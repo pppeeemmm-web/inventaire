@@ -420,13 +420,18 @@ const EX_OPS={
 };
 
 let exCrit=[], exFiltered=[], exSelected=new Set(), exCols=4;
+let exSelName="", exSelComment="", exItemNotes={}; // {oeuvreId: "note"}
 
 function showExport(){
   exShowAll=false;
   const mn=document.getElementById("mn");
   mn.innerHTML=`
     <div class="exp-top">
-      <h2 style="font-size:13px;font-weight:700;color:var(--wh);margin-bottom:8px">Export / Sélection</h2>
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+        <input id="exName" type="text" placeholder="Nom de la sélection..." value="${exSelName}" onchange="exSelName=this.value" style="font-family:inherit;font-size:14px;font-weight:700;color:var(--wh);background:none;border:none;border-bottom:1px solid var(--bd);padding:4px 0;width:300px;outline:none">
+        <span style="font-size:9px;color:var(--mt)">${new Date().toLocaleDateString("fr-FR")}</span>
+      </div>
+      <textarea id="exComment" placeholder="Notes / commentaires sur cette sélection..." onchange="exSelComment=this.value" style="font-family:inherit;font-size:10px;color:var(--tx);background:var(--bg);border:1px solid var(--bd);padding:6px 8px;width:100%;min-height:36px;max-height:80px;resize:vertical;outline:none;margin-bottom:8px">${esc(exSelComment)}</textarea>
       <div class="exp-filters" id="exFlt"></div>
     </div>
     <div class="exp-bar">
@@ -604,8 +609,9 @@ function renderExGrid(){
     const u=iuThumb(o.txtImageNameLink,thumbSize),sel=exSelected.has(o.OeuvreID);
     return`<div class="gc ${sel?'selected':''}" style="position:relative" data-oid="${o.OeuvreID}" onclick="toggleExSel(${o.OeuvreID})">
       <div class="check" style="position:absolute;top:4px;right:4px;width:18px;height:18px;border:2px solid rgba(255,255,255,0.4);background:${sel?'var(--ac)':'rgba(0,0,0,0.5)'};display:flex;align-items:center;justify-content:center;font-size:11px;color:${sel?'var(--bk)':'var(--ac)'};z-index:2;border-radius:2px">${sel?"✓":""}</div>
+      ${exItemNotes[o.OeuvreID]?`<div style="position:absolute;top:4px;left:4px;width:16px;height:16px;background:var(--ac);color:var(--bk);font-size:9px;display:flex;align-items:center;justify-content:center;border-radius:2px;z-index:2;cursor:pointer" onclick="event.stopPropagation();editItemNote(${o.OeuvreID})" title="${esc(exItemNotes[o.OeuvreID])}">✎</div>`:`<div style="position:absolute;top:4px;left:4px;width:16px;height:16px;background:rgba(0,0,0,0.3);color:rgba(255,255,255,0.3);font-size:9px;display:flex;align-items:center;justify-content:center;border-radius:2px;z-index:2;cursor:pointer" onclick="event.stopPropagation();editItemNote(${o.OeuvreID})">✎</div>`}
       ${u?`<img class="gi lazy" data-src="${u}" alt="">`:`<div class="ge">—</div>`}
-      <div class="gn">${buildLabel(o)}</div>
+      <div class="gn">${buildLabel(o)}${exItemNotes[o.OeuvreID]?`<div style="font-size:8px;color:var(--ac);margin-top:1px;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(exItemNotes[o.OeuvreID])}</div>`:""}</div>
     </div>`;
   }).join("");
   if(exPageSize>0&&total>exPageSize){
@@ -613,6 +619,16 @@ function renderExGrid(){
   }
   oL();
   updateExSummary();
+}
+
+function editItemNote(id){
+  const o=oeuvres.find(x=>x.OeuvreID===id);
+  const current=exItemNotes[id]||"";
+  const note=prompt(`Note pour "${o?.Titre||'ID '+id}" :`,current);
+  if(note===null)return; // cancelled
+  if(note)exItemNotes[id]=note;
+  else delete exItemNotes[id];
+  renderExGrid();
 }
 
 function sendToList(){
@@ -650,10 +666,24 @@ async function exPDF(mode){
   const doc=new jsPDF({orientation:mode==="tableau"?"landscape":"portrait",unit:"mm",format:"a4"});
   const pw=doc.internal.pageSize.getWidth(),ph=doc.internal.pageSize.getHeight();
   const mg=12;
+  const title=exSelName||"Sélection";
+  const date=new Date().toLocaleDateString("fr-FR");
+
+  // Cover page
+  doc.setFontSize(24);doc.setFont(undefined,"bold");
+  doc.text(title,mg,50);
+  doc.setFontSize(11);doc.setFont(undefined,"normal");doc.setTextColor(120);
+  doc.text(`${items.length} oeuvres · ${date}`,mg,60);
+  doc.text("Pierre Emmanuel Moulin",mg,67);
+  if(exSelComment){doc.setFontSize(9);doc.setTextColor(80);
+    const lines=doc.splitTextToSize(exSelComment,pw-mg*2);
+    doc.text(lines,mg,80);
+  }
+  doc.setTextColor(0);
 
   if(mode==="fiche"){
     for(let i=0;i<items.length;i++){
-      const o=items[i];if(i>0)doc.addPage();
+      const o=items[i];doc.addPage();
       st.textContent=`Fiche ${i+1}/${items.length}`;
       let y=mg;
       if(o.txtImageNameLink){
@@ -663,8 +693,13 @@ async function exPDF(mode){
       doc.setFontSize(16);doc.setFont(undefined,"bold");doc.text(o.Titre||"Sans titre",mg,y);y+=7;
       doc.setFontSize(9);doc.setFont(undefined,"normal");
       const d=dm(o);
-      [`ID ${o.OeuvreID} · ${o.Tirage||"1/1"}`,`${tM[o.Technique]||"—"} sur ${sM[o.Support]||"—"}`,o["Année"]?String(o["Année"]).slice(0,4):"",d.h&&d.l?`${d.h} × ${d.l} cm`:"",o.Prix>0?`${o.Prix} €`:"",o.Exposable?"Exposable":"",o.Commentaires?`${o.Commentaires.slice(0,200)}`:""].filter(Boolean).forEach(l=>{doc.text(l,mg,y);y+=4.5;});
-      doc.setFontSize(7);doc.setTextColor(150);doc.text(`© PEM`,mg,ph-6);doc.setTextColor(0);
+      [`ID ${o.OeuvreID} · ${o.Tirage||"1/1"}`,`${tM[o.Technique]||"—"} sur ${sM[o.Support]||"—"}`,o["Année"]?String(o["Année"]).slice(0,4):"",d.h&&d.l?`${d.h} × ${d.l} cm`:"",o.Prix>0?`${o.Prix} €`:"",o.Exposable?"Exposable":"",o.Commentaires?`Notes: ${o.Commentaires.slice(0,200)}`:""].filter(Boolean).forEach(l=>{doc.text(l,mg,y);y+=4.5;});
+      // Per-item note
+      if(exItemNotes[o.OeuvreID]){y+=3;doc.setFontSize(8);doc.setTextColor(150);
+        const nLines=doc.splitTextToSize(`Note: ${exItemNotes[o.OeuvreID]}`,pw-mg*2);
+        doc.text(nLines,mg,y);doc.setTextColor(0);
+      }
+      doc.setFontSize(7);doc.setTextColor(150);doc.text(`© PEM · ${title}`,mg,ph-6);doc.setTextColor(0);
     }
   }
   else if(mode==="grille"){
@@ -701,27 +736,34 @@ async function exPDF(mode){
       y+=3.5;
     }
   }
-  doc.save(`PEM_${mode}_${items.length}.pdf`);
+  const safeName=(exSelName||"selection").replace(/[^a-zA-Z0-9_-]/g,"_").slice(0,30);
+  doc.save(`PEM_${safeName}_${mode}_${items.length}.pdf`);
   st.textContent=`✓ ${items.length} oeuvres exportées`;tst(`PDF ${mode}`);
 }
 
 function exHTML(){
   const items=getExSel();if(!items.length){tst("Aucune oeuvre",true);return;}
   const cols=Number(document.getElementById("exPdfCols")?.value||4);
-  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>PEM — Sélection</title>
+  const title=exSelName||"Sélection";
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>PEM — ${esc(title)}</title>
 <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Georgia,serif;background:#fff;color:#222;padding:40px;max-width:1400px;margin:0 auto}
-h1{font-size:22px;font-weight:400;letter-spacing:3px;text-transform:uppercase;margin-bottom:24px}
+h1{font-size:22px;font-weight:400;letter-spacing:3px;text-transform:uppercase;margin-bottom:8px}
+.sub{font-size:11px;color:#888;margin-bottom:8px}
+.comment{font-size:11px;color:#666;margin-bottom:24px;font-style:italic;line-height:1.6;max-width:600px}
 .grid{display:grid;grid-template-columns:repeat(${cols},1fr);gap:24px}
 .card img{width:100%;aspect-ratio:4/5;object-fit:cover;display:block;background:#f0f0f0}
 .card h3{font-size:13px;margin-top:8px;font-weight:600}
 .card p{font-size:10px;color:#888;margin-top:3px;line-height:1.5}
+.card .note{font-size:9px;color:#b08030;margin-top:4px;font-style:italic}
 @media print{body{padding:15px}.grid{gap:12px}}</style></head><body>
-<h1>Pierre Emmanuel Moulin</h1>
-<p style="font-size:11px;color:#888;margin-bottom:24px">${items.length} oeuvres · ${new Date().toLocaleDateString("fr-FR")}</p>
+<h1>${esc(title)}</h1>
+<p class="sub">Pierre Emmanuel Moulin · ${items.length} oeuvres · ${new Date().toLocaleDateString("fr-FR")}</p>
+${exSelComment?`<p class="comment">${esc(exSelComment)}</p>`:""}
 <div class="grid">${items.map(o=>{const d=dm(o),u=iu(o.txtImageNameLink);
   return`<div class="card">${u?`<img src="${u}">`:""}
 <h3>${esc(o.Titre||"Sans titre")}</h3>
-<p>${tM[o.Technique]||""} sur ${sM[o.Support]||""}<br>${d.h&&d.l?`${d.h}×${d.l} cm · `:""}${o["Année"]?String(o["Année"]).slice(0,4):""}<br>${o.Prix>0?`${o.Prix} €`:""}</p></div>`;}).join("")}</div>
+<p>${tM[o.Technique]||""} sur ${sM[o.Support]||""}<br>${d.h&&d.l?`${d.h}×${d.l} cm · `:""}${o["Année"]?String(o["Année"]).slice(0,4):""}<br>${o.Prix>0?`${o.Prix} €`:""}</p>
+${exItemNotes[o.OeuvreID]?`<p class="note">${esc(exItemNotes[o.OeuvreID])}</p>`:""}</div>`;}).join("")}</div>
 <p style="font-size:8px;color:#ccc;margin-top:30px;text-align:center">© Pierre Emmanuel Moulin</p></body></html>`;
   const w=window.open();w.document.write(html);w.document.close();
 }
