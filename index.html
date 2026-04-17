@@ -101,17 +101,11 @@ nav button.active{background:var(--ac);color:var(--bk);font-weight:700}
 .exp-bar select{background:var(--sf);color:var(--tx);border:1px solid var(--bd);padding:3px 6px}
 .exp-bar .sep{width:1px;height:16px;background:var(--bd)}
 .exp-bar .cnt{font-size:10px;color:var(--mt)}
-.exp-grid{flex:1;overflow-y:auto;padding:16px;display:grid;gap:12px;min-height:0}
-.exp-card{position:relative;background:var(--sf);border:2px solid var(--bd);overflow:hidden;cursor:pointer;transition:border-color 0.15s;min-width:0}
-.exp-card:hover{border-color:#555}
-.exp-card.selected{border-color:var(--ac)}
-.exp-card .check{position:absolute;top:6px;right:6px;width:20px;height:20px;border:2px solid rgba(255,255,255,0.4);background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--ac);z-index:2;border-radius:2px}
-.exp-card.selected .check{background:var(--ac);border-color:var(--ac);color:var(--bk)}
-.exp-card .eimg{width:100%;object-fit:cover;display:block;background:var(--bk)}
-.exp-card .noimg{width:100%;display:flex;align-items:center;justify-content:center;color:var(--mt);font-size:9px;background:var(--bg)}
-.exp-card .lbl{padding:6px 8px}
-.exp-card .lbl .ttl{font-size:10px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.exp-card .lbl .sub{font-size:8px;color:var(--mt);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.exp-grid{flex:1;overflow-y:auto;padding:16px;display:grid;gap:10px;min-height:0;align-content:start}
+.exp-grid .gc{position:relative}
+.exp-grid .gc .check{position:absolute;top:6px;right:6px;width:20px;height:20px;border:2px solid rgba(255,255,255,0.4);background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--ac);z-index:2;border-radius:2px}
+.exp-grid .gc.selected{border:2px solid var(--ac)}
+.exp-grid .gc.selected .check{background:var(--ac);border-color:var(--ac);color:var(--bk)}
 .exp-formats{display:flex;gap:6px;flex-wrap:wrap;padding:10px 16px;border-top:1px solid var(--bd);background:var(--sf);align-items:center}
 .exp-fmt{font-family:inherit;padding:6px 14px;font-size:9px;font-weight:600;background:var(--bg);color:var(--tx);border:1px solid var(--bd);cursor:pointer;letter-spacing:1px;text-transform:uppercase}
 .exp-fmt:hover{border-color:var(--ac);color:var(--ac)}
@@ -240,7 +234,7 @@ function pubDet(id){const o=oeuvres.find(x=>x.OeuvreID===id);if(!o)return;const 
 }
 
 // ═══ ADMIN ═══
-function initA(){document.getElementById("app").innerHTML=`<header><h1>PEM — Inventaire</h1><nav id="nv"><button class="active" onclick="sv('list')">Liste</button><button onclick="sv('gallery')">Galerie</button><button onclick="sv('form')">+ Nouvelle</button><button onclick="sv('export')">Export</button></nav></header><div id="debug"></div><div class="body"><aside class="sidebar" id="sb"><div class="filters"><input type="text" id="q" placeholder="Recherche titre / ID..." oninput="applyF()"><select id="fT" onchange="applyF()"><option value="">Toutes techniques</option></select><select id="fS" onchange="applyF()"><option value="">Tous supports</option></select><select id="fSt" onchange="applyF()"><option value="">Tout statut</option><option value="cat">Catalogué</option><option value="ncat">Non catalogué</option><option value="exp">Exposable</option><option value="noimg">Sans image</option><option value="nopx">Sans prix</option></select></div><div class="list" id="ls"></div><div class="stats" id="st"></div></aside><main class="main" id="mn"><div class="empty">Chargement...</div></main></div>`;}
+function initA(){document.getElementById("app").innerHTML=`<header><h1>PEM — Inventaire</h1><nav id="nv"><button class="active" onclick="sv('list')">Liste</button><button onclick="sv('gallery')">Galerie</button><button onclick="sv('form')">+ Nouvelle</button><button onclick="sv('export')">Export/Sélection</button></nav></header><div id="debug"></div><div class="body"><aside class="sidebar" id="sb"><div class="filters"><input type="text" id="q" placeholder="Recherche titre / ID..." oninput="applyF()"><select id="fT" onchange="applyF()"><option value="">Toutes techniques</option></select><select id="fS" onchange="applyF()"><option value="">Tous supports</option></select><select id="fSt" onchange="applyF()"><option value="">Tout statut</option><option value="cat">Catalogué</option><option value="ncat">Non catalogué</option><option value="exp">Exposable</option><option value="noimg">Sans image</option><option value="nopx">Sans prix</option></select></div><div class="list" id="ls"></div><div class="stats" id="st"></div></aside><main class="main" id="mn"><div class="empty">Chargement...</div></main></div>`;}
 function popF(){document.getElementById("fT").innerHTML='<option value="">Toutes techniques</option>'+techniques.map(t=>`<option value="${t.TechniqueID}">${t.Technique}</option>`).join("");document.getElementById("fS").innerHTML='<option value="">Tous supports</option>'+supports.map(s=>`<option value="${s.SupportID}">${s.Support}</option>`).join("");}
 function upSt(){document.getElementById("st").textContent=`${filtered.length}/${oeuvres.length} · ${oeuvres.filter(o=>!o.txtImageNameLink).length} sans img · ${oeuvres.filter(o=>!o.Prix).length} sans prix`;}
 function applyF(){const q=document.getElementById("q").value.toLowerCase(),t=document.getElementById("fT").value,su=document.getElementById("fS").value,st=document.getElementById("fSt").value;filtered=oeuvres.filter(o=>{if(q&&!(o.Titre||"").toLowerCase().includes(q)&&!String(o.OeuvreID).includes(q))return false;if(t&&String(o.Technique)!==t)return false;if(su&&String(o.Support)!==su)return false;if(st==="cat"&&!o["Catalogué"])return false;if(st==="ncat"&&o["Catalogué"])return false;if(st==="exp"&&!o.Exposable)return false;if(st==="noimg"&&o.txtImageNameLink)return false;if(st==="nopx"&&o.Prix>0)return false;return true;});if(curV==="list")rList();if(curV==="gallery")rGal();upSt();}
@@ -454,6 +448,8 @@ function showExport(){
       <div class="sep"></div>
       <label style="color:var(--mt)">Colonnes: <select id="exColSel" onchange="exCols=Number(this.value);renderExGrid()">${[2,3,4,5,6,8].map(n=>`<option value="${n}" ${n===exCols?"selected":""}>${n}</option>`).join("")}</select></label>
       <div class="sep"></div>
+      <label style="color:var(--mt)">Affichage: <select onchange="exPageSize=Number(this.value);renderExGrid()"><option value="0" selected>Toutes</option><option value="24">24</option><option value="48">48</option><option value="96">96</option></select></label>
+      <div class="sep"></div>
       <span class="cnt" id="exCnt"></span>
     </div>
     <div class="exp-grid" id="exGrid"></div>
@@ -534,28 +530,31 @@ function exSelInvert(){const ns=new Set();exFiltered.forEach(o=>{if(!exSelected.
 function toggleExSel(id){
   if(exSelected.has(id))exSelected.delete(id);else exSelected.add(id);
   updateExCnt();
-  // Update just the card border instead of re-rendering entire grid
   const card=document.querySelector(`[data-oid="${id}"]`);
   if(card){card.classList.toggle("selected",exSelected.has(id));card.querySelector(".check").textContent=exSelected.has(id)?"✓":"";}
 }
 
-let exShowAll=false;
+let exShowAll=false, exPageSize=0; // 0 = all
 function renderExGrid(){
   const el=document.getElementById("exGrid");if(!el)return;
   el.style.gridTemplateColumns=`repeat(${exCols},1fr)`;
-  const items=exShowAll?exFiltered:exFiltered.filter(o=>o.txtImageNameLink);
-  const gridW=window.innerWidth-40;
-  const cardW=Math.floor(gridW/exCols)-16;
-  const imgH=Math.max(120,Math.min(cardW,400));
+  let items=exShowAll?exFiltered:exFiltered.filter(o=>o.txtImageNameLink);
+  const total=items.length;
+  if(exPageSize>0)items=items.slice(0,exPageSize);
   
   el.innerHTML=items.map(o=>{
-    const u=iuThumb(o.txtImageNameLink,300),sel=exSelected.has(o.OeuvreID),d=dm(o);
-    return`<div class="exp-card ${sel?'selected':''}" data-oid="${o.OeuvreID}" onclick="toggleExSel(${o.OeuvreID})">
+    const u=iuThumb(o.txtImageNameLink,300),sel=exSelected.has(o.OeuvreID),ic=iFor(o.OeuvreID).length,d=dm(o);
+    return`<div class="gc ${sel?'selected':''}" data-oid="${o.OeuvreID}" onclick="toggleExSel(${o.OeuvreID})">
       <div class="check">${sel?"✓":""}</div>
-      ${u?`<img class="eimg" src="${u}" loading="lazy" style="height:${imgH}px" alt="">`:`<div class="noimg" style="height:${imgH}px">—</div>`}
-      <div class="lbl"><div class="ttl">${esc(o.Titre||"S/T")}</div><div class="sub">${o.OeuvreID} · ${tM[o.Technique]||"—"} · ${o["Année"]?String(o["Année"]).slice(0,4):"—"}${d.h&&d.l?` · ${d.h}×${d.l}`:""}</div></div>
+      ${u?`<img class="gi lazy" data-src="${u}" alt="">`:`<div class="ge">—</div>`}
+      <div class="gn"><div class="gt">${esc(o.Titre||"S/T")}</div>
+      <div class="gs">${o.OeuvreID} · ${tM[o.Technique]||"—"} · ${o["Année"]?String(o["Année"]).slice(0,4):"—"}${d.h&&d.l?` · ${d.h}×${d.l}`:""}</div></div>
     </div>`;
   }).join("");
+  if(exPageSize>0&&total>exPageSize){
+    el.insertAdjacentHTML("beforeend",`<div style="grid-column:1/-1;text-align:center;padding:12px"><button class="exp-fmt" onclick="exPageSize+=exPageSize;renderExGrid()">Charger plus (${total-exPageSize} restantes)</button></div>`);
+  }
+  oL();
 }
 
 function getExSel(){return exFiltered.filter(o=>exSelected.has(o.OeuvreID));}
@@ -586,7 +585,7 @@ async function exPDF(mode){
       st.textContent=`Fiche ${i+1}/${items.length}`;
       let y=mg;
       if(o.txtImageNameLink){
-        const img=await imgToDataUrl(iu(o.txtImageNameLink),500,500);
+        const img=await imgToDataUrl(iu(o.txtImageNameLink),800,800);
         if(img){const sc=Math.min((pw-mg*2)/img.w,(ph*0.5)/img.h);doc.addImage(img.data,"JPEG",mg,y,img.w*sc,img.h*sc);y+=img.h*sc+6;}
       }
       doc.setFontSize(16);doc.setFont(undefined,"bold");doc.text(o.Titre||"Sans titre",mg,y);y+=7;
@@ -598,13 +597,16 @@ async function exPDF(mode){
   }
   else if(mode==="grille"){
     const cols=Number(document.getElementById("exPdfCols")?.value||4);
+    // Adaptive resolution: fewer cols = higher res per image
+    const imgRes=cols<=2?600:cols<=4?300:200;
     const cellW=(pw-mg*2)/cols,imgH=cellW*1.2,cellH=imgH+12;
     let x=mg,y=mg,col=0;
     for(let i=0;i<items.length;i++){
       const o=items[i];st.textContent=`Grille ${i+1}/${items.length}`;
       if(y+cellH>ph-mg){doc.addPage();x=mg;y=mg;col=0;}
       if(o.txtImageNameLink){
-        const img=await imgToDataUrl(iu(o.txtImageNameLink),300,300);
+        const imgUrl=cols<=2?iu(o.txtImageNameLink):iuThumb(o.txtImageNameLink,imgRes);
+        const img=await imgToDataUrl(imgUrl,imgRes,imgRes);
         if(img){const sc=Math.min((cellW-4)/img.w,imgH/img.h);const iw=img.w*sc,ih=img.h*sc;doc.addImage(img.data,"JPEG",x+(cellW-iw)/2,y,iw,ih);}
       }
       doc.setFontSize(6);doc.setFont(undefined,"bold");doc.text(`${o.OeuvreID}`,x+1,y+imgH+4);
