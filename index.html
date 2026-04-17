@@ -82,26 +82,42 @@ nav button.active{background:var(--ac);color:var(--bk);font-weight:700}
 .toast{position:fixed;bottom:16px;right:16px;padding:8px 14px;font-size:11px;font-weight:600;z-index:1000}
 .tok{background:var(--ac);color:var(--bk)}.terr{background:var(--dg);color:var(--wh)}
 .hidden{display:none}.lazy{opacity:0}.loaded{opacity:1;transition:opacity 0.3s ease}.img-err{opacity:0}
-/* Export */
-.exp-panel{max-width:900px}
-.exp-criteria{background:var(--sf);border:1px solid var(--bd);padding:12px;margin-bottom:12px}
-.exp-row{display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap}
-.exp-row select,.exp-row input{font-family:inherit;background:var(--bg);border:1px solid var(--bd);color:var(--tx);padding:4px 6px;font-size:10px;outline:none}
-.exp-row select{min-width:120px}
-.exp-row input{min-width:100px;flex:1}
-.exp-row .x{background:var(--dg);color:var(--wh);border:none;padding:3px 8px;cursor:pointer;font-size:10px;font-family:inherit}
-.exp-add{font-family:inherit;font-size:10px;color:var(--ac);background:none;border:1px dashed var(--bd);padding:4px 12px;cursor:pointer;margin-top:4px}
+/* Export workspace — full width */
+.exp{display:flex;flex-direction:column;height:100%}
+.exp-top{background:var(--sf);border-bottom:1px solid var(--bd);padding:10px 16px}
+.exp-top h2{font-size:13px;font-weight:700;color:var(--wh);margin-bottom:8px}
+.exp-filters{display:flex;flex-wrap:wrap;gap:4px;align-items:flex-start}
+.exp-row{display:flex;gap:4px;align-items:center;background:var(--bg);padding:3px 6px;border:1px solid var(--bd)}
+.exp-row select,.exp-row input{font-family:inherit;background:var(--bg);border:1px solid var(--bd);color:var(--tx);padding:3px 5px;font-size:10px;outline:none}
+.exp-row select{max-width:110px}.exp-row input{width:80px}
+.exp-row .x{background:none;color:var(--dg);border:none;cursor:pointer;font-size:12px;font-family:inherit;padding:0 2px}
+.exp-add{font-family:inherit;font-size:10px;color:var(--ac);background:none;border:1px dashed var(--bd);padding:3px 10px;cursor:pointer;align-self:center}
 .exp-add:hover{border-color:var(--ac)}
-.exp-preview{border:1px solid var(--bd);max-height:300px;overflow-y:auto;margin-bottom:12px}
-.exp-preview table{width:100%;border-collapse:collapse;font-size:10px}
-.exp-preview th{text-align:left;padding:4px 8px;background:var(--sf);color:var(--mt);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;position:sticky;top:0}
-.exp-preview td{padding:4px 8px;border-bottom:1px solid var(--bd)}
-.exp-preview tr:hover{background:#2a2a2a}
-.exp-preview img{width:30px;height:30px;object-fit:cover;background:var(--bg)}
-.exp-formats{display:flex;gap:8px;flex-wrap:wrap}
-.exp-fmt{font-family:inherit;padding:8px 16px;font-size:10px;font-weight:600;background:var(--sf);color:var(--tx);border:1px solid var(--bd);cursor:pointer;letter-spacing:1px;text-transform:uppercase}
+.exp-bar{display:flex;align-items:center;gap:8px;padding:8px 16px;border-bottom:1px solid var(--bd);background:var(--bg);flex-wrap:wrap}
+.exp-bar button,.exp-bar select,.exp-bar label{font-family:inherit;font-size:9px}
+.exp-bar button{padding:3px 10px;background:var(--sf);color:var(--tx);border:1px solid var(--bd);cursor:pointer;text-transform:uppercase;letter-spacing:0.5px}
+.exp-bar button:hover{border-color:var(--ac);color:var(--ac)}
+.exp-bar button.bp{background:var(--ac);color:var(--bk);border:none}
+.exp-bar select{background:var(--sf);color:var(--tx);border:1px solid var(--bd);padding:3px 6px}
+.exp-bar .sep{width:1px;height:16px;background:var(--bd)}
+.exp-bar .cnt{font-size:10px;color:var(--mt)}
+.exp-grid{flex:1;overflow-y:auto;padding:16px;display:grid;gap:12px;align-content:start}
+.exp-card{position:relative;background:var(--sf);border:2px solid var(--bd);overflow:hidden;cursor:pointer;transition:border-color 0.15s}
+.exp-card:hover{border-color:#555}
+.exp-card.selected{border-color:var(--ac)}
+.exp-card .check{position:absolute;top:6px;right:6px;width:20px;height:20px;border:2px solid rgba(255,255,255,0.4);background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--ac);z-index:2;border-radius:2px}
+.exp-card.selected .check{background:var(--ac);border-color:var(--ac);color:var(--bk)}
+.exp-card .img-wrap{position:relative;width:100%;padding-top:100%;background:var(--bk);overflow:hidden}
+.exp-card .img-wrap img{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;display:block}
+.exp-card .img-wrap .noimg{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--mt);font-size:9px;background:var(--bg)}
+.exp-card .lbl{padding:6px 8px}
+.exp-card .lbl .ttl{font-size:10px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.exp-card .lbl .sub{font-size:8px;color:var(--mt);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.exp-formats{display:flex;gap:6px;flex-wrap:wrap;padding:10px 16px;border-top:1px solid var(--bd);background:var(--sf);align-items:center}
+.exp-fmt{font-family:inherit;padding:6px 14px;font-size:9px;font-weight:600;background:var(--bg);color:var(--tx);border:1px solid var(--bd);cursor:pointer;letter-spacing:1px;text-transform:uppercase}
 .exp-fmt:hover{border-color:var(--ac);color:var(--ac)}
 .exp-fmt:disabled{opacity:0.3;cursor:default}
+.exp-status{font-size:9px;color:var(--mt);padding:0 16px 8px;background:var(--sf)}
 /* Public */
 .ph{text-align:center;padding:24px 16px 16px;border-bottom:1px solid var(--bd)}.ph h1{font-size:18px;font-weight:700;color:var(--ac);letter-spacing:4px;text-transform:uppercase}.ph p{font-size:11px;color:var(--mt);margin-top:4px;letter-spacing:1px}
 .pgal{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;padding:20px}
@@ -395,310 +411,238 @@ let lO=null;function oL(){if(lO)lO.disconnect();lO=new IntersectionObserver(es=>
 // EXPORT MODULE
 // ═══════════════════════════════════════
 
-// All Oeuvres fields available for filtering
 const EX_FIELDS=[
-  {k:"OeuvreID",l:"ID",type:"num"},
-  {k:"Titre",l:"Titre",type:"text"},
-  {k:"Technique",l:"Technique",type:"lookup",map:()=>tM},
-  {k:"Support",l:"Support",type:"lookup",map:()=>sM},
-  {k:"Année",l:"Année",type:"text"},
-  {k:"Format",l:"Format",type:"lookup",map:()=>fM},
-  {k:"Hauteur",l:"Hauteur",type:"num"},
-  {k:"Largeur",l:"Largeur",type:"num"},
-  {k:"Profondeur",l:"Profondeur",type:"num"},
-  {k:"Poids",l:"Poids",type:"num"},
-  {k:"ContactID",l:"Contact",type:"lookup",map:()=>cM},
-  {k:"Prix",l:"Prix",type:"num"},
-  {k:"Discount",l:"Discount",type:"num"},
-  {k:"PrixFinal",l:"Prix final",type:"num"},
-  {k:"Exposable",l:"Exposable",type:"bool"},
-  {k:"Catalogué",l:"Catalogué",type:"bool"},
-  {k:"Tirage",l:"Tirage",type:"text"},
-  {k:"Statut",l:"Statut",type:"num"},
-  {k:"Commentaires",l:"Commentaires",type:"text"},
-  {k:"Historique",l:"Historique",type:"text"},
-  {k:"txtImageNameLink",l:"Image",type:"text"},
-  {k:"NomOriginal",l:"Nom original",type:"text"},
+  {k:"OeuvreID",l:"ID",t:"num"},{k:"Titre",l:"Titre",t:"text"},
+  {k:"Technique",l:"Technique",t:"lookup",m:()=>tM},{k:"Support",l:"Support",t:"lookup",m:()=>sM},
+  {k:"Année",l:"Année",t:"date"},{k:"Format",l:"Format",t:"lookup",m:()=>fM},
+  {k:"Hauteur",l:"Hauteur",t:"num"},{k:"Largeur",l:"Largeur",t:"num"},
+  {k:"Profondeur",l:"Profondeur",t:"num"},{k:"Poids",l:"Poids",t:"num"},
+  {k:"ContactID",l:"Contact",t:"lookup",m:()=>cM},
+  {k:"Prix",l:"Prix",t:"num"},{k:"Discount",l:"Discount",t:"num"},{k:"PrixFinal",l:"Prix final",t:"num"},
+  {k:"Exposable",l:"Exposable",t:"bool"},{k:"Catalogué",l:"Catalogué",t:"bool"},
+  {k:"Tirage",l:"Tirage",t:"text"},{k:"Statut",l:"Statut",t:"num"},
+  {k:"Commentaires",l:"Commentaires",t:"text"},{k:"Historique",l:"Historique",t:"text"},
+  {k:"txtImageNameLink",l:"Image",t:"text"},{k:"NomOriginal",l:"Nom original",t:"text"},
 ];
-
 const EX_OPS={
   text:["contient","ne contient pas","=","≠","est vide","n'est pas vide"],
-  num:["=","≠",">","<",">=","<=","est vide","n'est pas vide"],
+  num:["=","≠",">","<","≥","≤","est vide","n'est pas vide"],
+  date:["=","≠",">","<","≥","≤","est vide","n'est pas vide"],
   bool:["= vrai","= faux"],
   lookup:["=","≠","est vide","n'est pas vide"],
 };
 
-let exCriteria=[]; // [{field, op, value}]
-let exResults=[];
+let exCrit=[], exFiltered=[], exSelected=new Set(), exCols=4;
 
 function showExport(){
+  // Use full width — hide sidebar, take over main
   const mn=document.getElementById("mn");
-  mn.innerHTML=`
-    <div class="exp-panel">
-      <h2 style="font-size:15px;font-weight:700;color:var(--wh);margin-bottom:12px">Export — Sélection avancée</h2>
-      <div class="exp-criteria" id="exCrit">
-        <div style="font-size:9px;color:var(--mt);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Critères (AND)</div>
-        <div id="exRows"></div>
-        <button class="exp-add" onclick="addExCrit()">+ Ajouter un critère</button>
-      </div>
-      <div style="margin-bottom:12px">
-        <button class="btn bp" onclick="runExFilter()">Appliquer</button>
-        <button class="btn bs" onclick="exCriteria=[];renderExCrit();runExFilter()">Réinitialiser</button>
-        <span id="exCount" style="font-size:10px;color:var(--mt);margin-left:12px"></span>
-      </div>
-      <div class="exp-preview" id="exPrev"></div>
-      <div style="font-size:9px;color:var(--mt);text-transform:uppercase;letter-spacing:1px;margin:12px 0 8px">Format d'export</div>
-      <div class="exp-formats">
-        <button class="exp-fmt" onclick="exPDF('fiche')" id="exBtnFiche">PDF Fiches</button>
-        <button class="exp-fmt" onclick="exPDF('grille')" id="exBtnGrille">PDF Grille</button>
-        <button class="exp-fmt" onclick="exPDF('tableau')" id="exBtnTableau">PDF Tableau</button>
-        <button class="exp-fmt" onclick="exHTML()">HTML (nouvelle page)</button>
-      </div>
-      <div id="exStatus" style="font-size:10px;color:var(--mt);margin-top:12px"></div>
-    </div>`;
+  mn.innerHTML=`<div class="exp">
+    <div class="exp-top">
+      <h2>Export — Sélection avancée</h2>
+      <div class="exp-filters" id="exFlt"></div>
+    </div>
+    <div class="exp-bar">
+      <button onclick="exSelImg()">Sélect. avec image</button>
+      <button onclick="exSelAll()">Tout</button>
+      <button onclick="exSelNone()">Aucun</button>
+      <button onclick="exSelInvert()">Inverser</button>
+      <div class="sep"></div>
+      <label style="color:var(--mt)"><input type="checkbox" id="exShowAll" onchange="exShowAll=this.checked;renderExGrid()"> Afficher sans image</label>
+      <div class="sep"></div>
+      <label style="color:var(--mt)">Colonnes: <select id="exColSel" onchange="exCols=Number(this.value);renderExGrid()">${[2,3,4,5,6,8].map(n=>`<option value="${n}" ${n===exCols?"selected":""}>${n}</option>`).join("")}</select></label>
+      <div class="sep"></div>
+      <span class="cnt" id="exCnt"></span>
+    </div>
+    <div class="exp-grid" id="exGrid"></div>
+    <div class="exp-formats" id="exFmts">
+      <label style="font-size:9px;color:var(--mt);align-self:center">PDF colonnes: <select id="exPdfCols">${[1,2,3,4,5,6].map(n=>`<option value="${n}" ${n===4?"selected":""}>${n}</option>`).join("")}</select></label>
+      <button class="exp-fmt" onclick="exPDF('fiche')">PDF Fiches</button>
+      <button class="exp-fmt" onclick="exPDF('grille')">PDF Grille</button>
+      <button class="exp-fmt" onclick="exPDF('tableau')">PDF Tableau</button>
+      <button class="exp-fmt" onclick="exHTML()">HTML</button>
+    </div>
+    <div class="exp-status" id="exStat"></div>
+  </div>`;
   renderExCrit();
   runExFilter();
 }
 
 function renderExCrit(){
-  const el=document.getElementById("exRows");if(!el)return;
-  el.innerHTML=exCriteria.map((c,i)=>{
+  const el=document.getElementById("exFlt");if(!el)return;
+  el.innerHTML=exCrit.map((c,i)=>{
     const fld=EX_FIELDS.find(f=>f.k===c.field)||EX_FIELDS[0];
-    const ops=EX_OPS[fld.type]||EX_OPS.text;
-    // Value input: for lookups show select, for bool hide, for text/num show input
-    let valHtml='';
-    if(fld.type==="lookup"){
-      const m=fld.map();
-      valHtml=`<select onchange="exCriteria[${i}].value=this.value;runExFilter()"><option value="">—</option>${Object.entries(m).map(([k,v])=>`<option value="${k}" ${c.value===String(k)?"selected":""}>${esc(v)}</option>`).join("")}</select>`;
-    }else if(fld.type==="bool"){
-      valHtml='';
-    }else{
-      valHtml=`<input type="${fld.type==='num'?'number':'text'}" value="${esc(c.value||'')}" placeholder="valeur" onchange="exCriteria[${i}].value=this.value;runExFilter()">`;
-    }
+    const ops=EX_OPS[fld.t]||EX_OPS.text;
+    let valH='';
+    if(fld.t==="lookup"){
+      const m=fld.m();
+      valH=`<select onchange="exCrit[${i}].value=this.value;runExFilter()"><option value="">—</option>${Object.entries(m).map(([k,v])=>`<option value="${k}" ${c.value===String(k)?"selected":""}>${esc(v)}</option>`).join("")}</select>`;
+    }else if(fld.t==="bool"){valH='';}
+    else{valH=`<input type="${fld.t==='num'?'number':'text'}" value="${esc(c.value||'')}" placeholder="${fld.t==='date'?'2022':'valeur'}" onchange="exCrit[${i}].value=this.value;runExFilter()">`;}
     return`<div class="exp-row">
-      <select onchange="exCriteria[${i}].field=this.value;exCriteria[${i}].op=EX_OPS[(EX_FIELDS.find(f=>f.k===this.value)||{}).type||'text'][0];exCriteria[${i}].value='';renderExCrit();runExFilter()">
-        ${EX_FIELDS.map(f=>`<option value="${f.k}" ${c.field===f.k?"selected":""}>${f.l}</option>`).join("")}
-      </select>
-      <select onchange="exCriteria[${i}].op=this.value;runExFilter()">
-        ${ops.map(op=>`<option ${c.op===op?"selected":""}>${op}</option>`).join("")}
-      </select>
-      ${valHtml}
-      <button class="x" onclick="exCriteria.splice(${i},1);renderExCrit();runExFilter()">✕</button>
+      <select onchange="exCrit[${i}].field=this.value;exCrit[${i}].op=EX_OPS[(EX_FIELDS.find(f=>f.k===this.value)||{t:'text'}).t][0];exCrit[${i}].value='';renderExCrit();runExFilter()">${EX_FIELDS.map(f=>`<option value="${f.k}" ${c.field===f.k?"selected":""}>${f.l}</option>`).join("")}</select>
+      <select onchange="exCrit[${i}].op=this.value;runExFilter()">${ops.map(op=>`<option ${c.op===op?"selected":""}>${op}</option>`).join("")}</select>
+      ${valH}
+      <button class="x" onclick="exCrit.splice(${i},1);renderExCrit();runExFilter()">✕</button>
     </div>`;
-  }).join("");
+  }).join("")+`<button class="exp-add" onclick="exCrit.push({field:'Technique',op:'=',value:''});renderExCrit()">+ critère</button>`;
 }
 
-function addExCrit(){
-  exCriteria.push({field:"Technique",op:"=",value:""});
-  renderExCrit();
-}
-
-function matchCrit(o,c){
+function exMatch(o,c){
   const fld=EX_FIELDS.find(f=>f.k===c.field);if(!fld)return true;
-  const raw=o[c.field];
-  const val=raw!=null?String(raw):"";
-  const cv=c.value||"";
-  
+  const raw=o[c.field];const val=raw!=null?String(raw):"";const cv=c.value||"";
+  // For date fields: compare year portion
+  const numVal=fld.t==="date"?(val?Number(val.slice(0,4)):0):Number(val);
+  const numCv=Number(cv);
   switch(c.op){
-    case "contient": return val.toLowerCase().includes(cv.toLowerCase());
-    case "ne contient pas": return !val.toLowerCase().includes(cv.toLowerCase());
-    case "=": return val===cv;
-    case "≠": return val!==cv;
-    case ">": return Number(val)>Number(cv);
-    case "<": return Number(val)<Number(cv);
-    case ">=": return Number(val)>=Number(cv);
-    case "<=": return Number(val)<=Number(cv);
-    case "est vide": return !raw&&raw!==0&&raw!==false;
-    case "n'est pas vide": return raw!=null&&raw!==""&&raw!==0||raw===0;
-    case "= vrai": return raw===true;
-    case "= faux": return !raw;
-    default: return true;
+    case "contient":return val.toLowerCase().includes(cv.toLowerCase());
+    case "ne contient pas":return !val.toLowerCase().includes(cv.toLowerCase());
+    case "=":return val===cv;
+    case "≠":return val!==cv;
+    case ">":return (fld.t==="date"?numVal:Number(val))>numCv;
+    case "<":return (fld.t==="date"?numVal:Number(val))<numCv;
+    case "≥":return (fld.t==="date"?numVal:Number(val))>=numCv;
+    case "≤":return (fld.t==="date"?numVal:Number(val))<=numCv;
+    case "est vide":return !raw&&raw!==0&&raw!==false;
+    case "n'est pas vide":return raw!=null&&raw!=="";
+    case "= vrai":return raw===true;
+    case "= faux":return !raw;
+    default:return true;
   }
 }
 
 function runExFilter(){
-  exResults=oeuvres.filter(o=>exCriteria.every(c=>matchCrit(o,c)));
-  const cnt=document.getElementById("exCount");
-  if(cnt)cnt.textContent=`${exResults.length} oeuvre${exResults.length>1?"s":""} sélectionnée${exResults.length>1?"s":""}`;
-  renderExPreview();
+  exFiltered=oeuvres.filter(o=>exCrit.every(c=>exMatch(o,c)));
+  // Start with none selected
+  exSelected=new Set();
+  updateExCnt();renderExGrid();
 }
 
-function renderExPreview(){
-  const el=document.getElementById("exPrev");if(!el)return;
-  if(!exResults.length){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--mt);font-size:10px">Aucun résultat</div>';return;}
-  const cols=["OeuvreID","Titre","Technique","Support","Année","Hauteur","Largeur","Prix","Exposable"];
-  el.innerHTML=`<table>
-    <tr>${cols.map(c=>`<th>${EX_FIELDS.find(f=>f.k===c)?.l||c}</th>`).join("")}<th>Img</th></tr>
-    ${exResults.slice(0,100).map(o=>{
-      const d=dm(o);
-      return`<tr>${cols.map(c=>{
-        let v=o[c];
-        if(c==="Technique")v=tM[v]||"";
-        else if(c==="Support")v=sM[v]||"";
-        else if(c==="Exposable")v=v?"✓":"";
-        else if(c==="Année")v=v?String(v).slice(0,4):"";
-        else v=v!=null?v:"";
-        return`<td>${esc(String(v))}</td>`;
-      }).join("")}<td>${o.txtImageNameLink?`<img src="${iu(o.txtImageNameLink)}" loading="lazy">`:"—"}</td></tr>`;
-    }).join("")}
-  </table>${exResults.length>100?`<div style="padding:8px;text-align:center;color:var(--mt);font-size:9px">${exResults.length-100} de plus non affichés</div>`:""}`;
+function updateExCnt(){
+  const el=document.getElementById("exCnt");
+  const withImg=exFiltered.filter(o=>o.txtImageNameLink).length;
+  if(el)el.textContent=`${exSelected.size} sélectionnée${exSelected.size>1?"s":""} / ${exFiltered.length} filtrée${exFiltered.length>1?"s":""} (${withImg} avec image)`;
 }
 
-// ── PDF Export (using jsPDF) ──
+function exSelAll(){exSelected=new Set(exFiltered.map(o=>o.OeuvreID));updateExCnt();renderExGrid();}
+function exSelImg(){exSelected=new Set(exFiltered.filter(o=>o.txtImageNameLink).map(o=>o.OeuvreID));updateExCnt();renderExGrid();}
+function exSelNone(){exSelected.clear();updateExCnt();renderExGrid();}
+function exSelInvert(){const ns=new Set();exFiltered.forEach(o=>{if(!exSelected.has(o.OeuvreID))ns.add(o.OeuvreID);});exSelected=ns;updateExCnt();renderExGrid();}
+
+function toggleExSel(id){
+  if(exSelected.has(id))exSelected.delete(id);else exSelected.add(id);
+  updateExCnt();
+  // Update just the card border instead of re-rendering entire grid
+  const card=document.querySelector(`[data-oid="${id}"]`);
+  if(card){card.classList.toggle("selected",exSelected.has(id));card.querySelector(".check").textContent=exSelected.has(id)?"✓":"";}
+}
+
+let exShowAll=false;
+function renderExGrid(){
+  const el=document.getElementById("exGrid");if(!el)return;
+  el.style.gridTemplateColumns=`repeat(${exCols},1fr)`;
+  const items=exShowAll?exFiltered:exFiltered.filter(o=>o.txtImageNameLink);
+  el.innerHTML=items.map(o=>{
+    const u=iu(o.txtImageNameLink),sel=exSelected.has(o.OeuvreID),d=dm(o);
+    return`<div class="exp-card ${sel?'selected':''}" data-oid="${o.OeuvreID}" onclick="toggleExSel(${o.OeuvreID})">
+      <div class="check">${sel?"✓":""}</div>
+      <div class="img-wrap">${u?`<img src="${u}" loading="lazy" alt="">`:`<div class="noimg">—</div>`}</div>
+      <div class="lbl"><div class="ttl">${esc(o.Titre||"S/T")}</div><div class="sub">${o.OeuvreID} · ${tM[o.Technique]||"—"} · ${o["Année"]?String(o["Année"]).slice(0,4):"—"}${d.h&&d.l?` · ${d.h}×${d.l}`:""}</div></div>
+    </div>`;
+  }).join("");
+}
+
+function getExSel(){return exFiltered.filter(o=>exSelected.has(o.OeuvreID));}
+
+// ── PDF ──
 async function loadJsPDF(){
   if(window.jspdf)return;
-  return new Promise((res,rej)=>{
-    const s=document.createElement("script");
-    s.src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
-    s.onload=res;s.onerror=()=>rej(new Error("Impossible de charger jsPDF"));
-    document.head.appendChild(s);
-  });
+  return new Promise((res,rej)=>{const s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";s.onload=res;s.onerror=()=>rej(new Error("jsPDF load failed"));document.head.appendChild(s);});
 }
-
 async function imgToDataUrl(url,maxW,maxH){
-  return new Promise((res)=>{
-    const img=new Image();img.crossOrigin="anonymous";
-    img.onload=()=>{
-      const sc=Math.min(maxW/img.naturalWidth,maxH/img.naturalHeight,1);
-      const c=document.createElement("canvas");
-      c.width=img.naturalWidth*sc;c.height=img.naturalHeight*sc;
-      c.getContext("2d").drawImage(img,0,0,c.width,c.height);
-      res({data:c.toDataURL("image/jpeg",0.8),w:c.width,h:c.height});
-    };
-    img.onerror=()=>res(null);
-    img.src=url;
-  });
+  return new Promise(res=>{const img=new Image();img.crossOrigin="anonymous";img.onload=()=>{const sc=Math.min(maxW/img.naturalWidth,maxH/img.naturalHeight,1);const c=document.createElement("canvas");c.width=img.naturalWidth*sc;c.height=img.naturalHeight*sc;c.getContext("2d").drawImage(img,0,0,c.width,c.height);res({data:c.toDataURL("image/jpeg",0.8),w:c.width,h:c.height});};img.onerror=()=>res(null);img.src=url;});
 }
 
 async function exPDF(mode){
-  const st=document.getElementById("exStatus");
-  if(!exResults.length){tst("Aucune oeuvre à exporter",true);return;}
-  st.textContent="Chargement de jsPDF...";
-  try{await loadJsPDF();}catch(e){st.textContent="Erreur: "+e.message;return;}
+  const items=getExSel();
+  if(!items.length){tst("Aucune oeuvre sélectionnée",true);return;}
+  const st=document.getElementById("exStat");
+  st.textContent="Chargement jsPDF...";
+  try{await loadJsPDF();}catch(e){st.textContent=e.message;return;}
   const{jsPDF}=window.jspdf;
   const doc=new jsPDF({orientation:mode==="tableau"?"landscape":"portrait",unit:"mm",format:"a4"});
   const pw=doc.internal.pageSize.getWidth(),ph=doc.internal.pageSize.getHeight();
-  const margin=15;
+  const mg=12;
 
   if(mode==="fiche"){
-    st.textContent="Génération fiches...";
-    for(let i=0;i<exResults.length;i++){
-      const o=exResults[i];
-      if(i>0)doc.addPage();
-      st.textContent=`Fiche ${i+1}/${exResults.length}...`;
-      let y=margin;
-      // Image
+    for(let i=0;i<items.length;i++){
+      const o=items[i];if(i>0)doc.addPage();
+      st.textContent=`Fiche ${i+1}/${items.length}`;
+      let y=mg;
       if(o.txtImageNameLink){
-        const img=await imgToDataUrl(iu(o.txtImageNameLink),400,400);
-        if(img){
-          const maxImgW=pw-margin*2,maxImgH=ph*0.45;
-          const sc=Math.min(maxImgW/img.w,maxImgH/img.h);
-          const iw=img.w*sc,ih=img.h*sc;
-          doc.addImage(img.data,"JPEG",margin,y,iw,ih);
-          y+=ih+8;
-        }
+        const img=await imgToDataUrl(iu(o.txtImageNameLink),500,500);
+        if(img){const sc=Math.min((pw-mg*2)/img.w,(ph*0.5)/img.h);doc.addImage(img.data,"JPEG",mg,y,img.w*sc,img.h*sc);y+=img.h*sc+6;}
       }
-      // Title
-      doc.setFontSize(16);doc.setFont(undefined,"bold");
-      doc.text(o.Titre||"Sans titre",margin,y);y+=8;
-      // Details
+      doc.setFontSize(16);doc.setFont(undefined,"bold");doc.text(o.Titre||"Sans titre",mg,y);y+=7;
       doc.setFontSize(9);doc.setFont(undefined,"normal");
       const d=dm(o);
-      const lines=[
-        `ID ${o.OeuvreID} · ${o.Tirage||"1/1"}`,
-        `${tM[o.Technique]||"—"} sur ${sM[o.Support]||"—"}`,
-        `${o["Année"]?String(o["Année"]).slice(0,4):"—"}`,
-        d.h&&d.l?`${d.h} × ${d.l} cm`:"Dimensions: —",
-        o.Prix>0?`Prix: ${o.Prix} €`:"",
-        o.Exposable?"Exposable: Oui":"Exposable: Non",
-        o.Commentaires?`Notes: ${o.Commentaires.slice(0,200)}`:"",
-      ].filter(Boolean);
-      lines.forEach(l=>{doc.text(l,margin,y);y+=5;});
-      // Footer
-      doc.setFontSize(7);doc.setTextColor(150);
-      doc.text(`© PEM · ${o.txtImageNameLink||""}`,margin,ph-8);
-      doc.setTextColor(0);
+      [`ID ${o.OeuvreID} · ${o.Tirage||"1/1"}`,`${tM[o.Technique]||"—"} sur ${sM[o.Support]||"—"}`,o["Année"]?String(o["Année"]).slice(0,4):"",d.h&&d.l?`${d.h} × ${d.l} cm`:"",o.Prix>0?`${o.Prix} €`:"",o.Exposable?"Exposable":"",o.Commentaires?`${o.Commentaires.slice(0,200)}`:""].filter(Boolean).forEach(l=>{doc.text(l,mg,y);y+=4.5;});
+      doc.setFontSize(7);doc.setTextColor(150);doc.text(`© PEM`,mg,ph-6);doc.setTextColor(0);
     }
   }
   else if(mode==="grille"){
-    st.textContent="Génération grille...";
-    const cols=4,imgSize=40,gap=5,cellW=(pw-margin*2)/cols;
-    let x=margin,y=margin,count=0;
-    for(let i=0;i<exResults.length;i++){
-      const o=exResults[i];
-      st.textContent=`Grille ${i+1}/${exResults.length}...`;
-      if(y+imgSize+15>ph-margin){doc.addPage();x=margin;y=margin;}
-      // Image
+    const cols=Number(document.getElementById("exPdfCols")?.value||4);
+    const cellW=(pw-mg*2)/cols,imgH=cellW*1.2,cellH=imgH+12;
+    let x=mg,y=mg,col=0;
+    for(let i=0;i<items.length;i++){
+      const o=items[i];st.textContent=`Grille ${i+1}/${items.length}`;
+      if(y+cellH>ph-mg){doc.addPage();x=mg;y=mg;col=0;}
       if(o.txtImageNameLink){
-        const img=await imgToDataUrl(iu(o.txtImageNameLink),200,200);
-        if(img){
-          const sc=Math.min(imgSize/img.w,imgSize/img.h);
-          doc.addImage(img.data,"JPEG",x,y,img.w*sc,img.h*sc);
-        }
+        const img=await imgToDataUrl(iu(o.txtImageNameLink),300,300);
+        if(img){const sc=Math.min((cellW-4)/img.w,imgH/img.h);const iw=img.w*sc,ih=img.h*sc;doc.addImage(img.data,"JPEG",x+(cellW-iw)/2,y,iw,ih);}
       }
-      // Label
-      doc.setFontSize(6);doc.setFont(undefined,"normal");
-      const label=`${o.OeuvreID} ${(o.Titre||"S/T").slice(0,20)}`;
-      doc.text(label,x,y+imgSize+4,{maxWidth:cellW-gap});
-      const sub=`${tM[o.Technique]||""} ${o["Année"]?String(o["Année"]).slice(0,4):""}`;
-      doc.setFontSize(5);doc.setTextColor(120);
-      doc.text(sub,x,y+imgSize+8,{maxWidth:cellW-gap});
-      doc.setTextColor(0);
-      
-      x+=cellW;count++;
-      if(count%cols===0){x=margin;y+=imgSize+18;}
+      doc.setFontSize(6);doc.setFont(undefined,"bold");doc.text(`${o.OeuvreID}`,x+1,y+imgH+4);
+      doc.setFont(undefined,"normal");doc.text((o.Titre||"S/T").slice(0,25),x+10,y+imgH+4);
+      doc.setFontSize(5);doc.setTextColor(120);doc.text(`${tM[o.Technique]||""} ${o["Année"]?String(o["Année"]).slice(0,4):""}`,x+1,y+imgH+8);doc.setTextColor(0);
+      col++;x+=cellW;
+      if(col>=cols){col=0;x=mg;y+=cellH;}
     }
   }
   else if(mode==="tableau"){
-    st.textContent="Génération tableau...";
-    doc.setFontSize(8);doc.setFont(undefined,"bold");
-    const headers=["ID","Titre","Technique","Support","Année","H","L","Prix","Exp"];
-    const colWidths=[12,50,30,25,18,12,12,18,10];
-    let y=margin+5;
-    // Header
-    let x=margin;
-    headers.forEach((h,i)=>{doc.text(h,x,y);x+=colWidths[i];});
-    y+=5;doc.setFont(undefined,"normal");doc.setFontSize(7);
-    
-    for(const o of exResults){
-      if(y>ph-margin){doc.addPage();y=margin+5;x=margin;doc.setFontSize(8);doc.setFont(undefined,"bold");headers.forEach((h,i)=>{doc.text(h,x,y);x+=colWidths[i];});y+=5;doc.setFont(undefined,"normal");doc.setFontSize(7);}
-      x=margin;
-      const d=dm(o);
-      const vals=[String(o.OeuvreID),(o.Titre||"").slice(0,30),tM[o.Technique]||"",sM[o.Support]||"",o["Année"]?String(o["Année"]).slice(0,4):"",d.h||"",d.l||"",o.Prix>0?String(o.Prix):"",o.Exposable?"✓":""];
-      vals.forEach((v,i)=>{doc.text(v,x,y,{maxWidth:colWidths[i]-2});x+=colWidths[i];});
-      y+=4;
+    const hdrs=["ID","Titre","Technique","Support","Année","H","L","Prix","Exp"];
+    const cw=[12,55,28,22,16,12,12,16,10];
+    let y=mg+4;
+    function drawHdr(){let x=mg;doc.setFontSize(7);doc.setFont(undefined,"bold");hdrs.forEach((h,i)=>{doc.text(h,x,y);x+=cw[i];});y+=4;doc.setFont(undefined,"normal");doc.setFontSize(6.5);}
+    drawHdr();
+    for(const o of items){
+      if(y>ph-mg){doc.addPage();y=mg+4;drawHdr();}
+      let x=mg;const d=dm(o);
+      [String(o.OeuvreID),(o.Titre||"").slice(0,35),tM[o.Technique]||"",sM[o.Support]||"",o["Année"]?String(o["Année"]).slice(0,4):"",d.h||"",d.l||"",o.Prix>0?String(o.Prix):"",o.Exposable?"✓":""].forEach((v,i)=>{doc.text(v,x,y,{maxWidth:cw[i]-2});x+=cw[i];});
+      y+=3.5;
     }
   }
-
-  // Save
-  const fname=`PEM_export_${mode}_${exResults.length}oeuvres.pdf`;
-  doc.save(fname);
-  st.textContent=`✓ ${fname} téléchargé`;
-  tst(`PDF ${mode} — ${exResults.length} oeuvres`);
+  doc.save(`PEM_${mode}_${items.length}.pdf`);
+  st.textContent=`✓ ${items.length} oeuvres exportées`;tst(`PDF ${mode}`);
 }
 
-// ── HTML export (opens in new window) ──
 function exHTML(){
-  if(!exResults.length){tst("Aucune oeuvre",true);return;}
+  const items=getExSel();if(!items.length){tst("Aucune oeuvre",true);return;}
+  const cols=Number(document.getElementById("exPdfCols")?.value||4);
   const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>PEM — Sélection</title>
-<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Georgia,serif;background:#fff;color:#222;padding:40px;max-width:1200px;margin:0 auto}
-h1{font-size:24px;font-weight:400;letter-spacing:3px;text-transform:uppercase;margin-bottom:30px;color:#333}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:30px}
+<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Georgia,serif;background:#fff;color:#222;padding:40px;max-width:1400px;margin:0 auto}
+h1{font-size:22px;font-weight:400;letter-spacing:3px;text-transform:uppercase;margin-bottom:24px}
+.grid{display:grid;grid-template-columns:repeat(${cols},1fr);gap:24px}
 .card img{width:100%;aspect-ratio:4/5;object-fit:cover;display:block;background:#f0f0f0}
-.card h3{font-size:14px;margin-top:10px;font-weight:600}
-.card p{font-size:11px;color:#888;margin-top:4px;line-height:1.5}
-@media print{body{padding:20px}.grid{gap:15px}}
-</style></head><body>
-<h1>Pierre Emmanuel Moulin — Sélection</h1>
-<p style="font-size:12px;color:#888;margin-bottom:30px">${exResults.length} oeuvres · ${new Date().toLocaleDateString("fr-FR")}</p>
-<div class="grid">${exResults.map(o=>{
-    const d=dm(o),u=iu(o.txtImageNameLink);
-    return`<div class="card">${u?`<img src="${u}" alt="${esc(o.Titre)}">`:""}
+.card h3{font-size:13px;margin-top:8px;font-weight:600}
+.card p{font-size:10px;color:#888;margin-top:3px;line-height:1.5}
+@media print{body{padding:15px}.grid{gap:12px}}</style></head><body>
+<h1>Pierre Emmanuel Moulin</h1>
+<p style="font-size:11px;color:#888;margin-bottom:24px">${items.length} oeuvres · ${new Date().toLocaleDateString("fr-FR")}</p>
+<div class="grid">${items.map(o=>{const d=dm(o),u=iu(o.txtImageNameLink);
+  return`<div class="card">${u?`<img src="${u}">`:""}
 <h3>${esc(o.Titre||"Sans titre")}</h3>
-<p>${tM[o.Technique]||""} sur ${sM[o.Support]||""}<br>${d.h&&d.l?`${d.h} × ${d.l} cm · `:""}${o["Année"]?String(o["Année"]).slice(0,4):""}<br>${o.Prix>0?`${o.Prix} €`:""}</p></div>`;
-  }).join("")}</div>
-<p style="font-size:9px;color:#ccc;margin-top:40px;text-align:center">© Pierre Emmanuel Moulin</p>
-</body></html>`;
+<p>${tM[o.Technique]||""} sur ${sM[o.Support]||""}<br>${d.h&&d.l?`${d.h}×${d.l} cm · `:""}${o["Année"]?String(o["Année"]).slice(0,4):""}<br>${o.Prix>0?`${o.Prix} €`:""}</p></div>`;}).join("")}</div>
+<p style="font-size:8px;color:#ccc;margin-top:30px;text-align:center">© Pierre Emmanuel Moulin</p></body></html>`;
   const w=window.open();w.document.write(html);w.document.close();
 }
 
