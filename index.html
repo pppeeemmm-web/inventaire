@@ -282,10 +282,16 @@ function initIZ(){
     const d=e.deltaY>0?0.9:1.12;
     const ns=Math.max(1,Math.min(ZMAX,_z.s*d));
     if(ns===_z.s)return;
-    // Zoom toward cursor
-    const r=img.getBoundingClientRect();
-    const cx=e.clientX-(r.left+r.width/2),cy=e.clientY-(r.top+r.height/2);
-    _z.tx+=cx*(1-ns/_z.s);_z.ty+=cy*(1-ns/_z.s);
+    if(ns>_z.s){
+      // Zooming IN: zoom toward cursor
+      const r=img.getBoundingClientRect();
+      const cx=e.clientX-(r.left+r.width/2),cy=e.clientY-(r.top+r.height/2);
+      _z.tx+=cx*(1-ns/_z.s);_z.ty+=cy*(1-ns/_z.s);
+    }else{
+      // Zooming OUT: scale translate toward 0 proportionally
+      const ratio=(ns-1)/Math.max(_z.s-1,0.01);
+      _z.tx*=ratio;_z.ty*=ratio;
+    }
     _z.s=ns;clampTx();adjH();aIZ();
   };
   vw.onmousedown=e=>{
