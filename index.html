@@ -227,7 +227,7 @@ function det(id){
 
   mn.innerHTML=`
     <div class="nb"><div><button class="nbtn" onclick="nP()" ${i<=0?"disabled":""}>← Préc</button> <button class="nbtn" onclick="nN()" ${i>=n-1?"disabled":""}>Suiv →</button><span class="nk">↑↓ ←→ · E=éditer</span></div><div class="pos">${i+1}/${n}</div></div>
-    ${aI.length?`<div class="iv" id="ivw"><img id="vi" src="${aI[0].url}" draggable="false" oncontextmenu="return false" onerror="this.parentElement.style.display='none'" alt=""><div class="wm">${Array(12).fill(WM_TEXT).join(" ")}</div><div class="zlvl" id="zl">100%</div><div class="zbar"><button onclick="zm(0.7)">−</button><button onclick="zm(1)">Fit</button><button onclick="zm(1.5)">+</button><button onclick="_z.s=1;_z.tx=0;_z.ty=0;_z.s=ZMAX;adjH();aIZ()">Max</button></div></div><div class="tstrip">${aI.map((im,idx)=>`<img src="${im.url}" class="${idx===0?'active':''}" onclick="swI(${idx})">`).join("")}<div class="add" onclick="qUp(${o.OeuvreID})">+</div></div>`:`<div style="padding:16px;text-align:center;background:var(--bg);border:1px solid var(--bd);margin-bottom:12px"><span style="color:var(--mt);font-size:10px">Pas d'image</span><br><button class="btn bs" style="margin-top:6px" onclick="qUp(${o.OeuvreID})">+ Photo</button></div>`}
+    ${aI.length?`<div class="iv" id="ivw"><img id="vi" src="${aI[0].url}" draggable="false" oncontextmenu="return false" onerror="this.parentElement.style.display='none'" alt=""><div class="wm">${Array(12).fill(WM_TEXT).join(" ")}</div><div class="zlvl" id="zl">100%</div><div class="zbar"><button onclick="zm(0.7)">−</button><button onclick="zm(1)">Fit</button><button onclick="zm(1.5)">+</button><button onclick="_z.s=ZMAX;_z.tx=0;_z.ty=0;clampTx();adjH();aIZ()">Max</button></div></div><div class="tstrip">${aI.map((im,idx)=>`<img src="${im.url}" class="${idx===0?'active':''}" onclick="swI(${idx})">`).join("")}<div class="add" onclick="qUp(${o.OeuvreID})">+</div></div>`:`<div style="padding:16px;text-align:center;background:var(--bg);border:1px solid var(--bd);margin-bottom:12px"><span style="color:var(--mt);font-size:10px">Pas d'image</span><br><button class="btn bs" style="margin-top:6px" onclick="qUp(${o.OeuvreID})">+ Photo</button></div>`}
     <div class="dh"><div><div class="dt">${esc(o.Titre||"Sans titre")}</div><div class="di">ID ${o.OeuvreID} · ${esc(o.Tirage||"1/1")}${o.txtImageNameLink?`<br>${esc(o.txtImageNameLink)}`:""}${o.NomOriginal&&o.NomOriginal!==o.txtImageNameLink?`<br>orig: ${esc(o.NomOriginal)}`:""}</div></div>${o.Prix>0?`<div class="dp">${o.Prix} €</div>`:""}</div>
     <div class="dg">${df("Technique",tM[o.Technique])}${df("Support",sM[o.Support])}${df("Année",o["Année"]?String(o["Année"]).slice(0,10):null)}${df("Format",fM[o.Format])}${df("Dimensions",d.h&&d.l?`${d.h} × ${d.l} cm`:null)}${df("Profondeur",o.Profondeur?`${o.Profondeur} cm`:null)}${df("Poids",o.Poids?`${o.Poids} kg`:null)}${df("Contact",cM[o.ContactID])}${df("Exposable",o.Exposable?"Oui":"Non")}${df("Catalogué",o["Catalogué"]?"Oui":"Non")}${df("Discount",o.Discount?`${o.Discount}%`:null)}${df("Prix final",o.PrixFinal>0?`${o.PrixFinal} €`:null)}</div>
     ${o.Commentaires?`<div class="dn"><div class="fl">Commentaires</div><p>${esc(o.Commentaires)}</p></div>`:""}
@@ -239,9 +239,34 @@ function det(id){
 function df(l,v){return`<div><div class="fl">${l}</div><div class="fv">${v||"—"}</div></div>`;}
 function swI(idx){if(!window._aI?.[idx])return;window._aIdx=idx;document.querySelectorAll(".tstrip img").forEach((t,j)=>t.classList.toggle("active",j===idx));const img=document.getElementById("vi");if(img){img.src=window._aI[idx].url;initIZ();}}
 
-// ── Zoom via transform: scale + translate. Flex centers the image naturally. ──
-const ZMIN=0.5, ZMAX=3; // zoom bounds
+// ── Zoom: image is attached to container. No float. ──
+// ZMIN=1 means the image never gets smaller than its fitted size.
+// Translate is clamped so image edges never leave the container edges.
+const ZMAX=3;
 let _z={s:1,tx:0,ty:0,dr:false,lx:0,ly:0};
+
+function getImgDims(){
+  const vw=document.getElementById("ivw"),img=document.getElementById("vi");
+  if(!vw||!img||!img.naturalWidth)return null;
+  const cw=vw.clientWidth;
+  // Base rendered size (image fitted to container width)
+  const baseW=Math.min(cw,img.naturalWidth);
+  const baseH=baseW*(img.naturalHeight/img.naturalWidth);
+  // Scaled size
+  const sW=baseW*_z.s,sH=baseH*_z.s;
+  return{cw,ch:vw.clientHeight,baseW,baseH,sW,sH};
+}
+
+function clampTx(){
+  const d=getImgDims();if(!d)return;
+  // If image is smaller than container: no translate allowed (centered by flex)
+  // If image is bigger: clamp so edges don't leave container
+  if(d.sW<=d.cw){_z.tx=0;}
+  else{const maxTx=(d.sW-d.cw)/2;_z.tx=Math.max(-maxTx,Math.min(maxTx,_z.tx));}
+  if(d.sH<=d.ch){_z.ty=0;}
+  else{const maxTy=(d.sH-d.ch)/2;_z.ty=Math.max(-maxTy,Math.min(maxTy,_z.ty));}
+}
+
 function initIZ(){
   const vw=document.getElementById("ivw"),img=document.getElementById("vi");
   if(!vw||!img)return;
@@ -252,22 +277,50 @@ function initIZ(){
   };
   if(img.complete&&img.naturalWidth)setup();img.onload=setup;
 
-  vw.onwheel=e=>{e.preventDefault();if(!img.naturalWidth)return;
-    const d=e.deltaY>0?0.88:1.15,ns=Math.max(ZMIN,Math.min(ZMAX,_z.s*d));
+  vw.onwheel=e=>{
+    e.preventDefault();if(!img.naturalWidth)return;
+    const d=e.deltaY>0?0.9:1.12;
+    const ns=Math.max(1,Math.min(ZMAX,_z.s*d));
+    if(ns===_z.s)return;
     // Zoom toward cursor
     const r=img.getBoundingClientRect();
     const cx=e.clientX-(r.left+r.width/2),cy=e.clientY-(r.top+r.height/2);
     _z.tx+=cx*(1-ns/_z.s);_z.ty+=cy*(1-ns/_z.s);
-    _z.s=ns;adjH();aIZ();};
-  vw.onmousedown=e=>{if(e.target.tagName==="BUTTON")return;_z.dr=true;_z.lx=e.clientX;_z.ly=e.clientY;vw.classList.add("zoomed","dragging");};
-  vw.onmousemove=e=>{if(!_z.dr)return;_z.tx+=e.clientX-_z.lx;_z.ty+=e.clientY-_z.ly;_z.lx=e.clientX;_z.ly=e.clientY;aIZ();};
+    _z.s=ns;clampTx();adjH();aIZ();
+  };
+  vw.onmousedown=e=>{
+    if(e.target.tagName==="BUTTON")return;
+    if(_z.s<=1)return; // no drag when not zoomed
+    _z.dr=true;_z.lx=e.clientX;_z.ly=e.clientY;
+    vw.classList.add("zoomed","dragging");
+  };
+  vw.onmousemove=e=>{
+    if(!_z.dr)return;
+    _z.tx+=e.clientX-_z.lx;_z.ty+=e.clientY-_z.ly;
+    _z.lx=e.clientX;_z.ly=e.clientY;
+    clampTx();aIZ();
+  };
   vw.onmouseup=()=>{_z.dr=false;vw.classList.remove("dragging");};
   vw.onmouseleave=()=>{_z.dr=false;vw.classList.remove("dragging");};
   let ltd=0;
-  vw.ontouchstart=e=>{if(e.touches.length===2)ltd=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);else{_z.dr=true;_z.lx=e.touches[0].clientX;_z.ly=e.touches[0].clientY;}};
-  vw.ontouchmove=e=>{e.preventDefault();if(e.touches.length===2&&ltd){const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);_z.s=Math.max(ZMIN,Math.min(ZMAX,_z.s*(d/ltd)));ltd=d;adjH();aIZ();}else if(_z.dr&&e.touches.length===1){_z.tx+=e.touches[0].clientX-_z.lx;_z.ty+=e.touches[0].clientY-_z.ly;_z.lx=e.touches[0].clientX;_z.ly=e.touches[0].clientY;aIZ();}};
+  vw.ontouchstart=e=>{
+    if(e.touches.length===2)ltd=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+    else if(_z.s>1){_z.dr=true;_z.lx=e.touches[0].clientX;_z.ly=e.touches[0].clientY;}
+  };
+  vw.ontouchmove=e=>{
+    e.preventDefault();
+    if(e.touches.length===2&&ltd){
+      const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+      _z.s=Math.max(1,Math.min(ZMAX,_z.s*(d/ltd)));ltd=d;clampTx();adjH();aIZ();
+    }else if(_z.dr&&e.touches.length===1){
+      _z.tx+=e.touches[0].clientX-_z.lx;_z.ty+=e.touches[0].clientY-_z.ly;
+      _z.lx=e.touches[0].clientX;_z.ly=e.touches[0].clientY;
+      clampTx();aIZ();
+    }
+  };
   vw.ontouchend=()=>{_z.dr=false;ltd=0;};
 }
+
 function aIZ(){
   const img=document.getElementById("vi"),vw=document.getElementById("ivw");
   if(!img)return;
@@ -276,24 +329,25 @@ function aIZ(){
   const el=document.getElementById("zl");if(el)el.textContent=pct+"%";
   vw.classList.toggle("zoomed",_z.s>1.05);
 }
+
 function adjH(){
   const vw=document.getElementById("ivw"),img=document.getElementById("vi");
   if(!vw||!img||!img.naturalWidth)return;
   const cw=vw.clientWidth;
-  // Image rendered size at current scale (constrained by max-width:100%)
-  const rendW=Math.min(cw,img.naturalWidth)*_z.s;
-  const rendH=(img.naturalHeight/img.naturalWidth)*rendW;
-  // Container = exactly the rendered image height, capped at 80vh
-  const h=Math.min(rendH,window.innerHeight*0.8);
+  const baseW=Math.min(cw,img.naturalWidth);
+  const baseH=baseW*(img.naturalHeight/img.naturalWidth);
+  // At s=1, container = exactly the image height (capped at 60vh)
+  // At s>1, container grows with zoom (capped at 80vh)
+  const fitH=Math.min(baseH,window.innerHeight*0.6);
+  const h=Math.min(fitH*_z.s,window.innerHeight*0.8);
   vw.style.height=Math.round(Math.max(150,h))+"px";
 }
+
 function zm(f){
   const vw=document.getElementById("ivw"),img=document.getElementById("vi");
   if(!vw||!img||!img.naturalWidth)return;
-  if(f===1){
-    _z.s=1;_z.tx=0;_z.ty=0;adjH();aIZ();return;
-  }
-  _z.s=Math.max(ZMIN,Math.min(ZMAX,_z.s*f));_z.tx=0;_z.ty=0;adjH();aIZ();
+  if(f===1){_z.s=1;_z.tx=0;_z.ty=0;adjH();aIZ();return;}
+  _z.s=Math.max(1,Math.min(ZMAX,_z.s*f));_z.tx=0;_z.ty=0;clampTx();adjH();aIZ();
 }
 
 function qUp(oid){const inp=document.createElement("input");inp.type="file";inp.accept="image/*";inp.multiple=true;inp.onchange=async()=>{const fs=Array.from(inp.files);if(!fs.length)return;tst(`Upload ${fs.length}...`);try{let last="",lastO="";for(const f of fs){const seq=nxS(oid),nm=mkN(oid,seq,f.name);await upl(f,nm);const mxId=imgTbl.reduce((m,i)=>Math.max(m,i.ImageID||0),0);await api("tblImage",{method:"POST",body:JSON.stringify({ImageID:mxId+1,OeuvreID:oid,txtImageNameLink:nm,txtImageName:nm,SeqNo:seq,DateAdded:new Date().toISOString()})});imgTbl.push({ImageID:mxId+1,OeuvreID:oid,txtImageNameLink:nm,SeqNo:seq});last=nm;lastO=f.name;}const o=oeuvres.find(x=>x.OeuvreID===oid);if(o&&!o.txtImageNameLink)await api(`Oeuvres?OeuvreID=eq.${oid}`,{method:"PATCH",body:JSON.stringify({txtImageNameLink:last,NomOriginal:lastO})});tst(`${fs.length} → W_${String(oid).padStart(4,"0")}_*`);await load();sel(oid);}catch(e){tst("Erreur: "+e.message,true);}};inp.click();}
