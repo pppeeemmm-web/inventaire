@@ -83,7 +83,7 @@ nav button.active{background:var(--ac);color:var(--bk);font-weight:700}
 .tok{background:var(--ac);color:var(--bk)}.terr{background:var(--dg);color:var(--wh)}
 .hidden{display:none}.lazy{opacity:0}.loaded{opacity:1;transition:opacity 0.3s ease}.img-err{opacity:0}
 /* Export workspace — full width */
-.exp{display:flex;flex-direction:column;height:100%}
+.exp{display:flex;flex-direction:column;height:100%;min-height:0}
 .exp-top{background:var(--sf);border-bottom:1px solid var(--bd);padding:10px 16px}
 .exp-top h2{font-size:13px;font-weight:700;color:var(--wh);margin-bottom:8px}
 .exp-filters{display:flex;flex-wrap:wrap;gap:4px;align-items:flex-start}
@@ -101,13 +101,13 @@ nav button.active{background:var(--ac);color:var(--bk);font-weight:700}
 .exp-bar select{background:var(--sf);color:var(--tx);border:1px solid var(--bd);padding:3px 6px}
 .exp-bar .sep{width:1px;height:16px;background:var(--bd)}
 .exp-bar .cnt{font-size:10px;color:var(--mt)}
-.exp-grid{flex:1;overflow-y:auto;padding:16px;display:grid;gap:12px;align-content:start}
-.exp-card{position:relative;background:var(--sf);border:2px solid var(--bd);overflow:hidden;cursor:pointer;transition:border-color 0.15s}
+.exp-grid{flex:1;overflow-y:auto;padding:16px;display:grid;gap:12px;min-height:0}
+.exp-card{position:relative;background:var(--sf);border:2px solid var(--bd);overflow:hidden;cursor:pointer;transition:border-color 0.15s;min-width:0}
 .exp-card:hover{border-color:#555}
 .exp-card.selected{border-color:var(--ac)}
 .exp-card .check{position:absolute;top:6px;right:6px;width:20px;height:20px;border:2px solid rgba(255,255,255,0.4);background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--ac);z-index:2;border-radius:2px}
 .exp-card.selected .check{background:var(--ac);border-color:var(--ac);color:var(--bk)}
-.exp-card .img-wrap{position:relative;width:100%;padding-top:100%;background:var(--bk);overflow:hidden}
+.exp-card .img-wrap{position:relative;width:100%;overflow:hidden;background:var(--bk)}
 .exp-card .img-wrap img{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;display:block}
 .exp-card .img-wrap .noimg{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--mt);font-size:9px;background:var(--bg)}
 .exp-card .lbl{padding:6px 8px}
@@ -247,7 +247,8 @@ function applyF(){const q=document.getElementById("q").value.toLowerCase(),t=doc
 function nI(){return filtered.findIndex(o=>o.OeuvreID===selId);}function nP(){const i=nI();if(i>0)sel(filtered[i-1].OeuvreID);}function nN(){const i=nI();if(i<filtered.length-1)sel(filtered[i+1].OeuvreID);}
 document.addEventListener("keydown",e=>{if(PUB||["INPUT","TEXTAREA","SELECT"].includes(e.target.tagName))return;if(curV==="list"&&selId){if(e.key==="ArrowUp"||e.key==="ArrowLeft"){e.preventDefault();nP();}if(e.key==="ArrowDown"||e.key==="ArrowRight"){e.preventDefault();nN();}if(e.key==="e")edO(selId);}});
 function stb(v){document.querySelectorAll("#nv button").forEach((b,i)=>b.classList.toggle("active",(v==="list"&&i===0)||(v==="gallery"&&i===1)||(v==="form"&&i===2)||(v==="export"&&i===3)));}
-function sv(v){curV=v;stb(v);document.getElementById("sb").style.display=(v==="form"||v==="export")?"none":"";if(v==="list"){rList();det(selId);}if(v==="gallery")rGal();if(v==="form")frm();if(v==="export")showExport();}
+function sv(v){curV=v;stb(v);document.getElementById("sb").style.display=(v==="form"||v==="export")?"none":"";
+  if(v==="list"){rList();det(selId);}if(v==="gallery")rGal();if(v==="form")frm();if(v==="export")showExport();}
 
 function rList(){const el=document.getElementById("ls");el.innerHTML=filtered.map(o=>{const u=iu(o.txtImageNameLink),d=dm(o),ds=d.h&&d.l?` · ${d.h}×${d.l}`:"",ic=iFor(o.OeuvreID).length;return`<div class="list-item ${selId===o.OeuvreID?'active':''}" onclick="sel(${o.OeuvreID})">${u?`<img class="lt lazy" data-src="${u}" alt="">`:`<div class="lte">—</div>`}<div class="li"><div class="ln">${esc(o.Titre||"Sans titre")}</div><div class="ls">${tM[o.Technique]||"?"} / ${sM[o.Support]||"?"} · ${o["Année"]?String(o["Année"]).slice(0,4):"?"}${ds}</div></div>${ic>1?`<span style="font-size:8px;color:var(--mt)">${ic}</span>`:""}${o.Exposable?'<span class="badge">EXP</span>':""}</div>`;}).join("");oL();const a=el.querySelector(".list-item.active");if(a)a.scrollIntoView({block:"nearest"});}
 function sel(id){selId=id;rList();det(id);}
@@ -542,6 +543,7 @@ function renderExGrid(){
   const el=document.getElementById("exGrid");if(!el)return;
   el.style.gridTemplateColumns=`repeat(${exCols},1fr)`;
   const items=exShowAll?exFiltered:exFiltered.filter(o=>o.txtImageNameLink);
+  
   el.innerHTML=items.map(o=>{
     const u=iu(o.txtImageNameLink),sel=exSelected.has(o.OeuvreID),d=dm(o);
     return`<div class="exp-card ${sel?'selected':''}" data-oid="${o.OeuvreID}" onclick="toggleExSel(${o.OeuvreID})">
@@ -550,6 +552,16 @@ function renderExGrid(){
       <div class="lbl"><div class="ttl">${esc(o.Titre||"S/T")}</div><div class="sub">${o.OeuvreID} · ${tM[o.Technique]||"—"} · ${o["Année"]?String(o["Année"]).slice(0,4):"—"}${d.h&&d.l?` · ${d.h}×${d.l}`:""}</div></div>
     </div>`;
   }).join("");
+  
+  // Set image heights after layout
+  requestAnimationFrame(()=>{
+    const cards=el.querySelectorAll(".exp-card");
+    if(cards.length){
+      const cardW=cards[0].clientWidth;
+      const h=Math.max(100,cardW);
+      el.querySelectorAll(".img-wrap").forEach(w=>w.style.height=h+"px");
+    }
+  });
 }
 
 function getExSel(){return exFiltered.filter(o=>exSelected.has(o.OeuvreID));}
