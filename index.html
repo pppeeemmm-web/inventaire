@@ -107,9 +107,8 @@ nav button.active{background:var(--ac);color:var(--bk);font-weight:700}
 .exp-card.selected{border-color:var(--ac)}
 .exp-card .check{position:absolute;top:6px;right:6px;width:20px;height:20px;border:2px solid rgba(255,255,255,0.4);background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--ac);z-index:2;border-radius:2px}
 .exp-card.selected .check{background:var(--ac);border-color:var(--ac);color:var(--bk)}
-.exp-card .img-wrap{position:relative;width:100%;overflow:hidden;background:var(--bk)}
-.exp-card .img-wrap img{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;display:block}
-.exp-card .img-wrap .noimg{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--mt);font-size:9px;background:var(--bg)}
+.exp-card .eimg{width:100%;object-fit:cover;display:block;background:var(--bk)}
+.exp-card .noimg{width:100%;display:flex;align-items:center;justify-content:center;color:var(--mt);font-size:9px;background:var(--bg)}
 .exp-card .lbl{padding:6px 8px}
 .exp-card .lbl .ttl{font-size:10px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .exp-card .lbl .sub{font-size:8px;color:var(--mt);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -436,6 +435,7 @@ const EX_OPS={
 let exCrit=[], exFiltered=[], exSelected=new Set(), exCols=4;
 
 function showExport(){
+  exShowAll=false;
   // Use full width — hide sidebar, take over main
   const mn=document.getElementById("mn");
   mn.innerHTML=`<div class="exp">
@@ -543,25 +543,19 @@ function renderExGrid(){
   const el=document.getElementById("exGrid");if(!el)return;
   el.style.gridTemplateColumns=`repeat(${exCols},1fr)`;
   const items=exShowAll?exFiltered:exFiltered.filter(o=>o.txtImageNameLink);
+  // Image height = square based on column width. Estimate from grid width.
+  const gridW=window.innerWidth-40; // approximate
+  const cardW=Math.floor(gridW/exCols)-16;
+  const imgH=Math.max(120,Math.min(cardW,400));
   
   el.innerHTML=items.map(o=>{
     const u=iu(o.txtImageNameLink),sel=exSelected.has(o.OeuvreID),d=dm(o);
     return`<div class="exp-card ${sel?'selected':''}" data-oid="${o.OeuvreID}" onclick="toggleExSel(${o.OeuvreID})">
       <div class="check">${sel?"✓":""}</div>
-      <div class="img-wrap">${u?`<img src="${u}" loading="lazy" alt="">`:`<div class="noimg">—</div>`}</div>
+      ${u?`<img class="eimg" src="${u}" loading="lazy" style="height:${imgH}px" alt="">`:`<div class="noimg" style="height:${imgH}px">—</div>`}
       <div class="lbl"><div class="ttl">${esc(o.Titre||"S/T")}</div><div class="sub">${o.OeuvreID} · ${tM[o.Technique]||"—"} · ${o["Année"]?String(o["Année"]).slice(0,4):"—"}${d.h&&d.l?` · ${d.h}×${d.l}`:""}</div></div>
     </div>`;
   }).join("");
-  
-  // Set image heights after layout
-  requestAnimationFrame(()=>{
-    const cards=el.querySelectorAll(".exp-card");
-    if(cards.length){
-      const cardW=cards[0].clientWidth;
-      const h=Math.max(100,cardW);
-      el.querySelectorAll(".img-wrap").forEach(w=>w.style.height=h+"px");
-    }
-  });
 }
 
 function getExSel(){return exFiltered.filter(o=>exSelected.has(o.OeuvreID));}
