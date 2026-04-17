@@ -82,6 +82,26 @@ nav button.active{background:var(--ac);color:var(--bk);font-weight:700}
 .toast{position:fixed;bottom:16px;right:16px;padding:8px 14px;font-size:11px;font-weight:600;z-index:1000}
 .tok{background:var(--ac);color:var(--bk)}.terr{background:var(--dg);color:var(--wh)}
 .hidden{display:none}.lazy{opacity:0}.loaded{opacity:1;transition:opacity 0.3s ease}.img-err{opacity:0}
+/* Export */
+.exp-panel{max-width:900px}
+.exp-criteria{background:var(--sf);border:1px solid var(--bd);padding:12px;margin-bottom:12px}
+.exp-row{display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap}
+.exp-row select,.exp-row input{font-family:inherit;background:var(--bg);border:1px solid var(--bd);color:var(--tx);padding:4px 6px;font-size:10px;outline:none}
+.exp-row select{min-width:120px}
+.exp-row input{min-width:100px;flex:1}
+.exp-row .x{background:var(--dg);color:var(--wh);border:none;padding:3px 8px;cursor:pointer;font-size:10px;font-family:inherit}
+.exp-add{font-family:inherit;font-size:10px;color:var(--ac);background:none;border:1px dashed var(--bd);padding:4px 12px;cursor:pointer;margin-top:4px}
+.exp-add:hover{border-color:var(--ac)}
+.exp-preview{border:1px solid var(--bd);max-height:300px;overflow-y:auto;margin-bottom:12px}
+.exp-preview table{width:100%;border-collapse:collapse;font-size:10px}
+.exp-preview th{text-align:left;padding:4px 8px;background:var(--sf);color:var(--mt);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;position:sticky;top:0}
+.exp-preview td{padding:4px 8px;border-bottom:1px solid var(--bd)}
+.exp-preview tr:hover{background:#2a2a2a}
+.exp-preview img{width:30px;height:30px;object-fit:cover;background:var(--bg)}
+.exp-formats{display:flex;gap:8px;flex-wrap:wrap}
+.exp-fmt{font-family:inherit;padding:8px 16px;font-size:10px;font-weight:600;background:var(--sf);color:var(--tx);border:1px solid var(--bd);cursor:pointer;letter-spacing:1px;text-transform:uppercase}
+.exp-fmt:hover{border-color:var(--ac);color:var(--ac)}
+.exp-fmt:disabled{opacity:0.3;cursor:default}
 /* Public */
 .ph{text-align:center;padding:24px 16px 16px;border-bottom:1px solid var(--bd)}.ph h1{font-size:18px;font-weight:700;color:var(--ac);letter-spacing:4px;text-transform:uppercase}.ph p{font-size:11px;color:var(--mt);margin-top:4px;letter-spacing:1px}
 .pgal{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;padding:20px}
@@ -204,14 +224,14 @@ function pubDet(id){const o=oeuvres.find(x=>x.OeuvreID===id);if(!o)return;const 
 }
 
 // ═══ ADMIN ═══
-function initA(){document.getElementById("app").innerHTML=`<header><h1>PEM — Inventaire</h1><nav id="nv"><button class="active" onclick="sv('list')">Liste</button><button onclick="sv('gallery')">Galerie</button><button onclick="sv('form')">+ Nouvelle</button></nav></header><div id="debug"></div><div class="body"><aside class="sidebar" id="sb"><div class="filters"><input type="text" id="q" placeholder="Recherche titre / ID..." oninput="applyF()"><select id="fT" onchange="applyF()"><option value="">Toutes techniques</option></select><select id="fS" onchange="applyF()"><option value="">Tous supports</option></select><select id="fSt" onchange="applyF()"><option value="">Tout statut</option><option value="cat">Catalogué</option><option value="ncat">Non catalogué</option><option value="exp">Exposable</option><option value="noimg">Sans image</option><option value="nopx">Sans prix</option></select></div><div class="list" id="ls"></div><div class="stats" id="st"></div></aside><main class="main" id="mn"><div class="empty">Chargement...</div></main></div>`;}
+function initA(){document.getElementById("app").innerHTML=`<header><h1>PEM — Inventaire</h1><nav id="nv"><button class="active" onclick="sv('list')">Liste</button><button onclick="sv('gallery')">Galerie</button><button onclick="sv('form')">+ Nouvelle</button><button onclick="sv('export')">Export</button></nav></header><div id="debug"></div><div class="body"><aside class="sidebar" id="sb"><div class="filters"><input type="text" id="q" placeholder="Recherche titre / ID..." oninput="applyF()"><select id="fT" onchange="applyF()"><option value="">Toutes techniques</option></select><select id="fS" onchange="applyF()"><option value="">Tous supports</option></select><select id="fSt" onchange="applyF()"><option value="">Tout statut</option><option value="cat">Catalogué</option><option value="ncat">Non catalogué</option><option value="exp">Exposable</option><option value="noimg">Sans image</option><option value="nopx">Sans prix</option></select></div><div class="list" id="ls"></div><div class="stats" id="st"></div></aside><main class="main" id="mn"><div class="empty">Chargement...</div></main></div>`;}
 function popF(){document.getElementById("fT").innerHTML='<option value="">Toutes techniques</option>'+techniques.map(t=>`<option value="${t.TechniqueID}">${t.Technique}</option>`).join("");document.getElementById("fS").innerHTML='<option value="">Tous supports</option>'+supports.map(s=>`<option value="${s.SupportID}">${s.Support}</option>`).join("");}
 function upSt(){document.getElementById("st").textContent=`${filtered.length}/${oeuvres.length} · ${oeuvres.filter(o=>!o.txtImageNameLink).length} sans img · ${oeuvres.filter(o=>!o.Prix).length} sans prix`;}
 function applyF(){const q=document.getElementById("q").value.toLowerCase(),t=document.getElementById("fT").value,su=document.getElementById("fS").value,st=document.getElementById("fSt").value;filtered=oeuvres.filter(o=>{if(q&&!(o.Titre||"").toLowerCase().includes(q)&&!String(o.OeuvreID).includes(q))return false;if(t&&String(o.Technique)!==t)return false;if(su&&String(o.Support)!==su)return false;if(st==="cat"&&!o["Catalogué"])return false;if(st==="ncat"&&o["Catalogué"])return false;if(st==="exp"&&!o.Exposable)return false;if(st==="noimg"&&o.txtImageNameLink)return false;if(st==="nopx"&&o.Prix>0)return false;return true;});if(curV==="list")rList();if(curV==="gallery")rGal();upSt();}
 function nI(){return filtered.findIndex(o=>o.OeuvreID===selId);}function nP(){const i=nI();if(i>0)sel(filtered[i-1].OeuvreID);}function nN(){const i=nI();if(i<filtered.length-1)sel(filtered[i+1].OeuvreID);}
 document.addEventListener("keydown",e=>{if(PUB||["INPUT","TEXTAREA","SELECT"].includes(e.target.tagName))return;if(curV==="list"&&selId){if(e.key==="ArrowUp"||e.key==="ArrowLeft"){e.preventDefault();nP();}if(e.key==="ArrowDown"||e.key==="ArrowRight"){e.preventDefault();nN();}if(e.key==="e")edO(selId);}});
-function stb(v){document.querySelectorAll("#nv button").forEach((b,i)=>b.classList.toggle("active",(v==="list"&&i===0)||(v==="gallery"&&i===1)||(v==="form"&&i===2)));}
-function sv(v){curV=v;stb(v);document.getElementById("sb").style.display=v==="form"?"none":"";if(v==="list"){rList();det(selId);}if(v==="gallery")rGal();if(v==="form")frm();}
+function stb(v){document.querySelectorAll("#nv button").forEach((b,i)=>b.classList.toggle("active",(v==="list"&&i===0)||(v==="gallery"&&i===1)||(v==="form"&&i===2)||(v==="export"&&i===3)));}
+function sv(v){curV=v;stb(v);document.getElementById("sb").style.display=(v==="form"||v==="export")?"none":"";if(v==="list"){rList();det(selId);}if(v==="gallery")rGal();if(v==="form")frm();if(v==="export")showExport();}
 
 function rList(){const el=document.getElementById("ls");el.innerHTML=filtered.map(o=>{const u=iu(o.txtImageNameLink),d=dm(o),ds=d.h&&d.l?` · ${d.h}×${d.l}`:"",ic=iFor(o.OeuvreID).length;return`<div class="list-item ${selId===o.OeuvreID?'active':''}" onclick="sel(${o.OeuvreID})">${u?`<img class="lt lazy" data-src="${u}" alt="">`:`<div class="lte">—</div>`}<div class="li"><div class="ln">${esc(o.Titre||"Sans titre")}</div><div class="ls">${tM[o.Technique]||"?"} / ${sM[o.Support]||"?"} · ${o["Année"]?String(o["Année"]).slice(0,4):"?"}${ds}</div></div>${ic>1?`<span style="font-size:8px;color:var(--mt)">${ic}</span>`:""}${o.Exposable?'<span class="badge">EXP</span>':""}</div>`;}).join("");oL();const a=el.querySelector(".list-item.active");if(a)a.scrollIntoView({block:"nearest"});}
 function sel(id){selId=id;rList();det(id);}
@@ -370,6 +390,317 @@ async function sF(){const id=gv("f_id");const data={Titre:gv("ft")||null,Techniq
 async function delO(id){if(!confirm("Supprimer ?"))return;try{await api(`Oeuvres?OeuvreID=eq.${id}`,{method:"DELETE"});tst("Supprimé");selId=null;await load();det(null);}catch(e){tst("Erreur: "+e.message,true);}}
 
 let lO=null;function oL(){if(lO)lO.disconnect();lO=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){const i=e.target;i.src=i.dataset.src;i.onload=()=>i.classList.add("loaded");i.onerror=()=>i.classList.add("img-err");i.classList.remove("lazy");lO.unobserve(i);}});},{rootMargin:"200px"});document.querySelectorAll("img.lazy").forEach(i=>lO.observe(i));}
+
+// ═══════════════════════════════════════
+// EXPORT MODULE
+// ═══════════════════════════════════════
+
+// All Oeuvres fields available for filtering
+const EX_FIELDS=[
+  {k:"OeuvreID",l:"ID",type:"num"},
+  {k:"Titre",l:"Titre",type:"text"},
+  {k:"Technique",l:"Technique",type:"lookup",map:()=>tM},
+  {k:"Support",l:"Support",type:"lookup",map:()=>sM},
+  {k:"Année",l:"Année",type:"text"},
+  {k:"Format",l:"Format",type:"lookup",map:()=>fM},
+  {k:"Hauteur",l:"Hauteur",type:"num"},
+  {k:"Largeur",l:"Largeur",type:"num"},
+  {k:"Profondeur",l:"Profondeur",type:"num"},
+  {k:"Poids",l:"Poids",type:"num"},
+  {k:"ContactID",l:"Contact",type:"lookup",map:()=>cM},
+  {k:"Prix",l:"Prix",type:"num"},
+  {k:"Discount",l:"Discount",type:"num"},
+  {k:"PrixFinal",l:"Prix final",type:"num"},
+  {k:"Exposable",l:"Exposable",type:"bool"},
+  {k:"Catalogué",l:"Catalogué",type:"bool"},
+  {k:"Tirage",l:"Tirage",type:"text"},
+  {k:"Statut",l:"Statut",type:"num"},
+  {k:"Commentaires",l:"Commentaires",type:"text"},
+  {k:"Historique",l:"Historique",type:"text"},
+  {k:"txtImageNameLink",l:"Image",type:"text"},
+  {k:"NomOriginal",l:"Nom original",type:"text"},
+];
+
+const EX_OPS={
+  text:["contient","ne contient pas","=","≠","est vide","n'est pas vide"],
+  num:["=","≠",">","<",">=","<=","est vide","n'est pas vide"],
+  bool:["= vrai","= faux"],
+  lookup:["=","≠","est vide","n'est pas vide"],
+};
+
+let exCriteria=[]; // [{field, op, value}]
+let exResults=[];
+
+function showExport(){
+  const mn=document.getElementById("mn");
+  mn.innerHTML=`
+    <div class="exp-panel">
+      <h2 style="font-size:15px;font-weight:700;color:var(--wh);margin-bottom:12px">Export — Sélection avancée</h2>
+      <div class="exp-criteria" id="exCrit">
+        <div style="font-size:9px;color:var(--mt);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Critères (AND)</div>
+        <div id="exRows"></div>
+        <button class="exp-add" onclick="addExCrit()">+ Ajouter un critère</button>
+      </div>
+      <div style="margin-bottom:12px">
+        <button class="btn bp" onclick="runExFilter()">Appliquer</button>
+        <button class="btn bs" onclick="exCriteria=[];renderExCrit();runExFilter()">Réinitialiser</button>
+        <span id="exCount" style="font-size:10px;color:var(--mt);margin-left:12px"></span>
+      </div>
+      <div class="exp-preview" id="exPrev"></div>
+      <div style="font-size:9px;color:var(--mt);text-transform:uppercase;letter-spacing:1px;margin:12px 0 8px">Format d'export</div>
+      <div class="exp-formats">
+        <button class="exp-fmt" onclick="exPDF('fiche')" id="exBtnFiche">PDF Fiches</button>
+        <button class="exp-fmt" onclick="exPDF('grille')" id="exBtnGrille">PDF Grille</button>
+        <button class="exp-fmt" onclick="exPDF('tableau')" id="exBtnTableau">PDF Tableau</button>
+        <button class="exp-fmt" onclick="exHTML()">HTML (nouvelle page)</button>
+      </div>
+      <div id="exStatus" style="font-size:10px;color:var(--mt);margin-top:12px"></div>
+    </div>`;
+  renderExCrit();
+  runExFilter();
+}
+
+function renderExCrit(){
+  const el=document.getElementById("exRows");if(!el)return;
+  el.innerHTML=exCriteria.map((c,i)=>{
+    const fld=EX_FIELDS.find(f=>f.k===c.field)||EX_FIELDS[0];
+    const ops=EX_OPS[fld.type]||EX_OPS.text;
+    // Value input: for lookups show select, for bool hide, for text/num show input
+    let valHtml='';
+    if(fld.type==="lookup"){
+      const m=fld.map();
+      valHtml=`<select onchange="exCriteria[${i}].value=this.value;runExFilter()"><option value="">—</option>${Object.entries(m).map(([k,v])=>`<option value="${k}" ${c.value===String(k)?"selected":""}>${esc(v)}</option>`).join("")}</select>`;
+    }else if(fld.type==="bool"){
+      valHtml='';
+    }else{
+      valHtml=`<input type="${fld.type==='num'?'number':'text'}" value="${esc(c.value||'')}" placeholder="valeur" onchange="exCriteria[${i}].value=this.value;runExFilter()">`;
+    }
+    return`<div class="exp-row">
+      <select onchange="exCriteria[${i}].field=this.value;exCriteria[${i}].op=EX_OPS[(EX_FIELDS.find(f=>f.k===this.value)||{}).type||'text'][0];exCriteria[${i}].value='';renderExCrit();runExFilter()">
+        ${EX_FIELDS.map(f=>`<option value="${f.k}" ${c.field===f.k?"selected":""}>${f.l}</option>`).join("")}
+      </select>
+      <select onchange="exCriteria[${i}].op=this.value;runExFilter()">
+        ${ops.map(op=>`<option ${c.op===op?"selected":""}>${op}</option>`).join("")}
+      </select>
+      ${valHtml}
+      <button class="x" onclick="exCriteria.splice(${i},1);renderExCrit();runExFilter()">✕</button>
+    </div>`;
+  }).join("");
+}
+
+function addExCrit(){
+  exCriteria.push({field:"Technique",op:"=",value:""});
+  renderExCrit();
+}
+
+function matchCrit(o,c){
+  const fld=EX_FIELDS.find(f=>f.k===c.field);if(!fld)return true;
+  const raw=o[c.field];
+  const val=raw!=null?String(raw):"";
+  const cv=c.value||"";
+  
+  switch(c.op){
+    case "contient": return val.toLowerCase().includes(cv.toLowerCase());
+    case "ne contient pas": return !val.toLowerCase().includes(cv.toLowerCase());
+    case "=": return val===cv;
+    case "≠": return val!==cv;
+    case ">": return Number(val)>Number(cv);
+    case "<": return Number(val)<Number(cv);
+    case ">=": return Number(val)>=Number(cv);
+    case "<=": return Number(val)<=Number(cv);
+    case "est vide": return !raw&&raw!==0&&raw!==false;
+    case "n'est pas vide": return raw!=null&&raw!==""&&raw!==0||raw===0;
+    case "= vrai": return raw===true;
+    case "= faux": return !raw;
+    default: return true;
+  }
+}
+
+function runExFilter(){
+  exResults=oeuvres.filter(o=>exCriteria.every(c=>matchCrit(o,c)));
+  const cnt=document.getElementById("exCount");
+  if(cnt)cnt.textContent=`${exResults.length} oeuvre${exResults.length>1?"s":""} sélectionnée${exResults.length>1?"s":""}`;
+  renderExPreview();
+}
+
+function renderExPreview(){
+  const el=document.getElementById("exPrev");if(!el)return;
+  if(!exResults.length){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--mt);font-size:10px">Aucun résultat</div>';return;}
+  const cols=["OeuvreID","Titre","Technique","Support","Année","Hauteur","Largeur","Prix","Exposable"];
+  el.innerHTML=`<table>
+    <tr>${cols.map(c=>`<th>${EX_FIELDS.find(f=>f.k===c)?.l||c}</th>`).join("")}<th>Img</th></tr>
+    ${exResults.slice(0,100).map(o=>{
+      const d=dm(o);
+      return`<tr>${cols.map(c=>{
+        let v=o[c];
+        if(c==="Technique")v=tM[v]||"";
+        else if(c==="Support")v=sM[v]||"";
+        else if(c==="Exposable")v=v?"✓":"";
+        else if(c==="Année")v=v?String(v).slice(0,4):"";
+        else v=v!=null?v:"";
+        return`<td>${esc(String(v))}</td>`;
+      }).join("")}<td>${o.txtImageNameLink?`<img src="${iu(o.txtImageNameLink)}" loading="lazy">`:"—"}</td></tr>`;
+    }).join("")}
+  </table>${exResults.length>100?`<div style="padding:8px;text-align:center;color:var(--mt);font-size:9px">${exResults.length-100} de plus non affichés</div>`:""}`;
+}
+
+// ── PDF Export (using jsPDF) ──
+async function loadJsPDF(){
+  if(window.jspdf)return;
+  return new Promise((res,rej)=>{
+    const s=document.createElement("script");
+    s.src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+    s.onload=res;s.onerror=()=>rej(new Error("Impossible de charger jsPDF"));
+    document.head.appendChild(s);
+  });
+}
+
+async function imgToDataUrl(url,maxW,maxH){
+  return new Promise((res)=>{
+    const img=new Image();img.crossOrigin="anonymous";
+    img.onload=()=>{
+      const sc=Math.min(maxW/img.naturalWidth,maxH/img.naturalHeight,1);
+      const c=document.createElement("canvas");
+      c.width=img.naturalWidth*sc;c.height=img.naturalHeight*sc;
+      c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+      res({data:c.toDataURL("image/jpeg",0.8),w:c.width,h:c.height});
+    };
+    img.onerror=()=>res(null);
+    img.src=url;
+  });
+}
+
+async function exPDF(mode){
+  const st=document.getElementById("exStatus");
+  if(!exResults.length){tst("Aucune oeuvre à exporter",true);return;}
+  st.textContent="Chargement de jsPDF...";
+  try{await loadJsPDF();}catch(e){st.textContent="Erreur: "+e.message;return;}
+  const{jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:mode==="tableau"?"landscape":"portrait",unit:"mm",format:"a4"});
+  const pw=doc.internal.pageSize.getWidth(),ph=doc.internal.pageSize.getHeight();
+  const margin=15;
+
+  if(mode==="fiche"){
+    st.textContent="Génération fiches...";
+    for(let i=0;i<exResults.length;i++){
+      const o=exResults[i];
+      if(i>0)doc.addPage();
+      st.textContent=`Fiche ${i+1}/${exResults.length}...`;
+      let y=margin;
+      // Image
+      if(o.txtImageNameLink){
+        const img=await imgToDataUrl(iu(o.txtImageNameLink),400,400);
+        if(img){
+          const maxImgW=pw-margin*2,maxImgH=ph*0.45;
+          const sc=Math.min(maxImgW/img.w,maxImgH/img.h);
+          const iw=img.w*sc,ih=img.h*sc;
+          doc.addImage(img.data,"JPEG",margin,y,iw,ih);
+          y+=ih+8;
+        }
+      }
+      // Title
+      doc.setFontSize(16);doc.setFont(undefined,"bold");
+      doc.text(o.Titre||"Sans titre",margin,y);y+=8;
+      // Details
+      doc.setFontSize(9);doc.setFont(undefined,"normal");
+      const d=dm(o);
+      const lines=[
+        `ID ${o.OeuvreID} · ${o.Tirage||"1/1"}`,
+        `${tM[o.Technique]||"—"} sur ${sM[o.Support]||"—"}`,
+        `${o["Année"]?String(o["Année"]).slice(0,4):"—"}`,
+        d.h&&d.l?`${d.h} × ${d.l} cm`:"Dimensions: —",
+        o.Prix>0?`Prix: ${o.Prix} €`:"",
+        o.Exposable?"Exposable: Oui":"Exposable: Non",
+        o.Commentaires?`Notes: ${o.Commentaires.slice(0,200)}`:"",
+      ].filter(Boolean);
+      lines.forEach(l=>{doc.text(l,margin,y);y+=5;});
+      // Footer
+      doc.setFontSize(7);doc.setTextColor(150);
+      doc.text(`© PEM · ${o.txtImageNameLink||""}`,margin,ph-8);
+      doc.setTextColor(0);
+    }
+  }
+  else if(mode==="grille"){
+    st.textContent="Génération grille...";
+    const cols=4,imgSize=40,gap=5,cellW=(pw-margin*2)/cols;
+    let x=margin,y=margin,count=0;
+    for(let i=0;i<exResults.length;i++){
+      const o=exResults[i];
+      st.textContent=`Grille ${i+1}/${exResults.length}...`;
+      if(y+imgSize+15>ph-margin){doc.addPage();x=margin;y=margin;}
+      // Image
+      if(o.txtImageNameLink){
+        const img=await imgToDataUrl(iu(o.txtImageNameLink),200,200);
+        if(img){
+          const sc=Math.min(imgSize/img.w,imgSize/img.h);
+          doc.addImage(img.data,"JPEG",x,y,img.w*sc,img.h*sc);
+        }
+      }
+      // Label
+      doc.setFontSize(6);doc.setFont(undefined,"normal");
+      const label=`${o.OeuvreID} ${(o.Titre||"S/T").slice(0,20)}`;
+      doc.text(label,x,y+imgSize+4,{maxWidth:cellW-gap});
+      const sub=`${tM[o.Technique]||""} ${o["Année"]?String(o["Année"]).slice(0,4):""}`;
+      doc.setFontSize(5);doc.setTextColor(120);
+      doc.text(sub,x,y+imgSize+8,{maxWidth:cellW-gap});
+      doc.setTextColor(0);
+      
+      x+=cellW;count++;
+      if(count%cols===0){x=margin;y+=imgSize+18;}
+    }
+  }
+  else if(mode==="tableau"){
+    st.textContent="Génération tableau...";
+    doc.setFontSize(8);doc.setFont(undefined,"bold");
+    const headers=["ID","Titre","Technique","Support","Année","H","L","Prix","Exp"];
+    const colWidths=[12,50,30,25,18,12,12,18,10];
+    let y=margin+5;
+    // Header
+    let x=margin;
+    headers.forEach((h,i)=>{doc.text(h,x,y);x+=colWidths[i];});
+    y+=5;doc.setFont(undefined,"normal");doc.setFontSize(7);
+    
+    for(const o of exResults){
+      if(y>ph-margin){doc.addPage();y=margin+5;x=margin;doc.setFontSize(8);doc.setFont(undefined,"bold");headers.forEach((h,i)=>{doc.text(h,x,y);x+=colWidths[i];});y+=5;doc.setFont(undefined,"normal");doc.setFontSize(7);}
+      x=margin;
+      const d=dm(o);
+      const vals=[String(o.OeuvreID),(o.Titre||"").slice(0,30),tM[o.Technique]||"",sM[o.Support]||"",o["Année"]?String(o["Année"]).slice(0,4):"",d.h||"",d.l||"",o.Prix>0?String(o.Prix):"",o.Exposable?"✓":""];
+      vals.forEach((v,i)=>{doc.text(v,x,y,{maxWidth:colWidths[i]-2});x+=colWidths[i];});
+      y+=4;
+    }
+  }
+
+  // Save
+  const fname=`PEM_export_${mode}_${exResults.length}oeuvres.pdf`;
+  doc.save(fname);
+  st.textContent=`✓ ${fname} téléchargé`;
+  tst(`PDF ${mode} — ${exResults.length} oeuvres`);
+}
+
+// ── HTML export (opens in new window) ──
+function exHTML(){
+  if(!exResults.length){tst("Aucune oeuvre",true);return;}
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>PEM — Sélection</title>
+<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Georgia,serif;background:#fff;color:#222;padding:40px;max-width:1200px;margin:0 auto}
+h1{font-size:24px;font-weight:400;letter-spacing:3px;text-transform:uppercase;margin-bottom:30px;color:#333}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:30px}
+.card img{width:100%;aspect-ratio:4/5;object-fit:cover;display:block;background:#f0f0f0}
+.card h3{font-size:14px;margin-top:10px;font-weight:600}
+.card p{font-size:11px;color:#888;margin-top:4px;line-height:1.5}
+@media print{body{padding:20px}.grid{gap:15px}}
+</style></head><body>
+<h1>Pierre Emmanuel Moulin — Sélection</h1>
+<p style="font-size:12px;color:#888;margin-bottom:30px">${exResults.length} oeuvres · ${new Date().toLocaleDateString("fr-FR")}</p>
+<div class="grid">${exResults.map(o=>{
+    const d=dm(o),u=iu(o.txtImageNameLink);
+    return`<div class="card">${u?`<img src="${u}" alt="${esc(o.Titre)}">`:""}
+<h3>${esc(o.Titre||"Sans titre")}</h3>
+<p>${tM[o.Technique]||""} sur ${sM[o.Support]||""}<br>${d.h&&d.l?`${d.h} × ${d.l} cm · `:""}${o["Année"]?String(o["Année"]).slice(0,4):""}<br>${o.Prix>0?`${o.Prix} €`:""}</p></div>`;
+  }).join("")}</div>
+<p style="font-size:9px;color:#ccc;margin-top:40px;text-align:center">© Pierre Emmanuel Moulin</p>
+</body></html>`;
+  const w=window.open();w.document.write(html);w.document.close();
+}
 
 if(PUB){document.getElementById("app").innerHTML='<div class="empty">Chargement...</div>';load();}
 else{initA();load();}
