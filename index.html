@@ -17,7 +17,7 @@ nav button.active{background:var(--ac);color:var(--bk);font-weight:700}
 #debug{padding:3px 16px;font-size:9px;color:var(--mt);background:#1e1e1e;border-bottom:1px solid var(--bd)}
 #debug.error{color:#ff6666}
 .body{flex:1;display:flex;overflow:hidden}
-.sidebar{width:280px;border-right:1px solid var(--bd);background:var(--sf);display:flex;flex-direction:column;flex-shrink:0}
+.sidebar{width:280px;min-width:280px;border-right:1px solid var(--bd);background:var(--sf);display:flex;flex-direction:column;flex-shrink:0}
 .filters{padding:8px 10px;border-bottom:1px solid var(--bd);display:flex;flex-direction:column;gap:5px}
 .filters input,.filters select{font-family:inherit;background:var(--bg);border:1px solid var(--bd);color:var(--tx);padding:5px 7px;font-size:11px;width:100%;outline:none}
 .list{flex:1;overflow-y:auto}.list-item{padding:7px 10px;border-bottom:1px solid var(--bd);cursor:pointer;display:flex;gap:7px;align-items:center;border-left:3px solid transparent}
@@ -227,7 +227,7 @@ function det(id){
 
   mn.innerHTML=`
     <div class="nb"><div><button class="nbtn" onclick="nP()" ${i<=0?"disabled":""}>← Préc</button> <button class="nbtn" onclick="nN()" ${i>=n-1?"disabled":""}>Suiv →</button><span class="nk">↑↓ ←→ · E=éditer</span></div><div class="pos">${i+1}/${n}</div></div>
-    ${aI.length?`<div class="iv" id="ivw" style="height:400px"><img id="vi" src="${aI[0].url}" draggable="false" oncontextmenu="return false" onerror="this.parentElement.style.display='none'" alt=""><div class="wm">${Array(12).fill(WM_TEXT).join(" ")}</div><div class="zlvl" id="zl">100%</div><div class="zbar"><button onclick="zm(0.7)">−</button><button onclick="zm(1)">Fit</button><button onclick="zm(1.5)">+</button><button onclick="_z.s=1;_z.tx=0;_z.ty=0;_z.s=ZMAX;adjH();aIZ()">Max</button></div></div><div class="tstrip">${aI.map((im,idx)=>`<img src="${im.url}" class="${idx===0?'active':''}" onclick="swI(${idx})">`).join("")}<div class="add" onclick="qUp(${o.OeuvreID})">+</div></div>`:`<div style="padding:16px;text-align:center;background:var(--bg);border:1px solid var(--bd);margin-bottom:12px"><span style="color:var(--mt);font-size:10px">Pas d'image</span><br><button class="btn bs" style="margin-top:6px" onclick="qUp(${o.OeuvreID})">+ Photo</button></div>`}
+    ${aI.length?`<div class="iv" id="ivw"><img id="vi" src="${aI[0].url}" draggable="false" oncontextmenu="return false" onerror="this.parentElement.style.display='none'" alt=""><div class="wm">${Array(12).fill(WM_TEXT).join(" ")}</div><div class="zlvl" id="zl">100%</div><div class="zbar"><button onclick="zm(0.7)">−</button><button onclick="zm(1)">Fit</button><button onclick="zm(1.5)">+</button><button onclick="_z.s=1;_z.tx=0;_z.ty=0;_z.s=ZMAX;adjH();aIZ()">Max</button></div></div><div class="tstrip">${aI.map((im,idx)=>`<img src="${im.url}" class="${idx===0?'active':''}" onclick="swI(${idx})">`).join("")}<div class="add" onclick="qUp(${o.OeuvreID})">+</div></div>`:`<div style="padding:16px;text-align:center;background:var(--bg);border:1px solid var(--bd);margin-bottom:12px"><span style="color:var(--mt);font-size:10px">Pas d'image</span><br><button class="btn bs" style="margin-top:6px" onclick="qUp(${o.OeuvreID})">+ Photo</button></div>`}
     <div class="dh"><div><div class="dt">${esc(o.Titre||"Sans titre")}</div><div class="di">ID ${o.OeuvreID} · ${esc(o.Tirage||"1/1")}${o.txtImageNameLink?`<br>${esc(o.txtImageNameLink)}`:""}${o.NomOriginal&&o.NomOriginal!==o.txtImageNameLink?`<br>orig: ${esc(o.NomOriginal)}`:""}</div></div>${o.Prix>0?`<div class="dp">${o.Prix} €</div>`:""}</div>
     <div class="dg">${df("Technique",tM[o.Technique])}${df("Support",sM[o.Support])}${df("Année",o["Année"]?String(o["Année"]).slice(0,10):null)}${df("Format",fM[o.Format])}${df("Dimensions",d.h&&d.l?`${d.h} × ${d.l} cm`:null)}${df("Profondeur",o.Profondeur?`${o.Profondeur} cm`:null)}${df("Poids",o.Poids?`${o.Poids} kg`:null)}${df("Contact",cM[o.ContactID])}${df("Exposable",o.Exposable?"Oui":"Non")}${df("Catalogué",o["Catalogué"]?"Oui":"Non")}${df("Discount",o.Discount?`${o.Discount}%`:null)}${df("Prix final",o.PrixFinal>0?`${o.PrixFinal} €`:null)}</div>
     ${o.Commentaires?`<div class="dn"><div class="fl">Commentaires</div><p>${esc(o.Commentaires)}</p></div>`:""}
@@ -280,13 +280,12 @@ function adjH(){
   const vw=document.getElementById("ivw"),img=document.getElementById("vi");
   if(!vw||!img||!img.naturalWidth)return;
   const cw=vw.clientWidth;
-  const fitW=Math.min(cw,img.naturalWidth);
-  const baseH=fitW*(img.naturalHeight/img.naturalWidth);
-  // Container height: baseH at s=1, scales up proportionally, capped at 80vh
-  const maxH=window.innerHeight*0.8;
-  const minH=Math.min(baseH,window.innerHeight*0.5);
-  const h=Math.min(minH*_z.s,maxH);
-  vw.style.height=Math.round(Math.max(200,h))+"px";
+  // Image rendered size at current scale (constrained by max-width:100%)
+  const rendW=Math.min(cw,img.naturalWidth)*_z.s;
+  const rendH=(img.naturalHeight/img.naturalWidth)*rendW;
+  // Container = exactly the rendered image height, capped at 80vh
+  const h=Math.min(rendH,window.innerHeight*0.8);
+  vw.style.height=Math.round(Math.max(150,h))+"px";
 }
 function zm(f){
   const vw=document.getElementById("ivw"),img=document.getElementById("vi");
