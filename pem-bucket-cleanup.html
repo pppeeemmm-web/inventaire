@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>PEM — Bucket Cleanup</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#1a1a1a;--sf:#242424;--bd:#333;--tx:#e0e0e0;--mt:#888;--ac:#c8a86e;--dg:#a04040;--wh:#fff;--bk:#000;--ok:#4a8a4a}
+body{font-family:'JetBrains Mono','Consolas',monospace;background:var(--bg);color:var(--tx);padding:20px}
+h1{font-size:15px;font-weight:700;color:var(--ac);letter-spacing:2px;text-transform:uppercase;margin-bottom:16px}
+h2{font-size:12px;font-weight:700;color:var(--wh);margin:20px 0 8px;padding:6px 0;border-bottom:1px solid var(--bd)}
+.stats{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:16px;padding:12px;background:var(--sf);border:1px solid var(--bd)}
+.stat{text-align:center}
+.stat .n{font-size:22px;font-weight:700;color:var(--ac)}
+.stat .l{font-size:9px;color:var(--mt);text-transform:uppercase;letter-spacing:1px}
+table{width:100%;border-collapse:collapse;font-size:10px;margin-bottom:16px}
+th{text-align:left;padding:4px 8px;background:var(--sf);color:var(--mt);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;position:sticky;top:0}
+td{padding:4px 8px;border-bottom:1px solid var(--bd)}
+tr:hover{background:#2a2a2a}
+.tag{padding:1px 6px;font-size:8px;font-weight:700;border-radius:2px;display:inline-block}
+.tag-ok{background:var(--ok);color:var(--wh)}
+.tag-old{background:#886600;color:var(--wh)}
+.tag-orphan{background:var(--dg);color:var(--wh)}
+.tag-dup{background:#664488;color:var(--wh)}
+.btn{font-family:inherit;padding:5px 12px;font-size:10px;font-weight:600;border:none;cursor:pointer;letter-spacing:1px;text-transform:uppercase}
+.bp{background:var(--ac);color:var(--bk)}.bd{background:var(--dg);color:var(--wh)}.bs{background:var(--sf);color:var(--tx);border:1px solid var(--bd)}
+.btn:hover{opacity:0.85}
+.brow{display:flex;gap:8px;margin:12px 0;flex-wrap:wrap}
+#log{background:var(--bk);border:1px solid var(--bd);padding:12px;font-size:10px;max-height:300px;overflow-y:auto;white-space:pre-wrap;margin-top:12px}
+.ok{color:var(--ok)}.err{color:var(--dg)}.wrn{color:#cc8800}
+.sz{color:var(--mt);font-size:9px}
+img.thumb{width:40px;height:40px;object-fit:cover;background:var(--bg);border:1px solid var(--bd)}
+.filter-bar{display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap}
+.filter-bar select,.filter-bar input{font-family:inherit;background:var(--bg);border:1px solid var(--bd);color:var(--tx);padding:4px 8px;font-size:10px}
+</style>
+</head>
+<body>
+<h1>PEM — Bucket Cleanup</h1>
+<div class="brow">
+  <button class="btn bp" onclick="scan()">Scanner le bucket</button>
+  <button class="btn bs" onclick="renameAll()" id="btnRename" disabled>Renommer les non-W_</button>
+  <button class="btn bd" onclick="deleteOrphans()" id="btnDel" disabled>Supprimer les doublons anciens</button>
+</div>
+<div class="stats" id="stats">Cliquer "Scanner" pour commencer</div>
+<div class="filter-bar" id="filterBar" style="display:none">
+  <label style="font-size:9px;color:var(--mt)">Filtrer: 
+    <select id="filterType" onchange="renderTable()">
+      <option value="all">Tout</option>
+      <option value="renamed">W_ renommés</option>
+      <option value="old">Non renommés (ancien nom)</option>
+      <option value="orphan">Orphelins (pas d'oeuvre)</option>
+      <option value="dup">Doublons (ancien + W_)</option>
+    </select>
+  </label>
+  <input type="text" id="filterQ" placeholder="Rechercher..." oninput="renderTable()">
+  <span id="filterCount" style="font-size:9px;color:var(--mt)"></span>
+</div>
+<div id="tbl"></div>
+<div id="log" style="display:none"></div>
+
+<script>
+const SB="https://mcrzsxrcoexnlwmaunte.supabase.co";
+const KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1jcnpzeHJjb2V4bmx3bWF1bnRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxOTM3NDEsImV4cCI6MjA5MTc2OTc0MX0.ba6g7WsOA3dVq2ltDbelTMpzJhQkZiLB8HjrRhAhGuo";
+const BKT="paintings";
+
+let bucketFiles=[], oeuvres=[], imgTbl=[], analysis=[];
+
+async function api(p){
+  const r=await fetch(`${SB}/rest/v1/${p}${p.includes("?")?"&":"?"}apikey=${KEY}`,{headers:{apikey:KEY,Authorization:`Bearer ${KEY}`}});
+  return r.json();
+}
+
+async function listBucket(){
+  // Supabase lists max 1000 per call, paginate
+  let all=[],offset=0;
+  while(true){
+    const r=await fetch(`${SB}/storage/v1/object/list/${BKT}`,{method:"POST",headers:{apikey:KEY,Authorization:`Bearer ${KEY}`,"Content-Type":"application/json"},body:JSON.stringify({limit:1000,offset,sortBy:{column:"name",order:"asc"}})});
+    const items=await r.json();
+    if(!items.length)break;
+    all=all.concat(items);
+    if(items.length<1000)break;
+    offset+=items.length;
+  }
+  return all.filter(f=>f.name&&!f.name.endsWith("/"));
+}
+
+function fmtSize(bytes){
+  if(!bytes)return"?";
+  if(bytes<1024)return bytes+"B";
+  if(bytes<1024*1024)return(bytes/1024).toFixed(0)+"KB";
+  return(bytes/(1024*1024)).toFixed(1)+"MB";
+}
+
+async function scan(){
+  document.getElementById("stats").textContent="Chargement...";
+  
+  // Load oeuvres and tblImage
+  const[o,im]=await Promise.all([
+    api("Oeuvres?select=OeuvreID,Titre,txtImageNameLink,NomOriginal&order=OeuvreID.asc&limit=2000"),
+    api("tblImage?select=ImageID,OeuvreID,txtImageNameLink&order=OeuvreID.asc&limit=5000")
+  ]);
+  oeuvres=o;imgTbl=im;
+  
+  // List bucket
+  bucketFiles=await listBucket();
+  
+  // Build lookup: which filenames are referenced by oeuvres/tblImage
+  const refByOeuvre=new Set();
+  const oeuvreByFile={};
+  oeuvres.forEach(o=>{
+    if(o.txtImageNameLink){refByOeuvre.add(o.txtImageNameLink);oeuvreByFile[o.txtImageNameLink]=o;}
+    if(o.NomOriginal){refByOeuvre.add(o.NomOriginal);if(!oeuvreByFile[o.NomOriginal])oeuvreByFile[o.NomOriginal]=o;}
+  });
+  imgTbl.forEach(i=>{
+    if(i.txtImageNameLink){refByOeuvre.add(i.txtImageNameLink);if(!oeuvreByFile[i.txtImageNameLink])oeuvreByFile[i.txtImageNameLink]={OeuvreID:i.OeuvreID};}
+  });
+  
+  // Analyze each bucket file
+  analysis=bucketFiles.map(f=>{
+    const name=f.name;
+    const isW=name.startsWith("W_");
+    const linked=refByOeuvre.has(name);
+    const oeuvre=oeuvreByFile[name]||null;
+    
+    // Check if this old-name file has a W_ counterpart (duplicate)
+    let hasDup=false,dupName="";
+    if(!isW&&oeuvre){
+      // Find the W_ version
+      const wName=oeuvre.txtImageNameLink;
+      if(wName&&wName.startsWith("W_")&&wName!==name){
+        const wExists=bucketFiles.find(bf=>bf.name===wName);
+        if(wExists){hasDup=true;dupName=wName;}
+      }
+    }
+    
+    let status;
+    if(isW&&linked)status="renamed";
+    else if(isW&&!linked)status="orphan";
+    else if(!isW&&linked&&hasDup)status="dup";
+    else if(!isW&&linked)status="old";
+    else status="orphan";
+    
+    return{
+      name,
+      size:f.metadata?.size||0,
+      mime:f.metadata?.mimetype||"",
+      isW,linked,oeuvre,status,hasDup,dupName,
+      oeuvreID:oeuvre?.OeuvreID||null,
+      titre:oeuvre?.Titre||""
+    };
+  });
+  
+  // Stats
+  const renamed=analysis.filter(a=>a.status==="renamed").length;
+  const old=analysis.filter(a=>a.status==="old").length;
+  const dup=analysis.filter(a=>a.status==="dup").length;
+  const orphan=analysis.filter(a=>a.status==="orphan").length;
+  const totalSize=analysis.reduce((s,a)=>s+a.size,0);
+  const dupSize=analysis.filter(a=>a.status==="dup").reduce((s,a)=>s+a.size,0);
+  
+  document.getElementById("stats").innerHTML=`
+    <div class="stat"><div class="n">${bucketFiles.length}</div><div class="l">fichiers total</div></div>
+    <div class="stat"><div class="n">${renamed}</div><div class="l">W_ renommés ✓</div></div>
+    <div class="stat"><div class="n">${old}</div><div class="l">non renommés</div></div>
+    <div class="stat"><div class="n">${dup}</div><div class="l">doublons (ancien + W_)</div></div>
+    <div class="stat"><div class="n">${orphan}</div><div class="l">orphelins</div></div>
+    <div class="stat"><div class="n">${fmtSize(totalSize)}</div><div class="l">taille totale</div></div>
+    <div class="stat"><div class="n" style="color:var(--dg)">${fmtSize(dupSize)}</div><div class="l">récupérable (doublons)</div></div>
+  `;
+  
+  document.getElementById("filterBar").style.display="flex";
+  document.getElementById("btnRename").disabled=old===0;
+  document.getElementById("btnDel").disabled=dup===0;
+  renderTable();
+}
+
+function renderTable(){
+  const filter=document.getElementById("filterType").value;
+  const q=(document.getElementById("filterQ").value||"").toLowerCase();
+  
+  let items=analysis;
+  if(filter!=="all")items=items.filter(a=>a.status===filter);
+  if(q)items=items.filter(a=>a.name.toLowerCase().includes(q)||(a.titre||"").toLowerCase().includes(q)||String(a.oeuvreID||"").includes(q));
+  
+  document.getElementById("filterCount").textContent=`${items.length} fichiers`;
+  
+  const thumbUrl=(name)=>`${SB}/storage/v1/render/image/public/${BKT}/${encodeURIComponent(name)}?width=80&height=80&resize=cover`;
+  
+  document.getElementById("tbl").innerHTML=`<table>
+    <tr><th></th><th>Fichier</th><th>Statut</th><th>Oeuvre</th><th>Taille</th><th>Doublon W_</th></tr>
+    ${items.slice(0,500).map(a=>{
+      const tag=a.status==="renamed"?"tag-ok":a.status==="old"?"tag-old":a.status==="dup"?"tag-dup":"tag-orphan";
+      const label=a.status==="renamed"?"W_ ✓":a.status==="old"?"ancien":a.status==="dup"?"doublon":"orphelin";
+      return`<tr>
+        <td><img class="thumb" src="${thumbUrl(a.name)}" loading="lazy" onerror="this.style.display='none'"></td>
+        <td style="word-break:break-all;max-width:400px">${a.name}</td>
+        <td><span class="tag ${tag}">${label}</span></td>
+        <td>${a.oeuvreID?`${a.oeuvreID} — ${(a.titre||"S/T").slice(0,30)}`:""}</td>
+        <td class="sz">${fmtSize(a.size)}</td>
+        <td style="font-size:9px;color:var(--mt)">${a.hasDup?a.dupName:""}</td>
+      </tr>`;
+    }).join("")}
+  </table>${items.length>500?`<div style="padding:8px;color:var(--mt);font-size:9px">${items.length-500} de plus non affichés</div>`:""}`;
+}
+
+function log(msg,cls){
+  const el=document.getElementById("log");
+  el.style.display="block";
+  el.innerHTML+=`<span class="${cls||""}">${msg}</span>\n`;
+  el.scrollTop=el.scrollHeight;
+}
+
+async function renameAll(){
+  const items=analysis.filter(a=>a.status==="old");
+  if(!items.length){log("Rien à renommer","wrn");return;}
+  if(!confirm(`Renommer ${items.length} fichiers vers la convention W_ ?`))return;
+  
+  log(`── Rename ${items.length} fichiers ──`);
+  let ok=0,err=0;
+  
+  for(const a of items){
+    if(!a.oeuvre)continue;
+    const oid=a.oeuvre.OeuvreID;
+    // Build W_ name
+    const ext=a.name.split(".").pop().toLowerCase();
+    const base=a.name.replace(/\.[^.]+$/,"").replace(/[^a-zA-Z0-9_-]/g,"_").replace(/_+/g,"_").replace(/^_|_$/g,"");
+    const wName=`W_${String(oid).padStart(4,"0")}_01_${base}.${ext}`;
+    
+    try{
+      // Download
+      const dl=await fetch(`${SB}/storage/v1/object/public/${BKT}/${encodeURIComponent(a.name)}`);
+      if(!dl.ok)throw new Error(`Download ${dl.status}`);
+      const blob=await dl.blob();
+      
+      // Upload with new name
+      const up=await fetch(`${SB}/storage/v1/object/${BKT}/${encodeURIComponent(wName)}`,{
+        method:"POST",headers:{apikey:KEY,Authorization:`Bearer ${KEY}`,"Content-Type":blob.type,"x-upsert":"true"},body:blob
+      });
+      if(!up.ok)throw new Error(`Upload ${up.status}`);
+      
+      // Update oeuvre record
+      await fetch(`${SB}/rest/v1/Oeuvres?OeuvreID=eq.${oid}`,{
+        method:"PATCH",headers:{apikey:KEY,Authorization:`Bearer ${KEY}`,"Content-Type":"application/json",Prefer:"return=minimal"},
+        body:JSON.stringify({txtImageNameLink:wName,NomOriginal:a.name})
+      });
+      
+      log(`✓ ${a.name} → ${wName}`,"ok");ok++;
+    }catch(e){
+      log(`✕ ${a.name}: ${e.message}`,"err");err++;
+    }
+  }
+  log(`\n── ${ok} renommés, ${err} erreurs ──`);
+  if(ok>0)setTimeout(scan,1000);
+}
+
+async function deleteOrphans(){
+  const items=analysis.filter(a=>a.status==="dup");
+  if(!items.length){log("Pas de doublons","wrn");return;}
+  
+  const totalSize=items.reduce((s,a)=>s+a.size,0);
+  if(!confirm(`Supprimer ${items.length} anciens fichiers (${fmtSize(totalSize)}) qui ont déjà un W_ ?\n\nLes fichiers W_ restent.`))return;
+  
+  log(`── Suppression ${items.length} doublons ──`);
+  let ok=0,err=0;
+  
+  for(const a of items){
+    try{
+      const r=await fetch(`${SB}/storage/v1/object/${BKT}`,{
+        method:"DELETE",headers:{apikey:KEY,Authorization:`Bearer ${KEY}`,"Content-Type":"application/json"},
+        body:JSON.stringify({prefixes:[a.name]})
+      });
+      if(!r.ok)throw new Error(`${r.status}`);
+      log(`✓ Supprimé: ${a.name} (${fmtSize(a.size)})`,"ok");ok++;
+    }catch(e){
+      log(`✕ ${a.name}: ${e.message}`,"err");err++;
+    }
+  }
+  log(`\n── ${ok} supprimés (${fmtSize(items.filter((_,i)=>i<ok).reduce((s,a)=>s+a.size,0))} libérés), ${err} erreurs ──`);
+  if(ok>0)setTimeout(scan,1000);
+}
+</script>
+</body>
+</html>
