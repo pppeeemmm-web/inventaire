@@ -35,11 +35,16 @@ img.thumb{width:40px;height:40px;object-fit:cover;background:var(--bg);border:1p
 </style>
 </head>
 <body>
-<h1>PEM — Bucket Cleanup</h1>
+<h1>PEM — Bucket Cleanup & Import</h1>
 <div class="brow">
   <button class="btn bp" onclick="scan()">Scanner le bucket</button>
   <button class="btn bs" onclick="renameAll()" id="btnRename" disabled>Renommer les non-W_</button>
-  <button class="btn bd" onclick="deleteOrphans()" id="btnDel" disabled>Supprimer les doublons anciens</button>
+  <button class="btn bd" onclick="deleteDups()" id="btnDel" disabled>Supprimer les doublons</button>
+</div>
+<h2>Import</h2>
+<div class="brow">
+  <button class="btn bp" onclick="moveWorks()">1. Déplacer works → paintings</button>
+  <button class="btn bs" onclick="batchCreate()" id="btnCreate" disabled>2. Créer oeuvres pour orphelins</button>
 </div>
 <div class="stats" id="stats">Cliquer "Scanner" pour commencer</div>
 <div class="filter-bar" id="filterBar" style="display:none">
@@ -263,6 +268,7 @@ async function scan(){
   document.getElementById("filterBar").style.display="flex";
   document.getElementById("btnRename").disabled=old===0;
   document.getElementById("btnDel").disabled=dup===0;
+  document.getElementById("btnCreate").disabled=orphan===0;
   renderTable();
   }catch(e){
     document.getElementById("stats").innerHTML=`<div style="color:var(--dg)">Erreur: ${e.message}<br><br>Si l'erreur concerne les permissions, exécuter dans Supabase SQL Editor :<br><code>CREATE POLICY "allow_anon_select" ON storage.objects FOR SELECT TO anon USING (bucket_id = 'paintings');</code></div>`;
@@ -348,7 +354,7 @@ async function renameAll(){
   if(ok>0)setTimeout(scan,1000);
 }
 
-async function deleteOrphans(){
+async function deleteDups(){
   const items=analysis.filter(a=>a.status==="dup");
   if(!items.length){log("Pas de doublons","wrn");return;}
   
@@ -370,8 +376,146 @@ async function deleteOrphans(){
       log(`✕ ${a.name}: ${e.message}`,"err");err++;
     }
   }
-  log(`\n── ${ok} supprimés (${fmtSize(items.filter((_,i)=>i<ok).reduce((s,a)=>s+a.size,0))} libérés), ${err} erreurs ──`);
-  if(ok>0)setTimeout(scan,1000);
+  log(`\n── ${ok} supprimés, ${err} erreurs ──`);
+  if(ok>0)setTimeout(scan,2000);
+}
+
+// ═══ MOVE WORKS → PAINTINGS ═══
+async function moveWorks(){
+  log("── Listing bucket 'works' ──");
+  
+  // List works bucket
+  let workFiles=[];
+  let offset=0;
+  while(true){
+    const r=await fetch(`${SB}/storage/v1/object/list/works`,{
+      method:"POST",
+      headers:{apikey:KEY,Authorization:`Bearer ${KEY}`,"Content-Type":"application/json"},
+      body:JSON.stringify({prefix:"",limit:1000,offset,sortBy:{column:"name",order:"asc"}})
+    });
+    if(!r.ok){
+      const txt=await r.text();
+      log(`Erreur listing works: ${r.status} — ${txt}`,"err");
+      log("Vérifier que le bucket 'works' existe et que la policy SELECT est active.","wrn");
+      return;
+    }
+    const items=await r.json();
+    if(!items.length)break;
+    workFiles=workFiles.concat(items.filter(f=>f.name&&f.id));
+    if(items.length<1000)break;
+    offset+=items.length;
+  }
+  
+  if(!workFiles.length){log("Bucket 'works' vide ou inexistant.","wrn");return;}
+  
+  log(`${workFiles.length} fichiers trouvés dans 'works'`);
+  if(!confirm(`Déplacer ${workFiles.length} fichiers de 'works' vers 'paintings' ?`))return;
+  
+  let ok=0,err=0,skip=0;
+  for(const f of workFiles){
+    try{
+      // Check if file already exists in paintings
+      const exists=bucketFiles.find(bf=>bf.name===f.name);
+      if(exists){log(`⊘ Skip (existe déjà): ${f.name}`,"wrn");skip++;continue;}
+      
+      // Download from works
+      const dl=await fetch(`${SB}/storage/v1/object/public/works/${encodeURIComponent(f.name)}`);
+      if(!dl.ok)throw new Error(`Download ${dl.status}`);
+      const blob=await dl.blob();
+      
+      // Upload to paintings
+      const up=await fetch(`${SB}/storage/v1/object/${BKT}/${encodeURIComponent(f.name)}`,{
+        method:"POST",headers:{apikey:KEY,Authorization:`Bearer ${KEY}`,"Content-Type":blob.type,"x-upsert":"true"},body:blob
+      });
+      if(!up.ok)throw new Error(`Upload ${up.status}`);
+      
+      // Delete from works
+      const del=await fetch(`${SB}/storage/v1/object/works`,{
+        method:"DELETE",headers:{apikey:KEY,Authorization:`Bearer ${KEY}`,"Content-Type":"application/json"},
+        body:JSON.stringify({prefixes:[f.name]})
+      });
+      
+      log(`✓ ${f.name} (${fmtSize(f.metadata?.size||0)})`,"ok");ok++;
+    }catch(e){
+      log(`✕ ${f.name}: ${e.message}`,"err");err++;
+    }
+  }
+  log(`\n── ${ok} déplacés, ${skip} existants skippés, ${err} erreurs ──`);
+  if(ok>0){log("Re-scan dans 3s...","wrn");setTimeout(scan,3000);}
+}
+
+// ═══ BATCH CREATE OEUVRES FOR ORPHANS ═══
+async function batchCreate(){
+  const orphans=analysis.filter(a=>a.status==="orphan"||a.status==="orphan-w");
+  if(!orphans.length){log("Pas d'orphelins","wrn");return;}
+  
+  if(!confirm(`Créer ${orphans.length} nouvelles oeuvres (une par image orpheline) ?\n\nChaque fichier sera renommé en W_ et lié à une nouvelle oeuvre.\nTitre par défaut: 'S/T'. Vous pourrez éditer ensuite.`))return;
+  
+  log(`── Création de ${orphans.length} oeuvres ──`);
+  
+  // Get max OeuvreID
+  let maxId=oeuvres.reduce((m,o)=>Math.max(m,o.OeuvreID||0),0);
+  let ok=0,err=0;
+  
+  for(const a of orphans){
+    try{
+      maxId++;
+      const newId=maxId;
+      const ext=a.name.split(".").pop().toLowerCase();
+      const base=a.name.replace(/\.[^.]+$/,"").replace(/^W_\d{4}_\d{2}_/,"").replace(/[^a-zA-Z0-9_-]/g,"_").replace(/_+/g,"_").replace(/^_|_$/g,"");
+      const wName=`W_${String(newId).padStart(4,"0")}_01_${base}.${ext}`;
+      
+      // Extract year from filename if possible (YYYYMMDD pattern)
+      const ym=a.name.match(/(20\d{2})\d{4}/);
+      const year=ym?ym[1]+"-01-01":null;
+      
+      // If file already has W_ prefix, just rename properly
+      if(a.isW){
+        // Download and re-upload with correct W_ name for new ID
+        const dl=await fetch(`${SB}/storage/v1/object/public/${BKT}/${encodeURIComponent(a.name)}`);
+        if(!dl.ok)throw new Error(`Download ${dl.status}`);
+        const blob=await dl.blob();
+        const up=await fetch(`${SB}/storage/v1/object/${BKT}/${encodeURIComponent(wName)}`,{
+          method:"POST",headers:{apikey:KEY,Authorization:`Bearer ${KEY}`,"Content-Type":blob.type,"x-upsert":"true"},body:blob
+        });
+        if(!up.ok)throw new Error(`Upload ${up.status}`);
+      }else{
+        // Download and upload with W_ name
+        const dl=await fetch(`${SB}/storage/v1/object/public/${BKT}/${encodeURIComponent(a.name)}`);
+        if(!dl.ok)throw new Error(`Download ${dl.status}`);
+        const blob=await dl.blob();
+        const up=await fetch(`${SB}/storage/v1/object/${BKT}/${encodeURIComponent(wName)}`,{
+          method:"POST",headers:{apikey:KEY,Authorization:`Bearer ${KEY}`,"Content-Type":blob.type,"x-upsert":"true"},body:blob
+        });
+        if(!up.ok)throw new Error(`Upload ${up.status}`);
+      }
+      
+      // Create oeuvre record
+      const data={
+        OeuvreID:newId,
+        Titre:"S/T",
+        txtImageNameLink:wName,
+        NomOriginal:a.name,
+        Statut:4,
+        "Catalogué":false,
+        Exposable:false
+      };
+      if(year)data["Année"]=year;
+      
+      const r=await fetch(`${SB}/rest/v1/Oeuvres`,{
+        method:"POST",
+        headers:{apikey:KEY,Authorization:`Bearer ${KEY}`,"Content-Type":"application/json",Prefer:"return=minimal"},
+        body:JSON.stringify(data)
+      });
+      if(!r.ok)throw new Error(`DB ${r.status}: ${await r.text()}`);
+      
+      log(`✓ ID ${newId}: ${a.name} → ${wName}${year?` (${year.slice(0,4)})`:""}`,"ok");ok++;
+    }catch(e){
+      log(`✕ ${a.name}: ${e.message}`,"err");err++;
+    }
+  }
+  log(`\n── ${ok} oeuvres créées, ${err} erreurs ──`);
+  if(ok>0){log("Re-scan dans 3s...","wrn");setTimeout(scan,3000);}
 }
 </script>
 </body>
