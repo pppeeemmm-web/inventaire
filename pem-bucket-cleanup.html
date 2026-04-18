@@ -46,10 +46,11 @@ img.thumb{width:40px;height:40px;object-fit:cover;background:var(--bg);border:1p
   <label style="font-size:9px;color:var(--mt)">Filtrer: 
     <select id="filterType" onchange="renderTable()">
       <option value="all">Tout</option>
-      <option value="renamed">W_ renommés</option>
-      <option value="old">Non renommés (ancien nom)</option>
-      <option value="orphan">Orphelins (pas d'oeuvre)</option>
-      <option value="dup">Doublons (ancien + W_)</option>
+      <option value="renamed">W_ renommés ✓</option>
+      <option value="old">Non renommés (à renommer)</option>
+      <option value="dup">Doublons (à supprimer)</option>
+      <option value="orphan">Orphelins sans W_</option>
+      <option value="orphan-w">Orphelins W_ (pas d'oeuvre)</option>
     </select>
   </label>
   <input type="text" id="filterQ" placeholder="Rechercher..." oninput="renderTable()">
@@ -131,6 +132,28 @@ async function scan(){
     if(i.txtImageNameLink){refByOeuvre.add(i.txtImageNameLink);if(!oeuvreByFile[i.txtImageNameLink])oeuvreByFile[i.txtImageNameLink]={OeuvreID:i.OeuvreID};}
   });
   
+  // Normalize a filename: remove W_ prefix, leading zeros in ID, spaces→underscores, lowercase
+  function norm(name){
+    return name
+      .replace(/^W_\d{4}_\d{2}_/,"") // strip W_XXXX_XX_ prefix
+      .replace(/\.[^.]+$/,"")         // strip extension
+      .replace(/[\s-]+/g,"_")         // spaces/hyphens → underscore
+      .replace(/_+/g,"_")             // collapse multiple underscores
+      .replace(/^_|_$/g,"")           // trim underscores
+      .toLowerCase();
+  }
+  
+  // Group bucket files by normalized name to find duplicates
+  const byNorm={};
+  bucketFiles.forEach(f=>{
+    const n=norm(f.name);
+    if(!byNorm[n])byNorm[n]=[];
+    byNorm[n].push(f.name);
+  });
+  
+  // Build W_ file set for quick lookup
+  const wFiles=new Set(bucketFiles.filter(f=>f.name.startsWith("W_")).map(f=>f.name));
+  
   // Analyze each bucket file
   analysis=bucketFiles.map(f=>{
     const name=f.name;
@@ -138,31 +161,54 @@ async function scan(){
     const linked=refByOeuvre.has(name);
     const oeuvre=oeuvreByFile[name]||null;
     
-    // Check if this old-name file has a W_ counterpart (duplicate)
+    // Find duplicate: for non-W_ files, check if a W_ file with same normalized name exists
     let hasDup=false,dupName="";
-    if(!isW&&oeuvre){
-      // Find the W_ version
-      const wName=oeuvre.txtImageNameLink;
-      if(wName&&wName.startsWith("W_")&&wName!==name){
-        const wExists=bucketFiles.find(bf=>bf.name===wName);
-        if(wExists){hasDup=true;dupName=wName;}
+    if(!isW){
+      const n=norm(name);
+      const group=byNorm[n]||[];
+      const wMatch=group.find(g=>g.startsWith("W_")&&g!==name);
+      if(wMatch){hasDup=true;dupName=wMatch;}
+      
+      // Also check via oeuvre link
+      if(!hasDup&&oeuvre){
+        const wName=oeuvre.txtImageNameLink;
+        if(wName&&wName.startsWith("W_")&&wName!==name&&wFiles.has(wName)){
+          hasDup=true;dupName=wName;
+        }
+      }
+    }
+    
+    // Try to find linked oeuvre even if not directly referenced
+    let foundOeuvre=oeuvre;
+    if(!foundOeuvre&&!isW){
+      // Search by NomOriginal match
+      const match=oeuvres.find(o=>o.NomOriginal===name);
+      if(match)foundOeuvre=match;
+    }
+    if(!foundOeuvre&&isW){
+      // Extract ID from W_ name: W_0201_01_... → 201
+      const m=name.match(/^W_(\d{4})_/);
+      if(m){
+        const id=parseInt(m[1]);
+        const match=oeuvres.find(o=>o.OeuvreID===id);
+        if(match)foundOeuvre=match;
       }
     }
     
     let status;
-    if(isW&&linked)status="renamed";
-    else if(isW&&!linked)status="orphan";
-    else if(!isW&&linked&&hasDup)status="dup";
-    else if(!isW&&linked)status="old";
+    if(isW&&(linked||foundOeuvre))status="renamed";
+    else if(isW&&!linked&&!foundOeuvre)status="orphan-w";
+    else if(!isW&&hasDup)status="dup";
+    else if(!isW&&(linked||foundOeuvre))status="old";
     else status="orphan";
     
     return{
       name,
       size:f.metadata?.size||0,
       mime:f.metadata?.mimetype||"",
-      isW,linked,oeuvre,status,hasDup,dupName,
-      oeuvreID:oeuvre?.OeuvreID||null,
-      titre:oeuvre?.Titre||""
+      isW,linked,oeuvre:foundOeuvre,status,hasDup,dupName,
+      oeuvreID:foundOeuvre?.OeuvreID||null,
+      titre:foundOeuvre?.Titre||""
     };
   });
   
@@ -170,18 +216,20 @@ async function scan(){
   const renamed=analysis.filter(a=>a.status==="renamed").length;
   const old=analysis.filter(a=>a.status==="old").length;
   const dup=analysis.filter(a=>a.status==="dup").length;
-  const orphan=analysis.filter(a=>a.status==="orphan").length;
+  const orphan=analysis.filter(a=>a.status==="orphan"||a.status==="orphan-w").length;
   const totalSize=analysis.reduce((s,a)=>s+a.size,0);
   const dupSize=analysis.filter(a=>a.status==="dup").reduce((s,a)=>s+a.size,0);
+  const orphanSize=analysis.filter(a=>a.status==="orphan"||a.status==="orphan-w").reduce((s,a)=>s+a.size,0);
   
   document.getElementById("stats").innerHTML=`
     <div class="stat"><div class="n">${bucketFiles.length}</div><div class="l">fichiers total</div></div>
     <div class="stat"><div class="n">${renamed}</div><div class="l">W_ renommés ✓</div></div>
     <div class="stat"><div class="n">${old}</div><div class="l">non renommés</div></div>
-    <div class="stat"><div class="n">${dup}</div><div class="l">doublons (ancien + W_)</div></div>
+    <div class="stat"><div class="n">${dup}</div><div class="l">doublons</div></div>
     <div class="stat"><div class="n">${orphan}</div><div class="l">orphelins</div></div>
     <div class="stat"><div class="n">${fmtSize(totalSize)}</div><div class="l">taille totale</div></div>
     <div class="stat"><div class="n" style="color:var(--dg)">${fmtSize(dupSize)}</div><div class="l">récupérable (doublons)</div></div>
+    <div class="stat"><div class="n" style="color:#886600">${fmtSize(orphanSize)}</div><div class="l">orphelins (taille)</div></div>
   `;
   
   document.getElementById("filterBar").style.display="flex";
@@ -208,8 +256,8 @@ function renderTable(){
   document.getElementById("tbl").innerHTML=`<table>
     <tr><th></th><th>Fichier</th><th>Statut</th><th>Oeuvre</th><th>Taille</th><th>Doublon W_</th></tr>
     ${items.slice(0,500).map(a=>{
-      const tag=a.status==="renamed"?"tag-ok":a.status==="old"?"tag-old":a.status==="dup"?"tag-dup":"tag-orphan";
-      const label=a.status==="renamed"?"W_ ✓":a.status==="old"?"ancien":a.status==="dup"?"doublon":"orphelin";
+      const tag=a.status==="renamed"?"tag-ok":a.status==="old"?"tag-old":a.status==="dup"?"tag-dup":a.status==="orphan-w"?"tag-orphan":"tag-orphan";
+      const label=a.status==="renamed"?"W_ ✓":a.status==="old"?"à renommer":a.status==="dup"?"doublon":a.status==="orphan-w"?"orphelin W_":"orphelin";
       return`<tr>
         <td><img class="thumb" src="${thumbUrl(a.name)}" loading="lazy" onerror="this.style.display='none'"></td>
         <td style="word-break:break-all;max-width:400px">${a.name}</td>
