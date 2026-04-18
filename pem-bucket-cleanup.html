@@ -110,10 +110,20 @@ async function scan(){
   document.getElementById("stats").textContent="Chargement...";
   
   try{
-  // Load oeuvres and tblImage
+  // Load oeuvres (paginated) and tblImage
+  async function apiAll(table,select,order){
+    let all=[],offset=0;
+    while(true){
+      const data=await api(`${table}?select=${select}&order=${order}&limit=1000&offset=${offset}`);
+      all=all.concat(data);
+      if(data.length<1000)break;
+      offset+=data.length;
+    }
+    return all;
+  }
   const[o,im]=await Promise.all([
-    api("Oeuvres?select=OeuvreID,Titre,txtImageNameLink,NomOriginal&order=OeuvreID.asc&limit=2000"),
-    api("tblImage?select=ImageID,OeuvreID,txtImageNameLink&order=OeuvreID.asc&limit=5000")
+    apiAll("Oeuvres","OeuvreID,Titre,txtImageNameLink,NomOriginal","OeuvreID.asc"),
+    apiAll("tblImage","ImageID,OeuvreID,txtImageNameLink","OeuvreID.asc")
   ]);
   oeuvres=o;imgTbl=im;
   
