@@ -453,12 +453,21 @@ async function batchCreate(){
   
   log(`── Création de ${orphans.length} oeuvres ──`);
   
-  // Get max OeuvreID
-  let maxId=oeuvres.reduce((m,o)=>Math.max(m,o.OeuvreID||0),0);
+  // Get real max OeuvreID from database
+  let maxIdData;
+  try{
+    maxIdData=await api("Oeuvres?select=OeuvreID&order=OeuvreID.desc&limit=1");
+  }catch(e){}
+  let maxId=(maxIdData&&maxIdData.length)?maxIdData[0].OeuvreID:oeuvres.reduce((m,o)=>Math.max(m,o.OeuvreID||0),0);
+  log(`Max ID actuel: ${maxId}`);
   let ok=0,err=0;
   
   for(const a of orphans){
     try{
+      // Double-check this file isn't already linked to an oeuvre (from previous partial run)
+      const check=await api(`Oeuvres?txtImageNameLink=eq.${encodeURIComponent(a.name)}&select=OeuvreID&limit=1`);
+      if(check&&check.length){log(`⊘ Skip (déjà lié à ID ${check[0].OeuvreID}): ${a.name}`,"wrn");continue;}
+      
       maxId++;
       const newId=maxId;
       const ext=a.name.split(".").pop().toLowerCase();
