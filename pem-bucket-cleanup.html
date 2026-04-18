@@ -132,21 +132,40 @@ async function scan(){
     if(i.txtImageNameLink){refByOeuvre.add(i.txtImageNameLink);if(!oeuvreByFile[i.txtImageNameLink])oeuvreByFile[i.txtImageNameLink]={OeuvreID:i.OeuvreID};}
   });
   
-  // Normalize a filename: remove W_ prefix, leading zeros in ID, spaces→underscores, lowercase
+  // Normalize: extract core content for matching
+  // Strip W_ prefix, strip extension, normalize separators, lowercase
   function norm(name){
-    return name
-      .replace(/^W_\d{4}_\d{2}_/,"") // strip W_XXXX_XX_ prefix
-      .replace(/\.[^.]+$/,"")         // strip extension
-      .replace(/[\s-]+/g,"_")         // spaces/hyphens → underscore
-      .replace(/_+/g,"_")             // collapse multiple underscores
-      .replace(/^_|_$/g,"")           // trim underscores
-      .toLowerCase();
+    let n=name.replace(/\.[^.]+$/,""); // strip extension
+    // Strip W_XXXX_XX_ prefix if present
+    n=n.replace(/^W_\d{4}_\d{2}_/,"");
+    // Normalize all separators to underscore, lowercase
+    n=n.replace(/[\s\-]+/g,"_").replace(/_+/g,"_").replace(/^_|_$/g,"").toLowerCase();
+    return n;
   }
   
-  // Group bucket files by normalized name to find duplicates
+  // Also extract a "signature" — the date+PE/PEM/DSCF/DSC number part
+  // e.g. "20221118_PE19477" from any variant of the filename
+  function sig(name){
+    let n=name.replace(/\.[^.]+$/,"");
+    n=n.replace(/^W_\d{4}_\d{2}_/,"");
+    n=n.replace(/[\s\-]+/g,"_").replace(/_+/g,"_").toLowerCase();
+    // Try to extract date_PExxxxx pattern
+    const m=n.match(/(\d{8})[_]*(pe|pem|dscf|dsc|pa|img)[\d_]+/i);
+    if(m)return m[0];
+    // Try just PE/PEM number
+    const m2=n.match(/(pe|pem|dscf|dsc)\d+/i);
+    if(m2)return m2[0];
+    return n;
+  }
+  
+  // Group bucket files by signature AND by norm to find duplicates
+  const bySig={};
   const byNorm={};
   bucketFiles.forEach(f=>{
+    const s=sig(f.name);
     const n=norm(f.name);
+    if(!bySig[s])bySig[s]=[];
+    bySig[s].push(f.name);
     if(!byNorm[n])byNorm[n]=[];
     byNorm[n].push(f.name);
   });
@@ -161,15 +180,24 @@ async function scan(){
     const linked=refByOeuvre.has(name);
     const oeuvre=oeuvreByFile[name]||null;
     
-    // Find duplicate: for non-W_ files, check if a W_ file with same normalized name exists
+    // Find duplicate: for non-W_ files, check if a W_ file with same norm or sig exists
     let hasDup=false,dupName="";
     if(!isW){
+      // Method 1: same normalized name
       const n=norm(name);
-      const group=byNorm[n]||[];
-      const wMatch=group.find(g=>g.startsWith("W_")&&g!==name);
-      if(wMatch){hasDup=true;dupName=wMatch;}
+      const groupN=byNorm[n]||[];
+      const wMatchN=groupN.find(g=>g.startsWith("W_")&&g!==name);
+      if(wMatchN){hasDup=true;dupName=wMatchN;}
       
-      // Also check via oeuvre link
+      // Method 2: same signature (date+PE number)
+      if(!hasDup){
+        const s=sig(name);
+        const groupS=bySig[s]||[];
+        const wMatchS=groupS.find(g=>g.startsWith("W_")&&g!==name);
+        if(wMatchS){hasDup=true;dupName=wMatchS;}
+      }
+      
+      // Method 3: via oeuvre DB link
       if(!hasDup&&oeuvre){
         const wName=oeuvre.txtImageNameLink;
         if(wName&&wName.startsWith("W_")&&wName!==name&&wFiles.has(wName)){
