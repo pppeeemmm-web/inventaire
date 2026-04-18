@@ -71,38 +71,17 @@ async function api(p){
 }
 
 async function listBucket(){
-  // Use REST API to query storage.objects table directly — more reliable than the list endpoint
-  // which requires SELECT RLS policies
-  let all=[],offset=0;
-  while(true){
-    const r=await fetch(`${SB}/rest/v1/objects?bucket_id=eq.${BKT}&order=name.asc&limit=1000&offset=${offset}&select=name,metadata`,{
-      headers:{apikey:KEY,Authorization:`Bearer ${KEY}`,Accept:"application/json"}
-    });
-    if(!r.ok){
-      // Fallback: try the storage list endpoint
-      return await listBucketStorage();
-    }
-    const items=await r.json();
-    if(!items.length)break;
-    all=all.concat(items);
-    if(items.length<1000)break;
-    offset+=items.length;
-  }
-  return all.filter(f=>f.name&&!f.name.endsWith("/"));
-}
-
-async function listBucketStorage(){
-  // Fallback: standard storage list endpoint
+  // Try the storage list endpoint with required prefix field
   let all=[],offset=0;
   while(true){
     const r=await fetch(`${SB}/storage/v1/object/list/${BKT}`,{
       method:"POST",
       headers:{apikey:KEY,Authorization:`Bearer ${KEY}`,"Content-Type":"application/json"},
-      body:JSON.stringify({limit:1000,offset,sortBy:{column:"name",order:"asc"}})
+      body:JSON.stringify({prefix:"",limit:1000,offset,sortBy:{column:"name",order:"asc"}})
     });
     if(!r.ok){
       const txt=await r.text();
-      throw new Error(`List failed: ${r.status} — ${txt}`);
+      throw new Error(`List ${r.status}: ${txt}`);
     }
     const items=await r.json();
     if(!items.length)break;
@@ -110,7 +89,7 @@ async function listBucketStorage(){
     if(items.length<1000)break;
     offset+=items.length;
   }
-  return all.filter(f=>f.name&&!f.name.endsWith("/"));
+  return all.filter(f=>f.name&&f.id);
 }
 
 function fmtSize(bytes){
