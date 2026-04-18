@@ -203,12 +203,31 @@ function downloadLowRes(url,title){
   };img.src=url;
 }
 
+async function apiAll(table,order,pageSize=1000){
+  let all=[],offset=0;
+  while(true){
+    const data=await api(`${table}?order=${order}&limit=${pageSize}&offset=${offset}`);
+    all=all.concat(data);
+    if(data.length<pageSize)break;
+    offset+=data.length;
+  }
+  return all;
+}
+
 async function load(){
   try{dbg("Chargement...");
-    const[o,t,su,f,c,im]=await Promise.all([api("Oeuvres?order=OeuvreID.desc&limit=2000"),api("Technique?order=TechniqueID.asc"),api("Support?order=SupportID.asc"),api("Format?order=FormatID.asc"),api("Contact?order=ContactID.asc"),api("tblImage?order=OeuvreID.asc,SeqNo.asc&limit=5000")]);
+    const[o,t,su,f,c,im]=await Promise.all([
+      apiAll("Oeuvres","OeuvreID.desc"),
+      api("Technique?order=TechniqueID.asc"),
+      api("Support?order=SupportID.asc"),
+      api("Format?order=FormatID.asc"),
+      api("Contact?order=ContactID.asc"),
+      apiAll("tblImage","OeuvreID.asc,SeqNo.asc")
+    ]);
     oeuvres=o;techniques=t;supports=su;formats=f;contacts=c;imgTbl=im;
     tM=Object.fromEntries(t.map(x=>[x.TechniqueID,x.Technique]));sM=Object.fromEntries(su.map(x=>[x.SupportID,x.Support]));fM=Object.fromEntries(f.map(x=>[x.FormatID,x.Format]));cM=Object.fromEntries(c.map(x=>[x.ContactID,x.NomInstitution]));
-    dbg(`${o.length} oeuvres · ${im.length} images`);
+    const imgCount=o.filter(x=>x.txtImageNameLink).length;
+    dbg(`${o.length} oeuvres · ${imgCount} avec image · ${im.length} tblImage`);
     if(PUB)initPub();else{popF();applyF();upSt();}
   }catch(e){dbg("ERREUR: "+e.message,true);}
 }
@@ -226,17 +245,33 @@ function pubDet(id){const o=oeuvres.find(x=>x.OeuvreID===id);if(!o)return;const 
 }
 
 // ═══ ADMIN ═══
-function initA(){document.getElementById("app").innerHTML=`<header><h1>PEM — Inventaire</h1><nav id="nv"><button class="active" onclick="sv('list')">Liste</button><button onclick="sv('gallery')">Galerie</button><button onclick="sv('form')">+ Nouvelle</button><button onclick="sv('export')">Export/Sélection</button></nav></header><div id="debug"></div><div class="body"><aside class="sidebar" id="sb"><div class="filters"><input type="text" id="q" placeholder="Recherche titre / ID..." oninput="applyF()"><select id="fT" onchange="applyF()"><option value="">Toutes techniques</option></select><select id="fS" onchange="applyF()"><option value="">Tous supports</option></select><select id="fSt" onchange="applyF()"><option value="">Tout statut</option><option value="cat">Catalogué</option><option value="ncat">Non catalogué</option><option value="exp">Exposable</option><option value="noimg">Sans image</option><option value="nopx">Sans prix</option></select></div><div class="list" id="ls"></div><div class="stats" id="st"></div></aside><main class="main" id="mn"><div class="empty">Chargement...</div></main></div>`;}
+function initA(){document.getElementById("app").innerHTML=`<header><h1>PEM — Inventaire</h1><nav id="nv"><button class="active" onclick="sv('list')">Liste</button><button onclick="sv('gallery')">Galerie</button><button onclick="sv('form')">+ Nouvelle</button><button onclick="sv('export')">Export/Sélection</button></nav></header><div id="debug"></div><div class="body"><aside class="sidebar" id="sb"><div class="filters"><input type="text" id="q" placeholder="Recherche titre / ID..." oninput="applyF()"><select id="fT" onchange="applyF()"><option value="">Toutes techniques</option></select><select id="fS" onchange="applyF()"><option value="">Tous supports</option></select><select id="fSt" onchange="applyF()"><option value="">Tout statut</option><option value="cat">Catalogué</option><option value="ncat">Non catalogué</option><option value="exp">Exposable</option><option value="noimg">Sans image</option><option value="nopx">Sans prix</option></select><select id="fSort" onchange="applyF()"><option value="id_desc">ID ↓</option><option value="id_asc">ID ↑</option><option value="year_desc">Année ↓</option><option value="year_asc">Année ↑</option><option value="title_asc">Titre A-Z</option><option value="title_desc">Titre Z-A</option><option value="tech">Technique</option><option value="support">Support</option><option value="prix_desc">Prix ↓</option><option value="prix_asc">Prix ↑</option></select></div><div class="list" id="ls"></div><div class="stats" id="st"></div></aside><main class="main" id="mn"><div class="empty">Chargement...</div></main></div>`;}
 function popF(){document.getElementById("fT").innerHTML='<option value="">Toutes techniques</option>'+techniques.map(t=>`<option value="${t.TechniqueID}">${t.Technique}</option>`).join("");document.getElementById("fS").innerHTML='<option value="">Tous supports</option>'+supports.map(s=>`<option value="${s.SupportID}">${s.Support}</option>`).join("");}
 function upSt(){document.getElementById("st").textContent=`${filtered.length}/${oeuvres.length} · ${oeuvres.filter(o=>!o.txtImageNameLink).length} sans img · ${oeuvres.filter(o=>!o.Prix).length} sans prix`;}
-function applyF(){const q=document.getElementById("q").value.toLowerCase(),t=document.getElementById("fT").value,su=document.getElementById("fS").value,st=document.getElementById("fSt").value;filtered=oeuvres.filter(o=>{if(q&&!(o.Titre||"").toLowerCase().includes(q)&&!String(o.OeuvreID).includes(q))return false;if(t&&String(o.Technique)!==t)return false;if(su&&String(o.Support)!==su)return false;if(st==="cat"&&!o["Catalogué"])return false;if(st==="ncat"&&o["Catalogué"])return false;if(st==="exp"&&!o.Exposable)return false;if(st==="noimg"&&o.txtImageNameLink)return false;if(st==="nopx"&&o.Prix>0)return false;return true;});if(curV==="list")rList();if(curV==="gallery")rGal();upSt();}
+function applyF(){const q=document.getElementById("q").value.toLowerCase(),t=document.getElementById("fT").value,su=document.getElementById("fS").value,st=document.getElementById("fSt").value;filtered=oeuvres.filter(o=>{if(q&&!(o.Titre||"").toLowerCase().includes(q)&&!String(o.OeuvreID).includes(q))return false;if(t&&String(o.Technique)!==t)return false;if(su&&String(o.Support)!==su)return false;if(st==="cat"&&!o["Catalogué"])return false;if(st==="ncat"&&o["Catalogué"])return false;if(st==="exp"&&!o.Exposable)return false;if(st==="noimg"&&o.txtImageNameLink)return false;if(st==="nopx"&&o.Prix>0)return false;return true;});
+  // Sort
+  const s=document.getElementById("fSort")?.value||"id_desc";
+  filtered.sort((a,b)=>{switch(s){
+    case "id_desc":return b.OeuvreID-a.OeuvreID;
+    case "id_asc":return a.OeuvreID-b.OeuvreID;
+    case "year_desc":return(b["Année"]||"").localeCompare(a["Année"]||"");
+    case "year_asc":return(a["Année"]||"").localeCompare(b["Année"]||"");
+    case "title_asc":return(a.Titre||"").localeCompare(b.Titre||"");
+    case "title_desc":return(b.Titre||"").localeCompare(a.Titre||"");
+    case "tech":return(tM[a.Technique]||"").localeCompare(tM[b.Technique]||"");
+    case "support":return(sM[a.Support]||"").localeCompare(sM[b.Support]||"");
+    case "prix_desc":return(b.Prix||0)-(a.Prix||0);
+    case "prix_asc":return(a.Prix||0)-(b.Prix||0);
+    default:return 0;
+  }});
+  if(curV==="list")rList();if(curV==="gallery")rGal();upSt();}
 function nI(){return filtered.findIndex(o=>o.OeuvreID===selId);}function nP(){const i=nI();if(i>0)sel(filtered[i-1].OeuvreID);}function nN(){const i=nI();if(i<filtered.length-1)sel(filtered[i+1].OeuvreID);}
 document.addEventListener("keydown",e=>{if(PUB||["INPUT","TEXTAREA","SELECT"].includes(e.target.tagName))return;if(curV==="list"&&selId){if(e.key==="ArrowUp"||e.key==="ArrowLeft"){e.preventDefault();nP();}if(e.key==="ArrowDown"||e.key==="ArrowRight"){e.preventDefault();nN();}if(e.key==="e")edO(selId);}});
 function stb(v){document.querySelectorAll("#nv button").forEach((b,i)=>b.classList.toggle("active",(v==="list"&&i===0)||(v==="gallery"&&i===1)||(v==="form"&&i===2)||(v==="export"&&i===3)));}
 function sv(v){curV=v;stb(v);document.getElementById("sb").style.display=(v==="form"||v==="export")?"none":"";
   if(v==="list"){rList();det(selId);}if(v==="gallery")rGal();if(v==="form")frm();if(v==="export")showExport();}
 
-function rList(){const el=document.getElementById("ls");el.innerHTML=filtered.map(o=>{const u=iuThumb(o.txtImageNameLink,80),d=dm(o),ds=d.h&&d.l?` · ${d.h}×${d.l}`:"",ic=iFor(o.OeuvreID).length;return`<div class="list-item ${selId===o.OeuvreID?'active':''}" onclick="sel(${o.OeuvreID})">${u?`<img class="lt lazy" data-src="${u}" alt="">`:`<div class="lte">—</div>`}<div class="li"><div class="ln">${esc(o.Titre||"Sans titre")}</div><div class="ls">${tM[o.Technique]||"?"} / ${sM[o.Support]||"?"} · ${o["Année"]?String(o["Année"]).slice(0,4):"?"}${ds}</div></div>${ic>1?`<span style="font-size:8px;color:var(--mt)">${ic}</span>`:""}${o.Exposable?'<span class="badge">EXP</span>':""}</div>`;}).join("");oL();const a=el.querySelector(".list-item.active");if(a)a.scrollIntoView({block:"nearest"});}
+function rList(){const el=document.getElementById("ls");el.innerHTML=filtered.map(o=>{const u=iuThumb(o.txtImageNameLink,80),d=dm(o),ds=d.h&&d.l?` · ${d.h}×${d.l}`:"",ic=iFor(o.OeuvreID).length;return`<div class="list-item ${selId===o.OeuvreID?'active':''}" onclick="sel(${o.OeuvreID})">${u?`<img class="lt lazy" data-src="${u}" alt="">`:`<div class="lte">—</div>`}<div class="li"><div class="ln"><span style="color:var(--mt);font-size:9px;margin-right:4px">${o.OeuvreID}</span>${esc(o.Titre||"Sans titre")}</div><div class="ls">${tM[o.Technique]||"?"} / ${sM[o.Support]||"?"} · ${o["Année"]?String(o["Année"]).slice(0,4):"?"}${ds}</div></div>${ic>1?`<span style="font-size:8px;color:var(--mt)">${ic}</span>`:""}${o.Exposable?'<span class="badge">EXP</span>':""}</div>`;}).join("");oL();const a=el.querySelector(".list-item.active");if(a)a.scrollIntoView({block:"nearest"});}
 function sel(id){selId=id;rList();det(id);}
 
 // ── Detail with canvas-based zoom ──
@@ -381,7 +416,7 @@ function zm(f){
 
 function qUp(oid){const inp=document.createElement("input");inp.type="file";inp.accept="image/*";inp.multiple=true;inp.onchange=async()=>{const fs=Array.from(inp.files);if(!fs.length)return;tst(`Upload ${fs.length}...`);try{let last="",lastO="";for(const f of fs){const seq=nxS(oid),nm=mkN(oid,seq,f.name);await upl(f,nm);const mxId=imgTbl.reduce((m,i)=>Math.max(m,i.ImageID||0),0);await api("tblImage",{method:"POST",body:JSON.stringify({ImageID:mxId+1,OeuvreID:oid,txtImageNameLink:nm,txtImageName:nm,SeqNo:seq,DateAdded:new Date().toISOString()})});imgTbl.push({ImageID:mxId+1,OeuvreID:oid,txtImageNameLink:nm,SeqNo:seq});last=nm;lastO=f.name;}const o=oeuvres.find(x=>x.OeuvreID===oid);if(o&&!o.txtImageNameLink)await api(`Oeuvres?OeuvreID=eq.${oid}`,{method:"PATCH",body:JSON.stringify({txtImageNameLink:last,NomOriginal:lastO})});tst(`${fs.length} → W_${String(oid).padStart(4,"0")}_*`);await load();sel(oid);}catch(e){tst("Erreur: "+e.message,true);}};inp.click();}
 
-function rGal(){document.getElementById("mn").innerHTML=`<div class="cnt">${filtered.length} oeuvres</div><div class="gal">${filtered.map(o=>{const u=iuThumb(o.txtImageNameLink,300),ic=iFor(o.OeuvreID).length;return`<div class="gc" onclick="sv('list');sel(${o.OeuvreID})">${u?`<img class="gi lazy" data-src="${u}" alt="">`:`<div class="ge">—</div>`}<div class="gn"><div class="gt">${esc(o.Titre||"Sans titre")}${ic>1?` (${ic})`:""}</div><div class="gs">${tM[o.Technique]||""} · ${o["Année"]?String(o["Année"]).slice(0,4):""}${o.Prix>0?` · ${o.Prix}€`:""}</div></div></div>`;}).join("")}</div>`;oL();}
+function rGal(){document.getElementById("mn").innerHTML=`<div class="cnt">${filtered.length} oeuvres</div><div class="gal">${filtered.map(o=>{const u=iuThumb(o.txtImageNameLink,300),ic=iFor(o.OeuvreID).length;return`<div class="gc" onclick="sv('list');sel(${o.OeuvreID})">${u?`<img class="gi lazy" data-src="${u}" alt="">`:`<div class="ge">—</div>`}<div class="gn"><div class="gt"><span style="color:var(--mt);font-size:8px">${o.OeuvreID}</span> ${esc(o.Titre||"Sans titre")}${ic>1?` (${ic})`:""}</div><div class="gs">${tM[o.Technique]||""} · ${o["Année"]?String(o["Année"]).slice(0,4):""}${o.Prix>0?` · ${o.Prix}€`:""}</div></div></div>`;}).join("")}</div>`;oL();}
 
 function frm(ex){const o=ex||{},isE=!!o.OeuvreID;document.getElementById("mn").innerHTML=`<h2 style="font-size:15px;font-weight:700;color:var(--wh);margin-bottom:14px">${isE?`Modifier — ${esc(o.Titre||"")}`:"Nouvelle oeuvre"}</h2><div id="ip" style="margin-bottom:10px">${o.txtImageNameLink?`<img src="${iu(o.txtImageNameLink)}" style="max-width:100%;max-height:280px;object-fit:contain;background:var(--bk)" alt="">`:""}</div><div class="dz" id="dz" onclick="document.getElementById('fi').click()" ondragover="event.preventDefault();this.classList.add('over')" ondragleave="this.classList.remove('over')" ondrop="event.preventDefault();this.classList.remove('over');hF(event.dataTransfer.files[0])">Glisser image ou cliquer</div><input type="file" id="fi" accept="image/*" style="display:none" onchange="hF(this.files[0])"><div id="fn" style="font-size:9px;color:var(--mt);margin:3px 0 14px">${o.txtImageNameLink||""}</div><input type="hidden" id="f_i" value="${esc(o.txtImageNameLink||"")}"><input type="hidden" id="f_or" value="${esc(o.NomOriginal||"")}"><input type="hidden" id="f_id" value="${o.OeuvreID||""}"><div class="fgrid">${fi("Titre","ft",o.Titre)}${fi("Année","fa",o["Année"]?String(o["Année"]).slice(0,10):"","text","2025-04-16")}${fsl("Technique","fk",techniques.map(t=>[t.TechniqueID,t.Technique]),o.Technique)}${fsl("Support","fs",supports.map(s=>[s.SupportID,s.Support]),o.Support)}${fsl("Format","ff",[["","— dim. manuelles"],...formats.map(f=>[f.FormatID,f.Format])],o.Format)}${fi("Tirage","fg",o.Tirage||"1/1")}${fi("Hauteur (cm)","fh",o.Hauteur,"number")}${fi("Largeur (cm)","fl",o.Largeur,"number")}${fi("Profondeur","fp",o.Profondeur,"number")}${fi("Poids (kg)","fw",o.Poids,"number")}${fsl("Contact","fc",contacts.map(c=>[c.ContactID,`${c.NomInstitution}${c.Nom?" ("+c.Nom+")":""}`]),o.ContactID)}${fi("Prix (€)","fx",o.Prix||0,"number")}${fi("Discount","fd",o.Discount||0,"number")}${fi("Prix final","fz",o.PrixFinal||0,"number")}<div class="ff"><div class="fl">Exposable</div><label class="chk"><input type="checkbox" id="fe" ${o.Exposable?"checked":""}> Oui</label></div><div class="ff"><div class="fl">Catalogué</div><label class="chk"><input type="checkbox" id="fb" ${o["Catalogué"]?"checked":""}> Oui</label></div><div class="ffull ff"><div class="fl">Commentaires</div><textarea id="fm">${esc(o.Commentaires||"")}</textarea></div><div class="ffull ff"><div class="fl">Historique</div><textarea id="fq">${esc(o.Historique||"")}</textarea></div></div><div class="brow"><button class="btn bp" onclick="sF()">${isE?"Enregistrer":"Créer"}</button><button class="btn bs" onclick="cF()">Annuler</button></div>`;}
 function fi(l,id,v,t,ph){return`<div class="ff"><div class="fl">${l}</div><input id="${id}" type="${t||"text"}" value="${esc(v!=null?String(v):"")}" ${ph?`placeholder="${ph}"`:""}></div>`;}
@@ -669,23 +704,21 @@ async function exPDF(mode){
   const title=exSelName||"Sélection";
   const date=new Date().toLocaleDateString("fr-FR");
 
-  // Cover page
-  doc.setFontSize(24);doc.setFont(undefined,"bold");
-  doc.text(title,mg,50);
-  doc.setFontSize(11);doc.setFont(undefined,"normal");doc.setTextColor(120);
-  doc.text(`${items.length} oeuvres · ${date}`,mg,60);
-  doc.text("Pierre Emmanuel Moulin",mg,67);
-  if(exSelComment){doc.setFontSize(9);doc.setTextColor(80);
-    const lines=doc.splitTextToSize(exSelComment,pw-mg*2);
-    doc.text(lines,mg,80);
-  }
+  // Title at top of first page
+  doc.setFontSize(14);doc.setFont(undefined,"bold");
+  doc.text(title,mg,mg+5);
+  doc.setFontSize(8);doc.setFont(undefined,"normal");doc.setTextColor(120);
+  doc.text(`${items.length} oeuvre${items.length>1?"s":""} · ${date} · Pierre Emmanuel Moulin`,mg,mg+11);
+  if(exSelComment){doc.setFontSize(7);const cl=doc.splitTextToSize(exSelComment,pw-mg*2);doc.text(cl,mg,mg+16);}
   doc.setTextColor(0);
+  // Start content below title block
+  const contentY=mg+(exSelComment?26:18);
 
   if(mode==="fiche"){
     for(let i=0;i<items.length;i++){
-      const o=items[i];doc.addPage();
+      const o=items[i];if(i>0)doc.addPage();
       st.textContent=`Fiche ${i+1}/${items.length}`;
-      let y=mg;
+      let y=i===0?contentY:mg;
       if(o.txtImageNameLink){
         const img=await imgToDataUrl(iu(o.txtImageNameLink),800,800);
         if(img){const sc=Math.min((pw-mg*2)/img.w,(ph*0.5)/img.h);doc.addImage(img.data,"JPEG",mg,y,img.w*sc,img.h*sc);y+=img.h*sc+6;}
@@ -706,10 +739,12 @@ async function exPDF(mode){
     const cols=Number(document.getElementById("exPdfCols")?.value||4);
     // Adaptive resolution: fewer cols = higher res per image
     const imgRes=cols<=2?600:cols<=4?300:200;
-    const cellW=(pw-mg*2)/cols,imgH=cellW*1.2,cellH=imgH+12;
-    let x=mg,y=mg,col=0;
+    const cellW=(pw-mg*2)/cols,imgH=cellW*1.2,baseLabelH=12,noteLabelH=6;
+    let x=mg,y=contentY,col=0;
     for(let i=0;i<items.length;i++){
       const o=items[i];st.textContent=`Grille ${i+1}/${items.length}`;
+      const hasNote=!!exItemNotes[o.OeuvreID];
+      const cellH=imgH+baseLabelH+(hasNote?noteLabelH:0);
       if(y+cellH>ph-mg){doc.addPage();x=mg;y=mg;col=0;}
       if(o.txtImageNameLink){
         const imgUrl=cols<=2?iu(o.txtImageNameLink):iuThumb(o.txtImageNameLink,imgRes);
@@ -719,14 +754,21 @@ async function exPDF(mode){
       doc.setFontSize(6);doc.setFont(undefined,"bold");doc.text(`${o.OeuvreID}`,x+1,y+imgH+4);
       doc.setFont(undefined,"normal");doc.text((o.Titre||"S/T").slice(0,25),x+10,y+imgH+4);
       doc.setFontSize(5);doc.setTextColor(120);doc.text(`${tM[o.Technique]||""} ${o["Année"]?String(o["Année"]).slice(0,4):""}`,x+1,y+imgH+8);doc.setTextColor(0);
+      if(hasNote){
+        doc.setFontSize(4.5);doc.setTextColor(180,120,40);
+        doc.text(exItemNotes[o.OeuvreID].slice(0,40),x+1,y+imgH+11,{maxWidth:cellW-4});
+        doc.setTextColor(0);
+      }
       col++;x+=cellW;
-      if(col>=cols){col=0;x=mg;y+=cellH;}
+      if(col>=cols){col=0;x=mg;y+=imgH+baseLabelH+(hasNote?noteLabelH:0);}
     }
+    // Footer on last page
+    doc.setFontSize(6);doc.setTextColor(150);doc.text(`© PEM · ${title} · ${items.length} oeuvres`,mg,ph-5);doc.setTextColor(0);
   }
   else if(mode==="tableau"){
     const hdrs=["ID","Titre","Technique","Support","Année","H","L","Prix","Exp"];
     const cw=[12,55,28,22,16,12,12,16,10];
-    let y=mg+4;
+    let y=contentY;
     function drawHdr(){let x=mg;doc.setFontSize(7);doc.setFont(undefined,"bold");hdrs.forEach((h,i)=>{doc.text(h,x,y);x+=cw[i];});y+=4;doc.setFont(undefined,"normal");doc.setFontSize(6.5);}
     drawHdr();
     for(const o of items){
@@ -734,6 +776,12 @@ async function exPDF(mode){
       let x=mg;const d=dm(o);
       [String(o.OeuvreID),(o.Titre||"").slice(0,35),tM[o.Technique]||"",sM[o.Support]||"",o["Année"]?String(o["Année"]).slice(0,4):"",d.h||"",d.l||"",o.Prix>0?String(o.Prix):"",o.Exposable?"✓":""].forEach((v,i)=>{doc.text(v,x,y,{maxWidth:cw[i]-2});x+=cw[i];});
       y+=3.5;
+      if(exItemNotes[o.OeuvreID]){
+        doc.setFontSize(5.5);doc.setTextColor(180,120,40);doc.setFont(undefined,"italic");
+        doc.text(`→ ${exItemNotes[o.OeuvreID].slice(0,80)}`,mg+12,y);
+        doc.setFont(undefined,"normal");doc.setTextColor(0);doc.setFontSize(6.5);
+        y+=3;
+      }
     }
   }
   const safeName=(exSelName||"selection").replace(/[^a-zA-Z0-9_-]/g,"_").slice(0,30);
