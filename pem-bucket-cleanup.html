@@ -71,10 +71,39 @@ async function api(p){
 }
 
 async function listBucket(){
-  // Supabase lists max 1000 per call, paginate
+  // Use REST API to query storage.objects table directly — more reliable than the list endpoint
+  // which requires SELECT RLS policies
   let all=[],offset=0;
   while(true){
-    const r=await fetch(`${SB}/storage/v1/object/list/${BKT}`,{method:"POST",headers:{apikey:KEY,Authorization:`Bearer ${KEY}`,"Content-Type":"application/json"},body:JSON.stringify({limit:1000,offset,sortBy:{column:"name",order:"asc"}})});
+    const r=await fetch(`${SB}/rest/v1/objects?bucket_id=eq.${BKT}&order=name.asc&limit=1000&offset=${offset}&select=name,metadata`,{
+      headers:{apikey:KEY,Authorization:`Bearer ${KEY}`,Accept:"application/json"}
+    });
+    if(!r.ok){
+      // Fallback: try the storage list endpoint
+      return await listBucketStorage();
+    }
+    const items=await r.json();
+    if(!items.length)break;
+    all=all.concat(items);
+    if(items.length<1000)break;
+    offset+=items.length;
+  }
+  return all.filter(f=>f.name&&!f.name.endsWith("/"));
+}
+
+async function listBucketStorage(){
+  // Fallback: standard storage list endpoint
+  let all=[],offset=0;
+  while(true){
+    const r=await fetch(`${SB}/storage/v1/object/list/${BKT}`,{
+      method:"POST",
+      headers:{apikey:KEY,Authorization:`Bearer ${KEY}`,"Content-Type":"application/json"},
+      body:JSON.stringify({limit:1000,offset,sortBy:{column:"name",order:"asc"}})
+    });
+    if(!r.ok){
+      const txt=await r.text();
+      throw new Error(`List failed: ${r.status} — ${txt}`);
+    }
     const items=await r.json();
     if(!items.length)break;
     all=all.concat(items);
@@ -94,6 +123,7 @@ function fmtSize(bytes){
 async function scan(){
   document.getElementById("stats").textContent="Chargement...";
   
+  try{
   // Load oeuvres and tblImage
   const[o,im]=await Promise.all([
     api("Oeuvres?select=OeuvreID,Titre,txtImageNameLink,NomOriginal&order=OeuvreID.asc&limit=2000"),
@@ -101,8 +131,15 @@ async function scan(){
   ]);
   oeuvres=o;imgTbl=im;
   
+  document.getElementById("stats").textContent=`${o.length} oeuvres chargées, scan du bucket...`;
+  
   // List bucket
   bucketFiles=await listBucket();
+  
+  if(!bucketFiles.length){
+    document.getElementById("stats").innerHTML=`<div style="color:var(--dg)">Aucun fichier trouvé. Vérifier les policies RLS sur storage.objects.<br>Exécuter dans SQL Editor :<br><code>CREATE POLICY "allow_anon_select" ON storage.objects FOR SELECT TO anon USING (bucket_id = 'paintings');</code></div>`;
+    return;
+  }
   
   // Build lookup: which filenames are referenced by oeuvres/tblImage
   const refByOeuvre=new Set();
@@ -172,6 +209,9 @@ async function scan(){
   document.getElementById("btnRename").disabled=old===0;
   document.getElementById("btnDel").disabled=dup===0;
   renderTable();
+  }catch(e){
+    document.getElementById("stats").innerHTML=`<div style="color:var(--dg)">Erreur: ${e.message}<br><br>Si l'erreur concerne les permissions, exécuter dans Supabase SQL Editor :<br><code>CREATE POLICY "allow_anon_select" ON storage.objects FOR SELECT TO anon USING (bucket_id = 'paintings');</code></div>`;
+  }
 }
 
 function renderTable(){
