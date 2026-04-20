@@ -2,49 +2,49 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>PEM — Map Engine v4</title>
+<title>PEM — Map Engine v5</title>
 <style>
+/* --- UI DE BASE --- */
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#111;--sf:#1a1a1a;--bd:#333;--tx:#eee;--ac:#c8a86e;--dg:#ff4444}
 body{font-family:monospace;background:var(--bg);color:var(--tx);overflow:hidden;height:100vh}
-
 #app{display:flex;height:100vh}
 
-/* SIDEBAR FIXE */
+/* --- SIDEBAR --- */
 .sidebar { width: 300px; background: var(--sf); border-right: 1px solid var(--bd); display: flex; flex-direction: column; z-index: 100;}
-.filters { padding: 15px; border-bottom: 1px solid var(--bd); }
-.filters input { width: 100%; background: #000; border: 1px solid var(--bd); color: var(--ac); padding: 8px; outline: none; }
-.list { flex: 1; overflow-y: auto; padding: 10px; display: grid; grid-template-columns: repeat(5, 50px); gap: 5px; }
+.filters { padding: 15px; border-bottom: 1px solid var(--bd); background: #111; }
+.filters input { width: 100%; background: #000; border: 1px solid var(--bd); color: var(--ac); padding: 10px; outline: none; border-radius: 4px;}
+.list { flex: 1; overflow-y: auto; padding: 10px; display: grid; grid-template-columns: repeat(5, 50px); gap: 8px; align-content: flex-start;}
 .list-item { width: 50px; height: 50px; cursor: grab; }
-.thumb { width: 44px; height: 44px; border-radius: 50%; border: 1px solid #444; object-fit: cover; }
+.thumb { width: 50px; height: 50px; border-radius: 50%; border: 1px solid #444; object-fit: cover; background: #000;}
 
-/* VIEWPORT & CANVAS */
-.viewport { flex: 1; position: relative; overflow: hidden; cursor: grab; }
-.viewport:active { cursor: grabbing; }
-
+/* --- VIEWPORT --- */
+.viewport { flex: 1; position: relative; overflow: hidden; background: #0a0a0a; }
 #canvas {
     position: absolute; width: 5000px; height: 5000px; transform-origin: 0 0;
     background-image: radial-gradient(#222 1px, transparent 1px); background-size: 50px 50px;
+    top:0; left:0;
 }
 
-/* NODES */
+/* --- ELEMENTS --- */
 .node { position: absolute; z-index: 10; user-select: none; }
-.art-node { width: 50px; height: 50px; min-width: 15px; } /* Min size clamp via JS */
-.art-node img { width: 100%; height: 100%; border-radius: 50%; border: 2px solid var(--ac); display: block; }
+.art-node { width: 50px; height: 50px; transform-origin: center center; }
+.art-node img { width: 50px; height: 50px; border-radius: 50%; border: 2px solid var(--ac); background: #000; display: block; }
+.id-tag { position: absolute; bottom: -5px; left: 50%; transform: translateX(-50%); font-size: 8px; background: #000; color: var(--ac); padding: 0 2px; border: 1px solid var(--ac); border-radius: 2px;}
 
 .zone-node { 
-    border: 2px dashed var(--ac); border-radius: 50%; background: rgba(200,168,110,0.05);
-    display: flex; align-items: center; justify-content: center; min-width: 50px;
+    border: 2px dashed #555; border-radius: 50%; background: rgba(200,168,110,0.03);
+    display: flex; align-items: center; justify-content: center;
 }
-.zone-node input { background: transparent; border: none; color: var(--ac); text-align: center; width: 80%; outline: none; font-size: 14px; font-weight: bold; }
+.zone-node input { background: transparent; border: none; color: #777; text-align: center; width: 80%; outline: none; font-weight: bold; }
 
-/* UI */
+/* --- CONTROLES --- */
 .ui-top { position: absolute; top: 20px; right: 20px; display: flex; gap: 10px; z-index: 1000; }
-.btn { background: var(--sf); color: var(--tx); border: 1px solid var(--bd); padding: 8px 15px; cursor: pointer; font-size: 10px; }
-.btn:hover { border-color: var(--ac); }
+.btn { background: var(--sf); color: var(--tx); border: 1px solid var(--bd); padding: 8px 15px; cursor: pointer; font-size: 11px; text-transform: uppercase;}
+.btn:hover { background: #222; border-color: var(--ac); }
 #trash { 
     position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; border-radius: 50%; 
-    border: 2px solid var(--dg); color: var(--dg); display: none; align-items: center; justify-content: center; z-index: 2000; background: #000;
+    border: 2px solid var(--dg); color: var(--dg); display: none; align-items: center; justify-content: center; z-index: 2000; background: rgba(0,0,0,0.9); font-size: 24px;
 }
 </style>
 </head>
@@ -52,15 +52,18 @@ body{font-family:monospace;background:var(--bg);color:var(--tx);overflow:hidden;
 
 <div id="app">
     <aside class="sidebar">
-        <div class="filters"><input type="text" id="q" placeholder="RECHERCHER ID..." oninput="renderSidebar()"></div>
+        <div class="filters">
+            <p style="font-size: 9px; color: #666; margin-bottom: 5px;">FILTRES</p>
+            <input type="text" id="q" placeholder="RECHERCHER ID..." oninput="renderSidebar()">
+        </div>
         <div class="list" id="ls"></div>
     </aside>
 
     <main class="viewport" id="v">
         <div class="ui-top">
-            <span id="zVal" style="font-size:12px; align-self:center">100%</span>
+            <span id="zVal" style="font-size:12px; align-self:center; color: var(--ac)">100%</span>
             <button class="btn" onclick="addZone()">+ CERCLE</button>
-            <button class="btn" onclick="saveMap()">💾 SAUVEGARDER</button>
+            <button class="btn" onclick="saveMap()">SAUVEGARDER</button>
             <button class="btn" onclick="clearMap()" style="color:var(--dg)">RESET</button>
         </div>
         <div id="canvas"></div>
@@ -88,8 +91,8 @@ function renderSidebar() {
     const q = document.getElementById('q').value;
     const filtered = oeuvres.filter(o => String(o.OeuvreID).includes(q));
     document.getElementById('ls').innerHTML = filtered.map(o => `
-        <div class="list-item" draggable="true" ondragstart="onDragStart(event, '${o.txtImageNameLink}', ${o.OeuvreID})">
-            <img class="thumb" src="${SB}/storage/v1/render/image/public/${BKT}/${encodeURIComponent(o.txtImageNameLink)}?width=50&height=50&resize=cover">
+        <div class="list-item" draggable="true" ondragstart="onDS(event, '${o.txtImageNameLink}', ${o.OeuvreID})">
+            <img class="thumb" src="${SB}/storage/v1/render/image/public/${BKT}/${encodeURIComponent(o.txtImageNameLink)}?width=100&height=100&resize=cover">
         </div>`).join('');
 }
 
@@ -97,29 +100,29 @@ function updateTransform() {
     canvas.style.transform = `translate(${px}px, ${py}px) scale(${scale})`;
     document.getElementById('zVal').textContent = Math.round(scale * 100) + "%";
     
-    // Empêcher les miniatures de devenir trop petites (Min 15px)
-    const minScaleForThumb = 15 / 50; 
-    const thumbScale = Math.max(1, minScaleForThumb / scale);
+    // LOGIQUE TAILLE FIXE MAX 50px
+    // Si scale > 1 (zoom), on réduit l'échelle interne de l'objet pour qu'il ne dépasse jamais 50px réels
+    // Si scale < 1, on empêche l'objet de devenir plus petit que 15px
+    const sFix = scale > 1 ? (1 / scale) : Math.max(1, (15/50) / scale);
+    
     document.querySelectorAll('.art-node').forEach(node => {
-        node.style.transform = `scale(${thumbScale})`;
+        node.style.transform = `scale(${sFix})`;
     });
 }
 
-// ZOOM
 viewport.onwheel = e => {
     e.preventDefault();
-    const delta = e.deltaY > 0 ? 0.9 : 1.1;
-    const nextScale = Math.min(Math.max(scale * delta, 0.02), 5);
-    const rect = viewport.getBoundingClientRect();
-    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-    px = mx - (mx - px) * (nextScale / scale);
-    py = my - (my - py) * (nextScale / scale);
-    scale = nextScale;
+    const d = e.deltaY > 0 ? 0.9 : 1.1;
+    const ns = Math.min(Math.max(scale * d, 0.02), 5);
+    const r = viewport.getBoundingClientRect();
+    const mx = e.clientX - r.left, my = e.clientY - r.top;
+    px = mx - (mx - px) * (ns / scale);
+    py = my - (my - py) * (ns / scale);
+    scale = ns;
     updateTransform();
 };
 
-// DRAG FROM SIDEBAR
-function onDragStart(e, img, id) {
+function onDS(e, img, id) {
     e.dataTransfer.setData("img", img);
     e.dataTransfer.setData("id", id);
 }
@@ -130,47 +133,47 @@ viewport.ondrop = e => {
     const img = e.dataTransfer.getData("img");
     const id = e.dataTransfer.getData("id");
     if(!img) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / scale - 25;
-    const y = (e.clientY - rect.top) / scale - 25;
-    createArtNode(img, id, x, y);
+    const r = canvas.getBoundingClientRect();
+    const x = (e.clientX - r.left) / scale - 25;
+    const y = (e.clientY - r.top) / scale - 25;
+    createNode(img, id, x, y);
 };
 
-function createArtNode(img, id, x, y) {
+function createNode(img, id, x, y) {
     const div = document.createElement('div');
     div.className = 'node art-node';
     div.dataset.img = img; div.dataset.id = id;
     div.style.left = x + 'px'; div.style.top = y + 'px';
-    div.innerHTML = `<img src="${SB}/storage/v1/render/image/public/${BKT}/${encodeURIComponent(img)}?width=100&height=100&resize=cover">`;
-    bindNode(div);
+    div.innerHTML = `<img src="${SB}/storage/v1/render/image/public/${BKT}/${encodeURIComponent(img)}?width=100&height=100&resize=cover"><div class="id-tag">${id}</div>`;
+    bind(div);
     canvas.appendChild(div);
     updateTransform();
 }
 
-function bindNode(el) {
-    let lx, ly;
+function bind(el) {
     el.onmousedown = e => {
         if(e.target.tagName === 'INPUT') return;
         e.preventDefault(); e.stopPropagation();
-        lx = e.clientX; ly = e.clientY;
-        document.getElementById('trash').style.display = 'flex';
+        
+        const trash = document.getElementById('trash');
+        trash.style.display = 'flex';
         el.style.zIndex = 2000;
 
         const move = e => {
-            const dx = (e.clientX - lx) / scale;
-            const dy = (e.clientY - ly) / scale;
-            el.style.left = (parseFloat(el.style.left) + dx) + "px";
-            el.style.top = (parseFloat(el.style.top) + dy) + "px";
-            lx = e.clientX; ly = e.clientY;
+            const r = canvas.getBoundingClientRect();
+            // Positionnement absolu dans le référentiel canvas corrigé par le scale
+            const nx = (e.clientX - r.left) / scale - 25;
+            const ny = (e.clientY - r.top) / scale - 25;
+            el.style.left = nx + "px";
+            el.style.top = ny + "px";
         };
 
         const up = e => {
             window.removeEventListener('mousemove', move);
             window.removeEventListener('mouseup', up);
-            document.getElementById('trash').style.display = 'none';
+            trash.style.display = 'none';
             el.style.zIndex = 10;
-            const t = document.getElementById('trash').getBoundingClientRect();
+            const t = trash.getBoundingClientRect();
             if(e.clientX > t.left && e.clientY > t.top) el.remove();
         };
         window.addEventListener('mousemove', move);
@@ -178,7 +181,6 @@ function bindNode(el) {
     };
 }
 
-// PAN FOND
 let isPan = false, sx, sy;
 viewport.onmousedown = e => {
     if(e.target === viewport || e.target === canvas) {
@@ -194,29 +196,28 @@ function addZone(w=400, h=400, x=500, y=500, txt="GROUPE") {
     div.style.width = w+'px'; div.style.height = h+'px';
     div.style.left = x+'px'; div.style.top = y+'px';
     div.innerHTML = `<input type="text" value="${txt}">`;
-    bindNode(div);
+    bind(div);
     canvas.appendChild(div);
 }
 
-// SAUVEGARDE
 function saveMap() {
     const data = {
-        nodes: Array.from(document.querySelectorAll('.art-node')).map(n => ({x: n.style.left, y: n.style.top, img: n.dataset.img, id: n.dataset.id})),
-        zones: Array.from(document.querySelectorAll('.zone-node')).map(z => ({x: z.style.left, y: z.style.top, w: z.style.width, h: z.style.height, txt: z.querySelector('input').value}))
+        n: Array.from(document.querySelectorAll('.art-node')).map(n => ({x: n.style.left, y: n.style.top, img: n.dataset.img, id: n.dataset.id})),
+        z: Array.from(document.querySelectorAll('.zone-node')).map(z => ({x: z.style.left, y: z.style.top, w: z.style.width, h: z.style.height, t: z.querySelector('input').value}))
     };
-    localStorage.setItem('pem_map', JSON.stringify(data));
-    alert("Carte sauvegardée !");
+    localStorage.setItem('pem_map_v5', JSON.stringify(data));
+    alert("Map Sauvegardée");
 }
 
 function loadMap() {
-    const raw = localStorage.getItem('pem_map');
+    const raw = localStorage.getItem('pem_map_v5');
     if(!raw) return;
     const data = JSON.parse(raw);
-    data.nodes.forEach(n => createArtNode(n.img, n.id, parseFloat(n.x), parseFloat(n.y)));
-    data.zones.forEach(z => addZone(parseFloat(z.w), parseFloat(z.h), parseFloat(z.x), parseFloat(z.y), z.txt));
+    data.n.forEach(n => createNode(n.img, n.id, parseFloat(n.x), parseFloat(n.y)));
+    data.z.forEach(z => addZone(parseFloat(z.w), parseFloat(z.h), parseFloat(z.x), parseFloat(z.y), z.t));
 }
 
-function clearMap() { if(confirm("Tout effacer ?")) { canvas.innerHTML = ''; localStorage.removeItem('pem_map'); } }
+function clearMap() { if(confirm("Effacer?")) { canvas.innerHTML = ''; localStorage.removeItem('pem_map_v5'); } }
 
 init();
 </script>
