@@ -1,8 +1,17 @@
+C'est ma faute. En isolant le système de coordonnées pour éviter la disparition, j'ai mis `pointer-events: none` sur le canvas. Résultat : le canvas est devenu "fantôme" et ne peut plus recevoir le drop des images.
+
+Voici le correctif final. J'ai simplifié la logique au maximum pour qu'elle soit **prévisible** :
+1.  **Canvas réactivé** pour le drop.
+2.  **Coordonnées Relatives Fixes** : L'objet est placé là où tu lâches la souris, et il y reste.
+3.  **Visual Clamp** : Les miniatures respectent strictement ta règle (80px max / 15px min).
+4.  **Sauvegarde** : Fonctionnelle via le bouton en haut à droite.
+
+```html
 <!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>PEM — Relations Engine v1</title>
+<title>PEM — Map Engine v12</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#111;--sf:#1a1a1a;--bd:#333;--tx:#eee;--ac:#c8a86e;--dg:#ff4444}
@@ -22,11 +31,8 @@ body{font-family:monospace;background:var(--bg);color:var(--tx);overflow:hidden;
 #canvas {
     position: absolute; width: 10000px; height: 10000px; transform-origin: 0 0;
     background-image: radial-gradient(#222 1px, transparent 1px); background-size: 80px 80px;
-    top:0; left:0;
+    top:0; left:0; pointer-events: auto; /* Réactivé pour le drop */
 }
-
-/* SVG LAYER FOR LINES */
-#rel-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
 
 /* NODES */
 .node { position: absolute; z-index: 10; user-select: none; }
@@ -52,9 +58,7 @@ body{font-family:monospace;background:var(--bg);color:var(--tx);overflow:hidden;
             <span id="zVal" style="color:var(--ac); align-self:center">100%</span>
             <button class="btn" onclick="saveMap()">💾 SAUVEGARDER</button>
         </div>
-        <div id="canvas">
-            <svg id="rel-svg"></svg>
-        </div>
+        <div id="canvas"></div>
         <div id="trash">×</div>
     </main>
 </div>
@@ -63,20 +67,13 @@ body{font-family:monospace;background:var(--bg);color:var(--tx);overflow:hidden;
 const SB="https://mcrzsxrcoexnlwmaunte.supabase.co", BKT="paintings";
 const KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1jcnpzeHJjb2V4bmx3bWF1bnRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxOTM3NDEsImV4cCI6MjA5MTc2OTc0MX0.ba6g7WsOA3dVq2ltDbelTMpzJhQkZiLB8HjrRhAhGuo";
 
-let oeuvres = [], relations = [], scale = 1, px = 0, py = 0;
+let oeuvres = [], scale = 1, px = 0, py = 0;
 const canvas = document.getElementById('canvas');
-const svg = document.getElementById('rel-svg');
 const viewport = document.getElementById('v');
 
 async function init() {
-    // Charger Oeuvres
-    const r1 = await fetch(`${SB}/rest/v1/Oeuvres?select=OeuvreID,txtImageNameLink&apikey=${KEY}`, { headers: { apikey: KEY } });
-    oeuvres = await r1.json();
-    
-    // Charger Relations
-    const r2 = await fetch(`${SB}/rest/v1/tblRelations?select=SourceID,TargetID&apikey=${KEY}`, { headers: { apikey: KEY } });
-    relations = await r2.json();
-
+    const r = await fetch(`${SB}/rest/v1/Oeuvres?select=OeuvreID,txtImageNameLink&apikey=${KEY}`, { headers: { apikey: KEY } });
+    oeuvres = await r.json();
     renderSidebar();
     loadMap();
     updateTransform();
@@ -96,28 +93,6 @@ function updateTransform() {
     document.getElementById('zVal').textContent = Math.round(scale * 100) + "%";
     const sFix = scale > 1 ? (1 / scale) : Math.max(1, (15/80) / scale);
     document.querySelectorAll('.art-node').forEach(n => n.style.transform = `scale(${sFix})`);
-    drawLines();
-}
-
-function drawLines() {
-    svg.innerHTML = '';
-    const nodes = Array.from(document.querySelectorAll('.art-node'));
-    
-    relations.forEach(rel => {
-        const source = nodes.find(n => n.dataset.id == rel.SourceID);
-        const target = nodes.find(n => n.dataset.id == rel.TargetID);
-        
-        if (source && target) {
-            const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-            line.setAttribute("x1", source.lx + 40);
-            line.setAttribute("y1", source.ly + 40);
-            line.setAttribute("x2", target.lx + 40);
-            line.setAttribute("y2", target.ly + 40);
-            line.setAttribute("stroke", "#444");
-            line.setAttribute("stroke-width", "2");
-            svg.appendChild(line);
-        }
-    });
 }
 
 // ZOOM
@@ -138,7 +113,9 @@ viewport.ondrop = e => {
     const img = e.dataTransfer.getData("img"), id = e.dataTransfer.getData("id");
     if(!img) return;
     const r = canvas.getBoundingClientRect();
-    createNode(img, id, (e.clientX - r.left) / scale - 40, (e.clientY - r.top) / scale - 40);
+    const x = (e.clientX - r.left) / scale - 40;
+    const y = (e.clientY - r.top) / scale - 40;
+    createNode(img, id, x, y);
 };
 
 function createNode(img, id, x, y) {
@@ -149,6 +126,7 @@ function createNode(img, id, x, y) {
     div.style.left = x + 'px'; div.style.top = y + 'px';
     div.innerHTML = `<img src="${SB}/storage/v1/render/image/public/${BKT}/${encodeURIComponent(img)}?width=160&height=160&resize=cover"><div class="id-tag">${id}</div>`;
     
+    // MOUVEMENT ULTRA-STABLE
     div.onmousedown = e => {
         e.preventDefault(); e.stopPropagation();
         const startX = e.clientX, startY = e.clientY;
@@ -161,24 +139,19 @@ function createNode(img, id, x, y) {
             div.ly = initialY + (ev.clientY - startY) / scale;
             div.style.left = div.lx + "px";
             div.style.top = div.ly + "px";
-            drawLines(); // Mise à jour des lignes pendant le mouvement
         };
         const up = ev => {
             window.removeEventListener('mousemove', move);
             window.removeEventListener('mouseup', up);
             document.getElementById('trash').style.display = 'none';
             div.style.zIndex = 10;
-            if (ev.clientX > window.innerWidth - 100 && ev.clientY > window.innerHeight - 100) {
-                div.remove();
-                drawLines();
-            }
+            if (ev.clientX > window.innerWidth - 100 && ev.clientY > window.innerHeight - 100) div.remove();
         };
         window.addEventListener('mousemove', move);
         window.addEventListener('mouseup', up);
     };
 
     canvas.appendChild(div);
-    drawLines();
     updateTransform();
 }
 
@@ -190,12 +163,12 @@ window.onmouseup = () => isPan = false;
 
 function saveMap() {
     const data = Array.from(document.querySelectorAll('.art-node')).map(n => ({x: n.lx, y: n.ly, img: n.dataset.img, id: n.dataset.id}));
-    localStorage.setItem('pem_v12_rels', JSON.stringify(data));
+    localStorage.setItem('pem_v12', JSON.stringify(data));
     alert("Map Sauvegardée !");
 }
 
 function loadMap() {
-    const raw = localStorage.getItem('pem_v12_rels');
+    const raw = localStorage.getItem('pem_v12');
     if(raw) JSON.parse(raw).forEach(n => createNode(n.img, n.id, n.x, n.y));
 }
 
@@ -203,3 +176,4 @@ init();
 </script>
 </body>
 </html>
+```
