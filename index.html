@@ -3,130 +3,112 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PEM — Inventaire & Galaxie</title>
+<title>PEM — Galaxy Light</title>
 <script src="https://unpkg.com/force-graph"></script>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <style>
-/* YOUR ORIGINAL STYLES */
-*{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#1a1a1a;--sf:#242424;--bd:#333;--tx:#e0e0e0;--mt:#888;--ac:#c8a86e;--ad:#8a7040}
-body{font-family:'JetBrains Mono',monospace;background:var(--bg);color:var(--tx);overflow:hidden}
-#app{display:flex;flex-direction:column;height:100vh}
-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--bd);background:var(--sf);z-index:100}
-header h1{font-size:12px;letter-spacing:2px;color:var(--ac)}
-nav button{background:none;border:none;color:var(--mt);padding:5px 10px;cursor:pointer;font-size:10px;text-transform:uppercase}
-nav button.active{color:var(--ac);background:var(--bd)}
-
-/* GALAXY & LINKER STYLES */
-#main{flex:1;position:relative}
-#galaxy-canvas{width:100%;height:100%;background:#0b0b0b}
-.linker-panel{position:absolute;bottom:20px;right:20px;background:var(--sf);padding:15px;border:1px solid var(--bd);width:250px;z-index:1000;display:none}
-.linker-panel h4{font-size:10px;color:var(--ac);margin-bottom:10px}
-.linker-panel select{width:100%;background:var(--bg);color:var(--tx);border:1px solid var(--bd);padding:5px;margin-bottom:10px;font-family:inherit}
-.btn-sm{background:var(--ac);color:var(--bk);border:none;padding:5px;font-size:9px;cursor:pointer;width:100%}
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:monospace;background:#050505;color:#c8a86e;overflow:hidden}
+    header{padding:10px;border-bottom:1px solid #333;display:flex;justify-content:space-between;background:#111}
+    #main{height:calc(100vh - 40px);width:100vw}
+    .panel{position:absolute;top:50px;right:10px;background:#1a1a1a;padding:10px;border:1px solid #333;font-size:10px;width:200px;z-index:100}
+    select, button{width:100%;margin-top:5px;background:#000;color:#c8a86e;border:1px solid #333;padding:5px;font-family:inherit}
+    button:hover{background:#c8a86e;color:#000;cursor:pointer}
 </style>
 </head>
 <body>
-<div id="app">
-    <header>
-        <h1>PEM <span id="vtitle">/ GALAXY</span></h1>
-        <nav>
-            <button onclick="sv('list')">Liste</button>
-            <button class="active" onclick="sv('galaxy')">Galaxie</button>
-        </nav>
-    </header>
-    <main id="main">
-        <div id="galaxy-canvas"></div>
-        <div id="linker" class="linker-panel">
-            <h4>Établir un lien</h4>
-            <p id="linker-from" style="font-size:9px;margin-bottom:5px;color:var(--mt)"></p>
-            <select id="linker-target"></select>
-            <button class="btn-sm" onclick="submitLink()">CRÉER LE LIEN</button>
-            <button class="btn-sm" style="background:#444;margin-top:5px" onclick="closeLinker()">ANNULER</button>
-        </div>
-    </main>
+
+<header>
+    <div style="font-size:10px;letter-spacing:2px">PEM / GALAXY</div>
+    <div id="status" style="font-size:9px;color:#888">Chargement...</div>
+</header>
+
+<main id="main"></main>
+
+<div id="ui" class="panel" style="display:none">
+    <div id="sel-node" style="margin-bottom:10px;font-weight:bold"></div>
+    <label>Lier à :</label>
+    <select id="target-node"></select>
+    <button onclick="createLink()">CRÉER LIEN</button>
 </div>
 
-<script type="module">
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+<script>
+// CONFIG
+const SB_URL = "https://mcrzsxrcoexnlwmaunte.supabase.co";
+const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1jcnpzeHJjb2V4bmx3bWF1bnRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxOTM3NDEsImV4cCI6MjA5MTc2OTc0MX0.ba6g7WsOA3dVq2ltDbelTMpzJhQkZiLB8HjrRhAhGuo";
+const supabase = typeof supabase !== 'undefined' ? supabase : window.supabase.createClient(SB_URL, SB_KEY);
 
-// CREDENTIALS FROM YOUR FILE
-const SB = "https://mcrzsxrcoexnlwmaunte.supabase.co";
-const KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1jcnpzeHJjb2V4bmx3bWF1bnRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxOTM3NDEsImV4cCI6MjA5MTc2OTc0MX0.ba6g7WsOA3dVq2ltDbelTMpzJhQkZiLB8HjrRhAhGuo";
-const supabase = createClient(SB, KEY);
+let oeuvres = [], relations = [], selectedSource = null;
+const imgCache = new Map();
 
-let oeuvres = [], relations = [], activeSourceId = null;
-
-async function load() {
-    const { data: o } = await supabase.from('Oeuvres').select('*').order('OeuvreID');
-    const { data: r } = await supabase.from('tblRelations').select('*');
+async function init() {
+    document.getElementById('status').innerText = "Sync Supabase...";
+    const { data: o } = await supabase.from('Oeuvres').select('OeuvreID,Titre,txtImageNameLink');
+    const { data: r } = await supabase.from('tblRelations').select('source_id,target_id');
+    
     oeuvres = o || [];
     relations = r || [];
-    renderGalaxy();
+    
+    document.getElementById('status').innerText = `${oeuvres.length} Noeuds / ${relations.length} Liens`;
+    render();
 }
 
-function renderGalaxy() {
-    const nodes = oeuvres.map(d => ({
-        id: d.OeuvreID,
-        name: d.Titre || "Sans titre",
-        img: `${SB}/storage/v1/object/public/paintings/${d.txtImageNameLink}?width=80&height=80&resize=contain`
+function render() {
+    const nodes = oeuvres.map(d => ({ 
+        id: d.OeuvreID, 
+        name: d.Titre,
+        imgUrl: `${SB_URL}/storage/v1/object/public/paintings/${d.txtImageNameLink}?width=50&resizing=pattern` 
     }));
-
+    
     const links = relations.map(r => ({ source: r.source_id, target: r.target_id }));
 
-    const Graph = ForceGraph()(document.getElementById('galaxy-canvas'))
+    const Graph = ForceGraph()(document.getElementById('main'))
         .graphData({ nodes, links })
+        .nodeLabel('name')
         .nodeCanvasObject((node, ctx) => {
-            const size = 12;
-            const img = new Image(); img.src = node.img;
-            ctx.save();
-            ctx.beginPath(); ctx.arc(node.x, node.y, size/2, 0, 2*Math.PI); ctx.clip();
-            try { ctx.drawImage(img, node.x-size/2, node.y-size/2, size, size); } catch(e){}
-            ctx.strokeStyle = activeSourceId === node.id ? '#fff' : '#c8a86e'; 
-            ctx.lineWidth = 1; ctx.stroke();
-            ctx.restore();
+            const size = 10;
+            ctx.beginPath(); ctx.arc(node.x, node.y, size/2, 0, 2*Math.PI);
+            ctx.strokeStyle = selectedSource === node.id ? '#fff' : '#c8a86e';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            
+            // Fast Image Handling
+            if (!imgCache.has(node.imgUrl)) {
+                const img = new Image(); img.src = node.imgUrl;
+                img.onload = () => imgCache.set(node.imgUrl, img);
+            } else {
+                const img = imgCache.get(node.imgUrl);
+                ctx.save();
+                ctx.beginPath(); ctx.arc(node.x, node.y, size/2, 0, 2*Math.PI); ctx.clip();
+                ctx.drawImage(img, node.x - size/2, node.y - size/2, size, size);
+                ctx.restore();
+            }
         })
-        .onNodeClick(node => openLinker(node))
-        .linkColor(() => '#333')
-        .linkDirectionalParticles(2);
+        .onNodeClick(node => {
+            selectedSource = node.id;
+            showUI(node);
+        })
+        .linkColor(() => '#222')
+        .backgroundColor('#050505');
 }
 
-// --- LINKING LOGIC ---
-window.openLinker = (node) => {
-    activeSourceId = node.id;
-    const panel = document.getElementById('linker');
-    const select = document.getElementById('linker-target');
-    const label = document.getElementById('linker-from');
-    
-    panel.style.display = 'block';
-    label.innerText = `Depuis: ${node.name}`;
-    
-    select.innerHTML = '<option value="">Lier à...</option>' + 
-        oeuvres.filter(o => o.OeuvreID !== node.id)
-               .map(o => `<option value="${o.OeuvreID}">${o.Titre} (#${o.OeuvreID})</option>`).join('');
-};
+function showUI(node) {
+    const ui = document.getElementById('ui');
+    ui.style.display = 'block';
+    document.getElementById('sel-node').innerText = node.name || `ID: ${node.id}`;
+    const sel = document.getElementById('target-node');
+    sel.innerHTML = oeuvres.filter(o => o.OeuvreID !== node.id)
+        .map(o => `<option value="${o.OeuvreID}">${o.Titre || o.OeuvreID}</option>`).join('');
+}
 
-window.submitLink = async () => {
-    const targetId = document.getElementById('linker-target').value;
-    if(!targetId) return;
+async function createLink() {
+    const target = document.getElementById('target-node').value;
+    const { error } = await supabase.from('tblRelations').insert([{ source_id: selectedSource, target_id: target }]);
+    if (error) alert("RLS Security Error: Check Supabase Policies");
+    else location.reload();
+}
 
-    const { error } = await supabase.from('tblRelations').insert([
-        { source_id: activeSourceId, target_id: parseInt(targetId) }
-    ]);
-
-    if(error) alert(error.message);
-    else {
-        alert("Lien créé !");
-        closeLinker();
-        load();
-    }
-};
-
-window.closeLinker = () => {
-    activeSourceId = null;
-    document.getElementById('linker').style.display = 'none';
-};
-
-window.onload = load;
+init();
 </script>
 </body>
 </html>
