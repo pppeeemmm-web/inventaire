@@ -4,140 +4,169 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PEM — Inventaire & Clusters</title>
-<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <style>
-/* --- TES STYLES ORIGINAUX (CONSERVÉS) --- */
+/* --- TES STYLES ORIGINAUX CONSERVÉS --- */
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#1a1a1a;--sf:#242424;--bd:#333;--tx:#e0e0e0;--mt:#888;--ac:#c8a86e;--ad:#8a7040;--dg:#a04040;--wh:#fff;--bk:#000}
-body{font-family:'JetBrains Mono',monospace;background:var(--bg);color:var(--tx);overflow:hidden}
+body{font-family:'JetBrains Mono','SF Mono','Consolas',monospace;background:var(--bg);color:var(--tx)}
 #app{display:flex;flex-direction:column;height:100vh}
-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--bd);background:var(--sf);z-index:100}
-header h1{font-size:11px;letter-spacing:2px;color:var(--ac);text-transform:uppercase}
-nav button{background:none;border:none;color:var(--mt);padding:5px 10px;cursor:pointer;font-size:10px;text-transform:uppercase;letter-spacing:1px}
-nav button.active{color:var(--ac);background:var(--bd)}
+header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--bd);background:var(--sf);position:sticky;top:0;z-index:100}
+header h1{font-size:13px;font-weight:700;letter-spacing:2px;color:var(--ac);text-transform:uppercase}
+nav{display:flex;gap:2px}
+nav button{font-family:inherit;padding:5px 10px;font-size:10px;border:none;cursor:pointer;letter-spacing:1px;text-transform:uppercase;background:transparent;color:var(--mt)}
+nav button.active{background:var(--ac);color:var(--bk);font-weight:700}
+#debug{padding:3px 16px;font-size:9px;color:var(--mt);background:#1e1e1e;border-bottom:1px solid var(--bd)}
 .body{flex:1;display:flex;overflow:hidden}
 .sidebar{width:280px;min-width:280px;border-right:1px solid var(--bd);background:var(--sf);display:flex;flex-direction:column;flex-shrink:0}
-.list{flex:1;overflow-y:auto}
-.main{flex:1;position:relative;overflow:hidden;background:#0d0d0d}
+.filters{padding:8px 10px;border-bottom:1px solid var(--bd);display:flex;flex-direction:column;gap:5px}
+.filters input,.filters select{font-family:inherit;background:var(--bg);border:1px solid var(--bd);color:var(--tx);padding:5px 7px;font-size:11px;width:100%;outline:none}
+.list{flex:1;overflow-y:auto}.list-item{padding:7px 10px;border-bottom:1px solid var(--bd);cursor:pointer;display:flex;gap:7px;align-items:center;border-left:3px solid transparent}
+.list-item:hover{background:#2a2a2a}.list-item.active{background:rgba(138,112,64,0.19);border-left-color:var(--ac)}
+.lt{width:36px;height:36px;object-fit:cover;background:var(--bg);flex-shrink:0;border:1px solid var(--bd)}
+.li{flex:1;overflow:hidden}.ln{font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ls{font-size:9px;color:var(--mt);margin-top:1px}
+.main{flex:1;overflow-y:auto;padding:16px;position:relative}
 
-/* --- SYSTÈME DE CLUSTERS (AJOUTÉ) --- */
-.cluster-region { position:absolute; border:1px dashed #444; border-radius:50%; width:200px; height:200px; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:move; z-index:5; }
-.cluster-region input { background:transparent; border:none; color:var(--ac); text-align:center; font-family:inherit; font-size:10px; outline:none; width:80%; pointer-events:auto; }
-.draggable-art { position:absolute; cursor:move; border:1px solid var(--bd); z-index:10; background:var(--bg); box-shadow: 4px 4px 15px rgba(0,0,0,0.5); }
-.controls-cluster { position:absolute; top:20px; right:20px; z-index:1000; }
-.btn-c { background:var(--ac); color:var(--bk); border:none; padding:10px 15px; font-size:10px; font-weight:bold; cursor:pointer; }
+/* --- AJOUTS SYSTÈME CLUSTER --- */
+#cluster-space { position:absolute; inset:0; background:#0d0d0d; overflow:hidden; display:none; }
+.cluster-region { position:absolute; border:1px dashed #444; border-radius:50%; width:220px; height:220px; display:flex; align-items:center; justify-content:center; z-index:5; cursor:move; }
+.cluster-region input { background:transparent; border:none; color:var(--ac); text-align:center; font-family:inherit; font-size:11px; outline:none; width:80%; }
+.draggable-art { position:absolute; cursor:move; border:1px solid var(--bd); z-index:10; background:var(--bg); box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+.cluster-tools { position:absolute; top:15px; right:15px; z-index:100; }
+.btn-c { font-family:inherit; padding:8px 12px; font-size:10px; background:var(--ac); color:var(--bk); border:none; cursor:pointer; font-weight:700; }
 </style>
 </head>
 <body>
 <div id="app">
     <header>
-        <h1>PEM <span id="vtitle">/ INVENTAIRE</span></h1>
+        <h1>PEM — Inventaire</h1>
         <nav id="nv">
-            <button onclick="sv('list')" id="b-list" class="active">Liste</button>
-            <button onclick="sv('clusters')" id="b-clusters">Clusters</button>
-            <button onclick="sv('gallery')" id="b-gallery">Galerie</button>
+            <button class="active" onclick="sv('list')">Liste</button>
+            <button onclick="sv('clusters')">Clusters</button> <button onclick="sv('gallery')">Galerie</button>
+            <button onclick="sv('form')">+ Nouvelle</button>
+            <button onclick="sv('export')">Export</button>
         </nav>
     </header>
+    <div id="debug"></div>
     <div class="body">
         <aside class="sidebar" id="sb">
-            <div style="padding:10px; border-bottom:1px solid var(--bd)">
-                <input type="text" id="q" placeholder="RECHERCHER..." oninput="applyF()" style="width:100%; background:#000; border:1px solid var(--bd); color:#fff; padding:8px; font-size:11px; outline:none;">
+            <div class="filters">
+                <input type="text" id="q" placeholder="Recherche..." oninput="applyF()">
+                <select id="fT" onchange="applyF()"><option value="">Toutes techniques</option></select>
+                <select id="fS" onchange="applyF()"><option value="">Tous supports</option></select>
             </div>
             <div class="list" id="ls"></div>
+            <div class="stats" id="st" style="padding:10px; font-size:9px; color:var(--mt)"></div>
         </aside>
         <main class="main" id="mn">
-            <div class="controls-cluster" id="cluster-ui" style="display:none">
-                <button class="btn-c" onclick="addRegion()">+ AJOUTER CERCLE</button>
+            <div id="cluster-space">
+                <div class="cluster-tools">
+                    <button class="btn-c" onclick="addClusterRegion()">+ NOUVEAU CERCLE</button>
+                </div>
+                <div id="cluster-canvas" style="width:100%; height:100%; position:relative;"></div>
             </div>
-            
-            <div id="cluster-space" style="width:100%; height:100%; position:relative;"></div>
+            <div id="main-content"></div>
         </main>
     </div>
 </div>
 
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <script>
-// --- CONFIGURATION SUPABASE ---
-const SB_URL = "https://mcrzsxrcoexnlwmaunte.supabase.co";
-const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1jcnpzeHJjb2V4bmx3bWF1bnRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxOTM3NDEsImV4cCI6MjA5MTc2OTc0MX0.ba6g7WsOA3dVq2ltDbelTMpzJhQkZiLB8HjrRhAhGuo";
-const supabase = window.supabase.createClient(SB_URL, SB_KEY);
+// Tes constantes (Extraites de ton fichier)
+const SB="https://mcrzsxrcoexnlwmaunte.supabase.co", 
+      KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1jcnpzeHJjb2V4bmx3bWF1bnRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxOTM3NDEsImV4cCI6MjA5MTc2OTc0MX0.ba6g7WsOA3dVq2ltDbelTMpzJhQkZiLB8HjrRhAhGuo",
+      STR=`${SB}/storage/v1/object/public/paintings`;
 
-let oeuvres = [], filtered = [], curV = 'list';
+const supabase = window.supabase.createClient(SB, KEY);
+let oeuvres=[], filtered=[], selId=null, curV="list";
+let tM={}, sM={};
 
 async function load() {
-    const { data } = await supabase.from('Oeuvres').select('*').order('OeuvreID', {ascending:false});
-    oeuvres = data || [];
+    const { data: o } = await supabase.from('Oeuvres').select('*').order('OeuvreID', {ascending:false});
+    const { data: t } = await supabase.from('Technique').select('*');
+    const { data: s } = await supabase.from('Support').select('*');
+    
+    oeuvres = o || [];
+    tM = Object.fromEntries(t.map(x=>[x.TechniqueID, x.Technique]));
+    sM = Object.fromEntries(s.map(x=>[x.SupportID, x.Support]));
+    
+    // Populer filtres
+    document.getElementById("fT").innerHTML += t.map(x=>`<option value="${x.TechniqueID}">${x.Technique}</option>`).join("");
+    document.getElementById("fS").innerHTML += s.map(x=>`<option value="${x.SupportID}">${x.Support}</option>`).join("");
+    
     applyF();
 }
 
-// Fonction de filtrage (Sidebar)
 function applyF() {
-    const q = document.getElementById('q').value.toLowerCase();
-    filtered = oeuvres.filter(o => (o.Titre || "").toLowerCase().includes(q));
-    renderList();
+    const q = document.getElementById("q").value.toLowerCase();
+    const t = document.getElementById("fT").value;
+    const su = document.getElementById("fS").value;
+    
+    filtered = oeuvres.filter(o => {
+        if (q && !(o.Titre||"").toLowerCase().includes(q) && !String(o.OeuvreID).includes(q)) return false;
+        if (t && String(o.Technique) !== t) return false;
+        if (su && String(o.Support) !== su) return false;
+        return true;
+    });
+    rList();
 }
 
-// Rendu de la liste (Sidebar)
-function renderList() {
-    const ls = document.getElementById('ls');
-    ls.innerHTML = filtered.map(o => `
-        <div style="padding:12px; border-bottom:1px solid #222; cursor:pointer; font-size:11px;" 
-             onclick="handleListClick(${o.OeuvreID}, '${o.txtImageNameLink}', '${o.Titre ? o.Titre.replace(/'/g, "\\'") : 'Sans Titre'}')">
-            <span style="color:#555; margin-right:8px;">#${o.OeuvreID}</span> ${o.Titre || 'SANS TITRE'}
+function rList() {
+    const el = document.getElementById("ls");
+    el.innerHTML = filtered.map(o => `
+        <div class="list-item ${selId===o.OeuvreID?'active':''}" onclick="sel(${o.OeuvreID})">
+            <div class="li">
+                <div class="ln"><span style="color:var(--mt);font-size:9px;margin-right:4px">${o.OeuvreID}</span>${o.Titre || 'Sans titre'}</div>
+                <div class="ls">${tM[o.Technique]||'?'} / ${sM[o.Support]||'?'}</div>
+            </div>
         </div>
-    `).join('');
+    `).join("");
 }
 
-// --- LOGIQUE CLUSTER ---
-
-function handleListClick(id, imgName, titre) {
+// MODIFICATION : Si on est en mode cluster, on "convoque" l'image
+function sel(id) {
+    selId = id;
+    rList();
     if (curV === 'clusters') {
-        // Si on est dans l'onglet Clusters, on fait apparaître l'image au centre
-        const space = document.getElementById('cluster-space');
-        const img = document.createElement('img');
-        img.src = `${SB_URL}/storage/v1/object/public/paintings/${imgName}?width=150`;
-        img.className = 'draggable-art';
-        img.style.left = '50px';
-        img.style.top = '50px';
-        img.style.width = '100px';
-        img.title = titre;
-        
-        makeDraggable(img);
-        space.appendChild(img);
+        summonToCluster(id);
     } else {
-        // Mode normal : tu peux ici appeler ta fonction de détail
-        console.log("Détail de l'oeuvre :", id);
+        document.getElementById("main-content").innerHTML = `<div style="padding:20px">Détail de l'oeuvre ${id} (Ta fonction det() originale ici)</div>`;
     }
 }
 
-// Ajouter un cercle thématique
-function addRegion() {
-    const space = document.getElementById('cluster-space');
-    const div = document.createElement('div');
-    div.className = 'cluster-region';
-    div.style.left = '300px';
-    div.style.top = '200px';
+// --- LOGIQUE CLUSTERS ---
+
+function summonToCluster(id) {
+    const o = oeuvres.find(x => x.OeuvreID === id);
+    if (!o || !o.txtImageNameLink) return;
+
+    const canvas = document.getElementById("cluster-canvas");
+    const img = document.createElement("img");
+    img.src = `${SB}/storage/v1/object/public/paintings/${o.txtImageNameLink}?width=200`;
+    img.className = "draggable-art";
+    img.style.left = "50px";
+    img.style.top = "50px";
+    img.style.width = "120px";
+    
+    makeDraggable(img);
+    canvas.appendChild(img);
+}
+
+function addClusterRegion() {
+    const canvas = document.getElementById("cluster-canvas");
+    const div = document.createElement("div");
+    div.className = "cluster-region";
+    div.style.left = "40%";
+    div.style.top = "40%";
     div.innerHTML = `<input type="text" placeholder="NOM DU THÈME" onclick="this.focus()">`;
     
     makeDraggable(div);
-    space.appendChild(div);
+    canvas.appendChild(div);
 }
 
-// Switcher de vue
-function sv(v) {
-    curV = v;
-    // Boutons navigation
-    document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
-    document.getElementById('b-' + v).classList.add('active');
-    
-    // Affichage des outils de cluster
-    document.getElementById('cluster-ui').style.display = (v === 'clusters') ? 'block' : 'none';
-}
-
-// Fonction universelle de Drag & Drop
 function makeDraggable(el) {
     let px = 0, py = 0;
     el.onmousedown = e => {
-        if(e.target.tagName === 'INPUT') return; // Laisse l'input éditable
+        if(e.target.tagName === 'INPUT') return;
         e.preventDefault();
         px = e.clientX; py = e.clientY;
         document.onmousemove = e => {
@@ -147,6 +176,30 @@ function makeDraggable(el) {
         };
         document.onmouseup = () => { document.onmousemove = null; };
     };
+}
+
+// Mise à jour de ta fonction de navigation sv(v)
+function sv(v) {
+    curV = v;
+    // Update boutons nav
+    document.querySelectorAll("#nv button").forEach(b => {
+        b.classList.toggle("active", b.getAttribute("onclick").includes(`'${v}'`));
+    });
+
+    // Affichage sidebar : masquée pour form/export comme dans ton code
+    document.getElementById("sb").style.display = (v === "form" || v === "export") ? "none" : "flex";
+
+    // Toggle Cluster Space
+    const cSpace = document.getElementById("cluster-space");
+    const mContent = document.getElementById("main-content");
+
+    if (v === 'clusters') {
+        cSpace.style.display = "block";
+        mContent.style.display = "none";
+    } else {
+        cSpace.style.display = "none";
+        mContent.style.display = "block";
+    }
 }
 
 window.onload = load;
