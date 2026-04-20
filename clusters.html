@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PEM — Beehive Workspace</title>
+<title>PEM — Beehive Workspace Fixed</title>
 <style>
-/* --- BASE --- */
+/* --- BASE & UI --- */
 *{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#1a1a1a;--sf:#242424;--bd:#333;--tx:#e0e0e0;--mt:#888;--ac:#c8a86e;--ad:#8a7040;--dg:#a04040;--wh:#fff;--bk:#000}
+:root{--bg:#1a1a1a;--sf:#242424;--bd:#333;--tx:#e0e0e0;--mt:#888;--ac:#c8a86e;--ad:#8a7040;--dg:#a04040;--bk:#000}
 body{font-family:'JetBrains Mono',monospace;background:var(--bg);color:var(--tx);overflow:hidden;height:100vh}
 #app{display:flex;flex-direction:column;height:100%}
 
@@ -16,94 +16,85 @@ header h1{font-size:12px;letter-spacing:2px;color:var(--ac);text-transform:upper
 
 .body-container{flex:1;display:flex;overflow:hidden;position:relative}
 
-/* --- SIDEBAR BEEHIVE (Optimized) --- */
+/* --- SIDEBAR BEEHIVE --- */
 .sidebar {
     width: 100px; min-width: 100px; background: var(--sf); border-right: 1px solid var(--bd);
     display: flex; flex-direction: column; transition: width 0.3s ease; z-index: 100;
 }
 .sidebar:hover { width: 500px; }
 
-.filters { 
-    padding: 10px; background: #1e1e1e; border-bottom: 1px solid var(--bd); 
-    display: flex; flex-direction: column; gap: 5px; opacity: 0; pointer-events: none; 
-}
+.filters { padding: 10px; background: #1e1e1e; border-bottom: 1px solid var(--bd); display: flex; opacity: 0; pointer-events: none; }
 .sidebar:hover .filters { opacity: 1; pointer-events: auto; }
-.filters input { background: var(--bg); border: 1px solid var(--bd); color: var(--tx); padding: 5px; font-size: 11px; outline: none; }
+.filters input { flex:1; background: var(--bg); border: 1px solid var(--bd); color: var(--tx); padding: 5px; font-size: 11px; outline: none; }
 
-/* Grille en Ruche (Beehive) */
 .list { 
     flex: 1; overflow-y: auto; overflow-x: hidden;
-    display: flex; flex-wrap: wrap; 
-    padding: 5px;
-    align-content: flex-start;
+    display: flex; flex-wrap: wrap; padding: 8px; align-content: flex-start;
 }
 .list-item { 
-    width: 48px; height: 48px; margin: -4px 1px; /* Stacking compact */
-    cursor: grab; position: relative; transition: transform 0.2s;
+    width: 48px; height: 48px; margin: -2px 1px; cursor: grab; position: relative; 
 }
-/* Décalage une ligne sur deux pour l'effet nid d'abeille */
-.sidebar:hover .list-item:nth-child(10n+6), 
-.sidebar:hover .list-item:nth-child(10n+7),
-.sidebar:hover .list-item:nth-child(10n+8),
-.sidebar:hover .list-item:nth-child(10n+9),
-.sidebar:hover .list-item:nth-child(10n+10) {
-    transform: translateX(25px);
-}
+/* Beehive offset sur 10 colonnes */
+.sidebar:hover .list-item:nth-child(10n+6), .sidebar:hover .list-item:nth-child(10n+7),
+.sidebar:hover .list-item:nth-child(10n+8), .sidebar:hover .list-item:nth-child(10n+9),
+.sidebar:hover .list-item:nth-child(10n+10) { transform: translateX(24px); }
 
 .thumb-wrap { 
-    width: 46px; height: 46px; border-radius: 50%; overflow: hidden; 
-    border: 1px solid #444; background: #000; position: relative;
+    width: 44px; height: 44px; border-radius: 50%; overflow: hidden; 
+    border: 1px solid #444; background: #000; position: relative; pointer-events: none;
 }
-.thumb-wrap img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
-.id-ov { position: absolute; font-size: 7px; color: var(--ac); background: rgba(0,0,0,0.7); padding: 1px 2px; bottom: 4px; left: 50%; transform: translateX(-50%); pointer-events: none; }
+.thumb-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.id-ov { position: absolute; font-size: 7px; color: var(--ac); background: rgba(0,0,0,0.7); padding: 1px 2px; bottom: 4px; left: 50%; transform: translateX(-50%); z-index: 5; }
 
-/* --- CANVAS --- */
-.main-viewport { flex: 1; position: relative; background: #111; overflow: hidden; }
+/* --- CANVAS & WORKSPACE --- */
+.main-viewport { flex: 1; position: relative; background: #0f0f0f; overflow: hidden; }
+
 #canvas-container {
-    position: absolute; width: 8000px; height: 8000px; transform-origin: 0 0; 
+    position: absolute; width: 10000px; height: 10000px; transform-origin: 0 0; 
     background: radial-gradient(circle, #222 1px, transparent 1px);
-    background-size: 40px 40px; top: 0; left: 0;
+    background-size: 50px 50px; top: 0; left: 0;
 }
 
 .dropped-art {
-    position: absolute; z-index: 10; cursor: move;
-    width: 46px; height: 46px; /* Taille identique à la sidebar */
+    position: absolute; z-index: 20; cursor: move;
+    width: 48px; height: 48px; /* Taille identique sidebar */
+    user-select: none;
 }
-.dropped-art .thumb-wrap { width: 100%; height: 100%; border-color: var(--bd); }
+/* On réactive les clics sur l'enveloppe mais pas sur l'image */
+.dropped-art .thumb-wrap { pointer-events: auto; }
 
 .cluster-zone {
     position: absolute; border: 2px dashed var(--ad); border-radius: 50%;
-    background: rgba(200, 168, 110, 0.05); display: flex; align-items: center; justify-content: center; z-index: 1;
+    background: rgba(200, 168, 110, 0.05); display: flex; align-items: center; justify-content: center; z-index: 10;
 }
 .cluster-zone input { background: transparent; border: none; color: var(--ad); text-align: center; font-size: 14px; font-weight: bold; outline: none; width: 80%; }
 
 #trash {
-    position: absolute; bottom: 30px; right: 30px; width: 60px; height: 60px; 
+    position: absolute; bottom: 30px; right: 30px; width: 64px; height: 64px; 
     border: 2px solid var(--dg); border-radius: 50%; display: none; align-items: center; justify-content: center;
     color: var(--dg); background: rgba(160, 64, 64, 0.2); z-index: 200; font-size: 24px;
 }
 
-.tools { display: flex; gap: 10px; align-items: center; }
-.btn { background: var(--sf); color: var(--tx); border: 1px solid var(--bd); padding: 6px 12px; font-size: 10px; cursor: pointer; }
+.tools { display: flex; gap: 8px; align-items: center; }
+.btn { background: var(--sf); color: var(--tx); border: 1px solid var(--bd); padding: 6px 10px; font-size: 10px; cursor: pointer; text-transform: uppercase; }
+.btn:hover { border-color: var(--ac); color: var(--ac); }
 </style>
 </head>
 <body>
 
 <div id="app">
     <header>
-        <h1>PEM — BEEHIVE WORKSPACE</h1>
+        <h1>PEM — CANVAS V2</h1>
         <div class="tools">
-            <span id="zVal" style="font-size:10px; color:var(--mt)">100%</span>
-            <button class="btn" onclick="addCluster()">+ Zone</button>
+            <span id="zVal" style="font-size:10px; color:var(--mt); margin-right:10px">100%</span>
+            <button class="btn" onclick="addCluster()">+ Tracer Zone</button>
             <button class="btn" onclick="resetCanvas()" style="color:var(--dg)">Reset</button>
         </div>
     </header>
 
     <div class="body-container">
         <aside class="sidebar">
-            <div class="filters">
-                <input type="text" id="q" placeholder="Rechercher..." oninput="applyF()">
-            </div>
+            <div class="filters"><input type="text" id="q" placeholder="Filtre..." oninput="applyF()"></div>
             <div class="list" id="ls"></div>
         </aside>
 
@@ -123,17 +114,19 @@ const container = document.getElementById('canvas-container');
 const viewport = document.getElementById('viewport');
 
 async function load() {
-    const r = await fetch(`${SB}/rest/v1/Oeuvres?select=*&order=OeuvreID.desc&apikey=${KEY}`, { headers: { apikey: KEY } });
-    oeuvres = await r.json();
-    applyF();
-    updateTransform();
+    try {
+        const r = await fetch(`${SB}/rest/v1/Oeuvres?select=*&order=OeuvreID.desc&apikey=${KEY}`, { headers: { apikey: KEY } });
+        oeuvres = await r.json();
+        applyF();
+        updateTransform();
+    } catch (e) { console.error(e); }
 }
 
 function applyF() {
     const q = document.getElementById('q').value.toLowerCase();
     const filtered = oeuvres.filter(o => (o.Titre||"").toLowerCase().includes(q) || String(o.OeuvreID).includes(q));
     document.getElementById('ls').innerHTML = filtered.map(o => `
-        <div class="list-item" draggable="true" ondragstart="onDrag(event, '${o.txtImageNameLink}', ${o.OeuvreID})">
+        <div class="list-item" draggable="true" ondragstart="onDragStart(event, '${o.txtImageNameLink}', ${o.OeuvreID})">
             <div class="thumb-wrap">
                 <img src="${SB}/storage/v1/render/image/public/${BKT}/${encodeURIComponent(o.txtImageNameLink)}?width=100&height=100&resize=cover">
                 <div class="id-ov">${o.OeuvreID}</div>
@@ -146,11 +139,11 @@ function updateTransform() {
     document.getElementById('zVal').textContent = Math.round(scale * 100) + "%";
 }
 
-// Zoom molette
+// Zoom molette optimisé
 viewport.onwheel = e => {
     e.preventDefault();
     const delta = e.deltaY > 0 ? 0.9 : 1.1;
-    const newScale = Math.min(Math.max(scale * delta, 0.1), 3);
+    const newScale = Math.min(Math.max(scale * delta, 0.05), 4);
     const rect = viewport.getBoundingClientRect();
     const mx = e.clientX - rect.left, my = e.clientY - rect.top;
     posX = mx - (mx - posX) * (newScale / scale);
@@ -159,8 +152,8 @@ viewport.onwheel = e => {
     updateTransform();
 };
 
-// Drag & Drop
-function onDrag(ev, img, id) {
+// Drag side to canvas
+function onDragStart(ev, img, id) {
     ev.dataTransfer.setData("img", img);
     ev.dataTransfer.setData("id", id);
 }
@@ -173,67 +166,94 @@ viewport.ondrop = e => {
     if(!imgName) return;
 
     const rect = container.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / scale - 23;
-    const y = (e.clientY - rect.top) / scale - 23;
+    const x = (e.clientX - rect.left) / scale - 24;
+    const y = (e.clientY - rect.top) / scale - 24;
 
+    createItem(imgName, id, x, y);
+};
+
+function createItem(imgName, id, x, y) {
     const div = document.createElement('div');
     div.className = 'dropped-art';
     div.style.left = x + 'px'; div.style.top = y + 'px';
-    div.innerHTML = `<div class="thumb-wrap"><img src="${SB}/storage/v1/render/image/public/${BKT}/${encodeURIComponent(imgName)}?width=200"><div class="id-ov">${id}</div></div>`;
+    div.innerHTML = `
+        <div class="thumb-wrap">
+            <img src="${SB}/storage/v1/render/image/public/${BKT}/${encodeURIComponent(imgName)}?width=200">
+            <div class="id-ov">${id}</div>
+        </div>`;
     
     makeDraggable(div);
     container.appendChild(div);
-};
+}
 
-// Moteur de mouvement ultra-stable
+// MOTEUR DE MOUVEMENT FIXE (Anti-disparition)
 function makeDraggable(el) {
-    let startMouseX = 0, startMouseY = 0;
+    let lastX = 0, lastY = 0;
     const trash = document.getElementById('trash');
 
     el.onmousedown = e => {
         if (e.target.tagName === 'INPUT') return;
         e.preventDefault(); e.stopPropagation();
         
-        startMouseX = e.clientX; startMouseY = e.clientY;
+        lastX = e.clientX; lastY = e.clientY;
         trash.style.display = 'flex';
+        el.style.zIndex = 1000; // Passe au dessus pendant le mouvement
 
         document.onmousemove = e => {
-            let dx = (e.clientX - startMouseX) / scale;
-            let dy = (e.clientY - startMouseY) / scale;
+            // On calcule le mouvement delta de la souris
+            const dx = (e.clientX - lastX) / scale;
+            const dy = (e.clientY - lastY) / scale;
             
-            el.style.left = (el.offsetLeft + dx) + "px";
-            el.style.top = (el.offsetTop + dy) + "px";
+            // On applique DIRECTEMENT à la position actuelle
+            const curTop = parseFloat(el.style.top) || 0;
+            const curLeft = parseFloat(el.style.left) || 0;
             
-            startMouseX = e.clientX; 
-            startMouseY = e.clientY;
+            el.style.top = (curTop + dy) + "px";
+            el.style.left = (curLeft + dx) + "px";
+            
+            lastX = e.clientX; 
+            lastY = e.clientY;
         };
 
         document.onmouseup = e => {
             document.onmousemove = null;
             trash.style.display = 'none';
+            el.style.zIndex = 20;
             const t = trash.getBoundingClientRect();
             if(e.clientX > t.left && e.clientY > t.top) el.remove();
         };
     };
 }
 
-// Navigation Pan (fond)
-let isPanning = false, sx, sy;
-viewport.onmousedown = e => { if(e.target === viewport || e.target === container) { isPanning = true; sx = e.clientX - posX; sy = e.clientY - posY; } };
-window.onmousemove = e => { if(isPanning) { posX = e.clientX - sx; posY = e.clientY - sy; updateTransform(); } };
+// NAVIGATION PAN (Fond)
+let isPanning = false, startX, startY;
+viewport.onmousedown = e => {
+    if(e.target === viewport || e.target === container) {
+        isPanning = true;
+        startX = e.clientX - posX;
+        startY = e.clientY - posY;
+    }
+};
+window.onmousemove = e => {
+    if(!isPanning) return;
+    posX = e.clientX - startX;
+    posY = e.clientY - startY;
+    updateTransform();
+};
 window.onmouseup = () => isPanning = false;
 
 function addCluster() {
     const div = document.createElement('div');
     div.className = 'cluster-zone';
-    div.style.left = '500px'; div.style.top = '500px';
-    div.style.width = '300px'; div.style.height = '300px';
-    div.innerHTML = `<input type="text" value="GROUPE">`;
+    div.style.left = (Math.random() * 500 + 400) + 'px'; 
+    div.style.top = (Math.random() * 500 + 400) + 'px';
+    div.style.width = '350px'; div.style.height = '350px';
+    div.innerHTML = `<input type="text" value="CLUSTER NAME">`;
     makeDraggable(div);
     container.appendChild(div);
 }
 
-function resetCanvas() { if(confirm("Vider?")) container.innerHTML = ''; }
+function resetCanvas() { if(confirm("Vider l'espace ?")) container.innerHTML = ''; }
 
 load();
 </script>
