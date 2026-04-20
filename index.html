@@ -28,7 +28,7 @@ nav button.active{background:var(--ac);color:var(--bk);font-weight:700}
 .badge{font-size:8px;padding:1px 4px;background:var(--ad);color:var(--wh);font-weight:600}
 .stats{padding:10px;border-top:1px solid var(--bd);font-size:9px;color:var(--mt);margin-top:auto}
 .main{flex:1;overflow-y:auto;padding:16px}
-/* Visionneuse Admin */
+/* Image Viewer & Zoom */
 .iv{position:relative;background:var(--bk);border:1px solid var(--bd);margin-bottom:12px;overflow:hidden;display:flex;align-items:center;justify-content:center}
 .iv img{display:block;max-width:100%;max-height:100%;user-select:none;cursor:zoom-in}
 .iv .wm{position:absolute;inset:0;pointer-events:none;z-index:5;opacity:0.06;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:60px;transform:rotate(-25deg);overflow:hidden;font-size:14px;color:var(--wh);font-weight:700}
@@ -36,16 +36,14 @@ nav button.active{background:var(--ac);color:var(--bk);font-weight:700}
 .tstrip img{width:44px;height:44px;object-fit:cover;border:2px solid transparent;cursor:pointer;background:var(--bg);flex-shrink:0}
 .tstrip img.active{border-color:var(--ac)}
 .nb{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:6px 0;border-bottom:1px solid var(--bd)}
-.nb .pos{font-size:10px;color:var(--mt)}
 .nbtn{font-family:inherit;padding:3px 10px;font-size:10px;background:var(--sf);color:var(--tx);border:1px solid var(--bd);cursor:pointer}
-.btn{font-family:inherit;padding:7px 14px;font-size:10px;font-weight:600;border:none;cursor:pointer;letter-spacing:1px;text-transform:uppercase;display:inline-flex;align-items:center;gap:5px}
-.bp{background:var(--ac);color:var(--bk)}.bd{background:var(--dg);color:var(--wh)}.bs{background:var(--sf);color:var(--tx)}
 .fgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px}
 .ffull{grid-column:1/-1}.ff{display:flex;flex-direction:column;gap:3px}
 .ff input,.ff select,.ff textarea{font-family:inherit;background:var(--bg);border:1px solid var(--bd);color:var(--tx);padding:5px 7px;font-size:11px;width:100%;outline:none}
+/* Nouveaux styles pour la généalogie */
 .rel-card{background:var(--sf);border:1px solid var(--bd);padding:10px;margin-top:15px}
+.fl{font-size:9px;color:var(--mt);text-transform:uppercase;letter-spacing:1px;margin-bottom:1px}
 .toast{position:fixed;bottom:16px;right:16px;padding:8px 14px;font-size:11px;font-weight:600;z-index:1000}
-.tok{background:var(--ac);color:var(--bk)}.terr{background:var(--dg);color:var(--wh)}
 .hidden{display:none}
 </style>
 </head>
@@ -54,6 +52,7 @@ nav button.active{background:var(--ac);color:var(--bk);font-weight:700}
 <div id="toast" class="toast hidden"></div>
 
 <script>
+/* CONFIGURATION & DATA */
 const SB="https://mcrzsxrcoexnlwmaunte.supabase.co",KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1jcnpzeHJjb2V4bmx3bWF1bnRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxOTM3NDEsImV4cCI6MjA5MTc2OTc0MX0.ba6g7WsOA3dVq2ltDbelTMpzJhQkZiLB8HjrRhAhGuo",BKT="paintings",STR=`${SB}/storage/v1/object/public/${BKT}`;
 const PUB=new URLSearchParams(location.search).get("mode")==="public";
 let oeuvres=[],techniques=[],supports=[],formats=[],contacts=[],imgTbl=[];
@@ -65,26 +64,27 @@ async function apiAll(table,order,pageSize=1000){let all=[],offset=0;while(true)
 function iu(f){if(!f)return null;return f.startsWith("http")?f:`${STR}/${encodeURIComponent(f)}`;}
 function iuThumb(f,size){if(!f)return null;const s=size||200;return`${SB}/storage/v1/render/image/public/${BKT}/${encodeURIComponent(f)}?width=${s}&height=${s}&resize=cover`;}
 function esc(s){if(!s)return"";const d=document.createElement("div");d.textContent=String(s);return d.innerHTML;}
-function gv(id){return document.getElementById(id)?.value||"";}
 function iFor(oid){return imgTbl.filter(i=>i.OeuvreID===oid).sort((a,b)=>(a.SeqNo||0)-(b.SeqNo||0));}
 
 async function load(){
-  try{
+  try {
     const[o,t,su,f,c,im]=await Promise.all([
-      apiAll("OeuvresComplete","OeuvreID.desc"), 
+      apiAll("OeuvresComplete","OeuvreID.desc"), // Utilisation de la vue complète
       api("Technique?order=TechniqueID.asc"),
       api("Support?order=SupportID.asc"),
       api("Format?order=FormatID.asc"),
       api("Contact?order=ContactID.asc"),
       apiAll("tblImage","OeuvreID.asc,SeqNo.asc")
     ]);
-    oeuvres=o;techniques=t;supports=su;formats=f;contacts=c;imgTbl=im;
-    tM=Object.fromEntries(t.map(x=>[x.TechniqueID,x.Technique]));sM=Object.fromEntries(su.map(x=>[x.SupportID,x.Support]));
-    initAdmin(); applyF();
-  }catch(e){console.error(e);}
+    oeuvres=o; techniques=t; supports=su; formats=f; contacts=c; imgTbl=im;
+    tM=Object.fromEntries(t.map(x=>[x.TechniqueID,x.Technique]));
+    sM=Object.fromEntries(su.map(x=>[x.SupportID,x.Support]));
+    initA(); // Appel de la fonction d'initialisation d'origine
+    applyF();
+  } catch(e) { console.error("Load error:", e); }
 }
 
-function initAdmin(){
+function initA(){
   document.getElementById("app").innerHTML=`
     <header><h1>PEM — Inventaire</h1><nav id="nv">
         <button class="active" onclick="sv('list')">Liste</button>
@@ -95,3 +95,94 @@ function initAdmin(){
     <div class="body">
         <aside class="sidebar" id="sb">
             <div class="filters">
+                <input type="text" id="q" placeholder="Recherche..." oninput="applyF()">
+                <select id="fT" onchange="applyF()"><option value="">Toutes Techniques</option></select>
+                <select id="fS" onchange="applyF()"><option value="">Tous Supports</option></select>
+            </div>
+            <div class="list" id="ls"></div>
+            <div class="stats" id="st"></div>
+        </aside>
+        <main class="main" id="mn"></main>
+    </div>`;
+    popF();
+}
+
+function popF(){
+    document.getElementById("fT").innerHTML += techniques.map(t=>`<option value="${t.TechniqueID}">${t.Technique}</option>`).join("");
+    document.getElementById("fS").innerHTML += supports.map(s=>`<option value="${s.SupportID}">${s.Support}</option>`).join("");
+}
+
+function applyF(){
+  const q=document.getElementById("q").value.toLowerCase(), t=document.getElementById("fT").value, su=document.getElementById("fS").value;
+  filtered = oeuvres.filter(o => {
+    if(q && !(o.Titre||"").toLowerCase().includes(q) && !String(o.OeuvreID).includes(q)) return false;
+    if(t && String(o.Technique)!==t) return false;
+    if(su && String(o.Support)!==su) return false;
+    return true;
+  });
+  rList();
+  document.getElementById("st").textContent = `${filtered.length} oeuvres`;
+}
+
+function rList(){
+  document.getElementById("ls").innerHTML = filtered.map(o => `
+    <div class="list-item ${selId===o.OeuvreID?'active':''}" onclick="sel(${o.OeuvreID})">
+        <img class="lt" src="${iuThumb(o.txtImageNameLink,80)}">
+        <div class="li">
+            <div class="ln">${esc(o.Titre||"Sans titre")}</div>
+            <div class="ls">${tM[o.Technique]||""} · <span style="color:var(--ac)">${o.statusLabel||"Dispo"}</span></div>
+        </div>
+    </div>`).join("");
+}
+
+function sel(id){ selId=id; rList(); det(id); }
+
+function det(id){
+  const o = oeuvres.find(x=>x.OeuvreID===id); if(!o) return;
+  const mn = document.getElementById("mn");
+  const ims = iFor(o.OeuvreID); let aI=[];
+  if(o.txtImageNameLink) aI.push({url:iu(o.txtImageNameLink), thumb:iuThumb(o.txtImageNameLink,100)});
+  ims.forEach(im => { const fn=im.txtImageNameLink||im.txtImageName; if(fn) aI.push({url:iu(fn), thumb:iuThumb(fn,100)}); });
+
+  mn.innerHTML = `
+    <div class="nb">
+        <div class="dt">${esc(o.Titre||"Sans titre")} <span class="badge">${esc(o.statusLabel || "WIP")}</span></div>
+        <div class="pos">ID ${o.OeuvreID}</div>
+    </div>
+
+    ${aI.length ? `
+    <div class="iv"><img id="vi" src="${aI[0].url}"><div class="wm">© PEM</div></div>
+    <div class="tstrip">${aI.map((im,idx)=>`<img src="${im.thumb}" onclick="document.getElementById('vi').src='${im.url}'">`).join("")}</div>`
+    : ""}
+
+    <div class="fgrid">
+      <div class="ff"><label class="fl">Titre</label><input value="${esc(o.Titre)}"></div>
+      <div class="ff"><label class="fl">Année</label><input value="${o["Année"]?o["Année"].slice(0,4):""}"></div>
+      <div class="ff"><label class="fl">Technique</label><select>${techniques.map(t=>`<option value="${t.TechniqueID}" ${t.TechniqueID==o.Technique?'selected':''}>${t.Technique}</option>`).join("")}</select></div>
+      <div class="ff"><label class="fl">Support</label><select>${supports.map(s=>`<option value="${s.SupportID}" ${s.SupportID==o.Support?'selected':''}>${s.Support}</option>`).join("")}</select></div>
+      <div class="ff"><label class="fl">Hauteur (cm)</label><input type="number" value="${o.Hauteur||""}"></div>
+      <div class="ff"><label class="fl">Largeur (cm)</label><input type="number" value="${o.Largeur||""}"></div>
+      <div class="ff"><label class="fl">Prix (€)</label><input type="number" value="${o.Prix||0}"></div>
+      <div class="ffull ff"><label class="fl">Commentaires</label><textarea>${esc(o.Commentaires||"")}</textarea></div>
+      
+      <div class="ffull rel-card">
+        <div style="font-size:9px; color:var(--ac); margin-bottom:10px; text-transform:uppercase">Généalogie (Relations)</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px">
+            <div><div class="fl">SOURCES (Précédents)</div>${(o.previous_works || []).map(p=>`<button class="nbtn" onclick="sel(${p.relatedId})" style="width:100%;text-align:left;margin-bottom:3px"><small>${p.type}:</small> ${esc(p.relatedTitle)}</button>`).join('') || '—'}</div>
+            <div><div class="fl">SUITES (Suivants)</div>${(o.next_works || []).map(n=>`<button class="nbtn" onclick="sel(${n.relatedId})" style="width:100%;text-align:left;margin-bottom:3px;border-color:var(--ac)"><small>${n.type}:</small> ${esc(n.relatedTitle)}</button>`).join('') || '—'}</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function sv(v){
+    curV=v;
+    document.querySelectorAll("#nv button").forEach((b,i)=>b.classList.toggle("active",(v==='list'&&i===0)||(v==='gallery'&&i===1)||(v==='export'&&i===2)));
+    if(v==='list') applyF();
+}
+
+window.onload=load;
+</script>
+</body>
+</html>
