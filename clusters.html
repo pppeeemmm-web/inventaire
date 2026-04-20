@@ -5,252 +5,174 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PEM — Inventaire</title>
 <style>
-/* --- STYLES DE BASE --- */
+/* --- BASE --- */
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#1a1a1a;--sf:#242424;--bd:#333;--tx:#e0e0e0;--mt:#888;--ac:#c8a86e;--ad:#8a7040;--dg:#a04040;--wh:#fff;--bk:#000}
-body{font-family:'JetBrains Mono','SF Mono','Consolas',monospace;background:var(--bg);color:var(--tx);overflow:hidden}
-#app{display:flex;flex-direction:column;height:100vh}
+body{font-family:'JetBrains Mono',monospace;background:var(--bg);color:var(--tx);overflow:hidden;height:100vh}
+#app{display:flex;flex-direction:column;height:100%;overflow:hidden}
 
 header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--bd);background:var(--sf);z-index:110}
-header h1{font-size:13px;font-weight:700;letter-spacing:2px;color:var(--ac);text-transform:uppercase}
-nav{display:flex;gap:2px}
-nav button{font-family:inherit;padding:5px 10px;font-size:10px;border:none;cursor:pointer;text-transform:uppercase;background:transparent;color:var(--mt)}
-nav button.active{background:var(--ac);color:var(--bk);font-weight:700}
+header h1{font-size:12px;letter-spacing:2px;color:var(--ac);text-transform:uppercase}
 
-.body{flex:1;display:flex;overflow:hidden;position:relative}
+.body-container{flex:1;display:flex;overflow:hidden;position:relative}
 
-/* --- SIDEBAR DYNAMIQUE (100px -> 500px) --- */
+/* --- SIDEBAR HOVER (100px -> 500px) --- */
 .sidebar {
-    width: 100px; /* 20% de 500px */
+    width: 100px;
     min-width: 100px;
-    height: 100%;
-    border-right: 1px solid var(--bd);
     background: var(--sf);
+    border-right: 1px solid var(--bd);
     display: flex;
     flex-direction: column;
-    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: width 0.3s ease;
     z-index: 100;
-    overflow: hidden;
 }
-.sidebar:hover {
-    width: 500px;
-}
+.sidebar:hover { width: 500px; }
 
 .filters {
-    padding: 10px;
-    background: #1e1e1e;
-    border-bottom: 1px solid var(--bd);
-    opacity: 0;
-    transition: opacity 0.2s;
-    pointer-events: none;
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
+    padding: 10px; background: #1e1e1e; border-bottom: 1px solid var(--bd);
+    display: flex; flex-direction: column; gap: 5px;
+    opacity: 0; pointer-events: none; transition: opacity 0.2s;
 }
-.sidebar:hover .filters {
-    opacity: 1;
-    pointer-events: auto;
-}
-.filters input, .filters select {
-    font-family: inherit; background: var(--bg); border: 1px solid var(--bd); color: var(--tx); padding: 5px; font-size: 10px; width: 100%; outline: none;
-}
+.sidebar:hover .filters { opacity: 1; pointer-events: auto; }
+.filters input { background: var(--bg); border: 1px solid var(--bd); color: var(--tx); padding: 5px; font-size: 11px; outline: none; }
 
-/* --- GRILLE 10 COLONNES (Images 50px) --- */
+/* --- GRILLE 10 COLONNES (50px) --- */
 .list {
-    flex: 1;
-    display: grid;
-    grid-template-columns: repeat(10, 50px);
+    flex: 1; display: grid; 
+    grid-template-columns: repeat(10, 50px); /* 10 colonnes de 50px pour atteindre 500px */
     grid-auto-rows: 50px;
-    overflow-y: auto;
-    overflow-x: hidden;
-    padding: 0;
+    overflow-y: auto; overflow-x: hidden;
 }
 .list-item {
-    width: 50px;
-    height: 50px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
+    width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; position: relative;
 }
 .thumb-wrap {
-    width: 46px; /* Espace réduit entre images */
-    height: 46px;
-    border-radius: 50%; /* Disque par défaut */
-    overflow: hidden;
-    border: 1px solid transparent;
-    transition: all 0.2s;
-    background: #000;
+    width: 44px; height: 44px; border-radius: 50%; /* DISQUE PAR DEFAUT */
+    overflow: hidden; border: 1px solid transparent; background: #000; transition: 0.2s;
 }
-.list-item.active .thumb-wrap { border-color: var(--ac); box-shadow: 0 0 5px var(--ac); }
-.lt { width: 100%; height: 100%; object-fit: cover; }
+.list-item.active .thumb-wrap { border-color: var(--ac); box-shadow: 0 0 8px var(--ac); }
+.list-item img { width: 100%; height: 100%; object-fit: cover; }
 
-/* Overlay ID au survol ou actif */
-.id-ov {
-    position: absolute;
-    font-size: 8px;
-    font-weight: 700;
-    color: var(--ac);
-    background: rgba(0,0,0,0.7);
-    padding: 1px 3px;
-    border-radius: 2px;
-    pointer-events: none;
-    z-index: 5;
+/* Overlay ID */
+.id-ov { position: absolute; font-size: 8px; color: var(--ac); background: rgba(0,0,0,0.6); padding: 1px 3px; pointer-events: none; }
+
+/* --- PANNEAU DE DROITE (DÉTAILS & OPTIONS) --- */
+.main-panel { flex: 1; overflow-y: auto; padding: 20px; background: #111; display: flex; flex-direction: column; gap: 20px; }
+
+.design-box {
+    background: var(--sf); border: 1px solid var(--bd); padding: 15px; border-left: 4px solid var(--ac);
 }
+.design-box h3 { font-size: 10px; text-transform: uppercase; color: var(--mt); margin-bottom: 12px; letter-spacing: 1px; }
+.opt-group { display: flex; gap: 20px; }
+.opt-group label { font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
 
-/* --- PANEL DROIT (Détails & Design) --- */
-.main { flex: 1; overflow-y: auto; padding: 20px; background: #111; }
+.detail-content { flex: 1; border-top: 1px solid var(--bd); padding-top: 20px; }
+.img-large { max-width: 100%; border: 1px solid var(--bd); background: #000; display: block; margin-bottom: 15px; }
 
-.design-panel {
-    background: var(--sf);
-    border: 1px solid var(--bd);
-    padding: 12px;
-    margin-bottom: 20px;
-    border-left: 3px solid var(--ac);
-}
-.design-panel h3 { font-size: 10px; text-transform: uppercase; margin-bottom: 10px; color: var(--mt); }
-.opt-row { display: flex; gap: 15px; align-items: center; }
-.opt-row label { font-size: 11px; display: flex; align-items: center; gap: 5px; cursor: pointer; }
-
-/* Styles pour le mode carré (via JS) */
+/* Mode Carré forcé par JS */
 .mode-square .thumb-wrap { border-radius: 4px !important; }
-
-/* --- ZOOM & FORMS (D'origine) --- */
-.iv{position:relative;background:#000;border:1px solid var(--bd);margin-bottom:12px;display:flex;align-items:center;justify-content:center;overflow:hidden}
-.iv img{max-width:100%;max-height:80vh;cursor:zoom-in}
-.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.ff label{font-size:9px;color:var(--mt);text-transform:uppercase;margin-bottom:3px;display:block}
-.ff input,.ff select,.ff textarea{width:100%;background:var(--sf);border:1px solid var(--bd);color:var(--tx);padding:7px;font-family:inherit;font-size:12px}
-.hidden{display:none}
 </style>
 </head>
 <body>
-<div id="app"></div>
+
+<div id="app">
+    <header>
+        <h1>PEM — WORKSPACE</h1>
+    </header>
+
+    <div class="body-container">
+        <aside class="sidebar" id="sb">
+            <div class="filters">
+                <input type="text" id="q" placeholder="Filtrer ID ou Titre..." oninput="applyF()">
+            </div>
+            <div class="list" id="ls">
+                </div>
+        </aside>
+
+        <main class="main-panel">
+            <div class="design-box">
+                <h3>Options d'affichage (Right Panel)</h3>
+                <div class="opt-group">
+                    <label><input type="radio" name="shape" checked onclick="setShape(true)"> Disques (Circles)</label>
+                    <label><input type="radio" name="shape" onclick="setShape(false)"> Carrés (Squares)</label>
+                </div>
+                <p style="font-size: 10px; color: var(--mt); margin-top: 10px;">
+                    La sidebar à gauche fait 100px. Survolez-la pour l'étendre à 500px (10 colonnes).
+                </p>
+            </div>
+
+            <div id="detail-area" class="detail-content">
+                <p style="color: var(--mt)">Sélectionnez une miniature pour voir les détails ici.</p>
+            </div>
+        </main>
+    </div>
+</div>
 
 <script>
-/* --- CONFIG & DATA --- */
-const SB="https://mcrzsxrcoexnlwmaunte.supabase.co",KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1jcnpzeHJjb2V4bmx3bWF1bnRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxOTM3NDEsImV4cCI6MjA5MTc2OTc0MX0.ba6g7WsOA3dVq2ltDbelTMpzJhQkZiLB8HjrRhAhGuo",BKT="paintings",STR=`${SB}/storage/v1/object/public/${BKT}`;
-let oeuvres=[], techniques=[], supports=[], filtered=[], selId=null;
-let tM={}, sM={}, circleMode=true;
+const SB="https://mcrzsxrcoexnlwmaunte.supabase.co", BKT="paintings";
+const KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1jcnpzeHJjb2V4bmx3bWF1bnRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxOTM3NDEsImV4cCI6MjA5MTc2OTc0MX0.ba6g7WsOA3dVq2ltDbelTMpzJhQkZiLB8HjrRhAhGuo";
 
-async function api(p){const r=await fetch(`${SB}/rest/v1/${p}${p.includes("?")?"&":"?"}apikey=${KEY}`,{headers:{apikey:KEY,Authorization:`Bearer ${KEY}`}});return r.json();}
-function iuThumb(f,s){return f?`${SB}/storage/v1/render/image/public/${BKT}/${encodeURIComponent(f)}?width=${s||100}&height=${s||100}&resize=cover`:null;}
+let oeuvres = [], filtered = [], selId = null, circleMode = true;
 
-async function load(){
-  try{
-    const[o,t,su]=await Promise.all([api("Oeuvres?order=OeuvreID.desc"),api("Technique"),api("Support")]);
-    oeuvres=o; techniques=t; supports=su;
-    tM=Object.fromEntries(t.map(x=>[x.TechniqueID,x.Technique]));
-    sM=Object.fromEntries(su.map(x=>[x.SupportID,x.Support]));
-    initLayout();
-    applyF();
-  }catch(e){console.error(e);}
+async function load() {
+    try {
+        const r = await fetch(`${SB}/rest/v1/Oeuvres?select=*&order=OeuvreID.desc&apikey=${KEY}`, {
+            headers: { Authorization: `Bearer ${KEY}`, apikey: KEY }
+        });
+        oeuvres = await r.json();
+        applyF();
+    } catch (e) { console.error(e); }
 }
 
-function initLayout(){
-  document.getElementById("app").innerHTML=`
-    <header>
-      <h1>PEM — Inventaire</h1>
-      <nav id="nv">
-        <button class="active" onclick="sv('list')">Liste</button>
-        <button onclick="sv('gallery')">Galerie</button>
-        <button onclick="sv('form')">+ Nouvelle</button>
-      </nav>
-    </header>
-    <div class="body">
-      <aside class="sidebar" id="sb">
-        <div class="filters">
-          <input type="text" id="q" placeholder="Rechercher ID ou Titre..." oninput="applyF()">
-          <select id="fT" onchange="applyF()"><option value="">Toutes Techniques</option></select>
+function applyF() {
+    const q = document.getElementById('q').value.toLowerCase();
+    filtered = oeuvres.filter(o => (o.Titre||"").toLowerCase().includes(q) || String(o.OeuvreID).includes(q));
+    renderSidebar();
+}
+
+function renderSidebar() {
+    const el = document.getElementById('ls');
+    el.className = `list ${circleMode ? '' : 'mode-square'}`;
+    el.innerHTML = filtered.map(o => {
+        const u = o.txtImageNameLink ? `${SB}/storage/v1/render/image/public/${BKT}/${encodeURIComponent(o.txtImageNameLink)}?width=60&height=60&resize=cover` : null;
+        return `
+        <div class="list-item ${selId === o.OeuvreID ? 'active' : ''}" onclick="sel(${o.OeuvreID})">
+            <div class="thumb-wrap">
+                ${u ? `<img src="${u}">` : `<div style="font-size:7px;color:#444;margin-top:15px;text-align:center">N/A</div>`}
+            </div>
+            <div class="id-ov">${o.OeuvreID}</div>
+        </div>`;
+    }).join('');
+}
+
+function sel(id) {
+    selId = id;
+    renderSidebar();
+    const o = oeuvres.find(x => x.OeuvreID === id);
+    const area = document.getElementById('detail-area');
+    area.innerHTML = `
+        <img class="img-large" src="${SB}/storage/v1/object/public/${BKT}/${o.txtImageNameLink}">
+        <h2 style="color:var(--ac)">${o.Titre || 'Sans titre'}</h2>
+        <p style="font-size:13px; margin: 10px 0;">ID: ${o.OeuvreID}</p>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:20px">
+            <div style="background:var(--sf); padding:10px; border:1px solid var(--bd)">
+                <small style="color:var(--mt)">TECHNIQUE</small><br>${o.Technique || '—'}
+            </div>
+            <div style="background:var(--sf); padding:10px; border:1px solid var(--bd)">
+                <small style="color:var(--mt)">SUPPORT</small><br>${o.Support || '—'}
+            </div>
         </div>
-        <div class="list" id="ls"></div>
-      </aside>
-      <main class="main" id="mn"></main>
-    </div>`;
-    
-  // Populer filtres
-  const ft=document.getElementById("fT");
-  techniques.forEach(t=>ft.innerHTML+=`<option value="${t.TechniqueID}">${t.Technique}</option>`);
+    `;
 }
 
-function applyF(){
-  const q=document.getElementById("q").value.toLowerCase();
-  const t=document.getElementById("fT").value;
-  filtered=oeuvres.filter(o=>{
-    const matchQ = !q || (o.Titre||"").toLowerCase().includes(q) || String(o.OeuvreID).includes(q);
-    const matchT = !t || String(o.Technique) === t;
-    return matchQ && matchT;
-  });
-  renderSidebar();
-}
-
-function renderSidebar(){
-  const el=document.getElementById("ls");
-  el.className = `list ${circleMode ? '' : 'mode-square'}`;
-  el.innerHTML=filtered.map(o=>{
-    const u=iuThumb(o.txtImageNameLink, 60);
-    return `
-    <div class="list-item ${selId===o.OeuvreID?'active':''}" onclick="sel(${o.OeuvreID})" title="${o.Titre}">
-      <div class="thumb-wrap">
-        ${u ? `<img class="lt" src="${u}">` : `<div style="color:#444;font-size:7px;text-align:center;padding-top:15px">N/A</div>`}
-      </div>
-      <div class="id-ov">${o.OeuvreID}</div>
-    </div>`;
-  }).join("");
-}
-
-function sel(id){
-  selId=id;
-  renderSidebar();
-  renderDetails(id);
-}
-
-/* --- PANEL DE DROITE & OPTIONS --- */
-function renderDetails(id){
-  const o=oeuvres.find(x=>x.OeuvreID===id);
-  const mn=document.getElementById("mn");
-  if(!o) return;
-
-  mn.innerHTML=`
-    <div class="design-panel">
-      <h3>Design & Affichage</h3>
-      <div class="opt-row">
-        <label><input type="radio" name="shape" ${circleMode?'checked':''} onclick="setShape(true)"> Disques</label>
-        <label><input type="radio" name="shape" ${!circleMode?'checked':''} onclick="setShape(false)"> Carrés</label>
-        <span style="color:var(--mt); font-size:10px; margin-left:15px">Sidebar : 10 colonnes (50px)</span>
-      </div>
-    </div>
-
-    <div class="detail-view">
-      <div class="iv">
-        <img src="${SB}/storage/v1/object/public/${BKT}/${o.txtImageNameLink}" onerror="this.style.display='none'">
-      </div>
-      <h2 style="color:var(--ac);margin-bottom:5px">${o.Titre || 'Sans titre'}</h2>
-      <p style="color:var(--mt);font-size:12px;margin-bottom:20px">ID ${o.OeuvreID} — ${tM[o.Technique]||'Technique'} sur ${sM[o.Support]||'Support'}</p>
-      
-      <div class="fgrid">
-        <div class="ff"><label>Année</label><input type="text" value="${o.Année||''}"></div>
-        <div class="ff"><label>Prix (€)</label><input type="number" value="${o.Prix||0}"></div>
-        <div class="ffull" style="grid-column: span 2">
-            <label>Notes</label>
-            <textarea style="width:100%; min-height:80px; background:var(--sf); border:1px solid var(--bd); color:var(--tx); padding:10px;">${o.Commentaire || ''}</textarea>
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-function setShape(isCircle){
+function setShape(isCircle) {
     circleMode = isCircle;
     renderSidebar();
 }
 
-function sv(v){
-    document.querySelectorAll("#nv button").forEach((b,i)=>b.classList.toggle("active",["list","gallery","form"][i]===v));
-}
-
-window.onload=load;
+load();
 </script>
 </body>
 </html>
