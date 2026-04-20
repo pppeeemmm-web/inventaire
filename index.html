@@ -216,11 +216,8 @@ async function apiAll(table,order,pageSize=1000){
 
 async function load(){
   try{dbg("Chargement...");
-    // Dans votre fonction load()
-const[o,t,su,f,c,im]=await Promise.all([
-  apiAll("OeuvresComplete","OeuvreID.desc"), // <-- On utilise la vue complète ici
-  api("Technique?order=TechniqueID.asc"),
-  // ... reste du code identique
+    const[o,t,su,f,c,im]=await Promise.all([
+      apiAll("Oeuvres","OeuvreID.desc"),
       api("Technique?order=TechniqueID.asc"),
       api("Support?order=SupportID.asc"),
       api("Format?order=FormatID.asc"),
@@ -286,44 +283,41 @@ function det(id){
   if(o.txtImageNameLink)aI.push({url:iu(o.txtImageNameLink),thumb:iuThumb(o.txtImageNameLink,100),name:o.txtImageNameLink,src:"oeuvre"});
   ims.forEach(im=>{const fn=im.txtImageNameLink||im.txtImageName;const x=iu(fn);if(x&&!aI.find(a=>a.url===x))aI.push({url:x,thumb:iuThumb(fn,100),name:fn,src:"tbl",imgId:im.ImageID});});
 
-  // Helper pour les champs input (réutilise votre style)
-  const fi=(l,id,v,t="text")=>`<div class="ff"><label class="fl">${l}</label><input type="${t}" id="${id}" value="${esc(v)}"></div>`;
+  const selO=(field,opts,val)=>`<select data-f="${field}">${opts}</select>`.replace(`value="${val}"`,`value="${val}" selected`);
 
   mn.innerHTML=`
-    <div class="nb">
-        <div><button class="nbtn" onclick="nP()" ${i<=0?"disabled":""}>← Préc</button> <button class="nbtn" onclick="nN()" ${i>=n-1?"disabled":""}>Suiv →</button></div>
-        <div class="pos">${i+1}/${n} <span class="badge" style="margin-left:8px">${esc(o.statusLabel || "STATUT INCONNU")}</span></div>
-    </div>
-    
-    ${aI.length?`<div class="iv" id="ivw"><img id="vi" src="${aI[0].url}" draggable="false" oncontextmenu="return false"><div class="wm">${Array(12).fill(WM_TEXT).join(" ")}</div><div class="zlvl" id="zl">100%</div><div class="zbar"><button onclick="zm(0.7)">−</button><button onclick="zm(1)">Fit</button><button onclick="zm(1.5)">+</button></div></div>
-    <div class="tstrip">${aI.map((im,idx)=>`<img src="${im.thumb}" class="${idx===0?'active':''}" onclick="document.getElementById('vi').src='${im.url}';document.querySelectorAll('.tstrip img').forEach(i=>i.classList.remove('active'));this.classList.add('active')">`).join("")}</div>` : ""}
-
+    <div class="nb"><div><button class="nbtn" onclick="nP()" ${i<=0?"disabled":""}>← Préc</button> <button class="nbtn" onclick="nN()" ${i>=n-1?"disabled":""}>Suiv →</button></div><div class="pos">${i+1}/${n}</div></div>
+    ${aI.length?`<div class="iv" id="ivw"><img id="vi" src="${aI[0].url}" draggable="false" oncontextmenu="return false" onerror="this.parentElement.style.display='none'" alt=""><div class="wm">${Array(12).fill(WM_TEXT).join(" ")}</div><div class="zlvl" id="zl">100%</div><div class="zbar"><button onclick="zm(0.7)">−</button><button onclick="zm(1)">Fit</button><button onclick="zm(1.5)">+</button><button onclick="_z.s=ZMAX;_z.tx=0;_z.ty=0;clampTx();adjH();aIZ()">Max</button></div></div>
+    <div class="tstrip" id="imgStrip">${aI.map((im,idx)=>`<div style="position:relative;display:inline-block"><img src="${im.thumb}" class="${idx===0?'active':''}" onclick="swI(${idx})" title="${esc(im.name)}"><div style="position:absolute;top:-2px;right:-2px;width:14px;height:14px;background:var(--dg);color:#fff;font-size:9px;display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:50%;z-index:3" onclick="event.stopPropagation();delImg(${o.OeuvreID},'${esc(im.name)}',${im.imgId||0})" title="Supprimer cette image">×</div></div>`).join("")}<div class="add" onclick="qUp(${o.OeuvreID})">+</div></div>
+    <div id="imgMeta" style="font-size:9px;color:var(--mt);padding:4px 0;margin-bottom:6px;display:flex;gap:12px;flex-wrap:wrap"></div>`
+    :`<div style="padding:16px;text-align:center;background:var(--bg);border:1px solid var(--bd);margin-bottom:12px"><button class="btn bs" onclick="qUp(${o.OeuvreID})">+ Photo</button></div>`}
+    <div style="font-size:9px;color:var(--mt);margin-bottom:8px">ID ${o.OeuvreID}${o.txtImageNameLink?` · ${esc(o.txtImageNameLink)}`:""}${o.NomOriginal&&o.NomOriginal!==o.txtImageNameLink?` · orig: ${esc(o.NomOriginal)}`:""}</div>
     <div class="fgrid" id="detForm">
       ${fi("Titre","dt_t",o.Titre)}
-      ${fi("Année","dt_a",o["Année"]?String(o["Année"]).slice(0,4):"")}
-      <div class="ff"><label class="fl">Technique</label><select id="dt_tech">${techniques.map(t=>`<option value="${t.TechniqueID}" ${t.TechniqueID==o.Technique?'selected':''}>${t.Technique}</option>`).join("")}</select></div>
-      <div class="ff"><label class="fl">Support</label><select id="dt_supp">${supports.map(s=>`<option value="${s.SupportID}" ${s.SupportID==o.Support?'selected':''}>${s.Support}</option>`).join("")}</select></div>
-      ${fi("Hauteur","dt_h",o.Hauteur||"","number")}
-      ${fi("Largeur","dt_l",o.Largeur||"","number")}
-      ${fi("Prix €","dt_p",o.Prix||0,"number")}
-      <div class="ffull ff"><label class="fl">Commentaires</label><textarea id="dt_c">${esc(o.Commentaires||"")}</textarea></div>
-      
-      <div class="ffull" style="background:#2a2a2a; padding:12px; border:1px solid var(--bd); margin-top:10px">
-        <div class="fl" style="color:var(--ac); margin-bottom:8px">Généalogie de l'oeuvre</div>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px">
-            <div><div class="fl">Précédents (Sources)</div>
-                ${(o.previous_works || []).map(p=>`<div style="font-size:10px; margin-bottom:4px; cursor:pointer; color:var(--ac)" onclick="sel(${p.relatedId})">← ${esc(p.relatedTitle)} <small style="opacity:0.6">(${p.type})</small></div>`).join('') || '<div class="ls">Aucune source</div>'}
-            </div>
-            <div><div class="fl">Suivants (Suites)</div>
-                ${(o.next_works || []).map(n=>`<div style="font-size:10px; margin-bottom:4px; cursor:pointer; color:var(--ac)" onclick="sel(${n.relatedId})">→ ${esc(n.relatedTitle)} <small style="opacity:0.6">(${n.type})</small></div>`).join('') || '<div class="ls">Aucune suite</div>'}
-            </div>
-        </div>
-      </div>
+      ${fi("Année","dt_a",o["Année"]?String(o["Année"]).slice(0,10):"","text","2025")}
+      ${fsl("Technique","dt_k",techniques.map(t=>[t.TechniqueID,t.Technique]),o.Technique)}
+      ${fsl("Support","dt_s",supports.map(s=>[s.SupportID,s.Support]),o.Support)}
+      ${fi("Hauteur","dt_h",o.Hauteur,"number")}
+      ${fi("Largeur","dt_l",o.Largeur,"number")}
+      ${fi("Profondeur","dt_p",o.Profondeur,"number")}
+      ${fi("Poids","dt_w",o.Poids,"number")}
+      ${fsl("Contact","dt_c",contacts.map(c=>[c.ContactID,`${c.NomInstitution}${c.Nom?" ("+c.Nom+")":""}`]),o.ContactID)}
+      ${fi("Prix","dt_x",o.Prix||0,"number")}
+      ${fi("Tirage","dt_g",o.Tirage||"1/1")}
+      ${fsl("Format","dt_f",[["","—"],...formats.map(f=>[f.FormatID,f.Format])],o.Format)}
+      <div class="ff"><div class="fl">Exposable</div><label class="chk"><input type="checkbox" id="dt_e" ${o.Exposable?"checked":""}> Oui</label></div>
+      <div class="ff"><div class="fl">Catalogué</div><label class="chk"><input type="checkbox" id="dt_b" ${o["Catalogué"]?"checked":""}> Oui</label></div>
+      <div class="ffull ff"><div class="fl">Commentaires</div><textarea id="dt_m" rows="2">${esc(o.Commentaires||"")}</textarea></div>
+      <div class="ffull ff"><div class="fl">Historique</div><textarea id="dt_q" rows="2">${esc(o.Historique||"")}</textarea></div>
     </div>
-    
-    <div class="brow"><button class="btn bp" onclick="saveDet(${o.OeuvreID})">Enregistrer les modifications</button></div>
-  `;
-  if(aI.length) initZ(); // Relance votre système de zoom existant
+    <div class="brow" style="margin-top:10px">
+      <button class="btn bp" onclick="saveDet(${o.OeuvreID})">Enregistrer</button>
+      <button class="btn bs" onclick="det(${o.OeuvreID})">Annuler</button>
+      ${aI.length?`<button class="btn bs" onclick="downloadLowRes('${aI[0].url}','${esc(o.Titre)}')">↓ Basse rés</button>`:""}
+      <button class="btn bd" onclick="delO(${o.OeuvreID})">Supprimer</button>
+    </div>`;
+  mn.scrollTop=0;window._aI=aI;window._aIdx=0;
+  if(aI.length){initIZ();updateImgMeta(aI[0]);}
 }
 
 async function saveDet(id){
