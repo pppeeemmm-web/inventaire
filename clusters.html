@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PEM — Beehive Workspace Fixed</title>
 <style>
-/* --- BASE & UI --- */
+/* --- BASE --- */
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#1a1a1a;--sf:#242424;--bd:#333;--tx:#e0e0e0;--mt:#888;--ac:#c8a86e;--ad:#8a7040;--dg:#a04040;--bk:#000}
 body{font-family:'JetBrains Mono',monospace;background:var(--bg);color:var(--tx);overflow:hidden;height:100vh}
@@ -27,47 +27,30 @@ header h1{font-size:12px;letter-spacing:2px;color:var(--ac);text-transform:upper
 .sidebar:hover .filters { opacity: 1; pointer-events: auto; }
 .filters input { flex:1; background: var(--bg); border: 1px solid var(--bd); color: var(--tx); padding: 5px; font-size: 11px; outline: none; }
 
-.list { 
-    flex: 1; overflow-y: auto; overflow-x: hidden;
-    display: flex; flex-wrap: wrap; padding: 8px; align-content: flex-start;
-}
-.list-item { 
-    width: 48px; height: 48px; margin: -2px 1px; cursor: grab; position: relative; 
-}
-/* Beehive offset sur 10 colonnes */
-.sidebar:hover .list-item:nth-child(10n+6), .sidebar:hover .list-item:nth-child(10n+7),
-.sidebar:hover .list-item:nth-child(10n+8), .sidebar:hover .list-item:nth-child(10n+9),
-.sidebar:hover .list-item:nth-child(10n+10) { transform: translateX(24px); }
+.list { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 15px 5px; }
+.beehive-row { display: flex; margin-bottom: -12px; }
+.beehive-row:nth-child(even) { margin-left: 25px; }
 
-.thumb-wrap { 
-    width: 44px; height: 44px; border-radius: 50%; overflow: hidden; 
-    border: 1px solid #444; background: #000; position: relative; pointer-events: none;
-}
+.list-item { width: 50px; height: 50px; cursor: grab; position: relative; flex-shrink: 0; }
+.thumb-wrap { width: 46px; height: 46px; border-radius: 50%; overflow: hidden; border: 1px solid #444; background: #000; position: relative; pointer-events: none; }
 .thumb-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.id-ov { position: absolute; font-size: 7px; color: var(--ac); background: rgba(0,0,0,0.7); padding: 1px 2px; bottom: 4px; left: 50%; transform: translateX(-50%); z-index: 5; }
+.id-ov { position: absolute; font-size: 7px; color: var(--ac); background: rgba(0,0,0,0.8); padding: 1px 2px; bottom: 4px; left: 50%; transform: translateX(-50%); z-index: 5; border-radius: 2px; pointer-events: none; }
 
-/* --- CANVAS & WORKSPACE --- */
+/* --- CANVAS --- */
 .main-viewport { flex: 1; position: relative; background: #0f0f0f; overflow: hidden; }
-
 #canvas-container {
-    position: absolute; width: 10000px; height: 10000px; transform-origin: 0 0; 
+    position: absolute; width: 8000px; height: 8000px; transform-origin: 0 0; 
     background: radial-gradient(circle, #222 1px, transparent 1px);
     background-size: 50px 50px; top: 0; left: 0;
 }
 
-.dropped-art {
-    position: absolute; z-index: 20; cursor: move;
-    width: 48px; height: 48px; /* Taille identique sidebar */
-    user-select: none;
-}
-/* On réactive les clics sur l'enveloppe mais pas sur l'image */
+/* ÉLÉMENTS SUR CANVAS */
+.dropped-art, .cluster-zone { position: absolute; z-index: 20; touch-action: none; }
+.dropped-art { width: 46px; height: 46px; cursor: move; }
 .dropped-art .thumb-wrap { pointer-events: auto; }
 
-.cluster-zone {
-    position: absolute; border: 2px dashed var(--ad); border-radius: 50%;
-    background: rgba(200, 168, 110, 0.05); display: flex; align-items: center; justify-content: center; z-index: 10;
-}
-.cluster-zone input { background: transparent; border: none; color: var(--ad); text-align: center; font-size: 14px; font-weight: bold; outline: none; width: 80%; }
+.cluster-zone { border: 2px dashed var(--ad); border-radius: 50%; background: rgba(200, 168, 110, 0.05); display: flex; align-items: center; justify-content: center; }
+.cluster-zone input { background: transparent; border: none; color: var(--ad); text-align: center; font-size: 14px; font-weight: bold; outline: none; width: 80%; pointer-events: auto; }
 
 #trash {
     position: absolute; bottom: 30px; right: 30px; width: 64px; height: 64px; 
@@ -77,17 +60,16 @@ header h1{font-size:12px;letter-spacing:2px;color:var(--ac);text-transform:upper
 
 .tools { display: flex; gap: 8px; align-items: center; }
 .btn { background: var(--sf); color: var(--tx); border: 1px solid var(--bd); padding: 6px 10px; font-size: 10px; cursor: pointer; text-transform: uppercase; }
-.btn:hover { border-color: var(--ac); color: var(--ac); }
 </style>
 </head>
 <body>
 
 <div id="app">
     <header>
-        <h1>PEM — CANVAS V2</h1>
+        <h1>PEM — CANVAS STABLE</h1>
         <div class="tools">
             <span id="zVal" style="font-size:10px; color:var(--mt); margin-right:10px">100%</span>
-            <button class="btn" onclick="addCluster()">+ Tracer Zone</button>
+            <button class="btn" onclick="addCluster()">+ Zone</button>
             <button class="btn" onclick="resetCanvas()" style="color:var(--dg)">Reset</button>
         </div>
     </header>
@@ -125,13 +107,21 @@ async function load() {
 function applyF() {
     const q = document.getElementById('q').value.toLowerCase();
     const filtered = oeuvres.filter(o => (o.Titre||"").toLowerCase().includes(q) || String(o.OeuvreID).includes(q));
-    document.getElementById('ls').innerHTML = filtered.map(o => `
-        <div class="list-item" draggable="true" ondragstart="onDragStart(event, '${o.txtImageNameLink}', ${o.OeuvreID})">
-            <div class="thumb-wrap">
-                <img src="${SB}/storage/v1/render/image/public/${BKT}/${encodeURIComponent(o.txtImageNameLink)}?width=100&height=100&resize=cover">
-                <div class="id-ov">${o.OeuvreID}</div>
-            </div>
-        </div>`).join('');
+    const ls = document.getElementById('ls');
+    ls.innerHTML = "";
+    const itemsPerRow = 9; 
+    for (let i = 0; i < filtered.length; i += itemsPerRow) {
+        const row = document.createElement('div');
+        row.className = 'beehive-row';
+        row.innerHTML = filtered.slice(i, i + itemsPerRow).map(o => `
+            <div class="list-item" draggable="true" ondragstart="onDragStart(event, '${o.txtImageNameLink}', ${o.OeuvreID})">
+                <div class="thumb-wrap">
+                    <img src="${SB}/storage/v1/render/image/public/${BKT}/${encodeURIComponent(o.txtImageNameLink)}?width=80&height=80&resize=cover">
+                    <div class="id-ov">${o.OeuvreID}</div>
+                </div>
+            </div>`).join('');
+        ls.appendChild(row);
+    }
 }
 
 function updateTransform() {
@@ -139,7 +129,7 @@ function updateTransform() {
     document.getElementById('zVal').textContent = Math.round(scale * 100) + "%";
 }
 
-// Zoom molette optimisé
+// Zoom
 viewport.onwheel = e => {
     e.preventDefault();
     const delta = e.deltaY > 0 ? 0.9 : 1.1;
@@ -152,7 +142,7 @@ viewport.onwheel = e => {
     updateTransform();
 };
 
-// Drag side to canvas
+// Drag start from sidebar
 function onDragStart(ev, img, id) {
     ev.dataTransfer.setData("img", img);
     ev.dataTransfer.setData("id", id);
@@ -164,96 +154,84 @@ viewport.ondrop = e => {
     const imgName = e.dataTransfer.getData("img");
     const id = e.dataTransfer.getData("id");
     if(!imgName) return;
-
     const rect = container.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / scale - 24;
-    const y = (e.clientY - rect.top) / scale - 24;
-
-    createItem(imgName, id, x, y);
-};
-
-function createItem(imgName, id, x, y) {
+    const x = (e.clientX - rect.left) / scale - 23;
+    const y = (e.clientY - rect.top) / scale - 23;
     const div = document.createElement('div');
     div.className = 'dropped-art';
     div.style.left = x + 'px'; div.style.top = y + 'px';
-    div.innerHTML = `
-        <div class="thumb-wrap">
-            <img src="${SB}/storage/v1/render/image/public/${BKT}/${encodeURIComponent(imgName)}?width=200">
-            <div class="id-ov">${id}</div>
-        </div>`;
-    
+    div.innerHTML = `<div class="thumb-wrap"><img src="${SB}/storage/v1/render/image/public/${BKT}/${encodeURIComponent(imgName)}?width=200"><div class="id-ov">${id}</div></div>`;
     makeDraggable(div);
     container.appendChild(div);
-}
+};
 
-// MOTEUR DE MOUVEMENT FIXE (Anti-disparition)
+// MOTEUR DE MOUVEMENT RE-CALIBRÉ
 function makeDraggable(el) {
-    let lastX = 0, lastY = 0;
+    let startX, startY, initialObjX, initialObjY;
     const trash = document.getElementById('trash');
 
     el.onmousedown = e => {
         if (e.target.tagName === 'INPUT') return;
         e.preventDefault(); e.stopPropagation();
         
-        lastX = e.clientX; lastY = e.clientY;
+        // On capture la position de la souris au moment du clic
+        startX = e.clientX;
+        startY = e.clientY;
+        
+        // On capture la position RÉELLE de l'objet sur le canvas
+        initialObjX = parseFloat(el.style.left);
+        initialObjY = parseFloat(el.style.top);
+        
         trash.style.display = 'flex';
-        el.style.zIndex = 1000; // Passe au dessus pendant le mouvement
+        el.style.zIndex = 1000;
 
-        document.onmousemove = e => {
-            // On calcule le mouvement delta de la souris
-            const dx = (e.clientX - lastX) / scale;
-            const dy = (e.clientY - lastY) / scale;
+        const onMove = e => {
+            // On calcule combien de pixels la souris a bougé (en tenant compte du zoom)
+            const dx = (e.clientX - startX) / scale;
+            const dy = (e.clientY - startY) / scale;
             
-            // On applique DIRECTEMENT à la position actuelle
-            const curTop = parseFloat(el.style.top) || 0;
-            const curLeft = parseFloat(el.style.left) || 0;
-            
-            el.style.top = (curTop + dy) + "px";
-            el.style.left = (curLeft + dx) + "px";
-            
-            lastX = e.clientX; 
-            lastY = e.clientY;
+            // On applique ce changement à la position initiale capturée au mousedown
+            el.style.left = (initialObjX + dx) + "px";
+            el.style.top = (initialObjY + dy) + "px";
         };
 
-        document.onmouseup = e => {
-            document.onmousemove = null;
+        const onUp = e => {
+            window.removeEventListener('mousemove', onMove);
+            window.removeEventListener('mouseup', onUp);
             trash.style.display = 'none';
             el.style.zIndex = 20;
             const t = trash.getBoundingClientRect();
             if(e.clientX > t.left && e.clientY > t.top) el.remove();
         };
+
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
     };
 }
 
-// NAVIGATION PAN (Fond)
-let isPanning = false, startX, startY;
+// PAN
+let isPanning = false, panStartX, panStartY;
 viewport.onmousedown = e => {
     if(e.target === viewport || e.target === container) {
         isPanning = true;
-        startX = e.clientX - posX;
-        startY = e.clientY - posY;
+        panStartX = e.clientX - posX; panStartY = e.clientY - posY;
     }
 };
-window.onmousemove = e => {
-    if(!isPanning) return;
-    posX = e.clientX - startX;
-    posY = e.clientY - startY;
-    updateTransform();
-};
+window.onmousemove = e => { if(isPanning) { posX = e.clientX - panStartX; posY = e.clientY - panStartY; updateTransform(); } };
 window.onmouseup = () => isPanning = false;
 
 function addCluster() {
     const div = document.createElement('div');
     div.className = 'cluster-zone';
-    div.style.left = (Math.random() * 500 + 400) + 'px'; 
-    div.style.top = (Math.random() * 500 + 400) + 'px';
+    div.style.left = (viewport.offsetWidth/2 - posX)/scale - 175 + 'px'; 
+    div.style.top = (viewport.offsetHeight/2 - posY)/scale - 175 + 'px';
     div.style.width = '350px'; div.style.height = '350px';
-    div.innerHTML = `<input type="text" value="CLUSTER NAME">`;
+    div.innerHTML = `<input type="text" value="GROUPE">`;
     makeDraggable(div);
     container.appendChild(div);
 }
 
-function resetCanvas() { if(confirm("Vider l'espace ?")) container.innerHTML = ''; }
+function resetCanvas() { if(confirm("Effacer le canvas ?")) container.innerHTML = ''; }
 
 load();
 </script>
