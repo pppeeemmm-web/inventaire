@@ -2,34 +2,29 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>PEM — Map Engine v7 (Absolute Relative)</title>
+<title>PEM — Map Engine v8 (Final Stability)</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#111;--sf:#1a1a1a;--bd:#333;--tx:#eee;--ac:#c8a86e;--dg:#ff4444}
 body{font-family:monospace;background:var(--bg);color:var(--tx);overflow:hidden;height:100vh}
-
 #app{display:flex;height:100vh}
 
-/* --- SIDEBAR BEEHIVE --- */
+/* --- SIDEBAR --- */
 .sidebar { width: 300px; background: var(--sf); border-right: 1px solid var(--bd); display: flex; flex-direction: column; z-index: 100;}
 .filters { padding: 15px; border-bottom: 1px solid var(--bd); }
 .filters input { width: 100%; background: #000; border: 1px solid var(--bd); color: var(--ac); padding: 10px; outline: none; }
-
-.list { 
-    flex: 1; overflow-y: auto; padding: 10px; 
-    display: flex; flex-wrap: wrap; align-content: flex-start;
-}
+.list { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-wrap: wrap; align-content: flex-start;}
 .list-item { width: 50px; height: 50px; cursor: grab; margin: 2px; }
 .thumb { width: 50px; height: 50px; border-radius: 50%; border: 1px solid #444; object-fit: cover; }
 
 /* --- CANVAS --- */
 .viewport { flex: 1; position: relative; overflow: hidden; background: #0a0a0a; }
 #canvas {
-    position: absolute; width: 8000px; height: 8000px; transform-origin: 0 0;
+    position: absolute; width: 10000px; height: 10000px; transform-origin: 0 0;
     background-image: radial-gradient(#222 1px, transparent 1px); background-size: 50px 50px;
 }
 
-/* --- NODES (80px Max) --- */
+/* --- NODES --- */
 .node { position: absolute; z-index: 10; user-select: none; }
 .art-node { width: 80px; height: 80px; transform-origin: center center; }
 .art-node img { width: 100%; height: 100%; border-radius: 50%; border: 2px solid var(--ac); display: block; pointer-events: none; }
@@ -40,7 +35,7 @@ body{font-family:monospace;background:var(--bg);color:var(--tx);overflow:hidden;
 
 .ui-top { position: absolute; top: 20px; right: 20px; display: flex; gap: 10px; z-index: 1000; }
 .btn { background: var(--sf); color: var(--tx); border: 1px solid var(--bd); padding: 8px 15px; cursor: pointer; font-size: 11px; }
-#trash { position: fixed; bottom: 30px; right: 30px; width: 70px; height: 70px; border-radius: 50%; border: 2px solid var(--dg); color: var(--dg); display: none; align-items: center; justify-content: center; z-index: 2000; background: #000; font-size: 24px; }
+#trash { position: fixed; bottom: 30px; right: 30px; width: 70px; height: 70px; border-radius: 50%; border: 2px solid var(--dg); color: var(--dg); display: none; align-items: center; justify-content: center; z-index: 2000; background: #000; }
 </style>
 </head>
 <body>
@@ -91,14 +86,14 @@ function updateTransform() {
     canvas.style.transform = `translate(${px}px, ${py}px) scale(${scale})`;
     document.getElementById('zVal').textContent = Math.round(scale * 100) + "%";
     
-    // Contrainte 80px : si on zoom trop, on scale down l'item pour qu'il reste à 80px écran
-    const sFix = scale > 1 ? (1 / scale) : 1; 
+    // Contrainte : Max 80px (si zoom > 1) et Min 15px (si zoom < 0.18)
+    const sFix = scale > 1 ? (1 / scale) : Math.max(1, (15/80) / scale);
     document.querySelectorAll('.art-node').forEach(n => n.style.transform = `scale(${sFix})`);
 }
 
 viewport.onwheel = e => {
     e.preventDefault();
-    const ns = Math.min(Math.max(scale * (e.deltaY > 0 ? 0.9 : 1.1), 0.02), 5);
+    const ns = Math.min(Math.max(scale * (e.deltaY > 0 ? 0.9 : 1.1), 0.01), 8);
     const r = viewport.getBoundingClientRect();
     px = (e.clientX - r.left) - ((e.clientX - r.left) - px) * (ns / scale);
     py = (e.clientY - r.top) - ((e.clientY - r.top) - py) * (ns / scale);
@@ -130,25 +125,21 @@ function createNode(img, id, x, y) {
 }
 
 function bindNode(el) {
-    let mX, mY, iX, iY;
-
     el.onmousedown = e => {
         if(e.target.tagName === 'INPUT') return;
         e.preventDefault(); e.stopPropagation();
         
-        // On mémorise l'état au moment du clic
-        mX = e.clientX; 
-        mY = e.clientY;
-        iX = parseFloat(el.style.left);
-        iY = parseFloat(el.style.top);
-
         document.getElementById('trash').style.display = 'flex';
         el.style.zIndex = 2000;
 
         const move = e => {
-            // Le mouvement est l'écart souris divisé par le zoom, ajouté à la position initiale
-            el.style.left = (iX + (e.clientX - mX) / scale) + "px";
-            el.style.top = (iY + (e.clientY - mY) / scale) + "px";
+            const r = canvas.getBoundingClientRect();
+            // On calcule la position directement par rapport au rectangle du canvas
+            // C'est la méthode la plus robuste contre les disparitions
+            const nx = (e.clientX - r.left) / scale - 40;
+            const ny = (e.clientY - r.top) / scale - 40;
+            el.style.left = nx + "px";
+            el.style.top = ny + "px";
         };
 
         const up = e => {
@@ -184,12 +175,12 @@ function saveMap() {
         n: Array.from(document.querySelectorAll('.art-node')).map(n => ({x: n.style.left, y: n.style.top, img: n.dataset.img, id: n.dataset.id})),
         z: Array.from(document.querySelectorAll('.zone-node')).map(z => ({x: z.style.left, y: z.style.top, w: z.style.width, h: z.style.height, t: z.querySelector('input').value}))
     };
-    localStorage.setItem('pem_map_final', JSON.stringify(d));
+    localStorage.setItem('pem_map_v8', JSON.stringify(d));
     alert("Map Sauvegardée");
 }
 
 function loadMap() {
-    const raw = localStorage.getItem('pem_map_final');
+    const raw = localStorage.getItem('pem_map_v8');
     if(!raw) return;
     const d = JSON.parse(raw);
     d.n.forEach(n => createNode(n.img, n.id, parseFloat(n.x), parseFloat(n.y)));
