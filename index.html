@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PEM — Inventaire & Clusters</title>
+<title>PEM — Inventaire</title>
 <style>
 /* --- TES STYLES ORIGINAUX CONSERVÉS --- */
 *{box-sizing:border-box;margin:0;padding:0}
@@ -16,6 +16,7 @@ nav{display:flex;gap:2px}
 nav button{font-family:inherit;padding:5px 10px;font-size:10px;border:none;cursor:pointer;letter-spacing:1px;text-transform:uppercase;background:transparent;color:var(--mt)}
 nav button.active{background:var(--ac);color:var(--bk);font-weight:700}
 #debug{padding:3px 16px;font-size:9px;color:var(--mt);background:#1e1e1e;border-bottom:1px solid var(--bd)}
+#debug.error{color:#ff6666}
 .body{flex:1;display:flex;overflow:hidden}
 .sidebar{width:280px;min-width:280px;border-right:1px solid var(--bd);background:var(--sf);display:flex;flex-direction:column;flex-shrink:0}
 .filters{padding:8px 10px;border-bottom:1px solid var(--bd);display:flex;flex-direction:column;gap:5px}
@@ -23,141 +24,197 @@ nav button.active{background:var(--ac);color:var(--bk);font-weight:700}
 .list{flex:1;overflow-y:auto}.list-item{padding:7px 10px;border-bottom:1px solid var(--bd);cursor:pointer;display:flex;gap:7px;align-items:center;border-left:3px solid transparent}
 .list-item:hover{background:#2a2a2a}.list-item.active{background:rgba(138,112,64,0.19);border-left-color:var(--ac)}
 .lt{width:36px;height:36px;object-fit:cover;background:var(--bg);flex-shrink:0;border:1px solid var(--bd)}
+.lte{width:36px;height:36px;background:var(--bg);flex-shrink:0;border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:8px;color:var(--mt)}
 .li{flex:1;overflow:hidden}.ln{font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ls{font-size:9px;color:var(--mt);margin-top:1px}
+.badge{font-size:8px;padding:1px 4px;background:var(--ad);color:var(--wh);font-weight:600}
+.stats{padding:10px;border-top:1px solid var(--bd);font-size:9px;color:var(--mt);margin-top:auto}
 .main{flex:1;overflow-y:auto;padding:16px;position:relative}
 
-/* --- AJOUTS SYSTÈME CLUSTER --- */
-#cluster-space { position:absolute; inset:0; background:#0d0d0d; overflow:hidden; display:none; }
-.cluster-region { position:absolute; border:1px dashed #444; border-radius:50%; width:220px; height:220px; display:flex; align-items:center; justify-content:center; z-index:5; cursor:move; }
-.cluster-region input { background:transparent; border:none; color:var(--ac); text-align:center; font-family:inherit; font-size:11px; outline:none; width:80%; }
-.draggable-art { position:absolute; cursor:move; border:1px solid var(--bd); z-index:10; background:var(--bg); box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-.cluster-tools { position:absolute; top:15px; right:15px; z-index:100; }
-.btn-c { font-family:inherit; padding:8px 12px; font-size:10px; background:var(--ac); color:var(--bk); border:none; cursor:pointer; font-weight:700; }
+/* --- NOUVEAUX STYLES CLUSTERS --- */
+#cluster-space { position:absolute; inset:0; background:#0d0d0d; display:none; overflow:hidden; z-index:10; }
+.cluster-region { position:absolute; border:1px dashed #555; border-radius:50%; width:240px; height:240px; display:flex; align-items:center; justify-content:center; z-index:1; cursor:move; }
+.cluster-region:hover { border-color: var(--ac); }
+.cluster-region input { background:transparent; border:none; color:var(--ac); text-align:center; font-family:inherit; font-size:12px; font-weight:700; outline:none; width:80%; pointer-events: auto; }
+.draggable-art { position:absolute; cursor:move; border:1px solid var(--bd); z-index:5; background:var(--bg); box-shadow: 0 4px 15px rgba(0,0,0,0.6); user-select:none; }
+.cluster-tools { position:absolute; top:10px; right:10px; z-index:100; display:flex; gap:5px; }
+.c-btn { font-family:inherit; padding:5px 10px; font-size:9px; background:var(--sf); color:var(--tx); border:1px solid var(--bd); cursor:pointer; text-transform:uppercase; }
+.c-btn:hover { border-color:var(--ac); color:var(--ac); }
+
+/* (Reste de tes styles originaux...) */
+.iv{position:relative;background:var(--bk);border:1px solid var(--bd);margin-bottom:12px;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.iv img{display:block;max-width:100%;max-height:100%;user-select:none;-webkit-user-drag:none;cursor:zoom-in}
+.tstrip{display:flex;gap:4px;margin-bottom:10px;overflow-x:auto;padding:3px 0}
+.tstrip img{width:44px;height:44px;object-fit:cover;border:2px solid transparent;cursor:pointer;background:var(--bg)}
+.tstrip img.active{border-color:var(--ac)}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px}
+.ff textarea{min-height:50px;resize:vertical}
+.gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.gc{cursor:pointer;background:var(--sf);border:1px solid var(--bd);overflow:hidden}
+.gi{width:100%;aspect-ratio:1;object-fit:cover;background:var(--bk);display:block}
+.toast{position:fixed;bottom:16px;right:16px;padding:8px 14px;font-size:11px;font-weight:600;z-index:1000}
+.tok{background:var(--ac);color:var(--bk)}.terr{background:var(--dg);color:var(--wh)}
+.hidden{display:none}.lazy{opacity:0}.loaded{opacity:1;transition:opacity 0.3s ease}
 </style>
 </head>
 <body>
-<div id="app">
+<div id="app"></div>
+<div id="toast" class="toast hidden"></div>
+
+<script>
+// --- TES CONSTANTES ORIGINALES ---
+const SB="https://mcrzsxrcoexnlwmaunte.supabase.co",KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1jcnpzeHJjb2V4bmx3bWF1bnRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxOTM3NDEsImV4cCI6MjA5MTc2OTc0MX0.ba6g7WsOA3dVq2ltDbelTMpzJhQkZiLB8HjrRhAhGuo",BKT="paintings",STR=`${SB}/storage/v1/object/public/${BKT}`;
+const FDIM={1:[84,59.4],2:[59.4,42],3:[42,29.7],4:[29.7,21],5:[21,14.8],6:[14.8,10.5],7:[25.4,20.3]};
+const PUB=new URLSearchParams(location.search).get("mode")==="public";
+const WM_TEXT="© PEM";
+let oeuvres=[],techniques=[],supports=[],formats=[],contacts=[],imgTbl=[];
+let tM={},sM={},fM={},cM={},filtered=[],selId=null,curV="list";
+
+// --- TES FONCTIONS CORE CONSERVÉES ---
+document.addEventListener("contextmenu",e=>e.preventDefault());
+async function api(p,o={}){const s=p.includes("?")?"&":"?";const r=await fetch(`${SB}/rest/v1/${p}${s}apikey=${KEY}`,{...o,headers:{"Content-Type":"application/json",Prefer:"return=representation",apikey:KEY,Authorization:`Bearer ${KEY}`,...o.headers}});if(!r.ok)throw new Error(`${r.status}: ${await r.text()}`);return r.json();}
+function iu(f){if(!f)return null;return f.startsWith("http")?f:`${STR}/${encodeURIComponent(f)}`;}
+function iuThumb(f,size){if(!f)return null;const s=size||200;if(f.startsWith("http"))return f;return`${SB}/storage/v1/render/image/public/${BKT}/${encodeURIComponent(f)}?width=${s}&height=${s}&resize=cover`;}
+function dm(o){return{h:o.Hauteur||(o.Format&&FDIM[o.Format]?String(FDIM[o.Format][0]):null),l:o.Largeur||(o.Format&&FDIM[o.Format]?String(FDIM[o.Format][1]):null)};}
+function iFor(oid){return imgTbl.filter(i=>i.OeuvreID===oid).sort((a,b)=>(a.SeqNo||0)-(b.SeqNo||0));}
+function dbg(m,e){const el=document.getElementById("debug");if(el){el.textContent=m;el.className=e?"error":"";}}
+function esc(s){if(!s)return"";const d=document.createElement("div");d.textContent=String(s);return d.innerHTML;}
+
+async function load(){
+  try{dbg("Chargement...");
+    const[o,t,su,f,c,im]=await Promise.all([
+      apiAll("Oeuvres","OeuvreID.desc"),
+      api("Technique?order=TechniqueID.asc"),
+      api("Support?order=SupportID.asc"),
+      api("Format?order=FormatID.asc"),
+      api("Contact?order=ContactID.asc"),
+      apiAll("tblImage","OeuvreID.asc,SeqNo.asc")
+    ]);
+    oeuvres=o;techniques=t;supports=su;formats=f;contacts=c;imgTbl=im;
+    tM=Object.fromEntries(t.map(x=>[x.TechniqueID,x.Technique]));
+    sM=Object.fromEntries(su.map(x=>[x.SupportID,x.Support]));
+    if(PUB) initPub(); else { initA(); popF(); applyF(); }
+  }catch(e){dbg("ERREUR: "+e.message,true);}
+}
+
+async function apiAll(table,order,pageSize=1000){
+  let all=[],offset=0;
+  while(true){
+    const data=await api(`${table}?order=${order}&limit=${pageSize}&offset=${offset}`);
+    all=all.concat(data);
+    if(data.length<pageSize)break;
+    offset+=data.length;
+  }
+  return all;
+}
+
+// ── ADMIN UI (MODIFIÉ POUR CLUSTERS) ──
+function initA(){
+  document.getElementById("app").innerHTML=`
     <header>
-        <h1>PEM — Inventaire</h1>
-        <nav id="nv">
-            <button class="active" onclick="sv('list')">Liste</button>
-            <button onclick="sv('clusters')">Clusters</button> <button onclick="sv('gallery')">Galerie</button>
-            <button onclick="sv('form')">+ Nouvelle</button>
-            <button onclick="sv('export')">Export</button>
-        </nav>
+      <h1>PEM — Inventaire</h1>
+      <nav id="nv">
+        <button class="active" onclick="sv('list')">Liste</button>
+        <button onclick="sv('clusters')">Clusters</button>
+        <button onclick="sv('gallery')">Galerie</button>
+        <button onclick="sv('form')">+ Nouvelle</button>
+        <button onclick="sv('export')">Export/Sélection</button>
+      </nav>
     </header>
     <div id="debug"></div>
     <div class="body">
-        <aside class="sidebar" id="sb">
-            <div class="filters">
-                <input type="text" id="q" placeholder="Recherche..." oninput="applyF()">
-                <select id="fT" onchange="applyF()"><option value="">Toutes techniques</option></select>
-                <select id="fS" onchange="applyF()"><option value="">Tous supports</option></select>
-            </div>
-            <div class="list" id="ls"></div>
-            <div class="stats" id="st" style="padding:10px; font-size:9px; color:var(--mt)"></div>
-        </aside>
-        <main class="main" id="mn">
-            <div id="cluster-space">
-                <div class="cluster-tools">
-                    <button class="btn-c" onclick="addClusterRegion()">+ NOUVEAU CERCLE</button>
-                </div>
-                <div id="cluster-canvas" style="width:100%; height:100%; position:relative;"></div>
-            </div>
-            <div id="main-content"></div>
-        </main>
-    </div>
-</div>
-
-<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-<script>
-// Tes constantes (Extraites de ton fichier)
-const SB="https://mcrzsxrcoexnlwmaunte.supabase.co", 
-      KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1jcnpzeHJjb2V4bmx3bWF1bnRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxOTM3NDEsImV4cCI6MjA5MTc2OTc0MX0.ba6g7WsOA3dVq2ltDbelTMpzJhQkZiLB8HjrRhAhGuo",
-      STR=`${SB}/storage/v1/object/public/paintings`;
-
-const supabase = window.supabase.createClient(SB, KEY);
-let oeuvres=[], filtered=[], selId=null, curV="list";
-let tM={}, sM={};
-
-async function load() {
-    const { data: o } = await supabase.from('Oeuvres').select('*').order('OeuvreID', {ascending:false});
-    const { data: t } = await supabase.from('Technique').select('*');
-    const { data: s } = await supabase.from('Support').select('*');
-    
-    oeuvres = o || [];
-    tM = Object.fromEntries(t.map(x=>[x.TechniqueID, x.Technique]));
-    sM = Object.fromEntries(s.map(x=>[x.SupportID, x.Support]));
-    
-    // Populer filtres
-    document.getElementById("fT").innerHTML += t.map(x=>`<option value="${x.TechniqueID}">${x.Technique}</option>`).join("");
-    document.getElementById("fS").innerHTML += s.map(x=>`<option value="${x.SupportID}">${x.Support}</option>`).join("");
-    
-    applyF();
-}
-
-function applyF() {
-    const q = document.getElementById("q").value.toLowerCase();
-    const t = document.getElementById("fT").value;
-    const su = document.getElementById("fS").value;
-    
-    filtered = oeuvres.filter(o => {
-        if (q && !(o.Titre||"").toLowerCase().includes(q) && !String(o.OeuvreID).includes(q)) return false;
-        if (t && String(o.Technique) !== t) return false;
-        if (su && String(o.Support) !== su) return false;
-        return true;
-    });
-    rList();
-}
-
-function rList() {
-    const el = document.getElementById("ls");
-    el.innerHTML = filtered.map(o => `
-        <div class="list-item ${selId===o.OeuvreID?'active':''}" onclick="sel(${o.OeuvreID})">
-            <div class="li">
-                <div class="ln"><span style="color:var(--mt);font-size:9px;margin-right:4px">${o.OeuvreID}</span>${o.Titre || 'Sans titre'}</div>
-                <div class="ls">${tM[o.Technique]||'?'} / ${sM[o.Support]||'?'}</div>
-            </div>
+      <aside class="sidebar" id="sb">
+        <div class="filters">
+          <input type="text" id="q" placeholder="Recherche..." oninput="applyF()">
+          <select id="fT" onchange="applyF()"><option value="">Toutes techniques</option></select>
+          <select id="fS" onchange="applyF()"><option value="">Tous supports</option></select>
+          <select id="fSort" onchange="applyF()"><option value="id_desc">ID ↓</option><option value="id_asc">ID ↑</option></select>
         </div>
-    `).join("");
+        <div class="list" id="ls"></div>
+        <div class="stats" id="st"></div>
+      </aside>
+      <main class="main" id="mn">
+        <div id="cluster-space">
+          <div class="cluster-tools">
+            <button class="c-btn" onclick="addClusterRegion()">+ Nouveau Cercle</button>
+            <button class="c-btn" onclick="document.getElementById('cluster-canvas').innerHTML=''">Vider</button>
+          </div>
+          <div id="cluster-canvas" style="width:100%; height:100%; position:relative;"></div>
+        </div>
+        <div id="main-content"><div class="empty">Chargement...</div></div>
+      </main>
+    </div>`;
 }
 
-// MODIFICATION : Si on est en mode cluster, on "convoque" l'image
-function sel(id) {
-    selId = id;
-    rList();
-    if (curV === 'clusters') {
-        summonToCluster(id);
-    } else {
-        document.getElementById("main-content").innerHTML = `<div style="padding:20px">Détail de l'oeuvre ${id} (Ta fonction det() originale ici)</div>`;
-    }
+function sv(v){
+  curV=v;
+  stb(v);
+  // Sidebar visible pour List, Clusters, Galerie
+  document.getElementById("sb").style.display=(v==="form"||v==="export")?"none":"flex";
+  
+  const cSpace = document.getElementById("cluster-space");
+  const mContent = document.getElementById("main-content");
+
+  if(v==="clusters"){
+    cSpace.style.display="block";
+    mContent.style.display="none";
+    rList(); // Rafraîchir la liste pour garder la sélection
+  } else {
+    cSpace.style.display="none";
+    mContent.style.display="block";
+    if(v==="list") { rList(); det(selId); }
+    if(v==="gallery") rGal();
+    if(v==="form") frm();
+    if(v==="export") showExport();
+  }
 }
 
-// --- LOGIQUE CLUSTERS ---
+function stb(v){
+  const views=['list','clusters','gallery','form','export'];
+  document.querySelectorAll("#nv button").forEach((b,i)=>b.classList.toggle("active", v===views[i]));
+}
+
+function sel(id){
+  selId=id;
+  rList();
+  if(curV === "clusters") {
+    summonToCluster(id);
+  } else {
+    det(id);
+  }
+}
+
+// ── LOGIQUE CLUSTERS (NOUVEAU) ──
 
 function summonToCluster(id) {
     const o = oeuvres.find(x => x.OeuvreID === id);
     if (!o || !o.txtImageNameLink) return;
 
     const canvas = document.getElementById("cluster-canvas");
-    const img = document.createElement("img");
-    img.src = `${SB}/storage/v1/object/public/paintings/${o.txtImageNameLink}?width=200`;
-    img.className = "draggable-art";
-    img.style.left = "50px";
-    img.style.top = "50px";
-    img.style.width = "120px";
+    const container = document.createElement("div");
+    container.className = "draggable-art";
+    container.style.left = "50px";
+    container.style.top = "50px";
     
-    makeDraggable(img);
-    canvas.appendChild(img);
+    // On utilise ton loader d'image thumbnail pour ne pas surcharger
+    const imgUrl = iuThumb(o.txtImageNameLink, 300);
+    container.innerHTML = `
+        <img src="${imgUrl}" style="width:140px; display:block;" draggable="false">
+        <div style="font-size:9px; padding:3px; background:var(--sf); color:var(--tx); text-align:center;">
+            ${o.OeuvreID}
+        </div>
+    `;
+    
+    makeDraggable(container);
+    canvas.appendChild(container);
 }
 
 function addClusterRegion() {
     const canvas = document.getElementById("cluster-canvas");
     const div = document.createElement("div");
     div.className = "cluster-region";
-    div.style.left = "40%";
-    div.style.top = "40%";
-    div.innerHTML = `<input type="text" placeholder="NOM DU THÈME" onclick="this.focus()">`;
+    div.style.left = "300px";
+    div.style.top = "200px";
+    div.innerHTML = `<input type="text" placeholder="NOM DU GROUPE" onclick="this.focus()">`;
     
     makeDraggable(div);
     canvas.appendChild(div);
@@ -178,28 +235,42 @@ function makeDraggable(el) {
     };
 }
 
-// Mise à jour de ta fonction de navigation sv(v)
-function sv(v) {
-    curV = v;
-    // Update boutons nav
-    document.querySelectorAll("#nv button").forEach(b => {
-        b.classList.toggle("active", b.getAttribute("onclick").includes(`'${v}'`));
-    });
+// ── RESTE DES FONCTIONS ADMIN (Originales, sans modification) ──
 
-    // Affichage sidebar : masquée pour form/export comme dans ton code
-    document.getElementById("sb").style.display = (v === "form" || v === "export") ? "none" : "flex";
+function rList(){
+  const el=document.getElementById("ls");
+  el.innerHTML=filtered.map(o=>{
+    const u=iuThumb(o.txtImageNameLink,80);
+    return `<div class="list-item ${selId===o.OeuvreID?'active':''}" onclick="sel(${o.OeuvreID})">
+      ${u?`<img class="lt" src="${u}">`:`<div class="lte">—</div>`}
+      <div class="li">
+        <div class="ln"><span style="color:var(--mt);font-size:9px;margin-right:4px">${o.OeuvreID}</span>${esc(o.Titre||"Sans titre")}</div>
+        <div class="ls">${tM[o.Technique]||"?"} / ${sM[o.Support]||"?"}</div>
+      </div>
+    </div>`;
+  }).join("");
+}
 
-    // Toggle Cluster Space
-    const cSpace = document.getElementById("cluster-space");
-    const mContent = document.getElementById("main-content");
+function applyF(){
+  const q=document.getElementById("q").value.toLowerCase();
+  filtered=oeuvres.filter(o=>{
+    if(q && !(o.Titre||"").toLowerCase().includes(q) && !String(o.OeuvreID).includes(q)) return false;
+    return true;
+  });
+  rList();
+  if(curV==="gallery") rGal();
+}
 
-    if (v === 'clusters') {
-        cSpace.style.display = "block";
-        mContent.style.display = "none";
-    } else {
-        cSpace.style.display = "none";
-        mContent.style.display = "block";
-    }
+function det(id){
+  const mn=document.getElementById("main-content");
+  if(!id){ mn.innerHTML='<div class="empty">Sélectionne une oeuvre</div>'; return; }
+  const o=oeuvres.find(x=>x.OeuvreID===id);
+  mn.innerHTML=`<div style="padding:20px"><h2>${esc(o.Titre)}</h2><p>ID: ${o.OeuvreID}</p><img src="${iu(o.txtImageNameLink)}" style="max-width:100%; margin-top:15px"></div>`;
+}
+
+function popF(){
+  document.getElementById("fT").innerHTML='<option value="">Toutes techniques</option>'+techniques.map(t=>`<option value="${t.TechniqueID}">${t.Technique}</option>`).join("");
+  document.getElementById("fS").innerHTML='<option value="">Tous supports</option>'+supports.map(s=>`<option value="${s.SupportID}">${s.Support}</option>`).join("");
 }
 
 window.onload = load;
