@@ -1000,6 +1000,55 @@ body{font-family:Georgia,serif;background:#fff;color:#222;padding:40px 40px 60px
 
 if(PUB){document.getElementById("app").innerHTML='<div class="empty">Chargement...</div>';load();}
 else{initA();load();}
+  
+  async function saveMap() {
+    // 1. On récupère le nom de la sélection actuelle dans ton interface
+    // (Ajuste l'ID '#selectionTitle' selon le nom de l'élément dans ton index.html)
+    const selectionTitle = document.querySelector('#selectionTitle')?.innerText || "Sans Titre";
+
+    // 2. Récupérer les IDs des oeuvres présentes sur le canvas
+    const nodes = Array.from(document.querySelectorAll('.art-node'));
+    const ids = nodes.map(n => n.dataset.id);
+
+    if (ids.length === 0) {
+        alert("Le canvas est vide, rien à taguer.");
+        return;
+    }
+
+    // 3. Sauvegarde locale des positions (comme avant)
+    const localData = nodes.map(n => ({
+        x: n.lx, 
+        y: n.ly, 
+        img: n.dataset.img, 
+        id: n.dataset.id
+    }));
+    localStorage.setItem('pem_index_map', JSON.stringify(localData));
+
+    // 4. Mise à jour massive du champ 'theme' dans Supabase
+    try {
+        const response = await fetch(`${SB}/rest/v1/Oeuvres?OeuvreID=in.(${ids.join(',')})`, {
+            method: 'PATCH',
+            headers: {
+                'apikey': KEY,
+                'Authorization': `Bearer ${KEY}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify({
+                theme: selectionTitle // On écrit le nom de la sélection dans la colonne theme
+            })
+        });
+
+        if (response.ok) {
+            console.log(`Base de données mise à jour : ${ids.length} œuvres liées au thème "${selectionTitle}"`);
+            alert("Positions sauvegardées et thème mis à jour dans la base !");
+        } else {
+            alert("Erreur lors de la mise à jour du champ 'theme' sur Supabase.");
+        }
+    } catch (err) {
+        console.error("Erreur de connexion Supabase:", err);
+    }
+}
 </script>
 </body>
 </html>
