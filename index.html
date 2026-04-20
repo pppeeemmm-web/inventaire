@@ -6,27 +6,26 @@
 <title>PEM — Inventaire & Clusters</title>
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <style>
-/* --- TES STYLES ORIGINAUX (STRICTEMENT IDENTIQUES) --- */
+/* --- TES STYLES ORIGINAUX (CONSERVÉS) --- */
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#1a1a1a;--sf:#242424;--bd:#333;--tx:#e0e0e0;--mt:#888;--ac:#c8a86e;--ad:#8a7040;--dg:#a04040;--wh:#fff;--bk:#000}
 body{font-family:'JetBrains Mono',monospace;background:var(--bg);color:var(--tx);overflow:hidden}
 #app{display:flex;flex-direction:column;height:100vh}
 header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--bd);background:var(--sf);z-index:100}
-header h1{font-size:11px;letter-spacing:2px;color:var(--ac)}
-nav button{background:none;border:none;color:var(--mt);padding:5px 10px;cursor:pointer;font-size:10px;text-transform:uppercase}
+header h1{font-size:11px;letter-spacing:2px;color:var(--ac);text-transform:uppercase}
+nav button{background:none;border:none;color:var(--mt);padding:5px 10px;cursor:pointer;font-size:10px;text-transform:uppercase;letter-spacing:1px}
 nav button.active{color:var(--ac);background:var(--bd)}
 .body{flex:1;display:flex;overflow:hidden}
 .sidebar{width:280px;min-width:280px;border-right:1px solid var(--bd);background:var(--sf);display:flex;flex-direction:column;flex-shrink:0}
-.list{flex:1;overflow-y:auto} /* Scroll conservé */
-.main{flex:1;position:relative;overflow:hidden;background:#0b0b0b}
+.list{flex:1;overflow-y:auto}
+.main{flex:1;position:relative;overflow:hidden;background:#0d0d0d}
 
-/* --- STYLES SPÉCIFIQUES AU MODE CLUSTERS --- */
+/* --- SYSTÈME DE CLUSTERS (AJOUTÉ) --- */
 .cluster-region { position:absolute; border:1px dashed #444; border-radius:50%; width:200px; height:200px; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:move; z-index:5; }
-.cluster-region input { background:transparent; border:none; color:var(--ac); text-align:center; font-family:inherit; font-size:10px; outline:none; width:80%; pointer-events: auto; }
-.draggable-art { position:absolute; cursor:move; border:1px solid var(--bd); z-index:10; background:var(--bg); box-shadow: 2px 2px 10px rgba(0,0,0,0.5); }
-.controls-cluster { position:absolute; top:15px; right:15px; z-index:100; }
-.btn-c { background:var(--ac); color:var(--bk); border:none; padding:8px 12px; font-size:10px; font-weight:bold; cursor:pointer; letter-spacing:1px; }
-.btn-c:hover { background:var(--ad); }
+.cluster-region input { background:transparent; border:none; color:var(--ac); text-align:center; font-family:inherit; font-size:10px; outline:none; width:80%; pointer-events:auto; }
+.draggable-art { position:absolute; cursor:move; border:1px solid var(--bd); z-index:10; background:var(--bg); box-shadow: 4px 4px 15px rgba(0,0,0,0.5); }
+.controls-cluster { position:absolute; top:20px; right:20px; z-index:1000; }
+.btn-c { background:var(--ac); color:var(--bk); border:none; padding:10px 15px; font-size:10px; font-weight:bold; cursor:pointer; }
 </style>
 </head>
 <body>
@@ -42,13 +41,13 @@ nav button.active{color:var(--ac);background:var(--bd)}
     <div class="body">
         <aside class="sidebar" id="sb">
             <div style="padding:10px; border-bottom:1px solid var(--bd)">
-                <input type="text" id="q" placeholder="Rechercher une oeuvre..." oninput="applyF()" style="width:100%; background:#000; border:1px solid var(--bd); color:#fff; padding:8px; font-size:11px; outline:none;">
+                <input type="text" id="q" placeholder="RECHERCHER..." oninput="applyF()" style="width:100%; background:#000; border:1px solid var(--bd); color:#fff; padding:8px; font-size:11px; outline:none;">
             </div>
             <div class="list" id="ls"></div>
         </aside>
         <main class="main" id="mn">
-            <div class="controls-cluster" id="cluster-tools" style="display:none">
-                <button class="btn-c" onclick="addRegion()">+ NOUVEAU CERCLE</button>
+            <div class="controls-cluster" id="cluster-ui" style="display:none">
+                <button class="btn-c" onclick="addRegion()">+ AJOUTER CERCLE</button>
             </div>
             
             <div id="cluster-space" style="width:100%; height:100%; position:relative;"></div>
@@ -70,90 +69,75 @@ async function load() {
     applyF();
 }
 
-// Recherche et filtrage (Ta logique originale)
+// Fonction de filtrage (Sidebar)
 function applyF() {
     const q = document.getElementById('q').value.toLowerCase();
     filtered = oeuvres.filter(o => (o.Titre || "").toLowerCase().includes(q));
     renderList();
 }
 
-// Rendu de la liste dans la sidebar
+// Rendu de la liste (Sidebar)
 function renderList() {
     const ls = document.getElementById('ls');
     ls.innerHTML = filtered.map(o => `
-        <div style="padding:12px; border-bottom:1px solid #222; cursor:pointer; font-size:11px; transition:0.2s;" 
-             onclick="handleListClick(${o.OeuvreID}, '${o.txtImageNameLink}', '${o.Titre ? o.Titre.replace(/'/g, "\\'") : 'Sans Titre'}')"
-             onmouseover="this.style.background='#222'" onmouseout="this.style.background='transparent'">
-            <span style="color:var(--mt); margin-right:8px;">#${o.OeuvreID}</span> ${o.Titre || 'SANS TITRE'}
+        <div style="padding:12px; border-bottom:1px solid #222; cursor:pointer; font-size:11px;" 
+             onclick="handleListClick(${o.OeuvreID}, '${o.txtImageNameLink}', '${o.Titre ? o.Titre.replace(/'/g, "\\'") : 'Sans Titre'}')">
+            <span style="color:#555; margin-right:8px;">#${o.OeuvreID}</span> ${o.Titre || 'SANS TITRE'}
         </div>
     `).join('');
 }
 
-// --- LOGIQUE DE L'ONGLET CLUSTERS ---
+// --- LOGIQUE CLUSTER ---
 
-// Gère le clic dans la liste selon le mode actif
-function handleListClick(id, img, titre) {
+function handleListClick(id, imgName, titre) {
     if (curV === 'clusters') {
-        spawnArt(img, titre); // En mode cluster, on fait apparaître l'image
+        // Si on est dans l'onglet Clusters, on fait apparaître l'image au centre
+        const space = document.getElementById('cluster-space');
+        const img = document.createElement('img');
+        img.src = `${SB_URL}/storage/v1/object/public/paintings/${imgName}?width=150`;
+        img.className = 'draggable-art';
+        img.style.left = '50px';
+        img.style.top = '50px';
+        img.style.width = '100px';
+        img.title = titre;
+        
+        makeDraggable(img);
+        space.appendChild(img);
     } else {
-        // Ici, tu peux remettre ta fonction originale pour voir le détail/éditer
-        console.log("Mode Liste : Voir détail de", id);
+        // Mode normal : tu peux ici appeler ta fonction de détail
+        console.log("Détail de l'oeuvre :", id);
     }
 }
 
-// Fait apparaître une œuvre dans l'espace Cluster
-function spawnArt(imgName, titre) {
-    const space = document.getElementById('cluster-space');
-    const img = document.createElement('img');
-    // On utilise un format de vignette pour ne pas ralentir le navigateur
-    img.src = `${SB_URL}/storage/v1/object/public/paintings/${imgName}?width=120`;
-    img.className = 'draggable-art';
-    img.style.left = '50px';
-    img.style.top = '50px';
-    img.style.width = '80px';
-    img.title = titre;
-    
-    makeDraggable(img);
-    space.appendChild(img);
-}
-
-// Ajoute un nouveau cercle thématique vide
-window.addRegion = function() {
+// Ajouter un cercle thématique
+function addRegion() {
     const space = document.getElementById('cluster-space');
     const div = document.createElement('div');
     div.className = 'cluster-region';
     div.style.left = '300px';
     div.style.top = '200px';
-    div.innerHTML = `<input type="text" placeholder="NOM DU THÈME..." onclick="this.focus()">`;
+    div.innerHTML = `<input type="text" placeholder="NOM DU THÈME" onclick="this.focus()">`;
     
     makeDraggable(div);
     space.appendChild(div);
 }
 
-// Changeur de vue (Nav)
-window.sv = function(v) {
+// Switcher de vue
+function sv(v) {
     curV = v;
-    // Mise à jour visuelle des boutons
+    // Boutons navigation
     document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
-    const activeBtn = document.getElementById('b-' + v);
-    if(activeBtn) activeBtn.classList.add('active');
-
+    document.getElementById('b-' + v).classList.add('active');
+    
     // Affichage des outils de cluster
-    document.getElementById('cluster-tools').style.display = (v === 'clusters') ? 'block' : 'none';
-    
-    if (v !== 'clusters') {
-        // Si on quitte le mode cluster, on peut choisir de vider ou garder l'espace
-        // document.getElementById('cluster-space').innerHTML = ''; 
-    }
-    
-    console.log("Vue actuelle :", v);
+    document.getElementById('cluster-ui').style.display = (v === 'clusters') ? 'block' : 'none';
 }
 
-// Fonction de Drag & Drop universelle (images et cercles)
+// Fonction universelle de Drag & Drop
 function makeDraggable(el) {
     let px = 0, py = 0;
     el.onmousedown = e => {
-        if(e.target.tagName === 'INPUT') return; // Permet d'écrire dans le champ texte
+        if(e.target.tagName === 'INPUT') return; // Laisse l'input éditable
         e.preventDefault();
         px = e.clientX; py = e.clientY;
         document.onmousemove = e => {
