@@ -2,72 +2,49 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PEM — Canvas 3000px</title>
+<title>PEM — Map Engine v4</title>
 <style>
-/* --- BASE --- */
 *{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#121212;--sf:#1e1e1e;--bd:#333;--tx:#e0e0e0;--ac:#c8a86e;--dg:#a04040}
+:root{--bg:#111;--sf:#1a1a1a;--bd:#333;--tx:#eee;--ac:#c8a86e;--dg:#ff4444}
 body{font-family:monospace;background:var(--bg);color:var(--tx);overflow:hidden;height:100vh}
-#app{display:flex;height:100vh;width:100vw}
 
-/* --- SIDEBAR (Fixe 300px pour la stabilité) --- */
-.sidebar {
-    width: 300px; min-width: 300px; background: var(--sf);
-    border-right: 1px solid var(--bd); display: flex; flex-direction: column; z-index: 100;
-}
+#app{display:flex;height:100vh}
+
+/* SIDEBAR FIXE */
+.sidebar { width: 300px; background: var(--sf); border-right: 1px solid var(--bd); display: flex; flex-direction: column; z-index: 100;}
 .filters { padding: 15px; border-bottom: 1px solid var(--bd); }
 .filters input { width: 100%; background: #000; border: 1px solid var(--bd); color: var(--ac); padding: 8px; outline: none; }
-
-.list { 
-    flex: 1; overflow-y: auto; padding: 10px;
-    display: grid; grid-template-columns: repeat(5, 50px); gap: 5px;
-}
-
+.list { flex: 1; overflow-y: auto; padding: 10px; display: grid; grid-template-columns: repeat(5, 50px); gap: 5px; }
 .list-item { width: 50px; height: 50px; cursor: grab; }
-.thumb { 
-    width: 50px; height: 50px; border-radius: 50%; border: 1px solid #444; 
-    object-fit: cover; display: block; 
-}
+.thumb { width: 44px; height: 44px; border-radius: 50%; border: 1px solid #444; object-fit: cover; }
 
-/* --- CANVAS AREA (Scrollable) --- */
-.viewport { flex: 1; overflow: auto; background: #0a0a0a; position: relative; }
+/* VIEWPORT & CANVAS */
+.viewport { flex: 1; position: relative; overflow: hidden; cursor: grab; }
+.viewport:active { cursor: grabbing; }
 
 #canvas {
-    width: 3000px; height: 3000px;
-    background-image: radial-gradient(#222 1px, transparent 1px);
-    background-size: 50px 50px;
-    position: relative;
+    position: absolute; width: 5000px; height: 5000px; transform-origin: 0 0;
+    background-image: radial-gradient(#222 1px, transparent 1px); background-size: 50px 50px;
 }
 
-/* Éléments sur le canvas */
-.art-node {
-    position: absolute; width: 50px; height: 50px;
-    cursor: move; z-index: 10;
-}
-.art-node img { width: 50px; height: 50px; border-radius: 50%; border: 2px solid var(--ac); pointer-events: none; }
-.art-node .id-label {
-    position: absolute; bottom: -5px; left: 50%; transform: translateX(-50%);
-    font-size: 8px; background: #000; color: var(--ac); padding: 0 2px;
-}
+/* NODES */
+.node { position: absolute; z-index: 10; user-select: none; }
+.art-node { width: 50px; height: 50px; min-width: 15px; } /* Min size clamp via JS */
+.art-node img { width: 100%; height: 100%; border-radius: 50%; border: 2px solid var(--ac); display: block; }
 
-.zone-node {
-    position: absolute; border: 2px dashed #666; border-radius: 50%;
-    background: rgba(200,168,110,0.05); display: flex; align-items: center; justify-content: center;
+.zone-node { 
+    border: 2px dashed var(--ac); border-radius: 50%; background: rgba(200,168,110,0.05);
+    display: flex; align-items: center; justify-content: center; min-width: 50px;
 }
-.zone-node input { background: transparent; border: none; color: #888; text-align: center; width: 80%; outline: none; }
+.zone-node input { background: transparent; border: none; color: var(--ac); text-align: center; width: 80%; outline: none; font-size: 14px; font-weight: bold; }
 
-/* Trash */
-#trash {
-    position: fixed; bottom: 30px; right: 30px; width: 70px; height: 70px;
-    border-radius: 50%; border: 2px solid var(--dg); color: var(--dg);
-    display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.8);
-    font-size: 30px; z-index: 200;
-}
-
-.btn-add {
-    position: fixed; top: 20px; right: 40px; padding: 10px 20px;
-    background: var(--ac); color: #000; border: none; cursor: pointer; font-weight: bold; z-index: 150;
+/* UI */
+.ui-top { position: absolute; top: 20px; right: 20px; display: flex; gap: 10px; z-index: 1000; }
+.btn { background: var(--sf); color: var(--tx); border: 1px solid var(--bd); padding: 8px 15px; cursor: pointer; font-size: 10px; }
+.btn:hover { border-color: var(--ac); }
+#trash { 
+    position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; border-radius: 50%; 
+    border: 2px solid var(--dg); color: var(--dg); display: none; align-items: center; justify-content: center; z-index: 2000; background: #000;
 }
 </style>
 </head>
@@ -75,12 +52,17 @@ body{font-family:monospace;background:var(--bg);color:var(--tx);overflow:hidden;
 
 <div id="app">
     <aside class="sidebar">
-        <div class="filters"><input type="text" id="q" placeholder="FILTRER ID..." oninput="renderSidebar()"></div>
+        <div class="filters"><input type="text" id="q" placeholder="RECHERCHER ID..." oninput="renderSidebar()"></div>
         <div class="list" id="ls"></div>
     </aside>
 
-    <main class="viewport">
-        <button class="btn-add" onclick="addZone()">+ AJOUTER CERCLE</button>
+    <main class="viewport" id="v">
+        <div class="ui-top">
+            <span id="zVal" style="font-size:12px; align-self:center">100%</span>
+            <button class="btn" onclick="addZone()">+ CERCLE</button>
+            <button class="btn" onclick="saveMap()">💾 SAUVEGARDER</button>
+            <button class="btn" onclick="clearMap()" style="color:var(--dg)">RESET</button>
+        </div>
         <div id="canvas"></div>
         <div id="trash">×</div>
     </main>
@@ -90,91 +72,151 @@ body{font-family:monospace;background:var(--bg);color:var(--tx);overflow:hidden;
 const SB="https://mcrzsxrcoexnlwmaunte.supabase.co", BKT="paintings";
 const KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1jcnpzeHJjb2V4bmx3bWF1bnRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxOTM3NDEsImV4cCI6MjA5MTc2OTc0MX0.ba6g7WsOA3dVq2ltDbelTMpzJhQkZiLB8HjrRhAhGuo";
 
-let oeuvres = [];
+let oeuvres = [], scale = 1, px = 0, py = 0;
 const canvas = document.getElementById('canvas');
+const viewport = document.getElementById('v');
 
 async function init() {
-    const r = await fetch(`${SB}/rest/v1/Oeuvres?select=OeuvreID,txtImageNameLink&order=OeuvreID.desc&apikey=${KEY}`, { headers: { apikey: KEY } });
+    const r = await fetch(`${SB}/rest/v1/Oeuvres?select=OeuvreID,txtImageNameLink&apikey=${KEY}`, { headers: { apikey: KEY } });
     oeuvres = await r.json();
     renderSidebar();
+    loadMap();
+    updateTransform();
 }
 
 function renderSidebar() {
     const q = document.getElementById('q').value;
     const filtered = oeuvres.filter(o => String(o.OeuvreID).includes(q));
     document.getElementById('ls').innerHTML = filtered.map(o => `
-        <div class="list-item" draggable="true" ondragstart="onDrag(event, '${o.txtImageNameLink}', ${o.OeuvreID})">
+        <div class="list-item" draggable="true" ondragstart="onDragStart(event, '${o.txtImageNameLink}', ${o.OeuvreID})">
             <img class="thumb" src="${SB}/storage/v1/render/image/public/${BKT}/${encodeURIComponent(o.txtImageNameLink)}?width=50&height=50&resize=cover">
         </div>`).join('');
 }
 
-function onDrag(e, img, id) {
+function updateTransform() {
+    canvas.style.transform = `translate(${px}px, ${py}px) scale(${scale})`;
+    document.getElementById('zVal').textContent = Math.round(scale * 100) + "%";
+    
+    // Empêcher les miniatures de devenir trop petites (Min 15px)
+    const minScaleForThumb = 15 / 50; 
+    const thumbScale = Math.max(1, minScaleForThumb / scale);
+    document.querySelectorAll('.art-node').forEach(node => {
+        node.style.transform = `scale(${thumbScale})`;
+    });
+}
+
+// ZOOM
+viewport.onwheel = e => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    const nextScale = Math.min(Math.max(scale * delta, 0.02), 5);
+    const rect = viewport.getBoundingClientRect();
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    px = mx - (mx - px) * (nextScale / scale);
+    py = my - (my - py) * (nextScale / scale);
+    scale = nextScale;
+    updateTransform();
+};
+
+// DRAG FROM SIDEBAR
+function onDragStart(e, img, id) {
     e.dataTransfer.setData("img", img);
     e.dataTransfer.setData("id", id);
 }
 
-canvas.ondragover = e => e.preventDefault();
-canvas.ondrop = e => {
+viewport.ondragover = e => e.preventDefault();
+viewport.ondrop = e => {
     e.preventDefault();
     const img = e.dataTransfer.getData("img");
     const id = e.dataTransfer.getData("id");
-    
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left - 25;
-    const y = e.clientY - rect.top - 25;
+    if(!img) return;
 
-    const div = document.createElement('div');
-    div.className = 'art-node';
-    div.style.left = x + 'px'; div.style.top = y + 'px';
-    div.innerHTML = `<img src="${SB}/storage/v1/render/image/public/${BKT}/${encodeURIComponent(img)}?width=100&height=100&resize=cover"><div class="id-label">${id}</div>`;
-    
-    bindDrag(div);
-    canvas.appendChild(div);
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / scale - 25;
+    const y = (e.clientY - rect.top) / scale - 25;
+    createArtNode(img, id, x, y);
 };
 
-function bindDrag(el) {
-    let active = false, ox, oy;
+function createArtNode(img, id, x, y) {
+    const div = document.createElement('div');
+    div.className = 'node art-node';
+    div.dataset.img = img; div.dataset.id = id;
+    div.style.left = x + 'px'; div.style.top = y + 'px';
+    div.innerHTML = `<img src="${SB}/storage/v1/render/image/public/${BKT}/${encodeURIComponent(img)}?width=100&height=100&resize=cover">`;
+    bindNode(div);
+    canvas.appendChild(div);
+    updateTransform();
+}
 
+function bindNode(el) {
+    let lx, ly;
     el.onmousedown = e => {
         if(e.target.tagName === 'INPUT') return;
-        active = true;
-        el.style.zIndex = 1000;
-        // Position relative de la souris dans l'objet
-        ox = e.clientX - el.offsetLeft;
-        oy = e.clientY - el.offsetTop;
+        e.preventDefault(); e.stopPropagation();
+        lx = e.clientX; ly = e.clientY;
         document.getElementById('trash').style.display = 'flex';
+        el.style.zIndex = 2000;
 
         const move = e => {
-            if(!active) return;
-            // Calcul direct par rapport au canvas parent
-            el.style.left = (e.clientX - ox) + "px";
-            el.style.top = (e.clientY - oy) + "px";
+            const dx = (e.clientX - lx) / scale;
+            const dy = (e.clientY - ly) / scale;
+            el.style.left = (parseFloat(el.style.left) + dx) + "px";
+            el.style.top = (parseFloat(el.style.top) + dy) + "px";
+            lx = e.clientX; ly = e.clientY;
         };
 
         const up = e => {
-            active = false;
-            el.style.zIndex = 10;
-            document.getElementById('trash').style.display = 'none';
-            const t = document.getElementById('trash').getBoundingClientRect();
-            if(e.clientX > t.left && e.clientY > t.top) el.remove();
             window.removeEventListener('mousemove', move);
             window.removeEventListener('mouseup', up);
+            document.getElementById('trash').style.display = 'none';
+            el.style.zIndex = 10;
+            const t = document.getElementById('trash').getBoundingClientRect();
+            if(e.clientX > t.left && e.clientY > t.top) el.remove();
         };
-
         window.addEventListener('mousemove', move);
         window.addEventListener('mouseup', up);
     };
 }
 
-function addZone() {
+// PAN FOND
+let isPan = false, sx, sy;
+viewport.onmousedown = e => {
+    if(e.target === viewport || e.target === canvas) {
+        isPan = true; sx = e.clientX - px; sy = e.clientY - py;
+    }
+};
+window.onmousemove = e => { if(isPan) { px = e.clientX - sx; py = e.clientY - sy; updateTransform(); } };
+window.onmouseup = () => isPan = false;
+
+function addZone(w=400, h=400, x=500, y=500, txt="GROUPE") {
     const div = document.createElement('div');
-    div.className = 'zone-node';
-    div.style.width = '400px'; div.style.height = '400px';
-    div.style.left = '500px'; div.style.top = '500px';
-    div.innerHTML = `<input type="text" value="THEME">`;
-    bindDrag(div);
+    div.className = 'node zone-node';
+    div.style.width = w+'px'; div.style.height = h+'px';
+    div.style.left = x+'px'; div.style.top = y+'px';
+    div.innerHTML = `<input type="text" value="${txt}">`;
+    bindNode(div);
     canvas.appendChild(div);
 }
+
+// SAUVEGARDE
+function saveMap() {
+    const data = {
+        nodes: Array.from(document.querySelectorAll('.art-node')).map(n => ({x: n.style.left, y: n.style.top, img: n.dataset.img, id: n.dataset.id})),
+        zones: Array.from(document.querySelectorAll('.zone-node')).map(z => ({x: z.style.left, y: z.style.top, w: z.style.width, h: z.style.height, txt: z.querySelector('input').value}))
+    };
+    localStorage.setItem('pem_map', JSON.stringify(data));
+    alert("Carte sauvegardée !");
+}
+
+function loadMap() {
+    const raw = localStorage.getItem('pem_map');
+    if(!raw) return;
+    const data = JSON.parse(raw);
+    data.nodes.forEach(n => createArtNode(n.img, n.id, parseFloat(n.x), parseFloat(n.y)));
+    data.zones.forEach(z => addZone(parseFloat(z.w), parseFloat(z.h), parseFloat(z.x), parseFloat(z.y), z.txt));
+}
+
+function clearMap() { if(confirm("Tout effacer ?")) { canvas.innerHTML = ''; localStorage.removeItem('pem_map'); } }
 
 init();
 </script>
