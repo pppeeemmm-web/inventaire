@@ -2,40 +2,38 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>PEM — Map Engine v8 (Final Stability)</title>
+<title>PEM — Logic Coordinates Engine</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#111;--sf:#1a1a1a;--bd:#333;--tx:#eee;--ac:#c8a86e;--dg:#ff4444}
 body{font-family:monospace;background:var(--bg);color:var(--tx);overflow:hidden;height:100vh}
 #app{display:flex;height:100vh}
 
-/* --- SIDEBAR --- */
+/* SIDEBAR */
 .sidebar { width: 300px; background: var(--sf); border-right: 1px solid var(--bd); display: flex; flex-direction: column; z-index: 100;}
 .filters { padding: 15px; border-bottom: 1px solid var(--bd); }
 .filters input { width: 100%; background: #000; border: 1px solid var(--bd); color: var(--ac); padding: 10px; outline: none; }
-.list { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-wrap: wrap; align-content: flex-start;}
-.list-item { width: 50px; height: 50px; cursor: grab; margin: 2px; }
+.list { flex: 1; overflow-y: auto; padding: 10px; display: grid; grid-template-columns: repeat(5, 50px); gap: 8px; }
+.list-item { width: 50px; height: 50px; cursor: grab; }
 .thumb { width: 50px; height: 50px; border-radius: 50%; border: 1px solid #444; object-fit: cover; }
 
-/* --- CANVAS --- */
+/* VIEWPORT */
 .viewport { flex: 1; position: relative; overflow: hidden; background: #0a0a0a; }
 #canvas {
     position: absolute; width: 10000px; height: 10000px; transform-origin: 0 0;
     background-image: radial-gradient(#222 1px, transparent 1px); background-size: 50px 50px;
+    top:0; left:0; pointer-events: none; /* Le canvas ne bloque pas les clics */
 }
 
-/* --- NODES --- */
-.node { position: absolute; z-index: 10; user-select: none; }
+/* NODES */
+.node { position: absolute; z-index: 10; user-select: none; pointer-events: auto; }
 .art-node { width: 80px; height: 80px; transform-origin: center center; }
-.art-node img { width: 100%; height: 100%; border-radius: 50%; border: 2px solid var(--ac); display: block; pointer-events: none; }
+.art-node img { width: 80px; height: 80px; border-radius: 50%; border: 2px solid var(--ac); display: block; pointer-events: none; }
 .id-tag { position: absolute; bottom: -5px; left: 50%; transform: translateX(-50%); font-size: 9px; background: #000; color: var(--ac); padding: 1px 4px; border: 1px solid var(--ac); border-radius: 3px; pointer-events: none;}
-
-.zone-node { border: 2px dashed #555; border-radius: 50%; background: rgba(200,168,110,0.03); display: flex; align-items: center; justify-content: center; }
-.zone-node input { background: transparent; border: none; color: #777; text-align: center; width: 80%; outline: none; font-weight: bold; }
 
 .ui-top { position: absolute; top: 20px; right: 20px; display: flex; gap: 10px; z-index: 1000; }
 .btn { background: var(--sf); color: var(--tx); border: 1px solid var(--bd); padding: 8px 15px; cursor: pointer; font-size: 11px; }
-#trash { position: fixed; bottom: 30px; right: 30px; width: 70px; height: 70px; border-radius: 50%; border: 2px solid var(--dg); color: var(--dg); display: none; align-items: center; justify-content: center; z-index: 2000; background: #000; }
+#trash { position: fixed; bottom: 30px; right: 30px; width: 70px; height: 70px; border-radius: 50%; border: 2px solid var(--dg); color: var(--dg); display: none; align-items: center; justify-content: center; z-index: 2000; background: #000; font-size: 24px; }
 </style>
 </head>
 <body>
@@ -49,7 +47,6 @@ body{font-family:monospace;background:var(--bg);color:var(--tx);overflow:hidden;
     <main class="viewport" id="v">
         <div class="ui-top">
             <span id="zVal" style="color:var(--ac)">100%</span>
-            <button class="btn" onclick="addZone()">+ CERCLE</button>
             <button class="btn" onclick="saveMap()">SAUVEGARDER</button>
         </div>
         <div id="canvas"></div>
@@ -77,7 +74,7 @@ function renderSidebar() {
     const q = document.getElementById('q').value;
     const filtered = oeuvres.filter(o => String(o.OeuvreID).includes(q));
     document.getElementById('ls').innerHTML = filtered.map(o => `
-        <div class="list-item" draggable="true" ondragstart="onDS(event, '${o.txtImageNameLink}', ${o.OeuvreID})">
+        <div class="list-item" draggable="true" ondragstart="e => { e.dataTransfer.setData('img', '${o.txtImageNameLink}'); e.dataTransfer.setData('id', ${o.OeuvreID}); }">
             <img class="thumb" src="${SB}/storage/v1/render/image/public/${BKT}/${encodeURIComponent(o.txtImageNameLink)}?width=100&height=100&resize=cover">
         </div>`).join('');
 }
@@ -86,11 +83,12 @@ function updateTransform() {
     canvas.style.transform = `translate(${px}px, ${py}px) scale(${scale})`;
     document.getElementById('zVal').textContent = Math.round(scale * 100) + "%";
     
-    // Contrainte : Max 80px (si zoom > 1) et Min 15px (si zoom < 0.18)
+    // Application visuelle du scale inverse (80px max / 15px min) sans toucher aux coordonnées
     const sFix = scale > 1 ? (1 / scale) : Math.max(1, (15/80) / scale);
     document.querySelectorAll('.art-node').forEach(n => n.style.transform = `scale(${sFix})`);
 }
 
+// ZOOM
 viewport.onwheel = e => {
     e.preventDefault();
     const ns = Math.min(Math.max(scale * (e.deltaY > 0 ? 0.9 : 1.1), 0.01), 8);
@@ -101,8 +99,7 @@ viewport.onwheel = e => {
     updateTransform();
 };
 
-function onDS(e, img, id) { e.dataTransfer.setData("img", img); e.dataTransfer.setData("id", id); }
-
+// DROP
 viewport.ondragover = e => e.preventDefault();
 viewport.ondrop = e => {
     e.preventDefault();
@@ -117,74 +114,68 @@ function createNode(img, id, x, y) {
     const div = document.createElement('div');
     div.className = 'node art-node';
     div.dataset.img = img; div.dataset.id = id;
+    
+    // Coordonnées Logiques (Stockées en float pour précision)
+    div.lx = x; div.ly = y;
     div.style.left = x + 'px'; div.style.top = y + 'px';
+    
     div.innerHTML = `<img src="${SB}/storage/v1/render/image/public/${BKT}/${encodeURIComponent(img)}?width=160&height=160&resize=cover"><div class="id-tag">${id}</div>`;
-    bindNode(div);
+    
+    bindMovement(div);
     canvas.appendChild(div);
     updateTransform();
 }
 
-function bindNode(el) {
+function bindMovement(el) {
     el.onmousedown = e => {
-        if(e.target.tagName === 'INPUT') return;
         e.preventDefault(); e.stopPropagation();
-        
-        document.getElementById('trash').style.display = 'flex';
         el.style.zIndex = 2000;
+        document.getElementById('trash').style.display = 'flex';
 
-        const move = e => {
-            const r = canvas.getBoundingClientRect();
-            // On calcule la position directement par rapport au rectangle du canvas
-            // C'est la méthode la plus robuste contre les disparitions
-            const nx = (e.clientX - r.left) / scale - 40;
-            const ny = (e.clientY - r.top) / scale - 40;
-            el.style.left = nx + "px";
-            el.style.top = ny + "px";
+        const onMove = ev => {
+            // Le mouvement de la souris (pixels écran) est converti en unités canvas
+            const movementX = ev.movementX / scale;
+            const movementY = ev.movementY / scale;
+            
+            // Mise à jour des coordonnées logiques
+            el.lx += movementX;
+            el.ly += movementY;
+            
+            // Application au style (rendu)
+            el.style.left = el.lx + "px";
+            el.style.top = el.ly + "px";
         };
 
-        const up = e => {
-            window.removeEventListener('mousemove', move);
-            window.removeEventListener('mouseup', up);
+        const onUp = ev => {
+            window.removeEventListener('mousemove', onMove);
+            window.removeEventListener('mouseup', onUp);
             document.getElementById('trash').style.display = 'none';
             el.style.zIndex = 10;
             const t = document.getElementById('trash').getBoundingClientRect();
-            if(e.clientX > t.left && e.clientY > t.top) el.remove();
+            if(ev.clientX > t.left && ev.clientY > t.top) el.remove();
         };
-        window.addEventListener('mousemove', move);
-        window.addEventListener('mouseup', up);
+
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
     };
 }
 
-let isPan = false, sx, sy;
-viewport.onmousedown = e => { if(e.target === viewport || e.target === canvas) { isPan = true; sx = e.clientX - px; sy = e.clientY - py; } };
-window.onmousemove = e => { if(isPan) { px = e.clientX - sx; py = e.clientY - sy; updateTransform(); } };
+// PANNING
+let isPan = false;
+viewport.onmousedown = e => { if(e.target === viewport) isPan = true; };
+window.onmousemove = e => { if(isPan) { px += e.movementX; py += e.movementY; updateTransform(); } };
 window.onmouseup = () => isPan = false;
 
-function addZone(w=400, h=400, x=500, y=500, txt="GROUPE") {
-    const div = document.createElement('div');
-    div.className = 'node zone-node';
-    div.style.width = w+'px'; div.style.height = h+'px';
-    div.style.left = x+'px'; div.style.top = y+'px';
-    div.innerHTML = `<input type="text" value="${txt}">`;
-    bindNode(div);
-    canvas.appendChild(div);
-}
-
 function saveMap() {
-    const d = {
-        n: Array.from(document.querySelectorAll('.art-node')).map(n => ({x: n.style.left, y: n.style.top, img: n.dataset.img, id: n.dataset.id})),
-        z: Array.from(document.querySelectorAll('.zone-node')).map(z => ({x: z.style.left, y: z.style.top, w: z.style.width, h: z.style.height, t: z.querySelector('input').value}))
-    };
-    localStorage.setItem('pem_map_v8', JSON.stringify(d));
-    alert("Map Sauvegardée");
+    const data = Array.from(document.querySelectorAll('.art-node')).map(n => ({x: n.lx, y: n.ly, img: n.dataset.img, id: n.dataset.id}));
+    localStorage.setItem('pem_v10', JSON.stringify(data));
+    alert("Position sauvegardées (Coordonnées Logiques)");
 }
 
 function loadMap() {
-    const raw = localStorage.getItem('pem_map_v8');
+    const raw = localStorage.getItem('pem_v10');
     if(!raw) return;
-    const d = JSON.parse(raw);
-    d.n.forEach(n => createNode(n.img, n.id, parseFloat(n.x), parseFloat(n.y)));
-    d.z.forEach(z => addZone(parseFloat(z.w), parseFloat(z.h), parseFloat(z.x), parseFloat(z.y), z.t));
+    JSON.parse(raw).forEach(n => createNode(n.img, n.id, n.x, n.y));
 }
 
 init();
