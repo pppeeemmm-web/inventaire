@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>PEM — Engine v14 (Fixed Thumbnails + Zones)</title>
+<title>PEM — Engine v15 (Fixed Position Persistence)</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#111;--sf:#1a1a1a;--bd:#333;--tx:#eee;--ac:#c8a86e;--dg:#ff4444}
@@ -19,11 +19,7 @@ body{font-family:monospace;background:var(--bg);color:var(--tx);overflow:hidden;
 
 /* VIEWPORT */
 .viewport { flex: 1; position: relative; overflow: hidden; background: #080808; }
-#canvas {
-    position: absolute; width: 10000px; height: 10000px; transform-origin: 0 0;
-    background-image: radial-gradient(#222 1px, transparent 1px); background-size: 80px 80px;
-    top:0; left:0;
-}
+#canvas { position: absolute; width: 10000px; height: 10000px; transform-origin: 0 0; background-image: radial-gradient(#222 1px, transparent 1px); background-size: 80px 80px; top:0; left:0; }
 
 /* NODES */
 .node { position: absolute; z-index: 10; user-select: none; }
@@ -37,7 +33,7 @@ body{font-family:monospace;background:var(--bg);color:var(--tx);overflow:hidden;
 .resizer { position: absolute; bottom: 10%; right: 10%; width: 14px; height: 14px; background: var(--ac); cursor: nwse-resize; border-radius: 2px; z-index: 20; border: 2px solid #000; }
 
 .ui-top { position: absolute; top: 20px; right: 20px; display: flex; gap: 10px; z-index: 1000; }
-.btn { background: var(--sf); color: var(--tx); border: 1px solid var(--bd); padding: 8px 15px; cursor: pointer; font-size: 11px; }
+.btn { background: var(--sf); color: var(--tx); border: 1px solid var(--bd); padding: 8px 15px; cursor: pointer; font-size: 11px; border-radius: 4px;}
 #trash { position: fixed; bottom: 30px; right: 30px; width: 70px; height: 70px; border-radius: 50%; border: 2px solid var(--dg); color: var(--dg); display: none; align-items: center; justify-content: center; z-index: 2000; background: #000; font-size: 24px; }
 </style>
 </head>
@@ -51,7 +47,7 @@ body{font-family:monospace;background:var(--bg);color:var(--tx);overflow:hidden;
 
     <main class="viewport" id="v">
         <div class="ui-top">
-            <span id="zVal" style="color:var(--ac); align-self:center">100%</span>
+            <span id="zVal" style="color:var(--ac); align-self:center; margin-right:10px">100%</span>
             <button class="btn" onclick="addZone()">● CERCLE</button>
             <button class="btn" onclick="saveMap()">💾 SAUVEGARDER</button>
         </div>
@@ -108,15 +104,20 @@ viewport.ondrop = e => {
     const img = e.dataTransfer.getData("img"), id = e.dataTransfer.getData("id");
     if(!img) return;
     const r = canvas.getBoundingClientRect();
-    createNode(img, id, (e.clientX - r.left) / scale - 40, (e.clientY - r.top) / scale - 40);
+    const x = (e.clientX - r.left) / scale - 40;
+    const y = (e.clientY - r.top) / scale - 40;
+    createNode(img, id, x, y);
 };
 
 function createNode(img, id, x, y) {
     const div = document.createElement('div');
     div.className = 'node art-node';
-    div.dataset.img = img; div.dataset.id = id;
-    div.lx = x; div.ly = y; // Stockage coordonnée logique
-    div.style.left = x + 'px'; div.style.top = y + 'px';
+    div.dataset.img = img; 
+    div.dataset.id = id;
+    div.dataset.lx = x; // Persistance forcée dans le DOM
+    div.dataset.ly = y;
+    div.style.left = x + 'px'; 
+    div.style.top = y + 'px';
     div.innerHTML = `<img src="${SB}/storage/v1/render/image/public/${BKT}/${encodeURIComponent(img)}?width=160&height=160&resize=cover"><div class="id-tag">${id}</div>`;
     bindMovement(div);
     canvas.appendChild(div);
@@ -126,30 +127,31 @@ function createNode(img, id, x, y) {
 function addZone(x=500, y=500, size=300, label="GROUPE") {
     const div = document.createElement('div');
     div.className = 'node zone-node';
-    div.lx = x; div.ly = y; div.lSize = size;
+    div.dataset.lx = x; 
+    div.dataset.ly = y; 
+    div.dataset.lSize = size;
     div.style.left = x+'px'; div.style.top = y+'px';
     div.style.width = size+'px'; div.style.height = size+'px';
     div.innerHTML = `<input type="text" value="${label}"><div class="resizer"></div>`;
     
     bindMovement(div);
     
-    // Logique Resizer spécifique au cercle
     const resizer = div.querySelector('.resizer');
     resizer.onmousedown = e => {
         e.preventDefault(); e.stopPropagation();
         const startX = e.clientX;
-        const initSize = div.lSize;
+        const initSize = parseFloat(div.dataset.lSize);
         const move = ev => {
             const delta = (ev.clientX - startX) / scale;
-            div.lSize = Math.max(50, initSize + delta);
-            div.style.width = div.lSize + "px";
-            div.style.height = div.lSize + "px";
+            const newSize = Math.max(50, initSize + delta);
+            div.dataset.lSize = newSize;
+            div.style.width = newSize + "px";
+            div.style.height = newSize + "px";
         };
         const up = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); };
         window.addEventListener('mousemove', move);
         window.addEventListener('mouseup', up);
     };
-
     canvas.appendChild(div);
 }
 
@@ -158,15 +160,18 @@ function bindMovement(el) {
         if(e.target.className === 'resizer' || e.target.tagName === 'INPUT') return;
         e.preventDefault(); e.stopPropagation();
         const startX = e.clientX, startY = e.clientY;
-        const initLX = el.lx, initLY = el.ly;
+        const initLX = parseFloat(el.dataset.lx);
+        const initLY = parseFloat(el.dataset.ly);
         document.getElementById('trash').style.display = 'flex';
         el.style.zIndex = 2000;
 
         const move = ev => {
-            el.lx = initLX + (ev.clientX - startX) / scale;
-            el.ly = initLY + (ev.clientY - startY) / scale;
-            el.style.left = el.lx + "px";
-            el.style.top = el.ly + "px";
+            const nx = initLX + (ev.clientX - startX) / scale;
+            const ny = initLY + (ev.clientY - startY) / scale;
+            el.dataset.lx = nx;
+            el.dataset.ly = ny;
+            el.style.left = nx + "px";
+            el.style.top = ny + "px";
         };
         const up = ev => {
             window.removeEventListener('mousemove', move);
@@ -187,19 +192,19 @@ window.onmouseup = () => isPan = false;
 
 function saveMap() {
     const data = {
-        arts: Array.from(document.querySelectorAll('.art-node')).map(n => ({x: n.lx, y: n.ly, img: n.dataset.img, id: n.dataset.id})),
-        zones: Array.from(document.querySelectorAll('.zone-node')).map(z => ({x: z.lx, y: z.ly, s: z.lSize, t: z.querySelector('input').value}))
+        arts: Array.from(document.querySelectorAll('.art-node')).map(n => ({x: n.dataset.lx, y: n.dataset.ly, img: n.dataset.img, id: n.dataset.id})),
+        zones: Array.from(document.querySelectorAll('.zone-node')).map(z => ({x: z.dataset.lx, y: z.dataset.ly, s: z.dataset.lSize, t: z.querySelector('input').value}))
     };
-    localStorage.setItem('pem_v14', JSON.stringify(data));
-    alert("Map Sauvegardée");
+    localStorage.setItem('pem_v15_stable', JSON.stringify(data));
+    alert("Map Sauvegardée !");
 }
 
 function loadMap() {
-    const raw = localStorage.getItem('pem_v14');
+    const raw = localStorage.getItem('pem_v15_stable');
     if(!raw) return;
     const d = JSON.parse(raw);
-    d.arts.forEach(n => createNode(n.img, n.id, n.x, n.y));
-    d.zones.forEach(z => addZone(z.x, z.y, z.s, z.t));
+    d.arts.forEach(n => createNode(n.img, n.id, parseFloat(n.x), parseFloat(n.y)));
+    d.zones.forEach(z => addZone(parseFloat(z.x), parseFloat(z.y), parseFloat(z.s), z.t));
 }
 
 init();
