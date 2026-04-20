@@ -3,20 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PEM — Inventaire</title>
+<title>PEM — Workspace Clusters</title>
 <style>
 /* --- BASE --- */
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#1a1a1a;--sf:#242424;--bd:#333;--tx:#e0e0e0;--mt:#888;--ac:#c8a86e;--ad:#8a7040;--dg:#a04040;--wh:#fff;--bk:#000}
 body{font-family:'JetBrains Mono',monospace;background:var(--bg);color:var(--tx);overflow:hidden;height:100vh}
-#app{display:flex;flex-direction:column;height:100%;overflow:hidden}
+#app{display:flex;flex-direction:column;height:100%}
 
 header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--bd);background:var(--sf);z-index:110}
 header h1{font-size:12px;letter-spacing:2px;color:var(--ac);text-transform:uppercase}
 
 .body-container{flex:1;display:flex;overflow:hidden;position:relative}
 
-/* --- SIDEBAR HOVER (100px -> 500px) --- */
+/* --- SIDEBAR HOVER (100px -> 500px, 10 COL) --- */
 .sidebar {
     width: 100px;
     min-width: 100px;
@@ -31,82 +31,113 @@ header h1{font-size:12px;letter-spacing:2px;color:var(--ac);text-transform:upper
 
 .filters {
     padding: 10px; background: #1e1e1e; border-bottom: 1px solid var(--bd);
-    display: flex; flex-direction: column; gap: 5px;
-    opacity: 0; pointer-events: none; transition: opacity 0.2s;
+    display: flex; gap: 5px; opacity: 0; pointer-events: none; transition: opacity 0.2s;
 }
 .sidebar:hover .filters { opacity: 1; pointer-events: auto; }
-.filters input { background: var(--bg); border: 1px solid var(--bd); color: var(--tx); padding: 5px; font-size: 11px; outline: none; }
+.filters input { flex:1; background: var(--bg); border: 1px solid var(--bd); color: var(--tx); padding: 5px; font-size: 11px; outline: none; }
 
-/* --- GRILLE 10 COLONNES (50px) --- */
 .list {
     flex: 1; display: grid; 
-    grid-template-columns: repeat(10, 50px); /* 10 colonnes de 50px pour atteindre 500px */
+    grid-template-columns: repeat(10, 50px);
     grid-auto-rows: 50px;
     overflow-y: auto; overflow-x: hidden;
 }
 .list-item {
     width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;
-    cursor: pointer; position: relative;
+    cursor: grab; position: relative;
 }
 .thumb-wrap {
-    width: 44px; height: 44px; border-radius: 50%; /* DISQUE PAR DEFAUT */
-    overflow: hidden; border: 1px solid transparent; background: #000; transition: 0.2s;
+    width: 42px; height: 42px; border-radius: 50%; 
+    overflow: hidden; border: 1px solid #444; background: #000;
 }
-.list-item.active .thumb-wrap { border-color: var(--ac); box-shadow: 0 0 8px var(--ac); }
-.list-item img { width: 100%; height: 100%; object-fit: cover; }
+.list-item img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+.id-ov { position: absolute; font-size: 7px; color: var(--ac); background: rgba(0,0,0,0.6); padding: 1px 2px; pointer-events: none; bottom: 5px; }
 
-/* Overlay ID */
-.id-ov { position: absolute; font-size: 8px; color: var(--ac); background: rgba(0,0,0,0.6); padding: 1px 3px; pointer-events: none; }
-
-/* --- PANNEAU DE DROITE (DÉTAILS & OPTIONS) --- */
-.main-panel { flex: 1; overflow-y: auto; padding: 20px; background: #111; display: flex; flex-direction: column; gap: 20px; }
-
-.design-box {
-    background: var(--sf); border: 1px solid var(--bd); padding: 15px; border-left: 4px solid var(--ac);
+/* --- CANVAS DE DROITE (WORKSPACE LIBRE) --- */
+.main-canvas { 
+    flex: 1; 
+    position: relative; 
+    background: radial-gradient(circle, #222 1px, transparent 1px);
+    background-size: 30px 30px; /* Grille de points discrète */
+    background-color: #111;
+    overflow: hidden; 
+    cursor: crosshair;
 }
-.design-box h3 { font-size: 10px; text-transform: uppercase; color: var(--mt); margin-bottom: 12px; letter-spacing: 1px; }
-.opt-group { display: flex; gap: 20px; }
-.opt-group label { font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
 
-.detail-content { flex: 1; border-top: 1px solid var(--bd); padding-top: 20px; }
-.img-large { max-width: 100%; border: 1px solid var(--bd); background: #000; display: block; margin-bottom: 15px; }
+/* Éléments déposés sur le canvas */
+.dropped-art {
+    position: absolute;
+    width: 120px; height: 120px;
+    border-radius: 50%;
+    border: 2px solid var(--bd);
+    cursor: move;
+    z-index: 10;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    background: var(--bk);
+}
+.dropped-art img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; pointer-events: none; }
+.dropped-art:hover { border-color: var(--ac); }
 
-/* Mode Carré forcé par JS */
-.mode-square .thumb-wrap { border-radius: 4px !important; }
+/* Cercles de groupement (Clusters) */
+.cluster-zone {
+    position: absolute;
+    border: 2px dashed var(--ad);
+    border-radius: 50%;
+    background: rgba(200, 168, 110, 0.03);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+    cursor: move;
+}
+.cluster-zone input {
+    background: transparent; border: none; color: var(--ad);
+    text-align: center; font-family: inherit; font-size: 14px;
+    font-weight: bold; outline: none; text-transform: uppercase;
+}
+
+/* Barre d'outils flottante */
+.tools {
+    position: absolute; top: 20px; right: 20px;
+    display: flex; gap: 10px; z-index: 200;
+}
+.btn {
+    background: var(--sf); color: var(--tx); border: 1px solid var(--bd);
+    padding: 8px 15px; font-size: 10px; cursor: pointer; text-transform: uppercase;
+}
+.btn:hover { border-color: var(--ac); color: var(--ac); }
+
+#trash {
+    position: absolute; bottom: 20px; right: 20px;
+    width: 60px; height: 60px; border: 2px solid var(--dg);
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    color: var(--dg); font-size: 20px; background: rgba(160, 64, 64, 0.1);
+    z-index: 200; display: none;
+}
 </style>
 </head>
 <body>
 
 <div id="app">
     <header>
-        <h1>PEM — WORKSPACE</h1>
+        <h1>PEM — CLUSTER CANVAS</h1>
+        <div class="tools">
+            <button class="btn" onclick="addCluster()">+ Tracer un cercle</button>
+            <button class="btn" onclick="clearCanvas()" style="color:var(--dg)">Reset</button>
+        </div>
     </header>
 
     <div class="body-container">
-        <aside class="sidebar" id="sb">
+        <aside class="sidebar">
             <div class="filters">
-                <input type="text" id="q" placeholder="Filtrer ID ou Titre..." oninput="applyF()">
+                <input type="text" id="q" placeholder="Rechercher..." oninput="applyF()">
             </div>
-            <div class="list" id="ls">
-                </div>
+            <div class="list" id="ls"></div>
         </aside>
 
-        <main class="main-panel">
-            <div class="design-box">
-                <h3>Options d'affichage (Right Panel)</h3>
-                <div class="opt-group">
-                    <label><input type="radio" name="shape" checked onclick="setShape(true)"> Disques (Circles)</label>
-                    <label><input type="radio" name="shape" onclick="setShape(false)"> Carrés (Squares)</label>
-                </div>
-                <p style="font-size: 10px; color: var(--mt); margin-top: 10px;">
-                    La sidebar à gauche fait 100px. Survolez-la pour l'étendre à 500px (10 colonnes).
-                </p>
-            </div>
-
-            <div id="detail-area" class="detail-content">
-                <p style="color: var(--mt)">Sélectionnez une miniature pour voir les détails ici.</p>
-            </div>
-        </main>
+        <main class="main-canvas" id="canvas" ondragover="event.preventDefault()" ondrop="drop(event)">
+            <div id="trash">×</div>
+            </main>
     </div>
 </div>
 
@@ -114,7 +145,7 @@ header h1{font-size:12px;letter-spacing:2px;color:var(--ac);text-transform:upper
 const SB="https://mcrzsxrcoexnlwmaunte.supabase.co", BKT="paintings";
 const KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1jcnpzeHJjb2V4bmx3bWF1bnRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxOTM3NDEsImV4cCI6MjA5MTc2OTc0MX0.ba6g7WsOA3dVq2ltDbelTMpzJhQkZiLB8HjrRhAhGuo";
 
-let oeuvres = [], filtered = [], selId = null, circleMode = true;
+let oeuvres = [], filtered = [];
 
 async function load() {
     try {
@@ -134,42 +165,102 @@ function applyF() {
 
 function renderSidebar() {
     const el = document.getElementById('ls');
-    el.className = `list ${circleMode ? '' : 'mode-square'}`;
     el.innerHTML = filtered.map(o => {
-        const u = o.txtImageNameLink ? `${SB}/storage/v1/render/image/public/${BKT}/${encodeURIComponent(o.txtImageNameLink)}?width=60&height=60&resize=cover` : null;
+        const u = o.txtImageNameLink ? `${SB}/storage/v1/render/image/public/${BKT}/${encodeURIComponent(o.txtImageNameLink)}?width=100&height=100&resize=cover` : null;
+        if(!u) return '';
         return `
-        <div class="list-item ${selId === o.OeuvreID ? 'active' : ''}" onclick="sel(${o.OeuvreID})">
+        <div class="list-item" draggable="true" ondragstart="drag(event, '${o.txtImageNameLink}', ${o.OeuvreID})">
             <div class="thumb-wrap">
-                ${u ? `<img src="${u}">` : `<div style="font-size:7px;color:#444;margin-top:15px;text-align:center">N/A</div>`}
+                <img src="${u}">
             </div>
             <div class="id-ov">${o.OeuvreID}</div>
         </div>`;
     }).join('');
 }
 
-function sel(id) {
-    selId = id;
-    renderSidebar();
-    const o = oeuvres.find(x => x.OeuvreID === id);
-    const area = document.getElementById('detail-area');
-    area.innerHTML = `
-        <img class="img-large" src="${SB}/storage/v1/object/public/${BKT}/${o.txtImageNameLink}">
-        <h2 style="color:var(--ac)">${o.Titre || 'Sans titre'}</h2>
-        <p style="font-size:13px; margin: 10px 0;">ID: ${o.OeuvreID}</p>
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:20px">
-            <div style="background:var(--sf); padding:10px; border:1px solid var(--bd)">
-                <small style="color:var(--mt)">TECHNIQUE</small><br>${o.Technique || '—'}
-            </div>
-            <div style="background:var(--sf); padding:10px; border:1px solid var(--bd)">
-                <small style="color:var(--mt)">SUPPORT</small><br>${o.Support || '—'}
-            </div>
-        </div>
-    `;
+// --- DRAG & DROP VERS CANVAS ---
+function drag(ev, img, id) {
+    ev.dataTransfer.setData("img", img);
+    ev.dataTransfer.setData("id", id);
 }
 
-function setShape(isCircle) {
-    circleMode = isCircle;
-    renderSidebar();
+function drop(ev) {
+    ev.preventDefault();
+    const imgName = ev.dataTransfer.getData("img");
+    if(!imgName) return;
+
+    const rect = ev.currentTarget.getBoundingClientRect();
+    const x = ev.clientX - rect.left - 60; // centrer sur 120px
+    const y = ev.clientY - rect.top - 60;
+
+    createDroppedArt(imgName, x, y);
+}
+
+function createDroppedArt(imgName, x, y) {
+    const div = document.createElement('div');
+    div.className = 'dropped-art';
+    div.style.left = x + 'px';
+    div.style.top = y + 'px';
+    
+    const img = document.createElement('img');
+    img.src = `${SB}/storage/v1/render/image/public/${BKT}/${encodeURIComponent(imgName)}?width=300`;
+    
+    div.appendChild(img);
+    makeDraggable(div);
+    document.getElementById('canvas').appendChild(div);
+}
+
+function addCluster() {
+    const div = document.createElement('div');
+    div.className = 'cluster-zone';
+    div.style.left = '300px';
+    div.style.top = '200px';
+    div.style.width = '350px';
+    div.style.height = '350px';
+    
+    const input = document.createElement('input');
+    input.value = "NOUVEAU THÈME";
+    
+    div.appendChild(input);
+    makeDraggable(div);
+    document.getElementById('canvas').appendChild(div);
+}
+
+// --- MOTEUR DE DÉPLACEMENT ---
+function makeDraggable(el) {
+    let px=0, py=0;
+    const trash = document.getElementById('trash');
+
+    el.onmousedown = e => {
+        if(e.target.tagName === 'INPUT') return;
+        e.preventDefault();
+        px = e.clientX; py = e.clientY;
+        trash.style.display = 'flex';
+
+        document.onmousemove = e => {
+            el.style.left = (el.offsetLeft - (px - e.clientX)) + "px";
+            el.style.top = (el.offsetTop - (py - e.clientY)) + "px";
+            px = e.clientX; py = e.clientY;
+            
+            // Over trash?
+            const tRect = trash.getBoundingClientRect();
+            if(e.clientX > tRect.left && e.clientY > tRect.top) trash.style.transform = "scale(1.3)";
+            else trash.style.transform = "scale(1)";
+        };
+
+        document.onmouseup = e => {
+            document.onmousemove = null;
+            trash.style.display = 'none';
+            const tRect = trash.getBoundingClientRect();
+            if(e.clientX > tRect.left && e.clientY > tRect.top) el.remove();
+        };
+    };
+}
+
+function clearCanvas() {
+    if(confirm("Vider tout l'espace ?")) {
+        document.querySelectorAll('.dropped-art, .cluster-zone').forEach(e => e.remove());
+    }
 }
 
 load();
