@@ -5,237 +5,249 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PEM — Inventaire</title>
 <style>
-/* --- STYLES DE BASE (CONSERVÉS) --- */
+/* --- STYLES DE BASE --- */
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#1a1a1a;--sf:#242424;--bd:#333;--tx:#e0e0e0;--mt:#888;--ac:#c8a86e;--ad:#8a7040;--dg:#a04040;--wh:#fff;--bk:#000}
 body{font-family:'JetBrains Mono','SF Mono','Consolas',monospace;background:var(--bg);color:var(--tx);overflow:hidden}
 #app{display:flex;flex-direction:column;height:100vh}
-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--bd);background:var(--sf);position:sticky;top:0;z-index:100}
+
+header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--bd);background:var(--sf);z-index:110}
 header h1{font-size:13px;font-weight:700;letter-spacing:2px;color:var(--ac);text-transform:uppercase}
 nav{display:flex;gap:2px}
-nav button{font-family:inherit;padding:5px 10px;font-size:10px;border:none;cursor:pointer;letter-spacing:1px;text-transform:uppercase;background:transparent;color:var(--mt)}
+nav button{font-family:inherit;padding:5px 10px;font-size:10px;border:none;cursor:pointer;text-transform:uppercase;background:transparent;color:var(--mt)}
 nav button.active{background:var(--ac);color:var(--bk);font-weight:700}
-#debug{padding:3px 16px;font-size:9px;color:var(--mt);background:#1e1e1e;border-bottom:1px solid var(--bd)}
 
-/* --- SIDEBAR : 500px, 5 COLONNES, DISQUES --- */
-.body{flex:1;display:flex;overflow:hidden}
-.sidebar{width:500px;min-width:500px;border-right:1px solid var(--bd);background:var(--sf);display:flex;flex-direction:column;flex-shrink:0}
-.filters{padding:8px 10px;border-bottom:1px solid var(--bd);display:flex;flex-direction:column;gap:5px}
-.filters input,.filters select{font-family:inherit;background:var(--bg);border:1px solid var(--bd);color:var(--tx);padding:5px 7px;font-size:11px;width:100%;outline:none}
+.body{flex:1;display:flex;overflow:hidden;position:relative}
 
-.list{
-    flex:1;
-    overflow-y:auto;
-    display:grid;
-    grid-template-columns: repeat(5, 100px); /* 5 colonnes de 100px */
-    grid-auto-rows: 100px;
+/* --- SIDEBAR DYNAMIQUE (100px -> 500px) --- */
+.sidebar {
+    width: 100px; /* 20% de 500px */
+    min-width: 100px;
+    height: 100%;
+    border-right: 1px solid var(--bd);
+    background: var(--sf);
+    display: flex;
+    flex-direction: column;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 100;
+    overflow: hidden;
+}
+.sidebar:hover {
+    width: 500px;
+}
+
+.filters {
+    padding: 10px;
+    background: #1e1e1e;
+    border-bottom: 1px solid var(--bd);
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+.sidebar:hover .filters {
+    opacity: 1;
+    pointer-events: auto;
+}
+.filters input, .filters select {
+    font-family: inherit; background: var(--bg); border: 1px solid var(--bd); color: var(--tx); padding: 5px; font-size: 10px; width: 100%; outline: none;
+}
+
+/* --- GRILLE 10 COLONNES (Images 50px) --- */
+.list {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(10, 50px);
+    grid-auto-rows: 50px;
+    overflow-y: auto;
+    overflow-x: hidden;
     padding: 0;
 }
+.list-item {
+    width: 50px;
+    height: 50px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+.thumb-wrap {
+    width: 46px; /* Espace réduit entre images */
+    height: 46px;
+    border-radius: 50%; /* Disque par défaut */
+    overflow: hidden;
+    border: 1px solid transparent;
+    transition: all 0.2s;
+    background: #000;
+}
+.list-item.active .thumb-wrap { border-color: var(--ac); box-shadow: 0 0 5px var(--ac); }
+.lt { width: 100%; height: 100%; object-fit: cover; }
 
-.list-item{
-    position:relative;
-    width:100px;
-    height:100px;
-    cursor:pointer;
-    display:flex;
-    align-items:center;
-    justify-content:center;
+/* Overlay ID au survol ou actif */
+.id-ov {
+    position: absolute;
+    font-size: 8px;
+    font-weight: 700;
+    color: var(--ac);
+    background: rgba(0,0,0,0.7);
+    padding: 1px 3px;
+    border-radius: 2px;
+    pointer-events: none;
+    z-index: 5;
 }
 
-.thumb-wrap{
-    width:90px; /* Légère marge entre les cercles */
-    height:90px;
-    border-radius:50%; /* Forme en disque */
-    overflow:hidden;
-    position:relative;
-    background:var(--bk);
-    border: 2px solid transparent;
-    transition: border-color 0.2s;
+/* --- PANEL DROIT (Détails & Design) --- */
+.main { flex: 1; overflow-y: auto; padding: 20px; background: #111; }
+
+.design-panel {
+    background: var(--sf);
+    border: 1px solid var(--bd);
+    padding: 12px;
+    margin-bottom: 20px;
+    border-left: 3px solid var(--ac);
 }
+.design-panel h3 { font-size: 10px; text-transform: uppercase; margin-bottom: 10px; color: var(--mt); }
+.opt-row { display: flex; gap: 15px; align-items: center; }
+.opt-row label { font-size: 11px; display: flex; align-items: center; gap: 5px; cursor: pointer; }
 
-.list-item:hover .thumb-wrap{ border-color: #555; }
-.list-item.active .thumb-wrap{ border-color: var(--ac); }
+/* Styles pour le mode carré (via JS) */
+.mode-square .thumb-wrap { border-radius: 4px !important; }
 
-.lt{width:100%; height:100%; object-fit:cover; display:block;}
-.lte{width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:8px; color:var(--mt);}
-
-/* Overlay ID 60% au centre du disque */
-.id-ov{
-    position:absolute;
-    top:50%; left:50%;
-    transform:translate(-50%, -50%);
-    background:rgba(0,0,0,0.6);
-    color:var(--ac);
-    font-size:10px;
-    font-weight:700;
-    padding:2px 5px;
-    border-radius:3px;
-    pointer-events:none;
-    z-index:10;
-}
-
-.li{display:none;} /* On cache les textes dans la vue grille */
-
-/* --- ESPACE PRINCIPAL ET CLUSTERS --- */
-.main{flex:1;overflow-y:auto;padding:16px;position:relative;background:#111}
-#cluster-space{position:absolute; inset:0; background:#0d0d0d; display:none; overflow:hidden; z-index:10;}
-#cluster-canvas{width:100%; height:100%; position:relative;}
-.cluster-region{position:absolute; border:1px dashed #444; border-radius:50%; width:250px; height:250px; display:flex; align-items:center; justify-content:center; z-index:1; cursor:move;}
-.cluster-region input{background:transparent; border:none; color:var(--ac); text-align:center; font-family:inherit; font-size:11px; font-weight:700; outline:none; width:80%;}
-.draggable-art{position:absolute; cursor:move; z-index:5; border-radius:50%; overflow:hidden; border:1px solid var(--bd); box-shadow: 0 4px 15px rgba(0,0,0,0.5);}
-.draggable-art img{display:block; pointer-events:none;}
-
-/* --- ZOOM ET DÉTAILS (VOS STYLES D'ORIGINE) --- */
-.iv{position:relative;background:var(--bk);border:1px solid var(--bd);margin-bottom:12px;overflow:hidden;display:flex;align-items:center;justify-content:center}
-.iv img{display:block;max-width:100%;max-height:100%;cursor:zoom-in}
-.tstrip{display:flex;gap:4px;margin-bottom:10px;overflow-x:auto;padding:3px 0}
-.tstrip img{width:44px;height:44px;object-fit:cover;border:2px solid transparent;cursor:pointer;background:var(--bg)}
-.tstrip img.active{border-color:var(--ac)}
-.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px}
-.ff label{display:block;font-size:9px;color:var(--mt);margin-bottom:3px;text-transform:uppercase}
-.ff input,.ff select,.ff textarea{width:100%;background:var(--sf);border:1px solid var(--bd);color:var(--tx);padding:7px;font-family:inherit;font-size:12px;outline:none}
-.toast{position:fixed;bottom:16px;right:16px;padding:8px 14px;font-size:11px;font-weight:600;z-index:1000}
+/* --- ZOOM & FORMS (D'origine) --- */
+.iv{position:relative;background:#000;border:1px solid var(--bd);margin-bottom:12px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.iv img{max-width:100%;max-height:80vh;cursor:zoom-in}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ff label{font-size:9px;color:var(--mt);text-transform:uppercase;margin-bottom:3px;display:block}
+.ff input,.ff select,.ff textarea{width:100%;background:var(--sf);border:1px solid var(--bd);color:var(--tx);padding:7px;font-family:inherit;font-size:12px}
 .hidden{display:none}
 </style>
 </head>
 <body>
 <div id="app"></div>
-<div id="toast" class="toast hidden"></div>
 
 <script>
-/* --- CONFIG ET API (Cités depuis votre fichier) --- */
+/* --- CONFIG & DATA --- */
 const SB="https://mcrzsxrcoexnlwmaunte.supabase.co",KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1jcnpzeHJjb2V4bmx3bWF1bnRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxOTM3NDEsImV4cCI6MjA5MTc2OTc0MX0.ba6g7WsOA3dVq2ltDbelTMpzJhQkZiLB8HjrRhAhGuo",BKT="paintings",STR=`${SB}/storage/v1/object/public/${BKT}`;
-const FDIM={1:[84,59.4],2:[59.4,42],3:[42,29.7],4:[29.7,21],5:[21,14.8],6:[14.8,10.5],7:[25.4,20.3]};
-let oeuvres=[],techniques=[],supports=[],imgTbl=[],filtered=[],selId=null,curV="list";
-let tM={},sM={};
+let oeuvres=[], techniques=[], supports=[], filtered=[], selId=null;
+let tM={}, sM={}, circleMode=true;
 
-async function api(p,o={}){const s=p.includes("?")?"&":"?";const r=await fetch(`${SB}/rest/v1/${p}${s}apikey=${KEY}`,{...o,headers:{"Content-Type":"application/json",Prefer:"return=representation",apikey:KEY,Authorization:`Bearer ${KEY}`,...o.headers}});return r.json();}
-function iu(f){return f?`${STR}/${encodeURIComponent(f)}`:null;}
+async function api(p){const r=await fetch(`${SB}/rest/v1/${p}${p.includes("?")?"&":"?"}apikey=${KEY}`,{headers:{apikey:KEY,Authorization:`Bearer ${KEY}`}});return r.json();}
 function iuThumb(f,s){return f?`${SB}/storage/v1/render/image/public/${BKT}/${encodeURIComponent(f)}?width=${s||100}&height=${s||100}&resize=cover`:null;}
-function esc(s){const d=document.createElement("div");d.textContent=String(s||"");return d.innerHTML;}
 
 async function load(){
   try{
-    const[o,t,su,im]=await Promise.all([api("Oeuvres?order=OeuvreID.desc"),api("Technique"),api("Support"),api("tblImage")]);
-    oeuvres=o;techniques=t;supports=su;imgTbl=im;
+    const[o,t,su]=await Promise.all([api("Oeuvres?order=OeuvreID.desc"),api("Technique"),api("Support")]);
+    oeuvres=o; techniques=t; supports=su;
     tM=Object.fromEntries(t.map(x=>[x.TechniqueID,x.Technique]));
     sM=Object.fromEntries(su.map(x=>[x.SupportID,x.Support]));
-    initA(); applyF();
+    initLayout();
+    applyF();
   }catch(e){console.error(e);}
 }
 
-function initA(){
+function initLayout(){
   document.getElementById("app").innerHTML=`
     <header>
       <h1>PEM — Inventaire</h1>
       <nav id="nv">
         <button class="active" onclick="sv('list')">Liste</button>
-        <button onclick="sv('clusters')">Clusters</button>
         <button onclick="sv('gallery')">Galerie</button>
         <button onclick="sv('form')">+ Nouvelle</button>
-        <button onclick="sv('export')">Export</button>
       </nav>
     </header>
-    <div id="debug"></div>
     <div class="body">
       <aside class="sidebar" id="sb">
         <div class="filters">
-          <input type="text" id="q" placeholder="Recherche..." oninput="applyF()">
+          <input type="text" id="q" placeholder="Rechercher ID ou Titre..." oninput="applyF()">
+          <select id="fT" onchange="applyF()"><option value="">Toutes Techniques</option></select>
         </div>
         <div class="list" id="ls"></div>
       </aside>
-      <main class="main" id="mn">
-        <div id="cluster-space">
-          <div style="position:absolute;top:10px;right:10px;z-index:100;display:flex;gap:5px">
-            <button onclick="addClusterRegion()" style="padding:4px 8px;font-size:10px">Cercle +</button>
-            <button onclick="document.getElementById('cluster-canvas').innerHTML=''" style="padding:4px 8px;font-size:10px">Reset</button>
-          </div>
-          <div id="cluster-canvas"></div>
-        </div>
-        <div id="main-content"></div>
-      </main>
+      <main class="main" id="mn"></main>
     </div>`;
-}
-
-function sv(v){
-  curV=v;
-  document.querySelectorAll("#nv button").forEach((b,i)=>b.classList.toggle("active",["list","clusters","gallery","form","export"][i]===v));
-  document.getElementById("cluster-space").style.display=(v==="clusters")?"block":"none";
-  document.getElementById("main-content").style.display=(v==="clusters")?"none":"block";
-  if(v==="list") det(selId);
+    
+  // Populer filtres
+  const ft=document.getElementById("fT");
+  techniques.forEach(t=>ft.innerHTML+=`<option value="${t.TechniqueID}">${t.Technique}</option>`);
 }
 
 function applyF(){
   const q=document.getElementById("q").value.toLowerCase();
-  filtered=oeuvres.filter(o=>(o.Titre||"").toLowerCase().includes(q)||String(o.OeuvreID).includes(q));
-  rList();
+  const t=document.getElementById("fT").value;
+  filtered=oeuvres.filter(o=>{
+    const matchQ = !q || (o.Titre||"").toLowerCase().includes(q) || String(o.OeuvreID).includes(q);
+    const matchT = !t || String(o.Technique) === t;
+    return matchQ && matchT;
+  });
+  renderSidebar();
 }
 
-function rList(){
+function renderSidebar(){
   const el=document.getElementById("ls");
+  el.className = `list ${circleMode ? '' : 'mode-square'}`;
   el.innerHTML=filtered.map(o=>{
-    const u=iuThumb(o.txtImageNameLink, 100);
+    const u=iuThumb(o.txtImageNameLink, 60);
     return `
-    <div class="list-item ${selId===o.OeuvreID?'active':''}" onclick="sel(${o.OeuvreID})">
+    <div class="list-item ${selId===o.OeuvreID?'active':''}" onclick="sel(${o.OeuvreID})" title="${o.Titre}">
       <div class="thumb-wrap">
-        <div class="id-ov">${o.OeuvreID}</div>
-        ${u ? `<img class="lt" src="${u}">` : `<div class="lte">—</div>`}
+        ${u ? `<img class="lt" src="${u}">` : `<div style="color:#444;font-size:7px;text-align:center;padding-top:15px">N/A</div>`}
       </div>
+      <div class="id-ov">${o.OeuvreID}</div>
     </div>`;
   }).join("");
 }
 
 function sel(id){
   selId=id;
-  rList();
-  if(curV==="clusters") summonToCluster(id);
-  else det(id);
+  renderSidebar();
+  renderDetails(id);
 }
 
-/* --- LOGIQUE CLUSTERS --- */
-function summonToCluster(id){
+/* --- PANEL DE DROITE & OPTIONS --- */
+function renderDetails(id){
   const o=oeuvres.find(x=>x.OeuvreID===id);
-  if(!o||!o.txtImageNameLink) return;
-  const div=document.createElement('div');
-  div.className='draggable-art';
-  div.style.left='100px'; div.style.top='100px';
-  div.innerHTML=`<img src="${iuThumb(o.txtImageNameLink,200)}" style="width:120px;height:120px;border-radius:50%;object-fit:cover;" draggable="false">`;
-  makeDraggable(div);
-  document.getElementById('cluster-canvas').appendChild(div);
+  const mn=document.getElementById("mn");
+  if(!o) return;
+
+  mn.innerHTML=`
+    <div class="design-panel">
+      <h3>Design & Affichage</h3>
+      <div class="opt-row">
+        <label><input type="radio" name="shape" ${circleMode?'checked':''} onclick="setShape(true)"> Disques</label>
+        <label><input type="radio" name="shape" ${!circleMode?'checked':''} onclick="setShape(false)"> Carrés</label>
+        <span style="color:var(--mt); font-size:10px; margin-left:15px">Sidebar : 10 colonnes (50px)</span>
+      </div>
+    </div>
+
+    <div class="detail-view">
+      <div class="iv">
+        <img src="${SB}/storage/v1/object/public/${BKT}/${o.txtImageNameLink}" onerror="this.style.display='none'">
+      </div>
+      <h2 style="color:var(--ac);margin-bottom:5px">${o.Titre || 'Sans titre'}</h2>
+      <p style="color:var(--mt);font-size:12px;margin-bottom:20px">ID ${o.OeuvreID} — ${tM[o.Technique]||'Technique'} sur ${sM[o.Support]||'Support'}</p>
+      
+      <div class="fgrid">
+        <div class="ff"><label>Année</label><input type="text" value="${o.Année||''}"></div>
+        <div class="ff"><label>Prix (€)</label><input type="number" value="${o.Prix||0}"></div>
+        <div class="ffull" style="grid-column: span 2">
+            <label>Notes</label>
+            <textarea style="width:100%; min-height:80px; background:var(--sf); border:1px solid var(--bd); color:var(--tx); padding:10px;">${o.Commentaire || ''}</textarea>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
-function addClusterRegion(){
-  const div=document.createElement('div');
-  div.className='cluster-region';
-  div.style.left='200px'; div.style.top='200px';
-  div.innerHTML=`<input type="text" placeholder="NOM DU GROUPE">`;
-  makeDraggable(div);
-  document.getElementById('cluster-canvas').appendChild(div);
+function setShape(isCircle){
+    circleMode = isCircle;
+    renderSidebar();
 }
 
-function makeDraggable(el){
-  let px=0,py=0;
-  el.onmousedown=e=>{
-    if(e.target.tagName==='INPUT') return;
-    px=e.clientX; py=e.clientY;
-    document.onmousemove=e=>{
-      el.style.left=(el.offsetLeft-(px-e.clientX))+"px";
-      el.style.top=(el.offsetTop-(py-e.clientY))+"px";
-      px=e.clientX; py=e.clientY;
-    };
-    document.onmouseup=()=>{document.onmousemove=null;};
-  };
-}
-
-function det(id){
-  const mn=document.getElementById("main-content");
-  if(!id){ mn.innerHTML='<div style="padding:40px;color:var(--mt)">Sélectionnez une oeuvre</div>'; return; }
-  const o=oeuvres.find(x=>x.OeuvreID===id);
-  mn.innerHTML=`<div style="padding:20px">
-    <h2 style="color:var(--ac)">${esc(o.Titre)}</h2>
-    <p style="font-size:11px;color:var(--mt);margin:10px 0">ID: ${o.OeuvreID} | ${tM[o.Technique]||'Technique'} sur ${sM[o.Support]||'Support'}</p>
-    <img src="${iu(o.txtImageNameLink)}" style="max-width:100%; border:1px solid var(--bd)">
-  </div>`;
+function sv(v){
+    document.querySelectorAll("#nv button").forEach((b,i)=>b.classList.toggle("active",["list","gallery","form"][i]===v));
 }
 
 window.onload=load;
