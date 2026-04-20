@@ -4,111 +4,118 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PEM — Inventaire & Galaxie</title>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <script src="https://unpkg.com/force-graph"></script>
 <style>
-/* Existing styles from your index.html maintained */
+/* Base Styles from your original file */
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#1a1a1a;--sf:#242424;--bd:#333;--tx:#e0e0e0;--mt:#888;--ac:#c8a86e;--ad:#8a7040;--dg:#a04040;--wh:#fff;--bk:#000}
-body{font-family:'JetBrains Mono','SF Mono','Consolas',monospace;background:var(--bg);color:var(--tx)}
+body{font-family:'JetBrains Mono',monospace;background:var(--bg);color:var(--tx);overflow:hidden}
 #app{display:flex;flex-direction:column;height:100vh}
-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--bd);background:var(--sf);position:sticky;top:0;z-index:100}
-header h1{font-size:13px;font-weight:700;letter-spacing:2px;color:var(--ac);text-transform:uppercase}
-nav{display:flex;gap:2px}
-nav button{font-family:inherit;padding:5px 10px;font-size:10px;border:none;cursor:pointer;letter-spacing:1px;text-transform:uppercase;background:transparent;color:var(--mt);transition:0.2s}
+header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--bd);background:var(--sf);z-index:100}
+header h1{font-size:11px;letter-spacing:2px;color:var(--ac)}
+nav button{background:none;border:none;color:var(--mt);padding:5px 10px;cursor:pointer;font-size:10px;text-transform:uppercase}
 nav button.active{color:var(--ac);background:var(--bd)}
+main{flex:1;overflow-y:auto;position:relative}
 
-/* New Galaxy specific styles */
-#galaxy-container { flex:1; position:relative; overflow:hidden; background:#000; }
-.rel-ui { background:var(--sf); padding:10px; border:1px solid var(--bd); margin-top:10px; border-radius:4px; }
-.rel-ui select { background:var(--bg); color:var(--tx); border:1px solid var(--bd); padding:4px; font-family:inherit; font-size:10px; width:100%; margin-bottom:5px; }
+/* Galaxy Styles */
+#galaxy-canvas{width:100%;height:100%;background:#0b0b0b}
+.node-label{background:rgba(0,0,0,0.8);color:#fff;padding:2px 5px;font-size:9px;border-radius:2px}
+
+/* Relationship Admin UI */
+.rel-box{margin-top:15px;padding:10px;border:1px solid var(--bd);background:rgba(200,168,110,0.05)}
+.rel-box h4{font-size:10px;color:var(--ac);margin-bottom:8px;text-transform:uppercase}
+.rel-row{display:flex;gap:5px;margin-bottom:5px}
+select{background:var(--bg);color:var(--tx);border:1px solid var(--bd);font-size:11px;padding:3px;flex:1}
 </style>
 </head>
 <body>
 <div id="app">
     <header>
-        <h1>PEM <span id="view-title">/ INVENTAIRE</span></h1>
-        <nav>
-            <button id="btn-grid" onclick="sv('grid')">Grille</button>
-            <button id="btn-galaxy" onclick="sv('galaxy')">Galaxie</button>
-            <button id="btn-admin" onclick="sv('admin')">Admin</button>
+        <h1>PEM <span id="vtitle">/ INVENTAIRE</span></h1>
+        <nav id="nav">
+            <button onclick="sv('grid')" id="b-grid">Grille</button>
+            <button onclick="sv('galaxy')" id="b-galaxy">Galaxie</button>
+            <button onclick="sv('admin')" id="b-admin">Admin</button>
         </nav>
     </header>
     <main id="main"></main>
 </div>
 
-<script type="module">
-// Integration of your existing Supabase logic + Galaxy Logic
-// Note: Ensure your Supabase credentials remain the same as your previous version
+<script>
+// --- CONFIGURATION (Replace with your actual keys) ---
+const SB_URL = "https://mcrzsxrcoexnlwmaunte.supabase.co";
+const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1jcnpzeHJjb2V4bmx3bWF1bnRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxOTM3NDEsImV4cCI6MjA5MTc2OTc0MX0.ba6g7WsOA3dVq2ltDbelTMpzJhQkZiLB8HjrRhAhGuo";
+const supabase = lib.supabase.createClient(SB_URL, SB_KEY);
 
-let relations = []; // Global store for galaxy links
+let oeuvres=[], techniques=[], supports=[], formats=[], cadres=[], images=[], relations=[], curV='grid';
 
-// --- NEW GALAXY RENDERER ---
+// --- DATA LOAD ---
+async function load() {
+    const [o, t, s, f, c, im, rels] = await Promise.all([
+        supabase.from('Oeuvres').select('*').order('OeuvreID', {ascending:false}),
+        supabase.from('tblTechniques').select('*'),
+        supabase.from('tblSupports').select('*'),
+        supabase.from('tblFormats').select('*'),
+        supabase.from('tblCadres').select('*'),
+        supabase.from('tblImages').select('*'),
+        supabase.from('tblRelations').select('*') // The new table
+    ]);
+    oeuvres=o.data; techniques=t.data; supports=s.data; formats=f.data; cadres=c.data; images=im.data; relations=rels.data||[];
+    sv(curV);
+}
+
+// --- GALAXY VIEW ---
 function renderGalaxy() {
-    const main = document.getElementById('main');
-    main.innerHTML = '<div id="galaxy-canvas"></div>';
+    const container = document.getElementById('main');
+    container.innerHTML = '<div id="galaxy-canvas"></div>';
     
-    const nodes = window.oeuvres.map(o => ({
-        id: o.OeuvreID,
-        img: `https://[YOUR_PROJECT_ID].supabase.co/storage/v1/object/public/art-inventory/${o.txtImageNameLink}?width=100&height=100&resize=contain`,
-        name: o.Titre || "Sans titre"
+    const nodes = oeuvres.map(d => ({
+        id: d.OeuvreID,
+        name: d.Titre || "Sans titre",
+        img: `https://your-project.supabase.co/storage/v1/object/public/art-inventory/${d.txtImageNameLink}?width=80&height=80&resize=contain`
     }));
 
-    const links = window.relations.map(r => ({
+    const links = relations.map(r => ({
         source: r.source_id,
-        target: r.target_id,
-        value: r.strength || 3
+        target: r.target_id
     }));
 
     const Graph = ForceGraph()(document.getElementById('galaxy-canvas'))
         .graphData({ nodes, links })
-        .nodeCanvasObject((node, ctx, globalScale) => {
-            const size = 12;
+        .nodeCanvasObject((node, ctx) => {
+            const size = 14;
             const img = new Image();
             img.src = node.img;
             ctx.save();
-            ctx.beginPath();
-            ctx.arc(node.x, node.y, size/2, 0, 2 * Math.PI, false);
-            ctx.clip();
-            try {
-                ctx.drawImage(img, node.x - size/2, node.y - size/2, size, size);
-            } catch(e) {}
-            ctx.stroke();
+            ctx.beginPath(); ctx.arc(node.x, node.y, size/2, 0, 2*Math.PI); ctx.clip();
+            try { ctx.drawImage(img, node.x-size/2, node.y-size/2, size, size); } catch(e){}
+            ctx.strokeStyle = '#c8a86e'; ctx.lineWidth = 0.5; ctx.stroke();
             ctx.restore();
         })
-        .onNodeClick(node => {
-            // Re-using your existing detail function
-            window.det(node.id);
-        })
-        .linkLabel(r => r.relation_type)
-        .linkWidth(l => l.value / 2)
-        .linkColor(() => '#c8a86e33');
+        .onNodeClick(node => det(node.id))
+        .linkDirectionalParticles(2)
+        .linkColor(() => '#333');
 }
 
-// --- UPDATED ADMIN LINKER (to be called inside your det() function) ---
-window.addRelationUI = (currentId) => {
-    return `
-    <div class="rel-ui">
-        <div class="fl">Lier à une oeuvre (Nœud)</div>
-        <select id="new-rel-target">
-            ${window.oeuvres.filter(o => o.OeuvreID !== currentId).map(o => 
-                `<option value="${o.OeuvreID}">${o.Titre} (${o.OeuvreID})</option>`
-            ).join('')}
-        </select>
-        <button class="btn bs" onclick="saveNewRelation(${currentId})">Connecter</button>
-    </div>`;
-};
+// --- NAVIGATION ---
+function sv(v) {
+    curV = v;
+    document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+    document.getElementById('b-'+v).classList.add('active');
+    if(v === 'galaxy') renderGalaxy();
+    else if(v === 'grid') renderGrid(); // Your existing grid function
+    else renderAdmin(); // Your existing admin function
+}
 
-window.saveNewRelation = async (sourceId) => {
-    const targetId = document.getElementById('new-rel-target').value;
-    const { error } = await supabase.from('tblRelations').insert([
-        { source_id: sourceId, target_id: targetId, strength: 3 }
-    ]);
-    if (error) alert(error.message);
-    else { alert("Lien galactique créé !"); location.reload(); }
-};
+// --- ADD RELATION (Call this inside your det() modal) ---
+async function addRel(src) {
+    const tgt = document.getElementById('rel-select').value;
+    await supabase.from('tblRelations').insert({ source_id: src, target_id: tgt });
+    load();
+}
 
-// ... Include your existing load(), apiAll(), and det() logic here ...
-// Ensure load() fetches tblRelations
+window.onload = load;
 </script>
 </body>
 </html>
