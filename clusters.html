@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>PEM — Engine v16 (Final Fix)</title>
+<title>PEM — Map Engine v17 (Merged & Stable)</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#111;--sf:#1a1a1a;--bd:#333;--tx:#eee;--ac:#c8a86e;--dg:#ff4444}
@@ -18,26 +18,29 @@ body{font-family:monospace;background:var(--bg);color:var(--tx);overflow:hidden;
 .thumb { width: 45px; height: 45px; border-radius: 50%; border: 1px solid #444; object-fit: cover; }
 
 /* VIEWPORT */
-.viewport { flex: 1; position: relative; overflow: hidden; background: #080808; touch-action: none; }
-#canvas { position: absolute; width: 10000px; height: 10000px; transform-origin: 0 0; background-image: radial-gradient(#222 1px, transparent 1px); background-size: 80px 80px; top:0; left:0; }
+.viewport { flex: 1; position: relative; overflow: hidden; background: #080808; }
+#canvas {
+    position: absolute; width: 10000px; height: 10000px; transform-origin: 0 0;
+    background-image: radial-gradient(#222 1px, transparent 1px); background-size: 80px 80px;
+    top:0; left:0; pointer-events: auto;
+}
 
-/* NODES */
-.node { position: absolute; z-index: 10; cursor: move; }
+/* NODES (Miniatures) */
+.node { position: absolute; z-index: 10; user-select: none; }
 .art-node { width: 80px; height: 80px; transform-origin: center center; }
 .art-node img { width: 80px; height: 80px; border-radius: 50%; border: 2px solid var(--ac); display: block; pointer-events: none; background:#000; }
 .id-tag { position: absolute; bottom: -5px; left: 50%; transform: translateX(-50%); font-size: 9px; background: #000; color: var(--ac); padding: 1px 4px; border: 1px solid var(--ac); border-radius: 3px; pointer-events: none; }
 
-/* ZONES */
+/* ZONES (Cercles) */
 .zone-node { border: 2px dashed #555; border-radius: 50%; background: rgba(200,168,110,0.03); display: flex; align-items: center; justify-content: center; }
 .zone-node input { background: transparent; border: none; color: #777; text-align: center; width: 80%; outline: none; font-weight: bold; font-family: inherit; }
-.resizer { position: absolute; bottom: 10%; right: 10%; width: 16px; height: 16px; background: var(--ac); cursor: nwse-resize; border-radius: 2px; z-index: 20; border: 2px solid #000; }
+.resizer { position: absolute; bottom: 10%; right: 10%; width: 14px; height: 14px; background: var(--ac); cursor: nwse-resize; border-radius: 2px; z-index: 20; border: 2px solid #000; }
 
+/* UI */
 .ui-top { position: absolute; top: 20px; right: 20px; display: flex; gap: 10px; z-index: 1000; }
-.btn { background: var(--sf); color: var(--tx); border: 1px solid var(--bd); padding: 8px 15px; cursor: pointer; font-size: 11px; border-radius: 4px;}
+.btn { background: var(--sf); color: var(--tx); border: 1px solid var(--bd); padding: 8px 15px; cursor: pointer; font-size: 11px; border-radius: 4px; }
+.btn:hover { border-color: var(--ac); color: var(--ac); }
 #trash { position: fixed; bottom: 30px; right: 30px; width: 70px; height: 70px; border-radius: 50%; border: 2px solid var(--dg); color: var(--dg); display: none; align-items: center; justify-content: center; z-index: 2000; background: #000; font-size: 24px; pointer-events: none; }
-
-/* Désactive les interactions pendant le drag pour éviter les sauts */
-.dragging { pointer-events: none !important; z-index: 5000 !important; }
 </style>
 </head>
 <body>
@@ -88,11 +91,10 @@ function updateTransform() {
     canvas.style.transform = `translate(${px}px, ${py}px) scale(${scale})`;
     document.getElementById('zVal').textContent = Math.round(scale * 100) + "%";
     const sFix = scale > 1 ? (1 / scale) : Math.max(1, (15/80) / scale);
-    document.querySelectorAll('.art-node').forEach(n => {
-        n.style.transform = `scale(${sFix})`;
-    });
+    document.querySelectorAll('.art-node').forEach(n => n.style.transform = `scale(${sFix})`);
 }
 
+// ZOOM (Inchangé)
 viewport.onwheel = e => {
     e.preventDefault();
     const ns = Math.min(Math.max(scale * (e.deltaY > 0 ? 0.9 : 1.1), 0.01), 10);
@@ -103,6 +105,7 @@ viewport.onwheel = e => {
     updateTransform();
 };
 
+// DROP (Inchangé)
 viewport.ondragover = e => e.preventDefault();
 viewport.ondrop = e => {
     e.preventDefault();
@@ -112,18 +115,43 @@ viewport.ondrop = e => {
     createNode(img, id, (e.clientX - r.left) / scale - 40, (e.clientY - r.top) / scale - 40);
 };
 
+// CRÉATION MINIATURE (Logique de ton fichier "Thumb OK")
 function createNode(img, id, x, y) {
     const div = document.createElement('div');
     div.className = 'node art-node';
     div.dataset.img = img; div.dataset.id = id;
-    div.lx = x; div.ly = y; // Utilisation de propriétés JS directes (plus rapide que dataset)
+    div.lx = x; div.ly = y;
     div.style.left = x + 'px'; div.style.top = y + 'px';
     div.innerHTML = `<img src="${SB}/storage/v1/render/image/public/${BKT}/${encodeURIComponent(img)}?width=160&height=160&resize=cover"><div class="id-tag">${id}</div>`;
-    bindAll(div);
+    
+    // MOUVEMENT ULTRA-STABLE (Copié de ton fichier)
+    div.onmousedown = e => {
+        e.preventDefault(); e.stopPropagation();
+        const startX = e.clientX, startY = e.clientY;
+        const initialX = div.lx, initialY = div.ly;
+        document.getElementById('trash').style.display = 'flex';
+        div.style.zIndex = 2000;
+        const move = ev => {
+            div.lx = initialX + (ev.clientX - startX) / scale;
+            div.ly = initialY + (ev.clientY - startY) / scale;
+            div.style.left = div.lx + "px";
+            div.style.top = div.ly + "px";
+        };
+        const up = ev => {
+            window.removeEventListener('mousemove', move);
+            window.removeEventListener('mouseup', up);
+            document.getElementById('trash').style.display = 'none';
+            div.style.zIndex = 10;
+            if (ev.clientX > window.innerWidth - 100 && ev.clientY > window.innerHeight - 100) div.remove();
+        };
+        window.addEventListener('mousemove', move);
+        window.addEventListener('mouseup', up);
+    };
     canvas.appendChild(div);
     updateTransform();
 }
 
+// CRÉATION CERCLE (Nouvelle fonction adaptée à ta logique stable)
 function addZone(x=500, y=500, size=300, label="GROUPE") {
     const div = document.createElement('div');
     div.className = 'node zone-node';
@@ -131,73 +159,68 @@ function addZone(x=500, y=500, size=300, label="GROUPE") {
     div.style.left = x+'px'; div.style.top = y+'px';
     div.style.width = size+'px'; div.style.height = size+'px';
     div.innerHTML = `<input type="text" value="${label}"><div class="resizer"></div>`;
-    bindAll(div);
-    canvas.appendChild(div);
-}
-
-function bindAll(el) {
-    el.onmousedown = e => {
+    
+    // Mouvement stable pour le cercle
+    div.onmousedown = e => {
         if(e.target.className === 'resizer' || e.target.tagName === 'INPUT') return;
         e.preventDefault(); e.stopPropagation();
-        
         const startX = e.clientX, startY = e.clientY;
-        const initialLX = el.lx, initialLY = el.ly;
-        
+        const initialX = div.lx, initialY = div.ly;
         document.getElementById('trash').style.display = 'flex';
-        el.classList.add('dragging');
-
+        div.style.zIndex = 1500;
         const move = ev => {
-            el.lx = initialLX + (ev.clientX - startX) / scale;
-            el.ly = initialLY + (ev.clientY - startY) / scale;
-            el.style.left = el.lx + "px";
-            el.style.top = el.ly + "px";
+            div.lx = initialX + (ev.clientX - startX) / scale;
+            div.ly = initialY + (ev.clientY - startY) / scale;
+            div.style.left = div.lx + "px";
+            div.style.top = div.ly + "px";
         };
-
         const up = ev => {
             window.removeEventListener('mousemove', move);
             window.removeEventListener('mouseup', up);
-            el.classList.remove('dragging');
             document.getElementById('trash').style.display = 'none';
-            if (ev.clientX > window.innerWidth - 100 && ev.clientY > window.innerHeight - 100) el.remove();
+            div.style.zIndex = 5;
+            if (ev.clientX > window.innerWidth - 100 && ev.clientY > window.innerHeight - 100) div.remove();
         };
         window.addEventListener('mousemove', move);
         window.addEventListener('mouseup', up);
     };
 
-    const resizer = el.querySelector('.resizer');
-    if(resizer) {
-        resizer.onmousedown = e => {
-            e.preventDefault(); e.stopPropagation();
-            const startX = e.clientX, initSize = el.lSize;
-            const move = ev => {
-                el.lSize = Math.max(50, initSize + (ev.clientX - startX) / scale);
-                el.style.width = el.lSize + "px";
-                el.style.height = el.lSize + "px";
-            };
-            const up = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); };
-            window.addEventListener('mousemove', move);
-            window.addEventListener('mouseup', up);
+    // Resizer pour le cercle
+    const resizer = div.querySelector('.resizer');
+    resizer.onmousedown = e => {
+        e.preventDefault(); e.stopPropagation();
+        const startX = e.clientX, initSize = div.lSize;
+        const move = ev => {
+            div.lSize = Math.max(50, initSize + (ev.clientX - startX) / scale);
+            div.style.width = div.lSize + "px";
+            div.style.height = div.lSize + "px";
         };
-    }
+        const up = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); };
+        window.addEventListener('mousemove', move);
+        window.addEventListener('mouseup', up);
+    };
+
+    canvas.appendChild(div);
 }
 
-// PAN
+// PAN (Inchangé)
 let isPan = false, sx, sy;
 viewport.onmousedown = e => { if(e.target === viewport || e.target === canvas) { isPan = true; sx = e.clientX - px; sy = e.clientY - py; } };
 window.onmousemove = e => { if(isPan) { px = e.clientX - sx; py = e.clientY - sy; updateTransform(); } };
 window.onmouseup = () => isPan = false;
 
+// SAUVEGARDE (Miniatures + Cercles)
 function saveMap() {
     const data = {
         arts: Array.from(document.querySelectorAll('.art-node')).map(n => ({x: n.lx, y: n.ly, img: n.dataset.img, id: n.dataset.id})),
         zones: Array.from(document.querySelectorAll('.zone-node')).map(z => ({x: z.lx, y: z.ly, s: z.lSize, t: z.querySelector('input').value}))
     };
-    localStorage.setItem('pem_v16', JSON.stringify(data));
+    localStorage.setItem('pem_v17_stable', JSON.stringify(data));
     alert("Map Sauvegardée !");
 }
 
 function loadMap() {
-    const raw = localStorage.getItem('pem_v16');
+    const raw = localStorage.getItem('pem_v17_stable');
     if(!raw) return;
     const d = JSON.parse(raw);
     d.arts.forEach(n => createNode(n.img, n.id, n.x, n.y));
