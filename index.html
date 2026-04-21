@@ -857,8 +857,8 @@ function getExSel(){return exFiltered.filter(o=>exSelected.has(o.OeuvreID));}
 // Cette fonction synchronise les oeuvres du canvas avec le champ 'theme' de la DB
 async function updateThemeBeforeExport() {
     // 1. On récupère le titre affiché de la sélection
-    // Assure-toi que l'élément HTML qui affiche le titre a bien l'ID "selectionTitle"
-    const selectionTitle = document.querySelector('#selectionTitle')?.innerText || "Sélection Sans Titre";
+    // Assure-toi que l'élément HTML qui affiche le titre a bien l'ID "exTitle"
+    const exTitle = document.querySelector('#exTitle')?.innerText || "Sélection Sans Titre";
 
     // 2. On récupère les IDs de toutes les miniatures présentes sur le canvas
     const nodes = Array.from(document.querySelectorAll('.art-node'));
@@ -878,12 +878,12 @@ async function updateThemeBeforeExport() {
                 'Prefer': 'return=minimal'
             },
             body: JSON.stringify({
-                theme: selectionTitle
+                theme: exTitle
             })
         });
 
         if (response.ok) {
-            console.log(`DB synchronisée : ${ids.length} oeuvres marquées "${selectionTitle}"`);
+            console.log(`DB synchronisée : ${ids.length} oeuvres marquées "${exTitle}"`);
         }
     } catch (err) {
         console.error("Erreur de sauvegarde du thème:", err);
@@ -1042,8 +1042,8 @@ else{initA();load();}
   
   async function saveMap() {
     // 1. On récupère le nom de la sélection actuelle dans ton interface
-    // (Ajuste l'ID '#selectionTitle' selon le nom de l'élément dans ton index.html)
-    const selectionTitle = document.querySelector('#selectionTitle')?.innerText || "Sans Titre";
+    // (Ajuste l'ID '#exTitle' selon le nom de l'élément dans ton index.html)
+    const exTitle = document.querySelector('#exTitle')?.innerText || "Sans Titre";
 
     // 2. Récupérer les IDs des oeuvres présentes sur le canvas
     const nodes = Array.from(document.querySelectorAll('.art-node'));
@@ -1074,12 +1074,12 @@ else{initA();load();}
                 'Prefer': 'return=minimal'
             },
             body: JSON.stringify({
-                theme: selectionTitle // On écrit le nom de la sélection dans la colonne theme
+                theme: exTitle // On écrit le nom de la sélection dans la colonne theme
             })
         });
 
         if (response.ok) {
-            console.log(`Base de données mise à jour : ${ids.length} œuvres liées au thème "${selectionTitle}"`);
+            console.log(`Base de données mise à jour : ${ids.length} œuvres liées au thème "${exTitle}"`);
             alert("Positions sauvegardées et thème mis à jour dans la base !");
         } else {
             alert("Erreur lors de la mise à jour du champ 'theme' sur Supabase.");
