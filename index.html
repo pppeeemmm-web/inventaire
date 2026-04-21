@@ -130,8 +130,7 @@ const WM_TEXT="© PEM";
 let oeuvres=[],techniques=[],supports=[],formats=[],contacts=[],imgTbl=[];
 let tM={},sM={},fM={},cM={},filtered=[],selId=null,curV="list";
 
-// Disable right-click globally
-document.addEventListener("contextmenu",e=>e.preventDefault());
+// Right-click enabled (image protection handled by canvas watermark)
 
 async function api(p,o={}){const s=p.includes("?")?"&":"?";const r=await fetch(`${SB}/rest/v1/${p}${s}apikey=${KEY}`,{...o,headers:{"Content-Type":"application/json",Prefer:"return=representation",apikey:KEY,Authorization:`Bearer ${KEY}`,...o.headers}});if(!r.ok)throw new Error(`${r.status}: ${await r.text()}`);return r.json();}
 async function upl(f,n){const r=await fetch(`${SB}/storage/v1/object/${BKT}/${encodeURIComponent(n)}`,{method:"POST",headers:{apikey:KEY,Authorization:`Bearer ${KEY}`,"Content-Type":f.type,"x-upsert":"true"},body:f});if(!r.ok)throw new Error(await r.text());}
@@ -660,7 +659,7 @@ const EX_FIELDS=[
   {k:"Prix",l:"Prix",t:"num"},{k:"Discount",l:"Discount",t:"num"},{k:"PrixFinal",l:"Prix final",t:"num"},
   {k:"Exposable",l:"Exposable",t:"bool"},{k:"Catalogué",l:"Catalogué",t:"bool"},
   {k:"Tirage",l:"Tirage",t:"text"},{k:"Statut",l:"Statut",t:"num"},
-  {k:"Commentaires",l:"Commentaires",t:"text"},{k:"Historique",l:"Historique",t:"text"},
+{k:"Commentaires",l:"Commentaires",t:"text"},{k:"Historique",l:"Historique",t:"text"},
   {k:"txtImageNameLink",l:"Image",t:"text"},{k:"NomOriginal",l:"Nom original",t:"text"},
   {k:"theme",l:"Thème",t:"text"},
 ];
@@ -678,70 +677,143 @@ let exSelName="", exSelComment="", exItemNotes={}; // {oeuvreId: "note"}
 function showExport(){
   exShowAll=false;
   const mn=document.getElementById("mn");
+  const IS="font-family:inherit;font-size:9px;background:var(--bg);border:1px solid var(--bd);color:var(--tx);padding:3px 6px;outline:none";
+  const themeOpts=[...new Set(oeuvres.map(o=>o.theme).filter(Boolean))].sort().map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join("");
+  mn.style.padding="0";
   mn.innerHTML=`
-    <div style="background:var(--sf);border:1px solid var(--bd);padding:12px 16px;margin-bottom:4px">
-      <div style="display:flex;gap:16px;align-items:baseline;flex-wrap:wrap;margin-bottom:6px">
-        <input id="exName" type="text" placeholder="Nom de la sélection..." value="${esc(exSelName)}" onchange="exSelName=this.value" style="font-family:inherit;font-size:15px;font-weight:700;color:var(--wh);background:none;border:none;border-bottom:1px solid var(--bd);padding:4px 0;width:320px;outline:none">
-        <span style="font-size:9px;color:var(--mt)">${new Date().toLocaleDateString("fr-FR")}</span>
-        <span class="cnt" id="exCnt" style="margin-left:auto"></span>
-      </div>
-      <textarea id="exComment" placeholder="Notes globales..." onchange="exSelComment=this.value" style="font-family:inherit;font-size:10px;color:var(--tx);background:var(--bg);border:1px solid var(--bd);padding:5px 8px;width:100%;min-height:28px;max-height:60px;resize:vertical;outline:none">${esc(exSelComment)}</textarea>
+  <div style="position:sticky;top:0;z-index:100;background:var(--bg);border-bottom:2px solid var(--ac)">
+    <div style="padding:10px 16px 8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <input id="exName" type="text" placeholder="Nom de la sélection..." value="${esc(exSelName)}" oninput="exSelName=this.value"
+        style="font-family:inherit;font-size:20px;font-weight:700;color:var(--ac);background:none;border:none;border-bottom:2px solid var(--ac);padding:2px 0;width:340px;outline:none">
+      <span style="font-size:9px;color:var(--mt)">${new Date().toLocaleDateString("fr-FR")}</span>
+      <span id="exCnt" style="font-size:9px;color:var(--mt);margin-left:auto"></span>
     </div>
-    <div style="background:var(--bg);border:1px solid var(--bd);padding:8px 16px;margin-bottom:4px">
-      <div style="font-size:8px;color:var(--mt);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Filtres</div>
-      <div class="exp-filters" id="exFlt"></div>
+    <div style="padding:0 16px 6px;border-bottom:1px solid var(--bd)">
+      <textarea id="exComment" rows="1" placeholder="Notes globales..." oninput="exSelComment=this.value"
+        onfocus="this.rows=3" onblur="this.rows=1"
+        style="font-family:inherit;font-size:10px;color:var(--tx);background:transparent;border:none;padding:2px 0;width:100%;resize:none;outline:none;line-height:1.4">${esc(exSelComment)}</textarea>
     </div>
-    <div class="exp-bar" style="margin-bottom:4px">
-      <button onclick="exSelImg()">Sélect. avec image</button>
-      <button onclick="exSelAll()">Tout</button>
-      <button onclick="exSelNone()">Aucun</button>
-      <button onclick="exSelInvert()">Inverser</button>
+    <div style="padding:4px 16px;border-bottom:1px solid var(--bd);display:flex;flex-wrap:wrap;gap:4px;align-items:center">
+      <span style="font-size:8px;color:var(--mt);text-transform:uppercase;letter-spacing:1px">Filtres</span>
+      <div class="exp-filters" id="exFlt" style="display:contents"></div>
+    </div>
+    <div style="padding:4px 8px 4px 16px;border-bottom:1px solid var(--bd);display:flex;flex-wrap:wrap;gap:4px;align-items:center;font-size:9px">
+      <button onclick="exSelImg()" style="${IS}">Avec image</button>
+      <button onclick="exSelAll()" style="${IS}">Tout</button>
+      <button onclick="exSelNone()" style="${IS}">Aucun</button>
+      <button onclick="exSelInvert()" style="${IS}">Inverser</button>
       <div class="sep"></div>
-      <label style="color:var(--mt)"><input type="checkbox" id="exShowAll" onchange="exShowAll=this.checked;renderExGrid()"> Sans image</label>
+      <label style="color:var(--mt)"><input type="checkbox" id="exShowAll" onchange="exShowAll=this.checked;renderExGrid()"> Sans img</label>
       <div class="sep"></div>
-      <label style="color:var(--mt)">Col: <select id="exColSel" onchange="exCols=Number(this.value);renderExGrid()">${[2,3,4,5,6,8,10,12,15].map(n=>`<option value="${n}" ${n===exCols?"selected":""}>${n}</option>`).join("")}</select></label>
-      <label style="color:var(--mt)">Page: <select onchange="exPageSize=Number(this.value);renderExGrid()"><option value="0" selected>Tout</option><option value="24">24</option><option value="48">48</option><option value="96">96</option></select></label>
-      <label style="color:var(--mt)">Tri: <select id="exSort" onchange="renderExGrid()"><option value="id_desc">ID ↓</option><option value="id_asc">ID ↑</option><option value="year_desc">Année ↓</option><option value="year_asc">Année ↑</option><option value="title_asc">Titre A-Z</option><option value="tech">Technique</option><option value="prix_desc">Prix ↓</option></select></label>
-    </div>
-    <div class="exp-bar" style="gap:6px;font-size:9px;color:var(--mt);margin-bottom:4px">
-      <span style="color:var(--mt)">IDs:</span>
-      <input type="text" id="exIdInput" placeholder="ex: 4, 10-20, 204, 1500-1600" style="font-family:inherit;font-size:9px;background:var(--bg);border:1px solid var(--bd);color:var(--tx);padding:3px 6px;width:200px;outline:none">
-      <button onclick="exSelByIds()">Appliquer</button>
+      Col:<select id="exColSel" onchange="exCols=Number(this.value);renderExGrid()" style="${IS}">${[2,3,4,5,6,8,10,12,15].map(n=>`<option value="${n}" ${n===exCols?"selected":""}>${n}</option>`).join("")}</select>
+      Page:<select onchange="exPageSize=Number(this.value);renderExGrid()" style="${IS}"><option value="0" selected>Tout</option><option value="24">24</option><option value="48">48</option><option value="96">96</option></select>
+      Tri:<select id="exSort" onchange="renderExGrid()" style="${IS}"><option value="id_desc">ID ↓</option><option value="id_asc">ID ↑</option><option value="year_desc">Année ↓</option><option value="year_asc">Année ↑</option><option value="title_asc">Titre A-Z</option><option value="tech">Technique</option><option value="prix_desc">Prix ↓</option></select>
       <div class="sep"></div>
-      <span style="color:var(--mt)">Thème:</span>
-      <select id="exThemeSel" style="font-family:inherit;font-size:9px;background:var(--bg);border:1px solid var(--bd);color:var(--tx);padding:3px 6px">
-        <option value="">— choisir —</option>
-        ${[...new Set(oeuvres.map(o=>o.theme).filter(Boolean))].sort().map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join("")}
-      </select>
-      <button onclick="exSelByTheme()">Sélect.</button>
+      IDs:<input type="text" id="exIdInput" placeholder="4, 10-20, 204" style="${IS};width:140px">
+      <button onclick="exSelByIds()" style="${IS}">↵</button>
       <div class="sep"></div>
-      Champs: 
-      <label><input type="checkbox" checked onchange="exDispFields.titre=this.checked;renderExGrid()"> Titre</label>
-      <label><input type="checkbox" checked onchange="exDispFields.id=this.checked;renderExGrid()"> ID</label>
-      <label><input type="checkbox" checked onchange="exDispFields.technique=this.checked;renderExGrid()"> Technique</label>
-      <label><input type="checkbox" checked onchange="exDispFields.annee=this.checked;renderExGrid()"> Année</label>
-      <label><input type="checkbox" onchange="exDispFields.support=this.checked;renderExGrid()"> Support</label>
-      <label><input type="checkbox" onchange="exDispFields.dims=this.checked;renderExGrid()"> Dimensions</label>
-      <label><input type="checkbox" onchange="exDispFields.prix=this.checked;renderExGrid()"> Prix</label>
-      <label><input type="checkbox" onchange="exDispFields.contact=this.checked;renderExGrid()"> Contact</label>
-      <label><input type="checkbox" onchange="exDispFields.exposable=this.checked;renderExGrid()"> Exposable</label>
-      <label><input type="checkbox" onchange="exDispFields.tirage=this.checked;renderExGrid()"> Tirage</label>
+      Thème:<select id="exThemeSel" style="${IS}"><option value="">—</option>${themeOpts}</select>
+      <button onclick="exSelByTheme()" style="${IS}">Sélect.</button>
+      <div class="sep"></div>
+      <label style="color:var(--mt)"><input type="checkbox" checked onchange="exDispFields.titre=this.checked;renderExGrid()"> Titre</label>
+      <label style="color:var(--mt)"><input type="checkbox" checked onchange="exDispFields.id=this.checked;renderExGrid()"> ID</label>
+      <label style="color:var(--mt)"><input type="checkbox" checked onchange="exDispFields.technique=this.checked;renderExGrid()"> Tech</label>
+      <label style="color:var(--mt)"><input type="checkbox" checked onchange="exDispFields.annee=this.checked;renderExGrid()"> Année</label>
+      <label style="color:var(--mt)"><input type="checkbox" onchange="exDispFields.support=this.checked;renderExGrid()"> Support</label>
+      <label style="color:var(--mt)"><input type="checkbox" onchange="exDispFields.dims=this.checked;renderExGrid()"> Dims</label>
+      <label style="color:var(--mt)"><input type="checkbox" onchange="exDispFields.prix=this.checked;renderExGrid()"> Prix</label>
+      <label style="color:var(--mt)"><input type="checkbox" onchange="exDispFields.contact=this.checked;renderExGrid()"> Contact</label>
+      <label style="color:var(--mt)"><input type="checkbox" onchange="exDispFields.exposable=this.checked;renderExGrid()"> Exp</label>
+      <label style="color:var(--mt)"><input type="checkbox" onchange="exDispFields.tirage=this.checked;renderExGrid()"> Tirage</label>
     </div>
-    <div id="exSummary" style="padding:4px 16px;font-size:9px;color:var(--mt);margin-bottom:8px"></div>
-    <div class="gal" id="exGrid"></div>
-    <div style="position:sticky;bottom:0;background:var(--sf);border-top:2px solid var(--ac);padding:8px 16px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;z-index:50">
-      <label style="font-size:9px;color:var(--mt)">PDF col: <select id="exPdfCols">${[1,2,3,4,5,6,8,10].map(n=>`<option value="${n}" ${n===4?"selected":""}>${n}</option>`).join("")}</select></label>
-      <button class="exp-fmt" onclick="exPDF('fiche')">PDF Fiches</button>
-      <button class="exp-fmt" onclick="exPDF('grille')">PDF Grille</button>
-      <button class="exp-fmt" onclick="exPDF('tableau')">PDF Tableau</button>
-      <button class="exp-fmt" onclick="exHTML()">HTML</button>
-      <div style="width:1px;height:16px;background:var(--bd)"></div>
-      <button class="exp-fmt" onclick="sendToList()">→ Voir dans Liste</button>
-    </div>
-    <div class="exp-status" id="exStat"></div>`;
+  </div>
+  <div style="padding:4px 16px"><div id="exSummary" style="font-size:9px;color:var(--mt);padding:4px 0"></div></div>
+  <div class="gal" id="exGrid" style="padding:0 16px 120px"></div>
+  <div style="position:sticky;bottom:0;background:var(--sf);border-top:2px solid var(--ac);padding:6px 16px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;z-index:50">
+    <span style="font-size:8px;color:var(--mt);text-transform:uppercase;letter-spacing:1px">Modifier:</span>
+    <select id="beField" onchange="renderBulkValue()" style="${IS}">
+      <option value="">— champ —</option>
+      <option value="Technique">Technique</option>
+      <option value="Support">Support</option>
+      <option value="Format">Format</option>
+      <option value="ContactID">Contact</option>
+      <option value="Exposable">Exposable</option>
+      <option value="Catalogué">Catalogué</option>
+      <option value="Prix">Prix (€)</option>
+      <option value="Tirage">Tirage</option>
+    </select>
+    <span id="beValueWrap"></span>
+    <button onclick="bulkEdit()" style="font-family:inherit;font-size:9px;background:var(--ac);color:var(--bk);border:none;padding:3px 10px;cursor:pointer;font-weight:700">Appliquer à <span id="beCnt">0</span></button>
+    <div style="width:1px;height:16px;background:var(--bd)"></div>
+    <label style="font-size:9px;color:var(--mt)">PDF col:<select id="exPdfCols" style="${IS}">${[1,2,3,4,5,6,8,10].map(n=>`<option value="${n}" ${n===4?"selected":""}>${n}</option>`).join("")}</select></label>
+    <button class="exp-fmt" onclick="exPDF('fiche')">PDF Fiches</button>
+    <button class="exp-fmt" onclick="exPDF('grille')">PDF Grille</button>
+    <button class="exp-fmt" onclick="exPDF('tableau')">PDF Tableau</button>
+    <button class="exp-fmt" onclick="exHTML()">HTML</button>
+    <div style="width:1px;height:16px;background:var(--bd)"></div>
+    <button class="exp-fmt" onclick="sendToList()">→ Liste</button>
+    <div id="exStat" style="font-size:9px;color:var(--mt);margin-left:auto"></div>
+  </div>`;
   renderExCrit();
   runExFilter();
 }
+
+const BULK_FIELDS_MAP={
+  Technique:()=>techniques.map(x=>[x.TechniqueID,x.Technique]),
+  Support:()=>supports.map(x=>[x.SupportID,x.Support]),
+  Format:()=>[["","—"],...formats.map(x=>[x.FormatID,x.Format])],
+  ContactID:()=>contacts.map(x=>[x.ContactID,`${x.NomInstitution}${x.Nom?" ("+x.Nom+")":""}`]),
+};
+const BULK_BOOL=["Exposable","Catalogué"];
+const BULK_NUM=["Prix"];
+
+function renderBulkValue(){
+  const f=document.getElementById("beField")?.value;
+  const w=document.getElementById("beValueWrap");
+  if(!w)return;
+  const S2="font-family:inherit;font-size:9px;background:var(--bg);border:1px solid var(--bd);color:var(--tx);padding:3px 6px;outline:none";
+  if(BULK_FIELDS_MAP[f]){
+    const opts=BULK_FIELDS_MAP[f]().map(([v,l])=>`<option value="${v}">${esc(String(l))}</option>`).join("");
+    w.innerHTML=`<select id="beVal" style="${S2}"><option value="">—</option>${opts}</select>`;
+  }else if(BULK_BOOL.includes(f)){
+    w.innerHTML=`<select id="beVal" style="${S2}"><option value="true">Oui</option><option value="false">Non</option></select>`;
+  }else if(BULK_NUM.includes(f)){
+    w.innerHTML=`<input id="beVal" type="number" style="${S2};width:80px">`;
+  }else if(f==="Tirage"){
+    w.innerHTML=`<input id="beVal" type="text" style="${S2};width:80px">`;
+  }else{w.innerHTML="";}
+}
+
+async function bulkEdit(){
+  const ids=[...exSelected];
+  if(!ids.length){tst("Aucune sélection",true);return;}
+  const f=document.getElementById("beField")?.value;
+  if(!f){tst("Choisir un champ",true);return;}
+  const valEl=document.getElementById("beVal");
+  if(!valEl){tst("Choisir une valeur",true);return;}
+  const val=valEl.value;
+  const data={};
+  if(BULK_BOOL.includes(f))data[f]=val==="true";
+  else if(BULK_NUM.includes(f))data[f]=Number(val)||0;
+  else if(BULK_FIELDS_MAP[f])data[f]=val?Number(val):null;
+  else data[f]=val||null;
+  if(!confirm(`Appliquer "${f}" à ${ids.length} œuvres ?`))return;
+  try{
+    await api(`Oeuvres?OeuvreID=in.(${ids.join(",")})`,{method:"PATCH",body:JSON.stringify(data)});
+    oeuvres.forEach(o=>{if(exSelected.has(o.OeuvreID))Object.assign(o,data);});
+    tst(`${ids.length} œuvres mises à jour`);
+    renderExGrid();
+  }catch(e){tst("Erreur: "+e.message,true);}
+}
+
+function clearExSelection(){
+  exSelName="";exSelComment="";exSelected=new Set();exCrit=[];exItemNotes={};
+  const n=document.getElementById("exName");if(n)n.value="";
+  const c=document.getElementById("exComment");if(c)c.value="";
+  updateExCnt();renderExGrid();
+}
+
+
 
 function renderExCrit(){
   const el=document.getElementById("exFlt");if(!el)return;
@@ -797,6 +869,7 @@ function updateExCnt(){
   const el=document.getElementById("exCnt");
   const withImg=exFiltered.filter(o=>o.txtImageNameLink).length;
   if(el)el.textContent=`${exSelected.size} sélectionnée${exSelected.size>1?"s":""} / ${exFiltered.length} filtrée${exFiltered.length>1?"s":""} (${withImg} avec image)`;
+  const bc=document.getElementById("beCnt");if(bc)bc.textContent=exSelected.size;
   updateExSummary();
 }
 
@@ -909,19 +982,28 @@ function renderExGrid(){
     </div>`;
   }).join("");
   if(exPageSize>0&&total>exPageSize){
-    el.insertAdjacentHTML("beforeend",`<div style="grid-column:1/-1;text-align:center;padding:12px"><button class="exp-fmt" onclick="exPageSize+=exPageSize;renderExGrid()">Charger plus (${total-exPageSize} restantes)</button></div>`);
+    el.insertAdjacentHTML("beforeend",`<div style="grid-column:1/-1;text-align:center;padding:12px"><button class="exp-fmt" onclick="exPageSize+=48;renderExGrid()">Charger plus (${total-exPageSize} restantes)</button></div>`);
   }
   oL();
   updateExSummary();
 }
 
 function editItemNote(id){
+  document.getElementById('noteModal')?.remove();
   const o=oeuvres.find(x=>x.OeuvreID===id);
-  const current=exItemNotes[id]||"";
-  const note=prompt(`Note pour "${o?.Titre||'ID '+id}" :`,current);
-  if(note===null)return; // cancelled
-  if(note)exItemNotes[id]=note;
-  else delete exItemNotes[id];
+  const cur=exItemNotes[id]||'';
+  const mo=document.createElement('div');
+  mo.id='noteModal';
+  mo.style.cssText='position:fixed;inset:0;z-index:600;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.65)';
+  mo.innerHTML=`<div style="background:var(--sf);border:1px solid var(--ac);padding:16px;width:360px;max-width:92vw"><div style="font-size:10px;font-weight:700;color:var(--ac);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">Note — ${esc(o?.Titre||'ID '+id)}</div><textarea id="nmI" rows="3" style="font-family:inherit;width:100%;background:var(--bg);border:1px solid var(--bd);color:var(--tx);padding:6px;font-size:11px;resize:vertical;outline:none">${esc(cur)}</textarea><div style="display:flex;gap:6px;margin-top:8px;justify-content:flex-end"><button class="btn bs" onclick="document.getElementById('noteModal').remove()">Annuler</button><button class="btn bp" onclick="saveNote(${id})">OK</button></div></div>`;
+  document.body.appendChild(mo);
+  mo.onclick=e=>{if(e.target===mo)mo.remove();};
+  document.getElementById('nmI')?.focus();
+}
+function saveNote(id){
+  const v=(document.getElementById('nmI')?.value||'').trim();
+  if(v)exItemNotes[id]=v;else delete exItemNotes[id];
+  document.getElementById('noteModal')?.remove();
   renderExGrid();
 }
 
@@ -1071,6 +1153,7 @@ async function exPDF(mode){
   const safeName=(exSelName||"selection").replace(/[^a-zA-Z0-9_-]/g,"_").slice(0,30);
   doc.save(`PEM_${safeName}_${mode}_${items.length}.pdf`);
   st.textContent=`✓ ${items.length} oeuvres exportées`;tst(`PDF ${mode}`);
+  setTimeout(()=>clearExSelection(),800);
 }
 
 async function exHTML(){
@@ -1110,59 +1193,14 @@ body{font-family:Georgia,serif;background:#fff;color:#222;padding:40px 40px 60px
 </div>`;}).join("")}</div>
 <p class="footer">© Pierre Emmanuel Moulin</p></body></html>`;
   const w=window.open();w.document.write(html);w.document.close();
+  setTimeout(()=>clearExSelection(),400);
 }
 
 if(PUB){document.getElementById("app").innerHTML='<div class="empty">Chargement...</div>';load();}
 else{initA();load();}
   
-  async function saveMap() {
-    // 1. On récupère le nom de la sélection actuelle dans ton interface
-    // (Ajuste l'ID '#exTitle' selon le nom de l'élément dans ton index.html)
-    const exTitle = document.querySelector('#exTitle')?.innerText || "Sans Titre";
 
-    // 2. Récupérer les IDs des oeuvres présentes sur le canvas
-    const nodes = Array.from(document.querySelectorAll('.art-node'));
-    const ids = nodes.map(n => n.dataset.id);
 
-    if (ids.length === 0) {
-        alert("Le canvas est vide, rien à taguer.");
-        return;
-    }
-
-    // 3. Sauvegarde locale des positions (comme avant)
-    const localData = nodes.map(n => ({
-        x: n.lx, 
-        y: n.ly, 
-        img: n.dataset.img, 
-        id: n.dataset.id
-    }));
-    localStorage.setItem('pem_index_map', JSON.stringify(localData));
-
-    // 4. Mise à jour massive du champ 'theme' dans Supabase
-    try {
-        const response = await fetch(`${SB}/rest/v1/Oeuvres?OeuvreID=in.(${ids.join(',')})`, {
-            method: 'PATCH',
-            headers: {
-                'apikey': KEY,
-                'Authorization': `Bearer ${KEY}`,
-                'Content-Type': 'application/json',
-                'Prefer': 'return=minimal'
-            },
-            body: JSON.stringify({
-                theme: exTitle // On écrit le nom de la sélection dans la colonne theme
-            })
-        });
-
-        if (response.ok) {
-            console.log(`Base de données mise à jour : ${ids.length} œuvres liées au thème "${exTitle}"`);
-            alert("Positions sauvegardées et thème mis à jour dans la base !");
-        } else {
-            alert("Erreur lors de la mise à jour du champ 'theme' sur Supabase.");
-        }
-    } catch (err) {
-        console.error("Erreur de connexion Supabase:", err);
-    }
-}
 </script>
 </body>
 </html>
