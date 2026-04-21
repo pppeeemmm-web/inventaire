@@ -891,7 +891,6 @@ async function updateThemeBeforeExport() {
 }
   
 async function loadJsPDF(){
-  await updateThemeBeforeExport();
   if(window.jspdf)return;
   return new Promise((res,rej)=>{const s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";s.onload=res;s.onerror=()=>rej(new Error("jsPDF load failed"));document.head.appendChild(s);});
 }
@@ -998,7 +997,7 @@ async function exPDF(mode){
   st.textContent=`✓ ${items.length} oeuvres exportées`;tst(`PDF ${mode}`);
 }
 
-function exHTML(){
+async function exHTML(){
   await updateThemeBeforeExport();
   const items=getExSel();if(!items.length){tst("Aucune oeuvre",true);return;}
   const cols=Number(document.getElementById("exPdfCols")?.value||4);
