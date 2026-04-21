@@ -854,7 +854,44 @@ function sendToList(){
 function getExSel(){return exFiltered.filter(o=>exSelected.has(o.OeuvreID));}
 
 // ── PDF ──
+// Cette fonction synchronise les oeuvres du canvas avec le champ 'theme' de la DB
+async function updateThemeBeforeExport() {
+    // 1. On récupère le titre affiché de la sélection
+    // Assure-toi que l'élément HTML qui affiche le titre a bien l'ID "selectionTitle"
+    const selectionTitle = document.querySelector('#selectionTitle')?.innerText || "Sélection Sans Titre";
+
+    // 2. On récupère les IDs de toutes les miniatures présentes sur le canvas
+    const nodes = Array.from(document.querySelectorAll('.art-node'));
+    const ids = nodes.map(n => n.dataset.id);
+
+    // Si le canvas est vide, on s'arrête là
+    if (ids.length === 0) return;
+
+    // 3. Mise à jour massive sur Supabase (PATCH)
+    try {
+        const response = await fetch(`${SB}/rest/v1/Oeuvres?OeuvreID=in.(${ids.join(',')})`, {
+            method: 'PATCH',
+            headers: {
+                'apikey': KEY,
+                'Authorization': `Bearer ${KEY}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify({
+                theme: selectionTitle
+            })
+        });
+
+        if (response.ok) {
+            console.log(`DB synchronisée : ${ids.length} oeuvres marquées "${selectionTitle}"`);
+        }
+    } catch (err) {
+        console.error("Erreur de sauvegarde du thème:", err);
+    }
+}
+  
 async function loadJsPDF(){
+  await updateThemeBeforeExport();
   if(window.jspdf)return;
   return new Promise((res,rej)=>{const s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";s.onload=res;s.onerror=()=>rej(new Error("jsPDF load failed"));document.head.appendChild(s);});
 }
@@ -863,6 +900,7 @@ async function imgToDataUrl(url,maxW,maxH){
 }
 
 async function exPDF(mode){
+  await updateThemeBeforeExport();
   const items=getExSel();
   if(!items.length){tst("Aucune oeuvre sélectionnée",true);return;}
   const st=document.getElementById("exStat");
@@ -961,6 +999,7 @@ async function exPDF(mode){
 }
 
 function exHTML(){
+  await updateThemeBeforeExport();
   const items=getExSel();if(!items.length){tst("Aucune oeuvre",true);return;}
   const cols=Number(document.getElementById("exPdfCols")?.value||4);
   const title=exSelName||"Sélection";
