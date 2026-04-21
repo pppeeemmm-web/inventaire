@@ -247,10 +247,16 @@ function pubDet(id){const o=oeuvres.find(x=>x.OeuvreID===id);if(!o)return;const 
 }
 
 // ═══ ADMIN ═══
-function initA(){document.getElementById("app").innerHTML=`<header><h1>PEM — Inventaire</h1><nav id="nv"><button class="active" onclick="sv('list')">Liste</button><button onclick="sv('gallery')">Galerie</button><button onclick="sv('form')">+ Nouvelle</button><button onclick="sv('export')">Export/Sélection</button></nav></header><div id="debug"></div><div class="body"><aside class="sidebar" id="sb"><div class="filters"><input type="text" id="q" placeholder="Recherche titre / ID..." oninput="applyF()"><select id="fT" onchange="applyF()"><option value="">Toutes techniques</option></select><select id="fS" onchange="applyF()"><option value="">Tous supports</option></select><select id="fSt" onchange="applyF()"><option value="">Tout statut</option><option value="cat">Catalogué</option><option value="ncat">Non catalogué</option><option value="exp">Exposable</option><option value="noimg">Sans image</option><option value="nopx">Sans prix</option></select><select id="fSort" onchange="applyF()"><option value="id_desc">ID ↓</option><option value="id_asc">ID ↑</option><option value="year_desc">Année ↓</option><option value="year_asc">Année ↑</option><option value="title_asc">Titre A-Z</option><option value="title_desc">Titre Z-A</option><option value="tech">Technique</option><option value="support">Support</option><option value="prix_desc">Prix ↓</option><option value="prix_asc">Prix ↑</option></select></div><div class="list" id="ls"></div><div class="stats" id="st"></div></aside><main class="main" id="mn"><div class="empty">Chargement...</div></main></div>`;}
-function popF(){document.getElementById("fT").innerHTML='<option value="">Toutes techniques</option>'+techniques.map(t=>`<option value="${t.TechniqueID}">${t.Technique}</option>`).join("");document.getElementById("fS").innerHTML='<option value="">Tous supports</option>'+supports.map(s=>`<option value="${s.SupportID}">${s.Support}</option>`).join("");}
+function initA(){document.getElementById("app").innerHTML=`<header><h1>PEM — Inventaire</h1><nav id="nv"><button class="active" onclick="sv('list')">Liste</button><button onclick="sv('gallery')">Galerie</button><button onclick="sv('form')">+ Nouvelle</button><button onclick="sv('export')">Export/Sélection</button></nav></header><div id="debug"></div><div class="body"><aside class="sidebar" id="sb"><div class="filters"><input type="text" id="q" placeholder="Recherche titre / ID..." oninput="applyF()"><select id="fT" onchange="applyF()"><option value="">Toutes techniques</option></select><select id="fS" onchange="applyF()"><option value="">Tous supports</option></select><select id="fSt" onchange="applyF()"><option value="">Tout statut</option><option value="cat">Catalogué</option><option value="ncat">Non catalogué</option><option value="exp">Exposable</option><option value="noimg">Sans image</option><option value="nopx">Sans prix</option></select><select id="fSort" onchange="applyF()"><option value="id_desc">ID ↓</option><option value="id_asc">ID ↑</option><option value="year_desc">Année ↓</option><option value="year_asc">Année ↑</option><option value="title_asc">Titre A-Z</option><option value="title_desc">Titre Z-A</option><option value="tech">Technique</option><option value="support">Support</option><option value="prix_desc">Prix ↓</option><option value="prix_asc">Prix ↑</option></select><select id="fTheme" onchange="applyF()"><option value="">Tous thèmes</option></select></div><div class="list" id="ls"></div><div class="stats" id="st"></div></aside><main class="main" id="mn"><div class="empty">Chargement...</div></main></div>`;}
+function popF(){
+  document.getElementById("fT").innerHTML='<option value="">Toutes techniques</option>'+techniques.map(t=>`<option value="${t.TechniqueID}">${t.Technique}</option>`).join("");
+  document.getElementById("fS").innerHTML='<option value="">Tous supports</option>'+supports.map(s=>`<option value="${s.SupportID}">${s.Support}</option>`).join("");
+  // Build theme list from oeuvres data
+  const themes=[...new Set(oeuvres.map(o=>o.theme).filter(Boolean))].sort();
+  document.getElementById("fTheme").innerHTML='<option value="">Tous thèmes</option>'+themes.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join("");
+}
 function upSt(){document.getElementById("st").textContent=`${filtered.length}/${oeuvres.length} · ${oeuvres.filter(o=>!o.txtImageNameLink).length} sans img · ${oeuvres.filter(o=>!o.Prix).length} sans prix`;}
-function applyF(){const q=document.getElementById("q").value.toLowerCase(),t=document.getElementById("fT").value,su=document.getElementById("fS").value,st=document.getElementById("fSt").value;filtered=oeuvres.filter(o=>{if(q&&!(o.Titre||"").toLowerCase().includes(q)&&!String(o.OeuvreID).includes(q))return false;if(t&&String(o.Technique)!==t)return false;if(su&&String(o.Support)!==su)return false;if(st==="cat"&&!o["Catalogué"])return false;if(st==="ncat"&&o["Catalogué"])return false;if(st==="exp"&&!o.Exposable)return false;if(st==="noimg"&&o.txtImageNameLink)return false;if(st==="nopx"&&o.Prix>0)return false;return true;});
+function applyF(){const q=document.getElementById("q").value.toLowerCase(),t=document.getElementById("fT").value,su=document.getElementById("fS").value,st=document.getElementById("fSt").value,th=document.getElementById("fTheme")?.value||"";filtered=oeuvres.filter(o=>{if(q&&!(o.Titre||"").toLowerCase().includes(q)&&!String(o.OeuvreID).includes(q))return false;if(t&&String(o.Technique)!==t)return false;if(su&&String(o.Support)!==su)return false;if(st==="cat"&&!o["Catalogué"])return false;if(st==="ncat"&&o["Catalogué"])return false;if(st==="exp"&&!o.Exposable)return false;if(st==="noimg"&&o.txtImageNameLink)return false;if(st==="nopx"&&o.Prix>0)return false;if(th&&(o.theme||"")!==th)return false;return true;});
   // Sort
   const s=document.getElementById("fSort")?.value||"id_desc";
   filtered.sort((a,b)=>{switch(s){
@@ -656,6 +662,7 @@ const EX_FIELDS=[
   {k:"Tirage",l:"Tirage",t:"text"},{k:"Statut",l:"Statut",t:"num"},
   {k:"Commentaires",l:"Commentaires",t:"text"},{k:"Historique",l:"Historique",t:"text"},
   {k:"txtImageNameLink",l:"Image",t:"text"},{k:"NomOriginal",l:"Nom original",t:"text"},
+  {k:"theme",l:"Thème",t:"text"},
 ];
 const EX_OPS={
   text:["contient","ne contient pas","=","≠","est vide","n'est pas vide"],
@@ -698,8 +705,15 @@ function showExport(){
     </div>
     <div class="exp-bar" style="gap:6px;font-size:9px;color:var(--mt);margin-bottom:4px">
       <span style="color:var(--mt)">IDs:</span>
-      <input type="text" id="exIdInput" placeholder="ex: 4, 10-20, 204, 1500-1600" style="font-family:inherit;font-size:9px;background:var(--bg);border:1px solid var(--bd);color:var(--tx);padding:3px 6px;width:260px;outline:none">
+      <input type="text" id="exIdInput" placeholder="ex: 4, 10-20, 204, 1500-1600" style="font-family:inherit;font-size:9px;background:var(--bg);border:1px solid var(--bd);color:var(--tx);padding:3px 6px;width:200px;outline:none">
       <button onclick="exSelByIds()">Appliquer</button>
+      <div class="sep"></div>
+      <span style="color:var(--mt)">Thème:</span>
+      <select id="exThemeSel" style="font-family:inherit;font-size:9px;background:var(--bg);border:1px solid var(--bd);color:var(--tx);padding:3px 6px">
+        <option value="">— choisir —</option>
+        ${[...new Set(oeuvres.map(o=>o.theme).filter(Boolean))].sort().map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join("")}
+      </select>
+      <button onclick="exSelByTheme()">Sélect.</button>
       <div class="sep"></div>
       Champs: 
       <label><input type="checkbox" checked onchange="exDispFields.titre=this.checked;renderExGrid()"> Titre</label>
@@ -788,6 +802,15 @@ function updateExCnt(){
 
 function exSelAll(){exSelected=new Set(exFiltered.map(o=>o.OeuvreID));updateExCnt();renderExGrid();}
 function exSelImg(){exSelected=new Set(exFiltered.filter(o=>o.txtImageNameLink).map(o=>o.OeuvreID));updateExCnt();renderExGrid();}
+function exSelByTheme(){
+  const theme=document.getElementById("exThemeSel")?.value;
+  if(!theme){tst("Choisir un thème",true);return;}
+  let added=0;
+  oeuvres.forEach(o=>{if(o.theme===theme){exSelected.add(o.OeuvreID);added++;}});
+  tst(`${added} oeuvres sélectionnées — thème "${theme}"`);
+  updateExCnt();renderExGrid();
+}
+
 function exSelByIds(){
   const raw=document.getElementById("exIdInput")?.value||"";
   if(!raw.trim()){tst("Entrer des IDs",true);return;}
