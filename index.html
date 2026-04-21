@@ -136,7 +136,7 @@ document.addEventListener("contextmenu",e=>e.preventDefault());
 async function api(p,o={}){const s=p.includes("?")?"&":"?";const r=await fetch(`${SB}/rest/v1/${p}${s}apikey=${KEY}`,{...o,headers:{"Content-Type":"application/json",Prefer:"return=representation",apikey:KEY,Authorization:`Bearer ${KEY}`,...o.headers}});if(!r.ok)throw new Error(`${r.status}: ${await r.text()}`);return r.json();}
 async function upl(f,n){const r=await fetch(`${SB}/storage/v1/object/${BKT}/${encodeURIComponent(n)}`,{method:"POST",headers:{apikey:KEY,Authorization:`Bearer ${KEY}`,"Content-Type":f.type,"x-upsert":"true"},body:f});if(!r.ok)throw new Error(await r.text());}
 function iu(f){if(!f)return null;return f.startsWith("http")?f:`${STR}/${encodeURIComponent(f)}`;}
-function iuThumb(f,size){if(!f)return null;const s=size||200;if(f.startsWith("http"))return f;return`${SB}/storage/v1/render/image/public/${BKT}/${encodeURIComponent(f)}?width=${s}&height=${s}&resize=cover`;}
+function iuThumb(f,size){if(!f)return null;const s=size||100;if(f.startsWith("http"))return f;return`${SB}/storage/v1/render/image/public/${BKT}/${encodeURIComponent(f)}?width=${s}&height=${s}&resize=cover`;}
 // Medium res for viewer: render at 1600px width, maintains aspect ratio — good quality, ~200-400KB instead of 3-4MB
 function iuMed(f){if(!f)return null;if(f.startsWith("http"))return f;return`${SB}/storage/v1/render/image/public/${BKT}/${encodeURIComponent(f)}?width=1600&quality=85`;}
 function dm(o){return{h:o.Hauteur||(o.Format&&FDIM[o.Format]?String(FDIM[o.Format][0]):null),l:o.Largeur||(o.Format&&FDIM[o.Format]?String(FDIM[o.Format][1]):null)};}
@@ -238,7 +238,7 @@ async function load(){
 function initPub(){const pub=oeuvres.filter(o=>o.Exposable&&o.txtImageNameLink).sort((a,b)=>(b["Année"]||"").localeCompare(a["Année"]||""));document.getElementById("app").innerHTML=`<div class="ph"><h1>Pierre Emmanuel Moulin</h1><p>Peinture · Dessin</p></div><div id="pm"></div>`;window._pub=pub;pubGal();}
 function pubGal(){const pm=document.getElementById("pm");pm.innerHTML=`<div class="pgal">${window._pub.map((o,i)=>{const d=dm(o);return`<div class="pc" onclick="pubDet(${o.OeuvreID})"><canvas id="pc${i}" style="width:100%;aspect-ratio:4/5"></canvas><div class="pi"><h3>${esc(o.Titre||"Sans titre")}</h3><p>${tM[o.Technique]||""} ${sM[o.Support]?`sur ${sM[o.Support]}`:""}${d.h&&d.l?` · ${d.h}×${d.l}`:""} · ${o["Année"]?String(o["Année"]).slice(0,4):""}</p></div></div>`;}).join("")}</div>`;
   // Draw canvases with lazy observer
-  const obs=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){const c=e.target;const idx=parseInt(c.id.replace("pc",""));const o=window._pub[idx];if(o)drawProtected(c.id,iu(o.txtImageNameLink),{maxW:400,maxH:500});obs.unobserve(c);}});},{rootMargin:"200px"});
+  const obs=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){const c=e.target;const idx=parseInt(c.id.replace("pc",""));const o=window._pub[idx];if(o)drawProtected(c.id,iu(o.txtImageNameLink),{maxW:400,maxH:500});obs.unobserve(c);}});},{rootMargin:"50px"});
   document.querySelectorAll("[id^=pc]").forEach(c=>obs.observe(c));
 }
 function pubDet(id){const o=oeuvres.find(x=>x.OeuvreID===id);if(!o)return;const d=dm(o),ai=iFor(o.OeuvreID);let au=[iu(o.txtImageNameLink)];ai.forEach(im=>{const x=iu(im.txtImageNameLink||im.txtImageName);if(x&&!au.includes(x))au.push(x);});window._pubImgs=au;
@@ -273,7 +273,32 @@ function stb(v){document.querySelectorAll("#nv button").forEach((b,i)=>b.classLi
 function sv(v){curV=v;stb(v);document.getElementById("sb").style.display=(v==="form"||v==="export")?"none":"";
   if(v==="list"){rList();det(selId);}if(v==="gallery")rGal();if(v==="form")frm();if(v==="export")showExport();}
 
-function rList(){const el=document.getElementById("ls");el.innerHTML=filtered.map(o=>{const u=iuThumb(o.txtImageNameLink,80),d=dm(o),ds=d.h&&d.l?` · ${d.h}×${d.l}`:"",ic=iFor(o.OeuvreID).length;return`<div class="list-item ${selId===o.OeuvreID?'active':''}" onclick="sel(${o.OeuvreID})">${u?`<img class="lt lazy" data-src="${u}" alt="">`:`<div class="lte">—</div>`}<div class="li"><div class="ln"><span style="color:var(--mt);font-size:9px;margin-right:4px">${o.OeuvreID}</span>${esc(o.Titre||"Sans titre")}</div><div class="ls">${tM[o.Technique]||"?"} / ${sM[o.Support]||"?"} · ${o["Année"]?String(o["Année"]).slice(0,4):"?"}${ds}</div></div>${ic>1?`<span style="font-size:8px;color:var(--mt)">${ic}</span>`:""}${o.Exposable?'<span class="badge">EXP</span>':""}</div>`;}).join("");oL();const a=el.querySelector(".list-item.active");if(a)a.scrollIntoView({block:"nearest"});}
+let listPage=0,listPageSize=50;
+function rList(){
+  const el=document.getElementById("ls");
+  listPage=0;
+  renderListPage(el,true);
+  const a=el.querySelector(".list-item.active");
+  if(a)setTimeout(()=>a.scrollIntoView({block:"nearest"}),50);
+  // Load more on scroll
+  el.onscroll=()=>{if(el.scrollTop+el.clientHeight>el.scrollHeight-100)renderListPage(el,false);};
+}
+function renderListPage(el,reset){
+  const start=reset?0:listPage*listPageSize;
+  if(reset){el.innerHTML="";listPage=0;}
+  const batch=filtered.slice(start,start+listPageSize);
+  if(!batch.length)return;
+  batch.forEach(o=>{
+    const u=iuThumb(o.txtImageNameLink,60),d=dm(o),ds=d.h&&d.l?` · ${d.h}×${d.l}`:"",ic=iFor(o.OeuvreID).length;
+    const div=document.createElement("div");
+    div.className=`list-item ${selId===o.OeuvreID?'active':''}`;
+    div.onclick=()=>sel(o.OeuvreID);
+    div.innerHTML=`${u?`<img class="lt lazy" data-src="${u}" alt="">`:`<div class="lte">—</div>`}<div class="li"><div class="ln"><span style="color:var(--mt);font-size:9px;margin-right:4px">${o.OeuvreID}</span>${esc(o.Titre||"Sans titre")}</div><div class="ls">${tM[o.Technique]||"?"} / ${sM[o.Support]||"?"} · ${o["Année"]?String(o["Année"]).slice(0,4):"?"}${ds}</div></div>${ic>1?`<span style="font-size:8px;color:var(--mt)">${ic}</span>`:""}${o.Exposable?'<span class="badge">EXP</span>':''}`;
+    el.appendChild(div);
+  });
+  listPage++;
+  oL();
+}
 function sel(id){selId=id;rList();det(id);}
 
 // ── Detail with inline edit ──
@@ -602,7 +627,7 @@ function qUp(oid){const inp=document.createElement("input");inp.type="file";inp.
 let galCols=0; // 0 = auto
 function rGal(){
   const colStyle=galCols>0?`grid-template-columns:repeat(${galCols},1fr)`:"";
-  document.getElementById("mn").innerHTML=`<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px"><span class="cnt">${filtered.length} oeuvres</span><label style="font-size:9px;color:var(--mt)">Colonnes: <select onchange="galCols=Number(this.value);rGal()"><option value="0" ${galCols===0?"selected":""}>Auto</option>${[2,3,4,5,6,8,10,12].map(n=>`<option value="${n}" ${galCols===n?"selected":""}>${n}</option>`).join("")}</select></label></div><div class="gal" ${colStyle?`style="${colStyle}"`:""}>${filtered.map(o=>{const u=iuThumb(o.txtImageNameLink,galCols>6?200:300),ic=iFor(o.OeuvreID).length;return`<div class="gc" onclick="sv('list');sel(${o.OeuvreID})">${u?`<img class="gi lazy" data-src="${u}" alt="">`:`<div class="ge">—</div>`}<div class="gn"><div class="gt"><span style="color:var(--mt);font-size:8px">${o.OeuvreID}</span> ${esc(o.Titre||"Sans titre")}${ic>1?` (${ic})`:""}</div><div class="gs">${tM[o.Technique]||""} · ${o["Année"]?String(o["Année"]).slice(0,4):""}${o.Prix>0?` · ${o.Prix}€`:""}</div></div></div>`;}).join("")}</div>`;oL();}
+  document.getElementById("mn").innerHTML=`<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px"><span class="cnt">${filtered.length} oeuvres</span><label style="font-size:9px;color:var(--mt)">Colonnes: <select onchange="galCols=Number(this.value);rGal()"><option value="0" ${galCols===0?"selected":""}>Auto</option>${[2,3,4,5,6,8,10,12].map(n=>`<option value="${n}" ${galCols===n?"selected":""}>${n}</option>`).join("")}</select></label></div><div class="gal" ${colStyle?`style="${colStyle}"`:""}>${filtered.map(o=>{const u=iuThumb(o.txtImageNameLink,galCols>6?100:150),ic=iFor(o.OeuvreID).length;return`<div class="gc" onclick="sv('list');sel(${o.OeuvreID})">${u?`<img class="gi lazy" data-src="${u}" alt="">`:`<div class="ge">—</div>`}<div class="gn"><div class="gt"><span style="color:var(--mt);font-size:8px">${o.OeuvreID}</span> ${esc(o.Titre||"Sans titre")}${ic>1?` (${ic})`:""}</div><div class="gs">${tM[o.Technique]||""} · ${o["Année"]?String(o["Année"]).slice(0,4):""}${o.Prix>0?` · ${o.Prix}€`:""}</div></div></div>`;}).join("")}</div>`;oL();}
 
 function frm(ex){const o=ex||{},isE=!!o.OeuvreID;document.getElementById("mn").innerHTML=`<h2 style="font-size:15px;font-weight:700;color:var(--wh);margin-bottom:14px">${isE?`Modifier — ${esc(o.Titre||"")}`:"Nouvelle oeuvre"}</h2><div id="ip" style="margin-bottom:10px">${o.txtImageNameLink?`<img src="${iuThumb(o.txtImageNameLink,600)}" style="max-width:100%;max-height:280px;object-fit:contain;background:var(--bk)" alt="">`:""}</div><div class="dz" id="dz" onclick="document.getElementById('fi').click()" ondragover="event.preventDefault();this.classList.add('over')" ondragleave="this.classList.remove('over')" ondrop="event.preventDefault();this.classList.remove('over');hF(event.dataTransfer.files[0])">Glisser image ou cliquer</div><input type="file" id="fi" accept="image/*" style="display:none" onchange="hF(this.files[0])"><div id="fn" style="font-size:9px;color:var(--mt);margin:3px 0 14px">${o.txtImageNameLink||""}</div><input type="hidden" id="f_i" value="${esc(o.txtImageNameLink||"")}"><input type="hidden" id="f_or" value="${esc(o.NomOriginal||"")}"><input type="hidden" id="f_id" value="${o.OeuvreID||""}"><div class="fgrid">${fi("Titre","ft",o.Titre)}${fi("Année","fa",o["Année"]?String(o["Année"]).slice(0,10):"","text","2025-04-16")}${fsl("Technique","fk",techniques.map(t=>[t.TechniqueID,t.Technique]),o.Technique)}${fsl("Support","fs",supports.map(s=>[s.SupportID,s.Support]),o.Support)}${fsl("Format","ff",[["","— dim. manuelles"],...formats.map(f=>[f.FormatID,f.Format])],o.Format)}${fi("Tirage","fg",o.Tirage||"1/1")}${fi("Hauteur (cm)","fh",o.Hauteur,"number")}${fi("Largeur (cm)","fl",o.Largeur,"number")}${fi("Profondeur","fp",o.Profondeur,"number")}${fi("Poids (kg)","fw",o.Poids,"number")}${fsl("Contact","fc",contacts.map(c=>[c.ContactID,`${c.NomInstitution}${c.Nom?" ("+c.Nom+")":""}`]),o.ContactID)}${fi("Prix (€)","fx",o.Prix||0,"number")}${fi("Discount","fd",o.Discount||0,"number")}${fi("Prix final","fz",o.PrixFinal||0,"number")}<div class="ff"><div class="fl">Exposable</div><label class="chk"><input type="checkbox" id="fe" ${o.Exposable?"checked":""}> Oui</label></div><div class="ff"><div class="fl">Catalogué</div><label class="chk"><input type="checkbox" id="fb" ${o["Catalogué"]?"checked":""}> Oui</label></div><div class="ffull ff"><div class="fl">Commentaires</div><textarea id="fm">${esc(o.Commentaires||"")}</textarea></div><div class="ffull ff"><div class="fl">Historique</div><textarea id="fq">${esc(o.Historique||"")}</textarea></div></div><div class="brow"><button class="btn bp" onclick="sF()">${isE?"Enregistrer":"Créer"}</button><button class="btn bs" onclick="cF()">Annuler</button></div>`;}
 function fi(l,id,v,t,ph){return`<div class="ff"><div class="fl">${l}</div><input id="${id}" type="${t||"text"}" value="${esc(v!=null?String(v):"")}" ${ph?`placeholder="${ph}"`:""}></div>`;}
@@ -613,7 +638,7 @@ async function hF(file){if(!file)return;document.getElementById("dz").textConten
 async function sF(){const id=gv("f_id");const data={Titre:gv("ft")||null,Technique:gvn("fk"),Support:gvn("fs"),"Année":gv("fa")||null,Tirage:gv("fg")||"1/1",Format:gvn("ff"),Hauteur:gv("fh")||null,Largeur:gv("fl")||null,Profondeur:gv("fp")||null,Poids:gv("fw")||null,ContactID:gvn("fc"),Prix:Number(gv("fx"))||0,Discount:Number(gv("fd"))||0,PrixFinal:Number(gv("fz"))||0,Exposable:document.getElementById("fe").checked,"Catalogué":document.getElementById("fb").checked,Commentaires:gv("fm")||null,Historique:gv("fq")||null,Statut:4,txtImageNameLink:gv("f_i")||null,NomOriginal:gv("f_or")||null};try{let sid;if(id){await api(`Oeuvres?OeuvreID=eq.${id}`,{method:"PATCH",body:JSON.stringify(data)});sid=Number(id);tst("Mise à jour");}else{const mx=oeuvres.reduce((m,o)=>Math.max(m,o.OeuvreID||0),0);data.OeuvreID=mx+1;sid=data.OeuvreID;if(data.txtImageNameLink?.startsWith("W_NEW_")){const ext=data.txtImageNameLink.split(".").pop(),oc=data.txtImageNameLink.replace(/^W_NEW_\d+_/,"").replace(/\.[^.]+$/,""),pn=`W_${String(sid).padStart(4,"0")}_01_${oc}.${ext}`;try{const r=await fetch(`${SB}/storage/v1/object/move`,{method:"POST",headers:{apikey:KEY,Authorization:`Bearer ${KEY}`,"Content-Type":"application/json"},body:JSON.stringify({bucketId:BKT,sourceKey:data.txtImageNameLink,destinationKey:pn})});if(r.ok)data.txtImageNameLink=pn;}catch(e){}}await api("Oeuvres",{method:"POST",body:JSON.stringify(data)});tst("ID "+sid);}await load();curV="list";stb("list");document.getElementById("sb").style.display="";sel(sid);}catch(e){tst("Erreur: "+e.message,true);}}
 async function delO(id){if(!confirm("Supprimer ?"))return;try{await api(`Oeuvres?OeuvreID=eq.${id}`,{method:"DELETE"});tst("Supprimé");selId=null;await load();det(null);}catch(e){tst("Erreur: "+e.message,true);}}
 
-let lO=null;function oL(){if(lO)lO.disconnect();lO=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){const i=e.target;i.src=i.dataset.src;i.onload=()=>i.classList.add("loaded");i.onerror=()=>i.classList.add("img-err");i.classList.remove("lazy");lO.unobserve(i);}});},{rootMargin:"200px"});document.querySelectorAll("img.lazy").forEach(i=>lO.observe(i));}
+let lO=null;function oL(){if(lO)lO.disconnect();lO=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){const i=e.target;i.src=i.dataset.src;i.onload=()=>i.classList.add("loaded");i.onerror=()=>i.classList.add("img-err");i.classList.remove("lazy");lO.unobserve(i);}});},{rootMargin:"50px"});document.querySelectorAll("img.lazy").forEach(i=>lO.observe(i));}
 
 // ═══════════════════════════════════════
 // EXPORT MODULE
@@ -849,7 +874,7 @@ function renderExGrid(){
   const total=items.length;
   if(exPageSize>0)items=items.slice(0,exPageSize);
   // Thumbnail size adapts to column count
-  const thumbSize=exCols<=4?300:exCols<=8?200:100;
+  const thumbSize=exCols<=4?150:exCols<=8?100:80;
   
   el.innerHTML=items.map(o=>{
     const u=iuThumb(o.txtImageNameLink,thumbSize),sel=exSelected.has(o.OeuvreID);
