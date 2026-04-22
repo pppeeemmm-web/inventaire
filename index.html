@@ -264,7 +264,14 @@ async function load(){
     presentations=pdr||[];statuts=str||[];paiements=pmt||[];
     tM=Object.fromEntries(t.map(x=>[x.TechniqueID,x.Technique]));sM=Object.fromEntries(su.map(x=>[x.SupportID,x.Support]));fM=Object.fromEntries(f.map(x=>[x.FormatID,x.Format]));cM=Object.fromEntries(c.map(x=>[x.ContactID,x.NomInstitution]));
     pM=Object.fromEntries((pdr||[]).map(x=>[x.PresentationID,x.Nom]));stM=Object.fromEntries((str||[]).map(x=>[x.StatutID,x.Nom]));
-    artistId = contacts.find(c => (c.Nom||"").toLowerCase().includes("moulin") || (c.NomInstitution||"").toLowerCase().includes("moulin"))?.ContactID || null;
+    const cands = contacts.filter(c => {
+      const n = (c.Nom||"").toLowerCase(), p = (c.Prenom||"").toLowerCase(), inst = (c.NomInstitution||"").toLowerCase();
+      return n.includes("moulin") || inst.includes("moulin") || inst.includes("pem") || p.includes("pem") || p.includes("pierre emmanuel");
+    });
+    artistId = cands.find(c => (c.NomInstitution||"").toLowerCase() === "pem")?.ContactID 
+             || cands.find(c => (c.Prenom||"").toLowerCase().includes("pierre emmanuel"))?.ContactID
+             || cands.find(c => !(c.Prenom||"").toLowerCase().includes("delphine") && !(c.Nom||"").toLowerCase().includes("delphine"))?.ContactID
+             || (contacts.length > 0 ? null : null); // Fallback to null if not found
     oeuvres.forEach(wk => { wk.themeIds = oeuvreThemes.filter(ot=>ot.OeuvreID===wk.OeuvreID).map(ot=>ot.ThemeID); });
     const imgCount=o.filter(x=>x.txtImageNameLink).length;
     dbg(`${o.length} oeuvres · ${imgCount} avec image · ${im.length} tblImage`);
@@ -375,7 +382,8 @@ function det(id){
       ${fsl("Présentation","dt_pr",presentations.map(p=>[p.PresentationID,p.Nom]),o.PresentationID)}
       ${fsl("Statut","dt_st",statuts.map(s=>[s.StatutID,s.Nom]),o.StatutID)}
       ${fi("Date Statut","dt_ds",o.DateStatut?String(o.DateStatut).slice(0,10):"","date")}
-      ${fsl("Localisation","dt_loc",contacts.map(c=>[c.ContactID,`${c.NomInstitution}${c.Nom?" ("+c.Nom+")":""}`]),o.LocalisationID||artistId)}
+      ${fsl("Localisation","dt_loc",contacts.map(c=>[c.ContactID,`${c.NomInstitution}${c.Nom?" ("+c.Nom+")":""}`]),o.LocalisationID||artistId, "updateLocAddr(this.value, 'dt_addr')")}
+      <div id="dt_addr" style="font-size:9px;color:var(--ac);margin:-4px 0 6px 4px;line-height:1.2;font-style:italic">${esc((contacts.find(c=>c.ContactID===(o.LocalisationID||artistId))?.Adresse||""))}</div>
       ${fi("Détail Localisation","dt_ld",o.LocalisationDetail||"","text","ex: Atelier, Salon")}
       ${fsl("Acheteur","dt_ach",contacts.map(c=>[c.ContactID,`${c.NomInstitution}${c.Nom?" ("+c.Nom+")":""}`]),o.AcheteurID)}
       <div class="ff"><div class="fl">Commission</div><label class="chk"><input type="checkbox" id="dt_com" ${o.IsCommission?"checked":""}> Oui</label></div>
@@ -743,9 +751,18 @@ function pmtRow(p){
   `;
 }
 
-function frm(ex){const o=ex||{},isE=!!o.OeuvreID;const defLoc = o.LocalisationID || artistId; document.getElementById("mn").innerHTML=`<h2 style="font-size:15px;font-weight:700;color:var(--wh);margin-bottom:14px">${isE?`Modifier — ${esc(o.Titre||"")}`:"Nouvelle oeuvre"}</h2><div id="ip" style="margin-bottom:10px">${o.txtImageNameLink?`<img src="${iuThumb(o.txtImageNameLink,600)}" style="max-width:100%;max-height:280px;object-fit:contain;background:var(--bk)" alt="">`:""}</div><div class="dz" id="dz" onclick="document.getElementById('fi').click()" ondragover="event.preventDefault();this.classList.add('over')" ondragleave="this.classList.remove('over')" ondrop="event.preventDefault();this.classList.remove('over');hF(event.dataTransfer.files[0])">Glisser image ou cliquer</div><input type="file" id="fi" accept="image/*" style="display:none" onchange="hF(this.files[0])"><div id="fn" style="font-size:9px;color:var(--mt);margin:3px 0 14px">${o.txtImageNameLink||""}</div><input type="hidden" id="f_i" value="${esc(o.txtImageNameLink||"")}"><input type="hidden" id="f_or" value="${esc(o.NomOriginal||"")}"><input type="hidden" id="f_id" value="${o.OeuvreID||""}"><div class="fgrid">${fi("Titre","ft",o.Titre)}${fi("Année","fa",o["Année"]?String(o["Année"]).slice(0,10):"","text","2025-04-16")}${fsl("Technique","fk",techniques.map(t=>[t.TechniqueID,t.Technique]),o.Technique)}${fsl("Support","fs",supports.map(s=>[s.SupportID,s.Support]),o.Support)}${fsl("Format","ff",[["","— dim. manuelles"],...formats.map(f=>[f.FormatID,f.Format])],o.Format,"applyFormatDims(this.value,'fh','fl','fp')")}${fi("Tirage","fg",o.Tirage||"1/1")}${fi("Hauteur (cm)","fh",o.Hauteur,"number")}${fi("Largeur (cm)","fl",o.Largeur,"number")}${fi("Profondeur (cm)","fp",o.Profondeur,"number")}${fi("Poids (kg)","fw",o.Poids,"number")}${fsl("Présentation","f_pr",presentations.map(p=>[p.PresentationID,p.Nom]),o.PresentationID)}${fsl("Statut","f_st",statuts.map(s=>[s.StatutID,s.Nom]),o.StatutID)}${fi("Date Statut","f_ds",o.DateStatut?String(o.DateStatut).slice(0,10):"","date")}${fsl("Localisation","f_loc",contacts.map(c=>[c.ContactID,`${c.NomInstitution}${c.Nom?" ("+c.Nom+")":""}`]),defLoc)}${fi("Détail Localisation","f_ld",o.LocalisationDetail||"","text","ex: Atelier, Salon")}${fsl("Acheteur","f_ach",contacts.map(c=>[c.ContactID,`${c.NomInstitution}${c.Nom?" ("+c.Nom+")":""}`]),o.AcheteurID)}<div class="ff"><div class="fl">Commission</div><label class="chk"><input type="checkbox" id="f_com" ${o.IsCommission?"checked":""}> Oui</label></div>${fi("Date Livraison","f_dl",o.DateLivraison?String(o.DateLivraison).slice(0,10):"","date")}${fi("Prix (€)","fx",o.Prix||0,"number")}${fi("Discount","fd",o.Discount||0,"number")}${fi("Prix final","fz",o.PrixFinal||0,"number")}<div class="ff"><div class="fl">Encadrée</div><label class="chk"><input type="checkbox" id="f_enc" ${o.Encadree?"checked":""}> Oui</label></div><div class="ff"><div class="fl">Exposable</div><label class="chk"><input type="checkbox" id="fe" ${o.Exposable?"checked":""}> Oui</label></div><div class="ff"><div class="fl">Catalogué</div><label class="chk"><input type="checkbox" id="fb" ${o["Catalogué"]?"checked":""}> Oui</label></div><div class="ffull ff"><div class="fl">Commentaires</div><textarea id="fm">${esc(o.Commentaires||"")}</textarea></div><div class="ffull ff"><div class="fl">Historique</div><textarea id="fq">${esc(o.Historique||"")}</textarea></div><div class="ffull ff"><div class="fl" style="display:flex;align-items:center;margin-bottom:6px">Thèmes <span style="cursor:pointer;color:var(--ac);font-weight:700;margin-left:12px;font-size:10px;letter-spacing:0" onclick="addNewTheme('ft_theme_wrap', 'ft_theme')">+ Ajouter un thème</span></div><div id="ft_theme_wrap" style="display:flex;flex-wrap:wrap;gap:8px;padding:4px 0">${themes.map(t=>`<label class="th-badge"><input type="checkbox" name="ft_theme" value="${t.ThemeID}" ${(o.themeIds||[]).includes(t.ThemeID)?"checked":""}> <span>${esc(t.Nom)}</span></label>`).join("")}</div></div></div><div class="ffull" style="margin-top:16px;border-top:1px solid var(--bd);padding-top:12px;margin-bottom:10px"><div style="font-weight:700;color:var(--wh);margin-bottom:10px;font-size:12px">Plan de Paiement</div><div id="f_pmt_wrap">${paiements.filter(p=>p.OeuvreID===o.OeuvreID).map(p=>pmtRow(p)).join("")}</div><button class="btn bs" style="font-size:10px;padding:4px 8px;margin-top:6px" onclick="document.getElementById('f_pmt_wrap').insertAdjacentHTML('beforeend',pmtRow({}))">+ Ajouter paiement</button></div><div class="brow"><button class="btn bp" onclick="sF()">${isE?"Enregistrer":"Créer"}</button><button class="btn bs" onclick="cF()">Annuler</button></div>`;}
+function frm(ex){const o=ex||{},isE=!!o.OeuvreID;const defLoc = o.LocalisationID || artistId; 
+  const c = contacts.find(x => x.ContactID == defLoc);
+  const locAddr = c ? `${c.Adresse||""}${c.Ville?`, ${c.Ville}`:""}${c.Pays?` (${c.Pays})`:""}` : "";
+  document.getElementById("mn").innerHTML=`<h2 style="font-size:15px;font-weight:700;color:var(--wh);margin-bottom:14px">${isE?`Modifier — ${esc(o.Titre||"")}`:"Nouvelle oeuvre"}</h2><div id="ip" style="margin-bottom:10px">${o.txtImageNameLink?`<img src="${iuThumb(o.txtImageNameLink,600)}" style="max-width:100%;max-height:280px;object-fit:contain;background:var(--bk)" alt="">`:""}</div><div class="dz" id="dz" onclick="document.getElementById('fi').click()" ondragover="event.preventDefault();this.classList.add('over')" ondragleave="this.classList.remove('over')" ondrop="event.preventDefault();this.classList.remove('over');hF(event.dataTransfer.files[0])">Glisser image ou cliquer</div><input type="file" id="fi" accept="image/*" style="display:none" onchange="hF(this.files[0])"><div id="fn" style="font-size:9px;color:var(--mt);margin:3px 0 14px">${o.txtImageNameLink||""}</div><input type="hidden" id="f_i" value="${esc(o.txtImageNameLink||"")}"><input type="hidden" id="f_or" value="${esc(o.NomOriginal||"")}"><input type="hidden" id="f_id" value="${o.OeuvreID||""}"><div class="fgrid">${fi("Titre","ft",o.Titre)}${fi("Année","fa",o["Année"]?String(o["Année"]).slice(0,10):"","text","2025-04-16")}${fsl("Technique","fk",techniques.map(t=>[t.TechniqueID,t.Technique]),o.Technique)}${fsl("Support","fs",supports.map(s=>[s.SupportID,s.Support]),o.Support)}${fsl("Format","ff",[["","— dim. manuelles"],...formats.map(f=>[f.FormatID,f.Format])],o.Format,"applyFormatDims(this.value,'fh','fl','fp')")}${fi("Tirage","fg",o.Tirage||"1/1")}${fi("Hauteur (cm)","fh",o.Hauteur,"number")}${fi("Largeur (cm)","fl",o.Largeur,"number")}${fi("Profondeur (cm)","fp",o.Profondeur,"number")}${fi("Poids (kg)","fw",o.Poids,"number")}${fsl("Présentation","f_pr",presentations.map(p=>[p.PresentationID,p.Nom]),o.PresentationID)}${fsl("Statut","f_st",statuts.map(s=>[s.StatutID,s.Nom]),o.StatutID)}${fi("Date Statut","f_ds",o.DateStatut?String(o.DateStatut).slice(0,10):"","date")}${fsl("Localisation","f_loc",contacts.map(c=>[c.ContactID,`${c.NomInstitution}${c.Nom?" ("+c.Nom+")":""}`]),defLoc, "updateLocAddr(this.value, 'f_addr')")}<div id="f_addr" style="font-size:9px;color:var(--ac);margin:-4px 0 6px 4px;line-height:1.2;font-style:italic;grid-column:1/-1">${esc(locAddr)}</div>${fi("Détail Localisation","f_ld",o.LocalisationDetail||"","text","ex: Atelier, Salon")}${fsl("Acheteur","f_ach",contacts.map(c=>[c.ContactID,`${c.NomInstitution}${c.Nom?" ("+c.Nom+")":""}`]),o.AcheteurID)}${fi("Date Retour (emprunt)","f_rd",o.ReturnDate?String(o.ReturnDate).slice(0,10):"","date")}<div class="ff"><div class="fl">Docs validés (Auth/Assur)</div><label class="chk"><input type="checkbox" id="f_dv" ${o.DocsValidated?"checked":""}> Validés</label></div><div class="ff"><div class="fl">Commission</div><label class="chk"><input type="checkbox" id="f_com" ${o.IsCommission?"checked":""}> Oui</label></div>${fi("Date Livraison","f_dl",o.DateLivraison?String(o.DateLivraison).slice(0,10):"","date")}${fi("Prix (€)","fx",o.Prix||0,"number")}${fi("Discount","fd",o.Discount||0,"number")}${fi("Prix final","fz",o.PrixFinal||0,"number")}<div class="ff"><div class="fl">Encadrée</div><label class="chk"><input type="checkbox" id="f_enc" ${o.Encadree?"checked":""}> Oui</label></div><div class="ff"><div class="fl">Exposable</div><label class="chk"><input type="checkbox" id="fe" ${o.Exposable?"checked":""}> Oui</label></div><div class="ff"><div class="fl">Catalogué</div><label class="chk"><input type="checkbox" id="fb" ${o["Catalogué"]?"checked":""}> Oui</label></div><div class="ffull ff"><div class="fl">Commentaires</div><textarea id="fm">${esc(o.Commentaires||"")}</textarea></div><div class="ffull ff"><div class="fl">Historique</div><textarea id="fq">${esc(o.Historique||"")}</textarea></div><div class="ffull ff"><div class="fl" style="display:flex;align-items:center;margin-bottom:6px">Thèmes <span style="cursor:pointer;color:var(--ac);font-weight:700;margin-left:12px;font-size:10px;letter-spacing:0" onclick="addNewTheme('ft_theme_wrap', 'ft_theme')">+ Ajouter un thème</span></div><div id="ft_theme_wrap" style="display:flex;flex-wrap:wrap;gap:8px;padding:4px 0">${themes.map(t=>`<label class="th-badge"><input type="checkbox" name="ft_theme" value="${t.ThemeID}" ${(o.themeIds||[]).includes(t.ThemeID)?"checked":""}> <span>${esc(t.Nom)}</span></label>`).join("")}</div></div></div><div class="ffull" style="margin-top:16px;border-top:1px solid var(--bd);padding-top:12px;margin-bottom:10px"><div style="font-weight:700;color:var(--wh);margin-bottom:10px;font-size:12px">Plan de Paiement</div><div id="f_pmt_wrap">${paiements.filter(p=>p.OeuvreID===o.OeuvreID).map(p=>pmtRow(p)).join("")}</div><button class="btn bs" style="font-size:10px;padding:4px 8px;margin-top:6px" onclick="document.getElementById('f_pmt_wrap').insertAdjacentHTML('beforeend',pmtRow({}))">+ Ajouter paiement</button></div><div class="brow"><button class="btn bp" onclick="sF()">${isE?"Enregistrer":"Créer"}</button><button class="btn bs" onclick="cF()">Annuler</button></div>`;}
 function fi(l,id,v,t,ph){return`<div class="ff"><div class="fl">${l}</div><input id="${id}" type="${t||"text"}" value="${esc(v!=null?String(v):"")}" ${ph?`placeholder="${ph}"`:""}></div>`;}
 function fsl(l,id,opts,sel,xch){return`<div class="ff"><div class="fl">${l}</div><select id="${id}" onfocus="this.dataset.prev=this.value" onchange="${xch?xch+';':''}if(this.value==='NEW')addNewLookup('${l}',this.id)"><option value="">—</option>${opts.map(([v,t])=>`<option value="${v}" ${String(v)===String(sel)?"selected":""}>${esc(String(t))}</option>`).join("")}<option value="NEW">+ Nouveau...</option></select></div>`;}
+
+function updateLocAddr(cid, targetId){
+  const c = contacts.find(x => x.ContactID == cid);
+  const el = document.getElementById(targetId);
+  if(el) el.textContent = c ? `${c.Adresse||""}${c.Ville?`, ${c.Ville}`:""}${c.Pays?` (${c.Pays})`:""}` : "";
+}
 
 function applyFormatDims(fmtId, idH, idL, idP){
   if(!fmtId || fmtId === "NEW") return;
@@ -772,6 +789,10 @@ async function addNewLookup(label, selectId) {
       <input type="text" id="nc_r" placeholder="Rôle" style="width:100%;margin-bottom:8px;padding:6px;background:var(--bg);color:var(--tx);border:1px solid var(--bd)">
       <input type="email" id="nc_e" placeholder="Email" style="width:100%;margin-bottom:8px;padding:6px;background:var(--bg);color:var(--tx);border:1px solid var(--bd)">
       <input type="text" id="nc_t" placeholder="Téléphone" style="width:100%;margin-bottom:8px;padding:6px;background:var(--bg);color:var(--tx);border:1px solid var(--bd)">
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <input type="text" id="nc_v" placeholder="Ville" style="flex:1;padding:6px;background:var(--bg);color:var(--tx);border:1px solid var(--bd)">
+        <input type="text" id="nc_p" placeholder="Pays" style="flex:1;padding:6px;background:var(--bg);color:var(--tx);border:1px solid var(--bd)">
+      </div>
       <textarea id="nc_a" placeholder="Adresse" rows="2" style="width:100%;margin-bottom:8px;padding:6px;background:var(--bg);color:var(--tx);border:1px solid var(--bd)"></textarea>
       <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px">
         <button class="btn bs" onclick="document.getElementById('contactModal').remove();document.getElementById('${selectId}').value=document.getElementById('${selectId}').dataset.prev||''">Annuler</button>
@@ -780,10 +801,10 @@ async function addNewLookup(label, selectId) {
     </div>`;
     document.body.appendChild(mo);
     document.getElementById('btnSaveContact').onclick = async () => {
-      const NomInstitution = gv('nc_ni'), Nom = gv('nc_n'), Role = gv('nc_r'), Email = gv('nc_e'), Telephone = gv('nc_t'), Adresse = gv('nc_a');
+      const NomInstitution = gv('nc_ni'), Nom = gv('nc_n'), Role = gv('nc_r'), Email = gv('nc_e'), Telephone = gv('nc_t'), Adresse = gv('nc_a'), Ville = gv('nc_v'), Pays = gv('nc_p');
       if(!NomInstitution && !Nom) { tst("Nom requis", true); return; }
       try {
-        const r = await api("Contact", {method: "POST", headers: {"Prefer": "return=representation"}, body: JSON.stringify({NomInstitution, Nom, Role, Email, Telephone, Adresse})});
+        const r = await api("Contact", {method: "POST", headers: {"Prefer": "return=representation"}, body: JSON.stringify({NomInstitution, Nom, Role, Email, Telephone, Adresse, Ville, Pays})});
         if(r && r[0]) {
           contacts.push(r[0]);
           contacts.sort((a,b) => (a.NomInstitution||"").localeCompare(b.NomInstitution||"") || (a.Nom||"").localeCompare(b.Nom||""));
@@ -844,7 +865,82 @@ async function addNewTheme(wrapId, nameAttr) {
 function cF(){curV="list";stb("list");document.getElementById("sb").style.display="";rList();det(selId);}
 function edO(id){const o=oeuvres.find(x=>x.OeuvreID===id);if(!o)return;document.getElementById("sb").style.display="none";curV="form";frm(o);}
 async function hF(file){if(!file)return;document.getElementById("dz").textContent="Upload...";try{const oid=gv("f_id");let nm;if(oid){nm=mkN(Number(oid),nxS(Number(oid)),file.name);}else{const cl=file.name.replace(/\.[^.]+$/,"").replace(/[^a-zA-Z0-9_-]/g,"_");nm=`W_NEW_${Date.now()}_${cl}.${file.name.split(".").pop().toLowerCase()}`;}await upl(file,nm);document.getElementById("f_i").value=nm;document.getElementById("f_or").value=file.name;document.getElementById("fn").textContent=nm;document.getElementById("ip").innerHTML=`<img src="${iu(nm)}" style="max-width:100%;max-height:280px;object-fit:contain;background:var(--bk)" alt="">`;document.getElementById("dz").textContent="✓ Glisser pour remplacer";tst(`→ ${nm}`);}catch(e){document.getElementById("dz").textContent="Erreur";tst("Erreur: "+e.message,true);}}
-async function sF(){const id=gv("f_id");const newSt=gvn("f_st"),newAch=gvn("f_ach");let hist=gv("fq")||"";const dtStatut=gv("f_ds")||new Date().toISOString().slice(0,10);const oldO=oeuvres.find(x=>x.OeuvreID==id);if(oldO&&(oldO.StatutID!==newSt||oldO.AcheteurID!==newAch)){const stName=newSt?(stM[newSt]||"Inconnu"):"Aucun statut";const achName=newAch?(cM[newAch]||"Inconnu"):"Aucun contact";const fDate=dtStatut.split("-").reverse().join("/");hist=(hist?hist+"\n":"")+`[${fDate}] Statut : ${stName} - Contact : ${achName}`;}const data={Titre:gv("ft")||null,Technique:gvn("fk"),Support:gvn("fs"),"Année":gv("fa")||null,Tirage:gv("fg")||"1/1",Format:gvn("ff"),Hauteur:gv("fh")||null,Largeur:gv("fl")||null,Profondeur:gv("fp")||null,Poids:gv("fw")||null,PresentationID:gvn("f_pr"),StatutID:newSt,DateStatut:dtStatut,ContactID:gvn("fc"),LocalisationID:gvn("f_loc"),LocalisationDetail:gv("f_ld")||null,AcheteurID:newAch,IsCommission:document.getElementById("f_com").checked,DateLivraison:gv("f_dl")||null,Prix:Number(gv("fx"))||0,Discount:Number(gv("fd"))||0,PrixFinal:Number(gv("fz"))||0,Encadree:document.getElementById("f_enc").checked,Exposable:document.getElementById("fe").checked,"Catalogué":document.getElementById("fb").checked,Commentaires:gv("fm")||null,Historique:hist,txtImageNameLink:gv("f_i")||null,NomOriginal:gv("f_or")||null};const selThemes = Array.from(document.querySelectorAll('input[name="ft_theme"]:checked')).map(cb=>Number(cb.value));const pmts = Array.from(document.querySelectorAll('#f_pmt_wrap .pmt-row')).map(r => ({Montant: Number(r.querySelector('.pmt-m').value) || 0,DateEcheance: r.querySelector('.pmt-d').value || null,EstPaye: r.querySelector('.pmt-p').checked,DatePaiement: r.querySelector('.pmt-dp').value || null,Notes: r.querySelector('.pmt-n').value || null}));try{let sid;if(id){await api(`Oeuvres?OeuvreID=eq.${id}`,{method:"PATCH",body:JSON.stringify(data)});sid=Number(id);tst("Mise à jour");}else{const mx=oeuvres.reduce((m,o)=>Math.max(m,o.OeuvreID||0),0);data.OeuvreID=mx+1;sid=data.OeuvreID;if(data.txtImageNameLink?.startsWith("W_NEW_")){const ext=data.txtImageNameLink.split(".").pop(),oc=data.txtImageNameLink.replace(/^W_NEW_\d+_/,"").replace(/\.[^.]+$/,""),pn=`W_${String(sid).padStart(4,"0")}_01_${oc}.${ext}`;try{const r=await fetch(`${SB}/storage/v1/object/move`,{method:"POST",headers:{apikey:KEY,Authorization:`Bearer ${KEY}`,"Content-Type":"application/json"},body:JSON.stringify({bucketId:BKT,sourceKey:data.txtImageNameLink,destinationKey:pn})});if(r.ok)data.txtImageNameLink=pn;}catch(e){}}await api("Oeuvres",{method:"POST",body:JSON.stringify(data)});tst("ID "+sid);}const tkn=await getToken();await fetch(`${SB}/rest/v1/OeuvreTheme?OeuvreID=eq.${sid}`,{method:"DELETE",headers:{apikey:KEY,Authorization:`Bearer ${tkn}`}});if(selThemes.length>0){await fetch(`${SB}/rest/v1/OeuvreTheme`,{method:"POST",headers:{apikey:KEY,Authorization:`Bearer ${tkn}`,"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify(selThemes.map(tid=>({OeuvreID:sid,ThemeID:tid})))});}await fetch(`${SB}/rest/v1/tblPaiement?OeuvreID=eq.${sid}`,{method:"DELETE",headers:{apikey:KEY,Authorization:`Bearer ${tkn}`}});if(pmts.length>0){await fetch(`${SB}/rest/v1/tblPaiement`,{method:"POST",headers:{apikey:KEY,Authorization:`Bearer ${tkn}`,"Content-Type":"application/json"},body:JSON.stringify(pmts.map(p=>({...p,OeuvreID:sid})))});}await load();curV="list";stb("list");document.getElementById("sb").style.display="";sel(sid);}catch(e){tst("Erreur: "+e.message,true);}}
+async function sF(){
+  const id=gv("f_id");
+  const newSt=gvn("f_st"), newAch=gvn("f_ach"), newLoc=gvn("f_loc");
+  const newRd=gv("f_rd"), newDv=document.getElementById("f_dv").checked;
+  let hist=gv("fq")||"";
+  const dtStatut=gv("f_ds")||new Date().toISOString().slice(0,10);
+  const oldO=oeuvres.find(x=>x.OeuvreID==id);
+  
+  const pmts = Array.from(document.querySelectorAll('#f_pmt_wrap .pmt-row')).map(r => ({
+    Montant: Number(r.querySelector('.pmt-m').value) || 0,
+    DateEcheance: r.querySelector('.pmt-d').value || null,
+    EstPaye: r.querySelector('.pmt-p').checked,
+    DatePaiement: r.querySelector('.pmt-dp').value || null,
+    Notes: r.querySelector('.pmt-n').value || null
+  }));
+  
+  const totPaid = pmts.filter(p=>p.EstPaye).reduce((s,p)=>s+(Number(p.Montant)||0),0);
+  const px = Number(gv("fz")) || Number(gv("fx")) || 0;
+  const isPaid = px > 0 && totPaid >= px;
+
+  if(oldO){
+    let chLog = [];
+    if(oldO.StatutID !== newSt) chLog.push(`Statut: ${stM[newSt]||"Aucun"}`);
+    if(oldO.AcheteurID !== newAch) chLog.push(`Acheteur: ${cM[newAch]||"Aucun"}`);
+    if(oldO.LocalisationID !== newLoc) chLog.push(`Localisation: ${cM[newLoc]||"Aucun"}`);
+    if(isPaid && (!oldO.PrixFinal || totPaid > (oldO.lastPaidSum||0))) chLog.push(`Entièrement payé (${totPaid}€)`);
+    if(chLog.length > 0) {
+      const fDate=dtStatut.split("-").reverse().join("/");
+      hist=(hist?hist+"\n":"")+`[${fDate}] ${chLog.join(" · ")}`;
+    }
+  }
+
+  let finalLoc = newLoc;
+  if((!finalLoc || finalLoc == artistId) && newAch) {
+    const stNm = (stM[newSt]||"").toLowerCase();
+    if(stNm.includes("vendu") || stNm.includes("don") || stNm.includes("emprunt")) finalLoc = newAch;
+  }
+
+  const data={
+    Titre:gv("ft")||null, Technique:gvn("fk"), Support:gvn("fs"), "Année":gv("fa")||null,
+    Tirage:gv("fg")||"1/1", Format:gvn("ff"), Hauteur:gv("fh")||null, Largeur:gv("fl")||null,
+    Profondeur:gv("fp")||null, Poids:gv("fw")||null, PresentationID:gvn("f_pr"),
+    StatutID:newSt, DateStatut:dtStatut, LocalisationID:finalLoc, LocalisationDetail:gv("f_ld")||null,
+    AcheteurID:newAch, IsCommission:document.getElementById("f_com").checked,
+    DateLivraison:gv("f_dl")||null, ReturnDate:newRd||null, DocsValidated:newDv,
+    Prix:Number(gv("fx"))||0, Discount:Number(gv("fd"))||0, PrixFinal:Number(gv("fz"))||0,
+    Encadree:document.getElementById("f_enc").checked, Exposable:document.getElementById("fe").checked,
+    "Catalogué":document.getElementById("fb").checked, Commentaires:gv("fm")||null,
+    Historique:hist, txtImageNameLink:gv("f_i")||null, NomOriginal:gv("f_or")||null
+  };
+
+  const selThemes = Array.from(document.querySelectorAll('input[name="ft_theme"]:checked')).map(cb=>Number(cb.value));
+
+  try{
+    let sid;
+    if(id){
+      await api(`Oeuvres?OeuvreID=eq.${id}`,{method:"PATCH",body:JSON.stringify(data)});
+      sid=Number(id); tst("Mise à jour");
+    }else{
+      const mx=oeuvres.reduce((m,o)=>Math.max(m,o.OeuvreID||0),0);
+      data.OeuvreID=mx+1; sid=data.OeuvreID;
+      await api("Oeuvres",{method:"POST",body:JSON.stringify(data)});
+      tst("Créé ID "+sid);
+    }
+    const tkn=await getToken();
+    await fetch(`${SB}/rest/v1/OeuvreTheme?OeuvreID=eq.${sid}`,{method:"DELETE",headers:{apikey:KEY,Authorization:`Bearer ${tkn}`}});
+    if(selThemes.length>0){
+      await fetch(`${SB}/rest/v1/OeuvreTheme`,{method:"POST",headers:{apikey:KEY,Authorization:`Bearer ${tkn}`,"Content-Type":"application/json"},body:JSON.stringify(selThemes.map(tid=>({OeuvreID:sid,ThemeID:tid})))});
+    }
+    await fetch(`${SB}/rest/v1/tblPaiement?OeuvreID=eq.${sid}`,{method:"DELETE",headers:{apikey:KEY,Authorization:`Bearer ${tkn}`}});
+    if(pmts.length>0){
+      await fetch(`${SB}/rest/v1/tblPaiement`,{method:"POST",headers:{apikey:KEY,Authorization:`Bearer ${tkn}`,"Content-Type":"application/json"},body:JSON.stringify(pmts.map(p=>({...p,OeuvreID:sid})))});
+    }
+    await load(); curV="list"; stb("list"); document.getElementById("sb").style.display=""; sel(sid);
+  }catch(e){tst("Erreur: "+e.message,true);}
+}
 async function delO(id){if(!confirm("Supprimer ?"))return;try{await api(`Oeuvres?OeuvreID=eq.${id}`,{method:"DELETE"});tst("Supprimé");selId=null;await load();det(null);}catch(e){tst("Erreur: "+e.message,true);}}
 
 let lO=null;function oL(){if(lO)lO.disconnect();lO=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){const i=e.target;i.src=i.dataset.src;i.onload=()=>i.classList.add("loaded");i.onerror=()=>i.classList.add("img-err");i.classList.remove("lazy");lO.unobserve(i);}});},{rootMargin:"50px"});document.querySelectorAll("img.lazy").forEach(i=>lO.observe(i));}
