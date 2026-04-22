@@ -68,8 +68,13 @@ nav button.active{background:var(--ac);color:var(--bk);font-weight:700}
 .fgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px}
 .ffull{grid-column:1/-1}.ff{display:flex;flex-direction:column;gap:3px}
 .ff input,.ff select,.ff textarea{font-family:inherit;background:var(--bg);border:1px solid var(--bd);color:var(--tx);padding:5px 7px;font-size:11px;width:100%;outline:none}
+.ff input[type="checkbox"]{width:auto;margin:0}
 .ff textarea{min-height:50px;resize:vertical}
 .ff label.chk{font-size:11px;display:flex;align-items:center;gap:5px;cursor:pointer}
+.th-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:var(--bg);border:1px solid var(--bd);border-radius:12px;font-size:11px;cursor:pointer;user-select:none;white-space:nowrap}
+.th-badge:hover{border-color:var(--mt)}
+.th-badge input:checked + span{color:var(--wh);font-weight:600}
+.th-badge input{margin:0;cursor:pointer;width:auto}
 .dz{border:2px dashed var(--bd);padding:16px;text-align:center;cursor:pointer;color:var(--mt);font-size:10px;background:var(--bg);margin-top:6px}
 .dz.over{border-color:var(--ac)}
 .gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
@@ -117,7 +122,12 @@ nav button.active{background:var(--ac);color:var(--bk);font-weight:700}
 /* Responsive */
 @media(max-width:768px){.body{flex-direction:column}.sidebar{width:100%;max-height:45vh;border-right:none;border-bottom:1px solid var(--bd)}.main{padding:12px}.dg,.fgrid{grid-template-columns:1fr}.ffull{grid-column:1}.gal{grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}.pgal{grid-template-columns:repeat(auto-fill,minmax(160px,1fr));padding:12px}.nk{display:none}header h1{font-size:11px}nav button{padding:4px 8px;font-size:9px}}
 @media(max-width:480px){.sidebar{max-height:35vh}.gal{grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px}.pgal{grid-template-columns:1fr 1fr;gap:8px;padding:8px}.dh{flex-direction:column;gap:8px}.brow{flex-direction:column}.btn{width:100%;justify-content:center}}
+.login-scr{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:9000;flex-direction:column;gap:20px}
+.login-box{background:var(--sf);border:1px solid var(--bd);padding:30px;width:90%;max-width:340px;text-align:center}
+.login-box input{width:100%;padding:10px;margin-bottom:15px;background:var(--bg);border:1px solid var(--bd);color:var(--tx);font-family:inherit;font-size:12px;outline:none}
+.login-box button{width:100%;padding:10px;background:var(--ac);color:var(--bk);border:none;font-weight:700;cursor:pointer}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 <div id="app"></div>
@@ -127,13 +137,33 @@ const SB="https://mcrzsxrcoexnlwmaunte.supabase.co",KEY="eyJhbGciOiJIUzI1NiIsInR
 const FDIM={1:[84,59.4],2:[59.4,42],3:[42,29.7],4:[29.7,21],5:[21,14.8],6:[14.8,10.5],7:[25.4,20.3]};
 const PUB=new URLSearchParams(location.search).get("mode")==="public";
 const WM_TEXT="© PEM";
-let oeuvres=[],techniques=[],supports=[],formats=[],contacts=[],imgTbl=[];
-let tM={},sM={},fM={},cM={},filtered=[],selId=null,curV="list";
+
+const sbClient = window.supabase.createClient(SB, KEY);
+
+let oeuvres=[],techniques=[],supports=[],formats=[],contacts=[],imgTbl=[],themes=[],oeuvreThemes=[],presentations=[],statuts=[],paiements=[];
+let tM={},sM={},fM={},cM={},pM={},stM={},filtered=[],selId=null,curV="list";
 
 // Right-click enabled (image protection handled by canvas watermark)
 
-async function api(p,o={}){const s=p.includes("?")?"&":"?";const r=await fetch(`${SB}/rest/v1/${p}${s}apikey=${KEY}`,{...o,headers:{"Content-Type":"application/json",Prefer:"return=representation",apikey:KEY,Authorization:`Bearer ${KEY}`,...o.headers}});if(!r.ok)throw new Error(`${r.status}: ${await r.text()}`);return r.json();}
-async function upl(f,n){const r=await fetch(`${SB}/storage/v1/object/${BKT}/${encodeURIComponent(n)}`,{method:"POST",headers:{apikey:KEY,Authorization:`Bearer ${KEY}`,"Content-Type":f.type,"x-upsert":"true"},body:f});if(!r.ok)throw new Error(await r.text());}
+async function getToken() {
+  const { data: { session } } = await sbClient.auth.getSession();
+  return session?.access_token || KEY;
+}
+
+async function api(p,o={}){
+  const token = await getToken();
+  const s=p.includes("?")?"&":"?";
+  const r=await fetch(`${SB}/rest/v1/${p}${s}apikey=${KEY}`,{...o,headers:{"Content-Type":"application/json",Prefer:"return=representation",apikey:KEY,Authorization:`Bearer ${token}`,...o.headers}});
+  if(!r.ok)throw new Error(`${r.status}: ${await r.text()}`);
+  if(r.status===204)return null; // Handle empty responses (like from DELETE)
+  const txt = await r.text();
+  return txt ? JSON.parse(txt) : null;
+}
+async function upl(f,n){
+  const token = await getToken();
+  const r=await fetch(`${SB}/storage/v1/object/${BKT}/${encodeURIComponent(n)}`,{method:"POST",headers:{apikey:KEY,Authorization:`Bearer ${token}`,"Content-Type":f.type,"x-upsert":"true"},body:f});
+  if(!r.ok)throw new Error(await r.text());
+}
 function iu(f){if(!f)return null;return f.startsWith("http")?f:`${STR}/${encodeURIComponent(f)}`;}
 function iuThumb(f,size){if(!f)return null;const s=size||100;if(f.startsWith("http"))return f;return`${SB}/storage/v1/render/image/public/${BKT}/${encodeURIComponent(f)}?width=${s}&height=${s}&resize=cover`;}
 // Medium res for viewer: render at 1600px width, maintains aspect ratio — good quality, ~200-400KB instead of 3-4MB
@@ -217,16 +247,24 @@ async function apiAll(table,order,pageSize=1000){
 
 async function load(){
   try{dbg("Chargement...");
-    const[o,t,su,f,c,im]=await Promise.all([
+    const[o,t,su,f,c,im,th,oth,pdr,str,pmt]=await Promise.all([
       apiAll("Oeuvres","OeuvreID.desc"),
-      api("Technique?order=TechniqueID.asc"),
-      api("Support?order=SupportID.asc"),
-      api("Format?order=FormatID.asc"),
-      api("Contact?order=ContactID.asc"),
-      apiAll("tblImage","OeuvreID.asc,SeqNo.asc")
+      api("Technique?order=Technique.asc"),
+      api("Support?order=Support.asc"),
+      api("Format?order=Format.asc"),
+      api("Contact?order=NomInstitution.asc,Nom.asc"),
+      apiAll("tblImage","OeuvreID.asc,SeqNo.asc"),
+      apiAll("tblTheme","Nom.asc"),
+      apiAll("OeuvreTheme","OeuvreID.asc"),
+      api("tblPresentation?order=Nom.asc").catch(()=>[]),
+      api("tblStatut?order=Nom.asc").catch(()=>[]),
+      apiAll("tblPaiement","DateEcheance.asc").catch(()=>[])
     ]);
-    oeuvres=o;techniques=t;supports=su;formats=f;contacts=c;imgTbl=im;
+    oeuvres=o;techniques=t;supports=su;formats=f;contacts=c;imgTbl=im;themes=th||[];oeuvreThemes=oth||[];
+    presentations=pdr||[];statuts=str||[];paiements=pmt||[];
     tM=Object.fromEntries(t.map(x=>[x.TechniqueID,x.Technique]));sM=Object.fromEntries(su.map(x=>[x.SupportID,x.Support]));fM=Object.fromEntries(f.map(x=>[x.FormatID,x.Format]));cM=Object.fromEntries(c.map(x=>[x.ContactID,x.NomInstitution]));
+    pM=Object.fromEntries((pdr||[]).map(x=>[x.PresentationID,x.Nom]));stM=Object.fromEntries((str||[]).map(x=>[x.StatutID,x.Nom]));
+    oeuvres.forEach(wk => { wk.themeIds = oeuvreThemes.filter(ot=>ot.OeuvreID===wk.OeuvreID).map(ot=>ot.ThemeID); });
     const imgCount=o.filter(x=>x.txtImageNameLink).length;
     dbg(`${o.length} oeuvres · ${imgCount} avec image · ${im.length} tblImage`);
     if(PUB)initPub();else{popF();applyF();upSt();}
@@ -250,12 +288,10 @@ function initA(){document.getElementById("app").innerHTML=`<header><h1>PEM — I
 function popF(){
   document.getElementById("fT").innerHTML='<option value="">Toutes techniques</option>'+techniques.map(t=>`<option value="${t.TechniqueID}">${t.Technique}</option>`).join("");
   document.getElementById("fS").innerHTML='<option value="">Tous supports</option>'+supports.map(s=>`<option value="${s.SupportID}">${s.Support}</option>`).join("");
-  // Build theme list from oeuvres data
-  const themes=[...new Set(oeuvres.map(o=>o.theme).filter(Boolean))].sort();
-  document.getElementById("fTheme").innerHTML='<option value="">Tous thèmes</option>'+themes.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join("");
+  document.getElementById("fTheme").innerHTML='<option value="">Tous thèmes</option>'+themes.map(t=>`<option value="${t.ThemeID}">${esc(t.Nom)}</option>`).join("");
 }
 function upSt(){document.getElementById("st").textContent=`${filtered.length}/${oeuvres.length} · ${oeuvres.filter(o=>!o.txtImageNameLink).length} sans img · ${oeuvres.filter(o=>!o.Prix).length} sans prix`;}
-function applyF(){const q=document.getElementById("q").value.toLowerCase(),t=document.getElementById("fT").value,su=document.getElementById("fS").value,st=document.getElementById("fSt").value,th=document.getElementById("fTheme")?.value||"";filtered=oeuvres.filter(o=>{if(q&&!(o.Titre||"").toLowerCase().includes(q)&&!String(o.OeuvreID).includes(q))return false;if(t&&String(o.Technique)!==t)return false;if(su&&String(o.Support)!==su)return false;if(st==="cat"&&!o["Catalogué"])return false;if(st==="ncat"&&o["Catalogué"])return false;if(st==="exp"&&!o.Exposable)return false;if(st==="noimg"&&o.txtImageNameLink)return false;if(st==="nopx"&&o.Prix>0)return false;if(th&&(o.theme||"")!==th)return false;return true;});
+function applyF(){const q=document.getElementById("q").value.toLowerCase(),t=document.getElementById("fT").value,su=document.getElementById("fS").value,st=document.getElementById("fSt").value,th=document.getElementById("fTheme")?.value||"";filtered=oeuvres.filter(o=>{if(q&&!(o.Titre||"").toLowerCase().includes(q)&&!String(o.OeuvreID).includes(q))return false;if(t&&String(o.Technique)!==t)return false;if(su&&String(o.Support)!==su)return false;if(st==="cat"&&!o["Catalogué"])return false;if(st==="ncat"&&o["Catalogué"])return false;if(st==="exp"&&!o.Exposable)return false;if(st==="noimg"&&o.txtImageNameLink)return false;if(st==="nopx"&&o.Prix>0)return false;if(th&&!(o.themeIds||[]).includes(Number(th)))return false;return true;});
   // Sort
   const s=document.getElementById("fSort")?.value||"id_desc";
   filtered.sort((a,b)=>{switch(s){
@@ -329,19 +365,30 @@ function det(id){
       ${fi("Année","dt_a",o["Année"]?String(o["Année"]).slice(0,10):"","text","2025")}
       ${fsl("Technique","dt_k",techniques.map(t=>[t.TechniqueID,t.Technique]),o.Technique)}
       ${fsl("Support","dt_s",supports.map(s=>[s.SupportID,s.Support]),o.Support)}
-      ${fi("Hauteur","dt_h",o.Hauteur,"number")}
-      ${fi("Largeur","dt_l",o.Largeur,"number")}
-      ${fi("Profondeur","dt_p",o.Profondeur,"number")}
+      ${fsl("Format","dt_f",[["","—"],...formats.map(f=>[f.FormatID,f.Format])],o.Format,"applyFormatDims(this.value,'dt_h','dt_l','dt_p')")}
+      ${fi("Hauteur (cm)","dt_h",o.Hauteur,"number")}
+      ${fi("Largeur (cm)","dt_l",o.Largeur,"number")}
+      ${fi("Profondeur (cm)","dt_p",o.Profondeur,"number")}
       ${fi("Poids","dt_w",o.Poids,"number")}
-      ${fsl("Contact","dt_c",contacts.map(c=>[c.ContactID,`${c.NomInstitution}${c.Nom?" ("+c.Nom+")":""}`]),o.ContactID)}
-      ${fi("Prix","dt_x",o.Prix||0,"number")}
+      ${fsl("Présentation","dt_pr",presentations.map(p=>[p.PresentationID,p.Nom]),o.PresentationID)}
+      ${fsl("Statut","dt_st",statuts.map(s=>[s.StatutID,s.Nom]),o.StatutID)}
+      ${fi("Date Statut","dt_ds",o.DateStatut?String(o.DateStatut).slice(0,10):"","date")}
+      ${fsl("Acheteur","dt_ach",contacts.map(c=>[c.ContactID,`${c.NomInstitution}${c.Nom?" ("+c.Nom+")":""}`]),o.AcheteurID)}
+      <div class="ff"><div class="fl">Commission</div><label class="chk"><input type="checkbox" id="dt_com" ${o.IsCommission?"checked":""}> Oui</label></div>
+      ${fi("Date Livraison","dt_dl",o.DateLivraison?String(o.DateLivraison).slice(0,10):"","date")}
+      ${fi("Prix (€)","dt_x",o.Prix||0,"number")}
       ${fi("Tirage","dt_g",o.Tirage||"1/1")}
-      ${fsl("Format","dt_f",[["","—"],...formats.map(f=>[f.FormatID,f.Format])],o.Format)}
+      <div class="ff"><div class="fl">Encadrée</div><label class="chk"><input type="checkbox" id="dt_enc" ${o.Encadree?"checked":""}> Oui</label></div>
       <div class="ff"><div class="fl">Exposable</div><label class="chk"><input type="checkbox" id="dt_e" ${o.Exposable?"checked":""}> Oui</label></div>
       <div class="ff"><div class="fl">Catalogué</div><label class="chk"><input type="checkbox" id="dt_b" ${o["Catalogué"]?"checked":""}> Oui</label></div>
       <div class="ffull ff"><div class="fl">Commentaires</div><textarea id="dt_m" rows="2">${esc(o.Commentaires||"")}</textarea></div>
       <div class="ffull ff"><div class="fl">Historique</div><textarea id="dt_q" rows="2">${esc(o.Historique||"")}</textarea></div>
-      ${fi("Thème","dt_th",o.theme)}
+      <div class="ffull ff"><div class="fl" style="display:flex;align-items:center;margin-bottom:6px">Thèmes <span style="cursor:pointer;color:var(--ac);font-weight:700;margin-left:12px;font-size:10px;letter-spacing:0" onclick="addNewTheme('dt_theme_wrap', 'dt_theme')">+ Ajouter un thème</span></div><div id="dt_theme_wrap" style="display:flex;flex-wrap:wrap;gap:8px;padding:4px 0">${themes.map(t=>`<label class="th-badge"><input type="checkbox" name="dt_theme" value="${t.ThemeID}" ${(o.themeIds||[]).includes(t.ThemeID)?"checked":""}> <span>${esc(t.Nom)}</span></label>`).join("")}</div></div>
+    </div>
+    <div class="ffull" style="margin-top:16px;border-top:1px solid var(--bd);padding-top:12px;margin-bottom:10px">
+      <div style="font-weight:700;color:var(--wh);margin-bottom:10px;font-size:12px">Plan de Paiement</div>
+      <div id="dt_pmt_wrap">${paiements.filter(p=>p.OeuvreID===o.OeuvreID).map(p=>pmtRow(p)).join("")}</div>
+      <button class="btn bs" style="font-size:10px;padding:4px 8px;margin-top:6px" onclick="document.getElementById('dt_pmt_wrap').insertAdjacentHTML('beforeend',pmtRow({}))">+ Ajouter paiement</button>
     </div>
     <div class="brow" style="margin-top:10px">
       <button class="btn bp" onclick="saveDet(${o.OeuvreID})">Enregistrer</button>
@@ -354,23 +401,54 @@ function det(id){
 }
 
 async function saveDet(id){
+  const oldO = oeuvres.find(x => x.OeuvreID === id);
+  const newSt = gvn("dt_st"), newAch = gvn("dt_ach");
+  let hist = gv("dt_q") || "";
+  const dtStatut = gv("dt_ds") || new Date().toISOString().slice(0,10);
+  if(oldO && (oldO.StatutID !== newSt || oldO.AcheteurID !== newAch)) {
+    const stName = newSt ? (stM[newSt] || "Inconnu") : "Aucun statut";
+    const achName = newAch ? (cM[newAch] || "Inconnu") : "Aucun contact";
+    const fDate = dtStatut.split("-").reverse().join("/");
+    hist = (hist ? hist + "\n" : "") + `[${fDate}] Statut : ${stName} - Contact : ${achName}`;
+    document.getElementById("dt_q").value = hist; // update DOM before save so it's visible instantly
+  }
+  const pmts = Array.from(document.querySelectorAll('#dt_pmt_wrap .pmt-row')).map(r => ({
+    Montant: Number(r.querySelector('.pmt-m').value) || 0,
+    DateEcheance: r.querySelector('.pmt-d').value || null,
+    EstPaye: r.querySelector('.pmt-p').checked,
+    DatePaiement: r.querySelector('.pmt-dp').value || null,
+    Notes: r.querySelector('.pmt-n').value || null
+  }));
   const data={
     Titre:gv("dt_t")||null,
     "Année":gv("dt_a")||null,
     Technique:gvn("dt_k"),Support:gvn("dt_s"),Format:gvn("dt_f"),ContactID:gvn("dt_c"),
     Hauteur:gv("dt_h")||null,Largeur:gv("dt_l")||null,Profondeur:gv("dt_p")||null,Poids:gv("dt_w")||null,
+    PresentationID:gvn("dt_pr"),StatutID:newSt,DateStatut:dtStatut,AcheteurID:newAch,
+    IsCommission:document.getElementById("dt_com").checked,DateLivraison:gv("dt_dl")||null,
     Prix:Number(gv("dt_x"))||0,Tirage:gv("dt_g")||"1/1",
+    Encadree:document.getElementById("dt_enc").checked,
     Exposable:document.getElementById("dt_e").checked,
     "Catalogué":document.getElementById("dt_b").checked,
-    Commentaires:gv("dt_m")||null,Historique:gv("dt_q")||null,
+    Commentaires:gv("dt_m")||null,Historique:hist,
     theme:gv("dt_th")||null
   };
+  const selThemes = Array.from(document.querySelectorAll('input[name="dt_theme"]:checked')).map(cb=>Number(cb.value));
   try{
     await api(`Oeuvres?OeuvreID=eq.${id}`,{method:"PATCH",body:JSON.stringify(data)});
+    const tkn = await getToken();
+    await fetch(`${SB}/rest/v1/OeuvreTheme?OeuvreID=eq.${id}`,{method:"DELETE",headers:{apikey:KEY,Authorization:`Bearer ${tkn}`}});
+    if(selThemes.length>0) {
+      await fetch(`${SB}/rest/v1/OeuvreTheme`,{method:"POST",headers:{apikey:KEY,Authorization:`Bearer ${tkn}`,"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify(selThemes.map(tid=>({OeuvreID:id,ThemeID:tid})))});
+    }
+    await fetch(`${SB}/rest/v1/tblPaiement?OeuvreID=eq.${id}`,{method:"DELETE",headers:{apikey:KEY,Authorization:`Bearer ${tkn}`}});
+    if(pmts.length>0){
+      await fetch(`${SB}/rest/v1/tblPaiement`,{method:"POST",headers:{apikey:KEY,Authorization:`Bearer ${tkn}`,"Content-Type":"application/json"},body:JSON.stringify(pmts.map(p=>({...p,OeuvreID:id})))});
+    }
+    await load(); // Reload to refresh paiement IDs and data
     tst("Enregistré");
-    // Update local cache
     const o=oeuvres.find(x=>x.OeuvreID===id);
-    if(o)Object.assign(o,data);
+    if(o){ Object.assign(o,data); o.themeIds=selThemes; }
     rList();det(id);
   }catch(e){tst("Erreur: "+e.message,true);}
 }
@@ -634,13 +712,108 @@ function rGal(){
   const colStyle=galCols>0?`grid-template-columns:repeat(${galCols},1fr)`:"";
   document.getElementById("mn").innerHTML=`<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px"><span class="cnt">${filtered.length} oeuvres</span><label style="font-size:9px;color:var(--mt)">Colonnes: <select onchange="galCols=Number(this.value);rGal()"><option value="0" ${galCols===0?"selected":""}>Auto</option>${[2,3,4,5,6,8,10,12].map(n=>`<option value="${n}" ${galCols===n?"selected":""}>${n}</option>`).join("")}</select></label></div><div class="gal" ${colStyle?`style="${colStyle}"`:""}>${filtered.map(o=>{const u=iuThumb(o.txtImageNameLink,galCols>6?100:150),ic=iFor(o.OeuvreID).length;return`<div class="gc" onclick="sv('list');sel(${o.OeuvreID})">${u?`<img class="gi lazy" data-src="${u}" alt="">`:`<div class="ge">—</div>`}<div class="gn"><div class="gt"><span style="color:var(--mt);font-size:8px">${o.OeuvreID}</span> ${esc(o.Titre||"Sans titre")}${ic>1?` (${ic})`:""}</div><div class="gs">${tM[o.Technique]||""} · ${o["Année"]?String(o["Année"]).slice(0,4):""}${o.Prix>0?` · ${o.Prix}€`:""}</div></div></div>`;}).join("")}</div>`;oL();}
 
-function frm(ex){const o=ex||{},isE=!!o.OeuvreID;document.getElementById("mn").innerHTML=`<h2 style="font-size:15px;font-weight:700;color:var(--wh);margin-bottom:14px">${isE?`Modifier — ${esc(o.Titre||"")}`:"Nouvelle oeuvre"}</h2><div id="ip" style="margin-bottom:10px">${o.txtImageNameLink?`<img src="${iuThumb(o.txtImageNameLink,600)}" style="max-width:100%;max-height:280px;object-fit:contain;background:var(--bk)" alt="">`:""}</div><div class="dz" id="dz" onclick="document.getElementById('fi').click()" ondragover="event.preventDefault();this.classList.add('over')" ondragleave="this.classList.remove('over')" ondrop="event.preventDefault();this.classList.remove('over');hF(event.dataTransfer.files[0])">Glisser image ou cliquer</div><input type="file" id="fi" accept="image/*" style="display:none" onchange="hF(this.files[0])"><div id="fn" style="font-size:9px;color:var(--mt);margin:3px 0 14px">${o.txtImageNameLink||""}</div><input type="hidden" id="f_i" value="${esc(o.txtImageNameLink||"")}"><input type="hidden" id="f_or" value="${esc(o.NomOriginal||"")}"><input type="hidden" id="f_id" value="${o.OeuvreID||""}"><div class="fgrid">${fi("Titre","ft",o.Titre)}${fi("Année","fa",o["Année"]?String(o["Année"]).slice(0,10):"","text","2025-04-16")}${fsl("Technique","fk",techniques.map(t=>[t.TechniqueID,t.Technique]),o.Technique)}${fsl("Support","fs",supports.map(s=>[s.SupportID,s.Support]),o.Support)}${fsl("Format","ff",[["","— dim. manuelles"],...formats.map(f=>[f.FormatID,f.Format])],o.Format)}${fi("Tirage","fg",o.Tirage||"1/1")}${fi("Hauteur (cm)","fh",o.Hauteur,"number")}${fi("Largeur (cm)","fl",o.Largeur,"number")}${fi("Profondeur","fp",o.Profondeur,"number")}${fi("Poids (kg)","fw",o.Poids,"number")}${fsl("Contact","fc",contacts.map(c=>[c.ContactID,`${c.NomInstitution}${c.Nom?" ("+c.Nom+")":""}`]),o.ContactID)}${fi("Prix (€)","fx",o.Prix||0,"number")}${fi("Discount","fd",o.Discount||0,"number")}${fi("Prix final","fz",o.PrixFinal||0,"number")}<div class="ff"><div class="fl">Exposable</div><label class="chk"><input type="checkbox" id="fe" ${o.Exposable?"checked":""}> Oui</label></div><div class="ff"><div class="fl">Catalogué</div><label class="chk"><input type="checkbox" id="fb" ${o["Catalogué"]?"checked":""}> Oui</label></div><div class="ffull ff"><div class="fl">Commentaires</div><textarea id="fm">${esc(o.Commentaires||"")}</textarea></div><div class="ffull ff"><div class="fl">Historique</div><textarea id="fq">${esc(o.Historique||"")}</textarea></div></div><div class="brow"><button class="btn bp" onclick="sF()">${isE?"Enregistrer":"Créer"}</button><button class="btn bs" onclick="cF()">Annuler</button></div>`;}
+function frm(ex){const o=ex||{},isE=!!o.OeuvreID;document.getElementById("mn").innerHTML=`<h2 style="font-size:15px;font-weight:700;color:var(--wh);margin-bottom:14px">${isE?`Modifier — ${esc(o.Titre||"")}`:"Nouvelle oeuvre"}</h2><div id="ip" style="margin-bottom:10px">${o.txtImageNameLink?`<img src="${iuThumb(o.txtImageNameLink,600)}" style="max-width:100%;max-height:280px;object-fit:contain;background:var(--bk)" alt="">`:""}</div><div class="dz" id="dz" onclick="document.getElementById('fi').click()" ondragover="event.preventDefault();this.classList.add('over')" ondragleave="this.classList.remove('over')" ondrop="event.preventDefault();this.classList.remove('over');hF(event.dataTransfer.files[0])">Glisser image ou cliquer</div><input type="file" id="fi" accept="image/*" style="display:none" onchange="hF(this.files[0])"><div id="fn" style="font-size:9px;color:var(--mt);margin:3px 0 14px">${o.txtImageNameLink||""}</div><input type="hidden" id="f_i" value="${esc(o.txtImageNameLink||"")}"><input type="hidden" id="f_or" value="${esc(o.NomOriginal||"")}"><input type="hidden" id="f_id" value="${o.OeuvreID||""}"><div class="fgrid">${fi("Titre","ft",o.Titre)}${fi("Année","fa",o["Année"]?String(o["Année"]).slice(0,10):"","text","2025-04-16")}${fsl("Technique","fk",techniques.map(t=>[t.TechniqueID,t.Technique]),o.Technique)}${fsl("Support","fs",supports.map(s=>[s.SupportID,s.Support]),o.Support)}${fsl("Format","ff",[["","— dim. manuelles"],...formats.map(f=>[f.FormatID,f.Format])],o.Format,"applyFormatDims(this.value,'fh','fl','fp')")}${fi("Tirage","fg",o.Tirage||"1/1")}${fi("Hauteur (cm)","fh",o.Hauteur,"number")}${fi("Largeur (cm)","fl",o.Largeur,"number")}${fi("Profondeur (cm)","fp",o.Profondeur,"number")}${fi("Poids (kg)","fw",o.Poids,"number")}${fsl("Présentation","f_pr",presentations.map(p=>[p.PresentationID,p.Nom]),o.PresentationID)}${fsl("Statut","f_st",statuts.map(s=>[s.StatutID,s.Nom]),o.StatutID)}${fi("Date Statut","f_ds",o.DateStatut?String(o.DateStatut).slice(0,10):"","date")}${fsl("Acheteur","f_ach",contacts.map(c=>[c.ContactID,`${c.NomInstitution}${c.Nom?" ("+c.Nom+")":""}`]),o.AcheteurID)}<div class="ff"><div class="fl">Commission</div><label class="chk"><input type="checkbox" id="f_com" ${o.IsCommission?"checked":""}> Oui</label></div>${fi("Date Livraison","f_dl",o.DateLivraison?String(o.DateLivraison).slice(0,10):"","date")}${fi("Prix (€)","fx",o.Prix||0,"number")}${fi("Discount","fd",o.Discount||0,"number")}${fi("Prix final","fz",o.PrixFinal||0,"number")}<div class="ff"><div class="fl">Encadrée</div><label class="chk"><input type="checkbox" id="f_enc" ${o.Encadree?"checked":""}> Oui</label></div><div class="ff"><div class="fl">Exposable</div><label class="chk"><input type="checkbox" id="fe" ${o.Exposable?"checked":""}> Oui</label></div><div class="ff"><div class="fl">Catalogué</div><label class="chk"><input type="checkbox" id="fb" ${o["Catalogué"]?"checked":""}> Oui</label></div><div class="ffull ff"><div class="fl">Commentaires</div><textarea id="fm">${esc(o.Commentaires||"")}</textarea></div><div class="ffull ff"><div class="fl">Historique</div><textarea id="fq">${esc(o.Historique||"")}</textarea></div><div class="ffull ff"><div class="fl" style="display:flex;align-items:center;margin-bottom:6px">Thèmes <span style="cursor:pointer;color:var(--ac);font-weight:700;margin-left:12px;font-size:10px;letter-spacing:0" onclick="addNewTheme('ft_theme_wrap', 'ft_theme')">+ Ajouter un thème</span></div><div id="ft_theme_wrap" style="display:flex;flex-wrap:wrap;gap:8px;padding:4px 0">${themes.map(t=>`<label class="th-badge"><input type="checkbox" name="ft_theme" value="${t.ThemeID}" ${(o.themeIds||[]).includes(t.ThemeID)?"checked":""}> <span>${esc(t.Nom)}</span></label>`).join("")}</div></div></div><div class="ffull" style="margin-top:16px;border-top:1px solid var(--bd);padding-top:12px;margin-bottom:10px"><div style="font-weight:700;color:var(--wh);margin-bottom:10px;font-size:12px">Plan de Paiement</div><div id="f_pmt_wrap">${paiements.filter(p=>p.OeuvreID===o.OeuvreID).map(p=>pmtRow(p)).join("")}</div><button class="btn bs" style="font-size:10px;padding:4px 8px;margin-top:6px" onclick="document.getElementById('f_pmt_wrap').insertAdjacentHTML('beforeend',pmtRow({}))">+ Ajouter paiement</button></div><div class="brow"><button class="btn bp" onclick="sF()">${isE?"Enregistrer":"Créer"}</button><button class="btn bs" onclick="cF()">Annuler</button></div>`;}
 function fi(l,id,v,t,ph){return`<div class="ff"><div class="fl">${l}</div><input id="${id}" type="${t||"text"}" value="${esc(v!=null?String(v):"")}" ${ph?`placeholder="${ph}"`:""}></div>`;}
-function fsl(l,id,opts,sel){return`<div class="ff"><div class="fl">${l}</div><select id="${id}"><option value="">—</option>${opts.map(([v,t])=>`<option value="${v}" ${String(v)===String(sel)?"selected":""}>${esc(String(t))}</option>`).join("")}</select></div>`;}
+function fsl(l,id,opts,sel,xch){return`<div class="ff"><div class="fl">${l}</div><select id="${id}" onfocus="this.dataset.prev=this.value" onchange="${xch?xch+';':''}if(this.value==='NEW')addNewLookup('${l}',this.id)"><option value="">—</option>${opts.map(([v,t])=>`<option value="${v}" ${String(v)===String(sel)?"selected":""}>${esc(String(t))}</option>`).join("")}<option value="NEW">+ Nouveau...</option></select></div>`;}
+
+function applyFormatDims(fmtId, idH, idL, idP){
+  if(!fmtId || fmtId === "NEW") return;
+  const name = (fM[fmtId]||"").toUpperCase().trim();
+  const P = {"A0":[118.9,84.1],"A1":[84.1,59.4],"A2":[59.4,42],"A3":[42,29.7],"A4":[29.7,21],"A5":[21,14.8],"A6":[14.8,10.5],"A7":[10.5,7.4],"A8":[7.4,5.2]};
+  if(P[name]){
+    document.getElementById(idH).value = P[name][0];
+    document.getElementById(idL).value = P[name][1];
+    document.getElementById(idP).value = 2; // Default paper depth
+  }
+}
+
+async function addNewLookup(label, selectId) {
+  const select = document.getElementById(selectId);
+  const reset = () => { select.value = select.dataset.prev || ""; };
+  
+  if(label === "Contact") {
+    const mo = document.createElement('div'); mo.id = 'contactModal';
+    mo.style.cssText = 'position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.65)';
+    mo.innerHTML = `<div style="background:var(--sf);border:1px solid var(--bd);padding:20px;width:90%;max-width:340px">
+      <div style="font-weight:700;margin-bottom:15px;color:var(--wh)">Nouveau Contact</div>
+      <input type="text" id="nc_ni" placeholder="Nom Institution (ex: Galerie X)" style="width:100%;margin-bottom:8px;padding:6px;background:var(--bg);color:var(--tx);border:1px solid var(--bd)">
+      <input type="text" id="nc_n" placeholder="Nom Contact" style="width:100%;margin-bottom:8px;padding:6px;background:var(--bg);color:var(--tx);border:1px solid var(--bd)">
+      <input type="text" id="nc_r" placeholder="Rôle" style="width:100%;margin-bottom:8px;padding:6px;background:var(--bg);color:var(--tx);border:1px solid var(--bd)">
+      <input type="email" id="nc_e" placeholder="Email" style="width:100%;margin-bottom:8px;padding:6px;background:var(--bg);color:var(--tx);border:1px solid var(--bd)">
+      <input type="text" id="nc_t" placeholder="Téléphone" style="width:100%;margin-bottom:8px;padding:6px;background:var(--bg);color:var(--tx);border:1px solid var(--bd)">
+      <textarea id="nc_a" placeholder="Adresse" rows="2" style="width:100%;margin-bottom:8px;padding:6px;background:var(--bg);color:var(--tx);border:1px solid var(--bd)"></textarea>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px">
+        <button class="btn bs" onclick="document.getElementById('contactModal').remove();document.getElementById('${selectId}').value=document.getElementById('${selectId}').dataset.prev||''">Annuler</button>
+        <button class="btn bp" id="btnSaveContact">Créer</button>
+      </div>
+    </div>`;
+    document.body.appendChild(mo);
+    document.getElementById('btnSaveContact').onclick = async () => {
+      const NomInstitution = gv('nc_ni'), Nom = gv('nc_n'), Role = gv('nc_r'), Email = gv('nc_e'), Telephone = gv('nc_t'), Adresse = gv('nc_a');
+      if(!NomInstitution && !Nom) { tst("Nom requis", true); return; }
+      try {
+        const r = await api("Contact", {method: "POST", headers: {"Prefer": "return=representation"}, body: JSON.stringify({NomInstitution, Nom, Role, Email, Telephone, Adresse})});
+        if(r && r[0]) {
+          contacts.push(r[0]);
+          contacts.sort((a,b) => (a.NomInstitution||"").localeCompare(b.NomInstitution||"") || (a.Nom||"").localeCompare(b.Nom||""));
+          const lbl = `${r[0].NomInstitution}${r[0].Nom?" ("+r[0].Nom+")":""}`;
+          cM[r[0].ContactID] = lbl;
+          const opt = document.createElement("option"); opt.value = r[0].ContactID; opt.textContent = lbl;
+          select.insertBefore(opt, select.lastElementChild);
+          select.value = r[0].ContactID; select.dataset.prev = r[0].ContactID;
+          mo.remove(); tst("Contact ajouté");
+        }
+      } catch(e) { tst("Erreur: " + e.message, true); }
+    };
+    return;
+  }
+
+  const val = prompt(`Entrez le nom pour le nouveau ${label}:`);
+  if(!val) return reset();
+  
+  try {
+    let table, idCol, nameCol, gArr, gMap;
+    if(label === "Technique") { table = "Technique"; idCol = "TechniqueID"; nameCol = "Technique"; gArr = techniques; gMap = tM; }
+    else if(label === "Support") { table = "Support"; idCol = "SupportID"; nameCol = "Support"; gArr = supports; gMap = sM; }
+    else if(label === "Format") { table = "Format"; idCol = "FormatID"; nameCol = "Format"; gArr = formats; gMap = fM; }
+    else if(label === "Présentation") { table = "tblPresentation"; idCol = "PresentationID"; nameCol = "Nom"; gArr = presentations; gMap = pM; }
+    else if(label === "Statut") { table = "tblStatut"; idCol = "StatutID"; nameCol = "Nom"; gArr = statuts; gMap = stM; }
+    
+    if(!table) return reset();
+    
+    const r = await api(table, {method: "POST", headers: {"Prefer": "return=representation"}, body: JSON.stringify({[nameCol]: val})});
+    if(r && r[0]) {
+      const newId = r[0][idCol];
+      gArr.push(r[0]);
+      gArr.sort((a,b) => (a[nameCol]||"").localeCompare(b[nameCol]||""));
+      gMap[newId] = val;
+      
+      const opt = document.createElement("option");
+      opt.value = newId; opt.textContent = val;
+      select.insertBefore(opt, select.lastElementChild);
+      select.value = newId; select.dataset.prev = newId;
+      tst(`${label} ajouté`);
+    }
+  } catch(e) { tst("Erreur: " + e.message, true); reset(); }
+}
+
+async function addNewTheme(wrapId, nameAttr) {
+  const val = prompt("Nom du nouveau thème :");
+  if(!val) return;
+  try {
+    const r = await api("tblTheme", {method: "POST", headers: {"Prefer": "return=representation"}, body: JSON.stringify({Nom: val})});
+    if(r && r[0]) {
+      themes.push(r[0]); themes.sort((a,b) => a.Nom.localeCompare(b.Nom));
+      document.getElementById(wrapId).insertAdjacentHTML('beforeend', `<label class="th-badge"><input type="checkbox" name="${nameAttr}" value="${r[0].ThemeID}" checked> <span>${esc(val)}</span></label>`);
+      tst("Thème ajouté");
+    }
+  } catch(e) { tst("Erreur: "+e.message, true); }
+}
+
 function cF(){curV="list";stb("list");document.getElementById("sb").style.display="";rList();det(selId);}
 function edO(id){const o=oeuvres.find(x=>x.OeuvreID===id);if(!o)return;document.getElementById("sb").style.display="none";curV="form";frm(o);}
 async function hF(file){if(!file)return;document.getElementById("dz").textContent="Upload...";try{const oid=gv("f_id");let nm;if(oid){nm=mkN(Number(oid),nxS(Number(oid)),file.name);}else{const cl=file.name.replace(/\.[^.]+$/,"").replace(/[^a-zA-Z0-9_-]/g,"_");nm=`W_NEW_${Date.now()}_${cl}.${file.name.split(".").pop().toLowerCase()}`;}await upl(file,nm);document.getElementById("f_i").value=nm;document.getElementById("f_or").value=file.name;document.getElementById("fn").textContent=nm;document.getElementById("ip").innerHTML=`<img src="${iu(nm)}" style="max-width:100%;max-height:280px;object-fit:contain;background:var(--bk)" alt="">`;document.getElementById("dz").textContent="✓ Glisser pour remplacer";tst(`→ ${nm}`);}catch(e){document.getElementById("dz").textContent="Erreur";tst("Erreur: "+e.message,true);}}
-async function sF(){const id=gv("f_id");const data={Titre:gv("ft")||null,Technique:gvn("fk"),Support:gvn("fs"),"Année":gv("fa")||null,Tirage:gv("fg")||"1/1",Format:gvn("ff"),Hauteur:gv("fh")||null,Largeur:gv("fl")||null,Profondeur:gv("fp")||null,Poids:gv("fw")||null,ContactID:gvn("fc"),Prix:Number(gv("fx"))||0,Discount:Number(gv("fd"))||0,PrixFinal:Number(gv("fz"))||0,Exposable:document.getElementById("fe").checked,"Catalogué":document.getElementById("fb").checked,Commentaires:gv("fm")||null,Historique:gv("fq")||null,Statut:4,txtImageNameLink:gv("f_i")||null,NomOriginal:gv("f_or")||null};try{let sid;if(id){await api(`Oeuvres?OeuvreID=eq.${id}`,{method:"PATCH",body:JSON.stringify(data)});sid=Number(id);tst("Mise à jour");}else{const mx=oeuvres.reduce((m,o)=>Math.max(m,o.OeuvreID||0),0);data.OeuvreID=mx+1;sid=data.OeuvreID;if(data.txtImageNameLink?.startsWith("W_NEW_")){const ext=data.txtImageNameLink.split(".").pop(),oc=data.txtImageNameLink.replace(/^W_NEW_\d+_/,"").replace(/\.[^.]+$/,""),pn=`W_${String(sid).padStart(4,"0")}_01_${oc}.${ext}`;try{const r=await fetch(`${SB}/storage/v1/object/move`,{method:"POST",headers:{apikey:KEY,Authorization:`Bearer ${KEY}`,"Content-Type":"application/json"},body:JSON.stringify({bucketId:BKT,sourceKey:data.txtImageNameLink,destinationKey:pn})});if(r.ok)data.txtImageNameLink=pn;}catch(e){}}await api("Oeuvres",{method:"POST",body:JSON.stringify(data)});tst("ID "+sid);}await load();curV="list";stb("list");document.getElementById("sb").style.display="";sel(sid);}catch(e){tst("Erreur: "+e.message,true);}}
+async function sF(){const id=gv("f_id");const newSt=gvn("f_st"),newAch=gvn("f_ach");let hist=gv("fq")||"";const dtStatut=gv("f_ds")||new Date().toISOString().slice(0,10);const oldO=oeuvres.find(x=>x.OeuvreID==id);if(oldO&&(oldO.StatutID!==newSt||oldO.AcheteurID!==newAch)){const stName=newSt?(stM[newSt]||"Inconnu"):"Aucun statut";const achName=newAch?(cM[newAch]||"Inconnu"):"Aucun contact";const fDate=dtStatut.split("-").reverse().join("/");hist=(hist?hist+"\n":"")+`[${fDate}] Statut : ${stName} - Contact : ${achName}`;}const data={Titre:gv("ft")||null,Technique:gvn("fk"),Support:gvn("fs"),"Année":gv("fa")||null,Tirage:gv("fg")||"1/1",Format:gvn("ff"),Hauteur:gv("fh")||null,Largeur:gv("fl")||null,Profondeur:gv("fp")||null,Poids:gv("fw")||null,PresentationID:gvn("f_pr"),StatutID:newSt,DateStatut:dtStatut,ContactID:gvn("fc"),AcheteurID:newAch,IsCommission:document.getElementById("f_com").checked,DateLivraison:gv("f_dl")||null,Prix:Number(gv("fx"))||0,Discount:Number(gv("fd"))||0,PrixFinal:Number(gv("fz"))||0,Encadree:document.getElementById("f_enc").checked,Exposable:document.getElementById("fe").checked,"Catalogué":document.getElementById("fb").checked,Commentaires:gv("fm")||null,Historique:hist,txtImageNameLink:gv("f_i")||null,NomOriginal:gv("f_or")||null};const selThemes = Array.from(document.querySelectorAll('input[name="ft_theme"]:checked')).map(cb=>Number(cb.value));const pmts = Array.from(document.querySelectorAll('#f_pmt_wrap .pmt-row')).map(r => ({Montant: Number(r.querySelector('.pmt-m').value) || 0,DateEcheance: r.querySelector('.pmt-d').value || null,EstPaye: r.querySelector('.pmt-p').checked,DatePaiement: r.querySelector('.pmt-dp').value || null,Notes: r.querySelector('.pmt-n').value || null}));try{let sid;if(id){await api(`Oeuvres?OeuvreID=eq.${id}`,{method:"PATCH",body:JSON.stringify(data)});sid=Number(id);tst("Mise à jour");}else{const mx=oeuvres.reduce((m,o)=>Math.max(m,o.OeuvreID||0),0);data.OeuvreID=mx+1;sid=data.OeuvreID;if(data.txtImageNameLink?.startsWith("W_NEW_")){const ext=data.txtImageNameLink.split(".").pop(),oc=data.txtImageNameLink.replace(/^W_NEW_\d+_/,"").replace(/\.[^.]+$/,""),pn=`W_${String(sid).padStart(4,"0")}_01_${oc}.${ext}`;try{const r=await fetch(`${SB}/storage/v1/object/move`,{method:"POST",headers:{apikey:KEY,Authorization:`Bearer ${KEY}`,"Content-Type":"application/json"},body:JSON.stringify({bucketId:BKT,sourceKey:data.txtImageNameLink,destinationKey:pn})});if(r.ok)data.txtImageNameLink=pn;}catch(e){}}await api("Oeuvres",{method:"POST",body:JSON.stringify(data)});tst("ID "+sid);}const tkn=await getToken();await fetch(`${SB}/rest/v1/OeuvreTheme?OeuvreID=eq.${sid}`,{method:"DELETE",headers:{apikey:KEY,Authorization:`Bearer ${tkn}`}});if(selThemes.length>0){await fetch(`${SB}/rest/v1/OeuvreTheme`,{method:"POST",headers:{apikey:KEY,Authorization:`Bearer ${tkn}`,"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify(selThemes.map(tid=>({OeuvreID:sid,ThemeID:tid})))});}await fetch(`${SB}/rest/v1/tblPaiement?OeuvreID=eq.${sid}`,{method:"DELETE",headers:{apikey:KEY,Authorization:`Bearer ${tkn}`}});if(pmts.length>0){await fetch(`${SB}/rest/v1/tblPaiement`,{method:"POST",headers:{apikey:KEY,Authorization:`Bearer ${tkn}`,"Content-Type":"application/json"},body:JSON.stringify(pmts.map(p=>({...p,OeuvreID:sid})))});}await load();curV="list";stb("list");document.getElementById("sb").style.display="";sel(sid);}catch(e){tst("Erreur: "+e.message,true);}}
 async function delO(id){if(!confirm("Supprimer ?"))return;try{await api(`Oeuvres?OeuvreID=eq.${id}`,{method:"DELETE"});tst("Supprimé");selId=null;await load();det(null);}catch(e){tst("Erreur: "+e.message,true);}}
 
 let lO=null;function oL(){if(lO)lO.disconnect();lO=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){const i=e.target;i.src=i.dataset.src;i.onload=()=>i.classList.add("loaded");i.onerror=()=>i.classList.add("img-err");i.classList.remove("lazy");lO.unobserve(i);}});},{rootMargin:"50px"});document.querySelectorAll("img.lazy").forEach(i=>lO.observe(i));}
@@ -657,8 +830,13 @@ const EX_FIELDS=[
   {k:"Profondeur",l:"Profondeur",t:"num"},{k:"Poids",l:"Poids",t:"num"},
   {k:"ContactID",l:"Contact",t:"lookup",m:()=>cM},
   {k:"Prix",l:"Prix",t:"num"},{k:"Discount",l:"Discount",t:"num"},{k:"PrixFinal",l:"Prix final",t:"num"},
-  {k:"Exposable",l:"Exposable",t:"bool"},{k:"Catalogué",l:"Catalogué",t:"bool"},
-  {k:"Tirage",l:"Tirage",t:"text"},{k:"Statut",l:"Statut",t:"num"},
+  {k:"PresentationID",l:"Présentation",t:"lookup",m:()=>pM},
+  {k:"StatutID",l:"Statut",t:"lookup",m:()=>stM},
+  {k:"AcheteurID",l:"Acheteur",t:"lookup",m:()=>cM},
+  {k:"IsCommission",l:"Commission",t:"bool"},
+  {k:"Encadree",l:"Encadrée",t:"bool"},
+  {k:"DateLivraison",l:"Livraison",t:"date"},
+  {k:"Tirage",l:"Tirage",t:"text"},
 {k:"Commentaires",l:"Commentaires",t:"text"},{k:"Historique",l:"Historique",t:"text"},
   {k:"txtImageNameLink",l:"Image",t:"text"},{k:"NomOriginal",l:"Nom original",t:"text"},
   {k:"theme",l:"Thème",t:"text"},
@@ -793,12 +971,33 @@ async function bulkEdit(){
   const valEl=document.getElementById("beVal");
   if(!valEl){tst("Choisir une valeur",true);return;}
   const val=valEl.value;
+  if(!confirm(`Appliquer "${f}" à ${ids.length} œuvres ?`))return;
+
+  if(f==="theme"){
+    if(!val)return;
+    try {
+      let themeId = themes.find(t=>t.Nom===val)?.ThemeID;
+      if(!themeId){
+        const nr = await api(`tblTheme`,{method:"POST",headers:{Prefer:"return=representation"},body:JSON.stringify({Nom:val})});
+        if(nr&&nr[0]){ themeId=nr[0].ThemeID; themes.push(nr[0]); }
+      }
+      if(themeId){
+        const tkn = await getToken();
+        const payload = ids.map(id=>({OeuvreID:id,ThemeID:themeId}));
+        await fetch(`${SB}/rest/v1/OeuvreTheme`,{method:"POST",headers:{apikey:KEY,Authorization:`Bearer ${tkn}`,"Content-Type":"application/json",Prefer:"resolution=ignore-duplicates"},body:JSON.stringify(payload)});
+        ids.forEach(id=>{const o=oeuvres.find(x=>x.OeuvreID===id);if(o && !o.themeIds.includes(themeId)) o.themeIds.push(themeId);});
+        tst(`${ids.length} œuvres mises à jour`);
+        renderExGrid();
+      }
+    } catch(e){tst("Erreur: "+e.message,true);}
+    return;
+  }
+
   const data={};
   if(BULK_BOOL.includes(f))data[f]=val==="true";
   else if(BULK_NUM.includes(f))data[f]=Number(val)||0;
   else if(BULK_FIELDS_MAP[f])data[f]=val?Number(val):null;
   else data[f]=val||null;
-  if(!confirm(`Appliquer "${f}" à ${ids.length} œuvres ?`))return;
   try{
     await api(`Oeuvres?OeuvreID=in.(${ids.join(",")})`,{method:"PATCH",body:JSON.stringify(data)});
     oeuvres.forEach(o=>{if(exSelected.has(o.OeuvreID))Object.assign(o,data);});
@@ -1032,15 +1231,23 @@ async function updateThemeBeforeExport() {
     const ids = [...exSelected];
     if(ids.length === 0) return;
     try {
-        const response = await fetch(`${SB}/rest/v1/Oeuvres?OeuvreID=in.(${ids.join(',')})`, {
-            method: 'PATCH',
-            headers: {'apikey': KEY, 'Authorization': `Bearer ${KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal'},
-            body: JSON.stringify({ theme: exTitle })
+        let themeId = themes.find(t=>t.Nom===exTitle)?.ThemeID;
+        if(!themeId){
+            const nr = await api(`tblTheme`,{method:"POST",headers:{Prefer:"return=representation"},body:JSON.stringify({Nom:exTitle})});
+            if(nr&&nr[0]){ themeId=nr[0].ThemeID; themes.push(nr[0]); }
+        }
+        if(!themeId) return;
+        const tkn = await getToken();
+        const payload = ids.map(id=>({OeuvreID:id,ThemeID:themeId}));
+        const response = await fetch(`${SB}/rest/v1/OeuvreTheme`, {
+            method: 'POST',
+            headers: {'apikey': KEY, 'Authorization': `Bearer ${tkn}`, 'Content-Type': 'application/json', 'Prefer': 'resolution=ignore-duplicates'},
+            body: JSON.stringify(payload)
         });
         if (response.ok) {
             console.log(`DB: ${ids.length} oeuvres -> theme "${exTitle}"`);
-            tst(`Theme "${exTitle}" -> ${ids.length} oeuvres`);
-            ids.forEach(id=>{const o=oeuvres.find(x=>x.OeuvreID===id);if(o)o.theme=exTitle;});
+            tst(`Theme "${exTitle}" ajouté`);
+            ids.forEach(id=>{const o=oeuvres.find(x=>x.OeuvreID===id);if(o && !o.themeIds.includes(themeId)) o.themeIds.push(themeId);});
         } else {
             tst("Erreur theme: " + await response.text(), true);
         }
@@ -1197,8 +1404,69 @@ body{font-family:Georgia,serif;background:#fff;color:#222;padding:40px 40px 60px
   setTimeout(()=>clearExSelection(),400);
 }
 
-if(PUB){document.getElementById("app").innerHTML='<div class="empty">Chargement...</div>';load();}
-else{initA();load();}
+async function checkAuthAndLoad() {
+  if(PUB){
+    document.getElementById("app").innerHTML='<div class="empty">Chargement public...</div>';
+    load();
+    return;
+  }
+  
+  // Check auth session
+  const { data: { session } } = await sbClient.auth.getSession();
+  
+  // Handle Magic Link return (hash in URL)
+  sbClient.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_IN') {
+      document.getElementById('loginScr')?.remove();
+      initA();load();
+    }
+  });
+
+  if (session) {
+    initA();load();
+  } else {
+    // Render Login Screen
+    document.body.insertAdjacentHTML('beforeend', `
+      <div id="loginScr" class="login-scr">
+        <div style="font-size:24px;font-weight:700;color:var(--ac);letter-spacing:4px;margin-bottom:30px">PEM INVENTAIRE</div>
+        <div class="login-box">
+          <div style="font-size:10px;color:var(--mt);margin-bottom:20px;text-transform:uppercase;letter-spacing:1px">Connexion sécurisée</div>
+          <input type="email" id="loginEmail" placeholder="Email...">
+          <button onclick="sendMagicLink()" id="loginBtn">Envoyer Lien Magique</button>
+          <div id="loginMsg" style="font-size:10px;color:var(--mt);margin-top:15px;min-height:14px"></div>
+        </div>
+      </div>
+    `);
+  }
+}
+
+async function sendMagicLink() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const msg = document.getElementById('loginMsg');
+  const btn = document.getElementById('loginBtn');
+  if(!email) return;
+  
+  btn.disabled = true;
+  btn.textContent = "Envoi...";
+  msg.textContent = "";
+  
+  const { error } = await sbClient.auth.signInWithOtp({ 
+    email,
+    options: { emailRedirectTo: window.location.origin + window.location.pathname }
+  });
+  
+  if (error) {
+    msg.textContent = "Erreur: " + error.message;
+    msg.style.color = "red";
+    btn.disabled = false;
+    btn.textContent = "Envoyer Lien Magique";
+  } else {
+    msg.textContent = "Lien envoyé ! Vérifiez votre boîte mail.";
+    msg.style.color = "var(--ac)";
+  }
+}
+
+checkAuthAndLoad();
   
 
 
