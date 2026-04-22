@@ -137,6 +137,16 @@ const SB="https://mcrzsxrcoexnlwmaunte.supabase.co",KEY="eyJhbGciOiJIUzI1NiIsInR
 const FDIM={1:[84,59.4],2:[59.4,42],3:[42,29.7],4:[29.7,21],5:[21,14.8],6:[14.8,10.5],7:[25.4,20.3]};
 const PUB=new URLSearchParams(location.search).get("mode")==="public";
 const WM_TEXT="© PEM";
+const CTYPES = {
+  "Artiste": {c: "#ff3e00", desc: "PEM / Artistes"},
+  "Galerie": {c: "#00d1ff", desc: "Galeries / Marchands"},
+  "Institution": {c: "#00ff88", desc: "Musées / Institutions"},
+  "Collectionneur": {c: "#ffdd00", desc: "Collectionneurs Privés"},
+  "Entreprise": {c: "#ffffff", desc: "Entreprises / Fondations"},
+  "Fournisseur": {c: "#ffa500", desc: "Fournisseurs / Ateliers"},
+  "Admin": {c: "#ff4444", desc: "Administration / Logistique"},
+  "Autre": {c: "#888888", desc: "Autres"}
+};
 
 const sbClient = window.supabase.createClient(SB, KEY);
 
@@ -292,7 +302,7 @@ function pubDet(id){const o=oeuvres.find(x=>x.OeuvreID===id);if(!o)return;const 
 }
 
 // ═══ ADMIN ═══
-function initA(){document.getElementById("app").innerHTML=`<header><h1>PEM — Inventaire</h1><nav id="nv"><button class="active" onclick="sv('list')">Liste</button><button onclick="sv('gallery')">Galerie</button><button onclick="sv('form')">+ Nouvelle</button><button onclick="sv('export')">Export/Sélection</button></nav></header><div id="debug"></div><div class="body"><aside class="sidebar" id="sb"><div class="filters"><input type="text" id="q" placeholder="Recherche titre / ID..." oninput="applyF()"><select id="fT" onchange="applyF()"><option value="">Toutes techniques</option></select><select id="fS" onchange="applyF()"><option value="">Tous supports</option></select><select id="fLoc" onchange="applyF()"><option value="">Toutes localisations</option></select><select id="fSt" onchange="applyF()"><option value="">Tout statut</option><option value="cat">Catalogué</option><option value="ncat">Non catalogué</option><option value="exp">Exposable</option><option value="noimg">Sans image</option><option value="nopx">Sans prix</option></select><select id="fSort" onchange="applyF()"><option value="id_desc">ID ↓</option><option value="id_asc">ID ↑</option><option value="year_desc">Année ↓</option><option value="year_asc">Année ↑</option><option value="title_asc">Titre A-Z</option><option value="title_desc">Titre Z-A</option><option value="tech">Technique</option><option value="support">Support</option><option value="prix_desc">Prix ↓</option><option value="prix_asc">Prix ↑</option></select><select id="fTheme" onchange="applyF()"><option value="">Tous thèmes</option></select></div><div class="list" id="ls"></div><div class="stats" id="st"></div></aside><main class="main" id="mn"><div class="empty">Chargement...</div></main></div>`;}
+function initA(){document.getElementById("app").innerHTML=`<header><h1>PEM — Inventaire</h1><nav id="nv"><button class="active" onclick="sv('list')">Liste</button><button onclick="sv('gallery')">Galerie</button><button onclick="sv('form')">+ Nouvelle</button><button onclick="sv('contacts')">Contacts</button><button onclick="sv('export')">Export/Sélection</button></nav></header><div id="debug"></div><div class="body"><aside class="sidebar" id="sb"><div class="filters"><input type="text" id="q" placeholder="Recherche titre / ID..." oninput="applyF()"><select id="fT" onchange="applyF()"><option value="">Toutes techniques</option></select><select id="fS" onchange="applyF()"><option value="">Tous supports</option></select><select id="fLoc" onchange="applyF()"><option value="">Toutes localisations</option></select><select id="fSt" onchange="applyF()"><option value="">Tout statut</option><option value="cat">Catalogué</option><option value="ncat">Non catalogué</option><option value="exp">Exposable</option><option value="noimg">Sans image</option><option value="nopx">Sans prix</option></select><select id="fSort" onchange="applyF()"><option value="id_desc">ID ↓</option><option value="id_asc">ID ↑</option><option value="year_desc">Année ↓</option><option value="year_asc">Année ↑</option><option value="title_asc">Titre A-Z</option><option value="title_desc">Titre Z-A</option><option value="tech">Technique</option><option value="support">Support</option><option value="prix_desc">Prix ↓</option><option value="prix_asc">Prix ↑</option></select><select id="fTheme" onchange="applyF()"><option value="">Tous thèmes</option></select></div><div class="list" id="ls"></div><div class="stats" id="st"></div></aside><main class="main" id="mn"><div class="empty">Chargement...</div></main></div>`;}
 function popF(){
   document.getElementById("fT").innerHTML='<option value="">Toutes techniques</option>'+techniques.map(t=>`<option value="${t.TechniqueID}">${t.Technique}</option>`).join("");
   document.getElementById("fS").innerHTML='<option value="">Tous supports</option>'+supports.map(s=>`<option value="${s.SupportID}">${s.Support}</option>`).join("");
@@ -319,9 +329,9 @@ function applyF(){const q=document.getElementById("q").value.toLowerCase(),t=doc
   if(curV==="list")rList();if(curV==="gallery")rGal();upSt();}
 function nI(){return filtered.findIndex(o=>o.OeuvreID===selId);}function nP(){const i=nI();if(i>0)sel(filtered[i-1].OeuvreID);}function nN(){const i=nI();if(i<filtered.length-1)sel(filtered[i+1].OeuvreID);}
 document.addEventListener("keydown",e=>{if(PUB||["INPUT","TEXTAREA","SELECT"].includes(e.target.tagName))return;if(curV==="list"&&selId){if(e.key==="ArrowUp"||e.key==="ArrowLeft"){e.preventDefault();nP();}if(e.key==="ArrowDown"||e.key==="ArrowRight"){e.preventDefault();nN();}}});
-function stb(v){document.querySelectorAll("#nv button").forEach((b,i)=>b.classList.toggle("active",(v==="list"&&i===0)||(v==="gallery"&&i===1)||(v==="form"&&i===2)||(v==="export"&&i===3)));}
-function sv(v){curV=v;stb(v);document.getElementById("sb").style.display=(v==="form"||v==="export")?"none":"";
-  if(v==="list"){rList();det(selId);}if(v==="gallery")rGal();if(v==="form")frm();if(v==="export")showExport();}
+function stb(v){document.querySelectorAll("#nv button").forEach((b,i)=>b.classList.toggle("active",(v==="list"&&i===0)||(v==="gallery"&&i===1)||(v==="form"&&i===2)||(v==="contacts"&&i===3)||(v==="export"&&i===4)));}
+function sv(v){curV=v;stb(v);document.getElementById("sb").style.display=(v==="form"||v==="export"||v==="contacts")?"none":"";
+  if(v==="list"){rList();det(selId);}if(v==="gallery")rGal();if(v==="form")frm();if(v==="contacts")showContacts();if(v==="export")showExport();}
 
 let listPage=0,listPageSize=50;
 function rList(){
@@ -793,6 +803,9 @@ async function addNewLookup(label, selectId) {
         <input type="text" id="nc_v" placeholder="Ville" style="flex:1;padding:6px;background:var(--bg);color:var(--tx);border:1px solid var(--bd)">
         <input type="text" id="nc_p" placeholder="Pays" style="flex:1;padding:6px;background:var(--bg);color:var(--tx);border:1px solid var(--bd)">
       </div>
+      <select id="nc_ty" style="width:100%;margin-bottom:8px;padding:6px;background:var(--bg);color:var(--tx);border:1px solid var(--bd)">
+        ${Object.entries(CTYPES).map(([k,v])=>`<option value="${k}">${v.desc}</option>`).join("")}
+      </select>
       <textarea id="nc_a" placeholder="Adresse" rows="2" style="width:100%;margin-bottom:8px;padding:6px;background:var(--bg);color:var(--tx);border:1px solid var(--bd)"></textarea>
       <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px">
         <button class="btn bs" onclick="document.getElementById('contactModal').remove();document.getElementById('${selectId}').value=document.getElementById('${selectId}').dataset.prev||''">Annuler</button>
@@ -801,10 +814,10 @@ async function addNewLookup(label, selectId) {
     </div>`;
     document.body.appendChild(mo);
     document.getElementById('btnSaveContact').onclick = async () => {
-      const NomInstitution = gv('nc_ni'), Nom = gv('nc_n'), Role = gv('nc_r'), Email = gv('nc_e'), Telephone = gv('nc_t'), Adresse = gv('nc_a'), Ville = gv('nc_v'), Pays = gv('nc_p');
+      const NomInstitution = gv('nc_ni'), Nom = gv('nc_n'), Role = gv('nc_r'), Email = gv('nc_e'), Telephone = gv('nc_t'), Adresse = gv('nc_a'), Ville = gv('nc_v'), Pays = gv('nc_p'), Type = gv('nc_ty');
       if(!NomInstitution && !Nom) { tst("Nom requis", true); return; }
       try {
-        const r = await api("Contact", {method: "POST", headers: {"Prefer": "return=representation"}, body: JSON.stringify({NomInstitution, Nom, Role, Email, Telephone, Adresse, Ville, Pays})});
+        const r = await api("Contact", {method: "POST", headers: {"Prefer": "return=representation"}, body: JSON.stringify({NomInstitution, Nom, Role, Email, Telephone, Adresse, Ville, Pays, Type})});
         if(r && r[0]) {
           contacts.push(r[0]);
           contacts.sort((a,b) => (a.NomInstitution||"").localeCompare(b.NomInstitution||"") || (a.Nom||"").localeCompare(b.Nom||""));
@@ -944,6 +957,127 @@ async function sF(){
 async function delO(id){if(!confirm("Supprimer ?"))return;try{await api(`Oeuvres?OeuvreID=eq.${id}`,{method:"DELETE"});tst("Supprimé");selId=null;await load();det(null);}catch(e){tst("Erreur: "+e.message,true);}}
 
 let lO=null;function oL(){if(lO)lO.disconnect();lO=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){const i=e.target;i.src=i.dataset.src;i.onload=()=>i.classList.add("loaded");i.onerror=()=>i.classList.add("img-err");i.classList.remove("lazy");lO.unobserve(i);}});},{rootMargin:"50px"});document.querySelectorAll("img.lazy").forEach(i=>lO.observe(i));}
+
+// ═══════════════════════════════════════
+// CONTACTS MODULE
+// ═══════════════════════════════════════
+
+function showContacts(){
+  const mn=document.getElementById("mn"); mn.style.padding="20px";
+  mn.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+    <h2 style="font-size:18px;color:var(--wh)">Gestion des Contacts</h2>
+    <div style="display:flex;gap:10px">
+      <input type="text" id="cSearch" placeholder="Rechercher contact..." oninput="renderContactsList()" style="padding:6px 12px;background:var(--bg);border:1px solid var(--bd);color:var(--tx);font-size:12px;width:240px">
+      <button class="btn bp" onclick="addNewLookup('Contact', 'cSearch')">+ Nouveau Contact</button>
+    </div>
+  </div>
+  <div id="cList" style="display:flex;flex-direction:column;gap:30px"></div>`;
+  renderContactsList();
+}
+
+function renderContactsList(){
+  const q=document.getElementById("cSearch").value.toLowerCase();
+  const el=document.getElementById("cList");
+  const filteredC = contacts.filter(c => 
+    (c.NomInstitution||"").toLowerCase().includes(q) || 
+    (c.Nom||"").toLowerCase().includes(q) || 
+    (c.Email||"").toLowerCase().includes(q) ||
+    (c.Ville||"").toLowerCase().includes(q) ||
+    (c.Type||"").toLowerCase().includes(q)
+  );
+
+  const groups = {};
+  Object.keys(CTYPES).forEach(t => groups[t] = []);
+  filteredC.forEach(c => {
+    const t = c.Type && CTYPES[c.Type] ? c.Type : "Autre";
+    groups[t].push(c);
+  });
+
+  el.innerHTML=Object.entries(CTYPES).map(([type, meta]) => {
+    const list = groups[type];
+    if(list.length === 0 && q) return ""; // Hide empty groups when searching
+    return `
+      <div class="c-group">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;border-bottom:1px solid ${meta.c}44;padding-bottom:6px">
+          <div style="width:4px;height:16px;background:${meta.c}"></div>
+          <h3 style="font-size:12px;color:${meta.c};text-transform:uppercase;letter-spacing:1px">${meta.desc}</h3>
+          <span style="font-size:10px;color:var(--mt);margin-left:auto">${list.length}</span>
+        </div>
+        <div class="fgrid" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">
+          ${list.map(c => `
+            <div class="card" style="background:var(--sf);border:1px solid var(--bd);border-left:3px solid ${meta.c};padding:12px;position:relative;display:flex;flex-direction:column;gap:3px">
+              <div style="font-weight:700;color:var(--wh);font-size:13px">${esc(c.NomInstitution||"")}${c.Nom?` (${esc(c.Nom)})`:""}</div>
+              <div style="font-size:10px;color:var(--mt)">${esc(c.Role||type)}</div>
+              ${c.Email?`<div style="font-size:10px;overflow:hidden;text-overflow:ellipsis"><span style="color:var(--mt)">Email:</span> ${esc(c.Email)}</div>`:""}
+              ${c.Telephone?`<div style="font-size:10px"><span style="color:var(--mt)">Tél:</span> ${esc(c.Telephone)}</div>`:""}
+              <div style="font-size:10px;color:var(--tx);margin-top:2px">
+                <i style="color:var(--mt)">${esc(c.Adresse||"")}</i><br>
+                ${c.Ville?`<b>${esc(c.Ville)}</b>`:""}${c.Pays?` (${esc(c.Pays)})`:""}
+              </div>
+              <div style="margin-top:8px;display:flex;gap:6px">
+                <button class="btn bs" style="font-size:8px;padding:2px 6px" onclick="editContact(${c.ContactID})">Modifier</button>
+                <button class="btn bs" style="font-size:8px;padding:2px 6px;color:var(--err)" onclick="delContact(${c.ContactID})">Supprimer</button>
+              </div>
+            </div>
+          `).join("")}
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+async function editContact(id){
+  const c = contacts.find(x => x.ContactID === id); if(!c) return;
+  const mo = document.createElement('div'); mo.id = 'contactModal';
+  mo.style.cssText = 'position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.65)';
+  mo.innerHTML = `<div style="background:var(--sf);border:1px solid var(--bd);padding:20px;width:90%;max-width:340px">
+    <div style="font-weight:700;margin-bottom:15px;color:var(--wh)">Modifier Contact</div>
+    <input type="text" id="ec_ni" value="${esc(c.NomInstitution||"")}" placeholder="Nom Institution" style="width:100%;margin-bottom:8px;padding:6px;background:var(--bg);color:var(--tx);border:1px solid var(--bd)">
+    <input type="text" id="ec_n" value="${esc(c.Nom||"")}" placeholder="Nom Contact" style="width:100%;margin-bottom:8px;padding:6px;background:var(--bg);color:var(--tx);border:1px solid var(--bd)">
+    <input type="text" id="ec_r" value="${esc(c.Role||"")}" placeholder="Rôle" style="width:100%;margin-bottom:8px;padding:6px;background:var(--bg);color:var(--tx);border:1px solid var(--bd)">
+    <input type="email" id="ec_e" value="${esc(c.Email||"")}" placeholder="Email" style="width:100%;margin-bottom:8px;padding:6px;background:var(--bg);color:var(--tx);border:1px solid var(--bd)">
+    <input type="text" id="ec_t" value="${esc(c.Telephone||"")}" placeholder="Téléphone" style="width:100%;margin-bottom:8px;padding:6px;background:var(--bg);color:var(--tx);border:1px solid var(--bd)">
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <input type="text" id="ec_v" value="${esc(c.Ville||"")}" placeholder="Ville" style="flex:1;padding:6px;background:var(--bg);color:var(--tx);border:1px solid var(--bd)">
+      <input type="text" id="ec_p" value="${esc(c.Pays||"")}" placeholder="Pays" style="flex:1;padding:6px;background:var(--bg);color:var(--tx);border:1px solid var(--bd)">
+    </div>
+    <select id="ec_ty" style="width:100%;margin-bottom:8px;padding:6px;background:var(--bg);color:var(--tx);border:1px solid var(--bd)">
+      ${Object.entries(CTYPES).map(([k,v])=>`<option value="${k}" ${c.Type===k?"selected":""}>${v.desc}</option>`).join("")}
+    </select>
+    <textarea id="ec_a" placeholder="Adresse" rows="2" style="width:100%;margin-bottom:8px;padding:6px;background:var(--bg);color:var(--tx);border:1px solid var(--bd)">${esc(c.Adresse||"")}</textarea>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px">
+      <button class="btn bs" onclick="document.getElementById('contactModal').remove()">Annuler</button>
+      <button class="btn bp" id="btnUpdateContact">Enregistrer</button>
+    </div>
+  </div>`;
+  document.body.appendChild(mo);
+  document.getElementById('btnUpdateContact').onclick = async () => {
+    const data = {
+      NomInstitution: gv('ec_ni'), Nom: gv('ec_n'), Role: gv('ec_r'), 
+      Email: gv('ec_e'), Telephone: gv('ec_t'), Adresse: gv('ec_a'),
+      Ville: gv('ec_v'), Pays: gv('ec_p'), Type: gv('ec_ty')
+    };
+    try {
+      await api(`Contact?ContactID=eq.${id}`, {method: "PATCH", body: JSON.stringify(data)});
+      Object.assign(c, data);
+      contacts.sort((a,b) => (a.NomInstitution||"").localeCompare(b.NomInstitution||"") || (a.Nom||"").localeCompare(b.Nom||""));
+      mo.remove(); tst("Contact mis à jour");
+      renderContactsList();
+    } catch(e) { tst("Erreur: " + e.message, true); }
+  };
+}
+
+async function delContact(id){
+  const count = oeuvres.filter(o => o.AcheteurID === id || o.LocalisationID === id).length;
+  if(count > 0) { tst(`Impossible: lié à ${count} œuvres`, true); return; }
+  if(!confirm("Supprimer ce contact ?")) return;
+  try {
+    await api(`Contact?ContactID=eq.${id}`, {method: "DELETE"});
+    contacts = contacts.filter(c => c.ContactID !== id);
+    tst("Contact supprimé");
+    renderContactsList();
+  } catch(e) { tst("Erreur: " + e.message, true); }
+}
 
 // ═══════════════════════════════════════
 // EXPORT MODULE
