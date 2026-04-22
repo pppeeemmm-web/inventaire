@@ -192,7 +192,10 @@ function tst(m,e){const el=document.getElementById("toast");el.textContent=m;el.
 function esc(s){if(!s)return"";const d=document.createElement("div");d.textContent=String(s);return d.innerHTML;}
 function gv(id){return (document.getElementById(id)?.value||"").trim();}
 function gvn(id){const v=gv(id);return v?Number(v):null;}
-function cap(s){ if(!s || typeof s !== 'string') return s; return s.charAt(0).toUpperCase() + s.slice(1); }
+function cap(s){ 
+  if(!s || typeof s !== 'string') return s; 
+  return s.toLowerCase().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '); 
+}
 
 // ── Protected image rendering via Canvas ──
 // Images are drawn onto a canvas — cannot be right-clicked/saved/dragged as images
@@ -888,9 +891,19 @@ async function addNewLookup(label, selectId) {
     document.getElementById('btnSaveContact').onclick = async () => {
       const NomInstitution = cap(gv('nc_ni')), Nom = cap(gv('nc_n')), Prénom = cap(gv('nc_pr')), Role = cap(gv('nc_r')), Email = gv('nc_e').toLowerCase(), Téléphone1 = gv('nc_t'), Adresse = cap(gv('nc_a')), Ville = cap(gv('nc_v')), Pays = cap(gv('nc_p')), Type = gv('nc_ty');
       if(!NomInstitution && !Nom) { tst("Nom ou Institution requis", true); return; }
-      try {
+    try {
         const cData = { NomInstitution, Nom, "Prénom": Prénom, Role, Email, "Téléphone1": Téléphone1, Adresse, Ville, Pays, Type, PersonneResponsable: `${Prénom} ${Nom}`.trim(), RoleResponsable: Role };
-        const r = await api("Contact", {method: "POST", headers: {"Prefer": "return=representation"}, body: JSON.stringify(cData)});
+        let r;
+        try {
+          r = await api("Contact", {method: "POST", headers: {"Prefer": "return=representation"}, body: JSON.stringify(cData)});
+        } catch(e) {
+          if(e.message.includes("PersonneResponsable")) {
+            console.warn("Falling back: PersonneResponsable column missing. Please run SQL v8.");
+            delete cData.PersonneResponsable; delete cData.RoleResponsable;
+            r = await api("Contact", {method: "POST", headers: {"Prefer": "return=representation"}, body: JSON.stringify(cData)});
+          } else throw e;
+        }
+        
         if(r && r[0]) {
           const newC = r[0];
           // Save additional addresses
@@ -1121,17 +1134,16 @@ function renderContactsList(){
     const list = groups[type];
     if(list.length === 0) return ""; 
     return `
-      <div class="c-group">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;border-bottom:1px solid ${meta.c}44;padding-bottom:6px">
-          <div style="width:4px;height:16px;background:${meta.c}"></div>
-          <h3 style="font-size:12px;color:${meta.c};text-transform:uppercase;letter-spacing:1px">${meta.desc}</h3>
-          <span style="font-size:10px;color:var(--mt);margin-left:auto">${list.length}</span>
+      <div class="c-group" style="margin-bottom:40px">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:15px;padding:10px;background:${meta.c}15;border-radius:6px;border-left:4px solid ${meta.c}">
+          <h3 style="font-size:14px;color:${meta.c};text-transform:uppercase;letter-spacing:1.5px;font-weight:800;margin:0">${meta.desc}</h3>
+          <span style="font-size:11px;color:var(--mt);margin-left:auto;background:var(--bg);padding:2px 8px;border-radius:10px;border:1px solid var(--bd)">${list.length} contact${list.length>1?'s':''}</span>
         </div>
-        <div class="fgrid" style="grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:15px">
+        <div class="fgrid" style="grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:20px">
           ${list.map(o => `
             <div class="card" style="background:var(--sf);border:1px solid var(--bd);border-left:3px solid ${meta.c};padding:15px;position:relative;display:flex;flex-direction:column;gap:10px">
               <div style="display:flex;justify-content:space-between;align-items:flex-start">
-                <div style="font-weight:700;color:var(--wh);font-size:14px;letter-spacing:0.5px">${esc(o.name)}</div>
+                <div style="font-weight:700;color:var(--wh);font-size:14px;letter-spacing:0.5px;text-transform:capitalize">${esc(o.name)}</div>
                 <div style="font-size:8px;padding:2px 6px;background:${meta.c}22;color:${meta.c};border-radius:10px;border:1px solid ${meta.c}44">${meta.desc.split("/")[0]}</div>
               </div>
 
@@ -1139,7 +1151,7 @@ function renderContactsList(){
                 <div style="display:flex;flex-direction:column;gap:6px">
                   ${o.people.map(p => `
                     <div style="border-left:2px solid var(--bd);padding-left:8px">
-                      <div style="font-size:11px;color:var(--wh)">${esc(p.p||"")} <b>${esc(p.n||"")}</b> <span style="font-size:9px;color:var(--ac);margin-left:5px">${esc(p.r||"")}</span></div>
+                      <div style="font-size:11px;color:var(--wh);text-transform:capitalize">${esc(p.p||"")} <b>${esc(p.n||"")}</b> <span style="font-size:9px;color:var(--ac);margin-left:5px;text-transform:none">${esc(p.r||"")}</span></div>
                       <div style="font-size:10px;color:var(--mt);margin-top:2px">
                         ${p.e ? `<span>✉ ${esc(p.e)}</span>` : ""}
                         ${p.t ? `<span style="margin-left:8px">📞 ${esc(p.t)}</span>` : ""}
@@ -1277,7 +1289,15 @@ async function editContact(id){
       PersonneResponsable: `${cap(gv('ec_pr'))} ${cap(gv('ec_n'))}`.trim(), RoleResponsable: cap(gv('ec_r'))
     };
     try {
-      await api(`Contact?ContactID=eq.${id}`, {method: "PATCH", body: JSON.stringify(data)});
+      try {
+        await api(`Contact?ContactID=eq.${id}`, {method: "PATCH", body: JSON.stringify(data)});
+      } catch(e) {
+        if(e.message.includes("PersonneResponsable")) {
+          console.warn("Falling back: PersonneResponsable column missing. Please run SQL v8.");
+          delete data.PersonneResponsable; delete data.RoleResponsable;
+          await api(`Contact?ContactID=eq.${id}`, {method: "PATCH", body: JSON.stringify(data)});
+        } else throw e;
+      }
       
       // Update additional addresses
       const tkn = await getToken();
