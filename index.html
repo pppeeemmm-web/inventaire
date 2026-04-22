@@ -741,6 +741,7 @@ function showExport(){
       <option value="Catalogué">Catalogué</option>
       <option value="Prix">Prix (€)</option>
       <option value="Tirage">Tirage</option>
+      <option value="theme">Thème</option>
     </select>
     <span id="beValueWrap"></span>
     <button onclick="bulkEdit()" style="font-family:inherit;font-size:9px;background:var(--ac);color:var(--bk);border:none;padding:3px 10px;cursor:pointer;font-weight:700">Appliquer à <span id="beCnt">0</span></button>
@@ -779,8 +780,8 @@ function renderBulkValue(){
     w.innerHTML=`<select id="beVal" style="${S2}"><option value="true">Oui</option><option value="false">Non</option></select>`;
   }else if(BULK_NUM.includes(f)){
     w.innerHTML=`<input id="beVal" type="number" style="${S2};width:80px">`;
-  }else if(f==="Tirage"){
-    w.innerHTML=`<input id="beVal" type="text" style="${S2};width:80px">`;
+  }else if(f==="Tirage"||f==="theme"){
+    w.innerHTML=`<input id="beVal" type="text" style="${S2};width:100px">`;
   }else{w.innerHTML="";}
 }
 
