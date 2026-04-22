@@ -98,6 +98,11 @@ nav button.active{background:var(--ac);color:var(--bk);font-weight:700}
 .exp-add:hover{border-color:var(--ac)}
 .exp-bar{display:flex;align-items:center;gap:8px;padding:8px 12px;margin-bottom:12px;background:var(--sf);border:1px solid var(--bd);flex-wrap:wrap}
 .exp-bar button,.exp-bar select,.exp-bar label{font-family:inherit;font-size:9px}
+.f2col{display:flex;gap:8px;margin-bottom:8px}
+.f2col > * {flex:1;min-width:0}
+.addr-row{background:rgba(255,255,255,0.05);padding:8px;margin-bottom:8px;border-radius:4px;position:relative}
+.addr-row .x{position:absolute;top:4px;right:4px;background:none;color:var(--dg);border:none;cursor:pointer;font-size:14px}
+.addr-row input, .addr-row textarea{background:var(--bg) !important; color:var(--tx) !important; border:1px solid var(--bd) !important; width:100%; margin-bottom:4px}
 .exp-bar button{padding:3px 10px;background:var(--bg);color:var(--tx);border:1px solid var(--bd);cursor:pointer;text-transform:uppercase;letter-spacing:0.5px}
 .exp-bar button:hover{border-color:var(--ac);color:var(--ac)}
 .exp-bar select{background:var(--bg);color:var(--tx);border:1px solid var(--bd);padding:3px 6px}
@@ -150,7 +155,7 @@ const CTYPES = {
 
 const sbClient = window.supabase.createClient(SB, KEY);
 
-let oeuvres=[],techniques=[],supports=[],formats=[],contacts=[],imgTbl=[],themes=[],oeuvreThemes=[],presentations=[],statuts=[],paiements=[];
+let oeuvres=[],techniques=[],supports=[],formats=[],contacts=[],contactAddresses=[],imgTbl=[],themes=[],oeuvreThemes=[],presentations=[],statuts=[],paiements=[];
 let tM={},sM={},fM={},cM={},pM={},stM={},filtered=[],selId=null,curV="list",artistId=null;
 
 // Right-click enabled (image protection handled by canvas watermark)
@@ -185,8 +190,9 @@ function iFor(oid){return imgTbl.filter(i=>i.OeuvreID===oid).sort((a,b)=>(a.SeqN
 function dbg(m,e){const el=document.getElementById("debug");if(el){el.textContent=m;el.className=e?"error":"";}}
 function tst(m,e){const el=document.getElementById("toast");el.textContent=m;el.className=`toast ${e?"terr":"tok"}`;setTimeout(()=>el.className="toast hidden",3000);}
 function esc(s){if(!s)return"";const d=document.createElement("div");d.textContent=String(s);return d.innerHTML;}
-function gv(id){return document.getElementById(id)?.value||"";}
+function gv(id){return (document.getElementById(id)?.value||"").trim();}
 function gvn(id){const v=gv(id);return v?Number(v):null;}
+function cap(s){ if(!s || typeof s !== 'string') return s; return s.charAt(0).toUpperCase() + s.slice(1); }
 
 // ── Protected image rendering via Canvas ──
 // Images are drawn onto a canvas — cannot be right-clicked/saved/dragged as images
@@ -257,12 +263,13 @@ async function apiAll(table,order,pageSize=1000){
 
 async function load(){
   try{dbg("Chargement...");
-    const[o,t,su,f,c,im,th,oth,pdr,str,pmt]=await Promise.all([
+    const[o,t,su,f,c,ca,im,th,oth,pdr,str,pmt]=await Promise.all([
       apiAll("Oeuvres","OeuvreID.desc"),
       api("Technique?order=Technique.asc"),
       api("Support?order=Support.asc"),
       api("Format?order=Format.asc"),
       api("Contact?order=NomInstitution.asc,Nom.asc"),
+      api("tblContactAddress").catch(()=>[]),
       apiAll("tblImage","OeuvreID.asc,SeqNo.asc"),
       apiAll("tblTheme","Nom.asc"),
       apiAll("OeuvreTheme","OeuvreID.asc"),
@@ -270,17 +277,18 @@ async function load(){
       api("tblStatut?order=Nom.asc").catch(()=>[]),
       apiAll("tblPaiement","DateEcheance.asc").catch(()=>[])
     ]);
-    oeuvres=o;techniques=t;supports=su;formats=f;contacts=c;imgTbl=im;themes=th||[];oeuvreThemes=oth||[];
+    oeuvres=o;techniques=t;supports=su;formats=f;contacts=c;contactAddresses=ca;imgTbl=im;themes=th||[];oeuvreThemes=oth||[];
     presentations=pdr||[];statuts=str||[];paiements=pmt||[];
-    tM=Object.fromEntries(t.map(x=>[x.TechniqueID,x.Technique]));sM=Object.fromEntries(su.map(x=>[x.SupportID,x.Support]));fM=Object.fromEntries(f.map(x=>[x.FormatID,x.Format]));cM=Object.fromEntries(c.map(x=>[x.ContactID,x.NomInstitution]));
+    tM=Object.fromEntries(t.map(x=>[x.TechniqueID,x.Technique]));sM=Object.fromEntries(su.map(x=>[x.SupportID,x.Support]));fM=Object.fromEntries(f.map(x=>[x.FormatID,x.Format]));
+    cM=Object.fromEntries(c.map(x=>[x.ContactID, x.NomInstitution || `${x.Nom||""} ${x["Prénom"]||""}`.trim() || `ID ${x.ContactID}`]));
     pM=Object.fromEntries((pdr||[]).map(x=>[x.PresentationID,x.Nom]));stM=Object.fromEntries((str||[]).map(x=>[x.StatutID,x.Nom]));
     const cands = contacts.filter(c => {
-      const n = (c.Nom||"").toLowerCase(), p = (c.Prenom||"").toLowerCase(), inst = (c.NomInstitution||"").toLowerCase();
+      const n = (c.Nom||"").toLowerCase(), p = (c["Prénom"]||"").toLowerCase(), inst = (c.NomInstitution||"").toLowerCase();
       return n.includes("moulin") || inst.includes("moulin") || inst.includes("pem") || p.includes("pem") || p.includes("pierre emmanuel");
     });
     artistId = cands.find(c => (c.NomInstitution||"").toLowerCase() === "pem")?.ContactID 
-             || cands.find(c => (c.Prenom||"").toLowerCase().includes("pierre emmanuel"))?.ContactID
-             || cands.find(c => !(c.Prenom||"").toLowerCase().includes("delphine") && !(c.Nom||"").toLowerCase().includes("delphine"))?.ContactID
+             || cands.find(c => (c["Prénom"]||"").toLowerCase().includes("pierre emmanuel"))?.ContactID
+             || cands.find(c => !(c["Prénom"]||"").toLowerCase().includes("delphine") && !(c.Nom||"").toLowerCase().includes("delphine"))?.ContactID
              || (contacts.length > 0 ? null : null); // Fallback to null if not found
     oeuvres.forEach(wk => { wk.themeIds = oeuvreThemes.filter(ot=>ot.OeuvreID===wk.OeuvreID).map(ot=>ot.ThemeID); });
     const imgCount=o.filter(x=>x.txtImageNameLink).length;
@@ -792,40 +800,114 @@ async function addNewLookup(label, selectId) {
   if(label === "Contact") {
     const mo = document.createElement('div'); mo.id = 'contactModal';
     mo.style.cssText = 'position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.65)';
-    mo.innerHTML = `<div style="background:var(--sf);border:1px solid var(--bd);padding:20px;width:90%;max-width:340px">
-      <div style="font-weight:700;margin-bottom:15px;color:var(--wh)">Nouveau Contact</div>
-      <input type="text" id="nc_ni" placeholder="Nom Institution (ex: Galerie X)" style="width:100%;margin-bottom:8px;padding:6px;background:var(--bg);color:var(--tx);border:1px solid var(--bd)">
-      <input type="text" id="nc_n" placeholder="Nom Contact" style="width:100%;margin-bottom:8px;padding:6px;background:var(--bg);color:var(--tx);border:1px solid var(--bd)">
-      <input type="text" id="nc_r" placeholder="Rôle" style="width:100%;margin-bottom:8px;padding:6px;background:var(--bg);color:var(--tx);border:1px solid var(--bd)">
-      <input type="email" id="nc_e" placeholder="Email" style="width:100%;margin-bottom:8px;padding:6px;background:var(--bg);color:var(--tx);border:1px solid var(--bd)">
-      <input type="text" id="nc_t" placeholder="Téléphone" style="width:100%;margin-bottom:8px;padding:6px;background:var(--bg);color:var(--tx);border:1px solid var(--bd)">
-      <div style="display:flex;gap:8px;margin-bottom:8px">
-        <input type="text" id="nc_v" placeholder="Ville" style="flex:1;padding:6px;background:var(--bg);color:var(--tx);border:1px solid var(--bd)">
-        <input type="text" id="nc_p" placeholder="Pays" style="flex:1;padding:6px;background:var(--bg);color:var(--tx);border:1px solid var(--bd)">
+    let localAddrs = [];
+    
+    const renderAddrs = () => {
+      const wrap = document.getElementById('nc_addr_list');
+      if(!wrap) return;
+      wrap.innerHTML = localAddrs.map((a, i) => `
+        <div class="addr-row">
+          <button class="x" onclick="window.removeNCAddr(${i})">✕</button>
+          <input type="text" placeholder="Label (ex: Succursale)" value="${esc(a.Label||"")}" oninput="window.updateNCAddr(${i}, 'Label', this.value)" style="margin-bottom:4px">
+          <textarea placeholder="Adresse" oninput="window.updateNCAddr(${i}, 'Adresse', this.value)" rows="1">${esc(a.Adresse||"")}</textarea>
+          <div class="f2col">
+            <input type="text" placeholder="Ville" value="${esc(a.Ville||"")}" oninput="window.updateNCAddr(${i}, 'Ville', this.value)">
+            <input type="text" placeholder="Pays" value="${esc(a.Pays||"")}" oninput="window.updateNCAddr(${i}, 'Pays', this.value)">
+          </div>
+        </div>
+      `).join("");
+    };
+
+    window.removeNCAddr = (i) => { localAddrs.splice(i, 1); renderAddrs(); };
+    window.updateNCAddr = (i, k, v) => { localAddrs[i][k] = v; };
+
+    mo.innerHTML = `<div style="background:var(--sf);border:1px solid var(--bd);padding:20px;width:95%;max-width:400px;max-height:90vh;overflow-y:auto">
+      <div style="font-weight:700;margin-bottom:15px;color:var(--wh);text-transform:uppercase;letter-spacing:1px;font-size:12px">Nouveau Contact</div>
+      <div class="ff" style="margin-bottom:12px">
+        <div class="fl">Institution / Organisation</div>
+        <input type="text" id="nc_ni" placeholder="ex: Galerie Art, Musée...">
       </div>
-      <select id="nc_ty" style="width:100%;margin-bottom:8px;padding:6px;background:var(--bg);color:var(--tx);border:1px solid var(--bd)">
-        ${Object.entries(CTYPES).map(([k,v])=>`<option value="${k}">${v.desc}</option>`).join("")}
-      </select>
-      <textarea id="nc_a" placeholder="Adresse" rows="2" style="width:100%;margin-bottom:8px;padding:6px;background:var(--bg);color:var(--tx);border:1px solid var(--bd)"></textarea>
-      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px">
+      <div class="f2col">
+        <div class="ff">
+          <div class="fl">Personne Responsable</div>
+          <input type="text" id="nc_pr" placeholder="Prénom">
+        </div>
+        <div class="ff">
+          <div class="fl">&nbsp;</div>
+          <input type="text" id="nc_n" placeholder="Nom">
+        </div>
+      </div>
+      <div class="ff" style="margin-bottom:12px">
+        <div class="fl">Rôle du Responsable</div>
+        <input type="text" id="nc_r" placeholder="ex: Directeur, Conservateur...">
+      </div>
+      <div class="f2col">
+        <div class="ff">
+          <div class="fl">Email</div>
+          <input type="email" id="nc_e" placeholder="email@example.com">
+        </div>
+        <div class="ff">
+          <div class="fl">Téléphone</div>
+          <input type="text" id="nc_t" placeholder="+33...">
+        </div>
+      </div>
+      <div class="ff" style="margin-bottom:12px">
+        <div class="fl">Catégorie</div>
+        <select id="nc_ty">
+          ${Object.entries(CTYPES).map(([k,v])=>`<option value="${k}">${v.desc}</option>`).join("")}
+        </select>
+      </div>
+      
+      <div style="margin-top:20px;padding-top:15px;border-top:1px solid var(--bd)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div class="fl" style="color:var(--ac)">Adresses & Localisations</div>
+          <button class="nbtn" onclick="window.addNCAddr()" style="font-size:8px">+ Ajouter</button>
+        </div>
+        
+        <div class="addr-row" style="border-left:2px solid var(--ac)">
+          <div style="font-size:8px;color:var(--ac);margin-bottom:4px;text-transform:uppercase">Adresse Principale</div>
+          <textarea id="nc_a" placeholder="Adresse" rows="1"></textarea>
+          <div class="f2col">
+            <input type="text" id="nc_v" placeholder="Ville">
+            <input type="text" id="nc_p" placeholder="Pays">
+          </div>
+        </div>
+        
+        <div id="nc_addr_list"></div>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px">
         <button class="btn bs" onclick="document.getElementById('contactModal').remove();document.getElementById('${selectId}').value=document.getElementById('${selectId}').dataset.prev||''">Annuler</button>
-        <button class="btn bp" id="btnSaveContact">Créer</button>
+        <button class="btn bp" id="btnSaveContact">Créer Contact</button>
       </div>
     </div>`;
+    
     document.body.appendChild(mo);
+    window.addNCAddr = () => { localAddrs.push({Label:'', Adresse:'', Ville:'', Pays:''}); renderAddrs(); };
+
     document.getElementById('btnSaveContact').onclick = async () => {
-      const NomInstitution = gv('nc_ni'), Nom = gv('nc_n'), Role = gv('nc_r'), Email = gv('nc_e'), Telephone = gv('nc_t'), Adresse = gv('nc_a'), Ville = gv('nc_v'), Pays = gv('nc_p'), Type = gv('nc_ty');
-      if(!NomInstitution && !Nom) { tst("Nom requis", true); return; }
+      const NomInstitution = cap(gv('nc_ni')), Nom = cap(gv('nc_n')), Prénom = cap(gv('nc_pr')), Role = cap(gv('nc_r')), Email = gv('nc_e').toLowerCase(), Téléphone1 = gv('nc_t'), Adresse = cap(gv('nc_a')), Ville = cap(gv('nc_v')), Pays = cap(gv('nc_p')), Type = gv('nc_ty');
+      if(!NomInstitution && !Nom) { tst("Nom ou Institution requis", true); return; }
       try {
-        const r = await api("Contact", {method: "POST", headers: {"Prefer": "return=representation"}, body: JSON.stringify({NomInstitution, Nom, Role, Email, Telephone, Adresse, Ville, Pays, Type})});
+        const cData = { NomInstitution, Nom, "Prénom": Prénom, Role, Email, "Téléphone1": Téléphone1, Adresse, Ville, Pays, Type, PersonneResponsable: `${Prénom} ${Nom}`.trim(), RoleResponsable: Role };
+        const r = await api("Contact", {method: "POST", headers: {"Prefer": "return=representation"}, body: JSON.stringify(cData)});
         if(r && r[0]) {
-          contacts.push(r[0]);
-          contacts.sort((a,b) => (a.NomInstitution||"").localeCompare(b.NomInstitution||"") || (a.Nom||"").localeCompare(b.Nom||""));
-          const lbl = `${r[0].NomInstitution}${r[0].Nom?" ("+r[0].Nom+")":""}`;
-          cM[r[0].ContactID] = lbl;
-          const opt = document.createElement("option"); opt.value = r[0].ContactID; opt.textContent = lbl;
+          const newC = r[0];
+          // Save additional addresses
+          if(localAddrs.length > 0) {
+            const tkn = await getToken();
+            const formattedAddrs = localAddrs.map(a => ({Label: cap(a.Label), Adresse: cap(a.Adresse), Ville: cap(a.Ville), Pays: cap(a.Pays), ContactID: newC.ContactID}));
+            await fetch(`${SB}/rest/v1/tblContactAddress`, {
+              method: 'POST',
+              headers: {'apikey': KEY, 'Authorization': `Bearer ${tkn}`, 'Content-Type': 'application/json'},
+              body: JSON.stringify(formattedAddrs)
+            });
+          }
+          await load();
+          const lbl = cM[newC.ContactID];
+          const opt = document.createElement("option"); opt.value = newC.ContactID; opt.textContent = lbl;
           select.insertBefore(opt, select.lastElementChild);
-          select.value = r[0].ContactID; select.dataset.prev = r[0].ContactID;
+          select.value = newC.ContactID; select.dataset.prev = newC.ContactID;
           mo.remove(); tst("Contact ajouté");
         }
       } catch(e) { tst("Erreur: " + e.message, true); }
@@ -917,15 +999,15 @@ async function sF(){
   }
 
   const data={
-    Titre:gv("ft")||null, Technique:gvn("fk"), Support:gvn("fs"), "Année":gv("fa")||null,
+    Titre:cap(gv("ft"))||null, Technique:gvn("fk"), Support:gvn("fs"), "Année":gv("fa")||null,
     Tirage:gv("fg")||"1/1", Format:gvn("ff"), Hauteur:gv("fh")||null, Largeur:gv("fl")||null,
     Profondeur:gv("fp")||null, Poids:gv("fw")||null, PresentationID:gvn("f_pr"),
-    StatutID:newSt, DateStatut:dtStatut, LocalisationID:finalLoc, LocalisationDetail:gv("f_ld")||null,
+    StatutID:newSt, DateStatut:dtStatut, LocalisationID:finalLoc, LocalisationDetail:cap(gv("f_ld"))||null,
     AcheteurID:newAch, IsCommission:document.getElementById("f_com").checked,
     DateLivraison:gv("f_dl")||null, ReturnDate:newRd||null, DocsValidated:newDv,
     Prix:Number(gv("fx"))||0, Discount:Number(gv("fd"))||0, PrixFinal:Number(gv("fz"))||0,
     Encadree:document.getElementById("f_enc").checked, Exposable:document.getElementById("fe").checked,
-    "Catalogué":document.getElementById("fb").checked, Commentaires:gv("fm")||null,
+    "Catalogué":document.getElementById("fb").checked, Commentaires:cap(gv("fm"))||null,
     Historique:hist, txtImageNameLink:gv("f_i")||null, NomOriginal:gv("f_or")||null
   };
 
@@ -978,24 +1060,66 @@ function showContacts(){
 function renderContactsList(){
   const q=document.getElementById("cSearch").value.toLowerCase();
   const el=document.getElementById("cList");
+  
+  // 1. Filter contacts based on search
   const filteredC = contacts.filter(c => 
     (c.NomInstitution||"").toLowerCase().includes(q) || 
     (c.Nom||"").toLowerCase().includes(q) || 
+    (c["Prénom"]||"").toLowerCase().includes(q) ||
     (c.Email||"").toLowerCase().includes(q) ||
     (c.Ville||"").toLowerCase().includes(q) ||
     (c.Type||"").toLowerCase().includes(q)
   );
 
+  // 2. Group by Institution/Nom to avoid duplicates and show locations together
+  const orgs = {};
+  filteredC.forEach(c => {
+    const orgName = c.NomInstitution || (c.Nom ? `${c.Nom} ${c["Prénom"]||""}`.trim() : "Sans Nom");
+    const key = orgName.toLowerCase().trim();
+    const rawType = (c.Type||"Autre");
+    // Flexible matching for type (case-insensitive and normalized)
+    const normType = Object.keys(CTYPES).find(k => k.toLowerCase() === rawType.toLowerCase()) || "Autre";
+    
+    if(!orgs[key]) orgs[key] = { name: orgName, type: normType, people: [], addresses: [], ids: [] };
+    
+    orgs[key].ids.push(c.ContactID);
+    
+    // Add person if they have a name or role
+    if(c.Nom || c["Prénom"] || c.Role) {
+      const pId = `${c["Prénom"]||""} ${c.Nom||""} ${c.Role||""}`.trim();
+      if(!orgs[key].people.some(p => p.id === pId)) {
+        orgs[key].people.push({ id: pId, n: c.Nom, p: c["Prénom"], r: c.Role, e: c.Email, t: c["Téléphone1"] });
+      }
+    }
+    
+    // Add primary address
+    if(c.Adresse) {
+      const aId = `${c.Adresse} ${c.Ville||""} ${c.Pays||""}`.trim();
+      if(!orgs[key].addresses.some(a => a.id === aId)) {
+        orgs[key].addresses.push({ id: aId, l: 'Principal', a: c.Adresse, v: c.Ville, p: c.Pays });
+      }
+    }
+    
+    // Add additional addresses
+    contactAddresses.filter(ca => ca.ContactID === c.ContactID).forEach(ca => {
+      const aId = `${ca.Adresse} ${ca.Ville||""} ${ca.Pays||""}`.trim();
+      if(!orgs[key].addresses.some(a => a.id === aId)) {
+        orgs[key].addresses.push({ id: aId, l: ca.Label, a: ca.Adresse, v: ca.Ville, p: ca.Pays });
+      }
+    });
+  });
+
+  // 3. Sort into type groups
   const groups = {};
   Object.keys(CTYPES).forEach(t => groups[t] = []);
-  filteredC.forEach(c => {
-    const t = c.Type && CTYPES[c.Type] ? c.Type : "Autre";
-    groups[t].push(c);
+  Object.values(orgs).forEach(o => {
+    const t = o.type && CTYPES[o.type] ? o.type : "Autre";
+    groups[t].push(o);
   });
 
   el.innerHTML=Object.entries(CTYPES).map(([type, meta]) => {
     const list = groups[type];
-    if(list.length === 0 && q) return ""; // Hide empty groups when searching
+    if(list.length === 0) return ""; 
     return `
       <div class="c-group">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;border-bottom:1px solid ${meta.c}44;padding-bottom:6px">
@@ -1003,20 +1127,43 @@ function renderContactsList(){
           <h3 style="font-size:12px;color:${meta.c};text-transform:uppercase;letter-spacing:1px">${meta.desc}</h3>
           <span style="font-size:10px;color:var(--mt);margin-left:auto">${list.length}</span>
         </div>
-        <div class="fgrid" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">
-          ${list.map(c => `
-            <div class="card" style="background:var(--sf);border:1px solid var(--bd);border-left:3px solid ${meta.c};padding:12px;position:relative;display:flex;flex-direction:column;gap:3px">
-              <div style="font-weight:700;color:var(--wh);font-size:13px">${esc(c.NomInstitution||"")}${c.Nom?` (${esc(c.Nom)})`:""}</div>
-              <div style="font-size:10px;color:var(--mt)">${esc(c.Role||type)}</div>
-              ${c.Email?`<div style="font-size:10px;overflow:hidden;text-overflow:ellipsis"><span style="color:var(--mt)">Email:</span> ${esc(c.Email)}</div>`:""}
-              ${c.Telephone?`<div style="font-size:10px"><span style="color:var(--mt)">Tél:</span> ${esc(c.Telephone)}</div>`:""}
-              <div style="font-size:10px;color:var(--tx);margin-top:2px">
-                <i style="color:var(--mt)">${esc(c.Adresse||"")}</i><br>
-                ${c.Ville?`<b>${esc(c.Ville)}</b>`:""}${c.Pays?` (${esc(c.Pays)})`:""}
+        <div class="fgrid" style="grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:15px">
+          ${list.map(o => `
+            <div class="card" style="background:var(--sf);border:1px solid var(--bd);border-left:3px solid ${meta.c};padding:15px;position:relative;display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                <div style="font-weight:700;color:var(--wh);font-size:14px;letter-spacing:0.5px">${esc(o.name)}</div>
+                <div style="font-size:8px;padding:2px 6px;background:${meta.c}22;color:${meta.c};border-radius:10px;border:1px solid ${meta.c}44">${meta.desc.split("/")[0]}</div>
               </div>
-              <div style="margin-top:8px;display:flex;gap:6px">
-                <button class="btn bs" style="font-size:8px;padding:2px 6px" onclick="editContact(${c.ContactID})">Modifier</button>
-                <button class="btn bs" style="font-size:8px;padding:2px 6px;color:var(--err)" onclick="delContact(${c.ContactID})">Supprimer</button>
+
+              ${o.people.length > 0 ? `
+                <div style="display:flex;flex-direction:column;gap:6px">
+                  ${o.people.map(p => `
+                    <div style="border-left:2px solid var(--bd);padding-left:8px">
+                      <div style="font-size:11px;color:var(--wh)">${esc(p.p||"")} <b>${esc(p.n||"")}</b> <span style="font-size:9px;color:var(--ac);margin-left:5px">${esc(p.r||"")}</span></div>
+                      <div style="font-size:10px;color:var(--mt);margin-top:2px">
+                        ${p.e ? `<span>✉ ${esc(p.e)}</span>` : ""}
+                        ${p.t ? `<span style="margin-left:8px">📞 ${esc(p.t)}</span>` : ""}
+                      </div>
+                    </div>
+                  `).join("")}
+                </div>
+              ` : ""}
+
+              ${o.addresses.length > 0 ? `
+                <div style="display:flex;flex-direction:column;gap:5px;background:rgba(0,0,0,0.2);padding:8px;border-radius:4px">
+                  ${o.addresses.map(a => `
+                    <div style="font-size:10px;color:var(--tx)">
+                      <div style="font-size:8px;color:var(--mt);text-transform:uppercase;margin-bottom:1px">${esc(a.l||"Localisation")}</div>
+                      <i style="color:var(--wh)">${esc(a.a||"")}</i><br>
+                      ${a.v ? `<b>${esc(a.v)}</b>` : ""}${a.p ? ` (${esc(a.p)})` : ""}
+                    </div>
+                  `).join("")}
+                </div>
+              ` : ""}
+
+              <div style="margin-top:5px;display:flex;gap:6px;justify-content:flex-end">
+                <button class="btn bs" style="font-size:8px;padding:4px 10px" onclick="editContact(${o.ids[0]})">Modifier</button>
+                <button class="btn bs" style="font-size:8px;padding:4px 10px;color:var(--err)" onclick="delContact(${o.ids[0]})">Supprimer</button>
               </div>
             </div>
           `).join("")}
@@ -1030,37 +1177,121 @@ async function editContact(id){
   const c = contacts.find(x => x.ContactID === id); if(!c) return;
   const mo = document.createElement('div'); mo.id = 'contactModal';
   mo.style.cssText = 'position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.65)';
-  mo.innerHTML = `<div style="background:var(--sf);border:1px solid var(--bd);padding:20px;width:90%;max-width:340px">
-    <div style="font-weight:700;margin-bottom:15px;color:var(--wh)">Modifier Contact</div>
-    <input type="text" id="ec_ni" value="${esc(c.NomInstitution||"")}" placeholder="Nom Institution" style="width:100%;margin-bottom:8px;padding:6px;background:var(--bg);color:var(--tx);border:1px solid var(--bd)">
-    <input type="text" id="ec_n" value="${esc(c.Nom||"")}" placeholder="Nom Contact" style="width:100%;margin-bottom:8px;padding:6px;background:var(--bg);color:var(--tx);border:1px solid var(--bd)">
-    <input type="text" id="ec_r" value="${esc(c.Role||"")}" placeholder="Rôle" style="width:100%;margin-bottom:8px;padding:6px;background:var(--bg);color:var(--tx);border:1px solid var(--bd)">
-    <input type="email" id="ec_e" value="${esc(c.Email||"")}" placeholder="Email" style="width:100%;margin-bottom:8px;padding:6px;background:var(--bg);color:var(--tx);border:1px solid var(--bd)">
-    <input type="text" id="ec_t" value="${esc(c.Telephone||"")}" placeholder="Téléphone" style="width:100%;margin-bottom:8px;padding:6px;background:var(--bg);color:var(--tx);border:1px solid var(--bd)">
-    <div style="display:flex;gap:8px;margin-bottom:8px">
-      <input type="text" id="ec_v" value="${esc(c.Ville||"")}" placeholder="Ville" style="flex:1;padding:6px;background:var(--bg);color:var(--tx);border:1px solid var(--bd)">
-      <input type="text" id="ec_p" value="${esc(c.Pays||"")}" placeholder="Pays" style="flex:1;padding:6px;background:var(--bg);color:var(--tx);border:1px solid var(--bd)">
+  
+  let localAddrs = contactAddresses.filter(a => a.ContactID === id).map(a => ({...a}));
+  
+  const renderAddrs = () => {
+    const wrap = document.getElementById('ec_addr_list');
+    if(!wrap) return;
+    wrap.innerHTML = localAddrs.map((a, i) => `
+      <div class="addr-row">
+        <button class="x" onclick="window.removeECAddr(${i})">✕</button>
+        <input type="text" placeholder="Label (ex: Succursale)" value="${esc(a.Label||"")}" oninput="window.updateECAddr(${i}, 'Label', this.value)" style="margin-bottom:4px">
+        <textarea placeholder="Adresse" oninput="window.updateECAddr(${i}, 'Adresse', this.value)" rows="1">${esc(a.Adresse||"")}</textarea>
+        <div class="f2col">
+          <input type="text" placeholder="Ville" value="${esc(a.Ville||"")}" oninput="window.updateECAddr(${i}, 'Ville', this.value)">
+          <input type="text" placeholder="Pays" value="${esc(a.Pays||"")}" oninput="window.updateECAddr(${i}, 'Pays', this.value)">
+        </div>
+      </div>
+    `).join("");
+  };
+
+  window.removeECAddr = (i) => { localAddrs.splice(i, 1); renderAddrs(); };
+  window.updateECAddr = (i, k, v) => { localAddrs[i][k] = v; };
+
+  mo.innerHTML = `<div style="background:var(--sf);border:1px solid var(--bd);padding:20px;width:95%;max-width:400px;max-height:90vh;overflow-y:auto">
+    <div style="font-weight:700;margin-bottom:15px;color:var(--wh);text-transform:uppercase;letter-spacing:1px;font-size:12px">Modifier Contact</div>
+    
+    <div class="ff" style="margin-bottom:12px">
+      <div class="fl">Institution / Organisation</div>
+      <input type="text" id="ec_ni" value="${esc(c.NomInstitution||"")}" placeholder="Nom Institution">
     </div>
-    <select id="ec_ty" style="width:100%;margin-bottom:8px;padding:6px;background:var(--bg);color:var(--tx);border:1px solid var(--bd)">
-      ${Object.entries(CTYPES).map(([k,v])=>`<option value="${k}" ${c.Type===k?"selected":""}>${v.desc}</option>`).join("")}
-    </select>
-    <textarea id="ec_a" placeholder="Adresse" rows="2" style="width:100%;margin-bottom:8px;padding:6px;background:var(--bg);color:var(--tx);border:1px solid var(--bd)">${esc(c.Adresse||"")}</textarea>
-    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px">
+
+    <div class="f2col">
+      <div class="ff">
+        <div class="fl">Personne Responsable</div>
+        <input type="text" id="ec_pr" value="${esc(c["Prénom"]||"")}" placeholder="Prénom">
+      </div>
+      <div class="ff">
+        <div class="fl">&nbsp;</div>
+        <input type="text" id="ec_n" value="${esc(c.Nom||"")}" placeholder="Nom">
+      </div>
+    </div>
+
+    <div class="ff" style="margin-bottom:12px">
+      <div class="fl">Rôle du Responsable</div>
+      <input type="text" id="ec_r" value="${esc(c.Role||"")}" placeholder="ex: Directeur, Conservateur...">
+    </div>
+
+    <div class="f2col">
+      <div class="ff">
+        <div class="fl">Email</div>
+        <input type="email" id="ec_e" value="${esc(c.Email||"")}" placeholder="Email">
+      </div>
+      <div class="ff">
+        <div class="fl">Téléphone</div>
+        <input type="text" id="ec_t" value="${esc(c["Téléphone1"]||"")}" placeholder="Téléphone">
+      </div>
+    </div>
+
+    <div class="ff" style="margin-bottom:12px">
+      <div class="fl">Catégorie</div>
+      <select id="ec_ty">
+        ${Object.entries(CTYPES).map(([k,v])=>`<option value="${k}" ${c.Type===k?"selected":""}>${v.desc}</option>`).join("")}
+      </select>
+    </div>
+
+    <div style="margin-top:20px;padding-top:15px;border-top:1px solid var(--bd)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div class="fl" style="color:var(--ac)">Adresses & Localisations</div>
+        <button class="nbtn" onclick="window.addECAddr()" style="font-size:8px">+ Ajouter</button>
+      </div>
+      
+      <div class="addr-row" style="border-left:2px solid var(--ac)">
+        <div style="font-size:8px;color:var(--ac);margin-bottom:4px;text-transform:uppercase">Adresse Principale</div>
+        <textarea id="ec_a" placeholder="Adresse" rows="1">${esc(c.Adresse||"")}</textarea>
+        <div class="f2col">
+          <input type="text" id="ec_v" value="${esc(c.Ville||"")}" placeholder="Ville">
+          <input type="text" id="ec_p" value="${esc(c.Pays||"")}" placeholder="Pays">
+        </div>
+      </div>
+      
+      <div id="ec_addr_list"></div>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px">
       <button class="btn bs" onclick="document.getElementById('contactModal').remove()">Annuler</button>
       <button class="btn bp" id="btnUpdateContact">Enregistrer</button>
     </div>
   </div>`;
+  
   document.body.appendChild(mo);
+  renderAddrs();
+  window.addECAddr = () => { localAddrs.push({Label:'', Adresse:'', Ville:'', Pays:''}); renderAddrs(); };
+
   document.getElementById('btnUpdateContact').onclick = async () => {
     const data = {
-      NomInstitution: gv('ec_ni'), Nom: gv('ec_n'), Role: gv('ec_r'), 
-      Email: gv('ec_e'), Telephone: gv('ec_t'), Adresse: gv('ec_a'),
-      Ville: gv('ec_v'), Pays: gv('ec_p'), Type: gv('ec_ty')
+      NomInstitution: cap(gv('ec_ni')), Nom: cap(gv('ec_n')), "Prénom": cap(gv('ec_pr')), Role: cap(gv('ec_r')), 
+      Email: gv('ec_e').toLowerCase(), "Téléphone1": gv('ec_t'), Adresse: cap(gv('ec_a')),
+      Ville: cap(gv('ec_v')), Pays: cap(gv('ec_p')), Type: gv('ec_ty'),
+      PersonneResponsable: `${cap(gv('ec_pr'))} ${cap(gv('ec_n'))}`.trim(), RoleResponsable: cap(gv('ec_r'))
     };
     try {
       await api(`Contact?ContactID=eq.${id}`, {method: "PATCH", body: JSON.stringify(data)});
-      Object.assign(c, data);
-      contacts.sort((a,b) => (a.NomInstitution||"").localeCompare(b.NomInstitution||"") || (a.Nom||"").localeCompare(b.Nom||""));
+      
+      // Update additional addresses
+      const tkn = await getToken();
+      await fetch(`${SB}/rest/v1/tblContactAddress?ContactID=eq.${id}`, {method: 'DELETE', headers: {'apikey': KEY, 'Authorization': `Bearer ${tkn}`}});
+      if(localAddrs.length > 0) {
+        const formattedAddrs = localAddrs.map(a => ({Label:cap(a.Label), Adresse:cap(a.Adresse), Ville:cap(a.Ville), Pays:cap(a.Pays), ContactID:id}));
+        await fetch(`${SB}/rest/v1/tblContactAddress`, {
+          method: 'POST',
+          headers: {'apikey': KEY, 'Authorization': `Bearer ${tkn}`, 'Content-Type': 'application/json'},
+          body: JSON.stringify(formattedAddrs)
+        });
+      }
+      
+      await load();
       mo.remove(); tst("Contact mis à jour");
       renderContactsList();
     } catch(e) { tst("Erreur: " + e.message, true); }
