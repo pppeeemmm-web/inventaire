@@ -280,7 +280,17 @@ async function load(){
       api("tblStatut?order=Nom.asc").catch(()=>[]),
       apiAll("tblPaiement","DateEcheance.asc").catch(()=>[])
     ]);
-    oeuvres=o;techniques=t;supports=su;formats=f;contacts=c;contactAddresses=ca;imgTbl=im;themes=th||[];oeuvreThemes=oth||[];
+    oeuvres=o;techniques=t;supports=su;formats=f;contacts=c.map(x => {
+      // NUCLEAR FIX: Force types for known names if they are empty
+      const n = (x.NomInstitution || x.Nom || "").toLowerCase();
+      if(!x.Type || x.Type === "Autre" || x.Type === "Autres") {
+        if(n.includes("pem") || n.includes("moulin")) x.Type = "Artiste";
+        else if(n.includes("galerie") || n.includes("charivari")) x.Type = "Galerie";
+        else if(n.includes("jackson") || n.includes("supplies") || n.includes("leroux")) x.Type = "Fournisseur";
+      }
+      return x;
+    });
+    contactAddresses=ca;imgTbl=im;themes=th||[];oeuvreThemes=oth||[];
     presentations=pdr||[];statuts=str||[];paiements=pmt||[];
     tM=Object.fromEntries(t.map(x=>[x.TechniqueID,x.Technique]));sM=Object.fromEntries(su.map(x=>[x.SupportID,x.Support]));fM=Object.fromEntries(f.map(x=>[x.FormatID,x.Format]));
     cM=Object.fromEntries(c.map(x=>[x.ContactID, x.NomInstitution || `${x.Nom||""} ${x["Prénom"]||""}`.trim() || `ID ${x.ContactID}`]));
@@ -1059,14 +1069,27 @@ let lO=null;function oL(){if(lO)lO.disconnect();lO=new IntersectionObserver(es=>
 
 function showContacts(){
   const mn=document.getElementById("mn"); mn.style.padding="20px";
-  mn.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-    <h2 style="font-size:18px;color:var(--wh)">Gestion des Contacts</h2>
+  mn.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;border: 5px solid #ff3e00; padding: 10px; background: rgba(255,62,0,0.1)">
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <h2 style="font-size:28px;color:#ff3e00;text-transform:uppercase;font-weight:900">🚨 CONTACTS ENGINE V1.5 🚨</h2>
+      <div id="dbStatus" style="font-size:12px;font-weight:900;color:#fff">DATABASE SYNC ACTIVE</div>
+    </div>
     <div style="display:flex;gap:10px">
       <input type="text" id="cSearch" placeholder="Rechercher contact..." oninput="renderContactsList()" style="padding:6px 12px;background:var(--bg);border:1px solid var(--bd);color:var(--tx);font-size:12px;width:240px">
       <button class="btn bp" onclick="addNewLookup('Contact', 'cSearch')">+ Nouveau Contact</button>
     </div>
   </div>
   <div id="cList" style="display:flex;flex-direction:column;gap:30px"></div>`;
+  
+  // Quick check for missing columns
+  api("Contact?limit=1").then(r => {
+    const s = document.getElementById("dbStatus");
+    if(r && r[0] && r[0].PersonneResponsable !== undefined) {
+      s.textContent = "Engine v1.3 - Base de données OK"; s.style.color = "var(--mt)";
+    } else {
+      s.innerHTML = "⚠️ ERREUR: <a href='#' style='color:var(--dg)' onclick='alert(\"Le script SQL v8 n a pas été exécuté dans Supabase. Les colonnes PersonneResponsable sont manquantes.\")'>Script v8 manquant</a>"; s.style.color = "var(--dg)";
+    }
+  }).catch(() => {});
   renderContactsList();
 }
 
@@ -1084,40 +1107,58 @@ function renderContactsList(){
     (c.Type||"").toLowerCase().includes(q)
   );
 
-  // 2. Group by Institution/Nom to avoid duplicates and show locations together
+  // 2. Group by Institution/Nom
   const orgs = {};
+  console.log("DEBUG: Contacts raw data", contacts);
   filteredC.forEach(c => {
-    const orgName = c.NomInstitution || (c.Nom ? `${c.Nom} ${c["Prénom"]||""}`.trim() : "Sans Nom");
-    const key = orgName.toLowerCase().trim();
-    const rawType = (c.Type||"Autre");
-    // Flexible matching for type (case-insensitive and normalized)
-    const normType = Object.keys(CTYPES).find(k => k.toLowerCase() === rawType.toLowerCase()) || "Autre";
+    const orgName = (c.NomInstitution || (c.Nom ? `${c["Prénom"]||""} ${c.Nom}`.trim() : "Sans Nom")).trim();
+    const key = orgName.toLowerCase();
+    let rawType = (c.Type||"Autre");
+
+    // SMART TAGGING: If type is 'Autre' or empty, try to guess it from the name
+    if(!c.Type || c.Type === "Autre" || c.Type === "Autres") {
+      const n = orgName.toLowerCase();
+      if(n.includes("pem") || n.includes("artiste") || n.includes("moulin")) rawType = "Artiste";
+      else if(n.includes("galerie") || n.includes("gallery") || n.includes("marchand")) rawType = "Galerie";
+      else if(n.includes("musée") || n.includes("museum") || n.includes("fondation") || n.includes("institution")) rawType = "Institution";
+      else if(n.includes("fournisseur") || n.includes("art supplies") || n.includes("couleurs") || n.includes("pigments") || n.includes("jackson") || n.includes("leroux")) rawType = "Fournisseur";
+      else if(n.includes("entreprise") || n.includes("company") || n.includes("société")) rawType = "Entreprise";
+    }
     
-    if(!orgs[key]) orgs[key] = { name: orgName, type: normType, people: [], addresses: [], ids: [] };
+    // Improved matching: check keys AND descriptions
+    let normType = Object.keys(CTYPES).find(k => k.toLowerCase() === rawType.toLowerCase());
+    if(!normType) normType = Object.entries(CTYPES).find(([k,v]) => v.desc.toLowerCase().includes(rawType.toLowerCase()))?.[0] || "Autre";
+    
+    if(!orgs[key]) {
+      orgs[key] = { name: orgName, type: normType, people: [], addresses: [], ids: [] };
+    } else {
+      const rank = (t) => t === "Artiste" ? 10 : (t === "Autre" ? 0 : 5);
+      if(rank(normType) > rank(orgs[key].type)) orgs[key].type = normType;
+    }
     
     orgs[key].ids.push(c.ContactID);
     
     // Add person if they have a name or role
-    if(c.Nom || c["Prénom"] || c.Role) {
-      const pId = `${c["Prénom"]||""} ${c.Nom||""} ${c.Role||""}`.trim();
-      if(!orgs[key].people.some(p => p.id === pId)) {
-        orgs[key].people.push({ id: pId, n: c.Nom, p: c["Prénom"], r: c.Role, e: c.Email, t: c["Téléphone1"] });
+    const pName = `${c["Prénom"]||""} ${c.Nom||""}`.trim();
+    if(pName || c.Role) {
+      if(!orgs[key].people.some(p => `${p.p||""} ${p.n||""}`.trim() === pName)) {
+        orgs[key].people.push({ n: c.Nom, p: c["Prénom"], r: c.Role, e: c.Email, t: c["Téléphone1"] });
       }
     }
     
     // Add primary address
     if(c.Adresse) {
-      const aId = `${c.Adresse} ${c.Ville||""} ${c.Pays||""}`.trim();
-      if(!orgs[key].addresses.some(a => a.id === aId)) {
-        orgs[key].addresses.push({ id: aId, l: 'Principal', a: c.Adresse, v: c.Ville, p: c.Pays });
+      const aStr = `${c.Adresse} ${c.Ville||""}`.toLowerCase().trim();
+      if(!orgs[key].addresses.some(a => `${a.a} ${a.v||""}`.toLowerCase().trim() === aStr)) {
+        orgs[key].addresses.push({ l: 'Principal', a: c.Adresse, v: c.Ville, p: c.Pays });
       }
     }
     
     // Add additional addresses
     contactAddresses.filter(ca => ca.ContactID === c.ContactID).forEach(ca => {
-      const aId = `${ca.Adresse} ${ca.Ville||""} ${ca.Pays||""}`.trim();
-      if(!orgs[key].addresses.some(a => a.id === aId)) {
-        orgs[key].addresses.push({ id: aId, l: ca.Label, a: ca.Adresse, v: ca.Ville, p: ca.Pays });
+      const aStr = `${ca.Adresse} ${ca.Ville||""}`.toLowerCase().trim();
+      if(!orgs[key].addresses.some(a => `${a.a} ${a.v||""}`.toLowerCase().trim() === aStr)) {
+        orgs[key].addresses.push({ l: ca.Label, a: ca.Adresse, v: ca.Ville, p: ca.Pays });
       }
     });
   });
@@ -1141,10 +1182,10 @@ function renderContactsList(){
         </div>
         <div class="fgrid" style="grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:20px">
           ${list.map(o => `
-            <div class="card" style="background:var(--sf);border:1px solid var(--bd);border-left:3px solid ${meta.c};padding:15px;position:relative;display:flex;flex-direction:column;gap:10px">
+            <div class="card" style="background:${meta.c}12;border:1px solid ${meta.c}66;border-left:8px solid ${meta.c};box-shadow: 0 0 15px ${meta.c}15;padding:18px;position:relative;display:flex;flex-direction:column;gap:12px">
               <div style="display:flex;justify-content:space-between;align-items:flex-start">
-                <div style="font-weight:700;color:var(--wh);font-size:14px;letter-spacing:0.5px;text-transform:capitalize">${esc(o.name)}</div>
-                <div style="font-size:8px;padding:2px 6px;background:${meta.c}22;color:${meta.c};border-radius:10px;border:1px solid ${meta.c}44">${meta.desc.split("/")[0]}</div>
+                <div style="font-weight:900;color:var(--wh);font-size:16px;letter-spacing:0.5px;text-transform:capitalize;text-shadow: 0 0 10px ${meta.c}44">${esc(o.name)}</div>
+                <div style="font-size:10px;padding:4px 10px;background:${meta.c};color:#000;border-radius:2px;font-weight:900;text-transform:uppercase;box-shadow: 0 2px 10px rgba(0,0,0,0.5)">${meta.desc.split("/")[0]}</div>
               </div>
 
               ${o.people.length > 0 ? `
@@ -1288,6 +1329,7 @@ async function editContact(id){
       Ville: cap(gv('ec_v')), Pays: cap(gv('ec_p')), Type: gv('ec_ty'),
       PersonneResponsable: `${cap(gv('ec_pr'))} ${cap(gv('ec_n'))}`.trim(), RoleResponsable: cap(gv('ec_r'))
     };
+    console.log("DEBUG: Saving contact", id, data);
     try {
       try {
         await api(`Contact?ContactID=eq.${id}`, {method: "PATCH", body: JSON.stringify(data)});
@@ -1765,8 +1807,10 @@ async function updateThemeBeforeExport() {
         } else {
             tst("Erreur theme: " + await response.text(), true);
         }
-    } catch (err) {
-        tst("Erreur: " + err.message, true);
+    } catch(e) {
+      console.error("SAVE ERROR:", e);
+      alert("ERREUR CRITIQUE LORS DE LA SAUVEGARDE:\n\n" + e.message + "\n\nVérifiez que vous avez bien exécuté le script SQL v8 dans Supabase.");
+      tst("Erreur: " + e.message, true);
     }
 }
   
