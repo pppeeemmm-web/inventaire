@@ -129,8 +129,16 @@ nav button.active{background:var(--ac);color:var(--bk);font-weight:700}
 @media(max-width:480px){.sidebar{max-height:35vh}.gal{grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px}.pgal{grid-template-columns:1fr 1fr;gap:8px;padding:8px}.dh{flex-direction:column;gap:8px}.brow{flex-direction:column}.btn{width:100%;justify-content:center}}
 .login-scr{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:9000;flex-direction:column;gap:20px}
 .login-box{background:var(--sf);border:1px solid var(--bd);padding:30px;width:90%;max-width:340px;text-align:center}
-.login-box input{width:100%;padding:10px;margin-bottom:15px;background:var(--bg);border:1px solid var(--bd);color:var(--tx);font-family:inherit;font-size:12px;outline:none}
-.login-box button{width:100%;padding:10px;background:var(--ac);color:var(--bk);border:none;font-weight:700;cursor:pointer}
+.login-box input{width:100%;padding:10px;margin-bottom:10px;background:var(--bg);border:1px solid var(--bd);color:var(--tx);font-family:inherit;font-size:12px;outline:none}
+.login-box button.login-primary{width:100%;padding:10px;background:var(--ac);color:var(--bk);border:none;font-weight:700;cursor:pointer;font-family:inherit;font-size:11px;letter-spacing:1px;margin-top:4px}
+.login-box button.login-primary:disabled{opacity:0.5;cursor:default}
+.login-box .login-sep{display:flex;align-items:center;gap:8px;margin:14px 0 10px;color:var(--mt);font-size:9px;letter-spacing:1px}
+.login-box .login-sep::before,.login-box .login-sep::after{content:"";flex:1;height:1px;background:var(--bd)}
+.login-box .login-link{background:none;border:none;color:var(--mt);font-family:inherit;font-size:10px;cursor:pointer;text-decoration:underline;padding:2px 0;width:auto}
+.login-box .login-link:hover{color:var(--tx)}
+.login-pw-wrap{position:relative;margin-bottom:10px}
+.login-pw-wrap input{margin-bottom:0;padding-right:36px}
+.login-pw-wrap .pw-eye{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--mt);cursor:pointer;font-size:12px;padding:0;line-height:1}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -1988,40 +1996,80 @@ async function checkAuthAndLoad() {
       <div id="loginScr" class="login-scr">
         <div style="font-size:24px;font-weight:700;color:var(--ac);letter-spacing:4px;margin-bottom:30px">PEM INVENTAIRE</div>
         <div class="login-box">
-          <div style="font-size:10px;color:var(--mt);margin-bottom:20px;text-transform:uppercase;letter-spacing:1px">Connexion sécurisée</div>
-          <input type="email" id="loginEmail" placeholder="Email...">
-          <button onclick="sendMagicLink()" id="loginBtn">Envoyer Lien Magique</button>
-          <div id="loginMsg" style="font-size:10px;color:var(--mt);margin-top:15px;min-height:14px"></div>
+          <div style="font-size:10px;color:var(--mt);margin-bottom:18px;text-transform:uppercase;letter-spacing:1px">Connexion sécurisée</div>
+          <input type="email" id="loginEmail" placeholder="Email..." autocomplete="email">
+          <div class="login-pw-wrap">
+            <input type="password" id="loginPw" placeholder="Mot de passe..." autocomplete="current-password">
+            <button class="pw-eye" onclick="togglePw()" title="Afficher">👁</button>
+          </div>
+          <button class="login-primary" onclick="signInWithPassword()" id="loginBtn">Se connecter</button>
+          <div id="loginMsg" style="font-size:10px;margin-top:12px;min-height:14px;color:var(--mt)"></div>
+          <div class="login-sep">ou</div>
+          <button class="login-link" onclick="sendMagicLink()">Recevoir un lien par e-mail</button>
+          <div style="margin-top:10px">
+            <button class="login-link" onclick="resetPassword()">Créer / réinitialiser mon mot de passe</button>
+          </div>
         </div>
       </div>
     `);
   }
 }
 
+function togglePw() {
+  const pw = document.getElementById('loginPw');
+  pw.type = pw.type === 'password' ? 'text' : 'password';
+}
+
+function loginMsg(text, ok) {
+  const el = document.getElementById('loginMsg');
+  el.textContent = text;
+  el.style.color = ok ? 'var(--ok)' : 'var(--err)';
+}
+
+function loginBusy(busy, label) {
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = busy;
+  btn.textContent = busy ? '...' : (label || 'Se connecter');
+}
+
+// Primary: email + password
+async function signInWithPassword() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pw    = document.getElementById('loginPw').value;
+  if (!email) { loginMsg('Email requis.', false); return; }
+  if (!pw)    { loginMsg('Mot de passe requis.', false); return; }
+  loginBusy(true); loginMsg('', true);
+  const { error } = await sbClient.auth.signInWithPassword({ email, password: pw });
+  if (error) {
+    loginMsg('Mot de passe incorrect ou compte introuvable.', false);
+    loginBusy(false);
+  }
+  // on success Supabase fires onAuthStateChange → loginScr is removed automatically
+}
+
+// Fallback: magic link
 async function sendMagicLink() {
   const email = document.getElementById('loginEmail').value.trim();
-  const msg = document.getElementById('loginMsg');
-  const btn = document.getElementById('loginBtn');
-  if(!email) return;
-  
-  btn.disabled = true;
-  btn.textContent = "Envoi...";
-  msg.textContent = "";
-  
-  const { error } = await sbClient.auth.signInWithOtp({ 
+  if (!email) { loginMsg('Email requis.', false); return; }
+  loginMsg('Envoi du lien…', true);
+  const { error } = await sbClient.auth.signInWithOtp({
     email,
     options: { emailRedirectTo: window.location.origin + window.location.pathname }
   });
-  
-  if (error) {
-    msg.textContent = "Erreur: " + error.message;
-    msg.style.color = "red";
-    btn.disabled = false;
-    btn.textContent = "Envoyer Lien Magique";
-  } else {
-    msg.textContent = "Lien envoyé ! Vérifiez votre boîte mail.";
-    msg.style.color = "var(--ac)";
-  }
+  if (error) loginMsg('Erreur : ' + error.message, false);
+  else loginMsg('Lien envoyé — vérifiez votre boîte mail.', true);
+}
+
+// Set / reset password
+async function resetPassword() {
+  const email = document.getElementById('loginEmail').value.trim();
+  if (!email) { loginMsg("Entrez votre email d'abord.", false); return; }
+  loginMsg('Envoi du lien de réinitialisation…', true);
+  const { error } = await sbClient.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + window.location.pathname + '?reset=1'
+  });
+  if (error) loginMsg('Erreur : ' + error.message, false);
+  else loginMsg('Lien envoyé — vérifiez votre boîte mail.', true);
 }
 
 checkAuthAndLoad();
