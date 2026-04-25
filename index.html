@@ -1397,6 +1397,8 @@ const EX_FIELDS=[
   {k:"AcheteurID",l:"Acheteur",t:"lookup",m:()=>cM},
   {k:"LocalisationID",l:"Localisation",t:"lookup",m:()=>cM},
   {k:"LocalisationDetail",l:"Loc. Détail",t:"text"},
+  {k:"Exposable",l:"Exposable",t:"bool"},
+  {k:"Catalogué",l:"Catalogué",t:"bool"},
   {k:"IsCommission",l:"Commission",t:"bool"},
   {k:"Encadree",l:"Encadrée",t:"bool"},
   {k:"DateLivraison",l:"Livraison",t:"date"},
@@ -1420,7 +1422,9 @@ function showExport(){
   exShowAll=false;
   const mn=document.getElementById("mn");
   const IS="font-family:inherit;font-size:9px;background:var(--bg);border:1px solid var(--bd);color:var(--tx);padding:3px 6px;outline:none";
-  const themeOpts=[...new Set(oeuvres.map(o=>o.theme).filter(Boolean))].sort().map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join("");
+  const _allThemeNames=new Set();
+  oeuvres.forEach(o=>{if(o.theme)_allThemeNames.add(o.theme);(o.themeIds||[]).forEach(id=>{const t=themes.find(th=>th.ThemeID===id);if(t)_allThemeNames.add(t.Nom);});});
+  const themeOpts=[..._allThemeNames].sort().map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join("");
   mn.style.padding="0";
   mn.innerHTML=`
   <div style="position:sticky;top:0;z-index:100;background:var(--bg);border-bottom:2px solid var(--ac)">
@@ -1601,6 +1605,7 @@ function renderExCrit(){
 
 function exMatch(o,c){
   const fld=EX_FIELDS.find(f=>f.k===c.field);if(!fld)return true;
+  if(c.field==="theme"){const cv=(c.value||"").toLowerCase();const names=[(o.theme||"").toLowerCase(),...(o.themeIds||[]).map(id=>{const t=themes.find(th=>th.ThemeID===id);return t?t.Nom.toLowerCase():"";})];switch(c.op){case "contient":return names.some(n=>n.includes(cv));case "ne contient pas":return names.every(n=>!n.includes(cv));case "=":return names.some(n=>n===cv);case "\u2260":return names.every(n=>n!==cv);case "est vide":return !o.theme&&!(o.themeIds||[]).length;case "n'est pas vide":return !!(o.theme||(o.themeIds||[]).length);default:return true;}}
   const raw=o[c.field];const val=raw!=null?String(raw):"";const cv=c.value||"";
   // For date fields: compare year portion
   const numVal=fld.t==="date"?(val?Number(val.slice(0,4)):0):Number(val);
@@ -1642,8 +1647,9 @@ function exSelImg(){exSelected=new Set(exFiltered.filter(o=>o.txtImageNameLink).
 function exSelByTheme(){
   const theme=document.getElementById("exThemeSel")?.value;
   if(!theme){tst("Choisir un thème",true);return;}
+  const themeObj=themes.find(t=>t.Nom===theme);
   let added=0;
-  oeuvres.forEach(o=>{if(o.theme===theme){exSelected.add(o.OeuvreID);added++;}});
+  oeuvres.forEach(o=>{const matchLegacy=o.theme===theme;const matchNew=themeObj&&(o.themeIds||[]).includes(themeObj.ThemeID);if(matchLegacy||matchNew){exSelected.add(o.OeuvreID);added++;}});
   tst(`${added} oeuvres sélectionnées — thème "${theme}"`);
   updateExCnt();renderExGrid();
 }
