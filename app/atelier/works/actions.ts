@@ -266,7 +266,7 @@ function r2PutHeaders(
   const secretKey = process.env.R2_SECRET_ACCESS_KEY!
   const bucket    = process.env.R2_BUCKET ?? 'paintings'
   const host      = `${account}.eu.r2.cloudflarestorage.com`
-  const pathname  = `/${bucket}/${encodeURIComponent(filename)}`
+  const pathname  = `/${bucket}/${filename.split('/').map(encodeURIComponent).join('/')}`
 
   const now       = new Date()
   const amzDate   = now.toISOString().replace(/[:-]|\.\d{3}/g, '').slice(0, 15) + 'Z'
@@ -307,7 +307,7 @@ function r2PutHeaders(
 async function r2Put(buf: Buffer, filename: string, contentType: string): Promise<void> {
   const account = process.env.R2_ACCOUNT_ID!
   const bucket  = process.env.R2_BUCKET ?? 'paintings'
-  const url     = `https://${account}.eu.r2.cloudflarestorage.com/${bucket}/${encodeURIComponent(filename)}`
+  const url     = `https://${account}.eu.r2.cloudflarestorage.com/${bucket}/${filename.split('/').map(encodeURIComponent).join('/')}`
   const headers = r2PutHeaders(buf, filename, contentType)
   const res     = await fetch(url, { method: 'PUT', headers, body: buf })
   if (!res.ok) throw new Error(`R2 PUT ${res.status}: ${await res.text()}`)
@@ -328,13 +328,13 @@ async function uploadImage(
     // Upload original
     await r2Put(buf, filename, file.type || 'application/octet-stream')
 
-    // Generate 400px thumbnail (JPEG, quality 80) and upload to thumbs/
+    // Generate 400px thumbnail (AVIF, quality 70) and upload to thumbs/
     const thumbBuf  = await sharp(buf)
       .resize({ width: 400, height: 400, fit: 'inside', withoutEnlargement: true })
-      .jpeg({ quality: 80 })
+      .avif({ quality: 70, effort: 3 })
       .toBuffer()
-    const thumbName = `thumbs/${filename.replace(/\.[^.]+$/, '')}.jpg`
-    await r2Put(thumbBuf, thumbName, 'image/jpeg')
+    const thumbName = `thumbs/${filename.replace(/\.[^.]+$/, '')}.avif`
+    await r2Put(thumbBuf, thumbName, 'image/avif')
 
     return { ok: true }
   } catch (e) {

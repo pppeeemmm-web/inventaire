@@ -407,6 +407,16 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
     }
   }
 
+  // ── Draw helpers ──────────────────────────────────────────────
+  // Draw image cover-cropped to fill a circle of radius r centred at cx,cy
+  function drawContain(ctx: CanvasRenderingContext2D, img: HTMLImageElement, cx: number, cy: number, r: number) {
+    const iw = img.naturalWidth, ih = img.naturalHeight
+    if (!iw || !ih) return
+    const scale = Math.max((r * 2) / iw, (r * 2) / ih)
+    const dw = iw * scale, dh = ih * scale
+    ctx.drawImage(img, cx - dw / 2, cy - dh / 2, dw, dh)
+  }
+
   // ── Draw ──────────────────────────────────────────────────────
   useEffect(() => {
     const canvas = canvasRef.current
@@ -673,7 +683,7 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
 
       // Thumbnail (only draw if fully loaded)
       if (img?.complete && img.naturalWidth > 0) {
-        ctx.drawImage(img, p.x, p.y, NW, NH)
+        drawContain(ctx, img, cx, cy, NR)
       }
 
       ctx.restore()
@@ -1027,7 +1037,7 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
         ctx.beginPath()
         ctx.arc(cx, cy, NR - 1, 0, Math.PI * 2)
         ctx.clip()
-        ctx.drawImage(img, pt.x + 1, pt.y + 1, NW - 2, NH - 2)
+        drawContain(ctx, img, cx, cy, NR - 1)
         ctx.restore()
       }
       // Circle border
@@ -1100,7 +1110,7 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
              ?? imagesRef.current.get(`${id}_40`)
       if (img?.complete && img.naturalWidth > 0) {
         ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, NR - 1, 0, Math.PI * 2); ctx.clip()
-        ctx.drawImage(img, pt.x + 1, pt.y + 1, NW - 2, NH - 2); ctx.restore()
+        drawContain(ctx, img, cx, cy, NR - 1); ctx.restore()
       }
       ctx.beginPath(); ctx.arc(cx, cy, NR - 0.5, 0, Math.PI * 2)
       ctx.strokeStyle = '#3a3a3a'; ctx.lineWidth = 1; ctx.stroke()

@@ -688,12 +688,15 @@ function InvList({
     }
   }
 
+  const router = useRouter()
+
   return (
     <div style={{ flex: 1, minWidth: 0, overflow: 'auto', borderRight: '1px solid var(--bd)' }}>
       <table className="tbl" style={{ tableLayout: 'auto' }}>
         <thead>
           <tr>
             <th style={{ width: 36 }}></th>
+            <th style={{ width: 32 }}></th>
             <th style={{ width: 40 }}>ID</th>
             <th style={{ width: 64 }}></th>
             <th>{t('title')}</th>
@@ -732,6 +735,21 @@ function InvList({
                   }}>
                     {isSel ? '✓' : ''}
                   </div>
+                </td>
+                {/* Inline edit button */}
+                <td style={{ padding: '0 4px' }}>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); router.push(`/atelier/works/${o.OeuvreID}/edit`) }}
+                    title="Éditer"
+                    style={{
+                      padding: '2px 6px', fontSize: 10,
+                      color: 'var(--tx3)', background: 'transparent',
+                      border: '1px solid transparent', cursor: 'pointer',
+                      lineHeight: 1,
+                    }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--ac)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--bd2)' }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--tx3)'; (e.currentTarget as HTMLElement).style.borderColor = 'transparent' }}
+                  >✎</button>
                 </td>
                 <td style={{ color: 'var(--tx3)', fontSize: 9 }}>{o.OeuvreID}</td>
                 {/* Thumb */}
@@ -1149,9 +1167,27 @@ function InvGrid({
   toggleInSel:    (id: number) => void
   onOpen:         (o: Oeuvre) => void
 }) {
+  const [cols, setCols] = useState<number>(() => {
+    try { return parseInt(localStorage.getItem('pem_grid_cols') ?? '5') || 5 } catch { return 5 }
+  })
+  const handleCols = (n: number) => {
+    setCols(n)
+    try { localStorage.setItem('pem_grid_cols', String(n)) } catch {}
+  }
+
   return (
     <div style={{ flex: 1, overflow: 'auto', padding: '20px 28px' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 }}>
+      {/* Column slider */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+        <span className="t-mono-sm" style={{ color: 'var(--tx3)', whiteSpace: 'nowrap' }}>Colonnes</span>
+        <input
+          type="range" min={2} max={10} step={1} value={cols}
+          onChange={(e) => handleCols(parseInt(e.target.value))}
+          style={{ width: 120, accentColor: 'var(--ac)' }}
+        />
+        <span className="t-mono-sm" style={{ color: 'var(--tx3)', minWidth: 16 }}>{cols}</span>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 10 }}>
         {rows.map((o) => {
           const isSel = selection.has(o.OeuvreID)
           return (
