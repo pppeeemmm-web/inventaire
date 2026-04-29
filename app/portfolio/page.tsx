@@ -1,0 +1,53 @@
+// /portfolio — public-facing portfolio (no auth required)
+import { createClient } from '@/lib/supabase/server'
+import PortfolioClient from '@/components/portfolio/PortfolioClient'
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'Pierre Emmanuel Moulin — Peinture, dessin, sculpture, photographie',
+  description: "Portfolio de l'artiste Pierre Emmanuel Moulin. Peinture, dessin, sculpture, photographie.",
+  robots: { index: true, follow: true },
+}
+
+const EXCLUDE_STATUT = [1, 9, 10]
+
+export default async function PortfolioPage() {
+  const supabase = await createClient()
+
+  const [{ data: rawWorks }, { data: rawTech }] = await Promise.all([
+    supabase
+      .from('Oeuvres')
+      .select('OeuvreID, Titre, Année, Hauteur, Largeur, Profondeur, txtImageNameLink, theme, Technique, statusId, Exposable')
+      .eq('is_public', true)
+      .eq('Exposable', true)
+      .order('Année', { ascending: false }) as any,
+    supabase.from('Technique').select('TechniqueID, Technique') as any,
+  ])
+
+  const tMap: Record<number, string> = {}
+  for (const t of (rawTech ?? []) as any[]) {
+    if (t.TechniqueID != null && t.Technique) tMap[t.TechniqueID] = t.Technique
+  }
+
+  const works = ((rawWorks ?? []) as any[])
+    .filter((o: any) => o.statusId == null || !EXCLUDE_STATUT.includes(o.statusId))
+    .map((o: any) => ({
+      OeuvreID:         o.OeuvreID         as number,
+      Titre:            o.Titre             as string | null,
+      Année:            o.Année             as string | null,
+      Hauteur:          o.Hauteur           as string | null,
+      Largeur:          o.Largeur           as string | null,
+      Profondeur:       o.Profondeur        as string | null,
+      UniteDimension:   null,
+      txtImageNameLink: o.txtImageNameLink  as string | null,
+      theme:            o.theme             as string | null,
+      techniqueName:    o.Technique != null ? (tMap[o.Technique as number] ?? null) : null,
+      statutId:         o.statusId          as number | null,
+    }))
+
+  return (
+    <div style={{ minHeight: '100vh', background: 'var(--bg0)', color: 'var(--tx)' }}>
+      <PortfolioClient works={works} />
+    </div>
+  )
+}

@@ -1,0 +1,144 @@
+'use client'
+
+// CurationDock — floating bar visible on non-constellation tabs when selection > 0.
+// Shows selection count, batch-edit, export, quick-save group, and constellation jump.
+
+import { useState } from 'react'
+import { BatchEditModal } from '@/components/atelier/BatchEditModal'
+import { ExportModal }    from '@/components/atelier/ExportModal'
+import type { Oeuvre }    from '@/lib/types/database'
+
+interface Props {
+  selection:          Set<number>
+  setSelection:       (s: Set<number>) => void
+  oeuvres:            Oeuvre[]
+  techniques:         { TechniqueID: number; Technique: string | null }[]
+  supports:           { SupportID:   number; Support:   string | null }[]
+  formats:            { FormatID:    number; Format:    string | null }[]
+  contacts:           { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null }[]
+  themes:             { ThemeID: number; Nom: string }[]
+  tM:                 Record<number, string>
+  sM:                 Record<number, string>
+  statusLabelMap:     Record<number, string>
+  onGoConstellation:  () => void
+  onSaveGroup:        (name: string, ids: number[]) => Promise<string | null>
+}
+
+export function CurationDock({
+  selection, setSelection,
+  oeuvres, techniques, supports, formats, contacts, themes, tM, sM, statusLabelMap,
+  onGoConstellation, onSaveGroup,
+}: Props) {
+  const [quickName, setQuickName] = useState('')
+  const [saving,    setSaving]    = useState(false)
+  const [savedName, setSavedName] = useState<string | null>(null)
+  const [showBatch, setShowBatch] = useState(false)
+  const [showExport,setShowExport]= useState(false)
+
+  const ids = [...selection]
+
+  async function handleSave() {
+    setSaving(true)
+    const nm = quickName.trim() || `Groupe du ${new Date().toLocaleDateString('fr-FR')}`
+    const id = await onSaveGroup(nm, ids)
+    if (id) {
+      setSavedName(nm)
+      setQuickName('')
+      setTimeout(() => setSavedName(null), 3000)
+    }
+    setSaving(false)
+  }
+
+  return (
+    <>
+      <div style={{
+        position: 'fixed', bottom: 20, left: '50%', transform: 'translateX(-50%)',
+        zIndex: 40, background: 'var(--bg2)', border: '1px solid var(--bd2)',
+        padding: '10px 14px', display: 'flex', gap: 10, alignItems: 'center',
+        boxShadow: '0 8px 40px rgba(0,0,0,0.5)',
+      }}>
+
+        {/* Count */}
+        <div className="row gap-sm">
+          <div className="t-eyebrow" style={{ color: 'var(--ac)' }}>Sélection</div>
+          <div style={{ fontSize: 20, color: 'var(--tx)', fontFamily: "'Instrument Serif', serif", lineHeight: 1 }}>
+            {ids.length}
+          </div>
+        </div>
+
+        <div className="vline" style={{ height: 20 }} />
+
+        {/* Batch edit */}
+        <button className="btn sm ghost" onClick={() => setShowBatch(true)}>
+          Modifier
+        </button>
+
+        {/* Export */}
+        <button className="btn sm ghost" onClick={() => setShowExport(true)}>
+          Exporter
+        </button>
+
+        <div className="vline" style={{ height: 20 }} />
+
+        {/* Quick group save */}
+        {savedName
+          ? <div className="t-mono-sm" style={{ color: 'var(--sage)', minWidth: 140 }}>✓ {savedName}</div>
+          : <>
+              <input
+                value={quickName}
+                onChange={(e) => setQuickName(e.target.value)}
+                placeholder="Nom du groupe…"
+                onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+                style={{
+                  width: 130, padding: '4px 8px',
+                  background: 'var(--bg1)', border: '1px solid var(--bd)',
+                  fontSize: 10, color: 'var(--tx)',
+                }}
+              />
+              <button className="btn sm" onClick={handleSave} disabled={saving}>
+                {saving ? '…' : '+'}
+              </button>
+            </>
+        }
+
+        {/* Constellation */}
+        <button className="btn sm primary" onClick={onGoConstellation}>
+          Curation →
+        </button>
+
+        {/* Clear */}
+        <button className="btn ghost sm" onClick={() => setSelection(new Set())}>
+          Effacer
+        </button>
+      </div>
+
+      {showBatch && (
+        <BatchEditModal
+          ids={ids}
+          techniques={techniques}
+          supports={supports}
+          formats={formats}
+          contacts={contacts}
+          themes={themes}
+          statusLabelMap={statusLabelMap}
+          onClose={() => setShowBatch(false)}
+          onDone={(count) => {
+            setShowBatch(false)
+            // Optionally clear selection after edit
+          }}
+        />
+      )}
+
+      {showExport && (
+        <ExportModal
+          ids={ids}
+          oeuvres={oeuvres}
+          tM={tM}
+          sM={sM}
+          statusLabelMap={statusLabelMap}
+          onClose={() => setShowExport(false)}
+        />
+      )}
+    </>
+  )
+}
