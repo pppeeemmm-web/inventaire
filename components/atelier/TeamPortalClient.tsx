@@ -211,6 +211,7 @@ export function TeamPortalClient({
             oeuvres={oeuvres}
             techniques={techniques}
             supports={supports}
+            formats={formats}
             themes={themes}
             groups={groups}
             tM={tM} sM={sM} cM={cM} pM={pM} locMap={locMap}
@@ -228,7 +229,7 @@ export function TeamPortalClient({
             themes={themes}
             selection={selection}
             setSelection={setSelection}
-            onOpen={setInspected}
+            onOpen={() => {}}
             onSaveGroup={handleSaveGroup}
           />
         )}

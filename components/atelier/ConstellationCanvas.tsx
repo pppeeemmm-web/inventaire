@@ -1300,7 +1300,7 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
           {panelNode ? (
             <div style={{ padding: 16, borderBottom: '1px solid var(--bd)', flexShrink: 0 }}>
               <div className="t-eyebrow" style={{ marginBottom: 10 }}>Œuvre</div>
-              <div style={{ background: 'var(--bg0)', height: 90, marginBottom: 10, overflow: 'hidden' }}>
+              <div style={{ background: 'var(--bg0)', height: 135, marginBottom: 10, overflow: 'hidden' }}>
                 {panelNode.txtImageNameLink
                   ? <img src={thumbUrl(panelNode.txtImageNameLink, 384) ?? ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="" />
                   : <div style={{ width: '100%', height: '100%', background: 'var(--bg2)' }} />

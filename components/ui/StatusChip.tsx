@@ -11,6 +11,7 @@ const MAP: Record<StatusKey, { cls: string; lbl: string }> = {
   wip:       { cls: 'rust', lbl: 'En cours' },
   destroyed: { cls: 'mt',   lbl: 'Détruit' },
   lost:      { cls: 'mt',   lbl: 'Perdu' },
+  gift:      { cls: 'cyan', lbl: 'Don' },
 }
 
 export function StatusChip({ s }: { s: StatusKey }) {

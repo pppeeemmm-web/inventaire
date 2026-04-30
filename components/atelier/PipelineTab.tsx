@@ -16,13 +16,14 @@ type ProcessStatut = 'en_cours' | 'gagne' | 'perdu' | 'annule' | 'termine'
 type EtapeStatut   = 'a_faire' | 'en_cours' | 'fait' | 'bloque'
 
 interface Etape {
-  id:            string
-  process_id:    string
-  nom:           string
-  date_echeance: string | null
-  statut:        EtapeStatut
-  position:      number
-  notes:         string | null
+  id:               string
+  process_id:       string
+  nom:              string
+  date_echeance:    string | null
+  statut:           EtapeStatut
+  position:         number
+  notes:            string | null
+  overdue_override: boolean
 }
 
 interface Responsable { nom: string; contact_id: number | null; role: string }
@@ -42,6 +43,7 @@ interface Process {
   stakeholders:   string | null
   responsables:   Responsable[]
   vault_tags:     string[]
+  vault_path:     string | null
   asset_notes:    string | null
   oeuvre_id:      number | null
   contact_id:     number | null
@@ -76,7 +78,6 @@ export const TYPE_LABELS: Record<ProcessType, string> = {
   autre:           'Autre',
 }
 
-// English equivalents for i18n
 export const TYPE_LABELS_EN: Record<ProcessType, string> = {
   collaboration:   'Collaboration',
   consignment:     'Consignment',
@@ -117,6 +118,27 @@ const STATUT_LABELS: Record<ProcessStatut, string> = {
   termine:  'Completed',
 }
 
+const ETAPE_STATUT_LABELS: Record<EtapeStatut, string> = {
+  a_faire:  'À faire',
+  en_cours: 'En cours',
+  fait:     'Fait',
+  bloque:   'Bloqué',
+}
+
+const ETAPE_STATUT_COLORS: Record<EtapeStatut, string> = {
+  a_faire:  'var(--tx3)',
+  en_cours: '#c0a030',
+  fait:     '#60a060',
+  bloque:   '#c06060',
+}
+
+const ETAPE_STATUT_ORDER: EtapeStatut[] = ['a_faire', 'en_cours', 'fait', 'bloque']
+
+function nextEtapeStatut(current: EtapeStatut): EtapeStatut {
+  const i = ETAPE_STATUT_ORDER.indexOf(current)
+  return ETAPE_STATUT_ORDER[(i + 1) % ETAPE_STATUT_ORDER.length]
+}
+
 const DEFAULT_ETAPES: Record<ProcessType, string[]> = {
   collaboration:   ['Initial contact', 'Proposal', 'Agreement', 'Production', 'Delivery'],
   consignment:     ['Proposal', 'Contract', 'Delivery', 'On sale', 'Return / Sold'],
@@ -133,7 +155,6 @@ const DEFAULT_ETAPES: Record<ProcessType, string[]> = {
   autre:           ['Step 1', 'Step 2', 'Step 3'],
 }
 
-// Sorted type list (alphabetical by label)
 const SORTED_TYPES = (Object.keys(TYPE_LABELS) as ProcessType[])
   .sort((a, b) => TYPE_LABELS[a].localeCompare(TYPE_LABELS[b], 'fr'))
 
@@ -167,19 +188,19 @@ const IS: React.CSSProperties = {
 // ── Main component ─────────────────────────────────────────────────────
 
 export function PipelineTab() {
-  const [processes,  setProcesses]  = useState<Process[]>([])
-  const [reminders,  setReminders]  = useState<Reminder[]>([])
-  const [typeFilter, setTypeFilter] = useState<ProcessType | 'all'>('all')
-  const [showDone,   setShowDone]   = useState(false)
-  const [editing,    setEditing]    = useState<Process | 'new' | null>(null)
-  const [inspected,  setInspected]  = useState<Process | null>(null)
-  const [loading,    setLoading]    = useState(true)
+  const [processes,   setProcesses]   = useState<Process[]>([])
+  const [reminders,   setReminders]   = useState<Reminder[]>([])
+  const [typeFilter,  setTypeFilter]  = useState<ProcessType | 'all'>('all')
+  const [showDone,    setShowDone]    = useState(false)
+  const [editing,     setEditing]     = useState<Process | 'new' | null>(null)
+  const [inspectedId, setInspectedId] = useState<string | null>(null)
+  const [loading,     setLoading]     = useState(true)
 
   const load = useCallback(async () => {
     const sb = createClient()
     const [{ data: procs }, { data: etapes }, { data: rems }] = await Promise.all([
-      (sb.from('suivi_process') as any).select('*').order('date_fin', { ascending: true, nullsFirst: false }),
-      (sb.from('suivi_etape')   as any).select('*').order('position'),
+      (sb.from('suivi_process')  as any).select('*').order('date_fin', { ascending: true, nullsFirst: false }),
+      (sb.from('suivi_etape')    as any).select('*').order('position'),
       (sb.from('suivi_reminder') as any).select('*').eq('lu', false).order('remind_at'),
     ])
     const etapeMap: Record<string, Etape[]> = {}
@@ -191,13 +212,23 @@ export function PipelineTab() {
       ...p,
       responsables: p.responsables ?? [],
       vault_tags:   p.vault_tags   ?? [],
-      etapes:       etapeMap[p.id] ?? [],
+      vault_path:   p.vault_path   ?? null,
+      etapes:       (etapeMap[p.id] ?? []).map((e: any) => ({
+        ...e,
+        overdue_override: e.overdue_override ?? false,
+      })),
     })))
     setReminders(rems ?? [])
     setLoading(false)
   }, [])
 
   useEffect(() => { load() }, [load])
+
+  // Derive the open drawer's process from live state — always fresh after optimistic updates
+  const inspected = useMemo(
+    () => inspectedId ? (processes.find(p => p.id === inspectedId) ?? null) : null,
+    [inspectedId, processes]
+  )
 
   const filtered = useMemo(() => processes.filter((p) => {
     if (!showDone && ['gagne','perdu','annule','termine'].includes(p.statut)) return false
@@ -211,7 +242,7 @@ export function PipelineTab() {
       if (['perdu','annule','termine'].includes(p.statut)) return
       if (p.date_fin) items.push({ label: p.nom, date: p.date_fin, time: p.deadline_time, type: p.type, processId: p.id })
       p.etapes.forEach((e) => {
-        if (e.statut !== 'fait' && e.date_echeance)
+        if (e.statut !== 'fait' && !e.overdue_override && e.date_echeance)
           items.push({ label: `${p.nom} · ${e.nom}`, date: e.date_echeance, time: null, type: p.type, processId: p.id, etapeId: e.id })
       })
     })
@@ -221,6 +252,22 @@ export function PipelineTab() {
   async function tickEtape(etapeId: string) {
     await (createClient().from('suivi_etape') as any).update({ statut: 'fait' }).eq('id', etapeId)
     await load()
+  }
+  async function cycleEtapeStatut(etapeId: string, current: EtapeStatut) {
+    const next = nextEtapeStatut(current)
+    await (createClient().from('suivi_etape') as any).update({ statut: next }).eq('id', etapeId)
+    // Optimistic patch — drawer re-renders immediately without a round-trip
+    setProcesses(prev => prev.map(p => ({
+      ...p,
+      etapes: p.etapes.map(e => e.id === etapeId ? { ...e, statut: next } : e),
+    })))
+  }
+  async function toggleOverdueOverride(etapeId: string, current: boolean) {
+    await (createClient().from('suivi_etape') as any).update({ overdue_override: !current }).eq('id', etapeId)
+    setProcesses(prev => prev.map(p => ({
+      ...p,
+      etapes: p.etapes.map(e => e.id === etapeId ? { ...e, overdue_override: !current } : e),
+    })))
   }
   async function cycleStatut(processId: string, current: ProcessStatut) {
     const order: ProcessStatut[] = ['en_cours', 'gagne', 'termine', 'perdu', 'annule']
@@ -271,7 +318,7 @@ export function PipelineTab() {
         <div style={{ flex: 1, overflow: 'auto', padding: '20px 28px' }}>
           {filtered.length === 0
             ? <div className="t-mono-sm" style={{ color:'var(--tx3)', paddingTop:40, textAlign:'center' }}>No active processes.</div>
-            : <GanttView processes={filtered} onSelect={setInspected} onEdit={setEditing} onRefresh={load} onCycleStatut={cycleStatut} />
+            : <GanttView processes={filtered} onSelect={p=>setInspectedId(p.id)} onEdit={setEditing} onRefresh={load} onCycleStatut={cycleStatut} />
           }
         </div>
       </div>
@@ -340,7 +387,14 @@ export function PipelineTab() {
         <ProcessModal process={editing==='new'?null:editing} onClose={()=>setEditing(null)} onSaved={async()=>{setEditing(null);await load()}} />
       )}
       {inspected !== null && (
-        <ProcessDrawer process={inspected} onClose={()=>setInspected(null)} onEdit={()=>{setEditing(inspected);setInspected(null)}} onRefresh={async()=>{await load()}} />
+        <ProcessDrawer
+          process={inspected}
+          onClose={()=>setInspectedId(null)}
+          onEdit={()=>{setEditing(inspected);setInspectedId(null)}}
+          onRefresh={async()=>{await load()}}
+          onCycleEtape={cycleEtapeStatut}
+          onOverdueOverride={toggleOverdueOverride}
+        />
       )}
     </div>
   )
@@ -401,21 +455,30 @@ function GanttView({ processes, onSelect, onEdit, onRefresh, onCycleStatut }: {
                   onClick={()=>onSelect(p)}>
                   <div style={{ position:'absolute', left:0, top:0, bottom:0, width:`${progress*100}%`, background:`${color}55` }} />
                   {p.etapes.filter(e=>e.date_echeance).map(e=>{
-                    const leftPct = Math.max(0,Math.min(100,((pct(e.date_echeance!)-barL)/barW)*100))
-                    const isFait  = e.statut === 'fait'
+                    const leftPct    = Math.max(0,Math.min(100,((pct(e.date_echeance!)-barL)/barW)*100))
+                    const isFait     = e.statut === 'fait'
+                    const isBloque   = e.statut === 'bloque'
+                    const isEnCours  = e.statut === 'en_cours'
+                    const days       = daysUntil(e.date_echeance!)
+                    const isOverdue  = days < 0 && !isFait && !e.overdue_override
+                    const markerColor = isOverdue ? '#c06060' : isFait ? color : isBloque ? '#c06060' : isEnCours ? '#c0a030' : `${color}66`
                     return (
                       <div key={e.id}
-                        title={`${e.nom}${isFait?' ✓':' — cliquer pour marquer fait'}`}
+                        title={`${e.nom} · ${ETAPE_STATUT_LABELS[e.statut]}${isOverdue?' ⚠ overdue':''} — cliquer pour changer`}
                         onClick={async(ev)=>{
                           ev.stopPropagation()
-                          const sb = createClient()
-                          const next: EtapeStatut = isFait ? 'a_faire' : 'fait'
-                          await (sb.from('suivi_etape') as any).update({statut:next}).eq('id',e.id)
+                          const next = nextEtapeStatut(e.statut)
+                          await (createClient().from('suivi_etape') as any).update({statut:next}).eq('id',e.id)
                           onRefresh()
                         }}
-                        style={{ position:'absolute', left:`${leftPct}%`, top:0, bottom:0, width:10, transform:'translateX(-50%)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}
+                        style={{ position:'absolute', left:`${leftPct}%`, top:0, bottom:0, width:12, transform:'translateX(-50%)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1 }}
                       >
-                        <div style={{ width:2, height:'100%', background:isFait?color:`${color}66` }} />
+                        <div style={{ width: isFait?3:2, height:'100%', background: markerColor, boxShadow: isOverdue?'0 0 4px #c06060':undefined }} />
+                        {(isFait || isBloque || isEnCours) && (
+                          <div style={{ position:'absolute', top:1, left:'50%', transform:'translateX(-50%)', fontSize:7, color: isFait?color:isBloque?'#c06060':'#c0a030', fontWeight:700, whiteSpace:'nowrap', pointerEvents:'none' }}>
+                            {isFait?'✓':isBloque?'✕':'…'}
+                          </div>
+                        )}
                       </div>
                     )
                   })}
@@ -436,15 +499,12 @@ function GanttView({ processes, onSelect, onEdit, onRefresh, onCycleStatut }: {
 
 // ── Detail drawer ──────────────────────────────────────────────────────
 
-function ProcessDrawer({ process, onClose, onEdit, onRefresh }: {
+function ProcessDrawer({ process, onClose, onEdit, onRefresh, onCycleEtape, onOverdueOverride }: {
   process:Process; onClose:()=>void; onEdit:()=>void; onRefresh:()=>Promise<void>
+  onCycleEtape:(id:string,current:EtapeStatut)=>Promise<void>
+  onOverdueOverride:(id:string,current:boolean)=>Promise<void>
 }) {
   const color = TYPE_COLORS[process.type as ProcessType]??'#888'
-  async function toggleEtape(e:Etape) {
-    const next:EtapeStatut = e.statut==='fait' ? 'a_faire' : 'fait'
-    await(createClient().from('suivi_etape')as any).update({statut:next}).eq('id',e.id)
-    await onRefresh()
-  }
 
   function Row({label,value,href}:{label:string;value?:string|null;href?:string}) {
     if(!value) return null
@@ -499,6 +559,19 @@ function ProcessDrawer({ process, onClose, onEdit, onRefresh }: {
         </div>
       )}
 
+      {process.vault_path && (
+        <div style={{ padding:'5px 0', borderBottom:'1px solid var(--bd)' }}>
+          <div className="t-mono-sm" style={{ color:'var(--tx3)', marginBottom:4 }}>Dossier vault</div>
+          <a
+            href={process.vault_path.startsWith('http') ? process.vault_path : `https://${process.vault_path}`}
+            target="_blank" rel="noopener noreferrer"
+            style={{ fontSize:11, color:'var(--ac)', wordBreak:'break-all', display:'flex', alignItems:'center', gap:5 }}
+          >
+            <span style={{ fontSize:14 }}>📁</span>
+            <span>{process.vault_path}</span>
+          </a>
+        </div>
+      )}
       {process.vault_tags?.length > 0 && (
         <div style={{ padding:'5px 0', borderBottom:'1px solid var(--bd)' }}>
           <div className="t-mono-sm" style={{ color:'var(--tx3)', marginBottom:4 }}>Assets / Tags</div>
@@ -513,24 +586,51 @@ function ProcessDrawer({ process, onClose, onEdit, onRefresh }: {
 
       {process.etapes.length > 0 && (
         <div style={{ marginTop:16 }}>
-          <div className="t-label" style={{ marginBottom:8 }}>Steps</div>
+          <div className="t-label" style={{ marginBottom:8 }}>Étapes</div>
           <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
             {process.etapes.map(e=>{
-              const days = e.date_echeance ? daysUntil(e.date_echeance) : null
+              const days      = e.date_echeance ? daysUntil(e.date_echeance) : null
+              const isFait    = e.statut === 'fait'
+              const isBloque  = e.statut === 'bloque'
+              const isEnCours = e.statut === 'en_cours'
+              const isOverdue = days !== null && days < 0 && !isFait && !e.overdue_override
+              const statColor = ETAPE_STATUT_COLORS[e.statut]
               return (
-                <div key={e.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'7px 10px', background:'var(--bg0)', opacity:e.statut==='fait'?0.45:1, cursor:'pointer' }}
-                  onClick={()=>toggleEtape(e)}>
-                  <div style={{ width:13, height:13, border:`1.5px solid ${color}`, background:e.statut==='fait'?color:'transparent', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                    {e.statut==='fait'&&<span style={{ fontSize:8, color:'#111' }}>✓</span>}
-                  </div>
-                  <div style={{ flex:1 }}>
-                    <div style={{ fontSize:10, textDecoration:e.statut==='fait'?'line-through':'none' }}>{e.nom}</div>
-                    {e.date_echeance && days!==null && (
-                      <div style={{ fontSize:8, color:urgencyColor(days), marginTop:1 }}>
-                        {new Date(e.date_echeance).toLocaleDateString('en',{day:'numeric',month:'short'})}
-                        {days>=0?` · in ${days}d`:` · ${Math.abs(days)}d overdue`}
-                      </div>
-                    )}
+                <div key={e.id} style={{ display:'flex', alignItems:'flex-start', gap:8, padding:'8px 10px', background:'var(--bg0)', opacity:isFait?0.5:1 }}>
+                  <button
+                    title={`Statut : ${ETAPE_STATUT_LABELS[e.statut]} — cliquer pour avancer`}
+                    onClick={()=>void onCycleEtape(e.id, e.statut)}
+                    style={{ width:16, height:16, border:`1.5px solid ${statColor}`, background:isFait?statColor:'transparent', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, cursor:'pointer', marginTop:1, color:isFait?'#111':statColor, fontSize:9 }}
+                  >
+                    {isFait ? '✓' : isBloque ? '✕' : isEnCours ? '…' : ''}
+                  </button>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontSize:10, textDecoration:isFait?'line-through':'none', color:'var(--tx)' }}>{e.nom}</div>
+                    <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:2, flexWrap:'wrap' }}>
+                      <span style={{ fontSize:8, color:statColor, textTransform:'uppercase', letterSpacing:'0.06em' }}>
+                        {ETAPE_STATUT_LABELS[e.statut]}
+                      </span>
+                      {e.date_echeance && days !== null && (
+                        <span style={{ fontSize:8, color: isOverdue ? '#c06060' : urgencyColor(days) }}>
+                          {new Date(e.date_echeance).toLocaleDateString('fr',{day:'numeric',month:'short'})}
+                          {days>=0 ? ` · J-${days}` : ` · ${Math.abs(days)}j dépassé`}
+                        </span>
+                      )}
+                      {isOverdue && (
+                        <button
+                          title="Ignorer l'alerte de dépassement"
+                          onClick={()=>void onOverdueOverride(e.id, e.overdue_override)}
+                          style={{ fontSize:8, color:'var(--tx3)', background:'none', border:'1px solid var(--bd)', padding:'1px 5px', cursor:'pointer' }}
+                        >ignorer ⚠</button>
+                      )}
+                      {e.overdue_override && !isFait && (
+                        <button
+                          title="Réactiver l'alerte de dépassement"
+                          onClick={()=>void onOverdueOverride(e.id, e.overdue_override)}
+                          style={{ fontSize:8, color:'var(--tx3)', background:'none', border:'1px solid var(--bd)', padding:'1px 5px', cursor:'pointer' }}
+                        >⚠ ignoré</button>
+                      )}
+                    </div>
                   </div>
                 </div>
               )
@@ -567,6 +667,7 @@ function ProcessModal({ process, onClose, onSaved }: {
   const [stakeholders, setStakeholders] = useState(process?.stakeholders  ?? '')
   const [responsables, setResponsables] = useState<Responsable[]>(process?.responsables ?? [])
   const [vaultTags,    setVaultTags]    = useState((process?.vault_tags ?? []).join(', '))
+  const [vaultPath,    setVaultPath]    = useState(process?.vault_path    ?? '')
   const [assetNotes,   setAssetNotes]   = useState(process?.asset_notes   ?? '')
   const [notes,        setNotes]        = useState(process?.notes         ?? '')
   const [etapes,       setEtapes]       = useState<{ nom:string; date_echeance:string; statut:EtapeStatut }[]>(
@@ -598,6 +699,7 @@ function ProcessModal({ process, onClose, onSaved }: {
         nom, type, date_debut:debut||null, date_fin:fin||null, deadline_time:deadlineTime||null,
         statut, localisation:localisation||null, url:url||null, scope:scope||null,
         stakeholders:stakeholders||null, responsables, vault_tags:tags,
+        vault_path:vaultPath||null,
         asset_notes:assetNotes||null, notes:notes||null, updated_at:new Date().toISOString(),
       }
       let pid = process?.id
@@ -631,11 +733,9 @@ function ProcessModal({ process, onClose, onSaved }: {
         </div>
 
         <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-          {/* Name */}
           <div><div className="t-label" style={{marginBottom:3}}>Name *</div>
             <input value={nom} onChange={e=>{const v=e.target.value;setNom(v)}} style={IS} placeholder="e.g. Prix Marcel Duchamp 2026" /></div>
 
-          {/* Type + Statut */}
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
             <div><div className="t-label" style={{marginBottom:3}}>Type</div>
               <select value={type} onChange={e=>handleTypeChange(e.target.value as ProcessType)} style={IS}>
@@ -647,7 +747,6 @@ function ProcessModal({ process, onClose, onSaved }: {
               </select></div>
           </div>
 
-          {/* Dates + time */}
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10 }}>
             <div><div className="t-label" style={{marginBottom:3}}>Start</div>
               <input type="date" value={debut} onChange={e=>{const v=e.target.value;setDebut(v)}} style={IS} /></div>
@@ -657,7 +756,6 @@ function ProcessModal({ process, onClose, onSaved }: {
               <input value={deadlineTime} onChange={e=>{const v=e.target.value;setDeadlineTime(v)}} style={IS} placeholder="23:59 GMT" /></div>
           </div>
 
-          {/* Location + URL */}
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
             <div><div className="t-label" style={{marginBottom:3}}>Location</div>
               <input value={localisation} onChange={e=>{const v=e.target.value;setLocalisation(v)}} style={IS} placeholder="City, venue…" /></div>
@@ -665,13 +763,11 @@ function ProcessModal({ process, onClose, onSaved }: {
               <input value={url} onChange={e=>{const v=e.target.value;setUrl(v)}} style={IS} placeholder="https://…" /></div>
           </div>
 
-          {/* Scope + Stakeholders */}
           <div><div className="t-label" style={{marginBottom:3}}>Scope</div>
             <input value={scope} onChange={e=>{const v=e.target.value;setScope(v)}} style={IS} placeholder="Describe the scope and objectives…" /></div>
           <div><div className="t-label" style={{marginBottom:3}}>Stakeholders</div>
             <input value={stakeholders} onChange={e=>{const v=e.target.value;setStakeholders(v)}} style={IS} placeholder="Organisations, institutions involved…" /></div>
 
-          {/* People in charge */}
           <div>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
               <div className="t-label">People in charge</div>
@@ -686,13 +782,13 @@ function ProcessModal({ process, onClose, onSaved }: {
             ))}
           </div>
 
-          {/* Assets */}
+          <div><div className="t-label" style={{marginBottom:3}}>Dossier vault (lien vers le dossier de documents)</div>
+            <input value={vaultPath} onChange={e=>{const v=e.target.value;setVaultPath(v)}} style={IS} placeholder="https://drive.google.com/… ou chemin local" /></div>
           <div><div className="t-label" style={{marginBottom:3}}>Vault tags (comma-separated)</div>
             <input value={vaultTags} onChange={e=>{const v=e.target.value;setVaultTags(v)}} style={IS} placeholder="dossier, photo, press release, contract…" /></div>
           <div><div className="t-label" style={{marginBottom:3}}>Assets to produce</div>
             <textarea value={assetNotes} onChange={e=>{const v=e.target.value;setAssetNotes(v)}} rows={2} style={{...IS,resize:'vertical',lineHeight:1.5}} placeholder="List assets to be produced for this process…" /></div>
 
-          {/* Steps */}
           <div>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
               <div className="t-label">Steps</div>
@@ -709,11 +805,9 @@ function ProcessModal({ process, onClose, onSaved }: {
             </div>
           </div>
 
-          {/* Notes */}
           <div><div className="t-label" style={{marginBottom:3}}>Notes</div>
             <textarea value={notes} onChange={e=>{const v=e.target.value;setNotes(v)}} rows={3} style={{...IS,resize:'vertical',lineHeight:1.6}} placeholder="Information, links, contacts…" /></div>
 
-          {/* Reminder */}
           <div style={{ borderTop:'1px solid var(--bd)', paddingTop:12 }}>
             <div className="t-label" style={{marginBottom:6}}>Add a reminder</div>
             <div style={{ display:'flex', gap:8 }}>

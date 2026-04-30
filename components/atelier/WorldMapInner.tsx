@@ -100,11 +100,17 @@ export function WorldMapInner({ pins, mapKey, onOpenContact }: Props) {
       if (pins.length === 0) return
       const latlngs: [number, number][] = []
 
+      const R2  = process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? ''
       const SB  = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
       const BKT = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET ?? 'paintings'
-      // Use Next.js's built-in image optimizer to keep map-marker thumbs tiny
-      const mkThumb = (path: string) =>
-        `/_next/image?url=${encodeURIComponent(`${SB}/storage/v1/object/public/${BKT}/${encodeURIComponent(path)}`)}&w=64&q=70`
+      // Build thumb URL: prefer R2 thumbs/<base>.avif, fall back to Supabase storage
+      const mkThumb = (path: string) => {
+        if (R2) {
+          const base = path.replace(/\.[^.]+$/, '')
+          return `${R2}/thumbs/${encodeURIComponent(base)}.avif`
+        }
+        return `/_next/image?url=${encodeURIComponent(`${SB}/storage/v1/object/public/${BKT}/${encodeURIComponent(path)}`)}&w=64&q=70`
+      }
 
       pins.forEach((pin) => {
         const isWork = pin.id.startsWith('work-')

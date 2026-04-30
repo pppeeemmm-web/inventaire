@@ -4,7 +4,7 @@
 // Left rail: multi-image progress manager. Right pane: scrollable field grid.
 // Submitted via Server Action (saveWork) with useTransition.
 
-import { useState, useTransition, useRef, useCallback } from 'react'
+import { useState, useEffect, useTransition, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { imageUrl, thumbUrl } from '@/lib/data'
 import type { Oeuvre, WorkImage } from '@/lib/types/database'
@@ -71,6 +71,7 @@ export function WorkForm({
 
   // Selected status (for sending label alongside id)
   const [statusId, setStatusId] = useState<string>(String(oeuvre?.statusId ?? ''))
+  const [isCatalogued, setIsCatalogued] = useState<boolean>(oeuvre?.Catalogué ?? false)
 
   // Controlled lookup selects — can grow via inline creation
   const [techniqueId,   setTechniqueId]   = useState(String(oeuvre?.Technique  ?? ''))
@@ -157,9 +158,14 @@ export function WorkForm({
     // Inject computed prix final
     fd.set('prix_final', String(prixFinal ?? ''))
 
-    // Inject status label (for history auto-append)
+    // Inject status label + contact name (for history auto-append)
     const label = statuses.find((s) => String(s.id) === statusId)?.label ?? ''
     fd.set('status_label', label)
+    const contact = localContacts.find((c) => String(c.ContactID) === contactId)
+    const contactName = contact
+      ? (contact.NomInstitution || `${contact.Prénom ?? ''} ${contact.Nom ?? ''}`.trim())
+      : ''
+    fd.set('contact_name', contactName)
 
     // Inject selected themes (checkboxes don't submit if unchecked)
     fd.delete('themes')
@@ -456,6 +462,32 @@ export function WorkForm({
                   ))}
                 </select>
               </Field>
+              <Field label="Stade de production">
+                {(() => {
+                  const stageGone = isCatalogued || statusLabel === 'Sold' || statusLabel === 'Gift'
+                  return (
+                    <select
+                      name="stage_production"
+                      defaultValue={(oeuvre as any)?.StageProduction ?? ''}
+                      disabled={stageGone}
+                      style={{
+                        ...inputStyle,
+                        opacity: stageGone ? 0.4 : 1,
+                        cursor: stageGone ? 'not-allowed' : undefined,
+                      }}
+                    >
+                      <option value="">— Non défini</option>
+                      <option value="idea">💡 Idée</option>
+                      <option value="wip">🖌 En cours</option>
+                      <option value="drying">⏳ Séchage</option>
+                      <option value="mounting">🔧 À monter</option>
+                      <option value="framing">🪟 À encadrer</option>
+                      <option value="shot">📷 À photographier</option>
+                      <option value="catalogued">✅ À cataloguer (fini)</option>
+                    </select>
+                  )
+                })()}
+              </Field>
               <Field label="Contact">
                 <div style={{ display: 'flex', gap: 4 }}>
                   <select
@@ -484,11 +516,12 @@ export function WorkForm({
               {[
                 { name: 'exposable',  label: 'Exposable',  defaultChecked: oeuvre?.Exposable ?? false },
                 { name: 'encadree',   label: 'Encadrée',   defaultChecked: oeuvre?.Encadree  ?? false },
-                { name: 'catalogued', label: 'Cataloguée', defaultChecked: oeuvre?.Catalogué ?? false },
+                { name: 'catalogued', label: 'Cataloguée', defaultChecked: oeuvre?.Catalogué ?? false, onChange: setIsCatalogued },
                 { name: 'is_public',  label: 'Public',     defaultChecked: oeuvre?.is_public ?? false },
-              ].map(({ name, label, defaultChecked }) => (
+              ].map(({ name, label, defaultChecked, onChange: onChg }: { name: string; label: string; defaultChecked: boolean; onChange?: (v: boolean) => void }) => (
                 <CheckFlag
                   key={name} name={name} label={label} defaultChecked={defaultChecked}
+                  onChange={onChg}
                   disabled={name === 'exposable' && statusId === '1'}
                   forceOff={name === 'exposable' && statusId === '1'}
                 />
@@ -559,38 +592,46 @@ export function WorkForm({
             {/* ─ Section: Prix ─ */}
             <SectionHead>Prix</SectionHead>
 
-            <FieldRow>
-              <Field label="Prix (€)">
-                <input
-                  name="prix"
-                  type="number"
-                  value={prix}
-                  onChange={(e) => setPrix(e.target.value)}
-                  placeholder="0"
-                  style={inputStyle}
-                />
-              </Field>
-              <Field label="Remise (€)">
-                <input
-                  name="discount"
-                  type="number"
-                  value={discount}
-                  onChange={(e) => setDiscount(e.target.value)}
-                  placeholder="0"
-                  style={inputStyle}
-                />
-              </Field>
-            </FieldRow>
+            {statusLabel === 'Gift' ? (
+              <div style={{ fontSize: 11, color: 'var(--tx3)', marginBottom: 24 }}>
+                — Aucun prix (don)
+              </div>
+            ) : (
+              <>
+                <FieldRow>
+                  <Field label="Prix (€)">
+                    <input
+                      name="prix"
+                      type="number"
+                      value={prix}
+                      onChange={(e) => setPrix(e.target.value)}
+                      placeholder="0"
+                      style={inputStyle}
+                    />
+                  </Field>
+                  <Field label="Remise (€)">
+                    <input
+                      name="discount"
+                      type="number"
+                      value={discount}
+                      onChange={(e) => setDiscount(e.target.value)}
+                      placeholder="0"
+                      style={inputStyle}
+                    />
+                  </Field>
+                </FieldRow>
 
-            <FieldRow>
-              <Field label="Prix final (€)">
-                <div style={{ ...inputStyle, color: 'var(--tx2)', display: 'flex', alignItems: 'center' }}>
-                  {prixFinal !== null
-                    ? prixFinal.toLocaleString('fr-FR')
-                    : <span style={{ color: 'var(--tx3)' }}>—</span>}
-                </div>
-              </Field>
-            </FieldRow>
+                <FieldRow>
+                  <Field label="Prix final (€)">
+                    <div style={{ ...inputStyle, color: 'var(--tx2)', display: 'flex', alignItems: 'center' }}>
+                      {prixFinal !== null
+                        ? prixFinal.toLocaleString('fr-FR')
+                        : <span style={{ color: 'var(--tx3)' }}>—</span>}
+                    </div>
+                  </Field>
+                </FieldRow>
+              </>
+            )}
 
             {/* ─ Section: Notes ─ */}
             <SectionHead>Notes</SectionHead>
@@ -1094,7 +1135,28 @@ function CreatableSelect({
 }
 
 // ── ContactModal ─────────────────────────────────────────────
-// Overlay modal for quick contact creation from the work form.
+// Full contact creation modal — matches the Contacts tab form.
+
+type CMFormState = {
+  NomInstitution: string; Nom: string; Prénom: string; Genre: string; Role: string
+  Email: string; IndicatifPays1: string; Téléphone1: string; IndicatifPays2: string; Téléphone2: string
+  Website: string
+  Instagram: string; LinkedIn: string; Facebook: string; Twitter: string
+  PersonneResponsable: string; RoleResponsable: string; Notes: string; Actif: boolean
+}
+
+type CMAddr = { label: string; adresse: string; code_postal: string; ville: string; pays: string }
+function emptyCMAddr(): CMAddr { return { label: "", adresse: "", code_postal: "", ville: "", pays: "" } }
+
+function CMSection({ title }: { title: string }) {
+  return (
+    <div style={{
+      fontSize: 8, letterSpacing: "0.12em", textTransform: "uppercase",
+      color: "var(--tx3)", borderBottom: "1px solid var(--bd)",
+      paddingBottom: 4, marginTop: 20, marginBottom: 10,
+    }}>{title}</div>
+  )
+}
 
 function ContactModal({
   onClose,
@@ -1103,17 +1165,35 @@ function ContactModal({
   onClose:   () => void
   onCreated: (c: { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null; Role: string | null; Ville?: string | null; Pays?: string | null }) => void
 }) {
-  const [form, setForm] = useState({
-    NomInstitution: "", Nom: "", Prénom: "", Role: "",
-    Email: "", IndicatifPays1: "", Téléphone1: "",
-    Website: "", Ville: "", Pays: "", Notes: "",
+  const [form, setForm] = useState<CMFormState>({
+    NomInstitution: "", Nom: "", Prénom: "", Genre: "", Role: "",
+    Email: "", IndicatifPays1: "", Téléphone1: "", IndicatifPays2: "", Téléphone2: "",
+    Website: "",
+    Instagram: "", LinkedIn: "", Facebook: "", Twitter: "",
+    PersonneResponsable: "", RoleResponsable: "", Notes: "", Actif: true,
   })
+  const [addrList, setAddrList] = useState<CMAddr[]>([emptyCMAddr()])
+  const [roleOptions, setRoleOptions] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
   const [err,  setErr]  = useState<string | null>(null)
 
-  function field(k: keyof typeof form) {
-    return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+  useEffect(() => {
+    import("@/lib/supabase/client").then(({ createClient }) => {
+      ;(createClient().from("tblRole") as any)
+        .select("Nom").order("Nom")
+        .then(({ data }: { data: { Nom: string }[] | null }) => {
+          if (data) setRoleOptions(data.map((r) => r.Nom))
+        })
+    })
+  }, [])
+
+  function f(k: keyof Omit<CMFormState, "Actif">) {
+    return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
       setForm((p) => ({ ...p, [k]: e.target.value }))
+  }
+
+  function updateAddr(i: number, k: keyof CMAddr, v: string) {
+    setAddrList((prev) => prev.map((a, j) => j === i ? { ...a, [k]: v } : a))
   }
 
   async function handleSave() {
@@ -1122,28 +1202,61 @@ function ContactModal({
     try {
       const { createClient } = await import("@/lib/supabase/client")
       const sb = createClient()
+      const validAddrs = addrList.filter((a) => a.adresse || a.ville || a.pays || a.code_postal)
+      const primaryVille = validAddrs[0]?.ville || null
+      const primaryPays  = validAddrs[0]?.pays  || null
+
       const { data: maxRow } = await (sb.from("Contact") as any)
         .select("ContactID")
         .order("ContactID", { ascending: false })
         .limit(1)
         .single()
       const nextId = ((maxRow as any)?.ContactID ?? 0) + 1
+
       const payload = {
-        ContactID:      nextId,
-        NomInstitution: form.NomInstitution || null,
-        Nom:            form.Nom            || null,
-        Prénom:         form.Prénom         || null,
-        Role:           form.Role           || null,
-        Email:          form.Email          || null,
-        IndicatifPays1: form.IndicatifPays1 || null,
-        Téléphone1:     form.Téléphone1     || null,
-        Website:        form.Website        || null,
-        Ville:          form.Ville          || null,
-        Pays:           form.Pays           || null,
-        Notes:          form.Notes          || null,
+        ContactID:           nextId,
+        NomInstitution:      form.NomInstitution      || null,
+        Nom:                 form.Nom                 || null,
+        Prénom:              form.Prénom              || null,
+        Genre:               form.Genre               || null,
+        Role:                form.Role                || null,
+        Email:               form.Email               || null,
+        IndicatifPays1:      form.IndicatifPays1      || null,
+        Téléphone1:          form.Téléphone1          || null,
+        IndicatifPays2:      form.IndicatifPays2      || null,
+        Téléphone2:          form.Téléphone2          || null,
+        Website:             form.Website             || null,
+        Adresse:             validAddrs[0]?.adresse   || null,
+        CodePostal:          validAddrs[0]?.code_postal || null,
+        Ville:               primaryVille,
+        Pays:                primaryPays,
+        Instagram:           form.Instagram           || null,
+        LinkedIn:            form.LinkedIn            || null,
+        Facebook:            form.Facebook            || null,
+        Twitter:             form.Twitter             || null,
+        PersonneResponsable: form.PersonneResponsable || null,
+        RoleResponsable:     form.RoleResponsable     || null,
+        Notes:               form.Notes               || null,
+        Actif:               form.Actif,
       }
+
       const { error } = await (sb.from("Contact") as any).insert(payload)
-      if (error) throw new Error(error.message)
+      if (error) throw new Error((error as any).message)
+
+      // Save additional addresses
+      if (validAddrs.length > 0) {
+        const insertRows = validAddrs.map((a, i) => ({
+          contact_id:  nextId,
+          label:       a.label || (validAddrs.length === 1 ? "Principal" : `Adresse ${i + 1}`),
+          adresse:     a.adresse     || null,
+          code_postal: a.code_postal || null,
+          ville:       a.ville       || null,
+          pays:        a.pays        || null,
+          position:    i,
+        }))
+        await (sb.from("contact_addresses") as any).insert(insertRows)
+      }
+
       onCreated({
         ContactID:      nextId,
         NomInstitution: payload.NomInstitution,
@@ -1166,88 +1279,161 @@ function ContactModal({
     color: "var(--tx)", outline: "none",
   }
 
-  const BASIC_FIELDS: [keyof typeof form, string][] = [
-    ["NomInstitution", "Institution"],
-    ["Prénom",         "Prénom"],
-    ["Nom",            "Nom"],
-    ["Role",           "Rôle"],
-  ]
+  const G2: React.CSSProperties = {
+    display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 12px",
+  }
+
+  function FR({ label, children }: { label: string; children: React.ReactNode }) {
+    return (
+      <div>
+        <div className="t-label" style={{ marginBottom: 3 }}>{label}</div>
+        {children}
+      </div>
+    )
+  }
 
   return (
     <div style={{
       position: "fixed", inset: 0, zIndex: 200,
-      background: "rgba(0,0,0,0.55)",
+      background: "rgba(0,0,0,0.6)",
       display: "flex", alignItems: "center", justifyContent: "center",
+      padding: 24,
     }}>
       <div style={{
         background: "var(--bg1)", border: "1px solid var(--bd)",
-        width: 460, padding: 28,
+        width: "100%", maxWidth: 600,
         maxHeight: "90vh", overflowY: "auto",
+        padding: 28,
       }}>
-        <div style={{
-          fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase",
-          color: "var(--tx3)", marginBottom: 20,
-        }}>
-          Nouveau contact
+        {/* Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+          <div style={{ fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--tx3)" }}>
+            Nouveau contact
+          </div>
+          <button type="button" className="btn ghost sm" onClick={onClose} disabled={busy}>✕</button>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {/* Identity */}
-          {BASIC_FIELDS.map(([k, l]) => (
-            <div key={k}>
-              <div className="t-label" style={{ marginBottom: 3 }}>{l}</div>
-              <input value={form[k]} onChange={field(k)} style={IS} />
+        {/* Identité */}
+        <CMSection title="Identité" />
+        <div style={G2}>
+          <FR label="Institution"><input value={form.NomInstitution} onChange={f("NomInstitution")} style={IS} /></FR>
+          <FR label="Rôle">
+            <select value={form.Role} onChange={f("Role")} style={IS}>
+              <option value="">— Choisir</option>
+              {form.Role && !roleOptions.includes(form.Role) && (
+                <option value={form.Role}>{form.Role}</option>
+              )}
+              {roleOptions.map((r) => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </FR>
+          <FR label="Prénom"><input value={form.Prénom} onChange={f("Prénom")} style={IS} /></FR>
+          <FR label="Nom"><input value={form.Nom} onChange={f("Nom")} style={IS} /></FR>
+          <FR label="Genre">
+            <select value={form.Genre} onChange={f("Genre")} style={IS}>
+              <option value="">—</option>
+              <option value="M.">M.</option>
+              <option value="Mme">Mme</option>
+              <option value="Mx">Mx</option>
+            </select>
+          </FR>
+          <FR label="Actif">
+            <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6, fontSize: 11, cursor: "pointer" }}>
+              <input type="checkbox" checked={form.Actif} onChange={(e) => setForm((p) => ({ ...p, Actif: e.target.checked }))} />
+              Actif
+            </label>
+          </FR>
+        </div>
+        <div style={{ ...G2, marginTop: 8 }}>
+          <FR label="Personne responsable"><input value={form.PersonneResponsable} onChange={f("PersonneResponsable")} style={IS} /></FR>
+          <FR label="Rôle responsable"><input value={form.RoleResponsable} onChange={f("RoleResponsable")} style={IS} /></FR>
+        </div>
+
+        {/* Contact */}
+        <CMSection title="Contact" />
+        <div style={G2}>
+          <FR label="Email"><input type="email" value={form.Email} onChange={f("Email")} style={IS} /></FR>
+          <FR label="Website"><input value={form.Website} onChange={f("Website")} placeholder="https://…" style={IS} /></FR>
+          <FR label="Indicatif + Tél. 1">
+            <div style={{ display: "flex", gap: 4 }}>
+              <input value={form.IndicatifPays1} onChange={f("IndicatifPays1")} placeholder="+" style={{ ...IS, width: 56, flexShrink: 0 }} />
+              <input value={form.Téléphone1} onChange={f("Téléphone1")} placeholder="Numéro" style={{ ...IS, flex: 1 }} />
+            </div>
+          </FR>
+          <FR label="Indicatif + Tél. 2">
+            <div style={{ display: "flex", gap: 4 }}>
+              <input value={form.IndicatifPays2} onChange={f("IndicatifPays2")} placeholder="+" style={{ ...IS, width: 56, flexShrink: 0 }} />
+              <input value={form.Téléphone2} onChange={f("Téléphone2")} placeholder="Numéro" style={{ ...IS, flex: 1 }} />
+            </div>
+          </FR>
+        </div>
+
+        {/* Adresse */}
+        <CMSection title="Adresse" />
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {addrList.map((addr, i) => (
+            <div key={i} style={{
+              border: "1px solid var(--bd)", padding: "10px 12px",
+              background: "var(--bg0)", position: "relative",
+            }}>
+              <div style={{ display: "flex", gap: 6, marginBottom: 8, alignItems: "center" }}>
+                <input
+                  value={addr.label}
+                  onChange={(e) => updateAddr(i, "label", e.target.value)}
+                  placeholder={i === 0 ? "Principal" : `Adresse ${i + 1}`}
+                  style={{ ...IS, flex: 1, fontSize: 10 }}
+                />
+                {addrList.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setAddrList((p) => p.filter((_, j) => j !== i))}
+                    style={{ background: "none", border: "1px solid var(--bd)", color: "var(--tx3)", padding: "4px 8px", cursor: "pointer", fontSize: 10 }}
+                  >✕</button>
+                )}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <input value={addr.adresse} onChange={(e) => updateAddr(i, "adresse", e.target.value)} placeholder="Rue / adresse" style={IS} />
+                <div style={{ display: "grid", gridTemplateColumns: "100px 1fr", gap: 6 }}>
+                  <input value={addr.code_postal} onChange={(e) => updateAddr(i, "code_postal", e.target.value)} placeholder="Code postal" style={IS} />
+                  <input value={addr.ville} onChange={(e) => updateAddr(i, "ville", e.target.value)} placeholder="Ville" style={IS} />
+                </div>
+                <input value={addr.pays} onChange={(e) => updateAddr(i, "pays", e.target.value)} placeholder="Pays" style={IS} />
+              </div>
             </div>
           ))}
-
-          {/* Contact */}
-          <div>
-            <div className="t-label" style={{ marginBottom: 3 }}>Email</div>
-            <input type="email" value={form.Email} onChange={field("Email")} style={IS} />
-          </div>
-          <div>
-            <div className="t-label" style={{ marginBottom: 3 }}>Téléphone</div>
-            <div style={{ display: "flex", gap: 6 }}>
-              <input value={form.IndicatifPays1} onChange={field("IndicatifPays1")}
-                placeholder="+" style={{ ...IS, width: 56, flexShrink: 0 }} />
-              <input value={form.Téléphone1} onChange={field("Téléphone1")}
-                placeholder="Numéro" style={{ ...IS, flex: 1 }} />
-            </div>
-          </div>
-          <div>
-            <div className="t-label" style={{ marginBottom: 3 }}>Website</div>
-            <input value={form.Website} onChange={field("Website")}
-              placeholder="https://…" style={IS} />
-          </div>
-
-          {/* Location */}
-          <div style={{ display: "flex", gap: 6 }}>
-            <div style={{ flex: 1 }}>
-              <div className="t-label" style={{ marginBottom: 3 }}>Ville</div>
-              <input value={form.Ville} onChange={field("Ville")} style={IS} />
-            </div>
-            <div style={{ flex: 1 }}>
-              <div className="t-label" style={{ marginBottom: 3 }}>Pays</div>
-              <input value={form.Pays} onChange={field("Pays")} style={IS} />
-            </div>
-          </div>
-
-          {/* Notes */}
-          <div>
-            <div className="t-label" style={{ marginBottom: 3 }}>Notes</div>
-            <textarea value={form.Notes} onChange={field("Notes")} rows={3}
-              style={{ ...IS, resize: "vertical", lineHeight: 1.6 }} />
-          </div>
+          <button
+            type="button"
+            onClick={() => setAddrList((p) => [...p, emptyCMAddr()])}
+            style={{
+              background: "none", border: "1px dashed var(--bd)",
+              color: "var(--tx3)", padding: 8,
+              cursor: "pointer", fontSize: 10, letterSpacing: 0.5, textAlign: "center",
+            }}
+          >+ Ajouter une adresse</button>
         </div>
 
-        {err && (
-          <div style={{ fontSize: 11, color: "var(--rust)", marginTop: 10 }}>{err}</div>
-        )}
+        {/* Réseaux sociaux */}
+        <CMSection title="Réseaux sociaux" />
+        <div style={G2}>
+          <FR label="Instagram"><input value={form.Instagram} onChange={f("Instagram")} placeholder="@handle ou URL" style={IS} /></FR>
+          <FR label="LinkedIn"><input value={form.LinkedIn} onChange={f("LinkedIn")} placeholder="handle ou URL" style={IS} /></FR>
+          <FR label="Facebook"><input value={form.Facebook} onChange={f("Facebook")} placeholder="handle ou URL" style={IS} /></FR>
+          <FR label="Twitter / X"><input value={form.Twitter} onChange={f("Twitter")} placeholder="@handle ou URL" style={IS} /></FR>
+        </div>
+
+        {/* Notes */}
+        <CMSection title="Notes" />
+        <textarea
+          value={form.Notes}
+          onChange={f("Notes")}
+          rows={3}
+          style={{ ...IS, resize: "vertical", lineHeight: 1.6 }}
+          placeholder="Notes libres..."
+        />
+
+        {err && <div style={{ fontSize: 11, color: "var(--rust)", marginTop: 10 }}>{err}</div>}
 
         <div className="row gap-sm" style={{ marginTop: 20, justifyContent: "flex-end" }}>
-          <button type="button" className="btn ghost sm" onClick={onClose} disabled={busy}>
-            Annuler
-          </button>
+          <button type="button" className="btn ghost sm" onClick={onClose} disabled={busy}>Annuler</button>
           <button type="button" className="btn primary sm" onClick={() => void handleSave()} disabled={busy}>
             {busy ? "..." : "Créer"}
           </button>

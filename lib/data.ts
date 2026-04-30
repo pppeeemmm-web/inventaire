@@ -45,10 +45,28 @@ export function decadeOf(year: number | null): string | null {
   return `${Math.floor(year / 10) * 10}s`
 }
 
+// ── Stage production color ─────────────────────────────────────
+
+export type StageKey = 'idea' | 'wip' | 'drying' | 'framing' | 'shot' | 'catalogued'
+
+/** Returns a CSS color var string for a StageProduction value */
+export function stageColor(stage: string | null | undefined): string {
+  switch (stage) {
+    case 'idea':      return 'var(--ac)'
+    case 'wip':       return 'var(--rust)'
+    case 'drying':    return 'var(--dust)'
+    case 'mounting':  return 'var(--dust)'
+    case 'framing':   return 'var(--dust)'
+    case 'shot':      return 'var(--cyan)'
+    case 'catalogued':return 'var(--sage)'
+    default:          return 'transparent'
+  }
+}
+
 // ── Status helpers ────────────────────────────────────────────
 
 export type StatusKey =
-  | 'studio' | 'consigned' | 'sold' | 'loan' | 'wip' | 'destroyed' | 'lost'
+  | 'studio' | 'consigned' | 'sold' | 'loan' | 'wip' | 'destroyed' | 'lost' | 'gift'
 
 /** Map OeuvreStatus.label → our canonical key */
 const STATUS_LABEL_MAP: Record<string, StatusKey> = {
@@ -62,6 +80,7 @@ const STATUS_LABEL_MAP: Record<string, StatusKey> = {
   Loan:       'loan',
   Destroyed:  'destroyed',
   Lost:       'lost',
+  Gift:       'gift',
 }
 
 export function statusKeyFromLabel(label: string | null | undefined): StatusKey {

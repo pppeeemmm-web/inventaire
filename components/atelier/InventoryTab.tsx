@@ -7,7 +7,7 @@ import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
-import { imageUrl, thumbUrl, yearOf, statusOf, type StatusKey } from '@/lib/data'
+import { imageUrl, thumbUrl, yearOf, statusOf, stageColor, type StatusKey } from '@/lib/data'
 import { StatusChip } from '@/components/ui/StatusChip'
 import type { Oeuvre } from '@/lib/types/database'
 
@@ -141,11 +141,12 @@ type View = 'list' | 'grid' | 'graph'
 
 export function InventoryTab({
   oeuvres, tM, sM, cM, pM, locMap, statusLabelMap,
-  techniques, supports, themes = [], groups = [],
+  techniques, supports, formats = [], themes = [], groups = [],
   selection, setSelection, onOpen,
 }: SharedProps & {
   techniques: { TechniqueID: number; Technique: string | null }[]
   supports:   { SupportID:   number; Support:   string | null }[]
+  formats?:   { FormatID:    number; Format:    string | null }[]
   themes?:    { ThemeID: number; Nom: string }[]
   groups?:    { id: string; name: string }[]
 }) {
@@ -193,6 +194,11 @@ export function InventoryTab({
   const thM = useMemo(
     () => Object.fromEntries(themes.map((t) => [t.ThemeID, t.Nom])),
     [themes],
+  )
+
+  const fM = useMemo(
+    () => Object.fromEntries(formats.map((f) => [f.FormatID, f.Format ?? ''])),
+    [formats],
   )
 
   useEffect(() => {
@@ -713,11 +719,18 @@ function InvList({
             const isFoc = focused?.OeuvreID === o.OeuvreID
             const st    = statusOf(o, statusLabelMap)
             const dims  = o.Hauteur && o.Largeur ? `${o.Hauteur}×${o.Largeur}` : '—'
+            const isGoneRow = st === 'sold' || st === 'gift'
+            const sCol  = isGoneRow ? 'transparent' : stageColor((o as any).StageProduction)
+            const sBg   = sCol === 'transparent' ? '' : `color-mix(in srgb, ${sCol} 8%, var(--bg1))`
             return (
               <tr
                 key={o.OeuvreID}
                 onClick={() => setFocused(o)}
-                style={{ background: isFoc ? 'var(--bg2)' : '', cursor: 'pointer' }}
+                style={{
+                  background: isFoc ? 'var(--bg2)' : sBg,
+                  cursor: 'pointer',
+                  borderLeft: `3px solid ${sCol === 'transparent' ? 'var(--bd)' : sCol}`,
+                }}
               >
                 {/* Checkbox — full-cell hit area, shift+click for range */}
                 <td
@@ -860,6 +873,7 @@ function InvPreview({
   const st     = statusOf(o, statusLabelMap)
   const isSold = st === 'sold'
   const isLoan = st === 'loan' || st === 'consigned'
+  const isGone = st === 'sold' || st === 'gift'  // left the atelier — stade irrelevant
   const dims   = o.Hauteur && o.Largeur
     ? `${o.Hauteur} × ${o.Largeur}${o.Profondeur ? ` × ${o.Profondeur}` : ''} cm`
     : null
@@ -868,7 +882,7 @@ function InvPreview({
   const priceDisplay = (() => {
     const p = (o as any).PrixFinal ?? o.Prix
     if (p && p > 0) return `€\u202f${Number(p).toLocaleString('fr-FR')}`
-    return isSold ? '—' : t('surDemande')
+    return isGone ? '—' : t('surDemande')
   })()
 
   // Owner/contact: default to PEM if not set
@@ -1051,6 +1065,9 @@ function InvPreview({
         <div className="t-label">{t('support')}</div>
         <div style={{ color: 'var(--tx2)' }}>{o.Support != null ? (sM[o.Support] ?? '—') : '—'}</div>
 
+        <div className="t-label">Format</div>
+        <div style={{ color: 'var(--tx2)' }}>{(o as any).Format != null ? (fM[(o as any).Format] ?? '—') : '—'}</div>
+
         <div className="t-label">{t('presentation')}</div>
         <div style={{ color: (o as any).PresentationID != null ? 'var(--tx2)' : 'var(--tx3)' }}>
           {(o as any).PresentationID != null ? (pM[(o as any).PresentationID] ?? '—') : '—'}
@@ -1061,9 +1078,8 @@ function InvPreview({
 
         {/* ── État ─────────────────────────────────────────────── */}
         <div className="t-label" style={{ paddingTop: 8 }}>{t('status')}</div>
-        <div style={{ paddingTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ paddingTop: 8, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <StatusChip s={st} />
-          {/* Show the raw DB label so "Reserved" / "Available" / etc. are readable */}
           {(o as any).statusId != null && statusLabelMap[(o as any).statusId] && (
             <span style={{ color: 'var(--tx3)', fontSize: 10 }}>
               {statusLabelMap[(o as any).statusId]}
@@ -1071,23 +1087,46 @@ function InvPreview({
           )}
         </div>
 
+        <div className="t-label">Stade</div>
+        <div>
+          {isGone ? (
+            // Sold or gifted — no longer in production, irrelevant
+            <span style={{ color: 'var(--tx3)' }}>—</span>
+          ) : o.Catalogué ? (
+            // Catalogued = finished, greyed out
+            <span style={{
+              fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase',
+              border: '1px solid var(--tx3)', color: 'var(--tx3)', padding: '1px 6px',
+            }}>Fini</span>
+          ) : (o as any).StageProduction ? (() => {
+            const stageLabels: Record<string, string> = {
+              idea: 'Idée', wip: 'En cours', drying: 'Séchage',
+              mounting: 'À monter', framing: 'À encadrer', shot: 'À photographier', catalogued: 'À cataloguer',
+            }
+            const sc = stageColor((o as any).StageProduction)
+            const sl = stageLabels[(o as any).StageProduction] ?? (o as any).StageProduction
+            return (
+              <span style={{
+                fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase',
+                border: `1px solid ${sc}`, color: sc, padding: '1px 6px',
+              }}>{sl}</span>
+            )
+          })() : <span style={{ color: 'var(--tx3)' }}>—</span>}
+        </div>
+
         <div className="t-label">{t('contact')}</div>
         <div style={{ color: 'var(--tx2)' }}>{ownerLabel}</div>
 
         {/* ── Localisation ──────────────────────────────────────── */}
         {(() => {
-          // Resolve from contact data (authoritative) — LocalisationDetail is a stale cache, ignore it
           const locLabel =
             ((o as any).LocalisationID != null ? locMap[(o as any).LocalisationID] : null) ||
-            (o.ContactID != null ? locMap[o.ContactID] : null) ||
-            locMap[PEM_CONTACT_ID] ||
+            (o.ContactID != null && o.ContactID !== PEM_CONTACT_ID ? locMap[o.ContactID] : null) ||
             null
           return (
             <>
               <div className="t-label">{t('localisation')}</div>
-              <div style={{ color: locLabel ? 'var(--tx2)' : 'var(--tx3)' }}>
-                {locLabel ?? '—'}
-              </div>
+              <div style={{ color: locLabel ? 'var(--tx2)' : 'var(--tx3)' }}>{locLabel ?? '—'}</div>
             </>
           )
         })()}
@@ -1102,8 +1141,10 @@ function InvPreview({
         )}
 
         {/* ── Finance ───────────────────────────────────────────── */}
-        <div className="t-label" style={{ paddingTop: 8 }}>{t('price')}</div>
-        <div style={{ color: 'var(--tx2)', paddingTop: 8 }}>{priceDisplay}</div>
+        <div className="t-label" style={{ paddingTop: 8 }}>Prix</div>
+        <div style={{ color: 'var(--tx2)', paddingTop: 8 }}>
+          {o.Prix && (o.Prix as any) > 0 ? `€ ${Number(o.Prix).toLocaleString('fr-FR')}` : '—'}
+        </div>
 
         {(o as any).Discount != null && (o as any).Discount > 0 && (
           <>
@@ -1111,6 +1152,9 @@ function InvPreview({
             <div style={{ color: 'var(--tx3)' }}>{(o as any).Discount}%</div>
           </>
         )}
+
+        <div className="t-label">Prix final</div>
+        <div style={{ color: 'var(--tx2)' }}>{priceDisplay}</div>
 
         {/* ── Flags ─────────────────────────────────────────────── */}
         <div className="t-label" style={{ paddingTop: 8 }}>{t('exposable')}</div>
@@ -1121,6 +1165,9 @@ function InvPreview({
 
         <div className="t-label">{t('catalogued')}</div>
         <div style={{ color: o.Catalogué ? 'var(--tx2)' : 'var(--tx3)' }}>{o.Catalogué ? '✓' : '—'}</div>
+
+        <div className="t-label">Public</div>
+        <div style={{ color: (o as any).is_public ? 'var(--cyan)' : 'var(--tx3)' }}>{(o as any).is_public ? '✓' : '—'}</div>
 
         <div className="t-label">{t('commission')}</div>
         <div style={{ color: o.IsCommission ? 'var(--tx2)' : 'var(--tx3)' }}>{o.IsCommission ? '✓' : '—'}</div>
@@ -1135,14 +1182,33 @@ function InvPreview({
         )}
       </div>
 
+      {/* ── Commentaires ──────────────────────────────────────────── */}
       {o.Commentaires && (
-        <div style={{
-          fontSize: 10.5, color: 'var(--tx2)', lineHeight: 1.65,
-          padding: '14px 0',
-          borderTop: '1px solid var(--bd)', borderBottom: '1px solid var(--bd)',
-          marginBottom: 16,
-        }}>
-          {o.Commentaires}
+        <div style={{ marginBottom: 14 }}>
+          <div className="t-label" style={{ marginBottom: 4 }}>Commentaires</div>
+          <div style={{
+            fontSize: 10.5, color: 'var(--tx2)', lineHeight: 1.65,
+            padding: '10px 12px',
+            background: 'var(--bg0)', border: '1px solid var(--bd)',
+          }}>
+            {o.Commentaires}
+          </div>
+        </div>
+      )}
+
+      {/* ── Historique ────────────────────────────────────────────── */}
+      {(o as any).Historique && (
+        <div style={{ marginBottom: 14 }}>
+          <div className="t-label" style={{ marginBottom: 4 }}>Historique</div>
+          <div style={{
+            fontSize: 10, color: 'var(--tx2)', lineHeight: 1.8,
+            padding: '10px 12px',
+            background: 'var(--bg0)', border: '1px solid var(--bd)',
+            fontFamily: 'var(--font-mono, monospace)',
+            whiteSpace: 'pre-wrap',
+          }}>
+            {(o as any).Historique}
+          </div>
         </div>
       )}
 
@@ -1170,26 +1236,54 @@ function InvGrid({
   const [cols, setCols] = useState<number>(() => {
     try { return parseInt(localStorage.getItem('pem_grid_cols') ?? '5') || 5 } catch { return 5 }
   })
+  // cardRatio: stored as integer 1–10 mapping to aspectRatio 0.5–1.5 (portrait → square → landscape)
+  // Default 4 → ratio 0.75 (3:4 portrait) — good for most paintings
+  const [cardRatio, setCardRatio] = useState<number>(() => {
+    try { return parseInt(localStorage.getItem('pem_grid_ratio') ?? '4') || 4 } catch { return 4 }
+  })
   const handleCols = (n: number) => {
     setCols(n)
     try { localStorage.setItem('pem_grid_cols', String(n)) } catch {}
   }
+  const handleRatio = (n: number) => {
+    setCardRatio(n)
+    try { localStorage.setItem('pem_grid_ratio', String(n)) } catch {}
+  }
+  // Map slider 1–10 → aspect ratio 0.5–1.5
+  const aspectRatio = (0.5 + (cardRatio - 1) * (1.0 / 9)).toFixed(3)
 
   return (
     <div style={{ flex: 1, overflow: 'auto', padding: '20px 28px' }}>
-      {/* Column slider */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-        <span className="t-mono-sm" style={{ color: 'var(--tx3)', whiteSpace: 'nowrap' }}>Colonnes</span>
-        <input
-          type="range" min={2} max={10} step={1} value={cols}
-          onChange={(e) => handleCols(parseInt(e.target.value))}
-          style={{ width: 120, accentColor: 'var(--ac)' }}
-        />
-        <span className="t-mono-sm" style={{ color: 'var(--tx3)', minWidth: 16 }}>{cols}</span>
+      {/* Column + height sliders */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 14, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span className="t-mono-sm" style={{ color: 'var(--tx3)', whiteSpace: 'nowrap' }}>Colonnes</span>
+          <input
+            type="range" min={2} max={10} step={1} value={cols}
+            onChange={(e) => handleCols(parseInt(e.target.value))}
+            style={{ width: 100, accentColor: 'var(--ac)' }}
+          />
+          <span className="t-mono-sm" style={{ color: 'var(--tx3)', minWidth: 14 }}>{cols}</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span className="t-mono-sm" style={{ color: 'var(--tx3)', whiteSpace: 'nowrap' }}>Hauteur</span>
+          <input
+            type="range" min={1} max={10} step={1} value={cardRatio}
+            onChange={(e) => handleRatio(parseInt(e.target.value))}
+            style={{ width: 100, accentColor: 'var(--ac)' }}
+          />
+          <span className="t-mono-sm" style={{ color: 'var(--tx3)', minWidth: 28 }}>
+            {cardRatio <= 3 ? 'tall' : cardRatio <= 6 ? 'mid' : 'wide'}
+          </span>
+        </div>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 10 }}>
         {rows.map((o) => {
-          const isSel = selection.has(o.OeuvreID)
+          const isSel     = selection.has(o.OeuvreID)
+          const stGrid    = statusOf(o, statusLabelMap)
+          const isGoneGrid = stGrid === 'sold' || stGrid === 'gift'
+          const sCol  = isGoneGrid ? 'transparent' : stageColor((o as any).StageProduction)
+          const sBg   = sCol === 'transparent' ? 'var(--bg1)' : `color-mix(in srgb, ${sCol} 10%, var(--bg1))`
           return (
             <div
               key={o.OeuvreID}
@@ -1197,12 +1291,13 @@ function InvGrid({
               style={{
                 cursor: 'pointer',
                 border: `1px solid ${isSel ? 'var(--ac)' : 'var(--bd)'}`,
-                background: 'var(--bg1)',
+                borderTop: `3px solid ${sCol === 'transparent' ? 'var(--bd)' : sCol}`,
+                background: sBg,
                 overflow: 'hidden',
                 position: 'relative',
               }}
             >
-              <div className="thumb" style={{ aspectRatio: '1' }}>
+              <div className="thumb" style={{ aspectRatio }}>
                 {o.txtImageNameLink
                   ? <img src={thumbUrl(o.txtImageNameLink, 384) ?? ''} loading="lazy" alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   : <div className="ph" style={{ fontSize: 8 }}>—</div>}
@@ -1236,11 +1331,6 @@ function InvGrid({
           )
         })}
       </div>
-      {rows.length > 200 && (
-        <div className="t-mono-sm" style={{ padding: '16px 0', textAlign: 'center', color: 'var(--tx3)' }}>
-          {rows.length} œuvres affichées
-        </div>
-      )}
     </div>
   )
 }

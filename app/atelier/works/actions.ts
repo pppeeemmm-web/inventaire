@@ -75,6 +75,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
   const isPublic     = formData.get('is_public')     === '1'
   const isCommission   = formData.get('is_commission') === '1'
   const dateLivraison  = (formData.get('date_livraison') as string | null)?.trim() || null
+  const stageProduction = (formData.get('stage_production') as string | null)?.trim() || null
 
   const themeIds: number[] = (formData.getAll('themes') as string[])
     .map(Number)
@@ -109,6 +110,14 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       imageName = filename
     }
 
+    // Auto-seed history with "Atelier" origin entry dated from the work's year
+    const workYear   = année ? String(année).slice(0, 4) : new Date().getFullYear()
+    const originDate = `01/01/${workYear}`
+    const originEntry = `[${originDate}] Atelier`
+    const initialHistorique = historique
+      ? `${originEntry}\n${historique}`
+      : originEntry
+
     // INSERT
     const { error: insertErr } = await supabase.from('Oeuvres').insert({
       OeuvreID:     oid,
@@ -126,16 +135,17 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       statusId:     statusId,
       ContactID:    contactId,
       Commentaires:      commentaires,
-      Historique:        historique,
+      Historique:        initialHistorique,
       LocalisationID:    localisationId,
       LocalisationDetail: localisationDetail,
       Exposable:         exposable,
-      Encadree:     encadree,
-      Catalogué:    catalogued,
-      is_public:    isPublic,
-      IsCommission: isCommission,
-      DateLivraison: dateLivraison,
-      txtImageNameLink: imageName,
+      Encadree:          encadree,
+      Catalogué:         catalogued,
+      is_public:         isPublic,
+      IsCommission:      isCommission,
+      DateLivraison:     dateLivraison,
+      StageProduction:   stageProduction,
+      txtImageNameLink:  imageName,
     })
 
     if (insertErr) return { error: insertErr.message }
@@ -166,20 +176,29 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
     const oid = parseInt(oeuvreIdRaw!, 10)
     if (isNaN(oid)) return { error: 'ID invalide' }
 
-    // Fetch current record to compare statusId for history
+    // Fetch current record to compare statusId + ContactID for history
     const { data: current } = await supabase
       .from('Oeuvres')
-      .select('statusId, Historique')
+      .select('statusId, ContactID, Historique')
       .eq('OeuvreID', oid)
       .single()
 
-    // Append history entry if status changed
+    // Build auto-history entry when status or contact/location changes
     let finalHistorique = historique
-    if (statusId !== null && current?.statusId !== statusId) {
-      const statusLabel = (formData.get('status_label') as string | null) ?? String(statusId)
+    const statusChanged  = statusId  !== null && current?.statusId  !== statusId
+    const contactChanged = contactId !== null && current?.ContactID !== contactId
+
+    if (statusChanged || contactChanged) {
       const today       = new Date().toLocaleDateString('fr-FR')
-      const newEntry    = `[${today}] Statut : ${statusLabel}`
-      finalHistorique   = finalHistorique
+      const statusLabel = (formData.get('status_label') as string | null) ?? String(statusId ?? '')
+      const contactName = (formData.get('contact_name') as string | null) ?? ''
+
+      let parts: string[] = []
+      if (statusChanged)  parts.push(`Statut → ${statusLabel}`)
+      if (contactChanged) parts.push(`Localisation → ${contactName || String(contactId)}`)
+
+      const newEntry = `[${today}] ${parts.join(' · ')}`
+      finalHistorique = finalHistorique
         ? `${finalHistorique}\n${newEntry}`
         : newEntry
     }
@@ -217,11 +236,12 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       LocalisationID:    localisationId,
       LocalisationDetail: localisationDetail,
       Exposable:         exposable,
-      Encadree:     encadree,
-      Catalogué:    catalogued,
-      is_public:    isPublic,
-      IsCommission: isCommission,
-      DateLivraison: dateLivraison,
+      Encadree:          encadree,
+      Catalogué:         catalogued,
+      is_public:         isPublic,
+      IsCommission:      isCommission,
+      DateLivraison:     dateLivraison,
+      StageProduction:   stageProduction,
     }
     if (formUploadedNewImage) {
       updatePayload.txtImageNameLink = imageName
@@ -311,6 +331,48 @@ async function r2Put(buf: Buffer, filename: string, contentType: string): Promis
   const headers = r2PutHeaders(buf, filename, contentType)
   const res     = await fetch(url, { method: 'PUT', headers, body: buf })
   if (!res.ok) throw new Error(`R2 PUT ${res.status}: ${await res.text()}`)
+}
+
+async function r2Delete(filename: string): Promise<void> {
+  const account   = process.env.R2_ACCOUNT_ID!
+  const accessKey = process.env.R2_ACCESS_KEY_ID!
+  const secretKey = process.env.R2_SECRET_ACCESS_KEY!
+  const bucket    = process.env.R2_BUCKET ?? 'paintings'
+  const host      = `${account}.eu.r2.cloudflarestorage.com`
+  const encodedPath = `/${bucket}/${filename.split('/').map(encodeURIComponent).join('/')}`
+
+  const now       = new Date()
+  const amzDate   = now.toISOString().replace(/[:-]|\.\d{3}/g, '').slice(0, 15) + 'Z'
+  const dateStamp = amzDate.slice(0, 8)
+  const bodyHash  = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855' // empty body
+
+  const headers: Record<string, string> = {
+    'host':                  host,
+    'x-amz-date':           amzDate,
+    'x-amz-content-sha256': bodyHash,
+  }
+  const sortedKeys       = Object.keys(headers).sort()
+  const canonicalHeaders = sortedKeys.map(k => `${k}:${headers[k]}\n`).join('')
+  const signedHeaderStr  = sortedKeys.join(';')
+  const canonicalRequest = ['DELETE', encodedPath, '', canonicalHeaders, signedHeaderStr, bodyHash].join('\n')
+
+  const region    = 'auto'
+  const service   = 's3'
+  const credScope = `${dateStamp}/${region}/${service}/aws4_request`
+  const strToSign = ['AWS4-HMAC-SHA256', amzDate, credScope,
+    crypto.createHash('sha256').update(canonicalRequest).digest('hex')].join('\n')
+
+  const hmac = (key: Buffer | string, data: string) =>
+    crypto.createHmac('sha256', key).update(data).digest()
+  const sigKey = hmac(hmac(hmac(hmac('AWS4' + secretKey, dateStamp), region), service), 'aws4_request')
+  const sig    = crypto.createHmac('sha256', sigKey).update(strToSign).digest('hex')
+
+  headers['Authorization'] =
+    `AWS4-HMAC-SHA256 Credential=${accessKey}/${credScope}, SignedHeaders=${signedHeaderStr}, Signature=${sig}`
+
+  const url = `https://${host}${encodedPath}`
+  const res = await fetch(url, { method: 'DELETE', headers })
+  if (!res.ok && res.status !== 404) throw new Error(`R2 DELETE ${res.status}: ${await res.text()}`)
 }
 
 /**
@@ -433,10 +495,13 @@ export async function deleteWorkImage(
   const { error } = await supabase.from('tblImage').delete().eq('ImageID', imageId)
   if (error) return { error: error.message }
 
-  // Remove from storage
+  // Remove original + thumbnail from R2
   if (img?.txtImageNameLink) {
-    const bucket = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET ?? 'paintings'
-    await supabase.storage.from(bucket).remove([img.txtImageNameLink])
+    const filename = img.txtImageNameLink
+    const thumbName = `thumbs/${filename.replace(/\.[^.]+$/, '')}.avif`
+    // Fire-and-forget — don't block on R2 delete errors
+    try { await r2Delete(filename) } catch {}
+    try { await r2Delete(thumbName) } catch {}
   }
 
   await syncCover(supabase, oeuvreId)

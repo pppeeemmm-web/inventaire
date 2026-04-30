@@ -1,15 +1,38 @@
 'use client'
 
-// ProductionTab — kanban pipeline for the /atelier team portal.
-// Stages are derived from real Oeuvre fields (Catalogué, txtImageNameLink, etc.)
-// Clicking a card opens the WorkDrawer via onOpen.
+// ProductionTab — action-based task board for works.
+// One column per work_action_type. A work appears in every column
+// where it has a pending (done=false) work_action.
+// Works that are Catalogué or sold/lost/destroyed are excluded.
 
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
-import { thumbUrl, stageOf, STAGES, type StageKey } from '@/lib/data'
+import { createClient } from '@/lib/supabase/client'
+import { thumbUrl, yearOf, statusOf, type StatusKey } from '@/lib/data'
 import type { Oeuvre } from '@/lib/types/database'
 
 // ── Types ────────────────────────────────────────────────────
+
+interface ActionType {
+  id:         number
+  label:      string
+  color:      string
+  sort_order: number
+  field_key:  string | null  // Oeuvres field to set true when action is ticked done
+}
+
+interface WorkAction {
+  id:             number
+  oeuvre_id:      number
+  action_type_id: number
+  done:           boolean
+  note:           string | null
+}
+
+const EXCLUDED_STATUSES: StatusKey[] = ['sold', 'lost', 'destroyed']
+
+// ── Component ────────────────────────────────────────────────
 
 interface Props {
   oeuvres:        Oeuvre[]
@@ -18,124 +41,262 @@ interface Props {
   onOpen:         (o: Oeuvre) => void
 }
 
-// ── Component ────────────────────────────────────────────────
-
 export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
   const { t } = useI18n()
+  const [search,      setSearch]      = useState('')
+  const [actionTypes, setActionTypes] = useState<ActionType[]>([])
+  const [actions,     setActions]     = useState<WorkAction[]>([])
+  const [loading,     setLoading]     = useState(true)
+  const [editingTypes, setEditingTypes] = useState(false)
 
-  const byStage = useMemo(() => {
-    const m: Record<StageKey, Oeuvre[]> = {
-      stage_idea:       [],
-      stage_sketch:     [],
-      stage_wip:        [],
-      stage_drying:     [],
-      stage_framing:    [],
-      stage_shot:       [],
-      stage_catalogued: [],
-    }
-    for (const o of oeuvres) {
-      m[stageOf(o, statusLabelMap)].push(o)
+  const sb = createClient()
+
+  const loadData = useCallback(async () => {
+    const [{ data: types }, { data: acts }] = await Promise.all([
+      sb.from('work_action_type').select('*').order('sort_order').order('id'),
+      sb.from('work_action').select('*').eq('done', false),
+    ])
+    if (types) setActionTypes(types)
+    if (acts)  setActions(acts)
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { loadData() }, [loadData])
+
+  // Active works — not catalogued, not sold/lost/destroyed
+  const active = useMemo(() => {
+    const sq = search.trim().toLowerCase()
+    return oeuvres.filter((o) => {
+      if (o.Catalogué) return false
+      const st = statusOf(o, statusLabelMap)
+      if (EXCLUDED_STATUSES.includes(st)) return false
+      if (sq) {
+        const bag = `${o.Titre ?? ''} #${o.OeuvreID} ${o.Technique != null ? (tM[o.Technique] ?? '') : ''}`.toLowerCase()
+        if (!bag.includes(sq)) return false
+      }
+      return true
+    })
+  }, [oeuvres, statusLabelMap, tM, search])
+
+  const oeuvresById = useMemo(
+    () => new Map(oeuvres.map((o) => [o.OeuvreID, o])),
+    [oeuvres],
+  )
+
+  // Map: actionTypeId → Set<oeuvreId> with pending action
+  const actionMap = useMemo(() => {
+    const m = new Map<number, Set<number>>()
+    for (const a of actions) {
+      if (!m.has(a.action_type_id)) m.set(a.action_type_id, new Set())
+      m.get(a.action_type_id)!.add(a.oeuvre_id)
     }
     return m
-  }, [oeuvres, statusLabelMap])
+  }, [actions])
 
-  const wip        = oeuvres.filter((o) => !o.Catalogué).length
-  const catalogued = oeuvres.filter((o) => o.Catalogué).length
+  // Mark an action done — also writes back the linked Oeuvres field if defined
+  async function markDone(oeuvreId: number, actionTypeId: number) {
+    const actionType = actionTypes.find((at) => at.id === actionTypeId)
+
+    // Mark the action row as done
+    await sb.from('work_action')
+      .update({ done: true, done_at: new Date().toISOString() })
+      .eq('oeuvre_id', oeuvreId)
+      .eq('action_type_id', actionTypeId)
+
+    // Write back to Oeuvres if this action has a linked field
+    if (actionType?.field_key) {
+      await sb.from('Oeuvres')
+        .update({ [actionType.field_key]: true })
+        .eq('OeuvreID', oeuvreId)
+    }
+
+    // Remove from local state so card disappears immediately
+    setActions((prev) => prev.filter(
+      (a) => !(a.oeuvre_id === oeuvreId && a.action_type_id === actionTypeId)
+    ))
+  }
+
+  // Add an action to a work
+  async function addAction(oeuvreId: number, actionTypeId: number) {
+    const { data } = await sb.from('work_action')
+      .upsert({ oeuvre_id: oeuvreId, action_type_id: actionTypeId, done: false },
+               { onConflict: 'oeuvre_id,action_type_id' })
+      .select()
+      .single()
+    if (data) setActions((prev) => [...prev.filter(
+      (a) => !(a.oeuvre_id === oeuvreId && a.action_type_id === actionTypeId)
+    ), data])
+  }
+
+  const cataloguedCount = oeuvres.filter((o) => o.Catalogué).length
+
+  if (loading) {
+    return <div className="t-mono-sm" style={{ padding: 40, color: 'var(--tx3)' }}>Chargement…</div>
+  }
 
   return (
-    <div style={{ padding: '20px 28px', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ padding: '16px 28px 0', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexShrink: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, flexShrink: 0 }}>
         <div>
           <div className="t-label">{t('production')}</div>
-          <div className="t-mono-sm" style={{ color: 'var(--tx3)', marginTop: 4 }}>
-            {wip} {t('wip')} · {catalogued} {t('catalogued')}
+          <div className="t-mono-sm" style={{ color: 'var(--tx3)', marginTop: 3 }}>
+            {active.length} en production · {cataloguedCount} catalogués
           </div>
         </div>
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Filtrer…"
+          style={{
+            marginLeft: 'auto', padding: '5px 10px', fontSize: 11,
+            background: 'var(--bg1)', border: '1px solid var(--bd)',
+            color: 'var(--tx)', width: 180,
+          }}
+        />
+        <button
+          onClick={() => setEditingTypes((v) => !v)}
+          style={{
+            padding: '5px 10px', fontSize: 10, cursor: 'pointer',
+            color: editingTypes ? 'var(--ac)' : 'var(--tx3)',
+            background: editingTypes ? 'var(--bg2)' : 'transparent',
+            border: '1px solid var(--bd)',
+          }}
+          title="Gérer les types d'action"
+        >⚙ Colonnes</button>
       </div>
 
-      {/* Kanban grid — horizontal scroll if narrow */}
-      <div style={{
-        flex: 1,
-        overflowX: 'auto',
-        overflowY: 'hidden',
-        minHeight: 0,
-      }}>
+      {/* Action type manager */}
+      {editingTypes && (
+        <ActionTypeManager
+          actionTypes={actionTypes}
+          onRefresh={loadData}
+          onClose={() => setEditingTypes(false)}
+        />
+      )}
+
+      {/* Kanban */}
+      <div style={{ flex: 1, overflowX: 'auto', overflowY: 'hidden', minHeight: 0 }}>
         <div style={{
           display: 'grid',
-          gridTemplateColumns: `repeat(${STAGES.length}, minmax(180px, 1fr))`,
-          gap: 1,
-          background: 'var(--bd)',
-          height: '100%',
-          minWidth: STAGES.length * 180,
+          gridTemplateColumns: `repeat(${actionTypes.length}, minmax(210px, 1fr))`,
+          gap: 1, background: 'var(--bd)',
+          height: '100%', minWidth: actionTypes.length * 210,
         }}>
-          {STAGES.map((stage) => (
-            <StageColumn
-              key={stage}
-              stage={stage}
-              label={t(stage)}
-              works={byStage[stage]}
-              tM={tM}
-              onOpen={onOpen}
-            />
-          ))}
+          {actionTypes.map((at) => {
+            const ids   = actionMap.get(at.id) ?? new Set<number>()
+            const works = active.filter((o) => ids.has(o.OeuvreID))
+            return (
+              <ActionColumn
+                key={at.id}
+                actionType={at}
+                works={works}
+                active={active}
+                tM={tM}
+                oeuvresById={oeuvresById}
+                onMarkDone={(oid) => markDone(oid, at.id)}
+                onAddAction={(oid) => addAction(oid, at.id)}
+                onOpen={onOpen}
+              />
+            )
+          })}
         </div>
       </div>
     </div>
   )
 }
 
-// ── Stage column ─────────────────────────────────────────────
+// ── Action column ─────────────────────────────────────────────
 
-const STAGE_LIMIT = 40 // show up to 40 cards per column, overflow counted
-
-function StageColumn({
-  stage, label, works, tM, onOpen,
+function ActionColumn({
+  actionType, works, active, tM, onMarkDone, onAddAction, onOpen,
 }: {
-  stage:  StageKey
-  label:  string
-  works:  Oeuvre[]
-  tM:     Record<number, string>
-  onOpen: (o: Oeuvre) => void
+  actionType:  ActionType
+  works:       Oeuvre[]
+  active:      Oeuvre[]
+  tM:          Record<number, string>
+  oeuvresById: Map<number, Oeuvre>
+  onMarkDone:  (oid: number) => void
+  onAddAction: (oid: number) => void
+  onOpen:      (o: Oeuvre) => void
 }) {
-  const visible = works.slice(0, STAGE_LIMIT)
-  const overflow = works.length - visible.length
+  const [showAdd, setShowAdd] = useState(false)
+  const [addQ,    setAddQ]    = useState('')
+
+  const currentIds = new Set(works.map((o) => o.OeuvreID))
+  const suggestions = addQ.trim()
+    ? active.filter((o) => {
+        if (currentIds.has(o.OeuvreID)) return false
+        const q = addQ.toLowerCase()
+        return (o.Titre ?? '').toLowerCase().includes(q) || String(o.OeuvreID).includes(q)
+      }).slice(0, 8)
+    : []
 
   return (
-    <div style={{
-      background: 'var(--bg1)',
-      display: 'flex',
-      flexDirection: 'column',
-      overflow: 'hidden',
-    }}>
-      {/* Column header */}
+    <div style={{ background: 'var(--bg1)', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      {/* Header */}
       <div style={{
-        padding: '14px 12px 10px',
-        borderBottom: '1px solid var(--bd)',
-        flexShrink: 0,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 8,
+        padding: '12px 10px 8px', borderBottom: '1px solid var(--bd)', flexShrink: 0,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ width: 16, height: 1, background: 'var(--ac)', display: 'inline-block' }} />
-          <span className="t-eyebrow" style={{ color: 'var(--ac)' }}>{label}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+          <span style={{ width: 10, height: 10, borderRadius: '50%', background: actionType.color, flexShrink: 0 }} />
+          <span className="t-eyebrow" style={{ color: actionType.color, fontSize: 9 }}>{actionType.label}</span>
         </div>
-        <span className="t-mono-sm" style={{ color: 'var(--tx3)' }}>{works.length}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span className="t-mono-sm" style={{ color: 'var(--tx3)' }}>{works.length}</span>
+          <button
+            onClick={() => { setShowAdd((v) => !v); setAddQ('') }}
+            style={{ fontSize: 14, color: 'var(--tx3)', background: 'transparent', border: 'none', cursor: 'pointer', lineHeight: 1, padding: '0 2px' }}
+            title="Ajouter une œuvre"
+          >+</button>
+        </div>
       </div>
 
+      {/* Add work search */}
+      {showAdd && (
+        <div style={{ padding: '6px 8px', borderBottom: '1px solid var(--bd)', flexShrink: 0 }}>
+          <input
+            autoFocus
+            value={addQ}
+            onChange={(e) => setAddQ(e.target.value)}
+            placeholder="Titre ou #ID…"
+            style={{
+              width: '100%', padding: '4px 7px', fontSize: 10,
+              background: 'var(--bg0)', border: '1px solid var(--bd)',
+              color: 'var(--tx)',
+            }}
+          />
+          {suggestions.map((o) => (
+            <div
+              key={o.OeuvreID}
+              onClick={() => { onAddAction(o.OeuvreID); setShowAdd(false); setAddQ('') }}
+              style={{
+                padding: '5px 7px', fontSize: 10, cursor: 'pointer',
+                color: 'var(--tx)', borderBottom: '1px solid var(--bd)',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg2)')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+            >
+              <span style={{ color: 'var(--tx3)', marginRight: 6 }}>#{o.OeuvreID}</span>
+              {o.Titre ?? '—'}
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Cards */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '8px 8px', display: 'flex', flexDirection: 'column', gap: 4 }}>
-        {visible.map((o) => (
-          <WorkCard key={o.OeuvreID} o={o} tM={tM} onOpen={onOpen} />
+      <div style={{ flex: 1, overflowY: 'auto', padding: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {works.map((o) => (
+          <WorkCard
+            key={o.OeuvreID}
+            o={o}
+            tM={tM}
+            onMarkDone={() => onMarkDone(o.OeuvreID)}
+            onOpen={onOpen}
+          />
         ))}
-        {overflow > 0 && (
-          <div className="t-mono-sm" style={{ color: 'var(--tx3)', textAlign: 'center', padding: '6px 0' }}>
-            +{overflow} more
-          </div>
-        )}
         {works.length === 0 && (
           <div className="t-mono-sm" style={{ color: 'var(--tx3)', padding: '12px 4px', textAlign: 'center' }}>—</div>
         )}
@@ -144,62 +305,206 @@ function StageColumn({
   )
 }
 
-// ── Work card ────────────────────────────────────────────────
+// ── Work card ─────────────────────────────────────────────────
 
-function WorkCard({ o, tM, onOpen }: { o: Oeuvre; tM: Record<number, string>; onOpen: (o: Oeuvre) => void }) {
-  const techLabel = o.Technique ? tM[o.Technique] : null
+function WorkCard({ o, tM, onMarkDone, onOpen }: {
+  o:          Oeuvre
+  tM:         Record<number, string>
+  onMarkDone: () => void
+  onOpen:     (o: Oeuvre) => void
+}) {
+  const router     = useRouter()
+  const techLabel  = o.Technique != null ? tM[o.Technique] : null
+  const year       = yearOf(o.Année)
   const isCommission = (o as any).IsCommission
-  const deadline = (o as any).DateLivraison ? String((o as any).DateLivraison).slice(0, 10) : null
+  const isFramed     = o.Encadree
+  const deadline     = (o as any).DateLivraison ? String((o as any).DateLivraison).slice(0, 10) : null
   const deadlinePast = deadline ? new Date(deadline) < new Date() : false
 
   return (
-    <div
-      onClick={() => onOpen(o)}
-      style={{
-        cursor: 'pointer',
-        border: `1px solid ${isCommission ? 'var(--ac)' : 'var(--bd)'}`,
-        padding: 6,
-        background: 'var(--bg2)',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 4,
-      }}
-      onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg3)')}
+    <div style={{
+      border: `1px solid ${isCommission ? 'var(--ac)' : 'var(--bd)'}`,
+      padding: '6px 7px', background: 'var(--bg2)',
+      display: 'flex', flexDirection: 'column', gap: 5,
+    }}
+      onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg0)')}
       onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--bg2)')}
     >
-      {/* Thumbnail + text row */}
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        <div style={{
-          width: 36, height: 36, flexShrink: 0,
+      <div style={{ display: 'flex', gap: 7, alignItems: 'flex-start' }}>
+        {/* Thumbnail */}
+        <div onClick={() => onOpen(o)} style={{
+          width: 40, height: 40, flexShrink: 0, cursor: 'pointer',
           background: 'var(--bg0)', overflow: 'hidden',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
           {o.txtImageNameLink
             ? <img src={thumbUrl(o.txtImageNameLink, 128) ?? ''} loading="lazy" alt=""
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            : <span style={{ color: 'var(--tx3)', fontSize: 14 }}>—</span>
-          }
+            : <span style={{ color: 'var(--tx3)', fontSize: 14 }}>—</span>}
         </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 9, color: 'var(--tx3)', marginBottom: 1 }}>#{o.OeuvreID}</div>
-          <div style={{ fontSize: 10, color: 'var(--tx)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.3 }}>
+
+        {/* Text */}
+        <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={() => onOpen(o)}>
+          <div style={{ fontSize: 9, color: 'var(--tx3)', marginBottom: 1 }}>
+            #{o.OeuvreID}{year ? ` · ${year}` : ''}
+          </div>
+          <div style={{
+            fontSize: 10, color: 'var(--tx)', lineHeight: 1.35,
+            overflow: 'hidden', textOverflow: 'ellipsis',
+            display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+          }}>
             {o.Titre ?? '—'}
           </div>
-          {techLabel && <div style={{ fontSize: 9, color: 'var(--tx3)', marginTop: 1 }}>{techLabel}</div>}
+          {techLabel && <div style={{ fontSize: 9, color: 'var(--tx3)', marginTop: 2 }}>{techLabel}</div>}
+        </div>
+
+        {/* Actions */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flexShrink: 0 }}>
+          {/* Mark done */}
+          <button
+            onClick={(e) => { e.stopPropagation(); onMarkDone() }}
+            title="Marquer comme fait"
+            style={{
+              fontSize: 11, padding: '1px 5px', color: 'var(--tx3)',
+              background: 'transparent', border: '1px solid transparent',
+              cursor: 'pointer',
+            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--sage)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--sage)' }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--tx3)'; (e.currentTarget as HTMLElement).style.borderColor = 'transparent' }}
+          >✓</button>
+          {/* Edit */}
+          <button
+            onClick={(e) => { e.stopPropagation(); router.push(`/atelier/works/${o.OeuvreID}/edit`) }}
+            title="Éditer"
+            style={{
+              fontSize: 10, padding: '1px 5px', color: 'var(--tx3)',
+              background: 'transparent', border: '1px solid transparent',
+              cursor: 'pointer',
+            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--ac)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--bd2)' }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--tx3)'; (e.currentTarget as HTMLElement).style.borderColor = 'transparent' }}
+          >✎</button>
         </div>
       </div>
-      {/* Commission deadline badge */}
-      {isCommission && (
-        <div style={{
-          fontSize: 9, letterSpacing: 0.5,
-          color: deadlinePast ? 'var(--rust)' : deadline ? 'var(--ac)' : 'var(--tx3)',
-          paddingLeft: 44, // align with text
-        }}>
-          {deadline
-            ? `⏱ ${new Date(deadline).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}`
-            : '⚠ commission — pas de deadline'}
+
+      {/* Badges */}
+      {(isFramed || (isCommission && (deadline || true))) && (
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', paddingLeft: 47 }}>
+          {isFramed && (
+            <span style={{ fontSize: 8, letterSpacing: 0.5, color: 'var(--tx3)', border: '1px solid var(--bd)', padding: '1px 4px' }}>
+              ENCADRÉE
+            </span>
+          )}
+          {isCommission && deadline && (
+            <span style={{
+              fontSize: 8, letterSpacing: 0.5, padding: '1px 4px',
+              color: deadlinePast ? 'var(--rust)' : 'var(--ac)',
+              border: `1px solid ${deadlinePast ? 'var(--rust)' : 'var(--ac)'}`,
+            }}>
+              {deadlinePast ? '⚠ ' : '⏱ '}
+              {new Date(deadline).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+            </span>
+          )}
+          {isCommission && !deadline && (
+            <span style={{ fontSize: 8, letterSpacing: 0.5, color: 'var(--rust)', border: '1px solid var(--rust)', padding: '1px 4px' }}>
+              ⚠ COMMISSION SANS DATE
+            </span>
+          )}
         </div>
       )}
+    </div>
+  )
+}
+
+// ── Action type manager ───────────────────────────────────────
+
+// Fields that can be written back on the Oeuvres table
+const FIELD_OPTIONS = [
+  { value: '',          label: '— aucun' },
+  { value: 'Encadree',  label: 'Encadrée' },
+  { value: 'Exposable', label: 'Exposable' },
+  { value: 'Catalogué', label: 'Cataloguée' },
+]
+
+function ActionTypeManager({ actionTypes, onRefresh, onClose }: {
+  actionTypes: ActionType[]
+  onRefresh:   () => void
+  onClose:     () => void
+}) {
+  const sb = createClient()
+  const [newLabel,    setNewLabel]    = useState('')
+  const [newColor,    setNewColor]    = useState('#6e7a8a')
+  const [newFieldKey, setNewFieldKey] = useState('')
+  const [saving,      setSaving]      = useState(false)
+
+  async function addType() {
+    if (!newLabel.trim()) return
+    setSaving(true)
+    await sb.from('work_action_type').insert({
+      label:      newLabel.trim(),
+      color:      newColor,
+      field_key:  newFieldKey || null,
+      sort_order: actionTypes.length,
+    })
+    setNewLabel('')
+    setNewFieldKey('')
+    await onRefresh()
+    setSaving(false)
+  }
+
+  async function deleteType(id: number) {
+    await sb.from('work_action_type').delete().eq('id', id)
+    onRefresh()
+  }
+
+  return (
+    <div style={{
+      marginBottom: 12, padding: '10px 14px',
+      background: 'var(--bg0)', border: '1px solid var(--bd)',
+      flexShrink: 0,
+    }}>
+      <div style={{ fontSize: 9, letterSpacing: 1.5, textTransform: 'uppercase', color: 'var(--tx3)', marginBottom: 10 }}>
+        Types d'action
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+        {actionTypes.map((at) => (
+          <div key={at.id} style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '3px 8px', border: '1px solid var(--bd)', background: 'var(--bg1)',
+          }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: at.color }} />
+            <span style={{ fontSize: 10, color: 'var(--tx)' }}>{at.label}</span>
+            <button
+              onClick={() => deleteType(at.id)}
+              style={{ fontSize: 9, color: 'var(--tx3)', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px' }}
+            >✕</button>
+          </div>
+        ))}
+      </div>
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+        <input
+          value={newLabel}
+          onChange={(e) => setNewLabel(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && addType()}
+          placeholder="Nouveau type…"
+          style={{ padding: '4px 8px', fontSize: 10, background: 'var(--bg1)', border: '1px solid var(--bd)', color: 'var(--tx)', width: 150 }}
+        />
+        <input type="color" value={newColor} onChange={(e) => setNewColor(e.target.value)}
+          style={{ width: 28, height: 28, border: '1px solid var(--bd)', cursor: 'pointer', background: 'none' }} />
+        <select
+          value={newFieldKey}
+          onChange={(e) => setNewFieldKey(e.target.value)}
+          style={{ padding: '4px 6px', fontSize: 10, background: 'var(--bg1)', border: '1px solid var(--bd)', color: 'var(--tx)' }}
+          title="Champ à mettre à jour quand l'action est cochée"
+        >
+          {FIELD_OPTIONS.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
+        </select>
+        <button
+          onClick={addType} disabled={saving || !newLabel.trim()}
+          style={{ padding: '4px 12px', fontSize: 10, cursor: 'pointer', background: 'var(--ac)', color: 'var(--bg0)', border: 'none' }}
+        >{saving ? '…' : '+ Ajouter'}</button>
+        <button onClick={onClose} style={{ padding: '4px 10px', fontSize: 10, cursor: 'pointer', background: 'transparent', border: '1px solid var(--bd)', color: 'var(--tx3)', marginLeft: 'auto' }}>Fermer</button>
+      </div>
     </div>
   )
 }
