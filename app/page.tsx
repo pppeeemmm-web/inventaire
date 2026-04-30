@@ -34,7 +34,6 @@ export default function LandingPage() {
           height: clamp(300px, 42vmin, 520px);
         }
 
-        /* orbital nav labels */
         .orb {
           position: absolute;
           font-size: 9px; letter-spacing: 3px; text-transform: uppercase;
@@ -45,50 +44,43 @@ export default function LandingPage() {
         }
         .orb:hover { color: #5a5650; }
 
-        /* vertical connectors (top/bottom) */
         .orb-top {
-          top: -52px; left: 50%; transform: translateX(-50%);
+          bottom: 100%; left: 50%; transform: translateX(-50%);
           flex-direction: column; gap: 10px;
+          padding-bottom: 52px;
         }
         .orb-top::after {
           content: ''; display: block; width: 1px; height: 28px;
           background: currentColor; opacity: .4;
-          transition: height .2s;
         }
-        .orb-top:hover::after { height: 40px; }
 
         .orb-bottom {
-          bottom: -52px; left: 50%; transform: translateX(-50%);
+          top: 100%; left: 50%; transform: translateX(-50%);
           flex-direction: column-reverse; gap: 10px;
+          padding-top: 52px;
         }
         .orb-bottom::after {
           content: ''; display: block; width: 1px; height: 28px;
           background: currentColor; opacity: .4;
-          transition: height .2s;
         }
-        .orb-bottom:hover::after { height: 40px; }
 
-        /* horizontal connectors (left/right) */
         .orb-left {
-          left: -130px; top: 50%; transform: translateY(-50%);
+          right: 100%; top: 50%; transform: translateY(-50%);
+          flex-direction: row; padding-right: 52px;
         }
         .orb-left::after {
-          content: ''; display: block; height: 1px; width: 36px;
+          content: ''; display: block; height: 1px; width: 28px;
           background: currentColor; opacity: .4;
-          transition: width .2s;
         }
-        .orb-left:hover::after { width: 52px; }
 
         .orb-right {
-          right: -140px; top: 50%; transform: translateY(-50%);
-          flex-direction: row-reverse;
+          left: 100%; top: 50%; transform: translateY(-50%);
+          flex-direction: row-reverse; padding-left: 52px;
         }
         .orb-right::after {
-          content: ''; display: block; height: 1px; width: 36px;
+          content: ''; display: block; height: 1px; width: 28px;
           background: currentColor; opacity: .4;
-          transition: width .2s;
         }
-        .orb-right:hover::after { width: 52px; }
       `}</style>
 
       <div className="stage">
@@ -103,7 +95,7 @@ export default function LandingPage() {
           <Link href="/works"    className="orb orb-top">Works</Link>
           <Link href="/about"    className="orb orb-left">About</Link>
           <Link href="/practice" className="orb orb-right">Practice</Link>
-          <a href="mailto:studio@pierreemmanuel.com" className="orb orb-bottom">Enquiry</a>
+          <a href="mailto:pppeeemmm@gmail.com" className="orb orb-bottom">Enquiry</a>
         </div>
       </div>
     </>
