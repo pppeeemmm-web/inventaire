@@ -35,6 +35,7 @@ export interface ExhibitionLayout {
 
 export type LayoutResult = { error: string } | { ok: true; layout: ExhibitionLayout }
 export type SimpleResult = { error: string } | { ok: true }
+export type UploadResult = { error: string } | { ok: true; key: string }
 
 // ── Auth guard ────────────────────────────────────────────────────────────────
 
@@ -64,14 +65,14 @@ function r2Client() {
 async function r2Upload(key: string, body: Buffer, contentType: string) {
   const s3 = r2Client()
   await s3.send(new PutObjectCommand({
-    Bucket: process.env.R2_VAULT_BUCKET ?? 'vault',
+    Bucket: process.env.R2_BUCKET ?? 'paintings',
     Key: key, Body: body, ContentType: contentType,
   }))
 }
 
 async function r2Delete(key: string) {
   const s3 = r2Client()
-  await s3.send(new DeleteObjectCommand({ Bucket: process.env.R2_VAULT_BUCKET ?? 'vault', Key: key }))
+  await s3.send(new DeleteObjectCommand({ Bucket: process.env.R2_BUCKET ?? 'paintings', Key: key }))
 }
 
 // ── Fetch layouts ─────────────────────────────────────────────────────────────
@@ -111,7 +112,7 @@ export async function createLayout(nom: string, processId?: string): Promise<Lay
 
 // ── Upload floor plan image ───────────────────────────────────────────────────
 
-export async function uploadFloorplan(layoutId: string, formData: FormData): Promise<SimpleResult> {
+export async function uploadFloorplan(layoutId: string, formData: FormData): Promise<UploadResult> {
   const { error: authErr, supabase } = await guardTeam()
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
 
@@ -122,8 +123,13 @@ export async function uploadFloorplan(layoutId: string, formData: FormData): Pro
   const key  = `floorplans/${layoutId}.${ext}`
   const buf  = Buffer.from(await file.arrayBuffer())
 
+  const bucketName = process.env.R2_VAULT_BUCKET ?? 'vault'
+  console.log('[exhibitions] uploading to bucket:', bucketName, 'key:', key)
   try { await r2Upload(key, buf, file.type) }
-  catch (e) { return { error: `Upload R2: ${String(e)}` } }
+  catch (e) {
+    console.error('[exhibitions] upload error:', String(e))
+    return { error: `Upload R2 (bucket="${bucketName}"): ${String(e)}` }
+  }
 
   const { error } = await supabase
     .from('exhibition_layout')
@@ -131,7 +137,7 @@ export async function uploadFloorplan(layoutId: string, formData: FormData): Pro
     .eq('id', layoutId)
 
   if (error) return { error: error.message }
-  return { ok: true }
+  return { ok: true, key }
 }
 
 // ── Save placements + walls ───────────────────────────────────────────────────
@@ -158,6 +164,16 @@ export async function deleteLayout(layoutId: string, floorplanPath: string | nul
   const { error } = await supabase.from('exhibition_layout').delete().eq('id', layoutId)
   if (error) return { error: error.message }
   return { ok: true }
+}
+
+// ── Get signed URL for floor plan ────────────────────────────────────────────
+
+export async function getFloorplanSignedUrl(key: string): Promise<{ url: string } | { error: string }> {
+  const { error: authErr } = await guardTeam()
+  if (authErr) return { error: authErr }
+  // Floor plans in public bucket — return direct URL, no signing needed
+  const url = `${process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? ''}/${key}`
+  return { url }
 }
 
 // ── Fetch pipeline processes (for linking) ───────────────────────────────────

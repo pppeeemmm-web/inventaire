@@ -327,8 +327,8 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
     async function load() {
       const sb = createClient()
       const [{ data: rels }, { data: ot }] = await Promise.all([
-        sb.from('tblrelations').select('id, source_id, target_id, relation_type, strength, description'),
-        sb.from('OeuvreTheme').select('OeuvreID, ThemeID'),
+        sb.from('tblrelations').select('id, source_id, target_id, relation_type, strength, description').range(0, 9999),
+        sb.from('OeuvreTheme').select('OeuvreID, ThemeID').range(0, 49999),
       ])
       if (!active) return
 

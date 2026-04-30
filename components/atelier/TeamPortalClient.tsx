@@ -261,7 +261,7 @@ export function TeamPortalClient({
         )}
         {tab === 'exhibitions' && (
           <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-            <ExhibitionsTab oeuvres={oeuvres} />
+            <ExhibitionsTab oeuvres={oeuvres} contacts={contacts} />
           </div>
         )}
         {tab === 'vault' && (
