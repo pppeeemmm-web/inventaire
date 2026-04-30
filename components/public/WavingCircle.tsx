@@ -11,11 +11,12 @@ export default function WavingCircle({ src, alt, className }: Props) {
     <>
       <style>{`
         @keyframes wave {
-          0%   { transform: scale(1.06) skewX(0deg)   skewY(0deg);   }
-          25%  { transform: scale(1.06) skewX(0.6deg)  skewY(0.3deg);  }
-          50%  { transform: scale(1.06) skewX(0deg)   skewY(0.5deg);  }
-          75%  { transform: scale(1.06) skewX(-0.6deg) skewY(0.3deg);  }
-          100% { transform: scale(1.06) skewX(0deg)   skewY(0deg);   }
+          0%   { transform: scale(1.06) skewX(0deg)    scaleX(1)    scaleY(1); }
+          20%  { transform: scale(1.06) skewX(0.5deg)  scaleX(1.015) scaleY(0.985); }
+          40%  { transform: scale(1.06) skewX(0deg)    scaleX(0.99) scaleY(1.015); }
+          60%  { transform: scale(1.06) skewX(-0.5deg) scaleX(1.015) scaleY(0.99); }
+          80%  { transform: scale(1.06) skewX(0deg)    scaleX(0.985) scaleY(1.01); }
+          100% { transform: scale(1.06) skewX(0deg)    scaleX(1)    scaleY(1); }
         }
       `}</style>
       <div style={{ width: '100%', height: '100%', borderRadius: '50%', overflow: 'hidden' }}>
