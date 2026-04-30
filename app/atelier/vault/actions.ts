@@ -1,13 +1,54 @@
 'use server'
 
 // Vault server actions — upload, delete, generate COA.
+// Storage: Cloudflare R2 (private vault bucket) via S3-compatible API.
 // COA uses pdfkit + qrcode (run: npm install pdfkit qrcode @types/pdfkit @types/qrcode)
+// R2:  npm install @aws-sdk/client-s3 @aws-sdk/s3-request-presigner
 
 import { createClient } from '@/lib/supabase/server'
 import { nanoid }       from 'nanoid'
 import { createHash }   from 'crypto'
+import {
+  S3Client, PutObjectCommand, DeleteObjectCommand,
+} from '@aws-sdk/client-s3'
+import { getSignedUrl as awsGetSignedUrl } from '@aws-sdk/s3-request-presigner'
+import { GetObjectCommand } from '@aws-sdk/client-s3'
 
-const BUCKET = 'vault'
+const BUCKET = process.env.R2_VAULT_BUCKET ?? 'vault'
+
+// ── R2 S3 client (private vault bucket) ─────────────────────────────────────
+function r2Client() {
+  const accountId = process.env.R2_ACCOUNT_ID ?? ''
+  return new S3Client({
+    region: 'auto',
+    endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+    credentials: {
+      accessKeyId:     process.env.R2_ACCESS_KEY_ID     ?? '',
+      secretAccessKey: process.env.R2_SECRET_ACCESS_KEY ?? '',
+    },
+  })
+}
+
+async function r2Upload(key: string, body: Buffer, contentType: string) {
+  const s3 = r2Client()
+  await s3.send(new PutObjectCommand({
+    Bucket:      BUCKET,
+    Key:         key,
+    Body:        body,
+    ContentType: contentType,
+  }))
+}
+
+async function r2Delete(key: string) {
+  const s3 = r2Client()
+  await s3.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: key }))
+}
+
+async function r2SignedUrl(key: string, expiresIn = 3600): Promise<string> {
+  const s3  = r2Client()
+  const cmd = new GetObjectCommand({ Bucket: BUCKET, Key: key })
+  return awsGetSignedUrl(s3, cmd, { expiresIn })
+}
 
 export type VaultResult = { error: string } | { ok: true }
 export type UploadResult = { error: string } | { ok: true; doc: VaultDoc }
@@ -62,11 +103,11 @@ export async function uploadDocument(formData: FormData): Promise<UploadResult> 
   const docName = name || file.name
 
   const buf = Buffer.from(await file.arrayBuffer())
-  const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, buf, {
-    contentType: file.type,
-    upsert: false,
-  })
-  if (upErr) return { error: `Upload : ${upErr.message}` }
+  try {
+    await r2Upload(path, buf, file.type)
+  } catch (e) {
+    return { error: `Upload R2 : ${String(e)}` }
+  }
 
   const { data: doc, error: dbErr } = await supabase
     .from('document')
@@ -85,8 +126,8 @@ export async function uploadDocument(formData: FormData): Promise<UploadResult> 
     .single()
 
   if (dbErr) {
-    // cleanup orphaned storage object
-    await supabase.storage.from(BUCKET).remove([path])
+    // cleanup orphaned R2 object
+    await r2Delete(path).catch(() => {})
     return { error: dbErr.message }
   }
 
@@ -100,7 +141,7 @@ export async function deleteDocument(id: string, storagePath: string | null): Pr
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
 
   if (storagePath) {
-    await supabase.storage.from(BUCKET).remove([storagePath])
+    await r2Delete(storagePath).catch(() => {})
   }
 
   const { error } = await supabase.from('document').delete().eq('id', id)
@@ -111,12 +152,15 @@ export async function deleteDocument(id: string, storagePath: string | null): Pr
 // ── Generate signed download URL ──────────────────────────────────────────
 
 export async function getSignedUrl(storagePath: string): Promise<{ url: string } | { error: string }> {
-  const { error: authErr, supabase } = await guardTeam()
-  if (authErr || !supabase) return { error: authErr ?? 'Auth' }
+  const { error: authErr } = await guardTeam()
+  if (authErr) return { error: authErr }
 
-  const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(storagePath, 3600)
-  if (error || !data) return { error: error?.message ?? 'Signed URL failed' }
-  return { url: data.signedUrl }
+  try {
+    const url = await r2SignedUrl(storagePath, 3600)
+    return { url }
+  } catch (e) {
+    return { error: `Signed URL failed: ${String(e)}` }
+  }
 }
 
 // ── Generate Certificate of Authenticity ─────────────────────────────────
@@ -156,9 +200,10 @@ export async function generateCOA(oeuvreId: number): Promise<CoaResult> {
   let imageBuffer: Buffer | null = null
   if (o.txtImageNameLink) {
     try {
+      const R2   = process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? ''
       const SB   = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
       const BKT  = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET ?? 'paintings'
-      const STR  = `${SB}/storage/v1/object/public/${BKT}`
+      const STR  = R2 || `${SB}/storage/v1/object/public/${BKT}`
       const imgUrl = `${STR}/${encodeURIComponent(o.txtImageNameLink)}`
       const res = await fetch(imgUrl)
       if (res.ok) imageBuffer = Buffer.from(await res.arrayBuffer())
@@ -181,13 +226,13 @@ export async function generateCOA(oeuvreId: number): Promise<CoaResult> {
     return { error: `Génération PDF : ${String(e)}` }
   }
 
-  // Upload to vault
+  // Upload to R2 vault
   const filename = `COA_${certId}.pdf`
-  const { error: upErr } = await supabase.storage.from(BUCKET).upload(filename, pdfBuffer, {
-    contentType: 'application/pdf',
-    upsert: false,
-  })
-  if (upErr) return { error: `Upload COA : ${upErr.message}` }
+  try {
+    await r2Upload(filename, pdfBuffer, 'application/pdf')
+  } catch (e) {
+    return { error: `Upload COA R2 : ${String(e)}` }
+  }
 
   // Insert document record
   const { data: doc, error: dbErr } = await supabase

@@ -231,7 +231,7 @@ export function PipelineTab() {
   )
 
   const filtered = useMemo(() => processes.filter((p) => {
-    if (!showDone && ['gagne','perdu','annule','termine'].includes(p.statut)) return false
+    if (!showDone && ['perdu','annule','termine'].includes(p.statut)) return false
     if (typeFilter !== 'all' && p.type !== typeFilter) return false
     return true
   }), [processes, typeFilter, showDone])
@@ -427,7 +427,7 @@ function GanttView({ processes, onSelect, onEdit, onRefresh, onCycleStatut }: {
       <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
         {processes.map(p=>{
           const color   = TYPE_COLORS[p.type as ProcessType]??'#888'
-          const isDone  = ['gagne','perdu','annule','termine'].includes(p.statut)
+          const isDone  = ['perdu','annule','termine'].includes(p.statut)
           const barL    = p.date_debut ? pct(p.date_debut) : todayPct-0.5
           const barR    = p.date_fin   ? pct(p.date_fin)   : todayPct+0.5
           const barW    = Math.max(0.5, barR-barL)

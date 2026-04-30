@@ -159,9 +159,10 @@ export async function generateExport(
 
   if (fetchErr || !oeuvres) return { error: fetchErr?.message ?? 'Fetch failed' }
 
+  const R2   = process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? ''
   const SB   = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
   const BKT  = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET ?? 'paintings'
-  const STR  = `${SB}/storage/v1/object/public/${BKT}`
+  const STR  = R2 || `${SB}/storage/v1/object/public/${BKT}`
 
   // Build image map: id → url or base64 data url
   // PDF always needs server-fetched images (pdfkit cannot load remote URLs).

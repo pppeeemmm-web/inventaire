@@ -10,12 +10,18 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 }
 
+const R2  = process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? ''
 const SB  = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
 const BKT = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET ?? 'paintings'
 
-function thumbUrl(path: string, size = 828): string {
+function thumbUrl(path: string, _size = 828): string {
+  if (R2) {
+    // Serve pre-generated AVIF thumbs from R2 (zero egress cost)
+    const base = path.replace(/\.[^.]+$/, '')
+    return `${R2}/thumbs/${encodeURIComponent(base)}.avif`
+  }
   const full = `${SB}/storage/v1/object/public/${BKT}/${encodeURIComponent(path)}`
-  return `/_next/image?url=${encodeURIComponent(full)}&w=${size}&q=70`
+  return `/_next/image?url=${encodeURIComponent(full)}&w=828&q=70`
 }
 
 export default async function LandingPage() {
