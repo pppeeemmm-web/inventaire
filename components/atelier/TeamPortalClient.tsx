@@ -23,12 +23,14 @@ import { ContactsTab }         from '@/components/atelier/ContactsTab'
 import { WorldMapTab }         from '@/components/atelier/WorldMapTab'
 import { PipelineTab }         from '@/components/atelier/PipelineTab'
 import { FiscalTab }           from '@/components/atelier/FiscalTab'
+import { ConceptsTab }         from '@/components/atelier/ConceptsTab'
+import { ExhibitionsTab }      from '@/components/atelier/ExhibitionsTab'
 
 // ── Types ────────────────────────────────────────────────────────────
 
 type Tab =
   | 'overview' | 'inventory' | 'constellation' | 'production'
-  | 'logistics' | 'sales' | 'exhibitions' | 'vault' | 'contacts' | 'map' | 'pipeline' | 'fiscal'
+  | 'logistics' | 'sales' | 'exhibitions' | 'vault' | 'contacts' | 'map' | 'pipeline' | 'fiscal' | 'concepts'
 
 interface Props {
   oeuvres:        Oeuvre[]
@@ -148,6 +150,7 @@ export function TeamPortalClient({
     ['pipeline',       t('pipeline')],
     ['map',           t('map')],
     ['fiscal',        'Fiscal'],
+    ['concepts',      'Concepts'],
   ]
 
   const showDock = selection.size > 0 && tab !== 'constellation'
@@ -251,12 +254,15 @@ export function TeamPortalClient({
           <SalesTab
             oeuvres={oeuvres}
             statusLabelMap={statusLabelMap}
+            contacts={contacts}
             cM={cM}
             tM={tM}
           />
         )}
         {tab === 'exhibitions' && (
-          <TabPlaceholder label="Expositions" note="source/team/tabs.jsx → ExhibitionsTab" />
+          <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+            <ExhibitionsTab oeuvres={oeuvres} />
+          </div>
         )}
         {tab === 'vault' && (
           <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
@@ -291,6 +297,11 @@ export function TeamPortalClient({
         {tab === 'fiscal' && (
           <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
             <FiscalTab oeuvres={oeuvres} />
+          </div>
+        )}
+        {tab === 'concepts' && (
+          <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+            <ConceptsTab />
           </div>
         )}
       </div>
