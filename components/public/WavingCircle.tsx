@@ -97,7 +97,7 @@ export default function WavingCircle({ src, alt, className }: Props) {
   }, [])
 
   return (
-    <canvas
+    <canvas suppressHydrationWarning
       ref={canvasRef}
       aria-label={alt}
       role="img"
