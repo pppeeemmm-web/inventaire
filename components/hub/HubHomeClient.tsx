@@ -36,7 +36,7 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 28px', borderBottom: '1px solid var(--bd)' }}>
         <div className="row gap-md">
           <div style={{ width: 24, height: 24, border: '1px solid var(--ac)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ac)', fontSize: 11, fontFamily: "'Instrument Serif', serif", lineHeight: 1 }}>P</div>
-          <div className="t-eyebrow" style={{ color: 'var(--tx)' }}>PEM HUB TEST</div>
+          <div className="t-eyebrow" style={{ color: 'var(--tx)' }}>{t('hub')}</div>
           <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>— {t('tagline')}</div>
         </div>
         <div className="row gap-md">
@@ -192,8 +192,8 @@ function PortalTile({
         width: '100%', cursor: wip ? 'default' : 'pointer',
         opacity: wip ? 0.7 : 1
       }}
-      onMouseEnter={(e) => { !wip && (e.currentTarget as HTMLElement).style.background = 'var(--bg1)' }}
-      onMouseLeave={(e) => { !wip && (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
+      onMouseEnter={(e) => { if (!wip) (e.currentTarget as HTMLElement).style.background = 'var(--bg1)' }}
+      onMouseLeave={(e) => { if (!wip) (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
       <div className="row gap-sm" style={{ justifyContent: 'space-between', width: '100%' }}>
         <div className="row gap-sm">
           <div style={{ color: 'var(--ac)', fontSize: 9, letterSpacing: 3, fontWeight: 500 }}>{code}</div>
