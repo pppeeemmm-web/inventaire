@@ -8,6 +8,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react'
 import Link from 'next/link'
 import { thumbUrl, yearOf } from '@/lib/data'
+import { createClient } from '@/lib/supabase/client'
 
 interface Work {
   OeuvreID:         number
@@ -35,6 +36,8 @@ interface Section {
 interface Props { 
   works: Work[] 
   sections: Section[]
+  statementUrl?: string | null
+  cvUrl?: string | null
 }
 
 function dims(w: Work): string {
@@ -73,7 +76,7 @@ interface Page {
 }
 
 // ── Main ───────────────────────────────────────────────────────────────
-export default function PortfolioClient({ works, sections }: Props) {
+export default function PortfolioClient({ works, sections, statementUrl, cvUrl }: Props) {
   const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('portrait')
   const [showPrivate,  setShowPrivate]  = useState(false)
   const [activeTheme,  setActiveTheme]  = useState<string | null>(null)
@@ -182,11 +185,9 @@ export default function PortfolioClient({ works, sections }: Props) {
 
         {/* Section links */}
         <div style={{ display: 'flex', gap: 0 }}>
-          {([['approach', 'Approche'], ['works', 'Œuvres'], ['enquiry', 'Enquiry']] as const).map(([s, label]) => {
-            const targetIdx = s === 'approach' ? 0 : s === 'enquiry' ? pages.length - 1 : 1
-            const isActive  = s === 'approach' ? pageIdx === 0
-                            : s === 'enquiry'  ? pageIdx === pages.length - 1
-                            : pageIdx > 0 && pageIdx < pages.length - 1
+          {([['approach', 'Approche'], ['works', 'Œuvres']] as const).map(([s, label]) => {
+            const targetIdx = s === 'approach' ? 0 : 1
+            const isActive  = s === 'approach' ? pageIdx === 0 : pageIdx > 0 && pageIdx < pages.length - 1
             return (
               <button key={s}
                 onClick={() => setPageIdx(targetIdx)}
@@ -202,6 +203,34 @@ export default function PortfolioClient({ works, sections }: Props) {
               >{label}</button>
             )
           })}
+          
+          {statementUrl && (
+             <a href={statementUrl} target="_blank" rel="noreferrer" style={{
+                padding: 'clamp(8px, 2vw, 14px) clamp(10px, 2vw, 24px)',
+                color: 'var(--tx3)', textDecoration: 'none',
+                fontSize: 'clamp(8px, 1.2vw, 10px)', letterSpacing: 2, textTransform: 'uppercase',
+             }}>Statement</a>
+          )}
+          {cvUrl && (
+             <a href={cvUrl} target="_blank" rel="noreferrer" style={{
+                padding: 'clamp(8px, 2vw, 14px) clamp(10px, 2vw, 24px)',
+                color: 'var(--tx3)', textDecoration: 'none',
+                fontSize: 'clamp(8px, 1.2vw, 10px)', letterSpacing: 2, textTransform: 'uppercase',
+             }}>CV</a>
+          )}
+
+          <button
+            onClick={() => setPageIdx(pages.length - 1)}
+            style={{
+              padding: 'clamp(8px, 2vw, 14px) clamp(10px, 2vw, 24px)',
+              background: 'none', border: 'none',
+              borderBottom: pageIdx === pages.length - 1 ? '2px solid var(--ac)' : '2px solid transparent',
+              color: pageIdx === pages.length - 1 ? 'var(--ac)' : 'var(--tx3)',
+              cursor: 'pointer', fontSize: 'clamp(8px, 1.2vw, 10px)',
+              letterSpacing: 2, textTransform: 'uppercase', fontFamily: 'inherit',
+              fontWeight: pageIdx === pages.length - 1 ? 600 : 400, whiteSpace: 'nowrap',
+            }}
+          >Enquiry</button>
         </div>
 
         {/* Controls */}
@@ -410,19 +439,11 @@ function CardContent({ page, isPortrait }: { page: Page; isPortrait: boolean }) 
 
   if (page.kind === 'enquiry') {
     return (
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 'clamp(24px,5%,48px)', justifyContent: 'flex-end' }}>
-        <div className="t-label" style={{ marginBottom: 16, letterSpacing: 3 }}>Enquiry</div>
-        <div className="t-mono-sm" style={{ lineHeight: 2.2, color: 'var(--tx3)' }}>
-          Acquisition, exposition, visites d&apos;atelier.<br />
-          Réponse sous quelques jours.
-        </div>
-        <a href="mailto:studio@pierreemmanuel.com" style={{
-          display: 'inline-block', marginTop: 24, padding: '12px 28px', width: 'fit-content',
-          border: '1px solid var(--ac)', color: 'var(--ac)', textDecoration: 'none',
-          fontFamily: 'inherit', fontSize: 10, letterSpacing: 2, textTransform: 'uppercase',
-        }}>Écrire</a>
-        <div className="t-mono-sm" style={{ marginTop: 32, fontSize: 9, opacity: 0.4 }}>
-          © {new Date().getFullYear()} Pierre Emmanuel Moulin · Tous droits réservés
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 'clamp(24px,5%,48px)', justifyContent: 'center' }}>
+        <div className="t-label" style={{ marginBottom: 24, letterSpacing: 3 }}>Enquiry</div>
+        <InquiryForm />
+        <div className="t-mono-sm" style={{ marginTop: 32, fontSize: 8, opacity: 0.4 }}>
+          © {new Date().getFullYear()} Pierre Emmanuel Moulin · Studio
         </div>
       </div>
     )
@@ -485,6 +506,69 @@ function PrintPage({ page }: { page: Page }) {
         </div>
       </>
     )
+    return null
   }
-  return null
+}
+
+function InquiryForm() {
+  const [sent, setSent] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [form, setForm] = useState({ name: '', email: '', message: '' })
+  const sb = createClient()
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!form.name || !form.email || !form.message) return
+    setLoading(true)
+    const { error } = await sb.from('inquiry').insert([form])
+    setLoading(false)
+    if (!error) setSent(true)
+  }
+
+  if (sent) {
+    return (
+      <div className="serif" style={{ fontSize: 16, color: 'var(--ac)', fontStyle: 'italic' }}>
+        Merci. Votre message a été transmis au studio.
+      </div>
+    )
+  }
+
+  return (
+    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 400 }}>
+      <div>
+        <input 
+          placeholder="Nom"
+          value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
+          required
+          style={{ width: '100%', background: 'none', border: 'none', borderBottom: '1px solid var(--bd2)', padding: '8px 0', fontSize: 13, color: 'var(--tx)', outline: 'none' }}
+        />
+      </div>
+      <div>
+        <input 
+          type="email" placeholder="Email"
+          value={form.email} onChange={e => setForm({ ...form, email: e.target.value })}
+          required
+          style={{ width: '100%', background: 'none', border: 'none', borderBottom: '1px solid var(--bd2)', padding: '8px 0', fontSize: 13, color: 'var(--tx)', outline: 'none' }}
+        />
+      </div>
+      <div>
+        <textarea 
+          placeholder="Message"
+          value={form.message} onChange={e => setForm({ ...form, message: e.target.value })}
+          required rows={4}
+          style={{ width: '100%', background: 'none', border: 'none', borderBottom: '1px solid var(--bd2)', padding: '8px 0', fontSize: 13, color: 'var(--tx)', outline: 'none', resize: 'none' }}
+        />
+      </div>
+      <button 
+        type="submit" disabled={loading}
+        style={{ 
+          marginTop: 8, padding: '10px 24px', width: 'fit-content',
+          background: 'none', border: '1px solid var(--ac)', color: 'var(--ac)',
+          fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', cursor: 'pointer'
+        }}
+      >
+        {loading ? 'Envoi...' : 'Envoyer'}
+      </button>
+    </form>
+  )
 }

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase/server'
 
 export const metadata: Metadata = {
   title: 'About — Pierre Emmanuel Moulin',
@@ -22,7 +23,49 @@ const formation = [
   { year: '1997', text: 'Sciences Po Aix-en-Provence' },
 ]
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  const supabase = await createClient()
+
+  // Fetch config
+  let config: any = { statement_doc_id: null, cv_doc_id: null }
+  const { data: configDoc } = await supabase
+    .from('document')
+    .select('storage_path')
+    .eq('name', 'portfolio_sections.json')
+    .single()
+
+  if (configDoc?.storage_path) {
+    const { data: fileData } = await supabase.storage.from('documents').download(configDoc.storage_path)
+    if (fileData) {
+      try {
+        const parsed = JSON.parse(await fileData.text())
+        if (!Array.isArray(parsed)) config = parsed
+      } catch (e) {}
+    }
+  }
+
+  // Fetch URLs
+  let statementUrl = null
+  let cvUrl = null
+
+  if (config.statement_doc_id || config.cv_doc_id) {
+    const ids = [config.statement_doc_id, config.cv_doc_id].filter(Boolean)
+    const { data: docs } = await supabase.from('document').select('id, storage_path').in('id', ids)
+    
+    if (docs) {
+      const sDoc = docs.find(d => d.id === config.statement_doc_id)
+      if (sDoc) {
+        const { data } = await supabase.storage.from('documents').createSignedUrl(sDoc.storage_path, 3600)
+        statementUrl = data?.signedUrl || null
+      }
+      const cDoc = docs.find(d => d.id === config.cv_doc_id)
+      if (cDoc) {
+        const { data } = await supabase.storage.from('documents').createSignedUrl(cDoc.storage_path, 3600)
+        cvUrl = data?.signedUrl || null
+      }
+    }
+  }
+
   return (
     <>
       <style>{`
@@ -57,15 +100,24 @@ export default function AboutPage() {
         .a-footer { text-align: center; padding: 40px; border-top: 1px solid #dedad4; font-size: 9px; color: #c8c4be; letter-spacing: 2px; text-transform: uppercase; }
         a.a-ext { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
         a.a-ext:hover { color: #3a3834; }
+        
+        .btn-doc {
+          display: inline-flex; align-items: center; gap: 12px;
+          padding: 12px 24px; border: 1px solid #dedad4;
+          text-decoration: none; color: #6b6760; font-size: 10px;
+          letter-spacing: 1.5px; text-transform: uppercase;
+          transition: all .2s; margin-right: 16px; margin-top: 24px;
+        }
+        .btn-doc:hover { background: #fff; border-color: #3a3834; color: #3a3834; }
       `}</style>
 
       <nav className="a-nav">
         <Link href="/" className="a-logo">Atelier PEM</Link>
         <div className="a-navlinks">
-          <Link href="/works"    className="a-navlink">Works</Link>
-          <Link href="/about"    className="a-navlink active">About</Link>
-          <Link href="/practice" className="a-navlink">Practice</Link>
-          <a href="mailto:pppeeemmm@gmail.com" className="a-navlink">Enquiry</a>
+          <Link href="/portfolio" className="a-navlink">Portfolio</Link>
+          <Link href="/about"     className="a-navlink active">About</Link>
+          <Link href="/practice"  className="a-navlink">Practice</Link>
+          <Link href="/portfolio" className="a-navlink">Enquiry</Link>
         </div>
       </nav>
 
@@ -96,6 +148,19 @@ export default function AboutPage() {
               Retour à Marseille en juin 2024. Corpus actif de plus de mille oeuvres depuis 2019 —
               peintures à l&apos;huile, pastel, encre, bâton d&apos;huile, crayons.
             </p>
+
+            <div style={{ marginTop: 40 }}>
+              {statementUrl && (
+                <a href={statementUrl} target="_blank" rel="noreferrer" className="btn-doc">
+                  Read Artist Statement (PDF)
+                </a>
+              )}
+              {cvUrl && (
+                <a href={cvUrl} target="_blank" rel="noreferrer" className="btn-doc">
+                  Download CV (PDF)
+                </a>
+              )}
+            </div>
           </div>
         </section>
 
@@ -127,7 +192,7 @@ export default function AboutPage() {
           <div className="a-section-label">Contact</div>
           <div className="a-bio">
             <p>Marseille, France &nbsp;&middot;&nbsp; +33 6 17 69 05 22</p>
-            <p><a href="mailto:pppeeemmm@gmail.com" className="a-ext">pppeeemmm@gmail.com</a></p>
+            <p><Link href="/portfolio" className="a-ext">Inquiry Form</Link></p>
             <p><a href="https://moulinfineart.myportfolio.com/" target="_blank" rel="noreferrer" className="a-ext">moulinfineart.myportfolio.com</a></p>
           </div>
         </section>

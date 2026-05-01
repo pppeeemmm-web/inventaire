@@ -46,7 +46,7 @@ export default async function PortfolioPage() {
     }))
 
   // Fetch config
-  let sections: any[] = []
+  let config: any = { sections: [], statement_doc_id: null, cv_doc_id: null }
   const { data: configDoc } = await supabase
     .from('document')
     .select('storage_path')
@@ -57,14 +57,42 @@ export default async function PortfolioPage() {
     const { data: fileData } = await supabase.storage.from('documents').download(configDoc.storage_path)
     if (fileData) {
       try {
-        sections = JSON.parse(await fileData.text())
+        const parsed = JSON.parse(await fileData.text())
+        config = Array.isArray(parsed) ? { ...config, sections: parsed } : parsed
       } catch (e) {}
+    }
+  }
+
+  // Fetch Statement and CV
+  let statementUrl = null
+  let cvUrl = null
+
+  if (config.statement_doc_id || config.cv_doc_id) {
+    const ids = [config.statement_doc_id, config.cv_doc_id].filter(Boolean)
+    const { data: docs } = await supabase.from('document').select('id, storage_path').in('id', ids)
+    
+    if (docs) {
+      const sDoc = docs.find(d => d.id === config.statement_doc_id)
+      if (sDoc) {
+        const { data } = await supabase.storage.from('documents').createSignedUrl(sDoc.storage_path, 3600)
+        statementUrl = data?.signedUrl || null
+      }
+      const cDoc = docs.find(d => d.id === config.cv_doc_id)
+      if (cDoc) {
+        const { data } = await supabase.storage.from('documents').createSignedUrl(cDoc.storage_path, 3600)
+        cvUrl = data?.signedUrl || null
+      }
     }
   }
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg0)', color: 'var(--tx)' }}>
-      <PortfolioClient works={works} sections={sections} />
+      <PortfolioClient 
+        works={works} 
+        sections={config.sections || []} 
+        statementUrl={statementUrl}
+        cvUrl={cvUrl}
+      />
     </div>
   )
 }

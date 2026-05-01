@@ -1,8 +1,7 @@
 // Gallery portal — /galerie/:gallery_id
-// Auth enforced by middleware. Galleries see only their own consigned works.
-// TODO: Implement from source/portals-stubs.jsx (galleries section)
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
+import PortalLayout from '@/components/portals/PortalLayout'
 
 export default async function GaleriePage({
   params,
@@ -27,21 +26,19 @@ export default async function GaleriePage({
 
   const { data: consignments } = await supabase
     .from('consignment')
-    .select('*, Oeuvres(OeuvreID, Titre, Année, Hauteur, Largeur, txtImageNameLink)')
+    .select('*, Oeuvres(OeuvreID, Titre, Année, Hauteur, Largeur, Profondeur, txtImageNameLink)')
     .eq('gallery_contact_id', parseInt(gallery_id))
     .is('ended_at', null)
-    .order('since', { ascending: false })
+    .order('since', { ascending: false }) as any
+
+  const works = (consignments || []).map((c: any) => c.Oeuvres).filter(Boolean)
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg0)', color: 'var(--tx)', padding: '48px 40px' }}>
-      <div className="t-eyebrow" style={{ marginBottom: 12 }}>Galerie</div>
-      <div className="serif s-lg" style={{ marginBottom: 32 }}>{contact.NomInstitution}</div>
-      <div className="t-label" style={{ marginBottom: 16 }}>Consignations en cours</div>
-      {/* TODO: Full gallery portal from source/portals-stubs.jsx */}
-      <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>
-        {consignments?.length ?? 0} œuvres en consignation.
-        Implement full gallery portal from <code>source/portals-stubs.jsx</code>.
-      </div>
-    </div>
+    <PortalLayout 
+      title="Espace Galerie"
+      subtitle={contact.NomInstitution || 'Galerie Partenaire'}
+      userName={user.email || 'Admin'}
+      works={works}
+    />
   )
 }
