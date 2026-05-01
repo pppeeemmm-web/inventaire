@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Oeuvre } from '@/lib/types/database'
 
-interface PortfolioSection {
+interface CollectionItem {
   id:          string
   title:       string
   description: string
@@ -14,9 +14,10 @@ interface PortfolioSection {
 }
 
 interface PortfolioConfig {
-  sections:         PortfolioSection[]
-  statement_doc_id: number | null
-  cv_doc_id:        number | null
+  sections:          CollectionItem[] // For /portfolio
+  works_collections: CollectionItem[] // For /works
+  statement_doc_id:  number | null
+  cv_doc_id:         number | null
 }
 
 interface Props {
@@ -24,7 +25,7 @@ interface Props {
 }
 
 export function PortfolioTab({ oeuvres }: Props) {
-  const [config,    setConfig]    = useState<PortfolioConfig>({ sections: [], statement_doc_id: null, cv_doc_id: null })
+  const [config,    setConfig]    = useState<PortfolioConfig>({ sections: [], works_collections: [], statement_doc_id: null, cv_doc_id: null })
   const [documents, setDocuments] = useState<any[]>([])
   const [loading,   setLoading]   = useState(true)
   const [saving,    setSaving]    = useState(false)
@@ -47,14 +48,16 @@ export function PortfolioTab({ oeuvres }: Props) {
         const text = await fileData.text()
         try {
           const parsed = JSON.parse(text)
-          // Handle legacy format (array of sections) vs new format (object)
-          if (Array.isArray(parsed)) {
-            setConfig({ sections: parsed, statement_doc_id: null, cv_doc_id: null })
-          } else {
-            setConfig(parsed)
+          // Migration
+          const next = {
+             sections:          parsed.sections || (Array.isArray(parsed) ? parsed : []),
+             works_collections: parsed.works_collections || [],
+             statement_doc_id:  parsed.statement_doc_id || null,
+             cv_doc_id:         parsed.cv_doc_id || null
           }
+          setConfig(next)
         } catch (e) {
-          setConfig({ sections: [], statement_doc_id: null, cv_doc_id: null })
+          setConfig({ sections: [], works_collections: [], statement_doc_id: null, cv_doc_id: null })
         }
       }
     }
@@ -82,27 +85,28 @@ export function PortfolioTab({ oeuvres }: Props) {
     setSaving(false)
   }
 
-  function addSection() {
-    const next: PortfolioSection = {
+  function addItem(target: 'sections' | 'works_collections') {
+    const next: CollectionItem = {
       id: Math.random().toString(36).slice(2),
       title: 'Nouvelle Section',
       description: '',
       theme: null,
-      sort_order: config.sections.length,
+      sort_order: config[target].length,
       is_active: true
     }
-    saveConfig({ ...config, sections: [...config.sections, next] })
+    const nextConfig = { ...config, [target]: [...config[target], next] }
+    saveConfig(nextConfig)
   }
 
-  function updateSection(id: string, patch: Partial<PortfolioSection>) {
-    const nextSections = config.sections.map(s => s.id === id ? { ...s, ...patch } : s)
-    setConfig({ ...config, sections: nextSections })
+  function updateItem(target: 'sections' | 'works_collections', id: string, patch: Partial<CollectionItem>) {
+    const nextList = config[target].map(s => s.id === id ? { ...s, ...patch } : s)
+    setConfig({ ...config, [target]: nextList })
   }
 
   if (loading) return <div className="t-mono-sm" style={{ padding: 40, color: 'var(--tx3)' }}>Chargement configuration...</div>
 
   return (
-    <div style={{ padding: '24px 32px', height: '100%', overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 32 }}>
+    <div style={{ padding: '24px 32px', height: '100%', overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 48 }}>
       
       {/* Global Content */}
       <section style={{ padding: '20px 24px', background: 'var(--bg0)', border: '1px solid var(--bd)' }}>
@@ -133,70 +137,92 @@ export function PortfolioTab({ oeuvres }: Props) {
         </div>
       </section>
 
-      {/* Sections Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <h2 className="serif" style={{ fontSize: 24, color: 'var(--tx)' }}>Portfolio Public</h2>
-          <p className="t-mono-sm" style={{ color: 'var(--tx3)', marginTop: 4 }}>Organisez les œuvres en "containers" thématiques.</p>
-        </div>
-        <button className="btn sm" onClick={addSection} disabled={saving}>+ Ajouter une section</button>
-      </div>
-
-      {/* Sections List */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        {config.sections.sort((a,b) => a.sort_order - b.sort_order).map((s) => (
-          <div key={s.id} style={{ padding: 20, background: 'var(--bg1)', border: '1px solid var(--bd)', display: 'flex', gap: 24 }}>
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ display: 'flex', gap: 12 }}>
-                <div style={{ flex: 1 }}>
-                  <label className="t-label" style={{ marginBottom: 4, display: 'block' }}>Titre de la section</label>
-                  <input 
-                    value={s.title} 
-                    onChange={e => updateSection(s.id, { title: e.target.value })}
-                    style={{ width: '100%', padding: '6px 10px', background: 'var(--bg0)', border: '1px solid var(--bd)', color: 'var(--tx)', fontSize: 13 }}
-                  />
-                </div>
-                <div style={{ width: 200 }}>
-                  <label className="t-label" style={{ marginBottom: 4, display: 'block' }}>Thème associé</label>
-                  <select 
-                    value={s.theme || ''} 
-                    onChange={e => updateSection(s.id, { theme: e.target.value || null })}
-                    style={{ width: '100%', padding: '6px 10px', background: 'var(--bg0)', border: '1px solid var(--bd)', color: 'var(--tx)', fontSize: 13 }}
-                  >
-                    <option value="">— Toutes les œuvres</option>
-                    {themes.map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="t-label" style={{ marginBottom: 4, display: 'block' }}>Introduction de section</label>
-                <textarea 
-                  value={s.description} 
-                  onChange={e => updateSection(s.id, { description: e.target.value })}
-                  rows={3}
-                  style={{ width: '100%', padding: '8px 10px', background: 'var(--bg0)', border: '1px solid var(--bd)', color: 'var(--tx2)', fontSize: 12, lineHeight: 1.5, resize: 'vertical' }}
-                />
-              </div>
-            </div>
-
-            <div style={{ width: 120, borderLeft: '1px solid var(--bd)', paddingLeft: 24, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <button className="btn ghost sm" onClick={() => saveConfig({ ...config, sections: config.sections.filter(x => x.id !== s.id) })} style={{ color: 'var(--rust)' }}>Supprimer</button>
-              <div style={{ marginTop: 'auto' }}>
-                 <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-                   <input type="checkbox" checked={s.is_active} onChange={e => updateSection(s.id, { is_active: e.target.checked })} />
-                   <span className="t-mono-sm" style={{ fontSize: 9 }}>Actif</span>
-                 </label>
-              </div>
-            </div>
+      {/* WORKS PAGE CONFIG */}
+      <section style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--bd)', paddingBottom: 12 }}>
+          <div>
+            <h2 className="serif" style={{ fontSize: 24, color: 'var(--tx)' }}>Page Œuvres (Works)</h2>
+            <p className="t-mono-sm" style={{ color: 'var(--tx3)', marginTop: 4 }}>Gérez les collections affichées sur la page publique des œuvres.</p>
           </div>
-        ))}
-      </div>
+          <button className="btn sm" onClick={() => addItem('works_collections')} disabled={saving}>+ Ajouter une collection</button>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {config.works_collections.sort((a,b) => a.sort_order - b.sort_order).map((s) => (
+            <ItemRow key={s.id} item={s} themes={themes} onUpdate={(p) => updateItem('works_collections', s.id, p)} onDelete={() => saveConfig({ ...config, works_collections: config.works_collections.filter(x => x.id !== s.id) })} />
+          ))}
+        </div>
+      </section>
+
+      {/* PORTFOLIO PAGE CONFIG */}
+      <section style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--bd)', paddingBottom: 12 }}>
+          <div>
+            <h2 className="serif" style={{ fontSize: 24, color: 'var(--tx)' }}>Portfolio Interactif</h2>
+            <p className="t-mono-sm" style={{ color: 'var(--tx3)', marginTop: 4 }}>Gérez les sections de l'expérience portfolio plein écran.</p>
+          </div>
+          <button className="btn sm" onClick={() => addItem('sections')} disabled={saving}>+ Ajouter une section</button>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {config.sections.sort((a,b) => a.sort_order - b.sort_order).map((s) => (
+            <ItemRow key={s.id} item={s} themes={themes} onUpdate={(p) => updateItem('sections', s.id, p)} onDelete={() => saveConfig({ ...config, sections: config.sections.filter(x => x.id !== s.id) })} />
+          ))}
+        </div>
+      </section>
 
       <div style={{ marginTop: 'auto', paddingTop: 24, borderTop: '1px solid var(--bd)', display: 'flex', justifyContent: 'flex-end' }}>
         <button className="btn" onClick={() => saveConfig(config)} disabled={saving}>
-          {saving ? 'Enregistrement...' : 'Enregistrer la configuration'}
+          {saving ? 'Enregistrement...' : 'Enregistrer la configuration globale'}
         </button>
+      </div>
+    </div>
+  )
+}
+
+function ItemRow({ item, themes, onUpdate, onDelete }: { item: CollectionItem, themes: string[], onUpdate: (p: Partial<CollectionItem>) => void, onDelete: () => void }) {
+  return (
+    <div style={{ padding: 20, background: 'var(--bg1)', border: '1px solid var(--bd)', display: 'flex', gap: 24 }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <div style={{ flex: 1 }}>
+            <label className="t-label" style={{ marginBottom: 4, display: 'block' }}>Titre</label>
+            <input 
+              value={item.title} 
+              onChange={e => onUpdate({ title: e.target.value })}
+              style={{ width: '100%', padding: '6px 10px', background: 'var(--bg0)', border: '1px solid var(--bd)', color: 'var(--tx)', fontSize: 13 }}
+            />
+          </div>
+          <div style={{ width: 200 }}>
+            <label className="t-label" style={{ marginBottom: 4, display: 'block' }}>Thème / Groupe</label>
+            <select 
+              value={item.theme || ''} 
+              onChange={e => onUpdate({ theme: e.target.value || null })}
+              style={{ width: '100%', padding: '6px 10px', background: 'var(--bg0)', border: '1px solid var(--bd)', color: 'var(--tx)', fontSize: 13 }}
+            >
+              <option value="">— Sélectionner</option>
+              {themes.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label className="t-label" style={{ marginBottom: 4, display: 'block' }}>Description / Introduction</label>
+          <textarea 
+            value={item.description} 
+            onChange={e => onUpdate({ description: e.target.value })}
+            rows={2}
+            style={{ width: '100%', padding: '8px 10px', background: 'var(--bg0)', border: '1px solid var(--bd)', color: 'var(--tx2)', fontSize: 12, lineHeight: 1.5, resize: 'vertical' }}
+          />
+        </div>
+      </div>
+
+      <div style={{ width: 120, borderLeft: '1px solid var(--bd)', paddingLeft: 24, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <button className="btn ghost sm" onClick={onDelete} style={{ color: 'var(--rust)' }}>Supprimer</button>
+        <div style={{ marginTop: 'auto' }}>
+           <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+             <input type="checkbox" checked={item.is_active} onChange={e => onUpdate({ is_active: e.target.checked })} />
+             <span className="t-mono-sm" style={{ fontSize: 9 }}>Actif</span>
+           </label>
+        </div>
       </div>
     </div>
   )

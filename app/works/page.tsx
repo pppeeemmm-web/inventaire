@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { thumbUrl, yearOf } from '@/lib/data'
 
 export const metadata: Metadata = {
   title: 'Works — Pierre Emmanuel Moulin',
@@ -8,31 +9,42 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 }
 
-const R2 = 'https://pub-a352e674a992412fa243598ffd6b659c.r2.dev'
-
-function thumb(path: string) {
-  const base = path.replace(/\.[^.]+$/, '')
-  return `${R2}/thumbs/${base}.avif`
-}
-
-const COLLECTIONS: { label: string; ids: number[] }[] = [
-  { label: 'Peintures récentes', ids: [2190, 2185, 2180, 2175, 2170, 2165] },
-  { label: 'Dessins',            ids: [2100, 2090, 2080, 2070, 2060, 2050] },
-  { label: 'Oeuvres sur papier', ids: [2000, 1990, 1980, 1970, 1960, 1950] },
-]
-
 export default async function WorksPage() {
   const supabase = await createClient()
 
-  const allIds = COLLECTIONS.flatMap((c) => c.ids)
-  const { data: works } = await supabase
-    .from('Oeuvres')
-    .select('OeuvreID, Titre, Annee, Hauteur, Largeur, txtImageNameLink, Technique')
-    .in('OeuvreID', allIds)
-    .not('txtImageNameLink', 'is', null)
+  // 1. Fetch Config
+  let config: any = { works_collections: [] }
+  const { data: configDoc } = await supabase
+    .from('document')
+    .select('storage_path')
+    .eq('name', 'portfolio_sections.json')
+    .single()
 
-  const byId: Record<number, any> = {}
-  for (const w of works ?? []) byId[w.OeuvreID] = w
+  if (configDoc?.storage_path) {
+    const { data: fileData } = await supabase.storage.from('documents').download(configDoc.storage_path)
+    if (fileData) {
+      try {
+        const parsed = JSON.parse(await fileData.text())
+        config = {
+          works_collections: parsed.works_collections || (Array.isArray(parsed) ? parsed : [])
+        }
+      } catch (e) {}
+    }
+  }
+
+  const collections = config.works_collections.filter((c: any) => c.is_active)
+
+  // 2. Fetch Works for all active collections
+  const themes = collections.map((c: any) => c.theme).filter(Boolean)
+  
+  const { data: rawWorks } = await supabase
+    .from('Oeuvres')
+    .select('OeuvreID, Titre, Année, Hauteur, Largeur, Profondeur, txtImageNameLink, theme')
+    .eq('is_public', true)
+    .in('theme', themes)
+    .order('Année', { ascending: false }) as any
+
+  const works = rawWorks || []
 
   return (
     <>
@@ -55,36 +67,36 @@ export default async function WorksPage() {
 
         .w-body { max-width: 860px; margin: 0 auto; padding: 72px 40px 120px; }
 
-        .w-collection { margin-bottom: 100px; }
+        .w-collection { margin-bottom: 120px; }
         .w-col-header {
-          display: flex; align-items: baseline; justify-content: space-between;
-          margin-bottom: 48px; padding-bottom: 12px;
+          margin-bottom: 56px; padding-bottom: 16px;
           border-bottom: 1px solid #dedad4;
         }
-        .w-col-label { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: #b0aca6; }
-        .w-col-count { font-size: 9px; color: #c8c4be; }
+        .w-col-label { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: #b0aca6; display: block; margin-bottom: 12px; }
+        .w-col-title { font-family: 'Instrument Serif', serif; font-size: 32px; color: #3a3834; margin-bottom: 16px; font-weight: 400; }
+        .w-col-desc { font-size: 12px; line-height: 1.8; color: #7a7670; max-width: 60ch; }
 
-        .w-list { display: flex; flex-direction: column; gap: 64px; }
+        .w-list { display: flex; flex-direction: column; gap: 80px; }
 
         .w-item { display: block; }
         .w-item img {
-          display: block;
-          width: 100%;
-          height: auto;
-          opacity: .92;
-          transition: opacity .4s;
+          display: block; width: 100%; height: auto;
+          opacity: .95; transition: opacity .4s;
+          mix-blend-mode: multiply;
         }
         .w-item:hover img { opacity: 1; }
+        
         .w-meta {
-          margin-top: 14px;
+          margin-top: 18px;
           display: flex; justify-content: space-between; align-items: baseline;
         }
-        .w-title { font-size: 11px; color: #6b6760; }
-        .w-dim { font-size: 9px; color: #b0aca6; letter-spacing: 1px; }
+        .w-title { font-family: 'Instrument Serif', serif; font-size: 18px; color: #3a3834; }
+        .w-dim { font-size: 9px; color: #b0aca6; letter-spacing: 1px; text-transform: uppercase; }
 
         .w-empty { padding: 40px 0; font-size: 9px; color: #c8c4be; letter-spacing: 2px; text-transform: uppercase; }
-
         .w-footer { text-align: center; padding: 40px; border-top: 1px solid #dedad4; font-size: 9px; color: #c8c4be; letter-spacing: 2px; text-transform: uppercase; }
+        
+        @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap');
       `}</style>
 
       <nav className="w-nav">
@@ -93,36 +105,35 @@ export default async function WorksPage() {
           <Link href="/works"    className="w-navlink active">Works</Link>
           <Link href="/about"    className="w-navlink">About</Link>
           <Link href="/practice" className="w-navlink">Practice</Link>
-          <a href="mailto:pppeeemmm@gmail.com" className="w-navlink">Enquiry</a>
+          <Link href="/enquiry"  className="w-navlink">Enquiry</Link>
         </div>
       </nav>
 
       <div className="w-body">
-        {COLLECTIONS.map((col) => {
-          const colWorks = col.ids.map((id) => byId[id]).filter(Boolean)
+        {collections.map((col: any) => {
+          const colWorks = works.filter((w: any) => w.theme === col.theme)
           return (
-            <section key={col.label} className="w-collection">
+            <section key={col.id} className="w-collection">
               <div className="w-col-header">
-                <span className="w-col-label">{col.label}</span>
-                <span className="w-col-count">{colWorks.length} oeuvre{colWorks.length !== 1 ? 's' : ''}</span>
+                <span className="w-col-label">{col.theme || 'Collection'}</span>
+                <h2 className="w-col-title">{col.title}</h2>
+                {col.description && <p className="w-col-desc">{col.description}</p>}
               </div>
+              
               {colWorks.length === 0 ? (
                 <div className="w-empty">Collection en cours de constitution</div>
               ) : (
                 <div className="w-list">
-                  {colWorks.map((w) => (
+                  {colWorks.map((w: any) => (
                     <div key={w.OeuvreID} className="w-item">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={thumb(w.txtImageNameLink)}
+                        src={thumbUrl(w.txtImageNameLink, 1200)}
                         alt={w.Titre ?? `Oeuvre #${w.OeuvreID}`}
-                        width={w.Largeur ?? 800}
-                        height={w.Hauteur ?? 600}
                       />
                       <div className="w-meta">
                         <span className="w-title">{w.Titre ?? 'Sans titre'}</span>
                         <span className="w-dim">
-                          {w.Annee ? String(w.Annee).slice(0,4) : ''}
+                          {yearOf(w.Année)}
                           {w.Hauteur && w.Largeur ? ` · ${w.Hauteur} x ${w.Largeur} cm` : ''}
                         </span>
                       </div>
@@ -133,6 +144,12 @@ export default async function WorksPage() {
             </section>
           )
         })}
+        
+        {collections.length === 0 && (
+          <div className="w-empty" style={{ textAlign: 'center', padding: '100px 0' }}>
+            Aucune collection configurée dans le hub.
+          </div>
+        )}
       </div>
 
       <footer className="w-footer">
