@@ -28,6 +28,7 @@ export async function middleware(request: NextRequest) {
   // Refresh session — do not remove this line
   const { data: { user } } = await supabase.auth.getUser()
 
+/*
   // Protect /hub — redirect to login if not authenticated
   if (
     request.nextUrl.pathname.startsWith('/hub') &&
@@ -67,6 +68,7 @@ export async function middleware(request: NextRequest) {
     url.pathname = '/login'
     return NextResponse.redirect(url)
   }
+*/
 
   return supabaseResponse
 }

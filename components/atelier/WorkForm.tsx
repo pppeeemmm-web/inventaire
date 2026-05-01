@@ -7,9 +7,15 @@
 import { useState, useEffect, useTransition, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { imageUrl, thumbUrl } from '@/lib/data'
+import { useI18n } from '@/lib/i18n/context'
 import type { Oeuvre, WorkImage } from '@/lib/types/database'
 import type { SaveResult } from '@/app/atelier/works/actions'
 import { addWorkImage, deleteWorkImage, reorderWorkImages } from '@/app/atelier/works/actions'
+
+function cap(s: string): string {
+  if (!s) return s
+  return s.charAt(0).toUpperCase() + s.slice(1)
+}
 
 // ── A-series format → dims lookup (cm) ───────────────────────────────────
 const FORMAT_DIMS: Record<string, { h: string; w: string }> = {
@@ -47,6 +53,7 @@ export function WorkForm({
   initialImages = [],
   action,
 }: Props) {
+  const { t }         = useI18n()
   const router        = useRouter()
   const [isPending, startTransition] = useTransition()
   const formRef       = useRef<HTMLFormElement>(null)
@@ -71,7 +78,11 @@ export function WorkForm({
 
   // Selected status (for sending label alongside id)
   const [statusId, setStatusId] = useState<string>(String(oeuvre?.statusId ?? ''))
+  const [stageProduction, setStageProduction] = useState<string>(String((oeuvre as any)?.StageProduction ?? ''))
   const [isCatalogued, setIsCatalogued] = useState<boolean>(oeuvre?.Catalogué ?? false)
+  const [montee, setMontee] = useState<boolean>((oeuvre as any)?.Montee ?? false)
+  const [isPublic, setIsPublic] = useState<boolean>(oeuvre?.is_public ?? false)
+  const [disponible, setDisponible] = useState<boolean>((oeuvre as any)?.Disponible ?? true)
 
   // Controlled lookup selects — can grow via inline creation
   const [techniqueId,   setTechniqueId]   = useState(String(oeuvre?.Technique  ?? ''))
@@ -106,6 +117,23 @@ export function WorkForm({
 
   // Error / submit
   const [error, setError] = useState<string | null>(null)
+
+  // ── Atelier Workflow ──
+  // If status is "Atelier" (id: 1), force production stage to WIP and contact to PEM.
+  useEffect(() => {
+    if (statusId === '1') {
+      setStageProduction('wip')
+      setContactId('13')
+      setLocalisationId('') // Atelier
+    }
+  }, [statusId])
+
+  // If stage was mounting and work is now catalogued (Done), mark as Mounted
+  useEffect(() => {
+    if (isCatalogued && stageProduction === 'mounting') {
+      setMontee(true)
+    }
+  }, [isCatalogued, stageProduction])
 
   // ── Handlers ────────────────────────────────────────────────────────
 
@@ -223,7 +251,7 @@ export function WorkForm({
             style={{ color: 'var(--tx3)' }}
             onClick={() => router.back()}
           >
-            ← Retour
+            ← {t('back')}
           </button>
           <div className="vline" style={{ height: 16 }} />
           <div className="t-eyebrow" style={{ color: 'var(--ac)' }}>
@@ -242,7 +270,7 @@ export function WorkForm({
             onClick={() => router.back()}
             disabled={isPending}
           >
-            Annuler
+            {t('cancel')}
           </button>
           <button
             type="submit"
@@ -250,7 +278,7 @@ export function WorkForm({
             className="btn sm primary"
             disabled={isPending}
           >
-            {isPending ? '…' : isNew ? 'Créer' : 'Enregistrer'}
+            {isPending ? '…' : isNew ? t('create') : t('save')}
           </button>
         </div>
       </div>
@@ -293,7 +321,7 @@ export function WorkForm({
 
           {/* Historique (append-only) */}
           <div style={{ marginTop: 4 }}>
-            <div className="t-label" style={{ marginBottom: 6 }}>Historique</div>
+            <div className="t-label" style={{ marginBottom: 6 }}>{t('history')}</div>
             <textarea
               name="historique"
               defaultValue={oeuvre?.Historique ?? (isNew ? 'Atelier' : '')}
@@ -325,7 +353,7 @@ export function WorkForm({
             )}
 
             {/* ─ Section: Identité ─ */}
-            <SectionHead>Identité</SectionHead>
+            <SectionHead>{t('identity')}</SectionHead>
 
             <FieldRow>
               <Field label="Titre" span={2}>
@@ -333,6 +361,7 @@ export function WorkForm({
                   name="titre"
                   defaultValue={oeuvre?.Titre ?? ''}
                   placeholder="Sans titre"
+                  onBlur={(e) => e.target.value = cap(e.target.value)}
                   style={inputStyle}
                 />
               </Field>
@@ -342,7 +371,7 @@ export function WorkForm({
               <Field label="Année">
                 <input
                   name="annee"
-                  defaultValue={oeuvre?.Année ?? ''}
+                  defaultValue={oeuvre?.Année ? String(oeuvre.Année).slice(0, 4) : ''}
                   placeholder="AAAA"
                   style={inputStyle}
                 />
@@ -353,7 +382,7 @@ export function WorkForm({
                   value={techniqueId}
                   onChange={setTechniqueId}
                   style={inputStyle}
-                  options={localTechs.map((t) => ({ id: String(t.TechniqueID), label: t.Technique ?? '—' }))}
+                  options={[...localTechs].sort((a,b) => (a.Technique ?? '').localeCompare(b.Technique ?? '', 'fr')).map((t) => ({ id: String(t.TechniqueID), label: t.Technique ?? '—' }))}
                   onCreate={async (name) => {
                     const { createClient } = await import('@/lib/supabase/client')
                     const sb = createClient()
@@ -375,7 +404,7 @@ export function WorkForm({
                   value={supportId}
                   onChange={setSupportId}
                   style={inputStyle}
-                  options={localSupports.map((s) => ({ id: String(s.SupportID), label: s.Support ?? '—' }))}
+                  options={[...localSupports].sort((a,b) => (a.Support ?? '').localeCompare(b.Support ?? '', 'fr')).map((s) => ({ id: String(s.SupportID), label: s.Support ?? '—' }))}
                   onCreate={async (name) => {
                     const { createClient } = await import('@/lib/supabase/client')
                     const sb = createClient()
@@ -394,7 +423,7 @@ export function WorkForm({
                   value={formatId}
                   onChange={(v) => { setFormatId(v); const label = localFormats.find((f) => String(f.FormatID) === v)?.Format ?? ''; const dims = FORMAT_DIMS[label]; if (dims) { setHauteur(dims.h); setLargeur(dims.w); } }}
                   style={inputStyle}
-                  options={localFormats.map((f) => ({ id: String(f.FormatID), label: f.Format ?? '—' }))}
+                  options={[...localFormats].sort((a,b) => (a.Format ?? '').localeCompare(b.Format ?? '', 'fr')).map((f) => ({ id: String(f.FormatID), label: f.Format ?? '—' }))}
                   onCreate={async (name) => {
                     const { createClient } = await import('@/lib/supabase/client')
                     const sb = createClient()
@@ -410,7 +439,7 @@ export function WorkForm({
             </FieldRow>
 
             {/* ─ Section: Dimensions ─ */}
-            <SectionHead>Dimensions (cm)</SectionHead>
+            <SectionHead>Dimensions ({techniqueId === '19' ? 'pixels' : 'cm'})</SectionHead>
 
             <FieldRow>
               <Field label="Hauteur">
@@ -418,7 +447,7 @@ export function WorkForm({
                   name="hauteur"
                   value={hauteur}
                   onChange={(e) => setHauteur(e.target.value)}
-                  placeholder="0.0"
+                  placeholder={techniqueId === '19' ? '0' : '0.0'}
                   style={inputStyle}
                 />
               </Field>
@@ -427,14 +456,14 @@ export function WorkForm({
                   name="largeur"
                   value={largeur}
                   onChange={(e) => setLargeur(e.target.value)}
-                  placeholder="0.0"
+                  placeholder={techniqueId === '19' ? '0' : '0.0'}
                   style={inputStyle}
                 />
               </Field>
             </FieldRow>
 
             <FieldRow>
-              <Field label="Profondeur">
+              <Field label={t('depth')}>
                 <input
                   name="profondeur"
                   value={profondeur}
@@ -446,7 +475,7 @@ export function WorkForm({
             </FieldRow>
 
             {/* ─ Section: État & Visibilité ─ */}
-            <SectionHead>État &amp; Visibilité</SectionHead>
+            <SectionHead>{t('visibility')}</SectionHead>
 
             <FieldRow>
               <Field label="Statut">
@@ -468,7 +497,8 @@ export function WorkForm({
                   return (
                     <select
                       name="stage_production"
-                      defaultValue={(oeuvre as any)?.StageProduction ?? ''}
+                      value={stageProduction}
+                      onChange={(e) => setStageProduction(e.target.value)}
                       disabled={stageGone}
                       style={{
                         ...inputStyle,
@@ -497,7 +527,7 @@ export function WorkForm({
                     style={{ ...inputStyle, flex: 1 }}
                   >
                     <option value="">—</option>
-                    {localContacts.map((c) => {
+                    {[...localContacts].sort((a,b) => (a.NomInstitution || a.Nom || '').localeCompare(b.NomInstitution || b.Nom || '', 'fr')).map((c) => {
                       const label = c.NomInstitution || `${c.Prénom ?? ''} ${c.Nom ?? ''}`.trim() || String(c.ContactID)
                       return <option key={c.ContactID} value={c.ContactID}>{label}</option>
                     })}
@@ -514,18 +544,28 @@ export function WorkForm({
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px 28px', marginBottom: 24 }}>
               {[
-                { name: 'exposable',  label: 'Exposable',  defaultChecked: oeuvre?.Exposable ?? false },
-                { name: 'encadree',   label: 'Encadrée',   defaultChecked: oeuvre?.Encadree  ?? false },
-                { name: 'catalogued', label: 'Cataloguée', defaultChecked: oeuvre?.Catalogué ?? false, onChange: setIsCatalogued },
-                { name: 'is_public',  label: 'Public',     defaultChecked: oeuvre?.is_public ?? false },
-              ].map(({ name, label, defaultChecked, onChange: onChg }: { name: string; label: string; defaultChecked: boolean; onChange?: (v: boolean) => void }) => (
-                <CheckFlag
-                  key={name} name={name} label={label} defaultChecked={defaultChecked}
-                  onChange={onChg}
-                  disabled={name === 'exposable' && statusId === '1'}
-                  forceOff={name === 'exposable' && statusId === '1'}
-                />
-              ))}
+                { name: 'exposable',  label: t('exhibitable'),  val: (oeuvre?.Exposable ?? false) },
+                { name: 'montee',     label: 'Montée',     val: montee,     onChange: setMontee },
+                { name: 'encadree',   label: 'Encadrée',   val: (oeuvre?.Encadree ?? false) },
+                { name: 'catalogued', label: 'Cataloguée', val: isCatalogued, onChange: setIsCatalogued },
+                { name: 'is_public',  label: 'Public',     val: isPublic,     onChange: setIsPublic },
+                { name: 'disponible', label: 'Disponible', val: disponible,   onChange: setDisponible },
+              ].map(({ name, label, val, onChange: onChg }: { name: string; label: string; val: boolean; onChange?: (v: boolean) => void }) => {
+                const isPrivate = statusId === '3'
+                const isAtelier = statusId === '1'
+                const shouldDisable = (name === 'exposable' && (isAtelier || isPrivate)) || 
+                                     ((name === 'is_public' || name === 'disponible') && isPrivate)
+                
+                return (
+                  <CheckFlag
+                    key={name} name={name} label={label} 
+                    defaultChecked={val}
+                    onChange={onChg}
+                    disabled={shouldDisable}
+                    forceOff={shouldDisable && (name === 'is_public' || name === 'disponible' || name === 'exposable')}
+                  />
+                )
+              })}
               <CheckFlag
                 name="is_commission" label="Commission"
                 defaultChecked={oeuvre?.IsCommission ?? false}
@@ -563,7 +603,7 @@ export function WorkForm({
             )}
 
             {/* ─ Section: Localisation ─ */}
-            <SectionHead>Localisation</SectionHead>
+            <SectionHead>{t('location')}</SectionHead>
 
             <FieldRow>
               <Field label="Chez">
@@ -574,7 +614,7 @@ export function WorkForm({
                   style={inputStyle}
                 >
                   <option value="">— Atelier</option>
-                  {localContacts.map((c) => {
+                  {[...localContacts].sort((a,b) => (a.NomInstitution || a.Nom || '').localeCompare(b.NomInstitution || b.Nom || '', 'fr')).map((c) => {
                     const label = c.NomInstitution || `${c.Prénom ?? ''} ${c.Nom ?? ''}`.trim() || String(c.ContactID)
                     return <option key={c.ContactID} value={c.ContactID}>{label}</option>
                   })}
@@ -642,16 +682,17 @@ export function WorkForm({
                 name="commentaires"
                 defaultValue={oeuvre?.Commentaires ?? ''}
                 rows={4}
+                onBlur={(e) => e.target.value = cap(e.target.value)}
                 style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.6 }}
                 placeholder="Notes libres…"
               />
             </div>
 
             {/* ─ Section: Thèmes ─ */}
-            <SectionHead>Thèmes</SectionHead>
+            <SectionHead>{t('themes')}</SectionHead>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 16px', marginBottom: 12 }}>
-              {allThemes.map((th) => (
+              {[...allThemes].sort((a,b) => a.Nom.localeCompare(b.Nom, 'fr')).map((th) => (
                 <label
                   key={th.ThemeID}
                   style={{
@@ -681,6 +722,7 @@ export function WorkForm({
                 type="text"
                 value={newThemeName}
                 onChange={(e) => setNewThemeName(e.target.value)}
+                onBlur={(e) => setNewThemeName(cap(e.target.value))}
                 onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTheme())}
                 placeholder="Nouveau thème…"
                 style={{ ...inputStyle, width: 180 }}
@@ -706,7 +748,7 @@ export function WorkForm({
                   className="btn primary"
                   disabled={isPending}
                 >
-                  {isPending ? '…' : isNew ? 'Créer l\'œuvre' : 'Enregistrer les modifications'}
+                  {isPending ? '…' : isNew ? t('create') : t('save')}
                 </button>
                 <button
                   type="button"
@@ -714,7 +756,7 @@ export function WorkForm({
                   onClick={() => router.back()}
                   disabled={isPending}
                 >
-                  Annuler
+                  {t('cancel')}
                 </button>
               </div>
             </div>
@@ -825,6 +867,7 @@ function ImageManager({
   initialImages: WorkImage[]
   coverLink?:    string | null
 }) {
+  const { t } = useI18n()
   const [images,  setImages]  = useState<WorkImage[]>(initialImages)
   const [busy,    setBusy]    = useState<number | 'add' | null>(null)
   const [imgError, setImgError] = useState<string | null>(null)

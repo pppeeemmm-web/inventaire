@@ -43,7 +43,7 @@ const STATUT_COLORS: Record<string, string> = {
 // ── Component ────────────────────────────────────────────────
 
 export function SalesTab({ oeuvres, statusLabelMap, contacts, cM, tM }: Props) {
-  const { lang } = useI18n()
+  const { t, lang } = useI18n()
   const [orders,    setOrders]    = useState<SaleOrderRow[]>([])
   const [showForm,  setShowForm]  = useState(false)
   const [loading,   setLoading]   = useState(true)
@@ -95,6 +95,11 @@ export function SalesTab({ oeuvres, statusLabelMap, contacts, cM, tM }: Props) {
     [oeuvres, statusLabelMap],
   )
 
+  const sortedContacts = useMemo(() =>
+    [...contacts].sort((a, b) => (a.NomInstitution || a.Nom || '').localeCompare(b.NomInstitution || b.Nom || '', 'fr')),
+    [contacts]
+  )
+
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
       <div style={{
@@ -115,10 +120,10 @@ export function SalesTab({ oeuvres, statusLabelMap, contacts, cM, tM }: Props) {
           gap: 0, marginBottom: 24,
           borderTop: '1px solid var(--bd)', borderBottom: '1px solid var(--bd)',
         }}>
-          <KpiCard label="Ventes totales"  value={String(soldWorks.length)}  detail="œuvres vendues" />
-          <KpiCard label="Revenu total"    value={fmt(totalRevenue)}          detail="prix final" border />
+          <KpiCard label={t('sold')}  value={String(soldWorks.length)}  detail="œuvres vendues" />
+          <KpiCard label={t('revenue')}    value={fmt(totalRevenue)}          detail="prix final" border />
           <KpiCard label="Prix moyen"      value={fmt(avgPrice)}              detail="par vente" border />
-          <KpiCard label="En consignation" value={String(consignedCount)}     detail="en galerie" border />
+          <KpiCard label={t('consigned')} value={String(consignedCount)}     detail="en galerie" border />
         </div>
 
         {byYear.length > 0 && (
@@ -189,7 +194,7 @@ export function SalesTab({ oeuvres, statusLabelMap, contacts, cM, tM }: Props) {
 
       {showForm && (
         <OrderFormModal
-          oeuvres={availableWorks} contacts={contacts} tM={tM}
+          oeuvres={availableWorks} contacts={sortedContacts} tM={tM}
           onClose={() => setShowForm(false)}
           onCreated={() => { setShowForm(false); loadOrders() }}
         />
@@ -322,7 +327,7 @@ function OrderFormModal({ oeuvres, contacts, tM, onClose, onCreated }: {
           <Section label="Livraison">
             <div style={{ marginBottom: 10 }}>
               <div className="t-label" style={{ marginBottom: 4 }}>Adresse de livraison</div>
-              <textarea name="delivery_address" rows={2} style={{ ...inputStyle, resize: 'vertical' }} placeholder="Rue, code postal, ville, pays…" />
+              <textarea name="delivery_address" rows={2} onBlur={e => e.target.value = e.target.value.charAt(0).toUpperCase() + e.target.value.slice(1)} style={{ ...inputStyle, resize: 'vertical' }} placeholder="Rue, code postal, ville, pays…" />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <div>
@@ -344,7 +349,7 @@ function OrderFormModal({ oeuvres, contacts, tM, onClose, onCreated }: {
             </div>
           </Section>
           <Section label="Notes">
-            <textarea name="notes" rows={3} style={{ ...inputStyle, resize: 'vertical' }} placeholder="Conditions particulières, remarques…" />
+            <textarea name="notes" rows={3} onBlur={e => e.target.value = e.target.value.charAt(0).toUpperCase() + e.target.value.slice(1)} style={{ ...inputStyle, resize: 'vertical' }} placeholder="Conditions particulières, remarques…" />
           </Section>
           {error && <div style={{ color: 'var(--rust)', fontSize: 11, marginBottom: 12 }}>{error}</div>}
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>

@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useI18n } from '@/lib/i18n/context'
 import type { Oeuvre } from '@/lib/types/database'
 
 // ── Constants ──────────────────────────────────────────────────────────
@@ -30,7 +31,7 @@ const CATEGORIES = [
   'Frais bancaires & assurances',
   'Informatique & logiciels',
   'Autres frais professionnels',
-]
+].sort((a, b) => a.localeCompare(b, 'fr'))
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -92,6 +93,7 @@ function StatCard({ label, value, sub, warn }: { label: string; value: string; s
 // ── Main component ─────────────────────────────────────────────────────
 
 export function FiscalTab({ oeuvres }: Props) {
+  const { t } = useI18n()
   const [year,     setYear]     = useState(YEAR_NOW)
   const [regime,   setRegime]   = useState<'micro' | 'reel'>('micro')
   const [expenses, setExpenses] = useState<Expense[]>([])
@@ -106,7 +108,14 @@ export function FiscalTab({ oeuvres }: Props) {
       .select('*')
       .eq('fiscal_year', year)
       .order('date', { ascending: false })
-      .then(({ data }: { data: Expense[] | null }) => {
+      .then(({ data, error }: { data: Expense[] | null; error: { message: string } | null }) => {
+        if (error) {
+          console.error('[FiscalTab] expense fetch error:', error.message)
+          // Table may not exist yet — surface a clear message instead of empty list
+          if (error.message?.includes('does not exist')) {
+            console.warn('[FiscalTab] Table `expense` missing in DB. Run fix_expense_and_document.sql.')
+          }
+        }
         setExpenses(data ?? [])
         setLoading(false)
       })
@@ -229,12 +238,10 @@ export function FiscalTab({ oeuvres }: Props) {
         <div style={{ flex: 1, overflow: 'auto', padding: '28px 32px' }}>
 
           {/* KPI row */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12, marginBottom: 28 }}>
-            <StatCard label="Recettes" value={fmtEur(recettes)} sub={`Ventes ${year} (Statut Vendu)`} />
-            <StatCard label="Dépenses TTC" value={fmtEur(totalDepenses)} sub={`${expenses.length} dossier${expenses.length > 1 ? 's' : ''}`} />
-            <StatCard label="BNC imposable" value={fmtEur(bnc)}
-              sub={regime === 'micro' ? `Après abattement 34%` : `Recettes − charges réelles`} />
-            <StatCard label="URSSAF estimé" value={fmtEur(urssaf)} sub={`${(URSSAF_RATE * 100).toFixed(1)}% des recettes brutes`} />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1, border: '1px solid var(--bd)', marginBottom: 24 }}>
+            <StatCard label={t('income')} value={fmtEur(recettes)} sub={`Ventes ${year}`} />
+            <StatCard label={t('expenses')} value={fmtEur(totalDepenses)} sub={`TTC (${expenses.length})`} />
+            <StatCard label="BNC" value={fmtEur(bnc)} sub={regime === 'micro' ? 'Net (abattement 34%)' : 'Réel (CA - Frais)'} />
           </div>
 
           {/* Thresholds */}
@@ -333,13 +340,13 @@ export function FiscalTab({ oeuvres }: Props) {
               <table className="tbl">
                 <thead>
                   <tr>
-                    <th>Date</th>
-                    <th>Libellé</th>
-                    <th>Catégorie</th>
+                    <th>{t('date')}</th>
+                    <th>{t('label')}</th>
+                    <th>{t('category')}</th>
                     <th style={{ textAlign: 'right' }}>HT</th>
                     <th style={{ textAlign: 'right' }}>TVA %</th>
                     <th style={{ textAlign: 'right' }}>TTC</th>
-                    <th>Ref. justificatif</th>
+                    <th>Ref.</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -510,11 +517,13 @@ function ExpenseModal({
         const { data, error } = await (sb.from('expense') as any)
           .insert(payload).select().single()
         if (error) throw new Error(error.message)
+        if (!data) throw new Error('Aucune donnée retournée par la base')
         onSaved(data as Expense)
       } else {
         const { data, error } = await (sb.from('expense') as any)
           .update(payload).eq('id', expense!.id).select().single()
         if (error) throw new Error(error.message)
+        if (!data) throw new Error('Aucune donnée retournée par la base')
         onSaved(data as Expense)
       }
     } catch (e) { setErr(String(e)) }

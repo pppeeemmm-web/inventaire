@@ -30,6 +30,8 @@ export default async function AtelierPage() {
     supabase.from('OeuvreStatus').select('id, label').order('id'),
     supabase.from('working_group').select('id, name, created_at').order('created_at', { ascending: false }).limit(100),
     supabase.from('tblPresentation').select('PresentationID, Nom').order('PresentationID'),
+    supabase.from('OeuvreTheme').select('OeuvreID, ThemeID'),
+    supabase.from('working_group_work').select('group_id, oeuvre_id'),
   ])
 
   // Build a flat id→label map for fast status lookups on the client

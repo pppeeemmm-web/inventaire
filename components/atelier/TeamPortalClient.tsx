@@ -10,10 +10,10 @@ import { createClient } from '@/lib/supabase/client'
 import { useI18n } from '@/lib/i18n/context'
 import type { Oeuvre } from '@/lib/types/database'
 
-import { InventoryTab }       from '@/components/atelier/InventoryTab'
-import { WorkDrawer }         from '@/components/atelier/WorkDrawer'
-import { CurationPanel }      from '@/components/atelier/CurationPanel'
-import { CurationDock }       from '@/components/atelier/CurationDock'
+import { InventoryTab }        from '@/components/atelier/InventoryTab'
+import { WorkDrawer }          from '@/components/atelier/WorkDrawer'
+import { CurationPanel }       from '@/components/atelier/CurationPanel'
+import { CurationDock }        from '@/components/atelier/CurationDock'
 import { ConstellationCanvas } from '@/components/atelier/ConstellationCanvas'
 import { VaultTab }            from '@/components/atelier/VaultTab'
 import { ProductionTab }       from '@/components/atelier/ProductionTab'
@@ -25,12 +25,13 @@ import { PipelineTab }         from '@/components/atelier/PipelineTab'
 import { FiscalTab }           from '@/components/atelier/FiscalTab'
 import { ConceptsTab }         from '@/components/atelier/ConceptsTab'
 import { ExhibitionsTab }      from '@/components/atelier/ExhibitionsTab'
+import { ThemesTab }           from '@/components/atelier/ThemesTab'
 
 // ── Types ────────────────────────────────────────────────────────────
 
 type Tab =
   | 'overview' | 'inventory' | 'constellation' | 'production'
-  | 'logistics' | 'sales' | 'exhibitions' | 'vault' | 'contacts' | 'map' | 'pipeline' | 'fiscal' | 'concepts'
+  | 'logistics' | 'sales' | 'exhibitions' | 'vault' | 'contacts' | 'map' | 'pipeline' | 'fiscal' | 'concepts' | 'themes'
 
 interface Props {
   oeuvres:        Oeuvre[]
@@ -42,6 +43,9 @@ interface Props {
   statusLabelMap: Record<number, string>
   initialGroups:  { id: string; name: string }[]
   presentations:  { PresentationID: number; Nom: string | null }[]
+  // Optional — not yet passed from page.tsx; defaults to {} to avoid crash
+  themeWorkCount?: Record<number, number>
+  groupWorkCount?:  Record<string, number>
 }
 
 // ── Component ────────────────────────────────────────────────────────
@@ -49,6 +53,7 @@ interface Props {
 export function TeamPortalClient({
   oeuvres, techniques, supports, formats, themes, contacts,
   statusLabelMap, initialGroups, presentations,
+  themeWorkCount = {}, groupWorkCount = {},
 }: Props) {
   const { t, lang, setLang } = useI18n()
   const router = useRouter()
@@ -57,8 +62,8 @@ export function TeamPortalClient({
 
   // Always start with 'overview' on server and client — prevents hydration mismatch.
   // Restore last tab from localStorage after first paint.
-  const [tab,             setTab]           = useState<Tab>('overview')
-  const [reminderCount,  setReminderCount]  = useState(0)
+  const [tab,            setTab]          = useState<Tab>('overview')
+  const [reminderCount,  setReminderCount] = useState(0)
 
   // Poll unread reminders for the landing badge
   useEffect(() => {
@@ -75,7 +80,13 @@ export function TeamPortalClient({
   }, [])
   const [inspected,  setInspected]  = useState<Oeuvre | null>(null)
   const [selection,  setSelection]  = useState<Set<number>>(new Set())
-  const [groups,     setGroups]     = useState<{ id: string; name: string }[]>(initialGroups)
+  const [groups,     setGroups]     = useState<{ id: string; name: string }[]>(
+    [...initialGroups].sort((a, b) => a.name.localeCompare(b.name, 'fr'))
+  )
+
+  useEffect(() => {
+    (window as any).setSelection = setSelection
+  }, [])
 
   function handleSetTab(next: Tab) {
     setTab(next)
@@ -147,10 +158,11 @@ export function TeamPortalClient({
     ['exhibitions',   t('exhibitions')],
     ['vault',         t('vault')],
     ['contacts',      t('contacts'), contacts.length],
-    ['pipeline',       t('pipeline')],
+    ['pipeline',      t('pipeline')],
     ['map',           t('map')],
-    ['fiscal',        'Fiscal'],
-    ['concepts',      'Concepts'],
+    ['fiscal',        t('fiscal')],
+    ['concepts',      t('concepts')],
+    ['themes',        t('themes')],
   ]
 
   const showDock = selection.size > 0 && tab !== 'constellation'
@@ -212,10 +224,10 @@ export function TeamPortalClient({
         {tab === 'inventory' && (
           <InventoryTab
             oeuvres={oeuvres}
-            techniques={techniques}
-            supports={supports}
-            formats={formats}
-            themes={themes}
+            techniques={[...techniques].sort((a, b) => (a.Technique ?? '').localeCompare(b.Technique ?? '', 'fr'))}
+            supports={[...supports].sort((a, b) => (a.Support ?? '').localeCompare(b.Support ?? '', 'fr'))}
+            formats={[...formats].sort((a, b) => (a.Format ?? '').localeCompare(b.Format ?? '', 'fr'))}
+            themes={[...themes].sort((a, b) => a.Nom.localeCompare(b.Nom, 'fr'))}
             groups={groups}
             tM={tM} sM={sM} cM={cM} pM={pM} locMap={locMap}
             statusLabelMap={statusLabelMap}
@@ -229,10 +241,11 @@ export function TeamPortalClient({
           <ConstellationCanvas
             oeuvres={oeuvres}
             tM={tM}
-            themes={themes}
+            themes={[...themes].sort((a, b) => a.Nom.localeCompare(b.Nom, 'fr'))}
+            groups={groups}
             selection={selection}
             setSelection={setSelection}
-            onOpen={() => {}}
+            onOpen={setInspected}
             onSaveGroup={handleSaveGroup}
           />
         )}
@@ -261,7 +274,12 @@ export function TeamPortalClient({
         )}
         {tab === 'exhibitions' && (
           <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-            <ExhibitionsTab oeuvres={oeuvres} contacts={contacts} />
+            <ExhibitionsTab
+              oeuvres={oeuvres}
+              contacts={contacts}
+              selection={selection}
+              setSelection={setSelection}
+            />
           </div>
         )}
         {tab === 'vault' && (
@@ -299,6 +317,15 @@ export function TeamPortalClient({
             <FiscalTab oeuvres={oeuvres} />
           </div>
         )}
+        {tab === 'themes' && (
+          <ThemesTab
+            initialThemes={[...themes].sort((a, b) => a.Nom.localeCompare(b.Nom, 'fr'))}
+            initialGroups={groups}
+            themeWorkCount={themeWorkCount}
+            groupWorkCount={groupWorkCount}
+          />
+        )}
+
         {tab === 'concepts' && (
           <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
             <ConceptsTab />
@@ -332,7 +359,10 @@ export function TeamPortalClient({
           tM={tM}
           sM={sM}
           statusLabelMap={statusLabelMap}
-          onGoConstellation={() => handleSetTab('constellation')}
+          onGoConstellation={() => {
+            sessionStorage.setItem('pem_curation_trigger', 'true')
+            handleSetTab('constellation')
+          }}
           onSaveGroup={handleSaveGroup}
         />
       )}
@@ -358,7 +388,7 @@ function OverviewTab({
   const catalogued = oeuvres.filter((o) => o.Catalogué).length
 
   // Upcoming deadlines from pipeline
-  const [upcoming, setUpcoming] = useState<{ nom: string; date_fin: string; deadline_time: string | null; type: string }[]>([])
+  const [upcoming,  setUpcoming]  = useState<{ nom: string; date_fin: string; deadline_time: string | null; type: string }[]>([])
   const [reminders, setReminders] = useState<{ id: string; message: string; remind_at: string }[]>([])
 
   useEffect(() => {
@@ -412,8 +442,8 @@ function OverviewTab({
             { l: t('works_cap'),                    v: oeuvres.length },
             { l: `${t('thisYear')} (${thisYear})`,  v: byYear },
             { l: t('exposable'),                    v: exposable },
-            { l: 'Catalogued',                      v: catalogued },
-            { l: 'Priced',                          v: withPrice },
+            { l: t('catalogued'),                   v: catalogued },
+            { l: t('priced'),                       v: withPrice },
           ].map(({ l, v }) => (
             <div key={l} style={{ padding: '20px 24px', borderRight: '1px solid var(--bd)' }}>
               <div className="stat">
@@ -426,7 +456,7 @@ function OverviewTab({
 
         {/* Technique breakdown */}
         <div style={{ marginBottom: 32 }}>
-          <div className="t-label" style={{ marginBottom: 12 }}>By technique</div>
+          <div className="t-label" style={{ marginBottom: 12 }}>{t('byTechnique')}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {topTechs.map(([techId, count]) => {
               const pct = Math.round((count / oeuvres.length) * 100)
@@ -458,7 +488,7 @@ function OverviewTab({
         {upcoming.length > 0 && (
           <div>
             <div className="t-eyebrow" style={{ marginBottom: 12, cursor: 'pointer' }} onClick={() => onGoTab('pipeline')}>
-              Upcoming deadlines →
+              {t('upcomingDeadlines')} →
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
               {upcoming.map((p, i) => {
@@ -519,15 +549,4 @@ function OverviewTab({
   )
 }
 
-// ── Generic placeholder ───────────────────────────────────────────────
-
-function TabPlaceholder({ label, note }: { label: string; note: string }) {
-  return (
-    <div style={{ padding: '32px 40px' }}>
-      <div className="t-eyebrow" style={{ marginBottom: 24 }}>{label}</div>
-      <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>
-        Implémenter depuis <code>{note}</code>.
-      </div>
-    </div>
-  )
-}
+//

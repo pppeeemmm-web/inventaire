@@ -5,6 +5,8 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { deleteContacts } from '@/app/atelier/contacts/actions'
+import { useI18n } from '@/lib/i18n/context'
 import type { Oeuvre } from '@/lib/types/database'
 
 // ── Types ────────────────────────────────────────────────────────────
@@ -64,6 +66,11 @@ function fmtPhone(ind: string | null | undefined, num: string | null | undefined
   return ind ? `${ind} ${num}` : num
 }
 
+function cap(s: string): string {
+  if (!s) return s
+  return s.charAt(0).toUpperCase() + s.slice(1)
+}
+
 const IS: React.CSSProperties = {
   padding: '7px 10px', fontSize: 11,
   background: 'var(--bg1)', border: '1px solid var(--bd)',
@@ -73,17 +80,24 @@ const IS: React.CSSProperties = {
 // ── Component ────────────────────────────────────────────────────────
 
 export function ContactsTab({ contacts: initialContacts, oeuvres }: Props) {
+  const { t, lang } = useI18n()
   const [contacts,   setContacts]   = useState<ContactRow[]>(initialContacts)
   const [q,          setQ]          = useState('')
+  const [searchBy,   setSearchBy]   = useState('all')
   const [role,       setRole]       = useState('all')
   const [sortBy,     setSortBy]     = useState<'alpha' | 'role'>('alpha')
   const [activeId,   setActiveId]   = useState<number | null>(null)
   const [editing,    setEditing]    = useState<ContactRow | 'new' | null>(null)
+  const [selected,   setSelected]   = useState<Set<number>>(new Set())
+  const [busy,       setBusy]       = useState(false)
 
   // Full contact data fetched client-side (extra fields not in server prop)
   const [extra,      setExtra]      = useState<Record<number, ContactRow>>({})
   // Multiple addresses per contact
   const [addresses,  setAddresses]  = useState<Record<number, ContactAddress[]>>({})
+
+  // List of all roles from tblRole
+  const [allRoles,   setAllRoles]   = useState<string[]>([])
 
   // Re-fetch everything on mount so edits appear without page reload
   useEffect(() => {
@@ -114,6 +128,13 @@ export function ContactsTab({ contacts: initialContacts, oeuvres }: Props) {
         })
         setAddresses(map)
       })
+    // Fetch all roles to ensure filter dropdown is complete
+    ;(sb.from('tblRole') as any)
+      .select('Nom')
+      .order('Nom')
+      .then(({ data }: { data: { Nom: string }[] | null }) => {
+        if (data) setAllRoles(data.map(r => r.Nom).filter(Boolean))
+      })
   }, [])
 
   // Auto-open a contact card when navigated from Map
@@ -139,10 +160,10 @@ export function ContactsTab({ contacts: initialContacts, oeuvres }: Props) {
   }, [oeuvres])
 
   const roles = useMemo(() => {
-    const set = new Set<string>()
+    const set = new Set<string>(allRoles)
     contacts.forEach((c) => { if (c.Role) set.add(c.Role) })
-    return [...set].sort()
-  }, [contacts])
+    return [...set].sort((a, b) => a.localeCompare(b, 'fr'))
+  }, [contacts, allRoles])
 
   const filtered = useMemo(() => {
     const sq = q.trim().toLowerCase()
@@ -151,13 +172,28 @@ export function ContactsTab({ contacts: initialContacts, oeuvres }: Props) {
       if (sq) {
         const ex = extra[c.ContactID]
         const addrs = addresses[c.ContactID] ?? []
-        const addrStr = addrs.map((a) => [a.ville, a.pays, a.adresse].filter(Boolean).join(' ')).join(' ')
-        const bag = [
-          c.NomInstitution, c.Nom, c.Prénom, c.Role,
-          ex?.Email, ex?.Téléphone1, ex?.Website,
-          addrStr,
-        ].filter(Boolean).join(' ').toLowerCase()
-        if (!bag.includes(sq)) return false
+        const addrStr = addrs.map((a) => [a.ville, a.pays, a.adresse, a.label].filter(Boolean).join(' ')).join(' ')
+        
+        let target = ''
+        if (searchBy === 'all') {
+          target = [
+            c.NomInstitution, c.Nom, c.Prénom, c.Role,
+            ex?.Email, ex?.Téléphone1, ex?.Website, ex?.Notes,
+            ex?.Instagram, ex?.LinkedIn, ex?.Facebook, ex?.Twitter,
+            ex?.PersonneResponsable, ex?.RoleResponsable,
+            addrStr,
+          ].filter(Boolean).join(' ')
+        } else if (searchBy === 'name') {
+          target = [c.NomInstitution, c.Nom, c.Prénom].filter(Boolean).join(' ')
+        } else if (searchBy === 'city') {
+          target = addrStr || [c.Ville, c.Pays].filter(Boolean).join(' ')
+        } else if (searchBy === 'email') {
+          target = ex?.Email || ''
+        } else if (searchBy === 'notes') {
+          target = ex?.Notes || ''
+        }
+
+        if (!target.toLowerCase().includes(sq)) return false
       }
       return true
     })
@@ -202,6 +238,41 @@ export function ContactsTab({ contacts: initialContacts, oeuvres }: Props) {
     setEditing(null)
   }, [])
 
+  const toggleAll = () => {
+    if (selected.size === filtered.length) setSelected(new Set())
+    else setSelected(new Set(filtered.map(c => c.ContactID)))
+  }
+
+  const toggleOne = (id: number) => {
+    const next = new Set(selected)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    setSelected(next)
+  }
+
+  async function handleDeleteSelected() {
+    if (!selected.size) return
+    if (!confirm(`Supprimer ${selected.size} contacts ?`)) return
+    setBusy(true)
+    const ids = Array.from(selected)
+    const res = await deleteContacts(ids)
+    if ('error' in res) { alert(res.error); setBusy(false); return }
+    setContacts(prev => prev.filter(c => !selected.has(c.ContactID)))
+    setSelected(new Set())
+    if (activeId && selected.has(activeId)) setActiveId(null)
+    setBusy(false)
+  }
+
+  async function handleDeleteOne(id: number) {
+    if (!confirm('Supprimer ce contact ?')) return
+    setBusy(true)
+    const res = await deleteContacts([id])
+    if ('error' in res) { alert(res.error); setBusy(false); return }
+    setContacts(prev => prev.filter(c => c.ContactID !== id))
+    if (activeId === id) setActiveId(null)
+    setBusy(false)
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
 
@@ -226,13 +297,26 @@ export function ContactsTab({ contacts: initialContacts, oeuvres }: Props) {
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Rechercher nom, institution, ville, email..."
+          placeholder={t('searchPlaceholderContacts')}
           style={{ ...IS, flex: 1 }}
         />
+        <select value={searchBy} onChange={(e) => setSearchBy(e.target.value)} style={{ ...IS, maxWidth: 110 }}>
+          <option value="all">{t('searchFieldAll')}</option>
+          <option value="name">{t('searchFieldName')}</option>
+          <option value="city">{t('searchFieldCity')}</option>
+          <option value="email">{t('searchFieldEmail')}</option>
+          <option value="notes">{t('searchFieldNotes')}</option>
+        </select>
         <select value={role} onChange={(e) => setRole(e.target.value)} style={IS}>
-          <option value="all">Tous rôles</option>
+          <option value="all">{t('allRoles')}</option>
           {roles.map((r) => <option key={r} value={r}>{r}</option>)}
         </select>
+
+        {selected.size > 0 && (
+          <button className="btn sm" onClick={handleDeleteSelected} disabled={busy} style={{ background: 'var(--rust)', borderColor: 'var(--rust)' }}>
+            {t('deleteSelected')} ({selected.size})
+          </button>
+        )}
         {/* Sort toggles */}
         <div style={{ display: 'flex', border: '1px solid var(--bd)', flexShrink: 0 }}>
           {(['alpha', 'role'] as const).map((s) => (
@@ -266,6 +350,9 @@ export function ContactsTab({ contacts: initialContacts, oeuvres }: Props) {
           <table className="tbl" style={{ tableLayout: 'auto' }}>
             <thead>
               <tr>
+                <th style={{ width: 30 }}>
+                  <input type="checkbox" checked={selected.size > 0 && selected.size === filtered.length} onChange={toggleAll} />
+                </th>
                 <th style={{ width: 36 }}>ID</th>
                 <th>Nom / Institution</th>
                 <th>Rôle</th>
@@ -288,6 +375,13 @@ export function ContactsTab({ contacts: initialContacts, oeuvres }: Props) {
                     onClick={() => setActiveId(c.ContactID)}
                     style={{ cursor: 'pointer', background: isFoc ? 'var(--bg2)' : '', opacity: inactive ? 0.45 : 1 }}
                   >
+                    <td>
+                      <input
+                        type="checkbox"
+                        checked={selected.has(c.ContactID)}
+                        onChange={(e) => { e.stopPropagation(); toggleOne(c.ContactID) }}
+                      />
+                    </td>
                     <td style={{ color: 'var(--tx3)', fontSize: 10 }}>{c.ContactID}</td>
                     <td style={{ fontWeight: isFoc ? 600 : undefined }}>{displayName(c)}</td>
                     <td style={{ color: 'var(--tx3)', fontSize: 10 }}>{c.Role ?? '—'}</td>
@@ -311,6 +405,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres }: Props) {
             workCounts={workCounts}
             oeuvres={oeuvres}
             onEdit={() => setEditing({ ...active, ...extra[active.ContactID] })}
+            onDelete={() => handleDeleteOne(active.ContactID)}
           />
         ) : (
           <div style={{ width: 340, padding: 20, color: 'var(--tx3)' }} className="t-mono-sm">—</div>
@@ -323,14 +418,16 @@ export function ContactsTab({ contacts: initialContacts, oeuvres }: Props) {
 // ── Detail panel ─────────────────────────────────────────────────────
 
 function ContactDetail({
-  contact, addresses, workCounts, oeuvres, onEdit,
+  contact, addresses, workCounts, oeuvres, onEdit, onDelete,
 }: {
   contact:    ContactRow
   addresses:  ContactAddress[]
   workCounts: { owner: Record<number, number>; loc: Record<number, number>; buyer: Record<number, number> }
   oeuvres:    Oeuvre[]
   onEdit:     () => void
+  onDelete:   () => void
 }) {
+  const { t } = useI18n()
   const id   = contact.ContactID
   const works = oeuvres.filter((o) => o.ContactID === id)
   const locs  = oeuvres.filter((o) => o.LocalisationID === id)
@@ -359,7 +456,10 @@ function ContactDetail({
         <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--tx)', flex: 1, marginRight: 8 }}>
           {displayName(contact)}
         </div>
-        <button className="btn ghost sm" onClick={onEdit} style={{ flexShrink: 0 }}>Modifier</button>
+        <div style={{ display: 'flex', gap: 4 }}>
+          <button className="btn ghost sm" onClick={onEdit}>{t('edit')}</button>
+          <button className="btn ghost sm" onClick={onDelete} style={{ color: 'var(--rust)' }}>{t('close')}</button>
+        </div>
       </div>
 
       {contact.Actif === false && (
@@ -394,7 +494,7 @@ function ContactDetail({
       )}
 
       {/* Multiple addresses */}
-      {addresses.length > 0 && (
+      {addresses.length > 0 ? (
         <div style={{ marginBottom: 12 }}>
           <div className="t-label" style={{ marginBottom: 4 }}>
             {addresses.length === 1 ? 'Adresse' : `Adresses (${addresses.length})`}
@@ -420,7 +520,22 @@ function ContactDetail({
             )
           })}
         </div>
-      )}
+      ) : (contact.Adresse || contact.CodePostal || contact.Ville || contact.Pays) ? (
+        <div style={{ marginBottom: 12 }}>
+          <div className="t-label" style={{ marginBottom: 4 }}>Adresse</div>
+          <div style={{ fontSize: 11, color: 'var(--tx)', lineHeight: 1.6 }}>
+            {[
+              contact.Adresse,
+              [contact.CodePostal, contact.Ville].filter(Boolean).join(' '),
+              contact.Pays,
+            ]
+              .filter(Boolean)
+              .map((line, i) => (
+                <div key={i}>{line}</div>
+              ))}
+          </div>
+        </div>
+      ) : null}
 
       {/* Social */}
       {(contact.Instagram || contact.LinkedIn || contact.Facebook || contact.Twitter) && (
@@ -454,7 +569,18 @@ function ContactDetail({
       )}
 
       {/* Works */}
-      {works.length > 0 && <WorkMini label="Oeuvres associées" items={works} />}
+      {works.length > 0 && (
+        <div style={{ marginBottom: 14 }}>
+          <WorkMini label="Oeuvres associées" items={works} />
+          <button className="btn sm ghost" onClick={() => {
+            const win = (window as any)
+            if (win.setSelection) {
+              win.setSelection(new Set(works.map(o => o.OeuvreID)))
+              alert(`${works.length} œuvres sélectionnées dans l'inventaire.`)
+            }
+          }} style={{ width: '100%', fontSize: 9 }}>Sélectionner ces {works.length} œuvres</button>
+        </div>
+      )}
       {locs.length  > 0 && <WorkMini label="En localisation"   items={locs}  />}
       {buys.length  > 0 && <WorkMini label="Achats"             items={buys}  />}
     </div>
@@ -549,7 +675,10 @@ function ContactEditModal({
     ;(createClient().from('tblRole') as any)
       .select('Nom').order('Nom')
       .then(({ data }: { data: { Nom: string }[] | null }) => {
-        if (data) setRoleOptions(data.map((r) => r.Nom))
+        const defaults = ['Team', 'Client', 'Gallery', 'Artist', 'Supplier', 'Press', 'Museum', 'Collector', 'Restorer', 'Framer']
+        const fetched = data ? data.map((r) => r.Nom) : []
+        const merged = Array.from(new Set([...defaults, ...fetched])).sort()
+        setRoleOptions(merged)
       })
   }, [])
 
@@ -585,7 +714,13 @@ function ContactEditModal({
           ville:       a.ville ?? '',
           pays:        a.pays ?? '',
         }))
-      : [emptyAddr()]
+      : [{
+          label:       'Principal',
+          adresse:     contact?.Adresse ?? '',
+          code_postal: contact?.CodePostal ?? '',
+          ville:       contact?.Ville ?? '',
+          pays:        contact?.Pays ?? '',
+        }]
   )
 
   const [busy, setBusy] = useState(false)
@@ -594,6 +729,12 @@ function ContactEditModal({
   function f(k: keyof Omit<FormState, 'Actif'>) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
       setForm((p) => ({ ...p, [k]: e.target.value }))
+    }
+  }
+
+  function b(k: keyof Omit<FormState, 'Actif' | 'Email' | 'Website' | 'Instagram' | 'LinkedIn' | 'Facebook' | 'Twitter' | 'Notes'>) {
+    return (e: React.FocusEvent<HTMLInputElement>) => {
+      setForm((p) => ({ ...p, [k]: cap(e.target.value) }))
     }
   }
 
@@ -606,7 +747,33 @@ function ContactEditModal({
   }
 
   function updateAddr(i: number, k: keyof AddrForm, v: string) {
-    setAddrList((prev) => prev.map((a, j) => j === i ? { ...a, [k]: v } : a))
+    setAddrList((prev) => {
+      const next = prev.map((a, j) => j === i ? { ...a, [k]: v } : a)
+      // Address induction for FR
+      if (k === 'code_postal' && v.length === 5 && /^\d+$/.test(v)) {
+        fetch(`https://api-adresse.data.gouv.fr/search/?q=${v}&type=municipality&limit=1`)
+          .then(r => r.json())
+          .then(data => {
+            const feat = data.features?.[0]
+            if (feat) {
+              const city = feat.properties.city
+              setAddrList(cur => cur.map((a, j) => j === i ? { ...a, ville: city, pays: 'France' } : a))
+            }
+          })
+          .catch(() => {
+             // Fallback to international zip
+             fetch(`https://api.zippopotam.us/fr/${v}`)
+              .then(r => r.json())
+              .then(data => {
+                if (data.places?.[0]) {
+                  const city = data.places[0]['place name']
+                  setAddrList(cur => cur.map((a, j) => j === i ? { ...a, ville: city, pays: 'France' } : a))
+                }
+              }).catch(() => {})
+          })
+      }
+      return next
+    })
   }
 
   async function handleSave() {
@@ -731,8 +898,8 @@ function ContactEditModal({
               {roleOptions.map((r) => <option key={r} value={r}>{r}</option>)}
             </select>
           </FRow>
-          <FRow label="Prénom"><input value={form.Prénom} onChange={f('Prénom')} style={FIS} /></FRow>
-          <FRow label="Nom"><input value={form.Nom} onChange={f('Nom')} style={FIS} /></FRow>
+          <FRow label="Prénom"><input value={form.Prénom} onChange={f('Prénom')} onBlur={b('Prénom')} style={FIS} /></FRow>
+          <FRow label="Nom"><input value={form.Nom} onChange={f('Nom')} onBlur={b('Nom')} style={FIS} /></FRow>
           <FRow label="Genre">
             <select value={form.Genre} onChange={f('Genre')} style={FIS}>
               <option value="">—</option>
@@ -780,58 +947,29 @@ function ContactEditModal({
             <div
               key={i}
               style={{
-                border: '1px solid var(--bd)', padding: '10px 12px',
+                border: '1px solid var(--bd)', padding: '14px 16px',
                 background: 'var(--bg0)', position: 'relative',
+                marginBottom: 4,
               }}
             >
-              {/* Label + remove button */}
-              <div style={{ display: 'flex', gap: 6, marginBottom: 8, alignItems: 'center' }}>
-                <input
-                  value={addr.label}
-                  onChange={(e) => updateAddr(i, 'label', e.target.value)}
-                  placeholder={i === 0 ? 'Principal' : `Adresse ${i + 1}`}
-                  style={{ ...FIS, flex: 1, fontSize: 10, letterSpacing: 0.5 }}
-                />
-                {addrList.length > 1 && (
-                  <button
-                    onClick={() => removeAddr(i)}
-                    style={{
-                      background: 'none', border: '1px solid var(--bd)',
-                      color: 'var(--tx3)', padding: '4px 8px',
-                      cursor: 'pointer', fontSize: 10, flexShrink: 0,
-                    }}
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <input
-                  value={addr.adresse}
-                  onChange={(e) => updateAddr(i, 'adresse', e.target.value)}
-                  placeholder="Rue / adresse"
-                  style={FIS}
-                />
-                <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: 6 }}>
-                  <input
-                    value={addr.code_postal}
-                    onChange={(e) => updateAddr(i, 'code_postal', e.target.value)}
-                    placeholder="Code postal"
-                    style={FIS}
-                  />
-                  <input
-                    value={addr.ville}
-                    onChange={(e) => updateAddr(i, 'ville', e.target.value)}
-                    placeholder="Ville"
-                    style={FIS}
-                  />
-                </div>
-                <input
-                  value={addr.pays}
-                  onChange={(e) => updateAddr(i, 'pays', e.target.value)}
-                  placeholder="Pays"
-                  style={FIS}
-                />
+              {addrList.length > 1 && (
+                <button
+                  onClick={() => removeAddr(i)}
+                  style={{
+                    position: 'absolute', top: 8, right: 8,
+                    background: 'none', border: 'none',
+                    color: 'var(--tx3)', cursor: 'pointer', fontSize: 10,
+                  }}
+                >✕</button>
+              )}
+              <Grid2>
+                <FRow label="Libellé (ex: Principal)"><input value={addr.label} onChange={(e) => updateAddr(i, 'label', e.target.value)} onBlur={e => updateAddr(i, 'label', cap(e.target.value))} placeholder="Bureau, Domicile..." style={FIS} /></FRow>
+                <FRow label="Code Postal"><input value={addr.code_postal} onChange={(e) => updateAddr(i, 'code_postal', e.target.value)} placeholder="75001..." style={FIS} /></FRow>
+                <FRow label="Ville"><input value={addr.ville} onChange={(e) => updateAddr(i, 'ville', e.target.value)} onBlur={e => updateAddr(i, 'ville', cap(e.target.value))} style={FIS} /></FRow>
+                <FRow label="Pays"><input value={addr.pays} onChange={(e) => updateAddr(i, 'pays', e.target.value)} onBlur={e => updateAddr(i, 'pays', cap(e.target.value))} style={FIS} /></FRow>
+              </Grid2>
+              <div style={{ marginTop: 8 }}>
+                <FRow label="Adresse (rue, n°, etc.)"><input value={addr.adresse} onChange={(e) => updateAddr(i, 'adresse', e.target.value)} onBlur={e => updateAddr(i, 'adresse', cap(e.target.value))} style={FIS} /></FRow>
               </div>
             </div>
           ))}

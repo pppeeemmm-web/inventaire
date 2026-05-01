@@ -195,7 +195,21 @@ export function ExportModal({ ids, oeuvres, tM, sM, statusLabelMap, onClose }: P
             <Section label="Format">
               <ToggleRow
                 options={[{ v: 'html', l: 'HTML' }, { v: 'pdf', l: 'PDF' }]}
-                value={cfg.format} onChange={(v) => set('format', v as 'html' | 'pdf')}
+                value={cfg.format} onChange={(v) => {
+                  set('format', v as 'html' | 'pdf')
+                  if (v === 'html') set('paper', 'screen')
+                }}
+              />
+            </Section>
+
+            {/* Title */}
+            <Section label="Titre de l'export">
+              <input
+                className="input"
+                placeholder="Ex: Sélection de Printemps, Thème: Paysages..."
+                value={cfg.exportTitle ?? ''}
+                onChange={(e) => set('exportTitle', e.target.value || null)}
+                style={{ width: '100%', fontSize: 11 }}
               />
             </Section>
 
@@ -278,9 +292,13 @@ export function ExportModal({ ids, oeuvres, tM, sM, statusLabelMap, onClose }: P
             )}
 
             {/* Paper */}
-            <Section label="Format papier">
+            <Section label={cfg.format === 'html' ? 'Format d\'affichage' : 'Format papier'}>
               <ToggleRow
-                options={[{ v: 'a4', l: 'A4' }, { v: 'a3', l: 'A3' }, { v: 'screen', l: 'Écran' }]}
+                options={
+                  cfg.format === 'html'
+                    ? [{ v: 'screen', l: 'Écran' }]
+                    : [{ v: 'a4', l: 'A4' }, { v: 'a3', l: 'A3' }, { v: 'screen', l: 'Écran' }]
+                }
                 value={cfg.paper} onChange={(v) => set('paper', v as ExportConfig['paper'])}
               />
             </Section>

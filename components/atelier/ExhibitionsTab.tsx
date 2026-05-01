@@ -53,11 +53,17 @@ const inputSt: React.CSSProperties = {
 }
 
 const STATUT_COLORS: Record<string, string> = {
-  en_cours: 'var(--ac)',
-  gagne:    '#4caf82',
-  termine:  '#888',
-  perdu:    '#c06060',
-  annule:   '#c06060',
+  a_confirmer: '#a0a040', // To confirm (Gold/Mustard)
+  prevue:      '#6080c0', // Planned (Blue)
+  en_cours:    'var(--ac)', // Current (Orange/Action)
+  passee:      '#888',     // Passed (Grey)
+}
+
+const STATUT_LABELS: Record<string, string> = {
+  a_confirmer: 'À confirmer',
+  prevue:      'Prévue',
+  en_cours:    'En cours',
+  passee:      'Passée',
 }
 
 const STEP_COLORS: Record<string, string> = {
@@ -322,15 +328,23 @@ function FloorPlanTool({ exhibitionId, oeuvres }: { exhibitionId: string; oeuvre
     dragOeuvreId.current = oeuvreId
   }
 
-  function handleDropOnWall(wallId: string, oeuvreId: number) {
+  function handleDropOnCanvas(e: React.DragEvent) {
     if (!layout) return
-    if (layout.placements.some((p) => p.oeuvre_id === oeuvreId)) return
-    patchLocal({ placements: [...layout.placements, { oeuvre_id: oeuvreId, wall_id: wallId, position: 50, scale: 1 }] })
-  }
+    const id = Number(e.dataTransfer.getData('oeuvre_id'))
+    if (!id) return
+    
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = ((e.clientX - rect.left) / rect.width) * 100
+    const y = ((e.clientY - rect.top) / rect.height) * 100
 
-  function handleRemove(wallId: string, oeuvreId: number) {
-    if (!layout) return
-    patchLocal({ placements: layout.placements.filter((p) => !(p.wall_id === wallId && p.oeuvre_id === oeuvreId)) })
+    const existingIdx = layout.placements.findIndex(p => p.oeuvre_id === id)
+    if (existingIdx >= 0) {
+      const next = [...layout.placements]
+      next[existingIdx] = { ...next[existingIdx], x, y }
+      patchLocal({ placements: next })
+    } else {
+      patchLocal({ placements: [...layout.placements, { oeuvre_id: id, wall_id: 'canvas', position: 50, scale: 1, x, y }] })
+    }
   }
 
   function handleReorder(wallId: string, fromIdx: number, toIdx: number) {
@@ -414,7 +428,7 @@ function FloorPlanTool({ exhibitionId, oeuvres }: { exhibitionId: string; oeuvre
           {/* Work sidebar */}
           <div style={{ width: 140, flexShrink: 0, borderRight: '1px solid var(--bd)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <div style={{ padding: '8px 10px', fontSize: 9, letterSpacing: 1, color: 'var(--tx3)', textTransform: 'uppercase', borderBottom: '1px solid var(--bd)' }}>
-              Œuvres exposables
+              Œuvres candidates
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: 6 }}>
               {exposable.map((o) => (
@@ -437,7 +451,7 @@ function FloorPlanTool({ exhibitionId, oeuvres }: { exhibitionId: string; oeuvre
                   border: 'none', borderBottom: subTab === t ? '2px solid var(--ac)' : '2px solid transparent',
                   color: subTab === t ? 'var(--tx)' : 'var(--tx3)', cursor: 'pointer',
                 }}>
-                  {t === 'murs' ? 'Murs & placement' : 'Paramètres'}
+                  {t === 'murs' ? 'Placement spatial' : 'Paramètres'}
                 </button>
               ))}
               <div style={{ flex: 1 }} />
@@ -448,29 +462,74 @@ function FloorPlanTool({ exhibitionId, oeuvres }: { exhibitionId: string; oeuvre
 
             {subTab === 'murs' ? (
               <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}>
-                {/* Floor plan */}
-                <div style={{ flex: 1, padding: 12, overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-                  {floorplanUrl ? (
-                    <img src={floorplanUrl} alt="Plan" style={{ maxWidth: '100%', maxHeight: 280, objectFit: 'contain', border: '1px solid var(--bd)' }} />
-                  ) : (
-                    <DefaultRoomSVG walls={layout.walls} />
-                  )}
-                  <label className="btn sm" style={{ cursor: uploading ? 'wait' : 'pointer', fontSize: 9, opacity: uploading ? 0.6 : 1 }}>
-                    {uploading ? 'Upload en cours…' : floorplanUrl ? 'Changer le plan' : 'Uploader un plan'}
-                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFloorplanUpload} disabled={uploading} />
-                  </label>
+                {/* Floor plan Canvas */}
+                <div style={{ flex: 1, padding: 12, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                  <div 
+                    onDragOver={e => e.preventDefault()}
+                    onDrop={handleDropOnCanvas}
+                    style={{ 
+                      flex: 1, position: 'relative', background: 'var(--bg0)', 
+                      border: '1px solid var(--bd)', overflow: 'hidden',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}
+                  >
+                    {floorplanUrl ? (
+                      <div style={{ position: 'relative', display: 'inline-block' }}>
+                        <img src={floorplanUrl} alt="Plan" style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain', pointerEvents: 'none' }} />
+                        {layout.placements.map(p => {
+                          if (p.x == null || p.y == null) return null
+                          const o = oeuvres.find(x => x.OeuvreID === p.oeuvre_id)
+                          return (
+                            <div key={p.oeuvre_id} style={{ 
+                              position: 'absolute', left: `${p.x}%`, top: `${p.y}%`, 
+                              transform: 'translate(-50%, -50%)',
+                              width: 24, height: 24, borderRadius: '50%', background: 'var(--ac)',
+                              border: '2px solid #fff', boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontSize: 8, color: '#fff', fontWeight: 600, cursor: 'move',
+                              zIndex: 10
+                            }} title={o?.Titre ?? `#${p.oeuvre_id}`}>
+                              {o?.Titre?.slice(0,1).toUpperCase() || '?'}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      <DefaultRoomSVG walls={layout.walls} />
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 10, justifyContent: 'center' }}>
+                    <label className="btn sm" style={{ cursor: uploading ? 'wait' : 'pointer', fontSize: 9, opacity: uploading ? 0.6 : 1 }}>
+                      {uploading ? 'Upload en cours…' : floorplanUrl ? 'Changer le plan' : 'Uploader un plan'}
+                      <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFloorplanUpload} disabled={uploading} />
+                    </label>
+                    <div style={{ fontSize: 9, color: 'var(--tx3)' }}>Glissez les œuvres sur le plan</div>
+                  </div>
                   {uploadError && (
-                    <div style={{ fontSize: 9, color: '#c06060', background: '#c0606022', border: '1px solid #c06060', padding: '4px 8px', maxWidth: 280, wordBreak: 'break-all' }}>
+                    <div style={{ fontSize: 9, color: '#c06060', background: '#c0606022', border: '1px solid #c06060', padding: '4px 8px', marginTop: 8, textAlign: 'center' }}>
                       ⚠ {uploadError}
                     </div>
                   )}
                 </div>
-                {/* Wall strips */}
-                <div style={{ width: 240, flexShrink: 0, borderLeft: '1px solid var(--bd)', overflowY: 'auto', padding: 10 }}>
-                  {layout.walls.map((wall) => (
-                    <WallStrip key={wall.id} wall={wall} placements={layout.placements} oeuvres={oeuvres}
-                      onDrop={handleDropOnWall} onRemove={handleRemove} onReorder={handleReorder} />
-                  ))}
+
+                {/* Wall strips Sidebar (Optional) */}
+                <div style={{ width: 220, flexShrink: 0, borderLeft: '1px solid var(--bd)', overflowY: 'auto', padding: 10, background: 'var(--bg1)' }}>
+                  <div style={{ fontSize: 9, color: 'var(--tx3)', marginBottom: 12, letterSpacing: 1, textTransform: 'uppercase' }}>Placements</div>
+                  {layout.placements.length === 0 ? (
+                    <div style={{ fontSize: 9, color: 'var(--tx3)', fontStyle: 'italic' }}>Aucune œuvre placée.</div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {layout.placements.map(p => {
+                        const o = oeuvres.find(x => x.OeuvreID === p.oeuvre_id)
+                        return (
+                          <div key={p.oeuvre_id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 8px', background: 'var(--bg0)', border: '1px solid var(--bd)', borderRadius: 4 }}>
+                            <div style={{ flex: 1, fontSize: 10, color: 'var(--tx)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{o?.Titre || `#${p.oeuvre_id}`}</div>
+                            <button onClick={() => patchLocal({ placements: layout.placements.filter(px => px.oeuvre_id !== p.oeuvre_id) })} style={{ border: 'none', background: 'transparent', color: 'var(--tx3)', cursor: 'pointer', fontSize: 12 }}>×</button>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (
@@ -501,10 +560,6 @@ function FloorPlanTool({ exhibitionId, oeuvres }: { exhibitionId: string; oeuvre
             )}
           </div>
         </div>
-      ) : (
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--tx3)', fontSize: 11 }}>
-          Créez une mise en espace pour commencer.
-        </div>
       )}
     </div>
   )
@@ -512,12 +567,16 @@ function FloorPlanTool({ exhibitionId, oeuvres }: { exhibitionId: string; oeuvre
 
 // ── ExhibitionDetail ──────────────────────────────────────────────────────────
 
-function ExhibitionDetail({ exhibition, oeuvres, contacts }: {
+function ExhibitionDetail({ exhibition, oeuvres, contacts, selection, setSelection, onDelete, onUpdate }: {
   exhibition: Exhibition
   oeuvres:    Oeuvre[]
-  contacts:   { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null }[]
+  contacts:   { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null; Email?: string | null; Tel?: string | null }[]
+  selection:  Set<number>
+  setSelection: (s: Set<number>) => void
+  onDelete:   () => void
+  onUpdate:   (p: Partial<Exhibition>) => void
 }) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'works' | 'floorplan'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'works' | 'floorplan' | 'calendar'>('overview')
 
   const contact = contacts.find((c) => c.ContactID === exhibition.contact_id)
   const contactName = contact
@@ -537,6 +596,7 @@ function ExhibitionDetail({ exhibition, oeuvres, contacts }: {
 
   const TABS = [
     { id: 'overview',  label: 'Aperçu'       },
+    { id: 'calendar',  label: 'Calendrier'   },
     { id: 'works',     label: `Œuvres${linkedWorks.length ? ` (${linkedWorks.length})` : ''}` },
     { id: 'floorplan', label: 'Mise en espace'},
   ] as const
@@ -547,25 +607,35 @@ function ExhibitionDetail({ exhibition, oeuvres, contacts }: {
       <div style={{ padding: '14px 20px 0', borderBottom: '1px solid var(--bd)', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, marginBottom: 10 }}>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--tx)', marginBottom: 4 }}>{exhibition.nom}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
+              <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--tx)' }}>{exhibition.nom}</div>
+              <button onClick={onDelete} className="btn ghost sm" style={{ color: 'var(--tx3)', fontSize: 9 }}>Supprimer</button>
+            </div>
             <div style={{ display: 'flex', gap: 14, fontSize: 10, color: 'var(--tx3)', flexWrap: 'wrap' }}>
               {contact && <span>📍 {contactName}</span>}
+              {contact?.Email && <span title={contact.Email}>✉️ {contact.Email}</span>}
+              {contact?.Tel && <span title={contact.Tel}>📞 {contact.Tel}</span>}
               {exhibition.localisation && <span>🗺 {exhibition.localisation}</span>}
               {exhibition.date_debut && <span>Du {fmtDate(exhibition.date_debut)}</span>}
               {exhibition.date_fin && <span>au {fmtDate(exhibition.date_fin)}</span>}
-              {exhibition.url && <a href={exhibition.url} target="_blank" rel="noreferrer" style={{ color: 'var(--ac)', textDecoration: 'none' }}>🔗 Site</a>}
             </div>
           </div>
           <div style={{ textAlign: 'right', flexShrink: 0 }}>
-            <div style={{
-              display: 'inline-block', padding: '2px 10px', fontSize: 9, letterSpacing: 1,
-              textTransform: 'uppercase', borderRadius: 2,
-              background: `${STATUT_COLORS[exhibition.statut] ?? 'var(--bd)'}22`,
-              color: STATUT_COLORS[exhibition.statut] ?? 'var(--tx3)',
-              border: `1px solid ${STATUT_COLORS[exhibition.statut] ?? 'var(--bd)'}`,
-            }}>
-              {exhibition.statut.replace('_', ' ')}
-            </div>
+            <select
+              value={exhibition.statut}
+              onChange={(e) => onUpdate({ statut: e.target.value })}
+              style={{
+                background: `${STATUT_COLORS[exhibition.statut] ?? 'var(--bd)'}22`,
+                color: STATUT_COLORS[exhibition.statut] ?? 'var(--tx3)',
+                border: `1px solid ${STATUT_COLORS[exhibition.statut] ?? 'var(--bd)'}`,
+                padding: '2px 10px', fontSize: 9, letterSpacing: 1,
+                textTransform: 'uppercase', borderRadius: 2, outline: 'none', cursor: 'pointer'
+              }}
+            >
+              {Object.entries(STATUT_LABELS).map(([k, v]) => (
+                <option key={k} value={k} style={{ background: 'var(--bg1)', color: 'var(--tx)' }}>{v}</option>
+              ))}
+            </select>
           </div>
         </div>
 
@@ -640,8 +710,64 @@ function ExhibitionDetail({ exhibition, oeuvres, contacts }: {
           </div>
         )}
 
+        {activeTab === 'calendar' && (
+          <div style={{ padding: 24 }}>
+            <div style={{ position: 'relative', borderLeft: '1px solid var(--bd)', paddingLeft: 24, display: 'flex', flexDirection: 'column', gap: 24 }}>
+              {/* Start Date */}
+              {exhibition.date_debut && (
+                <div style={{ position: 'relative' }}>
+                  <div style={{ position: 'absolute', left: -29, top: 2, width: 9, height: 9, borderRadius: '50%', background: 'var(--ac)' }} />
+                  <div style={{ fontSize: 9, color: 'var(--tx3)', textTransform: 'uppercase', letterSpacing: 1 }}>Début de l'exposition</div>
+                  <div style={{ fontSize: 13, color: 'var(--tx)', fontWeight: 500 }}>{fmtDate(exhibition.date_debut)}</div>
+                </div>
+              )}
+
+              {/* Steps */}
+              {exhibition.steps.slice().sort((a,b) => (a.date_echeance ?? '').localeCompare(b.date_echeance ?? '')).map(s => (
+                <div key={s.id} style={{ position: 'relative' }}>
+                  <div style={{ position: 'absolute', left: -29, top: 4, width: 9, height: 9, borderRadius: '50%', background: STEP_COLORS[s.statut] ?? 'var(--bd)', border: '2px solid var(--bg1)' }} />
+                  <div style={{ fontSize: 9, color: 'var(--tx3)', textTransform: 'uppercase', letterSpacing: 1 }}>{s.statut === 'fait' ? '✓ Terminée' : s.statut === 'en_cours' ? '→ En cours' : 'À faire'}</div>
+                  <div style={{ fontSize: 11, color: 'var(--tx)', marginBottom: 2 }}>{s.nom}</div>
+                  {s.date_echeance && <div style={{ fontSize: 10, color: 'var(--tx2)' }}>Échéance : {fmtDate(s.date_echeance)}</div>}
+                </div>
+              ))}
+
+              {/* End Date */}
+              {exhibition.date_fin && (
+                <div style={{ position: 'relative' }}>
+                  <div style={{ position: 'absolute', left: -29, top: 2, width: 9, height: 9, borderRadius: '50%', background: 'var(--tx3)' }} />
+                  <div style={{ fontSize: 9, color: 'var(--tx3)', textTransform: 'uppercase', letterSpacing: 1 }}>Fin de l'exposition</div>
+                  <div style={{ fontSize: 13, color: 'var(--tx)', fontWeight: 500 }}>{fmtDate(exhibition.date_fin)}</div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {activeTab === 'works' && (
           <div style={{ padding: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <div style={{ fontSize: 11, color: 'var(--tx2)' }}>
+                {linkedWorks.length} œuvre{linkedWorks.length !== 1 ? 's' : ''} liée{linkedWorks.length !== 1 ? 's' : ''}
+              </div>
+              {selection.size > 0 && (
+                <button
+                  className="btn primary sm"
+                  onClick={async () => {
+                    if (!exhibition.contact_id) { alert("Veuillez d'abord lier un contact à cette exposition."); return }
+                    const sb = createClient()
+                    const ids = Array.from(selection)
+                    const { error } = await sb.from('Oeuvres').update({ ContactID: exhibition.contact_id }).in('OeuvreID', ids)
+                    if (!error) {
+                      alert(`${ids.length} œuvres ont été liées à cette exposition.`);
+                      window.location.reload() // lazy refresh
+                    }
+                  }}
+                >
+                  Ajouter la sélection ({selection.size})
+                </button>
+              )}
+            </div>
             {linkedWorks.length === 0 ? (
               <div style={{ fontSize: 11, color: 'var(--tx3)', fontStyle: 'italic' }}>
                 Aucune œuvre liée à ce contact pour le moment.
@@ -681,9 +807,11 @@ function ExhibitionDetail({ exhibition, oeuvres, contacts }: {
 
 // ── ExhibitionsTab ────────────────────────────────────────────────────────────
 
-export function ExhibitionsTab({ oeuvres, contacts }: {
+export function ExhibitionsTab({ oeuvres, contacts, selection, setSelection }: {
   oeuvres:  Oeuvre[]
-  contacts: { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null; Role: string | null; Ville?: string | null; Pays?: string | null }[]
+  contacts: { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null; Role: string | null; Ville?: string | null; Pays?: string | null; Email?: string | null; Tel?: string | null }[]
+  selection: Set<number>
+  setSelection: (s: Set<number>) => void
 }) {
   const [exhibitions, setExhibitions] = useState<Exhibition[]>([])
   const [selected,    setSelected]    = useState<Exhibition | null>(null)
@@ -701,6 +829,7 @@ export function ExhibitionsTab({ oeuvres, contacts }: {
     const { data: processes } = await supabase
       .from('suivi_process')
       .select('id, nom, type, statut, date_debut, date_fin, contact_id, localisation, url, notes, created_at')
+      .in('type', ['exposition', 'foire', 'residence']) // Only exhibition family
       .order('date_fin', { ascending: false, nullsFirst: false })
 
     const { data: steps } = await supabase
@@ -716,9 +845,22 @@ export function ExhibitionsTab({ oeuvres, contacts }: {
     setExhibitions(list)
     if (list.length > 0 && !selected) setSelected(list[0])
     setLoading(false)
-  }, [])
+  }, [selected, supabase])
 
   useEffect(() => { load() }, [load])
+
+  async function handleDelete() {
+    if (!selected) return
+    if (!confirm(`Supprimer l'exposition "${selected.nom}" ? Cette action est irréversible.`)) return
+    setLoading(true)
+    const { error } = await supabase.from('suivi_process').delete().eq('id', selected.id)
+    if (!error) {
+      const next = exhibitions.filter(e => e.id !== selected.id)
+      setExhibitions(next)
+      setSelected(next[0] ?? null)
+    }
+    setLoading(false)
+  }
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
@@ -726,7 +868,7 @@ export function ExhibitionsTab({ oeuvres, contacts }: {
     setCreating(true)
     const { data, error } = await supabase
       .from('suivi_process')
-      .insert({ nom: newNom.trim(), type: newType, statut: 'en_cours' })
+      .insert({ nom: newNom.trim(), type: newType, statut: 'prevue' }) // Start as Planned
       .select()
       .single()
     setCreating(false)
@@ -735,6 +877,14 @@ export function ExhibitionsTab({ oeuvres, contacts }: {
       setExhibitions((prev) => [ex, ...prev])
       setSelected(ex)
       setNewNom(''); setShowNew(false)
+    }
+  }
+
+  async function handleUpdateStatus(id: string, patch: Partial<Exhibition>) {
+    const { error } = await supabase.from('suivi_process').update(patch).eq('id', id)
+    if (!error) {
+      setExhibitions(prev => prev.map(e => e.id === id ? { ...e, ...patch } : e))
+      if (selected?.id === id) setSelected(prev => prev ? { ...prev, ...patch } : null)
     }
   }
 
@@ -754,12 +904,12 @@ export function ExhibitionsTab({ oeuvres, contacts }: {
         {/* Toolbar */}
         <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--bd)', display: 'flex', gap: 6, alignItems: 'center' }}>
           <button onClick={() => setShowNew((v) => !v)} className="btn sm" style={{ flexShrink: 0 }}>+ Nouveau</button>
-          <select value={filter} onChange={(e) => setFilter(e.target.value as typeof filter)}
+          <select value={filter} onChange={(e) => setFilter(e.target.value as any)}
             style={{ ...inputSt, fontSize: 9, flex: 1, padding: '4px 6px' }}>
             <option value="all">Tous</option>
-            <option value="en_cours">En cours</option>
-            <option value="gagne">Gagnés</option>
-            <option value="termine">Terminés</option>
+            {Object.entries(STATUT_LABELS).map(([k, v]) => (
+              <option key={k} value={k}>{v}</option>
+            ))}
           </select>
         </div>
 
@@ -831,6 +981,10 @@ export function ExhibitionsTab({ oeuvres, contacts }: {
           exhibition={selected}
           oeuvres={oeuvres}
           contacts={contacts}
+          selection={selection}
+          setSelection={setSelection}
+          onDelete={handleDelete}
+          onUpdate={(p) => handleUpdateStatus(selected.id, p)}
         />
       ) : (
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--tx3)', fontSize: 11 }}>

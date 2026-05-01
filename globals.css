@@ -23,10 +23,10 @@
   --mt:  #4c4a44;
   --ac:  #c8a86e;
   --ac2: #8a7040;
-  --cyan: oklch(0.72 0.06 200);
-  --rust: oklch(0.64 0.12 35);
-  --sage: oklch(0.70 0.05 140);
-  --dust: oklch(0.68 0.03 60);
+  --cyan: oklch(0.72 0.12 200);
+  --rust: oklch(0.64 0.18 35);
+  --sage: oklch(0.70 0.10 140);
+  --dust: oklch(0.68 0.08 60);
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -79,13 +79,13 @@ select { color-scheme: dark; }
 .chip {
   display: inline-flex; align-items: center; gap: 5px;
   padding: 3px 8px; font-size: 9px; letter-spacing: 1px; text-transform: uppercase;
-  border: 1px solid var(--bd); color: var(--tx2); background: transparent; font-weight: 500;
+  border: 1px solid var(--bd); color: var(--tx2); background: rgba(128,128,128,0.05); font-weight: 500;
 }
-.chip.active { border-color: var(--ac); color: var(--ac); background: rgba(200,168,110,0.05); }
-.chip.cyan   { border-color: var(--cyan); color: var(--cyan); }
-.chip.rust   { border-color: var(--rust); color: var(--rust); }
-.chip.sage   { border-color: var(--sage); color: var(--sage); }
-.chip.dust   { border-color: var(--bd2);  color: var(--tx2); }
+.chip.active { border-color: var(--ac); color: var(--ac); background: rgba(200,168,110,0.1); }
+.chip.cyan   { border-color: var(--cyan); color: var(--cyan); background: color-mix(in oklch, var(--cyan) 10%, transparent); }
+.chip.rust   { border-color: var(--rust); color: var(--rust); background: color-mix(in oklch, var(--rust) 10%, transparent); }
+.chip.sage   { border-color: var(--sage); color: var(--sage); background: color-mix(in oklch, var(--sage) 10%, transparent); }
+.chip.dust   { border-color: var(--bd2);  color: var(--tx2); background: rgba(128,128,128,0.08); }
 
 /* ── Input / Select ──────────────────────────────────────── */
 .input {

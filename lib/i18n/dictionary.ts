@@ -12,7 +12,7 @@ export type DictKey =
   | 'allWorks' | 'recentlyAdded' | 'byTechnique' | 'bySupport'
   | 'byYear' | 'search' | 'filter' | 'reset' | 'untitled' | 'newWork'
   | 'quickActions' | 'openTasks' | 'upcomingShipments' | 'activity'
-  | 'notes' | 'seeAll' | 'close' | 'back' | 'details' | 'cancel'
+  | 'notes' | 'seeAll' | 'close' | 'back' | 'details' | 'cancel' | 'delete'
   | 'stage_idea' | 'stage_sketch' | 'stage_wip' | 'stage_drying'
   | 'stage_framing' | 'stage_shot' | 'stage_catalogued'
   | 'constellation_intro' | 'year' | 'technique' | 'support'
@@ -30,6 +30,13 @@ export type DictKey =
   | 'returnDate' | 'deliveryDate' | 'addToSel' | 'edit'
   | 'surDemande' | 'atelier' | 'localisation'
   | 'pipeline' | 'map' | 'contacts' | 'reminders' | 'upcomingDeadlines'
+  | 'searchPlaceholderContacts' | 'allRoles' | 'deleteSelected' | 'confirmDeleteContacts'
+  | 'fiscal' | 'expenses' | 'dashboard' | 'income' | 'tax' | 'category' | 'amount'
+  | 'sales' | 'revenue' | 'orders' | 'newOrder' | 'buyer'
+  | 'concepts' | 'themes' | 'location' | 'tirage' | 'exhibitable' | 'image'
+  | 'searchFieldAll' | 'searchFieldName' | 'searchFieldCity' | 'searchFieldEmail' | 'searchFieldNotes'
+  | 'identity' | 'depth' | 'visibility' | 'history' | 'save' | 'create'
+  | 'priced' | 'date' | 'label'
 
 type Dictionary = Record<DictKey, string>
 
@@ -62,7 +69,7 @@ export const dict: Record<Lang, Dictionary> = {
     quickActions: 'Actions', openTasks: 'Tâches ouvertes',
     upcomingShipments: 'Envois à venir', activity: 'Activité',
     notes: 'Notes', seeAll: 'Tout voir', close: 'Fermer',
-    back: 'Retour', details: 'Détails', cancel: 'Annuler',
+    back: 'Retour', details: 'Détails', cancel: 'Annuler', delete: 'Supprimer',
     stage_idea: 'Idée', stage_sketch: 'Esquisse', stage_wip: 'En cours',
     stage_drying: 'Séchage', stage_framing: 'À encadrer',
     stage_shot: 'À photographier', stage_catalogued: 'À cataloguer',
@@ -94,6 +101,20 @@ export const dict: Record<Lang, Dictionary> = {
     surDemande: 'Sur demande', atelier: 'Atelier', localisation: 'Localisation',
     pipeline: 'Suivi', map: 'Carte', contacts: 'Contacts',
     reminders: 'Rappels', upcomingDeadlines: 'Échéances',
+    searchPlaceholderContacts: 'Rechercher nom, institution, ville, email, notes...',
+    allRoles: 'Tous rôles', deleteSelected: 'Supprimer',
+    confirmDeleteContacts: 'Supprimer définitivement ces contacts ?',
+    fiscal: 'Fiscal', expenses: 'Dépenses', dashboard: 'Tableau de bord',
+    income: 'Revenus', tax: 'Impôts', category: 'Catégorie', amount: 'Montant',
+    sales: 'Ventes', revenue: 'Chiffre d\'affaires', orders: 'Commandes',
+    newOrder: 'Nouvelle commande', buyer: 'Acheteur',
+    concepts: 'Concepts', themes: 'Thèmes / Groupes', location: 'Localisation',
+    tirage: 'Tirage', exhibitable: 'Exposable', image: 'Image',
+    searchFieldAll: 'Partout', searchFieldName: 'Nom', searchFieldCity: 'Ville',
+    searchFieldEmail: 'Email', searchFieldNotes: 'Notes',
+    identity: 'Identité', depth: 'Profondeur', visibility: 'Visibilité',
+    history: 'Historique', save: 'Enregistrer', create: 'Créer',
+    priced: 'Évalué', date: 'Date', label: 'Libellé',
   },
   en: {
     hub: 'Studio', tagline: 'Inventory · Production · Curation · Relations',
@@ -122,7 +143,7 @@ export const dict: Record<Lang, Dictionary> = {
     quickActions: 'Actions', openTasks: 'Open tasks',
     upcomingShipments: 'Upcoming shipments', activity: 'Activity',
     notes: 'Notes', seeAll: 'See all', close: 'Close',
-    back: 'Back', details: 'Details', cancel: 'Cancel',
+    back: 'Back', details: 'Details', cancel: 'Cancel', delete: 'Delete',
     stage_idea: 'Idea', stage_sketch: 'Sketch', stage_wip: 'In progress',
     stage_drying: 'Drying', stage_framing: 'Framing',
     stage_shot: 'Photographed', stage_catalogued: 'Catalogued',
@@ -154,5 +175,16 @@ export const dict: Record<Lang, Dictionary> = {
     surDemande: 'On request', atelier: 'Studio', localisation: 'Location',
     pipeline: 'Pipeline', map: 'Map', contacts: 'Contacts',
     reminders: 'Reminders', upcomingDeadlines: 'Upcoming deadlines',
+    searchPlaceholderContacts: 'Search name, institution, city, email, notes...',
+    allRoles: 'All roles', deleteSelected: 'Delete',
+    confirmDeleteContacts: 'Permanently delete these contacts?',
+    fiscal: 'Fiscal', expenses: 'Expenses', dashboard: 'Dashboard',
+    income: 'Income', tax: 'Taxes', category: 'Category', amount: 'Amount',
+    sales: 'Sales', revenue: 'Revenue', orders: 'Orders',
+    newOrder: 'New order', buyer: 'Buyer',
+    concepts: 'Concepts', themes: 'Themes / Groups', location: 'Location',
+    tirage: 'Edition', exhibitable: 'Exhibitable', image: 'Image',
+    searchFieldAll: 'All', searchFieldName: 'Name', searchFieldCity: 'City',
+    searchFieldEmail: 'Email', searchFieldNotes: 'Notes',
   },
 }

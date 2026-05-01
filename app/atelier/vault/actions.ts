@@ -201,9 +201,7 @@ export async function generateCOA(oeuvreId: number): Promise<CoaResult> {
   if (o.txtImageNameLink) {
     try {
       const R2   = process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? ''
-      const SB   = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
-      const BKT  = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET ?? 'paintings'
-      const STR  = R2 || `${SB}/storage/v1/object/public/${BKT}`
+      const STR  = R2
       const imgUrl = `${STR}/${encodeURIComponent(o.txtImageNameLink)}`
       const res = await fetch(imgUrl)
       if (res.ok) imageBuffer = Buffer.from(await res.arrayBuffer())

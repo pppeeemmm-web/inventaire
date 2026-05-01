@@ -9,7 +9,7 @@ import { useMemo, useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
 import { createClient } from '@/lib/supabase/client'
-import { thumbUrl, yearOf, statusOf, type StatusKey } from '@/lib/data'
+import { imageUrl, thumbUrl, yearOf, statusOf, type StatusKey } from '@/lib/data'
 import type { Oeuvre } from '@/lib/types/database'
 
 // ── Types ────────────────────────────────────────────────────
@@ -224,39 +224,62 @@ function ActionColumn({
   const [showAdd, setShowAdd] = useState(false)
   const [addQ,    setAddQ]    = useState('')
 
-  const currentIds = new Set(works.map((o) => o.OeuvreID))
-  const suggestions = addQ.trim()
-    ? active.filter((o) => {
-        if (currentIds.has(o.OeuvreID)) return false
-        const q = addQ.toLowerCase()
-        return (o.Titre ?? '').toLowerCase().includes(q) || String(o.OeuvreID).includes(q)
-      }).slice(0, 8)
-    : []
+  const sortedWorks = useMemo(() => {
+    return [...works].sort((a, b) => {
+      const aDl = (a as any).DateLivraison
+      const bDl = (b as any).DateLivraison
+      const aCom = (a as any).IsCommission
+      const bCom = (b as any).IsCommission
+
+      // 1. Commissions with imminent deadlines first
+      if (aCom && bCom) {
+        if (aDl && bDl) return aDl.localeCompare(bDl)
+        if (aDl) return -1
+        if (bDl) return 1
+        return 0
+      }
+      if (aCom) return -1
+      if (bCom) return 1
+
+      // 2. Others by ID (descending)
+      return b.OeuvreID - a.OeuvreID
+    })
+  }, [works])
+
+  const suggestions = useMemo(() => {
+    if (!addQ.trim()) return []
+    const sq = addQ.toLowerCase()
+    return active.filter(o =>
+      !works.find(w => w.OeuvreID === o.OeuvreID) &&
+      (`${o.Titre ?? ''} #${o.OeuvreID}`).toLowerCase().includes(sq)
+    ).slice(0, 8)
+  }, [active, works, addQ])
 
   return (
     <div style={{ background: 'var(--bg1)', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       {/* Header */}
       <div style={{
-        padding: '12px 10px 8px', borderBottom: '1px solid var(--bd)', flexShrink: 0,
+        padding: '12px 10px 10px', borderBottom: '1px solid var(--bd)', flexShrink: 0,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        background: 'var(--bg2)',
+        borderTop: `3px solid ${actionType.color}`,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-          <span style={{ width: 10, height: 10, borderRadius: '50%', background: actionType.color, flexShrink: 0 }} />
-          <span className="t-eyebrow" style={{ color: actionType.color, fontSize: 9 }}>{actionType.label}</span>
+          <span className="t-eyebrow" style={{ color: actionType.color, fontSize: 10, fontWeight: 700 }}>{actionType.label}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span className="t-mono-sm" style={{ color: 'var(--tx3)' }}>{works.length}</span>
           <button
             onClick={() => { setShowAdd((v) => !v); setAddQ('') }}
             style={{ fontSize: 14, color: 'var(--tx3)', background: 'transparent', border: 'none', cursor: 'pointer', lineHeight: 1, padding: '0 2px' }}
-            title="Ajouter une œuvre"
+            title="Ajouter une œuvre à cette étape"
           >+</button>
         </div>
       </div>
 
-      {/* Add work search */}
+      {/* Add work search suggestions */}
       {showAdd && (
-        <div style={{ padding: '6px 8px', borderBottom: '1px solid var(--bd)', flexShrink: 0 }}>
+        <div style={{ padding: '6px 8px', borderBottom: '1px solid var(--bd)', flexShrink: 0, background: 'var(--bg1)' }}>
           <input
             autoFocus
             value={addQ}
@@ -275,20 +298,29 @@ function ActionColumn({
               style={{
                 padding: '5px 7px', fontSize: 10, cursor: 'pointer',
                 color: 'var(--tx)', borderBottom: '1px solid var(--bd)',
+                display: 'flex', alignItems: 'center', gap: 6,
               }}
               onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg2)')}
               onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
             >
-              <span style={{ color: 'var(--tx3)', marginRight: 6 }}>#{o.OeuvreID}</span>
-              {o.Titre ?? '—'}
+              <div style={{ width: 16, height: 16, background: 'var(--bg0)', flexShrink: 0, overflow: 'hidden' }}>
+                {o.txtImageNameLink && <img src={thumbUrl(o.txtImageNameLink, 48) ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />}
+              </div>
+              <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {o.Titre ?? '—'}
+              </div>
+              <span style={{ color: 'var(--tx3)', fontSize: 8 }}>#{o.OeuvreID}</span>
             </div>
           ))}
+          {addQ.trim() && suggestions.length === 0 && (
+            <div className="t-mono-sm" style={{ padding: '5px 7px', color: 'var(--tx3)' }}>Aucun résultat</div>
+          )}
         </div>
       )}
 
       {/* Cards */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
-        {works.map((o) => (
+      <div style={{ flex: 1, overflowY: 'auto', padding: '8px 7px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {sortedWorks.map((o) => (
           <WorkCard
             key={o.OeuvreID}
             o={o}
@@ -338,8 +370,15 @@ function WorkCard({ o, tM, onMarkDone, onOpen }: {
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
           {o.txtImageNameLink
-            ? <img src={thumbUrl(o.txtImageNameLink, 128) ?? ''} loading="lazy" alt=""
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ? <img src={thumbUrl(o.txtImageNameLink, 128) ?? ''}
+                loading="lazy" alt=""
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                onError={(e) => {
+                  // Thumb not yet backfilled — fall back to full-res image
+                  const full = imageUrl(o.txtImageNameLink) ?? ''
+                  if (full && e.currentTarget.src !== full) e.currentTarget.src = full
+                }}
+              />
             : <span style={{ color: 'var(--tx3)', fontSize: 14 }}>—</span>}
         </div>
 
@@ -421,6 +460,7 @@ function WorkCard({ o, tM, onMarkDone, onOpen }: {
 // Fields that can be written back on the Oeuvres table
 const FIELD_OPTIONS = [
   { value: '',          label: '— aucun' },
+  { value: 'Montee',    label: 'Montée' },
   { value: 'Encadree',  label: 'Encadrée' },
   { value: 'Exposable', label: 'Exposable' },
   { value: 'Catalogué', label: 'Cataloguée' },

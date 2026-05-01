@@ -17,6 +17,8 @@ export interface Placement {
   position:  number   // 0–100 along wall
   scale:     number   // relative size (default 1)
   label?:    string
+  x?:        number   // % from left of floorplan (0-100)
+  y?:        number   // % from top of floorplan (0-100)
 }
 
 export interface ExhibitionLayout {

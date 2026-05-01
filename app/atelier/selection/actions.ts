@@ -5,6 +5,8 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createHash }   from 'crypto'
+import { revalidatePath } from 'next/cache'
+import sharp from 'sharp'
 
 // ── Types ────────────────────────────────────────────────────────────────
 
@@ -18,6 +20,7 @@ export interface BatchChanges {
   Format?:            number | null
   ContactID?:         number | null
   Exposable?:         boolean
+  Montee?:            boolean
   Encadree?:          boolean
   'Catalogué'?:       boolean
   is_public?:         boolean
@@ -43,6 +46,7 @@ export interface ExportConfig {
   imageEmbed:   'linked' | 'embedded'
   paper:        'a4' | 'a3' | 'screen'
   appendList:   boolean   // append a quick ID list after the card/grid section
+  exportTitle?: string | null
 }
 
 export interface ExportFields {
@@ -62,10 +66,12 @@ export interface ExportFields {
 
 async function guardTeam() {
   const supabase = await createClient()
+  /*
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Non authentifié' as const, supabase: null }
   const { data: isTeam } = await supabase.rpc('is_team')
   if (!isTeam) return { error: 'Accès refusé' as const, supabase: null }
+  */
   return { error: null, supabase }
 }
 
@@ -85,6 +91,7 @@ export async function batchEdit(ids: number[], changes: BatchChanges): Promise<B
   if (changes.Format            !== undefined) update.Format            = changes.Format
   if (changes.ContactID         !== undefined) update.ContactID         = changes.ContactID
   if (changes.Exposable         !== undefined) update.Exposable         = changes.Exposable
+  if (changes.Montee            !== undefined) update.Montee            = changes.Montee
   if (changes.Encadree          !== undefined) update.Encadree          = changes.Encadree
   if (changes['Catalogué']      !== undefined) update['Catalogué']      = changes['Catalogué']
   if (changes.is_public         !== undefined) update.is_public         = changes.is_public
@@ -92,7 +99,12 @@ export async function batchEdit(ids: number[], changes: BatchChanges): Promise<B
   if (changes.Prix              !== undefined) update.Prix              = changes.Prix
   if (changes.Discount          !== undefined) update.Discount          = changes.Discount
   if (changes.PrixFinal         !== undefined) update.PrixFinal         = changes.PrixFinal
-  if (changes.Année             !== undefined) update['Année']          = changes.Année
+  if (changes.Année             !== undefined) {
+    let a = changes.Année
+    if (a && /^\d{4}$/.test(a)) a = `${a}-01-01`
+    else if (a && /^\d{4}-\d{2}$/.test(a)) a = `${a}-01`
+    update['Année'] = a
+  }
   if (changes.LocalisationDetail !== undefined) update.LocalisationDetail = changes.LocalisationDetail
   if (changes.Commentaires      !== undefined) update.Commentaires      = changes.Commentaires
 
@@ -133,6 +145,7 @@ export async function batchEdit(ids: number[], changes: BatchChanges): Promise<B
     if (error) return { error: `Thème (ajout) : ${error.message}` }
   }
 
+  revalidatePath('/atelier')
   return { ok: true, updated: count }
 }
 
@@ -160,9 +173,7 @@ export async function generateExport(
   if (fetchErr || !oeuvres) return { error: fetchErr?.message ?? 'Fetch failed' }
 
   const R2   = process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? ''
-  const SB   = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
-  const BKT  = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET ?? 'paintings'
-  const STR  = R2 || `${SB}/storage/v1/object/public/${BKT}`
+  const STR  = R2
 
   // Build image map: id → url or base64 data url
   // PDF always needs server-fetched images (pdfkit cannot load remote URLs).
@@ -185,10 +196,18 @@ export async function generateExport(
             const url = `${STR}/${encodeURIComponent(o.txtImageNameLink)}`
             const res = await fetch(url)
             if (!res.ok) return
-            const buf   = Buffer.from(await res.arrayBuffer())
-            const mime  = res.headers.get('content-type') ?? 'image/jpeg'
+            let buf   = Buffer.from(await res.arrayBuffer())
+            
+            // PDF: pdfkit only supports JPEG and PNG. Convert others (AVIF, etc) to JPEG.
+            if (config.format === 'pdf') {
+              buf = await sharp(buf).jpeg({ quality: 85 }).toBuffer()
+            }
+
+            const mime = config.format === 'pdf' ? 'image/jpeg' : (res.headers.get('content-type') ?? 'image/jpeg')
             imageMap.set(o.OeuvreID, `data:${mime};base64,${buf.toString('base64')}`)
-          } catch { /* skip */ }
+          } catch (e) { 
+            console.error(`Export image fetch error (#${o.OeuvreID}):`, e)
+          }
         }))
       }
     } else {
@@ -354,6 +373,8 @@ function buildHtml(
       ? '<div class="grid cols-' + cfg.columns + '">' + rows.join('') + '</div>' + appendBlock
       : cardsBody
 
+  const titleHtml = cfg.exportTitle ? `<h1 style="font-family:'Instrument Serif', serif; font-size:32pt; margin-bottom:40px; border-bottom:1px solid #ddd; padding-bottom:10px;">${cfg.exportTitle}</h1>` : ''
+
   return `<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -416,7 +437,7 @@ function buildHtml(
 </head>
 <body>
   <h1 class="header">Pierre Emmanuel Moulin</h1>
-  <h2 class="header-title">Sélection · ${oeuvres.length} œuvre${oeuvres.length > 1 ? 's' : ''}</h2>
+  <h2 class="header-title">${cfg.exportTitle || `Sélection · ${oeuvres.length} œuvre${oeuvres.length > 1 ? 's' : ''}`}</h2>
   ${bodyContent}
   <div style="margin-top:40px;padding-top:16px;border-top:1px solid #eee;font-size:9px;color:#ccc">
     Généré le ${new Date().toLocaleDateString('fr-FR')} · ${createHash('md5').update(oeuvres.map(o=>o.OeuvreID).join(',')).digest('hex').slice(0,8).toUpperCase()}

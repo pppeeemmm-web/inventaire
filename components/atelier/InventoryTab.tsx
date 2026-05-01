@@ -36,6 +36,7 @@ const FIELD_DEFS = [
   { k: 'statusId',          l: 'Status',        t: 'lookup' },
   { k: 'ContactID',        l: 'Contact',       t: 'lookup' },
   { k: 'LocalisationID',   l: 'Location',      t: 'lookup' },
+  { k: 'AcheteurID',       l: 'Acheteur',      t: 'lookup' },
   { k: 'txtImageNameLink', l: 'Image',         t: 'text'   },
 ] as const
 
@@ -434,7 +435,7 @@ export function InventoryTab({
               selection={selection} setSelection={setSelection}
             />
             <InvPreview
-              o={focused} tM={tM} sM={sM} cM={cM} pM={pM} locMap={locMap} statusLabelMap={statusLabelMap}
+              o={focused} tM={tM} sM={sM} cM={cM} pM={pM} fM={fM} locMap={locMap} statusLabelMap={statusLabelMap}
               selection={selection} toggleInSel={toggleInSel}
               onOpen={onOpen}
             />
@@ -494,7 +495,7 @@ function CriteriaPanel({
     if (field === 'Technique')      return Object.entries(tM).sort((a,b) => a[1].localeCompare(b[1])).map(([k,v]) => [k, v])
     if (field === 'Support')        return Object.entries(sM).sort((a,b) => a[1].localeCompare(b[1])).map(([k,v]) => [k, v])
     if (field === '_theme')         return Object.entries(thM).sort((a,b) => a[1].localeCompare(b[1])).map(([k,v]) => [k, v])
-    if (field === 'statusId')        return Object.entries(statusLabelMap).map(([k,v]) => [k, v])
+    if (field === 'statusId')        return Object.entries(statusLabelMap).sort((a,b) => a[1].localeCompare(b[1])).map(([k,v]) => [k, v])
     if (field === 'ContactID' || field === 'LocalisationID')
                                     return Object.entries(cM).sort((a,b) => a[1].localeCompare(b[1])).map(([k,v]) => [k, v])
     return []
@@ -559,7 +560,17 @@ function CriteriaPanel({
               }}
               style={{ ...IS, maxWidth: 130 }}
             >
-              {FIELD_DEFS.map((f) => <option key={f.k} value={f.k}>{f.l}</option>)}
+              {FIELD_DEFS.map((f) => {
+                const labelMap: Record<string, string> = {
+                  OeuvreID: 'ID', Titre: t('title'), Technique: t('technique'),
+                  Support: t('support'), _theme: t('theme'), Année: t('year'),
+                  Prix: t('price'), PrixFinal: 'Final price', Exposable: t('exhibitable'),
+                  Catalogué: t('catalogued'), Encadree: t('framed'), Tirage: t('tirage'),
+                  Commentaires: t('notes'), statusId: t('status'), ContactID: t('contact'),
+                  LocalisationID: t('location'), AcheteurID: t('buyer'), txtImageNameLink: t('image')
+                }
+                return <option key={f.k} value={f.k}>{labelMap[f.k] || f.l}</option>
+              })}
             </select>
 
             {/* Operator */}
@@ -796,13 +807,14 @@ function InvList({
 // ── InvPreview ──────────────────────────────────────────────────────
 
 function InvPreview({
-  o, tM, sM, cM, pM, locMap, statusLabelMap, selection, toggleInSel, onOpen,
+  o, tM, sM, cM, pM, fM, locMap, statusLabelMap, selection, toggleInSel, onOpen,
 }: {
   o:              Oeuvre | null
   tM:             Record<number, string>
   sM:             Record<number, string>
   cM:             Record<number, string>
   pM:             Record<number, string>
+  fM:             Record<number, string>
   locMap:         Record<number, string>
   statusLabelMap: Record<number, string>
   selection:      Set<number>

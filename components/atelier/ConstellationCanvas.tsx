@@ -40,7 +40,7 @@ interface Edge {
   description:   string | null
 }
 interface Drag {
-  mode:       'idle' | 'pan' | 'node' | 'link'
+  mode:       'idle' | 'pan' | 'node' | 'link' | 'marquee' | 'draw'
   startX:     number
   startY:     number
   nodeId?:    number
@@ -80,8 +80,30 @@ function savePos(g: GroupBy, m: NodeMap, themeId?: number | null) {
 
 // ── Named snapshots ────────────────────────────────────────────────────────
 const SNAP_KEY = 'pem_const_snapshots'
-interface Snapshot { id: string; name: string; groupBy: GroupBy; positions: Record<string, Pt>; savedAt: string }
-function loadSnapshots(): Snapshot[] { try { return JSON.parse(localStorage.getItem(SNAP_KEY) ?? '[]') } catch { return [] } }
+type Shape =
+  | { type: 'line'; points: Pt[]; color: string; width: number }
+  | { type: 'text'; x: number; y: number; text: string; color: string; size: number }
+
+type Tool = 'move' | 'draw' | 'text' | 'marquee' | 'erase'
+
+interface Snapshot {
+  id: string
+  name: string
+  groupBy: GroupBy
+  positions: Record<string, Pt>
+  shapes: Shape[]
+  savedAt: string
+}
+
+function loadSnapshots(): Snapshot[] {
+  try {
+    const raw = localStorage.getItem(SNAP_KEY)
+    if (!raw) return []
+    const snaps = JSON.parse(raw) as Snapshot[]
+    // Ensure back-compat for old snapshots without shapes
+    return snaps.map(s => ({ ...s, shapes: s.shapes ?? [] }))
+  } catch { return [] }
+}
 function persistSnapshots(s: Snapshot[]) { try { localStorage.setItem(SNAP_KEY, JSON.stringify(s)) } catch {} }
 function posToObj(m: NodeMap): Record<string, Pt> { const o: Record<string, Pt> = {}; m.forEach((v, k) => { o[k] = v }); return o }
 function objToPos(o: Record<string, Pt>): NodeMap  { return new Map(Object.entries(o).map(([k, v]) => [+k, v])) }
@@ -273,10 +295,17 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
   const [groupBy,   setGroupBy]   = useState<GroupBy>('year')
   const [linkType,  setLinkType]  = useState<LinkType>('influence')
   const [loading,   setLoading]   = useState(true)
+  const [tool,      setTool]      = useState<Tool>('move')
+  const [shapes,    setShapes]    = useState<Shape[]>([])
+  const [marquee,   setMarquee]   = useState<{ x: number; y: number; w: number; h: number } | null>(null)
   const [themeWork, setThemeWork] = useState<Map<number, Set<number>>>(new Map())
   const [panelNode, setPanelNode] = useState<Oeuvre | null>(null)
   const [groupName,  setGroupName]  = useState('')
   const [saving,     setSaving]     = useState(false)
+  const [activeShape, setActiveShape] = useState<Shape | null>(null)
+  const [drawColor,   setDrawColor]   = useState('#c8a86e')
+  const [textInput,   setTextInput]   = useState<{ x: number, y: number } | null>(null)
+  const [textVal,     setTextVal]     = useState('')
   const [savedName,  setSavedName]  = useState<string | null>(null)
   const [snapshots,  setSnapshots]  = useState<Snapshot[]>(loadSnapshots)
   const [snapName,   setSnapName]   = useState('')
@@ -299,14 +328,38 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
   useEffect(() => {
     // Clear the old monolithic theme cache key (before filter-aware keys were introduced).
     try { localStorage.removeItem('pem_const_pos_theme') } catch {}
-  }, [])
+
+    // ── Curation Trigger: handle transition from Inventory dock ──
+    const trigger = sessionStorage.getItem('pem_curation_trigger')
+    if (trigger === 'true') {
+      sessionStorage.removeItem('pem_curation_trigger')
+      const selIds = Array.from(selection)
+      if (selIds.length > 0) {
+        setGroupBy('custom')
+        groupByRef.current = 'custom'
+        setCustomIds(new Set(selIds))
+        
+        // Layout selection in a clean grid at the center
+        const selectedOeuvres = selIds.map(id => oeuvresById.get(id)).filter(Boolean) as Oeuvre[]
+        const m = layoutGrid(selectedOeuvres)
+        // Center the grid
+        const canvas = canvasRef.current
+        if (canvas) {
+          const cx = canvas.offsetWidth / 2, cy = canvas.offsetHeight / 2
+          m.forEach(p => { p.x += cx - 300; p.y += cy - 200 })
+        }
+        posRef.current = m
+        redraw()
+      }
+    }
+  }, [selection, oeuvresById, redraw])
 
   // Works shown in theme mode: only those belonging to the selected/all themes
   const constellationOeuvres = useMemo(() => {
     if (groupBy !== 'theme') return oeuvres
-    const themeIds = selectedThemeId !== null ? [selectedThemeId] : [...themeWork.keys()]
-    const ids = new Set<number>()
-    themeIds.forEach(tid => (themeWork.get(tid) ?? new Set()).forEach(id => ids.add(id)))
+    // REQUIRE a selection in theme mode to avoid "messy" all-themes view
+    if (selectedThemeId === null) return []
+    const ids = themeWork.get(selectedThemeId) ?? new Set<number>()
     return oeuvres.filter(o => ids.has(o.OeuvreID))
   }, [groupBy, oeuvres, themeWork, selectedThemeId])
 
@@ -395,15 +448,28 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
     for (const [id, p] of posRef.current) {
       const ncx = p.x + NW / 2, ncy = p.y + NH / 2
       if (ncx + NR < x0 || ncx - NR > x1 || ncy + NR < y0 || ncy - NR > y1) continue
-      const key = `${id}_${tier}`
-      if (imagesRef.current.has(key)) continue
+      
       const o = oeuvresById.get(id)
       if (!o?.txtImageNameLink) continue
-      const img    = new Image()
-      img.crossOrigin = 'anonymous'
-      img.onload  = () => { imagesRef.current.set(key, img); redraw() }
-      img.src     = thumbUrl(o.txtImageNameLink, tier) ?? ''
-      imagesRef.current.set(key, img) // placeholder until loaded
+
+      // Request current tier + base fallback tiers (100, 40)
+      [tier, 100, 40].forEach(t => {
+        const key = `${id}_${t}`
+        if (!imagesRef.current.has(key)) {
+          const img = new Image()
+          img.crossOrigin = 'anonymous'
+          img.onload  = () => { imagesRef.current.set(key, img); redraw() }
+          img.onerror = () => {
+            const full = imageUrl(o.txtImageNameLink!) ?? ''
+            if (full && img.src !== full) {
+              img.src = full
+              redraw()
+            }
+          }
+          img.src = thumbUrl(o.txtImageNameLink!, t) ?? ''
+          imagesRef.current.set(key, img)
+        }
+      })
     }
   }
 
@@ -681,26 +747,75 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
       ctx.fillStyle = '#111112'
       ctx.fill()
 
-      // Thumbnail (only draw if fully loaded)
+      // Thumbnail (draw if loaded, else fallback to initials)
       if (img?.complete && img.naturalWidth > 0) {
         drawContain(ctx, img, cx, cy, NR)
+      } else {
+        ctx.fillStyle = 'rgba(255,255,255,0.03)'
+        ctx.fill()
+        ctx.fillStyle = 'var(--tx3)'
+        ctx.font      = `${Math.max(6, 12 / vp.z)}px monospace`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        const label = o.Titre ? o.Titre.slice(0, 2).toUpperCase() : `#${id}`
+        ctx.fillText(label, cx, cy)
       }
 
       ctx.restore()
 
-      // Circle border — colour-coded by theme, gold if selected, grey if hovered
       ctx.beginPath()
       ctx.arc(cx, cy, NR - 0.5 / vp.z, 0, Math.PI * 2)
       ctx.strokeStyle = isSel ? '#c8a86e' : isHov ? '#a8a397' : themeC
       ctx.lineWidth   = (isSel ? 2.5 : groupBy === 'theme' ? 1.5 : 1) / vp.z
       ctx.stroke()
+
+      // Small label below node
+      if (vp.z > 0.4) {
+        ctx.fillStyle = isSel ? 'var(--ac)' : isHov ? 'var(--tx)' : 'var(--tx3)'
+        ctx.font      = `${8 / vp.z}px "JetBrains Mono", monospace`
+        ctx.textAlign = 'center'
+        const short = o.Titre ? (o.Titre.length > 20 ? o.Titre.slice(0, 18) + '…' : o.Titre) : `#${id}`
+        ctx.fillText(short, cx, cy + NR + 10 / vp.z)
+      }
       ctx.globalAlpha = 1
     }
 
+    // ── Shapes & Active Shape ────────────────────────────────────
+    const allShapes = activeShape ? [...shapes, activeShape] : shapes
+    for (const s of allShapes) {
+      ctx.strokeStyle = s.color
+      ctx.fillStyle   = s.color
+      if (s.type === 'line') {
+        if (s.points.length < 2) continue
+        ctx.beginPath()
+        ctx.moveTo(s.points[0].x, s.points[0].y)
+        for (let i = 1; i < s.points.length; i++) ctx.lineTo(s.points[i].x, s.points[i].y)
+        ctx.lineWidth = s.width
+        ctx.lineCap   = 'round'
+        ctx.lineJoin  = 'round'
+        ctx.stroke()
+      } else {
+        ctx.font = `${s.size}px "Instrument Serif", serif`
+        ctx.fillText(s.text, s.x, s.y)
+      }
+    }
+
     ctx.restore()
+
+    // ── Marquee (Screen Space) ──────────────────────────────────
+    if (marquee) {
+      ctx.strokeStyle = 'rgba(200,168,110,0.8)'
+      ctx.setLineDash([4, 4])
+      ctx.lineWidth   = 1
+      ctx.strokeRect(marquee.x, marquee.y, marquee.w, marquee.h)
+      ctx.fillStyle   = 'rgba(200,168,110,0.1)'
+      ctx.fillRect(marquee.x, marquee.y, marquee.w, marquee.h)
+      ctx.setLineDash([])
+    }
+
     loadVisible()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tick, groupBy, linkType, oeuvres, themes, themeWork, oeuvresById, selectedThemeId])
+  }, [tick, groupBy, linkType, oeuvres, themes, themeWork, oeuvresById, selectedThemeId, shapes, activeShape, marquee])
 
   // ── Wheel (passive: false required for preventDefault) ────────
   useEffect(() => {
@@ -736,10 +851,28 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
 
   // ── Mouse handlers ─────────────────────────────────────────────
   const onMouseDown = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (e.button !== 0) return
     const rect = canvasRef.current!.getBoundingClientRect()
     const lx = e.clientX - rect.left, ly = e.clientY - rect.top
+    const wx = (lx - vpRef.current.x) / vpRef.current.z
+    const wy = (ly - vpRef.current.y) / vpRef.current.z
     const hit = hitNode(lx, ly, posRef.current, vpRef.current)
+
+    if (tool === 'draw') {
+      dragRef.current = { mode: 'draw', startX: lx, startY: ly }
+      setActiveShape({ type: 'line', points: [{ x: wx, y: wy }], color: drawColor, width: 2 / vpRef.current.z })
+      return
+    }
+
+    if (tool === 'text') {
+      setTextInput({ x: wx, y: wy })
+      return
+    }
+
+    if (tool === 'marquee' || (!hit && tool === 'move')) {
+      dragRef.current = { mode: 'marquee', startX: lx, startY: ly }
+      setMarquee({ x: lx, y: ly, w: 0, h: 0 })
+      return
+    }
 
     if (!hit) {
       dragRef.current = { mode: 'pan', startX: lx, startY: ly, panOrigin: { x: vpRef.current.x, y: vpRef.current.y } }
@@ -753,13 +886,27 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
       dragRef.current = { mode: 'node', startX: lx, startY: ly, nodeId: hit.id }
       if (canvasRef.current) canvasRef.current.style.cursor = 'grabbing'
     }
-  }, [])
+  }, [tool, drawColor])
 
   const onMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     const rect = canvasRef.current!.getBoundingClientRect()
     const lx = e.clientX - rect.left, ly = e.clientY - rect.top
     const drag = dragRef.current
     const vp   = vpRef.current
+
+    if (drag.mode === 'draw' && activeShape?.type === 'line') {
+      const wx = (lx - vp.x) / vp.z
+      const wy = (ly - vp.y) / vp.z
+      setActiveShape({ ...activeShape, points: [...activeShape.points, { x: wx, y: wy }] })
+      redraw()
+      return
+    }
+
+    if (drag.mode === 'marquee') {
+      setMarquee({ x: drag.startX, y: drag.startY, w: lx - drag.startX, h: ly - drag.startY })
+      redraw()
+      return
+    }
 
     if (drag.mode === 'pan') {
       vpRef.current = { ...vp, x: drag.panOrigin!.x + (lx - drag.startX), y: drag.panOrigin!.y + (ly - drag.startY) }
@@ -818,7 +965,24 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
     const lx = e.clientX - rect.left, ly = e.clientY - rect.top
     const drag = dragRef.current
 
-    if (drag.mode === 'link') {
+    if (drag.mode === 'draw' && activeShape) {
+      setShapes(prev => [...prev, activeShape])
+      setActiveShape(null)
+    } else if (drag.mode === 'marquee' && marquee) {
+      // Logic for selecting nodes in rect
+      const x0 = (Math.min(marquee.x, marquee.x + marquee.w) - vpRef.current.x) / vpRef.current.z
+      const x1 = (Math.max(marquee.x, marquee.x + marquee.w) - vpRef.current.x) / vpRef.current.z
+      const y0 = (Math.min(marquee.y, marquee.y + marquee.h) - vpRef.current.y) / vpRef.current.z
+      const y1 = (Math.max(marquee.y, marquee.y + marquee.h) - vpRef.current.y) / vpRef.current.z
+      
+      const next = e.shiftKey ? new Set(selRef.current) : new Set<number>()
+      posRef.current.forEach((p, id) => {
+        const cx = p.x + NW / 2, cy = p.y + NH / 2
+        if (cx >= x0 && cx <= x1 && cy >= y0 && cy <= y1) next.add(id)
+      })
+      setSelection(next)
+      setMarquee(null)
+    } else if (drag.mode === 'link') {
       draftRef.current   = null
       hovNodeRef.current = null
       const hit = hitNode(lx, ly, posRef.current, vpRef.current)
@@ -850,8 +1014,10 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
             setSelection(next)
           } else {
             const o = oeuvresById.get(hit.id)
-            if (o) onOpen(o)
+            setPanelNode(o || null)
           }
+        } else {
+          setPanelNode(null)
         }
       }
     }
@@ -864,6 +1030,51 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
     e.preventDefault()
     const rect = canvasRef.current!.getBoundingClientRect()
     const lx = e.clientX - rect.left, ly = e.clientY - rect.top
+
+    // Check if we hit a node first
+    const nodeHit = hitNode(lx, ly, posRef.current, vpRef.current)
+    if (nodeHit) {
+      if (groupByRef.current === 'custom') {
+        removeFromCustom(nodeHit.id)
+      } else if (groupByRef.current === 'theme' && selectedThemeId) {
+        if (confirm("Retirer le thème de cette œuvre ?")) {
+          const sb = createClient()
+          sb.from('OeuvreTheme').delete().eq('OeuvreID', nodeHit.id).eq('ThemeID', selectedThemeId).then(({ error }) => {
+            if (!error) {
+              setThemeWork(prev => {
+                const n = new Map(prev)
+                const s = new Set(n.get(selectedThemeId))
+                s.delete(nodeHit.id)
+                n.set(selectedThemeId, s)
+                return n
+              })
+              // The useMemo 'constellationOeuvres' will filter it out on next tick
+              redraw()
+            }
+          })
+        }
+      }
+      return
+    }
+
+    // Check if hit a shape
+    if (tool === 'erase') {
+      const wx = (lx - vpRef.current.x) / vpRef.current.z
+      const wy = (ly - vpRef.current.y) / vpRef.current.z
+      setShapes(prev => prev.filter(s => {
+        if (s.type === 'line') {
+          for (let i = 0; i < s.points.length - 1; i++) {
+            if (ptSeg(wx, wy, s.points[i].x, s.points[i].y, s.points[i+1].x, s.points[i+1].y) < 10 / vpRef.current.z) return false
+          }
+          return true
+        } else {
+          return Math.hypot(wx - s.x, wy - s.y) > 20 / vpRef.current.z
+        }
+      }))
+      redraw()
+      return
+    }
+
     const edge = hitEdge(lx, ly, edgesRef.current, posRef.current, vpRef.current)
     if (!edge) return
     const sb = createClient()
@@ -872,7 +1083,7 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
       if (hovEdgeRef.current === edge) hovEdgeRef.current = null
       setTick(t => t + 1)
     })
-  }, [])
+  }, [removeFromCustom])
 
   const onMouseLeave = useCallback(() => {
     if (dragRef.current.mode === 'node') savePos(groupByRef.current, posRef.current, groupByRef.current === 'theme' ? selectedThemeId : undefined)
@@ -945,6 +1156,7 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
       name,
       groupBy:   groupByRef.current,
       positions: posToObj(posRef.current),
+      shapes:    shapes,
       savedAt:   new Date().toISOString(),
     }
     const updated = [snap, ...snapshots.filter(s => s.name !== name)].slice(0, 20)
@@ -961,6 +1173,7 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
     if (!snap) return
     groupByRef.current = snap.groupBy
     posRef.current = objToPos(snap.positions)
+    setShapes(snap.shapes || [])
     if (snap.groupBy === 'custom') {
       setCustomIds(new Set(Object.keys(snap.positions).map(Number)))
     }
@@ -975,9 +1188,54 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
     setSnapshots(updated)
   }
 
+  const handleDoubleClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    const rect = canvasRef.current!.getBoundingClientRect()
+    const lx = e.clientX - rect.left, ly = e.clientY - rect.top
+    const hit = hitNode(lx, ly, posRef.current, vpRef.current)
+    if (hit) {
+      const o = oeuvresById.get(hit.id)
+      if (o) onOpen(o)
+    }
+  }, [oeuvresById, onOpen])
+
+  function handleAddText() {
+    if (!textInput || !textVal.trim()) { setTextInput(null); setTextVal(''); return }
+    setShapes(prev => [...prev, {
+      type: 'text',
+      x: textInput.x,
+      y: textInput.y,
+      text: textVal.trim(),
+      color: drawColor,
+      size: 16 / vpRef.current.z,
+    }])
+    setTextInput(null)
+    setTextVal('')
+  }
+  function waitImg(id: number, tier: number): Promise<HTMLImageElement | null> {
+    const key = `${id}_${tier}`
+    const existing = imagesRef.current.get(key)
+    if (existing?.complete && existing.naturalWidth > 0) return Promise.resolve(existing)
+    
+    const o = oeuvresById.get(id)
+    if (!o?.txtImageNameLink) return Promise.resolve(null)
+    
+    return new Promise((res) => {
+      const img = new Image()
+      img.crossOrigin = 'anonymous'
+      img.onload  = () => { imagesRef.current.set(key, img); res(img) }
+      img.onerror = () => res(null)
+      img.src     = thumbUrl(o.txtImageNameLink, tier) ?? ''
+    })
+  }
+
   // ── Export full canvas as PNG ───────────────────────────────────
-  function handleExportPng() {
+  async function handleExportPng() {
     if (posRef.current.size === 0) return
+    setSaving(true) // reuse saving state for feedback
+
+    // Ensure all visible nodes have their tier-100 images loaded
+    await Promise.all(Array.from(posRef.current.keys()).map(id => waitImg(id, 100)))
+
     // Calculate bounds of all nodes
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
     posRef.current.forEach(({ x, y }) => {
@@ -1055,17 +1313,42 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
         ctx.fillText(short, cx, cy + NR + 12)
       }
     })
+
+    // Draw shapes
+    for (const s of shapes) {
+      ctx.strokeStyle = s.color
+      ctx.fillStyle   = s.color
+      if (s.type === 'line') {
+        if (s.points.length < 2) continue
+        ctx.beginPath()
+        ctx.moveTo(s.points[0].x, s.points[0].y)
+        for (let i = 1; i < s.points.length; i++) ctx.lineTo(s.points[i].x, s.points[i].y)
+        ctx.lineWidth = s.width
+        ctx.lineCap   = 'round'; ctx.lineJoin = 'round'
+        ctx.stroke()
+      } else {
+        ctx.font = `${s.size}px "Instrument Serif", serif`
+        ctx.fillText(s.text, s.x, s.y)
+      }
+    }
+
     ctx.restore()
     // Download
     const a = document.createElement('a')
     a.href     = off.toDataURL('image/png')
     a.download = `constellation-${new Date().toISOString().slice(0, 10)}.png`
     a.click()
+    setSaving(false)
   }
-
+  
   // ── Export: tiled A4 print window ──────────────────────────────
-  function handleExportTiledA4() {
+  async function handleExportTiledA4() {
     if (posRef.current.size === 0) return
+    setSaving(true)
+    
+    // Ensure all visible nodes have their tier-100 images loaded
+    await Promise.all(Array.from(posRef.current.keys()).map(id => waitImg(id, 100)))
+
     // Reuse same bounding-box + canvas creation logic as handleExportPng
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
     posRef.current.forEach(({ x, y }) => {
@@ -1120,6 +1403,25 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
         ctx.fillText(short, cx, cy + NR + 12)
       }
     })
+
+    // Draw shapes
+    for (const s of shapes) {
+      ctx.strokeStyle = s.color
+      ctx.fillStyle   = s.color
+      if (s.type === 'line') {
+        if (s.points.length < 2) continue
+        ctx.beginPath()
+        ctx.moveTo(s.points[0].x, s.points[0].y)
+        for (let i = 1; i < s.points.length; i++) ctx.lineTo(s.points[i].x, s.points[i].y)
+        ctx.lineWidth = s.width
+        ctx.lineCap   = 'round'; ctx.lineJoin = 'round'
+        ctx.stroke()
+      } else {
+        ctx.font = `${s.size}px "Instrument Serif", serif`
+        ctx.fillText(s.text, s.x, s.y)
+      }
+    }
+
     ctx.restore()
 
     // A4 landscape @ 150 dpi = 1754 × 1240 physical px
@@ -1166,6 +1468,7 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
       <script>window.onload = () => setTimeout(() => window.print(), 400)<\/script>
     </body></html>`)
     win.document.close()
+    setSaving(false)
   }
 
   // ── Save group ─────────────────────────────────────────────────
@@ -1179,19 +1482,55 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
     setSaving(false)
   }
 
+  async function handleSaveAllAsGroup() {
+    const ids = Array.from(posRef.current.keys())
+    if (!ids.length) return
+    setSaving(true)
+    const nm = groupName.trim() || `Constellation ${new Date().toLocaleDateString('fr-FR')}`
+    const id = await onSaveGroup(nm, ids)
+    if (id) { setSavedName(nm); setGroupName(''); setTimeout(() => setSavedName(null), 3000) }
+    setSaving(false)
+  }
+
   // ── Render ─────────────────────────────────────────────────────
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
 
       {/* Toolbar */}
       <div style={{ flexShrink: 0, height: 40, borderBottom: '1px solid var(--bd)', background: 'var(--bg1)', display: 'flex', alignItems: 'center', padding: '0 16px', gap: 10, overflow: 'hidden' }}>
+        <div className="t-label" style={{ color: 'var(--tx3)', whiteSpace: 'nowrap' }}>Outils</div>
+        {[
+          { id: 'move',    l: '🖐️',  t: 'Déplacer / Sélection' },
+          { id: 'marquee', l: '⬛',  t: 'Marquée' },
+          { id: 'draw',    l: '✏️',  t: 'Dessiner' },
+          { id: 'text',    l: 'T',   t: 'Texte' },
+          { id: 'erase',   l: '🧹',  t: 'Effacer' },
+        ].map(t => (
+          <button key={t.id} className={`btn ghost sm ${tool === t.id ? 'active' : ''}`}
+            title={t.t}
+            style={{ padding: '0 8px', borderColor: tool === t.id ? 'var(--ac)' : undefined, color: tool === t.id ? 'var(--ac)' : undefined }}
+            onClick={() => setTool(t.id as Tool)}
+          >
+            {t.l}
+          </button>
+        ))}
+
+        <input
+          type="color"
+          value={drawColor}
+          onChange={e => setDrawColor(e.target.value)}
+          style={{ width: 20, height: 20, padding: 0, border: 'none', background: 'none', cursor: 'pointer' }}
+        />
+
+        <div className="vline" style={{ height: 16 }} />
+
         <div className="t-label" style={{ color: 'var(--tx3)', whiteSpace: 'nowrap' }}>Vue</div>
         {(['year', 'theme', 'none'] as GroupBy[]).map(g => (
           <button key={g} className="btn ghost sm"
             style={{ borderColor: groupBy === g ? 'var(--ac)' : undefined, color: groupBy === g ? 'var(--ac)' : undefined, whiteSpace: 'nowrap' }}
             onClick={() => { groupByRef.current = g; setGroupBy(g) }}
           >
-            {g === 'year' ? 'Année' : g === 'theme' ? 'Thème' : 'Libre'}
+            {g === 'year' ? 'Année' : g === 'theme' ? 'Thème' : 'Global'}
           </button>
         ))}
         {groupBy === 'theme' && (
@@ -1201,7 +1540,7 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
             style={{ fontSize: 9, background: 'var(--bg0)', border: '1px solid var(--ac)', color: 'var(--tx)', padding: '2px 8px', cursor: 'pointer', maxWidth: 140 }}
           >
             <option value="">Tous les thèmes ({[...themeWork.values()].reduce((a, s) => { s.forEach(id => a.add(id)); return a }, new Set()).size})</option>
-            {themes.map(th => (
+            {themes.filter(th => (themeWork.get(th.ThemeID)?.size ?? 0) > 0).map(th => (
               <option key={th.ThemeID} value={th.ThemeID}>
                 {th.Nom} ({themeWork.get(th.ThemeID)?.size ?? 0})
               </option>
@@ -1290,7 +1629,39 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
             onMouseUp={onMouseUp}
             onMouseLeave={onMouseLeave}
             onContextMenu={onContextMenu}
+            onDoubleClick={handleDoubleClick}
           />
+
+          {/* Text Input Overlay */}
+          {textInput && (
+            <div style={{ position: 'absolute', left: 0, top: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+              <div style={{ background: 'var(--bg1)', padding: 20, border: '1px solid var(--bd)', width: 300 }}>
+                <div className="t-eyebrow" style={{ marginBottom: 12 }}>Ajouter un texte</div>
+                <input
+                  autoFocus
+                  className="input"
+                  value={textVal}
+                  onChange={e => setTextVal(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleAddText(); if (e.key === 'Escape') setTextInput(null) }}
+                  placeholder="Écrivez ici…"
+                  style={{ width: '100%', marginBottom: 12 }}
+                />
+                <div className="row gap-sm j-end">
+                  <button className="btn ghost sm" onClick={() => setTextInput(null)}>Annuler</button>
+                  <button className="btn sm" onClick={handleAddText}>Ajouter</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Theme mode instruction overlay */}
+          {groupBy === 'theme' && selectedThemeId === null && (
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+              <div className="t-mono-sm" style={{ color: 'var(--tx3)', background: 'var(--bg1)', padding: '10px 20px', border: '1px solid var(--bd)', borderRadius: 2 }}>
+                Veuillez sélectionner un thème dans la barre d'outils.
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right panel */}
@@ -1321,6 +1692,16 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
               >
                 {selection.has(panelNode.OeuvreID) ? '✓ Sélectionné' : '+ Sélectionner'}
               </button>
+
+              {groupBy === 'custom' && (
+                <button
+                  className="btn ghost sm"
+                  style={{ marginTop: 6, width: '100%', justifyContent: 'center', color: 'var(--rust)', borderColor: 'var(--rust)' }}
+                  onClick={() => removeFromCustom(panelNode.OeuvreID)}
+                >
+                  ✕ Retirer du canvas
+                </button>
+              )}
             </div>
           ) : groupBy === 'custom' ? (
             /* Custom mode: work picker */
@@ -1359,7 +1740,7 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
                     {pickerQ ? 'Aucun résultat' : 'Toutes les œuvres sont dans la constellation'}
                   </div>
                 )}
-                {filteredForPicker.slice(0, 80).map(o => (
+                {filteredForPicker.slice(0, 200).map(o => (
                   <div
                     key={o.OeuvreID}
                     style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 10px', cursor: 'pointer' }}
@@ -1381,9 +1762,9 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
                     <span style={{ fontSize: 11, color: 'var(--ac)', flexShrink: 0 }}>+</span>
                   </div>
                 ))}
-                {filteredForPicker.length > 80 && (
+                {filteredForPicker.length > 200 && (
                   <div className="t-mono-sm" style={{ padding: '4px 14px', color: 'var(--tx3)' }}>
-                    +{filteredForPicker.length - 80} — affinez la recherche
+                    +{filteredForPicker.length - 200} — affinez la recherche
                   </div>
                 )}
 
@@ -1461,7 +1842,12 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
                     </button>
                   </div>
                 )}
-                <button className="btn ghost sm" onClick={() => setSelection(new Set())}>Tout effacer</button>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button className="btn ghost sm" style={{ flex: 1 }} onClick={() => setSelection(new Set())}>Effacer</button>
+                  {groupBy === 'custom' && posRef.current.size > 0 && (
+                    <button className="btn ghost sm" style={{ flex: 1, whiteSpace: 'nowrap' }} onClick={handleSaveAllAsGroup}>Tout sauv.</button>
+                  )}
+                </div>
               </>
             ) : (
               <div className="t-mono-sm" style={{ color: 'var(--tx3)', lineHeight: 1.7 }}>

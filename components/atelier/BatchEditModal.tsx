@@ -39,6 +39,7 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
 
   // Boolean fields — null = unchanged
   const [exposable,    setExposable]    = useState<Tri>(null)
+  const [montee,       setMontee]       = useState<Tri>(null)
   const [encadree,     setEncadree]     = useState<Tri>(null)
   const [catalogued,   setCatalogued]   = useState<Tri>(null)
   const [isPublic,     setIsPublic]     = useState<Tri>(null)
@@ -72,7 +73,7 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
     statusId !== '' || technique !== '' || support !== '' || format !== '' ||
     contactId !== '' || prix !== '' || discount !== '' ||
     annee !== '' || locDetail !== '' || commentaires !== '' ||
-    exposable !== null || encadree !== null || catalogued !== null ||
+    exposable !== null || montee !== null || encadree !== null || catalogued !== null ||
     isPublic !== null || isCommission !== null ||
     addThemes.size > 0 || removeThemes.size > 0
   )
@@ -91,6 +92,7 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
     if (commentaires !== '') changes.Commentaires = commentaires.trim() || null
 
     if (exposable    !== null) changes.Exposable    = exposable
+    if (montee       !== null) changes.Montee       = montee
     if (encadree     !== null) changes.Encadree     = encadree
     if (catalogued   !== null) changes['Catalogué'] = catalogued
     if (isPublic     !== null) changes.is_public    = isPublic
@@ -110,6 +112,7 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
         const r = await batchEdit(ids, changes)
         if ('error' in r) { setError(r.error); return }
         onDone(r.updated)
+        window.location.reload() // Force a full refresh to clear any stale client state
       } catch (e) {
         setError(String(e))
       }
@@ -277,6 +280,7 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
       <SectionLabel>Attributs</SectionLabel>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 20 }}>
         <TriField label="Exposable"   value={exposable}    onChange={setExposable}   />
+        <TriField label="Montée"      value={montee}       onChange={setMontee}      />
         <TriField label="Encadrée"    value={encadree}     onChange={setEncadree}    />
         <TriField label="Cataloguée"  value={catalogued}   onChange={setCatalogued}  />
         <TriField label="Publique"    value={isPublic}     onChange={setIsPublic}    />
