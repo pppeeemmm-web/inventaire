@@ -1946,6 +1946,7 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
                   )}
                 </div>
               </>
+            ) : (
               <div className="t-mono-sm" style={{ color: 'var(--tx3)', lineHeight: 1.7 }}>
                 Maj+clic ou outil Marquée pour sélectionner des œuvres et créer un groupe.
               </div>

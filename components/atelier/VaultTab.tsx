@@ -6,7 +6,7 @@
 import { useState, useEffect, useRef, useTransition, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
-  uploadDocument, deleteDocument, getSignedUrl, generateCOA,
+  uploadDocument, updateDocument, deleteDocument, getSignedUrl, generateCOA,
   type VaultDoc,
 } from '@/app/atelier/vault/actions'
 import type { Oeuvre } from '@/lib/types/database'
@@ -41,6 +41,8 @@ export function VaultTab({ oeuvres, tM }: Props) {
   const [selected, setSelected] = useState<VaultDoc | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [showUpload, setShowUpload] = useState(false)
+  const [showEdit,   setShowEdit]   = useState(false)
+  const [editingDoc, setEditingDoc] = useState<VaultDoc | null>(null)
   const [showCoa,    setShowCoa]    = useState(false)
 
   // ── Fetch documents ──────────────────────────────────────────────
@@ -177,7 +179,13 @@ export function VaultTab({ oeuvres, tM }: Props) {
                         )}
                       </td>
                       <td style={{ padding: '10px 16px', color: 'var(--tx3)', fontSize: 11 }}>
-                        {work ? (work.Titre ?? `#${work.OeuvreID}`) : '—'}
+                        {doc.oeuvre_ids && doc.oeuvre_ids.length > 1 ? (
+                          <span title={doc.oeuvre_ids.map(id => oeuvres.find(o => o.OeuvreID === id)?.Titre || `#${id}`).join(', ')}>
+                            {doc.oeuvre_ids.length} œuvres
+                          </span>
+                        ) : work ? (
+                          work.Titre ?? `#${work.OeuvreID}`
+                        ) : '—'}
                       </td>
                       <td style={{ padding: '10px 16px', color: 'var(--tx3)', fontSize: 11, whiteSpace: 'nowrap' }}>
                         {doc.doc_date
@@ -225,7 +233,12 @@ export function VaultTab({ oeuvres, tM }: Props) {
             {selected.kind && (
               <Row label="Type" value={kindLabel(selected.kind)} />
             )}
-            {linkedWork && (
+            {selected.oeuvre_ids && selected.oeuvre_ids.length > 0 ? (
+              <Row 
+                label={selected.oeuvre_ids.length > 1 ? "Œuvres" : "Œuvre"} 
+                value={selected.oeuvre_ids.map(id => oeuvres.find(o => o.OeuvreID === id)?.Titre || `#${id}`).join(', ')} 
+              />
+            ) : linkedWork && (
               <Row label="Œuvre" value={linkedWork.Titre ?? `#${linkedWork.OeuvreID}`} />
             )}
             {selected.doc_date && (
@@ -234,39 +247,38 @@ export function VaultTab({ oeuvres, tM }: Props) {
             {selected.file_size && (
               <Row label="Taille" value={formatSize(selected.file_size)} />
             )}
-            {selected.notes && (
-              <div>
-                <div className="t-label" style={{ marginBottom: 4 }}>Notes</div>
-                <div style={{ color: 'var(--tx2)', lineHeight: 1.6 }}>{selected.notes}</div>
-              </div>
-            )}
-
-            {/* COA fields */}
-            {selected.cert_id && (
-              <>
-                <div>
-                  <div className="t-label" style={{ marginBottom: 4, letterSpacing: 1 }}>Référence</div>
-                  <div className="t-mono-sm" style={{ color: 'var(--tx)', letterSpacing: 1 }}>{selected.cert_id}</div>
-                </div>
-                <div>
-                  <div className="t-label" style={{ marginBottom: 4, letterSpacing: 1 }}>Empreinte SHA-256</div>
-                  <div className="t-mono-sm" style={{ color: 'var(--tx3)', wordBreak: 'break-all', lineHeight: 1.5 }}>{selected.cert_hash}</div>
-                </div>
-              </>
-            )}
-
-            {previewUrl && (
-              <a
-                href={previewUrl}
-                download={selected.name}
-                className="btn ghost sm"
-                style={{ textAlign: 'center', marginTop: 4 }}
+            <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+              <button 
+                className="btn sm" 
+                style={{ flex: 1, background: 'var(--bg2)', color: 'var(--tx1)' }}
+                onClick={() => { setEditingDoc(selected); setShowEdit(true); }}
               >
-                ↓ Télécharger
-              </a>
-            )}
+                Modifier
+              </button>
+              <button 
+                className="btn sm" 
+                style={{ flex: 1, background: '#442222', color: '#ff8888' }}
+                onClick={() => confirm('Supprimer ce document ?') && handleDelete(selected)}
+              >
+                Supprimer
+              </button>
+            </div>
           </div>
         </div>
+      )}
+
+      {showEdit && editingDoc && (
+        <EditModal 
+          doc={editingDoc}
+          oeuvres={oeuvres}
+          onClose={() => { setShowEdit(false); setEditingDoc(null); }}
+          onUpdated={(d) => {
+            setDocs(prev => prev.map(x => x.id === d.id ? d : x))
+            setShowEdit(false)
+            setEditingDoc(null)
+            setSelected(d)
+          }}
+        />
       )}
 
       {/* ── Upload modal ────────────────────────────────────────── */}
@@ -339,7 +351,21 @@ function UploadModal({
   const [pending, startUpload] = useTransition()
   const [error,   setError]    = useState<string | null>(null)
   const [file,    setFile]     = useState<File | null>(null)
+  const [q,       setQ]        = useState('')
+  const [selIds,  setSelIds]   = useState<number[]>([])
+  const [showCust, setShowCust] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  const filtered = q.trim() 
+    ? oeuvres.filter(o => 
+        (o.Titre?.toLowerCase().includes(q.toLowerCase())) || 
+        (String(o.OeuvreID) === q.trim())
+      ).slice(0, 8)
+    : []
+
+  function toggleId(id: number) {
+    setSelIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -377,32 +403,80 @@ function UploadModal({
         <input ref={inputRef} type="file" name="file" style={{ display: 'none' }}
           onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
 
-        <Field label="Nom" name="name" placeholder={file?.name ?? 'Nom du document'} />
+        <Field label="Description rapide" name="name" placeholder={file?.name ?? 'Bref résumé...'} />
 
         <div>
           <label className="t-label" style={{ display: 'block', marginBottom: 6 }}>Type</label>
-          <select name="kind" className="input" style={{ width: '100%' }}>
+          <select 
+            name="kind" 
+            className="input" 
+            style={{ width: '100%' }}
+            onChange={(e) => setShowCust(e.target.value === 'custom')}
+          >
             <option value="">— Choisir —</option>
             {DOC_KINDS.map(({ value, label }) => (
               <option key={value} value={value}>{label}</option>
             ))}
+            <option value="custom" style={{ color: 'var(--ac)' }}>+ Autre...</option>
           </select>
+          {showCust && (
+            <input 
+              name="custom_kind" 
+              className="input" 
+              placeholder="Saisir le type..." 
+              style={{ width: '100%', marginTop: 8 }}
+              autoFocus
+            />
+          )}
         </div>
 
         <div>
-          <label className="t-label" style={{ display: 'block', marginBottom: 6 }}>Œuvre associée</label>
-          <select name="oeuvre_id" className="input" style={{ width: '100%' }}>
-            <option value="">— Aucune —</option>
-            {oeuvres.slice(0, 200).map((o) => (
-              <option key={o.OeuvreID} value={o.OeuvreID}>
-                {o.Titre ?? `#${o.OeuvreID}`} {o.Année ? `(${o.Année.slice(0, 4)})` : ''}
-              </option>
-            ))}
-          </select>
+          <label className="t-label" style={{ display: 'block', marginBottom: 6 }}>Œuvre(s) associée(s)</label>
+          <div style={{ border: '1px solid var(--bd)', padding: 8, background: 'var(--bg0)' }}>
+            <input 
+              className="input sm" 
+              placeholder="Rechercher une œuvre..." 
+              value={q}
+              onChange={e => setQ(e.target.value)}
+              style={{ width: '100%', marginBottom: 8, fontSize: 11 }}
+            />
+            
+            {filtered.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 8, borderBottom: '1px solid var(--bd)', pb: 8 }}>
+                {filtered.map(o => (
+                  <button 
+                    key={o.OeuvreID}
+                    type="button"
+                    onClick={() => toggleId(o.OeuvreID)}
+                    style={{ 
+                      textAlign: 'left', padding: '4px 8px', fontSize: 10, background: 'var(--bg1)', border: 'none',
+                      color: selIds.includes(o.OeuvreID) ? 'var(--ac)' : 'var(--tx2)', cursor: 'pointer'
+                    }}
+                  >
+                    {selIds.includes(o.OeuvreID) ? '✓ ' : '+ '} {o.Titre ?? `#${o.OeuvreID}`}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+              {selIds.length === 0 && <span style={{ fontSize: 10, color: 'var(--tx3)' }}>Aucune sélection</span>}
+              {selIds.map(id => {
+                const o = oeuvres.find(x => x.OeuvreID === id)
+                return (
+                  <span key={id} style={{ padding: '2px 6px', background: 'var(--bg2)', fontSize: 9, borderRadius: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    {o?.Titre ?? `#${id}`}
+                    <button type="button" onClick={() => toggleId(id)} style={{ border: 'none', background: 'none', color: 'var(--tx3)', cursor: 'pointer' }}>×</button>
+                  </span>
+                )
+              })}
+            </div>
+            <input type="hidden" name="oeuvre_ids" value={selIds.join(',')} />
+          </div>
         </div>
 
         <Field label="Date du document" name="doc_date" type="date" />
-        <Field label="Notes" name="notes" placeholder="Notes optionnelles…" />
+        <Field label="Notes" name="notes" placeholder="Instructions, histoire ou détails additionnels…" />
 
         {error && <div className="t-mono-sm" style={{ color: '#c0392b' }}>{error}</div>}
 
@@ -530,14 +604,129 @@ function Overlay({ children, onClose }: { children: React.ReactNode; onClose: ()
   )
 }
 
-function Field({ label, name, placeholder, type = 'text' }: { label: string; name: string; placeholder?: string; type?: string }) {
+function EditModal({ doc, oeuvres, onClose, onUpdated }: { doc: VaultDoc; oeuvres: any[]; onClose: () => void; onUpdated: (d: VaultDoc) => void }) {
+  const [pending, startUpdate] = useTransition()
+  const [error,   setError]    = useState<string | null>(null)
+  const [q,       setQ]        = useState('')
+  const [selIds,  setSelIds]   = useState<number[]>(doc.oeuvre_ids || (doc.oeuvre_id ? [doc.oeuvre_id] : []))
+  
+  const isCustomType = !DOC_KINDS.find(k => k.value === doc.kind)
+  const [showCust, setShowCust] = useState(isCustomType)
+
+  const filtered = q.trim() 
+    ? oeuvres.filter(o => (o.Titre?.toLowerCase().includes(q.toLowerCase())) || (String(o.OeuvreID) === q.trim())).slice(0, 8)
+    : []
+
+  function toggleId(id: number) {
+    setSelIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  }
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    startUpdate(async () => {
+      const fd = new FormData(e.currentTarget)
+      const res = await updateDocument(String(doc.id), fd)
+      if ('error' in res) setError(res.error)
+      else onUpdated(res.doc)
+    })
+  }
+
+  return (
+    <Modal onClose={onClose} title="MODIFIER LE DOCUMENT">
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ padding: 12, background: 'var(--bg0)', border: '1px solid var(--bd)', opacity: 0.6 }}>
+          <div className="t-mono-xs" style={{ fontSize: 9 }}>{doc.storage_path}</div>
+        </div>
+
+        <Field label="Description rapide" name="name" defaultValue={doc.name} />
+
+        <div>
+          <label className="t-label" style={{ display: 'block', marginBottom: 6 }}>Type</label>
+          <select 
+            name="kind" 
+            className="input" 
+            style={{ width: '100%' }}
+            defaultValue={isCustomType ? 'custom' : (doc.kind || '')}
+            onChange={(e) => setShowCust(e.target.value === 'custom')}
+          >
+            <option value="">— Choisir —</option>
+            {DOC_KINDS.map(({ value, label }) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+            <option value="custom" style={{ color: 'var(--ac)' }}>+ Autre...</option>
+          </select>
+          {showCust && (
+            <input 
+              name="custom_kind" 
+              className="input" 
+              defaultValue={isCustomType ? (doc.kind || '') : ''}
+              placeholder="Saisir le type..." 
+              style={{ width: '100%', marginTop: 8 }}
+              autoFocus
+            />
+          )}
+        </div>
+
+        <div>
+          <label className="t-label" style={{ display: 'block', marginBottom: 6 }}>Œuvre(s) associée(s)</label>
+          <div style={{ border: '1px solid var(--bd)', padding: 8, background: 'var(--bg0)' }}>
+            <input 
+              className="input sm" 
+              placeholder="Rechercher une œuvre..." 
+              value={q}
+              onChange={e => setQ(e.target.value)}
+              style={{ width: '100%', marginBottom: 8, fontSize: 11 }}
+            />
+            {filtered.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 8, borderBottom: '1px solid var(--bd)', pb: 8 }}>
+                {filtered.map(o => (
+                  <button key={o.OeuvreID} type="button" onClick={() => toggleId(o.OeuvreID)}
+                    style={{ textAlign: 'left', padding: '4px 8px', fontSize: 10, background: 'var(--bg1)', border: 'none', color: selIds.includes(o.OeuvreID) ? 'var(--ac)' : 'var(--tx2)', cursor: 'pointer' }}>
+                    {selIds.includes(o.OeuvreID) ? '✓ ' : '+ '} {o.Titre ?? `#${o.OeuvreID}`}
+                  </button>
+                ))}
+              </div>
+            )}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+              {selIds.map(id => {
+                const o = oeuvres.find(x => x.OeuvreID === id)
+                return (
+                  <span key={id} style={{ padding: '2px 6px', background: 'var(--bg2)', fontSize: 9, borderRadius: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    {o?.Titre ?? `#${id}`}
+                    <button type="button" onClick={() => toggleId(id)} style={{ border: 'none', background: 'none', color: 'var(--tx3)', cursor: 'pointer' }}>×</button>
+                  </span>
+                )
+              })}
+            </div>
+            <input type="hidden" name="oeuvre_ids" value={selIds.join(',')} />
+          </div>
+        </div>
+
+        <Field label="Date du document" name="doc_date" type="date" defaultValue={doc.doc_date || ''} />
+        <Field label="Notes" name="notes" defaultValue={doc.notes || ''} placeholder="Instructions, histoire ou détails additionnels…" />
+
+        {error && <div className="t-mono-sm" style={{ color: '#c0392b' }}>{error}</div>}
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 16 }}>
+          <button type="button" className="btn-text" onClick={onClose} disabled={pending}>ANNULER</button>
+          <button type="submit" className="btn" style={{ minWidth: 120 }} disabled={pending}>
+            {pending ? '...' : 'ENREGISTRER'}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
+function Field({ label, name, placeholder, type = 'text', defaultValue }: { label: string; name: string; placeholder?: string; type?: string; defaultValue?: string }) {
   return (
     <div>
       <label className="t-label" style={{ display: 'block', marginBottom: 6 }}>{label}</label>
-      <input name={name} type={type} placeholder={placeholder} className="input" style={{ width: '100%' }} />
+      <input name={name} type={type} placeholder={placeholder} className="input" defaultValue={defaultValue} style={{ width: '100%' }} />
     </div>
   )
 }
+
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 

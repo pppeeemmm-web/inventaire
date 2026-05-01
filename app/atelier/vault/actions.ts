@@ -21,7 +21,7 @@ function r2Client() {
   const accountId = process.env.R2_ACCOUNT_ID ?? ''
   return new S3Client({
     region: 'auto',
-    endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+    endpoint: `https://${accountId}.eu.r2.cloudflarestorage.com`,
     credentials: {
       accessKeyId:     process.env.R2_ACCESS_KEY_ID     ?? '',
       secretAccessKey: process.env.R2_SECRET_ACCESS_KEY ?? '',
@@ -60,6 +60,7 @@ export interface VaultDoc {
   name:         string
   storage_path: string | null
   oeuvre_id:    number | null
+  oeuvre_ids:   number[] | null
   contact_id:   number | null
   created_at:   string
   notes:        string | null
@@ -87,38 +88,55 @@ export async function uploadDocument(formData: FormData): Promise<UploadResult> 
   const { error: authErr, supabase } = await guardTeam()
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
 
-  const file      = formData.get('file') as File | null
-  const name      = (formData.get('name') as string | null)?.trim()      || null
-  const kind      = (formData.get('kind') as string | null)?.trim()      || null
-  const notes     = (formData.get('notes') as string | null)?.trim()     || null
-  const doc_date  = (formData.get('doc_date') as string | null)?.trim()  || null
-  const oeuvre_id = formData.get('oeuvre_id') ? Number(formData.get('oeuvre_id')) : null
-  const contact_id = formData.get('contact_id') ? Number(formData.get('contact_id')) : null
-
+  const file        = formData.get('file') as File | null
+  const name        = (formData.get('name') as string | null)?.trim()      || null
+  const kind        = (formData.get('kind') as string | null)?.trim()      || null
+  const customKind  = (formData.get('custom_kind') as string | null)?.trim() || null
+  const notes       = (formData.get('notes') as string | null)?.trim()     || null
+  const doc_date    = (formData.get('doc_date') as string | null)?.trim()  || null
+  const oeuvre_ids_str = (formData.get('oeuvre_ids') as string | null)    || ''
+  
   if (!file || file.size === 0) return { error: 'Aucun fichier sélectionné' }
 
-  const ext     = file.name.match(/\.([^.]+)$/)?.[1]?.toLowerCase() ?? 'bin'
-  const slug    = nanoid(12)
-  const path    = `${slug}.${ext}`
-  const docName = name || file.name
+  // 1. Get Uploader Name
+  const { data: { user } } = await supabase.auth.getUser()
+  const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user?.id ?? '').single()
+  const uploader = (profile?.full_name || user?.email?.split('@')[0] || 'User').replace(/\s+/g, '_')
+
+  // 2. Get Next Serial Number
+  const { count } = await supabase.from('document').select('*', { count: 'exact', head: true })
+  const serial = (count ?? 0) + 1
+
+  // 3. Construct Smart Filename
+  const dateStr   = doc_date || new Date().toISOString().slice(0, 10)
+  const typeStr   = (kind === 'custom' ? customKind : kind) || 'other'
+  const cleanDesc = (name || '').replace(/[^a-zA-Z0-9]/g, '_').slice(0, 30)
+  const cleanOrig = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
+  
+  const finalPath = `${dateStr}_${typeStr}_${cleanDesc}_${uploader}_${serial}_${cleanOrig}`
+  const docName   = name || file.name
 
   const buf = Buffer.from(await file.arrayBuffer())
   try {
-    await r2Upload(path, buf, file.type)
+    await r2Upload(finalPath, buf, file.type)
   } catch (e) {
     return { error: `Upload R2 : ${String(e)}` }
   }
+
+  // 4. Handle multiple oeuvre IDs
+  const ids = oeuvre_ids_str.split(',').filter(Boolean).map(Number)
+  const primaryOeuvreId = ids.length > 0 ? ids[0] : null
 
   const { data: doc, error: dbErr } = await supabase
     .from('document')
     .insert({
       name:         docName,
-      kind,
+      kind:         typeStr,
       notes,
       doc_date:     doc_date || null,
-      oeuvre_id,
-      contact_id,
-      storage_path: path,
+      oeuvre_id:    primaryOeuvreId,
+      oeuvre_ids:   ids, // Multi-link support
+      storage_path: finalPath,
       file_size:    file.size,
       mime_type:    file.type,
     })
@@ -126,11 +144,43 @@ export async function uploadDocument(formData: FormData): Promise<UploadResult> 
     .single()
 
   if (dbErr) {
-    // cleanup orphaned R2 object
-    await r2Delete(path).catch(() => {})
+    await r2Delete(finalPath).catch(() => {})
     return { error: dbErr.message }
   }
 
+  return { ok: true, doc: doc as VaultDoc }
+}
+
+export async function updateDocument(id: string, formData: FormData): Promise<UploadResult> {
+  const { error: authErr, supabase } = await guardTeam()
+  if (authErr || !supabase) return { error: authErr ?? 'Auth' }
+
+  const name        = (formData.get('name') as string | null)?.trim()      || null
+  const kind        = (formData.get('kind') as string | null)?.trim()      || null
+  const customKind  = (formData.get('custom_kind') as string | null)?.trim() || null
+  const notes       = (formData.get('notes') as string | null)?.trim()     || null
+  const doc_date    = (formData.get('doc_date') as string | null)?.trim()  || null
+  const oeuvre_ids_str = (formData.get('oeuvre_ids') as string | null)    || ''
+
+  const typeStr = (kind === 'custom' ? customKind : kind) || 'other'
+  const ids     = oeuvre_ids_str.split(',').filter(Boolean).map(Number)
+  const primary = ids.length > 0 ? ids[0] : null
+
+  const { data: doc, error: dbErr } = await supabase
+    .from('document')
+    .update({
+      name,
+      kind:      typeStr,
+      notes,
+      doc_date:  doc_date || null,
+      oeuvre_id: primary,
+      oeuvre_ids: ids,
+    })
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (dbErr) return { error: dbErr.message }
   return { ok: true, doc: doc as VaultDoc }
 }
 
