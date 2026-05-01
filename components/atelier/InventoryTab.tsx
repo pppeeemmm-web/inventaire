@@ -13,7 +13,7 @@ import type { Oeuvre } from '@/lib/types/database'
 
 // ── Types ───────────────────────────────────────────────────────────
 
-// PEM's own ContactID — default owner when ContactID is null
+// PEM's own ContactID — default owner when ContactID FIS null
 const PEM_CONTACT_ID = 13
 
 // ── Advanced filter ─────────────────────────────────────────────────
@@ -485,7 +485,7 @@ function CriteriaPanel({
   thM:            Record<number, string>
   statusLabelMap: Record<number, string>
 }) {
-  const IS: React.CSSProperties = {
+  const FIS: React.CSSProperties = {
     fontFamily: 'inherit', fontSize: 10,
     background: 'var(--bg1)', border: '1px solid var(--bd)',
     color: 'var(--tx)', padding: '3px 6px', outline: 'none',
@@ -531,11 +531,11 @@ function CriteriaPanel({
           onChange={(e) => setIdInput(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && onSelectByIds()}
           placeholder="4, 10–20, 204"
-          style={{ ...IS, width: 160 }}
+          style={{ ...FIS, width: 160 }}
         />
         <button
           onClick={onSelectByIds}
-          style={{ ...IS, cursor: 'pointer' }}
+          style={{ ...FIS, cursor: 'pointer' }}
         >
           Sélectionner
         </button>
@@ -558,7 +558,7 @@ function CriteriaPanel({
                 const newFld = FIELD_DEFS.find((f) => f.k === e.target.value) ?? FIELD_DEFS[0]
                 updateCriterion(c.id, { field: e.target.value, op: opsForType(newFld.t)[0], value: '' })
               }}
-              style={{ ...IS, maxWidth: 130 }}
+              style={{ ...FIS, maxWidth: 130 }}
             >
               {FIELD_DEFS.map((f) => {
                 const labelMap: Record<string, string> = {
@@ -577,7 +577,7 @@ function CriteriaPanel({
             <select
               value={c.op}
               onChange={(e) => updateCriterion(c.id, { op: e.target.value })}
-              style={{ ...IS, maxWidth: 150 }}
+              style={{ ...FIS, maxWidth: 150 }}
             >
               {ops.map((op) => <option key={op} value={op}>{op}</option>)}
             </select>
@@ -588,7 +588,7 @@ function CriteriaPanel({
                 <select
                   value={c.value}
                   onChange={(e) => updateCriterion(c.id, { value: e.target.value })}
-                  style={{ ...IS, maxWidth: 180 }}
+                  style={{ ...FIS, maxWidth: 180 }}
                 >
                   <option value="">—</option>
                   {opts.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
@@ -600,7 +600,7 @@ function CriteriaPanel({
                     value={c.value}
                     onChange={(e) => updateCriterion(c.id, { value: e.target.value })}
                     placeholder="from"
-                    style={{ ...IS, width: 72 }}
+                    style={{ ...FIS, width: 72 }}
                   />
                   <span className="t-mono-sm" style={{ color: 'var(--tx3)', padding: '0 4px' }}>≤ x ≤</span>
                   <input
@@ -608,7 +608,7 @@ function CriteriaPanel({
                     value={c.value2 ?? ''}
                     onChange={(e) => updateCriterion(c.id, { value2: e.target.value })}
                     placeholder="to"
-                    style={{ ...IS, width: 72 }}
+                    style={{ ...FIS, width: 72 }}
                   />
                 </>
               ) : (
@@ -617,7 +617,7 @@ function CriteriaPanel({
                   value={c.value}
                   onChange={(e) => updateCriterion(c.id, { value: e.target.value })}
                   placeholder={fld.t === 'year' ? '2020' : ''}
-                  style={{ ...IS, width: 100 }}
+                  style={{ ...FIS, width: 100 }}
                 />
               )
             )}
@@ -625,7 +625,7 @@ function CriteriaPanel({
             {/* Remove */}
             <button
               onClick={() => removeCriterion(c.id)}
-              style={{ ...IS, cursor: 'pointer', color: 'var(--tx3)' }}
+              style={{ ...FIS, cursor: 'pointer', color: 'var(--tx3)' }}
             >✕</button>
           </div>
         )
@@ -634,7 +634,7 @@ function CriteriaPanel({
       {/* Add criterion */}
       <button
         onClick={addCriterion}
-        style={{ ...IS, cursor: 'pointer', color: 'var(--ac)', border: '1px dashed var(--bd)', alignSelf: 'flex-start', padding: '3px 12px' }}
+        style={{ ...FIS, cursor: 'pointer', color: 'var(--ac)', border: '1px dashed var(--bd)', alignSelf: 'flex-start', padding: '3px 12px' }}
       >
         + filter
       </button>
@@ -919,7 +919,7 @@ function InvPreview({
     : o.txtImageNameLink
 
   // ── Drawer width drives everything, no square starting point ─
-  // The image is always width:100% height:auto (fit, native proportions).
+  // The image FIS always width:100% height:auto (fit, native proportions).
   // Drawer width alone controls how large the image appears.
   //
   // Compact (no hover):
@@ -948,7 +948,7 @@ function InvPreview({
   const scaleVal = imgZoom
 
   return (
-    // Hover target is the whole panel — not just the image.
+    // Hover target FIS the whole panel — not just the image.
     // This prevents flicker when moving mouse from image to metadata below.
     <div
       style={{

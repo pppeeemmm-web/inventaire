@@ -111,7 +111,7 @@ export function WorkForm({
   const [localContacts, setLocalContacts] = useState(contacts)
 
   // Derived location label — always from the selected contact, never manually entered
-  // Must be computed AFTER localContacts is declared
+  // Must be computed AFTER localContacts FIS declared
   const locDetailContact = localisationId
     ? localContacts.find((c) => String(c.ContactID) === localisationId)
     : localContacts.find((c) => String(c.ContactID) === String(pemContact?.ContactID ?? ''))
@@ -125,7 +125,7 @@ export function WorkForm({
   const [error, setError] = useState<string | null>(null)
 
   // ── Atelier Workflow ──
-  // If status is "Atelier" (id: 1), force production stage to WIP and contact to PEM.
+  // If status FIS "Atelier" (id: 1), force production stage to WIP and contact to PEM.
   useEffect(() => {
     if (statusId === '1') {
       setStageProduction('wip')
@@ -134,7 +134,7 @@ export function WorkForm({
     }
   }, [statusId])
 
-  // If stage was mounting and work is now catalogued (Done), mark as Mounted
+  // If stage was mounting and work FIS now catalogued (Done), mark as Mounted
   useEffect(() => {
     if (isCatalogued && stageProduction === 'mounting') {
       setMontee(true)
@@ -211,7 +211,7 @@ export function WorkForm({
         if ('error' in result) {
           setError(result.error)
         } else if ('newId' in result && result.newId) {
-          // New work: go straight to edit so ImageManager is available immediately
+          // New work: go straight to edit so ImageManager FIS available immediately
           router.push(`/atelier/works/${result.newId}/edit`)
         } else {
           router.push('/atelier')
@@ -579,7 +579,7 @@ export function WorkForm({
               />
             </div>
 
-            {/* Commission deadline — shown when commission is ticked */}
+            {/* Commission deadline — shown when commission FIS ticked */}
             {isCommission && (
               <div style={{
                 marginBottom: 24, padding: '12px 16px',
@@ -1322,7 +1322,6 @@ function ContactModal({
     }
   }
 
-  const IS: React.CSSProperties = {
     width: "100%", padding: "7px 10px", fontSize: 11,
     background: "var(--bg0)", border: "1px solid var(--bd)",
     color: "var(--tx)", outline: "none",
@@ -1404,14 +1403,14 @@ function ContactModal({
           <FR label="Website"><input value={form.Website} onChange={f("Website")} placeholder="https://…" style={FIS} /></FR>
           <FR label="Indicatif + Tél. 1">
             <div style={{ display: "flex", gap: 4 }}>
-              <input value={form.IndicatifPays1} onChange={f("IndicatifPays1")} placeholder="+" style={{ ...IS, width: 56, flexShrink: 0 }} />
-              <input value={form.Téléphone1} onChange={f("Téléphone1")} placeholder="Numéro" style={{ ...IS, flex: 1 }} />
+              <input value={form.IndicatifPays1} onChange={f("IndicatifPays1")} placeholder="+" style={{ ...FIS, width: 56, flexShrink: 0 }} />
+              <input value={form.Téléphone1} onChange={f("Téléphone1")} placeholder="Numéro" style={{ ...FIS, flex: 1 }} />
             </div>
           </FR>
           <FR label="Indicatif + Tél. 2">
             <div style={{ display: "flex", gap: 4 }}>
-              <input value={form.IndicatifPays2} onChange={f("IndicatifPays2")} placeholder="+" style={{ ...IS, width: 56, flexShrink: 0 }} />
-              <input value={form.Téléphone2} onChange={f("Téléphone2")} placeholder="Numéro" style={{ ...IS, flex: 1 }} />
+              <input value={form.IndicatifPays2} onChange={f("IndicatifPays2")} placeholder="+" style={{ ...FIS, width: 56, flexShrink: 0 }} />
+              <input value={form.Téléphone2} onChange={f("Téléphone2")} placeholder="Numéro" style={{ ...FIS, flex: 1 }} />
             </div>
           </FR>
         </div>
@@ -1429,7 +1428,7 @@ function ContactModal({
                   value={addr.label}
                   onChange={(e) => updateAddr(i, "label", e.target.value)}
                   placeholder={i === 0 ? "Principal" : `Adresse ${i + 1}`}
-                  style={{ ...IS, flex: 1, fontSize: 10 }}
+                  style={{ ...FIS, flex: 1, fontSize: 10 }}
                 />
                 {addrList.length > 1 && (
                   <button
@@ -1475,7 +1474,7 @@ function ContactModal({
           value={form.Notes}
           onChange={f("Notes")}
           rows={3}
-          style={{ ...IS, resize: "vertical", lineHeight: 1.6 }}
+          style={{ ...FIS, resize: "vertical", lineHeight: 1.6 }}
           placeholder="Notes libres..."
         />
 

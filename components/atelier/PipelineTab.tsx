@@ -185,7 +185,6 @@ function fmtDate(s: string, includeTime?: string | null): string {
   return includeTime ? `${base} · ${includeTime}` : base
 }
 
-const IS: React.CSSProperties = {
   width: '100%', padding: '7px 9px', fontSize: 11,
   background: 'var(--bg0)', border: '1px solid var(--bd)',
   color: 'var(--tx)', outline: 'none',
@@ -696,7 +695,7 @@ function ProcessModal({ process, onClose, onSaved }: {
   }
 
   async function handleSave() {
-    if(!nom.trim()){ setErr('Name is required.'); return }
+    if(!nom.trim()){ setErr('Name FIS required.'); return }
     setBusy(true); setErr(null)
     try {
       const sb = createClient()
@@ -781,8 +780,8 @@ function ProcessModal({ process, onClose, onSaved }: {
             </div>
             {responsables.map((r,i)=>(
               <div key={i} style={{ display:'flex', gap:6, alignItems:'center', marginBottom:4 }}>
-                <input value={r.nom} onChange={e=>setResp(i,'nom',e.target.value)} style={{...IS,flex:1}} placeholder="Name" />
-                <input value={r.role} onChange={e=>setResp(i,'role',e.target.value)} style={{...IS,width:140,flexShrink:0}} placeholder="Role" />
+                <input value={r.nom} onChange={e=>setResp(i,'nom',e.target.value)} style={{...FIS,flex:1}} placeholder="Name" />
+                <input value={r.role} onChange={e=>setResp(i,'role',e.target.value)} style={{...FIS,width:140,flexShrink:0}} placeholder="Role" />
                 <button style={{fontSize:10,color:'var(--tx3)',padding:'0 4px'}} onClick={()=>setResponsables(p=>p.filter((_,j)=>j!==i))}>✕</button>
               </div>
             ))}
@@ -793,7 +792,7 @@ function ProcessModal({ process, onClose, onSaved }: {
           <div><div className="t-label" style={{marginBottom:3}}>Vault tags (comma-separated)</div>
             <input value={vaultTags} onChange={e=>{const v=e.target.value;setVaultTags(v)}} style={FIS} placeholder="dossier, photo, press release, contract…" /></div>
           <div><div className="t-label" style={{marginBottom:3}}>Assets to produce</div>
-            <textarea value={assetNotes} onChange={e=>{const v=e.target.value;setAssetNotes(v)}} rows={2} style={{...IS,resize:'vertical',lineHeight:1.5}} placeholder="List assets to be produced for this process…" /></div>
+            <textarea value={assetNotes} onChange={e=>{const v=e.target.value;setAssetNotes(v)}} rows={2} style={{...FIS,resize:'vertical',lineHeight:1.5}} placeholder="List assets to be produced for this process…" /></div>
 
           <div>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
@@ -803,8 +802,8 @@ function ProcessModal({ process, onClose, onSaved }: {
             <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
               {etapes.map((e,i)=>(
                 <div key={i} style={{ display:'flex', gap:6, alignItems:'center' }}>
-                  <input value={e.nom} onChange={ev=>{const v=ev.target.value;setEtapes(p=>p.map((x,j)=>j===i?{...x,nom:v}:x))}} style={{...IS,flex:1}} placeholder={`Step ${i+1}`} />
-                  <input type="date" value={e.date_echeance} onChange={ev=>{const v=ev.target.value;setEtapes(p=>p.map((x,j)=>j===i?{...x,date_echeance:v}:x))}} style={{...IS,width:130,flexShrink:0}} />
+                  <input value={e.nom} onChange={ev=>{const v=ev.target.value;setEtapes(p=>p.map((x,j)=>j===i?{...x,nom:v}:x))}} style={{...FIS,flex:1}} placeholder={`Step ${i+1}`} />
+                  <input type="date" value={e.date_echeance} onChange={ev=>{const v=ev.target.value;setEtapes(p=>p.map((x,j)=>j===i?{...x,date_echeance:v}:x))}} style={{...FIS,width:130,flexShrink:0}} />
                   <button style={{fontSize:10,color:'var(--tx3)',padding:'0 4px'}} onClick={()=>setEtapes(p=>p.filter((_,j)=>j!==i))}>✕</button>
                 </div>
               ))}
@@ -812,13 +811,13 @@ function ProcessModal({ process, onClose, onSaved }: {
           </div>
 
           <div><div className="t-label" style={{marginBottom:3}}>Notes</div>
-            <textarea value={notes} onChange={e=>{const v=e.target.value;setNotes(v)}} rows={3} style={{...IS,resize:'vertical',lineHeight:1.6}} placeholder="Information, links, contacts…" /></div>
+            <textarea value={notes} onChange={e=>{const v=e.target.value;setNotes(v)}} rows={3} style={{...FIS,resize:'vertical',lineHeight:1.6}} placeholder="Information, links, contacts…" /></div>
 
           <div style={{ borderTop:'1px solid var(--bd)', paddingTop:12 }}>
             <div className="t-label" style={{marginBottom:6}}>Add a reminder</div>
             <div style={{ display:'flex', gap:8 }}>
-              <input value={reminderMsg} onChange={e=>{const v=e.target.value;setReminderMsg(v)}} placeholder="Reminder message…" style={{...IS,flex:1}} />
-              <input type="date" value={reminderDate} onChange={e=>{const v=e.target.value;setReminderDate(v)}} style={{...IS,width:140,flexShrink:0}} />
+              <input value={reminderMsg} onChange={e=>{const v=e.target.value;setReminderMsg(v)}} placeholder="Reminder message…" style={{...FIS,flex:1}} />
+              <input type="date" value={reminderDate} onChange={e=>{const v=e.target.value;setReminderDate(v)}} style={{...FIS,width:140,flexShrink:0}} />
             </div>
           </div>
         </div>

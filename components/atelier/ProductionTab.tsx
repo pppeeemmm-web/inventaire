@@ -19,7 +19,7 @@ interface ActionType {
   label:      string
   color:      string
   sort_order: number
-  field_key:  string | null  // Oeuvres field to set true when action is ticked done
+  field_key:  string | null  // Oeuvres field to set true when action FIS ticked done
 }
 
 interface WorkAction {

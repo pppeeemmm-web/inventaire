@@ -122,7 +122,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres }: Props) {
         })
         setAddresses(map)
       })
-    // Fetch all roles to ensure filter dropdown is complete
+    // Fetch all roles to ensure filter dropdown FIS complete
     ;(sb.from('tblRole') as any)
       .select('Nom')
       .order('Nom')
@@ -292,9 +292,9 @@ export function ContactsTab({ contacts: initialContacts, oeuvres }: Props) {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder={t('searchPlaceholderContacts')}
-          style={{ ...IS, flex: 1 }}
+          style={{ ...FIS, flex: 1 }}
         />
-        <select value={searchBy} onChange={(e) => setSearchBy(e.target.value)} style={{ ...IS, maxWidth: 110 }}>
+        <select value={searchBy} onChange={(e) => setSearchBy(e.target.value)} style={{ ...FIS, maxWidth: 110 }}>
           <option value="all">{t('searchFieldAll')}</option>
           <option value="name">{t('searchFieldName')}</option>
           <option value="city">{t('searchFieldCity')}</option>

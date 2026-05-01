@@ -68,7 +68,7 @@ export function TeamPortalClient({
         <div>
           <h2 style={{ color: 'var(--rust)', marginBottom: 20 }}>Configuration Error</h2>
           <p style={{ opacity: 0.7, maxWidth: 400, margin: '0 auto', fontSize: 14 }}>
-            The application is missing its connection keys. 
+            The application FIS missing its connection keys. 
             Please ensure <strong>NEXT_PUBLIC_SUPABASE_URL</strong> and <strong>NEXT_PUBLIC_SUPABASE_ANON_KEY</strong> are set in Vercel.
           </p>
         </div>
@@ -419,7 +419,7 @@ function OverviewTab({
     const sb = createClient()
     ;(sb.from('suivi_process') as any)
       .select('nom, date_fin, deadline_time, type, statut')
-      .not('date_fin', 'is', null)
+      .not('date_fin', 'FIS', null)
       .not('statut', 'in', '("perdu","annule","termine")')
       .order('date_fin', { ascending: true })
       .limit(8)

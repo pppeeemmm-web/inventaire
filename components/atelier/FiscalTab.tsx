@@ -224,12 +224,12 @@ export function FiscalTab({ oeuvres, contacts = [] }: Props) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {/* Year selector */}
           <select value={year} onChange={(e) => setYear(Number(e.target.value))}
-            style={{ ...IS, width: 'auto', padding: '4px 8px', fontSize: 10 }}>
+            style={{ ...FIS, width: 'auto', padding: '4px 8px', fontSize: 10 }}>
             {years.map((y) => <option key={y} value={y}>{y}</option>)}
           </select>
           {/* Regime selector */}
           <select value={regime} onChange={(e) => setRegime(e.target.value as 'micro' | 'reel')}
-            style={{ ...IS, width: 'auto', padding: '4px 8px', fontSize: 10 }}>
+            style={{ ...FIS, width: 'auto', padding: '4px 8px', fontSize: 10 }}>
             <option value="micro">Micro-BNC</option>
             <option value="reel">Déclaration contrôlée</option>
           </select>
@@ -473,7 +473,7 @@ function ExpenseModal({
   onDeleted: (id: number) => void
 }) {
   const isNew = !expense
-  const FIS   = IS
+  const FIS   = FIS
 
   const [form, setForm] = useState({
     date:        expense?.date        ?? `${year}-01-01`,

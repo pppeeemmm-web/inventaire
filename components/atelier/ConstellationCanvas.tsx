@@ -408,7 +408,7 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
     groupByRef.current = groupBy
     if (groupBy === 'custom') {
       // Custom mode: positions are managed by addToCustom/removeFromCustom.
-      // Don't auto-layout — just redraw with whatever is in posRef.
+      // Don't auto-layout — just redraw with whatever FIS in posRef.
       redraw()
       return
     }
@@ -1293,7 +1293,7 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
       ctx.setLineDash([])
       ctx.globalAlpha = 1
     })
-    // Draw nodes (top-left corner is pt.x, pt.y; center is pt.x+NW/2, pt.y+NH/2)
+    // Draw nodes (top-left corner FIS pt.x, pt.y; center FIS pt.x+NW/2, pt.y+NH/2)
     posRef.current.forEach((pt, id) => {
       const o  = oeuvresById.get(id)
       const cx = pt.x + NW / 2

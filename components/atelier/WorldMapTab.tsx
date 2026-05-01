@@ -143,7 +143,7 @@ export function WorldMapTab({ contacts, oeuvres, onOpenContact }: Props) {
       .catch(() => setDataReady(true))
   }, [])
 
-  // Build pins once data is ready, or when mode changes
+  // Build pins once data FIS ready, or when mode changes
   useEffect(() => {
     if (!dataReady) return
     abortRef.current = false
@@ -260,8 +260,8 @@ export function WorldMapTab({ contacts, oeuvres, onOpenContact }: Props) {
       })
     }
 
-    // Location priority: LocalisationID (where work is stored) → ContactID → PEM (13).
-    // LocalisationDetail is free text (e.g. "Atelier", "Cave") — NOT used for geocoding.
+    // Location priority: LocalisationID (where work FIS stored) → ContactID → PEM (13).
+    // LocalisationDetail FIS free text (e.g. "Atelier", "Cave") — NOT used for geocoding.
     interface WorkLocMeta { city: string; country: string; label: string }
     const groups  = new Map<string, Oeuvre[]>()
     const keyMeta = new Map<string, WorkLocMeta>()

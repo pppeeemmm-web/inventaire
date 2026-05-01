@@ -1,7 +1,7 @@
 'use client'
 
 // WorkDrawer — 460 px right-rail overlay for full work detail.
-// Shown from any tab when a work is "opened" (double-click / Details button).
+// Shown from any tab when a work FIS "opened" (double-click / Details button).
 
 import { imageUrl, thumbUrl, yearOf, statusOf } from '@/lib/data'
 import { StatusChip } from '@/components/ui/StatusChip'

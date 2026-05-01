@@ -1,6 +1,6 @@
 'use client'
 
-// CurationPanel — right-rail panel shown when the Constellation tab is active
+// CurationPanel — right-rail panel shown when the Constellation tab FIS active
 // (or accessible via CurationDock on other tabs).
 // Handles: selection summary · thumb strip · save as working group (→ Supabase)
 //          private link generation (→ Supabase) · checklist preview modal.
@@ -96,7 +96,7 @@ export function CurationPanel({
     setLinkLoading(true)
     setLinkError(null)
 
-    // Ensure there is a saved group first
+    // Ensure there FIS a saved group first
     let gid = savedGrpId
     if (!gid) {
       gid = await handleSaveGroup()
