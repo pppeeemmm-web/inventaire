@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Studio Bible — PEM Hub Complete Manual</title>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #ffffff;
+            --tx: #1a1a1d;
+            --ac: #c8a86e;
+            --bd: #e0e0e0;
+            --gray: #f5f5f5;
+        }
+        @media print {
+            .no-print { display: none; }
+            body { padding: 40px; font-size: 10pt; }
+            .page-break { page-break-before: always; }
+            .no-break { page-break-inside: avoid; }
+        }
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--bg);
+            color: var(--tx);
+            line-height: 1.5;
+            padding: 80px;
+            max-width: 900px;
+            margin: 0 auto;
+            font-size: 11px;
+        }
+        h1, h2, h3, h4 {
+            font-family: 'Instrument Serif', serif;
+            font-weight: 400;
+            margin-top: 2.5em;
+            line-height: 1.1;
+        }
+        h1 { font-size: 56px; border-bottom: 2px solid var(--ac); padding-bottom: 30px; margin-top: 0; }
+        h2 { font-size: 32px; color: var(--ac); border-bottom: 1px solid var(--bd); padding-bottom: 15px; }
+        h3 { font-size: 22px; margin-bottom: 12px; border-left: 4px solid var(--ac); padding-left: 15px; }
+        h4 { font-size: 16px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; color: #555; }
+        
+        .header-meta {
+            display: flex;
+            justify-content: space-between;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-size: 9px;
+            color: #888;
+            margin-bottom: 80px;
+        }
+        
+        .section { margin-bottom: 60px; }
+        
+        .feature-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin: 20px 0;
+        }
+
+        .tab-detail {
+            background: var(--gray);
+            padding: 20px;
+            border: 1px solid var(--bd);
+            margin-bottom: 20px;
+        }
+        
+        .rule-box {
+            background: #fffdf5;
+            padding: 20px;
+            border: 1px solid var(--ac);
+            margin: 20px 0;
+        }
+
+        .step-list {
+            padding-left: 20px;
+        }
+        .step-list li { margin-bottom: 10px; }
+
+        .btn-print {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--ac);
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            cursor: pointer;
+            font-family: inherit;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+
+        .highlight { color: var(--ac); font-weight: 600; }
+        code { background: #eee; padding: 2px 4px; font-size: 10px; }
+    </style>
+</head>
+<body>
+    <button class="btn-print no-print" onclick="window.print()">Download Studio Bible (PDF)</button>
+
+    <div class="header-meta">
+        <div>Atelier Pierre Emmanuel Moulin</div>
+        <div>System Documentation v1.0 — 2026</div>
+    </div>
+
+    <h1>The Studio Bible</h1>
+    <p style="font-size: 14px; margin-top: -10px; color: #666;">The Comprehensive Operating Manual for the PEM Hub Infrastructure.</p>
+
+    <div class="section">
+        <h2>01. The Grand Architecture</h2>
+        <p>The Hub is split into four distinct "Surfaces," each serving a specific audience. Access is controlled by roles and secret tokens.</p>
+        <div class="feature-grid">
+            <div>
+                <h4>A. The Atelier (Internal)</h4>
+                <p>The nerve center. Used for inventory, sales, and logistics. This is where 99% of administrative work happens.</p>
+            </div>
+            <div>
+                <h4>B. Collectionneurs (Private)</h4>
+                <p>A gated portal for VIP clients. They see only the works you have specifically shared with them.</p>
+            </div>
+            <div>
+                <h4>C. Galeries (Partner)</h4>
+                <p>A collaborative surface for partners. They can view consignments and manage shared checklists.</p>
+            </div>
+            <div>
+                <h4>D. Portfolio (Public)</h4>
+                <p>The external face of the studio. No prices, no private data—just the art and the bio.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="page-break"></div>
+
+    <h2>02. The Atelier Portal: 16 Tabs of Power</h2>
+    <p>Once you click "ENTRER" on the Atelier tile, you have access to these specific modules:</p>
+
+    <div class="tab-detail no-break">
+        <h3>Overview (Tableau de Bord)</h3>
+        <p><strong>What it does:</strong> Displays "Live Intelligence"—counts of works created this year, technique breakdowns, and urgent pipeline deadlines.</p>
+        <p><strong>Hidden Feature:</strong> The "Burning Concepts" list shows ideas with high "Energy" ratings that need attention.</p>
+    </div>
+
+    <div class="tab-detail no-break">
+        <h3>Inventory (Inventaire)</h3>
+        <p><strong>What it does:</strong> The master list of every artwork ever made.</p>
+        <p><strong>How to use:</strong> Use the search bar to find works by Title or ID. Click a row to open the <strong>Work Drawer</strong> on the right.</p>
+        <div class="rule-box">
+            <strong>The 80/80 Rule:</strong> Double-click any thumbnail image to expand the drawer to 80% of the screen for high-detail inspection.
+        </div>
+    </div>
+
+    <div class="tab-detail no-break">
+        <h3>Constellation</h3>
+        <p><strong>What it does:</strong> A visual map where X = Time and Y = Technique.</p>
+        <p><strong>The Lasso:</strong> Hold the mouse and drag a square over the nodes to select them. This is how you "curate" a selection for an exhibition or a PDF.</p>
+    </div>
+
+    <div class="tab-detail no-break">
+        <h3>Production (Kanban)</h3>
+        <p><strong>What it does:</strong> Tracks works in progress. Drag cards from <code>Idée</code> to <code>Encadrement</code>.</p>
+        <p><strong>Workflow:</strong> When a work hits the "Photographié" column, ensure the high-res image is uploaded to the Vault.</p>
+    </div>
+
+    <div class="tab-detail no-break">
+        <h3>Logistics & Shipments</h3>
+        <p><strong>What it does:</strong> Tracks the physical location of works.</p>
+        <p><strong>How to use:</strong> Create a "New Shipment" whenever art leaves the studio. This automatically updates the work's location in the inventory.</p>
+    </div>
+
+    <div class="tab-detail no-break">
+        <h3>Vault (Le Coffre)</h3>
+        <p><strong>What it does:</strong> Digital document storage.</p>
+        <p><strong>Action:</strong> Upload Certificates of Authenticity and Insurance docs here. They are permanently linked to the Work ID.</p>
+    </div>
+
+    <div class="page-break"></div>
+
+    <h2>03. Core Operational Workflows</h2>
+
+    <h3>Curation & Exports (The "Leverage" Flow)</h3>
+    <ol class="step-list">
+        <li><strong>Selection:</strong> Choose works in the <code>Inventory</code> (via checkboxes) or <code>Constellation</code> (via Lasso).</li>
+        <li><strong>The Dock:</strong> A black bar will appear at the bottom showing <code>N works selected</code>.</li>
+        <li><strong>Export PDF Checklist:</strong> Click this to generate a museum-standard PDF with thumbnails and prices.</li>
+        <li><strong>Create Private Link:</strong> Generates a secret URL. Send this to a collector. It allows them to view only the selected works in a premium interface.</li>
+    </ol>
+
+    <h3>Fiscal & Expense Management</h3>
+    <ol class="step-list">
+        <li>Navigate to the <strong>Fiscal</strong> tab.</li>
+        <li>Click <strong>Add Expense</strong>.</li>
+        <li>Input the exact amount, the Supplier (linked from Contacts), and the Receipt Date.</li>
+        <li>The system automatically calculates the total burn rate per month.</li>
+    </ol>
+
+    <h3>Stock & Material Audit</h3>
+    <p>To prevent running out of pigments or canvas, a physical audit is required monthly.</p>
+    <div class="rule-box">
+        <strong>The Audit Rule:</strong> Go to the <code>Stock-take</code> tab. Enter the physical count. If the system says you have 10 and you count 5, the system will highlight the discrepancy in red. Log this in the <code>System Ledger</code>.
+    </div>
+
+    <div class="page-break"></div>
+
+    <h2>04. The Data Standard (Non-Negotiable)</h2>
+    <p>The system is only as good as the data entered. Follow these rules strictly:</p>
+    
+    <div class="feature-grid">
+        <div>
+            <h4>Typography</h4>
+            <ul>
+                <li>Capitalize proper nouns: <code>Oil on Canvas</code>, not <code>oil on canvas</code>.</li>
+                <li>Dimensions: Use <code>×</code> (multiplication), not <code>x</code> (the letter).</li>
+                <li>Metric: cm only.</li>
+            </ul>
+        </div>
+        <div>
+            <h4>Imagery</h4>
+            <ul>
+                <li>Format: <code>.avif</code> (Primary) or <code>.webp</code>.</li>
+                <li>Resolution: Minimum 2000px on the long edge.</li>
+                <li>Flag: Use the <code>Needs Photo</code> toggle if the image is missing.</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>05. System Maintenance & Evolution</h2>
+        <p>If the system breaks or you have an idea for a new feature:</p>
+        <ol class="step-list">
+            <li>Go to the <strong>System</strong> tab (top right of the Atelier).</li>
+            <li>Select <strong>💡 Suggestion</strong> or <strong>🔧 Maintenance</strong>.</li>
+            <li>Type the details. The developers check this log daily to improve the site.</li>
+        </ol>
+    </div>
+
+    <div class="footer">
+        Confidential. Property of Atelier Pierre Emmanuel Moulin. Hand-off Document.
+    </div>
+</body>
+</html>
