@@ -57,7 +57,7 @@ interface Props {
 
 // ── Helpers ────────────────────────────────────────────────────────────
 
-const IS: React.CSSProperties = {
+const FIS: React.CSSProperties = {
   padding: '6px 9px', fontSize: 11,
   background: 'var(--bg0)', border: '1px solid var(--bd)',
   color: 'var(--tx)', outline: 'none', width: '100%',
