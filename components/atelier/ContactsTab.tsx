@@ -71,12 +71,6 @@ function cap(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
-const FIS: React.CSSProperties = {
-  padding: '7px 10px', fontSize: 11,
-  background: 'var(--bg1)', border: '1px solid var(--bd)',
-  color: 'var(--tx)', outline: 'none',
-}
-
 // ── Component ────────────────────────────────────────────────────────
 
 export function ContactsTab({ contacts: initialContacts, oeuvres }: Props) {
