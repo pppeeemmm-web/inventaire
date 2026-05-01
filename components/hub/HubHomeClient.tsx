@@ -63,108 +63,97 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
         </div>
       </div>
 
-      {/* Main */}
-      <div style={{ flex: 1, padding: '24px 40px 24px', display: 'flex', flexDirection: 'column', overflow: 'hidden', gap: 24 }}>
-
-        {/* System Log + stats */}
-        <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr', gap: 32, alignItems: 'start' }}>
+      {/* Main Content Area */}
+      <div style={{ flex: 1, padding: '40px 40px', display: 'flex', flexDirection: 'column', overflow: 'auto', gap: 48 }}>
+        
+        {/* Section 1: Executive Summary */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: 60, alignItems: 'end' }}>
           <div>
-            <div className="t-eyebrow" style={{ color: 'var(--tx3)', marginBottom: 16 }}>
-              Atelier · {dateLabel}
+            <div className="serif" style={{ fontSize: 'clamp(32px, 4vw, 48px)', color: 'var(--tx)', marginBottom: 8, letterSpacing: '-0.03em' }}>
+              {t('hub')}
             </div>
+            <div className="t-eyebrow" style={{ color: 'var(--tx3)', letterSpacing: 2 }}>
+              {dateLabel} · {stats.total} {t('works_cap')}
+            </div>
+          </div>
+          
+          <div style={{ display: 'flex', gap: 32, paddingBottom: 6 }}>
+            <div className="stat-v2">
+              <span className="label">{t('thisYear')}</span>
+              <span className="value">{stats.thisYear}</span>
+            </div>
+            <div className="vline" style={{ height: 32, opacity: 0.1 }} />
+            <div className="stat-v2">
+              <span className="label">Maintenance</span>
+              <span className="value" style={{ fontSize: 14, fontFamily: 'monospace', letterSpacing: 0 }}>{displayLogs[0].label}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Section 2: Navigation Matrix (The 4 Portals) */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', borderTop: '1px solid var(--bd)', borderBottom: '1px solid var(--bd)' }}>
+          <PortalTile code="01" title={t('team')}     desc={t('teamDesc')}     href="/atelier"    detail={{ works: stats.total }} lang={lang} />
+          <PortalTile code="02" title={t('clients')}   desc={t('clientsDesc')}  href="/collection" lang={lang} wip={true} />
+          <PortalTile code="03" title={t('galleries')} desc={t('galleriesDesc')} href="/galerie"   lang={lang} wip={true} />
+          <PortalTile code="04" title={t('public')}    desc={t('publicDesc')}   href="/portfolio"  lang={lang} />
+        </div>
+
+        {/* Section 3: Live Pulse */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.2fr', gap: 60 }}>
+          
+          {/* Suivi / Pipeline */}
+          <div>
+            <div className="t-eyebrow" style={{ marginBottom: 24, opacity: 0.5 }}>01 · {t('pipeline')}</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {recentProcess.slice(0, 5).map(p => (
+                <div key={p.id} onClick={() => router.push('/atelier?tab=pipeline')} style={{ cursor: 'pointer', borderBottom: '1px solid var(--bd2)', paddingBottom: 12 }}>
+                  <div className="serif" style={{ fontSize: 16, color: 'var(--tx)', marginBottom: 4 }}>{p.label}</div>
+                  <div className="row gap-sm" style={{ justifyContent: 'space-between' }}>
+                    <span className="t-mono-sm" style={{ color: 'var(--ac)', letterSpacing: 1 }}>{p.status}</span>
+                    <span className="t-mono-sm" style={{ color: 'var(--tx3)' }}>{new Date(p.created_at).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Concepts */}
+          <div>
+            <div className="t-eyebrow" style={{ marginBottom: 24, opacity: 0.5 }}>02 · {t('concepts')}</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-               <h2 className="serif" style={{ fontSize: 24, color: 'var(--tx)', marginBottom: 4 }}>Improvements & Maintenance</h2>
-               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                  {displayLogs.map(log => (
-                    <div key={log.id} 
-                      onClick={() => router.push('/atelier?tab=system')}
-                      style={{ border: '1px solid var(--bd2)', padding: '10px 14px', background: 'var(--bg1)', cursor: 'pointer' }}>
-                       <div className="row gap-sm" style={{ marginBottom: 4 }}>
-                          <span style={{ fontSize: 8, textTransform: 'uppercase', color: 'var(--ac)', letterSpacing: 1, border: '1px solid var(--ac)', padding: '1px 4px' }}>{log.type}</span>
-                          <span style={{ fontSize: 9, color: 'var(--tx2)', fontWeight: 600 }}>{log.label}</span>
-                       </div>
-                       <div style={{ fontSize: 10, color: 'var(--tx3)', lineHeight: 1.4 }}>{log.details}</div>
-                    </div>
-                  ))}
-               </div>
+              {burningIdeas.slice(0, 4).map(i => (
+                <div key={i.id} onClick={() => router.push('/atelier?tab=concepts')} 
+                  style={{ padding: '12px 16px', background: 'var(--bg1)', border: '1px solid var(--bd2)', cursor: 'pointer', transition: 'border-color .2s' }}>
+                  <div className="t-mono-sm" style={{ fontSize: 8, color: 'var(--tx3)', marginBottom: 4, textTransform: 'uppercase' }}>{i.medium || 'Concept'}</div>
+                  <div className="serif" style={{ fontSize: 15, color: 'var(--tx)' }}>{i.title}</div>
+                </div>
+              ))}
             </div>
           </div>
-          <div style={{ borderLeft: '1px solid var(--bd)', paddingLeft: 20 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8 }}>
-               <div className="stat" style={{ padding: '4px 0' }}><span className="l">{t('works_cap')}</span><span className="v" style={{ fontSize: 16 }}>{stats.total}</span></div>
-               <div className="stat" style={{ padding: '4px 0' }}><span className="l">{t('thisYear')}</span><span className="v" style={{ color: 'var(--ac)', fontSize: 16 }}>{stats.thisYear}</span></div>
-               {stats.stockAlerts > 0 && (
-                 <div className="stat" style={{ padding: '4px 0' }}>
-                   <span className="l" style={{ color: 'var(--rust)' }}>Alerte Stock</span>
-                   <span className="v" style={{ color: 'var(--rust)', fontSize: 16 }}>{stats.stockAlerts}</span>
-                 </div>
-               )}
+
+          {/* Recently Added */}
+          <div>
+            <div className="t-eyebrow" style={{ marginBottom: 24, opacity: 0.5 }}>03 · {t('recentlyAdded')}</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+              {recentImages.slice(0, 12).map((o) => (
+                <div key={o.OeuvreID} style={{ aspectRatio: '1', background: 'var(--bg1)', border: '1px solid var(--bd2)', overflow: 'hidden' }}>
+                  {o.txtImageNameLink
+                    ? <img src={thumbUrl(o.txtImageNameLink, 256) ?? ''} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.8 }} />
+                    : <div style={{ width: '100%', height: '100%', background: 'var(--bg2)' }} />}
+                </div>
+              ))}
             </div>
           </div>
+
         </div>
 
-        {/* Portal grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', borderTop: '1px solid var(--bd)', borderBottom: '1px solid var(--bd)' }}>
-          <PortalTile code="01" emphasis title={t('team')}     desc={t('teamDesc')}     href="/atelier"    detail={{ works: stats.total }} lang={lang} />
-          <PortalTile code="02"         title={t('clients')}   desc={t('clientsDesc')}  href="/collection" lang={lang} wip={true} />
-          <PortalTile code="03"         title={t('galleries')} desc={t('galleriesDesc')} href="/galerie"   lang={lang} wip={true} />
-          <PortalTile code="04"         title={t('public')}    desc={t('publicDesc')}   href="/portfolio"  lang={lang} />
-        </div>
-
-        {/* Live Feed Row */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: 40, flex: 1, minHeight: 0 }}>
-           {/* Column 1: Pipeline Pulse */}
-           <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-             <div className="t-eyebrow" style={{ marginBottom: 12, opacity: 0.6, fontSize: 9 }}>{t('pipeline')} ↑</div>
-             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, overflow: 'auto', flex: 1 }}>
-                {recentProcess.length === 0 ? (
-                  <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>Aucun projet actif</div>
-                ) : recentProcess.map(p => (
-                  <div key={p.id} 
-                    onClick={() => router.push('/atelier?tab=pipeline')}
-                    style={{ paddingBottom: 8, borderBottom: '1px solid var(--bd2)', cursor: 'pointer' }}>
-                    <div className="t-mono-sm" style={{ color: 'var(--tx)', fontSize: 10 }}>{p.label}</div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>
-                       <span style={{ fontSize: 8, textTransform: 'uppercase', color: 'var(--ac)', letterSpacing: 1 }}>{p.status}</span>
-                       <span style={{ fontSize: 8, color: 'var(--tx3)' }}>{new Date(p.created_at).toLocaleDateString()}</span>
-                    </div>
-                  </div>
-                ))}
-             </div>
-           </div>
-
-           {/* Column 2: Burning Ideas */}
-           <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-             <div className="t-eyebrow" style={{ marginBottom: 12, opacity: 0.6, fontSize: 9 }}>{t('concepts')} ⚡</div>
-             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, overflow: 'auto', flex: 1 }}>
-                {burningIdeas.length === 0 ? (
-                  <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>Pas d'idées brûlantes</div>
-                ) : burningIdeas.map(i => (
-                  <div key={i.id} 
-                    onClick={() => router.push('/atelier?tab=concepts')}
-                    style={{ padding: '6px 10px', background: 'var(--bg1)', borderLeft: '2px solid var(--ac)', cursor: 'pointer' }}>
-                    <div style={{ fontSize: 8, color: 'var(--tx3)', marginBottom: 2, textTransform: 'uppercase' }}>{i.medium || 'Concept'}</div>
-                    <div className="serif" style={{ fontSize: 13, color: 'var(--tx)' }}>{i.title}</div>
-                  </div>
-                ))}
-             </div>
-           </div>
-
-           {/* Column 3: Recent Activity */}
-           <div>
-             <div className="t-eyebrow" style={{ marginBottom: 12, opacity: 0.6, fontSize: 9 }}>{t('recentlyAdded')}</div>
-             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4 }}>
-                {recentImages.slice(0, 12).map((o) => (
-                  <div key={o.OeuvreID} className="thumb" style={{ aspectRatio: '1', height: 'auto' }}>
-                    {o.txtImageNameLink
-                      ? <img src={thumbUrl(o.txtImageNameLink, 128) ?? ''} loading="lazy" alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      : <div className="ph" />}
-                  </div>
-                ))}
-             </div>
-           </div>
-        </div>
       </div>
+
+      <style jsx>{`
+        .stat-v2 { display: flex; flexDirection: column; gap: 4px; }
+        .stat-v2 .label { font-size: 8px; letter-spacing: 2px; text-transform: uppercase; color: var(--tx3); }
+        .stat-v2 .value { font-size: 24px; color: var(--tx); font-family: 'Instrument Serif', serif; line-height: 1; }
+      `}</style>
 
       {/* Footer */}
       <div style={{ padding: '10px 28px', borderTop: '1px solid var(--bd)', display: 'flex', justifyContent: 'space-between', color: 'var(--tx3)', fontSize: 9, letterSpacing: 1 }}>
