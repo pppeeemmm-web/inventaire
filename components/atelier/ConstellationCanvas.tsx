@@ -1705,7 +1705,7 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
 
         <div className="vline" style={{ height: 16 }} />
         <div className="t-mono-sm" style={{ color: 'var(--tx3)', whiteSpace: 'nowrap', fontSize: 9 }}>
-          Bord → lier · Maj+clic → sélect. · Clic droit → suppr. lien
+          Bord → lier · Maj+clic/Marquée → sélect. · Balai → effacer · Clic dr. → suppr.
         </div>
         {loading && <div className="pulse t-mono-sm" style={{ color: 'var(--tx3)', marginLeft: 'auto', whiteSpace: 'nowrap' }}>Chargement…</div>}
       </div>
@@ -1946,9 +1946,8 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
                   )}
                 </div>
               </>
-            ) : (
               <div className="t-mono-sm" style={{ color: 'var(--tx3)', lineHeight: 1.7 }}>
-                Maj+clic pour sélectionner des œuvres et créer un groupe.
+                Maj+clic ou outil Marquée pour sélectionner des œuvres et créer un groupe.
               </div>
             )}
 
