@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atelier Studio Manual — PEM Hub</title>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #ffffff;
+            --tx: #1a1a1d;
+            --ac: #c8a86e;
+            --bd: #e0e0e0;
+        }
+        @media print {
+            .no-print { display: none; }
+            body { padding: 0; }
+            .page-break { page-break-before: always; }
+        }
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--bg);
+            color: var(--tx);
+            line-height: 1.6;
+            padding: 80px;
+            max-width: 800px;
+            margin: 0 auto;
+            font-size: 11px;
+        }
+        h1, h2, h3 {
+            font-family: 'Instrument Serif', serif;
+            font-weight: 400;
+            margin-top: 2em;
+        }
+        h1 { font-size: 48px; border-bottom: 1px solid var(--ac); padding-bottom: 20px; margin-top: 0; }
+        h2 { font-size: 28px; color: var(--ac); border-bottom: 1px solid var(--bd); padding-bottom: 10px; }
+        h3 { font-size: 20px; margin-bottom: 10px; }
+        
+        .header-meta {
+            display: flex;
+            justify-content: space-between;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-size: 9px;
+            color: #888;
+            margin-bottom: 60px;
+        }
+        
+        .tab-box {
+            border-left: 2px solid var(--bd);
+            padding-left: 24px;
+            margin-bottom: 32px;
+        }
+        
+        .rule {
+            background: #f9f9f9;
+            padding: 12px 16px;
+            border-left: 2px solid var(--ac);
+            margin: 10px 0;
+            font-size: 10px;
+        }
+        
+        .footer {
+            margin-top: 100px;
+            border-top: 1px solid var(--bd);
+            padding-top: 20px;
+            font-size: 9px;
+            color: #888;
+        }
+
+        .btn-print {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--ac);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-family: inherit;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+    </style>
+</head>
+<body>
+    <button class="btn-print no-print" onclick="window.print()">Print to PDF</button>
+
+    <div class="header-meta">
+        <div>Atelier PEM — Studio Manual</div>
+        <div>v1.0 / May 2026</div>
+    </div>
+
+    <h1>Atelier Studio Manual: Data & Operations</h1>
+    <p>This document is a beginner's guide to managing the Atelier PEM Hub. Whether you are an art assistant or a data administrator, follow these steps to keep the studio running with high precision.</p>
+
+    <div class="page-break"></div>
+
+    <h2>Part 1: Tab-by-Tab Orientation</h2>
+
+    <div class="tab-box">
+        <h3>01. Overview 📊</h3>
+        <p><strong>Purpose:</strong> The "Health Check."</p>
+        <p><strong>Action:</strong> Use this to see how many works were created this year and what techniques are currently most frequent. No data input happens here; it's a mirror of the rest of the system.</p>
+    </div>
+
+    <div class="tab-box">
+        <h3>02. Inventory 🖼️</h3>
+        <p><strong>Purpose:</strong> The Master Record.</p>
+        <p><strong>Action:</strong> Every single physical work must be listed here.</p>
+        <div class="rule"><strong>Rule:</strong> If it exists in the studio, it must have an "OeuvreID" and a status of "Studio".</div>
+    </div>
+
+    <div class="tab-box">
+        <h3>03. Constellation 🌌</h3>
+        <p><strong>Purpose:</strong> Artistic Curation.</p>
+        <p><strong>Action:</strong> A visual map of the works. Use the <strong>Lasso tool</strong> (click and drag) to select multiple works for a PDF checklist or a private gallery link.</p>
+    </div>
+
+    <div class="tab-box">
+        <h3>04. Production (Kanban) 🏗️</h3>
+        <p><strong>Purpose:</strong> The "Factory Floor."</p>
+        <p><strong>Action:</strong> Drag artwork cards from "Idée" to "En cours" to "Séchage".</p>
+        <div class="rule"><strong>Rule:</strong> Never skip the "Séchage" (Drying) stage for oil paintings—it signals to the team that the work cannot be moved yet.</div>
+    </div>
+
+    <div class="tab-box">
+        <h3>05. Logistics 📦</h3>
+        <p><strong>Purpose:</strong> Shipping & Loans.</p>
+        <p><strong>Action:</strong> Record every time a work leaves the studio (e.g., to a gallery or a photographer). Input the destination contact and the "Scheduled Date."</p>
+    </div>
+
+    <div class="tab-box">
+        <h3>06. Vault 🔒</h3>
+        <p><strong>Purpose:</strong> Legal & Certificates.</p>
+        <p><strong>Action:</strong> Upload PDF versions of Authenticity Certificates, Invoices, and Insurance contracts here.</p>
+        <div class="rule"><strong>Rule:</strong> Link every document to its specific "OeuvreID".</div>
+    </div>
+
+    <div class="tab-box">
+        <h3>07. Contacts & World Map 👥</h3>
+        <p><strong>Purpose:</strong> The Rolodex.</p>
+        <p><strong>Action:</strong> Enter new collectors, suppliers, and galleries.</p>
+        <div class="rule"><strong>Rule:</strong> Ensure every contact has a City and Country so they appear correctly on the World Map.</div>
+    </div>
+
+    <div class="tab-box">
+        <h3>08. Pipeline ⏳</h3>
+        <p><strong>Purpose:</strong> Deadlines.</p>
+        <p><strong>Action:</strong> Check this daily for upcoming exhibition deadlines or "To-Do" reminders.</p>
+    </div>
+
+    <div class="tab-box">
+        <h3>09. Fiscal 💸</h3>
+        <p><strong>Purpose:</strong> Money.</p>
+        <p><strong>Action:</strong> Input all receipts for supplies.</p>
+        <div class="rule"><strong>Rule:</strong> The "Date" field must match the receipt date exactly to ensure the tax reports are accurate.</div>
+    </div>
+
+    <div class="tab-box">
+        <h3>10. Concepts 💡</h3>
+        <p><strong>Purpose:</strong> Ideas.</p>
+        <p><strong>Action:</strong> Log "Burning Ideas" here. If an idea becomes a real painting, link it to the new Inventory record.</p>
+    </div>
+
+    <div class="tab-box">
+        <h3>11. Stock & Stock-take 🧪</h3>
+        <p><strong>Purpose:</strong> Studio Supplies.</p>
+        <p><strong>Action:</strong> Perform a physical count of pigments and canvases on the last Friday of the month. Enter the numbers in "Stock-take."</p>
+    </div>
+
+    <div class="tab-box">
+        <h3>12. System ⚙️</h3>
+        <p><strong>Purpose:</strong> The Suggestion Box.</p>
+        <p><strong>Action:</strong> If the software is confusing or needs a new feature, log a <strong>Suggestion</strong> here.</p>
+    </div>
+
+    <div class="page-break"></div>
+
+    <h2>Part 2: Data Entry Best Practices</h2>
+    <ul>
+        <li><strong>Capitalization:</strong> Use <strong>Title Case</strong> for everything. "CoG 2026", not "cog 2026".</li>
+        <li><strong>Dimensions:</strong> Always "Height × Width" in cm. Use the "×" sign.</li>
+        <li><strong>Images:</strong> Use <strong>AVIF</strong> format. If a work has no photo, turn the "Needs Photograph" flag <strong>ON</strong>.</li>
+        <li><strong>No Gaps:</strong> A database is only useful if it's complete. If a field is empty, the system loses leverage.</li>
+    </ul>
+
+    <div class="footer">
+        Atelier Pierre Emmanuel Moulin — Propriété Privée. Generated by Art Engine.
+    </div>
+</body>
+</html>
