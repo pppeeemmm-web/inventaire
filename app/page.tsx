@@ -91,10 +91,10 @@ export default function LandingPage() {
             src="https://pub-a352e674a992412fa243598ffd6b659c.r2.dev/thumbs/W_2190_01_20260411-20260411-_PE16262_-_pe_moulin_-_pe_moulin.avif"
             alt="Pierre Emmanuel Moulin"
           />
-          <Link href="/portfolio" className="orb orb-top">Portfolio</Link>
-          <Link href="/about"     className="orb orb-left">About</Link>
-          <Link href="/practice"  className="orb orb-right">Practice</Link>
-          <Link href="/portfolio" className="orb orb-bottom">Enquiry</Link>
+          <Link href="/works"    className="orb orb-top">Works</Link>
+          <Link href="/about"    className="orb orb-left">About</Link>
+          <Link href="/practice" className="orb orb-right">Practice</Link>
+          <Link href="/enquiry" className="orb orb-bottom">Enquiry</Link>
         </div>
 
         <Link href="/hub" style={{ 

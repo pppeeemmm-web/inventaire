@@ -114,10 +114,10 @@ export default async function AboutPage() {
       <nav className="a-nav">
         <Link href="/" className="a-logo">Atelier PEM</Link>
         <div className="a-navlinks">
-          <Link href="/portfolio" className="a-navlink">Portfolio</Link>
-          <Link href="/about"     className="a-navlink active">About</Link>
-          <Link href="/practice"  className="a-navlink">Practice</Link>
-          <Link href="/portfolio" className="a-navlink">Enquiry</Link>
+          <Link href="/works"    className="a-navlink">Works</Link>
+          <Link href="/about"    className="a-navlink active">About</Link>
+          <Link href="/practice" className="a-navlink">Practice</Link>
+          <Link href="/enquiry"  className="a-navlink">Enquiry</Link>
         </div>
       </nav>
 
@@ -192,7 +192,7 @@ export default async function AboutPage() {
           <div className="a-section-label">Contact</div>
           <div className="a-bio">
             <p>Marseille, France &nbsp;&middot;&nbsp; +33 6 17 69 05 22</p>
-            <p><Link href="/portfolio" className="a-ext">Inquiry Form</Link></p>
+            <p><Link href="/enquiry" className="a-ext">Enquiry Form</Link></p>
             <p><a href="https://moulinfineart.myportfolio.com/" target="_blank" rel="noreferrer" className="a-ext">moulinfineart.myportfolio.com</a></p>
           </div>
         </section>

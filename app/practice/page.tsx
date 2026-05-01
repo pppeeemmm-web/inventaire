@@ -60,10 +60,10 @@ export default function PracticePage() {
       <nav className="p-nav">
         <Link href="/" className="p-logo">Atelier PEM</Link>
         <div className="p-navlinks">
-          <Link href="/portfolio" className="p-navlink">Portfolio</Link>
-          <Link href="/about"     className="p-navlink">About</Link>
-          <Link href="/practice"  className="p-navlink active">Practice</Link>
-          <Link href="/portfolio" className="p-navlink">Enquiry</Link>
+          <Link href="/works"    className="p-navlink">Works</Link>
+          <Link href="/about"    className="p-navlink">About</Link>
+          <Link href="/practice" className="p-navlink active">Practice</Link>
+          <Link href="/enquiry"  className="p-navlink">Enquiry</Link>
         </div>
       </nav>
 
