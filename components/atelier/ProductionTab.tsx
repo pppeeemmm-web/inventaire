@@ -188,7 +188,7 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
         }}>
           {actionTypes.map((at) => {
             const ids   = actionMap.get(at.id) ?? new Set<number>()
-            const isPhotoColumn = at.label.toLowerCase().includes('photograph')
+            const isPhotoColumn = at.id === 6 // 'Photographier'
             const works = active.filter((o) => {
               const needsPhoto = (o as any).NeedsPhotograph || (o as any).needsphotograph
               return ids.has(o.OeuvreID) || (isPhotoColumn && needsPhoto)

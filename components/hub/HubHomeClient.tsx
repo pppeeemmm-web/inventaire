@@ -36,12 +36,16 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 28px', borderBottom: '1px solid var(--bd)' }}>
         <div className="row gap-md">
           <div style={{ width: 24, height: 24, border: '1px solid var(--ac)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ac)', fontSize: 11, fontFamily: "'Instrument Serif', serif", lineHeight: 1 }}>P</div>
-          <div className="t-eyebrow" style={{ color: 'var(--tx)' }}>{t('hub')}</div>
+          <div className="t-eyebrow" style={{ color: 'var(--tx)' }}>PEM HUB TEST</div>
           <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>— {t('tagline')}</div>
         </div>
         <div className="row gap-md">
           <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>{t('signedAs')} · atelier</div>
-          <Link href="/atelier?tab=system" className="t-mono-sm" style={{ color: 'var(--tx2)', textDecoration: 'none', marginLeft: 12 }}>
+          <Link href="/Atelier_Studio_Bible.html" target="_blank" className="t-mono-sm" style={{ color: 'var(--tx2)', textDecoration: 'none', marginLeft: 12 }}>
+            Studio Bible 📖
+          </Link>
+          <div className="vline" style={{ height: 12, margin: '0 12px', opacity: 0.3 }} />
+          <Link href="/atelier?tab=system" className="t-mono-sm" style={{ color: 'var(--tx2)', textDecoration: 'none' }}>
             Suggestions 💡
           </Link>
           <div className="vline" style={{ height: 12, margin: '0 12px', opacity: 0.3 }} />
@@ -102,8 +106,8 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
         {/* Portal grid */}
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', borderTop: '1px solid var(--bd)', borderBottom: '1px solid var(--bd)' }}>
           <PortalTile code="01" emphasis title={t('team')}     desc={t('teamDesc')}     href="/atelier"    detail={{ works: stats.total }} lang={lang} />
-          <PortalTile code="02"         title={t('clients')}   desc={t('clientsDesc')}  href="/collection" lang={lang} />
-          <PortalTile code="03"         title={t('galleries')} desc={t('galleriesDesc')} href="/galerie"   lang={lang} />
+          <PortalTile code="02"         title={t('clients')}   desc={t('clientsDesc')}  href="/collection" lang={lang} wip={true} />
+          <PortalTile code="03"         title={t('galleries')} desc={t('galleriesDesc')} href="/galerie"   lang={lang} wip={true} />
           <PortalTile code="04"         title={t('public')}    desc={t('publicDesc')}   href="/portfolio"  lang={lang} />
         </div>
 
@@ -172,29 +176,41 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
 }
 
 function PortalTile({
-  code, title, desc, href, emphasis, detail, lang,
+  code, title, desc, href, emphasis, detail, lang, wip
 }: {
   code: string; title: string; desc: string; href: string
-  emphasis?: boolean; detail?: { works: number }; lang: string
+  emphasis?: boolean; detail?: { works: number }; lang: string; wip?: boolean
 }) {
   const router = useRouter()
   return (
-    <button onClick={() => router.push(href)}
+    <button onClick={() => !wip && router.push(href)}
       style={{
         background: 'transparent', border: 'none',
         borderRight: '1px solid var(--bd)', padding: '24px 20px 20px',
         textAlign: 'left', minHeight: emphasis ? 180 : 160,
         display: 'flex', flexDirection: 'column', gap: 10, transition: 'background .2s',
-        width: '100%',
+        width: '100%', cursor: wip ? 'default' : 'pointer',
+        opacity: wip ? 0.7 : 1
       }}
-      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg1)' }}
-      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
-      <div className="row gap-sm">
-        <div style={{ color: 'var(--ac)', fontSize: 9, letterSpacing: 3, fontWeight: 500 }}>{code}</div>
-        {emphasis && <div style={{ width: 6, height: 6, background: 'var(--ac)', borderRadius: '50%' }} />}
+      onMouseEnter={(e) => { !wip && (e.currentTarget as HTMLElement).style.background = 'var(--bg1)' }}
+      onMouseLeave={(e) => { !wip && (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
+      <div className="row gap-sm" style={{ justifyContent: 'space-between', width: '100%' }}>
+        <div className="row gap-sm">
+          <div style={{ color: 'var(--ac)', fontSize: 9, letterSpacing: 3, fontWeight: 500 }}>{code}</div>
+          {emphasis && <div style={{ width: 6, height: 6, background: 'var(--ac)', borderRadius: '50%' }} />}
+        </div>
+        {wip && (
+          <span style={{ 
+            fontSize: 7, letterSpacing: 1, textTransform: 'uppercase', 
+            color: 'var(--bg0)', background: 'var(--ac)', 
+            padding: '2px 6px', fontWeight: 600 
+          }}>
+            WIP
+          </span>
+        )}
       </div>
-      <h3 className="serif" style={{ fontSize: emphasis ? 32 : 22, color: 'var(--tx)', lineHeight: 1.05, letterSpacing: '-0.02em' }}>{title}</h3>
-      <p style={{ fontSize: 10, color: 'var(--tx2)', lineHeight: 1.5, maxWidth: '28ch' }}>{desc}</p>
+      <h3 className="serif" style={{ fontSize: emphasis ? 32 : 22, color: 'var(--tx)', lineHeight: 1.05, letterSpacing: '-0.02em', opacity: wip ? 0.4 : 1 }}>{title}</h3>
+      <p style={{ fontSize: 10, color: 'var(--tx2)', lineHeight: 1.5, maxWidth: '28ch', opacity: wip ? 0.6 : 1 }}>{desc}</p>
       {detail && (
         <div className="row gap-lg" style={{ paddingTop: 8, borderTop: '1px dashed var(--bd2)', marginTop: 'auto' }}>
           <div className="col gap-xs">
@@ -203,8 +219,8 @@ function PortalTile({
           </div>
         </div>
       )}
-      <div className="row gap-sm" style={{ marginTop: detail ? 0 : 'auto', color: 'var(--ac)', fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', fontWeight: 500 }}>
-        <span>{lang === 'fr' ? 'Entrer' : 'Enter'}</span><span>→</span>
+      <div className="row gap-sm" style={{ marginTop: detail ? 0 : 'auto', color: wip ? 'var(--tx3)' : 'var(--ac)', fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', fontWeight: 600 }}>
+        <span>{wip ? (lang === 'fr' ? 'Bientôt' : 'Soon') : (lang === 'fr' ? 'Entrer' : 'Enter')}</span>{!wip && <span>→</span>}
       </div>
     </button>
   )

@@ -45,6 +45,17 @@ export function VaultTab({ oeuvres, tM }: Props) {
   const [editingDoc, setEditingDoc] = useState<VaultDoc | null>(null)
   const [showCoa,    setShowCoa]    = useState(false)
 
+  const kindColor = (k: string) => {
+    switch (k) {
+      case 'coa':       return { bg: 'rgba(200, 168, 110, 0.15)', tx: 'var(--ac)' }
+      case 'facture':   return { bg: 'rgba(114, 184, 114, 0.15)', tx: '#72b872' }
+      case 'contrat':   return { bg: 'rgba(100, 180, 200, 0.15)', tx: '#64b4c8' }
+      case 'police':    return { bg: 'rgba(200, 100, 100, 0.15)', tx: '#c86464' }
+      case 'brouillon': return { bg: 'rgba(200, 160, 100, 0.15)', tx: '#c8a064' }
+      default:          return { bg: 'var(--bg2)', tx: 'var(--tx3)' }
+    }
+  }
+
   // ── Fetch documents ──────────────────────────────────────────────
   const fetchDocs = useCallback(async () => {
     setLoading(true)
@@ -171,8 +182,9 @@ export function VaultTab({ oeuvres, tM }: Props) {
                         {doc.kind && (
                           <span style={{
                             fontSize: 10, padding: '2px 7px', borderRadius: 2,
-                            background: 'var(--bg2)', color: 'var(--tx3)',
-                            textTransform: 'uppercase', letterSpacing: 1,
+                            background: kindColor(doc.kind).bg, color: kindColor(doc.kind).tx,
+                            textTransform: 'uppercase', letterSpacing: 1, fontWeight: 600,
+                            border: `1px solid ${kindColor(doc.kind).tx}33`
                           }}>
                             {kindLabel(doc.kind)}
                           </span>
