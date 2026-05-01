@@ -36,7 +36,7 @@ import { SystemTab }           from '@/components/atelier/SystemTab'
 
 type Tab =
   | 'overview' | 'inventory' | 'constellation' | 'production'
-  | 'logistics' | 'sales' | 'exhibitions' | 'vault' | 'contacts' | 'map' | 'pipeline' | 'fiscal' | 'concepts' | 'themes' | 'stock' | 'stock-take' | 'system'
+  | 'logistics' | 'sales' | 'exhibitions' | 'vault' | 'contacts' | 'map' | 'pipeline' | 'fiscal' | 'concepts' | 'themes' | 'stock' | 'stock-take' | 'system' | 'portfolio'
 
 interface Props {
   oeuvres:        Oeuvre[]
@@ -190,7 +190,7 @@ export function TeamPortalClient({
 
   // ── Tab definitions ────────────────────────────────────────────
 
-  const TABS: [Tab, string, number?][] = [
+  const TABS_RAW: [Tab, string, number?][] = [
     ['overview',      t('overview')],
     ['inventory',     t('inventory'), oeuvres.length],
     ['constellation', t('constellation')],
@@ -211,57 +211,87 @@ export function TeamPortalClient({
     ['system',        'System'],
   ]
 
+  const GROUPS: { label: string, tabs: Tab[] }[] = [
+    { label: 'Gestion', tabs: ['overview', 'inventory', 'contacts', 'vault'] },
+    { label: 'Opérations', tabs: ['production', 'logistics', 'stock', 'stock-take'] },
+    { label: 'Vision', tabs: ['constellation', 'concepts', 'themes', 'map'] },
+    { label: 'Commercial', tabs: ['sales', 'exhibitions', 'pipeline', 'fiscal'] },
+    { label: 'Diffusion', tabs: ['portfolio'] },
+    { label: 'Config', tabs: ['system'] },
+  ]
+
   const showDock = selection.size > 0 && tab !== 'constellation'
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg0)', position: 'relative' }}>
-
-      {/* ── Top bar ─────────────────────────────────────────────── */}
-      <div style={{ borderBottom: '1px solid var(--bd)', background: 'var(--bg1)', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 28px' }}>
-          <div className="row gap-md">
-            <button onClick={() => router.push('/hub')} className="t-mono-sm" style={{ color: 'var(--tx3)' }}>
-              ← {t('back')}
-            </button>
-            <div className="vline" style={{ height: 16 }} />
-            <div className="t-eyebrow" style={{ color: 'var(--ac)' }}>{t('team')}</div>
-            <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>· {oeuvres.length} {t('works')}</div>
-          </div>
-          <div className="row gap-sm">
-            <div style={{ display: 'flex', border: '1px solid var(--bd)', fontSize: 10, letterSpacing: 1 }}>
-              {(['fr', 'en'] as const).map((l) => (
-                <button
-                  key={l}
-                  onClick={() => setLang(l)}
-                  style={{
-                    padding: '4px 8px',
-                    background: lang === l ? 'var(--ac)' : 'transparent',
-                    color: lang === l ? 'var(--bg0)' : 'var(--tx3)',
-                    fontWeight: lang === l ? 600 : 400,
-                    borderRight: l === 'fr' ? '1px solid var(--bd)' : 'none',
-                  }}
-                >
-                  {l.toUpperCase()}
-                </button>
-              ))}
-            </div>
-            <button className="btn ghost sm" onClick={() => router.push('/atelier/works/new')}>
-              + {t('newWork')}
-            </button>
-          </div>
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg0)' }}>
+      
+      {/* ── Top header ─────────────────────────────────────────────── */}
+      <div style={{ flexShrink: 0, borderBottom: '1px solid var(--bd)', background: 'var(--bg1)', padding: '16px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+          <button onClick={() => router.push('/hub')} className="serif" style={{ fontSize: 24, letterSpacing: '-0.01em', color: 'var(--tx)', cursor: 'pointer' }}>Atelier PEM</button>
+          <div className="vline" style={{ height: 20, opacity: 0.5 }} />
+          <div className="t-mono-sm" style={{ opacity: 0.5 }}>{oeuvres.length} ŒUVRES</div>
         </div>
-        <nav style={{ display: 'flex', padding: '0 28px' }}>
-          {TABS.map(([k, lb, cnt]) => (
-            <button key={k} className={`navtab ${tab === k ? 'active' : ''}`} onClick={() => handleSetTab(k)}>
-              {lb}
-              {cnt !== undefined && <span className="cnt">{cnt}</span>}
-            </button>
-          ))}
-        </nav>
+
+        <div className="row gap-sm">
+          <div style={{ display: 'flex', border: '1px solid var(--bd)', fontSize: 10, letterSpacing: 1 }}>
+            {(['fr', 'en'] as const).map((l) => (
+              <button key={l} onClick={() => setLang(l)}
+                style={{
+                  padding: '4px 8px',
+                  background: lang === l ? 'var(--ac)' : 'transparent',
+                  color: lang === l ? 'var(--bg0)' : 'var(--tx3)',
+                  fontWeight: lang === l ? 600 : 400,
+                  borderRight: l === 'fr' ? '1px solid var(--bd)' : 'none',
+                }}
+              >{l.toUpperCase()}</button>
+            ))}
+          </div>
+          <button className="btn ghost sm" onClick={() => router.push('/atelier/works/new')}>+ {t('newWork')}</button>
+        </div>
       </div>
 
-      {/* ── Tab content ─────────────────────────────────────────── */}
-      <div style={{ flex: 1, overflow: 'auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+        
+        {/* ── Sidebar Nav ──────────────────────────────────────────── */}
+        <div style={{ width: 200, flexShrink: 0, borderRight: '1px solid var(--bd)', background: 'var(--bg1)', overflowY: 'auto', display: 'flex', flexDirection: 'column', padding: '24px 0' }}>
+          {GROUPS.map((g) => (
+            <div key={g.label} style={{ marginBottom: 28 }}>
+              <div className="t-eyebrow" style={{ padding: '0 24px', marginBottom: 12, opacity: 0.5, fontSize: 8 }}>{g.label}</div>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                {g.tabs.map((k) => {
+                  const item = TABS_RAW.find(x => x[0] === k)
+                  if (!item) return null
+                  const [key, label, count] = item
+                  const isActive = tab === key
+                  return (
+                    <button key={key} onClick={() => handleSetTab(key)}
+                      style={{
+                        padding: '8px 24px', fontSize: 11, textAlign: 'left',
+                        color: isActive ? 'var(--ac)' : 'var(--tx2)',
+                        background: isActive ? 'rgba(200,168,110,0.06)' : 'transparent',
+                        borderLeft: '3px solid',
+                        borderColor: isActive ? 'var(--ac)' : 'transparent',
+                        transition: 'all 0.15s', display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                      }}
+                    >
+                      <span style={{ fontWeight: isActive ? 600 : 400 }}>{label}</span>
+                      {count !== undefined && (
+                        <span style={{ 
+                          fontSize: 9, opacity: 0.6, padding: '1px 5px', 
+                          border: '1px solid currentColor', borderRadius: 2 
+                        }}>{count}</span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* ── Content ────────────────────────────────────────────── */}
+        <div style={{ flex: 1, overflow: 'auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
 
         {tab === 'overview' && (
           <OverviewTab oeuvres={oeuvres} tM={tM} t={t as (k: string) => string} onGoTab={handleSetTab} reminderCount={reminderCount} />
