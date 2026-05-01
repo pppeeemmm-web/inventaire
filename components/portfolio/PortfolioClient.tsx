@@ -6,6 +6,7 @@
 // PDF: @media print outputs A4 pages.
 
 import { useState, useMemo, useCallback, useEffect } from 'react'
+import Link from 'next/link'
 import { thumbUrl, yearOf } from '@/lib/data'
 
 interface Work {
@@ -22,7 +23,19 @@ interface Work {
   statutId:         number | null
 }
 
-interface Props { works: Work[] }
+interface Section {
+  id:          string
+  title:       string
+  description: string
+  theme:       string | null
+  sort_order:  number
+  is_active:   boolean
+}
+
+interface Props { 
+  works: Work[] 
+  sections: Section[]
+}
 
 function dims(w: Work): string {
   const p = [w.Hauteur, w.Largeur, w.Profondeur].filter(Boolean)
@@ -50,8 +63,14 @@ function Img({ src, alt, style, imgStyle }: {
 }
 
 // ── Page types ─────────────────────────────────────────────────────────
-type PageKind = 'cover' | 'approach' | 'work' | 'enquiry'
-interface Page { kind: PageKind; work?: Work; index?: number; total?: number }
+type PageKind = 'cover' | 'approach' | 'work' | 'enquiry' | 'section_intro'
+interface Page { 
+  kind: PageKind; 
+  work?: Work; 
+  index?: number; 
+  total?: number;
+  section?: Section;
+}
 
 // ── Main ───────────────────────────────────────────────────────────────
 export default function PortfolioClient({ works }: Props) {
@@ -70,11 +89,40 @@ export default function PortfolioClient({ works }: Props) {
       return Boolean(w.txtImageNameLink)
     }), [works, showPrivate, activeTheme])
 
-  const pages: Page[] = useMemo(() => [
-    { kind: 'approach' },
-    ...featured.map((w, i) => ({ kind: 'work' as PageKind, work: w, index: i + 1, total: featured.length })),
-    { kind: 'enquiry' },
-  ], [featured])
+  const pages: Page[] = useMemo(() => {
+    const activeSections = sections.filter(s => s.is_active).sort((a,b) => a.sort_order - b.sort_order)
+    
+    if (activeSections.length === 0) {
+      // Default behavior
+      return [
+        { kind: 'approach' },
+        ...featured.map((w, i) => ({ kind: 'work' as PageKind, work: w, index: i + 1, total: featured.length })),
+        { kind: 'enquiry' },
+      ]
+    }
+
+    // Dynamic sections
+    const dynamicPages: Page[] = [{ kind: 'approach' }]
+    
+    activeSections.forEach(s => {
+      // Intro page for the section
+      dynamicPages.push({ kind: 'section_intro', section: s })
+      
+      // Works for this section
+      const sectionWorks = works.filter(w => {
+        if (!showPrivate && !isAvail(w)) return false
+        if (s.theme && w.theme !== s.theme) return false
+        return Boolean(w.txtImageNameLink)
+      })
+      
+      sectionWorks.forEach((w, idx) => {
+        dynamicPages.push({ kind: 'work', work: w, index: idx + 1, total: sectionWorks.length })
+      })
+    })
+    
+    dynamicPages.push({ kind: 'enquiry' })
+    return dynamicPages
+  }, [featured, works, showPrivate, sections])
 
   useEffect(() => {
     setPageIdx(i => Math.min(i, pages.length - 1))
@@ -125,9 +173,11 @@ export default function PortfolioClient({ works }: Props) {
         position: 'sticky', top: 0, zIndex: 200,
         flexShrink: 0,
       }}>
-        {/* Artist name (compact) */}
-        <div className="serif" style={{ fontSize: 'clamp(12px, 2vw, 16px)', letterSpacing: '-0.02em', color: 'var(--tx2)', whiteSpace: 'nowrap' }}>
-          Pierre Emmanuel Moulin
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <Link href="/hub" style={{ textDecoration: 'none', color: 'var(--bg0)', fontSize: 8, opacity: 0.1, cursor: 'default' }}>·</Link>
+          <div className="serif" style={{ fontSize: 'clamp(12px, 2vw, 16px)', letterSpacing: '-0.02em', color: 'var(--tx2)', whiteSpace: 'nowrap' }}>
+            Pierre Emmanuel Moulin
+          </div>
         </div>
 
         {/* Section links */}
@@ -287,6 +337,18 @@ export default function PortfolioClient({ works }: Props) {
 // ── Card page content ──────────────────────────────────────────────────
 
 function CardContent({ page, isPortrait }: { page: Page; isPortrait: boolean }) {
+  if (page.kind === 'section_intro' && page.section) {
+    const s = page.section
+    return (
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 'clamp(24px,5%,48px)', justifyContent: 'center' }}>
+        <div className="t-label" style={{ marginBottom: 16, letterSpacing: 3 }}>{s.title}</div>
+        <div className="serif" style={{ fontSize: 'clamp(15px, 2.5vw, 22px)', lineHeight: 1.6, color: 'var(--tx)', fontStyle: 'italic', maxWidth: '35ch' }}>
+          {s.description}
+        </div>
+      </div>
+    )
+  }
+
   if (page.kind === 'approach') {
     return (
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 'clamp(24px,5%,48px)', justifyContent: 'space-between' }}>
@@ -372,6 +434,17 @@ function CardContent({ page, isPortrait }: { page: Page; isPortrait: boolean }) 
 // ── Print page ─────────────────────────────────────────────────────────
 
 function PrintPage({ page }: { page: Page }) {
+  if (page.kind === 'section_intro' && page.section) {
+    const s = page.section
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100%' }}>
+        <div style={{ fontFamily: 'monospace', fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', color: '#888', marginBottom: 24 }}>{s.title}</div>
+        <div style={{ fontFamily: 'Georgia, serif', fontSize: 18, lineHeight: 1.6, color: '#222', fontStyle: 'italic', maxWidth: 480 }}>
+          {s.description}
+        </div>
+      </div>
+    )
+  }
   if (page.kind === 'approach') {
     return (
       <>

@@ -45,9 +45,26 @@ export default async function PortfolioPage() {
       statutId:         o.statusId          as number | null,
     }))
 
+  // Fetch config
+  let sections: any[] = []
+  const { data: configDoc } = await supabase
+    .from('document')
+    .select('storage_path')
+    .eq('name', 'portfolio_sections.json')
+    .single()
+
+  if (configDoc?.storage_path) {
+    const { data: fileData } = await supabase.storage.from('documents').download(configDoc.storage_path)
+    if (fileData) {
+      try {
+        sections = JSON.parse(await fileData.text())
+      } catch (e) {}
+    }
+  }
+
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg0)', color: 'var(--tx)' }}>
-      <PortfolioClient works={works} />
+      <PortfolioClient works={works} sections={sections} />
     </div>
   )
 }

@@ -27,6 +27,7 @@ import { FiscalTab }           from '@/components/atelier/FiscalTab'
 import { ConceptsTab }         from '@/components/atelier/ConceptsTab'
 import { ExhibitionsTab }      from '@/components/atelier/ExhibitionsTab'
 import { ThemesTab }           from '@/components/atelier/ThemesTab'
+import { PortfolioTab }        from '@/components/atelier/PortfolioTab'
 import { SupplierHub }         from '@/components/atelier/SupplierHub'
 import { StockTakeTab }        from '@/components/atelier/StockTakeTab'
 import { SystemTab }           from '@/components/atelier/SystemTab'
@@ -204,6 +205,7 @@ export function TeamPortalClient({
     ['fiscal',        t('fiscal')],
     ['concepts',      t('concepts')],
     ['themes',        t('themes')],
+    ['portfolio',     'Portfolio'],
     ['stock',         'Stock'],
     ['stock-take',    'Stock-take'],
     ['system',        'System'],
@@ -334,6 +336,11 @@ export function TeamPortalClient({
         {tab === 'contacts' && (
           <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
             <ContactsTab contacts={contacts} oeuvres={oeuvres} />
+          </div>
+        )}
+        {tab === 'portfolio' && (
+          <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+            <PortfolioTab oeuvres={oeuvres} />
           </div>
         )}
         {tab === 'map' && (
