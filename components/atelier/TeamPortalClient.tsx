@@ -59,6 +59,23 @@ export function TeamPortalClient({
   const { t, lang, setLang } = useI18n()
   const router = useRouter()
 
+  // ── Environment Check ──────────────────────────────────────────
+  const isConfigured = !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+  
+  if (!isConfigured) {
+    return (
+      <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000', color: '#fff', textAlign: 'center', padding: 40 }}>
+        <div>
+          <h2 style={{ color: 'var(--rust)', marginBottom: 20 }}>Configuration Error</h2>
+          <p style={{ opacity: 0.7, maxWidth: 400, margin: '0 auto', fontSize: 14 }}>
+            The application is missing its connection keys. 
+            Please ensure <strong>NEXT_PUBLIC_SUPABASE_URL</strong> and <strong>NEXT_PUBLIC_SUPABASE_ANON_KEY</strong> are set in Vercel.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   // ── Global state ───────────────────────────────────────────────
 
   // Always start with 'overview' on server and client — prevents hydration mismatch.
