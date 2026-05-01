@@ -60,6 +60,12 @@ interface Reminder {
   lu:         boolean
 }
 
+const FIS: React.CSSProperties = {
+  padding: '6px 9px', fontSize: 11,
+  background: 'var(--bg0)', border: '1px solid var(--bd)',
+  color: 'var(--tx)', outline: 'none', width: '100%',
+}
+
 // ── Config ─────────────────────────────────────────────────────────────
 
 export const TYPE_LABELS: Record<ProcessType, string> = {
@@ -734,39 +740,39 @@ function ProcessModal({ process, onClose, onSaved }: {
 
         <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
           <div><div className="t-label" style={{marginBottom:3}}>Name *</div>
-            <input value={nom} onChange={e=>{const v=e.target.value;setNom(v)}} style={IS} placeholder="e.g. Prix Marcel Duchamp 2026" /></div>
+            <input value={nom} onChange={e=>{const v=e.target.value;setNom(v)}} style={FIS} placeholder="e.g. Prix Marcel Duchamp 2026" /></div>
 
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
             <div><div className="t-label" style={{marginBottom:3}}>Type</div>
-              <select value={type} onChange={e=>handleTypeChange(e.target.value as ProcessType)} style={IS}>
+              <select value={type} onChange={e=>handleTypeChange(e.target.value as ProcessType)} style={FIS}>
                 {SORTED_TYPES.map(t=><option key={t} value={t}>{TYPE_LABELS[t]}</option>)}
               </select></div>
             <div><div className="t-label" style={{marginBottom:3}}>Status</div>
-              <select value={statut} onChange={e=>{const v=e.target.value;setStatut(v as ProcessStatut)}} style={IS}>
+              <select value={statut} onChange={e=>{const v=e.target.value;setStatut(v as ProcessStatut)}} style={FIS}>
                 {(Object.entries(STATUT_LABELS) as [ProcessStatut,string][]).sort((a,b)=>a[1].localeCompare(b[1])).map(([k,v])=><option key={k} value={k}>{v}</option>)}
               </select></div>
           </div>
 
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10 }}>
             <div><div className="t-label" style={{marginBottom:3}}>Start</div>
-              <input type="date" value={debut} onChange={e=>{const v=e.target.value;setDebut(v)}} style={IS} /></div>
+              <input type="date" value={debut} onChange={e=>{const v=e.target.value;setDebut(v)}} style={FIS} /></div>
             <div><div className="t-label" style={{marginBottom:3}}>Deadline date</div>
-              <input type="date" value={fin} onChange={e=>{const v=e.target.value;setFin(v)}} style={IS} /></div>
+              <input type="date" value={fin} onChange={e=>{const v=e.target.value;setFin(v)}} style={FIS} /></div>
             <div><div className="t-label" style={{marginBottom:3}}>Time (GMT)</div>
-              <input value={deadlineTime} onChange={e=>{const v=e.target.value;setDeadlineTime(v)}} style={IS} placeholder="23:59 GMT" /></div>
+              <input value={deadlineTime} onChange={e=>{const v=e.target.value;setDeadlineTime(v)}} style={FIS} placeholder="23:59 GMT" /></div>
           </div>
 
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
             <div><div className="t-label" style={{marginBottom:3}}>Location</div>
-              <input value={localisation} onChange={e=>{const v=e.target.value;setLocalisation(v)}} style={IS} placeholder="City, venue…" /></div>
+              <input value={localisation} onChange={e=>{const v=e.target.value;setLocalisation(v)}} style={FIS} placeholder="City, venue…" /></div>
             <div><div className="t-label" style={{marginBottom:3}}>URL (instructions / website)</div>
-              <input value={url} onChange={e=>{const v=e.target.value;setUrl(v)}} style={IS} placeholder="https://…" /></div>
+              <input value={url} onChange={e=>{const v=e.target.value;setUrl(v)}} style={FIS} placeholder="https://…" /></div>
           </div>
 
           <div><div className="t-label" style={{marginBottom:3}}>Scope</div>
-            <input value={scope} onChange={e=>{const v=e.target.value;setScope(v)}} style={IS} placeholder="Describe the scope and objectives…" /></div>
+            <input value={scope} onChange={e=>{const v=e.target.value;setScope(v)}} style={FIS} placeholder="Describe the scope and objectives…" /></div>
           <div><div className="t-label" style={{marginBottom:3}}>Stakeholders</div>
-            <input value={stakeholders} onChange={e=>{const v=e.target.value;setStakeholders(v)}} style={IS} placeholder="Organisations, institutions involved…" /></div>
+            <input value={stakeholders} onChange={e=>{const v=e.target.value;setStakeholders(v)}} style={FIS} placeholder="Organisations, institutions involved…" /></div>
 
           <div>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
@@ -783,9 +789,9 @@ function ProcessModal({ process, onClose, onSaved }: {
           </div>
 
           <div><div className="t-label" style={{marginBottom:3}}>Dossier vault (lien vers le dossier de documents)</div>
-            <input value={vaultPath} onChange={e=>{const v=e.target.value;setVaultPath(v)}} style={IS} placeholder="https://drive.google.com/… ou chemin local" /></div>
+            <input value={vaultPath} onChange={e=>{const v=e.target.value;setVaultPath(v)}} style={FIS} placeholder="https://drive.google.com/… ou chemin local" /></div>
           <div><div className="t-label" style={{marginBottom:3}}>Vault tags (comma-separated)</div>
-            <input value={vaultTags} onChange={e=>{const v=e.target.value;setVaultTags(v)}} style={IS} placeholder="dossier, photo, press release, contract…" /></div>
+            <input value={vaultTags} onChange={e=>{const v=e.target.value;setVaultTags(v)}} style={FIS} placeholder="dossier, photo, press release, contract…" /></div>
           <div><div className="t-label" style={{marginBottom:3}}>Assets to produce</div>
             <textarea value={assetNotes} onChange={e=>{const v=e.target.value;setAssetNotes(v)}} rows={2} style={{...IS,resize:'vertical',lineHeight:1.5}} placeholder="List assets to be produced for this process…" /></div>
 

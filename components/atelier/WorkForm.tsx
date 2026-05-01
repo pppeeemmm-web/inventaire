@@ -44,6 +44,12 @@ interface Props {
   action:          (fd: FormData) => Promise<SaveResult>
 }
 
+const FIS: React.CSSProperties = {
+  padding: '6px 9px', fontSize: 11,
+  background: 'var(--bg0)', border: '1px solid var(--bd)',
+  color: 'var(--tx)', outline: 'none', width: '100%',
+}
+
 // ── Component ─────────────────────────────────────────────────────────────
 
 export function WorkForm({
@@ -1359,9 +1365,9 @@ function ContactModal({
         {/* Identité */}
         <CMSection title="Identité" />
         <div style={G2}>
-          <FR label="Institution"><input value={form.NomInstitution} onChange={f("NomInstitution")} style={IS} /></FR>
+          <FR label="Institution"><input value={form.NomInstitution} onChange={f("NomInstitution")} style={FIS} /></FR>
           <FR label="Rôle">
-            <select value={form.Role} onChange={f("Role")} style={IS}>
+            <select value={form.Role} onChange={f("Role")} style={FIS}>
               <option value="">— Choisir</option>
               {form.Role && !roleOptions.includes(form.Role) && (
                 <option value={form.Role}>{form.Role}</option>
@@ -1369,10 +1375,10 @@ function ContactModal({
               {roleOptions.map((r) => <option key={r} value={r}>{r}</option>)}
             </select>
           </FR>
-          <FR label="Prénom"><input value={form.Prénom} onChange={f("Prénom")} style={IS} /></FR>
-          <FR label="Nom"><input value={form.Nom} onChange={f("Nom")} style={IS} /></FR>
+          <FR label="Prénom"><input value={form.Prénom} onChange={f("Prénom")} style={FIS} /></FR>
+          <FR label="Nom"><input value={form.Nom} onChange={f("Nom")} style={FIS} /></FR>
           <FR label="Genre">
-            <select value={form.Genre} onChange={f("Genre")} style={IS}>
+            <select value={form.Genre} onChange={f("Genre")} style={FIS}>
               <option value="">—</option>
               <option value="M.">M.</option>
               <option value="Mme">Mme</option>
@@ -1387,15 +1393,15 @@ function ContactModal({
           </FR>
         </div>
         <div style={{ ...G2, marginTop: 8 }}>
-          <FR label="Personne responsable"><input value={form.PersonneResponsable} onChange={f("PersonneResponsable")} style={IS} /></FR>
-          <FR label="Rôle responsable"><input value={form.RoleResponsable} onChange={f("RoleResponsable")} style={IS} /></FR>
+          <FR label="Personne responsable"><input value={form.PersonneResponsable} onChange={f("PersonneResponsable")} style={FIS} /></FR>
+          <FR label="Rôle responsable"><input value={form.RoleResponsable} onChange={f("RoleResponsable")} style={FIS} /></FR>
         </div>
 
         {/* Contact */}
         <CMSection title="Contact" />
         <div style={G2}>
-          <FR label="Email"><input type="email" value={form.Email} onChange={f("Email")} style={IS} /></FR>
-          <FR label="Website"><input value={form.Website} onChange={f("Website")} placeholder="https://…" style={IS} /></FR>
+          <FR label="Email"><input type="email" value={form.Email} onChange={f("Email")} style={FIS} /></FR>
+          <FR label="Website"><input value={form.Website} onChange={f("Website")} placeholder="https://…" style={FIS} /></FR>
           <FR label="Indicatif + Tél. 1">
             <div style={{ display: "flex", gap: 4 }}>
               <input value={form.IndicatifPays1} onChange={f("IndicatifPays1")} placeholder="+" style={{ ...IS, width: 56, flexShrink: 0 }} />
@@ -1434,12 +1440,12 @@ function ContactModal({
                 )}
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <input value={addr.adresse} onChange={(e) => updateAddr(i, "adresse", e.target.value)} placeholder="Rue / adresse" style={IS} />
+                <input value={addr.adresse} onChange={(e) => updateAddr(i, "adresse", e.target.value)} placeholder="Rue / adresse" style={FIS} />
                 <div style={{ display: "grid", gridTemplateColumns: "100px 1fr", gap: 6 }}>
-                  <input value={addr.code_postal} onChange={(e) => updateAddr(i, "code_postal", e.target.value)} placeholder="Code postal" style={IS} />
-                  <input value={addr.ville} onChange={(e) => updateAddr(i, "ville", e.target.value)} placeholder="Ville" style={IS} />
+                  <input value={addr.code_postal} onChange={(e) => updateAddr(i, "code_postal", e.target.value)} placeholder="Code postal" style={FIS} />
+                  <input value={addr.ville} onChange={(e) => updateAddr(i, "ville", e.target.value)} placeholder="Ville" style={FIS} />
                 </div>
-                <input value={addr.pays} onChange={(e) => updateAddr(i, "pays", e.target.value)} placeholder="Pays" style={IS} />
+                <input value={addr.pays} onChange={(e) => updateAddr(i, "pays", e.target.value)} placeholder="Pays" style={FIS} />
               </div>
             </div>
           ))}
@@ -1457,10 +1463,10 @@ function ContactModal({
         {/* Réseaux sociaux */}
         <CMSection title="Réseaux sociaux" />
         <div style={G2}>
-          <FR label="Instagram"><input value={form.Instagram} onChange={f("Instagram")} placeholder="@handle ou URL" style={IS} /></FR>
-          <FR label="LinkedIn"><input value={form.LinkedIn} onChange={f("LinkedIn")} placeholder="handle ou URL" style={IS} /></FR>
-          <FR label="Facebook"><input value={form.Facebook} onChange={f("Facebook")} placeholder="handle ou URL" style={IS} /></FR>
-          <FR label="Twitter / X"><input value={form.Twitter} onChange={f("Twitter")} placeholder="@handle ou URL" style={IS} /></FR>
+          <FR label="Instagram"><input value={form.Instagram} onChange={f("Instagram")} placeholder="@handle ou URL" style={FIS} /></FR>
+          <FR label="LinkedIn"><input value={form.LinkedIn} onChange={f("LinkedIn")} placeholder="handle ou URL" style={FIS} /></FR>
+          <FR label="Facebook"><input value={form.Facebook} onChange={f("Facebook")} placeholder="handle ou URL" style={FIS} /></FR>
+          <FR label="Twitter / X"><input value={form.Twitter} onChange={f("Twitter")} placeholder="@handle ou URL" style={FIS} /></FR>
         </div>
 
         {/* Notes */}

@@ -71,7 +71,7 @@ function cap(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
-const IS: React.CSSProperties = {
+const FIS: React.CSSProperties = {
   padding: '7px 10px', fontSize: 11,
   background: 'var(--bg1)', border: '1px solid var(--bd)',
   color: 'var(--tx)', outline: 'none',
@@ -307,7 +307,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres }: Props) {
           <option value="email">{t('searchFieldEmail')}</option>
           <option value="notes">{t('searchFieldNotes')}</option>
         </select>
-        <select value={role} onChange={(e) => setRole(e.target.value)} style={IS}>
+        <select value={role} onChange={(e) => setRole(e.target.value)} style={FIS}>
           <option value="all">{t('allRoles')}</option>
           {roles.map((r) => <option key={r} value={r}>{r}</option>)}
         </select>
