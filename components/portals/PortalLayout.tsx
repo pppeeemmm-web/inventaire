@@ -28,7 +28,7 @@ export default function PortalLayout({ title, subtitle, works, userName }: Props
       {/* Header */}
       <nav style={{ 
         position: 'sticky', top: 0, zIndex: 100,
-        display: 'flex', alignItems: 'center', justify-content: 'space-between',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '24px 40px', background: 'rgba(237,234,228,0.92)', backdropFilter: 'blur(12px)',
         borderBottom: '1px solid #dedad4'
       }}>
