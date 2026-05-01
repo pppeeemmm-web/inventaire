@@ -96,6 +96,12 @@ export default function LandingPage() {
           <Link href="/practice" className="orb orb-right">Practice</Link>
           <a href="mailto:pppeeemmm@gmail.com" className="orb orb-bottom">Enquiry</a>
         </div>
+
+        <Link href="/hub" style={{ 
+          position: 'absolute', bottom: 20, right: 24, 
+          fontSize: 8, letterSpacing: 2, textTransform: 'uppercase', 
+          color: '#b0aca6', textDecoration: 'none', opacity: 0.5 
+        }}>•</Link>
       </div>
     </>
   )
