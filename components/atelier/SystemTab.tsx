@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useTransition } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { vaultStudioBible } from '@/app/atelier/vault/bible-action'
 
 interface LogEntry {
   id: number
@@ -16,6 +17,7 @@ export function SystemTab() {
   const [logs, setLogs] = useState<LogEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
+  const [isPending, startTransition] = useTransition()
   
   // Form state
   const [label, setLabel] = useState('')
@@ -51,11 +53,44 @@ export function SystemTab() {
     setBusy(false)
   }
 
+  function handleRegenerateBible() {
+    if (!confirm('Regenerate and Vault the Studio Bible PDF?')) return
+    startTransition(async () => {
+      const res = await vaultStudioBible()
+      if ('error' in res) {
+        alert(`Error: ${res.error}`)
+      } else {
+        alert(`Success! Studio Bible vaulted as: ${res.filename}`)
+        // Add a log entry for the update
+        const sb = createClient()
+        await sb.from('system_log').insert([{
+          label: 'Studio Bible Updated',
+          details: `Regenerated high-fidelity PDF and vaulted as ${res.filename}`,
+          type: 'improvement',
+          status: 'completed'
+        }])
+        fetchLogs()
+      }
+    })
+  }
+
   return (
     <div style={{ flex: 1, padding: '32px 40px', overflow: 'auto', background: 'var(--bg0)' }}>
       <div style={{ maxWidth: 900 }}>
-        <h2 className="serif" style={{ fontSize: 32, marginBottom: 8 }}>System Ledger & Suggestions</h2>
-        <p className="t-mono-sm" style={{ color: 'var(--tx3)', marginBottom: 32 }}>Record maintenance, log improvements, or suggest new features for the studio system.</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32 }}>
+          <div>
+            <h2 className="serif" style={{ fontSize: 32, marginBottom: 8 }}>System Ledger & Suggestions</h2>
+            <p className="t-mono-sm" style={{ color: 'var(--tx3)' }}>Record maintenance, log improvements, or suggest new features for the studio system.</p>
+          </div>
+          <button 
+            className="btn ghost sm" 
+            onClick={handleRegenerateBible}
+            disabled={isPending}
+            style={{ borderColor: 'var(--ac)', color: 'var(--ac)' }}
+          >
+            {isPending ? 'Regenerating...' : '✦ Regenerate Studio Bible'}
+          </button>
+        </div>
         
         {/* Input Form */}
         <form onSubmit={handleSubmit} style={{ 

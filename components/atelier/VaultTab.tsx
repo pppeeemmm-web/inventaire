@@ -21,6 +21,7 @@ const DOC_KINDS: { value: string; label: string }[] = [
   { value: 'police',    label: 'Polices' },
   { value: 'brouillon', label: 'Brouillons' },
   { value: 'ecriture',  label: 'Écrits' },
+  { value: 'bible',     label: 'Studio Bible' },
   { value: 'autre',     label: 'Autres' },
 ]
 
@@ -52,6 +53,7 @@ export function VaultTab({ oeuvres, tM }: Props) {
       case 'contrat':   return { bg: 'rgba(100, 180, 200, 0.15)', tx: '#64b4c8' }
       case 'police':    return { bg: 'rgba(200, 100, 100, 0.15)', tx: '#c86464' }
       case 'brouillon': return { bg: 'rgba(200, 160, 100, 0.15)', tx: '#c8a064' }
+      case 'bible':     return { bg: 'rgba(192, 96, 96, 0.15)',  tx: '#c06060' }
       default:          return { bg: 'var(--bg2)', tx: 'var(--tx3)' }
     }
   }

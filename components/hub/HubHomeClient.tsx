@@ -41,8 +41,8 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
         </div>
         <div className="row gap-md">
           <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>{t('signedAs')} · atelier</div>
-          <Link href="/Atelier_Studio_Bible.html" target="_blank" className="t-mono-sm" style={{ color: 'var(--tx2)', textDecoration: 'none', marginLeft: 12 }}>
-            Studio Bible 📖
+          <Link href="/Atelier_Studio_Bible.pdf" target="_blank" className="t-mono-sm" style={{ color: 'var(--tx2)', textDecoration: 'none', marginLeft: 12 }}>
+            Studio Bible 📕
           </Link>
           <div className="vline" style={{ height: 12, margin: '0 12px', opacity: 0.3 }} />
           <Link href="/atelier?tab=system" className="t-mono-sm" style={{ color: 'var(--tx2)', textDecoration: 'none' }}>
