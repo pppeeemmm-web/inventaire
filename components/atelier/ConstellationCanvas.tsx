@@ -442,6 +442,7 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
   }, [groupBy, loading, constellationOeuvres, themes, selectedThemeId, redraw, oeuvresById, oeuvres])
 
   // ── Visible image loading (zoom-adaptive tiers) ───────────────
+  const loadingSet = useRef(new Set<string>())
   function loadVisible() {
     const c = canvasRef.current
     if (!c) return
@@ -451,31 +452,52 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
     const x0   = (-vp.x - m) / vp.z, x1 = (c.offsetWidth  - vp.x + m) / vp.z
     const y0   = (-vp.y - m) / vp.z, y1 = (c.offsetHeight - vp.y + m) / vp.z
 
+    // Limit concurrent new requests to avoid browser bottleneck
+    let requestsStarted = 0
+    const MAX_BATCH = 20
+
     for (const [id, p] of posRef.current) {
+      if (requestsStarted >= MAX_BATCH) break
+
       const ncx = p.x + NW / 2, ncy = p.y + NH / 2
       if (ncx + NR < x0 || ncx - NR > x1 || ncy + NR < y0 || ncy - NR > y1) continue
       
       const o = oeuvresById.get(id)
       if (!o?.txtImageNameLink) continue
 
-      // Request current tier + base fallback tiers (100, 40)
-      [tier, 100, 40].forEach(t => {
-        const key = `${id}_${t}`
-        if (!imagesRef.current.has(key)) {
-          const img = new Image()
-          img.crossOrigin = 'anonymous'
-          img.onload  = () => { imagesRef.current.set(key, img); redraw() }
-          img.onerror = () => {
-            const full = imageUrl(o.txtImageNameLink!) ?? ''
-            if (full && img.src !== full) {
-              img.src = full
+      const key = `${id}_${tier}`
+      // If we don't have THIS specific tier and aren't already fetching it
+      if (!imagesRef.current.has(key) && !loadingSet.current.has(key)) {
+        requestsStarted++
+        loadingSet.current.add(key)
+
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        
+        img.onload = () => {
+          loadingSet.current.delete(key)
+          imagesRef.current.set(key, img)
+          redraw()
+        }
+
+        img.onerror = () => {
+          loadingSet.current.delete(key)
+          // If thumbnail fails, try to load the full image as a fallback
+          const fullUrl = imageUrl(o.txtImageNameLink!)
+          if (fullUrl && img.src !== fullUrl) {
+            // Note: we don't use loadingSet for full image fallback to keep it simple
+            const fallbackImg = new Image()
+            fallbackImg.crossOrigin = 'anonymous'
+            fallbackImg.onload = () => {
+              imagesRef.current.set(key, fallbackImg)
               redraw()
             }
+            fallbackImg.src = fullUrl
           }
-          img.src = thumbUrl(o.txtImageNameLink!, t) ?? ''
-          imagesRef.current.set(key, img)
         }
-      })
+
+        img.src = thumbUrl(o.txtImageNameLink!, tier) ?? ''
+      }
     }
   }
 
@@ -512,7 +534,8 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
     const sel     = selRef.current
     const hovNode = hovNodeRef.current
     const hovEdge = hovEdgeRef.current
-
+ 
+    ctx.save() // Viewport transform start
     ctx.translate(vp.x, vp.y)
     ctx.scale(vp.z, vp.z)
 
@@ -806,9 +829,9 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
       }
     }
 
-    ctx.restore()
+    ctx.restore() // Viewport transform end
 
-    // ── Marquee (Screen Space) ──────────────────────────────────
+    // ── Marquee (Screen Space - CSS Pixels with DPR) ────────────
     if (marquee) {
       ctx.strokeStyle = 'rgba(200,168,110,0.8)'
       ctx.setLineDash([4, 4])
@@ -819,6 +842,8 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
       ctx.setLineDash([])
     }
 
+    ctx.restore()
+ 
     loadVisible()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tick, groupBy, linkType, oeuvres, themes, themeWork, oeuvresById, selectedThemeId, shapes, activeShape, marquee])
@@ -895,6 +920,29 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
       setMarquee({ x: lx, y: ly, w: 0, h: 0 })
       return
     }
+ 
+    if (tool === 'erase') {
+      dragRef.current = { mode: 'erase', startX: lx, startY: ly }
+      // Immediate erase on click
+      const wx = (lx - vpRef.current.x) / vpRef.current.z
+      const wy = (ly - vpRef.current.y) / vpRef.current.z
+      setShapes(prev => prev.filter(s => {
+        if (s.type === 'line') {
+          for (let i = 0; i < s.points.length - 1; i++) {
+            if (ptSeg(wx, wy, s.points[i].x, s.points[i].y, s.points[i+1].x, s.points[i+1].y) < 12 / vpRef.current.z) return false
+          }
+          return true
+        } else {
+          // Better text hit detection: assume 12px width per char approx, check box
+          const charW = (s.size * 0.6)
+          const tw = s.text.length * charW
+          const th = s.size
+          return !(wx >= s.x - 10 && wx <= s.x + tw + 10 && wy >= s.y - th && wy <= s.y + 10)
+        }
+      }))
+      redraw()
+      return
+    }
 
     if (!hit) {
       dragRef.current = { mode: 'pan', startX: lx, startY: ly, panOrigin: { x: vpRef.current.x, y: vpRef.current.y } }
@@ -926,6 +974,26 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
 
     if (drag.mode === 'marquee') {
       setMarquee({ x: drag.startX, y: drag.startY, w: lx - drag.startX, h: ly - drag.startY })
+      redraw()
+      return
+    }
+ 
+    if (drag.mode === 'erase') {
+      const wx = (lx - vp.x) / vp.z
+      const wy = (ly - vp.y) / vp.z
+      setShapes(prev => prev.filter(s => {
+        if (s.type === 'line') {
+          for (let i = 0; i < s.points.length - 1; i++) {
+            if (ptSeg(wx, wy, s.points[i].x, s.points[i].y, s.points[i+1].x, s.points[i+1].y) < 12 / vp.z) return false
+          }
+          return true
+        } else {
+          const charW = (s.size * 0.6)
+          const tw = s.text.length * charW
+          const th = s.size
+          return !(wx >= s.x - 10 && wx <= s.x + tw + 10 && wy >= s.y - th && wy <= s.y + 10)
+        }
+      }))
       redraw()
       return
     }
@@ -1087,11 +1155,14 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
       setShapes(prev => prev.filter(s => {
         if (s.type === 'line') {
           for (let i = 0; i < s.points.length - 1; i++) {
-            if (ptSeg(wx, wy, s.points[i].x, s.points[i].y, s.points[i+1].x, s.points[i+1].y) < 10 / vpRef.current.z) return false
+            if (ptSeg(wx, wy, s.points[i].x, s.points[i].y, s.points[i+1].x, s.points[i+1].y) < 12 / vpRef.current.z) return false
           }
           return true
         } else {
-          return Math.hypot(wx - s.x, wy - s.y) > 20 / vpRef.current.z
+          const charW = (s.size * 0.6)
+          const tw = s.text.length * charW
+          const th = s.size
+          return !(wx >= s.x - 10 && wx <= s.x + tw + 10 && wy >= s.y - th && wy <= s.y + 10)
         }
       }))
       redraw()
