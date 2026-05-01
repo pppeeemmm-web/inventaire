@@ -73,7 +73,7 @@ interface Page {
 }
 
 // ── Main ───────────────────────────────────────────────────────────────
-export default function PortfolioClient({ works }: Props) {
+export default function PortfolioClient({ works, sections }: Props) {
   const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('portrait')
   const [showPrivate,  setShowPrivate]  = useState(false)
   const [activeTheme,  setActiveTheme]  = useState<string | null>(null)
