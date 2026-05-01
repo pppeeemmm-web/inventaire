@@ -8,6 +8,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useI18n } from '@/lib/i18n/context'
+import { imageUrl, thumbUrl, yearOf } from '@/lib/data'
 import type { Oeuvre } from '@/lib/types/database'
 
 import { InventoryTab }        from '@/components/atelier/InventoryTab'
@@ -47,6 +48,7 @@ interface Props {
   // Optional — not yet passed from page.tsx; defaults to {} to avoid crash
   themeWorkCount?: Record<number, number>
   groupWorkCount?:  Record<string, number>
+  addresses?:       any[]
 }
 
 // ── Component ────────────────────────────────────────────────────────
@@ -55,6 +57,7 @@ export function TeamPortalClient({
   oeuvres, techniques, supports, formats, themes, contacts,
   statusLabelMap, initialGroups, presentations,
   themeWorkCount = {}, groupWorkCount = {},
+  addresses = [],
 }: Props) {
   const { t, lang, setLang } = useI18n()
   const router = useRouter()
@@ -105,6 +108,19 @@ export function TeamPortalClient({
   useEffect(() => {
     (window as any).setSelection = setSelection
   }, [])
+
+  const [showCompare, setShowCompare] = useState(false)
+  const [toast,         setToast]        = useState<string | null>(null)
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('batch') === 'success') {
+      setToast(t('batchSuccess'))
+      // Clean up URL without reload
+      window.history.replaceState({}, '', window.location.pathname)
+      setTimeout(() => setToast(null), 4000)
+    }
+  }, [t])
 
   function handleSetTab(next: Tab) {
     setTab(next)
@@ -388,8 +404,44 @@ export function TeamPortalClient({
             handleSetTab('constellation')
           }}
           onSaveGroup={handleSaveGroup}
+          onCompare={() => setShowCompare(true)}
         />
       )}
+
+      {/* ── Compare Modal ────────────────────────────────────────── */}
+      {showCompare && (
+        <CompareModal
+          ids={[...selection]}
+          oeuvres={oeuvres}
+          tM={tM} sM={sM}
+          contacts={contacts}
+          addresses={addresses}
+          statusLabelMap={statusLabelMap}
+          onClose={() => setShowCompare(false)}
+        />
+      )}
+
+      {/* ── Toast Notification ──────────────────────────────────── */}
+      {toast && (
+        <div style={{
+          position: 'fixed', bottom: 32, right: 32, zIndex: 200,
+          background: 'var(--bg2)', border: '1px solid var(--ac)',
+          padding: '12px 20px', borderRadius: 2,
+          boxShadow: '0 8px 40px rgba(0,0,0,0.5)',
+          color: 'var(--ac)', display: 'flex', alignItems: 'center', gap: 12,
+          animation: 'toastIn 0.3s ease-out',
+        }}>
+          <span style={{ fontSize: 16 }}>✓</span>
+          <span className="t-mono-sm" style={{ fontWeight: 600 }}>{toast}</span>
+        </div>
+      )}
+
+      <style jsx>{`
+        @keyframes toastIn {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </div>
   )
 }
@@ -574,3 +626,157 @@ function OverviewTab({
 }
 
 //
+ 
+// ── Compare Modal ──────────────────────────────────────────────────
+
+function CompareModal({ ids, oeuvres, tM, sM, contacts, addresses, statusLabelMap, onClose }: {
+  ids:             number[]
+  oeuvres:         Oeuvre[]
+  tM:              Record<number, string>
+  sM:              Record<number, string>
+  contacts:        any[]
+  addresses:       any[]
+  statusLabelMap:  Record<number, string>
+  onClose:         () => void
+}) {
+  const { t } = useI18n()
+  const works = oeuvres.filter(o => ids.includes(o.OeuvreID))
+
+  const contactName = (cid: any) => {
+    if (!cid) return '—'
+    const c = contacts.find(x => String(x.ContactID) === String(cid))
+    if (!c) return `#${cid}`
+    return c.NomInstitution || `${c.Prénom ?? ''} ${c.Nom ?? ''}`.trim() || `#${cid}`
+  }
+
+  const resolveLocation = (cid: any) => {
+    if (!cid) return 'Atelier (Marseille)'
+    const c = contacts.find(x => String(x.ContactID) === String(cid))
+    if (!c) return `#${cid}`
+    
+    const relevantAddrs = addresses.filter(a => String(a.contact_id) === String(cid))
+    const geo = [c.Ville, c.Pays].filter(Boolean).join(', ')
+    
+    // If only one address (or none), the location (City/Country) is enough
+    if (relevantAddrs.length <= 1) {
+      return geo || c.NomInstitution || '—'
+    }
+    
+    // Multiple addresses: show address label + city
+    // For now, since we don't have an AddressID in Oeuvre, we look at LocalisationDetail
+    // or fallback to the contact name if we can't distinguish.
+    const name = c.NomInstitution || `${c.Prénom ?? ''} ${c.Nom ?? ''}`.trim()
+    return geo ? `${name} (${geo})` : name
+  }
+
+  // Define ALL fields to compare
+  const fields = [
+    { l: 'ID',             k: (o: any) => `#${o.OeuvreID}` },
+    { l: t('title'),       k: (o: any) => o.Titre || '—' },
+    { l: t('year'),        k: (o: any) => yearOf(o.Année) || '—' },
+    { l: t('technique'),   k: (o: any) => o.Technique != null ? tM[o.Technique] : '—' },
+    { l: t('support'),     k: (o: any) => o.Support != null ? sM[o.Support] : '—' },
+    { l: 'Format',         k: (o: any) => o.Format || '—' },
+    { l: 'Dimensions',     k: (o: any) => o.Hauteur && o.Largeur ? `${o.Hauteur} × ${o.Largeur} cm` : '—' },
+    { l: t('depth'),       k: (o: any) => o.Profondeur ? `${o.Profondeur} cm` : '—' },
+    { l: t('tirage'),      k: (o: any) => o.Tirage || '—' },
+    { l: t('status'),      k: (o: any) => o.statusId != null ? statusLabelMap[o.statusId] : '—' },
+    { l: t('production'),  k: (o: any) => o.StageProduction || '—' },
+    { l: t('contact'),     k: (o: any) => contactName(o.ContactID) },
+    { l: t('location'),    k: (o: any) => resolveLocation(o.LocalisationID) },
+    { l: t('price'),       k: (o: any) => o.Prix ? `€ ${Number(o.Prix).toLocaleString('fr-FR')}` : '—' },
+    { l: t('discount'),    k: (o: any) => o.Discount ? `€ ${Number(o.Discount).toLocaleString('fr-FR')}` : '—' },
+    { l: 'Prix Final',     k: (o: any) => o.PrixFinal ? `€ ${Number(o.PrixFinal).toLocaleString('fr-FR')}` : '—' },
+    { l: t('exhibitable'), k: (o: any) => o.Exposable ? '✓' : '—' },
+    { l: 'Encadrée',       k: (o: any) => o.Encadree ? '✓' : '—' },
+    { l: 'Montée',         k: (o: any) => o.Montee ? '✓' : '—' },
+    { l: t('catalogued'),  k: (o: any) => o.Catalogué ? '✓' : '—' },
+    { l: 'Anonymat',       k: (o: any) => {
+        const level = (o as any).anonymity_level ?? (o.is_public === false ? 2 : 0)
+        return level === 0 ? 'Public' : level === 1 ? 'Anonyme' : 'Privé'
+      }},
+    { l: 'Commission',     k: (o: any) => o.IsCommission ? '✓' : '—' },
+    { l: t('notes'),       k: (o: any) => o.Commentaires || '—' },
+    { l: t('history'),     k: (o: any) => o.Historique || '—' },
+  ]
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 1000,
+      background: 'rgba(10,10,12,0.98)',
+      display: 'flex', flexDirection: 'column', padding: '40px 60px',
+      backdropFilter: 'blur(12px)',
+    }} onClick={onClose}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <div className="t-eyebrow" style={{ color: '#fff' }}>{t('compare')} — {ids.length} {t('works')}</div>
+        <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: 24, cursor: 'pointer' }}>×</button>
+      </div>
+
+      <div style={{
+        flex: 1, overflow: 'auto', background: 'var(--bg1)', border: '1px solid var(--bd)',
+        scrollbarWidth: 'thin', scrollbarColor: 'var(--ac) transparent',
+      }} onClick={e => e.stopPropagation()}>
+        <table style={{ borderCollapse: 'collapse', width: 'max-content', minWidth: '100%' }}>
+          <thead>
+            <tr>
+              <th style={{
+                position: 'sticky', left: 0, top: 0, zIndex: 20, background: 'var(--bg2)',
+                padding: '16px 24px', textAlign: 'left', borderBottom: '2px solid var(--bd)',
+                borderRight: '2px solid var(--bd)', color: 'var(--tx3)', fontSize: 9, letterSpacing: 1.5,
+              }}>
+                CHARACTERISTIC
+              </th>
+              {works.map(o => (
+                <th key={o.OeuvreID} style={{
+                  position: 'sticky', top: 0, zIndex: 15,
+                  padding: '12px 20px', textAlign: 'left', borderBottom: '2px solid var(--bd)',
+                  background: 'var(--bg1)', minWidth: 200, maxWidth: 280,
+                }}>
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                    <div style={{ width: 44, height: 44, background: '#000', overflow: 'hidden', flexShrink: 0, border: '1px solid var(--bd)' }}>
+                      {o.txtImageNameLink ? (
+                        <img src={thumbUrl(o.txtImageNameLink, 128) ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--tx3)', fontSize: 8 }}>—</div>
+                      )}
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div className="t-mono-sm" style={{ color: 'var(--ac)', fontSize: 9 }}>#{o.OeuvreID}</div>
+                      <div style={{ fontSize: 11, color: 'var(--tx)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {o.Titre || '—'}
+                      </div>
+                    </div>
+                  </div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {fields.map((f, i) => (
+              <tr key={i} style={{ background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)' }}>
+                <td style={{
+                  position: 'sticky', left: 0, zIndex: 5, background: 'var(--bg2)',
+                  padding: '10px 24px', borderBottom: '1px solid var(--bd)',
+                  borderRight: '2px solid var(--bd)', color: 'var(--tx3)', fontSize: 8,
+                  textTransform: 'uppercase', letterSpacing: 1.2,
+                }}>
+                  {f.l}
+                </td>
+                {works.map(o => (
+                  <td key={o.OeuvreID} style={{
+                    padding: '10px 20px', borderBottom: '1px solid var(--bd)',
+                    color: 'var(--tx2)', fontSize: 10, verticalAlign: 'top',
+                    whiteSpace: (f.l === t('notes') || f.l === t('history')) ? 'pre-wrap' : 'nowrap',
+                    maxWidth: 280,
+                  }}>
+                    {f.k(o)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}

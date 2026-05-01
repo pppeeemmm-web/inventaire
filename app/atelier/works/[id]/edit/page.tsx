@@ -25,6 +25,7 @@ export default async function EditWorkPage({ params }: Props) {
     { data: contacts },
     { data: statuses },
     { data: images },
+    { data: addresses },
   ] = await Promise.all([
     supabase.from('Oeuvres').select('*').eq('OeuvreID', oid).single(),
     supabase.from('OeuvreTheme').select('ThemeID').eq('OeuvreID', oid),
@@ -35,6 +36,7 @@ export default async function EditWorkPage({ params }: Props) {
     supabase.from('Contact').select('ContactID, NomInstitution, Nom, Prénom, Role, Ville, Pays').order('ContactID'),
     supabase.from('OeuvreStatus').select('id, label').order('id'),
     supabase.from('tblImage').select('*').eq('OeuvreID', oid).order('SeqNo', { ascending: true }),
+    supabase.from('contact_addresses').select('*'),
   ])
 
   if (!oeuvre) notFound()
@@ -52,6 +54,7 @@ export default async function EditWorkPage({ params }: Props) {
       contacts={contacts ?? []}
       statuses={statuses ?? []}
       initialImages={images ?? []}
+      addresses={addresses ?? []}
       action={saveWork}
     />
   )

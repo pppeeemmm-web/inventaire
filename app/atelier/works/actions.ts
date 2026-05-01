@@ -72,6 +72,8 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
   const isCommission   = formData.get('is_commission') === '1'
   const dateLivraison  = (formData.get('date_livraison') as string | null)?.trim() || null
   const stageProduction = (formData.get('stage_production') as string | null)?.trim() || null
+  const needsPhotograph = formData.get('needs_photograph') === '1'
+  const anonymityLevel = numOrNull(formData.get('anonymity_level')) ?? 0
 
   const themeIds: number[] = (formData.getAll('themes') as string[])
     .map(Number)
@@ -151,6 +153,8 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       IsCommission:      isCommission,
       DateLivraison:     dateLivraison,
       StageProduction:   stageProduction,
+      NeedsPhotograph:   needsPhotograph,
+      anonymity_level:   anonymityLevel,
       txtImageNameLink:  imageName,
     })
 
@@ -249,6 +253,8 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       IsCommission:      isCommission,
       DateLivraison:     dateLivraison,
       StageProduction:   stageProduction,
+      NeedsPhotograph:   needsPhotograph,
+      anonymity_level:   anonymityLevel,
     }
     if (formUploadedNewImage) {
       updatePayload.txtImageNameLink = imageName

@@ -19,28 +19,42 @@ const PEM_CONTACT_ID = 13
 // ── Advanced filter ─────────────────────────────────────────────────
 interface Criterion { id: number; field: string; op: string; value: string; value2?: string }
 
-const FIELD_DEFS = [
-  { k: 'OeuvreID',        l: 'ID',            t: 'num'    },
-  { k: 'Titre',            l: 'Title',         t: 'text'   },
-  { k: 'Technique',        l: 'Technique',    t: 'lookup' },
-  { k: 'Support',          l: 'Support',      t: 'lookup' },
-  { k: '_theme',           l: 'Theme',         t: 'lookup' },
-  { k: 'Année',            l: 'Year',           t: 'year'   },
-  { k: 'Prix',             l: 'Prix',           t: 'num'    },
-  { k: 'PrixFinal',        l: 'Final price',  t: 'num'    },
-  { k: 'Exposable',        l: 'Exhibitable',  t: 'bool'   },
-  { k: 'Catalogué',        l: 'Catalogued',   t: 'bool'   },
-  { k: 'Encadree',         l: 'Framed',       t: 'bool'   },
-  { k: 'Tirage',           l: 'Tirage',         t: 'text'   },
-  { k: 'Commentaires',     l: 'Notes',        t: 'text'   },
-  { k: 'statusId',          l: 'Status',        t: 'lookup' },
-  { k: 'ContactID',        l: 'Contact',       t: 'lookup' },
-  { k: 'LocalisationID',   l: 'Location',      t: 'lookup' },
-  { k: 'AcheteurID',       l: 'Acheteur',      t: 'lookup' },
-  { k: 'txtImageNameLink', l: 'Image',         t: 'text'   },
-] as const
+// ── Field Labels Mapping ──
+const FIELD_LABELS: Record<string, string> = {
+  OeuvreID:        'ID',
+  Titre:           'Titre',
+  Technique:       'Technique',
+  Support:         'Support',
+  _theme:          'Thème',
+  Année:           'Année',
+  Prix:            'Prix',
+  PrixFinal:       'Prix final',
+  Exposable:       'Exposable',
+  Catalogué:       'Cataloguée',
+  Encadree:        'Encadrée',
+  Tirage:          'Tirage',
+  Commentaires:    'Notes',
+  NeedsPhotograph: 'À photographier',
+  needsphotograph: 'À photographier',
+  statusId:        'Statut',
+  ContactID:       'Contact',
+  LocalisationID:  'Localisation',
+  AcheteurID:      'Acheteur',
+  anonymity_level: 'Anonymat',
+  txtImageNameLink: 'Image',
+  IsCommission:    'Commission',
+  DateLivraison:   'Deadline',
+}
 
-type FieldKey = typeof FIELD_DEFS[number]['k']
+interface FieldDef { k: string; l: string; t: 'num' | 'text' | 'bool' | 'lookup' | 'year' }
+
+function getFieldType(k: string, sampleValue: any): FieldDef['t'] {
+  if (k === 'Année') return 'year'
+  if (k.toLowerCase().includes('status') || k.toLowerCase().includes('id')) return 'lookup'
+  if (typeof sampleValue === 'number') return 'num'
+  if (typeof sampleValue === 'boolean') return 'bool'
+  return 'text'
+}
 
 const OPS_TEXT   = ['contient', 'ne contient pas', '=', '≠', 'est vide', "n'est pas vide"] as const
 const OPS_NUM    = ['=', '≠', '>', '<', '≥', '≤', 'est vide', "n'est pas vide"] as const
@@ -62,49 +76,60 @@ function extractYear(s: unknown): number {
   return m ? parseInt(m[1]) : NaN
 }
 
-function matchesCriterion(o: Oeuvre, c: Criterion): boolean {
-  const fld = FIELD_DEFS.find((f) => f.k === c.field)
+function matchesCriterion(o: Oeuvre, c: Criterion, allFields: FieldDef[]): boolean {
+  const fld = allFields.find((f) => f.k === c.field)
   if (!fld) return true
+  
+  // Special handling for photography flags (legacy mapping)
+  if (c.field === 'photograph' || c.field === 'NeedsPhotograph' || c.field === 'needsphotograph') {
+    const val = !!((o as any).NeedsPhotograph || (o as any).needsphotograph)
+    return c.op === '= vrai' ? val : !val
+  }
+
   const raw = (o as Record<string, unknown>)[c.field]
   const val = raw != null ? String(raw) : ''
   const cv  = c.value ?? ''
+
+  // 1. Boolean types
+  if (fld.t === 'bool') {
+    const bVal = !!raw
+    return c.op === '= vrai' ? bVal : !bVal
+  }
+
+  // 2. Empty / Not Empty (all types)
+  if (c.op === 'est vide')       return raw == null || raw === ''
+  if (c.op === "n'est pas vide") return raw != null && raw !== ''
+
+  // 3. Numeric & Year types
+  if (fld.t === 'num' || fld.t === 'year') {
+    const n  = fld.t === 'year' ? extractYear(raw) : Number(raw)
+    const v1 = Number(cv)
+    const v2 = Number(c.value2 ?? cv)
+
+    if (c.op === 'between') {
+      return !isNaN(n) && n >= Math.min(v1, v2) && n <= Math.max(v1, v2)
+    }
+    
+    if (['=', '>', '<', '≥', '≤', '≠'].includes(c.op)) {
+      if (isNaN(n)) return false
+      switch (c.op) {
+        case '=': return n === v1
+        case '≠': return n !== v1
+        case '>': return n > v1
+        case '<': return n < v1
+        case '≥': return n >= v1
+        case '≤': return n <= v1
+      }
+    }
+  }
+
+  // 4. Text & Fallback
   switch (c.op) {
     case 'contient':          return val.toLowerCase().includes(cv.toLowerCase())
     case 'ne contient pas':   return !val.toLowerCase().includes(cv.toLowerCase())
     case '=':                 return val === cv
     case '≠':                 return val !== cv
-    case '>':                 return Number(val) > Number(cv)
-    case '<':                 return Number(val) < Number(cv)
-    case '≥':                 return Number(val) >= Number(cv)
-    case '≤':                 return Number(val) <= Number(cv)
-    case 'est vide':          return raw == null || raw === ''
-    case "n'est pas vide":    return raw != null && raw !== ''
-    case '= vrai':            return raw === true
-    case '= faux':            return !raw
-    // ── Year operators ─────────────────────────────────────────────
-    case 'between': {
-      if (c.field !== 'Année') return true
-      const yr  = extractYear(raw)
-      const lo  = parseInt(cv)
-      const hi  = parseInt(c.value2 ?? cv)
-      return !isNaN(yr) && yr >= Math.min(lo, hi) && yr <= Math.max(lo, hi)
-    }
-    default: {
-      // For year fields with numeric ops, compare extracted year
-      const fld2 = FIELD_DEFS.find((f) => f.k === c.field)
-      if (fld2?.t === 'year') {
-        const yr = extractYear(raw)
-        const n  = parseInt(cv)
-        switch (c.op) {
-          case '=':  return yr === n
-          case '>':  return yr >  n
-          case '<':  return yr <  n
-          case '≥':  return yr >= n
-          case '≤':  return yr <= n
-        }
-      }
-      return true
-    }
+    default:                  return true
   }
 }
 
@@ -163,8 +188,43 @@ export function InventoryTab({
   const [idInput,     setIdInput]     = useState('')
   const [showAdv,     setShowAdv]     = useState(false)
   const [showGroups,  setShowGroups]  = useState(false)
+  const [showLegend,  setShowLegend]  = useState(false)
+  const [showPreview, setShowPreview] = useState(true)
+  const [previewExpanded, setPreviewExpanded] = useState(false)
+  const [publicMode,  setPublicMode]  = useState(false)
   const [loadingGrp,  setLoadingGrp]  = useState<string | null>(null)
   const nextCritId = useRef(0)
+
+  const allFields: FieldDef[] = useMemo(() => {
+    if (oeuvres.length === 0) return []
+    const sample = oeuvres[0]
+    const keys = Object.keys(sample)
+    
+    // Curated order for known fields
+    const labelKeys = Object.keys(FIELD_LABELS)
+    const sorted = keys.sort((a, b) => {
+      const ia = labelKeys.indexOf(a)
+      const ib = labelKeys.indexOf(b)
+      if (ia !== -1 && ib !== -1) return ia - ib
+      if (ia !== -1) return -1
+      if (ib !== -1) return 1
+      return a.localeCompare(b)
+    })
+
+    return sorted
+      .filter(k => ![
+        'txtImageNameLink', 
+        'StageProduction', 
+        'Historique', 
+        'theme', // themes are handled separately via _theme virtual field
+        'is_public' // deprecated by anonymity_level
+      ].includes(k))
+      .map(k => ({
+        k,
+        l: FIELD_LABELS[k] || k,
+        t: getFieldType(k, (sample as any)[k])
+      }))
+  }, [oeuvres])
 
   const handleLoadGroup = useCallback(async (id: string) => {
     setLoadingGrp(id)
@@ -233,12 +293,12 @@ export function InventoryTab({
           if (c.op === '≠') return !themeIds.includes(tid)
           return true
         }
-        return matchesCriterion(o, c)
+        return matchesCriterion(o, c, allFields)
       })) return false
       return true
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [oeuvres, q, tech, support, status, tM, sM, statusLabelMap, criteria, oeuvreThemeMap])
+  }, [oeuvres, q, tech, support, status, tM, sM, statusLabelMap, criteria, oeuvreThemeMap, allFields])
 
   // Keep focused in sync with filtered results
   useEffect(() => {
@@ -267,9 +327,9 @@ export function InventoryTab({
   const statusOptions: [string, string][] = [
     ['all', 'Tous'],
     ['studio',    'Atelier'],
-    ['consigned', 'Consigné'],
+    ['consigned', 'Dépôt (Galerie)'],
+    ['loan',      'Prêt (Institution)'],
     ['sold',      'Vendu'],
-    ['loan',      'Prêt'],
     ['wip',       'En cours'],
   ]
 
@@ -347,14 +407,56 @@ export function InventoryTab({
           onClick={() => setShowAdv((v) => !v)}
           style={{
             padding: '7px 10px', fontSize: 11,
-            color: (showAdv || criteria.length > 0) ? 'var(--ac)' : 'var(--tx3)',
-            background: (showAdv || criteria.length > 0) ? 'var(--bg2)' : 'transparent',
+            color: (showAdv || criteria.length > 0) ? 'var(--bg0)' : 'var(--tx3)',
+            background: (showAdv || criteria.length > 0) ? 'var(--ac)' : 'transparent',
             border: '1px solid var(--bd)',
             cursor: 'pointer',
+            boxShadow: criteria.length > 0 ? '0 0 10px rgba(200,168,110,0.3)' : 'none',
           }}
         >
-          {criteria.length > 0 ? `Filtres (${criteria.length})` : 'Filtres +'}
+          {criteria.length > 0 ? `✓ ${t('filters')} (${criteria.length})` : `${t('filters')} +`}
         </button>
+
+        {/* Legend toggle */}
+        <div style={{ position: 'relative' }}>
+          <button
+            onClick={() => setShowLegend((v) => !v)}
+            title="Légende des couleurs"
+            style={{
+              padding: '7px 12px', fontSize: 10, letterSpacing: 1,
+              color: showLegend ? 'var(--ac)' : 'var(--tx3)',
+              background: showLegend ? 'var(--bg2)' : 'transparent',
+              border: '1px solid var(--bd)',
+              cursor: 'pointer',
+            }}
+          >
+            {t('legend')}
+          </button>
+          {showLegend && (
+            <div style={{
+              position: 'absolute', top: '100%', left: 0, zIndex: 60,
+              background: 'var(--bg2)', border: '1px solid var(--bd2)',
+              padding: '12px 16px', minWidth: 160, marginTop: 4,
+              boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+            }}>
+              <div className="t-eyebrow" style={{ marginBottom: 10, fontSize: 8 }}>{t('legend')}</div>
+              {[
+                { l: t('stage_idea'),       c: 'var(--ac)' },
+                { l: t('stage_wip'),        c: 'var(--rust)' },
+                { l: t('stage_drying'),     c: 'var(--dust)' },
+                { l: t('stage_mounting'),   c: 'var(--dust)' },
+                { l: t('stage_framing'),    c: 'var(--dust)' },
+                { l: t('stage_shot'),       c: 'var(--cyan)' },
+                { l: t('stage_catalogued'), c: 'var(--sage)' },
+              ].map((it, i) => (
+                <div key={i} className="row gap-sm" style={{ marginBottom: 6 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: it.c }} />
+                  <div className="t-mono-sm" style={{ fontSize: 9 }}>{it.l}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Saved groups */}
         <div style={{ position: 'relative' }}>
@@ -408,6 +510,38 @@ export function InventoryTab({
           )}
         </div>
 
+        {/* Preview toggle */}
+        <button
+          onClick={() => setShowPreview((v) => !v)}
+          style={{
+            padding: '7px 12px', fontSize: 11,
+            color: showPreview ? 'var(--ac)' : 'var(--tx3)',
+            background: showPreview ? 'var(--bg2)' : 'transparent',
+            border: '1px solid var(--bd)',
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+          }}
+          title="Afficher/masquer l'aperçu latéral"
+        >
+          {showPreview ? 'Aperçu ◀' : 'Aperçu ▶'}
+        </button>
+
+        {/* Public mode toggle */}
+        <button
+          onClick={() => setPublicMode((v) => !v)}
+          title="Simuler la vue publique (masque les contacts selon l'anonymat)"
+          style={{
+            padding: '7px 12px', fontSize: 11,
+            color: publicMode ? 'var(--ac)' : 'var(--tx3)',
+            background: publicMode ? 'var(--bg2)' : 'transparent',
+            border: '1px solid var(--bd)',
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {publicMode ? 'Vue Public ON 👁️' : 'Vue Public'}
+        </button>
+
         {/* Selection count */}
         <div className="t-mono-sm" style={{ color: selection.size > 0 ? 'var(--ac)' : 'var(--tx3)', minWidth: 60, textAlign: 'right' }}>
           {selection.size > 0 ? `${selection.size} ${t('selected')}` : ''}
@@ -421,7 +555,8 @@ export function InventoryTab({
           nextCritId={nextCritId}
           idInput={idInput} setIdInput={setIdInput}
           onSelectByIds={selectByIds}
-          tM={tM} sM={sM} cM={cM} thM={thM} statusLabelMap={statusLabelMap}
+          tM={tM} sM={sM} cM={cM} thM={thM} pM={pM} statusLabelMap={statusLabelMap}
+          allFields={allFields}
         />
       )}
 
@@ -430,15 +565,23 @@ export function InventoryTab({
         {view === 'list' && (
           <>
             <InvList
-              rows={filtered} tM={tM} sM={sM} statusLabelMap={statusLabelMap}
+              rows={filtered} tM={tM} sM={sM} cM={cM} locMap={locMap} statusLabelMap={statusLabelMap}
               focused={focused} setFocused={setFocused}
               selection={selection} setSelection={setSelection}
+              onImageDoubleClick={() => { setShowPreview(true); setPreviewExpanded(true) }}
+              publicMode={publicMode}
             />
-            <InvPreview
-              o={focused} tM={tM} sM={sM} cM={cM} pM={pM} fM={fM} locMap={locMap} statusLabelMap={statusLabelMap}
-              selection={selection} toggleInSel={toggleInSel}
-              onOpen={onOpen}
-            />
+            {showPreview && (
+              <InvPreview
+                o={focused} tM={tM} sM={sM} cM={cM} pM={pM} fM={fM} locMap={locMap} statusLabelMap={statusLabelMap}
+                selection={selection} toggleInSel={toggleInSel}
+                onOpen={onOpen}
+                onClose={() => setShowPreview(false)}
+                expanded={previewExpanded}
+                setExpanded={setPreviewExpanded}
+                publicMode={publicMode}
+              />
+            )}
           </>
         )}
         {view === 'grid' && (
@@ -471,7 +614,7 @@ export function InventoryTab({
 function CriteriaPanel({
   criteria, setCriteria, nextCritId,
   idInput, setIdInput, onSelectByIds,
-  tM, sM, cM, thM, statusLabelMap,
+  tM, sM, cM, thM, pM, statusLabelMap, allFields
 }: {
   criteria:       Criterion[]
   setCriteria:    (c: Criterion[]) => void
@@ -482,9 +625,12 @@ function CriteriaPanel({
   tM:             Record<number, string>
   sM:             Record<number, string>
   cM:             Record<number, string>
+  pM:             Record<number, string>
   thM:            Record<number, string>
   statusLabelMap: Record<number, string>
+  allFields:      FieldDef[]
 }) {
+  const { t } = useI18n()
   const FIS: React.CSSProperties = {
     fontFamily: 'inherit', fontSize: 10,
     background: 'var(--bg1)', border: '1px solid var(--bd)',
@@ -492,18 +638,29 @@ function CriteriaPanel({
   }
 
   function lookupOpts(field: string): [string, string][] {
-    if (field === 'Technique')      return Object.entries(tM).sort((a,b) => a[1].localeCompare(b[1])).map(([k,v]) => [k, v])
-    if (field === 'Support')        return Object.entries(sM).sort((a,b) => a[1].localeCompare(b[1])).map(([k,v]) => [k, v])
-    if (field === '_theme')         return Object.entries(thM).sort((a,b) => a[1].localeCompare(b[1])).map(([k,v]) => [k, v])
-    if (field === 'statusId')        return Object.entries(statusLabelMap).sort((a,b) => a[1].localeCompare(b[1])).map(([k,v]) => [k, v])
-    if (field === 'ContactID' || field === 'LocalisationID')
-                                    return Object.entries(cM).sort((a,b) => a[1].localeCompare(b[1])).map(([k,v]) => [k, v])
+    const maps: Record<string, Record<string | number, string>> = {
+      Technique:       tM,
+      Support:         sM,
+      _theme:          thM,
+      statusId:        statusLabelMap,
+      ContactID:       cM,
+      LocalisationID:  cM,
+      AcheteurID:      cM,
+      PresentationID:  pM,
+      anonymity_level: { '0': 'Public', '1': 'Anonyme', '2': 'Privé' }
+    }
+    const map = maps[field]
+    if (map) {
+      return Object.entries(map)
+        .sort((a, b) => String(a[1]).localeCompare(String(b[1])))
+        .map(([k, v]) => [k, v])
+    }
     return []
   }
 
   function addCriterion() {
     const id = nextCritId.current++
-    setCriteria([...criteria, { id, field: 'Titre', op: 'contient', value: '' }])
+    setCriteria([...criteria, { id, field: allFields[0].k, op: 'contient', value: '' }])
   }
 
   function updateCriterion(id: number, patch: Partial<Criterion>) {
@@ -546,7 +703,7 @@ function CriteriaPanel({
 
       {/* Criteria rows */}
       {criteria.map((c) => {
-        const fld  = FIELD_DEFS.find((f) => f.k === c.field) ?? FIELD_DEFS[0]
+        const fld  = allFields.find((f) => f.k === c.field) ?? allFields[0]
         const ops  = opsForType(fld.t)
         const opts = lookupOpts(c.field)
         return (
@@ -555,22 +712,14 @@ function CriteriaPanel({
             <select
               value={c.field}
               onChange={(e) => {
-                const newFld = FIELD_DEFS.find((f) => f.k === e.target.value) ?? FIELD_DEFS[0]
+                const newFld = allFields.find((f) => f.k === e.target.value) ?? allFields[0]
                 updateCriterion(c.id, { field: e.target.value, op: opsForType(newFld.t)[0], value: '' })
               }}
               style={{ ...FIS, maxWidth: 130 }}
             >
-              {FIELD_DEFS.map((f) => {
-                const labelMap: Record<string, string> = {
-                  OeuvreID: 'ID', Titre: t('title'), Technique: t('technique'),
-                  Support: t('support'), _theme: t('theme'), Année: t('year'),
-                  Prix: t('price'), PrixFinal: 'Final price', Exposable: t('exhibitable'),
-                  Catalogué: t('catalogued'), Encadree: t('framed'), Tirage: t('tirage'),
-                  Commentaires: t('notes'), statusId: t('status'), ContactID: t('contact'),
-                  LocalisationID: t('location'), AcheteurID: t('buyer'), txtImageNameLink: t('image')
-                }
-                return <option key={f.k} value={f.k}>{labelMap[f.k] || f.l}</option>
-              })}
+              {allFields.map((f) => (
+                <option key={f.k} value={f.k}>{FIELD_LABELS[f.k] || f.l}</option>
+              ))}
             </select>
 
             {/* Operator */}
@@ -674,20 +823,37 @@ function InvSelect({
 // ── InvList ─────────────────────────────────────────────────────────
 
 function InvList({
-  rows, tM, sM, statusLabelMap, focused, setFocused, selection, setSelection,
+  rows, tM, sM, cM, locMap, statusLabelMap, focused, setFocused, selection, setSelection, onImageDoubleClick, publicMode,
 }: {
   rows:           Oeuvre[]
   tM:             Record<number, string>
   sM:             Record<number, string>
+  cM:             Record<number, string>
+  locMap:         Record<number, string>
   statusLabelMap: Record<number, string>
   focused:        Oeuvre | null
   setFocused:     (o: Oeuvre) => void
   selection:      Set<number>
   setSelection:   (s: Set<number>) => void
+  onImageDoubleClick: () => void
+  publicMode?:    boolean
 }) {
   const { t } = useI18n()
   const lastSelIdxRef = useRef<number | null>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
   const visible = rows
+
+  // Restore scroll position on mount
+  useEffect(() => {
+    const saved = sessionStorage.getItem('pem_inv_scroll')
+    if (saved && scrollRef.current) {
+      scrollRef.current.scrollTop = parseInt(saved)
+    }
+  }, [])
+
+  function handleScroll(e: React.UIEvent<HTMLDivElement>) {
+    sessionStorage.setItem('pem_inv_scroll', String(e.currentTarget.scrollTop))
+  }
 
   function handleCheck(e: React.MouseEvent, oid: number, idx: number) {
     e.stopPropagation()
@@ -708,20 +874,48 @@ function InvList({
   const router = useRouter()
 
   return (
-    <div style={{ flex: 1, minWidth: 0, overflow: 'auto', borderRight: '1px solid var(--bd)' }}>
-      <table className="tbl" style={{ tableLayout: 'auto' }}>
+    <div
+      ref={scrollRef}
+      onScroll={handleScroll}
+      style={{ flex: 1, minWidth: 0, overflow: 'auto', borderRight: '1px solid var(--bd)' }}
+    >
+      <table className="tbl" style={{ tableLayout: 'auto', width: 'max-content', minWidth: '100%' }}>
         <thead>
-          <tr>
-            <th style={{ width: 36 }}></th>
-            <th style={{ width: 32 }}></th>
-            <th style={{ width: 40 }}>ID</th>
-            <th style={{ width: 64 }}></th>
-            <th>{t('title')}</th>
-            <th>{t('technique')}</th>
-            <th>{t('support')}</th>
-            <th className="num">{t('dimensions')}</th>
-            <th className="num">{t('year')}</th>
-            <th>{t('status')}</th>
+          <tr style={{ height: 32 }}>
+            <th style={{ width: 42, padding: '0 8px' }}>
+              <div style={{
+                width: 14, height: 14, margin: '0 auto',
+                border: `1.5px solid ${visible.length > 0 && visible.every(o => selection.has(o.OeuvreID)) ? 'var(--ac)' : 'var(--bd2)'}`,
+                background: visible.length > 0 && visible.every(o => selection.has(o.OeuvreID)) ? 'var(--ac)' : 'transparent',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 9, color: 'var(--bg0)', cursor: 'pointer',
+              }} onClick={() => {
+                const allSel = visible.every(o => selection.has(o.OeuvreID))
+                const next = new Set(selection)
+                if (allSel) {
+                  visible.forEach(o => next.delete(o.OeuvreID))
+                } else {
+                  visible.forEach(o => next.add(o.OeuvreID))
+                }
+                setSelection(next)
+              }}>
+                {visible.length > 0 && visible.every(o => selection.has(o.OeuvreID)) ? '✓' : ''}
+              </div>
+            </th>
+            <th style={{ width: 28, padding: '0 2px' }}></th>
+            <th style={{ width: 32, color: 'var(--tx3)', fontSize: 7, padding: '0 2px' }}>ID</th>
+            <th style={{ width: 20, textAlign: 'center', fontSize: 8 }}>🔒</th>
+            <th style={{ width: 44, padding: '0 4px' }}></th>
+            <th style={{ textAlign: 'left', padding: '0 6px', fontSize: 10 }}>{t('title')}</th>
+            <th style={{ textAlign: 'left', padding: '0 6px', fontSize: 10 }}>{t('technique')}</th>
+            <th style={{ textAlign: 'left', padding: '0 6px', fontSize: 10 }}>{t('support')}</th>
+            <th style={{ textAlign: 'left', padding: '0 6px', fontSize: 10 }}>Dims</th>
+            <th style={{ textAlign: 'left', padding: '0 6px', fontSize: 10 }}>Année</th>
+            <th style={{ textAlign: 'left', padding: '0 6px', fontSize: 10 }}>Prix</th>
+            <th style={{ textAlign: 'left', padding: '0 6px', fontSize: 10 }}>Contact</th>
+            <th style={{ textAlign: 'left', padding: '0 6px', fontSize: 10 }}>Localisation</th>
+            <th style={{ textAlign: 'center', padding: '0 6px', fontSize: 10 }} title="Exposable | Encadré | Catalogué">E/F/C</th>
+            <th style={{ textAlign: 'left', padding: '0 6px', fontSize: 10 }}>{t('status')}</th>
           </tr>
         </thead>
         <tbody>
@@ -733,64 +927,88 @@ function InvList({
             const isGoneRow = st === 'sold' || st === 'gift'
             const sCol  = isGoneRow ? 'transparent' : stageColor((o as any).StageProduction)
             const sBg   = sCol === 'transparent' ? '' : `color-mix(in srgb, ${sCol} 8%, var(--bg1))`
+            
+            const baseBg = isFoc ? 'var(--bg2)' : sBg
+            const rowBg  = isSel 
+              ? `color-mix(in srgb, var(--ac) 20%, ${baseBg || 'var(--bg1)'})`
+              : baseBg
+
             return (
-              <tr
-                key={o.OeuvreID}
-                onClick={() => setFocused(o)}
-                style={{
-                  background: isFoc ? 'var(--bg2)' : sBg,
-                  cursor: 'pointer',
-                  borderLeft: `3px solid ${sCol === 'transparent' ? 'var(--bd)' : sCol}`,
-                }}
-              >
-                {/* Checkbox — full-cell hit area, shift+click for range */}
-                <td
-                  style={{ textAlign: 'center', padding: '0 8px', cursor: 'pointer' }}
-                  onClick={(e) => handleCheck(e, o.OeuvreID, idx)}
-                  title="Cliquer pour sélectionner · Maj+clic pour sélectionner une plage"
+                <tr
+                  key={o.OeuvreID}
+                  onClick={() => setFocused(o)}
+                  onDoubleClick={() => onImageDoubleClick()}
+                  style={{
+                    background: rowBg,
+                    cursor: 'pointer',
+                    borderLeft: `3px solid ${isSel ? 'var(--ac)' : sCol === 'transparent' ? 'var(--bd)' : sCol}`,
+                    height: 44,
+                  }}
                 >
-                  <div style={{
-                    width: 16, height: 16, margin: '0 auto',
-                    border: `1.5px solid ${isSel ? 'var(--ac)' : 'var(--bd2)'}`,
-                    background: isSel ? 'var(--ac)' : 'transparent',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 10, color: 'var(--bg0)', lineHeight: 1,
-                    transition: 'background 0.1s, border-color 0.1s',
-                  }}>
-                    {isSel ? '✓' : ''}
-                  </div>
-                </td>
-                {/* Inline edit button */}
-                <td style={{ padding: '0 4px' }}>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); router.push(`/atelier/works/${o.OeuvreID}/edit`) }}
-                    title="Éditer"
-                    style={{
-                      padding: '2px 6px', fontSize: 10,
-                      color: 'var(--tx3)', background: 'transparent',
-                      border: '1px solid transparent', cursor: 'pointer',
-                      lineHeight: 1,
-                    }}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--ac)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--bd2)' }}
-                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--tx3)'; (e.currentTarget as HTMLElement).style.borderColor = 'transparent' }}
-                  >✎</button>
-                </td>
-                <td style={{ color: 'var(--tx3)', fontSize: 9 }}>{o.OeuvreID}</td>
-                {/* Thumb */}
-                <td>
-                  <div className="thumb" style={{ width: 52, height: 52 }}>
-                    {o.txtImageNameLink
-                      ? <img src={thumbUrl(o.txtImageNameLink, 96) ?? ''} loading="lazy" alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      : <div className="ph" style={{ fontSize: 8 }}>—</div>}
-                  </div>
-                </td>
-                <td style={{ color: 'var(--tx)' }}>{o.Titre || '—'}</td>
-                <td>{o.Technique != null ? (tM[o.Technique] ?? '—') : '—'}</td>
-                <td>{o.Support != null ? (sM[o.Support] ?? '—') : '—'}</td>
-                <td className="num">{dims}</td>
-                <td className="num">{yearOf(o.Année) ?? '—'}</td>
-                <td><StatusChip s={st} /></td>
-              </tr>
+                  <td style={{ textAlign: 'center', padding: '0 8px' }}>
+                    <div style={{
+                      width: 14, height: 14, margin: '0 auto',
+                      border: `1.5px solid ${isSel ? 'var(--ac)' : 'var(--bd2)'}`,
+                      background: isSel ? 'var(--ac)' : 'transparent',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 9, color: 'var(--bg0)',
+                    }} onClick={(e) => { e.stopPropagation(); handleCheck(e, o.OeuvreID, idx) }}>
+                      {isSel ? '✓' : ''}
+                    </div>
+                  </td>
+                  <td style={{ padding: '0 2px' }}>
+                    <button onClick={(e) => { e.stopPropagation(); router.push(`/atelier/works/${o.OeuvreID}/edit`) }} style={{ color: 'var(--tx3)', fontSize: 9 }}>✎</button>
+                  </td>
+                  <td style={{ color: 'var(--tx3)', fontSize: 8, padding: '0 2px' }}>{o.OeuvreID}</td>
+                  <td style={{ textAlign: 'center', fontSize: 10 }}>
+                    {(() => {
+                      const level = (o as any).anonymity_level ?? (o.is_public === false ? 2 : 0)
+                      if (level === 2) return <span title="Privé" style={{ opacity: 0.5 }}>🔒</span>
+                      if (level === 1) return <span title="Anonyme" style={{ color: 'var(--ac)' }}>👤</span>
+                      return <span title="Public" style={{ opacity: 0.2 }}>👁️</span>
+                    })()}
+                  </td>
+                  <td style={{ padding: '2px' }}>
+                    <div 
+                      className="thumb" 
+                      style={{ 
+                        width: 40, height: 40, cursor: 'zoom-in', 
+                        border: '1px solid var(--bd)', borderRadius: 2, overflow: 'hidden' 
+                      }}
+                      onDoubleClick={(e) => { 
+                        e.stopPropagation(); 
+                        onImageDoubleClick(); 
+                      }}
+                      title="DOUBLE-CLICK pour agrandir l'aperçu"
+                    >
+                      {o.txtImageNameLink 
+                        ? <img src={thumbUrl(o.txtImageNameLink, 96) ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> 
+                        : <div className="ph" style={{ fontSize: 8 }}>—</div>}
+                    </div>
+                  </td>
+                  <td style={{ color: 'var(--tx)', padding: '0 6px', fontSize: 10, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 160 }}>{o.Titre || '—'}</td>
+                  <td style={{ padding: '0 6px', fontSize: 9.5, whiteSpace: 'nowrap' }}>{o.Technique != null ? (tM[o.Technique] ?? '—') : '—'}</td>
+                  <td style={{ padding: '0 6px', fontSize: 9.5, whiteSpace: 'nowrap' }}>{o.Support != null ? (sM[o.Support] ?? '—') : '—'}</td>
+                  <td style={{ padding: '0 6px', fontSize: 9.5, whiteSpace: 'nowrap' }}>{dims}</td>
+                  <td style={{ padding: '0 6px', fontSize: 9.5 }}>{yearOf(o.Année) ?? '—'}</td>
+                  <td style={{ padding: '0 6px', fontSize: 9.5, whiteSpace: 'nowrap' }}>{o.Prix ? `€ ${Number(o.Prix).toLocaleString('fr-FR')}` : '—'}</td>
+                  <td style={{ padding: '0 6px', fontSize: 9.5, whiteSpace: 'nowrap' }}>
+                    {(() => {
+                      const level = (o as any).anonymity_level ?? (o.is_public === false ? 2 : 0)
+                      if (publicMode && level >= 1) return <span style={{ opacity: 0.3 }}>[Anonyme]</span>
+                      return o.ContactID != null ? (cM[o.ContactID] ?? '—') : 'Pem'
+                    })()}
+                  </td>
+                  <td style={{ padding: '0 6px', fontSize: 9.5, whiteSpace: 'nowrap' }}>
+                    {((o as any).LocalisationID != null ? locMap[(o as any).LocalisationID] : 'Pem - Atelier') || '—'}
+                  </td>
+                  <td style={{ padding: '0 6px', textAlign: 'center', fontSize: 9, color: 'var(--tx3)' }}>
+                    <span style={{ color: o.Exposable ? 'var(--sage)' : 'inherit' }}>{o.Exposable ? 'E' : '·'}</span>
+                    <span style={{ color: o.Encadree ? 'var(--tx2)' : 'inherit', marginLeft: 4 }}>{o.Encadree ? 'F' : '·'}</span>
+                    <span style={{ color: o.Catalogué ? 'var(--tx2)' : 'inherit', marginLeft: 4 }}>{o.Catalogué ? 'C' : '·'}</span>
+                  </td>
+                  <td style={{ padding: '0 6px' }}><StatusChip s={st} /></td>
+                </tr>
             )
           })}
         </tbody>
@@ -807,7 +1025,8 @@ function InvList({
 // ── InvPreview ──────────────────────────────────────────────────────
 
 function InvPreview({
-  o, tM, sM, cM, pM, fM, locMap, statusLabelMap, selection, toggleInSel, onOpen,
+  o, tM, sM, cM, pM, fM, locMap, statusLabelMap, selection, toggleInSel, onOpen, onClose,
+  expanded, setExpanded, publicMode,
 }: {
   o:              Oeuvre | null
   tM:             Record<number, string>
@@ -820,6 +1039,9 @@ function InvPreview({
   selection:      Set<number>
   toggleInSel:    (id: number) => void
   onOpen:         (o: Oeuvre) => void
+  onClose:        () => void
+  expanded:       boolean
+  setExpanded:    (b: boolean) => void
 }) {
   const router = useRouter()
 
@@ -856,6 +1078,14 @@ function InvPreview({
         })
     })
   }, [o?.OeuvreID])
+
+  // Reset zoom/pan when collapsing or when work changes
+  useEffect(() => {
+    if (!expanded || !o?.OeuvreID) {
+      setImgZoom(1)
+      setImgPan({ x: 0, y: 0 })
+    }
+  }, [expanded, o?.OeuvreID])
 
   // Non-passive wheel: zoom 1×–2× (200%) only while hovered
   useEffect(() => {
@@ -897,21 +1127,23 @@ function InvPreview({
     return isGone ? '—' : t('surDemande')
   })()
 
-  // Owner/contact: default to PEM if not set
-  const ownerLabel = o.ContactID != null
-    ? (cM[o.ContactID] ?? 'Pem')
-    : 'Pem'
+  const level = (o as any).anonymity_level ?? (o.is_public === false ? 2 : 0)
+
+  // Owner/contact: default to PEM if not set; mask if publicMode
+  const ownerLabel = (() => {
+    if (publicMode && level >= 1) return <span style={{ opacity: 0.3 }}>[Anonyme]</span>
+    return o.ContactID != null ? (cM[o.ContactID] ?? 'Pem') : 'Pem'
+  })()
 
   function fmtDate(d: string | null | undefined) {
     if (!d) return '—'
     try { return new Date(d).toLocaleDateString('fr-FR') } catch { return d }
   }
 
-  // ── Hover-expand + wheel zoom (1×–2×) ───────────────────────────────
-  // Compact (default): 380px panel, square crop
-  // Expanded (hover or zoomed): up to 50vw panel, fixed-height image container.
-  //   objectFit:contain shows native proportions without the container growing to
-  const isExpanded = hovered || imgZoom > 1
+  // ── Expansion Logic ───────────────────────────────
+  // Compact (default): 380px panel
+  // Expanded: driven by prop (double-click from list) or image zoom
+  const isExpanded = expanded || imgZoom > 1
 
   // Active image: filmstrip selection → fall back to o.txtImageNameLink
   const activeImgPath = workImages.length > 0 && activeImgIdx >= 0
@@ -937,13 +1169,10 @@ function InvPreview({
   const isPortrait = ratio !== null && ratio < 0.95
   const isSquare   = ratio !== null && ratio >= 0.95 && ratio <= 1.05
 
+  // ── Expansion Widths ───────────────────────────────
   const flexBasis = !isExpanded
-    ? '380px'
-    : isPortrait
-      ? 'min(33vw, 600px)'
-      : isSquare
-        ? 'min(50vw, 900px)'
-        : 'min(44vw, 800px)'
+    ? '360px' // Tighter idle state
+    : '80vw'  // 80% of viewport
 
   const scaleVal = imgZoom
 
@@ -953,19 +1182,16 @@ function InvPreview({
     <div
       style={{
         flex: `0 0 ${flexBasis}`,
-        padding: 24,
+        padding: 40,
         overflow: 'auto',
         background: 'var(--bg1)',
         borderLeft: '1px solid var(--bd)',
-        transition: 'flex-basis 0.15s ease',
-      }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => {
-        isDragging.current = false
-        if (imgZoom <= 1) setHovered(false)
+        transition: 'flex-basis 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        boxShadow: isExpanded ? '-10px 0 40px rgba(0,0,0,0.4)' : 'none',
+        position: 'relative',
       }}
     >
-      {/* Header row: ID + edit button + zoom indicator */}
+      {/* Header row: ID + edit button + zoom indicator + CLOSE */}
       <div className="row between" style={{ marginBottom: 10 }}>
         <div className="row gap-sm" style={{ alignItems: 'center' }}>
           <div className="t-eyebrow" style={{ color: 'var(--tx3)' }}>#{o.OeuvreID}</div>
@@ -977,11 +1203,31 @@ function InvPreview({
             ✎ {t('edit')}
           </button>
         </div>
-        {imgZoom > 1 && (
-          <span className="t-mono-sm" style={{ color: 'var(--tx3)' }}>
-            ×{imgZoom.toFixed(1)}
-          </span>
-        )}
+        <div className="row gap-sm">
+          {imgZoom > 1 && (
+            <span className="t-mono-sm" style={{ color: 'var(--tx3)', marginRight: 8 }}>
+              ×{imgZoom.toFixed(1)}
+            </span>
+          )}
+          <button 
+            onClick={() => setExpanded(!expanded)}
+            style={{ 
+              background: 'transparent', border: '1px solid var(--bd)', color: 'var(--tx3)', 
+              cursor: 'pointer', fontSize: 10, padding: '2px 6px', marginRight: 4,
+            }}
+            title={expanded ? "Réduire" : "Agrandir"}
+          >
+            {expanded ? '◀' : '▶'}
+          </button>
+          <button 
+            onClick={onClose}
+            style={{ 
+              background: 'transparent', border: 'none', color: 'var(--tx3)', 
+              cursor: 'pointer', fontSize: 16, padding: '0 4px' 
+            }}
+            title={t('close')}
+          >×</button>
+        </div>
       </div>
 
       {/* Image — always fit (width:100% height:auto), drawer width controls the size */}
@@ -1019,7 +1265,12 @@ function InvPreview({
                 if (el.naturalWidth > 0) setNaturalSize({ w: el.naturalWidth, h: el.naturalHeight })
               }}
               style={{
-                display: 'block', width: '100%', height: 'auto',
+                display: 'block', 
+                maxWidth: '100%', 
+                maxHeight: isExpanded ? '80vh' : 'none',
+                width: 'auto',
+                height: 'auto',
+                margin: '0 auto',
                 transform: `translate(${imgPan.x}px, ${imgPan.y}px) scale(${scaleVal})`,
                 transformOrigin: 'center center',
                 transition: 'transform 0.06s ease-out',
@@ -1169,17 +1420,12 @@ function InvPreview({
         <div style={{ color: 'var(--tx2)' }}>{priceDisplay}</div>
 
         {/* ── Flags ─────────────────────────────────────────────── */}
-        <div className="t-label" style={{ paddingTop: 8 }}>{t('exposable')}</div>
-        <div style={{ color: o.Exposable ? 'var(--sage)' : 'var(--tx3)', paddingTop: 8 }}>{o.Exposable ? '✓' : '—'}</div>
-
-        <div className="t-label">{t('framed')}</div>
-        <div style={{ color: o.Encadree ? 'var(--tx2)' : 'var(--tx3)' }}>{o.Encadree ? '✓' : '—'}</div>
-
-        <div className="t-label">{t('catalogued')}</div>
-        <div style={{ color: o.Catalogué ? 'var(--tx2)' : 'var(--tx3)' }}>{o.Catalogué ? '✓' : '—'}</div>
-
-        <div className="t-label">Public</div>
-        <div style={{ color: (o as any).is_public ? 'var(--cyan)' : 'var(--tx3)' }}>{(o as any).is_public ? '✓' : '—'}</div>
+        <div className="t-label">Anonymat</div>
+        <div>
+          {level === 0 && <span style={{ color: 'var(--tx3)' }}>Public</span>}
+          {level === 1 && <span style={{ color: 'var(--ac)' }}>Anonyme (contact masqué)</span>}
+          {level === 2 && <span style={{ color: 'var(--tx3)', opacity: 0.5 }}>Privé (œuvre masquée)</span>}
+        </div>
 
         <div className="t-label">{t('commission')}</div>
         <div style={{ color: o.IsCommission ? 'var(--tx2)' : 'var(--tx3)' }}>{o.IsCommission ? '✓' : '—'}</div>

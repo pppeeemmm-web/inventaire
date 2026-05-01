@@ -67,7 +67,9 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
   const active = useMemo(() => {
     const sq = search.trim().toLowerCase()
     return oeuvres.filter((o) => {
-      if (o.Catalogué) return false
+      // Show if not catalogued OR if it specifically needs a photograph
+      const needsPhoto = (o as any).NeedsPhotograph || (o as any).needsphotograph
+      if (o.Catalogué && !needsPhoto) return false
       const st = statusOf(o, statusLabelMap)
       if (EXCLUDED_STATUSES.includes(st)) return false
       if (sq) {
@@ -186,7 +188,11 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
         }}>
           {actionTypes.map((at) => {
             const ids   = actionMap.get(at.id) ?? new Set<number>()
-            const works = active.filter((o) => ids.has(o.OeuvreID))
+            const isPhotoColumn = at.label.toLowerCase().includes('photograph')
+            const works = active.filter((o) => {
+              const needsPhoto = (o as any).NeedsPhotograph || (o as any).needsphotograph
+              return ids.has(o.OeuvreID) || (isPhotoColumn && needsPhoto)
+            })
             return (
               <ActionColumn
                 key={at.id}

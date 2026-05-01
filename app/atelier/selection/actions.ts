@@ -44,6 +44,7 @@ export interface ExportConfig {
   fields:       ExportFields
   imageSize:    'large' | 'small' | 'none'
   imageEmbed:   'linked' | 'embedded'
+  imageCrop:    'square' | 'native'
   paper:        'a4' | 'a3' | 'screen'
   appendList:   boolean   // append a quick ID list after the card/grid section
   exportTitle?: string | null
@@ -285,8 +286,8 @@ function buildHtml(
     }
 
     const imgHtml = (img && f.image)
-      ? `<div class="img-wrap${cfg.imageSize === 'large' ? ' large' : ''}"><img src="${img}" alt="${o.Titre ?? ''}"></div>`
-      : (f.image && cfg.imageSize !== 'none' ? `<div class="img-wrap${cfg.imageSize === 'large' ? ' large' : ''} empty"></div>` : '')
+      ? `<div class="img-wrap${cfg.imageSize === 'large' ? ' large' : ''}${cfg.imageCrop === 'native' ? ' native' : ''}"><img src="${img}" alt="${o.Titre ?? ''}"></div>`
+      : (f.image && cfg.imageSize !== 'none' ? `<div class="img-wrap${cfg.imageSize === 'large' ? ' large' : ''}${cfg.imageCrop === 'native' ? ' native' : ''} empty"></div>` : '')
 
     // Grid: minimal caption — ID then title, tight to image
     if (cfg.layout === 'grid') {
@@ -373,10 +374,12 @@ function buildHtml(
     return pages.join('\n') + appendBlock
   })()
 
+  const gridGap = cfg.columns >= 10 ? '8px 12px' : cfg.columns >= 6 ? '16px 24px' : '32px 48px'
+
   const bodyContent = cfg.layout === 'list'
     ? listTable
     : cfg.layout === 'grid'
-      ? '<div class="grid cols-' + cfg.columns + '">' + rows.join('') + '</div>' + appendBlock
+      ? `<div class="grid cols-${cfg.columns}" style="gap:${gridGap}">` + rows.join('') + '</div>' + appendBlock
       : cardsBody
 
   const titleHtml = cfg.exportTitle ? `<h1 style="font-family:'Instrument Serif', serif; font-size:32pt; margin-bottom:40px; border-bottom:1px solid #ddd; padding-bottom:10px;">${cfg.exportTitle}</h1>` : ''
@@ -386,30 +389,39 @@ function buildHtml(
 <head>
 <meta charset="UTF-8">
 <title>Export — Pierre Emmanuel Moulin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
   ${paperCss}
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:11px;color:#1a1a1a;background:#fff;padding:24px}
-  h1.header{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#999;margin-bottom:4px}
-  h2.header-title{font-size:22px;color:#1a1a1a;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid #eee}
+  body{font-family:'Inter', sans-serif;font-size:11px;color:#1a1a1a;background:#fff;padding:40px 80px 80px 80px}
+  h1.header{font-size:8px;letter-spacing:4px;text-transform:uppercase;color:#ccc;margin-bottom:12px;text-align:center;font-weight:500}
+  
+  .header-group{display:flex;flex-direction:column;align-items:center;margin-bottom:60px;text-align:center}
+  .header-title{font-family:'Instrument Serif', serif;font-size:36px;color:#111;font-weight:400;letter-spacing:-0.01em;margin:16px 0 12px 0;line-height:1}
+  .header-sep{width:1px;height:24px;background:#eee;margin:12px 0}
+  .header-meta{font-size:9px;color:#aaa;letter-spacing:1.5px;text-transform:uppercase;font-weight:400}
   /* Page groups for cards-per-page */
   .pg{page-break-after:always;break-after:page}
   .pg:last-child{page-break-after:auto;break-after:auto}
+  
   /* Cards */
-  .card{display:flex;gap:24px;margin-bottom:40px;padding-bottom:40px;border-bottom:1px solid #eee;page-break-inside:avoid}
+  .card{display:flex;gap:32px;margin-bottom:48px;padding-bottom:48px;border-bottom:1px solid #f0f0f0;page-break-inside:avoid}
   .card:last-child{border-bottom:none}
-  .img-wrap{overflow:hidden;flex-shrink:0}
-  .img-wrap.large{flex:0 0 280px;height:280px}
+  .img-wrap{overflow:hidden;flex-shrink:0;background:#fdfdfd;display:flex;align-items:center;justify-content:center;border:1px solid #f5f5f5}
+  .img-wrap.large{flex:0 0 320px;height:320px}
   .img-wrap.empty{opacity:0}
-  .img-wrap:not(.large){flex:0 0 120px;height:120px}
-  .img-wrap img{width:100%;height:100%;object-fit:cover;display:block}
+  .img-wrap:not(.large){flex:0 0 160px;height:160px}
+  .img-wrap img{max-width:100%;max-height:100%;object-fit:contain;display:block}
   .meta{flex:1}
-  .meta h2{font-size:18px;margin-bottom:12px;font-weight:400;color:#1a1a1a}
+  .meta h2{font-family:'Instrument Serif', serif;font-size:24px;margin-bottom:16px;font-weight:400;color:#111}
   .meta table{border-collapse:collapse;width:100%}
-  .meta td{padding:3px 0;vertical-align:top;color:#555}
-  .meta td.lbl{color:#aaa;width:90px;font-size:9px;text-transform:uppercase;letter-spacing:1px;padding-top:5px}
-  /* Grid — contact sheet: square cells, cover crop, no gap text below */
-  .grid{display:grid;gap:2px}
+  .meta td{padding:5px 0;vertical-align:top;color:#444;line-height:1.4}
+  .meta td.lbl{color:#bbb;width:100px;font-size:8px;text-transform:uppercase;letter-spacing:1.5px;padding-top:7px;font-weight:500}
+  
+  /* Grid — contact sheet: clean grid with breathing room */
+  .grid{display:grid;column-gap:64px;row-gap:100px}
   .grid.cols-2{grid-template-columns:repeat(2,1fr)}
   .grid.cols-3{grid-template-columns:repeat(3,1fr)}
   .grid.cols-4{grid-template-columns:repeat(4,1fr)}
@@ -417,22 +429,29 @@ function buildHtml(
   .grid.cols-8{grid-template-columns:repeat(8,1fr)}
   .grid.cols-10{grid-template-columns:repeat(10,1fr)}
   .grid.cols-12{grid-template-columns:repeat(12,1fr)}
-  .grid .card{flex-direction:column;margin:0;padding:0;border:none;border-bottom:none;page-break-inside:avoid}
-  .grid .card .img-wrap,.grid .card .img-wrap.large{flex:none;width:100%;height:auto;aspect-ratio:1/1}
-  .grid .card .meta{padding:2px 1px 0}
-  .grid .card .meta .ref-cap{font-size:8px;color:#999;font-family:monospace;line-height:1.3}
-  .grid .card .meta .title-cap{font-size:9px;font-weight:400;line-height:1.2;color:#1a1a1a;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+  
+  .grid .card{flex-direction:column;margin:0;padding:0;border:none;gap:0}
+  .grid .card .img-wrap,.grid .card .img-wrap.large{flex:none;width:100%;height:auto;aspect-ratio:1/1;margin-bottom:40px}
+  .grid .card .img-wrap img{width:100%;height:100%;object-fit:cover;filter:drop-shadow(0 4px 16px rgba(0,0,0,0.05))}
+  .grid .card .img-wrap.native img{object-fit:contain}
+  
+  .grid .card .meta{padding:0;text-align:center}
+  .grid .card .meta .ref-cap{font-size:7px;color:#ccc;font-family:ui-monospace, monospace;letter-spacing:0.5px;margin-bottom:6px}
+  .grid .card .meta .title-cap{font-family:'Instrument Serif', serif;font-size:13px;font-weight:400;line-height:1.2;color:#111;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+  
   /* Index grid — 3 columns, compact */
-  .idx-grid{display:grid;grid-template-columns:repeat(3,1fr);column-gap:16px}
-  .idx-item{display:flex;gap:6px;padding:2px 0;border-bottom:1px solid #f0f0f0;overflow:hidden;min-width:0}
-  .idx-ref{font-family:monospace;font-size:8px;color:#bbb;flex-shrink:0;width:38px}
-  .idx-title{font-size:9px;color:#444;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .idx-grid{display:grid;grid-template-columns:repeat(3,1fr);column-gap:24px;row-gap:4px}
+  .idx-item{display:flex;gap:8px;padding:4px 0;border-bottom:1px solid #f5f5f5;overflow:hidden;min-width:0}
+  .idx-ref{font-family:ui-monospace, monospace;font-size:8px;color:#ccc;flex-shrink:0;width:42px;padding-top:1px}
+  .idx-title{font-size:10px;color:#555;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  
   /* List */
-  .list{width:100%;border-collapse:collapse}
-  .list th{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:#999;padding:6px 12px;border-bottom:1px solid #ddd;text-align:left}
-  .list td{padding:8px 12px;border-bottom:1px solid #f0f0f0;vertical-align:middle}
-  .list td.title{font-weight:500}
-  .list tr:hover td{background:#fafafa}
+  .list{width:100%;border-collapse:collapse;margin-top:20px}
+  .list th{font-size:8px;letter-spacing:1.5px;text-transform:uppercase;color:#bbb;padding:10px 16px;border-bottom:1px solid #eee;text-align:left;font-weight:500}
+  .list td{padding:12px 16px;border-bottom:1px solid #f8f8f8;vertical-align:middle;color:#444}
+  .list td.title{font-family:'Instrument Serif', serif;font-size:15px;color:#111}
+  .list tr:hover td{background:#fcfcfc}
+  
   /* Print */
   @media print{
     body{padding:0}
@@ -442,11 +461,17 @@ function buildHtml(
 </style>
 </head>
 <body>
-  <h1 class="header">Pierre Emmanuel Moulin</h1>
-  <h2 class="header-title">${cfg.exportTitle || `Sélection · ${oeuvres.length} œuvre${oeuvres.length > 1 ? 's' : ''}`}</h2>
+  <div class="header-group">
+    <h1 class="header" style="margin-bottom:0">Pierre Emmanuel Moulin</h1>
+    <div class="header-sep"></div>
+    ${cfg.exportTitle ? `<h2 class="header-title">${cfg.exportTitle}</h2>` : ''}
+    <p class="header-meta">
+      Sélection · ${oeuvres.length} œuvre${oeuvres.length > 1 ? 's' : ''} · ${new Date().toLocaleDateString('fr-FR')}
+    </p>
+  </div>
   ${bodyContent}
-  <div style="margin-top:40px;padding-top:16px;border-top:1px solid #eee;font-size:9px;color:#ccc">
-    Généré le ${new Date().toLocaleDateString('fr-FR')} · ${createHash('md5').update(oeuvres.map(o=>o.OeuvreID).join(',')).digest('hex').slice(0,8).toUpperCase()}
+  <div style="margin-top:60px;padding-top:24px;border-top:1px solid #f0f0f0;font-size:8px;color:#ccc;text-align:center;letter-spacing:1px">
+    GÉNÉRÉ LE ${new Date().toLocaleDateString('fr-FR').toUpperCase()} · RÉF. ${createHash('md5').update(oeuvres.map(o=>o.OeuvreID).join(',')).digest('hex').slice(0,8).toUpperCase()}
   </div>
 </body>
 </html>`
@@ -466,7 +491,7 @@ async function buildPdf(
 
   const pageSize = cfg.paper === 'a3' ? 'A3' : 'A4'
 
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     const doc    = new PDFDocument({ size: pageSize, margin: 50, autoFirstPage: true })
     const chunks: Buffer[] = []
     doc.on('data',  (c: Buffer) => chunks.push(c))
@@ -480,13 +505,24 @@ async function buildPdf(
 
     // Header on first page
     doc.fontSize(8).fillColor('#999999').text('PIERRE EMMANUEL MOULIN', margin, margin, { characterSpacing: 2 })
-    doc.fontSize(9).fillColor('#aaaaaa').text(
-      `Sélection · ${oeuvres.length} œuvre${oeuvres.length > 1 ? 's' : ''} · ${new Date().toLocaleDateString('fr-FR')}`,
-      margin, margin + 14
-    )
-    doc.moveTo(margin, margin + 28).lineTo(margin + usable, margin + 28).lineWidth(0.5).strokeColor('#dddddd').stroke()
+    
+    let headY = margin + 14
+    if (cfg.exportTitle) {
+      doc.fontSize(14).fillColor('#111111').text(cfg.exportTitle, margin, headY)
+      headY += 18
+      doc.fontSize(8).fillColor('#aaaaaa').text(
+        `Sélection · ${oeuvres.length} œuvre${oeuvres.length > 1 ? 's' : ''} · ${new Date().toLocaleDateString('fr-FR')}`,
+        margin, headY
+      )
+    } else {
+      doc.fontSize(10).fillColor('#111111').text(
+        `Sélection · ${oeuvres.length} œuvre${oeuvres.length > 1 ? 's' : ''} · ${new Date().toLocaleDateString('fr-FR')}`,
+        margin, headY
+      )
+    }
+    doc.moveTo(margin + (usable/2), margin + 30).lineTo(margin + (usable/2), margin + 50).lineWidth(0.5).strokeColor('#eeeeee').stroke()
 
-    let y = margin + 44
+    let y = margin + 140
     const f = cfg.fields   // available to all layout branches
 
     if (cfg.layout === 'list') {
@@ -548,12 +584,14 @@ async function buildPdf(
     } else if (cfg.layout === 'grid') {
       // ── Grid layout ──────────────────────────────────────────
       const cols      = cfg.columns
-      const gap       = cfg.columns >= 6 ? 2 : 8
+      // Dynamic gaps: tighter for more columns to maximize image size
+      const gap       = cfg.columns >= 12 ? 6 : cfg.columns >= 8 ? 12 : cfg.columns >= 6 ? 16 : cfg.columns >= 4 ? 24 : 32
+      const rowGap    = cfg.columns >= 6 ? 64 : 80
       const cellW     = (usable - gap * (cols - 1)) / cols
       const imgH      = cfg.imageSize !== 'none' ? Math.round(cellW) : 0  // square
       // textH must fit: ID line (10px) + title line for narrower columns (12px) + top gap (3px)
-      const showTitle = cfg.columns < 10
-      const textH     = cfg.columns >= 10 ? 14 : cfg.columns >= 6 ? 26 : 34
+      const showTitle = cfg.columns < 12
+      const textH     = cfg.columns >= 12 ? 16 : cfg.columns >= 8 ? 32 : cfg.columns >= 4 ? 48 : 64
       const cellH     = imgH + textH + gap
 
       let col = 0
@@ -567,22 +605,36 @@ async function buildPdf(
           const imgSrc = imageMap.get(o.OeuvreID)
           if (imgSrc?.startsWith('data:')) {
             const imgBuf = Buffer.from(imgSrc.split(',')[1], 'base64')
-            try { doc.image(imgBuf, cx, y, { cover: [cellW, imgH], align: 'center', valign: 'center' }) } catch {}
+            const fitType = cfg.imageCrop === 'native' ? 'inside' : 'cover'
+            
+            try {
+              // Pre-process with sharp to ensure perfect cropping and no overlap
+              const processed = await sharp(imgBuf)
+                .resize(Math.round(cellW * 2), Math.round(imgH * 2), { // 2x for retina-like quality
+                  fit: fitType,
+                  background: { r: 255, g: 255, b: 255, alpha: 0 }
+                })
+                .toBuffer()
+              
+              doc.image(processed, cx, y, { width: cellW, height: imgH, align: 'center', valign: 'center' })
+            } catch (err) {
+              console.error('PDF Image Error:', err)
+            }
           }
           // No grey rect if image missing — keep contact sheet clean
         }
 
         // Caption: ID first (always), then title for wider columns
-        let ty = y + imgH + 3
+        let ty = y + imgH + 6
         if (f.id) {
-          doc.fontSize(7).fillColor('#999999').font('Courier')
-             .text('#' + o.OeuvreID, cx, ty, { width: cellW, lineBreak: false })
+          doc.fontSize(7).fillColor('#bbbbbb').font('Courier')
+             .text('#' + o.OeuvreID, cx, ty, { width: cellW, align: 'center', lineBreak: false })
           doc.font('Helvetica')
           ty += 10
         }
         if (showTitle && f.title) {
-          doc.fontSize(cfg.columns >= 6 ? 7 : 8).fillColor('#1a1a1a')
-             .text(o.Titre ?? '—', cx, ty, { width: cellW, lineBreak: false, ellipsis: true })
+          doc.fontSize(cfg.columns >= 6 ? 7 : 9).fillColor('#111111')
+             .text(o.Titre ?? '—', cx, ty, { width: cellW, align: 'center', lineBreak: false, ellipsis: true })
         }
 
         col++
@@ -597,7 +649,7 @@ async function buildPdf(
     } else {
       // ── Cards layout ─────────────────────────────────────────
       const imgW       = cfg.imageSize === 'large' ? 200 : cfg.imageSize === 'small' ? 120 : 0
-      const imgH       = cfg.imageSize === 'large' ? 150 : cfg.imageSize === 'small' ? 90  : 0
+      const imgH       = imgW // Square
       const perPage    = cfg.cardsPerPage ?? 1
       let   cardCount  = 0
 

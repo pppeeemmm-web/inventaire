@@ -5,6 +5,7 @@
 // Export themes are saved to localStorage for reuse.
 
 import { useState, useTransition, useEffect } from 'react'
+import { useI18n } from '@/lib/i18n/context'
 import { generateExport, type ExportConfig, type ExportFields } from '@/app/atelier/selection/actions'
 import type { Oeuvre } from '@/lib/types/database'
 
@@ -46,6 +47,7 @@ const DEFAULT_CONFIG: ExportConfig = {
   cardsPerPage: 2,
   imageSize:    'small',
   imageEmbed:   'linked',
+  imageCrop:    'square',
   paper:        'a4',
   appendList:   false,
   fields: {
@@ -76,7 +78,21 @@ interface Props {
 // ── Component ─────────────────────────────────────────────────────────────
 
 export function ExportModal({ ids, oeuvres, tM, sM, statusLabelMap, onClose }: Props) {
+  const { t } = useI18n()
   const [cfg,          setCfg]          = useState<ExportConfig>(DEFAULT_CONFIG)
+
+  const FIELD_LABELS: Record<keyof ExportFields, string> = {
+    image:     t('image'),
+    title:     t('title'),
+    id:        t('reference'),
+    year:      t('year'),
+    technique: t('technique'),
+    support:   t('support'),
+    dims:      'Dimensions',
+    price:     t('price'),
+    status:    t('status'),
+    notes:     t('notes'),
+  }
   const [themes,       setThemes]       = useState<ExportTheme[]>([])
   const [themeName,    setThemeName]    = useState('')
   const [activeTheme,  setActiveTheme]  = useState<string | null>(null)
@@ -180,9 +196,9 @@ export function ExportModal({ ids, oeuvres, tM, sM, statusLabelMap, onClose }: P
 
         {/* Header */}
         <div style={{ padding: '20px 28px 16px', borderBottom: '1px solid var(--bd)', flexShrink: 0 }}>
-          <div className="t-eyebrow">Exporter la sélection</div>
-          <div className="t-mono-sm" style={{ color: 'var(--tx3)', marginTop: 4 }}>
-            {ids.length} œuvre{ids.length > 1 ? 's' : ''}
+          <div className="t-eyebrow" style={{ marginBottom: 4 }}>{t('exportSelection')}</div>
+          <div className="t-mono-sm" style={{ color: 'var(--tx3)', marginBottom: 24 }}>
+            {ids.length} {t('works')}
           </div>
         </div>
 
@@ -192,7 +208,7 @@ export function ExportModal({ ids, oeuvres, tM, sM, statusLabelMap, onClose }: P
           <div style={{ flex: 1, padding: '20px 28px', display: 'flex', flexDirection: 'column', gap: 20, borderRight: '1px solid var(--bd)', overflow: 'auto' }}>
 
             {/* Format */}
-            <Section label="Format">
+            <Section label="FORMAT">
               <ToggleRow
                 options={[{ v: 'html', l: 'HTML' }, { v: 'pdf', l: 'PDF' }]}
                 value={cfg.format} onChange={(v) => {
@@ -203,10 +219,10 @@ export function ExportModal({ ids, oeuvres, tM, sM, statusLabelMap, onClose }: P
             </Section>
 
             {/* Title */}
-            <Section label="Titre de l'export">
+            <Section label={t('exportTitle')}>
               <input
                 className="input"
-                placeholder="Ex: Sélection de Printemps, Thème: Paysages..."
+                placeholder={t('exportTitlePlaceholder')}
                 value={cfg.exportTitle ?? ''}
                 onChange={(e) => set('exportTitle', e.target.value || null)}
                 style={{ width: '100%', fontSize: 11 }}
@@ -214,18 +230,18 @@ export function ExportModal({ ids, oeuvres, tM, sM, statusLabelMap, onClose }: P
             </Section>
 
             {/* Layout */}
-            <Section label="Mise en page">
+            <Section label={t('layout')}>
               <ToggleRow
                 options={[
-                  { v: 'cards', l: 'Fiches' },
-                  { v: 'grid',  l: 'Grille' },
-                  { v: 'list',  l: 'Liste rapide' },
+                  { v: 'cards', l: t('fiches') },
+                  { v: 'grid',  l: t('grille') },
+                  { v: 'list',  l: t('listeRapide') },
                 ]}
                 value={cfg.layout} onChange={(v) => set('layout', v as ExportConfig['layout'])}
               />
               {cfg.layout === 'grid' && (
                 <div className="row gap-sm" style={{ marginTop: 10, flexWrap: 'wrap' }}>
-                  <span className="t-label">Colonnes :</span>
+                  <span className="t-label">{t('columns')} :</span>
                   {([2, 3, 4, 6, 8, 10, 12] as const).map((n) => (
                     <button key={n} className={`btn sm ${cfg.columns === n ? 'primary' : 'ghost'}`}
                       onClick={() => set('columns', n as ExportConfig['columns'])}>{n}</button>
@@ -234,7 +250,7 @@ export function ExportModal({ ids, oeuvres, tM, sM, statusLabelMap, onClose }: P
               )}
               {cfg.layout === 'cards' && (
                 <div className="row gap-sm" style={{ marginTop: 10, flexWrap: 'wrap' }}>
-                  <span className="t-label">Fiches / page :</span>
+                  <span className="t-label">{t('cardsPerPage')} :</span>
                   {([1, 2, 3, 4, 5, 6] as const).map((n) => (
                     <button key={n} className={`btn sm ${cfg.cardsPerPage === n ? 'primary' : 'ghost'}`}
                       onClick={() => set('cardsPerPage', n as ExportConfig['cardsPerPage'])}>{n}</button>
@@ -246,14 +262,14 @@ export function ExportModal({ ids, oeuvres, tM, sM, statusLabelMap, onClose }: P
                   <input type="checkbox" checked={cfg.appendList}
                     onChange={(e) => set('appendList', e.target.checked)} />
                   <span className="t-mono-sm" style={{ color: cfg.appendList ? 'var(--tx)' : 'var(--tx3)' }}>
-                    Ajouter un index (liste rapide) à la fin
+                    {t('appendIndex')}
                   </span>
                 </label>
               )}
             </Section>
 
             {/* Fields */}
-            <Section label="Champs affichés">
+            <Section label={t('displayedFields')}>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }}>
                 {(Object.entries(cfg.fields) as [keyof ExportFields, boolean][]).map(([k, v]) => (
                   <label key={k} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
@@ -269,21 +285,27 @@ export function ExportModal({ ids, oeuvres, tM, sM, statusLabelMap, onClose }: P
             {/* Image options */}
             {cfg.fields.image && (
               <>
-                <Section label="Taille d'image">
+                <Section label={t('imageSize')}>
                   <ToggleRow
-                    options={[{ v: 'large', l: 'Grande' }, { v: 'small', l: 'Petite' }, { v: 'none', l: 'Sans image' }]}
+                    options={[{ v: 'large', l: t('large') }, { v: 'small', l: t('small') }, { v: 'none', l: t('none') }]}
                     value={cfg.imageSize} onChange={(v) => set('imageSize', v as ExportConfig['imageSize'])}
                   />
                 </Section>
+                <Section label={t('imageFormat')}>
+                  <ToggleRow
+                    options={[{ v: 'square', l: t('square') }, { v: 'native', l: t('original') }]}
+                    value={cfg.imageCrop} onChange={(v) => set('imageCrop', v as 'square' | 'native')}
+                  />
+                </Section>
                 {cfg.imageSize !== 'none' && (
-                  <Section label="Images">
+                  <Section label={t('images')}>
                     <ToggleRow
-                      options={[{ v: 'linked', l: 'URL liées' }, { v: 'embedded', l: 'Incorporées' }]}
+                      options={[{ v: 'linked', l: t('highRes') }, { v: 'embedded', l: t('lowRes') }]}
                       value={cfg.imageEmbed} onChange={(v) => set('imageEmbed', v as 'linked' | 'embedded')}
                     />
                     {isEmbedHeavy && (
                       <div className="t-mono-sm" style={{ color: '#c8a86e', marginTop: 6 }}>
-                        ⚠ {ids.length} œuvres avec images incorporées — la génération peut prendre 30–60 s.
+                        ⚠ {ids.length} {t('embedHeavyWarning')}
                       </div>
                     )}
                   </Section>
@@ -292,12 +314,12 @@ export function ExportModal({ ids, oeuvres, tM, sM, statusLabelMap, onClose }: P
             )}
 
             {/* Paper */}
-            <Section label={cfg.format === 'html' ? 'Format d\'affichage' : 'Format papier'}>
+            <Section label={cfg.format === 'html' ? t('displayFormat') : t('paperFormat')}>
               <ToggleRow
                 options={
                   cfg.format === 'html'
-                    ? [{ v: 'screen', l: 'Écran' }]
-                    : [{ v: 'a4', l: 'A4' }, { v: 'a3', l: 'A3' }, { v: 'screen', l: 'Écran' }]
+                    ? [{ v: 'screen', l: t('screen') }]
+                    : [{ v: 'a4', l: 'A4' }, { v: 'a3', l: 'A3' }, { v: 'screen', l: t('screen') }]
                 }
                 value={cfg.paper} onChange={(v) => set('paper', v as ExportConfig['paper'])}
               />
@@ -306,17 +328,17 @@ export function ExportModal({ ids, oeuvres, tM, sM, statusLabelMap, onClose }: P
 
           {/* ── Themes sidebar ──────────────────────────────── */}
           <div style={{ width: 210, flexShrink: 0, padding: '20px 16px', display: 'flex', flexDirection: 'column', gap: 8, overflow: 'auto' }}>
-            <div className="t-label" style={{ marginBottom: 4 }}>Thèmes enregistrés</div>
+            <div className="t-label" style={{ marginBottom: 4 }}>{t('savedThemes')}</div>
 
             {themes.length === 0 && (
-              <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>Aucun thème sauvegardé.</div>
+              <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>{t('noThemesSaved')}</div>
             )}
 
-            {themes.map((t) => {
-              const isActive  = activeTheme === t.name
-              const isFlash   = loadedFlash === t.name
+            {themes.map((t_item) => {
+              const isActive  = activeTheme === t_item.name
+              const isFlash   = loadedFlash === t_item.name
               return (
-                <div key={t.name} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div key={t_item.name} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <button
                     style={{
                       flex: 1, textAlign: 'left', padding: '5px 8px',
@@ -326,8 +348,8 @@ export function ExportModal({ ids, oeuvres, tM, sM, statusLabelMap, onClose }: P
                       fontSize: 10, fontFamily: 'inherit', cursor: 'pointer',
                       transition: 'border-color 0.15s, color 0.15s',
                     }}
-                    onClick={(e) => { e.stopPropagation(); handleLoadTheme(t) }}>
-                    {isFlash ? '✓ ' : ''}{t.name}
+                    onClick={(e) => { e.stopPropagation(); handleLoadTheme(t_item) }}>
+                    {isFlash ? '✓ ' : ''}{t_item.name}
                   </button>
                   <button
                     style={{
@@ -335,31 +357,26 @@ export function ExportModal({ ids, oeuvres, tM, sM, statusLabelMap, onClose }: P
                       border: '1px solid var(--bd)', color: 'var(--tx3)',
                       fontSize: 10, cursor: 'pointer', fontFamily: 'inherit',
                     }}
-                    onClick={(e) => { e.stopPropagation(); handleDeleteTheme(t.name) }}>×</button>
+                    onClick={(e) => { e.stopPropagation(); handleDeleteTheme(t_item.name) }}>×</button>
                 </div>
               )
             })}
 
-            <div style={{ marginTop: 'auto', borderTop: '1px solid var(--bd)', paddingTop: 12 }}>
-              <div className="t-label" style={{ marginBottom: 6 }}>
-                {activeTheme ? `Thème actif : ${activeTheme}` : 'Sauvegarder ce thème'}
-              </div>
+            <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: '1px solid var(--bd)' }}>
               <input
-                className="input" placeholder="Nom du thème…" value={themeName}
+                className="input sm"
+                placeholder={t('themeNamePlaceholder')}
+                value={themeName}
                 onChange={(e) => setThemeName(e.target.value)}
                 onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter') handleSaveTheme() }}
                 style={{ width: '100%', marginBottom: 6, fontSize: 11 }}
               />
               <button
-                style={{
-                  width: '100%', padding: '6px 0',
-                  background: themeName.trim() ? 'var(--ac)' : 'transparent',
-                  border: '1px solid var(--bd)',
-                  color: themeName.trim() ? 'var(--bg0)' : 'var(--tx3)',
-                  fontSize: 10, fontFamily: 'inherit', cursor: themeName.trim() ? 'pointer' : 'default',
-                }}
-                disabled={!themeName.trim()} onClick={(e) => { e.stopPropagation(); handleSaveTheme() }}>
-                Sauvegarder
+                className="btn sm primary"
+                style={{ width: '100%' }}
+                disabled={!themeName.trim()}
+                onClick={(e) => { e.stopPropagation(); handleSaveTheme() }}>
+                {t('save')}
               </button>
             </div>
           </div>
@@ -370,9 +387,9 @@ export function ExportModal({ ids, oeuvres, tM, sM, statusLabelMap, onClose }: P
           {progress && <div className="t-mono-sm" style={{ color: 'var(--tx3)', marginBottom: 8 }}>{progress}</div>}
           {error    && <div className="t-mono-sm" style={{ color: '#c0392b', marginBottom: 8 }}>{error}</div>}
           <div className="row gap-sm" style={{ justifyContent: 'flex-end' }}>
-            <button className="btn ghost" onClick={onClose}>Annuler</button>
+            <button className="btn ghost" onClick={onClose}>{t('cancel')}</button>
             <button className="btn primary" disabled={pending} onClick={(e) => { e.stopPropagation(); handleExport() }}>
-              {pending ? 'Génération…' : `Exporter (${cfg.format.toUpperCase()})${activeTheme ? ` · ${activeTheme}` : ''}`}
+              {pending ? `${t('generating')}…` : `${t('export')} (${cfg.format.toUpperCase()})${activeTheme ? ` · ${activeTheme}` : ''}`}
             </button>
           </div>
         </div>
@@ -408,19 +425,6 @@ function ToggleRow({ options, value, onChange }: {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────
-
-const FIELD_LABELS: Record<keyof ExportFields, string> = {
-  image:     'Image',
-  title:     'Titre',
-  id:        'Référence',
-  year:      'Année',
-  technique: 'Technique',
-  support:   'Support',
-  dims:      'Dimensions',
-  price:     'Prix',
-  status:    'Statut',
-  notes:     'Notes',
-}
 
 function triggerDownload(url: string, filename: string) {
   const a    = document.createElement('a')

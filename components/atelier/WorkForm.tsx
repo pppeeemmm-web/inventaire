@@ -38,9 +38,9 @@ interface Props {
   supports:        { SupportID:   number; Support:   string | null }[]
   formats:         { FormatID:    number; Format:    string | null }[]
   themes:          { ThemeID:     number; Nom:       string        }[]
-  contacts:        { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null; Role: string | null; Ville?: string | null; Pays?: string | null }[]
   statuses:        { id: number; label: string }[]
   initialImages?:  WorkImage[]
+  addresses:       { id: number; contact_id: number | null; label: string | null; city: string | null; country: string | null }[]
   action:          (fd: FormData) => Promise<SaveResult>
 }
 
@@ -57,6 +57,7 @@ export function WorkForm({
   techniques, supports, formats, themes: initialThemes,
   contacts, statuses,
   initialImages = [],
+  addresses = [],
   action,
 }: Props) {
   const { t }         = useI18n()
@@ -87,7 +88,9 @@ export function WorkForm({
   const [stageProduction, setStageProduction] = useState<string>(String((oeuvre as any)?.StageProduction ?? ''))
   const [isCatalogued, setIsCatalogued] = useState<boolean>(oeuvre?.Catalogué ?? false)
   const [montee, setMontee] = useState<boolean>((oeuvre as any)?.Montee ?? false)
+  const [needsPhotograph, setNeedsPhotograph] = useState<boolean>((oeuvre as any)?.NeedsPhotograph ?? false)
   const [isPublic, setIsPublic] = useState<boolean>(oeuvre?.is_public ?? false)
+  const [anonymityLevel, setAnonymityLevel] = useState<number>((oeuvre as any)?.anonymity_level ?? (oeuvre?.is_public === false ? 2 : 0))
   const [disponible, setDisponible] = useState<boolean>((oeuvre as any)?.Disponible ?? true)
 
   // Controlled lookup selects — can grow via inline creation
@@ -134,12 +137,49 @@ export function WorkForm({
     }
   }, [statusId])
 
-  // If stage was mounting and work FIS now catalogued (Done), mark as Mounted
+  // Rule: if contact is PEM, location is Atelier by default
+  useEffect(() => {
+    if (contactId === '13') {
+      setLocalisationId('') // Atelier
+    }
+  }, [contactId])
+
+  // Rule: If Sold (2) or Gift (4), automatically mark as Catalogued and Not Available
+  useEffect(() => {
+    if (statusId === '2' || statusId === '4') {
+      setIsCatalogued(true)
+      setDisponible(false)
+    }
+  }, [statusId])
+
+  // Rule: If Reserved/Option (5), set Not Available
+  useEffect(() => {
+    if (statusId === '5') {
+      setDisponible(false)
+    }
+  }, [statusId])
+
+  // Rule: If Available and Catalogued, production stage is Finished (undefined)
+  useEffect(() => {
+    if (disponible && isCatalogued) {
+      setStageProduction('')
+    }
+  }, [disponible, isCatalogued])
+
+  // If stage was mounting and work is now catalogued (Done), mark as Mounted
   useEffect(() => {
     if (isCatalogued && stageProduction === 'mounting') {
       setMontee(true)
     }
   }, [isCatalogued, stageProduction])
+
+  // If status is "Sold" or "Gift", it is no longer available
+  useEffect(() => {
+    const label = statuses.find((s) => String(s.id) === statusId)?.label
+    if (label === 'Sold' || label === 'Gift') {
+      setDisponible(false)
+    }
+  }, [statusId, statuses])
 
   // ── Handlers ────────────────────────────────────────────────────────
 
@@ -499,7 +539,10 @@ export function WorkForm({
               </Field>
               <Field label="Stade de production">
                 {(() => {
-                  const stageGone = isCatalogued || statusLabel === 'Sold' || statusLabel === 'Gift'
+                  const statusLabel = statuses.find((s) => String(s.id) === statusId)?.label || ''
+                  const sLabel = statusLabel.toLowerCase()
+                  const isAvailableStatus = sLabel.includes('avail') || sLabel.includes('atel')
+                  const stageGone = (disponible && isCatalogued) || isAvailableStatus || sLabel.includes('sold') || sLabel.includes('gift')
                   return (
                     <select
                       name="stage_production"
@@ -513,12 +556,10 @@ export function WorkForm({
                       }}
                     >
                       <option value="">— Non défini</option>
-                      <option value="idea">💡 Idée</option>
                       <option value="wip">🖌 En cours</option>
                       <option value="drying">⏳ Séchage</option>
                       <option value="mounting">🔧 À monter</option>
                       <option value="framing">🪟 À encadrer</option>
-                      <option value="shot">📷 À photographier</option>
                       <option value="catalogued">✅ À cataloguer (fini)</option>
                     </select>
                   )
@@ -553,22 +594,45 @@ export function WorkForm({
                 { name: 'exposable',  label: t('exhibitable'),  val: (oeuvre?.Exposable ?? false) },
                 { name: 'montee',     label: 'Montée',     val: montee,     onChange: setMontee },
                 { name: 'encadree',   label: 'Encadrée',   val: (oeuvre?.Encadree ?? false) },
+                { name: 'needs_photograph', label: 'Besoin d\'une photo', val: needsPhotograph, onChange: setNeedsPhotograph },
                 { name: 'catalogued', label: 'Cataloguée', val: isCatalogued, onChange: setIsCatalogued },
                 { name: 'is_public',  label: 'Public',     val: isPublic,     onChange: setIsPublic },
                 { name: 'disponible', label: 'Disponible', val: disponible,   onChange: setDisponible },
               ].map(({ name, label, val, onChange: onChg }: { name: string; label: string; val: boolean; onChange?: (v: boolean) => void }) => {
+                const isSold = statusId === '2'
+                const isGift = statusId === '4'
+                const isReserved = statusId === '5'
+                const isUnavailable = isSold || isGift || isReserved
+                const isFinalized = isSold || isGift
+
                 const isPrivate = statusId === '3'
                 const isAtelier = statusId === '1'
-                const shouldDisable = (name === 'exposable' && (isAtelier || isPrivate)) || 
-                                     ((name === 'is_public' || name === 'disponible') && isPrivate)
                 
+                // Force off rules
+                let forcedOff = false
+                if (name === 'exposable' && (isAtelier || isPrivate)) forcedOff = true
+                // Special: 'is_public' checkbox is now deprecated by anonymity_level, but we keep it for now if needed.
+                // However, the user wants 3 levels, so we'll render the levels separately.
+                if (name === 'is_public' && (isPrivate || anonymityLevel === 2)) forcedOff = true
+                if (name === 'disponible' && (isPrivate || isUnavailable)) forcedOff = true
+                
+                // Force on rules
+                let forcedOn = false
+                if (name === 'catalogued' && isFinalized) forcedOn = true
+                if (name === 'is_public' && anonymityLevel < 2) forcedOn = true
+
+                const shouldDisable = forcedOff || forcedOn
+                
+                // Skip rendering 'Public' as a simple checkbox, we'll render it as levels below
+                if (name === 'is_public') return null
+
                 return (
                   <CheckFlag
                     key={name} name={name} label={label} 
-                    defaultChecked={val}
+                    defaultChecked={forcedOn ? true : forcedOff ? false : val}
                     onChange={onChg}
                     disabled={shouldDisable}
-                    forceOff={shouldDisable && (name === 'is_public' || name === 'disponible' || name === 'exposable')}
+                    forceOff={forcedOff}
                   />
                 )
               })}
@@ -577,6 +641,40 @@ export function WorkForm({
                 defaultChecked={oeuvre?.IsCommission ?? false}
                 onChange={setIsCommission}
               />
+            </div>
+
+            {/* ── Section: Visibilité (Anonymat) ── */}
+            <div style={{ marginBottom: 28 }}>
+              <div className="t-label" style={{ marginBottom: 12 }}>Visibilité & Anonymat</div>
+              <div style={{ display: 'flex', gap: 10 }}>
+                {[
+                  { v: 0, l: 'Public',     desc: 'Œuvre et contact visibles' },
+                  { v: 1, l: 'Anonyme',    desc: 'Œuvre visible, contact masqué' },
+                  { v: 2, l: 'Privé',      desc: 'Œuvre et contact masqués' },
+                ].map((tier) => (
+                  <button
+                    key={tier.v}
+                    type="button"
+                    onClick={() => setAnonymityLevel(tier.v)}
+                    style={{
+                      flex: 1, padding: '10px 12px', textAlign: 'left',
+                      background: anonymityLevel === tier.v ? 'var(--bg2)' : 'var(--bg0)',
+                      border: `1px solid ${anonymityLevel === tier.v ? 'var(--ac)' : 'var(--bd)'}`,
+                      cursor: 'pointer', transition: 'all 0.1s',
+                    }}
+                  >
+                    <div style={{ fontSize: 10, fontWeight: 700, color: anonymityLevel === tier.v ? 'var(--tx)' : 'var(--tx3)', marginBottom: 4 }}>
+                      {tier.l.toUpperCase()}
+                    </div>
+                    <div style={{ fontSize: 9, color: 'var(--tx3)', lineHeight: 1.3 }}>
+                      {tier.desc}
+                    </div>
+                    <input type="radio" name="anonymity_level" value={tier.v} checked={anonymityLevel === tier.v} readOnly style={{ display: 'none' }} />
+                  </button>
+                ))}
+              </div>
+              {/* Sync is_public hidden field for existing logic/filters */}
+              <input type="hidden" name="is_public" value={anonymityLevel < 2 ? '1' : '0'} />
             </div>
 
             {/* Commission deadline — shown when commission FIS ticked */}
@@ -619,11 +717,43 @@ export function WorkForm({
                   onChange={(e) => setLocalisationId(e.target.value)}
                   style={inputStyle}
                 >
-                  <option value="">— Atelier</option>
-                  {[...localContacts].sort((a,b) => (a.NomInstitution || a.Nom || '').localeCompare(b.NomInstitution || b.Nom || '', 'fr')).map((c) => {
-                    const label = c.NomInstitution || `${c.Prénom ?? ''} ${c.Nom ?? ''}`.trim() || String(c.ContactID)
-                    return <option key={c.ContactID} value={c.ContactID}>{label}</option>
-                  })}
+                  {(() => {
+                    const finalOptions: { id: string; label: string }[] = []
+                    
+                    // 1. Add "Pem - Atelier" as the absolute default (value "")
+                    const pemContact = contacts.find(c => (c.NomInstitution || '').toLowerCase().includes('pem'))
+                    const pemLabel = pemContact ? (pemContact.NomInstitution || `${pemContact.Prénom ?? ''} ${pemContact.Nom ?? ''}`.trim()) : 'Pem'
+                    finalOptions.push({ id: '', label: `${pemLabel} - Atelier` })
+
+                    // 2. Build sorted list of contacts
+                    const sortedContacts = [...contacts]
+                      .sort((a, b) => {
+                        const la = a.NomInstitution || `${a.Prénom ?? ''} ${a.Nom ?? ''}`.trim()
+                        const lb = b.NomInstitution || `${b.Prénom ?? ''} ${b.Nom ?? ''}`.trim()
+                        return la.localeCompare(lb, 'fr')
+                      })
+
+                    // 3. For each contact, add it + its specific addresses
+                    sortedContacts.forEach(c => {
+                      const cName = c.NomInstitution || `${c.Prénom ?? ''} ${c.Nom ?? ''}`.trim() || String(c.ContactID)
+                      finalOptions.push({ id: String(c.ContactID), label: cName })
+
+                      // Add sub-addresses if any
+                      const cAddrs = addresses.filter(a => a.contact_id === c.ContactID)
+                      cAddrs.forEach(addr => {
+                        const subLabel = `${cName} - ${addr.label}`
+                        // Skip if generic or if it's the exact "Pem - Atelier" we already put at the top
+                        if (!addr.label || addr.label.toLowerCase() === 'principal') return
+                        if (subLabel === `${pemLabel} - Atelier`) return 
+                        
+                        finalOptions.push({ id: String(c.ContactID), label: subLabel })
+                      })
+                    })
+
+                    return finalOptions.map((opt, i) => (
+                      <option key={`${opt.id}-${opt.label}-${i}`} value={opt.id}>{opt.label}</option>
+                    ))
+                  })()}
                 </select>
               </Field>
               <Field label="Ville, pays">
@@ -827,6 +957,9 @@ function CheckFlag({
   onChange?: (checked: boolean) => void
 }) {
   const [checked, setChecked] = useState(defaultChecked)
+  useEffect(() => {
+    setChecked(defaultChecked)
+  }, [defaultChecked])
   // When forceOff activates (e.g. WIP status), treat as unchecked
   const effectiveChecked = forceOff ? false : checked
   return (
@@ -842,7 +975,13 @@ function CheckFlag({
         value={effectiveChecked ? '1' : '0'}
       />
       <div
-        onClick={() => { if (!disabled) { setChecked((p) => { onChange?.(!p); return !p }) } }}
+        onClick={() => {
+          if (!disabled) {
+            const next = !checked
+            setChecked(next)
+            onChange?.(next)
+          }
+        }}
         title={disabled ? 'Non disponible pour les œuvres en cours' : undefined}
         style={{
           width: 14, height: 14,

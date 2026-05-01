@@ -4,6 +4,7 @@
 // Only fields explicitly set by the user are updated; others are untouched.
 
 import { useState, useTransition } from 'react'
+import { useI18n } from '@/lib/i18n/context'
 import { batchEdit, type BatchChanges } from '@/app/atelier/selection/actions'
 
 interface Props {
@@ -22,6 +23,7 @@ interface Props {
 type Tri = null | boolean
 
 export function BatchEditModal({ ids, techniques, supports, formats, contacts, themes, statusLabelMap, onClose, onDone }: Props) {
+  const { t } = useI18n()
   const [pending, startEdit] = useTransition()
   const [error,   setError]  = useState<string | null>(null)
 
@@ -112,7 +114,8 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
         const r = await batchEdit(ids, changes)
         if ('error' in r) { setError(r.error); return }
         onDone(r.updated)
-        window.location.reload() // Force a full refresh to clear any stale client state
+        // Refresh server data and show success toast via URL param
+        window.location.href = window.location.pathname + '?batch=success'
       } catch (e) {
         setError(String(e))
       }
@@ -126,49 +129,49 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
 
   return (
     <Overlay onClose={onClose}>
-      <div className="t-eyebrow" style={{ marginBottom: 6 }}>Modification groupée</div>
+      <div className="t-eyebrow" style={{ marginBottom: 6 }}>{t('batchEdit')}</div>
       <div className="t-mono-sm" style={{ color: 'var(--tx3)', marginBottom: 24 }}>
-        {ids.length} œuvre{ids.length > 1 ? 's' : ''} sélectionnée{ids.length > 1 ? 's' : ''}
-        {' · '}Seuls les champs modifiés seront mis à jour.
+        {ids.length} {t('works')}
+        {' · '}{t('onlyChangedUpdated')}
       </div>
 
       {/* ── Section: Classification ─────────────────────────────── */}
       <SectionLabel>Classification</SectionLabel>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 20px', marginBottom: 20 }}>
 
-        <FieldWrap label="Statut" active={statusId !== ''}>
+        <FieldWrap label={t('status')} active={statusId !== ''}>
           <select className="input" style={{ width: '100%' }} value={statusId}
             onChange={(e) => setStatusId(e.target.value)}>
-            <option value="">— Inchangé —</option>
-            <option value="null">Retirer le statut</option>
+            <option value="">— {t('unchanged')} —</option>
+            <option value="null">{t('removeStatus')}</option>
             {statuses.map(({ id, label }) => (
               <option key={id} value={id}>{label}</option>
             ))}
           </select>
         </FieldWrap>
 
-        <FieldWrap label="Année" active={annee !== ''}>
+        <FieldWrap label={t('year')} active={annee !== ''}>
           <input className="input" type="text" style={{ width: '100%' }}
-            placeholder="Inchangé (ex. 2024)" value={annee}
+            placeholder={`${t('unchanged')} (ex. 2024)`} value={annee}
             onChange={(e) => setAnnee(e.target.value)} />
         </FieldWrap>
 
-        <FieldWrap label="Technique" active={technique !== ''}>
+        <FieldWrap label={t('technique')} active={technique !== ''}>
           <select className="input" style={{ width: '100%' }} value={technique}
             onChange={(e) => setTechnique(e.target.value)}>
-            <option value="">— Inchangé —</option>
-            <option value="null">Retirer</option>
+            <option value="">— {t('unchanged')} —</option>
+            <option value="null">{t('remove')}</option>
             {techniques.map((t) => (
               <option key={t.TechniqueID} value={t.TechniqueID}>{t.Technique}</option>
             ))}
           </select>
         </FieldWrap>
 
-        <FieldWrap label="Support" active={support !== ''}>
+        <FieldWrap label={t('support')} active={support !== ''}>
           <select className="input" style={{ width: '100%' }} value={support}
             onChange={(e) => setSupport(e.target.value)}>
-            <option value="">— Inchangé —</option>
-            <option value="null">Retirer</option>
+            <option value="">— {t('unchanged')} —</option>
+            <option value="null">{t('remove')}</option>
             {supports.map((s) => (
               <option key={s.SupportID} value={s.SupportID}>{s.Support}</option>
             ))}
@@ -178,19 +181,19 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
         <FieldWrap label="Format" active={format !== ''}>
           <select className="input" style={{ width: '100%' }} value={format}
             onChange={(e) => setFormat(e.target.value)}>
-            <option value="">— Inchangé —</option>
-            <option value="null">Retirer</option>
+            <option value="">— {t('unchanged')} —</option>
+            <option value="null">{t('remove')}</option>
             {formats.map((f) => (
               <option key={f.FormatID} value={f.FormatID}>{f.Format}</option>
             ))}
           </select>
         </FieldWrap>
 
-        <FieldWrap label="Contact" active={contactId !== ''}>
+        <FieldWrap label={t('contact')} active={contactId !== ''}>
           <select className="input" style={{ width: '100%' }} value={contactId}
             onChange={(e) => setContactId(e.target.value)}>
-            <option value="">— Inchangé —</option>
-            <option value="null">Retirer</option>
+            <option value="">— {t('unchanged')} —</option>
+            <option value="null">{t('remove')}</option>
             {contacts.map((c) => (
               <option key={c.ContactID} value={c.ContactID}>{contactLabel(c)}</option>
             ))}
@@ -203,15 +206,15 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
       <SectionLabel>Prix</SectionLabel>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 20px', marginBottom: 20 }}>
 
-        <FieldWrap label="Prix (€)" active={prix !== ''}>
+        <FieldWrap label={`${t('price')} (€)`} active={prix !== ''}>
           <input className="input" type="number" style={{ width: '100%' }}
-            placeholder="Inchangé" value={prix}
+            placeholder={t('unchanged')} value={prix}
             onChange={(e) => setPrix(e.target.value)} />
         </FieldWrap>
 
-        <FieldWrap label="Remise (%)" active={discount !== ''}>
+        <FieldWrap label={`${t('discount')} (%)`} active={discount !== ''}>
           <input className="input" type="number" style={{ width: '100%' }}
-            placeholder="Inchangé" value={discount} min={0} max={100}
+            placeholder={t('unchanged')} value={discount} min={0} max={100}
             onChange={(e) => setDiscount(e.target.value)} />
         </FieldWrap>
 
@@ -221,15 +224,15 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
       <SectionLabel>Localisation & notes</SectionLabel>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '10px', marginBottom: 20 }}>
 
-        <FieldWrap label="Localisation (détail)" active={locDetail !== ''}>
+        <FieldWrap label={t('locationDetail')} active={locDetail !== ''}>
           <input className="input" type="text" style={{ width: '100%' }}
-            placeholder="Inchangé (ex. Marseille, France)" value={locDetail}
+            placeholder={`${t('unchanged')} (ex. Marseille, France)`} value={locDetail}
             onChange={(e) => setLocDetail(e.target.value)} />
         </FieldWrap>
 
-        <FieldWrap label="Commentaires" active={commentaires !== ''}>
+        <FieldWrap label={t('notes')} active={commentaires !== ''}>
           <textarea className="input" style={{ width: '100%', minHeight: 60, resize: 'vertical', fontFamily: 'inherit' }}
-            placeholder="Inchangé — remplacera le commentaire existant"
+            placeholder={t('notesBatchPlaceholder')}
             value={commentaires}
             onChange={(e) => setCommentaires(e.target.value)} />
         </FieldWrap>
@@ -239,10 +242,10 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
       {/* ── Section: Thèmes ──────────────────────────────────────── */}
       {themes.length > 0 && (
         <>
-          <SectionLabel>Thèmes</SectionLabel>
+          <SectionLabel>{t('themes')}</SectionLabel>
           <div style={{ marginBottom: 8 }}>
             <div className="t-mono-sm" style={{ color: 'var(--tx3)', marginBottom: 8 }}>
-              Clic = ajouter · Clic droit = retirer · gris = inchangé
+              {t('themesBatchHelp')}
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {themes.map(th => {
@@ -267,9 +270,9 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
             </div>
             {(addThemes.size > 0 || removeThemes.size > 0) && (
               <div className="t-mono-sm" style={{ color: 'var(--tx3)', marginTop: 6 }}>
-                {addThemes.size > 0 && `Ajouter : ${[...addThemes].map(id => themes.find(t => t.ThemeID === id)?.Nom).join(', ')}`}
+                {addThemes.size > 0 && `${t('add')} : ${[...addThemes].map(id => themes.find(t => t.ThemeID === id)?.Nom).join(', ')}`}
                 {addThemes.size > 0 && removeThemes.size > 0 && ' · '}
-                {removeThemes.size > 0 && `Retirer : ${[...removeThemes].map(id => themes.find(t => t.ThemeID === id)?.Nom).join(', ')}`}
+                {removeThemes.size > 0 && `${t('remove')} : ${[...removeThemes].map(id => themes.find(t => t.ThemeID === id)?.Nom).join(', ')}`}
               </div>
             )}
           </div>
@@ -277,28 +280,28 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
       )}
 
       {/* ── Section: Attributs ───────────────────────────────────── */}
-      <SectionLabel>Attributs</SectionLabel>
+      <SectionLabel>{t('attributes')}</SectionLabel>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 20 }}>
-        <TriField label="Exposable"   value={exposable}    onChange={setExposable}   />
-        <TriField label="Montée"      value={montee}       onChange={setMontee}      />
-        <TriField label="Encadrée"    value={encadree}     onChange={setEncadree}    />
-        <TriField label="Cataloguée"  value={catalogued}   onChange={setCatalogued}  />
-        <TriField label="Publique"    value={isPublic}     onChange={setIsPublic}    />
-        <TriField label="Commission"  value={isCommission} onChange={setIsCommission}/>
+        <TriField label={t('exposable')}   value={exposable}    onChange={setExposable}   />
+        <TriField label={t('montee')}      value={montee}       onChange={setMontee}      />
+        <TriField label={t('framed')}      value={encadree}     onChange={setEncadree}    />
+        <TriField label={t('catalogued')}  value={catalogued}   onChange={setCatalogued}  />
+        <TriField label={t('public')}      value={isPublic}     onChange={setIsPublic}    />
+        <TriField label={t('commission')}  value={isCommission} onChange={setIsCommission}/>
       </div>
 
       {!changed && (
         <div className="t-mono-sm" style={{ color: 'var(--tx3)', marginTop: 4 }}>
-          Modifiez au moins un champ pour appliquer.
+          {t('modifyAtLeastOne')}
         </div>
       )}
 
       {error && <div className="t-mono-sm" style={{ color: '#c0392b', marginTop: 12 }}>{error}</div>}
 
       <div className="row gap-sm" style={{ justifyContent: 'flex-end', marginTop: 20 }}>
-        <button className="btn ghost" onClick={onClose}>Annuler</button>
+        <button className="btn ghost" onClick={onClose}>{t('cancel')}</button>
         <button className="btn primary" disabled={!changed || pending} onClick={handleSubmit}>
-          {pending ? 'Modification…' : `Appliquer aux ${ids.length} œuvre${ids.length > 1 ? 's' : ''}`}
+          {pending ? `${t('modifying')}…` : `${t('applyTo')} ${ids.length} ${t('works')}`}
         </button>
       </div>
     </Overlay>
@@ -339,7 +342,7 @@ function TriField({ label, value, onChange }: { label: string; value: Tri; onCha
     >
       <span className="t-mono-sm" style={{ color: value !== null ? 'var(--tx)' : 'var(--tx3)' }}>{label}</span>
       <span className="t-mono-sm" style={{ color: value === true ? 'var(--sage)' : value === false ? '#c0392b' : 'var(--tx3)' }}>
-        {value === null ? '—' : value ? 'Oui' : 'Non'}
+        {value === null ? '—' : value ? t('yes') : t('no')}
       </span>
     </div>
   )

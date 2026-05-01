@@ -4,6 +4,7 @@
 // Shows selection count, batch-edit, export, quick-save group, and constellation jump.
 
 import { useState } from 'react'
+import { useI18n } from '@/lib/i18n/context'
 import { BatchEditModal } from '@/components/atelier/BatchEditModal'
 import { ExportModal }    from '@/components/atelier/ExportModal'
 import type { Oeuvre }    from '@/lib/types/database'
@@ -22,13 +23,15 @@ interface Props {
   statusLabelMap:     Record<number, string>
   onGoConstellation:  () => void
   onSaveGroup:        (name: string, ids: number[]) => Promise<string | null>
+  onCompare:          () => void
 }
 
 export function CurationDock({
   selection, setSelection,
   oeuvres, techniques, supports, formats, contacts, themes, tM, sM, statusLabelMap,
-  onGoConstellation, onSaveGroup,
+  onGoConstellation, onSaveGroup, onCompare,
 }: Props) {
+  const { t } = useI18n()
   const [quickName, setQuickName] = useState('')
   const [saving,    setSaving]    = useState(false)
   const [savedName, setSavedName] = useState<string | null>(null)
@@ -39,7 +42,7 @@ export function CurationDock({
 
   async function handleSave() {
     setSaving(true)
-    const nm = quickName.trim() || `Groupe du ${new Date().toLocaleDateString('fr-FR')}`
+    const nm = quickName.trim() || `${t('selectionGroup')} ${new Date().toLocaleDateString('fr-FR')}`
     const id = await onSaveGroup(nm, ids)
     if (id) {
       setSavedName(nm)
@@ -60,7 +63,7 @@ export function CurationDock({
 
         {/* Count */}
         <div className="row gap-sm">
-          <div className="t-eyebrow" style={{ color: 'var(--ac)' }}>Sélection</div>
+          <div className="t-eyebrow" style={{ color: 'var(--ac)' }}>{t('selection')}</div>
           <div style={{ fontSize: 20, color: 'var(--tx)', fontFamily: "'Instrument Serif', serif", lineHeight: 1 }}>
             {ids.length}
           </div>
@@ -70,12 +73,17 @@ export function CurationDock({
 
         {/* Batch edit */}
         <button className="btn sm ghost" onClick={() => setShowBatch(true)}>
-          Modifier
+          {t('modify')}
         </button>
 
         {/* Export */}
         <button className="btn sm ghost" onClick={() => setShowExport(true)}>
-          Exporter
+          {t('export')}
+        </button>
+
+        {/* Compare */}
+        <button className="btn sm ghost" onClick={onCompare}>
+          {t('compare')}
         </button>
 
         <div className="vline" style={{ height: 20 }} />
@@ -87,7 +95,7 @@ export function CurationDock({
               <input
                 value={quickName}
                 onChange={(e) => setQuickName(e.target.value)}
-                placeholder="Nom du groupe…"
+                placeholder={t('groupNamePlaceholder')}
                 onKeyDown={(e) => e.key === 'Enter' && handleSave()}
                 style={{
                   width: 130, padding: '4px 8px',
@@ -103,12 +111,12 @@ export function CurationDock({
 
         {/* Constellation */}
         <button className="btn sm primary" onClick={onGoConstellation}>
-          Curation →
+          {t('curate')} →
         </button>
 
         {/* Clear */}
         <button className="btn ghost sm" onClick={() => setSelection(new Set())}>
-          Effacer
+          {t('clear')}
         </button>
       </div>
 

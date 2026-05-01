@@ -40,7 +40,7 @@ export function decadeOf(year: number | null): string | null {
 
 // ── Stage production color ─────────────────────────────────────
 
-export type StageKey = 'idea' | 'wip' | 'drying' | 'framing' | 'shot' | 'catalogued'
+export type StageKey = 'idea' | 'wip' | 'drying' | 'mounting' | 'framing' | 'shot' | 'catalogued'
 
 /** Returns a CSS color var string for a StageProduction value */
 export function stageColor(stage: string | null | undefined): string {
@@ -142,11 +142,11 @@ export function seqFromFilename(filename: string | null | undefined): number {
 
 // ── Production stage helpers ──────────────────────────────────
 
-export type StageKey =
+export type StageProductionKey =
   | 'stage_idea' | 'stage_sketch' | 'stage_wip'
   | 'stage_drying' | 'stage_framing' | 'stage_shot' | 'stage_catalogued'
 
-export const STAGES: StageKey[] = [
+export const STAGES: StageProductionKey[] = [
   'stage_idea', 'stage_sketch', 'stage_wip',
   'stage_drying', 'stage_framing', 'stage_shot', 'stage_catalogued',
 ]
@@ -156,9 +156,10 @@ export const STAGES: StageKey[] = [
  * Priority: Catalogué > has image > framed > WIP status > hash fallback.
  */
 export function stageOf(
-  o: { Catalogué?: boolean | null; txtImageNameLink?: string | null; Encadree?: boolean | null; statusId?: number | null },
+  o: { Catalogué?: boolean | null; txtImageNameLink?: string | null; Encadree?: boolean | null; statusId?: number | null; NeedsPhotograph?: boolean | null },
   statusLabelMap: Record<number, string> = {},
-): StageKey {
+): StageProductionKey {
+  if (o.NeedsPhotograph) return 'stage_shot'
   if (o.Catalogué) return 'stage_catalogued'
   if (o.txtImageNameLink) return 'stage_shot'
   if (o.Encadree) return 'stage_framing'
@@ -172,7 +173,7 @@ export function stageOf(
       ? (o as { OeuvreID: number }).OeuvreID
       : 0,
   )
-  const earlyStages: StageKey[] = ['stage_idea', 'stage_sketch', 'stage_drying']
+  const earlyStages: StageProductionKey[] = ['stage_idea', 'stage_sketch', 'stage_drying']
   return earlyStages[h % earlyStages.length]
 }
 

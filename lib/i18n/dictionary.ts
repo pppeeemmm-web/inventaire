@@ -37,6 +37,8 @@ export type DictKey =
   | 'searchFieldAll' | 'searchFieldName' | 'searchFieldCity' | 'searchFieldEmail' | 'searchFieldNotes'
   | 'identity' | 'depth' | 'visibility' | 'history' | 'save' | 'create'
   | 'priced' | 'date' | 'label'
+  | 'selection' | 'modify' | 'export' | 'compare' | 'groupNamePlaceholder' | 'clear'
+  | 'legend' | 'stage_mounting'
 
 type Dictionary = Record<DictKey, string>
 
@@ -115,6 +117,9 @@ export const dict: Record<Lang, Dictionary> = {
     identity: 'Identité', depth: 'Profondeur', visibility: 'Visibilité',
     history: 'Historique', save: 'Enregistrer', create: 'Créer',
     priced: 'Évalué', date: 'Date', label: 'Libellé',
+    selection: 'SÉLECTION', modify: 'MODIFIER', export: 'EXPORTER',
+    compare: 'COMPARER', groupNamePlaceholder: 'nom du groupe...', clear: 'EFFACER',
+    legend: 'LÉGENDE', stage_mounting: 'À monter',
   },
   en: {
     hub: 'Studio', tagline: 'Inventory · Production · Curation · Relations',
@@ -186,5 +191,8 @@ export const dict: Record<Lang, Dictionary> = {
     tirage: 'Edition', exhibitable: 'Exhibitable', image: 'Image',
     searchFieldAll: 'All', searchFieldName: 'Name', searchFieldCity: 'City',
     searchFieldEmail: 'Email', searchFieldNotes: 'Notes',
+    selection: 'SELECTION', modify: 'MODIFY', export: 'EXPORT',
+    compare: 'COMPARE', groupNamePlaceholder: 'group name...', clear: 'CLEAR',
+    legend: 'LEGEND', stage_mounting: 'To mount',
   },
 }

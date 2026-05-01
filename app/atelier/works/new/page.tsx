@@ -6,13 +6,8 @@ import { saveWork }     from '@/app/atelier/works/actions'
 export default async function NewWorkPage() {
   const supabase = await createClient()
 
-  const [
-    { data: techniques },
-    { data: supports },
-    { data: formats },
-    { data: themes },
-    { data: contacts },
     { data: statuses },
+    { data: addresses },
   ] = await Promise.all([
     supabase.from('Technique').select('TechniqueID, Technique').order('Technique'),
     supabase.from('Support').select('SupportID, Support').order('SupportID'),
@@ -20,6 +15,7 @@ export default async function NewWorkPage() {
     supabase.from('tblTheme').select('ThemeID, Nom').order('ThemeID'),
     supabase.from('Contact').select('ContactID, NomInstitution, Nom, Prénom, Role, Ville, Pays').order('ContactID'),
     supabase.from('OeuvreStatus').select('id, label').order('id'),
+    supabase.from('contact_addresses').select('*'),
   ])
 
   return (
@@ -32,6 +28,7 @@ export default async function NewWorkPage() {
       themes={themes ?? []}
       contacts={contacts ?? []}
       statuses={statuses ?? []}
+      addresses={addresses ?? []}
       action={saveWork}
     />
   )

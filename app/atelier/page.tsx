@@ -16,10 +16,13 @@ export default async function AtelierPage() {
     { data: statuses },
     { data: groups },
     { data: presentations },
+    _themes_link,
+    _groups_link,
+    { data: addresses },
   ] = await Promise.all([
     supabase
       .from('Oeuvres')
-      .select('OeuvreID, Titre, Technique, Support, Année, Format, Hauteur, Largeur, Profondeur, Exposable, Prix, PrixFinal, Discount, statusId, Catalogué, txtImageNameLink, ContactID, Commentaires, Historique, LocalisationID, LocalisationDetail, is_public, theme, Encadree, IsCommission, PresentationID, ReturnDate, DateLivraison, AcheteurID, StageProduction')
+      .select('OeuvreID, Titre, Technique, Support, Année, Format, Hauteur, Largeur, Profondeur, Exposable, Prix, PrixFinal, Discount, statusId, Catalogué, txtImageNameLink, ContactID, Commentaires, Historique, LocalisationID, LocalisationDetail, is_public, theme, Encadree, IsCommission, PresentationID, ReturnDate, DateLivraison, AcheteurID, StageProduction, NeedsPhotograph, anonymity_level')
       .order('OeuvreID', { ascending: false })
       .range(0, 4999),
     supabase.from('Technique').select('TechniqueID, Technique').order('TechniqueID'),
@@ -32,6 +35,7 @@ export default async function AtelierPage() {
     supabase.from('tblPresentation').select('PresentationID, Nom').order('PresentationID'),
     supabase.from('OeuvreTheme').select('OeuvreID, ThemeID'),
     supabase.from('working_group_work').select('group_id, oeuvre_id'),
+    supabase.from('contact_addresses').select('*'),
   ])
 
   // Build a flat id→label map for fast status lookups on the client
@@ -46,6 +50,7 @@ export default async function AtelierPage() {
       formats={formats ?? []}
       themes={themes ?? []}
       contacts={contacts ?? []}
+      addresses={(addresses ?? []) as any[]}
       statusLabelMap={statusLabelMap}
       initialGroups={(groups ?? [] as { id: string; name: string; created_at: string }[]).map((g) => ({ id: g.id, name: g.name }))}
       presentations={presentations ?? []}
