@@ -129,6 +129,11 @@ export function TeamPortalClient({
 
   // ── Derived lookup maps ────────────────────────────────────────
 
+  const sortedTechniques = useMemo(() => [...techniques].sort((a, b) => (a.Technique ?? '').localeCompare(b.Technique ?? '', 'fr')), [techniques])
+  const sortedSupports   = useMemo(() => [...supports].sort((a, b) => (a.Support ?? '').localeCompare(b.Support ?? '', 'fr')), [supports])
+  const sortedFormats    = useMemo(() => [...formats].sort((a, b) => (a.Format ?? '').localeCompare(b.Format ?? '', 'fr')), [formats])
+  const sortedThemes     = useMemo(() => [...themes].sort((a, b) => a.Nom.localeCompare(b.Nom, 'fr')), [themes])
+
   const tM = useMemo(
     () => Object.fromEntries(techniques.map((x) => [x.TechniqueID, x.Technique ?? ''])),
     [techniques],
@@ -259,10 +264,10 @@ export function TeamPortalClient({
         {tab === 'inventory' && (
           <InventoryTab
             oeuvres={oeuvres}
-            techniques={[...techniques].sort((a, b) => (a.Technique ?? '').localeCompare(b.Technique ?? '', 'fr'))}
-            supports={[...supports].sort((a, b) => (a.Support ?? '').localeCompare(b.Support ?? '', 'fr'))}
-            formats={[...formats].sort((a, b) => (a.Format ?? '').localeCompare(b.Format ?? '', 'fr'))}
-            themes={[...themes].sort((a, b) => a.Nom.localeCompare(b.Nom, 'fr'))}
+            techniques={sortedTechniques}
+            supports={sortedSupports}
+            formats={sortedFormats}
+            themes={sortedThemes}
             groups={groups}
             tM={tM} sM={sM} cM={cM} pM={pM} locMap={locMap}
             statusLabelMap={statusLabelMap}
@@ -276,7 +281,7 @@ export function TeamPortalClient({
           <ConstellationCanvas
             oeuvres={oeuvres}
             tM={tM}
-            themes={[...themes].sort((a, b) => a.Nom.localeCompare(b.Nom, 'fr'))}
+            themes={sortedThemes}
             groups={groups}
             selection={selection}
             setSelection={setSelection}

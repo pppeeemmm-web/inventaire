@@ -413,12 +413,13 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
       return
     }
     if (groupBy === 'theme') {
-      // Try to restore saved positions for this exact theme filter.
-      // Saved positions are keyed by (groupBy, selectedThemeId) so each filter state persists independently.
       const saved = loadPos('theme', selectedThemeId)
       if (saved && saved.size > 0) {
         posRef.current = saved
       } else {
+        // If we already have some positions in posRef and haven't changed theme, 
+        // maybe we don't need to full layout? 
+        // But for safety on first load/filter change, we run it.
         const activeThemes = selectedThemeId !== null
           ? themes.filter(t => t.ThemeID === selectedThemeId)
           : themes
@@ -429,12 +430,16 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
       if (saved) {
         posRef.current = saved
       } else {
-        if (groupBy === 'year') posRef.current = layoutYear(oeuvres)
-        else                    posRef.current = layoutGrid(oeuvres)
+        // Only auto-layout if posRef is actually empty for the current view
+        const currentCount = Array.from(posRef.current.keys()).filter(id => oeuvresById.has(id)).length
+        if (currentCount < oeuvres.length * 0.8) {
+           if (groupBy === 'year') posRef.current = layoutYear(oeuvres)
+           else                    posRef.current = layoutGrid(oeuvres)
+        }
       }
     }
     redraw()
-  }, [groupBy, loading, oeuvres, constellationOeuvres, themeWork, themes, selectedThemeId, redraw])
+  }, [groupBy, loading, constellationOeuvres, themes, selectedThemeId, redraw, oeuvresById, oeuvres])
 
   // ── Visible image loading (zoom-adaptive tiers) ───────────────
   function loadVisible() {
@@ -903,7 +908,7 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
       dragRef.current = { mode: 'node', startX: lx, startY: ly, nodeId: hit.id }
       if (canvasRef.current) canvasRef.current.style.cursor = 'grabbing'
     }
-  }, [tool, drawColor])
+  }, [tool, drawColor, spacePressed])
 
   const onMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     const rect = canvasRef.current!.getBoundingClientRect()
@@ -976,7 +981,7 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
       }
       if (needRedraw) setTick(t => t + 1)
     }
-  }, [oeuvresById, spacePressed])
+  }, [oeuvresById, spacePressed, activeShape, groupBy, redraw])
 
   const onMouseUp = useCallback(async (e: React.MouseEvent<HTMLCanvasElement>) => {
     const rect = canvasRef.current!.getBoundingClientRect()
@@ -1042,7 +1047,7 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
 
     dragRef.current = { mode: 'idle', startX: 0, startY: 0 }
     if (canvasRef.current) canvasRef.current.style.cursor = 'grab'
-  }, [linkType, oeuvresById, onOpen, setSelection])
+  }, [linkType, oeuvresById, onOpen, setSelection, groupBy, selectedThemeId, activeShape, marquee])
 
   const onContextMenu = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     e.preventDefault()
@@ -1101,7 +1106,7 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
       if (hovEdgeRef.current === edge) hovEdgeRef.current = null
       setTick(t => t + 1)
     })
-  }, [removeFromCustom])
+  }, [removeFromCustom, tool, redraw, selectedThemeId])
 
   const onMouseLeave = useCallback(() => {
     if (dragRef.current.mode === 'node') savePos(groupByRef.current, posRef.current, groupByRef.current === 'theme' ? selectedThemeId : undefined)
@@ -1111,7 +1116,7 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
     dragRef.current    = { mode: 'idle', startX: 0, startY: 0 }
     setPanelNode(null)
     setTick(t => t + 1)
-  }, [])
+  }, [selectedThemeId])
 
   // ── Custom canvas: add / remove individual works ───────────────
   function addToCustom(id: number) {
