@@ -226,27 +226,6 @@ function WallStrip({ wall, placements, oeuvres, onDrop, onRemove, onReorder }: {
 // ── DefaultRoomSVG ────────────────────────────────────────────────────────────
 
 function DefaultRoomSVG({ walls }: { walls: Wall[] }) {
-  const n = walls.length
-  const segments = [
-    { label: 'top',    x1: 60, y1: 40,  x2: 240, y2: 40  },
-    { label: 'right',  x1: 240, y1: 40, x2: 240, y2: 160 },
-    { label: 'bottom', x1: 240, y1: 160,x2: 60,  y2: 160 },
-    { label: 'left',   x1: 60, y1: 160, x2: 60,  y2: 40  },
-  ]
-  return (
-    <svg viewBox="0 0 300 200" style={{ width: '100%', maxWidth: 320, height: 'auto', display: 'block' }}>
-      <rect x="50" y="30" width="200" height="140" fill="var(--bg1)" stroke="var(--bd)" strokeWidth="1" />
-      {segments.slice(0, n).map((seg, i) => (
-        <g key={i}>
-          <line x1={seg.x1} y1={seg.y1} x2={seg.x2} y2={seg.y2} stroke={walls[i]?.color ?? '#888'} strokeWidth="6" strokeLinecap="round" />
-          </text>
-        </g>
-      ))}
-    </svg>
-  )
-}
-
-function DefaultRoomSVG({ walls }: { walls: Wall[] }) {
   return (
     <svg width="100%" height="100%" viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid meet" style={{ background: '#0a0a0a' }}>
       <rect x="50" y="50" width="900" height="500" fill="none" stroke="#222" strokeWidth="2" />
