@@ -9,6 +9,8 @@ import {
   fetchConcepts, createConcept, updateConcept, deleteConcept,
   type ConceptRow,
 } from '@/app/atelier/concepts/actions'
+import { convertConceptToProcess } from '@/app/atelier/pipeline/actions'
+import { TYPE_LABELS as PIPELINE_LABELS } from './PipelineTab'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -29,6 +31,13 @@ const STATUT_COLORS: Record<string, string> = {
 }
 
 const ENERGIE_LABELS = ['', '❄️ Vague', '🌱 Naissante', '🔥 Active', '⚡ Urgente', '🌋 Brûlante']
+
+const CATEGORIES = [
+  { id: 'artistic',  label: '🎨 Artistique' },
+  { id: 'business',  label: '💼 Business' },
+  { id: 'logistics', label: '🏔 Logistique / Montagne' },
+  { id: 'other',     label: '⚙️ Autre' },
+]
 
 const MEDIUMS = ['Peinture', 'Dessin', 'Gravure', 'Sculpture', 'Installation', 'Vidéo', 'Photo', 'Autre']
 
@@ -109,6 +118,12 @@ function NewConceptForm({ onCreated, onCancel }: {
             {[1,2,3,4,5].map((n) => <option key={n} value={n}>{ENERGIE_LABELS[n]}</option>)}
           </select>
         </div>
+        <div>
+          <label style={labelSt}>Catégorie</label>
+          <select name="category" style={inputSt} defaultValue="artistic">
+            {CATEGORIES.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+          </select>
+        </div>
         <div style={{ gridColumn: '1 / -1' }}>
           <label style={labelSt}>Description / intuition</label>
           <textarea name="description" style={{ ...inputSt, height: 72, resize: 'vertical' }}
@@ -160,6 +175,9 @@ function ConceptCard({ concept, onUpdated, onDeleted }: {
   const [energie,     setEnergie]    = useState<number | ''>(concept.energie ?? '')
   const [imageNote,   setImageNote]  = useState(concept.image_note ?? '')
   const [notes,       setNotes]      = useState(concept.notes ?? '')
+  const [category,    setCategory]   = useState(concept.category ?? 'artistic')
+  const [showConvert, setShowConvert] = useState(false)
+  const [targetType,  setTargetType]  = useState('exposition')
 
   async function save() {
     setBusy(true)
@@ -173,6 +191,7 @@ function ConceptCard({ concept, onUpdated, onDeleted }: {
       energie:     energie === '' ? null : Number(energie),
       image_note:  imageNote.trim() || null,
       notes:       notes.trim() || null,
+      category,
     })
     setBusy(false)
     if ('ok' in res) {
@@ -186,17 +205,24 @@ function ConceptCard({ concept, onUpdated, onDeleted }: {
         energie:     energie === '' ? null : Number(energie),
         image_note:  imageNote.trim() || null,
         notes:       notes.trim() || null,
+        category:    category,
         updated_at:  new Date().toISOString(),
       })
       setEditing(false)
     }
   }
 
-  async function handleDelete() {
-    if (!confirm(`Supprimer l'idée "${concept.titre}" ?`)) return
+  async function handleConvert() {
     setBusy(true)
-    await deleteConcept(concept.id)
-    onDeleted(concept.id)
+    const res = await convertConceptToProcess(concept.id, targetType as any)
+    setBusy(false)
+    if ('ok' in res) {
+      alert("Idée convertie en projet dans le Pipeline !")
+      onUpdated({ ...concept, statut: 'en_cours' })
+      setShowConvert(false)
+    } else {
+      alert("Erreur: " + res.error)
+    }
   }
 
   const isAbandoned  = concept.statut === 'abandonne'
@@ -227,12 +253,10 @@ function ConceptCard({ concept, onUpdated, onDeleted }: {
           }}>
             {concept.titre}
           </div>
-          <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 2, display: 'flex', gap: 10 }}>
+          <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 2, display: 'flex', gap: 10, alignItems: 'center' }}>
+            <span style={{ color: 'var(--ac)', fontWeight: 500 }}>{CATEGORIES.find(c => c.id === concept.category)?.label?.split(' ')[0] || '🎨'}</span>
             {concept.medium && <span>{concept.medium}</span>}
             {concept.themes?.length ? <span>{concept.themes.slice(0, 3).join(' · ')}</span> : null}
-            {concept.description && <span style={{ fontStyle: 'italic', opacity: 0.7 }}>
-              {concept.description.slice(0, 60)}{concept.description.length > 60 ? '…' : ''}
-            </span>}
           </div>
         </div>
 
@@ -284,6 +308,12 @@ function ConceptCard({ concept, onUpdated, onDeleted }: {
               <div>
                 <label style={labelSt}>Thèmes</label>
                 <input style={inputSt} value={themesStr} onChange={(e) => setThemesStr(e.target.value)} placeholder="corps, mémoire…" />
+              </div>
+              <div>
+                <label style={labelSt}>Catégorie</label>
+                <select style={inputSt} value={category} onChange={(e) => setCategory(e.target.value)}>
+                  {CATEGORIES.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+                </select>
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
                 <label style={labelSt}>Description</label>
@@ -381,10 +411,25 @@ function ConceptCard({ concept, onUpdated, onDeleted }: {
 
               <div className="row gap-sm">
                 <button className="btn ghost sm" onClick={() => setEditing(true)}>Modifier</button>
+                <button className="btn ghost sm" onClick={() => setShowConvert(!showConvert)}>Pipeline ↑</button>
                 <button className="btn ghost sm" style={{ color: 'var(--rust)' }} onClick={handleDelete} disabled={busy}>
                   Supprimer
                 </button>
               </div>
+
+              {showConvert && (
+                <div style={{ marginTop: 12, padding: 12, background: 'var(--bg2)', border: '1px solid var(--bd)' }}>
+                  <div style={labelSt}>Convertir en projet</div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <select style={{ ...inputSt, flex: 1 }} value={targetType} onChange={(e) => setTargetType(e.target.value)}>
+                      {Object.entries(PIPELINE_LABELS).map(([k, v]) => (
+                        <option key={k} value={k}>{v}</option>
+                      ))}
+                    </select>
+                    <button className="btn sm" onClick={handleConvert} disabled={busy}>Go</button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -432,7 +477,12 @@ export function ConceptsTab() {
 
   // Filter + search
   const visible = concepts.filter((c) => {
-    if (filter !== 'all' && c.statut !== filter) return false
+    if (filter !== 'all') {
+      const isStatus = Object.keys(STATUT_LABELS).includes(filter)
+      if (isStatus && c.statut !== filter) return false
+      const isCategory = CATEGORIES.some(x => x.id === filter)
+      if (isCategory && c.category !== filter) return false
+    }
     if (search) {
       const q = search.toLowerCase()
       return (
@@ -482,6 +532,24 @@ export function ConceptsTab() {
             }}
           >
             {l}
+          </button>
+        ))}
+
+        <div style={{ margin: '12px 0 4px', borderTop: '1px solid var(--bd)' }} />
+
+        {CATEGORIES.map((c) => (
+          <button
+            key={c.id}
+            onClick={() => setFilter(c.id)}
+            style={{
+              textAlign: 'left', padding: '6px 10px', fontSize: 11,
+              background: filter === c.id ? 'var(--bg2)' : 'transparent',
+              color: filter === c.id ? 'var(--tx)' : 'var(--tx3)',
+              border: 'none', cursor: 'pointer',
+              borderLeft: filter === c.id ? `2px solid var(--ac)` : '2px solid transparent',
+            }}
+          >
+            {c.label}
           </button>
         ))}
 

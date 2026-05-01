@@ -19,6 +19,7 @@ export interface ConceptRow {
   image_note:  string | null
   energie:     number | null
   notes:       string | null
+  category:    string | null
 }
 
 export type ConceptResult  = { error: string } | { ok: true; concept: ConceptRow }
@@ -63,10 +64,11 @@ export async function createConcept(formData: FormData): Promise<ConceptResult> 
   const image_note  = (formData.get('image_note') as string | null)?.trim() || null
   const energie     = formData.get('energie') ? Number(formData.get('energie')) : null
   const notes       = (formData.get('notes') as string | null)?.trim() || null
+  const category    = (formData.get('category') as string | null) || 'artistic'
 
   const { data, error } = await supabase
     .from('concept')
-    .insert({ titre, description, medium, themes, statut, image_note, energie, notes })
+    .insert({ titre, description, medium, themes, statut, image_note, energie, notes, category })
     .select()
     .single()
 

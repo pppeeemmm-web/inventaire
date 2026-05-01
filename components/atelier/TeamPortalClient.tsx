@@ -471,6 +471,7 @@ function OverviewTab({
   // Upcoming deadlines from pipeline
   const [upcoming,  setUpcoming]  = useState<{ nom: string; date_fin: string; deadline_time: string | null; type: string }[]>([])
   const [reminders, setReminders] = useState<{ id: string; message: string; remind_at: string }[]>([])
+  const [burningConcepts, setBurningConcepts] = useState<{ id: string; titre: string; energie: number }[]>([])
 
   useEffect(() => {
     const sb = createClient()
@@ -493,6 +494,14 @@ function OverviewTab({
       .order('remind_at')
       .limit(6)
       .then(({ data }: { data: any[] | null }) => { if (data) setReminders(data) })
+    ;(sb.from('concept') as any)
+      .select('id, titre, energie')
+      .gte('energie', 4)
+      .not('statut', 'eq', 'abandonne')
+      .not('statut', 'eq', 'devenu_oeuvre')
+      .order('energie', { ascending: false })
+      .limit(5)
+      .then(({ data }: { data: any[] | null }) => { if (data) setBurningConcepts(data) })
   }, [])
 
   // Technique breakdown
@@ -616,7 +625,29 @@ function OverviewTab({
           </div>
         )}
 
-        {upcoming.length === 0 && reminders.length === 0 && (
+        {burningConcepts.length > 0 && (
+          <div>
+            <div className="t-eyebrow" style={{ marginBottom: 12, cursor: 'pointer' }} onClick={() => onGoTab('concepts')}>
+              Burning Ideas →
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              {burningConcepts.map((c) => (
+                <div key={c.id} onClick={() => onGoTab('concepts')} style={{
+                  padding: '8px 10px', background: 'var(--bg1)',
+                  border: '1px solid var(--bd)', cursor: 'pointer',
+                  borderLeft: `3px solid var(--ac)`,
+                }}>
+                  <div style={{ fontSize: 10, fontWeight: 500, color: 'var(--tx)' }}>{c.titre}</div>
+                  <div style={{ fontSize: 9, color: 'var(--tx3)', marginTop: 2 }}>
+                    {'🔥'.repeat(c.energie - 2)} {['Vague', 'Naissante', 'Active', 'Urgente', 'Brûlante'][c.energie - 1]}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {upcoming.length === 0 && reminders.length === 0 && burningConcepts.length === 0 && (
           <div
             style={{ padding: '20px 16px', border: '1px solid var(--bd)', cursor: 'pointer', opacity: 0.5 }}
             onClick={() => onGoTab('pipeline')}
