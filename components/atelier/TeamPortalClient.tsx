@@ -28,12 +28,13 @@ import { ConceptsTab }         from '@/components/atelier/ConceptsTab'
 import { ExhibitionsTab }      from '@/components/atelier/ExhibitionsTab'
 import { ThemesTab }           from '@/components/atelier/ThemesTab'
 import { SupplierHub }         from '@/components/atelier/SupplierHub'
+import { StockTakeTab }        from '@/components/atelier/StockTakeTab'
 
 // ── Types ────────────────────────────────────────────────────────────
 
 type Tab =
   | 'overview' | 'inventory' | 'constellation' | 'production'
-  | 'logistics' | 'sales' | 'exhibitions' | 'vault' | 'contacts' | 'map' | 'pipeline' | 'fiscal' | 'concepts' | 'themes' | 'stock'
+  | 'logistics' | 'sales' | 'exhibitions' | 'vault' | 'contacts' | 'map' | 'pipeline' | 'fiscal' | 'concepts' | 'themes' | 'stock' | 'stock-take'
 
 interface Props {
   oeuvres:        Oeuvre[]
@@ -203,6 +204,7 @@ export function TeamPortalClient({
     ['concepts',      t('concepts')],
     ['themes',        t('themes')],
     ['stock',         'Stock'],
+    ['stock-take',    'Stock-take'],
   ]
 
   const showDock = selection.size > 0 && tab !== 'constellation'
@@ -374,6 +376,12 @@ export function TeamPortalClient({
         {tab === 'stock' && (
           <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
             <SupplierHub contacts={contacts} />
+          </div>
+        )}
+
+        {tab === 'stock-take' && (
+          <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+            <StockTakeTab contacts={contacts} />
           </div>
         )}
       </div>
