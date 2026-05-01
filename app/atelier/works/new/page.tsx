@@ -6,6 +6,12 @@ import { saveWork }     from '@/app/atelier/works/actions'
 export default async function NewWorkPage() {
   const supabase = await createClient()
 
+  const [
+    { data: techniques },
+    { data: supports },
+    { data: formats },
+    { data: themes },
+    { data: contacts },
     { data: statuses },
     { data: addresses },
   ] = await Promise.all([
