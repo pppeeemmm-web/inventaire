@@ -204,3 +204,13 @@ export function techniqueColor(techniqueId: number): string {
   const hue = (techniqueId * 47) % 360
   return `hsl(${hue}, 40%, 55%)`
 }
+/** Types of suivi_process that are allowed to have an exhibition layout/floorplan */
+export const EXHIBITION_READY_TYPES = [
+  'salon',
+  'exposition',
+  'consignment',
+  'evenement',
+  'collaboration',
+  'prix',
+  'residence',
+]

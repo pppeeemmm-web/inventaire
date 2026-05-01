@@ -12,6 +12,8 @@ import {
   type ExhibitionLayout, type Wall, type Placement,
 } from '@/app/atelier/exhibitions/actions'
 import { createClient } from '@/lib/supabase/client'
+import { EXHIBITION_READY_TYPES } from '@/lib/data'
+import { TYPE_LABELS as PIPELINE_LABELS } from './PipelineTab'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -821,7 +823,7 @@ export function ExhibitionsTab({ oeuvres, contacts, selection, setSelection }: {
     const { data: processes } = await supabase
       .from('suivi_process')
       .select('id, nom, type, statut, date_debut, date_fin, contact_id, localisation, url, notes, created_at')
-      .in('type', ['exposition', 'foire', 'residence']) // Only exhibition family
+      .in('type', EXHIBITION_READY_TYPES)
       .order('date_fin', { ascending: false, nullsFirst: false })
 
     const { data: steps } = await supabase
@@ -910,10 +912,9 @@ export function ExhibitionsTab({ oeuvres, contacts, selection, setSelection }: {
           <form onSubmit={handleCreate} style={{ padding: '10px 12px', borderBottom: '1px solid var(--bd)', display: 'flex', flexDirection: 'column', gap: 6 }}>
             <input value={newNom} onChange={(e) => setNewNom(e.target.value)} placeholder="Nom de l'exposition…" style={inputSt} autoFocus />
             <select value={newType} onChange={(e) => setNewType(e.target.value)} style={inputSt}>
-              <option value="exposition">Exposition</option>
-              <option value="foire">Foire / Salon</option>
-              <option value="residence">Résidence</option>
-              <option value="autre">Autre</option>
+              {EXHIBITION_READY_TYPES.map(t => (
+                <option key={t} value={t}>{PIPELINE_LABELS[t as any] || t}</option>
+              ))}
             </select>
             <div style={{ display: 'flex', gap: 6 }}>
               <button type="submit" disabled={creating || !newNom.trim()} className="btn sm" style={{ flex: 1 }}>Créer</button>

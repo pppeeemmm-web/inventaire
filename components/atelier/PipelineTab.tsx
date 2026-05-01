@@ -146,19 +146,19 @@ function nextEtapeStatut(current: EtapeStatut): EtapeStatut {
 }
 
 const DEFAULT_ETAPES: Record<ProcessType, string[]> = {
-  collaboration:   ['Initial contact', 'Proposal', 'Agreement', 'Production', 'Delivery'],
-  consignment:     ['Proposal', 'Contract', 'Delivery', 'On sale', 'Return / Sold'],
-  correspondance:  ['Draft', 'Sent', 'Response received'],
-  evenement:       ['Concept', 'Planning', 'Communication', 'Event day', 'Follow-up'],
-  expedition:      ['Preparation', 'Packing', 'In transit', 'Delivery', 'Confirmed'],
-  exposition:      ['Concept', 'Design', 'Production', 'Installation', 'Opening', 'Closing'],
-  livre:           ['Concept', 'Editorial', 'Texts & images', 'Layout', 'Print', 'Distribution'],
-  pr:              ['Strategy', 'Contact', 'In progress', 'Published'],
-  prix:            ['Discovery', 'Application', 'Dossier', 'Submission', 'Shortlist', 'Result'],
-  residence:       ['Discovery', 'Application', 'Dossier', 'Submission', 'Interview', 'Result'],
-  salon:           ['Application', 'Selection', 'Logistics', 'Installation', 'Fair', 'Return'],
-  visite_atelier:  ['Invitation sent', 'Confirmed', 'Visit', 'Follow-up'],
-  autre:           ['Step 1', 'Step 2', 'Step 3'],
+  collaboration:   ['Premier contact', 'Proposition', 'Accord', 'Production', 'Livraison'],
+  consignment:     ['Proposition', 'Contrat', 'Livraison', 'En vente', 'Retour / Vente'],
+  correspondance:  ['Brouillon', 'Envoyé', 'Réponse reçue'],
+  evenement:       ['Concept', 'Planning', 'Communication', 'Jour J', 'Suivi'],
+  expedition:      ['Préparation', 'Emballage', 'En transit', 'Livré', 'Confirmé'],
+  exposition:      ['Concept', 'Sélection', 'Production', 'Installation', 'Vernissage', 'Décrochage'],
+  livre:           ['Concept', 'Éditorial', 'Textes & Images', 'Mise en page', 'Impression', 'Distribution'],
+  pr:              ['Stratégie', 'Contact', 'En cours', 'Publié'],
+  prix:            ['Dossier', 'Soumission', 'Présélection', 'Résultat'],
+  residence:       ['Dossier', 'Soumission', 'Entretien', 'Résultat'],
+  salon:           ['Candidature', 'Sélection', 'Logistique', 'Installation', 'Foire', 'Retour'],
+  visite_atelier:  ['Invitation', 'Confirmation', 'Visite', 'Suivi'],
+  autre:           ['Étape 1', 'Étape 2', 'Étape 3'],
 }
 
 const SORTED_TYPES = (Object.keys(TYPE_LABELS) as ProcessType[])
