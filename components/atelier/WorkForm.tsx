@@ -1322,10 +1322,6 @@ function ContactModal({
     }
   }
 
-    width: "100%", padding: "7px 10px", fontSize: 11,
-    background: "var(--bg0)", border: "1px solid var(--bd)",
-    color: "var(--tx)", outline: "none",
-  }
 
   const G2: React.CSSProperties = {
     display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 12px",

@@ -473,7 +473,7 @@ function ExpenseModal({
   onDeleted: (id: number) => void
 }) {
   const isNew = !expense
-  const FIS   = FIS
+  
 
   const [form, setForm] = useState({
     date:        expense?.date        ?? `${year}-01-01`,

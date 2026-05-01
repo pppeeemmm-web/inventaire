@@ -185,10 +185,6 @@ function fmtDate(s: string, includeTime?: string | null): string {
   return includeTime ? `${base} · ${includeTime}` : base
 }
 
-  width: '100%', padding: '7px 9px', fontSize: 11,
-  background: 'var(--bg0)', border: '1px solid var(--bd)',
-  color: 'var(--tx)', outline: 'none',
-}
 
 // ── Main component ─────────────────────────────────────────────────────
 
