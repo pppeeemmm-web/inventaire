@@ -49,6 +49,7 @@ const DEFAULT_CONFIG: ExportConfig = {
   imageEmbed:   'linked',
   imageCrop:    'square',
   paper:        'a4',
+  orientation:  'portrait',
   appendList:   false,
   fields: {
     image:     true,
@@ -324,6 +325,15 @@ export function ExportModal({ ids, oeuvres, tM, sM, statusLabelMap, onClose }: P
                 value={cfg.paper} onChange={(v) => set('paper', v as ExportConfig['paper'])}
               />
             </Section>
+
+            {cfg.format === 'pdf' && (
+              <Section label="ORIENTATION">
+                <ToggleRow
+                  options={[{ v: 'portrait', l: 'Portrait' }, { v: 'landscape', l: 'Paysage' }]}
+                  value={cfg.orientation} onChange={(v) => set('orientation', v as ExportConfig['orientation'])}
+                />
+              </Section>
+            )}
           </div>
 
           {/* ── Themes sidebar ──────────────────────────────── */}

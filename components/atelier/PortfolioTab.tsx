@@ -133,6 +133,17 @@ export function PortfolioTab({ oeuvres }: Props) {
       <div style={{ flex: 1, overflowY: 'auto', padding: '32px' }}>
         <div style={{ maxWidth: 900, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 48 }}>
 
+          {/* PIPELINE VISUALIZATION */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0, padding: '0 0 20px 0' }}>
+             <PipelineStep label="COVER" active={!!config.general.artist_name} subtitle="Présentation" />
+             <PipelineLine active={!!config.general.artist_name && (!!config.statement_doc_id || !!config.general.about_intro)} />
+             <PipelineStep label="ABOUT" active={!!config.statement_doc_id || !!config.general.about_intro} subtitle="Statement / Intro" />
+             <PipelineLine active={(!!config.statement_doc_id || !!config.general.about_intro) && config.works_collections.length > 0} />
+             <PipelineStep label="WORKS" active={config.works_collections.length > 0} subtitle="Collections" />
+             <PipelineLine active={config.works_collections.length > 0 && !!config.general.contact_email} />
+             <PipelineStep label="CONTACT" active={!!config.general.contact_email} subtitle="Formulaire" />
+          </div>
+
           {/* GENERAL INFO */}
           <section className="panel pad-md">
             <h3 className="t-label" style={{ marginBottom: 20 }}>Informations Générales & Contact</h3>
@@ -240,5 +251,28 @@ function ItemRow({ item, themes, onUpdate, onDelete }: { item: CollectionItem, t
         </label>
       </div>
     </div>
+  )
+}
+
+function PipelineStep({ label, subtitle, active }: { label: string, subtitle: string, active: boolean }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 120 }}>
+      <div style={{ 
+        width: 32, height: 32, borderRadius: '50%', border: `1px solid ${active ? 'var(--ac)' : 'var(--bd)'}`,
+        background: active ? 'rgba(200,168,110,0.1)' : 'transparent',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        marginBottom: 8, transition: 'all 0.3s'
+      }}>
+        <div style={{ width: 6, height: 6, borderRadius: '50%', background: active ? 'var(--ac)' : 'var(--bd)' }} />
+      </div>
+      <div className="t-mono-sm" style={{ color: active ? 'var(--tx)' : 'var(--tx3)', fontSize: 9, letterSpacing: 1 }}>{label}</div>
+      <div style={{ fontSize: 8, color: 'var(--tx3)', marginTop: 2, textAlign: 'center' }}>{subtitle}</div>
+    </div>
+  )
+}
+
+function PipelineLine({ active }: { active: boolean }) {
+  return (
+    <div style={{ flex: 1, height: 1, background: active ? 'var(--ac)' : 'var(--bd)', margin: '0 -20px 24px -20px', position: 'relative', top: -14, zIndex: -1, transition: 'all 0.5s' }} />
   )
 }

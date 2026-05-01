@@ -150,41 +150,51 @@ export default function PortfolioClient({ works, sections, statementUrl, cvUrl }
   return (
     <>
       <style>{`
+        :root {
+          --pf-bg: #edeae4;
+          --pf-tx: #1a1a1a;
+          --pf-tx2: #4a4a4a;
+          --pf-tx3: #8a8a8a;
+          --pf-ac: #c8a86e;
+          --pf-bd: rgba(0,0,0,0.1);
+          --pf-bd2: rgba(0,0,0,0.05);
+        }
         @media print {
           .pf-screen { display: none !important; }
           .pf-print  { display: block !important; }
           .pf-page   {
             page-break-after: always; break-after: page;
-            width: 210mm !important; height: 297mm !important;
+            width: ${isPortrait ? '210mm' : '297mm'} !important;
+            height: ${isPortrait ? '297mm' : '210mm'} !important;
             padding: 20mm !important; box-sizing: border-box !important;
             background: white !important; color: black !important;
             position: relative;
           }
           .pf-page:last-child { page-break-after: auto; break-after: auto; }
-          @page { size: A4 portrait; margin: 0; }
+          @page { size: A4 ${orientation}; margin: 0; }
         }
         .pf-print { display: none; }
+        .pf-serif { font-family: 'Instrument Serif', serif; }
+        .pf-mono { font-family: ui-monospace, monospace; }
       `}</style>
 
-      {/* ── NAV BAR — first element, always visible at top ── */}
-      <nav className="pf-screen" style={{
+      {/* Header */}
+      <header className="pf-screen" style={{ 
+        height: NAV_H, 
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        height: NAV_H,
         padding: '0 clamp(16px, 4vw, 40px)',
-        borderBottom: '1px solid var(--bd)',
-        background: 'var(--bg1)',
+        borderBottom: '1px solid var(--pf-bd)', background: 'var(--pf-bg)',
         position: 'sticky', top: 0, zIndex: 200,
-        flexShrink: 0,
+        flexShrink: 0
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Link href="/hub" style={{ textDecoration: 'none', color: 'var(--bg0)', fontSize: 8, opacity: 0.1, cursor: 'default' }}>·</Link>
-          <div className="serif" style={{ fontSize: 'clamp(12px, 2vw, 16px)', letterSpacing: '-0.02em', color: 'var(--tx2)', whiteSpace: 'nowrap' }}>
+          <Link href="/hub" style={{ textDecoration: 'none', color: 'var(--pf-tx)', fontSize: 8, opacity: 0.1, cursor: 'default' }}>·</Link>
+          <div className="pf-serif" style={{ fontSize: 'clamp(14px, 2vw, 18px)', letterSpacing: '-0.01em', color: 'var(--pf-tx)', whiteSpace: 'nowrap' }}>
             Pierre Emmanuel Moulin
           </div>
         </div>
 
-        {/* Section links */}
-        <div style={{ display: 'flex', gap: 0 }}>
+        <nav style={{ display: 'flex', gap: 0 }}>
           {([['approach', 'Approche'], ['works', 'Œuvres']] as const).map(([s, label]) => {
             const targetIdx = s === 'approach' ? 0 : 1
             const isActive  = s === 'approach' ? pageIdx === 0 : pageIdx > 0 && pageIdx < pages.length - 1
@@ -194,126 +204,64 @@ export default function PortfolioClient({ works, sections, statementUrl, cvUrl }
                 style={{
                   padding: 'clamp(8px, 2vw, 14px) clamp(10px, 2vw, 24px)',
                   background: 'none', border: 'none',
-                  borderBottom: isActive ? '2px solid var(--ac)' : '2px solid transparent',
-                  color: isActive ? 'var(--ac)' : 'var(--tx3)',
-                  cursor: 'pointer', fontSize: 'clamp(8px, 1.2vw, 10px)',
+                  borderBottom: isActive ? '1px solid var(--pf-tx)' : '1px solid transparent',
+                  color: isActive ? 'var(--pf-tx)' : 'var(--pf-tx3)',
+                  cursor: 'pointer', fontSize: 'clamp(8px, 1.2vw, 9px)',
                   letterSpacing: 2, textTransform: 'uppercase', fontFamily: 'inherit',
                   fontWeight: isActive ? 600 : 400, whiteSpace: 'nowrap',
                 }}
               >{label}</button>
             )
           })}
-          
-          {statementUrl && (
-             <a href={statementUrl} target="_blank" rel="noreferrer" style={{
-                padding: 'clamp(8px, 2vw, 14px) clamp(10px, 2vw, 24px)',
-                color: 'var(--tx3)', textDecoration: 'none',
-                fontSize: 'clamp(8px, 1.2vw, 10px)', letterSpacing: 2, textTransform: 'uppercase',
-             }}>Statement</a>
-          )}
-          {cvUrl && (
-             <a href={cvUrl} target="_blank" rel="noreferrer" style={{
-                padding: 'clamp(8px, 2vw, 14px) clamp(10px, 2vw, 24px)',
-                color: 'var(--tx3)', textDecoration: 'none',
-                fontSize: 'clamp(8px, 1.2vw, 10px)', letterSpacing: 2, textTransform: 'uppercase',
-             }}>CV</a>
-          )}
-
           <button
             onClick={() => setPageIdx(pages.length - 1)}
             style={{
               padding: 'clamp(8px, 2vw, 14px) clamp(10px, 2vw, 24px)',
               background: 'none', border: 'none',
-              borderBottom: pageIdx === pages.length - 1 ? '2px solid var(--ac)' : '2px solid transparent',
-              color: pageIdx === pages.length - 1 ? 'var(--ac)' : 'var(--tx3)',
-              cursor: 'pointer', fontSize: 'clamp(8px, 1.2vw, 10px)',
+              borderBottom: pageIdx === pages.length - 1 ? '1px solid var(--pf-tx)' : '1px solid transparent',
+              color: pageIdx === pages.length - 1 ? 'var(--pf-tx)' : 'var(--pf-tx3)',
+              cursor: 'pointer', fontSize: 'clamp(8px, 1.2vw, 9px)',
               letterSpacing: 2, textTransform: 'uppercase', fontFamily: 'inherit',
               fontWeight: pageIdx === pages.length - 1 ? 600 : 400, whiteSpace: 'nowrap',
             }}
           >Enquiry</button>
-        </div>
+        </nav>
 
-        {/* Controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {/* Orientation */}
-          <div style={{ display: 'flex', border: '1px solid var(--bd)' }}>
-            {(['portrait', 'landscape'] as const).map((o, i) => (
-              <button key={o} onClick={() => setOrientation(o)} title={o === 'portrait' ? 'Portrait' : 'Paysage'}
-                style={{
-                  padding: '4px 8px', background: 'none', border: 'none',
-                  color: orientation === o ? 'var(--ac)' : 'var(--tx3)',
-                  cursor: 'pointer', fontSize: 11, fontFamily: 'inherit',
-                  borderRight: i === 0 ? '1px solid var(--bd)' : 'none',
-                }}
-              >{o === 'portrait' ? '▯' : '▭'}</button>
-            ))}
-          </div>
-          {/* Show unavailable */}
-          <label style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer' }}>
-            <input type="checkbox" checked={showPrivate} onChange={e => setShowPrivate(e.target.checked)}
-              style={{ accentColor: 'var(--ac)' }} />
-            <span className="t-mono-sm" style={{ fontSize: 9, letterSpacing: 1, color: 'var(--tx3)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
-              Indisponibles
-            </span>
-          </label>
-          {/* PDF */}
-          <button onClick={() => window.print()}
-            style={{
-              background: 'none', border: '1px solid var(--bd)', color: 'var(--tx3)',
-              padding: '5px 12px', cursor: 'pointer', fontSize: 9,
-              letterSpacing: 1, textTransform: 'uppercase', fontFamily: 'inherit',
-            }}
-          >PDF</button>
+        <div style={{ width: 120, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <button onClick={() => setOrientation('portrait')} className="pf-mono" style={{ background: 'none', border: 'none', padding: 4, cursor: 'pointer', color: isPortrait ? 'var(--pf-tx)' : 'var(--pf-tx3)', fontSize: 14 }} title="Portrait">▯</button>
+          <button onClick={() => setOrientation('landscape')} className="pf-mono" style={{ background: 'none', border: 'none', padding: 4, cursor: 'pointer', color: !isPortrait ? 'var(--pf-tx)' : 'var(--pf-tx3)', fontSize: 14 }} title="Paysage">▭</button>
+          <div style={{ width: 1, height: 16, background: 'var(--pf-bd)', margin: '0 4px' }} />
+          <button onClick={() => window.print()} className="pf-mono" style={{ background: 'none', border: 'none', padding: 4, cursor: 'pointer', fontSize: 9, color: 'var(--pf-tx2)' }} title="Print">PDF</button>
         </div>
-      </nav>
+      </header>
 
-      {/* ── Theme filter bar (only on works pages) ── */}
-      {cur.kind === 'work' && themes.length > 0 && (
-        <div className="pf-screen" style={{
-          display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center',
-          padding: '10px clamp(16px, 4vw, 40px)',
-          borderBottom: '1px solid var(--bd)', background: 'var(--bg0)',
-          position: 'sticky', top: NAV_H, zIndex: 100,
-        }}>
-          {[null, ...themes].map((t) => (
-            <button key={t ?? '__all'} onClick={() => { setActiveTheme(t); if (t !== activeTheme) setPageIdx(1) }}
-              style={{
-                padding: '3px 12px', fontSize: 9, letterSpacing: 1, cursor: 'pointer', fontFamily: 'inherit',
-                textTransform: 'uppercase',
-                background: activeTheme === t ? 'var(--ac)' : 'transparent',
-                border: `1px solid ${activeTheme === t ? 'var(--ac)' : 'var(--bd2)'}`,
-                color: activeTheme === t ? '#000' : 'var(--tx3)',
-              }}
-            >{t ?? 'Tous'}</button>
-          ))}
-        </div>
-      )}
-
-      {/* ── Card viewer ── */}
       <div className="pf-screen" style={{
         minHeight: `calc(100vh - ${NAV_H}px)`,
         display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center',
-        padding: 'clamp(16px, 4vw, 32px) clamp(12px, 3vw, 24px) 80px',
-        background: 'var(--bg0)',
+        padding: '60px clamp(12px, 3vw, 24px) 120px',
+        background: 'var(--pf-bg)',
       }}>
         {/* Card */}
         <div style={{
           width: '100%',
-          maxWidth: isPortrait ? 'min(640px, 90vw)' : 'min(900px, 95vw)',
+          maxWidth: isPortrait ? 'min(640px, 90vw)' : 'min(960px, 95vw)',
           aspectRatio: isPortrait ? '210/297' : '297/210',
-          background: 'var(--bg1)', border: '1px solid var(--bd)',
-          boxShadow: '0 8px 40px rgba(0,0,0,0.4)',
+          background: '#fff', border: '1px solid var(--pf-bd)',
+          boxShadow: '0 4px 30px rgba(0,0,0,0.03)',
           display: 'flex', flexDirection: 'column', overflow: 'hidden',
+          position: 'relative',
         }}>
-          <CardContent page={cur} isPortrait={isPortrait} />
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column' }}>
+            <CardContent page={cur} isPortrait={isPortrait} />
+          </div>
         </div>
 
         {/* Navigation row */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 40 }}>
           <button onClick={prev} disabled={pageIdx === 0}
             style={{
-              background: 'none', border: '1px solid var(--bd)', color: 'var(--tx)',
+              background: 'none', border: '1px solid var(--pf-bd)', color: 'var(--pf-tx)',
               padding: '8px 16px', cursor: pageIdx === 0 ? 'default' : 'pointer',
               fontSize: 12, fontFamily: 'inherit', opacity: pageIdx === 0 ? 0.2 : 1,
             }}
@@ -325,7 +273,7 @@ export default function PortfolioClient({ works, sections, statementUrl, cvUrl }
               <button key={i} onClick={() => setPageIdx(i)} style={{
                 width: p.kind === 'work' && i === pageIdx ? 16 : 5,
                 height: 5, borderRadius: 3, border: 'none', cursor: 'pointer', padding: 0,
-                background: i === pageIdx ? 'var(--ac)' : 'var(--bd2)',
+                background: i === pageIdx ? 'var(--pf-ac)' : 'var(--pf-bd2)',
                 transition: 'width 0.2s, background 0.2s',
               }} />
             ))}
@@ -333,19 +281,21 @@ export default function PortfolioClient({ works, sections, statementUrl, cvUrl }
 
           <button onClick={next} disabled={pageIdx === pages.length - 1}
             style={{
-              background: 'none', border: '1px solid var(--bd)', color: 'var(--tx)',
+              background: 'none', border: '1px solid var(--pf-bd)', color: 'var(--pf-tx)',
               padding: '8px 16px', cursor: pageIdx === pages.length - 1 ? 'default' : 'pointer',
               fontSize: 12, fontFamily: 'inherit', opacity: pageIdx === pages.length - 1 ? 0.2 : 1,
             }}
           >→</button>
         </div>
 
-        <div className="t-mono-sm" style={{ color: 'var(--tx3)', marginTop: 8, fontSize: 9, letterSpacing: 1 }}>
-          {pageIdx + 1} / {pages.length}
-          {cur.kind === 'work' && cur.total && (
-            <span style={{ opacity: 0.5 }}> · Œuvre {cur.index} / {cur.total}</span>
-          )}
-        </div>
+        <Link href="/hub" style={{ 
+          position: 'fixed', bottom: 32, right: 40, 
+          fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', 
+          color: '#8a8680', textDecoration: 'none', opacity: 0.7,
+          transition: 'all 0.3s',
+          fontWeight: 600,
+          zIndex: 1000
+        }} className="hub-link">[ Hub ]</Link>
       </div>
 
       {/* ── Print version ── */}
@@ -380,22 +330,22 @@ function CardContent({ page, isPortrait }: { page: Page; isPortrait: boolean }) 
 
   if (page.kind === 'approach') {
     return (
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 'clamp(24px,5%,48px)', justifyContent: 'space-between' }}>
-        <div>
-          <div className="serif s-display" style={{ fontSize: 'clamp(18px, 3.5vw, 32px)', letterSpacing: '-0.025em', lineHeight: 1.1, color: 'var(--tx)', marginBottom: 16 }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '64px 48px', justifyContent: 'flex-start' }}>
+        <div style={{ marginBottom: 80 }}>
+          <div className="pf-serif" style={{ fontSize: 'clamp(24px, 4vw, 40px)', letterSpacing: '-0.02em', lineHeight: 1.1, color: 'var(--pf-tx)', marginBottom: 20 }}>
             Pierre Emmanuel Moulin
           </div>
-          <div className="t-mono-sm" style={{ color: 'var(--tx3)', letterSpacing: 2, fontSize: 'clamp(8px, 1.2vw, 10px)' }}>
+          <div className="pf-mono" style={{ color: 'var(--pf-ac)', letterSpacing: 2, fontSize: 'clamp(8px, 1.2vw, 10px)', fontWeight: 600, textTransform: 'uppercase' }}>
             Peinture · Dessin · Sculpture · Photographie
           </div>
         </div>
-        <div className="serif" style={{ fontSize: 'clamp(13px, 2.2vw, 18px)', lineHeight: 1.75, color: 'var(--tx2)', fontStyle: 'italic' }}>
+        <div className="pf-serif" style={{ fontSize: 'clamp(15px, 2.5vw, 24px)', lineHeight: 1.6, color: 'var(--pf-tx)', fontStyle: 'italic', maxWidth: '38ch' }}>
           La peinture comme résistance au visible. Chaque œuvre est une tentative
           d&apos;approcher ce qui se dérobe — la lumière sur une surface, la densité d&apos;un silence,
           la matière du temps.
         </div>
-        <div className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 9, opacity: 0.5, letterSpacing: 1 }}>
-          Pas de réseaux sociaux, par choix.
+        <div className="pf-mono" style={{ marginTop: 'auto', color: 'var(--pf-tx3)', fontSize: 9, opacity: 0.5, letterSpacing: 1.5, textTransform: 'uppercase' }}>
+          Studio · {new Date().getFullYear()}
         </div>
       </div>
     )
@@ -404,34 +354,54 @@ function CardContent({ page, isPortrait }: { page: Page; isPortrait: boolean }) 
   if (page.kind === 'work' && page.work) {
     const w   = page.work
     const src = thumbUrl(w.txtImageNameLink, 1200)
+    // Detect if image is likely portrait based on metadata or just provide a way to handle it.
+    // Since we don't have metadata here easily, we'll use a row layout for landscape cards 
+    // but with a style that allows "full bleeder" if the image is tall.
+    
     return (
-      <div style={{ flex: 1, display: 'flex', flexDirection: isPortrait ? 'column' : 'row' }}>
-        <div style={{ flex: isPortrait ? '1 1 68%' : '1 1 62%', background: 'var(--bg0)', overflow: 'hidden', position: 'relative' }}>
+      <div style={{ 
+        flex: 1, display: 'flex', 
+        flexDirection: isPortrait ? 'column' : 'row', 
+        height: '100%',
+        background: '#fff'
+      }}>
+        {/* Image Container */}
+        <div style={{ 
+          flex: isPortrait ? '0 0 80%' : '1 1 65%', 
+          background: '#fff', 
+          overflow: 'hidden', 
+          position: 'relative',
+          display: 'flex',
+          alignItems: isPortrait ? 'flex-start' : 'center',
+          justifyContent: 'center',
+          padding: '24px 24px 0', // Equalized top/left/right margins
+          borderRight: isPortrait ? 'none' : '1px solid var(--pf-bd)'
+        }}>
           {src
-            ? <Img src={src} alt={w.Titre ?? ''} style={{ width: '100%', height: '100%' }} imgStyle={{ objectFit: 'contain' }} />
-            : <div style={{ width: '100%', height: '100%', background: 'var(--bg2)' }} />
+            ? <Img src={src} alt={w.Titre ?? ''} style={{ width: '100%', height: '100%' }} imgStyle={{ objectFit: 'contain', objectPosition: isPortrait ? 'center top' : 'center' }} />
+            : <div style={{ width: '100%', height: '100%', background: '#fff' }} />
           }
           {!isAvail(w) && (
-            <div style={{ position: 'absolute', top: 10, left: 10, fontSize: 8, letterSpacing: 1, textTransform: 'uppercase', color: 'var(--tx3)', background: 'rgba(0,0,0,0.7)', padding: '2px 7px', border: '1px solid var(--bd)' }}>
+            <div className="pf-mono" style={{ position: 'absolute', top: 24, left: 24, fontSize: 8, letterSpacing: 1, textTransform: 'uppercase', color: 'var(--pf-tx3)', background: 'rgba(255,255,255,0.9)', padding: '4px 10px', border: '1px solid var(--pf-bd)', zIndex: 10 }}>
               Non disponible
             </div>
           )}
         </div>
+
+        {/* Info Container */}
         <div style={{
-          flex: isPortrait ? '0 0 auto' : '0 0 200px',
-          padding: 'clamp(14px, 3%, 24px)',
-          display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
-          borderTop: isPortrait ? '1px solid var(--bd)' : 'none',
-          borderLeft: isPortrait ? 'none' : '1px solid var(--bd)',
+          flex: isPortrait ? '1 1 auto' : '0 0 300px',
+          padding: isPortrait ? '16px 24px 24px' : '40px 32px',
+          display: 'flex', flexDirection: 'column', 
+          justifyContent: isPortrait ? 'flex-start' : 'center',
         }}>
-          {w.Titre && <div className="serif" style={{ fontSize: 'clamp(13px, 2vw, 17px)', lineHeight: 1.3, color: 'var(--tx)', marginBottom: 10 }}>{w.Titre}</div>}
-          <div className="t-mono-sm" style={{ lineHeight: 2, color: 'var(--tx3)', fontSize: 10 }}>
-            {yearOf(w.Année) && <div>{yearOf(w.Année)}</div>}
+          {w.Titre && <div className="pf-serif" style={{ fontSize: 'clamp(16px, 2.5vw, 22px)', lineHeight: 1.2, color: 'var(--pf-tx)', marginBottom: 12 }}>{w.Titre}</div>}
+          <div className="pf-mono" style={{ lineHeight: 2.2, color: 'var(--pf-tx2)', fontSize: 9, letterSpacing: 0.5 }}>
+            {yearOf(w.Année) && <div style={{ color: 'var(--pf-tx3)' }}>{yearOf(w.Année)}</div>}
             {w.techniqueName && <div>{w.techniqueName}</div>}
             {dims(w) && <div>{dims(w)}</div>}
           </div>
-          {w.theme && <div className="t-label" style={{ marginTop: 12, fontSize: 8 }}>{w.theme}</div>}
-          <div className="t-mono-sm" style={{ marginTop: 14, fontSize: 8, opacity: 0.35 }}>{page.index} / {page.total}</div>
+          {w.theme && <div className="pf-mono" style={{ marginTop: 'auto', paddingTop: 20, fontSize: 8, letterSpacing: 1.5, textTransform: 'uppercase', color: 'var(--pf-ac)', fontWeight: 600 }}>{w.theme}</div>}
         </div>
       </div>
     )
@@ -439,10 +409,10 @@ function CardContent({ page, isPortrait }: { page: Page; isPortrait: boolean }) 
 
   if (page.kind === 'enquiry') {
     return (
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 'clamp(24px,5%,48px)', justifyContent: 'center' }}>
-        <div className="t-label" style={{ marginBottom: 24, letterSpacing: 3 }}>Enquiry</div>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '64px 48px', justifyContent: 'flex-start' }}>
+        <div className="pf-mono" style={{ marginBottom: 40, letterSpacing: 3, textTransform: 'uppercase', fontSize: 10, color: 'var(--pf-ac)', fontWeight: 600 }}>Enquiry</div>
         <InquiryForm />
-        <div className="t-mono-sm" style={{ marginTop: 32, fontSize: 8, opacity: 0.4 }}>
+        <div className="pf-mono" style={{ marginTop: 'auto', fontSize: 8, opacity: 0.3, letterSpacing: 1.5, textTransform: 'uppercase' }}>
           © {new Date().getFullYear()} Pierre Emmanuel Moulin · Studio
         </div>
       </div>
@@ -527,40 +497,44 @@ function InquiryForm() {
 
   if (sent) {
     return (
-      <div className="serif" style={{ fontSize: 16, color: 'var(--ac)', fontStyle: 'italic' }}>
+      <div className="pf-serif" style={{ fontSize: 18, color: 'var(--pf-tx)', fontStyle: 'italic' }}>
         Merci. Votre message a été transmis au studio.
       </div>
     )
   }
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 400 }}>
+    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 450 }}>
       <div>
+        <label className="pf-mono" style={{ fontSize: 8, letterSpacing: 1, textTransform: 'uppercase', color: 'var(--pf-tx3)', marginBottom: 4, display: 'block' }}>Nom complet</label>
         <input 
-          placeholder="Nom"
+          placeholder="Jean Dupont"
           value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
           required
-          style={{ width: '100%', background: 'none', border: 'none', borderBottom: '1px solid var(--bd2)', padding: '8px 0', fontSize: 13, color: 'var(--tx)', outline: 'none' }}
+          style={{ width: '100%', background: 'none', border: 'none', borderBottom: '1px solid var(--pf-bd)', padding: '10px 0', fontSize: 14, color: 'var(--pf-tx)', outline: 'none' }}
         />
       </div>
       <div>
+        <label className="pf-mono" style={{ fontSize: 8, letterSpacing: 1, textTransform: 'uppercase', color: 'var(--pf-tx3)', marginBottom: 4, display: 'block' }}>Email</label>
         <input 
-          type="email" placeholder="Email"
+          type="email" placeholder="jean@exemple.com"
           value={form.email} onChange={e => setForm({ ...form, email: e.target.value })}
           required
-          style={{ width: '100%', background: 'none', border: 'none', borderBottom: '1px solid var(--bd2)', padding: '8px 0', fontSize: 13, color: 'var(--tx)', outline: 'none' }}
+          style={{ width: '100%', background: 'none', border: 'none', borderBottom: '1px solid var(--pf-bd)', padding: '10px 0', fontSize: 14, color: 'var(--pf-tx)', outline: 'none' }}
         />
       </div>
       <div>
+        <label className="pf-mono" style={{ fontSize: 8, letterSpacing: 1, textTransform: 'uppercase', color: 'var(--pf-tx3)', marginBottom: 4, display: 'block' }}>Message</label>
         <textarea 
-          placeholder="Message"
+          placeholder="Votre demande..."
           value={form.message} onChange={e => setForm({ ...form, message: e.target.value })}
           required rows={4}
-          style={{ width: '100%', background: 'none', border: 'none', borderBottom: '1px solid var(--bd2)', padding: '8px 0', fontSize: 13, color: 'var(--tx)', outline: 'none', resize: 'none' }}
+          style={{ width: '100%', background: 'none', border: 'none', borderBottom: '1px solid var(--pf-bd)', padding: '10px 0', fontSize: 14, color: 'var(--pf-tx)', outline: 'none', resize: 'none', lineHeight: 1.6 }}
         />
       </div>
       <button 
         type="submit" disabled={loading}
+        className="pf-mono"
         style={{ 
           marginTop: 8, padding: '10px 24px', width: 'fit-content',
           background: 'none', border: '1px solid var(--ac)', color: 'var(--ac)',

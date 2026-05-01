@@ -211,6 +211,8 @@ export function TeamPortalClient({
     ['system',        'System'],
   ]
 
+  const activeTabLabel = TABS_RAW.find(x => x[0] === tab)?.[1] ?? ''
+
   const GROUPS: { label: string, tabs: Tab[] }[] = [
     { label: 'Gestion', tabs: ['overview', 'inventory', 'contacts', 'vault'] },
     { label: 'Opérations', tabs: ['production', 'logistics', 'stock', 'stock-take'] },
@@ -225,12 +227,19 @@ export function TeamPortalClient({
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg0)' }}>
       
-      {/* ── Top header ─────────────────────────────────────────────── */}
-      <div style={{ flexShrink: 0, borderBottom: '1px solid var(--bd)', background: 'var(--bg1)', padding: '16px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-          <button onClick={() => router.push('/hub')} className="serif" style={{ fontSize: 24, letterSpacing: '-0.01em', color: 'var(--tx)', cursor: 'pointer' }}>Atelier PEM</button>
-          <div className="vline" style={{ height: 20, opacity: 0.5 }} />
-          <div className="t-mono-sm" style={{ opacity: 0.5 }}>{oeuvres.length} ŒUVRES</div>
+      <div style={{ flexShrink: 0, borderBottom: '1px solid var(--bd)', background: 'var(--bg1)', padding: '12px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button onClick={() => router.push('/hub')} 
+            className="t-mono-sm" 
+            style={{ color: 'var(--tx3)', cursor: 'pointer', background: 'none', border: 'none', padding: 0, fontSize: 9, letterSpacing: 1.5, textTransform: 'uppercase', opacity: 0.7 }}>
+            Hub
+          </button>
+          <span style={{ color: 'var(--tx3)', fontSize: 10, opacity: 0.3 }}>/</span>
+          <div className="serif" style={{ fontSize: 24, letterSpacing: '-0.01em', color: 'var(--tx)' }}>Atelier</div>
+          <span style={{ color: 'var(--tx3)', fontSize: 10, opacity: 0.3 }}>/</span>
+          <div className="t-eyebrow" style={{ color: 'var(--ac)', fontSize: 10 }}>{activeTabLabel}</div>
+          <div className="vline" style={{ height: 16, opacity: 0.3, marginLeft: 8 }} />
+          <div className="t-mono-sm" style={{ opacity: 0.5, fontSize: 9 }}>{oeuvres.length} ŒUVRES</div>
         </div>
 
         <div className="row gap-sm">

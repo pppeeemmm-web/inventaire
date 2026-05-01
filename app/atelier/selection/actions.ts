@@ -46,6 +46,7 @@ export interface ExportConfig {
   imageEmbed:   'linked' | 'embedded'
   imageCrop:    'square' | 'native'
   paper:        'a4' | 'a3' | 'screen'
+  orientation:  'portrait' | 'landscape'
   appendList:   boolean   // append a quick ID list after the card/grid section
   exportTitle?: string | null
 }
@@ -492,14 +493,19 @@ async function buildPdf(
   const pageSize = cfg.paper === 'a3' ? 'A3' : 'A4'
 
   return new Promise(async (resolve, reject) => {
-    const doc    = new PDFDocument({ size: pageSize, margin: 50, autoFirstPage: true })
+    const layout = cfg.orientation || 'portrait'
+    const doc    = new PDFDocument({ size: pageSize, layout, margin: 50, autoFirstPage: true })
     const chunks: Buffer[] = []
     doc.on('data',  (c: Buffer) => chunks.push(c))
     doc.on('end',   () => resolve(Buffer.concat(chunks).toString('base64')))
     doc.on('error', reject)
 
-    const PW = pageSize === 'A3' ? 841 : 595
-    const PH = pageSize === 'A3' ? 1189 : 842
+    const isLandscape = layout === 'landscape'
+    const PW_RAW = pageSize === 'A3' ? 841 : 595
+    const PH_RAW = pageSize === 'A3' ? 1189 : 842
+    
+    const PW = isLandscape ? PH_RAW : PW_RAW
+    const PH = isLandscape ? PW_RAW : PH_RAW
     const margin = 50
     const usable = PW - margin * 2
 

@@ -81,6 +81,7 @@ export default function LandingPage() {
           content: ''; display: block; height: 1px; width: 28px;
           background: currentColor; opacity: .4;
         }
+        .hub-link:hover { opacity: 1 !important; color: #1a1a1a !important; }
       `}</style>
 
       <div className="stage">
@@ -98,10 +99,12 @@ export default function LandingPage() {
         </div>
 
         <Link href="/hub" style={{ 
-          position: 'absolute', bottom: 20, right: 24, 
-          fontSize: 8, letterSpacing: 2, textTransform: 'uppercase', 
-          color: '#b0aca6', textDecoration: 'none', opacity: 0.5 
-        }}>•</Link>
+          position: 'absolute', bottom: 32, right: 40, 
+          fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', 
+          color: '#8a8680', textDecoration: 'none', opacity: 0.7,
+          transition: 'all 0.3s',
+          fontWeight: 600
+        }} className="hub-link">[ Hub ]</Link>
       </div>
     </>
   )
