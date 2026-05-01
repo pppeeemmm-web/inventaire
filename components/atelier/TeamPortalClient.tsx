@@ -253,10 +253,10 @@ export function TeamPortalClient({
 
       <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
         
-        <div style={{ width: 220, flexShrink: 0, borderRight: '1px solid var(--bd)', background: 'var(--bg1)', overflowY: 'auto', display: 'flex', flexDirection: 'column', padding: '32px 0' }}>
+        <div style={{ width: 200, flexShrink: 0, borderRight: '1px solid var(--bd)', background: 'var(--bg1)', overflow: 'hidden', display: 'flex', flexDirection: 'column', padding: '24px 0' }}>
           {GROUPS.map((g) => (
-            <div key={g.label} style={{ marginBottom: 32 }}>
-              <div className="t-eyebrow" style={{ padding: '0 24px', marginBottom: 14, color: 'var(--tx3)', fontSize: 9, letterSpacing: '2px', fontWeight: 600 }}>{g.label}</div>
+            <div key={g.label} style={{ marginBottom: 20 }}>
+              <div className="t-eyebrow" style={{ padding: '0 20px', marginBottom: 8, color: 'var(--tx2)', fontSize: 9, letterSpacing: '2px', fontWeight: 600, opacity: 0.8 }}>{g.label}</div>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 {g.tabs.map((k) => {
                   const item = TABS_RAW.find(x => x[0] === k)
@@ -266,22 +266,23 @@ export function TeamPortalClient({
                   return (
                     <button key={key} onClick={() => handleSetTab(key)}
                       style={{
-                        padding: '10px 24px', fontSize: 12, textAlign: 'left',
-                        color: isActive ? 'var(--ac)' : 'var(--tx2)',
-                        background: isActive ? 'rgba(200,168,110,0.08)' : 'transparent',
+                        padding: '6px 20px', fontSize: 11, textAlign: 'left',
+                        color: isActive ? 'var(--ac)' : 'var(--tx)',
+                        background: isActive ? 'rgba(200,168,110,0.12)' : 'transparent',
                         borderLeft: '3px solid',
                         borderColor: isActive ? 'var(--ac)' : 'transparent',
-                        transition: 'all 0.15s', display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                        transition: 'all 0.1s', display: 'flex', alignItems: 'center', justifyContent: 'space-between'
                       }}
-                      onMouseEnter={(e) => !isActive && (e.currentTarget.style.background = 'rgba(255,255,255,0.02)')}
+                      onMouseEnter={(e) => !isActive && (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
                       onMouseLeave={(e) => !isActive && (e.currentTarget.style.background = 'transparent')}
                     >
-                      <span style={{ fontWeight: isActive ? 600 : 400, letterSpacing: '0.01em' }}>{label}</span>
+                      <span style={{ fontWeight: isActive ? 600 : 400 }}>{label}</span>
                       {count !== undefined && (
                         <span style={{ 
-                          fontSize: 9, opacity: 0.5, padding: '2px 6px', 
+                          fontSize: 9, opacity: 0.7, padding: '1px 4px', 
                           border: '1px solid currentColor', borderRadius: 1,
-                          fontVariantNumeric: 'tabular-nums'
+                          background: isActive ? 'var(--ac)' : 'transparent',
+                          color: isActive ? 'var(--bg1)' : 'inherit'
                         }}>{count}</span>
                       )}
                     </button>
