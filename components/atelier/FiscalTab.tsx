@@ -194,6 +194,7 @@ export function FiscalTab({ oeuvres, contacts = [] }: Props) {
         <ExpenseModal
           expense={editing === 'new' ? null : editing}
           year={year}
+          contacts={contacts}
           onClose={() => setEditing(null)}
           onSaved={(e) => {
             setExpenses((prev) =>
@@ -464,10 +465,11 @@ function FRow2({ label, value }: { label: string; value: string }) {
 // ── Expense modal ──────────────────────────────────────────────────────
 
 function ExpenseModal({
-  expense, year, onClose, onSaved, onDeleted,
+  expense, year, contacts, onClose, onSaved, onDeleted,
 }: {
   expense:   Expense | null
   year:      number
+  contacts:  { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null }[]
   onClose:   () => void
   onSaved:   (e: Expense) => void
   onDeleted: (id: number) => void
