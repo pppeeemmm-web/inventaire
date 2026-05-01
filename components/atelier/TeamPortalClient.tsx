@@ -26,6 +26,7 @@ import { FiscalTab }           from '@/components/atelier/FiscalTab'
 import { ConceptsTab }         from '@/components/atelier/ConceptsTab'
 import { ExhibitionsTab }      from '@/components/atelier/ExhibitionsTab'
 import { ThemesTab }           from '@/components/atelier/ThemesTab'
+import { SupplierHub }         from '@/components/atelier/SupplierHub'
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -163,6 +164,7 @@ export function TeamPortalClient({
     ['fiscal',        t('fiscal')],
     ['concepts',      t('concepts')],
     ['themes',        t('themes')],
+    ['stock',         'Stock'],
   ]
 
   const showDock = selection.size > 0 && tab !== 'constellation'
@@ -314,7 +316,7 @@ export function TeamPortalClient({
         )}
         {tab === 'fiscal' && (
           <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-            <FiscalTab oeuvres={oeuvres} />
+            <FiscalTab oeuvres={oeuvres} contacts={contacts} />
           </div>
         )}
         {tab === 'themes' && (
@@ -329,6 +331,11 @@ export function TeamPortalClient({
         {tab === 'concepts' && (
           <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
             <ConceptsTab />
+          </div>
+        )}
+        {tab === 'stock' && (
+          <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+            <SupplierHub contacts={contacts} />
           </div>
         )}
       </div>

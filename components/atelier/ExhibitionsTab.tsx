@@ -239,12 +239,21 @@ function DefaultRoomSVG({ walls }: { walls: Wall[] }) {
       {segments.slice(0, n).map((seg, i) => (
         <g key={i}>
           <line x1={seg.x1} y1={seg.y1} x2={seg.x2} y2={seg.y2} stroke={walls[i]?.color ?? '#888'} strokeWidth="6" strokeLinecap="round" />
-          <text x={(seg.x1 + seg.x2) / 2} y={(seg.y1 + seg.y2) / 2 - 4} textAnchor="middle" fontSize="8" fill={walls[i]?.color ?? '#888'}>
-            {walls[i]?.nom}
           </text>
         </g>
       ))}
-      <text x="150" y="100" textAnchor="middle" fontSize="9" fill="var(--tx3)">Plan par défaut</text>
+    </svg>
+  )
+}
+
+function DefaultRoomSVG({ walls }: { walls: Wall[] }) {
+  return (
+    <svg width="100%" height="100%" viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid meet" style={{ background: '#0a0a0a' }}>
+      <rect x="50" y="50" width="900" height="500" fill="none" stroke="#222" strokeWidth="2" />
+      <text x="500" y="310" textAnchor="middle" fill="#333" fontSize="14" fontFamily="monospace">CANVAS GLOBAL</text>
+      {walls.map((w, i) => (
+        <rect key={w.id} x={100 + i * 120} y={150} width="100" height="300" fill={w.color + '22'} stroke={w.color} strokeWidth="1" />
+      ))}
     </svg>
   )
 }
@@ -330,7 +339,8 @@ function FloorPlanTool({ exhibitionId, oeuvres }: { exhibitionId: string; oeuvre
 
   function handleDropOnCanvas(e: React.DragEvent) {
     if (!layout) return
-    const id = Number(e.dataTransfer.getData('oeuvre_id'))
+    const idStr = e.dataTransfer.getData('oeuvre_id')
+    const id = Number(idStr)
     if (!id) return
     
     const rect = e.currentTarget.getBoundingClientRect()
@@ -480,7 +490,10 @@ function FloorPlanTool({ exhibitionId, oeuvres }: { exhibitionId: string; oeuvre
                           if (p.x == null || p.y == null) return null
                           const o = oeuvres.find(x => x.OeuvreID === p.oeuvre_id)
                           return (
-                            <div key={p.oeuvre_id} style={{ 
+                            <div key={p.oeuvre_id}
+                              draggable
+                              onDragStart={(e) => { e.dataTransfer.setData('oeuvre_id', String(p.oeuvre_id)) }}
+                              style={{ 
                               position: 'absolute', left: `${p.x}%`, top: `${p.y}%`, 
                               transform: 'translate(-50%, -50%)',
                               width: 24, height: 24, borderRadius: '50%', background: 'var(--ac)',
@@ -560,7 +573,7 @@ function FloorPlanTool({ exhibitionId, oeuvres }: { exhibitionId: string; oeuvre
             )}
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   )
 }
@@ -609,7 +622,7 @@ function ExhibitionDetail({ exhibition, oeuvres, contacts, selection, setSelecti
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
               <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--tx)' }}>{exhibition.nom}</div>
-              <button onClick={onDelete} className="btn ghost sm" style={{ color: 'var(--tx3)', fontSize: 9 }}>Supprimer</button>
+              <button onClick={onDelete} className="btn ghost sm" style={{ color: 'var(--rust)', fontSize: 9, borderColor: 'var(--rust)', opacity: 0.8 }}>Supprimer l'exposition</button>
             </div>
             <div style={{ display: 'flex', gap: 14, fontSize: 10, color: 'var(--tx3)', flexWrap: 'wrap' }}>
               {contact && <span>📍 {contactName}</span>}

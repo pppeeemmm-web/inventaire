@@ -313,6 +313,7 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
   // Custom (blank canvas) mode
   const [customIds,        setCustomIds]        = useState<Set<number>>(new Set())
   const [pickerQ,          setPickerQ]          = useState('')
+  const [spacePressed, setSpacePressed] = useState(false)
   // Theme mode: optional single-theme filter
   const [selectedThemeId,  setSelectedThemeId]  = useState<number | null>(null)
 
@@ -840,7 +841,17 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
   useEffect(() => {
     const obs = new ResizeObserver(() => redraw())
     if (wrapRef.current) obs.observe(wrapRef.current)
-    return () => obs.disconnect()
+
+    const onKeyDown = (e: KeyboardEvent) => { if (e.code === 'Space') setSpacePressed(true) }
+    const onKeyUp   = (e: KeyboardEvent) => { if (e.code === 'Space') setSpacePressed(false) }
+    window.addEventListener('keydown', onKeyDown)
+    window.addEventListener('keyup',   onKeyUp)
+
+    return () => {
+      obs.disconnect()
+      window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('keyup',   onKeyUp)
+    }
   }, [redraw])
 
   // ── Helpers ───────────────────────────────────────────────────
@@ -857,6 +868,12 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
     const wy = (ly - vpRef.current.y) / vpRef.current.z
     const hit = hitNode(lx, ly, posRef.current, vpRef.current)
 
+    if (spacePressed) {
+      dragRef.current = { mode: 'pan', startX: lx, startY: ly, panOrigin: { x: vpRef.current.x, y: vpRef.current.y } }
+      if (canvasRef.current) canvasRef.current.style.cursor = 'grabbing'
+      return
+    }
+
     if (tool === 'draw') {
       dragRef.current = { mode: 'draw', startX: lx, startY: ly }
       setActiveShape({ type: 'line', points: [{ x: wx, y: wy }], color: drawColor, width: 2 / vpRef.current.z })
@@ -868,7 +885,7 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
       return
     }
 
-    if (tool === 'marquee' || (!hit && tool === 'move')) {
+    if (tool === 'marquee') {
       dragRef.current = { mode: 'marquee', startX: lx, startY: ly }
       setMarquee({ x: lx, y: ly, w: 0, h: 0 })
       return
@@ -951,14 +968,15 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
 
       const c = canvasRef.current
       if (c) {
-        if (hit?.zone === 'ring')    c.style.cursor = 'crosshair'
+        if (spacePressed)            c.style.cursor = 'grab'
+        else if (hit?.zone === 'ring')    c.style.cursor = 'crosshair'
         else if (hit?.zone === 'center') c.style.cursor = 'pointer'
         else if (newHovEd)          c.style.cursor = 'pointer'
         else                        c.style.cursor = 'grab'
       }
       if (needRedraw) setTick(t => t + 1)
     }
-  }, [oeuvresById])
+  }, [oeuvresById, spacePressed])
 
   const onMouseUp = useCallback(async (e: React.MouseEvent<HTMLCanvasElement>) => {
     const rect = canvasRef.current!.getBoundingClientRect()
@@ -1148,6 +1166,16 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
     redraw()
   }
 
+  const handleDoubleClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    const rect = canvasRef.current!.getBoundingClientRect()
+    const lx = e.clientX - rect.left, ly = e.clientY - rect.top
+    const hit = hitNode(lx, ly, posRef.current, vpRef.current)
+    if (hit) {
+      const o = oeuvresById.get(hit.id)
+      if (o) onOpen(o)
+    }
+  }, [oeuvresById, onOpen])
+
   // ── Snapshot: save current layout ──────────────────────────────
   function handleSaveSnapshot() {
     const name = snapName.trim() || `Vue ${new Date().toLocaleDateString('fr-FR')}`
@@ -1187,16 +1215,6 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
     persistSnapshots(updated)
     setSnapshots(updated)
   }
-
-  const handleDoubleClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-    const rect = canvasRef.current!.getBoundingClientRect()
-    const lx = e.clientX - rect.left, ly = e.clientY - rect.top
-    const hit = hitNode(lx, ly, posRef.current, vpRef.current)
-    if (hit) {
-      const o = oeuvresById.get(hit.id)
-      if (o) onOpen(o)
-    }
-  }, [oeuvresById, onOpen])
 
   function handleAddText() {
     if (!textInput || !textVal.trim()) { setTextInput(null); setTextVal(''); return }
@@ -1623,7 +1641,10 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
         <div ref={wrapRef} style={{ flex: 1, overflow: 'hidden', position: 'relative', background: 'var(--bg0)' }}>
           <canvas
             ref={canvasRef}
-            style={{ display: 'block', width: '100%', height: '100%', cursor: 'grab' }}
+            style={{ 
+              display: 'block', width: '100%', height: '100%', 
+              cursor: tool === 'move' ? 'grab' : (tool === 'draw' || tool === 'text') ? 'text' : 'crosshair'
+            }}
             onMouseDown={onMouseDown}
             onMouseMove={onMouseMove}
             onMouseUp={onMouseUp}

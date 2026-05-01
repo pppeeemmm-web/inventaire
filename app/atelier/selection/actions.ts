@@ -146,6 +146,7 @@ export async function batchEdit(ids: number[], changes: BatchChanges): Promise<B
   }
 
   revalidatePath('/atelier')
+  revalidatePath('/hub')
   return { ok: true, updated: count }
 }
 
@@ -181,6 +182,7 @@ export async function generateExport(
   if (config.fields.image && config.imageSize !== 'none') {
     const imgSize  = config.imageSize === 'large' ? 600 : 240
     const needFetch = config.imageEmbed === 'embedded' || config.format === 'pdf'
+    const R2_URL = process.env.NEXT_PUBLIC_R2_PUBLIC_URL || process.env.R2_PUBLIC_URL || ''
 
     if (needFetch) {
       // Fetch + base64 encode server-side, 8 at a time
@@ -193,7 +195,8 @@ export async function generateExport(
         await Promise.all(chunk.map(async (o) => {
           if (!o.txtImageNameLink) return
           try {
-            const url = `${STR}/${encodeURIComponent(o.txtImageNameLink)}`
+            const fileName = o.txtImageNameLink
+            const url = fileName.startsWith('http') ? fileName : `${R2_URL}/${encodeURIComponent(fileName)}`
             const res = await fetch(url)
             if (!res.ok) return
             let buf   = Buffer.from(await res.arrayBuffer())
@@ -213,8 +216,11 @@ export async function generateExport(
     } else {
       // Linked HTML — include URL directly (browser loads it)
       for (const o of oeuvres) {
-        if (o.txtImageNameLink)
-          imageMap.set(o.OeuvreID, `${STR}/${encodeURIComponent(o.txtImageNameLink)}`)
+        if (o.txtImageNameLink) {
+          const fileName = o.txtImageNameLink
+          const url = fileName.startsWith('http') ? fileName : `${R2_URL}/${encodeURIComponent(fileName)}`
+          imageMap.set(o.OeuvreID, url)
+        }
       }
     }
   }

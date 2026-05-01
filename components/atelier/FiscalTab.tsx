@@ -40,6 +40,8 @@ interface Expense {
   date:        string
   libelle:     string
   category:    string | null
+  type:        'bill' | 'receipt' | 'docket' | 'other' | null
+  contact_id:  number | null
   montant_ht:  number | null
   tva_rate:    number | null
   montant_ttc: number
@@ -50,6 +52,7 @@ interface Expense {
 
 interface Props {
   oeuvres: Oeuvre[]
+  contacts?: { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null }[]
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────
@@ -92,7 +95,7 @@ function StatCard({ label, value, sub, warn }: { label: string; value: string; s
 
 // ── Main component ─────────────────────────────────────────────────────
 
-export function FiscalTab({ oeuvres }: Props) {
+export function FiscalTab({ oeuvres, contacts = [] }: Props) {
   const { t } = useI18n()
   const [year,     setYear]     = useState(YEAR_NOW)
   const [regime,   setRegime]   = useState<'micro' | 'reel'>('micro')
@@ -476,6 +479,8 @@ function ExpenseModal({
     date:        expense?.date        ?? `${year}-01-01`,
     libelle:     expense?.libelle     ?? '',
     category:    expense?.category    ?? '',
+    type:        expense?.type       ?? 'receipt',
+    contact_id:  String(expense?.contact_id ?? ''),
     montant_ht:  String(expense?.montant_ht  ?? ''),
     tva_rate:    String(expense?.tva_rate    ?? '0'),
     montant_ttc: String(expense?.montant_ttc ?? ''),
@@ -505,6 +510,8 @@ function ExpenseModal({
         date:        form.date,
         libelle:     form.libelle   || null,
         category:    form.category  || null,
+        type:        form.type      || 'receipt',
+        contact_id:  form.contact_id ? parseInt(form.contact_id) : null,
         montant_ht:  form.montant_ht  ? parseFloat(form.montant_ht)  : null,
         tva_rate:    form.tva_rate    ? parseFloat(form.tva_rate)    : 0,
         montant_ttc: parseFloat(form.montant_ttc),
@@ -574,6 +581,29 @@ function ExpenseModal({
               <select value={form.category} onChange={f('category')} style={FIS}>
                 <option value="">— Choisir</option>
                 {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div>
+              <div className="t-label" style={{ marginBottom: 3 }}>Type</div>
+              <select value={form.type || ''} onChange={f('type')} style={FIS}>
+                <option value="receipt">Ticket / Docket</option>
+                <option value="bill">Facture</option>
+                <option value="docket">Bon de livraison</option>
+                <option value="other">Autre</option>
+              </select>
+            </div>
+            <div>
+              <div className="t-label" style={{ marginBottom: 3 }}>Contact / Fournisseur</div>
+              <select value={form.contact_id} onChange={f('contact_id')} style={FIS}>
+                <option value="">— Aucun</option>
+                {contacts.sort((a,b) => (a.NomInstitution||a.Nom||'').localeCompare(b.NomInstitution||b.Nom||'', 'fr')).map(c => (
+                  <option key={c.ContactID} value={c.ContactID}>
+                    {c.NomInstitution || `${c.Prénom||''} ${c.Nom||''}`.trim() || `#${c.ContactID}`}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
