@@ -21,7 +21,7 @@ interface Props {
   contacts: { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null; Role: string | null }[]
 }
 
-const CATS = ['Cadres', 'Papier', 'Encre', 'Emballage', 'Outils', 'Autre']
+const CATS = ['Additif', 'Autre', "Couleur à l'huile", 'Liant', 'Lin', 'Medium à peindre', 'Papier', 'Pigment', 'Pinceau', 'Primer', 'Solvent']
 
 export function SupplierHub({ contacts }: Props) {
   const { lang } = useI18n()
