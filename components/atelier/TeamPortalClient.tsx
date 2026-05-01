@@ -500,7 +500,8 @@ export function TeamPortalClient({
         }
       `}</style>
     </div>
-  )
+  </div>
+)
 }
 
 // ── Overview tab ─────────────────────────────────────────────────────
