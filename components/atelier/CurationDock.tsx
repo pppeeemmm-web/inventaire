@@ -18,6 +18,7 @@ interface Props {
   formats:            { FormatID:    number; Format:    string | null }[]
   contacts:           { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null }[]
   themes:             { ThemeID: number; Nom: string }[]
+  groups:             { id: string; name: string }[]
   tM:                 Record<number, string>
   sM:                 Record<number, string>
   statusLabelMap:     Record<number, string>
@@ -28,7 +29,7 @@ interface Props {
 
 export function CurationDock({
   selection, setSelection,
-  oeuvres, techniques, supports, formats, contacts, themes, tM, sM, statusLabelMap,
+  oeuvres, techniques, supports, formats, contacts, themes, groups, tM, sM, statusLabelMap,
   onGoConstellation, onSaveGroup, onCompare,
 }: Props) {
   const { t } = useI18n()
@@ -128,6 +129,7 @@ export function CurationDock({
           formats={formats}
           contacts={contacts}
           themes={themes}
+          groups={groups}
           statusLabelMap={statusLabelMap}
           onClose={() => setShowBatch(false)}
           onDone={(count) => {

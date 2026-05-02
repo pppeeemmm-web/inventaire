@@ -28,9 +28,10 @@ interface PortfolioConfig {
 
 interface Props {
   oeuvres: Oeuvre[]
+  themes:  { ThemeID: number; Nom: string }[]
 }
 
-export function PortfolioTab({ oeuvres }: Props) {
+export function PortfolioTab({ oeuvres, themes }: Props) {
   const [config, setConfig] = useState<PortfolioConfig>({
     general: { artist_name: '', about_intro: '', contact_email: '', instagram: '' },
     sections: [],
@@ -42,7 +43,7 @@ export function PortfolioTab({ oeuvres }: Props) {
   const [loading,   setLoading]   = useState(true)
   const [saving,    setSaving]    = useState(false)
   
-  const themes = [...new Set(oeuvres.map(o => o.theme).filter(Boolean))].sort() as string[]
+  const themeNames = [...themes].sort((a,b) => a.Nom.localeCompare(b.Nom, 'fr')).map(t => t.Nom)
   const sb = createClient()
 
   const loadData = useCallback(async () => {
@@ -196,7 +197,7 @@ export function PortfolioTab({ oeuvres }: Props) {
             </div>
             <div className="col gap-md">
               {config.works_collections.map(item => (
-                <ItemRow key={item.id} item={item} themes={themes} onUpdate={p => updateItem('works_collections', item.id, p)} onDelete={() => setConfig({ ...config, works_collections: config.works_collections.filter(x => x.id !== item.id) })} />
+                <ItemRow key={item.id} item={item} themes={themeNames} onUpdate={p => updateItem('works_collections', item.id, p)} onDelete={() => setConfig({ ...config, works_collections: config.works_collections.filter(x => x.id !== item.id) })} />
               ))}
             </div>
           </section>
@@ -209,7 +210,7 @@ export function PortfolioTab({ oeuvres }: Props) {
             </div>
             <div className="col gap-md">
               {config.sections.map(item => (
-                <ItemRow key={item.id} item={item} themes={themes} onUpdate={p => updateItem('sections', item.id, p)} onDelete={() => setConfig({ ...config, sections: config.sections.filter(x => x.id !== item.id) })} />
+                <ItemRow key={item.id} item={item} themes={themeNames} onUpdate={p => updateItem('sections', item.id, p)} onDelete={() => setConfig({ ...config, sections: config.sections.filter(x => x.id !== item.id) })} />
               ))}
             </div>
           </section>

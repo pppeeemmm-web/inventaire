@@ -34,17 +34,43 @@ export default async function WorksPage() {
 
   const collections = config.works_collections.filter((c: any) => c.is_active)
 
-  // 2. Fetch Works for all active collections
-  const themes = collections.map((c: any) => c.theme).filter(Boolean)
+  // 2. Fetch Themes to get IDs
+  const themeNames = collections.map((c: any) => c.theme).filter(Boolean)
+  const { data: themeRecords } = await supabase
+    .from('tblTheme')
+    .select('ThemeID, Nom')
+    .in('Nom', themeNames)
   
+  const themeIds = (themeRecords || []).map(r => r.ThemeID)
+
+  // 3. Fetch OeuvreIDs for these themes
+  const { data: oeuvreThemes } = await supabase
+    .from('OeuvreTheme')
+    .select('OeuvreID, ThemeID')
+    .in('ThemeID', themeIds)
+  
+  const oeuvreIds = [...new Set((oeuvreThemes || []).map(ot => ot.OeuvreID))]
+
+  // 4. Fetch Works
   const { data: rawWorks } = await supabase
     .from('Oeuvres')
-    .select('OeuvreID, Titre, Année, Hauteur, Largeur, Profondeur, txtImageNameLink, theme')
+    .select('OeuvreID, Titre, Année, Hauteur, Largeur, Profondeur, txtImageNameLink')
     .eq('is_public', true)
-    .in('theme', themes)
+    .in('OeuvreID', oeuvreIds)
     .order('Année', { ascending: false }) as any
 
   const works = rawWorks || []
+
+  // Create a map of OeuvreID -> ThemeNames
+  const oeuvreThemeMap = new Map<number, string[]>()
+  if (themeRecords && oeuvreThemes) {
+    const idToName = Object.fromEntries(themeRecords.map(r => [r.ThemeID, r.Nom]))
+    oeuvreThemes.forEach(ot => {
+      if (!oeuvreThemeMap.has(ot.OeuvreID)) oeuvreThemeMap.set(ot.OeuvreID, [])
+      const name = idToName[ot.ThemeID]
+      if (name) oeuvreThemeMap.get(ot.OeuvreID)!.push(name)
+    })
+  }
 
   return (
     <>
@@ -111,7 +137,10 @@ export default async function WorksPage() {
 
       <div className="w-body">
         {collections.map((col: any) => {
-          const colWorks = works.filter((w: any) => w.theme === col.theme)
+          const colWorks = works.filter((w: any) => {
+            const wThemes = oeuvreThemeMap.get(w.OeuvreID) ?? []
+            return wThemes.includes(col.theme)
+          })
           return (
             <section key={col.id} className="w-collection">
               <div className="w-col-header">

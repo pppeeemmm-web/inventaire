@@ -25,12 +25,20 @@ interface Props {
   selection:       Set<number>
   setSelection:    (s: Set<number>) => void
   onClose:         () => void
+  // Curation maps
+  thM:             Record<number, string>   // themeID → name
+  oeuvreThemeMap:  Map<number, number[]>    // workID → themeIDs
+  oeuvreGroupMap:  Map<number, string[]>    // workID → groupIDs
+  groupNameMap:    Record<string, string>   // groupID → name
 }
 
 interface ActionType { id: number; label: string; color: string; field_key: string | null }
 interface WorkAction { action_type_id: number; done: boolean }
 
-export function WorkDrawer({ o, tM, sM, cM, pM, statusLabelMap, selection, setSelection, onClose }: Props) {
+export function WorkDrawer({ 
+  o, tM, sM, cM, pM, statusLabelMap, selection, setSelection, onClose,
+  thM, oeuvreThemeMap, oeuvreGroupMap, groupNameMap
+}: Props) {
   const { t }  = useI18n()
   const router = useRouter()
   const isSel  = selection.has(o.OeuvreID)
@@ -242,6 +250,39 @@ export function WorkDrawer({ o, tM, sM, cM, pM, statusLabelMap, selection, setSe
               </div>
             </>
           )}
+
+          {/* ── Curation ────────────────────────────── */}
+          <div className="t-label" style={{ paddingTop: 10 }}>{t('themes')}</div>
+          <div style={{ paddingTop: 10, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+            {(() => {
+              const ids = oeuvreThemeMap?.get?.(o.OeuvreID) ?? []
+              if (ids.length === 0) return <span style={{ color: 'var(--tx3)' }}>—</span>
+              return ids.map(tid => (
+                <span key={tid} style={{ 
+                  fontSize: 9, background: 'var(--bg0)', border: '1px solid var(--bd)', 
+                  padding: '2px 8px', color: 'var(--tx2)', borderRadius: 2 
+                }}>
+                  {thM[tid] ?? tid}
+                </span>
+              ))
+            })()}
+          </div>
+
+          <div className="t-label">{t('workingGroups')}</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+            {(() => {
+              const ids = oeuvreGroupMap?.get?.(o.OeuvreID) ?? []
+              if (ids.length === 0) return <span style={{ color: 'var(--tx3)' }}>—</span>
+              return ids.map(gid => (
+                <span key={gid} style={{ 
+                  fontSize: 9, background: 'color-mix(in srgb, var(--ac) 10%, var(--bg0))', 
+                  border: '1px solid var(--bd)', padding: '2px 8px', color: 'var(--tx)', borderRadius: 2 
+                }}>
+                  {groupNameMap[gid] ?? gid}
+                </span>
+              ))
+            })()}
+          </div>
         </div>
 
         {/* Comments */}

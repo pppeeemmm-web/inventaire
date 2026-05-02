@@ -115,6 +115,34 @@ export function TeamPortalClient({
   const [showCompare, setShowCompare] = useState(false)
   const [toast,         setToast]        = useState<string | null>(null)
 
+  // Curation maps
+  const [oeuvreThemeMap, setOeuvreThemeMap] = useState<Map<number, number[]>>(new Map())
+  const [oeuvreGroupMap, setOeuvreGroupMap] = useState<Map<number, string[]>>(new Map())
+
+  useEffect(() => {
+    const sb = createClient()
+    // Fetch Themes
+    ;(sb.from('OeuvreTheme') as any).select('OeuvreID, ThemeID').range(0, 10000).then(({ data }: { data: { OeuvreID: number; ThemeID: number }[] | null }) => {
+      if (!data) return
+      const map = new Map<number, number[]>()
+      data.forEach(({ OeuvreID, ThemeID }) => {
+        if (!map.has(OeuvreID)) map.set(OeuvreID, [])
+        map.get(OeuvreID)!.push(ThemeID)
+      })
+      setOeuvreThemeMap(map)
+    })
+    // Fetch Groups
+    ;(sb.from('working_group_work') as any).select('oeuvre_id, group_id').range(0, 10000).then(({ data }: { data: { oeuvre_id: number; group_id: string }[] | null }) => {
+      if (!data) return
+      const map = new Map<number, string[]>()
+      data.forEach(({ oeuvre_id, group_id }) => {
+        if (!map.has(oeuvre_id)) map.set(oeuvre_id, [])
+        map.get(oeuvre_id)!.push(group_id)
+      })
+      setOeuvreGroupMap(map)
+    })
+  }, [])
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('batch') === 'success') {
@@ -382,7 +410,7 @@ export function TeamPortalClient({
         )}
         {tab === 'portfolio' && (
           <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-            <PortfolioTab oeuvres={oeuvres} />
+            <PortfolioTab oeuvres={oeuvres} themes={themes} />
           </div>
         )}
         {tab === 'map' && (
@@ -451,6 +479,11 @@ export function TeamPortalClient({
           selection={selection}
           setSelection={setSelection}
           onClose={() => setInspected(null)}
+          // Curation props
+          thM={thM}
+          oeuvreThemeMap={oeuvreThemeMap}
+          oeuvreGroupMap={oeuvreGroupMap}
+          groupNameMap={groupNameMap}
         />
       )}
 
@@ -465,6 +498,7 @@ export function TeamPortalClient({
           formats={formats}
           contacts={contacts}
           themes={themes}
+          groups={groups}
           tM={tM}
           sM={sM}
           statusLabelMap={statusLabelMap}
@@ -533,6 +567,18 @@ function OverviewTab({
   const exposable  = oeuvres.filter((o) => o.Exposable).length
   const catalogued = oeuvres.filter((o) => o.Catalogué).length
 
+  // New: Recent Works
+  const recentWorks = [...oeuvres].sort((a, b) => b.OeuvreID - a.OeuvreID).slice(0, 6)
+
+  // New: Data Health
+  const missingDims   = oeuvres.filter(o => !o.Hauteur || !o.Largeur).length
+  const missingImages = oeuvres.filter(o => !o.txtImageNameLink).length
+  const missingLoc    = oeuvres.filter(o => !o.LocalisationID).length
+
+  // New: Production Summary (Simplified)
+  const inProgress = oeuvres.filter(o => o.statusId === 1 || o.StageProduction?.toLowerCase().includes('cours')).length
+  const ready      = oeuvres.filter(o => o.statusId === 2 || o.Exposable).length
+
   // Upcoming deadlines from pipeline
   const [upcoming,  setUpcoming]  = useState<{ nom: string; date_fin: string; deadline_time: string | null; type: string }[]>([])
   const [reminders, setReminders] = useState<{ id: string; message: string; remind_at: string }[]>([])
@@ -585,143 +631,176 @@ function OverviewTab({
   }
 
   return (
-    <div style={{ padding: '32px 40px', display: 'grid', gridTemplateColumns: '1fr 280px', gap: 48, alignItems: 'start' }}>
+    <div style={{ padding: '32px 40px', display: 'grid', gridTemplateColumns: '1fr 300px', gap: 60, alignItems: 'start' }}>
 
-      {/* Left: inventory stats + techniques */}
-      <div>
-        <div className="t-eyebrow" style={{ marginBottom: 24 }}>Overview</div>
-
-        {/* Key stats */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 1, border: '1px solid var(--bd)', marginBottom: 32 }}>
-          {[
-            { l: t('works_cap'),                    v: oeuvres.length },
-            { l: `${t('thisYear')} (${thisYear})`,  v: byYear },
-            { l: t('exposable'),                    v: exposable },
-            { l: t('catalogued'),                   v: catalogued },
-            { l: t('priced'),                       v: withPrice },
-          ].map(({ l, v }) => (
-            <div key={l} style={{ padding: '20px 24px', borderRight: '1px solid var(--bd)' }}>
-              <div className="stat">
-                <span className="l">{l}</span>
-                <span className="v">{v}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Technique breakdown */}
-        <div style={{ marginBottom: 32 }}>
-          <div className="t-label" style={{ marginBottom: 12 }}>{t('byTechnique')}</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {topTechs.map(([techId, count]) => {
-              const pct = Math.round((count / oeuvres.length) * 100)
-              return (
-                <div key={techId} style={{ display: 'grid', gridTemplateColumns: '160px 1fr 40px', alignItems: 'center', gap: 12 }}>
-                  <div className="t-mono-sm" style={{ color: 'var(--tx2)' }}>{tM[Number(techId)] ?? '—'}</div>
-                  <div style={{ height: 4, background: 'var(--bg2)', position: 'relative' }}>
-                    <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${pct}%`, background: 'var(--ac)' }} />
-                  </div>
-                  <div className="t-mono-sm" style={{ color: 'var(--tx3)', textAlign: 'right' }}>{count}</div>
+      {/* Left Column: Dashboard Pulse */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 48 }}>
+        
+        {/* Row 1: Executive Stats */}
+        <div>
+          <div className="t-eyebrow" style={{ marginBottom: 24, opacity: 0.6 }}>Executive Summary</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 1, border: '1px solid var(--bd)', background: 'var(--bd)' }}>
+            {[
+              { l: t('works_cap'),                    v: oeuvres.length },
+              { l: `${t('thisYear')} (${thisYear})`,  v: byYear },
+              { l: t('exposable'),                    v: exposable },
+              { l: t('catalogued'),                   v: catalogued },
+              { l: t('priced'),                       v: withPrice },
+            ].map(({ l, v }) => (
+              <div key={l} style={{ padding: '20px 24px', background: 'var(--bg1)' }}>
+                <div className="stat">
+                  <span className="l" style={{ fontSize: 9, letterSpacing: 1.5 }}>{l}</span>
+                  <span className="v" style={{ fontSize: 24 }}>{v}</span>
                 </div>
-              )
-            })}
+              </div>
+            ))}
           </div>
         </div>
 
-        <div className="row gap-sm">
-          <button className="btn ghost sm" onClick={() => onGoTab('inventory')}>Inventory →</button>
-          <button className="btn ghost sm" onClick={() => onGoTab('constellation')}>Constellation →</button>
-          <button className="btn ghost sm" onClick={() => onGoTab('pipeline')}>
-            Pipeline {reminderCount > 0 && <span style={{ marginLeft: 4, background: 'var(--rust)', color: '#fff', borderRadius: '50%', width: 14, height: 14, fontSize: 8, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{reminderCount}</span>}
-          </button>
+        {/* Row 2: Visual Grid (Recent Documentation) */}
+        <div>
+          <div className="row gap-sm" style={{ justifyContent: 'space-between', marginBottom: 20 }}>
+            <div className="t-eyebrow" style={{ opacity: 0.6 }}>Recent Documentation</div>
+            <button className="t-mono-sm" onClick={() => onGoTab('inventory')} style={{ background: 'none', border: 'none', color: 'var(--ac)', cursor: 'pointer', fontSize: 9, letterSpacing: 1 }}>VIEW ALL →</button>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 12 }}>
+            {recentWorks.map((o) => (
+              <div key={o.OeuvreID} style={{ aspectRatio: '1', background: 'var(--bg1)', border: '1px solid var(--bd2)', position: 'relative', overflow: 'hidden', cursor: 'pointer' }}>
+                {o.txtImageNameLink ? (
+                  <img src={thumbUrl(o.txtImageNameLink, 256) ?? ''} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--tx3)', fontSize: 10 }}>NO IMG</div>
+                )}
+                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '4px 6px', background: 'linear-gradient(transparent, rgba(0,0,0,0.8))', color: '#fff', fontSize: 8, fontFamily: 'var(--font-mono)' }}>
+                  #{o.OeuvreID}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Row 3: Technique & Distribution */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40 }}>
+          {/* Technique breakdown */}
+          <div>
+            <div className="t-label" style={{ marginBottom: 16, opacity: 0.8 }}>{t('byTechnique')}</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {topTechs.map(([techId, count]) => {
+                const pct = Math.round((count / oeuvres.length) * 100)
+                return (
+                  <div key={techId} style={{ display: 'grid', gridTemplateColumns: '120px 1fr 30px', alignItems: 'center', gap: 12 }}>
+                    <div className="t-mono-sm" style={{ color: 'var(--tx2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tM[Number(techId)] ?? '—'}</div>
+                    <div style={{ height: 3, background: 'var(--bg2)', position: 'relative' }}>
+                      <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${pct}%`, background: 'var(--ac)' }} />
+                    </div>
+                    <div className="t-mono-sm" style={{ color: 'var(--tx3)', textAlign: 'right', fontSize: 9 }}>{count}</div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Production & Health Summary */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 20 }}>
+             <div style={{ padding: '16px', background: 'var(--bg1)', border: '1px solid var(--bd)' }}>
+                <div className="t-eyebrow" style={{ fontSize: 8, marginBottom: 12, color: 'var(--tx3)' }}>Studio Health</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <HealthRow label="Missing Dimensions" count={missingDims} color={missingDims > 0 ? 'var(--rust)' : 'var(--tx3)'} />
+                  <HealthRow label="Missing Photos" count={missingImages} color={missingImages > 0 ? 'var(--rust)' : 'var(--tx3)'} />
+                  <HealthRow label="No Location Set" count={missingLoc} color={missingLoc > 0 ? 'var(--rust)' : 'var(--tx3)'} />
+                </div>
+             </div>
+          </div>
         </div>
       </div>
 
-      {/* Right: pipeline deadlines + reminders */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {/* Right Column: Deadlines & Concepts */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
 
-        {upcoming.length > 0 && (
+        {/* Reminders Pulse */}
+        {reminders.length > 0 && (
           <div>
-            <div className="t-eyebrow" style={{ marginBottom: 12, cursor: 'pointer' }} onClick={() => onGoTab('pipeline')}>
-              {t('upcomingDeadlines')} →
+            <div className="t-eyebrow" style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+              Reminders
+              {reminderCount > 0 && <span style={{ background: 'var(--ac)', color: 'var(--bg0)', padding: '1px 6px', borderRadius: 10, fontSize: 8 }}>{reminderCount}</span>}
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {reminders.map((r) => {
+                const days = Math.ceil((new Date(r.remind_at).setHours(0,0,0,0) - new Date().setHours(0,0,0,0)) / 86400000)
+                return (
+                  <div key={r.id} style={{ padding: '10px 12px', background: 'var(--bg1)', border: '1px solid var(--bd2)', borderLeft: `2px solid var(--ac)` }}>
+                    <div style={{ fontSize: 10, color: 'var(--tx)', lineHeight: 1.4 }}>{r.message}</div>
+                    <div style={{ fontSize: 8, color: urgencyColor(days), marginTop: 4, letterSpacing: 0.5, textTransform: 'uppercase' }}>
+                      {days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : days < 0 ? `${Math.abs(days)}d ago` : `in ${days}d`}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Pipeline Pulse */}
+        <div>
+          <div className="t-eyebrow" style={{ marginBottom: 16, cursor: 'pointer' }} onClick={() => onGoTab('pipeline')}>
+            Active Pipeline →
+          </div>
+          {upcoming.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {upcoming.map((p, i) => {
                 const days = Math.ceil((new Date(p.date_fin).setHours(0,0,0,0) - new Date().setHours(0,0,0,0)) / 86400000)
                 const col  = urgencyColor(days)
                 return (
                   <div key={i} onClick={() => onGoTab('pipeline')} style={{
-                    padding: '8px 10px', background: 'var(--bg1)',
-                    border: '1px solid var(--bd)', cursor: 'pointer',
-                    borderLeft: `3px solid ${col}`,
+                    padding: '10px 12px', background: 'var(--bg1)',
+                    border: '1px solid var(--bd2)', cursor: 'pointer',
+                    borderLeft: `2px solid ${col}`,
                   }}>
                     <div style={{ fontSize: 10, fontWeight: 500, color: 'var(--tx)' }}>{p.nom}</div>
-                    <div style={{ fontSize: 9, color: col, marginTop: 2, fontWeight: days <= 7 ? 700 : 400 }}>
-                      {days < 0 ? `${Math.abs(days)}d overdue` : days === 0 ? 'Today' : `in ${days}d`}
-                      {' · '}{new Date(p.date_fin).toLocaleDateString('en', { day: 'numeric', month: 'short' })}
-                      {p.deadline_time ? ` · ${p.deadline_time}` : ''}
+                    <div style={{ fontSize: 8, color: col, marginTop: 4, letterSpacing: 0.5 }}>
+                      {days < 0 ? `${Math.abs(days)}d OVERDUE` : days === 0 ? 'DUE TODAY' : `IN ${days} DAYS`}
                     </div>
                   </div>
                 )
               })}
             </div>
-          </div>
-        )}
+          ) : (
+            <div className="t-mono-sm" style={{ opacity: 0.4, padding: 12, border: '1px dashed var(--bd2)', textAlign: 'center' }}>No active deadlines</div>
+          )}
+        </div>
 
-        {reminders.length > 0 && (
-          <div>
-            <div className="t-eyebrow" style={{ marginBottom: 12 }}>
-              Reminders
-              <span style={{ marginLeft: 6, color: 'var(--ac)' }}>({reminders.length})</span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-              {reminders.map((r) => {
-                const days = Math.ceil((new Date(r.remind_at).setHours(0,0,0,0) - new Date().setHours(0,0,0,0)) / 86400000)
-                return (
-                  <div key={r.id} style={{ padding: '8px 10px', background: 'var(--bg1)', border: '1px solid var(--bd)' }}>
-                    <div style={{ fontSize: 10, color: 'var(--tx)', lineHeight: 1.3 }}>{r.message}</div>
-                    <div style={{ fontSize: 9, color: urgencyColor(days), marginTop: 2 }}>
-                      {new Date(r.remind_at).toLocaleDateString('en', { day: 'numeric', month: 'short' })}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
+        {/* Burning Concepts */}
         {burningConcepts.length > 0 && (
           <div>
-            <div className="t-eyebrow" style={{ marginBottom: 12, cursor: 'pointer' }} onClick={() => onGoTab('concepts')}>
+            <div className="t-eyebrow" style={{ marginBottom: 16, cursor: 'pointer' }} onClick={() => onGoTab('concepts')}>
               Burning Ideas →
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {burningConcepts.map((c) => (
                 <div key={c.id} onClick={() => onGoTab('concepts')} style={{
-                  padding: '8px 10px', background: 'var(--bg1)',
-                  border: '1px solid var(--bd)', cursor: 'pointer',
-                  borderLeft: `3px solid var(--ac)`,
+                  padding: '10px 12px', background: 'var(--bg1)',
+                  border: '1px solid var(--bd2)', cursor: 'pointer',
+                  borderLeft: `2px solid var(--ac)`,
                 }}>
                   <div style={{ fontSize: 10, fontWeight: 500, color: 'var(--tx)' }}>{c.titre}</div>
-                  <div style={{ fontSize: 9, color: 'var(--tx3)', marginTop: 2 }}>
-                    {'🔥'.repeat(c.energie - 2)} {['Vague', 'Naissante', 'Active', 'Urgente', 'Brûlante'][c.energie - 1]}
+                  <div style={{ fontSize: 8, color: 'var(--tx3)', marginTop: 4, letterSpacing: 1 }}>
+                    {'●'.repeat(c.energie)} <span style={{ marginLeft: 4 }}>{['Vague', 'Naissante', 'Active', 'Urgente', 'Brûlante'][c.energie - 1]}</span>
                   </div>
                 </div>
               ))}
             </div>
           </div>
         )}
-
-        {upcoming.length === 0 && reminders.length === 0 && burningConcepts.length === 0 && (
-          <div
-            style={{ padding: '20px 16px', border: '1px solid var(--bd)', cursor: 'pointer', opacity: 0.5 }}
-            onClick={() => onGoTab('pipeline')}
-          >
-            <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>No upcoming deadlines.</div>
-            <div className="t-mono-sm" style={{ color: 'var(--tx3)', marginTop: 4 }}>Go to Pipeline →</div>
-          </div>
-        )}
       </div>
+    </div>
+  )
+}
+
+function HealthRow({ label, count, color }: { label: string; count: number; color: string }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <span className="t-mono-sm" style={{ fontSize: 9, color: 'var(--tx2)' }}>{label}</span>
+      <span className="t-mono-sm" style={{ fontSize: 10, color, fontWeight: count > 0 ? 700 : 400 }}>{count}</span>
     </div>
   )
 }

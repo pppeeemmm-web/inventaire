@@ -14,19 +14,38 @@ const EXCLUDE_STATUT = [1, 9, 10]
 export default async function PortfolioPage() {
   const supabase = await createClient()
 
-  const [{ data: rawWorks }, { data: rawTech }] = await Promise.all([
+  const [
+    { data: rawWorks }, 
+    { data: rawTech },
+    { data: rawThemes },
+    { data: rawOeuvreThemes }
+  ] = await Promise.all([
     supabase
       .from('Oeuvres')
-      .select('OeuvreID, Titre, Année, Hauteur, Largeur, Profondeur, txtImageNameLink, theme, Technique, statusId, Exposable')
+      .select('OeuvreID, Titre, Année, Hauteur, Largeur, Profondeur, txtImageNameLink, Technique, statusId, Exposable')
       .eq('is_public', true)
       .eq('Exposable', true)
       .order('Année', { ascending: false }) as any,
     supabase.from('Technique').select('TechniqueID, Technique') as any,
+    supabase.from('tblTheme').select('ThemeID, Nom') as any,
+    supabase.from('OeuvreTheme').select('OeuvreID, ThemeID') as any,
   ])
 
   const tMap: Record<number, string> = {}
   for (const t of (rawTech ?? []) as any[]) {
     if (t.TechniqueID != null && t.Technique) tMap[t.TechniqueID] = t.Technique
+  }
+
+  const thMap: Record<number, string> = {}
+  for (const th of (rawThemes ?? []) as any[]) {
+    thMap[th.ThemeID] = th.Nom
+  }
+
+  const oeuvreThemeMap = new Map<number, string[]>()
+  for (const ot of (rawOeuvreThemes ?? []) as any[]) {
+    if (!oeuvreThemeMap.has(ot.OeuvreID)) oeuvreThemeMap.set(ot.OeuvreID, [])
+    const name = thMap[ot.ThemeID]
+    if (name) oeuvreThemeMap.get(ot.OeuvreID)!.push(name)
   }
 
   const works = ((rawWorks ?? []) as any[])
@@ -40,7 +59,7 @@ export default async function PortfolioPage() {
       Profondeur:       o.Profondeur        as string | null,
       UniteDimension:   null,
       txtImageNameLink: o.txtImageNameLink  as string | null,
-      theme:            o.theme             as string | null,
+      themes:           oeuvreThemeMap.get(o.OeuvreID) ?? [],
       techniqueName:    o.Technique != null ? (tMap[o.Technique as number] ?? null) : null,
       statutId:         o.statusId          as number | null,
     }))

@@ -430,14 +430,15 @@ export function WorkForm({
                   style={inputStyle}
                   options={[...localTechs].sort((a,b) => (a.Technique ?? '').localeCompare(b.Technique ?? '', 'fr')).map((t) => ({ id: String(t.TechniqueID), label: t.Technique ?? '—' }))}
                   onCreate={async (name) => {
+                    const capped = cap(name)
                     const { createClient } = await import('@/lib/supabase/client')
                     const sb = createClient()
                     const { data: mx } = await (sb.from('Technique') as any).select('TechniqueID').order('TechniqueID', { ascending: false }).limit(1).single()
                     const nextTid = ((mx as any)?.TechniqueID ?? 0) + 1
-                    const { data, error } = await (sb.from('Technique') as any).insert({ TechniqueID: nextTid, Technique: name }).select('TechniqueID, Technique').single()
+                    const { data, error } = await (sb.from('Technique') as any).insert({ TechniqueID: nextTid, Technique: capped }).select('TechniqueID, Technique').single()
                     if (error || !data) throw new Error(error?.message ?? 'Erreur')
                     setLocalTechs((p) => [...p, data as any])
-                    return { id: String((data as any).TechniqueID), label: (data as any).Technique ?? name }
+                    return { id: String((data as any).TechniqueID), label: (data as any).Technique ?? capped }
                   }}
                 />
               </Field>
@@ -452,14 +453,15 @@ export function WorkForm({
                   style={inputStyle}
                   options={[...localSupports].sort((a,b) => (a.Support ?? '').localeCompare(b.Support ?? '', 'fr')).map((s) => ({ id: String(s.SupportID), label: s.Support ?? '—' }))}
                   onCreate={async (name) => {
+                    const capped = cap(name)
                     const { createClient } = await import('@/lib/supabase/client')
                     const sb = createClient()
                     const { data: mx } = await (sb.from('Support') as any).select('SupportID').order('SupportID', { ascending: false }).limit(1).single()
                     const nextSid = ((mx as any)?.SupportID ?? 0) + 1
-                    const { data, error } = await (sb.from('Support') as any).insert({ SupportID: nextSid, Support: name }).select('SupportID, Support').single()
+                    const { data, error } = await (sb.from('Support') as any).insert({ SupportID: nextSid, Support: capped }).select('SupportID, Support').single()
                     if (error || !data) throw new Error(error?.message ?? 'Erreur')
                     setLocalSupports((p) => [...p, data as any])
-                    return { id: String((data as any).SupportID), label: (data as any).Support ?? name }
+                    return { id: String((data as any).SupportID), label: (data as any).Support ?? capped }
                   }}
                 />
               </Field>
@@ -1376,12 +1378,19 @@ function ContactModal({
   }, [])
 
   function f(k: keyof Omit<CMFormState, "Actif">) {
-    return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
-      setForm((p) => ({ ...p, [k]: e.target.value }))
+    return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+      let v = e.target.value
+      // Auto-capitalize key identity fields
+      if (['NomInstitution', 'Nom', 'Prénom', 'Ville', 'Pays', 'PersonneResponsable', 'RoleResponsable'].includes(k)) {
+        v = cap(v)
+      }
+      setForm((p) => ({ ...p, [k]: v }))
+    }
   }
 
   function updateAddr(i: number, k: keyof CMAddr, v: string) {
-    setAddrList((prev) => prev.map((a, j) => j === i ? { ...a, [k]: v } : a))
+    const val = (k === 'ville' || k === 'pays' || k === 'adresse') ? cap(v) : v
+    setAddrList((prev) => prev.map((a, j) => j === i ? { ...a, [k]: val } : a))
   }
 
   async function handleSave() {

@@ -178,13 +178,21 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
         />
       )}
 
-      {/* Kanban */}
-      <div style={{ flex: 1, overflowX: 'auto', overflowY: 'hidden', minHeight: 0 }}>
+      {/* Kanban — Truly fluid and scrollable */}
+      <div style={{ 
+        flex: 1, 
+        overflowX: 'auto', 
+        overflowY: 'hidden', 
+        minHeight: 0,
+        background: 'var(--bd)', // Grid lines
+        display: 'flex',
+      }}>
         <div style={{
-          display: 'grid',
-          gridTemplateColumns: `repeat(${actionTypes.length}, minmax(210px, 1fr))`,
-          gap: 1, background: 'var(--bd)',
-          height: '100%', minWidth: actionTypes.length * 210,
+          display: 'flex',
+          gap: 1,
+          height: '100%', 
+          width: '100%',
+          minWidth: 'max-content', // Only scroll if it must
         }}>
           {actionTypes.map((at) => {
             const ids   = actionMap.get(at.id) ?? new Set<number>()
@@ -194,17 +202,18 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
               return ids.has(o.OeuvreID) || (isPhotoColumn && needsPhoto)
             })
             return (
-              <ActionColumn
-                key={at.id}
-                actionType={at}
-                works={works}
-                active={active}
-                tM={tM}
-                oeuvresById={oeuvresById}
-                onMarkDone={(oid) => markDone(oid, at.id)}
-                onAddAction={(oid) => addAction(oid, at.id)}
-                onOpen={onOpen}
-              />
+              <div key={at.id} style={{ flex: '1 0 240px', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                <ActionColumn
+                  actionType={at}
+                  works={works}
+                  active={active}
+                  tM={tM}
+                  oeuvresById={oeuvresById}
+                  onMarkDone={(oid) => markDone(oid, at.id)}
+                  onAddAction={(oid) => addAction(oid, at.id)}
+                  onOpen={onOpen}
+                />
+              </div>
             )
           })}
         </div>

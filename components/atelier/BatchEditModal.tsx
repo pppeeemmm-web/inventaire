@@ -5,7 +5,7 @@
 
 import { useState, useTransition } from 'react'
 import { useI18n } from '@/lib/i18n/context'
-import { batchEdit, type BatchChanges } from '@/app/atelier/selection/actions'
+import { batchEdit, createTheme, type BatchChanges } from '@/app/atelier/selection/actions'
 
 interface Props {
   ids:            number[]
@@ -14,6 +14,7 @@ interface Props {
   formats:        { FormatID:    number; Format:    string | null }[]
   contacts:       { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null }[]
   themes:         { ThemeID: number; Nom: string }[]
+  groups?:        { id: string; name: string }[]
   statusLabelMap: Record<number, string>
   onClose:        () => void
   onDone:         (count: number) => void
@@ -22,10 +23,30 @@ interface Props {
 // Tri-state for boolean fields: null = unchanged, true/false = set
 type Tri = null | boolean
 
-export function BatchEditModal({ ids, techniques, supports, formats, contacts, themes, statusLabelMap, onClose, onDone }: Props) {
+export function BatchEditModal({ ids, techniques, supports, formats, contacts, themes: initialThemes, groups = [], statusLabelMap, onClose, onDone }: Props) {
   const { t } = useI18n()
   const [pending, startEdit] = useTransition()
   const [error,   setError]  = useState<string | null>(null)
+
+  // Local themes to support on-the-fly creation
+  const [localThemes, setLocalThemes] = useState(initialThemes)
+  const [newThemeName, setNewThemeName] = useState('')
+  const [creatingTheme, setCreatingTheme] = useState(false)
+
+  async function handleCreateTheme() {
+    const name = newThemeName.trim()
+    if (!name) return
+    setCreatingTheme(true)
+    const res = await createTheme(name)
+    if (res.theme) {
+      setLocalThemes(prev => [...prev, res.theme!])
+      toggleTheme(res.theme.ThemeID)
+      setNewThemeName('')
+    } else if (res.error) {
+      setError(res.error)
+    }
+    setCreatingTheme(false)
+  }
 
   // Scalar fields — empty string = unchanged
   const [statusId,          setStatusId]         = useState('')
@@ -50,13 +71,18 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
   // Theme junction — sets of IDs to add or remove
   const [addThemes,    setAddThemes]    = useState<Set<number>>(new Set())
   const [removeThemes, setRemoveThemes] = useState<Set<number>>(new Set())
+  const [themeFilter,  setThemeFilter]  = useState('')
+
+  // Group junction
+  const [addGroups,    setAddGroups]    = useState<Set<string>>(new Set())
+  const [removeGroups, setRemoveGroups] = useState<Set<string>>(new Set())
+  const [groupFilter,  setGroupFilter]  = useState('')
 
   function toggleTheme(id: number) {
     setAddThemes(prev => {
       const next = new Set(prev)
       if (next.has(id)) { next.delete(id); return next }
       next.add(id)
-      // Can't add and remove the same theme
       setRemoveThemes(r => { const nr = new Set(r); nr.delete(id); return nr })
       return next
     })
@@ -71,13 +97,33 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
     })
   }
 
+  function toggleGroup(id: string) {
+    setAddGroups(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) { next.delete(id); return next }
+      next.add(id)
+      setRemoveGroups(r => { const nr = new Set(r); nr.delete(id); return nr })
+      return next
+    })
+  }
+  function toggleRemoveGroup(id: string) {
+    setRemoveGroups(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) { next.delete(id); return next }
+      next.add(id)
+      setAddGroups(a => { const na = new Set(a); na.delete(id); return na })
+      return next
+    })
+  }
+
   const changed = (
     statusId !== '' || technique !== '' || support !== '' || format !== '' ||
     contactId !== '' || prix !== '' || discount !== '' ||
     annee !== '' || locDetail !== '' || commentaires !== '' ||
     exposable !== null || montee !== null || encadree !== null || catalogued !== null ||
     isPublic !== null || isCommission !== null ||
-    addThemes.size > 0 || removeThemes.size > 0
+    addThemes.size > 0 || removeThemes.size > 0 ||
+    addGroups.size > 0 || removeGroups.size > 0
   )
 
   function handleSubmit() {
@@ -99,8 +145,11 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
     if (catalogued   !== null) changes['Catalogué'] = catalogued
     if (isPublic     !== null) changes.is_public    = isPublic
     if (isCommission !== null) changes.IsCommission = isCommission
+    
     if (addThemes.size    > 0) changes.addThemeIds    = [...addThemes]
     if (removeThemes.size > 0) changes.removeThemeIds = [...removeThemes]
+    if (addGroups.size    > 0) changes.addGroupIds    = [...addGroups]
+    if (removeGroups.size > 0) changes.removeGroupIds = [...removeGroups]
 
     // Auto-compute PrixFinal if Prix/Discount changed
     if (changes.Prix !== undefined) {
@@ -126,6 +175,11 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
 
   const contactLabel = (c: Props['contacts'][0]) =>
     c.NomInstitution || `${c.Prénom ?? ''} ${c.Nom ?? ''}`.trim() || `#${c.ContactID}`
+
+  const filteredThemes = localThemes
+    .filter(th => th.Nom.toLowerCase().includes(themeFilter.toLowerCase()))
+    .sort((a, b) => a.Nom.localeCompare(b.Nom))
+  const filteredGroups = groups.filter(g => g.name.toLowerCase().includes(groupFilter.toLowerCase()))
 
   return (
     <Overlay onClose={onClose}>
@@ -240,54 +294,128 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
       </div>
 
       {/* ── Section: Thèmes ──────────────────────────────────────── */}
-      {themes.length > 0 && (
-        <>
-          <SectionLabel>{t('themes')}</SectionLabel>
-          <div style={{ marginBottom: 8 }}>
-            <div className="t-mono-sm" style={{ color: 'var(--tx3)', marginBottom: 8 }}>
-              {t('themesBatchHelp')}
+      {localThemes.length > 0 && (
+        <div style={{ marginBottom: 32 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 12, gap: 12 }}>
+            <SectionLabel style={{ margin: 0 }}>{t('themes')}</SectionLabel>
+            
+            <div className="row gap-sm" style={{ flex: 1, justifyContent: 'flex-end' }}>
+              <input 
+                className="input sm" 
+                placeholder="Nouveau thème..." 
+                value={newThemeName}
+                onChange={e => setNewThemeName(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleCreateTheme()}
+                style={{ width: 120, fontSize: 10, padding: '3px 8px' }}
+              />
+              <button 
+                className="btn sm primary" 
+                onClick={handleCreateTheme} 
+                disabled={creatingTheme || !newThemeName.trim()}
+                style={{ fontSize: 9, padding: '3px 8px' }}
+              >
+                {creatingTheme ? '…' : '+'}
+              </button>
+              
+              <div className="vline" style={{ height: 16 }} />
+
+              <input 
+                className="input sm" 
+                placeholder={`${t('search')}...`} 
+                value={themeFilter}
+                onChange={e => setThemeFilter(e.target.value)}
+                style={{ width: 100, fontSize: 10, padding: '3px 8px' }}
+              />
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {themes.map(th => {
-                const isAdd    = addThemes.has(th.ThemeID)
-                const isRemove = removeThemes.has(th.ThemeID)
-                return (
-                  <button
-                    key={th.ThemeID}
-                    onContextMenu={(e) => { e.preventDefault(); toggleRemoveTheme(th.ThemeID) }}
-                    onClick={() => toggleTheme(th.ThemeID)}
-                    style={{
-                      padding: '4px 10px', fontSize: 10, fontFamily: 'inherit', cursor: 'pointer',
-                      border: `1px solid ${isAdd ? 'var(--sage)' : isRemove ? '#c0392b' : 'var(--bd)'}`,
-                      background: isAdd ? 'rgba(100,180,100,0.12)' : isRemove ? 'rgba(192,57,43,0.12)' : 'transparent',
-                      color: isAdd ? 'var(--sage)' : isRemove ? '#e74c3c' : 'var(--tx3)',
-                    }}
-                  >
-                    {isAdd ? '+ ' : isRemove ? '− ' : ''}{th.Nom}
-                  </button>
-                )
-              })}
-            </div>
-            {(addThemes.size > 0 || removeThemes.size > 0) && (
-              <div className="t-mono-sm" style={{ color: 'var(--tx3)', marginTop: 6 }}>
-                {addThemes.size > 0 && `${t('add')} : ${[...addThemes].map(id => themes.find(t => t.ThemeID === id)?.Nom).join(', ')}`}
-                {addThemes.size > 0 && removeThemes.size > 0 && ' · '}
-                {removeThemes.size > 0 && `${t('remove')} : ${[...removeThemes].map(id => themes.find(t => t.ThemeID === id)?.Nom).join(', ')}`}
+          </div>
+          <div className="t-mono-sm" style={{ color: 'var(--tx3)', marginBottom: 12 }}>
+            {t('themesBatchHelp')}
+          </div>
+          <div style={{ 
+            display: 'flex', flexWrap: 'wrap', gap: 6, 
+            maxHeight: 180, overflowY: 'auto', padding: '12px',
+            background: 'var(--bg2)', border: '1px solid var(--bd)'
+          }}>
+            {filteredThemes.map(th => {
+              const isAdd    = addThemes.has(th.ThemeID)
+              const isRemove = removeThemes.has(th.ThemeID)
+              return (
+                <button
+                  key={th.ThemeID}
+                  onContextMenu={(e) => { e.preventDefault(); toggleRemoveTheme(th.ThemeID) }}
+                  onClick={() => toggleTheme(th.ThemeID)}
+                  style={{
+                    padding: '4px 10px', fontSize: 10, fontFamily: 'inherit', cursor: 'pointer',
+                    border: `1px solid ${isAdd ? 'var(--sage)' : isRemove ? '#c0392b' : 'var(--bd)'}`,
+                    background: isAdd ? 'rgba(100,180,100,0.12)' : isRemove ? 'rgba(192,57,43,0.12)' : 'transparent',
+                    color: isAdd ? 'var(--sage)' : isRemove ? '#e74c3c' : 'var(--tx3)',
+                  }}
+                >
+                  {isAdd ? '+ ' : isRemove ? '− ' : ''}{th.Nom}
+                </button>
+              )
+            })}
+            {filteredThemes.length === 0 && (
+              <div className="t-mono-sm" style={{ color: 'var(--tx3)', width: '100%', textAlign: 'center', padding: 20 }}>
+                Aucun thème correspondant
               </div>
             )}
           </div>
-        </>
+        </div>
       )}
 
+      {/* ── Section: Groupes ─────────────────────────────────────── */}
+      {groups.length > 0 && (
+        <div style={{ marginBottom: 32 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 12 }}>
+            <SectionLabel style={{ margin: 0 }}>Groupes de travail</SectionLabel>
+            <input 
+              className="input sm" 
+              placeholder={`${t('search')}...`} 
+              value={groupFilter}
+              onChange={e => setGroupFilter(e.target.value)}
+              style={{ width: 140, fontSize: 10, padding: '3px 8px' }}
+            />
+          </div>
+          <div className="t-mono-sm" style={{ color: 'var(--tx3)', marginBottom: 12 }}>
+            Clic gauche pour ajouter à un groupe, clic droit pour retirer.
+          </div>
+          <div style={{ 
+            display: 'flex', flexWrap: 'wrap', gap: 6, 
+            maxHeight: 120, overflowY: 'auto', padding: '12px',
+            background: 'var(--bg2)', border: '1px solid var(--bd)'
+          }}>
+            {filteredGroups.map(g => {
+              const isAdd    = addGroups.has(g.id)
+              const isRemove = removeGroups.has(g.id)
+              return (
+                <button
+                  key={g.id}
+                  onContextMenu={(e) => { e.preventDefault(); toggleRemoveGroup(g.id) }}
+                  onClick={() => toggleGroup(g.id)}
+                  style={{
+                    padding: '4px 10px', fontSize: 10, fontFamily: 'inherit', cursor: 'pointer',
+                    border: `1px solid ${isAdd ? 'var(--ac)' : isRemove ? '#c0392b' : 'var(--bd)'}`,
+                    background: isAdd ? 'rgba(200,168,110,0.12)' : isRemove ? 'rgba(192,57,43,0.12)' : 'transparent',
+                    color: isAdd ? 'var(--ac)' : isRemove ? '#e74c3c' : 'var(--tx3)',
+                  }}
+                >
+                  {isAdd ? '+ ' : isRemove ? '− ' : ''}{g.name}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
       {/* ── Section: Attributs ───────────────────────────────────── */}
       <SectionLabel>{t('attributes')}</SectionLabel>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 20 }}>
-        <TriField label={t('exposable')}   value={exposable}    onChange={setExposable}   />
-        <TriField label={t('montee')}      value={montee}       onChange={setMontee}      />
-        <TriField label={t('framed')}      value={encadree}     onChange={setEncadree}    />
-        <TriField label={t('catalogued')}  value={catalogued}   onChange={setCatalogued}  />
-        <TriField label={t('public')}      value={isPublic}     onChange={setIsPublic}    />
-        <TriField label={t('commission')}  value={isCommission} onChange={setIsCommission}/>
+        <TriField label={t('exposable')}   value={exposable}    onChange={setExposable}   t={t as any} />
+        <TriField label={t('montee')}      value={montee}       onChange={setMontee}      t={t as any} />
+        <TriField label={t('framed')}      value={encadree}     onChange={setEncadree}    t={t as any} />
+        <TriField label={t('catalogued')}  value={catalogued}   onChange={setCatalogued}  t={t as any} />
+        <TriField label={t('public')}      value={isPublic}     onChange={setIsPublic}    t={t as any} />
+        <TriField label={t('commission')}  value={isCommission} onChange={setIsCommission} t={t as any} />
       </div>
 
       {!changed && (
@@ -332,11 +460,12 @@ function FieldWrap({ label, active, children }: { label: string; active: boolean
   )
 }
 
-function TriField({ label, value, onChange }: { label: string; value: Tri; onChange: (v: Tri) => void }) {
+function TriField({ label, value, onChange, t }: { label: string; value: Tri; onChange: (v: Tri) => void; t: (k: string) => string }) {
   return (
     <div style={{
       padding: '8px 10px', border: `1px solid ${value !== null ? 'var(--ac)' : 'var(--bd)'}`,
       cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      background: value === true ? 'rgba(100,180,100,0.05)' : value === false ? 'rgba(192,57,43,0.05)' : 'transparent'
     }}
       onClick={() => onChange(value === null ? true : value === true ? false : null)}
     >

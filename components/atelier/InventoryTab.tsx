@@ -26,24 +26,34 @@ const FIELD_LABELS: Record<string, string> = {
   Technique:       'Technique',
   Support:         'Support',
   _theme:          'Thème',
+  _group:          'Groupe',
   Année:           'Année',
+  DateCreation:    'Date création',
   Prix:            'Prix',
   PrixFinal:       'Prix final',
+  Discount:        'Remise (%)',
   Exposable:       'Exposable',
   Catalogué:       'Cataloguée',
   Encadree:        'Encadrée',
   Tirage:          'Tirage',
+  Hauteur:         'Hauteur (cm)',
+  Largeur:         'Largeur (cm)',
+  Profondeur:      'Profondeur (cm)',
+  Poids:           'Poids (kg)',
+  PresentationID:  'Présentation',
   Commentaires:    'Notes',
   NeedsPhotograph: 'À photographier',
-  needsphotograph: 'À photographier',
+  StageProduction: 'Stade production',
   statusId:        'Statut',
   ContactID:       'Contact',
   LocalisationID:  'Localisation',
   AcheteurID:      'Acheteur',
+  ReturnDate:      'Date retour',
   anonymity_level: 'Anonymat',
   txtImageNameLink: 'Image',
   IsCommission:    'Commission',
   DateLivraison:   'Deadline',
+  Historique:      'Historique',
 }
 
 interface FieldDef { k: string; l: string; t: 'num' | 'text' | 'bool' | 'lookup' | 'year' }
@@ -135,14 +145,19 @@ function matchesCriterion(o: Oeuvre, c: Criterion, allFields: FieldDef[]): boole
 
 function parseIdRanges(input: string): Set<number> {
   const ids = new Set<number>()
-  input.split(',').forEach((part) => {
-    const p = part.trim()
-    const range = p.match(/^(\d+)\s*[-–]\s*(\d+)$/)
+  // Split by comma, space, or newline
+  const parts = input.split(/[,\s\n]+/)
+  parts.forEach((p) => {
+    const clean = p.trim().replace(/^#/, '')
+    if (!clean) return
+    
+    // Range: 100-105
+    const range = clean.match(/^(\d+)\s*[-–]\s*(\d+)$/)
     if (range) {
       const a = parseInt(range[1]), b = parseInt(range[2])
       for (let i = Math.min(a, b); i <= Math.max(a, b); i++) ids.add(i)
-    } else if (/^\d+$/.test(p)) {
-      ids.add(parseInt(p))
+    } else if (/^\d+$/.test(clean)) {
+      ids.add(parseInt(clean))
     }
   })
   return ids
@@ -185,14 +200,13 @@ export function InventoryTab({
   const [view,        setView]        = useState<View>('list')
   const [focused,     setFocused]     = useState<Oeuvre | null>(null)
   const [criteria,    setCriteria]    = useState<Criterion[]>([])
-  const [idInput,     setIdInput]     = useState('')
   const [showAdv,     setShowAdv]     = useState(false)
-  const [showGroups,  setShowGroups]  = useState(false)
   const [showLegend,  setShowLegend]  = useState(false)
   const [showPreview, setShowPreview] = useState(true)
   const [previewExpanded, setPreviewExpanded] = useState(false)
-  const [publicMode,  setPublicMode]  = useState(false)
   const [loadingGrp,  setLoadingGrp]  = useState<string | null>(null)
+  const [filterTheme, setFilterTheme] = useState('all')
+  const [filterGroup, setFilterGroup] = useState('all')
   const nextCritId = useRef(0)
 
   const allFields: FieldDef[] = useMemo(() => {
@@ -211,11 +225,9 @@ export function InventoryTab({
       return a.localeCompare(b)
     })
 
-    return sorted
+    const fields = sorted
       .filter(k => ![
         'txtImageNameLink', 
-        'StageProduction', 
-        'Historique', 
         'theme', // themes are handled separately via _theme virtual field
         'is_public' // deprecated by anonymity_level
       ].includes(k))
@@ -224,24 +236,40 @@ export function InventoryTab({
         l: FIELD_LABELS[k] || k,
         t: getFieldType(k, (sample as any)[k])
       }))
+
+    // Add virtual curation fields for advanced filter
+    fields.push({ k: '_theme', l: 'Thème',  t: 'lookup' })
+    fields.push({ k: '_group', l: 'Groupe', t: 'lookup' })
+
+    return fields
   }, [oeuvres])
 
-  const handleLoadGroup = useCallback(async (id: string) => {
+  const handleLoadGroup = useCallback(async (id: string, mode: 'select' | 'filter' = 'select') => {
     setLoadingGrp(id)
     const sb = createClient()
     const { data } = await (sb.from('working_group_work') as any)
       .select('oeuvre_id')
       .eq('group_id', id)
-    if (data) setSelection(new Set((data as { oeuvre_id: number }[]).map((r) => r.oeuvre_id)))
+    
+    if (data) {
+      if (mode === 'select') {
+        setSelection(new Set((data as { oeuvre_id: number }[]).map((r) => r.oeuvre_id)))
+      } else {
+        setFilterGroup(id)
+      }
+    }
     setShowGroups(false)
     setLoadingGrp(null)
   }, [setSelection])
 
   // OeuvreTheme junction: Map<OeuvreID, ThemeID[]>
   const [oeuvreThemeMap, setOeuvreThemeMap] = useState<Map<number, number[]>>(new Map())
+  const [oeuvreGroupMap, setOeuvreGroupMap] = useState<Map<number, string[]>>(new Map())
+
   useEffect(() => {
     const sb = createClient()
-    ;(sb.from('OeuvreTheme') as any).select('OeuvreID, ThemeID').then(({ data }: { data: { OeuvreID: number; ThemeID: number }[] | null }) => {
+    // Fetch Themes
+    ;(sb.from('OeuvreTheme') as any).select('OeuvreID, ThemeID').range(0, 10000).then(({ data }: { data: { OeuvreID: number; ThemeID: number }[] | null }) => {
       if (!data) return
       const map = new Map<number, number[]>()
       data.forEach(({ OeuvreID, ThemeID }) => {
@@ -250,8 +278,19 @@ export function InventoryTab({
       })
       setOeuvreThemeMap(map)
     })
+    // Fetch Groups
+    ;(sb.from('working_group_work') as any).select('oeuvre_id, group_id').range(0, 10000).then(({ data }: { data: { oeuvre_id: number; group_id: string }[] | null }) => {
+      if (!data) return
+      const map = new Map<number, string[]>()
+      data.forEach(({ oeuvre_id, group_id }) => {
+        if (!map.has(oeuvre_id)) map.set(oeuvre_id, [])
+        map.get(oeuvre_id)!.push(group_id)
+      })
+      setOeuvreGroupMap(map)
+    })
   }, [])
 
+  const sortedThemes = useMemo(() => [...themes].sort((a, b) => a.Nom.localeCompare(b.Nom, 'fr')), [themes])
   const thM = useMemo(
     () => Object.fromEntries(themes.map((t) => [t.ThemeID, t.Nom])),
     [themes],
@@ -260,6 +299,11 @@ export function InventoryTab({
   const fM = useMemo(
     () => Object.fromEntries(formats.map((f) => [f.FormatID, f.Format ?? ''])),
     [formats],
+  )
+
+  const groupNameMap = useMemo(
+    () => Object.fromEntries(groups.map((g) => [g.id, g.name])),
+    [groups],
   )
 
   useEffect(() => {
@@ -272,15 +316,40 @@ export function InventoryTab({
   }, [view])
 
   const filtered = useMemo(() => {
-    const sq = q.trim().toLowerCase()
+    const trimmedQ = q.trim()
+    const sq = trimmedQ.toLowerCase()
+    
+    // Support for "#ID, ID-ID" filtering
+    let idSet: Set<number> | null = null
+    if (trimmedQ.startsWith('#') && trimmedQ.length > 1) {
+      idSet = parseIdRanges(trimmedQ)
+    }
+
     return oeuvres.filter((o) => {
-      if (sq) {
-        const bag = `${o.Titre ?? ''} #${o.OeuvreID} ${o.Technique != null ? (tM[o.Technique] ?? '') : ''} ${o.Support != null ? (sM[o.Support] ?? '') : ''}`.toLowerCase()
+      if (idSet) {
+        if (!idSet.has(o.OeuvreID)) return false
+      } else if (sq) {
+        const themeNames = (oeuvreThemeMap.get(o.OeuvreID) ?? []).map(tid => thM[tid] ?? '').join(' ')
+        const groupNames = (oeuvreGroupMap.get(o.OeuvreID) ?? []).map(gid => groupNameMap[gid] ?? '').join(' ')
+        const bag = `${o.Titre ?? ''} #${o.OeuvreID} ${o.Technique != null ? (tM[o.Technique] ?? '') : ''} ${o.Support != null ? (sM[o.Support] ?? '') : ''} ${themeNames} ${groupNames}`.toLowerCase()
         if (!bag.includes(sq)) return false
       }
       if (tech !== 'all' && String(o.Technique ?? '') !== tech) return false
       if (support !== 'all' && String(o.Support ?? '') !== support) return false
       if (status !== 'all' && statusOf(o, statusLabelMap) !== status) return false
+      
+      // Theme filter
+      if (filterTheme !== 'all') {
+        const tids = oeuvreThemeMap.get(o.OeuvreID) ?? []
+        if (!tids.includes(Number(filterTheme))) return false
+      }
+
+      // Group filter
+      if (filterGroup !== 'all') {
+        const gids = oeuvreGroupMap.get(o.OeuvreID) ?? []
+        if (!gids.includes(filterGroup)) return false
+      }
+
       if (!criteria.every((c) => {
         // Special handling for theme (many-to-many via OeuvreTheme)
         if (c.field === '_theme') {
@@ -293,12 +362,36 @@ export function InventoryTab({
           if (c.op === '≠') return !themeIds.includes(tid)
           return true
         }
+        // Special handling for group
+        if (c.field === '_group') {
+          const groupIds = oeuvreGroupMap.get(o.OeuvreID) ?? []
+          if (c.op === "n'est pas vide") return groupIds.length > 0
+          if (c.op === 'est vide')       return groupIds.length === 0
+          const gid = c.value
+          if (!gid) return true
+          if (c.op === '=') return groupIds.includes(gid)
+          if (c.op === '≠') return !groupIds.includes(gid)
+          return true
+        }
         return matchesCriterion(o, c, allFields)
       })) return false
       return true
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [oeuvres, q, tech, support, status, tM, sM, statusLabelMap, criteria, oeuvreThemeMap, allFields])
+  }, [oeuvres, q, tech, support, status, filterTheme, filterGroup, tM, sM, statusLabelMap, criteria, oeuvreThemeMap, oeuvreGroupMap, allFields])
+
+  const activeStages = useMemo(() => {
+    const present = new Set(oeuvres.map(o => (o as any).StageProduction).filter(Boolean))
+    return [
+      { k: 'idea',      l: t('stage_idea'),       c: 'var(--ac)' },
+      { k: 'wip',       l: t('stage_wip'),        c: 'var(--rust)' },
+      { k: 'drying',    l: t('stage_drying'),     c: 'var(--dust)' },
+      { k: 'mounting',  l: t('stage_mounting'),   c: 'var(--dust)' },
+      { k: 'framing',   l: t('stage_framing'),    c: 'var(--dust)' },
+      { k: 'shot',      l: t('stage_shot'),       c: 'var(--cyan)' },
+      { k: 'catalogued',l: t('stage_catalogued'), c: 'var(--sage)' },
+    ].filter(s => present.has(s.k))
+  }, [oeuvres, t])
 
   // Keep focused in sync with filtered results
   useEffect(() => {
@@ -312,14 +405,6 @@ export function InventoryTab({
     if (next.has(oid)) next.delete(oid)
     else next.add(oid)
     setSelection(next)
-  }
-  function selectByIds() {
-    if (!idInput.trim()) return
-    const ids = parseIdRanges(idInput)
-    const next = new Set(selection)
-    oeuvres.forEach((o) => { if (ids.has(o.OeuvreID)) next.add(o.OeuvreID) })
-    setSelection(next)
-    setIdInput('')
   }
 
   // passed to InvList for range selection
@@ -338,15 +423,16 @@ export function InventoryTab({
 
       {/* Filter bar */}
       <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'auto 1fr auto auto auto auto auto auto auto',
+        display: 'flex',
+        flexWrap: 'wrap',
         gap: 8,
         padding: '12px 28px',
         borderBottom: '1px solid var(--bd)',
         alignItems: 'center',
+        background: 'var(--bg1)',
       }}>
         {/* Count */}
-        <div className="t-mono-sm" style={{ color: 'var(--tx3)', whiteSpace: 'nowrap' }}>
+        <div className="t-mono-sm" style={{ color: 'var(--tx3)', whiteSpace: 'nowrap', marginRight: 8 }}>
           {filtered.length}<span style={{ opacity: 0.5 }}>/{oeuvres.length}</span>
         </div>
 
@@ -354,40 +440,35 @@ export function InventoryTab({
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder={t('search')}
+          placeholder={`${t('search')} (ex: #1-10, 20...)`}
           style={{
-            padding: '7px 10px',
-            background: 'var(--bg1)',
+            flex: 1,
+            minWidth: 200,
+            padding: '10px 14px',
+            background: 'var(--bg2)',
             border: '1px solid var(--bd)',
             color: 'var(--tx)',
-            fontSize: 11,
+            fontSize: 13,
           }}
         />
 
-        {/* Technique */}
+        {/* Theme */}
         <InvSelect
-          value={tech} onChange={setTech}
-          label={t('technique')}
-          options={[['all', t('allTech')], ...techniques.map((x) => [String(x.TechniqueID), x.Technique ?? ''] as [string, string])]}
+          value={filterTheme} onChange={setFilterTheme}
+          label={t('theme')}
+          options={[['all', 'Tous les thèmes'], ...sortedThemes.map((x) => [String(x.ThemeID), x.Nom] as [string, string])]}
         />
 
-        {/* Support */}
+        {/* Group */}
         <InvSelect
-          value={support} onChange={setSupport}
-          label={t('support')}
-          options={[['all', t('allSupports')], ...supports.map((x) => [String(x.SupportID), x.Support ?? ''] as [string, string])]}
-        />
-
-        {/* Status */}
-        <InvSelect
-          value={status} onChange={setStatus}
-          label={t('status')}
-          options={statusOptions}
+          value={filterGroup} onChange={setFilterGroup}
+          label="Groupe"
+          options={[['all', 'Tous les groupes'], ...groups.map((x) => [x.id, x.name] as [string, string])]}
         />
 
         {/* View toggle */}
         <div style={{ display: 'flex', border: '1px solid var(--bd)' }}>
-          {([['list', '≡', t('listView')], ['grid', '▦', t('gridView')], ['graph', '✦', t('graphView')]] as const).map(([k, glyph, title]) => (
+          {([['list', '≡', t('listView')], ['grid', '▦', t('gridView')]] as const).map(([k, glyph, title]) => (
             <button
               key={k}
               onClick={() => setView(k)}
@@ -396,7 +477,7 @@ export function InventoryTab({
                 padding: '6px 10px', fontSize: 12,
                 color: view === k ? 'var(--ac)' : 'var(--tx3)',
                 background: view === k ? 'var(--bg2)' : 'transparent',
-                borderRight: k !== 'graph' ? '1px solid var(--bd)' : 'none',
+                borderRight: k === 'list' ? '1px solid var(--bd)' : 'none',
               }}
             >{glyph}</button>
           ))}
@@ -417,6 +498,45 @@ export function InventoryTab({
           {criteria.length > 0 ? `✓ ${t('filters')} (${criteria.length})` : `${t('filters')} +`}
         </button>
 
+        {/* Select all filtered */}
+        <button
+          onClick={() => {
+            const next = new Set(selection)
+            filtered.forEach(o => next.add(o.OeuvreID))
+            setSelection(next)
+          }}
+          className="btn sm"
+          style={{ 
+            fontSize: 9, padding: '6px 12px', 
+            border: '1px solid var(--bd)',
+            background: filtered.length > 0 ? 'var(--bg2)' : 'transparent',
+            color: filtered.length > 0 ? 'var(--ac)' : 'var(--tx3)',
+            cursor: 'pointer',
+          }}
+          title="Sélectionner tous les résultats affichés"
+        >
+          {t('selectAll')} ({filtered.length})
+        </button>
+
+        {/* Clear filters */}
+        {(q || tech !== 'all' || support !== 'all' || status !== 'all' || filterTheme !== 'all' || filterGroup !== 'all' || criteria.length > 0) && (
+          <button
+            onClick={() => {
+              setQ('')
+              setTech('all')
+              setSupport('all')
+              setStatus('all')
+              setFilterTheme('all')
+              setFilterGroup('all')
+              setCriteria([])
+            }}
+            className="btn ghost sm"
+            style={{ fontSize: 9, padding: '4px 8px', color: 'var(--rust)' }}
+          >
+            {t('clear')}
+          </button>
+        )}
+
         {/* Legend toggle */}
         <div style={{ position: 'relative' }}>
           <button
@@ -434,21 +554,14 @@ export function InventoryTab({
           </button>
           {showLegend && (
             <div style={{
-              position: 'absolute', top: '100%', left: 0, zIndex: 60,
+              position: 'absolute', top: '100%', right: 0, zIndex: 60,
               background: 'var(--bg2)', border: '1px solid var(--bd2)',
               padding: '12px 16px', minWidth: 160, marginTop: 4,
               boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
             }}>
               <div className="t-eyebrow" style={{ marginBottom: 10, fontSize: 8 }}>{t('legend')}</div>
-              {[
-                { l: t('stage_idea'),       c: 'var(--ac)' },
-                { l: t('stage_wip'),        c: 'var(--rust)' },
-                { l: t('stage_drying'),     c: 'var(--dust)' },
-                { l: t('stage_mounting'),   c: 'var(--dust)' },
-                { l: t('stage_framing'),    c: 'var(--dust)' },
-                { l: t('stage_shot'),       c: 'var(--cyan)' },
-                { l: t('stage_catalogued'), c: 'var(--sage)' },
-              ].map((it, i) => (
+              {activeStages.length === 0 && <div style={{ fontSize: 9, opacity: 0.5 }}>Aucune œuvre en production</div>}
+              {activeStages.map((it, i) => (
                 <div key={i} className="row gap-sm" style={{ marginBottom: 6 }}>
                   <div style={{ width: 8, height: 8, borderRadius: '50%', background: it.c }} />
                   <div className="t-mono-sm" style={{ fontSize: 9 }}>{it.l}</div>
@@ -458,57 +571,6 @@ export function InventoryTab({
           )}
         </div>
 
-        {/* Saved groups */}
-        <div style={{ position: 'relative' }}>
-          <button
-            onClick={() => setShowGroups((v) => !v)}
-            style={{
-              padding: '7px 10px', fontSize: 11,
-              color: showGroups ? 'var(--ac)' : 'var(--tx3)',
-              background: showGroups ? 'var(--bg2)' : 'transparent',
-              border: '1px solid var(--bd)',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            Groupes {groups.length > 0 ? `(${groups.length})` : ''}
-          </button>
-          {showGroups && groups.length > 0 && (
-            <div style={{
-              position: 'absolute', top: '100%', right: 0, zIndex: 50,
-              background: 'var(--bg2)', border: '1px solid var(--bd2)',
-              minWidth: 220, marginTop: 4,
-              boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
-            }}>
-              {groups.map((g) => (
-                <button
-                  key={g.id}
-                  onClick={() => handleLoadGroup(g.id)}
-                  style={{
-                    display: 'block', width: '100%', textAlign: 'left',
-                    padding: '8px 12px', fontSize: 11,
-                    color: loadingGrp === g.id ? 'var(--ac)' : 'var(--tx)',
-                    background: 'transparent',
-                    borderBottom: '1px solid var(--bd)',
-                    cursor: 'pointer',
-                  }}
-                >
-                  {loadingGrp === g.id ? '…' : '▶ '}{g.name}
-                </button>
-              ))}
-            </div>
-          )}
-          {showGroups && groups.length === 0 && (
-            <div style={{
-              position: 'absolute', top: '100%', right: 0, zIndex: 50,
-              background: 'var(--bg2)', border: '1px solid var(--bd2)',
-              padding: '10px 14px', fontSize: 11, color: 'var(--tx3)',
-              marginTop: 4,
-            }}>
-              Aucun groupe sauvegardé
-            </div>
-          )}
-        </div>
 
         {/* Preview toggle */}
         <button
@@ -526,21 +588,6 @@ export function InventoryTab({
           {showPreview ? 'Aperçu ◀' : 'Aperçu ▶'}
         </button>
 
-        {/* Public mode toggle */}
-        <button
-          onClick={() => setPublicMode((v) => !v)}
-          title="Simuler la vue publique (masque les contacts selon l'anonymat)"
-          style={{
-            padding: '7px 12px', fontSize: 11,
-            color: publicMode ? 'var(--ac)' : 'var(--tx3)',
-            background: publicMode ? 'var(--bg2)' : 'transparent',
-            border: '1px solid var(--bd)',
-            cursor: 'pointer',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {publicMode ? 'Vue Public ON 👁️' : 'Vue Public'}
-        </button>
 
         {/* Selection count */}
         <div className="t-mono-sm" style={{ color: selection.size > 0 ? 'var(--ac)' : 'var(--tx3)', minWidth: 60, textAlign: 'right' }}>
@@ -553,9 +600,9 @@ export function InventoryTab({
         <CriteriaPanel
           criteria={criteria} setCriteria={setCriteria}
           nextCritId={nextCritId}
-          idInput={idInput} setIdInput={setIdInput}
-          onSelectByIds={selectByIds}
+          setQ={setQ}
           tM={tM} sM={sM} cM={cM} thM={thM} pM={pM} statusLabelMap={statusLabelMap}
+          groups={groups}
           allFields={allFields}
         />
       )}
@@ -569,17 +616,17 @@ export function InventoryTab({
               focused={focused} setFocused={setFocused}
               selection={selection} setSelection={setSelection}
               onImageDoubleClick={() => { setShowPreview(true); setPreviewExpanded(true) }}
-              publicMode={publicMode}
             />
             {showPreview && (
               <InvPreview
                 o={focused} tM={tM} sM={sM} cM={cM} pM={pM} fM={fM} locMap={locMap} statusLabelMap={statusLabelMap}
+                thM={thM} oeuvreThemeMap={oeuvreThemeMap} oeuvreGroupMap={oeuvreGroupMap}
+                groupNameMap={groupNameMap}
                 selection={selection} toggleInSel={toggleInSel}
-                onOpen={onOpen}
+                onOpen={setFocused}
                 onClose={() => setShowPreview(false)}
                 expanded={previewExpanded}
                 setExpanded={setPreviewExpanded}
-                publicMode={publicMode}
               />
             )}
           </>
@@ -613,21 +660,20 @@ export function InventoryTab({
 
 function CriteriaPanel({
   criteria, setCriteria, nextCritId,
-  idInput, setIdInput, onSelectByIds,
-  tM, sM, cM, thM, pM, statusLabelMap, allFields
+  setQ,
+  tM, sM, cM, thM, pM, statusLabelMap, groups, allFields
 }: {
   criteria:       Criterion[]
   setCriteria:    (c: Criterion[]) => void
   nextCritId:     React.MutableRefObject<number>
-  idInput:        string
-  setIdInput:     (s: string) => void
-  onSelectByIds:  () => void
+  setQ:           (q: string) => void
   tM:             Record<number, string>
   sM:             Record<number, string>
   cM:             Record<number, string>
   pM:             Record<number, string>
   thM:            Record<number, string>
   statusLabelMap: Record<number, string>
+  groups:         { id: string; name: string }[]
   allFields:      FieldDef[]
 }) {
   const { t } = useI18n()
@@ -642,11 +688,13 @@ function CriteriaPanel({
       Technique:       tM,
       Support:         sM,
       _theme:          thM,
+      _group:          Object.fromEntries(groups.map(g => [g.id, g.name])),
       statusId:        statusLabelMap,
       ContactID:       cM,
       LocalisationID:  cM,
       AcheteurID:      cM,
       PresentationID:  pM,
+      StageProduction: { 'idea': 'Idée', 'wip': 'En cours', 'drying': 'Séchage', 'mounting': 'À monter', 'framing': 'À encadrer', 'shot': 'À photographier', 'catalogued': 'À cataloguer' },
       anonymity_level: { '0': 'Public', '1': 'Anonyme', '2': 'Privé' }
     }
     const map = maps[field]
@@ -680,26 +728,6 @@ function CriteriaPanel({
       background: 'var(--bg0)',
       display: 'flex', flexDirection: 'column', gap: 6,
     }}>
-      {/* ID range selector */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span className="t-mono-sm" style={{ color: 'var(--tx3)', minWidth: 24 }}>IDs</span>
-        <input
-          value={idInput}
-          onChange={(e) => setIdInput(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && onSelectByIds()}
-          placeholder="4, 10–20, 204"
-          style={{ ...FIS, width: 160 }}
-        />
-        <button
-          onClick={onSelectByIds}
-          style={{ ...FIS, cursor: 'pointer' }}
-        >
-          Sélectionner
-        </button>
-        <span className="t-mono-sm" style={{ color: 'var(--tx3)' }}>
-          — adds to current selection
-        </span>
-      </div>
 
       {/* Criteria rows */}
       {criteria.map((c) => {
@@ -879,7 +907,7 @@ function InvList({
       onScroll={handleScroll}
       style={{ flex: 1, minWidth: 0, overflow: 'auto', borderRight: '1px solid var(--bd)' }}
     >
-      <table className="tbl" style={{ tableLayout: 'auto', width: 'max-content', minWidth: '100%' }}>
+      <table className="tbl" style={{ tableLayout: 'fixed', width: '100%' }}>
         <thead>
           <tr style={{ height: 32 }}>
             <th style={{ width: 42, padding: '0 8px' }}>
@@ -904,18 +932,16 @@ function InvList({
             </th>
             <th style={{ width: 28, padding: '0 2px' }}></th>
             <th style={{ width: 32, color: 'var(--tx3)', fontSize: 7, padding: '0 2px' }}>ID</th>
-            <th style={{ width: 20, textAlign: 'center', fontSize: 8 }}>🔒</th>
             <th style={{ width: 44, padding: '0 4px' }}></th>
-            <th style={{ textAlign: 'left', padding: '0 6px', fontSize: 10 }}>{t('title')}</th>
-            <th style={{ textAlign: 'left', padding: '0 6px', fontSize: 10 }}>{t('technique')}</th>
-            <th style={{ textAlign: 'left', padding: '0 6px', fontSize: 10 }}>{t('support')}</th>
-            <th style={{ textAlign: 'left', padding: '0 6px', fontSize: 10 }}>Dims</th>
-            <th style={{ textAlign: 'left', padding: '0 6px', fontSize: 10 }}>Année</th>
-            <th style={{ textAlign: 'left', padding: '0 6px', fontSize: 10 }}>Prix</th>
-            <th style={{ textAlign: 'left', padding: '0 6px', fontSize: 10 }}>Contact</th>
-            <th style={{ textAlign: 'left', padding: '0 6px', fontSize: 10 }}>Localisation</th>
-            <th style={{ textAlign: 'center', padding: '0 6px', fontSize: 10 }} title="Exposable | Encadré | Catalogué">E/F/C</th>
-            <th style={{ textAlign: 'left', padding: '0 6px', fontSize: 10 }}>{t('status')}</th>
+            <th style={{ textAlign: 'left', padding: '0 6px', fontSize: 10, width: 'auto' }}>{t('title')}</th>
+            <th style={{ textAlign: 'left', padding: '0 6px', fontSize: 10, width: 120 }}>{t('technique')}</th>
+            <th style={{ textAlign: 'left', padding: '0 6px', fontSize: 10, width: 120 }}>{t('support')}</th>
+            <th style={{ textAlign: 'left', padding: '0 6px', fontSize: 10, width: 90 }}>Dims</th>
+            <th style={{ textAlign: 'left', padding: '0 6px', fontSize: 10, width: 60 }}>Année</th>
+            <th style={{ textAlign: 'left', padding: '0 6px', fontSize: 10, width: 100 }}>Prix</th>
+            <th style={{ textAlign: 'left', padding: '0 6px', fontSize: 10, width: 140 }}>Contact</th>
+            <th style={{ textAlign: 'left', padding: '0 6px', fontSize: 10, width: 160 }}>Localisation</th>
+            <th style={{ textAlign: 'left', padding: '0 6px', fontSize: 10, width: 100 }}>{t('status')}</th>
           </tr>
         </thead>
         <tbody>
@@ -959,13 +985,13 @@ function InvList({
                   <td style={{ padding: '0 2px' }}>
                     <button onClick={(e) => { e.stopPropagation(); router.push(`/atelier/works/${o.OeuvreID}/edit`) }} style={{ color: 'var(--tx3)', fontSize: 9 }}>✎</button>
                   </td>
-                  <td style={{ color: 'var(--tx3)', fontSize: 8, padding: '0 2px' }}>{o.OeuvreID}</td>
-                  <td style={{ textAlign: 'center', fontSize: 10 }}>
+                  <td style={{ color: 'var(--tx3)', fontSize: 8, padding: '0 2px', whiteSpace: 'nowrap' }}>
+                    {o.OeuvreID}
                     {(() => {
                       const level = (o as any).anonymity_level ?? (o.is_public === false ? 2 : 0)
-                      if (level === 2) return <span title="Privé" style={{ opacity: 0.5 }}>🔒</span>
-                      if (level === 1) return <span title="Anonyme" style={{ color: 'var(--ac)' }}>👤</span>
-                      return <span title="Public" style={{ opacity: 0.2 }}>👁️</span>
+                      if (level === 2) return <span title="Privé (Confidentiel)" style={{ marginLeft: 4, opacity: 0.6 }}>🔒</span>
+                      if (level === 1) return <span title="Anonyme (Confidentiel)" style={{ marginLeft: 4, color: 'var(--ac)' }}>👤</span>
+                      return null
                     })()}
                   </td>
                   <td style={{ padding: '2px' }}>
@@ -986,26 +1012,21 @@ function InvList({
                         : <div className="ph" style={{ fontSize: 8 }}>—</div>}
                     </div>
                   </td>
-                  <td style={{ color: 'var(--tx)', padding: '0 6px', fontSize: 10, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 160 }}>{o.Titre || '—'}</td>
-                  <td style={{ padding: '0 6px', fontSize: 9.5, whiteSpace: 'nowrap' }}>{o.Technique != null ? (tM[o.Technique] ?? '—') : '—'}</td>
-                  <td style={{ padding: '0 6px', fontSize: 9.5, whiteSpace: 'nowrap' }}>{o.Support != null ? (sM[o.Support] ?? '—') : '—'}</td>
+                  <td style={{ color: 'var(--tx)', padding: '0 6px', fontSize: 10, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{o.Titre || '—'}</td>
+                  <td style={{ padding: '0 6px', fontSize: 9.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{o.Technique != null ? (tM[o.Technique] ?? '—') : '—'}</td>
+                  <td style={{ padding: '0 6px', fontSize: 9.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{o.Support != null ? (sM[o.Support] ?? '—') : '—'}</td>
                   <td style={{ padding: '0 6px', fontSize: 9.5, whiteSpace: 'nowrap' }}>{dims}</td>
                   <td style={{ padding: '0 6px', fontSize: 9.5 }}>{yearOf(o.Année) ?? '—'}</td>
                   <td style={{ padding: '0 6px', fontSize: 9.5, whiteSpace: 'nowrap' }}>{o.Prix ? `€ ${Number(o.Prix).toLocaleString('fr-FR')}` : '—'}</td>
-                  <td style={{ padding: '0 6px', fontSize: 9.5, whiteSpace: 'nowrap' }}>
+                  <td style={{ padding: '0 6px', fontSize: 9.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {(() => {
                       const level = (o as any).anonymity_level ?? (o.is_public === false ? 2 : 0)
                       if (publicMode && level >= 1) return <span style={{ opacity: 0.3 }}>[Anonyme]</span>
                       return o.ContactID != null ? (cM[o.ContactID] ?? '—') : 'Pem'
                     })()}
                   </td>
-                  <td style={{ padding: '0 6px', fontSize: 9.5, whiteSpace: 'nowrap' }}>
+                  <td style={{ padding: '0 6px', fontSize: 9.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {((o as any).LocalisationID != null ? locMap[(o as any).LocalisationID] : 'Pem - Atelier') || '—'}
-                  </td>
-                  <td style={{ padding: '0 6px', textAlign: 'center', fontSize: 9, color: 'var(--tx3)' }}>
-                    <span style={{ color: o.Exposable ? 'var(--sage)' : 'inherit' }}>{o.Exposable ? 'E' : '·'}</span>
-                    <span style={{ color: o.Encadree ? 'var(--tx2)' : 'inherit', marginLeft: 4 }}>{o.Encadree ? 'F' : '·'}</span>
-                    <span style={{ color: o.Catalogué ? 'var(--tx2)' : 'inherit', marginLeft: 4 }}>{o.Catalogué ? 'C' : '·'}</span>
                   </td>
                   <td style={{ padding: '0 6px' }}><StatusChip s={st} /></td>
                 </tr>
@@ -1025,8 +1046,8 @@ function InvList({
 // ── InvPreview ──────────────────────────────────────────────────────
 
 function InvPreview({
-  o, tM, sM, cM, pM, fM, locMap, statusLabelMap, selection, toggleInSel, onOpen, onClose,
-  expanded, setExpanded, publicMode,
+  o, tM, sM, cM, pM, fM, locMap, statusLabelMap, thM, oeuvreThemeMap, oeuvreGroupMap, groupNameMap, selection, toggleInSel, onOpen, onClose,
+  expanded, setExpanded,
 }: {
   o:              Oeuvre | null
   tM:             Record<number, string>
@@ -1036,6 +1057,10 @@ function InvPreview({
   fM:             Record<number, string>
   locMap:         Record<number, string>
   statusLabelMap: Record<number, string>
+  thM:             Record<number, string>
+  oeuvreThemeMap:  Map<number, number[]>
+  oeuvreGroupMap:  Map<number, string[]>
+  groupNameMap:    Record<string, string>
   selection:      Set<number>
   toggleInSel:    (id: number) => void
   onOpen:         (o: Oeuvre) => void
@@ -1129,11 +1154,8 @@ function InvPreview({
 
   const level = (o as any).anonymity_level ?? (o.is_public === false ? 2 : 0)
 
-  // Owner/contact: default to PEM if not set; mask if publicMode
-  const ownerLabel = (() => {
-    if (publicMode && level >= 1) return <span style={{ opacity: 0.3 }}>[Anonyme]</span>
-    return o.ContactID != null ? (cM[o.ContactID] ?? 'Pem') : 'Pem'
-  })()
+  // Owner/contact: default to PEM if not set
+  const ownerLabel = o.ContactID != null ? (cM[o.ContactID] ?? 'Pem') : 'Pem'
 
   function fmtDate(d: string | null | undefined) {
     if (!d) return '—'
@@ -1402,6 +1424,39 @@ function InvPreview({
             </div>
           </>
         )}
+
+        {/* ── Curation ── */}
+        <div className="t-label" style={{ paddingTop: 8 }}>{t('themes')}</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, paddingTop: 4 }}>
+          {(() => {
+            const ids = oeuvreThemeMap.get(o.OeuvreID) ?? []
+            if (ids.length === 0) return <span className="t-mono-sm" style={{ color: 'var(--tx3)' }}>—</span>
+            return ids.map(tid => (
+              <span key={tid} style={{ 
+                fontSize: 9, background: 'var(--bg0)', border: '1px solid var(--bd)', 
+                padding: '1px 6px', color: 'var(--tx2)', borderRadius: 2 
+              }}>
+                {thM[tid] ?? tid}
+              </span>
+            ))
+          })()}
+        </div>
+
+        <div className="t-label">{t('workingGroups')}</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, paddingTop: 4 }}>
+          {(() => {
+            const ids = oeuvreGroupMap.get(o.OeuvreID) ?? []
+            if (ids.length === 0) return <span className="t-mono-sm" style={{ color: 'var(--tx3)' }}>—</span>
+            return ids.map(gid => (
+              <span key={gid} style={{ 
+                fontSize: 9, background: 'color-mix(in srgb, var(--ac) 10%, var(--bg0))', 
+                border: '1px solid var(--bd)', padding: '1px 6px', color: 'var(--tx)', borderRadius: 2 
+              }}>
+                {groupNameMap[gid] ?? gid}
+              </span>
+            ))
+          })()}
+        </div>
 
         {/* ── Finance ───────────────────────────────────────────── */}
         <div className="t-label" style={{ paddingTop: 8 }}>Prix</div>

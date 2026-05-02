@@ -1,5 +1,10 @@
 'use client'
 
+function cap(s: string): string {
+  if (!s) return s
+  return s.charAt(0).toUpperCase() + s.slice(1)
+}
+
 import { useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -121,7 +126,7 @@ export function ThemesTab({ initialThemes, initialGroups, themeWorkCount, groupW
                 <input
                   autoFocus
                   value={editVal}
-                  onChange={e => setEditVal(e.target.value)}
+                  onChange={e => setEditVal(cap(e.target.value))}
                   onKeyDown={e => { if (e.key === 'Enter') saveTheme(t.ThemeID); if (e.key === 'Escape') setEditTheme(null) }}
                   style={{ flex: 1, background: 'var(--bg2)', border: '1px solid var(--ac)', color: 'var(--tx)', padding: '4px 8px', fontSize: 12 }}
                 />
@@ -143,7 +148,7 @@ export function ThemesTab({ initialThemes, initialGroups, themeWorkCount, groupW
           <input
             placeholder="Nouveau thème..."
             value={newTheme}
-            onChange={e => setNewTheme(e.target.value)}
+            onChange={e => setNewTheme(cap(e.target.value))}
             onKeyDown={e => e.key === 'Enter' && addTheme()}
             style={{ flex: 1, background: 'var(--bg2)', border: '1px solid var(--bd2)', color: 'var(--tx)', padding: '6px 10px', fontSize: 11 }}
           />
@@ -164,7 +169,7 @@ export function ThemesTab({ initialThemes, initialGroups, themeWorkCount, groupW
                 <input
                   autoFocus
                   value={editVal}
-                  onChange={e => setEditVal(e.target.value)}
+                  onChange={e => setEditVal(cap(e.target.value))}
                   onKeyDown={e => { if (e.key === 'Enter') saveGroup(g.id); if (e.key === 'Escape') setEditGroup(null) }}
                   style={{ flex: 1, background: 'var(--bg2)', border: '1px solid var(--ac)', color: 'var(--tx)', padding: '4px 8px', fontSize: 12 }}
                 />
@@ -186,7 +191,7 @@ export function ThemesTab({ initialThemes, initialGroups, themeWorkCount, groupW
           <input
             placeholder="Nouveau groupe..."
             value={newGroup}
-            onChange={e => setNewGroup(e.target.value)}
+            onChange={e => setNewGroup(cap(e.target.value))}
             onKeyDown={e => e.key === 'Enter' && addGroup()}
             style={{ flex: 1, background: 'var(--bg2)', border: '1px solid var(--bd2)', color: 'var(--tx)', padding: '6px 10px', fontSize: 11 }}
           />

@@ -292,7 +292,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres }: Props) {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder={t('searchPlaceholderContacts')}
-          style={{ ...FIS, flex: 1 }}
+          style={{ ...FIS, flex: 1, minWidth: 200 }}
         />
         <select value={searchBy} onChange={(e) => setSearchBy(e.target.value)} style={{ ...FIS, maxWidth: 110 }}>
           <option value="all">{t('searchFieldAll')}</option>
@@ -301,7 +301,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres }: Props) {
           <option value="email">{t('searchFieldEmail')}</option>
           <option value="notes">{t('searchFieldNotes')}</option>
         </select>
-        <select value={role} onChange={(e) => setRole(e.target.value)} style={FIS}>
+        <select value={role} onChange={(e) => setRole(e.target.value)} style={{ ...FIS, width: 'auto', minWidth: 140 }}>
           <option value="all">{t('allRoles')}</option>
           {roles.map((r) => <option key={r} value={r}>{r}</option>)}
         </select>
@@ -341,21 +341,21 @@ export function ContactsTab({ contacts: initialContacts, oeuvres }: Props) {
       {/* Table + detail */}
       <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
         <div style={{ flex: 1, overflow: 'auto', borderRight: '1px solid var(--bd)' }}>
-          <table className="tbl" style={{ tableLayout: 'auto' }}>
+          <table className="tbl" style={{ width: '100%', tableLayout: 'fixed' }}>
             <thead>
               <tr>
-                <th style={{ width: 30 }}>
+                <th style={{ width: 40 }}>
                   <input type="checkbox" checked={selected.size > 0 && selected.size === filtered.length} onChange={toggleAll} />
                 </th>
-                <th style={{ width: 36 }}>ID</th>
-                <th>Nom / Institution</th>
-                <th>Rôle</th>
-                <th>Ville(s)</th>
-                <th>Email</th>
-                <th>Tél.</th>
-                <th className="num" title="Oeuvres associées">Œ</th>
-                <th className="num" title="En localisation">Loc</th>
-                <th className="num" title="Achats">Ach</th>
+                <th style={{ width: 46 }}>ID</th>
+                <th style={{ width: 'auto' }}>Nom / Institution</th>
+                <th style={{ width: 120 }}>Rôle</th>
+                <th style={{ width: 180 }}>Ville(s)</th>
+                <th style={{ width: 220 }}>Email</th>
+                <th style={{ width: 160 }}>Tél.</th>
+                <th style={{ width: 40 }} className="num" title="Oeuvres associées">Œ</th>
+                <th style={{ width: 40 }} className="num" title="En localisation">Loc</th>
+                <th style={{ width: 40 }} className="num" title="Achats">Ach</th>
               </tr>
             </thead>
             <tbody>
@@ -380,8 +380,8 @@ export function ContactsTab({ contacts: initialContacts, oeuvres }: Props) {
                     <td style={{ fontWeight: isFoc ? 600 : undefined }}>{displayName(c)}</td>
                     <td style={{ color: 'var(--tx3)', fontSize: 10 }}>{c.Role ?? '—'}</td>
                     <td style={{ color: 'var(--tx3)', fontSize: 10 }}>{listVille(c.ContactID)}</td>
-                    <td style={{ color: 'var(--tx3)', fontSize: 10 }}>{ex?.Email ?? <span style={{ opacity: 0.3 }}>…</span>}</td>
-                    <td style={{ color: 'var(--tx3)', fontSize: 10 }}>{fmtPhone(ex?.IndicatifPays1, ex?.Téléphone1) ?? '—'}</td>
+                    <td style={{ color: 'var(--tx3)', fontSize: 10, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ex?.Email ?? <span style={{ opacity: 0.3 }}>…</span>}</td>
+                    <td style={{ color: 'var(--tx3)', fontSize: 10, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{fmtPhone(ex?.IndicatifPays1, ex?.Téléphone1) ?? '—'}</td>
                     <td className="num">{workCounts.owner[c.ContactID] ?? '—'}</td>
                     <td className="num" style={{ color: 'var(--tx3)' }}>{workCounts.loc[c.ContactID] ?? '—'}</td>
                     <td className="num" style={{ color: 'var(--tx3)' }}>{workCounts.buyer[c.ContactID] ?? '—'}</td>

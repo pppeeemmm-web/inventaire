@@ -89,33 +89,74 @@ function fmtDate(d: string | null) {
 
 // ── Step pill ─────────────────────────────────────────────────────────────────
 
-function StepPill({ step }: { step: Step }) {
+function StepPill({ step, onToggle, onRename, onDelete }: { 
+  step: Step; 
+  onToggle?: (id: string, next: string) => void;
+  onRename?: (id: string, name: string) => void;
+  onDelete?: (id: string) => void;
+}) {
   const color = STEP_COLORS[step.statut] ?? 'var(--bd)'
   const isDone = step.statut === 'fait'
   const isActive = step.statut === 'en_cours'
+  const [editing, setEditing] = useState(false)
+  const [temp, setTemp] = useState(step.nom)
+
+  function handleToggle() {
+    if (!onToggle) return
+    const sequence = ['a_faire', 'en_cours', 'fait']
+    const idx = sequence.indexOf(step.statut)
+    const next = sequence[(idx + 1) % sequence.length]
+    onToggle(step.id, next)
+  }
+
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0',
+      display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0',
       borderBottom: '1px solid var(--bg2)',
     }}>
-      <div style={{
-        width: 10, height: 10, borderRadius: '50%', flexShrink: 0,
-        background: isDone ? color : 'transparent',
-        border: `2px solid ${color}`,
-      }} />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <span style={{
-          fontSize: 11, color: isDone ? 'var(--tx3)' : 'var(--tx)',
-          textDecoration: isDone ? 'line-through' : 'none',
-        }}>{step.nom}</span>
-        {step.date_echeance && (
+      <div 
+        onClick={handleToggle}
+        style={{
+          width: 12, height: 12, borderRadius: '50%', flexShrink: 0,
+          background: isDone ? color : 'transparent',
+          border: `2px solid ${color}`,
+          cursor: onToggle ? 'pointer' : 'default',
+          transition: 'all 0.2s'
+        }} 
+      />
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+        {editing ? (
+          <input 
+            autoFocus
+            value={temp}
+            onChange={e => setTemp(e.target.value)}
+            onBlur={() => { setEditing(false); if (temp.trim() && temp !== step.nom) onRename?.(step.id, temp.trim()) }}
+            onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
+            style={{ ...inputSt, padding: '2px 6px', fontSize: 10, height: 20 }}
+          />
+        ) : (
+          <span 
+            onDoubleClick={() => setEditing(true)}
+            style={{
+              fontSize: 11, color: isDone ? 'var(--tx3)' : 'var(--tx)',
+              textDecoration: isDone ? 'line-through' : 'none',
+              cursor: 'text'
+            }}>{step.nom}</span>
+        )}
+        {step.date_echeance && !editing && (
           <span style={{ fontSize: 9, color: isActive ? 'var(--ac)' : 'var(--tx3)', marginLeft: 8 }}>
             {fmtDate(step.date_echeance)}
           </span>
         )}
       </div>
-      {isActive && (
+      {isActive && !editing && (
         <span style={{ fontSize: 9, color: 'var(--ac)', letterSpacing: 0.5 }}>EN COURS</span>
+      )}
+      {onDelete && (
+        <button 
+          onClick={() => onDelete(step.id)}
+          style={{ border: 'none', background: 'transparent', color: 'var(--tx3)', fontSize: 12, cursor: 'pointer', padding: '0 4px', opacity: 0.5 }}
+        >×</button>
       )}
     </div>
   )
@@ -660,45 +701,121 @@ function ExhibitionDetail({ exhibition, oeuvres, contacts, selection, setSelecti
       <div style={{ flex: 1, minHeight: 0, display: activeTab === 'floorplan' ? 'none' : 'block', overflow: 'auto' }}>
         {activeTab === 'overview' && (
           <div style={{ padding: 20 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-              {/* Steps */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40 }}>
+              {/* Steps Management */}
               <div>
-                <div style={{ fontSize: 9, letterSpacing: 1, textTransform: 'uppercase', color: 'var(--tx3)', marginBottom: 10 }}>Étapes</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <div style={{ fontSize: 9, letterSpacing: 1, textTransform: 'uppercase', color: 'var(--tx3)' }}>Étapes</div>
+                  <button 
+                    onClick={() => {
+                      const newStep: Step = { id: `s${Date.now()}`, nom: 'Nouvelle étape', statut: 'a_faire', date_echeance: null, position: exhibition.steps.length, notes: null, overdue_override: false }
+                      onUpdate({ steps: [...exhibition.steps, newStep] })
+                    }}
+                    className="btn sm" style={{ fontSize: 9, padding: '2px 8px' }}>+ Ajouter</button>
+                </div>
+                
                 {exhibition.steps.length === 0 ? (
                   <div style={{ fontSize: 10, color: 'var(--tx3)', fontStyle: 'italic' }}>Aucune étape définie.</div>
                 ) : (
-                  exhibition.steps.map((s) => <StepPill key={s.id} step={s} />)
-                )}
-              </div>
-              {/* Info */}
-              <div>
-                <div style={{ fontSize: 9, letterSpacing: 1, textTransform: 'uppercase', color: 'var(--tx3)', marginBottom: 10 }}>Infos</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {[
-                    ['Type',       exhibition.type ?? '—'],
-                    ['Contact',    contactName],
-                    ['Lieu',       exhibition.localisation ?? '—'],
-                    ['Début',      fmtDate(exhibition.date_debut)],
-                    ['Fin',        fmtDate(exhibition.date_fin)],
-                  ].map(([label, val]) => (
-                    <div key={label} style={{ display: 'flex', gap: 10, fontSize: 11 }}>
-                      <div style={{ width: 70, flexShrink: 0, color: 'var(--tx3)', fontSize: 10 }}>{label}</div>
-                      <div style={{ color: 'var(--tx)' }}>{val}</div>
-                    </div>
-                  ))}
-                  {exhibition.url && (
-                    <div style={{ display: 'flex', gap: 10, fontSize: 11 }}>
-                      <div style={{ width: 70, flexShrink: 0, color: 'var(--tx3)', fontSize: 10 }}>URL</div>
-                      <a href={exhibition.url} target="_blank" rel="noreferrer" style={{ color: 'var(--ac)' }}>{exhibition.url}</a>
-                    </div>
-                  )}
-                </div>
-                {exhibition.notes && (
-                  <div style={{ marginTop: 16 }}>
-                    <div style={{ fontSize: 9, letterSpacing: 1, textTransform: 'uppercase', color: 'var(--tx3)', marginBottom: 6 }}>Notes</div>
-                    <div style={{ fontSize: 11, color: 'var(--tx)', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{exhibition.notes}</div>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    {exhibition.steps.map((s) => (
+                      <StepPill 
+                        key={s.id} 
+                        step={s} 
+                        onToggle={(id, next) => {
+                          onUpdate({ steps: exhibition.steps.map(sx => sx.id === id ? { ...sx, statut: next } : sx) })
+                        }}
+                        onRename={(id, name) => {
+                          onUpdate({ steps: exhibition.steps.map(sx => sx.id === id ? { ...sx, nom: name } : sx) })
+                        }}
+                        onDelete={(id) => {
+                          if (confirm('Supprimer cette étape ?')) {
+                            onUpdate({ steps: exhibition.steps.filter(sx => sx.id !== id) })
+                          }
+                        }}
+                      />
+                    ))}
                   </div>
                 )}
+                <div style={{ marginTop: 12, fontSize: 9, color: 'var(--tx3)', fontStyle: 'italic' }}>
+                  Double-cliquez sur un nom pour le modifier. Cliquez sur le cercle pour changer le statut.
+                </div>
+              </div>
+
+              {/* Info Editing */}
+              <div style={{ borderLeft: '1px solid var(--bg2)', paddingLeft: 20 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <div style={{ fontSize: 9, letterSpacing: 1, textTransform: 'uppercase', color: 'var(--tx3)' }}>Infos</div>
+                  <button 
+                    onClick={() => onUpdate({ _isEditing: !exhibition['_isEditing' as keyof Exhibition] })}
+                    className="btn sm" style={{ fontSize: 9, padding: '2px 8px' }}>
+                    {exhibition['_isEditing' as keyof Exhibition] ? 'Terminer' : 'Éditer'}
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {[
+                    { label: 'Type',    key: 'type',         val: exhibition.type },
+                    { label: 'Lieu',    key: 'localisation', val: exhibition.localisation },
+                    { label: 'URL',     key: 'url',          val: exhibition.url },
+                    { label: 'Début',   key: 'date_debut',   val: exhibition.date_debut, type: 'date' },
+                    { label: 'Fin',     key: 'date_fin',     val: exhibition.date_fin,   type: 'date' },
+                  ].map((field) => (
+                    <div key={field.key} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                      <div style={{ width: 60, flexShrink: 0, color: 'var(--tx3)', fontSize: 10 }}>{field.label}</div>
+                      {exhibition['_isEditing' as keyof Exhibition] ? (
+                        <input 
+                          type={field.type || 'text'}
+                          value={field.val ?? ''}
+                          onChange={(e) => onUpdate({ [field.key]: e.target.value || null })}
+                          style={{ ...inputSt, flex: 1, fontSize: 10, padding: '4px 8px' }}
+                        />
+                      ) : (
+                        <div style={{ fontSize: 11, color: 'var(--tx)', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {field.key === 'url' && field.val ? (
+                            <a href={field.val} target="_blank" rel="noreferrer" style={{ color: 'var(--ac)' }}>{field.val}</a>
+                          ) : (
+                            field.type === 'date' ? fmtDate(field.val) : (field.val ?? '—')
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                    <div style={{ width: 60, flexShrink: 0, color: 'var(--tx3)', fontSize: 10 }}>Contact</div>
+                    {exhibition['_isEditing' as keyof Exhibition] ? (
+                      <select 
+                        value={exhibition.contact_id ?? ''}
+                        onChange={(e) => onUpdate({ contact_id: Number(e.target.value) || null })}
+                        style={{ ...inputSt, flex: 1, fontSize: 10, padding: '4px 8px' }}
+                      >
+                        <option value="">— Aucun —</option>
+                        {contacts.map(c => (
+                          <option key={c.ContactID} value={c.ContactID}>
+                            {c.NomInstitution || [c.Prénom, c.Nom].filter(Boolean).join(' ') || `#${c.ContactID}`}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div style={{ fontSize: 11, color: 'var(--tx)' }}>{contactName}</div>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ marginTop: 20 }}>
+                  <div style={{ fontSize: 9, letterSpacing: 1, textTransform: 'uppercase', color: 'var(--tx3)', marginBottom: 6 }}>Notes</div>
+                  {exhibition['_isEditing' as keyof Exhibition] ? (
+                    <textarea 
+                      value={exhibition.notes ?? ''}
+                      onChange={(e) => onUpdate({ notes: e.target.value || null })}
+                      rows={4}
+                      style={{ ...inputSt, fontSize: 10, resize: 'vertical' }}
+                    />
+                  ) : (
+                    <div style={{ fontSize: 11, color: 'var(--tx)', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{exhibition.notes ?? '—'}</div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -874,11 +991,62 @@ export function ExhibitionsTab({ oeuvres, contacts, selection, setSelection }: {
     }
   }
 
-  async function handleUpdateStatus(id: string, patch: Partial<Exhibition>) {
-    const { error } = await supabase.from('suivi_process').update(patch).eq('id', id)
-    if (!error) {
-      setExhibitions(prev => prev.map(e => e.id === id ? { ...e, ...patch } : e))
-      if (selected?.id === id) setSelected(prev => prev ? { ...prev, ...patch } : null)
+  async function handleUpdateStatus(id: string, patch: any) {
+    // 1. Separate steps from main process patch
+    const { steps, ...processPatch } = patch
+
+    // 2. Update main process if needed
+    if (Object.keys(processPatch).length > 0) {
+      // Remove any UI-only helper keys
+      delete (processPatch as any)._isEditing
+      const { error } = await supabase.from('suivi_process').update(processPatch).eq('id', id)
+      if (error) { console.error('Process Update Error:', error); return }
+    }
+
+    // 3. Handle steps sync if provided
+    if (steps) {
+      const current = exhibitions.find(e => e.id === id)?.steps ?? []
+      
+      // Identify deleted steps
+      const deletedIds = current.filter(c => !steps.find((s: any) => s.id === c.id)).map(c => c.id)
+      if (deletedIds.length > 0) {
+        await supabase.from('suivi_etape').delete().in('id', deletedIds)
+      }
+
+      // Upsert remaining steps
+      const finalSteps = []
+      for (const s of steps) {
+        const isNew = String(s.id).startsWith('s')
+        if (isNew) {
+          const { id: _t, ...newStep } = s
+          const { data, error } = await supabase.from('suivi_etape').insert(newStep).select().single()
+          if (!error && data) finalSteps.push(data)
+          else finalSteps.push(s) // fallback
+        } else {
+          await supabase.from('suivi_etape').update(s).eq('id', s.id)
+          finalSteps.push(s)
+        }
+      }
+      // Replace steps with the ones that have real IDs
+      patch.steps = finalSteps
+    }
+
+    // 4. Update local state
+    setExhibitions(prev => prev.map(e => {
+      if (e.id === id) {
+        const updated = { ...e, ...processPatch }
+        if (patch.steps) updated.steps = patch.steps
+        return updated
+      }
+      return e
+    }))
+    if (selected?.id === id) {
+      setSelected(prev => {
+        if (!prev) return null
+        const updated = { ...prev, ...processPatch }
+        if (patch.steps) updated.steps = patch.steps
+        return updated
+      })
     }
   }
 

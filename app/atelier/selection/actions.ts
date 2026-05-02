@@ -34,13 +34,18 @@ export interface BatchChanges {
   // Theme junction — add and/or remove theme IDs across OeuvreTheme
   addThemeIds?:       number[]
   removeThemeIds?:    number[]
+  // Group junction — add and/or remove group IDs across working_group_work
+  addGroupIds?:       string[]
+  removeGroupIds?:    string[]
 }
+
 
 export interface ExportConfig {
   format:       'html' | 'pdf'
   layout:       'cards' | 'grid' | 'list'
   columns:      2 | 3 | 4 | 6 | 8 | 10 | 12
   cardsPerPage: 1 | 2 | 3 | 4 | 5 | 6   // fiches layout only
+  rowsPerPage:  number                  // grid layout only (0 = auto)
   fields:       ExportFields
   imageSize:    'large' | 'small' | 'none'
   imageEmbed:   'linked' | 'embedded'
@@ -112,7 +117,8 @@ export async function batchEdit(ids: number[], changes: BatchChanges): Promise<B
 
   const hasScalarChanges  = Object.keys(update).length > 0
   const hasThemeChanges   = (changes.addThemeIds?.length ?? 0) > 0 || (changes.removeThemeIds?.length ?? 0) > 0
-  if (!hasScalarChanges && !hasThemeChanges) return { error: 'Aucun champ modifié' }
+  const hasGroupChanges   = (changes.addGroupIds?.length ?? 0) > 0 || (changes.removeGroupIds?.length ?? 0) > 0
+  if (!hasScalarChanges && !hasThemeChanges && !hasGroupChanges) return { error: 'Aucun champ modifié' }
 
   let count = ids.length
 
@@ -147,9 +153,55 @@ export async function batchEdit(ids: number[], changes: BatchChanges): Promise<B
     if (error) return { error: `Thème (ajout) : ${error.message}` }
   }
 
+  // ── Group junction (working_group_work) ────────────────────────────────
+  if (changes.removeGroupIds?.length) {
+    const { error } = await supabase
+      .from('working_group_work')
+      .delete()
+      .in('oeuvre_id', ids)
+      .in('group_id', changes.removeGroupIds)
+    if (error) return { error: `Groupe (retrait) : ${error.message}` }
+  }
+
+  if (changes.addGroupIds?.length) {
+    const rows = ids.flatMap(oid =>
+      changes.addGroupIds!.map(gid => ({ oeuvre_id: oid, group_id: gid }))
+    )
+    const { error } = await supabase
+      .from('working_group_work')
+      .upsert(rows, { onConflict: 'oeuvre_id,group_id', ignoreDuplicates: true })
+    if (error) return { error: `Groupe (ajout) : ${error.message}` }
+  }
+
   revalidatePath('/atelier')
   revalidatePath('/hub')
   return { ok: true, updated: count }
+}
+
+export async function createTheme(name: string): Promise<{ error?: string, theme?: { ThemeID: number, Nom: string } }> {
+  const { error: authErr, supabase } = await guardTeam()
+  if (authErr || !supabase) return { error: authErr ?? 'Auth' }
+
+  // 1. Try to insert
+  const { data, error } = await supabase
+    .from('tblTheme')
+    .insert({ Nom: name })
+    .select('ThemeID, Nom')
+    .single()
+
+  // 2. If it exists already (23505), just fetch it
+  if (error?.code === '23505') {
+    const { data: existing } = await supabase
+      .from('tblTheme')
+      .select('ThemeID, Nom')
+      .eq('Nom', name)
+      .single()
+    if (existing) return { theme: existing }
+  }
+
+  if (error) return { error: `Thème : ${error.message}` }
+  revalidatePath('/atelier')
+  return { theme: data }
 }
 
 // ── Export ────────────────────────────────────────────────────────────────
@@ -421,24 +473,24 @@ function buildHtml(
   .meta td{padding:5px 0;vertical-align:top;color:#444;line-height:1.4}
   .meta td.lbl{color:#bbb;width:100px;font-size:8px;text-transform:uppercase;letter-spacing:1.5px;padding-top:7px;font-weight:500}
   
-  /* Grid — contact sheet: clean grid with breathing room */
-  .grid{display:grid;column-gap:64px;row-gap:100px}
-  .grid.cols-2{grid-template-columns:repeat(2,1fr)}
-  .grid.cols-3{grid-template-columns:repeat(3,1fr)}
-  .grid.cols-4{grid-template-columns:repeat(4,1fr)}
-  .grid.cols-6{grid-template-columns:repeat(6,1fr)}
-  .grid.cols-8{grid-template-columns:repeat(8,1fr)}
-  .grid.cols-10{grid-template-columns:repeat(10,1fr)}
-  .grid.cols-12{grid-template-columns:repeat(12,1fr)}
+  /* Grid — contact sheet: tight, consistent, professional */
+  .grid{display:grid}
+  .grid.cols-2{grid-template-columns:repeat(2,1fr);gap:32px 48px}
+  .grid.cols-3{grid-template-columns:repeat(3,1fr);gap:24px 40px}
+  .grid.cols-4{grid-template-columns:repeat(4,1fr);gap:16px 32px}
+  .grid.cols-6{grid-template-columns:repeat(6,1fr);gap:12px 24px}
+  .grid.cols-8{grid-template-columns:repeat(8,1fr);gap:8px 16px}
+  .grid.cols-10{grid-template-columns:repeat(10,1fr);gap:6px 12px}
+  .grid.cols-12{grid-template-columns:repeat(12,1fr);gap:4px 8px}
   
   .grid .card{flex-direction:column;margin:0;padding:0;border:none;gap:0}
-  .grid .card .img-wrap,.grid .card .img-wrap.large{flex:none;width:100%;height:auto;aspect-ratio:1/1;margin-bottom:40px}
-  .grid .card .img-wrap img{width:100%;height:100%;object-fit:cover;filter:drop-shadow(0 4px 16px rgba(0,0,0,0.05))}
+  .grid .card .img-wrap,.grid .card .img-wrap.large{flex:none;width:100%;height:auto;aspect-ratio:1/1;margin-bottom:8px}
+  .grid .card .img-wrap img{width:100%;height:100%;object-fit:cover;filter:drop-shadow(0 2px 8px rgba(0,0,0,0.05))}
   .grid .card .img-wrap.native img{object-fit:contain}
   
-  .grid .card .meta{padding:0;text-align:center}
-  .grid .card .meta .ref-cap{font-size:7px;color:#ccc;font-family:ui-monospace, monospace;letter-spacing:0.5px;margin-bottom:6px}
-  .grid .card .meta .title-cap{font-family:'Instrument Serif', serif;font-size:13px;font-weight:400;line-height:1.2;color:#111;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+  .grid .card .meta{padding:0;text-align:left}
+  .grid .card .meta .ref-cap{font-size:6px;color:#ccc;font-family:ui-monospace, monospace;letter-spacing:0.5px;margin-bottom:2px}
+  .grid .card .meta .title-cap{font-family:'Instrument Serif', serif;font-size:11px;font-weight:400;line-height:1.1;color:#111;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
   
   /* Index grid — 3 columns, compact */
   .idx-grid{display:grid;grid-template-columns:repeat(3,1fr);column-gap:24px;row-gap:4px}
@@ -494,7 +546,8 @@ async function buildPdf(
 
   return new Promise(async (resolve, reject) => {
     const layout = cfg.orientation || 'portrait'
-    const doc    = new PDFDocument({ size: pageSize, layout, margin: 50, autoFirstPage: true })
+    // Disable automatic page breaks to prevent 'ghosting' from large text blocks
+    const doc    = new PDFDocument({ size: pageSize, layout, margin: 50, autoFirstPage: true, bufferPages: true })
     const chunks: Buffer[] = []
     doc.on('data',  (c: Buffer) => chunks.push(c))
     doc.on('end',   () => resolve(Buffer.concat(chunks).toString('base64')))
@@ -509,26 +562,27 @@ async function buildPdf(
     const margin = 50
     const usable = PW - margin * 2
 
-    // Header on first page
-    doc.fontSize(8).fillColor('#999999').text('PIERRE EMMANUEL MOULIN', margin, margin, { characterSpacing: 2 })
+    // Header — Ultra Minimal
+    doc.fontSize(6).fillColor('#bbbbbb').text('PIERRE EMMANUEL MOULIN', margin, margin - 10, { characterSpacing: 1.5 })
     
-    let headY = margin + 14
+    let headY = margin - 2
     if (cfg.exportTitle) {
-      doc.fontSize(14).fillColor('#111111').text(cfg.exportTitle, margin, headY)
-      headY += 18
-      doc.fontSize(8).fillColor('#aaaaaa').text(
-        `Sélection · ${oeuvres.length} œuvre${oeuvres.length > 1 ? 's' : ''} · ${new Date().toLocaleDateString('fr-FR')}`,
-        margin, headY
+      doc.fontSize(18).fillColor('#111111').text(cfg.exportTitle, margin, headY, { lineGap: -4 })
+      headY += 22
+      doc.fontSize(6.5).fillColor('#aaaaaa').text(
+        `SÉLECTION · ${oeuvres.length} ŒUVRES · ${new Date().toLocaleDateString('fr-FR')}`,
+        margin, headY, { characterSpacing: 0.8 }
       )
     } else {
-      doc.fontSize(10).fillColor('#111111').text(
-        `Sélection · ${oeuvres.length} œuvre${oeuvres.length > 1 ? 's' : ''} · ${new Date().toLocaleDateString('fr-FR')}`,
-        margin, headY
+      doc.fontSize(8).fillColor('#111111').text(
+        `SÉLECTION · ${oeuvres.length} ŒUVRES · ${new Date().toLocaleDateString('fr-FR')}`,
+        margin, headY, { characterSpacing: 0.8 }
       )
     }
-    doc.moveTo(margin + (usable/2), margin + 30).lineTo(margin + (usable/2), margin + 50).lineWidth(0.5).strokeColor('#eeeeee').stroke()
+    headY += 12
+    doc.moveTo(margin, headY).lineTo(margin + 30, headY).lineWidth(0.4).strokeColor('#eeeeee').stroke()
 
-    let y = margin + 140
+    let y = headY + 15
     const f = cfg.fields   // available to all layout branches
 
     if (cfg.layout === 'list') {
@@ -588,23 +642,41 @@ async function buildPdf(
       }
 
     } else if (cfg.layout === 'grid') {
-      // ── Grid layout ──────────────────────────────────────────
+      // ── Grid layout (Contact Sheet) ──────────────────────────
       const cols      = cfg.columns
-      // Dynamic gaps: tighter for more columns to maximize image size
-      const gap       = cfg.columns >= 12 ? 6 : cfg.columns >= 8 ? 12 : cfg.columns >= 6 ? 16 : cfg.columns >= 4 ? 24 : 32
-      const rowGap    = cfg.columns >= 6 ? 64 : 80
+      // Tighter gaps for professional contact sheet look
+      const gap       = cfg.columns >= 8 ? 4 : cfg.columns >= 4 ? 8 : 12
+      const rowGap    = cfg.columns >= 8 ? 12 : cfg.columns >= 4 ? 20 : 28
       const cellW     = (usable - gap * (cols - 1)) / cols
-      const imgH      = cfg.imageSize !== 'none' ? Math.round(cellW) : 0  // square
-      // textH must fit: ID line (10px) + title line for narrower columns (12px) + top gap (3px)
-      const showTitle = cfg.columns < 12
-      const textH     = cfg.columns >= 12 ? 16 : cfg.columns >= 8 ? 32 : cfg.columns >= 4 ? 48 : 64
-      const cellH     = imgH + textH + gap
+      
+      // Calculate text height based on active fields
+      const activeMetaCount = [f.year, f.technique, f.support, f.dims, f.price].filter(Boolean).length
+      const showTitle = f.title
+      const textLineH = (cols >= 8 ? 6 : 8)
+      const textH     = (showTitle ? (cols >= 8 ? 8 : 12) : 0) + (f.id ? (cols >= 8 ? 7 : 10) : 0) + (activeMetaCount * textLineH) + 4
+      
+      // If rowsPerPage is set, we adjust imgH to fit exactly N rows on the page height
+      const pageUsableH = PH - margin * 2 - (y - margin) // Remaining space on first page
+      let imgH = cfg.imageSize !== 'none' ? Math.round(cellW) : 0
+
+      if (cfg.rowsPerPage > 0) {
+        // (imgH + textH + rowGap) * rows = pageUsableH
+        const calculatedImgH = Math.floor((PH - margin * 2 - 40) / cfg.rowsPerPage) - textH - rowGap
+        if (calculatedImgH > 0 && calculatedImgH < imgH) {
+           imgH = calculatedImgH
+        }
+      }
+      const cellH = imgH + textH
 
       let col = 0
       for (const o of oeuvres) {
         const cx = margin + col * (cellW + gap)
 
-        if (y + cellH > PH - margin && col === 0) { doc.addPage(); y = margin + 30 }
+        // If next row won't fit, break now
+        if (col === 0 && (y + cellH > PH - margin)) {
+          doc.addPage()
+          y = margin + 20 // Higher start on new pages
+        }
 
         // Image (always base64 for PDF — see generateExport image-fetch logic)
         if (imgH > 0) {
@@ -622,7 +694,7 @@ async function buildPdf(
                 })
                 .toBuffer()
               
-              doc.image(processed, cx, y, { width: cellW, height: imgH, align: 'center', valign: 'center' })
+              doc.image(processed, cx, y, { width: cellW, height: imgH, align: 'left', valign: 'top' })
             } catch (err) {
               console.error('PDF Image Error:', err)
             }
@@ -630,27 +702,56 @@ async function buildPdf(
           // No grey rect if image missing — keep contact sheet clean
         }
 
-        // Caption: ID first (always), then title for wider columns
-        let ty = y + imgH + 6
+        // Caption: Dynamic fields (tight) — Left Aligned
+        let ty = y + imgH + 3
         if (f.id) {
-          doc.fontSize(7).fillColor('#bbbbbb').font('Courier')
-             .text('#' + o.OeuvreID, cx, ty, { width: cellW, align: 'center', lineBreak: false })
+          doc.fontSize(cols >= 8 ? 5 : 6).fillColor('#cccccc').font('Courier')
+             .text('#' + o.OeuvreID, cx, ty, { width: cellW, align: 'left', lineBreak: false })
           doc.font('Helvetica')
-          ty += 10
+          ty += (cols >= 8 ? 7 : 8)
         }
-        if (showTitle && f.title) {
-          doc.fontSize(cfg.columns >= 6 ? 7 : 9).fillColor('#111111')
-             .text(o.Titre ?? '—', cx, ty, { width: cellW, align: 'center', lineBreak: false, ellipsis: true })
+        if (f.title) {
+          doc.fontSize(cols >= 8 ? 6 : 7.5).fillColor('#111111').font('Helvetica-Bold')
+             .text(o.Titre ?? '—', cx, ty, { width: cellW, align: 'left', lineBreak: true, ellipsis: true, maxLines: 1 })
+          doc.font('Helvetica')
+          ty += (cols >= 8 ? 8 : 10)
+        }
+        
+        // Extra meta lines
+        doc.fontSize(cols >= 8 ? 5 : 6).fillColor('#666666')
+        const metaLines: string[] = []
+        if (f.year && o.Année) metaLines.push(o.Année.slice(0, 4))
+        
+        const techPart = [f.technique && (o.Technique != null ? tM[o.Technique] : null), f.support && (o.Support != null ? sM[o.Support] : null)].filter(Boolean).join(', ')
+        if (techPart) metaLines.push(techPart)
+        
+        if (f.dims) {
+          const d = o.Hauteur && o.Largeur ? `${o.Hauteur}×${o.Largeur} cm` : null
+          if (d) metaLines.push(d)
+        }
+        if (f.price) {
+          const p = o.PrixFinal ?? o.Prix
+          if (p) metaLines.push(`€${p.toLocaleString('fr-FR')}`)
+        }
+
+        for (const line of metaLines) {
+          doc.text(line, cx, ty, { width: cellW, align: 'left', lineBreak: false, ellipsis: true })
+          ty += (cols >= 8 ? 6 : 8)
         }
 
         col++
         if (col >= cols) {
           col = 0
-          y += cellH + gap
+          y += cellH + rowGap
+          // Crucial: Move the internal PDFKit cursor back to our manual Y to prevent 'ghosting'
+          doc.y = y
         }
       }
       // Advance y if last row was partial
-      if (col > 0) y += cellH + gap
+      if (col > 0) {
+        y += cellH + gap
+        doc.y = y
+      }
 
     } else {
       // ── Cards layout ─────────────────────────────────────────

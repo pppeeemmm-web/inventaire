@@ -19,7 +19,7 @@ interface Work {
   Profondeur:       string | null
   UniteDimension:   number | null
   txtImageNameLink: string | null
-  theme:            string | null
+  themes:           string[]
   techniqueName:    string | null
   statutId:         number | null
 }
@@ -82,13 +82,15 @@ export default function PortfolioClient({ works, sections, statementUrl, cvUrl }
   const [activeTheme,  setActiveTheme]  = useState<string | null>(null)
   const [pageIdx,      setPageIdx]      = useState(0)
 
-  const themes = useMemo(() =>
-    [...new Set(works.map(w => w.theme).filter((t): t is string => Boolean(t)))].sort(), [works])
+  const themes = useMemo(() => {
+    const all = works.flatMap(w => w.themes)
+    return [...new Set(all)].sort()
+  }, [works])
 
   const featured = useMemo(() =>
     works.filter(w => {
       if (!showPrivate && !isAvail(w)) return false
-      if (activeTheme && w.theme !== activeTheme) return false
+      if (activeTheme && !w.themes.includes(activeTheme)) return false
       return Boolean(w.txtImageNameLink)
     }), [works, showPrivate, activeTheme])
 
@@ -114,7 +116,7 @@ export default function PortfolioClient({ works, sections, statementUrl, cvUrl }
       // Works for this section
       const sectionWorks = works.filter(w => {
         if (!showPrivate && !isAvail(w)) return false
-        if (s.theme && w.theme !== s.theme) return false
+        if (s.theme && !w.themes.includes(s.theme)) return false
         return Boolean(w.txtImageNameLink)
       })
       
@@ -401,7 +403,15 @@ function CardContent({ page, isPortrait }: { page: Page; isPortrait: boolean }) 
             {w.techniqueName && <div>{w.techniqueName}</div>}
             {dims(w) && <div>{dims(w)}</div>}
           </div>
-          {w.theme && <div className="pf-mono" style={{ marginTop: 'auto', paddingTop: 20, fontSize: 8, letterSpacing: 1.5, textTransform: 'uppercase', color: 'var(--pf-ac)', fontWeight: 600 }}>{w.theme}</div>}
+          {w.themes.length > 0 && (
+            <div className="pf-mono" style={{ 
+              marginTop: 'auto', paddingTop: 20, fontSize: 8, 
+              letterSpacing: 1.5, textTransform: 'uppercase', 
+              color: 'var(--pf-ac)', fontWeight: 600 
+            }}>
+              {w.themes.join(' · ')}
+            </div>
+          )}
         </div>
       </div>
     )

@@ -39,6 +39,9 @@ export type DictKey =
   | 'priced' | 'date' | 'label'
   | 'selection' | 'modify' | 'export' | 'compare' | 'groupNamePlaceholder' | 'clear'
   | 'legend' | 'stage_mounting'
+  | 'batchEdit' | 'onlyChangedUpdated' | 'modifyAtLeastOne' | 'modifying' | 'applyTo'
+  | 'unchanged' | 'removeStatus' | 'remove' | 'yes' | 'no' | 'selectionUpdated'
+  | 'themesBatchHelp' | 'notesBatchPlaceholder' | 'attributes'
 
 type Dictionary = Record<DictKey, string>
 
@@ -81,7 +84,7 @@ export const dict: Record<Lang, Dictionary> = {
     allTech: 'Toutes techniques', allSupports: 'Tous supports',
     allYears: 'Toutes années', showEdges: 'Afficher les liens',
     hideEdges: 'Masquer les liens', edgesBy: 'Liens par',
-    selected: 'sélectionnées', clearSel: 'Effacer', curate: 'Curer',
+    selected: 'sélectionnées', clearSel: 'Effacer', curate: 'Cartographier',
     workingGroups: 'Groupes de travail', newGroup: 'Nouveau groupe',
     viewMode: 'Vue', listView: 'Liste', graphView: 'Constellation', gridView: 'Grille',
     workingGroup: 'Groupe de travail',
@@ -112,14 +115,20 @@ export const dict: Record<Lang, Dictionary> = {
     newOrder: 'Nouvelle commande', buyer: 'Acheteur',
     concepts: 'Concepts', themes: 'Thèmes / Groupes', location: 'Localisation',
     tirage: 'Tirage', exhibitable: 'Exposable', image: 'Image',
+    attributes: 'Attributs',
     searchFieldAll: 'Partout', searchFieldName: 'Nom', searchFieldCity: 'Ville',
     searchFieldEmail: 'Email', searchFieldNotes: 'Notes',
     identity: 'Identité', depth: 'Profondeur', visibility: 'Visibilité',
     history: 'Historique', save: 'Enregistrer', create: 'Créer',
     priced: 'Évalué', date: 'Date', label: 'Libellé',
     selection: 'SÉLECTION', modify: 'MODIFIER', export: 'EXPORTER',
-    compare: 'COMPARER', groupNamePlaceholder: 'nom du groupe...', clear: 'EFFACER',
     legend: 'LÉGENDE', stage_mounting: 'À monter',
+    batchEdit: 'Modification en lot', onlyChangedUpdated: 'Seuls les champs modifiés seront mis à jour.',
+    modifyAtLeastOne: 'Modifiez au moins un champ pour appliquer.', modifying: 'Modification',
+    applyTo: 'Appliquer à', unchanged: 'inchangé', removeStatus: 'Retirer le statut',
+    remove: 'Retirer', yes: 'Oui', no: 'Non', selectionUpdated: 'Sélection mise à jour',
+    themesBatchHelp: 'Clic gauche pour ajouter un thème, clic droit pour retirer.',
+    notesBatchPlaceholder: 'Écraser les commentaires existants par...',
   },
   en: {
     hub: 'Studio', tagline: 'Inventory · Production · Curation · Relations',
@@ -158,7 +167,7 @@ export const dict: Record<Lang, Dictionary> = {
     allTech: 'All techniques', allSupports: 'All supports',
     allYears: 'All years', showEdges: 'Show edges',
     hideEdges: 'Hide edges', edgesBy: 'Edges by',
-    selected: 'selected', clearSel: 'Clear', curate: 'Curate',
+    selected: 'selected', clearSel: 'Clear', curate: 'Mapping',
     workingGroups: 'Working groups', newGroup: 'New group',
     viewMode: 'View', listView: 'List', graphView: 'Constellation', gridView: 'Grid',
     workingGroup: 'Working group',
@@ -189,10 +198,16 @@ export const dict: Record<Lang, Dictionary> = {
     newOrder: 'New order', buyer: 'Buyer',
     concepts: 'Concepts', themes: 'Themes / Groups', location: 'Location',
     tirage: 'Edition', exhibitable: 'Exhibitable', image: 'Image',
+    attributes: 'Attributes',
     searchFieldAll: 'All', searchFieldName: 'Name', searchFieldCity: 'City',
     searchFieldEmail: 'Email', searchFieldNotes: 'Notes',
     selection: 'SELECTION', modify: 'MODIFY', export: 'EXPORT',
-    compare: 'COMPARE', groupNamePlaceholder: 'group name...', clear: 'CLEAR',
     legend: 'LEGEND', stage_mounting: 'To mount',
+    batchEdit: 'Batch Edit', onlyChangedUpdated: 'Only modified fields will be updated.',
+    modifyAtLeastOne: 'Modify at least one field to apply.', modifying: 'Modifying',
+    applyTo: 'Apply to', unchanged: 'unchanged', removeStatus: 'Remove status',
+    remove: 'Remove', yes: 'Yes', no: 'No', selectionUpdated: 'Selection updated',
+    themesBatchHelp: 'Left click to add theme, right click to remove.',
+    notesBatchPlaceholder: 'Overwrite existing comments with...',
   },
 }

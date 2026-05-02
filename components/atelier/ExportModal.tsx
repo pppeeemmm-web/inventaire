@@ -14,6 +14,8 @@ import type { Oeuvre } from '@/lib/types/database'
 const THEME_KEY      = 'pem_export_themes'
 const LAST_CFG_KEY   = 'pem_export_last_cfg'
 
+const cap = (s: string) => s ? s.charAt(0).toUpperCase() + s.slice(1) : s
+
 interface ExportTheme {
   name:   string
   config: ExportConfig
@@ -45,6 +47,7 @@ const DEFAULT_CONFIG: ExportConfig = {
   layout:       'grid',
   columns:      4,
   cardsPerPage: 2,
+  rowsPerPage:  0, // 0 = auto
   imageSize:    'small',
   imageEmbed:   'linked',
   imageCrop:    'square',
@@ -123,7 +126,7 @@ export function ExportModal({ ids, oeuvres, tM, sM, statusLabelMap, onClose }: P
   }
 
   function handleSaveTheme() {
-    const name = themeName.trim()
+    const name = cap(themeName.trim())
     if (!name) return
     const next = [{ name, config: cfg }, ...themes.filter((t) => t.name !== name)]
     setThemes(next)
@@ -241,12 +244,23 @@ export function ExportModal({ ids, oeuvres, tM, sM, statusLabelMap, onClose }: P
                 value={cfg.layout} onChange={(v) => set('layout', v as ExportConfig['layout'])}
               />
               {cfg.layout === 'grid' && (
-                <div className="row gap-sm" style={{ marginTop: 10, flexWrap: 'wrap' }}>
-                  <span className="t-label">{t('columns')} :</span>
-                  {([2, 3, 4, 6, 8, 10, 12] as const).map((n) => (
-                    <button key={n} className={`btn sm ${cfg.columns === n ? 'primary' : 'ghost'}`}
-                      onClick={() => set('columns', n as ExportConfig['columns'])}>{n}</button>
-                  ))}
+                <div style={{ marginTop: 10 }}>
+                  <div className="row gap-sm" style={{ flexWrap: 'wrap' }}>
+                    <span className="t-label">{t('columns')} :</span>
+                    {([2, 3, 4, 6, 8, 10, 12] as const).map((n) => (
+                      <button key={n} className={`btn sm ${cfg.columns === n ? 'primary' : 'ghost'}`}
+                        onClick={() => set('columns', n as ExportConfig['columns'])}>{n}</button>
+                    ))}
+                  </div>
+                  <div className="row gap-sm" style={{ marginTop: 10, flexWrap: 'wrap' }}>
+                    <span className="t-label">Lignes :</span>
+                    {([0, 1, 2, 3, 4, 5, 6, 8, 10] as const).map((n) => (
+                      <button key={n} className={`btn sm ${cfg.rowsPerPage === n ? 'primary' : 'ghost'}`}
+                        onClick={() => set('rowsPerPage', n)}>
+                        {n === 0 ? 'Auto' : n}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
               {cfg.layout === 'cards' && (
@@ -337,8 +351,11 @@ export function ExportModal({ ids, oeuvres, tM, sM, statusLabelMap, onClose }: P
           </div>
 
           {/* ── Themes sidebar ──────────────────────────────── */}
-          <div style={{ width: 210, flexShrink: 0, padding: '20px 16px', display: 'flex', flexDirection: 'column', gap: 8, overflow: 'auto' }}>
-            <div className="t-label" style={{ marginBottom: 4 }}>{t('savedThemes')}</div>
+          <div style={{ width: 230, flexShrink: 0, padding: '20px 16px', display: 'flex', flexDirection: 'column', gap: 8, overflow: 'auto', background: 'rgba(0,0,0,0.1)' }}>
+            <div className="t-label" style={{ marginBottom: 2 }}>{t('savedThemes')}</div>
+            <div className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 8, marginBottom: 8, lineHeight: 1.4 }}>
+              Configurations d'exportation enregistrées pour réutilisation rapide.
+            </div>
 
             {themes.length === 0 && (
               <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>{t('noThemesSaved')}</div>
@@ -359,7 +376,7 @@ export function ExportModal({ ids, oeuvres, tM, sM, statusLabelMap, onClose }: P
                       transition: 'border-color 0.15s, color 0.15s',
                     }}
                     onClick={(e) => { e.stopPropagation(); handleLoadTheme(t_item) }}>
-                    {isFlash ? '✓ ' : ''}{t_item.name}
+                    {isFlash ? '✓ ' : ''}{cap(t_item.name)}
                   </button>
                   <button
                     style={{
@@ -375,7 +392,7 @@ export function ExportModal({ ids, oeuvres, tM, sM, statusLabelMap, onClose }: P
             <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: '1px solid var(--bd)' }}>
               <input
                 className="input sm"
-                placeholder={t('themeNamePlaceholder')}
+                placeholder="Nom de la configuration..."
                 value={themeName}
                 onChange={(e) => setThemeName(e.target.value)}
                 onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter') handleSaveTheme() }}
