@@ -32,6 +32,7 @@ export type DictKey =
   | 'pipeline' | 'map' | 'contacts' | 'reminders' | 'upcomingDeadlines'
   | 'searchPlaceholderContacts' | 'allRoles' | 'deleteSelected' | 'confirmDeleteContacts'
   | 'fiscal' | 'expenses' | 'dashboard' | 'income' | 'tax' | 'category' | 'amount'
+  | 'framework' | 'taxFramework'
   | 'sales' | 'revenue' | 'orders' | 'newOrder' | 'buyer'
   | 'concepts' | 'themes' | 'location' | 'tirage' | 'exhibitable' | 'image'
   | 'searchFieldAll' | 'searchFieldName' | 'searchFieldCity' | 'searchFieldEmail' | 'searchFieldNotes'
@@ -103,17 +104,18 @@ export const dict: Record<Lang, Dictionary> = {
     framed: 'Encadrée', commission: 'Commission',
     returnDate: 'Retour', deliveryDate: 'Livraison',
     addToSel: '+ Groupe', edit: 'Éditer',
-    surDemande: 'Sur demande', atelier: 'Atelier', localisation: 'Localisation',
+    surDemande: 'Sur demande', atelier: 'Atelier', localisation: 'Dépositaire',
     pipeline: 'Suivi', map: 'Carte', contacts: 'Contacts',
     reminders: 'Rappels', upcomingDeadlines: 'Échéances',
     searchPlaceholderContacts: 'Rechercher nom, institution, ville, email, notes...',
     allRoles: 'Tous rôles', deleteSelected: 'Supprimer',
     confirmDeleteContacts: 'Supprimer définitivement ces contacts ?',
-    fiscal: 'Fiscal', expenses: 'Dépenses', dashboard: 'Tableau de bord',
+    fiscal: 'Revenus & Dépenses', expenses: 'Dépenses', dashboard: 'Tableau de bord',
     income: 'Revenus', tax: 'Impôts', category: 'Catégorie', amount: 'Montant',
+    framework: 'Cadre fiscal', taxFramework: 'Cadre fiscal — Artiste-auteur en France',
     sales: 'Ventes', revenue: 'Chiffre d\'affaires', orders: 'Commandes',
     newOrder: 'Nouvelle commande', buyer: 'Acheteur',
-    concepts: 'Concepts', themes: 'Thèmes / Groupes', location: 'Localisation',
+    concepts: 'Concepts', themes: 'Thèmes / Groupes', location: 'Dépositaire',
     tirage: 'Tirage', exhibitable: 'Exposable', image: 'Image',
     attributes: 'Attributs',
     searchFieldAll: 'Partout', searchFieldName: 'Nom', searchFieldCity: 'Ville',
@@ -186,17 +188,18 @@ export const dict: Record<Lang, Dictionary> = {
     framed: 'Framed', commission: 'Commission',
     returnDate: 'Return', deliveryDate: 'Delivery',
     addToSel: '+ Group', edit: 'Edit',
-    surDemande: 'On request', atelier: 'Studio', localisation: 'Location',
+    surDemande: 'On request', atelier: 'Studio', localisation: 'Custodian',
     pipeline: 'Pipeline', map: 'Map', contacts: 'Contacts',
     reminders: 'Reminders', upcomingDeadlines: 'Upcoming deadlines',
     searchPlaceholderContacts: 'Search name, institution, city, email, notes...',
     allRoles: 'All roles', deleteSelected: 'Delete',
     confirmDeleteContacts: 'Permanently delete these contacts?',
-    fiscal: 'Fiscal', expenses: 'Expenses', dashboard: 'Dashboard',
+    fiscal: 'Income & Expenses', expenses: 'Expenses', dashboard: 'Dashboard',
     income: 'Income', tax: 'Taxes', category: 'Category', amount: 'Amount',
+    framework: 'Tax Framework', taxFramework: 'Tax Framework — Artist-Author in France',
     sales: 'Sales', revenue: 'Revenue', orders: 'Orders',
     newOrder: 'New order', buyer: 'Buyer',
-    concepts: 'Concepts', themes: 'Themes / Groups', location: 'Location',
+    concepts: 'Concepts', themes: 'Themes / Groups', location: 'Custodian',
     tirage: 'Edition', exhibitable: 'Exhibitable', image: 'Image',
     attributes: 'Attributes',
     searchFieldAll: 'All', searchFieldName: 'Name', searchFieldCity: 'City',

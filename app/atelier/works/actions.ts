@@ -15,21 +15,25 @@ export type SaveResult   = { error: string } | { ok: true; newId?: number }
 export type DeleteResult = { error: string } | { ok: true }
 export type ImageResult  = { error: string } | { ok: true; image: WorkImage }
 
-// ── Delete ────────────────────────────────────────────────────────────────
-
 export async function deleteWork(oid: number): Promise<DeleteResult> {
   const supabase = await createClient()
-
-  // Auth bypassed for development
-  const user = { id: 'dev' }
-  const isTeam = true
-
-  // Delete relations and themes first (no CASCADE on FK in these tables)
   await supabase.from('tblrelations').delete().or(`source_id.eq.${oid},target_id.eq.${oid}`)
   await supabase.from('OeuvreTheme').delete().eq('OeuvreID', oid)
-
   const { error } = await supabase.from('Oeuvres').delete().eq('OeuvreID', oid)
   if (error) return { error: error.message }
+  return { ok: true }
+}
+
+export async function deleteSelectedWorks(ids: number[]): Promise<DeleteResult> {
+  const supabase = await createClient()
+  // Delete all relations for all selected works
+  for (const id of ids) {
+    await supabase.from('tblrelations').delete().or(`source_id.eq.${id},target_id.eq.${id}`)
+    await supabase.from('OeuvreTheme').delete().eq('OeuvreID', id)
+  }
+  const { error } = await supabase.from('Oeuvres').delete().in('OeuvreID', ids)
+  if (error) return { error: error.message }
+  revalidatePath('/atelier')
   return { ok: true }
 }
 
@@ -117,12 +121,12 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       imageName = filename
     }
 
-    // Auto-seed history with "Atelier" origin entry dated from the work's year
-    const workYear   = année ? String(année).slice(0, 4) : new Date().getFullYear()
-    const originDate = `01/01/${workYear}`
-    const originEntry = `[${originDate}] Atelier`
-    const initialHistorique = historique
-      ? `${originEntry}\n${historique}`
+    // Provenance seeding
+    const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '/')
+    const originEntry = `[${dateStr}] Atelier`
+    const historiqueAppend = formData.get('historique_append') as string | null
+    const initialHistorique = historiqueAppend 
+      ? `${originEntry}\n${historiqueAppend}`
       : originEntry
 
     // INSERT
@@ -193,24 +197,10 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       .eq('OeuvreID', oid)
       .single()
 
-    // Build auto-history entry when status or contact/location changes
-    let finalHistorique = historique
-    const statusChanged  = statusId  !== null && current?.statusId  !== statusId
-    const contactChanged = contactId !== null && current?.ContactID !== contactId
-
-    if (statusChanged || contactChanged) {
-      const today       = new Date().toLocaleDateString('fr-FR')
-      const statusLabel = (formData.get('status_label') as string | null) ?? String(statusId ?? '')
-      const contactName = (formData.get('contact_name') as string | null) ?? ''
-
-      let parts: string[] = []
-      if (statusChanged)  parts.push(`Statut → ${statusLabel}`)
-      if (contactChanged) parts.push(`Localisation → ${contactName || String(contactId)}`)
-
-      const newEntry = `[${today}] ${parts.join(' · ')}`
-      finalHistorique = finalHistorique
-        ? `${finalHistorique}\n${newEntry}`
-        : newEntry
+    const historiqueAppend = formData.get('historique_append') as string | null
+    let finalHistorique = current?.Historique || ''
+    if (historiqueAppend) {
+        finalHistorique = finalHistorique ? `${finalHistorique}\n${historiqueAppend}` : historiqueAppend
     }
 
     // Upload new image if provided via form (separate from ImageManager flow)
@@ -224,9 +214,11 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       formUploadedNewImage = true
     }
 
-    // Build update payload. Only touch txtImageNameLink when the form itself
-    // uploaded a new file — otherwise ImageManager owns the cover, and
-    // overwriting with a stale image_existing snapshot would erase it.
+    const isGift       = formData.get('is_gift')       === '1'
+    const paymentDone  = formData.get('payment_received') === '1'
+    const isAnonymous  = formData.get('is_anonymous') === '1'
+
+    // Build update payload.
     const updatePayload: Record<string, unknown> = {
       Titre:        titre,
       Année:        annéeFinal,
@@ -254,7 +246,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       DateLivraison:     dateLivraison,
       StageProduction:   stageProduction,
       NeedsPhotograph:   needsPhotograph,
-      anonymity_level:   anonymityLevel,
+      anonymity_level:   isAnonymous ? 1 : 0,
     }
     if (formUploadedNewImage) {
       updatePayload.txtImageNameLink = imageName
@@ -266,17 +258,37 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
 
     // Replace themes: delete + reinsert
     await supabase.from('OeuvreTheme').delete().eq('OeuvreID', oid)
-
     if (themeIds.length > 0) {
-      const { error: themeErr } = await supabase.from('OeuvreTheme').insert(
-        themeIds.map((tid) => ({ OeuvreID: oid, ThemeID: tid })),
-      )
-      if (themeErr) return { error: themeErr.message }
+      await supabase.from('OeuvreTheme').insert(themeIds.map(tid => ({ OeuvreID: oid, ThemeID: tid })))
     }
+
+    // Replace working groups
+    const groupIds = (formData.getAll('groups') as string[]).filter(Boolean)
+    await saveWorkGroups(supabase, oid, groupIds)
 
     revalidatePath('/atelier')
     return { ok: true }
   }
+}
+
+async function saveWorkGroups(supabase: SupabaseClient, oid: number, gids: string[]) {
+  await supabase.from('working_group_work').delete().eq('oeuvre_id', oid)
+  if (gids.length > 0) {
+    await supabase.from('working_group_work').insert(gids.map(gid => ({ oeuvre_id: oid, group_id: gid })))
+  }
+}
+
+export async function createLookup(table: string, name: string): Promise<{ id: number } | { error: string }> {
+  const supabase = await createClient()
+  const idField   = table === 'Technique' ? 'TechniqueID' : (table === 'Support' ? 'SupportID' : 'FormatID')
+  const nameField = table === 'Technique' ? 'Technique' : (table === 'Support' ? 'Support' : 'Format')
+
+  const { data: maxRow } = await supabase.from(table).select(idField).order(idField, { ascending: false }).limit(1).single()
+  const nextId = (((maxRow as any)?.[idField] ?? 0) as number) + 1
+
+  const { data, error } = await supabase.from(table).insert({ [idField]: nextId, [nameField]: name }).select().single()
+  if (error) return { error: error.message }
+  return { id: (data as any)[idField] }
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────

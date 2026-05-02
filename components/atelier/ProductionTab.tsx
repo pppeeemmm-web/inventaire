@@ -97,6 +97,7 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
 
   async function markDone(oeuvreId: number, actionTypeId: number) {
     const actionType = actionTypes.find((at) => at.id === actionTypeId)
+    const o = oeuvresById.get(oeuvreId)
 
     // Mark the action row as done
     const { error } = await sb.from('work_action')
@@ -110,10 +111,23 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
     }
 
     // Write back to Oeuvres if this action has a linked field
-    if (actionType?.field_key) {
-      await sb.from('Oeuvres')
-        .update({ [actionType.field_key]: true })
-        .eq('OeuvreID', oeuvreId)
+    if (actionType?.field_key || actionTypeId === 6) {
+      const updates: any = {}
+      if (actionType?.field_key) updates[actionType.field_key] = true
+      
+      // Special case for Photographier (ID 6)
+      if (actionTypeId === 6) updates['NeedsPhotograph'] = false
+
+      // Check if we should transition to Available (StatusID 2)
+      // Rule: If (Catalogué OR finishing Cataloguer task) AND (NOT NeedsPhotograph OR finishing Photographier task)
+      const willBeCatalogued = (o?.Catalogué) || (actionTypeId === 9) // 9 is Cataloguer
+      const willNotNeedPhoto = (!o?.NeedsPhotograph) || (actionTypeId === 6) // 6 is Photographier
+      
+      if (willBeCatalogued && willNotNeedPhoto) {
+        updates['statusId'] = 2 // Available
+      }
+
+      await sb.from('Oeuvres').update(updates).eq('OeuvreID', oeuvreId)
     }
 
     // Remove from local state so card disappears immediately
@@ -141,7 +155,7 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
   }
 
   return (
-    <div style={{ padding: '16px 28px 0', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ padding: '16px 28px 0', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%', flex: 1 }}>
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, flexShrink: 0 }}>
@@ -195,8 +209,8 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
           display: 'flex',
           gap: 1,
           height: '100%', 
-          width: '100%',
-          minWidth: 'max-content', // Only scroll if it must
+          flex: 1,
+          alignItems: 'stretch',
         }}>
           {actionTypes.map((at) => {
             const ids   = actionMap.get(at.id) ?? new Set<number>()
@@ -206,7 +220,7 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
               return ids.has(o.OeuvreID) || (isPhotoColumn && needsPhoto)
             })
             return (
-              <div key={at.id} style={{ flex: '1 0 240px', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+              <div key={at.id} style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 120, height: '100%' }}>
                 <ActionColumn
                   actionType={at}
                   works={works}
@@ -275,7 +289,7 @@ function ActionColumn({
   }, [active, works, addQ])
 
   return (
-    <div style={{ background: 'var(--bg1)', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+    <div style={{ background: 'var(--bg1)', display: 'flex', flexDirection: 'column', minHeight: 0, width: '100%', flex: 1 }}>
       {/* Header */}
       <div style={{
         padding: '12px 10px 10px', borderBottom: '1px solid var(--bd)', flexShrink: 0,
@@ -283,8 +297,11 @@ function ActionColumn({
         background: 'var(--bg2)',
         borderTop: `3px solid ${actionType.color}`,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-          <span className="t-eyebrow" style={{ color: actionType.color, fontSize: 10, fontWeight: 700 }}>{actionType.label}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+          <span className="t-eyebrow" style={{ 
+            color: actionType.color, fontSize: 10, fontWeight: 700,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+          }}>{actionType.label}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span className="t-mono-sm" style={{ color: 'var(--tx3)' }}>{works.length}</span>
@@ -323,7 +340,15 @@ function ActionColumn({
               onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
             >
               <div style={{ width: 16, height: 16, background: 'var(--bg0)', flexShrink: 0, overflow: 'hidden' }}>
-                {o.txtImageNameLink && <img src={thumbUrl(o.txtImageNameLink, 48) ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />}
+                {o.txtImageNameLink && <img 
+                  src={thumbUrl(o.txtImageNameLink, 48) ?? ''} 
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                  alt="" 
+                  onError={(e) => {
+                    const full = imageUrl(o.txtImageNameLink) ?? ''
+                    if (full && e.currentTarget.src !== full) e.currentTarget.src = full
+                  }}
+                />}
               </div>
               <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {o.Titre ?? '—'}

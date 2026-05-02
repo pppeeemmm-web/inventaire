@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import type { Pin } from './WorldMapTab'
-import { thumbUrl } from '@/lib/data'
+import { thumbUrl, imageUrl } from '@/lib/data'
 
 interface Props {
   pins:           Pin[]
@@ -18,7 +18,15 @@ export function WorldMapInner({ pins, mapKey, onOpenContact }: Props) {
   // Expose callback to window so Leaflet popup onclick can call it
   useEffect(() => {
     ;(window as any).__pemOpenContact = onOpenContact ?? null
-    return () => { ;(window as any).__pemOpenContact = null }
+    // Fallback for broken thumbnails in Leaflet popups
+    ;(window as any).__pemHandleThumbError = (el: HTMLImageElement, path: string) => {
+      const full = imageUrl(path)
+      if (full && el.src !== full) el.src = full
+    }
+    return () => { 
+      ;(window as any).__pemOpenContact = null
+      ;(window as any).__pemHandleThumbError = null
+    }
   }, [onOpenContact])
 
   // ── Leaflet CSS ──────────────────────────────────────────────────────
@@ -113,6 +121,7 @@ export function WorldMapInner({ pins, mapKey, onOpenContact }: Props) {
           ? `<div style="display:flex;gap:3px;margin-top:6px;flex-wrap:wrap">
                ${pin.workThumbs.slice(0, 6).map((p) =>
                  `<img src="${mkThumb(p)}" width="44" height="44"
+                       onerror="window.__pemHandleThumbError(this, '${p}')"
                        style="object-fit:cover;border:1px solid #2a2a2a;flex-shrink:0;display:block" />`
                ).join('')}
              </div>`

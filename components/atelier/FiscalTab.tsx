@@ -218,9 +218,9 @@ export function FiscalTab({ oeuvres, contacts = [] }: Props) {
         padding: '0 28px', justifyContent: 'space-between',
       }}>
         <div style={{ display: 'flex' }}>
-          {navBtn('dashboard', 'Tableau de bord')}
-          {navBtn('expenses', `Dépenses (${expenses.length})`)}
-          {navBtn('framework', 'Cadre fiscal')}
+          {navBtn('dashboard', t('dashboard'))}
+          {navBtn('expenses', `${t('expenses')} (${expenses.length})`)}
+          {navBtn('framework', t('framework'))}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {/* Year selector */}
@@ -250,7 +250,7 @@ export function FiscalTab({ oeuvres, contacts = [] }: Props) {
 
           {/* Thresholds */}
           <div style={{ marginBottom: 24 }}>
-            <div className="t-label" style={{ marginBottom: 12 }}>Seuils réglementaires {year}</div>
+            <div className="t-label" style={{ marginBottom: 12 }}>{t('reminders')} {year}</div>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               <Badge label={`Micro-BNC : ${microOk ? 'Éligible' : 'Dépassé'}`} ok={microOk} />
               <Badge label={`TVA franchise : ${tvaOk ? 'Exonéré' : 'TVA due'}`} ok={tvaOk} />
@@ -266,7 +266,7 @@ export function FiscalTab({ oeuvres, contacts = [] }: Props) {
           {/* Expenses by category */}
           {catBreakdown.length > 0 && (
             <div style={{ marginBottom: 24 }}>
-              <div className="t-label" style={{ marginBottom: 12 }}>Dépenses par catégorie</div>
+              <div className="t-label" style={{ marginBottom: 12 }}>{t('expenses')} par catégorie</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {catBreakdown.map(([cat, total]) => {
                   const pct = totalDepenses > 0 ? total / totalDepenses : 0
@@ -383,7 +383,7 @@ export function FiscalTab({ oeuvres, contacts = [] }: Props) {
       {/* ── Tax framework reference ── */}
       {section === 'framework' && (
         <div style={{ flex: 1, overflow: 'auto', padding: '28px 32px', maxWidth: 760 }}>
-          <div className="t-label" style={{ marginBottom: 20 }}>Cadre fiscal — Artiste-auteur en France</div>
+          <div className="t-label" style={{ marginBottom: 20 }}>{t('taxFramework')}</div>
 
           <FrameworkBlock title="Régime Micro-BNC" accent>
             <FRow2 label="Condition" value={`CA ≤ ${fmt(MICRO_BNC_SEUIL)} € par an`} />

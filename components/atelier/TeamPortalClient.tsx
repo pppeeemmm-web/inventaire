@@ -261,7 +261,7 @@ export function TeamPortalClient({
   const showDock = selection.size > 0 && tab !== 'constellation'
 
   return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg0)' }}>
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', flexDirection: 'column', background: 'var(--bg0)', overflow: 'hidden' }}>
       
       <div style={{ flexShrink: 0, borderBottom: '1px solid var(--bd)', background: 'var(--bg1)', padding: '12px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -375,7 +375,7 @@ export function TeamPortalClient({
         )}
 
         {tab === 'production' && (
-          <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+          <div style={{ flex: 1, display: 'flex', minHeight: 0, width: '100%' }}>
             <ProductionTab
               oeuvres={oeuvres}
               tM={tM}
@@ -593,9 +593,18 @@ function OverviewTab({
   const [upcoming,  setUpcoming]  = useState<{ nom: string; date_fin: string; deadline_time: string | null; type: string }[]>([])
   const [reminders, setReminders] = useState<{ id: string; message: string; remind_at: string }[]>([])
   const [burningConcepts, setBurningConcepts] = useState<{ id: string; titre: string; energie: number }[]>([])
+  const [expenseTotal, setExpenseTotal] = useState(0)
 
   useEffect(() => {
     const sb = createClient()
+    // Fetch total expenses for this year
+    ;(sb.from('expense') as any)
+      .select('montant_ttc')
+      .eq('fiscal_year', thisYear)
+      .then(({ data }: { data: { montant_ttc: number }[] | null }) => {
+        if (data) setExpenseTotal(data.reduce((s, e) => s + (e.montant_ttc || 0), 0))
+      })
+
     ;(sb.from('suivi_process') as any)
       .select('nom, date_fin, deadline_time, type, statut')
       .not('date_fin', 'is', null)
@@ -649,13 +658,14 @@ function OverviewTab({
         {/* Row 1: Executive Stats */}
         <div>
           <div className="t-eyebrow" style={{ marginBottom: 24, opacity: 0.6 }}>Executive Summary</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 1, border: '1px solid var(--bd)', background: 'var(--bd)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 1, border: '1px solid var(--bd)', background: 'var(--bd)' }}>
             {[
               { l: t('works_cap'),                    v: oeuvres.length },
               { l: `${t('thisYear')} (${thisYear})`,  v: byYear },
               { l: t('exposable'),                    v: exposable },
               { l: t('catalogued'),                   v: catalogued },
               { l: t('priced'),                       v: withPrice },
+              { l: 'Total Value',                     v: `€ ${Math.round(oeuvres.reduce((s,o) => s+(o.Prix||0), 0)/1000)}k` },
             ].map(({ l, v }) => (
               <div key={l} style={{ padding: '20px 24px', background: 'var(--bg1)' }}>
                 <div className="stat">
@@ -664,6 +674,49 @@ function OverviewTab({
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Row 1.5: Financial Pulse */}
+        <div>
+          <div className="row gap-sm" style={{ justifyContent: 'space-between', marginBottom: 20 }}>
+            <div className="t-eyebrow" style={{ opacity: 0.6 }}>Financial Pulse · {thisYear}</div>
+            <button className="t-mono-sm" onClick={() => onGoTab('fiscal')} style={{ background: 'none', border: 'none', color: 'var(--ac)', cursor: 'pointer', fontSize: 9, letterSpacing: 1 }}>MANAGE REVENUES →</button>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40, padding: 24, background: 'var(--bg1)', border: '1px solid var(--bd)' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div className="t-label" style={{ fontSize: 10, color: 'var(--tx3)' }}>Income vs Expenses</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
+                  <span>Income (Sales)</span>
+                  <span style={{ color: 'var(--green)' }}>€ {Math.round(oeuvres.filter(o => o.statusId === 4 && o.Année?.startsWith(String(thisYear))).reduce((s,o) => s+(o.PrixFinal||o.Prix||0), 0)).toLocaleString()}</span>
+                </div>
+                <div style={{ height: 4, background: 'var(--bg2)', borderRadius: 2 }}>
+                  <div style={{ height: '100%', width: '100%', background: 'var(--green)', borderRadius: 2 }} />
+                </div>
+                
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginTop: 4 }}>
+                  <span>Expenses</span>
+                  <span style={{ color: 'var(--rust)' }}>€ {Math.round(expenseTotal).toLocaleString()}</span>
+                </div>
+                <div style={{ height: 4, background: 'var(--bg2)', borderRadius: 2 }}>
+                  <div style={{ height: '100%', width: `${Math.min(100, (expenseTotal / Math.max(1, oeuvres.filter(o => o.statusId === 4 && o.Année?.startsWith(String(thisYear))).reduce((s,o) => s+(o.PrixFinal||o.Prix||0), 0))) * 100)}%`, background: 'var(--rust)', borderRadius: 2 }} />
+                </div>
+              </div>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, borderLeft: '1px solid var(--bd)', paddingLeft: 40 }}>
+              <div className="t-label" style={{ fontSize: 10, color: 'var(--tx3)' }}>Cash Health</div>
+              <div style={{ display: 'flex', alignItems: 'end', gap: 12 }}>
+                <div style={{ fontSize: 32, fontWeight: 700 }}>
+                  € {Math.round(oeuvres.filter(o => o.statusId === 4 && o.Année?.startsWith(String(thisYear))).reduce((s,o) => s+(o.PrixFinal||o.Prix||0), 0) - expenseTotal).toLocaleString()}
+                </div>
+                <div className="t-mono-sm" style={{ marginBottom: 8, color: 'var(--tx3)' }}>NET BNC ESTIMATE</div>
+              </div>
+              <div style={{ fontSize: 9, color: 'var(--tx3)', fontStyle: 'italic' }}>
+                * Based on sold works delivered in {thisYear} and recorded expenses.
+              </div>
+            </div>
           </div>
         </div>
 

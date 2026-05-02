@@ -274,11 +274,11 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
 
       </div>
 
-      {/* ── Section: Localisation & notes ────────────────────────── */}
-      <SectionLabel>Localisation & notes</SectionLabel>
+      {/* ── Section: Custodian & notes ────────────────────────── */}
+      <SectionLabel>{t('location')} & {t('notes')}</SectionLabel>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '10px', marginBottom: 20 }}>
 
-        <FieldWrap label={t('locationDetail')} active={locDetail !== ''}>
+        <FieldWrap label={`${t('location')} (City, Venue…)`} active={locDetail !== ''}>
           <input className="input" type="text" style={{ width: '100%' }}
             placeholder={`${t('unchanged')} (ex. Marseille, France)`} value={locDetail}
             onChange={(e) => setLocDetail(e.target.value)} />

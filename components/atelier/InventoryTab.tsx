@@ -193,6 +193,7 @@ export function InventoryTab({
 }) {
   const { t } = useI18n()
 
+  const router = useRouter()
   const [q,           setQ]           = useState('')
   const [tech,        setTech]        = useState('all')
   const [support,     setSupport]     = useState('all')
@@ -517,6 +518,25 @@ export function InventoryTab({
         >
           {t('selectAll')} ({filtered.length})
         </button>
+
+        {/* Selection count & Delete */}
+        {selection.size > 0 && (
+          <div className="row gap-sm" style={{ borderLeft: '1px solid var(--bd)', paddingLeft: 12, marginLeft: 4 }}>
+            <button
+              onClick={async () => {
+                if (!confirm(`Confirmer la suppression de ${selection.size} œuvre(s) ?\nCette action est irréversible.`)) return
+                const { deleteSelectedWorks } = await import('@/app/atelier/works/actions')
+                const res = await deleteSelectedWorks(Array.from(selection))
+                if ('error' in res) alert(res.error)
+                else { setSelection(new Set()); router.refresh() }
+              }}
+              className="btn sm"
+              style={{ fontSize: 9, padding: '6px 12px', background: 'var(--rust)22', color: 'var(--rust)', border: '1px solid var(--rust)44' }}
+            >
+              Supprimer ({selection.size})
+            </button>
+          </div>
+        )}
 
         {/* Clear filters */}
         {(q || tech !== 'all' || support !== 'all' || status !== 'all' || filterTheme !== 'all' || filterGroup !== 'all' || criteria.length > 0) && (
@@ -940,7 +960,7 @@ function InvList({
             <th style={{ textAlign: 'left', padding: '0 6px', fontSize: 10, width: 60 }}>Année</th>
             <th style={{ textAlign: 'left', padding: '0 6px', fontSize: 10, width: 100 }}>Prix</th>
             <th style={{ textAlign: 'left', padding: '0 6px', fontSize: 10, width: 140 }}>Contact</th>
-            <th style={{ textAlign: 'left', padding: '0 6px', fontSize: 10, width: 160 }}>Localisation</th>
+            <th style={{ textAlign: 'left', padding: '0 6px', fontSize: 10, width: 160 }}>Custodian</th>
             <th style={{ textAlign: 'left', padding: '0 6px', fontSize: 10, width: 100 }}>{t('status')}</th>
           </tr>
         </thead>

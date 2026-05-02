@@ -17,6 +17,32 @@
 
 **Règles absolues édictées par l'artiste (Mai 2026) :**
 1. **Questions & Choix multiples** : Toujours poser des questions claires et offrir plusieurs choix d'architecture ou de design avant d'implémenter des fonctionnalités lourdes.
+2. **Logiques de Maître** : Toute modification doit être précédée d'une validation de la logique métier. En cas d'incohérence, l'IA doit demander clarification.
+3. **Tri Alphabétique** : Tous les dropdowns et listes de choix doivent être triés par ordre alphabétique systématiquement.
+4. **Dates Flexibles** : Le champ "Année" supporte les formats `YYYY`, `YYYY/MM`, ou `YYYY/MM/DD`.
+
+---
+
+## Architecture des Pipelines (Atelier)
+
+### ⚙️ Production
+- **Atelier** : Public OFF, Consignation/Vente bloquée.
+- **Catalogué** : Public OFF, Checkbox "Needs Photo" activée. Si la tâche photo est faite -> Passage auto à **Available**.
+- **Available** : Public ON, Logistique/Vente possible.
+
+### 🌍 Ownership & Logistique
+- **Pem (Artist Atelier)** : Lieu par défaut.
+- **Consignation** : Mise à jour via l'onglet Exposition ou via un "Consignment Order". Adresse auto-dérivée du contact.
+- **Sold/Gift** : Désactive le pipeline Production (Archive). Toggle Vente vs Cadeau. Si non payé -> Statut "Reserved".
+
+### 🛡️ Condition & Archive
+- **Damaged** : Génère auto une tâche de restauration dans l'onglet Production.
+- **Destroyed/Lost** : Verrouille l'ownership et force l'état Archive.
+
+### 💰 Financials
+- **Gift** : Champs prix/remise grisés.
+- **Sold** : Calcul du prix final, gestion du calendrier de paiement, génération de tâches de suivi si impayés.
+- **Anonymat** : Toggle pour masquer les données de l'acheteur sur les documents publics.
 2. **Pas de "Quick Fixes"** : Ne jamais utiliser de rustines (quick fixes), de données fantômes (ghost data), ou d'options "nucléaires" juste pour forcer un résultat à fonctionner temporairement. Les solutions doivent être propres, robustes et avec 95% de confiance.
 3. **Partenariat Actif** : Agir en tant que partenaire technique. Challenger les hypothèses, proposer des améliorations réalistes basées sur les standards de l'industrie, et alerter sur les faiblesses structurelles potentielles de toute nouvelle fonctionnalité.
 
@@ -206,6 +232,7 @@ supabase.from('Oeuvres').select('Statut, StatutID')
 - [ ] `Oeuvres.Poids` — 739 lignes, pas d'UI. Garder pour l'instant
 - [ ] `is_public` — 0 œuvres ont ce flag à true. Décider si on l'utilise ou si on le supprime
 - [ ] Évaluer `Fournitures` (173 lignes archivées dans `archive_Fournitures.csv` sur le Desktop)
+- [ ] **PipelineTab** : Refonte complète du formulaire de création/édition de processus (overhaul).
 
 ---
 

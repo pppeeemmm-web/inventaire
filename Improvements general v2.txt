@@ -1,0 +1,45 @@
+General remarks to input into the persistent memory:
+-You are the master of logics. If something seems illogical ask for clarification.
+-Before acting, coding, make sure the logics is correct, and finely understood by both of us.
+-would that be better to use a spreadsheet to describe the states and cascades?
+-You missed alphabetical sorting in the dropdowns
+-I want an answer for every question.
+-Do we need to display a calendar at the overview tab?
+
+Work form:
+-Année is displayed as YYYY/MM/DD fallback from left to right. ie 1999 or 1999/10 or 1999/10/10.
+-for digital: format could be multiple: tiff, jpg, avif, psd etc.
+-when entering new contact, full form needed.
+-I like the placement of themes (creative).
+-Groupes(business), is fine there.
+
+Prod pipeline:
+-what is the impact of exposable? And its necessity? Does that create noise for the pipelines?
+-When in atelier stage: media ready greyed out (ok), master public switched off, consignement not possible, sale or gift even less
+-when in catalogué stage: master public switched off,'needs hi res photograph' checkbox checked (does pipeline production task 'a photographier', if done, update in the workform to advance at catalogué stage? and mocve to next stage 'available'). consignement not possible, sale or gift even less
+-when available stage: media-ready box checked, master public switched on, 'needs photo' unchecked and greyed out(ok). If I uncheck media-ready it will downgrade to catalogué, which in turn, as expected will check 'Needs photograph" and production tab task etc. Consignement, sale and gift possible.
+-when archived, master public switch should be turned off and greyed out if owner is me - Pem. If not no change. Does that make sense? Ownership should be Pem (the artists archive) and greyed out.
+consignement not possible, sale or gift even less
+
+ownership & logistics pipeline:
+-when consignement stage, i like atelier/in transit, but transit is a phase, not a destination, how does "consigneé…" update? From the exhibition tab event (that would be correct).Both ways would leave a silent fail if not done through the exhibition process. How does current logistical update? Shows Location automatically of the event address? Do we need to issue a consignement order similar to a sales order to update that stage?
+-When Sold/gift, havea a toggle to indicate sale or gift. Until final payment is done, the work should be marked as reserved, and made unavailable from the sales point ( from production stage it remains available. Public switch still on
+-When sold/gift, production pipeline above should be greyed out and set to archive.
+-When change of ownership, auto login into 'historique should use Date without brace - Contact name - City/Country
+
+Condition:
+-does damaged trigger production tab pipeline tag?
+-Destroyed should lock into the last owner and grey out the ownership pipeline as well as the production pipeline into archive stage.
+-When lost, should do the same as above, unknown location but not unknowed owner.
+
+Financials:
+-If gift = greyed out
+-if sold = final price paid
+-payment plan sums and schedule, paid so far, to be paid, you chose. Should trigger a pipeline task
+
+Anonymity for the owner:
+-if sold/gift ask the owner in the quote/invoice. Here= toggle, hide the owner's data from the public. By default, no anonimity.
+
+
+
+

@@ -171,118 +171,175 @@ export function WorkDrawer({
           {o.Titre || t('untitled')}
         </h2>
 
-        {/* Metadata grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '7px 18px', fontSize: 11, marginBottom: 20 }}>
-
-          {/* ── Identité ────────────────────────────── */}
-          <div className="t-label">{t('year')}</div>
-          <div style={{ color: 'var(--tx2)' }}>{yearOf(o.Année) ?? '—'}</div>
-
-          <div className="t-label">{t('technique')}</div>
-          <div style={{ color: 'var(--tx2)' }}>{(o.Technique != null && tM[o.Technique]) || '—'}</div>
-
-          <div className="t-label">{t('support')}</div>
-          <div style={{ color: 'var(--tx2)' }}>{(o.Support != null && sM[o.Support]) || '—'}</div>
-
-          <div className="t-label">Présentation</div>
-          <div style={{ color: (o as any).PresentationID != null ? 'var(--tx2)' : 'var(--tx3)' }}>
-            {(o as any).PresentationID != null ? (pM[(o as any).PresentationID] ?? '—') : '—'}
-          </div>
-
-          <div className="t-label">{t('dimensions')}</div>
-          <div style={{ color: 'var(--tx2)' }}>{dims ?? '—'}</div>
-
-          {/* ── État ────────────────────────────────── */}
-          <div className="t-label" style={{ paddingTop: 10 }}>{t('status')}</div>
-          <div style={{ paddingTop: 10 }}><StatusChip s={st} /></div>
-
-          <div className="t-label">Contact</div>
-          <div style={{ color: 'var(--tx2)' }}>
-            {o.ContactID != null ? (cM[o.ContactID] ?? 'Pem') : 'Pem'}
-          </div>
-
-          {isLoan && (
-            <>
-              <div className="t-label">Retour</div>
-              <div style={{ color: (o as any).ReturnDate ? 'var(--ac)' : 'var(--tx3)' }}>
-                {fmtDate((o as any).ReturnDate) ?? '—'}
-              </div>
-            </>
-          )}
-
-          {/* ── Finance ─────────────────────────────── */}
-          <div className="t-label" style={{ paddingTop: 10 }}>{t('price')}</div>
-          <div style={{ color: 'var(--tx2)', paddingTop: 10 }}>
-            {(() => {
-              const p = (o as any).PrixFinal ?? o.Prix
-              if (p && p > 0) return `€\u202f${Number(p).toLocaleString('fr-FR')}`
-              return isSold ? '—' : t('priceOnRequest')
-            })()}
-          </div>
-
-          {(o as any).Discount != null && (o as any).Discount > 0 && (
-            <>
-              <div className="t-label">Remise</div>
-              <div style={{ color: 'var(--tx3)' }}>{(o as any).Discount}%</div>
-            </>
-          )}
-
-          {/* ── Flags ───────────────────────────────── */}
-          <div className="t-label" style={{ paddingTop: 10 }}>Exposable</div>
-          <div style={{ color: o.Exposable ? 'var(--sage)' : 'var(--tx3)', paddingTop: 10 }}>
-            {o.Exposable ? '✓' : '—'}
-          </div>
-
-          <div className="t-label">{t('framed')}</div>
-          <div style={{ color: o.Encadree ? 'var(--tx2)' : 'var(--tx3)' }}>{o.Encadree ? '✓' : '—'}</div>
+        {/* Metadata Pipes */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 28, marginBottom: 28 }}>
           
-          <div className="t-label">{t('catalogued')}</div>
-          <div style={{ color: o.Catalogué ? 'var(--tx2)' : 'var(--tx3)' }}>{o.Catalogué ? '✓' : '—'}</div>
+          {/* Pipe 1: Identity & Physicality */}
+          <section>
+            <SectionTitle title="Identity & Physicality" />
+            <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 18px', fontSize: 11 }}>
+              <div className="t-label">{t('year')}</div>
+              <div style={{ color: 'var(--tx2)' }}>{yearOf(o.Année) ?? '—'}</div>
 
-          <div className="t-label">{t('commission')}</div>
-          <div style={{ color: o.IsCommission ? 'var(--tx2)' : 'var(--tx3)' }}>{o.IsCommission ? '✓' : '—'}</div>
+              <div className="t-label">{t('technique')}</div>
+              <div style={{ color: 'var(--tx2)' }}>{(o.Technique != null && tM[o.Technique]) || '—'}</div>
 
-          {o.IsCommission && (
-            <>
-              <div className="t-label">{t('deliveryDate')}</div>
-              <div style={{ color: (o as any).DateLivraison ? 'var(--ac)' : 'var(--tx3)' }}>
-                {fmtDate((o as any).DateLivraison) ?? '—'}
+              <div className="t-label">{t('support')}</div>
+              <div style={{ color: 'var(--tx2)' }}>{(o.Support != null && sM[o.Support]) || '—'}</div>
+
+              <div className="t-label">{t('dimensions')}</div>
+              <div style={{ color: 'var(--tx2)' }}>{dims ?? '—'}</div>
+
+              <div className="t-label">Presentation</div>
+              <div style={{ color: (o as any).PresentationID != null ? 'var(--tx2)' : 'var(--tx3)' }}>
+                {(o as any).PresentationID != null ? (pM[(o as any).PresentationID] ?? '—') : '—'}
               </div>
-            </>
-          )}
 
-          {/* ── Curation ────────────────────────────── */}
-          <div className="t-label" style={{ paddingTop: 10 }}>{t('themes')}</div>
-          <div style={{ paddingTop: 10, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-            {(() => {
-              const ids = oeuvreThemeMap?.get?.(o.OeuvreID) ?? []
-              if (ids.length === 0) return <span style={{ color: 'var(--tx3)' }}>—</span>
-              return ids.map(tid => (
-                <span key={tid} style={{ 
-                  fontSize: 9, background: 'var(--bg0)', border: '1px solid var(--bd)', 
-                  padding: '2px 8px', color: 'var(--tx2)', borderRadius: 2 
-                }}>
-                  {thM[tid] ?? tid}
-                </span>
-              ))
-            })()}
-          </div>
+              <div className="t-label">{t('themes')}</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {(() => {
+                  const ids = oeuvreThemeMap?.get?.(o.OeuvreID) ?? []
+                  if (ids.length === 0) return <span style={{ color: 'var(--tx3)' }}>—</span>
+                  return ids.map(tid => (
+                    <span key={tid} style={{ 
+                      fontSize: 9, background: 'var(--bg0)', border: '1px solid var(--bd)', 
+                      padding: '2px 8px', color: 'var(--tx2)', borderRadius: 2 
+                    }}>
+                      {thM[tid] ?? tid}
+                    </span>
+                  ))
+                })()}
+              </div>
+            </div>
+          </section>
 
-          <div className="t-label">{t('workingGroups')}</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-            {(() => {
-              const ids = oeuvreGroupMap?.get?.(o.OeuvreID) ?? []
-              if (ids.length === 0) return <span style={{ color: 'var(--tx3)' }}>—</span>
-              return ids.map(gid => (
-                <span key={gid} style={{ 
-                  fontSize: 9, background: 'color-mix(in srgb, var(--ac) 10%, var(--bg0))', 
-                  border: '1px solid var(--bd)', padding: '2px 8px', color: 'var(--tx)', borderRadius: 2 
-                }}>
-                  {groupNameMap[gid] ?? gid}
-                </span>
-              ))
-            })()}
-          </div>
+          {/* Pipe 2: Logistics & Ownership */}
+          <section>
+            <SectionTitle title="Logistics & Ownership" />
+            <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 18px', fontSize: 11 }}>
+              <div className="t-label">{t('contact')}</div>
+              <div style={{ color: 'var(--tx2)' }}>
+                {o.ContactID != null ? (cM[o.ContactID] ?? 'Pem') : 'Pem'}
+              </div>
+
+              <div className="t-label">{t('localisation')}</div>
+              <div style={{ color: 'var(--tx2)' }}>
+                {o.LocalisationID != null ? (cM[o.LocalisationID] ?? 'Atelier') : 'Atelier'}
+              </div>
+
+              {isLoan && (
+                <>
+                  <div className="t-label">Retour prévu</div>
+                  <div style={{ color: (o as any).ReturnDate ? 'var(--ac)' : 'var(--tx3)' }}>
+                    {fmtDate((o as any).ReturnDate) ?? '—'}
+                  </div>
+                </>
+              )}
+
+              <div className="t-label">{t('workingGroups')}</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {(() => {
+                  const ids = oeuvreGroupMap?.get?.(o.OeuvreID) ?? []
+                  if (ids.length === 0) return <span style={{ color: 'var(--tx3)' }}>—</span>
+                  return ids.map(gid => (
+                    <span key={gid} style={{ 
+                      fontSize: 9, background: 'color-mix(in srgb, var(--ac) 10%, var(--bg0))', 
+                      border: '1px solid var(--bd)', padding: '2px 8px', color: 'var(--tx)', borderRadius: 2 
+                    }}>
+                      {groupNameMap[gid] ?? gid}
+                    </span>
+                  ))
+                })()}
+              </div>
+            </div>
+          </section>
+
+          {/* Pipe 3: Production & Readiness */}
+          <section>
+            <SectionTitle title="Production & Readiness" />
+            <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 18px', fontSize: 11 }}>
+              <div className="t-label">{t('status')}</div>
+              <div><StatusChip s={st} /></div>
+
+              <div className="t-label">Prod. Stage</div>
+              <div style={{ color: 'var(--tx2)' }}>{o.StageProduction || '—'}</div>
+
+              <div className="t-label">{t('catalogued')}</div>
+              <div style={{ color: o.Catalogué ? 'var(--sage)' : 'var(--tx3)' }}>{o.Catalogué ? '✓' : '—'}</div>
+
+              <div className="t-label">{t('framed')}</div>
+              <div style={{ color: o.Encadree ? 'var(--tx2)' : 'var(--tx3)' }}>{o.Encadree ? '✓' : '—'}</div>
+
+              <div className="t-label">Exposable</div>
+              <div style={{ color: o.Exposable ? 'var(--sage)' : 'var(--tx3)' }}>
+                {o.Exposable ? '✓' : '—'}
+              </div>
+            </div>
+
+            {/* Pipeline Steps inside Production Pipe */}
+            <div style={{ marginTop: 16, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 8 }}>
+              {pipeline.map(at => {
+                const isDone = workActions[at.id] ?? false
+                return (
+                  <div
+                    key={at.id}
+                    onClick={() => toggleAction(at)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
+                      background: isDone ? 'var(--bg2)' : 'var(--bg0)',
+                      border: `1px solid ${isDone ? at.color : 'var(--bd)'}`,
+                      cursor: 'pointer', transition: 'all 0.1s ease'
+                    }}
+                  >
+                    <div style={{
+                      width: 12, height: 12, borderRadius: 2, border: `1px solid ${at.color}`,
+                      background: isDone ? at.color : 'transparent',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--bg0)', fontSize: 9, fontWeight: 700
+                    }}>
+                      {isDone && '✓'}
+                    </div>
+                    <span style={{ fontSize: 10, color: isDone ? 'var(--tx)' : 'var(--tx3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {at.label}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+
+          {/* Pipe 4: Financials & Sales */}
+          <section>
+            <SectionTitle title="Financials & Sales" />
+            <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 18px', fontSize: 11 }}>
+              <div className="t-label">{t('price')}</div>
+              <div style={{ color: 'var(--tx2)' }}>
+                {(() => {
+                  const p = (o as any).PrixFinal ?? o.Prix
+                  if (p && p > 0) return `€\u202f${Number(p).toLocaleString('fr-FR')}`
+                  return isSold ? '—' : t('priceOnRequest')
+                })()}
+              </div>
+
+              {(o as any).Discount != null && (o as any).Discount > 0 && (
+                <>
+                  <div className="t-label">Discount</div>
+                  <div style={{ color: 'var(--rust)' }}>{(o as any).Discount}%</div>
+                </>
+              )}
+
+              <div className="t-label">{t('commission')}</div>
+              <div style={{ color: o.IsCommission ? 'var(--tx2)' : 'var(--tx3)' }}>{o.IsCommission ? '✓' : '—'}</div>
+
+              {o.IsCommission && (
+                <>
+                  <div className="t-label">Target Delivery</div>
+                  <div style={{ color: (o as any).DateLivraison ? 'var(--ac)' : 'var(--tx3)' }}>
+                    {fmtDate((o as any).DateLivraison) ?? '—'}
+                  </div>
+                </>
+              )}
+            </div>
+          </section>
         </div>
 
         {/* Comments */}
@@ -291,48 +348,11 @@ export function WorkDrawer({
             fontSize: 11, color: 'var(--tx2)', lineHeight: 1.7,
             padding: '16px 0',
             borderTop: '1px solid var(--bd)',
-            marginBottom: 0,
+            marginBottom: 20,
           }}>
             {o.Commentaires}
           </div>
         )}
-
-        {/* Pipeline / Production Section */}
-        <div style={{ borderTop: '1px solid var(--bd)', padding: '16px 0', marginBottom: 20 }}>
-          <div className="t-eyebrow" style={{ color: 'var(--tx3)', marginBottom: 12 }}>Production Pipeline</div>
-          {loadingPipe && <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>Chargement…</div>}
-          {!loadingPipe && pipeline.length === 0 && <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>Aucun type d'action configuré.</div>}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 8 }}>
-            {pipeline.map(at => {
-              const isDone = workActions[at.id] ?? false
-              return (
-                <div
-                  key={at.id}
-                  onClick={() => toggleAction(at)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
-                    background: isDone ? 'var(--bg2)' : 'var(--bg0)',
-                    border: `1px solid ${isDone ? at.color : 'var(--bd)'}`,
-                    cursor: 'pointer', transition: 'all 0.1s ease'
-                  }}
-                  onMouseEnter={e => !isDone && (e.currentTarget.style.borderColor = at.color)}
-                  onMouseLeave={e => !isDone && (e.currentTarget.style.borderColor = 'var(--bd)')}
-                >
-                  <div style={{
-                    width: 12, height: 12, borderRadius: 2, border: `1px solid ${at.color}`,
-                    background: isDone ? at.color : 'transparent',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--bg0)', fontSize: 9, fontWeight: 700
-                  }}>
-                    {isDone && '✓'}
-                  </div>
-                  <span style={{ fontSize: 10, color: isDone ? 'var(--tx)' : 'var(--tx3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {at.label}
-                  </span>
-                </div>
-              )
-            })}
-          </div>
-        </div>
 
         {/* Actions */}
         <div style={{ marginTop: 'auto', paddingTop: 16 }}>
@@ -381,6 +401,19 @@ export function WorkDrawer({
           )}
         </div>
       </div>
+    </div>
+  )
+}
+
+function SectionTitle({ title }: { title: string }) {
+  return (
+    <div style={{
+      fontSize: 8, letterSpacing: '0.12em', textTransform: 'uppercase',
+      color: 'var(--tx3)', marginBottom: 12, paddingBottom: 4,
+      borderBottom: '1px solid var(--bd2)', display: 'flex', alignItems: 'center', gap: 8
+    }}>
+      <span style={{ width: 4, height: 4, background: 'var(--ac)' }} />
+      {title}
     </div>
   )
 }
