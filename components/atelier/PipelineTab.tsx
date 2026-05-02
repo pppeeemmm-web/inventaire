@@ -251,12 +251,17 @@ export function PipelineTab() {
   }, [processes])
 
   async function tickEtape(etapeId: string) {
-    await (createClient().from('suivi_etape') as any).update({ statut: 'fait' }).eq('id', etapeId)
+    const { error } = await (createClient().from('suivi_etape') as any).update({ statut: 'fait' }).eq('id', etapeId)
+    if (error) alert("Erreur: " + error.message)
     await load()
   }
   async function cycleEtapeStatut(etapeId: string, current: EtapeStatut) {
     const next = nextEtapeStatut(current)
-    await (createClient().from('suivi_etape') as any).update({ statut: next }).eq('id', etapeId)
+    const { error } = await (createClient().from('suivi_etape') as any).update({ statut: next }).eq('id', etapeId)
+    if (error) {
+      alert("Erreur: " + error.message)
+      return
+    }
     // Optimistic patch — drawer re-renders immediately without a round-trip
     setProcesses(prev => prev.map(p => ({
       ...p,
@@ -264,7 +269,11 @@ export function PipelineTab() {
     })))
   }
   async function toggleOverdueOverride(etapeId: string, current: boolean) {
-    await (createClient().from('suivi_etape') as any).update({ overdue_override: !current }).eq('id', etapeId)
+    const { error } = await (createClient().from('suivi_etape') as any).update({ overdue_override: !current }).eq('id', etapeId)
+    if (error) {
+      alert("Erreur: " + error.message)
+      return
+    }
     setProcesses(prev => prev.map(p => ({
       ...p,
       etapes: p.etapes.map(e => e.id === etapeId ? { ...e, overdue_override: !current } : e),
@@ -273,7 +282,8 @@ export function PipelineTab() {
   async function cycleStatut(processId: string, current: ProcessStatut) {
     const order: ProcessStatut[] = ['en_cours', 'gagne', 'termine', 'perdu', 'annule']
     const next = order[(order.indexOf(current) + 1) % order.length]
-    await (createClient().from('suivi_process') as any).update({ statut: next }).eq('id', processId)
+    const { error } = await (createClient().from('suivi_process') as any).update({ statut: next }).eq('id', processId)
+    if (error) alert("Erreur: " + error.message)
     await load()
   }
 

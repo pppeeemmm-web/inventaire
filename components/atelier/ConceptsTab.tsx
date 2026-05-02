@@ -225,6 +225,18 @@ function ConceptCard({ concept, onUpdated, onDeleted }: {
     }
   }
 
+  async function handleDelete() {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer cette idée ?')) return
+    setBusy(true)
+    const res = await deleteConcept(concept.id)
+    setBusy(false)
+    if (res && 'error' in res) {
+      alert(res.error)
+    } else {
+      onDeleted(concept.id)
+    }
+  }
+
   const isAbandoned  = concept.statut === 'abandonne'
   const isBecameWork = concept.statut === 'devenu_oeuvre'
 

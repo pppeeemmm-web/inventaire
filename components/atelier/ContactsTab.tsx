@@ -48,6 +48,38 @@ interface ContactAddress {
   ville:       string | null
   pays:        string | null
   position:    number
+  shipping_notes?: string | null
+}
+
+interface ContactEmail {
+  id?: number
+  contact_id: number
+  email: string
+  label: string
+  is_primary: boolean
+}
+
+interface ContactPhone {
+  id?: number
+  contact_id: number
+  country_code?: string | null
+  phone: string
+  label: string
+  is_primary: boolean
+}
+
+interface ContactWebsite {
+  id?: number
+  contact_id: number
+  url: string
+  label: string
+}
+
+interface ContactSocial {
+  id?: number
+  contact_id: number
+  platform: string
+  handle: string
 }
 
 interface Props {
@@ -87,8 +119,12 @@ export function ContactsTab({ contacts: initialContacts, oeuvres }: Props) {
 
   // Full contact data fetched client-side (extra fields not in server prop)
   const [extra,      setExtra]      = useState<Record<number, ContactRow>>({})
-  // Multiple addresses per contact
+  // Multiple data per contact
   const [addresses,  setAddresses]  = useState<Record<number, ContactAddress[]>>({})
+  const [emails,     setEmails]     = useState<Record<number, ContactEmail[]>>({})
+  const [phones,     setPhones]     = useState<Record<number, ContactPhone[]>>({})
+  const [websites,   setWebsites]   = useState<Record<number, ContactWebsite[]>>({})
+  const [socials,    setSocials]    = useState<Record<number, ContactSocial[]>>({})
 
   // List of all roles from tblRole
   const [allRoles,   setAllRoles]   = useState<string[]>([])
@@ -111,7 +147,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres }: Props) {
         setExtra(map)
       })
     ;(sb.from('contact_addresses') as any)
-      .select('id, contact_id, label, adresse, code_postal, ville, pays, position')
+      .select('id, contact_id, label, adresse, code_postal, ville, pays, position, shipping_notes')
       .order('position')
       .then(({ data }: { data: ContactAddress[] | null }) => {
         if (!data) return
@@ -122,6 +158,45 @@ export function ContactsTab({ contacts: initialContacts, oeuvres }: Props) {
         })
         setAddresses(map)
       })
+    
+    // Fetch all the new multi-tables
+    ;(sb.from('contact_emails') as any).select('*').then(({ data }: any) => {
+      if (!data) return
+      const map: Record<number, ContactEmail[]> = {}
+      data.forEach((x: any) => {
+        if (!map[x.contact_id]) map[x.contact_id] = []
+        map[x.contact_id].push(x)
+      })
+      setEmails(map)
+    })
+    ;(sb.from('contact_phones') as any).select('*').then(({ data }: any) => {
+      if (!data) return
+      const map: Record<number, ContactPhone[]> = {}
+      data.forEach((x: any) => {
+        if (!map[x.contact_id]) map[x.contact_id] = []
+        map[x.contact_id].push(x)
+      })
+      setPhones(map)
+    })
+    ;(sb.from('contact_websites') as any).select('*').then(({ data }: any) => {
+      if (!data) return
+      const map: Record<number, ContactWebsite[]> = {}
+      data.forEach((x: any) => {
+        if (!map[x.contact_id]) map[x.contact_id] = []
+        map[x.contact_id].push(x)
+      })
+      setWebsites(map)
+    })
+    ;(sb.from('contact_socials') as any).select('*').then(({ data }: any) => {
+      if (!data) return
+      const map: Record<number, ContactSocial[]> = {}
+      data.forEach((x: any) => {
+        if (!map[x.contact_id]) map[x.contact_id] = []
+        map[x.contact_id].push(x)
+      })
+      setSocials(map)
+    })
+
     // Fetch all roles to ensure filter dropdown FIS complete
     ;(sb.from('tblRole') as any)
       .select('Nom')
@@ -217,18 +292,26 @@ export function ContactsTab({ contacts: initialContacts, oeuvres }: Props) {
     return extra[id]?.Ville ?? '—'
   }
 
-  const handleCreated = useCallback((c: ContactRow, addrs: ContactAddress[]) => {
+  const handleCreated = useCallback((c: ContactRow, addrs: ContactAddress[], e: ContactEmail[], p: ContactPhone[], w: ContactWebsite[], s: ContactSocial[]) => {
     setContacts((prev) => [...prev, c])
     setExtra((prev) => ({ ...prev, [c.ContactID]: c }))
     setAddresses((prev) => ({ ...prev, [c.ContactID]: addrs }))
+    setEmails((prev) => ({ ...prev, [c.ContactID]: e }))
+    setPhones((prev) => ({ ...prev, [c.ContactID]: p }))
+    setWebsites((prev) => ({ ...prev, [c.ContactID]: w }))
+    setSocials((prev) => ({ ...prev, [c.ContactID]: s }))
     setActiveId(c.ContactID)
     setEditing(null)
   }, [])
 
-  const handleUpdated = useCallback((c: ContactRow, addrs: ContactAddress[]) => {
+  const handleUpdated = useCallback((c: ContactRow, addrs: ContactAddress[], e: ContactEmail[], p: ContactPhone[], w: ContactWebsite[], s: ContactSocial[]) => {
     setContacts((prev) => prev.map((x) => x.ContactID === c.ContactID ? { ...x, ...c } : x))
     setExtra((prev) => ({ ...prev, [c.ContactID]: { ...prev[c.ContactID], ...c } }))
     setAddresses((prev) => ({ ...prev, [c.ContactID]: addrs }))
+    setEmails((prev) => ({ ...prev, [c.ContactID]: e }))
+    setPhones((prev) => ({ ...prev, [c.ContactID]: p }))
+    setWebsites((prev) => ({ ...prev, [c.ContactID]: w }))
+    setSocials((prev) => ({ ...prev, [c.ContactID]: s }))
     setEditing(null)
   }, [])
 
@@ -242,6 +325,53 @@ export function ContactsTab({ contacts: initialContacts, oeuvres }: Props) {
     if (next.has(id)) next.delete(id)
     else next.add(id)
     setSelected(next)
+  }
+
+  const [batchEditing, setBatchEditing] = useState(false)
+
+  async function handleBatchSave(data: { Role?: string; Actif?: boolean; Notes?: string; appendNotes?: boolean }) {
+    setBusy(true)
+    const sb = createClient()
+    const ids = Array.from(selected)
+    
+    try {
+      const updates: Record<number, any> = {}
+      for (const id of ids) {
+        const update: any = {}
+        if (data.Role !== undefined) update.Role = data.Role === 'Encadreur' ? 'Framer' : data.Role
+        if (data.Actif !== undefined) update.Actif = data.Actif
+        if (data.Notes !== undefined) {
+          if (data.appendNotes) {
+            const currentNotes = extra[id]?.Notes || ''
+            update.Notes = currentNotes ? `${currentNotes}\n${data.Notes}` : data.Notes
+          } else {
+            update.Notes = data.Notes
+          }
+        }
+
+        const { error } = await (sb.from('Contact') as any).update(update).eq('ContactID', id)
+        if (error) throw error
+        updates[id] = update
+      }
+
+      // Bulk local update
+      setContacts(prev => prev.map(c => updates[c.ContactID] ? { ...c, ...updates[c.ContactID] } : c))
+      setExtra(prev => {
+        const next = { ...prev }
+        Object.entries(updates).forEach(([id, u]) => {
+          const numId = parseInt(id)
+          next[numId] = { ...next[numId], ...u }
+        })
+        return next
+      })
+
+      setSelected(new Set())
+      setBatchEditing(false)
+    } catch (e) {
+      alert(String(e))
+    } finally {
+      setBusy(false)
+    }
   }
 
   async function handleDeleteSelected() {
@@ -274,9 +404,23 @@ export function ContactsTab({ contacts: initialContacts, oeuvres }: Props) {
         <ContactEditModal
           contact={editing === 'new' ? null : { ...editing, ...extra[editing.ContactID] }}
           initialAddresses={editing === 'new' ? [] : (addresses[(editing as ContactRow).ContactID] ?? [])}
+          initialEmails={editing === 'new' ? [] : (emails[(editing as ContactRow).ContactID] ?? [])}
+          initialPhones={editing === 'new' ? [] : (phones[(editing as ContactRow).ContactID] ?? [])}
+          initialWebsites={editing === 'new' ? [] : (websites[(editing as ContactRow).ContactID] ?? [])}
+          initialSocials={editing === 'new' ? [] : (socials[(editing as ContactRow).ContactID] ?? [])}
           onClose={() => setEditing(null)}
           onCreated={handleCreated}
           onUpdated={handleUpdated}
+        />
+      )}
+
+      {batchEditing && (
+        <BatchEditModal
+          count={selected.size}
+          roleOptions={roles}
+          onClose={() => setBatchEditing(false)}
+          onSave={handleBatchSave}
+          busy={busy}
         />
       )}
 
@@ -307,9 +451,14 @@ export function ContactsTab({ contacts: initialContacts, oeuvres }: Props) {
         </select>
 
         {selected.size > 0 && (
-          <button className="btn sm" onClick={handleDeleteSelected} disabled={busy} style={{ background: 'var(--rust)', borderColor: 'var(--rust)' }}>
-            {t('deleteSelected')} ({selected.size})
-          </button>
+          <div style={{ display: 'flex', gap: 4 }}>
+            <button className="btn sm" onClick={() => setBatchEditing(true)} disabled={busy} style={{ background: 'var(--ac)', borderColor: 'var(--ac)' }}>
+              Modifier ({selected.size})
+            </button>
+            <button className="btn sm" onClick={handleDeleteSelected} disabled={busy} style={{ background: 'var(--rust)', borderColor: 'var(--rust)' }}>
+              Suppr.
+            </button>
+          </div>
         )}
         {/* Sort toggles */}
         <div style={{ display: 'flex', border: '1px solid var(--bd)', flexShrink: 0 }}>
@@ -396,6 +545,10 @@ export function ContactsTab({ contacts: initialContacts, oeuvres }: Props) {
           <ContactDetail
             contact={{ ...active, ...extra[active.ContactID] }}
             addresses={addresses[active.ContactID] ?? []}
+            emails={emails[active.ContactID] ?? []}
+            phones={phones[active.ContactID] ?? []}
+            websites={websites[active.ContactID] ?? []}
+            socials={socials[active.ContactID] ?? []}
             workCounts={workCounts}
             oeuvres={oeuvres}
             onEdit={() => setEditing({ ...active, ...extra[active.ContactID] })}
@@ -412,10 +565,14 @@ export function ContactsTab({ contacts: initialContacts, oeuvres }: Props) {
 // ── Detail panel ─────────────────────────────────────────────────────
 
 function ContactDetail({
-  contact, addresses, workCounts, oeuvres, onEdit, onDelete,
+  contact, addresses, emails, phones, websites, socials, workCounts, oeuvres, onEdit, onDelete,
 }: {
   contact:    ContactRow
   addresses:  ContactAddress[]
+  emails:     ContactEmail[]
+  phones:     ContactPhone[]
+  websites:   ContactWebsite[]
+  socials:    ContactSocial[]
   workCounts: { owner: Record<number, number>; loc: Record<number, number>; buyer: Record<number, number> }
   oeuvres:    Oeuvre[]
   onEdit:     () => void
@@ -426,23 +583,30 @@ function ContactDetail({
   const works = oeuvres.filter((o) => o.ContactID === id)
   const locs  = oeuvres.filter((o) => o.LocalisationID === id)
   const buys  = oeuvres.filter((o) => o.AcheteurID === id)
-
-  function Row({ label, value, href }: { label: string; value: React.ReactNode; href?: string }) {
+  
+  function Row({ label, value, href, icon }: { label: string; value: React.ReactNode; href?: string; icon?: string }) {
     if (!value && value !== 0) return null
     return (
       <div style={{ display: 'flex', gap: 8, padding: '5px 0', borderBottom: '1px solid var(--bd)' }}>
-        <div className="t-mono-sm" style={{ color: 'var(--tx3)', minWidth: 110, flexShrink: 0 }}>{label}</div>
-        <div style={{ fontSize: 11, color: 'var(--tx)', wordBreak: 'break-word' }}>
+        <div className="t-mono-sm" style={{ color: 'var(--tx3)', minWidth: 110, flexShrink: 0 }}>
+          {icon && <span style={{ marginRight: 4, opacity: 0.7 }}>{icon}</span>}
+          {label}
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--tx)', wordBreak: 'break-word', flex: 1 }}>
           {href
-            ? <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--ac)' }}>{value}</a>
+            ? <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--ac)', textDecoration: 'none' }}>{value}</a>
             : value}
         </div>
       </div>
     )
   }
 
-  const phone1 = fmtPhone(contact.IndicatifPays1, contact.Téléphone1)
-  const phone2 = fmtPhone(contact.IndicatifPays2, contact.Téléphone2)
+  // Fallback to legacy single fields if new lists are empty
+  const hasMultiContact = emails.length > 0 || phones.length > 0 || websites.length > 0 || socials.length > 0
+  const legacyEmail = contact.Email
+  const legacyPhone1 = fmtPhone(contact.IndicatifPays1, contact.Téléphone1)
+  const legacyPhone2 = fmtPhone(contact.IndicatifPays2, contact.Téléphone2)
+  const legacyWeb = contact.Website
 
   return (
     <div style={{ width: 340, flexShrink: 0, overflow: 'auto', padding: 20 }}>
@@ -473,19 +637,34 @@ function ContactDetail({
       </div>
 
       {/* Contact details */}
-      {(contact.Email || phone1 || phone2 || contact.Website) && (
-        <div style={{ marginBottom: 12 }}>
-          <div className="t-label" style={{ marginBottom: 4 }}>Contact</div>
-          {contact.Email && (
-            <Row label="Email" value={contact.Email} href={`mailto:${contact.Email}`} />
-          )}
-          {phone1 && <Row label="Tél. 1" value={phone1} href={`tel:${phone1.replace(/\s/g, '')}`} />}
-          {phone2 && <Row label="Tél. 2" value={phone2} href={`tel:${phone2.replace(/\s/g, '')}`} />}
-          {contact.Website && (
-            <Row label="Web" value={contact.Website} href={contact.Website.startsWith('http') ? contact.Website : `https://${contact.Website}`} />
-          )}
-        </div>
-      )}
+      <div style={{ marginBottom: 12 }}>
+        <div className="t-label" style={{ marginBottom: 4 }}>Contact</div>
+        
+        {emails.length > 0 ? (
+          emails.map((e, idx) => <Row key={idx} label={e.label || 'Email'} value={e.email} href={`mailto:${e.email}`} icon="✉" />)
+        ) : legacyEmail && (
+          <Row label="Email" value={legacyEmail} href={`mailto:${legacyEmail}`} icon="✉" />
+        )}
+
+        {phones.length > 0 ? (
+          phones.map((p, idx) => (
+            <Row key={idx} label={p.label || 'Tél.'} value={fmtPhone(p.country_code, p.phone)} href={`tel:${p.phone}`} icon="☏" />
+          ))
+        ) : (legacyPhone1 || legacyPhone2) && (
+          <>
+            {legacyPhone1 && <Row label="Tél. 1" value={legacyPhone1} href={`tel:${legacyPhone1.replace(/\s/g, '')}`} icon="☏" />}
+            {legacyPhone2 && <Row label="Tél. 2" value={legacyPhone2} href={`tel:${legacyPhone2.replace(/\s/g, '')}`} icon="☏" />}
+          </>
+        )}
+
+        {websites.length > 0 ? (
+          websites.map((w, idx) => (
+            <Row key={idx} label={w.label || 'Web'} value={w.url} href={w.url.startsWith('http') ? w.url : `https://${w.url}`} icon="🌐" />
+          ))
+        ) : legacyWeb && (
+          <Row label="Web" value={legacyWeb} href={legacyWeb.startsWith('http') ? legacyWeb : `https://${legacyWeb}`} icon="🌐" />
+        )}
+      </div>
 
       {/* Multiple addresses */}
       {addresses.length > 0 ? (
@@ -501,15 +680,21 @@ function ContactDetail({
             ].filter(Boolean)
             if (parts.length === 0) return null
             return (
-              <div key={addr.id ?? i} style={{ marginBottom: i < addresses.length - 1 ? 10 : 0 }}>
-                {addresses.length > 1 && addr.label && (
-                  <div className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 9, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 2 }}>
-                    {addr.label}
+              <div key={addr.id ?? i} style={{ marginBottom: i < addresses.length - 1 ? 14 : 0, padding: '4px 8px', background: 'var(--bg1)', borderRadius: 2 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                  <div className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 9, letterSpacing: 1, textTransform: 'uppercase' }}>
+                    {addr.label || 'Principal'}
                   </div>
-                )}
+                </div>
                 <div style={{ fontSize: 11, color: 'var(--tx)', lineHeight: 1.6 }}>
                   {parts.map((line, li) => <div key={li}>{line}</div>)}
                 </div>
+                {addr.shipping_notes && (
+                  <div style={{ marginTop: 6, paddingTop: 4, borderTop: '1px dashed var(--bd)', fontSize: 10, color: 'var(--ac)', fontStyle: 'italic' }}>
+                    <span style={{ fontWeight: 600, textTransform: 'uppercase', fontSize: 8 }}>Logistique : </span>
+                    {addr.shipping_notes}
+                  </div>
+                )}
               </div>
             )
           })}
@@ -532,24 +717,24 @@ function ContactDetail({
       ) : null}
 
       {/* Social */}
-      {(contact.Instagram || contact.LinkedIn || contact.Facebook || contact.Twitter) && (
+      {(socials.length > 0 || contact.Instagram || contact.LinkedIn || contact.Facebook || contact.Twitter) && (
         <div style={{ marginBottom: 12 }}>
           <div className="t-label" style={{ marginBottom: 4 }}>Réseaux</div>
-          {contact.Instagram && (
-            <Row label="Instagram" value={contact.Instagram}
-              href={contact.Instagram.startsWith('http') ? contact.Instagram : `https://instagram.com/${contact.Instagram.replace('@', '')}`} />
-          )}
-          {contact.LinkedIn && (
-            <Row label="LinkedIn" value={contact.LinkedIn}
-              href={contact.LinkedIn.startsWith('http') ? contact.LinkedIn : `https://linkedin.com/in/${contact.LinkedIn}`} />
-          )}
-          {contact.Facebook && (
-            <Row label="Facebook" value={contact.Facebook}
-              href={contact.Facebook.startsWith('http') ? contact.Facebook : `https://facebook.com/${contact.Facebook}`} />
-          )}
-          {contact.Twitter && (
-            <Row label="Twitter / X" value={contact.Twitter}
-              href={contact.Twitter.startsWith('http') ? contact.Twitter : `https://x.com/${contact.Twitter.replace('@', '')}`} />
+          {socials.map((s, idx) => {
+            const baseUrl = s.platform.toLowerCase() === 'instagram' ? 'https://instagram.com/' :
+                            s.platform.toLowerCase() === 'linkedin' ? 'https://linkedin.com/in/' :
+                            s.platform.toLowerCase() === 'facebook' ? 'https://facebook.com/' :
+                            s.platform.toLowerCase() === 'x' ? 'https://x.com/' : ''
+            const url = s.handle.startsWith('http') ? s.handle : `${baseUrl}${s.handle.replace('@', '')}`
+            return <Row key={idx} label={s.platform} value={s.handle} href={url} />
+          })}
+          {socials.length === 0 && (
+            <>
+              {contact.Instagram && <Row label="Instagram" value={contact.Instagram} href={`https://instagram.com/${contact.Instagram.replace('@', '')}`} />}
+              {contact.LinkedIn && <Row label="LinkedIn" value={contact.LinkedIn} href={`https://linkedin.com/in/${contact.LinkedIn}`} />}
+              {contact.Facebook && <Row label="Facebook" value={contact.Facebook} href={`https://facebook.com/${contact.Facebook}`} />}
+              {contact.Twitter && <Row label="Twitter / X" value={contact.Twitter} href={`https://x.com/${contact.Twitter.replace('@', '')}`} />}
+            </>
           )}
         </div>
       )}
@@ -647,20 +832,25 @@ type AddrForm = {
   code_postal: string
   ville:       string
   pays:        string
+  shipping_notes: string
 }
 
 function emptyAddr(): AddrForm {
-  return { label: '', adresse: '', code_postal: '', ville: '', pays: '' }
+  return { label: '', adresse: '', code_postal: '', ville: '', pays: '', shipping_notes: '' }
 }
 
 function ContactEditModal({
-  contact, initialAddresses, onClose, onCreated, onUpdated,
+  contact, initialAddresses, initialEmails, initialPhones, initialWebsites, initialSocials, onClose, onCreated, onUpdated,
 }: {
   contact?:          ContactRow | null
   initialAddresses:  ContactAddress[]
+  initialEmails:     ContactEmail[]
+  initialPhones:     ContactPhone[]
+  initialWebsites:   ContactWebsite[]
+  initialSocials:    ContactSocial[]
   onClose:           () => void
-  onCreated:         (c: ContactRow, addrs: ContactAddress[]) => void
-  onUpdated:         (c: ContactRow, addrs: ContactAddress[]) => void
+  onCreated:         (c: ContactRow, addrs: ContactAddress[], e: ContactEmail[], p: ContactPhone[], w: ContactWebsite[], s: ContactSocial[]) => void
+  onUpdated:         (c: ContactRow, addrs: ContactAddress[], e: ContactEmail[], p: ContactPhone[], w: ContactWebsite[], s: ContactSocial[]) => void
 }) {
   const isNew = !contact
 
@@ -707,6 +897,7 @@ function ContactEditModal({
           code_postal: a.code_postal ?? '',
           ville:       a.ville ?? '',
           pays:        a.pays ?? '',
+          shipping_notes: a.shipping_notes ?? '',
         }))
       : [{
           label:       'Principal',
@@ -714,8 +905,14 @@ function ContactEditModal({
           code_postal: contact?.CodePostal ?? '',
           ville:       contact?.Ville ?? '',
           pays:        contact?.Pays ?? '',
+          shipping_notes: '',
         }]
   )
+
+  const [emailList, setEmailList] = useState<ContactEmail[]>(initialEmails)
+  const [phoneList, setPhoneList] = useState<ContactPhone[]>(initialPhones)
+  const [webList,   setWebList]   = useState<ContactWebsite[]>(initialWebsites)
+  const [socialList, setSocialList] = useState<ContactSocial[]>(initialSocials)
 
   const [busy, setBusy] = useState(false)
   const [err,  setErr]  = useState<string | null>(null)
@@ -809,6 +1006,8 @@ function ContactEditModal({
       }
 
       let contactId: number
+      const normalizedRole = form.Role === 'Encadreur' ? 'Framer' : form.Role
+      payload.Role = normalizedRole
 
       if (isNew) {
         const { data: maxRow } = await (sb.from('Contact') as any)
@@ -824,9 +1023,14 @@ function ContactEditModal({
         if (error) throw new Error((error as any).message)
       }
 
-      // Replace all addresses for this contact
-      await (sb.from('contact_addresses') as any)
-        .delete().eq('contact_id', contactId)
+      // Replace all sub-data for this contact
+      await Promise.all([
+        (sb.from('contact_addresses') as any).delete().eq('contact_id', contactId),
+        (sb.from('contact_emails') as any).delete().eq('contact_id', contactId),
+        (sb.from('contact_phones') as any).delete().eq('contact_id', contactId),
+        (sb.from('contact_websites') as any).delete().eq('contact_id', contactId),
+        (sb.from('contact_socials') as any).delete().eq('contact_id', contactId),
+      ])
 
       let savedAddrs: ContactAddress[] = []
       if (validAddrs.length > 0) {
@@ -838,18 +1042,50 @@ function ContactEditModal({
           ville:       a.ville    || null,
           pays:        a.pays     || null,
           position:    i,
+          shipping_notes: a.shipping_notes || null,
         }))
-        const { data: insertedAddrs, error: addrErr } = await (sb.from('contact_addresses') as any)
-          .insert(insertRows).select()
-        if (addrErr) throw new Error((addrErr as any).message)
-        savedAddrs = (insertedAddrs ?? []) as ContactAddress[]
+        const { data, error } = await (sb.from('contact_addresses') as any).insert(insertRows).select()
+        if (error) throw error
+        savedAddrs = data || []
+      }
+
+      let savedEmails: ContactEmail[] = []
+      if (emailList.length > 0) {
+        const rows = emailList.map(e => ({ contact_id: contactId, email: e.email, label: e.label, is_primary: e.is_primary }))
+        const { data, error } = await (sb.from('contact_emails') as any).insert(rows).select()
+        if (error) throw error
+        savedEmails = data || []
+      }
+
+      let savedPhones: ContactPhone[] = []
+      if (phoneList.length > 0) {
+        const rows = phoneList.map(p => ({ contact_id: contactId, phone: p.phone, country_code: p.country_code, label: p.label, is_primary: p.is_primary }))
+        const { data, error } = await (sb.from('contact_phones') as any).insert(rows).select()
+        if (error) throw error
+        savedPhones = data || []
+      }
+
+      let savedWebs: ContactWebsite[] = []
+      if (webList.length > 0) {
+        const rows = webList.map(w => ({ contact_id: contactId, url: w.url, label: w.label }))
+        const { data, error } = await (sb.from('contact_websites') as any).insert(rows).select()
+        if (error) throw error
+        savedWebs = data || []
+      }
+
+      let savedSocials: ContactSocial[] = []
+      if (socialList.length > 0) {
+        const rows = socialList.map(s => ({ contact_id: contactId, platform: s.platform, handle: s.handle }))
+        const { data, error } = await (sb.from('contact_socials') as any).insert(rows).select()
+        if (error) throw error
+        savedSocials = data || []
       }
 
       const savedContact = { ContactID: contactId, ...payload } as ContactRow
       if (isNew) {
-        onCreated(savedContact, savedAddrs)
+        onCreated(savedContact, savedAddrs, savedEmails, savedPhones, savedWebs, savedSocials)
       } else {
-        onUpdated(savedContact, savedAddrs)
+        onUpdated(savedContact, savedAddrs, savedEmails, savedPhones, savedWebs, savedSocials)
       }
     } catch (e) {
       setErr(String(e))
@@ -915,24 +1151,79 @@ function ContactEditModal({
           <FRow label="Rôle responsable"><input value={form.RoleResponsable} onChange={f('RoleResponsable')} style={FIS} /></FRow>
         </Grid2>
 
-        {/* Contact */}
-        <Section title="Contact" />
-        <Grid2>
-          <FRow label="Email"><input type="email" value={form.Email} onChange={f('Email')} style={FIS} /></FRow>
-          <FRow label="Website"><input value={form.Website} onChange={f('Website')} placeholder="https://..." style={FIS} /></FRow>
-          <FRow label="Indicatif + Tél. 1">
-            <div style={{ display: 'flex', gap: 4 }}>
-              <input value={form.IndicatifPays1} onChange={f('IndicatifPays1')} placeholder="+" style={{ ...FIS, width: 56, flexShrink: 0 }} />
-              <input value={form.Téléphone1} onChange={f('Téléphone1')} placeholder="Numéro" style={{ ...FIS, flex: 1 }} />
+        {/* Contact — Multi-emails */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Section title="Emails" />
+          <button className="btn ghost sm" onClick={() => setEmailList([...emailList, { contact_id: 0, email: '', label: '', is_primary: false }])} style={{ fontSize: 9 }}>+</button>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {emailList.map((e, i) => (
+            <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <input value={e.email} onChange={(ev) => setEmailList(emailList.map((x, j) => i === j ? { ...x, email: ev.target.value } : x))} placeholder="Email" style={{ ...FIS, flex: 2 }} />
+              <input value={e.label} onChange={(ev) => setEmailList(emailList.map((x, j) => i === j ? { ...x, label: ev.target.value } : x))} placeholder="Label (Pro, Perso...)" style={{ ...FIS, flex: 1 }} />
+              <button className="btn ghost sm" onClick={() => setEmailList(emailList.filter((_, j) => i !== j))}>✕</button>
             </div>
-          </FRow>
-          <FRow label="Indicatif + Tél. 2">
-            <div style={{ display: 'flex', gap: 4 }}>
-              <input value={form.IndicatifPays2} onChange={f('IndicatifPays2')} placeholder="+" style={{ ...FIS, width: 56, flexShrink: 0 }} />
-              <input value={form.Téléphone2} onChange={f('Téléphone2')} placeholder="..." style={{ ...FIS, flex: 1 }} />
+          ))}
+          {emailList.length === 0 && <div className="t-mono-sm" style={{ color: 'var(--tx3)', opacity: 0.5 }}>Aucun email</div>}
+        </div>
+
+        {/* Contact — Multi-phones */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Section title="Téléphones" />
+          <button className="btn ghost sm" onClick={() => setPhoneList([...phoneList, { contact_id: 0, phone: '', label: '', is_primary: false }])} style={{ fontSize: 9 }}>+</button>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {phoneList.map((p, i) => (
+            <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <input value={p.country_code || ''} onChange={(ev) => setPhoneList(phoneList.map((x, j) => i === j ? { ...x, country_code: ev.target.value } : x))} placeholder="+33" style={{ ...FIS, width: 50 }} />
+              <input value={p.phone} onChange={(ev) => setPhoneList(phoneList.map((x, j) => i === j ? { ...x, phone: ev.target.value } : x))} placeholder="Numéro" style={{ ...FIS, flex: 2 }} />
+              <input value={p.label} onChange={(ev) => setPhoneList(phoneList.map((x, j) => i === j ? { ...x, label: ev.target.value } : x))} placeholder="Label" style={{ ...FIS, flex: 1 }} />
+              <button className="btn ghost sm" onClick={() => setPhoneList(phoneList.filter((_, j) => i !== j))}>✕</button>
             </div>
-          </FRow>
-        </Grid2>
+          ))}
+          {phoneList.length === 0 && <div className="t-mono-sm" style={{ color: 'var(--tx3)', opacity: 0.5 }}>Aucun téléphone</div>}
+        </div>
+
+        {/* Contact — Multi-websites */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Section title="Sites Web" />
+          <button className="btn ghost sm" onClick={() => setWebList([...webList, { contact_id: 0, url: '', label: '' }])} style={{ fontSize: 9 }}>+</button>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {webList.map((w, i) => (
+            <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <input value={w.url} onChange={(ev) => setWebList(webList.map((x, j) => i === j ? { ...x, url: ev.target.value } : x))} placeholder="https://..." style={{ ...FIS, flex: 2 }} />
+              <input value={w.label} onChange={(ev) => setWebList(webList.map((x, j) => i === j ? { ...x, label: ev.target.value } : x))} placeholder="Label" style={{ ...FIS, flex: 1 }} />
+              <button className="btn ghost sm" onClick={() => setWebList(webList.filter((_, j) => i !== j))}>✕</button>
+            </div>
+          ))}
+          {webList.length === 0 && <div className="t-mono-sm" style={{ color: 'var(--tx3)', opacity: 0.5 }}>Aucun site web</div>}
+        </div>
+
+        {/* Contact — Multi-socials (Dropdown) */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Section title="Réseaux Sociaux" />
+          <button className="btn ghost sm" onClick={() => setSocialList([...socialList, { contact_id: 0, platform: 'Instagram', handle: '' }])} style={{ fontSize: 9 }}>+</button>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {socialList.map((s, i) => (
+            <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <select value={s.platform} onChange={(ev) => setSocialList(socialList.map((x, j) => i === j ? { ...x, platform: ev.target.value } : x))} style={{ ...FIS, flex: 1 }}>
+                <option value="Instagram">Instagram</option>
+                <option value="LinkedIn">LinkedIn</option>
+                <option value="Facebook">Facebook</option>
+                <option value="X">X (Twitter)</option>
+                <option value="Behance">Behance</option>
+                <option value="Vimeo">Vimeo</option>
+                <option value="Pinterest">Pinterest</option>
+                <option value="Autre">Autre</option>
+              </select>
+              <input value={s.handle} onChange={(ev) => setSocialList(socialList.map((x, j) => i === j ? { ...x, handle: ev.target.value } : x))} placeholder="@handle or URL" style={{ ...FIS, flex: 2 }} />
+              <button className="btn ghost sm" onClick={() => setSocialList(socialList.filter((_, j) => i !== j))}>✕</button>
+            </div>
+          ))}
+          {socialList.length === 0 && <div className="t-mono-sm" style={{ color: 'var(--tx3)', opacity: 0.5 }}>Aucun réseau</div>}
+        </div>
 
         {/* Adresses — multiple */}
         <Section title="Adresses" />
@@ -965,6 +1256,9 @@ function ContactEditModal({
               <div style={{ marginTop: 8 }}>
                 <FRow label="Adresse (rue, n°, etc.)"><input value={addr.adresse} onChange={(e) => updateAddr(i, 'adresse', e.target.value)} onBlur={e => updateAddr(i, 'adresse', cap(e.target.value))} style={FIS} /></FRow>
               </div>
+              <div style={{ marginTop: 8 }}>
+                <FRow label="Notes d'expédition / Logistique"><input value={addr.shipping_notes} onChange={(e) => updateAddr(i, 'shipping_notes', e.target.value)} placeholder="Interphone, code, instructions de livraison..." style={FIS} /></FRow>
+              </div>
             </div>
           ))}
           <button
@@ -980,14 +1274,6 @@ function ContactEditModal({
           </button>
         </div>
 
-        {/* Réseaux sociaux */}
-        <Section title="Réseaux sociaux" />
-        <Grid2>
-          <FRow label="Instagram"><input value={form.Instagram} onChange={f('Instagram')} placeholder="@handle ou URL" style={FIS} /></FRow>
-          <FRow label="LinkedIn"><input value={form.LinkedIn} onChange={f('LinkedIn')} placeholder="handle ou URL" style={FIS} /></FRow>
-          <FRow label="Facebook"><input value={form.Facebook} onChange={f('Facebook')} placeholder="handle ou URL" style={FIS} /></FRow>
-          <FRow label="Twitter / X"><input value={form.Twitter} onChange={f('Twitter')} placeholder="@handle ou URL" style={FIS} /></FRow>
-        </Grid2>
 
         {/* Notes */}
         <Section title="Notes" />
@@ -1005,6 +1291,74 @@ function ContactEditModal({
           <button className="btn ghost sm" onClick={onClose} disabled={busy}>Annuler</button>
           <button className="btn primary sm" onClick={() => void handleSave()} disabled={busy}>
             {busy ? '...' : isNew ? 'Créer' : 'Enregistrer'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function BatchEditModal({
+  count, roleOptions, onClose, onSave, busy
+}: {
+  count: number; roleOptions: string[]; onClose: () => void; onSave: (data: any) => void; busy: boolean
+}) {
+  const [role, setRole] = useState<string | undefined>()
+  const [actif, setActif] = useState<boolean | undefined>()
+  const [notes, setNotes] = useState<string | undefined>()
+  const [append, setAppend] = useState(true)
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 300,
+      background: 'rgba(0,0,0,0.6)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 24,
+    }}>
+      <div style={{
+        background: 'var(--bg1)', border: '1px solid var(--bd)',
+        width: '100%', maxWidth: 400, padding: 28,
+      }}>
+        <div style={{ fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--tx3)', marginBottom: 20 }}>
+          Batch Edit · {count} contacts
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <FRow label="Nouveau Rôle">
+            <select value={role ?? ''} onChange={e => setRole(e.target.value || undefined)} style={FIS}>
+              <option value="">— Ne pas modifier</option>
+              {roleOptions.map(r => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </FRow>
+
+          <FRow label="Statut Actif">
+            <select value={actif === undefined ? '' : String(actif)} onChange={e => setActif(e.target.value === '' ? undefined : e.target.value === 'true')} style={FIS}>
+              <option value="">— Ne pas modifier</option>
+              <option value="true">Actif</option>
+              <option value="false">Inactif</option>
+            </select>
+          </FRow>
+
+          <FRow label="Notes">
+            <textarea
+              value={notes ?? ''}
+              onChange={e => setNotes(e.target.value || undefined)}
+              placeholder="Texte à ajouter ou remplacer..."
+              style={{ ...FIS, height: 80, resize: 'vertical' }}
+            />
+            {notes && (
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, fontSize: 10, color: 'var(--tx3)' }}>
+                <input type="checkbox" checked={append} onChange={e => setAppend(e.target.checked)} />
+                Ajouter à la fin (Append)
+              </label>
+            )}
+          </FRow>
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, marginTop: 24 }}>
+          <button className="btn sm ghost" onClick={onClose} disabled={busy} style={{ flex: 1 }}>Annuler</button>
+          <button className="btn sm" onClick={() => onSave({ Role: role, Actif: actif, Notes: notes, appendNotes: append })} disabled={busy || (role === undefined && actif === undefined && notes === undefined)} style={{ flex: 1, background: 'var(--ac)', borderColor: 'var(--ac)' }}>
+            Appliquer
           </button>
         </div>
       </div>

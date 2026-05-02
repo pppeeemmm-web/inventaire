@@ -14,6 +14,7 @@ import {
 import { createClient } from '@/lib/supabase/client'
 import { EXHIBITION_READY_TYPES } from '@/lib/data'
 import { TYPE_LABELS as PIPELINE_LABELS } from './PipelineTab'
+import { ConstellationCanvas, type NodeMap, type Pt } from './ConstellationCanvas'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -282,7 +283,12 @@ function DefaultRoomSVG({ walls }: { walls: Wall[] }) {
 
 // ── FloorPlanTool ─────────────────────────────────────────────────────────────
 
-function FloorPlanTool({ exhibitionId, oeuvres }: { exhibitionId: string; oeuvres: Oeuvre[] }) {
+function FloorPlanTool({ exhibitionId, oeuvres, themes, tM }: { 
+  exhibitionId: string; 
+  oeuvres: Oeuvre[]; 
+  themes: { ThemeID: number; Nom: string }[];
+  tM: Record<number, string>;
+}) {
   const [layouts, setLayouts]   = useState<ExhibitionLayout[]>([])
   const [selected, setSelected] = useState<ExhibitionLayout | null>(null)
   const [creating, setCreating] = useState(false)
@@ -291,6 +297,7 @@ function FloorPlanTool({ exhibitionId, oeuvres }: { exhibitionId: string; oeuvre
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [subTab, setSubTab]     = useState<'murs' | 'parametres'>('murs')
+  const [bgOpacity, setBgOpacity] = useState(0.7)
   const dragOeuvreId = useRef<number | null>(null)
 
   const load = useCallback(async () => {
@@ -416,6 +423,38 @@ function FloorPlanTool({ exhibitionId, oeuvres }: { exhibitionId: string; oeuvre
     ? `${R2}/${layout.floorplan_path}`
     : null
 
+  // Convert placements to NodeMap for ConstellationCanvas
+  const initialPositions = useMemo(() => {
+    if (!layout) return new Map()
+    const m = new Map()
+    layout.placements.forEach(p => {
+      if (p.x != null && p.y != null) {
+        // In ConstellationCanvas, we work with logical pixels. 
+        // Exhibition layout currently uses percentages (0-100).
+        // Let's assume a 1000px base for the floorplan if it's percentage-based?
+        // Actually, ConstellationCanvas doesn't care about the scale as long as it's consistent.
+        m.set(p.oeuvre_id, { x: p.x * 10, y: p.y * 10 })
+      }
+    })
+    return m
+  }, [layout])
+
+  const handleConstellationDrop = (id: number, wx: number, wy: number) => {
+    if (!layout) return
+    // Convert logical coordinates back to percentages
+    const x = wx / 10
+    const y = wy / 10
+
+    const existingIdx = layout.placements.findIndex(p => p.oeuvre_id === id)
+    if (existingIdx >= 0) {
+      const next = [...layout.placements]
+      next[existingIdx] = { ...next[existingIdx], x, y }
+      patchLocal({ placements: next })
+    } else {
+      patchLocal({ placements: [...layout.placements, { oeuvre_id: id, wall_id: 'canvas', position: 50, scale: 1, x, y }] })
+    }
+  }
+
   return (
     <div style={{ display: 'flex', height: '100%', minHeight: 0 }}>
       {/* Layout list */}
@@ -495,56 +534,41 @@ function FloorPlanTool({ exhibitionId, oeuvres }: { exhibitionId: string; oeuvre
             {subTab === 'murs' ? (
               <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}>
                 {/* Floor plan Canvas */}
-                <div style={{ flex: 1, padding: 12, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ flex: 1, padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                   <div 
-                    onDragOver={e => e.preventDefault()}
-                    onDrop={handleDropOnCanvas}
                     style={{ 
                       flex: 1, position: 'relative', background: 'var(--bg0)', 
                       border: '1px solid var(--bd)', overflow: 'hidden',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center'
+                      display: 'flex', alignItems: 'stretch'
                     }}
                   >
-                    {floorplanUrl ? (
-                      <div style={{ position: 'relative', display: 'inline-block' }}>
-                        <img src={floorplanUrl} alt="Plan" style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain', pointerEvents: 'none' }} />
-                        {layout.placements.map(p => {
-                          if (p.x == null || p.y == null) return null
-                          const o = oeuvres.find(x => x.OeuvreID === p.oeuvre_id)
-                          return (
-                            <div key={p.oeuvre_id}
-                              draggable
-                              onDragStart={(e) => { e.dataTransfer.setData('oeuvre_id', String(p.oeuvre_id)) }}
-                              style={{ 
-                              position: 'absolute', left: `${p.x}%`, top: `${p.y}%`, 
-                              transform: 'translate(-50%, -50%)',
-                              width: 24, height: 24, borderRadius: '50%', background: 'var(--ac)',
-                              border: '2px solid #fff', boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              fontSize: 8, color: '#fff', fontWeight: 600, cursor: 'move',
-                              zIndex: 10
-                            }} title={o?.Titre ?? `#${p.oeuvre_id}`}>
-                              {o?.Titre?.slice(0,1).toUpperCase() || '?'}
-                            </div>
-                          )
-                        })}
-                      </div>
-                    ) : (
-                      <DefaultRoomSVG walls={layout.walls} />
-                    )}
+                    <ConstellationCanvas
+                      oeuvres={oeuvres}
+                      themes={themes}
+                      tM={tM}
+                      selection={new Set()}
+                      setSelection={() => {}}
+                      onOpen={() => {}}
+                      onSaveGroup={async () => null}
+                      backgroundImage={floorplanUrl || undefined}
+                      backgroundOpacity={bgOpacity}
+                      onBackgroundOpacity={setBgOpacity}
+                      initialPositions={initialPositions}
+                      onDropExternal={handleConstellationDrop}
+                    />
                   </div>
-                  <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 10, justifyContent: 'center' }}>
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '10px 20px', borderTop: '1px solid var(--bd)', background: 'var(--bg1)' }}>
                     <label className="btn sm" style={{ cursor: uploading ? 'wait' : 'pointer', fontSize: 9, opacity: uploading ? 0.6 : 1 }}>
                       {uploading ? 'Upload en cours…' : floorplanUrl ? 'Changer le plan' : 'Uploader un plan'}
                       <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFloorplanUpload} disabled={uploading} />
                     </label>
                     <div style={{ fontSize: 9, color: 'var(--tx3)' }}>Glissez les œuvres sur le plan</div>
+                    {uploadError && (
+                      <div style={{ fontSize: 9, color: '#c06060', marginLeft: 12 }}>
+                        ⚠ {uploadError}
+                      </div>
+                    )}
                   </div>
-                  {uploadError && (
-                    <div style={{ fontSize: 9, color: '#c06060', background: '#c0606022', border: '1px solid #c06060', padding: '4px 8px', marginTop: 8, textAlign: 'center' }}>
-                      ⚠ {uploadError}
-                    </div>
-                  )}
                 </div>
 
                 {/* Wall strips Sidebar (Optional) */}
@@ -602,10 +626,12 @@ function FloorPlanTool({ exhibitionId, oeuvres }: { exhibitionId: string; oeuvre
 
 // ── ExhibitionDetail ──────────────────────────────────────────────────────────
 
-function ExhibitionDetail({ exhibition, oeuvres, contacts, selection, setSelection, onDelete, onUpdate }: {
+function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, selection, setSelection, onDelete, onUpdate }: {
   exhibition: Exhibition
   oeuvres:    Oeuvre[]
   contacts:   { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null; Email?: string | null; Tel?: string | null }[]
+  themes:     { ThemeID: number; Nom: string }[]
+  tM:         Record<number, string>
   selection:  Set<number>
   setSelection: (s: Set<number>) => void
   onDelete:   () => void
@@ -909,7 +935,7 @@ function ExhibitionDetail({ exhibition, oeuvres, contacts, selection, setSelecti
       {/* Floor plan — outside scroll container so it can fill remaining height */}
       {activeTab === 'floorplan' && (
         <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <FloorPlanTool exhibitionId={exhibition.id} oeuvres={oeuvres} />
+          <FloorPlanTool exhibitionId={exhibition.id} oeuvres={oeuvres} themes={themes} tM={tM} />
         </div>
       )}
     </div>
@@ -918,11 +944,13 @@ function ExhibitionDetail({ exhibition, oeuvres, contacts, selection, setSelecti
 
 // ── ExhibitionsTab ────────────────────────────────────────────────────────────
 
-export function ExhibitionsTab({ oeuvres, contacts, selection, setSelection }: {
-  oeuvres:  Oeuvre[]
-  contacts: { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null; Role: string | null; Ville?: string | null; Pays?: string | null; Email?: string | null; Tel?: string | null }[]
-  selection: Set<number>
-  setSelection: (s: Set<number>) => void
+export function ExhibitionsTab({ oeuvres, contacts, themes, tM, selection, setSelection }: {
+  oeuvres: Oeuvre[]; 
+  contacts: any[]; 
+  themes: { ThemeID: number; Nom: string }[];
+  tM: Record<number, string>;
+  selection: Set<number>; 
+  setSelection: any
 }) {
   const [exhibitions, setExhibitions] = useState<Exhibition[]>([])
   const [selected,    setSelected]    = useState<Exhibition | null>(null)
@@ -1142,6 +1170,8 @@ export function ExhibitionsTab({ oeuvres, contacts, selection, setSelection }: {
           exhibition={selected}
           oeuvres={oeuvres}
           contacts={contacts}
+          themes={themes}
+          tM={tM}
           selection={selection}
           setSelection={setSelection}
           onDelete={handleDelete}

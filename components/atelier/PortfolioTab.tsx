@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { savePortfolioConfig, loadPortfolioConfig } from '@/app/atelier/portfolio/actions'
 import type { Oeuvre } from '@/lib/types/database'
 
 interface CollectionItem {
@@ -22,8 +22,8 @@ interface PortfolioConfig {
   }
   sections:          CollectionItem[]
   works_collections: CollectionItem[]
-  statement_doc_id:  number | null
-  cv_doc_id:         number | null
+  statement_doc_id:  string | null
+  cv_doc_id:         string | null
 }
 
 interface Props {
@@ -36,63 +36,38 @@ export function PortfolioTab({ oeuvres, themes }: Props) {
     general: { artist_name: '', about_intro: '', contact_email: '', instagram: '' },
     sections: [],
     works_collections: [],
-    statement_doc_id: null,
-    cv_doc_id: null
+    statement_doc_id: null as string | null,
+    cv_doc_id: null as string | null
   })
   const [documents, setDocuments] = useState<any[]>([])
   const [loading,   setLoading]   = useState(true)
   const [saving,    setSaving]    = useState(false)
   
   const themeNames = [...themes].sort((a,b) => a.Nom.localeCompare(b.Nom, 'fr')).map(t => t.Nom)
-  const sb = createClient()
 
   const loadData = useCallback(async () => {
     setLoading(true)
-    const [{ data: configDoc }, { data: docs }] = await Promise.all([
-      sb.from('document').select('storage_path').eq('name', 'portfolio_sections.json').single(),
-      sb.from('document').select('id, name').order('name')
-    ])
-
-    if (docs) setDocuments(docs)
-
-    if (configDoc?.storage_path) {
-      const { data: fileData } = await sb.storage.from('documents').download(configDoc.storage_path)
-      if (fileData) {
-        const text = await fileData.text()
-        try {
-          const parsed = JSON.parse(text)
-          setConfig({
-             general:           parsed.general || { artist_name: 'Pierre Emmanuel Moulin', about_intro: '', contact_email: '', instagram: '' },
-             sections:          parsed.sections || [],
-             works_collections: parsed.works_collections || [],
-             statement_doc_id:  parsed.statement_doc_id || null,
-             cv_doc_id:         parsed.cv_doc_id || null
-          })
-        } catch (e) {}
-      }
+    const result = await loadPortfolioConfig()
+    if ('ok' in result) {
+      setConfig(result.config)
+      setDocuments(result.documents)
+    } else {
+      console.error('Load error:', result.error)
     }
     setLoading(false)
-  }, [sb])
+  }, [])
 
   useEffect(() => { loadData() }, [loadData])
 
   async function saveConfig() {
     setSaving(true)
-    const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' })
-    const path = `config/portfolio_sections.json`
-    
-    await sb.storage.from('documents').upload(path, blob, { upsert: true })
-
-    await sb.from('document').upsert({
-      name: 'portfolio_sections.json',
-      storage_path: path,
-      kind: 'autre',
-      mime_type: 'application/json',
-      file_size: blob.size
-    }, { onConflict: 'name' })
-
+    const result = await savePortfolioConfig(config)
     setSaving(false)
-    alert('Configuration enregistrée avec succès.')
+    if ('error' in result) {
+      alert(`Erreur lors de l'enregistrement : ${result.error}`)
+    } else {
+      alert('Configuration enregistrée avec succès.')
+    }
   }
 
   function addItem(target: 'sections' | 'works_collections') {
@@ -170,14 +145,14 @@ export function PortfolioTab({ oeuvres, themes }: Props) {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
               <div>
                 <label className="t-label" style={{ display: 'block', marginBottom: 6 }}>Artist Statement (PDF)</label>
-                <select className="input" style={{ width: '100%' }} value={config.statement_doc_id || ''} onChange={e => setConfig({ ...config, statement_doc_id: Number(e.target.value) || null })}>
+                <select className="input" style={{ width: '100%' }} value={config.statement_doc_id || ''} onChange={e => setConfig({ ...config, statement_doc_id: e.target.value || null })}>
                   <option value="">— Sélectionner</option>
                   {documents.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                 </select>
               </div>
               <div>
                 <label className="t-label" style={{ display: 'block', marginBottom: 6 }}>Curriculum Vitae (PDF)</label>
-                <select className="input" style={{ width: '100%' }} value={config.cv_doc_id || ''} onChange={e => setConfig({ ...config, cv_doc_id: Number(e.target.value) || null })}>
+                <select className="input" style={{ width: '100%' }} value={config.cv_doc_id || ''} onChange={e => setConfig({ ...config, cv_doc_id: e.target.value || null })}>
                   <option value="">— Sélectionner</option>
                   {documents.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                 </select>

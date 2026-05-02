@@ -196,6 +196,14 @@ export function TeamPortalClient({
     () => Object.fromEntries(presentations.map((p) => [p.PresentationID, p.Nom ?? ''])),
     [presentations],
   )
+  const thM = useMemo(
+    () => Object.fromEntries(themes.map((t) => [t.ThemeID, t.Nom])),
+    [themes],
+  )
+  const groupNameMap = useMemo(
+    () => Object.fromEntries(groups.map((g) => [g.id, g.name])),
+    [groups],
+  )
 
   // ── Save working group (Supabase) ──────────────────────────────
 
@@ -393,6 +401,8 @@ export function TeamPortalClient({
             <ExhibitionsTab
               oeuvres={oeuvres}
               contacts={contacts}
+              themes={sortedThemes}
+              tM={tM}
               selection={selection}
               setSelection={setSelection}
             />

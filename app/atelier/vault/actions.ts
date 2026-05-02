@@ -55,7 +55,7 @@ export type UploadResult = { error: string } | { ok: true; doc: VaultDoc }
 export type CoaResult    = { error: string } | { ok: true; doc: VaultDoc }
 
 export interface VaultDoc {
-  id:           string
+  id:           number
   kind:         string | null
   name:         string
   storage_path: string | null
@@ -100,16 +100,16 @@ export async function uploadDocument(formData: FormData): Promise<UploadResult> 
 
   // 1. Get Uploader Name
   const { data: { user } } = await supabase.auth.getUser()
-  const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user?.id ?? '').single()
+  const { data: profile } = await (supabase.from('profiles') as any).select('full_name').eq('id', user?.id ?? '').single()
   const uploader = (profile?.full_name || user?.email?.split('@')[0] || 'User').replace(/\s+/g, '_')
 
   // 2. Get Next Serial Number
-  const { count } = await supabase.from('document').select('*', { count: 'exact', head: true })
+  const { count } = await (supabase.from('document') as any).select('*', { count: 'exact', head: true })
   const serial = (count ?? 0) + 1
 
   // 3. Construct Smart Filename
   const dateStr   = doc_date || new Date().toISOString().slice(0, 10)
-  const typeStr   = (kind === 'custom' ? customKind : kind) || 'other'
+  const typeStr   = (kind === 'custom' ? customKind : kind) || 'autre'
   const cleanDesc = (name || '').replace(/[^a-zA-Z0-9]/g, '_').slice(0, 30)
   const cleanOrig = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
   
@@ -127,8 +127,8 @@ export async function uploadDocument(formData: FormData): Promise<UploadResult> 
   const ids = oeuvre_ids_str.split(',').filter(Boolean).map(Number)
   const primaryOeuvreId = ids.length > 0 ? ids[0] : null
 
-  const { data: doc, error: dbErr } = await supabase
-    .from('document')
+  const { data: doc, error: dbErr } = await (supabase
+    .from('document') as any)
     .insert({
       name:         docName,
       kind:         typeStr,
@@ -151,7 +151,7 @@ export async function uploadDocument(formData: FormData): Promise<UploadResult> 
   return { ok: true, doc: doc as VaultDoc }
 }
 
-export async function updateDocument(id: string, formData: FormData): Promise<UploadResult> {
+export async function updateDocument(id: number, formData: FormData): Promise<UploadResult> {
   const { error: authErr, supabase } = await guardTeam()
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
 
@@ -162,12 +162,12 @@ export async function updateDocument(id: string, formData: FormData): Promise<Up
   const doc_date    = (formData.get('doc_date') as string | null)?.trim()  || null
   const oeuvre_ids_str = (formData.get('oeuvre_ids') as string | null)    || ''
 
-  const typeStr = (kind === 'custom' ? customKind : kind) || 'other'
+  const typeStr = (kind === 'custom' ? customKind : kind) || 'autre'
   const ids     = oeuvre_ids_str.split(',').filter(Boolean).map(Number)
   const primary = ids.length > 0 ? ids[0] : null
 
-  const { data: doc, error: dbErr } = await supabase
-    .from('document')
+  const { data: doc, error: dbErr } = await (supabase
+    .from('document') as any)
     .update({
       name,
       kind:      typeStr,
@@ -186,7 +186,7 @@ export async function updateDocument(id: string, formData: FormData): Promise<Up
 
 // ── Delete document ───────────────────────────────────────────────────────
 
-export async function deleteDocument(id: string, storagePath: string | null): Promise<VaultResult> {
+export async function deleteDocument(id: number, storagePath: string | null): Promise<VaultResult> {
   const { error: authErr, supabase } = await guardTeam()
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
 
@@ -194,7 +194,7 @@ export async function deleteDocument(id: string, storagePath: string | null): Pr
     await r2Delete(storagePath).catch(() => {})
   }
 
-  const { error } = await supabase.from('document').delete().eq('id', id)
+  const { error } = await (supabase.from('document') as any).delete().eq('id', id)
   if (error) return { error: error.message }
   return { ok: true }
 }
@@ -220,8 +220,8 @@ export async function generateCOA(oeuvreId: number): Promise<CoaResult> {
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
 
   // Fetch work data
-  const { data: o, error: fetchErr } = await supabase
-    .from('Oeuvres')
+  const { data: o, error: fetchErr } = await (supabase
+    .from('Oeuvres') as any)
     .select('OeuvreID, Titre, Année, Technique, Support, Hauteur, Largeur, Profondeur, txtImageNameLink')
     .eq('OeuvreID', oeuvreId)
     .single()
@@ -230,8 +230,8 @@ export async function generateCOA(oeuvreId: number): Promise<CoaResult> {
 
   // Fetch technique / support labels
   const [{ data: techRow }, { data: suppRow }] = await Promise.all([
-    o.Technique ? supabase.from('Technique').select('Technique').eq('TechniqueID', o.Technique).single() : Promise.resolve({ data: null }),
-    o.Support   ? supabase.from('Support').select('Support').eq('SupportID', o.Support).single()         : Promise.resolve({ data: null }),
+    o.Technique ? (supabase.from('Technique') as any).select('Technique').eq('TechniqueID', o.Technique).single() : Promise.resolve({ data: null }),
+    o.Support   ? (supabase.from('Support') as any).select('Support').eq('SupportID', o.Support).single()         : Promise.resolve({ data: null }),
   ])
 
   const techLabel = (techRow as { Technique: string } | null)?.Technique ?? ''
@@ -283,8 +283,8 @@ export async function generateCOA(oeuvreId: number): Promise<CoaResult> {
   }
 
   // Insert document record
-  const { data: doc, error: dbErr } = await supabase
-    .from('document')
+  const { data: doc, error: dbErr } = await (supabase
+    .from('document') as any)
     .insert({
       name:         filename,
       kind:         'coa',
@@ -348,7 +348,7 @@ async function buildCoaPdf(data: CoaData): Promise<Buffer> {
     if (imageBuffer) {
       try {
         const imgW = 200, imgH = 150
-        doc.image(imageBuffer, col, y, { fit: [imgW, imgH], align: 'left' })
+        doc.image(imageBuffer, col, y, { fit: [imgW, imgH] })
         // metadata beside image
         doc.fontSize(18).fillColor('#1a1a1a')
            .text(titre, col + imgW + 20, y, { width: W - imgW - 20 })

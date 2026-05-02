@@ -45,6 +45,7 @@ export function VaultTab({ oeuvres, tM }: Props) {
   const [showEdit,   setShowEdit]   = useState(false)
   const [editingDoc, setEditingDoc] = useState<VaultDoc | null>(null)
   const [showCoa,    setShowCoa]    = useState(false)
+  const [delPending, startDel]      = useTransition()
 
   const kindColor = (k: string) => {
     switch (k) {
@@ -272,9 +273,21 @@ export function VaultTab({ oeuvres, tM }: Props) {
               <button 
                 className="btn sm" 
                 style={{ flex: 1, background: '#442222', color: '#ff8888' }}
-                onClick={() => confirm('Supprimer ce document ?') && handleDelete(selected)}
+                onClick={() => {
+                  if (!confirm('Supprimer ce document ?')) return
+                  startDel(async () => {
+                    const r = await deleteDocument(selected.id, selected.storage_path)
+                    if ('ok' in r) {
+                      setDocs(prev => prev.filter(d => d.id !== selected.id))
+                      setSelected(null)
+                    } else {
+                      alert(`Erreur : ${r.error}`)
+                    }
+                  })
+                }}
+                disabled={delPending}
               >
-                Supprimer
+                {delPending ? '…' : 'Supprimer'}
               </button>
             </div>
           </div>
@@ -336,7 +349,11 @@ function DocActions({ doc, onDeleted }: { doc: VaultDoc; onDeleted: () => void }
     e.stopPropagation()
     startDelete(async () => {
       const r = await deleteDocument(doc.id, doc.storage_path)
-      if ('ok' in r) onDeleted()
+      if ('ok' in r) {
+        onDeleted()
+      } else {
+        alert(`Erreur lors de la suppression : ${r.error}`)
+      }
     })
   }
 
@@ -456,7 +473,7 @@ function UploadModal({
             />
             
             {filtered.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 8, borderBottom: '1px solid var(--bd)', pb: 8 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 8, borderBottom: '1px solid var(--bd)', paddingBottom: 8 }}>
                 {filtered.map(o => (
                   <button 
                     key={o.OeuvreID}
@@ -639,14 +656,14 @@ function EditModal({ doc, oeuvres, onClose, onUpdated }: { doc: VaultDoc; oeuvre
     e.preventDefault()
     startUpdate(async () => {
       const fd = new FormData(e.currentTarget)
-      const res = await updateDocument(String(doc.id), fd)
+      const res = await updateDocument(doc.id, fd)
       if ('error' in res) setError(res.error)
       else onUpdated(res.doc)
     })
   }
 
   return (
-    <Modal onClose={onClose} title="MODIFIER LE DOCUMENT">
+    <Overlay onClose={onClose}>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div style={{ padding: 12, background: 'var(--bg0)', border: '1px solid var(--bd)', opacity: 0.6 }}>
           <div className="t-mono-xs" style={{ fontSize: 9 }}>{doc.storage_path}</div>
@@ -692,7 +709,7 @@ function EditModal({ doc, oeuvres, onClose, onUpdated }: { doc: VaultDoc; oeuvre
               style={{ width: '100%', marginBottom: 8, fontSize: 11 }}
             />
             {filtered.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 8, borderBottom: '1px solid var(--bd)', pb: 8 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 8, borderBottom: '1px solid var(--bd)', paddingBottom: 8 }}>
                 {filtered.map(o => (
                   <button key={o.OeuvreID} type="button" onClick={() => toggleId(o.OeuvreID)}
                     style={{ textAlign: 'left', padding: '4px 8px', fontSize: 10, background: 'var(--bg1)', border: 'none', color: selIds.includes(o.OeuvreID) ? 'var(--ac)' : 'var(--tx2)', cursor: 'pointer' }}>
@@ -728,7 +745,7 @@ function EditModal({ doc, oeuvres, onClose, onUpdated }: { doc: VaultDoc; oeuvre
           </button>
         </div>
       </form>
-    </Modal>
+    </Overlay>
   )
 }
 

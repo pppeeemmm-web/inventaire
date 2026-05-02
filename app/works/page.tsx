@@ -3,6 +3,11 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { thumbUrl, yearOf } from '@/lib/data'
 
+function normalizeTheme(s: string | null | undefined): string {
+  if (!s) return ''
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+}
+
 export const metadata: Metadata = {
   title: 'Works — Pierre Emmanuel Moulin',
   description: 'Selected works by Pierre Emmanuel Moulin.',
@@ -14,14 +19,14 @@ export default async function WorksPage() {
 
   // 1. Fetch Config
   let config: any = { works_collections: [] }
-  const { data: configDoc } = await supabase
-    .from('document')
+  const { data: configDoc } = await (supabase
+    .from('document') as any)
     .select('storage_path')
     .eq('name', 'portfolio_sections.json')
-    .single()
+    .maybeSingle()
 
   if (configDoc?.storage_path) {
-    const { data: fileData } = await supabase.storage.from('documents').download(configDoc.storage_path)
+    const { data: fileData } = await supabase.storage.from('vault').download(configDoc.storage_path)
     if (fileData) {
       try {
         const parsed = JSON.parse(await fileData.text())
@@ -34,26 +39,22 @@ export default async function WorksPage() {
 
   const collections = config.works_collections.filter((c: any) => c.is_active)
 
-  // 2. Fetch Themes to get IDs
-  const themeNames = collections.map((c: any) => c.theme).filter(Boolean)
-  const { data: themeRecords } = await supabase
-    .from('tblTheme')
+  // 2. Fetch all themes (small table) to allow fuzzy matching in JS
+  const { data: themeRecords } = await (supabase
+    .from('tblTheme') as any)
     .select('ThemeID, Nom')
-    .in('Nom', themeNames)
   
-  const themeIds = (themeRecords || []).map(r => r.ThemeID)
-
-  // 3. Fetch OeuvreIDs for these themes
-  const { data: oeuvreThemes } = await supabase
-    .from('OeuvreTheme')
+  // 3. Fetch all OeuvreThemes for public works
+  // (We could filter by OeuvreID, but since we only process public works, filtering the map is fine)
+  const { data: oeuvreThemes } = await (supabase
+    .from('OeuvreTheme') as any)
     .select('OeuvreID, ThemeID')
-    .in('ThemeID', themeIds)
   
   const oeuvreIds = [...new Set((oeuvreThemes || []).map(ot => ot.OeuvreID))]
 
   // 4. Fetch Works
-  const { data: rawWorks } = await supabase
-    .from('Oeuvres')
+  const { data: rawWorks } = await (supabase
+    .from('Oeuvres') as any)
     .select('OeuvreID, Titre, Année, Hauteur, Largeur, Profondeur, txtImageNameLink')
     .eq('is_public', true)
     .in('OeuvreID', oeuvreIds)
@@ -76,8 +77,9 @@ export default async function WorksPage() {
     <>
       <style>{`
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { height: auto; }
         html, body { background: #edeae4; font-family: 'JetBrains Mono', monospace; color: #6b6760; }
-        body { overflow-y: auto; overflow-x: hidden; }
+        body { overflow-y: auto; overflow-x: hidden; min-height: 100vh; }
 
         .w-nav {
           position: sticky; top: 0; z-index: 10;
@@ -131,6 +133,7 @@ export default async function WorksPage() {
           <Link href="/works"    className="w-navlink active">Works</Link>
           <Link href="/about"    className="w-navlink">About</Link>
           <Link href="/practice" className="w-navlink">Practice</Link>
+          <Link href="/portfolio" className="w-navlink">Portfolio</Link>
           <Link href="/enquiry"  className="w-navlink">Enquiry</Link>
         </div>
       </nav>
@@ -139,7 +142,11 @@ export default async function WorksPage() {
         {collections.map((col: any) => {
           const colWorks = works.filter((w: any) => {
             const wThemes = oeuvreThemeMap.get(w.OeuvreID) ?? []
-            return wThemes.includes(col.theme)
+            if (!Boolean(w.txtImageNameLink)) return false
+            if (!col.theme) return true // no theme = show all
+            
+            const colMatch = normalizeTheme(col.theme)
+            return wThemes.some(th => normalizeTheme(th).includes(colMatch))
           })
           return (
             <section key={col.id} className="w-collection">
@@ -156,7 +163,7 @@ export default async function WorksPage() {
                   {colWorks.map((w: any) => (
                     <div key={w.OeuvreID} className="w-item">
                       <img
-                        src={thumbUrl(w.txtImageNameLink, 1200)}
+                        src={thumbUrl(w.txtImageNameLink, 1200) ?? undefined}
                         alt={w.Titre ?? `Oeuvre #${w.OeuvreID}`}
                       />
                       <div className="w-meta">

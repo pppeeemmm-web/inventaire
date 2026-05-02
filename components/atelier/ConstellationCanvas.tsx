@@ -25,8 +25,8 @@ function thumbTier(z: number): 40 | 100 | 200 {
 }
 
 // ── Types ──────────────────────────────────────────────────────────────────
-type Pt       = { x: number; y: number }
-type NodeMap  = Map<number, Pt>
+export type Pt       = { x: number; y: number }
+export type NodeMap  = Map<number, Pt>
 type GroupBy  = 'year' | 'theme' | 'none' | 'custom'
 type LinkType = 'influence' | 'proximity' | 'series' | 'diptych'
 
@@ -40,7 +40,7 @@ interface Edge {
   description:   string | null
 }
 interface Drag {
-  mode:       'idle' | 'pan' | 'node' | 'link' | 'marquee' | 'draw'
+  mode:       'idle' | 'pan' | 'node' | 'link' | 'marquee' | 'draw' | 'line' | 'erase'
   startX:     number
   startY:     number
   nodeId?:    number
@@ -84,7 +84,7 @@ type Shape =
   | { type: 'line'; points: Pt[]; color: string; width: number }
   | { type: 'text'; x: number; y: number; text: string; color: string; size: number }
 
-type Tool = 'move' | 'draw' | 'text' | 'marquee' | 'erase'
+type Tool = 'move' | 'draw' | 'line' | 'text' | 'marquee' | 'erase'
 
 interface Snapshot {
   id: string
@@ -269,10 +269,21 @@ interface Props {
   setSelection: (s: Set<number>) => void
   onOpen:       (o: Oeuvre) => void
   onSaveGroup:  (name: string, ids: number[]) => Promise<string | null>
+  
+  // Background floorplan integration
+  backgroundImage?:     string
+  backgroundOpacity?:   number
+  onBackgroundOpacity?: (opacity: number) => void
+  onDropExternal?:      (id: number, x: number, y: number) => void
+  hideToolbar?:         boolean
+  initialPositions?:    NodeMap
 }
 
 // ── Component ──────────────────────────────────────────────────────────────
-export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelection, onOpen, onSaveGroup }: Props) {
+export function ConstellationCanvas({ 
+  oeuvres, tM, themes, selection, setSelection, onOpen, onSaveGroup,
+  backgroundImage, backgroundOpacity = 1, onBackgroundOpacity, onDropExternal, hideToolbar, initialPositions
+}: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const wrapRef   = useRef<HTMLDivElement>(null)
 
@@ -289,7 +300,6 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
   const selRef      = useRef(selection)
   const groupByRef  = useRef<GroupBy>('year')
   useEffect(() => { selRef.current = selection }, [selection])
-
   // React state
   const [tick,      setTick]      = useState(0)
   const [groupBy,   setGroupBy]   = useState<GroupBy>('year')
@@ -304,6 +314,7 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
   const [saving,     setSaving]     = useState(false)
   const [activeShape, setActiveShape] = useState<Shape | null>(null)
   const [drawColor,   setDrawColor]   = useState('#c8a86e')
+  const [drawWidth,   setDrawWidth]   = useState(2)
   const [textInput,   setTextInput]   = useState<{ x: number, y: number } | null>(null)
   const [textVal,     setTextVal]     = useState('')
   const [savedName,  setSavedName]  = useState<string | null>(null)
@@ -318,8 +329,38 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
   const [selectedThemeId,  setSelectedThemeId]  = useState<number | null>(null)
 
   const redraw = useCallback(() => setTick(t => t + 1), [])
-
   const oeuvresById = useMemo(() => new Map(oeuvres.map(o => [o.OeuvreID, o])), [oeuvres])
+
+  // Background image ref
+  const bgImgRef = useRef<HTMLImageElement | null>(null)
+  const [bgLoaded, setBgLoaded] = useState(false)
+  
+  useEffect(() => {
+    if (initialPositions) {
+      posRef.current = new Map(initialPositions)
+      setCustomIds(new Set(initialPositions.keys()))
+      setGroupBy('custom')
+      groupByRef.current = 'custom'
+      redraw()
+    }
+  }, [initialPositions, redraw])
+
+  useEffect(() => {
+    if (!backgroundImage) {
+      bgImgRef.current = null
+      setBgLoaded(false)
+      redraw()
+      return
+    }
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => {
+      bgImgRef.current = img
+      setBgLoaded(true)
+      redraw()
+    }
+    img.src = backgroundImage
+  }, [backgroundImage, redraw])
 
   // Reset theme filter when leaving theme mode; clear panel in theme mode.
   useEffect(() => {
@@ -539,6 +580,17 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
     ctx.translate(vp.x, vp.y)
     ctx.scale(vp.z, vp.z)
 
+    // ── Background Floorplan ────────────────────────────────────
+    if (bgImgRef.current && bgLoaded) {
+      ctx.save()
+      ctx.globalAlpha = backgroundOpacity
+      const img = bgImgRef.current
+      const iw = img.naturalWidth, ih = img.naturalHeight
+      // In exhibition mode, we align (0,0) with top-left of the floorplan.
+      ctx.drawImage(img, 0, 0, iw, ih)
+      ctx.restore()
+    }
+
     // ── Year band backgrounds + labels ──────────────────────────
     if (groupBy === 'year') {
       const byY = new Map<string, Oeuvre[]>()
@@ -564,11 +616,11 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
     // ── Theme colors (one distinct hue per theme) ────────────────
     // Computed inline so they stay in sync with the themes array order.
     const themeColors = new Map<number, string>(
-      themes.map((th, i) => [th.ThemeID, `hsl(${Math.round((i / Math.max(1, themes.length)) * 300 + 20)}, 55%, 62%)`])
+      (themes || []).map((th, i) => [th.ThemeID, `hsl(${Math.round((i / Math.max(1, (themes?.length || 1))) * 300 + 20)}, 55%, 62%)`])
     )
     // Map each work to its first-listed theme (for border colouring)
-    const workPrimaryTheme = new Map<number, number>()
-    themes.forEach(th => {
+    const workPrimaryTheme = new Map<number, number>();
+    (themes || []).forEach(th => {
       (themeWork.get(th.ThemeID) ?? new Set()).forEach(id => {
         if (!workPrimaryTheme.has(id)) workPrimaryTheme.set(id, th.ThemeID)
       })
@@ -906,7 +958,13 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
 
     if (tool === 'draw') {
       dragRef.current = { mode: 'draw', startX: lx, startY: ly }
-      setActiveShape({ type: 'line', points: [{ x: wx, y: wy }], color: drawColor, width: 2 / vpRef.current.z })
+      setActiveShape({ type: 'line', points: [{ x: wx, y: wy }], color: drawColor, width: drawWidth / vpRef.current.z })
+      return
+    }
+
+    if (tool === 'line') {
+      dragRef.current = { mode: 'line', startX: lx, startY: ly }
+      setActiveShape({ type: 'line', points: [{ x: wx, y: wy }, { x: wx, y: wy }], color: drawColor, width: drawWidth / vpRef.current.z })
       return
     }
 
@@ -956,7 +1014,7 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
       dragRef.current = { mode: 'node', startX: lx, startY: ly, nodeId: hit.id }
       if (canvasRef.current) canvasRef.current.style.cursor = 'grabbing'
     }
-  }, [tool, drawColor, spacePressed])
+  }, [tool, drawColor, drawWidth, spacePressed])
 
   const onMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     const rect = canvasRef.current!.getBoundingClientRect()
@@ -968,6 +1026,15 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
       const wx = (lx - vp.x) / vp.z
       const wy = (ly - vp.y) / vp.z
       setActiveShape({ ...activeShape, points: [...activeShape.points, { x: wx, y: wy }] })
+      redraw()
+      return
+    }
+
+    if (drag.mode === 'line' && activeShape?.type === 'line') {
+      const wx = (lx - vp.x) / vp.z
+      const wy = (ly - vp.y) / vp.z
+      const pts = [activeShape.points[0], { x: wx, y: wy }]
+      setActiveShape({ ...activeShape, points: pts })
       redraw()
       return
     }
@@ -1056,7 +1123,7 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
     const lx = e.clientX - rect.left, ly = e.clientY - rect.top
     const drag = dragRef.current
 
-    if (drag.mode === 'draw' && activeShape) {
+    if ((drag.mode === 'draw' || drag.mode === 'line') && activeShape) {
       setShapes(prev => [...prev, activeShape])
       setActiveShape(null)
     } else if (drag.mode === 'marquee' && marquee) {
@@ -1139,8 +1206,14 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
                 n.set(selectedThemeId, s)
                 return n
               })
-              // The useMemo 'constellationOeuvres' will filter it out on next tick
+              // Remove from local positions too so it disappears from canvas immediately
+              const next = new Map(posRef.current)
+              next.delete(nodeHit.id)
+              posRef.current = next
               redraw()
+            } else {
+              console.error("Erreur suppression thème:", error)
+              alert("Erreur lors de la suppression du thème.")
             }
           })
         }
@@ -1178,6 +1251,35 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
       setTick(t => t + 1)
     })
   }, [removeFromCustom, tool, redraw, selectedThemeId])
+
+  // ── Drag and Drop (Exhibition Floorplan integration) ──────────
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    const id = Number(e.dataTransfer.getData('oeuvre_id'))
+    if (!id) return
+
+    const rect = canvasRef.current!.getBoundingClientRect()
+    const lx = e.clientX - rect.left, ly = e.clientY - rect.top
+    const wx = (lx - vpRef.current.x) / vpRef.current.z
+    const wy = (ly - vpRef.current.y) / vpRef.current.z
+
+    if (onDropExternal) {
+      // Pass coordinates that center the node on the drop point
+      onDropExternal(id, wx - NW / 2, wy - NH / 2)
+    } else if (groupBy === 'custom') {
+      if (!posRef.current.has(id)) {
+        const next = new Map(posRef.current)
+        next.set(id, { x: wx - NW / 2, y: wy - NH / 2 })
+        posRef.current = next
+        setCustomIds(prev => new Set([...prev, id]))
+        redraw()
+      }
+    }
+  }, [onDropExternal, groupBy, redraw])
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+  }, [])
 
   const onMouseLeave = useCallback(() => {
     if (dragRef.current.mode === 'node') savePos(groupByRef.current, posRef.current, groupByRef.current === 'theme' ? selectedThemeId : undefined)
@@ -1586,6 +1688,25 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
     setSaving(false)
   }
 
+  if (hideToolbar) {
+    return (
+      <div ref={wrapRef} style={{ flex: 1, overflow: 'hidden', position: 'relative', background: 'var(--bg0)' }}>
+        <canvas
+          ref={canvasRef}
+          style={{ display: 'block', width: '100%', height: '100%', cursor: 'grab' }}
+          onMouseDown={onMouseDown}
+          onMouseMove={onMouseMove}
+          onMouseUp={onMouseUp}
+          onMouseLeave={onMouseLeave}
+          onContextMenu={onContextMenu}
+          onDoubleClick={handleDoubleClick}
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+        />
+      </div>
+    )
+  }
+
   // ── Render ─────────────────────────────────────────────────────
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
@@ -1596,7 +1717,8 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
         {[
           { id: 'move',    l: '🖐️',  t: 'Déplacer / Sélection' },
           { id: 'marquee', l: '⬛',  t: 'Marquée' },
-          { id: 'draw',    l: '✏️',  t: 'Dessiner' },
+          { id: 'draw',    l: '✏️',  t: 'Crayon' },
+          { id: 'line',    l: '📏',  t: 'Ligne' },
           { id: 'text',    l: 'T',   t: 'Texte' },
           { id: 'erase',   l: '🧹',  t: 'Effacer' },
         ].map(t => (
@@ -1615,6 +1737,25 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
           onChange={e => setDrawColor(e.target.value)}
           style={{ width: 20, height: 20, padding: 0, border: 'none', background: 'none', cursor: 'pointer' }}
         />
+
+        <select 
+          value={drawWidth} 
+          onChange={e => setDrawWidth(Number(e.target.value))}
+          style={{ fontSize: 9, background: 'var(--bg0)', border: '1px solid var(--bd)', color: 'var(--tx)', padding: '1px 2px', cursor: 'pointer', height: 20 }}
+          title="Épaisseur du trait"
+        >
+          <option value="1">1px</option>
+          <option value="2">2px</option>
+          <option value="4">4px</option>
+          <option value="8">8px</option>
+          <option value="16">16px</option>
+        </select>
+
+        {shapes.length > 0 && (
+          <button className="btn ghost sm" onClick={() => { if (confirm("Effacer tous les dessins ?")) setShapes([]) }} style={{ padding: '0 6px', color: 'var(--rust)', borderColor: 'var(--rust)' }} title="Effacer tout le calque de dessin">
+            Effacer
+          </button>
+        )}
 
         <div className="vline" style={{ height: 16 }} />
 
@@ -1703,6 +1844,19 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
           ↓ A4
         </button>
 
+        {backgroundImage && (
+          <>
+            <div className="vline" style={{ height: 16 }} />
+            <div className="t-label" style={{ color: 'var(--tx3)', whiteSpace: 'nowrap' }}>Plan</div>
+            <input 
+              type="range" min="0.1" max="1" step="0.05" 
+              value={backgroundOpacity} 
+              onChange={e => onBackgroundOpacity?.(Number(e.target.value))}
+              style={{ width: 60, height: 4, cursor: 'pointer', appearance: 'none', background: 'var(--bg2)', borderRadius: 2 }}
+            />
+          </>
+        )}
+
         <div className="vline" style={{ height: 16 }} />
         <div className="t-mono-sm" style={{ color: 'var(--tx3)', whiteSpace: 'nowrap', fontSize: 9 }}>
           Bord → lier · Maj+clic/Marquée → sélect. · Balai → effacer · Clic dr. → suppr.
@@ -1719,7 +1873,7 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
             ref={canvasRef}
             style={{ 
               display: 'block', width: '100%', height: '100%', 
-              cursor: tool === 'move' ? 'grab' : (tool === 'draw' || tool === 'text') ? 'text' : 'crosshair'
+              cursor: tool === 'move' ? 'grab' : tool === 'text' ? 'text' : (tool === 'draw' || tool === 'line') ? 'crosshair' : 'crosshair'
             }}
             onMouseDown={onMouseDown}
             onMouseMove={onMouseMove}
@@ -1727,6 +1881,8 @@ export function ConstellationCanvas({ oeuvres, tM, themes, selection, setSelecti
             onMouseLeave={onMouseLeave}
             onContextMenu={onContextMenu}
             onDoubleClick={handleDoubleClick}
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
           />
 
           {/* Text Input Overlay */}

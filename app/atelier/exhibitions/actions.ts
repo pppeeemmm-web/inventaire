@@ -56,7 +56,7 @@ function r2Client() {
   const accountId = process.env.R2_ACCOUNT_ID ?? ''
   return new S3Client({
     region: 'auto',
-    endpoint: `https://${accountId}.eu.r2.cloudflarestorage.com`,
+    endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
     credentials: {
       accessKeyId:     process.env.R2_ACCESS_KEY_ID     ?? '',
       secretAccessKey: process.env.R2_SECRET_ACCESS_KEY ?? '',
@@ -82,8 +82,8 @@ async function r2Delete(key: string) {
 export async function fetchLayouts(): Promise<ExhibitionLayout[]> {
   const { error: authErr, supabase } = await guardTeam()
   if (authErr || !supabase) return []
-  const { data } = await supabase
-    .from('exhibition_layout')
+  const { data } = await (supabase
+    .from('exhibition_layout') as any)
     .select('*')
     .order('updated_at', { ascending: false })
   return (data ?? []) as ExhibitionLayout[]
@@ -102,9 +102,13 @@ export async function createLayout(nom: string, processId?: string): Promise<Lay
     { id: 'w4', nom: 'Mur D', color: '#a0a060' },
   ]
 
-  const { data, error } = await supabase
-    .from('exhibition_layout')
-    .insert({ nom, process_id: processId ?? null, walls: defaultWalls, placements: [] })
+  const { data, error } = await (supabase.from('exhibition_layout') as any)
+    .insert({
+      nom,
+      process_id: processId ?? null,
+      walls: defaultWalls as any,
+      placements: [] as any
+    })
     .select()
     .single()
 
@@ -134,9 +138,9 @@ export async function uploadFloorplan(layoutId: string, formData: FormData): Pro
     return { error: `Upload R2 (bucket="${bucketName}"): ${String(e)}` }
   }
 
-  const { error } = await supabase
-    .from('exhibition_layout')
-    .update({ floorplan_path: key })
+  const { error } = await (supabase
+    .from('exhibition_layout') as any)
+    .update({ floorplan_path: key } as any)
     .eq('id', layoutId)
 
   if (error) return { error: error.message }
@@ -152,7 +156,7 @@ export async function saveLayout(
   const { error: authErr, supabase } = await guardTeam()
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
 
-  const { error } = await supabase.from('exhibition_layout').update(patch).eq('id', layoutId)
+  const { error } = await (supabase.from('exhibition_layout') as any).update(patch as any).eq('id', layoutId)
   if (error) return { error: error.message }
   return { ok: true }
 }
@@ -185,7 +189,7 @@ export async function fetchExhibitionProcesses(): Promise<{ id: string; nom: str
   const { error: authErr, supabase } = await guardTeam()
   if (authErr || !supabase) return []
   const { data } = await supabase
-    .from('suivi_process')
+    .from('suivi_process' as any)
     .select('id, nom')
     .eq('type', 'exposition')
     .order('date_fin', { ascending: false })

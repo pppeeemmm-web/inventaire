@@ -13,11 +13,35 @@
 
 ---
 
+## Conventions de collaboration & Style d'interaction
+
+**Règles absolues édictées par l'artiste (Mai 2026) :**
+1. **Questions & Choix multiples** : Toujours poser des questions claires et offrir plusieurs choix d'architecture ou de design avant d'implémenter des fonctionnalités lourdes.
+2. **Pas de "Quick Fixes"** : Ne jamais utiliser de rustines (quick fixes), de données fantômes (ghost data), ou d'options "nucléaires" juste pour forcer un résultat à fonctionner temporairement. Les solutions doivent être propres, robustes et avec 95% de confiance.
+3. **Partenariat Actif** : Agir en tant que partenaire technique. Challenger les hypothèses, proposer des améliorations réalistes basées sur les standards de l'industrie, et alerter sur les faiblesses structurelles potentielles de toute nouvelle fonctionnalité.
+
+---
+
 ## Colonnes canoniques — règles absolues
 
 ### Statut des œuvres
 - **Colonne canonique** : `Oeuvres.statusId` (integer, FK → `OeuvreStatus.id`, 1112/1112 renseignées)
 - `Statut` (text) : **droppée** — ne plus référencer
+
+---
+
+## Prévention des Défaillances Silencieuses (Silent Failures)
+
+### Principes de Développement & Test
+1. **Assertions Explicites** : Ajouter des assertions après chaque action critique, pas seulement à la fin.
+2. **Contexte d'Erreur Riche** : Logger les erreurs avec les entrées, l'environnement, le nom de l'étape et le contexte complet pour une reproduction rapide.
+3. **Heartbeats / Health Checks** : Utiliser des contrôles de santé dans les flux longs pour détecter les processus bloqués.
+4. **Preuves Visuelles** : Capturer des captures d'écran, vidéos ou traces réseau en cas d'échec pour exposer les points de rupture cachés.
+5. **Fail Fast** : Échouer immédiatement sur les exceptions inattendues au lieu de les "avaler" (swallowing errors).
+6. **Stabilité des Données** : Maintenir un état d'environnement stable pour éviter les faux positifs/négatifs.
+
+### Règle d'Or
+Si un processus continue après l'échec d'une étape majeure, c'est une faille de conception. **Détecter tôt, rapporter clairement, et escalader immédiatement.**
 - `StatutID` (integer) : **droppée** — ne plus référencer
 - Tout filtre de statut passe par `statusId`
 - Labels lisibles via `OeuvreStatus` (10 entrées) ou le map `statusLabelMap` fourni par `page.tsx`

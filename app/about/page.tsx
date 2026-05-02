@@ -28,14 +28,14 @@ export default async function AboutPage() {
 
   // Fetch config
   let config: any = { statement_doc_id: null, cv_doc_id: null }
-  const { data: configDoc } = await supabase
-    .from('document')
+  const { data: configDoc } = await (supabase
+    .from('document') as any)
     .select('storage_path')
     .eq('name', 'portfolio_sections.json')
-    .single()
+    .maybeSingle()
 
   if (configDoc?.storage_path) {
-    const { data: fileData } = await supabase.storage.from('documents').download(configDoc.storage_path)
+    const { data: fileData } = await supabase.storage.from('vault').download(configDoc.storage_path)
     if (fileData) {
       try {
         const parsed = JSON.parse(await fileData.text())
@@ -50,17 +50,17 @@ export default async function AboutPage() {
 
   if (config.statement_doc_id || config.cv_doc_id) {
     const ids = [config.statement_doc_id, config.cv_doc_id].filter(Boolean)
-    const { data: docs } = await supabase.from('document').select('id, storage_path').in('id', ids)
+    const { data: docs } = await (supabase.from('document') as any).select('id, storage_path').in('id', ids)
     
     if (docs) {
       const sDoc = docs.find(d => d.id === config.statement_doc_id)
       if (sDoc) {
-        const { data } = await supabase.storage.from('documents').createSignedUrl(sDoc.storage_path, 3600)
+        const { data } = await supabase.storage.from('vault').createSignedUrl(sDoc.storage_path, 3600)
         statementUrl = data?.signedUrl || null
       }
       const cDoc = docs.find(d => d.id === config.cv_doc_id)
       if (cDoc) {
-        const { data } = await supabase.storage.from('documents').createSignedUrl(cDoc.storage_path, 3600)
+        const { data } = await supabase.storage.from('vault').createSignedUrl(cDoc.storage_path, 3600)
         cvUrl = data?.signedUrl || null
       }
     }
@@ -70,8 +70,9 @@ export default async function AboutPage() {
     <>
       <style>{`
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { height: auto; }
         html, body { background: #edeae4; font-family: 'JetBrains Mono', monospace; color: #6b6760; }
-        body { overflow-y: auto; }
+        body { overflow-y: auto; min-height: 100vh; }
         .a-nav {
           position: sticky; top: 0; z-index: 10;
           display: flex; align-items: center; justify-content: space-between;

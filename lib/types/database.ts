@@ -108,8 +108,37 @@ export type Database = {
           txtImageNameLink: string | null
           UniteDimension: number | null
         }
-        Insert: { [key: string]: unknown }
-        Update: { [key: string]: unknown }
+        Insert: {
+          OeuvreID?: number
+          Titre?: string | null
+          Année?: string | null
+          Technique?: number | null
+          Support?: number | null
+          Format?: number | null
+          Hauteur?: string | null
+          Largeur?: string | null
+          Profondeur?: string | null
+          Prix?: number | null
+          Discount?: number | null
+          PrixFinal?: number | null
+          statusId?: number | null
+          ContactID?: number | null
+          Commentaires?: string | null
+          Historique?: string | null
+          LocalisationID?: number | null
+          LocalisationDetail?: string | null
+          Exposable?: boolean | null
+          Montee?: boolean | null
+          Encadree?: boolean | null
+          Catalogué?: boolean | null
+          is_public?: boolean | null
+          IsCommission?: boolean | null
+          DateLivraison?: string | null
+          txtImageNameLink?: string | null
+        }
+        Update: {
+          [key: string]: any
+        }
       }
       OeuvresComplete: {
         Row: { [key: string]: unknown }
@@ -121,16 +150,26 @@ export type Database = {
           Support: string | null
           SupportID: number
         }
-        Insert: { [key: string]: unknown }
-        Update: { [key: string]: unknown }
+        Insert: {
+          SupportID?: number
+          Support?: string | null
+        }
+        Update: {
+          Support?: string | null
+        }
       }
       Technique: {
         Row: {
           Technique: string | null
           TechniqueID: number
         }
-        Insert: { [key: string]: unknown }
-        Update: { [key: string]: unknown }
+        Insert: {
+          TechniqueID?: number
+          Technique?: string | null
+        }
+        Update: {
+          Technique?: string | null
+        }
       }
       consignment: {
         Row: {
@@ -159,6 +198,47 @@ export type Database = {
         Insert: { [key: string]: unknown }
         Update: { [key: string]: unknown }
       }
+      exhibition_layout: {
+        Row: {
+          id: string
+          nom: string
+          process_id: string | null
+          floorplan_path: string | null
+          floorplan_w: number | null
+          floorplan_h: number | null
+          walls: Json
+          placements: Json
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          nom: string
+          process_id?: string | null
+          floorplan_path?: string | null
+          floorplan_w?: number | null
+          floorplan_h?: number | null
+          walls?: Json
+          placements?: Json
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+          [key: string]: any
+        }
+        Update: {
+          nom?: string
+          process_id?: string | null
+          floorplan_path?: string | null
+          floorplan_w?: number | null
+          floorplan_h?: number | null
+          walls?: Json
+          placements?: Json
+          notes?: string | null
+          updated_at?: string
+          [key: string]: any
+        }
+      }
       document: {
         Row: {
           id: number
@@ -168,6 +248,7 @@ export type Database = {
           doc_date: string | null
           oeuvre_id: number | null
           contact_id: number | null
+          oeuvre_ids: number[] | null
           storage_path: string
           file_size: number
           mime_type: string
@@ -182,13 +263,22 @@ export type Database = {
           doc_date?: string | null
           oeuvre_id?: number | null
           contact_id?: number | null
+          oeuvre_ids?: number[] | null
           storage_path: string
           file_size: number
           mime_type: string
           cert_id?: string | null
           cert_hash?: string | null
         }
-        Update: { [key: string]: unknown }
+        Update: {
+          name?: string | null
+          kind?: string | null
+          notes?: string | null
+          doc_date?: string | null
+          oeuvre_id?: number | null
+          contact_id?: number | null
+          oeuvre_ids?: number[] | null
+        }
       }
       expense: {
         Row: {
@@ -224,8 +314,17 @@ export type Database = {
           avatar_url: string | null
           updated_at: string | null
         }
-        Insert: { [key: string]: unknown }
-        Update: { [key: string]: unknown }
+        Insert: {
+          id: string
+          full_name?: string | null
+          avatar_url?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          full_name?: string | null
+          avatar_url?: string | null
+          updated_at?: string | null
+        }
       }
       shipment: {
         Row: {
@@ -263,15 +362,30 @@ export type Database = {
       }
       suivi_process: {
         Row: {
-          id: number
+          id: string
           oeuvre_id: number | null
           label: string | null
+          nom: string | null
+          type: string | null
           status: string | null
           notes: string | null
+          date_fin: string | null
           created_at: string | null
         }
-        Insert: { [key: string]: unknown }
-        Update: { [key: string]: unknown }
+        Insert: {
+          id?: string
+          oeuvre_id?: number | null
+          label?: string | null
+          nom?: string | null
+          type?: string | null
+          status?: string | null
+          notes?: string | null
+          date_fin?: string | null
+          created_at?: string | null
+        }
+        Update: {
+          [key: string]: any
+        }
       }
       suivi_reminder: {
         Row: {

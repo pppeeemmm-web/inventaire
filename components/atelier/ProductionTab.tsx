@@ -95,15 +95,19 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
     return m
   }, [actions])
 
-  // Mark an action done — also writes back the linked Oeuvres field if defined
   async function markDone(oeuvreId: number, actionTypeId: number) {
     const actionType = actionTypes.find((at) => at.id === actionTypeId)
 
     // Mark the action row as done
-    await sb.from('work_action')
+    const { error } = await sb.from('work_action')
       .update({ done: true, done_at: new Date().toISOString() })
       .eq('oeuvre_id', oeuvreId)
       .eq('action_type_id', actionTypeId)
+
+    if (error) {
+      alert("Erreur lors de la mise à jour: " + error.message)
+      return
+    }
 
     // Write back to Oeuvres if this action has a linked field
     if (actionType?.field_key) {
@@ -495,70 +499,109 @@ function ActionTypeManager({ actionTypes, onRefresh, onClose }: {
   async function addType() {
     if (!newLabel.trim()) return
     setSaving(true)
-    await sb.from('work_action_type').insert({
+    const { error } = await sb.from('work_action_type').insert({
       label:      newLabel.trim(),
       color:      newColor,
       field_key:  newFieldKey || null,
       sort_order: actionTypes.length,
     })
-    setNewLabel('')
-    setNewFieldKey('')
-    await onRefresh()
+    if (error) {
+      alert("Erreur lors de l'ajout: " + error.message)
+    } else {
+      setNewLabel('')
+      setNewFieldKey('')
+      await onRefresh()
+    }
     setSaving(false)
   }
 
   async function deleteType(id: number) {
-    await sb.from('work_action_type').delete().eq('id', id)
-    onRefresh()
+    if (!confirm("Supprimer cette colonne ? Les actions associées seront également effacées.")) return
+    const { error } = await sb.from('work_action_type').delete().eq('id', id)
+    if (error) {
+      alert("Erreur lors de la suppression: " + error.message)
+    } else {
+      onRefresh()
+    }
   }
 
   return (
     <div style={{
-      marginBottom: 12, padding: '10px 14px',
+      marginBottom: 12, padding: '12px 16px',
       background: 'var(--bg0)', border: '1px solid var(--bd)',
       flexShrink: 0,
     }}>
-      <div style={{ fontSize: 9, letterSpacing: 1.5, textTransform: 'uppercase', color: 'var(--tx3)', marginBottom: 10 }}>
-        Types d'action
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <div style={{ fontSize: 9, letterSpacing: 1.5, textTransform: 'uppercase', color: 'var(--tx3)' }}>
+          Gestion des colonnes de production
+        </div>
+        <button onClick={onClose} style={{ padding: '2px 8px', fontSize: 10, cursor: 'pointer', background: 'transparent', border: '1px solid var(--bd)', color: 'var(--tx3)' }}>Fermer</button>
       </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
         {actionTypes.map((at) => (
           <div key={at.id} style={{
             display: 'flex', alignItems: 'center', gap: 6,
-            padding: '3px 8px', border: '1px solid var(--bd)', background: 'var(--bg1)',
+            padding: '4px 10px', border: '1px solid var(--bd)', background: 'var(--bg1)',
+            borderRadius: 2,
           }}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: at.color }} />
-            <span style={{ fontSize: 10, color: 'var(--tx)' }}>{at.label}</span>
+            <span style={{ fontSize: 10, color: 'var(--tx)', fontWeight: 500 }}>{at.label}</span>
+            {at.field_key && (
+              <span title={`Auto-update: ${at.field_key}`} style={{ fontSize: 8, color: 'var(--ac)', opacity: 0.8 }}>⚡</span>
+            )}
             <button
               onClick={() => deleteType(at.id)}
-              style={{ fontSize: 9, color: 'var(--tx3)', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px' }}
+              title="Supprimer la colonne"
+              style={{ fontSize: 11, color: 'var(--tx3)', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', marginLeft: 4 }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = '#c06060')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--tx3)')}
             >✕</button>
           </div>
         ))}
       </div>
-      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-        <input
-          value={newLabel}
-          onChange={(e) => setNewLabel(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && addType()}
-          placeholder="Nouveau type…"
-          style={{ padding: '4px 8px', fontSize: 10, background: 'var(--bg1)', border: '1px solid var(--bd)', color: 'var(--tx)', width: 150 }}
-        />
-        <input type="color" value={newColor} onChange={(e) => setNewColor(e.target.value)}
-          style={{ width: 28, height: 28, border: '1px solid var(--bd)', cursor: 'pointer', background: 'none' }} />
-        <select
-          value={newFieldKey}
-          onChange={(e) => setNewFieldKey(e.target.value)}
-          style={{ padding: '4px 6px', fontSize: 10, background: 'var(--bg1)', border: '1px solid var(--bd)', color: 'var(--tx)' }}
-          title="Champ à mettre à jour quand l'action est cochée"
-        >
-          {FIELD_OPTIONS.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
-        </select>
+
+      <div style={{ borderTop: '1px solid var(--bg1)', paddingTop: 12, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={{ fontSize: 8, color: 'var(--tx3)', textTransform: 'uppercase' }}>Libellé</div>
+          <input
+            value={newLabel}
+            onChange={(e) => setNewLabel(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && addType()}
+            placeholder="Nouveau type…"
+            style={{ padding: '6px 10px', fontSize: 11, background: 'var(--bg1)', border: '1px solid var(--bd)', color: 'var(--tx)', width: 160 }}
+          />
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={{ fontSize: 8, color: 'var(--tx3)', textTransform: 'uppercase' }}>Couleur</div>
+          <input type="color" value={newColor} onChange={(e) => setNewColor(e.target.value)}
+            style={{ width: 32, height: 32, border: '1px solid var(--bd)', cursor: 'pointer', background: 'none', padding: 0 }} />
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={{ fontSize: 8, color: 'var(--tx3)', textTransform: 'uppercase' }}>Automation (Auto-cochage)</div>
+          <select
+            value={newFieldKey}
+            onChange={(e) => setNewFieldKey(e.target.value)}
+            style={{ padding: '6px 8px', fontSize: 11, background: 'var(--bg1)', border: '1px solid var(--bd)', color: 'var(--tx)', outline: 'none' }}
+          >
+            {FIELD_OPTIONS.map((f) => (
+              <option key={f.value} value={f.value}>
+                {f.label === '— aucun' ? 'Aucune automation' : `Fait ➜ ${f.label}`}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <button
           onClick={addType} disabled={saving || !newLabel.trim()}
-          style={{ padding: '4px 12px', fontSize: 10, cursor: 'pointer', background: 'var(--ac)', color: 'var(--bg0)', border: 'none' }}
-        >{saving ? '…' : '+ Ajouter'}</button>
-        <button onClick={onClose} style={{ padding: '4px 10px', fontSize: 10, cursor: 'pointer', background: 'transparent', border: '1px solid var(--bd)', color: 'var(--tx3)', marginLeft: 'auto' }}>Fermer</button>
+          style={{ 
+            padding: '6px 16px', fontSize: 11, fontWeight: 600, cursor: 'pointer', 
+            background: 'var(--ac)', color: 'var(--bg0)', border: 'none',
+            marginTop: 15, alignSelf: 'flex-start'
+          }}
+        >{saving ? 'Enregistrement…' : '+ Ajouter la colonne'}</button>
       </div>
     </div>
   )

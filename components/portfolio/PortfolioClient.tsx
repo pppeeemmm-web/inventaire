@@ -10,6 +10,11 @@ import Link from 'next/link'
 import { thumbUrl, yearOf } from '@/lib/data'
 import { createClient } from '@/lib/supabase/client'
 
+function normalizeTheme(s: string | null | undefined): string {
+  if (!s) return ''
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+}
+
 interface Work {
   OeuvreID:         number
   Titre:            string | null
@@ -33,9 +38,22 @@ interface Section {
   is_active:   boolean
 }
 
+interface PortfolioConfig {
+  general: {
+    artist_name:   string
+    about_intro:   string
+    contact_email: string
+    instagram:     string
+  }
+  sections:          Section[]
+  works_collections: Section[]
+  statement_doc_id:  string | null
+  cv_doc_id:         string | null
+}
+
 interface Props { 
   works: Work[] 
-  sections: Section[]
+  config: PortfolioConfig
   statementUrl?: string | null
   cvUrl?: string | null
 }
@@ -76,7 +94,7 @@ interface Page {
 }
 
 // ── Main ───────────────────────────────────────────────────────────────
-export default function PortfolioClient({ works, sections, statementUrl, cvUrl }: Props) {
+export default function PortfolioClient({ works, config, statementUrl, cvUrl }: Props) {
   const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('portrait')
   const [showPrivate,  setShowPrivate]  = useState(false)
   const [activeTheme,  setActiveTheme]  = useState<string | null>(null)
@@ -89,15 +107,17 @@ export default function PortfolioClient({ works, sections, statementUrl, cvUrl }
 
   const featured = useMemo(() =>
     works.filter(w => {
-      if (!showPrivate && !isAvail(w)) return false
-      if (activeTheme && !w.themes.includes(activeTheme)) return false
+      if (activeTheme) {
+        const tMatch = normalizeTheme(activeTheme)
+        if (!w.themes.some(th => normalizeTheme(th).includes(tMatch))) return false
+      }
       return Boolean(w.txtImageNameLink)
     }), [works, showPrivate, activeTheme])
 
   const pages: Page[] = useMemo(() => {
-    const activeSections = sections.filter(s => s.is_active).sort((a,b) => a.sort_order - b.sort_order)
+    const activeCollections = config.works_collections?.filter(s => s.is_active).sort((a,b) => a.sort_order - b.sort_order) || []
     
-    if (activeSections.length === 0) {
+    if (activeCollections.length === 0) {
       // Default behavior
       return [
         { kind: 'approach' },
@@ -106,17 +126,19 @@ export default function PortfolioClient({ works, sections, statementUrl, cvUrl }
       ]
     }
 
-    // Dynamic sections
+    // Dynamic collections
     const dynamicPages: Page[] = [{ kind: 'approach' }]
     
-    activeSections.forEach(s => {
+    activeCollections.forEach(s => {
       // Intro page for the section
       dynamicPages.push({ kind: 'section_intro', section: s })
       
-      // Works for this section
+      // Works for this collection
       const sectionWorks = works.filter(w => {
-        if (!showPrivate && !isAvail(w)) return false
-        if (s.theme && !w.themes.includes(s.theme)) return false
+        if (s.theme) {
+          const sMatch = normalizeTheme(s.theme)
+          if (!w.themes.some(th => normalizeTheme(th).includes(sMatch))) return false
+        }
         return Boolean(w.txtImageNameLink)
       })
       
@@ -127,7 +149,7 @@ export default function PortfolioClient({ works, sections, statementUrl, cvUrl }
     
     dynamicPages.push({ kind: 'enquiry' })
     return dynamicPages
-  }, [featured, works, showPrivate, sections])
+  }, [featured, works, showPrivate, config.works_collections])
 
   useEffect(() => {
     setPageIdx(i => Math.min(i, pages.length - 1))
@@ -152,6 +174,7 @@ export default function PortfolioClient({ works, sections, statementUrl, cvUrl }
   return (
     <>
       <style>{`
+        html, body { height: 100%; overflow: hidden; }
         :root {
           --pf-bg: #edeae4;
           --pf-tx: #1a1a1a;
@@ -182,17 +205,16 @@ export default function PortfolioClient({ works, sections, statementUrl, cvUrl }
 
       {/* Header */}
       <header className="pf-screen" style={{ 
-        height: NAV_H, 
+        height: NAV_H, flexShrink: 0,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '0 clamp(16px, 4vw, 40px)',
         borderBottom: '1px solid var(--pf-bd)', background: 'var(--pf-bg)',
-        position: 'sticky', top: 0, zIndex: 200,
-        flexShrink: 0
+        position: 'relative', zIndex: 200,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <Link href="/hub" style={{ textDecoration: 'none', color: 'var(--pf-tx)', fontSize: 8, opacity: 0.1, cursor: 'default' }}>·</Link>
           <div className="pf-serif" style={{ fontSize: 'clamp(14px, 2vw, 18px)', letterSpacing: '-0.01em', color: 'var(--pf-tx)', whiteSpace: 'nowrap' }}>
-            Pierre Emmanuel Moulin
+            {config.general.artist_name || 'Artiste'}
           </div>
         </div>
 
@@ -237,35 +259,46 @@ export default function PortfolioClient({ works, sections, statementUrl, cvUrl }
         </div>
       </header>
 
+      {/* ── Main viewer (fixed height — no scroll) ── */}
       <div className="pf-screen" style={{
-        minHeight: `calc(100vh - ${NAV_H}px)`,
-        display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center',
-        padding: '60px clamp(12px, 3vw, 24px) 120px',
+        height: `calc(100dvh - ${NAV_H}px)`,
+        flex: 1, minHeight: 0,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        padding: 'clamp(16px, 3vw, 40px)',
+        paddingBottom: '80px', // Reserve space for absolute nav
         background: 'var(--pf-bg)',
+        overflow: 'hidden',
+        position: 'relative',
       }}>
-        {/* Card */}
+        {/* Card — responsive proportions for screens, not strict A4 */}
         <div style={{
+          flex: '1 1 auto',
+          minHeight: 0,
+          aspectRatio: isPortrait ? '3/4' : '3/2',
+          maxWidth: isPortrait ? '640px' : '1100px',
           width: '100%',
-          maxWidth: isPortrait ? 'min(640px, 90vw)' : 'min(960px, 95vw)',
-          aspectRatio: isPortrait ? '210/297' : '297/210',
+          maxHeight: '100%',
           background: '#fff', border: '1px solid var(--pf-bd)',
-          boxShadow: '0 4px 30px rgba(0,0,0,0.03)',
+          boxShadow: '0 4px 30px rgba(0,0,0,0.05)',
           display: 'flex', flexDirection: 'column', overflow: 'hidden',
           position: 'relative',
         }}>
           <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column' }}>
-            <CardContent page={cur} isPortrait={isPortrait} />
+            <CardContent page={cur} isPortrait={isPortrait} config={config} />
           </div>
         </div>
 
-        {/* Navigation row */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 40 }}>
+        {/* Navigation bottom — absolute positioned so it never gets pushed off screen */}
+        <div style={{ 
+          position: 'absolute', bottom: 24, left: '50%', transform: 'translateX(-50%)',
+          display: 'flex', gap: 16, zIndex: 100 
+        }}>
           <button onClick={prev} disabled={pageIdx === 0}
             style={{
-              background: 'none', border: '1px solid var(--pf-bd)', color: 'var(--pf-tx)',
-              padding: '8px 16px', cursor: pageIdx === 0 ? 'default' : 'pointer',
-              fontSize: 12, fontFamily: 'inherit', opacity: pageIdx === 0 ? 0.2 : 1,
+              background: 'var(--pf-bg)', border: '1px solid var(--pf-bd)', color: 'var(--pf-tx)',
+              padding: '6px 14px', cursor: pageIdx === 0 ? 'default' : 'pointer',
+              fontSize: 12, fontFamily: 'inherit', opacity: pageIdx === 0 ? 0.2 : 0.8,
+              boxShadow: '0 2px 10px rgba(0,0,0,0.05)'
             }}
           >←</button>
 
@@ -283,9 +316,10 @@ export default function PortfolioClient({ works, sections, statementUrl, cvUrl }
 
           <button onClick={next} disabled={pageIdx === pages.length - 1}
             style={{
-              background: 'none', border: '1px solid var(--pf-bd)', color: 'var(--pf-tx)',
-              padding: '8px 16px', cursor: pageIdx === pages.length - 1 ? 'default' : 'pointer',
-              fontSize: 12, fontFamily: 'inherit', opacity: pageIdx === pages.length - 1 ? 0.2 : 1,
+              background: 'var(--pf-bg)', border: '1px solid var(--pf-bd)', color: 'var(--pf-tx)',
+              padding: '6px 14px', cursor: pageIdx === pages.length - 1 ? 'default' : 'pointer',
+              fontSize: 12, fontFamily: 'inherit', opacity: pageIdx === pages.length - 1 ? 0.2 : 0.8,
+              boxShadow: '0 2px 10px rgba(0,0,0,0.05)'
             }}
           >→</button>
         </div>
@@ -304,7 +338,7 @@ export default function PortfolioClient({ works, sections, statementUrl, cvUrl }
       <div className="pf-print">
         {pages.map((p, i) => (
           <div key={i} className="pf-page">
-            <PrintPage page={p} />
+            <PrintPage page={p} config={config} />
             <div style={{ position: 'absolute', bottom: 12, right: 16, fontSize: 7, color: '#bbb', letterSpacing: 1 }}>
               Pierre Emmanuel Moulin · {i + 1}
             </div>
@@ -317,7 +351,7 @@ export default function PortfolioClient({ works, sections, statementUrl, cvUrl }
 
 // ── Card page content ──────────────────────────────────────────────────
 
-function CardContent({ page, isPortrait }: { page: Page; isPortrait: boolean }) {
+function CardContent({ page, isPortrait, config }: { page: Page; isPortrait: boolean; config: PortfolioConfig }) {
   if (page.kind === 'section_intro' && page.section) {
     const s = page.section
     return (
@@ -332,21 +366,19 @@ function CardContent({ page, isPortrait }: { page: Page; isPortrait: boolean }) 
 
   if (page.kind === 'approach') {
     return (
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '64px 48px', justifyContent: 'flex-start' }}>
-        <div style={{ marginBottom: 80 }}>
-          <div className="pf-serif" style={{ fontSize: 'clamp(24px, 4vw, 40px)', letterSpacing: '-0.02em', lineHeight: 1.1, color: 'var(--pf-tx)', marginBottom: 20 }}>
-            Pierre Emmanuel Moulin
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 'clamp(20px,6%,64px) clamp(20px,7%,48px)', justifyContent: 'flex-start', overflowY: 'auto' }}>
+        <div style={{ marginBottom: 'clamp(16px,5%,80px)' }}>
+          <div className="pf-serif" style={{ fontSize: 'clamp(18px, 4vw, 40px)', letterSpacing: '-0.02em', lineHeight: 1.1, color: 'var(--pf-tx)', marginBottom: 12 }}>
+            {config.general.artist_name || 'Artiste'}
           </div>
-          <div className="pf-mono" style={{ color: 'var(--pf-ac)', letterSpacing: 2, fontSize: 'clamp(8px, 1.2vw, 10px)', fontWeight: 600, textTransform: 'uppercase' }}>
+          <div className="pf-mono" style={{ color: 'var(--pf-ac)', letterSpacing: 2, fontSize: 'clamp(7px, 1vw, 10px)', fontWeight: 600, textTransform: 'uppercase' }}>
             Peinture · Dessin · Sculpture · Photographie
           </div>
         </div>
-        <div className="pf-serif" style={{ fontSize: 'clamp(15px, 2.5vw, 24px)', lineHeight: 1.6, color: 'var(--pf-tx)', fontStyle: 'italic', maxWidth: '38ch' }}>
-          La peinture comme résistance au visible. Chaque œuvre est une tentative
-          d&apos;approcher ce qui se dérobe — la lumière sur une surface, la densité d&apos;un silence,
-          la matière du temps.
+        <div className="pf-serif" style={{ fontSize: 'clamp(12px, 2vw, 22px)', lineHeight: 1.55, color: 'var(--pf-tx)', fontStyle: 'italic', maxWidth: '38ch' }}>
+          {config.general.about_intro || "La peinture comme résistance au visible. Chaque œuvre est une tentative d'approcher ce qui se dérobe — la lumière sur une surface, la densité d'un silence, la matière du temps."}
         </div>
-        <div className="pf-mono" style={{ marginTop: 'auto', color: 'var(--pf-tx3)', fontSize: 9, opacity: 0.5, letterSpacing: 1.5, textTransform: 'uppercase' }}>
+        <div className="pf-mono" style={{ marginTop: 'auto', color: 'var(--pf-tx3)', fontSize: 8, opacity: 0.5, letterSpacing: 1.5, textTransform: 'uppercase' }}>
           Studio · {new Date().getFullYear()}
         </div>
       </div>
@@ -396,6 +428,7 @@ function CardContent({ page, isPortrait }: { page: Page; isPortrait: boolean }) 
           padding: isPortrait ? '16px 24px 24px' : '40px 32px',
           display: 'flex', flexDirection: 'column', 
           justifyContent: isPortrait ? 'flex-start' : 'center',
+          overflowY: 'auto'
         }}>
           {w.Titre && <div className="pf-serif" style={{ fontSize: 'clamp(16px, 2.5vw, 22px)', lineHeight: 1.2, color: 'var(--pf-tx)', marginBottom: 12 }}>{w.Titre}</div>}
           <div className="pf-mono" style={{ lineHeight: 2.2, color: 'var(--pf-tx2)', fontSize: 9, letterSpacing: 0.5 }}>
@@ -419,9 +452,9 @@ function CardContent({ page, isPortrait }: { page: Page; isPortrait: boolean }) 
 
   if (page.kind === 'enquiry') {
     return (
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '64px 48px', justifyContent: 'flex-start' }}>
-        <div className="pf-mono" style={{ marginBottom: 40, letterSpacing: 3, textTransform: 'uppercase', fontSize: 10, color: 'var(--pf-ac)', fontWeight: 600 }}>Enquiry</div>
-        <InquiryForm />
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 'clamp(20px,6%,64px) clamp(20px,7%,48px)', justifyContent: 'flex-start', overflowY: 'auto' }}>
+        <div className="pf-mono" style={{ marginBottom: 'clamp(16px,4%,40px)', letterSpacing: 3, textTransform: 'uppercase', fontSize: 10, color: 'var(--pf-ac)', fontWeight: 600 }}>Enquiry</div>
+        <InquiryForm contactEmail={config.general.contact_email} />
         <div className="pf-mono" style={{ marginTop: 'auto', fontSize: 8, opacity: 0.3, letterSpacing: 1.5, textTransform: 'uppercase' }}>
           © {new Date().getFullYear()} Pierre Emmanuel Moulin · Studio
         </div>
@@ -434,7 +467,7 @@ function CardContent({ page, isPortrait }: { page: Page; isPortrait: boolean }) 
 
 // ── Print page ─────────────────────────────────────────────────────────
 
-function PrintPage({ page }: { page: Page }) {
+function PrintPage({ page, config }: { page: Page; config: PortfolioConfig }) {
   if (page.kind === 'section_intro' && page.section) {
     const s = page.section
     return (
@@ -481,16 +514,15 @@ function PrintPage({ page }: { page: Page }) {
       <>
         <div style={{ fontFamily: 'Georgia, serif', fontSize: 13, letterSpacing: 2, textTransform: 'uppercase', color: '#888', marginBottom: 32 }}>Contact</div>
         <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#444', lineHeight: 2.2 }}>
-          studio@pierreemmanuel.com<br />
-          pem-hub.vercel.app/portfolio
+          {config.general.contact_email || 'studio@exemple.com'}<br />
+          {config.general.instagram ? `Instagram : ${config.general.instagram}` : ''}
         </div>
       </>
     )
-    return null
   }
 }
 
-function InquiryForm() {
+function InquiryForm({ contactEmail }: { contactEmail?: string }) {
   const [sent, setSent] = useState(false)
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({ name: '', email: '', message: '' })
@@ -500,7 +532,7 @@ function InquiryForm() {
     e.preventDefault()
     if (!form.name || !form.email || !form.message) return
     setLoading(true)
-    const { error } = await sb.from('inquiry').insert([form])
+    const { error } = await (sb.from('inquiry') as any).insert([form])
     setLoading(false)
     if (!error) setSent(true)
   }

@@ -1,0 +1,144 @@
+In the work form separate physically the different pipes. We need to organize the sections. Maybe in the pipeline form like the one we use for the pipeline tab processes we need to have a discussion about that. I do like the preview of the individual pipeline processes. With switches that have different states maybe we could use that capability.
+
+production status: Pipeline
+-atelier = 90 % with first picture (because process usually starts with picture) 5% commission 5% no picture (old work usually). Commission starts a suivi process preferably with a deadline, price and payment plan to be agreed under policy (tbc and redacted depending on customer type (family is special, as well as returning customers, mécènes, etc.))
+-media ready = good picture (for print and screen) check policies (to be redacted: ie print is 300 DPI CYMK and screen is 72 dpi RGB SRGB - anf if print exists then all ok) // if photo ready is checked, if not create item in production tab and dimensions (necessary for proper display) = catalogué
+-from there either: archive (atelier archive) or available (ready to deploy publically)
+-si available : soit prêt à partir (ready for next process all prices POA when public unless overidden) soit: - A monter ? oui/non (depends on the customer or the person who takes the works in charge, ie consignement) - a restaurer? then when checked
+-sales process : frame or not/ crate or tube or flat strong if not flexible (depending on support and thickness and materials used) But we'll take care of that later. COA. Insurance. Shipping. Payment plan agreement. Accounts reconciliation. Debt collection.
+
+ownership pipeline = contact = acheteurID?
+-Artist (always is the starting point) until sold or given
+-Sold - Gift are transfer of property
+-loan - consignement (galerie / espace d'art) are not transfer of property (trigger letters of consignement : agree terms on person in charge, shipping, insurance, return schedule etc.)
+-Always log auto the changes with date / contact / location
+
+Location (linked to ownership's pipe):
+-(prod stage until 3 incl) artist's atelier address
+-when transfer of property: acheteur's adress
+-if no transfer of property: the event's location
+-if lost no location
+Location is the relevant's owner adress (as there can be multiple addresses)
+
+confidentiality pipeline owner data and image:
+-open / No public image (production stage1) reads as "artist" / Location / Not public
+-(production stage 3) open/public
+-sold / given : give choice to owner over his data and not the work unless premium is agreed and release policy agreed (by default = public) = public or not (remove private)
+
+Etat
+-good (to go to sales stage)
+-damaged -> to retouch or à restaurer (when done back to 1 ie good to go)
+-destroyed
+-lost (trace ownership to last person's contact ie acheteur)
+
+.
+
+---------------
+
+In the contact form:
+
+Is there a primary key in the contact main data source?
+
+Try to rationalize the width of the columns.
+
+We need to be able to do batch editing for the contacts as well.
+
+We should be able to add several email addresses.
+
+Several phone numbers.
+
+Several websites.
+
+Could we set up a contact maintenance tool? To pull information from what's in the contact form over the internet maybe with an agent / to be reflected on
+
+Into the address block we should add a note, specific to shipping.
+
+Social media should be a drop-down. With the main ones of course and the ability to add more.
+
+If it's a collector or a mécène a friend or a client
+
+In the roles section contact-wise Framer and Encadreur are the same. So check for duplicates.
+
+---------------
+
+Beyond the work form : remarks :
+
+Offer a Control-Z possibility.
+
+We may rename the physical tab income and Expenses, in the dashboard view we need more data visualization.
+
+In the Concepts tab when I try to go into one of them, an error is triggered.
+
+In the Themes/group tab can we rationalize the UX?
+
+In the stock tab I need selection possibilities, batch edit possibilities. Even dynamic tables possibilities if possible.
+
+The stock tag tab should be a sub tab from the stock.
+
+In the process tab When I try to add a column, nothing happens.
+
+When I click done on the process, nothing happens. I think the task should disappear.
+
+As a general rule because this is a bilingual website any time a form or a new feature is implemented, make sure everything is ready for English and French. I know that most of the data is in French and it may trigger a conflict in the future. Because of the accent's specific character but we'll take care of that. Later.
+
+We need more data especially health data on the overview panel. This is kind of empty.
+
+Infrastructure-wise, scalability is a priority. Therefore the system must be sound. It is possible that we may have to re-label all the table fields and operate a migration. To cut through the quirks of the naming, etc., and establish a naming policy for tables and everything. This is a big move so we have to handle this carefully. Very carefully. Setup backups and all.
+
+Supabase is the handler of the database only
+R2-CloudFare is the storage. At the moment there are two buckets:
+- Paintings, where we store images of works
+- Vault, where we store documents of different sorts
+Vercel it's the next.js. Renderer.
+GitHub is the repository.
+Art DB is the folder for the project.
+Within the Artr db/app/import images of build scripts can be put there. Successful Imports Move to  asset folder Success…
+The real project folder for the build is the artdb/app/
+The front-end website starts at the root. The backend starts at /atelier. Portfolio is /portfolio.
+Always try to test locally. Then push to GitHub. When amendments are consistent and consequent.
+
+Gather all policies. In the vault such as flat field process Studio Bible etc.
+
+Whenever there is an edit possibility there must be a delete possibility with a pop-up confirmation window. Stating the dangers re data.
+
+Always test the implementation of new features extensively.
+
+As a general rule whenever you implement a new feature I want you to flag what could go wrong and what are the weaknesses of the new feature towards the structure of the database and the website as well.
+
+Log in every general rule I've said into a process reminder for you. To use as often as you can
+
+You need to, as a general rule, act my partner. You therefore need to challenge my assumptions. Propose improvements. Realistic ones. When implementing features, you need to be 95% confident you can implement them safely within the general rules above. It is good to be aware of general practice within the industry. And to leverage that knowledge therefore give you the right to search the internet to gather this kind of information.
+
+Layout should be responsive and flexible [sensitive to window resizing ].
+
+Start User log and display changes accordingly somewhere relevant. Set up user assignement in process tabs
+
+Always allow additions in drop-down menus for technique / Support / Role. There should always be tables on their own. So that we can gather data easily and demand it.
+
+Maintain the fallback logic for the year of the work.
+
+1st letter capitalization everywhere.
+
+Color code red fill for flagged data. I mean Payment incomplete. To be completed later.
+
+If technique equals digital then dimensions will be in pixels. This is already the case. But I want to convert to actual dimensions in centimeters with the DPI. By default will be 300 dpi.
+
+Auto CP>City>country (fallback logic as always to avoid data gaps unless stipulated)
+
+Establish a framework for artist's representation by gallery/marchand
+
+Discount is in %
+
+A GIF could be built from the image manager resources. Different stages. Automated script to insert the result in the image manager. set up a few parameters.
+
+Historique is a log field, fed auto and manually as well
+
+The website tab should be renamed Diffusion or have a separate tab for the portfolio. Under the Diffusion section. I think we have the main tools to have control over the website and the portfolio contents. We may need graphic improvements. And we need to work on the PDF output. A4 is the standard size. We need to find a solution to showcase the physicality of the works.
+
+Following distinction to commit to and evaluate the changes to the db:
+1 - Themes (creative)
+Displayed in work form can be assigned / removed from / created and assigned
+2 - Group (ownership)
+works groups could be more relevant to exhibitions (map as well) / consignements
+
+Relations are logged into a table and are visually established in the constellation panel by proximity/influence/series/diptych

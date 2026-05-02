@@ -298,7 +298,7 @@ function r2PutHeaders(
   const accessKey = process.env.R2_ACCESS_KEY_ID!
   const secretKey = process.env.R2_SECRET_ACCESS_KEY!
   const bucket    = process.env.R2_BUCKET ?? 'paintings'
-  const host      = `${account}.eu.r2.cloudflarestorage.com`
+  const host      = `${account}.r2.cloudflarestorage.com`
   const pathname  = `/${bucket}/${filename.split('/').map(encodeURIComponent).join('/')}`
 
   const now       = new Date()
@@ -340,7 +340,7 @@ function r2PutHeaders(
 async function r2Put(buf: Buffer, filename: string, contentType: string): Promise<void> {
   const account = process.env.R2_ACCOUNT_ID!
   const bucket  = process.env.R2_BUCKET ?? 'paintings'
-  const url     = `https://${account}.eu.r2.cloudflarestorage.com/${bucket}/${filename.split('/').map(encodeURIComponent).join('/')}`
+  const url     = `https://${account}.r2.cloudflarestorage.com/${bucket}/${filename.split('/').map(encodeURIComponent).join('/')}`
   const headers = r2PutHeaders(buf, filename, contentType)
   const res     = await fetch(url, { method: 'PUT', headers, body: buf })
   if (!res.ok) throw new Error(`R2 PUT ${res.status}: ${await res.text()}`)
@@ -351,7 +351,7 @@ async function r2Delete(filename: string): Promise<void> {
   const accessKey = process.env.R2_ACCESS_KEY_ID!
   const secretKey = process.env.R2_SECRET_ACCESS_KEY!
   const bucket    = process.env.R2_BUCKET ?? 'paintings'
-  const host      = `${account}.eu.r2.cloudflarestorage.com`
+  const host      = `${account}.r2.cloudflarestorage.com`
   const encodedPath = `/${bucket}/${filename.split('/').map(encodeURIComponent).join('/')}`
 
   const now       = new Date()
