@@ -28,6 +28,9 @@ export default async function WorksPage() {
     collections = raw.filter((c: any) => c.is_active)
   }
 
+  // FALLBACK: If no collections are configured, show all public works in a single section
+  const hasConfig = collections.length > 0
+
   // 2. Themes
   const { data: themeRecords } = await (supabase.from('tblTheme') as any).select('ThemeID, Nom')
   const { data: oeuvreThemes } = await (supabase.from('OeuvreTheme') as any).select('OeuvreID, ThemeID')
@@ -60,6 +63,15 @@ export default async function WorksPage() {
     txtImageNameLink: w.txtImageNameLink as string | null,
     themes:           oeuvreThemeMap.get(w.OeuvreID) ?? [],
   }))
+
+  if (!hasConfig && works.length > 0) {
+    collections = [{
+      id: 'default',
+      title: 'Selected Works',
+      theme: null,
+      is_active: true
+    }]
+  }
 
   return <WorksClient works={works} collections={collections} />
 }
