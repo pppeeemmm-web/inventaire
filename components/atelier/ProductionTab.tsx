@@ -170,15 +170,15 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Filtrer…"
           style={{
-            marginLeft: 'auto', padding: '5px 10px', fontSize: 11,
+            marginLeft: 'auto', padding: '8px 14px', fontSize: 13,
             background: 'var(--bg1)', border: '1px solid var(--bd)',
-            color: 'var(--tx)', width: 180,
+            color: 'var(--tx)', width: 220,
           }}
         />
         <button
           onClick={() => setEditingTypes((v) => !v)}
           style={{
-            padding: '5px 10px', fontSize: 10, cursor: 'pointer',
+            padding: '8px 12px', fontSize: 12, cursor: 'pointer',
             color: editingTypes ? 'var(--ac)' : 'var(--tx3)',
             background: editingTypes ? 'var(--bg2)' : 'transparent',
             border: '1px solid var(--bd)',
@@ -299,7 +299,7 @@ function ActionColumn({
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
           <span className="t-eyebrow" style={{ 
-            color: actionType.color, fontSize: 10, fontWeight: 700,
+            color: actionType.color, fontSize: 13, fontWeight: 700,
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
           }}>{actionType.label}</span>
         </div>
@@ -322,7 +322,7 @@ function ActionColumn({
             onChange={(e) => setAddQ(e.target.value)}
             placeholder="Titre ou #ID…"
             style={{
-              width: '100%', padding: '4px 7px', fontSize: 10,
+              width: '100%', padding: '6px 10px', fontSize: 13,
               background: 'var(--bg0)', border: '1px solid var(--bd)',
               color: 'var(--tx)',
             }}
@@ -332,9 +332,9 @@ function ActionColumn({
               key={o.OeuvreID}
               onClick={() => { onAddAction(o.OeuvreID); setShowAdd(false); setAddQ('') }}
               style={{
-                padding: '5px 7px', fontSize: 10, cursor: 'pointer',
+                padding: '8px 12px', fontSize: 13, cursor: 'pointer',
                 color: 'var(--tx)', borderBottom: '1px solid var(--bd)',
-                display: 'flex', alignItems: 'center', gap: 6,
+                display: 'flex', alignItems: 'center', gap: 8,
               }}
               onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg2)')}
               onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
@@ -353,7 +353,7 @@ function ActionColumn({
               <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {o.Titre ?? '—'}
               </div>
-              <span style={{ color: 'var(--tx3)', fontSize: 8 }}>#{o.OeuvreID}</span>
+              <span style={{ color: 'var(--tx3)', fontSize: 11 }}>#{o.OeuvreID}</span>
             </div>
           ))}
           {addQ.trim() && suggestions.length === 0 && (
@@ -428,17 +428,17 @@ function WorkCard({ o, tM, onMarkDone, onOpen }: {
 
         {/* Text */}
         <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={() => onOpen(o)}>
-          <div style={{ fontSize: 9, color: 'var(--tx3)', marginBottom: 1 }}>
+          <div style={{ fontSize: 11, color: 'var(--tx3)', marginBottom: 2 }}>
             #{o.OeuvreID}{year ? ` · ${year}` : ''}
           </div>
           <div style={{
-            fontSize: 10, color: 'var(--tx)', lineHeight: 1.35,
+            fontSize: 13, color: 'var(--tx)', lineHeight: 1.4,
             overflow: 'hidden', textOverflow: 'ellipsis',
             display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
           }}>
             {o.Titre ?? '—'}
           </div>
-          {techLabel && <div style={{ fontSize: 9, color: 'var(--tx3)', marginTop: 2 }}>{techLabel}</div>}
+          {techLabel && <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 4 }}>{techLabel}</div>}
         </div>
 
         {/* Actions */}
@@ -448,7 +448,7 @@ function WorkCard({ o, tM, onMarkDone, onOpen }: {
             onClick={(e) => { e.stopPropagation(); onMarkDone() }}
             title="Marquer comme fait"
             style={{
-              fontSize: 11, padding: '1px 5px', color: 'var(--tx3)',
+              fontSize: 13, padding: '2px 6px', color: 'var(--tx3)',
               background: 'transparent', border: '1px solid transparent',
               cursor: 'pointer',
             }}
@@ -460,7 +460,7 @@ function WorkCard({ o, tM, onMarkDone, onOpen }: {
             onClick={(e) => { e.stopPropagation(); router.push(`/atelier/works/${o.OeuvreID}/edit`) }}
             title="Éditer"
             style={{
-              fontSize: 10, padding: '1px 5px', color: 'var(--tx3)',
+              fontSize: 12, padding: '2px 6px', color: 'var(--tx3)',
               background: 'transparent', border: '1px solid transparent',
               cursor: 'pointer',
             }}
@@ -474,13 +474,13 @@ function WorkCard({ o, tM, onMarkDone, onOpen }: {
       {(isFramed || (isCommission && (deadline || true))) && (
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', paddingLeft: 47 }}>
           {isFramed && (
-            <span style={{ fontSize: 8, letterSpacing: 0.5, color: 'var(--tx3)', border: '1px solid var(--bd)', padding: '1px 4px' }}>
+            <span style={{ fontSize: 10, letterSpacing: 0.5, color: 'var(--tx3)', border: '1px solid var(--bd)', padding: '2px 6px' }}>
               ENCADRÉE
             </span>
           )}
           {isCommission && deadline && (
             <span style={{
-              fontSize: 8, letterSpacing: 0.5, padding: '1px 4px',
+              fontSize: 10, letterSpacing: 0.5, padding: '2px 6px',
               color: deadlinePast ? 'var(--rust)' : 'var(--ac)',
               border: `1px solid ${deadlinePast ? 'var(--rust)' : 'var(--ac)'}`,
             }}>
@@ -489,7 +489,7 @@ function WorkCard({ o, tM, onMarkDone, onOpen }: {
             </span>
           )}
           {isCommission && !deadline && (
-            <span style={{ fontSize: 8, letterSpacing: 0.5, color: 'var(--rust)', border: '1px solid var(--rust)', padding: '1px 4px' }}>
+            <span style={{ fontSize: 10, letterSpacing: 0.5, color: 'var(--rust)', border: '1px solid var(--rust)', padding: '2px 6px' }}>
               ⚠ COMMISSION SANS DATE
             </span>
           )}
@@ -557,10 +557,10 @@ function ActionTypeManager({ actionTypes, onRefresh, onClose }: {
       flexShrink: 0,
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <div style={{ fontSize: 9, letterSpacing: 1.5, textTransform: 'uppercase', color: 'var(--tx3)' }}>
+        <div style={{ fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', color: 'var(--tx3)' }}>
           Gestion des colonnes de production
         </div>
-        <button onClick={onClose} style={{ padding: '2px 8px', fontSize: 10, cursor: 'pointer', background: 'transparent', border: '1px solid var(--bd)', color: 'var(--tx3)' }}>Fermer</button>
+        <button onClick={onClose} style={{ padding: '6px 12px', fontSize: 12, cursor: 'pointer', background: 'transparent', border: '1px solid var(--bd)', color: 'var(--tx3)' }}>Fermer</button>
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
@@ -570,15 +570,15 @@ function ActionTypeManager({ actionTypes, onRefresh, onClose }: {
             padding: '4px 10px', border: '1px solid var(--bd)', background: 'var(--bg1)',
             borderRadius: 2,
           }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: at.color }} />
-            <span style={{ fontSize: 10, color: 'var(--tx)', fontWeight: 500 }}>{at.label}</span>
+            <span style={{ width: 10, height: 10, borderRadius: '50%', background: at.color }} />
+            <span style={{ fontSize: 13, color: 'var(--tx)', fontWeight: 500 }}>{at.label}</span>
             {at.field_key && (
-              <span title={`Auto-update: ${at.field_key}`} style={{ fontSize: 8, color: 'var(--ac)', opacity: 0.8 }}>⚡</span>
+              <span title={`Auto-update: ${at.field_key}`} style={{ fontSize: 11, color: 'var(--ac)', opacity: 0.8 }}>⚡</span>
             )}
             <button
               onClick={() => deleteType(at.id)}
               title="Supprimer la colonne"
-              style={{ fontSize: 11, color: 'var(--tx3)', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', marginLeft: 4 }}
+              style={{ fontSize: 14, color: 'var(--tx3)', background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px', marginLeft: 8 }}
               onMouseEnter={(e) => (e.currentTarget.style.color = '#c06060')}
               onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--tx3)')}
             >✕</button>
@@ -588,28 +588,28 @@ function ActionTypeManager({ actionTypes, onRefresh, onClose }: {
 
       <div style={{ borderTop: '1px solid var(--bg1)', paddingTop: 12, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <div style={{ fontSize: 8, color: 'var(--tx3)', textTransform: 'uppercase' }}>Libellé</div>
+          <div style={{ fontSize: 11, color: 'var(--tx3)', textTransform: 'uppercase' }}>Libellé</div>
           <input
             value={newLabel}
             onChange={(e) => setNewLabel(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && addType()}
             placeholder="Nouveau type…"
-            style={{ padding: '6px 10px', fontSize: 11, background: 'var(--bg1)', border: '1px solid var(--bd)', color: 'var(--tx)', width: 160 }}
+            style={{ padding: '8px 12px', fontSize: 13, background: 'var(--bg1)', border: '1px solid var(--bd)', color: 'var(--tx)', width: 180 }}
           />
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <div style={{ fontSize: 8, color: 'var(--tx3)', textTransform: 'uppercase' }}>Couleur</div>
+          <div style={{ fontSize: 11, color: 'var(--tx3)', textTransform: 'uppercase' }}>Couleur</div>
           <input type="color" value={newColor} onChange={(e) => setNewColor(e.target.value)}
             style={{ width: 32, height: 32, border: '1px solid var(--bd)', cursor: 'pointer', background: 'none', padding: 0 }} />
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <div style={{ fontSize: 8, color: 'var(--tx3)', textTransform: 'uppercase' }}>Automation (Auto-cochage)</div>
+          <div style={{ fontSize: 11, color: 'var(--tx3)', textTransform: 'uppercase' }}>Automation (Auto-cochage)</div>
           <select
             value={newFieldKey}
             onChange={(e) => setNewFieldKey(e.target.value)}
-            style={{ padding: '6px 8px', fontSize: 11, background: 'var(--bg1)', border: '1px solid var(--bd)', color: 'var(--tx)', outline: 'none' }}
+            style={{ padding: '8px 12px', fontSize: 13, background: 'var(--bg1)', border: '1px solid var(--bd)', color: 'var(--tx)', outline: 'none' }}
           >
             {FIELD_OPTIONS.map((f) => (
               <option key={f.value} value={f.value}>
@@ -622,9 +622,9 @@ function ActionTypeManager({ actionTypes, onRefresh, onClose }: {
         <button
           onClick={addType} disabled={saving || !newLabel.trim()}
           style={{ 
-            padding: '6px 16px', fontSize: 11, fontWeight: 600, cursor: 'pointer', 
+            padding: '10px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer', 
             background: 'var(--ac)', color: 'var(--bg0)', border: 'none',
-            marginTop: 15, alignSelf: 'flex-start'
+            marginTop: 18, alignSelf: 'flex-start'
           }}
         >{saving ? 'Enregistrement…' : '+ Ajouter la colonne'}</button>
       </div>

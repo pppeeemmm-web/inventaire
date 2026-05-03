@@ -46,13 +46,14 @@ export type StageKey = 'idea' | 'wip' | 'drying' | 'mounting' | 'framing' | 'sho
 export function stageColor(stage: string | null | undefined): string {
   switch (stage) {
     case 'idea':      return 'var(--ac)'
+    case 'sketch':    return 'var(--rust)'
     case 'wip':       return 'var(--rust)'
     case 'drying':    return 'var(--dust)'
     case 'mounting':  return 'var(--dust)'
     case 'framing':   return 'var(--dust)'
     case 'shot':      return 'var(--cyan)'
     case 'catalogued':return 'var(--sage)'
-    default:          return 'transparent'
+    default:          return 'var(--tx3)'
   }
 }
 
@@ -65,8 +66,6 @@ export type StatusKey =
 const STATUS_LABEL_MAP: Record<string, StatusKey> = {
   WIP:        'wip',
   Available:  'studio',
-  Private:    'studio',
-  Reserved:   'studio',
   Borrowed:   'loan',
   Sold:       'sold',
   Consigned:  'consigned',
@@ -84,16 +83,39 @@ export function statusKeyFromLabel(label: string | null | undefined): StatusKey 
 /**
  * Resolve the StatusKey for a work.
  * Checks statusId against the OeuvreStatus table first, falls back to hash.
+ * Also enforces the "Physical Reality" by checking LocalisationID.
  */
 export function statusOf(
-  o: { statusId: number | null; OeuvreID: number },
+  o: any,
   statusLabelMap: Record<number, string>,
 ): StatusKey {
-  if (o.statusId !== null) {
+  let key: StatusKey = 'studio'
+
+  if (o.statusId !== null && o.statusId !== undefined) {
     const label = statusLabelMap[o.statusId]
-    if (label) return statusKeyFromLabel(label)
+    if (label) key = statusKeyFromLabel(label)
+  } else if (o.OeuvreID) {
+    key = fallbackStatus(o.OeuvreID)
   }
-  return fallbackStatus(o.OeuvreID)
+
+  // TRUTH ENFORCEMENT: If the physical location is not the studio (ID 13), 
+  // it is effectively a "Loan" or "Consignment" state.
+  const locId = o.LocalisationID
+  const isStudio = locId === null || locId === 13 || locId === '13'
+  
+  if (key === 'studio' && !isStudio) {
+    return 'loan'
+  }
+
+  return key
+}
+
+/** 
+ * Resolve the commercial state (Lock) for a work.
+ * Independent of the logistics status.
+ */
+export function commercialStatusOf(o: any): 'available' | 'reserved' | 'private' {
+  return (o as any).commercial_status || 'available'
 }
 
 /** Deterministic fallback when statusId is null (matches prototype heuristic) */

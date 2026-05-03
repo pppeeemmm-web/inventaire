@@ -5,9 +5,16 @@ export interface Oeuvre {
   Technique: string | null;
   Dimensions: string | null;
   Statut: string | null;
+  statusId: number | null;
+  commercial_status: 'available' | 'reserved' | 'private' | null;
+  Catalogué: boolean;
+  StageProduction: string | null;
   Prix: number | null;
   ImageURL: string | null;
   NeedsPhotograph?: boolean;
+  txtImageNameLink?: string | null;
+  ContactID?: number | null;
+  LocalisationID?: number | null;
 }
 
 export interface Contact {

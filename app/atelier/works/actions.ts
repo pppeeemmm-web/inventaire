@@ -76,8 +76,11 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
   const isCommission   = formData.get('is_commission') === '1'
   const dateLivraison  = (formData.get('date_livraison') as string | null)?.trim() || null
   const stageProduction = (formData.get('stage_production') as string | null)?.trim() || null
+  const commercialStatus = (formData.get('commercial_status') as string | null)?.trim() || 'available'
   const needsPhotograph = formData.get('needs_photograph') === '1'
   const anonymityLevel = numOrNull(formData.get('anonymity_level')) ?? 0
+  const isPaid         = formData.get('is_paid') === '1'
+  const isGift         = formData.get('is_gift') === '1'
 
   const themeIds: number[] = (formData.getAll('themes') as string[])
     .map(Number)
@@ -129,6 +132,26 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       ? `${originEntry}\n${historiqueAppend}`
       : originEntry
 
+    // ── FORCE FIELD ENFORCEMENT ──
+    const isCatalogued = !!catalogued
+    const needsPhoto   = !!needsPhotograph
+    const isArchive     = [6, 7, 11].includes(statusId ?? 0)
+
+    let finalComm   = commercialStatus
+    let finalLoc    = localisationId
+    let finalStage  = stageProduction
+
+    if (!isCatalogued || needsPhoto) {
+      finalComm  = 'private'
+      finalLoc   = 13
+      finalStage = needsPhoto ? 'shot' : 'wip'
+    } else if (isArchive) {
+      finalStage = 'archive'
+    } else {
+      finalStage = 'available'
+      if (finalComm === 'private') finalComm = 'available'
+    }
+
     // INSERT
     const { error: insertErr } = await supabase.from('Oeuvres').insert({
       OeuvreID:     oid,
@@ -147,7 +170,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       ContactID:    contactId,
       Commentaires:      commentaires,
       Historique:        initialHistorique,
-      LocalisationID:    localisationId,
+      LocalisationID:    finalLoc,
       LocalisationDetail: localisationDetail,
       Exposable:         exposable,
       Montee:            montee,
@@ -156,9 +179,12 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       is_public:         isPublic,
       IsCommission:      isCommission,
       DateLivraison:     dateLivraison,
-      StageProduction:   stageProduction,
+      StageProduction:   finalStage,
+      commercial_status: finalComm,
       NeedsPhotograph:   needsPhotograph,
       anonymity_level:   anonymityLevel,
+      is_paid:           isPaid,
+      is_gift:           isGift,
       txtImageNameLink:  imageName,
     })
 
@@ -245,11 +271,33 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       IsCommission:      isCommission,
       DateLivraison:     dateLivraison,
       StageProduction:   stageProduction,
+      commercial_status: commercialStatus,
       NeedsPhotograph:   needsPhotograph,
-      anonymity_level:   isAnonymous ? 1 : 0,
+      anonymity_level:   anonymityLevel,
+      is_paid:           isPaid,
+      is_gift:           isGift,
     }
     if (formUploadedNewImage) {
       updatePayload.txtImageNameLink = imageName
+    }
+
+    // ── FORCE FIELD ENFORCEMENT ──
+    const isCatalogued = !!catalogued
+    const needsPhoto   = !!needsPhotograph
+    const isArchive     = [6, 7, 11].includes(statusId ?? 0)
+
+    if (!isCatalogued || needsPhoto) {
+      updatePayload.commercial_status = 'private'
+      updatePayload.LocalisationID    = 13
+      updatePayload.StageProduction   = needsPhoto ? 'shot' : 'wip'
+    } else if (isArchive) {
+      updatePayload.StageProduction   = 'archive'
+    } else {
+      updatePayload.StageProduction   = 'available'
+      // If moving from WIP to Catalogued, default to available unless already reserved
+      if (current?.StageProduction !== 'available' && updatePayload.commercial_status === 'private') {
+        updatePayload.commercial_status = 'available'
+      }
     }
 
     const { error: updateErr } = await supabase.from('Oeuvres').update(updatePayload).eq('OeuvreID', oid)
@@ -494,8 +542,15 @@ export async function addWorkImage(formData: FormData): Promise<ImageResult> {
 
   if (insertErr || !inserted) return { error: insertErr?.message ?? 'Erreur insertion' }
 
-  // New image is last → it becomes the cover
-  await syncCover(supabase, oeuvreId)
+  // New image is last → it becomes the cover. 
+  // FORCE FIELD: If we just added an image, the work no longer needs photography.
+  await supabase
+    .from('Oeuvres')
+    .update({ 
+      txtImageNameLink: inserted.txtImageNameLink,
+      NeedsPhotograph: false 
+    })
+    .eq('OeuvreID', oeuvreId)
 
   revalidatePath('/atelier')
   return { ok: true, image: inserted as WorkImage }

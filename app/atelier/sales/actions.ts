@@ -223,6 +223,51 @@ export async function updateOrderStatut(
   return { ok: true }
 }
 
+export async function deleteSaleOrder(id: string): Promise<SimpleResult> {
+  const { error: authErr, supabase } = await guardTeam()
+  if (authErr || !supabase) return { error: authErr ?? 'Auth' }
+
+  // 1. Get the order to find the works and pdf path
+  const { data: order, error: fetchErr } = await supabase
+    .from('sale_order')
+    .select('*')
+    .eq('id', id)
+    .single()
+
+  if (fetchErr || !order) return { error: fetchErr?.message ?? 'Order not found' }
+
+  // Extract IDs from notes
+  let ids: number[] = []
+  if (order.notes?.includes('BATCH_IDS:')) {
+    try {
+      const match = order.notes.match(/BATCH_IDS: (\[.*?\])/)
+      if (match) ids = JSON.parse(match[1])
+    } catch { ids = [order.oeuvre_id] }
+  }
+  if (ids.length === 0) ids = [order.oeuvre_id]
+
+  // 2. Delete the order record
+  const { error: delErr } = await supabase.from('sale_order').delete().eq('id', id)
+  if (delErr) return { error: delErr.message }
+
+  // 3. Revert works status
+  await supabase
+    .from('Oeuvres')
+    .update({
+      statusId:      1,    // Atelier
+      AcheteurID:    null,
+      DateLivraison: null,
+      ContactID:     13,   // Pem Atelier
+      LocalisationID: 13,
+    })
+    .in('OeuvreID', ids)
+
+  // 4. Cleanup document record
+  await supabase.from('document').delete().eq('storage_path', order.pdf_path)
+
+  return { ok: true }
+}
+
 export async function regenerateOrderPdf(id: string): Promise<SimpleResult> {
   const { error: authErr, supabase } = await guardTeam()
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
@@ -379,12 +424,7 @@ export async function buildOrderPdf(order: SaleOrderRow, supabase: any): Promise
       doc.y += 6
     }
 
-    if (isPaid) {
-      doc.save()
-      doc.fontSize(80).fillColor('#72b872', 0.1).rotate(-30, { origin: [300, 450] })
-      doc.text('PAYÉ / PAID', 150, 400, { characterSpacing: 5 })
-      doc.restore()
-    }
+    // Watermark rendered in bufferedPageRange loop below
 
     const summaryNeeded = 220
     if (doc.y > (841 - 40 - summaryNeeded)) {
@@ -439,6 +479,15 @@ export async function buildOrderPdf(order: SaleOrderRow, supabase: any): Promise
     const pages = doc.bufferedPageRange()
     for (let i = 0; i < pages.count; i++) {
       doc.switchToPage(i)
+
+      // PAYÉ / PAID watermark on every page
+      if (isPaid) {
+        doc.save()
+        doc.fontSize(80).fillColor('#72b872', 0.12).rotate(-30, { origin: [300, 450] })
+        doc.text('PAYÉ / PAID', 150, 400, { characterSpacing: 5 })
+        doc.restore()
+      }
+
       doc.fontSize(7).fillColor(tx2).text('PIERRE EMMANUEL MOULIN', 40, 40)
       doc.fontSize(16).fillColor('#222').text(`Bon de commande`, 40, 54)
       doc.fontSize(9).fillColor(ac).text(`${order.order_ref} · PAGE ${i + 1} / ${pages.count}`, 40, 74)

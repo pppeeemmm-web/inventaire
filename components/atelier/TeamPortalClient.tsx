@@ -71,7 +71,7 @@ export function TeamPortalClient({
   
   if (!isConfigured) {
     return (
-      <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000', color: '#fff', textAlign: 'center', padding: 40 }}>
+      <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg0)', color: 'var(--tx)', textAlign: 'center', padding: 40 }}>
         <div>
           <h2 style={{ color: 'var(--rust)', marginBottom: 20 }}>Configuration Error</h2>
           <p style={{ opacity: 0.7, maxWidth: 400, margin: '0 auto', fontSize: 14 }}>
@@ -89,6 +89,19 @@ export function TeamPortalClient({
   // Restore last tab from localStorage after first paint.
   const [tab,            setTab]          = useState<Tab>('overview')
   const [reminderCount,  setReminderCount] = useState(0)
+  const [theme,          setTheme]          = useState<'dark' | 'light'>('dark')
+
+  useEffect(() => {
+    const savedTab = localStorage.getItem('pem_team_tab') as Tab | null
+    if (savedTab) setTab(savedTab)
+    const savedTheme = localStorage.getItem('pem_theme') as 'dark' | 'light' | null
+    if (savedTheme) setTheme(savedTheme)
+  }, [])
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+    localStorage.setItem('pem_theme', theme)
+  }, [theme])
 
   // Poll unread reminders for the landing badge
   useEffect(() => {
@@ -98,12 +111,7 @@ export function TeamPortalClient({
       .eq('lu', false)
       .then(({ count }: { count: number | null }) => setReminderCount(count ?? 0))
       .catch(err => console.error("Reminder Poll Error:", err))
-  }, [tab]) // refresh when tab changes
-
-  useEffect(() => {
-    const saved = localStorage.getItem('pem_team_tab') as Tab | null
-    if (saved) setTab(saved)
-  }, [])
+  }, [tab])
   const [inspected,  setInspected]  = useState<Oeuvre | null>(null)
   const [selection,  setSelection]  = useState<Set<number>>(new Set())
   const [groups,     setGroups]     = useState<{ id: string; name: string }[]>(
@@ -282,10 +290,22 @@ export function TeamPortalClient({
 
         <div className="row gap-sm">
           <div style={{ display: 'flex', border: '1px solid var(--bd)', fontSize: 10, letterSpacing: 1 }}>
+            <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              style={{
+                padding: '4px 10px',
+                background: 'transparent',
+                color: 'var(--tx2)',
+                fontWeight: 600,
+                borderRight: '1px solid var(--bd)',
+                display: 'flex', alignItems: 'center', gap: 6
+              }}>
+              {theme === 'dark' ? '🌙' : '☀️'}
+              <span>{theme === 'dark' ? 'NIGHT' : 'DAY'}</span>
+            </button>
             {(['fr', 'en'] as const).map((l) => (
               <button key={l} onClick={() => setLang(l)}
                 style={{
-                  padding: '4px 8px',
+                  padding: '4px 10px',
                   background: lang === l ? 'var(--ac)' : 'transparent',
                   color: lang === l ? 'var(--bg0)' : 'var(--tx3)',
                   fontWeight: lang === l ? 600 : 400,
@@ -315,12 +335,12 @@ export function TeamPortalClient({
                       style={{
                         padding: '6px 20px', fontSize: 11, textAlign: 'left',
                         color: isActive ? 'var(--ac)' : 'var(--tx)',
-                        background: isActive ? 'rgba(200,168,110,0.12)' : 'transparent',
+                        background: isActive ? 'color-mix(in srgb, var(--ac) 12%, transparent)' : 'transparent',
                         borderLeft: '3px solid',
                         borderColor: isActive ? 'var(--ac)' : 'transparent',
                         transition: 'all 0.1s', display: 'flex', alignItems: 'center', justifyContent: 'space-between'
                       }}
-                      onMouseEnter={(e) => !isActive && (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
+                      onMouseEnter={(e) => !isActive && (e.currentTarget.style.background = 'var(--bg2)')}
                       onMouseLeave={(e) => !isActive && (e.currentTarget.style.background = 'transparent')}
                     >
                       <span style={{ fontWeight: isActive ? 600 : 400 }}>{label}</span>
@@ -737,7 +757,7 @@ function OverviewTab({
                 ) : (
                   <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--tx3)', fontSize: 10 }}>NO IMG</div>
                 )}
-                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '4px 6px', background: 'linear-gradient(transparent, rgba(0,0,0,0.8))', color: '#fff', fontSize: 8, fontFamily: 'var(--font-mono)' }}>
+                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '4px 6px', background: 'linear-gradient(transparent, color-mix(in srgb, var(--bg0) 80%, transparent))', color: 'var(--tx)', fontSize: 8, fontFamily: 'var(--font-mono)' }}>
                   #{o.OeuvreID}
                 </div>
               </div>

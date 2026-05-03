@@ -100,6 +100,16 @@ export function FiscalTab({ oeuvres, contacts = [] }: Props) {
   const [year,     setYear]     = useState(YEAR_NOW)
   const [regime,   setRegime]   = useState<'micro' | 'reel'>('micro')
   const [expenses, setExpenses] = useState<Expense[]>([])
+  const [sortKey,  setSortKey]  = useState<string>('date')
+  const [sortDir,  setSortDir]  = useState<'asc' | 'desc'>('desc')
+  const toggleSort = (k: string) => {
+    if (sortKey === k) {
+      setSortDir(sortDir === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortKey(k)
+      setSortDir('asc')
+    }
+  }
   const [loading,  setLoading]  = useState(true)
   const [section,  setSection]  = useState<'dashboard' | 'expenses' | 'framework'>('dashboard')
   const [editing,  setEditing]  = useState<Expense | 'new' | null>(null)
@@ -166,6 +176,22 @@ export function FiscalTab({ oeuvres, contacts = [] }: Props) {
     })
     return [...m.entries()].sort((a, b) => b[1] - a[1])
   }, [expenses])
+
+  const sortedExpenses = useMemo(() => {
+    const list = [...expenses]
+    list.sort((a, b) => {
+      const dir = sortDir === 'asc' ? 1 : -1
+      if (sortKey === 'date')     return (new Date(a.date).getTime() - new Date(b.date).getTime()) * dir
+      if (sortKey === 'label')    return (a.libelle || '').localeCompare(b.libelle || '') * dir
+      if (sortKey === 'category') return (a.category || '').localeCompare(b.category || '') * dir
+      if (sortKey === 'ht')       return ((a.montant_ht || 0) - (b.montant_ht || 0)) * dir
+      if (sortKey === 'tva')      return ((a.tva_rate || 0) - (b.tva_rate || 0)) * dir
+      if (sortKey === 'ttc')      return (a.montant_ttc - b.montant_ttc) * dir
+      if (sortKey === 'ref')      return (a.receipt_ref || '').localeCompare(b.receipt_ref || '') * dir
+      return 0
+    })
+    return list
+  }, [expenses, sortKey, sortDir])
 
   const years = useMemo(() => {
     const ys = new Set<number>()
@@ -344,17 +370,17 @@ export function FiscalTab({ oeuvres, contacts = [] }: Props) {
               <table className="tbl">
                 <thead>
                   <tr>
-                    <th>{t('date')}</th>
-                    <th>{t('label')}</th>
-                    <th>{t('category')}</th>
-                    <th style={{ textAlign: 'right' }}>HT</th>
-                    <th style={{ textAlign: 'right' }}>TVA %</th>
-                    <th style={{ textAlign: 'right' }}>TTC</th>
-                    <th>Ref.</th>
+                    <th onClick={() => toggleSort('date')} style={{ cursor: 'pointer' }}>{t('date')} <SortInd k="date" current={sortKey} dir={sortDir} /></th>
+                    <th onClick={() => toggleSort('label')} style={{ cursor: 'pointer' }}>{t('label')} <SortInd k="label" current={sortKey} dir={sortDir} /></th>
+                    <th onClick={() => toggleSort('category')} style={{ cursor: 'pointer' }}>{t('category')} <SortInd k="category" current={sortKey} dir={sortDir} /></th>
+                    <th onClick={() => toggleSort('ht')} style={{ textAlign: 'right', cursor: 'pointer' }}>HT <SortInd k="ht" current={sortKey} dir={sortDir} /></th>
+                    <th onClick={() => toggleSort('tva')} style={{ textAlign: 'right', cursor: 'pointer' }}>TVA % <SortInd k="tva" current={sortKey} dir={sortDir} /></th>
+                    <th onClick={() => toggleSort('ttc')} style={{ textAlign: 'right', cursor: 'pointer' }}>TTC <SortInd k="ttc" current={sortKey} dir={sortDir} /></th>
+                    <th onClick={() => toggleSort('ref')} style={{ cursor: 'pointer' }}>Ref. <SortInd k="ref" current={sortKey} dir={sortDir} /></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {expenses.map((e) => (
+                  {sortedExpenses.map((e) => (
                     <tr key={e.id} onClick={() => setEditing(e)} style={{ cursor: 'pointer' }}>
                       <td className="t-mono-sm" style={{ whiteSpace: 'nowrap', color: 'var(--tx3)' }}>
                         {new Date(e.date).toLocaleDateString('fr-FR')}
@@ -688,4 +714,9 @@ function ExpenseModal({
       </div>
     </div>
   )
+}
+
+function SortInd({ k, current, dir }: { k: string; current: string; dir: 'asc' | 'desc' }) {
+  if (k !== current) return <span style={{ opacity: 0.2, marginLeft: 4, fontSize: 11 }}>↕</span>
+  return <span style={{ color: 'var(--ac)', marginLeft: 4, fontSize: 11 }}>{dir === 'asc' ? '↑' : '↓'}</span>
 }

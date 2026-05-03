@@ -6,7 +6,7 @@ import { useMemo, useState, useEffect, useCallback } from 'react'
 import { useI18n }      from '@/lib/i18n/context'
 import { statusOf, yearOf, thumbUrl, type StatusKey } from '@/lib/data'
 import type { Oeuvre }  from '@/lib/types/database'
-import { createSaleOrder, updateOrderStatut, fetchOrders, regenerateOrderPdf, type SaleOrderRow } from '@/app/atelier/sales/actions'
+import { createSaleOrder, updateOrderStatut, deleteSaleOrder, fetchOrders, regenerateOrderPdf, type SaleOrderRow } from '@/app/atelier/sales/actions'
 import { getSignedUrl } from '@/app/atelier/vault/actions'
 import { stringifyError } from '@/lib/error'
 
@@ -22,7 +22,7 @@ interface Props {
 }
 
 const inputStyle: React.CSSProperties = {
-  width: '100%', padding: '7px 10px', fontSize: 11,
+  width: '100%', padding: '8px 12px', fontSize: 13,
   background: 'var(--bg0)', border: '1px solid var(--bd)',
   color: 'var(--tx)', outline: 'none',
 }
@@ -48,6 +48,16 @@ const STATUT_COLORS: Record<string, string> = {
 export function SalesTab({ oeuvres, statusLabelMap, contacts, groups, cM, tM }: Props) {
   const { t, lang } = useI18n()
   const [orders,    setOrders]    = useState<SaleOrderRow[]>([])
+  const [sortKey,   setSortKey]   = useState<string>('date')
+  const [sortDir,   setSortDir]   = useState<'asc' | 'desc'>('desc')
+  const toggleSort = (k: string) => {
+    if (sortKey === k) {
+      setSortDir(sortDir === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortKey(k)
+      setSortDir('asc')
+    }
+  }
   const [showForm,  setShowForm]  = useState(false)
   const [loading,   setLoading]   = useState(true)
   const [inspected, setInspected] = useState<SaleOrderRow | null>(null)
@@ -103,13 +113,36 @@ export function SalesTab({ oeuvres, statusLabelMap, contacts, groups, cM, tM }: 
     [contacts]
   )
 
+  const sortedOrders = useMemo(() => {
+    const list = [...orders]
+    list.sort((a, b) => {
+      const dir = sortDir === 'asc' ? 1 : -1
+      if (sortKey === 'ref')   return (a.order_ref || '').localeCompare(b.order_ref || '') * dir
+      if (sortKey === 'date')  return (new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) * dir
+      if (sortKey === 'prix')  return ((a.prix_final || 0) - (b.prix_final || 0)) * dir
+      if (sortKey === 'statut') return a.statut.localeCompare(b.statut) * dir
+      if (sortKey === 'buyer') {
+        const ba = a.buyer_id ? (cM[a.buyer_id] || '') : ''
+        const bb = b.buyer_id ? (cM[b.buyer_id] || '') : ''
+        return ba.localeCompare(bb) * dir
+      }
+      if (sortKey === 'work') {
+        const wa = oeuvres.find(o => o.OeuvreID === a.oeuvre_id)?.Titre || ''
+        const wb = oeuvres.find(o => o.OeuvreID === b.oeuvre_id)?.Titre || ''
+        return wa.localeCompare(wb) * dir
+      }
+      return 0
+    })
+    return list
+  }, [orders, sortKey, sortDir, cM, oeuvres])
+
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '10px 24px', borderBottom: '1px solid var(--bd)', flexShrink: 0,
+        padding: '12px 24px', borderBottom: '1px solid var(--bd)', flexShrink: 0,
       }}>
-        <div style={{ fontSize: 11, color: 'var(--tx2)' }}>
+        <div style={{ fontSize: 13, color: 'var(--tx2)' }}>
           {orders.length} commande{orders.length !== 1 ? 's' : ''}
         </div>
         <button className="btn primary sm" onClick={() => setShowForm(true)}>
@@ -136,13 +169,13 @@ export function SalesTab({ oeuvres, statusLabelMap, contacts, groups, cM, tM }: 
               {byYear.map(([yr, { count, revenue }]) => {
                 const pct = maxRevYear > 0 ? (revenue / maxRevYear) * 100 : 0
                 return (
-                  <div key={yr} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, minWidth: 0 }}>
-                    <div style={{ fontSize: 8, color: 'var(--tx3)', textAlign: 'center' }}>{revenue > 0 ? fmt(revenue) : '—'}</div>
+                  <div key={yr} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                    <div style={{ fontSize: 11, color: 'var(--tx3)', textAlign: 'center' }}>{revenue > 0 ? fmt(revenue) : '—'}</div>
                     <div style={{ flex: 1, width: '100%', display: 'flex', alignItems: 'flex-end' }}>
                       <div style={{ width: '100%', height: `${pct}%`, background: revenue > 0 ? 'var(--ac)' : 'var(--bd)', minHeight: revenue > 0 ? 2 : 0 }} />
                     </div>
-                    <div style={{ fontSize: 9, color: 'var(--tx3)' }}>{yr}</div>
-                    {count > 0 && <div style={{ fontSize: 8, color: 'var(--tx3)', marginTop: -2 }}>{count}×</div>}
+                    <div style={{ fontSize: 12, color: 'var(--tx3)' }}>{yr}</div>
+                    {count > 0 && <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: -2 }}>{count}×</div>}
                   </div>
                 )
               })}
@@ -153,39 +186,39 @@ export function SalesTab({ oeuvres, statusLabelMap, contacts, groups, cM, tM }: 
         <div className="panel pad-md" style={{ overflowX: 'auto' }}>
           <div className="t-label" style={{ marginBottom: 16, color: 'var(--ac)' }}>Commandes</div>
           {loading ? (
-            <div style={{ color: 'var(--tx3)', fontSize: 11 }}>Chargement…</div>
+            <div style={{ color: 'var(--tx3)', fontSize: 13 }}>Chargement…</div>
           ) : orders.length === 0 ? (
-            <div style={{ color: 'var(--tx3)', fontSize: 11 }}>Aucune commande. Créez la première via "+ Nouvelle commande".</div>
+            <div style={{ color: 'var(--tx3)', fontSize: 13 }}>Aucune commande. Créez la première via "+ Nouvelle commande".</div>
           ) : (
             <table className="tbl" style={{ minWidth: 800 }}>
               <thead>
                 <tr>
-                  <th style={{ width: 100 }}>Réf.</th>
-                  <th style={{ width: 220 }}>Œuvre</th>
-                  <th style={{ width: 180 }}>Acheteur</th>
-                  <th style={{ width: 100 }}>Date</th>
-                  <th className="num" style={{ width: 120 }}>Prix final</th>
-                  <th style={{ width: 120 }}>Statut</th>
+                  <th onClick={() => toggleSort('ref')} style={{ width: 100, cursor: 'pointer' }}>Réf. <SortInd k="ref" current={sortKey} dir={sortDir} /></th>
+                  <th onClick={() => toggleSort('work')} style={{ width: 220, cursor: 'pointer' }}>Œuvre <SortInd k="work" current={sortKey} dir={sortDir} /></th>
+                  <th onClick={() => toggleSort('buyer')} style={{ width: 180, cursor: 'pointer' }}>Acheteur <SortInd k="buyer" current={sortKey} dir={sortDir} /></th>
+                  <th onClick={() => toggleSort('date')} style={{ width: 100, cursor: 'pointer' }}>Date <SortInd k="date" current={sortKey} dir={sortDir} /></th>
+                  <th onClick={() => toggleSort('prix')} className="num" style={{ width: 120, cursor: 'pointer' }}>Prix final <SortInd k="prix" current={sortKey} dir={sortDir} /></th>
+                  <th onClick={() => toggleSort('statut')} style={{ width: 120, cursor: 'pointer' }}>Statut <SortInd k="statut" current={sortKey} dir={sortDir} /></th>
                   <th style={{ width: 60 }}>PDF</th>
                 </tr>
               </thead>
               <tbody>
-                {orders.map((ord) => {
+                {sortedOrders.map((ord) => {
                   const work  = oeuvres.find((o) => o.OeuvreID === ord.oeuvre_id)
                   const buyer = ord.buyer_id ? (cM[ord.buyer_id] ?? `#${ord.buyer_id}`) : '—'
                   return (
                     <tr key={ord.id} style={{ cursor: 'pointer' }} onClick={() => setInspected(ord)}>
-                      <td style={{ color: 'var(--ac)', fontFamily: 'var(--font-mono)', fontSize: 10 }}>{ord.order_ref ?? '—'}</td>
-                      <td style={{ color: 'var(--tx)', fontWeight: 500 }}>{work?.Titre ?? `#${ord.oeuvre_id}`}</td>
-                      <td style={{ color: 'var(--tx2)' }}>{buyer}</td>
-                      <td style={{ color: 'var(--tx3)', fontSize: 10 }}>{ord.created_at.slice(0, 10)}</td>
+                      <td style={{ color: 'var(--ac)', fontFamily: 'var(--font-mono)', fontSize: 11 }}>{ord.order_ref ?? '—'}</td>
+                      <td style={{ color: 'var(--tx)', fontWeight: 500, fontSize: 13 }}>{work?.Titre ?? `#${ord.oeuvre_id}`}</td>
+                      <td style={{ color: 'var(--tx2)', fontSize: 13 }}>{buyer}</td>
+                      <td style={{ color: 'var(--tx3)', fontSize: 11 }}>{ord.created_at.slice(0, 10)}</td>
                       <td className="num" style={{ color: 'var(--ac)', fontWeight: 600 }}>{ord.prix_final ? fmt(ord.prix_final) : '—'}</td>
                       <td>
                         <span style={{
-                          fontSize: 9, letterSpacing: '0.06em', textTransform: 'uppercase',
+                          fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase',
                           color: STATUT_COLORS[ord.statut] ?? 'var(--tx3)',
                           border: `1px solid ${STATUT_COLORS[ord.statut] ?? 'var(--bd)'}`,
-                          padding: '1px 6px',
+                          padding: '2px 8px',
                           display: 'inline-block'
                         }}>
                           {STATUT_LABELS[ord.statut] ?? ord.statut}
@@ -205,12 +238,12 @@ export function SalesTab({ oeuvres, statusLabelMap, contacts, groups, cM, tM }: 
                               }
                             }}
                             className="t-mono-sm"
-                            style={{ background: 'none', border: 'none', padding: 0, fontSize: 9, color: 'var(--cyan)', cursor: 'pointer', opacity: 0.8 }}
+                            style={{ background: 'none', border: 'none', padding: 0, fontSize: 11, color: 'var(--cyan)', cursor: 'pointer', opacity: 0.8 }}
                           >
                             PDF
                           </button>
                         ) : (
-                          <span style={{ fontSize: 9, color: 'var(--tx3)' }}>—</span>
+                          <span style={{ fontSize: 11, color: 'var(--tx3)' }}>—</span>
                         )}
                       </td>
                     </tr>
@@ -311,9 +344,9 @@ function OrderFormModal({ oeuvres, contacts, groups, tM, onClose, onCreated }: {
       display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200,
     }} onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
       <div style={{ width: 680, maxHeight: '90vh', overflowY: 'auto', background: 'var(--bg1)', border: '1px solid var(--bd)', padding: 28 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <div style={{ fontSize: 14, color: 'var(--tx)' }}>Nouvelle commande</div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--tx3)', cursor: 'pointer', fontSize: 18 }}>×</button>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+          <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--tx)' }}>Nouvelle commande</div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--tx3)', cursor: 'pointer', fontSize: 24 }}>×</button>
         </div>
         <form onSubmit={handleSubmit}>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 20 }}>
@@ -336,14 +369,14 @@ function OrderFormModal({ oeuvres, contacts, groups, tM, onClose, onCreated }: {
               {oeuvreIds.map(id => {
                 const o = oeuvres.find(x => x.OeuvreID === id)
                 return (
-                  <div key={id} style={{ display:'flex', alignItems:'center', gap:8, background:'var(--bg2)', padding:'4px 8px', border:'1px solid var(--bd2)' }}>
-                    {o?.txtImageNameLink && <img src={thumbUrl(o.txtImageNameLink, 64) ?? ''} alt="" style={{ width:24, height:24, objectFit:'cover' }} />}
-                    <span style={{ fontSize:10, fontFamily:'var(--font-mono)' }}>#{id}</span>
-                    <button type="button" onClick={() => setOeuvreIds(prev => prev.filter(x => x !== id))} style={{ background:'none', border:'none', color:'var(--rust)', cursor:'pointer' }}>×</button>
+                  <div key={id} style={{ display:'flex', alignItems:'center', gap:10, background:'var(--bg2)', padding:'6px 12px', border:'1px solid var(--bd2)' }}>
+                    {o?.txtImageNameLink && <img src={thumbUrl(o.txtImageNameLink, 64) ?? ''} alt="" style={{ width:32, height:32, objectFit:'cover' }} />}
+                    <span style={{ fontSize:12, fontFamily:'var(--font-mono)' }}>#{id}</span>
+                    <button type="button" onClick={() => setOeuvreIds(prev => prev.filter(x => x !== id))} style={{ background:'none', border:'none', color:'var(--rust)', cursor:'pointer', fontSize: 16 }}>×</button>
                   </div>
                 )
               })}
-              {oeuvreIds.length === 0 && <div style={{ fontSize:11, color:'var(--tx3)', fontStyle:'italic' }}>Aucune œuvre sélectionnée</div>}
+              {oeuvreIds.length === 0 && <div style={{ fontSize:13, color:'var(--tx3)', fontStyle:'italic' }}>Aucune œuvre sélectionnée</div>}
             </div>
 
             <div style={{ position: 'relative' }}>
@@ -361,7 +394,7 @@ function OrderFormModal({ oeuvres, contacts, groups, tM, onClose, onCreated }: {
                     .slice(0, 10)
                     .map(o => (
                       <div key={o.OeuvreID} onClick={() => { setOeuvreIds(prev => [...prev, o.OeuvreID]); setSearch('') }}
-                        style={{ padding:'8px 12px', fontSize:11, borderBottom:'1px solid var(--bd2)', cursor:'pointer', display:'flex', alignItems:'center', gap:10 }}
+                        style={{ padding:'10px 16px', fontSize:13, borderBottom:'1px solid var(--bd2)', cursor:'pointer', display:'flex', alignItems:'center', gap:12 }}
                         className="hover-bg"
                       >
                         {o.txtImageNameLink && <img src={thumbUrl(o.txtImageNameLink, 64) ?? ''} alt="" style={{ width:32, height:32, objectFit:'cover' }} />}
@@ -457,7 +490,7 @@ function OrderFormModal({ oeuvres, contacts, groups, tM, onClose, onCreated }: {
           <Section label="Notes">
             <textarea name="notes" rows={3} onBlur={e => e.target.value = e.target.value.charAt(0).toUpperCase() + e.target.value.slice(1)} style={{ ...inputStyle, resize: 'vertical' }} placeholder="Conditions particulières, remarques…" />
           </Section>
-          {error && <div style={{ color: 'var(--rust)', fontSize: 11, marginBottom: 12 }}>{error}</div>}
+          {error && <div style={{ color: 'var(--rust)', fontSize: 13, marginBottom: 12 }}>{error}</div>}
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
             <button type="button" onClick={onClose} className="btn ghost sm">Annuler</button>
             <button type="submit" disabled={saving} className="btn primary sm">
@@ -500,15 +533,15 @@ function OrderDetailPanel({ order, oeuvres, cM, onClose, onUpdated }: {
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
       display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200,
     }} onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
-      <div style={{ width: 480, background: 'var(--bg1)', border: '1px solid var(--bd)', padding: 24 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+      <div style={{ width: 540, background: 'var(--bg1)', border: '1px solid var(--bd)', padding: 32 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
           <div>
-            <div style={{ fontFamily: 'var(--font-mono)', color: 'var(--ac)', fontSize: 11 }}>{order.order_ref}</div>
-            <div style={{ fontSize: 14, color: 'var(--tx)', marginTop: 2 }}>{work?.Titre ?? `Œuvre #${order.oeuvre_id}`}</div>
+            <div style={{ fontFamily: 'var(--font-mono)', color: 'var(--ac)', fontSize: 13 }}>{order.order_ref}</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--tx)', marginTop: 4 }}>{work?.Titre ?? `Œuvre #${order.oeuvre_id}`}</div>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--tx3)', cursor: 'pointer', fontSize: 18 }}>×</button>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--tx3)', cursor: 'pointer', fontSize: 24 }}>×</button>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '6px 16px', fontSize: 11, marginBottom: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 20px', fontSize: 13, marginBottom: 24 }}>
           <span style={{ color: 'var(--tx3)' }}>Acheteur</span>       <span>{buyer}</span>
           <span style={{ color: 'var(--tx3)' }}>Prix catalogue</span>  <span>{fmt(order.prix_catalogue)}</span>
           {order.discount_pct    ? <><span style={{ color: 'var(--tx3)' }}>Remise</span>     <span>{order.discount_pct}%</span></> : null}
@@ -523,18 +556,34 @@ function OrderDetailPanel({ order, oeuvres, cM, onClose, onUpdated }: {
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <span style={{
-            fontSize: 9, letterSpacing: '0.06em', textTransform: 'uppercase',
+            fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase',
             color: STATUT_COLORS[order.statut] ?? 'var(--tx3)',
             border: `1px solid ${STATUT_COLORS[order.statut] ?? 'var(--bd)'}`,
-            padding: '2px 8px',
+            padding: '3px 10px',
           }}>
             {STATUT_LABELS[order.statut] ?? order.statut}
           </span>
           {order.statut !== 'completed' && order.statut !== 'cancelled' && (
-            <button className="btn ghost sm" onClick={advance} style={{ fontSize: 10 }}>Avancer →</button>
+            <button className="btn ghost sm" onClick={advance} style={{ fontSize: 12 }}>Avancer →</button>
           )}
           {order.pdf_path && (
             <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
+              <button 
+                onClick={async () => {
+                  if (!confirm("Supprimer définitivement cette commande ?\nLes œuvres repasseront en statut 'Atelier'.")) return
+                  const res = await deleteSaleOrder(order.id)
+                  if ('ok' in res) {
+                    onUpdated()
+                    onClose()
+                  } else {
+                    alert(`Erreur : ${stringifyError(res.error)}`)
+                  }
+                }}
+                className="btn ghost sm"
+                style={{ fontSize: 11, color: 'var(--rust)', marginRight: 10 }}
+              >
+                Supprimer
+              </button>
               <button 
                 onClick={async (e) => {
                   if (!confirm("Re-générer le PDF avec le nouveau layout et les images ?")) return
@@ -556,7 +605,7 @@ function OrderDetailPanel({ order, oeuvres, cM, onClose, onUpdated }: {
                   }
                 }}
                 className="btn ghost sm"
-                style={{ fontSize: 10, color: 'var(--tx3)' }}
+                style={{ fontSize: 11, color: 'var(--tx3)' }}
               >
                 ↻ Re-générer
               </button>
@@ -571,7 +620,7 @@ function OrderDetailPanel({ order, oeuvres, cM, onClose, onUpdated }: {
                   }
                 }}
                 className="btn ghost sm" 
-                style={{ fontSize: 10, color: 'var(--cyan)' }}
+                style={{ fontSize: 11, color: 'var(--cyan)' }}
               >
                 ↓ Télécharger PDF
               </button>
@@ -600,8 +649,13 @@ function KpiCard({ label, value, detail, border = false }: { label: string; valu
       <div className="stat">
         <span className="l">{label}</span>
         <span className="v">{value}</span>
-        {detail && <span className="d" style={{ fontSize: 9, color: 'var(--tx3)', marginTop: 4 }}>{detail}</span>}
+        {detail && <span className="d" style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 4 }}>{detail}</span>}
       </div>
     </div>
   )
+}
+
+function SortInd({ k, current, dir }: { k: string; current: string; dir: 'asc' | 'desc' }) {
+  if (k !== current) return <span style={{ opacity: 0.2, marginLeft: 4, fontSize: 13 }}>↕</span>
+  return <span style={{ color: 'var(--ac)', marginLeft: 4, fontSize: 13 }}>{dir === 'asc' ? '↑' : '↓'}</span>
 }

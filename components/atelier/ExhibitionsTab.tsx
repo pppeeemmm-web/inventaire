@@ -50,7 +50,7 @@ const R2 = process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? '' // used for work thumbnai
 const WALL_COLORS = ['#c8a86e','#60a0a0','#a060a0','#a0a060','#c06060','#6080c0','#80c080','#c08060']
 
 const inputSt: React.CSSProperties = {
-  width: '100%', padding: '6px 10px', fontSize: 11,
+  width: '100%', padding: '8px 12px', fontSize: 13,
   background: 'var(--bg0)', border: '1px solid var(--bd)',
   color: 'var(--tx)', outline: 'none', boxSizing: 'border-box',
 }
@@ -133,30 +133,30 @@ function StepPill({ step, onToggle, onRename, onDelete }: {
             onChange={e => setTemp(e.target.value)}
             onBlur={() => { setEditing(false); if (temp.trim() && temp !== step.nom) onRename?.(step.id, temp.trim()) }}
             onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
-            style={{ ...inputSt, padding: '2px 6px', fontSize: 10, height: 20 }}
+            style={{ ...inputSt, padding: '4px 8px', fontSize: 12, height: 24 }}
           />
         ) : (
           <span 
             onDoubleClick={() => setEditing(true)}
             style={{
-              fontSize: 11, color: isDone ? 'var(--tx3)' : 'var(--tx)',
+              fontSize: 13, color: isDone ? 'var(--tx3)' : 'var(--tx)',
               textDecoration: isDone ? 'line-through' : 'none',
               cursor: 'text'
             }}>{step.nom}</span>
         )}
         {step.date_echeance && !editing && (
-          <span style={{ fontSize: 9, color: isActive ? 'var(--ac)' : 'var(--tx3)', marginLeft: 8 }}>
+          <span style={{ fontSize: 11, color: isActive ? 'var(--ac)' : 'var(--tx3)', marginLeft: 10 }}>
             {fmtDate(step.date_echeance)}
           </span>
         )}
       </div>
       {isActive && !editing && (
-        <span style={{ fontSize: 9, color: 'var(--ac)', letterSpacing: 0.5 }}>EN COURS</span>
+        <span style={{ fontSize: 11, color: 'var(--ac)', letterSpacing: 0.5 }}>EN COURS</span>
       )}
       {onDelete && (
         <button 
           onClick={() => onDelete(step.id)}
-          style={{ border: 'none', background: 'transparent', color: 'var(--tx3)', fontSize: 12, cursor: 'pointer', padding: '0 4px', opacity: 0.5 }}
+          style={{ border: 'none', background: 'transparent', color: 'var(--tx3)', fontSize: 14, cursor: 'pointer', padding: '0 4px', opacity: 0.5 }}
         >×</button>
       )}
     </div>
@@ -177,12 +177,12 @@ function WorkChip({ oeuvre, onDragStart }: { oeuvre: Oeuvre; onDragStart: (id: n
         cursor: 'grab', marginBottom: 4, userSelect: 'none',
       }}
     >
-      {thumb && <img src={thumb} alt="" style={{ width: 32, height: 32, objectFit: 'cover', flexShrink: 0 }} />}
+      {thumb && <img src={thumb} alt="" style={{ width: 40, height: 40, objectFit: 'cover', flexShrink: 0 }} />}
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 10, color: 'var(--tx)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <div style={{ fontSize: 13, color: 'var(--tx)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {oeuvre.Titre ?? 'S/T'}
         </div>
-        <div style={{ fontSize: 9, color: 'var(--tx3)' }}>#{oeuvre.OeuvreID}</div>
+        <div style={{ fontSize: 11, color: 'var(--tx3)' }}>#{oeuvre.OeuvreID}</div>
       </div>
     </div>
   )
@@ -208,8 +208,8 @@ function WallStrip({ wall, placements, oeuvres, onDrop, onRemove, onReorder }: {
 
   return (
     <div style={{ marginBottom: 12 }}>
-      <div style={{ fontSize: 9, letterSpacing: 1, color: wall.color, textTransform: 'uppercase', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: wall.color, flexShrink: 0 }} />
+      <div style={{ fontSize: 11, letterSpacing: 1, color: wall.color, textTransform: 'uppercase', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: wall.color, flexShrink: 0 }} />
         {wall.nom}
         <span style={{ color: 'var(--tx3)', fontWeight: 400 }}>({wallPlacements.length})</span>
       </div>
@@ -225,7 +225,7 @@ function WallStrip({ wall, placements, oeuvres, onDrop, onRemove, onReorder }: {
         }}
       >
         {wallPlacements.length === 0 && (
-          <div style={{ fontSize: 9, color: 'var(--tx3)', alignSelf: 'center', padding: '0 4px' }}>
+          <div style={{ fontSize: 11, color: 'var(--tx3)', alignSelf: 'center', padding: '0 4px' }}>
             Déposer des œuvres ici
           </div>
         )}
@@ -251,13 +251,13 @@ function WallStrip({ wall, placements, oeuvres, onDrop, onRemove, onReorder }: {
               {thumb ? (
                 <img src={thumb} alt="" style={{ width: 64, height: 64, objectFit: 'cover', display: 'block' }} />
               ) : (
-                <div style={{ width: 64, height: 64, background: 'var(--bg2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: 'var(--tx3)' }}>
+                <div style={{ width: 64, height: 64, background: 'var(--bg2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: 'var(--tx3)' }}>
                   #{p.oeuvre_id}
                 </div>
               )}
               <button
                 onClick={() => onRemove(wall.id, p.oeuvre_id)}
-                style={{ position: 'absolute', top: 2, right: 2, width: 14, height: 14, borderRadius: '50%', background: '#c00', color: '#fff', border: 'none', fontSize: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+                style={{ position: 'absolute', top: 2, right: 2, width: 16, height: 16, borderRadius: '50%', background: '#c00', color: '#fff', border: 'none', fontSize: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
               >×</button>
             </div>
           )
@@ -273,7 +273,7 @@ function DefaultRoomSVG({ walls }: { walls: Wall[] }) {
   return (
     <svg width="100%" height="100%" viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid meet" style={{ background: '#0a0a0a' }}>
       <rect x="50" y="50" width="900" height="500" fill="none" stroke="#222" strokeWidth="2" />
-      <text x="500" y="310" textAnchor="middle" fill="#333" fontSize="14" fontFamily="monospace">CANVAS GLOBAL</text>
+      <text x="500" y="310" textAnchor="middle" fill="#333" fontSize="18" fontFamily="monospace">CANVAS GLOBAL</text>
       {walls.map((w, i) => (
         <rect key={w.id} x={100 + i * 120} y={150} width="100" height="300" fill={w.color + '22'} stroke={w.color} strokeWidth="1" />
       ))}
@@ -460,14 +460,14 @@ function FloorPlanTool({ exhibitionId, oeuvres, themes, tM }: {
       {/* Layout list */}
       <div style={{ width: 160, flexShrink: 0, borderRight: '1px solid var(--bd)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--bd)' }}>
-          <form onSubmit={handleCreate} style={{ display: 'flex', gap: 4 }}>
-            <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Nouvelle mise…" style={{ ...inputSt, flex: 1, fontSize: 9 }} />
+          <form onSubmit={handleCreate} style={{ display: 'flex', gap: 6 }}>
+            <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Nouvelle mise…" style={{ ...inputSt, flex: 1, fontSize: 11 }} />
             <button type="submit" className="btn sm" disabled={creating || !newName.trim()}>+</button>
           </form>
         </div>
         <div style={{ flex: 1, overflowY: 'auto' }}>
           {layouts.length === 0 ? (
-            <div style={{ padding: '12px 10px', fontSize: 9, color: 'var(--tx3)', fontStyle: 'italic' }}>Aucune mise en espace.</div>
+            <div style={{ padding: '12px 10px', fontSize: 11, color: 'var(--tx3)', fontStyle: 'italic' }}>Aucune mise en espace.</div>
           ) : layouts.map((l) => (
             <button key={l.id} onClick={() => setSelected(l)} style={{
               width: '100%', textAlign: 'left', padding: '8px 10px',
@@ -475,8 +475,8 @@ function FloorPlanTool({ exhibitionId, oeuvres, themes, tM }: {
               border: 'none', borderBottom: '1px solid var(--bd)', cursor: 'pointer',
               borderLeft: selected?.id === l.id ? '2px solid var(--ac)' : '2px solid transparent',
             }}>
-              <div style={{ fontSize: 10, color: 'var(--tx)' }}>{l.nom}</div>
-              <div style={{ fontSize: 8, color: 'var(--tx3)', marginTop: 1 }}>{l.placements.length} œuvre{l.placements.length !== 1 ? 's' : ''}</div>
+              <div style={{ fontSize: 13, color: 'var(--tx)' }}>{l.nom}</div>
+              <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 2 }}>{l.placements.length} œuvre{l.placements.length !== 1 ? 's' : ''}</div>
             </button>
           ))}
         </div>
@@ -491,14 +491,14 @@ function FloorPlanTool({ exhibitionId, oeuvres, themes, tM }: {
             <rect x="34" y="8" width="22" height="14" stroke="currentColor" strokeWidth="1.5" fill="none"/>
             <rect x="8" y="34" width="14" height="22" stroke="currentColor" strokeWidth="1.5" fill="none"/>
           </svg>
-          <div style={{ fontSize: 11 }}>Aucune mise en espace pour cette exposition.</div>
-          <div style={{ fontSize: 10, color: 'var(--tx3)' }}>Créez-en une dans le panneau de gauche pour commencer à placer des œuvres.</div>
+          <div style={{ fontSize: 13 }}>Aucune mise en espace pour cette exposition.</div>
+          <div style={{ fontSize: 11, color: 'var(--tx3)' }}>Créez-en une dans le panneau de gauche pour commencer à placer des œuvres.</div>
         </div>
       ) : layout ? (
         <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}>
           {/* Work sidebar */}
-          <div style={{ width: 140, flexShrink: 0, borderRight: '1px solid var(--bd)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            <div style={{ padding: '8px 10px', fontSize: 9, letterSpacing: 1, color: 'var(--tx3)', textTransform: 'uppercase', borderBottom: '1px solid var(--bd)' }}>
+          <div style={{ width: 160, flexShrink: 0, borderRight: '1px solid var(--bd)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ padding: '10px 12px', fontSize: 11, letterSpacing: 1, color: 'var(--tx3)', textTransform: 'uppercase', borderBottom: '1px solid var(--bd)' }}>
               Œuvres candidates
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: 6 }}>
@@ -517,7 +517,7 @@ function FloorPlanTool({ exhibitionId, oeuvres, themes, tM }: {
             <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--bd)', flexShrink: 0 }}>
               {(['murs', 'parametres'] as const).map((t) => (
                 <button key={t} onClick={() => setSubTab(t)} style={{
-                  padding: '6px 14px', fontSize: 9, letterSpacing: 1, textTransform: 'uppercase',
+                  padding: '8px 16px', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase',
                   background: subTab === t ? 'var(--bg2)' : 'transparent',
                   border: 'none', borderBottom: subTab === t ? '2px solid var(--ac)' : '2px solid transparent',
                   color: subTab === t ? 'var(--tx)' : 'var(--tx3)', cursor: 'pointer',
@@ -557,14 +557,14 @@ function FloorPlanTool({ exhibitionId, oeuvres, themes, tM }: {
                       onDropExternal={handleConstellationDrop}
                     />
                   </div>
-                  <div style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '10px 20px', borderTop: '1px solid var(--bd)', background: 'var(--bg1)' }}>
-                    <label className="btn sm" style={{ cursor: uploading ? 'wait' : 'pointer', fontSize: 9, opacity: uploading ? 0.6 : 1 }}>
+                  <div style={{ display: 'flex', gap: 14, alignItems: 'center', padding: '12px 24px', borderTop: '1px solid var(--bd)', background: 'var(--bg1)' }}>
+                    <label className="btn sm" style={{ cursor: uploading ? 'wait' : 'pointer', fontSize: 12, opacity: uploading ? 0.6 : 1 }}>
                       {uploading ? 'Upload en cours…' : floorplanUrl ? 'Changer le plan' : 'Uploader un plan'}
                       <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFloorplanUpload} disabled={uploading} />
                     </label>
-                    <div style={{ fontSize: 9, color: 'var(--tx3)' }}>Glissez les œuvres sur le plan</div>
+                    <div style={{ fontSize: 12, color: 'var(--tx3)' }}>Glissez les œuvres sur le plan</div>
                     {uploadError && (
-                      <div style={{ fontSize: 9, color: '#c06060', marginLeft: 12 }}>
+                      <div style={{ fontSize: 12, color: '#c06060', marginLeft: 16 }}>
                         ⚠ {uploadError}
                       </div>
                     )}
@@ -572,10 +572,10 @@ function FloorPlanTool({ exhibitionId, oeuvres, themes, tM }: {
                 </div>
 
                 {/* Wall strips Sidebar (Optional) */}
-                <div style={{ width: 220, flexShrink: 0, borderLeft: '1px solid var(--bd)', overflowY: 'auto', padding: 10, background: 'var(--bg1)' }}>
-                  <div style={{ fontSize: 9, color: 'var(--tx3)', marginBottom: 12, letterSpacing: 1, textTransform: 'uppercase' }}>Placements</div>
+                <div style={{ width: 240, flexShrink: 0, borderLeft: '1px solid var(--bd)', overflowY: 'auto', padding: 12, background: 'var(--bg1)' }}>
+                  <div style={{ fontSize: 12, color: 'var(--tx3)', marginBottom: 14, letterSpacing: 1, textTransform: 'uppercase' }}>Placements</div>
                   {layout.placements.length === 0 ? (
-                    <div style={{ fontSize: 9, color: 'var(--tx3)', fontStyle: 'italic' }}>Aucune œuvre placée.</div>
+                    <div style={{ fontSize: 12, color: 'var(--tx3)', fontStyle: 'italic' }}>Aucune œuvre placée.</div>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       {layout.placements.map(p => {
@@ -592,28 +592,28 @@ function FloorPlanTool({ exhibitionId, oeuvres, themes, tM }: {
                 </div>
               </div>
             ) : (
-              <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ fontSize: 9, color: 'var(--tx3)', marginBottom: 4, letterSpacing: 1, textTransform: 'uppercase' }}>Nom</div>
+              <div style={{ flex: 1, overflowY: 'auto', padding: 20 }}>
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ fontSize: 11, color: 'var(--tx3)', marginBottom: 6, letterSpacing: 1, textTransform: 'uppercase' }}>Nom</div>
                   <input value={layout.nom} onChange={(e) => patchLocal({ nom: e.target.value })} style={inputSt} />
                 </div>
-                <div style={{ marginBottom: 16 }}>
-                  <div style={{ fontSize: 9, color: 'var(--tx3)', marginBottom: 4, letterSpacing: 1, textTransform: 'uppercase' }}>Murs</div>
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ fontSize: 11, color: 'var(--tx3)', marginBottom: 6, letterSpacing: 1, textTransform: 'uppercase' }}>Murs</div>
                   {layout.walls.map((w) => (
                     <div key={w.id} style={{ display: 'flex', gap: 6, marginBottom: 6, alignItems: 'center' }}>
                       <input type="color" value={w.color} onChange={(e) => updateWall(w.id, 'color', e.target.value)}
-                        style={{ width: 24, height: 24, padding: 0, border: 'none', cursor: 'pointer', background: 'none' }} />
+                        style={{ width: 32, height: 32, padding: 0, border: 'none', cursor: 'pointer', background: 'none' }} />
                       <input value={w.nom} onChange={(e) => updateWall(w.id, 'nom', e.target.value)}
                         style={{ ...inputSt, flex: 1 }} />
-                      <button onClick={() => removeWall(w.id)} className="btn sm" style={{ color: '#c06060', flexShrink: 0 }}>×</button>
+                      <button onClick={() => removeWall(w.id)} className="btn sm" style={{ color: '#c06060', flexShrink: 0, fontSize: 14 }}>×</button>
                     </div>
                   ))}
                   <button onClick={addWall} className="btn sm">+ Mur</button>
                 </div>
                 <div>
-                  <div style={{ fontSize: 9, color: 'var(--tx3)', marginBottom: 4, letterSpacing: 1, textTransform: 'uppercase' }}>Notes</div>
+                  <div style={{ fontSize: 11, color: 'var(--tx3)', marginBottom: 6, letterSpacing: 1, textTransform: 'uppercase' }}>Notes</div>
                   <textarea value={layout.notes ?? ''} onChange={(e) => patchLocal({ notes: e.target.value })}
-                    rows={4} style={{ ...inputSt, resize: 'vertical' }} />
+                    rows={4} style={{ ...inputSt, resize: 'vertical', fontSize: 13 }} />
                 </div>
               </div>
             )}
@@ -668,11 +668,11 @@ function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, selection
       <div style={{ padding: '14px 20px 0', borderBottom: '1px solid var(--bd)', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, marginBottom: 10 }}>
           <div style={{ flex: 1 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
-              <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--tx)' }}>{exhibition.nom}</div>
-              <button onClick={onDelete} className="btn ghost sm" style={{ color: 'var(--rust)', fontSize: 9, borderColor: 'var(--rust)', opacity: 0.8 }}>Supprimer l'exposition</button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
+              <div style={{ fontSize: 18, fontWeight: 500, color: 'var(--tx)' }}>{exhibition.nom}</div>
+              <button onClick={onDelete} className="btn ghost sm" style={{ color: 'var(--rust)', fontSize: 11, borderColor: 'var(--rust)', opacity: 0.8 }}>Supprimer l'exposition</button>
             </div>
-            <div style={{ display: 'flex', gap: 14, fontSize: 10, color: 'var(--tx3)', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--tx3)', flexWrap: 'wrap' }}>
               {contact && <span>📍 {contactName}</span>}
               {contact?.Email && <span title={contact.Email}>✉️ {contact.Email}</span>}
               {contact?.Tel && <span title={contact.Tel}>📞 {contact.Tel}</span>}
@@ -689,7 +689,7 @@ function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, selection
                 background: `${STATUT_COLORS[exhibition.statut] ?? 'var(--bd)'}22`,
                 color: STATUT_COLORS[exhibition.statut] ?? 'var(--tx3)',
                 border: `1px solid ${STATUT_COLORS[exhibition.statut] ?? 'var(--bd)'}`,
-                padding: '2px 10px', fontSize: 9, letterSpacing: 1,
+                padding: '4px 12px', fontSize: 11, letterSpacing: 1,
                 textTransform: 'uppercase', borderRadius: 2, outline: 'none', cursor: 'pointer'
               }}
             >
@@ -702,17 +702,17 @@ function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, selection
 
         {/* Progress bar */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-          <div style={{ flex: 1, height: 4, background: 'var(--bg2)', borderRadius: 2, overflow: 'hidden' }}>
+          <div style={{ flex: 1, height: 6, background: 'var(--bg2)', borderRadius: 3, overflow: 'hidden' }}>
             <div style={{ height: '100%', width: `${pct}%`, background: pct === 100 ? '#4caf82' : 'var(--ac)', transition: 'width .3s' }} />
           </div>
-          <div style={{ fontSize: 9, color: 'var(--tx3)', flexShrink: 0 }}>{stepsDone}/{stepsTotal} étapes</div>
+          <div style={{ fontSize: 11, color: 'var(--tx3)', flexShrink: 0 }}>{stepsDone}/{stepsTotal} étapes</div>
         </div>
 
         {/* Sub-tabs */}
         <div style={{ display: 'flex', gap: 0 }}>
           {TABS.map((t) => (
             <button key={t.id} onClick={() => setActiveTab(t.id as typeof activeTab)} style={{
-              padding: '5px 14px', fontSize: 9, letterSpacing: 1, textTransform: 'uppercase',
+              padding: '8px 18px', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase',
               background: 'transparent', border: 'none',
               borderBottom: activeTab === t.id ? '2px solid var(--ac)' : '2px solid transparent',
               color: activeTab === t.id ? 'var(--tx)' : 'var(--tx3)', cursor: 'pointer',
@@ -730,18 +730,18 @@ function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, selection
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40 }}>
               {/* Steps Management */}
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                  <div style={{ fontSize: 9, letterSpacing: 1, textTransform: 'uppercase', color: 'var(--tx3)' }}>Étapes</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                  <div style={{ fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', color: 'var(--tx3)' }}>Étapes</div>
                   <button 
                     onClick={() => {
                       const newStep: Step = { id: `s${Date.now()}`, nom: 'Nouvelle étape', statut: 'a_faire', date_echeance: null, position: exhibition.steps.length, notes: null, overdue_override: false }
                       onUpdate({ steps: [...exhibition.steps, newStep] })
                     }}
-                    className="btn sm" style={{ fontSize: 9, padding: '2px 8px' }}>+ Ajouter</button>
+                    className="btn sm" style={{ fontSize: 11, padding: '4px 10px' }}>+ Ajouter</button>
                 </div>
                 
                 {exhibition.steps.length === 0 ? (
-                  <div style={{ fontSize: 10, color: 'var(--tx3)', fontStyle: 'italic' }}>Aucune étape définie.</div>
+                  <div style={{ fontSize: 13, color: 'var(--tx3)', fontStyle: 'italic' }}>Aucune étape définie.</div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
                     {exhibition.steps.map((s) => (
@@ -763,18 +763,18 @@ function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, selection
                     ))}
                   </div>
                 )}
-                <div style={{ marginTop: 12, fontSize: 9, color: 'var(--tx3)', fontStyle: 'italic' }}>
+                <div style={{ marginTop: 16, fontSize: 11, color: 'var(--tx3)', fontStyle: 'italic' }}>
                   Double-cliquez sur un nom pour le modifier. Cliquez sur le cercle pour changer le statut.
                 </div>
               </div>
 
               {/* Info Editing */}
               <div style={{ borderLeft: '1px solid var(--bg2)', paddingLeft: 20 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                  <div style={{ fontSize: 9, letterSpacing: 1, textTransform: 'uppercase', color: 'var(--tx3)' }}>Infos</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                  <div style={{ fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', color: 'var(--tx3)' }}>Infos</div>
                   <button 
                     onClick={() => onUpdate({ _isEditing: !exhibition['_isEditing' as keyof Exhibition] })}
-                    className="btn sm" style={{ fontSize: 9, padding: '2px 8px' }}>
+                    className="btn sm" style={{ fontSize: 11, padding: '4px 10px' }}>
                     {exhibition['_isEditing' as keyof Exhibition] ? 'Terminer' : 'Éditer'}
                   </button>
                 </div>
@@ -788,16 +788,16 @@ function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, selection
                     { label: 'Fin',     key: 'date_fin',     val: exhibition.date_fin,   type: 'date' },
                   ].map((field) => (
                     <div key={field.key} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                      <div style={{ width: 60, flexShrink: 0, color: 'var(--tx3)', fontSize: 10 }}>{field.label}</div>
+                      <div style={{ width: 80, flexShrink: 0, color: 'var(--tx3)', fontSize: 12 }}>{field.label}</div>
                       {exhibition['_isEditing' as keyof Exhibition] ? (
                         <input 
                           type={field.type || 'text'}
                           value={field.val ?? ''}
                           onChange={(e) => onUpdate({ [field.key]: e.target.value || null })}
-                          style={{ ...inputSt, flex: 1, fontSize: 10, padding: '4px 8px' }}
+                          style={{ ...inputSt, flex: 1, fontSize: 13, padding: '6px 10px' }}
                         />
                       ) : (
-                        <div style={{ fontSize: 11, color: 'var(--tx)', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <div style={{ fontSize: 13, color: 'var(--tx)', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {field.key === 'url' && field.val ? (
                             <a href={field.val} target="_blank" rel="noreferrer" style={{ color: 'var(--ac)' }}>{field.val}</a>
                           ) : (

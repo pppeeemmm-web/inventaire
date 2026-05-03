@@ -9,6 +9,11 @@ import { deleteContacts } from '@/app/atelier/contacts/actions'
 import { useI18n } from '@/lib/i18n/context'
 import type { Oeuvre } from '@/lib/types/database'
 
+function SortInd({ k, current, dir }: { k: string; current: string; dir: 'asc' | 'desc' }) {
+  if (k !== current) return <span style={{ opacity: 0.2, marginLeft: 4, fontSize: 13 }}>↕</span>
+  return <span style={{ color: 'var(--ac)', marginLeft: 4, fontSize: 13 }}>{dir === 'asc' ? '↑' : '↓'}</span>
+}
+
 // ── Types ────────────────────────────────────────────────────────────
 
 interface ContactRow {
@@ -111,7 +116,16 @@ export function ContactsTab({ contacts: initialContacts, oeuvres }: Props) {
   const [q,          setQ]          = useState('')
   const [searchBy,   setSearchBy]   = useState('all')
   const [role,       setRole]       = useState('all')
-  const [sortBy,     setSortBy]     = useState<'alpha' | 'role'>('alpha')
+  const [sortKey,    setSortKey]    = useState<string>('alpha')
+  const [sortDir,    setSortDir]    = useState<'asc' | 'desc'>('asc')
+  const toggleSort = (k: string) => {
+    if (sortKey === k) {
+      setSortDir(sortDir === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortKey(k)
+      setSortDir('asc')
+    }
+  }
   const [activeId,   setActiveId]   = useState<number | null>(null)
   const [editing,    setEditing]    = useState<ContactRow | 'new' | null>(null)
   const [selected,   setSelected]   = useState<Set<number>>(new Set())
@@ -266,19 +280,49 @@ export function ContactsTab({ contacts: initialContacts, oeuvres }: Props) {
       }
       return true
     })
-    function contactLabel(c: ContactRow) {
-      return (c.NomInstitution || `${c.Prénom ?? ''} ${c.Nom ?? ''}`.trim() || '').toLowerCase()
-    }
-    if (sortBy === 'alpha') {
-      return [...base].sort((a, b) => contactLabel(a).localeCompare(contactLabel(b), 'fr'))
-    }
-    return [...base].sort((a, b) => {
-      const ra = (a.Role ?? 'Zzz').toLowerCase()
-      const rb = (b.Role ?? 'Zzz').toLowerCase()
-      if (ra !== rb) return ra.localeCompare(rb, 'fr')
-      return contactLabel(a).localeCompare(contactLabel(b), 'fr')
+    
+    const list = [...base]
+    list.sort((a, b) => {
+      const dir = sortDir === 'asc' ? 1 : -1
+      
+      if (sortKey === 'alpha') {
+        return displayName(a).localeCompare(displayName(b), 'fr') * dir
+      }
+      if (sortKey === 'role') {
+        const ra = (a.Role || 'Zzz').toLowerCase()
+        const rb = (b.Role || 'Zzz').toLowerCase()
+        if (ra !== rb) return ra.localeCompare(rb, 'fr') * dir
+        return displayName(a).localeCompare(displayName(b), 'fr') * dir
+      }
+      if (sortKey === 'ContactID') {
+        return (a.ContactID - b.ContactID) * dir
+      }
+      if (sortKey === 'ville') {
+        return listVille(a.ContactID).localeCompare(listVille(b.ContactID), 'fr') * dir
+      }
+      if (sortKey === 'email') {
+        const ea = extra[a.ContactID]?.Email || ''
+        const eb = extra[b.ContactID]?.Email || ''
+        return ea.localeCompare(eb) * dir
+      }
+      if (sortKey === 'phone') {
+        const pa = extra[a.ContactID]?.Téléphone1 || ''
+        const pb = extra[b.ContactID]?.Téléphone1 || ''
+        return pa.localeCompare(pb) * dir
+      }
+      if (sortKey === 'works') {
+        return ((workCounts.owner[a.ContactID] || 0) - (workCounts.owner[b.ContactID] || 0)) * dir
+      }
+      if (sortKey === 'loc') {
+        return ((workCounts.loc[a.ContactID] || 0) - (workCounts.loc[b.ContactID] || 0)) * dir
+      }
+      if (sortKey === 'buyer') {
+        return ((workCounts.buyer[a.ContactID] || 0) - (workCounts.buyer[b.ContactID] || 0)) * dir
+      }
+      return 0
     })
-  }, [contacts, q, role, sortBy, extra, addresses])
+    return list
+  }, [contacts, q, role, sortKey, sortDir, extra, addresses, workCounts])
 
   const active = filtered.find((c) => c.ContactID === activeId) ?? filtered[0] ?? null
 
@@ -466,11 +510,11 @@ export function ContactsTab({ contacts: initialContacts, oeuvres }: Props) {
             <button
               key={s}
               className="btn ghost sm"
-              onClick={() => setSortBy(s)}
+              onClick={() => { setSortKey(s); setSortDir('asc') }}
               style={{
-                padding: '4px 10px', fontSize: 9, letterSpacing: 1,
-                opacity: sortBy === s ? 1 : 0.4,
-                fontWeight: sortBy === s ? 700 : 400,
+                padding: '6px 12px', fontSize: 11, letterSpacing: 1,
+                opacity: sortKey === s ? 1 : 0.4,
+                fontWeight: sortKey === s ? 700 : 400,
                 borderRight: s === 'alpha' ? '1px solid var(--bd)' : 'none',
               }}
             >
@@ -496,15 +540,15 @@ export function ContactsTab({ contacts: initialContacts, oeuvres }: Props) {
                 <th style={{ width: 40 }}>
                   <input type="checkbox" checked={selected.size > 0 && selected.size === filtered.length} onChange={toggleAll} />
                 </th>
-                <th style={{ width: 46 }}>ID</th>
-                <th style={{ width: 'auto' }}>Nom / Institution</th>
-                <th style={{ width: 120 }}>Rôle</th>
-                <th style={{ width: 180 }}>Ville(s)</th>
-                <th style={{ width: 220 }}>Email</th>
-                <th style={{ width: 160 }}>Tél.</th>
-                <th style={{ width: 40 }} className="num" title="Oeuvres associées">Œ</th>
-                <th style={{ width: 40 }} className="num" title="En localisation">Loc</th>
-                <th style={{ width: 40 }} className="num" title="Achats">Ach</th>
+                <th onClick={() => toggleSort('ContactID')} style={{ width: 46, cursor: 'pointer' }}>ID <SortInd k="ContactID" current={sortKey} dir={sortDir} /></th>
+                <th onClick={() => toggleSort('alpha')} style={{ width: 'auto', cursor: 'pointer' }}>Nom / Institution <SortInd k="alpha" current={sortKey} dir={sortDir} /></th>
+                <th onClick={() => toggleSort('role')} style={{ width: 120, cursor: 'pointer' }}>Rôle <SortInd k="role" current={sortKey} dir={sortDir} /></th>
+                <th onClick={() => toggleSort('ville')} style={{ width: 180, cursor: 'pointer' }}>Ville(s) <SortInd k="ville" current={sortKey} dir={sortDir} /></th>
+                <th onClick={() => toggleSort('email')} style={{ width: 220, cursor: 'pointer' }}>Email <SortInd k="email" current={sortKey} dir={sortDir} /></th>
+                <th onClick={() => toggleSort('phone')} style={{ width: 160, cursor: 'pointer' }}>Tél. <SortInd k="phone" current={sortKey} dir={sortDir} /></th>
+                <th onClick={() => toggleSort('works')} style={{ width: 40, cursor: 'pointer' }} className="num" title="Oeuvres associées">Œ <SortInd k="works" current={sortKey} dir={sortDir} /></th>
+                <th onClick={() => toggleSort('loc')} style={{ width: 40, cursor: 'pointer' }} className="num" title="En localisation">Loc <SortInd k="loc" current={sortKey} dir={sortDir} /></th>
+                <th onClick={() => toggleSort('buyer')} style={{ width: 40, cursor: 'pointer' }} className="num" title="Achats">Ach <SortInd k="buyer" current={sortKey} dir={sortDir} /></th>
               </tr>
             </thead>
             <tbody>
@@ -525,12 +569,12 @@ export function ContactsTab({ contacts: initialContacts, oeuvres }: Props) {
                         onChange={(e) => { e.stopPropagation(); toggleOne(c.ContactID) }}
                       />
                     </td>
-                    <td style={{ color: 'var(--tx3)', fontSize: 10 }}>{c.ContactID}</td>
-                    <td style={{ fontWeight: isFoc ? 600 : undefined }}>{displayName(c)}</td>
-                    <td style={{ color: 'var(--tx3)', fontSize: 10 }}>{c.Role ?? '—'}</td>
-                    <td style={{ color: 'var(--tx3)', fontSize: 10 }}>{listVille(c.ContactID)}</td>
-                    <td style={{ color: 'var(--tx3)', fontSize: 10, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ex?.Email ?? <span style={{ opacity: 0.3 }}>…</span>}</td>
-                    <td style={{ color: 'var(--tx3)', fontSize: 10, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{fmtPhone(ex?.IndicatifPays1, ex?.Téléphone1) ?? '—'}</td>
+                    <td style={{ color: 'var(--tx3)', fontSize: 11 }}>{c.ContactID}</td>
+                    <td style={{ fontWeight: isFoc ? 600 : undefined, fontSize: 13 }}>{displayName(c)}</td>
+                    <td style={{ color: 'var(--tx3)', fontSize: 12 }}>{c.Role ?? '—'}</td>
+                    <td style={{ color: 'var(--tx3)', fontSize: 12 }}>{listVille(c.ContactID)}</td>
+                    <td style={{ color: 'var(--tx3)', fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ex?.Email ?? <span style={{ opacity: 0.3 }}>…</span>}</td>
+                    <td style={{ color: 'var(--tx3)', fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{fmtPhone(ex?.IndicatifPays1, ex?.Téléphone1) ?? '—'}</td>
                     <td className="num">{workCounts.owner[c.ContactID] ?? '—'}</td>
                     <td className="num" style={{ color: 'var(--tx3)' }}>{workCounts.loc[c.ContactID] ?? '—'}</td>
                     <td className="num" style={{ color: 'var(--tx3)' }}>{workCounts.buyer[c.ContactID] ?? '—'}</td>
@@ -588,11 +632,11 @@ function ContactDetail({
     if (!value && value !== 0) return null
     return (
       <div style={{ display: 'flex', gap: 8, padding: '5px 0', borderBottom: '1px solid var(--bd)' }}>
-        <div className="t-mono-sm" style={{ color: 'var(--tx3)', minWidth: 110, flexShrink: 0 }}>
-          {icon && <span style={{ marginRight: 4, opacity: 0.7 }}>{icon}</span>}
+        <div className="t-mono-sm" style={{ color: 'var(--tx3)', minWidth: 120, flexShrink: 0 }}>
+          {icon && <span style={{ marginRight: 6, opacity: 0.7 }}>{icon}</span>}
           {label}
         </div>
-        <div style={{ fontSize: 11, color: 'var(--tx)', wordBreak: 'break-word', flex: 1 }}>
+        <div style={{ fontSize: 13, color: 'var(--tx)', wordBreak: 'break-word', flex: 1 }}>
           {href
             ? <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--ac)', textDecoration: 'none' }}>{value}</a>
             : value}
@@ -610,8 +654,8 @@ function ContactDetail({
 
   return (
     <div style={{ width: 340, flexShrink: 0, overflow: 'auto', padding: 20 }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 4 }}>
-        <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--tx)', flex: 1, marginRight: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8 }}>
+        <div style={{ fontWeight: 700, fontSize: 18, color: 'var(--tx)', flex: 1, marginRight: 8 }}>
           {displayName(contact)}
         </div>
         <div style={{ display: 'flex', gap: 4 }}>
@@ -680,18 +724,18 @@ function ContactDetail({
             ].filter(Boolean)
             if (parts.length === 0) return null
             return (
-              <div key={addr.id ?? i} style={{ marginBottom: i < addresses.length - 1 ? 14 : 0, padding: '4px 8px', background: 'var(--bg1)', borderRadius: 2 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-                  <div className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 9, letterSpacing: 1, textTransform: 'uppercase' }}>
+              <div key={addr.id ?? i} style={{ marginBottom: i < addresses.length - 1 ? 18 : 0, padding: '8px 12px', background: 'var(--bg1)', borderRadius: 2 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                  <div className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase' }}>
                     {addr.label || 'Principal'}
                   </div>
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--tx)', lineHeight: 1.6 }}>
+                <div style={{ fontSize: 13, color: 'var(--tx)', lineHeight: 1.6 }}>
                   {parts.map((line, li) => <div key={li}>{line}</div>)}
                 </div>
                 {addr.shipping_notes && (
-                  <div style={{ marginTop: 6, paddingTop: 4, borderTop: '1px dashed var(--bd)', fontSize: 10, color: 'var(--ac)', fontStyle: 'italic' }}>
-                    <span style={{ fontWeight: 600, textTransform: 'uppercase', fontSize: 8 }}>Logistique : </span>
+                  <div style={{ marginTop: 8, paddingTop: 6, borderTop: '1px dashed var(--bd)', fontSize: 12, color: 'var(--ac)', fontStyle: 'italic' }}>
+                    <span style={{ fontWeight: 600, textTransform: 'uppercase', fontSize: 10 }}>Logistique : </span>
                     {addr.shipping_notes}
                   </div>
                 )}
@@ -702,7 +746,7 @@ function ContactDetail({
       ) : (contact.Adresse || contact.CodePostal || contact.Ville || contact.Pays) ? (
         <div style={{ marginBottom: 12 }}>
           <div className="t-label" style={{ marginBottom: 4 }}>Adresse</div>
-          <div style={{ fontSize: 11, color: 'var(--tx)', lineHeight: 1.6 }}>
+          <div style={{ fontSize: 13, color: 'var(--tx)', lineHeight: 1.6 }}>
             {[
               contact.Adresse,
               [contact.CodePostal, contact.Ville].filter(Boolean).join(' '),
@@ -741,9 +785,9 @@ function ContactDetail({
 
       {/* Notes */}
       {contact.Notes && (
-        <div style={{ marginBottom: 12 }}>
-          <div className="t-label" style={{ marginBottom: 4 }}>Notes</div>
-          <div style={{ fontSize: 11, color: 'var(--tx2)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{contact.Notes}</div>
+        <div style={{ marginBottom: 16 }}>
+          <div className="t-label" style={{ marginBottom: 6 }}>Notes</div>
+          <div style={{ fontSize: 13, color: 'var(--tx2)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{contact.Notes}</div>
         </div>
       )}
 

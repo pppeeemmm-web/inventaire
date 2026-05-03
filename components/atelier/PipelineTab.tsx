@@ -75,7 +75,7 @@ interface Reminder {
 }
 
 const FIS: React.CSSProperties = {
-  padding: '6px 9px', fontSize: 11,
+  padding: '8px 12px', fontSize: 13,
   background: 'var(--bg0)', border: '1px solid var(--bd)',
   color: 'var(--tx)', outline: 'none', width: '100%',
 }
@@ -337,7 +337,7 @@ export function PipelineTab({ oeuvres, contacts, exhibitions, groups }: Props) {
             </button>
           ))}
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: 'var(--tx3)', cursor: 'pointer' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--tx3)', cursor: 'pointer' }}>
               <input type="checkbox" checked={showDone} onChange={(e) => setShowDone(e.target.checked)} />
               Show completed
             </label>
@@ -378,15 +378,15 @@ export function PipelineTab({ oeuvres, contacts, exhibitions, groups }: Props) {
           <div className="t-eyebrow" style={{ marginBottom: 12 }}>Upcoming deadlines</div>
           {upcoming.length === 0
             ? <div className="t-mono-sm" style={{ color:'var(--tx3)' }}>None in 60 days.</div>
-            : <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
+            : <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
                 {upcoming.slice(0,20).map((item,i) => {
                   const days = daysUntil(item.date)
                   const col  = urgencyColor(days)
                   return (
-                    <div key={i} style={{ padding:'7px 10px', borderLeft:`3px solid ${TYPE_COLORS[item.type]}`, background:'var(--bg0)', display:'flex', alignItems:'flex-start', gap:6 }}>
+                    <div key={i} style={{ padding:'10px 14px', borderLeft:`3px solid ${TYPE_COLORS[item.type]}`, background:'var(--bg0)', display:'flex', alignItems:'flex-start', gap:8 }}>
                       <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ fontSize:10, color:'var(--tx)', fontWeight:500, lineHeight:1.3 }}>{item.label}</div>
-                        <div style={{ fontSize:9, color:col, fontWeight:days<=7?700:400, marginTop:2 }}>
+                        <div style={{ fontSize:13, color:'var(--tx)', fontWeight:500, lineHeight:1.3 }}>{item.label}</div>
+                        <div style={{ fontSize:11, color:col, fontWeight:days<=7?700:400, marginTop:4 }}>
                           {days<0 ? `${Math.abs(days)}d overdue` : days===0 ? 'Today' : `in ${days}d`}
                           {' · '}{new Date(item.date).toLocaleDateString('en',{day:'numeric',month:'short'})}
                           {item.time ? ` · ${item.time}` : ''}
@@ -402,7 +402,7 @@ export function PipelineTab({ oeuvres, contacts, exhibitions, groups }: Props) {
                             }
                           }}
                           title="Marquer comme fait"
-                          style={{ flexShrink:0, width:20, height:20, border:'1px solid var(--bd)', background:'var(--bg1)', color:'var(--tx3)', cursor:'pointer', fontSize:11, display:'flex', alignItems:'center', justifyContent:'center', marginTop:1 }}
+                          style={{ flexShrink:0, width:24, height:24, border:'1px solid var(--bd)', background:'var(--bg1)', color:'var(--tx3)', cursor:'pointer', fontSize:13, display:'flex', alignItems:'center', justifyContent:'center', marginTop:1 }}
                         >✓</button>
                       )}
                     </div>
@@ -419,15 +419,15 @@ export function PipelineTab({ oeuvres, contacts, exhibitions, groups }: Props) {
               {reminders.map((r) => {
                 const days = daysUntil(r.remind_at)
                 return (
-                  <div key={r.id} style={{ padding:'7px 10px', background:'var(--bg0)', display:'flex', alignItems:'flex-start', gap:8 }}>
-                    <div style={{ fontSize:9, color:urgencyColor(days), marginTop:1, flexShrink:0 }}>{days<=0?'●':'○'}</div>
+                  <div key={r.id} style={{ padding:'10px 14px', background:'var(--bg0)', display:'flex', alignItems:'flex-start', gap:10 }}>
+                    <div style={{ fontSize:12, color:urgencyColor(days), marginTop:1, flexShrink:0 }}>{days<=0?'●':'○'}</div>
                     <div style={{ flex:1 }}>
-                      <div style={{ fontSize:10, color:'var(--tx)', lineHeight:1.3 }}>{r.message}</div>
-                      <div style={{ fontSize:9, color:'var(--tx3)', marginTop:2 }}>
+                      <div style={{ fontSize:13, color:'var(--tx)', lineHeight:1.3 }}>{r.message}</div>
+                      <div style={{ fontSize:11, color:'var(--tx3)', marginTop:4 }}>
                         {new Date(r.remind_at).toLocaleDateString('en',{day:'numeric',month:'short'})}
                       </div>
                     </div>
-                    <button style={{ fontSize:8, color:'var(--tx3)', flexShrink:0 }}
+                    <button style={{ fontSize:12, color:'var(--tx3)', flexShrink:0 }}
                       onClick={async() => {
                         try {
                           await (createClient().from('suivi_reminder') as any).update({lu:true}).eq('id',r.id)
@@ -479,9 +479,9 @@ function GanttView({ processes, onSelect, onEdit, onRefresh, onCycleStatut }: {
 
   return (
     <div>
-      <div style={{ position:'relative', height:20, marginBottom:4, marginLeft:220 }}>
+      <div style={{ position:'relative', height:24, marginBottom:8, marginLeft:240 }}>
         {months.map(m=>(
-          <div key={m.label} style={{ position:'absolute', left:`${m.left}%`, fontSize:8, color:'var(--tx3)', letterSpacing:'0.05em', transform:'translateX(-50%)' }}>{m.label}</div>
+          <div key={m.label} style={{ position:'absolute', left:`${m.left}%`, fontSize:11, color:'var(--tx3)', letterSpacing:'0.05em', transform:'translateX(-50%)' }}>{m.label}</div>
         ))}
       </div>
       <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
@@ -495,14 +495,14 @@ function GanttView({ processes, onSelect, onEdit, onRefresh, onCycleStatut }: {
           const progress= p.etapes.length>0 ? done/p.etapes.length : 0
           return (
             <div key={p.id} style={{ display:'flex', alignItems:'center', opacity:isDone?0.5:1 }}>
-              <div style={{ width:220, flexShrink:0, paddingRight:12 }}>
-                <div style={{ fontSize:10, color:'var(--tx)', fontWeight:500, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', cursor:'pointer' }} onClick={()=>onSelect(p)}>{p.nom}</div>
-                <div style={{ display:'flex', alignItems:'center', gap:4, marginTop:2 }}>
-                  <span style={{ fontSize:8, color }}>{TYPE_LABELS[p.type as ProcessType]}</span>
+              <div style={{ width:240, flexShrink:0, paddingRight:16 }}>
+                <div style={{ fontSize:13, color:'var(--tx)', fontWeight:500, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', cursor:'pointer' }} onClick={()=>onSelect(p)}>{p.nom}</div>
+                <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:4 }}>
+                  <span style={{ fontSize:11, color }}>{TYPE_LABELS[p.type as ProcessType]}</span>
                   <button
                     onClick={() => onCycleStatut(p.id, p.statut)}
                     title={`Statut : ${STATUT_LABELS[p.statut]} — cliquer pour changer`}
-                    style={{ fontSize:7, padding:'1px 5px', background:'var(--bg0)', border:`1px solid ${color}55`, color, cursor:'pointer', letterSpacing:'0.04em', textTransform:'uppercase', flexShrink:0 }}
+                    style={{ fontSize:10, padding:'2px 8px', background:'var(--bg0)', border:`1px solid ${color}55`, color, cursor:'pointer', letterSpacing:'0.04em', textTransform:'uppercase', flexShrink:0 }}
                   >{STATUT_LABELS[p.statut]}</button>
                 </div>
               </div>
@@ -537,9 +537,9 @@ function GanttView({ processes, onSelect, onEdit, onRefresh, onCycleStatut }: {
                         }}
                         style={{ position:'absolute', left:`${leftPct}%`, top:0, bottom:0, width:12, transform:'translateX(-50%)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1 }}
                       >
-                        <div style={{ width: isFait?3:2, height:'100%', background: markerColor, boxShadow: isOverdue?'0 0 4px #c06060':undefined }} />
+                        <div style={{ width: isFait?4:3, height:'100%', background: markerColor, boxShadow: isOverdue?'0 0 6px #c06060':undefined }} />
                         {(isFait || isBloque || isEnCours) && (
-                          <div style={{ position:'absolute', top:1, left:'50%', transform:'translateX(-50%)', fontSize:7, color: isFait?color:isBloque?'#c06060':'#c0a030', fontWeight:700, whiteSpace:'nowrap', pointerEvents:'none' }}>
+                          <div style={{ position:'absolute', top:2, left:'50%', transform:'translateX(-50%)', fontSize:10, color: isFait?color:isBloque?'#c06060':'#c0a030', fontWeight:700, whiteSpace:'nowrap', pointerEvents:'none' }}>
                             {isFait?'✓':isBloque?'✕':'…'}
                           </div>
                         )}
@@ -548,7 +548,7 @@ function GanttView({ processes, onSelect, onEdit, onRefresh, onCycleStatut }: {
                   })}
                 </div>
                 {p.statut!=='en_cours' && (
-                  <div style={{ position:'absolute', left:`${barR+0.5}%`, top:'50%', transform:'translateY(-50%)', fontSize:7, color, fontWeight:700, letterSpacing:'0.05em', textTransform:'uppercase', whiteSpace:'nowrap', paddingLeft:4 }}>
+                  <div style={{ position:'absolute', left:`${barR+0.5}%`, top:'50%', transform:'translateY(-50%)', fontSize:10, color, fontWeight:700, letterSpacing:'0.05em', textTransform:'uppercase', whiteSpace:'nowrap', paddingLeft:8 }}>
                     {STATUT_LABELS[p.statut]}
                   </div>
                 )}
@@ -573,9 +573,9 @@ function ProcessDrawer({ process, onClose, onEdit, onRefresh, onCycleEtape, onOv
   function Row({label,value,href}:{label:string;value?:string|null;href?:string}) {
     if(!value) return null
     return (
-      <div style={{ display:'flex', gap:8, padding:'5px 0', borderBottom:'1px solid var(--bd)' }}>
-        <div className="t-mono-sm" style={{ color:'var(--tx3)', minWidth:120, flexShrink:0 }}>{label}</div>
-        <div style={{ fontSize:11, wordBreak:'break-word' }}>
+      <div style={{ display:'flex', gap:8, padding:'8px 0', borderBottom:'1px solid var(--bd)' }}>
+        <div className="t-mono-sm" style={{ color:'var(--tx3)', minWidth:140, flexShrink:0 }}>{label}</div>
+        <div style={{ fontSize:13, wordBreak:'break-word' }}>
           {href ? <a href={href} target="_blank" rel="noopener noreferrer" style={{ color:'var(--ac)' }}>{value}</a> : value}
         </div>
       </div>
@@ -584,10 +584,10 @@ function ProcessDrawer({ process, onClose, onEdit, onRefresh, onCycleEtape, onOv
 
   return (
     <div style={{ position:'fixed', right:0, top:0, bottom:0, width:400, zIndex:100, background:'var(--bg1)', borderLeft:'1px solid var(--bd)', overflow:'auto', padding:24 }}>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:20 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:24 }}>
         <div>
-          <div style={{ fontWeight:700, fontSize:14 }}>{process.nom}</div>
-          <div style={{ fontSize:9, color, marginTop:3, textTransform:'uppercase', letterSpacing:'0.1em' }}>
+          <div style={{ fontWeight:700, fontSize:18 }}>{process.nom}</div>
+          <div style={{ fontSize:11, color, marginTop:4, textTransform:'uppercase', letterSpacing:'0.1em' }}>
             {TYPE_LABELS[process.type as ProcessType]} · {STATUT_LABELS[process.statut]}
           </div>
         </div>
@@ -601,11 +601,11 @@ function ProcessDrawer({ process, onClose, onEdit, onRefresh, onCycleEtape, onOv
       <Row label="URL"          value={process.url} href={process.url?.startsWith('http')?process.url:`https://${process.url}`} />
       {process.date_debut && <Row label="Start"  value={fmtDate(process.date_debut)} />}
       {process.date_fin   && (
-        <div style={{ display:'flex', gap:8, padding:'5px 0', borderBottom:'1px solid var(--bd)' }}>
-          <div className="t-mono-sm" style={{ color:'var(--tx3)', minWidth:120, flexShrink:0 }}>Deadline</div>
-          <div style={{ fontSize:11, color:urgencyColor(daysUntil(process.date_fin)), fontWeight:600 }}>
+        <div style={{ display:'flex', gap:8, padding:'8px 0', borderBottom:'1px solid var(--bd)' }}>
+          <div className="t-mono-sm" style={{ color:'var(--tx3)', minWidth:140, flexShrink:0 }}>Deadline</div>
+          <div style={{ fontSize:13, color:urgencyColor(daysUntil(process.date_fin)), fontWeight:600 }}>
             {fmtDate(process.date_fin, process.deadline_time)}
-            <span style={{ fontSize:9, fontWeight:400, marginLeft:6, color:'var(--tx3)' }}>
+            <span style={{ fontSize:11, fontWeight:400, marginLeft:6, color:'var(--tx3)' }}>
               ({daysUntil(process.date_fin)>=0?`in ${daysUntil(process.date_fin)}d`:`${Math.abs(daysUntil(process.date_fin))}d overdue`})
             </span>
           </div>
@@ -615,33 +615,33 @@ function ProcessDrawer({ process, onClose, onEdit, onRefresh, onCycleEtape, onOv
       <Row label="Stakeholders" value={process.stakeholders} />
 
       {process.responsables?.length > 0 && (
-        <div style={{ padding:'5px 0', borderBottom:'1px solid var(--bd)' }}>
-          <div className="t-mono-sm" style={{ color:'var(--tx3)', marginBottom:4 }}>In charge</div>
+        <div style={{ padding:'8px 0', borderBottom:'1px solid var(--bd)' }}>
+          <div className="t-mono-sm" style={{ color:'var(--tx3)', marginBottom:6 }}>In charge</div>
           {process.responsables.map((r,i)=>(
-            <div key={i} style={{ fontSize:11, padding:'2px 0' }}>{r.nom} <span style={{ color:'var(--tx3)', fontSize:9 }}>· {r.role}</span></div>
+            <div key={i} style={{ fontSize:13, padding:'4px 0' }}>{r.nom} <span style={{ color:'var(--tx3)', fontSize:11 }}>· {r.role}</span></div>
           ))}
         </div>
       )}
 
       {process.vault_path && (
-        <div style={{ padding:'5px 0', borderBottom:'1px solid var(--bd)' }}>
-          <div className="t-mono-sm" style={{ color:'var(--tx3)', marginBottom:4 }}>Dossier vault</div>
+        <div style={{ padding:'8px 0', borderBottom:'1px solid var(--bd)' }}>
+          <div className="t-mono-sm" style={{ color:'var(--tx3)', marginBottom:6 }}>Dossier vault</div>
           <a
             href={process.vault_path.startsWith('http') ? process.vault_path : `https://${process.vault_path}`}
             target="_blank" rel="noopener noreferrer"
-            style={{ fontSize:11, color:'var(--ac)', wordBreak:'break-all', display:'flex', alignItems:'center', gap:5 }}
+            style={{ fontSize:13, color:'var(--ac)', wordBreak:'break-all', display:'flex', alignItems:'center', gap:8 }}
           >
-            <span style={{ fontSize:14 }}>📁</span>
+            <span style={{ fontSize:18 }}>📁</span>
             <span>{process.vault_path}</span>
           </a>
         </div>
       )}
       {process.vault_tags?.length > 0 && (
-        <div style={{ padding:'5px 0', borderBottom:'1px solid var(--bd)' }}>
-          <div className="t-mono-sm" style={{ color:'var(--tx3)', marginBottom:4 }}>Assets / Tags</div>
-          <div style={{ display:'flex', flexWrap:'wrap', gap:4 }}>
+        <div style={{ padding:'8px 0', borderBottom:'1px solid var(--bd)' }}>
+          <div className="t-mono-sm" style={{ color:'var(--tx3)', marginBottom:6 }}>Assets / Tags</div>
+          <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
             {process.vault_tags.map(tag=>(
-              <span key={tag} style={{ fontSize:9, padding:'2px 7px', border:'1px solid var(--bd)', color:'var(--tx3)' }}>{tag}</span>
+              <span key={tag} style={{ fontSize:11, padding:'3px 10px', border:'1px solid var(--bd)', color:'var(--tx3)' }}>{tag}</span>
             ))}
           </div>
         </div>
@@ -673,7 +673,7 @@ function ProcessDrawer({ process, onClose, onEdit, onRefresh, onCycleEtape, onOv
                 }
               }}
               className="btn ghost sm"
-              style={{ flex: 1, fontSize: 10, border: '1px solid rgba(34,211,238,0.3)' }}
+              style={{ flex: 1, fontSize: 12, border: '1px solid rgba(34,211,238,0.3)' }}
             >
               ↻ Re-générer
             </button>
@@ -688,10 +688,10 @@ function ProcessDrawer({ process, onClose, onEdit, onRefresh, onCycleEtape, onOv
                 }
               }}
               className="btn primary sm"
-              style={{ flex: 1, display: 'flex', justifyContent: 'center', gap: 8 }}
+              style={{ flex: 1, display: 'flex', justifyContent: 'center', gap: 10, padding: '8px 12px' }}
             >
-              <span style={{ fontSize: 16 }}>↓</span>
-              <span>Télécharger</span>
+              <span style={{ fontSize: 20 }}>↓</span>
+              <span style={{ fontSize: 14 }}>Télécharger</span>
             </button>
           </div>
         </div>
@@ -713,18 +713,18 @@ function ProcessDrawer({ process, onClose, onEdit, onRefresh, onCycleEtape, onOv
                   <button
                     title={`Statut : ${ETAPE_STATUT_LABELS[e.statut]} — cliquer pour avancer`}
                     onClick={()=>void onCycleEtape(e.id, e.statut)}
-                    style={{ width:16, height:16, border:`1.5px solid ${statColor}`, background:isFait?statColor:'transparent', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, cursor:'pointer', marginTop:1, color:isFait?'#111':statColor, fontSize:9 }}
+                    style={{ width:20, height:20, border:`1.5px solid ${statColor}`, background:isFait?statColor:'transparent', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, cursor:'pointer', marginTop:1, color:isFait?'#111':statColor, fontSize:12 }}
                   >
                     {isFait ? '✓' : isBloque ? '✕' : isEnCours ? '…' : ''}
                   </button>
                   <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontSize:10, textDecoration:isFait?'line-through':'none', color:'var(--tx)' }}>{e.nom}</div>
-                    <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:2, flexWrap:'wrap' }}>
-                      <span style={{ fontSize:8, color:statColor, textTransform:'uppercase', letterSpacing:'0.06em' }}>
+                    <div style={{ fontSize:13, textDecoration:isFait?'line-through':'none', color:'var(--tx)' }}>{e.nom}</div>
+                    <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:4, flexWrap:'wrap' }}>
+                      <span style={{ fontSize:11, color:statColor, textTransform:'uppercase', letterSpacing:'0.06em' }}>
                         {ETAPE_STATUT_LABELS[e.statut]}
                       </span>
                       {e.date_echeance && days !== null && (
-                        <span style={{ fontSize:8, color: isOverdue ? '#c06060' : urgencyColor(days) }}>
+                        <span style={{ fontSize:11, color: isOverdue ? '#c06060' : urgencyColor(days) }}>
                           {new Date(e.date_echeance).toLocaleDateString('fr',{day:'numeric',month:'short'})}
                           {days>=0 ? ` · J-${days}` : ` · ${Math.abs(days)}j dépassé`}
                         </span>
@@ -733,14 +733,14 @@ function ProcessDrawer({ process, onClose, onEdit, onRefresh, onCycleEtape, onOv
                         <button
                           title="Ignorer l'alerte de dépassement"
                           onClick={()=>void onOverdueOverride(e.id, e.overdue_override)}
-                          style={{ fontSize:8, color:'var(--tx3)', background:'none', border:'1px solid var(--bd)', padding:'1px 5px', cursor:'pointer' }}
+                          style={{ fontSize:11, color:'var(--tx3)', background:'none', border:'1px solid var(--bd)', padding:'2px 8px', cursor:'pointer' }}
                         >ignorer ⚠</button>
                       )}
                       {e.overdue_override && !isFait && (
                         <button
                           title="Réactiver l'alerte de dépassement"
                           onClick={()=>void onOverdueOverride(e.id, e.overdue_override)}
-                          style={{ fontSize:8, color:'var(--tx3)', background:'none', border:'1px solid var(--bd)', padding:'1px 5px', cursor:'pointer' }}
+                          style={{ fontSize:11, color:'var(--tx3)', background:'none', border:'1px solid var(--bd)', padding:'2px 8px', cursor:'pointer' }}
                         >⚠ ignoré</button>
                       )}
                     </div>
@@ -753,9 +753,9 @@ function ProcessDrawer({ process, onClose, onEdit, onRefresh, onCycleEtape, onOv
       )}
 
       {process.notes && (
-        <div style={{ marginTop:16 }}>
-          <div className="t-label" style={{ marginBottom:6 }}>Notes</div>
-          <div style={{ fontSize:11, color:'var(--tx2)', lineHeight:1.6, whiteSpace:'pre-wrap' }}>{process.notes}</div>
+        <div style={{ marginTop:24 }}>
+          <div className="t-label" style={{ marginBottom:10 }}>Notes</div>
+          <div style={{ fontSize:14, color:'var(--tx2)', lineHeight:1.6, whiteSpace:'pre-wrap' }}>{process.notes}</div>
         </div>
       )}
     </div>

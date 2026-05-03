@@ -7,8 +7,9 @@ import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
-import { imageUrl, thumbUrl, yearOf, statusOf, stageColor, type StatusKey } from '@/lib/data'
+import { imageUrl, thumbUrl, yearOf, statusOf, commercialStatusOf, stageOf, stageColor, type StatusKey } from '@/lib/data'
 import { StatusChip } from '@/components/ui/StatusChip'
+import { StageChip }  from './StageChip'
 import { stringifyError } from '@/lib/error'
 import type { Oeuvre } from '@/lib/types/database'
 
@@ -16,6 +17,11 @@ import type { Oeuvre } from '@/lib/types/database'
 
 // PEM's own ContactID — default owner when ContactID FIS null
 const PEM_CONTACT_ID = 13
+
+function SortInd({ k, current, dir }: { k: string; current: string; dir: 'asc' | 'desc' }) {
+  if (k !== current) return <span style={{ opacity: 0.2, marginLeft: 4, fontSize: 13 }}>↕</span>
+  return <span style={{ color: 'var(--ac)', marginLeft: 4, fontSize: 13 }}>{dir === 'asc' ? '↑' : '↓'}</span>
+}
 
 // ── Advanced filter ─────────────────────────────────────────────────
 interface Criterion { id: number; field: string; op: string; value: string; value2?: string }
@@ -44,8 +50,8 @@ const FIELD_LABELS: Record<string, string> = {
   PresentationID:  'Présentation',
   Commentaires:    'Notes',
   NeedsPhotograph: 'À photographier',
-  StageProduction: 'Stade production',
-  statusId:        'Statut',
+  StageProduction: 'Production',
+  statusId:        'Ownership',
   ContactID:       'Contact',
   LocalisationID:  'Localisation',
   AcheteurID:      'Acheteur',
@@ -200,6 +206,16 @@ export function InventoryTab({
   const [support,     setSupport]     = useState('all')
   const [status,      setStatus]      = useState('all')
   const [view,        setView]        = useState<View>('list')
+  const [sortKey,     setSortKey]     = useState<string>('OeuvreID')
+  const [sortDir,     setSortDir]     = useState<'asc' | 'desc'>('desc')
+  const toggleSort = (k: string) => {
+    if (sortKey === k) {
+      setSortDir(sortDir === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortKey(k)
+      setSortDir('asc')
+    }
+  }
   const [focused,     setFocused]     = useState<Oeuvre | null>(null)
   const [criteria,    setCriteria]    = useState<Criterion[]>([])
   const [showAdv,     setShowAdv]     = useState(false)
@@ -378,9 +394,44 @@ export function InventoryTab({
         return matchesCriterion(o, c, allFields)
       })) return false
       return true
+    }).sort((a, b) => {
+      // ── Sorting Logic ──
+      const dir = sortDir === 'asc' ? 1 : -1
+      
+      if (sortKey === 'OeuvreID') return (a.OeuvreID - b.OeuvreID) * dir
+      if (sortKey === 'Titre') return (a.Titre || '').localeCompare(b.Titre || '') * dir
+      if (sortKey === 'Année') return ((extractYear(a.Année) || 0) - (extractYear(b.Année) || 0)) * dir
+      if (sortKey === 'Prix') return ((a.Prix || 0) - (b.Prix || 0)) * dir
+      if (sortKey === 'Status') {
+        const sa = statusOf(a, statusLabelMap)
+        const sb = statusOf(b, statusLabelMap)
+        return sa.localeCompare(sb) * dir
+      }
+      if (sortKey === 'Stage') {
+        const sa = (a as any).StageProduction || stageOf(a, statusLabelMap)
+        const sb = (b as any).StageProduction || stageOf(b, statusLabelMap)
+        return sa.localeCompare(sb) * dir
+      }
+      if (sortKey === 'Contact') {
+        const ca = a.ContactID != null ? (cM[a.ContactID] || '') : 'Pem'
+        const cb = b.ContactID != null ? (cM[b.ContactID] || '') : 'Pem'
+        return ca.localeCompare(cb) * dir
+      }
+      if (sortKey === 'Custodian') {
+        const la = (a as any).LocalisationID != null ? (locMap[(a as any).LocalisationID] || '') : 'Pem'
+        const lb = (b as any).LocalisationID != null ? (locMap[(b as any).LocalisationID] || '') : 'Pem'
+        return la.localeCompare(lb) * dir
+      }
+      if (sortKey === 'Comm') {
+        const ca = commercialStatusOf(a)
+        const cb = commercialStatusOf(b)
+        return ca.localeCompare(cb) * dir
+      }
+
+      return 0
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [oeuvres, q, tech, support, status, filterTheme, filterGroup, tM, sM, statusLabelMap, criteria, oeuvreThemeMap, oeuvreGroupMap, allFields])
+  }, [oeuvres, q, tech, support, status, filterTheme, filterGroup, criteria, oeuvreThemeMap, oeuvreGroupMap, thM, groupNameMap, tM, sM, statusLabelMap, allFields, sortKey, sortDir, cM, locMap])
 
   const activeStages = useMemo(() => {
     const present = new Set(oeuvres.map(o => (o as any).StageProduction).filter(Boolean))
@@ -450,7 +501,7 @@ export function InventoryTab({
             background: 'var(--bg2)',
             border: '1px solid var(--bd)',
             color: 'var(--tx)',
-            fontSize: 13,
+            fontSize: 15,
           }}
         />
 
@@ -476,7 +527,7 @@ export function InventoryTab({
               onClick={() => setView(k)}
               title={title}
               style={{
-                padding: '6px 10px', fontSize: 12,
+                padding: '8px 14px', fontSize: 14,
                 color: view === k ? 'var(--ac)' : 'var(--tx3)',
                 background: view === k ? 'var(--bg2)' : 'transparent',
                 borderRight: k === 'list' ? '1px solid var(--bd)' : 'none',
@@ -489,7 +540,7 @@ export function InventoryTab({
         <button
           onClick={() => setShowAdv((v) => !v)}
           style={{
-            padding: '7px 10px', fontSize: 11,
+            padding: '8px 12px', fontSize: 13,
             color: (showAdv || criteria.length > 0) ? 'var(--bg0)' : 'var(--tx3)',
             background: (showAdv || criteria.length > 0) ? 'var(--ac)' : 'transparent',
             border: '1px solid var(--bd)',
@@ -509,7 +560,7 @@ export function InventoryTab({
           }}
           className="btn sm"
           style={{ 
-            fontSize: 9, padding: '6px 12px', 
+            fontSize: 12, padding: '8px 16px', 
             border: '1px solid var(--bd)',
             background: filtered.length > 0 ? 'var(--bg2)' : 'transparent',
             color: filtered.length > 0 ? 'var(--ac)' : 'var(--tx3)',
@@ -532,7 +583,7 @@ export function InventoryTab({
                 else { setSelection(new Set()); router.refresh() }
               }}
               className="btn sm"
-              style={{ fontSize: 9, padding: '6px 12px', background: 'var(--rust)22', color: 'var(--rust)', border: '1px solid var(--rust)44' }}
+              style={{ fontSize: 12, padding: '8px 16px', background: 'var(--rust)22', color: 'var(--rust)', border: '1px solid var(--rust)44' }}
             >
               Supprimer ({selection.size})
             </button>
@@ -552,7 +603,7 @@ export function InventoryTab({
               setCriteria([])
             }}
             className="btn ghost sm"
-            style={{ fontSize: 9, padding: '4px 8px', color: 'var(--rust)' }}
+            style={{ fontSize: 12, padding: '6px 10px', color: 'var(--rust)' }}
           >
             {t('clear')}
           </button>
@@ -564,7 +615,7 @@ export function InventoryTab({
             onClick={() => setShowLegend((v) => !v)}
             title="Légende des couleurs"
             style={{
-              padding: '7px 12px', fontSize: 10, letterSpacing: 1,
+              padding: '8px 16px', fontSize: 13, letterSpacing: 1,
               color: showLegend ? 'var(--ac)' : 'var(--tx3)',
               background: showLegend ? 'var(--bg2)' : 'transparent',
               border: '1px solid var(--bd)',
@@ -580,12 +631,12 @@ export function InventoryTab({
               padding: '12px 16px', minWidth: 160, marginTop: 4,
               boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
             }}>
-              <div className="t-eyebrow" style={{ marginBottom: 10, fontSize: 8 }}>{t('legend')}</div>
-              {activeStages.length === 0 && <div style={{ fontSize: 9, opacity: 0.5 }}>Aucune œuvre en production</div>}
+              <div className="t-eyebrow" style={{ marginBottom: 12, fontSize: 11 }}>{t('legend')}</div>
+              {activeStages.length === 0 && <div style={{ fontSize: 12, opacity: 0.5 }}>Aucune œuvre en production</div>}
               {activeStages.map((it, i) => (
                 <div key={i} className="row gap-sm" style={{ marginBottom: 6 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: it.c }} />
-                  <div className="t-mono-sm" style={{ fontSize: 9 }}>{it.l}</div>
+                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: it.c }} />
+                  <div className="t-mono-sm" style={{ fontSize: 12 }}>{it.l}</div>
                 </div>
               ))}
             </div>
@@ -597,7 +648,7 @@ export function InventoryTab({
         <button
           onClick={() => setShowPreview((v) => !v)}
           style={{
-            padding: '7px 12px', fontSize: 11,
+            padding: '8px 16px', fontSize: 13,
             color: showPreview ? 'var(--ac)' : 'var(--tx3)',
             background: showPreview ? 'var(--bg2)' : 'transparent',
             border: '1px solid var(--bd)',
@@ -636,6 +687,7 @@ export function InventoryTab({
               rows={filtered} tM={tM} sM={sM} cM={cM} locMap={locMap} statusLabelMap={statusLabelMap}
               focused={focused} setFocused={setFocused}
               selection={selection} setSelection={setSelection}
+              sortKey={sortKey} sortDir={sortDir} toggleSort={toggleSort}
               onImageDoubleClick={() => { setShowPreview(true); setPreviewExpanded(true) }}
             />
             {showPreview && (
@@ -699,7 +751,7 @@ function CriteriaPanel({
 }) {
   const { t } = useI18n()
   const FIS: React.CSSProperties = {
-    fontFamily: 'inherit', fontSize: 10,
+    fontFamily: 'inherit', fontSize: 13,
     background: 'var(--bg1)', border: '1px solid var(--bd)',
     color: 'var(--tx)', padding: '3px 6px', outline: 'none',
   }
@@ -715,7 +767,11 @@ function CriteriaPanel({
       LocalisationID:  cM,
       AcheteurID:      cM,
       PresentationID:  pM,
-      StageProduction: { 'idea': 'Idée', 'wip': 'En cours', 'drying': 'Séchage', 'mounting': 'À monter', 'framing': 'À encadrer', 'shot': 'À photographier', 'catalogued': 'À cataloguer' },
+      StageProduction: { 
+        'idea': 'Idée', 'sketch': 'Esquisse', 'wip': 'En cours', 
+        'drying': 'Séchage', 'mounting': 'À monter', 'framing': 'À encadrer', 
+        'shot': 'Photo', 'catalogued': 'Fini' 
+      },
       anonymity_level: { '0': 'Public', '1': 'Anonyme', '2': 'Privé' }
     }
     const map = maps[field]
@@ -859,7 +915,7 @@ function InvSelect({
         background: 'var(--bg1)',
         border: '1px solid var(--bd)',
         color: 'var(--tx)',
-        fontSize: 11,
+        fontSize: 14,
       }}
     >
       {options.map(([v, lb]) => (
@@ -872,7 +928,9 @@ function InvSelect({
 // ── InvList ─────────────────────────────────────────────────────────
 
 function InvList({
-  rows, tM, sM, cM, locMap, statusLabelMap, focused, setFocused, selection, setSelection, onImageDoubleClick, publicMode,
+  rows, tM, sM, cM, locMap, statusLabelMap, focused, setFocused, selection, setSelection, 
+  sortKey, sortDir, toggleSort,
+  onImageDoubleClick, publicMode,
 }: {
   rows:           Oeuvre[]
   tM:             Record<number, string>
@@ -884,6 +942,9 @@ function InvList({
   setFocused:     (o: Oeuvre) => void
   selection:      Set<number>
   setSelection:   (s: Set<number>) => void
+  sortKey:        string
+  sortDir:        'asc' | 'desc'
+  toggleSort:     (k: string) => void
   onImageDoubleClick: () => void
   publicMode?:    boolean
 }) {
@@ -928,57 +989,65 @@ function InvList({
       onScroll={handleScroll}
       style={{ flex: 1, minWidth: 0, overflow: 'auto', borderRight: '1px solid var(--bd)' }}
     >
-      <table className="tbl" style={{ tableLayout: 'fixed', width: '100%' }}>
-        <thead>
-          <tr style={{ height: 32 }}>
-            <th style={{ width: 42, padding: '0 8px' }}>
+      <table style={{ 
+        width: '100%', 
+        tableLayout: 'fixed', 
+        borderCollapse: 'collapse', 
+        borderSpacing: 0,
+        background: 'var(--bg1)',
+        fontSize: 14,
+      }}>
+        <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--bg0)' }}>
+          <tr style={{ height: 28, borderBottom: '1px solid var(--bd)' }}>
+            <th style={{ width: 30 }}>
               <div style={{
-                width: 14, height: 14, margin: '0 auto',
+                width: 12, height: 12, margin: '0 auto',
                 border: `1.5px solid ${visible.length > 0 && visible.every(o => selection.has(o.OeuvreID)) ? 'var(--ac)' : 'var(--bd2)'}`,
                 background: visible.length > 0 && visible.every(o => selection.has(o.OeuvreID)) ? 'var(--ac)' : 'transparent',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 9, color: 'var(--bg0)', cursor: 'pointer',
+                cursor: 'pointer',
               }} onClick={() => {
                 const allSel = visible.every(o => selection.has(o.OeuvreID))
                 const next = new Set(selection)
-                if (allSel) {
-                  visible.forEach(o => next.delete(o.OeuvreID))
-                } else {
-                  visible.forEach(o => next.add(o.OeuvreID))
-                }
+                if (allSel) visible.forEach(o => next.delete(o.OeuvreID))
+                else visible.forEach(o => next.add(o.OeuvreID))
                 setSelection(next)
               }}>
                 {visible.length > 0 && visible.every(o => selection.has(o.OeuvreID)) ? '✓' : ''}
               </div>
             </th>
-            <th style={{ width: 28, padding: '0 2px' }}></th>
-            <th style={{ width: 32, color: 'var(--tx3)', fontSize: 7, padding: '0 2px' }}>ID</th>
-            <th style={{ width: 44, padding: '0 4px' }}></th>
-            <th style={{ textAlign: 'left', padding: '0 6px', fontSize: 10, width: 'auto' }}>{t('title')}</th>
-            <th style={{ textAlign: 'left', padding: '0 6px', fontSize: 10, width: 120 }}>{t('technique')}</th>
-            <th style={{ textAlign: 'left', padding: '0 6px', fontSize: 10, width: 120 }}>{t('support')}</th>
-            <th style={{ textAlign: 'left', padding: '0 6px', fontSize: 10, width: 90 }}>Dims</th>
-            <th style={{ textAlign: 'left', padding: '0 6px', fontSize: 10, width: 60 }}>Année</th>
-            <th style={{ textAlign: 'left', padding: '0 6px', fontSize: 10, width: 100 }}>Prix</th>
-            <th style={{ textAlign: 'left', padding: '0 6px', fontSize: 10, width: 140 }}>Contact</th>
-            <th style={{ textAlign: 'left', padding: '0 6px', fontSize: 10, width: 160 }}>Custodian</th>
-            <th style={{ textAlign: 'left', padding: '0 6px', fontSize: 10, width: 100 }}>{t('status')}</th>
+            <th style={{ width: 22 }}></th>
+            <th onClick={() => toggleSort('OeuvreID')} style={{ width: 40, color: 'var(--tx3)', fontSize: 12, cursor: 'pointer' }}>ID <SortInd k="OeuvreID" current={sortKey} dir={sortDir} /></th>
+            <th style={{ width: 44 }}></th>
+            <th onClick={() => toggleSort('Titre')} style={{ textAlign: 'left', padding: '0 4px', width: '15%', cursor: 'pointer' }}>{t('title')} <SortInd k="Titre" current={sortKey} dir={sortDir} /></th>
+            <th style={{ textAlign: 'left', padding: '0 4px', width: '20%' }}>Description</th>
+            <th style={{ textAlign: 'left', padding: '0 4px', width: 60 }}>Dims</th>
+            <th onClick={() => toggleSort('Année')} style={{ textAlign: 'left', padding: '0 4px', width: 35, cursor: 'pointer' }}>Year <SortInd k="Année" current={sortKey} dir={sortDir} /></th>
+            <th onClick={() => toggleSort('Prix')} style={{ textAlign: 'left', padding: '0 4px', width: 60, cursor: 'pointer' }}>Prix <SortInd k="Prix" current={sortKey} dir={sortDir} /></th>
+            <th onClick={() => toggleSort('Contact')} style={{ textAlign: 'left', padding: '0 4px', width: 80, cursor: 'pointer' }}>Contact <SortInd k="Contact" current={sortKey} dir={sortDir} /></th>
+            <th onClick={() => toggleSort('Custodian')} style={{ textAlign: 'left', padding: '0 4px', width: 85, cursor: 'pointer' }}>Custodian <SortInd k="Custodian" current={sortKey} dir={sortDir} /></th>
+            <th onClick={() => toggleSort('Stage')} style={{ textAlign: 'left', padding: '0 4px', width: 85, cursor: 'pointer' }}>Stage <SortInd k="Stage" current={sortKey} dir={sortDir} /></th>
+            <th onClick={() => toggleSort('Status')} style={{ textAlign: 'left', padding: '0 4px', width: 70, cursor: 'pointer' }}>Status <SortInd k="Status" current={sortKey} dir={sortDir} /></th>
+            <th onClick={() => toggleSort('Comm')} style={{ textAlign: 'left', padding: '0 4px', width: 60, cursor: 'pointer' }}>Comm <SortInd k="Comm" current={sortKey} dir={sortDir} /></th>
           </tr>
         </thead>
         <tbody>
           {visible.map((o, idx) => {
             const isSel = selection.has(o.OeuvreID)
             const isFoc = focused?.OeuvreID === o.OeuvreID
-            const st    = statusOf(o, statusLabelMap)
+            const realStage = (o as any).StageProduction || stageOf(o, statusLabelMap)
+            const isFinished = realStage === 'available' || realStage === 'archive'
+            const st    = isFinished ? statusOf(o, statusLabelMap) : 'studio'
             const dims  = o.Hauteur && o.Largeur ? `${o.Hauteur}×${o.Largeur}` : '—'
             const isGoneRow = st === 'sold' || st === 'gift'
             const sCol  = isGoneRow ? 'transparent' : stageColor((o as any).StageProduction)
-            const sBg   = sCol === 'transparent' ? '' : `color-mix(in srgb, ${sCol} 8%, var(--bg1))`
             
-            const baseBg = isFoc ? 'var(--bg2)' : sBg
-            const rowBg  = isSel 
-              ? `color-mix(in srgb, var(--ac) 20%, ${baseBg || 'var(--bg1)'})`
-              : baseBg
+            // CLEAN LOGIC: Background is ONLY for Focus or Selection.
+            const rowBg = isFoc 
+              ? 'var(--bg2)' // Clear focus color
+              : isSel 
+                ? 'rgba(255,255,255,0.05)' // Subtle selection hint
+                : 'transparent' // Default dark
 
             return (
                 <tr
@@ -998,15 +1067,15 @@ function InvList({
                       border: `1.5px solid ${isSel ? 'var(--ac)' : 'var(--bd2)'}`,
                       background: isSel ? 'var(--ac)' : 'transparent',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 9, color: 'var(--bg0)',
-                    }} onClick={(e) => { e.stopPropagation(); handleCheck(e, o.OeuvreID, idx) }}>
+                      fontSize: 11, color: 'var(--bg0)',
+                    }} onClick={(e) => handleCheck(e, o.OeuvreID, idx)}>
                       {isSel ? '✓' : ''}
                     </div>
                   </td>
                   <td style={{ padding: '0 2px' }}>
-                    <button onClick={(e) => { e.stopPropagation(); router.push(`/atelier/works/${o.OeuvreID}/edit`) }} style={{ color: 'var(--tx3)', fontSize: 9 }}>✎</button>
+                    <button onClick={(e) => { e.stopPropagation(); router.push(`/atelier/works/${o.OeuvreID}/edit`) }} style={{ color: 'var(--tx3)', fontSize: 12 }}>✎</button>
                   </td>
-                  <td style={{ color: 'var(--tx3)', fontSize: 8, padding: '0 2px', whiteSpace: 'nowrap' }}>
+                  <td style={{ color: 'var(--tx3)', fontSize: 11, padding: '0 2px', whiteSpace: 'nowrap' }}>
                     {o.OeuvreID}
                     {(() => {
                       const level = (o as any).anonymity_level ?? (o.is_public === false ? 2 : 0)
@@ -1030,26 +1099,45 @@ function InvList({
                     >
                       {o.txtImageNameLink 
                         ? <img src={thumbUrl(o.txtImageNameLink, 96) ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> 
-                        : <div className="ph" style={{ fontSize: 8 }}>—</div>}
+                        : <div className="ph" style={{ fontSize: 11 }}>—</div>}
                     </div>
                   </td>
-                  <td style={{ color: 'var(--tx)', padding: '0 6px', fontSize: 10, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{o.Titre || '—'}</td>
-                  <td style={{ padding: '0 6px', fontSize: 9.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{o.Technique != null ? (tM[o.Technique] ?? '—') : '—'}</td>
-                  <td style={{ padding: '0 6px', fontSize: 9.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{o.Support != null ? (sM[o.Support] ?? '—') : '—'}</td>
-                  <td style={{ padding: '0 6px', fontSize: 9.5, whiteSpace: 'nowrap' }}>{dims}</td>
-                  <td style={{ padding: '0 6px', fontSize: 9.5 }}>{yearOf(o.Année) ?? '—'}</td>
-                  <td style={{ padding: '0 6px', fontSize: 9.5, whiteSpace: 'nowrap' }}>{o.Prix ? `€ ${Number(o.Prix).toLocaleString('fr-FR')}` : '—'}</td>
-                  <td style={{ padding: '0 6px', fontSize: 9.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <td style={{ color: 'var(--tx)', padding: '0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.Titre || '—'}</td>
+                  <td style={{ padding: '0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: 0.8 }}>
+                    {o.Technique != null ? (tM[o.Technique] ?? '') : ''} 
+                    {o.Support != null ? ` · ${sM[o.Support] ?? ''}` : ''}
+                  </td>
+                  <td style={{ padding: '0 4px', whiteSpace: 'nowrap', opacity: 0.8 }}>{dims}</td>
+                  <td style={{ padding: '0 4px', opacity: 0.8 }}>{yearOf(o.Année) ?? '—'}</td>
+                  <td style={{ padding: '0 4px', whiteSpace: 'nowrap', opacity: 0.8 }}>{o.Prix ? `€ ${Number(o.Prix).toLocaleString('fr-FR')}` : '—'}</td>
+                  <td style={{ padding: '0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: 0.8 }}>
                     {(() => {
                       const level = (o as any).anonymity_level ?? (o.is_public === false ? 2 : 0)
                       if (publicMode && level >= 1) return <span style={{ opacity: 0.3 }}>[Anonyme]</span>
                       return o.ContactID != null ? (cM[o.ContactID] ?? '—') : 'Pem'
                     })()}
                   </td>
-                  <td style={{ padding: '0 6px', fontSize: 9.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {((o as any).LocalisationID != null ? locMap[(o as any).LocalisationID] : 'Pem - Atelier') || '—'}
+                  <td style={{ padding: '0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: 0.8 }}>
+                    {(() => {
+                      const isReady = (o as any).StageProduction === 'available'
+                      if (!isReady) return 'Pem - Atelier'
+                      return ((o as any).LocalisationID != null ? locMap[(o as any).LocalisationID] : 'Pem - Atelier') || '—'
+                    })()}
                   </td>
-                  <td style={{ padding: '0 6px' }}><StatusChip s={st} /></td>
+                  <td style={{ padding: '0 4px' }}>
+                    <StageChip o={o} statusLabelMap={statusLabelMap} />
+                  </td>
+                  <td style={{ padding: '0 4px' }}>
+                    <StatusChip s={st} />
+                  </td>
+                  <td style={{ padding: '0 4px' }}>
+                    {(() => {
+                      const comm = commercialStatusOf(o)
+                      if (comm === 'reserved') return <span className="chip cyan" style={{ fontSize: 10 }}>RÉSERVÉ</span>
+                      if (comm === 'private') return <span className="chip mt" style={{ fontSize: 10 }}>PRIVÉ</span>
+                      return null
+                    })()}
+                  </td>
                 </tr>
             )
           })}
@@ -1241,7 +1329,7 @@ function InvPreview({
           <button
             className="btn ghost sm"
             onClick={() => router.push(`/atelier/works/${o.OeuvreID}/edit`)}
-            style={{ fontSize: 9, padding: '2px 8px', letterSpacing: 0.5 }}
+            style={{ fontSize: 12, padding: '4px 10px', letterSpacing: 0.5 }}
           >
             ✎ {t('edit')}
           </button>
@@ -1256,7 +1344,7 @@ function InvPreview({
             onClick={() => setExpanded(!expanded)}
             style={{ 
               background: 'transparent', border: '1px solid var(--bd)', color: 'var(--tx3)', 
-              cursor: 'pointer', fontSize: 10, padding: '2px 6px', marginRight: 4,
+              cursor: 'pointer', fontSize: 13, padding: '4px 8px', marginRight: 4,
             }}
             title={expanded ? "Réduire" : "Agrandir"}
           >
@@ -1266,7 +1354,7 @@ function InvPreview({
             onClick={onClose}
             style={{ 
               background: 'transparent', border: 'none', color: 'var(--tx3)', 
-              cursor: 'pointer', fontSize: 16, padding: '0 4px' 
+              cursor: 'pointer', fontSize: 24, padding: '0 6px' 
             }}
             title={t('close')}
           >×</button>
@@ -1349,16 +1437,16 @@ function InvPreview({
         </div>
       )}
 
-      <h2 className="serif" style={{ fontSize: 24, color: 'var(--tx)', marginBottom: 14, lineHeight: 1.15 }}>
+      <h2 className="serif" style={{ fontSize: 32, color: 'var(--tx)', marginBottom: 20, lineHeight: 1.1 }}>
         {o.Titre || '—'}
       </h2>
 
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'auto 1fr',
-        gap: '5px 14px',
-        fontSize: 10.5,
-        marginBottom: 16,
+        gap: '8px 24px',
+        fontSize: 14,
+        marginBottom: 24,
       }}>
 
         {/* ── Identité ─────────────────────────────────────────── */}
@@ -1383,41 +1471,20 @@ function InvPreview({
         <div style={{ color: 'var(--tx2)' }}>{dims ?? '—'}</div>
 
         {/* ── État ─────────────────────────────────────────────── */}
-        <div className="t-label" style={{ paddingTop: 8 }}>{t('status')}</div>
+        <div className="t-label" style={{ paddingTop: 8 }}>Ownership</div>
         <div style={{ paddingTop: 8, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <StatusChip s={st} />
-          {(o as any).statusId != null && statusLabelMap[(o as any).statusId] && (
-            <span style={{ color: 'var(--tx3)', fontSize: 10 }}>
-              {statusLabelMap[(o as any).statusId]}
-            </span>
-          )}
+          {(() => {
+            const comm = commercialStatusOf(o)
+            if (comm === 'reserved') return <span className="chip cyan">RÉSERVÉ</span>
+            if (comm === 'private') return <span className="chip mt">PRIVÉ</span>
+            return null
+          })()}
         </div>
 
-        <div className="t-label">Stade</div>
+        <div className="t-label">Production</div>
         <div>
-          {isGone ? (
-            // Sold or gifted — no longer in production, irrelevant
-            <span style={{ color: 'var(--tx3)' }}>—</span>
-          ) : o.Catalogué ? (
-            // Catalogued = finished, greyed out
-            <span style={{
-              fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase',
-              border: '1px solid var(--tx3)', color: 'var(--tx3)', padding: '1px 6px',
-            }}>Fini</span>
-          ) : (o as any).StageProduction ? (() => {
-            const stageLabels: Record<string, string> = {
-              idea: 'Idée', wip: 'En cours', drying: 'Séchage',
-              mounting: 'À monter', framing: 'À encadrer', shot: 'À photographier', catalogued: 'À cataloguer',
-            }
-            const sc = stageColor((o as any).StageProduction)
-            const sl = stageLabels[(o as any).StageProduction] ?? (o as any).StageProduction
-            return (
-              <span style={{
-                fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase',
-                border: `1px solid ${sc}`, color: sc, padding: '1px 6px',
-              }}>{sl}</span>
-            )
-          })() : <span style={{ color: 'var(--tx3)' }}>—</span>}
+          <StageChip o={o} statusLabelMap={statusLabelMap} />
         </div>
 
         <div className="t-label">{t('contact')}</div>
@@ -1454,8 +1521,8 @@ function InvPreview({
             if (ids.length === 0) return <span className="t-mono-sm" style={{ color: 'var(--tx3)' }}>—</span>
             return ids.map(tid => (
               <span key={tid} style={{ 
-                fontSize: 9, background: 'var(--bg0)', border: '1px solid var(--bd)', 
-                padding: '1px 6px', color: 'var(--tx2)', borderRadius: 2 
+                fontSize: 12, background: 'var(--bg0)', border: '1px solid var(--bd)', 
+                padding: '2px 8px', color: 'var(--tx2)', borderRadius: 2 
               }}>
                 {thM[tid] ?? tid}
               </span>
@@ -1470,8 +1537,8 @@ function InvPreview({
             if (ids.length === 0) return <span className="t-mono-sm" style={{ color: 'var(--tx3)' }}>—</span>
             return ids.map(gid => (
               <span key={gid} style={{ 
-                fontSize: 9, background: 'color-mix(in srgb, var(--ac) 10%, var(--bg0))', 
-                border: '1px solid var(--bd)', padding: '1px 6px', color: 'var(--tx)', borderRadius: 2 
+                fontSize: 12, background: 'color-mix(in srgb, var(--ac) 10%, var(--bg0))', 
+                border: '1px solid var(--bd)', padding: '2px 8px', color: 'var(--tx)', borderRadius: 2 
               }}>
                 {groupNameMap[gid] ?? gid}
               </span>
@@ -1519,10 +1586,10 @@ function InvPreview({
       {/* ── Commentaires ──────────────────────────────────────────── */}
       {o.Commentaires && (
         <div style={{ marginBottom: 14 }}>
-          <div className="t-label" style={{ marginBottom: 4 }}>Commentaires</div>
+          <div className="t-label" style={{ marginBottom: 8 }}>Commentaires</div>
           <div style={{
-            fontSize: 10.5, color: 'var(--tx2)', lineHeight: 1.65,
-            padding: '10px 12px',
+            fontSize: 14, color: 'var(--tx2)', lineHeight: 1.6,
+            padding: '14px 16px',
             background: 'var(--bg0)', border: '1px solid var(--bd)',
           }}>
             {o.Commentaires}
@@ -1616,8 +1683,10 @@ function InvGrid({
           const isSel     = selection.has(o.OeuvreID)
           const stGrid    = statusOf(o, statusLabelMap)
           const isGoneGrid = stGrid === 'sold' || stGrid === 'gift'
-          const sCol  = isGoneGrid ? 'transparent' : stageColor((o as any).StageProduction)
-          const sBg   = sCol === 'transparent' ? 'var(--bg1)' : `color-mix(in srgb, ${sCol} 10%, var(--bg1))`
+          const rawS = (o as any).StageProduction
+          const infS = o.Catalogué ? 'catalogued' : (o as any).NeedsPhotograph ? 'shot' : stageOf(o, statusLabelMap).replace('stage_', '')
+          const sCol = isGoneGrid ? 'transparent' : stageColor(rawS || infS)
+          const sBg  = sCol === 'transparent' ? 'var(--bg1)' : `color-mix(in srgb, ${sCol} 10%, var(--bg1))`
           return (
             <div
               key={o.OeuvreID}

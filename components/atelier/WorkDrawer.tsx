@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState, useTransition, useCallback } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import type { Oeuvre } from '@/lib/types/database'
+import { StageChip } from './StageChip'
 
 // PEM's ContactID — default owner
 const PEM_CONTACT_ID = 13
@@ -177,7 +178,7 @@ export function WorkDrawer({
           {/* Pipe 1: Identity & Physicality */}
           <section>
             <SectionTitle title="Identity & Physicality" />
-            <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 18px', fontSize: 11 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 20px', fontSize: 13 }}>
               <div className="t-label">{t('year')}</div>
               <div style={{ color: 'var(--tx2)' }}>{yearOf(o.Année) ?? '—'}</div>
 
@@ -202,8 +203,8 @@ export function WorkDrawer({
                   if (ids.length === 0) return <span style={{ color: 'var(--tx3)' }}>—</span>
                   return ids.map(tid => (
                     <span key={tid} style={{ 
-                      fontSize: 9, background: 'var(--bg0)', border: '1px solid var(--bd)', 
-                      padding: '2px 8px', color: 'var(--tx2)', borderRadius: 2 
+                      fontSize: 11, background: 'var(--bg0)', border: '1px solid var(--bd)', 
+                      padding: '3px 10px', color: 'var(--tx2)', borderRadius: 2 
                     }}>
                       {thM[tid] ?? tid}
                     </span>
@@ -216,7 +217,7 @@ export function WorkDrawer({
           {/* Pipe 2: Logistics & Ownership */}
           <section>
             <SectionTitle title="Logistics & Ownership" />
-            <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 18px', fontSize: 11 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 20px', fontSize: 13 }}>
               <div className="t-label">{t('contact')}</div>
               <div style={{ color: 'var(--tx2)' }}>
                 {o.ContactID != null ? (cM[o.ContactID] ?? 'Pem') : 'Pem'}
@@ -243,8 +244,8 @@ export function WorkDrawer({
                   if (ids.length === 0) return <span style={{ color: 'var(--tx3)' }}>—</span>
                   return ids.map(gid => (
                     <span key={gid} style={{ 
-                      fontSize: 9, background: 'color-mix(in srgb, var(--ac) 10%, var(--bg0))', 
-                      border: '1px solid var(--bd)', padding: '2px 8px', color: 'var(--tx)', borderRadius: 2 
+                      fontSize: 11, background: 'color-mix(in srgb, var(--ac) 10%, var(--bg0))', 
+                      border: '1px solid var(--bd)', padding: '3px 10px', color: 'var(--tx)', borderRadius: 2 
                     }}>
                       {groupNameMap[gid] ?? gid}
                     </span>
@@ -254,18 +255,14 @@ export function WorkDrawer({
             </div>
           </section>
 
-          {/* Pipe 3: Production & Readiness */}
           <section>
             <SectionTitle title="Production & Readiness" />
-            <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 18px', fontSize: 11 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 20px', fontSize: 13 }}>
               <div className="t-label">{t('status')}</div>
               <div><StatusChip s={st} /></div>
 
-              <div className="t-label">Prod. Stage</div>
-              <div style={{ color: 'var(--tx2)' }}>{o.StageProduction || '—'}</div>
-
-              <div className="t-label">{t('catalogued')}</div>
-              <div style={{ color: o.Catalogué ? 'var(--sage)' : 'var(--tx3)' }}>{o.Catalogué ? '✓' : '—'}</div>
+              <div className="t-label">Production</div>
+              <div><StageChip o={o} statusLabelMap={statusLabelMap} /></div>
 
               <div className="t-label">{t('framed')}</div>
               <div style={{ color: o.Encadree ? 'var(--tx2)' : 'var(--tx3)' }}>{o.Encadree ? '✓' : '—'}</div>
@@ -292,13 +289,13 @@ export function WorkDrawer({
                     }}
                   >
                     <div style={{
-                      width: 12, height: 12, borderRadius: 2, border: `1px solid ${at.color}`,
+                      width: 14, height: 14, borderRadius: 2, border: `1px solid ${at.color}`,
                       background: isDone ? at.color : 'transparent',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--bg0)', fontSize: 9, fontWeight: 700
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--bg0)', fontSize: 11, fontWeight: 700
                     }}>
                       {isDone && '✓'}
                     </div>
-                    <span style={{ fontSize: 10, color: isDone ? 'var(--tx)' : 'var(--tx3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <span style={{ fontSize: 12, color: isDone ? 'var(--tx)' : 'var(--tx3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {at.label}
                     </span>
                   </div>
@@ -310,7 +307,7 @@ export function WorkDrawer({
           {/* Pipe 4: Financials & Sales */}
           <section>
             <SectionTitle title="Financials & Sales" />
-            <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 18px', fontSize: 11 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 20px', fontSize: 13 }}>
               <div className="t-label">{t('price')}</div>
               <div style={{ color: 'var(--tx2)' }}>
                 {(() => {
@@ -345,8 +342,8 @@ export function WorkDrawer({
         {/* Comments */}
         {o.Commentaires && (
           <div style={{
-            fontSize: 11, color: 'var(--tx2)', lineHeight: 1.7,
-            padding: '16px 0',
+            fontSize: 13, color: 'var(--tx2)', lineHeight: 1.7,
+            padding: '20px 0',
             borderTop: '1px solid var(--bd)',
             marginBottom: 20,
           }}>
@@ -408,8 +405,8 @@ export function WorkDrawer({
 function SectionTitle({ title }: { title: string }) {
   return (
     <div style={{
-      fontSize: 8, letterSpacing: '0.12em', textTransform: 'uppercase',
-      color: 'var(--tx3)', marginBottom: 12, paddingBottom: 4,
+      fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase',
+      color: 'var(--tx3)', marginBottom: 16, paddingBottom: 6,
       borderBottom: '1px solid var(--bd2)', display: 'flex', alignItems: 'center', gap: 8
     }}>
       <span style={{ width: 4, height: 4, background: 'var(--ac)' }} />

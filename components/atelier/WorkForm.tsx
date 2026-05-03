@@ -37,6 +37,12 @@ const PRODUCTION_STAGES = [
   { id: 'archive',    label: 'Archive',    pct: 100, desc: 'Historical archive' },
 ]
 
+const COMMERCIAL_STAGES = [
+  { id: 'available', label: 'Available', desc: 'Listed / Visible' },
+  { id: 'reserved',  label: 'Reserved',  desc: 'Transaction pending' },
+  { id: 'private',   label: 'Private',   desc: 'Internal / Hidden' },
+]
+
 const OWNERSHIP_STAGES = [
   { id: 'artist',      label: 'Artist',       desc: 'Full ownership' },
   { id: 'possession',  label: 'Consignment',  desc: 'Loan / Galerie (No transfer)' },
@@ -108,6 +114,9 @@ export function WorkForm({
   const [exposable, setExposable] = useState((oeuvre as any)?.Exposable ?? false)
   const [needsPhoto, setNeedsPhoto] = useState(!!((oeuvre as any)?.NeedsPhotograph ?? false))
 
+  // 2.5 Commercial State
+  const [commStage, setCommStage] = useState(oeuvre?.commercial_status ?? 'available')
+
   // 3. Ownership & Logistics
   const initialOwn = (oeuvre?.statusId === 6 || oeuvre?.statusId === 11) ? 'transfer' : 
                      (oeuvre?.statusId === 7 || oeuvre?.statusId === 8 || oeuvre?.statusId === 5) ? 'possession' : 'artist'
@@ -137,6 +146,8 @@ export function WorkForm({
   const [selGroups,       setSelGroups]       = useState<Set<string>>(new Set(currentGroupIds))
   const [allThemes, setAllThemes] = useState(initialThemes)
   const [selThemes, setSelThemes] = useState<Set<number>>(new Set(currentThemeIds))
+  const [commentaires, setCommentaires] = useState(oeuvre?.Commentaires ?? '')
+  const [historique,   setHistorique]   = useState(oeuvre?.Historique ?? '')
 
   // ── 2. Computed Values ──────────────────────────────────────────
 
@@ -156,7 +167,7 @@ export function WorkForm({
   const isSoldOrGift = ownStage === 'transfer'
   const isArchived   = prodStage === 'archive' || condition === 'destroyed' || condition === 'lost'
   const isArtistVaulted = isArchived && isPemOwner
-  const isReserved   = isSoldOrGift && !paymentDone
+  const isReserved   = commStage === 'reserved'
 
   const currentLoc = useMemo(() => {
     if (condition === 'lost') return 'Unknown (Lost)'
@@ -191,19 +202,26 @@ export function WorkForm({
     }
   }, [condition])
 
+  // 9. TOTAL SYNC: The Ownership, Production & Commercial Lock
+  // RULE: If in production (not available), it MUST be at the Atelier and PRIVATE.
+  const mustBeAtAtelier = prodStage !== 'available' && prodStage !== 'archive'
+  
   useEffect(() => {
     if (!pemContact) return
-    const isPem = String(pemContact.ContactID) === contactId
+    const pemId = String(pemContact.ContactID)
+    const isPem = contactId === pemId
 
-    // If we are in Artist mode, contact MUST be PEM
-    if (ownStage === 'artist' && !isPem) {
-      setContactId(String(pemContact.ContactID))
+    // A. ENFORCE ATELIER & PRIVATE FOR PRODUCTION
+    if (mustBeAtAtelier) {
+      if (ownStage !== 'artist') setOwnStage('artist')
+      if (!isPem) setContactId(pemId)
+      if (commStage !== 'private') setCommStage('private')
     } 
-    // If we are in other modes but contact is PEM, shift back to Artist
-    else if (ownStage !== 'artist' && isPem) {
-      setOwnStage('artist')
+    // B. ENFORCE ATELIER FOR "ARTIST" STAGE (even if Available)
+    else if (ownStage === 'artist' && !isPem) {
+      setContactId(pemId)
     }
-  }, [contactId, pemContact, ownStage])
+  }, [contactId, pemContact, ownStage, prodStage, commStage, mustBeAtAtelier])
 
   useEffect(() => {
     if (isGift) {
@@ -234,7 +252,7 @@ export function WorkForm({
     prevNeedsPhoto.current = needsPhoto
   }, [needsPhoto])
 
-  // 8. Hard Guard: Cannot be Consigned/Sold if not Available
+  // 8. Hard Guard: Ensure production stage consistency
   useEffect(() => {
     if (prodStage !== 'available' && prodStage !== 'archive' && ownStage !== 'artist') {
       setOwnStage('artist')
@@ -248,6 +266,21 @@ export function WorkForm({
     }
   }, [prodStage])
 
+  // 10. Commercial Automation
+  useEffect(() => {
+    if (isArchived) {
+      setCommStage('private')
+    }
+  }, [isArchived])
+
+  useEffect(() => {
+    if (ownStage === 'transfer' && !paymentDone) {
+      setCommStage('reserved')
+    } else if (ownStage === 'transfer' && paymentDone) {
+        setCommStage('available') // Cleared for new owner's record
+    }
+  }, [ownStage, paymentDone])
+
   // ── 4. Handlers ─────────────────────────────────────────────
 
   async function handleSubmit(e: any) {
@@ -256,15 +289,22 @@ export function WorkForm({
     
     fd.set('catalogued', (prodStage === 'catalogued' || prodStage === 'available') ? '1' : '0')
     fd.set('is_public', isPublic ? '1' : '0')
-    fd.set('is_gift', isGift ? '1' : '0')
+    fd.set('is_gift', (ownStage === 'transfer' && isGift) ? '1' : '0')
     fd.set('needs_photograph', needsPhoto ? '1' : '0')
     fd.set('stage_production', prodStage)
+    fd.set('commercial_status', commStage)
     fd.set('prix_final', String(prixFinal))
+    fd.set('is_gift', isGift ? '1' : '0')
+    fd.set('is_paid', paymentDone ? '1' : '0')
+    fd.set('commentaires', commentaires)
+    fd.set('historique', historique)
+    
+    // Total Sync Enforcement for DB columns
     fd.set('contact_id', contactId)
-    fd.set('localisation_id', contactId)
+    fd.set('localisation_id', contactId) // Custodian ALWAYS follows Ownership/Holder
     
     let finalStatus = 1
-    if (prodStage === 'available') finalStatus = 2
+    if (commStage === 'available' || prodStage === 'available') finalStatus = 2
     if (ownStage === 'possession') finalStatus = 7
     if (ownStage === 'transfer')   finalStatus = isGift ? 11 : 6
     if (prodStage === 'archive')   finalStatus = 6 // Sold/Gone
@@ -323,12 +363,35 @@ export function WorkForm({
         <div style={{ width: 340, borderRight: '1px solid var(--bd)', background: 'var(--bg1)', padding: 24, overflow: 'auto' }}>
           <ImageManager oeuvreId={oeuvre?.OeuvreID ?? 0} initialImages={initialImages} />
           <div style={{ marginTop: 32 }}>
-            <div className="t-eyebrow" style={{ marginBottom: 12, fontSize: 9 }}>Themes / Sets</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+            <div className="t-eyebrow" style={{ marginBottom: 12, fontSize: 11 }}>Themes / Sets</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {allThemes.map(th => (
                 <button key={th.ThemeID} type="button" onClick={() => setSelThemes(p => { const s = new Set(p); if(s.has(th.ThemeID)) s.delete(th.ThemeID); else s.add(th.ThemeID); return s })}
-                  style={{ padding: '3px 8px', fontSize: 9, borderRadius: 2, border: '1px solid var(--bd)', background: selThemes.has(th.ThemeID) ? 'var(--ac)' : 'var(--bg2)', color: selThemes.has(th.ThemeID) ? 'var(--bg0)' : 'var(--tx3)' }}>{th.Nom}</button>
+                  style={{ padding: '4px 10px', fontSize: 11, borderRadius: 2, border: '1px solid var(--bd)', background: selThemes.has(th.ThemeID) ? 'var(--ac)' : 'var(--bg2)', color: selThemes.has(th.ThemeID) ? 'var(--bg0)' : 'var(--tx3)' }}>{th.Nom}</button>
               ))}
+            </div>
+          </div>
+          
+          <div style={{ marginTop: 32, borderTop: '1px solid var(--bd)', paddingTop: 24 }}>
+            <div className="t-eyebrow" style={{ marginBottom: 12, fontSize: 11 }}>Commentaires</div>
+            <textarea 
+              value={commentaires} 
+              onChange={e => setCommentaires(e.target.value)} 
+              style={{ ...FIS, height: 120, resize: 'vertical', fontSize: 13 }} 
+              placeholder="Notes internes..."
+            />
+          </div>
+
+          <div style={{ marginTop: 32, borderTop: '1px solid var(--bd)', paddingTop: 24 }}>
+            <div className="t-eyebrow" style={{ marginBottom: 12, fontSize: 11 }}>Historique / Provenance</div>
+            <textarea 
+              value={historique} 
+              onChange={e => setHistorique(e.target.value)} 
+              style={{ ...FIS, height: 140, resize: 'vertical', fontSize: 12, fontFamily: 'var(--font-mono)' }} 
+              placeholder="Historique des mouvements..."
+            />
+            <div style={{ marginTop: 10, fontSize: 11, color: 'var(--tx3)', lineHeight: 1.4 }}>
+              Note: Les changements de localisation sont automatiquement ajoutés lors de la sauvegarde si le contact change.
             </div>
           </div>
         </div>
@@ -337,7 +400,7 @@ export function WorkForm({
           <div style={{ maxWidth: 800, display: 'flex', flexDirection: 'column', gap: 56 }}>
             {/* 1. Identity */}
             <section>
-              <div className="t-eyebrow" style={{ marginBottom: 20, color: 'var(--tx3)', fontSize: 10 }}>1. Base Identity</div>
+              <div className="t-eyebrow" style={{ marginBottom: 20, color: 'var(--tx3)', fontSize: 12 }}>1. Base Identity</div>
               <div style={{ display: 'grid', gridTemplateColumns: '3fr 1fr', gap: 20 }}>
                 <Field label="Titre (Auto-cap)"><input name="titre" value={titre} onChange={e=>setTitre(cap(e.target.value))} style={FIS} /></Field>
                 <Field label="Année / Période (YYYY/MM/DD)"><input name="annee" value={annee} onChange={e=>setAnnee(e.target.value)} style={FIS} placeholder="1999/10/31" /></Field>
@@ -377,16 +440,16 @@ export function WorkForm({
                 <Field label="D (cm)"><input name="profondeur" value={profondeur} onChange={e=>setProfondeur(e.target.value)} style={FIS} /></Field>
               </div>
               {isDigital && (
-                <div style={{ marginTop: 24, padding: 20, border: '1px solid var(--bd)', background: 'var(--bg2)' }}>
-                  <div className="t-eyebrow" style={{ fontSize: 8, marginBottom: 12 }}>Digital Asset Manifest</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 12 }}>
+                <div style={{ marginTop: 24, padding: 24, border: '1px solid var(--bd)', background: 'var(--bg2)' }}>
+                  <div className="t-eyebrow" style={{ fontSize: 11, marginBottom: 16 }}>Digital Asset Manifest</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
                     {['TIFF', 'JPG', 'AVIF', 'WEBP', 'PSD', 'PDF', 'VIDEO', 'SOURCE'].map(f => (
-                        <label key={f} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 9, color: 'var(--tx2)' }}>
+                        <label key={f} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--tx2)' }}>
                             <input type="checkbox" style={{ accentColor: 'var(--ac)' }} /> {f}
                         </label>
                     ))}
                   </div>
-                  <div className="t-mono-xs" style={{ marginTop: 16, color: 'var(--ac)' }}>≈ {pxToCm(hauteur)} × {pxToCm(largeur)} cm (@300dpi)</div>
+                  <div className="t-mono-xs" style={{ marginTop: 20, color: 'var(--ac)', fontSize: 12 }}>≈ {pxToCm(hauteur)} × {pxToCm(largeur)} cm (@300dpi)</div>
                 </div>
               )}
             </section>
@@ -403,6 +466,11 @@ export function WorkForm({
                 <Switch label="Exposable" checked={exposable} onChange={setExposable} />
                 <Switch label="Needs Photo" checked={needsPhoto} onChange={setNeedsPhoto} />
               </div>
+            </section>
+
+            <section style={{ opacity: isArchived ? 0.4 : 1 }}>
+              <PipeHeader icon="💎" title="Commercial State" color="#a060c0" />
+              <PipeProgress stages={COMMERCIAL_STAGES.map(s => ({ ...s, disabled: mustBeAtAtelier }))} current={commStage} onSelect={setCommStage} color="#a060c0" />
             </section>
 
             <section style={{ opacity: isArchived ? 0.4 : 1 }}>
@@ -447,9 +515,9 @@ export function WorkForm({
                     )}
                   </div>
                 </Field>
-                <div style={{ background: 'var(--bg1)', padding: 16, border: '1px solid var(--bd)', alignSelf: 'flex-end' }}>
-                  <div className="t-label" style={{ fontSize: 7, marginBottom: 4 }}>CURRENT CUSTODIAL STATE</div>
-                  <div className="t-mono-sm" style={{ color: 'var(--ac)' }}>{currentLoc}</div>
+                <div style={{ background: 'var(--bg1)', padding: 20, border: '1px solid var(--bd)', alignSelf: 'flex-end' }}>
+                  <div className="t-label" style={{ fontSize: 10, marginBottom: 6 }}>CURRENT CUSTODIAL STATE</div>
+                  <div className="t-mono-sm" style={{ color: 'var(--ac)', fontSize: 12 }}>{currentLoc}</div>
                 </div>
               </div>
             </section>
@@ -465,20 +533,21 @@ export function WorkForm({
                 <Field label="Base Price (€)"><input value={prix} onChange={e=>setPrix(e.target.value)} style={FIS} disabled={isGift} /></Field>
                 <Field label="Discount (%)"><input value={discount} onChange={e=>setDiscount(e.target.value)} style={FIS} disabled={isGift} /></Field>
                 <div style={{ alignSelf: 'flex-end' }}>
-                  <div className="t-label" style={{ fontSize: 7, color: paymentDone ? 'var(--tx3)' : 'var(--rust)' }}>FINAL SETTLEMENT</div>
-                  <div className="t-mono-md" style={{ fontWeight: 700 }}>€ {prixFinal.toLocaleString()}</div>
+                  <div className="t-label" style={{ fontSize: 11, color: paymentDone ? 'var(--tx3)' : 'var(--rust)', marginBottom: 6 }}>FINAL SETTLEMENT</div>
+                  <div className="t-mono-md" style={{ fontWeight: 700, fontSize: 18 }}>€ {prixFinal.toLocaleString()}</div>
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 32, marginTop: 24 }}>
-                <Switch label="Payment Received" checked={paymentDone} onChange={setPaymentDone} />
+                <Switch label="Payment Received" checked={paymentDone} onChange={setPaymentDone} disabled={isGift} />
+                <Switch label="Cadeau (Gift)" checked={isGift} onChange={setIsGift} disabled={!isSoldOrGift} />
                 <Switch label="Master Public" checked={isPublic} onChange={setIsPublic} disabled={isArtistVaulted || needsPhoto} />
               </div>
               {isSoldOrGift && !isGift && (
                 <div style={{ marginTop: 24, padding: 16, background: 'var(--bg2)', borderLeft: `3px solid ${paymentDone ? 'var(--ac)' : 'var(--rust)'}` }}>
-                   <div className="t-eyebrow" style={{ fontSize: 8, marginBottom: 8 }}>Payment Plan & Schedule</div>
+                   <div className="t-eyebrow" style={{ fontSize: 11, marginBottom: 8 }}>Payment Plan & Schedule</div>
                    <div style={{ display: 'flex', gap: 24, color: 'var(--tx2)' }}>
-                      <div className="t-mono-xs">Paid: € {(paymentDone ? prixFinal : 0).toLocaleString()}</div>
-                      <div className="t-mono-xs">Due: € {(paymentDone ? 0 : prixFinal).toLocaleString()}</div>
+                      <div className="t-mono-xs" style={{ fontSize: 12 }}>Paid: € {(paymentDone ? prixFinal : 0).toLocaleString()}</div>
+                      <div className="t-mono-xs" style={{ fontSize: 12 }}>Due: € {(paymentDone ? 0 : prixFinal).toLocaleString()}</div>
                    </div>
                 </div>
               )}
@@ -489,7 +558,7 @@ export function WorkForm({
                           const isSel = selGroups.has(g.id)
                           return (
                             <div key={g.id} onClick={() => setSelGroups(p => { const n = new Set(p); if (n.has(g.id)) n.delete(g.id); else n.add(g.id); return n })}
-                              style={{ padding: '4px 12px', fontSize: 9, cursor: 'pointer', border: `1px solid ${isSel ? 'var(--ac)' : 'var(--bd)'}`, background: isSel ? 'var(--ac)22' : 'transparent', color: isSel ? 'var(--ac)' : 'var(--tx3)', borderRadius: 12 }}>{g.name}</div>
+                              style={{ padding: '6px 14px', fontSize: 12, cursor: 'pointer', border: `1px solid ${isSel ? 'var(--ac)' : 'var(--bd)'}`, background: isSel ? 'var(--ac)22' : 'transparent', color: isSel ? 'var(--ac)' : 'var(--tx3)', borderRadius: 14 }}>{g.name}</div>
                           )
                       })}
                    </div>
@@ -508,7 +577,7 @@ function PipeHeader({ icon, title, color }: { icon: string; title: string; color
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, borderBottom: `1px solid ${color}44`, paddingBottom: 8 }}>
       <span style={{ fontSize: 18 }}>{icon}</span>
-      <div className="t-eyebrow" style={{ color }}>{title}</div>
+      <div className="t-eyebrow" style={{ color, fontSize: 12 }}>{title}</div>
     </div>
   )
 }
@@ -530,7 +599,7 @@ function PipeProgress({ stages, current, onSelect, color }: { stages: any[]; cur
               padding: '8px 4px', 
               opacity: isDisabled ? 0.2 : (isPast ? 1 : 0.4) 
             }}>
-            <div style={{ fontSize: 9, fontWeight: isActive ? 700 : 400, color: isPast ? 'var(--tx)' : 'var(--tx3)' }}>{s.label}</div>
+            <div style={{ fontSize: 11, fontWeight: isActive ? 700 : 400, color: isPast ? 'var(--tx)' : 'var(--tx3)' }}>{s.label}</div>
           </div>
         )
       })}
@@ -541,7 +610,7 @@ function PipeProgress({ stages, current, onSelect, color }: { stages: any[]; cur
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div style={{ flex: 1 }}>
-      <div className="t-label" style={{ marginBottom: 4, fontSize: 8, letterSpacing: '0.05em' }}>{label}</div>
+      <div className="t-label" style={{ marginBottom: 6, fontSize: 12, letterSpacing: '0.05em' }}>{label}</div>
       {children}
     </div>
   )
@@ -549,9 +618,9 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function Switch({ label, checked, onChange, disabled = false }: { label: string; checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
   return (
-    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: disabled ? 'default' : 'pointer', fontSize: 10, opacity: disabled ? 0.5 : 1 }}>
+    <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: disabled ? 'default' : 'pointer', fontSize: 13, opacity: disabled ? 0.5 : 1 }}>
       <div onClick={() => !disabled && onChange(!checked)}
-        style={{ width: 14, height: 14, border: '1px solid var(--bd)', background: checked ? 'var(--ac)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--bg0)', fontSize: 9 }}>{checked ? '✓' : ''}</div>
+        style={{ width: 16, height: 16, border: '1px solid var(--bd)', background: checked ? 'var(--ac)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--bg0)', fontSize: 11 }}>{checked ? '✓' : ''}</div>
       <span style={{ color: checked ? 'var(--tx)' : 'var(--tx3)' }}>{label}</span>
     </label>
   )
@@ -563,7 +632,7 @@ function CreatableSelect({ value, options, onChange, onAdd, name }: { value: str
     if (isAdding) {
         return (
             <div style={{ display: 'flex', gap: 4 }}>
-                <input value={newVal} onChange={e => setNewVal(e.target.value)} style={{ ...FIS, height: 31 }} placeholder="New..." autoFocus />
+                <input value={newVal} onChange={e => setNewVal(e.target.value)} style={{ ...FIS, height: 42 }} placeholder="New..." autoFocus />
                 <button type="button" className="btn primary sm" onClick={() => { onAdd(newVal); setIsAdding(false); setNewVal('') }}>OK</button>
                 <button type="button" className="btn ghost sm" onClick={() => setIsAdding(false)}>✕</button>
             </div>
@@ -594,12 +663,12 @@ function ImageManager({ oeuvreId, initialImages }: { oeuvreId: number; initialIm
   }
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div className="t-eyebrow" style={{ fontSize: 9 }}>Media Manager</div>
+      <div className="t-eyebrow" style={{ fontSize: 12 }}>Media Manager</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
         {imgs.map(img => (
           <div key={img.ImageID} style={{ position: 'relative', aspectRatio: '1', background: 'var(--bg2)', border: '1px solid var(--bd)' }}>
             <img src={thumbUrl(img.txtImageNameLink||'')} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            <button type="button" onClick={() => onDelete(img.ImageID)} style={{ position: 'absolute', top: 2, right: 2, background: 'rgba(0,0,0,0.5)', color: '#fff', border: 'none', borderRadius: '50%', width: 14, height: 14, fontSize: 8, cursor: 'pointer' }}>✕</button>
+            <button type="button" onClick={() => onDelete(img.ImageID)} style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(0,0,0,0.5)', color: '#fff', border: 'none', borderRadius: '50%', width: 18, height: 18, fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
           </div>
         ))}
         <label style={{ aspectRatio: '1', border: '1px dashed var(--bd)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, color: 'var(--tx3)', cursor: 'pointer' }}>
@@ -620,8 +689,8 @@ function ContactModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
     }
     return (
       <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ background: 'var(--bg1)', border: '1px solid var(--bd)', padding: 32, width: 600, boxShadow: '0 30px 60px rgba(0,0,0,0.5)' }}>
-          <div className="t-eyebrow" style={{ marginBottom: 24, fontSize: 10, color: 'var(--ac)' }}>Full Fidelity Contact Creation</div>
+        <div style={{ background: 'var(--bg1)', border: '1px solid var(--bd)', padding: 40, width: 720, boxShadow: '0 30px 60px rgba(0,0,0,0.5)' }}>
+          <div className="t-eyebrow" style={{ marginBottom: 24, fontSize: 13, color: 'var(--ac)' }}>Full Fidelity Contact Creation</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
              <Field label="INSTITUTION"><input value={form.NomInstitution} onChange={e => setForm(p => ({...p, NomInstitution: cap(e.target.value)}))} style={FIS} autoFocus /></Field>
              <Field label="ROLE"><input value={form.Role} onChange={e => setForm(p => ({...p, Role: cap(e.target.value)}))} style={FIS} /></Field>
@@ -644,7 +713,7 @@ function ContactModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
 }
 
 const FIS: React.CSSProperties = {
-  padding: '8px 12px', fontSize: 12,
+  padding: '10px 14px', fontSize: 14,
   background: 'var(--bg2)', border: '1px solid var(--bd)',
   color: 'var(--tx)', outline: 'none', width: '100%',
 }

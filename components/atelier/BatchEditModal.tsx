@@ -58,7 +58,9 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
   const [discount,          setDiscount]         = useState('')
   const [annee,             setAnnee]            = useState('')
   const [locDetail,         setLocDetail]        = useState('')
+  const [stageProduction,   setStageProduction]  = useState('')
   const [commentaires,      setCommentaires]     = useState('')
+  const [historiqueAppend,  setHistoriqueAppend]  = useState('')
 
   // Boolean fields — null = unchanged
   const [exposable,    setExposable]    = useState<Tri>(null)
@@ -67,6 +69,9 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
   const [catalogued,   setCatalogued]   = useState<Tri>(null)
   const [isPublic,     setIsPublic]     = useState<Tri>(null)
   const [isCommission, setIsCommission] = useState<Tri>(null)
+  const [isGift,       setIsGift]       = useState<Tri>(null)
+  const [isPaid,       setIsPaid]       = useState<Tri>(null)
+  const [needsPhoto,   setNeedsPhoto]   = useState<Tri>(null)
 
   // Theme junction — sets of IDs to add or remove
   const [addThemes,    setAddThemes]    = useState<Set<number>>(new Set())
@@ -118,12 +123,13 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
 
   const changed = (
     statusId !== '' || technique !== '' || support !== '' || format !== '' ||
-    contactId !== '' || prix !== '' || discount !== '' ||
+    contactId !== '' || prix !== '' || discount !== '' || stageProduction !== '' ||
     annee !== '' || locDetail !== '' || commentaires !== '' ||
     exposable !== null || montee !== null || encadree !== null || catalogued !== null ||
-    isPublic !== null || isCommission !== null ||
+    isPublic !== null || isCommission !== null || isGift !== null || isPaid !== null || needsPhoto !== null ||
     addThemes.size > 0 || removeThemes.size > 0 ||
-    addGroups.size > 0 || removeGroups.size > 0
+    addGroups.size > 0 || removeGroups.size > 0 ||
+    historiqueAppend !== ''
   )
 
   function handleSubmit() {
@@ -136,8 +142,14 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
     if (prix       !== '')  changes.Prix       = prix       === ''     ? null : parseFloat(prix)
     if (discount   !== '')  changes.Discount   = discount   === ''     ? null : parseFloat(discount)
     if (annee      !== '')  changes.Année      = annee.trim() || null
+    if (stageProduction !== '') changes.StageProduction = stageProduction === 'null' ? null : stageProduction
     if (locDetail  !== '')  changes.LocalisationDetail = locDetail.trim() || null
     if (commentaires !== '') changes.Commentaires = commentaires.trim() || null
+    
+    // For batch historique, we can't really "replace" it easily, but we can have an "append" logic if we wanted.
+    // However, the batchEdit action doesn't support "append" yet. 
+    // I will add a simple logic here if I can, or just keep it simple.
+    // Let's assume for now we don't batch edit historique to avoid data loss.
 
     if (exposable    !== null) changes.Exposable    = exposable
     if (montee       !== null) changes.Montee       = montee
@@ -145,6 +157,9 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
     if (catalogued   !== null) changes['Catalogué'] = catalogued
     if (isPublic     !== null) changes.is_public    = isPublic
     if (isCommission !== null) changes.IsCommission = isCommission
+    if (isGift       !== null) changes.is_gift       = isGift
+    if (isPaid       !== null) changes.is_paid       = isPaid
+    if (needsPhoto   !== null) changes.NeedsPhotograph = needsPhoto
     
     if (addThemes.size    > 0) changes.addThemeIds    = [...addThemes]
     if (removeThemes.size > 0) changes.removeThemeIds = [...removeThemes]
@@ -251,6 +266,18 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
             {contacts.map((c) => (
               <option key={c.ContactID} value={c.ContactID}>{contactLabel(c)}</option>
             ))}
+          </select>
+        </FieldWrap>
+
+        <FieldWrap label="Stage Production" active={stageProduction !== ''}>
+          <select className="input" style={{ width: '100%' }} value={stageProduction}
+            onChange={(e) => setStageProduction(e.target.value)}>
+            <option value="">— {t('unchanged')} —</option>
+            <option value="wip">Production (WIP)</option>
+            <option value="catalogued">Catalogué</option>
+            <option value="shot">Shot / Photo</option>
+            <option value="available">Disponible (Available)</option>
+            <option value="archive">Archive</option>
           </select>
         </FieldWrap>
 
@@ -416,6 +443,9 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
         <TriField label={t('catalogued')}  value={catalogued}   onChange={setCatalogued}  t={t as any} />
         <TriField label={t('public')}      value={isPublic}     onChange={setIsPublic}    t={t as any} />
         <TriField label={t('commission')}  value={isCommission} onChange={setIsCommission} t={t as any} />
+        <TriField label="Cadeau (Gift)"    value={isGift}       onChange={setIsGift}       t={t as any} />
+        <TriField label="Payé (Paid)"      value={isPaid}       onChange={setIsPaid}       t={t as any} />
+        <TriField label="Photo à faire"    value={needsPhoto}   onChange={setNeedsPhoto}   t={t as any} />
       </div>
 
       {!changed && (

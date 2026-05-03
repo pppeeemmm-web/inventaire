@@ -40,6 +40,8 @@ export function VaultTab({ oeuvres, tM }: Props) {
   const [loading,  setLoading]  = useState(true)
   const [kindFilter, setKindFilter] = useState<string | null>(null)
   const [search,   setSearch]   = useState('')
+  const [sortKey,  setSortKey]  = useState<string>('date')
+  const [sortDir,  setSortDir]  = useState<'asc' | 'desc'>('desc')
   const [selected, setSelected] = useState<VaultDoc | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [showUpload, setShowUpload] = useState(false)
@@ -82,12 +84,52 @@ export function VaultTab({ oeuvres, tM }: Props) {
     })
   }, [selected])
 
-  // ── Filtered list ────────────────────────────────────────────────
-  const filtered = docs.filter((d) => {
-    if (kindFilter && d.kind !== kindFilter) return false
-    if (search && !d.name.toLowerCase().includes(search.toLowerCase())) return false
-    return true
-  })
+  // ── Sorting & Filtering ─────────────────────────────────────────
+  const toggleSort = (k: string) => {
+    if (sortKey === k) {
+      setSortDir(sortDir === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortKey(k)
+      setSortDir('asc')
+    }
+  }
+
+  const processed = useMemo(() => {
+    let list = docs.filter((d) => {
+      if (kindFilter && d.kind !== kindFilter) return false
+      if (search && !d.name.toLowerCase().includes(search.toLowerCase())) return false
+      return true
+    })
+
+    list.sort((a, b) => {
+      const dir = sortDir === 'asc' ? 1 : -1
+      
+      if (sortKey === 'name') {
+        return a.name.localeCompare(b.name) * dir
+      }
+      if (sortKey === 'kind') {
+        return (a.kind || '').localeCompare(b.kind || '') * dir
+      }
+      if (sortKey === 'date') {
+        const da = a.doc_date || a.created_at
+        const db = b.doc_date || b.created_at
+        return (new Date(da).getTime() - new Date(db).getTime()) * dir
+      }
+      if (sortKey === 'oeuvre') {
+        const getTitre = (d: VaultDoc) => {
+          if (d.oeuvre_ids && d.oeuvre_ids.length > 1) return `${d.oeuvre_ids.length} oeuvres`
+          const work = d.oeuvre_id ? oeuvres.find(o => o.OeuvreID === d.oeuvre_id) : null
+          return work?.Titre || ''
+        }
+        return getTitre(a).localeCompare(getTitre(b)) * dir
+      }
+      return 0
+    })
+    
+    return list
+  }, [docs, kindFilter, search, sortKey, sortDir, oeuvres])
+
+  const filtered = processed // For backward compatibility in rendering if needed, but we'll use processed
 
   const linkedWork = selected?.oeuvre_id
     ? oeuvres.find((o) => o.OeuvreID === selected.oeuvre_id)
@@ -144,7 +186,7 @@ export function VaultTab({ oeuvres, tM }: Props) {
             placeholder="Rechercher…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={{ width: '100%', fontSize: 12 }}
+            style={{ width: '100%', fontSize: 13, padding: '8px 12px' }}
           />
         </div>
 
@@ -158,12 +200,22 @@ export function VaultTab({ oeuvres, tM }: Props) {
               {docs.length === 0 ? 'Aucun document. Importez ou générez un certificat.' : 'Aucun résultat.'}
             </div>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--bd)' }}>
-                  {['Nom', 'Type', 'Œuvre', 'Date', ''].map((h) => (
-                    <th key={h} className="t-label" style={{ padding: '8px 16px', textAlign: 'left', fontWeight: 400 }}>{h}</th>
-                  ))}
+                  <th className="t-label" onClick={() => toggleSort('name')} style={{ padding: '8px 16px', textAlign: 'left', fontWeight: 400, cursor: 'pointer' }}>
+                    Nom <SortInd k="name" current={sortKey} dir={sortDir} />
+                  </th>
+                  <th className="t-label" onClick={() => toggleSort('kind')} style={{ padding: '8px 16px', textAlign: 'left', fontWeight: 400, cursor: 'pointer' }}>
+                    Type <SortInd k="kind" current={sortKey} dir={sortDir} />
+                  </th>
+                  <th className="t-label" onClick={() => toggleSort('oeuvre')} style={{ padding: '8px 16px', textAlign: 'left', fontWeight: 400, cursor: 'pointer' }}>
+                    Œuvre <SortInd k="oeuvre" current={sortKey} dir={sortDir} />
+                  </th>
+                  <th className="t-label" onClick={() => toggleSort('date')} style={{ padding: '8px 16px', textAlign: 'left', fontWeight: 400, cursor: 'pointer' }}>
+                    Date <SortInd k="date" current={sortKey} dir={sortDir} />
+                  </th>
+                  <th className="t-label" style={{ padding: '8px 16px', textAlign: 'left', fontWeight: 400 }}></th>
                 </tr>
               </thead>
               <tbody>
@@ -187,7 +239,7 @@ export function VaultTab({ oeuvres, tM }: Props) {
                       <td style={{ padding: '10px 16px' }}>
                         {doc.kind && (
                           <span style={{
-                            fontSize: 10, padding: '2px 7px', borderRadius: 2,
+                            fontSize: 11, padding: '3px 8px', borderRadius: 2,
                             background: kindColor(doc.kind).bg, color: kindColor(doc.kind).tx,
                             textTransform: 'uppercase', letterSpacing: 1, fontWeight: 600,
                             border: `1px solid ${kindColor(doc.kind).tx}33`
@@ -196,7 +248,7 @@ export function VaultTab({ oeuvres, tM }: Props) {
                           </span>
                         )}
                       </td>
-                      <td style={{ padding: '10px 16px', color: 'var(--tx3)', fontSize: 11 }}>
+                      <td style={{ padding: '10px 16px', color: 'var(--tx3)', fontSize: 12 }}>
                         {doc.oeuvre_ids && doc.oeuvre_ids.length > 1 ? (
                           <span title={doc.oeuvre_ids.map(id => oeuvres.find(o => o.OeuvreID === id)?.Titre || `#${id}`).join(', ')}>
                             {doc.oeuvre_ids.length} œuvres
@@ -205,7 +257,7 @@ export function VaultTab({ oeuvres, tM }: Props) {
                           work.Titre ?? `#${work.OeuvreID}`
                         ) : '—'}
                       </td>
-                      <td style={{ padding: '10px 16px', color: 'var(--tx3)', fontSize: 11, whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '10px 16px', color: 'var(--tx3)', fontSize: 12, whiteSpace: 'nowrap' }}>
                         {doc.doc_date
                           ? new Date(doc.doc_date).toLocaleDateString('fr-FR')
                           : new Date(doc.created_at).toLocaleDateString('fr-FR')}
@@ -230,8 +282,8 @@ export function VaultTab({ oeuvres, tM }: Props) {
           overflow: 'auto',
         }}>
           <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--bd)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span className="t-label">{selected.name}</span>
-            <button className="btn ghost sm" onClick={() => setSelected(null)}>×</button>
+            <span className="t-label" style={{ fontSize: 15 }}>{selected.name}</span>
+            <button className="btn ghost sm" style={{ fontSize: 18 }} onClick={() => setSelected(null)}>×</button>
           </div>
 
           {/* Preview area */}
@@ -247,7 +299,7 @@ export function VaultTab({ oeuvres, tM }: Props) {
           </div>
 
           {/* Metadata */}
-          <div style={{ padding: '16px 20px', fontSize: 11, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ padding: '16px 20px', fontSize: 13, display: 'flex', flexDirection: 'column', gap: 10 }}>
             {selected.kind && (
               <Row label="Type" value={kindLabel(selected.kind)} />
             )}
@@ -487,7 +539,7 @@ function UploadModal({
                     type="button"
                     onClick={() => toggleId(o.OeuvreID)}
                     style={{ 
-                      textAlign: 'left', padding: '4px 8px', fontSize: 10, background: 'var(--bg1)', border: 'none',
+                      textAlign: 'left', padding: '6px 10px', fontSize: 12, background: 'var(--bg1)', border: 'none',
                       color: selIds.includes(o.OeuvreID) ? 'var(--ac)' : 'var(--tx2)', cursor: 'pointer'
                     }}
                   >
@@ -497,14 +549,14 @@ function UploadModal({
               </div>
             )}
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-              {selIds.length === 0 && <span style={{ fontSize: 10, color: 'var(--tx3)' }}>Aucune sélection</span>}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {selIds.length === 0 && <span style={{ fontSize: 12, color: 'var(--tx3)' }}>Aucune sélection</span>}
               {selIds.map(id => {
                 const o = oeuvres.find(x => x.OeuvreID === id)
                 return (
-                  <span key={id} style={{ padding: '2px 6px', background: 'var(--bg2)', fontSize: 9, borderRadius: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span key={id} style={{ padding: '4px 8px', background: 'var(--bg2)', fontSize: 11, borderRadius: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
                     {o?.Titre ?? `#${id}`}
-                    <button type="button" onClick={() => toggleId(id)} style={{ border: 'none', background: 'none', color: 'var(--tx3)', cursor: 'pointer' }}>×</button>
+                    <button type="button" onClick={() => toggleId(id)} style={{ border: 'none', background: 'none', color: 'var(--tx3)', cursor: 'pointer', fontSize: 14 }}>×</button>
                   </span>
                 )
               })}
@@ -582,7 +634,7 @@ function CoaModal({
         {work && (
           <div style={{
             background: 'var(--bg2)', border: '1px solid var(--bd)',
-            padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 6, fontSize: 11,
+            padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13,
           }}>
             <div className="t-label" style={{ marginBottom: 4 }}>Aperçu du certificat</div>
             <Row label="Titre"    value={work.Titre ?? 'Sans titre'} />
@@ -673,7 +725,7 @@ function EditModal({ doc, oeuvres, onClose, onUpdated }: { doc: VaultDoc; oeuvre
     <Overlay onClose={onClose}>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div style={{ padding: 12, background: 'var(--bg0)', border: '1px solid var(--bd)', opacity: 0.6 }}>
-          <div className="t-mono-xs" style={{ fontSize: 9 }}>{doc.storage_path}</div>
+          <div className="t-mono-xs" style={{ fontSize: 11 }}>{doc.storage_path}</div>
         </div>
 
         <Field label="Description rapide" name="name" defaultValue={doc.name} />
@@ -713,13 +765,13 @@ function EditModal({ doc, oeuvres, onClose, onUpdated }: { doc: VaultDoc; oeuvre
               placeholder="Rechercher une œuvre..." 
               value={q}
               onChange={e => setQ(e.target.value)}
-              style={{ width: '100%', marginBottom: 8, fontSize: 11 }}
+              style={{ width: '100%', marginBottom: 10, fontSize: 13, padding: '6px 10px' }}
             />
             {filtered.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 8, borderBottom: '1px solid var(--bd)', paddingBottom: 8 }}>
                 {filtered.map(o => (
                   <button key={o.OeuvreID} type="button" onClick={() => toggleId(o.OeuvreID)}
-                    style={{ textAlign: 'left', padding: '4px 8px', fontSize: 10, background: 'var(--bg1)', border: 'none', color: selIds.includes(o.OeuvreID) ? 'var(--ac)' : 'var(--tx2)', cursor: 'pointer' }}>
+                    style={{ textAlign: 'left', padding: '6px 10px', fontSize: 12, background: 'var(--bg1)', border: 'none', color: selIds.includes(o.OeuvreID) ? 'var(--ac)' : 'var(--tx2)', cursor: 'pointer' }}>
                     {selIds.includes(o.OeuvreID) ? '✓ ' : '+ '} {o.Titre ?? `#${o.OeuvreID}`}
                   </button>
                 ))}
@@ -729,9 +781,9 @@ function EditModal({ doc, oeuvres, onClose, onUpdated }: { doc: VaultDoc; oeuvre
               {selIds.map(id => {
                 const o = oeuvres.find(x => x.OeuvreID === id)
                 return (
-                  <span key={id} style={{ padding: '2px 6px', background: 'var(--bg2)', fontSize: 9, borderRadius: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span key={id} style={{ padding: '4px 8px', background: 'var(--bg2)', fontSize: 11, borderRadius: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
                     {o?.Titre ?? `#${id}`}
-                    <button type="button" onClick={() => toggleId(id)} style={{ border: 'none', background: 'none', color: 'var(--tx3)', cursor: 'pointer' }}>×</button>
+                    <button type="button" onClick={() => toggleId(id)} style={{ border: 'none', background: 'none', color: 'var(--tx3)', cursor: 'pointer', fontSize: 14 }}>×</button>
                   </span>
                 )
               })}
@@ -787,4 +839,9 @@ function formatSize(bytes: number) {
 
 function kindLabel(kind: string) {
   return DOC_KINDS.find((k) => k.value === kind)?.label ?? kind
+}
+
+function SortInd({ k, current, dir }: { k: string; current: string; dir: 'asc' | 'desc' }) {
+  if (k !== current) return <span style={{ opacity: 0.2, marginLeft: 4, fontSize: 11 }}>↕</span>
+  return <span style={{ color: 'var(--ac)', marginLeft: 4, fontSize: 11 }}>{dir === 'asc' ? '↑' : '↓'}</span>
 }
