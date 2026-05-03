@@ -165,6 +165,8 @@ Si un processus continue après l'échec d'une étape majeure, c'est une faille 
 | Portfolio lisait `StatutID` (2 lignes) au lieu de `statusId` (1112) | `app/portfolio/page.tsx` | Remplacé le 27/04/2026 |
 | InventoryTab filtrait sur `StatutID` au lieu de `statusId` | `components/atelier/InventoryTab.tsx` | Remplacé le 27/04/2026 |
 | WorldMapTab re-fetchait Contact (déjà dans les props) | `components/atelier/WorldMapTab.tsx` | Supprimé le 27/04/2026 |
+| **Document PDF (Thumbnails)** | `app/atelier/sales/actions.ts` | Fix AVIF support (via Sharp conversion) + AWS4 signatures fetch (SDK bypass) - 03/05/2026 |
+| **Sales Tab UI (Overlaps)** | `components/atelier/SalesTab.tsx` | Fix UI squashing via minWidth + explicit table columns - 03/05/2026 |
 
 ---
 

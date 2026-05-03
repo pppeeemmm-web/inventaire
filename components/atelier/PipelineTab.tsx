@@ -4,13 +4,14 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { stringifyError } from '@/lib/error'
 
 // ── Types ──────────────────────────────────────────────────────────────
 
 type ProcessType =
   | 'prix' | 'residence' | 'expedition' | 'consignment' | 'exposition'
   | 'pr' | 'visite_atelier' | 'salon' | 'livre' | 'collaboration'
-  | 'evenement' | 'correspondance' | 'autre'
+  | 'evenement' | 'correspondance' | 'vente' | 'autre'
 
 type ProcessStatut = 'en_cours' | 'gagne' | 'perdu' | 'annule' | 'termine'
 type EtapeStatut   = 'a_faire' | 'en_cours' | 'fait' | 'bloque'
@@ -44,11 +45,24 @@ interface Process {
   responsables:   Responsable[]
   vault_tags:     string[]
   vault_path:     string | null
+  pdf_path:       string | null
   asset_notes:    string | null
   oeuvre_id:      number | null
   contact_id:     number | null
   created_at:     string
   etapes:         Etape[]
+}
+
+import { createConsignmentOrder, regenerateConsignmentPdf } from '@/app/atelier/consignments/actions'
+import { createSaleOrder } from '@/app/atelier/sales/actions'
+import { getSignedUrl } from '@/app/atelier/vault/actions'
+import type { Oeuvre } from '@/lib/types/database'
+
+interface Props {
+  oeuvres:     Oeuvre[]
+  contacts:    any[]
+  exhibitions: any[]
+  groups:      { id: string; name: string }[]
 }
 
 interface Reminder {
@@ -81,6 +95,7 @@ export const TYPE_LABELS: Record<ProcessType, string> = {
   residence:       'Résidence / Bourse',
   salon:           'Salon / Foire',
   visite_atelier:  'Visite d\'atelier',
+  vente:           'Vente',
   autre:           'Autre',
 }
 
@@ -97,6 +112,7 @@ export const TYPE_LABELS_EN: Record<ProcessType, string> = {
   residence:       'Residency / Grant',
   salon:           'Art Fair',
   visite_atelier:  'Studio Visit',
+  vente:           'Sale',
   autre:           'Other',
 }
 
@@ -113,6 +129,7 @@ export const TYPE_COLORS: Record<ProcessType, string> = {
   residence:       '#6090c0',
   salon:           '#c06090',
   visite_atelier:  '#70b080',
+  vente:           '#60a060',
   autre:           '#888888',
 }
 
@@ -158,6 +175,7 @@ const DEFAULT_ETAPES: Record<ProcessType, string[]> = {
   residence:       ['Dossier', 'Soumission', 'Entretien', 'Résultat'],
   salon:           ['Candidature', 'Sélection', 'Logistique', 'Installation', 'Foire', 'Retour'],
   visite_atelier:  ['Invitation', 'Confirmation', 'Visite', 'Suivi'],
+  vente:           ['Négociation', 'Accord', 'Acompte', 'Préparation', 'Livraison', 'Solde'],
   autre:           ['Étape 1', 'Étape 2', 'Étape 3'],
 }
 
@@ -188,7 +206,7 @@ function fmtDate(s: string, includeTime?: string | null): string {
 
 // ── Main component ─────────────────────────────────────────────────────
 
-export function PipelineTab() {
+export function PipelineTab({ oeuvres, contacts, exhibitions, groups }: Props) {
   const [processes,   setProcesses]   = useState<Process[]>([])
   const [reminders,   setReminders]   = useState<Reminder[]>([])
   const [typeFilter,  setTypeFilter]  = useState<ProcessType | 'all'>('all')
@@ -252,14 +270,14 @@ export function PipelineTab() {
 
   async function tickEtape(etapeId: string) {
     const { error } = await (createClient().from('suivi_etape') as any).update({ statut: 'fait' }).eq('id', etapeId)
-    if (error) alert("Erreur: " + error.message)
+    if (error) alert(`Erreur : ${stringifyError(error)}`)
     await load()
   }
   async function cycleEtapeStatut(etapeId: string, current: EtapeStatut) {
     const next = nextEtapeStatut(current)
     const { error } = await (createClient().from('suivi_etape') as any).update({ statut: next }).eq('id', etapeId)
     if (error) {
-      alert("Erreur: " + error.message)
+      alert(`Erreur : ${stringifyError(error)}`)
       return
     }
     // Optimistic patch — drawer re-renders immediately without a round-trip
@@ -271,7 +289,7 @@ export function PipelineTab() {
   async function toggleOverdueOverride(etapeId: string, current: boolean) {
     const { error } = await (createClient().from('suivi_etape') as any).update({ overdue_override: !current }).eq('id', etapeId)
     if (error) {
-      alert("Erreur: " + error.message)
+      alert(`Erreur : ${stringifyError(error)}`)
       return
     }
     setProcesses(prev => prev.map(p => ({
@@ -283,9 +301,11 @@ export function PipelineTab() {
     const order: ProcessStatut[] = ['en_cours', 'gagne', 'termine', 'perdu', 'annule']
     const next = order[(order.indexOf(current) + 1) % order.length]
     const { error } = await (createClient().from('suivi_process') as any).update({ statut: next }).eq('id', processId)
-    if (error) alert("Erreur: " + error.message)
+    if (error) alert(`Erreur : ${stringifyError(error)}`)
     await load()
   }
+
+  const cM = useMemo(() => Object.fromEntries(contacts.map(c => [c.ContactID, c.NomInstitution || `${c.Prénom ?? ''} ${c.Nom ?? ''}`.trim() || String(c.ContactID)])), [contacts])
 
   if (loading) return <div style={{ padding: 40 }} className="t-mono-sm">Loading…</div>
 
@@ -325,6 +345,24 @@ export function PipelineTab() {
           </div>
         </div>
 
+        {/* ── Content ────────────────────────────────────────────── */}
+        <div style={{ flex: 1, overflow: 'auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+
+        {editing && (
+          <ProcessModal
+            oeuvres={oeuvres}
+            contacts={contacts}
+            exhibitions={exhibitions}
+            groups={groups}
+            process={editing === 'new' ? null : editing}
+            onClose={() => setEditing(null)}
+            onSaved={async () => {
+              setEditing(null)
+              await load()
+            }}
+          />
+        )}
+
         {/* Gantt */}
         <div style={{ flex: 1, overflow: 'auto', padding: '20px 28px' }}>
           {filtered.length === 0
@@ -356,7 +394,13 @@ export function PipelineTab() {
                       </div>
                       {item.etapeId && (
                         <button
-                          onClick={() => void tickEtape(item.etapeId!)}
+                          onClick={async (ev) => {
+                            try {
+                              await tickEtape(item.etapeId!)
+                            } catch (err) {
+                              alert(`Error: ${stringifyError(err)}`)
+                            }
+                          }}
                           title="Marquer comme fait"
                           style={{ flexShrink:0, width:20, height:20, border:'1px solid var(--bd)', background:'var(--bg1)', color:'var(--tx3)', cursor:'pointer', fontSize:11, display:'flex', alignItems:'center', justifyContent:'center', marginTop:1 }}
                         >✓</button>
@@ -384,7 +428,14 @@ export function PipelineTab() {
                       </div>
                     </div>
                     <button style={{ fontSize:8, color:'var(--tx3)', flexShrink:0 }}
-                      onClick={async()=>{ await(createClient().from('suivi_reminder')as any).update({lu:true}).eq('id',r.id); setReminders(p=>p.filter(x=>x.id!==r.id)) }}>✕</button>
+                      onClick={async() => {
+                        try {
+                          await (createClient().from('suivi_reminder') as any).update({lu:true}).eq('id',r.id)
+                          setReminders(p => p.filter(x => x.id !== r.id))
+                        } catch (err) {
+                          alert("Error: " + (err instanceof Error ? err.message : String(err)))
+                        }
+                      }}>✕</button>
                   </div>
                 )
               })}
@@ -394,9 +445,6 @@ export function PipelineTab() {
       </div>
 
       {/* Modals */}
-      {editing !== null && (
-        <ProcessModal process={editing==='new'?null:editing} onClose={()=>setEditing(null)} onSaved={async()=>{setEditing(null);await load()}} />
-      )}
       {inspected !== null && (
         <ProcessDrawer
           process={inspected}
@@ -408,6 +456,7 @@ export function PipelineTab() {
         />
       )}
     </div>
+  </div>
   )
 }
 
@@ -478,9 +527,13 @@ function GanttView({ processes, onSelect, onEdit, onRefresh, onCycleStatut }: {
                         title={`${e.nom} · ${ETAPE_STATUT_LABELS[e.statut]}${isOverdue?' ⚠ overdue':''} — cliquer pour changer`}
                         onClick={async(ev)=>{
                           ev.stopPropagation()
-                          const next = nextEtapeStatut(e.statut)
-                          await (createClient().from('suivi_etape') as any).update({statut:next}).eq('id',e.id)
-                          onRefresh()
+                          try {
+                            const next = nextEtapeStatut(e.statut)
+                            await (createClient().from('suivi_etape') as any).update({statut:next}).eq('id',e.id)
+                            onRefresh()
+                          } catch (err) {
+                            alert(`Error: ${stringifyError(err)}`)
+                          }
                         }}
                         style={{ position:'absolute', left:`${leftPct}%`, top:0, bottom:0, width:12, transform:'translateX(-50%)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1 }}
                       >
@@ -595,6 +648,55 @@ function ProcessDrawer({ process, onClose, onEdit, onRefresh, onCycleEtape, onOv
       )}
       {process.asset_notes && <Row label="Asset notes" value={process.asset_notes} />}
 
+      {process.pdf_path && (
+        <div style={{ marginTop: 20, padding: 16, background: 'rgba(34,211,238,0.05)', border: '1px solid rgba(34,211,238,0.2)' }}>
+          <div className="t-label" style={{ marginBottom: 8, color: 'var(--cyan)' }}>COMMERCIAL BOND / PDF</div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button 
+              onClick={async (e) => {
+                if (!confirm("Re-générer le PDF avec le nouveau layout et les images ?")) return
+                const btn = (e.currentTarget as HTMLButtonElement)
+                const old = btn.innerText
+                btn.innerText = 'BUSY...'
+                btn.disabled = true
+                try {
+                  const res = await regenerateConsignmentPdf(process.id)
+                  if (res.ok) {
+                    alert("PDF mis à jour. Rechargez pour télécharger.")
+                    await onRefresh()
+                  } else alert(res.error)
+                } catch (err) {
+                  alert("Error: " + (err instanceof Error ? err.message : String(err)))
+                } finally {
+                  btn.innerText = old
+                  btn.disabled = false
+                }
+              }}
+              className="btn ghost sm"
+              style={{ flex: 1, fontSize: 10, border: '1px solid rgba(34,211,238,0.3)' }}
+            >
+              ↻ Re-générer
+            </button>
+            <button 
+              onClick={async () => {
+                try {
+                  const res = await getSignedUrl(process.pdf_path!)
+                  if ('url' in res) window.open(res.url, '_blank')
+                  else alert(res.error)
+                } catch (err) {
+                  alert("Error: " + (err instanceof Error ? err.message : String(err)))
+                }
+              }}
+              className="btn primary sm"
+              style={{ flex: 1, display: 'flex', justifyContent: 'center', gap: 8 }}
+            >
+              <span style={{ fontSize: 16 }}>↓</span>
+              <span>Télécharger</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {process.etapes.length > 0 && (
         <div style={{ marginTop:16 }}>
           <div className="t-label" style={{ marginBottom:8 }}>Étapes</div>
@@ -662,8 +764,14 @@ function ProcessDrawer({ process, onClose, onEdit, onRefresh, onCycleEtape, onOv
 
 // ── Create / edit modal ────────────────────────────────────────────────
 
-function ProcessModal({ process, onClose, onSaved }: {
-  process:Process|null; onClose:()=>void; onSaved:()=>Promise<void>
+function ProcessModal({ oeuvres, contacts, exhibitions, groups, process, onClose, onSaved }: {
+  oeuvres:     any[]
+  contacts:    any[]
+  exhibitions: any[]
+  groups:      { id: string; name: string }[]
+  process:     any | null
+  onClose:     () => void
+  onSaved:     () => Promise<void>
 }) {
   const isNew = !process
   const [nom,          setNom]          = useState(process?.nom           ?? '')
@@ -682,29 +790,103 @@ function ProcessModal({ process, onClose, onSaved }: {
   const [assetNotes,   setAssetNotes]   = useState(process?.asset_notes   ?? '')
   const [notes,        setNotes]        = useState(process?.notes         ?? '')
   const [etapes,       setEtapes]       = useState<{ nom:string; date_echeance:string; statut:EtapeStatut }[]>(
-    process?.etapes.map(e=>({nom:e.nom, date_echeance:e.date_echeance??'', statut:e.statut})) ??
+    process?.etapes?.map(e=>({nom:e.nom, date_echeance:e.date_echeance??'', statut:e.statut})) ??
     DEFAULT_ETAPES['prix'].map(n=>({nom:n, date_echeance:'', statut:'a_faire'}))
   )
+  
+  const [oeuvreIds,    setOeuvreIds]    = useState<number[]>(process?.oeuvre_id ? [process.oeuvre_id] : [])
+  const [contactId,    setContactId]    = useState<number | null>(process?.contact_id ?? null)
+  const [exhibitionId, setExhibitionId] = useState<string | null>(null)
+  const [insurance,    setInsurance]    = useState<string>('')
+  const [catalogPrice, setCatalogPrice] = useState<string>('')
+  const [discount,     setDiscount]     = useState<string>('')
+  const [prixFinal,    setPrixFinal]    = useState<string>('')
+
   const [reminderMsg,  setReminderMsg]  = useState('')
   const [reminderDate, setReminderDate] = useState('')
+  
+  // New Contact Quick-Add
+  const [isNewContact, setIsNewContact] = useState(false)
+  const [newContactName, setNewContactName] = useState('')
+  const [newContactEmail, setNewContactEmail] = useState('')
+  const [newContactType,  setNewContactType]  = useState('Galerie')
+
   const [busy, setBusy] = useState(false)
   const [err,  setErr]  = useState<string|null>(null)
+  const [selectedGroup, setSelectedGroup] = useState('')
+
+  async function handleGroupSelect(groupId: string) {
+    if (!groupId) return
+    setSelectedGroup(groupId)
+    const { createClient } = await import('@/lib/supabase/client')
+    const supabase = createClient()
+    const { data } = await supabase.from('working_group_work').select('oeuvre_id').eq('group_id', groupId)
+    if (data) {
+      const newIds = data.map(x => x.oeuvre_id).filter(id => !oeuvreIds.includes(id))
+      setOeuvreIds(prev => [...prev, ...newIds])
+    }
+    setSelectedGroup('') // Reset dropdown
+  }
 
   function handleTypeChange(t:ProcessType) {
     setType(t)
     if(isNew) setEtapes(DEFAULT_ETAPES[t].map(n=>({nom:n, date_echeance:'', statut:'a_faire'})))
   }
 
-  function addResponsable() { setResponsables(p=>[...p,{nom:'',contact_id:null,role:''}]) }
-  function setResp(i:number, k:keyof Responsable, v:string) {
-    setResponsables(p=>p.map((r,j)=>j===i?{...r,[k]:v}:r))
+  function handleExhibitionSelect(id: string) {
+    setExhibitionId(id)
+    const ex = exhibitions.find(x => String(x.id) === id)
+    if (ex) {
+      if (ex.contact_id) setContactId(ex.contact_id)
+      if (ex.date_debut) setDebut(ex.date_debut)
+      if (ex.date_fin)   setFin(ex.date_fin)
+      if (ex.lieu)       setLocalisation(ex.lieu)
+      if (!nom)          setNom(`Exposition : ${ex.titre}`)
+    }
   }
 
+  useEffect(() => {
+    if (type === 'vente' && oeuvreIds.length > 0) {
+      const total = oeuvreIds.reduce((sum, id) => {
+        const o = oeuvres.find(x => x.OeuvreID === id)
+        return sum + (o?.Prix || 0)
+      }, 0)
+      setCatalogPrice(String(total))
+    }
+  }, [oeuvreIds, type, oeuvres])
+
+  useEffect(() => {
+    const cat = parseFloat(catalogPrice) || 0
+    const disc = parseFloat(discount) || 0
+    const final = cat * (1 - disc / 100)
+    setPrixFinal(final.toFixed(2))
+  }, [catalogPrice, discount])
+
   async function handleSave() {
-    if(!nom.trim()){ setErr('Name FIS required.'); return }
+    if(!nom.trim()){ setErr('Name is required.'); return }
     setBusy(true); setErr(null)
     try {
       const sb = createClient()
+      
+      let effectiveContactId = contactId
+      
+      // AUTO-CREATE CONTACT IF NEW
+      if (isNewContact && newContactName.trim()) {
+        const { data: nc, error: ncErr } = await (sb.from('contacts') as any).insert({
+          NomInstitution: newContactName,
+          Email: newContactEmail || null,
+          Type: newContactType,
+          created_at: new Date().toISOString()
+        }).select('ContactID').single()
+        
+        if (ncErr) throw new Error("Contact creation failed: " + ncErr.message)
+        effectiveContactId = (nc as any).ContactID
+      }
+
+      if (!effectiveContactId && type !== 'autre') {
+        throw new Error("A contact (existing or new) is required for this process type.")
+      }
+
       const tags = vaultTags.split(',').map(t=>t.trim()).filter(Boolean)
       const payload = {
         nom, type, date_debut:debut||null, date_fin:fin||null, deadline_time:deadlineTime||null,
@@ -712,128 +894,318 @@ function ProcessModal({ process, onClose, onSaved }: {
         stakeholders:stakeholders||null, responsables, vault_tags:tags,
         vault_path:vaultPath||null,
         asset_notes:assetNotes||null, notes:notes||null, updated_at:new Date().toISOString(),
+        oeuvre_id: oeuvreIds[0] || null,
+        contact_id: effectiveContactId,
       }
+
       let pid = process?.id
       if(isNew) {
         const {data,error} = await(sb.from('suivi_process')as any).insert(payload).select('id').single()
         if(error) throw new Error(error.message)
         pid = (data as any).id
-        const rows = etapes.filter(e=>e.nom.trim()).map((e,i)=>({process_id:pid,nom:e.nom,date_echeance:e.date_echeance||null,statut:e.statut,position:i}))
-        if(rows.length>0) await(sb.from('suivi_etape')as any).insert(rows)
+        
+        if (type === 'consignment' && oeuvreIds.length > 0 && effectiveContactId) {
+          const fd = new FormData()
+          oeuvreIds.forEach(id => fd.append('oeuvre_ids', String(id)))
+          fd.append('partner_id', String(effectiveContactId))
+          fd.append('start_date', debut)
+          fd.append('end_date', fin)
+          fd.append('notes', notes)
+          const res = await createConsignmentOrder(fd)
+          if ('ok' in res && res.order.pdf_path) {
+            await (sb.from('suivi_process') as any).update({ pdf_path: res.order.pdf_path }).eq('id', pid)
+          }
+        }
+        if (type === 'vente' && oeuvreIds.length > 0 && effectiveContactId) {
+          const fd = new FormData()
+          oeuvreIds.forEach(id => fd.append('oeuvre_ids', String(id)))
+          fd.append('buyer_id', String(effectiveContactId))
+          fd.append('prix_catalogue', catalogPrice)
+          fd.append('discount_pct', discount)
+          fd.append('prix_final', prixFinal)
+          fd.append('notes', notes)
+          const res = await createSaleOrder(fd)
+          if ('ok' in res && res.order.pdf_path) {
+            await (sb.from('suivi_process') as any).update({ pdf_path: res.order.pdf_path }).eq('id', pid)
+          }
+        }
       } else {
         const {error} = await(sb.from('suivi_process')as any).update(payload).eq('id',pid)
         if(error) throw new Error(error.message)
-        await(sb.from('suivi_etape')as any).delete().eq('process_id',pid)
-        const rows = etapes.filter(e=>e.nom.trim()).map((e,i)=>({process_id:pid,nom:e.nom,date_echeance:e.date_echeance||null,statut:e.statut,position:i}))
-        if(rows.length>0) await(sb.from('suivi_etape')as any).insert(rows)
       }
+
+      await(sb.from('suivi_etape')as any).delete().eq('process_id',pid)
+      const rows = etapes.filter(e=>e.nom.trim()).map((e,i)=>({process_id:pid,nom:e.nom,date_echeance:e.date_echeance||null,statut:e.statut,position:i}))
+      if(rows.length>0) await(sb.from('suivi_etape')as any).insert(rows)
+
       if(reminderMsg.trim()&&reminderDate)
         await(sb.from('suivi_reminder')as any).insert({process_id:pid,message:reminderMsg,remind_at:reminderDate})
+      
       await onSaved()
     } catch(e){ setErr(String(e)) } finally { setBusy(false) }
   }
 
+  const [workSearch, setWorkSearch] = useState('')
+  const filteredWorks = useMemo(() => {
+    const list = oeuvres || []
+    if (!workSearch.trim()) return list.slice(0, 10)
+    const q = workSearch.toLowerCase()
+    return list.filter(o => o.Titre?.toLowerCase().includes(q) || String(o.OeuvreID).includes(q)).slice(0, 10)
+  }, [oeuvres, workSearch])
+
+  const [contactSearch, setContactSearch] = useState('')
+  const filteredContacts = useMemo(() => {
+    const list = contacts || []
+    if (!contactSearch.trim()) return list.slice(0, 10)
+    const q = contactSearch.toLowerCase()
+    return list.filter(c => {
+      const name = (c.NomInstitution || `${c.Prénom ?? ''} ${c.Nom ?? ''}`).toLowerCase()
+      return name.includes(q)
+    }).slice(0, 10)
+  }, [contacts, contactSearch])
+
   return (
-    <div style={{ position:'fixed', inset:0, zIndex:200, background:'rgba(0,0,0,0.65)', display:'flex', alignItems:'center', justifyContent:'center', padding:24 }}>
-      <div style={{ background:'var(--bg1)', border:'1px solid var(--bd)', width:'100%', maxWidth:620, maxHeight:'90vh', overflow:'auto', padding:28 }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
-          <div style={{ fontSize:9, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--tx3)' }}>
-            {isNew ? 'New process' : `Edit · ${process!.nom}`}
+    <div style={{ position:'fixed', inset:0, zIndex:200, background:'rgba(10,10,12,0.95)', backdropFilter:'blur(20px)', display:'flex', alignItems:'center', justifyContent:'center', padding:24 }}>
+      <div style={{ background:'var(--bg1)', border:'1px solid var(--bd)', width:'100%', maxWidth:720, maxHeight:'90vh', overflow:'auto', padding:40, borderRadius: 2, boxShadow: '0 30px 100px rgba(0,0,0,0.8)' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:32 }}>
+          <div>
+            <div style={{ fontSize:9, letterSpacing:'0.2em', textTransform:'uppercase', color:'var(--ac)', fontWeight: 700, marginBottom: 8 }}>PROCESS MANAGEMENT</div>
+            <div style={{ fontSize: 24, fontWeight: 300, color: '#fff' }}>{isNew ? 'Initialize New Track' : `Refine Process · ${process!.nom}`}</div>
           </div>
-          <button className="btn ghost sm" onClick={onClose} disabled={busy}>✕</button>
+          <button onClick={onClose} disabled={busy} style={{ background: 'none', border: 'none', color: 'var(--tx3)', fontSize: 32, cursor: 'pointer' }}>×</button>
         </div>
 
-        <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-          <div><div className="t-label" style={{marginBottom:3}}>Name *</div>
-            <input value={nom} onChange={e=>{const v=e.target.value;setNom(v)}} style={FIS} placeholder="e.g. Prix Marcel Duchamp 2026" /></div>
-
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-            <div><div className="t-label" style={{marginBottom:3}}>Type</div>
-              <select value={type} onChange={e=>handleTypeChange(e.target.value as ProcessType)} style={FIS}>
+        <div style={{ display:'flex', flexDirection:'column', gap:32 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 200px', gap: 20 }}>
+            <div>
+              <div className="t-label" style={{marginBottom:6, opacity: 0.5}}>Process Name</div>
+              <input value={nom} onChange={e=>setNom(e.target.value)} style={{...FIS, fontSize: 16, padding: '12px 16px', background: 'var(--bg2)'}} placeholder="e.g. Consignment to Gagosian London" />
+            </div>
+            <div>
+              <div className="t-label" style={{marginBottom:6, opacity: 0.5}}>Category</div>
+              <select value={type} onChange={e=>handleTypeChange(e.target.value as ProcessType)} style={{...FIS, fontSize: 13, height: 44, background: 'var(--bg2)'}}>
                 {SORTED_TYPES.map(t=><option key={t} value={t}>{TYPE_LABELS[t]}</option>)}
-              </select></div>
-            <div><div className="t-label" style={{marginBottom:3}}>Status</div>
-              <select value={statut} onChange={e=>{const v=e.target.value;setStatut(v as ProcessStatut)}} style={FIS}>
-                {(Object.entries(STATUT_LABELS) as [ProcessStatut,string][]).sort((a,b)=>a[1].localeCompare(b[1])).map(([k,v])=><option key={k} value={k}>{v}</option>)}
-              </select></div>
-          </div>
-
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10 }}>
-            <div><div className="t-label" style={{marginBottom:3}}>Start</div>
-              <input type="date" value={debut} onChange={e=>{const v=e.target.value;setDebut(v)}} style={FIS} /></div>
-            <div><div className="t-label" style={{marginBottom:3}}>Deadline date</div>
-              <input type="date" value={fin} onChange={e=>{const v=e.target.value;setFin(v)}} style={FIS} /></div>
-            <div><div className="t-label" style={{marginBottom:3}}>Time (GMT)</div>
-              <input value={deadlineTime} onChange={e=>{const v=e.target.value;setDeadlineTime(v)}} style={FIS} placeholder="23:59 GMT" /></div>
-          </div>
-
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-            <div><div className="t-label" style={{marginBottom:3}}>Location</div>
-              <input value={localisation} onChange={e=>{const v=e.target.value;setLocalisation(v)}} style={FIS} placeholder="City, venue…" /></div>
-            <div><div className="t-label" style={{marginBottom:3}}>URL (instructions / website)</div>
-              <input value={url} onChange={e=>{const v=e.target.value;setUrl(v)}} style={FIS} placeholder="https://…" /></div>
-          </div>
-
-          <div><div className="t-label" style={{marginBottom:3}}>Scope</div>
-            <input value={scope} onChange={e=>{const v=e.target.value;setScope(v)}} style={FIS} placeholder="Describe the scope and objectives…" /></div>
-          <div><div className="t-label" style={{marginBottom:3}}>Stakeholders</div>
-            <input value={stakeholders} onChange={e=>{const v=e.target.value;setStakeholders(v)}} style={FIS} placeholder="Organisations, institutions involved…" /></div>
-
-          <div>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
-              <div className="t-label">People in charge</div>
-              <button className="btn ghost sm" style={{fontSize:9}} onClick={addResponsable}>+ Add</button>
+              </select>
             </div>
-            {responsables.map((r,i)=>(
-              <div key={i} style={{ display:'flex', gap:6, alignItems:'center', marginBottom:4 }}>
-                <input value={r.nom} onChange={e=>setResp(i,'nom',e.target.value)} style={{...FIS,flex:1}} placeholder="Name" />
-                <input value={r.role} onChange={e=>setResp(i,'role',e.target.value)} style={{...FIS,width:140,flexShrink:0}} placeholder="Role" />
-                <button style={{fontSize:10,color:'var(--tx3)',padding:'0 4px'}} onClick={()=>setResponsables(p=>p.filter((_,j)=>j!==i))}>✕</button>
+          </div>
+
+          <div style={{ padding: 16, background: 'rgba(200,168,110,0.05)', border: '1px solid rgba(200,168,110,0.2)', borderRadius: 2 }}>
+            <div className="t-label" style={{marginBottom:8, color: 'var(--ac)'}}>Link to Exhibition Project (Optional)</div>
+            <select value={exhibitionId || ''} onChange={e => handleExhibitionSelect(e.target.value)} style={{...FIS, background: 'var(--bg1)'}}>
+              <option value="">-- No exhibition link --</option>
+              {exhibitions.map(ex => <option key={ex.id} value={ex.id}>{ex.titre} ({ex.lieu})</option>)}
+            </select>
+          </div>
+
+          <div style={{ padding: 24, background: 'var(--bg2)', border: '1px solid var(--bd2)', borderRadius: 2, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+            <div style={{ position: 'relative' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <div className="t-label">Selected Works ({oeuvreIds.length})</div>
+                <div className="t-mono-sm" style={{ fontSize: 8, color: 'var(--ac)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>— BATCH MODE ACTIVE —</div>
               </div>
-            ))}
+
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', 
+                gap: 8, 
+                marginBottom: oeuvreIds.length > 0 ? 12 : 0,
+                maxHeight: 240,
+                overflowY: 'auto',
+                paddingRight: 4
+              }}>
+                {oeuvreIds.map(id => {
+                  const o = oeuvres?.find(x => x.OeuvreID === id)
+                  return (
+                    <div key={id} style={{ 
+                      display: 'flex', 
+                      gap: 10, 
+                      background: 'var(--bg1)', 
+                      padding: 6, 
+                      border: '1px solid var(--bd)', 
+                      position: 'relative',
+                      boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
+                    }}>
+                      <div style={{ width: 32, height: 32, background: 'var(--bg2)', flexShrink: 0, overflow: 'hidden', border: '1px solid var(--bd)' }}>
+                        {o?.ImageURL ? <img src={o.ImageURL} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : null}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 10, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--tx1)' }}>{o?.Titre || 'Untitled'}</div>
+                        <div className="t-mono-sm" style={{ fontSize: 9, color: 'var(--tx3)', marginTop: 1 }}>ID: {id}</div>
+                      </div>
+                      <button 
+                        onClick={() => setOeuvreIds(p => p.filter(x => x !== id))}
+                        title="Remove from batch"
+                        style={{ position: 'absolute', top: -6, right: -6, width: 16, height: 16, borderRadius: '50%', background: 'var(--rust)', color: 'white', border: '1px solid var(--bg0)', cursor: 'pointer', fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1 }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+
+              <input 
+                value={workSearch} 
+                onChange={e => setWorkSearch(e.target.value)} 
+                placeholder="Search title or ID to add to batch..." 
+                style={{ ...FIS, background: 'var(--bg1)', borderStyle: 'dashed' }} 
+              />
+              
+              {workSearch.trim() && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--bg1)', border: '1px solid var(--ac)', zIndex: 300, maxHeight: 200, overflow: 'auto', boxShadow: '0 10px 20px rgba(0,0,0,0.2)' }}>
+                  {filteredWorks.filter(o => !oeuvreIds.includes(o.OeuvreID)).map(o => (
+                    <div key={o.OeuvreID} onClick={() => { setOeuvreIds(p => [...p, o.OeuvreID]); setWorkSearch('') }} style={{ padding: '8px 12px', borderBottom: '1px solid var(--bd)', cursor: 'pointer', display: 'flex', gap: 10, alignItems: 'center', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(200,168,110,0.1)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                      <div style={{ width: 24, height: 24, background: 'var(--bg2)', border: '1px solid var(--bd)' }}>
+                        {o.ImageURL && <img src={o.ImageURL} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                      </div>
+                      <div style={{ fontSize: 11 }}>{o.Titre} <span style={{ color: 'var(--tx3)', marginLeft: 4 }}>#{o.OeuvreID}</span></div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div style={{ position: 'relative' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <div className="t-label">Principal Contact / Gallery</div>
+                <button 
+                  onClick={() => setIsNewContact(!isNewContact)} 
+                  style={{ fontSize: 9, background: isNewContact ? 'var(--ac)' : 'transparent', border: '1px solid var(--bd)', color: isNewContact ? '#111' : 'var(--ac)', cursor: 'pointer', padding: '2px 6px' }}
+                >
+                  {isNewContact ? '× USE EXISTING' : '+ NEW CONTACT'}
+                </button>
+              </div>
+
+              {isNewContact ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: 'rgba(200,168,110,0.05)', padding: 12, border: '1px solid rgba(200,168,110,0.2)' }}>
+                  <input value={newContactName} onChange={e => setNewContactName(e.target.value)} placeholder="Company / Gallery Name..." style={FIS} />
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px', gap: 8 }}>
+                    <input value={newContactEmail} onChange={e => setNewContactEmail(e.target.value)} placeholder="Email address..." style={FIS} />
+                    <select value={newContactType} onChange={e => setNewContactType(e.target.value)} style={FIS}>
+                      <option value="Galerie">Gallery</option>
+                      <option value="Musée">Museum</option>
+                      <option value="Collectionneur">Collector</option>
+                      <option value="Transporteur">Shipper</option>
+                    </select>
+                  </div>
+                </div>
+              ) : contactId ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--bg1)', padding: '6px 12px', border: '1px solid var(--ac)', height: 32 }}>
+                  <div style={{ fontSize: 11, flex: 1, fontWeight: 500 }}>{contacts?.find(c => c.ContactID === contactId)?.NomInstitution || 'Selected Contact'}</div>
+                  <button onClick={() => setContactId(null)} style={{ background: 'none', border: 'none', color: 'var(--rust)', cursor: 'pointer', fontSize: 14 }}>×</button>
+                </div>
+              ) : (
+                <>
+                  <input value={contactSearch} onChange={e => setContactSearch(e.target.value)} placeholder="Search gallery..." style={{ ...FIS, background: 'var(--bg1)', borderStyle: 'dashed' }} />
+                  {contactSearch.trim() && (
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--bg1)', border: '1px solid var(--ac)', zIndex: 300, maxHeight: 200, overflow: 'auto' }}>
+                      {filteredContacts.map(c => (
+                        <div key={c.ContactID} onClick={() => { setContactId(c.ContactID); setContactSearch('') }} style={{ padding: '10px 15px', fontSize: 11, cursor: 'pointer' }}>{c.NomInstitution || `${c.Prénom} ${c.Nom}`}</div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
           </div>
 
-          <div><div className="t-label" style={{marginBottom:3}}>Dossier vault (lien vers le dossier de documents)</div>
-            <input value={vaultPath} onChange={e=>{const v=e.target.value;setVaultPath(v)}} style={FIS} placeholder="https://drive.google.com/… ou chemin local" /></div>
-          <div><div className="t-label" style={{marginBottom:3}}>Vault tags (comma-separated)</div>
-            <input value={vaultTags} onChange={e=>{const v=e.target.value;setVaultTags(v)}} style={FIS} placeholder="dossier, photo, press release, contract…" /></div>
-          <div><div className="t-label" style={{marginBottom:3}}>Assets to produce</div>
-            <textarea value={assetNotes} onChange={e=>{const v=e.target.value;setAssetNotes(v)}} rows={2} style={{...FIS,resize:'vertical',lineHeight:1.5}} placeholder="List assets to be produced for this process…" /></div>
-
-          <div>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
-              <div className="t-label">Steps</div>
-              <button className="btn ghost sm" style={{fontSize:9}} onClick={()=>setEtapes(p=>[...p,{nom:'',date_echeance:'',statut:'a_faire'}])}>+ Step</button>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 20 }}>
+            <div style={{ flex: 1 }}>
+              <div className="t-label" style={{marginBottom:6, opacity: 0.5}}>Import depuis Groupe</div>
+              <select 
+                value={selectedGroup} 
+                onChange={e => handleGroupSelect(e.target.value)} 
+                style={{ ...FIS, border: '1px solid var(--ac)', color: 'var(--ac)' }}
+              >
+                <option value="">— Sélectionner un groupe pour ajouter ses œuvres</option>
+                {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+              </select>
             </div>
-            <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+          </div>
+
+          {type === 'vente' && (
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:20, background:'rgba(34,197,94,0.05)', padding:24, border:'1px solid rgba(34,197,94,0.2)', marginBottom: 20 }}>
+              <div>
+                <div className="t-label" style={{marginBottom:8}}>Batch Total (Catalog)</div>
+                <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                  <span style={{ fontSize:12, color: 'var(--tx3)' }}>€</span>
+                  <input value={catalogPrice} onChange={e=>setCatalogPrice(e.target.value)} style={{...FIS, fontSize: 16, fontWeight: 700, background:'transparent', border:'none', borderBottom:'1px solid var(--bd)'}} placeholder="0.00" />
+                </div>
+              </div>
+              <div>
+                <div className="t-label" style={{marginBottom:8}}>Discount (%)</div>
+                <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                  <input value={discount} onChange={e=>setDiscount(e.target.value)} style={{...FIS, fontSize: 16, fontWeight: 700, background:'transparent', border:'none', borderBottom:'1px solid var(--bd)', textAlign: 'center'}} placeholder="0" />
+                  <span style={{ fontSize:12, color: 'var(--tx3)' }}>%</span>
+                </div>
+              </div>
+              <div>
+                <div className="t-label" style={{marginBottom:8, color: 'var(--green)'}}>Final Net Total</div>
+                <div style={{ display:'flex', alignItems:'center', gap:8, color:'var(--green)' }}>
+                  <span style={{ fontSize:12 }}>€</span>
+                  <input value={prixFinal} onChange={e=>setPrixFinal(e.target.value)} style={{...FIS, fontSize: 20, fontWeight: 800, background:'transparent', border:'none', borderBottom:'1px solid var(--bd)', color:'inherit'}} placeholder="0.00" />
+                </div>
+              </div>
+              <div style={{ gridColumn: '1 / -1', fontSize: 9, color: 'var(--tx3)', fontStyle: 'italic', marginTop: 8 }}>
+                * Automatic calculation active: Sum of catalog prices for {oeuvreIds.length} works.
+              </div>
+            </div>
+          )}
+
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 120px', gap:20 }}>
+            <div><div className="t-label" style={{marginBottom:6}}>Commencement</div><input type="date" value={debut} onChange={e=>setDebut(e.target.value)} style={FIS} /></div>
+            <div><div className="t-label" style={{marginBottom:6}}>Deadline</div><input type="date" value={fin} onChange={e=>setFin(e.target.value)} style={FIS} /></div>
+            <div><div className="t-label" style={{marginBottom:6}}>Time</div><input value={deadlineTime} onChange={e=>setDeadlineTime(e.target.value)} style={FIS} placeholder="23:59" /></div>
+          </div>
+
+          <div style={{ borderTop: '1px solid var(--bd)', paddingTop: 32 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+              <div className="t-eyebrow">Pipeline Steps</div>
+              <button className="btn ghost sm" onClick={()=>setEtapes(p=>[...p,{nom:'',date_echeance:'',statut:'a_faire'}])}>+ ADD STEP</button>
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
               {etapes.map((e,i)=>(
-                <div key={i} style={{ display:'flex', gap:6, alignItems:'center' }}>
-                  <input value={e.nom} onChange={ev=>{const v=ev.target.value;setEtapes(p=>p.map((x,j)=>j===i?{...x,nom:v}:x))}} style={{...FIS,flex:1}} placeholder={`Step ${i+1}`} />
-                  <input type="date" value={e.date_echeance} onChange={ev=>{const v=ev.target.value;setEtapes(p=>p.map((x,j)=>j===i?{...x,date_echeance:v}:x))}} style={{...FIS,width:130,flexShrink:0}} />
-                  <button style={{fontSize:10,color:'var(--tx3)',padding:'0 4px'}} onClick={()=>setEtapes(p=>p.filter((_,j)=>j!==i))}>✕</button>
+                <div key={i} style={{ display:'flex', gap:12, alignItems:'center', background: 'var(--bg0)', padding: '4px 12px' }}>
+                  <input value={e.nom} onChange={ev=>{const v=ev.target.value;setEtapes(p=>p.map((x,j)=>j===i?{...x,nom:v}:x))}} style={{...FIS, border: 'none', background: 'transparent', flex: 1}} placeholder="Step name..." />
+                  <input type="date" value={e.date_echeance} onChange={ev=>{const v=ev.target.value;setEtapes(p=>p.map((x,j)=>j===i?{...x,date_echeance:v}:x))}} style={{...FIS, width:130, border: 'none', background: 'transparent'}} />
+                  <button onClick={()=>setEtapes(p=>p.filter((_,j)=>j!==i))} style={{ background: 'none', border: 'none', color: 'var(--tx3)', cursor: 'pointer' }}>×</button>
                 </div>
               ))}
             </div>
           </div>
 
-          <div><div className="t-label" style={{marginBottom:3}}>Notes</div>
-            <textarea value={notes} onChange={e=>{const v=e.target.value;setNotes(v)}} rows={3} style={{...FIS,resize:'vertical',lineHeight:1.6}} placeholder="Information, links, contacts…" /></div>
-
-          <div style={{ borderTop:'1px solid var(--bd)', paddingTop:12 }}>
-            <div className="t-label" style={{marginBottom:6}}>Add a reminder</div>
-            <div style={{ display:'flex', gap:8 }}>
-              <input value={reminderMsg} onChange={e=>{const v=e.target.value;setReminderMsg(v)}} placeholder="Reminder message…" style={{...FIS,flex:1}} />
-              <input type="date" value={reminderDate} onChange={e=>{const v=e.target.value;setReminderDate(v)}} style={{...FIS,width:140,flexShrink:0}} />
-            </div>
+          <div>
+            <div className="t-label" style={{marginBottom:6, opacity: 0.5}}>Internal Strategic Notes</div>
+            <textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={4} style={{...FIS, resize:'vertical', lineHeight:1.6, background: 'var(--bg2)', padding: 16}} placeholder="Context..." />
           </div>
-        </div>
 
-        {err && <div style={{ fontSize:11, color:'var(--rust)', marginTop:12 }}>{err}</div>}
-        <div className="row gap-sm" style={{ marginTop:20, justifyContent:'flex-end' }}>
-          <button className="btn ghost sm" onClick={onClose} disabled={busy}>Cancel</button>
-          <button className="btn primary sm" onClick={()=>void handleSave()} disabled={busy}>
-            {busy ? '…' : isNew ? 'Create' : 'Save'}
-          </button>
+          {err && <div style={{ fontSize:11, color:'var(--rust)', padding: 12, border: '1px solid var(--rust)' }}>{err}</div>}
+          
+          <div className="row gap-md" style={{ marginTop:20, justifyContent:'flex-end' }}>
+            {!isNew && (
+              <button 
+                className="btn ghost" 
+                style={{ color: 'var(--rust)', marginRight: 'auto' }} 
+                onClick={async () => {
+                  if (!confirm("Are you sure you want to delete this process? This will also remove all associated steps and reminders.")) return
+                  setBusy(true)
+                  const sb = createClient()
+                  const { error } = await (sb.from('suivi_process') as any).delete().eq('id', process.id)
+                  if (error) {
+                    setErr(error.message)
+                    setBusy(false)
+                  } else {
+                    onSaved() // triggers refresh and close
+                  }
+                }}
+                disabled={busy}
+              >
+                DELETE PROCESS
+              </button>
+            )}
+            <button className="btn ghost" onClick={onClose} disabled={busy}>Discard</button>
+            <button className="btn primary" onClick={()=>void handleSave()} disabled={busy}>{busy ? 'SYNCHRONIZING…' : 'COMMIT UPDATES'}</button>
+          </div>
         </div>
       </div>
     </div>

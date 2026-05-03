@@ -11,6 +11,7 @@ import {
 } from '@/app/atelier/concepts/actions'
 import { convertConceptToProcess } from '@/app/atelier/pipeline/actions'
 import { TYPE_LABELS as PIPELINE_LABELS } from './PipelineTab'
+import { stringifyError } from '@/lib/error'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -88,7 +89,7 @@ function NewConceptForm({ onCreated, onCancel }: {
     const fd = new FormData(formRef.current)
     const res = await createConcept(fd)
     setBusy(false)
-    if ('error' in res) { setErr(res.error); return }
+    if ('error' in res) { setErr(stringifyError(res.error)); return }
     onCreated(res.concept)
   }
 
@@ -221,7 +222,7 @@ function ConceptCard({ concept, onUpdated, onDeleted }: {
       onUpdated({ ...concept, statut: 'en_cours' })
       setShowConvert(false)
     } else {
-      alert("Erreur: " + res.error)
+      alert(`Erreur : ${stringifyError(res.error)}`)
     }
   }
 
@@ -231,7 +232,7 @@ function ConceptCard({ concept, onUpdated, onDeleted }: {
     const res = await deleteConcept(concept.id)
     setBusy(false)
     if (res && 'error' in res) {
-      alert(res.error)
+      alert(`Erreur : ${stringifyError(res.error)}`)
     } else {
       onDeleted(concept.id)
     }

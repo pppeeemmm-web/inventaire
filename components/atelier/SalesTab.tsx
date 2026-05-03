@@ -4,9 +4,11 @@
 
 import { useMemo, useState, useEffect, useCallback } from 'react'
 import { useI18n }      from '@/lib/i18n/context'
-import { statusOf, yearOf, type StatusKey } from '@/lib/data'
+import { statusOf, yearOf, thumbUrl, type StatusKey } from '@/lib/data'
 import type { Oeuvre }  from '@/lib/types/database'
-import { createSaleOrder, updateOrderStatut, fetchOrders, type SaleOrderRow } from '@/app/atelier/sales/actions'
+import { createSaleOrder, updateOrderStatut, fetchOrders, regenerateOrderPdf, type SaleOrderRow } from '@/app/atelier/sales/actions'
+import { getSignedUrl } from '@/app/atelier/vault/actions'
+import { stringifyError } from '@/lib/error'
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -14,6 +16,7 @@ interface Props {
   oeuvres:        Oeuvre[]
   statusLabelMap: Record<number, string>
   contacts:       { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null }[]
+  groups:         { id: string; name: string }[]
   cM:             Record<number, string>
   tM:             Record<number, string>
 }
@@ -42,7 +45,7 @@ const STATUT_COLORS: Record<string, string> = {
 
 // ── Component ────────────────────────────────────────────────
 
-export function SalesTab({ oeuvres, statusLabelMap, contacts, cM, tM }: Props) {
+export function SalesTab({ oeuvres, statusLabelMap, contacts, groups, cM, tM }: Props) {
   const { t, lang } = useI18n()
   const [orders,    setOrders]    = useState<SaleOrderRow[]>([])
   const [showForm,  setShowForm]  = useState(false)
@@ -117,7 +120,7 @@ export function SalesTab({ oeuvres, statusLabelMap, contacts, cM, tM }: Props) {
       <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
         <div style={{
           display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
-          gap: 0, marginBottom: 24,
+          gap: 0, marginBottom: 24, minWidth: 800,
           borderTop: '1px solid var(--bd)', borderBottom: '1px solid var(--bd)',
         }}>
           <KpiCard label={t('sold')}  value={String(soldWorks.length)}  detail="œuvres vendues" />
@@ -147,18 +150,23 @@ export function SalesTab({ oeuvres, statusLabelMap, contacts, cM, tM }: Props) {
           </div>
         )}
 
-        <div className="panel pad-md">
-          <div className="t-label" style={{ marginBottom: 12 }}>Commandes</div>
+        <div className="panel pad-md" style={{ overflowX: 'auto' }}>
+          <div className="t-label" style={{ marginBottom: 16, color: 'var(--ac)' }}>Commandes</div>
           {loading ? (
             <div style={{ color: 'var(--tx3)', fontSize: 11 }}>Chargement…</div>
           ) : orders.length === 0 ? (
             <div style={{ color: 'var(--tx3)', fontSize: 11 }}>Aucune commande. Créez la première via "+ Nouvelle commande".</div>
           ) : (
-            <table className="tbl">
+            <table className="tbl" style={{ minWidth: 800 }}>
               <thead>
                 <tr>
-                  <th>Réf.</th><th>Œuvre</th><th>Acheteur</th><th>Date</th>
-                  <th className="num">Prix final</th><th>Statut</th><th>PDF</th>
+                  <th style={{ width: 100 }}>Réf.</th>
+                  <th style={{ width: 220 }}>Œuvre</th>
+                  <th style={{ width: 180 }}>Acheteur</th>
+                  <th style={{ width: 100 }}>Date</th>
+                  <th className="num" style={{ width: 120 }}>Prix final</th>
+                  <th style={{ width: 120 }}>Statut</th>
+                  <th style={{ width: 60 }}>PDF</th>
                 </tr>
               </thead>
               <tbody>
@@ -167,22 +175,44 @@ export function SalesTab({ oeuvres, statusLabelMap, contacts, cM, tM }: Props) {
                   const buyer = ord.buyer_id ? (cM[ord.buyer_id] ?? `#${ord.buyer_id}`) : '—'
                   return (
                     <tr key={ord.id} style={{ cursor: 'pointer' }} onClick={() => setInspected(ord)}>
-                      <td style={{ color: 'var(--ac)', fontFamily: 'var(--font-mono)' }}>{ord.order_ref ?? '—'}</td>
-                      <td style={{ color: 'var(--tx)' }}>{work?.Titre ?? `#${ord.oeuvre_id}`}</td>
+                      <td style={{ color: 'var(--ac)', fontFamily: 'var(--font-mono)', fontSize: 10 }}>{ord.order_ref ?? '—'}</td>
+                      <td style={{ color: 'var(--tx)', fontWeight: 500 }}>{work?.Titre ?? `#${ord.oeuvre_id}`}</td>
                       <td style={{ color: 'var(--tx2)' }}>{buyer}</td>
-                      <td style={{ color: 'var(--tx3)' }}>{ord.created_at.slice(0, 10)}</td>
-                      <td className="num" style={{ color: 'var(--ac)' }}>{ord.prix_final ? fmt(ord.prix_final) : '—'}</td>
+                      <td style={{ color: 'var(--tx3)', fontSize: 10 }}>{ord.created_at.slice(0, 10)}</td>
+                      <td className="num" style={{ color: 'var(--ac)', fontWeight: 600 }}>{ord.prix_final ? fmt(ord.prix_final) : '—'}</td>
                       <td>
                         <span style={{
                           fontSize: 9, letterSpacing: '0.06em', textTransform: 'uppercase',
                           color: STATUT_COLORS[ord.statut] ?? 'var(--tx3)',
                           border: `1px solid ${STATUT_COLORS[ord.statut] ?? 'var(--bd)'}`,
                           padding: '1px 6px',
+                          display: 'inline-block'
                         }}>
                           {STATUT_LABELS[ord.statut] ?? ord.statut}
                         </span>
                       </td>
-                      <td>{ord.pdf_path ? <span style={{ fontSize: 9, color: 'var(--cyan)' }}>↓ PDF</span> : <span style={{ fontSize: 9, color: 'var(--tx3)' }}>—</span>}</td>
+                      <td>
+                        {ord.pdf_path ? (
+                          <button 
+                            onClick={async (e) => {
+                              e.stopPropagation()
+                              try {
+                                const res = await getSignedUrl(ord.pdf_path!)
+                                if ('url' in res) window.open(res.url, '_blank')
+                                else alert(`Erreur : ${stringifyError(res.error)}`)
+                              } catch (err) {
+                                alert(`Error: ${stringifyError(err)}`)
+                              }
+                            }}
+                            className="t-mono-sm"
+                            style={{ background: 'none', border: 'none', padding: 0, fontSize: 9, color: 'var(--cyan)', cursor: 'pointer', opacity: 0.8 }}
+                          >
+                            PDF
+                          </button>
+                        ) : (
+                          <span style={{ fontSize: 9, color: 'var(--tx3)' }}>—</span>
+                        )}
+                      </td>
                     </tr>
                   )
                 })}
@@ -194,7 +224,7 @@ export function SalesTab({ oeuvres, statusLabelMap, contacts, cM, tM }: Props) {
 
       {showForm && (
         <OrderFormModal
-          oeuvres={availableWorks} contacts={sortedContacts} tM={tM}
+          oeuvres={availableWorks} contacts={sortedContacts} groups={groups} tM={tM}
           onClose={() => setShowForm(false)}
           onCreated={() => { setShowForm(false); loadOrders() }}
         />
@@ -211,20 +241,37 @@ export function SalesTab({ oeuvres, statusLabelMap, contacts, cM, tM }: Props) {
 
 // ── Order form modal ─────────────────────────────────────────
 
-function OrderFormModal({ oeuvres, contacts, tM, onClose, onCreated }: {
+function OrderFormModal({ oeuvres, contacts, groups, tM, onClose, onCreated }: {
   oeuvres:   Oeuvre[]
   contacts:  { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null }[]
+  groups:    { id: string; name: string }[]
   tM:        Record<number, string>
   onClose:   () => void
   onCreated: () => void
 }) {
   const [saving,      setSaving]      = useState(false)
   const [error,       setError]       = useState<string | null>(null)
-  const [oeuvreId,    setOeuvreId]    = useState('')
+  const [oeuvreIds,   setOeuvreIds]   = useState<number[]>([])
   const [prixCat,     setPrixCat]     = useState('')
   const [discountPct, setDiscountPct] = useState('')
   const [prixFinal,   setPrixFinal]   = useState('')
   const [depositPct,  setDepositPct]  = useState('')
+  const [selectedGroup, setSelectedGroup] = useState('')
+  
+  const [search,      setSearch]      = useState('')
+
+  async function handleGroupSelect(groupId: string) {
+    if (!groupId) return
+    setSelectedGroup(groupId)
+    const { createClient } = await import('@/lib/supabase/client')
+    const supabase = createClient()
+    const { data } = await supabase.from('working_group_work').select('oeuvre_id').eq('group_id', groupId)
+    if (data) {
+      const newIds = data.map(x => x.oeuvre_id).filter(id => !oeuvreIds.includes(id))
+      setOeuvreIds(prev => [...prev, ...newIds])
+    }
+    setSelectedGroup('') // Reset dropdown
+  }
 
   useEffect(() => {
     const p = parseFloat(prixCat), d = parseFloat(discountPct)
@@ -233,19 +280,28 @@ function OrderFormModal({ oeuvres, contacts, tM, onClose, onCreated }: {
   }, [prixCat, discountPct])
 
   useEffect(() => {
-    if (!oeuvreId) return
-    const o = oeuvres.find((w) => String(w.OeuvreID) === oeuvreId)
-    if (o) {
-      if (o.Prix)     setPrixCat(String(o.Prix))
-      if (o.Discount) setDiscountPct(String(o.Discount))
-    }
-  }, [oeuvreId, oeuvres])
+    if (oeuvreIds.length === 0) return
+    const total = oeuvreIds.reduce((sum, id) => {
+      const o = oeuvres.find(x => x.OeuvreID === id)
+      return sum + (o?.Prix || 0)
+    }, 0)
+    setPrixCat(String(total))
+    
+    // Auto-apply discount if the first work has one
+    const first = oeuvres.find(x => x.OeuvreID === oeuvreIds[0])
+    if (first?.Discount) setDiscountPct(String(first.Discount))
+  }, [oeuvreIds, oeuvres])
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault(); setSaving(true); setError(null)
-    const res = await createSaleOrder(new FormData(e.currentTarget))
+    const fd = new FormData(e.currentTarget)
+    // Pluralize oeuvre IDs
+    fd.delete('oeuvre_id') // remove old single field if any
+    oeuvreIds.forEach(id => fd.append('oeuvre_ids', String(id)))
+    
+    const res = await createSaleOrder(fd)
     setSaving(false)
-    if ('error' in res) { setError(res.error); return }
+    if ('error' in res) { setError(stringifyError(res.error)); return }
     onCreated()
   }
 
@@ -260,15 +316,65 @@ function OrderFormModal({ oeuvres, contacts, tM, onClose, onCreated }: {
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--tx3)', cursor: 'pointer', fontSize: 18 }}>×</button>
         </div>
         <form onSubmit={handleSubmit}>
-          <Section label="Œuvre">
-            <select name="oeuvre_id" required value={oeuvreId} onChange={(e) => setOeuvreId(e.target.value)} style={inputStyle}>
-              <option value="">— Sélectionner une œuvre</option>
-              {oeuvres.map((o) => (
-                <option key={o.OeuvreID} value={o.OeuvreID}>
-                  #{o.OeuvreID} — {o.Titre ?? 'S/T'}{o.Technique ? ` · ${tM[o.Technique] ?? ''}` : ''}{o.Année ? ` · ${String(o.Année).slice(0,4)}` : ''}
-                </option>
-              ))}
-            </select>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 20 }}>
+            <div style={{ flex: 1 }}>
+              <Section label="Import depuis Groupe">
+                <select 
+                  value={selectedGroup} 
+                  onChange={e => handleGroupSelect(e.target.value)} 
+                  style={{ ...inputStyle, border: '1px solid var(--ac)', color: 'var(--ac)' }}
+                >
+                  <option value="">— Sélectionner un groupe pour ajouter ses œuvres</option>
+                  {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                </select>
+              </Section>
+            </div>
+          </div>
+
+          <Section label="Batch de Œuvres">
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+              {oeuvreIds.map(id => {
+                const o = oeuvres.find(x => x.OeuvreID === id)
+                return (
+                  <div key={id} style={{ display:'flex', alignItems:'center', gap:8, background:'var(--bg2)', padding:'4px 8px', border:'1px solid var(--bd2)' }}>
+                    {o?.txtImageNameLink && <img src={thumbUrl(o.txtImageNameLink, 64) ?? ''} alt="" style={{ width:24, height:24, objectFit:'cover' }} />}
+                    <span style={{ fontSize:10, fontFamily:'var(--font-mono)' }}>#{id}</span>
+                    <button type="button" onClick={() => setOeuvreIds(prev => prev.filter(x => x !== id))} style={{ background:'none', border:'none', color:'var(--rust)', cursor:'pointer' }}>×</button>
+                  </div>
+                )
+              })}
+              {oeuvreIds.length === 0 && <div style={{ fontSize:11, color:'var(--tx3)', fontStyle:'italic' }}>Aucune œuvre sélectionnée</div>}
+            </div>
+
+            <div style={{ position: 'relative' }}>
+              <input 
+                value={search} 
+                onChange={e => setSearch(e.target.value)} 
+                placeholder="Rechercher par #ID ou Titre..." 
+                style={{ ...inputStyle, marginBottom: 4 }}
+              />
+              {search && (
+                <div style={{ position:'absolute', top:'100%', left:0, right:0, background:'var(--bg1)', border:'1px solid var(--bd)', zIndex:10, maxHeight:200, overflow:'auto', boxShadow:'0 10px 30px rgba(0,0,0,0.5)' }}>
+                  {oeuvres
+                    .filter(o => !oeuvreIds.includes(o.OeuvreID))
+                    .filter(o => String(o.OeuvreID).includes(search) || o.Titre?.toLowerCase().includes(search.toLowerCase()))
+                    .slice(0, 10)
+                    .map(o => (
+                      <div key={o.OeuvreID} onClick={() => { setOeuvreIds(prev => [...prev, o.OeuvreID]); setSearch('') }}
+                        style={{ padding:'8px 12px', fontSize:11, borderBottom:'1px solid var(--bd2)', cursor:'pointer', display:'flex', alignItems:'center', gap:10 }}
+                        className="hover-bg"
+                      >
+                        {o.txtImageNameLink && <img src={thumbUrl(o.txtImageNameLink, 64) ?? ''} alt="" style={{ width:32, height:32, objectFit:'cover' }} />}
+                        <div style={{ flex:1 }}>
+                          <div style={{ fontWeight:600 }}>#{o.OeuvreID} — {o.Titre ?? 'S/T'}</div>
+                          <div style={{ opacity:0.6 }}>{o.Technique ? tM[o.Technique] : ''}</div>
+                        </div>
+                      </div>
+                    ))
+                  }
+                </div>
+              )}
+            </div>
           </Section>
           <Section label="Acheteur">
             <select name="buyer_id" style={inputStyle}>
@@ -427,7 +533,50 @@ function OrderDetailPanel({ order, oeuvres, cM, onClose, onUpdated }: {
           {order.statut !== 'completed' && order.statut !== 'cancelled' && (
             <button className="btn ghost sm" onClick={advance} style={{ fontSize: 10 }}>Avancer →</button>
           )}
-          {order.pdf_path && <span style={{ fontSize: 10, color: 'var(--cyan)', marginLeft: 'auto' }}>↓ PDF généré</span>}
+          {order.pdf_path && (
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
+              <button 
+                onClick={async (e) => {
+                  if (!confirm("Re-générer le PDF avec le nouveau layout et les images ?")) return
+                  const btn = (e.currentTarget as HTMLButtonElement)
+                  const oldText = btn.innerText
+                  btn.innerText = 'BUSY...'
+                  btn.disabled = true
+                  try {
+                    const res = await regenerateOrderPdf(order.id)
+                    if (res.ok) {
+                      alert("PDF mis à jour. Rechargez la page ou recliquez sur Télécharger.")
+                      onUpdated() // refresh list
+                    } else alert(`Erreur : ${stringifyError(res.error)}`)
+                  } catch (err) {
+                    alert(`Error: ${stringifyError(err)}`)
+                  } finally {
+                    btn.innerText = oldText
+                    btn.disabled = false
+                  }
+                }}
+                className="btn ghost sm"
+                style={{ fontSize: 10, color: 'var(--tx3)' }}
+              >
+                ↻ Re-générer
+              </button>
+              <button 
+                onClick={async () => {
+                  try {
+                    const res = await getSignedUrl(order.pdf_path!)
+                    if ('url' in res) window.open(res.url, '_blank')
+                    else alert(`Erreur : ${stringifyError(res.error)}`)
+                  } catch (err) {
+                    alert(`Error: ${stringifyError(err)}`)
+                  }
+                }}
+                className="btn ghost sm" 
+                style={{ fontSize: 10, color: 'var(--cyan)' }}
+              >
+                ↓ Télécharger PDF
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

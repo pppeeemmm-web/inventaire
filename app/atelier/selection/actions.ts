@@ -562,28 +562,9 @@ async function buildPdf(
     const margin = 50
     const usable = PW - margin * 2
 
-    // Header — Ultra Minimal
-    doc.fontSize(6).fillColor('#bbbbbb').text('PIERRE EMMANUEL MOULIN', margin, margin - 10, { characterSpacing: 1.5 })
-    
-    let headY = margin - 2
-    if (cfg.exportTitle) {
-      doc.fontSize(18).fillColor('#111111').text(cfg.exportTitle, margin, headY, { lineGap: -4 })
-      headY += 22
-      doc.fontSize(6.5).fillColor('#aaaaaa').text(
-        `SÉLECTION · ${oeuvres.length} ŒUVRES · ${new Date().toLocaleDateString('fr-FR')}`,
-        margin, headY, { characterSpacing: 0.8 }
-      )
-    } else {
-      doc.fontSize(8).fillColor('#111111').text(
-        `SÉLECTION · ${oeuvres.length} ŒUVRES · ${new Date().toLocaleDateString('fr-FR')}`,
-        margin, headY, { characterSpacing: 0.8 }
-      )
-    }
-    headY += 12
-    doc.moveTo(margin, headY).lineTo(margin + 30, headY).lineWidth(0.4).strokeColor('#eeeeee').stroke()
-
-    let y = headY + 15
-    const f = cfg.fields   // available to all layout branches
+    // --- Content Generation ---
+    let y = margin + 40 // Initial offset to leave room for the header
+    const f = cfg.fields
 
     if (cfg.layout === 'list') {
       // ── List layout ──────────────────────────────────────────
@@ -597,7 +578,6 @@ async function buildPdf(
         f.status    && { label: 'Statut',    w: 70  },
       ].filter(Boolean) as { label: string; w: number }[]
 
-      // Distribute remaining width to flex col
       const fixed = cols.reduce((s, c) => s + c.w, 0)
       const flexCol = cols.find((c) => c.w === 0)
       if (flexCol) flexCol.w = usable - fixed
@@ -613,7 +593,7 @@ async function buildPdf(
       doc.moveTo(margin, y - 2).lineTo(margin + usable, y - 2).lineWidth(0.3).strokeColor('#cccccc').stroke()
 
       for (const o of oeuvres) {
-        if (y > PH - margin - 20) { doc.addPage(); y = margin + 30 }
+        if (y > PH - margin - 40) { doc.addPage(); y = margin + 40 }
         const dims   = o.Hauteur && o.Largeur ? `${o.Hauteur}×${o.Largeur}` : '—'
         const tech   = o.Technique != null ? tM[o.Technique] ?? '' : ''
         const status = o.statusId  != null ? statusLabelMap[o.statusId] ?? '' : ''
@@ -644,27 +624,18 @@ async function buildPdf(
     } else if (cfg.layout === 'grid') {
       // ── Grid layout (Contact Sheet) ──────────────────────────
       const cols      = cfg.columns
-      // Tighter gaps for professional contact sheet look
       const gap       = cfg.columns >= 8 ? 4 : cfg.columns >= 4 ? 8 : 12
       const rowGap    = cfg.columns >= 8 ? 12 : cfg.columns >= 4 ? 20 : 28
       const cellW     = (usable - gap * (cols - 1)) / cols
       
-      // Calculate text height based on active fields
       const activeMetaCount = [f.year, f.technique, f.support, f.dims, f.price].filter(Boolean).length
-      const showTitle = f.title
       const textLineH = (cols >= 8 ? 6 : 8)
-      const textH     = (showTitle ? (cols >= 8 ? 8 : 12) : 0) + (f.id ? (cols >= 8 ? 7 : 10) : 0) + (activeMetaCount * textLineH) + 4
+      const textH     = (f.title ? (cols >= 8 ? 8 : 12) : 0) + (f.id ? (cols >= 8 ? 7 : 10) : 0) + (activeMetaCount * textLineH) + 4
       
-      // If rowsPerPage is set, we adjust imgH to fit exactly N rows on the page height
-      const pageUsableH = PH - margin * 2 - (y - margin) // Remaining space on first page
       let imgH = cfg.imageSize !== 'none' ? Math.round(cellW) : 0
-
       if (cfg.rowsPerPage > 0) {
-        // (imgH + textH + rowGap) * rows = pageUsableH
-        const calculatedImgH = Math.floor((PH - margin * 2 - 40) / cfg.rowsPerPage) - textH - rowGap
-        if (calculatedImgH > 0 && calculatedImgH < imgH) {
-           imgH = calculatedImgH
-        }
+        const calculatedImgH = Math.floor((PH - margin * 2 - 60) / cfg.rowsPerPage) - textH - rowGap
+        if (calculatedImgH > 0 && calculatedImgH < imgH) imgH = calculatedImgH
       }
       const cellH = imgH + textH
 
@@ -672,59 +643,43 @@ async function buildPdf(
       for (const o of oeuvres) {
         const cx = margin + col * (cellW + gap)
 
-        // If next row won't fit, break now
-        if (col === 0 && (y + cellH > PH - margin)) {
+        if (col === 0 && (y + cellH > PH - margin - 20)) {
           doc.addPage()
-          y = margin + 20 // Higher start on new pages
+          y = margin + 40
         }
 
-        // Image (always base64 for PDF — see generateExport image-fetch logic)
         if (imgH > 0) {
           const imgSrc = imageMap.get(o.OeuvreID)
           if (imgSrc?.startsWith('data:')) {
             const imgBuf = Buffer.from(imgSrc.split(',')[1], 'base64')
-            const fitType = cfg.imageCrop === 'native' ? 'inside' : 'cover'
-            
             try {
-              // Pre-process with sharp to ensure perfect cropping and no overlap
               const processed = await sharp(imgBuf)
-                .resize(Math.round(cellW * 2), Math.round(imgH * 2), { // 2x for retina-like quality
-                  fit: fitType,
+                .resize(Math.round(cellW * 2), Math.round(imgH * 2), {
+                  fit: cfg.imageCrop === 'native' ? 'inside' : 'cover',
                   background: { r: 255, g: 255, b: 255, alpha: 0 }
-                })
-                .toBuffer()
-              
+                }).toBuffer()
               doc.image(processed, cx, y, { width: cellW, height: imgH, align: 'left', valign: 'top' })
-            } catch (err) {
-              console.error('PDF Image Error:', err)
-            }
+            } catch {}
           }
-          // No grey rect if image missing — keep contact sheet clean
         }
 
-        // Caption: Dynamic fields (tight) — Left Aligned
         let ty = y + imgH + 3
         if (f.id) {
-          doc.fontSize(cols >= 8 ? 5 : 6).fillColor('#cccccc').font('Courier')
-             .text('#' + o.OeuvreID, cx, ty, { width: cellW, align: 'left', lineBreak: false })
+          doc.fontSize(cols >= 8 ? 5 : 6).fillColor('#cccccc').font('Courier').text('#' + o.OeuvreID, cx, ty, { width: cellW, align: 'left', lineBreak: false })
           doc.font('Helvetica')
           ty += (cols >= 8 ? 7 : 8)
         }
         if (f.title) {
-          doc.fontSize(cols >= 8 ? 6 : 7.5).fillColor('#111111').font('Helvetica-Bold')
-             .text(o.Titre ?? '—', cx, ty, { width: cellW, align: 'left', lineBreak: true, ellipsis: true, maxLines: 1 })
+          doc.fontSize(cols >= 8 ? 6 : 7.5).fillColor('#111111').font('Helvetica-Bold').text(o.Titre ?? '—', cx, ty, { width: cellW, align: 'left', lineBreak: true, ellipsis: true, maxLines: 1 })
           doc.font('Helvetica')
           ty += (cols >= 8 ? 8 : 10)
         }
         
-        // Extra meta lines
         doc.fontSize(cols >= 8 ? 5 : 6).fillColor('#666666')
         const metaLines: string[] = []
         if (f.year && o.Année) metaLines.push(o.Année.slice(0, 4))
-        
         const techPart = [f.technique && (o.Technique != null ? tM[o.Technique] : null), f.support && (o.Support != null ? sM[o.Support] : null)].filter(Boolean).join(', ')
         if (techPart) metaLines.push(techPart)
-        
         if (f.dims) {
           const d = o.Hauteur && o.Largeur ? `${o.Hauteur}×${o.Largeur} cm` : null
           if (d) metaLines.push(d)
@@ -743,37 +698,31 @@ async function buildPdf(
         if (col >= cols) {
           col = 0
           y += cellH + rowGap
-          // Crucial: Move the internal PDFKit cursor back to our manual Y to prevent 'ghosting'
           doc.y = y
         }
       }
-      // Advance y if last row was partial
-      if (col > 0) {
-        y += cellH + gap
-        doc.y = y
-      }
+      if (col > 0) { y += cellH + gap; doc.y = y }
 
     } else {
       // ── Cards layout ─────────────────────────────────────────
       const imgW       = cfg.imageSize === 'large' ? 200 : cfg.imageSize === 'small' ? 120 : 0
-      const imgH       = imgW // Square
+      const imgH       = imgW
       const perPage    = cfg.cardsPerPage ?? 1
       let   cardCount  = 0
 
       for (const o of oeuvres) {
-        // Force page break after N cards
-        if (cardCount > 0 && cardCount % perPage === 0) {
-          doc.addPage(); y = margin + 30
-        } else if (y > PH - margin - 60) {
-          doc.addPage(); y = margin + 30
+        // Robust card height estimation for page break
+        const estH = Math.max(imgH, 100) + 40
+        if ((cardCount > 0 && cardCount % perPage === 0) || (y + estH > PH - margin - 20)) {
+          doc.addPage(); y = margin + 40; cardCount = 0
         }
+
         const dims   = o.Hauteur && o.Largeur ? `${o.Hauteur} × ${o.Largeur}${o.Profondeur ? ` × ${o.Profondeur}` : ''} cm` : null
         const tech   = o.Technique != null ? tM[o.Technique] ?? '' : ''
         const supp   = o.Support   != null ? sM[o.Support]   ?? '' : ''
         const status = o.statusId  != null ? statusLabelMap[o.statusId] ?? '' : ''
         const price  = o.PrixFinal ?? o.Prix
 
-        // Image
         if (imgW > 0) {
           const imgSrc = imageMap.get(o.OeuvreID)
           if (imgSrc?.startsWith('data:')) {
@@ -788,76 +737,63 @@ async function buildPdf(
         const tw = usable - (imgW > 0 ? imgW + 16 : 0)
         let   ty = y
 
-        if (f.title) {
-          doc.fontSize(14).fillColor('#1a1a1a').text(o.Titre ?? 'Sans titre', tx, ty, { width: tw })
-          ty += 20
-        }
-        if (f.year && o.Année) {
-          doc.fontSize(9).fillColor('#666666').text(o.Année.slice(0, 4), tx, ty, { width: tw })
-          ty += 13
-        }
-        if (f.technique && tech) {
-          doc.fontSize(8).fillColor('#888888').text(tech + (supp ? `, ${supp}` : ''), tx, ty, { width: tw })
-          ty += 12
-        }
-        if (f.dims && dims) {
-          doc.fontSize(8).fillColor('#888888').text(dims, tx, ty, { width: tw })
-          ty += 12
-        }
-        if (f.price && price) {
-          doc.fontSize(9).fillColor('#444444').text(`€\u202f${price.toLocaleString('fr-FR')}`, tx, ty, { width: tw })
-          ty += 12
-        }
-        if (f.status && status) {
-          doc.fontSize(8).fillColor('#888888').text(status, tx, ty, { width: tw })
-          ty += 12
-        }
-        if (f.id) {
-          doc.fontSize(7).fillColor('#cccccc').text(`#${o.OeuvreID}`, tx, ty, { width: tw })
-          ty += 10
-        }
+        if (f.title) { doc.fontSize(14).fillColor('#1a1a1a').text(o.Titre ?? 'Sans titre', tx, ty, { width: tw }); ty += 20 }
+        if (f.year && o.Année) { doc.fontSize(9).fillColor('#666666').text(o.Année.slice(0, 4), tx, ty, { width: tw }); ty += 13 }
+        if (f.technique && tech) { doc.fontSize(8).fillColor('#888888').text(tech + (supp ? `, ${supp}` : ''), tx, ty, { width: tw }); ty += 12 }
+        if (f.dims && dims) { doc.fontSize(8).fillColor('#888888').text(dims, tx, ty, { width: tw }); ty += 12 }
+        if (f.price && price) { doc.fontSize(9).fillColor('#444444').text(`€\u202f${price.toLocaleString('fr-FR')}`, tx, ty, { width: tw }); ty += 12 }
+        if (f.status && status) { doc.fontSize(8).fillColor('#888888').text(status, tx, ty, { width: tw }); ty += 12 }
+        if (f.id) { doc.fontSize(7).fillColor('#cccccc').text(`#${o.OeuvreID}`, tx, ty, { width: tw }); ty += 10 }
 
-        const cardH = Math.max(ty - y, imgH) + 20
-        y += cardH
-        doc.moveTo(margin, y - 8).lineTo(margin + usable, y - 8).lineWidth(0.3).strokeColor('#eeeeee').stroke()
+        const actualCardH = Math.max(ty - y, imgH) + 24
+        y += actualCardH
+        doc.moveTo(margin, y - 12).lineTo(margin + usable, y - 12).lineWidth(0.3).strokeColor('#eeeeee').stroke()
         cardCount++
       }
     }
 
-    // ── Append index (grid + cards layouts) ─────────────────────
+    // ── Append index ─────────────────────
     if (cfg.appendList && cfg.layout !== 'list') {
       y += 20
-      if (y > PH - margin - 80) { doc.addPage(); y = margin + 30 }
-
+      if (y > PH - margin - 80) { doc.addPage(); y = margin + 40 }
       doc.moveTo(margin, y).lineTo(margin + usable, y).lineWidth(0.3).strokeColor('#dddddd').stroke()
       y += 14
-
-      doc.fontSize(7).fillColor('#aaaaaa').font('Helvetica')
-         .text('INDEX', margin, y, { characterSpacing: 2 })
+      doc.fontSize(7).fillColor('#aaaaaa').font('Helvetica').text('INDEX', margin, y, { characterSpacing: 2 })
       y += 16
-
-      // Three-column index: each column = ref(36) + title(rest)
-      const idxCols  = 3
-      const colW     = Math.floor(usable / idxCols)
-      const idxRefW  = 36
-      const idxTitW  = colW - idxRefW - 6
-      let   idxCol   = 0
-
+      const idxCols = 3, colW = Math.floor(usable / idxCols), idxRefW = 36, idxTitW = colW - idxRefW - 6
+      let idxCol = 0
       for (const o of oeuvres) {
-        if (y > PH - margin - 10 && idxCol === 0) { doc.addPage(); y = margin + 30 }
+        if (y > PH - margin - 20 && idxCol === 0) { doc.addPage(); y = margin + 40 }
         const ix = margin + idxCol * colW
-        doc.fontSize(7).fillColor('#bbbbbb').font('Courier')
-           .text('#' + o.OeuvreID, ix, y, { width: idxRefW, lineBreak: false })
-        doc.fontSize(7).fillColor('#333333').font('Helvetica')
-           .text(o.Titre ?? '—', ix + idxRefW + 4, y, { width: idxTitW, lineBreak: false, ellipsis: true })
+        doc.fontSize(7).fillColor('#bbbbbb').font('Courier').text('#' + o.OeuvreID, ix, y, { width: idxRefW, lineBreak: false })
+        doc.fontSize(7).fillColor('#333333').font('Helvetica').text(o.Titre ?? '—', ix + idxRefW + 4, y, { width: idxTitW, lineBreak: false, ellipsis: true })
         idxCol++
         if (idxCol >= idxCols) {
-          idxCol = 0
-          y += 10
+          idxCol = 0; y += 10
           doc.moveTo(margin, y - 1).lineTo(margin + usable, y - 1).lineWidth(0.2).strokeColor('#f0f0f0').stroke()
         }
       }
-      if (idxCol > 0) y += 10
+    }
+
+    // --- Global Headers & Footers (on all pages) ---
+    const pages = doc.bufferedPageRange()
+    for (let i = 0; i < pages.count; i++) {
+      doc.switchToPage(i)
+      
+      // Header
+      doc.fontSize(6).fillColor('#bbbbbb').text('PIERRE EMMANUEL MOULIN', margin, margin - 10, { characterSpacing: 1.5 })
+      let headY = margin - 2
+      if (cfg.exportTitle) {
+        doc.fontSize(16).fillColor('#111111').text(cfg.exportTitle, margin, headY, { lineGap: -4 })
+        headY += 20
+        doc.fontSize(6.5).fillColor('#aaaaaa').text(`SÉLECTION · ${oeuvres.length} ŒUVRES · PAGE ${i + 1} / ${pages.count}`, margin, headY, { characterSpacing: 0.8 })
+      } else {
+        doc.fontSize(8).fillColor('#111111').text(`SÉLECTION · ${oeuvres.length} ŒUVRES · PAGE ${i + 1} / ${pages.count}`, margin, headY, { characterSpacing: 0.8 })
+      }
+      doc.moveTo(margin, headY + 10).lineTo(margin + 40, headY + 10).lineWidth(0.5).strokeColor('#eeeeee').stroke()
+
+      doc.fontSize(6).fillColor('#ccc')
+         .text(`GÉNÉRÉ LE ${new Date().toLocaleDateString('fr-FR').toUpperCase()} · PIERREEMMANUELMOULIN.COM`, margin, PH - margin, { align: 'center', width: usable, characterSpacing: 1, lineBreak: false })
     }
 
     doc.end()

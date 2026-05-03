@@ -286,7 +286,7 @@ export function WorkForm({
 
     startTransition(async () => {
       const res = await action(fd)
-      if ('error' in res) alert(res.error)
+      if ('error' in res) alert("Erreur : " + res.error)
       else { router.push('/atelier'); router.refresh() }
     })
   }
@@ -295,7 +295,7 @@ export function WorkForm({
     if (!name) return
     const { createLookup } = await import('@/app/atelier/works/actions')
     const res = await createLookup(table, cap(name))
-    if ('error' in res) alert(res.error)
+    if ('error' in res) alert("Erreur : " + res.error)
     else {
         if (table === 'Technique') { setLocalTechniques(prev => [...prev, { TechniqueID: res.id, Technique: cap(name) }]); setTechniqueId(String(res.id)) }
         else if (table === 'Support') { setLocalSupports(prev => [...prev, { SupportID: res.id, Support: cap(name) }]); setSupportId(String(res.id)) }

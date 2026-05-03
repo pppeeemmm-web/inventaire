@@ -367,8 +367,8 @@ export function ContactsTab({ contacts: initialContacts, oeuvres }: Props) {
 
       setSelected(new Set())
       setBatchEditing(false)
-    } catch (e) {
-      alert(String(e))
+    } catch (err) {
+      alert("Error: " + (err instanceof Error ? err.message : String(err)))
     } finally {
       setBusy(false)
     }
@@ -380,7 +380,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres }: Props) {
     setBusy(true)
     const ids = Array.from(selected)
     const res = await deleteContacts(ids)
-    if ('error' in res) { alert(res.error); setBusy(false); return }
+    if ('error' in res) { alert("Erreur : " + res.error); setBusy(false); return }
     setContacts(prev => prev.filter(c => !selected.has(c.ContactID)))
     setSelected(new Set())
     if (activeId && selected.has(activeId)) setActiveId(null)
@@ -391,7 +391,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres }: Props) {
     if (!confirm('Supprimer ce contact ?')) return
     setBusy(true)
     const res = await deleteContacts([id])
-    if ('error' in res) { alert(res.error); setBusy(false); return }
+    if ('error' in res) { alert("Erreur : " + res.error); setBusy(false); return }
     setContacts(prev => prev.filter(c => c.ContactID !== id))
     if (activeId === id) setActiveId(null)
     setBusy(false)

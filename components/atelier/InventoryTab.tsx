@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
 import { imageUrl, thumbUrl, yearOf, statusOf, stageColor, type StatusKey } from '@/lib/data'
 import { StatusChip } from '@/components/ui/StatusChip'
+import { stringifyError } from '@/lib/error'
 import type { Oeuvre } from '@/lib/types/database'
 
 // ── Types ───────────────────────────────────────────────────────────
@@ -278,7 +279,7 @@ export function InventoryTab({
         map.get(OeuvreID)!.push(ThemeID)
       })
       setOeuvreThemeMap(map)
-    })
+    }).catch(err => console.error("Theme Map Error:", err))
     // Fetch Groups
     ;(sb.from('working_group_work') as any).select('oeuvre_id, group_id').range(0, 10000).then(({ data }: { data: { oeuvre_id: number; group_id: string }[] | null }) => {
       if (!data) return
@@ -288,7 +289,7 @@ export function InventoryTab({
         map.get(oeuvre_id)!.push(group_id)
       })
       setOeuvreGroupMap(map)
-    })
+    }).catch(err => console.error("Group Map Error:", err))
   }, [])
 
   const sortedThemes = useMemo(() => [...themes].sort((a, b) => a.Nom.localeCompare(b.Nom, 'fr')), [themes])
@@ -527,7 +528,7 @@ export function InventoryTab({
                 if (!confirm(`Confirmer la suppression de ${selection.size} œuvre(s) ?\nCette action est irréversible.`)) return
                 const { deleteSelectedWorks } = await import('@/app/atelier/works/actions')
                 const res = await deleteSelectedWorks(Array.from(selection))
-                if ('error' in res) alert(res.error)
+                if ('error' in res) alert(`Erreur : ${stringifyError(res.error)}`)
                 else { setSelection(new Set()); router.refresh() }
               }}
               className="btn sm"

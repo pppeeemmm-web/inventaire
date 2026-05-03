@@ -7,6 +7,7 @@
 import { useState, useTransition, useEffect } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { generateExport, type ExportConfig, type ExportFields } from '@/app/atelier/selection/actions'
+import { stringifyError } from '@/lib/error'
 import type { Oeuvre } from '@/lib/types/database'
 
 // ── Theme persistence ─────────────────────────────────────────────────────
@@ -168,7 +169,7 @@ export function ExportModal({ ids, oeuvres, tM, sM, statusLabelMap, onClose }: P
       try {
         const r = await generateExport(ids, cfg, tM, sM, statusLabelMap)
         setProgress('')
-        if ('error' in r) { setError(r.error); return }
+        if ('error' in r) { setError(stringifyError(r.error)); return }
 
         // Trigger download
         let content = r.content
@@ -187,7 +188,7 @@ export function ExportModal({ ids, oeuvres, tM, sM, statusLabelMap, onClose }: P
         }
       } catch (e) {
         setProgress('')
-        setError(String(e))
+        setError(stringifyError(e))
       }
     })
   }

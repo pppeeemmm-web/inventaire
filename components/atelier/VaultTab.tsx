@@ -9,6 +9,7 @@ import {
   uploadDocument, updateDocument, deleteDocument, getSignedUrl, generateCOA,
   type VaultDoc,
 } from '@/app/atelier/vault/actions'
+import { stringifyError } from '@/lib/error'
 import type { Oeuvre } from '@/lib/types/database'
 
 // ── Constants ─────────────────────────────────────────────────────────────
@@ -76,6 +77,8 @@ export function VaultTab({ oeuvres, tM }: Props) {
     setPreviewUrl(null)
     getSignedUrl(selected.storage_path).then((r) => {
       if ('url' in r) setPreviewUrl(r.url)
+    }).catch(err => {
+      console.error("Vault Preview Error:", err)
     })
   }, [selected])
 
@@ -281,7 +284,7 @@ export function VaultTab({ oeuvres, tM }: Props) {
                       setDocs(prev => prev.filter(d => d.id !== selected.id))
                       setSelected(null)
                     } else {
-                      alert(`Erreur : ${r.error}`)
+                      alert(`Erreur : ${stringifyError(r.error)}`)
                     }
                   })
                 }}
@@ -348,11 +351,15 @@ function DocActions({ doc, onDeleted }: { doc: VaultDoc; onDeleted: () => void }
   function handleDelete(e: React.MouseEvent) {
     e.stopPropagation()
     startDelete(async () => {
-      const r = await deleteDocument(doc.id, doc.storage_path)
-      if ('ok' in r) {
-        onDeleted()
-      } else {
-        alert(`Erreur lors de la suppression : ${r.error}`)
+      try {
+        const r = await deleteDocument(doc.id, doc.storage_path)
+        if ('ok' in r) {
+          onDeleted()
+        } else {
+          alert(`Erreur lors de la suppression : ${stringifyError(r.error)}`)
+        }
+      } catch (err) {
+        alert(`Erreur critique : ${stringifyError(err)}`)
       }
     })
   }
@@ -405,10 +412,10 @@ function UploadModal({
     startUpload(async () => {
       try {
         const r = await uploadDocument(fd)
-        if ('error' in r) { setError(r.error); return }
+        if ('error' in r) { setError(stringifyError(r.error)); return }
         onUploaded(r.doc)
       } catch (err) {
-        setError(String(err))
+        setError(stringifyError(err))
       }
     })
   }
@@ -543,10 +550,10 @@ function CoaModal({
     startGen(async () => {
       try {
         const r = await generateCOA(oeuvreId)
-        if ('error' in r) { setError(r.error); return }
+        if ('error' in r) { setError(stringifyError(r.error)); return }
         onGenerated(r.doc)
       } catch (e) {
-        setError(String(e))
+        setError(stringifyError(e))
       }
     })
   }
@@ -657,7 +664,7 @@ function EditModal({ doc, oeuvres, onClose, onUpdated }: { doc: VaultDoc; oeuvre
     startUpdate(async () => {
       const fd = new FormData(e.currentTarget)
       const res = await updateDocument(doc.id, fd)
-      if ('error' in res) setError(res.error)
+      if ('error' in res) setError(stringifyError(res.error))
       else onUpdated(res.doc)
     })
   }

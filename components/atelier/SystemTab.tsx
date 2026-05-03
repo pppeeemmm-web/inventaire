@@ -3,6 +3,7 @@
 import { useState, useEffect, useTransition } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { vaultStudioBible } from '@/app/atelier/vault/bible-action'
+import { stringifyError } from '@/lib/error'
 
 interface LogEntry {
   id: number
@@ -58,7 +59,7 @@ export function SystemTab() {
     startTransition(async () => {
       const res = await vaultStudioBible()
       if ('error' in res) {
-        alert(`Error: ${res.error}`)
+        alert(`Error: ${stringifyError(res.error)}`)
       } else {
         alert(`Success! Studio Bible vaulted as: ${res.filename}`)
         // Add a log entry for the update

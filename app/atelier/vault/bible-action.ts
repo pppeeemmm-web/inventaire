@@ -73,15 +73,12 @@ async function buildBiblePdf(): Promise<Buffer> {
     const text   = '#1a1a1d'
     const gray   = '#888888'
 
-    // ── Header ──────────────────────────────────────────────────
-    doc.fontSize(8).fillColor(gray).text('ATELIER PIERRE EMMANUEL MOULIN', 50, 40)
-    doc.text('SYSTEM DOCUMENTATION v1.0 — 2026', 50, 40, { align: 'right' })
-    
-    doc.moveTo(50, 55).lineTo(50 + W, 55).lineWidth(0.5).strokeColor('#e0e0e0').stroke()
+    // --- Content Generation ---
+    // Start after header space
+    let y = 100 
 
     // ── Title ───────────────────────────────────────────────────
-    doc.moveDown(3)
-    doc.fontSize(32).fillColor(text).text('The Studio Bible', { charSpacing: -1 })
+    doc.fontSize(32).fillColor(text).text('The Studio Bible', 50, y, { charSpacing: -1 })
     doc.fontSize(12).fillColor(gray).text('The Comprehensive Operating Manual for the PEM Hub Infrastructure.', { lineGap: 10 })
     
     doc.moveDown(2)
@@ -151,10 +148,17 @@ async function buildBiblePdf(): Promise<Buffer> {
     doc.fontSize(10).font('Helvetica-Bold').text('Stable Header Rule:').font('Helvetica')
     doc.text('The wordmark and navigation must remain static. No dynamic height shifts or sticky toolbars.', { lineGap: 4 })
 
-    // ── Footer ──────────────────────────────────────────────────
+    // ── Global Headers & Footers ────────────────────────────────
     const pages = doc.bufferedPageRange()
     for (let i = 0; i < pages.count; i++) {
       doc.switchToPage(i)
+      
+      // Header
+      doc.fontSize(8).fillColor(gray).text('ATELIER PIERRE EMMANUEL MOULIN', 50, 40)
+      doc.text('SYSTEM DOCUMENTATION v1.0 — 2026', 50, 40, { align: 'right' })
+      doc.moveTo(50, 55).lineTo(50 + W, 55).lineWidth(0.5).strokeColor('#e0e0e0').stroke()
+
+      // Footer
       doc.fontSize(8).fillColor(gray).text(
         `Confidential. Property of Atelier Pierre Emmanuel Moulin. Page ${i + 1} of ${pages.count}`,
         50, 780, { align: 'center' }

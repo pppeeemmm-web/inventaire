@@ -48,6 +48,7 @@ interface Props {
   statusLabelMap: Record<number, string>
   initialGroups:  { id: string; name: string }[]
   presentations:  { PresentationID: number; Nom: string | null }[]
+  exhibitions:   any[]
   // Optional — not yet passed from page.tsx; defaults to {} to avoid crash
   themeWorkCount?: Record<number, number>
   groupWorkCount?:  Record<string, number>
@@ -58,7 +59,7 @@ interface Props {
 
 export function TeamPortalClient({
   oeuvres, techniques, supports, formats, themes, contacts,
-  statusLabelMap, initialGroups, presentations,
+  statusLabelMap, initialGroups, presentations, exhibitions,
   themeWorkCount = {}, groupWorkCount = {},
   addresses = [],
 }: Props) {
@@ -96,6 +97,7 @@ export function TeamPortalClient({
       .select('id', { count: 'exact', head: true })
       .eq('lu', false)
       .then(({ count }: { count: number | null }) => setReminderCount(count ?? 0))
+      .catch(err => console.error("Reminder Poll Error:", err))
   }, [tab]) // refresh when tab changes
 
   useEffect(() => {
@@ -130,7 +132,7 @@ export function TeamPortalClient({
         map.get(OeuvreID)!.push(ThemeID)
       })
       setOeuvreThemeMap(map)
-    })
+    }).catch(err => console.error("Theme Map Error:", err))
     // Fetch Groups
     ;(sb.from('working_group_work') as any).select('oeuvre_id, group_id').range(0, 10000).then(({ data }: { data: { oeuvre_id: number; group_id: string }[] | null }) => {
       if (!data) return
@@ -140,7 +142,7 @@ export function TeamPortalClient({
         map.get(oeuvre_id)!.push(group_id)
       })
       setOeuvreGroupMap(map)
-    })
+    }).catch(err => console.error("Group Map Error:", err))
   }, [])
 
   useEffect(() => {
@@ -392,6 +394,7 @@ export function TeamPortalClient({
             oeuvres={oeuvres}
             statusLabelMap={statusLabelMap}
             contacts={contacts}
+            groups={groups}
             cM={cM}
             tM={tM}
           />
@@ -440,7 +443,7 @@ export function TeamPortalClient({
         )}
         {tab === 'pipeline' && (
           <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-            <PipelineTab />
+            <PipelineTab oeuvres={oeuvres} contacts={contacts} exhibitions={exhibitions} groups={groups} />
           </div>
         )}
         {tab === 'fiscal' && (
