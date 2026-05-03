@@ -14,7 +14,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="fr" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <head>
         {/* Self-host fonts in production — for now load from Google Fonts */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -36,7 +36,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body style={{ height: '100dvh', overflow: 'hidden' }} suppressHydrationWarning>
+      <body style={{ minHeight: '100dvh' }} suppressHydrationWarning>
         <I18nProvider>
           {children}
         </I18nProvider>

@@ -6,7 +6,7 @@ export type DictKey =
   | 'teamDesc' | 'clientsDesc' | 'galleriesDesc' | 'publicDesc'
   | 'overview' | 'inventory' | 'constellation' | 'production'
   | 'logistics' | 'sales' | 'exhibitions' | 'vault'
-  | 'works' | 'works_cap' | 'catalogued' | 'exposable'
+  | 'works' | 'works_cap' | 'catalogued' | 'exposable' | 'montee'
   | 'unpriced' | 'noImage' | 'thisYear' | 'wip' | 'consigned'
   | 'sold' | 'available' | 'totalValue' | 'atStudio' | 'onLoan'
   | 'allWorks' | 'recentlyAdded' | 'byTechnique' | 'bySupport'
@@ -43,6 +43,15 @@ export type DictKey =
   | 'batchEdit' | 'onlyChangedUpdated' | 'modifyAtLeastOne' | 'modifying' | 'applyTo'
   | 'unchanged' | 'removeStatus' | 'remove' | 'yes' | 'no' | 'selectionUpdated'
   | 'themesBatchHelp' | 'notesBatchPlaceholder' | 'attributes'
+  | 'exportTitlePlaceholder' | 'appendIndex'
+  // ── Public site ────────────────────────────────────────────────────────
+  | 'pub_works' | 'pub_about' | 'pub_practice' | 'pub_enquiry' | 'pub_portfolio'
+  | 'pub_biography' | 'pub_exhibitions_selected' | 'pub_education' | 'pub_contact'
+  | 'pub_approach' | 'pub_central_themes' | 'pub_media_materials'
+  | 'pub_no_collections' | 'pub_collection_in_progress' | 'pub_untitled'
+  | 'pub_name' | 'pub_email' | 'pub_message' | 'pub_send' | 'pub_sending'
+  | 'pub_back' | 'pub_thank_you'
+  | 'pub_read_statement' | 'pub_download_cv'
 
 type Dictionary = Record<DictKey, string>
 
@@ -62,7 +71,7 @@ export const dict: Record<Lang, Dictionary> = {
     logistics: 'Logistique', sales: 'Ventes',
     exhibitions: 'Expositions', vault: 'Coffre',
     works: 'oeuvres', works_cap: 'Oeuvres', catalogued: 'cataloguées',
-    exposable: 'exposables', unpriced: 'sans prix', noImage: 'sans image',
+    exposable: 'exposables', montee: 'Montée', unpriced: 'sans prix', noImage: 'sans image',
     thisYear: 'cette année', wip: 'en production',
     consigned: 'en consignation', sold: 'vendues',
     available: 'disponibles', totalValue: 'valeur totale',
@@ -76,7 +85,6 @@ export const dict: Record<Lang, Dictionary> = {
     upcomingShipments: 'Envois à venir', activity: 'Activité',
     notes: 'Notes', seeAll: 'Tout voir', close: 'Fermer',
     back: 'Retour', details: 'Détails', cancel: 'Annuler', delete: 'Supprimer',
-    status_reserved: 'Réservé', status_private: 'Privé', status_available: 'Disponible',
     stage_idea: 'Idée', stage_sketch: 'Esquisse', stage_wip: 'En cours',
     stage_drying: 'Séchage', stage_framing: 'À encadrer',
     stage_shot: 'Photo', stage_catalogued: 'Fini',
@@ -125,6 +133,7 @@ export const dict: Record<Lang, Dictionary> = {
     history: 'Historique', save: 'Enregistrer', create: 'Créer',
     priced: 'Évalué', date: 'Date', label: 'Libellé',
     selection: 'SÉLECTION', modify: 'MODIFIER', export: 'EXPORTER',
+    compare: 'COMPARER', groupNamePlaceholder: 'Nom du groupe…', clear: 'Effacer',
     legend: 'LÉGENDE', stage_mounting: 'À monter',
     batchEdit: 'Modification en lot', onlyChangedUpdated: 'Seuls les champs modifiés seront mis à jour.',
     modifyAtLeastOne: 'Modifiez au moins un champ pour appliquer.', modifying: 'Modification',
@@ -132,6 +141,23 @@ export const dict: Record<Lang, Dictionary> = {
     remove: 'Retirer', yes: 'Oui', no: 'Non', selectionUpdated: 'Sélection mise à jour',
     themesBatchHelp: 'Clic gauche pour ajouter un thème, clic droit pour retirer.',
     notesBatchPlaceholder: 'Écraser les commentaires existants par...',
+    exportTitlePlaceholder: 'Titre du document…',
+    appendIndex: 'Ajouter index en fin de document',
+    // Public site
+    pub_works: 'Works', pub_about: 'About', pub_practice: 'Practice',
+    pub_enquiry: 'Enquiry', pub_portfolio: 'Portfolio',
+    pub_biography: 'Biographie', pub_exhibitions_selected: 'Expositions & sélections',
+    pub_education: 'Formation', pub_contact: 'Contact',
+    pub_approach: 'Approche', pub_central_themes: 'Thèmes centraux',
+    pub_media_materials: 'Médiums & matériaux',
+    pub_no_collections: 'Aucune collection configurée.',
+    pub_collection_in_progress: 'Collection en cours',
+    pub_untitled: 'Sans titre',
+    pub_name: 'Nom', pub_email: 'Email', pub_message: 'Message',
+    pub_send: 'Envoyer', pub_sending: 'Envoi…',
+    pub_back: 'Retour', pub_thank_you: 'Merci. Votre message a bien été reçu. Nous vous répondrons prochainement.',
+    pub_read_statement: 'Lire la démarche artistique (PDF)',
+    pub_download_cv: 'Télécharger CV (PDF)',
   },
   en: {
     hub: 'Studio', tagline: 'Inventory · Production · Curation · Relations',
@@ -147,7 +173,7 @@ export const dict: Record<Lang, Dictionary> = {
     logistics: 'Logistics', sales: 'Sales',
     exhibitions: 'Exhibitions', vault: 'Vault',
     works: 'works', works_cap: 'Works', catalogued: 'catalogued',
-    exposable: 'exhibitable', unpriced: 'unpriced', noImage: 'no image',
+    exposable: 'exhibitable', montee: 'Mounted', unpriced: 'unpriced', noImage: 'no image',
     thisYear: 'this year', wip: 'in production',
     consigned: 'on consignment', sold: 'sold',
     available: 'available', totalValue: 'total value',
@@ -205,7 +231,11 @@ export const dict: Record<Lang, Dictionary> = {
     attributes: 'Attributes',
     searchFieldAll: 'All', searchFieldName: 'Name', searchFieldCity: 'City',
     searchFieldEmail: 'Email', searchFieldNotes: 'Notes',
+    identity: 'Identity', depth: 'Depth', visibility: 'Visibility',
+    history: 'History', save: 'Save', create: 'Create',
+    priced: 'Priced', date: 'Date', label: 'Label',
     selection: 'SELECTION', modify: 'MODIFY', export: 'EXPORT',
+    compare: 'COMPARE', groupNamePlaceholder: 'Group name…', clear: 'Clear',
     legend: 'LEGEND', stage_mounting: 'To mount',
     batchEdit: 'Batch Edit', onlyChangedUpdated: 'Only modified fields will be updated.',
     modifyAtLeastOne: 'Modify at least one field to apply.', modifying: 'Modifying',
@@ -213,5 +243,22 @@ export const dict: Record<Lang, Dictionary> = {
     remove: 'Remove', yes: 'Yes', no: 'No', selectionUpdated: 'Selection updated',
     themesBatchHelp: 'Left click to add theme, right click to remove.',
     notesBatchPlaceholder: 'Overwrite existing comments with...',
+    exportTitlePlaceholder: 'Document title…',
+    appendIndex: 'Append index at end of document',
+    // Public site
+    pub_works: 'Works', pub_about: 'About', pub_practice: 'Practice',
+    pub_enquiry: 'Enquiry', pub_portfolio: 'Portfolio',
+    pub_biography: 'Biography', pub_exhibitions_selected: 'Exhibitions & selected',
+    pub_education: 'Education', pub_contact: 'Contact',
+    pub_approach: 'Approach', pub_central_themes: 'Central themes',
+    pub_media_materials: 'Media & materials',
+    pub_no_collections: 'No collections configured.',
+    pub_collection_in_progress: 'Collection in progress',
+    pub_untitled: 'Untitled',
+    pub_name: 'Name', pub_email: 'Email', pub_message: 'Message',
+    pub_send: 'Send', pub_sending: 'Sending…',
+    pub_back: 'Back', pub_thank_you: 'Thank you. Your message has been received. We will be in touch shortly.',
+    pub_read_statement: 'Read Artist Statement (PDF)',
+    pub_download_cv: 'Download CV (PDF)',
   },
 }

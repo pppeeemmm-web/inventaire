@@ -103,7 +103,7 @@ export function SalesTab({ oeuvres, statusLabelMap, contacts, groups, cM, tM }: 
   const availableWorks = useMemo(() =>
     oeuvres.filter((o) => {
       const k = statusOf(o, statusLabelMap)
-      return k !== 'sold' && k !== 'gift' && k !== 'destroyed' && k !== 'lost'
+      return k !== 'sold' && k !== 'gift' && k !== 'artist_archive' && k !== 'private_archive'
     }).sort((a, b) => b.OeuvreID - a.OeuvreID),
     [oeuvres, statusLabelMap],
   )

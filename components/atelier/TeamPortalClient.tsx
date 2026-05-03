@@ -609,7 +609,7 @@ function OverviewTab({
   const missingLoc    = oeuvres.filter(o => !o.LocalisationID).length
 
   // New: Production Summary (Simplified)
-  const inProgress = oeuvres.filter(o => o.statusId === 1 || o.StageProduction?.toLowerCase().includes('cours')).length
+  const inProgress = oeuvres.filter(o => o.statusId === 1).length
   const ready      = oeuvres.filter(o => o.statusId === 2 || o.Exposable).length
 
   // Upcoming deadlines from pipeline
@@ -947,7 +947,7 @@ function CompareModal({ ids, oeuvres, tM, sM, contacts, addresses, statusLabelMa
     { l: t('depth'),       k: (o: any) => o.Profondeur ? `${o.Profondeur} cm` : '—' },
     { l: t('tirage'),      k: (o: any) => o.Tirage || '—' },
     { l: t('status'),      k: (o: any) => o.statusId != null ? statusLabelMap[o.statusId] : '—' },
-    { l: t('production'),  k: (o: any) => o.StageProduction || '—' },
+    { l: t('status'),      k: (o: any) => o.statusId != null ? (statusLabelMap[o.statusId] ?? '—') : '—' },
     { l: t('contact'),     k: (o: any) => contactName(o.ContactID) },
     { l: t('location'),    k: (o: any) => resolveLocation(o.LocalisationID) },
     { l: t('price'),       k: (o: any) => o.Prix ? `€ ${Number(o.Prix).toLocaleString('fr-FR')}` : '—' },

@@ -3,7 +3,7 @@
 // VaultTab — document vault with upload, preview, search/filter, and COA generation.
 // Fetches documents client-side (dynamic content, team-auth required).
 
-import { useState, useEffect, useRef, useTransition, useCallback } from 'react'
+import { useState, useEffect, useRef, useTransition, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
   uploadDocument, updateDocument, deleteDocument, getSignedUrl, generateCOA,
@@ -318,15 +318,25 @@ export function VaultTab({ oeuvres, tM }: Props) {
               <Row label="Taille" value={formatSize(selected.file_size)} />
             )}
             <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-              <button 
-                className="btn sm" 
+              {previewUrl && (
+                <button
+                  className="btn sm"
+                  style={{ flex: 1, background: 'var(--bg2)', color: 'var(--tx1)' }}
+                  onClick={() => window.open(previewUrl, '_blank')}
+                  title="Ouvrir dans un nouvel onglet pour imprimer ou partager"
+                >
+                  ↗ Ouvrir
+                </button>
+              )}
+              <button
+                className="btn sm"
                 style={{ flex: 1, background: 'var(--bg2)', color: 'var(--tx1)' }}
                 onClick={() => { setEditingDoc(selected); setShowEdit(true); }}
               >
                 Modifier
               </button>
-              <button 
-                className="btn sm" 
+              <button
+                className="btn sm"
                 style={{ flex: 1, background: '#442222', color: '#ff8888' }}
                 onClick={() => {
                   if (!confirm('Supprimer ce document ?')) return

@@ -246,16 +246,25 @@ export async function generateCOA(oeuvreId: number): Promise<CoaResult> {
   const hashData = `${certId}|${oeuvreId}|${o.Titre ?? ''}|${o.Année ?? ''}|${techLabel}|${dims ?? ''}`
   const certHash = createHash('sha256').update(hashData).digest('hex')
 
-  // Fetch work image if available
+  // Fetch work image and convert to JPEG (pdfkit only handles JPEG/PNG/GIF, not AVIF/WebP)
   let imageBuffer: Buffer | null = null
   if (o.txtImageNameLink) {
     try {
-      const R2   = process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? ''
-      const STR  = R2
-      const imgUrl = `${STR}/${encodeURIComponent(o.txtImageNameLink)}`
-      const res = await fetch(imgUrl)
-      if (res.ok) imageBuffer = Buffer.from(await res.arrayBuffer())
-    } catch { /* skip image on error */ }
+      const base   = (process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? '').replace(/\/$/, '')
+      const imgPath = o.txtImageNameLink.split('/').map(encodeURIComponent).join('/')
+      const imgUrl  = `${base}/${imgPath}`
+      const res = await fetch(imgUrl, { signal: AbortSignal.timeout(8000) })
+      if (res.ok) {
+        const raw = Buffer.from(await res.arrayBuffer())
+        // Convert any format (AVIF, WebP, etc.) to JPEG for pdfkit compatibility
+        const sharp = (await import('sharp')).default
+        imageBuffer = await sharp(raw).jpeg({ quality: 85 }).toBuffer()
+      } else {
+        console.warn(`COA image fetch failed: ${res.status} ${imgUrl}`)
+      }
+    } catch (e) {
+      console.warn(`COA image fetch/convert error: ${e}`)
+    }
   }
 
   // Build PDF
@@ -324,6 +333,10 @@ async function buildCoaPdf(data: CoaData): Promise<Buffer> {
 
   const { certId, certHash, imageBuffer, titre, année, technique, support, dims } = data
 
+  // Generate QR code synchronously BEFORE opening the PDF stream
+  const qrText = `https://pem.studio/verify/${certId}`
+  const qrBuf: Buffer = await QRCode.toBuffer(qrText, { type: 'png', width: 72, margin: 1 })
+
   return new Promise((resolve, reject) => {
     const doc    = new PDFDocument({ size: 'A4', margin: 60 })
     const chunks: Buffer[] = []
@@ -331,7 +344,7 @@ async function buildCoaPdf(data: CoaData): Promise<Buffer> {
     doc.on('end',   () => resolve(Buffer.concat(chunks)))
     doc.on('error', reject)
 
-    const W   = 595 - 120  // usable width
+    const W   = 595 - 120  // usable width (A4 = 595pt, margins 60 each side)
     const col = 60          // left margin
 
     // ── Header ──────────────────────────────────────────────────
@@ -343,36 +356,34 @@ async function buildCoaPdf(data: CoaData): Promise<Buffer> {
 
     doc.moveTo(col, 110).lineTo(col + W, 110).lineWidth(0.5).strokeColor('#cccccc').stroke()
 
-    // ── Work image ───────────────────────────────────────────────
-    let y = 126
+    let y = 124
+
+    // ── Work image — full-width top ──────────────────────────────
     if (imageBuffer) {
       try {
-        const imgW = 200, imgH = 150
-        doc.image(imageBuffer, col, y, { fit: [imgW, imgH] })
-        // metadata beside image
-        doc.fontSize(18).fillColor('#1a1a1a')
-           .text(titre, col + imgW + 20, y, { width: W - imgW - 20 })
-        y += 4
-        doc.fontSize(10).fillColor('#555555')
-           .text(année, col + imgW + 20, y + 28, { width: W - imgW - 20 })
-        if (technique) {
-          doc.fontSize(9).fillColor('#888888')
-             .text(technique + (support ? `, ${support}` : ''), col + imgW + 20, y + 46, { width: W - imgW - 20 })
-        }
-        if (dims) {
-          doc.fontSize(9).fillColor('#888888')
-             .text(dims, col + imgW + 20, y + 62, { width: W - imgW - 20 })
-        }
-        y += imgH + 24
-      } catch { y += 4 }
+        // Cap at 200pt tall to leave room for all content on one A4 page
+        const maxW = W, maxH = 200
+        doc.image(imageBuffer, col, y, { fit: [maxW, maxH], align: 'center' })
+        y += maxH + 14
+      } catch (e) {
+        console.warn('COA image embed failed:', e)
+      }
+    }
+
+    // ── Work metadata ────────────────────────────────────────────
+    doc.fontSize(18).fillColor('#1a1a1a').text(titre, col, y, { width: W })
+    y += 28
+
+    const metaParts: string[] = []
+    if (année)     metaParts.push(année)
+    if (technique) metaParts.push(technique + (support ? `, ${support}` : ''))
+    if (dims)      metaParts.push(dims)
+
+    if (metaParts.length) {
+      doc.fontSize(10).fillColor('#666666').text(metaParts.join('  ·  '), col, y, { width: W })
+      y += 18 + 16
     } else {
-      doc.fontSize(18).fillColor('#1a1a1a').text(titre, col, y)
-      y += 30
-      doc.fontSize(10).fillColor('#555555').text(année, col, y)
-      y += 20
-      if (technique) { doc.fontSize(9).fillColor('#888888').text(technique, col, y); y += 16 }
-      if (dims)      { doc.fontSize(9).fillColor('#888888').text(dims, col, y);      y += 16 }
-      y += 10
+      y += 16
     }
 
     doc.moveTo(col, y).lineTo(col + W, y).lineWidth(0.5).strokeColor('#e0e0e0').stroke()
@@ -389,7 +400,7 @@ async function buildCoaPdf(data: CoaData): Promise<Buffer> {
 
     // ── Signature block ───────────────────────────────────────────
     const today = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
-    doc.fontSize(9).fillColor('#888888').text('Paris, ' + today, col, y)
+    doc.fontSize(9).fillColor('#888888').text('Marseille, ' + today, col, y)
     y += 30
     doc.moveTo(col, y).lineTo(col + 160, y).lineWidth(0.5).strokeColor('#bbbbbb').stroke()
     y += 8
@@ -412,23 +423,21 @@ async function buildCoaPdf(data: CoaData): Promise<Buffer> {
     doc.fontSize(7).fillColor('#555555').font('Courier')
        .text(certHash, col, y, { width: W - 90, lineGap: 2 })
 
-    // ── QR code (verification) ────────────────────────────────────
-    const qrText = `https://pem.studio/verify/${certId}`
-    QRCode.toBuffer(qrText, { type: 'png', width: 72, margin: 1 })
-      .then((qrBuf: Buffer) => {
-        try { doc.image(qrBuf, col + W - 72, y - 14, { width: 72 }) } catch {}
-        doc.fontSize(6).fillColor('#aaaaaa').font('Helvetica')
-           .text('Vérification', col + W - 72, y + 60, { width: 72, align: 'center' })
+    // ── QR code — synchronous, buffer pre-generated above ────────
+    try { doc.image(qrBuf, col + W - 72, y - 14, { width: 72 }) } catch {}
+    doc.fontSize(6).fillColor('#aaaaaa').font('Helvetica')
+       .text('Vérification', col + W - 72, y + 60, { width: 72, align: 'center', lineBreak: false })
 
-        // footer rule
-        doc.moveTo(col, 780).lineTo(col + W, 780).lineWidth(0.3).strokeColor('#e0e0e0').stroke()
-        doc.fontSize(7).fillColor('#cccccc').font('Helvetica')
-           .text('Ce document est un certificat d\'authenticité officiel. Toute falsification est un délit.', col, 788, { width: W, align: 'center' })
+    // ── Footer — drawn last, anchored to bottom of page ───────────
+    const pageH   = 842
+    const footerY = pageH - 54
+    doc.moveTo(col, footerY).lineTo(col + W, footerY).lineWidth(0.3).strokeColor('#e0e0e0').stroke()
+    doc.fontSize(7).fillColor('#cccccc').font('Helvetica')
+       .text(
+         'Ce document est un certificat d\'authenticité officiel. Toute falsification est un délit.',
+         col, footerY + 6, { width: W, align: 'center', lineBreak: false }
+       )
 
-        doc.end()
-      })
-      .catch(() => {
-        doc.end()
-      })
+    doc.end()
   })
 }

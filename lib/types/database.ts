@@ -6,15 +6,15 @@ export interface Oeuvre {
   Dimensions: string | null;
   Statut: string | null;
   statusId: number | null;
-  commercial_status: 'available' | 'reserved' | 'private' | null;
   Catalogué: boolean;
-  StageProduction: string | null;
-  Prix: number | null;
-  ImageURL: string | null;
   NeedsPhotograph?: boolean;
   txtImageNameLink?: string | null;
   ContactID?: number | null;
   LocalisationID?: number | null;
+  Prix: number | null;
+  ImageURL: string | null;
+  // Kept in DB for historical reference, not used by app logic:
+  // commercial_status, StageProduction
 }
 
 export interface Contact {
@@ -33,4 +33,13 @@ export interface Exhibition {
   date_debut: string | null;
   date_fin: string | null;
   contact_id: number | null;
+}
+
+export interface WorkImage {
+  ImageID: number;
+  OeuvreID: number;
+  txtImageNameLink: string | null;
+  txtImageName: string | null;
+  SeqNo: number | null;
+  DateAdded: string | null;
 }

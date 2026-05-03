@@ -38,98 +38,110 @@ export function decadeOf(year: number | null): string | null {
   return `${Math.floor(year / 10) * 10}s`
 }
 
-// ── Stage production color ─────────────────────────────────────
-
-export type StageKey = 'idea' | 'wip' | 'drying' | 'mounting' | 'framing' | 'shot' | 'catalogued'
-
-/** Returns a CSS color var string for a StageProduction value */
-export function stageColor(stage: string | null | undefined): string {
-  switch (stage) {
-    case 'idea':      return 'var(--ac)'
-    case 'sketch':    return 'var(--rust)'
-    case 'wip':       return 'var(--rust)'
-    case 'drying':    return 'var(--dust)'
-    case 'mounting':  return 'var(--dust)'
-    case 'framing':   return 'var(--dust)'
-    case 'shot':      return 'var(--cyan)'
-    case 'catalogued':return 'var(--sage)'
-    default:          return 'var(--tx3)'
-  }
-}
-
 // ── Status helpers ────────────────────────────────────────────
 
+/**
+ * Canonical work state.
+ *
+ * Production states (derived from booleans when statusId resolves to en_production/available):
+ *   en_production  — Catalogué=false  OR  Catalogué=true + NeedsPhotograph=true
+ *   available      — Catalogué=true + NeedsPhotograph=false
+ *
+ * Ownership / flow states (from statusId → OeuvreStatus.label):
+ *   reserved        — pending sale, manual assignment only
+ *   consigned       — at gallery, no ownership transfer
+ *   loan            — at institution, no ownership transfer
+ *   sold            — ownership transferred
+ *   gift            — ownership transferred, no payment
+ *   artist_archive  — withdrawn from circulation (Pem retains)
+ *   private_archive — withdrawn, private collection
+ */
 export type StatusKey =
-  | 'studio' | 'consigned' | 'sold' | 'loan' | 'wip' | 'destroyed' | 'lost' | 'gift'
+  | 'en_production'
+  | 'available'
+  | 'reserved'
+  | 'consigned'
+  | 'loan'
+  | 'sold'
+  | 'gift'
+  | 'artist_archive'
+  | 'private_archive'
 
-/** Map OeuvreStatus.label → our canonical key */
+/** Map OeuvreStatus.label → canonical StatusKey */
 const STATUS_LABEL_MAP: Record<string, StatusKey> = {
-  WIP:        'wip',
-  Available:  'studio',
-  Borrowed:   'loan',
-  Sold:       'sold',
-  Consigned:  'consigned',
-  Loan:       'loan',
-  Destroyed:  'destroyed',
-  Lost:       'lost',
-  Gift:       'gift',
+  'En production':   'en_production',
+  'Disponible':      'available',
+  'Réservé':         'reserved',
+  'Archive artiste': 'artist_archive',
+  'Archive privée':  'private_archive',
+  'Vendu':           'sold',
+  'Sold':            'sold',
+  'Consigné':        'consigned',
+  'Consigned':       'consigned',
+  'Prêt':            'loan',
+  'Loan':            'loan',
+  'Borrowed':        'loan',
+  'Gift':            'gift',
+  'Don':             'gift',
 }
 
 export function statusKeyFromLabel(label: string | null | undefined): StatusKey {
-  if (!label) return 'studio'
-  return STATUS_LABEL_MAP[label] ?? 'studio'
+  if (!label) return 'en_production'
+  return STATUS_LABEL_MAP[label] ?? 'en_production'
 }
 
 /**
  * Resolve the StatusKey for a work.
- * Checks statusId against the OeuvreStatus table first, falls back to hash.
- * Also enforces the "Physical Reality" by checking LocalisationID.
+ * Reads statusId against OeuvreStatus first.
+ * Falls back to deriving from Catalogué + NeedsPhotograph booleans.
  */
 export function statusOf(
   o: any,
-  statusLabelMap: Record<number, string>,
+  statusLabelMap: Record<number, string> = {},
 ): StatusKey {
-  let key: StatusKey = 'studio'
-
   if (o.statusId !== null && o.statusId !== undefined) {
     const label = statusLabelMap[o.statusId]
-    if (label) key = statusKeyFromLabel(label)
-  } else if (o.OeuvreID) {
-    key = fallbackStatus(o.OeuvreID)
+    if (label) return statusKeyFromLabel(label)
   }
+  // Boolean fallback when statusId is missing or unmapped
+  if (!o.Catalogué) return 'en_production'
+  if (o.NeedsPhotograph) return 'en_production'
+  return 'available'
+}
 
-  // TRUTH ENFORCEMENT: If the physical location is not the studio (ID 13), 
-  // it is effectively a "Loan" or "Consignment" state.
-  const locId = o.LocalisationID
-  const isStudio = locId === null || locId === 13 || locId === '13'
-  
-  if (key === 'studio' && !isStudio) {
-    return 'loan'
+/** Color for a StatusKey — used for row/grid tinting in InventoryTab */
+export function statusColor(key: StatusKey): string {
+  switch (key) {
+    case 'en_production':   return 'var(--rust)'
+    case 'available':       return 'var(--sage)'
+    case 'reserved':        return 'var(--dust)'
+    case 'consigned':       return 'var(--dust)'
+    case 'loan':            return 'var(--cyan)'
+    case 'sold':            return 'transparent'
+    case 'gift':            return 'transparent'
+    case 'artist_archive':  return 'var(--mt)'
+    case 'private_archive': return 'var(--mt)'
+    default:                return 'var(--tx3)'
   }
-
-  return key
 }
 
-/** 
- * Resolve the commercial state (Lock) for a work.
- * Independent of the logistics status.
- */
-export function commercialStatusOf(o: any): 'available' | 'reserved' | 'private' {
-  return (o as any).commercial_status || 'available'
-}
+// ── Stage production color (kept for constellation/sort, not for chips) ──────
 
-/** Deterministic fallback when statusId is null (matches prototype heuristic) */
-const STATUSES: StatusKey[] = [
-  'studio', 'studio', 'studio', 'studio',
-  'consigned', 'consigned', 'sold', 'loan', 'wip',
-]
+export type StageKey = 'idea' | 'wip' | 'drying' | 'mounting' | 'framing' | 'shot' | 'catalogued'
 
-export function hashId(id: number): number {
-  return Math.abs((id * 2654435761) % 2147483647)
-}
-
-export function fallbackStatus(oeuvreId: number): StatusKey {
-  return STATUSES[hashId(oeuvreId) % STATUSES.length]
+/** Returns a CSS color var string for a legacy StageProduction value */
+export function stageColor(stage: string | null | undefined): string {
+  switch (stage) {
+    case 'idea':       return 'var(--ac)'
+    case 'sketch':     return 'var(--rust)'
+    case 'wip':        return 'var(--rust)'
+    case 'drying':     return 'var(--dust)'
+    case 'mounting':   return 'var(--dust)'
+    case 'framing':    return 'var(--dust)'
+    case 'shot':       return 'var(--cyan)'
+    case 'catalogued': return 'var(--sage)'
+    default:           return 'var(--tx3)'
+  }
 }
 
 // ── Image filename helpers ────────────────────────────────────
@@ -162,7 +174,7 @@ export function seqFromFilename(filename: string | null | undefined): number {
   return m ? parseInt(m[1], 10) : 1
 }
 
-// ── Production stage helpers ──────────────────────────────────
+// ── Production stage helpers (legacy — kept for constellation/sort) ───────────
 
 export type StageProductionKey =
   | 'stage_idea' | 'stage_sketch' | 'stage_wip'
@@ -174,29 +186,18 @@ export const STAGES: StageProductionKey[] = [
 ]
 
 /**
- * Infer the production stage of a work from real DB fields.
- * Priority: Catalogué > has image > framed > WIP status > hash fallback.
+ * Infer a legacy production stage from DB fields.
+ * Used only for constellation layout and sort — not for UI chips.
  */
 export function stageOf(
   o: { Catalogué?: boolean | null; txtImageNameLink?: string | null; Encadree?: boolean | null; statusId?: number | null; NeedsPhotograph?: boolean | null },
-  statusLabelMap: Record<number, string> = {},
+  _statusLabelMap: Record<number, string> = {},
 ): StageProductionKey {
   if (o.NeedsPhotograph) return 'stage_shot'
   if (o.Catalogué) return 'stage_catalogued'
   if (o.txtImageNameLink) return 'stage_shot'
   if (o.Encadree) return 'stage_framing'
-  if (o.statusId !== null && o.statusId !== undefined) {
-    const label = statusLabelMap[o.statusId]
-    if (label === 'WIP') return 'stage_wip'
-  }
-  // Deterministic fallback over the early stages (idea / sketch / drying)
-  const h = hashId(
-    typeof (o as { OeuvreID?: number }).OeuvreID === 'number'
-      ? (o as { OeuvreID: number }).OeuvreID
-      : 0,
-  )
-  const earlyStages: StageProductionKey[] = ['stage_idea', 'stage_sketch', 'stage_drying']
-  return earlyStages[h % earlyStages.length]
+  return 'stage_wip'
 }
 
 // ── Constellation coordinate helpers ─────────────────────────
@@ -204,9 +205,6 @@ export function stageOf(
 /**
  * Compute deterministic SVG x/y for a work given the year range
  * and the ordered list of technique IDs.
- *
- * x = (year - minYear) * xScale
- * y = techniqueIndex * rowHeight
  */
 export function constellationCoords(
   year: number,
@@ -226,6 +224,7 @@ export function techniqueColor(techniqueId: number): string {
   const hue = (techniqueId * 47) % 360
   return `hsl(${hue}, 40%, 55%)`
 }
+
 /** Types of suivi_process that are allowed to have an exhibition layout/floorplan */
 export const EXHIBITION_READY_TYPES = [
   'salon',

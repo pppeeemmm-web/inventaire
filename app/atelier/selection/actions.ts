@@ -40,7 +40,6 @@ export interface BatchChanges {
   is_gift?:           boolean
   is_paid?:           boolean
   NeedsPhotograph?:   boolean
-  StageProduction?:   string | null
 }
 
 
@@ -121,31 +120,6 @@ export async function batchEdit(ids: number[], changes: BatchChanges): Promise<B
   if (changes.is_gift           !== undefined) update.is_gift           = changes.is_gift
   if (changes.is_paid           !== undefined) update.is_paid           = changes.is_paid
   if (changes.NeedsPhotograph   !== undefined) update.NeedsPhotograph   = changes.NeedsPhotograph
-  if (changes.StageProduction   !== undefined) update.StageProduction   = changes.StageProduction
-
-  // ── FORCE FIELD ENFORCEMENT ──
-  // 1. Archive logic (Sold / Consigned / Gift)
-  if (changes.statusId !== undefined) {
-    const s = changes.statusId
-    if ([6, 7, 11].includes(s ?? 0)) {
-      update.StageProduction = 'archive'
-    } else if (s === 2) {
-      update.StageProduction = 'available'
-    }
-  }
-
-  // 2. Production Lock (Catalogued / NeedsPhotograph)
-  // If we are explicitly setting these in batch, we force the resulting state
-  if (changes['Catalogué'] === false || changes.NeedsPhotograph === true) {
-    update.commercial_status = 'private'
-    update.LocalisationID    = 13
-    update.StageProduction   = changes.NeedsPhotograph ? 'shot' : 'wip'
-  } else if (changes['Catalogué'] === true) {
-    // If marking as catalogued, move to available stage
-    update.StageProduction = 'available'
-    // Also unlock commercial status if it was private (heuristic)
-    update.commercial_status = 'available'
-  }
 
   const hasScalarChanges  = Object.keys(update).length > 0
   const hasThemeChanges   = (changes.addThemeIds?.length ?? 0) > 0 || (changes.removeThemeIds?.length ?? 0) > 0

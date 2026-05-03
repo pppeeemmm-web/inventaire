@@ -58,7 +58,6 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
   const [discount,          setDiscount]         = useState('')
   const [annee,             setAnnee]            = useState('')
   const [locDetail,         setLocDetail]        = useState('')
-  const [stageProduction,   setStageProduction]  = useState('')
   const [commentaires,      setCommentaires]     = useState('')
   const [historiqueAppend,  setHistoriqueAppend]  = useState('')
 
@@ -123,7 +122,7 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
 
   const changed = (
     statusId !== '' || technique !== '' || support !== '' || format !== '' ||
-    contactId !== '' || prix !== '' || discount !== '' || stageProduction !== '' ||
+    contactId !== '' || prix !== '' || discount !== '' ||
     annee !== '' || locDetail !== '' || commentaires !== '' ||
     exposable !== null || montee !== null || encadree !== null || catalogued !== null ||
     isPublic !== null || isCommission !== null || isGift !== null || isPaid !== null || needsPhoto !== null ||
@@ -142,7 +141,6 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
     if (prix       !== '')  changes.Prix       = prix       === ''     ? null : parseFloat(prix)
     if (discount   !== '')  changes.Discount   = discount   === ''     ? null : parseFloat(discount)
     if (annee      !== '')  changes.Année      = annee.trim() || null
-    if (stageProduction !== '') changes.StageProduction = stageProduction === 'null' ? null : stageProduction
     if (locDetail  !== '')  changes.LocalisationDetail = locDetail.trim() || null
     if (commentaires !== '') changes.Commentaires = commentaires.trim() || null
     
@@ -269,17 +267,6 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
           </select>
         </FieldWrap>
 
-        <FieldWrap label="Stage Production" active={stageProduction !== ''}>
-          <select className="input" style={{ width: '100%' }} value={stageProduction}
-            onChange={(e) => setStageProduction(e.target.value)}>
-            <option value="">— {t('unchanged')} —</option>
-            <option value="wip">Production (WIP)</option>
-            <option value="catalogued">Catalogué</option>
-            <option value="shot">Shot / Photo</option>
-            <option value="available">Disponible (Available)</option>
-            <option value="archive">Archive</option>
-          </select>
-        </FieldWrap>
 
       </div>
 

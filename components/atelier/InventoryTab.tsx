@@ -7,9 +7,8 @@ import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
-import { imageUrl, thumbUrl, yearOf, statusOf, commercialStatusOf, stageOf, stageColor, type StatusKey } from '@/lib/data'
-import { StatusChip } from '@/components/ui/StatusChip'
-import { StageChip }  from './StageChip'
+import { imageUrl, thumbUrl, yearOf, statusOf, statusColor, stageOf, type StatusKey } from '@/lib/data'
+import { WorkStateChip } from './WorkStateChip'
 import { stringifyError } from '@/lib/error'
 import type { Oeuvre } from '@/lib/types/database'
 
@@ -50,8 +49,7 @@ const FIELD_LABELS: Record<string, string> = {
   PresentationID:  'Présentation',
   Commentaires:    'Notes',
   NeedsPhotograph: 'À photographier',
-  StageProduction: 'Production',
-  statusId:        'Ownership',
+  statusId:        'État',
   ContactID:       'Contact',
   LocalisationID:  'Localisation',
   AcheteurID:      'Acheteur',
@@ -408,8 +406,8 @@ export function InventoryTab({
         return sa.localeCompare(sb) * dir
       }
       if (sortKey === 'Stage') {
-        const sa = (a as any).StageProduction || stageOf(a, statusLabelMap)
-        const sb = (b as any).StageProduction || stageOf(b, statusLabelMap)
+        const sa = statusOf(a, statusLabelMap)
+        const sb = statusOf(b, statusLabelMap)
         return sa.localeCompare(sb) * dir
       }
       if (sortKey === 'Contact') {
@@ -423,8 +421,8 @@ export function InventoryTab({
         return la.localeCompare(lb) * dir
       }
       if (sortKey === 'Comm') {
-        const ca = commercialStatusOf(a)
-        const cb = commercialStatusOf(b)
+        const ca = statusOf(a, statusLabelMap)
+        const cb = statusOf(b, statusLabelMap)
         return ca.localeCompare(cb) * dir
       }
 
@@ -434,17 +432,19 @@ export function InventoryTab({
   }, [oeuvres, q, tech, support, status, filterTheme, filterGroup, criteria, oeuvreThemeMap, oeuvreGroupMap, thM, groupNameMap, tM, sM, statusLabelMap, allFields, sortKey, sortDir, cM, locMap])
 
   const activeStages = useMemo(() => {
-    const present = new Set(oeuvres.map(o => (o as any).StageProduction).filter(Boolean))
+    const present = new Set(oeuvres.map(o => statusOf(o, statusLabelMap)))
     return [
-      { k: 'idea',      l: t('stage_idea'),       c: 'var(--ac)' },
-      { k: 'wip',       l: t('stage_wip'),        c: 'var(--rust)' },
-      { k: 'drying',    l: t('stage_drying'),     c: 'var(--dust)' },
-      { k: 'mounting',  l: t('stage_mounting'),   c: 'var(--dust)' },
-      { k: 'framing',   l: t('stage_framing'),    c: 'var(--dust)' },
-      { k: 'shot',      l: t('stage_shot'),       c: 'var(--cyan)' },
-      { k: 'catalogued',l: t('stage_catalogued'), c: 'var(--sage)' },
-    ].filter(s => present.has(s.k))
-  }, [oeuvres, t])
+      { k: 'en_production',   l: 'En production', c: 'var(--rust)' },
+      { k: 'available',       l: 'Disponible',    c: 'var(--sage)' },
+      { k: 'reserved',        l: 'Réservé',       c: 'var(--dust)' },
+      { k: 'consigned',       l: 'Consigné',      c: 'var(--dust)' },
+      { k: 'loan',            l: 'Prêt',          c: 'var(--cyan)' },
+      { k: 'sold',            l: 'Vendu',         c: 'var(--mt)'   },
+      { k: 'gift',            l: 'Don',           c: 'var(--mt)'   },
+      { k: 'artist_archive',  l: 'Archive (Pem)', c: 'var(--mt)'   },
+      { k: 'private_archive', l: 'Archive privée',c: 'var(--mt)'   },
+    ].filter(s => present.has(s.k as StatusKey))
+  }, [oeuvres, statusLabelMap])
 
   // Keep focused in sync with filtered results
   useEffect(() => {
@@ -463,12 +463,16 @@ export function InventoryTab({
   // passed to InvList for range selection
 
   const statusOptions: [string, string][] = [
-    ['all', 'Tous'],
-    ['studio',    'Atelier'],
-    ['consigned', 'Dépôt (Galerie)'],
-    ['loan',      'Prêt (Institution)'],
-    ['sold',      'Vendu'],
-    ['wip',       'En cours'],
+    ['all',             'Tous'],
+    ['en_production',   'En production'],
+    ['available',       'Disponible'],
+    ['reserved',        'Réservé'],
+    ['consigned',       'Consigné'],
+    ['loan',            'Prêt'],
+    ['sold',            'Vendu'],
+    ['gift',            'Don'],
+    ['artist_archive',  'Archive (Pem)'],
+    ['private_archive', 'Archive privée'],
   ]
 
   return (
@@ -767,11 +771,6 @@ function CriteriaPanel({
       LocalisationID:  cM,
       AcheteurID:      cM,
       PresentationID:  pM,
-      StageProduction: { 
-        'idea': 'Idée', 'sketch': 'Esquisse', 'wip': 'En cours', 
-        'drying': 'Séchage', 'mounting': 'À monter', 'framing': 'À encadrer', 
-        'shot': 'Photo', 'catalogued': 'Fini' 
-      },
       anonymity_level: { '0': 'Public', '1': 'Anonyme', '2': 'Privé' }
     }
     const map = maps[field]
@@ -1035,12 +1034,10 @@ function InvList({
           {visible.map((o, idx) => {
             const isSel = selection.has(o.OeuvreID)
             const isFoc = focused?.OeuvreID === o.OeuvreID
-            const realStage = (o as any).StageProduction || stageOf(o, statusLabelMap)
-            const isFinished = realStage === 'available' || realStage === 'archive'
-            const st    = isFinished ? statusOf(o, statusLabelMap) : 'studio'
+            const st    = statusOf(o, statusLabelMap)
             const dims  = o.Hauteur && o.Largeur ? `${o.Hauteur}×${o.Largeur}` : '—'
-            const isGoneRow = st === 'sold' || st === 'gift'
-            const sCol  = isGoneRow ? 'transparent' : stageColor((o as any).StageProduction)
+            const isGoneRow = st === 'sold' || st === 'gift' || st === 'artist_archive' || st === 'private_archive'
+            const sCol  = statusColor(st)
             
             // CLEAN LOGIC: Background is ONLY for Focus or Selection.
             const rowBg = isFoc 
@@ -1119,24 +1116,18 @@ function InvList({
                   </td>
                   <td style={{ padding: '0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: 0.8 }}>
                     {(() => {
-                      const isReady = (o as any).StageProduction === 'available'
-                      if (!isReady) return 'Pem - Atelier'
+                      // TRUTH ENFORCEMENT: If the status implies it's gone (Consigned, Loaned, Sold, Gifted), 
+                      // we MUST show the actual location. Otherwise, it is at the Atelier.
+                      const isExternal = ['consigned', 'loan', 'sold', 'gift'].includes(st)
+                      if (!isExternal) return 'Pem - Atelier'
                       return ((o as any).LocalisationID != null ? locMap[(o as any).LocalisationID] : 'Pem - Atelier') || '—'
                     })()}
                   </td>
-                  <td style={{ padding: '0 4px' }}>
-                    <StageChip o={o} statusLabelMap={statusLabelMap} />
+                  <td style={{ padding: '0 4px' }} colSpan={2}>
+                    <WorkStateChip o={o} statusLabelMap={statusLabelMap} />
                   </td>
                   <td style={{ padding: '0 4px' }}>
-                    <StatusChip s={st} />
-                  </td>
-                  <td style={{ padding: '0 4px' }}>
-                    {(() => {
-                      const comm = commercialStatusOf(o)
-                      if (comm === 'reserved') return <span className="chip cyan" style={{ fontSize: 10 }}>RÉSERVÉ</span>
-                      if (comm === 'private') return <span className="chip mt" style={{ fontSize: 10 }}>PRIVÉ</span>
-                      return null
-                    })()}
+                    {st === 'reserved' && <span className="chip dust" style={{ fontSize: 10 }}>RÉSERVÉ</span>}
                   </td>
                 </tr>
             )
@@ -1471,20 +1462,9 @@ function InvPreview({
         <div style={{ color: 'var(--tx2)' }}>{dims ?? '—'}</div>
 
         {/* ── État ─────────────────────────────────────────────── */}
-        <div className="t-label" style={{ paddingTop: 8 }}>Ownership</div>
-        <div style={{ paddingTop: 8, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <StatusChip s={st} />
-          {(() => {
-            const comm = commercialStatusOf(o)
-            if (comm === 'reserved') return <span className="chip cyan">RÉSERVÉ</span>
-            if (comm === 'private') return <span className="chip mt">PRIVÉ</span>
-            return null
-          })()}
-        </div>
-
-        <div className="t-label">Production</div>
-        <div>
-          <StageChip o={o} statusLabelMap={statusLabelMap} />
+        <div className="t-label" style={{ paddingTop: 8 }}>État</div>
+        <div style={{ paddingTop: 8 }}>
+          <WorkStateChip o={o} statusLabelMap={statusLabelMap} />
         </div>
 
         <div className="t-label">{t('contact')}</div>
@@ -1682,10 +1662,8 @@ function InvGrid({
         {rows.map((o) => {
           const isSel     = selection.has(o.OeuvreID)
           const stGrid    = statusOf(o, statusLabelMap)
-          const isGoneGrid = stGrid === 'sold' || stGrid === 'gift'
-          const rawS = (o as any).StageProduction
-          const infS = o.Catalogué ? 'catalogued' : (o as any).NeedsPhotograph ? 'shot' : stageOf(o, statusLabelMap).replace('stage_', '')
-          const sCol = isGoneGrid ? 'transparent' : stageColor(rawS || infS)
+          const isGoneGrid = stGrid === 'sold' || stGrid === 'gift' || stGrid === 'artist_archive' || stGrid === 'private_archive'
+          const sCol = isGoneGrid ? 'transparent' : statusColor(stGrid)
           const sBg  = sCol === 'transparent' ? 'var(--bg1)' : `color-mix(in srgb, ${sCol} 10%, var(--bg1))`
           return (
             <div
@@ -1693,8 +1671,10 @@ function InvGrid({
               onClick={() => onOpen(o)}
               style={{
                 cursor: 'pointer',
-                border: `1px solid ${isSel ? 'var(--ac)' : 'var(--bd)'}`,
-                borderTop: `3px solid ${sCol === 'transparent' ? 'var(--bd)' : sCol}`,
+                borderTop:    `3px solid ${sCol === 'transparent' ? 'var(--bd)' : sCol}`,
+                borderRight:  `1px solid ${isSel ? 'var(--ac)' : 'var(--bd)'}`,
+                borderBottom: `1px solid ${isSel ? 'var(--ac)' : 'var(--bd)'}`,
+                borderLeft:   `1px solid ${isSel ? 'var(--ac)' : 'var(--bd)'}`,
                 background: sBg,
                 overflow: 'hidden',
                 position: 'relative',

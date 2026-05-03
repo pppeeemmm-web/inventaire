@@ -30,7 +30,7 @@ interface WorkAction {
   note:           string | null
 }
 
-const EXCLUDED_STATUSES: StatusKey[] = ['sold', 'lost', 'destroyed']
+const EXCLUDED_STATUSES: StatusKey[] = ['sold', 'gift', 'artist_archive', 'private_archive']
 
 // ── Component ────────────────────────────────────────────────
 
@@ -111,20 +111,41 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
     }
 
     // Write back to Oeuvres if this action has a linked field
-    if (actionType?.field_key || actionTypeId === 6) {
+    if (actionType?.field_key || actionTypeId === 6 || actionTypeId === 9) {
       const updates: any = {}
       if (actionType?.field_key) updates[actionType.field_key] = true
-      
-      // Special case for Photographier (ID 6)
-      if (actionTypeId === 6) updates['NeedsPhotograph'] = false
 
-      // Check if we should transition to Available (StatusID 2)
-      // Rule: If (Catalogué OR finishing Cataloguer task) AND (NOT NeedsPhotograph OR finishing Photographier task)
-      const willBeCatalogued = (o?.Catalogué) || (actionTypeId === 9) // 9 is Cataloguer
-      const willNotNeedPhoto = (!o?.NeedsPhotograph) || (actionTypeId === 6) // 6 is Photographier
-      
-      if (willBeCatalogued && willNotNeedPhoto) {
-        updates['statusId'] = 2 // Available
+      if (actionTypeId === 9) {
+        // Cataloguer ticked done → enter photo gate, do NOT skip to Available
+        updates['Catalogué']        = true
+        updates['NeedsPhotograph']  = true
+        updates['statusId']         = 1  // En production — gate not cleared yet
+
+        // Auto-create Photographier task if not already pending
+        const { data: existing } = await sb.from('work_action')
+          .select('id')
+          .eq('oeuvre_id', oeuvreId)
+          .eq('action_type_id', 6)
+          .eq('done', false)
+          .maybeSingle()
+        if (!existing) {
+          await sb.from('work_action').insert({
+            oeuvre_id:      oeuvreId,
+            action_type_id: 6,
+            done:           false,
+          })
+        }
+      } else if (actionTypeId === 6) {
+        // Photographier ticked done → clear photo gate, move to Disponible
+        updates['NeedsPhotograph'] = false
+        updates['statusId']        = 2  // Disponible
+      } else {
+        // Other field_key actions — only advance to Available if fully ready
+        const willBeCatalogued = o?.Catalogué
+        const willNotNeedPhoto = !o?.NeedsPhotograph
+        if (willBeCatalogued && willNotNeedPhoto) {
+          updates['statusId'] = 2
+        }
       }
 
       await sb.from('Oeuvres').update(updates).eq('OeuvreID', oeuvreId)

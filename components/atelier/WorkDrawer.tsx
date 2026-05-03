@@ -11,7 +11,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState, useTransition, useCallback } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import type { Oeuvre } from '@/lib/types/database'
-import { StageChip } from './StageChip'
+import { WorkStateChip } from './WorkStateChip'
 
 // PEM's ContactID — default owner
 const PEM_CONTACT_ID = 13
@@ -262,7 +262,7 @@ export function WorkDrawer({
               <div><StatusChip s={st} /></div>
 
               <div className="t-label">Production</div>
-              <div><StageChip o={o} statusLabelMap={statusLabelMap} /></div>
+              <div><WorkStateChip o={o} statusLabelMap={statusLabelMap} /></div>
 
               <div className="t-label">{t('framed')}</div>
               <div style={{ color: o.Encadree ? 'var(--tx2)' : 'var(--tx3)' }}>{o.Encadree ? '✓' : '—'}</div>
