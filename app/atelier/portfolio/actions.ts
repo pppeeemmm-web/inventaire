@@ -8,6 +8,10 @@ import {
   S3Client, PutObjectCommand, GetObjectCommand,
 } from '@aws-sdk/client-s3'
 
+interface MammothLib {
+  extractRawText(opts: { buffer: Buffer }): Promise<{ value: string }>
+}
+
 const BUCKET     = process.env.R2_VAULT_BUCKET ?? 'vault'
 const CONFIG_KEY = 'portfolio_sections.json'
 
@@ -23,15 +27,15 @@ function r2Client() {
   })
 }
 
-export type SaveConfigResult = { error: string } | { ok: true }
-export type LoadConfigResult = { error: string } | { ok: true; config: any; documents: any[] }
+export type SaveConfigResult  = { error: string } | { ok: true }
+export type LoadConfigResult  = { error: string } | { ok: true; config: any; documents: any[] }
+export type ExtractTextResult = { error: string } | { ok: true; text: string }
 
 export async function loadPortfolioConfig(): Promise<LoadConfigResult> {
   try {
     const sb = createServiceClient()
     const s3 = r2Client()
 
-    // Fetch documents list and config from R2 in parallel
     const [docsResult, r2Result] = await Promise.allSettled([
       (sb.from('document') as any).select('id, name').order('name'),
       s3.send(new GetObjectCommand({ Bucket: BUCKET, Key: CONFIG_KEY })),
@@ -55,6 +59,8 @@ export async function loadPortfolioConfig(): Promise<LoadConfigResult> {
           const parsed = JSON.parse(text)
           config = {
             general:           parsed.general           || config.general,
+            about:             parsed.about             || null,
+            practice:          parsed.practice          || null,
             sections:          parsed.sections          || [],
             works_collections: parsed.works_collections || [],
             statement_doc_id:  parsed.statement_doc_id  || null,
@@ -65,11 +71,40 @@ export async function loadPortfolioConfig(): Promise<LoadConfigResult> {
         }
       }
     }
-    // If r2Result failed with "NoSuchKey", that's fine — first-time use
 
     return { ok: true, config, documents }
   } catch (e: any) {
     console.error('[loadPortfolioConfig]', e)
+    return { error: e.message ?? String(e) }
+  }
+}
+
+/**
+ * Extract plain text from an uploaded .txt or .docx file.
+ * Receives FormData with a single 'file' entry.
+ */
+export async function extractDocumentText(formData: FormData): Promise<ExtractTextResult> {
+  try {
+    const file = formData.get('file')
+    if (!file || typeof file === 'string') return { error: 'No file provided' }
+
+    const fname = (file as File).name.toLowerCase()
+    const buf   = Buffer.from(await (file as File).arrayBuffer())
+
+    if (fname.endsWith('.txt')) {
+      return { ok: true, text: buf.toString('utf-8').trim() }
+    }
+
+    if (fname.endsWith('.docx')) {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const mammoth: MammothLib = require('mammoth')
+      const result = await mammoth.extractRawText({ buffer: buf })
+      return { ok: true, text: result.value.trim() }
+    }
+
+    return { error: 'Format non supporte. Utiliser .txt ou .docx.' }
+  } catch (e: any) {
+    console.error('[extractDocumentText]', e)
     return { error: e.message ?? String(e) }
   }
 }
@@ -79,7 +114,6 @@ export async function savePortfolioConfig(config: unknown): Promise<SaveConfigRe
     const json = JSON.stringify(config, null, 2)
     const buf  = Buffer.from(json, 'utf-8')
 
-    // 1. Upload to R2
     const s3 = r2Client()
     await s3.send(new PutObjectCommand({
       Bucket:      BUCKET,
@@ -88,7 +122,6 @@ export async function savePortfolioConfig(config: unknown): Promise<SaveConfigRe
       ContentType: 'application/json',
     }))
 
-    // 2. Upsert document record via service_role (bypasses RLS)
     const sb = createServiceClient()
     const { data: existing } = await (sb.from('document') as any)
       .select('id')
