@@ -1,9 +1,8 @@
 'use client'
 
 import { useI18n } from '@/lib/i18n/context'
-import PublicNav from './PublicNav'
 import { imageUrl, yearOf } from '@/lib/data'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 
 function normalizeTheme(s: string | null | undefined): string {
   if (!s) return ''
@@ -28,241 +27,309 @@ interface Collection {
   is_active: boolean
 }
 
+type SequenceItem = 
+  | { type: 'work'; data: Work; collectionId?: string }
+  | { type: 'header'; title: string; subtitle?: string }
+
 interface Props {
   works: Work[]
   collections: Collection[]
 }
 
-function PushedLiquidWorkItem({ work, index }: { work: Work; index: number }) {
-  const { t } = useI18n()
-  const anchorRef = useRef<HTMLDivElement>(null)
-  const [isVisible, setIsVisible] = useState(false)
-  
-  // Animation state: Ultra-Viscosity Liquid LERP
-  const [displayZoom, setDisplayZoom] = useState(1)
-  const targetZoom = useRef(1)
-  const currentZoom = useRef(1)
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => { setIsVisible(entry.isIntersecting) },
-      { threshold: 0.01 }
-    )
-    if (anchorRef.current) observer.observe(anchorRef.current)
-
-    let rafId: number
-    
-    const animate = () => {
-      // Pushing the viscosity: 0.035 is extremely heavy and liquid
-      const viscosity = 0.035 
-      const delta = targetZoom.current - currentZoom.current
-      
-      if (Math.abs(delta) > 0.0001) {
-        currentZoom.current += delta * viscosity
-        setDisplayZoom(currentZoom.current)
-      }
-      
-      rafId = requestAnimationFrame(animate)
-    }
-
-    const handleScroll = () => {
-      if (!anchorRef.current) return
-      const rect = anchorRef.current.getBoundingClientRect()
-      const vh = window.innerHeight
-      const vCenter = vh / 2
-      const anchorCenter = rect.top + rect.height / 2
-      
-      const distance = Math.abs(anchorCenter - vCenter)
-      // Pushing the focus zone: 4x Viewport height for extreme gear reduction
-      const maxDist = vh * 4.0
-      const normalizedDist = Math.min(1, distance / maxDist)
-      
-      const smoothFactor = Math.cos(normalizedDist * Math.PI / 2)
-      // Pushing peak scale to 3.0x
-      targetZoom.current = 1 + (smoothFactor * 2.0)
-    }
-
-    rafId = requestAnimationFrame(animate)
-    window.addEventListener('scroll', handleScroll, { passive: true })
-    handleScroll()
-
-    return () => {
-      observer.disconnect()
-      cancelAnimationFrame(rafId)
-      window.removeEventListener('scroll', handleScroll)
-    }
-  }, [])
-
-  const isLeft = index % 2 === 0
-  const driftAmount = (displayZoom - 1) * 160 // Pushed counter-drift
-  const infoStyle = {
-    transform: `translate3d(${isLeft ? -driftAmount : driftAmount}px, 0, 0) translateZ(0)`,
-    opacity: 1.15 - (displayZoom - 1) * 0.4
-  }
-
-  return (
-    <div 
-      className={`w-physical-item ${isVisible ? 'is-visible' : ''} ${isLeft ? 'is-left' : 'is-right'}`}
-    >
-      <div ref={anchorRef} className="w-anchor-box">
-        <div className="w-item-inner">
-          <div 
-            className="w-artwork-container"
-            style={{ transform: `scale3d(${displayZoom}, ${displayZoom}, 1) translateZ(0)` }}
-          >
-            <img
-              src={imageUrl(work.txtImageNameLink) ?? undefined}
-              alt={work.Titre ?? `Oeuvre #${work.OeuvreID}`}
-              className="w-main-img"
-            />
-          </div>
-          
-          <div className="w-work-info" style={infoStyle}>
-            <h3 className="w-work-title">{work.Titre ?? t('pub_untitled')}</h3>
-            <div className="w-work-details">
-              <span className="w-work-year">{yearOf(work.Annee)}</span>
-              <span className="w-work-dot"></span>
-              <span className="w-work-dim">
-                {work.Hauteur && work.Largeur ? `${work.Hauteur} X ${work.Largeur} CM` : 'Dimensions on request'}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 export default function WorksClient({ works, collections }: Props) {
   const { t } = useI18n()
+  
+  const sequence = useMemo(() => {
+    const items: SequenceItem[] = []
+    const activeCollections = collections.filter(c => c.is_active)
+    
+    activeCollections.forEach((col, colIdx) => {
+      items.push({ type: 'header', title: col.title, subtitle: col.description })
+      
+      const colMatch = normalizeTheme(col.theme)
+      const colWorks = works.filter(w => {
+        if (!w.txtImageNameLink) return false
+        if (!col.theme) return true
+        return w.themes.some(th => normalizeTheme(th).includes(colMatch))
+      })
+      
+      colWorks.forEach(w => {
+        items.push({ type: 'work', data: w, collectionId: col.id })
+      })
+    })
+
+    if (items.length === 0) {
+      works.filter(w => w.txtImageNameLink).forEach(w => items.push({ type: 'work', data: w }))
+    }
+    return items
+  }, [works, collections])
+
+  const targetDepth = useRef(0)
+  const currentDepth = useRef(0)
+  const [displayDepth, setDisplayDepth] = useState(0)
+
+  const STEP = 6000 
+  const BIRTH_DIST = 24000 // Further birth for better needle-point feel
+
+  useEffect(() => {
+    const handleWheel = (e: WheelEvent) => {
+      targetDepth.current += e.deltaY * 2.5 
+      const maxScroll = (sequence.length - 1) * STEP + 2000
+      targetDepth.current = Math.max(0, Math.min(targetDepth.current, maxScroll))
+    }
+    window.addEventListener('wheel', handleWheel, { passive: true })
+
+    let rafId: number
+    const animate = () => {
+      const viscosity = 0.04 
+      const delta = targetDepth.current - currentDepth.current
+      currentDepth.current += delta * viscosity
+      setDisplayDepth(currentDepth.current)
+      document.getElementById('grain')?.style.setProperty('--scroll-y', currentDepth.current.toString())
+      rafId = requestAnimationFrame(animate)
+    }
+    rafId = requestAnimationFrame(animate)
+
+    return () => {
+      window.removeEventListener('wheel', handleWheel)
+      cancelAnimationFrame(rafId)
+    }
+  }, [sequence.length])
 
   return (
     <>
       <style>{`
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         
+        html, body { 
+          background: #e8e6e1; font-family: 'JetBrains Mono', monospace; color: #3a3834; 
+          height: 100vh; overflow: hidden;
+          -webkit-font-smoothing: antialiased;
+        }
+
+        .w-viewport {
+          position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+          overflow: hidden; pointer-events: none; z-index: 10;
+          display: flex; align-items: center; justify-content: center;
+          perspective: 1200px;
+          perspective-origin: center;
+          transform-style: preserve-3d;
+        }
+
         .grain-overlay {
           position: fixed; top: 0; left: 0; width: 100%; height: 200%;
-          pointer-events: none; z-index: 9999; opacity: 0.05;
-          background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-          /* Texture Parallax */
+          pointer-events: none; z-index: 5;
+          opacity: 0.04;
+          background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
           transform: translateY(calc(var(--scroll-y, 0) * -0.05px));
         }
 
-        html { height: auto; scroll-behavior: smooth; }
-        html, body { background: #f2f0eb; font-family: 'JetBrains Mono', monospace; color: #3a3834; }
-        body { overflow-y: auto; overflow-x: hidden; min-height: 100vh; -webkit-font-smoothing: antialiased; }
+        .w-paper-bg {
+          position: fixed; inset: 0; 
+          background: radial-gradient(circle at center, #fcfaf7 0%, #e8e6e1 100%);
+          z-index: 1; pointer-events: none;
+        }
 
         .w-nav {
-          position: sticky; top: 0; z-index: 100;
+          position: fixed; top: 0; left: 0; right: 0; z-index: 2000;
           display: flex; align-items: center; justify-content: space-between;
-          padding: 24px 48px;
-          background: rgba(242,240,235, 0.95); backdrop-filter: blur(40px);
-          border-bottom: 1px solid rgba(0,0,0,0.03);
+          padding: 24px 48px; background: transparent; pointer-events: auto;
         }
         .w-logo { font-size: 10px; letter-spacing: 5px; text-transform: uppercase; color: #1a1816; text-decoration: none; font-weight: 500; }
         .w-navlinks { display: flex; gap: 40px; align-items: center; }
-        .w-navlink { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: #b0aca6; text-decoration: none; transition: all .3s; }
+        .w-navlink { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: #b0aca6; text-decoration: none; transition: color .3s; }
         .w-navlink:hover, .w-navlink.active { color: #1a1816; }
-        
-        .w-body { max-width: 1500px; margin: 0 auto; padding: 180px 48px 400px; }
-        
-        .w-collection { margin-bottom: 700px; }
-        .w-col-intro { max-width: 900px; margin-bottom: 400px; }
-        .w-col-label { font-size: 10px; letter-spacing: 12px; text-transform: uppercase; color: #c0bdb8; display: block; margin-bottom: 32px; }
-        .w-col-title { font-family: 'Instrument Serif', serif; font-size: clamp(80px, 18vw, 220px); color: #1a1816; margin-bottom: 48px; font-weight: 400; line-height: 0.75; letter-spacing: -0.07em; }
-        .w-col-desc { font-size: 20px; line-height: 1.65; color: #5a5752; max-width: 42ch; font-weight: 300; letter-spacing: -0.01em; }
-        
-        .w-physical-item {
-          width: 100%; margin-bottom: 850px;
-          opacity: 0; transform: translate3d(0, 80px, 0); transition: opacity 2.5s ease-out, transform 2.5s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        .w-physical-item.is-visible { opacity: 1; transform: translate3d(0, 0, 0); }
-        
-        .w-anchor-box { width: 100%; position: relative; }
 
-        .w-item-inner {
-          display: flex; align-items: center; gap: 140px; width: 100%; position: relative;
+        .w-depth-item {
+          position: absolute; inset: 0;
+          display: flex; align-items: center; justify-content: center;
+          will-change: transform, opacity; pointer-events: none;
+          transform-style: preserve-3d;
         }
-        .w-physical-item.is-left .w-item-inner { flex-direction: row; padding-right: 15%; }
-        .w-physical-item.is-right .w-item-inner { flex-direction: row-reverse; padding-left: 15%; }
 
-        .w-artwork-container {
-          flex: 0 0 50%;
+        .w-artwork-wrap {
+          position: relative; width: 100vw; height: 100vh;
+          display: flex; align-items: center; justify-content: center;
+          mix-blend-mode: multiply;
+        }
+
+        .w-image-container {
           position: relative;
+          display: flex; align-items: center; justify-content: center;
           background: transparent;
-          user-select: none;
-          transform-origin: center center;
-          display: flex; justify-content: center;
-          will-change: transform;
+          mask-image: var(--breakthrough-mask);
+          -webkit-mask-image: var(--breakthrough-mask);
+          mask-repeat: no-repeat;
+          -webkit-mask-repeat: no-repeat;
+          mask-position: center;
+          -webkit-mask-position: center;
         }
+
         .w-main-img {
-          display: block; width: 100%; height: auto; max-height: 70vh; object-fit: contain;
-          mix-blend-mode: multiply; position: relative; z-index: 2;
-          pointer-events: none;
-          filter: drop-shadow(0 2px 4px rgba(0,0,0,0.04)) drop-shadow(0 15px 35px rgba(0,0,0,0.05));
-        }
-        
-        .w-work-info { 
-          flex: 0 0 35%; 
-          padding-bottom: 150px;
-          will-change: transform, opacity;
-        }
-        .w-work-title { font-family: 'Instrument Serif', serif; font-size: clamp(40px, 6vw, 64px); color: #1a1816; font-weight: 400; margin-bottom: 32px; letter-spacing: -0.04em; line-height: 1; }
-        .w-work-details { display: flex; flex-direction: column; gap: 16px; font-size: 11px; color: #b0aca6; letter-spacing: 5px; text-transform: uppercase; }
-
-        .w-footer { 
-          padding: 350px 48px; border-top: 1px solid rgba(0,0,0,0.05);
-          text-align: center; font-size: 10px; color: #b0aca6; letter-spacing: 6px; text-transform: uppercase;
+          max-width: 50vw; max-height: 50vh;
+          display: block;
+          mix-blend-mode: multiply;
+          image-rendering: high-quality;
+          backface-visibility: hidden;
         }
 
-        @media (max-width: 1024px) {
-          .w-item-inner { flex-direction: column !important; gap: 64px; padding: 0 !important; }
-          .w-artwork-container { flex: 0 0 100%; }
-          .w-work-info { flex: 0 0 100%; text-align: center; padding-bottom: 0; transform: none !important; opacity: 1 !important; }
-          .w-physical-item { margin-bottom: 500px; }
+        .w-radial-vignette {
+          position: absolute; inset: -1000px;
+          background: var(--radial-vignette);
+          z-index: 10; pointer-events: none;
+          opacity: 0.98;
+        }
+
+        .w-parallax-meta {
+          position: absolute; top: 50%; 
+          left: 64px; /* Slightly more margin for big text */
+          width: 35vw; max-width: 500px; z-index: 100;
+          pointer-events: auto; transition: opacity 0.5s ease-out;
+          will-change: transform;
+          transform-style: preserve-3d;
+          transform: translateY(-50%) rotateX(30deg); 
+          text-align: left;
+        }
+
+        .w-parallax-header {
+          position: relative; width: 100vw; height: 100vh;
+          display: flex; flex-direction: column; align-items: flex-start; justify-content: center;
+          text-align: left;
+          padding-left: 64px;
+          transform-style: preserve-3d;
+          transform: rotateX(15deg); 
+        }
+        /* BIGGER TEXT ENGINE */
+        .w-header-title {
+          font-family: 'Instrument Serif', serif; font-size: clamp(80px, 15vw, 240px);
+          color: #1a1816; letter-spacing: -0.05em; line-height: 0.85;
+          margin-bottom: 48px;
+        }
+        .w-header-subtitle {
+          max-width: 600px; font-size: 14px; line-height: 1.6; letter-spacing: 0.1em; 
+          text-transform: uppercase; color: #8a8680; text-align: left; font-weight: 400;
+        }
+
+        .w-work-title { 
+          font-family: 'Instrument Serif', serif; font-size: clamp(32px, 6vw, 72px); 
+          color: #1a1816; font-weight: 400; margin-bottom: 32px; letter-spacing: -0.04em; line-height: 1; 
+        }
+        .w-work-details { display: flex; flex-direction: column; gap: 16px; font-size: 11px; color: #b0aca6; letter-spacing: 6px; text-transform: uppercase; }
+
+        .w-scroll-hint {
+          position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
+          font-size: 8px; letter-spacing: 4px; color: #b0aca6; text-transform: uppercase;
+          z-index: 100; opacity: 0.3;
         }
       `}</style>
 
+      <div className="w-paper-bg"></div>
       <div className="grain-overlay" id="grain"></div>
-      <PublicNav active="works" prefix="w" />
 
-      <script dangerouslySetInnerHTML={{ __html: `
-        window.addEventListener('scroll', () => {
-          document.getElementById('grain').style.setProperty('--scroll-y', window.scrollY);
-        }, { passive: true });
-      `}} />
+      <nav className="w-nav">
+        <a href="/" className="w-logo">PIERRE EMMANUEL MOULIN</a>
+        <div className="w-navlinks">
+          <a href="/works" className="w-navlink active">{t('nav_works')}</a>
+          <a href="/atelier" className="w-navlink">{t('nav_atelier')}</a>
+        </div>
+      </nav>
 
-      <div className="w-body">
-        {collections.map((col) => {
-          const colWorks = works.filter((w) => {
-            if (!w.txtImageNameLink) return false
-            if (!col.theme) return true
-            const colMatch = normalizeTheme(col.theme)
-            return w.themes.some(th => normalizeTheme(th).includes(colMatch))
-          })
+      <div className="w-viewport">
+        {sequence.map((item, idx) => {
+          const centerPos = idx * STEP
+          const dist = displayDepth - centerPos
+          
+          const opacity = dist < 12000 ? 1 : Math.max(0, 1 - (dist - 12000) / 2000)
+          
+          let translateZ = 0
+          let scale = 1
+          
+          if (dist < 0) {
+            const progress = Math.max(0, (dist + BIRTH_DIST) / BIRTH_DIST)
+            /* NEEDLE-POINT IMAGE: Steeper curve for microscopic birth */
+            translateZ = -BIRTH_DIST + (BIRTH_DIST * progress)
+            scale = 0 + (1 - 0) * Math.pow(progress, 8.0) 
+          } else {
+            translateZ = (dist / STEP) * 2000 
+            scale = 1 + (dist / STEP) * 4
+          }
+
+          if (opacity <= 0 && Math.abs(dist) > BIRTH_DIST + 5000) return null
+
+          const zIndex = 1000 - Math.floor(Math.abs(dist) / 50)
+
+          if (item.type === 'header') {
+            const headerZ = translateZ * 1.2 
+            return (
+              <div key={`header-${idx}`} className="w-depth-item" style={{
+                opacity: Math.max(0, 1 - Math.abs(dist / 3000)),
+                transform: `translate3d(0, 0, ${headerZ}px) scale(${scale * 0.8})`,
+                zIndex: zIndex
+              }}>
+                <div className="w-parallax-header">
+                  <h1 className="w-header-title">{item.title}</h1>
+                  {item.subtitle && <p className="w-header-subtitle">{item.subtitle}</p>}
+                </div>
+              </div>
+            )
+          }
+
+          const work = item.data
+          let maskRadius = 45 
+          let vignetteRadius = 55
+          
+          if (dist > -800) {
+            const arrivalProgress = Math.min(1, Math.max(0, (dist + 800) / 1000))
+            maskRadius = 45 + (arrivalProgress * 300)
+            vignetteRadius = 55 + (arrivalProgress * 300)
+          }
+          
+          const breakthroughMask = `radial-gradient(circle at center, black 0%, black 10%, transparent ${maskRadius}%)`
+          const vignette = `radial-gradient(circle at center, transparent 0%, transparent 20%, black ${vignetteRadius}%)`
+
+          const textZ = translateZ * 0.8 
+          const textOpacity = Math.max(0, 1 - Math.abs(dist / 1200))
 
           return (
-            <section key={col.id} className="w-collection">
-              <div className="w-col-intro">
-                <span className="w-col-label">{col.theme || 'Series'}</span>
-                <h2 className="w-col-title">{col.title}</h2>
-                {col.description && <p className="w-col-desc">{col.description}</p>}
+            <div key={`work-${work.OeuvreID}`} className="w-depth-item" style={{ 
+              opacity, 
+              transform: `translate3d(0, 0, ${translateZ}px) scale(${scale})`,
+              zIndex: zIndex,
+              // @ts-ignore
+              '--breakthrough-mask': breakthroughMask,
+              // @ts-ignore
+              '--radial-vignette': vignette
+            }}>
+              <div className="w-artwork-wrap">
+                <div className="w-image-container">
+                  <img
+                    src={imageUrl(work.txtImageNameLink) ?? undefined}
+                    alt={work.Titre ?? ''}
+                    className="w-main-img"
+                  />
+                  <div className="w-radial-vignette"></div>
+                </div>
               </div>
 
-              <div className="w-curated-grid">
-                {colWorks.map((w, idx) => (
-                  <PushedLiquidWorkItem key={w.OeuvreID} work={w} index={idx} />
-                ))}
+              <div 
+                className="w-parallax-meta"
+                style={{ 
+                  opacity: textOpacity,
+                  transform: `translate3d(0, 0, ${textZ - translateZ}px) rotateX(30deg)` 
+                }}
+              >
+                <h3 className="w-work-title">{work.Titre ?? t('pub_untitled')}</h3>
+                <div className="w-work-details">
+                  <span className="w-work-year">{yearOf(work.Annee)}</span>
+                  <span className="max-w-[200px]">{work.Hauteur && work.Largeur ? `${work.Hauteur} X ${work.Largeur} CM` : ''}</span>
+                </div>
               </div>
-            </section>
+            </div>
           )
         })}
       </div>
 
-      <footer className="w-footer">
-        &copy; {new Date().getFullYear()} PIERRE EMMANUEL MOULIN
-      </footer>
+      <div className="w-scroll-hint">Liquid Depth · Scroll Wheel</div>
     </>
   )
 }

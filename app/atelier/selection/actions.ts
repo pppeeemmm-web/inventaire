@@ -14,6 +14,7 @@ export type BatchResult  = { error: string } | { ok: true; updated: number }
 export type ExportResult = { error: string } | { ok: true; content: string; filename: string; mime: string }
 
 export interface BatchChanges {
+  Titre?:             string | null
   statusId?:          number | null
   Technique?:         number | null
   Support?:           number | null
@@ -95,6 +96,7 @@ export async function batchEdit(ids: number[], changes: BatchChanges): Promise<B
 
   // Build update object from only explicitly-set fields
   const update: Record<string, unknown> = {}
+  if (changes.Titre             !== undefined) update.Titre             = changes.Titre?.trim() || null
   if (changes.statusId          !== undefined) update.statusId          = changes.statusId
   if (changes.Technique         !== undefined) update.Technique         = changes.Technique
   if (changes.Support           !== undefined) update.Support           = changes.Support

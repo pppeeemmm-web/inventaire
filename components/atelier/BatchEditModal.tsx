@@ -49,6 +49,7 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
   }
 
   // Scalar fields — empty string = unchanged
+  const [titre,             setTitre]            = useState('')
   const [statusId,          setStatusId]         = useState('')
   const [technique,         setTechnique]        = useState('')
   const [support,           setSupport]          = useState('')
@@ -121,7 +122,7 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
   }
 
   const changed = (
-    statusId !== '' || technique !== '' || support !== '' || format !== '' ||
+    titre !== '' || statusId !== '' || technique !== '' || support !== '' || format !== '' ||
     contactId !== '' || prix !== '' || discount !== '' ||
     annee !== '' || locDetail !== '' || commentaires !== '' ||
     exposable !== null || montee !== null || encadree !== null || catalogued !== null ||
@@ -133,6 +134,7 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
 
   function handleSubmit() {
     const changes: BatchChanges = {}
+    if (titre      !== '')  changes.Titre      = titre.trim() || null
     if (statusId   !== '')  changes.statusId   = statusId   === 'null' ? null : Number(statusId)
     if (technique  !== '')  changes.Technique  = technique  === 'null' ? null : Number(technique)
     if (support    !== '')  changes.Support    = support    === 'null' ? null : Number(support)
@@ -205,6 +207,12 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
       {/* ── Section: Classification ─────────────────────────────── */}
       <SectionLabel>Classification</SectionLabel>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 20px', marginBottom: 20 }}>
+
+        <FieldWrap label={t('title')} active={titre !== ''} style={{ gridColumn: 'span 2' }}>
+          <input className="input" type="text" style={{ width: '100%' }}
+            placeholder={`${t('unchanged')} (ex. Sans titre)`} value={titre}
+            onChange={(e) => setTitre(e.target.value)} />
+        </FieldWrap>
 
         <FieldWrap label={t('status')} active={statusId !== ''}>
           <select className="input" style={{ width: '100%' }} value={statusId}
