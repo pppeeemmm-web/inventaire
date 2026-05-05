@@ -280,6 +280,12 @@ export async function moveDocuments(docIds: number[], targetFolder: string | nul
   const { error: authErr, supabase } = await guardTeam()
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
 
+  if (!docIds.length) return { ok: true }
+
+  const { error } = await (supabase.from('document') as any)
+    .update({ folder: targetFolder })
+    .in('id', docIds)
+
   if (error) return { error: error.message }
   return { ok: true }
 }
