@@ -269,7 +269,7 @@ export function TeamPortalClient({
     ['fiscal',        t('fiscal')],
     ['concepts',      t('concepts')],
     ['themes',        t('themes')],
-    ['portfolio',     'Portfolio'],
+    ['portfolio',     'Public'],
     ['stock',         'Stock'],
     ['stock-take',    'Stock-take'],
     ['system',        'System'],

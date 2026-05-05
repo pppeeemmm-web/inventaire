@@ -148,7 +148,8 @@ export function PortfolioTab({ oeuvres, themes }: Props) {
     if (page === 'about' && key) {
       (next.about as any)[key] = value
     } else if ((page === 'works' || page === 'sections') && index !== undefined) {
-      next[page][index].theme = value
+      const key = page === 'works' ? 'works_collections' : 'sections'
+      next[key][index].theme = value
     }
     setConfig(next)
     setActiveSlot(null)
@@ -183,7 +184,7 @@ export function PortfolioTab({ oeuvres, themes }: Props) {
               fontFamily: 'inherit', fontWeight: activeTab === tab ? 600 : 400,
               transition: 'all 0.2s'
             }}>
-              {tab === 'website' ? 'Général' : 'Collections'}
+              {tab === 'website' ? 'Général' : 'Portfolio'}
             </button>
           ))}
         </div>
