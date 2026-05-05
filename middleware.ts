@@ -28,47 +28,14 @@ export async function middleware(request: NextRequest) {
   // Refresh session — do not remove this line
   const { data: { user } } = await supabase.auth.getUser()
 
-/*
-  // Protect /hub — redirect to login if not authenticated
-  if (
-    request.nextUrl.pathname.startsWith('/hub') &&
-    !user
-  ) {
+  // Protect private routes — redirect to login if not authenticated
+  const protectedPaths = ['/atelier', '/hub', '/galerie', '/collection']
+  const isProtected = protectedPaths.some(p => request.nextUrl.pathname.startsWith(p))
+  if (isProtected && !user) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
   }
-
-  // Protect /atelier — redirect to login if not authenticated
-  if (
-    request.nextUrl.pathname.startsWith('/atelier') &&
-    !user
-  ) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/login'
-    return NextResponse.redirect(url)
-  }
-
-  // Protect /galerie — redirect to login if not authenticated
-  if (
-    request.nextUrl.pathname.startsWith('/galerie') &&
-    !user
-  ) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/login'
-    return NextResponse.redirect(url)
-  }
-
-  // Protect /collection — redirect to login if not authenticated
-  if (
-    request.nextUrl.pathname.startsWith('/collection') &&
-    !user
-  ) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/login'
-    return NextResponse.redirect(url)
-  }
-*/
 
   return supabaseResponse
 }
