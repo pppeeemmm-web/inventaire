@@ -4,6 +4,7 @@
 
 import { createClient }  from '@/lib/supabase/server'
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3'
+import { logSystemEvent } from '@/lib/utils/logging'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -31,6 +32,17 @@ export interface SaleOrderRow {
   statut:           string
   notes:            string | null
   pdf_path:         string | null
+  payments?:        PaymentRow[]
+}
+
+export interface PaymentRow {
+  id: string
+  order_id: string
+  amount: number
+  payment_date: string
+  method: string | null
+  notes: string | null
+  created_at: string
 }
 
 export type OrderResult = { error: string } | { ok: true; order: SaleOrderRow }
@@ -163,6 +175,13 @@ export async function createSaleOrder(formData: FormData): Promise<OrderResult> 
 
   if (dbErr || !order) return { error: dbErr?.message ?? 'Insert failed' }
   
+  await logSystemEvent({
+    eventType: 'ORDER_CREATED',
+    tableName: 'sale_order',
+    rowId: order.id,
+    metadata: { ref: order.order_ref, amount: prix_final, works: oeuvre_ids }
+  })
+
   // Attach the list to the object for the PDF builder
   const orderWithIds = { ...order, oeuvre_ids } as SaleOrderRow
 
@@ -207,20 +226,62 @@ export async function createSaleOrder(formData: FormData): Promise<OrderResult> 
 
 // ── Update order status ───────────────────────────────────────────────────────
 
-export async function updateOrderStatut(
-  id: string,
-  statut: string,
-  field?: 'deposit_paid' | 'balance_paid' | 'delivered',
-): Promise<SimpleResult> {
+export async function addPayment(order_id: string, amount: number, method: string, notes?: string): Promise<SimpleResult> {
   const { error: authErr, supabase } = await guardTeam()
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
 
-  const update: Record<string, unknown> = { statut }
-  if (field) update[field] = true
+  const { error } = await supabase.from('payments').insert({
+    order_id,
+    amount,
+    method,
+    notes
+  })
 
-  const { error } = await supabase.from('sale_order').update(update).eq('id', id)
   if (error) return { error: error.message }
+
+  await logSystemEvent({
+    eventType: 'PAYMENT_GRAIN',
+    tableName: 'payments',
+    rowId: order_id,
+    newValue: amount,
+    metadata: { method, notes }
+  })
+  
   return { ok: true }
+}
+
+export async function updateOrderStatut(id: string, statut: string, toggleField?: 'deposit_paid' | 'balance_paid' | 'delivered'): Promise<SimpleResult> {
+  const { error: authErr, supabase } = await guardTeam()
+  if (authErr || !supabase) return { error: authErr ?? 'Auth' }
+
+  const payload: Record<string, any> = { statut }
+  if (toggleField) payload[toggleField] = true
+
+  const { error } = await supabase.from('sale_order').update(payload).eq('id', id)
+  if (error) return { error: error.message }
+
+  await logSystemEvent({
+    eventType: 'STATUS_CHANGE',
+    tableName: 'sale_order',
+    rowId: id,
+    newValue: statut,
+    metadata: { toggleField }
+  })
+
+  return { ok: true }
+}
+
+export async function fetchPayments(order_id: string): Promise<PaymentRow[]> {
+  const { error: authErr, supabase } = await guardTeam()
+  if (authErr || !supabase) return []
+
+  const { data } = await supabase
+    .from('payments')
+    .select('*')
+    .eq('order_id', order_id)
+    .order('payment_date', { ascending: true })
+
+  return (data ?? []) as PaymentRow[]
 }
 
 export async function deleteSaleOrder(id: string): Promise<SimpleResult> {

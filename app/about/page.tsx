@@ -3,7 +3,7 @@ import AboutClient from '@/components/public/AboutClient'
 
 export const metadata: Metadata = {
   title: 'About — Pierre Emmanuel Moulin',
-  description: 'Biographie et CV de Pierre Emmanuel Moulin, peintre.',
+  description: 'Biography and CV of Pierre Emmanuel Moulin, painter.',
   robots: { index: true, follow: true },
 }
 

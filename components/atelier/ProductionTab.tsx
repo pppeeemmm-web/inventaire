@@ -111,11 +111,26 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
     }
 
     // Write back to Oeuvres if this action has a linked field
-    if (actionType?.field_key || actionTypeId === 6 || actionTypeId === 9) {
+    if (actionType?.field_key || actionTypeId === 1 || actionTypeId === 6 || actionTypeId === 9) {
       const updates: any = {}
       if (actionType?.field_key) updates[actionType.field_key] = true
 
-      if (actionTypeId === 9) {
+      if (actionTypeId === 1) {
+        // "EN COURS" ticked done -> Auto-create "Cataloguer" task (ID 9)
+        const { data: existing } = await sb.from('work_action')
+          .select('id')
+          .eq('oeuvre_id', oeuvreId)
+          .eq('action_type_id', 9)
+          .eq('done', false)
+          .maybeSingle()
+        if (!existing) {
+          await sb.from('work_action').insert({
+            oeuvre_id:      oeuvreId,
+            action_type_id: 9,
+            done:           false,
+          })
+        }
+      } else if (actionTypeId === 9) {
         // Cataloguer ticked done → enter photo gate, do NOT skip to Available
         updates['Catalogué']        = true
         updates['NeedsPhotograph']  = true

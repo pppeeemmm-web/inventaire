@@ -122,7 +122,6 @@ export function WorkForm({
   const [prix,        setPrix]        = useState(String(oeuvre?.Prix ?? '0'))
   const [discount,    setDiscount]    = useState(String((oeuvre as any)?.Discount ?? '0'))
   const [paymentDone, setPaymentDone] = useState((oeuvre as any)?.PaymentDone ?? false)
-  const [isPublic,    setIsPublic]    = useState(oeuvre?.is_public ?? false)
   const [exposable,   setExposable]   = useState((oeuvre as any)?.Exposable ?? false)
 
   // ── Lookups ───────────────────────────────────────────────────────
@@ -205,7 +204,6 @@ export function WorkForm({
   useEffect(() => {
     if (!needsPhoto && prevNeedsPhoto.current === true) {
       setProdStage('available')
-      setIsPublic(true)
     }
     prevNeedsPhoto.current = needsPhoto
   }, [needsPhoto])
@@ -221,7 +219,6 @@ export function WorkForm({
   // D. Archived → not public, contact = Pem
   useEffect(() => {
     if (isArchived && pemContact) {
-      setIsPublic(false)
       setContactId(String(pemContact.ContactID))
     }
   }, [isArchived, pemContact])
@@ -256,7 +253,6 @@ export function WorkForm({
 
     fd.set('catalogued', (prodStage !== 'atelier') ? '1' : '0')
     fd.set('needs_photograph', needsPhoto ? '1' : '0')
-    fd.set('is_public', isPublic ? '1' : '0')
     fd.set('prix_final', String(prixFinal))
     fd.set('is_paid', paymentDone ? '1' : '0')
     fd.set('commentaires', commentaires)
@@ -402,7 +398,6 @@ export function WorkForm({
                   setNeedsPhoto(v)
                 }} />
                 <Switch label="Exposable" checked={exposable} onChange={setExposable} />
-                <Switch label="Visible (public)" checked={isPublic} onChange={setIsPublic} disabled={isArchived || needsPhoto} />
               </div>
               {needsPhoto && prodStage === 'catalogued' && (
                 <div style={{ marginTop: 12, padding: '8px 14px', background: 'var(--dust)22', border: '1px solid var(--dust)44', fontSize: 12, color: 'var(--tx2)' }}>

@@ -31,12 +31,14 @@ import { PortfolioTab }        from '@/components/atelier/PortfolioTab'
 import { SupplierHub }         from '@/components/atelier/SupplierHub'
 import { StockTakeTab }        from '@/components/atelier/StockTakeTab'
 import { SystemTab }           from '@/components/atelier/SystemTab'
+import { AuditTab }            from './AuditTab'
+import { fetchContactConflicts } from '@/app/atelier/contacts/actions'
 
 // ── Types ────────────────────────────────────────────────────────────
 
 type Tab =
   | 'overview' | 'inventory' | 'constellation' | 'production'
-  | 'logistics' | 'sales' | 'exhibitions' | 'vault' | 'contacts' | 'map' | 'pipeline' | 'fiscal' | 'concepts' | 'themes' | 'stock' | 'stock-take' | 'system' | 'portfolio'
+  | 'logistics' | 'sales' | 'exhibitions' | 'vault' | 'contacts' | 'map' | 'pipeline' | 'fiscal' | 'concepts' | 'themes' | 'stock' | 'stock-take' | 'system' | 'portfolio' | 'audit'
 
 interface Props {
   oeuvres:        Oeuvre[]
@@ -128,6 +130,8 @@ export function TeamPortalClient({
   // Curation maps
   const [oeuvreThemeMap, setOeuvreThemeMap] = useState<Map<number, number[]>>(new Map())
   const [oeuvreGroupMap, setOeuvreGroupMap] = useState<Map<number, string[]>>(new Map())
+  const [conflicts,      setConflicts]      = useState<any[]>([])
+  const [isAdmin,        setIsAdmin]        = useState(false)
 
   useEffect(() => {
     const sb = createClient()
@@ -151,7 +155,21 @@ export function TeamPortalClient({
       })
       setOeuvreGroupMap(map)
     }).catch(err => console.error("Group Map Error:", err))
-  }, [])
+
+    // Fetch Conflicts (Admin only)
+    fetchContactConflicts().then(data => {
+      setConflicts(data)
+      if (data.length > 0 || tab === 'overview') {
+        // Also check admin status
+        sb.auth.getUser().then(({ data: { user } }) => {
+          if (user) {
+            sb.from('profiles').select('role').eq('id', user.id).single()
+              .then(({ data: p }) => setIsAdmin(p?.role === 'admin'))
+          }
+        })
+      }
+    })
+  }, [tab])
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -251,10 +269,11 @@ export function TeamPortalClient({
     ['fiscal',        t('fiscal')],
     ['concepts',      t('concepts')],
     ['themes',        t('themes')],
-    ['portfolio',     'Site Web'],
+    ['portfolio',     'Portfolio'],
     ['stock',         'Stock'],
     ['stock-take',    'Stock-take'],
     ['system',        'System'],
+    ['audit',         'Audit Log'],
   ]
 
   const activeTabLabel = TABS_RAW.find(x => x[0] === tab)?.[1] ?? ''
@@ -265,7 +284,7 @@ export function TeamPortalClient({
     { label: 'Vision', tabs: ['constellation', 'concepts', 'themes', 'map'] },
     { label: 'Commercial', tabs: ['sales', 'exhibitions', 'pipeline', 'fiscal'] },
     { label: 'Diffusion', tabs: ['portfolio'] },
-    { label: 'Config', tabs: ['system'] },
+    { label: 'Config', tabs: isAdmin ? ['system', 'audit'] : ['system'] },
   ]
 
   const showDock = selection.size > 0 && tab !== 'constellation'
@@ -364,7 +383,15 @@ export function TeamPortalClient({
         <div style={{ flex: 1, overflow: 'auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
 
         {tab === 'overview' && (
-          <OverviewTab oeuvres={oeuvres} tM={tM} t={t as (k: string) => string} onGoTab={handleSetTab} reminderCount={reminderCount} />
+          <OverviewTab
+            oeuvres={oeuvres}
+            tM={tM}
+            t={t as (k: string) => string}
+            onGoTab={handleSetTab}
+            reminderCount={reminderCount}
+            isAdmin={isAdmin}
+            conflicts={conflicts}
+          />
         )}
 
         {tab === 'inventory' && (
@@ -436,16 +463,13 @@ export function TeamPortalClient({
             <VaultTab oeuvres={oeuvres} tM={tM} />
           </div>
         )}
-        {tab === 'contacts' && (
-          <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-            <ContactsTab contacts={contacts} oeuvres={oeuvres} />
-          </div>
-        )}
+        {tab === 'contacts' && <ContactsTab contacts={contacts} oeuvres={oeuvres} conflicts={conflicts} />}
         {tab === 'portfolio' && (
           <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
             <PortfolioTab oeuvres={oeuvres} themes={themes} />
           </div>
         )}
+        {tab === 'audit' && <AuditTab />}
         {tab === 'map' && (
           <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
             <WorldMapTab
@@ -586,13 +610,15 @@ export function TeamPortalClient({
 // ── Overview tab ─────────────────────────────────────────────────────
 
 function OverviewTab({
-  oeuvres, tM, t, onGoTab, reminderCount,
+  oeuvres, tM, t, onGoTab, reminderCount, isAdmin, conflicts,
 }: {
   oeuvres:       Oeuvre[]
   tM:            Record<number, string>
   t:             (k: string) => string
   onGoTab:       (tab: Tab) => void
   reminderCount: number
+  isAdmin:       boolean
+  conflicts:     any[]
 }) {
   const thisYear   = new Date().getFullYear()
   const byYear     = oeuvres.filter((o) => o.Année?.startsWith(String(thisYear))).length
@@ -802,6 +828,29 @@ function OverviewTab({
 
       {/* Right Column: Deadlines & Concepts */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
+
+        {/* Integrity Sentry (Admin Only) */}
+        {isAdmin && conflicts.length > 0 && (
+          <div style={{ padding: 16, background: 'var(--rust)11', border: '1px solid var(--rust)44' }}>
+            <div className="t-eyebrow" style={{ color: 'var(--rust)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 14 }}>⚠</span> Integrity Alerts
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {conflicts.map(c => (
+                <div key={c.id} style={{ fontSize: 11, color: 'var(--tx2)', lineHeight: 1.4 }}>
+                  <strong style={{ color: 'var(--tx)' }}>Contact Collision:</strong><br/>
+                  Public entry <em>"{c.public?.NomInstitution || c.public?.Nom}"</em> matches a hidden private record. 
+                  <button 
+                    onClick={() => onGoTab('contacts')}
+                    style={{ display: 'block', marginTop: 4, background: 'none', border: 'none', color: 'var(--ac)', padding: 0, fontSize: 10, cursor: 'pointer' }}
+                  >
+                    RESOLVE IN CONTACTS →
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Reminders Pulse */}
         {reminders.length > 0 && (

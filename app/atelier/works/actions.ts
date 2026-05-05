@@ -10,6 +10,7 @@ import { makeFilename, seqFromFilename } from '@/lib/data'
 import type { WorkImage } from '@/lib/types/database'
 import crypto from 'crypto'
 import sharp from 'sharp'
+import { logSystemEvent } from '@/lib/utils/logging'
 
 export type SaveResult   = { error: string } | { ok: true; newId?: number }
 export type DeleteResult = { error: string } | { ok: true }
@@ -42,9 +43,8 @@ export async function deleteSelectedWorks(ids: number[]): Promise<DeleteResult> 
 export async function saveWork(formData: FormData): Promise<SaveResult> {
   const supabase = await createClient()
 
-  // Auth bypassed for development
-  const user = { id: 'dev' }
-  const isTeam = true
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié' }
 
   // ── Parse scalar fields ──────────────────────────────────────────────
   const oeuvreIdRaw  = (formData.get('oeuvre_id') as string | null)?.trim()
@@ -97,6 +97,29 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
   const imageFile     = formData.get('image') as File | null
   const imageExisting = (formData.get('image_existing') as string | null)?.trim() || null
   let imageName       = imageExisting
+
+  // ── Strict Photography Gate ──
+  // Rule 1: No one can be Catalogued (7) or Available (2) without an image.
+  // Rule 2: ONLY Admin can unlock the Catalogued/Available state (validation of high-res).
+  const isTargetingRelease = (catalogued || statusId === 2)
+  const isAdmin = (await supabase.from('profiles').select('role').eq('id', user.id).single()).data?.role === 'admin'
+
+  if (isTargetingRelease) {
+    // Check for image
+    if (!imageFile?.size && !imageExisting) {
+      return { error: 'Une œuvre ne peut pas être cataloguée ou disponible sans photographie (Strict Gate).' }
+    }
+    // Check for Admin authority
+    if (!isAdmin) {
+      await logSystemEvent({
+        eventType: 'GATE_BYPASS',
+        tableName: 'Oeuvres',
+        rowId: oeuvreIdRaw || 'NEW',
+        metadata: { user: user.email, titre, reason: 'Non-admin attempting to release without gate validation' }
+      })
+      return { error: 'Validation haute-résolution requise. Seul l\'administrateur peut débloquer cet état.' }
+    }
+  }
 
   // ── Branch: new vs edit ───────────────────────────────────────────────
 
@@ -222,6 +245,11 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
     const paymentDone  = formData.get('payment_received') === '1'
     const isAnonymous  = formData.get('is_anonymous') === '1'
 
+    // ── Automated Visibility Logic ──
+    // Visibility is a CONSEQUENCE, not a manual choice.
+    // Rule: Visible if (Admin has Unlocked) AND (Work is Catalogued/Available)
+    const automatedIsPublic = (catalogued || statusId === 2) && isAdmin
+
     // Build update payload.
     const updatePayload: Record<string, unknown> = {
       Titre:        titre,
@@ -245,7 +273,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       Montee:            montee,
       Encadree:          encadree,
       Catalogué:         catalogued,
-      is_public:         isPublic,
+      is_public:         automatedIsPublic, // Hard-locked to the gate logic
       IsCommission:      isCommission,
       DateLivraison:     dateLivraison,
       NeedsPhotograph:   needsPhotograph,
@@ -260,6 +288,29 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
     const { error: updateErr } = await supabase.from('Oeuvres').update(updatePayload).eq('OeuvreID', oid)
 
     if (updateErr) return { error: updateErr.message }
+
+    // ── Log Significant Event: Visibility Release ──
+    if (automatedIsPublic && (!current || !current.is_public)) {
+      await logSystemEvent({
+        eventType: 'VISIBILITY_GATE',
+        tableName: 'Oeuvres',
+        rowId: oid,
+        newValue: 'PUBLIC',
+        metadata: { titre, method: 'Photography Gate Passed' }
+      })
+    }
+
+    // ── Log Significant Event: Status Change ──
+    if (current && statusId !== current.statusId) {
+      await logSystemEvent({
+        eventType: 'STATUS_CHANGE',
+        tableName: 'Oeuvres',
+        rowId: oid,
+        oldValue: current.statusId,
+        newValue: statusId,
+        metadata: { titre }
+      })
+    }
 
     // Replace themes: delete + reinsert
     await supabase.from('OeuvreTheme').delete().eq('OeuvreID', oid)

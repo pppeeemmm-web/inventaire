@@ -43,6 +43,14 @@ const STATUT_COLORS: Record<string, string> = {
   cancelled:    'var(--rust)',
 }
 
+const pulseAnim = `
+  @keyframes pulse-red {
+    0% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(1.05); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+`
+
 // ── Component ────────────────────────────────────────────────
 
 export function SalesTab({ oeuvres, statusLabelMap, contacts, groups, cM, tM }: Props) {
@@ -198,6 +206,7 @@ export function SalesTab({ oeuvres, statusLabelMap, contacts, groups, cM, tM }: 
                   <th onClick={() => toggleSort('buyer')} style={{ width: 180, cursor: 'pointer' }}>Acheteur <SortInd k="buyer" current={sortKey} dir={sortDir} /></th>
                   <th onClick={() => toggleSort('date')} style={{ width: 100, cursor: 'pointer' }}>Date <SortInd k="date" current={sortKey} dir={sortDir} /></th>
                   <th onClick={() => toggleSort('prix')} className="num" style={{ width: 120, cursor: 'pointer' }}>Prix final <SortInd k="prix" current={sortKey} dir={sortDir} /></th>
+                  <th style={{ width: 150 }}>Règlement (Grains)</th>
                   <th onClick={() => toggleSort('statut')} style={{ width: 120, cursor: 'pointer' }}>Statut <SortInd k="statut" current={sortKey} dir={sortDir} /></th>
                   <th style={{ width: 60 }}>PDF</th>
                 </tr>
@@ -213,6 +222,7 @@ export function SalesTab({ oeuvres, statusLabelMap, contacts, groups, cM, tM }: 
                       <td style={{ color: 'var(--tx2)', fontSize: 13 }}>{buyer}</td>
                       <td style={{ color: 'var(--tx3)', fontSize: 11 }}>{ord.created_at.slice(0, 10)}</td>
                       <td className="num" style={{ color: 'var(--ac)', fontWeight: 600 }}>{ord.prix_final ? fmt(ord.prix_final) : '—'}</td>
+                      <td><PaymentProgress order={ord} /></td>
                       <td>
                         <span style={{
                           fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase',
@@ -512,6 +522,39 @@ function OrderDetailPanel({ order, oeuvres, cM, onClose, onUpdated }: {
   onClose:   () => void
   onUpdated: () => void
 }) {
+  const [payments, setPayments] = useState<PaymentRow[]>([])
+  const [loading,  setLoading]  = useState(true)
+  const [adding,   setAdding]   = useState(false)
+  const [amt,      setAmt]      = useState('')
+  const [meth,     setMeth]     = useState('Virement')
+
+  useEffect(() => {
+    async function load() {
+      const { fetchPayments } = await import('@/app/atelier/sales/actions')
+      const rows = await fetchPayments(order.id)
+      setPayments(rows)
+      setLoading(false)
+    }
+    load()
+  }, [order.id])
+
+  const totalPaid = payments.reduce((acc, p) => acc + p.amount, 0)
+  const remaining = (order.prix_final || 0) - totalPaid
+
+  async function handleAddPayment(e: React.FormEvent) {
+    e.preventDefault()
+    if (!amt || isNaN(Number(amt))) return
+    setAdding(true)
+    const { addPayment } = await import('@/app/atelier/sales/actions')
+    const res = await addPayment(order.id, Number(amt), meth)
+    if ('ok' in res) {
+      const { fetchPayments } = await import('@/app/atelier/sales/actions')
+      setPayments(await fetchPayments(order.id))
+      setAmt('')
+    }
+    setAdding(false)
+  }
+
   const work  = oeuvres.find((o) => o.OeuvreID === order.oeuvre_id)
   const buyer = order.buyer_id ? (cM[order.buyer_id] ?? `#${order.buyer_id}`) : '—'
   const fmt   = (n: number | null) => n ? `€ ${Number(n).toLocaleString('fr-FR')}` : '—'
@@ -546,13 +589,53 @@ function OrderDetailPanel({ order, oeuvres, cM, onClose, onUpdated }: {
           <span style={{ color: 'var(--tx3)' }}>Prix catalogue</span>  <span>{fmt(order.prix_catalogue)}</span>
           {order.discount_pct    ? <><span style={{ color: 'var(--tx3)' }}>Remise</span>     <span>{order.discount_pct}%</span></> : null}
           <span style={{ color: 'var(--tx3)' }}>Prix final</span>      <span style={{ color: 'var(--ac)' }}>{fmt(order.prix_final)}</span>
-          {order.deposit_pct     ? <><span style={{ color: 'var(--tx3)' }}>Acompte</span>    <span>{order.deposit_pct}% {order.deposit_paid ? '✓' : '—'}</span></> : null}
-          {order.balance_due     ? <><span style={{ color: 'var(--tx3)' }}>Solde dû le</span><span>{order.balance_due.slice(0,10)}</span></> : null}
-          {order.payment_method  ? <><span style={{ color: 'var(--tx3)' }}>Paiement</span>   <span>{order.payment_method}</span></> : null}
-          {order.delivery_date   ? <><span style={{ color: 'var(--tx3)' }}>Livraison</span>  <span>{order.delivery_date.slice(0,10)} {order.delivered ? '✓' : ''}</span></> : null}
-          {order.shipping_method ? <><span style={{ color: 'var(--tx3)' }}>Expédition</span> <span>{order.shipping_method}</span></> : null}
-          {order.delivery_address? <><span style={{ color: 'var(--tx3)' }}>Adresse</span>    <span style={{ whiteSpace: 'pre-line' }}>{order.delivery_address}</span></> : null}
-          {order.notes           ? <><span style={{ color: 'var(--tx3)' }}>Notes</span>      <span>{order.notes}</span></> : null}
+          
+          <div style={{ gridColumn: '1 / -1', height: 1, background: 'var(--bd)', margin: '8px 0' }} />
+          
+          <span style={{ color: 'var(--tx3)' }}>Total Réglé</span>    <span style={{ color: 'var(--sage)', fontWeight: 600 }}>{fmt(totalPaid)}</span>
+          <span style={{ color: 'var(--tx3)' }}>Reste à payer</span>   <span style={{ color: remaining > 0 ? 'var(--rust)' : 'var(--tx3)' }}>{fmt(remaining)}</span>
+          
+          <div style={{ gridColumn: '1 / -1', height: 1, background: 'var(--bd)', margin: '8px 0' }} />
+
+          {order.notes           ? <><span style={{ color: 'var(--tx3)' }}>Notes</span>      <span style={{ opacity: 0.8 }}>{order.notes}</span></> : null}
+        </div>
+
+        {/* --- Payment History (Grains) --- */}
+        <div style={{ marginBottom: 24 }}>
+          <div className="t-label" style={{ marginBottom: 12, color: 'var(--tx2)' }}>Historique des règlements (Grains)</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
+            {loading ? <div style={{ fontSize: 12, color: 'var(--tx3)' }}>Chargement...</div> :
+             payments.length === 0 ? <div style={{ fontSize: 12, color: 'var(--tx3)', fontStyle: 'italic' }}>Aucun versement enregistré.</div> :
+             payments.map(p => (
+               <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg2)', padding: '6px 12px', fontSize: 12, border: '1px solid var(--bd2)' }}>
+                 <div>
+                   <span style={{ color: 'var(--tx2)', fontWeight: 600 }}>{fmt(p.amount)}</span>
+                   <span style={{ color: 'var(--tx3)', marginLeft: 8 }}>via {p.method}</span>
+                 </div>
+                 <div style={{ color: 'var(--tx3)', fontSize: 11 }}>{p.payment_date}</div>
+               </div>
+             ))
+            }
+          </div>
+
+          <form onSubmit={handleAddPayment} style={{ display: 'flex', gap: 8, background: 'var(--bg0)', padding: 12, border: '1px dashed var(--bd)' }}>
+            <input 
+              type="number" 
+              placeholder="Montant (€)" 
+              value={amt} 
+              onChange={e => setAmt(e.target.value)}
+              style={{ ...inputStyle, width: 100 }}
+            />
+            <select value={meth} onChange={e => setMeth(e.target.value)} style={{ ...inputStyle, flex: 1 }}>
+              <option value="Virement">Virement</option>
+              <option value="Chèque">Chèque</option>
+              <option value="Espèces">Espèces</option>
+              <option value="Family">Family / Geste</option>
+            </select>
+            <button type="submit" disabled={adding} className="btn primary sm" style={{ padding: '6px 12px' }}>
+              + Ajouter
+            </button>
+          </form>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <span style={{
@@ -658,4 +741,58 @@ function KpiCard({ label, value, detail, border = false }: { label: string; valu
 function SortInd({ k, current, dir }: { k: string; current: string; dir: 'asc' | 'desc' }) {
   if (k !== current) return <span style={{ opacity: 0.2, marginLeft: 4, fontSize: 13 }}>↕</span>
   return <span style={{ color: 'var(--ac)', marginLeft: 4, fontSize: 13 }}>{dir === 'asc' ? '↑' : '↓'}</span>
+}
+
+function PaymentProgress({ order }: { order: SaleOrderRow }) {
+  const [paid, setPaid] = useState(0)
+  const total = order.prix_final || 0
+  
+  const today = new Date().toISOString().split('T')[0]
+  const isDepositOverdue = !order.deposit_paid && order.deposit_due && order.deposit_due < today
+  const isBalanceOverdue = !order.balance_paid && order.balance_due && order.balance_due < today
+  const isOverdue = isDepositOverdue || isBalanceOverdue
+
+  useEffect(() => {
+    import('@/app/atelier/sales/actions').then(({ fetchPayments }) => {
+      fetchPayments(order.id).then(rows => {
+        setPaid(rows.reduce((s, p) => s + p.amount, 0))
+      })
+    })
+  }, [order.id])
+
+  const pct = total > 0 ? Math.min(100, (paid / total) * 100) : 0
+  const isDone = paid >= total && total > 0
+  
+  return (
+    <div style={{ width: '100%', minWidth: 100 }}>
+      <style>{pulseAnim}</style>
+      <div style={{ 
+        display: 'flex', justifyContent: 'space-between', fontSize: 9, 
+        color: isOverdue ? 'var(--rust)' : 'var(--tx3)', 
+        marginBottom: 4, fontFamily: 'var(--font-mono)',
+        animation: isOverdue ? 'pulse-red 2s infinite ease-in-out' : 'none'
+      }}>
+        <span>{isOverdue ? '⚠️ OVERDUE' : `${Math.round(pct)}%`}</span>
+        <span>{isDone ? 'CLEAR' : `${(total - paid).toLocaleString()}€ REST.`}</span>
+      </div>
+      <div style={{ 
+        height: 4, background: 'var(--bg2)', borderRadius: 2, overflow: 'hidden',
+        border: isOverdue ? '1px solid var(--rust)44' : 'none'
+      }}>
+        <div style={{ 
+          height: '100%', width: `${pct}%`, 
+          background: isDone ? 'var(--sage)' : isOverdue ? 'var(--rust)' : pct > 0 ? 'var(--cyan)' : 'var(--bd)',
+          transition: 'width 0.4s ease'
+        }} />
+      </div>
+    </div>
+  )
+}
+
+interface PaymentRow {
+  id: number
+  order_id: string
+  amount: number
+  method: string
+  payment_date: string
 }

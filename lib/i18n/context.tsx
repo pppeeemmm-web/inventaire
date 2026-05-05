@@ -15,7 +15,7 @@ interface I18nContextValue {
 const I18nContext = createContext<I18nContextValue | null>(null)
 
 export function I18nProvider({ children }: { children: ReactNode }) {
-  const [lang, setLangState] = useState<Lang>('en')
+  const [lang, setLangState] = useState<Lang>('fr')
 
   useEffect(() => {
     const stored = localStorage.getItem('pem_lang') as Lang | null

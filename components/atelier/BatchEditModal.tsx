@@ -67,7 +67,6 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
   const [montee,       setMontee]       = useState<Tri>(null)
   const [encadree,     setEncadree]     = useState<Tri>(null)
   const [catalogued,   setCatalogued]   = useState<Tri>(null)
-  const [isPublic,     setIsPublic]     = useState<Tri>(null)
   const [isCommission, setIsCommission] = useState<Tri>(null)
   const [isGift,       setIsGift]       = useState<Tri>(null)
   const [isPaid,       setIsPaid]       = useState<Tri>(null)
@@ -126,7 +125,7 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
     contactId !== '' || prix !== '' || discount !== '' ||
     annee !== '' || locDetail !== '' || commentaires !== '' ||
     exposable !== null || montee !== null || encadree !== null || catalogued !== null ||
-    isPublic !== null || isCommission !== null || isGift !== null || isPaid !== null || needsPhoto !== null ||
+    isCommission !== null || isGift !== null || isPaid !== null || needsPhoto !== null ||
     addThemes.size > 0 || removeThemes.size > 0 ||
     addGroups.size > 0 || removeGroups.size > 0 ||
     historiqueAppend !== ''
@@ -155,7 +154,6 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
     if (montee       !== null) changes.Montee       = montee
     if (encadree     !== null) changes.Encadree     = encadree
     if (catalogued   !== null) changes['Catalogué'] = catalogued
-    if (isPublic     !== null) changes.is_public    = isPublic
     if (isCommission !== null) changes.IsCommission = isCommission
     if (isGift       !== null) changes.is_gift       = isGift
     if (isPaid       !== null) changes.is_paid       = isPaid
@@ -436,7 +434,6 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
         <TriField label={t('montee')}      value={montee}       onChange={setMontee}      t={t as any} />
         <TriField label={t('framed')}      value={encadree}     onChange={setEncadree}    t={t as any} />
         <TriField label={t('catalogued')}  value={catalogued}   onChange={setCatalogued}  t={t as any} />
-        <TriField label={t('public')}      value={isPublic}     onChange={setIsPublic}    t={t as any} />
         <TriField label={t('commission')}  value={isCommission} onChange={setIsCommission} t={t as any} />
         <TriField label="Cadeau (Gift)"    value={isGift}       onChange={setIsGift}       t={t as any} />
         <TriField label="Payé (Paid)"      value={isPaid}       onChange={setIsPaid}       t={t as any} />

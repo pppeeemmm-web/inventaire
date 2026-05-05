@@ -69,6 +69,8 @@ export interface VaultDoc {
   doc_date:     string | null
   cert_id:      string | null
   cert_hash:    string | null
+  process_id:   number | null
+  folder:       string | null
 }
 
 // ── Auth guard helper ─────────────────────────────────────────────────────
@@ -94,6 +96,7 @@ export async function uploadDocument(formData: FormData): Promise<UploadResult> 
   const customKind  = (formData.get('custom_kind') as string | null)?.trim() || null
   const notes       = (formData.get('notes') as string | null)?.trim()     || null
   const doc_date    = (formData.get('doc_date') as string | null)?.trim()  || null
+  const folder      = (formData.get('folder') as string | null)?.trim()    || null
   const oeuvre_ids_str = (formData.get('oeuvre_ids') as string | null)    || ''
   
   if (!file || file.size === 0) return { error: 'Aucun fichier sélectionné' }
@@ -139,6 +142,7 @@ export async function uploadDocument(formData: FormData): Promise<UploadResult> 
       storage_path: finalPath,
       file_size:    file.size,
       mime_type:    file.type,
+      folder:       folder,
     })
     .select()
     .single()
@@ -160,6 +164,7 @@ export async function updateDocument(id: number, formData: FormData): Promise<Up
   const customKind  = (formData.get('custom_kind') as string | null)?.trim() || null
   const notes       = (formData.get('notes') as string | null)?.trim()     || null
   const doc_date    = (formData.get('doc_date') as string | null)?.trim()  || null
+  const folder      = (formData.get('folder') as string | null)?.trim()    || null
   const oeuvre_ids_str = (formData.get('oeuvre_ids') as string | null)    || ''
 
   const typeStr = (kind === 'custom' ? customKind : kind) || 'autre'
@@ -175,6 +180,7 @@ export async function updateDocument(id: number, formData: FormData): Promise<Up
       doc_date:  doc_date || null,
       oeuvre_id: primary,
       oeuvre_ids: ids,
+      folder,
     })
     .eq('id', id)
     .select()
@@ -198,6 +204,98 @@ export async function deleteDocument(id: number, storagePath: string | null): Pr
   if (error) return { error: error.message }
   return { ok: true }
 }
+
+// ── Folder Management ─────────────────────────────────────────────────────
+
+/**
+ * Renames a folder by updating the 'folder' field of all documents sharing the prefix.
+ * Supports nested renames (e.g., 'Archive/2023' -> 'Archive/2024').
+ */
+export async function renameFolder(oldPath: string, newPath: string): Promise<VaultResult> {
+  const { error: authErr, supabase } = await guardTeam()
+  if (authErr || !supabase) return { error: authErr ?? 'Auth' }
+
+  // 1. Fetch all docs in the old path (and its subfolders)
+  const { data: docs, error: fetchErr } = await (supabase.from('document') as any)
+    .select('id, folder')
+    .or(`folder.eq.${oldPath},folder.ilike.${oldPath}/%`)
+
+  if (fetchErr) return { error: fetchErr.message }
+  if (!docs || docs.length === 0) return { ok: true }
+
+  // 2. Prepare updates
+  const updates = docs.map((d: any) => {
+    let updatedFolder = newPath
+    if (d.folder.startsWith(oldPath + '/')) {
+      updatedFolder = newPath + d.folder.slice(oldPath.length)
+    }
+    return { id: d.id, folder: updatedFolder }
+  })
+
+  // 3. Batch update (Supabase handles this if we pass an array with IDs)
+  // Note: Standard Supabase .upsert or multiple .update calls. 
+  // For simplicity and safety, we'll do them in a single rpc if available, 
+  // or a loop if the count is small. 
+  // Optimal: .upsert(updates) where updates include the primary key 'id'.
+  const { error: upErr } = await (supabase.from('document') as any).upsert(updates)
+  
+  if (upErr) return { error: upErr.message }
+  return { ok: true }
+}
+
+/**
+ * Creates a permanent empty folder by inserting a hidden '.keep' document.
+ * This ensures the folder exists in the ramification tree even without user files.
+ */
+export async function createFolder(path: string): Promise<VaultResult> {
+  const { error: authErr, supabase } = await guardTeam()
+  if (authErr || !supabase) return { error: authErr ?? 'Auth' }
+
+  // Check if it already exists (virtually)
+  const { data: existing } = await (supabase.from('document') as any)
+    .select('id')
+    .eq('folder', path)
+    .eq('name', '.keep')
+    .maybeSingle()
+
+  if (existing) return { ok: true }
+
+  const { error } = await (supabase.from('document') as any)
+    .insert({
+      name: '.keep',
+      kind: 'system',
+      folder: path,
+      notes: 'Folder marker',
+      mime_type: 'application/x-directory'
+    })
+
+  if (error) return { error: error.message }
+  return { ok: true }
+}
+
+/**
+ * Moves one or more documents to a new folder.
+ */
+export async function moveDocuments(docIds: number[], targetFolder: string | null): Promise<VaultResult> {
+  const { error: authErr, supabase } = await guardTeam()
+  if (authErr || !supabase) return { error: authErr ?? 'Auth' }
+
+  if (error) return { error: error.message }
+  return { ok: true }
+}
+
+export async function renameDocument(id: number, newName: string): Promise<VaultResult> {
+  const { error: authErr, supabase } = await guardTeam()
+  if (authErr || !supabase) return { error: authErr ?? 'Auth' }
+
+  const { error } = await (supabase.from('document') as any)
+    .update({ name: newName })
+    .eq('id', id)
+
+  if (error) return { error: error.message }
+  return { ok: true }
+}
+
 
 // ── Generate signed download URL ──────────────────────────────────────────
 

@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
   },
   // pdfkit → fontkit uses decorators incompatible with Turbopack's @swc/helpers.
   // Keep them as native Node.js requires instead of bundling.
-  serverExternalPackages: ['pdfkit', 'fontkit', 'qrcode'],
+  serverExternalPackages: ['pdfkit', 'fontkit', 'qrcode', 'sharp'],
 
   turbopack: {
     // Silence "multiple lockfiles" workspace root warning

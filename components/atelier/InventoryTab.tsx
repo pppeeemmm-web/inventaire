@@ -1078,6 +1078,11 @@ function InvList({
                       const level = (o as any).anonymity_level ?? (o.is_public === false ? 2 : 0)
                       if (level === 2) return <span title="Privé (Confidentiel)" style={{ marginLeft: 4, opacity: 0.6 }}>🔒</span>
                       if (level === 1) return <span title="Anonyme (Confidentiel)" style={{ marginLeft: 4, color: 'var(--ac)' }}>👤</span>
+                      
+                      // Photography Gate Indicator
+                      if (!o.Catalogué && o.statusId === 1 && o.txtImageNameLink) {
+                        return <span title="En attente de validation Haute-Résolution" style={{ marginLeft: 6, color: 'var(--ac)', fontSize: 9, fontWeight: 700 }}>● GATE</span>
+                      }
                       return null
                     })()}
                   </td>

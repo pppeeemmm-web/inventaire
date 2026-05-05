@@ -52,11 +52,11 @@ export default function LandingPage() {
           flex-shrink: 0;
         }
         .orb {
-          position: absolute; font-size: 9px; letter-spacing: 3px; text-transform: uppercase;
-          color: #b0aca6; text-decoration: none;
+          position: absolute; font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
+          color: #7a7670; text-decoration: none;
           display: flex; align-items: center; gap: 10px; white-space: nowrap; transition: color .25s;
         }
-        .orb:hover { color: #5a5650; }
+        .orb:hover { color: #3a3834; }
         .orb-top    { bottom: 100%; left: 50%; transform: translateX(-50%); flex-direction: column; padding-bottom: 52px; }
         .orb-top::after    { content: ''; display: block; width: 1px; height: 28px; background: currentColor; opacity: .4; }
         .orb-bottom { top: 100%;  left: 50%; transform: translateX(-50%); flex-direction: column-reverse; padding-top: 52px; }

@@ -90,6 +90,7 @@ interface ContactSocial {
 interface Props {
   contacts: ContactRow[]
   oeuvres:  Oeuvre[]
+  conflicts?: any[]
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -110,7 +111,7 @@ function cap(s: string): string {
 
 // ── Component ────────────────────────────────────────────────────────
 
-export function ContactsTab({ contacts: initialContacts, oeuvres }: Props) {
+export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = [] }: Props) {
   const { t, lang } = useI18n()
   const [contacts,   setContacts]   = useState<ContactRow[]>(initialContacts)
   const [q,          setQ]          = useState('')
@@ -570,7 +571,14 @@ export function ContactsTab({ contacts: initialContacts, oeuvres }: Props) {
                       />
                     </td>
                     <td style={{ color: 'var(--tx3)', fontSize: 11 }}>{c.ContactID}</td>
-                    <td style={{ fontWeight: isFoc ? 600 : undefined, fontSize: 13 }}>{displayName(c)}</td>
+                    <td style={{ fontWeight: isFoc ? 600 : undefined, fontSize: 13 }}>
+                      {displayName(c)}
+                      {conflicts.some(conf => conf.public_contact_id === c.ContactID) && (
+                        <span style={{ marginLeft: 8, background: 'var(--rust)', color: '#fff', fontSize: 8, padding: '1px 4px', borderRadius: 2, letterSpacing: 0.5, verticalAlign: 'middle' }}>
+                          CONFLICT
+                        </span>
+                      )}
+                    </td>
                     <td style={{ color: 'var(--tx3)', fontSize: 12 }}>{c.Role ?? '—'}</td>
                     <td style={{ color: 'var(--tx3)', fontSize: 12 }}>{listVille(c.ContactID)}</td>
                     <td style={{ color: 'var(--tx3)', fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ex?.Email ?? <span style={{ opacity: 0.3 }}>…</span>}</td>

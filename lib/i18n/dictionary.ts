@@ -38,6 +38,7 @@ export type DictKey =
   | 'searchFieldAll' | 'searchFieldName' | 'searchFieldCity' | 'searchFieldEmail' | 'searchFieldNotes'
   | 'identity' | 'depth' | 'visibility' | 'history' | 'save' | 'create'
   | 'priced' | 'date' | 'label'
+  | 'main' | 'ramifications' | 'import' | 'newFolder' | 'generateCoa'
   | 'selection' | 'modify' | 'export' | 'compare' | 'groupNamePlaceholder' | 'clear'
   | 'legend' | 'stage_mounting'
   | 'batchEdit' | 'onlyChangedUpdated' | 'modifyAtLeastOne' | 'modifying' | 'applyTo'
@@ -52,6 +53,8 @@ export type DictKey =
   | 'pub_name' | 'pub_email' | 'pub_message' | 'pub_send' | 'pub_sending'
   | 'pub_back' | 'pub_thank_you'
   | 'pub_read_statement' | 'pub_download_cv'
+  | 'pub_not_available' | 'pub_approach_tab' | 'pub_works_tab'
+  | 'pub_full_name' | 'pub_your_enquiry'
 
 type Dictionary = Record<DictKey, string>
 
@@ -143,9 +146,11 @@ export const dict: Record<Lang, Dictionary> = {
     notesBatchPlaceholder: 'Écraser les commentaires existants par...',
     exportTitlePlaceholder: 'Titre du document…',
     appendIndex: 'Ajouter index en fin de document',
+    main: 'Principal', ramifications: 'Ramifications',
+    import: 'Importer', newFolder: 'Nouveau dossier', generateCoa: 'Générer COA',
     // Public site
-    pub_works: 'Works', pub_about: 'About', pub_practice: 'Practice',
-    pub_enquiry: 'Enquiry', pub_portfolio: 'Portfolio',
+    pub_works: 'Oeuvres', pub_about: 'À propos', pub_practice: 'Pratique',
+    pub_enquiry: 'Contact', pub_portfolio: 'Portfolio',
     pub_biography: 'Biographie', pub_exhibitions_selected: 'Expositions & sélections',
     pub_education: 'Formation', pub_contact: 'Contact',
     pub_approach: 'Approche', pub_central_themes: 'Thèmes centraux',
@@ -158,6 +163,11 @@ export const dict: Record<Lang, Dictionary> = {
     pub_back: 'Retour', pub_thank_you: 'Merci. Votre message a bien été reçu. Nous vous répondrons prochainement.',
     pub_read_statement: 'Lire la démarche artistique (PDF)',
     pub_download_cv: 'Télécharger CV (PDF)',
+    pub_not_available: 'Non disponible',
+    pub_approach_tab: 'Approche',
+    pub_works_tab: 'Œuvres',
+    pub_full_name: 'Nom complet',
+    pub_your_enquiry: 'Votre demande...',
   },
   en: {
     hub: 'Studio', tagline: 'Inventory · Production · Curation · Relations',
@@ -245,6 +255,8 @@ export const dict: Record<Lang, Dictionary> = {
     notesBatchPlaceholder: 'Overwrite existing comments with...',
     exportTitlePlaceholder: 'Document title…',
     appendIndex: 'Append index at end of document',
+    main: 'Main', ramifications: 'Hierarchy',
+    import: 'Import', newFolder: 'New Folder', generateCoa: 'Generate COA',
     // Public site
     pub_works: 'Works', pub_about: 'About', pub_practice: 'Practice',
     pub_enquiry: 'Enquiry', pub_portfolio: 'Portfolio',
@@ -260,5 +272,10 @@ export const dict: Record<Lang, Dictionary> = {
     pub_back: 'Back', pub_thank_you: 'Thank you. Your message has been received. We will be in touch shortly.',
     pub_read_statement: 'Read Artist Statement (PDF)',
     pub_download_cv: 'Download CV (PDF)',
+    pub_not_available: 'Unavailable',
+    pub_approach_tab: 'Approach',
+    pub_works_tab: 'Works',
+    pub_full_name: 'Full name',
+    pub_your_enquiry: 'Your enquiry...',
   },
 }

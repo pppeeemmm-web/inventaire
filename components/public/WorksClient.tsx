@@ -3,6 +3,7 @@
 import { useI18n } from '@/lib/i18n/context'
 import { imageUrl, yearOf } from '@/lib/data'
 import { useEffect, useState, useRef, useMemo } from 'react'
+import PublicNav from './PublicNav'
 
 function normalizeTheme(s: string | null | undefined): string {
   if (!s) return ''
@@ -137,8 +138,10 @@ export default function WorksClient({ works, collections }: Props) {
         }
         .w-logo { font-size: 10px; letter-spacing: 5px; text-transform: uppercase; color: #1a1816; text-decoration: none; font-weight: 500; }
         .w-navlinks { display: flex; gap: 40px; align-items: center; }
-        .w-navlink { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: #b0aca6; text-decoration: none; transition: color .3s; }
+        .w-navlink { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: #7a7670; text-decoration: none; transition: color .3s; }
         .w-navlink:hover, .w-navlink.active { color: #1a1816; }
+        .w-lang { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: #7a7670; background: none; border: 1px solid #c8c4be; padding: 3px 8px; cursor: pointer; transition: all .15s; font-family: inherit; }
+        .w-lang:hover { color: #1a1816; border-color: #7a7670; }
 
         .w-depth-item {
           position: absolute; inset: 0;
@@ -226,13 +229,7 @@ export default function WorksClient({ works, collections }: Props) {
       <div className="w-paper-bg"></div>
       <div className="grain-overlay" id="grain"></div>
 
-      <nav className="w-nav">
-        <a href="/" className="w-logo">PIERRE EMMANUEL MOULIN</a>
-        <div className="w-navlinks">
-          <a href="/works" className="w-navlink active">{t('nav_works')}</a>
-          <a href="/atelier" className="w-navlink">{t('nav_atelier')}</a>
-        </div>
-      </nav>
+      <PublicNav active="works" prefix="w" />
 
       <div className="w-viewport">
         {sequence.map((item, idx) => {
@@ -329,7 +326,7 @@ export default function WorksClient({ works, collections }: Props) {
         })}
       </div>
 
-      <div className="w-scroll-hint">Liquid Depth · Scroll Wheel</div>
+      <div className="w-scroll-hint">↓ scroll</div>
     </>
   )
 }
