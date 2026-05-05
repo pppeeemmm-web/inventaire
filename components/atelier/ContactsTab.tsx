@@ -42,6 +42,7 @@ interface ContactRow {
   PersonneResponsable?: string | null
   RoleResponsable?:   string | null
   Actif?:             boolean | null
+  is_private?:        boolean | null
 }
 
 interface ContactAddress {
@@ -113,6 +114,7 @@ function cap(s: string): string {
 
 export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = [] }: Props) {
   const { t, lang } = useI18n()
+  const [isAdmin,    setIsAdmin]    = useState(false)
   const [contacts,   setContacts]   = useState<ContactRow[]>(initialContacts)
   const [q,          setQ]          = useState('')
   const [searchBy,   setSearchBy]   = useState('all')
@@ -147,8 +149,12 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
   // Re-fetch everything on mount so edits appear without page reload
   useEffect(() => {
     const sb = createClient()
+    // Check if current user is admin
+    sb.rpc('is_admin').then(({ data }: { data: boolean | null }) => {
+      setIsAdmin(!!data)
+    })
     ;(sb.from('Contact') as any)
-      .select('ContactID, NomInstitution, Nom, Prénom, Role, Ville, Pays')
+      .select('ContactID, NomInstitution, Nom, Prénom, Role, Ville, Pays, is_private')
       .order('"ContactID"')
       .then(({ data }: { data: ContactRow[] | null }) => {
         if (data) setContacts(data)
@@ -456,6 +462,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
           onClose={() => setEditing(null)}
           onCreated={handleCreated}
           onUpdated={handleUpdated}
+          isAdminUser={isAdmin}
         />
       )}
 
@@ -875,6 +882,7 @@ type FormState = {
   Website: string
   Instagram: string; LinkedIn: string; Facebook: string; Twitter: string
   PersonneResponsable: string; RoleResponsable: string; Notes: string; Actif: boolean
+  is_private: boolean
 }
 
 type AddrForm = {
@@ -892,7 +900,7 @@ function emptyAddr(): AddrForm {
 }
 
 function ContactEditModal({
-  contact, initialAddresses, initialEmails, initialPhones, initialWebsites, initialSocials, onClose, onCreated, onUpdated,
+  contact, initialAddresses, initialEmails, initialPhones, initialWebsites, initialSocials, onClose, onCreated, onUpdated, isAdminUser,
 }: {
   contact?:          ContactRow | null
   initialAddresses:  ContactAddress[]
@@ -903,6 +911,7 @@ function ContactEditModal({
   onClose:           () => void
   onCreated:         (c: ContactRow, addrs: ContactAddress[], e: ContactEmail[], p: ContactPhone[], w: ContactWebsite[], s: ContactSocial[]) => void
   onUpdated:         (c: ContactRow, addrs: ContactAddress[], e: ContactEmail[], p: ContactPhone[], w: ContactWebsite[], s: ContactSocial[]) => void
+  isAdminUser:       boolean
 }) {
   const isNew = !contact
 
@@ -938,6 +947,7 @@ function ContactEditModal({
     RoleResponsable:    contact?.RoleResponsable    ?? '',
     Notes:              contact?.Notes              ?? '',
     Actif:              contact?.Actif              ?? true,
+    is_private:         contact?.is_private         ?? false,
   })
 
   const [addrList, setAddrList] = useState<AddrForm[]>(
@@ -1055,6 +1065,7 @@ function ContactEditModal({
         RoleResponsable:    form.RoleResponsable    || null,
         Notes:              form.Notes              || null,
         Actif:              form.Actif,
+        is_private:         isAdminUser ? form.is_private : false,
       }
 
       let contactId: number
@@ -1197,6 +1208,14 @@ function ContactEditModal({
             </label>
           </FRow>
         </Grid2>
+        {isAdminUser && (
+          <FRow label="Privé">
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, fontSize: 11, cursor: 'pointer' }}>
+              <input type="checkbox" checked={form.is_private ?? false} onChange={(e) => setForm((p) => ({ ...p, is_private: e.target.checked }))} />
+              Contact privé (visible uniquement par l'admin)
+            </label>
+          </FRow>
+        )}
 
         <Grid2>
           <FRow label="Personne responsable"><input value={form.PersonneResponsable} onChange={f('PersonneResponsable')} style={FIS} /></FRow>
@@ -1379,13 +1398,6 @@ function BatchEditModal({
           <FRow label="Nouveau Rôle">
             <select value={role ?? ''} onChange={e => setRole(e.target.value || undefined)} style={FIS}>
               <option value="">— Ne pas modifier</option>
-              {roleOptions.map(r => <option key={r} value={r}>{r}</option>)}
-            </select>
-          </FRow>
-
-          <FRow label="Statut Actif">
-            <select value={actif === undefined ? '' : String(actif)} onChange={e => setActif(e.target.value === '' ? undefined : e.target.value === 'true')} style={FIS}>
-              <option value="">— Ne pas modifier</option>
               <option value="true">Actif</option>
               <option value="false">Inactif</option>
             </select>
@@ -1393,13 +1405,13 @@ function BatchEditModal({
 
           <FRow label="Notes">
             <textarea
-              value={notes ?? ''}
+              value={notes ?? ""}
               onChange={e => setNotes(e.target.value || undefined)}
               placeholder="Texte à ajouter ou remplacer..."
-              style={{ ...FIS, height: 80, resize: 'vertical' }}
+              style={{ ...FIS, height: 80, resize: "vertical" }}
             />
             {notes && (
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, fontSize: 10, color: 'var(--tx3)' }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4, fontSize: 10, color: "var(--tx3)" }}>
                 <input type="checkbox" checked={append} onChange={e => setAppend(e.target.checked)} />
                 Ajouter à la fin (Append)
               </label>
@@ -1407,9 +1419,9 @@ function BatchEditModal({
           </FRow>
         </div>
 
-        <div style={{ display: 'flex', gap: 8, marginTop: 24 }}>
+        <div style={{ display: "flex", gap: 8, marginTop: 24 }}>
           <button className="btn sm ghost" onClick={onClose} disabled={busy} style={{ flex: 1 }}>Annuler</button>
-          <button className="btn sm" onClick={() => onSave({ Role: role, Actif: actif, Notes: notes, appendNotes: append })} disabled={busy || (role === undefined && actif === undefined && notes === undefined)} style={{ flex: 1, background: 'var(--ac)', borderColor: 'var(--ac)' }}>
+          <button className="btn sm" onClick={() => onSave({ Role: role, Actif: actif, Notes: notes, appendNotes: append })} disabled={busy || (role === undefined && actif === undefined && notes === undefined)} style={{ flex: 1, background: "var(--ac)", borderColor: "var(--ac)" }}>
             Appliquer
           </button>
         </div>
