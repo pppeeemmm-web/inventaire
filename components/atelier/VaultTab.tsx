@@ -305,7 +305,6 @@ export function VaultTab({ oeuvres, tM }: Props) {
               })
             }}
           />
-          />
         </div>
 
         <div className="t-eyebrow" style={{ padding: '24px 20px 8px', fontSize: 10, opacity: 0.5, letterSpacing: 1.5 }}>
