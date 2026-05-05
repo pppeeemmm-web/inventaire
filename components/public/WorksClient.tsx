@@ -43,8 +43,9 @@ export default function WorksClient({ works, collections }: Props) {
   const sequence = useMemo(() => {
     const items: SequenceItem[] = []
     const activeCollections = collections.filter(c => c.is_active)
+
+    // Works first — headers move to the end as the loop trigger
     activeCollections.forEach(col => {
-      items.push({ type: 'header', title: col.title, subtitle: col.description })
       const colMatch = normalizeTheme(col.theme)
       const colWorks = works.filter(w => {
         if (!w.txtImageNameLink) return false
@@ -56,6 +57,11 @@ export default function WorksClient({ works, collections }: Props) {
     if (items.length === 0) {
       works.filter(w => w.txtImageNameLink).forEach((w, i) => items.push({ type: 'work', data: w, workIndex: i }))
     }
+
+    // Header at the end — clicking it loops back to start
+    activeCollections.forEach(col => {
+      items.push({ type: 'header', title: col.title, subtitle: col.description })
+    })
     return items
   }, [works, collections])
 
@@ -63,10 +69,13 @@ export default function WorksClient({ works, collections }: Props) {
   const currentDepth = useRef(0)
   const [displayDepth, setDisplayDepth] = useState(0)
 
-  // Ken Burns: slow zoom per-painting, resets when a new painting hits center
-  const burnZoom      = useRef(1)
-  const burnTarget    = useRef(1)
-  const activePainting = useRef<number>(-1)
+  // Ken Burns: persistent individual zoom per painting
+  const zooms = useRef<number[]>([])
+  const isReady = useRef(false)
+  useEffect(() => {
+    zooms.current = new Array(sequence.length).fill(1)
+    isReady.current = true
+  }, [sequence])
 
   const STEP       = 6000
   const BIRTH_DIST = 60000
@@ -74,7 +83,7 @@ export default function WorksClient({ works, collections }: Props) {
   useEffect(() => {
     const handleWheel = (e: WheelEvent) => {
       targetDepth.current += e.deltaY * 2.5
-      const maxScroll = (sequence.length - 1) * STEP + 2000
+      const maxScroll = (sequence.length - 1) * STEP
       targetDepth.current = Math.max(0, Math.min(targetDepth.current, maxScroll))
     }
     window.addEventListener('wheel', handleWheel, { passive: true })
@@ -87,19 +96,16 @@ export default function WorksClient({ works, collections }: Props) {
       setDisplayDepth(currentDepth.current)
       document.getElementById('grain')?.style.setProperty('--scroll-y', currentDepth.current.toString())
 
-      // Ken Burns: find active painting index
-      const activeIdx = Math.round(currentDepth.current / STEP)
-      const item = sequence[activeIdx]
-      if (item?.type === 'work') {
-        if (activePainting.current !== activeIdx) {
-          // New painting arrived — reset zoom
-          activePainting.current = activeIdx
-          burnZoom.current = 1
-          burnTarget.current = 1.18
+      // Ken Burns: Update all visible paintings (Cinematic Creep)
+      sequence.forEach((item, i) => {
+        const dist = currentDepth.current - i * STEP
+        if (Math.abs(dist) < BIRTH_DIST) {
+          // Continuous slow zoom
+          zooms.current[i] = (zooms.current[i] || 1) + 0.0004
+        } else {
+          zooms.current[i] = 1
         }
-        // Slowly creep toward target
-        burnZoom.current += (burnTarget.current - burnZoom.current) * 0.002
-      }
+      })
 
       rafId = requestAnimationFrame(animate)
     }
@@ -111,17 +117,7 @@ export default function WorksClient({ works, collections }: Props) {
     }
   }, [sequence])
 
-  // Read burn zoom each render via ref — avoids re-render overhead
-  const [burnValue, setBurnValue] = useState(1)
-  useEffect(() => {
-    let raf: number
-    const tick = () => {
-      setBurnValue(burnZoom.current)
-      raf = requestAnimationFrame(tick)
-    }
-    raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
-  }, [])
+  // We re-render on displayDepth change, which picks up the latest zooms.current values.
 
   return (
     <>
@@ -171,14 +167,22 @@ export default function WorksClient({ works, collections }: Props) {
           display: flex; align-items: center; justify-content: center;
         }
 
-        /* Floating shadow intensifies at center, fades at distance */
-        .w-image-container {
+        .w-artwork-container {
+          position: relative;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          /* The shadow is on this outer layer so it can bleed out */
+          box-shadow: var(--painting-shadow);
+          will-change: transform;
+        }
+
+        .w-image-clipper {
           position: relative;
           display: flex; align-items: center; justify-content: center;
-          border-radius: var(--img-radius);
+          background-color: #fcfaf7; /* Solid barrier to prevent ghosting */
           overflow: hidden;
           isolation: isolate;
-          box-shadow: var(--painting-shadow);
         }
 
         .w-main-img {
@@ -213,6 +217,10 @@ export default function WorksClient({ works, collections }: Props) {
         .w-header-title {
           font-family: 'Instrument Serif', serif; font-size: clamp(80px, 15vw, 240px);
           color: #1a1816; letter-spacing: -0.05em; line-height: 0.85; margin-bottom: 48px;
+          transition: opacity 0.3s;
+        }
+        .w-parallax-header:hover .w-header-title {
+          opacity: 0.65;
         }
         .w-header-subtitle {
           max-width: 600px; font-size: 14px; line-height: 1.6; letter-spacing: 0.1em;
@@ -221,21 +229,27 @@ export default function WorksClient({ works, collections }: Props) {
 
         .w-parallax-meta {
           position: absolute; top: 50%; left: 64px;
-          width: 30vw; max-width: 420px; z-index: 100;
+          z-index: 100;
           pointer-events: auto;
           will-change: transform;
-          transform-style: preserve-3d;
-          transform: translateY(-50%) rotateX(30deg);
+          transform: translateY(-50%);
         }
-        .w-work-title {
-          font-family: 'Instrument Serif', serif; font-size: clamp(28px, 4vw, 56px);
-          color: #1a1816; font-weight: 400; margin-bottom: 24px;
-          letter-spacing: -0.04em; line-height: 1;
-          text-shadow: -6px 10px 20px rgba(20,16,10,0.25);
+        .w-work-caption {
+          font-family: 'Instrument Serif', serif;
+          font-size: clamp(20px, 3vw, 42px);
+          color: #1a1816;
+          white-space: nowrap;
+          letter-spacing: -0.02em;
+          text-shadow: 0 0 30px rgba(255,255,255,0.8), 0 0 60px rgba(255,255,255,0.4);
         }
-        .w-work-details {
-          display: flex; flex-direction: column; gap: 12px; font-size: 10px; color: #b0aca6; letter-spacing: 5px; text-transform: uppercase;
-          text-shadow: -4px 6px 12px rgba(20,16,10,0.2);
+        .w-work-details-line {
+          font-family: 'Inter', sans-serif;
+          font-size: 10px;
+          color: #8a8680;
+          margin-left: 20px;
+          letter-spacing: 0.2em;
+          text-transform: uppercase;
+          vertical-align: middle;
         }
 
         .w-scroll-hint {
@@ -273,7 +287,7 @@ export default function WorksClient({ works, collections }: Props) {
           // Opacity: steep fade-in on approach, hold briefly at center, quick fade out
           const opacity = dist < 0
             ? Math.pow(Math.max(0, (dist + BIRTH_DIST) / BIRTH_DIST), 4)
-            : Math.max(0, 1 - Math.max(0, dist - STEP * 0.3) / (STEP * 0.4))
+            : (dist < 100 ? 1 : 0) // Instant cut after passing the center
 
           let translateZ = 0
           let scale = 1
@@ -296,7 +310,11 @@ export default function WorksClient({ works, collections }: Props) {
                 opacity: Math.max(0, 1 - Math.abs(dist / 3000)),
                 transform: `translate3d(0, 0, ${translateZ * 1.2}px) scale(${scale * 0.8})`,
                 zIndex,
-              }}>
+                pointerEvents: Math.abs(dist) < 2000 ? 'auto' : 'none',
+                cursor: 'pointer',
+              }}
+                onClick={() => { targetDepth.current = 0 }}
+              >
                 <div className="w-parallax-header">
                   <h1 className="w-header-title">{item.title}</h1>
                   {item.subtitle && <p className="w-header-subtitle">{item.subtitle}</p>}
@@ -307,7 +325,6 @@ export default function WorksClient({ works, collections }: Props) {
 
           const work = item.data
           const isFirstWork = item.workIndex === 0
-          const isActive = activePainting.current === idx
 
           // ── First work: slides in from right with rotateY skew ──
           let slideTranslateX = 0
@@ -321,12 +338,6 @@ export default function WorksClient({ works, collections }: Props) {
             slideRotateY    = (1 - eased) * 42   // degrees skew
           }
 
-          // Shape: circle far away → sharp rectangle at center
-          const approachWindow = STEP * 2
-          const shapeProgress  = dist < 0
-            ? Math.max(0, Math.min(1, (dist + approachWindow) / approachWindow))
-            : 1
-          const cornerRadius = Math.round((1 - shapeProgress) * 50)
 
           // Shadow: grows as painting arrives, fades as it leaves (top-right source → bottom-left)
           const shadowIntensity = Math.max(0, 1 - Math.abs(dist) / (STEP * 1.5))
@@ -395,17 +406,18 @@ export default function WorksClient({ works, collections }: Props) {
               </>}
 
               <div className="w-artwork-wrap">
-                <div className="w-image-container" style={{
-                  // @ts-ignore
-                  '--img-radius': `${cornerRadius}%`,
+                <div className="w-artwork-container" style={{
                   '--painting-shadow': paintingShadow,
+                  transform: `scale(${zooms.current[idx] || 1}) translate3d(${( (zooms.current[idx] || 1) - 1) * 40}px, ${( (zooms.current[idx] || 1) - 1) * 20}px, 0)`,
+                  opacity: opacity, /* Move opacity here so barrier stays solid? No, barrier needs to fade too, but we block it with Z-stack */
                 } as React.CSSProperties}>
-                  <img
-                    src={imgSrc}
-                    alt={work.Titre ?? ''}
-                    className="w-main-img"
-                    style={{ '--burns-zoom': isActive ? burnValue : 1 } as React.CSSProperties}
-                  />
+                  <div className="w-image-clipper">
+                    <img
+                      src={imgSrc}
+                      alt={work.Titre ?? ''}
+                      className="w-main-img"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -413,13 +425,14 @@ export default function WorksClient({ works, collections }: Props) {
                 className="w-parallax-meta"
                 style={{
                   opacity: textOpacity,
-                  transform: `translate3d(0, 0, ${textZ - translateZ}px) rotateX(30deg)`,
+                  transform: `translate3d(0, 0, ${textZ - translateZ}px)`,
                 }}
               >
-                <h3 className="w-work-title">{work.Titre ?? t('pub_untitled')}</h3>
-                <div className="w-work-details">
-                  <span>{yearOf(work.Annee)}</span>
-                  <span>{work.Hauteur && work.Largeur ? `${work.Hauteur} × ${work.Largeur} cm` : ''}</span>
+                <div className="w-work-caption">
+                  {work.Titre ?? t('pub_untitled')}
+                  <span className="w-work-details-line">
+                    {yearOf(work.Annee)} {work.Hauteur && work.Largeur ? ` • ${work.Hauteur} × ${work.Largeur} cm` : ''}
+                  </span>
                 </div>
               </div>
             </div>

@@ -1,0 +1,6 @@
+{
+  "task.allowAutomaticTasks": "on",
+  "git.postCommitCommand": "push",
+  "git.autofetch": true,
+  "git.enableSmartCommit": true
+}
