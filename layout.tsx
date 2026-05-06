@@ -14,7 +14,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="fr">
+    <html lang="en" suppressHydrationWarning>
       <head>
         {/* Self-host fonts in production — for now load from Google Fonts */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -23,8 +23,20 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500;600;700&display=swap"
           rel="stylesheet"
         />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var theme = localStorage.getItem('pem_theme') || 'dark';
+                  document.documentElement.setAttribute('data-theme', theme);
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
       </head>
-      <body style={{ height: '100dvh', overflow: 'hidden' }}>
+      <body style={{ minHeight: '100dvh' }} suppressHydrationWarning>
         <I18nProvider>
           {children}
         </I18nProvider>

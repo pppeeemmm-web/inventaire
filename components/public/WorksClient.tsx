@@ -5,6 +5,44 @@ import { imageUrl, yearOf } from '@/lib/data'
 import { useEffect, useState, useRef, useMemo } from 'react'
 import PublicNav from './PublicNav'
 
+// Strip HTML tags to plain text before FlameText transform
+function htmlToPlain(html: string): string {
+  if (!html) return ''
+  return html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<\/h[1-6]>/gi, '\n')
+    .replace(/<\/li>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ')
+    .replace(/\n{3,}/g, '\n\n').trim()
+}
+
+// Subtitle text: line breaks → █, periods → /
+function FlameText({ text }: { text: string }) {
+  const plain = htmlToPlain(text)
+  const formatted = plain
+    .replace(/\./g, ' /')
+    .replace(/\n/g, ' █ ')
+
+  return (
+    <p style={{
+      maxWidth: 'min(640px, 80vw)',
+      fontSize: 'clamp(9px, 1.1vw, 13px)',
+      lineHeight: 1.9,
+      letterSpacing: '0.18em',
+      textTransform: 'uppercase',
+      color: '#8a8680',
+      textAlign: 'justify',
+      wordSpacing: '0.3em',
+      fontFamily: 'JetBrains Mono, monospace',
+      margin: '0 auto',
+    }}>
+      {formatted}
+    </p>
+  )
+}
+
 function normalizeTheme(s: string | null | undefined): string {
   if (!s) return ''
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
@@ -43,8 +81,7 @@ export default function WorksClient({ works, collections }: Props) {
   const sequence = useMemo(() => {
     const items: SequenceItem[] = []
     const activeCollections = collections.filter(c => c.is_active)
-
-    // Works first — headers move to the end as the loop trigger
+    // Works first
     activeCollections.forEach(col => {
       const colMatch = normalizeTheme(col.theme)
       const colWorks = works.filter(w => {
@@ -57,8 +94,7 @@ export default function WorksClient({ works, collections }: Props) {
     if (items.length === 0) {
       works.filter(w => w.txtImageNameLink).forEach((w, i) => items.push({ type: 'work', data: w, workIndex: i }))
     }
-
-    // Header at the end — clicking it loops back to start
+    // Header at end — click loops back to start
     activeCollections.forEach(col => {
       items.push({ type: 'header', title: col.title, subtitle: col.description })
     })
@@ -68,25 +104,76 @@ export default function WorksClient({ works, collections }: Props) {
   const targetDepth  = useRef(0)
   const currentDepth = useRef(0)
   const [displayDepth, setDisplayDepth] = useState(0)
+  const [activeWork, setActiveWork] = useState<Work | null>(null)
+  const [captionOpacity, setCaptionOpacity] = useState(0)
+  const [atEnd, setAtEnd] = useState(false)
+  const [endOpacity, setEndOpacity] = useState(0)
 
-  // Ken Burns: persistent individual zoom per painting
-  const zooms = useRef<number[]>([])
-  const isReady = useRef(false)
-  useEffect(() => {
-    zooms.current = new Array(sequence.length).fill(1)
-    isReady.current = true
-  }, [sequence])
+  // Ken Burns
+  const burnZooms      = useRef<Map<number, number>>(new Map())
+  const burnTicks      = useRef(0)        // ticks for currently settled painting
+  const settledIdx     = useRef<number>(-1) // which painting is currently settled
+  const activePainting = useRef<number>(-1)
 
   const STEP       = 6000
   const BIRTH_DIST = 60000
 
+  const touchLastY  = useRef<number | null>(null)
+  const touchVelY   = useRef(0)
+  const touchActive = useRef(false)
+
   useEffect(() => {
-    const handleWheel = (e: WheelEvent) => {
-      targetDepth.current += e.deltaY * 2.5
-      const maxScroll = (sequence.length - 1) * STEP
-      targetDepth.current = Math.max(0, Math.min(targetDepth.current, maxScroll))
+    const maxScroll = () => (sequence.length - 1) * STEP + 2000
+    // Soft clamp: hard floor at 0, soft resistance past max
+    const softClamp = (v: number) => {
+      if (v < 0) return 0
+      const max = maxScroll()
+      if (v <= max) return v
+      return max + (v - max) * 0.15  // 85% resistance past end
     }
-    window.addEventListener('wheel', handleWheel, { passive: true })
+
+    const handleWheel = (e: WheelEvent) => {
+      targetDepth.current = softClamp(targetDepth.current + e.deltaY * 2.5)
+    }
+
+    const handleTouchStart = (e: TouchEvent) => {
+      touchLastY.current  = e.touches[0].clientY
+      touchVelY.current   = 0
+      touchActive.current = true
+    }
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (touchLastY.current === null) return
+      const dy = touchLastY.current - e.touches[0].clientY
+      touchVelY.current   = dy
+      touchLastY.current  = e.touches[0].clientY
+      targetDepth.current = softClamp(targetDepth.current + dy * 6)
+    }
+
+    const handleTouchEnd = () => {
+      touchActive.current = false
+      const coast = () => {
+        if (Math.abs(touchVelY.current) < 0.5) return
+        touchVelY.current  *= 0.92
+        targetDepth.current = softClamp(targetDepth.current + touchVelY.current * 4)
+        requestAnimationFrame(coast)
+      }
+      requestAnimationFrame(coast)
+    }
+
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+        targetDepth.current = softClamp(targetDepth.current + STEP)
+      } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+        targetDepth.current = softClamp(targetDepth.current - STEP)
+      }
+    }
+
+    window.addEventListener('wheel',      handleWheel,      { passive: true })
+    window.addEventListener('touchstart', handleTouchStart, { passive: true })
+    window.addEventListener('touchmove',  handleTouchMove,  { passive: true })
+    window.addEventListener('touchend',   handleTouchEnd)
+    window.addEventListener('keydown',    handleKey)
 
     let rafId: number
     const animate = () => {
@@ -96,31 +183,76 @@ export default function WorksClient({ works, collections }: Props) {
       setDisplayDepth(currentDepth.current)
       document.getElementById('grain')?.style.setProperty('--scroll-y', currentDepth.current.toString())
 
-      // Ken Burns: Update all visible paintings (Cinematic Creep)
-      sequence.forEach((item, i) => {
-        const dist = currentDepth.current - i * STEP
-        if (Math.abs(dist) < BIRTH_DIST) {
-          // Continuous slow zoom
-          zooms.current[i] = (zooms.current[i] || 1) + 0.0004
-        } else {
-          zooms.current[i] = 1
+      // Ken Burns + caption
+      const activeIdx = Math.round(currentDepth.current / STEP)
+      const item = sequence[activeIdx]
+
+      // Find last work index once
+      const lastWorkIdx = sequence.reduce((acc, s, i) => s.type === 'work' ? i : acc, -1)
+      const pastLastWork = currentDepth.current > lastWorkIdx * STEP + STEP * 0.5
+
+      // End overlay opacity: fades in over 1 STEP past the last work
+      const lastCenter = lastWorkIdx * STEP
+      const endProgress = Math.max(0, Math.min(1, (currentDepth.current - lastCenter - STEP * 0.3) / (STEP * 0.7)))
+      setEndOpacity(endProgress)
+      setAtEnd(endProgress > 0)
+
+      // Work caption: fades out as end fades in — hard zero once end starts
+      if (endProgress > 0) {
+        setCaptionOpacity(0)
+      } else if (item?.type === 'work') {
+        const dist = currentDepth.current - activeIdx * STEP
+        setCaptionOpacity(Math.max(0, 1 - Math.abs(dist / 1200)))
+        if (activePainting.current !== activeIdx) {
+          setActiveWork(item.data)
         }
-      })
+      } else {
+        setCaptionOpacity(0)
+      }
+
+      // Ken Burns: nearest work index drives the zoom
+      const nearestWorkIdx = Math.round(currentDepth.current / STEP)
+      const nearestItem = sequence[nearestWorkIdx]
+      if (nearestItem?.type === 'work') {
+        if (settledIdx.current !== nearestWorkIdx) {
+          // Switched to a new painting — reset
+          settledIdx.current = nearestWorkIdx
+          burnTicks.current  = 0
+          burnZooms.current.set(nearestWorkIdx, 1)
+        }
+        burnTicks.current += 1
+        const t = 1 - Math.exp(-burnTicks.current / 180)
+        burnZooms.current.set(nearestWorkIdx, 1 + 0.48 * t)
+      }
 
       rafId = requestAnimationFrame(animate)
     }
     rafId = requestAnimationFrame(animate)
 
     return () => {
-      window.removeEventListener('wheel', handleWheel)
+      window.removeEventListener('wheel',      handleWheel)
+      window.removeEventListener('touchstart', handleTouchStart)
+      window.removeEventListener('touchmove',  handleTouchMove)
+      window.removeEventListener('touchend',   handleTouchEnd)
+      window.removeEventListener('keydown',    handleKey)
       cancelAnimationFrame(rafId)
     }
   }, [sequence])
 
-  // We re-render on displayDepth change, which picks up the latest zooms.current values.
+  // Snapshot zoom map each frame so render picks up latest values
+  const [burnSnapshot, setBurnSnapshot] = useState<Map<number, number>>(new Map())
+  useEffect(() => {
+    let raf: number
+    const tick = () => {
+      setBurnSnapshot(new Map(burnZooms.current))
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [])
 
   return (
-    <>
+    <div className="w-page-enter">
       <style>{`
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -128,6 +260,14 @@ export default function WorksClient({ works, collections }: Props) {
           background: #e8e6e1; font-family: 'JetBrains Mono', monospace; color: #3a3834;
           height: 100vh; overflow: hidden;
           -webkit-font-smoothing: antialiased;
+        }
+
+        @keyframes w-fadein {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+        .w-page-enter {
+          animation: w-fadein 2s ease forwards;
         }
 
         .w-viewport {
@@ -167,89 +307,80 @@ export default function WorksClient({ works, collections }: Props) {
           display: flex; align-items: center; justify-content: center;
         }
 
-        .w-artwork-container {
-          position: relative;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          /* The shadow is on this outer layer so it can bleed out */
-          box-shadow: var(--painting-shadow);
-          will-change: transform;
-        }
-
-        .w-image-clipper {
+        /* Floating shadow intensifies at center, fades at distance */
+        .w-image-container {
           position: relative;
           display: flex; align-items: center; justify-content: center;
-          background-color: #fcfaf7; /* Solid barrier to prevent ghosting */
+          border-radius: var(--img-radius);
           overflow: hidden;
           isolation: isolate;
+          box-shadow: var(--painting-shadow);
         }
 
         .w-main-img {
           width: auto; height: auto;
-          max-width: min(78vw, 1100px); max-height: min(80vh, 800px);
+          max-width: min(94vw, 1600px); max-height: min(94vh, 1200px);
           display: block;
           image-rendering: high-quality;
           backface-visibility: hidden;
           transform-origin: center center;
           transform: scale(var(--burns-zoom, 1));
           will-change: transform;
+          transition: opacity 1s ease;
         }
 
-        /* RGB channel layers — absolutely positioned, blend over image */
-        .w-rgb-r, .w-rgb-g, .w-rgb-b {
-          position: absolute; inset: 0;
-          pointer-events: none;
-          mix-blend-mode: screen;
-          opacity: var(--rgb-opacity, 0);
-        }
-        .w-rgb-r img { filter: url(#filter-red);   width: 100%; height: 100%; object-fit: cover; }
-        .w-rgb-g img { filter: url(#filter-green); width: 100%; height: 100%; object-fit: cover; }
-        .w-rgb-b img { filter: url(#filter-blue);  width: 100%; height: 100%; object-fit: cover; }
-
-        .w-parallax-header {
+.w-parallax-header {
           position: relative; width: 100vw; height: 100vh;
-          display: flex; flex-direction: column; align-items: flex-start; justify-content: center;
-          padding-left: 64px;
+          display: flex; flex-direction: column; align-items: center; justify-content: center;
+          text-align: center;
+          padding: 0 clamp(32px, 8vw, 120px);
           transform-style: preserve-3d;
           transform: rotateX(15deg);
+          cursor: pointer;
         }
         .w-header-title {
           font-family: 'Instrument Serif', serif; font-size: clamp(80px, 15vw, 240px);
           color: #1a1816; letter-spacing: -0.05em; line-height: 0.85; margin-bottom: 48px;
           transition: opacity 0.3s;
         }
-        .w-parallax-header:hover .w-header-title {
-          opacity: 0.65;
-        }
+        .w-parallax-header:hover .w-header-title { opacity: 0.6; }
         .w-header-subtitle {
-          max-width: 600px; font-size: 14px; line-height: 1.6; letter-spacing: 0.1em;
-          text-transform: uppercase; color: #8a8680; font-weight: 400;
+          max-width: 680px; font-size: 14px; line-height: 1.6; letter-spacing: 0.1em;
+          text-transform: uppercase; color: #8a8680; font-weight: 400; text-align: center;
         }
 
-        .w-parallax-meta {
-          position: absolute; top: 50%; left: 64px;
-          z-index: 100;
-          pointer-events: auto;
-          will-change: transform;
+        .w-caption {
+          position: fixed; top: 50%; left: clamp(24px, 5vw, 64px);
           transform: translateY(-50%);
+          width: clamp(140px, 28vw, 560px); z-index: 200;
+          pointer-events: auto;
+          cursor: pointer;
         }
-        .w-work-caption {
-          font-family: 'Instrument Serif', serif;
-          font-size: clamp(20px, 3vw, 42px);
-          color: #1a1816;
-          white-space: nowrap;
-          letter-spacing: -0.02em;
-          text-shadow: 0 0 30px rgba(255,255,255,0.8), 0 0 60px rgba(255,255,255,0.4);
+        @media (max-width: 640px) {
+          .w-caption {
+            top: auto; bottom: clamp(60px, 10vh, 100px);
+            left: 50%; transform: translateX(-50%);
+            width: 90vw; text-align: center;
+          }
         }
-        .w-work-details-line {
-          font-family: 'Inter', sans-serif;
-          font-size: 10px;
-          color: #8a8680;
-          margin-left: 20px;
-          letter-spacing: 0.2em;
-          text-transform: uppercase;
-          vertical-align: middle;
+        .w-caption:hover .w-work-title { opacity: 0.55; }
+        .w-work-title {
+          font-family: 'Instrument Serif', serif; font-size: clamp(20px, 3.5vw, 56px);
+          color: #1a1816; font-weight: 400; margin-bottom: 16px;
+          letter-spacing: -0.04em; line-height: 1;
+          text-shadow:
+            0 0 24px rgba(255,255,255,1),
+            0 0 48px rgba(255,255,255,0.9),
+            0 0 80px rgba(255,255,255,0.6);
+          transition: opacity 0.25s;
+        }
+        .w-work-details {
+          display: flex; flex-direction: column; gap: 8px;
+          font-size: 9px; letter-spacing: 5px; text-transform: uppercase;
+          color: #6a6660;
+          text-shadow:
+            0 0 12px rgba(255,255,255,1),
+            0 0 24px rgba(255,255,255,0.8);
         }
 
         .w-scroll-hint {
@@ -259,22 +390,7 @@ export default function WorksClient({ works, collections }: Props) {
         }
       `}</style>
 
-      {/* SVG filters for RGB channel separation */}
-      <svg style={{ position: 'absolute', width: 0, height: 0 }}>
-        <defs>
-          <filter id="filter-red">
-            <feColorMatrix type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0"/>
-          </filter>
-          <filter id="filter-green">
-            <feColorMatrix type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0"/>
-          </filter>
-          <filter id="filter-blue">
-            <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0"/>
-          </filter>
-        </defs>
-      </svg>
-
-      <div className="w-paper-bg"/>
+<div className="w-paper-bg"/>
       <div className="grain-overlay" id="grain"/>
 
       <PublicNav active="works" prefix="w" />
@@ -287,7 +403,7 @@ export default function WorksClient({ works, collections }: Props) {
           // Opacity: steep fade-in on approach, hold briefly at center, quick fade out
           const opacity = dist < 0
             ? Math.pow(Math.max(0, (dist + BIRTH_DIST) / BIRTH_DIST), 4)
-            : (dist < 100 ? 1 : 0) // Instant cut after passing the center
+            : Math.max(0, 1 - Math.max(0, dist - STEP * 0.3) / (STEP * 0.4))
 
           let translateZ = 0
           let scale = 1
@@ -295,8 +411,9 @@ export default function WorksClient({ works, collections }: Props) {
           if (dist < 0) {
             const progress = Math.max(0, (dist + BIRTH_DIST) / BIRTH_DIST)
             translateZ = -BIRTH_DIST + BIRTH_DIST * progress
-            const remapped = Math.max(0, (progress - 0.85) / 0.15)
-            scale = Math.pow(remapped, 3.0)
+            // Scale starts growing from 60% of the journey in, with a gentle ease
+            const remapped = Math.max(0, (progress - 0.6) / 0.4)
+            scale = Math.pow(remapped, 1.8)
           }
           // post-center: translateZ=0, scale=1 — fade handles exit
 
@@ -306,18 +423,20 @@ export default function WorksClient({ works, collections }: Props) {
 
           if (item.type === 'header') {
             return (
-              <div key={`header-${idx}`} className="w-depth-item" style={{
-                opacity: Math.max(0, 1 - Math.abs(dist / 3000)),
-                transform: `translate3d(0, 0, ${translateZ * 1.2}px) scale(${scale * 0.8})`,
-                zIndex,
-                pointerEvents: Math.abs(dist) < 2000 ? 'auto' : 'none',
-                cursor: 'pointer',
-              }}
+              <div
+                key={`header-${idx}`}
+                className="w-depth-item"
+                style={{
+                  opacity: Math.max(0, 1 - Math.abs(dist / 3000)),
+                  transform: `translate3d(0, 0, ${translateZ * 1.2}px) scale(${scale * 0.8})`,
+                  zIndex,
+                  pointerEvents: Math.abs(dist) < 2000 ? 'auto' : 'none',
+                }}
                 onClick={() => { targetDepth.current = 0 }}
               >
                 <div className="w-parallax-header">
                   <h1 className="w-header-title">{item.title}</h1>
-                  {item.subtitle && <p className="w-header-subtitle">{item.subtitle}</p>}
+                  {item.subtitle && <FlameText text={item.subtitle} />}
                 </div>
               </div>
             )
@@ -338,6 +457,12 @@ export default function WorksClient({ works, collections }: Props) {
             slideRotateY    = (1 - eased) * 42   // degrees skew
           }
 
+          // Shape: circle far away → sharp rectangle at center
+          const approachWindow = STEP * 2
+          const shapeProgress  = dist < 0
+            ? Math.max(0, Math.min(1, (dist + approachWindow) / approachWindow))
+            : 1
+          const cornerRadius = Math.round((1 - shapeProgress) * 50)
 
           // Shadow: grows as painting arrives, fades as it leaves (top-right source → bottom-left)
           const shadowIntensity = Math.max(0, 1 - Math.abs(dist) / (STEP * 1.5))
@@ -348,20 +473,7 @@ export default function WorksClient({ works, collections }: Props) {
             ? `-${Math.round(shadowIntensity * 28)}px ${Math.round(shadowIntensity * 36)}px ${shadowBlur}px ${shadowSpread}px rgba(20,16,10,${shadowAlpha}), -${Math.round(shadowIntensity * 8)}px ${Math.round(shadowIntensity * 12)}px ${Math.round(shadowIntensity * 22)}px rgba(20,16,10,${(shadowIntensity * 0.25).toFixed(2)})`
             : 'none'
 
-          // RGB split: offset diverges when far, converges to 0 at center
-          // Only active while approaching (dist < 0)
-          const rgbDist    = Math.max(0, -dist) // 0 at center, grows when approaching
-          const rgbOffset  = Math.min(rgbDist / STEP, 1) // 0–1
-          // Depth offset per channel (translateZ)
-          const rZ = translateZ - rgbOffset * 800
-          const gZ = translateZ
-          const bZ = translateZ + rgbOffset * 800
-          // RGB layers visible only during approach, fade away at arrival
-          const rgbOpacity = Math.max(0, Math.min(0.6, rgbOffset * 1.5))
-
-          const textZ       = translateZ * 0.8
-          const textOpacity = Math.max(0, 1 - Math.abs(dist / 1200))
-          const imgSrc      = imageUrl(work.txtImageNameLink) ?? undefined
+const imgSrc      = imageUrl(work.txtImageNameLink) ?? undefined
 
           const itemTransform = isFirstWork
             ? `translate3d(${slideTranslateX}vw, 0, ${translateZ}px) rotateY(${slideRotateY}deg) scale(${scale})`
@@ -373,74 +485,14 @@ export default function WorksClient({ works, collections }: Props) {
               transform: itemTransform,
               zIndex,
             }}>
-              {/* RGB channel layers at different depths */}
-              {rgbOpacity > 0.01 && <>
-                <div style={{
-                  position: 'absolute', inset: 0,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  transform: `translate3d(0, 0, ${rZ - translateZ}px)`,
-                  opacity: rgbOpacity,
-                  pointerEvents: 'none',
-                  mixBlendMode: 'screen',
-                }}>
-                  <img src={imgSrc} alt="" style={{
-                    maxWidth: 'min(78vw, 1100px)', maxHeight: 'min(80vh, 800px)',
-                    filter: 'url(#filter-red)',
-                    display: 'block',
-                  }} />
-                </div>
-                <div style={{
-                  position: 'absolute', inset: 0,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  transform: `translate3d(0, 0, ${bZ - translateZ}px)`,
-                  opacity: rgbOpacity,
-                  pointerEvents: 'none',
-                  mixBlendMode: 'screen',
-                }}>
-                  <img src={imgSrc} alt="" style={{
-                    maxWidth: 'min(78vw, 1100px)', maxHeight: 'min(80vh, 800px)',
-                    filter: 'url(#filter-blue)',
-                    display: 'block',
-                  }} />
-                </div>
-              </>}
-
               <div className="w-artwork-wrap">
-                <div className="w-artwork-container" style={{
+                <div className="w-image-container" style={{
+                  // @ts-ignore
+                  '--img-radius': `${cornerRadius}%`,
                   '--painting-shadow': paintingShadow,
-                  transform: `scale(${zooms.current[idx] || 1}) translate3d(${( (zooms.current[idx] || 1) - 1) * 40}px, ${( (zooms.current[idx] || 1) - 1) * 20}px, 0)`,
-                  opacity: opacity, /* Move opacity here so barrier stays solid? No, barrier needs to fade too, but we block it with Z-stack */
                 } as React.CSSProperties}>
-                  <div className="w-image-clipper">
-                    <img
-                      src={imgSrc}
-                      alt={work.Titre ?? ''}
-                      className="w-main-img"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div
-                className="w-parallax-meta"
-                style={{
-                  opacity: textOpacity,
-                  transform: `translate3d(0, 0, ${textZ - translateZ}px)`,
-                }}
-              >
-                <div className="w-work-caption">
-                  {work.Titre ?? t('pub_untitled')}
-                  <span className="w-work-details-line">
-                    {yearOf(work.Annee)} {work.Hauteur && work.Largeur ? ` • ${work.Hauteur} × ${work.Largeur} cm` : ''}
-                  </span>
-                </div>
-              </div>
-            </div>
-          )
-        })}
-      </div>
-
-      <div className="w-scroll-hint">↓ scroll</div>
-    </>
-  )
-}
+                  <img
+                    src={imgSrc}
+                    alt={work.Titre ?? ''}
+                    className="w-main-img"
+         

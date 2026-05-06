@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { savePortfolioConfig, loadPortfolioConfig, extractDocumentText } from '@/app/atelier/portfolio/actions'
 import type { Oeuvre } from '@/lib/types/database'
+import { RichEditor, htmlToPlain } from './RichEditor'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -236,7 +237,7 @@ export function PortfolioTab({ oeuvres, themes }: Props) {
 
         {/* Main content */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '32px 40px' }}>
-          <div style={{ maxWidth: 960, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 48 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 48 }}>
 
             {activeTab === 'website' && (
               <>
@@ -398,40 +399,72 @@ function FileImportButton({ onText, lang }: { onText: (v: string) => void; lang:
   )
 }
 
+function FlamePreview({ html }: { html: string }) {
+  const plain = htmlToPlain(html)
+  return (
+    <div style={{
+      border: '1px solid var(--bd)', borderRadius: 4, padding: '16px 20px',
+      background: '#f0ede8', fontFamily: 'JetBrains Mono, monospace',
+      fontSize: 11, lineHeight: 2.0, letterSpacing: '0.15em',
+      textTransform: 'uppercase', color: '#8a8680',
+      textAlign: 'justify', wordSpacing: '0.3em',
+      whiteSpace: 'pre-wrap', minHeight: 60,
+    }}>
+      {plain
+        ? plain.replace(/\./g, ' /').replace(/\n/g, ' █ ')
+        : <span style={{ opacity: 0.25 }}>—</span>}
+    </div>
+  )
+}
+
 function DualField({ label, fr, en, onFr, onEn, rows = 1, placeholder, allowImport }: {
   label: string; fr: string; en: string
   onFr: (v: string) => void; onEn: (v: string) => void
   rows?: number; placeholder?: { fr?: string; en?: string }
   allowImport?: boolean
 }) {
-  const Tag = rows > 1 ? 'textarea' : 'input'
+  const rich = rows > 1
   return (
-    <div>
-      <div className="t-label" style={{ marginBottom: 8, fontSize: 9 }}>{label}</div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="t-label" style={{ fontSize: 9 }}>{label}</div>
+
+      {/* Editors side by side */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
             <span style={{ fontSize: 8, letterSpacing: 2, color: 'var(--tx3)' }}>FR</span>
-            {allowImport && rows > 1 && <FileImportButton onText={onFr} lang="fr" />}
+            {allowImport && rich && <FileImportButton onText={onFr} lang="fr" />}
           </div>
-          <Tag className="input full"
-            value={fr} onChange={(e: any) => onFr(e.target.value)}
-            placeholder={placeholder?.fr || ''}
-            {...(rows > 1 ? { rows } : {})}
-            style={{ width: '100%', resize: rows > 1 ? 'vertical' : undefined }} />
+          {rich
+            ? <RichEditor value={fr} onChange={onFr} placeholder={placeholder?.fr} minHeight={rows * 32} />
+            : <input className="input full" value={fr} onChange={e => onFr(e.target.value)} placeholder={placeholder?.fr || ''} style={{ width: '100%' }} />
+          }
         </div>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
             <span style={{ fontSize: 8, letterSpacing: 2, color: 'var(--tx3)' }}>EN</span>
-            {allowImport && rows > 1 && <FileImportButton onText={onEn} lang="en" />}
+            {allowImport && rich && <FileImportButton onText={onEn} lang="en" />}
           </div>
-          <Tag className="input full"
-            value={en} onChange={(e: any) => onEn(e.target.value)}
-            placeholder={placeholder?.en || ''}
-            {...(rows > 1 ? { rows } : {})}
-            style={{ width: '100%', resize: rows > 1 ? 'vertical' : undefined }} />
+          {rich
+            ? <RichEditor value={en} onChange={onEn} placeholder={placeholder?.en} minHeight={rows * 32} />
+            : <input className="input full" value={en} onChange={e => onEn(e.target.value)} placeholder={placeholder?.en || ''} style={{ width: '100%' }} />
+          }
         </div>
       </div>
+
+      {/* Live previews side by side — only for rich fields */}
+      {rich && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div>
+            <div className="t-label" style={{ fontSize: 8, marginBottom: 4, opacity: 0.5 }}>APERÇU FR</div>
+            <FlamePreview html={fr} />
+          </div>
+          <div>
+            <div className="t-label" style={{ fontSize: 8, marginBottom: 4, opacity: 0.5 }}>APERÇU EN</div>
+            <FlamePreview html={en} />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -526,15 +559,27 @@ function CollectionRow({ item, isTarget, onAssign, onUpdate, onDelete }: {
         </div>
       </div>
 
-      {/* Descriptions */}
+      {/* Descriptions — side by side editors */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <div>
-          <label className="t-label" style={{ display: 'block', marginBottom: 4, fontSize: 9 }}>TEXTE FR</label>
-          <textarea className="input full" rows={2} value={item.description_fr} onChange={e => onUpdate({ description_fr: e.target.value })} style={{ resize: 'vertical' }} />
+          <label className="t-label" style={{ display: 'block', marginBottom: 6, fontSize: 9 }}>TEXTE FR</label>
+          <RichEditor value={item.description_fr} onChange={v => onUpdate({ description_fr: v })} minHeight={220} />
         </div>
         <div>
-          <label className="t-label" style={{ display: 'block', marginBottom: 4, fontSize: 9 }}>TEXTE EN</label>
-          <textarea className="input full" rows={2} value={item.description_en} onChange={e => onUpdate({ description_en: e.target.value })} style={{ resize: 'vertical' }} />
+          <label className="t-label" style={{ display: 'block', marginBottom: 6, fontSize: 9 }}>TEXTE EN</label>
+          <RichEditor value={item.description_en} onChange={v => onUpdate({ description_en: v })} minHeight={220} />
+        </div>
+      </div>
+
+      {/* Live previews — side by side below */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div>
+          <div className="t-label" style={{ fontSize: 8, marginBottom: 4, opacity: 0.5 }}>APERÇU /WORKS FR</div>
+          <FlamePreview html={item.description_fr} />
+        </div>
+        <div>
+          <div className="t-label" style={{ fontSize: 8, marginBottom: 4, opacity: 0.5 }}>APERÇU /WORKS EN</div>
+          <FlamePreview html={item.description_en} />
         </div>
       </div>
 
@@ -552,12 +597,4 @@ function CollectionRow({ item, isTarget, onAssign, onUpdate, onDelete }: {
             </span>
           </div>
         </div>
-        <label className="row gap-xs pointer center" style={{ paddingBottom: 6 }}>
-          <input type="checkbox" checked={item.is_active} onChange={e => onUpdate({ is_active: e.target.checked })} />
-          <span className="t-mono-xs" style={{ fontSize: 9 }}>ACTIF</span>
-        </label>
-        <button className="t-mono-sm" style={{ color: 'var(--rust)', cursor: 'pointer', border: 'none', background: 'none', paddingBottom: 6 }} onClick={onDelete}>Supprimer</button>
-      </div>
-    </div>
-  )
-}
+        <label class

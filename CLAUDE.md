@@ -17,9 +17,10 @@
 
 **Règles absolues édictées par l'artiste (Mai 2026) :**
 1. **Questions & Choix multiples** : Toujours poser des questions claires et offrir plusieurs choix d'architecture ou de design avant d'implémenter des fonctionnalités lourdes.
-2. **Logiques de Maître** : Toute modification doit être précédée d'une validation de la logique métier. En cas d'incohérence, l'IA doit demander clarification.
-3. **Tri Alphabétique** : Tous les dropdowns et listes de choix doivent être triés par ordre alphabétique systématiquement.
-4. **Dates Flexibles** : Le champ "Année" supporte les formats `YYYY`, `YYYY/MM`, ou `YYYY/MM/DD`.
+2. **Zéro Autonomie de Modification** : Antigravity a l'interdiction formelle de modifier tout fichier du projet sans une commande explicite "GO" ou "EXECUTE" faisant suite à une proposition détaillée et validée par l'artiste.
+3. **Logiques de Maître** : Toute modification doit être précédée d'une validation de la logique métier. En cas d'incohérence, l'IA doit demander clarification.
+4. **Tri Alphabétique** : Tous les dropdowns et listes de choix doivent être triés par ordre alphabétique systématiquement.
+5. **Dates Flexibles** : Le champ "Année" supporte les formats `YYYY`, `YYYY/MM`, ou `YYYY/MM/DD`.
 
 ---
 
