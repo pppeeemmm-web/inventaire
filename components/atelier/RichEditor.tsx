@@ -55,7 +55,7 @@ function Sep() {
 // ── RichEditor ─────────────────────────────────────────────────────────────
 
 interface Props {
-  value: string          // HTML string
+  value: string
   onChange: (html: string) => void
   placeholder?: string
   minHeight?: number
@@ -92,7 +92,6 @@ export function RichEditor({ value, onChange, placeholder = '', minHeight = 160 
     },
   })
 
-  // Sync external value changes (e.g. file import) without re-initialising
   useEffect(() => {
     if (!editor) return
     const current = editor.isEmpty ? '' : editor.getHTML()
@@ -112,7 +111,6 @@ export function RichEditor({ value, onChange, placeholder = '', minHeight = 160 
       background: 'var(--bg0)',
       overflow: 'hidden',
     }}>
-      {/* ── Toolbar ── */}
       <div style={{
         display: 'flex',
         flexWrap: 'wrap',
@@ -122,7 +120,6 @@ export function RichEditor({ value, onChange, placeholder = '', minHeight = 160 
         borderBottom: '1px solid var(--bd)',
         background: 'var(--bg1)',
       }}>
-        {/* Text style */}
         <Btn title="Gras" active={e.isActive('bold')} onClick={() => e.chain().focus().toggleBold().run()}>
           <strong>B</strong>
         </Btn>
@@ -138,7 +135,6 @@ export function RichEditor({ value, onChange, placeholder = '', minHeight = 160 
 
         <Sep />
 
-        {/* Headings */}
         <Btn title="Titre H2" active={e.isActive('heading', { level: 2 })} onClick={() => e.chain().focus().toggleHeading({ level: 2 }).run()}>
           H2
         </Btn>
@@ -148,7 +144,6 @@ export function RichEditor({ value, onChange, placeholder = '', minHeight = 160 
 
         <Sep />
 
-        {/* Lists */}
         <Btn title="Liste à puces" active={e.isActive('bulletList')} onClick={() => e.chain().focus().toggleBulletList().run()}>
           ≡
         </Btn>
@@ -161,7 +156,6 @@ export function RichEditor({ value, onChange, placeholder = '', minHeight = 160 
 
         <Sep />
 
-        {/* Alignment */}
         <Btn title="Aligner à gauche" active={e.isActive({ textAlign: 'left' })} onClick={() => e.chain().focus().setTextAlign('left').run()}>
           ⬤◯◯
         </Btn>
@@ -174,7 +168,6 @@ export function RichEditor({ value, onChange, placeholder = '', minHeight = 160 
 
         <Sep />
 
-        {/* History */}
         <Btn title="Annuler" disabled={!e.can().undo()} onClick={() => e.chain().focus().undo().run()}>
           ↩
         </Btn>
@@ -184,16 +177,13 @@ export function RichEditor({ value, onChange, placeholder = '', minHeight = 160 
 
         <Sep />
 
-        {/* Clear */}
         <Btn title="Effacer le formatage" onClick={() => e.chain().focus().clearNodes().unsetAllMarks().run()}>
           ✕fmt
         </Btn>
       </div>
 
-      {/* ── Editor area ── */}
       <EditorContent editor={editor} />
 
-      {/* Placeholder (Tiptap's built-in extension needs CSS; simpler to do it ourselves) */}
       {editor.isEmpty && placeholder && (
         <div style={{
           position: 'absolute',
@@ -208,7 +198,6 @@ export function RichEditor({ value, onChange, placeholder = '', minHeight = 160 
         </div>
       )}
 
-      {/* Tiptap prose styles */}
       <style>{`
         .tiptap { position: relative; }
         .tiptap p { margin: 0 0 0.5em; }
@@ -241,6 +230,7 @@ export function RichEditor({ value, onChange, placeholder = '', minHeight = 160 
 }
 
 // ── Utility: strip HTML tags to plain text ─────────────────────────────────
+
 export function htmlToPlain(html: string): string {
   if (!html) return ''
   return html
@@ -256,4 +246,3 @@ export function htmlToPlain(html: string): string {
     .replace(/\n{3,}/g, '\n\n')
     .trim()
 }
-                     
