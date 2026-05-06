@@ -9,7 +9,7 @@ async function run() {
     return acc
   }, {})
 
-  const sb = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY)
+  const sb = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY)
 
   const sql = `
   CREATE TABLE IF NOT EXISTS contact_emails (
