@@ -495,4 +495,63 @@ const imgSrc      = imageUrl(work.txtImageNameLink) ?? undefined
                     src={imgSrc}
                     alt={work.Titre ?? ''}
                     className="w-main-img"
-         
+                             style={{ '--burns-zoom': burnSnapshot.get(idx) ?? 1 } as React.CSSProperties}
+                  />
+                </div>
+              </div>
+
+              {/* caption now in fixed overlay — removed from depth item */}
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Work caption — fades per distance, hard-hidden at end */}
+      {activeWork && (
+        <div
+          className="w-caption"
+          style={{ opacity: atEnd ? 0 : captionOpacity, pointerEvents: atEnd ? 'none' : 'auto' }}
+        >
+          <h3 className="w-work-title">{activeWork.Titre ?? t('pub_untitled')}</h3>
+          <div className="w-work-details">
+            <span>{yearOf(activeWork.Annee)}</span>
+            {activeWork.Hauteur && activeWork.Largeur && (
+              <span>{activeWork.Hauteur} × {activeWork.Largeur} cm</span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* End overlay — separate entity, click to go back to top */}
+      {atEnd && (
+        <div
+          onClick={() => { targetDepth.current = 0 }}
+          style={{
+            position: 'fixed', top: '50%', left: 'clamp(24px, 5vw, 64px)',
+            transform: 'translateY(-50%)',
+            zIndex: 200, cursor: 'pointer',
+            display: 'flex', flexDirection: 'column', gap: 16,
+            opacity: endOpacity,
+          }}
+        >
+          <div style={{
+            fontFamily: 'Instrument Serif, serif',
+            fontSize: 'clamp(20px, 3.5vw, 56px)',
+            color: '#1a1816', letterSpacing: '-0.04em', lineHeight: 1,
+            textShadow: '0 0 24px rgba(255,255,255,1), 0 0 48px rgba(255,255,255,0.9)',
+          }}>
+            ↑
+          </div>
+          <div style={{
+            fontSize: 8, letterSpacing: 4, textTransform: 'uppercase', color: '#6a6660',
+            textShadow: '0 0 12px rgba(255,255,255,1), 0 0 24px rgba(255,255,255,0.8)',
+          }}>
+            retour
+          </div>
+        </div>
+      )}
+
+      <div className="w-scroll-hint">↓ scroll</div>
+    </div>
+  )
+}
