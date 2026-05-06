@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { savePortfolioConfig, loadPortfolioConfig, extractDocumentText } from '@/app/atelier/portfolio/actions'
+import { RichEditor, htmlToPlain } from '@/components/atelier/RichEditor'
 import type { Oeuvre } from '@/lib/types/database'
-import { RichEditor, htmlToPlain } from './RichEditor'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -105,6 +105,27 @@ function migrate(raw: any): PortfolioConfig {
   }
 }
 
+// ── FlamePreview ───────────────────────────────────────────────────────────
+
+function FlamePreview({ html }: { html: string }) {
+  const plain = htmlToPlain(html)
+  return (
+    <div style={{
+      border: '1px solid var(--bd)', borderRadius: 4, padding: '16px 20px',
+      background: '#f0ede8', fontFamily: 'JetBrains Mono, monospace',
+      fontSize: 11, lineHeight: 2.0, letterSpacing: '0.15em',
+      textTransform: 'uppercase', color: '#8a8680',
+      textAlign: 'justify', wordSpacing: '0.3em',
+      whiteSpace: 'pre-wrap', minHeight: 60,
+    }}>
+      {plain
+        ? plain.replace(/\./g, ' /').replace(/\n/g, ' █ ')
+        : <span style={{ opacity: 0.25 }}>—</span>
+      }
+    </div>
+  )
+}
+
 // ── Component ─────────────────────────────────────────────────────────────
 
 export function PortfolioTab({ oeuvres, themes }: Props) {
@@ -149,8 +170,8 @@ export function PortfolioTab({ oeuvres, themes }: Props) {
     if (page === 'about' && key) {
       (next.about as any)[key] = value
     } else if ((page === 'works' || page === 'sections') && index !== undefined) {
-      const key = page === 'works' ? 'works_collections' : 'sections'
-      next[key][index].theme = value
+      const listKey = page === 'works' ? 'works_collections' : 'sections'
+      next[listKey][index].theme = value
     }
     setConfig(next)
     setActiveSlot(null)
@@ -235,7 +256,7 @@ export function PortfolioTab({ oeuvres, themes }: Props) {
           )}
         </div>
 
-        {/* Main content */}
+        {/* Main content — no maxWidth constraint */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '32px 40px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 48 }}>
 
@@ -270,7 +291,7 @@ export function PortfolioTab({ oeuvres, themes }: Props) {
 
                 {/* About */}
                 <PageSection title="Page À propos" icon="✎">
-                  <DualField label="Texte d'introduction" rows={4} allowImport
+                  <DualField label="Texte d'introduction" rich allowImport
                     fr={config.about.intro_fr} en={config.about.intro_en}
                     onFr={v => setConfig({ ...config, about: { ...config.about, intro_fr: v } })}
                     onEn={v => setConfig({ ...config, about: { ...config.about, intro_en: v } })} />
@@ -290,12 +311,12 @@ export function PortfolioTab({ oeuvres, themes }: Props) {
 
                 {/* Practice */}
                 <PageSection title="Page Pratique" icon="◉">
-                  <DualField label="Approche / statement" rows={5} allowImport
+                  <DualField label="Approche / statement" rich allowImport
                     fr={config.practice.approach_fr} en={config.practice.approach_en}
                     onFr={v => setConfig({ ...config, practice: { ...config.practice, approach_fr: v } })}
                     onEn={v => setConfig({ ...config, practice: { ...config.practice, approach_en: v } })} />
                   <div style={{ marginTop: 20 }}>
-                    <DualField label="Médiums & matériaux" rows={2}
+                    <DualField label="Médiums & matériaux"
                       fr={config.practice.materials_fr} en={config.practice.materials_en}
                       onFr={v => setConfig({ ...config, practice: { ...config.practice, materials_fr: v } })}
                       onEn={v => setConfig({ ...config, practice: { ...config.practice, materials_en: v } })} />
@@ -399,68 +420,52 @@ function FileImportButton({ onText, lang }: { onText: (v: string) => void; lang:
   )
 }
 
-function FlamePreview({ html }: { html: string }) {
-  const plain = htmlToPlain(html)
-  return (
-    <div style={{
-      border: '1px solid var(--bd)', borderRadius: 4, padding: '16px 20px',
-      background: '#f0ede8', fontFamily: 'JetBrains Mono, monospace',
-      fontSize: 11, lineHeight: 2.0, letterSpacing: '0.15em',
-      textTransform: 'uppercase', color: '#8a8680',
-      textAlign: 'justify', wordSpacing: '0.3em',
-      whiteSpace: 'pre-wrap', minHeight: 60,
-    }}>
-      {plain
-        ? plain.replace(/\./g, ' /').replace(/\n/g, ' █ ')
-        : <span style={{ opacity: 0.25 }}>—</span>}
-    </div>
-  )
-}
-
-function DualField({ label, fr, en, onFr, onEn, rows = 1, placeholder, allowImport }: {
+function DualField({ label, fr, en, onFr, onEn, rows = 1, placeholder, allowImport, rich }: {
   label: string; fr: string; en: string
   onFr: (v: string) => void; onEn: (v: string) => void
   rows?: number; placeholder?: { fr?: string; en?: string }
-  allowImport?: boolean
+  allowImport?: boolean; rich?: boolean
 }) {
-  const rich = rows > 1
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div className="t-label" style={{ fontSize: 9 }}>{label}</div>
+  const isRich = rich === true
+  const minH = isRich ? 180 : undefined
 
+  return (
+    <div>
+      <div className="t-label" style={{ marginBottom: 8, fontSize: 9 }}>{label}</div>
       {/* Editors side by side */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
             <span style={{ fontSize: 8, letterSpacing: 2, color: 'var(--tx3)' }}>FR</span>
-            {allowImport && rich && <FileImportButton onText={onFr} lang="fr" />}
+            {allowImport && isRich && <FileImportButton onText={onFr} lang="fr" />}
           </div>
-          {rich
-            ? <RichEditor value={fr} onChange={onFr} placeholder={placeholder?.fr} minHeight={rows * 32} />
-            : <input className="input full" value={fr} onChange={e => onFr(e.target.value)} placeholder={placeholder?.fr || ''} style={{ width: '100%' }} />
+          {isRich
+            ? <RichEditor value={fr} onChange={onFr} minHeight={minH} />
+            : <input className="input full" value={fr} onChange={e => onFr(e.target.value)}
+                placeholder={placeholder?.fr || ''} style={{ width: '100%' }} />
           }
         </div>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
             <span style={{ fontSize: 8, letterSpacing: 2, color: 'var(--tx3)' }}>EN</span>
-            {allowImport && rich && <FileImportButton onText={onEn} lang="en" />}
+            {allowImport && isRich && <FileImportButton onText={onEn} lang="en" />}
           </div>
-          {rich
-            ? <RichEditor value={en} onChange={onEn} placeholder={placeholder?.en} minHeight={rows * 32} />
-            : <input className="input full" value={en} onChange={e => onEn(e.target.value)} placeholder={placeholder?.en || ''} style={{ width: '100%' }} />
+          {isRich
+            ? <RichEditor value={en} onChange={onEn} minHeight={minH} />
+            : <input className="input full" value={en} onChange={e => onEn(e.target.value)}
+                placeholder={placeholder?.en || ''} style={{ width: '100%' }} />
           }
         </div>
       </div>
-
-      {/* Live previews side by side — only for rich fields */}
-      {rich && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+      {/* FlameText previews side by side — only for rich fields */}
+      {isRich && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 10 }}>
           <div>
-            <div className="t-label" style={{ fontSize: 8, marginBottom: 4, opacity: 0.5 }}>APERÇU FR</div>
+            <div style={{ fontSize: 8, letterSpacing: 2, color: 'var(--tx3)', marginBottom: 4 }}>APERÇU FR</div>
             <FlamePreview html={fr} />
           </div>
           <div>
-            <div className="t-label" style={{ fontSize: 8, marginBottom: 4, opacity: 0.5 }}>APERÇU EN</div>
+            <div style={{ fontSize: 8, letterSpacing: 2, color: 'var(--tx3)', marginBottom: 4 }}>APERÇU EN</div>
             <FlamePreview html={en} />
           </div>
         </div>
@@ -559,26 +564,26 @@ function CollectionRow({ item, isTarget, onAssign, onUpdate, onDelete }: {
         </div>
       </div>
 
-      {/* Descriptions — side by side editors */}
+      {/* Descriptions — rich editors side by side */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <div>
-          <label className="t-label" style={{ display: 'block', marginBottom: 6, fontSize: 9 }}>TEXTE FR</label>
-          <RichEditor value={item.description_fr} onChange={v => onUpdate({ description_fr: v })} minHeight={220} />
+          <label className="t-label" style={{ display: 'block', marginBottom: 4, fontSize: 9 }}>TEXTE FR</label>
+          <RichEditor value={item.description_fr} onChange={v => onUpdate({ description_fr: v })} minHeight={120} />
         </div>
         <div>
-          <label className="t-label" style={{ display: 'block', marginBottom: 6, fontSize: 9 }}>TEXTE EN</label>
-          <RichEditor value={item.description_en} onChange={v => onUpdate({ description_en: v })} minHeight={220} />
+          <label className="t-label" style={{ display: 'block', marginBottom: 4, fontSize: 9 }}>TEXTE EN</label>
+          <RichEditor value={item.description_en} onChange={v => onUpdate({ description_en: v })} minHeight={120} />
         </div>
       </div>
 
-      {/* Live previews — side by side below */}
+      {/* FlameText previews */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <div>
-          <div className="t-label" style={{ fontSize: 8, marginBottom: 4, opacity: 0.5 }}>APERÇU /WORKS FR</div>
+          <div style={{ fontSize: 8, letterSpacing: 2, color: 'var(--tx3)', marginBottom: 4 }}>APERÇU FR</div>
           <FlamePreview html={item.description_fr} />
         </div>
         <div>
-          <div className="t-label" style={{ fontSize: 8, marginBottom: 4, opacity: 0.5 }}>APERÇU /WORKS EN</div>
+          <div style={{ fontSize: 8, letterSpacing: 2, color: 'var(--tx3)', marginBottom: 4 }}>APERÇU EN</div>
           <FlamePreview html={item.description_en} />
         </div>
       </div>
@@ -597,4 +602,12 @@ function CollectionRow({ item, isTarget, onAssign, onUpdate, onDelete }: {
             </span>
           </div>
         </div>
-        <label class
+        <label className="row gap-xs pointer center" style={{ paddingBottom: 6 }}>
+          <input type="checkbox" checked={item.is_active} onChange={e => onUpdate({ is_active: e.target.checked })} />
+          <span className="t-mono-xs" style={{ fontSize: 9 }}>ACTIF</span>
+        </label>
+        <button className="t-mono-sm" style={{ color: 'var(--rust)', cursor: 'pointer', border: 'none', background: 'none', paddingBottom: 6 }} onClick={onDelete}>Supprimer</button>
+      </div>
+    </div>
+  )
+}
