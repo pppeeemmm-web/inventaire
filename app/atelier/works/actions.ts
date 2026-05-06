@@ -98,27 +98,27 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
   const imageExisting = (formData.get('image_existing') as string | null)?.trim() || null
   let imageName       = imageExisting
 
-  // ── Strict Photography Gate ──
-  // Rule 1: No one can be Catalogued (7) or Available (2) without an image.
-  // Rule 2: ONLY Admin can unlock the Catalogued/Available state (validation of high-res).
-  const isTargetingRelease = (catalogued || statusId === 2)
-  const isAdmin = (await supabase.from('profiles').select('role').eq('id', user.id).single()).data?.role === 'admin'
+  // ── Photography Gates ─────────────────────────────────────────────────────
+  // Gate 1 — Catalogué: must have at least one image in tblImage.
+  //   Images are managed via tblImage independently; query DB rather than form field.
+  if (catalogued && !imageFile?.size) {
+    let hasImage = false
+    if (!isNew && oeuvreIdRaw) {
+      const { count } = await supabase
+        .from('tblImage')
+        .select('ImageID', { count: 'exact', head: true })
+        .eq('OeuvreID', parseInt(oeuvreIdRaw))
+      hasImage = (count ?? 0) > 0
+    }
+    if (!hasImage) {
+      return { error: 'Une œuvre ne peut pas être cataloguée sans photographie.' }
+    }
+  }
 
-  if (isTargetingRelease) {
-    // Check for image
-    if (!imageFile?.size && !imageExisting) {
-      return { error: 'Une œuvre ne peut pas être cataloguée ou disponible sans photographie (Strict Gate).' }
-    }
-    // Check for Admin authority
-    if (!isAdmin) {
-      await logSystemEvent({
-        eventType: 'GATE_BYPASS',
-        tableName: 'Oeuvres',
-        rowId: oeuvreIdRaw || 'NEW',
-        metadata: { user: user.email, titre, reason: 'Non-admin attempting to release without gate validation' }
-      })
-      return { error: 'Validation haute-résolution requise. Seul l\'administrateur peut débloquer cet état.' }
-    }
+  // Gate 2 — Disponible (statusId 2): NeedsPhotograph must be unchecked.
+  //   The artist/admin validates photo quality by unchecking NeedsPhotograph.
+  if (statusId === 2 && needsPhotograph) {
+    return { error: 'Décochez "Photo requise" pour confirmer la validation photo avant de passer en Disponible.' }
   }
 
   // ── Branch: new vs edit ───────────────────────────────────────────────

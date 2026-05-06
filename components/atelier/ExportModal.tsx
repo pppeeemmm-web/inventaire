@@ -48,7 +48,7 @@ const DEFAULT_CONFIG: ExportConfig = {
   layout:       'grid',
   columns:      4,
   cardsPerPage: 2,
-  rowsPerPage:  0, // 0 = auto
+  rowsPerPage:  4,
   imageSize:    'small',
   imageEmbed:   'linked',
   imageCrop:    'square',
@@ -158,12 +158,8 @@ export function ExportModal({ ids, oeuvres, tM, sM, statusLabelMap, onClose }: P
 
   function handleExport() {
     setError(null)
-    const embeddedWarning = cfg.imageEmbed === 'embedded' && ids.length > 30
-    if (embeddedWarning) {
-      setProgress(`Récupération des images pour ${ids.length} œuvres…`)
-    } else {
-      setProgress('Génération…')
-    }
+    const heavy = cfg.format === 'pdf' || (cfg.imageEmbed === 'embedded' && ids.length > 30)
+    setProgress(heavy ? `Récupération des images pour ${ids.length} œuvres…` : 'Génération…')
 
     startExport(async () => {
       try {
@@ -193,7 +189,7 @@ export function ExportModal({ ids, oeuvres, tM, sM, statusLabelMap, onClose }: P
     })
   }
 
-  const isEmbedHeavy = cfg.imageEmbed === 'embedded' && cfg.fields.image && ids.length > 20
+  const isEmbedHeavy = cfg.format === 'html' && cfg.imageEmbed === 'embedded' && cfg.fields.image && ids.length > 20
 
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 80, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -219,6 +215,7 @@ export function ExportModal({ ids, oeuvres, tM, sM, statusLabelMap, onClose }: P
                 value={cfg.format} onChange={(v) => {
                   set('format', v as 'html' | 'pdf')
                   if (v === 'html') set('paper', 'screen')
+                  if (v === 'pdf' && cfg.paper === 'screen') set('paper', 'a4')
                 }}
               />
             </Section>
@@ -247,19 +244,10 @@ export function ExportModal({ ids, oeuvres, tM, sM, statusLabelMap, onClose }: P
               {cfg.layout === 'grid' && (
                 <div style={{ marginTop: 10 }}>
                   <div className="row gap-sm" style={{ flexWrap: 'wrap' }}>
-                    <span className="t-label">{t('columns')} :</span>
-                    {([2, 3, 4, 6, 8, 10, 12] as const).map((n) => (
-                      <button key={n} className={`btn sm ${cfg.columns === n ? 'primary' : 'ghost'}`}
-                        onClick={() => set('columns', n as ExportConfig['columns'])}>{n}</button>
-                    ))}
-                  </div>
-                  <div className="row gap-sm" style={{ marginTop: 10, flexWrap: 'wrap' }}>
-                    <span className="t-label">Lignes :</span>
-                    {([0, 1, 2, 3, 4, 5, 6, 8, 10] as const).map((n) => (
+                    <span className="t-label">Lignes / page :</span>
+                    {([2, 3, 4, 5, 6, 8, 10] as const).map((n) => (
                       <button key={n} className={`btn sm ${cfg.rowsPerPage === n ? 'primary' : 'ghost'}`}
-                        onClick={() => set('rowsPerPage', n)}>
-                        {n === 0 ? 'Auto' : n}
-                      </button>
+                        onClick={() => set('rowsPerPage', n)}>{n}</button>
                     ))}
                   </div>
                 </div>
@@ -313,7 +301,7 @@ export function ExportModal({ ids, oeuvres, tM, sM, statusLabelMap, onClose }: P
                     value={cfg.imageCrop} onChange={(v) => set('imageCrop', v as 'square' | 'native')}
                   />
                 </Section>
-                {cfg.imageSize !== 'none' && (
+                {cfg.format === 'html' && cfg.imageSize !== 'none' && (
                   <Section label={t('images')}>
                     <ToggleRow
                       options={[{ v: 'linked', l: t('highRes') }, { v: 'embedded', l: t('lowRes') }]}
@@ -329,25 +317,22 @@ export function ExportModal({ ids, oeuvres, tM, sM, statusLabelMap, onClose }: P
               </>
             )}
 
-            {/* Paper */}
-            <Section label={cfg.format === 'html' ? t('displayFormat') : t('paperFormat')}>
-              <ToggleRow
-                options={
-                  cfg.format === 'html'
-                    ? [{ v: 'screen', l: t('screen') }]
-                    : [{ v: 'a4', l: 'A4' }, { v: 'a3', l: 'A3' }, { v: 'screen', l: t('screen') }]
-                }
-                value={cfg.paper} onChange={(v) => set('paper', v as ExportConfig['paper'])}
-              />
-            </Section>
-
+            {/* Paper + orientation — PDF only */}
             {cfg.format === 'pdf' && (
-              <Section label="ORIENTATION">
-                <ToggleRow
-                  options={[{ v: 'portrait', l: 'Portrait' }, { v: 'landscape', l: 'Paysage' }]}
-                  value={cfg.orientation} onChange={(v) => set('orientation', v as ExportConfig['orientation'])}
-                />
-              </Section>
+              <>
+                <Section label={t('paperFormat')}>
+                  <ToggleRow
+                    options={[{ v: 'a4', l: 'A4' }, { v: 'a3', l: 'A3' }]}
+                    value={cfg.paper} onChange={(v) => set('paper', v as ExportConfig['paper'])}
+                  />
+                </Section>
+                <Section label="ORIENTATION">
+                  <ToggleRow
+                    options={[{ v: 'portrait', l: 'Portrait' }, { v: 'landscape', l: 'Paysage' }]}
+                    value={cfg.orientation} onChange={(v) => set('orientation', v as ExportConfig['orientation'])}
+                  />
+                </Section>
+              </>
             )}
           </div>
 
