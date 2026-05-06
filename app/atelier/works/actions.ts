@@ -208,6 +208,20 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       if (themeErr) return { error: themeErr.message }
     }
 
+    // Auto-create photography task when entering photo gate
+    if (catalogued && needsPhotograph) {
+      const { data: existing } = await supabase
+        .from('work_action')
+        .select('id')
+        .eq('oeuvre_id', oid)
+        .eq('action_type_id', 6)
+        .eq('done', false)
+        .maybeSingle()
+      if (!existing) {
+        await supabase.from('work_action').insert({ oeuvre_id: oid, action_type_id: 6, done: false })
+      }
+    }
+
     revalidatePath('/atelier')
     return { ok: true, newId: oid }
 
@@ -218,7 +232,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
     // Fetch current record to compare statusId + ContactID for history
     const { data: current } = await supabase
       .from('Oeuvres')
-      .select('statusId, ContactID, Historique')
+      .select('statusId, ContactID, Historique, "Catalogué", "NeedsPhotograph"')
       .eq('OeuvreID', oid)
       .single()
 
@@ -245,10 +259,8 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
     const paymentDone  = formData.get('payment_received') === '1'
     const isAnonymous  = formData.get('is_anonymous') === '1'
 
-    // ── Automated Visibility Logic ──
-    // Visibility is a CONSEQUENCE, not a manual choice.
-    // Rule: Visible if (Admin has Unlocked) AND (Work is Catalogued/Available)
-    const automatedIsPublic = (catalogued || statusId === 2) && isAdmin
+    // is_public is managed by DB trigger sync_is_public_from_status() — not set manually.
+    const willBePublic = [2, 4, 6, 7, 8, 11].includes(statusId)
 
     // Build update payload.
     const updatePayload: Record<string, unknown> = {
@@ -273,7 +285,6 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       Montee:            montee,
       Encadree:          encadree,
       Catalogué:         catalogued,
-      is_public:         automatedIsPublic, // Hard-locked to the gate logic
       IsCommission:      isCommission,
       DateLivraison:     dateLivraison,
       NeedsPhotograph:   needsPhotograph,
@@ -290,13 +301,13 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
     if (updateErr) return { error: updateErr.message }
 
     // ── Log Significant Event: Visibility Release ──
-    if (automatedIsPublic && (!current || !current.is_public)) {
+    if (willBePublic && (!current || !current.is_public)) {
       await logSystemEvent({
         eventType: 'VISIBILITY_GATE',
         tableName: 'Oeuvres',
         rowId: oid,
         newValue: 'PUBLIC',
-        metadata: { titre, method: 'Photography Gate Passed' }
+        metadata: { titre, statusId }
       })
     }
 
@@ -310,6 +321,21 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
         newValue: statusId,
         metadata: { titre }
       })
+    }
+
+    // Auto-create photography task when entering photo gate (only if not already open)
+    const enteringPhotoGate = catalogued && needsPhotograph && !current?.['Catalogué']
+    if (enteringPhotoGate) {
+      const { data: existing } = await supabase
+        .from('work_action')
+        .select('id')
+        .eq('oeuvre_id', oid)
+        .eq('action_type_id', 6)
+        .eq('done', false)
+        .maybeSingle()
+      if (!existing) {
+        await supabase.from('work_action').insert({ oeuvre_id: oid, action_type_id: 6, done: false })
+      }
     }
 
     // Replace themes: delete + reinsert

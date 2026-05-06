@@ -40,7 +40,7 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
     const res = await createTheme(name)
     if (res.theme) {
       setLocalThemes(prev => [...prev, res.theme!])
-      toggleTheme(res.theme.ThemeID)
+      cycleTheme(res.theme.ThemeID)
       setNewThemeName('')
     } else if (res.error) {
       setError(res.error)
@@ -49,18 +49,18 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
   }
 
   // Scalar fields — empty string = unchanged
-  const [titre,             setTitre]            = useState('')
-  const [statusId,          setStatusId]         = useState('')
-  const [technique,         setTechnique]        = useState('')
-  const [support,           setSupport]          = useState('')
-  const [format,            setFormat]           = useState('')
-  const [contactId,         setContactId]        = useState('')
-  const [prix,              setPrix]             = useState('')
-  const [discount,          setDiscount]         = useState('')
-  const [annee,             setAnnee]            = useState('')
-  const [locDetail,         setLocDetail]        = useState('')
-  const [commentaires,      setCommentaires]     = useState('')
-  const [historiqueAppend,  setHistoriqueAppend]  = useState('')
+  const [titre,            setTitre]           = useState('')
+  const [statusId,         setStatusId]        = useState('')
+  const [technique,        setTechnique]       = useState('')
+  const [support,          setSupport]         = useState('')
+  const [format,           setFormat]          = useState('')
+  const [contactId,        setContactId]       = useState('')
+  const [prix,             setPrix]            = useState('')
+  const [discount,         setDiscount]        = useState('')
+  const [annee,            setAnnee]           = useState('')
+  const [locDetail,        setLocDetail]       = useState('')
+  const [commentaires,     setCommentaires]    = useState('')
+  const [historiqueAppend, setHistoriqueAppend] = useState('')
 
   // Boolean fields — null = unchanged
   const [exposable,    setExposable]    = useState<Tri>(null)
@@ -82,42 +82,27 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
   const [removeGroups, setRemoveGroups] = useState<Set<string>>(new Set())
   const [groupFilter,  setGroupFilter]  = useState('')
 
-  function toggleTheme(id: number) {
-    setAddThemes(prev => {
-      const next = new Set(prev)
-      if (next.has(id)) { next.delete(id); return next }
-      next.add(id)
-      setRemoveThemes(r => { const nr = new Set(r); nr.delete(id); return nr })
-      return next
-    })
-  }
-  function toggleRemoveTheme(id: number) {
-    setRemoveThemes(prev => {
-      const next = new Set(prev)
-      if (next.has(id)) { next.delete(id); return next }
-      next.add(id)
-      setAddThemes(a => { const na = new Set(a); na.delete(id); return na })
-      return next
-    })
+  // Single click cycles: neutral → add → remove → neutral
+  function cycleTheme(id: number) {
+    if (addThemes.has(id)) {
+      setAddThemes(prev => { const n = new Set(prev); n.delete(id); return n })
+      setRemoveThemes(prev => { const n = new Set(prev); n.add(id); return n })
+    } else if (removeThemes.has(id)) {
+      setRemoveThemes(prev => { const n = new Set(prev); n.delete(id); return n })
+    } else {
+      setAddThemes(prev => { const n = new Set(prev); n.add(id); return n })
+    }
   }
 
-  function toggleGroup(id: string) {
-    setAddGroups(prev => {
-      const next = new Set(prev)
-      if (next.has(id)) { next.delete(id); return next }
-      next.add(id)
-      setRemoveGroups(r => { const nr = new Set(r); nr.delete(id); return nr })
-      return next
-    })
-  }
-  function toggleRemoveGroup(id: string) {
-    setRemoveGroups(prev => {
-      const next = new Set(prev)
-      if (next.has(id)) { next.delete(id); return next }
-      next.add(id)
-      setAddGroups(a => { const na = new Set(a); na.delete(id); return na })
-      return next
-    })
+  function cycleGroup(id: string) {
+    if (addGroups.has(id)) {
+      setAddGroups(prev => { const n = new Set(prev); n.delete(id); return n })
+      setRemoveGroups(prev => { const n = new Set(prev); n.add(id); return n })
+    } else if (removeGroups.has(id)) {
+      setRemoveGroups(prev => { const n = new Set(prev); n.delete(id); return n })
+    } else {
+      setAddGroups(prev => { const n = new Set(prev); n.add(id); return n })
+    }
   }
 
   const changed = (
@@ -144,21 +129,16 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
     if (annee      !== '')  changes.Année      = annee.trim() || null
     if (locDetail  !== '')  changes.LocalisationDetail = locDetail.trim() || null
     if (commentaires !== '') changes.Commentaires = commentaires.trim() || null
-    
-    // For batch historique, we can't really "replace" it easily, but we can have an "append" logic if we wanted.
-    // However, the batchEdit action doesn't support "append" yet. 
-    // I will add a simple logic here if I can, or just keep it simple.
-    // Let's assume for now we don't batch edit historique to avoid data loss.
 
-    if (exposable    !== null) changes.Exposable    = exposable
-    if (montee       !== null) changes.Montee       = montee
-    if (encadree     !== null) changes.Encadree     = encadree
-    if (catalogued   !== null) changes['Catalogué'] = catalogued
-    if (isCommission !== null) changes.IsCommission = isCommission
-    if (isGift       !== null) changes.is_gift       = isGift
-    if (isPaid       !== null) changes.is_paid       = isPaid
+    if (exposable    !== null) changes.Exposable      = exposable
+    if (montee       !== null) changes.Montee         = montee
+    if (encadree     !== null) changes.Encadree       = encadree
+    if (catalogued   !== null) changes['Catalogué']   = catalogued
+    if (isCommission !== null) changes.IsCommission   = isCommission
+    if (isGift       !== null) changes.is_gift        = isGift
+    if (isPaid       !== null) changes.is_paid        = isPaid
     if (needsPhoto   !== null) changes.NeedsPhotograph = needsPhoto
-    
+
     if (addThemes.size    > 0) changes.addThemeIds    = [...addThemes]
     if (removeThemes.size > 0) changes.removeThemeIds = [...removeThemes]
     if (addGroups.size    > 0) changes.addGroupIds    = [...addGroups]
@@ -176,7 +156,6 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
         const r = await batchEdit(ids, changes)
         if ('error' in r) { setError(r.error); return }
         onDone(r.updated)
-        // Refresh server data and show success toast via URL param
         window.location.href = window.location.pathname + '?batch=success'
       } catch (e) {
         setError(String(e))
@@ -184,15 +163,24 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
     })
   }
 
-  const statuses = Object.entries(statusLabelMap).map(([id, label]) => ({ id: Number(id), label }))
-
   const contactLabel = (c: Props['contacts'][0]) =>
     c.NomInstitution || `${c.Prénom ?? ''} ${c.Nom ?? ''}`.trim() || `#${c.ContactID}`
+
+  // All dropdowns sorted alphabetically
+  const sortedStatuses   = Object.entries(statusLabelMap)
+    .map(([id, label]) => ({ id: Number(id), label }))
+    .sort((a, b) => a.label.localeCompare(b.label))
+  const sortedTechniques = [...techniques].sort((a, b) => (a.Technique ?? '').localeCompare(b.Technique ?? ''))
+  const sortedSupports   = [...supports].sort((a, b) => (a.Support ?? '').localeCompare(b.Support ?? ''))
+  const sortedFormats    = [...formats].sort((a, b) => (a.Format ?? '').localeCompare(b.Format ?? ''))
+  const sortedContacts   = [...contacts].sort((a, b) => contactLabel(a).localeCompare(contactLabel(b)))
 
   const filteredThemes = localThemes
     .filter(th => th.Nom.toLowerCase().includes(themeFilter.toLowerCase()))
     .sort((a, b) => a.Nom.localeCompare(b.Nom))
-  const filteredGroups = groups.filter(g => g.name.toLowerCase().includes(groupFilter.toLowerCase()))
+  const filteredGroups = groups
+    .filter(g => g.name.toLowerCase().includes(groupFilter.toLowerCase()))
+    .sort((a, b) => a.name.localeCompare(b.name))
 
   return (
     <Overlay onClose={onClose}>
@@ -217,7 +205,7 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
             onChange={(e) => setStatusId(e.target.value)}>
             <option value="">— {t('unchanged')} —</option>
             <option value="null">{t('removeStatus')}</option>
-            {statuses.map(({ id, label }) => (
+            {sortedStatuses.map(({ id, label }) => (
               <option key={id} value={id}>{label}</option>
             ))}
           </select>
@@ -234,8 +222,8 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
             onChange={(e) => setTechnique(e.target.value)}>
             <option value="">— {t('unchanged')} —</option>
             <option value="null">{t('remove')}</option>
-            {techniques.map((t) => (
-              <option key={t.TechniqueID} value={t.TechniqueID}>{t.Technique}</option>
+            {sortedTechniques.map((tech) => (
+              <option key={tech.TechniqueID} value={tech.TechniqueID}>{tech.Technique}</option>
             ))}
           </select>
         </FieldWrap>
@@ -245,7 +233,7 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
             onChange={(e) => setSupport(e.target.value)}>
             <option value="">— {t('unchanged')} —</option>
             <option value="null">{t('remove')}</option>
-            {supports.map((s) => (
+            {sortedSupports.map((s) => (
               <option key={s.SupportID} value={s.SupportID}>{s.Support}</option>
             ))}
           </select>
@@ -256,28 +244,27 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
             onChange={(e) => setFormat(e.target.value)}>
             <option value="">— {t('unchanged')} —</option>
             <option value="null">{t('remove')}</option>
-            {formats.map((f) => (
+            {sortedFormats.map((f) => (
               <option key={f.FormatID} value={f.FormatID}>{f.Format}</option>
             ))}
           </select>
         </FieldWrap>
 
-        <FieldWrap label={t('contact')} active={contactId !== ''}>
+        <FieldWrap label={t('contact')} active={contactId !== ''} style={{ gridColumn: 'span 2' }}>
           <select className="input" style={{ width: '100%' }} value={contactId}
             onChange={(e) => setContactId(e.target.value)}>
             <option value="">— {t('unchanged')} —</option>
             <option value="null">{t('remove')}</option>
-            {contacts.map((c) => (
+            {sortedContacts.map((c) => (
               <option key={c.ContactID} value={c.ContactID}>{contactLabel(c)}</option>
             ))}
           </select>
         </FieldWrap>
 
-
       </div>
 
       {/* ── Section: Prix ────────────────────────────────────────── */}
-      <SectionLabel>Prix</SectionLabel>
+      <SectionLabel>{t('price')}</SectionLabel>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 20px', marginBottom: 20 }}>
 
         <FieldWrap label={`${t('price')} (€)`} active={prix !== ''}>
@@ -294,11 +281,11 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
 
       </div>
 
-      {/* ── Section: Custodian & notes ────────────────────────── */}
-      <SectionLabel>{t('location')} & {t('notes')}</SectionLabel>
+      {/* ── Section: Localisation & Notes ────────────────────────── */}
+      <SectionLabel>{t('locationNotes')}</SectionLabel>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '10px', marginBottom: 20 }}>
 
-        <FieldWrap label={`${t('location')} (City, Venue…)`} active={locDetail !== ''}>
+        <FieldWrap label={t('localisationDetail')} active={locDetail !== ''}>
           <input className="input" type="text" style={{ width: '100%' }}
             placeholder={`${t('unchanged')} (ex. Marseille, France)`} value={locDetail}
             onChange={(e) => setLocDetail(e.target.value)} />
@@ -317,31 +304,31 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
       {localThemes.length > 0 && (
         <div style={{ marginBottom: 32 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 12, gap: 12 }}>
-            <SectionLabel style={{ margin: 0 }}>{t('themes')}</SectionLabel>
-            
+            <SectionLabel style={{ marginBottom: 0 }}>{t('themesSection')}</SectionLabel>
+
             <div className="row gap-sm" style={{ flex: 1, justifyContent: 'flex-end' }}>
-              <input 
-                className="input sm" 
-                placeholder="Nouveau thème..." 
+              <input
+                className="input sm"
+                placeholder={t('newTheme')}
                 value={newThemeName}
                 onChange={e => setNewThemeName(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleCreateTheme()}
                 style={{ width: 120, fontSize: 10, padding: '3px 8px' }}
               />
-              <button 
-                className="btn sm primary" 
-                onClick={handleCreateTheme} 
+              <button
+                className="btn sm primary"
+                onClick={handleCreateTheme}
                 disabled={creatingTheme || !newThemeName.trim()}
                 style={{ fontSize: 9, padding: '3px 8px' }}
               >
                 {creatingTheme ? '…' : '+'}
               </button>
-              
+
               <div className="vline" style={{ height: 16 }} />
 
-              <input 
-                className="input sm" 
-                placeholder={`${t('search')}...`} 
+              <input
+                className="input sm"
+                placeholder={`${t('search')}...`}
                 value={themeFilter}
                 onChange={e => setThemeFilter(e.target.value)}
                 style={{ width: 100, fontSize: 10, padding: '3px 8px' }}
@@ -351,8 +338,8 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
           <div className="t-mono-sm" style={{ color: 'var(--tx3)', marginBottom: 12 }}>
             {t('themesBatchHelp')}
           </div>
-          <div style={{ 
-            display: 'flex', flexWrap: 'wrap', gap: 6, 
+          <div style={{
+            display: 'flex', flexWrap: 'wrap', gap: 6,
             maxHeight: 180, overflowY: 'auto', padding: '12px',
             background: 'var(--bg2)', border: '1px solid var(--bd)'
           }}>
@@ -362,8 +349,7 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
               return (
                 <button
                   key={th.ThemeID}
-                  onContextMenu={(e) => { e.preventDefault(); toggleRemoveTheme(th.ThemeID) }}
-                  onClick={() => toggleTheme(th.ThemeID)}
+                  onClick={() => cycleTheme(th.ThemeID)}
                   style={{
                     padding: '4px 10px', fontSize: 10, fontFamily: 'inherit', cursor: 'pointer',
                     border: `1px solid ${isAdd ? 'var(--sage)' : isRemove ? '#c0392b' : 'var(--bd)'}`,
@@ -377,31 +363,31 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
             })}
             {filteredThemes.length === 0 && (
               <div className="t-mono-sm" style={{ color: 'var(--tx3)', width: '100%', textAlign: 'center', padding: 20 }}>
-                Aucun thème correspondant
+                {t('empty')}
               </div>
             )}
           </div>
         </div>
       )}
 
-      {/* ── Section: Groupes ─────────────────────────────────────── */}
+      {/* ── Section: Groupes de travail ───────────────────────────── */}
       {groups.length > 0 && (
         <div style={{ marginBottom: 32 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 12 }}>
-            <SectionLabel style={{ margin: 0 }}>Groupes de travail</SectionLabel>
-            <input 
-              className="input sm" 
-              placeholder={`${t('search')}...`} 
+            <SectionLabel style={{ marginBottom: 0 }}>{t('workingGroups')}</SectionLabel>
+            <input
+              className="input sm"
+              placeholder={`${t('search')}...`}
               value={groupFilter}
               onChange={e => setGroupFilter(e.target.value)}
               style={{ width: 140, fontSize: 10, padding: '3px 8px' }}
             />
           </div>
           <div className="t-mono-sm" style={{ color: 'var(--tx3)', marginBottom: 12 }}>
-            Clic gauche pour ajouter à un groupe, clic droit pour retirer.
+            {t('themesBatchHelp')}
           </div>
-          <div style={{ 
-            display: 'flex', flexWrap: 'wrap', gap: 6, 
+          <div style={{
+            display: 'flex', flexWrap: 'wrap', gap: 6,
             maxHeight: 120, overflowY: 'auto', padding: '12px',
             background: 'var(--bg2)', border: '1px solid var(--bd)'
           }}>
@@ -411,8 +397,7 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
               return (
                 <button
                   key={g.id}
-                  onContextMenu={(e) => { e.preventDefault(); toggleRemoveGroup(g.id) }}
-                  onClick={() => toggleGroup(g.id)}
+                  onClick={() => cycleGroup(g.id)}
                   style={{
                     padding: '4px 10px', fontSize: 10, fontFamily: 'inherit', cursor: 'pointer',
                     border: `1px solid ${isAdd ? 'var(--ac)' : isRemove ? '#c0392b' : 'var(--bd)'}`,
@@ -427,17 +412,18 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
           </div>
         </div>
       )}
+
       {/* ── Section: Attributs ───────────────────────────────────── */}
       <SectionLabel>{t('attributes')}</SectionLabel>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 20 }}>
-        <TriField label={t('exposable')}   value={exposable}    onChange={setExposable}   t={t as any} />
-        <TriField label={t('montee')}      value={montee}       onChange={setMontee}      t={t as any} />
-        <TriField label={t('framed')}      value={encadree}     onChange={setEncadree}    t={t as any} />
-        <TriField label={t('catalogued')}  value={catalogued}   onChange={setCatalogued}  t={t as any} />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 20 }}>
+        <TriField label={t('needsPhoto')}  value={needsPhoto}   onChange={setNeedsPhoto}   t={t as any} />
+        <TriField label={t('catalogued')}  value={catalogued}   onChange={setCatalogued}   t={t as any} />
+        <TriField label={t('exposable')}   value={exposable}    onChange={setExposable}    t={t as any} />
+        <TriField label={t('montee')}      value={montee}       onChange={setMontee}       t={t as any} />
+        <TriField label={t('framed')}      value={encadree}     onChange={setEncadree}     t={t as any} />
         <TriField label={t('commission')}  value={isCommission} onChange={setIsCommission} t={t as any} />
-        <TriField label="Cadeau (Gift)"    value={isGift}       onChange={setIsGift}       t={t as any} />
-        <TriField label="Payé (Paid)"      value={isPaid}       onChange={setIsPaid}       t={t as any} />
-        <TriField label="Photo à faire"    value={needsPhoto}   onChange={setNeedsPhoto}   t={t as any} />
+        <TriField label={t('gift')}        value={isGift}       onChange={setIsGift}       t={t as any} />
+        <TriField label={t('paid')}        value={isPaid}       onChange={setIsPaid}       t={t as any} />
       </div>
 
       {!changed && (
@@ -460,17 +446,17 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
+function SectionLabel({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
-    <div className="t-label" style={{ marginBottom: 10, paddingBottom: 4, borderBottom: '1px solid var(--bd)', color: 'var(--tx3)' }}>
+    <div className="t-label" style={{ marginBottom: 10, paddingBottom: 4, borderBottom: '1px solid var(--bd)', color: 'var(--tx3)', ...style }}>
       {children}
     </div>
   )
 }
 
-function FieldWrap({ label, active, children }: { label: string; active: boolean; children: React.ReactNode }) {
+function FieldWrap({ label, active, children, style }: { label: string; active: boolean; children: React.ReactNode; style?: React.CSSProperties }) {
   return (
-    <div>
+    <div style={style}>
       <label className="t-label" style={{
         display: 'block', marginBottom: 6,
         color: active ? 'var(--ac)' : undefined,

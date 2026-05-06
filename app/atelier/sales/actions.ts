@@ -185,15 +185,13 @@ export async function createSaleOrder(formData: FormData): Promise<OrderResult> 
   // Attach the list to the object for the PDF builder
   const orderWithIds = { ...order, oeuvre_ids } as SaleOrderRow
 
-  // Update ALL works: mark as sold, set buyer and delivery date
+  // Update works: mark as Reserved (pending payment). Ownership transfers only on completion.
   await supabase
     .from('Oeuvres')
     .update({
-      statusId:      6,   // Sold
+      statusId:      4,   // Réservé — payment not yet cleared
       AcheteurID:    buyer_id,
       DateLivraison: delivery_date,
-      ContactID:     buyer_id,   // work now at buyer's location
-      LocalisationID: buyer_id,
     })
     .in('OeuvreID', oeuvre_ids)
 
@@ -259,6 +257,49 @@ export async function updateOrderStatut(id: string, statut: string, toggleField?
 
   const { error } = await supabase.from('sale_order').update(payload).eq('id', id)
   if (error) return { error: error.message }
+
+  // On completion: transfer ownership — statusId 6 (Vendu) or 11 (Gift) per work
+  if (statut === 'completed') {
+    const { data: order } = await supabase
+      .from('sale_order')
+      .select('oeuvre_id, notes, buyer_id')
+      .eq('id', id)
+      .single()
+
+    if (order) {
+      let ids: number[] = []
+      if (order.notes?.includes('BATCH_IDS:')) {
+        try {
+          const match = order.notes.match(/BATCH_IDS: (\[.*?\])/)
+          if (match) ids = JSON.parse(match[1])
+        } catch { ids = [order.oeuvre_id] }
+      }
+      if (ids.length === 0) ids = [order.oeuvre_id]
+
+      const { data: works } = await supabase
+        .from('Oeuvres')
+        .select('OeuvreID, is_gift')
+        .in('OeuvreID', ids)
+
+      const giftIds = (works ?? []).filter(w => w.is_gift).map(w => w.OeuvreID)
+      const saleIds = (works ?? []).filter(w => !w.is_gift).map(w => w.OeuvreID)
+
+      if (saleIds.length > 0) {
+        await supabase.from('Oeuvres').update({
+          statusId:      6,   // Vendu
+          ContactID:     order.buyer_id,
+          LocalisationID: order.buyer_id,
+        }).in('OeuvreID', saleIds)
+      }
+      if (giftIds.length > 0) {
+        await supabase.from('Oeuvres').update({
+          statusId:      11,  // Gift
+          ContactID:     order.buyer_id,
+          LocalisationID: order.buyer_id,
+        }).in('OeuvreID', giftIds)
+      }
+    }
+  }
 
   await logSystemEvent({
     eventType: 'STATUS_CHANGE',

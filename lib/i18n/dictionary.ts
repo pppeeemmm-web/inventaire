@@ -45,6 +45,8 @@ export type DictKey =
   | 'unchanged' | 'removeStatus' | 'remove' | 'yes' | 'no' | 'selectionUpdated'
   | 'themesBatchHelp' | 'notesBatchPlaceholder' | 'attributes'
   | 'exportTitlePlaceholder' | 'appendIndex'
+  | 'themesSection' | 'locationNotes' | 'localisationDetail'
+  | 'gift' | 'paid' | 'needsPhoto' | 'newTheme'
   // ── Public site ────────────────────────────────────────────────────────
   | 'pub_works' | 'pub_about' | 'pub_practice' | 'pub_enquiry' | 'pub_portfolio'
   | 'pub_biography' | 'pub_exhibitions_selected' | 'pub_education' | 'pub_contact'
@@ -142,8 +144,11 @@ export const dict: Record<Lang, Dictionary> = {
     modifyAtLeastOne: 'Modifiez au moins un champ pour appliquer.', modifying: 'Modification',
     applyTo: 'Appliquer à', unchanged: 'inchangé', removeStatus: 'Retirer le statut',
     remove: 'Retirer', yes: 'Oui', no: 'Non', selectionUpdated: 'Sélection mise à jour',
-    themesBatchHelp: 'Clic gauche pour ajouter un thème, clic droit pour retirer.',
+    themesBatchHelp: 'Clic pour basculer : ajouter → retirer → inchangé.',
     notesBatchPlaceholder: 'Écraser les commentaires existants par...',
+    themesSection: 'Thèmes', locationNotes: 'Localisation & Notes',
+    localisationDetail: 'Détail localisation',
+    gift: 'Cadeau', paid: 'Payé', needsPhoto: 'Photo requise', newTheme: 'Nouveau thème…',
     exportTitlePlaceholder: 'Titre du document…',
     appendIndex: 'Ajouter index en fin de document',
     main: 'Principal', ramifications: 'Ramifications',
@@ -251,8 +256,11 @@ export const dict: Record<Lang, Dictionary> = {
     modifyAtLeastOne: 'Modify at least one field to apply.', modifying: 'Modifying',
     applyTo: 'Apply to', unchanged: 'unchanged', removeStatus: 'Remove status',
     remove: 'Remove', yes: 'Yes', no: 'No', selectionUpdated: 'Selection updated',
-    themesBatchHelp: 'Left click to add theme, right click to remove.',
+    themesBatchHelp: 'Click to cycle: add → remove → unchanged.',
     notesBatchPlaceholder: 'Overwrite existing comments with...',
+    themesSection: 'Themes', locationNotes: 'Location & Notes',
+    localisationDetail: 'Location detail',
+    gift: 'Gift', paid: 'Paid', needsPhoto: 'Needs photo', newTheme: 'New theme…',
     exportTitlePlaceholder: 'Document title…',
     appendIndex: 'Append index at end of document',
     main: 'Main', ramifications: 'Hierarchy',
