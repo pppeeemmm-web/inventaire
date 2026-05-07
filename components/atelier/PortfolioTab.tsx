@@ -31,10 +31,8 @@ interface PortfolioConfig {
     media_tagline_en:  string
   }
   about: {
-    intro_fr:         string
-    intro_en:         string
-    statement_doc_id: string | null
-    cv_doc_id:        string | null
+    intro_fr: string
+    intro_en: string
   }
   practice: {
     approach_fr:  string
@@ -60,7 +58,7 @@ interface Props {
 
 const DEFAULT_CONFIG: PortfolioConfig = {
   general: { artist_name: '', contact_email: '', instagram: '', phone: '', media_tagline_fr: '', media_tagline_en: '' },
-  about:   { intro_fr: '', intro_en: '', statement_doc_id: null, cv_doc_id: null },
+  about:   { intro_fr: '', intro_en: '' },
   practice:{ approach_fr: '', approach_en: '', themes: [], materials_fr: '', materials_en: '' },
   sections: [],
   works_collections: []
@@ -95,10 +93,8 @@ function migrate(raw: any): PortfolioConfig {
       media_tagline_en: raw.general?.media_tagline_en || '',
     },
     about: {
-      intro_fr:         raw.about?.intro_fr || raw.about?.intro || raw.general?.about_intro || '',
-      intro_en:         raw.about?.intro_en || '',
-      statement_doc_id: raw.about?.statement_doc_id || raw.statement_doc_id || null,
-      cv_doc_id:        raw.about?.cv_doc_id         || raw.cv_doc_id        || null,
+      intro_fr: raw.about?.intro_fr || raw.about?.intro || raw.general?.about_intro || '',
+      intro_en: raw.about?.intro_en || '',
     },
     practice: {
       approach_fr:  raw.practice?.approach_fr  || raw.practice?.approach  || '',
@@ -159,15 +155,13 @@ function ProsePreview({ html }: { html: string }) {
 export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePrivateWorks = {} }: Props) {
   const router = useRouter()
   const [config,     setConfig]     = useState<PortfolioConfig>(DEFAULT_CONFIG)
-  const [documents,  setDocuments]  = useState<{id: string, name: string}[]>([])
   const [loading,    setLoading]    = useState(true)
   const [saving,     setSaving]     = useState(false)
   const [activeTab,  setActiveTab]  = useState<'website' | 'portfolio' | 'analytics'>('website')
   const [activeSlot, setActiveSlot] = useState<{
-    type: 'doc' | 'theme'
-    page: 'about' | 'works' | 'sections'
-    index?: number
-    key?: string
+    type: 'theme'
+    page: 'works' | 'sections'
+    index: number
   } | null>(null)
 
   const themeNames = themes.map(t => t.Nom).sort((a, b) => a.localeCompare(b, 'fr'))
@@ -195,7 +189,6 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
     const result = await loadPortfolioConfig()
     if ('ok' in result) {
       setConfig(migrate(result.config))
-      setDocuments(result.documents)
     }
     setLoading(false)
   }, [])
@@ -212,14 +205,10 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
 
   const handleTransfer = (value: string) => {
     if (!activeSlot) return
-    const { type, page, index, key } = activeSlot
+    const { page, index } = activeSlot
     const next = { ...config }
-    if (page === 'about' && key) {
-      (next.about as any)[key] = value
-    } else if ((page === 'works' || page === 'sections') && index !== undefined) {
-      const listKey = page === 'works' ? 'works_collections' : 'sections'
-      next[listKey][index].theme = value
-    }
+    const listKey = page === 'works' ? 'works_collections' : 'sections'
+    next[listKey][index].theme = value
     setConfig(next)
     setActiveSlot(null)
   }
@@ -283,16 +272,6 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
           </div>
           <div style={{ flex: 1, overflowY: 'auto', padding: 16 }} className="col gap-lg">
             <div>
-              <div className="t-label" style={{ marginBottom: 8, fontSize: 10 }}>COFFRE — DOCUMENTS</div>
-              <div className="col gap-xs">
-                {documents.map(doc => (
-                  <SourceItem key={doc.id} label={doc.name}
-                    active={activeSlot?.type === 'doc'}
-                    onClick={() => activeSlot?.type === 'doc' && handleTransfer(doc.id)} />
-                ))}
-              </div>
-            </div>
-            <div>
               <div className="t-label" style={{ marginBottom: 8, fontSize: 10 }}>THÈMES & GROUPES</div>
               <div className="col gap-xs">
                 {themeNames.map(name => {
@@ -300,8 +279,8 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
                   const hasPrivate = s ? s.pub < s.total : false
                   return (
                     <SourceItem key={name} label={name}
-                      active={activeSlot?.type === 'theme'}
-                      onClick={() => activeSlot?.type === 'theme' && handleTransfer(name)}
+                      active={!!activeSlot}
+                      onClick={() => activeSlot && handleTransfer(name)}
                       badge={s ? `${s.pub}/${s.total}` : undefined}
                       badgeWarn={hasPrivate} />
                   )
@@ -356,18 +335,6 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
                     fr={config.about.intro_fr} en={config.about.intro_en}
                     onFr={v => setConfig({ ...config, about: { ...config.about, intro_fr: v } })}
                     onEn={v => setConfig({ ...config, about: { ...config.about, intro_en: v } })} />
-                  <div className="row gap-md" style={{ marginTop: 20 }}>
-                    <DocumentSlot label="Démarche artistique"
-                      name={documents.find(d => d.id === config.about.statement_doc_id)?.name}
-                      active={activeSlot?.key === 'statement_doc_id'}
-                      onClick={() => setActiveSlot({ type: 'doc', page: 'about', key: 'statement_doc_id' })}
-                      onClear={() => setConfig({ ...config, about: { ...config.about, statement_doc_id: null } })} />
-                    <DocumentSlot label="Curriculum Vitae"
-                      name={documents.find(d => d.id === config.about.cv_doc_id)?.name}
-                      active={activeSlot?.key === 'cv_doc_id'}
-                      onClick={() => setActiveSlot({ type: 'doc', page: 'about', key: 'cv_doc_id' })}
-                      onClear={() => setConfig({ ...config, about: { ...config.about, cv_doc_id: null } })} />
-                  </div>
                 </PageSection>
 
                 {/* Practice */}
@@ -376,6 +343,25 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
                     fr={config.practice.approach_fr} en={config.practice.approach_en}
                     onFr={v => setConfig({ ...config, practice: { ...config.practice, approach_fr: v } })}
                     onEn={v => setConfig({ ...config, practice: { ...config.practice, approach_en: v } })} />
+                  <div style={{ marginTop: 20 }}>
+                    <label className="t-label" style={{ display: 'block', marginBottom: 6, fontSize: 9 }}>
+                      THÈMES CENTRAUX (un par ligne)
+                    </label>
+                    <textarea
+                      className="input full"
+                      rows={5}
+                      value={(config.practice.themes ?? []).join('\n')}
+                      onChange={e => setConfig({
+                        ...config,
+                        practice: {
+                          ...config.practice,
+                          themes: e.target.value.split('\n').map((s: string) => s.trim()).filter(Boolean)
+                        }
+                      })}
+                      placeholder="La physiologie de la perception…"
+                      style={{ width: '100%', resize: 'vertical', fontFamily: 'inherit' }}
+                    />
+                  </div>
                   <div style={{ marginTop: 20 }}>
                     <DualField label="Médiums & matériaux"
                       fr={config.practice.materials_fr} en={config.practice.materials_en}
@@ -743,32 +729,6 @@ function Slot({ label, children }: { label: string; children: React.ReactNode })
   )
 }
 
-function DocumentSlot({ label, name, active, onClick, onClear }: {
-  label: string; name?: string; active: boolean
-  onClick: () => void; onClear: () => void
-}) {
-  return (
-    <div style={{ flex: 1 }}>
-      <label className="t-label" style={{ display: 'block', marginBottom: 6, fontSize: 9 }}>{label}</label>
-      <div onClick={onClick} style={{
-        height: 60, border: `1px ${name ? 'solid' : 'dashed'} ${active ? 'var(--ac)' : 'var(--bd)'}`,
-        borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: 12, cursor: 'pointer', background: name ? 'rgba(200,168,110,0.05)' : 'var(--bg0)',
-        transition: 'all 0.2s'
-      }}>
-        {name ? (
-          <div className="row between full">
-            <span className="t-mono-sm" style={{ fontSize: 10, color: 'var(--ac)' }}>{name}</span>
-            <button className="t-mono-xs" style={{ color: 'var(--rust)', background: 'none', border: 'none', cursor: 'pointer' }}
-              onClick={e => { e.stopPropagation(); onClear() }}>Retirer</button>
-          </div>
-        ) : (
-          <span className="t-mono-xs" style={{ opacity: 0.3 }}>{active ? 'PRÊT' : 'CLIQUER POUR ASSIGNER'}</span>
-        )}
-      </div>
-    </div>
-  )
-}
 
 function CollectionRow({ item, isTarget, onAssign, onUpdate, onDelete, themeStats, privateWorks, onMakePublic }: {
   item: CollectionItem; isTarget: boolean
@@ -799,11 +759,17 @@ function CollectionRow({ item, isTarget, onAssign, onUpdate, onDelete, themeStat
       {/* Descriptions — rich editors side by side */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <div>
-          <label className="t-label" style={{ display: 'block', marginBottom: 4, fontSize: 9 }}>TEXTE FR</label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+            <span className="t-label" style={{ fontSize: 9 }}>TEXTE FR</span>
+            <FileImportButton onText={v => onUpdate({ description_fr: v })} lang="fr" />
+          </div>
           <RichEditor value={item.description_fr} onChange={v => onUpdate({ description_fr: v })} minHeight={120} />
         </div>
         <div>
-          <label className="t-label" style={{ display: 'block', marginBottom: 4, fontSize: 9 }}>TEXTE EN</label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+            <span className="t-label" style={{ fontSize: 9 }}>TEXTE EN</span>
+            <FileImportButton onText={v => onUpdate({ description_en: v })} lang="en" />
+          </div>
           <RichEditor value={item.description_en} onChange={v => onUpdate({ description_en: v })} minHeight={120} />
         </div>
       </div>

@@ -25,12 +25,7 @@ export default function PracticeClient() {
   const approach = lang === 'en'
     ? (config?.practice?.approach_en || config?.practice?.approach_fr)
     : (config?.practice?.approach_fr || config?.practice?.approach_en)
-  const themes = config?.practice?.themes && config.practice.themes.length > 0 ? config.practice.themes : [
-    'La physiologie de la perception et la théorie de la Gestalt',
-    "La trace comme vecteur d'énergie",
-    "La relation entre l'impression et l'image",
-    "Le rôle du spectateur dans l'achèvement du sens",
-  ]
+  const themes: string[] = config?.practice?.themes ?? []
   const materials = lang === 'en'
     ? (config?.practice?.materials_en || config?.practice?.materials_fr)
     : (config?.practice?.materials_fr || config?.practice?.materials_en)
@@ -92,71 +87,32 @@ export default function PracticeClient() {
           <div className="p-section-label">{t('pub_approach')}</div>
           <h1 className="p-title">Des caprices<br /><em>kaléidoscopiques</em></h1>
 
-          <div className="p-text">
-            {hasContent(approach) ? (
-              <div dangerouslySetInnerHTML={{ __html: approach! }} />
-            ) : (
-              <>
-                <p>
-                  Je peins des caprices. En apparence disjointes, ces impressions sont des intuitions
-                  kaléidoscopiques — issues de mon expérience et de toutes sortes de conjectures :
-                  sur la matière première, la métamorphose, l'infrastructure physique.
-                </p>
-                <p>
-                  Dans la conception, j'opère à la lisière de la mémoire, de la perception et de la figuration.
-                  Dans ce temps arraché, je déploie mes visions et interrogations. J'y vois une fascination
-                  pour la frontière — entre formes, entre couleurs, en palimpseste parfois. Avec des dégradés,
-                  des blocs colorés mats, des transparences brillantes, des noirs absolus.
-                </p>
-              </>
-            )}
-          </div>
-
-          {!hasContent(approach) && (
-            <blockquote className="p-pull">
-              « Une révélation progressive — comme la corne broyée que l'on ajoute à la terre. »
-            </blockquote>
-          )}
-
-          {!hasContent(approach) && (
+          {hasContent(approach) && (
             <div className="p-text">
-              <p>
-                Pour construire mes topographies, je puise aussi dans la tradition de la peinture.
-                À bien regarder, tout est connexion : les cycles recommencent — impressions, crêtes et creux —
-                vers une nouvelle appréciation de l'émotion comme un voyage de l'esprit.
-              </p>
+              <div dangerouslySetInnerHTML={{ __html: approach! }} />
             </div>
           )}
         </section>
 
-        <section className="p-section">
-          <div className="p-section-label">{t('pub_central_themes')}</div>
-          <div className="p-themes">
-            {themes.map((th: any, i: number) => (
-              <div key={i} className="p-theme">{th}</div>
-            ))}
-          </div>
-        </section>
+        {themes.length > 0 && (
+          <section className="p-section">
+            <div className="p-section-label">{t('pub_central_themes')}</div>
+            <div className="p-themes">
+              {themes.map((th: string, i: number) => (
+                <div key={i} className="p-theme">{th}</div>
+              ))}
+            </div>
+          </section>
+        )}
 
-        <section className="p-section">
-          <div className="p-section-label">{t('pub_media_materials')}</div>
-          <div className="p-text">
-            {hasContent(materials) ? (
+        {hasContent(materials) && (
+          <section className="p-section">
+            <div className="p-section-label">{t('pub_media_materials')}</div>
+            <div className="p-text">
               <p style={{ whiteSpace: 'pre-wrap' }}>{materials}</p>
-            ) : (
-              <>
-                <p>
-                  Peinture à l'huile sur toile, bois préparé et papier texturé. Acrylique.
-                  Pastel, encre, bâton d'huile, crayons — pierre noire, craie. Photographie.
-                </p>
-                <p>
-                  Un intérêt soutenu pour les propriétés matérielles du médium : pigments à interférence,
-                  préparations au gesso structuré, optique des surfaces stratifiées, noir Musou.
-                </p>
-              </>
-            )}
-          </div>
-        </section>
+            </div>
+          </section>
+        )}
 
       </div>
 

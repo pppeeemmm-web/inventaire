@@ -14,7 +14,7 @@ export default async function WorksPage() {
   void trackView('/works')
   const supabase = await createClient()
 
-  // 1. Config — map title_fr/title_en to single title (fr preferred)
+  // 1. Config — pass dual-language fields so WorksClient can switch on client
   let collections: any[] = []
   const result = await loadPortfolioConfig()
   if ('ok' in result) {
@@ -22,11 +22,13 @@ export default async function WorksPage() {
     collections = raw
       .filter((c: any) => c.is_active)
       .map((c: any) => ({
-        id:          c.id,
-        title:       c.title_fr || c.title_en || c.title || '',
-        description: c.description_fr || c.description_en || c.description || '',
-        theme:       c.theme ?? null,
-        is_active:   true,
+        id:             c.id,
+        title_fr:       c.title_fr  || c.title  || '',
+        title_en:       c.title_en  || c.title  || '',
+        description_fr: c.description_fr || c.description || '',
+        description_en: c.description_en || c.description || '',
+        theme:          c.theme ?? null,
+        is_active:      true,
       }))
   }
 
@@ -36,7 +38,7 @@ export default async function WorksPage() {
 
   // 3. Works — fetch ALL public works, not just those with a theme assignment
   const { data: rawWorks } = await (supabase.from('Oeuvres') as any)
-    .select('OeuvreID, Titre, Année, Hauteur, Largeur, txtImageNameLink')
+    .select('OeuvreID, Titre, Année, Hauteur, Largeur, txtImageNameLink, Support')
     .eq('is_public', true)
     .order('Année', { ascending: false })
 
@@ -51,6 +53,7 @@ export default async function WorksPage() {
     })
   }
 
+  const ROUND_SUPPORT_ID = 16
   const works = ((rawWorks || []) as any[]).map(w => ({
     OeuvreID:         w.OeuvreID         as number,
     Titre:            w.Titre             as string | null,
@@ -59,11 +62,12 @@ export default async function WorksPage() {
     Largeur:          w.Largeur           as string | null,
     txtImageNameLink: w.txtImageNameLink  as string | null,
     themes:           oeuvreThemeMap.get(w.OeuvreID) ?? [],
+    isRound:          w.Support === ROUND_SUPPORT_ID,
   }))
 
   // Fallback: if no collections configured, show everything in one section
   if (collections.length === 0 && works.length > 0) {
-    collections = [{ id: 'default', title: 'Works', theme: null, is_active: true }]
+    collections = [{ id: 'default', title_fr: 'Œuvres', title_en: 'Works', description_fr: '', description_en: '', theme: null, is_active: true }]
   }
 
   return <WorksClient works={works} collections={collections} />

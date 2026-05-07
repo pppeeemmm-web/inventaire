@@ -45,12 +45,15 @@ interface Work {
   Largeur: string | null
   txtImageNameLink: string | null
   themes: string[]
+  isRound: boolean
 }
 
 interface Collection {
   id: string
-  title: string
-  description?: string
+  title_fr: string
+  title_en: string
+  description_fr: string
+  description_en: string
   theme?: string | null
   is_active: boolean
 }
@@ -65,7 +68,7 @@ interface Props {
 }
 
 export default function WorksClient({ works, collections }: Props) {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
 
   const sequence = useMemo(() => {
     const items: SequenceItem[] = []
@@ -83,10 +86,12 @@ export default function WorksClient({ works, collections }: Props) {
       works.filter(w => w.txtImageNameLink).forEach((w, i) => items.push({ type: 'work', data: w, workIndex: i }))
     }
     activeCollections.forEach(col => {
-      items.push({ type: 'header', title: col.title, subtitle: col.description })
+      const title = lang === 'en' ? (col.title_en || col.title_fr) : (col.title_fr || col.title_en)
+      const subtitle = lang === 'en' ? (col.description_en || col.description_fr) : (col.description_fr || col.description_en)
+      items.push({ type: 'header', title, subtitle })
     })
     return items
-  }, [works, collections])
+  }, [works, collections, lang])
 
   const lastWorkIdx = useMemo(() =>
     sequence.reduce((acc, s, i) => s.type === 'work' ? i : acc, -1)
@@ -266,8 +271,12 @@ export default function WorksClient({ works, collections }: Props) {
         }
         .w-image-container {
           position: relative; display: flex; align-items: center; justify-content: center;
-          border-radius: var(--img-radius); overflow: hidden; isolation: isolate;
-          box-shadow: var(--painting-shadow);
+          filter: var(--painting-filter, none);
+          isolation: isolate;
+        }
+        .w-img-clip {
+          border-radius: var(--img-radius);
+          overflow: hidden;
         }
         .w-main-img {
           width: auto; height: auto;
@@ -410,14 +419,13 @@ export default function WorksClient({ works, collections }: Props) {
 
           const approachWindow = STEP * 2
           const shapeProgress  = dist < 0 ? Math.max(0, Math.min(1, (dist + approachWindow) / approachWindow)) : 1
-          const cornerRadius   = Math.round((1 - shapeProgress) * 50)
+          const cornerRadius   = work.isRound ? 50 : Math.round((1 - shapeProgress) * 50)
 
           const shadowIntensity = Math.max(0, 1 - Math.abs(dist) / (STEP * 1.5))
           const shadowBlur      = Math.round(shadowIntensity * 80)
-          const shadowSpread    = Math.round(shadowIntensity * 8)
           const shadowAlpha     = (shadowIntensity * 0.45).toFixed(2)
-          const paintingShadow  = shadowIntensity > 0.05
-            ? `-${Math.round(shadowIntensity * 28)}px ${Math.round(shadowIntensity * 36)}px ${shadowBlur}px ${shadowSpread}px rgba(20,16,10,${shadowAlpha}), -${Math.round(shadowIntensity * 8)}px ${Math.round(shadowIntensity * 12)}px ${Math.round(shadowIntensity * 22)}px rgba(20,16,10,${(shadowIntensity * 0.25).toFixed(2)})`
+          const paintingFilter  = shadowIntensity > 0.05
+            ? `drop-shadow(-${Math.round(shadowIntensity * 28)}px ${Math.round(shadowIntensity * 36)}px ${shadowBlur}px rgba(20,16,10,${shadowAlpha})) drop-shadow(-${Math.round(shadowIntensity * 8)}px ${Math.round(shadowIntensity * 12)}px ${Math.round(shadowIntensity * 22)}px rgba(20,16,10,${(shadowIntensity * 0.25).toFixed(2)}))`
             : 'none'
 
           const imgSrc      = imageUrl(work.txtImageNameLink) ?? undefined
@@ -429,15 +437,18 @@ export default function WorksClient({ works, collections }: Props) {
             <div key={`work-${work.OeuvreID}`} className="w-depth-item" style={{ opacity, transform: itemTransform, zIndex }}>
               <div className="w-artwork-wrap">
                 <div className="w-image-container" style={{
-                  '--img-radius': cornerRadius > 0 ? `${cornerRadius}%` : '5px',
-                  '--painting-shadow': paintingShadow,
+                  '--painting-filter': paintingFilter,
                 } as React.CSSProperties}>
-                  <img
-                    src={imgSrc}
-                    alt={work.Titre ?? ''}
-                    className="w-main-img"
-                    style={{ '--burns-zoom': burnSnapshot.get(idx) ?? 1 } as React.CSSProperties}
-                  />
+                  <div className="w-img-clip" style={{
+                    '--img-radius': cornerRadius > 0 ? `${cornerRadius}%` : '5px',
+                  } as React.CSSProperties}>
+                    <img
+                      src={imgSrc}
+                      alt={work.Titre ?? ''}
+                      className="w-main-img"
+                      style={{ '--burns-zoom': burnSnapshot.get(idx) ?? 1 } as React.CSSProperties}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
