@@ -3,6 +3,146 @@
 import { revalidatePath } from 'next/cache'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 
+// ── Google Contacts CSV Import ────────────────────────────────────────────────
+
+export interface ImportedContact {
+  prenom:      string | null
+  nom:         string | null
+  institution: string | null
+  role:        string | null
+  notes:       string | null
+  emails:    { email: string; label: string }[]
+  phones:    { country_code: string | null; phone: string; label: string }[]
+  addresses: { label: string; adresse: string | null; code_postal: string | null; ville: string | null; pays: string | null }[]
+  websites:  { url: string; label: string }[]
+}
+
+export type ImportResult = { ok: true; imported: number; skipped: number } | { error: string }
+
+export async function importGoogleContacts(contacts: ImportedContact[]): Promise<ImportResult> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié' }
+
+  if (!contacts.length) return { ok: true, imported: 0, skipped: 0 }
+
+  // Collect all emails from the batch to check for duplicates
+  const allEmails = contacts
+    .flatMap(c => c.emails.map(e => e.email.toLowerCase()))
+    .filter(Boolean)
+
+  const existingEmails = new Set<string>()
+
+  if (allEmails.length > 0) {
+    const { data: existingMain } = await supabase
+      .from('Contact')
+      .select('Email')
+      .in('Email', allEmails)
+    const { data: existingTable } = await supabase
+      .from('contact_emails')
+      .select('email')
+      .in('email', allEmails)
+    existingMain?.forEach(r => r.Email && existingEmails.add(r.Email.toLowerCase()))
+    existingTable?.forEach(r => r.email && existingEmails.add(r.email.toLowerCase()))
+  }
+
+  let imported = 0
+  let skipped  = 0
+
+  for (const c of contacts) {
+    // Skip if any email already exists
+    const isDupe = c.emails.some(e => existingEmails.has(e.email.toLowerCase()))
+    // Also skip if no name and no institution
+    const hasIdentity = c.prenom || c.nom || c.institution
+    if (isDupe || !hasIdentity) { skipped++; continue }
+
+    const primaryEmail = c.emails[0]?.email ?? null
+    const primaryPhone = c.phones[0] ?? null
+
+    const { data: inserted, error: insertErr } = await supabase
+      .from('Contact')
+      .insert({
+        Prénom:          c.prenom,
+        Nom:             c.nom,
+        NomInstitution:  c.institution,
+        Role:            c.role,
+        Email:           primaryEmail,
+        Téléphone1:      primaryPhone?.phone ?? null,
+        IndicatifPays1:  primaryPhone?.country_code ?? null,
+        Notes:           c.notes,
+        is_private:      true,
+        Actif:           true,
+        Type:            'Autre',
+      })
+      .select('ContactID')
+      .single()
+
+    if (insertErr || !inserted) {
+      console.error('Contact insert failed:', insertErr?.message, JSON.stringify({ prenom: c.prenom, nom: c.nom }))
+      skipped++; continue
+    }
+
+    const cid = inserted.ContactID
+
+    // Emails
+    if (c.emails.length > 0) {
+      await supabase.from('contact_emails').insert(
+        c.emails.map((e, i) => ({
+          contact_id: cid,
+          email:      e.email,
+          label:      e.label || 'Personnel',
+          is_primary: i === 0,
+        }))
+      )
+      c.emails.forEach(e => existingEmails.add(e.email.toLowerCase()))
+    }
+
+    // Phones
+    if (c.phones.length > 0) {
+      await supabase.from('contact_phones').insert(
+        c.phones.map((p, i) => ({
+          contact_id:   cid,
+          phone:        p.phone,
+          country_code: p.country_code,
+          label:        p.label || 'Mobile',
+          is_primary:   i === 0,
+        }))
+      )
+    }
+
+    // Addresses
+    if (c.addresses.length > 0) {
+      await supabase.from('contact_addresses').insert(
+        c.addresses.map((a, i) => ({
+          contact_id:  cid,
+          label:       a.label || 'Principal',
+          adresse:     a.adresse,
+          code_postal: a.code_postal,
+          ville:       a.ville,
+          pays:        a.pays,
+          position:    i,
+        }))
+      )
+    }
+
+    // Websites
+    if (c.websites.length > 0) {
+      await supabase.from('contact_websites').insert(
+        c.websites.map(w => ({
+          contact_id: cid,
+          url:        w.url,
+          label:      w.label || 'Web',
+        }))
+      )
+    }
+
+    imported++
+  }
+
+  revalidatePath('/atelier')
+  return { ok: true, imported, skipped }
+}
+
 export type ContactDeleteResult = { error: string } | { ok: true }
 
 /**

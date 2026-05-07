@@ -5,7 +5,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { deleteContacts } from '@/app/atelier/contacts/actions'
+import { deleteContacts, importGoogleContacts, type ImportedContact } from '@/app/atelier/contacts/actions'
 import { useI18n } from '@/lib/i18n/context'
 import type { Oeuvre } from '@/lib/types/database'
 
@@ -133,6 +133,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
   const [editing,    setEditing]    = useState<ContactRow | 'new' | null>(null)
   const [selected,   setSelected]   = useState<Set<number>>(new Set())
   const [busy,       setBusy]       = useState(false)
+  const [importing,  setImporting]  = useState(false)
 
   // Full contact data fetched client-side (extra fields not in server prop)
   const [extra,      setExtra]      = useState<Record<number, ContactRow>>({})
@@ -537,7 +538,29 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
         >
           + Nouveau contact
         </button>
+        <button
+          className="btn ghost sm"
+          onClick={() => setImporting(true)}
+          style={{ whiteSpace: 'nowrap', flexShrink: 0 }}
+        >
+          ↑ Google CSV
+        </button>
       </div>
+
+      {importing && (
+        <ImportGoogleModal
+          onClose={() => setImporting(false)}
+          onDone={(n) => {
+            setImporting(false)
+            // Reload contacts list
+            const sb = createClient()
+            ;(sb.from('Contact') as any)
+              .select('ContactID, NomInstitution, Nom, Prénom, Role, Ville, Pays, is_private')
+              .order('"ContactID"')
+              .then(({ data }: { data: ContactRow[] | null }) => { if (data) setContacts(data) })
+          }}
+        />
+      )}
 
       {/* Table + detail */}
       <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
@@ -1374,10 +1397,20 @@ function BatchEditModal({
 }: {
   count: number; roleOptions: string[]; onClose: () => void; onSave: (data: any) => void; busy: boolean
 }) {
-  const [role, setRole] = useState<string | undefined>()
-  const [actif, setActif] = useState<boolean | undefined>()
-  const [notes, setNotes] = useState<string | undefined>()
+  const [role,   setRole]   = useState<string | undefined>()
+  const [actif,  setActif]  = useState<'unchanged' | 'true' | 'false'>('unchanged')
+  const [notes,  setNotes]  = useState<string | undefined>()
   const [append, setAppend] = useState(true)
+
+  const hasChange = role !== undefined || actif !== 'unchanged' || notes !== undefined
+
+  function handleSave() {
+    const payload: any = {}
+    if (role !== undefined)    payload.Role  = role
+    if (actif !== 'unchanged') payload.Actif = actif === 'true'
+    if (notes !== undefined)   { payload.Notes = notes; payload.appendNotes = append }
+    onSave(payload)
+  }
 
   return (
     <div style={{
@@ -1391,13 +1424,20 @@ function BatchEditModal({
         width: '100%', maxWidth: 400, padding: 28,
       }}>
         <div style={{ fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--tx3)', marginBottom: 20 }}>
-          Batch Edit · {count} contacts
+          Batch Edit · {count} contact{count > 1 ? 's' : ''}
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <FRow label="Nouveau Rôle">
+          <FRow label="Rôle">
             <select value={role ?? ''} onChange={e => setRole(e.target.value || undefined)} style={FIS}>
               <option value="">— Ne pas modifier</option>
+              {roleOptions.map(r => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </FRow>
+
+          <FRow label="Actif">
+            <select value={actif} onChange={e => setActif(e.target.value as any)} style={FIS}>
+              <option value="unchanged">— Ne pas modifier</option>
               <option value="true">Actif</option>
               <option value="false">Inactif</option>
             </select>
@@ -1405,26 +1445,246 @@ function BatchEditModal({
 
           <FRow label="Notes">
             <textarea
-              value={notes ?? ""}
+              value={notes ?? ''}
               onChange={e => setNotes(e.target.value || undefined)}
               placeholder="Texte à ajouter ou remplacer..."
-              style={{ ...FIS, height: 80, resize: "vertical" }}
+              style={{ ...FIS, height: 80, resize: 'vertical' }}
             />
             {notes && (
-              <label style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4, fontSize: 10, color: "var(--tx3)" }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, fontSize: 10, color: 'var(--tx3)', cursor: 'pointer' }}>
                 <input type="checkbox" checked={append} onChange={e => setAppend(e.target.checked)} />
-                Ajouter à la fin (Append)
+                Ajouter à la fin (ne pas écraser)
               </label>
             )}
           </FRow>
         </div>
 
-        <div style={{ display: "flex", gap: 8, marginTop: 24 }}>
+        <div style={{ display: 'flex', gap: 8, marginTop: 24 }}>
           <button className="btn sm ghost" onClick={onClose} disabled={busy} style={{ flex: 1 }}>Annuler</button>
-          <button className="btn sm" onClick={() => onSave({ Role: role, Actif: actif, Notes: notes, appendNotes: append })} disabled={busy || (role === undefined && actif === undefined && notes === undefined)} style={{ flex: 1, background: "var(--ac)", borderColor: "var(--ac)" }}>
-            Appliquer
+          <button className="btn sm" onClick={handleSave} disabled={busy || !hasChange} style={{ flex: 1, background: 'var(--ac)', borderColor: 'var(--ac)' }}>
+            {busy ? '...' : 'Appliquer'}
           </button>
         </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Google CSV Import ─────────────────────────────────────────────────────────
+
+function parseGoogleCSV(text: string): ImportedContact[] {
+  // Strip UTF-8 BOM
+  const clean = text.replace(/^﻿/, '')
+
+  // Auto-detect delimiter from first line (Google CSV = comma, some locales = semicolon)
+  const firstLine = clean.split(/\r?\n/)[0] ?? ''
+  const delim = firstLine.split(';').length > firstLine.split(',').length ? ';' : ','
+
+  function parseRow(line: string): string[] {
+    const fields: string[] = []
+    let cur = '', inQ = false
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i]
+      if (ch === '"') {
+        if (inQ && line[i + 1] === '"') { cur += '"'; i++ }
+        else inQ = !inQ
+      } else if (ch === delim && !inQ) {
+        fields.push(cur); cur = ''
+      } else {
+        cur += ch
+      }
+    }
+    fields.push(cur)
+    return fields
+  }
+
+  const lines = clean.split(/\r?\n/)
+  if (lines.length < 2) return []
+  const headers = parseRow(lines[0]).map(h => h.trim().replace(/^﻿/, ''))
+
+  const contacts: ImportedContact[] = []
+
+  for (let i = 1; i < lines.length; i++) {
+    if (!lines[i].trim()) continue
+    const vals = parseRow(lines[i])
+    const get  = (h: string) => {
+      const idx = headers.indexOf(h)
+      return idx >= 0 ? (vals[idx] ?? '').trim() : ''
+    }
+
+    const prenom      = get('First Name') || get('Given Name') || null
+    const nom         = get('Last Name')  || get('Family Name') || null
+    const institution = get('Organization 1 - Name') || null
+    const role        = get('Organization 1 - Title') || null
+    const notes       = get('Notes') || null
+
+    // Fallback: if Given/Family empty, split the Name field
+    let resolvedPrenom = prenom
+    let resolvedNom    = nom
+    if (!resolvedPrenom && !resolvedNom) {
+      const fullName = get('Name')
+      if (fullName) {
+        // Google sometimes stores as "Last, First"
+        if (fullName.includes(',')) {
+          const [last, ...rest] = fullName.split(',')
+          resolvedNom    = last.trim() || null
+          resolvedPrenom = rest.join(',').trim() || null
+        } else {
+          const parts = fullName.trim().split(/\s+/)
+          resolvedPrenom = parts.slice(0, -1).join(' ') || fullName || null
+          resolvedNom    = parts.length > 1 ? parts[parts.length - 1] : null
+        }
+      }
+    }
+
+    // Accept any row with at least a name or institution (email alone is not enough)
+    if (!resolvedPrenom && !resolvedNom && !institution) continue
+
+    // Emails — Google exports as "E-mail N - Value" / "E-mail N - Label"
+    const emails: ImportedContact['emails'] = []
+    for (let n = 1; n <= 10; n++) {
+      const val   = get(`E-mail ${n} - Value`)
+      const label = get(`E-mail ${n} - Label`)
+      if (val) emails.push({ email: val, label: label || 'Personnel' })
+    }
+
+    // Phones — "Phone N - Value" / "Phone N - Label"
+    const phones: ImportedContact['phones'] = []
+    for (let n = 1; n <= 10; n++) {
+      const raw   = get(`Phone ${n} - Value`)
+      const label = get(`Phone ${n} - Label`)
+      if (!raw) continue
+      // Split country code (+33...) from number
+      const m = raw.match(/^(\+\d{1,3})\s*(.+)$/)
+      phones.push({
+        country_code: m ? m[1] : null,
+        phone:        m ? m[2].replace(/\s/g, '') : raw.replace(/\s/g, ''),
+        label:        label || 'Mobile',
+      })
+    }
+
+    // Addresses — "Address N - Street/City/Postal Code/Country"
+    const addresses: ImportedContact['addresses'] = []
+    for (let n = 1; n <= 5; n++) {
+      const street  = get(`Address ${n} - Street`)
+      const city    = get(`Address ${n} - City`)
+      const postal  = get(`Address ${n} - Postal Code`)
+      const country = get(`Address ${n} - Country`)
+      const label   = get(`Address ${n} - Label`)
+      if (street || city || country) {
+        addresses.push({ label: label || 'Principal', adresse: street || null, code_postal: postal || null, ville: city || null, pays: country || null })
+      }
+    }
+
+    // Websites — "Website N - Value" / "Website N - Label"
+    const websites: ImportedContact['websites'] = []
+    for (let n = 1; n <= 5; n++) {
+      const url   = get(`Website ${n} - Value`)
+      const label = get(`Website ${n} - Label`)
+      if (url) websites.push({ url, label: label || 'Web' })
+    }
+
+    contacts.push({ prenom: resolvedPrenom, nom: resolvedNom, institution, role, notes, emails, phones, addresses, websites })
+  }
+
+  return contacts
+}
+
+function ImportGoogleModal({ onClose, onDone }: { onClose: () => void; onDone: (n: number) => void }) {
+  const [parsed,  setParsed]  = useState<ImportedContact[] | null>(null)
+  const [busy,    setBusy]    = useState(false)
+  const [result,  setResult]  = useState<{ imported: number; skipped: number } | null>(null)
+  const [err,     setErr]     = useState<string | null>(null)
+
+  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string
+      const contacts = parseGoogleCSV(text)
+      setParsed(contacts)
+    }
+    reader.readAsText(file, 'UTF-8')
+  }
+
+  async function handleImport() {
+    if (!parsed) return
+    setBusy(true)
+    setErr(null)
+    const res = await importGoogleContacts(parsed)
+    setBusy(false)
+    if ('error' in res) { setErr(res.error); return }
+    setResult({ imported: res.imported, skipped: res.skipped })
+  }
+
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 80, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--bg1)', border: '1px solid var(--bd)', width: 440, padding: 28, display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div className="t-eyebrow">Importer Google Contacts</div>
+          <button className="btn ghost sm" onClick={onClose}>✕</button>
+        </div>
+
+        <div className="t-mono-sm" style={{ color: 'var(--tx3)', lineHeight: 1.6 }}>
+          Exporter depuis Google Contacts → <strong>Exporter</strong> → <strong>Google CSV</strong>.
+          Tous les contacts importés seront marqués <strong>Privé</strong>.
+        </div>
+
+        {!result ? (
+          <>
+            <label style={{ cursor: 'pointer' }}>
+              <input type="file" accept=".csv" onChange={handleFile} style={{ display: 'none' }} />
+              <div className="btn ghost sm" style={{ display: 'inline-block' }}>
+                Choisir un fichier CSV…
+              </div>
+            </label>
+
+            {parsed !== null && (
+              <div className="t-mono-sm" style={{ color: 'var(--tx)', lineHeight: 1.8 }}>
+                <div><strong>{parsed.length}</strong> contacts trouvés dans le fichier.</div>
+                {parsed.length > 0 && (
+                  <div style={{ color: 'var(--tx3)', fontSize: 9, marginTop: 6, lineHeight: 1.6 }}>
+                    {parsed.slice(0, 5).map((c, i) => (
+                      <div key={i}>{[c.prenom, c.nom, c.institution].filter(Boolean).join(' ') || '—'}</div>
+                    ))}
+                    {parsed.length > 5 && <div>… +{parsed.length - 5} autres</div>}
+                  </div>
+                )}
+                {parsed.length === 0 && (
+                  <div style={{ color: 'var(--rust)', marginTop: 4 }}>
+                    Aucun contact reconnu — vérifiez que c'est bien un export Google CSV (pas Outlook).
+                  </div>
+                )}
+              </div>
+            )}
+
+            {err && <div className="t-mono-sm" style={{ color: 'var(--rust)' }}>{err}</div>}
+
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn ghost sm" onClick={onClose} style={{ flex: 1 }}>Annuler</button>
+              <button
+                className="btn sm"
+                onClick={handleImport}
+                disabled={!parsed || busy}
+                style={{ flex: 1, background: 'var(--ac)', borderColor: 'var(--ac)' }}
+              >
+                {busy ? 'Import en cours…' : `Importer ${parsed ? parsed.length : ''}`}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="t-mono-sm" style={{ lineHeight: 1.8 }}>
+              <div>✓ <strong>{result.imported}</strong> contacts importés</div>
+              {result.skipped > 0 && <div style={{ color: 'var(--tx3)' }}>↷ {result.skipped} ignorés (doublons ou vides)</div>}
+            </div>
+            <button className="btn sm" onClick={() => onDone(result.imported)} style={{ background: 'var(--ac)', borderColor: 'var(--ac)' }}>
+              Fermer
+            </button>
+          </>
+        )}
       </div>
     </div>
   )
