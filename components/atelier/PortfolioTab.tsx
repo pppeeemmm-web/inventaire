@@ -440,9 +440,8 @@ function AnalyticsPanel() {
 
       {!loading && result && 'ok' in result && (
         <>
-          {/* Stat cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 32 }}>
-            <StatCard label="Visiteurs uniques" value={result.visits.toLocaleString('fr-FR')} />
+          {/* Stat card */}
+          <div style={{ marginBottom: 32 }}>
             <StatCard label="Pages vues" value={result.pageviews.toLocaleString('fr-FR')} />
           </div>
 
@@ -470,7 +469,7 @@ function AnalyticsPanel() {
           </div>
 
           <div className="t-mono-xs" style={{ marginTop: 32, color: 'var(--tx3)', opacity: 0.5 }}>
-            Données Vercel Analytics — actualisées toutes les heures
+            Données collectées depuis votre base Supabase — temps réel
           </div>
         </>
       )}

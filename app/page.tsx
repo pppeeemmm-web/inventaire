@@ -5,10 +5,13 @@ import Link from 'next/link'
 import WavingCircle from '@/components/public/WavingCircle'
 import { useI18n } from '@/lib/i18n/context'
 import { createClient } from '@/lib/supabase/client'
+import { trackView } from '@/lib/track'
 
 export default function LandingPage() {
   const { lang, setLang, t } = useI18n()
   const [artistName, setArtistName] = useState('Atelier PEM')
+
+  useEffect(() => { trackView('/', document.referrer || null) }, [])
 
   useEffect(() => {
     async function fetchName() {

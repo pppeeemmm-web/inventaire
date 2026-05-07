@@ -1,48 +1,35 @@
 'use server'
 
+import { createClient } from '@supabase/supabase-js'
+
+const sb = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
+
 export type AnalyticsResult =
   | { error: string }
-  | { ok: true; visits: number; pageviews: number; topPages: { path: string; views: number }[] }
+  | { ok: true; pageviews: number; topPages: { path: string; views: number }[] }
 
 export async function getAnalyticsStats(days: number): Promise<AnalyticsResult> {
-  const token     = process.env.VERCEL_ACCESS_TOKEN
-  const projectId = process.env.VERCEL_PROJECT_ID
+  const since = new Date(Date.now() - days * 86400 * 1000).toISOString()
 
-  if (!token || !projectId) {
-    return { error: 'VERCEL_ACCESS_TOKEN ou VERCEL_PROJECT_ID manquant dans les variables d\'environnement.' }
-  }
+  const { data, error } = await sb
+    .from('page_view')
+    .select('path')
+    .gte('created_at', since)
 
-  const to   = Date.now()
-  const from = to - days * 24 * 60 * 60 * 1000
-  const tz   = 'Europe%2FParis'
-  const filter = encodeURIComponent('{}')
-  const base = `projectId=${projectId}&from=${from}&to=${to}&filter=${filter}&tz=${tz}`
+  if (error) return { error: error.message }
 
-  const [statsRes, breakdownRes] = await Promise.all([
-    fetch(`https://vercel.com/api/web/insights/stats?${base}`, {
-      headers: { Authorization: `Bearer ${token}` },
-      next: { revalidate: 3600 },
-    }),
-    fetch(`https://vercel.com/api/web/insights/breakdown?${base}&groupBy=path&limit=10`, {
-      headers: { Authorization: `Bearer ${token}` },
-      next: { revalidate: 3600 },
-    }),
-  ])
+  const pageviews = data.length
 
-  if (!statsRes.ok) {
-    return { error: `Erreur API Vercel stats: ${statsRes.status} ${statsRes.statusText}` }
-  }
-  if (!breakdownRes.ok) {
-    return { error: `Erreur API Vercel breakdown: ${breakdownRes.status} ${breakdownRes.statusText}` }
-  }
+  const counts: Record<string, number> = {}
+  for (const row of data) counts[row.path] = (counts[row.path] ?? 0) + 1
 
-  const stats     = await statsRes.json()
-  const breakdown = await breakdownRes.json()
+  const topPages = Object.entries(counts)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 10)
+    .map(([path, views]) => ({ path, views }))
 
-  return {
-    ok:        true,
-    visits:    stats.data?.visits    ?? 0,
-    pageviews: stats.data?.pageviews ?? 0,
-    topPages:  (breakdown.data ?? []).map((d: any) => ({ path: d.key as string, views: d.total as number })),
-  }
+  return { ok: true, pageviews, topPages }
 }

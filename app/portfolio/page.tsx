@@ -3,6 +3,7 @@ import { loadPortfolioConfig } from '@/app/atelier/portfolio/actions'
 import { createClient } from '@/lib/supabase/server'
 import PortfolioClient from '@/components/portfolio/PortfolioClient'
 import type { Metadata } from 'next'
+import { trackView } from '@/lib/track'
 
 export const metadata: Metadata = {
   title: 'Portfolio d\'Artiste',
@@ -55,6 +56,7 @@ function migrateConfig(raw: any): any {
 }
 
 export default async function PortfolioPage() {
+  void trackView('/portfolio')
   const sb = await createClient() as any
 
   const [

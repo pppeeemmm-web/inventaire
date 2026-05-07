@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { loadPortfolioConfig } from '@/app/atelier/portfolio/actions'
 import WorksClient from '@/components/public/WorksClient'
+import { trackView } from '@/lib/track'
 
 export const metadata: Metadata = {
   title: 'Works — Pierre Emmanuel Moulin',
@@ -10,6 +11,7 @@ export const metadata: Metadata = {
 }
 
 export default async function WorksPage() {
+  void trackView('/works')
   const supabase = await createClient()
 
   // 1. Config — map title_fr/title_en to single title (fr preferred)
