@@ -395,9 +395,54 @@ const PERIODS = [
   { label: '90 jours', days: 90 },
 ]
 
+function BarList({ items, labelKey, valueKey }: {
+  items: Record<string, any>[]
+  labelKey: string
+  valueKey: string
+}) {
+  const max = items[0]?.[valueKey] ?? 1
+  if (items.length === 0) return (
+    <div className="t-mono-xs" style={{ color: 'var(--tx3)', opacity: 0.5 }}>Aucune donnée.</div>
+  )
+  return (
+    <div className="col gap-xs">
+      {items.map((item, i) => (
+        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div className="t-mono-sm" style={{ width: 180, color: 'var(--tx2)', flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {item[labelKey]}
+          </div>
+          <div style={{ flex: 1, height: 4, background: 'var(--bd)', borderRadius: 2 }}>
+            <div style={{ width: `${(item[valueKey] / max) * 100}%`, height: '100%', background: 'var(--ac)', borderRadius: 2 }} />
+          </div>
+          <div className="t-mono-sm" style={{ width: 40, textAlign: 'right', color: 'var(--tx3)', flexShrink: 0 }}>
+            {item[valueKey]}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function Sparkline({ trend }: { trend: { date: string; views: number }[] }) {
+  const max = Math.max(...trend.map(d => d.views), 1)
+  const h = 48
+  const w = 100
+  const pts = trend.map((d, i) => {
+    const x = (i / (trend.length - 1)) * w
+    const y = h - (d.views / max) * h
+    return `${x},${y}`
+  }).join(' ')
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none"
+      style={{ width: '100%', height: h, display: 'block' }}>
+      <polyline points={pts} fill="none" stroke="var(--ac)" strokeWidth="1.5" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
 function AnalyticsPanel() {
-  const [days,   setDays]   = useState(30)
-  const [result, setResult] = useState<AnalyticsResult | null>(null)
+  const [days,    setDays]    = useState(30)
+  const [result,  setResult]  = useState<AnalyticsResult | null>(null)
   const [loading, setLoading] = useState(false)
 
   const load = useCallback(async (d: number) => {
@@ -408,11 +453,8 @@ function AnalyticsPanel() {
 
   useEffect(() => { load(days) }, [load, days])
 
-  const topPages = (result && 'ok' in result) ? result.topPages : []
-  const maxViews = topPages.length > 0 ? topPages[0].views : 1
-
   return (
-    <div style={{ maxWidth: 680 }}>
+    <div style={{ maxWidth: 720 }}>
       {/* Period selector */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 32 }}>
         {PERIODS.map(p => (
@@ -439,39 +481,46 @@ function AnalyticsPanel() {
       )}
 
       {!loading && result && 'ok' in result && (
-        <>
-          {/* Stat card */}
-          <div style={{ marginBottom: 32 }}>
-            <StatCard label="Pages vues" value={result.pageviews.toLocaleString('fr-FR')} />
-          </div>
+        <div className="col gap-lg" style={{ gap: 36 }}>
 
-          {/* Top pages */}
-          <div>
-            <div className="t-label" style={{ marginBottom: 16 }}>Top pages</div>
-            {topPages.length === 0 && (
-              <div className="t-mono-xs" style={{ color: 'var(--tx3)', opacity: 0.5 }}>Aucune donnée pour cette période.</div>
-            )}
-            <div className="col gap-xs">
-              {topPages.map(p => (
-                <div key={p.path} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div className="t-mono-sm" style={{ width: 160, color: 'var(--tx2)', flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {p.path}
-                  </div>
-                  <div style={{ flex: 1, height: 4, background: 'var(--bd)', borderRadius: 2 }}>
-                    <div style={{ width: `${(p.views / maxViews) * 100}%`, height: '100%', background: 'var(--ac)', borderRadius: 2 }} />
-                  </div>
-                  <div className="t-mono-sm" style={{ width: 48, textAlign: 'right', color: 'var(--tx3)', flexShrink: 0 }}>
-                    {p.views.toLocaleString('fr-FR')}
-                  </div>
-                </div>
-              ))}
+          {/* Stat + sparkline */}
+          <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: 16, alignItems: 'stretch' }}>
+            <div style={{ padding: '20px 24px', background: 'var(--bg0)', border: '1px solid var(--bd)' }}>
+              <div className="t-label" style={{ marginBottom: 10 }}>Pages vues</div>
+              <div style={{ fontSize: 32, fontWeight: 300, color: 'var(--tx)', fontFamily: 'var(--font-serif, serif)', letterSpacing: -0.5 }}>
+                {result.pageviews.toLocaleString('fr-FR')}
+              </div>
+            </div>
+            <div style={{ padding: '16px 20px', background: 'var(--bg0)', border: '1px solid var(--bd)' }}>
+              <div className="t-label" style={{ marginBottom: 12 }}>Tendance</div>
+              <Sparkline trend={result.trend} />
             </div>
           </div>
 
-          <div className="t-mono-xs" style={{ marginTop: 32, color: 'var(--tx3)', opacity: 0.5 }}>
-            Données collectées depuis votre base Supabase — temps réel
+          {/* Top pages + countries side by side */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
+            <div>
+              <div className="t-label" style={{ marginBottom: 14 }}>Top pages</div>
+              <BarList items={result.topPages} labelKey="path" valueKey="views" />
+            </div>
+            <div>
+              <div className="t-label" style={{ marginBottom: 14 }}>Pays</div>
+              <BarList items={result.topCountries} labelKey="country" valueKey="views" />
+            </div>
           </div>
-        </>
+
+          {/* Referrers */}
+          {result.topReferrers.length > 0 && (
+            <div>
+              <div className="t-label" style={{ marginBottom: 14 }}>Sources</div>
+              <BarList items={result.topReferrers} labelKey="referrer" valueKey="views" />
+            </div>
+          )}
+
+          <div className="t-mono-xs" style={{ color: 'var(--tx3)', opacity: 0.5 }}>
+            Supabase · temps réel
+          </div>
+        </div>
       )}
     </div>
   )
