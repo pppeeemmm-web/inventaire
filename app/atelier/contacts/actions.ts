@@ -24,9 +24,13 @@ export async function importGoogleContacts(contacts: ImportedContact[]): Promise
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Non authentifié' }
 
+  // Use service client for writes — RLS INSERT policy only allows is_private=false for team,
+  // but imported contacts should be private. Service client bypasses RLS.
+  const svc = createServiceClient()
+
   if (!contacts.length) return { ok: true, imported: 0, skipped: 0 }
 
-  // Collect all emails from the batch to check for duplicates
+  // Collect all emails from the batch to check for duplicates (via service client to see all)
   const allEmails = contacts
     .flatMap(c => c.emails.map(e => e.email.toLowerCase()))
     .filter(Boolean)
@@ -34,11 +38,11 @@ export async function importGoogleContacts(contacts: ImportedContact[]): Promise
   const existingEmails = new Set<string>()
 
   if (allEmails.length > 0) {
-    const { data: existingMain } = await supabase
+    const { data: existingMain } = await svc
       .from('Contact')
       .select('Email')
       .in('Email', allEmails)
-    const { data: existingTable } = await supabase
+    const { data: existingTable } = await svc
       .from('contact_emails')
       .select('email')
       .in('email', allEmails)
@@ -59,7 +63,7 @@ export async function importGoogleContacts(contacts: ImportedContact[]): Promise
     const primaryEmail = c.emails[0]?.email ?? null
     const primaryPhone = c.phones[0] ?? null
 
-    const { data: inserted, error: insertErr } = await supabase
+    const { data: inserted, error: insertErr } = await svc
       .from('Contact')
       .insert({
         Prénom:          c.prenom,
@@ -67,12 +71,11 @@ export async function importGoogleContacts(contacts: ImportedContact[]): Promise
         NomInstitution:  c.institution,
         Role:            c.role,
         Email:           primaryEmail,
-        Téléphone1:      primaryPhone?.phone ?? null,
-        IndicatifPays1:  primaryPhone?.country_code ?? null,
+        Téléphone1:      (primaryPhone?.phone ?? null)?.slice(0, 20) ?? null,
+        IndicatifPays1:  (primaryPhone?.country_code ?? null)?.slice(0, 10) ?? null,
         Notes:           c.notes,
         is_private:      true,
         Actif:           true,
-        Type:            'Autre',
       })
       .select('ContactID')
       .single()
@@ -86,7 +89,7 @@ export async function importGoogleContacts(contacts: ImportedContact[]): Promise
 
     // Emails
     if (c.emails.length > 0) {
-      await supabase.from('contact_emails').insert(
+      await svc.from('contact_emails').insert(
         c.emails.map((e, i) => ({
           contact_id: cid,
           email:      e.email,
@@ -99,7 +102,7 @@ export async function importGoogleContacts(contacts: ImportedContact[]): Promise
 
     // Phones
     if (c.phones.length > 0) {
-      await supabase.from('contact_phones').insert(
+      await svc.from('contact_phones').insert(
         c.phones.map((p, i) => ({
           contact_id:   cid,
           phone:        p.phone,
@@ -112,7 +115,7 @@ export async function importGoogleContacts(contacts: ImportedContact[]): Promise
 
     // Addresses
     if (c.addresses.length > 0) {
-      await supabase.from('contact_addresses').insert(
+      await svc.from('contact_addresses').insert(
         c.addresses.map((a, i) => ({
           contact_id:  cid,
           label:       a.label || 'Principal',
@@ -127,7 +130,7 @@ export async function importGoogleContacts(contacts: ImportedContact[]): Promise
 
     // Websites
     if (c.websites.length > 0) {
-      await supabase.from('contact_websites').insert(
+      await svc.from('contact_websites').insert(
         c.websites.map(w => ({
           contact_id: cid,
           url:        w.url,

@@ -1514,8 +1514,8 @@ function parseGoogleCSV(text: string): ImportedContact[] {
 
     const prenom      = get('First Name') || get('Given Name') || null
     const nom         = get('Last Name')  || get('Family Name') || null
-    const institution = get('Organization 1 - Name') || null
-    const role        = get('Organization 1 - Title') || null
+    const institution = get('Organization Name') || get('Organization 1 - Name') || null
+    const role        = get('Organization Title') || get('Organization 1 - Title') || null
     const notes       = get('Notes') || null
 
     // Fallback: if Given/Family empty, split the Name field
@@ -1549,18 +1549,23 @@ function parseGoogleCSV(text: string): ImportedContact[] {
     }
 
     // Phones — "Phone N - Value" / "Phone N - Label"
+    // Google CSV sometimes packs multiple numbers in one cell separated by ' ::: '
     const phones: ImportedContact['phones'] = []
     for (let n = 1; n <= 10; n++) {
       const raw   = get(`Phone ${n} - Value`)
       const label = get(`Phone ${n} - Label`)
       if (!raw) continue
-      // Split country code (+33...) from number
-      const m = raw.match(/^(\+\d{1,3})\s*(.+)$/)
-      phones.push({
-        country_code: m ? m[1] : null,
-        phone:        m ? m[2].replace(/\s/g, '') : raw.replace(/\s/g, ''),
-        label:        label || 'Mobile',
-      })
+      const parts = raw.split(/\s+:::\s+/)
+      for (const part of parts) {
+        const p = part.trim()
+        if (!p) continue
+        const m = p.match(/^(\+\d{1,3})\s*(.+)$/)
+        phones.push({
+          country_code: m ? m[1] : null,
+          phone:        m ? m[2].replace(/\s/g, '') : p.replace(/\s/g, ''),
+          label:        label || 'Mobile',
+        })
+      }
     }
 
     // Addresses — "Address N - Street/City/Postal Code/Country"
