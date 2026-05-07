@@ -5,8 +5,13 @@ import { useI18n } from '@/lib/i18n/context'
 import PublicNav from './PublicNav'
 import { loadPortfolioConfig } from '@/app/atelier/portfolio/actions'
 
+function hasContent(html: string | null | undefined): boolean {
+  if (!html) return false
+  return html.replace(/<[^>]*>/g, '').trim().length > 0
+}
+
 export default function PracticeClient() {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const [config, setConfig] = useState<any>(null)
 
   useEffect(() => {
@@ -17,14 +22,18 @@ export default function PracticeClient() {
     fetchData()
   }, [])
 
-  const approach = config?.practice?.approach
+  const approach = lang === 'en'
+    ? (config?.practice?.approach_en || config?.practice?.approach_fr)
+    : (config?.practice?.approach_fr || config?.practice?.approach_en)
   const themes = config?.practice?.themes && config.practice.themes.length > 0 ? config.practice.themes : [
     'La physiologie de la perception et la théorie de la Gestalt',
     "La trace comme vecteur d'énergie",
     "La relation entre l'impression et l'image",
     "Le rôle du spectateur dans l'achèvement du sens",
   ]
-  const materials = config?.practice?.materials
+  const materials = lang === 'en'
+    ? (config?.practice?.materials_en || config?.practice?.materials_fr)
+    : (config?.practice?.materials_fr || config?.practice?.materials_en)
 
   return (
     <>
@@ -84,8 +93,8 @@ export default function PracticeClient() {
           <h1 className="p-title">Des caprices<br /><em>kaléidoscopiques</em></h1>
 
           <div className="p-text">
-            {approach ? (
-              <p style={{ whiteSpace: 'pre-wrap' }}>{approach}</p>
+            {hasContent(approach) ? (
+              <div dangerouslySetInnerHTML={{ __html: approach! }} />
             ) : (
               <>
                 <p>
@@ -103,13 +112,13 @@ export default function PracticeClient() {
             )}
           </div>
 
-          {!approach && (
+          {!hasContent(approach) && (
             <blockquote className="p-pull">
               « Une révélation progressive — comme la corne broyée que l'on ajoute à la terre. »
             </blockquote>
           )}
 
-          {!approach && (
+          {!hasContent(approach) && (
             <div className="p-text">
               <p>
                 Pour construire mes topographies, je puise aussi dans la tradition de la peinture.
@@ -132,7 +141,7 @@ export default function PracticeClient() {
         <section className="p-section">
           <div className="p-section-label">{t('pub_media_materials')}</div>
           <div className="p-text">
-            {materials ? (
+            {hasContent(materials) ? (
               <p style={{ whiteSpace: 'pre-wrap' }}>{materials}</p>
             ) : (
               <>

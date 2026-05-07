@@ -133,6 +133,27 @@ function FlamePreview({ html }: { html: string }) {
   )
 }
 
+function ProsePreview({ html }: { html: string }) {
+  if (!html) return (
+    <div style={{
+      border: '1px solid var(--bd)', borderRadius: 4, padding: '16px 20px',
+      background: '#f0ede8', minHeight: 60, display: 'flex', alignItems: 'center',
+    }}>
+      <span style={{ opacity: 0.25, fontSize: 11 }}>—</span>
+    </div>
+  )
+  return (
+    <div
+      dangerouslySetInnerHTML={{ __html: html }}
+      style={{
+        border: '1px solid var(--bd)', borderRadius: 4, padding: '16px 20px',
+        background: '#f0ede8', fontSize: 12, lineHeight: 1.8,
+        color: 'var(--tx2)', minHeight: 60,
+      }}
+    />
+  )
+}
+
 // ── Component ─────────────────────────────────────────────────────────────
 
 export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePrivateWorks = {} }: Props) {
@@ -331,7 +352,7 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
 
                 {/* About */}
                 <PageSection title="Page À propos" icon="✎">
-                  <DualField label="Texte d'introduction" rich allowImport
+                  <DualField label="Texte d'introduction" rich allowImport preview="prose"
                     fr={config.about.intro_fr} en={config.about.intro_en}
                     onFr={v => setConfig({ ...config, about: { ...config.about, intro_fr: v } })}
                     onEn={v => setConfig({ ...config, about: { ...config.about, intro_en: v } })} />
@@ -351,7 +372,7 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
 
                 {/* Practice */}
                 <PageSection title="Page Pratique" icon="◉">
-                  <DualField label="Approche / statement" rich allowImport
+                  <DualField label="Approche / statement" rich allowImport preview="prose"
                     fr={config.practice.approach_fr} en={config.practice.approach_en}
                     onFr={v => setConfig({ ...config, practice: { ...config.practice, approach_fr: v } })}
                     onEn={v => setConfig({ ...config, practice: { ...config.practice, approach_en: v } })} />
@@ -620,11 +641,11 @@ function FileImportButton({ onText, lang }: { onText: (v: string) => void; lang:
   )
 }
 
-function DualField({ label, fr, en, onFr, onEn, rows = 1, placeholder, allowImport, rich }: {
+function DualField({ label, fr, en, onFr, onEn, rows = 1, placeholder, allowImport, rich, preview = 'flame' }: {
   label: string; fr: string; en: string
   onFr: (v: string) => void; onEn: (v: string) => void
   rows?: number; placeholder?: { fr?: string; en?: string }
-  allowImport?: boolean; rich?: boolean
+  allowImport?: boolean; rich?: boolean; preview?: 'flame' | 'prose'
 }) {
   const isRich = rich === true
   const minH = isRich ? 180 : undefined
@@ -662,11 +683,11 @@ function DualField({ label, fr, en, onFr, onEn, rows = 1, placeholder, allowImpo
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 10 }}>
           <div>
             <div style={{ fontSize: 8, letterSpacing: 2, color: 'var(--tx3)', marginBottom: 4 }}>APERÇU FR</div>
-            <FlamePreview html={fr} />
+            {preview === 'prose' ? <ProsePreview html={fr} /> : <FlamePreview html={fr} />}
           </div>
           <div>
             <div style={{ fontSize: 8, letterSpacing: 2, color: 'var(--tx3)', marginBottom: 4 }}>APERÇU EN</div>
-            <FlamePreview html={en} />
+            {preview === 'prose' ? <ProsePreview html={en} /> : <FlamePreview html={en} />}
           </div>
         </div>
       )}

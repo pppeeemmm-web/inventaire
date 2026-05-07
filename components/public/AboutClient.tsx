@@ -1,65 +1,33 @@
 'use client'
 
-import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import PublicNav from './PublicNav'
 import { loadPortfolioConfig } from '@/app/atelier/portfolio/actions'
-import { createClient } from '@/lib/supabase/client'
 
-const expositions = [
-  { year: '2026', text: 'Salon de Montrouge — candidature en cours' },
-  { year: '2026', text: 'CoG — Londres' },
-  { year: '2025', text: 'Therapeia — Paris' },
-  { year: '2023', text: 'Exposition collective — Ennistymon, Irlande' },
-  { year: '2022', text: 'Waterford International Film Festival — sélection photographie (2x consécutif)' },
-]
 
-const formation = [
-  { year: '2022', text: 'Design graphique et motion design' },
-  { year: '2019', text: "Apprentissage de la peinture à l'huile — pratique autodidacte intensive" },
-  { year: '2000', text: "Candidature, École des Beaux-Arts de Paris" },
-  { year: '1997', text: 'Sciences Po Aix-en-Provence' },
-]
+function hasContent(html: string | null | undefined): boolean {
+  if (!html) return false
+  return html.replace(/<[^>]*>/g, '').trim().length > 0
+}
 
 export default function AboutClient() {
-  const { t } = useI18n()
-  const [statementUrl, setStatementUrl] = useState<string | null>(null)
-  const [cvUrl, setCvUrl] = useState<string | null>(null)
+  const { t, lang } = useI18n()
   const [config, setConfig] = useState<any>(null)
 
   useEffect(() => {
     async function fetchData() {
       const result = await loadPortfolioConfig()
       if (!('ok' in result)) return
-      const cfg = result.config
-      setConfig(cfg)
-
-      const sId = cfg.about?.statement_doc_id || cfg.statement_doc_id
-      const cId = cfg.about?.cv_doc_id || cfg.cv_doc_id
-      const ids = [sId, cId].filter(Boolean)
-      
-      if (!ids.length) return
-      const sb = createClient()
-      const { data: docs } = await (sb.from('document') as any).select('id, storage_path').in('id', ids)
-      if (!docs) return
-
-      const sDoc = docs.find((d: any) => d.id === sId)
-      if (sDoc) {
-        const { data } = await sb.storage.from('vault').createSignedUrl(sDoc.storage_path, 3600)
-        if (data?.signedUrl) setStatementUrl(data.signedUrl)
-      }
-      const cDoc = docs.find((d: any) => d.id === cId)
-      if (cDoc) {
-        const { data } = await sb.storage.from('vault').createSignedUrl(cDoc.storage_path, 3600)
-        if (data?.signedUrl) setCvUrl(data.signedUrl)
-      }
+      setConfig(result.config)
     }
     fetchData()
   }, [])
 
   const artistName = config?.general?.artist_name || 'Pierre Emmanuel Moulin'
-  const bioIntro = config?.about?.intro || config?.general?.about_intro
+  const bioIntro = lang === 'en'
+    ? (config?.about?.intro_en || config?.about?.intro_fr)
+    : (config?.about?.intro_fr || config?.about?.intro_en)
 
   return (
     <>
@@ -97,21 +65,9 @@ export default function AboutClient() {
         }
         .a-bio { font-size: 13px; line-height: 2; color: #7a7670; max-width: 64ch; }
         .a-bio p + p { margin-top: 1.4em; }
-        .a-cv-entries { display: flex; flex-direction: column; gap: 20px; }
-        .a-cv-entry { display: grid; grid-template-columns: 90px 1fr; gap: 20px; align-items: baseline; }
-        .a-cv-year { font-size: 9px; color: #b0aca6; letter-spacing: 1px; padding-top: 2px; }
-        .a-cv-text { font-size: 11px; color: #6b6760; line-height: 1.7; }
         .a-footer { text-align: center; padding: 40px; border-top: 1px solid #dedad4; font-size: 9px; color: #c8c4be; letter-spacing: 2px; text-transform: uppercase; }
         a.a-ext { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
         a.a-ext:hover { color: #3a3834; }
-        .btn-doc {
-          display: inline-flex; align-items: center; gap: 12px;
-          padding: 12px 24px; border: 1px solid #dedad4;
-          text-decoration: none; color: #6b6760; font-size: 10px;
-          letter-spacing: 1.5px; text-transform: uppercase;
-          transition: all .2s; margin-right: 16px; margin-top: 24px;
-        }
-        .btn-doc:hover { background: #fff; border-color: #3a3834; color: #3a3834; }
       `}</style>
 
       <PublicNav active="about" prefix="a" />
@@ -124,8 +80,8 @@ export default function AboutClient() {
             {artistName.split(' ').map((part, i) => <span key={i}>{part}<br /></span>)}
           </h1>
           <div className="a-bio">
-            {bioIntro ? (
-              <p style={{ whiteSpace: 'pre-wrap' }}>{bioIntro}</p>
+            {hasContent(bioIntro) ? (
+              <div dangerouslySetInnerHTML={{ __html: bioIntro! }} />
             ) : (
               <>
                 <p>
@@ -152,53 +108,9 @@ export default function AboutClient() {
               </>
             )}
 
-            <div style={{ marginTop: 40 }}>
-              {statementUrl && (
-                <a href={statementUrl} target="_blank" rel="noreferrer" className="btn-doc">
-                  {t('pub_read_statement')}
-                </a>
-              )}
-              {cvUrl && (
-                <a href={cvUrl} target="_blank" rel="noreferrer" className="btn-doc">
-                  {t('pub_download_cv')}
-                </a>
-              )}
-            </div>
           </div>
         </section>
 
-        <section className="a-section">
-          <div className="a-section-label">{t('pub_exhibitions_selected')}</div>
-          <div className="a-cv-entries">
-            {expositions.map((e, i) => (
-              <div key={i} className="a-cv-entry">
-                <span className="a-cv-year">{e.year}</span>
-                <span className="a-cv-text">{e.text}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="a-section">
-          <div className="a-section-label">{t('pub_education')}</div>
-          <div className="a-cv-entries">
-            {formation.map((e, i) => (
-              <div key={i} className="a-cv-entry">
-                <span className="a-cv-year">{e.year}</span>
-                <span className="a-cv-text">{e.text}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="a-section">
-          <div className="a-section-label">{t('pub_contact')}</div>
-          <div className="a-bio">
-            <p>Marseille, France &nbsp;&middot;&nbsp; +33 6 17 69 05 22</p>
-            <p><Link href="/enquiry" className="a-ext">{t('pub_enquiry')}</Link></p>
-            <p><a href="https://moulinfineart.myportfolio.com/" target="_blank" rel="noreferrer" className="a-ext">moulinfineart.myportfolio.com</a></p>
-          </div>
-        </section>
 
       </div>
 

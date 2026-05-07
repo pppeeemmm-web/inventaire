@@ -10,6 +10,7 @@ import {
 
 interface MammothLib {
   extractRawText(opts: { buffer: Buffer }): Promise<{ value: string }>
+  convertToHtml(opts: { buffer: Buffer }): Promise<{ value: string; messages: any[] }>
 }
 
 const BUCKET     = process.env.R2_VAULT_BUCKET ?? 'vault'
@@ -27,9 +28,44 @@ function r2Client() {
   })
 }
 
-export type SaveConfigResult  = { error: string } | { ok: true }
-export type LoadConfigResult  = { error: string } | { ok: true; config: any; documents: any[] }
-export type ExtractTextResult = { error: string } | { ok: true; text: string }
+export type SaveConfigResult     = { error: string } | { ok: true }
+export type LoadConfigResult     = { error: string } | { ok: true; config: any; documents: any[] }
+export type ExtractTextResult    = { error: string } | { ok: true; text: string }
+export type DocSignedUrlsResult  = { statementUrl: string | null; cvUrl: string | null }
+
+export async function getDocSignedUrls(
+  statementDocId: string | null,
+  cvDocId: string | null,
+): Promise<DocSignedUrlsResult> {
+  const ids = [statementDocId, cvDocId].filter(Boolean) as string[]
+  if (!ids.length) return { statementUrl: null, cvUrl: null }
+
+  try {
+    const sb = createServiceClient()
+    const { data: docs } = await (sb.from('document') as any)
+      .select('id, storage_path')
+      .in('id', ids)
+
+    if (!docs?.length) return { statementUrl: null, cvUrl: null }
+
+    async function signed(docId: string | null): Promise<string | null> {
+      if (!docId) return null
+      const doc = docs.find((d: any) => d.id === docId)
+      if (!doc) return null
+      const { data } = await sb.storage.from('vault').createSignedUrl(doc.storage_path, 3600)
+      return data?.signedUrl ?? null
+    }
+
+    const [statementUrl, cvUrl] = await Promise.all([
+      signed(statementDocId),
+      signed(cvDocId),
+    ])
+    return { statementUrl, cvUrl }
+  } catch (e) {
+    console.error('[getDocSignedUrls]', e)
+    return { statementUrl: null, cvUrl: null }
+  }
+}
 
 export async function loadPortfolioConfig(): Promise<LoadConfigResult> {
   try {
@@ -98,8 +134,8 @@ export async function extractDocumentText(formData: FormData): Promise<ExtractTe
     if (fname.endsWith('.docx')) {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const mammoth: MammothLib = require('mammoth')
-      const result = await mammoth.extractRawText({ buffer: buf })
-      return { ok: true, text: result.value.trim() }
+      const result = await mammoth.convertToHtml({ buffer: buf })
+      return { ok: true, text: result.value }
     }
 
     return { error: 'Format non supporte. Utiliser .txt ou .docx.' }
