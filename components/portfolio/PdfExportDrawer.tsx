@@ -84,9 +84,11 @@ export default function PdfExportDrawer({ works, config, worksCollections, open,
     )
   }, [works, collectionFilter, worksCollections])
 
-  const cap         = maxWorks ?? MAX_WORKS
-  const willWarn    = filteredWorks.length > cap
-  const exportCount = Math.min(filteredWorks.length, cap)
+  const cap             = maxWorks ?? MAX_WORKS
+  const willWarn        = filteredWorks.length > cap
+  const exportCount     = Math.min(filteredWorks.length, cap)
+  const NON_PUBLIC_IDS  = new Set([1, 3, 5, 9, 10])
+  const nonPublicCount  = filteredWorks.slice(0, cap).filter(w => NON_PUBLIC_IDS.has(w.statutId ?? 0)).length
 
   async function handleExport() {
     setPhase('fetching')
@@ -315,6 +317,16 @@ export default function PdfExportDrawer({ works, config, worksCollections, open,
             {willWarn && (
               <div style={{ marginTop: 8, fontSize: 9, color: '#8a6a3a', lineHeight: 1.5 }}>
                 ⚠ {filteredWorks.length} œuvres dans la sélection — les {cap} premières seront exportées.
+              </div>
+            )}
+            {nonPublicCount > 0 && (
+              <div style={{
+                marginTop: 8, fontSize: 9, lineHeight: 1.5,
+                color: '#c88a20', background: 'rgba(200,140,40,0.08)',
+                border: '1px solid rgba(200,140,40,0.35)',
+                padding: '5px 8px', borderRadius: 3,
+              }}>
+                ⚠ {nonPublicCount} œuvre{nonPublicCount > 1 ? 's' : ''} non publique{nonPublicCount > 1 ? 's' : ''} dans cette sélection
               </div>
             )}
             <div style={{ marginTop: 8, fontSize: 8, color: '#bbb', lineHeight: 1.6 }}>

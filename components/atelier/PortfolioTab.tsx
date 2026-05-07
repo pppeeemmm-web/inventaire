@@ -1,9 +1,11 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
-import { savePortfolioConfig, loadPortfolioConfig, extractDocumentText } from '@/app/atelier/portfolio/actions'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { savePortfolioConfig, loadPortfolioConfig, extractDocumentText, setWorkPublic } from '@/app/atelier/portfolio/actions'
 import { getAnalyticsStats, type AnalyticsResult } from '@/app/atelier/analytics/actions'
+import { useRouter } from 'next/navigation'
 import { RichEditor, htmlToPlain } from '@/components/atelier/RichEditor'
+import { thumbUrl } from '@/lib/data'
 import type { Oeuvre } from '@/lib/types/database'
 
 // ── Types ─────────────────────────────────────────────────────────────────
@@ -45,9 +47,13 @@ interface PortfolioConfig {
   works_collections: CollectionItem[]
 }
 
+type ThemeWork = { OeuvreID: number; txtImageNameLink: string | null; isPublic: boolean }
+
 interface Props {
   oeuvres: Oeuvre[]
   themes:  { ThemeID: number; Nom: string }[]
+  themePublicStats?: Record<number, { total: number; pub: number }>
+  themePrivateWorks?: Record<number, ThemeWork[]>
 }
 
 // ── Defaults ───────────────────────────────────────────────────────────────
@@ -129,7 +135,8 @@ function FlamePreview({ html }: { html: string }) {
 
 // ── Component ─────────────────────────────────────────────────────────────
 
-export function PortfolioTab({ oeuvres, themes }: Props) {
+export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePrivateWorks = {} }: Props) {
+  const router = useRouter()
   const [config,     setConfig]     = useState<PortfolioConfig>(DEFAULT_CONFIG)
   const [documents,  setDocuments]  = useState<{id: string, name: string}[]>([])
   const [loading,    setLoading]    = useState(true)
@@ -143,6 +150,24 @@ export function PortfolioTab({ oeuvres, themes }: Props) {
   } | null>(null)
 
   const themeNames = themes.map(t => t.Nom).sort((a, b) => a.localeCompare(b, 'fr'))
+
+  const themeNameStats = useMemo(() => {
+    const map: Record<string, { total: number; pub: number }> = {}
+    for (const t of themes) {
+      const s = themePublicStats[t.ThemeID]
+      if (s) map[t.Nom] = s
+    }
+    return map
+  }, [themes, themePublicStats])
+
+  const themeNamePrivateWorks = useMemo(() => {
+    const map: Record<string, ThemeWork[]> = {}
+    for (const t of themes) {
+      const ws = themePrivateWorks[t.ThemeID]
+      if (ws?.length) map[t.Nom] = ws
+    }
+    return map
+  }, [themes, themePrivateWorks])
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -176,6 +201,12 @@ export function PortfolioTab({ oeuvres, themes }: Props) {
     }
     setConfig(next)
     setActiveSlot(null)
+  }
+
+  const handleMakePublic = async (oeuvreId: number) => {
+    const res = await setWorkPublic(oeuvreId)
+    if ('error' in res) { alert(`Erreur : ${res.error}`); return }
+    router.refresh()
   }
 
   const addItem = (target: 'sections' | 'works_collections') => {
@@ -243,11 +274,17 @@ export function PortfolioTab({ oeuvres, themes }: Props) {
             <div>
               <div className="t-label" style={{ marginBottom: 8, fontSize: 10 }}>THÈMES & GROUPES</div>
               <div className="col gap-xs">
-                {themeNames.map(name => (
-                  <SourceItem key={name} label={name}
-                    active={activeSlot?.type === 'theme'}
-                    onClick={() => activeSlot?.type === 'theme' && handleTransfer(name)} />
-                ))}
+                {themeNames.map(name => {
+                  const s = themeNameStats[name]
+                  const hasPrivate = s ? s.pub < s.total : false
+                  return (
+                    <SourceItem key={name} label={name}
+                      active={activeSlot?.type === 'theme'}
+                      onClick={() => activeSlot?.type === 'theme' && handleTransfer(name)}
+                      badge={s ? `${s.pub}/${s.total}` : undefined}
+                      badgeWarn={hasPrivate} />
+                  )
+                })}
               </div>
             </div>
           </div>
@@ -338,7 +375,10 @@ export function PortfolioTab({ oeuvres, themes }: Props) {
                           const next = [...config.works_collections]; next[i] = { ...item, ...p }
                           setConfig({ ...config, works_collections: next })
                         }}
-                        onDelete={() => setConfig({ ...config, works_collections: config.works_collections.filter(x => x.id !== item.id) })} />
+                        onDelete={() => setConfig({ ...config, works_collections: config.works_collections.filter(x => x.id !== item.id) })}
+                        themeStats={themeNameStats}
+                        privateWorks={item.theme ? themeNamePrivateWorks[item.theme] : undefined}
+                        onMakePublic={handleMakePublic} />
                     ))}
                   </div>
                 </PageSection>
@@ -362,7 +402,10 @@ export function PortfolioTab({ oeuvres, themes }: Props) {
                           const next = [...config.sections]; next[i] = { ...item, ...p }
                           setConfig({ ...config, sections: next })
                         }}
-                        onDelete={() => setConfig({ ...config, sections: config.sections.filter(x => x.id !== item.id) })} />
+                        onDelete={() => setConfig({ ...config, sections: config.sections.filter(x => x.id !== item.id) })}
+                        themeStats={themeNameStats}
+                        privateWorks={item.theme ? themeNamePrivateWorks[item.theme] : undefined}
+                        onMakePublic={handleMakePublic} />
                     ))}
                     {config.sections.length === 0 && (
                       <div className="t-mono-xs" style={{ opacity: 0.3, padding: '24px 0' }}>Aucune section. Cliquer "+ Ajouter".</div>
@@ -631,7 +674,10 @@ function DualField({ label, fr, en, onFr, onEn, rows = 1, placeholder, allowImpo
   )
 }
 
-function SourceItem({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+function SourceItem({ label, active, onClick, badge, badgeWarn }: {
+  label: string; active: boolean; onClick: () => void
+  badge?: string; badgeWarn?: boolean
+}) {
   return (
     <div onClick={onClick} style={{
       padding: '8px 12px', borderRadius: 4, border: '1px solid var(--bd)',
@@ -642,7 +688,12 @@ function SourceItem({ label, active, onClick }: { label: string; active: boolean
       transform: active ? 'scale(1.01)' : 'none',
     }}>
       <div style={{ width: 5, height: 5, borderRadius: '50%', background: active ? 'var(--ac)' : 'var(--bd)', flexShrink: 0 }} />
-      <span className="t-mono-xs" style={{ fontSize: 10, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>
+      <span className="t-mono-xs" style={{ fontSize: 10, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>{label}</span>
+      {badge && (
+        <span className="t-mono-xs" style={{ fontSize: 9, flexShrink: 0, color: badgeWarn ? 'var(--rust)' : 'var(--tx3)' }}>
+          {badge}
+        </span>
+      )}
     </div>
   )
 }
@@ -698,11 +749,14 @@ function DocumentSlot({ label, name, active, onClick, onClear }: {
   )
 }
 
-function CollectionRow({ item, isTarget, onAssign, onUpdate, onDelete }: {
+function CollectionRow({ item, isTarget, onAssign, onUpdate, onDelete, themeStats, privateWorks, onMakePublic }: {
   item: CollectionItem; isTarget: boolean
   onAssign: () => void
   onUpdate: (p: Partial<CollectionItem>) => void
   onDelete: () => void
+  themeStats?: Record<string, { total: number; pub: number }>
+  privateWorks?: ThemeWork[]
+  onMakePublic?: (id: number) => void
 }) {
   return (
     <div className="panel pad-md col gap-md" style={{
@@ -758,6 +812,71 @@ function CollectionRow({ item, isTarget, onAssign, onUpdate, onDelete }: {
               {item.theme || (isTarget ? 'PRÊT POUR THÈME' : 'CLIQUER POUR CHOISIR')}
             </span>
           </div>
+          {privateWorks && privateWorks.length > 0 && (() => {
+            const hidden  = privateWorks.filter(w => !w.isPublic)
+            const visible = privateWorks.filter(w =>  w.isPublic)
+            const Thumb = ({ w }: { w: ThemeWork }) => (
+              <div style={{ width: 64, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                {/* image or no-image placeholder */}
+                <div style={{
+                  width: 64, height: 64, overflow: 'hidden', flexShrink: 0,
+                  background: 'repeating-linear-gradient(45deg, var(--bg2), var(--bg2) 6px, var(--bg1) 6px, var(--bg1) 12px)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  border: !w.isPublic ? '2px solid var(--rust)' : '2px solid transparent',
+                  boxSizing: 'border-box',
+                }}>
+                  {w.txtImageNameLink
+                    ? <img src={thumbUrl(w.txtImageNameLink) ?? ''} alt="" loading="lazy"
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    : <span style={{ fontSize: 20, fontWeight: 900, color: 'var(--tx3)', opacity: 0.4, userSelect: 'none', lineHeight: 1 }}>{w.OeuvreID}</span>
+                  }
+                </div>
+                {/* ID below the card */}
+                <div className="t-mono-xs" style={{
+                  fontSize: 9, textAlign: 'center', width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  color: w.isPublic ? 'var(--tx3)' : 'var(--rust)', fontWeight: w.isPublic ? 400 : 700,
+                }}>#{w.OeuvreID}</div>
+                {/* make-public button for private works */}
+                {!w.isPublic && onMakePublic && (
+                  <button
+                    onClick={() => onMakePublic(w.OeuvreID)}
+                    title={`Rendre #${w.OeuvreID} public (→ Disponible)`}
+                    style={{
+                      width: '100%', background: 'var(--rust)', color: '#fff',
+                      border: 'none', borderRadius: 2, fontSize: 8, padding: '2px 0',
+                      cursor: 'pointer', letterSpacing: 0.3, textAlign: 'center', fontWeight: 600,
+                    }}>→ publier</button>
+                )}
+              </div>
+            )
+            return (
+              <div style={{ marginTop: 12, display: 'flex', gap: 20, alignItems: 'flex-start' }}>
+                {hidden.length > 0 && (
+                  <div>
+                    <div className="t-mono-xs" style={{ color: 'var(--rust)', fontSize: 10, fontWeight: 700, marginBottom: 6, letterSpacing: 1 }}>
+                      ⚠ NON-PUBLIQUES ({hidden.length})
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {hidden.map(w => <Thumb key={w.OeuvreID} w={w} />)}
+                    </div>
+                  </div>
+                )}
+                {hidden.length > 0 && visible.length > 0 && (
+                  <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--bd)', flexShrink: 0, marginTop: 20 }} />
+                )}
+                {visible.length > 0 && (
+                  <div>
+                    <div className="t-mono-xs" style={{ color: 'var(--tx3)', fontSize: 10, marginBottom: 6, letterSpacing: 1 }}>
+                      PUBLIQUES ({visible.length})
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {visible.map(w => <Thumb key={w.OeuvreID} w={w} />)}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })()}
         </div>
         <label className="row gap-xs pointer center" style={{ paddingBottom: 6 }}>
           <input type="checkbox" checked={item.is_active} onChange={e => onUpdate({ is_active: e.target.checked })} />

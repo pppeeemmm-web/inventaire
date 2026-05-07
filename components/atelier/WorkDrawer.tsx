@@ -167,6 +167,15 @@ export function WorkDrawer({
             : <div className="ph">—</div>}
         </div>
 
+        {/* Non-public warning */}
+        {o.is_public === false && (
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            background: 'rgba(200,140,40,0.12)', border: '1px solid rgba(200,140,40,0.5)',
+            color: '#c88a20', fontSize: 10, padding: '4px 10px', borderRadius: 2, marginBottom: 12,
+          }}>⚠ Non public</div>
+        )}
+
         {/* Title */}
         <h2 className="serif" style={{ fontSize: 32, color: 'var(--tx)', lineHeight: 1.1, marginBottom: 16 }}>
           {o.Titre || t('untitled')}

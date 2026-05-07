@@ -229,7 +229,7 @@ export async function generateExport(
   // Fetch selected works
   const { data: oeuvres, error: fetchErr } = await supabase
     .from('Oeuvres')
-    .select('OeuvreID, Titre, Année, Technique, Support, Format, Hauteur, Largeur, Profondeur, Prix, PrixFinal, Discount, statusId, Exposable, Catalogué, txtImageNameLink, Commentaires')
+    .select('OeuvreID, Titre, Année, Technique, Support, Format, Hauteur, Largeur, Profondeur, Prix, PrixFinal, Discount, statusId, Exposable, Catalogué, txtImageNameLink, Commentaires, is_public')
     .in('OeuvreID', ids)
     .order('OeuvreID', { ascending: false })
 
@@ -311,7 +311,7 @@ type Oeuvre = {
   Hauteur?: string | null; Largeur?: string | null; Profondeur?: string | null
   Prix?: number | null; PrixFinal?: number | null; Discount?: number | null
   statusId?: number | null; Exposable?: boolean | null; ['Catalogué']?: boolean | null
-  txtImageNameLink?: string | null; Commentaires?: string | null
+  txtImageNameLink?: string | null; Commentaires?: string | null; is_public?: boolean | null
 }
 
 function buildHtml(
@@ -332,12 +332,13 @@ function buildHtml(
     const supp    = o.Support   != null ? sM[o.Support]   ?? '' : ''
     const status  = o.statusId  != null ? statusLabelMap[o.statusId] ?? '' : ''
     const price   = o.PrixFinal ?? o.Prix
+    const npBadge = o.is_public === false ? '<span class="np-badge">⚠ NON PUBLIC</span>' : ''
 
     if (cfg.layout === 'list') {
       return `<tr>
         ${f.id        ? `<td>${o.OeuvreID}</td>` : ''}
         ${f.image     ? `<td>${img ? `<img src="${img}" style="width:48px;height:48px;object-fit:cover">` : ''}</td>` : ''}
-        ${f.title     ? `<td class="title">${o.Titre ?? '—'}</td>` : ''}
+        ${f.title     ? `<td class="title">${o.Titre ?? '—'}${npBadge}</td>` : ''}
         ${f.year      ? `<td>${o.Année?.slice(0,4) ?? '—'}</td>` : ''}
         ${f.technique ? `<td>${tech}${supp ? `, ${supp}` : ''}</td>` : ''}
         ${f.dims      ? `<td>${dims ?? '—'}</td>` : ''}
@@ -357,6 +358,7 @@ function buildHtml(
         + '<div class="meta">'
         + (f.id    ? '<div class="ref-cap">#' + o.OeuvreID + '</div>' : '')
         + (f.title ? '<div class="title-cap">' + (o.Titre ?? '—') + '</div>' : '')
+        + (npBadge ? '<div style="margin-top:2px">' + npBadge + '</div>' : '')
         + '</div></div>'
     }
 
@@ -375,6 +377,7 @@ function buildHtml(
       ${imgHtml}
       <div class="meta">
         ${f.title ? `<h2>${o.Titre ?? 'Sans titre'}</h2>` : ''}
+        ${npBadge ? `<div class="np-badge-block">⚠ NON PUBLIC</div>` : ''}
         ${meta ? `<table>${meta}</table>` : ''}
       </div>
     </div>`
@@ -435,12 +438,24 @@ function buildHtml(
     return pages.join('\n') + appendBlock
   })()
 
-  const gridGap = cfg.columns >= 10 ? '8px 12px' : cfg.columns >= 6 ? '16px 24px' : '32px 48px'
+  // Derive HTML column count from rowsPerPage using A4 portrait proportions as baseline
+  const htmlCols = (() => {
+    const r = cfg.rowsPerPage > 0 ? cfg.rowsPerPage : 4
+    const isL = cfg.orientation === 'landscape'
+    const pw = cfg.paper === 'a3' ? (isL ? 1189 : 841) : (isL ? 842 : 595)
+    const ph = cfg.paper === 'a3' ? (isL ? 841 : 1189) : (isL ? 595 : 842)
+    const usableW = pw - 100
+    const availH  = ph - 100 - 60
+    const cellH   = Math.floor((availH - 16 * (r - 1)) / r)
+    const imgH    = Math.max(20, cellH - 30)
+    return Math.max(1, Math.floor((usableW + 8) / (imgH + 8)))
+  })()
+  const gridGap = htmlCols >= 10 ? '8px 12px' : htmlCols >= 6 ? '16px 24px' : '32px 48px'
 
   const bodyContent = cfg.layout === 'list'
     ? listTable
     : cfg.layout === 'grid'
-      ? `<div class="grid cols-${cfg.columns}" style="gap:${gridGap}">` + rows.join('') + '</div>' + appendBlock
+      ? `<div class="grid" style="display:grid;grid-template-columns:repeat(${htmlCols},1fr);gap:${gridGap}">` + rows.join('') + '</div>' + appendBlock
       : cardsBody
 
   const titleHtml = cfg.exportTitle ? `<h1 style="font-family:'Instrument Serif', serif; font-size:32pt; margin-bottom:40px; border-bottom:1px solid #ddd; padding-bottom:10px;">${cfg.exportTitle}</h1>` : ''
@@ -513,6 +528,10 @@ function buildHtml(
   .list td.title{font-family:'Instrument Serif', serif;font-size:15px;color:#111}
   .list tr:hover td{background:#fcfcfc}
   
+  /* Non-public badge */
+  .np-badge{display:inline-block;background:rgba(200,140,40,0.12);border:1px solid rgba(200,140,40,0.5);color:#c88a20;font-size:7px;padding:1px 5px;border-radius:2px;font-family:ui-monospace,monospace;letter-spacing:0.5px;vertical-align:middle;margin-left:6px}
+  .np-badge-block{display:block;background:rgba(200,140,40,0.10);border:1px solid rgba(200,140,40,0.4);color:#c88a20;font-size:7px;padding:2px 6px;border-radius:2px;font-family:ui-monospace,monospace;letter-spacing:0.5px;margin-bottom:4px}
+
   /* Print */
   @media print{
     body{padding:0}
@@ -555,7 +574,7 @@ async function buildPdf(
   return new Promise(async (resolve, reject) => {
     const layout = cfg.orientation || 'portrait'
     // Disable automatic page breaks to prevent 'ghosting' from large text blocks
-    const doc    = new PDFDocument({ size: pageSize, layout, margin: 50, autoFirstPage: true, bufferPages: true })
+    const doc    = new PDFDocument({ size: pageSize, layout, margin: 50, autoFirstPage: true })
     const chunks: Buffer[] = []
     doc.on('data',  (c: Buffer) => chunks.push(c))
     doc.on('end',   () => resolve(Buffer.concat(chunks).toString('base64')))
@@ -569,6 +588,26 @@ async function buildPdf(
     const PH = isLandscape ? PW_RAW : PH_RAW
     const margin = 50
     const usable = PW - margin * 2
+
+    // Stamp header on every page as it opens — no bufferPages/switchToPage needed
+    let pageNum = 0
+    const stampHeader = () => {
+      pageNum++
+      const savedY = doc.y
+      doc.fontSize(6).fillColor('#bbbbbb').text('PIERRE EMMANUEL MOULIN', margin, margin - 10, { characterSpacing: 1.5, lineBreak: false })
+      let headY = margin - 2
+      if (cfg.exportTitle) {
+        doc.fontSize(16).fillColor('#111111').text(cfg.exportTitle, margin, headY, { lineBreak: false })
+        headY += 20
+        doc.fontSize(6.5).fillColor('#aaaaaa').text(`SÉLECTION · ${oeuvres.length} ŒUVRES · PAGE ${pageNum}`, margin, headY, { characterSpacing: 0.8, lineBreak: false })
+      } else {
+        doc.fontSize(8).fillColor('#111111').text(`SÉLECTION · ${oeuvres.length} ŒUVRES · PAGE ${pageNum}`, margin, headY, { characterSpacing: 0.8, lineBreak: false })
+      }
+      doc.moveTo(margin, headY + 10).lineTo(margin + 40, headY + 10).lineWidth(0.5).strokeColor('#eeeeee').stroke()
+      doc.y = savedY
+    }
+    doc.on('pageAdded', stampHeader)
+    stampHeader() // first page is created by autoFirstPage before the listener attaches
 
     // --- Content Generation ---
     let y = margin + 40 // Initial offset to leave room for the header
@@ -608,7 +647,7 @@ async function buildPdf(
         const price  = o.PrixFinal ?? o.Prix
         const vals: string[] = [
           f.id        ? String(o.OeuvreID)    : '',
-          f.title     ? (o.Titre ?? '—')      : '',
+          f.title     ? `${o.Titre ?? '—'}${o.is_public === false ? ' ⚠' : ''}` : '',
           f.year      ? (o.Année?.slice(0,4) ?? '—') : '',
           f.technique ? tech                  : '',
           f.dims      ? dims                  : '',
@@ -630,22 +669,22 @@ async function buildPdf(
       }
 
     } else if (cfg.layout === 'grid') {
-      // ── Grid layout (Contact Sheet) ──────────────────────────
-      const cols      = cfg.columns
-      const gap       = cfg.columns >= 8 ? 4 : cfg.columns >= 4 ? 8 : 12
-      const rowGap    = cfg.columns >= 8 ? 12 : cfg.columns >= 4 ? 20 : 28
-      const cellW     = (usable - gap * (cols - 1)) / cols
-      
+      // ── Grid layout (Contact Sheet) — rows-first ─────────────
+      // Rows per page drives cell height; columns auto-fill from square cells.
+      const rows    = Math.max(1, cfg.rowsPerPage > 0 ? cfg.rowsPerPage : 4)
+      const gap     = 8
+      const rowGap  = 16
+
       const activeMetaCount = [f.year, f.technique, f.support, f.dims, f.price].filter(Boolean).length
-      const textLineH = (cols >= 8 ? 6 : 8)
-      const textH     = (f.title ? (cols >= 8 ? 8 : 12) : 0) + (f.id ? (cols >= 8 ? 7 : 10) : 0) + (activeMetaCount * textLineH) + 4
-      
-      let imgH = cfg.imageSize !== 'none' ? Math.round(cellW) : 0
-      if (cfg.rowsPerPage > 0) {
-        const calculatedImgH = Math.floor((PH - margin * 2 - 60) / cfg.rowsPerPage) - textH - rowGap
-        if (calculatedImgH > 0 && calculatedImgH < imgH) imgH = calculatedImgH
-      }
-      const cellH = imgH + textH
+      const textH   = (f.title ? 12 : 0) + (f.id ? 10 : 0) + (activeMetaCount * 8) + 4
+
+      const availH  = PH - margin * 2 - 60
+      const cellH   = Math.floor((availH - rowGap * (rows - 1)) / rows)
+      const imgH    = cfg.imageSize !== 'none' ? Math.max(20, cellH - textH - 3) : 0
+
+      // Square cells: columns = how many imgH-wide cells fit across the page
+      const cols    = Math.max(1, Math.floor((usable + gap) / (imgH > 0 ? imgH + gap : cellH + gap)))
+      const cellW   = (usable - gap * (cols - 1)) / cols
 
       let col = 0
       for (const o of oeuvres) {
@@ -672,18 +711,26 @@ async function buildPdf(
         }
 
         let ty = y + imgH + 3
+        // Font scale: smaller cells → smaller text
+        const fSmall = cols >= 8 ? 5 : cols >= 5 ? 5.5 : 6
+        const fTitle = cols >= 8 ? 6 : cols >= 5 ? 7 : 7.5
+
         if (f.id) {
-          doc.fontSize(cols >= 8 ? 5 : 6).fillColor('#cccccc').font('Courier').text('#' + o.OeuvreID, cx, ty, { width: cellW, align: 'left', lineBreak: false })
+          doc.fontSize(fSmall).fillColor('#cccccc').font('Courier').text('#' + o.OeuvreID, cx, ty, { width: cellW, align: 'left', lineBreak: false })
           doc.font('Helvetica')
-          ty += (cols >= 8 ? 7 : 8)
+          ty += fSmall + 2
         }
         if (f.title) {
-          doc.fontSize(cols >= 8 ? 6 : 7.5).fillColor('#111111').font('Helvetica-Bold').text(o.Titre ?? '—', cx, ty, { width: cellW, align: 'left', lineBreak: true, ellipsis: true, maxLines: 1 })
+          doc.fontSize(fTitle).fillColor('#111111').font('Helvetica-Bold').text(o.Titre ?? '—', cx, ty, { width: cellW, align: 'left', lineBreak: true, ellipsis: true, maxLines: 1 })
           doc.font('Helvetica')
-          ty += (cols >= 8 ? 8 : 10)
+          ty += fTitle + 2
         }
-        
-        doc.fontSize(cols >= 8 ? 5 : 6).fillColor('#666666')
+        if (o.is_public === false) {
+          doc.fontSize(fSmall).fillColor('#c88a20').text('⚠ NON PUBLIC', cx, ty, { width: cellW, align: 'left', lineBreak: false })
+          ty += fSmall + 2
+        }
+
+        doc.fontSize(fSmall).fillColor('#666666')
         const metaLines: string[] = []
         if (f.year && o.Année) metaLines.push(o.Année.slice(0, 4))
         const techPart = [f.technique && (o.Technique != null ? tM[o.Technique] : null), f.support && (o.Support != null ? sM[o.Support] : null)].filter(Boolean).join(', ')
@@ -699,7 +746,7 @@ async function buildPdf(
 
         for (const line of metaLines) {
           doc.text(line, cx, ty, { width: cellW, align: 'left', lineBreak: false, ellipsis: true })
-          ty += (cols >= 8 ? 6 : 8)
+          ty += fSmall + 2
         }
 
         col++
@@ -746,6 +793,7 @@ async function buildPdf(
         let   ty = y
 
         if (f.title) { doc.fontSize(14).fillColor('#1a1a1a').text(o.Titre ?? 'Sans titre', tx, ty, { width: tw }); ty += 20 }
+        if (o.is_public === false) { doc.fontSize(7).fillColor('#c88a20').text('⚠ NON PUBLIC', tx, ty, { width: tw }); ty += 11 }
         if (f.year && o.Année) { doc.fontSize(9).fillColor('#666666').text(o.Année.slice(0, 4), tx, ty, { width: tw }); ty += 13 }
         if (f.technique && tech) { doc.fontSize(8).fillColor('#888888').text(tech + (supp ? `, ${supp}` : ''), tx, ty, { width: tw }); ty += 12 }
         if (f.dims && dims) { doc.fontSize(8).fillColor('#888888').text(dims, tx, ty, { width: tw }); ty += 12 }
@@ -781,27 +829,6 @@ async function buildPdf(
           doc.moveTo(margin, y - 1).lineTo(margin + usable, y - 1).lineWidth(0.2).strokeColor('#f0f0f0').stroke()
         }
       }
-    }
-
-    // --- Global Headers & Footers (on all pages) ---
-    const pages = doc.bufferedPageRange()
-    for (let i = 0; i < pages.count; i++) {
-      doc.switchToPage(i)
-      
-      // Header
-      doc.fontSize(6).fillColor('#bbbbbb').text('PIERRE EMMANUEL MOULIN', margin, margin - 10, { characterSpacing: 1.5 })
-      let headY = margin - 2
-      if (cfg.exportTitle) {
-        doc.fontSize(16).fillColor('#111111').text(cfg.exportTitle, margin, headY, { lineGap: -4 })
-        headY += 20
-        doc.fontSize(6.5).fillColor('#aaaaaa').text(`SÉLECTION · ${oeuvres.length} ŒUVRES · PAGE ${i + 1} / ${pages.count}`, margin, headY, { characterSpacing: 0.8 })
-      } else {
-        doc.fontSize(8).fillColor('#111111').text(`SÉLECTION · ${oeuvres.length} ŒUVRES · PAGE ${i + 1} / ${pages.count}`, margin, headY, { characterSpacing: 0.8 })
-      }
-      doc.moveTo(margin, headY + 10).lineTo(margin + 40, headY + 10).lineWidth(0.5).strokeColor('#eeeeee').stroke()
-
-      doc.fontSize(6).fillColor('#ccc')
-         .text(`GÉNÉRÉ LE ${new Date().toLocaleDateString('fr-FR').toUpperCase()} · PIERREEMMANUELMOULIN.COM`, margin, PH - margin, { align: 'center', width: usable, characterSpacing: 1, lineBreak: false })
     }
 
     doc.end()

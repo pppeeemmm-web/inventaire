@@ -22,6 +22,7 @@ interface Props {
   tM:                 Record<number, string>
   sM:                 Record<number, string>
   statusLabelMap:     Record<number, string>
+  addresses?:         { id: number; contact_id: number; label: string; adresse: string | null; ville: string | null; pays: string | null }[]
   onGoConstellation:  () => void
   onSaveGroup:        (name: string, ids: number[]) => Promise<string | null>
   onCompare:          () => void
@@ -30,6 +31,7 @@ interface Props {
 export function CurationDock({
   selection, setSelection,
   oeuvres, techniques, supports, formats, contacts, themes, groups, tM, sM, statusLabelMap,
+  addresses = [],
   onGoConstellation, onSaveGroup, onCompare,
 }: Props) {
   const { t } = useI18n()
@@ -128,6 +130,7 @@ export function CurationDock({
           supports={supports}
           formats={formats}
           contacts={contacts}
+          addresses={addresses}
           themes={themes}
           groups={groups}
           statusLabelMap={statusLabelMap}

@@ -153,3 +153,26 @@ export async function savePortfolioConfig(config: unknown): Promise<SaveConfigRe
     return { error: e.message ?? String(e) }
   }
 }
+
+// Sets a work to statusId=2 (Disponible) so the trigger makes it public.
+// Requires an authenticated admin session.
+export async function setWorkPublic(oeuvreId: number): Promise<{ ok: true } | { error: string }> {
+  try {
+    const { createClient: createUserClient } = await import('@/lib/supabase/server')
+    const userSb = await createUserClient()
+    const { data: { user } } = await userSb.auth.getUser()
+    if (!user) return { error: 'Non authentifié' }
+    const { data: isAdmin } = await userSb.rpc('is_admin')
+    if (!isAdmin) return { error: 'Accès refusé' }
+
+    const sb = createServiceClient()
+    const { error } = await (sb.from('Oeuvres') as any)
+      .update({ statusId: 2 })
+      .eq('OeuvreID', oeuvreId)
+    if (error) throw error
+    return { ok: true }
+  } catch (e: any) {
+    console.error('[setWorkPublic]', e)
+    return { error: e.message ?? String(e) }
+  }
+}

@@ -850,6 +850,25 @@ export function ConstellationCanvas({
       ctx.lineWidth   = (isSel ? 2.5 : groupBy === 'theme' ? 1.5 : 1) / vp.z
       ctx.stroke()
 
+      // Non-public indicator: amber dot with ! at top-right of circle
+      if (o.is_public === false) {
+        ctx.save()
+        const dotR = 7 / vp.z
+        const ang  = -Math.PI / 4
+        const dotX = cx + (NR - dotR * 0.5) * Math.cos(ang)
+        const dotY = cy + (NR - dotR * 0.5) * Math.sin(ang)
+        ctx.beginPath()
+        ctx.arc(dotX, dotY, dotR, 0, Math.PI * 2)
+        ctx.fillStyle = '#c88a20'
+        ctx.fill()
+        ctx.fillStyle = '#fff'
+        ctx.font = `bold ${Math.max(5, 8 / vp.z)}px monospace`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText('!', dotX, dotY)
+        ctx.restore()
+      }
+
       // Small label below node
       if (vp.z > 0.4) {
         ctx.fillStyle = isSel ? 'var(--ac)' : isHov ? 'var(--tx)' : 'var(--tx3)'

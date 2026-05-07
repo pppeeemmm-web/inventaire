@@ -7,12 +7,15 @@ import { useState, useTransition } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { batchEdit, createTheme, type BatchChanges } from '@/app/atelier/selection/actions'
 
+type ContactAddress = { id: number; contact_id: number; label: string; adresse: string | null; ville: string | null; pays: string | null }
+
 interface Props {
   ids:            number[]
   techniques:     { TechniqueID: number; Technique: string | null }[]
   supports:       { SupportID:   number; Support:   string | null }[]
   formats:        { FormatID:    number; Format:    string | null }[]
   contacts:       { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null }[]
+  addresses?:     ContactAddress[]
   themes:         { ThemeID: number; Nom: string }[]
   groups?:        { id: string; name: string }[]
   statusLabelMap: Record<number, string>
@@ -23,7 +26,7 @@ interface Props {
 // Tri-state for boolean fields: null = unchanged, true/false = set
 type Tri = null | boolean
 
-export function BatchEditModal({ ids, techniques, supports, formats, contacts, themes: initialThemes, groups = [], statusLabelMap, onClose, onDone }: Props) {
+export function BatchEditModal({ ids, techniques, supports, formats, contacts, addresses = [], themes: initialThemes, groups = [], statusLabelMap, onClose, onDone }: Props) {
   const { t } = useI18n()
   const [pending, startEdit] = useTransition()
   const [error,   setError]  = useState<string | null>(null)
@@ -58,6 +61,8 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
   const [prix,             setPrix]            = useState('')
   const [discount,         setDiscount]        = useState('')
   const [annee,            setAnnee]           = useState('')
+  const [localisationId,   setLocalisationId]  = useState('')
+  const [addressId,        setAddressId]       = useState('')
   const [locDetail,        setLocDetail]       = useState('')
   const [commentaires,     setCommentaires]    = useState('')
   const [historiqueAppend, setHistoriqueAppend] = useState('')
@@ -105,9 +110,25 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
     }
   }
 
+  const contactAddresses = (localisationId !== '' && localisationId !== 'null')
+    ? addresses.filter(a => a.contact_id === Number(localisationId))
+    : []
+
+  function handleLocalisationChange(id: string) {
+    setLocalisationId(id)
+    setAddressId('')
+    if (id !== '' && id !== 'null') {
+      const addrs = addresses.filter(a => a.contact_id === Number(id))
+      if (addrs.length === 1) setLocDetail(`${addrs[0].label}${addrs[0].ville ? ` — ${addrs[0].ville}` : ''}`)
+      else setLocDetail('')
+    } else {
+      setLocDetail('')
+    }
+  }
+
   const changed = (
     titre !== '' || statusId !== '' || technique !== '' || support !== '' || format !== '' ||
-    contactId !== '' || prix !== '' || discount !== '' ||
+    contactId !== '' || localisationId !== '' || prix !== '' || discount !== '' ||
     annee !== '' || locDetail !== '' || commentaires !== '' ||
     exposable !== null || montee !== null || encadree !== null || catalogued !== null ||
     isCommission !== null || isGift !== null || isPaid !== null || needsPhoto !== null ||
@@ -123,7 +144,8 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
     if (technique  !== '')  changes.Technique  = technique  === 'null' ? null : Number(technique)
     if (support    !== '')  changes.Support    = support    === 'null' ? null : Number(support)
     if (format     !== '')  changes.Format     = format     === 'null' ? null : Number(format)
-    if (contactId  !== '')  changes.ContactID  = contactId  === 'null' ? null : Number(contactId)
+    if (contactId      !== '')  changes.ContactID      = contactId      === 'null' ? null : Number(contactId)
+    if (localisationId !== '')  changes.LocalisationID = localisationId === 'null' ? null : Number(localisationId)
     if (prix       !== '')  changes.Prix       = prix       === ''     ? null : parseFloat(prix)
     if (discount   !== '')  changes.Discount   = discount   === ''     ? null : parseFloat(discount)
     if (annee      !== '')  changes.Année      = annee.trim() || null
@@ -285,9 +307,41 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, t
       <SectionLabel>{t('locationNotes')}</SectionLabel>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '10px', marginBottom: 20 }}>
 
+        <FieldWrap label={t('location')} active={localisationId !== ''}>
+          <select className="input" style={{ width: '100%' }} value={localisationId}
+            onChange={(e) => handleLocalisationChange(e.target.value)}>
+            <option value="">— {t('unchanged')} —</option>
+            <option value="null">{t('remove')} (Pem — Atelier)</option>
+            {sortedContacts.map((c) => (
+              <option key={c.ContactID} value={c.ContactID}>{contactLabel(c)}</option>
+            ))}
+          </select>
+        </FieldWrap>
+
+        {contactAddresses.length >= 2 && (
+          <FieldWrap label="Adresse" active={addressId !== ''}>
+            <select className="input" style={{ width: '100%' }} value={addressId}
+              onChange={(e) => {
+                const id = e.target.value
+                setAddressId(id)
+                if (id !== '') {
+                  const a = contactAddresses.find(a => String(a.id) === id)
+                  if (a) setLocDetail(`${a.label}${a.ville ? ` — ${a.ville}` : ''}`)
+                }
+              }}>
+              <option value="">— {t('unchanged')} —</option>
+              {contactAddresses.map(a => (
+                <option key={a.id} value={a.id}>
+                  {a.label}{a.ville ? ` — ${a.ville}` : ''}
+                </option>
+              ))}
+            </select>
+          </FieldWrap>
+        )}
+
         <FieldWrap label={t('localisationDetail')} active={locDetail !== ''}>
           <input className="input" type="text" style={{ width: '100%' }}
-            placeholder={`${t('unchanged')} (ex. Marseille, France)`} value={locDetail}
+            placeholder={`${t('unchanged')} (ex. Réserve B, caisse 3)`} value={locDetail}
             onChange={(e) => setLocDetail(e.target.value)} />
         </FieldWrap>
 

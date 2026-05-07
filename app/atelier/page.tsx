@@ -17,7 +17,7 @@ export default async function AtelierPage() {
     { data: groups },
     { data: presentations },
     { data: exhibitions },
-    _themes_link,
+    themesLink,
     _groups_link,
     { data: addresses },
   ] = await Promise.all([
@@ -44,6 +44,48 @@ export default async function AtelierPage() {
   const statusLabelMap: Record<number, string> = {}
   for (const s of (statuses ?? []) as { id: number; label: string }[]) statusLabelMap[s.id] = s.label
 
+  // Build per-theme public/total counts for the Public tab warning
+  const oeuvreIsPublic: Record<number, boolean> = {}
+  for (const o of (oeuvres ?? []) as { OeuvreID: number; is_public: boolean }[])
+    oeuvreIsPublic[o.OeuvreID] = o.is_public ?? false
+
+  // name → ThemeID lookup for the deprecated theme text fallback
+  const themeNameToId: Record<string, number> = {}
+  for (const t of (themes ?? []) as { ThemeID: number; Nom: string }[])
+    themeNameToId[t.Nom] = t.ThemeID
+
+  type ThemeWork = { OeuvreID: number; txtImageNameLink: string | null; isPublic: boolean }
+  const themePublicStats: Record<number, { total: number; pub: number }> = {}
+  const themeAllWorks: Record<number, ThemeWork[]> = {}
+
+  // OeuvreID → work shape for quick lookup
+  const oeuvreMap: Record<number, ThemeWork> = {}
+  for (const o of (oeuvres ?? []) as { OeuvreID: number; txtImageNameLink: string | null; is_public: boolean }[])
+    oeuvreMap[o.OeuvreID] = { OeuvreID: o.OeuvreID, txtImageNameLink: o.txtImageNameLink, isPublic: o.is_public ?? false }
+
+  // Primary: canonical OeuvreTheme junction
+  const inOeuvreTheme = new Set<number>()
+  for (const row of (themesLink.data ?? []) as { OeuvreID: number; ThemeID: number }[]) {
+    if (!themePublicStats[row.ThemeID]) themePublicStats[row.ThemeID] = { total: 0, pub: 0 }
+    themePublicStats[row.ThemeID].total++
+    if (oeuvreIsPublic[row.OeuvreID]) themePublicStats[row.ThemeID].pub++
+    if (!themeAllWorks[row.ThemeID]) themeAllWorks[row.ThemeID] = []
+    if (oeuvreMap[row.OeuvreID]) themeAllWorks[row.ThemeID].push(oeuvreMap[row.OeuvreID])
+    inOeuvreTheme.add(row.OeuvreID)
+  }
+
+  // Fallback: deprecated theme text field for works not yet migrated to OeuvreTheme
+  for (const o of (oeuvres ?? []) as { OeuvreID: number; is_public: boolean; theme?: string | null; txtImageNameLink: string | null }[]) {
+    if (inOeuvreTheme.has(o.OeuvreID) || !o.theme) continue
+    const themeId = themeNameToId[o.theme]
+    if (!themeId) continue
+    if (!themePublicStats[themeId]) themePublicStats[themeId] = { total: 0, pub: 0 }
+    themePublicStats[themeId].total++
+    if (oeuvreIsPublic[o.OeuvreID]) themePublicStats[themeId].pub++
+    if (!themeAllWorks[themeId]) themeAllWorks[themeId] = []
+    themeAllWorks[themeId].push({ OeuvreID: o.OeuvreID, txtImageNameLink: o.txtImageNameLink, isPublic: o.is_public ?? false })
+  }
+
   return (
     <TeamPortalClient
       oeuvres={oeuvres ?? []}
@@ -57,6 +99,8 @@ export default async function AtelierPage() {
       initialGroups={(groups ?? [] as { id: string; name: string; created_at: string }[]).map((g) => ({ id: g.id, name: g.name }))}
       presentations={presentations ?? []}
       exhibitions={exhibitions ?? []}
+      themePublicStats={themePublicStats}
+      themePrivateWorks={themeAllWorks}
     />
   )
 }

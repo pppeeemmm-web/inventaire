@@ -229,7 +229,7 @@ export async function generateExport(
   // Fetch selected works
   const { data: oeuvres, error: fetchErr } = await supabase
     .from('Oeuvres')
-    .select('OeuvreID, Titre, Année, Technique, Support, Format, Hauteur, Largeur, Profondeur, Prix, PrixFinal, Discount, statusId, Exposable, Catalogué, txtImageNameLink, Commentaires')
+    .select('OeuvreID, Titre, Année, Technique, Support, Format, Hauteur, Largeur, Profondeur, Prix, PrixFinal, Discount, statusId, Exposable, Catalogué, txtImageNameLink, Commentaires, is_public')
     .in('OeuvreID', ids)
     .order('OeuvreID', { ascending: false })
 
@@ -311,7 +311,7 @@ type Oeuvre = {
   Hauteur?: string | null; Largeur?: string | null; Profondeur?: string | null
   Prix?: number | null; PrixFinal?: number | null; Discount?: number | null
   statusId?: number | null; Exposable?: boolean | null; ['Catalogué']?: boolean | null
-  txtImageNameLink?: string | null; Commentaires?: string | null
+  txtImageNameLink?: string | null; Commentaires?: string | null; is_public?: boolean | null
 }
 
 function buildHtml(
@@ -332,12 +332,13 @@ function buildHtml(
     const supp    = o.Support   != null ? sM[o.Support]   ?? '' : ''
     const status  = o.statusId  != null ? statusLabelMap[o.statusId] ?? '' : ''
     const price   = o.PrixFinal ?? o.Prix
+    const npBadge = o.is_public === false ? '<span class="np-badge">⚠ NON PUBLIC</span>' : ''
 
     if (cfg.layout === 'list') {
       return `<tr>
         ${f.id        ? `<td>${o.OeuvreID}</td>` : ''}
         ${f.image     ? `<td>${img ? `<img src="${img}" style="width:48px;height:48px;object-fit:cover">` : ''}</td>` : ''}
-        ${f.title     ? `<td class="title">${o.Titre ?? '—'}</td>` : ''}
+        ${f.title     ? `<td class="title">${o.Titre ?? '—'}${npBadge}</td>` : ''}
         ${f.year      ? `<td>${o.Année?.slice(0,4) ?? '—'}</td>` : ''}
         ${f.technique ? `<td>${tech}${supp ? `, ${supp}` : ''}</td>` : ''}
         ${f.dims      ? `<td>${dims ?? '—'}</td>` : ''}
@@ -357,6 +358,7 @@ function buildHtml(
         + '<div class="meta">'
         + (f.id    ? '<div class="ref-cap">#' + o.OeuvreID + '</div>' : '')
         + (f.title ? '<div class="title-cap">' + (o.Titre ?? '—') + '</div>' : '')
+        + (npBadge ? '<div style="margin-top:2px">' + npBadge + '</div>' : '')
         + '</div></div>'
     }
 
@@ -375,6 +377,7 @@ function buildHtml(
       ${imgHtml}
       <div class="meta">
         ${f.title ? `<h2>${o.Titre ?? 'Sans titre'}</h2>` : ''}
+        ${npBadge ? `<div class="np-badge-block">⚠ NON PUBLIC</div>` : ''}
         ${meta ? `<table>${meta}</table>` : ''}
       </div>
     </div>`
@@ -525,6 +528,10 @@ function buildHtml(
   .list td.title{font-family:'Instrument Serif', serif;font-size:15px;color:#111}
   .list tr:hover td{background:#fcfcfc}
   
+  /* Non-public badge */
+  .np-badge{display:inline-block;background:rgba(200,140,40,0.12);border:1px solid rgba(200,140,40,0.5);color:#c88a20;font-size:7px;padding:1px 5px;border-radius:2px;font-family:ui-monospace,monospace;letter-spacing:0.5px;vertical-align:middle;margin-left:6px}
+  .np-badge-block{display:block;background:rgba(200,140,40,0.10);border:1px solid rgba(200,140,40,0.4);color:#c88a20;font-size:7px;padding:2px 6px;border-radius:2px;font-family:ui-monospace,monospace;letter-spacing:0.5px;margin-bottom:4px}
+
   /* Print */
   @media print{
     body{padding:0}
@@ -640,7 +647,7 @@ async function buildPdf(
         const price  = o.PrixFinal ?? o.Prix
         const vals: string[] = [
           f.id        ? String(o.OeuvreID)    : '',
-          f.title     ? (o.Titre ?? '—')      : '',
+          f.title     ? `${o.Titre ?? '—'}${o.is_public === false ? ' ⚠' : ''}` : '',
           f.year      ? (o.Année?.slice(0,4) ?? '—') : '',
           f.technique ? tech                  : '',
           f.dims      ? dims                  : '',
@@ -718,6 +725,10 @@ async function buildPdf(
           doc.font('Helvetica')
           ty += fTitle + 2
         }
+        if (o.is_public === false) {
+          doc.fontSize(fSmall).fillColor('#c88a20').text('⚠ NON PUBLIC', cx, ty, { width: cellW, align: 'left', lineBreak: false })
+          ty += fSmall + 2
+        }
 
         doc.fontSize(fSmall).fillColor('#666666')
         const metaLines: string[] = []
@@ -782,6 +793,7 @@ async function buildPdf(
         let   ty = y
 
         if (f.title) { doc.fontSize(14).fillColor('#1a1a1a').text(o.Titre ?? 'Sans titre', tx, ty, { width: tw }); ty += 20 }
+        if (o.is_public === false) { doc.fontSize(7).fillColor('#c88a20').text('⚠ NON PUBLIC', tx, ty, { width: tw }); ty += 11 }
         if (f.year && o.Année) { doc.fontSize(9).fillColor('#666666').text(o.Année.slice(0, 4), tx, ty, { width: tw }); ty += 13 }
         if (f.technique && tech) { doc.fontSize(8).fillColor('#888888').text(tech + (supp ? `, ${supp}` : ''), tx, ty, { width: tw }); ty += 12 }
         if (f.dims && dims) { doc.fontSize(8).fillColor('#888888').text(dims, tx, ty, { width: tw }); ty += 12 }

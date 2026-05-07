@@ -183,6 +183,33 @@ interface SharedProps {
 
 type View = 'list' | 'grid' | 'graph'
 
+// ── MissingThumb ─────────────────────────────────────────────────────
+function MissingThumb({ id, onOpen }: { id: number; onOpen?: () => void }) {
+  return (
+    <div style={{
+      width: '100%', height: '100%', position: 'relative', overflow: 'hidden',
+      background: 'repeating-linear-gradient(45deg, var(--bg2), var(--bg2) 10px, var(--bg1) 10px, var(--bg1) 20px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}>
+      <span style={{
+        fontSize: 40, fontWeight: 800, color: 'var(--tx)', opacity: 0.18,
+        letterSpacing: -2, userSelect: 'none', lineHeight: 1,
+      }}>{id}</span>
+      {onOpen && (
+        <button
+          onClick={e => { e.stopPropagation(); onOpen() }}
+          title="Ajouter une image"
+          style={{
+            position: 'absolute', bottom: 3, right: 3,
+            background: 'rgba(0,0,0,0.45)', color: 'rgba(255,255,255,0.8)',
+            border: 'none', borderRadius: 3,
+            fontSize: 9, padding: '2px 4px', cursor: 'pointer', lineHeight: 1.4,
+          }}>⊕</button>
+      )}
+    </div>
+  )
+}
+
 // ── Main component ──────────────────────────────────────────────────
 
 export function InventoryTab({
@@ -1100,8 +1127,8 @@ function InvList({
                       title="DOUBLE-CLICK pour agrandir l'aperçu"
                     >
                       {o.txtImageNameLink 
-                        ? <img src={thumbUrl(o.txtImageNameLink, 96) ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> 
-                        : <div className="ph" style={{ fontSize: 11 }}>—</div>}
+                        ? <img src={thumbUrl(o.txtImageNameLink, 96) ?? ''} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> 
+                        : <MissingThumb id={o.OeuvreID} onOpen={() => onOpen(o)} />}
                     </div>
                   </td>
                   <td style={{ color: 'var(--tx)', padding: '0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.Titre || '—'}</td>
@@ -1424,6 +1451,8 @@ function InvPreview({
               {img.txtImageNameLink && (
                 <img
                   src={thumbUrl(img.txtImageNameLink, 96) ?? ''}
+                  loading="lazy"
+                  decoding="async"
                   alt=""
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
@@ -1688,7 +1717,7 @@ function InvGrid({
               <div className="thumb" style={{ aspectRatio }}>
                 {o.txtImageNameLink
                   ? <img src={thumbUrl(o.txtImageNameLink, 384) ?? ''} loading="lazy" alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  : <div className="ph" style={{ fontSize: 8 }}>—</div>}
+                  : <MissingThumb id={o.OeuvreID} onOpen={() => onOpen(o)} />}
               </div>
 
               {/* Selection checkbox — 22 px, semi-transparent bg when unselected */}

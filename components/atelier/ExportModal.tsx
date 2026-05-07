@@ -399,6 +399,18 @@ export function ExportModal({ ids, oeuvres, tM, sM, statusLabelMap, onClose }: P
         <div style={{ padding: '14px 28px', borderTop: '1px solid var(--bd)', flexShrink: 0 }}>
           {progress && <div className="t-mono-sm" style={{ color: 'var(--tx3)', marginBottom: 8 }}>{progress}</div>}
           {error    && <div className="t-mono-sm" style={{ color: '#c0392b', marginBottom: 8 }}>{error}</div>}
+          {(() => {
+            const nonPublicCount = oeuvres.filter(o => ids.includes(o.OeuvreID) && o.is_public === false).length
+            return nonPublicCount > 0 ? (
+              <div className="t-mono-sm" style={{
+                color: '#c88a20', marginBottom: 8,
+                background: 'rgba(200,140,40,0.10)', border: '1px solid rgba(200,140,40,0.4)',
+                padding: '5px 10px', borderRadius: 2,
+              }}>
+                ⚠ {nonPublicCount} œuvre{nonPublicCount > 1 ? 's' : ''} non publique{nonPublicCount > 1 ? 's' : ''} dans cette sélection
+              </div>
+            ) : null
+          })()}
           <div className="row gap-sm" style={{ justifyContent: 'flex-end' }}>
             <button className="btn ghost" onClick={onClose}>{t('cancel')}</button>
             <button className="btn primary" disabled={pending} onClick={(e) => { e.stopPropagation(); handleExport() }}>

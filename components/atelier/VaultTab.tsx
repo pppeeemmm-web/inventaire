@@ -822,9 +822,11 @@ function FolderTree({
                 whiteSpace: 'nowrap',
                 fontWeight: isActive ? 600 : 400
               }}>{child.name}</span>
-              <button 
-                className="btn ghost sm" 
-                style={{ marginLeft: 'auto', padding: '0 4px', fontSize: 10, opacity: 0.5 }}
+              <span
+                role="button"
+                tabIndex={0}
+                className="btn ghost sm"
+                style={{ marginLeft: 'auto', padding: '0 4px', fontSize: 10, opacity: 0.5, cursor: 'pointer' }}
                 onClick={(e) => {
                   e.stopPropagation()
                   const n = prompt('Renommer le dossier :', child.name)
@@ -834,7 +836,14 @@ function FolderTree({
                     onRename(oldPath, newPath)
                   }
                 }}
-              >✎</button>
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.stopPropagation()
+                    const n = prompt('Renommer le dossier :', child.name)
+                    if (n && n !== child.name) onRename(fullPathStr, [...parentPath, n].join('/'))
+                  }
+                }}
+              >✎</span>
             </button>
             {isExpanded && Object.keys(child.children).length > 0 && (
               <FolderTree 

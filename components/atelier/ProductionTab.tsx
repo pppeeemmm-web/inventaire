@@ -32,6 +32,33 @@ interface WorkAction {
 
 const EXCLUDED_STATUSES: StatusKey[] = ['sold', 'gift', 'artist_archive', 'private_archive']
 
+// ── MissingThumb ─────────────────────────────────────────────
+function MissingThumb({ id, onOpen }: { id: number; onOpen?: () => void }) {
+  return (
+    <div style={{
+      width: '100%', height: '100%', position: 'relative', overflow: 'hidden',
+      background: 'repeating-linear-gradient(45deg, var(--bg2), var(--bg2) 10px, var(--bg1) 10px, var(--bg1) 20px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}>
+      <span style={{
+        fontSize: 22, fontWeight: 800, color: 'var(--tx)', opacity: 0.18,
+        letterSpacing: -1, userSelect: 'none', lineHeight: 1,
+      }}>{id}</span>
+      {onOpen && (
+        <button
+          onClick={e => { e.stopPropagation(); onOpen() }}
+          title="Ajouter une image"
+          style={{
+            position: 'absolute', bottom: 2, right: 2,
+            background: 'rgba(0,0,0,0.45)', color: 'rgba(255,255,255,0.8)',
+            border: 'none', borderRadius: 3,
+            fontSize: 8, padding: '1px 3px', cursor: 'pointer', lineHeight: 1.4,
+          }}>⊕</button>
+      )}
+    </div>
+  )
+}
+
 // ── Component ────────────────────────────────────────────────
 
 interface Props {
@@ -459,7 +486,7 @@ function WorkCard({ o, tM, onMarkDone, onOpen }: {
                   if (full && e.currentTarget.src !== full) e.currentTarget.src = full
                 }}
               />
-            : <span style={{ color: 'var(--tx3)', fontSize: 14 }}>—</span>}
+            : <MissingThumb id={o.OeuvreID} onOpen={() => onOpen(o)} />}
         </div>
 
         {/* Text */}

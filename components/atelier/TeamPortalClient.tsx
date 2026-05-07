@@ -55,6 +55,8 @@ interface Props {
   themeWorkCount?: Record<number, number>
   groupWorkCount?:  Record<string, number>
   addresses?:       any[]
+  themePublicStats?: Record<number, { total: number; pub: number }>
+  themePrivateWorks?: Record<number, { OeuvreID: number; txtImageNameLink: string | null; isPublic: boolean }[]>
 }
 
 // ── Component ────────────────────────────────────────────────────────
@@ -64,6 +66,8 @@ export function TeamPortalClient({
   statusLabelMap, initialGroups, presentations, exhibitions,
   themeWorkCount = {}, groupWorkCount = {},
   addresses = [],
+  themePublicStats = {},
+  themePrivateWorks = {},
 }: Props) {
   const { t, lang, setLang } = useI18n()
   const router = useRouter()
@@ -466,7 +470,7 @@ export function TeamPortalClient({
         {tab === 'contacts' && <ContactsTab contacts={contacts} oeuvres={oeuvres} conflicts={conflicts} />}
         {tab === 'portfolio' && (
           <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-            <PortfolioTab oeuvres={oeuvres} themes={themes} />
+            <PortfolioTab oeuvres={oeuvres} themes={themes} themePublicStats={themePublicStats} themePrivateWorks={themePrivateWorks} />
           </div>
         )}
         {tab === 'audit' && <AuditTab />}
@@ -563,6 +567,7 @@ export function TeamPortalClient({
             sessionStorage.setItem('pem_curation_trigger', 'true')
             handleSetTab('constellation')
           }}
+          addresses={addresses ?? []}
           onSaveGroup={handleSaveGroup}
           onCompare={() => setShowCompare(true)}
         />
@@ -623,8 +628,8 @@ function OverviewTab({
   const thisYear   = new Date().getFullYear()
   const byYear     = oeuvres.filter((o) => o.Année?.startsWith(String(thisYear))).length
   const withPrice  = oeuvres.filter((o) => o.Prix && o.Prix > 0).length
-  const exposable  = oeuvres.filter((o) => o.Exposable).length
-  const catalogued = oeuvres.filter((o) => o.Catalogué).length
+  const available  = oeuvres.filter((o) => o.statusId === 2).length
+  const exposable  = oeuvres.filter((o) => o.Exposable && o.statusId === 2).length
 
   // New: Recent Works
   const recentWorks = [...oeuvres].sort((a, b) => b.OeuvreID - a.OeuvreID).slice(0, 6)
@@ -711,8 +716,8 @@ function OverviewTab({
             {[
               { l: t('works_cap'),                    v: oeuvres.length },
               { l: `${t('thisYear')} (${thisYear})`,  v: byYear },
+              { l: 'Available',                        v: available },
               { l: t('exposable'),                    v: exposable },
-              { l: t('catalogued'),                   v: catalogued },
               { l: t('priced'),                       v: withPrice },
               { l: 'Total Value',                     v: `€ ${Math.round(oeuvres.reduce((s,o) => s+(o.Prix||0), 0)/1000)}k` },
             ].map(({ l, v }) => (

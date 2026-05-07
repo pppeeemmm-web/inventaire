@@ -6,6 +6,7 @@ export interface Oeuvre {
   Dimensions: string | null;
   Statut: string | null;
   statusId: number | null;
+  is_public: boolean | null;
   Catalogué: boolean;
   NeedsPhotograph?: boolean;
   txtImageNameLink?: string | null;

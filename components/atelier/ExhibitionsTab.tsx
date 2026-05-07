@@ -920,6 +920,13 @@ function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, selection
                           ? <img src={thumb} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                           : <span style={{ fontSize: 9, color: 'var(--tx3)' }}>#{o.OeuvreID}</span>}
                       </div>
+                      {o.is_public === false && (
+                        <div style={{
+                          fontSize: 8, background: 'rgba(200,140,40,0.12)',
+                          border: '1px solid rgba(200,140,40,0.5)', color: '#c88a20',
+                          padding: '1px 5px', borderRadius: 2, marginBottom: 3,
+                        }}>⚠ Non public</div>
+                      )}
                       <div style={{ fontSize: 9, color: 'var(--tx)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{o.Titre ?? 'S/T'}</div>
                       <div style={{ fontSize: 8, color: 'var(--tx3)' }}>#{o.OeuvreID}</div>
                     </div>
