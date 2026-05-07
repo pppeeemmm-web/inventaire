@@ -5,29 +5,73 @@ import { createClient } from '@/lib/supabase/client'
 import { vaultStudioBible } from '@/app/atelier/vault/bible-action'
 import { stringifyError } from '@/lib/error'
 
+const TYPES   = ['suggestion', 'improvement', 'maintenance', 'backlog', 'bug'] as const
+const STATUSES = ['active', 'requested', 'in-progress', 'completed', 'dismissed'] as const
+const TYPE_LABELS: Record<string, string> = {
+  suggestion: '💡 Suggestion', improvement: '✨ Improvement',
+  maintenance: '🔧 Maintenance', backlog: '📅 Backlog', bug: '🐛 Bug Report',
+}
+
+function priorityColor(p: string | null | undefined) {
+  if (p === 'P1') return '#e05252'
+  if (p === 'P2') return '#d4843a'
+  if (p === 'P4') return 'var(--tx3)'
+  return 'var(--ac)'
+}
+
+function statusColor(s: string | null | undefined) {
+  if (s === 'completed')  return 'var(--green)'
+  if (s === 'dismissed')  return 'var(--tx3)'
+  if (s === 'in-progress') return '#d4843a'
+  return 'var(--ac)'
+}
+
+function nextStatus(s: string | null | undefined): string {
+  const idx = STATUSES.indexOf((s ?? 'active') as any)
+  return STATUSES[(idx + 1) % STATUSES.length]
+}
+
 interface LogEntry {
   id: number
   created_at: string
-  type: string
-  label: string
+  type: string | null
+  action: string
+  details: string | null
+  status: string | null
+  priority: string | null
+}
+
+interface Draft {
+  action: string
   details: string
+  type: string
   status: string
+  priority: string
+}
+
+const inputStyle: React.CSSProperties = {
+  padding: '5px 8px', background: 'var(--bg0)', border: '1px solid var(--bd)',
+  color: 'var(--tx)', fontSize: 11, width: '100%', boxSizing: 'border-box',
 }
 
 export function SystemTab() {
-  const [logs, setLogs] = useState<LogEntry[]>([])
-  const [loading, setLoading] = useState(true)
-  const [busy, setBusy] = useState(false)
+  const [logs, setLogs]         = useState<LogEntry[]>([])
+  const [loading, setLoading]   = useState(true)
+  const [busy, setBusy]         = useState(false)
   const [isPending, startTransition] = useTransition()
-  
-  // Form state
-  const [label, setLabel] = useState('')
-  const [details, setDetails] = useState('')
-  const [type, setType] = useState('maintenance')
 
-  useEffect(() => {
-    fetchLogs()
-  }, [])
+  // Add form
+  const [action,   setAction]   = useState('')
+  const [details,  setDetails]  = useState('')
+  const [type,     setType]     = useState('maintenance')
+  const [priority, setPriority] = useState('P3')
+
+  // Edit state
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [draft,     setDraft]     = useState<Draft | null>(null)
+  const [saveBusy,  setSaveBusy]  = useState(false)
+
+  useEffect(() => { fetchLogs() }, [])
 
   async function fetchLogs() {
     const sb = createClient()
@@ -38,20 +82,53 @@ export function SystemTab() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!label) return
+    if (!action) return
     setBusy(true)
     const sb = createClient()
     const status = type === 'suggestion' ? 'requested' : 'active'
-    const { data, error } = await sb.from('system_log').insert([{
-      label, details, type, status
+    const { data } = await sb.from('system_log').insert([{
+      action, details, type, status, priority,
     }]).select().single()
-    
-    if (data) {
-      setLogs([data, ...logs])
-      setLabel('')
-      setDetails('')
-    }
+    if (data) { setLogs([data, ...logs]); setAction(''); setDetails(''); setPriority('P3') }
     setBusy(false)
+  }
+
+  function startEdit(log: LogEntry) {
+    setEditingId(log.id)
+    setDraft({
+      action:   log.action,
+      details:  log.details  ?? '',
+      type:     log.type     ?? 'maintenance',
+      status:   log.status   ?? 'active',
+      priority: log.priority ?? 'P3',
+    })
+  }
+
+  async function saveEdit(id: number) {
+    if (!draft) return
+    setSaveBusy(true)
+    const sb = createClient()
+    const { data } = await sb.from('system_log')
+      .update({ action: draft.action, details: draft.details, type: draft.type, status: draft.status, priority: draft.priority })
+      .eq('id', id).select().single()
+    if (data) setLogs(logs.map(l => l.id === id ? data : l))
+    setSaveBusy(false)
+    setEditingId(null)
+    setDraft(null)
+  }
+
+  async function cycleStatus(log: LogEntry) {
+    const next = nextStatus(log.status)
+    const sb = createClient()
+    const { data } = await sb.from('system_log').update({ status: next }).eq('id', log.id).select().single()
+    if (data) setLogs(logs.map(l => l.id === log.id ? data : l))
+  }
+
+  async function deleteLog(id: number) {
+    if (!confirm('Delete this entry?')) return
+    const sb = createClient()
+    const { error } = await sb.from('system_log').delete().eq('id', id)
+    if (!error) setLogs(logs.filter(l => l.id !== id))
   }
 
   function handleRegenerateBible() {
@@ -62,13 +139,11 @@ export function SystemTab() {
         alert(`Error: ${stringifyError(res.error)}`)
       } else {
         alert(`Success! Studio Bible vaulted as: ${res.filename}`)
-        // Add a log entry for the update
         const sb = createClient()
         await sb.from('system_log').insert([{
-          label: 'Studio Bible Updated',
+          action: 'Studio Bible Updated',
           details: `Regenerated high-fidelity PDF and vaulted as ${res.filename}`,
-          type: 'improvement',
-          status: 'completed'
+          type: 'improvement', status: 'completed', priority: 'P3',
         }])
         fetchLogs()
       }
@@ -77,90 +152,156 @@ export function SystemTab() {
 
   return (
     <div style={{ flex: 1, padding: '32px 40px', overflow: 'auto', background: 'var(--bg0)' }}>
-      <div style={{ maxWidth: 900 }}>
+      <div style={{ maxWidth: 960 }}>
+
+        {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32 }}>
           <div>
-            <h2 className="serif" style={{ fontSize: 32, marginBottom: 8 }}>System Ledger & Suggestions</h2>
-            <p className="t-mono-sm" style={{ color: 'var(--tx3)' }}>Record maintenance, log improvements, or suggest new features for the studio system.</p>
+            <h2 className="serif" style={{ fontSize: 32, marginBottom: 8 }}>System Ledger</h2>
+            <p className="t-mono-sm" style={{ color: 'var(--tx3)' }}>Record maintenance, improvements, and suggestions for the studio system.</p>
           </div>
-          <button 
-            className="btn ghost sm" 
-            onClick={handleRegenerateBible}
-            disabled={isPending}
-            style={{ borderColor: 'var(--ac)', color: 'var(--ac)' }}
-          >
+          <button className="btn ghost sm" onClick={handleRegenerateBible} disabled={isPending}
+            style={{ borderColor: 'var(--ac)', color: 'var(--ac)' }}>
             {isPending ? 'Regenerating...' : '✦ Regenerate Studio Bible'}
           </button>
         </div>
-        
-        {/* Input Form */}
-        <form onSubmit={handleSubmit} style={{ 
-          background: 'var(--bg1)', border: '1px solid var(--bd)', 
-          padding: 24, marginBottom: 40, display: 'flex', flexDirection: 'column', gap: 16 
+
+        {/* Add form */}
+        <form onSubmit={handleSubmit} style={{
+          background: 'var(--bg1)', border: '1px solid var(--bd)',
+          padding: 24, marginBottom: 40, display: 'flex', flexDirection: 'column', gap: 16,
         }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: 16 }}>
-            <select value={type} onChange={e => setType(e.target.value)} 
-              style={{ padding: '8px', background: 'var(--bg0)', border: '1px solid var(--bd)', color: 'var(--tx)', fontSize: 11 }}>
-              <option value="suggestion">💡 Suggestion</option>
-              <option value="improvement">✨ Improvement</option>
-              <option value="maintenance">🔧 Maintenance</option>
-              <option value="backlog">📅 Backlog</option>
-              <option value="bug">🐛 Bug Report</option>
+          <div style={{ display: 'grid', gridTemplateColumns: '80px 150px 1fr', gap: 12 }}>
+            <select value={priority} onChange={e => setPriority(e.target.value)}
+              style={{ ...inputStyle, border: `1px solid ${priorityColor(priority)}`, color: priorityColor(priority), fontWeight: 600 }}>
+              <option value="P1">P1 — Critical</option>
+              <option value="P2">P2 — High</option>
+              <option value="P3">P3 — Normal</option>
+              <option value="P4">P4 — Low</option>
             </select>
-            <input 
-              placeholder="What changed or needs fixing?" 
-              value={label} 
-              onChange={e => setLabel(e.target.value)}
-              style={{ padding: '8px 12px', background: 'var(--bg0)', border: '1px solid var(--bd)', color: 'var(--tx)', fontSize: 12 }}
-            />
+            <select value={type} onChange={e => setType(e.target.value)} style={inputStyle}>
+              {TYPES.map(t => <option key={t} value={t}>{TYPE_LABELS[t]}</option>)}
+            </select>
+            <input placeholder="What changed or needs fixing?"
+              value={action} onChange={e => setAction(e.target.value)} style={inputStyle} />
           </div>
-          <textarea 
-            placeholder="Additional details, technical notes, or observations..." 
-            value={details}
-            onChange={e => setDetails(e.target.value)}
-            style={{ padding: '10px 12px', background: 'var(--bg0)', border: '1px solid var(--bd)', color: 'var(--tx)', fontSize: 11, minHeight: 60, resize: 'vertical' }}
-          />
+          <textarea placeholder="Additional details, technical notes, or observations..."
+            value={details} onChange={e => setDetails(e.target.value)}
+            style={{ ...inputStyle, minHeight: 60, resize: 'vertical' }} />
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-             <button disabled={busy || !label} type="submit" className="btn primary sm">
-               {busy ? 'Logging...' : 'Add Log Entry'}
-             </button>
+            <button disabled={busy || !action} type="submit" className="btn primary sm">
+              {busy ? 'Logging...' : '+ Add Entry'}
+            </button>
           </div>
         </form>
 
+        {/* Ledger table */}
         {loading ? (
-          <div className="t-mono-sm">Loading ledger...</div>
+          <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>Loading ledger...</div>
+        ) : logs.length === 0 ? (
+          <div className="t-mono-sm" style={{ color: 'var(--tx3)', opacity: 0.5 }}>No entries yet.</div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', border: '1px solid var(--bd)' }}>
-            {logs.map((log, idx) => (
-              <div key={log.id} style={{ 
-                display: 'grid', gridTemplateColumns: '100px 100px 1fr 100px', 
-                gap: 20, padding: '14px 20px', 
-                borderBottom: idx === logs.length - 1 ? 'none' : '1px solid var(--bd2)',
-                background: idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)',
-                alignItems: 'start'
-              }}>
-                <div className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 9 }}>
-                  {new Date(log.created_at).toLocaleDateString()}
+          <div style={{ border: '1px solid var(--bd)' }}>
+            {/* Column headers */}
+            <div style={{
+              display: 'grid', gridTemplateColumns: '44px 84px 110px 1fr 100px 88px',
+              gap: 12, padding: '8px 16px',
+              borderBottom: '1px solid var(--bd)', background: 'var(--bg1)',
+            }}>
+              {['Pri', 'Date', 'Type', 'Entry', 'Status', ''].map((h, i) => (
+                <div key={i} style={{ fontSize: 8, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--tx3)' }}>{h}</div>
+              ))}
+            </div>
+
+            {logs.map((log, idx) => {
+              const isEditing = editingId === log.id
+
+              return (
+                <div key={log.id} style={{
+                  borderBottom: idx === logs.length - 1 ? 'none' : '1px solid var(--bd2)',
+                  background: isEditing ? 'var(--bg1)' : idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)',
+                }}>
+                  {isEditing && draft ? (
+                    /* ── Edit row ── */
+                    <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '80px 150px 1fr', gap: 10 }}>
+                        <select value={draft.priority} onChange={e => setDraft({ ...draft, priority: e.target.value })}
+                          style={{ ...inputStyle, border: `1px solid ${priorityColor(draft.priority)}`, color: priorityColor(draft.priority), fontWeight: 600 }}>
+                          <option value="P1">P1 — Critical</option>
+                          <option value="P2">P2 — High</option>
+                          <option value="P3">P3 — Normal</option>
+                          <option value="P4">P4 — Low</option>
+                        </select>
+                        <select value={draft.type} onChange={e => setDraft({ ...draft, type: e.target.value })} style={inputStyle}>
+                          {TYPES.map(t => <option key={t} value={t}>{TYPE_LABELS[t]}</option>)}
+                        </select>
+                        <input value={draft.action} onChange={e => setDraft({ ...draft, action: e.target.value })} style={inputStyle} />
+                      </div>
+                      <textarea value={draft.details} onChange={e => setDraft({ ...draft, details: e.target.value })}
+                        style={{ ...inputStyle, minHeight: 52, resize: 'vertical' }} />
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <span style={{ fontSize: 8, letterSpacing: 1, color: 'var(--tx3)', textTransform: 'uppercase' }}>Status</span>
+                        <select value={draft.status} onChange={e => setDraft({ ...draft, status: e.target.value })} style={{ ...inputStyle, width: 'auto' }}>
+                          {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                        <div style={{ flex: 1 }} />
+                        <button type="button" onClick={() => { setEditingId(null); setDraft(null) }}
+                          className="btn ghost sm" style={{ fontSize: 10 }}>Cancel</button>
+                        <button type="button" onClick={() => saveEdit(log.id)} disabled={saveBusy || !draft.action}
+                          className="btn primary sm" style={{ fontSize: 10 }}>
+                          {saveBusy ? 'Saving…' : 'Save'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    /* ── View row ── */
+                    <div style={{
+                      display: 'grid', gridTemplateColumns: '44px 84px 110px 1fr 100px 88px',
+                      gap: 12, padding: '13px 16px', alignItems: 'start',
+                    }}>
+                      <div style={{ fontWeight: 700, fontSize: 10, color: priorityColor(log.priority), letterSpacing: 0.5, paddingTop: 1 }}>
+                        {log.priority ?? '—'}
+                      </div>
+                      <div className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 9, paddingTop: 2 }}>
+                        {new Date(log.created_at).toLocaleDateString()}
+                      </div>
+                      <div>
+                        {log.type && (
+                          <span style={{
+                            fontSize: 8, textTransform: 'uppercase', color: 'var(--ac)',
+                            letterSpacing: 1, border: '1px solid var(--ac)', padding: '1px 5px',
+                          }}>{log.type}</span>
+                        )}
+                      </div>
+                      <div>
+                        <div className="t-mono" style={{ fontSize: 11, fontWeight: 600, color: 'var(--tx)' }}>{log.action}</div>
+                        {log.details && <div style={{ fontSize: 10, color: 'var(--tx2)', marginTop: 4, lineHeight: 1.4 }}>{log.details}</div>}
+                      </div>
+                      <div>
+                        <button onClick={() => cycleStatus(log)} title="Click to cycle status"
+                          style={{
+                            background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                            fontSize: 8, textTransform: 'uppercase', letterSpacing: 1,
+                            color: statusColor(log.status), fontFamily: 'inherit',
+                          }}>
+                          {log.status ?? 'active'} ↻
+                        </button>
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 1 }}>
+                        <button onClick={() => startEdit(log)} title="Edit"
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--tx3)', fontSize: 11, padding: '0 2px' }}>
+                          ✎
+                        </button>
+                        <button onClick={() => deleteLog(log.id)} title="Delete"
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--tx3)', fontSize: 13, padding: '0 2px', lineHeight: 1 }}>
+                          ×
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div>
-                   <span style={{ 
-                     fontSize: 8, textTransform: 'uppercase', color: 'var(--ac)', 
-                     letterSpacing: 1, border: '1px solid var(--ac)', padding: '1px 5px' 
-                   }}>{log.type}</span>
-                </div>
-                <div>
-                  <div className="t-mono" style={{ fontSize: 11, fontWeight: 600, color: 'var(--tx)' }}>{log.label}</div>
-                  {log.details && <div style={{ fontSize: 10, color: 'var(--tx2)', marginTop: 4, lineHeight: 1.4 }}>{log.details}</div>}
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                   <span style={{ 
-                     fontSize: 8, textTransform: 'uppercase', 
-                     color: log.status === 'completed' ? 'var(--green)' : 'var(--ac)', 
-                     letterSpacing: 1 
-                   }}>{log.status}</span>
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>

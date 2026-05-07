@@ -167,7 +167,7 @@ export function TeamPortalClient({
         // Also check admin status
         sb.auth.getUser().then(({ data: { user } }) => {
           if (user) {
-            sb.from('profiles').select('role').eq('id', user.id).single()
+            sb.from('profiles').select('role').eq('id', user.id).maybeSingle()
               .then(({ data: p }) => setIsAdmin(p?.role === 'admin'))
           }
         })

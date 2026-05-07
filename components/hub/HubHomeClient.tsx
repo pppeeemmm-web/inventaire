@@ -5,12 +5,29 @@ import Link from 'next/link'
 import { useI18n } from '@/lib/i18n/context'
 import { thumbUrl } from '@/lib/data'
 
+interface SystemLogEntry {
+  id: number
+  action: string
+  details: string | null
+  type: string | null
+  status: string | null
+  priority: string | null
+  created_at: string
+}
+
 interface Props {
   stats: { total: number; thisYear: number; stockAlerts: number }
   recentImages: { OeuvreID: number; txtImageNameLink: string | null }[]
   recentProcess: { id: number; label: string; status: string; created_at: string }[]
   burningIdeas:  { id: number; title: string; energy: number | null; medium: string | null }[]
-  systemLogs:    { id: number; type: string; label: string; details: string; status: string }[]
+  systemLogs:    SystemLogEntry[]
+}
+
+function priorityColor(p: string | null | undefined) {
+  if (p === 'P1') return '#e05252'
+  if (p === 'P2') return '#d4843a'
+  if (p === 'P4') return 'var(--tx3)'
+  return 'var(--ac)'
 }
 
 export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas, systemLogs }: Props) {
@@ -22,12 +39,7 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
     { weekday: 'long', day: 'numeric', month: 'long' }
   )
 
-  const displayLogs = systemLogs.length > 0 ? systemLogs : [
-    { id: -1, type: 'feature', label: 'Stock-take Inventory Audit', details: 'Added physical quantity verification with automatic discrepancy calculation.', status: 'completed' },
-    { id: -2, type: 'data', label: 'Material Import (178 items)', details: 'Migrated studio supplies from Excel files into the stock database.', status: 'completed' },
-    { id: -3, type: 'data', label: 'Docket Processing Pipeline', details: 'Integrated digital receipt processing for Jackson\'s, Leroux, and Kremer.', status: 'active' },
-    { id: -4, type: 'ui', label: 'Hub Intelligence Optimization', details: 'Redesigned Hub into a no-scroll executive dashboard surfacing Live Pipeline.', status: 'completed' }
-  ]
+  const displayLogs: SystemLogEntry[] = systemLogs
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg0)' }}>
@@ -84,8 +96,8 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
             </div>
             <div className="vline" style={{ height: 32, opacity: 0.1 }} />
             <div className="stat-v2">
-              <span className="label">Maintenance</span>
-              <span className="value" style={{ fontSize: 14, fontFamily: 'monospace', letterSpacing: 0 }}>{displayLogs[0].label}</span>
+              <span className="label">Last log</span>
+              <span className="value" style={{ fontSize: 14, fontFamily: 'monospace', letterSpacing: 0 }}>{displayLogs[0]?.action ?? '—'}</span>
             </div>
           </div>
         </div>
@@ -99,7 +111,7 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
         </div>
 
         {/* Section 3: Live Pulse */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.2fr', gap: 60 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1.2fr', gap: 48 }}>
           
           {/* Suivi / Pipeline */}
           <div>
@@ -131,9 +143,34 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
             </div>
           </div>
 
+          {/* System Ledger */}
+          <div>
+            <div className="t-eyebrow" style={{ marginBottom: 24, opacity: 0.5 }}>03 · Ledger</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {displayLogs.length === 0 ? (
+                <div className="t-mono-sm" style={{ color: 'var(--tx3)', opacity: 0.5 }}>No entries yet</div>
+              ) : displayLogs.slice(0, 5).map(log => (
+                <div key={log.id} onClick={() => router.push('/atelier?tab=system')}
+                  style={{ display: 'flex', gap: 10, alignItems: 'flex-start', borderBottom: '1px solid var(--bd2)', paddingBottom: 10, cursor: 'pointer' }}>
+                  <span style={{ fontWeight: 700, fontSize: 9, color: priorityColor(log.priority), letterSpacing: 0.5, paddingTop: 2, flexShrink: 0 }}>
+                    {log.priority ?? 'P3'}
+                  </span>
+                  <div style={{ minWidth: 0 }}>
+                    <div className="t-mono" style={{ fontSize: 10, fontWeight: 600, color: 'var(--tx)', lineHeight: 1.3 }}>{log.action}</div>
+                    {log.type && <div style={{ fontSize: 8, color: 'var(--tx3)', textTransform: 'uppercase', letterSpacing: 1, marginTop: 3 }}>{log.type}</div>}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div onClick={() => router.push('/atelier?tab=system')}
+              style={{ marginTop: 16, fontSize: 8, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--tx3)', cursor: 'pointer' }}>
+              View all →
+            </div>
+          </div>
+
           {/* Recently Added */}
           <div>
-            <div className="t-eyebrow" style={{ marginBottom: 24, opacity: 0.5 }}>03 · {t('recentlyAdded')}</div>
+            <div className="t-eyebrow" style={{ marginBottom: 24, opacity: 0.5 }}>04 · {t('recentlyAdded')}</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
               {recentImages.slice(0, 12).map((o) => (
                 <div key={o.OeuvreID} style={{ aspectRatio: '1', background: 'var(--bg1)', border: '1px solid var(--bd2)', overflow: 'hidden' }}>

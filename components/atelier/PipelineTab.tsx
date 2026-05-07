@@ -724,9 +724,9 @@ function ProcessDrawer({ process, onClose, onEdit, onRefresh, onCycleEtape, onOv
                         {ETAPE_STATUT_LABELS[e.statut]}
                       </span>
                       {e.date_echeance && days !== null && (
-                        <span style={{ fontSize:11, color: isOverdue ? '#c06060' : urgencyColor(days) }}>
+                        <span style={{ fontSize:11, color: isFait ? 'var(--tx3)' : isOverdue ? '#c06060' : urgencyColor(days) }}>
                           {new Date(e.date_echeance).toLocaleDateString('fr',{day:'numeric',month:'short'})}
-                          {days>=0 ? ` · J-${days}` : ` · ${Math.abs(days)}j dépassé`}
+                          {days>=0 ? ` · J-${days}` : isOverdue ? ` · ${Math.abs(days)}j dépassé` : ''}
                         </span>
                       )}
                       {isOverdue && (

@@ -45,9 +45,10 @@ export default async function HubPage() {
       .limit(3),
     supabase
       .from('system_log')
-      .select('*')
-      .order('id', { ascending: false })
-      .limit(4),
+      .select('id, created_at, action, details, type, status, priority')
+      .not('action', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(6),
   ])
 
   return (
@@ -66,7 +67,15 @@ export default async function HubPage() {
         energy: i.energie,
         medium: i.medium
       }))}
-      systemLogs={systemLogs ?? []}
+      systemLogs={(systemLogs ?? []).map((l: any) => ({
+        id:         l.id,
+        action:     l.action as string,
+        details:    l.details as string | null,
+        type:       l.type   as string | null,
+        status:     l.status as string | null,
+        priority:   l.priority as string | null,
+        created_at: l.created_at as string,
+      }))}
     />
   )
 }
