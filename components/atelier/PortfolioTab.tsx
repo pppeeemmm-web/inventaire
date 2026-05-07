@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { savePortfolioConfig, loadPortfolioConfig, extractDocumentText } from '@/app/atelier/portfolio/actions'
+import { getAnalyticsStats, type AnalyticsResult } from '@/app/atelier/analytics/actions'
 import { RichEditor, htmlToPlain } from '@/components/atelier/RichEditor'
 import type { Oeuvre } from '@/lib/types/database'
 
@@ -133,7 +134,7 @@ export function PortfolioTab({ oeuvres, themes }: Props) {
   const [documents,  setDocuments]  = useState<{id: string, name: string}[]>([])
   const [loading,    setLoading]    = useState(true)
   const [saving,     setSaving]     = useState(false)
-  const [activeTab,  setActiveTab]  = useState<'website' | 'portfolio'>('website')
+  const [activeTab,  setActiveTab]  = useState<'website' | 'portfolio' | 'analytics'>('website')
   const [activeSlot, setActiveSlot] = useState<{
     type: 'doc' | 'theme'
     page: 'about' | 'works' | 'sections'
@@ -197,7 +198,7 @@ export function PortfolioTab({ oeuvres, themes }: Props) {
       {/* ── Top bar ── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 40px', borderBottom: '1px solid var(--bd)', background: 'var(--bg1)', flexShrink: 0 }}>
         <div style={{ display: 'flex' }}>
-          {(['website', 'portfolio'] as const).map(tab => (
+          {(['website', 'portfolio', 'analytics'] as const).map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)} style={{
               padding: '16px 24px', background: 'none', border: 'none',
               borderBottom: activeTab === tab ? '2px solid var(--ac)' : '2px solid transparent',
@@ -206,20 +207,22 @@ export function PortfolioTab({ oeuvres, themes }: Props) {
               fontFamily: 'inherit', fontWeight: activeTab === tab ? 600 : 400,
               transition: 'all 0.2s'
             }}>
-              {tab === 'website' ? 'Général' : 'Portfolio'}
+              {tab === 'website' ? 'Général' : tab === 'portfolio' ? 'Portfolio' : 'Analytiques'}
             </button>
           ))}
         </div>
-        <button className="btn primary" onClick={handleSave} disabled={saving} style={{ fontSize: 9, letterSpacing: 2 }}>
-          {saving ? 'Publication...' : 'Publier'}
-        </button>
+        {activeTab !== 'analytics' && (
+          <button className="btn primary" onClick={handleSave} disabled={saving} style={{ fontSize: 9, letterSpacing: 2 }}>
+            {saving ? 'Publication...' : 'Publier'}
+          </button>
+        )}
       </div>
 
       {/* ── Body ── */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
-        {/* Left sidebar — sources */}
-        <div style={{ width: 280, borderRight: '1px solid var(--bd)', background: 'var(--bg1)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+        {/* Left sidebar — sources (hidden on analytics tab) */}
+        <div style={{ width: activeTab === 'analytics' ? 0 : 280, borderRight: activeTab === 'analytics' ? 'none' : '1px solid var(--bd)', background: 'var(--bg1)', display: activeTab === 'analytics' ? 'none' : 'flex', flexDirection: 'column', flexShrink: 0 }}>
           <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--bd)' }}>
             <div className="t-eyebrow" style={{ marginBottom: 4 }}>Sources</div>
             <p className="t-mono-xs" style={{ opacity: 0.4 }}>
@@ -369,6 +372,10 @@ export function PortfolioTab({ oeuvres, themes }: Props) {
               </>
             )}
 
+            {activeTab === 'analytics' && (
+              <AnalyticsPanel />
+            )}
+
           </div>
         </div>
       </div>
@@ -376,6 +383,108 @@ export function PortfolioTab({ oeuvres, themes }: Props) {
       <style jsx>{`
         .full { width: 100%; }
       `}</style>
+    </div>
+  )
+}
+
+// ── AnalyticsPanel ────────────────────────────────────────────────────────
+
+const PERIODS = [
+  { label: '7 jours',  days: 7 },
+  { label: '30 jours', days: 30 },
+  { label: '90 jours', days: 90 },
+]
+
+function AnalyticsPanel() {
+  const [days,   setDays]   = useState(30)
+  const [result, setResult] = useState<AnalyticsResult | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  const load = useCallback(async (d: number) => {
+    setLoading(true)
+    setResult(await getAnalyticsStats(d))
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { load(days) }, [load, days])
+
+  const topPages = (result && 'ok' in result) ? result.topPages : []
+  const maxViews = topPages.length > 0 ? topPages[0].views : 1
+
+  return (
+    <div style={{ maxWidth: 680 }}>
+      {/* Period selector */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 32 }}>
+        {PERIODS.map(p => (
+          <button key={p.days} onClick={() => setDays(p.days)} style={{
+            padding: '6px 16px', fontSize: 9, letterSpacing: 2, textTransform: 'uppercase',
+            fontFamily: 'inherit', cursor: 'pointer', border: '1px solid var(--bd)',
+            background: days === p.days ? 'var(--ac)' : 'none',
+            color: days === p.days ? 'white' : 'var(--tx3)',
+            borderColor: days === p.days ? 'var(--ac)' : 'var(--bd)',
+          }}>
+            {p.label}
+          </button>
+        ))}
+      </div>
+
+      {loading && (
+        <div className="t-mono-sm" style={{ color: 'var(--tx3)', paddingTop: 40 }}>Chargement…</div>
+      )}
+
+      {!loading && result && 'error' in result && (
+        <div style={{ padding: '20px 24px', background: 'var(--bg0)', border: '1px solid var(--bd)', color: 'var(--tx3)', fontSize: 13 }}>
+          {result.error}
+        </div>
+      )}
+
+      {!loading && result && 'ok' in result && (
+        <>
+          {/* Stat cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 32 }}>
+            <StatCard label="Visiteurs uniques" value={result.visits.toLocaleString('fr-FR')} />
+            <StatCard label="Pages vues" value={result.pageviews.toLocaleString('fr-FR')} />
+          </div>
+
+          {/* Top pages */}
+          <div>
+            <div className="t-label" style={{ marginBottom: 16 }}>Top pages</div>
+            {topPages.length === 0 && (
+              <div className="t-mono-xs" style={{ color: 'var(--tx3)', opacity: 0.5 }}>Aucune donnée pour cette période.</div>
+            )}
+            <div className="col gap-xs">
+              {topPages.map(p => (
+                <div key={p.path} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div className="t-mono-sm" style={{ width: 160, color: 'var(--tx2)', flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {p.path}
+                  </div>
+                  <div style={{ flex: 1, height: 4, background: 'var(--bd)', borderRadius: 2 }}>
+                    <div style={{ width: `${(p.views / maxViews) * 100}%`, height: '100%', background: 'var(--ac)', borderRadius: 2 }} />
+                  </div>
+                  <div className="t-mono-sm" style={{ width: 48, textAlign: 'right', color: 'var(--tx3)', flexShrink: 0 }}>
+                    {p.views.toLocaleString('fr-FR')}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="t-mono-xs" style={{ marginTop: 32, color: 'var(--tx3)', opacity: 0.5 }}>
+            Données Vercel Analytics — actualisées toutes les heures
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+function StatCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ padding: '20px 24px', background: 'var(--bg0)', border: '1px solid var(--bd)' }}>
+      <div className="t-label" style={{ marginBottom: 10 }}>{label}</div>
+      <div style={{ fontSize: 28, fontWeight: 300, color: 'var(--tx)', fontFamily: 'var(--font-serif, serif)', letterSpacing: -0.5 }}>
+        {value}
+      </div>
     </div>
   )
 }
