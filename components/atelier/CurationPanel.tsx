@@ -177,7 +177,7 @@ export function CurationPanel({
             {o.txtImageNameLink
               ? <img src={thumbUrl(o.txtImageNameLink, 128) ?? ''} loading="lazy" alt="" />
               : <div className="ph" style={{ fontSize: 8 }}>—</div>}
-            {o.is_public === false && (
+            {(o as any).anonymity_level === 2 && (
               <div style={{
                 position: 'absolute', bottom: 2, left: 2,
                 fontSize: 7, background: 'rgba(200,140,40,0.85)',
@@ -224,7 +224,7 @@ export function CurationPanel({
             <span style={{ flex: 1, color: 'var(--tx)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {o.Titre || '—'}
             </span>
-            {o.is_public === false && (
+            {(o as any).anonymity_level === 2 && (
               <span style={{
                 fontSize: 8, background: 'rgba(200,140,40,0.12)',
                 border: '1px solid rgba(200,140,40,0.5)', color: '#c88a20',
@@ -417,7 +417,7 @@ function ChecklistPreview({
                 <div>
                   <div style={{ fontSize: 18, lineHeight: 1.2, marginBottom: 4 }}>
                     {o.Titre || '—'}
-                    {o.is_public === false && (
+                    {(o as any).anonymity_level === 2 && (
                       <span style={{
                         marginLeft: 10, fontSize: 9,
                         background: 'rgba(200,140,40,0.15)', border: '1px solid rgba(200,140,40,0.5)',

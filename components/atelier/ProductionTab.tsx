@@ -70,6 +70,7 @@ interface Props {
 
 export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
   const { t } = useI18n()
+  const router = useRouter()
   const [search,      setSearch]      = useState('')
   const [actionTypes, setActionTypes] = useState<ActionType[]>([])
   const [actions,     setActions]     = useState<WorkAction[]>([])
@@ -90,28 +91,6 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
 
   useEffect(() => { loadData() }, [loadData])
 
-  // Active works — not catalogued, not sold/lost/destroyed
-  const active = useMemo(() => {
-    const sq = search.trim().toLowerCase()
-    return oeuvres.filter((o) => {
-      // Show if not catalogued OR if it specifically needs a photograph
-      const needsPhoto = (o as any).NeedsPhotograph || (o as any).needsphotograph
-      if (o.Catalogué && !needsPhoto) return false
-      const st = statusOf(o, statusLabelMap)
-      if (EXCLUDED_STATUSES.includes(st)) return false
-      if (sq) {
-        const bag = `${o.Titre ?? ''} #${o.OeuvreID} ${o.Technique != null ? (tM[o.Technique] ?? '') : ''}`.toLowerCase()
-        if (!bag.includes(sq)) return false
-      }
-      return true
-    })
-  }, [oeuvres, statusLabelMap, tM, search])
-
-  const oeuvresById = useMemo(
-    () => new Map(oeuvres.map((o) => [o.OeuvreID, o])),
-    [oeuvres],
-  )
-
   // Map: actionTypeId → Set<oeuvreId> with pending action
   const actionMap = useMemo(() => {
     const m = new Map<number, Set<number>>()
@@ -121,6 +100,36 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
     }
     return m
   }, [actions])
+
+  // Active works — not catalogued OR has pending actions, not sold/lost/destroyed
+  const active = useMemo(() => {
+    const sq = search.trim().toLowerCase()
+    
+    // Set of all oeuvreIds that have at least one pending action
+    const worksWithActions = new Set<number>()
+    for (const a of actions) worksWithActions.add(a.oeuvre_id)
+
+    return oeuvres.filter((o) => {
+      // Show if not catalogued OR if it specifically needs a photograph OR if it has a pending action
+      const needsPhoto = (o as any).NeedsPhotograph || (o as any).needsphotograph
+      const hasAction = worksWithActions.has(o.OeuvreID)
+      if (o.Catalogué && !needsPhoto && !hasAction) return false
+      
+      const st = statusOf(o, statusLabelMap)
+      if (EXCLUDED_STATUSES.includes(st)) return false
+      
+      if (sq) {
+        const bag = `${o.Titre ?? ''} #${o.OeuvreID} ${o.Technique != null ? (tM[o.Technique] ?? '') : ''}`.toLowerCase()
+        if (!bag.includes(sq)) return false
+      }
+      return true
+    })
+  }, [oeuvres, statusLabelMap, tM, search, actions])
+
+  const oeuvresById = useMemo(
+    () => new Map(oeuvres.map((o) => [o.OeuvreID, o])),
+    [oeuvres],
+  )
 
   async function markDone(oeuvreId: number, actionTypeId: number) {
     const actionType = actionTypes.find((at) => at.id === actionTypeId)
@@ -137,27 +146,14 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
       return
     }
 
+    let newActionsToAdd: any[] = []
+
     // Write back to Oeuvres if this action has a linked field
-    if (actionType?.field_key || actionTypeId === 1 || actionTypeId === 6 || actionTypeId === 9) {
+    if (actionType?.field_key || actionTypeId === 6 || actionTypeId === 9) {
       const updates: any = {}
       if (actionType?.field_key) updates[actionType.field_key] = true
 
-      if (actionTypeId === 1) {
-        // "EN COURS" ticked done -> Auto-create "Cataloguer" task (ID 9)
-        const { data: existing } = await sb.from('work_action')
-          .select('id')
-          .eq('oeuvre_id', oeuvreId)
-          .eq('action_type_id', 9)
-          .eq('done', false)
-          .maybeSingle()
-        if (!existing) {
-          await sb.from('work_action').insert({
-            oeuvre_id:      oeuvreId,
-            action_type_id: 9,
-            done:           false,
-          })
-        }
-      } else if (actionTypeId === 9) {
+      if (actionTypeId === 9) {
         // Cataloguer ticked done → enter photo gate, do NOT skip to Available
         updates['Catalogué']        = true
         updates['NeedsPhotograph']  = true
@@ -171,11 +167,12 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
           .eq('done', false)
           .maybeSingle()
         if (!existing) {
-          await sb.from('work_action').insert({
+          const { data: newAction } = await sb.from('work_action').insert({
             oeuvre_id:      oeuvreId,
             action_type_id: 6,
             done:           false,
-          })
+          }).select().single()
+          if (newAction) newActionsToAdd.push(newAction)
         }
       } else if (actionTypeId === 6) {
         // Photographier ticked done → clear photo gate, move to Disponible
@@ -193,10 +190,16 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
       await sb.from('Oeuvres').update(updates).eq('OeuvreID', oeuvreId)
     }
 
-    // Remove from local state so card disappears immediately
-    setActions((prev) => prev.filter(
-      (a) => !(a.oeuvre_id === oeuvreId && a.action_type_id === actionTypeId)
-    ))
+    // Remove from local state so card disappears immediately, and inject new actions so they appear instantly
+    setActions((prev) => {
+      const filtered = prev.filter(
+        (a) => !(a.oeuvre_id === oeuvreId && a.action_type_id === actionTypeId)
+      )
+      return [...filtered, ...newActionsToAdd]
+    })
+    
+    // Sync the main oeuvres list so the tables update their status chips
+    router.refresh()
   }
 
   // Add an action to a work

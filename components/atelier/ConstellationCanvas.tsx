@@ -851,7 +851,7 @@ export function ConstellationCanvas({
       ctx.stroke()
 
       // Non-public indicator: amber dot with ! at top-right of circle
-      if (o.is_public === false) {
+      if ((o as any).anonymity_level === 2) {
         ctx.save()
         const dotR = 7 / vp.z
         const ang  = -Math.PI / 4

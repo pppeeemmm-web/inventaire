@@ -99,13 +99,23 @@ export function statusOf(
   o: any,
   statusLabelMap: Record<number, string> = {},
 ): StatusKey {
+  let baseKey: StatusKey | null = null
   if (o.statusId !== null && o.statusId !== undefined) {
     const label = statusLabelMap[o.statusId]
-    if (label) return statusKeyFromLabel(label)
+    if (label) baseKey = statusKeyFromLabel(label)
   }
-  // Boolean fallback when statusId is missing or unmapped
+
+  // If the work is sold, reserved, archived, consigned, etc. (ownership state), return it.
+  if (baseKey && baseKey !== 'en_production' && baseKey !== 'available') {
+    return baseKey
+  }
+
+  // If ownership is 'Atelier' (statusId 1 or 2, or null), strictly use production flags
+  // to determine if it is 'en_production' or 'available'.
+  // This prevents discrepancies where statusId is 'Disponible' but Catalogué is false.
   if (!o.Catalogué) return 'en_production'
-  if (o.NeedsPhotograph) return 'en_production'
+  if (o.NeedsPhotograph || o.needsphotograph) return 'en_production'
+  
   return 'available'
 }
 

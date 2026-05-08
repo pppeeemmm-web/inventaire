@@ -1102,7 +1102,7 @@ function InvList({
                   <td style={{ color: 'var(--tx3)', fontSize: 11, padding: '0 2px', whiteSpace: 'nowrap' }}>
                     {o.OeuvreID}
                     {(() => {
-                      const level = (o as any).anonymity_level ?? (o.is_public === false ? 2 : 0)
+                      const level = (o as any).anonymity_level ?? 0
                       if (level === 2) return <span title="Privé (Confidentiel)" style={{ marginLeft: 4, opacity: 0.6 }}>🔒</span>
                       if (level === 1) return <span title="Anonyme (Confidentiel)" style={{ marginLeft: 4, color: 'var(--ac)' }}>👤</span>
                       
@@ -1141,7 +1141,7 @@ function InvList({
                   <td style={{ padding: '0 4px', whiteSpace: 'nowrap', opacity: 0.8 }}>{o.Prix ? `€ ${Number(o.Prix).toLocaleString('fr-FR')}` : '—'}</td>
                   <td style={{ padding: '0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: 0.8 }}>
                     {(() => {
-                      const level = (o as any).anonymity_level ?? (o.is_public === false ? 2 : 0)
+                      const level = (o as any).anonymity_level ?? 0
                       if (publicMode && level >= 1) return <span style={{ opacity: 0.3 }}>[Anonyme]</span>
                       return o.ContactID != null ? (cM[o.ContactID] ?? '—') : 'Pem'
                     })()}
@@ -1284,7 +1284,7 @@ function InvPreview({
     return isGone ? '—' : t('surDemande')
   })()
 
-  const level = (o as any).anonymity_level ?? (o.is_public === false ? 2 : 0)
+  const level = (o as any).anonymity_level ?? 0
 
   // Owner/contact: default to PEM if not set
   const ownerLabel = o.ContactID != null ? (cM[o.ContactID] ?? 'Pem') : 'Pem'

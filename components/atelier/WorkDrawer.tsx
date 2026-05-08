@@ -123,6 +123,8 @@ export function WorkDrawer({
     if (type.field_key) {
       await sb.from('Oeuvres').update({ [type.field_key]: nextDone }).eq('OeuvreID', o.OeuvreID)
     }
+    
+    router.refresh()
   }
 
   return (
@@ -168,7 +170,7 @@ export function WorkDrawer({
         </div>
 
         {/* Non-public warning */}
-        {o.is_public === false && (
+        {(o as any).anonymity_level === 2 && (
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
             background: 'rgba(200,140,40,0.12)', border: '1px solid rgba(200,140,40,0.5)',
@@ -269,9 +271,6 @@ export function WorkDrawer({
             <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 20px', fontSize: 13 }}>
               <div className="t-label">{t('status')}</div>
               <div><StatusChip s={st} /></div>
-
-              <div className="t-label">Production</div>
-              <div><WorkStateChip o={o} statusLabelMap={statusLabelMap} /></div>
 
               <div className="t-label">{t('framed')}</div>
               <div style={{ color: o.Encadree ? 'var(--tx2)' : 'var(--tx3)' }}>{o.Encadree ? '✓' : '—'}</div>

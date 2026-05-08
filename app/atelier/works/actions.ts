@@ -12,6 +12,47 @@ import crypto from 'crypto'
 import sharp from 'sharp'
 import { logSystemEvent } from '@/lib/utils/logging'
 
+async function syncPipelineWithBooleans(
+  supabase: any,
+  oid: number,
+  flags: { catalogued: boolean; needsPhotograph: boolean }
+) {
+  const setAction = async (actionId: number, state: 'done' | 'pending' | 'remove') => {
+    if (state === 'remove') {
+      await supabase.from('work_action').delete().eq('oeuvre_id', oid).eq('action_type_id', actionId)
+      return
+    }
+    const isDone = state === 'done'
+    const { data: existing } = await supabase
+      .from('work_action')
+      .select('id, done')
+      .eq('oeuvre_id', oid)
+      .eq('action_type_id', actionId)
+      .maybeSingle()
+
+    if (existing) {
+      if (existing.done !== isDone) {
+        await supabase.from('work_action').update({ done: isDone }).eq('id', existing.id)
+      }
+    } else {
+      await supabase.from('work_action').insert({ oeuvre_id: oid, action_type_id: actionId, done: isDone })
+    }
+  }
+
+  // Action IDs: 6 = Photographier, 9 = Cataloguer
+  if (!flags.catalogued) {
+    await setAction(9, 'pending')
+    await setAction(6, 'remove')
+  } else if (flags.catalogued && flags.needsPhotograph) {
+    await setAction(9, 'done')
+    await setAction(6, 'pending')
+  } else {
+    // "Disponible" (Catalogued and NO photo needed)
+    await setAction(9, 'done')
+    await setAction(6, 'done')
+  }
+}
+
 export type SaveResult   = { error: string } | { ok: true; newId?: number }
 export type DeleteResult = { error: string } | { ok: true }
 export type ImageResult  = { error: string } | { ok: true; image: WorkImage }
@@ -72,7 +113,6 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
   const montee       = formData.get('montee')      === '1'
   const encadree     = formData.get('encadree')      === '1'
   const catalogued   = formData.get('catalogued')    === '1'
-  const isPublic     = formData.get('is_public')     === '1'
   const isCommission   = formData.get('is_commission') === '1'
   const dateLivraison  = (formData.get('date_livraison') as string | null)?.trim() || null
   const needsPhotograph = formData.get('needs_photograph') === '1'
@@ -177,7 +217,6 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       Montee:            montee,
       Encadree:          encadree,
       Catalogué:         catalogued,
-      is_public:         isPublic,
       IsCommission:      isCommission,
       DateLivraison:     dateLivraison,
       NeedsPhotograph:   needsPhotograph,
@@ -208,19 +247,8 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       if (themeErr) return { error: themeErr.message }
     }
 
-    // Auto-create photography task when entering photo gate
-    if (catalogued && needsPhotograph) {
-      const { data: existing } = await supabase
-        .from('work_action')
-        .select('id')
-        .eq('oeuvre_id', oid)
-        .eq('action_type_id', 6)
-        .eq('done', false)
-        .maybeSingle()
-      if (!existing) {
-        await supabase.from('work_action').insert({ oeuvre_id: oid, action_type_id: 6, done: false })
-      }
-    }
+    // Sync pipeline actions with production booleans
+    await syncPipelineWithBooleans(supabase, oid, { catalogued, needsPhotograph })
 
     revalidatePath('/atelier')
     return { ok: true, newId: oid }
@@ -323,20 +351,8 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       })
     }
 
-    // Auto-create photography task when entering photo gate (only if not already open)
-    const enteringPhotoGate = catalogued && needsPhotograph && !current?.['Catalogué']
-    if (enteringPhotoGate) {
-      const { data: existing } = await supabase
-        .from('work_action')
-        .select('id')
-        .eq('oeuvre_id', oid)
-        .eq('action_type_id', 6)
-        .eq('done', false)
-        .maybeSingle()
-      if (!existing) {
-        await supabase.from('work_action').insert({ oeuvre_id: oid, action_type_id: 6, done: false })
-      }
-    }
+    // Sync pipeline actions with production booleans
+    await syncPipelineWithBooleans(supabase, oid, { catalogued, needsPhotograph })
 
     // Replace themes: delete + reinsert
     await supabase.from('OeuvreTheme').delete().eq('OeuvreID', oid)
@@ -592,13 +608,19 @@ export async function addWorkImage(formData: FormData): Promise<ImageResult> {
   }
   if (wasInPhotoGate) {
     coverUpdate.statusId = 2  // Disponible
-    coverUpdate.is_public = true
   }
 
   await supabase
     .from('Oeuvres')
     .update(coverUpdate)
     .eq('OeuvreID', oeuvreId)
+
+  if (workState) {
+    await syncPipelineWithBooleans(supabase, oeuvreId, { 
+      catalogued: !!workState['Catalogué'], 
+      needsPhotograph: false 
+    })
+  }
 
   revalidatePath('/atelier')
   return { ok: true, image: inserted as WorkImage }

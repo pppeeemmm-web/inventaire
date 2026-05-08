@@ -400,7 +400,7 @@ export function ExportModal({ ids, oeuvres, tM, sM, statusLabelMap, onClose }: P
           {progress && <div className="t-mono-sm" style={{ color: 'var(--tx3)', marginBottom: 8 }}>{progress}</div>}
           {error    && <div className="t-mono-sm" style={{ color: '#c0392b', marginBottom: 8 }}>{error}</div>}
           {(() => {
-            const nonPublicCount = oeuvres.filter(o => ids.includes(o.OeuvreID) && o.is_public === false).length
+            const nonPublicCount = oeuvres.filter(o => ids.includes(o.OeuvreID) && (o as any).anonymity_level === 2).length
             return nonPublicCount > 0 ? (
               <div className="t-mono-sm" style={{
                 color: '#c88a20', marginBottom: 8,

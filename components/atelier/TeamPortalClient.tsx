@@ -1012,7 +1012,7 @@ function CompareModal({ ids, oeuvres, tM, sM, contacts, addresses, statusLabelMa
     { l: 'Montée',         k: (o: any) => o.Montee ? '✓' : '—' },
     { l: t('catalogued'),  k: (o: any) => o.Catalogué ? '✓' : '—' },
     { l: 'Anonymat',       k: (o: any) => {
-        const level = (o as any).anonymity_level ?? (o.is_public === false ? 2 : 0)
+        const level = (o as any).anonymity_level ?? 0
         return level === 0 ? 'Public' : level === 1 ? 'Anonyme' : 'Privé'
       }},
     { l: 'Commission',     k: (o: any) => o.IsCommission ? '✓' : '—' },

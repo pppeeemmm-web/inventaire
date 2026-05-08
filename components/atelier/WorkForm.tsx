@@ -192,10 +192,12 @@ export function WorkForm({
 
   // ── Automations ───────────────────────────────────────────────────
 
-  // A. Cataloguer → always enter photo gate (prodStage sets needsPhoto)
+  // A. Change of prodStage dictates NeedsPhoto logic
   useEffect(() => {
     if (prodStage === 'catalogued') {
       setNeedsPhoto(true)
+    } else {
+      setNeedsPhoto(false)
     }
   }, [prodStage])
 
