@@ -20,8 +20,11 @@
 
 **Règles absolues édictées par l'artiste (Mai 2026) :**
 1. **Questions & Choix multiples** : Toujours poser des questions claires et offrir plusieurs choix d'architecture ou de design avant d'implémenter des fonctionnalités lourdes.
-2. **Zéro Autonomie de Modification** : Interdiction formelle de modifier tout fichier du projet sans une commande explicite "GO" ou "EXECUTE" faisant suite à une proposition détaillée et validée par l'artiste.
-3. **Logiques de Maître** : Toute modification doit être précédée d'une validation de la logique métier. En cas d'incohérence, demander clarification.
+2. **Zéro Autonomie de Modification & Exécution** : Interdiction formelle de modifier un fichier OU d'exécuter une migration/requête SQL sur la base de données sans une commande "GO" ou "Execute" explicite. Même en cas d'auto-approbation d'artefact, attendre la confirmation pour les actions critiques.
+3. **Contrôle de Sécurité Ciblé (Adversarial Check)** : Avant de soumettre du code lié à la sécurité, aux permissions ou aux règles RLS, tu dois explicitement :
+   - Lister au moins 3 façons dont un utilisateur malveillant pourrait contourner ta propre solution (ex: mise à jour de colonnes non protégées).
+   - Prouver comment ta proposition bloque ces vecteurs d'attaque.
+3b. **Logiques de Maître** : Toute modification doit être précédée d'une validation de la logique métier. En cas d'incohérence, demander clarification.
 4. **Tri Alphabétique** : Tous les dropdowns et listes de choix triés par ordre alphabétique systématiquement.
 5. **Dates Flexibles** : Le champ "Année" supporte `YYYY`, `YYYY/MM`, ou `YYYY/MM/DD`.
 6. **Pas de "Quick Fixes"** : Jamais de rustines, données fantômes, ou options nucléaires. Solutions propres, robustes, 95% de confiance minimum.
