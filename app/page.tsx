@@ -1,33 +1,17 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import Link from 'next/link'
 import WavingCircle from '@/components/public/WavingCircle'
 import { useI18n } from '@/lib/i18n/context'
-import { createClient } from '@/lib/supabase/client'
 import { trackView } from '@/lib/track'
+
+const artistName = 'Pierre Emmanuel Moulin'
 
 export default function LandingPage() {
   const { lang, setLang, t } = useI18n()
-  const [artistName, setArtistName] = useState('Atelier PEM')
 
   useEffect(() => { trackView('/', document.referrer || null) }, [])
-
-  useEffect(() => {
-    async function fetchName() {
-      const sb = createClient()
-      const { data: configDoc } = await (sb.from('document') as any)
-        .select('storage_path').eq('name', 'portfolio_sections.json').maybeSingle()
-      if (!configDoc?.storage_path) return
-      const { data: fileData } = await sb.storage.from('vault').download(configDoc.storage_path)
-      if (!fileData) return
-      try {
-        const cfg = JSON.parse(await fileData.text())
-        if (cfg?.general?.artist_name) setArtistName(cfg.general.artist_name)
-      } catch { }
-    }
-    fetchName()
-  }, [])
 
   return (
     <>
