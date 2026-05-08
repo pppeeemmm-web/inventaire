@@ -18,3 +18,5 @@ build/
 npm-debug.log*
 
 .vercel
+.claude/
+components/public/WorksClient_clean.tsx
