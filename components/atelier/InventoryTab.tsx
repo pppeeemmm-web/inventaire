@@ -704,7 +704,7 @@ export function InventoryTab({
                 thM={thM} oeuvreThemeMap={oeuvreThemeMap} oeuvreGroupMap={oeuvreGroupMap}
                 groupNameMap={groupNameMap}
                 selection={selection} toggleInSel={toggleInSel}
-                onOpen={setFocused}
+                onEdit={onOpen}
                 onClose={() => setShowPreview(false)}
                 expanded={previewExpanded}
                 setExpanded={setPreviewExpanded}
@@ -1165,7 +1165,7 @@ function InvList({
 // ── InvPreview ──────────────────────────────────────────────────────
 
 function InvPreview({
-  o, tM, sM, cM, pM, fM, locMap, statusLabelMap, thM, oeuvreThemeMap, oeuvreGroupMap, groupNameMap, selection, toggleInSel, onOpen, onClose,
+  o, tM, sM, cM, pM, fM, locMap, statusLabelMap, thM, oeuvreThemeMap, oeuvreGroupMap, groupNameMap, selection, toggleInSel, onEdit, onClose,
   expanded, setExpanded,
 }: {
   o:              Oeuvre | null
@@ -1182,7 +1182,7 @@ function InvPreview({
   groupNameMap:    Record<string, string>
   selection:      Set<number>
   toggleInSel:    (id: number) => void
-  onOpen:         (o: Oeuvre) => void
+  onEdit:         (o: Oeuvre) => void
   onClose:        () => void
   expanded:       boolean
   setExpanded:    (b: boolean) => void
@@ -1313,7 +1313,7 @@ function InvPreview({
   // ── Expansion Widths ───────────────────────────────
   const flexBasis = !isExpanded
     ? '360px' // Tighter idle state
-    : '80vw'  // 80% of viewport
+    : '50vw'  // Constrained to 50% of viewport
 
   const scaleVal = imgZoom
 
@@ -1323,22 +1323,26 @@ function InvPreview({
     <div
       style={{
         flex: `0 0 ${flexBasis}`,
-        padding: 40,
+        padding: 0,
         overflow: 'auto',
         background: 'var(--bg1)',
         borderLeft: '1px solid var(--bd)',
-        transition: 'flex-basis 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         boxShadow: isExpanded ? '-10px 0 40px rgba(0,0,0,0.4)' : 'none',
         position: 'relative',
+        maxHeight: isExpanded ? '75vh' : '100%',
+        alignSelf: 'center',
+        borderRadius: isExpanded ? '16px 0 0 16px' : '0',
       }}
     >
+      <div style={{ padding: 40 }}>
       {/* Header row: ID + edit button + zoom indicator + CLOSE */}
       <div className="row between" style={{ marginBottom: 10 }}>
         <div className="row gap-sm" style={{ alignItems: 'center' }}>
           <div className="t-eyebrow" style={{ color: 'var(--tx3)' }}>#{o.OeuvreID}</div>
           <button
             className="btn ghost sm"
-            onClick={() => router.push(`/atelier/works/${o.OeuvreID}/edit`)}
+            onClick={() => onEdit(o)}
             style={{ fontSize: 12, padding: '4px 10px', letterSpacing: 0.5 }}
           >
             ✎ {t('edit')}
@@ -1376,9 +1380,10 @@ function InvPreview({
         ref={imgContainerRef}
         style={{
           width: '100%', overflow: 'hidden',
-          background: 'var(--bg0)',
+          background: 'transparent',
           cursor: imgZoom > 1 ? 'grab' : 'default',
           userSelect: 'none', marginBottom: 16,
+          maxHeight: '75vh',
         }}
         onMouseDown={(e) => {
           if (imgZoom > 1) {
@@ -1613,6 +1618,7 @@ function InvPreview({
         <button className={`btn ${isSel ? 'primary' : ''}`} onClick={() => toggleInSel(o.OeuvreID)}>
           {isSel ? `✓ ${t('selected')}` : t('addToSel')}
         </button>
+      </div>
       </div>
     </div>
   )

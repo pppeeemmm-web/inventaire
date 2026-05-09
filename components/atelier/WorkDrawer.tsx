@@ -243,7 +243,7 @@ export function WorkDrawer({
         position: 'fixed', inset: 0,
         background: 'transparent',
         zIndex: 60,
-        display: 'flex', justifyContent: 'flex-end',
+        display: 'flex', justifyContent: 'flex-end', alignItems: 'center',
         pointerEvents: 'none'
       }}
     >
@@ -251,16 +251,22 @@ export function WorkDrawer({
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          width: 460, height: '100%',
+          width: 460, 
+          maxWidth: '50vw',
+          maxHeight: '75vh',
+          height: 'fit-content',
           background: 'var(--bg1)',
-          borderLeft: '1px solid var(--bd)',
-          padding: 28,
+          border: '1px solid var(--bd)',
+          borderRadius: '16px 0 0 16px',
+          padding: 0,
           overflow: 'auto',
           display: 'flex', flexDirection: 'column',
           pointerEvents: 'auto',
-          boxShadow: '-10px 0 30px rgba(0,0,0,0.3)'
+          boxShadow: '-10px 0 50px rgba(0,0,0,0.4)',
+          margin: 'auto 0'
         }}
       >
+        <div style={{ padding: 28 }}>
         {/* Header */}
         <div className="row between" style={{ marginBottom: 16 }}>
           <div className="t-eyebrow" style={{ color: 'var(--tx3)' }}>Œuvre #{o.OeuvreID}</div>
@@ -268,7 +274,7 @@ export function WorkDrawer({
         </div>
 
         {/* Image */}
-        <div className="thumb" style={{ marginBottom: 20, background: 'var(--bg0)', flexShrink: 0, position: 'relative' }}>
+        <div className="thumb" style={{ marginBottom: 20, background: 'transparent', flexShrink: 0, position: 'relative', maxHeight: '75vh', overflow: 'hidden' }}>
           {o.txtImageNameLink
             ? <WorkThumb file={o.txtImageNameLink} size={1080} alt={o.Titre ?? ''} style={{ height: 'auto', objectFit: 'contain' }} />
             : <div className="ph">—</div>}
@@ -640,6 +646,7 @@ export function WorkDrawer({
           {deleteError && (
             <div className="t-mono-sm" style={{ color: '#c0392b', marginTop: 8 }}>{deleteError}</div>
           )}
+        </div>
         </div>
       </div>
     </div>

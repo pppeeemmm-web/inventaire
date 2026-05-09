@@ -115,8 +115,9 @@ export function WorkForm({
   const [needsPhoto, setNeedsPhoto] = useState(!!((oeuvre as any)?.NeedsPhotograph ?? false))
 
   // ── Ownership / flow state ────────────────────────────────────────
-  const [ownStage,  setOwnStage]  = useState(() => ownStageFromStatusId(oeuvre?.statusId))
-  const [contactId, setContactId] = useState(String(oeuvre?.LocalisationID ?? ''))
+  const [ownStage,      setOwnStage]      = useState(() => ownStageFromStatusId(oeuvre?.statusId))
+  const [contactId,     setContactId]     = useState(String(oeuvre?.LocalisationID ?? ''))
+  const [anonymityLevel, setAnonymityLevel] = useState<number>((oeuvre as any)?.anonymity_level ?? 0)
   const [showContactModal, setShowContactModal] = useState(false)
 
   // ── Financials ────────────────────────────────────────────────────
@@ -240,6 +241,13 @@ export function WorkForm({
     }
   }, [ownStage, pemContact])
 
+  // G. Available / still-artist → anonymity_level must be 0 (DB trigger enforces too)
+  useEffect(() => {
+    if (ownStage === 'artist' || ownStage === 'artist_archive') {
+      setAnonymityLevel(0)
+    }
+  }, [ownStage])
+
   // ── Computed statusId ─────────────────────────────────────────────
   function computeStatusId(): number {
     if (ownStage !== 'artist') return OWN_TO_STATUS_ID[ownStage] ?? 1
@@ -255,6 +263,7 @@ export function WorkForm({
     const fd = new FormData(formRef.current!)
 
     fd.set('catalogued', (prodStage !== 'atelier') ? '1' : '0')
+    fd.set('anonymity_level', String(anonymityLevel))
     fd.set('needs_photograph', needsPhoto ? '1' : '0')
     fd.set('prix_final', String(prixFinal))
     fd.set('is_paid', paymentDone ? '1' : '0')
@@ -444,6 +453,45 @@ export function WorkForm({
                 <div style={{ background: 'var(--bg1)', padding: 20, border: '1px solid var(--bd)', alignSelf: 'flex-end' }}>
                   <div className="t-label" style={{ fontSize: 10, marginBottom: 6 }}>LOCALISATION ACTUELLE</div>
                   <div className="t-mono-sm" style={{ color: 'var(--ac)', fontSize: 12 }}>{currentLoc}</div>
+                </div>
+              </div>
+
+              {/* Anonymity level — only meaningful post-sale, but admin can always set */}
+              <div style={{ marginTop: 24, borderTop: '1px solid var(--bd)', paddingTop: 20 }}>
+                <div className="t-eyebrow" style={{ fontSize: 11, marginBottom: 4 }}>CONFIDENTIALITÉ DU CONTACT</div>
+                <div style={{ fontSize: 11, color: 'var(--tx3)', marginBottom: 12, lineHeight: 1.5 }}>
+                  {ownStage === 'artist' || ownStage === 'artist_archive'
+                    ? 'Niveau 0 automatique — l\u2019œuvre est toujours à l\u2019atelier.'
+                    : 'Applicable après vente / sur demande de l\u2019acquéreur.'}
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {[
+                    { level: 0, label: '🌐 Public',   desc: 'Contact visible publiquement' },
+                    { level: 1, label: '👤 Anonyme',  desc: 'Contact masqué — nom seul visible admin' },
+                    { level: 2, label: '🔒 Privé',    desc: 'Contact confidentiel — admin seulement' },
+                  ].map(({ level, label, desc }) => {
+                    const isActive = anonymityLevel === level
+                    const isForced = (ownStage === 'artist' || ownStage === 'artist_archive') && level !== 0
+                    return (
+                      <button
+                        key={level}
+                        type="button"
+                        disabled={isForced}
+                        title={isForced ? 'Uniquement disponible après cession de propriété' : desc}
+                        onClick={() => !isForced && setAnonymityLevel(level)}
+                        style={{
+                          flex: 1, padding: '10px 8px', fontSize: 11, cursor: isForced ? 'not-allowed' : 'pointer',
+                          border: `1px solid ${isActive ? 'var(--ac)' : 'var(--bd)'}`,
+                          background: isActive ? 'var(--ac)22' : 'var(--bg2)',
+                          color: isActive ? 'var(--ac)' : isForced ? 'var(--tx3)' : 'var(--tx2)',
+                          opacity: isForced ? 0.35 : 1,
+                          textAlign: 'center', transition: 'all 0.15s',
+                        }}
+                      >
+                        <div style={{ fontWeight: isActive ? 700 : 400 }}>{label}</div>
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
             </section>
