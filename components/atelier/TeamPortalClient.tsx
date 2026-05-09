@@ -8,7 +8,8 @@ import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useI18n } from '@/lib/i18n/context'
-import { imageUrl, thumbUrl, yearOf } from '@/lib/data'
+import { thumbUrl, formatCurrency, formatMetric } from '@/lib/data'
+import { WorkThumb } from './WorkThumb'
 import type { Oeuvre } from '@/lib/types/database'
 
 import { InventoryTab }        from '@/components/atelier/InventoryTab'
@@ -71,23 +72,6 @@ export function TeamPortalClient({
 }: Props) {
   const { t, lang, setLang } = useI18n()
   const router = useRouter()
-
-  // ── Environment Check ──────────────────────────────────────────
-  const isConfigured = !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
-  
-  if (!isConfigured) {
-    return (
-      <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg0)', color: 'var(--tx)', textAlign: 'center', padding: 40 }}>
-        <div>
-          <h2 style={{ color: 'var(--rust)', marginBottom: 20 }}>Configuration Error</h2>
-          <p style={{ opacity: 0.7, maxWidth: 400, margin: '0 auto', fontSize: 14 }}>
-            The application is missing its connection keys. 
-            Please ensure <strong>NEXT_PUBLIC_SUPABASE_URL</strong> and <strong>NEXT_PUBLIC_SUPABASE_ANON_KEY</strong> are set in Vercel.
-          </p>
-        </div>
-      </div>
-    )
-  }
 
   // ── Global state ───────────────────────────────────────────────
 
@@ -256,7 +240,25 @@ export function TeamPortalClient({
     return (grp as any).id
   }, [])
 
+  // ── Environment Check ──────────────────────────────────────────
+  const isConfigured = !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+  
+  if (!isConfigured) {
+    return (
+      <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg0)', color: 'var(--tx)', textAlign: 'center', padding: 40 }}>
+        <div>
+          <h2 style={{ color: 'var(--rust)', marginBottom: 20 }}>Configuration Error</h2>
+          <p style={{ opacity: 0.7, maxWidth: 400, margin: '0 auto', fontSize: 14 }}>
+            The application is missing its connection keys. 
+            Please ensure <strong>NEXT_PUBLIC_SUPABASE_URL</strong> and <strong>NEXT_PUBLIC_SUPABASE_ANON_KEY</strong> are set in Vercel.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   // ── Tab definitions ────────────────────────────────────────────
+
 
   const TABS_RAW: [Tab, string, number?][] = [
     ['overview',      t('overview')],
@@ -545,6 +547,14 @@ export function TeamPortalClient({
           oeuvreThemeMap={oeuvreThemeMap}
           oeuvreGroupMap={oeuvreGroupMap}
           groupNameMap={groupNameMap}
+          // Reference data for editing
+          techniques={techniques}
+          supports={supports}
+          formats={formats}
+          themes={themes}
+          contacts={contacts}
+          groups={groups}
+          presentations={presentations}
         />
       )}
 
@@ -686,7 +696,7 @@ function OverviewTab({
       .order('energie', { ascending: false })
       .limit(5)
       .then(({ data }: { data: any[] | null }) => { if (data) setBurningConcepts(data) })
-  }, [])
+  }, [thisYear])
 
   // Technique breakdown
   const byTech = oeuvres.reduce<Record<string, number>>((acc, o) => {
@@ -784,7 +794,7 @@ function OverviewTab({
             {recentWorks.map((o) => (
               <div key={o.OeuvreID} style={{ aspectRatio: '1', background: 'var(--bg1)', border: '1px solid var(--bd2)', position: 'relative', overflow: 'hidden', cursor: 'pointer' }}>
                 {o.txtImageNameLink ? (
-                  <img src={thumbUrl(o.txtImageNameLink, 256) ?? ''} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <WorkThumb file={o.txtImageNameLink} size={256} alt="" />
                 ) : (
                   <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--tx3)', fontSize: 10 }}>NO IMG</div>
                 )}
@@ -844,7 +854,7 @@ function OverviewTab({
               {conflicts.map(c => (
                 <div key={c.id} style={{ fontSize: 11, color: 'var(--tx2)', lineHeight: 1.4 }}>
                   <strong style={{ color: 'var(--tx)' }}>Contact Collision:</strong><br/>
-                  Public entry <em>"{c.public?.NomInstitution || c.public?.Nom}"</em> matches a hidden private record. 
+                  Public entry <em>&quot;{c.public?.NomInstitution || c.public?.Nom}&quot;</em> matches a hidden private record. 
                   <button 
                     onClick={() => onGoTab('contacts')}
                     style={{ display: 'block', marginTop: 4, background: 'none', border: 'none', color: 'var(--ac)', padding: 0, fontSize: 10, cursor: 'pointer' }}
@@ -1053,9 +1063,9 @@ function CompareModal({ ids, oeuvres, tM, sM, contacts, addresses, statusLabelMa
                   background: 'var(--bg1)', minWidth: 200, maxWidth: 280,
                 }}>
                   <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                    <div style={{ width: 44, height: 44, background: '#000', overflow: 'hidden', flexShrink: 0, border: '1px solid var(--bd)' }}>
+                    <div style={{ width: 44, height: 44, background: '#000', overflow: 'hidden', flexShrink: 0, border: '1px solid var(--bd)', position: 'relative' }}>
                       {o.txtImageNameLink ? (
-                        <img src={thumbUrl(o.txtImageNameLink, 128) ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <WorkThumb file={o.txtImageNameLink} size={128} alt="" />
                       ) : (
                         <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--tx3)', fontSize: 8 }}>—</div>
                       )}

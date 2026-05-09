@@ -12,6 +12,7 @@ import { thumbUrl } from '@/lib/data'
 import { useI18n } from '@/lib/i18n/context'
 import type { Oeuvre, WorkImage } from '@/lib/types/database'
 import type { SaveResult } from '@/app/atelier/works/actions'
+import { WorkThumb } from './WorkThumb'
 import { addWorkImage, deleteWorkImage, createLookup } from '@/app/atelier/works/actions'
 import { createClient } from '@/lib/supabase/client'
 
@@ -230,7 +231,7 @@ export function WorkForm({
     if (isOwnershipTransferred && prodStage === 'atelier') {
       setProdStage('available')
     }
-  }, [isOwnershipTransferred])
+  }, [isOwnershipTransferred, prodStage])
 
   // F. Artist/archive → contact = Pem
   useEffect(() => {
@@ -403,7 +404,7 @@ export function WorkForm({
               </div>
               {needsPhoto && prodStage === 'catalogued' && (
                 <div style={{ marginTop: 12, padding: '8px 14px', background: 'var(--dust)22', border: '1px solid var(--dust)44', fontSize: 12, color: 'var(--tx2)' }}>
-                  En attente de photographie — décocher "Photo requise" pour passer en Disponible.
+                  En attente de photographie — décocher &quot;Photo requise&quot; pour passer en Disponible.
                 </div>
               )}
             </section>
@@ -603,7 +604,7 @@ function ImageManager({ oeuvreId, initialImages }: { oeuvreId: number; initialIm
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
         {imgs.map(img => (
           <div key={img.ImageID} style={{ position: 'relative', aspectRatio: '1', background: 'var(--bg2)', border: '1px solid var(--bd)' }}>
-            <img src={thumbUrl(img.txtImageNameLink ?? '')} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <WorkThumb file={img.txtImageNameLink ?? ''} size={256} alt="" />
             <button type="button" onClick={() => onDelete(img.ImageID)}
               style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(0,0,0,0.5)', color: '#fff', border: 'none', borderRadius: '50%', width: 18, height: 18, fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               ✕

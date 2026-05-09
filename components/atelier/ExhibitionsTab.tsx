@@ -6,6 +6,7 @@
 //        dates, notes, and (inside "Mise en espace" sub-tab) the floor plan tool.
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import Image from 'next/image'
 import type { Oeuvre } from '@/lib/types/database'
 import {
   fetchLayouts, createLayout, saveLayout, uploadFloorplan, deleteLayout, getFloorplanSignedUrl,
@@ -15,6 +16,7 @@ import { createClient } from '@/lib/supabase/client'
 import { EXHIBITION_READY_TYPES } from '@/lib/data'
 import { TYPE_LABELS as PIPELINE_LABELS } from './PipelineTab'
 import { ConstellationCanvas, type NodeMap, type Pt } from './ConstellationCanvas'
+import { WorkThumb } from './WorkThumb'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -77,11 +79,6 @@ const STEP_COLORS: Record<string, string> = {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function thumbUrl(o: Oeuvre): string | null {
-  if (!o.txtImageNameLink) return null
-  const base = o.txtImageNameLink.replace(/\.[^.]+$/, '')
-  return R2 ? `${R2}/thumbs/${base}.avif` : null
-}
 
 function fmtDate(d: string | null) {
   if (!d) return '—'
@@ -166,7 +163,7 @@ function StepPill({ step, onToggle, onRename, onDelete }: {
 // ── WorkChip (draggable for floor plan) ──────────────────────────────────────
 
 function WorkChip({ oeuvre, onDragStart }: { oeuvre: Oeuvre; onDragStart: (id: number, e: React.DragEvent) => void }) {
-  const thumb = thumbUrl(oeuvre)
+  const thumb = oeuvre.txtImageNameLink
   return (
     <div
       draggable
@@ -177,7 +174,11 @@ function WorkChip({ oeuvre, onDragStart }: { oeuvre: Oeuvre; onDragStart: (id: n
         cursor: 'grab', marginBottom: 4, userSelect: 'none',
       }}
     >
-      {thumb && <img src={thumb} alt="" style={{ width: 40, height: 40, objectFit: 'cover', flexShrink: 0 }} />}
+      {oeuvre.txtImageNameLink && (
+        <div style={{ width: 40, height: 40, position: 'relative', flexShrink: 0 }}>
+          <WorkThumb file={oeuvre.txtImageNameLink} size={256} alt="" />
+        </div>
+      )}
       <div style={{ minWidth: 0 }}>
         <div style={{ fontSize: 13, color: 'var(--tx)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {oeuvre.Titre ?? 'S/T'}
@@ -231,7 +232,7 @@ function WallStrip({ wall, placements, oeuvres, onDrop, onRemove, onReorder }: {
         )}
         {wallPlacements.map((p, idx) => {
           const o = oeuvres.find((x) => x.OeuvreID === p.oeuvre_id)
-          const thumb = o ? thumbUrl(o) : null
+          const thumb = o?.txtImageNameLink
           return (
             <div
               key={p.oeuvre_id}
@@ -249,7 +250,9 @@ function WallStrip({ wall, placements, oeuvres, onDrop, onRemove, onReorder }: {
               title={o?.Titre ?? `#${p.oeuvre_id}`}
             >
               {thumb ? (
-                <img src={thumb} alt="" style={{ width: 64, height: 64, objectFit: 'cover', display: 'block' }} />
+                <div style={{ width: 64, height: 64, position: 'relative' }}>
+                  <WorkThumb file={thumb} size={256} alt="" />
+                </div>
               ) : (
                 <div style={{ width: 64, height: 64, background: 'var(--bg2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: 'var(--tx3)' }}>
                   #{p.oeuvre_id}
@@ -670,7 +673,7 @@ function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, selection
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
               <div style={{ fontSize: 18, fontWeight: 500, color: 'var(--tx)' }}>{exhibition.nom}</div>
-              <button onClick={onDelete} className="btn ghost sm" style={{ color: 'var(--rust)', fontSize: 11, borderColor: 'var(--rust)', opacity: 0.8 }}>Supprimer l'exposition</button>
+              <button onClick={onDelete} className="btn ghost sm" style={{ color: 'var(--rust)', fontSize: 11, borderColor: 'var(--rust)', opacity: 0.8 }}>Supprimer l&apos;exposition</button>
             </div>
             <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--tx3)', flexWrap: 'wrap' }}>
               {contact && <span>📍 {contactName}</span>}
@@ -854,7 +857,7 @@ function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, selection
               {exhibition.date_debut && (
                 <div style={{ position: 'relative' }}>
                   <div style={{ position: 'absolute', left: -29, top: 2, width: 9, height: 9, borderRadius: '50%', background: 'var(--ac)' }} />
-                  <div style={{ fontSize: 9, color: 'var(--tx3)', textTransform: 'uppercase', letterSpacing: 1 }}>Début de l'exposition</div>
+                  <div style={{ fontSize: 9, color: 'var(--tx3)', textTransform: 'uppercase', letterSpacing: 1 }}>Début de l&apos;exposition</div>
                   <div style={{ fontSize: 13, color: 'var(--tx)', fontWeight: 500 }}>{fmtDate(exhibition.date_debut)}</div>
                 </div>
               )}
@@ -873,7 +876,7 @@ function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, selection
               {exhibition.date_fin && (
                 <div style={{ position: 'relative' }}>
                   <div style={{ position: 'absolute', left: -29, top: 2, width: 9, height: 9, borderRadius: '50%', background: 'var(--tx3)' }} />
-                  <div style={{ fontSize: 9, color: 'var(--tx3)', textTransform: 'uppercase', letterSpacing: 1 }}>Fin de l'exposition</div>
+                  <div style={{ fontSize: 9, color: 'var(--tx3)', textTransform: 'uppercase', letterSpacing: 1 }}>Fin de l&apos;exposition</div>
                   <div style={{ fontSize: 13, color: 'var(--tx)', fontWeight: 500 }}>{fmtDate(exhibition.date_fin)}</div>
                 </div>
               )}
@@ -915,9 +918,9 @@ function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, selection
                   const thumb = thumbUrl(o)
                   return (
                     <div key={o.OeuvreID} style={{ width: 120, flexShrink: 0 }}>
-                      <div style={{ width: 120, height: 120, background: 'var(--bg2)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 4, overflow: 'hidden' }}>
+                      <div style={{ width: 120, height: 120, background: 'var(--bg2)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 4, overflow: 'hidden', position: 'relative' }}>
                         {thumb
-                          ? <img src={thumb} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          ? <Image src={thumb} alt={o.Titre ?? ''} fill sizes="120px" style={{ objectFit: 'cover' }} />
                           : <span style={{ fontSize: 9, color: 'var(--tx3)' }}>#{o.OeuvreID}</span>}
                       </div>
                       {(o as any).anonymity_level === 2 && (

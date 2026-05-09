@@ -4,6 +4,7 @@
 // Fetches documents client-side (dynamic content, team-auth required).
 
 import React, { useState, useEffect, useRef, useTransition, useCallback, useMemo } from 'react'
+import Image from 'next/image'
 import { useI18n } from '@/lib/i18n/context'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -621,7 +622,17 @@ export function VaultTab({ oeuvres, tM }: Props) {
               ? isPdf(selected.mime_type)
                 ? <iframe src={previewUrl} style={{ width: '100%', height: '100%', border: 0 }} title={selected.name} />
                 : isImage(selected.mime_type)
-                  ? <img src={previewUrl} alt={selected.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                  ? (
+                    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+                      <Image 
+                        src={previewUrl} 
+                        alt={selected.name} 
+                        fill
+                        unoptimized={true}
+                        style={{ objectFit: 'contain' }} 
+                      />
+                    </div>
+                  )
                   : <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>Aperçu non disponible</div>
               : <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>Chargement aperçu…</div>
             }
@@ -1198,7 +1209,7 @@ function CoaModal({
 
   return (
     <Overlay onClose={onClose}>
-      <div className="t-eyebrow" style={{ marginBottom: 20 }}>Générer un certificat d'authenticité</div>
+      <div className="t-eyebrow" style={{ marginBottom: 20 }}>Générer un certificat d&apos;authenticité</div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div>
@@ -1232,7 +1243,7 @@ function CoaModal({
             <div style={{ marginTop: 8, padding: '10px 12px', background: 'var(--bg0)', borderRadius: 2 }}>
               <div className="t-label" style={{ marginBottom: 4 }}>Le certificat contiendra</div>
               <div className="t-mono-sm" style={{ color: 'var(--tx3)', lineHeight: 2 }}>
-                Photo de l'œuvre · Métadonnées · Déclaration d'authenticité<br />
+                Photo de l&apos;œuvre · Métadonnées · Déclaration d&apos;authenticité<br />
                 Bloc de signature · Identifiant unique · Empreinte SHA-256 · QR code
               </div>
             </div>

@@ -340,7 +340,7 @@ export function ExportModal({ ids, oeuvres, tM, sM, statusLabelMap, onClose }: P
           <div style={{ width: 230, flexShrink: 0, padding: '20px 16px', display: 'flex', flexDirection: 'column', gap: 8, overflow: 'auto', background: 'rgba(0,0,0,0.1)' }}>
             <div className="t-label" style={{ marginBottom: 2 }}>{t('savedThemes')}</div>
             <div className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 8, marginBottom: 8, lineHeight: 1.4 }}>
-              Configurations d'exportation enregistrées pour réutilisation rapide.
+              Configurations d&apos;exportation enregistrées pour réutilisation rapide.
             </div>
 
             {themes.length === 0 && (

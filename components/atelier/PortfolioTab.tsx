@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import { RichEditor, htmlToPlain } from '@/components/atelier/RichEditor'
 import { thumbUrl } from '@/lib/data'
 import type { Oeuvre } from '@/lib/types/database'
+import { WorkThumb, MissingThumb } from './WorkThumb'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -398,7 +399,7 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
                 <PageSection title="Sections Portfolio" icon="◪"
                   action={<button className="btn sm ghost" onClick={() => addItem('sections')}>+ Ajouter</button>}>
                   <p className="t-mono-xs" style={{ opacity: 0.5, marginBottom: 20 }}>
-                    Chaque section génère une carte d'introduction dans le portfolio, suivie des œuvres du thème assigné.
+                    Chaque section génère une carte d&apos;introduction dans le portfolio, suivie des œuvres du thème assigné.
                   </p>
                   <div className="col gap-md">
                     {config.sections.map((item, i) => (
@@ -415,7 +416,7 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
                         onMakePublic={handleMakePublic} />
                     ))}
                     {config.sections.length === 0 && (
-                      <div className="t-mono-xs" style={{ opacity: 0.3, padding: '24px 0' }}>Aucune section. Cliquer "+ Ajouter".</div>
+                      <div className="t-mono-xs" style={{ opacity: 0.3, padding: '24px 0' }}>Aucune section. Cliquer &quot;+ Ajouter&quot;.</div>
                     )}
                   </div>
                 </PageSection>
@@ -811,10 +812,10 @@ function CollectionRow({ item, isTarget, onAssign, onUpdate, onDelete, themeStat
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   border: !w.isPublic ? '2px solid var(--rust)' : '2px solid transparent',
                   boxSizing: 'border-box',
+                  position: 'relative',
                 }}>
                   {w.txtImageNameLink
-                    ? <img src={thumbUrl(w.txtImageNameLink) ?? ''} alt="" loading="lazy"
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ? <WorkThumb file={w.txtImageNameLink} size={128} alt="" />
                     : <span style={{ fontSize: 20, fontWeight: 900, color: 'var(--tx3)', opacity: 0.4, userSelect: 'none', lineHeight: 1 }}>{w.OeuvreID}</span>
                   }
                 </div>

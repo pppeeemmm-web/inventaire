@@ -412,7 +412,7 @@ function ConceptCard({ concept, onUpdated, onDeleted }: {
 
               {isBecameWork && concept.oeuvre_id && (
                 <div style={{ marginBottom: 12, fontSize: 10, color: 'var(--sage)' }}>
-                  ✓ Devenu l'œuvre #{concept.oeuvre_id}
+                  ✓ Devenu l&apos;œuvre #{concept.oeuvre_id}
                 </div>
               )}
 
@@ -618,7 +618,7 @@ export function ConceptsTab() {
             <div style={{ color: 'var(--tx3)', fontSize: 11, textAlign: 'center', marginTop: 40 }}>
               {search || filter !== 'all'
                 ? 'Aucune idée correspondante.'
-                : 'Aucune idée pour l\'instant. Créez la première !'}
+                : 'Aucune idée pour l&apos;instant. Créez la première !'}
             </div>
           ) : (
             visible.map((c) => (

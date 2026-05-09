@@ -8,6 +8,7 @@
 import { useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { thumbUrl, yearOf } from '@/lib/data'
+import { WorkThumb } from './WorkThumb'
 import type { Oeuvre } from '@/lib/types/database'
 
 interface Props {
@@ -175,7 +176,7 @@ export function CurationPanel({
             onClick={() => onOpen(o)}
           >
             {o.txtImageNameLink
-              ? <img src={thumbUrl(o.txtImageNameLink, 128) ?? ''} loading="lazy" alt="" />
+              ? <WorkThumb file={o.txtImageNameLink} size={128} alt="" />
               : <div className="ph" style={{ fontSize: 8 }}>—</div>}
             {(o as any).anonymity_level === 2 && (
               <div style={{
@@ -404,11 +405,11 @@ function ChecklistPreview({
                 }}
               >
                 {/* Thumb */}
-                <div style={{ width: 64, height: 64, background: '#e5dcc9', flexShrink: 0 }}>
+                <div style={{ width: 64, height: 64, background: '#e5dcc9', flexShrink: 0, position: 'relative' }}>
                   {o.txtImageNameLink && (
-                    <img
-                      src={thumbUrl(o.txtImageNameLink, 128) ?? ''}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                    <WorkThumb
+                      file={o.txtImageNameLink}
+                      size={128}
                       alt=""
                     />
                   )}

@@ -6,21 +6,7 @@ import { TeamPortalClient } from '@/components/atelier/TeamPortalClient'
 export default async function AtelierPage() {
   const supabase = await createClient()
 
-  const [
-    { data: oeuvres },
-    { data: techniques },
-    { data: supports },
-    { data: formats },
-    { data: themes },
-    { data: contacts },
-    { data: statuses },
-    { data: groups },
-    { data: presentations },
-    { data: exhibitions },
-    themesLink,
-    _groups_link,
-    { data: addresses },
-  ] = await Promise.all([
+  const results = await Promise.all([
     supabase
       .from('Oeuvres')
       .select('OeuvreID, Titre, Technique, Support, Année, Format, Hauteur, Largeur, Profondeur, Exposable, Prix, PrixFinal, Discount, statusId, Catalogué, txtImageNameLink, ContactID, Commentaires, Historique, LocalisationID, LocalisationDetail, is_public, theme, Encadree, IsCommission, PresentationID, ReturnDate, DateLivraison, AcheteurID, NeedsPhotograph, anonymity_level')
@@ -39,6 +25,20 @@ export default async function AtelierPage() {
     supabase.from('working_group_work').select('group_id, oeuvre_id'),
     supabase.from('contact_addresses').select('*'),
   ])
+
+  const oeuvres        = results[0]?.data
+  const techniques     = results[1]?.data
+  const supports       = results[2]?.data
+  const formats        = results[3]?.data
+  const themes         = results[4]?.data
+  const contacts       = results[5]?.data
+  const statuses       = results[6]?.data
+  const groups         = results[7]?.data
+  const presentations  = results[8]?.data
+  const exhibitions    = results[9]?.data
+  const themesLink     = results[10]
+  const _groups_link   = results[11]
+  const addresses      = results[12]?.data
 
   // Build a flat id→label map for fast status lookups on the client
   const statusLabelMap: Record<number, string> = {}
@@ -65,7 +65,7 @@ export default async function AtelierPage() {
 
   // Primary: canonical OeuvreTheme junction
   const inOeuvreTheme = new Set<number>()
-  for (const row of (themesLink.data ?? []) as { OeuvreID: number; ThemeID: number }[]) {
+  for (const row of (themesLink?.data ?? []) as { OeuvreID: number; ThemeID: number }[]) {
     if (!themePublicStats[row.ThemeID]) themePublicStats[row.ThemeID] = { total: 0, pub: 0 }
     themePublicStats[row.ThemeID].total++
     if (oeuvreIsPublic[row.OeuvreID]) themePublicStats[row.ThemeID].pub++

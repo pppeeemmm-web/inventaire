@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useI18n } from '@/lib/i18n/context'
 import { thumbUrl } from '@/lib/data'
+import { WorkThumb } from '../atelier/WorkThumb'
 
 interface SystemLogEntry {
   id: number
@@ -173,9 +174,9 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
             <div className="t-eyebrow" style={{ marginBottom: 24, opacity: 0.5 }}>04 · {t('recentlyAdded')}</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
               {recentImages.slice(0, 12).map((o) => (
-                <div key={o.OeuvreID} style={{ aspectRatio: '1', background: 'var(--bg1)', border: '1px solid var(--bd2)', overflow: 'hidden' }}>
+                <div key={o.OeuvreID} style={{ aspectRatio: '1', background: 'var(--bg1)', border: '1px solid var(--bd2)', overflow: 'hidden', position: 'relative' }}>
                   {o.txtImageNameLink
-                    ? <img src={thumbUrl(o.txtImageNameLink, 256) ?? ''} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.8 }} />
+                    ? <WorkThumb file={o.txtImageNameLink} size={256} alt="" />
                     : <div style={{ width: '100%', height: '100%', background: 'var(--bg2)' }} />}
                 </div>
               ))}

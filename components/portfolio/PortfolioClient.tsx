@@ -11,6 +11,8 @@ import Link from 'next/link'
 import { imageUrl, yearOf } from '@/lib/data'
 import { createClient } from '@/lib/supabase/client'
 import { useI18n } from '@/lib/i18n/context'
+import { WorkThumb } from '../atelier/WorkThumb'
+import Image from 'next/image'
 import type { Lang, DictKey } from '@/lib/i18n/dictionary'
 import PdfExportDrawer from './PdfExportDrawer'
 
@@ -93,16 +95,26 @@ function colDesc(c: CollectionItem, lang: Lang): string {
   return pick(c.description_fr, c.description_en, lang)
 }
 
-function Img({ src, alt, style, imgStyle }: {
-  src: string; alt: string
+function Img({ src, alt, style, imgStyle, fileName }: {
+  src?: string; alt: string; fileName?: string
   style?: React.CSSProperties; imgStyle?: React.CSSProperties
 }) {
   return (
     <div style={{ position: 'relative', overflow: 'hidden', ...style }}>
-      <img src={src} alt={alt} draggable={false}
-        onContextMenu={e => e.preventDefault()} onDragStart={e => e.preventDefault()}
-        style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover', userSelect: 'none', ...imgStyle }}
-      />
+      {fileName ? (
+        <WorkThumb file={fileName} size={800} alt={alt} style={imgStyle} />
+      ) : src ? (
+        <Image 
+          src={src} 
+          alt={alt} 
+          fill
+          unoptimized={true}
+          draggable={false}
+          onContextMenu={e => e.preventDefault()} 
+          onDragStart={e => e.preventDefault()}
+          style={{ display: 'block', objectFit: 'cover', userSelect: 'none', ...imgStyle }}
+        />
+      ) : null}
       <div style={{ position: 'absolute', inset: 0, zIndex: 1, cursor: 'default', userSelect: 'none' }}
         onContextMenu={e => e.preventDefault()} onDragStart={e => e.preventDefault()} />
     </div>
@@ -454,16 +466,12 @@ function CardContent({ page, isPortrait, config, lang, t }: {
       <div style={{ position: 'absolute', inset: 0, background: '#1a1816', overflow: 'hidden' }}>
 
         {/* Full-bleed image — slight right bias for visual tension */}
-        {src && (
-          <img
-            src={src} alt={w.Titre ?? ''}
-            draggable={false} onContextMenu={e => e.preventDefault()}
+        {w.txtImageNameLink && (
+          <WorkThumb
+            file={w.txtImageNameLink} alt={w.Titre ?? ''}
+            size={1200}
             style={{
-              position: 'absolute',
-              top: 0, left: 0,
-              width: '100%', height: '100%',
-              objectFit: 'cover', objectPosition: '55% center',
-              userSelect: 'none',
+              objectPosition: '55% center',
             }}
           />
         )}

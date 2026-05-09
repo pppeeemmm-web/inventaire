@@ -7,9 +7,11 @@
 
 import { useMemo, useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { useI18n } from '@/lib/i18n/context'
 import { createClient } from '@/lib/supabase/client'
 import { imageUrl, thumbUrl, yearOf, statusOf, type StatusKey } from '@/lib/data'
+import { MissingThumb, WorkThumb, SuggestionThumb } from './WorkThumb'
 import type { Oeuvre } from '@/lib/types/database'
 
 // ── Types ────────────────────────────────────────────────────
@@ -32,32 +34,7 @@ interface WorkAction {
 
 const EXCLUDED_STATUSES: StatusKey[] = ['sold', 'gift', 'artist_archive', 'private_archive']
 
-// ── MissingThumb ─────────────────────────────────────────────
-function MissingThumb({ id, onOpen }: { id: number; onOpen?: () => void }) {
-  return (
-    <div style={{
-      width: '100%', height: '100%', position: 'relative', overflow: 'hidden',
-      background: 'repeating-linear-gradient(45deg, var(--bg2), var(--bg2) 10px, var(--bg1) 10px, var(--bg1) 20px)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-    }}>
-      <span style={{
-        fontSize: 22, fontWeight: 800, color: 'var(--tx)', opacity: 0.18,
-        letterSpacing: -1, userSelect: 'none', lineHeight: 1,
-      }}>{id}</span>
-      {onOpen && (
-        <button
-          onClick={e => { e.stopPropagation(); onOpen() }}
-          title="Ajouter une image"
-          style={{
-            position: 'absolute', bottom: 2, right: 2,
-            background: 'rgba(0,0,0,0.45)', color: 'rgba(255,255,255,0.8)',
-            border: 'none', borderRadius: 3,
-            fontSize: 8, padding: '1px 3px', cursor: 'pointer', lineHeight: 1.4,
-          }}>⊕</button>
-      )}
-    </div>
-  )
-}
+
 
 // ── Component ────────────────────────────────────────────────
 
@@ -74,8 +51,14 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
   const [search,      setSearch]      = useState('')
   const [actionTypes, setActionTypes] = useState<ActionType[]>([])
   const [actions,     setActions]     = useState<WorkAction[]>([])
+  const [localOeuvres, setLocalOeuvres] = useState<Oeuvre[]>(oeuvres)
   const [loading,     setLoading]     = useState(true)
   const [editingTypes, setEditingTypes] = useState(false)
+
+  // Sync with props when they change
+  useEffect(() => {
+    setLocalOeuvres(oeuvres)
+  }, [oeuvres])
 
   const sb = createClient()
 
@@ -87,7 +70,7 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
     if (types) setActionTypes(types)
     if (acts)  setActions(acts)
     setLoading(false)
-  }, [])
+  }, [sb])
 
   useEffect(() => { loadData() }, [loadData])
 
@@ -109,7 +92,7 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
     const worksWithActions = new Set<number>()
     for (const a of actions) worksWithActions.add(a.oeuvre_id)
 
-    return oeuvres.filter((o) => {
+    return localOeuvres.filter((o) => {
       // Show if not catalogued OR if it specifically needs a photograph OR if it has a pending action
       const needsPhoto = (o as any).NeedsPhotograph || (o as any).needsphotograph
       const hasAction = worksWithActions.has(o.OeuvreID)
@@ -124,11 +107,11 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
       }
       return true
     })
-  }, [oeuvres, statusLabelMap, tM, search, actions])
+  }, [localOeuvres, statusLabelMap, tM, search, actions])
 
   const oeuvresById = useMemo(
-    () => new Map(oeuvres.map((o) => [o.OeuvreID, o])),
-    [oeuvres],
+    () => new Map(localOeuvres.map((o) => [o.OeuvreID, o])),
+    [localOeuvres],
   )
 
   async function markDone(oeuvreId: number, actionTypeId: number) {
@@ -188,6 +171,15 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
       }
 
       await sb.from('Oeuvres').update(updates).eq('OeuvreID', oeuvreId)
+
+      // Update local oeuvres state so header counts and filters update instantly
+      if (Object.keys(updates).length > 0) {
+        setLocalOeuvres((prev) =>
+          prev.map((item) =>
+            item.OeuvreID === oeuvreId ? { ...item, ...updates } : item
+          )
+        )
+      }
     }
 
     // Remove from local state so card disappears immediately, and inject new actions so they appear instantly
@@ -214,7 +206,11 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
     ), data])
   }
 
-  const cataloguedCount = oeuvres.filter((o) => o.Catalogué).length
+  const productionCount = localOeuvres.filter(o => statusOf(o, statusLabelMap) === 'en_production').length
+  const availableCount = localOeuvres.filter(o => statusOf(o, statusLabelMap) === 'available').length
+  const archivePemCount = localOeuvres.filter(o => statusOf(o, statusLabelMap) === 'artist_archive').length
+  const soldCount       = localOeuvres.filter(o => statusOf(o, statusLabelMap) === 'sold').length
+  const othersCount     = localOeuvres.length - (productionCount + availableCount + archivePemCount + soldCount)
 
   if (loading) {
     return <div className="t-mono-sm" style={{ padding: 40, color: 'var(--tx3)' }}>Chargement…</div>
@@ -228,7 +224,7 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
         <div>
           <div className="t-label">{t('production')}</div>
           <div className="t-mono-sm" style={{ color: 'var(--tx3)', marginTop: 3 }}>
-            {active.length} en production · {cataloguedCount} catalogués
+            {active.length} en production · {availableCount} disponibles · {archivePemCount} archive Pem {soldCount > 0 && `· ${soldCount} vendus`} {othersCount > 0 && `· ${othersCount} autres`}
           </div>
         </div>
         <input
@@ -405,16 +401,8 @@ function ActionColumn({
               onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg2)')}
               onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
             >
-              <div style={{ width: 16, height: 16, background: 'var(--bg0)', flexShrink: 0, overflow: 'hidden' }}>
-                {o.txtImageNameLink && <img 
-                  src={thumbUrl(o.txtImageNameLink, 48) ?? ''} 
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                  alt="" 
-                  onError={(e) => {
-                    const full = imageUrl(o.txtImageNameLink) ?? ''
-                    if (full && e.currentTarget.src !== full) e.currentTarget.src = full
-                  }}
-                />}
+              <div style={{ width: 16, height: 16, background: 'var(--bg0)', flexShrink: 0, overflow: 'hidden', position: 'relative' }}>
+                {o.txtImageNameLink && <SuggestionThumb file={o.txtImageNameLink} alt={o.Titre ?? ''} />}
               </div>
               <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {o.Titre ?? '—'}
@@ -478,17 +466,10 @@ function WorkCard({ o, tM, onMarkDone, onOpen }: {
           width: 40, height: 40, flexShrink: 0, cursor: 'pointer',
           background: 'var(--bg0)', overflow: 'hidden',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
+          position: 'relative',
         }}>
           {o.txtImageNameLink
-            ? <img src={thumbUrl(o.txtImageNameLink, 128) ?? ''}
-                loading="lazy" alt=""
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                onError={(e) => {
-                  // Thumb not yet backfilled — fall back to full-res image
-                  const full = imageUrl(o.txtImageNameLink) ?? ''
-                  if (full && e.currentTarget.src !== full) e.currentTarget.src = full
-                }}
-              />
+            ? <WorkThumb file={o.txtImageNameLink} alt={o.Titre ?? ''} />
             : <MissingThumb id={o.OeuvreID} onOpen={() => onOpen(o)} />}
         </div>
 
@@ -697,3 +678,7 @@ function ActionTypeManager({ actionTypes, onRefresh, onClose }: {
     </div>
   )
 }
+
+
+
+function cap(s: string) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : '' }

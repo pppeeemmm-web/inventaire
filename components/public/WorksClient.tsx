@@ -2,6 +2,7 @@
 
 import { useI18n } from '@/lib/i18n/context'
 import { imageUrl, yearOf } from '@/lib/data'
+import { WorkThumb } from '@/components/atelier/WorkThumb'
 import { useEffect, useState, useRef, useMemo } from 'react'
 import PublicNav from './PublicNav'
 
@@ -428,7 +429,7 @@ export default function WorksClient({ works, collections }: Props) {
             ? `drop-shadow(-${Math.round(shadowIntensity * 28)}px ${Math.round(shadowIntensity * 36)}px ${shadowBlur}px rgba(20,16,10,${shadowAlpha})) drop-shadow(-${Math.round(shadowIntensity * 8)}px ${Math.round(shadowIntensity * 12)}px ${Math.round(shadowIntensity * 22)}px rgba(20,16,10,${(shadowIntensity * 0.25).toFixed(2)}))`
             : 'none'
 
-          const imgSrc      = imageUrl(work.txtImageNameLink) ?? undefined
+          const imgSrc = imageUrl(work.txtImageNameLink) ?? undefined
           const itemTransform = isFirstWork
             ? `translate3d(${slideTranslateX}vw, 0, ${translateZ}px) rotateY(${slideRotateY}deg) scale(${scale})`
             : `translate3d(0, 0, ${translateZ}px) scale(${scale})`
@@ -446,7 +447,10 @@ export default function WorksClient({ works, collections }: Props) {
                       src={imgSrc}
                       alt={work.Titre ?? ''}
                       className="w-main-img"
-                      style={{ '--burns-zoom': burnSnapshot.get(idx) ?? 1 } as React.CSSProperties}
+                      style={{ 
+                        '--burns-zoom': burnSnapshot.get(idx) ?? 1,
+                        objectFit: 'contain'
+                      } as React.CSSProperties}
                     />
                   </div>
                 </div>

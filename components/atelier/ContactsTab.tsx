@@ -1235,7 +1235,7 @@ function ContactEditModal({
           <FRow label="Privé">
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, fontSize: 11, cursor: 'pointer' }}>
               <input type="checkbox" checked={form.is_private ?? false} onChange={(e) => setForm((p) => ({ ...p, is_private: e.target.checked }))} />
-              Contact privé (visible uniquement par l'admin)
+              Contact privé (visible uniquement par l&apos;admin)
             </label>
           </FRow>
         )}
@@ -1659,7 +1659,7 @@ function ImportGoogleModal({ onClose, onDone }: { onClose: () => void; onDone: (
                 )}
                 {parsed.length === 0 && (
                   <div style={{ color: 'var(--rust)', marginTop: 4 }}>
-                    Aucun contact reconnu — vérifiez que c'est bien un export Google CSV (pas Outlook).
+                    Aucun contact reconnu — vérifiez que c&apos;est bien un export Google CSV (pas Outlook).
                   </div>
                 )}
               </div>

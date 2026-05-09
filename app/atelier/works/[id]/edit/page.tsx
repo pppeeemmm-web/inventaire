@@ -15,21 +15,7 @@ export default async function EditWorkPage({ params }: Props) {
 
   const supabase = await createClient()
 
-  const [
-    { data: oeuvre },
-    { data: themeRows },
-    { data: techniques },
-    { data: supports },
-    { data: formats },
-    { data: themes },
-    { data: contacts },
-    { data: statuses },
-    { data: images },
-    { data: addresses },
-    { data: groups },
-    { data: workGroups },
-    { data: consignments },
-  ] = await Promise.all([
+  const results = await Promise.all([
     supabase.from('Oeuvres').select('*').eq('OeuvreID', oid).single(),
     supabase.from('OeuvreTheme').select('ThemeID').eq('OeuvreID', oid),
     supabase.from('Technique').select('TechniqueID, Technique').order('Technique', { ascending: true }),
@@ -44,6 +30,20 @@ export default async function EditWorkPage({ params }: Props) {
     supabase.from('working_group_work').select('group_id').eq('oeuvre_id', oid),
     supabase.from('consignment').select('*, Contact(NomInstitution, Nom, Prénom, Ville, Pays)').eq('oeuvre_id', oid).order('created_at', { ascending: false }).limit(1),
   ])
+
+  const oeuvre       = results[0]?.data
+  const themeRows    = results[1]?.data
+  const techniques   = results[2]?.data
+  const supports     = results[3]?.data
+  const formats      = results[4]?.data
+  const themes       = results[5]?.data
+  const contacts     = results[6]?.data
+  const statuses     = results[7]?.data
+  const images       = results[8]?.data
+  const addresses    = results[9]?.data
+  const groups       = results[10]?.data
+  const workGroups   = results[11]?.data
+  const consignments = results[12]?.data
 
   if (!oeuvre) notFound()
 

@@ -4,6 +4,7 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import { thumbUrl } from '@/lib/data'
+import { WorkThumb } from '@/components/atelier/WorkThumb'
 
 export default async function PrivateLinkPage({
   params,
@@ -55,9 +56,9 @@ export default async function PrivateLinkPage({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 48 }}>
         {oeuvres.map((o) => (
           <div key={o['OeuvreID'] as number} style={{ display: 'grid', gridTemplateColumns: '420px 1fr', gap: 40, alignItems: 'start' }}>
-            <div className="thumb" style={{ height: 420 }}>
+            <div className="thumb" style={{ height: 420, position: 'relative' }}>
               {o['txtImageNameLink']
-                ? <img src={thumbUrl(o['txtImageNameLink'] as string, 750) ?? ''} alt={o['Titre'] as string ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ? <WorkThumb file={o['txtImageNameLink'] as string} size={800} alt={o['Titre'] as string ?? ''} />
                 : <div className="ph" />}
             </div>
             <div style={{ paddingTop: 8 }}>

@@ -9,6 +9,7 @@ import type { Oeuvre }  from '@/lib/types/database'
 import { createSaleOrder, updateOrderStatut, deleteSaleOrder, fetchOrders, regenerateOrderPdf, type SaleOrderRow } from '@/app/atelier/sales/actions'
 import { getSignedUrl } from '@/app/atelier/vault/actions'
 import { stringifyError } from '@/lib/error'
+import { WorkThumb } from './WorkThumb'
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -196,7 +197,7 @@ export function SalesTab({ oeuvres, statusLabelMap, contacts, groups, cM, tM }: 
           {loading ? (
             <div style={{ color: 'var(--tx3)', fontSize: 13 }}>Chargement…</div>
           ) : orders.length === 0 ? (
-            <div style={{ color: 'var(--tx3)', fontSize: 13 }}>Aucune commande. Créez la première via "+ Nouvelle commande".</div>
+            <div style={{ color: 'var(--tx3)', fontSize: 13 }}>Aucune commande. Créez la première via &quot;+ Nouvelle commande&quot;.</div>
           ) : (
             <table className="tbl" style={{ minWidth: 800 }}>
               <thead>
@@ -379,8 +380,12 @@ function OrderFormModal({ oeuvres, contacts, groups, tM, onClose, onCreated }: {
               {oeuvreIds.map(id => {
                 const o = oeuvres.find(x => x.OeuvreID === id)
                 return (
-                  <div key={id} style={{ display:'flex', alignItems:'center', gap:10, background:'var(--bg2)', padding:'6px 12px', border:'1px solid var(--bd2)' }}>
-                    {o?.txtImageNameLink && <img src={thumbUrl(o.txtImageNameLink, 64) ?? ''} alt="" style={{ width:32, height:32, objectFit:'cover' }} />}
+                  <div key={id} style={{ display:'flex', alignItems:'center', gap:10, background:'var(--bg2)', padding:'6px 12px', border:'1px solid var(--bd2)', position: 'relative' }}>
+                    {o?.txtImageNameLink && (
+                      <div style={{ width: 32, height: 32, position: 'relative' }}>
+                        <WorkThumb file={o.txtImageNameLink} size={64} alt="" />
+                      </div>
+                    )}
                     <span style={{ fontSize:12, fontFamily:'var(--font-mono)' }}>#{id}</span>
                     <button type="button" onClick={() => setOeuvreIds(prev => prev.filter(x => x !== id))} style={{ background:'none', border:'none', color:'var(--rust)', cursor:'pointer', fontSize: 16 }}>×</button>
                   </div>
@@ -407,7 +412,9 @@ function OrderFormModal({ oeuvres, contacts, groups, tM, onClose, onCreated }: {
                         style={{ padding:'10px 16px', fontSize:13, borderBottom:'1px solid var(--bd2)', cursor:'pointer', display:'flex', alignItems:'center', gap:12 }}
                         className="hover-bg"
                       >
-                        {o.txtImageNameLink && <img src={thumbUrl(o.txtImageNameLink, 64) ?? ''} alt="" style={{ width:32, height:32, objectFit:'cover' }} />}
+                        <div style={{ width:32, height:32, position: 'relative', flexShrink: 0 }}>
+                          {o.txtImageNameLink && <WorkThumb file={o.txtImageNameLink} size={64} alt="" />}
+                        </div>
                         <div style={{ flex:1 }}>
                           <div style={{ fontWeight:600 }}>#{o.OeuvreID} — {o.Titre ?? 'S/T'}</div>
                           <div style={{ opacity:0.6 }}>{o.Technique ? tM[o.Technique] : ''}</div>
@@ -480,7 +487,7 @@ function OrderFormModal({ oeuvres, contacts, groups, tM, onClose, onCreated }: {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <div>
-                <div className="t-label" style={{ marginBottom: 4 }}>Mode d'expédition</div>
+                <div className="t-label" style={{ marginBottom: 4 }}>Mode d&apos;expédition</div>
                 <select name="shipping_method" style={inputStyle}>
                   <option value="">—</option>
                   <option value="Remise en main propre">Remise en main propre</option>

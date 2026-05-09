@@ -3,6 +3,7 @@
 import React from 'react'
 import Link from 'next/link'
 import { thumbUrl, yearOf } from '@/lib/data'
+import { WorkThumb } from '../atelier/WorkThumb'
 
 interface Work {
   OeuvreID:         number
@@ -54,10 +55,11 @@ export default function PortalLayout({ title, subtitle, works, userName }: Props
                   border: '1px solid rgba(0,0,0,0.03)', position: 'relative' 
                 }}>
                   {w.txtImageNameLink ? (
-                    <img 
-                      src={thumbUrl(w.txtImageNameLink, 800)} 
+                    <WorkThumb 
+                      file={w.txtImageNameLink} 
+                      size={800} 
                       alt={w.Titre || ''} 
-                      style={{ width: '100%', height: '100%', objectFit: 'contain', mixBlendMode: 'multiply' }} 
+                      style={{ mixBlendMode: 'multiply' }} 
                     />
                   ) : (
                     <div style={{ width: '100%', height: '100%', display: 'grid', placeItems: 'center', color: '#c8c4be', fontSize: 10 }}>SANS IMAGE</div>

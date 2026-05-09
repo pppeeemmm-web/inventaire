@@ -132,8 +132,7 @@ export async function extractDocumentText(formData: FormData): Promise<ExtractTe
     }
 
     if (fname.endsWith('.docx')) {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const mammoth: MammothLib = require('mammoth')
+      const mammoth = await import('mammoth')
       const result = await mammoth.convertToHtml({ buffer: buf })
       return { ok: true, text: result.value }
     }

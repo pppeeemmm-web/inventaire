@@ -151,7 +151,7 @@ export function RichEditor({ value, onChange, placeholder = '', minHeight = 160 
           1≡
         </Btn>
         <Btn title="Citation" active={e.isActive('blockquote')} onClick={() => e.chain().focus().toggleBlockquote().run()}>
-          "
+          &quot;
         </Btn>
 
         <Sep />

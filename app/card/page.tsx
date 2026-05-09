@@ -6,6 +6,7 @@ export const metadata = {
   robots: { index: false, follow: false },
 }
 
+import Image from 'next/image'
 const PORTFOLIO_URL = 'https://pem-hub.vercel.app/portfolio'  // update when deployed
 const EMAIL         = 'pppeeemmm@gmail.com'
 const QR_URL        = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(PORTFOLIO_URL)}&color=ece7da&bgcolor=0a0a0b&margin=8`
@@ -191,7 +192,7 @@ export default function CardPage() {
           <div className="card card-back">
             <div className="qr-wrap">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={QR_URL} alt="QR code — portfolio" width={80} height={80} />
+              <Image src={QR_URL} alt="QR code — portfolio" width={80} height={80} unoptimized={true} />
               <div className="qr-label">Portfolio</div>
             </div>
             <div className="back-text">

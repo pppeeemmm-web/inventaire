@@ -57,6 +57,7 @@ import { createConsignmentOrder, regenerateConsignmentPdf } from '@/app/atelier/
 import { createSaleOrder } from '@/app/atelier/sales/actions'
 import { getSignedUrl } from '@/app/atelier/vault/actions'
 import type { Oeuvre } from '@/lib/types/database'
+import { WorkThumb } from './WorkThumb'
 
 interface Props {
   oeuvres:     Oeuvre[]
@@ -259,7 +260,23 @@ export function PipelineTab({ oeuvres, contacts, exhibitions, groups }: Props) {
     const items: { label: string; date: string; time: string | null; type: ProcessType; processId: string; etapeId?: string }[] = []
     processes.forEach((p) => {
       if (['perdu','annule','termine'].includes(p.statut)) return
-      if (p.date_fin) items.push({ label: p.nom, date: p.date_fin, time: p.deadline_time, type: p.type, processId: p.id })
+      
+      let skipDateFin = false;
+      if (p.date_fin) {
+        const days = daysUntil(p.date_fin);
+        const hasCompletedSameDay = p.etapes.some(e => e.statut === 'fait' && e.date_echeance === p.date_fin);
+        const hasFutureSteps = p.etapes.some(e => e.statut !== 'fait' && e.date_echeance && daysUntil(e.date_echeance) >= 0);
+        const hasPendingSameDay = p.etapes.some(e => e.statut !== 'fait' && e.date_echeance === p.date_fin);
+        
+        if (hasCompletedSameDay || (days < 0 && hasFutureSteps) || hasPendingSameDay) {
+          skipDateFin = true;
+        }
+      }
+      
+      if (p.date_fin && !skipDateFin) {
+        items.push({ label: p.nom, date: p.date_fin, time: p.deadline_time, type: p.type, processId: p.id })
+      }
+
       p.etapes.forEach((e) => {
         if (e.statut !== 'fait' && !e.overdue_override && e.date_echeance)
           items.push({ label: `${p.nom} · ${e.nom}`, date: e.date_echeance, time: null, type: p.type, processId: p.id, etapeId: e.id })
@@ -600,17 +617,24 @@ function ProcessDrawer({ process, onClose, onEdit, onRefresh, onCycleEtape, onOv
       <Row label="Location"     value={process.localisation} />
       <Row label="URL"          value={process.url} href={process.url?.startsWith('http')?process.url:`https://${process.url}`} />
       {process.date_debut && <Row label="Start"  value={fmtDate(process.date_debut)} />}
-      {process.date_fin   && (
-        <div style={{ display:'flex', gap:8, padding:'8px 0', borderBottom:'1px solid var(--bd)' }}>
-          <div className="t-mono-sm" style={{ color:'var(--tx3)', minWidth:140, flexShrink:0 }}>Deadline</div>
-          <div style={{ fontSize:13, color:urgencyColor(daysUntil(process.date_fin)), fontWeight:600 }}>
-            {fmtDate(process.date_fin, process.deadline_time)}
-            <span style={{ fontSize:11, fontWeight:400, marginLeft:6, color:'var(--tx3)' }}>
-              ({daysUntil(process.date_fin)>=0?`in ${daysUntil(process.date_fin)}d`:`${Math.abs(daysUntil(process.date_fin))}d overdue`})
-            </span>
+      {process.date_fin   && (() => {
+        const days = daysUntil(process.date_fin);
+        const hasCompletedSameDay = process.etapes.some(e => e.statut === 'fait' && e.date_echeance === process.date_fin);
+        const hasFutureSteps = process.etapes.some(e => e.statut !== 'fait' && e.date_echeance && daysUntil(e.date_echeance) >= 0);
+        const isOverdue = days < 0 && !hasCompletedSameDay && !hasFutureSteps;
+        const color = isOverdue ? '#c06060' : (days >= 0 ? urgencyColor(days) : 'var(--tx)');
+        return (
+          <div style={{ display:'flex', gap:8, padding:'8px 0', borderBottom:'1px solid var(--bd)' }}>
+            <div className="t-mono-sm" style={{ color:'var(--tx3)', minWidth:140, flexShrink:0 }}>Deadline</div>
+            <div style={{ fontSize:13, color, fontWeight:600 }}>
+              {fmtDate(process.date_fin, process.deadline_time)}
+              <span style={{ fontSize:11, fontWeight:400, marginLeft:6, color:'var(--tx3)' }}>
+                {days >= 0 ? `(in ${days}d)` : isOverdue ? `(${Math.abs(days)}d overdue)` : `(On track)`}
+              </span>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
       <Row label="Scope"        value={process.scope} />
       <Row label="Stakeholders" value={process.stakeholders} />
 
@@ -1025,8 +1049,10 @@ function ProcessModal({ oeuvres, contacts, exhibitions, groups, process, onClose
                       position: 'relative',
                       boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
                     }}>
-                      <div style={{ width: 32, height: 32, background: 'var(--bg2)', flexShrink: 0, overflow: 'hidden', border: '1px solid var(--bd)' }}>
-                        {o?.ImageURL ? <img src={o.ImageURL} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : null}
+                      <div style={{ width: 32, height: 32, background: 'var(--bg2)', flexShrink: 0, overflow: 'hidden', border: '1px solid var(--bd)', position: 'relative' }}>
+                        {o?.ImageURL || o?.txtImageNameLink ? (
+                          <WorkThumb file={o.txtImageNameLink || o.ImageURL} size={64} alt="" />
+                        ) : null}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 10, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--tx1)' }}>{o?.Titre || 'Untitled'}</div>
@@ -1055,8 +1081,10 @@ function ProcessModal({ oeuvres, contacts, exhibitions, groups, process, onClose
                 <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--bg1)', border: '1px solid var(--ac)', zIndex: 300, maxHeight: 200, overflow: 'auto', boxShadow: '0 10px 20px rgba(0,0,0,0.2)' }}>
                   {filteredWorks.filter(o => !oeuvreIds.includes(o.OeuvreID)).map(o => (
                     <div key={o.OeuvreID} onClick={() => { setOeuvreIds(p => [...p, o.OeuvreID]); setWorkSearch('') }} style={{ padding: '8px 12px', borderBottom: '1px solid var(--bd)', cursor: 'pointer', display: 'flex', gap: 10, alignItems: 'center', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(200,168,110,0.1)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                      <div style={{ width: 24, height: 24, background: 'var(--bg2)', border: '1px solid var(--bd)' }}>
-                        {o.ImageURL && <img src={o.ImageURL} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                      <div style={{ width: 24, height: 24, background: 'var(--bg2)', border: '1px solid var(--bd)', position: 'relative' }}>
+                        {(o.ImageURL || o.txtImageNameLink) && (
+                          <WorkThumb file={o.txtImageNameLink || o.ImageURL} size={48} alt="" />
+                        )}
                       </div>
                       <div style={{ fontSize: 11 }}>{o.Titre} <span style={{ color: 'var(--tx3)', marginLeft: 4 }}>#{o.OeuvreID}</span></div>
                     </div>

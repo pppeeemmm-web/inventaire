@@ -7,6 +7,7 @@
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { imageUrl, thumbUrl } from '@/lib/data'
+import { WorkThumb } from './WorkThumb'
 import type { Oeuvre }  from '@/lib/types/database'
 
 // ── Constants ──────────────────────────────────────────────────────────────
@@ -1930,7 +1931,7 @@ export function ConstellationCanvas({
           {groupBy === 'theme' && selectedThemeId === null && (
             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
               <div className="t-mono-sm" style={{ color: 'var(--tx3)', background: 'var(--bg1)', padding: '10px 20px', border: '1px solid var(--bd)', borderRadius: 2 }}>
-                Veuillez sélectionner un thème dans la barre d'outils.
+                Veuillez sélectionner un thème dans la barre d&apos;outils.
               </div>
             </div>
           )}
@@ -1943,9 +1944,9 @@ export function ConstellationCanvas({
           {panelNode ? (
             <div style={{ padding: 16, borderBottom: '1px solid var(--bd)', flexShrink: 0 }}>
               <div className="t-eyebrow" style={{ marginBottom: 10 }}>Œuvre</div>
-              <div style={{ background: 'var(--bg0)', height: 135, marginBottom: 10, overflow: 'hidden' }}>
+              <div style={{ background: 'var(--bg0)', height: 135, marginBottom: 10, overflow: 'hidden', position: 'relative' }}>
                 {panelNode.txtImageNameLink
-                  ? <img src={thumbUrl(panelNode.txtImageNameLink, 384) ?? ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="" />
+                  ? <WorkThumb file={panelNode.txtImageNameLink} size={384} style={{ objectFit: 'contain' }} alt="" />
                   : <div style={{ width: '100%', height: '100%', background: 'var(--bg2)' }} />
                 }
               </div>
@@ -2020,7 +2021,9 @@ export function ConstellationCanvas({
                     title="Cliquer pour ajouter"
                   >
                     {o.txtImageNameLink
-                      ? <img src={thumbUrl(o.txtImageNameLink, 48) ?? ''} style={{ width: 24, height: 24, objectFit: 'cover', flexShrink: 0, borderRadius: '50%' }} alt="" />
+                      ? <div style={{ width: 24, height: 24, position: 'relative', flexShrink: 0, borderRadius: '50%', overflow: 'hidden' }}>
+                          <WorkThumb file={o.txtImageNameLink} size={48} alt="" />
+                        </div>
                       : <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--bg2)', flexShrink: 0 }} />
                     }
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -2091,7 +2094,11 @@ export function ConstellationCanvas({
                         onClick={() => { const n = new Set(selRef.current); n.delete(id); setSelection(n) }}
                         style={{ width: 44, height: 33, background: 'var(--bg0)', border: '1px solid var(--bd)', overflow: 'hidden', cursor: 'pointer', flexShrink: 0 }}
                       >
-                        {o.txtImageNameLink && <img src={thumbUrl(o.txtImageNameLink, 96) ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />}
+                        {o.txtImageNameLink && (
+                          <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+                            <WorkThumb file={o.txtImageNameLink} size={96} alt="" />
+                          </div>
+                        )}
                       </div>
                     ) : null
                   })}

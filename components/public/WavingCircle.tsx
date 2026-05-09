@@ -1,5 +1,7 @@
 'use client'
 
+import Image from 'next/image'
+
 interface Props {
   src: string
   alt: string
@@ -19,13 +21,12 @@ export default function WavingCircle({ src, alt, className }: Props) {
           100% { transform: scale(1.06) skewX(0deg)    scaleX(1)    scaleY(1); }
         }
       `}</style>
-      <div style={{ width: '100%', height: '100%', borderRadius: '50%', overflow: 'hidden' }}>
-        <img
+      <div style={{ width: '100%', height: '100%', borderRadius: '50%', overflow: 'hidden', position: 'relative' }}>
+        <Image
           src={src}
           alt={alt}
+          fill
           style={{
-            width: '100%',
-            height: '100%',
             objectFit: 'cover',
             display: 'block',
             animation: 'wave 7s ease-in-out infinite',

@@ -8,7 +8,9 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
 import { imageUrl, thumbUrl, yearOf, statusOf, statusColor, stageOf, type StatusKey } from '@/lib/data'
+import { MissingThumb, WorkThumb } from './WorkThumb'
 import { WorkStateChip } from './WorkStateChip'
+import Image from 'next/image'
 import { stringifyError } from '@/lib/error'
 import type { Oeuvre } from '@/lib/types/database'
 
@@ -183,32 +185,7 @@ interface SharedProps {
 
 type View = 'list' | 'grid' | 'graph'
 
-// ── MissingThumb ─────────────────────────────────────────────────────
-function MissingThumb({ id, onOpen }: { id: number; onOpen?: () => void }) {
-  return (
-    <div style={{
-      width: '100%', height: '100%', position: 'relative', overflow: 'hidden',
-      background: 'repeating-linear-gradient(45deg, var(--bg2), var(--bg2) 10px, var(--bg1) 10px, var(--bg1) 20px)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-    }}>
-      <span style={{
-        fontSize: 40, fontWeight: 800, color: 'var(--tx)', opacity: 0.18,
-        letterSpacing: -2, userSelect: 'none', lineHeight: 1,
-      }}>{id}</span>
-      {onOpen && (
-        <button
-          onClick={e => { e.stopPropagation(); onOpen() }}
-          title="Ajouter une image"
-          style={{
-            position: 'absolute', bottom: 3, right: 3,
-            background: 'rgba(0,0,0,0.45)', color: 'rgba(255,255,255,0.8)',
-            border: 'none', borderRadius: 3,
-            fontSize: 9, padding: '2px 4px', cursor: 'pointer', lineHeight: 1.4,
-          }}>⊕</button>
-      )}
-    </div>
-  )
-}
+
 
 // ── Main component ──────────────────────────────────────────────────
 
@@ -1102,9 +1079,9 @@ function InvList({
                   <td style={{ color: 'var(--tx3)', fontSize: 11, padding: '0 2px', whiteSpace: 'nowrap' }}>
                     {o.OeuvreID}
                     {(() => {
-                      const level = (o as any).anonymity_level ?? 0
-                      if (level === 2) return <span title="Privé (Confidentiel)" style={{ marginLeft: 4, opacity: 0.6 }}>🔒</span>
-                      if (level === 1) return <span title="Anonyme (Confidentiel)" style={{ marginLeft: 4, color: 'var(--ac)' }}>👤</span>
+                      if (!(o as any).is_public) {
+                        return <span title="Œuvre privée (Non publique)" style={{ marginLeft: 4, opacity: 0.6 }}>🔒</span>
+                      }
                       
                       // Photography Gate Indicator
                       if (!o.Catalogué && o.statusId === 1 && o.txtImageNameLink) {
@@ -1118,7 +1095,8 @@ function InvList({
                       className="thumb" 
                       style={{ 
                         width: 40, height: 40, cursor: 'zoom-in', 
-                        border: '1px solid var(--bd)', borderRadius: 2, overflow: 'hidden' 
+                        border: '1px solid var(--bd)', borderRadius: 2, overflow: 'hidden',
+                        position: 'relative'
                       }}
                       onDoubleClick={(e) => { 
                         e.stopPropagation(); 
@@ -1127,7 +1105,7 @@ function InvList({
                       title="DOUBLE-CLICK pour agrandir l'aperçu"
                     >
                       {o.txtImageNameLink 
-                        ? <img src={thumbUrl(o.txtImageNameLink, 96) ?? ''} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> 
+                        ? <WorkThumb file={o.txtImageNameLink} alt={o.Titre ?? ''} size={96} displaySize="40px" /> 
                         : <MissingThumb id={o.OeuvreID} onOpen={() => onOpen(o)} />}
                     </div>
                   </td>
@@ -1142,8 +1120,17 @@ function InvList({
                   <td style={{ padding: '0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: 0.8 }}>
                     {(() => {
                       const level = (o as any).anonymity_level ?? 0
+                      const contactName = o.ContactID != null ? (cM[o.ContactID] ?? '—') : 'Pem'
+                      
                       if (publicMode && level >= 1) return <span style={{ opacity: 0.3 }}>[Anonyme]</span>
-                      return o.ContactID != null ? (cM[o.ContactID] ?? '—') : 'Pem'
+                      
+                      return (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{contactName}</span>
+                          {level === 1 && <span title="Anonyme (Confidentiel)" style={{ color: 'var(--ac)' }}>👤</span>}
+                          {level === 2 && <span title="Privé (Confidentiel)" style={{ opacity: 0.6 }}>🔒</span>}
+                        </span>
+                      )
                     })()}
                   </td>
                   <td style={{ padding: '0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: 0.8 }}>
@@ -1410,26 +1397,25 @@ function InvPreview({
         onMouseUp={() => { isDragging.current = false }}
       >
         {activeImgPath
-          ? <img
-              draggable={false}
-              src={imageUrl(activeImgPath) ?? ''}
-              alt={o.Titre ?? ''}
-              onLoad={(e) => {
-                const el = e.currentTarget
-                if (el.naturalWidth > 0) setNaturalSize({ w: el.naturalWidth, h: el.naturalHeight })
-              }}
-              style={{
-                display: 'block', 
-                maxWidth: '100%', 
-                maxHeight: isExpanded ? '80vh' : 'none',
-                width: 'auto',
-                height: 'auto',
-                margin: '0 auto',
-                transform: `translate(${imgPan.x}px, ${imgPan.y}px) scale(${scaleVal})`,
-                transformOrigin: 'center center',
-                transition: 'transform 0.06s ease-out',
-              }}
-            />
+          ? <div style={{ width: '100%', overflow: 'hidden' }}>
+              <img
+                draggable={false}
+                src={imageUrl(activeImgPath) ?? ''}
+                alt={o.Titre ?? ''}
+                onLoad={(e) => {
+                  const el = e.currentTarget
+                  if (el.naturalWidth > 0) setNaturalSize({ w: el.naturalWidth, h: el.naturalHeight })
+                }}
+                style={{
+                  width: '100%',
+                  height: 'auto',
+                  display: 'block',
+                  transform: `translate(${imgPan.x}px, ${imgPan.y}px) scale(${scaleVal})`,
+                  transformOrigin: 'center center',
+                  transition: 'transform 0.06s ease-out',
+                }}
+              />
+            </div>
           : <div className="ph" style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>—</div>}
       </div>
 
@@ -1449,13 +1435,9 @@ function InvPreview({
               title={`Image ${idx + 1}${idx === workImages.length - 1 ? ' (couverture)' : ''}`}
             >
               {img.txtImageNameLink && (
-                <img
-                  src={thumbUrl(img.txtImageNameLink, 96) ?? ''}
-                  loading="lazy"
-                  decoding="async"
-                  alt=""
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                />
+                <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+                  <WorkThumb file={img.txtImageNameLink} alt={`Vue ${idx + 1}`} size={64} displaySize="44px" />
+                </div>
               )}
             </button>
           ))}
@@ -1714,9 +1696,9 @@ function InvGrid({
                 position: 'relative',
               }}
             >
-              <div className="thumb" style={{ aspectRatio }}>
+              <div className="thumb" style={{ aspectRatio, position: 'relative' }}>
                 {o.txtImageNameLink
-                  ? <img src={thumbUrl(o.txtImageNameLink, 384) ?? ''} loading="lazy" alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ? <WorkThumb file={o.txtImageNameLink} alt={o.Titre ?? ''} size={384} displaySize="(max-width: 768px) 50vw, 20vw" />
                   : <MissingThumb id={o.OeuvreID} onOpen={() => onOpen(o)} />}
               </div>
 
