@@ -314,17 +314,18 @@ export default function WorksClient({ works, collections }: Props) {
         .w-logo:hover { opacity: 0.5; }
         .w-navlinks { display: flex; align-items: center; gap: clamp(20px, 3vw, 40px); }
         .w-navlink {
-          font-size: 8px; letter-spacing: 4px; text-transform: uppercase;
+          font-size: clamp(8px, 1.1vw, 9px); letter-spacing: 4px; text-transform: uppercase;
           color: #6a6660; text-decoration: none;
           text-shadow: 0 0 12px rgba(255,255,255,1), 0 0 24px rgba(255,255,255,0.8);
           transition: color 0.2s;
         }
         .w-navlink:hover, .w-navlink.active { color: #1a1816; }
         .w-lang {
-          font-size: 8px; letter-spacing: 4px; text-transform: uppercase;
+          font-size: clamp(8px, 1.1vw, 9px); letter-spacing: 4px; text-transform: uppercase;
           color: #6a6660; background: none; border: none; cursor: pointer;
           text-shadow: 0 0 12px rgba(255,255,255,1), 0 0 24px rgba(255,255,255,0.8);
           font-family: inherit; padding: 0; transition: color 0.2s;
+          min-height: 44px; min-width: 44px; display: inline-flex; align-items: center; justify-content: center;
         }
         .w-lang:hover { color: #1a1816; }
 
@@ -359,10 +360,14 @@ export default function WorksClient({ works, collections }: Props) {
           50%       { opacity: 0.5;  transform: translateX(-50%) translateY(4px); }
         }
         .w-scroll-hint {
-          position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
-          font-size: 8px; letter-spacing: 4px; color: #b0aca6; text-transform: uppercase;
+          position: fixed; bottom: clamp(20px, 5vh, 40px); left: 50%; transform: translateX(-50%);
+          font-size: clamp(7px, 1vw, 8px); letter-spacing: 4px; color: #b0aca6; text-transform: uppercase;
           z-index: 100; animation: w-hint-pulse 2.4s ease-in-out infinite;
           text-shadow: 0 0 12px rgba(255,255,255,1); transition: opacity 0.6s;
+        }
+        @media (max-width: 640px) {
+          .w-navlinks { gap: clamp(12px, 2.5vw, 20px); }
+          .w-nav { padding: 16px clamp(16px, 4vw, 24px); }
         }
       `}</style>
 

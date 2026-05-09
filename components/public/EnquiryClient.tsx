@@ -44,19 +44,20 @@ export default function EnquiryClient() {
         .stage {
           position: fixed; top: 0; left: 0; right: 0; bottom: 0;
           display: flex; flex-direction: column; align-items: center; justify-content: center;
-          padding: 40px;
+          padding: clamp(16px, 5vw, 40px);
         }
         .wordmark {
-          position: absolute; top: 28px; left: 32px;
-          font-size: 9px; letter-spacing: 3px; text-transform: uppercase;
+          position: absolute; top: clamp(16px, 3.5vw, 28px); left: clamp(16px, 4vw, 32px);
+          font-size: clamp(8px, 1.2vw, 9px); letter-spacing: 3px; text-transform: uppercase;
           color: #b0aca6; text-decoration: none;
         }
         .lang-btn {
-          position: absolute; top: 24px; right: 32px;
-          font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
+          position: absolute; top: clamp(14px, 3vw, 24px); right: clamp(16px, 4vw, 32px);
+          font-size: clamp(8px, 1.2vw, 9px); letter-spacing: 2px; text-transform: uppercase;
           color: #b0aca6; background: none; border: 1px solid #dedad4;
           padding: 4px 10px; cursor: pointer; transition: all .15s;
           font-family: inherit;
+          min-height: 44px; min-width: 44px; display: inline-flex; align-items: center; justify-content: center;
         }
         .lang-btn:hover { color: #6b6760; border-color: #b0aca6; }
         .form-container { width: 100%; max-width: 440px; animation: fadeIn 0.8s ease-out; }
@@ -83,15 +84,16 @@ export default function EnquiryClient() {
           background: none; border: 1px solid #b0aca6; color: #b0aca6;
           padding: 14px 32px; font-size: 9px; letter-spacing: 2px;
           text-transform: uppercase; cursor: pointer; transition: all 0.25s;
-          margin-top: 12px; font-family: inherit;
+          margin-top: 12px; font-family: inherit; min-height: 44px;
         }
         .btn-submit:hover { background: #5a5650; border-color: #5a5650; color: #edeae4; }
         .btn-submit:disabled { opacity: 0.5; cursor: default; }
         .success-msg { font-style: italic; font-size: 14px; color: #9a9690; line-height: 1.8; }
         .back-link {
-          position: absolute; bottom: 40px;
+          position: absolute; bottom: clamp(20px, 5vw, 40px);
           font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
           color: #b0aca6; text-decoration: none;
+          min-height: 44px; display: inline-flex; align-items: center;
         }
         .back-link:hover { color: #6b6760; }
       `}</style>
