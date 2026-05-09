@@ -1,14 +1,10 @@
-'use client'
-
-function cap(s: string): string {
-  if (!s) return s
-  return s.charAt(0).toUpperCase() + s.slice(1)
-}
-
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { thumbUrl } from '@/lib/data'
+import { useI18n } from '@/lib/i18n/context'
+import type { Oeuvre } from '@/lib/types/database'
 
-interface Theme  { ThemeID: number; Nom: string }
+interface Theme  { id: number; name: string }
 interface Group  { id: string; name: string }
 
 interface Props {
@@ -16,10 +12,23 @@ interface Props {
   initialGroups: Group[]
   themeWorkCount: Record<number, number>
   groupWorkCount:  Record<string, number>
+  themePrivateWorks?: Record<number, { OeuvreID: number; txtImageNameLink: string | null; isPublic: boolean }[]>
+  groupPrivateWorks?: Record<string, { OeuvreID: number; txtImageNameLink: string | null; isPublic: boolean }[]>
+  themeToGroups?:      Record<number, string[]>
+  groupToThemes?:      Record<string, number[]>
+  oeuvres:             Oeuvre[]
+  onOpen:              (o: Oeuvre) => void
+  tM:                  Record<number, string>
 }
 
-export function ThemesTab({ initialThemes, initialGroups, themeWorkCount, groupWorkCount }: Props) {
+export function ThemesTab({ 
+  initialThemes, initialGroups, themeWorkCount, groupWorkCount,
+  themePrivateWorks = {}, groupPrivateWorks = {},
+  themeToGroups = {}, groupToThemes = {},
+  oeuvres, onOpen, tM
+}: Props) {
   const sb = createClient()
+  const { t } = useI18n()
 
   const [themes,     setThemes]     = useState<Theme[]>(initialThemes)
   const [groups,     setGroups]     = useState<Group[]>(initialGroups)
@@ -31,18 +40,25 @@ export function ThemesTab({ initialThemes, initialGroups, themeWorkCount, groupW
   const [busy,       setBusy]       = useState(false)
   const [msg,        setMsg]        = useState<string | null>(null)
 
+  // Interaction State
+  const [hoverTheme, setHoverTheme] = useState<number | null>(null)
+  const [hoverGroup, setHoverGroup] = useState<string | null>(null)
+
   function flash(m: string) { setMsg(m); setTimeout(() => setMsg(null), 2500) }
 
-  // ── THEMES ──────────────────────────────────────────────────────────
-
+  // ── THEMES ──
   async function addTheme() {
     const name = newTheme.trim()
     if (!name) return
     setBusy(true)
-    const { data, error } = await (sb.from('tblTheme') as any)
-      .insert({ Nom: name }).select('ThemeID, Nom').single()
-    if (!error && data) { setThemes(t => [...t, data].sort((a,b) => a.Nom.localeCompare(b.Nom))); setNewTheme(''); flash('Thème ajouté') }
-    else flash('Erreur: ' + (error?.message ?? ''))
+    const { data, error } = await (sb.from('theme') as any).insert({ name }).select('id, name').single()
+    if (!error && data) { 
+      setThemes(t_ => [...t_, data].sort((a,b) => a.name.localeCompare(b.name)))
+      setNewTheme('')
+      flash(t('batchSuccess')) 
+    } else {
+      flash(t('error') + ': ' + (error?.message ?? ''))
+    }
     setBusy(false)
   }
 
@@ -50,32 +66,44 @@ export function ThemesTab({ initialThemes, initialGroups, themeWorkCount, groupW
     const name = editVal.trim()
     if (!name) return
     setBusy(true)
-    const { error } = await (sb.from('tblTheme') as any).update({ Nom: name }).eq('ThemeID', id)
-    if (!error) { setThemes(t => t.map(x => x.ThemeID === id ? { ...x, Nom: name } : x)); setEditTheme(null); flash('Thème renommé') }
-    else flash('Erreur: ' + (error?.message ?? ''))
+    const { error } = await (sb.from('theme') as any).update({ name }).eq('id', id)
+    if (!error) { 
+      setThemes(t_ => t_.map(x => x.id === id ? { ...x, name } : x))
+      setEditTheme(null)
+      flash(t('batchSuccess')) 
+    } else {
+      flash(t('error') + ': ' + (error?.message ?? ''))
+    }
     setBusy(false)
   }
 
   async function deleteTheme(id: number) {
-    if (!confirm('Supprimer ce thème ? Les liens avec les œuvres seront supprimés.')) return
+    if (!confirm(t('delete') + '?')) return
     setBusy(true)
-    await (sb.from('OeuvreTheme') as any).delete().eq('ThemeID', id)
-    const { error } = await (sb.from('tblTheme') as any).delete().eq('ThemeID', id)
-    if (!error) { setThemes(t => t.filter(x => x.ThemeID !== id)); flash('Thème supprimé') }
-    else flash('Erreur: ' + (error?.message ?? ''))
+    await (sb.from('oeuvre_theme') as any).delete().eq('theme_id', id)
+    const { error } = await (sb.from('theme') as any).delete().eq('id', id)
+    if (!error) { 
+      setThemes(t_ => t_.filter(x => x.id !== id))
+      flash(t('batchSuccess')) 
+    } else {
+      flash(t('error') + ': ' + (error?.message ?? ''))
+    }
     setBusy(false)
   }
 
-  // ── GROUPS ──────────────────────────────────────────────────────────
-
+  // ── GROUPS ──
   async function addGroup() {
     const name = newGroup.trim()
     if (!name) return
     setBusy(true)
-    const { data, error } = await (sb.from('working_group') as any)
-      .insert({ name }).select('id, name').single()
-    if (!error && data) { setGroups(g => [...g, data].sort((a,b) => a.name.localeCompare(b.name))); setNewGroup(''); flash('Groupe ajouté') }
-    else flash('Erreur: ' + (error?.message ?? ''))
+    const { data, error } = await (sb.from('working_group') as any).insert({ name }).select('id, name').single()
+    if (!error && data) { 
+      setGroups(g_ => [...g_, data].sort((a,b) => a.name.localeCompare(b.name)))
+      setNewGroup('')
+      flash(t('batchSuccess')) 
+    } else {
+      flash(t('error') + ': ' + (error?.message ?? ''))
+    }
     setBusy(false)
   }
 
@@ -84,121 +112,324 @@ export function ThemesTab({ initialThemes, initialGroups, themeWorkCount, groupW
     if (!name) return
     setBusy(true)
     const { error } = await (sb.from('working_group') as any).update({ name }).eq('id', id)
-    if (!error) { setGroups(g => g.map(x => x.id === id ? { ...x, name } : x)); setEditGroup(null); flash('Groupe renommé') }
-    else flash('Erreur: ' + (error?.message ?? ''))
+    if (!error) { 
+      setGroups(g_ => g_.map(x => x.id === id ? { ...x, name } : x))
+      setEditGroup(null)
+      flash(t('batchSuccess')) 
+    } else {
+      flash(t('error') + ': ' + (error?.message ?? ''))
+    }
     setBusy(false)
   }
 
   async function deleteGroup(id: string) {
-    if (!confirm('Supprimer ce groupe ? Les liens avec les œuvres seront supprimés.')) return
+    if (!confirm(t('delete') + '?')) return
     setBusy(true)
     await (sb.from('working_group_work') as any).delete().eq('group_id', id)
     const { error } = await (sb.from('working_group') as any).delete().eq('id', id)
-    if (!error) { setGroups(g => g.filter(x => x.id !== id)); flash('Groupe supprimé') }
-    else flash('Erreur: ' + (error?.message ?? ''))
+    if (!error) { 
+      setGroups(g_ => g_.filter(x => x.id !== id))
+      flash(t('batchSuccess')) 
+    } else {
+      flash(t('error') + ': ' + (error?.message ?? ''))
+    }
     setBusy(false)
   }
 
-  const row: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid var(--bd)' }
-  const name_: React.CSSProperties = { flex: 1, fontSize: 12, color: 'var(--tx)' }
-  const cnt_: React.CSSProperties = { fontSize: 10, color: 'var(--tx3)', minWidth: 60, textAlign: 'right' }
-  const btn_: React.CSSProperties = { fontSize: 9, letterSpacing: 1, padding: '3px 8px', border: '1px solid var(--bd2)', color: 'var(--tx2)', background: 'none', cursor: 'pointer', textTransform: 'uppercase' }
+  // Related IDs for highlighting
+  const relatedGroups = hoverTheme ? (themeToGroups[hoverTheme] || []) : []
+  const relatedThemes = hoverGroup ? (groupToThemes[hoverGroup] || []) : []
+
+  // Works for the mosaic
+  const allWorksInCategory = (hoverTheme ? (themePrivateWorks[hoverTheme] || []) : hoverGroup ? (groupPrivateWorks[hoverGroup!] || []) : [])
+  const previewWorks = allWorksInCategory.slice(0, 100)
 
   return (
-    <div style={{ padding: 32, maxWidth: 760, margin: '0 auto' }}>
+    <div style={{ padding: '40px', width: '100%', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, background: 'var(--bg0)' }}>
+      {msg && <div className="flash-msg">{msg.toUpperCase()}</div>}
 
-      {msg && (
-        <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', background: 'var(--ac)', color: '#000', padding: '8px 20px', fontSize: 11, zIndex: 999 }}>
-          {msg}
-        </div>
-      )}
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: '280px 1fr 300px', 
+        gap: '40px', 
+        width: '100%', 
+        flex: 1,
+        minHeight: 0,
+        alignItems: 'start'
+      }}>
 
-      {/* ── THEMES ── */}
-      <div style={{ marginBottom: 56 }}>
-        <div style={{ fontSize: 9, letterSpacing: 3, textTransform: 'uppercase', color: 'var(--tx3)', marginBottom: 24, paddingBottom: 10, borderBottom: '1px solid var(--bd)' }}>
-          Thèmes <span style={{ marginLeft: 8, color: 'var(--tx3)' }}>{themes.length}</span>
-        </div>
+        {/* ── LEFT: THEMES ── */}
+        <section style={{ position: 'sticky', top: 0, maxHeight: 'calc(100vh - 160px)', overflowY: 'auto', paddingRight: 10 }}>
+          <header style={{ marginBottom: 32, paddingBottom: 16, borderBottom: '1px solid var(--bd)' }}>
+            <h2 className="serif" style={{ fontSize: 28, margin: 0, color: 'var(--tx)' }}>{t('themesSection')}</h2>
+            <div className="t-mono-sm" style={{ fontSize: 9, color: 'var(--tx3)', letterSpacing: 2, marginTop: 8 }}>{themes.length} COLLECTIONS</div>
+          </header>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {themes.map(t_ => {
+              const isRel = relatedThemes.includes(t_.id)
+              const isHov = hoverTheme === t_.id
+              return (
+                <div key={t_.id} 
+                  className={`row-item ${isHov ? 'hov' : ''} ${isRel ? 'rel' : ''}`}
+                  onMouseEnter={() => { setHoverTheme(t_.id); setHoverGroup(null) }} 
+                  style={{ 
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '12px 16px', borderRadius: 4, transition: 'all 0.2s',
+                    background: isHov ? 'var(--bg1)' : isRel ? 'rgba(var(--ac-rgb), 0.05)' : 'transparent',
+                    borderLeft: isRel ? '2px solid var(--ac)' : '2px solid transparent',
+                    cursor: 'default'
+                  }}
+                >
+                  {editTheme === t_.id ? (
+                    <div style={{ display: 'flex', gap: 8, flex: 1 }}>
+                      <input autoFocus value={editVal} onChange={e => setEditVal(cap(e.target.value))} style={{ flex: 1, fontSize: 13, background: 'var(--bg2)', border: '1px solid var(--bd)', color: 'var(--tx)', padding: '4px 8px' }} onKeyDown={e => e.key === 'Enter' && saveTheme(t_.id)} />
+                      <button className="btn sm primary" onClick={() => saveTheme(t_.id)}>OK</button>
+                    </div>
+                  ) : (
+                    <>
+                      <span style={{ fontSize: 14, fontWeight: isHov ? 600 : 400, color: isHov ? 'var(--tx)' : 'var(--tx2)' }}>{t_.name}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <span className="t-mono-sm" style={{ fontSize: 11, opacity: 0.4 }}>{themeWorkCount[t_.id] ?? 0}</span>
+                        <div className="item-actions" style={{ display: 'flex', gap: 4, opacity: isHov ? 1 : 0 }}>
+                          <button onClick={() => { setEditTheme(t_.id); setEditVal(t_.name) }} style={{ background: 'none', border: 'none', color: 'var(--tx3)', cursor: 'pointer', padding: 4 }}>✎</button>
+                          <button onClick={() => deleteTheme(t_.id)} style={{ background: 'none', border: 'none', color: 'var(--rust)', cursor: 'pointer', padding: 4 }}>✕</button>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )
+            })}
+          </div>
 
-        {themes.map(t => (
-          <div key={t.ThemeID} style={row}>
-            {editTheme === t.ThemeID ? (
-              <>
-                <input
-                  autoFocus
-                  value={editVal}
-                  onChange={e => setEditVal(cap(e.target.value))}
-                  onKeyDown={e => { if (e.key === 'Enter') saveTheme(t.ThemeID); if (e.key === 'Escape') setEditTheme(null) }}
-                  style={{ flex: 1, background: 'var(--bg2)', border: '1px solid var(--ac)', color: 'var(--tx)', padding: '4px 8px', fontSize: 12 }}
-                />
-                <button style={btn_} onClick={() => saveTheme(t.ThemeID)} disabled={busy}>Sauver</button>
-                <button style={{ ...btn_, borderColor: 'transparent' }} onClick={() => setEditTheme(null)}>Annuler</button>
-              </>
+          <div style={{ marginTop: 32, padding: 20, background: 'var(--bg1)', border: '1px solid var(--bd)', borderRadius: 4 }}>
+            <input 
+              placeholder={t('newTheme')} 
+              value={newTheme} 
+              onChange={e => setNewTheme(cap(e.target.value))} 
+              onKeyDown={e => e.key === 'Enter' && addTheme()} 
+              style={{ width: '100%', marginBottom: 12, fontSize: 13, background: 'var(--bg0)', border: '1px solid var(--bd)', padding: '10px 14px', color: 'var(--tx)' }} 
+            />
+            <button className="btn primary block sm" onClick={addTheme} disabled={busy || !newTheme.trim()} style={{ width: '100%', fontSize: 10, letterSpacing: 1.5 }}>
+              + {t('create').toUpperCase()}
+            </button>
+          </div>
+        </section>
+
+        {/* ── CENTER: MOSAIC PREVIEW ── */}
+        <div style={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          gap: 32, 
+          width: '100%', 
+          minHeight: 0,
+          maxHeight: 'calc(100vh - 160px)' 
+        }}>
+          <div style={{ 
+            flex: 1, 
+            display: 'flex', 
+            flexDirection: 'column', 
+            minHeight: 0,
+            background: 'var(--bg1)', 
+            border: '1px solid var(--bd)', 
+            borderRadius: 8,
+            overflow: 'hidden',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
+          }}>
+            {previewWorks.length > 0 ? (
+              <div className="mosaic-scroll" style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+                <div style={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: previewWorks.length <= 3 
+                    ? `repeat(${previewWorks.length}, minmax(200px, 400px))` 
+                    : previewWorks.length <= 8
+                    ? `repeat(auto-fill, minmax(160px, 1fr))`
+                    : 'repeat(auto-fill, minmax(110px, 180px))', 
+                  gap: previewWorks.length <= 3 ? 24 : 12, 
+                  width: '100%',
+                  alignContent: 'start',
+                  justifyContent: previewWorks.length <= 3 ? 'center' : 'start'
+                }}>
+                  {previewWorks.map((w, idx) => (
+                    <div key={w.OeuvreID} className="mosaic-card" 
+                      style={{ 
+                        aspectRatio: '1', position: 'relative', cursor: 'pointer',
+                        animation: 'fadeInUp 0.5s ease forwards',
+                        animationDelay: `${idx * 15}ms`,
+                        opacity: 0,
+                        borderRadius: 4,
+                        overflow: 'hidden'
+                      }} 
+                      onClick={() => {
+                        const fullWork = oeuvres.find(o => o.OeuvreID === w.OeuvreID)
+                        if (fullWork) onOpen(fullWork)
+                      }}
+                    >
+                      <img src={thumbUrl(w.txtImageNameLink)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <div style={{ 
+                        position: 'absolute', top: 8, right: 8, 
+                        width: 8, height: 8, borderRadius: '50%',
+                        background: w.isPublic ? 'var(--green)' : 'var(--rust)',
+                        boxShadow: '0 0 10px rgba(0,0,0,0.5)',
+                        border: '1px solid rgba(255,255,255,0.2)'
+                      }} />
+                    </div>
+                  ))}
+                </div>
+              </div>
             ) : (
-              <>
-                <span style={name_}>{t.Nom}</span>
-                <span style={cnt_}>{themeWorkCount[t.ThemeID] ?? 0} œuvre{(themeWorkCount[t.ThemeID] ?? 0) !== 1 ? 's' : ''}</span>
-                <button style={btn_} onClick={() => { setEditTheme(t.ThemeID); setEditVal(t.Nom) }}>Renommer</button>
-                <button style={{ ...btn_, color: 'var(--rust)' }} onClick={() => deleteTheme(t.ThemeID)} disabled={busy}>Supprimer</button>
-              </>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--tx3)', gap: 16 }}>
+                <div style={{ fontSize: 32, opacity: 0.2 }}>✧</div>
+                <div style={{ fontSize: 11, letterSpacing: 4, fontWeight: 500 }}>{t('clickToSelect').toUpperCase()}</div>
+              </div>
+            )}
+            
+            {allWorksInCategory.length > 0 && (
+              <div style={{ 
+                padding: '16px 24px', 
+                borderTop: '1px solid var(--bd)', 
+                background: 'var(--bg2)', 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center'
+              }}>
+                <div className="t-mono-sm" style={{ fontSize: 10, letterSpacing: 1, color: 'var(--tx)' }}>
+                  {hoverTheme ? themes.find(t => t.id === hoverTheme)?.name : hoverGroup ? groups.find(g => g.id === hoverGroup)?.name : ''}
+                </div>
+                <div className="t-mono-sm" style={{ fontSize: 10, letterSpacing: 1.5, fontWeight: 700, color: 'var(--ac)' }}>
+                  {allWorksInCategory.length} WORKS DISPLAYED
+                </div>
+              </div>
             )}
           </div>
-        ))}
-
-        <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
-          <input
-            placeholder="Nouveau thème..."
-            value={newTheme}
-            onChange={e => setNewTheme(cap(e.target.value))}
-            onKeyDown={e => e.key === 'Enter' && addTheme()}
-            style={{ flex: 1, background: 'var(--bg2)', border: '1px solid var(--bd2)', color: 'var(--tx)', padding: '6px 10px', fontSize: 11 }}
-          />
-          <button className="btn primary sm" onClick={addTheme} disabled={busy || !newTheme.trim()}>+ Ajouter</button>
         </div>
+
+        {/* ── RIGHT: GROUPS & ANALYTICS ── */}
+        <aside style={{ position: 'sticky', top: 0, maxHeight: 'calc(100vh - 160px)', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 32 }}>
+          
+          {/* GROUPS */}
+          <section>
+            <header style={{ marginBottom: 24, paddingBottom: 16, borderBottom: '1px solid var(--bd)' }}>
+              <h2 className="serif" style={{ fontSize: 22, margin: 0, color: 'var(--tx)' }}>{t('workingGroups')}</h2>
+              <div className="t-mono-sm" style={{ fontSize: 9, color: 'var(--tx3)', letterSpacing: 2, marginTop: 8 }}>{groups.length} ACTIVE GROUPS</div>
+            </header>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {groups.map(g_ => {
+                const isRel = relatedGroups.includes(g_.id)
+                const isHov = hoverGroup === g_.id
+                return (
+                  <div key={g_.id} 
+                    className={`row-item ${isHov ? 'hov' : ''} ${isRel ? 'rel' : ''}`}
+                    onMouseEnter={() => { setHoverGroup(g_.id); setHoverTheme(null) }} 
+                    style={{ 
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '10px 14px', borderRadius: 4, transition: 'all 0.2s',
+                      background: isHov ? 'var(--bg1)' : isRel ? 'rgba(var(--ac-rgb), 0.05)' : 'transparent',
+                      borderLeft: isRel ? '2px solid var(--ac)' : '2px solid transparent',
+                      cursor: 'default'
+                    }}
+                  >
+                    {editGroup === g_.id ? (
+                      <div style={{ display: 'flex', gap: 8, flex: 1 }}>
+                        <input autoFocus value={editVal} onChange={e => setEditVal(cap(e.target.value))} style={{ flex: 1, fontSize: 12, background: 'var(--bg2)', border: '1px solid var(--bd)', color: 'var(--tx)', padding: '4px 8px' }} onKeyDown={e => e.key === 'Enter' && saveGroup(g_.id)} />
+                        <button className="btn sm primary" onClick={() => saveGroup(g_.id)}>OK</button>
+                      </div>
+                    ) : (
+                      <>
+                        <span style={{ fontSize: 13, fontWeight: isHov ? 600 : 400, color: isHov ? 'var(--tx)' : 'var(--tx2)' }}>{g_.name}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <span className="t-mono-sm" style={{ fontSize: 10, opacity: 0.4 }}>{groupWorkCount[g_.id] ?? 0}</span>
+                          <div className="item-actions" style={{ display: 'flex', gap: 4, opacity: isHov ? 1 : 0 }}>
+                            <button onClick={() => { setEditGroup(g_.id); setEditVal(g_.name) }} style={{ background: 'none', border: 'none', color: 'var(--tx3)', cursor: 'pointer', padding: 4 }}>✎</button>
+                            <button onClick={() => deleteGroup(g_.id)} style={{ background: 'none', border: 'none', color: 'var(--rust)', cursor: 'pointer', padding: 4 }}>✕</button>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+
+          {/* ANALYTICS */}
+          {(hoverTheme || hoverGroup) && (() => {
+            const techMap: Record<string, { total: number, pub: number }> = {}
+            let totalHT = 0
+            let totalTTC = 0
+
+            allWorksInCategory.forEach(w => {
+              const full = oeuvres.find(o => o.OeuvreID === w.OeuvreID)
+              if (full) {
+                const prixHT = (full.Prix || 0)
+                const tvaRate = (full as any).tva_rate || 0
+                const prixTTC = prixHT * (1 + tvaRate / 100)
+                
+                totalHT += prixHT
+                totalTTC += prixTTC
+                
+                const techId = full.Technique
+                const techName = (techId != null && tM[techId]) || 'UNKNOWN'
+                if (!techMap[techName]) techMap[techName] = { total: 0, pub: 0 }
+                techMap[techName].total++
+                if (w.isPublic) techMap[techName].pub++
+              }
+            })
+
+            return (
+              <div style={{ background: 'var(--bg1)', border: '1px solid var(--bd)', padding: 24, borderRadius: 8 }}>
+                <header style={{ marginBottom: 20, paddingBottom: 12, borderBottom: '1px solid var(--bd)' }}>
+                  <div className="t-mono-sm" style={{ fontSize: 9, color: 'var(--tx3)', letterSpacing: 2, marginBottom: 8 }}>DATA INSIGHTS</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--tx)', textTransform: 'uppercase' }}>
+                    {hoverTheme ? themes.find(t => t.id === hoverTheme)?.name : groups.find(g => g.id === hoverGroup)?.name}
+                  </div>
+                </header>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div>
+                      <div className="t-mono-sm" style={{ fontSize: 8, color: 'var(--tx3)', marginBottom: 4 }}>VALEUR (HT)</div>
+                      <div style={{ fontSize: 18, fontWeight: 700 }}>€{Math.round(totalHT / 1000)}k</div>
+                    </div>
+                    <div>
+                      <div className="t-mono-sm" style={{ fontSize: 8, color: 'var(--tx3)', marginBottom: 4 }}>VALEUR (TTC)</div>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--ac)' }}>€{Math.round(totalTTC / 1000)}k</div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="t-mono-sm" style={{ fontSize: 8, color: 'var(--tx3)', marginBottom: 12 }}>TECHNIQUE SPREAD</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {Object.entries(techMap).sort((a,b) => b[1].total - a[1].total).slice(0, 5).map(([name, s]) => (
+                        <div key={name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <span className="t-mono-sm" style={{ fontSize: 9, color: 'var(--tx2)' }}>{name.toUpperCase()}</span>
+                          <span className="t-mono-sm" style={{ fontSize: 9, fontWeight: 700 }}>{s.total}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
+        </aside>
+
       </div>
 
-      {/* ── GROUPS ── */}
-      <div>
-        <div style={{ fontSize: 9, letterSpacing: 3, textTransform: 'uppercase', color: 'var(--tx3)', marginBottom: 24, paddingBottom: 10, borderBottom: '1px solid var(--bd)' }}>
-          Groupes de travail <span style={{ marginLeft: 8, color: 'var(--tx3)' }}>{groups.length}</span>
-        </div>
-
-        {groups.map(g => (
-          <div key={g.id} style={row}>
-            {editGroup === g.id ? (
-              <>
-                <input
-                  autoFocus
-                  value={editVal}
-                  onChange={e => setEditVal(cap(e.target.value))}
-                  onKeyDown={e => { if (e.key === 'Enter') saveGroup(g.id); if (e.key === 'Escape') setEditGroup(null) }}
-                  style={{ flex: 1, background: 'var(--bg2)', border: '1px solid var(--ac)', color: 'var(--tx)', padding: '4px 8px', fontSize: 12 }}
-                />
-                <button style={btn_} onClick={() => saveGroup(g.id)} disabled={busy}>Sauver</button>
-                <button style={{ ...btn_, borderColor: 'transparent' }} onClick={() => setEditGroup(null)}>Annuler</button>
-              </>
-            ) : (
-              <>
-                <span style={name_}>{g.name}</span>
-                <span style={cnt_}>{groupWorkCount[g.id] ?? 0} œuvre{(groupWorkCount[g.id] ?? 0) !== 1 ? 's' : ''}</span>
-                <button style={btn_} onClick={() => { setEditGroup(g.id); setEditVal(g.name) }}>Renommer</button>
-                <button style={{ ...btn_, color: 'var(--rust)' }} onClick={() => deleteGroup(g.id)} disabled={busy}>Supprimer</button>
-              </>
-            )}
-          </div>
-        ))}
-
-        <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
-          <input
-            placeholder="Nouveau groupe..."
-            value={newGroup}
-            onChange={e => setNewGroup(cap(e.target.value))}
-            onKeyDown={e => e.key === 'Enter' && addGroup()}
-            style={{ flex: 1, background: 'var(--bg2)', border: '1px solid var(--bd2)', color: 'var(--tx)', padding: '6px 10px', fontSize: 11 }}
-          />
-          <button className="btn primary sm" onClick={addGroup} disabled={busy || !newGroup.trim()}>+ Ajouter</button>
-        </div>
-      </div>
-
+      <style jsx>{`
+        .flash-msg { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%); background: var(--ac); color: #000; padding: 12px 28px; font-size: 11px; z-index: 999; font-weight: 700; letter-spacing: 2px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); border-radius: 4px; }
+        .row-item:hover .item-actions { opacity: 1 !important; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        section::-webkit-scrollbar, aside::-webkit-scrollbar, .mosaic-scroll::-webkit-scrollbar { width: 4px; }
+        section::-webkit-scrollbar-thumb, aside::-webkit-scrollbar-thumb, .mosaic-scroll::-webkit-scrollbar-thumb { background: var(--bd); border-radius: 10px; }
+      `}</style>
     </div>
   )
+}
+
+function cap(s: string): string {
+  if (!s) return s
+  return s.charAt(0).toUpperCase() + s.slice(1)
 }

@@ -197,7 +197,7 @@ export function InventoryTab({
   techniques: { TechniqueID: number; Technique: string | null }[]
   supports:   { SupportID:   number; Support:   string | null }[]
   formats?:   { FormatID:    number; Format:    string | null }[]
-  themes?:    { ThemeID: number; Nom: string }[]
+  themes?:    { id: number; name: string }[]
   groups?:    { id: string; name: string }[]
 }) {
   const { t } = useI18n()
@@ -289,12 +289,12 @@ export function InventoryTab({
   useEffect(() => {
     const sb = createClient()
     // Fetch Themes
-    ;(sb.from('OeuvreTheme') as any).select('OeuvreID, ThemeID').range(0, 10000).then(({ data }: { data: { OeuvreID: number; ThemeID: number }[] | null }) => {
+    ;(sb.from('oeuvre_theme') as any).select('oeuvre_id, theme_id').range(0, 10000).then(({ data }: { data: { oeuvre_id: number; theme_id: number }[] | null }) => {
       if (!data) return
       const map = new Map<number, number[]>()
-      data.forEach(({ OeuvreID, ThemeID }) => {
-        if (!map.has(OeuvreID)) map.set(OeuvreID, [])
-        map.get(OeuvreID)!.push(ThemeID)
+      data.forEach(({ oeuvre_id, theme_id }) => {
+        if (!map.has(oeuvre_id)) map.set(oeuvre_id, [])
+        map.get(oeuvre_id)!.push(theme_id)
       })
       setOeuvreThemeMap(map)
     }).catch(err => console.error("Theme Map Error:", err))
@@ -310,9 +310,9 @@ export function InventoryTab({
     }).catch(err => console.error("Group Map Error:", err))
   }, [])
 
-  const sortedThemes = useMemo(() => [...themes].sort((a, b) => a.Nom.localeCompare(b.Nom, 'fr')), [themes])
+  const sortedThemes = useMemo(() => [...themes].sort((a, b) => a.name.localeCompare(b.name, 'fr')), [themes])
   const thM = useMemo(
-    () => Object.fromEntries(themes.map((t) => [t.ThemeID, t.Nom])),
+    () => Object.fromEntries(themes.map((t) => [t.id, t.name])),
     [themes],
   )
 
@@ -517,7 +517,7 @@ export function InventoryTab({
         <InvSelect
           value={filterTheme} onChange={setFilterTheme}
           label={t('theme')}
-          options={[['all', 'Tous les thèmes'], ...sortedThemes.map((x) => [String(x.ThemeID), x.Nom] as [string, string])]}
+          options={[['all', 'Tous les thèmes'], ...sortedThemes.map((x) => [String(x.id), x.name] as [string, string])]}
         />
 
         {/* Group */}

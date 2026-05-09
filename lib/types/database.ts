@@ -34,7 +34,6 @@ export interface Oeuvre {
   PresentationID?: number | null;
   StageProduction?: string | null;
   NomOriginal?: string | null;
-  theme?: string | null;
   anonymity_level?: number | null;
   is_paid?: boolean | null;
   is_gift?: boolean | null;

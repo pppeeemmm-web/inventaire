@@ -16,7 +16,7 @@ interface Props {
   formats:        { FormatID:    number; Format:    string | null }[]
   contacts:       { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null }[]
   addresses?:     ContactAddress[]
-  themes:         { ThemeID: number; Nom: string }[]
+  themes:         { id: number; name: string }[]
   groups?:        { id: string; name: string }[]
   statusLabelMap: Record<number, string>
   onClose:        () => void
@@ -43,7 +43,7 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, a
     const res = await createTheme(name)
     if (res.theme) {
       setLocalThemes(prev => [...prev, res.theme!])
-      cycleTheme(res.theme.ThemeID)
+      cycleTheme(res.theme.id)
       setNewThemeName('')
     } else if (res.error) {
       setError(res.error)
@@ -198,8 +198,8 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, a
   const sortedContacts   = [...contacts].sort((a, b) => contactLabel(a).localeCompare(contactLabel(b)))
 
   const filteredThemes = localThemes
-    .filter(th => th.Nom.toLowerCase().includes(themeFilter.toLowerCase()))
-    .sort((a, b) => a.Nom.localeCompare(b.Nom))
+    .filter(th => th.name.toLowerCase().includes(themeFilter.toLowerCase()))
+    .sort((a, b) => a.name.localeCompare(b.name))
   const filteredGroups = groups
     .filter(g => g.name.toLowerCase().includes(groupFilter.toLowerCase()))
     .sort((a, b) => a.name.localeCompare(b.name))
@@ -398,12 +398,12 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, a
             background: 'var(--bg2)', border: '1px solid var(--bd)'
           }}>
             {filteredThemes.map(th => {
-              const isAdd    = addThemes.has(th.ThemeID)
-              const isRemove = removeThemes.has(th.ThemeID)
+              const isAdd    = addThemes.has(th.id)
+              const isRemove = removeThemes.has(th.id)
               return (
                 <button
-                  key={th.ThemeID}
-                  onClick={() => cycleTheme(th.ThemeID)}
+                  key={th.id}
+                  onClick={() => cycleTheme(th.id)}
                   style={{
                     padding: '4px 10px', fontSize: 10, fontFamily: 'inherit', cursor: 'pointer',
                     border: `1px solid ${isAdd ? 'var(--sage)' : isRemove ? '#c0392b' : 'var(--bd)'}`,
@@ -411,7 +411,7 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, a
                     color: isAdd ? 'var(--sage)' : isRemove ? '#e74c3c' : 'var(--tx3)',
                   }}
                 >
-                  {isAdd ? '+ ' : isRemove ? '− ' : ''}{th.Nom}
+                  {isAdd ? '+ ' : isRemove ? '− ' : ''}{th.name}
                 </button>
               )
             })}

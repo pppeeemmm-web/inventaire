@@ -34,7 +34,7 @@ interface Props {
   techniques:     { TechniqueID: number; Technique: string | null }[]
   supports:       { SupportID:   number; Support:   string | null }[]
   formats:        { FormatID:    number; Format:    string | null }[]
-  themes:         { ThemeID:     number; Nom:       string }[]
+  themes:         { id:          number; name:      string }[]
   contacts:       { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null; Role: string | null; Ville?: string | null; Pays?: string | null }[]
   groups:         { id: string; name: string }[]
   presentations:  { PresentationID: number; Nom: string | null }[]
@@ -364,12 +364,12 @@ export function WorkDrawer({
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                 {isEditing ? (
                   initialThemes.map(th => {
-                    const active = selThemes.has(th.ThemeID)
+                    const active = selThemes.has(th.id)
                     return (
-                      <button key={th.ThemeID} type="button"
-                        onClick={() => setSelThemes(p => { const s = new Set(p); if (s.has(th.ThemeID)) s.delete(th.ThemeID); else s.add(th.ThemeID); return s })}
+                      <button key={th.id} type="button"
+                        onClick={() => setSelThemes(p => { const s = new Set(p); if (s.has(th.id)) s.delete(th.id); else s.add(th.id); return s })}
                         style={{ padding: '2px 8px', fontSize: 10, borderRadius: 2, border: '1px solid var(--bd)', background: active ? 'var(--ac)' : 'var(--bg2)', color: active ? 'var(--bg1)' : 'var(--tx3)' }}>
-                        {th.Nom}
+                        {th.name}
                       </button>
                     )
                   })

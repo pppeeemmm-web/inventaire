@@ -17,7 +17,7 @@ interface Props {
   supports:           { SupportID:   number; Support:   string | null }[]
   formats:            { FormatID:    number; Format:    string | null }[]
   contacts:           { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null }[]
-  themes:             { ThemeID: number; Nom: string }[]
+  themes:             { id: number; name: string }[]
   groups:             { id: string; name: string }[]
   tM:                 Record<number, string>
   sM:                 Record<number, string>

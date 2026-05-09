@@ -139,24 +139,24 @@ export async function batchEdit(ids: number[], changes: BatchChanges): Promise<B
     count = c ?? ids.length
   }
 
-  // ── Theme junction (OeuvreTheme) ──────────────────────────────────────
+  // ── Theme junction (oeuvre_theme) ──────────────────────────────────────
   if (changes.removeThemeIds?.length) {
     const { error } = await supabase
-      .from('OeuvreTheme')
+      .from('oeuvre_theme')
       .delete()
-      .in('OeuvreID', ids)
-      .in('ThemeID', changes.removeThemeIds)
+      .in('oeuvre_id', ids)
+      .in('theme_id', changes.removeThemeIds)
     if (error) return { error: `Thème (retrait) : ${error.message}` }
   }
 
   if (changes.addThemeIds?.length) {
     // Build all (oeuvreId, themeId) pairs; upsert ignores existing ones
     const rows = ids.flatMap(oid =>
-      changes.addThemeIds!.map(tid => ({ OeuvreID: oid, ThemeID: tid }))
+      changes.addThemeIds!.map(tid => ({ oeuvre_id: oid, theme_id: tid }))
     )
     const { error } = await supabase
-      .from('OeuvreTheme')
-      .upsert(rows, { onConflict: 'OeuvreID,ThemeID', ignoreDuplicates: true })
+      .from('oeuvre_theme')
+      .upsert(rows, { onConflict: 'oeuvre_id,theme_id', ignoreDuplicates: true })
     if (error) return { error: `Thème (ajout) : ${error.message}` }
   }
 
@@ -185,23 +185,23 @@ export async function batchEdit(ids: number[], changes: BatchChanges): Promise<B
   return { ok: true, updated: count }
 }
 
-export async function createTheme(name: string): Promise<{ error?: string, theme?: { ThemeID: number, Nom: string } }> {
+export async function createTheme(name: string): Promise<{ error?: string, theme?: { id: number, name: string } }> {
   const { error: authErr, supabase } = await guardTeam()
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
 
   // 1. Try to insert
   const { data, error } = await supabase
-    .from('tblTheme')
-    .insert({ Nom: name })
-    .select('ThemeID, Nom')
+    .from('theme')
+    .insert({ name: name })
+    .select('id, name')
     .single()
 
   // 2. If it exists already (23505), just fetch it
   if (error?.code === '23505') {
     const { data: existing } = await supabase
-      .from('tblTheme')
-      .select('ThemeID, Nom')
-      .eq('Nom', name)
+      .from('theme')
+      .select('id, name')
+      .eq('name', name)
       .single()
     if (existing) return { theme: existing }
   }

@@ -60,7 +60,7 @@ export type ImageResult  = { error: string } | { ok: true; image: WorkImage }
 export async function deleteWork(oid: number): Promise<DeleteResult> {
   const supabase = await createClient()
   await supabase.from('tblrelations').delete().or(`source_id.eq.${oid},target_id.eq.${oid}`)
-  await supabase.from('OeuvreTheme').delete().eq('OeuvreID', oid)
+  await supabase.from('oeuvre_theme').delete().eq('oeuvre_id', oid)
   const { error } = await supabase.from('Oeuvres').delete().eq('OeuvreID', oid)
   if (error) return { error: error.message }
   return { ok: true }
@@ -71,7 +71,7 @@ export async function deleteSelectedWorks(ids: number[]): Promise<DeleteResult> 
   // Delete all relations for all selected works
   for (const id of ids) {
     await supabase.from('tblrelations').delete().or(`source_id.eq.${id},target_id.eq.${id}`)
-    await supabase.from('OeuvreTheme').delete().eq('OeuvreID', id)
+    await supabase.from('oeuvre_theme').delete().eq('oeuvre_id', id)
   }
   const { error } = await supabase.from('Oeuvres').delete().in('OeuvreID', ids)
   if (error) return { error: error.message }
@@ -108,6 +108,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
   const historique        = (formData.get('historique')         as string | null)?.trim() || null
   const localisationId    = numOrNull(formData.get('localisation_id'))
   const localisationDetail = (formData.get('localisation_detail') as string | null)?.trim() || null
+  const tvaRate      = numOrNull(formData.get('tva_rate'))
 
   const exposable    = formData.get('exposable')     === '1'
   const montee       = formData.get('montee')      === '1'
@@ -221,6 +222,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       DateLivraison:     dateLivraison,
       NeedsPhotograph:   needsPhotograph,
       anonymity_level:   anonymityLevel,
+      tva_rate:          tvaRate,
       is_paid:           isPaid,
       is_gift:           isGift,
       txtImageNameLink:  imageName,
@@ -241,8 +243,8 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
 
     // Insert themes
     if (themeIds.length > 0) {
-      const { error: themeErr } = await supabase.from('OeuvreTheme').insert(
-        themeIds.map((tid) => ({ OeuvreID: oid, ThemeID: tid })),
+      const { error: themeErr } = await supabase.from('oeuvre_theme').insert(
+        themeIds.map((tid) => ({ oeuvre_id: oid, theme_id: tid })),
       )
       if (themeErr) return { error: themeErr.message }
     }
@@ -317,6 +319,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       DateLivraison:     dateLivraison,
       NeedsPhotograph:   needsPhotograph,
       anonymity_level:   anonymityLevel,
+      tva_rate:          tvaRate,
       is_paid:           isPaid,
       is_gift:           isGift,
     }
@@ -355,9 +358,9 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
     await syncPipelineWithBooleans(supabase, oid, { catalogued, needsPhotograph })
 
     // Replace themes: delete + reinsert
-    await supabase.from('OeuvreTheme').delete().eq('OeuvreID', oid)
+    await supabase.from('oeuvre_theme').delete().eq('oeuvre_id', oid)
     if (themeIds.length > 0) {
-      await supabase.from('OeuvreTheme').insert(themeIds.map(tid => ({ OeuvreID: oid, ThemeID: tid })))
+      await supabase.from('oeuvre_theme').insert(themeIds.map(tid => ({ oeuvre_id: oid, theme_id: tid })))
     }
 
     // Replace working groups

@@ -46,7 +46,7 @@ interface Props {
   techniques:     { TechniqueID: number; Technique: string | null }[]
   supports:       { SupportID:   number; Support:   string | null }[]
   formats:        { FormatID:    number; Format:    string | null }[]
-  themes:         { ThemeID:     number; Nom:       string }[]
+  themes:         { id:          number; name:      string }[]
   contacts:       { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null; Role: string | null; Ville?: string | null; Pays?: string | null }[]
   statusLabelMap: Record<number, string>
   initialGroups:  { id: string; name: string }[]
@@ -58,6 +58,11 @@ interface Props {
   addresses?:       any[]
   themePublicStats?: Record<number, { total: number; pub: number }>
   themePrivateWorks?: Record<number, { OeuvreID: number; txtImageNameLink: string | null; isPublic: boolean }[]>
+  groupPrivateWorks?: Record<string, { OeuvreID: number; txtImageNameLink: string | null; isPublic: boolean }[]>
+  themeToGroups?:      Record<number, string[]>
+  groupToThemes?:      Record<string, number[]>
+  oeuvres:             Oeuvre[]
+  onOpen:              (o: Oeuvre) => void
 }
 
 // ── Component ────────────────────────────────────────────────────────
@@ -69,9 +74,15 @@ export function TeamPortalClient({
   addresses = [],
   themePublicStats = {},
   themePrivateWorks = {},
+  groupPrivateWorks = {},
+  themeToGroups = {},
+  groupToThemes = {},
 }: Props) {
   const { t, lang, setLang } = useI18n()
   const router = useRouter()
+  
+  const [inspected,  setInspected]  = useState<Oeuvre | null>(null)
+  const onOpen = setInspected
 
   // ── Global state ───────────────────────────────────────────────
 
@@ -102,7 +113,7 @@ export function TeamPortalClient({
       .then(({ count }: { count: number | null }) => setReminderCount(count ?? 0))
       .catch(err => console.error("Reminder Poll Error:", err))
   }, [tab])
-  const [inspected,  setInspected]  = useState<Oeuvre | null>(null)
+
   const [selection,  setSelection]  = useState<Set<number>>(new Set())
   const [groups,     setGroups]     = useState<{ id: string; name: string }[]>(
     [...initialGroups].sort((a, b) => a.name.localeCompare(b.name, 'fr'))
@@ -124,12 +135,12 @@ export function TeamPortalClient({
   useEffect(() => {
     const sb = createClient()
     // Fetch Themes
-    ;(sb.from('OeuvreTheme') as any).select('OeuvreID, ThemeID').range(0, 10000).then(({ data }: { data: { OeuvreID: number; ThemeID: number }[] | null }) => {
+    ;(sb.from('oeuvre_theme') as any).select('oeuvre_id, theme_id').range(0, 10000).then(({ data }: { data: { oeuvre_id: number; theme_id: number }[] | null }) => {
       if (!data) return
       const map = new Map<number, number[]>()
-      data.forEach(({ OeuvreID, ThemeID }) => {
-        if (!map.has(OeuvreID)) map.set(OeuvreID, [])
-        map.get(OeuvreID)!.push(ThemeID)
+      data.forEach(({ oeuvre_id, theme_id }) => {
+        if (!map.has(oeuvre_id)) map.set(oeuvre_id, [])
+        map.get(oeuvre_id)!.push(theme_id)
       })
       setOeuvreThemeMap(map)
     }).catch(err => console.error("Theme Map Error:", err))
@@ -179,7 +190,7 @@ export function TeamPortalClient({
   const sortedTechniques = useMemo(() => [...techniques].sort((a, b) => (a.Technique ?? '').localeCompare(b.Technique ?? '', 'fr')), [techniques])
   const sortedSupports   = useMemo(() => [...supports].sort((a, b) => (a.Support ?? '').localeCompare(b.Support ?? '', 'fr')), [supports])
   const sortedFormats    = useMemo(() => [...formats].sort((a, b) => (a.Format ?? '').localeCompare(b.Format ?? '', 'fr')), [formats])
-  const sortedThemes     = useMemo(() => [...themes].sort((a, b) => a.Nom.localeCompare(b.Nom, 'fr')), [themes])
+  const sortedThemes     = useMemo(() => [...themes].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '', 'fr')), [themes])
 
   const tM = useMemo(
     () => Object.fromEntries(techniques.map((x) => [x.TechniqueID, x.Technique ?? ''])),
@@ -213,7 +224,7 @@ export function TeamPortalClient({
     [presentations],
   )
   const thM = useMemo(
-    () => Object.fromEntries(themes.map((t) => [t.ThemeID, t.Nom])),
+    () => Object.fromEntries(themes.map((t) => [t.id, t.name])),
     [themes],
   )
   const groupNameMap = useMemo(
@@ -503,10 +514,17 @@ export function TeamPortalClient({
         )}
         {tab === 'themes' && (
           <ThemesTab
-            initialThemes={[...themes].sort((a, b) => a.Nom.localeCompare(b.Nom, 'fr'))}
+            initialThemes={[...themes].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '', 'fr'))}
             initialGroups={groups}
             themeWorkCount={themeWorkCount}
             groupWorkCount={groupWorkCount}
+            themePrivateWorks={themePrivateWorks}
+            groupPrivateWorks={groupPrivateWorks}
+            themeToGroups={themeToGroups}
+            groupToThemes={groupToThemes}
+            oeuvres={oeuvres}
+            onOpen={onOpen}
+            tM={tM}
           />
         )}
 

@@ -50,7 +50,7 @@ type ThemeWork = { OeuvreID: number; txtImageNameLink: string | null; isPublic: 
 
 interface Props {
   oeuvres: Oeuvre[]
-  themes:  { ThemeID: number; Nom: string }[]
+  themes:  { id: number; name: string }[]
   themePublicStats?: Record<number, { total: number; pub: number }>
   themePrivateWorks?: Record<number, ThemeWork[]>
 }
@@ -165,13 +165,13 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
     index: number
   } | null>(null)
 
-  const themeNames = themes.map(t => t.Nom).sort((a, b) => a.localeCompare(b, 'fr'))
+  const themeNames = themes.map(t => t.name).sort((a, b) => a.localeCompare(b, 'fr'))
 
   const themeNameStats = useMemo(() => {
     const map: Record<string, { total: number; pub: number }> = {}
     for (const t of themes) {
-      const s = themePublicStats[t.ThemeID]
-      if (s) map[t.Nom] = s
+      const s = themePublicStats[t.id]
+      if (s) map[t.name] = s
     }
     return map
   }, [themes, themePublicStats])
@@ -179,8 +179,8 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
   const themeNamePrivateWorks = useMemo(() => {
     const map: Record<string, ThemeWork[]> = {}
     for (const t of themes) {
-      const ws = themePrivateWorks[t.ThemeID]
-      if (ws?.length) map[t.Nom] = ws
+      const ws = themePrivateWorks[t.id]
+      if (ws?.length) map[t.name] = ws
     }
     return map
   }, [themes, themePrivateWorks])

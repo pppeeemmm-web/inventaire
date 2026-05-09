@@ -74,7 +74,7 @@ interface Props {
   techniques:      { TechniqueID: number; Technique: string | null }[]
   supports:        { SupportID:   number; Support:   string | null }[]
   formats:         { FormatID:    number; Format:    string | null }[]
-  themes:          { ThemeID:     number; Nom:       string        }[]
+  themes:          { id:          number; name:      string        }[]
   contacts:        any[]
   initialImages?:  WorkImage[]
   addresses?:      any[]
@@ -122,6 +122,7 @@ export function WorkForm({
 
   // ── Financials ────────────────────────────────────────────────────
   const [prix,        setPrix]        = useState(String(oeuvre?.Prix ?? '0'))
+  const [tvaRate,     setTvaRate]     = useState(String((oeuvre as any)?.tva_rate ?? '0'))
   const [discount,    setDiscount]    = useState(String((oeuvre as any)?.Discount ?? '0'))
   const [paymentDone, setPaymentDone] = useState((oeuvre as any)?.PaymentDone ?? false)
   const [exposable,   setExposable]   = useState((oeuvre as any)?.Exposable ?? false)
@@ -272,6 +273,7 @@ export function WorkForm({
     fd.set('contact_id', contactId)
     fd.set('localisation_id', contactId)
     fd.set('status_id', String(computeStatusId()))
+    fd.set('tva_rate', tvaRate)
 
     // Ownership change history
     if (oeuvre?.LocalisationID !== parseInt(contactId)) {
@@ -337,10 +339,10 @@ export function WorkForm({
             <div className="t-eyebrow" style={{ marginBottom: 12, fontSize: 11 }}>Thèmes / Séries</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {allThemes.map(th => (
-                <button key={th.ThemeID} type="button"
-                  onClick={() => setSelThemes(p => { const s = new Set(p); if (s.has(th.ThemeID)) s.delete(th.ThemeID); else s.add(th.ThemeID); return s })}
-                  style={{ padding: '4px 10px', fontSize: 11, borderRadius: 2, border: '1px solid var(--bd)', background: selThemes.has(th.ThemeID) ? 'var(--ac)' : 'var(--bg2)', color: selThemes.has(th.ThemeID) ? 'var(--bg0)' : 'var(--tx3)' }}>
-                  {th.Nom}
+                <button key={th.id} type="button"
+                  onClick={() => setSelThemes(p => { const s = new Set(p); if (s.has(th.id)) s.delete(th.id); else s.add(th.id); return s })}
+                  style={{ padding: '4px 10px', fontSize: 11, borderRadius: 2, border: '1px solid var(--bd)', background: selThemes.has(th.id) ? 'var(--ac)' : 'var(--bg2)', color: selThemes.has(th.id) ? 'var(--bg0)' : 'var(--tx3)' }}>
+                  {th.name}
                 </button>
               ))}
             </div>
@@ -506,8 +508,15 @@ export function WorkForm({
                 <Field label="Remise (%)">
                   <input value={discount} onChange={e => setDiscount(e.target.value)} style={FIS} disabled={ownStage === 'gift'} />
                 </Field>
+                <Field label="TVA (%)">
+                  <select value={tvaRate} onChange={e => setTvaRate(e.target.value)} style={FIS} disabled={ownStage === 'gift'}>
+                    <option value="0">0% (Exonéré)</option>
+                    <option value="5.5">5.5% (Taux réduit)</option>
+                    <option value="20">20% (Taux normal)</option>
+                  </select>
+                </Field>
                 <div style={{ alignSelf: 'flex-end' }}>
-                  <div className="t-label" style={{ fontSize: 11, color: paymentDone ? 'var(--tx3)' : 'var(--rust)', marginBottom: 6 }}>MONTANT FINAL</div>
+                  <div className="t-label" style={{ fontSize: 11, color: paymentDone ? 'var(--tx3)' : 'var(--rust)', marginBottom: 6 }}>MONTANT FINAL (HT)</div>
                   <div className="t-mono-md" style={{ fontWeight: 700, fontSize: 18 }}>€ {prixFinal.toLocaleString()}</div>
                 </div>
               </div>

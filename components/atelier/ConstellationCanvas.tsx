@@ -171,7 +171,7 @@ function clusterOuterR(n: number): number {
 function layoutTheme(
   oeuvres:   Oeuvre[],
   themeWork: Map<number, Set<number>>,
-  themes:    { ThemeID: number }[],
+  themes:    { id: number }[],
 ): NodeMap {
   // Only place works that belong to at least one of the given themes.
   // Unthemed works are intentionally excluded — use year/libre mode for them.
@@ -182,7 +182,7 @@ function layoutTheme(
   // Gather per-theme work lists (skip already-placed multi-theme works after first placement)
   const themeLists = themes.map(th => ({
     th,
-    ids: [...(themeWork.get(th.ThemeID) ?? [])].filter(id => oeuvreSet.has(id)),
+    ids: [...(themeWork.get(th.id) ?? [])].filter(id => oeuvreSet.has(id)),
   })).filter(x => x.ids.length > 0)
 
   if (themeLists.length === 0) return m
@@ -265,7 +265,7 @@ function hitEdge(lx: number, ly: number, edges: Edge[], pos: NodeMap, vp: VP): E
 interface Props {
   oeuvres:      Oeuvre[]
   tM:           Record<number, string>
-  themes:       { ThemeID: number; Nom: string }[]
+  themes:       { id: number; name: string }[]
   selection:    Set<number>
   setSelection: (s: Set<number>) => void
   onOpen:       (o: Oeuvre) => void
@@ -424,7 +424,7 @@ export function ConstellationCanvas({
       const sb = createClient()
       const [{ data: rels }, { data: ot }] = await Promise.all([
         sb.from('tblrelations').select('id, source_id, target_id, relation_type, strength, description').range(0, 9999),
-        sb.from('OeuvreTheme').select('OeuvreID, ThemeID').range(0, 49999),
+        sb.from('oeuvre_theme').select('oeuvre_id, theme_id').range(0, 49999),
       ])
       if (!active) return
 
@@ -434,8 +434,8 @@ export function ConstellationCanvas({
 
       const tw = new Map<number, Set<number>>()
       for (const row of (ot ?? [])) {
-        if (!tw.has(row.ThemeID)) tw.set(row.ThemeID, new Set())
-        tw.get(row.ThemeID)!.add(row.OeuvreID)
+        if (!tw.has(row.theme_id)) tw.set(row.theme_id, new Set())
+        tw.get(row.theme_id)!.add(row.oeuvre_id)
       }
       setThemeWork(tw)
       setLoading(false)
@@ -461,7 +461,7 @@ export function ConstellationCanvas({
         posRef.current = saved
       } else {
         const activeThemes = selectedThemeId !== null
-          ? themes.filter(t => t.ThemeID === selectedThemeId)
+          ? themes.filter(t => t.id === selectedThemeId)
           : themes
         posRef.current = layoutTheme(constellationOeuvres, themeWork, activeThemes)
       }
@@ -624,13 +624,13 @@ export function ConstellationCanvas({
     // ── Theme colors (one distinct hue per theme) ────────────────
     // Computed inline so they stay in sync with the themes array order.
     const themeColors = new Map<number, string>(
-      (themes || []).map((th, i) => [th.ThemeID, `hsl(${Math.round((i / Math.max(1, (themes?.length || 1))) * 300 + 20)}, 55%, 62%)`])
+      (themes || []).map((th, i) => [th.id, `hsl(${Math.round((i / Math.max(1, (themes?.length || 1))) * 300 + 20)}, 55%, 62%)`])
     )
     // Map each work to its first-listed theme (for border colouring)
     const workPrimaryTheme = new Map<number, number>();
     (themes || []).forEach(th => {
-      (themeWork.get(th.ThemeID) ?? new Set()).forEach(id => {
-        if (!workPrimaryTheme.has(id)) workPrimaryTheme.set(id, th.ThemeID)
+      (themeWork.get(th.id) ?? new Set()).forEach(id => {
+        if (!workPrimaryTheme.has(id)) workPrimaryTheme.set(id, th.id)
       })
     })
 
@@ -638,11 +638,11 @@ export function ConstellationCanvas({
     if (groupBy === 'theme') {
       // Step 1: compute ideal positions and sizes for each theme label
       const maxCount = Math.max(1, ...themes.map(th =>
-        [...(themeWork.get(th.ThemeID) ?? [])].filter(id => pos.has(id)).length
+        [...(themeWork.get(th.id) ?? [])].filter(id => pos.has(id)).length
       ))
 
       interface LBox {
-        th:       { ThemeID: number; Nom: string }
+        th:       { id: number; name: string }
         ax: number; ay: number   // anchor (cluster top-centre)
         x:  number; y:  number   // current (after collision resolution)
         w:  number; h:  number   // pill bounding box
@@ -654,7 +654,7 @@ export function ConstellationCanvas({
       const labels: LBox[] = []
 
       for (const th of themes) {
-        const ids = [...(themeWork.get(th.ThemeID) ?? [])].filter(id => pos.has(id))
+        const ids = [...(themeWork.get(th.id) ?? [])].filter(id => pos.has(id))
         if (!ids.length) continue
         const pts   = ids.map(id => pos.get(id)!)
         const cx    = pts.reduce((a, p) => a + p.x + NW / 2, 0) / pts.length
@@ -665,7 +665,7 @@ export function ConstellationCanvas({
         const t   = Math.sqrt(count / maxCount)   // 0..1, sqrt for perceptual scaling
         const fs  = (8 + 7 * t) / vp.z
         ctx.font  = `${fs}px "JetBrains Mono", monospace`
-        const tw  = ctx.measureText(th.Nom).width
+        const tw  = ctx.measureText(th.name).width
         const padH = (5 + 3 * t) / vp.z
         const padV = (3 + 2 * t) / vp.z
         const w   = tw + padH * 2
@@ -677,8 +677,8 @@ export function ConstellationCanvas({
           ax: cx, ay,
           x: cx, y: ay,
           w, h, fs,
-          color: themeColors.get(th.ThemeID) ?? 'rgba(166,163,151,0.8)',
-          alpha: selectedThemeId === null || selectedThemeId === th.ThemeID ? 1 : 0.22,
+          color: themeColors.get(th.id) ?? 'rgba(166,163,151,0.8)',
+          alpha: selectedThemeId === null || selectedThemeId === th.id ? 1 : 0.22,
         })
       }
 
@@ -747,7 +747,7 @@ export function ConstellationCanvas({
         // Label text
         ctx.font      = `${fs}px "JetBrains Mono", monospace`
         ctx.fillStyle = color
-        ctx.fillText(lb.th.Nom, x, ry + fs + (h - fs) / 2)
+        ctx.fillText(lb.th.name, x, ry + fs + (h - fs) / 2)
         ctx.globalAlpha = 1
       }
       ctx.textAlign = 'left'

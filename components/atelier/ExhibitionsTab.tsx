@@ -289,7 +289,7 @@ function DefaultRoomSVG({ walls }: { walls: Wall[] }) {
 function FloorPlanTool({ exhibitionId, oeuvres, themes, tM }: { 
   exhibitionId: string; 
   oeuvres: Oeuvre[]; 
-  themes: { ThemeID: number; Nom: string }[];
+  themes: { id: number; name: string }[];
   tM: Record<number, string>;
 }) {
   const [layouts, setLayouts]   = useState<ExhibitionLayout[]>([])
@@ -633,7 +633,7 @@ function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, selection
   exhibition: Exhibition
   oeuvres:    Oeuvre[]
   contacts:   { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null; Email?: string | null; Tel?: string | null }[]
-  themes:     { ThemeID: number; Nom: string }[]
+  themes:     { id: number; name: string }[]
   tM:         Record<number, string>
   selection:  Set<number>
   setSelection: (s: Set<number>) => void
@@ -957,7 +957,7 @@ function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, selection
 export function ExhibitionsTab({ oeuvres, contacts, themes, tM, selection, setSelection }: {
   oeuvres: Oeuvre[]; 
   contacts: any[]; 
-  themes: { ThemeID: number; Nom: string }[];
+  themes: { id: number; name: string }[];
   tM: Record<number, string>;
   selection: Set<number>; 
   setSelection: any
