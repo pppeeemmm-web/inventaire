@@ -47,6 +47,13 @@ export type DictKey =
   | 'exportTitlePlaceholder' | 'appendIndex'
   | 'themesSection' | 'locationNotes' | 'localisationDetail'
   | 'gift' | 'paid' | 'needsPhoto' | 'newTheme'
+  // ── Export & Curation keys ──────────────────────────────────────────────
+  | 'reference' | 'selectionGroup' | 'exportSelection' | 'exportTitle'
+  | 'layout' | 'fiches' | 'grille' | 'listeRapide'
+  | 'cardsPerPage' | 'displayedFields' | 'imageSize' | 'large' | 'small' | 'none'
+  | 'imageFormat' | 'square' | 'original' | 'images' | 'highRes' | 'lowRes'
+  | 'embedHeavyWarning' | 'paperFormat' | 'savedThemes' | 'noThemesSaved'
+  | 'generating' | 'batchSuccess' | 'selectAll' | 'renameFile' | 'filters'
   // ── Public site ────────────────────────────────────────────────────────
   | 'pub_works' | 'pub_about' | 'pub_practice' | 'pub_enquiry' | 'pub_portfolio'
   | 'pub_biography' | 'pub_exhibitions_selected' | 'pub_education' | 'pub_contact'
@@ -127,7 +134,7 @@ export const dict: Record<Lang, Dictionary> = {
     fiscal: 'Revenus & Dépenses', expenses: 'Dépenses', dashboard: 'Tableau de bord',
     income: 'Revenus', tax: 'Impôts', category: 'Catégorie', amount: 'Montant',
     framework: 'Cadre fiscal', taxFramework: 'Cadre fiscal — Artiste-auteur en France',
-    sales: 'Ventes', revenue: 'Chiffre d\'affaires', orders: 'Commandes',
+    revenue: 'Chiffre d\'affaires', orders: 'Commandes',
     newOrder: 'Nouvelle commande', buyer: 'Acheteur',
     concepts: 'Concepts', themes: 'Thèmes / Groupes', location: 'Dépositaire',
     tirage: 'Tirage', exhibitable: 'Exposable', image: 'Image',
@@ -153,6 +160,19 @@ export const dict: Record<Lang, Dictionary> = {
     appendIndex: 'Ajouter index en fin de document',
     main: 'Principal', ramifications: 'Ramifications',
     import: 'Importer', newFolder: 'Nouveau dossier', generateCoa: 'Générer COA',
+    // Export & Curation
+    reference: 'Référence', selectionGroup: 'Groupe de sélection',
+    exportSelection: 'Exporter la sélection', exportTitle: 'Titre d\'export',
+    layout: 'Mise en page', fiches: 'Fiches', grille: 'Grille', listeRapide: 'Liste rapide',
+    cardsPerPage: 'Fiches par page', displayedFields: 'Champs affichés',
+    imageSize: 'Taille d\'image', large: 'Grande', small: 'Petite', none: 'Aucune',
+    imageFormat: 'Format d\'image', square: 'Carré', original: 'Original',
+    images: 'Images', highRes: 'Haute résolution', lowRes: 'Basse résolution',
+    embedHeavyWarning: 'L\'intégration des images augmente considérablement la taille du fichier.',
+    paperFormat: 'Format papier', savedThemes: 'Thèmes enregistrés',
+    noThemesSaved: 'Aucun thème enregistré.', generating: 'Génération…',
+    batchSuccess: 'Modifications appliquées.', selectAll: 'Tout sélectionner',
+    renameFile: 'Renommer le fichier', filters: 'Filtres',
     // Public site
     pub_works: 'Oeuvres', pub_about: 'À propos', pub_practice: 'Pratique',
     pub_enquiry: 'Contact', pub_portfolio: 'Portfolio',
@@ -239,7 +259,7 @@ export const dict: Record<Lang, Dictionary> = {
     fiscal: 'Income & Expenses', expenses: 'Expenses', dashboard: 'Dashboard',
     income: 'Income', tax: 'Taxes', category: 'Category', amount: 'Amount',
     framework: 'Tax Framework', taxFramework: 'Tax Framework — Artist-Author in France',
-    sales: 'Sales', revenue: 'Revenue', orders: 'Orders',
+    revenue: 'Revenue', orders: 'Orders',
     newOrder: 'New order', buyer: 'Buyer',
     concepts: 'Concepts', themes: 'Themes / Groups', location: 'Custodian',
     tirage: 'Edition', exhibitable: 'Exhibitable', image: 'Image',
@@ -265,6 +285,19 @@ export const dict: Record<Lang, Dictionary> = {
     appendIndex: 'Append index at end of document',
     main: 'Main', ramifications: 'Hierarchy',
     import: 'Import', newFolder: 'New Folder', generateCoa: 'Generate COA',
+    // Export & Curation
+    reference: 'Reference', selectionGroup: 'Selection group',
+    exportSelection: 'Export selection', exportTitle: 'Export title',
+    layout: 'Layout', fiches: 'Cards', grille: 'Grid', listeRapide: 'Quick list',
+    cardsPerPage: 'Cards per page', displayedFields: 'Displayed fields',
+    imageSize: 'Image size', large: 'Large', small: 'Small', none: 'None',
+    imageFormat: 'Image format', square: 'Square', original: 'Original',
+    images: 'Images', highRes: 'High resolution', lowRes: 'Low resolution',
+    embedHeavyWarning: 'Embedding images significantly increases file size.',
+    paperFormat: 'Paper format', savedThemes: 'Saved themes',
+    noThemesSaved: 'No saved themes.', generating: 'Generating…',
+    batchSuccess: 'Changes applied.', selectAll: 'Select all',
+    renameFile: 'Rename file', filters: 'Filters',
     // Public site
     pub_works: 'Works', pub_about: 'About', pub_practice: 'Practice',
     pub_enquiry: 'Enquiry', pub_portfolio: 'Portfolio',

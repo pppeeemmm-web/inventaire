@@ -30,6 +30,7 @@ export interface BatchChanges {
   PrixFinal?:         number | null
   Année?:             string | null
   LocalisationDetail?: string | null
+  LocalisationID?:  number | null
   Commentaires?:      string | null
   // Theme junction — add and/or remove theme IDs across OeuvreTheme
   addThemeIds?:       number[]

@@ -32,6 +32,7 @@ export interface SaleOrderRow {
   statut:           string
   notes:            string | null
   pdf_path:         string | null
+  updated_at?:      string | null
   payments?:        PaymentRow[]
 }
 
