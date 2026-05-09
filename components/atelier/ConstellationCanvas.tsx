@@ -450,18 +450,16 @@ export function ConstellationCanvas({
     groupByRef.current = groupBy
     if (groupBy === 'custom') {
       // Custom mode: positions are managed by addToCustom/removeFromCustom.
-      // Don't auto-layout — just redraw with whatever FIS in posRef.
+      // Don't auto-layout — just redraw with whatever is in posRef.
       redraw()
       return
     }
+
     if (groupBy === 'theme') {
       const saved = loadPos('theme', selectedThemeId)
       if (saved && saved.size > 0) {
         posRef.current = saved
       } else {
-        // If we already have some positions in posRef and haven't changed theme, 
-        // maybe we don't need to full layout? 
-        // But for safety on first load/filter change, we run it.
         const activeThemes = selectedThemeId !== null
           ? themes.filter(t => t.ThemeID === selectedThemeId)
           : themes
@@ -471,10 +469,19 @@ export function ConstellationCanvas({
       const saved = loadPos(groupBy)
       if (saved) {
         posRef.current = saved
+        // Incremental add: if new works are in oeuvres but not in saved pos, 
+        // we should ideally add them. For now, if we detect MANY missing works,
+        // or specifically if the user is in 'year' mode and a year is missing, we might re-layout.
+        const missingCount = oeuvres.filter(o => !saved.has(o.OeuvreID)).length
+        if (missingCount > 0 && (missingCount > 10 || saved.size < 5)) {
+          // Automatic re-layout if significant changes detected
+          if (groupBy === 'year') posRef.current = layoutYear(oeuvres)
+          else                    posRef.current = layoutGrid(oeuvres)
+        }
       } else {
         // Only auto-layout if posRef is actually empty for the current view
         const currentCount = Array.from(posRef.current.keys()).filter(id => oeuvresById.has(id)).length
-        if (currentCount < oeuvres.length * 0.8) {
+        if (currentCount < oeuvres.length) {
            if (groupBy === 'year') posRef.current = layoutYear(oeuvres)
            else                    posRef.current = layoutGrid(oeuvres)
         }
@@ -1393,6 +1400,43 @@ export function ConstellationCanvas({
     setTimeout(() => setSnapSaved(false), 2500)
   }
 
+  function handleResetLayout() {
+    if (!confirm("Réinitialiser le placement automatique ?")) return
+    if (groupBy === 'year')  posRef.current = layoutYear(oeuvres)
+    else if (groupBy === 'none') posRef.current = layoutGrid(oeuvres)
+    else if (groupBy === 'theme') {
+      const activeThemes = selectedThemeId !== null ? themes.filter(t => t.ThemeID === selectedThemeId) : themes
+      posRef.current = layoutTheme(constellationOeuvres, themeWork, activeThemes)
+    }
+    savePos(groupBy, posRef.current, groupBy === 'theme' ? selectedThemeId : undefined)
+    redraw()
+  }
+
+  function handleFitView() {
+    const canvas = canvasRef.current
+    if (!canvas || posRef.current.size === 0) return
+    
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+    posRef.current.forEach(({ x, y }) => {
+      if (x < minX) minX = x
+      if (y < minY) minY = y
+      if (x + NW > maxX) maxX = x + NW
+      if (y + NH > maxY) maxY = y + NH
+    })
+    
+    const w = canvas.offsetWidth, h = canvas.offsetHeight
+    const bw = maxX - minX, bh = maxY - minY
+    const PAD = 80
+    const scale = Math.min(6, Math.max(0.05, Math.min((w - PAD) / bw, (h - PAD) / bh)))
+    
+    vpRef.current = {
+      x: (w / 2) - (minX + bw / 2) * scale,
+      y: (h / 2) - (minY + bh / 2) * scale,
+      z: scale
+    }
+    redraw()
+  }
+
   // ── Snapshot: load ──────────────────────────────────────────────
   function handleLoadSnapshot(id: string) {
     const snap = snapshots.find(s => s.id === id)
@@ -1857,6 +1901,12 @@ export function ConstellationCanvas({
         </button>
 
         <div className="vline" style={{ height: 16 }} />
+        <button className="btn ghost sm" onClick={handleResetLayout} title="Réinitialiser le placement (Année/Thème)" style={{ whiteSpace: 'nowrap', fontSize: 9 }}>
+          ↺ Reset
+        </button>
+        <button className="btn ghost sm" onClick={handleFitView} title="Centrer la vue sur les œuvres" style={{ whiteSpace: 'nowrap', fontSize: 9 }}>
+          ⛶ Centrer
+        </button>
         <button className="btn ghost sm" onClick={handleExportPng} style={{ whiteSpace: 'nowrap', fontSize: 9 }}>
           ↓ PNG
         </button>
