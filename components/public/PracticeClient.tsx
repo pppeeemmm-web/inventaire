@@ -39,31 +39,32 @@ export default function PracticeClient() {
         .p-nav {
           position: sticky; top: 0; z-index: 10;
           display: flex; align-items: center; justify-content: space-between;
-          padding: 20px 40px;
+          padding: clamp(14px, 2.5vw, 20px) clamp(16px, 5vw, 40px);
           background: rgba(237,234,228,.92); backdrop-filter: blur(8px);
           border-bottom: 1px solid #dedad4;
         }
-        .p-logo { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: #b0aca6; text-decoration: none; }
-        .p-navlinks { display: flex; gap: 32px; align-items: center; }
-        .p-navlink { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: #b0aca6; text-decoration: none; transition: color .15s; }
+        .p-logo { font-size: clamp(8px, 1.2vw, 9px); letter-spacing: 3px; text-transform: uppercase; color: #b0aca6; text-decoration: none; }
+        .p-navlinks { display: flex; gap: clamp(16px, 3.5vw, 32px); align-items: center; }
+        .p-navlink { font-size: clamp(8px, 1.2vw, 9px); letter-spacing: 2px; text-transform: uppercase; color: #b0aca6; text-decoration: none; transition: color .15s; }
         .p-navlink:hover, .p-navlink.active { color: #6b6760; }
         .p-lang {
           font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
           color: #b0aca6; background: none; border: 1px solid #dedad4;
           padding: 3px 8px; cursor: pointer; transition: all .15s;
           font-family: inherit;
+          min-height: 44px; display: inline-flex; align-items: center; justify-content: center;
         }
         .p-lang:hover { color: #6b6760; border-color: #b0aca6; }
-        .p-body { max-width: 860px; margin: 0 auto; padding: 72px 40px 120px; }
+        .p-body { max-width: 860px; margin: 0 auto; padding: clamp(40px, 8vw, 72px) clamp(16px, 5vw, 40px) clamp(60px, 12vw, 120px); }
         .p-section { margin-bottom: 72px; }
-        .p-section-label { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: #b0aca6; margin-bottom: 32px; padding-bottom: 12px; border-bottom: 1px solid #dedad4; }
+        .p-section-label { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: #b0aca6; margin-bottom: clamp(20px, 4vw, 32px); padding-bottom: 12px; border-bottom: 1px solid #dedad4; }
         .p-title {
           font-family: 'Instrument Serif', serif;
           font-size: clamp(28px,4vw,52px); font-weight: 400;
           color: #3a3834; line-height: 1.1; letter-spacing: -.02em; margin-bottom: 40px;
         }
         .p-title em { font-style: italic; color: #9a9690; }
-        .p-text { font-size: 13px; line-height: 2.1; color: #7a7670; max-width: 64ch; }
+        .p-text { font-size: clamp(12px, 1.6vw, 13px); line-height: 2.1; color: #7a7670; max-width: 64ch; }
         .p-text p + p { margin-top: 1.6em; }
         .p-pull {
           margin: 52px 0;
@@ -74,9 +75,13 @@ export default function PracticeClient() {
           font-style: italic; color: #9a9690; line-height: 1.7;
         }
         .p-themes { margin-top: 40px; display: flex; flex-direction: column; gap: 12px; }
-        .p-theme { display: flex; gap: 16px; align-items: baseline; font-size: 11px; color: #7a7670; line-height: 1.6; }
+        .p-theme { display: flex; gap: 16px; align-items: baseline; font-size: clamp(10px, 1.4vw, 11px); color: #7a7670; line-height: 1.6; }
         .p-theme::before { content: '·'; color: #b0aca6; flex-shrink: 0; }
         .p-footer { text-align: center; padding: 40px; border-top: 1px solid #dedad4; font-size: 9px; color: #c8c4be; letter-spacing: 2px; text-transform: uppercase; }
+        @media (max-width: 640px) {
+          .p-navlinks { gap: clamp(10px, 2.5vw, 16px); }
+          .p-navlink { letter-spacing: 1px; }
+        }
       `}</style>
 
       <PublicNav active="practice" prefix="p" />
