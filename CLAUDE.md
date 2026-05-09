@@ -5,20 +5,23 @@ NO AUTONOMY: No "GO" = No file edit.
 KISS: Minimal code. 50 lines > 200 lines. No bloat.
 CONFIRM DELETE: Always ask.
 CAVEMAN CHAT: Stop verbosity. No "I've updated..." or "Here is...". Code only. 1-3 word status max.
-🛠️ CONTEXT & CMDS
-Next.js 15 (P3000). npm dev | build | lint. No tests.
+
+🛠️ CMDS
+Next.js 15 (port 3000). npm dev | build | lint. No tests.
 Path: C:\Users\pppee\Documents\Claude\Projects\Art db\app
+
 💾 DATA LOGIC
-Status: Use Oeuvres.statusId (FK → OeuvreStatus.id).
-Themes: Use OeuvreTheme (junction). Oeuvres.theme = READ-ONLY/OLD.
-Images: Source = tblImage. DB Trigger updates Oeuvres.
+Status: Oeuvres.statusId (FK → OeuvreStatus.id).
+Themes: OeuvreTheme junction table. Oeuvres.theme = READ-ONLY/DEAD.
+Images: tblImage → trigger updates Oeuvres auto.
 Dates: Oeuvres.Année = DATE (YYYY-01-01). Use yearOf() in lib/data.ts.
 Sort: UI dropdowns = Alphabetical.
+Mutations: Server Actions ('use server') only. No API routes.
+Image URLs: imageUrl() / thumbUrl() from lib/data.ts. Never build R2 URLs manually.
 
-### 2. Variables & Helpers Critiques
-- **Dossier** : `C:\Users\pppee\Documents\Claude\Projects\Art db\app`
-- **Statut** : Toujours utiliser `Oeuvres.statusId` (integer FK → `OeuvreStatus.id`).
-- **Thèmes** : Utiliser la table de jonction `OeuvreTheme`. `Oeuvres.theme` est en lecture seule (déprécié).
-- **Images** : Source unique = `tblImage`. Le trigger mettra à jour `Oeuvres` auto.
-- **Dates** : `Oeuvres.Année` est un DATE (`YYYY-01-01`). Extraire via `yearOf()` dans `lib/data.ts`.
-- **Tri** : Tous les dropdowns UI doivent être triés par ordre alphabétique.
+🚫 CEMETERY (instant fail)
+DEAD COLUMNS: Oeuvres.Statut, Oeuvres.StatutID, tags, txtImageName, Emballage, DocsValidated, UniteDimension
+ORPHAN COLS: NomOriginal (→ Titre), Poids, Tirage
+DEAD TABLES: tblRelations (→ tblrelations), OeuvreRelationships
+NEVER WRITE: Oeuvres.is_public (trigger), Oeuvres.txtImageNameLink (trigger tblimage_cover_sync)
+NEW TABLES: snake_case only. No tbl prefix. No CamelCase.
