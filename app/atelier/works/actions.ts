@@ -118,6 +118,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
   const dateLivraison  = (formData.get('date_livraison') as string | null)?.trim() || null
   const needsPhotograph = formData.get('needs_photograph') === '1'
   const anonymityLevel = numOrNull(formData.get('anonymity_level')) ?? 0
+  const adminOverrideAnonymity = formData.get('admin_override_anonymity') === '1'
   const isPaid         = formData.get('is_paid') === '1'
   const isGift         = formData.get('is_gift') === '1'
 
@@ -222,6 +223,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       DateLivraison:     dateLivraison,
       NeedsPhotograph:   needsPhotograph,
       anonymity_level:   anonymityLevel,
+      admin_override_anonymity: adminOverrideAnonymity,
       tva_rate:          tvaRate,
       is_paid:           isPaid,
       is_gift:           isGift,
@@ -319,6 +321,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       DateLivraison:     dateLivraison,
       NeedsPhotograph:   needsPhotograph,
       anonymity_level:   anonymityLevel,
+      admin_override_anonymity: adminOverrideAnonymity,
       tva_rate:          tvaRate,
       is_paid:           isPaid,
       is_gift:           isGift,

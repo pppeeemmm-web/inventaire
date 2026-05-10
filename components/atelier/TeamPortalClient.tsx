@@ -419,6 +419,8 @@ export function TeamPortalClient({
             formats={sortedFormats}
             themes={sortedThemes}
             groups={groups}
+            contacts={contacts}
+            presentations={presentations}
             tM={tM} sM={sM} cM={cM} pM={pM} locMap={locMap}
             statusLabelMap={statusLabelMap}
             selection={selection}
