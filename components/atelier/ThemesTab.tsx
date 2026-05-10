@@ -142,7 +142,7 @@ export function ThemesTab({
 
   // Works for the mosaic
   const allWorksInCategory = (hoverTheme ? (themePrivateWorks[hoverTheme] || []) : hoverGroup ? (groupPrivateWorks[hoverGroup!] || []) : [])
-  const previewWorks = allWorksInCategory.slice(0, 100)
+  const previewWorks = allWorksInCategory
 
   return (
     <div style={{ padding: '40px', width: '100%', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, background: 'var(--bg0)' }}>
@@ -239,17 +239,23 @@ export function ThemesTab({
           }}>
             {previewWorks.length > 0 ? (
               <div className="mosaic-scroll" style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
-                <div style={{ 
-                  display: 'grid', 
-                  gridTemplateColumns: previewWorks.length <= 3 
-                    ? `repeat(${previewWorks.length}, minmax(200px, 400px))` 
-                    : previewWorks.length <= 8
-                    ? `repeat(auto-fill, minmax(160px, 1fr))`
-                    : 'repeat(auto-fill, minmax(110px, 180px))', 
-                  gap: previewWorks.length <= 3 ? 24 : 12, 
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: `repeat(${
+                    previewWorks.length <= 1 ? 1
+                    : previewWorks.length <= 4 ? 2
+                    : previewWorks.length <= 9 ? 3
+                    : previewWorks.length <= 16 ? 4
+                    : previewWorks.length <= 25 ? 5
+                    : previewWorks.length <= 36 ? 6
+                    : previewWorks.length <= 49 ? 7
+                    : previewWorks.length <= 64 ? 8
+                    : previewWorks.length <= 100 ? 10
+                    : 12
+                  }, 1fr)`,
+                  gap: previewWorks.length <= 4 ? 20 : previewWorks.length <= 16 ? 12 : 6,
                   width: '100%',
-                  alignContent: 'start',
-                  justifyContent: previewWorks.length <= 3 ? 'center' : 'start'
+                  alignContent: 'start'
                 }}>
                   {previewWorks.map((w, idx) => (
                     <div key={w.OeuvreID} className="mosaic-card" 
