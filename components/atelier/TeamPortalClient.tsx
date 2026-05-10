@@ -436,12 +436,14 @@ export function TeamPortalClient({
           <ConstellationCanvas
             oeuvres={oeuvres}
             tM={tM}
+            sM={sM}
             themes={sortedThemes}
-            groups={groups}
             selection={selection}
             setSelection={setSelection}
             onOpen={setInspected}
             onSaveGroup={handleSaveGroup}
+            onGroupSaved={(id, name) => setGroups((prev) => [{ id, name }, ...prev])}
+            onCompare={() => setShowCompare(true)}
           />
         )}
 
@@ -475,6 +477,7 @@ export function TeamPortalClient({
               contacts={contacts}
               themes={sortedThemes}
               tM={tM}
+              sM={sM}
               selection={selection}
               setSelection={setSelection}
             />

@@ -8,6 +8,7 @@ import { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { imageUrl, thumbUrl } from '@/lib/data'
 import { WorkThumb } from './WorkThumb'
+import { CurationPanel } from '@/components/atelier/CurationPanel'
 import type { Oeuvre }  from '@/lib/types/database'
 
 // ── Constants ──────────────────────────────────────────────────────────────
@@ -286,12 +287,17 @@ function hitEdge(lx: number, ly: number, edges: Edge[], pos: NodeMap, vp: VP): E
 interface Props {
   oeuvres:      Oeuvre[]
   tM:           Record<number, string>
+  sM:           Record<number, string>
   themes:       { id: number; name: string }[]
   selection:    Set<number>
   setSelection: (s: Set<number>) => void
   onOpen:       (o: Oeuvre) => void
   onSaveGroup:  (name: string, ids: number[]) => Promise<string | null>
-  
+  onGroupSaved: (id: string, name: string) => void
+  onCompare?:   () => void
+  /** When false, hides working-group / private-link panel (e.g. exhibition floor-plan embed). */
+  showWorkingGroupPanel?: boolean
+
   // Background floorplan integration
   backgroundImage?:     string
   backgroundOpacity?:   number
@@ -303,7 +309,8 @@ interface Props {
 
 // ── Component ──────────────────────────────────────────────────────────────
 export function ConstellationCanvas({ 
-  oeuvres, tM, themes, selection, setSelection, onOpen, onSaveGroup,
+  oeuvres, tM, sM, themes, selection, setSelection, onOpen, onSaveGroup, onGroupSaved, onCompare,
+  showWorkingGroupPanel = true,
   backgroundImage, backgroundOpacity = 1, onBackgroundOpacity, onDropExternal, hideToolbar, initialPositions
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -1245,7 +1252,7 @@ export function ConstellationCanvas({
       } else if (groupByRef.current === 'theme' && selectedThemeId) {
         if (confirm("Retirer le thème de cette œuvre ?")) {
           const sb = createClient()
-          sb.from('OeuvreTheme').delete().eq('OeuvreID', nodeHit.id).eq('ThemeID', selectedThemeId).then(({ error }) => {
+          sb.from('oeuvre_theme').delete().eq('oeuvre_id', nodeHit.id).eq('theme_id', selectedThemeId).then(({ error }) => {
             if (!error) {
               setThemeWork(prev => {
                 const n = new Map(prev)
@@ -1426,7 +1433,7 @@ export function ConstellationCanvas({
     if (groupBy === 'year')  posRef.current = layoutYear(oeuvres)
     else if (groupBy === 'none') posRef.current = layoutGrid(oeuvres)
     else if (groupBy === 'theme') {
-      const activeThemes = selectedThemeId !== null ? themes.filter(t => t.ThemeID === selectedThemeId) : themes
+      const activeThemes = selectedThemeId !== null ? themes.filter(t => t.id === selectedThemeId) : themes
       posRef.current = layoutTheme(constellationOeuvres, themeWork, activeThemes)
     }
     savePos(groupBy, posRef.current, groupBy === 'theme' ? selectedThemeId : undefined)
@@ -1755,17 +1762,6 @@ export function ConstellationCanvas({
     setSaving(false)
   }
 
-  // ── Save group ─────────────────────────────────────────────────
-  async function handleSaveGroup() {
-    const ids = [...selection]
-    if (!ids.length) return
-    setSaving(true)
-    const nm = groupName.trim() || `Groupe ${new Date().toLocaleDateString('fr-FR')}`
-    const id = await onSaveGroup(nm, ids)
-    if (id) { setSavedName(nm); setGroupName(''); setTimeout(() => setSavedName(null), 3000) }
-    setSaving(false)
-  }
-
   async function handleSaveAllAsGroup() {
     const ids = Array.from(posRef.current.keys())
     if (!ids.length) return
@@ -1863,9 +1859,9 @@ export function ConstellationCanvas({
             style={{ fontSize: 9, background: 'var(--bg0)', border: '1px solid var(--ac)', color: 'var(--tx)', padding: '2px 8px', cursor: 'pointer', maxWidth: 140 }}
           >
             <option value="">Tous les thèmes ({[...themeWork.values()].reduce((a, s) => { s.forEach(id => a.add(id)); return a }, new Set()).size})</option>
-            {themes.filter(th => (themeWork.get(th.ThemeID)?.size ?? 0) > 0).map(th => (
-              <option key={th.ThemeID} value={th.ThemeID}>
-                {th.Nom} ({themeWork.get(th.ThemeID)?.size ?? 0})
+            {themes.filter(th => (themeWork.get(th.id)?.size ?? 0) > 0).map(th => (
+              <option key={th.id} value={th.id}>
+                {th.name} ({themeWork.get(th.id)?.size ?? 0})
               </option>
             ))}
           </select>
@@ -1952,6 +1948,12 @@ export function ConstellationCanvas({
         )}
 
         <div className="vline" style={{ height: 16 }} />
+        {selection.size >= 2 && onCompare && (
+          <button type="button" className="btn ghost sm" onClick={onCompare} style={{ whiteSpace: 'nowrap', fontSize: 9 }}>
+            Comparer
+          </button>
+        )}
+        <div className="vline" style={{ height: 16 }} />
         <div className="t-mono-sm" style={{ color: 'var(--tx3)', whiteSpace: 'nowrap', fontSize: 9 }}>
           Bord → lier · Maj+clic/Marquée → sélect. · Balai → effacer · Clic dr. → suppr.
         </div>
@@ -2012,7 +2014,7 @@ export function ConstellationCanvas({
         </div>
 
         {/* Right panel */}
-        <div style={{ width: 240, borderLeft: '1px solid var(--bd)', background: 'var(--bg1)', display: 'flex', flexDirection: 'column', flexShrink: 0, overflow: 'hidden' }}>
+        <div style={{ width: 280, borderLeft: '1px solid var(--bd)', background: 'var(--bg1)', display: 'flex', flexDirection: 'column', flexShrink: 0, overflow: 'hidden' }}>
 
           {/* Node inspector */}
           {panelNode ? (
@@ -2148,74 +2150,58 @@ export function ConstellationCanvas({
               <div className="t-eyebrow" style={{ marginBottom: 6 }}>Constellation</div>
               <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>
                 {groupBy === 'theme'
-                  ? `${constellationOeuvres.length} œuvre${constellationOeuvres.length !== 1 ? 's' : ''}${selectedThemeId !== null ? ` · ${themes.find(t => t.ThemeID === selectedThemeId)?.Nom ?? ''}` : ' thématisées'}`
+                  ? `${constellationOeuvres.length} œuvre${constellationOeuvres.length !== 1 ? 's' : ''}${selectedThemeId !== null ? ` · ${themes.find(t => t.id === selectedThemeId)?.name ?? ''}` : ' thématisées'}`
                   : `${oeuvres.length} œuvres`}
               </div>
             </div>
           )}
 
-          {/* Selection + save */}
-          <div style={{ flex: 1, overflow: 'auto', padding: 16 }}>
-            {selection.size > 0 ? (
-              <>
-                <div className="t-eyebrow" style={{ marginBottom: 10 }}>Sélection · {selection.size}</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 14 }}>
-                  {[...selection].slice(0, 15).map(id => {
-                    const o = oeuvresById.get(id)
-                    return o ? (
-                      <div key={id}
-                        title={`${o.Titre ?? '—'} — clic pour retirer`}
-                        onClick={() => { const n = new Set(selRef.current); n.delete(id); setSelection(n) }}
-                        style={{ width: 44, height: 33, background: 'var(--bg0)', border: '1px solid var(--bd)', overflow: 'hidden', cursor: 'pointer', flexShrink: 0 }}
-                      >
-                        {o.txtImageNameLink && (
-                          <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-                            <WorkThumb file={o.txtImageNameLink} size={96} alt="" />
-                          </div>
-                        )}
-                      </div>
-                    ) : null
-                  })}
-                  {selection.size > 15 && <div className="t-mono-sm" style={{ color: 'var(--tx3)', alignSelf: 'center' }}>+{selection.size - 15}</div>}
-                </div>
+          {/* Curation (working group, private link, checklist) + snapshots */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
+            {showWorkingGroupPanel && (
+              <div style={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
+                <CurationPanel
+                  selection={selection}
+                  setSelection={setSelection}
+                  oeuvres={oeuvres}
+                  tM={tM}
+                  sM={sM}
+                  onOpen={onOpen}
+                  onGroupSaved={onGroupSaved}
+                />
+              </div>
+            )}
 
+            {groupBy === 'custom' && customIds.size > 0 && (
+              <div style={{ flexShrink: 0, padding: '12px 16px', borderTop: '1px solid var(--bd)', background: 'var(--bg1)' }}>
+                <div className="t-label" style={{ marginBottom: 6, fontSize: 9 }}>Enregistrer toute la constellation</div>
                 {savedName ? (
-                  <div className="t-mono-sm" style={{ color: 'var(--sage)', marginBottom: 8 }}>✓ {savedName}</div>
+                  <div className="t-mono-sm" style={{ color: 'var(--sage)' }}>✓ {savedName}</div>
                 ) : (
-                  <div className="row gap-sm" style={{ marginBottom: 8 }}>
+                  <div className="row gap-sm">
                     <input
                       value={groupName}
                       onChange={e => setGroupName(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && handleSaveGroup()}
+                      onKeyDown={e => e.key === 'Enter' && handleSaveAllAsGroup()}
                       placeholder="Nom du groupe…"
                       style={{ flex: 1, minWidth: 0, padding: '4px 8px', background: 'var(--bg0)', border: '1px solid var(--bd)', fontSize: 10, color: 'var(--tx)' }}
                     />
-                    <button className="btn sm" onClick={handleSaveGroup} disabled={saving}>
+                    <button type="button" className="btn sm" onClick={handleSaveAllAsGroup} disabled={saving}>
                       {saving ? '…' : '+'}
                     </button>
                   </div>
                 )}
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <button className="btn ghost sm" style={{ flex: 1 }} onClick={() => setSelection(new Set())}>Effacer</button>
-                  {groupBy === 'custom' && posRef.current.size > 0 && (
-                    <button className="btn ghost sm" style={{ flex: 1, whiteSpace: 'nowrap' }} onClick={handleSaveAllAsGroup}>Tout sauv.</button>
-                  )}
-                </div>
-              </>
-            ) : (
-              <div className="t-mono-sm" style={{ color: 'var(--tx3)', lineHeight: 1.7 }}>
-                Maj+clic ou outil Marquée pour sélectionner des œuvres et créer un groupe.
               </div>
             )}
 
-            {/* Saved constellation maps */}
             {snapshots.length > 0 && (
-              <div style={{ marginTop: 20 }}>
+              <div style={{ flexShrink: 0, padding: 16, borderTop: '1px solid var(--bd)' }}>
                 <div className="t-eyebrow" style={{ marginBottom: 8 }}>Constellations</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {snapshots.map(s => (
                     <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <button
+                        type="button"
                         className="btn ghost sm"
                         onClick={() => handleLoadSnapshot(s.id)}
                         style={{ flex: 1, justifyContent: 'flex-start', fontSize: 9, textAlign: 'left', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}
@@ -2224,6 +2210,7 @@ export function ConstellationCanvas({
                         {s.name}
                       </button>
                       <button
+                        type="button"
                         className="btn ghost sm"
                         onClick={() => handleDeleteSnapshot(s.id)}
                         style={{ fontSize: 9, padding: '2px 5px', color: 'var(--tx3)', flexShrink: 0 }}

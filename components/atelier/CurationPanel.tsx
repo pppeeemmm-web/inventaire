@@ -7,7 +7,7 @@
 
 import { useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { thumbUrl, yearOf } from '@/lib/data'
+import { yearOf } from '@/lib/data'
 import { WorkThumb } from './WorkThumb'
 import type { Oeuvre } from '@/lib/types/database'
 
@@ -138,7 +138,7 @@ export function CurationPanel({
   // ── Render ─────────────────────────────────────────────────────
 
   return (
-    <div style={{ padding: '20px 18px', flex: 1, overflow: 'auto' }}>
+    <div style={{ padding: '20px 18px', overflow: 'auto' }}>
 
       {/* Header */}
       <div className="row between" style={{ marginBottom: 14 }}>
