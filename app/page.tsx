@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import WavingCircle from '@/components/public/WavingCircle'
+import LandingPdfPopup from '@/components/portfolio/LandingPdfPopup'
 import { useI18n } from '@/lib/i18n/context'
 import { trackView } from '@/lib/track'
 
@@ -10,6 +11,7 @@ const artistName = 'Pierre Emmanuel Moulin'
 
 export default function LandingPage() {
   const { lang, setLang, t } = useI18n()
+  const [pdfOpen, setPdfOpen] = useState(false)
 
   useEffect(() => { trackView('/', document.referrer || null) }, [])
 
@@ -60,13 +62,14 @@ export default function LandingPage() {
           transition: all 0.3s; font-weight: 600;
         }
         .hub-link:hover { opacity: 1 !important; color: #1a1a1a !important; }
-        .portfolio-link {
+        .pdf-link {
           position: absolute; bottom: clamp(16px, 4vw, 32px); left: clamp(20px, 5vw, 40px);
           font-size: clamp(8px, 1.2vw, 9px); letter-spacing: 2px; text-transform: uppercase;
-          color: #8a8680; text-decoration: none; opacity: 0.7;
-          transition: all 0.3s; font-weight: 600;
+          color: #8a8680; background: none; border: none; padding: 0;
+          opacity: 0.7; transition: all 0.3s;
+          font-family: inherit; font-weight: 600; cursor: pointer;
         }
-        .portfolio-link:hover { opacity: 1 !important; color: #1a1a1a !important; }
+        .pdf-link:hover { opacity: 1; color: #1a1a1a; }
       `}</style>
 
       <div className="stage">
@@ -90,9 +93,19 @@ export default function LandingPage() {
           <Link href="/enquiry"  className="orb orb-bottom">{t('pub_enquiry')}</Link>
         </div>
 
-        <Link href="/portfolio" className="portfolio-link">{t('pub_portfolio')}</Link>
+        <button
+          type="button"
+          className="pdf-link"
+          onClick={() => setPdfOpen(true)}
+          aria-label={lang === 'fr' ? 'Télécharger le portfolio PDF' : 'Download portfolio PDF'}
+        >
+          [ {lang === 'fr' ? 'Portfolio PDF' : 'Portfolio PDF'} ]
+        </button>
+
         <Link href="/hub" className="hub-link">[ Hub ]</Link>
       </div>
+
+      <LandingPdfPopup open={pdfOpen} onClose={() => setPdfOpen(false)} lang={lang} />
     </>
   )
 }

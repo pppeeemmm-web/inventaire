@@ -108,7 +108,7 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
           <PortalTile code="01" title={t('team')}     desc={t('teamDesc')}     href="/atelier"    detail={{ works: stats.total }} lang={lang} />
           <PortalTile code="02" title={t('clients')}   desc={t('clientsDesc')}  href="/collection" lang={lang} wip={true} />
           <PortalTile code="03" title={t('galleries')} desc={t('galleriesDesc')} href="/galerie"   lang={lang} wip={true} />
-          <PortalTile code="04" title={t('public')}    desc={t('publicDesc')}   href="/portfolio"  lang={lang} />
+          <PortalTile code="04" title={t('public')}    desc={t('publicDesc')}   href="/works"  lang={lang} />
         </div>
 
         {/* Section 3: Live Pulse */}

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import WorksClient from '@/components/public/WorksClient'
+import { loadPortfolioConfig } from '@/app/atelier/portfolio/actions'
 import { trackView } from '@/lib/track'
 import { resolveWorksUx } from '@/lib/worksUx'
 
@@ -43,9 +44,8 @@ export default async function WorksPage({
   await trackView('/works')
   const supabase = await createClient()
 
-  // 1. Config — async import pulls AWS/R2 + portfolio/actions after page chunk loads (reduces webpack bootstrap failures on /works).
+  // 1. Config — same static import as portfolio/about/practice (avoids broken dynamic chunks for `use server` modules).
   let modes: any[] = []
-  const { loadPortfolioConfig } = await import('@/app/atelier/portfolio/actions')
   const result = await loadPortfolioConfig()
   if ('ok' in result) {
     const cfg = result.config

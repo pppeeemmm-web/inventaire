@@ -5,7 +5,6 @@
 export const PUBLIC_SITE_PATHS = new Set([
   '/',
   '/works',
-  '/portfolio',
   '/about',
   '/practice',
   '/enquiry',

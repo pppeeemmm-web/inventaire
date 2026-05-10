@@ -25,37 +25,45 @@ export const FORMATS: Record<PdfFormat, {
 
 export type PdfPreset = 'galerie' | 'collectionneur' | 'presse' | 'custom'
 
-export interface PresetConfig {
+/**
+ * Self-contained request from the client to the server action.
+ * Server action loads atelier config + works internally — no client data prep.
+ */
+export interface PdfRequestOptions {
   preset:           PdfPreset
   format:           PdfFormat
   lang:             Lang
   includeCover:     boolean
-  includeApproach:  boolean
-  includeEnquiry:   boolean
+  includeAbout:     boolean      // about/intro page (config.about.intro)
+  includePractice:  boolean      // practice/approach page (config.practice.approach)
+  includeContact:   boolean      // contact / enquiry page
+  /** Optional cap on works (after section ordering). null = MAX_WORKS. */
   maxWorks:         number | null
+  /** Optional: limit to a single section (atelier section id). null = all sections. */
   collectionFilter: string | null
 }
 
-export const PRESET_DEFAULTS: Record<Exclude<PdfPreset, 'custom'>, Omit<PresetConfig, 'lang' | 'collectionFilter'>> = {
+export const PRESET_DEFAULTS: Record<Exclude<PdfPreset, 'custom'>, Omit<PdfRequestOptions, 'lang' | 'collectionFilter' | 'format'>> = {
   galerie: {
-    preset: 'galerie', format: 'a4p',
-    includeCover: true, includeApproach: true, includeEnquiry: true,
+    preset: 'galerie',
+    includeCover: true, includeAbout: true, includePractice: true, includeContact: true,
     maxWorks: null,
   },
   collectionneur: {
-    preset: 'collectionneur', format: 'a4p',
-    includeCover: true, includeApproach: false, includeEnquiry: true,
+    preset: 'collectionneur',
+    includeCover: true, includeAbout: true, includePractice: false, includeContact: true,
     maxWorks: 8,
   },
   presse: {
-    preset: 'presse', format: 'a4p',
-    includeCover: true, includeApproach: false, includeEnquiry: false,
+    preset: 'presse',
+    includeCover: true, includeAbout: false, includePractice: false, includeContact: true,
     maxWorks: 3,
   },
 }
 
-// ── Data types ─────────────────────────────────────────────────────────────
+// ── Internal data shapes (server-side only, but kept here for type sharing) ──
 
+/** A single artwork as consumed by the PDF builder. */
 export interface PdfWork {
   OeuvreID:         number
   Titre:            string | null
@@ -69,15 +77,24 @@ export interface PdfWork {
   statutId:         number | null
 }
 
+/** Resolved section block with works ordered as the atelier configured them. */
+export interface PdfSection {
+  id:           string
+  title:        string
+  description:  string  // plain text (HTML stripped)
+  intro:        string  // plain text
+  outro:        string  // plain text (rare — modes only)
+  works:        PdfWork[]
+}
+
 export interface PdfPortfolioConfig {
   artist_name:      string
   contact_email:    string
   instagram:        string
   phone:            string
-  media_tagline_fr: string
-  media_tagline_en: string
-  intro_fr:         string
-  intro_en:         string
+  media_tagline:    string  // already lang-resolved
+  about_intro:      string  // already lang-resolved
+  practice_intro:   string  // already lang-resolved (practice.approach)
 }
 
 export type PortfolioPdfResult =

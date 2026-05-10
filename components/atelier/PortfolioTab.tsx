@@ -13,6 +13,7 @@ import { RichEditor, htmlToPlain } from '@/components/atelier/RichEditor'
 import { thumbUrl } from '@/lib/data'
 import type { Oeuvre } from '@/lib/types/database'
 import { WorkThumb, MissingThumb } from './WorkThumb'
+import PdfExportDrawer from '@/components/portfolio/PdfExportDrawer'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -244,6 +245,7 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
     modeIdx?: number
   } | null>(null)
   const [saveBusy, setSaveBusy] = useState(false)
+  const [pdfOpen,  setPdfOpen]  = useState(false)
 
   const themeNames = themes.map(t => t.name).sort((a, b) => a.localeCompare(b, 'fr'))
 
@@ -402,7 +404,6 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
     setConfig({ ...config, [target]: [...config[target], newItem] })
   }
 
-  // Move a collection within its list, then re-stamp sort_order to mirror array index.
   const moveCollection = (target: 'sections' | 'works_collections', from: number, to: number) => {
     const list = config[target]
     if (to < 0 || to >= list.length) return
@@ -442,21 +443,30 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
           >
             Site
           </a>
+          <button
+            type="button"
+            onClick={() => setPdfOpen(true)}
+            className="btn ghost sm"
+            style={{ fontSize: 9, letterSpacing: 2 }}
+            title="Aperçu PDF (sections + œuvres configurées ici)"
+          >
+            ↓ PDF
+          </button>
           <a
-            href="/portfolio"
+            href="/works"
             target="_blank"
             rel="noopener noreferrer"
             className="btn ghost sm"
             style={{ fontSize: 9, letterSpacing: 2, textDecoration: 'none' }}
-            title="Ouvrir le parcours /portfolio"
+            title="Aperçu catalogue (/works)"
           >
-            Portfolio
+            /works
           </a>
           {activeTab !== 'analytics' && (
             <button
               type="button"
               className="btn primary sm"
-              title="Écrit le fichier de configuration (R2) : identité, /works, sections /portfolio"
+              title="Écrit le fichier de configuration (R2) : identité, /works, sections portfolio (JSON)"
               onClick={handleSave}
               disabled={saveBusy}
               style={{ fontSize: 9, letterSpacing: 1.5 }}
@@ -525,7 +535,7 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
             {activeTab === 'website' && (
               <>
                 <p className="t-mono-xs" style={{ opacity: 0.55, marginBottom: 24, maxWidth: 720, lineHeight: 1.5 }}>
-                  Onglet <strong>Site public</strong> : identité, pages <strong>À propos</strong> et <strong>Pratique</strong>, et les <strong>modes /works</strong> (chaque mode = un sous-onglet sur la page <code style={{ opacity: 0.85 }}>/works</code>). Ceci est indépendant du flux <strong>/portfolio</strong> (autre onglet).
+                  Onglet <strong>Site public</strong> : identité, pages <strong>À propos</strong> et <strong>Pratique</strong>, et les <strong>modes /works</strong> (chaque mode = un sous-onglet sur la page <code style={{ opacity: 0.85 }}>/works</code>). Les sections dédiées au flux portfolio sont dans l’onglet <strong>Portfolio</strong>.
                 </p>
                 {/* General identity */}
                 <PageSection title="Identité générale" icon="◈">
@@ -599,7 +609,7 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
                 <PageSection title="Page /works — Modes (sous-onglets publics)" icon="▤"
                   action={<button className="btn sm ghost" onClick={addMode}>+ Mode</button>}>
                   <p className="t-mono-xs" style={{ opacity: 0.5, marginBottom: 16 }}>
-                    Chaque mode devient un sous-onglet sur <code>/works</code>, avec ses collections et sa carte de clôture. Les sections du Portfolio n’y sont pas mélangées.
+                    Chaque mode devient un sous-onglet sur <code>/works</code>, avec ses collections et sa carte de clôture. Les sections du Portfolio (autre onglet) n’y sont pas mélangées.
                   </p>
 
                   {/* Mode tab bar */}
@@ -697,13 +707,12 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
             {activeTab === 'portfolio' && (
               <>
                 <p className="t-mono-xs" style={{ opacity: 0.55, marginBottom: 24, maxWidth: 720, lineHeight: 1.5 }}>
-                  Onglet <strong>Portfolio</strong> : uniquement la page plein écran <code style={{ opacity: 0.85 }}>/portfolio</code>. Ne pilote pas <code>/works</code> ni l’accueil.
+                  Onglet <strong>Portfolio</strong> : sections enregistrées dans le JSON (R2). Elles alimentent le <strong>PDF téléchargeable</strong> (lien sur la page d’accueil et bouton <code>↓ PDF</code> ci-dessus). Utiliser <code>/works</code> pour l’aperçu du catalogue défilant.
                 </p>
-                {/* Portfolio sections */}
                 <PageSection title="Sections Portfolio" icon="◪"
                   action={<button className="btn sm ghost" onClick={() => addItem('sections')}>+ Ajouter</button>}>
                   <p className="t-mono-xs" style={{ opacity: 0.5, marginBottom: 20 }}>
-                    Chaque section génère une carte d&apos;introduction dans le portfolio, suivie des œuvres du thème assigné.
+                    Données de section (titres, textes, thème, ordre des œuvres) — consommées par le PDF (titre · intro · œuvres dans l’ordre choisi).
                   </p>
                   <div className="col gap-md">
                     {config.sections.map((item, i) => (
@@ -746,6 +755,8 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
       <style jsx>{`
         .full { width: 100%; }
       `}</style>
+
+      <PdfExportDrawer open={pdfOpen} onClose={() => setPdfOpen(false)} />
     </div>
   )
 }

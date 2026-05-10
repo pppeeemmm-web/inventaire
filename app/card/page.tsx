@@ -7,9 +7,9 @@ export const metadata = {
 }
 
 import Image from 'next/image'
-const PORTFOLIO_URL = 'https://pem-hub.vercel.app/portfolio'  // update when deployed
+const PUBLIC_WORKS_URL = 'https://pem-hub.vercel.app/works'  // update when deployed
 const EMAIL         = 'pppeeemmm@gmail.com'
-const QR_URL        = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(PORTFOLIO_URL)}&color=ece7da&bgcolor=0a0a0b&margin=8`
+const QR_URL        = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(PUBLIC_WORKS_URL)}&color=ece7da&bgcolor=0a0a0b&margin=8`
 
 export default function CardPage() {
   return (
@@ -175,7 +175,7 @@ export default function CardPage() {
               </div>
               <div className="detail-row">
                 <span className="detail-label">Web</span>
-                <span>{PORTFOLIO_URL.replace('https://', '')}</span>
+                <span>{PUBLIC_WORKS_URL.replace('https://', '')}</span>
               </div>
               <div className="detail-row">
                 <span className="detail-label">Base</span>
@@ -198,14 +198,14 @@ export default function CardPage() {
             <div className="back-text">
               <div className="monogram">PEM</div>
               <div className="back-name">Pierre Emmanuel<br />Moulin</div>
-              <div className="back-url">{PORTFOLIO_URL.replace('https://', '')}</div>
+              <div className="back-url">{PUBLIC_WORKS_URL.replace('https://', '')}</div>
               <div className="no-social">No social media, by choice.</div>
             </div>
           </div>
         </div>
 
         <div className="print-note" style={{ marginTop: 8 }}>
-          Update PORTFOLIO_URL in /app/card/page.tsx when deploying to production.
+          Update PUBLIC_WORKS_URL in /app/card/page.tsx when deploying to production.
         </div>
       </body>
     </html>

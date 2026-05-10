@@ -50,3 +50,31 @@ ORPHAN COLS: NomOriginal (→ Titre), Poids, Tirage
 DEAD TABLES: tblRelations (→ tblrelations), OeuvreRelationships
 NEVER WRITE: Oeuvres.is_public (trigger), Oeuvres.txtImageNameLink (trigger tblimage_cover_sync)
 NEW TABLES: snake_case only. No tbl prefix. No CamelCase.
+
+📄 PORTFOLIO PDF
+Engine: app/atelier/portfolio/pdf-action.ts → generatePortfolioPdf(opts).
+Self-contained: server action loads R2 config (portfolio_sections.json) + Supabase public works internally. No client data prep.
+
+SOURCE PRIORITY for sections (try in order, keep FIRST that claims ≥1 work):
+1. raw.sections                       (Atelier > Portfolio tab)
+2. raw.works_modes[0].collections     (Atelier > Site public tab) ← user's real config lives here
+3. raw.works_collections              (legacy mirror)
+If all 0 claims → fallback __all__ virtual section with all public works in DB order.
+DIAGNOSTIC: server logs '[portfolio-pdf] source "X": N collections → Y works claimed'. Watch dev console.
+
+WORK ORDER inside a section: manual_work_order[] first (atelier drag order, public+image-bearing only), then theme-matched residual.
+
+LAYOUT by orientation (page aspect × artwork H/W from DB):
+- match (P/P or L/L) → full bleed + slim 22% bottom band, 60% black opacity
+- mismatch P+L      → image top ~55% on off-white, text panel below
+- mismatch L+P      → image left ~55% on off-white, text panel right
+
+COVER WORK: first work whose image actually loaded. EXCLUDED from work pages (no duplication).
+
+🪦 PDFKIT GOTCHAS
+ALPHA HEX UNSUPPORTED: `#RRGGBBAA` is parsed wrong → pdfkit takes the last 6 bytes as RGB. `#00000066` → navy, `#000000aa` → royal blue, `#000000cc` → bright blue. SOLUTION: always `doc.fillOpacity(N).rect(...).fill('#RRGGBB').fillOpacity(1)`. Always reset to 1 after, else bleeds into subsequent draws.
+NEVER use 8-char hex with pdfkit. Period.
+TEXT OVERFLOW: doc.text(longBody, x, y, { width }) without `height` auto-paginates. New auto-pages have no background fill — re-fill if needed.
+
+📦 SHARP / AVIF
+sharp 0.34.5 has libheif 1.20 → AVIF input works via the `heif` format key. No special config. AVIF is NOT a problem for portfolio image processing.

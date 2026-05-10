@@ -105,6 +105,9 @@ interface Props {
   modes: WorksMode[]
   /** default | bridge | intro | chapters — query ?worksUx= or NEXT_PUBLIC_WORKS_UX_MODE */
   worksUxMode?: WorksUxMode
+  /** Removed UI; optional so stale bundles / partial merges never ReferenceError */
+  showUxPicker?: boolean
+  uxPickerSticky?: boolean
 }
 
 type SectionPill = { seqIdx: number; title: string; chapterIdx: number }
@@ -258,7 +261,13 @@ function worksForCollection(col: Collection, works: Work[]): Work[] {
   })
 }
 
-export default function WorksClient({ works, modes, worksUxMode = 'default' }: Props) {
+export default function WorksClient({
+  works,
+  modes,
+  worksUxMode = 'default',
+  showUxPicker = false,
+  uxPickerSticky = false,
+}: Props) {
   const { t, lang } = useI18n()
   const [activeModeIdx, setActiveModeIdx] = useState(0)
   const [activeChapterIdx, setActiveChapterIdx] = useState(0)

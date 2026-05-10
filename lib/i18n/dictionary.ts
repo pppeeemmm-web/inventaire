@@ -56,7 +56,7 @@ export type DictKey =
   | 'generating' | 'batchSuccess' | 'selectAll' | 'renameFile' | 'filters'
   | 'auditAttributedHint'
   // ── Public site ────────────────────────────────────────────────────────
-  | 'pub_works' | 'pub_about' | 'pub_practice' | 'pub_enquiry' | 'pub_portfolio'
+  | 'pub_works' | 'pub_about' | 'pub_practice' | 'pub_enquiry'
   | 'pub_biography' | 'pub_exhibitions_selected' | 'pub_education' | 'pub_contact'
   | 'pub_approach' | 'pub_central_themes' | 'pub_media_materials'
   | 'pub_no_collections' | 'pub_collection_in_progress' | 'pub_untitled'
@@ -180,7 +180,7 @@ export const dict: Record<Lang, Dictionary> = {
     auditAttributedHint: 'Enregistrements importants (statut, visibilité, ventes…) attribués à votre compte dans le journal système.',
     // Public site
     pub_works: 'Oeuvres', pub_about: 'À propos', pub_practice: 'Pratique',
-    pub_enquiry: 'Contact', pub_portfolio: 'Portfolio',
+    pub_enquiry: 'Contact',
     pub_biography: 'Biographie', pub_exhibitions_selected: 'Expositions & sélections',
     pub_education: 'Formation', pub_contact: 'Contact',
     pub_approach: 'Approche', pub_central_themes: 'Thèmes centraux',
@@ -311,7 +311,7 @@ export const dict: Record<Lang, Dictionary> = {
     auditAttributedHint: 'Important saves (status, visibility, sales…) are attributed to your account in the system log.',
     // Public site
     pub_works: 'Works', pub_about: 'About', pub_practice: 'Practice',
-    pub_enquiry: 'Enquiry', pub_portfolio: 'Portfolio',
+    pub_enquiry: 'Enquiry',
     pub_biography: 'Biography', pub_exhibitions_selected: 'Exhibitions & selected',
     pub_education: 'Education', pub_contact: 'Contact',
     pub_approach: 'Approach', pub_central_themes: 'Central themes',
