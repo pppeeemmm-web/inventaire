@@ -122,6 +122,11 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
   const isPaid         = formData.get('is_paid') === '1'
   const isGift         = formData.get('is_gift') === '1'
 
+  // Anonymity gate (matches WorkDrawer): statuts 1/2 → niveau 0 sauf override admin
+  if ((statusId === 1 || statusId === 2) && !adminOverrideAnonymity && anonymityLevel !== 0) {
+    return { error: 'Anonymat incompatible avec En production / Disponible (override admin requis).' }
+  }
+
   const themeIds: number[] = (formData.getAll('themes') as string[])
     .map(Number)
     .filter((n) => n > 0)
@@ -264,7 +269,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
     // Fetch current record to compare statusId + ContactID for history
     const { data: current } = await supabase
       .from('Oeuvres')
-      .select('statusId, ContactID, Historique, "Catalogué", "NeedsPhotograph"')
+      .select('statusId, ContactID, Historique, "Catalogué", "NeedsPhotograph", is_public')
       .eq('OeuvreID', oid)
       .single()
 

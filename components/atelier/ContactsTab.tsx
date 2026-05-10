@@ -5,7 +5,17 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { deleteContacts, importGoogleContacts, type ImportedContact } from '@/app/atelier/contacts/actions'
+import {
+  checkOllamaListening,
+  deleteContacts,
+  importGoogleContacts,
+  mergeContacts,
+  previewContactFromUrl,
+  type ImportedContact,
+  type UrlEnrichMeta,
+} from '@/app/atelier/contacts/actions'
+import { runOllamaInstructionScript } from '@/app/atelier/ollama/actions'
+import { OLLAMA_SCRIPT_INSTRUCTIONS } from '@/lib/ollama-script'
 import { useI18n } from '@/lib/i18n/context'
 import type { Oeuvre } from '@/lib/types/database'
 
@@ -134,6 +144,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
   const [selected,   setSelected]   = useState<Set<number>>(new Set())
   const [busy,       setBusy]       = useState(false)
   const [importing,  setImporting]  = useState(false)
+  const [urlModalOpen, setUrlModalOpen] = useState(false)
 
   // Full contact data fetched client-side (extra fields not in server prop)
   const [extra,      setExtra]      = useState<Record<number, ContactRow>>({})
@@ -147,10 +158,9 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
   // List of all roles from tblRole
   const [allRoles,   setAllRoles]   = useState<string[]>([])
 
-  // Re-fetch everything on mount so edits appear without page reload
-  useEffect(() => {
+  /** Same loads as mount — must run after CSV/URL import so websites/emails/etc. state matches DB */
+  const refreshContactsClientData = useCallback(() => {
     const sb = createClient()
-    // Check if current user is admin
     sb.rpc('is_admin').then(({ data }: { data: boolean | null }) => {
       setIsAdmin(!!data)
     })
@@ -180,8 +190,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
         })
         setAddresses(map)
       })
-    
-    // Fetch all the new multi-tables
+
     ;(sb.from('contact_emails') as any).select('*').then(({ data }: any) => {
       if (!data) return
       const map: Record<number, ContactEmail[]> = {}
@@ -219,7 +228,6 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
       setSocials(map)
     })
 
-    // Fetch all roles to ensure filter dropdown FIS complete
     ;(sb.from('tblRole') as any)
       .select('Nom')
       .order('Nom')
@@ -227,6 +235,10 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
         if (data) setAllRoles(data.map(r => r.Nom).filter(Boolean))
       })
   }, [])
+
+  useEffect(() => {
+    refreshContactsClientData()
+  }, [refreshContactsClientData])
 
   // Auto-open a contact card when navigated from Map
   useEffect(() => {
@@ -380,6 +392,9 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
   }
 
   const [batchEditing, setBatchEditing] = useState(false)
+  const [mergeOpen, setMergeOpen] = useState(false)
+  const [mergePair, setMergePair] = useState<[number, number] | null>(null)
+  const [mergeKeepId, setMergeKeepId] = useState<number | null>(null)
 
   async function handleBatchSave(data: { Role?: string; Actif?: boolean; Notes?: string; appendNotes?: boolean }) {
     setBusy(true)
@@ -508,6 +523,22 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
             <button className="btn sm" onClick={() => setBatchEditing(true)} disabled={busy} style={{ background: 'var(--ac)', borderColor: 'var(--ac)' }}>
               Modifier ({selected.size})
             </button>
+            {selected.size === 2 && (
+              <button
+                type="button"
+                className="btn sm"
+                onClick={() => {
+                  const sorted = Array.from(selected).sort((a, b) => a - b)
+                  setMergePair([sorted[0], sorted[1]])
+                  setMergeKeepId(sorted[0])
+                  setMergeOpen(true)
+                }}
+                disabled={busy}
+                style={{ background: 'var(--bg2)', borderColor: 'var(--bd)' }}
+              >
+                Fusionner
+              </button>
+            )}
             <button className="btn sm" onClick={handleDeleteSelected} disabled={busy} style={{ background: 'var(--rust)', borderColor: 'var(--rust)' }}>
               Suppr.
             </button>
@@ -545,21 +576,116 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
         >
           ↑ Google CSV
         </button>
+        <button
+          className="btn ghost sm"
+          onClick={() => setUrlModalOpen(true)}
+          style={{ whiteSpace: 'nowrap', flexShrink: 0 }}
+          title="Extraire institution, emails, tel. depuis une page web (+ IA optionnelle)"
+        >
+          URL
+        </button>
       </div>
 
       {importing && (
         <ImportGoogleModal
           onClose={() => setImporting(false)}
-          onDone={(n) => {
+          onDone={(_n) => {
             setImporting(false)
-            // Reload contacts list
-            const sb = createClient()
-            ;(sb.from('Contact') as any)
-              .select('ContactID, NomInstitution, Nom, Prénom, Role, Ville, Pays, is_private')
-              .order('"ContactID"')
-              .then(({ data }: { data: ContactRow[] | null }) => { if (data) setContacts(data) })
+            refreshContactsClientData()
           }}
         />
+      )}
+
+      {urlModalOpen && (
+        <ImportUrlModal
+          onClose={() => setUrlModalOpen(false)}
+          onDone={() => {
+            setUrlModalOpen(false)
+            refreshContactsClientData()
+          }}
+        />
+      )}
+
+      {mergeOpen && mergePair && mergeKeepId != null && (
+        <div
+          role="presentation"
+          style={{
+            position: 'fixed', inset: 0, zIndex: 120,
+            background: 'rgba(0,0,0,0.55)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 24,
+          }}
+          onClick={() => !busy && setMergeOpen(false)}
+        >
+          <div
+            role="dialog"
+            aria-labelledby="merge-title"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'var(--bg1)', border: '1px solid var(--bd)',
+              maxWidth: 440, width: '100%', padding: 24,
+            }}
+          >
+            <div id="merge-title" className="t-eyebrow" style={{ marginBottom: 12 }}>
+              Fusionner deux contacts
+            </div>
+            <p className="t-mono-sm" style={{ color: 'var(--tx3)', lineHeight: 1.6, marginBottom: 16 }}>
+              Conserver un contact : l&apos;autre sera supprimé après transfert des œuvres, commandes, documents et champs vides.
+            </p>
+            {[mergePair[0], mergePair[1]].map((id) => {
+              const base = contacts.find((c) => c.ContactID === id)
+              const label = base
+                ? displayName({ ...base, ...extra[id] } as ContactRow)
+                : `#${id}`
+              return (
+              <label
+                key={id}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, cursor: 'pointer' }}
+              >
+                <input
+                  type="radio"
+                  name="merge-keep"
+                  checked={mergeKeepId === id}
+                  onChange={() => setMergeKeepId(id)}
+                  disabled={busy}
+                />
+                <span style={{ fontSize: 13 }}>
+                  #{id} — {label}
+                </span>
+              </label>
+              )
+            })}
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
+              <button type="button" className="btn ghost sm" onClick={() => setMergeOpen(false)} disabled={busy}>
+                Annuler
+              </button>
+              <button
+                type="button"
+                className="btn sm"
+                style={{ background: 'var(--ac)', borderColor: 'var(--ac)' }}
+                disabled={busy}
+                onClick={async () => {
+                  if (!mergePair || mergeKeepId == null) return
+                  const fromId = mergePair[0] === mergeKeepId ? mergePair[1] : mergePair[0]
+                  setBusy(true)
+                  const res = await mergeContacts(mergeKeepId, fromId)
+                  setBusy(false)
+                  if ('error' in res) {
+                    alert(res.error)
+                    return
+                  }
+                  refreshContactsClientData()
+                  setSelected(new Set())
+                  setActiveId(res.keptId)
+                  setMergeOpen(false)
+                  setMergePair(null)
+                }}
+              >
+                {busy ? '…' : 'Fusionner'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Table + detail */}
@@ -696,9 +822,9 @@ function ContactDetail({
         <div style={{ fontWeight: 700, fontSize: 18, color: 'var(--tx)', flex: 1, marginRight: 8 }}>
           {displayName(contact)}
         </div>
-        <div style={{ display: 'flex', gap: 4 }}>
-          <button className="btn ghost sm" onClick={onEdit}>{t('edit')}</button>
-          <button className="btn ghost sm" onClick={onDelete} style={{ color: 'var(--rust)' }}>{t('close')}</button>
+        <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+          <button type="button" className="btn ghost sm" onClick={onEdit}>{t('edit')}</button>
+          <button type="button" className="btn ghost sm" onClick={onDelete} style={{ color: 'var(--rust)' }}>{t('delete')}</button>
         </div>
       </div>
 
@@ -1593,6 +1719,394 @@ function parseGoogleCSV(text: string): ImportedContact[] {
   }
 
   return contacts
+}
+
+const PEM_HIDE_OLLAMA_TIP = 'pem_hide_ollama_url_tip'
+
+function ImportUrlModal({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
+  const [url, setUrl] = useState('')
+  const [refineLlm, setRefineLlm] = useState(true)
+  const [busy, setBusy] = useState(false)
+  const [parsed, setParsed] = useState<ImportedContact | null>(null)
+  const [meta, setMeta] = useState<UrlEnrichMeta | null>(null)
+  const [err, setErr] = useState<string | null>(null)
+  const [result, setResult] = useState<{ imported: number; skipped: number } | null>(null)
+  const [showOllamaTip, setShowOllamaTip] = useState(true)
+  const [scriptBusy, setScriptBusy] = useState(false)
+  const [scriptOut, setScriptOut] = useState<string | null>(null)
+
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem(PEM_HIDE_OLLAMA_TIP) === '1') setShowOllamaTip(false)
+    } catch {
+      /* ignore */
+    }
+  }, [])
+
+  function dismissOllamaTip() {
+    try {
+      sessionStorage.setItem(PEM_HIDE_OLLAMA_TIP, '1')
+    } catch {
+      /* ignore */
+    }
+    setShowOllamaTip(false)
+  }
+
+  type OllamaPing =
+    | { phase: 'checking' }
+    | { phase: 'done'; ok: true; host: string }
+    | { phase: 'done'; ok: false; host: string; message: string }
+
+  const [ollamaPing, setOllamaPing] = useState<OllamaPing>({ phase: 'checking' })
+
+  const runOllamaPing = useCallback(async () => {
+    setOllamaPing({ phase: 'checking' })
+    const r = await checkOllamaListening()
+    if (r.ok) setOllamaPing({ phase: 'done', ok: true, host: r.host })
+    else setOllamaPing({ phase: 'done', ok: false, host: r.host, message: r.message })
+  }, [])
+
+  useEffect(() => {
+    runOllamaPing()
+  }, [runOllamaPing])
+
+  async function handleExtract() {
+    const u = url.trim()
+    if (!u) return
+    setBusy(true)
+    setErr(null)
+    setParsed(null)
+    setMeta(null)
+    const res = await previewContactFromUrl(u, { refineWithLlm: refineLlm })
+    setBusy(false)
+    if ('error' in res) {
+      setErr(res.error)
+      return
+    }
+    setParsed(res.contact)
+    setMeta(res.meta)
+  }
+
+  async function handleImport() {
+    if (!parsed) return
+    setBusy(true)
+    setErr(null)
+    const res = await importGoogleContacts([parsed])
+    setBusy(false)
+    if ('error' in res) {
+      setErr(res.error)
+      return
+    }
+    setResult({ imported: res.imported, skipped: res.skipped })
+  }
+
+  async function handleOllamaScript() {
+    setScriptBusy(true)
+    setScriptOut(null)
+    const r = await runOllamaInstructionScript()
+    setScriptBusy(false)
+    if ('error' in r) setScriptOut(r.error)
+    else setScriptOut(`— ${r.host} · ${r.model}\n\n${r.reply}`)
+  }
+
+  return (
+    <div
+      onClick={onClose}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 80, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: 'var(--bg1)',
+          border: '1px solid var(--bd)',
+          width: 520,
+          maxWidth: '96vw',
+          maxHeight: '92vh',
+          overflowY: 'auto',
+          padding: 28,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 16,
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div className="t-eyebrow">Importer depuis une URL</div>
+          <button type="button" className="btn ghost sm" onClick={onClose}>
+            ✕
+          </button>
+        </div>
+
+        <div className="t-mono-sm" style={{ color: 'var(--tx3)', lineHeight: 1.6 }}>
+          Extraction JSON-LD, meta, liens mailto/tel, puis optionnellement un modèle{' '}
+          <strong>Ollama</strong> local (<code style={{ fontSize: 10 }}>:11435</code> par défaut) ou{' '}
+          <strong>OpenAI</strong> (clé + URL de base). Import{' '}
+          <strong>privé</strong>, comme le CSV Google.
+        </div>
+
+        {!result ? (
+          <>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                flexWrap: 'wrap',
+                padding: '10px 12px',
+                border: '1px solid var(--bd)',
+                background: 'var(--bg2)',
+              }}
+            >
+              <span style={{ fontSize: 18, lineHeight: 1 }} aria-hidden>
+                {ollamaPing.phase === 'checking' ? (
+                  <span style={{ opacity: 0.45 }}>◌</span>
+                ) : ollamaPing.phase === 'done' && ollamaPing.ok ? (
+                  <span style={{ color: '#2ecc71' }} title="Ollama répond">●</span>
+                ) : (
+                  <span style={{ color: 'var(--rust)' }} title="Ollama ne répond pas">●</span>
+                )}
+              </span>
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <div className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx)', lineHeight: 1.45 }}>
+                  {ollamaPing.phase === 'checking' ? (
+                    <>Vérification Ollama…</>
+                  ) : ollamaPing.phase === 'done' && ollamaPing.ok ? (
+                    <>
+                      <strong>À l&apos;écoute</strong>
+                      {' · '}
+                      <code style={{ fontSize: 10 }}>{ollamaPing.host}</code>
+                      <span style={{ color: 'var(--tx3)', marginLeft: 6 }}>(/api/tags OK)</span>
+                    </>
+                  ) : ollamaPing.phase === 'done' ? (
+                    <>
+                      <strong>Hors ligne</strong>
+                      {ollamaPing.host ? (
+                        <>
+                          {' · '}
+                          <code style={{ fontSize: 10 }}>{ollamaPing.host}</code>
+                        </>
+                      ) : null}
+                      {ollamaPing.message ? (
+                        <span style={{ color: 'var(--rust)', display: 'block', marginTop: 4, fontSize: 10 }}>
+                          {ollamaPing.message}
+                        </span>
+                      ) : null}
+                    </>
+                  ) : null}
+                </div>
+                <div className="t-mono-sm" style={{ fontSize: 9, color: 'var(--tx3)', marginTop: 4, lineHeight: 1.4 }}>
+                  Test depuis le serveur Next.js (en dev local = votre PC). Déployé dans le cloud, ce test ne voit pas Ollama sur votre machine.
+                </div>
+              </div>
+              <button type="button" className="btn ghost sm" onClick={() => runOllamaPing()} disabled={ollamaPing.phase === 'checking'}>
+                Vérifier
+              </button>
+            </div>
+
+            {showOllamaTip && (
+              <div
+                role="dialog"
+                aria-label="Rappel Ollama"
+                style={{
+                  position: 'relative',
+                  padding: '14px 16px',
+                  border: '1px solid var(--ac)',
+                  background: 'var(--bg2)',
+                  borderRadius: 2,
+                  boxShadow: '0 8px 28px rgba(0,0,0,0.35)',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 10 }}>
+                  <div className="t-eyebrow" style={{ margin: 0 }}>
+                    Ollama — démarrage (PowerShell)
+                  </div>
+                  <button type="button" className="btn ghost sm" onClick={dismissOllamaTip} style={{ flexShrink: 0 }}>
+                    Masquer
+                  </button>
+                </div>
+                <pre
+                  className="t-mono-sm"
+                  style={{
+                    margin: 0,
+                    padding: '12px 14px',
+                    background: 'var(--bg1)',
+                    border: '1px solid var(--bd)',
+                    color: 'var(--tx)',
+                    fontSize: 11,
+                    lineHeight: 1.55,
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-all',
+                  }}
+                >
+                  {`In Powershell terminal run:
+
+$env:OLLAMA_HOST="127.0.0.1:11435"; ollama serve
+
+Autre fenêtre PowerShell — une fois : télécharger le modèle, vérifier le nom exact :
+ollama pull llama3.2:1b
+ollama list
+
+Test interactif (optionnel) :
+$env:OLLAMA_HOST="127.0.0.1:11435"; ollama run llama3.2:1b`}
+                </pre>
+                <p className="t-mono-sm" style={{ margin: '12px 0 0', color: 'var(--tx3)', fontSize: 10, lineHeight: 1.6 }}>
+                  Dans <code style={{ fontSize: 10 }}>.env.local</code> à la racine du projet :{' '}
+                  <code style={{ fontSize: 10 }}>OLLAMA_ORIGIN=http://127.0.0.1:11435</code> (prioritaire pour Next.js). Évitez{' '}
+                  <code style={{ fontSize: 10 }}>OLLAMA_HOST</code> dans ce fichier si vous faites{' '}
+                  <code style={{ fontSize: 10 }}>$env:OLLAMA_HOST=...</code> dans le même PowerShell — la session peut écraser{' '}
+                  <code style={{ fontSize: 10 }}>.env.local</code> et fausser le port.
+                </p>
+                <p className="t-mono-sm" style={{ margin: '10px 0 0', color: 'var(--tx3)', fontSize: 10, lineHeight: 1.6 }}>
+                  <strong>Modèle IA</strong> : la valeur doit être <strong>strictement identique</strong> à un nom affiché par{' '}
+                  <code style={{ fontSize: 10 }}>ollama list</code> (ex. <code style={{ fontSize: 10 }}>llama3.2:1b</code>, pas{' '}
+                  <code style={{ fontSize: 10 }}>llama3.2</code> seul). Dans <code style={{ fontSize: 10 }}>.env.local</code> :{' '}
+                  <code style={{ fontSize: 10 }}>OLLAMA_MODEL=llama3.2:1b</code>, puis redémarrer <code style={{ fontSize: 10 }}>npm run dev</code>.
+                  Sans modèle téléchargé ou avec un mauvais nom, l&apos;extraction HTML fonctionne mais l&apos;affinage IA renvoie une erreur « model not found ».
+                </p>
+              </div>
+            )}
+
+            <input
+              type="url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://…"
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                border: '1px solid var(--bd)',
+                background: 'var(--bg2)',
+                color: 'var(--tx)',
+                fontSize: 13,
+              }}
+            />
+            <label style={{ display: 'flex', gap: 10, alignItems: 'center', cursor: 'pointer' }}>
+              <input type="checkbox" checked={refineLlm} onChange={(e) => setRefineLlm(e.target.checked)} />
+              <span className="t-mono-sm">Affiner avec l&apos;IA (si configurée côté serveur)</span>
+            </label>
+
+            <button type="button" className="btn sm" onClick={handleExtract} disabled={busy || !url.trim()} style={{ alignSelf: 'flex-start' }}>
+              {busy && !parsed ? 'Extraction…' : 'Extraire'}
+            </button>
+
+            {meta && (
+              <div className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 10, lineHeight: 1.6 }}>
+                <div>
+                  <strong>Sources</strong>: {meta.sources.length ? meta.sources.join(' · ') : '—'}
+                </div>
+                <div>
+                  <strong>IA</strong>: {meta.llm}
+                  {meta.llmNote ? ` — ${meta.llmNote}` : ''}
+                </div>
+              </div>
+            )}
+
+            {parsed && (
+              <div className="t-mono-sm" style={{ color: 'var(--tx)', lineHeight: 1.85, borderTop: '1px solid var(--bd)', paddingTop: 12 }}>
+                <div><strong>{[parsed.prenom, parsed.nom].filter(Boolean).join(' ') || '—'}</strong></div>
+                <div>{parsed.institution || '—'}</div>
+                <div style={{ color: 'var(--tx3)', marginTop: 6 }}>
+                  {parsed.emails.length > 0 && <div>Email: {parsed.emails.map((e) => e.email).join(', ')}</div>}
+                  {parsed.phones.length > 0 && <div>Tél.: {parsed.phones.map((p) => p.phone).join(', ')}</div>}
+                  {parsed.websites.length > 0 && <div>Web: {parsed.websites.map((w) => w.url).join(', ')}</div>}
+                  {parsed.role && <div>Rôle: {parsed.role}</div>}
+                  {parsed.notes && (
+                    <div style={{ marginTop: 6, maxHeight: 100, overflow: 'auto' }}>Notes: {parsed.notes}</div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {err && <div className="t-mono-sm" style={{ color: 'var(--rust)' }}>{err}</div>}
+
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="button" className="btn ghost sm" onClick={onClose} style={{ flex: 1 }}>
+                Annuler
+              </button>
+              <button
+                type="button"
+                className="btn sm"
+                onClick={handleImport}
+                disabled={!parsed || busy}
+                style={{ flex: 1, background: 'var(--ac)', borderColor: 'var(--ac)' }}
+              >
+                {busy && parsed ? 'Import…' : 'Importer ce contact'}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="t-mono-sm" style={{ lineHeight: 1.8 }}>
+              <div>
+                ✓ <strong>{result.imported}</strong> contact importé
+              </div>
+              {result.skipped > 0 && (
+                <div style={{ color: 'var(--tx3)' }}>↷ {result.skipped} ignoré (doublon ou vide)</div>
+              )}
+            </div>
+            <button type="button" className="btn sm" onClick={onDone} style={{ background: 'var(--ac)', borderColor: 'var(--ac)' }}>
+              Fermer
+            </button>
+          </>
+        )}
+
+        <div style={{ borderTop: '1px solid var(--bd)', paddingTop: 14 }}>
+          <div className="t-eyebrow" style={{ marginBottom: 8 }}>
+            Script Ollama
+          </div>
+          <div className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 10, marginBottom: 8, lineHeight: 1.45 }}>
+            Instructions (modifiable dans <code style={{ fontSize: 9 }}>lib/ollama-script.ts</code>) :
+          </div>
+          <pre
+            className="t-mono-sm"
+            style={{
+              margin: '0 0 12px',
+              padding: '10px 12px',
+              background: 'var(--bg2)',
+              border: '1px solid var(--bd)',
+              color: 'var(--tx3)',
+              fontSize: 10,
+              lineHeight: 1.5,
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              maxHeight: 140,
+              overflow: 'auto',
+            }}
+          >
+            {OLLAMA_SCRIPT_INSTRUCTIONS}
+          </pre>
+          <button
+            type="button"
+            className="btn sm"
+            onClick={handleOllamaScript}
+            disabled={scriptBusy}
+            style={{ background: 'var(--bg2)', borderColor: 'var(--bd)' }}
+          >
+            {scriptBusy ? 'Exécution…' : 'Lancer le script'}
+          </button>
+          {scriptOut && (
+            <div
+              className="t-mono-sm"
+              style={{
+                marginTop: 12,
+                padding: 12,
+                background: 'var(--bg0)',
+                border: '1px solid var(--bd)',
+                color: 'var(--tx)',
+                fontSize: 10,
+                lineHeight: 1.55,
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                maxHeight: 220,
+                overflow: 'auto',
+              }}
+            >
+              {scriptOut}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function ImportGoogleModal({ onClose, onDone }: { onClose: () => void; onDone: (n: number) => void }) {

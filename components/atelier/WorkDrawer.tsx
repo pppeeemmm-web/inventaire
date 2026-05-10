@@ -160,7 +160,7 @@ export function WorkDrawer({
         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         boxShadow: isExpanded ? '-10px 0 40px rgba(0,0,0,0.4)' : 'none',
         maxHeight: isExpanded ? '75vh' : '100%',
-        alignSelf: 'center',
+        alignSelf: 'stretch',
         borderRadius: isExpanded ? '16px 0 0 16px' : '0',
       }}>
         <div style={{ padding: 28 }}>
@@ -190,10 +190,10 @@ export function WorkDrawer({
 
   // Overlay mode
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'transparent', zIndex: 60, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', pointerEvents: 'none' }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'transparent', zIndex: 60, display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-start', pointerEvents: 'none' }}>
       <div
         onClick={e => e.stopPropagation()}
-        style={{ width: 460, maxWidth: '50vw', maxHeight: '75vh', height: 'fit-content', background: 'var(--bg1)', border: '1px solid var(--bd)', borderRadius: '16px 0 0 16px', padding: 0, overflow: 'auto', display: 'flex', flexDirection: 'column', pointerEvents: 'auto', boxShadow: '-10px 0 50px rgba(0,0,0,0.4)', margin: 'auto 0' }}
+        style={{ width: 460, maxWidth: '50vw', maxHeight: '75vh', height: 'fit-content', background: 'var(--bg1)', border: '1px solid var(--bd)', borderRadius: '16px 0 0 16px', padding: 0, overflow: 'auto', display: 'flex', flexDirection: 'column', pointerEvents: 'auto', boxShadow: '-10px 0 50px rgba(0,0,0,0.4)', margin: 0 }}
       >
         <div style={{ padding: 28 }}>
           <DrawerContent
@@ -376,6 +376,9 @@ function DrawerContent({
     fd.append('prix_final', prixFinal)
     fd.append('anonymity_level', String(anonymityLevel))
     fd.append('admin_override_anonymity', adminOverride ? '1' : '0')
+    // Preserve production booleans — saveWork defaults missing keys to false and would wipe gates/pipeline sync.
+    fd.append('catalogued', (o as { Catalogué?: boolean }).Catalogué ? '1' : '0')
+    fd.append('needs_photograph', (o as { NeedsPhotograph?: boolean }).NeedsPhotograph ? '1' : '0')
     selThemes.forEach(id => fd.append('themes', String(id)))
     selGroups.forEach(id => fd.append('groups', id))
 

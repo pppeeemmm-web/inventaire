@@ -3,7 +3,7 @@
 // TeamPortalClient — fully interactive shell for the /atelier team portal.
 // Receives pre-fetched reference data from app/atelier/page.tsx.
 // Manages global state: active tab, work drawer, selection, working groups.
-// Heavy tab panels load on demand (next/dynamic); sidebar prefetches chunk on hover.
+// Heavy tab panels load on demand (next/dynamic). SystemTab is eager-loaded to avoid dev ChunkLoadError on that chunk.
 
 import { useState, useMemo, useCallback, useEffect } from 'react'
 import dynamic from 'next/dynamic'
@@ -17,6 +17,7 @@ import { WorkDrawer }          from '@/components/atelier/WorkDrawer'
 import { CurationDock }        from '@/components/atelier/CurationDock'
 import { fetchContactConflicts } from '@/app/atelier/contacts/actions'
 import { ExhibitionsTabSkeleton } from '@/components/atelier/ExhibitionsTabSkeleton'
+import { SystemTab } from '@/components/atelier/SystemTab'
 
 function TabPanelFallback() {
   return (
@@ -43,30 +44,7 @@ const ThemesTab = dynamic(() => import('@/components/atelier/ThemesTab').then((m
 const PortfolioTab = dynamic(() => import('@/components/atelier/PortfolioTab').then((m) => ({ default: m.PortfolioTab })), { loading: () => <TabPanelFallback />, ssr: false })
 const SupplierHub = dynamic(() => import('@/components/atelier/SupplierHub').then((m) => ({ default: m.SupplierHub })), { loading: () => <TabPanelFallback />, ssr: false })
 const StockTakeTab = dynamic(() => import('@/components/atelier/StockTakeTab').then((m) => ({ default: m.StockTakeTab })), { loading: () => <TabPanelFallback />, ssr: false })
-const SystemTab = dynamic(() => import('@/components/atelier/SystemTab').then((m) => ({ default: m.SystemTab })), { loading: () => <TabPanelFallback />, ssr: false })
 const AuditTab = dynamic(() => import('@/components/atelier/AuditTab').then((m) => ({ default: m.AuditTab })), { loading: () => <TabPanelFallback />, ssr: false })
-
-/** Warm tab JS before click — hover sidebar row to prefetch chunk */
-const TAB_PREFETCH: Partial<Record<string, () => Promise<unknown>>> = {
-  inventory: () => import('@/components/atelier/InventoryTab'),
-  constellation: () => import('@/components/atelier/ConstellationCanvas'),
-  production: () => import('@/components/atelier/ProductionTab'),
-  logistics: () => import('@/components/atelier/LogisticsTab'),
-  sales: () => import('@/components/atelier/SalesTab'),
-  exhibitions: () => import('@/components/atelier/ExhibitionsTab'),
-  vault: () => import('@/components/atelier/VaultTab'),
-  contacts: () => import('@/components/atelier/ContactsTab'),
-  portfolio: () => import('@/components/atelier/PortfolioTab'),
-  audit: () => import('@/components/atelier/AuditTab'),
-  map: () => import('@/components/atelier/WorldMapTab'),
-  pipeline: () => import('@/components/atelier/PipelineTab'),
-  fiscal: () => import('@/components/atelier/FiscalTab'),
-  concepts: () => import('@/components/atelier/ConceptsTab'),
-  themes: () => import('@/components/atelier/ThemesTab'),
-  stock: () => import('@/components/atelier/SupplierHub'),
-  'stock-take': () => import('@/components/atelier/StockTakeTab'),
-  system: () => import('@/components/atelier/SystemTab'),
-}
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -414,7 +392,6 @@ export function TeamPortalClient({
                       key={key}
                       type="button"
                       onClick={() => handleSetTab(key)}
-                      onMouseEnter={() => { TAB_PREFETCH[key]?.() }}
                       className={isActive ? 'pem-sidebar-tab pem-sidebar-tab--on' : 'pem-sidebar-tab'}
                       style={{
                         padding: '6px 20px',

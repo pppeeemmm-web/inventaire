@@ -2,20 +2,20 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
+import type { ImportedContact } from '@/lib/contact-import-types'
+import {
+  assertSafePublicUrl,
+  extractContactFromHtml,
+  refineContactWithLlm,
+  resolveLlmMode,
+  resolveOllamaClientUrl,
+  type UrlEnrichMeta,
+} from '@/lib/contact-url-enrich'
+
+export type { ImportedContact } from '@/lib/contact-import-types'
+export type { UrlEnrichMeta } from '@/lib/contact-url-enrich'
 
 // ── Google Contacts CSV Import ────────────────────────────────────────────────
-
-export interface ImportedContact {
-  prenom:      string | null
-  nom:         string | null
-  institution: string | null
-  role:        string | null
-  notes:       string | null
-  emails:    { email: string; label: string }[]
-  phones:    { country_code: string | null; phone: string; label: string }[]
-  addresses: { label: string; adresse: string | null; code_postal: string | null; ville: string | null; pays: string | null }[]
-  websites:  { url: string; label: string }[]
-}
 
 export type ImportResult = { ok: true; imported: number; skipped: number } | { error: string }
 
@@ -62,6 +62,7 @@ export async function importGoogleContacts(contacts: ImportedContact[]): Promise
 
     const primaryEmail = c.emails[0]?.email ?? null
     const primaryPhone = c.phones[0] ?? null
+    const primaryWebsite = c.websites[0]?.url?.slice(0, 500) ?? null
 
     const { data: inserted, error: insertErr } = await svc
       .from('Contact')
@@ -73,6 +74,7 @@ export async function importGoogleContacts(contacts: ImportedContact[]): Promise
         Email:           primaryEmail,
         Téléphone1:      (primaryPhone?.phone ?? null)?.slice(0, 20) ?? null,
         IndicatifPays1:  (primaryPhone?.country_code ?? null)?.slice(0, 10) ?? null,
+        Website:         primaryWebsite,
         Notes:           c.notes,
         is_private:      true,
         Actif:           true,
@@ -182,6 +184,267 @@ export async function deleteContacts(ids: number[]): Promise<ContactDeleteResult
 
   revalidatePath('/atelier')
   return { ok: true }
+}
+
+export type MergeContactsResult = { ok: true; keptId: number } | { error: string }
+
+function isBlankScalar(v: unknown): boolean {
+  return v == null || v === ''
+}
+
+/** Prefer rows already on `keep`; fill empty columns from `lose`. */
+function mergeContactScalars(keep: Record<string, unknown>, lose: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...keep }
+  for (const [k, v] of Object.entries(lose)) {
+    if (k === 'ContactID') continue
+    if (isBlankScalar(v)) continue
+    if (isBlankScalar(out[k])) out[k] = v
+  }
+  return out
+}
+
+function normEmail(e: string): string {
+  return e.trim().toLowerCase()
+}
+
+function normPhone(p: string): string {
+  return p.replace(/\D/g, '')
+}
+
+function normWeb(u: string): string {
+  return u.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '')
+}
+
+function socialKey(platform: string, handle: string): string {
+  return `${platform.trim().toLowerCase()}|${handle.trim().toLowerCase()}`
+}
+
+/**
+ * Merge `fromId` into `intoId`: reassign FKs, union contact_* rows (dedupe), fill blank Contact fields, delete `fromId`.
+ * Uses service role for consistent FK + junction updates.
+ */
+export async function mergeContacts(intoId: number, fromId: number): Promise<MergeContactsResult> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié' }
+
+  const { data: isTeam } = await supabase.rpc('is_team')
+  if (!isTeam) return { error: 'Accès refusé' }
+
+  if (!intoId || !fromId || intoId === fromId) return { error: 'Fusion invalide' }
+
+  const svc = createServiceClient()
+
+  const { data: keepRow, error: ke } = await svc.from('Contact').select('*').eq('ContactID', intoId).maybeSingle()
+  const { data: loseRow, error: le } = await svc.from('Contact').select('*').eq('ContactID', fromId).maybeSingle()
+  if (ke || le || !keepRow || !loseRow) return { error: 'Contact introuvable' }
+
+  const mergedScalars = mergeContactScalars(keepRow as Record<string, unknown>, loseRow as Record<string, unknown>)
+  delete (mergedScalars as { ContactID?: number }).ContactID
+  const { error: mergeErr } = await svc.from('Contact').update(mergedScalars).eq('ContactID', intoId)
+  if (mergeErr) return { error: mergeErr.message }
+
+  const fkRefs: { table: string; col: string }[] = [
+    { table: 'Oeuvres', col: 'ContactID' },
+    { table: 'Oeuvres', col: 'LocalisationID' },
+    { table: 'Oeuvres', col: 'AcheteurID' },
+    { table: 'exhibition', col: 'contact_id' },
+    { table: 'document', col: 'contact_id' },
+    { table: 'sale_order', col: 'buyer_id' },
+    { table: 'consignment_order', col: 'partner_id' },
+    { table: 'suivi_process', col: 'contact_id' },
+    { table: 'expense', col: 'contact_id' },
+    { table: 'shipment', col: 'to_contact_id' },
+  ]
+
+  for (const { table, col } of fkRefs) {
+    const { error } = await (svc.from(table) as any).update({ [col]: intoId }).eq(col, fromId)
+    if (error) return { error: `${table}.${col}: ${error.message}` }
+  }
+
+  const { error: addrErr } = await svc.from('contact_addresses').update({ contact_id: intoId }).eq('contact_id', fromId)
+  if (addrErr) return { error: addrErr.message }
+
+  // Emails — dedupe by normalized email
+  const { data: srcEmails } = await svc.from('contact_emails').select('*').eq('contact_id', fromId)
+  const { data: tgtEmails } = await svc.from('contact_emails').select('email').eq('contact_id', intoId)
+  const emailSet = new Set((tgtEmails ?? []).map((r: { email: string }) => normEmail(r.email)))
+  for (const row of srcEmails ?? []) {
+    const ne = normEmail(row.email)
+    if (emailSet.has(ne)) {
+      const { error } = await svc.from('contact_emails').delete().eq('id', row.id)
+      if (error) return { error: error.message }
+    } else {
+      const { error } = await svc.from('contact_emails').update({ contact_id: intoId }).eq('id', row.id)
+      if (error) return { error: error.message }
+      emailSet.add(ne)
+    }
+  }
+
+  const { data: srcPhones } = await svc.from('contact_phones').select('*').eq('contact_id', fromId)
+  const { data: tgtPhones } = await svc.from('contact_phones').select('phone').eq('contact_id', intoId)
+  const phoneSet = new Set((tgtPhones ?? []).map((r: { phone: string }) => normPhone(r.phone)))
+  for (const row of srcPhones ?? []) {
+    const np = normPhone(row.phone)
+    if (phoneSet.has(np)) {
+      const { error } = await svc.from('contact_phones').delete().eq('id', row.id)
+      if (error) return { error: error.message }
+    } else {
+      const { error } = await svc.from('contact_phones').update({ contact_id: intoId }).eq('id', row.id)
+      if (error) return { error: error.message }
+      phoneSet.add(np)
+    }
+  }
+
+  const { data: srcWeb } = await svc.from('contact_websites').select('*').eq('contact_id', fromId)
+  const { data: tgtWeb } = await svc.from('contact_websites').select('url').eq('contact_id', intoId)
+  const webSet = new Set((tgtWeb ?? []).map((r: { url: string }) => normWeb(r.url)))
+  for (const row of srcWeb ?? []) {
+    const nw = normWeb(row.url)
+    if (webSet.has(nw)) {
+      const { error } = await svc.from('contact_websites').delete().eq('id', row.id)
+      if (error) return { error: error.message }
+    } else {
+      const { error } = await svc.from('contact_websites').update({ contact_id: intoId }).eq('id', row.id)
+      if (error) return { error: error.message }
+      webSet.add(nw)
+    }
+  }
+
+  const { data: srcSoc } = await svc.from('contact_socials').select('*').eq('contact_id', fromId)
+  const { data: tgtSoc } = await svc.from('contact_socials').select('platform, handle').eq('contact_id', intoId)
+  const socSet = new Set((tgtSoc ?? []).map((r: { platform: string; handle: string }) => socialKey(r.platform, r.handle)))
+  for (const row of srcSoc ?? []) {
+    const sk = socialKey(row.platform, row.handle)
+    if (socSet.has(sk)) {
+      const { error } = await svc.from('contact_socials').delete().eq('id', row.id)
+      if (error) return { error: error.message }
+    } else {
+      const { error } = await svc.from('contact_socials').update({ contact_id: intoId }).eq('id', row.id)
+      if (error) return { error: error.message }
+      socSet.add(sk)
+    }
+  }
+
+  await svc.from('contact_conflicts').update({ resolved: true }).eq('public_contact_id', fromId)
+  await svc.from('contact_conflicts').update({ resolved: true }).eq('private_contact_id', fromId)
+
+  const { error: delErr } = await svc.from('Contact').delete().eq('ContactID', fromId)
+  if (delErr) return { error: delErr.message }
+
+  revalidatePath('/atelier')
+  return { ok: true, keptId: intoId }
+}
+
+export type UrlEnrichPreviewResult =
+  | { ok: true; contact: ImportedContact; meta: UrlEnrichMeta }
+  | { error: string }
+
+/** Fetch a public https URL, extract JSON-LD / meta / mailto / tel, optionally refine with local Ollama or OpenAI-compatible API. */
+export async function previewContactFromUrl(
+  rawUrl: string,
+  opts?: { refineWithLlm?: boolean },
+): Promise<UrlEnrichPreviewResult> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié' }
+
+  const { data: isTeam } = await supabase.rpc('is_team')
+  if (!isTeam) return { error: 'Accès refusé' }
+
+  let safeUrl: URL
+  try {
+    safeUrl = assertSafePublicUrl(rawUrl)
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'URL invalide' }
+  }
+
+  let html: string
+  let finalUrl: string
+  try {
+    const ctrl = new AbortController()
+    const timer = setTimeout(() => ctrl.abort(), 15_000)
+    const res = await fetch(safeUrl.toString(), {
+      redirect: 'follow',
+      signal: ctrl.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; PEM-ContactEnrich/1.0)',
+        Accept: 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.8',
+      },
+    })
+    clearTimeout(timer)
+    if (!res.ok) return { error: `HTTP ${res.status}` }
+    const buf = await res.arrayBuffer()
+    const max = 2_000_000
+    const slice = buf.byteLength > max ? buf.slice(0, max) : buf
+    html = new TextDecoder('utf-8', { fatal: false }).decode(slice)
+    finalUrl = res.url
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Échec réseau'
+    return { error: /abort/i.test(msg) ? 'Délai dépassé (15s)' : msg }
+  }
+
+  const { draft, sources, textSample } = extractContactFromHtml(html, finalUrl)
+  const meta: UrlEnrichMeta = { sources: [...sources], llm: 'none' }
+
+  const wantLlm = opts?.refineWithLlm !== false
+  const mode = resolveLlmMode()
+
+  if (wantLlm && mode !== 'none') {
+    const env = {
+      mode,
+      openaiBase: process.env.OPENAI_BASE_URL || 'https://api.openai.com',
+      openaiKey: process.env.OPENAI_API_KEY || '',
+      openaiModel: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+      ollamaHost: resolveOllamaClientUrl(),
+      ollamaModel: process.env.OLLAMA_MODEL || 'llama3.2:1b',
+    }
+    if (mode === 'openai' && !env.openaiKey) {
+      meta.llmNote = 'OPENAI_API_KEY manquante'
+    } else {
+      try {
+        const { merged, llm } = await refineContactWithLlm(draft, textSample, finalUrl, env)
+        meta.llm = llm
+        return { ok: true, contact: merged, meta }
+      } catch (e) {
+        meta.llmNote = e instanceof Error ? e.message.slice(0, 240) : 'IA indisponible'
+      }
+    }
+  }
+
+  return { ok: true, contact: draft, meta }
+}
+
+export type OllamaListenResult =
+  | { ok: true; host: string }
+  | { ok: false; host: string; message: string }
+
+/** GET /api/tags on configured Ollama (same host as enrich). Runs on the Next.js server — matches local dev when Ollama is on this machine. */
+export async function checkOllamaListening(): Promise<OllamaListenResult> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { ok: false, host: '', message: 'Non authentifié' }
+
+  const { data: isTeam } = await supabase.rpc('is_team')
+  if (!isTeam) return { ok: false, host: '', message: 'Accès refusé' }
+
+  const host = resolveOllamaClientUrl().replace(/\/$/, '')
+  try {
+    const ctrl = new AbortController()
+    const timer = setTimeout(() => ctrl.abort(), 4000)
+    const res = await fetch(`${host}/api/tags`, {
+      method: 'GET',
+      signal: ctrl.signal,
+      headers: { Accept: 'application/json' },
+    })
+    clearTimeout(timer)
+    if (!res.ok) return { ok: false, host, message: `HTTP ${res.status}` }
+    return { ok: true, host }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Erreur réseau'
+    const detail = /abort/i.test(msg) ? 'Timeout (4s)' : msg.slice(0, 160)
+    return { ok: false, host, message: detail }
+  }
 }
 
 export async function saveContactWithConflictCheck(formData: FormData): Promise<{ ok: true; id: number } | { error: string }> {
