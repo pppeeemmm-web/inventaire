@@ -692,3 +692,22 @@ export async function reorderWorkImages(
   revalidatePath('/atelier')
   return { ok: true }
 }
+
+/** Long text fields omitted from the bulk Atelier payload — fetch when comparing works or full edit. */
+export async function loadOeuvreLongText(
+  oeuvreId: number,
+): Promise<{ Commentaires: string | null; Historique: string | null } | { error: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié' }
+  const { data, error } = await supabase
+    .from('Oeuvres')
+    .select('Commentaires, Historique')
+    .eq('OeuvreID', oeuvreId)
+    .maybeSingle()
+  if (error) return { error: error.message }
+  return {
+    Commentaires: data?.Commentaires ?? null,
+    Historique: data?.Historique ?? null,
+  }
+}

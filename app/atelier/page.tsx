@@ -9,7 +9,7 @@ export default async function AtelierPage() {
   const results = await Promise.all([
     supabase
       .from('Oeuvres')
-      .select('OeuvreID, Titre, Technique, Support, Année, Format, Hauteur, Largeur, Profondeur, Exposable, Prix, PrixFinal, Discount, statusId, Catalogué, txtImageNameLink, ContactID, Commentaires, Historique, LocalisationID, LocalisationDetail, is_public, Encadree, IsCommission, PresentationID, ReturnDate, DateLivraison, AcheteurID, NeedsPhotograph, anonymity_level, admin_override_anonymity')
+      .select('OeuvreID, Titre, Technique, Support, Année, Format, Hauteur, Largeur, Profondeur, Exposable, Prix, PrixFinal, Discount, statusId, Catalogué, txtImageNameLink, ContactID, LocalisationID, LocalisationDetail, is_public, Encadree, IsCommission, PresentationID, ReturnDate, DateLivraison, AcheteurID, NeedsPhotograph, anonymity_level, admin_override_anonymity')
       .order('OeuvreID', { ascending: false })
       .range(0, 4999),
     supabase.from('Technique').select('TechniqueID, Technique').order('TechniqueID'),
@@ -49,44 +49,49 @@ export default async function AtelierPage() {
   for (const o of (oeuvres ?? []) as { OeuvreID: number; is_public: boolean }[])
     oeuvreIsPublic[o.OeuvreID] = o.is_public ?? false
 
-  type ThemeWork = { OeuvreID: number; txtImageNameLink: string | null; isPublic: boolean }
   const themePublicStats: Record<number, { total: number; pub: number }> = {}
-  const themeAllWorks: Record<number, ThemeWork[]> = {}
+  const themeAllWorks: Record<number, number[]> = {}
 
-  // OeuvreID → work shape for quick lookup
-  const oeuvreMap: Record<number, ThemeWork> = {}
-  for (const o of (oeuvres ?? []) as { OeuvreID: number; txtImageNameLink: string | null; is_public: boolean }[])
-    oeuvreMap[o.OeuvreID] = { OeuvreID: o.OeuvreID, txtImageNameLink: o.txtImageNameLink, isPublic: o.is_public ?? false }
+  const oeuvreThemeIdsByOeuvre: Record<number, number[]> = {}
+  const oeuvreGroupIdsByOeuvre: Record<number, string[]> = {}
 
   const themeWorkCount: Record<number, number> = {}
   const groupWorkCount: Record<string, number> = {}
   const themeToGroups:  Record<number, Set<string>> = {}
   const groupToThemes:  Record<string, Set<number>> = {}
-  const groupAllWorks:  Record<string, ThemeWork[]> = {}
+  const groupAllWorks:  Record<string, number[]> = {}
+
+  /** Bulk-loaded œuvre IDs — junction rows pointing elsewhere are skipped (matches legacy ThemeWork guard). */
+  const oeuvreMap: Record<number, true> = {}
+  for (const o of (oeuvres ?? []) as { OeuvreID: number }[]) oeuvreMap[o.OeuvreID] = true
 
   // Canonical oeuvre_theme junction
-  const oeuvreThemes: Record<number, number[]> = {}
   for (const row of (themesLink?.data ?? []) as { oeuvre_id: number; theme_id: number }[]) {
+    if (!oeuvreMap[row.oeuvre_id]) continue
     if (!themePublicStats[row.theme_id]) themePublicStats[row.theme_id] = { total: 0, pub: 0 }
     themePublicStats[row.theme_id].total++
     themeWorkCount[row.theme_id] = (themeWorkCount[row.theme_id] ?? 0) + 1
     if (oeuvreIsPublic[row.oeuvre_id]) themePublicStats[row.theme_id].pub++
     if (!themeAllWorks[row.theme_id]) themeAllWorks[row.theme_id] = []
-    if (oeuvreMap[row.oeuvre_id]) themeAllWorks[row.theme_id].push(oeuvreMap[row.oeuvre_id])
-    
-    if (!oeuvreThemes[row.oeuvre_id]) oeuvreThemes[row.oeuvre_id] = []
-    oeuvreThemes[row.oeuvre_id].push(row.theme_id)
+    themeAllWorks[row.theme_id].push(row.oeuvre_id)
+
+    if (!oeuvreThemeIdsByOeuvre[row.oeuvre_id]) oeuvreThemeIdsByOeuvre[row.oeuvre_id] = []
+    oeuvreThemeIdsByOeuvre[row.oeuvre_id].push(row.theme_id)
   }
 
   // Canonical working_group_work junction
   for (const row of (_groups_link?.data ?? []) as { oeuvre_id: number; group_id: string }[]) {
+    if (!oeuvreMap[row.oeuvre_id]) continue
     groupWorkCount[row.group_id] = (groupWorkCount[row.group_id] ?? 0) + 1
     if (!groupAllWorks[row.group_id]) groupAllWorks[row.group_id] = []
-    if (oeuvreMap[row.oeuvre_id]) groupAllWorks[row.group_id].push(oeuvreMap[row.oeuvre_id])
+    groupAllWorks[row.group_id].push(row.oeuvre_id)
+
+    if (!oeuvreGroupIdsByOeuvre[row.oeuvre_id]) oeuvreGroupIdsByOeuvre[row.oeuvre_id] = []
+    oeuvreGroupIdsByOeuvre[row.oeuvre_id].push(row.group_id)
 
     // Cross-link relationships
-    if (oeuvreThemes[row.oeuvre_id]) {
-      for (const tId of oeuvreThemes[row.oeuvre_id]) {
+    if (oeuvreThemeIdsByOeuvre[row.oeuvre_id]) {
+      for (const tId of oeuvreThemeIdsByOeuvre[row.oeuvre_id]) {
         if (!themeToGroups[tId]) themeToGroups[tId] = new Set()
         themeToGroups[tId].add(row.group_id)
         if (!groupToThemes[row.group_id]) groupToThemes[row.group_id] = new Set()
@@ -119,6 +124,8 @@ export default async function AtelierPage() {
       themeWorkCount={themeWorkCount}
       groupWorkCount={groupWorkCount}
       groupPrivateWorks={groupAllWorks}
+      oeuvreThemeIdsByOeuvre={oeuvreThemeIdsByOeuvre}
+      oeuvreGroupIdsByOeuvre={oeuvreGroupIdsByOeuvre}
       themeToGroups={t2g}
       groupToThemes={g2t}
     />

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { thumbUrl } from '@/lib/data'
 import { useI18n } from '@/lib/i18n/context'
@@ -12,8 +12,8 @@ interface Props {
   initialGroups: Group[]
   themeWorkCount: Record<number, number>
   groupWorkCount:  Record<string, number>
-  themePrivateWorks?: Record<number, { OeuvreID: number; txtImageNameLink: string | null; isPublic: boolean }[]>
-  groupPrivateWorks?: Record<string, { OeuvreID: number; txtImageNameLink: string | null; isPublic: boolean }[]>
+  themePrivateWorks?: Record<number, number[]>
+  groupPrivateWorks?: Record<string, number[]>
   themeToGroups?:      Record<number, string[]>
   groupToThemes?:      Record<string, number[]>
   oeuvres:             Oeuvre[]
@@ -43,6 +43,8 @@ export function ThemesTab({
   // Interaction State
   const [hoverTheme, setHoverTheme] = useState<number | null>(null)
   const [hoverGroup, setHoverGroup] = useState<string | null>(null)
+
+  const oeuvreById = useMemo(() => new Map(oeuvres.map((o) => [o.OeuvreID, o])), [oeuvres])
 
   function flash(m: string) { setMsg(m); setTimeout(() => setMsg(null), 2500) }
 
@@ -140,8 +142,25 @@ export function ThemesTab({
   const relatedGroups = hoverTheme ? (themeToGroups[hoverTheme] || []) : []
   const relatedThemes = hoverGroup ? (groupToThemes[hoverGroup] || []) : []
 
-  // Works for the mosaic
-  const allWorksInCategory = (hoverTheme ? (themePrivateWorks[hoverTheme] || []) : hoverGroup ? (groupPrivateWorks[hoverGroup!] || []) : [])
+  const allWorksInCategory = useMemo(() => {
+    const ids = hoverTheme
+      ? (themePrivateWorks[hoverTheme] ?? [])
+      : hoverGroup
+        ? (groupPrivateWorks[hoverGroup!] ?? [])
+        : []
+    return ids
+      .map((id) => {
+        const o = oeuvreById.get(id)
+        if (!o) return null
+        return {
+          OeuvreID: o.OeuvreID,
+          txtImageNameLink: o.txtImageNameLink ?? null,
+          isPublic: !!(o as { is_public?: boolean }).is_public,
+        }
+      })
+      .filter(Boolean) as { OeuvreID: number; txtImageNameLink: string | null; isPublic: boolean }[]
+  }, [hoverTheme, hoverGroup, themePrivateWorks, groupPrivateWorks, oeuvreById])
+
   const previewWorks = allWorksInCategory
 
   return (
@@ -268,7 +287,7 @@ export function ThemesTab({
                         overflow: 'hidden'
                       }} 
                       onClick={() => {
-                        const fullWork = oeuvres.find(o => o.OeuvreID === w.OeuvreID)
+                        const fullWork = oeuvreById.get(w.OeuvreID)
                         if (fullWork) onOpen(fullWork)
                       }}
                     >
@@ -367,7 +386,7 @@ export function ThemesTab({
             let totalTTC = 0
 
             allWorksInCategory.forEach(w => {
-              const full = oeuvres.find(o => o.OeuvreID === w.OeuvreID)
+              const full = oeuvreById.get(w.OeuvreID)
               if (full) {
                 const prixHT = (full.Prix || 0)
                 const tvaRate = (full as any).tva_rate || 0

@@ -652,16 +652,24 @@ function ExpenseModal({
             </div>
             <div>
               <div className="t-label" style={{ marginBottom: 3 }}>TVA %</div>
-              <select
+              <input
+                type="number"
+                min={0}
+                max={100}
+                step={0.01}
+                list="expense-tva-presets"
                 value={form.tva_rate}
                 onChange={(e) => handleHtOrTva('tva_rate', e.target.value)}
+                placeholder="0–100"
+                title="Saisie libre ou suggestion (raccourcis 0 %, 5,5 %, 10 %, 20 %)"
                 style={FIS}
-              >
-                <option value="0">0% (exo)</option>
-                <option value="5.5">5,5%</option>
-                <option value="10">10%</option>
-                <option value="20">20%</option>
-              </select>
+              />
+              <datalist id="expense-tva-presets">
+                <option value="0" />
+                <option value="5.5" />
+                <option value="10" />
+                <option value="20" />
+              </datalist>
             </div>
             <div>
               <div className="t-label" style={{ marginBottom: 3 }}>Montant TTC (€) *</div>

@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { useI18n } from '@/lib/i18n/context'
 import { createClient } from '@/lib/supabase/client'
+import { getWorkActionTypes, invalidateWorkActionTypesCache } from '@/lib/work-action-type-cache'
 import { imageUrl, thumbUrl, yearOf, statusOf, type StatusKey } from '@/lib/data'
 import { MissingThumb, WorkThumb, SuggestionThumb } from './WorkThumb'
 import type { Oeuvre } from '@/lib/types/database'
@@ -63,12 +64,12 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
   const sb = createClient()
 
   const loadData = useCallback(async () => {
-    const [{ data: types }, { data: acts }] = await Promise.all([
-      sb.from('work_action_type').select('*').order('sort_order').order('id'),
+    const [types, { data: acts }] = await Promise.all([
+      getWorkActionTypes(sb),
       sb.from('work_action').select('*').eq('done', false),
     ])
-    if (types) setActionTypes(types)
-    if (acts)  setActions(acts)
+    setActionTypes(types as ActionType[])
+    if (acts) setActions(acts)
     setLoading(false)
   }, [sb])
 
@@ -582,6 +583,7 @@ function ActionTypeManager({ actionTypes, onRefresh, onClose }: {
     } else {
       setNewLabel('')
       setNewFieldKey('')
+      invalidateWorkActionTypesCache()
       await onRefresh()
     }
     setSaving(false)
@@ -593,6 +595,7 @@ function ActionTypeManager({ actionTypes, onRefresh, onClose }: {
     if (error) {
       alert("Erreur lors de la suppression: " + error.message)
     } else {
+      invalidateWorkActionTypesCache()
       onRefresh()
     }
   }

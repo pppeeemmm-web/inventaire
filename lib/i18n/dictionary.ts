@@ -60,12 +60,14 @@ export type DictKey =
   | 'pub_biography' | 'pub_exhibitions_selected' | 'pub_education' | 'pub_contact'
   | 'pub_approach' | 'pub_central_themes' | 'pub_media_materials'
   | 'pub_no_collections' | 'pub_collection_in_progress' | 'pub_untitled'
+  | 'pub_works_groups_nomatch'
   | 'pub_name' | 'pub_email' | 'pub_message' | 'pub_send' | 'pub_sending'
   | 'pub_back' | 'pub_thank_you'
   | 'pub_read_statement' | 'pub_download_cv'
   | 'pub_not_available' | 'pub_approach_tab' | 'pub_works_tab'
   | 'pub_full_name' | 'pub_your_enquiry'
   | 'pub_works_collections' | 'pub_works_views_label'
+  | 'pub_works_bridge_label' | 'pub_works_preview_badge'
 
 type Dictionary = Record<DictKey, string>
 
@@ -184,6 +186,7 @@ export const dict: Record<Lang, Dictionary> = {
     pub_approach: 'Approche', pub_central_themes: 'Thèmes centraux',
     pub_media_materials: 'Médiums & matériaux',
     pub_no_collections: 'Aucune collection configurée.',
+    pub_works_groups_nomatch: 'Aucune œuvre ne correspond aux groupes configurés pour cette page.',
     pub_collection_in_progress: 'Collection en cours',
     pub_untitled: 'Sans titre',
     pub_name: 'Nom', pub_email: 'Email', pub_message: 'Message',
@@ -198,6 +201,8 @@ export const dict: Record<Lang, Dictionary> = {
     pub_your_enquiry: 'Votre demande...',
     pub_works_collections: 'Collections',
     pub_works_views_label: 'Vues',
+    pub_works_bridge_label: 'Suite',
+    pub_works_preview_badge: 'Aperçu UX',
   },
   en: {
     hub: 'Studio', tagline: 'Inventory · Production · Curation · Relations',
@@ -312,6 +317,7 @@ export const dict: Record<Lang, Dictionary> = {
     pub_approach: 'Approach', pub_central_themes: 'Central themes',
     pub_media_materials: 'Media & materials',
     pub_no_collections: 'No collections configured.',
+    pub_works_groups_nomatch: 'No works match the groups configured for this page.',
     pub_collection_in_progress: 'Collection in progress',
     pub_untitled: 'Untitled',
     pub_name: 'Name', pub_email: 'Email', pub_message: 'Message',
@@ -326,5 +332,7 @@ export const dict: Record<Lang, Dictionary> = {
     pub_your_enquiry: 'Your enquiry...',
     pub_works_collections: 'Collections',
     pub_works_views_label: 'Views',
+    pub_works_bridge_label: 'Next',
+    pub_works_preview_badge: 'UX preview',
   },
 }

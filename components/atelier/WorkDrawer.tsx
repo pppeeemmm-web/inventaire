@@ -5,6 +5,7 @@ import { StatusChip } from '@/components/ui/StatusChip'
 import { WorkStateChip } from './WorkStateChip'
 import { deleteWork } from '@/app/atelier/works/actions'
 import { createClient } from '@/lib/supabase/client'
+import { getWorkActionTypes } from '@/lib/work-action-type-cache'
 import { useRouter } from 'next/navigation'
 import { useEffect, useLayoutEffect, useState, useTransition, useCallback, useRef, useMemo } from 'react'
 import { useI18n } from '@/lib/i18n/context'
@@ -346,11 +347,11 @@ function DrawerContent({
 
   const loadPipeline = useCallback(async () => {
     const sb = createClient()
-    const [{ data: types }, { data: acts }] = await Promise.all([
-      sb.from('work_action_type').select('id, label, color, field_key, sort_order').order('sort_order'),
-      sb.from('work_action').select('action_type_id, done').eq('oeuvre_id', o.OeuvreID)
+    const [types, { data: acts }] = await Promise.all([
+      getWorkActionTypes(sb),
+      sb.from('work_action').select('action_type_id, done').eq('oeuvre_id', o.OeuvreID),
     ])
-    if (types) setPipeline(types)
+    setPipeline((types ?? []) as ActionType[])
     if (acts) {
       const m: Record<number, boolean> = {}
       acts.forEach((a: any) => { m[a.action_type_id] = a.done })

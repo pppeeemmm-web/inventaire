@@ -18,6 +18,27 @@ const RING  = 10   // link-drag zone outside circle border (logical px)
 const MIN_Z = 0.04
 const MAX_Z = 6
 
+/** Cap in-memory decoded thumbnails; drop stale zoom tiers per œuvre first. */
+const MAX_THUMB_CACHE = 480
+
+function cacheConstellationThumb(
+  map: Map<string, HTMLImageElement>,
+  key: string,
+  img: HTMLImageElement,
+  oeuvreId: number,
+) {
+  for (const k of [...map.keys()]) {
+    if (k.startsWith(`${oeuvreId}_`) && k !== key) map.delete(k)
+  }
+  if (map.has(key)) map.delete(key)
+  map.set(key, img)
+  while (map.size > MAX_THUMB_CACHE) {
+    const oldest = map.keys().next().value as string | undefined
+    if (!oldest) break
+    map.delete(oldest)
+  }
+}
+
 // ── Thumb tier: pick image resolution based on zoom level ─────────────────
 function thumbTier(z: number): 40 | 100 | 200 {
   if (z < 0.3)  return 40
@@ -525,7 +546,7 @@ export function ConstellationCanvas({
         
         img.onload = () => {
           loadingSet.current.delete(key)
-          imagesRef.current.set(key, img)
+          cacheConstellationThumb(imagesRef.current, key, img, id)
           redraw()
         }
 
@@ -538,7 +559,7 @@ export function ConstellationCanvas({
             const fallbackImg = new Image()
             fallbackImg.crossOrigin = 'anonymous'
             fallbackImg.onload = () => {
-              imagesRef.current.set(key, fallbackImg)
+              cacheConstellationThumb(imagesRef.current, key, fallbackImg, id)
               redraw()
             }
             fallbackImg.src = fullUrl
@@ -1482,7 +1503,10 @@ export function ConstellationCanvas({
     return new Promise((res) => {
       const img = new Image()
       img.crossOrigin = 'anonymous'
-      img.onload  = () => { imagesRef.current.set(key, img); res(img) }
+      img.onload  = () => {
+        cacheConstellationThumb(imagesRef.current, key, img, id)
+        res(img)
+      }
       img.onerror = () => res(null)
       img.src     = thumbUrl(o.txtImageNameLink, tier) ?? ''
     })

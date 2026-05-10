@@ -49,6 +49,8 @@ interface Process {
   asset_notes:    string | null
   oeuvre_id:      number | null
   contact_id:     number | null
+  /** Optional link to an exhibition-hub process (same table); cleared if that project is deleted. */
+  exhibition_process_id?: string | null
   created_at:     string
   etapes:         Etape[]
 }
@@ -57,12 +59,12 @@ import { createConsignmentOrder, regenerateConsignmentPdf, closeConsignmentByPdf
 import { createSaleOrder } from '@/app/atelier/sales/actions'
 import { getSignedUrl } from '@/app/atelier/vault/actions'
 import type { Oeuvre } from '@/lib/types/database'
+import { EXHIBITION_READY_TYPES } from '@/lib/data'
 import { WorkThumb } from './WorkThumb'
 
 interface Props {
   oeuvres:     Oeuvre[]
   contacts:    any[]
-  exhibitions: any[]
   groups:      { id: string; name: string }[]
 }
 
@@ -207,7 +209,7 @@ function fmtDate(s: string, includeTime?: string | null): string {
 
 // ── Main component ─────────────────────────────────────────────────────
 
-export function PipelineTab({ oeuvres, contacts, exhibitions, groups }: Props) {
+export function PipelineTab({ oeuvres, contacts, groups }: Props) {
   const [processes,   setProcesses]   = useState<Process[]>([])
   const [reminders,   setReminders]   = useState<Reminder[]>([])
   const [typeFilter,  setTypeFilter]  = useState<ProcessType | 'all'>('all')
@@ -369,7 +371,6 @@ export function PipelineTab({ oeuvres, contacts, exhibitions, groups }: Props) {
           <ProcessModal
             oeuvres={oeuvres}
             contacts={contacts}
-            exhibitions={exhibitions}
             groups={groups}
             process={editing === 'new' ? null : editing}
             onClose={() => setEditing(null)}
@@ -820,10 +821,9 @@ function ProcessDrawer({ process, onClose, onEdit, onRefresh, onCycleEtape, onOv
 
 // ── Create / edit modal ────────────────────────────────────────────────
 
-function ProcessModal({ oeuvres, contacts, exhibitions, groups, process, onClose, onSaved }: {
+function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved }: {
   oeuvres:     any[]
   contacts:    any[]
-  exhibitions: any[]
   groups:      { id: string; name: string }[]
   process:     any | null
   onClose:     () => void
@@ -852,7 +852,10 @@ function ProcessModal({ oeuvres, contacts, exhibitions, groups, process, onClose
   
   const [oeuvreIds,    setOeuvreIds]    = useState<number[]>(process?.oeuvre_id ? [process.oeuvre_id] : [])
   const [contactId,    setContactId]    = useState<number | null>(process?.contact_id ?? null)
-  const [exhibitionId, setExhibitionId] = useState<string | null>(null)
+  const [exhibitionProcessId, setExhibitionProcessId] = useState<string | null>(process?.exhibition_process_id ?? null)
+  const [exhibitionProcessOptions, setExhibitionProcessOptions] = useState<
+    { id: string; nom: string; localisation: string | null; contact_id: number | null; date_debut: string | null; date_fin: string | null }[]
+  >([])
   const [insurance,    setInsurance]    = useState<string>('')
   const [catalogPrice, setCatalogPrice] = useState<string>('')
   const [discount,     setDiscount]     = useState<string>('')
@@ -890,17 +893,33 @@ function ProcessModal({ oeuvres, contacts, exhibitions, groups, process, onClose
     if(isNew) setEtapes(DEFAULT_ETAPES[t].map(n=>({nom:n, date_echeance:'', statut:'a_faire'})))
   }
 
-  function handleExhibitionSelect(id: string) {
-    setExhibitionId(id)
-    const ex = exhibitions.find(x => String(x.id) === id)
+  function handleExhibitionProcessSelect(id: string) {
+    setExhibitionProcessId(id || null)
+    if (!id) return
+    const ex = exhibitionProcessOptions.find(x => x.id === id)
     if (ex) {
       if (ex.contact_id) setContactId(ex.contact_id)
       if (ex.date_debut) setDebut(ex.date_debut)
       if (ex.date_fin)   setFin(ex.date_fin)
-      if (ex.lieu)       setLocalisation(ex.lieu)
-      if (!nom)          setNom(`Exposition : ${ex.titre}`)
+      if (ex.localisation) setLocalisation(ex.localisation)
+      if (!nom.trim())    setNom(ex.nom ? `Exposition : ${ex.nom}` : nom)
     }
   }
+
+  useEffect(() => {
+    const sb = createClient()
+    ;(sb.from('suivi_process') as any)
+      .select('id, nom, localisation, contact_id, date_debut, date_fin')
+      .in('type', EXHIBITION_READY_TYPES)
+      .order('date_fin', { ascending: false, nullsFirst: false })
+      .then(({ data }: { data: typeof exhibitionProcessOptions | null }) => {
+        setExhibitionProcessOptions(data ?? [])
+      })
+  }, [])
+
+  useEffect(() => {
+    setExhibitionProcessId(process?.exhibition_process_id ?? null)
+  }, [process?.id, process?.exhibition_process_id])
 
   useEffect(() => {
     if (type === 'vente' && oeuvreIds.length > 0) {
@@ -953,6 +972,7 @@ function ProcessModal({ oeuvres, contacts, exhibitions, groups, process, onClose
         asset_notes:assetNotes||null, notes:notes||null, updated_at:new Date().toISOString(),
         oeuvre_id: oeuvreIds[0] || null,
         contact_id: effectiveContactId,
+        exhibition_process_id: exhibitionProcessId || null,
       }
 
       let pid = process?.id
@@ -1048,10 +1068,16 @@ function ProcessModal({ oeuvres, contacts, exhibitions, groups, process, onClose
           </div>
 
           <div style={{ padding: 16, background: 'rgba(200,168,110,0.05)', border: '1px solid rgba(200,168,110,0.2)', borderRadius: 2 }}>
-            <div className="t-label" style={{marginBottom:8, color: 'var(--ac)'}}>Link to Exhibition Project (Optional)</div>
-            <select value={exhibitionId || ''} onChange={e => handleExhibitionSelect(e.target.value)} style={{...FIS, background: 'var(--bg1)'}}>
-              <option value="">-- No exhibition link --</option>
-              {exhibitions.map(ex => <option key={ex.id} value={ex.id}>{ex.titre} ({ex.lieu})</option>)}
+            <div className="t-label" style={{marginBottom:8, color: 'var(--ac)'}}>Link to exhibition process (optional)</div>
+            <select value={exhibitionProcessId || ''} onChange={e => handleExhibitionProcessSelect(e.target.value)} style={{...FIS, background: 'var(--bg1)'}}>
+              <option value="">— No link —</option>
+              {exhibitionProcessOptions
+                .filter((ex) => !process?.id || ex.id !== process.id)
+                .map((ex) => (
+                  <option key={ex.id} value={ex.id}>
+                    {ex.nom}{ex.localisation ? ` (${ex.localisation})` : ''}
+                  </option>
+                ))}
             </select>
           </div>
 

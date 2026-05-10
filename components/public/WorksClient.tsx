@@ -1,10 +1,18 @@
 'use client'
 
+import type { WheelEvent } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { imageUrl, yearOf } from '@/lib/data'
-import { WorkThumb } from '@/components/atelier/WorkThumb'
 import { useEffect, useState, useRef, useMemo } from 'react'
 import PublicNav from './PublicNav'
+import type { WorksUxMode } from '@/lib/worksUx'
+
+/** Virtual distance between sequence slide centers (wheel deltas map here). */
+const WORKS_STEP = 7200
+/** Matches slide spacing — keeps birth / micro transitions proportional. */
+const WORKS_BIRTH_DIST = WORKS_STEP * 10
+/** Scroll budget past the last slide center (end hint + “retour”), then hard stop — no infinite wheel. */
+const WORKS_END_TAIL = 1.22
 
 function htmlToPlain(html: string): string {
   if (!html) return ''
@@ -23,10 +31,10 @@ function FlameText({ text }: { text: string }) {
   const formatted = plain.replace(/\./g, ' /').replace(/\n/g, ' █ ')
   return (
     <p style={{
-      maxWidth: 'min(640px, 80vw)', fontSize: 'clamp(9px, 1.1vw, 13px)',
+      width: '100%', maxWidth: '100%', fontSize: 'clamp(9px, 1.1vw, 13px)',
       lineHeight: 1.9, letterSpacing: '0.18em', textTransform: 'uppercase',
       color: '#8a8680', textAlign: 'justify', wordSpacing: '0.3em',
-      fontFamily: 'JetBrains Mono, monospace', margin: '0 auto',
+      fontFamily: 'JetBrains Mono, monospace', margin: 0,
     }}>
       {formatted}
     </p>
@@ -38,7 +46,7 @@ function normalizeTheme(s: string | null | undefined): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
 }
 
-/** Same rule as PortfolioClient — bidirectional substring match on normalized names */
+/** Bidirectional substring match on normalized theme names */
 function workMatchesCollectionTheme(workThemes: string[], collectionTheme: string | null | undefined): boolean {
   if (!collectionTheme?.trim()) return true
   const sMatch = normalizeTheme(collectionTheme)
@@ -63,6 +71,8 @@ interface Collection {
   id: string
   title_fr: string
   title_en: string
+  intro_fr?: string
+  intro_en?: string
   description_fr: string
   description_en: string
   theme?: string | null
@@ -71,8 +81,14 @@ interface Collection {
 }
 
 type SequenceItem =
-  | { type: 'work'; data: Work; collectionId?: string; workIndex: number }
-  | { type: 'header'; title: string; subtitle?: string }
+  /** leadInCollection: first image of this collection — micro-scale birth transition */
+  | { type: 'work'; data: Work; collectionId?: string; workIndex: number; leadInCollection: boolean }
+  /** Closing prose after works (FlameText) */
+  | { type: 'header'; title: string; subtitle?: string; collectionId?: string }
+  /** Opening HTML before works (matches Diffusion rich editor) */
+  | { type: 'intro'; title: string; subtitle?: string; collectionId?: string }
+  /** Between collections when worksUx=bridge */
+  | { type: 'bridge'; nextTitle: string }
   | { type: 'outro'; html_fr: string; html_en: string }
 
 interface WorksMode {
@@ -87,64 +103,188 @@ interface WorksMode {
 interface Props {
   works: Work[]
   modes: WorksMode[]
+  /** default | bridge | intro | chapters — query ?worksUx= or NEXT_PUBLIC_WORKS_UX_MODE */
+  worksUxMode?: WorksUxMode
 }
 
-export default function WorksClient({ works, modes }: Props) {
+type SectionPill = { seqIdx: number; title: string; chapterIdx: number }
+
+function buildWorksSequence(
+  works: Work[],
+  mode: WorksMode,
+  lang: 'fr' | 'en',
+  worksUxMode: WorksUxMode,
+  activeChapterIdx: number,
+): { sequence: SequenceItem[]; curatedGroupsNomatch: boolean; collectionSections: SectionPill[] } {
+  const items: SequenceItem[] = []
+  /** Preserve Diffusion order (sort_order). Each collection lists its own works — no cross-collection stealing. */
+  const allActive = mode.collections
+
+  let activeCollections = allActive
+  if (worksUxMode === 'chapters') {
+    const pick = allActive[activeChapterIdx]
+    activeCollections = pick ? [pick] : []
+  }
+
+  for (let i = 0; i < activeCollections.length; i++) {
+    const col = activeCollections[i]
+    let colWorks = worksForCollection(col, works)
+
+    const orderIds = col.manual_work_order ?? []
+    if (orderIds.length > 0 && colWorks.length > 0) {
+      const rank = new Map(orderIds.map((id, idx) => [id, idx]))
+      colWorks = colWorks.slice().sort((a, b) => {
+        const ai = rank.has(a.OeuvreID) ? rank.get(a.OeuvreID)! : Number.POSITIVE_INFINITY
+        const bi = rank.has(b.OeuvreID) ? rank.get(b.OeuvreID)! : Number.POSITIVE_INFINITY
+        return ai - bi
+      })
+    }
+
+    const title = lang === 'en' ? (col.title_en || col.title_fr) : (col.title_fr || col.title_en)
+    const subtitleClosing = lang === 'en' ? (col.description_en || col.description_fr) : (col.description_fr || col.description_en)
+    const introHtml = lang === 'en' ? (col.intro_en ?? '') : (col.intro_fr ?? '')
+    const hasIntro = Boolean(introHtml && htmlToPlain(introHtml).trim())
+    const hasClosing = Boolean((title && title.trim()) || (subtitleClosing && htmlToPlain(subtitleClosing).trim()))
+
+    if (colWorks.length === 0 && !hasClosing && !hasIntro) continue
+
+    if (worksUxMode === 'bridge' && i > 0) {
+      items.push({ type: 'bridge', nextTitle: title?.trim() || '—' })
+    }
+
+    if (hasIntro) {
+      items.push({
+        type: 'intro',
+        title: title?.trim() ? title : '',
+        subtitle: introHtml,
+        collectionId: col.id,
+      })
+    }
+
+    colWorks.forEach((w, wi) => {
+      const workIndex = items.filter(x => x.type === 'work').length
+      items.push({
+        type: 'work',
+        data: w,
+        collectionId: col.id,
+        workIndex,
+        leadInCollection: wi === 0,
+      })
+    })
+
+    if (hasClosing) {
+      items.push({
+        type: 'header',
+        title: title?.trim() ? title : '',
+        subtitle: subtitleClosing,
+        collectionId: col.id,
+      })
+    }
+  }
+
+  if (items.length === 0 && allActive.length === 0) {
+    works.filter(w => w.txtImageNameLink).forEach((w, i) => {
+      items.push({ type: 'work', data: w, workIndex: i, leadInCollection: i === 0 })
+    })
+  }
+
+  const curatedGroupsNomatch = items.length === 0 && allActive.length > 0
+
+  const itemsBeforeOutro = items.slice()
+
+  if (mode.outro_fr || mode.outro_en) {
+    items.push({ type: 'outro', html_fr: mode.outro_fr, html_en: mode.outro_en })
+  }
+
+  const sectionPills: SectionPill[] = []
+  allActive.forEach((col, chapterIdx) => {
+    const label = lang === 'en' ? (col.title_en || col.title_fr) : (col.title_fr || col.title_en)
+    if (worksUxMode === 'chapters') {
+      sectionPills.push({ seqIdx: 0, title: label?.trim() || '—', chapterIdx })
+      return
+    }
+    const intros = itemsBeforeOutro.findIndex(
+      it => it.type === 'intro' && it.collectionId === col.id,
+    )
+    const wrk = itemsBeforeOutro.findIndex(
+      it => it.type === 'work' && it.collectionId === col.id,
+    )
+    const hdr = itemsBeforeOutro.findIndex(
+      it => it.type === 'header' && it.collectionId === col.id,
+    )
+    let seqIdx = -1
+    if (intros >= 0) seqIdx = intros
+    else if (wrk >= 0) seqIdx = wrk
+    else seqIdx = hdr
+    if (seqIdx >= 0) sectionPills.push({ seqIdx, title: label?.trim() || '—', chapterIdx })
+  })
+
+  return { sequence: items, curatedGroupsNomatch, collectionSections: sectionPills }
+}
+
+/** Membership per collection only (no global de-dupe across sequences). */
+function worksForCollection(col: Collection, works: Work[]): Work[] {
+  const seenHere = new Set<number>()
+  const orderIds = col.manual_work_order ?? []
+  const byId = new Map(works.map(w => [w.OeuvreID, w]))
+
+  if (orderIds.length > 0) {
+    const out: Work[] = []
+    for (const id of orderIds) {
+      const w = byId.get(id)
+      if (!w?.txtImageNameLink) continue
+      if (seenHere.has(w.OeuvreID)) continue
+      seenHere.add(w.OeuvreID)
+      out.push(w)
+    }
+    for (const w of works) {
+      if (!w.txtImageNameLink) continue
+      if (seenHere.has(w.OeuvreID)) continue
+      if (!workMatchesCollectionTheme(w.themes, col.theme)) continue
+      seenHere.add(w.OeuvreID)
+      out.push(w)
+    }
+    return out
+  }
+
+  return works.filter(w => {
+    if (!w.txtImageNameLink) return false
+    if (!workMatchesCollectionTheme(w.themes, col.theme)) return false
+    return true
+  }).filter(w => {
+    if (seenHere.has(w.OeuvreID)) return false
+    seenHere.add(w.OeuvreID)
+    return true
+  })
+}
+
+export default function WorksClient({ works, modes, worksUxMode = 'default' }: Props) {
   const { t, lang } = useI18n()
   const [activeModeIdx, setActiveModeIdx] = useState(0)
+  const [activeChapterIdx, setActiveChapterIdx] = useState(0)
   const safeModes = modes.length > 0 ? modes : [{
     id: 'default', label_fr: 'Œuvres', label_en: 'Works',
     collections: [], outro_fr: '', outro_en: '',
   }]
   const mode = safeModes[Math.min(activeModeIdx, safeModes.length - 1)]
-  const collections = mode.collections
 
-  const sequence = useMemo(() => {
-    const items: SequenceItem[] = []
-    const seenWorkIds = new Set<number>()
-    const activeCollections = collections.filter(c => c.is_active)
+  const allActiveLen = useMemo(() => mode.collections.length, [mode.collections])
 
-    for (const col of activeCollections) {
-      let colWorks = works.filter(w => {
-        if (!w.txtImageNameLink) return false
-        if (!workMatchesCollectionTheme(w.themes, col.theme)) return false
-        return true
-      }).filter(w => {
-        if (seenWorkIds.has(w.OeuvreID)) return false
-        seenWorkIds.add(w.OeuvreID)
-        return true
-      })
+  useEffect(() => {
+    if (worksUxMode !== 'chapters') setActiveChapterIdx(0)
+  }, [worksUxMode])
 
-      const orderIds = col.manual_work_order ?? []
-      if (orderIds.length > 0) {
-        const rank = new Map(orderIds.map((id, i) => [id, i]))
-        colWorks = colWorks.slice().sort((a, b) => {
-          const ai = rank.has(a.OeuvreID) ? rank.get(a.OeuvreID)! : Number.POSITIVE_INFINITY
-          const bi = rank.has(b.OeuvreID) ? rank.get(b.OeuvreID)! : Number.POSITIVE_INFINITY
-          return ai - bi
-        })
-      }
-      if (colWorks.length === 0) continue
+  useEffect(() => {
+    setActiveChapterIdx(i => {
+      if (allActiveLen <= 0) return 0
+      return Math.min(i, allActiveLen - 1)
+    })
+  }, [allActiveLen])
 
-      const title = lang === 'en' ? (col.title_en || col.title_fr) : (col.title_fr || col.title_en)
-      const subtitle = lang === 'en' ? (col.description_en || col.description_fr) : (col.description_fr || col.description_en)
-      items.push({ type: 'header', title, subtitle })
-      colWorks.forEach(w => {
-        const workIndex = items.filter(i => i.type === 'work').length
-        items.push({ type: 'work', data: w, collectionId: col.id, workIndex })
-      })
-    }
-
-    if (items.length === 0) {
-      works.filter(w => w.txtImageNameLink).forEach((w, i) => {
-        items.push({ type: 'work', data: w, workIndex: i })
-      })
-    }
-    if (mode.outro_fr || mode.outro_en) {
-      items.push({ type: 'outro', html_fr: mode.outro_fr, html_en: mode.outro_en })
-    }
-    return items
-  }, [works, collections, lang, mode.outro_fr, mode.outro_en])
+  const { sequence, curatedGroupsNomatch, collectionSections } = useMemo(
+    () => buildWorksSequence(works, mode, lang as 'fr' | 'en', worksUxMode, activeChapterIdx),
+    [works, mode, lang, worksUxMode, activeChapterIdx],
+  )
 
   // Last "scrollable" index: last work, or outro card if present (so end overlay
   // appears AFTER the closing text, not over it).
@@ -164,30 +304,41 @@ export default function WorksClient({ works, modes }: Props) {
   const settledIdx = useRef<number>(-1)
   const activePainting = useRef<number>(-1)
 
-  const STEP       = 6000
-  const BIRTH_DIST = 60000
-
-  /** Each collection starts with a header in the scroll sequence — used for jump chips */
-  const collectionSections = useMemo(() => {
-    const out: { seqIdx: number; title: string }[] = []
-    sequence.forEach((item, idx) => {
-      if (item.type === 'header') out.push({ seqIdx: idx, title: item.title })
-    })
-    return out
-  }, [sequence])
+  const STEP       = WORKS_STEP
+  const BIRTH_DIST = WORKS_BIRTH_DIST
+  /** Narrow focus band — less stacking ghost between neighbours */
+  const WORK_IN    = STEP * 0.17
+  const WORK_OUT   = STEP * 0.21
+  /** Text slides: slightly tighter than 0.2×STEP for cleaner hand-offs */
+  const TEXT_BAND  = STEP * 0.175
+  /** First image of each collection: start ~micro, grow across full approach */
+  const LEAD_MICRO = 0.028
+  /** Extra depth (px, more negative) so the lead painting begins farther “back” in Z */
+  const LEAD_Z_PUSH = 38000
 
   const touchLastY  = useRef<number | null>(null)
   const touchVelY   = useRef(0)
 
+  /** After sequence changes (mode/tab), keep depth inside the new stack — no runaway target. */
   useEffect(() => {
-    // maxScroll: enough to push endProgress to 1, plus a bit of resistance room
-    const maxScroll = lastWorkIdx * STEP + STEP * 1.5
-
-    const softClamp = (v: number) => {
-      if (v < 0) return 0
-      if (v <= maxScroll) return v
-      return maxScroll + (v - maxScroll) * 0.1
+    const maxScroll =
+      sequence.length === 0
+        ? 0
+        : (sequence.length - 1) * WORKS_STEP + WORKS_STEP * WORKS_END_TAIL
+    if (targetDepth.current > maxScroll) {
+      targetDepth.current = maxScroll
+      currentDepth.current = maxScroll
+      setDisplayDepth(maxScroll)
     }
+  }, [sequence])
+
+  useEffect(() => {
+    const maxScroll =
+      sequence.length === 0
+        ? 0
+        : (sequence.length - 1) * STEP + STEP * WORKS_END_TAIL
+
+    const softClamp = (v: number) => Math.max(0, Math.min(v, maxScroll))
 
     const handleWheel = (e: WheelEvent) => {
       targetDepth.current = softClamp(targetDepth.current + e.deltaY * 2.5)
@@ -284,7 +435,7 @@ export default function WorksClient({ works, modes }: Props) {
       window.removeEventListener('keydown',    handleKey)
       cancelAnimationFrame(rafId)
     }
-  }, [sequence, lastWorkIdx])
+  }, [sequence, lastWorkIdx, STEP])
 
   const [burnSnapshot, setBurnSnapshot] = useState<Map<number, number>>(new Map())
   useEffect(() => {
@@ -293,6 +444,37 @@ export default function WorksClient({ works, modes }: Props) {
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
   }, [])
+
+  const opacityBirth = (dist: number) =>
+    Math.pow(Math.max(0, (dist + BIRTH_DIST) / BIRTH_DIST), 4)
+  const workSlideOpacity = (dist: number) =>
+    dist < 0 ? opacityBirth(dist) : Math.max(0, 1 - Math.max(0, dist - WORK_IN) / WORK_OUT)
+  const textSlideOpacity = (dist: number) =>
+    dist < 0 ? opacityBirth(dist) : Math.max(0, 1 - Math.abs(dist) / TEXT_BAND)
+
+  /**
+   * After intro/bridge, the next work used to “peek” at ~60%+ opacity while intro was still
+   * centered (birth curve at dist = −STEP). This gates the painting to 0 until scroll gets
+   * within `gate` of the work center, then ramps — proper sequence: text alone → then image.
+   */
+  function workRevealAfterTextSlide(dist: number, gate: number): number {
+    if (dist >= 0) return 1
+    if (dist <= -gate) return 0
+    return (dist + gate) / gate
+  }
+
+  /** Wheel inside scrollable prose should scroll text, not advance the slide stack */
+  const absorbNestedWheel = (e: WheelEvent<HTMLDivElement>) => {
+    const t = e.currentTarget
+    const { scrollTop, scrollHeight, clientHeight } = t
+    if (scrollHeight <= clientHeight + 2) return
+    const dy = e.deltaY
+    const atTop = scrollTop <= 1
+    const atBottom = scrollTop + clientHeight >= scrollHeight - 2
+    if ((dy < 0 && !atTop) || (dy > 0 && !atBottom)) {
+      e.stopPropagation()
+    }
+  }
 
   return (
     <div className="w-page-enter">
@@ -349,18 +531,57 @@ export default function WorksClient({ works, modes }: Props) {
           transform-origin: center center; transform: scale(var(--burns-zoom, 1));
           will-change: transform;
         }
-        .w-parallax-header {
-          position: relative; width: 100vw; height: 100vh;
+        /* Full-viewport typography slides — isolated from image stack, long copy scrolls */
+        .w-text-slide {
+          position: relative; width: 100%; min-height: 100vh;
           display: flex; flex-direction: column; align-items: center; justify-content: center;
-          text-align: center; padding: 0 clamp(32px, 8vw, 120px);
-          transform-style: preserve-3d; transform: rotateX(15deg); cursor: pointer;
+          text-align: center;
+          padding: clamp(88px, 11vh, 120px) clamp(24px, 6vw, 96px) clamp(96px, 14vh, 140px);
+          pointer-events: none;
         }
+        .w-text-slide-scroll {
+          width: 100%; max-width: min(680px, 92vw);
+          max-height: min(70vh, 640px);
+          overflow-y: auto; overflow-x: hidden;
+          -webkit-overflow-scrolling: touch;
+          pointer-events: auto;
+          cursor: auto;
+          padding: clamp(18px, 2.8vw, 32px) clamp(14px, 2.5vw, 24px);
+          margin-top: clamp(10px, 2vh, 28px);
+          background: rgba(248, 245, 239, 0.96);
+          border: 1px solid rgba(26, 24, 22, 0.07);
+          border-radius: 3px;
+          box-shadow:
+            0 12px 56px rgba(248, 245, 239, 0.98),
+            0 0 0 1px rgba(255, 252, 245, 0.5);
+        }
+        .w-text-slide-scroll:first-child { margin-top: 0; }
+        .w-bridge-inner {
+          max-height: none;
+          padding: clamp(22px, 3vw, 36px) clamp(20px, 4vw, 40px);
+        }
+        /* Intro from CMS rich editor — readable, matches Atelier preview */
+        .w-intro-prose {
+          font-family: 'Instrument Serif', serif;
+          font-size: clamp(17px, 2.4vw, 26px);
+          line-height: 1.5;
+          color: #252320;
+          text-align: center;
+          font-weight: 400;
+        }
+        .w-intro-prose p { margin: 0.45em 0; }
+        .w-intro-prose p:first-child { margin-top: 0; }
+        .w-intro-prose p:last-child { margin-bottom: 0; }
+        .w-intro-prose strong { font-weight: 600; }
+        .w-intro-prose em { font-style: italic; }
         .w-header-title {
           font-family: 'Instrument Serif', serif; font-size: clamp(80px, 15vw, 240px);
-          color: #1a1816; letter-spacing: -0.05em; line-height: 0.85; margin-bottom: 48px;
+          color: #1a1816; letter-spacing: -0.05em; line-height: 0.85;
+          margin-bottom: clamp(12px, 2vh, 32px);
           transition: opacity 0.3s;
+          pointer-events: none;
         }
-        .w-parallax-header:hover .w-header-title { opacity: 0.6; }
+        .w-text-slide:hover .w-header-title { opacity: 0.72; }
 
         /* ── Nav ── */
         .w-nav {
@@ -525,17 +746,38 @@ export default function WorksClient({ works, modes }: Props) {
           border-color: rgba(26,24,22,0.35);
           background: rgba(255,252,245,0.92);
         }
+        .w-section-pill.active {
+          color: #1a1816;
+          border-color: rgba(26,24,22,0.45);
+          background: rgba(255,252,245,0.98);
+          box-shadow: 0 0 0 1px rgba(26,24,22,0.08);
+        }
 
         /* ── Outro card ── */
         .w-outro-card {
           width: min(720px, 86vw);
+          max-height: min(82vh, 800px);
           padding: clamp(28px, 5vw, 56px) clamp(20px, 4vw, 40px);
           text-align: center;
+          display: flex; flex-direction: column;
+          background: rgba(248, 245, 239, 0.55);
+          border-radius: 4px;
+          pointer-events: auto;
         }
         .w-outro-rule {
+          flex-shrink: 0;
           width: clamp(40px, 6vw, 64px); height: 1px;
           background: rgba(20,24,22,0.35);
-          margin: 0 auto clamp(20px, 3vw, 32px);
+          margin: 0 auto clamp(16px, 2.5vw, 28px);
+        }
+        .w-outro-scroll-body {
+          flex: 1;
+          min-height: 0;
+          overflow-y: auto;
+          overflow-x: hidden;
+          -webkit-overflow-scrolling: touch;
+          padding-right: 4px;
+          margin-right: -4px;
         }
         .w-outro-text {
           font-family: 'Instrument Serif', serif;
@@ -550,6 +792,35 @@ export default function WorksClient({ works, modes }: Props) {
       <div className="w-paper-bg" />
       <div className="grain-overlay" id="grain" />
       <PublicNav active="works" prefix="w" />
+
+      {worksUxMode !== 'default' && (
+        <div
+          className="t-mono-xs"
+          style={{
+            position: 'fixed', top: 14, left: 14, zIndex: 400,
+            padding: '6px 10px', borderRadius: 4,
+            background: 'rgba(248,245,239,0.92)', border: '1px solid rgba(26,24,22,0.12)',
+            fontSize: 9, letterSpacing: 2, color: '#6a6660', textTransform: 'uppercase',
+            pointerEvents: 'none',
+          }}
+        >
+          {t('pub_works_preview_badge')} · {worksUxMode}
+        </div>
+      )}
+
+      {curatedGroupsNomatch && (
+        <div
+          role="status"
+          style={{
+            position: 'fixed', left: '50%', top: '50%', transform: 'translate(-50%, -50%)',
+            zIndex: 400, maxWidth: 'min(420px, 88vw)', textAlign: 'center',
+            fontSize: 12, letterSpacing: '0.08em', lineHeight: 1.65, color: '#6a6660',
+            pointerEvents: 'none',
+          }}
+        >
+          {t('pub_works_groups_nomatch')}
+        </div>
+      )}
 
       {safeModes.length > 1 && (
         <div className="w-modes-wrap">
@@ -566,6 +837,7 @@ export default function WorksClient({ works, modes }: Props) {
                   onClick={() => {
                     if (i === activeModeIdx) return
                     setActiveModeIdx(i)
+                    setActiveChapterIdx(0)
                     targetDepth.current = 0
                     currentDepth.current = 0
                     setDisplayDepth(0)
@@ -585,10 +857,24 @@ export default function WorksClient({ works, modes }: Props) {
           const centerPos = idx * STEP
           const dist      = displayDepth - centerPos
 
-          const rawOpacity = dist < 0
-            ? Math.pow(Math.max(0, (dist + BIRTH_DIST) / BIRTH_DIST), 4)
-            : Math.max(0, 1 - Math.max(0, dist - STEP * 0.3) / (STEP * 0.4))
-          const opacity = rawOpacity
+          const prevItem = idx > 0 ? sequence[idx - 1] : undefined
+          const afterIntroOrBridge =
+            item.type === 'work'
+            && prevItem
+            && (prevItem.type === 'intro' || prevItem.type === 'bridge')
+
+          const AFTER_TEXT_GATE = STEP * 0.44
+
+          let opacity =
+            item.type === 'work'
+              ? workSlideOpacity(dist)
+              : item.type === 'bridge' || item.type === 'intro' || item.type === 'header' || item.type === 'outro'
+                ? textSlideOpacity(dist)
+                : 0
+
+          if (afterIntroOrBridge) {
+            opacity *= workRevealAfterTextSlide(dist, AFTER_TEXT_GATE)
+          }
 
           let translateZ = 0
           let scale = 1
@@ -601,18 +887,60 @@ export default function WorksClient({ works, modes }: Props) {
 
           if (opacity <= 0 && Math.abs(dist) > BIRTH_DIST + 5000) return null
 
-          const zIndex = 1000 - Math.floor(Math.abs(dist) / 50)
+          let zIndex = 1000 - Math.floor(Math.abs(dist) / 50)
+          if (
+            item.type !== 'work'
+            && Math.abs(dist) < STEP * 0.32
+          ) {
+            zIndex = Math.max(zIndex, 920)
+          }
 
-          if (item.type === 'header') {
+          if (item.type === 'bridge') {
             return (
-              <div key={`header-${idx}`} className="w-depth-item" style={{
-                opacity: Math.max(0, 1 - Math.abs(dist / 3000)),
+              <div key={`bridge-${idx}`} className="w-depth-item" style={{
+                opacity,
+                transform: `translate3d(0, 0, ${translateZ * 1.15}px) scale(${scale * 0.82})`,
+                zIndex, pointerEvents: Math.abs(dist) < TEXT_BAND ? 'auto' : 'none',
+              }}>
+                <div className="w-text-slide">
+                  <div className="w-text-slide-scroll w-bridge-inner">
+                  <div style={{
+                    fontSize: 'clamp(8px, 1vw, 10px)', letterSpacing: '0.35em', textTransform: 'uppercase',
+                    color: '#9a9690', marginBottom: 14,
+                  }}>{t('pub_works_bridge_label')}</div>
+                  <div style={{
+                    fontFamily: 'Instrument Serif, serif', fontSize: 'clamp(22px, 4vw, 34px)',
+                    color: '#3a3834', lineHeight: 1.25,
+                  }}>{item.nextTitle}</div>
+                  </div>
+                </div>
+              </div>
+            )
+          }
+
+          if (item.type === 'header' || item.type === 'intro') {
+            const k = item.type === 'intro' ? `intro-${item.collectionId ?? idx}` : `header-${item.collectionId ?? idx}`
+            return (
+              <div key={k} className="w-depth-item" style={{
+                opacity,
                 transform: `translate3d(0, 0, ${translateZ * 1.2}px) scale(${scale * 0.8})`,
-                zIndex: 252, pointerEvents: Math.abs(dist) < 2000 ? 'auto' : 'none',
-              }} onClick={() => { targetDepth.current = 0 }}>
-                <div className="w-parallax-header">
-                  <h1 className="w-header-title">{item.title}</h1>
-                  {item.subtitle && <FlameText text={item.subtitle} />}
+                zIndex, pointerEvents: Math.abs(dist) < TEXT_BAND ? 'auto' : 'none',
+              }}>
+                <div className="w-text-slide">
+                  {item.title?.trim() ? <h1 className="w-header-title">{item.title}</h1> : null}
+                  {item.subtitle ? (
+                    item.type === 'intro' ? (
+                      <div
+                        className="w-text-slide-scroll w-intro-prose"
+                        onWheel={absorbNestedWheel}
+                        dangerouslySetInnerHTML={{ __html: item.subtitle }}
+                      />
+                    ) : (
+                      <div className="w-text-slide-scroll" onWheel={absorbNestedWheel}>
+                        <FlameText text={item.subtitle} />
+                      </div>
+                    )
+                  ) : null}
                 </div>
               </div>
             )
@@ -620,35 +948,60 @@ export default function WorksClient({ works, modes }: Props) {
 
           if (item.type === 'outro') {
             const html = lang === 'en' ? (item.html_en || item.html_fr) : (item.html_fr || item.html_en)
-            // Fade in only while approaching from above; stay solid once centered or scrolled past
-            const outroOpacity = dist < 0 ? Math.max(0, 1 + dist / 3500) : 1
             return (
               <div key={`outro-${idx}`} className="w-depth-item" style={{
-                opacity: outroOpacity,
+                opacity,
                 transform: `translate3d(0, 0, ${translateZ * 1.2}px) scale(${scale * 0.85})`,
-                zIndex: 252, pointerEvents: Math.abs(dist) < 2000 ? 'auto' : 'none',
+                zIndex, pointerEvents: Math.abs(dist) < TEXT_BAND ? 'auto' : 'none',
               }}>
                 <div className="w-outro-card">
                   <div className="w-outro-rule" />
-                  <div className="w-outro-text" dangerouslySetInnerHTML={{ __html: html }} />
+                  <div className="w-outro-scroll-body" onWheel={absorbNestedWheel}>
+                    <div className="w-outro-text" dangerouslySetInnerHTML={{ __html: html }} />
+                  </div>
                 </div>
               </div>
             )
           }
 
+          if (item.type !== 'work') return null
+
           const work = item.data
-          const isFirstWork = item.workIndex === 0
+          const isLead = item.leadInCollection
           let slideTranslateX = 0, slideRotateY = 0
-          if (isFirstWork && dist < 0) {
+          if (isLead && dist < 0) {
             const p     = Math.max(0, Math.min(1, (dist + BIRTH_DIST) / BIRTH_DIST))
             const eased = Math.pow(p, 0.5)
             slideTranslateX = (1 - eased) * 160
             slideRotateY    = (1 - eased) * 42
           }
 
+          let paintScale = scale
+          if (isLead && dist < 0) {
+            const p = Math.max(0, Math.min(1, (dist + BIRTH_DIST) / BIRTH_DIST))
+            paintScale = LEAD_MICRO + (1 - LEAD_MICRO) * Math.pow(p, 0.42)
+          }
+
+          /** Lead: extra negative Z at birth so it reads deeper in the stack */
+          let translateZPaint = translateZ
+          if (isLead && dist < 0) {
+            const birthP = Math.max(0, Math.min(1, (dist + BIRTH_DIST) / BIRTH_DIST))
+            translateZPaint = translateZ - LEAD_Z_PUSH * (1 - birthP)
+          }
+
           const approachWindow = STEP * 2
           const shapeProgress  = dist < 0 ? Math.max(0, Math.min(1, (dist + approachWindow) / approachWindow)) : 1
-          const cornerRadius   = work.isRound ? 50 : Math.round((1 - shapeProgress) * 50)
+          /** Lead rectangles: stay pill-round longer; others keep slide window curve */
+          let cornerRadius: number
+          if (work.isRound) {
+            cornerRadius = 50
+          } else if (isLead && dist < 0) {
+            const birthP = Math.max(0, Math.min(1, (dist + BIRTH_DIST) / BIRTH_DIST))
+            const roundHold = Math.pow(1 - birthP, 0.48)
+            cornerRadius = Math.round(roundHold * 50)
+          } else {
+            cornerRadius = Math.round((1 - shapeProgress) * 50)
+          }
 
           const shadowIntensity = Math.max(0, 1 - Math.abs(dist) / (STEP * 1.5))
           const shadowBlur      = Math.round(shadowIntensity * 80)
@@ -658,12 +1011,12 @@ export default function WorksClient({ works, modes }: Props) {
             : 'none'
 
           const imgSrc = imageUrl(work.txtImageNameLink) ?? undefined
-          const itemTransform = isFirstWork
-            ? `translate3d(${slideTranslateX}vw, 0, ${translateZ}px) rotateY(${slideRotateY}deg) scale(${scale})`
-            : `translate3d(0, 0, ${translateZ}px) scale(${scale})`
+          const itemTransform = isLead
+            ? `translate3d(${slideTranslateX}vw, 0, ${translateZPaint}px) rotateY(${slideRotateY}deg) scale(${paintScale})`
+            : `translate3d(0, 0, ${translateZ}px) scale(${paintScale})`
 
           return (
-            <div key={`work-${work.OeuvreID}`} className="w-depth-item" style={{ opacity, transform: itemTransform, zIndex }}>
+            <div key={`work-${idx}-${work.OeuvreID}`} className="w-depth-item" style={{ opacity, transform: itemTransform, zIndex }}>
               <div className="w-artwork-wrap">
                 <div className="w-image-container" style={{
                   '--painting-filter': paintingFilter,
@@ -722,22 +1075,24 @@ export default function WorksClient({ works, modes }: Props) {
       </div>
 
       <div className="w-bottom-stack">
-        {collectionSections.length > 1 && (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, pointerEvents: 'none' }}>
+        {worksUxMode === 'chapters' && collectionSections.length >= 2 && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
             <span className="w-section-nav-label">{t('pub_works_collections')}</span>
-            <div className="w-section-pills" aria-label={lang === 'en' ? 'Jump to collection' : 'Aller à une collection'}>
+            <div className="w-section-pills" aria-label={lang === 'en' ? 'Switch chapter' : 'Changer de séquence'}>
               {collectionSections.map((s) => (
                 <button
-                  key={s.seqIdx}
+                  key={`pill-${s.chapterIdx}`}
                   type="button"
-                  className="w-section-pill"
-                  title={lang === 'en' ? `Jump to: ${s.title}` : `Aller à : ${s.title}`}
+                  className={`w-section-pill${s.chapterIdx === activeChapterIdx ? ' active' : ''}`}
+                  title={lang === 'en' ? `Open: ${s.title}` : `Ouvrir : ${s.title}`}
                   onClick={() => {
-                    const pos = s.seqIdx * STEP
-                    targetDepth.current = pos
-                    currentDepth.current = pos
-                    setDisplayDepth(pos)
+                    setActiveChapterIdx(s.chapterIdx)
+                    targetDepth.current = 0
+                    currentDepth.current = 0
+                    setDisplayDepth(0)
                     setEndOpacity(0)
+                    setActiveWork(null)
+                    setCaptionOpacity(0)
                   }}
                 >
                   {s.title || '—'}

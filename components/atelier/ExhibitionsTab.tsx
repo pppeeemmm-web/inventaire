@@ -1003,6 +1003,8 @@ export function ExhibitionsTab({ oeuvres, contacts, themes, tM, selection, setSe
     if (!selected) return
     if (!confirm(`Supprimer l'exposition "${selected.nom}" ? Cette action est irréversible.`)) return
     setLoading(true)
+    // Unlink any pipeline processes pointing at this exhibition project (do not delete those tracks).
+    await supabase.from('suivi_process').update({ exhibition_process_id: null } as any).eq('exhibition_process_id', selected.id)
     const { error } = await supabase.from('suivi_process').delete().eq('id', selected.id)
     if (!error) {
       const next = exhibitions.filter(e => e.id !== selected.id)
@@ -1012,13 +1014,16 @@ export function ExhibitionsTab({ oeuvres, contacts, themes, tM, selection, setSe
     setLoading(false)
   }
 
-  async function handleCreate(e: React.FormEvent) {
+  async function handleCreate(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    if (!newNom.trim()) return
+    // Read live DOM value — avoids empty submit when Enter is pressed before React
+    // commits the last onChange, which also kept the submit button disabled.
+    const nom = String(new FormData(e.currentTarget).get('nom') ?? '').trim()
+    if (!nom) return
     setCreating(true)
     const { data, error } = await supabase
       .from('suivi_process')
-      .insert({ nom: newNom.trim(), type: newType, statut: 'prevue' }) // Start as Planned
+      .insert({ nom, type: newType, statut: 'prevue' }) // Start as Planned
       .select()
       .single()
     setCreating(false)
@@ -1119,14 +1124,14 @@ export function ExhibitionsTab({ oeuvres, contacts, themes, tM, selection, setSe
         {/* New form */}
         {showNew && (
           <form onSubmit={handleCreate} style={{ padding: '10px 12px', borderBottom: '1px solid var(--bd)', display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <input value={newNom} onChange={(e) => setNewNom(e.target.value)} placeholder="Nom de l'exposition…" style={inputSt} autoFocus />
+            <input name="nom" value={newNom} onChange={(e) => setNewNom(e.target.value)} placeholder="Nom de l'exposition…" style={inputSt} autoFocus />
             <select value={newType} onChange={(e) => setNewType(e.target.value)} style={inputSt}>
               {EXHIBITION_READY_TYPES.map(t => (
                 <option key={t} value={t}>{PIPELINE_LABELS[t as any] || t}</option>
               ))}
             </select>
             <div style={{ display: 'flex', gap: 6 }}>
-              <button type="submit" disabled={creating || !newNom.trim()} className="btn sm" style={{ flex: 1 }}>Créer</button>
+              <button type="submit" disabled={creating} className="btn sm" style={{ flex: 1 }}>Créer</button>
               <button type="button" onClick={() => setShowNew(false)} className="btn sm">Annuler</button>
             </div>
           </form>

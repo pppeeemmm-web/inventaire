@@ -5,10 +5,6 @@
 
 import { createServiceClient } from '@/lib/supabase/server'
 import {
-  syncFirstWorksModeToSections,
-  syncSectionsToFirstWorksMode,
-} from '@/lib/portfolio-sync'
-import {
   S3Client, PutObjectCommand, GetObjectCommand,
 } from '@aws-sdk/client-s3'
 
@@ -150,21 +146,17 @@ export async function extractDocumentText(formData: FormData): Promise<ExtractTe
   }
 }
 
-/** Publier — « Sections Portfolio » remplace les collections du mode 1 /works (+ mirror legacy). */
-export async function publishPortfolioToWorks(config: unknown): Promise<SaveConfigResult> {
-  const merged = syncSectionsToFirstWorksMode(config as never)
-  return savePortfolioConfig(merged)
-}
-
-/** Publier — les collections du mode 1 /works remplacent les blocs « Sections Portfolio » (+ mirror legacy). */
-export async function publishWorksToPortfolio(config: unknown): Promise<SaveConfigResult> {
-  const merged = syncFirstWorksModeToSections(config as never)
-  return savePortfolioConfig(merged)
-}
-
 export async function savePortfolioConfig(config: unknown): Promise<SaveConfigResult> {
   try {
-    const json = JSON.stringify(config, null, 2)
+    const c = config as Record<string, unknown>
+    const modes = Array.isArray(c.works_modes) ? (c.works_modes as { collections?: unknown[] }[]) : []
+    const m0 = modes[0]
+    const normalized =
+      m0 && Array.isArray(m0.collections)
+        ? { ...c, works_collections: JSON.parse(JSON.stringify(m0.collections)) as unknown }
+        : { ...c }
+
+    const json = JSON.stringify(normalized, null, 2)
     const buf  = Buffer.from(json, 'utf-8')
 
     const s3 = r2Client()

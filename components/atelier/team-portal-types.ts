@@ -20,8 +20,12 @@ export interface TeamPortalClientProps {
   groupWorkCount?: Record<string, number>
   addresses?:     any[]
   themePublicStats?: Record<number, { total: number; pub: number }>
-  themePrivateWorks?: Record<number, { OeuvreID: number; txtImageNameLink: string | null; isPublic: boolean }[]>
-  groupPrivateWorks?: Record<string, { OeuvreID: number; txtImageNameLink: string | null; isPublic: boolean }[]>
+  /** œuvre IDs per theme/group — resolve thumb/public from `oeuvres` */
+  themePrivateWorks?: Record<number, number[]>
+  groupPrivateWorks?: Record<string, number[]>
+  /** Serialized junction maps (same rows as `oeuvre_theme` / `working_group_work`) */
+  oeuvreThemeIdsByOeuvre?: Record<number, number[]>
+  oeuvreGroupIdsByOeuvre?: Record<number, string[]>
   themeToGroups?: Record<number, string[]>
   groupToThemes?: Record<string, number[]>
 }

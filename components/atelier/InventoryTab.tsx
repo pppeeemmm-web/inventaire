@@ -3,7 +3,8 @@
 // InventoryTab — filter bar + three views: list (table+preview), grid, graph placeholder.
 // Mirrors source/team/inventory.jsx.
 
-import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
+import { useState, useMemo, useEffect, useLayoutEffect, useRef, useCallback } from 'react'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
@@ -50,7 +51,6 @@ const FIELD_LABELS: Record<string, string> = {
   Profondeur:      'Profondeur (cm)',
   Poids:           'Poids (kg)',
   PresentationID:  'Présentation',
-  Commentaires:    'Notes',
   NeedsPhotograph: 'À photographier',
   statusId:        'État',
   ContactID:       'Contact',
@@ -61,7 +61,6 @@ const FIELD_LABELS: Record<string, string> = {
   txtImageNameLink: 'Image',
   IsCommission:    'Commission',
   DateLivraison:   'Deadline',
-  Historique:      'Historique',
 }
 
 interface FieldDef { k: string; l: string; t: 'num' | 'text' | 'bool' | 'lookup' | 'year' }
@@ -186,7 +185,12 @@ interface SharedProps {
 
 type View = 'list' | 'grid' | 'graph'
 
-
+const INV_LIST_ROW_H = 44
+const INV_TABLE_COLS = 13
+const INV_GRID_GAP = 12
+const INV_GRID_PAD = 16
+const INV_GRID_MIN_CELL = 140
+const INV_GRID_ROW_H = 228
 
 // ── Main component ──────────────────────────────────────────────────
 
@@ -195,6 +199,8 @@ export function InventoryTab({
   techniques, supports, formats = [], themes = [], groups = [],
   contacts = [], presentations = [],
   selection, setSelection, onOpen,
+  oeuvreThemeIdsByOeuvre = {},
+  oeuvreGroupIdsByOeuvre = {},
 }: SharedProps & {
   techniques:     { TechniqueID: number; Technique: string | null }[]
   supports:       { SupportID:   number; Support:   string | null }[]
@@ -203,6 +209,9 @@ export function InventoryTab({
   groups?:        { id: string; name: string }[]
   contacts?:      { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null; Role: string | null; Ville?: string | null; Pays?: string | null }[]
   presentations?: { PresentationID: number; Nom: string | null }[]
+  /** From RSC (oeuvre_theme / working_group_work); avoids duplicate client fetch */
+  oeuvreThemeIdsByOeuvre?: Record<number, number[]>
+  oeuvreGroupIdsByOeuvre?: Record<number, string[]>
 }) {
   const { t } = useI18n()
 
@@ -282,37 +291,20 @@ export function InventoryTab({
         setFilterGroup(id)
       }
     }
-    setShowGroups(false)
     setLoadingGrp(null)
   }, [setSelection])
 
-  // OeuvreTheme junction: Map<OeuvreID, ThemeID[]>
-  const [oeuvreThemeMap, setOeuvreThemeMap] = useState<Map<number, number[]>>(new Map())
-  const [oeuvreGroupMap, setOeuvreGroupMap] = useState<Map<number, string[]>>(new Map())
+  const oeuvreThemeMap = useMemo(() => {
+    const m = new Map<number, number[]>()
+    for (const [k, arr] of Object.entries(oeuvreThemeIdsByOeuvre)) m.set(Number(k), arr)
+    return m
+  }, [oeuvreThemeIdsByOeuvre])
 
-  useEffect(() => {
-    const sb = createClient()
-    // Fetch Themes
-    ;(sb.from('oeuvre_theme') as any).select('oeuvre_id, theme_id').range(0, 10000).then(({ data }: { data: { oeuvre_id: number; theme_id: number }[] | null }) => {
-      if (!data) return
-      const map = new Map<number, number[]>()
-      data.forEach(({ oeuvre_id, theme_id }) => {
-        if (!map.has(oeuvre_id)) map.set(oeuvre_id, [])
-        map.get(oeuvre_id)!.push(theme_id)
-      })
-      setOeuvreThemeMap(map)
-    }).catch(err => console.error("Theme Map Error:", err))
-    // Fetch Groups
-    ;(sb.from('working_group_work') as any).select('oeuvre_id, group_id').range(0, 10000).then(({ data }: { data: { oeuvre_id: number; group_id: string }[] | null }) => {
-      if (!data) return
-      const map = new Map<number, string[]>()
-      data.forEach(({ oeuvre_id, group_id }) => {
-        if (!map.has(oeuvre_id)) map.set(oeuvre_id, [])
-        map.get(oeuvre_id)!.push(group_id)
-      })
-      setOeuvreGroupMap(map)
-    }).catch(err => console.error("Group Map Error:", err))
-  }, [])
+  const oeuvreGroupMap = useMemo(() => {
+    const m = new Map<number, string[]>()
+    for (const [k, arr] of Object.entries(oeuvreGroupIdsByOeuvre)) m.set(Number(k), arr)
+    return m
+  }, [oeuvreGroupIdsByOeuvre])
 
   const sortedThemes = useMemo(() => [...themes].sort((a, b) => a.name.localeCompare(b.name, 'fr')), [themes])
   const thM = useMemo(
@@ -701,6 +693,7 @@ export function InventoryTab({
               selection={selection} setSelection={setSelection}
               sortKey={sortKey} sortDir={sortDir} toggleSort={toggleSort}
               onImageDoubleClick={() => { setShowPreview(true); setPreviewExpanded(true) }}
+              onOpen={onOpen}
             />
             {showPreview && (
               <WorkDrawer
@@ -943,7 +936,7 @@ function InvSelect({
 function InvList({
   rows, tM, sM, cM, locMap, statusLabelMap, focused, setFocused, selection, setSelection, 
   sortKey, sortDir, toggleSort,
-  onImageDoubleClick, publicMode,
+  onImageDoubleClick, onOpen, publicMode,
 }: {
   rows:           Oeuvre[]
   tM:             Record<number, string>
@@ -959,6 +952,7 @@ function InvList({
   sortDir:        'asc' | 'desc'
   toggleSort:     (k: string) => void
   onImageDoubleClick: () => void
+  onOpen:         (o: Oeuvre) => void
   publicMode?:    boolean
 }) {
   const { t } = useI18n()
@@ -994,13 +988,42 @@ function InvList({
     }
   }
 
+  const virtualizer = useVirtualizer({
+    count: visible.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => INV_LIST_ROW_H,
+    overscan: 15,
+  })
+
+  const vItems = virtualizer.getVirtualItems()
+  const padTop = vItems.length ? vItems[0].start : 0
+  const padBot = vItems.length ? virtualizer.getTotalSize() - vItems[vItems.length - 1].end : 0
+
+  function focusRowAt(nextIdx: number) {
+    const o = visible[nextIdx]
+    if (!o) return
+    setFocused(o)
+    virtualizer.scrollToIndex(nextIdx, { align: 'auto' })
+  }
+
+  function onKeyNav(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
+    e.preventDefault()
+    const cur = focused ? visible.findIndex((x) => x.OeuvreID === focused.OeuvreID) : -1
+    if (e.key === 'ArrowDown') focusRowAt(cur < 0 ? 0 : Math.min(visible.length - 1, cur + 1))
+    else focusRowAt(cur <= 0 ? 0 : cur - 1)
+  }
+
   const router = useRouter()
 
   return (
     <div
       ref={scrollRef}
+      data-testid="inventory-virtual-scroll"
+      tabIndex={0}
       onScroll={handleScroll}
-      style={{ flex: 1, minWidth: 0, overflow: 'auto', borderRight: '1px solid var(--bd)' }}
+      onKeyDown={onKeyNav}
+      style={{ flex: 1, minWidth: 0, overflow: 'auto', borderRight: '1px solid var(--bd)', outline: 'none' }}
     >
       <table style={{ 
         width: '100%', 
@@ -1033,24 +1056,42 @@ function InvList({
             <th onClick={() => toggleSort('OeuvreID')} style={{ width: 40, color: 'var(--tx3)', fontSize: 12, cursor: 'pointer' }}>ID <SortInd k="OeuvreID" current={sortKey} dir={sortDir} /></th>
             <th style={{ width: 44 }}></th>
             <th onClick={() => toggleSort('Titre')} style={{ textAlign: 'left', padding: '0 4px', width: '15%', cursor: 'pointer' }}>{t('title')} <SortInd k="Titre" current={sortKey} dir={sortDir} /></th>
-            <th style={{ textAlign: 'left', padding: '0 4px', width: '20%' }}>Description</th>
+            <th style={{ textAlign: 'left', padding: '0 4px', width: '20%' }}>Médium</th>
             <th style={{ textAlign: 'left', padding: '0 4px', width: 60 }}>Dims</th>
-            <th onClick={() => toggleSort('Année')} style={{ textAlign: 'left', padding: '0 4px', width: 35, cursor: 'pointer' }}>Year <SortInd k="Année" current={sortKey} dir={sortDir} /></th>
+            <th onClick={() => toggleSort('Année')} style={{ textAlign: 'left', padding: '0 4px', width: 35, cursor: 'pointer' }}>Année <SortInd k="Année" current={sortKey} dir={sortDir} /></th>
             <th onClick={() => toggleSort('Prix')} style={{ textAlign: 'left', padding: '0 4px', width: 60, cursor: 'pointer' }}>Prix <SortInd k="Prix" current={sortKey} dir={sortDir} /></th>
             <th onClick={() => toggleSort('Contact')} style={{ textAlign: 'left', padding: '0 4px', width: 80, cursor: 'pointer' }}>Contact <SortInd k="Contact" current={sortKey} dir={sortDir} /></th>
-            <th onClick={() => toggleSort('Custodian')} style={{ textAlign: 'left', padding: '0 4px', width: 85, cursor: 'pointer' }}>Custodian <SortInd k="Custodian" current={sortKey} dir={sortDir} /></th>
-            <th onClick={() => toggleSort('Stage')} style={{ textAlign: 'left', padding: '0 4px', width: 85, cursor: 'pointer' }}>Stage <SortInd k="Stage" current={sortKey} dir={sortDir} /></th>
-            <th onClick={() => toggleSort('Status')} style={{ textAlign: 'left', padding: '0 4px', width: 70, cursor: 'pointer' }}>Status <SortInd k="Status" current={sortKey} dir={sortDir} /></th>
-            <th onClick={() => toggleSort('Comm')} style={{ textAlign: 'left', padding: '0 4px', width: 60, cursor: 'pointer' }}>Comm <SortInd k="Comm" current={sortKey} dir={sortDir} /></th>
+            <th onClick={() => toggleSort('Custodian')} style={{ textAlign: 'left', padding: '0 4px', width: 85, cursor: 'pointer' }}>Emplacement <SortInd k="Custodian" current={sortKey} dir={sortDir} /></th>
+            <th
+              colSpan={2}
+              onClick={() => toggleSort('Status')}
+              style={{ textAlign: 'left', padding: '0 4px', minWidth: 168, cursor: 'pointer' }}
+              title="État commercial (disponible, production, réservé, vendu…)"
+            >
+              État <SortInd k="Status" current={sortKey === 'Stage' ? 'Status' : sortKey} dir={sortDir} />
+            </th>
+            <th
+              onClick={() => toggleSort('Comm')}
+              style={{ textAlign: 'left', padding: '0 4px', width: 72, cursor: 'pointer' }}
+              title="Rappel si réservé (l’état détaillé est dans la colonne État)"
+            >
+              Réserve <SortInd k="Comm" current={sortKey} dir={sortDir} />
+            </th>
           </tr>
         </thead>
         <tbody>
-          {visible.map((o, idx) => {
+          {padTop > 0 && (
+            <tr>
+              <td colSpan={INV_TABLE_COLS} style={{ height: padTop, padding: 0, border: 'none', lineHeight: 0 }} />
+            </tr>
+          )}
+          {vItems.map((vi) => {
+            const o = visible[vi.index]
+            const idx = vi.index
             const isSel = selection.has(o.OeuvreID)
             const isFoc = focused?.OeuvreID === o.OeuvreID
             const st    = statusOf(o, statusLabelMap)
             const dims  = formatInventoryDims(o.Hauteur, o.Largeur, o.Support != null ? sM[o.Support] : null, o.Profondeur)
-            const isGoneRow = st === 'sold' || st === 'gift' || st === 'artist_archive' || st === 'private_archive'
             const sCol  = statusColor(st)
             
             // CLEAN LOGIC: Background is ONLY for Focus or Selection.
@@ -1152,7 +1193,7 @@ function InvList({
                       return ((o as any).LocalisationID != null ? locMap[(o as any).LocalisationID] : 'Pem - Atelier') || '—'
                     })()}
                   </td>
-                  <td style={{ padding: '0 4px' }} colSpan={2}>
+                  <td style={{ padding: '0 4px', whiteSpace: 'nowrap', verticalAlign: 'middle' }} colSpan={2}>
                     <WorkStateChip o={o} statusLabelMap={statusLabelMap} />
                   </td>
                   <td style={{ padding: '0 4px' }}>
@@ -1161,6 +1202,11 @@ function InvList({
                 </tr>
             )
           })}
+          {padBot > 0 && (
+            <tr>
+              <td colSpan={INV_TABLE_COLS} style={{ height: padBot, padding: 0, border: 'none', lineHeight: 0 }} />
+            </tr>
+          )}
         </tbody>
       </table>
       {rows.length > 500 && (
@@ -1189,106 +1235,158 @@ function InvGrid({
   toggleInSel:    (oid: number) => void
   onOpen:         (o: Oeuvre) => void
 }) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [cols, setCols] = useState(4)
+
+  useLayoutEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const measure = () => {
+      const w = el.clientWidth - INV_GRID_PAD * 2
+      setCols(Math.max(1, Math.floor((w + INV_GRID_GAP) / (INV_GRID_MIN_CELL + INV_GRID_GAP))))
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  const rowCount = Math.ceil(rows.length / cols) || 0
+
+  const gridVirtualizer = useVirtualizer({
+    count: rowCount,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => INV_GRID_ROW_H,
+    overscan: 2,
+  })
+
+  const gvItems = gridVirtualizer.getVirtualItems()
+
+  function renderCard(o: Oeuvre) {
+    const isSel = selection.has(o.OeuvreID)
+    const st = statusOf(o, statusLabelMap)
+    const sCol = statusColor(st)
+    return (
+      <div
+        key={o.OeuvreID}
+        role="button"
+        tabIndex={0}
+        onClick={() => onOpen(o)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onOpen(o)
+          }
+        }}
+        style={{
+          position: 'relative',
+          background: 'var(--bg1)',
+          border: `1px solid ${isSel ? 'var(--ac)' : 'var(--bd)'}`,
+          borderLeft: `4px solid ${sCol === 'transparent' ? 'var(--bd)' : sCol}`,
+          borderRadius: 4,
+          padding: 8,
+          cursor: 'pointer',
+        }}
+      >
+        <div
+          style={{ position: 'absolute', top: 6, left: 6, zIndex: 2 }}
+          onClick={(e) => {
+            e.stopPropagation()
+            toggleInSel(o.OeuvreID)
+          }}
+        >
+          <div
+            style={{
+              width: 16,
+              height: 16,
+              border: `1.5px solid ${isSel ? 'var(--ac)' : 'var(--bd2)'}`,
+              background: isSel ? 'var(--ac)' : 'transparent',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 11,
+              color: 'var(--bg0)',
+              cursor: 'pointer',
+            }}
+          >
+            {isSel ? '✓' : ''}
+          </div>
+        </div>
+        <div
+          style={{
+            width: '100%',
+            aspectRatio: '1',
+            borderRadius: 2,
+            overflow: 'hidden',
+            border: '1px solid var(--bd)',
+            marginBottom: 8,
+            background: 'var(--bg2)',
+          }}
+        >
+          {o.txtImageNameLink ? (
+            <WorkThumb file={o.txtImageNameLink} alt={o.Titre ?? ''} size={160} displaySize="100%" />
+          ) : (
+            <MissingThumb id={o.OeuvreID} onOpen={() => onOpen(o)} />
+          )}
+        </div>
+        <div
+          className="t-mono-sm"
+          style={{
+            fontSize: 12,
+            color: 'var(--tx)',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            marginBottom: 4,
+          }}
+          title={o.Titre ?? ''}
+        >
+          {o.Titre || '—'}
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--tx3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {o.Technique != null ? (tM[o.Technique] ?? '') : ''}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div
+      ref={scrollRef}
+      data-testid="inventory-virtual-grid"
       style={{
         flex: 1,
         minWidth: 0,
         overflow: 'auto',
-        padding: 16,
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
-        gap: 12,
-        alignContent: 'start',
+        padding: `${INV_GRID_PAD}px 0`,
       }}
     >
-      {rows.map((o) => {
-        const isSel = selection.has(o.OeuvreID)
-        const st = statusOf(o, statusLabelMap)
-        const sCol = statusColor(st)
-        return (
-          <div
-            key={o.OeuvreID}
-            role="button"
-            tabIndex={0}
-            onClick={() => onOpen(o)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault()
-                onOpen(o)
-              }
-            }}
-            style={{
-              position: 'relative',
-              background: 'var(--bg1)',
-              border: `1px solid ${isSel ? 'var(--ac)' : 'var(--bd)'}`,
-              borderLeft: `4px solid ${sCol === 'transparent' ? 'var(--bd)' : sCol}`,
-              borderRadius: 4,
-              padding: 8,
-              cursor: 'pointer',
-            }}
-          >
+      <div style={{ height: gridVirtualizer.getTotalSize(), position: 'relative', width: '100%' }}>
+        {gvItems.map((gv) => {
+          const start = gv.index * cols
+          const slice = rows.slice(start, start + cols)
+          return (
             <div
-              style={{ position: 'absolute', top: 6, left: 6, zIndex: 2 }}
-              onClick={(e) => {
-                e.stopPropagation()
-                toggleInSel(o.OeuvreID)
-              }}
-            >
-              <div
-                style={{
-                  width: 16,
-                  height: 16,
-                  border: `1.5px solid ${isSel ? 'var(--ac)' : 'var(--bd2)'}`,
-                  background: isSel ? 'var(--ac)' : 'transparent',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 11,
-                  color: 'var(--bg0)',
-                  cursor: 'pointer',
-                }}
-              >
-                {isSel ? '✓' : ''}
-              </div>
-            </div>
-            <div
+              key={gv.key}
               style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
                 width: '100%',
-                aspectRatio: '1',
-                borderRadius: 2,
-                overflow: 'hidden',
-                border: '1px solid var(--bd)',
-                marginBottom: 8,
-                background: 'var(--bg2)',
+                transform: `translateY(${gv.start}px)`,
+                display: 'grid',
+                gridTemplateColumns: `repeat(${cols}, minmax(${INV_GRID_MIN_CELL}px, 1fr))`,
+                gap: INV_GRID_GAP,
+                paddingLeft: INV_GRID_PAD,
+                paddingRight: INV_GRID_PAD,
+                boxSizing: 'border-box',
               }}
             >
-              {o.txtImageNameLink ? (
-                <WorkThumb file={o.txtImageNameLink} alt={o.Titre ?? ''} size={160} displaySize="100%" />
-              ) : (
-                <MissingThumb id={o.OeuvreID} onOpen={() => onOpen(o)} />
-              )}
+              {slice.map((o) => renderCard(o))}
             </div>
-            <div
-              className="t-mono-sm"
-              style={{
-                fontSize: 12,
-                color: 'var(--tx)',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                marginBottom: 4,
-              }}
-              title={o.Titre ?? ''}
-            >
-              {o.Titre || '—'}
-            </div>
-            <div style={{ fontSize: 11, color: 'var(--tx3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {o.Technique != null ? (tM[o.Technique] ?? '') : ''}
-            </div>
-          </div>
-        )
-      })}
+          )
+        })}
+      </div>
     </div>
   )
 }

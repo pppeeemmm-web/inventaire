@@ -1,8 +1,11 @@
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
-import { loadPortfolioConfig } from '@/app/atelier/portfolio/actions'
 import WorksClient from '@/components/public/WorksClient'
 import { trackView } from '@/lib/track'
+import { resolveWorksUx } from '@/lib/worksUx'
+
+/** Allow ?worksUx= preview without static caching */
+export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: 'Works — Pierre Emmanuel Moulin',
@@ -12,7 +15,8 @@ export const metadata: Metadata = {
 
 function mapCollections(raw: any[]) {
   return raw
-    .filter((c: any) => c.is_active)
+    /** Match atelier migrate: missing flag means active (raw JSON often omits it). */
+    .filter((c: any) => c.is_active !== false)
     .slice()
     .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
     .map((c: any) => ({
@@ -26,46 +30,45 @@ function mapCollections(raw: any[]) {
       manual_work_order: Array.isArray(c.manual_work_order)
         ? c.manual_work_order.map((n: any) => Number(n)).filter((n: number) => Number.isFinite(n))
         : [],
+      intro_fr: c.intro_fr ?? '',
+      intro_en: c.intro_en ?? '',
     }))
 }
 
-export default async function WorksPage() {
-  void trackView('/works')
+export default async function WorksPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ worksUx?: string }>
+}) {
+  await trackView('/works')
   const supabase = await createClient()
 
-  // 1. Config — build modes (transparent migration from legacy works_collections)
+  // 1. Config — async import pulls AWS/R2 + portfolio/actions after page chunk loads (reduces webpack bootstrap failures on /works).
   let modes: any[] = []
-  let portfolioCfg: any = null
+  const { loadPortfolioConfig } = await import('@/app/atelier/portfolio/actions')
   const result = await loadPortfolioConfig()
   if ('ok' in result) {
-    portfolioCfg = result.config
-    const cfg = portfolioCfg
-    /** Same ordering as /portfolio — drives mode 1 when present */
-    const sectionCols = mapCollections(Array.isArray(cfg.sections) ? cfg.sections : [])
+    const cfg = result.config
+    /** /works modes come from Diffusion (atelier); separate from card-page section blocks. */
     const rawModes = Array.isArray(cfg.works_modes) ? cfg.works_modes : []
     if (rawModes.length > 0) {
       modes = rawModes
         .filter((m: any) => m.is_active !== false)
         .slice()
         .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
-        .map((m: any, i: number) => {
-          let collections = mapCollections(Array.isArray(m.collections) ? m.collections : [])
-          if (i === 0 && sectionCols.length > 0) {
-            collections = sectionCols
-          }
-          return {
-            id:          m.id || `mode-${i}`,
-            label_fr:    m.label_fr || m.label || (i === 0 ? 'Œuvres' : `Mode ${i + 1}`),
-            label_en:    m.label_en || m.label || (i === 0 ? 'Works'  : `Mode ${i + 1}`),
-            collections,
-            outro_fr:    m.outro_fr || '',
-            outro_en:    m.outro_en || '',
-          }
-        })
+        .map((m: any, i: number) => ({
+          id:          m.id || `mode-${i}`,
+          label_fr:    m.label_fr || m.label || (i === 0 ? 'Œuvres' : `Mode ${i + 1}`),
+          label_en:    m.label_en || m.label || (i === 0 ? 'Works'  : `Mode ${i + 1}`),
+          collections: mapCollections(Array.isArray(m.collections) ? m.collections : []),
+          outro_fr:    m.outro_fr || '',
+          outro_en:    m.outro_en || '',
+        }))
     }
     if (modes.length === 0) {
       const fromLegacy = mapCollections(cfg.works_collections || [])
-      const cols = sectionCols.length > 0 ? sectionCols : fromLegacy
+      const fromSections = mapCollections(Array.isArray(cfg.sections) ? cfg.sections : [])
+      const cols = fromLegacy.length > 0 ? fromLegacy : fromSections
       modes = [{
         id: 'default', label_fr: 'Œuvres', label_en: 'Works',
         collections: cols,
@@ -107,18 +110,22 @@ export default async function WorksPage() {
     isRound:          w.Support === ROUND_SUPPORT_ID,
   }))
 
-  // Fallback: if no mode has any collection, use Sections Portfolio blocks when possible
+  // Fallback: open bucket only — never substitute blocks from other site surfaces
   const anyCol = modes.some(m => m.collections.length > 0)
   if (!anyCol && works.length > 0) {
-    const secCols = portfolioCfg ? mapCollections(portfolioCfg.sections || []) : []
     modes = [{
       id: 'default', label_fr: 'Œuvres', label_en: 'Works',
-      collections: secCols.length > 0
-        ? secCols
-        : [{ id: 'default', title_fr: 'Œuvres', title_en: 'Works', description_fr: '', description_en: '', theme: null, is_active: true, manual_work_order: [] }],
+      collections: [{
+        id: 'default', title_fr: 'Œuvres', title_en: 'Works',
+        description_fr: '', description_en: '', theme: null, is_active: true, manual_work_order: [],
+        intro_fr: '', intro_en: '',
+      }],
       outro_fr: '', outro_en: '',
     }]
   }
 
-  return <WorksClient works={works} modes={modes} />
+  const sp = searchParams ? await searchParams : {}
+  const worksUxMode = resolveWorksUx(sp.worksUx)
+
+  return <WorksClient works={works} modes={modes} worksUxMode={worksUxMode} />
 }

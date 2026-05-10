@@ -2,13 +2,11 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import {
-  publishPortfolioToWorks,
-  publishWorksToPortfolio,
+  savePortfolioConfig,
   loadPortfolioConfig,
   extractDocumentText,
   setWorkPublic,
 } from '@/app/atelier/portfolio/actions'
-import { syncFirstWorksModeToSections, syncSectionsToFirstWorksMode } from '@/lib/portfolio-sync'
 import { getAnalyticsStats, type AnalyticsResult } from '@/app/atelier/analytics/actions'
 import { useRouter } from 'next/navigation'
 import { RichEditor, htmlToPlain } from '@/components/atelier/RichEditor'
@@ -22,6 +20,9 @@ interface CollectionItem {
   id:              string
   title_fr:        string
   title_en:        string
+  /** Optional: shown before works on /works when site mode is “intro” */
+  intro_fr:        string
+  intro_en:        string
   description_fr:  string
   description_en:  string
   theme:           string | null
@@ -81,7 +82,7 @@ interface Props {
   oeuvres: Oeuvre[]
   themes:  { id: number; name: string }[]
   themePublicStats?: Record<number, { total: number; pub: number }>
-  themePrivateWorks?: Record<number, ThemeWork[]>
+  themePrivateWorks?: Record<number, number[]>
 }
 
 // ── Defaults ───────────────────────────────────────────────────────────────
@@ -110,6 +111,8 @@ function migrate(raw: any): PortfolioConfig {
       id:             c.id || Math.random().toString(36).slice(2),
       title_fr:       c.title_fr || c.title || '',
       title_en:       c.title_en || '',
+      intro_fr:       c.intro_fr || '',
+      intro_en:       c.intro_en || '',
       description_fr: c.description_fr || c.description || '',
       description_en: c.description_en || '',
       theme:          c.theme ?? null,
@@ -168,6 +171,8 @@ function migrateModes(raw: any, fallbackCollections: CollectionItem[]): WorksMod
       id:             c.id || Math.random().toString(36).slice(2),
       title_fr:       c.title_fr || c.title || '',
       title_en:       c.title_en || '',
+      intro_fr:       c.intro_fr || '',
+      intro_en:       c.intro_en || '',
       description_fr: c.description_fr || c.description || '',
       description_en: c.description_en || '',
       theme:          c.theme ?? null,
@@ -238,7 +243,7 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
     index: number
     modeIdx?: number
   } | null>(null)
-  const [publishBusy, setPublishBusy] = useState<'idle' | 'p2w' | 'w2p'>('idle')
+  const [saveBusy, setSaveBusy] = useState(false)
 
   const themeNames = themes.map(t => t.name).sort((a, b) => a.localeCompare(b, 'fr'))
 
@@ -251,14 +256,32 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
     return map
   }, [themes, themePublicStats])
 
+  const oeuvreThemeLite = useMemo(() => {
+    const m = new Map<number, ThemeWork>()
+    for (const o of oeuvres) {
+      m.set(o.OeuvreID, {
+        OeuvreID: o.OeuvreID,
+        txtImageNameLink: o.txtImageNameLink ?? null,
+        isPublic: !!(o as { is_public?: boolean }).is_public,
+      })
+    }
+    return m
+  }, [oeuvres])
+
   const themeNamePrivateWorks = useMemo(() => {
     const map: Record<string, ThemeWork[]> = {}
     for (const t of themes) {
-      const ws = themePrivateWorks[t.id]
-      if (ws?.length) map[t.name] = ws
+      const ids = themePrivateWorks[t.id]
+      if (!ids?.length) continue
+      const ws: ThemeWork[] = []
+      for (const id of ids) {
+        const w = oeuvreThemeLite.get(id)
+        if (w) ws.push(w)
+      }
+      if (ws.length) map[t.name] = ws
     }
     return map
-  }, [themes, themePrivateWorks])
+  }, [themes, themePrivateWorks, oeuvreThemeLite])
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -271,24 +294,12 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
 
   useEffect(() => { loadData() }, [loadData])
 
-  const handlePublishPortfolioToWorks = async () => {
-    setPublishBusy('p2w')
-    const result = await publishPortfolioToWorks(config)
-    setPublishBusy('idle')
-    if ('ok' in result) {
-      setConfig(syncSectionsToFirstWorksMode(config))
-      alert('Publié : blocs « Sections Portfolio » copiés vers le mode 1 de /works (et miroir legacy).')
-    } else alert(`Erreur : ${result.error}`)
-  }
-
-  const handlePublishWorksToPortfolio = async () => {
-    setPublishBusy('w2p')
-    const result = await publishWorksToPortfolio(config)
-    setPublishBusy('idle')
-    if ('ok' in result) {
-      setConfig(syncFirstWorksModeToSections(config))
-      alert('Publié : collections du mode 1 /works copiées vers « Sections Portfolio » (et miroir legacy).')
-    } else alert(`Erreur : ${result.error}`)
+  const handleSave = async () => {
+    setSaveBusy(true)
+    const result = await savePortfolioConfig(config)
+    setSaveBusy(false)
+    if ('ok' in result) alert('Configuration enregistrée (y compris site public et portfolio).')
+    else alert(`Erreur : ${result.error}`)
   }
 
   const handleTransfer = (value: string) => {
@@ -348,6 +359,7 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
     const newItem: CollectionItem = {
       id: Math.random().toString(36).slice(2),
       title_fr: '', title_en: '',
+      intro_fr: '', intro_en: '',
       description_fr: '', description_en: '',
       theme: null,
       sort_order: modes[m].collections.length,
@@ -381,6 +393,7 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
     const newItem: CollectionItem = {
       id: Math.random().toString(36).slice(2),
       title_fr: '', title_en: '',
+      intro_fr: '', intro_en: '',
       description_fr: '', description_en: '',
       theme: null,
       sort_order: config[target].length,
@@ -414,43 +427,44 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
               fontFamily: 'inherit', fontWeight: activeTab === tab ? 600 : 400,
               transition: 'all 0.2s'
             }}>
-              {tab === 'website' ? 'Général' : tab === 'portfolio' ? 'Portfolio' : 'Analytiques'}
+              {tab === 'website' ? 'Site public' : tab === 'portfolio' ? 'Portfolio' : 'Analytiques'}
             </button>
           ))}
         </div>
-        {activeTab !== 'analytics' && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <a
-              href="/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn ghost sm"
-              style={{ fontSize: 9, letterSpacing: 2, textDecoration: 'none' }}
-            >
-              Site public
-            </a>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <a
+            href="/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn ghost sm"
+            style={{ fontSize: 9, letterSpacing: 2, textDecoration: 'none' }}
+            title="Ouvrir la page d’accueil (site public)"
+          >
+            Site
+          </a>
+          <a
+            href="/portfolio"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn ghost sm"
+            style={{ fontSize: 9, letterSpacing: 2, textDecoration: 'none' }}
+            title="Ouvrir le parcours /portfolio"
+          >
+            Portfolio
+          </a>
+          {activeTab !== 'analytics' && (
             <button
               type="button"
               className="btn primary sm"
-              title="Copie les blocs Portfolio (colonne droite) vers les collections du premier mode /works"
-              onClick={handlePublishPortfolioToWorks}
-              disabled={publishBusy !== 'idle'}
+              title="Écrit le fichier de configuration (R2) : identité, /works, sections /portfolio"
+              onClick={handleSave}
+              disabled={saveBusy}
               style={{ fontSize: 9, letterSpacing: 1.5 }}
             >
-              {publishBusy === 'p2w' ? 'Publication…' : 'Publier Portfolio → /works'}
+              {saveBusy ? 'Enregistrement…' : 'Enregistrer'}
             </button>
-            <button
-              type="button"
-              className="btn ghost sm"
-              title="Copie les collections du premier mode /works vers les blocs Sections Portfolio"
-              onClick={handlePublishWorksToPortfolio}
-              disabled={publishBusy !== 'idle'}
-              style={{ fontSize: 9, letterSpacing: 1.5 }}
-            >
-              {publishBusy === 'w2p' ? 'Publication…' : 'Publier /works → Portfolio'}
-            </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* ── Body ── */}
@@ -510,6 +524,9 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
 
             {activeTab === 'website' && (
               <>
+                <p className="t-mono-xs" style={{ opacity: 0.55, marginBottom: 24, maxWidth: 720, lineHeight: 1.5 }}>
+                  Onglet <strong>Site public</strong> : identité, pages <strong>À propos</strong> et <strong>Pratique</strong>, et les <strong>modes /works</strong> (chaque mode = un sous-onglet sur la page <code style={{ opacity: 0.85 }}>/works</code>). Ceci est indépendant du flux <strong>/portfolio</strong> (autre onglet).
+                </p>
                 {/* General identity */}
                 <PageSection title="Identité générale" icon="◈">
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
@@ -579,10 +596,10 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
                 </PageSection>
 
                 {/* Works — multi-mode (tabs) */}
-                <PageSection title="Page /works — Modes" icon="▤"
+                <PageSection title="Page /works — Modes (sous-onglets publics)" icon="▤"
                   action={<button className="btn sm ghost" onClick={addMode}>+ Mode</button>}>
                   <p className="t-mono-xs" style={{ opacity: 0.5, marginBottom: 16 }}>
-                    Chaque mode apparaît comme un onglet sur /works avec ses propres collections et sa carte de clôture.
+                    Chaque mode devient un sous-onglet sur <code>/works</code>, avec ses collections et sa carte de clôture. Les sections du Portfolio n’y sont pas mélangées.
                   </p>
 
                   {/* Mode tab bar */}
@@ -640,10 +657,14 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
 
                         <div>
                           <div className="t-label" style={{ marginBottom: 8, fontSize: 9 }}>COLLECTIONS DU MODE ({mode.collections.length})</div>
+                          <p className="t-mono-xs" style={{ opacity: 0.5, marginBottom: 12, maxWidth: 720, lineHeight: 1.45 }}>
+                            Ordre vertical sur <code style={{ opacity: 0.85 }}>/works</code> (ex. Purinos puis COG). Glisser ⋮⋮ ou ↑↓ pour réordonner les séquences.
+                          </p>
                           <div className="col gap-md">
                             {mode.collections.map((item, i) => (
                               <CollectionRow key={item.id} item={item}
                                 index={i} total={mode.collections.length}
+                                sequenceLabel={`Séquence ${i + 1}`}
                                 onMove={(from, to) => moveModeCollection(activeMode, from, to)}
                                 isTarget={activeSlot?.page === 'works' && activeSlot?.modeIdx === activeMode && activeSlot?.index === i}
                                 onAssign={() => setActiveSlot({ type: 'theme', page: 'works', index: i, modeIdx: activeMode })}
@@ -675,6 +696,9 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
 
             {activeTab === 'portfolio' && (
               <>
+                <p className="t-mono-xs" style={{ opacity: 0.55, marginBottom: 24, maxWidth: 720, lineHeight: 1.5 }}>
+                  Onglet <strong>Portfolio</strong> : uniquement la page plein écran <code style={{ opacity: 0.85 }}>/portfolio</code>. Ne pilote pas <code>/works</code> ni l’accueil.
+                </p>
                 {/* Portfolio sections */}
                 <PageSection title="Sections Portfolio" icon="◪"
                   action={<button className="btn sm ghost" onClick={() => addItem('sections')}>+ Ajouter</button>}>
@@ -1249,10 +1273,12 @@ function Slot({ label, children }: { label: string; children: React.ReactNode })
 }
 
 
-function CollectionRow({ item, index, total, onMove, isTarget, onAssign, onUpdate, onDelete, themeStats, privateWorks, onMakePublic }: {
+function CollectionRow({ item, index, total, sequenceLabel, onMove, isTarget, onAssign, onUpdate, onDelete, themeStats, privateWorks, onMakePublic }: {
   item: CollectionItem
   index: number
   total: number
+  /** Website works collections: show sequence badge + intro fields for /works “intro” mode */
+  sequenceLabel?: string
   onMove: (from: number, to: number) => void
   isTarget: boolean
   onAssign: () => void
@@ -1289,11 +1315,17 @@ function CollectionRow({ item, index, total, onMove, isTarget, onAssign, onUpdat
     >
       {/* Reorder header */}
       <div className="row gap-md" style={{ alignItems: 'center', justifyContent: 'space-between' }}>
-        <div className="row gap-xs" style={{ alignItems: 'center' }}>
+        <div className="row gap-xs" style={{ alignItems: 'center', flexWrap: 'wrap' }}>
           <span title="Glisser pour réordonner" style={{
             cursor: 'grab', color: 'var(--tx3)', fontSize: 14, lineHeight: 1,
             padding: '2px 6px', borderRadius: 3, userSelect: 'none',
           }}>⋮⋮</span>
+          {sequenceLabel && (
+            <span className="t-mono-xs" style={{
+              fontSize: 9, letterSpacing: 2, color: 'var(--ac)', fontWeight: 700,
+              padding: '3px 8px', borderRadius: 3, border: '1px solid var(--ac)',
+            }}>{sequenceLabel}</span>
+          )}
           <span className="t-mono-xs" style={{ fontSize: 9, color: 'var(--tx3)', letterSpacing: 1 }}>
             {index + 1} / {total}
           </span>
@@ -1321,18 +1353,40 @@ function CollectionRow({ item, index, total, onMove, isTarget, onAssign, onUpdat
         </div>
       </div>
 
-      {/* Descriptions — rich editors side by side */}
+      {sequenceLabel && (
+        <>
+          <div className="t-label" style={{ fontSize: 9, opacity: 0.75 }}>INTRO (optionnel) — affichée sur /works avant les œuvres de cette séquence lorsque le champ est rempli</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <span className="t-label" style={{ fontSize: 9 }}>INTRO FR</span>
+                <FileImportButton onText={v => onUpdate({ intro_fr: v })} lang="fr" />
+              </div>
+              <RichEditor value={item.intro_fr} onChange={v => onUpdate({ intro_fr: v })} minHeight={100} />
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <span className="t-label" style={{ fontSize: 9 }}>INTRO EN</span>
+                <FileImportButton onText={v => onUpdate({ intro_en: v })} lang="en" />
+              </div>
+              <RichEditor value={item.intro_en} onChange={v => onUpdate({ intro_en: v })} minHeight={100} />
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Descriptions — rich editors side by side (closing text after works on /works) */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            <span className="t-label" style={{ fontSize: 9 }}>TEXTE FR</span>
+            <span className="t-label" style={{ fontSize: 9 }}>{sequenceLabel ? 'TEXTE FR — après les œuvres' : 'TEXTE FR'}</span>
             <FileImportButton onText={v => onUpdate({ description_fr: v })} lang="fr" />
           </div>
           <RichEditor value={item.description_fr} onChange={v => onUpdate({ description_fr: v })} minHeight={120} />
         </div>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            <span className="t-label" style={{ fontSize: 9 }}>TEXTE EN</span>
+            <span className="t-label" style={{ fontSize: 9 }}>{sequenceLabel ? 'TEXTE EN — après les œuvres' : 'TEXTE EN'}</span>
             <FileImportButton onText={v => onUpdate({ description_en: v })} lang="en" />
           </div>
           <RichEditor value={item.description_en} onChange={v => onUpdate({ description_en: v })} minHeight={120} />

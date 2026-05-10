@@ -18,6 +18,7 @@ import { yearOf, formatInventoryDims } from '@/lib/data'
 import { WorkDrawer }          from '@/components/atelier/WorkDrawer'
 import { CurationDock }        from '@/components/atelier/CurationDock'
 import { fetchContactConflicts } from '@/app/atelier/contacts/conflicts-actions'
+import { loadOeuvreLongText } from '@/app/atelier/works/actions'
 import { ExhibitionsTabSkeleton } from '@/components/atelier/ExhibitionsTabSkeleton'
 import { SystemTab } from '@/components/atelier/SystemTab'
 
@@ -68,6 +69,8 @@ export function TeamPortalClient({
   groupPrivateWorks = {},
   themeToGroups = {},
   groupToThemes = {},
+  oeuvreThemeIdsByOeuvre = {},
+  oeuvreGroupIdsByOeuvre = {},
 }: TeamPortalClientProps) {
   const { t, lang, setLang } = useI18n()
   const router = useRouter()
@@ -115,7 +118,7 @@ export function TeamPortalClient({
       .eq('lu', false)
       .then(({ count }: { count: number | null }) => setReminderCount(count ?? 0))
       .catch(err => console.error("Reminder Poll Error:", err))
-  }, [tab])
+  }, [])
 
   const [selection,  setSelection]  = useState<Set<number>>(new Set())
   const [groups,     setGroups]     = useState<{ id: string; name: string }[]>(
@@ -129,49 +132,34 @@ export function TeamPortalClient({
   const [showCompare, setShowCompare] = useState(false)
   const [toast,         setToast]        = useState<string | null>(null)
 
-  // Curation maps
-  const [oeuvreThemeMap, setOeuvreThemeMap] = useState<Map<number, number[]>>(new Map())
-  const [oeuvreGroupMap, setOeuvreGroupMap] = useState<Map<number, string[]>>(new Map())
+  const oeuvreThemeMap = useMemo(() => {
+    const m = new Map<number, number[]>()
+    for (const [k, arr] of Object.entries(oeuvreThemeIdsByOeuvre)) m.set(Number(k), arr)
+    return m
+  }, [oeuvreThemeIdsByOeuvre])
+
+  const oeuvreGroupMap = useMemo(() => {
+    const m = new Map<number, string[]>()
+    for (const [k, arr] of Object.entries(oeuvreGroupIdsByOeuvre)) m.set(Number(k), arr)
+    return m
+  }, [oeuvreGroupIdsByOeuvre])
+
   const [conflicts,      setConflicts]      = useState<any[]>([])
   const [isAdmin,        setIsAdmin]        = useState(false)
 
   useEffect(() => {
-    const sb = createClient()
-    // Fetch Themes
-    ;(sb.from('oeuvre_theme') as any).select('oeuvre_id, theme_id').range(0, 10000).then(({ data }: { data: { oeuvre_id: number; theme_id: number }[] | null }) => {
-      if (!data) return
-      const map = new Map<number, number[]>()
-      data.forEach(({ oeuvre_id, theme_id }) => {
-        if (!map.has(oeuvre_id)) map.set(oeuvre_id, [])
-        map.get(oeuvre_id)!.push(theme_id)
-      })
-      setOeuvreThemeMap(map)
-    }).catch(err => console.error("Theme Map Error:", err))
-    // Fetch Groups
-    ;(sb.from('working_group_work') as any).select('oeuvre_id, group_id').range(0, 10000).then(({ data }: { data: { oeuvre_id: number; group_id: string }[] | null }) => {
-      if (!data) return
-      const map = new Map<number, string[]>()
-      data.forEach(({ oeuvre_id, group_id }) => {
-        if (!map.has(oeuvre_id)) map.set(oeuvre_id, [])
-        map.get(oeuvre_id)!.push(group_id)
-      })
-      setOeuvreGroupMap(map)
-    }).catch(err => console.error("Group Map Error:", err))
+    fetchContactConflicts().then(setConflicts).catch((err) => console.error('Contact conflicts:', err))
+  }, [])
 
-    // Fetch Conflicts (Admin only)
-    fetchContactConflicts().then(data => {
-      setConflicts(data)
-      if (data.length > 0 || tab === 'overview') {
-        // Also check admin status
-        sb.auth.getUser().then(({ data: { user } }) => {
-          if (user) {
-            sb.from('profiles').select('role').eq('id', user.id).maybeSingle()
-              .then(({ data: p }) => setIsAdmin(p?.role === 'admin'))
-          }
-        })
-      }
+  useEffect(() => {
+    const sb = createClient()
+    sb.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return
+      sb.from('profiles').select('role').eq('id', user.id).maybeSingle()
+        .then(({ data: p }) => setIsAdmin(p?.role === 'admin'))
+        .catch((err) => console.error('Profile role:', err))
     })
-  }, [tab])
+  }, [])
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -233,6 +221,11 @@ export function TeamPortalClient({
   const groupNameMap = useMemo(
     () => Object.fromEntries(groups.map((g) => [g.id, g.name])),
     [groups],
+  )
+
+  const compareIdsSorted = useMemo(
+    () => Array.from(selection).sort((a, b) => a - b),
+    [selection],
   )
 
   // ── Save working group (Supabase) ──────────────────────────────
@@ -434,6 +427,8 @@ export function TeamPortalClient({
             selection={selection}
             setSelection={setSelection}
             onOpen={setInspected}
+            oeuvreThemeIdsByOeuvre={oeuvreThemeIdsByOeuvre}
+            oeuvreGroupIdsByOeuvre={oeuvreGroupIdsByOeuvre}
           />
         )}
 
@@ -516,7 +511,7 @@ export function TeamPortalClient({
         )}
         {tab === 'pipeline' && (
           <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-            <PipelineTab oeuvres={oeuvres} contacts={contacts} exhibitions={exhibitions} groups={groups} />
+            <PipelineTab oeuvres={oeuvres} contacts={contacts} groups={groups} />
           </div>
         )}
         {tab === 'fiscal' && (
@@ -616,7 +611,7 @@ export function TeamPortalClient({
       {/* ── Compare Modal ────────────────────────────────────────── */}
       {showCompare && (
         <CompareModal
-          ids={[...selection]}
+          ids={compareIdsSorted}
           oeuvres={oeuvres}
           tM={tM} sM={sM}
           contacts={contacts}
@@ -666,22 +661,32 @@ function OverviewTab({
   conflicts:     any[]
 }) {
   const thisYear   = new Date().getFullYear()
-  const byYear     = oeuvres.filter((o) => o.Année?.startsWith(String(thisYear))).length
-  const withPrice  = oeuvres.filter((o) => o.Prix && o.Prix > 0).length
-  const available  = oeuvres.filter((o) => o.statusId === 2).length
-  const exposable  = oeuvres.filter((o) => o.Exposable && o.statusId === 2).length
+  const yearPrefix = String(thisYear)
+  let byYear = 0
+  let withPrice = 0
+  let available = 0
+  let exposable = 0
+  let missingDims = 0
+  let missingImages = 0
+  let missingLoc = 0
+  /** Sold works (status 4) with revenue attributed to this calendar year — used in Financial Pulse */
+  let soldIncomeThisYear = 0
+  for (const o of oeuvres) {
+    if (o.Année?.startsWith(yearPrefix)) byYear++
+    if (o.Prix && o.Prix > 0) withPrice++
+    if (o.statusId === 2) {
+      available++
+      if (o.Exposable) exposable++
+    }
+    if (!o.Hauteur || !o.Largeur) missingDims++
+    if (!o.txtImageNameLink) missingImages++
+    if (!o.LocalisationID) missingLoc++
+    if (o.statusId === 4 && o.Année?.startsWith(yearPrefix)) {
+      soldIncomeThisYear += Number(o.PrixFinal ?? o.Prix ?? 0)
+    }
+  }
 
-  // New: Recent Works
   const recentWorks = [...oeuvres].sort((a, b) => b.OeuvreID - a.OeuvreID).slice(0, 6)
-
-  // New: Data Health
-  const missingDims   = oeuvres.filter(o => !o.Hauteur || !o.Largeur).length
-  const missingImages = oeuvres.filter(o => !o.txtImageNameLink).length
-  const missingLoc    = oeuvres.filter(o => !o.LocalisationID).length
-
-  // New: Production Summary (Simplified)
-  const inProgress = oeuvres.filter(o => o.statusId === 1).length
-  const ready      = oeuvres.filter(o => o.statusId === 2 || o.Exposable).length
 
   // Upcoming deadlines from pipeline
   const [upcoming,  setUpcoming]  = useState<{ nom: string; date_fin: string; deadline_time: string | null; type: string }[]>([])
@@ -728,7 +733,6 @@ function OverviewTab({
       .then(({ data }: { data: any[] | null }) => { if (data) setBurningConcepts(data) })
   }, [thisYear])
 
-  // Technique breakdown
   const byTech = oeuvres.reduce<Record<string, number>>((acc, o) => {
     const k = String(o.Technique ?? 'unknown')
     acc[k] = (acc[k] ?? 0) + 1
@@ -783,7 +787,7 @@ function OverviewTab({
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
                   <span>Income (Sales)</span>
-                  <span style={{ color: 'var(--green)' }}>€ {Math.round(oeuvres.filter(o => o.statusId === 4 && o.Année?.startsWith(String(thisYear))).reduce((s,o) => s+(o.PrixFinal||o.Prix||0), 0)).toLocaleString()}</span>
+                  <span style={{ color: 'var(--green)' }}>€ {Math.round(soldIncomeThisYear).toLocaleString()}</span>
                 </div>
                 <div style={{ height: 4, background: 'var(--bg2)', borderRadius: 2 }}>
                   <div style={{ height: '100%', width: '100%', background: 'var(--green)', borderRadius: 2 }} />
@@ -794,7 +798,7 @@ function OverviewTab({
                   <span style={{ color: 'var(--rust)' }}>€ {Math.round(expenseTotal).toLocaleString()}</span>
                 </div>
                 <div style={{ height: 4, background: 'var(--bg2)', borderRadius: 2 }}>
-                  <div style={{ height: '100%', width: `${Math.min(100, (expenseTotal / Math.max(1, oeuvres.filter(o => o.statusId === 4 && o.Année?.startsWith(String(thisYear))).reduce((s,o) => s+(o.PrixFinal||o.Prix||0), 0))) * 100)}%`, background: 'var(--rust)', borderRadius: 2 }} />
+                  <div style={{ height: '100%', width: `${Math.min(100, (expenseTotal / Math.max(1, soldIncomeThisYear)) * 100)}%`, background: 'var(--rust)', borderRadius: 2 }} />
                 </div>
               </div>
             </div>
@@ -803,7 +807,7 @@ function OverviewTab({
               <div className="t-label" style={{ fontSize: 10, color: 'var(--tx3)' }}>Cash Health</div>
               <div style={{ display: 'flex', alignItems: 'end', gap: 12 }}>
                 <div style={{ fontSize: 32, fontWeight: 700 }}>
-                  € {Math.round(oeuvres.filter(o => o.statusId === 4 && o.Année?.startsWith(String(thisYear))).reduce((s,o) => s+(o.PrixFinal||o.Prix||0), 0) - expenseTotal).toLocaleString()}
+                  € {Math.round(soldIncomeThisYear - expenseTotal).toLocaleString()}
                 </div>
                 <div className="t-mono-sm" style={{ marginBottom: 8, color: 'var(--tx3)' }}>NET BNC ESTIMATE</div>
               </div>
@@ -1002,6 +1006,28 @@ function CompareModal({ ids, oeuvres, tM, sM, contacts, addresses, statusLabelMa
   const { t } = useI18n()
   const works = oeuvres.filter(o => ids.includes(o.OeuvreID))
 
+  const [longById, setLongById] = useState<
+    Record<number, { Commentaires: string | null; Historique: string | null }>
+  >({})
+
+  useEffect(() => {
+    let cancelled = false
+    setLongById({})
+    ;(async () => {
+      const next: Record<number, { Commentaires: string | null; Historique: string | null }> = {}
+      await Promise.all(
+        ids.map(async (id) => {
+          const r = await loadOeuvreLongText(id)
+          if (!('error' in r)) next[id] = { Commentaires: r.Commentaires, Historique: r.Historique }
+        }),
+      )
+      if (!cancelled) setLongById(next)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [ids])
+
   const contactName = (cid: any) => {
     if (!cid) return '—'
     const c = contacts.find(x => String(x.ContactID) === String(cid))
@@ -1043,8 +1069,7 @@ function CompareModal({ ids, oeuvres, tM, sM, contacts, addresses, statusLabelMa
       } },
     { l: t('depth'),       k: (o: any) => o.Profondeur ? `${o.Profondeur} cm` : '—' },
     { l: t('tirage'),      k: (o: any) => o.Tirage || '—' },
-    { l: t('status'),      k: (o: any) => o.statusId != null ? statusLabelMap[o.statusId] : '—' },
-    { l: t('status'),      k: (o: any) => o.statusId != null ? (statusLabelMap[o.statusId] ?? '—') : '—' },
+    { l: t('status'),      k: (o: any) => (o.statusId != null ? statusLabelMap[o.statusId] : null) ?? '—' },
     { l: t('contact'),     k: (o: any) => contactName(o.ContactID) },
     { l: t('location'),    k: (o: any) => resolveLocation(o.LocalisationID) },
     { l: t('price'),       k: (o: any) => o.Prix ? `€ ${Number(o.Prix).toLocaleString('fr-FR')}` : '—' },
@@ -1059,8 +1084,14 @@ function CompareModal({ ids, oeuvres, tM, sM, contacts, addresses, statusLabelMa
         return level === 0 ? 'Public' : level === 1 ? 'Masqué' : 'Privé'
       }},
     { l: 'Commission',     k: (o: any) => o.IsCommission ? '✓' : '—' },
-    { l: t('notes'),       k: (o: any) => o.Commentaires || '—' },
-    { l: t('history'),     k: (o: any) => o.Historique || '—' },
+    {
+      l: t('notes'),
+      k: (o: any) => longById[o.OeuvreID]?.Commentaires ?? (o as Oeuvre).Commentaires ?? '—',
+    },
+    {
+      l: t('history'),
+      k: (o: any) => longById[o.OeuvreID]?.Historique ?? (o as Oeuvre).Historique ?? '—',
+    },
   ]
 
   return (

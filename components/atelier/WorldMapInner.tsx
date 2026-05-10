@@ -187,10 +187,28 @@ export function WorldMapInner({ pins, mapKey, onOpenContact }: Props) {
         latlngs.push([pin.lat, pin.lng])
       })
 
-      try {
-        if (latlngs.length === 1) map.setView(latlngs[0], 6)
-        else if (latlngs.length > 1) map.fitBounds(latlngs, { padding: [60, 60], maxZoom: 5 })
-      } catch { /* map already removed */ }
+      const safeFit = () => {
+        const m = mapRef.current
+        if (cancelled || !m || m !== map || layerRef.current !== layer) return
+        const el = m.getContainer?.()
+        if (!el?.isConnected) return
+        try {
+          if (latlngs.length === 1) {
+            m.setView(latlngs[0], 6)
+            return
+          }
+          if (latlngs.length > 1) {
+            const b = L.latLngBounds(latlngs)
+            if (b.isValid()) m.fitBounds(b, { padding: [60, 60], maxZoom: 5 })
+          }
+        } catch {
+          /* map torn down mid-zoom */
+        }
+      }
+
+      map.whenReady(() => {
+        requestAnimationFrame(safeFit)
+      })
     })
 
     return () => { cancelled = true }

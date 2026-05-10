@@ -536,11 +536,24 @@ export function WorkForm({
                   <input value={discount} onChange={e => setDiscount(e.target.value)} style={FIS} disabled={ownStage === 'gift'} />
                 </Field>
                 <Field label="TVA (%)">
-                  <select value={tvaRate} onChange={e => setTvaRate(e.target.value)} style={FIS} disabled={ownStage === 'gift'}>
-                    <option value="0">0% (Exonéré)</option>
-                    <option value="5.5">5.5% (Taux réduit)</option>
-                    <option value="20">20% (Taux normal)</option>
-                  </select>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={0.01}
+                    list="work-tva-presets"
+                    value={tvaRate}
+                    onChange={e => setTvaRate(e.target.value)}
+                    placeholder="0–100"
+                    style={FIS}
+                    disabled={ownStage === 'gift'}
+                  />
+                  <datalist id="work-tva-presets">
+                    <option value="0" />
+                    <option value="5.5" />
+                    <option value="10" />
+                    <option value="20" />
+                  </datalist>
                 </Field>
                 <div style={{ alignSelf: 'flex-end' }}>
                   <div className="t-label" style={{ fontSize: 11, color: paymentDone ? 'var(--tx3)' : 'var(--rust)', marginBottom: 6 }}>MONTANT FINAL (HT)</div>

@@ -97,17 +97,17 @@ async function geocode(city: string, country: string): Promise<[number, number] 
   if (!key || key === '|') return null
   if (geoCache.has(key)) return geoCache.get(key)!
   try {
-    const q   = [city, country].filter(Boolean).join(', ')
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`,
-      { headers: { 'User-Agent': 'pem-artdb/1.0' } },
-    )
-    const data = await res.json()
-    if (data?.[0]) {
-      const coords: [number, number] = [parseFloat(data[0].lat), parseFloat(data[0].lon)]
-      geoCache.set(key, coords)
+    const params = new URLSearchParams()
+    if (city) params.set('city', city)
+    if (country) params.set('country', country)
+    const res = await fetch(`/api/geocode?${params}`, { cache: 'no-store' })
+    if (res.status === 404 || !res.ok) return null
+    const data = (await res.json()) as { lat?: number; lng?: number } | null
+    if (data && typeof data.lat === 'number' && typeof data.lng === 'number') {
+      const tuple: [number, number] = [data.lat, data.lng]
+      geoCache.set(key, tuple)
       persistGeoCache()
-      return coords
+      return tuple
     }
   } catch { /* network */ }
   // Do NOT cache null — transient failures (rate limit, network) would permanently block geocoding.
