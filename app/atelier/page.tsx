@@ -1,7 +1,7 @@
 // Team portal — loads all reference data server-side, hands off to the
 // fully-interactive client shell (tabs, constellation, drawer, etc.)
 import { createClient } from '@/lib/supabase/server'
-import { TeamPortalClient } from '@/components/atelier/TeamPortalClient'
+import { AtelierTeamPortalLoader } from '@/components/atelier/AtelierTeamPortalLoader'
 
 export default async function AtelierPage() {
   const supabase = await createClient()
@@ -102,7 +102,7 @@ export default async function AtelierPage() {
   for (const [k, v] of Object.entries(groupToThemes)) g2t[k] = Array.from(v)
 
   return (
-    <TeamPortalClient
+    <AtelierTeamPortalLoader
       oeuvres={oeuvres ?? []}
       techniques={techniques ?? []}
       supports={supports ?? []}
@@ -124,3 +124,4 @@ export default async function AtelierPage() {
     />
   )
 }
+

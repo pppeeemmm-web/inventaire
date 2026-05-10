@@ -213,3 +213,18 @@ input, textarea, select { font: inherit; color: inherit; background: transparent
 .bl { border-left:   1px solid var(--bd); }
 .panel { background: var(--bg1); border: 1px solid var(--bd); }
 .mono  { font-family: 'JetBrains Mono', 'SF Mono', ui-monospace, monospace; }
+
+/* Atelier sidebar — stable CSS (avoid styled-jsx global hydration edge cases) */
+.pem-sidebar-tab {
+  color: var(--tx);
+  background: transparent;
+  border-left: 3px solid transparent;
+}
+.pem-sidebar-tab.pem-sidebar-tab--on {
+  color: var(--ac);
+  background: color-mix(in srgb, var(--ac) 12%, transparent);
+  border-left-color: var(--ac);
+}
+.pem-sidebar-tab:not(.pem-sidebar-tab--on):hover {
+  background: var(--bg2);
+}

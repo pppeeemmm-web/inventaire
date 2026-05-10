@@ -1,6 +1,23 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
+  /** Browsers still request /favicon.ico by default */
+  async redirects() {
+    return [{ source: '/favicon.ico', destination: '/favicon.svg', permanent: false }]
+  },
+
+  /** Dev: same-origin proxy so R2 images don’t trip CORS when ConstellationCanvas sets img.crossOrigin */
+  async rewrites() {
+    const base = process.env.NEXT_PUBLIC_R2_PUBLIC_URL
+    if (!base) return []
+    try {
+      const { origin } = new URL(base)
+      return [{ source: '/r2-proxy/:path*', destination: `${origin}/:path*` }]
+    } catch {
+      return []
+    }
+  },
+
   typescript: {
     // Type errors are tracked separately — don't block production builds.
     // Re-enable once database.ts types are regenerated from live schema.

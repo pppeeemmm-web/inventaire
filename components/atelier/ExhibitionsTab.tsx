@@ -17,6 +17,7 @@ import { EXHIBITION_READY_TYPES } from '@/lib/data'
 import { TYPE_LABELS as PIPELINE_LABELS } from './PipelineTab'
 import { ConstellationCanvas, type NodeMap, type Pt } from './ConstellationCanvas'
 import { WorkThumb } from './WorkThumb'
+import { ExhibitionsTabSkeleton } from './ExhibitionsTabSkeleton'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -1093,7 +1094,9 @@ export function ExhibitionsTab({ oeuvres, contacts, themes, tM, selection, setSe
     return exhibitions.filter((e) => e.statut === filter)
   }, [exhibitions, filter])
 
-  if (loading) return <div style={{ padding: 40, fontSize: 11, color: 'var(--tx3)' }}>Chargement…</div>
+  const showInitialSkeleton = loading && exhibitions.length === 0
+
+  if (showInitialSkeleton) return <ExhibitionsTabSkeleton />
 
   return (
     <div style={{ display: 'flex', height: '100%', minHeight: 0 }}>

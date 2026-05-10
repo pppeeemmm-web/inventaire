@@ -1172,3 +1172,124 @@ function InvList({
   )
 }
 
+// ── InvGrid ─────────────────────────────────────────────────────────
+
+function InvGrid({
+  rows,
+  tM,
+  statusLabelMap,
+  selection,
+  toggleInSel,
+  onOpen,
+}: {
+  rows:           Oeuvre[]
+  tM:             Record<number, string>
+  statusLabelMap: Record<number, string>
+  selection:      Set<number>
+  toggleInSel:    (oid: number) => void
+  onOpen:         (o: Oeuvre) => void
+}) {
+  return (
+    <div
+      style={{
+        flex: 1,
+        minWidth: 0,
+        overflow: 'auto',
+        padding: 16,
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+        gap: 12,
+        alignContent: 'start',
+      }}
+    >
+      {rows.map((o) => {
+        const isSel = selection.has(o.OeuvreID)
+        const st = statusOf(o, statusLabelMap)
+        const sCol = statusColor(st)
+        return (
+          <div
+            key={o.OeuvreID}
+            role="button"
+            tabIndex={0}
+            onClick={() => onOpen(o)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                onOpen(o)
+              }
+            }}
+            style={{
+              position: 'relative',
+              background: 'var(--bg1)',
+              border: `1px solid ${isSel ? 'var(--ac)' : 'var(--bd)'}`,
+              borderLeft: `4px solid ${sCol === 'transparent' ? 'var(--bd)' : sCol}`,
+              borderRadius: 4,
+              padding: 8,
+              cursor: 'pointer',
+            }}
+          >
+            <div
+              style={{ position: 'absolute', top: 6, left: 6, zIndex: 2 }}
+              onClick={(e) => {
+                e.stopPropagation()
+                toggleInSel(o.OeuvreID)
+              }}
+            >
+              <div
+                style={{
+                  width: 16,
+                  height: 16,
+                  border: `1.5px solid ${isSel ? 'var(--ac)' : 'var(--bd2)'}`,
+                  background: isSel ? 'var(--ac)' : 'transparent',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 11,
+                  color: 'var(--bg0)',
+                  cursor: 'pointer',
+                }}
+              >
+                {isSel ? '✓' : ''}
+              </div>
+            </div>
+            <div
+              style={{
+                width: '100%',
+                aspectRatio: '1',
+                borderRadius: 2,
+                overflow: 'hidden',
+                border: '1px solid var(--bd)',
+                marginBottom: 8,
+                background: 'var(--bg2)',
+              }}
+            >
+              {o.txtImageNameLink ? (
+                <WorkThumb file={o.txtImageNameLink} alt={o.Titre ?? ''} size={160} displaySize="100%" />
+              ) : (
+                <MissingThumb id={o.OeuvreID} onOpen={() => onOpen(o)} />
+              )}
+            </div>
+            <div
+              className="t-mono-sm"
+              style={{
+                fontSize: 12,
+                color: 'var(--tx)',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                marginBottom: 4,
+              }}
+              title={o.Titre ?? ''}
+            >
+              {o.Titre || '—'}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--tx3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {o.Technique != null ? (tM[o.Technique] ?? '') : ''}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+

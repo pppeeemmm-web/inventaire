@@ -1,13 +1,24 @@
 // Shared data helpers — mirrors source/data.js, typed for Next.js.
 // Use on the server (lib/supabase/server) or client (lib/supabase/client).
 
-const R2 = process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? ''
+const R2 = (process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? '').replace(/\/$/, '')
+
+/** In development, use Next rewrite (/r2-proxy → R2) so canvas + crossOrigin sees same-origin */
+function r2DevProxyEnabled(): boolean {
+  return process.env.NODE_ENV === 'development' && Boolean(R2)
+}
+
+function r2PublicPath(pathWithinBucket: string): string {
+  const enc = pathWithinBucket.split('/').map((s) => encodeURIComponent(s)).join('/')
+  if (r2DevProxyEnabled()) return `/r2-proxy/${enc}`
+  return `${R2}/${enc}`
+}
 
 /** Full URL for a stored image path — served from Cloudflare R2 (zero egress) */
 export function imageUrl(file: string | null | undefined): string | null {
   if (!file) return null
   if (file.startsWith('http')) return file
-  return `${R2}/${encodeURIComponent(file)}`
+  return r2PublicPath(file)
 }
 
 /**
@@ -24,7 +35,7 @@ export function thumbUrl(
   if (file.startsWith('http')) return file
   // Strip extension, always use .avif — matches backfill + new uploads
   const base = file.replace(/\.[^.]+$/, '')
-  return `${R2}/thumbs/${encodeURIComponent(base)}.avif`
+  return r2PublicPath(`thumbs/${base}.avif`)
 }
 
 /** Extract 4-digit year from the Année date field */

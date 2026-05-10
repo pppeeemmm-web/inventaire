@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   title: 'PEM · Atelier',
   description: 'Outil d\'atelier interne — accès restreint',
   robots: { index: false, follow: false }, // never public
+  icons: { icon: [{ url: '/favicon.svg', type: 'image/svg+xml' }] },
 }
 
 export default function RootLayout({
@@ -41,7 +42,8 @@ export default function RootLayout({
         <I18nProvider>
           {children}
         </I18nProvider>
-        <Analytics />
+        {/* Only on Vercel deployments — avoids 404 + console noise on localhost */}
+        {process.env.VERCEL === '1' ? <Analytics /> : null}
       </body>
     </html>
   )

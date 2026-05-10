@@ -3,37 +3,70 @@
 // TeamPortalClient — fully interactive shell for the /atelier team portal.
 // Receives pre-fetched reference data from app/atelier/page.tsx.
 // Manages global state: active tab, work drawer, selection, working groups.
+// Heavy tab panels load on demand (next/dynamic); sidebar prefetches chunk on hover.
 
 import { useState, useMemo, useCallback, useEffect } from 'react'
+import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useI18n } from '@/lib/i18n/context'
-import { thumbUrl, formatCurrency, formatMetric } from '@/lib/data'
 import { WorkThumb } from './WorkThumb'
 import type { Oeuvre } from '@/lib/types/database'
 
-import { InventoryTab }        from '@/components/atelier/InventoryTab'
 import { WorkDrawer }          from '@/components/atelier/WorkDrawer'
-import { CurationPanel }       from '@/components/atelier/CurationPanel'
 import { CurationDock }        from '@/components/atelier/CurationDock'
-import { ConstellationCanvas } from '@/components/atelier/ConstellationCanvas'
-import { VaultTab }            from '@/components/atelier/VaultTab'
-import { ProductionTab }       from '@/components/atelier/ProductionTab'
-import { LogisticsTab }        from '@/components/atelier/LogisticsTab'
-import { SalesTab }            from '@/components/atelier/SalesTab'
-import { ContactsTab }         from '@/components/atelier/ContactsTab'
-import { WorldMapTab }         from '@/components/atelier/WorldMapTab'
-import { PipelineTab }         from '@/components/atelier/PipelineTab'
-import { FiscalTab }           from '@/components/atelier/FiscalTab'
-import { ConceptsTab }         from '@/components/atelier/ConceptsTab'
-import { ExhibitionsTab }      from '@/components/atelier/ExhibitionsTab'
-import { ThemesTab }           from '@/components/atelier/ThemesTab'
-import { PortfolioTab }        from '@/components/atelier/PortfolioTab'
-import { SupplierHub }         from '@/components/atelier/SupplierHub'
-import { StockTakeTab }        from '@/components/atelier/StockTakeTab'
-import { SystemTab }           from '@/components/atelier/SystemTab'
-import { AuditTab }            from './AuditTab'
 import { fetchContactConflicts } from '@/app/atelier/contacts/actions'
+import { ExhibitionsTabSkeleton } from '@/components/atelier/ExhibitionsTabSkeleton'
+
+function TabPanelFallback() {
+  return (
+    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 240, color: 'var(--tx3)' }}>
+      <span className="t-mono-sm">Loading...</span>
+    </div>
+  )
+}
+
+/** Lazy tabs: ssr:false — panel JS/CSS only runs client-side; avoids hydration mismatch (React #418) */
+const InventoryTab = dynamic(() => import('@/components/atelier/InventoryTab').then((m) => ({ default: m.InventoryTab })), { loading: () => <TabPanelFallback />, ssr: false })
+const ConstellationCanvas = dynamic(() => import('@/components/atelier/ConstellationCanvas').then((m) => ({ default: m.ConstellationCanvas })), { loading: () => <TabPanelFallback />, ssr: false })
+const VaultTab = dynamic(() => import('@/components/atelier/VaultTab').then((m) => ({ default: m.VaultTab })), { loading: () => <TabPanelFallback />, ssr: false })
+const ProductionTab = dynamic(() => import('@/components/atelier/ProductionTab').then((m) => ({ default: m.ProductionTab })), { loading: () => <TabPanelFallback />, ssr: false })
+const LogisticsTab = dynamic(() => import('@/components/atelier/LogisticsTab').then((m) => ({ default: m.LogisticsTab })), { loading: () => <TabPanelFallback />, ssr: false })
+const SalesTab = dynamic(() => import('@/components/atelier/SalesTab').then((m) => ({ default: m.SalesTab })), { loading: () => <TabPanelFallback />, ssr: false })
+const ContactsTab = dynamic(() => import('@/components/atelier/ContactsTab').then((m) => ({ default: m.ContactsTab })), { loading: () => <TabPanelFallback />, ssr: false })
+const WorldMapTab = dynamic(() => import('@/components/atelier/WorldMapTab').then((m) => ({ default: m.WorldMapTab })), { loading: () => <TabPanelFallback />, ssr: false })
+const PipelineTab = dynamic(() => import('@/components/atelier/PipelineTab').then((m) => ({ default: m.PipelineTab })), { loading: () => <TabPanelFallback />, ssr: false })
+const FiscalTab = dynamic(() => import('@/components/atelier/FiscalTab').then((m) => ({ default: m.FiscalTab })), { loading: () => <TabPanelFallback />, ssr: false })
+const ConceptsTab = dynamic(() => import('@/components/atelier/ConceptsTab').then((m) => ({ default: m.ConceptsTab })), { loading: () => <TabPanelFallback />, ssr: false })
+const ExhibitionsTab = dynamic(() => import('@/components/atelier/ExhibitionsTab').then((m) => ({ default: m.ExhibitionsTab })), { loading: () => <ExhibitionsTabSkeleton />, ssr: false })
+const ThemesTab = dynamic(() => import('@/components/atelier/ThemesTab').then((m) => ({ default: m.ThemesTab })), { loading: () => <TabPanelFallback />, ssr: false })
+const PortfolioTab = dynamic(() => import('@/components/atelier/PortfolioTab').then((m) => ({ default: m.PortfolioTab })), { loading: () => <TabPanelFallback />, ssr: false })
+const SupplierHub = dynamic(() => import('@/components/atelier/SupplierHub').then((m) => ({ default: m.SupplierHub })), { loading: () => <TabPanelFallback />, ssr: false })
+const StockTakeTab = dynamic(() => import('@/components/atelier/StockTakeTab').then((m) => ({ default: m.StockTakeTab })), { loading: () => <TabPanelFallback />, ssr: false })
+const SystemTab = dynamic(() => import('@/components/atelier/SystemTab').then((m) => ({ default: m.SystemTab })), { loading: () => <TabPanelFallback />, ssr: false })
+const AuditTab = dynamic(() => import('@/components/atelier/AuditTab').then((m) => ({ default: m.AuditTab })), { loading: () => <TabPanelFallback />, ssr: false })
+
+/** Warm tab JS before click — hover sidebar row to prefetch chunk */
+const TAB_PREFETCH: Partial<Record<string, () => Promise<unknown>>> = {
+  inventory: () => import('@/components/atelier/InventoryTab'),
+  constellation: () => import('@/components/atelier/ConstellationCanvas'),
+  production: () => import('@/components/atelier/ProductionTab'),
+  logistics: () => import('@/components/atelier/LogisticsTab'),
+  sales: () => import('@/components/atelier/SalesTab'),
+  exhibitions: () => import('@/components/atelier/ExhibitionsTab'),
+  vault: () => import('@/components/atelier/VaultTab'),
+  contacts: () => import('@/components/atelier/ContactsTab'),
+  portfolio: () => import('@/components/atelier/PortfolioTab'),
+  audit: () => import('@/components/atelier/AuditTab'),
+  map: () => import('@/components/atelier/WorldMapTab'),
+  pipeline: () => import('@/components/atelier/PipelineTab'),
+  fiscal: () => import('@/components/atelier/FiscalTab'),
+  concepts: () => import('@/components/atelier/ConceptsTab'),
+  themes: () => import('@/components/atelier/ThemesTab'),
+  stock: () => import('@/components/atelier/SupplierHub'),
+  'stock-take': () => import('@/components/atelier/StockTakeTab'),
+  system: () => import('@/components/atelier/SystemTab'),
+}
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -41,7 +74,7 @@ type Tab =
   | 'overview' | 'inventory' | 'constellation' | 'production'
   | 'logistics' | 'sales' | 'exhibitions' | 'vault' | 'contacts' | 'map' | 'pipeline' | 'fiscal' | 'concepts' | 'themes' | 'stock' | 'stock-take' | 'system' | 'portfolio' | 'audit'
 
-interface Props {
+export interface TeamPortalClientProps {
   oeuvres:        Oeuvre[]
   techniques:     { TechniqueID: number; Technique: string | null }[]
   supports:       { SupportID:   number; Support:   string | null }[]
@@ -61,8 +94,6 @@ interface Props {
   groupPrivateWorks?: Record<string, { OeuvreID: number; txtImageNameLink: string | null; isPublic: boolean }[]>
   themeToGroups?:      Record<number, string[]>
   groupToThemes?:      Record<string, number[]>
-  oeuvres:             Oeuvre[]
-  onOpen:              (o: Oeuvre) => void
 }
 
 // ── Component ────────────────────────────────────────────────────────
@@ -77,7 +108,7 @@ export function TeamPortalClient({
   groupPrivateWorks = {},
   themeToGroups = {},
   groupToThemes = {},
-}: Props) {
+}: TeamPortalClientProps) {
   const { t, lang, setLang } = useI18n()
   const router = useRouter()
   
@@ -97,6 +128,18 @@ export function TeamPortalClient({
     if (savedTab) setTab(savedTab)
     const savedTheme = localStorage.getItem('pem_theme') as 'dark' | 'light' | null
     if (savedTheme) setTheme(savedTheme)
+  }, [])
+
+  // Warm exhibitions chunk after paint — reduces flash when opening Commercial → Exhibitions
+  useEffect(() => {
+    const run = () => void import('@/components/atelier/ExhibitionsTab')
+    let id: number | ReturnType<typeof setTimeout>
+    if (typeof requestIdleCallback !== 'undefined') {
+      id = requestIdleCallback(run, { timeout: 2500 })
+      return () => cancelIdleCallback(id as number)
+    }
+    id = setTimeout(run, 1200)
+    return () => clearTimeout(id as ReturnType<typeof setTimeout>)
   }, [])
 
   useEffect(() => {
@@ -367,17 +410,23 @@ export function TeamPortalClient({
                   const [key, label, count] = item
                   const isActive = tab === key
                   return (
-                    <button key={key} onClick={() => handleSetTab(key)}
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => handleSetTab(key)}
+                      onMouseEnter={() => { TAB_PREFETCH[key]?.() }}
+                      className={isActive ? 'pem-sidebar-tab pem-sidebar-tab--on' : 'pem-sidebar-tab'}
                       style={{
-                        padding: '6px 20px', fontSize: 11, textAlign: 'left',
-                        color: isActive ? 'var(--ac)' : 'var(--tx)',
-                        background: isActive ? 'color-mix(in srgb, var(--ac) 12%, transparent)' : 'transparent',
-                        borderLeft: '3px solid',
-                        borderColor: isActive ? 'var(--ac)' : 'transparent',
-                        transition: 'all 0.1s', display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                        padding: '6px 20px',
+                        fontSize: 11,
+                        textAlign: 'left',
+                        border: 'none',
+                        cursor: 'pointer',
+                        width: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
                       }}
-                      onMouseEnter={(e) => !isActive && (e.currentTarget.style.background = 'var(--bg2)')}
-                      onMouseLeave={(e) => !isActive && (e.currentTarget.style.background = 'transparent')}
                     >
                       <span style={{ fontWeight: isActive ? 600 : 400 }}>{label}</span>
                       {count !== undefined && (

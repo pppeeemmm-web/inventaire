@@ -6,7 +6,7 @@ import { WorkStateChip } from './WorkStateChip'
 import { deleteWork } from '@/app/atelier/works/actions'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState, useTransition, useCallback, useRef } from 'react'
+import { useEffect, useLayoutEffect, useState, useTransition, useCallback, useRef } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { saveWork, createLookup } from '@/app/atelier/works/actions'
 import type { Oeuvre } from '@/lib/types/database'
@@ -75,6 +75,8 @@ export function WorkDrawer({
   const imgContainerRef = useRef<HTMLDivElement>(null)
   const isDragging = useRef(false)
   const dragStart = useRef({ x: 0, y: 0, px: 0, py: 0 })
+  const pendingWheelDy = useRef(0)
+  const wheelRafId = useRef<number | null>(null)
 
   // Reset on work change
   useEffect(() => {
@@ -97,20 +99,38 @@ export function WorkDrawer({
       })
   }, [o?.OeuvreID])
 
-  // Wheel zoom
-  useEffect(() => {
+  // Wheel zoom — accumulate delta, apply at most once per animation frame (fewer React commits).
+  useLayoutEffect(() => {
     const el = imgContainerRef.current
     if (!el) return
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault()
+
+    const flushWheel = () => {
+      wheelRafId.current = null
+      const dy = pendingWheelDy.current
+      pendingWheelDy.current = 0
+      if (dy === 0) return
       setImgZoom(z => {
-        const next = Math.min(2, Math.max(1, z - e.deltaY * 0.003))
+        const next = Math.min(2, Math.max(1, z - dy * 0.003))
         if (next <= 1) setImgPan({ x: 0, y: 0 })
         return next
       })
     }
+
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      pendingWheelDy.current += e.deltaY
+      if (wheelRafId.current == null) {
+        wheelRafId.current = requestAnimationFrame(flushWheel)
+      }
+    }
+
     el.addEventListener('wheel', onWheel, { passive: false })
-    return () => el.removeEventListener('wheel', onWheel)
+    return () => {
+      el.removeEventListener('wheel', onWheel)
+      if (wheelRafId.current != null) cancelAnimationFrame(wheelRafId.current)
+      wheelRafId.current = null
+      pendingWheelDy.current = 0
+    }
   }, [o?.OeuvreID])
 
   if (!o) {
@@ -246,6 +266,9 @@ function DrawerContent({
   const [creatingContact, setCreatingContact] = useState(false)
   const [anonymityLevel, setAnonymityLevel] = useState<number>((o as any).anonymity_level ?? 0)
   const [adminOverride, setAdminOverride] = useState<boolean>((o as any).admin_override_anonymity ?? false)
+
+  const panRafId = useRef<number | null>(null)
+  const latestMouseRef = useRef({ x: 0, y: 0 })
 
   // Sync on work change
   useEffect(() => {
@@ -394,6 +417,17 @@ function DrawerContent({
   const cName = (c: typeof localContacts[0]) => c.NomInstitution || `${c.Prénom ?? ''} ${c.Nom ?? ''}`.trim() || `#${c.ContactID}`
   const sortedContacts = [...localContacts].sort((a, b) => cName(a).localeCompare(cName(b), 'fr'))
 
+  const useFullResPreview = imgZoom > 1
+  const previewImgSrc = activeImgPath
+    ? ((useFullResPreview ? imageUrl(activeImgPath) : thumbUrl(activeImgPath)) ?? '')
+    : ''
+  const previewImgKey = activeImgPath ? `${activeImgPath}-${useFullResPreview ? 'full' : 'thumb'}` : ''
+
+  useEffect(() => () => {
+    if (panRafId.current != null) cancelAnimationFrame(panRafId.current)
+    panRafId.current = null
+  }, [])
+
   async function handleCreateContact() {
     if (!newC.inst && !newC.prenom && !newC.nom) return
     setCreatingContact(true)
@@ -448,18 +482,52 @@ function DrawerContent({
       <div
         ref={imgContainerRef}
         style={{ width: '100%', overflow: 'hidden', background: 'transparent', cursor: imgZoom > 1 ? 'grab' : 'default', userSelect: 'none', marginBottom: 16 }}
-        onMouseDown={e => { if (imgZoom > 1) { isDragging.current = true; dragStart.current = { x: e.clientX, y: e.clientY, px: imgPan.x, py: imgPan.y } } }}
-        onMouseMove={e => { if (isDragging.current) setImgPan({ x: dragStart.current.px + (e.clientX - dragStart.current.x), y: dragStart.current.py + (e.clientY - dragStart.current.y) }) }}
+        onMouseDown={e => {
+          if (imgZoom > 1) {
+            isDragging.current = true
+            dragStart.current = { x: e.clientX, y: e.clientY, px: imgPan.x, py: imgPan.y }
+          }
+        }}
+        onMouseMove={e => {
+          if (!isDragging.current) return
+          latestMouseRef.current = { x: e.clientX, y: e.clientY }
+          if (panRafId.current != null) return
+          panRafId.current = requestAnimationFrame(() => {
+            panRafId.current = null
+            const { x, y } = latestMouseRef.current
+            setImgPan({
+              x: dragStart.current.px + (x - dragStart.current.x),
+              y: dragStart.current.py + (y - dragStart.current.y),
+            })
+          })
+        }}
         onMouseUp={() => { isDragging.current = false }}
+        onMouseLeave={() => { isDragging.current = false }}
       >
         {activeImgPath
-          ? <img
-              draggable={false}
-              src={imageUrl(activeImgPath) ?? ''}
-              alt={o.Titre ?? ''}
-              onLoad={e => { const el = e.currentTarget; if (el.naturalWidth > 0) setNaturalSize({ w: el.naturalWidth, h: el.naturalHeight }) }}
-              style={{ width: '100%', height: 'auto', maxHeight: '60vh', objectFit: 'contain', display: 'block', transform: `translate(${imgPan.x}px, ${imgPan.y}px) scale(${imgZoom})`, transformOrigin: 'center center', transition: 'transform 0.06s ease-out' }}
-            />
+          ? (
+              <img
+                key={previewImgKey}
+                draggable={false}
+                src={previewImgSrc}
+                alt={o.Titre ?? ''}
+                onLoad={e => {
+                  const el = e.currentTarget
+                  if (el.naturalWidth > 0) setNaturalSize({ w: el.naturalWidth, h: el.naturalHeight })
+                }}
+                style={{
+                  width: '100%',
+                  height: 'auto',
+                  maxHeight: '60vh',
+                  objectFit: 'contain',
+                  display: 'block',
+                  transform: `translate(${imgPan.x}px, ${imgPan.y}px) scale(${imgZoom})`,
+                  transformOrigin: 'center center',
+                  transition: 'none',
+                  willChange: imgZoom > 1 ? 'transform' : 'auto',
+                }}
+              />
+            )
           : <div className="ph" style={{ height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--tx3)' }}>—</div>}
       </div>
 
