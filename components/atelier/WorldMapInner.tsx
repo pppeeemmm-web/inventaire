@@ -5,12 +5,13 @@ import type { Pin } from './WorldMapTab'
 import { thumbUrl, imageUrl } from '@/lib/data'
 
 interface Props {
-  pins:           Pin[]
-  mapKey:         string
-  onOpenContact?: (id: number) => void
+  pins:               Pin[]
+  mapKey:             string
+  onOpenContact?:     (id: number) => void
+  onOpenOeuvreById?:  (oeuvreId: number) => void
 }
 
-export function WorldMapInner({ pins, mapKey, onOpenContact }: Props) {
+export function WorldMapInner({ pins, mapKey, onOpenContact, onOpenOeuvreById }: Props) {
   const divRef   = useRef<HTMLDivElement>(null)
   const mapRef   = useRef<any>(null)
   const layerRef = useRef<any>(null)
@@ -183,6 +184,19 @@ export function WorldMapInner({ pins, mapKey, onOpenContact }: Props) {
           </div>
         `, { maxWidth: 280 })
 
+        circle.on('contextmenu', (ev: { originalEvent?: MouseEvent }) => {
+          const dom = ev.originalEvent
+          if (dom) {
+            dom.preventDefault()
+            dom.stopPropagation()
+          }
+          const ids = pin.oeuvreIds
+          if (!ids?.length || !onOpenOeuvreById) return
+          const ctrl = !!(dom?.ctrlKey || dom?.metaKey)
+          const pick = ctrl && ids.length > 1 ? ids[1] : ids[0]
+          onOpenOeuvreById(pick)
+        })
+
         layer.addLayer(circle)
         latlngs.push([pin.lat, pin.lng])
       })
@@ -212,7 +226,7 @@ export function WorldMapInner({ pins, mapKey, onOpenContact }: Props) {
     })
 
     return () => { cancelled = true }
-  }, [pins])
+  }, [pins, onOpenOeuvreById])
 
   return <div ref={divRef} style={{ width: '100%', height: '100%', background: '#0d0d0d' }} />
 }

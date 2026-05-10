@@ -3,7 +3,8 @@
 // Selection actions — batch edit and export (HTML / PDF).
 // Called from BatchEditModal and ExportModal via useTransition.
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { STATUS_ID_ARCHIVE_ARTISTE } from '@/lib/data'
 import { createHash }   from 'crypto'
 import { revalidatePath } from 'next/cache'
 import sharp from 'sharp'
@@ -91,8 +92,15 @@ async function guardTeam() {
 export async function batchEdit(ids: number[], changes: BatchChanges): Promise<BatchResult> {
   if (!ids.length) return { error: 'Aucune sélection' }
 
+  const sessionClient = await createClient()
+  const { data: { user } } = await sessionClient.auth.getUser()
+  if (!user) return { error: 'Non authentifié' }
+
   const { error: authErr, supabase } = await guardTeam()
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
+
+  /** Junction tables — service_role so writes persist even when RLS has no DELETE/UPSERT for anon JWT */
+  const svc = createServiceClient()
 
   // Build update object from only explicitly-set fields
   const update: Record<string, unknown> = {}
@@ -122,6 +130,8 @@ export async function batchEdit(ids: number[], changes: BatchChanges): Promise<B
   if (changes.is_paid           !== undefined) update.is_paid           = changes.is_paid
   if (changes.NeedsPhotograph   !== undefined) update.NeedsPhotograph   = changes.NeedsPhotograph
 
+  if (update.statusId === STATUS_ID_ARCHIVE_ARTISTE) update.Exposable = false
+
   const hasScalarChanges  = Object.keys(update).length > 0
   const hasThemeChanges   = (changes.addThemeIds?.length ?? 0) > 0 || (changes.removeThemeIds?.length ?? 0) > 0
   const hasGroupChanges   = (changes.addGroupIds?.length ?? 0) > 0 || (changes.removeGroupIds?.length ?? 0) > 0
@@ -139,9 +149,18 @@ export async function batchEdit(ids: number[], changes: BatchChanges): Promise<B
     count = c ?? ids.length
   }
 
+  if (changes.Exposable === true) {
+    const { error: archErr } = await supabase
+      .from('Oeuvres')
+      .update({ Exposable: false })
+      .in('OeuvreID', ids)
+      .eq('statusId', STATUS_ID_ARCHIVE_ARTISTE)
+    if (archErr) return { error: archErr.message }
+  }
+
   // ── Theme junction (oeuvre_theme) ──────────────────────────────────────
   if (changes.removeThemeIds?.length) {
-    const { error } = await supabase
+    const { error } = await svc
       .from('oeuvre_theme')
       .delete()
       .in('oeuvre_id', ids)
@@ -154,7 +173,7 @@ export async function batchEdit(ids: number[], changes: BatchChanges): Promise<B
     const rows = ids.flatMap(oid =>
       changes.addThemeIds!.map(tid => ({ oeuvre_id: oid, theme_id: tid }))
     )
-    const { error } = await supabase
+    const { error } = await svc
       .from('oeuvre_theme')
       .upsert(rows, { onConflict: 'oeuvre_id,theme_id', ignoreDuplicates: true })
     if (error) return { error: `Thème (ajout) : ${error.message}` }
@@ -162,7 +181,7 @@ export async function batchEdit(ids: number[], changes: BatchChanges): Promise<B
 
   // ── Group junction (working_group_work) ────────────────────────────────
   if (changes.removeGroupIds?.length) {
-    const { error } = await supabase
+    const { error } = await svc
       .from('working_group_work')
       .delete()
       .in('oeuvre_id', ids)
@@ -174,7 +193,7 @@ export async function batchEdit(ids: number[], changes: BatchChanges): Promise<B
     const rows = ids.flatMap(oid =>
       changes.addGroupIds!.map(gid => ({ oeuvre_id: oid, group_id: gid }))
     )
-    const { error } = await supabase
+    const { error } = await svc
       .from('working_group_work')
       .upsert(rows, { onConflict: 'oeuvre_id,group_id', ignoreDuplicates: true })
     if (error) return { error: `Groupe (ajout) : ${error.message}` }
@@ -183,6 +202,106 @@ export async function batchEdit(ids: number[], changes: BatchChanges): Promise<B
   revalidatePath('/atelier')
   revalidatePath('/hub')
   return { ok: true, updated: count }
+}
+
+/** Single-row junction delete — Constellation UX; service role avoids RLS DELETE gaps on junction tables */
+export async function removeOeuvreFromCatalogTheme(
+  oeuvreId: number,
+  themeId: number,
+): Promise<{ error: string } | { ok: true }> {
+  const { error: authErr } = await guardTeam()
+  if (authErr) return { error: authErr }
+
+  const sessionClient = await createClient()
+  const { data: { user } } = await sessionClient.auth.getUser()
+  if (!user) return { error: 'Non authentifié' }
+
+  const supabase = createServiceClient()
+  const { data, error } = await supabase
+    .from('oeuvre_theme')
+    .delete()
+    .eq('oeuvre_id', oeuvreId)
+    .eq('theme_id', themeId)
+    .select('oeuvre_id')
+
+  if (error) return { error: error.message }
+  if (!data?.length) {
+    return {
+      error:
+        'Aucune association retirée — la ligne oeuvre_theme est introuvable (thème ou œuvre incohérent).',
+    }
+  }
+
+  revalidatePath('/atelier')
+  return { ok: true }
+}
+
+export async function removeOeuvreFromWorkingGroup(
+  oeuvreId: number,
+  groupId: string,
+): Promise<{ error: string } | { ok: true }> {
+  const { error: authErr } = await guardTeam()
+  if (authErr) return { error: authErr }
+
+  const sessionClient = await createClient()
+  const { data: { user } } = await sessionClient.auth.getUser()
+  if (!user) return { error: 'Non authentifié' }
+
+  const supabase = createServiceClient()
+  const { data, error } = await supabase
+    .from('working_group_work')
+    .delete()
+    .eq('oeuvre_id', oeuvreId)
+    .eq('group_id', groupId)
+    .select('oeuvre_id')
+
+  if (error) return { error: error.message }
+  if (!data?.length) {
+    return {
+      error:
+        'Aucune association retirée — la ligne working_group_work est introuvable.',
+    }
+  }
+
+  revalidatePath('/atelier')
+  return { ok: true }
+}
+
+/** Dock “quick save” — new working_group + junction rows (service_role so inserts persist under RLS) */
+export async function createWorkingGroupWithOeuvres(
+  name: string,
+  oeuvreIds: number[],
+): Promise<{ error: string } | { ok: true; groupId: string }> {
+  const sessionClient = await createClient()
+  const { data: { user } } = await sessionClient.auth.getUser()
+  if (!user) return { error: 'Non authentifié' }
+
+  const svc = createServiceClient()
+  const trimmed = name.trim()
+  if (!trimmed) return { error: 'Nom requis' }
+
+  const { data: grp, error: gErr } = await svc
+    .from('working_group')
+    .insert({ name: trimmed })
+    .select('id')
+    .single()
+
+  if (gErr || !grp) return { error: gErr?.message ?? 'Création groupe' }
+
+  const groupId = (grp as { id: string }).id
+
+  if (oeuvreIds.length > 0) {
+    const rows = oeuvreIds.map((oeuvre_id, i) => ({
+      group_id: groupId,
+      oeuvre_id,
+      position: i,
+    }))
+    const { error: wErr } = await svc.from('working_group_work').insert(rows as any)
+    if (wErr) return { error: wErr.message }
+  }
+
+  revalidatePath('/atelier')
+  return { ok: true, groupId }
 }
 
 export async function createTheme(name: string): Promise<{ error?: string, theme?: { id: number, name: string } }> {
@@ -209,6 +328,36 @@ export async function createTheme(name: string): Promise<{ error?: string, theme
   if (error) return { error: `Thème : ${error.message}` }
   revalidatePath('/atelier')
   return { theme: data }
+}
+
+export async function createWorkingGroup(
+  name: string,
+): Promise<{ error?: string; group?: { id: string; name: string } }> {
+  const { error: authErr, supabase } = await guardTeam()
+  if (authErr || !supabase) return { error: authErr ?? 'Auth' }
+
+  const trimmed = name.trim()
+  if (!trimmed) return { error: 'Nom requis' }
+
+  const { data, error } = await supabase
+    .from('working_group')
+    .insert({ name: trimmed })
+    .select('id, name')
+    .single()
+
+  if (error?.code === '23505') {
+    const { data: existing } = await supabase
+      .from('working_group')
+      .select('id, name')
+      .eq('name', trimmed)
+      .maybeSingle()
+    if (existing) return { group: existing as { id: string; name: string } }
+  }
+
+  if (error) return { error: `Groupe : ${error.message}` }
+  revalidatePath('/atelier')
+  revalidatePath('/hub')
+  return { group: data as { id: string; name: string } }
 }
 
 // ── Export ────────────────────────────────────────────────────────────────

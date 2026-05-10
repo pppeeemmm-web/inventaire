@@ -5,7 +5,7 @@
 // Manages global state: active tab, work drawer, selection, working groups.
 // Heavy tab panels load on demand (next/dynamic). SystemTab is eager-loaded to avoid dev ChunkLoadError on that chunk.
 
-import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -15,10 +15,11 @@ import type { Oeuvre } from '@/lib/types/database'
 import type { TeamPortalClientProps } from '@/components/atelier/team-portal-types'
 import { yearOf, formatInventoryDims } from '@/lib/data'
 
-import { WorkDrawer }          from '@/components/atelier/WorkDrawer'
+import { WorkDrawer, type WorkDrawerGuardHandle } from '@/components/atelier/WorkDrawer'
 import { CurationDock }        from '@/components/atelier/CurationDock'
 import { fetchContactConflicts } from '@/app/atelier/contacts/conflicts-actions'
 import { loadOeuvreLongText } from '@/app/atelier/works/actions'
+import { createWorkingGroupWithOeuvres } from '@/app/atelier/selection/actions'
 import { ExhibitionsTabSkeleton } from '@/components/atelier/ExhibitionsTabSkeleton'
 import { SystemTab } from '@/components/atelier/SystemTab'
 
@@ -76,7 +77,18 @@ export function TeamPortalClient({
   const router = useRouter()
   
   const [inspected,  setInspected]  = useState<Oeuvre | null>(null)
-  const onOpen = setInspected
+  const workDrawerGuardRef = useRef<WorkDrawerGuardHandle>(null)
+
+  const openInspected = useCallback((next: Oeuvre | null) => {
+    if (next && inspected && next.OeuvreID === inspected.OeuvreID) return
+    if (!inspected) {
+      setInspected(next)
+      return
+    }
+    workDrawerGuardRef.current?.runGuarded(() => setInspected(next))
+  }, [inspected])
+
+  const onOpen = openInspected
 
   // ── Global state ───────────────────────────────────────────────
 
@@ -231,21 +243,12 @@ export function TeamPortalClient({
   // ── Save working group (Supabase) ──────────────────────────────
 
   const handleSaveGroup = useCallback(async (name: string, ids: number[]): Promise<string | null> => {
-    const supabase = createClient()
-    const { data: grp, error } = await (supabase.from('working_group') as any)
-      .insert({ name })
-      .select('id')
-      .single()
-
-    if (error || !grp) return null
-
-    await (supabase.from('working_group_work') as any).insert(
-      ids.map((id, i) => ({ group_id: (grp as any).id, oeuvre_id: id, position: i })),
-    )
-
-    setGroups((prev) => [{ id: (grp as any).id, name }, ...prev])
-    return (grp as any).id
-  }, [])
+    const res = await createWorkingGroupWithOeuvres(name, ids)
+    if ('error' in res) return null
+    setGroups((prev) => [{ id: res.groupId, name: name.trim() || name }, ...prev])
+    router.refresh()
+    return res.groupId
+  }, [router])
 
   // ── Environment Check ──────────────────────────────────────────
   const isConfigured = !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
@@ -426,7 +429,7 @@ export function TeamPortalClient({
             statusLabelMap={statusLabelMap}
             selection={selection}
             setSelection={setSelection}
-            onOpen={setInspected}
+            onOpen={onOpen}
             oeuvreThemeIdsByOeuvre={oeuvreThemeIdsByOeuvre}
             oeuvreGroupIdsByOeuvre={oeuvreGroupIdsByOeuvre}
           />
@@ -440,7 +443,7 @@ export function TeamPortalClient({
             groups={groups}
             selection={selection}
             setSelection={setSelection}
-            onOpen={setInspected}
+            onOpen={onOpen}
             onSaveGroup={handleSaveGroup}
           />
         )}
@@ -451,7 +454,7 @@ export function TeamPortalClient({
               oeuvres={oeuvres}
               tM={tM}
               statusLabelMap={statusLabelMap}
-              onOpen={setInspected}
+              onOpen={onOpen}
             />
           </div>
         )}
@@ -505,6 +508,10 @@ export function TeamPortalClient({
                 handleSetTab('contacts')
                 // ContactsTab reads openContactId from sessionStorage
                 sessionStorage.setItem('pem_open_contact', String(id))
+              }}
+              onOpenOeuvreById={(id) => {
+                const o = oeuvres.find((x) => x.OeuvreID === id)
+                if (o) openInspected(o)
               }}
             />
           </div>
@@ -561,6 +568,7 @@ export function TeamPortalClient({
       {/* ── Work Drawer ─────────────────────────────────────────── */}
       {inspected && (
         <WorkDrawer
+          ref={workDrawerGuardRef}
           o={inspected}
           tM={tM} sM={sM} cM={cM} pM={pM}
           statusLabelMap={statusLabelMap}

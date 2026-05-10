@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo, useLayoutEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useI18n } from '@/lib/i18n/context'
+import { useUnsavedCloseGuard } from '@/hooks/useUnsavedCloseGuard'
 
 interface StockItem {
   id:           number
@@ -42,8 +43,8 @@ export function SupplierHub({ contacts }: Props) {
 
   useEffect(() => { load() }, [load])
 
-  async function handleSave() {
-    if (!editing?.name) return
+  async function handleSave(): Promise<boolean> {
+    if (!editing?.name) return false
     setBusy(true)
     const sb = createClient()
     const payload = {
@@ -57,14 +58,20 @@ export function SupplierHub({ contacts }: Props) {
       notes:       editing.notes || null,
     }
 
-    if (editing.id) {
-      await sb.from('stock_item').update(payload).eq('id', editing.id)
-    } else {
-      await sb.from('stock_item').insert(payload)
+    try {
+      if (editing.id) {
+        await sb.from('stock_item').update(payload).eq('id', editing.id)
+      } else {
+        await sb.from('stock_item').insert(payload)
+      }
+      await load()
+      setEditing(null)
+      return true
+    } catch {
+      return false
+    } finally {
+      setBusy(false)
     }
-    await load()
-    setEditing(null)
-    setBusy(false)
   }
 
   async function handleDelete(id: number) {
@@ -75,6 +82,27 @@ export function SupplierHub({ contacts }: Props) {
     await load()
     setBusy(false)
   }
+
+  const editKey = editing ? String(editing.id ?? 'new') : ''
+  const editingSnap = useMemo(() => (editing ? JSON.stringify(editing) : ''), [editing])
+  const [baselineEdit, setBaselineEdit] = useState<string | null>(null)
+  useLayoutEffect(() => {
+    if (!editing) {
+      setBaselineEdit(null)
+      return
+    }
+    setBaselineEdit(JSON.stringify(editing))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editKey])
+  const isDirtyStock = editing != null && baselineEdit != null && editingSnap !== baselineEdit
+
+  const performSaveStock = async () => handleSave()
+
+  const { attemptClose: attemptCloseStock, unsavedDialog: unsavedStockDialog } = useUnsavedCloseGuard({
+    isDirty: isDirtyStock,
+    onClose: () => setEditing(null),
+    performSave: performSaveStock,
+  })
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '24px 32px' }}>
@@ -133,8 +161,13 @@ export function SupplierHub({ contacts }: Props) {
       </div>
 
       {editing && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: 'var(--bg1)', border: '1px solid var(--bd2)', width: 400, padding: 24, boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
+        <>
+        {unsavedStockDialog}
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={attemptCloseStock}
+        >
+          <div style={{ background: 'var(--bg1)', border: '1px solid var(--bd2)', width: 400, padding: 24, boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }} onClick={(e) => e.stopPropagation()}>
             <div className="t-eyebrow" style={{ marginBottom: 20 }}>{editing.id ? 'Modifier article' : 'Nouvel article'}</div>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -177,17 +210,18 @@ export function SupplierHub({ contacts }: Props) {
                 </select>
               </div>
               <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>
-                <button className="btn primary" style={{ flex: 1 }} onClick={handleSave} disabled={busy || !editing.name}>
+                <button type="button" className="btn primary" style={{ flex: 1 }} onClick={() => void handleSave()} disabled={busy || !editing.name}>
                   {busy ? '…' : 'Enregistrer'}
                 </button>
                 {editing.id && (
-                   <button className="btn ghost" style={{ color: 'var(--rust)' }} onClick={() => handleDelete(editing.id!)}>Supprimer</button>
+                   <button type="button" className="btn ghost" style={{ color: 'var(--rust)' }} onClick={() => handleDelete(editing.id!)}>Supprimer</button>
                 )}
-                <button className="btn ghost" onClick={() => setEditing(null)}>Annuler</button>
+                <button type="button" className="btn ghost" onClick={attemptCloseStock}>Annuler</button>
               </div>
             </div>
           </div>
         </div>
+        </>
       )}
     </div>
   )

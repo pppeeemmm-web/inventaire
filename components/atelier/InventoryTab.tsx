@@ -14,7 +14,7 @@ import { WorkStateChip } from './WorkStateChip'
 import Image from 'next/image'
 import { stringifyError } from '@/lib/error'
 import type { Oeuvre } from '@/lib/types/database'
-import { WorkDrawer } from './WorkDrawer'
+import { WorkDrawer, type WorkDrawerGuardHandle } from './WorkDrawer'
 
 // ── Types ───────────────────────────────────────────────────────────
 
@@ -241,6 +241,20 @@ export function InventoryTab({
   const [filterTheme, setFilterTheme] = useState('all')
   const [filterGroup, setFilterGroup] = useState('all')
   const nextCritId = useRef(0)
+  const panelDrawerGuardRef = useRef<WorkDrawerGuardHandle>(null)
+
+  const focusRowGuarded = useCallback((o: Oeuvre) => {
+    if (!showPreview) {
+      setFocused(o)
+      return
+    }
+    if (focused?.OeuvreID === o.OeuvreID) return
+    if (!focused) {
+      setFocused(o)
+      return
+    }
+    panelDrawerGuardRef.current?.runGuarded(() => setFocused(o))
+  }, [showPreview, focused])
 
   const allFields: FieldDef[] = useMemo(() => {
     if (oeuvres.length === 0) return []
@@ -689,7 +703,7 @@ export function InventoryTab({
           <>
             <InvList
               rows={filtered} tM={tM} sM={sM} cM={cM} locMap={locMap} statusLabelMap={statusLabelMap}
-              focused={focused} setFocused={setFocused}
+              focused={focused} setFocused={focusRowGuarded}
               selection={selection} setSelection={setSelection}
               sortKey={sortKey} sortDir={sortDir} toggleSort={toggleSort}
               onImageDoubleClick={() => { setShowPreview(true); setPreviewExpanded(true) }}
@@ -697,6 +711,7 @@ export function InventoryTab({
             />
             {showPreview && (
               <WorkDrawer
+                ref={panelDrawerGuardRef}
                 o={focused}
                 mode="panel"
                 tM={tM} sM={sM} cM={cM} pM={pM} fM={fM} locMap={locMap}

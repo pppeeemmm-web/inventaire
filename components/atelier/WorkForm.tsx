@@ -6,7 +6,7 @@
  * No commercial_status. No StageProduction. No FORCE FIELD ENFORCEMENT.
  */
 
-import { useState, useEffect, useTransition, useRef, useMemo } from 'react'
+import { useState, useEffect, useTransition, useRef, useMemo, useLayoutEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { thumbUrl, isCircularSupport, DIAMETER_SIGN } from '@/lib/data'
 import { useI18n } from '@/lib/i18n/context'
@@ -15,6 +15,7 @@ import type { SaveResult } from '@/app/atelier/works/actions'
 import { WorkThumb } from './WorkThumb'
 import { addWorkImage, deleteWorkImage, createLookup } from '@/app/atelier/works/actions'
 import { createClient } from '@/lib/supabase/client'
+import { useUnsavedCloseGuard } from '@/hooks/useUnsavedCloseGuard'
 
 // ── Config ────────────────────────────────────────────────────────────────
 
@@ -719,14 +720,44 @@ function ImageManager({ oeuvreId, initialImages }: { oeuvreId: number; initialIm
 function ContactModal({ onClose, onCreated }: { onClose: () => void; onCreated: (c: any) => void }) {
   const [form, setForm] = useState({ NomInstitution: '', Nom: '', Prénom: '', Role: '', Ville: '', Pays: '', Email: '', Téléphone1: '', Website: '', Adresse: '' })
   const [busy, setBusy] = useState(false)
-  async function handleSave() {
-    if (!form.NomInstitution && !form.Nom) return; setBusy(true)
-    const sb = createClient(); const { data, error } = await sb.from('Contact').insert(form).select().single()
-    if (!error && data) onCreated(data); setBusy(false); onClose()
+  const emptySnap = useMemo(() => JSON.stringify({ NomInstitution: '', Nom: '', Prénom: '', Role: '', Ville: '', Pays: '', Email: '', Téléphone1: '', Website: '', Adresse: '' }), [])
+  const formSnap = useMemo(() => JSON.stringify(form), [form])
+  const [baselineSnap, setBaselineSnap] = useState<string | null>(null)
+  useLayoutEffect(() => {
+    setBaselineSnap(emptySnap)
+  }, [emptySnap])
+  const isDirty = baselineSnap != null && formSnap !== baselineSnap
+
+  async function handleSave(): Promise<boolean> {
+    if (!form.NomInstitution && !form.Nom) return false
+    setBusy(true)
+    const sb = createClient()
+    const { data, error } = await sb.from('Contact').insert(form).select().single()
+    setBusy(false)
+    if (!error && data) {
+      onCreated(data)
+      onClose()
+      return true
+    }
+    return false
   }
+
+  const performSave = async () => handleSave()
+
+  const { attemptClose, unsavedDialog } = useUnsavedCloseGuard({
+    isDirty,
+    onClose,
+    performSave,
+  })
+
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ background: 'var(--bg1)', border: '1px solid var(--bd)', padding: 40, width: 720, boxShadow: '0 30px 60px rgba(0,0,0,0.5)' }}>
+    <>
+    {unsavedDialog}
+    <div
+      style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      onClick={attemptClose}
+    >
+      <div style={{ background: 'var(--bg1)', border: '1px solid var(--bd)', padding: 40, width: 720, boxShadow: '0 30px 60px rgba(0,0,0,0.5)' }} onClick={(e) => e.stopPropagation()}>
         <div className="t-eyebrow" style={{ marginBottom: 24, fontSize: 13, color: 'var(--ac)' }}>Nouveau contact</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
           <Field label="INSTITUTION"><input value={form.NomInstitution} onChange={e => setForm(p => ({ ...p, NomInstitution: cap(e.target.value) }))} style={FIS} autoFocus /></Field>
@@ -741,11 +772,12 @@ function ContactModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
           <Field label="PAYS"><input value={form.Pays} onChange={e => setForm(p => ({ ...p, Pays: cap(e.target.value) }))} style={FIS} /></Field>
         </div>
         <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
-          <button type="button" className="btn ghost sm" onClick={onClose} style={{ flex: 1 }}>Annuler</button>
-          <button type="button" className="btn primary sm" onClick={handleSave} style={{ flex: 1, background: 'var(--ac)' }} disabled={busy}>Enregistrer</button>
+          <button type="button" className="btn ghost sm" onClick={attemptClose} style={{ flex: 1 }}>Annuler</button>
+          <button type="button" className="btn primary sm" onClick={() => void handleSave()} style={{ flex: 1, background: 'var(--ac)' }} disabled={busy}>Enregistrer</button>
         </div>
       </div>
     </div>
+    </>
   )
 }
 

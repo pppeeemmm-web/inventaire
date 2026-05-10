@@ -3,6 +3,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { AtelierTeamPortalLoader } from '@/components/atelier/AtelierTeamPortalLoader'
 
+/** Junction tables must always reflect DB after edits (theme/group removals, batch, etc.) */
+export const dynamic = 'force-dynamic'
+
 export default async function AtelierPage() {
   const supabase = await createClient()
 

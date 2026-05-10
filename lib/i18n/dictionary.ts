@@ -4,6 +4,7 @@ export type DictKey =
   | 'hub' | 'tagline' | 'signedAs'
   | 'team' | 'clients' | 'galleries' | 'public'
   | 'teamDesc' | 'clientsDesc' | 'galleriesDesc' | 'publicDesc'
+  | 'hubWorksOnline' | 'hubLastLog' | 'hubStockLow'
   | 'overview' | 'inventory' | 'constellation' | 'production'
   | 'logistics' | 'sales' | 'exhibitions' | 'vault'
   | 'works' | 'works_cap' | 'catalogued' | 'exposable' | 'montee'
@@ -52,9 +53,17 @@ export type DictKey =
   | 'layout' | 'fiches' | 'grille' | 'listeRapide'
   | 'cardsPerPage' | 'displayedFields' | 'imageSize' | 'large' | 'small' | 'none'
   | 'imageFormat' | 'square' | 'original' | 'images' | 'highRes' | 'lowRes'
-  | 'embedHeavyWarning' | 'paperFormat' | 'savedThemes' | 'noThemesSaved'
+  | 'embedHeavyWarning' | 'paperFormat' | 'savedThemes' | 'savedExportPresetsBlurb'
+  | 'noThemesSaved' | 'exportPresetNamePlaceholder'
+  | 'exportSaveSelectionTitle' | 'exportSaveSelectionBlurb' | 'exportSaveNothing'
+  | 'exportSaveAsCatalogTheme' | 'exportSaveAsWorkingGroup' | 'exportContinue'
+  | 'exportPickCatalogTheme' | 'exportNewCatalogThemePlaceholder' | 'exportCreateCatalogThemeBtn'
+  | 'exportPickWorkingGroup' | 'exportNewWorkingGroupPlaceholder'
+  | 'exportThemeRequired' | 'exportGroupRequired' | 'exportPersistError'
+  | 'curationDockAttach' | 'catalogAttachBlurb'
   | 'generating' | 'batchSuccess' | 'selectAll' | 'renameFile' | 'filters'
   | 'auditAttributedHint'
+  | 'workDrawerUnsavedTitle' | 'workDrawerUnsavedBody' | 'workDrawerDiscard'
   // ── Public site ────────────────────────────────────────────────────────
   | 'pub_works' | 'pub_about' | 'pub_practice' | 'pub_enquiry'
   | 'pub_biography' | 'pub_exhibitions_selected' | 'pub_education' | 'pub_contact'
@@ -77,11 +86,12 @@ export const dict: Record<Lang, Dictionary> = {
     tagline: 'Inventaire · Production · Curation · Relations',
     signedAs: 'Atelier',
     team: 'Atelier', clients: 'Collectionneurs',
-    galleries: 'Galeries', public: 'Portfolio',
+    galleries: 'Galeries', public: 'Relations publiques',
     teamDesc: 'Inventaire complet, production, curation, logistique, ventes.',
     clientsDesc: 'Liens privés et sélections curatées par destinataire.',
     galleriesDesc: 'Consignations, listes partagées, oeuvres co-gérées.',
-    publicDesc: 'Portfolio public, expositions, presse.',
+    publicDesc: 'Site public, portfolio, expositions, presse.',
+    hubWorksOnline: 'En ligne', hubLastLog: 'Dernier journal', hubStockLow: 'Stock bas',
     overview: "Vue d'ensemble", inventory: 'Inventaire',
     constellation: 'Constellation', production: 'Production',
     logistics: 'Logistique', sales: 'Ventes',
@@ -173,11 +183,38 @@ export const dict: Record<Lang, Dictionary> = {
     imageFormat: 'Format d\'image', square: 'Carré', original: 'Original',
     images: 'Images', highRes: 'Haute résolution', lowRes: 'Basse résolution',
     embedHeavyWarning: 'L\'intégration des images augmente considérablement la taille du fichier.',
-    paperFormat: 'Format papier', savedThemes: 'Thèmes enregistrés',
-    noThemesSaved: 'Aucun thème enregistré.', generating: 'Génération…',
+    paperFormat: 'Format papier',
+    savedThemes: 'Modèles d\'export',
+    savedExportPresetsBlurb:
+      'Préréglages de mise en page (HTML/PDF) pour cet ordinateur — rien à voir avec les thèmes d\'œuvres du catalogue.',
+    noThemesSaved:
+      'Aucun modèle sauvegardé ici. Cliquez « Enregistrer » pour stocker la configuration actuelle (données locales au navigateur).',
+    exportPresetNamePlaceholder: 'Nom du modèle…',
+    exportSaveSelectionTitle: 'Enregistrer la sélection ?',
+    exportSaveSelectionBlurb:
+      'Après le téléchargement, vous pouvez aussi rattacher ces œuvres à un thème du catalogue ou à un groupe de travail (sans lien avec les modèles d’export à droite).',
+    exportSaveNothing: 'Non, exporter seulement',
+    exportSaveAsCatalogTheme: 'Ajouter au thème du catalogue',
+    exportSaveAsWorkingGroup: 'Ajouter au groupe de travail',
+    exportContinue: 'Continuer',
+    exportPickCatalogTheme: 'Thème du catalogue',
+    exportNewCatalogThemePlaceholder: 'Nom du nouveau thème…',
+    exportCreateCatalogThemeBtn: 'Créer',
+    exportPickWorkingGroup: 'Groupe de travail',
+    exportNewWorkingGroupPlaceholder: 'Nom du nouveau groupe…',
+    exportThemeRequired: 'Sélectionnez un thème ou créez-en un.',
+    exportGroupRequired: 'Sélectionnez un groupe ou créez-en un.',
+    catalogAttachBlurb:
+      'Rattachez ces œuvres à un thème du catalogue ou à un groupe de travail (sans lien avec les modèles d’export).',
+    curationDockAttach: 'Thème · groupe',
+    exportPersistError: 'Fichier téléchargé, mais la sauvegarde a échoué :',
+    generating: 'Génération…',
     batchSuccess: 'Modifications appliquées.', selectAll: 'Tout sélectionner',
     renameFile: 'Renommer le fichier', filters: 'Filtres',
     auditAttributedHint: 'Enregistrements importants (statut, visibilité, ventes…) attribués à votre compte dans le journal système.',
+    workDrawerUnsavedTitle: 'Modifications non enregistrées',
+    workDrawerUnsavedBody: 'Enregistrer avant de fermer la fiche ?',
+    workDrawerDiscard: 'Quitter sans enregistrer',
     // Public site
     pub_works: 'Oeuvres', pub_about: 'À propos', pub_practice: 'Pratique',
     pub_enquiry: 'Contact',
@@ -208,11 +245,12 @@ export const dict: Record<Lang, Dictionary> = {
     hub: 'Studio', tagline: 'Inventory · Production · Curation · Relations',
     signedAs: 'Studio',
     team: 'Studio', clients: 'Collectors',
-    galleries: 'Galleries', public: 'Portfolio',
+    galleries: 'Galleries', public: 'Public relations',
     teamDesc: 'Full inventory, production, curation, logistics, sales.',
     clientsDesc: 'Private links and curated selections per recipient.',
     galleriesDesc: 'Consignments, shared checklists, co-managed works.',
-    publicDesc: 'Public portfolio, exhibitions, press.',
+    publicDesc: 'Public site, portfolio, exhibitions, press.',
+    hubWorksOnline: 'Online', hubLastLog: 'Last log', hubStockLow: 'Low stock',
     overview: 'Overview', inventory: 'Inventory',
     constellation: 'Constellation', production: 'Production',
     logistics: 'Logistics', sales: 'Sales',
@@ -304,11 +342,38 @@ export const dict: Record<Lang, Dictionary> = {
     imageFormat: 'Image format', square: 'Square', original: 'Original',
     images: 'Images', highRes: 'High resolution', lowRes: 'Low resolution',
     embedHeavyWarning: 'Embedding images significantly increases file size.',
-    paperFormat: 'Paper format', savedThemes: 'Saved themes',
-    noThemesSaved: 'No saved themes.', generating: 'Generating…',
+    paperFormat: 'Paper format',
+    savedThemes: 'Export presets',
+    savedExportPresetsBlurb:
+      'Saved layout settings (HTML/PDF) on this device — not the same as artwork “themes” in the catalog.',
+    noThemesSaved:
+      'No presets saved yet. Click Save to store the current layout (stored locally in this browser).',
+    exportPresetNamePlaceholder: 'Preset name…',
+    exportSaveSelectionTitle: 'Save this selection?',
+    exportSaveSelectionBlurb:
+      'After the file downloads, you can also attach these works to a catalog theme or to a working group (not related to export presets on the right).',
+    exportSaveNothing: 'Export only',
+    exportSaveAsCatalogTheme: 'Add to catalog theme',
+    exportSaveAsWorkingGroup: 'Add to working group',
+    exportContinue: 'Continue',
+    exportPickCatalogTheme: 'Catalog theme',
+    exportNewCatalogThemePlaceholder: 'New theme name…',
+    exportCreateCatalogThemeBtn: 'Create',
+    exportPickWorkingGroup: 'Working group',
+    exportNewWorkingGroupPlaceholder: 'New working group name…',
+    exportThemeRequired: 'Pick or create a theme.',
+    exportGroupRequired: 'Pick or create a working group.',
+    catalogAttachBlurb:
+      'Attach these works to a catalog theme or a working group (not related to export presets on the right).',
+    curationDockAttach: 'Theme · group',
+    exportPersistError: 'Download succeeded, but saving failed:',
+    generating: 'Generating…',
     batchSuccess: 'Changes applied.', selectAll: 'Select all',
     renameFile: 'Rename file', filters: 'Filters',
     auditAttributedHint: 'Important saves (status, visibility, sales…) are attributed to your account in the system log.',
+    workDrawerUnsavedTitle: 'Unsaved changes',
+    workDrawerUnsavedBody: 'Save before closing this work?',
+    workDrawerDiscard: 'Close without saving',
     // Public site
     pub_works: 'Works', pub_about: 'About', pub_practice: 'Practice',
     pub_enquiry: 'Enquiry',

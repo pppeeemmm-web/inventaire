@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, type MouseEvent } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { thumbUrl } from '@/lib/data'
 import { useI18n } from '@/lib/i18n/context'
@@ -79,18 +79,60 @@ export function ThemesTab({
     setBusy(false)
   }
 
-  async function deleteTheme(id: number) {
-    if (!confirm(t('delete') + '?')) return
+  async function promptRenameTheme(id: number, currentName: string) {
+    const nm = window.prompt('Nouveau nom du thème :', currentName)
+    if (nm === null) return
+    const trimmed = nm.trim()
+    if (!trimmed || trimmed === currentName) return
+    if (!confirm(`Renommer « ${currentName} » en « ${trimmed} » ?`)) return
     setBusy(true)
-    await (sb.from('oeuvre_theme') as any).delete().eq('theme_id', id)
-    const { error } = await (sb.from('theme') as any).delete().eq('id', id)
-    if (!error) { 
-      setThemes(t_ => t_.filter(x => x.id !== id))
-      flash(t('batchSuccess')) 
+    const { error } = await (sb.from('theme') as any).update({ name: trimmed }).eq('id', id)
+    if (!error) {
+      setThemes((t_) => t_.map((x) => (x.id === id ? { ...x, name: trimmed } : x)))
+      flash(t('batchSuccess'))
     } else {
       flash(t('error') + ': ' + (error?.message ?? ''))
     }
     setBusy(false)
+  }
+
+  async function runDeleteTheme(id: number) {
+    setBusy(true)
+    await (sb.from('oeuvre_theme') as any).delete().eq('theme_id', id)
+    const { error } = await (sb.from('theme') as any).delete().eq('id', id)
+    if (!error) {
+      setThemes((t_) => t_.filter((x) => x.id !== id))
+      setEditTheme((cur) => (cur === id ? null : cur))
+      setHoverTheme((cur) => (cur === id ? null : cur))
+      flash(t('batchSuccess'))
+    } else {
+      flash(t('error') + ': ' + (error?.message ?? ''))
+    }
+    setBusy(false)
+  }
+
+  async function deleteTheme(id: number) {
+    if (!confirm(t('delete') + '?')) return
+    await runDeleteTheme(id)
+  }
+
+  async function confirmDeleteTheme(id: number, name: string, workCount: number) {
+    const msg =
+      workCount > 2
+        ? `Supprimer « ${name} » ? ${workCount} œuvres seront dissociées de ce thème catalogue.`
+        : `${t('delete')} « ${name} » ?`
+    if (!confirm(msg)) return
+    await runDeleteTheme(id)
+  }
+
+  function onThemeRowContextMenu(t_: Theme, e: MouseEvent) {
+    e.preventDefault()
+    if (editTheme === t_.id) return
+    if (e.ctrlKey || e.metaKey) {
+      void confirmDeleteTheme(t_.id, t_.name, themeWorkCount[t_.id] ?? 0)
+    } else {
+      void promptRenameTheme(t_.id, t_.name)
+    }
   }
 
   // ── GROUPS ──
@@ -124,18 +166,60 @@ export function ThemesTab({
     setBusy(false)
   }
 
-  async function deleteGroup(id: string) {
-    if (!confirm(t('delete') + '?')) return
+  async function promptRenameGroup(id: string, currentName: string) {
+    const nm = window.prompt('Nouveau nom du groupe de travail :', currentName)
+    if (nm === null) return
+    const trimmed = nm.trim()
+    if (!trimmed || trimmed === currentName) return
+    if (!confirm(`Renommer « ${currentName} » en « ${trimmed} » ?`)) return
     setBusy(true)
-    await (sb.from('working_group_work') as any).delete().eq('group_id', id)
-    const { error } = await (sb.from('working_group') as any).delete().eq('id', id)
-    if (!error) { 
-      setGroups(g_ => g_.filter(x => x.id !== id))
-      flash(t('batchSuccess')) 
+    const { error } = await (sb.from('working_group') as any).update({ name: trimmed }).eq('id', id)
+    if (!error) {
+      setGroups((g_) => g_.map((x) => (x.id === id ? { ...x, name: trimmed } : x)))
+      flash(t('batchSuccess'))
     } else {
       flash(t('error') + ': ' + (error?.message ?? ''))
     }
     setBusy(false)
+  }
+
+  async function runDeleteGroup(id: string) {
+    setBusy(true)
+    await (sb.from('working_group_work') as any).delete().eq('group_id', id)
+    const { error } = await (sb.from('working_group') as any).delete().eq('id', id)
+    if (!error) {
+      setGroups((g_) => g_.filter((x) => x.id !== id))
+      setEditGroup((cur) => (cur === id ? null : cur))
+      setHoverGroup((cur) => (cur === id ? null : cur))
+      flash(t('batchSuccess'))
+    } else {
+      flash(t('error') + ': ' + (error?.message ?? ''))
+    }
+    setBusy(false)
+  }
+
+  async function deleteGroup(id: string) {
+    if (!confirm(t('delete') + '?')) return
+    await runDeleteGroup(id)
+  }
+
+  async function confirmDeleteGroup(id: string, name: string, workCount: number) {
+    const msg =
+      workCount > 2
+        ? `Supprimer « ${name} » ? ${workCount} œuvres seront retirées de ce groupe de travail.`
+        : `${t('delete')} « ${name} » ?`
+    if (!confirm(msg)) return
+    await runDeleteGroup(id)
+  }
+
+  function onGroupRowContextMenu(g_: Group, e: MouseEvent) {
+    e.preventDefault()
+    if (editGroup === g_.id) return
+    if (e.ctrlKey || e.metaKey) {
+      void confirmDeleteGroup(g_.id, g_.name, groupWorkCount[g_.id] ?? 0)
+    } else {
+      void promptRenameGroup(g_.id, g_.name)
+    }
   }
 
   // Related IDs for highlighting
@@ -192,6 +276,8 @@ export function ThemesTab({
                 <div key={t_.id} 
                   className={`row-item ${isHov ? 'hov' : ''} ${isRel ? 'rel' : ''}`}
                   onMouseEnter={() => { setHoverTheme(t_.id); setHoverGroup(null) }} 
+                  onContextMenu={(e) => onThemeRowContextMenu(t_, e)}
+                  title="Clic droit : renommer · Ctrl+clic droit : supprimer"
                   style={{ 
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     padding: '12px 16px', borderRadius: 4, transition: 'all 0.2s',
@@ -348,6 +434,8 @@ export function ThemesTab({
                   <div key={g_.id} 
                     className={`row-item ${isHov ? 'hov' : ''} ${isRel ? 'rel' : ''}`}
                     onMouseEnter={() => { setHoverGroup(g_.id); setHoverTheme(null) }} 
+                    onContextMenu={(e) => onGroupRowContextMenu(g_, e)}
+                    title="Clic droit : renommer · Ctrl+clic droit : supprimer"
                     style={{ 
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                       padding: '10px 14px', borderRadius: 4, transition: 'all 0.2s',

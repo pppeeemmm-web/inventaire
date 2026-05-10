@@ -6,6 +6,7 @@
 import { useState } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { BatchEditModal } from '@/components/atelier/BatchEditModal'
+import { CatalogPersistModal } from '@/components/atelier/CatalogPersistModal'
 import { ExportModal }    from '@/components/atelier/ExportModal'
 import type { Oeuvre }    from '@/lib/types/database'
 
@@ -40,6 +41,7 @@ export function CurationDock({
   const [savedName, setSavedName] = useState<string | null>(null)
   const [showBatch, setShowBatch] = useState(false)
   const [showExport,setShowExport]= useState(false)
+  const [showCatalogPersist, setShowCatalogPersist] = useState(false)
 
   const ids = [...selection]
 
@@ -81,8 +83,18 @@ export function CurationDock({
         </button>
 
         {/* Export */}
-        <button className="btn sm ghost" onClick={() => setShowExport(true)}>
+        <button type="button" className="btn sm ghost" data-testid="curation-open-export" onClick={() => setShowExport(true)}>
           {t('export')}
+        </button>
+
+        <button
+          type="button"
+          className="btn sm ghost"
+          data-testid="curation-open-catalog-persist"
+          onClick={() => setShowCatalogPersist(true)}
+          title={t('catalogAttachBlurb')}
+        >
+          {t('curationDockAttach')}
         </button>
 
         {/* Compare */}
@@ -150,7 +162,18 @@ export function CurationDock({
           tM={tM}
           sM={sM}
           statusLabelMap={statusLabelMap}
+          catalogThemes={themes}
+          catalogGroups={groups}
           onClose={() => setShowExport(false)}
+        />
+      )}
+
+      {showCatalogPersist && (
+        <CatalogPersistModal
+          ids={ids}
+          catalogThemes={themes}
+          catalogGroups={groups}
+          onClose={() => setShowCatalogPersist(false)}
         />
       )}
     </>

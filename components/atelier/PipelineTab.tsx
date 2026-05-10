@@ -2,7 +2,7 @@
 
 // PipelineTab — parallel process tracker: Gantt + deadline sidebar + reminder panel.
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useLayoutEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { stringifyError } from '@/lib/error'
 
@@ -61,6 +61,7 @@ import { getSignedUrl } from '@/app/atelier/vault/actions'
 import type { Oeuvre } from '@/lib/types/database'
 import { EXHIBITION_READY_TYPES } from '@/lib/data'
 import { WorkThumb } from './WorkThumb'
+import { useUnsavedCloseGuard } from '@/hooks/useUnsavedCloseGuard'
 
 interface Props {
   oeuvres:     Oeuvre[]
@@ -938,8 +939,8 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved }: 
     setPrixFinal(final.toFixed(2))
   }, [catalogPrice, discount])
 
-  async function handleSave() {
-    if(!nom.trim()){ setErr('Name is required.'); return }
+  async function handleSave(): Promise<boolean> {
+    if(!nom.trim()){ setErr('Name is required.'); return false }
     setBusy(true); setErr(null)
     try {
       const sb = createClient()
@@ -1020,7 +1021,8 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved }: 
         await(sb.from('suivi_reminder')as any).insert({process_id:pid,message:reminderMsg,remind_at:reminderDate})
       
       await onSaved()
-    } catch(e){ setErr(String(e)) } finally { setBusy(false) }
+      return true
+    } catch(e){ setErr(String(e)); return false } finally { setBusy(false) }
   }
 
   const [workSearch, setWorkSearch] = useState('')
@@ -1042,15 +1044,54 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved }: 
     }).slice(0, 10)
   }, [contacts, contactSearch])
 
+  const processSnapshot = useMemo(() => JSON.stringify({
+    nom, type, debut, fin, deadlineTime, statut, localisation, url, scope, stakeholders,
+    responsables, vaultTags, vaultPath, assetNotes, notes, etapes,
+    oeuvreIds: [...oeuvreIds].sort((a, b) => a - b), contactId, exhibitionProcessId,
+    insurance, catalogPrice, discount, prixFinal, commissionPct,
+    reminderMsg, reminderDate, isNewContact, newContactName, newContactEmail, newContactType,
+    selectedGroup,
+  }), [
+    nom, type, debut, fin, deadlineTime, statut, localisation, url, scope, stakeholders,
+    responsables, vaultTags, vaultPath, assetNotes, notes, etapes, oeuvreIds, contactId, exhibitionProcessId,
+    insurance, catalogPrice, discount, prixFinal, commissionPct,
+    reminderMsg, reminderDate, isNewContact, newContactName, newContactEmail, newContactType,
+    selectedGroup,
+  ])
+
+  const processKey = process?.id ?? 'new'
+  const [baselineSnap, setBaselineSnap] = useState<string | null>(null)
+  useLayoutEffect(() => {
+    setBaselineSnap(processSnapshot)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [processKey])
+  const isDirty = baselineSnap != null && processSnapshot !== baselineSnap
+
+  const performSave = async () => handleSave()
+
+  const { attemptClose, unsavedDialog } = useUnsavedCloseGuard({
+    isDirty,
+    onClose,
+    performSave,
+  })
+
   return (
-    <div style={{ position:'fixed', inset:0, zIndex:200, background:'rgba(10,10,12,0.95)', backdropFilter:'blur(20px)', display:'flex', alignItems:'center', justifyContent:'center', padding:24 }}>
-      <div style={{ background:'var(--bg1)', border:'1px solid var(--bd)', width:'100%', maxWidth:720, maxHeight:'90vh', overflow:'auto', padding:40, borderRadius: 2, boxShadow: '0 30px 100px rgba(0,0,0,0.8)' }}>
+    <>
+    {unsavedDialog}
+    <div
+      style={{ position:'fixed', inset:0, zIndex:200, background:'rgba(10,10,12,0.95)', backdropFilter:'blur(20px)', display:'flex', alignItems:'center', justifyContent:'center', padding:24 }}
+      onClick={attemptClose}
+    >
+      <div
+        style={{ background:'var(--bg1)', border:'1px solid var(--bd)', width:'100%', maxWidth:720, maxHeight:'90vh', overflow:'auto', padding:40, borderRadius: 2, boxShadow: '0 30px 100px rgba(0,0,0,0.8)' }}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:32 }}>
           <div>
             <div style={{ fontSize:9, letterSpacing:'0.2em', textTransform:'uppercase', color:'var(--ac)', fontWeight: 700, marginBottom: 8 }}>PROCESS MANAGEMENT</div>
             <div style={{ fontSize: 24, fontWeight: 300, color: '#fff' }}>{isNew ? 'Initialize New Track' : `Refine Process · ${process!.nom}`}</div>
           </div>
-          <button onClick={onClose} disabled={busy} style={{ background: 'none', border: 'none', color: 'var(--tx3)', fontSize: 32, cursor: 'pointer' }}>×</button>
+          <button type="button" onClick={attemptClose} disabled={busy} style={{ background: 'none', border: 'none', color: 'var(--tx3)', fontSize: 32, cursor: 'pointer' }}>×</button>
         </div>
 
         <div style={{ display:'flex', flexDirection:'column', gap:32 }}>
@@ -1315,11 +1356,12 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved }: 
                 DELETE PROCESS
               </button>
             )}
-            <button className="btn ghost" onClick={onClose} disabled={busy}>Discard</button>
-            <button className="btn primary" onClick={()=>void handleSave()} disabled={busy}>{busy ? 'SYNCHRONIZING…' : 'COMMIT UPDATES'}</button>
+            <button type="button" className="btn ghost" onClick={attemptClose} disabled={busy}>Discard</button>
+            <button type="button" className="btn primary" onClick={()=>void handleSave()} disabled={busy}>{busy ? 'SYNCHRONIZING…' : 'COMMIT UPDATES'}</button>
           </div>
         </div>
       </div>
     </div>
+    </>
   )
 }

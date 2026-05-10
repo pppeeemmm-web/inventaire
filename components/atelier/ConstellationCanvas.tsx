@@ -5,8 +5,13 @@
 // Grouped by year / theme / free. Zoom/pan. Drag-edge-to-link. Right-click edge to delete.
 
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { imageUrl, thumbUrl } from '@/lib/data'
+import {
+  removeOeuvreFromCatalogTheme,
+  removeOeuvreFromWorkingGroup,
+} from '@/app/atelier/selection/actions'
 import { WorkThumb } from './WorkThumb'
 import type { Oeuvre }  from '@/lib/types/database'
 
@@ -49,7 +54,7 @@ function thumbTier(z: number): 40 | 100 | 200 {
 // ── Types ──────────────────────────────────────────────────────────────────
 export type Pt       = { x: number; y: number }
 export type NodeMap  = Map<number, Pt>
-type GroupBy  = 'year' | 'theme' | 'none' | 'custom'
+type GroupBy  = 'year' | 'theme' | 'workgroup' | 'none' | 'custom'
 type LinkType = 'influence' | 'proximity' | 'series' | 'diptych'
 
 interface VP { x: number; y: number; z: number }
@@ -67,6 +72,8 @@ interface Drag {
   startY:     number
   nodeId?:    number
   panOrigin?: Pt
+  /** Multi-select: drag these ids together (subset of selection with positions). */
+  moveIds?:   number[]
 }
 
 // ── Link styles ────────────────────────────────────────────────────────────
@@ -78,26 +85,38 @@ const LINK_VIS: Record<string, { color: string; dash: number[]; w: number }> = {
 }
 const LINK_DEF = { color: '#706c62', dash: [4, 6], w: 1 }
 
-// ── Position persistence (per groupBy mode + theme filter) ────────────────
-// Theme mode uses the selectedThemeId in the key so each filter state saves separately.
-const POS_KEY = (g: GroupBy, themeId?: number | null) =>
-  g === 'theme' ? `pem_const_pos_theme_${themeId ?? 'all'}` : `pem_const_pos_${g}`
+// ── Position persistence (per groupBy mode + theme / working-group filter) ─
+const POS_KEY = (g: GroupBy, filter?: number | string | null) => {
+  if (g === 'theme') return `pem_const_pos_theme_${filter ?? 'all'}`
+  if (g === 'workgroup') return `pem_const_pos_wg_${filter ?? 'all'}`
+  return `pem_const_pos_${g}`
+}
 
-function loadPos(g: GroupBy, themeId?: number | null): NodeMap | null {
+function loadPos(g: GroupBy, filter?: number | string | null): NodeMap | null {
   try {
-    const raw = localStorage.getItem(POS_KEY(g, themeId))
+    const raw = localStorage.getItem(POS_KEY(g, filter))
     if (!raw) return null
     const obj = JSON.parse(raw) as Record<string, Pt>
     const m = new Map(Object.entries(obj).map(([k, v]) => [+k, v]))
     return m.size > 0 ? m : null
   } catch { return null }
 }
-function savePos(g: GroupBy, m: NodeMap, themeId?: number | null) {
+function savePos(g: GroupBy, m: NodeMap, filter?: number | string | null) {
   try {
     const obj: Record<string, Pt> = {}
     m.forEach((v, k) => { obj[k] = v })
-    localStorage.setItem(POS_KEY(g, themeId), JSON.stringify(obj))
+    localStorage.setItem(POS_KEY(g, filter), JSON.stringify(obj))
   } catch {}
+}
+
+/** Drop stale nodes from persisted layouts (junction changed or row already removed in DB). */
+function filterSavedToMembership(saved: NodeMap, memberOf: Set<number> | null): NodeMap | null {
+  if (!memberOf) return saved
+  const m = new Map<number, Pt>()
+  for (const [id, pt] of saved) {
+    if (memberOf.has(id)) m.set(id, pt)
+  }
+  return m.size > 0 ? m : null
 }
 
 // ── Named snapshots ────────────────────────────────────────────────────────
@@ -239,6 +258,47 @@ function layoutTheme(
   return m
 }
 
+function layoutWorkGroup(
+  oeuvres:   Oeuvre[],
+  groupWork: Map<string, Set<number>>,
+  groups:    { id: string }[],
+): NodeMap {
+  const oeuvreSet = new Set(oeuvres.map(o => o.OeuvreID))
+  const m         = new Map<number, Pt>()
+  const placed    = new Set<number>()
+
+  const groupLists = groups.map(g => ({
+    g,
+    ids: [...(groupWork.get(g.id) ?? [])].filter(id => oeuvreSet.has(id)),
+  })).filter(x => x.ids.length > 0)
+
+  if (groupLists.length === 0) return m
+
+  if (groupLists.length === 1) {
+    const ids = groupLists[0].ids
+    placeCluster(ids, 700, 500, m)
+    ids.forEach(id => placed.add(id))
+  } else {
+    const radii = groupLists.map(x => clusterOuterR(x.ids.length))
+    const maxR  = Math.max(...radii)
+    const N         = groupLists.length
+    const minArc    = (2 * maxR + 120)
+    const R_CLUSTER = Math.max(600, (minArc * N) / (2 * Math.PI))
+
+    groupLists.forEach(({ g: _g, ids }, ti) => {
+      const unplaced = ids.filter(id => !placed.has(id))
+      if (!unplaced.length) return
+      const angle = (ti / N) * Math.PI * 2 - Math.PI / 2
+      const cx    = 700 + Math.cos(angle) * R_CLUSTER
+      const cy    = 500 + Math.sin(angle) * R_CLUSTER
+      placeCluster(unplaced, cx, cy, m)
+      unplaced.forEach(id => placed.add(id))
+    })
+  }
+
+  return m
+}
+
 function layoutGrid(oeuvres: Oeuvre[]): NodeMap {
   const m    = new Map<number, Pt>()
   const cols = Math.ceil(Math.sqrt(oeuvres.length * 1.4))
@@ -287,6 +347,7 @@ interface Props {
   oeuvres:      Oeuvre[]
   tM:           Record<number, string>
   themes:       { id: number; name: string }[]
+  groups?:      { id: string; name: string }[]
   selection:    Set<number>
   setSelection: (s: Set<number>) => void
   onOpen:       (o: Oeuvre) => void
@@ -303,9 +364,10 @@ interface Props {
 
 // ── Component ──────────────────────────────────────────────────────────────
 export function ConstellationCanvas({ 
-  oeuvres, tM, themes, selection, setSelection, onOpen, onSaveGroup,
+  oeuvres, tM, themes, groups = [], selection, setSelection, onOpen, onSaveGroup,
   backgroundImage, backgroundOpacity = 1, onBackgroundOpacity, onDropExternal, hideToolbar, initialPositions
 }: Props) {
+  const router = useRouter()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const wrapRef   = useRef<HTMLDivElement>(null)
 
@@ -349,6 +411,8 @@ export function ConstellationCanvas({
   const [spacePressed, setSpacePressed] = useState(false)
   // Theme mode: optional single-theme filter
   const [selectedThemeId,  setSelectedThemeId]  = useState<number | null>(null)
+  const [selectedGroupId,   setSelectedGroupId]  = useState<string | null>(null)
+  const [groupWork,         setGroupWork]         = useState<Map<string, Set<number>>>(new Map())
 
   const redraw = useCallback(() => setTick(t => t + 1), [])
   const oeuvresById = useMemo(() => new Map(oeuvres.map(o => [o.OeuvreID, o])), [oeuvres])
@@ -384,10 +448,11 @@ export function ConstellationCanvas({
     img.src = backgroundImage
   }, [backgroundImage, redraw])
 
-  // Reset theme filter when leaving theme mode; clear panel in theme mode.
+  // Reset filters when switching vue mode; hide preview panel in theme/workgroup modes.
   useEffect(() => {
     if (groupBy !== 'theme') setSelectedThemeId(null)
-    else setPanelNode(null)   // hide preview panel when entering theme mode
+    if (groupBy !== 'workgroup') setSelectedGroupId(null)
+    if (groupBy === 'theme' || groupBy === 'workgroup') setPanelNode(null)
   }, [groupBy])
   useEffect(() => {
     // Clear the old monolithic theme cache key (before filter-aware keys were introduced).
@@ -418,14 +483,20 @@ export function ConstellationCanvas({
     }
   }, [selection, oeuvresById, redraw])
 
-  // Works shown in theme mode: only those belonging to the selected/all themes
+  // Theme / working-group vue: only works in the selected catalog theme or working group
   const constellationOeuvres = useMemo(() => {
-    if (groupBy !== 'theme') return oeuvres
-    // REQUIRE a selection in theme mode to avoid "messy" all-themes view
-    if (selectedThemeId === null) return []
-    const ids = themeWork.get(selectedThemeId) ?? new Set<number>()
-    return oeuvres.filter(o => ids.has(o.OeuvreID))
-  }, [groupBy, oeuvres, themeWork, selectedThemeId])
+    if (groupBy === 'theme') {
+      if (selectedThemeId === null) return []
+      const ids = themeWork.get(selectedThemeId) ?? new Set<number>()
+      return oeuvres.filter(o => ids.has(o.OeuvreID))
+    }
+    if (groupBy === 'workgroup') {
+      if (selectedGroupId === null) return []
+      const ids = groupWork.get(selectedGroupId) ?? new Set<number>()
+      return oeuvres.filter(o => ids.has(o.OeuvreID))
+    }
+    return oeuvres
+  }, [groupBy, oeuvres, themeWork, groupWork, selectedThemeId, selectedGroupId])
 
   // Works not yet in the custom canvas, matching picker search
   const filteredForPicker = useMemo(() => {
@@ -438,32 +509,45 @@ export function ConstellationCanvas({
     })
   }, [groupBy, oeuvres, customIds, pickerQ, tM])
 
-  // ── Data load ──────────────────────────────────────────────────
-  useEffect(() => {
-    let active = true
-    async function load() {
-      const sb = createClient()
-      const [{ data: rels }, { data: ot }] = await Promise.all([
-        sb.from('tblrelations').select('id, source_id, target_id, relation_type, strength, description').range(0, 9999),
-        sb.from('oeuvre_theme').select('oeuvre_id, theme_id').range(0, 49999),
-      ])
-      if (!active) return
+  // ── Graph + junction data (reload after theme/group removal so UI matches DB) ─
+  const reloadGraphData = useCallback(async (completeInitialLoad = false) => {
+    const sb = createClient()
+    const [{ data: rels }, { data: ot }, { data: wg }] = await Promise.all([
+      sb.from('tblrelations').select('id, source_id, target_id, relation_type, strength, description').range(0, 9999),
+      sb.from('oeuvre_theme').select('oeuvre_id, theme_id').range(0, 49999),
+      sb.from('working_group_work').select('oeuvre_id, group_id').range(0, 49999),
+    ])
 
-      edgesRef.current = (rels ?? [])
-        .filter(r => r.source_id && r.target_id)
-        .map(r => ({ id: r.id, source: r.source_id!, target: r.target_id!, relation_type: r.relation_type, strength: r.strength, description: r.description }))
+    edgesRef.current = (rels ?? [])
+      .filter(r => r.source_id && r.target_id)
+      .map(r => ({ id: r.id, source: r.source_id!, target: r.target_id!, relation_type: r.relation_type, strength: r.strength, description: r.description }))
 
-      const tw = new Map<number, Set<number>>()
-      for (const row of (ot ?? [])) {
-        if (!tw.has(row.theme_id)) tw.set(row.theme_id, new Set())
-        tw.get(row.theme_id)!.add(row.oeuvre_id)
-      }
-      setThemeWork(tw)
-      setLoading(false)
+    const tw = new Map<number, Set<number>>()
+    for (const row of (ot ?? [])) {
+      if (!tw.has(row.theme_id)) tw.set(row.theme_id, new Set())
+      tw.get(row.theme_id)!.add(row.oeuvre_id)
     }
-    load()
-    return () => { active = false }
-  }, [])
+    setThemeWork(tw)
+
+    const gw = new Map<string, Set<number>>()
+    for (const row of (wg ?? []) as { group_id: string; oeuvre_id: number }[]) {
+      if (!gw.has(row.group_id)) gw.set(row.group_id, new Set())
+      gw.get(row.group_id)!.add(row.oeuvre_id)
+    }
+    setGroupWork(gw)
+
+    if (completeInitialLoad) setLoading(false)
+    redraw()
+  }, [redraw])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      await reloadGraphData(true)
+      if (cancelled) return
+    })()
+    return () => { cancelled = true }
+  }, [reloadGraphData])
 
   // ── Layout ────────────────────────────────────────────────────
   useEffect(() => {
@@ -477,7 +561,13 @@ export function ConstellationCanvas({
     }
 
     if (groupBy === 'theme') {
-      const saved = loadPos('theme', selectedThemeId)
+      const savedRaw = loadPos('theme', selectedThemeId)
+      const allowed =
+        selectedThemeId !== null ? (themeWork.get(selectedThemeId) ?? new Set<number>()) : null
+      const saved =
+        savedRaw && selectedThemeId !== null
+          ? filterSavedToMembership(savedRaw, allowed)
+          : savedRaw
       if (saved && saved.size > 0) {
         posRef.current = saved
       } else {
@@ -485,6 +575,22 @@ export function ConstellationCanvas({
           ? themes.filter(t => t.id === selectedThemeId)
           : themes
         posRef.current = layoutTheme(constellationOeuvres, themeWork, activeThemes)
+      }
+    } else if (groupBy === 'workgroup') {
+      const savedRaw = loadPos('workgroup', selectedGroupId)
+      const allowed =
+        selectedGroupId !== null ? (groupWork.get(selectedGroupId) ?? new Set<number>()) : null
+      const saved =
+        savedRaw && selectedGroupId !== null
+          ? filterSavedToMembership(savedRaw, allowed)
+          : savedRaw
+      if (saved && saved.size > 0) {
+        posRef.current = saved
+      } else {
+        const activeGroups = selectedGroupId !== null
+          ? groups.filter(g => g.id === selectedGroupId)
+          : groups
+        posRef.current = layoutWorkGroup(constellationOeuvres, groupWork, activeGroups)
       }
     } else {
       const saved = loadPos(groupBy)
@@ -509,7 +615,7 @@ export function ConstellationCanvas({
       }
     }
     redraw()
-  }, [groupBy, loading, constellationOeuvres, themes, selectedThemeId, redraw, oeuvresById, oeuvres])
+  }, [groupBy, loading, constellationOeuvres, themes, groups, themeWork, groupWork, selectedThemeId, selectedGroupId, redraw, oeuvresById, oeuvres])
 
   // ── Visible image loading (zoom-adaptive tiers) ───────────────
   const loadingSet = useRef(new Set<string>())
@@ -655,6 +761,16 @@ export function ConstellationCanvas({
       })
     })
 
+    const groupColors = new Map<string, string>(
+      (groups || []).map((g, i) => [g.id, `hsl(${Math.round((i / Math.max(1, (groups?.length || 1))) * 280 + 40)}, 50%, 58%)`]),
+    )
+    const workPrimaryGroup = new Map<number, string>()
+    ;(groups || []).forEach(g => {
+      (groupWork.get(g.id) ?? new Set()).forEach(oid => {
+        if (!workPrimaryGroup.has(oid)) workPrimaryGroup.set(oid, g.id)
+      })
+    })
+
     // ── Theme cluster labels (pill badges, colour-coded, size-scaled) ─
     if (groupBy === 'theme') {
       // Step 1: compute ideal positions and sizes for each theme label
@@ -774,6 +890,107 @@ export function ConstellationCanvas({
       ctx.textAlign = 'left'
     }
 
+    // ── Working-group cluster labels (same pill UX as themes) ─────
+    if (groupBy === 'workgroup') {
+      const maxGW = Math.max(1, ...groups.map(gr =>
+        [...(groupWork.get(gr.id) ?? [])].filter(id => pos.has(id)).length
+      ))
+      interface GWBox {
+        gr: { id: string; name: string }
+        ax: number; ay: number
+        x: number; y: number
+        w: number; h: number
+        fs: number
+        color: string
+        alpha: number
+        count: number
+      }
+      const gwLabels: GWBox[] = []
+      for (const gr of groups) {
+        const ids = [...(groupWork.get(gr.id) ?? [])].filter(id => pos.has(id))
+        if (!ids.length) continue
+        const pts  = ids.map(id => pos.get(id)!)
+        const cx   = pts.reduce((a, p) => a + p.x + NW / 2, 0) / pts.length
+        const minY = Math.min(...pts.map(p => p.y))
+        const count = ids.length
+        const t    = Math.sqrt(count / maxGW)
+        const fs   = (8 + 7 * t) / vp.z
+        ctx.font   = `${fs}px "JetBrains Mono", monospace`
+        const tw   = ctx.measureText(gr.name).width
+        const padH = (5 + 3 * t) / vp.z
+        const padV = (3 + 2 * t) / vp.z
+        const w    = tw + padH * 2
+        const h    = fs + padV * 2
+        const ay   = minY - NR / vp.z - h - 6 / vp.z
+        gwLabels.push({
+          gr, count,
+          ax: cx, ay,
+          x: cx, y: ay,
+          w, h, fs,
+          color: groupColors.get(gr.id) ?? 'rgba(166,163,151,0.8)',
+          alpha: selectedGroupId === null || selectedGroupId === gr.id ? 1 : 0.22,
+        })
+      }
+      for (let pass = 0; pass < 5; pass++) {
+        for (let i = 0; i < gwLabels.length; i++) {
+          for (let j = i + 1; j < gwLabels.length; j++) {
+            const a = gwLabels[i], b = gwLabels[j]
+            const overlapX = (a.w + b.w) / 2 - Math.abs(a.x - b.x)
+            const overlapY = (a.h + b.h) / 2 + 4 / vp.z - Math.abs(a.y - b.y)
+            if (overlapX <= 0 || overlapY <= 0) continue
+            if (overlapX < overlapY) {
+              const push = overlapX / 2 + 2 / vp.z
+              if (a.x <= b.x) { a.x -= push; b.x += push }
+              else             { a.x += push; b.x -= push }
+            } else {
+              const push = overlapY / 2 + 2 / vp.z
+              if (a.count >= b.count) { b.y -= push } else { a.y -= push }
+            }
+          }
+        }
+      }
+      ctx.textAlign = 'center'
+      for (const lb of gwLabels) {
+        ctx.globalAlpha = lb.alpha
+        const { x, y, w, h, fs, color } = lb
+        const dx = x - lb.ax, dy = y - lb.ay
+        if (Math.hypot(dx, dy) > 4 / vp.z) {
+          ctx.beginPath()
+          ctx.moveTo(lb.ax, lb.ay + h / 2)
+          ctx.lineTo(x, y + h / 2)
+          ctx.strokeStyle = color
+          ctx.lineWidth   = 0.5 / vp.z
+          ctx.globalAlpha = lb.alpha * 0.4
+          ctx.setLineDash([3 / vp.z, 3 / vp.z])
+          ctx.stroke()
+          ctx.setLineDash([])
+          ctx.globalAlpha = lb.alpha
+        }
+        const rx = x - w / 2, ry = y, rad = 3 / vp.z
+        ctx.beginPath()
+        ctx.moveTo(rx + rad, ry)
+        ctx.lineTo(rx + w - rad, ry)
+        ctx.arcTo(rx + w, ry, rx + w, ry + rad, rad)
+        ctx.lineTo(rx + w, ry + h - rad)
+        ctx.arcTo(rx + w, ry + h, rx + w - rad, ry + h, rad)
+        ctx.lineTo(rx + rad, ry + h)
+        ctx.arcTo(rx, ry + h, rx, ry + h - rad, rad)
+        ctx.lineTo(rx, ry + rad)
+        ctx.arcTo(rx, ry, rx + rad, ry, rad)
+        ctx.closePath()
+        ctx.fillStyle = 'rgba(13,13,13,0.82)'
+        ctx.fill()
+        ctx.strokeStyle = color
+        ctx.lineWidth   = (0.8 + 0.7 * Math.sqrt(lb.count / maxGW)) / vp.z
+        ctx.stroke()
+        ctx.font      = `${fs}px "JetBrains Mono", monospace`
+        ctx.fillStyle = color
+        ctx.fillText(lb.gr.name, x, ry + fs + (h - fs) / 2)
+        ctx.globalAlpha = 1
+      }
+      ctx.textAlign = 'left'
+    }
+
     // ── Edges ────────────────────────────────────────────────────
     for (const e of edgesRef.current) {
       const a = pos.get(e.source), b = pos.get(e.target)
@@ -826,11 +1043,15 @@ export function ConstellationCanvas({
       const cx    = p.x + NW / 2
       const cy    = p.y + NH / 2
 
-      // Theme colour for this node's border
+      // Catalogue theme / working-group colour for this node's border
       const primThemeId = workPrimaryTheme.get(id)
-      const themeC      = (groupBy === 'theme' && primThemeId != null)
-        ? themeColors.get(primThemeId) ?? '#26262a'
-        : '#26262a'
+      const primGroupId = workPrimaryGroup.get(id)
+      let themeC = '#26262a'
+      if (groupBy === 'theme' && primThemeId != null) {
+        themeC = themeColors.get(primThemeId) ?? '#26262a'
+      } else if (groupBy === 'workgroup' && primGroupId != null) {
+        themeC = groupColors.get(primGroupId) ?? '#26262a'
+      }
 
       // No dimming in theme mode — all visible nodes are relevant
       ctx.globalAlpha = 1
@@ -876,7 +1097,7 @@ export function ConstellationCanvas({
       ctx.beginPath()
       ctx.arc(cx, cy, NR - 0.5 / vp.z, 0, Math.PI * 2)
       ctx.strokeStyle = isSel ? '#c8a86e' : isHov ? '#a8a397' : themeC
-      ctx.lineWidth   = (isSel ? 2.5 : groupBy === 'theme' ? 1.5 : 1) / vp.z
+      ctx.lineWidth   = (isSel ? 2.5 : groupBy === 'theme' || groupBy === 'workgroup' ? 1.5 : 1) / vp.z
       ctx.stroke()
 
       // Non-public indicator: amber dot with ! at top-right of circle
@@ -946,7 +1167,7 @@ export function ConstellationCanvas({
  
     loadVisible()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tick, groupBy, linkType, oeuvres, themes, themeWork, oeuvresById, selectedThemeId, shapes, activeShape, marquee])
+  }, [tick, groupBy, linkType, oeuvres, themes, groups, themeWork, groupWork, oeuvresById, selectedThemeId, selectedGroupId, shapes, activeShape, marquee])
 
   // ── Wheel (passive: false required for preventDefault) ────────
   useEffect(() => {
@@ -1059,7 +1280,12 @@ export function ConstellationCanvas({
       if (canvasRef.current) canvasRef.current.style.cursor = 'crosshair'
       setTick(t => t + 1)
     } else {
-      dragRef.current = { mode: 'node', startX: lx, startY: ly, nodeId: hit.id }
+      const sel = selRef.current
+      const moveIds =
+        sel.size > 1 && sel.has(hit.id)
+          ? [...sel].filter(id => posRef.current.has(id))
+          : undefined
+      dragRef.current = { mode: 'node', startX: lx, startY: ly, nodeId: hit.id, moveIds }
       if (canvasRef.current) canvasRef.current.style.cursor = 'grabbing'
     }
   }, [tool, drawColor, drawWidth, spacePressed])
@@ -1117,10 +1343,19 @@ export function ConstellationCanvas({
       vpRef.current = { ...vp, x: drag.panOrigin!.x + (lx - drag.startX), y: drag.panOrigin!.y + (ly - drag.startY) }
       setTick(t => t + 1)
     } else if (drag.mode === 'node') {
-      const cur = posRef.current.get(drag.nodeId!)
-      if (cur) {
-        const next = new Map(posRef.current)
-        next.set(drag.nodeId!, { x: cur.x + (lx - drag.startX) / vp.z, y: cur.y + (ly - drag.startY) / vp.z })
+      const dx = (lx - drag.startX) / vp.z
+      const dy = (ly - drag.startY) / vp.z
+      const ids = drag.moveIds?.length ? drag.moveIds : [drag.nodeId!]
+      const next = new Map(posRef.current)
+      let moved = false
+      for (const id of ids) {
+        const cur = next.get(id)
+        if (cur) {
+          next.set(id, { x: cur.x + dx, y: cur.y + dy })
+          moved = true
+        }
+      }
+      if (moved) {
         posRef.current  = next
         dragRef.current = { ...drag, startX: lx, startY: ly }
         setTick(t => t + 1)
@@ -1144,7 +1379,7 @@ export function ConstellationCanvas({
       if (newHovId !== hovNodeRef.current) {
         hovNodeRef.current = newHovId
         // In theme mode, suppress the preview panel — user just wants to rearrange
-        if (groupBy !== 'theme') {
+        if (groupBy !== 'theme' && groupBy !== 'workgroup') {
           setPanelNode(newHovId ? (oeuvresById.get(newHovId) ?? null) : null)
         }
         needRedraw = true
@@ -1209,7 +1444,15 @@ export function ConstellationCanvas({
       setPanelNode(null)
       setTick(t => t + 1)
     } else if (drag.mode === 'node') {
-      savePos(groupByRef.current, posRef.current, groupByRef.current === 'theme' ? selectedThemeId : undefined)
+      savePos(
+        groupByRef.current,
+        posRef.current,
+        groupByRef.current === 'theme'
+          ? selectedThemeId
+          : groupByRef.current === 'workgroup'
+            ? selectedGroupId
+            : undefined,
+      )
       // Click detection (no movement → open or toggle selection)
       if (Math.abs(lx - drag.startX) < 4 && Math.abs(ly - drag.startY) < 4) {
         const hit = hitNode(lx, ly, posRef.current, vpRef.current)
@@ -1230,41 +1473,61 @@ export function ConstellationCanvas({
 
     dragRef.current = { mode: 'idle', startX: 0, startY: 0 }
     if (canvasRef.current) canvasRef.current.style.cursor = 'grab'
-  }, [linkType, oeuvresById, onOpen, setSelection, groupBy, selectedThemeId, activeShape, marquee])
+  }, [linkType, oeuvresById, onOpen, setSelection, groupBy, selectedThemeId, selectedGroupId, activeShape, marquee])
 
   const onContextMenu = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     e.preventDefault()
     const rect = canvasRef.current!.getBoundingClientRect()
     const lx = e.clientX - rect.left, ly = e.clientY - rect.top
 
-    // Check if we hit a node first
+    // Check if we hit a node first — right-click / Ctrl+right-click target works only (not toolbar).
     const nodeHit = hitNode(lx, ly, posRef.current, vpRef.current)
     if (nodeHit) {
-      if (groupByRef.current === 'custom') {
+      const oeuvre = oeuvresById.get(nodeHit.id)
+      const ctrl = e.ctrlKey || e.metaKey
+      const gb = groupByRef.current
+
+      if (ctrl && oeuvre) {
+        onOpen(oeuvre)
+        return
+      }
+
+      if (gb === 'custom') {
         removeFromCustom(nodeHit.id)
-      } else if (groupByRef.current === 'theme' && selectedThemeId) {
+      } else if (gb === 'theme' && selectedThemeId) {
         if (confirm("Retirer le thème de cette œuvre ?")) {
-          const sb = createClient()
-          sb.from('OeuvreTheme').delete().eq('OeuvreID', nodeHit.id).eq('ThemeID', selectedThemeId).then(({ error }) => {
-            if (!error) {
-              setThemeWork(prev => {
-                const n = new Map(prev)
-                const s = new Set(n.get(selectedThemeId))
-                s.delete(nodeHit.id)
-                n.set(selectedThemeId, s)
-                return n
-              })
-              // Remove from local positions too so it disappears from canvas immediately
-              const next = new Map(posRef.current)
-              next.delete(nodeHit.id)
-              posRef.current = next
-              redraw()
-            } else {
-              console.error("Erreur suppression thème:", error)
-              alert("Erreur lors de la suppression du thème.")
+          void (async () => {
+            const res = await removeOeuvreFromCatalogTheme(nodeHit.id, selectedThemeId)
+            if ('error' in res) {
+              alert(res.error)
+              return
             }
-          })
+            await reloadGraphData(false)
+            router.refresh()
+            const next = new Map(posRef.current)
+            next.delete(nodeHit.id)
+            posRef.current = next
+            redraw()
+          })()
         }
+      } else if (gb === 'workgroup' && selectedGroupId) {
+        if (confirm("Retirer cette œuvre du groupe de travail ?")) {
+          void (async () => {
+            const res = await removeOeuvreFromWorkingGroup(nodeHit.id, selectedGroupId)
+            if ('error' in res) {
+              alert(res.error)
+              return
+            }
+            await reloadGraphData(false)
+            router.refresh()
+            const next = new Map(posRef.current)
+            next.delete(nodeHit.id)
+            posRef.current = next
+            redraw()
+          })()
+        }
+      } else if (oeuvre) {
+        onOpen(oeuvre)
       }
       return
     }
@@ -1298,7 +1561,7 @@ export function ConstellationCanvas({
       if (hovEdgeRef.current === edge) hovEdgeRef.current = null
       setTick(t => t + 1)
     })
-  }, [removeFromCustom, tool, redraw, selectedThemeId])
+  }, [removeFromCustom, tool, redraw, selectedThemeId, selectedGroupId, reloadGraphData, router, oeuvresById, onOpen])
 
   // ── Drag and Drop (Exhibition Floorplan integration) ──────────
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -1330,14 +1593,24 @@ export function ConstellationCanvas({
   }, [])
 
   const onMouseLeave = useCallback(() => {
-    if (dragRef.current.mode === 'node') savePos(groupByRef.current, posRef.current, groupByRef.current === 'theme' ? selectedThemeId : undefined)
+    if (dragRef.current.mode === 'node') {
+      savePos(
+        groupByRef.current,
+        posRef.current,
+        groupByRef.current === 'theme'
+          ? selectedThemeId
+          : groupByRef.current === 'workgroup'
+            ? selectedGroupId
+            : undefined,
+      )
+    }
     draftRef.current   = null
     hovNodeRef.current = null
     hovEdgeRef.current = null
     dragRef.current    = { mode: 'idle', startX: 0, startY: 0 }
     setPanelNode(null)
     setTick(t => t + 1)
-  }, [selectedThemeId])
+  }, [selectedThemeId, selectedGroupId])
 
   // ── Custom canvas: add / remove individual works ───────────────
   function addToCustom(id: number) {
@@ -1426,10 +1699,17 @@ export function ConstellationCanvas({
     if (groupBy === 'year')  posRef.current = layoutYear(oeuvres)
     else if (groupBy === 'none') posRef.current = layoutGrid(oeuvres)
     else if (groupBy === 'theme') {
-      const activeThemes = selectedThemeId !== null ? themes.filter(t => t.ThemeID === selectedThemeId) : themes
+      const activeThemes = selectedThemeId !== null ? themes.filter(t => t.id === selectedThemeId) : themes
       posRef.current = layoutTheme(constellationOeuvres, themeWork, activeThemes)
+    } else if (groupBy === 'workgroup') {
+      const activeGroups = selectedGroupId !== null ? groups.filter(g => g.id === selectedGroupId) : groups
+      posRef.current = layoutWorkGroup(constellationOeuvres, groupWork, activeGroups)
     }
-    savePos(groupBy, posRef.current, groupBy === 'theme' ? selectedThemeId : undefined)
+    savePos(
+      groupBy,
+      posRef.current,
+      groupBy === 'theme' ? selectedThemeId : groupBy === 'workgroup' ? selectedGroupId : undefined,
+    )
     redraw()
   }
 
@@ -1848,12 +2128,12 @@ export function ConstellationCanvas({
         <div className="vline" style={{ height: 16 }} />
 
         <div className="t-label" style={{ color: 'var(--tx3)', whiteSpace: 'nowrap' }}>Vue</div>
-        {(['year', 'theme', 'none'] as GroupBy[]).map(g => (
+        {(['year', 'theme', 'workgroup', 'none'] as GroupBy[]).map(g => (
           <button key={g} className="btn ghost sm"
             style={{ borderColor: groupBy === g ? 'var(--ac)' : undefined, color: groupBy === g ? 'var(--ac)' : undefined, whiteSpace: 'nowrap' }}
             onClick={() => { groupByRef.current = g; setGroupBy(g) }}
           >
-            {g === 'year' ? 'Année' : g === 'theme' ? 'Thème' : 'Global'}
+            {g === 'year' ? 'Année' : g === 'theme' ? 'Thème' : g === 'workgroup' ? 'Groupe' : 'Global'}
           </button>
         ))}
         {groupBy === 'theme' && (
@@ -1863,9 +2143,23 @@ export function ConstellationCanvas({
             style={{ fontSize: 9, background: 'var(--bg0)', border: '1px solid var(--ac)', color: 'var(--tx)', padding: '2px 8px', cursor: 'pointer', maxWidth: 140 }}
           >
             <option value="">Tous les thèmes ({[...themeWork.values()].reduce((a, s) => { s.forEach(id => a.add(id)); return a }, new Set()).size})</option>
-            {themes.filter(th => (themeWork.get(th.ThemeID)?.size ?? 0) > 0).map(th => (
-              <option key={th.ThemeID} value={th.ThemeID}>
-                {th.Nom} ({themeWork.get(th.ThemeID)?.size ?? 0})
+            {themes.filter(th => (themeWork.get(th.id)?.size ?? 0) > 0).map(th => (
+              <option key={th.id} value={th.id}>
+                {th.name} ({themeWork.get(th.id)?.size ?? 0})
+              </option>
+            ))}
+          </select>
+        )}
+        {groupBy === 'workgroup' && (
+          <select
+            value={selectedGroupId ?? ''}
+            onChange={e => setSelectedGroupId(e.target.value || null)}
+            style={{ fontSize: 9, background: 'var(--bg0)', border: '1px solid var(--ac)', color: 'var(--tx)', padding: '2px 8px', cursor: 'pointer', maxWidth: 140 }}
+          >
+            <option value="">Tous les groupes ({[...groupWork.values()].reduce((a, s) => { s.forEach(id => a.add(id)); return a }, new Set()).size})</option>
+            {groups.filter(gr => (groupWork.get(gr.id)?.size ?? 0) > 0).map(gr => (
+              <option key={gr.id} value={gr.id}>
+                {gr.name} ({groupWork.get(gr.id)?.size ?? 0})
               </option>
             ))}
           </select>
@@ -1953,7 +2247,7 @@ export function ConstellationCanvas({
 
         <div className="vline" style={{ height: 16 }} />
         <div className="t-mono-sm" style={{ color: 'var(--tx3)', whiteSpace: 'nowrap', fontSize: 9 }}>
-          Bord → lier · Maj+clic/Marquée → sélect. · Balai → effacer · Clic dr. → suppr.
+          Bord → lier · Maj+clic/Marquée → sélect. · Balai → effacer · Œuvre : clic dr. retirer (thème/groupe) ou ouvrir (année/global) · Ctrl+clic dr. → ouvrir fiche
         </div>
         {loading && <div className="pulse t-mono-sm" style={{ color: 'var(--tx3)', marginLeft: 'auto', whiteSpace: 'nowrap' }}>Chargement…</div>}
       </div>
@@ -2001,11 +2295,18 @@ export function ConstellationCanvas({
             </div>
           )}
 
-          {/* Theme mode instruction overlay */}
+          {/* Theme / working-group filter prompt */}
           {groupBy === 'theme' && selectedThemeId === null && (
             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
               <div className="t-mono-sm" style={{ color: 'var(--tx3)', background: 'var(--bg1)', padding: '10px 20px', border: '1px solid var(--bd)', borderRadius: 2 }}>
                 Veuillez sélectionner un thème dans la barre d&apos;outils.
+              </div>
+            </div>
+          )}
+          {groupBy === 'workgroup' && selectedGroupId === null && (
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+              <div className="t-mono-sm" style={{ color: 'var(--tx3)', background: 'var(--bg1)', padding: '10px 20px', border: '1px solid var(--bd)', borderRadius: 2 }}>
+                Veuillez sélectionner un groupe de travail dans la barre d&apos;outils.
               </div>
             </div>
           )}
@@ -2148,8 +2449,10 @@ export function ConstellationCanvas({
               <div className="t-eyebrow" style={{ marginBottom: 6 }}>Constellation</div>
               <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>
                 {groupBy === 'theme'
-                  ? `${constellationOeuvres.length} œuvre${constellationOeuvres.length !== 1 ? 's' : ''}${selectedThemeId !== null ? ` · ${themes.find(t => t.ThemeID === selectedThemeId)?.Nom ?? ''}` : ' thématisées'}`
-                  : `${oeuvres.length} œuvres`}
+                  ? `${constellationOeuvres.length} œuvre${constellationOeuvres.length !== 1 ? 's' : ''}${selectedThemeId !== null ? ` · ${themes.find(t => t.id === selectedThemeId)?.name ?? ''}` : ' thématisées'}`
+                  : groupBy === 'workgroup'
+                    ? `${constellationOeuvres.length} œuvre${constellationOeuvres.length !== 1 ? 's' : ''}${selectedGroupId !== null ? ` · ${groups.find(g => g.id === selectedGroupId)?.name ?? ''}` : ''}`
+                    : `${oeuvres.length} œuvres`}
               </div>
             </div>
           )}

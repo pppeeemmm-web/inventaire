@@ -2,7 +2,7 @@
 // Only team members can access /atelier. No public sign-up.
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 export default function LoginPage() {
@@ -11,6 +11,30 @@ export default function LoginPage() {
   const [sent, setSent]           = useState(false)
   const [loading, setLoading]     = useState(false)
   const [error, setError]         = useState<string | null>(null)
+
+  // Supabase/Google may return errors in the URL hash after a failed OAuth exchange
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const { hash, search, pathname } = window.location
+
+    const q = new URLSearchParams(search)
+    if (q.get('error') === 'auth') {
+      setError('La session n’a pas pu être créée. Vérifiez la configuration Google + Supabase (voir documentation), ou réessayez.')
+    }
+
+    if (!hash || hash.length < 2) return
+    const params = new URLSearchParams(hash.slice(1))
+    const code = params.get('error_code')
+    const desc = params.get('error_description')
+    const err  = params.get('error')
+    if (desc || err) {
+      const msg = desc
+        ? decodeURIComponent(desc.replace(/\+/g, ' '))
+        : err ?? code ?? 'Erreur d’authentification'
+      setError(msg)
+    }
+    window.history.replaceState(null, '', pathname + search)
+  }, [])
 
   async function handleGoogle() {
     setLoading(true)

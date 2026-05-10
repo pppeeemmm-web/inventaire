@@ -3,7 +3,7 @@
 // ContactsTab — searchable, filterable contact list with full field set + edit/create.
 // Supports multiple addresses per contact via contact_addresses table.
 
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useState, useMemo, useEffect, useCallback, useLayoutEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
   checkOllamaListening,
@@ -17,6 +17,7 @@ import {
 import { runOllamaInstructionScript } from '@/app/atelier/ollama/actions'
 import { OLLAMA_SCRIPT_INSTRUCTIONS } from '@/lib/ollama-script'
 import { useI18n } from '@/lib/i18n/context'
+import { useUnsavedCloseGuard } from '@/hooks/useUnsavedCloseGuard'
 import type { Oeuvre } from '@/lib/types/database'
 
 function SortInd({ k, current, dir }: { k: string; current: string; dir: 'asc' | 'desc' }) {
@@ -396,7 +397,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
   const [mergePair, setMergePair] = useState<[number, number] | null>(null)
   const [mergeKeepId, setMergeKeepId] = useState<number | null>(null)
 
-  async function handleBatchSave(data: { Role?: string; Actif?: boolean; Notes?: string; appendNotes?: boolean }) {
+  async function handleBatchSave(data: { Role?: string; Actif?: boolean; Notes?: string; appendNotes?: boolean }): Promise<boolean> {
     setBusy(true)
     const sb = createClient()
     const ids = Array.from(selected)
@@ -434,8 +435,10 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
 
       setSelected(new Set())
       setBatchEditing(false)
+      return true
     } catch (err) {
       alert("Error: " + (err instanceof Error ? err.message : String(err)))
+      return false
     } finally {
       setBusy(false)
     }
@@ -1178,7 +1181,7 @@ function ContactEditModal({
     })
   }
 
-  async function handleSave() {
+  async function handleSave(): Promise<boolean> {
     setBusy(true)
     setErr(null)
     try {
@@ -1299,32 +1302,62 @@ function ContactEditModal({
       } else {
         onUpdated(savedContact, savedAddrs, savedEmails, savedPhones, savedWebs, savedSocials)
       }
+      return true
     } catch (e) {
       setErr(String(e))
+      return false
     } finally {
       setBusy(false)
     }
   }
 
+  const contactKey = contact?.ContactID ?? 'new'
+  const formPayload = useMemo(
+    () => JSON.stringify({ form, addrList, emailList, phoneList, webList, socialList }),
+    [form, addrList, emailList, phoneList, webList, socialList],
+  )
+  const [baselinePayload, setBaselinePayload] = useState<string | null>(null)
+  useLayoutEffect(() => {
+    setBaselinePayload(formPayload)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- baseline only when switching contact
+  }, [contactKey])
+  const isDirty = baselinePayload != null && formPayload !== baselinePayload
+
+  const performSave = async () => handleSave()
+
+  const { attemptClose, unsavedDialog } = useUnsavedCloseGuard({
+    isDirty,
+    onClose,
+    performSave,
+  })
+
   return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 200,
-      background: 'rgba(0,0,0,0.6)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: 24,
-    }}>
-      <div style={{
-        background: 'var(--bg1)', border: '1px solid var(--bd)',
-        width: '100%', maxWidth: 600,
-        maxHeight: '90vh', overflow: 'auto',
-        padding: 28,
-      }}>
+    <>
+      {unsavedDialog}
+      <div
+        style={{
+          position: 'fixed', inset: 0, zIndex: 200,
+          background: 'rgba(0,0,0,0.6)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 24,
+        }}
+        onClick={attemptClose}
+      >
+      <div
+        style={{
+          background: 'var(--bg1)', border: '1px solid var(--bd)',
+          width: '100%', maxWidth: 600,
+          maxHeight: '90vh', overflow: 'auto',
+          padding: 28,
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <div style={{ fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--tx3)' }}>
             {isNew ? 'Nouveau contact' : `Modifier · #${contact!.ContactID}`}
           </div>
-          <button className="btn ghost sm" onClick={onClose} disabled={busy}>✕</button>
+          <button type="button" className="btn ghost sm" onClick={attemptClose} disabled={busy}>✕</button>
         </div>
 
         {/* Identité */}
@@ -1508,20 +1541,21 @@ function ContactEditModal({
         {err && <div style={{ fontSize: 11, color: 'var(--rust)', marginTop: 10 }}>{err}</div>}
 
         <div className="row gap-sm" style={{ marginTop: 20, justifyContent: 'flex-end' }}>
-          <button className="btn ghost sm" onClick={onClose} disabled={busy}>Annuler</button>
-          <button className="btn primary sm" onClick={() => void handleSave()} disabled={busy}>
+          <button type="button" className="btn ghost sm" onClick={attemptClose} disabled={busy}>Annuler</button>
+          <button type="button" className="btn primary sm" onClick={() => void handleSave()} disabled={busy}>
             {busy ? '...' : isNew ? 'Créer' : 'Enregistrer'}
           </button>
         </div>
       </div>
     </div>
+    </>
   )
 }
 
 function BatchEditModal({
   count, roleOptions, onClose, onSave, busy
 }: {
-  count: number; roleOptions: string[]; onClose: () => void; onSave: (data: any) => void; busy: boolean
+  count: number; roleOptions: string[]; onClose: () => void; onSave: (data: any) => Promise<boolean>; busy: boolean
 }) {
   const [role,   setRole]   = useState<string | undefined>()
   const [actif,  setActif]  = useState<'unchanged' | 'true' | 'false'>('unchanged')
@@ -1530,25 +1564,39 @@ function BatchEditModal({
 
   const hasChange = role !== undefined || actif !== 'unchanged' || notes !== undefined
 
-  function handleSave() {
+  async function applyBatch() {
     const payload: any = {}
     if (role !== undefined)    payload.Role  = role
     if (actif !== 'unchanged') payload.Actif = actif === 'true'
     if (notes !== undefined)   { payload.Notes = notes; payload.appendNotes = append }
-    onSave(payload)
+    return onSave(payload)
   }
 
+  const { attemptClose, unsavedDialog } = useUnsavedCloseGuard({
+    isDirty: hasChange,
+    onClose,
+    performSave: applyBatch,
+  })
+
   return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 300,
-      background: 'rgba(0,0,0,0.6)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: 24,
-    }}>
-      <div style={{
-        background: 'var(--bg1)', border: '1px solid var(--bd)',
-        width: '100%', maxWidth: 400, padding: 28,
-      }}>
+    <>
+    {unsavedDialog}
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 300,
+        background: 'rgba(0,0,0,0.6)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 24,
+      }}
+      onClick={attemptClose}
+    >
+      <div
+        style={{
+          background: 'var(--bg1)', border: '1px solid var(--bd)',
+          width: '100%', maxWidth: 400, padding: 28,
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div style={{ fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--tx3)', marginBottom: 20 }}>
           Batch Edit · {count} contact{count > 1 ? 's' : ''}
         </div>
@@ -1586,13 +1634,14 @@ function BatchEditModal({
         </div>
 
         <div style={{ display: 'flex', gap: 8, marginTop: 24 }}>
-          <button className="btn sm ghost" onClick={onClose} disabled={busy} style={{ flex: 1 }}>Annuler</button>
-          <button className="btn sm" onClick={handleSave} disabled={busy || !hasChange} style={{ flex: 1, background: 'var(--ac)', borderColor: 'var(--ac)' }}>
+          <button type="button" className="btn sm ghost" onClick={attemptClose} disabled={busy} style={{ flex: 1 }}>Annuler</button>
+          <button type="button" className="btn sm" onClick={() => void applyBatch()} disabled={busy || !hasChange} style={{ flex: 1, background: 'var(--ac)', borderColor: 'var(--ac)' }}>
             {busy ? '...' : 'Appliquer'}
           </button>
         </div>
       </div>
     </div>
+    </>
   )
 }
 

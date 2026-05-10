@@ -4,9 +4,9 @@
 // Called from WorkForm (client component) via useTransition.
 
 import { revalidatePath } from 'next/cache'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { makeFilename, seqFromFilename } from '@/lib/data'
+import { makeFilename, seqFromFilename, STATUS_ID_ARCHIVE_ARTISTE } from '@/lib/data'
 import type { WorkImage } from '@/lib/types/database'
 import crypto from 'crypto'
 import sharp from 'sharp'
@@ -59,8 +59,9 @@ export type ImageResult  = { error: string } | { ok: true; image: WorkImage }
 
 export async function deleteWork(oid: number): Promise<DeleteResult> {
   const supabase = await createClient()
+  const svc = createServiceClient()
   await supabase.from('tblrelations').delete().or(`source_id.eq.${oid},target_id.eq.${oid}`)
-  await supabase.from('oeuvre_theme').delete().eq('oeuvre_id', oid)
+  await svc.from('oeuvre_theme').delete().eq('oeuvre_id', oid)
   const { error } = await supabase.from('Oeuvres').delete().eq('OeuvreID', oid)
   if (error) return { error: error.message }
   return { ok: true }
@@ -68,10 +69,11 @@ export async function deleteWork(oid: number): Promise<DeleteResult> {
 
 export async function deleteSelectedWorks(ids: number[]): Promise<DeleteResult> {
   const supabase = await createClient()
+  const svc = createServiceClient()
   // Delete all relations for all selected works
   for (const id of ids) {
     await supabase.from('tblrelations').delete().or(`source_id.eq.${id},target_id.eq.${id}`)
-    await supabase.from('oeuvre_theme').delete().eq('oeuvre_id', id)
+    await svc.from('oeuvre_theme').delete().eq('oeuvre_id', id)
   }
   const { error } = await supabase.from('Oeuvres').delete().in('OeuvreID', ids)
   if (error) return { error: error.message }
@@ -83,6 +85,7 @@ export async function deleteSelectedWorks(ids: number[]): Promise<DeleteResult> 
 
 export async function saveWork(formData: FormData): Promise<SaveResult> {
   const supabase = await createClient()
+  const svc = createServiceClient()
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Non authentifié' }
@@ -110,7 +113,8 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
   const localisationDetail = (formData.get('localisation_detail') as string | null)?.trim() || null
   const tvaRate      = numOrNull(formData.get('tva_rate'))
 
-  const exposable    = formData.get('exposable')     === '1'
+  let exposable      = formData.get('exposable')     === '1'
+  if (statusId === STATUS_ID_ARCHIVE_ARTISTE) exposable = false
   const montee       = formData.get('montee')      === '1'
   const encadree     = formData.get('encadree')      === '1'
   const catalogued   = formData.get('catalogued')    === '1'
@@ -245,7 +249,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
 
     // Insert themes
     if (themeIds.length > 0) {
-      const { error: themeErr } = await supabase.from('oeuvre_theme').insert(
+      const { error: themeErr } = await svc.from('oeuvre_theme').insert(
         themeIds.map((tid) => ({ oeuvre_id: oid, theme_id: tid })),
       )
       if (themeErr) return { error: themeErr.message }
@@ -361,14 +365,14 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
     await syncPipelineWithBooleans(supabase, oid, { catalogued, needsPhotograph })
 
     // Replace themes: delete + reinsert
-    await supabase.from('oeuvre_theme').delete().eq('oeuvre_id', oid)
+    await svc.from('oeuvre_theme').delete().eq('oeuvre_id', oid)
     if (themeIds.length > 0) {
-      await supabase.from('oeuvre_theme').insert(themeIds.map(tid => ({ oeuvre_id: oid, theme_id: tid })))
+      await svc.from('oeuvre_theme').insert(themeIds.map(tid => ({ oeuvre_id: oid, theme_id: tid })))
     }
 
     // Replace working groups
     const groupIds = (formData.getAll('groups') as string[]).filter(Boolean)
-    await saveWorkGroups(supabase, oid, groupIds)
+    await saveWorkGroups(svc, oid, groupIds)
 
     revalidatePath('/atelier')
     return { ok: true }

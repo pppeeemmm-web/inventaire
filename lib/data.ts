@@ -51,6 +51,9 @@ export function decadeOf(year: number | null): string | null {
 
 // ── Status helpers ────────────────────────────────────────────
 
+/** `Oeuvres.statusId` for OeuvreStatus label « Archive artiste » (PEM archive). */
+export const STATUS_ID_ARCHIVE_ARTISTE = 3
+
 /**
  * Canonical work state.
  *

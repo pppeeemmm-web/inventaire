@@ -37,6 +37,8 @@ export interface Props {
   statusLabelMap:  Record<number, string>
   oeuvreThemeMap?: Map<number, number[]>
   onOpenContact?:  (id: number) => void
+  /** Context menu on work-mode pins: right-click = first work, Ctrl+right-click = second if clustered. */
+  onOpenOeuvreById?: (oeuvreId: number) => void
 }
 
 export interface Pin {
@@ -51,6 +53,7 @@ export interface Pin {
   works?:     string[]
   workThumbs?: string[]   // parallel array of txtImageNameLink paths
   contacts?:  { id: number; name: string; role: string | null }[]  // for multi-contact pins
+  oeuvreIds?: number[]    // works-mode pin: OeuvreIDs at this location (order matches thumbs)
 }
 
 export const ROLE_COLORS: Record<string, string> = {
@@ -116,7 +119,12 @@ async function geocode(city: string, country: string): Promise<[number, number] 
 }
 
 // ── Leaflet dynamic import ─────────────────────────────────────────────
-interface MapProps { pins: Pin[]; mapKey: string; onOpenContact?: (id: number) => void }
+interface MapProps {
+  pins: Pin[]
+  mapKey: string
+  onOpenContact?: (id: number) => void
+  onOpenOeuvreById?: (oeuvreId: number) => void
+}
 const LeafletMap = dynamic<MapProps>(
   () => import('./WorldMapInner').then(m => m.WorldMapInner),
   { ssr: false, loading: () => <div style={{ flex: 1, background: '#0d0d0d' }} /> },
@@ -136,6 +144,7 @@ export function WorldMapTab({
   statusLabelMap,
   oeuvreThemeMap: oeuvreThemeMapProp,
   onOpenContact,
+  onOpenOeuvreById,
 }: Props) {
   const oeuvreThemeMap = oeuvreThemeMapProp ?? EMPTY_THEME_MAP
   const [mode,      setMode]      = useState<Mode>('contacts')
@@ -417,7 +426,17 @@ export function WorldMapTab({
       const lng   = coords[1] + (Math.random() - 0.5) * 0.008
       const label = group.length === 1 ? (group[0].Titre ?? `#${group[0].OeuvreID}`) : `${group.length} œuvres`
       const workThumbs = group.map(o => o.txtImageNameLink ?? '').filter(Boolean).slice(0, 6) as string[]
-      result.push({ id: key, lat, lng, label, sub: meta.label, color: '#c0a060', count: group.length, workThumbs })
+      result.push({
+        id: key,
+        lat,
+        lng,
+        label,
+        sub: meta.label,
+        color: '#c0a060',
+        count: group.length,
+        workThumbs,
+        oeuvreIds: group.map((w) => w.OeuvreID),
+      })
       if (!abortRef.current) setPins([...result])
     }
     if (!abortRef.current) setLoading(false)
@@ -444,6 +463,11 @@ export function WorldMapTab({
             {m === 'contacts' ? `Contacts (${addrCount} adresses)` : `Œuvres (${worksWithLoc})`}
           </button>
         ))}
+        {mode === 'works' && (
+          <span className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 9 }}>
+            Marqueur · clic dr. → fiche · Ctrl+clic dr. → 2e œuvre si plusieurs au point
+          </span>
+        )}
         {loading && (
           <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>
             Géocodage… {pins.length} point{pins.length > 1 ? 's' : ''}
@@ -676,7 +700,12 @@ export function WorldMapTab({
             </div>
           </div>
         )}
-        <LeafletMap pins={pins} mapKey={mode} onOpenContact={onOpenContact} />
+        <LeafletMap
+          pins={pins}
+          mapKey={mode}
+          onOpenContact={onOpenContact}
+          onOpenOeuvreById={onOpenOeuvreById}
+        />
       </div>
     </div>
   )

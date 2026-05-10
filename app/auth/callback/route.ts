@@ -1,30 +1,52 @@
-// Auth callback — exchanges the PKCE code delivered by Supabase magic links
-// for a real session, then redirects to the intended destination.
+// Auth callback — exchanges the PKCE code (OAuth + magic link) for a session.
+// Cookies MUST be attached to the same NextResponse as the redirect, otherwise
+// the session never reaches the browser and protected routes loop back to /login.
 //
-// Flow:
-//   signInWithOtp → email → user clicks link
-//   → /auth/callback?code=xxx&next=/atelier
-//   → this route exchanges code → sets session cookies → redirect next
+// Flow: signInWithOAuth / signInWithOtp → … → /auth/callback?code=xxx&next=/atelier
 
-import { NextResponse } from 'next/server'
-import { createClient }  from '@/lib/supabase/server'
+import { NextResponse, type NextRequest } from 'next/server'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
 
-export async function GET(request: Request) {
-  const url      = new URL(request.url)
-  const code     = url.searchParams.get('code')
-  const next     = url.searchParams.get('next') ?? '/atelier'
-  const origin   = url.origin
+function safeNext(param: string | null): string {
+  const fallback = '/atelier'
+  if (!param || !param.startsWith('/') || param.startsWith('//')) return fallback
+  return param
+}
+
+export async function GET(request: NextRequest) {
+  const url    = new URL(request.url)
+  const code   = url.searchParams.get('code')
+  const next   = safeNext(url.searchParams.get('next'))
+  const origin = url.origin
 
   if (code) {
-    const supabase = await createClient()
+    let response = NextResponse.redirect(`${origin}${next}`)
+
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll()
+          },
+          setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              response.cookies.set(name, value, options)
+            })
+          },
+        },
+      },
+    )
+
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`)
+      return response
     }
-    // Code exchange failed — send back to login with hint
+
+    console.error('[auth/callback] exchangeCodeForSession:', error.message)
     return NextResponse.redirect(`${origin}/login?error=auth`)
   }
 
-  // No code — just redirect (handles implicit-flow tokens set client-side)
   return NextResponse.redirect(`${origin}${next}`)
 }

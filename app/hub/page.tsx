@@ -11,6 +11,7 @@ export default async function HubPage() {
   const [
     { count: total },
     { count: thisYear },
+    { count: publicWorks },
     { data: recentImages },
     { count: stockAlerts },
     { data: recentProcess },
@@ -24,10 +25,14 @@ export default async function HubPage() {
       .gte('Année', yearStart),
     supabase
       .from('Oeuvres')
+      .select('*', { count: 'exact', head: true })
+      .eq('is_public', true),
+    supabase
+      .from('Oeuvres')
       .select('OeuvreID, txtImageNameLink')
       .not('txtImageNameLink', 'is', null)
       .order('OeuvreID', { ascending: false })
-      .limit(24),
+      .limit(16),
     supabase
       .from('stock_item')
       .select('*', { count: 'exact', head: true })
@@ -36,24 +41,29 @@ export default async function HubPage() {
       .from('suivi_process')
       .select('id, nom, statut, created_at')
       .order('created_at', { ascending: false })
-      .limit(5),
+      .limit(6),
     supabase
       .from('concept')
       .select('id, titre, energie, medium')
       .not('statut', 'eq', 'archived')
       .order('created_at', { ascending: false })
-      .limit(3),
+      .limit(4),
     supabase
       .from('system_log')
       .select('id, created_at, action, details, type, status, priority')
       .not('action', 'is', null)
       .order('created_at', { ascending: false })
-      .limit(6),
+      .limit(8),
   ])
 
   return (
     <HubHomeClient
-      stats={{ total: total ?? 0, thisYear: thisYear ?? 0, stockAlerts: stockAlerts ?? 0 }}
+      stats={{
+        total: total ?? 0,
+        thisYear: thisYear ?? 0,
+        stockAlerts: stockAlerts ?? 0,
+        publicWorks: publicWorks ?? 0,
+      }}
       recentImages={recentImages ?? []}
       recentProcess={(recentProcess ?? []).map((p: any) => ({
         id: p.id,

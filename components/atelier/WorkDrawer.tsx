@@ -1,19 +1,31 @@
 'use client'
 
-import { imageUrl, thumbUrl, yearOf, statusOf, DIAMETER_SIGN, isCircularSupport } from '@/lib/data'
+import { imageUrl, thumbUrl, yearOf, statusOf, DIAMETER_SIGN, isCircularSupport, STATUS_ID_ARCHIVE_ARTISTE } from '@/lib/data'
 import { StatusChip } from '@/components/ui/StatusChip'
 import { WorkStateChip } from './WorkStateChip'
 import { deleteWork } from '@/app/atelier/works/actions'
 import { createClient } from '@/lib/supabase/client'
 import { getWorkActionTypes } from '@/lib/work-action-type-cache'
 import { useRouter } from 'next/navigation'
-import { useEffect, useLayoutEffect, useState, useTransition, useCallback, useRef, useMemo } from 'react'
+import { useEffect, useLayoutEffect, useState, useTransition, useCallback, useRef, useMemo, forwardRef, useImperativeHandle } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { saveWork, createLookup } from '@/app/atelier/works/actions'
 import { markAsGift } from '@/app/atelier/works/gift-actions'
 import type { Oeuvre } from '@/lib/types/database'
 import { WorkThumb } from './WorkThumb'
 import { logAtelierOeuvreView } from '@/app/atelier/audit/log-view'
+
+function setsEqualNum(a: Set<number>, b: Set<number>): boolean {
+  if (a.size !== b.size) return false
+  for (const x of a) if (!b.has(x)) return false
+  return true
+}
+
+function setsEqualStr(a: Set<string>, b: Set<string>): boolean {
+  if (a.size !== b.size) return false
+  for (const x of a) if (!b.has(x)) return false
+  return true
+}
 
 /* ──────────────────────────────────────────────────────────────────
    WorkDrawer — unified detail panel.
@@ -54,17 +66,26 @@ interface Props {
 
 interface ActionType { id: number; label: string; color: string; field_key: string | null; sort_order: number }
 
-export function WorkDrawer({
+/** Parent can call `runGuarded(() => …)` before changing the open work (e.g. list click) so unsaved edits prompt first. */
+export type WorkDrawerGuardHandle = { runGuarded: (fn: () => void) => void }
+
+export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function WorkDrawer({
   o, tM, sM, cM, pM, fM, locMap, statusLabelMap, selection, setSelection, toggleInSel, onClose, onEdit,
   thM, oeuvreThemeMap, oeuvreGroupMap, groupNameMap,
   techniques: initialTechniques, supports: initialSupports, formats: initialFormats,
   themes: initialThemes, contacts: initialContacts, groups: initialGroups,
   presentations: initialPresentations,
   mode = 'overlay', expanded: expandedProp = false, setExpanded: setExpandedProp,
-}: Props) {
-  const { t }  = useI18n()
-  const router = useRouter()
+}, ref) {
   const isPanel = mode === 'panel'
+
+  /** Wired by DrawerContent — backdrop / × call this to guard unsaved edits (overlay + panel). */
+  const closeAttemptRef = useRef<(() => void) | null>(null)
+
+  const runGuardedSlot = useRef<(fn: () => void) => void>((fn) => { fn() })
+  useImperativeHandle(ref, () => ({
+    runGuarded: (fn) => runGuardedSlot.current(fn),
+  }), [])
 
   const panelRef = useRef<HTMLDivElement>(null)
   useEffect(() => { panelRef.current?.scrollTo(0, 0) }, [o?.OeuvreID])
@@ -185,18 +206,32 @@ export function WorkDrawer({
             imgContainerRef={imgContainerRef} isDragging={isDragging} dragStart={dragStart}
             activeImgPath={activeImgPath}
             isSel={isSel} st={st} isSold={isSold} isLoan={isLoan}
+            closeAttemptRef={closeAttemptRef}
+            runGuardedSlot={runGuardedSlot}
           />
         </div>
       </div>
     )
   }
 
-  // Overlay mode
+  // Overlay mode — dimmed backdrop catches outside clicks; panel stops propagation.
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'transparent', zIndex: 60, display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-start', pointerEvents: 'none' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 60, display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-start' }}>
       <div
-        onClick={e => e.stopPropagation()}
-        style={{ width: 460, maxWidth: '50vw', maxHeight: '75vh', height: 'fit-content', background: 'var(--bg1)', border: '1px solid var(--bd)', borderRadius: '16px 0 0 16px', padding: 0, overflow: 'auto', display: 'flex', flexDirection: 'column', pointerEvents: 'auto', boxShadow: '-10px 0 50px rgba(0,0,0,0.4)', margin: 0 }}
+        role="presentation"
+        aria-hidden
+        onClick={() => closeAttemptRef.current?.()}
+        style={{
+          flex: 1,
+          minWidth: 0,
+          alignSelf: 'stretch',
+          background: 'rgba(0,0,0,0.35)',
+          cursor: 'default',
+        }}
+      />
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ width: 460, maxWidth: '50vw', maxHeight: '75vh', height: 'fit-content', background: 'var(--bg1)', border: '1px solid var(--bd)', borderRadius: '16px 0 0 16px', padding: 0, overflow: 'auto', display: 'flex', flexDirection: 'column', boxShadow: '-10px 0 50px rgba(0,0,0,0.4)', margin: 0 }}
       >
         <div style={{ padding: 28 }}>
           <DrawerContent
@@ -217,12 +252,16 @@ export function WorkDrawer({
             imgContainerRef={imgContainerRef} isDragging={isDragging} dragStart={dragStart}
             activeImgPath={activeImgPath}
             isSel={isSel} st={st} isSold={isSold} isLoan={isLoan}
+            closeAttemptRef={closeAttemptRef}
+            runGuardedSlot={runGuardedSlot}
           />
         </div>
       </div>
     </div>
   )
-}
+})
+
+WorkDrawer.displayName = 'WorkDrawer'
 
 /* ══════════════════════════════════════════════════════════════════
    DrawerContent — shared inner body
@@ -238,6 +277,8 @@ function DrawerContent({
   workImages, activeImgIdx, setActiveImgIdx,
   imgContainerRef, isDragging, dragStart, activeImgPath,
   isSel, st, isSold, isLoan,
+  closeAttemptRef,
+  runGuardedSlot,
 }: any) {
   const { t } = useI18n()
   const router = useRouter()
@@ -287,6 +328,10 @@ function DrawerContent({
   const [giftBusy, setGiftBusy]                 = useState(false)
   const [giftError, setGiftError]               = useState<string | null>(null)
 
+  const [showUnsavedModal, setShowUnsavedModal] = useState(false)
+  const [savingExit, setSavingExit]             = useState(false)
+  const pendingAfterGuardRef = useRef<(() => void) | null>(null)
+
   const panRafId = useRef<number | null>(null)
   const latestMouseRef = useRef({ x: 0, y: 0 })
 
@@ -304,7 +349,7 @@ function DrawerContent({
     setStatusId(String(o.statusId ?? ''))
     setContactId(String(o.ContactID ?? ''))
     setLocId(String(o.LocalisationID ?? ''))
-    setExposable(!!o.Exposable)
+    setExposable(o.statusId === STATUS_ID_ARCHIVE_ARTISTE ? false : !!o.Exposable)
     setEncadree(!!o.Encadree)
     setPrix(String(o.Prix ?? ''))
     setPrixFinal(String((o as any).PrixFinal ?? ''))
@@ -313,6 +358,15 @@ function DrawerContent({
     setAnonymityLevel((o as any).anonymity_level ?? 0)
     setLocalContacts(initialContacts)
   }, [o.OeuvreID, oeuvreThemeMap, oeuvreGroupMap, o, initialContacts])
+
+  useEffect(() => {
+    if (Number(statusId) === STATUS_ID_ARCHIVE_ARTISTE && exposable) setExposable(false)
+  }, [statusId, exposable])
+
+  useEffect(() => {
+    pendingAfterGuardRef.current = null
+    setShowUnsavedModal(false)
+  }, [o.OeuvreID])
 
   // Lookups
   const [localTechniques, setLocalTechniques] = useState(initialTechniques)
@@ -331,6 +385,87 @@ function DrawerContent({
     if (a === b) return hauteur
     return hauteur || largeur
   }, [circularPlanar, hauteur, largeur])
+
+  const baselineThemes = useMemo(
+    () => new Set(oeuvreThemeMap.get(o.OeuvreID) ?? []),
+    [o.OeuvreID, oeuvreThemeMap],
+  )
+  const baselineGroups = useMemo(
+    () => new Set(oeuvreGroupMap.get(o.OeuvreID) ?? []),
+    [o.OeuvreID, oeuvreGroupMap],
+  )
+
+  const isDirty = useMemo(() => {
+    if ((o.Titre ?? '') !== titre) return true
+    if (String(o.Année ?? '') !== String(annee)) return true
+    if (String(o.Technique ?? '') !== techniqueId) return true
+    if (String(o.Support ?? '') !== supportId) return true
+    if (String(o.Format ?? '') !== formatId) return true
+    if (String(o.Hauteur ?? '') !== hauteur) return true
+    if (String(o.Largeur ?? '') !== largeur) return true
+    if (String(o.Profondeur ?? '') !== profondeur) return true
+    if (String((o as { PresentationID?: number }).PresentationID ?? '') !== presentationId) return true
+    if (String(o.statusId ?? '') !== statusId) return true
+    if (String(o.ContactID ?? '') !== contactId) return true
+    if (String(o.LocalisationID ?? '') !== locId) return true
+    if (!!o.Exposable !== exposable) return true
+    if (!!o.Encadree !== encadree) return true
+    if (String(o.Prix ?? '') !== prix) return true
+    if (String((o as { PrixFinal?: number }).PrixFinal ?? '') !== prixFinal) return true
+    if (((o as { anonymity_level?: number }).anonymity_level ?? 0) !== anonymityLevel) return true
+    if (!setsEqualNum(selThemes, baselineThemes)) return true
+    if (!setsEqualStr(selGroups, baselineGroups)) return true
+    return false
+  }, [
+    o,
+    titre,
+    annee,
+    techniqueId,
+    supportId,
+    formatId,
+    hauteur,
+    largeur,
+    profondeur,
+    presentationId,
+    statusId,
+    contactId,
+    locId,
+    exposable,
+    encadree,
+    prix,
+    prixFinal,
+    anonymityLevel,
+    selThemes,
+    selGroups,
+    baselineThemes,
+    baselineGroups,
+  ])
+
+  const runGuarded = useCallback((fn: () => void) => {
+    if (!isDirty) fn()
+    else {
+      pendingAfterGuardRef.current = fn
+      setShowUnsavedModal(true)
+    }
+  }, [isDirty])
+
+  const attemptClose = useCallback(() => {
+    runGuarded(onClose)
+  }, [runGuarded, onClose])
+
+  useEffect(() => {
+    closeAttemptRef.current = attemptClose
+    return () => {
+      closeAttemptRef.current = null
+    }
+  }, [attemptClose, closeAttemptRef])
+
+  useEffect(() => {
+    runGuardedSlot.current = runGuarded
+    return () => {
+      runGuardedSlot.current = (fn: () => void) => { fn() }
+    }
+  }, [runGuarded, runGuardedSlot])
 
   async function saveLookup(table: string, name: string) {
     if (!name) return
@@ -379,7 +514,7 @@ function DrawerContent({
   }
 
   // ── Save ───────────────────────────────────────────────
-  async function handleSubmit() {
+  function buildFormData(): FormData {
     const fd = new FormData()
     fd.append('oeuvre_id', String(o.OeuvreID))
     fd.append('titre', titre)
@@ -403,14 +538,47 @@ function DrawerContent({
     // Preserve production booleans — saveWork defaults missing keys to false and would wipe gates/pipeline sync.
     fd.append('catalogued', (o as { Catalogué?: boolean }).Catalogué ? '1' : '0')
     fd.append('needs_photograph', (o as { NeedsPhotograph?: boolean }).NeedsPhotograph ? '1' : '0')
-    selThemes.forEach(id => fd.append('themes', String(id)))
-    selGroups.forEach(id => fd.append('groups', id))
+    selThemes.forEach((id) => fd.append('themes', String(id)))
+    selGroups.forEach((id) => fd.append('groups', id))
+    return fd
+  }
 
+  async function performSave(): Promise<boolean> {
+    const res = await saveWork(buildFormData())
+    if ('error' in res) {
+      alert(res.error)
+      return false
+    }
+    router.refresh()
+    return true
+  }
+
+  function handleSubmit() {
     startSave(async () => {
-      const res = await saveWork(fd)
-      if ('error' in res) { alert(res.error) }
-      else { router.refresh() }
+      await performSave()
     })
+  }
+
+  async function handleSaveAndClose() {
+    setSavingExit(true)
+    try {
+      const ok = await performSave()
+      if (ok) {
+        setShowUnsavedModal(false)
+        const run = pendingAfterGuardRef.current
+        pendingAfterGuardRef.current = null
+        run?.()
+      }
+    } finally {
+      setSavingExit(false)
+    }
+  }
+
+  function discardUnsavedClose() {
+    setShowUnsavedModal(false)
+    const run = pendingAfterGuardRef.current
+    pendingAfterGuardRef.current = null
+    run?.()
   }
 
   // ── Delete ─────────────────────────────────────────────
@@ -509,7 +677,7 @@ function DrawerContent({
               title={isExpanded ? 'Réduire' : 'Agrandir'}
             >{isExpanded ? '◀' : '▶'}</button>
           )}
-          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--tx3)', cursor: 'pointer', fontSize: 24, padding: '0 6px' }}>×</button>
+          <button type="button" onClick={attemptClose} style={{ background: 'transparent', border: 'none', color: 'var(--tx3)', cursor: 'pointer', fontSize: 24, padding: '0 6px' }}>×</button>
         </div>
       </div>
 
@@ -599,7 +767,7 @@ function DrawerContent({
           { id: 8,  label: 'Prêt',          short: 'Prêt',    color: 'var(--cyan)' },
           { id: 6,  label: 'Vendu',         short: 'Vendu',   color: 'var(--mt)'   },
           { id: 11, label: 'Gift',          short: 'Don',     color: 'var(--mt)'   },
-          { id: 3,  label: 'Archive artiste', short: 'Arch.', color: 'var(--mt)'   },
+          { id: STATUS_ID_ARCHIVE_ARTISTE, label: 'Archive artiste', short: 'Arch.', color: 'var(--mt)'   },
           { id: 5,  label: 'Archive privée',  short: 'Priv.', color: 'var(--mt)'   },
           { id: 9,  label: 'Destroyed',     short: 'Détruit', color: '#555'        },
           { id: 10, label: 'Lost',          short: 'Perdu',   color: '#555'        },
@@ -935,6 +1103,74 @@ function DrawerContent({
               <button className="btn ghost sm" onClick={() => { setShowNewContact(false); setNewC({ inst: '', prenom: '', nom: '', role: '', email: '', phone: '', ville: '', pays: '', notes: '' }) }} style={{ fontSize: 11 }}>Annuler</button>
               <button className="btn primary sm" onClick={handleCreateContact} disabled={creatingContact || (!newC.inst && !newC.prenom && !newC.nom)} style={{ fontSize: 11 }}>
                 {creatingContact ? '…' : 'Créer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showUnsavedModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="work-drawer-unsaved-title"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 230,
+            background: 'rgba(0,0,0,0.55)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 16,
+          }}
+          onClick={() => {
+            if (savingExit) return
+            setShowUnsavedModal(false)
+            pendingAfterGuardRef.current = null
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'var(--bg1)',
+              border: '1px solid var(--bd)',
+              borderRadius: 10,
+              padding: 24,
+              width: '100%',
+              maxWidth: 400,
+              boxShadow: '0 20px 60px rgba(0,0,0,0.45)',
+            }}
+          >
+            <div id="work-drawer-unsaved-title" style={{ fontSize: 16, fontFamily: "'Instrument Serif', serif", marginBottom: 8, color: 'var(--tx)' }}>
+              {t('workDrawerUnsavedTitle')}
+            </div>
+            <div className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx3)', marginBottom: 20, lineHeight: 1.45 }}>
+              {t('workDrawerUnsavedBody')}
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="btn ghost sm"
+                disabled={savingExit}
+                onClick={discardUnsavedClose}
+                style={{ color: 'var(--rust)', borderColor: 'rgba(192,57,43,0.35)' }}
+              >
+                {t('workDrawerDiscard')}
+              </button>
+              <button
+                type="button"
+                className="btn ghost sm"
+                disabled={savingExit}
+                onClick={() => {
+                  setShowUnsavedModal(false)
+                  pendingAfterGuardRef.current = null
+                }}
+              >
+                {t('cancel')}
+              </button>
+              <button type="button" className="btn primary sm" disabled={savingExit} onClick={() => void handleSaveAndClose()}>
+                {savingExit ? '…' : t('save')}
               </button>
             </div>
           </div>

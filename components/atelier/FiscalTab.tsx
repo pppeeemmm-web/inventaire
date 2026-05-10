@@ -4,9 +4,10 @@
 // Régimes: Micro-BNC (abattement 34%) or Déclaration contrôlée (réel).
 // URSSAF cotisations ~21.1%. TVA franchise thresholds.
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useLayoutEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useI18n } from '@/lib/i18n/context'
+import { useUnsavedCloseGuard } from '@/hooks/useUnsavedCloseGuard'
 import type { Oeuvre } from '@/lib/types/database'
 
 // ── Constants ──────────────────────────────────────────────────────────
@@ -530,7 +531,7 @@ function ExpenseModal({
     setForm(updated)
   }
 
-  async function handleSave() {
+  async function handleSave(): Promise<boolean> {
     setBusy(true); setErr(null)
     try {
       const sb = createClient()
@@ -561,7 +562,8 @@ function ExpenseModal({
         if (!data) throw new Error('Aucune donnée retournée par la base')
         onSaved(data as Expense)
       }
-    } catch (e) { setErr(String(e)) }
+      return true
+    } catch (e) { setErr(String(e)); return false }
     finally { setBusy(false) }
   }
 
@@ -580,22 +582,47 @@ function ExpenseModal({
       setForm((p) => ({ ...p, [k]: e.target.value }))
   }
 
+  const expenseKey = expense?.id ?? 'new'
+  const formPayload = useMemo(() => JSON.stringify(form), [form])
+  const [baselinePayload, setBaselinePayload] = useState<string | null>(null)
+  useLayoutEffect(() => {
+    setBaselinePayload(formPayload)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expenseKey])
+  const isDirty = baselinePayload != null && formPayload !== baselinePayload
+
+  const performSave = async () => handleSave()
+
+  const { attemptClose, unsavedDialog } = useUnsavedCloseGuard({
+    isDirty,
+    onClose,
+    performSave,
+  })
+
   return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 300,
-      background: 'rgba(0,0,0,0.6)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
-    }}>
-      <div style={{
-        background: 'var(--bg1)', border: '1px solid var(--bd)',
-        width: '100%', maxWidth: 520,
-        maxHeight: '90vh', overflow: 'auto', padding: 28,
-      }}>
+    <>
+    {unsavedDialog}
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 300,
+        background: 'rgba(0,0,0,0.6)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
+      }}
+      onClick={attemptClose}
+    >
+      <div
+        style={{
+          background: 'var(--bg1)', border: '1px solid var(--bd)',
+          width: '100%', maxWidth: 520,
+          maxHeight: '90vh', overflow: 'auto', padding: 28,
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20, alignItems: 'center' }}>
           <div style={{ fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--tx3)' }}>
             {isNew ? 'Nouvelle dépense' : `Modifier dépense #${expense!.id}`}
           </div>
-          <button className="btn ghost sm" onClick={onClose} disabled={busy}>✕</button>
+          <button type="button" className="btn ghost sm" onClick={attemptClose} disabled={busy}>✕</button>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -713,14 +740,15 @@ function ExpenseModal({
             )}
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn ghost sm" onClick={onClose} disabled={busy}>Annuler</button>
-            <button className="btn primary sm" onClick={() => void handleSave()} disabled={busy}>
+            <button type="button" className="btn ghost sm" onClick={attemptClose} disabled={busy}>Annuler</button>
+            <button type="button" className="btn primary sm" onClick={() => void handleSave()} disabled={busy}>
               {busy ? '…' : isNew ? 'Créer' : 'Enregistrer'}
             </button>
           </div>
         </div>
       </div>
     </div>
+    </>
   )
 }
 

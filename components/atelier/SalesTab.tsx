@@ -2,7 +2,7 @@
 
 // SalesTab — KPI stats + order list + new order modal form.
 
-import { useMemo, useState, useEffect, useCallback } from 'react'
+import { useMemo, useState, useEffect, useCallback, useRef } from 'react'
 import { useI18n }      from '@/lib/i18n/context'
 import { statusOf, yearOf, thumbUrl, type StatusKey } from '@/lib/data'
 import type { Oeuvre }  from '@/lib/types/database'
@@ -10,6 +10,7 @@ import { createSaleOrder, updateOrderStatut, deleteSaleOrder, fetchOrders, regen
 import { getSignedUrl } from '@/app/atelier/vault/actions'
 import { stringifyError } from '@/lib/error'
 import { WorkThumb } from './WorkThumb'
+import { useUnsavedCloseGuard } from '@/hooks/useUnsavedCloseGuard'
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -303,6 +304,8 @@ function OrderFormModal({ oeuvres, contacts, groups, tM, onClose, onCreated }: {
   const [selectedGroup, setSelectedGroup] = useState('')
   
   const [search,      setSearch]      = useState('')
+  const [dirty,       setDirty]       = useState(false)
+  const formRef       = useRef<HTMLFormElement>(null)
 
   async function handleGroupSelect(groupId: string) {
     if (!groupId) return
@@ -313,6 +316,7 @@ function OrderFormModal({ oeuvres, contacts, groups, tM, onClose, onCreated }: {
     if (data) {
       const newIds = data.map(x => x.oeuvre_id).filter(id => !oeuvreIds.includes(id))
       setOeuvreIds(prev => [...prev, ...newIds])
+      if (newIds.length) setDirty(true)
     }
     setSelectedGroup('') // Reset dropdown
   }
@@ -336,30 +340,46 @@ function OrderFormModal({ oeuvres, contacts, groups, tM, onClose, onCreated }: {
     if (first?.Discount) setDiscountPct(String(first.Discount))
   }, [oeuvreIds, oeuvres])
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault(); setSaving(true); setError(null)
-    const fd = new FormData(e.currentTarget)
-    // Pluralize oeuvre IDs
-    fd.delete('oeuvre_id') // remove old single field if any
+  async function submitOrder(): Promise<boolean> {
+    setSaving(true); setError(null)
+    const form = formRef.current
+    if (!form) { setSaving(false); return false }
+    const fd = new FormData(form)
+    fd.delete('oeuvre_id')
     oeuvreIds.forEach(id => fd.append('oeuvre_ids', String(id)))
-    
     const res = await createSaleOrder(fd)
     setSaving(false)
-    if ('error' in res) { setError(stringifyError(res.error)); return }
+    if ('error' in res) { setError(stringifyError(res.error)); return false }
     onCreated()
+    return true
   }
 
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    void submitOrder()
+  }
+
+  const isDirty = dirty
+
+  const { attemptClose, unsavedDialog } = useUnsavedCloseGuard({
+    isDirty,
+    onClose,
+    performSave: submitOrder,
+  })
+
   return (
+    <>
+    {unsavedDialog}
     <div style={{
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
       display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200,
-    }} onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
-      <div style={{ width: 680, maxHeight: '90vh', overflowY: 'auto', background: 'var(--bg1)', border: '1px solid var(--bd)', padding: 28 }}>
+    }} onClick={(e) => { if (e.target === e.currentTarget) attemptClose() }}>
+      <div style={{ width: 680, maxHeight: '90vh', overflowY: 'auto', background: 'var(--bg1)', border: '1px solid var(--bd)', padding: 28 }} onClick={(e) => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
           <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--tx)' }}>Nouvelle commande</div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--tx3)', cursor: 'pointer', fontSize: 24 }}>×</button>
+          <button type="button" onClick={attemptClose} style={{ background: 'none', border: 'none', color: 'var(--tx3)', cursor: 'pointer', fontSize: 24 }}>×</button>
         </div>
-        <form onSubmit={handleSubmit}>
+        <form ref={formRef} onSubmit={handleSubmit} onChange={() => setDirty(true)}>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 20 }}>
             <div style={{ flex: 1 }}>
               <Section label="Import depuis Groupe">
@@ -387,7 +407,7 @@ function OrderFormModal({ oeuvres, contacts, groups, tM, onClose, onCreated }: {
                       </div>
                     )}
                     <span style={{ fontSize:12, fontFamily:'var(--font-mono)' }}>#{id}</span>
-                    <button type="button" onClick={() => setOeuvreIds(prev => prev.filter(x => x !== id))} style={{ background:'none', border:'none', color:'var(--rust)', cursor:'pointer', fontSize: 16 }}>×</button>
+                    <button type="button" onClick={() => { setDirty(true); setOeuvreIds(prev => prev.filter(x => x !== id)) }} style={{ background:'none', border:'none', color:'var(--rust)', cursor:'pointer', fontSize: 16 }}>×</button>
                   </div>
                 )
               })}
@@ -408,7 +428,7 @@ function OrderFormModal({ oeuvres, contacts, groups, tM, onClose, onCreated }: {
                     .filter(o => String(o.OeuvreID).includes(search) || o.Titre?.toLowerCase().includes(search.toLowerCase()))
                     .slice(0, 10)
                     .map(o => (
-                      <div key={o.OeuvreID} onClick={() => { setOeuvreIds(prev => [...prev, o.OeuvreID]); setSearch('') }}
+                      <div key={o.OeuvreID} onClick={() => { setDirty(true); setOeuvreIds(prev => [...prev, o.OeuvreID]); setSearch('') }}
                         style={{ padding:'10px 16px', fontSize:13, borderBottom:'1px solid var(--bd2)', cursor:'pointer', display:'flex', alignItems:'center', gap:12 }}
                         className="hover-bg"
                       >
@@ -509,7 +529,7 @@ function OrderFormModal({ oeuvres, contacts, groups, tM, onClose, onCreated }: {
           </Section>
           {error && <div style={{ color: 'var(--rust)', fontSize: 13, marginBottom: 12 }}>{error}</div>}
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-            <button type="button" onClick={onClose} className="btn ghost sm">Annuler</button>
+            <button type="button" onClick={attemptClose} className="btn ghost sm">Annuler</button>
             <button type="submit" disabled={saving} className="btn primary sm">
               {saving ? 'Création…' : 'Créer la commande + PDF'}
             </button>
@@ -517,6 +537,7 @@ function OrderFormModal({ oeuvres, contacts, groups, tM, onClose, onCreated }: {
         </form>
       </div>
     </div>
+    </>
   )
 }
 

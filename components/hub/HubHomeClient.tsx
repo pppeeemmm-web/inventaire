@@ -17,7 +17,7 @@ interface SystemLogEntry {
 }
 
 interface Props {
-  stats: { total: number; thisYear: number; stockAlerts: number }
+  stats: { total: number; thisYear: number; stockAlerts: number; publicWorks: number }
   recentImages: { OeuvreID: number; txtImageNameLink: string | null }[]
   recentProcess: { id: number; label: string; status: string; created_at: string }[]
   burningIdeas:  { id: number; title: string; energy: number | null; medium: string | null }[]
@@ -77,48 +77,84 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
       </div>
 
       {/* Main Content Area */}
-      <div style={{ flex: 1, padding: '40px 40px', display: 'flex', flexDirection: 'column', overflow: 'auto', gap: 48 }}>
+      <div style={{
+        flex: 1,
+        padding: '32px clamp(18px, 3vw, 40px)',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'auto',
+        gap: 40,
+        width: '100%',
+        maxWidth: 1440,
+        margin: '0 auto',
+        boxSizing: 'border-box',
+      }}>
         
         {/* Section 1: Executive Summary */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: 60, alignItems: 'end' }}>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+          gap: 'clamp(24px, 4vw, 48px)',
+          alignItems: 'end',
+        }}>
           <div>
             <div className="serif" style={{ fontSize: 'clamp(32px, 4vw, 48px)', color: 'var(--tx)', marginBottom: 8, letterSpacing: '-0.03em' }}>
               {t('hub')}
             </div>
             <div className="t-eyebrow" style={{ color: 'var(--tx3)', letterSpacing: 2 }}>
-              {dateLabel} · {stats.total} {t('works_cap')}
+              {dateLabel} · {stats.total} {t('works_cap')} · {stats.publicWorks} {t('hubWorksOnline')}
             </div>
           </div>
           
-          <div style={{ display: 'flex', gap: 32, paddingBottom: 6 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'clamp(16px, 3vw, 28px)', paddingBottom: 6, alignItems: 'flex-end' }}>
             <div className="stat-v2">
               <span className="label">{t('thisYear')}</span>
               <span className="value">{stats.thisYear}</span>
             </div>
             <div className="vline" style={{ height: 32, opacity: 0.1 }} />
             <div className="stat-v2">
-              <span className="label">Last log</span>
+              <span className="label">{t('hubLastLog')}</span>
               <span className="value" style={{ fontSize: 14, fontFamily: 'monospace', letterSpacing: 0 }}>{displayLogs[0]?.action ?? '—'}</span>
             </div>
+            {stats.stockAlerts > 0 && (
+              <>
+                <div className="vline" style={{ height: 32, opacity: 0.1 }} />
+                <div className="stat-v2">
+                  <span className="label">{t('hubStockLow')}</span>
+                  <span className="value" style={{ color: 'var(--ac)' }}>{stats.stockAlerts}</span>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
-        {/* Section 2: Navigation Matrix (The 4 Portals) */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', borderTop: '1px solid var(--bd)', borderBottom: '1px solid var(--bd)' }}>
-          <PortalTile code="01" title={t('team')}     desc={t('teamDesc')}     href="/atelier"    detail={{ works: stats.total }} lang={lang} />
-          <PortalTile code="02" title={t('clients')}   desc={t('clientsDesc')}  href="/collection" lang={lang} wip={true} />
-          <PortalTile code="03" title={t('galleries')} desc={t('galleriesDesc')} href="/galerie"   lang={lang} wip={true} />
-          <PortalTile code="04" title={t('public')}    desc={t('publicDesc')}   href="/works"  lang={lang} />
+        {/* Section 2: Navigation Matrix (The 4 Portals) — Relations publiques second (moved left) */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          borderTop: '1px solid var(--bd)',
+          borderBottom: '1px solid var(--bd)',
+        }}>
+          <PortalTile code="01" title={t('team')} desc={t('teamDesc')} href="/atelier"
+            detail={{ works: stats.total, caption: t('works_cap') }} lang={lang} />
+          <PortalTile code="02" title={t('public')} desc={t('publicDesc')} href="/works"
+            detail={{ works: stats.publicWorks, caption: t('hubWorksOnline') }} lang={lang} />
+          <PortalTile code="03" title={t('clients')} desc={t('clientsDesc')} href="/collection" lang={lang} wip />
+          <PortalTile code="04" title={t('galleries')} desc={t('galleriesDesc')} href="/galerie" lang={lang} wip />
         </div>
 
         {/* Section 3: Live Pulse */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1.2fr', gap: 48 }}>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+          gap: 'clamp(28px, 4vw, 48px)',
+        }}>
           
           {/* Suivi / Pipeline */}
           <div>
             <div className="t-eyebrow" style={{ marginBottom: 24, opacity: 0.5 }}>01 · {t('pipeline')}</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {recentProcess.slice(0, 5).map(p => (
+              {recentProcess.slice(0, 6).map(p => (
                 <div key={p.id} onClick={() => router.push('/atelier?tab=pipeline')} style={{ cursor: 'pointer', borderBottom: '1px solid var(--bd2)', paddingBottom: 12 }}>
                   <div className="serif" style={{ fontSize: 16, color: 'var(--tx)', marginBottom: 4 }}>{p.label}</div>
                   <div className="row gap-sm" style={{ justifyContent: 'space-between' }}>
@@ -150,7 +186,7 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {displayLogs.length === 0 ? (
                 <div className="t-mono-sm" style={{ color: 'var(--tx3)', opacity: 0.5 }}>No entries yet</div>
-              ) : displayLogs.slice(0, 5).map(log => (
+              ) : displayLogs.slice(0, 6).map(log => (
                 <div key={log.id} onClick={() => router.push('/atelier?tab=system')}
                   style={{ display: 'flex', gap: 10, alignItems: 'flex-start', borderBottom: '1px solid var(--bd2)', paddingBottom: 10, cursor: 'pointer' }}>
                   <span style={{ fontWeight: 700, fontSize: 9, color: priorityColor(log.priority), letterSpacing: 0.5, paddingTop: 2, flexShrink: 0 }}>
@@ -172,9 +208,10 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
           {/* Recently Added */}
           <div>
             <div className="t-eyebrow" style={{ marginBottom: 24, opacity: 0.5 }}>04 · {t('recentlyAdded')}</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
-              {recentImages.slice(0, 12).map((o) => (
-                <div key={o.OeuvreID} style={{ aspectRatio: '1', background: 'var(--bg1)', border: '1px solid var(--bd2)', overflow: 'hidden', position: 'relative' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 8 }}>
+              {recentImages.slice(0, 16).map((o) => (
+                <div key={o.OeuvreID} onClick={() => router.push('/atelier?tab=inventory')}
+                  style={{ aspectRatio: '1', background: 'var(--bg1)', border: '1px solid var(--bd2)', overflow: 'hidden', position: 'relative', cursor: 'pointer' }}>
                   {o.txtImageNameLink
                     ? <WorkThumb file={o.txtImageNameLink} size={256} alt="" />
                     : <div style={{ width: '100%', height: '100%', background: 'var(--bg2)' }} />}
@@ -206,7 +243,7 @@ function PortalTile({
   code, title, desc, href, emphasis, detail, lang, wip
 }: {
   code: string; title: string; desc: string; href: string
-  emphasis?: boolean; detail?: { works: number }; lang: string; wip?: boolean
+  emphasis?: boolean; detail?: { works: number; caption: string }; lang: string; wip?: boolean
 }) {
   const router = useRouter()
   return (
@@ -241,7 +278,7 @@ function PortalTile({
       {detail && (
         <div className="row gap-lg" style={{ paddingTop: 8, borderTop: '1px dashed var(--bd2)', marginTop: 'auto' }}>
           <div className="col gap-xs">
-            <span style={{ fontSize: 8, letterSpacing: 2, color: 'var(--tx3)', textTransform: 'uppercase' }}>Œuvres</span>
+            <span style={{ fontSize: 8, letterSpacing: 2, color: 'var(--tx3)', textTransform: 'uppercase' }}>{detail.caption}</span>
             <span style={{ fontSize: 18, color: 'var(--tx)', fontFamily: "'Instrument Serif', serif" }}>{detail.works}</span>
           </div>
         </div>
