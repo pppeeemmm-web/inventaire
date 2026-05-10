@@ -287,11 +287,12 @@ function DefaultRoomSVG({ walls }: { walls: Wall[] }) {
 
 // ── FloorPlanTool ─────────────────────────────────────────────────────────────
 
-function FloorPlanTool({ exhibitionId, oeuvres, themes, tM }: { 
+function FloorPlanTool({ exhibitionId, oeuvres, themes, tM, sM }: { 
   exhibitionId: string; 
   oeuvres: Oeuvre[]; 
   themes: { id: number; name: string }[];
   tM: Record<number, string>;
+  sM: Record<number, string>;
 }) {
   const [layouts, setLayouts]   = useState<ExhibitionLayout[]>([])
   const [selected, setSelected] = useState<ExhibitionLayout | null>(null)
@@ -550,10 +551,13 @@ function FloorPlanTool({ exhibitionId, oeuvres, themes, tM }: {
                       oeuvres={oeuvres}
                       themes={themes}
                       tM={tM}
+                      sM={sM}
                       selection={new Set()}
                       setSelection={() => {}}
                       onOpen={() => {}}
                       onSaveGroup={async () => null}
+                      onGroupSaved={() => {}}
+                      showWorkingGroupPanel={false}
                       backgroundImage={floorplanUrl || undefined}
                       backgroundOpacity={bgOpacity}
                       onBackgroundOpacity={setBgOpacity}
@@ -630,12 +634,13 @@ function FloorPlanTool({ exhibitionId, oeuvres, themes, tM }: {
 
 // ── ExhibitionDetail ──────────────────────────────────────────────────────────
 
-function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, selection, setSelection, onDelete, onUpdate }: {
+function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, sM, selection, setSelection, onDelete, onUpdate }: {
   exhibition: Exhibition
   oeuvres:    Oeuvre[]
   contacts:   { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null; Email?: string | null; Tel?: string | null }[]
   themes:     { id: number; name: string }[]
   tM:         Record<number, string>
+  sM:         Record<number, string>
   selection:  Set<number>
   setSelection: (s: Set<number>) => void
   onDelete:   () => void
@@ -946,7 +951,7 @@ function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, selection
       {/* Floor plan — outside scroll container so it can fill remaining height */}
       {activeTab === 'floorplan' && (
         <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <FloorPlanTool exhibitionId={exhibition.id} oeuvres={oeuvres} themes={themes} tM={tM} />
+          <FloorPlanTool exhibitionId={exhibition.id} oeuvres={oeuvres} themes={themes} tM={tM} sM={sM} />
         </div>
       )}
     </div>
@@ -955,11 +960,12 @@ function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, selection
 
 // ── ExhibitionsTab ────────────────────────────────────────────────────────────
 
-export function ExhibitionsTab({ oeuvres, contacts, themes, tM, selection, setSelection }: {
+export function ExhibitionsTab({ oeuvres, contacts, themes, tM, sM, selection, setSelection }: {
   oeuvres: Oeuvre[]; 
   contacts: any[]; 
   themes: { id: number; name: string }[];
   tM: Record<number, string>;
+  sM: Record<number, string>;
   selection: Set<number>; 
   setSelection: any
 }) {
@@ -1190,6 +1196,7 @@ export function ExhibitionsTab({ oeuvres, contacts, themes, tM, selection, setSe
           contacts={contacts}
           themes={themes}
           tM={tM}
+          sM={sM}
           selection={selection}
           setSelection={setSelection}
           onDelete={handleDelete}
