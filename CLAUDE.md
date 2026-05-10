@@ -8,6 +8,8 @@ THINK FIRST: <thinking> block mandatory. Plan steps. Surgical edits only.
 NO AUTONOMY: No "GO" = No file edit.
 KISS: Minimal code. 50 lines > 200 lines. No bloat.
 CONFIRM DELETE: Always ask.
+COMMIT COMPLETE: Before every commit, run git diff --stat. Stage ALL modified source files. Never partial-commit. Exclude only build artifacts (tsconfig.tsbuildinfo, .next/).
+WORKTREE CLEANUP: At session end, remove all claude/* worktrees and branches except the active one. git worktree remove --force + git branch -D + git worktree prune.
 CAVEMAN CHAT: Stop verbosity. No "I've updated..." or "Here is...". Code only. 1-3 word status max.
 
 🛠️ CMDS
