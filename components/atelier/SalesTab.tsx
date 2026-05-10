@@ -596,7 +596,15 @@ function OrderDetailPanel({ order, oeuvres, cM, onClose, onUpdated }: {
           <span style={{ color: 'var(--tx3)' }}>Prix catalogue</span>  <span>{fmt(order.prix_catalogue)}</span>
           {order.discount_pct    ? <><span style={{ color: 'var(--tx3)' }}>Remise</span>     <span>{order.discount_pct}%</span></> : null}
           <span style={{ color: 'var(--tx3)' }}>Prix final</span>      <span style={{ color: 'var(--ac)' }}>{fmt(order.prix_final)}</span>
-          
+          {order.consignment_order_id && order.commission_amount ? (
+            <>
+              <span style={{ color: 'var(--tx3)' }}>Commission galerie</span>
+              <span style={{ color: 'var(--rust)' }}>– {fmt(order.commission_amount)}</span>
+              <span style={{ color: 'var(--tx3)' }}>Net artiste</span>
+              <span style={{ color: 'var(--sage)', fontWeight: 600 }}>{fmt((order.prix_final ?? 0) - (order.commission_amount ?? 0))}</span>
+            </>
+          ) : null}
+
           <div style={{ gridColumn: '1 / -1', height: 1, background: 'var(--bd)', margin: '8px 0' }} />
           
           <span style={{ color: 'var(--tx3)' }}>Total Réglé</span>    <span style={{ color: 'var(--sage)', fontWeight: 600 }}>{fmt(totalPaid)}</span>

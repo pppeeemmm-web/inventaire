@@ -8,7 +8,7 @@
 
 import { useState, useEffect, useTransition, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { thumbUrl } from '@/lib/data'
+import { thumbUrl, isCircularSupport, DIAMETER_SIGN } from '@/lib/data'
 import { useI18n } from '@/lib/i18n/context'
 import type { Oeuvre, WorkImage } from '@/lib/types/database'
 import type { SaveResult } from '@/app/atelier/works/actions'
@@ -141,6 +141,18 @@ export function WorkForm({
 
   // ── Derived ───────────────────────────────────────────────────────
   const isDigital  = techniqueId === '19'
+  const supportLabel = useMemo(
+    () => localSupports.find(s => String(s.SupportID) === supportId)?.Support ?? '',
+    [localSupports, supportId],
+  )
+  const circularPlanar = !isDigital && isCircularSupport(supportLabel)
+  const diameterFieldValue = useMemo(() => {
+    if (!circularPlanar) return hauteur
+    const a = hauteur.trim()
+    const b = largeur.trim()
+    if (a === b) return hauteur
+    return hauteur || largeur
+  }, [circularPlanar, hauteur, largeur])
   const pxToCm = (px: string) => px ? (parseFloat(px) / (300 / 2.54)).toFixed(1) : ''
 
   const prixVal  = parseFloat(prix) || 0
@@ -241,13 +253,6 @@ export function WorkForm({
       setContactId(String(pemContact.ContactID))
     }
   }, [ownStage, pemContact])
-
-  // G. Available / still-artist → anonymity_level must be 0 (DB trigger enforces too)
-  useEffect(() => {
-    if (ownStage === 'artist' || ownStage === 'artist_archive') {
-      setAnonymityLevel(0)
-    }
-  }, [ownStage])
 
   // ── Computed statusId ─────────────────────────────────────────────
   function computeStatusId(): number {
@@ -386,10 +391,37 @@ export function WorkForm({
                   <CreatableSelect value={formatId} options={localFormats.map(f => ({ id: String(f.FormatID), label: f.Format ?? '' }))} onChange={setFormatId} onAdd={name => saveLookup('Format', name)} name="format" />
                 </Field>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20, marginTop: 16 }}>
-                <Field label={isDigital ? "H (px)" : "H (cm)"}><input name="hauteur" value={hauteur} onChange={e => setHauteur(e.target.value)} style={FIS} /></Field>
-                <Field label={isDigital ? "W (px)" : "W (cm)"}><input name="largeur" value={largeur} onChange={e => setLargeur(e.target.value)} style={FIS} /></Field>
-                <Field label="D (cm)"><input name="profondeur" value={profondeur} onChange={e => setProfondeur(e.target.value)} style={FIS} /></Field>
+              {circularPlanar && <input type="hidden" name="largeur" value={largeur} readOnly aria-hidden />}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: circularPlanar ? '1fr 1fr' : '1fr 1fr 1fr',
+                gap: 20,
+                marginTop: 16,
+              }}>
+                {circularPlanar ? (
+                  <>
+                    <Field label={`${DIAMETER_SIGN} (cm)`}>
+                      <input
+                        name="hauteur"
+                        value={diameterFieldValue}
+                        onChange={(e) => {
+                          const v = e.target.value
+                          setHauteur(v)
+                          setLargeur(v)
+                        }}
+                        style={FIS}
+                        title="Diamètre"
+                      />
+                    </Field>
+                    <Field label="D (cm)"><input name="profondeur" value={profondeur} onChange={e => setProfondeur(e.target.value)} style={FIS} /></Field>
+                  </>
+                ) : (
+                  <>
+                    <Field label={isDigital ? "H (px)" : "H (cm)"}><input name="hauteur" value={hauteur} onChange={e => setHauteur(e.target.value)} style={FIS} /></Field>
+                    <Field label={isDigital ? "W (px)" : "W (cm)"}><input name="largeur" value={largeur} onChange={e => setLargeur(e.target.value)} style={FIS} /></Field>
+                    <Field label="D (cm)"><input name="profondeur" value={profondeur} onChange={e => setProfondeur(e.target.value)} style={FIS} /></Field>
+                  </>
+                )}
               </div>
               {isDigital && (
                 <div style={{ marginTop: 24, padding: 24, border: '1px solid var(--bd)', background: 'var(--bg2)' }}>
@@ -458,35 +490,30 @@ export function WorkForm({
                 </div>
               </div>
 
-              {/* Anonymity level — only meaningful post-sale, but admin can always set */}
+              {/* Visibilité du contact — défaut public, choix du propriétaire */}
               <div style={{ marginTop: 24, borderTop: '1px solid var(--bd)', paddingTop: 20 }}>
-                <div className="t-eyebrow" style={{ fontSize: 11, marginBottom: 4 }}>CONFIDENTIALITÉ DU CONTACT</div>
+                <div className="t-eyebrow" style={{ fontSize: 11, marginBottom: 4 }}>VISIBILITÉ DU CONTACT</div>
                 <div style={{ fontSize: 11, color: 'var(--tx3)', marginBottom: 12, lineHeight: 1.5 }}>
-                  {ownStage === 'artist' || ownStage === 'artist_archive'
-                    ? 'Niveau 0 automatique — l\u2019œuvre est toujours à l\u2019atelier.'
-                    : 'Applicable après vente / sur demande de l\u2019acquéreur.'}
+                  Par défaut public ; vous pouvez masquer ou restreindre l\u2019affichage du contact à tout moment.
                 </div>
                 <div style={{ display: 'flex', gap: 6 }}>
                   {[
                     { level: 0, label: '🌐 Public',   desc: 'Contact visible publiquement' },
-                    { level: 1, label: '👤 Anonyme',  desc: 'Contact masqué — nom seul visible admin' },
+                    { level: 1, label: '👤 Masqué',   desc: 'Contact masqué — nom seul visible admin' },
                     { level: 2, label: '🔒 Privé',    desc: 'Contact confidentiel — admin seulement' },
                   ].map(({ level, label, desc }) => {
                     const isActive = anonymityLevel === level
-                    const isForced = (ownStage === 'artist' || ownStage === 'artist_archive') && level !== 0
                     return (
                       <button
                         key={level}
                         type="button"
-                        disabled={isForced}
-                        title={isForced ? 'Uniquement disponible après cession de propriété' : desc}
-                        onClick={() => !isForced && setAnonymityLevel(level)}
+                        title={desc}
+                        onClick={() => setAnonymityLevel(level)}
                         style={{
-                          flex: 1, padding: '10px 8px', fontSize: 11, cursor: isForced ? 'not-allowed' : 'pointer',
+                          flex: 1, padding: '10px 8px', fontSize: 11, cursor: 'pointer',
                           border: `1px solid ${isActive ? 'var(--ac)' : 'var(--bd)'}`,
                           background: isActive ? 'var(--ac)22' : 'var(--bg2)',
-                          color: isActive ? 'var(--ac)' : isForced ? 'var(--tx3)' : 'var(--tx2)',
-                          opacity: isForced ? 0.35 : 1,
+                          color: isActive ? 'var(--ac)' : 'var(--tx2)',
                           textAlign: 'center', transition: 'all 0.15s',
                         }}
                       >

@@ -103,8 +103,8 @@ export function statusKeyFromLabel(label: string | null | undefined): StatusKey 
 
 /**
  * Resolve the StatusKey for a work.
- * Reads statusId against OeuvreStatus first.
- * Falls back to deriving from Catalogué + NeedsPhotograph booleans.
+ * Reads statusId against OeuvreStatus; explicit "En production" wins immediately.
+ * For "Disponible" / missing row, refines with Catalogué + NeedsPhotograph (atelier gates).
  */
 export function statusOf(
   o: any,
@@ -116,17 +116,17 @@ export function statusOf(
     if (label) baseKey = statusKeyFromLabel(label)
   }
 
-  // If the work is sold, reserved, archived, consigned, etc. (ownership state), return it.
-  if (baseKey && baseKey !== 'en_production' && baseKey !== 'available') {
-    return baseKey
-  }
+  // Explicit OeuvreStatus "En production" — honor it (drawer + list must match).
+  if (baseKey === 'en_production') return 'en_production'
 
-  // If ownership is 'Atelier' (statusId 1 or 2, or null), strictly use production flags
-  // to determine if it is 'en_production' or 'available'.
-  // This prevents discrepancies where statusId is 'Disponible' but Catalogué is false.
+  // Sold, reserved, archived, consigned, loan, gift, …
+  if (baseKey && baseKey !== 'available') return baseKey
+
+  // statusId → Disponible (or unknown): refine with Catalogué / NeedsPhotograph so
+  // "Disponible" + !Catalogué still reads as en_production.
   if (!o.Catalogué) return 'en_production'
   if (o.NeedsPhotograph || o.needsphotograph) return 'en_production'
-  
+
   return 'available'
 }
 
@@ -219,6 +219,41 @@ export function stageOf(
   if (o.txtImageNameLink) return 'stage_shot'
   if (o.Encadree) return 'stage_framing'
   return 'stage_wip'
+}
+
+// ── Dimensions: circular supports (diameter U+2300) ────────────────
+
+/** Diameter sign ⌀ (Unicode U+2300) */
+export const DIAMETER_SIGN = '\u2300'
+
+/** True when support label indicates a round/circular support (e.g. papier rond). */
+export function isCircularSupport(supportLabel: string | null | undefined): boolean {
+  if (!supportLabel?.trim()) return false
+  const n = supportLabel.toLowerCase().normalize('NFD').replace(/\p{M}/gu, '')
+  return /\b(rond|circular|round|circulaire|disque)\b/.test(n) || /\bpapier\s*rond\b/.test(n)
+}
+
+/** Compact dims for lists: `H×L` or `⌀d` if diameter was stored only in Profondeur. */
+export function formatInventoryDims(
+  h: string | null | undefined,
+  l: string | null | undefined,
+  supportLabel: string | null | undefined,
+  profondeur?: string | null | undefined,
+): string {
+  const ht = (h ?? '').trim()
+  const lt = (l ?? '').trim()
+  const pt = (profondeur ?? '').trim()
+
+  if (isCircularSupport(supportLabel)) {
+    if (ht && lt && ht === lt) return `${DIAMETER_SIGN}${ht}`
+    if (ht && !lt) return `${DIAMETER_SIGN}${ht}`
+    if (!ht && lt) return `${DIAMETER_SIGN}${lt}`
+    if (!ht && !lt && pt) return `${DIAMETER_SIGN}${pt}`
+    if (ht && lt) return `${ht}×${lt}`
+    return '—'
+  }
+  if (ht && lt) return `${ht}×${lt}`
+  return '—'
 }
 
 // ── Constellation coordinate helpers ─────────────────────────

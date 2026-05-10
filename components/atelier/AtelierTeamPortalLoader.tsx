@@ -1,7 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import type { TeamPortalClientProps } from '@/components/atelier/TeamPortalClient'
+import type { TeamPortalClientProps } from '@/components/atelier/team-portal-types'
 
 /** Must live in a Client Component — next/dynamic + ssr:false is forbidden in Server Components */
 const TeamPortalClient = dynamic(

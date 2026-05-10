@@ -54,7 +54,7 @@ export type DictKey =
   | 'imageFormat' | 'square' | 'original' | 'images' | 'highRes' | 'lowRes'
   | 'embedHeavyWarning' | 'paperFormat' | 'savedThemes' | 'noThemesSaved'
   | 'generating' | 'batchSuccess' | 'selectAll' | 'renameFile' | 'filters'
-  | 'recordDonePersonal'
+  | 'auditAttributedHint'
   // ── Public site ────────────────────────────────────────────────────────
   | 'pub_works' | 'pub_about' | 'pub_practice' | 'pub_enquiry' | 'pub_portfolio'
   | 'pub_biography' | 'pub_exhibitions_selected' | 'pub_education' | 'pub_contact'
@@ -175,7 +175,7 @@ export const dict: Record<Lang, Dictionary> = {
     noThemesSaved: 'Aucun thème enregistré.', generating: 'Génération…',
     batchSuccess: 'Modifications appliquées.', selectAll: 'Tout sélectionner',
     renameFile: 'Renommer le fichier', filters: 'Filtres',
-    recordDonePersonal: 'Marqué comme vu (vous)',
+    auditAttributedHint: 'Enregistrements importants (statut, visibilité, ventes…) attribués à votre compte dans le journal système.',
     // Public site
     pub_works: 'Oeuvres', pub_about: 'À propos', pub_practice: 'Pratique',
     pub_enquiry: 'Contact', pub_portfolio: 'Portfolio',
@@ -303,7 +303,7 @@ export const dict: Record<Lang, Dictionary> = {
     noThemesSaved: 'No saved themes.', generating: 'Generating…',
     batchSuccess: 'Changes applied.', selectAll: 'Select all',
     renameFile: 'Rename file', filters: 'Filters',
-    recordDonePersonal: 'Marked done (personal)',
+    auditAttributedHint: 'Important saves (status, visibility, sales…) are attributed to your account in the system log.',
     // Public site
     pub_works: 'Works', pub_about: 'About', pub_practice: 'Practice',
     pub_enquiry: 'Enquiry', pub_portfolio: 'Portfolio',

@@ -7,15 +7,13 @@ import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
-import { imageUrl, thumbUrl, yearOf, statusOf, statusColor, stageOf, type StatusKey } from '@/lib/data'
+import { imageUrl, thumbUrl, yearOf, statusOf, statusColor, stageOf, type StatusKey, formatInventoryDims } from '@/lib/data'
 import { MissingThumb, WorkThumb } from './WorkThumb'
 import { WorkStateChip } from './WorkStateChip'
 import Image from 'next/image'
 import { stringifyError } from '@/lib/error'
 import type { Oeuvre } from '@/lib/types/database'
 import { WorkDrawer } from './WorkDrawer'
-import { useUserRecordDone } from '@/components/UserRecordDoneProvider'
-import { USER_RECORD_SCOPE } from '@/lib/user-record-scope'
 
 // ── Types ───────────────────────────────────────────────────────────
 
@@ -59,7 +57,7 @@ const FIELD_LABELS: Record<string, string> = {
   LocalisationID:  'Localisation',
   AcheteurID:      'Acheteur',
   ReturnDate:      'Date retour',
-  anonymity_level: 'Anonymat',
+  anonymity_level: 'Visibilité',
   txtImageNameLink: 'Image',
   IsCommission:    'Commission',
   DateLivraison:   'Deadline',
@@ -787,7 +785,7 @@ function CriteriaPanel({
       LocalisationID:  cM,
       AcheteurID:      cM,
       PresentationID:  pM,
-      anonymity_level: { '0': 'Public', '1': 'Anonyme', '2': 'Privé' }
+      anonymity_level: { '0': 'Public', '1': 'Masqué', '2': 'Privé' }
     }
     const map = maps[field]
     if (map) {
@@ -964,11 +962,9 @@ function InvList({
   publicMode?:    boolean
 }) {
   const { t } = useI18n()
-  const { isDone: isUserRecordDone, toggle: toggleUserRecordDone } = useUserRecordDone()
   const lastSelIdxRef = useRef<number | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const visible = rows
-  const RSCOPE = USER_RECORD_SCOPE.oeuvre
 
   // Restore scroll position on mount
   useEffect(() => {
@@ -1033,9 +1029,6 @@ function InvList({
                 {visible.length > 0 && visible.every(o => selection.has(o.OeuvreID)) ? '✓' : ''}
               </div>
             </th>
-            <th style={{ width: 28, textAlign: 'center' }} title={t('recordDonePersonal')}>
-              <span className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 10 }}>◇</span>
-            </th>
             <th style={{ width: 22 }}></th>
             <th onClick={() => toggleSort('OeuvreID')} style={{ width: 40, color: 'var(--tx3)', fontSize: 12, cursor: 'pointer' }}>ID <SortInd k="OeuvreID" current={sortKey} dir={sortDir} /></th>
             <th style={{ width: 44 }}></th>
@@ -1056,7 +1049,7 @@ function InvList({
             const isSel = selection.has(o.OeuvreID)
             const isFoc = focused?.OeuvreID === o.OeuvreID
             const st    = statusOf(o, statusLabelMap)
-            const dims  = o.Hauteur && o.Largeur ? `${o.Hauteur}×${o.Largeur}` : '—'
+            const dims  = formatInventoryDims(o.Hauteur, o.Largeur, o.Support != null ? sM[o.Support] : null, o.Profondeur)
             const isGoneRow = st === 'sold' || st === 'gift' || st === 'artist_archive' || st === 'private_archive'
             const sCol  = statusColor(st)
             
@@ -1089,33 +1082,6 @@ function InvList({
                     }} onClick={(e) => handleCheck(e, o.OeuvreID, idx)}>
                       {isSel ? '✓' : ''}
                     </div>
-                  </td>
-                  <td style={{ textAlign: 'center', padding: '0 4px', verticalAlign: 'middle' }}>
-                    <button
-                      type="button"
-                      title={t('recordDonePersonal')}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        void toggleUserRecordDone(RSCOPE, String(o.OeuvreID))
-                      }}
-                      style={{
-                        width: 18,
-                        height: 18,
-                        margin: '0 auto',
-                        border: `1.5px solid ${isUserRecordDone(RSCOPE, String(o.OeuvreID)) ? 'var(--ac)' : 'var(--bd2)'}`,
-                        background: isUserRecordDone(RSCOPE, String(o.OeuvreID)) ? 'var(--ac)' : 'transparent',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: 10,
-                        color: isUserRecordDone(RSCOPE, String(o.OeuvreID)) ? 'var(--bg0)' : 'var(--tx3)',
-                        cursor: 'pointer',
-                        padding: 0,
-                        borderRadius: 2,
-                      }}
-                    >
-                      {isUserRecordDone(RSCOPE, String(o.OeuvreID)) ? '✓' : ''}
-                    </button>
                   </td>
                   <td style={{ padding: '0 2px' }}>
                     <button onClick={(e) => { e.stopPropagation(); router.push(`/atelier/works/${o.OeuvreID}/edit`) }} style={{ color: 'var(--tx3)', fontSize: 12 }}>✎</button>
@@ -1166,12 +1132,12 @@ function InvList({
                       const level = (o as any).anonymity_level ?? 0
                       const contactName = o.ContactID != null ? (cM[o.ContactID] ?? '—') : 'Pem'
                       
-                      if (publicMode && level >= 1) return <span style={{ opacity: 0.3 }}>[Anonyme]</span>
+                      if (publicMode && level >= 1) return <span style={{ opacity: 0.3 }}>[Masqué]</span>
                       
                       return (
                         <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{contactName}</span>
-                          {level === 1 && <span title="Anonyme (Confidentiel)" style={{ color: 'var(--ac)' }}>👤</span>}
+                          {level === 1 && <span title="Contact masqué" style={{ color: 'var(--ac)' }}>👤</span>}
                           {level === 2 && <span title="Privé (Confidentiel)" style={{ opacity: 0.6 }}>🔒</span>}
                         </span>
                       )
@@ -1223,10 +1189,6 @@ function InvGrid({
   toggleInSel:    (oid: number) => void
   onOpen:         (o: Oeuvre) => void
 }) {
-  const { t } = useI18n()
-  const { isDone: isUserRecordDone, toggle: toggleUserRecordDone } = useUserRecordDone()
-  const RSCOPE = USER_RECORD_SCOPE.oeuvre
-
   return (
     <div
       style={{
@@ -1288,31 +1250,6 @@ function InvGrid({
                 }}
               >
                 {isSel ? '✓' : ''}
-              </div>
-            </div>
-            <div
-              style={{ position: 'absolute', top: 6, right: 6, zIndex: 2 }}
-              onClick={(e) => {
-                e.stopPropagation()
-                void toggleUserRecordDone(RSCOPE, String(o.OeuvreID))
-              }}
-              title={t('recordDonePersonal')}
-            >
-              <div
-                style={{
-                  width: 16,
-                  height: 16,
-                  border: `1.5px solid ${isUserRecordDone(RSCOPE, String(o.OeuvreID)) ? 'var(--ac)' : 'var(--bd2)'}`,
-                  background: isUserRecordDone(RSCOPE, String(o.OeuvreID)) ? 'var(--ac)' : 'transparent',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 11,
-                  color: 'var(--bg0)',
-                  cursor: 'pointer',
-                }}
-              >
-                {isUserRecordDone(RSCOPE, String(o.OeuvreID)) ? '✓' : ''}
               </div>
             </div>
             <div

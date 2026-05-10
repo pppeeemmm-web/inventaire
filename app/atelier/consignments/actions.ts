@@ -3,6 +3,7 @@
 
 import { createClient }  from '@/lib/supabase/server'
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
+import { logSystemEvent } from '@/lib/utils/logging'
 
 export interface ConsignmentOrderRow {
   id:               string
@@ -13,6 +14,7 @@ export interface ConsignmentOrderRow {
   end_date:         string | null
   insurance_value:  number | null
   catalog_price:    number | null
+  commission_pct:   number | null
   status:           string
   kind:             'consignment' | 'loan'
   order_ref:        string | null
@@ -21,6 +23,18 @@ export interface ConsignmentOrderRow {
 }
 
 export type ConsignmentResult = { error: string } | { ok: true; order: ConsignmentOrderRow }
+export type CloseResult = { error: string } | { ok: true; reverted: number[]; skipped: number[] }
+
+const PEM_CONTACT_ID = 13
+
+function extractBatchIds(notes: string | null | undefined): number[] {
+  if (!notes?.includes('BATCH_IDS:')) return []
+  try {
+    const match = notes.match(/BATCH_IDS: (\[.*?\])/)
+    if (match) return JSON.parse(match[1])
+  } catch {}
+  return []
+}
 
 async function guardTeam() {
   const supabase = await createClient()
@@ -60,6 +74,8 @@ export async function createConsignmentOrder(formData: FormData): Promise<Consig
   const end_date       = (formData.get('end_date')       as string | null) || null
   const notes          = (formData.get('notes')          as string | null) || null
   const kind           = (formData.get('kind') as 'consignment' | 'loan' | null) === 'loan' ? 'loan' : 'consignment'
+  const commissionRaw  = formData.get('commission_pct')
+  const commission_pct = commissionRaw != null && commissionRaw !== '' ? Number(commissionRaw) : 0
 
   if (oeuvre_ids.length === 0) return { error: 'Au moins une œuvre est requise' }
 
@@ -73,6 +89,7 @@ export async function createConsignmentOrder(formData: FormData): Promise<Consig
       partner_id,
       start_date, end_date,
       kind,
+      commission_pct: kind === 'consignment' ? commission_pct : 0,
       notes: `BATCH_IDS: ${JSON.stringify(oeuvre_ids)}\n${notes || ''}`,
       status: 'active',
       order_ref: `${refPrefix}-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`
@@ -131,26 +148,109 @@ export async function regenerateConsignmentPdf(id: string): Promise<{ error?: st
   const { data: order, error: fetchErr } = await supabase.from('consignment_order').select('*').eq('id', id).single()
   if (fetchErr || !order) return { error: 'Order not found' }
 
-  // Extract IDs from notes
-  let oeuvre_ids: number[] = []
-  if (order.notes?.includes('BATCH_IDS:')) {
-    try {
-      const match = order.notes.match(/BATCH_IDS: (\[.*?\])/)
-      if (match) oeuvre_ids = JSON.parse(match[1])
-    } catch {}
-  }
-  
+  const oeuvre_ids = extractBatchIds(order.notes)
   if (oeuvre_ids.length === 0) return { error: 'No artworks linked to this consignment in notes.' }
+
+  const oldPath = order.pdf_path as string | null
+  const folder  = order.kind === 'loan' ? 'loans' : 'consignments'
+  const docName = order.kind === 'loan' ? 'BORDEREAU_PRET' : 'BORDEREAU'
+  const key     = `${folder}/${docName}_${order.order_ref}.pdf`
 
   try {
     const pdf = await buildConsignmentPdf(order as ConsignmentOrderRow, oeuvre_ids, supabase)
-    const key = `consignments/BORDEREAU_${order.order_ref}.pdf`
     await r2UploadPdf(key, pdf)
     await supabase.from('consignment_order').update({ pdf_path: key }).eq('id', id)
+
+    // Re-point the document row at the new key so vault links keep working
+    if (oldPath && oldPath !== key) {
+      await supabase.from('document').update({ storage_path: key }).eq('storage_path', oldPath)
+    }
     return { ok: true }
   } catch (e) {
     return { error: String(e) }
   }
+}
+
+// ── Close (return) consignment / loan ─────────────────────────────────────────
+//
+// Stamps the order as 'returned'. Reverts each work to Disponible (statusId=2)
+// + Pem location ONLY if the work is still in the consignment-owned states
+// (7 or 8). Works that have moved on into the sale lifecycle (4, 6, 11) are
+// left untouched — those are owned by the parallel sale flow.
+
+export async function closeConsignmentOrder(id: string): Promise<CloseResult> {
+  const { error: authErr, supabase } = await guardTeam()
+  if (authErr || !supabase) return { error: authErr ?? 'Auth' }
+
+  const { data: order, error: fetchErr } = await supabase
+    .from('consignment_order')
+    .select('id, kind, status, end_date, order_ref, notes')
+    .eq('id', id)
+    .single()
+  if (fetchErr || !order) return { error: 'Order not found' }
+
+  if (order.status === 'returned') return { error: 'Déjà clôturée' }
+
+  const oeuvre_ids = extractBatchIds(order.notes)
+  const today = new Date().toISOString().slice(0, 10)
+
+  // Look up which works are still in consignment-owned states
+  let reverted: number[] = []
+  let skipped: number[] = []
+  if (oeuvre_ids.length > 0) {
+    const { data: works } = await supabase
+      .from('Oeuvres')
+      .select('OeuvreID, statusId')
+      .in('OeuvreID', oeuvre_ids)
+
+    reverted = (works ?? []).filter(w => w.statusId === 7 || w.statusId === 8).map(w => w.OeuvreID)
+    skipped  = (works ?? []).filter(w => w.statusId !== 7 && w.statusId !== 8).map(w => w.OeuvreID)
+
+    if (reverted.length > 0) {
+      await supabase
+        .from('Oeuvres')
+        .update({
+          statusId:       2,
+          ContactID:      PEM_CONTACT_ID,
+          LocalisationID: PEM_CONTACT_ID,
+          ReturnDate:     null,
+        })
+        .in('OeuvreID', reverted)
+    }
+  }
+
+  const closeUpdate: Record<string, any> = { status: 'returned' }
+  // Only stamp end_date if it was missing or in the future (don't rewrite history)
+  if (!order.end_date || order.end_date > today) closeUpdate.end_date = today
+
+  await supabase.from('consignment_order').update(closeUpdate).eq('id', id)
+
+  await logSystemEvent({
+    eventType: 'STATUS_CHANGE',
+    tableName: 'consignment_order',
+    rowId: id,
+    oldValue: order.status,
+    newValue: 'returned',
+    metadata: { kind: order.kind, order_ref: order.order_ref, reverted, skipped },
+  })
+
+  return { ok: true, reverted, skipped }
+}
+
+// Convenience wrapper: PipelineTab tracks consignments via suivi_process and
+// only stores the consignment_order's pdf_path on it. Look the order up by
+// that path then delegate to closeConsignmentOrder.
+export async function closeConsignmentByPdfPath(pdfPath: string): Promise<CloseResult> {
+  const { error: authErr, supabase } = await guardTeam()
+  if (authErr || !supabase) return { error: authErr ?? 'Auth' }
+
+  const { data: order, error } = await supabase
+    .from('consignment_order')
+    .select('id')
+    .eq('pdf_path', pdfPath)
+    .maybeSingle()
+  if (error || !order) return { error: 'Consignation introuvable pour ce PDF' }
+  return closeConsignmentOrder(order.id)
 }
 
 async function buildConsignmentPdf(order: ConsignmentOrderRow, oeuvre_ids: number[], supabase: any): Promise<Buffer> {
@@ -254,6 +354,16 @@ async function buildConsignmentPdf(order: ConsignmentOrderRow, oeuvre_ids: numbe
       ? 'Les œuvres listées ci-dessus sont prêtées pour une durée déterminée. L\'emprunteur s\'engage à en assurer la conservation et la protection durant toute la période de prêt.'
       : 'Les œuvres listées ci-dessus sont confiées en dépôt pour une durée déterminée. L\'assurance est à la charge du dépositaire pendant toute la durée du dépôt.'
     doc.fontSize(8).fillColor(tx2).text(conditionsText, 56, doc.y + 4, { width: W, align: 'justify' })
+
+    // Commission line — only for consignments with a non-zero rate.
+    const commissionPct = Number(order.commission_pct ?? 0)
+    if (!isLoan && commissionPct > 0) {
+      doc.moveDown(1)
+      doc.fontSize(8).fillColor(tx2).text(
+        `Commission galerie : ${commissionPct}% du prix de vente net (hors taxes), prélevée à la vente.`,
+        56, doc.y, { width: W, align: 'justify' }
+      )
+    }
 
     doc.moveDown(2)
     doc.fontSize(9).fillColor(tx2).text('PÉRIODE', 56, doc.y)

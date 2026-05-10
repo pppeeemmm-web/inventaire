@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import { I18nProvider } from '@/lib/i18n/context'
-import { UserRecordDoneProvider } from '@/components/UserRecordDoneProvider'
 import { Analytics } from '@vercel/analytics/react'
 
 export const metadata: Metadata = {
@@ -41,9 +40,7 @@ export default function RootLayout({
       </head>
       <body style={{ minHeight: '100dvh' }} suppressHydrationWarning>
         <I18nProvider>
-          <UserRecordDoneProvider>
-            {children}
-          </UserRecordDoneProvider>
+          {children}
         </I18nProvider>
         {/* Only on Vercel deployments — avoids 404 + console noise on localhost */}
         {process.env.VERCEL === '1' ? <Analytics /> : null}

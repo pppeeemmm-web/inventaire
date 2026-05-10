@@ -490,9 +490,23 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
           )}
         </div>
 
-        {/* Main content — no maxWidth constraint */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '32px 40px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 48 }}>
+        {/* Main content — no maxWidth constraint (analytics: single viewport, no scroll) */}
+        <div style={{
+          flex: 1,
+          minHeight: 0,
+          overflowY: activeTab === 'analytics' ? 'hidden' : 'auto',
+          overflowX: 'hidden',
+          padding: activeTab === 'analytics' ? '10px 14px' : '32px 40px',
+          display: activeTab === 'analytics' ? 'flex' : 'block',
+          flexDirection: 'column',
+        }}>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: activeTab === 'analytics' ? 0 : 48,
+            flex: activeTab === 'analytics' ? 1 : undefined,
+            minHeight: activeTab === 'analytics' ? 0 : undefined,
+          }}>
 
             {activeTab === 'website' && (
               <>
@@ -692,11 +706,13 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
             )}
 
             {activeTab === 'analytics' && (
-              <AnalyticsPanel
-                themes={themes}
-                oeuvres={oeuvres}
-                themePublicStats={themePublicStats}
-              />
+              <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                <AnalyticsPanel
+                  themes={themes}
+                  oeuvres={oeuvres}
+                  themePublicStats={themePublicStats}
+                />
+              </div>
             )}
 
           </div>
@@ -718,49 +734,122 @@ const PERIODS = [
   { label: '90 jours', days: 90 },
 ]
 
-function BarList({ items, labelKey, valueKey }: {
-  items: Record<string, any>[]
+function BarList({ items, labelKey, valueKey, maxRows = 10 }: {
+  items: Record<string, unknown>[]
   labelKey: string
   valueKey: string
+  maxRows?: number
 }) {
-  const max = items[0]?.[valueKey] ?? 1
-  if (items.length === 0) return (
+  const slice = items.slice(0, maxRows)
+  const max = slice[0]?.[valueKey] as number | undefined ?? 1
+  if (slice.length === 0) return (
     <div className="t-mono-xs" style={{ color: 'var(--tx3)', opacity: 0.5 }}>Aucune donnée.</div>
   )
   return (
-    <div className="col gap-xs">
-      {items.map((item, i) => (
-        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div className="t-mono-sm" style={{ width: 180, color: 'var(--tx2)', flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {item[labelKey]}
+    <div className="col" style={{ gap: 3 }}>
+      {slice.map((item, i) => {
+        const v = item[valueKey] as number
+        return (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div className="t-mono-sm" style={{
+              width: '42%', maxWidth: 160, color: 'var(--tx2)', flexShrink: 0,
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 11,
+            }}>
+              {String(item[labelKey])}
+            </div>
+            <div style={{ flex: 1, height: 3, background: 'var(--bd)', borderRadius: 2, minWidth: 0 }}>
+              <div style={{
+                width: `${(v / max) * 100}%`, height: '100%', background: 'var(--ac)', borderRadius: 2,
+              }} />
+            </div>
+            <div className="t-mono-sm" style={{
+              width: 44, textAlign: 'right', color: 'var(--tx)', flexShrink: 0, fontSize: 11, fontVariantNumeric: 'tabular-nums',
+            }}>
+              {v.toLocaleString('fr-FR')}
+            </div>
           </div>
-          <div style={{ flex: 1, height: 4, background: 'var(--bd)', borderRadius: 2 }}>
-            <div style={{ width: `${(item[valueKey] / max) * 100}%`, height: '100%', background: 'var(--ac)', borderRadius: 2 }} />
-          </div>
-          <div className="t-mono-sm" style={{ width: 40, textAlign: 'right', color: 'var(--tx3)', flexShrink: 0 }}>
-            {item[valueKey]}
-          </div>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }
 
+/** Labels at evenly spaced points so trend stays readable for 7–90 days. */
 function Sparkline({ trend }: { trend: { date: string; views: number }[] }) {
   if (trend.length === 0) return null
   const max = Math.max(...trend.map(d => d.views), 1)
-  const h = 48
+  const chartH = 38
+  const labelBand = 14
   const w = 100
+  const h = chartH + labelBand
   const denom = Math.max(trend.length - 1, 1)
   const pts = trend.map((d, i) => {
     const x = (i / denom) * w
-    const y = h - (d.views / max) * h
+    const y = chartH - (d.views / max) * (chartH - 4) - 2
     return `${x},${y}`
   }).join(' ')
+
+  const labelCount = Math.min(9, trend.length)
+  const labelIdx = new Set<number>()
+  if (labelCount === 1) {
+    labelIdx.add(0)
+  } else {
+    for (let k = 0; k < labelCount; k++) {
+      const j = Math.round((k * (trend.length - 1)) / (labelCount - 1))
+      labelIdx.add(j)
+    }
+  }
+
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none"
-      style={{ width: '100%', height: h, display: 'block' }}>
-      <polyline points={pts} fill="none" stroke="var(--ac)" strokeWidth="1.5" strokeLinejoin="round" />
+    <svg
+      viewBox={`0 0 ${w} ${h}`}
+      preserveAspectRatio="none"
+      style={{ width: '100%', height: '100%', minHeight: 52, display: 'block' }}
+    >
+      <polyline
+        points={pts}
+        fill="none"
+        stroke="var(--ac)"
+        strokeWidth="1.2"
+        strokeLinejoin="round"
+        vectorEffect="non-scaling-stroke"
+      />
+      {trend.map((d, i) => {
+        const x = (i / denom) * w
+        const y = chartH - (d.views / max) * (chartH - 4) - 2
+        return (
+          <circle
+            key={d.date + i}
+            cx={x}
+            cy={y}
+            r={labelIdx.has(i) ? 1.4 : 0.9}
+            fill="var(--ac)"
+            stroke="var(--bg0)"
+            strokeWidth="0.35"
+            vectorEffect="non-scaling-stroke"
+          />
+        )
+      })}
+      {trend.map((d, i) => {
+        if (!labelIdx.has(i)) return null
+        const x = (i / denom) * w
+        const y = chartH - (d.views / max) * (chartH - 4) - 2
+        const n = d.views.toLocaleString('fr-FR')
+        return (
+          <text
+            key={`t-${d.date}-${i}`}
+            x={x}
+            y={Math.max(y - 3, 8)}
+            textAnchor="middle"
+            fill="var(--tx2)"
+            fontSize="3.2"
+            fontFamily="ui-monospace, monospace"
+            style={{ fontVariantNumeric: 'tabular-nums' }}
+          >
+            {n}
+          </text>
+        )
+      })}
     </svg>
   )
 }
@@ -803,40 +892,38 @@ function AnalyticsPanel({
   useEffect(() => { load(days, scope) }, [load, days, scope])
 
   return (
-    <div style={{ maxWidth: 820 }}>
-      <div style={{ marginBottom: 28, padding: '20px 24px', background: 'var(--bg0)', border: '1px solid var(--bd)' }}>
-        <div className="t-label" style={{ marginBottom: 12 }}>Catalogue (données atelier)</div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24, alignItems: 'baseline', marginBottom: themeRows.length ? 16 : 0 }}>
-          <div>
-            <span className="t-mono-xs" style={{ color: 'var(--tx3)', marginRight: 8 }}>Œuvres publiées</span>
-            <span style={{ fontSize: 22, fontWeight: 600, fontFamily: 'var(--font-serif, serif)' }}>
-              {cataloguePublic.toLocaleString('fr-FR')} / {oeuvres.length.toLocaleString('fr-FR')}
-            </span>
-          </div>
-        </div>
-        {themeRows.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 16, alignItems: 'center' }}>
-              <div className="t-mono-xs" style={{ color: 'var(--tx3)', letterSpacing: 1 }}>THÈME</div>
-              <div className="t-mono-xs" style={{ color: 'var(--tx3)', letterSpacing: 1, textAlign: 'right' }}>PUBL.</div>
-              <div className="t-mono-xs" style={{ color: 'var(--tx3)', letterSpacing: 1, textAlign: 'right' }}>TOTAL</div>
-            </div>
-            {themeRows.map((r) => (
-              <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 16, alignItems: 'center' }}>
-                <div className="t-mono-sm" style={{ color: 'var(--tx2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</div>
-                <div className="t-mono-sm" style={{ textAlign: 'right', color: 'var(--green)' }}>{r.pub}</div>
-                <div className="t-mono-sm" style={{ textAlign: 'right', opacity: 0.7 }}>{r.total}</div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16, alignItems: 'center' }}>
-        <span className="t-mono-xs" style={{ color: 'var(--tx3)', marginRight: 8 }}>TRAFIC</span>
+    <div style={{
+      flex: 1,
+      minHeight: 0,
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 8,
+      overflow: 'hidden',
+      maxWidth: '100%',
+    }}>
+      {/* Toolbar — catalogue + filters on one band */}
+      <div style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        alignItems: 'center',
+        gap: '8px 14px',
+        padding: '8px 10px',
+        background: 'var(--bg0)',
+        border: '1px solid var(--bd)',
+        flexShrink: 0,
+      }}>
+        <span className="t-mono-xs" style={{ color: 'var(--tx3)', letterSpacing: 1 }}>CATALOGUE</span>
+        <span style={{ fontSize: 13, fontWeight: 600, fontFamily: 'var(--font-serif, serif)' }}>
+          {cataloguePublic.toLocaleString('fr-FR')} / {oeuvres.length.toLocaleString('fr-FR')}
+        </span>
+        <span className="t-mono-xs" style={{ color: 'var(--tx3)' }}>
+          · {themeRows.length} thème{themeRows.length !== 1 ? 's' : ''}
+        </span>
+        <span style={{ width: 1, height: 14, background: 'var(--bd)', flexShrink: 0 }} aria-hidden />
+        <span className="t-mono-xs" style={{ color: 'var(--tx3)', letterSpacing: 1 }}>TRAFIC</span>
         {(['public_site', 'all'] as const).map((s) => (
           <button key={s} type="button" onClick={() => setScope(s)} style={{
-            padding: '6px 14px', fontSize: 9, letterSpacing: 1.5, textTransform: 'uppercase',
+            padding: '4px 10px', fontSize: 8, letterSpacing: 1.2, textTransform: 'uppercase',
             fontFamily: 'inherit', cursor: 'pointer', border: '1px solid var(--bd)',
             background: scope === s ? 'var(--ac)' : 'none',
             color: scope === s ? 'white' : 'var(--tx3)',
@@ -845,13 +932,9 @@ function AnalyticsPanel({
             {s === 'public_site' ? 'Pages site' : 'Tout brut'}
           </button>
         ))}
-      </div>
-
-      {/* Period selector */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 32 }}>
-        {PERIODS.map(p => (
-          <button key={p.days} onClick={() => setDays(p.days)} style={{
-            padding: '6px 16px', fontSize: 9, letterSpacing: 2, textTransform: 'uppercase',
+        {PERIODS.map((p) => (
+          <button key={p.days} type="button" onClick={() => setDays(p.days)} style={{
+            padding: '4px 10px', fontSize: 8, letterSpacing: 1.5, textTransform: 'uppercase',
             fontFamily: 'inherit', cursor: 'pointer', border: '1px solid var(--bd)',
             background: days === p.days ? 'var(--ac)' : 'none',
             color: days === p.days ? 'white' : 'var(--tx3)',
@@ -863,61 +946,148 @@ function AnalyticsPanel({
       </div>
 
       {loading && (
-        <div className="t-mono-sm" style={{ color: 'var(--tx3)', paddingTop: 40 }}>Chargement…</div>
+        <div className="t-mono-sm" style={{ color: 'var(--tx3)', padding: 12 }}>Chargement…</div>
       )}
 
       {!loading && result && 'error' in result && (
-        <div style={{ padding: '20px 24px', background: 'var(--bg0)', border: '1px solid var(--bd)', color: 'var(--tx3)', fontSize: 13 }}>
+        <div style={{
+          padding: '12px 14px',
+          background: 'var(--bg0)',
+          border: '1px solid var(--bd)',
+          color: 'var(--tx3)',
+          fontSize: 12,
+          flexShrink: 0,
+        }}>
           {result.error}
         </div>
       )}
 
       {!loading && result && 'ok' in result && (
-        <div className="col gap-lg" style={{ gap: 36 }}>
-
-          {/* Stat + sparkline */}
-          <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: 16, alignItems: 'stretch' }}>
-            <div style={{ padding: '20px 24px', background: 'var(--bg0)', border: '1px solid var(--bd)' }}>
-              <div className="t-label" style={{ marginBottom: 10 }}>
+        <div style={{
+          flex: 1,
+          minHeight: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
+        }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'minmax(120px, 170px) 1fr',
+            gap: 8,
+            flexShrink: 0,
+            minHeight: 92,
+            maxHeight: 128,
+          }}>
+            <div style={{
+              padding: '10px 12px',
+              background: 'var(--bg0)',
+              border: '1px solid var(--bd)',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              minHeight: 0,
+            }}>
+              <div className="t-label" style={{ marginBottom: 4, fontSize: 8 }}>
                 {result.scope === 'public_site' ? 'Pages vues (site)' : 'Pages vues (brut)'}
               </div>
-              <div style={{ fontSize: 32, fontWeight: 300, color: 'var(--tx)', fontFamily: 'var(--font-serif, serif)', letterSpacing: -0.5 }}>
+              <div style={{
+                fontSize: 24,
+                fontWeight: 300,
+                lineHeight: 1,
+                color: 'var(--tx)',
+                fontFamily: 'var(--font-serif, serif)',
+                letterSpacing: -0.5,
+                fontVariantNumeric: 'tabular-nums',
+              }}>
                 {result.pageviews.toLocaleString('fr-FR')}
               </div>
               {result.scope === 'public_site' && result.offSitePageviews != null && result.offSitePageviews > 0 && (
-                <div className="t-mono-xs" style={{ color: 'var(--tx3)', marginTop: 12, lineHeight: 1.4 }}>
-                  + {result.offSitePageviews.toLocaleString('fr-FR')} hors routes connues (non inclus ci-dessus)
+                <div className="t-mono-xs" style={{ color: 'var(--tx3)', marginTop: 6, lineHeight: 1.35 }}>
+                  +{result.offSitePageviews.toLocaleString('fr-FR')} hors routes
                 </div>
               )}
             </div>
-            <div style={{ padding: '16px 20px', background: 'var(--bg0)', border: '1px solid var(--bd)' }}>
-              <div className="t-label" style={{ marginBottom: 12 }}>Tendance</div>
-              <Sparkline trend={result.trend} />
+            <div style={{
+              padding: '8px 12px',
+              background: 'var(--bg0)',
+              border: '1px solid var(--bd)',
+              minHeight: 0,
+              display: 'flex',
+              flexDirection: 'column',
+            }}>
+              <div className="t-label" style={{ marginBottom: 4, fontSize: 8, flexShrink: 0 }}>Tendance (vues / jour)</div>
+              <div style={{ flex: 1, minHeight: 48 }}>
+                <Sparkline trend={result.trend} />
+              </div>
             </div>
           </div>
 
-          {/* Top pages + countries side by side */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
-            <div>
-              <div className="t-label" style={{ marginBottom: 14 }}>Top pages</div>
-              <BarList items={result.topPages} labelKey="path" valueKey="views" />
+          <div style={{
+            flex: '1 1 0',
+            minHeight: 0,
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: 8,
+          }}>
+            <div style={{
+              padding: '8px 10px',
+              background: 'var(--bg0)',
+              border: '1px solid var(--bd)',
+              minHeight: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+            }}>
+              <div className="t-label" style={{ marginBottom: 6, fontSize: 8, flexShrink: 0 }}>Top pages</div>
+              <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+                <BarList items={result.topPages} labelKey="path" valueKey="views" maxRows={6} />
+              </div>
             </div>
-            <div>
-              <div className="t-label" style={{ marginBottom: 14 }}>Pays</div>
-              <BarList items={result.topCountries} labelKey="country" valueKey="views" />
+            <div style={{
+              padding: '8px 10px',
+              background: 'var(--bg0)',
+              border: '1px solid var(--bd)',
+              minHeight: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+            }}>
+              <div className="t-label" style={{ marginBottom: 6, fontSize: 8, flexShrink: 0 }}>Pays</div>
+              <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+                <BarList items={result.topCountries} labelKey="country" valueKey="views" maxRows={6} />
+              </div>
             </div>
           </div>
 
-          {/* Referrers (includes Direct) */}
-          <div>
-            <div className="t-label" style={{ marginBottom: 14 }}>Sources</div>
-            <BarList items={result.topReferrers} labelKey="referrer" valueKey="views" />
+          <div style={{
+            flex: '1 1 0',
+            minHeight: 0,
+            padding: '8px 10px',
+            background: 'var(--bg0)',
+            border: '1px solid var(--bd)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+          }}>
+            <div className="t-label" style={{ marginBottom: 6, fontSize: 8, flexShrink: 0 }}>Sources</div>
+            <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+              <BarList items={result.topReferrers} labelKey="referrer" valueKey="views" maxRows={6} />
+            </div>
           </div>
 
-          <div className="t-mono-xs" style={{ color: 'var(--tx3)', opacity: 0.5 }}>
-            Source : page_view · {result.scope === 'public_site'
-              ? 'filtre routes = lib/public-site-paths (trackView)'
-              : 'aucun filtre route'} · jours UTC · pagination complète
+          <div
+            className="t-mono-xs"
+            style={{
+              color: 'var(--tx3)',
+              opacity: 0.55,
+              flexShrink: 0,
+              lineHeight: 1.3,
+              fontSize: 9,
+            }}
+          >
+            page_view · {result.scope === 'public_site'
+              ? 'routes lib/public-site-paths'
+              : 'sans filtre route'} · UTC
           </div>
         </div>
       )}

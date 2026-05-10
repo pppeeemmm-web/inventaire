@@ -53,7 +53,7 @@ interface Process {
   etapes:         Etape[]
 }
 
-import { createConsignmentOrder, regenerateConsignmentPdf } from '@/app/atelier/consignments/actions'
+import { createConsignmentOrder, regenerateConsignmentPdf, closeConsignmentByPdfPath } from '@/app/atelier/consignments/actions'
 import { createSaleOrder } from '@/app/atelier/sales/actions'
 import { getSignedUrl } from '@/app/atelier/vault/actions'
 import type { Oeuvre } from '@/lib/types/database'
@@ -718,6 +718,38 @@ function ProcessDrawer({ process, onClose, onEdit, onRefresh, onCycleEtape, onOv
               <span style={{ fontSize: 14 }}>Télécharger</span>
             </button>
           </div>
+          {process.type === 'consignment' && (
+            <div style={{ marginTop: 10 }}>
+              <button
+                onClick={async (e) => {
+                  if (!confirm("Clôturer cette consignation ?\nLes œuvres encore en statut Consigné/Prêt repasseront à Disponible (Atelier).\nLes œuvres déjà engagées dans une vente ne sont pas touchées.")) return
+                  const btn = (e.currentTarget as HTMLButtonElement)
+                  const old = btn.innerText
+                  btn.innerText = 'BUSY...'
+                  btn.disabled = true
+                  try {
+                    const res = await closeConsignmentByPdfPath(process.pdf_path!)
+                    if ('ok' in res) {
+                      const msg = res.reverted.length > 0
+                        ? `Clôturée. ${res.reverted.length} œuvre(s) repassée(s) en Atelier.${res.skipped.length > 0 ? ` ${res.skipped.length} laissée(s) en l'état (vente en cours).` : ''}`
+                        : `Clôturée.${res.skipped.length > 0 ? ` ${res.skipped.length} œuvre(s) laissée(s) en l'état (vente en cours).` : ''}`
+                      alert(msg)
+                      await onRefresh()
+                    } else alert(res.error)
+                  } catch (err) {
+                    alert("Error: " + (err instanceof Error ? err.message : String(err)))
+                  } finally {
+                    btn.innerText = old
+                    btn.disabled = false
+                  }
+                }}
+                className="btn ghost sm"
+                style={{ width: '100%', fontSize: 12, color: 'var(--rust)', border: '1px solid rgba(202,89,73,0.4)' }}
+              >
+                ✕ Clôturer la consignation
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -825,6 +857,7 @@ function ProcessModal({ oeuvres, contacts, exhibitions, groups, process, onClose
   const [catalogPrice, setCatalogPrice] = useState<string>('')
   const [discount,     setDiscount]     = useState<string>('')
   const [prixFinal,    setPrixFinal]    = useState<string>('')
+  const [commissionPct, setCommissionPct] = useState<string>('')
 
   const [reminderMsg,  setReminderMsg]  = useState('')
   const [reminderDate, setReminderDate] = useState('')
@@ -935,6 +968,7 @@ function ProcessModal({ oeuvres, contacts, exhibitions, groups, process, onClose
           fd.append('start_date', debut)
           fd.append('end_date', fin)
           fd.append('notes', notes)
+          if (commissionPct) fd.append('commission_pct', commissionPct)
           const res = await createConsignmentOrder(fd)
           if ('ok' in res && res.order.pdf_path) {
             await (sb.from('suivi_process') as any).update({ pdf_path: res.order.pdf_path }).eq('id', pid)
@@ -1176,6 +1210,30 @@ function ProcessModal({ oeuvres, contacts, exhibitions, groups, process, onClose
               </div>
               <div style={{ gridColumn: '1 / -1', fontSize: 9, color: 'var(--tx3)', fontStyle: 'italic', marginTop: 8 }}>
                 * Automatic calculation active: Sum of catalog prices for {oeuvreIds.length} works.
+              </div>
+            </div>
+          )}
+
+          {type === 'consignment' && (
+            <div style={{ display:'grid', gridTemplateColumns:'1fr', gap:20, background:'rgba(200,168,110,0.06)', padding:24, border:'1px solid rgba(200,168,110,0.25)', marginBottom: 20 }}>
+              <div>
+                <div className="t-label" style={{marginBottom:8}}>Commission galerie (%)</div>
+                <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.5"
+                    value={commissionPct}
+                    onChange={e=>setCommissionPct(e.target.value)}
+                    style={{...FIS, fontSize: 16, fontWeight: 700, background:'transparent', border:'none', borderBottom:'1px solid var(--bd)', textAlign: 'center', maxWidth: 140}}
+                    placeholder="0"
+                  />
+                  <span style={{ fontSize:12, color: 'var(--tx3)' }}>% du prix de vente net</span>
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--tx3)', fontStyle: 'italic', marginTop: 6 }}>
+                  Prélevée automatiquement à la clôture d&apos;une vente passée par cette consignation.
+                </div>
               </div>
             </div>
           )}

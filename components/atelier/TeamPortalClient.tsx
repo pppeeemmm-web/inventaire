@@ -12,10 +12,12 @@ import { createClient } from '@/lib/supabase/client'
 import { useI18n } from '@/lib/i18n/context'
 import { WorkThumb } from './WorkThumb'
 import type { Oeuvre } from '@/lib/types/database'
+import type { TeamPortalClientProps } from '@/components/atelier/team-portal-types'
+import { yearOf, formatInventoryDims } from '@/lib/data'
 
 import { WorkDrawer }          from '@/components/atelier/WorkDrawer'
 import { CurationDock }        from '@/components/atelier/CurationDock'
-import { fetchContactConflicts } from '@/app/atelier/contacts/actions'
+import { fetchContactConflicts } from '@/app/atelier/contacts/conflicts-actions'
 import { ExhibitionsTabSkeleton } from '@/components/atelier/ExhibitionsTabSkeleton'
 import { SystemTab } from '@/components/atelier/SystemTab'
 
@@ -52,27 +54,7 @@ type Tab =
   | 'overview' | 'inventory' | 'constellation' | 'production'
   | 'logistics' | 'sales' | 'exhibitions' | 'vault' | 'contacts' | 'map' | 'pipeline' | 'fiscal' | 'concepts' | 'themes' | 'stock' | 'stock-take' | 'system' | 'portfolio' | 'audit'
 
-export interface TeamPortalClientProps {
-  oeuvres:        Oeuvre[]
-  techniques:     { TechniqueID: number; Technique: string | null }[]
-  supports:       { SupportID:   number; Support:   string | null }[]
-  formats:        { FormatID:    number; Format:    string | null }[]
-  themes:         { id:          number; name:      string }[]
-  contacts:       { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null; Role: string | null; Ville?: string | null; Pays?: string | null }[]
-  statusLabelMap: Record<number, string>
-  initialGroups:  { id: string; name: string }[]
-  presentations:  { PresentationID: number; Nom: string | null }[]
-  exhibitions:   any[]
-  // Optional — not yet passed from page.tsx; defaults to {} to avoid crash
-  themeWorkCount?: Record<number, number>
-  groupWorkCount?:  Record<string, number>
-  addresses?:       any[]
-  themePublicStats?: Record<number, { total: number; pub: number }>
-  themePrivateWorks?: Record<number, { OeuvreID: number; txtImageNameLink: string | null; isPublic: boolean }[]>
-  groupPrivateWorks?: Record<string, { OeuvreID: number; txtImageNameLink: string | null; isPublic: boolean }[]>
-  themeToGroups?:      Record<number, string[]>
-  groupToThemes?:      Record<string, number[]>
-}
+export type { TeamPortalClientProps }
 
 // ── Component ────────────────────────────────────────────────────────
 
@@ -1055,7 +1037,10 @@ function CompareModal({ ids, oeuvres, tM, sM, contacts, addresses, statusLabelMa
     { l: t('technique'),   k: (o: any) => o.Technique != null ? tM[o.Technique] : '—' },
     { l: t('support'),     k: (o: any) => o.Support != null ? sM[o.Support] : '—' },
     { l: 'Format',         k: (o: any) => o.Format || '—' },
-    { l: 'Dimensions',     k: (o: any) => o.Hauteur && o.Largeur ? `${o.Hauteur} × ${o.Largeur} cm` : '—' },
+    { l: 'Dimensions',     k: (o: any) => {
+        const raw = formatInventoryDims(o.Hauteur, o.Largeur, o.Support != null ? sM[o.Support] : null, o.Profondeur)
+        return raw === '—' ? '—' : `${raw} cm`
+      } },
     { l: t('depth'),       k: (o: any) => o.Profondeur ? `${o.Profondeur} cm` : '—' },
     { l: t('tirage'),      k: (o: any) => o.Tirage || '—' },
     { l: t('status'),      k: (o: any) => o.statusId != null ? statusLabelMap[o.statusId] : '—' },
@@ -1069,9 +1054,9 @@ function CompareModal({ ids, oeuvres, tM, sM, contacts, addresses, statusLabelMa
     { l: 'Encadrée',       k: (o: any) => o.Encadree ? '✓' : '—' },
     { l: 'Montée',         k: (o: any) => o.Montee ? '✓' : '—' },
     { l: t('catalogued'),  k: (o: any) => o.Catalogué ? '✓' : '—' },
-    { l: 'Anonymat',       k: (o: any) => {
+    { l: 'Visibilité',     k: (o: any) => {
         const level = (o as any).anonymity_level ?? 0
-        return level === 0 ? 'Public' : level === 1 ? 'Anonyme' : 'Privé'
+        return level === 0 ? 'Public' : level === 1 ? 'Masqué' : 'Privé'
       }},
     { l: 'Commission',     k: (o: any) => o.IsCommission ? '✓' : '—' },
     { l: t('notes'),       k: (o: any) => o.Commentaires || '—' },

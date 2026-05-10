@@ -1,18 +1,18 @@
 'use client'
 
-import { imageUrl, thumbUrl, yearOf, statusOf } from '@/lib/data'
+import { imageUrl, thumbUrl, yearOf, statusOf, DIAMETER_SIGN, isCircularSupport } from '@/lib/data'
 import { StatusChip } from '@/components/ui/StatusChip'
 import { WorkStateChip } from './WorkStateChip'
 import { deleteWork } from '@/app/atelier/works/actions'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { useEffect, useLayoutEffect, useState, useTransition, useCallback, useRef } from 'react'
+import { useEffect, useLayoutEffect, useState, useTransition, useCallback, useRef, useMemo } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { saveWork, createLookup } from '@/app/atelier/works/actions'
+import { markAsGift } from '@/app/atelier/works/gift-actions'
 import type { Oeuvre } from '@/lib/types/database'
 import { WorkThumb } from './WorkThumb'
-import { useUserRecordDone } from '@/components/UserRecordDoneProvider'
-import { USER_RECORD_SCOPE } from '@/lib/user-record-scope'
+import { logAtelierOeuvreView } from '@/app/atelier/audit/log-view'
 
 /* ──────────────────────────────────────────────────────────────────
    WorkDrawer — unified detail panel.
@@ -241,7 +241,16 @@ function DrawerContent({
   const { t } = useI18n()
   const router = useRouter()
   const isPanel = mode === 'panel'
-  const { isDone: isUserRecordDone, toggle: toggleUserRecordDone } = useUserRecordDone()
+
+  useEffect(() => {
+    if (!o?.OeuvreID) return
+    const k = `pem_atelier_view_${o.OeuvreID}`
+    try {
+      if (sessionStorage.getItem(k)) return
+      sessionStorage.setItem(k, '1')
+    } catch { /* private mode */ }
+    void logAtelierOeuvreView(o.OeuvreID)
+  }, [o?.OeuvreID])
 
   // ── Form State (always editable) ───────────────────────
   const [isSaving, startSave] = useTransition()
@@ -268,7 +277,14 @@ function DrawerContent({
   const [newC, setNewC] = useState({ inst: '', prenom: '', nom: '', role: '', email: '', phone: '', ville: '', pays: '', notes: '' })
   const [creatingContact, setCreatingContact] = useState(false)
   const [anonymityLevel, setAnonymityLevel] = useState<number>((o as any).anonymity_level ?? 0)
-  const [adminOverride, setAdminOverride] = useState<boolean>((o as any).admin_override_anonymity ?? false)
+
+  // ── Gift modal state ───────────────────────────────────
+  const [showGiftModal, setShowGiftModal]       = useState(false)
+  const [giftRecipientId, setGiftRecipientId]   = useState('')
+  const [giftDeliveryDate, setGiftDeliveryDate] = useState('')
+  const [giftNotes, setGiftNotes]               = useState('')
+  const [giftBusy, setGiftBusy]                 = useState(false)
+  const [giftError, setGiftError]               = useState<string | null>(null)
 
   const panRafId = useRef<number | null>(null)
   const latestMouseRef = useRef({ x: 0, y: 0 })
@@ -294,7 +310,6 @@ function DrawerContent({
     setSelThemes(new Set(oeuvreThemeMap.get(o.OeuvreID) ?? []))
     setSelGroups(new Set(oeuvreGroupMap.get(o.OeuvreID) ?? []))
     setAnonymityLevel((o as any).anonymity_level ?? 0)
-    setAdminOverride((o as any).admin_override_anonymity ?? false)
     setLocalContacts(initialContacts)
   }, [o.OeuvreID, oeuvreThemeMap, oeuvreGroupMap, o, initialContacts])
 
@@ -302,6 +317,19 @@ function DrawerContent({
   const [localTechniques, setLocalTechniques] = useState(initialTechniques)
   const [localSupports,   setLocalSupports]   = useState(initialSupports)
   const [localFormats,    setLocalFormats]    = useState(initialFormats)
+
+  const supportLabel = useMemo(
+    () => localSupports.find((s: { SupportID: number; Support: string | null }) => String(s.SupportID) === supportId)?.Support ?? '',
+    [localSupports, supportId],
+  )
+  const circularPlanar = isCircularSupport(supportLabel)
+  const diameterFieldValue = useMemo(() => {
+    if (!circularPlanar) return hauteur
+    const a = hauteur.trim()
+    const b = largeur.trim()
+    if (a === b) return hauteur
+    return hauteur || largeur
+  }, [circularPlanar, hauteur, largeur])
 
   async function saveLookup(table: string, name: string) {
     if (!name) return
@@ -311,14 +339,6 @@ function DrawerContent({
     else if (table === 'Support') { setLocalSupports((p: any) => [...p, { SupportID: res.id, Support: cap(name) }]); setSupportId(String(res.id)) }
     else if (table === 'Format') { setLocalFormats((p: any) => [...p, { FormatID: res.id, Format: cap(name) }]); setFormatId(String(res.id)) }
   }
-
-  // ── Logic Gates ────────────────────────────────────────
-  const statusNum = Number(statusId)
-  const isGateLocked = (statusNum === 1 || statusNum === 2) && !adminOverride
-
-  useEffect(() => {
-    if (isGateLocked) setAnonymityLevel(0)
-  }, [isGateLocked])
 
   // ── Pipeline ───────────────────────────────────────────
   const [pipeline,    setPipeline]    = useState<ActionType[]>([])
@@ -378,7 +398,7 @@ function DrawerContent({
     fd.append('prix', prix)
     fd.append('prix_final', prixFinal)
     fd.append('anonymity_level', String(anonymityLevel))
-    fd.append('admin_override_anonymity', adminOverride ? '1' : '0')
+    fd.append('admin_override_anonymity', '0')
     // Preserve production booleans — saveWork defaults missing keys to false and would wipe gates/pipeline sync.
     fd.append('catalogued', (o as { Catalogué?: boolean }).Catalogué ? '1' : '0')
     fd.append('needs_photograph', (o as { NeedsPhotograph?: boolean }).NeedsPhotograph ? '1' : '0')
@@ -462,42 +482,22 @@ function DrawerContent({
     setNewC({ inst: '', prenom: '', nom: '', role: '', email: '', phone: '', ville: '', pays: '', notes: '' })
   }
 
-  const userMarkedRecordDone = isUserRecordDone(USER_RECORD_SCOPE.oeuvre, String(o.OeuvreID))
-
   return (
     <>
       {/* Header */}
       <div className="row between" style={{ marginBottom: 10 }}>
         <div className="row gap-sm" style={{ alignItems: 'center' }}>
           <div className="t-eyebrow" style={{ color: 'var(--tx3)' }}>#{o.OeuvreID}</div>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              void toggleUserRecordDone(USER_RECORD_SCOPE.oeuvre, String(o.OeuvreID))
-            }}
-            title={t('recordDonePersonal')}
-            style={{
-              width: 26,
-              height: 26,
-              borderRadius: 4,
-              flexShrink: 0,
-              border: `1.5px solid ${userMarkedRecordDone ? 'var(--ac)' : 'var(--bd2)'}`,
-              background: userMarkedRecordDone ? 'var(--ac)' : 'transparent',
-              color: userMarkedRecordDone ? 'var(--bg0)' : 'var(--tx3)',
-              cursor: 'pointer',
-              fontSize: 13,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              lineHeight: 1,
-              padding: 0,
-            }}
+          <span
+            className="t-mono-sm"
+            title={t('auditAttributedHint')}
+            aria-label={t('auditAttributedHint')}
+            style={{ color: 'var(--ac)', cursor: 'help', fontSize: 11, opacity: 0.85 }}
           >
-            {userMarkedRecordDone ? '✓' : ''}
-          </button>
+            ◈
+          </span>
         </div>
-        <div className="row gap-sm">
+        <div className="row gap-sm" style={{ alignItems: 'center' }}>
           {imgZoom > 1 && (
             <span className="t-mono-sm" style={{ color: 'var(--tx3)', marginRight: 8 }}>×{imgZoom.toFixed(1)}</span>
           )}
@@ -660,36 +660,22 @@ function DrawerContent({
         </div>
       </section>
 
-      {/* ═══ VISIBILITY & ANONYMITY GATE ═══ */}
+      {/* ═══ VISIBILITY (contact disclosure) ═══ */}
       <section style={{ marginBottom: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+        <div style={{ marginBottom: 8 }}>
           <span style={{ fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--tx3)' }}>Visibility</span>
-          {isGateLocked && (
-            <span style={{ fontSize: 9, color: '#c88c28', display: 'flex', alignItems: 'center', gap: 3 }}>
-              🔒 Gate: forcé par statut
-            </span>
-          )}
-          {(statusNum === 1 || statusNum === 2) && (
-            <button
-              onClick={() => setAdminOverride(!adminOverride)}
-              style={{ marginLeft: 'auto', fontSize: 9, padding: '2px 6px', borderRadius: 2, border: `1px solid ${adminOverride ? 'var(--ac)' : 'var(--bd)'}`, background: adminOverride ? 'rgba(100,180,255,0.1)' : 'transparent', color: adminOverride ? 'var(--ac)' : 'var(--tx3)', cursor: 'pointer' }}
-            >
-              {adminOverride ? '🛡 Override ON' : '🛡 Override'}
-            </button>
-          )}
         </div>
         <div style={{ display: 'flex', borderRadius: 3, overflow: 'hidden', border: '1px solid var(--bd)' }}>
           {[
             { level: 0, label: 'PUBLIC', color: '#4caf50' },
-            { level: 1, label: 'ANONYME', color: '#ff9800' },
+            { level: 1, label: 'MASQUÉ', color: '#ff9800' },
             { level: 2, label: 'PRIVÉ', color: '#f44336' },
           ].map(opt => {
             const active = anonymityLevel === opt.level
-            const disabled = isGateLocked && opt.level !== 0
             return (
-              <button key={opt.level} disabled={disabled}
-                onClick={() => !disabled && setAnonymityLevel(opt.level)}
-                style={{ flex: 1, padding: '6px 0', fontSize: 10, fontWeight: 600, letterSpacing: '0.05em', border: 'none', cursor: disabled ? 'not-allowed' : 'pointer', background: active ? opt.color : 'var(--bg0)', color: active ? '#fff' : disabled ? 'var(--tx3)' : 'var(--tx2)', opacity: disabled ? 0.4 : 1, transition: 'all 0.15s ease' }}
+              <button key={opt.level} type="button"
+                onClick={() => setAnonymityLevel(opt.level)}
+                style={{ flex: 1, padding: '6px 0', fontSize: 10, fontWeight: 600, letterSpacing: '0.05em', border: 'none', cursor: 'pointer', background: active ? opt.color : 'var(--bg0)', color: active ? '#fff' : 'var(--tx2)', transition: 'all 0.15s ease' }}
               >{opt.label}</button>
             )
           })}
@@ -717,12 +703,33 @@ function DrawerContent({
             <CreatableSelect value={supportId} options={localSupports.map((s: any) => ({ id: String(s.SupportID), label: s.Support ?? '' }))} onChange={setSupportId} onAdd={(name: string) => saveLookup('Support', name)} />
 
             <Label>Dim.</Label>
-            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-              <input className="input" value={hauteur} onChange={e => setHauteur(e.target.value)} style={{ ...FIS, width: '30%' }} placeholder="H" />
-              <span style={{ color: 'var(--tx3)', fontSize: 10 }}>×</span>
-              <input className="input" value={largeur} onChange={e => setLargeur(e.target.value)} style={{ ...FIS, width: '30%' }} placeholder="W" />
-              <span style={{ color: 'var(--tx3)', fontSize: 10 }}>×</span>
-              <input className="input" value={profondeur} onChange={e => setProfondeur(e.target.value)} style={{ ...FIS, width: '30%' }} placeholder="D" />
+            <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
+              {circularPlanar ? (
+                <>
+                  <span style={{ color: 'var(--tx3)', fontSize: 12, lineHeight: 1 }} title="Diamètre (U+2300)">{DIAMETER_SIGN}</span>
+                  <input
+                    className="input"
+                    value={diameterFieldValue}
+                    onChange={(e) => {
+                      const v = e.target.value
+                      setHauteur(v)
+                      setLargeur(v)
+                    }}
+                    style={{ ...FIS, width: '34%', minWidth: 52 }}
+                    placeholder="cm"
+                  />
+                  <span style={{ color: 'var(--tx3)', fontSize: 10 }}>×</span>
+                  <input className="input" value={profondeur} onChange={e => setProfondeur(e.target.value)} style={{ ...FIS, width: '30%' }} placeholder="D" />
+                </>
+              ) : (
+                <>
+                  <input className="input" value={hauteur} onChange={e => setHauteur(e.target.value)} style={{ ...FIS, width: '30%' }} placeholder="H" />
+                  <span style={{ color: 'var(--tx3)', fontSize: 10 }}>×</span>
+                  <input className="input" value={largeur} onChange={e => setLargeur(e.target.value)} style={{ ...FIS, width: '30%' }} placeholder="W" />
+                  <span style={{ color: 'var(--tx3)', fontSize: 10 }}>×</span>
+                  <input className="input" value={profondeur} onChange={e => setProfondeur(e.target.value)} style={{ ...FIS, width: '30%' }} placeholder="D" />
+                </>
+              )}
             </div>
 
             <Label>Présentation</Label>
@@ -834,6 +841,23 @@ function DrawerContent({
           <button className={`btn ${isSel ? 'primary' : 'ghost'}`} onClick={handleToggleSel} style={{ fontSize: 11 }}>
             {isSel ? '✓ Sél.' : '+ Sél.'}
           </button>
+          {/* Direct gift path — disabled when ownership has already moved or work is archived */}
+          {!([3, 5, 6, 11].includes(Number(statusId))) && (
+            <button
+              className="btn ghost sm"
+              style={{ fontSize: 11, color: 'var(--ac)', borderColor: 'rgba(200,168,110,0.4)' }}
+              onClick={() => {
+                setGiftRecipientId('')
+                setGiftDeliveryDate(new Date().toISOString().slice(0, 10))
+                setGiftNotes('')
+                setGiftError(null)
+                setShowGiftModal(true)
+              }}
+              title="Transférer en don (sans contrepartie)"
+            >
+              ⊕ Don
+            </button>
+          )}
           {!confirmDelete ? (
             <button className="btn ghost sm" style={{ marginLeft: 'auto', color: 'var(--tx3)', fontSize: 10 }} onClick={() => setConfirmDelete(true)}>
               Supprimer
@@ -910,6 +934,76 @@ function DrawerContent({
               <button className="btn ghost sm" onClick={() => { setShowNewContact(false); setNewC({ inst: '', prenom: '', nom: '', role: '', email: '', phone: '', ville: '', pays: '', notes: '' }) }} style={{ fontSize: 11 }}>Annuler</button>
               <button className="btn primary sm" onClick={handleCreateContact} disabled={creatingContact || (!newC.inst && !newC.prenom && !newC.nom)} style={{ fontSize: 11 }}>
                 {creatingContact ? '…' : 'Créer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Gift transfer modal */}
+      {showGiftModal && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 220, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+          onClick={() => !giftBusy && setShowGiftModal(false)}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ background: 'var(--bg1)', border: '1px solid var(--ac)', borderRadius: 8, padding: 24, width: '100%', maxWidth: 480, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div>
+              <div style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ac)' }}>Marquer comme don</div>
+              <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 4 }}>
+                Transfert de propriété sans contrepartie financière. Génère un Bordereau de Don dans le coffre.
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label style={{ fontSize: 10, color: 'var(--tx3)' }}>Bénéficiaire *</label>
+              <select className="input" value={giftRecipientId} onChange={e => setGiftRecipientId(e.target.value)} style={FIS} autoFocus>
+                <option value="">— Sélectionner un contact —</option>
+                {sortedContacts.map((c: any) => (
+                  <option key={c.ContactID} value={c.ContactID}>{cName(c)}</option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label style={{ fontSize: 10, color: 'var(--tx3)' }}>Date de remise</label>
+              <input type="date" className="input" value={giftDeliveryDate} onChange={e => setGiftDeliveryDate(e.target.value)} style={FIS} />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label style={{ fontSize: 10, color: 'var(--tx3)' }}>Notes</label>
+              <textarea className="input" value={giftNotes} onChange={e => setGiftNotes(e.target.value)} style={{ ...FIS, height: 72, resize: 'vertical' }} placeholder="Contexte, occasion, conditions…" />
+            </div>
+
+            {giftError && <div style={{ color: '#c0392b', fontSize: 10 }}>{giftError}</div>}
+
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="btn ghost sm" disabled={giftBusy} onClick={() => setShowGiftModal(false)} style={{ fontSize: 11 }}>Annuler</button>
+              <button
+                className="btn primary sm"
+                disabled={giftBusy || !giftRecipientId}
+                onClick={async () => {
+                  setGiftBusy(true); setGiftError(null)
+                  try {
+                    const fd = new FormData()
+                    fd.append('oeuvre_id', String(o.OeuvreID))
+                    fd.append('recipient_id', giftRecipientId)
+                    if (giftDeliveryDate) fd.append('delivery_date', giftDeliveryDate)
+                    if (giftNotes.trim())  fd.append('notes', giftNotes.trim())
+                    const res = await markAsGift(fd)
+                    if ('error' in res) {
+                      setGiftError(res.error)
+                    } else {
+                      setShowGiftModal(false)
+                      router.refresh()
+                    }
+                  } catch (err) {
+                    setGiftError(err instanceof Error ? err.message : String(err))
+                  } finally {
+                    setGiftBusy(false)
+                  }
+                }}
+                style={{ fontSize: 11 }}
+              >
+                {giftBusy ? '…' : 'Confirmer le don'}
               </button>
             </div>
           </div>

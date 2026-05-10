@@ -59,7 +59,8 @@ export function CurationDock({
     <>
       <div style={{
         position: 'fixed', bottom: 20, left: '50%', transform: 'translateX(-50%)',
-        zIndex: 40, background: 'var(--bg2)', border: '1px solid var(--bd2)',
+        /* Above WorkDrawer overlay (z-60); below BatchEdit/Export modals (z-80) */
+        zIndex: 75, background: 'var(--bg2)', border: '1px solid var(--bd2)',
         padding: '10px 14px', display: 'flex', gap: 10, alignItems: 'center',
         boxShadow: '0 8px 40px rgba(0,0,0,0.5)',
       }}>

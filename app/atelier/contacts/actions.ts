@@ -503,20 +503,3 @@ export async function saveContactWithConflictCheck(formData: FormData): Promise<
   revalidatePath('/atelier')
   return { ok: true, id: contact.ContactID }
 }
-
-export async function fetchContactConflicts() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return []
-
-  // Check if user is admin
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  if (profile?.role !== 'admin') return []
-
-  const { data } = await supabase
-    .from('contact_conflicts')
-    .select('*, public:public_contact_id(ContactID, Nom, Prénom, NomInstitution), private:private_contact_id(ContactID, Nom, Prénom, NomInstitution)')
-    .eq('resolved', false)
-
-  return data ?? []
-}

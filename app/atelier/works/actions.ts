@@ -122,11 +122,6 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
   const isPaid         = formData.get('is_paid') === '1'
   const isGift         = formData.get('is_gift') === '1'
 
-  // Anonymity gate (matches WorkDrawer): statuts 1/2 → niveau 0 sauf override admin
-  if ((statusId === 1 || statusId === 2) && !adminOverrideAnonymity && anonymityLevel !== 0) {
-    return { error: 'Anonymat incompatible avec En production / Disponible (override admin requis).' }
-  }
-
   const themeIds: number[] = (formData.getAll('themes') as string[])
     .map(Number)
     .filter((n) => n > 0)
@@ -510,8 +505,8 @@ async function r2Delete(filename: string): Promise<void> {
 }
 
 /**
- * Upload original to R2 and generate + upload a 400px JPEG thumbnail
- * to thumbs/<filename>.jpg — automatically for every new image.
+ * Upload original to R2 and generate + upload a 400px AVIF thumbnail
+ * to thumbs/<base>.avif — automatically for every new image.
  */
 async function uploadImage(
   _supabase: SupabaseClient,
@@ -524,10 +519,17 @@ async function uploadImage(
     // Upload original
     await r2Put(buf, filename, file.type || 'application/octet-stream')
 
-    // Generate 400px thumbnail (AVIF, quality 70) and upload to thumbs/
+    // Generate 400px thumbnail (AVIF); ensureAlpha + transparent resize bg preserve PNG/WebP alpha
     const thumbBuf  = await sharp(buf)
-      .resize({ width: 400, height: 400, fit: 'inside', withoutEnlargement: true })
-      .avif({ quality: 70, effort: 3 })
+      .ensureAlpha()
+      .resize({
+        width: 400,
+        height: 400,
+        fit: 'inside',
+        withoutEnlargement: true,
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      })
+      .avif({ quality: 70, effort: 3, chromaSubsampling: '4:4:4' })
       .toBuffer()
     const thumbName = `thumbs/${filename.replace(/\.[^.]+$/, '')}.avif`
     await r2Put(thumbBuf, thumbName, 'image/avif')

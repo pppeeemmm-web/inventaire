@@ -9,31 +9,33 @@ import { logSystemEvent } from '@/lib/utils/logging'
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface SaleOrderRow {
-  id:               string
-  created_at:       string
-  oeuvre_id:        number
-  oeuvre_ids?:      number[] // New plural support
-  buyer_id:         number | null
-  prix_catalogue:   number | null
-  discount_pct:     number | null
-  prix_final:       number | null
-  currency:         string
-  deposit_pct:      number | null
-  deposit_due:      string | null
-  balance_due:      string | null
-  payment_method:   string | null
-  deposit_paid:     boolean
-  balance_paid:     boolean
-  delivery_address: string | null
-  shipping_method:  string | null
-  delivery_date:    string | null
-  delivered:        boolean
-  order_ref:        string | null
-  statut:           string
-  notes:            string | null
-  pdf_path:         string | null
-  updated_at?:      string | null
-  payments?:        PaymentRow[]
+  id:                   string
+  created_at:           string
+  oeuvre_id:            number
+  oeuvre_ids?:          number[] // New plural support
+  buyer_id:             number | null
+  prix_catalogue:       number | null
+  discount_pct:         number | null
+  prix_final:           number | null
+  currency:             string
+  deposit_pct:          number | null
+  deposit_due:          string | null
+  balance_due:          string | null
+  payment_method:       string | null
+  deposit_paid:         boolean
+  balance_paid:         boolean
+  delivery_address:     string | null
+  shipping_method:      string | null
+  delivery_date:        string | null
+  delivered:            boolean
+  order_ref:            string | null
+  statut:               string
+  notes:                string | null
+  pdf_path:             string | null
+  consignment_order_id: string | null
+  commission_amount:    number | null
+  updated_at?:          string | null
+  payments?:            PaymentRow[]
 }
 
 export interface PaymentRow {
@@ -58,6 +60,43 @@ async function guardTeam() {
   const { data: isTeam } = await supabase.rpc('is_team')
   if (!isTeam) return { error: 'Accès refusé' as const, supabase: null }
   return { error: null, supabase }
+}
+
+// Find the active consignment_order that best matches the works being sold.
+// Returns the order id with the largest overlap, or null if none found.
+async function detectActiveConsignment(supabase: any, oeuvre_ids: number[]): Promise<string | null> {
+  if (oeuvre_ids.length === 0) return null
+
+  // Restrict to works currently flagged Consigné (statusId=7). Loans (8) don't earn commission.
+  const { data: consignedWorks } = await supabase
+    .from('Oeuvres')
+    .select('OeuvreID')
+    .in('OeuvreID', oeuvre_ids)
+    .eq('statusId', 7)
+
+  const candidateIds = (consignedWorks ?? []).map((w: any) => w.OeuvreID)
+  if (candidateIds.length === 0) return null
+
+  const { data: orders } = await supabase
+    .from('consignment_order')
+    .select('id, notes, kind, status')
+    .eq('status', 'active')
+    .eq('kind', 'consignment')
+
+  let best: { id: string; overlap: number } | null = null
+  for (const o of (orders ?? [])) {
+    if (!o.notes?.includes('BATCH_IDS:')) continue
+    let ids: number[] = []
+    try {
+      const m = o.notes.match(/BATCH_IDS: (\[.*?\])/)
+      if (m) ids = JSON.parse(m[1])
+    } catch { continue }
+    const overlap = ids.filter((id: number) => candidateIds.includes(id)).length
+    if (overlap > 0 && (!best || overlap > best.overlap)) {
+      best = { id: o.id, overlap }
+    }
+  }
+  return best?.id ?? null
 }
 
 const BUCKET       = process.env.R2_VAULT_BUCKET ?? 'vault'
@@ -159,7 +198,12 @@ export async function createSaleOrder(formData: FormData): Promise<OrderResult> 
 
   if (oeuvre_ids.length === 0) return { error: 'Œuvre(s) requise(s)' }
 
-  // We store the first one in the legacy column and the list in notes or a new column if exists
+  // Auto-detect a parent consignment_order so we can compute the gallery commission
+  // at completion. We pick the active consignment (kind='consignment') that covers
+  // the largest subset of works currently in statusId 7. Loans (statusId 8) and works
+  // outside any consignment are ignored.
+  const consignment_order_id = await detectActiveConsignment(supabase, oeuvre_ids)
+
   const { data: order, error: dbErr } = await supabase
     .from('sale_order')
     .insert({
@@ -170,6 +214,7 @@ export async function createSaleOrder(formData: FormData): Promise<OrderResult> 
       delivery_address, shipping_method, delivery_date,
       notes: `BATCH_IDS: ${JSON.stringify(oeuvre_ids)}\n${notes || ''}`,
       statut: 'draft',
+      consignment_order_id,
     })
     .select()
     .single()
@@ -263,7 +308,7 @@ export async function updateOrderStatut(id: string, statut: string, toggleField?
   if (statut === 'completed') {
     const { data: order } = await supabase
       .from('sale_order')
-      .select('oeuvre_id, notes, buyer_id')
+      .select('oeuvre_id, notes, buyer_id, prix_final, consignment_order_id')
       .eq('id', id)
       .single()
 
@@ -298,6 +343,33 @@ export async function updateOrderStatut(id: string, statut: string, toggleField?
           ContactID:     order.buyer_id,
           LocalisationID: order.buyer_id,
         }).in('OeuvreID', giftIds)
+      }
+
+      // Compute & stamp gallery commission when sale was routed through a consignment.
+      if (order.consignment_order_id) {
+        const { data: consignment } = await supabase
+          .from('consignment_order')
+          .select('commission_pct, order_ref')
+          .eq('id', order.consignment_order_id)
+          .single()
+
+        const pct = Number(consignment?.commission_pct ?? 0)
+        if (pct > 0 && order.prix_final) {
+          const commission_amount = Math.round(order.prix_final * pct) / 100
+          await supabase.from('sale_order').update({ commission_amount }).eq('id', id)
+
+          await logSystemEvent({
+            eventType: 'PAYMENT_GRAIN',
+            tableName: 'sale_order',
+            rowId: id,
+            newValue: commission_amount,
+            metadata: {
+              commission_pct: pct,
+              consignment_order_id: order.consignment_order_id,
+              consignment_ref: consignment?.order_ref,
+            },
+          })
+        }
       }
     }
   }
@@ -426,6 +498,16 @@ export async function buildOrderPdf(order: SaleOrderRow, supabase: any): Promise
     ? await supabase.from('Contact').select('Nom, Prénom, NomInstitution, Ville, Pays').eq('ContactID', order.buyer_id).single()
     : { data: null }
 
+  // If routed through a consignment, fetch its commission rate to render on the bond.
+  const { data: consignment } = order.consignment_order_id
+    ? await supabase.from('consignment_order').select('commission_pct, order_ref, partner_id').eq('id', order.consignment_order_id).single()
+    : { data: null }
+  const commissionPct = Number((consignment as any)?.commission_pct ?? 0)
+  const commissionAmount = (commissionPct > 0 && order.prix_final)
+    ? Math.round(order.prix_final * commissionPct) / 100
+    : 0
+  const netArtiste = (order.prix_final ?? 0) - commissionAmount
+
   // Fetch techniques/supports for all works to avoid repeated calls or just use names if available
   // To keep it simple and fast, we'll fetch them once if possible
   const techIds = [...new Set(works?.map(w => w.Technique).filter(Boolean))]
@@ -552,6 +634,20 @@ export async function buildOrderPdf(order: SaleOrderRow, supabase: any): Promise
       doc.fontSize(9).fillColor(tx2).text(l, totalX, cy)
       doc.fontSize(bold ? 14 : 10).fillColor(bold ? ac : '#000').text(v, totalX, cy - (bold ? 3 : 0), { width: totalW, align: 'right' })
       doc.moveDown(bold ? 1.5 : 1.2)
+    }
+
+    // Commission breakdown — only when routed through a consignment with a non-zero rate.
+    if (commissionPct > 0) {
+      const breakdown: [string, string, boolean][] = [
+        [`Commission galerie (${commissionPct}%)`, `– € ${formatPrice(commissionAmount)}`, false],
+        ['Net artiste', `€ ${formatPrice(netArtiste)}`, false],
+      ]
+      for (const [l, v, bold] of breakdown) {
+        const cy = doc.y
+        doc.fontSize(8).fillColor(tx2).text(l, totalX, cy)
+        doc.fontSize(9).fillColor('#000').text(v, totalX, cy, { width: totalW, align: 'right' })
+        doc.moveDown(1)
+      }
     }
 
     doc.y = startSummaryY
