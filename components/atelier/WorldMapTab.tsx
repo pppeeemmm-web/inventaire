@@ -4,7 +4,7 @@
 // Fetches contact_addresses (multiple per contact) and Contact.Ville/Pays as fallback.
 // Both fetches run in parallel; pin building only starts when BOTH complete.
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase/client'
 import type { Oeuvre } from '@/lib/types/database'
@@ -28,11 +28,15 @@ interface ContactAddress {
 }
 
 export interface Props {
-  contacts:       ContactRow[]
-  oeuvres:        Oeuvre[]
-  tM:             Record<number, string>
-  statusLabelMap: Record<number, string>
-  onOpenContact?: (id: number) => void
+  contacts:        ContactRow[]
+  oeuvres:         Oeuvre[]
+  /** Technique id → label (works filter) */
+  tM:              Record<number, string>
+  /** Theme id → label (works filter) */
+  thM?:            Record<number, string>
+  statusLabelMap:  Record<number, string>
+  oeuvreThemeMap?: Map<number, number[]>
+  onOpenContact?:  (id: number) => void
 }
 
 export interface Pin {
@@ -121,13 +125,123 @@ const LeafletMap = dynamic<MapProps>(
 type Mode = 'contacts' | 'works'
 
 // ── Component ──────────────────────────────────────────────────────────
-export function WorldMapTab({ contacts, oeuvres, onOpenContact }: Props) {
+const SANS_ROLE = '(Sans rôle)'
+const EMPTY_THEME_MAP = new Map<number, number[]>()
+
+export function WorldMapTab({
+  contacts,
+  oeuvres,
+  tM,
+  thM = {},
+  statusLabelMap,
+  oeuvreThemeMap: oeuvreThemeMapProp,
+  onOpenContact,
+}: Props) {
+  const oeuvreThemeMap = oeuvreThemeMapProp ?? EMPTY_THEME_MAP
   const [mode,      setMode]      = useState<Mode>('contacts')
   const [pins,      setPins]      = useState<Pin[]>([])
   const [loading,   setLoading]   = useState(false)
   const [dataReady, setDataReady] = useState(false)
   const [addresses, setAddresses] = useState<ContactAddress[]>([])
   const abortRef = useRef(false)
+
+  /** Contacts mode: hidden roles (empty = show all roles) */
+  const [hiddenRoles, setHiddenRoles] = useState<Set<string>>(() => new Set())
+  /** Contacts mode: '' = all countries */
+  const [countryFilter, setCountryFilter] = useState('')
+  /** Works mode: hidden status ids */
+  const [hiddenStatusIds, setHiddenStatusIds] = useState<Set<number>>(() => new Set())
+  /** Works mode: hidden theme ids */
+  const [hiddenThemeIds, setHiddenThemeIds] = useState<Set<number>>(() => new Set())
+  /** Works mode: hidden technique ids */
+  const [hiddenTechniqueIds, setHiddenTechniqueIds] = useState<Set<number>>(() => new Set())
+
+  const rolesInData = useMemo(() => {
+    const s = new Set<string>()
+    contacts.forEach((c) => s.add(c.Role || SANS_ROLE))
+    return [...s].sort((a, b) => a.localeCompare(b, 'fr'))
+  }, [contacts])
+
+  const paysOptions = useMemo(() => {
+    const s = new Set<string>()
+    addresses.forEach((a) => {
+      if (a.pays?.trim()) s.add(a.pays.trim())
+    })
+    contacts.forEach((c) => {
+      if (c.Pays?.trim()) s.add(c.Pays.trim())
+    })
+    return [...s].sort((a, b) => a.localeCompare(b, 'fr'))
+  }, [addresses, contacts])
+
+  const statusIdsInData = useMemo(() => {
+    const s = new Set<number>()
+    oeuvres.forEach((o) => {
+      if (o.statusId != null) s.add(o.statusId)
+    })
+    return [...s].sort((a, b) => a - b)
+  }, [oeuvres])
+
+  const themeIdsInData = useMemo(() => {
+    const s = new Set<number>()
+    oeuvreThemeMap.forEach((ids) => ids.forEach((id) => s.add(id)))
+    return [...s].sort((a, b) => a - b)
+  }, [oeuvreThemeMap])
+
+  const techniqueIdsInData = useMemo(() => {
+    const s = new Set<number>()
+    oeuvres.forEach((o) => {
+      if (o.Technique != null) s.add(o.Technique)
+    })
+    return [...s].sort((a, b) => a - b)
+  }, [oeuvres])
+
+  function roleKey(role: string | null | undefined) {
+    return role || SANS_ROLE
+  }
+
+  function passesContactFilters(c: ContactRow): boolean {
+    if (hiddenRoles.has(roleKey(c.Role))) return false
+    return true
+  }
+
+  function passesCountryOnEntry(ville: string, pays: string): boolean {
+    if (!countryFilter) return true
+    return (pays || '').trim().toLowerCase() === countryFilter.trim().toLowerCase()
+  }
+
+  const oeuvresFiltered = useMemo(
+    () => oeuvres.filter((o) => {
+      if (o.statusId != null && hiddenStatusIds.has(o.statusId)) return false
+      if (o.statusId == null && hiddenStatusIds.has(-1)) return false
+      if (o.Technique != null && hiddenTechniqueIds.has(o.Technique)) return false
+      if (o.Technique == null && hiddenTechniqueIds.has(-1)) return false
+      if (oeuvreThemeMap.size === 0) return true
+      const tids = oeuvreThemeMap.get(o.OeuvreID)
+      if (!tids?.length) return !hiddenThemeIds.has(-1)
+      return tids.some((id) => !hiddenThemeIds.has(id))
+    }),
+    [oeuvres, hiddenStatusIds, hiddenThemeIds, hiddenTechniqueIds, oeuvreThemeMap],
+  )
+
+  const hasWorksSansStatus = useMemo(
+    () => oeuvres.some((o) => o.statusId == null),
+    [oeuvres],
+  )
+  const hasWorksSansTechnique = useMemo(
+    () => oeuvres.some((o) => o.Technique == null),
+    [oeuvres],
+  )
+  const hasWorksSansTheme = useMemo(
+    () => oeuvreThemeMap.size > 0 && oeuvres.some((o) => !oeuvreThemeMap.get(o.OeuvreID)?.length),
+    [oeuvres, oeuvreThemeMap],
+  )
+
+  const filtersActive =
+    hiddenRoles.size > 0 ||
+    countryFilter !== '' ||
+    hiddenStatusIds.size > 0 ||
+    hiddenThemeIds.size > 0 ||
+    hiddenTechniqueIds.size > 0
 
   // Contacts come from page.tsx props — no re-fetch needed.
   // Only fetch contact_addresses (not loaded server-side).
@@ -143,7 +257,7 @@ export function WorldMapTab({ contacts, oeuvres, onOpenContact }: Props) {
       .catch(() => setDataReady(true))
   }, [])
 
-  // Build pins once data FIS ready, or when mode changes
+  // Build pins once data FIS ready, or when mode / filters change
   useEffect(() => {
     if (!dataReady) return
     abortRef.current = false
@@ -153,7 +267,15 @@ export function WorldMapTab({ contacts, oeuvres, onOpenContact }: Props) {
     else void buildWorkPins()
     return () => { abortRef.current = true }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dataReady, mode])
+  }, [
+    dataReady,
+    mode,
+    contacts,
+    addresses,
+    countryFilter,
+    hiddenRoles,
+    oeuvresFiltered,
+  ])
 
   async function buildContactPins() {
     const result: Pin[] = []
@@ -167,6 +289,9 @@ export function WorldMapTab({ contacts, oeuvres, onOpenContact }: Props) {
     if (addresses.length > 0) {
       addresses.forEach(a => {
         if (a.ville || a.pays) {
+          const contact = contactMap.get(a.contact_id)
+          if (!contact || !passesContactFilters(contact)) return
+          if (!passesCountryOnEntry(a.ville ?? '', a.pays ?? '')) return
           locEntries.push({ contact_id: a.contact_id, ville: a.ville ?? '', pays: a.pays ?? '', label: a.label })
         }
       })
@@ -174,6 +299,8 @@ export function WorldMapTab({ contacts, oeuvres, onOpenContact }: Props) {
       const coveredIds = new Set(addresses.map(a => a.contact_id))
       contacts.forEach(c => {
         if (!coveredIds.has(c.ContactID) && (c.Ville || c.Pays)) {
+          if (!passesContactFilters(c)) return
+          if (!passesCountryOnEntry(c.Ville ?? '', c.Pays ?? '')) return
           locEntries.push({ contact_id: c.ContactID, ville: c.Ville ?? '', pays: c.Pays ?? '', label: null })
         }
       })
@@ -181,6 +308,8 @@ export function WorldMapTab({ contacts, oeuvres, onOpenContact }: Props) {
       // No contact_addresses at all — fall back to Contact.Ville/Pays
       contacts.forEach(c => {
         if (c.Ville || c.Pays) {
+          if (!passesContactFilters(c)) return
+          if (!passesCountryOnEntry(c.Ville ?? '', c.Pays ?? '')) return
           locEntries.push({ contact_id: c.ContactID, ville: c.Ville ?? '', pays: c.Pays ?? '', label: null })
         }
       })
@@ -218,7 +347,7 @@ export function WorldMapTab({ contacts, oeuvres, onOpenContact }: Props) {
       const sub   = [city, country].filter(Boolean).join(', ') + (topRole ? ` · ${topRole}` : '')
 
       const ids      = new Set(unique.map(c => c.ContactID))
-      const assoc    = oeuvres.filter(o =>
+      const assoc    = oeuvresFiltered.filter(o =>
         (o.ContactID != null && ids.has(o.ContactID)) ||
         ((o as any).AcheteurID != null && ids.has((o as any).AcheteurID))
       )
@@ -266,7 +395,7 @@ export function WorldMapTab({ contacts, oeuvres, onOpenContact }: Props) {
     const groups  = new Map<string, Oeuvre[]>()
     const keyMeta = new Map<string, WorkLocMeta>()
 
-    oeuvres.forEach(o => {
+    oeuvresFiltered.forEach(o => {
       const locId = (o as any).LocalisationID as number | null
       const cid   = locId ?? o.ContactID ?? 13
       const addr  = contactLocMap.get(cid) ?? contactLocMap.get(13)
@@ -297,7 +426,7 @@ export function WorldMapTab({ contacts, oeuvres, onOpenContact }: Props) {
   const addrCount = addresses.length > 0
     ? addresses.length
     : contacts.filter(c => c.Ville || c.Pays).length
-  const worksWithLoc = oeuvres.length  // all works now shown (fallback to contact location)
+  const worksWithLoc = oeuvresFiltered.length
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
@@ -333,17 +462,204 @@ export function WorldMapTab({ contacts, oeuvres, onOpenContact }: Props) {
             ↺ Rafraîchir
           </button>
         )}
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          {Object.entries(ROLE_COLORS)
-            .filter(([r]) => contacts.some(c => c.Role === r))
-            .map(([role, color]) => (
-              <div key={role} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <div style={{ width: 7, height: 7, borderRadius: '50%', background: color, flexShrink: 0 }} />
-                <span className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 9 }}>{role}</span>
-              </div>
-            ))}
-        </div>
+        {filtersActive && (
+          <button
+            type="button"
+            className="btn ghost sm"
+            style={{ marginLeft: 'auto', fontSize: 9 }}
+            onClick={() => {
+              setHiddenRoles(new Set())
+              setCountryFilter('')
+              setHiddenStatusIds(new Set())
+              setHiddenThemeIds(new Set())
+              setHiddenTechniqueIds(new Set())
+            }}
+          >
+            ✕ Filtres
+          </button>
+        )}
       </div>
+
+      {/* Filters */}
+      {dataReady && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+          padding: '8px 28px 10px', borderBottom: '1px solid var(--bd)',
+          background: 'var(--bg0)', flexShrink: 0,
+        }}>
+          {mode === 'contacts' && (
+            <>
+              {paysOptions.length > 0 && (
+                <>
+                  <div className="t-label">Pays</div>
+                  <select
+                    className="btn ghost sm"
+                    style={{ fontSize: 10, maxWidth: 200, padding: '4px 8px' }}
+                    value={countryFilter}
+                    onChange={(e) => setCountryFilter(e.target.value)}
+                  >
+                    <option value="">Tous pays</option>
+                    {paysOptions.map((p) => (
+                      <option key={p} value={p}>{p}</option>
+                    ))}
+                  </select>
+                </>
+              )}
+              {rolesInData.length > 0 && (
+                <>
+                  <div className="t-label">Rôles</div>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                    {rolesInData.map((role) => {
+                      const hidden = hiddenRoles.has(role)
+                      const dot = role === SANS_ROLE ? '#888' : roleColor(role)
+                      return (
+                        <button
+                          key={role}
+                          type="button"
+                          className="btn ghost sm"
+                          title={hidden ? 'Afficher sur la carte' : 'Masquer'}
+                          style={{
+                            opacity: hidden ? 0.35 : 1,
+                            fontSize: 10,
+                            borderLeft: `3px solid ${dot}`,
+                            paddingLeft: 8,
+                          }}
+                          onClick={() => setHiddenRoles((prev) => {
+                            const n = new Set(prev)
+                            if (n.has(role)) n.delete(role)
+                            else n.add(role)
+                            return n
+                          })}
+                        >
+                          {role === SANS_ROLE ? 'Sans rôle' : role}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </>
+              )}
+            </>
+          )}
+          {mode === 'works' && (
+            <>
+              {(statusIdsInData.length > 0 || hasWorksSansStatus) && (
+              <>
+              <div className="t-label">Statut</div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                {statusIdsInData.map((id) => (
+                  <button
+                    key={id}
+                    type="button"
+                    className="btn ghost sm"
+                    style={{ fontSize: 10, opacity: hiddenStatusIds.has(id) ? 0.35 : 1 }}
+                    onClick={() => setHiddenStatusIds((prev) => {
+                      const n = new Set(prev)
+                      if (n.has(id)) n.delete(id)
+                      else n.add(id)
+                      return n
+                    })}
+                  >
+                    {statusLabelMap[id] ?? `#${id}`}
+                  </button>
+                ))}
+                {hasWorksSansStatus && (
+                  <button
+                    type="button"
+                    className="btn ghost sm"
+                    style={{ fontSize: 10, opacity: hiddenStatusIds.has(-1) ? 0.35 : 1 }}
+                    onClick={() => setHiddenStatusIds((prev) => {
+                      const n = new Set(prev)
+                      if (n.has(-1)) n.delete(-1)
+                      else n.add(-1)
+                      return n
+                    })}
+                  >
+                    Sans statut
+                  </button>
+                )}
+              </div>
+              </>
+              )}
+              {oeuvreThemeMap.size > 0 && (themeIdsInData.length > 0 || hasWorksSansTheme) && (
+                <>
+                  <div className="t-label">Thème</div>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                    {themeIdsInData.map((id) => (
+                      <button
+                        key={id}
+                        type="button"
+                        className="btn ghost sm"
+                        style={{ fontSize: 10, opacity: hiddenThemeIds.has(id) ? 0.35 : 1 }}
+                        onClick={() => setHiddenThemeIds((prev) => {
+                          const n = new Set(prev)
+                          if (n.has(id)) n.delete(id)
+                          else n.add(id)
+                          return n
+                        })}
+                      >
+                        {thM[id] ?? `#${id}`}
+                      </button>
+                    ))}
+                    {hasWorksSansTheme && (
+                      <button
+                        type="button"
+                        className="btn ghost sm"
+                        style={{ fontSize: 10, opacity: hiddenThemeIds.has(-1) ? 0.35 : 1 }}
+                        onClick={() => setHiddenThemeIds((prev) => {
+                          const n = new Set(prev)
+                          if (n.has(-1)) n.delete(-1)
+                          else n.add(-1)
+                          return n
+                        })}
+                      >
+                        Sans thème
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+              {(techniqueIdsInData.length > 0 || hasWorksSansTechnique) && (
+              <>
+              <div className="t-label">Technique</div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                {techniqueIdsInData.map((id) => (
+                  <button
+                    key={id}
+                    type="button"
+                    className="btn ghost sm"
+                    style={{ fontSize: 10, opacity: hiddenTechniqueIds.has(id) ? 0.35 : 1 }}
+                    onClick={() => setHiddenTechniqueIds((prev) => {
+                      const n = new Set(prev)
+                      if (n.has(id)) n.delete(id)
+                      else n.add(id)
+                      return n
+                    })}
+                  >
+                    {tM[id] ?? `#${id}`}
+                  </button>
+                ))}
+                {hasWorksSansTechnique && (
+                  <button
+                    type="button"
+                    className="btn ghost sm"
+                    style={{ fontSize: 10, opacity: hiddenTechniqueIds.has(-1) ? 0.35 : 1 }}
+                    onClick={() => setHiddenTechniqueIds((prev) => {
+                      const n = new Set(prev)
+                      if (n.has(-1)) n.delete(-1)
+                      else n.add(-1)
+                      return n
+                    })}
+                  >
+                    Sans technique
+                  </button>
+                )}
+              </div>
+              </>
+              )}
+            </>
+          )}
+        </div>
+      )}
 
       {/* Map */}
       <div style={{ flex: 1, position: 'relative', minHeight: 0 }}>

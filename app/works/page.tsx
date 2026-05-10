@@ -10,26 +10,68 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 }
 
+function mapCollections(raw: any[]) {
+  return raw
+    .filter((c: any) => c.is_active)
+    .slice()
+    .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+    .map((c: any) => ({
+      id:             c.id,
+      title_fr:       c.title_fr  || c.title  || '',
+      title_en:       c.title_en  || c.title  || '',
+      description_fr: c.description_fr || c.description || '',
+      description_en: c.description_en || c.description || '',
+      theme:          c.theme ?? null,
+      is_active:      true,
+      manual_work_order: Array.isArray(c.manual_work_order)
+        ? c.manual_work_order.map((n: any) => Number(n)).filter((n: number) => Number.isFinite(n))
+        : [],
+    }))
+}
+
 export default async function WorksPage() {
   void trackView('/works')
   const supabase = await createClient()
 
-  // 1. Config — pass dual-language fields so WorksClient can switch on client
-  let collections: any[] = []
+  // 1. Config — build modes (transparent migration from legacy works_collections)
+  let modes: any[] = []
+  let portfolioCfg: any = null
   const result = await loadPortfolioConfig()
   if ('ok' in result) {
-    const raw = result.config.works_collections || []
-    collections = raw
-      .filter((c: any) => c.is_active)
-      .map((c: any) => ({
-        id:             c.id,
-        title_fr:       c.title_fr  || c.title  || '',
-        title_en:       c.title_en  || c.title  || '',
-        description_fr: c.description_fr || c.description || '',
-        description_en: c.description_en || c.description || '',
-        theme:          c.theme ?? null,
-        is_active:      true,
-      }))
+    portfolioCfg = result.config
+    const cfg = portfolioCfg
+    /** Same ordering as /portfolio — drives mode 1 when present */
+    const sectionCols = mapCollections(Array.isArray(cfg.sections) ? cfg.sections : [])
+    const rawModes = Array.isArray(cfg.works_modes) ? cfg.works_modes : []
+    if (rawModes.length > 0) {
+      modes = rawModes
+        .filter((m: any) => m.is_active !== false)
+        .slice()
+        .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+        .map((m: any, i: number) => {
+          let collections = mapCollections(Array.isArray(m.collections) ? m.collections : [])
+          if (i === 0 && sectionCols.length > 0) {
+            collections = sectionCols
+          }
+          return {
+            id:          m.id || `mode-${i}`,
+            label_fr:    m.label_fr || m.label || (i === 0 ? 'Œuvres' : `Mode ${i + 1}`),
+            label_en:    m.label_en || m.label || (i === 0 ? 'Works'  : `Mode ${i + 1}`),
+            collections,
+            outro_fr:    m.outro_fr || '',
+            outro_en:    m.outro_en || '',
+          }
+        })
+    }
+    if (modes.length === 0) {
+      const fromLegacy = mapCollections(cfg.works_collections || [])
+      const cols = sectionCols.length > 0 ? sectionCols : fromLegacy
+      modes = [{
+        id: 'default', label_fr: 'Œuvres', label_en: 'Works',
+        collections: cols,
+        outro_fr: '', outro_en: '',
+      }]
+    }
   }
 
   // 2. Themes + OeuvreTheme junction
@@ -65,10 +107,18 @@ export default async function WorksPage() {
     isRound:          w.Support === ROUND_SUPPORT_ID,
   }))
 
-  // Fallback: if no collections configured, show everything in one section
-  if (collections.length === 0 && works.length > 0) {
-    collections = [{ id: 'default', title_fr: 'Œuvres', title_en: 'Works', description_fr: '', description_en: '', theme: null, is_active: true }]
+  // Fallback: if no mode has any collection, use Sections Portfolio blocks when possible
+  const anyCol = modes.some(m => m.collections.length > 0)
+  if (!anyCol && works.length > 0) {
+    const secCols = portfolioCfg ? mapCollections(portfolioCfg.sections || []) : []
+    modes = [{
+      id: 'default', label_fr: 'Œuvres', label_en: 'Works',
+      collections: secCols.length > 0
+        ? secCols
+        : [{ id: 'default', title_fr: 'Œuvres', title_en: 'Works', description_fr: '', description_en: '', theme: null, is_active: true, manual_work_order: [] }],
+      outro_fr: '', outro_en: '',
+    }]
   }
 
-  return <WorksClient works={works} collections={collections} />
+  return <WorksClient works={works} modes={modes} />
 }

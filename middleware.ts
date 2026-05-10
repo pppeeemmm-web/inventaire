@@ -1,5 +1,7 @@
 // Supabase auth session refresh middleware.
 // Keeps the auth token alive on every request — required for SSR auth.
+// Auth gating for private apps uses layout.tsx + redirect() so React Flight / Server Actions
+// never receive an HTML redirect from middleware (that causes "unexpected response").
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
@@ -26,16 +28,7 @@ export async function middleware(request: NextRequest) {
   )
 
   // Refresh session — do not remove this line
-  const { data: { user } } = await supabase.auth.getUser()
-
-  // Protect private routes — redirect to login if not authenticated
-  const protectedPaths = ['/atelier', '/hub', '/galerie', '/collection']
-  const isProtected = protectedPaths.some(p => request.nextUrl.pathname.startsWith(p))
-  if (isProtected && !user) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/login'
-    return NextResponse.redirect(url)
-  }
+  await supabase.auth.getUser()
 
   return supabaseResponse
 }

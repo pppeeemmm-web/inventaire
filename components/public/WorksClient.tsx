@@ -38,6 +38,16 @@ function normalizeTheme(s: string | null | undefined): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
 }
 
+/** Same rule as PortfolioClient — bidirectional substring match on normalized names */
+function workMatchesCollectionTheme(workThemes: string[], collectionTheme: string | null | undefined): boolean {
+  if (!collectionTheme?.trim()) return true
+  const sMatch = normalizeTheme(collectionTheme)
+  return workThemes.some((th) => {
+    const wMatch = normalizeTheme(th)
+    return wMatch.includes(sMatch) || sMatch.includes(wMatch)
+  })
+}
+
 interface Work {
   OeuvreID: number
   Titre: string | null
@@ -57,45 +67,89 @@ interface Collection {
   description_en: string
   theme?: string | null
   is_active: boolean
+  manual_work_order?: number[]
 }
 
 type SequenceItem =
   | { type: 'work'; data: Work; collectionId?: string; workIndex: number }
   | { type: 'header'; title: string; subtitle?: string }
+  | { type: 'outro'; html_fr: string; html_en: string }
+
+interface WorksMode {
+  id: string
+  label_fr: string
+  label_en: string
+  collections: Collection[]
+  outro_fr: string
+  outro_en: string
+}
 
 interface Props {
   works: Work[]
-  collections: Collection[]
+  modes: WorksMode[]
 }
 
-export default function WorksClient({ works, collections }: Props) {
+export default function WorksClient({ works, modes }: Props) {
   const { t, lang } = useI18n()
+  const [activeModeIdx, setActiveModeIdx] = useState(0)
+  const safeModes = modes.length > 0 ? modes : [{
+    id: 'default', label_fr: 'Œuvres', label_en: 'Works',
+    collections: [], outro_fr: '', outro_en: '',
+  }]
+  const mode = safeModes[Math.min(activeModeIdx, safeModes.length - 1)]
+  const collections = mode.collections
 
   const sequence = useMemo(() => {
     const items: SequenceItem[] = []
+    const seenWorkIds = new Set<number>()
     const activeCollections = collections.filter(c => c.is_active)
-    activeCollections.forEach(col => {
-      const colMatch = normalizeTheme(col.theme)
-      const colWorks = works.filter(w => {
+
+    for (const col of activeCollections) {
+      let colWorks = works.filter(w => {
         if (!w.txtImageNameLink) return false
-        if (!col.theme) return true
-        return w.themes.some(th => normalizeTheme(th).includes(colMatch))
+        if (!workMatchesCollectionTheme(w.themes, col.theme)) return false
+        return true
+      }).filter(w => {
+        if (seenWorkIds.has(w.OeuvreID)) return false
+        seenWorkIds.add(w.OeuvreID)
+        return true
       })
-      colWorks.forEach(w => items.push({ type: 'work', data: w, collectionId: col.id, workIndex: items.filter(i => i.type === 'work').length }))
-    })
-    if (items.length === 0) {
-      works.filter(w => w.txtImageNameLink).forEach((w, i) => items.push({ type: 'work', data: w, workIndex: i }))
-    }
-    activeCollections.forEach(col => {
+
+      const orderIds = col.manual_work_order ?? []
+      if (orderIds.length > 0) {
+        const rank = new Map(orderIds.map((id, i) => [id, i]))
+        colWorks = colWorks.slice().sort((a, b) => {
+          const ai = rank.has(a.OeuvreID) ? rank.get(a.OeuvreID)! : Number.POSITIVE_INFINITY
+          const bi = rank.has(b.OeuvreID) ? rank.get(b.OeuvreID)! : Number.POSITIVE_INFINITY
+          return ai - bi
+        })
+      }
+      if (colWorks.length === 0) continue
+
       const title = lang === 'en' ? (col.title_en || col.title_fr) : (col.title_fr || col.title_en)
       const subtitle = lang === 'en' ? (col.description_en || col.description_fr) : (col.description_fr || col.description_en)
       items.push({ type: 'header', title, subtitle })
-    })
-    return items
-  }, [works, collections, lang])
+      colWorks.forEach(w => {
+        const workIndex = items.filter(i => i.type === 'work').length
+        items.push({ type: 'work', data: w, collectionId: col.id, workIndex })
+      })
+    }
 
+    if (items.length === 0) {
+      works.filter(w => w.txtImageNameLink).forEach((w, i) => {
+        items.push({ type: 'work', data: w, workIndex: i })
+      })
+    }
+    if (mode.outro_fr || mode.outro_en) {
+      items.push({ type: 'outro', html_fr: mode.outro_fr, html_en: mode.outro_en })
+    }
+    return items
+  }, [works, collections, lang, mode.outro_fr, mode.outro_en])
+
+  // Last "scrollable" index: last work, or outro card if present (so end overlay
+  // appears AFTER the closing text, not over it).
   const lastWorkIdx = useMemo(() =>
-    sequence.reduce((acc, s, i) => s.type === 'work' ? i : acc, -1)
+    sequence.reduce((acc, s, i) => (s.type === 'work' || s.type === 'outro') ? i : acc, -1)
   , [sequence])
 
   const targetDepth  = useRef(0)
@@ -112,6 +166,15 @@ export default function WorksClient({ works, collections }: Props) {
 
   const STEP       = 6000
   const BIRTH_DIST = 60000
+
+  /** Each collection starts with a header in the scroll sequence — used for jump chips */
+  const collectionSections = useMemo(() => {
+    const out: { seqIdx: number; title: string }[] = []
+    sequence.forEach((item, idx) => {
+      if (item.type === 'header') out.push({ seqIdx: idx, title: item.title })
+    })
+    return out
+  }, [sequence])
 
   const touchLastY  = useRef<number | null>(null)
   const touchVelY   = useRef(0)
@@ -356,24 +419,166 @@ export default function WorksClient({ works, collections }: Props) {
 
         /* ── Scroll hint ── */
         @keyframes w-hint-pulse {
-          0%, 100% { opacity: 0.25; transform: translateX(-50%) translateY(0); }
-          50%       { opacity: 0.5;  transform: translateX(-50%) translateY(4px); }
+          0%, 100% { opacity: 0.25; transform: translateY(0); }
+          50%       { opacity: 0.5;  transform: translateY(4px); }
         }
         .w-scroll-hint {
-          position: fixed; bottom: clamp(20px, 5vh, 40px); left: 50%; transform: translateX(-50%);
           font-size: clamp(7px, 1vw, 8px); letter-spacing: 4px; color: #b0aca6; text-transform: uppercase;
-          z-index: 100; animation: w-hint-pulse 2.4s ease-in-out infinite;
+          animation: w-hint-pulse 2.4s ease-in-out infinite;
           text-shadow: 0 0 12px rgba(255,255,255,1); transition: opacity 0.6s;
+          text-align: center;
         }
         @media (max-width: 640px) {
           .w-navlinks { gap: clamp(12px, 2.5vw, 20px); }
           .w-nav { padding: 16px clamp(16px, 4vw, 24px); }
         }
+
+        /* ── Mode tab bar ── */
+        .w-mode-tab {
+          pointer-events: auto;
+          font-size: clamp(8px, 1.05vw, 9px); letter-spacing: 3px; text-transform: uppercase;
+          color: #6a6660; background: none; border: none; padding: 8px 4px; cursor: pointer;
+          font-family: inherit; transition: color 0.2s;
+          text-shadow: 0 0 12px rgba(255,255,255,1), 0 0 24px rgba(255,255,255,0.8);
+          min-height: 36px; display: inline-flex; align-items: center;
+          border-bottom: 1px solid transparent;
+        }
+        .w-mode-tab:hover { color: #1a1816; }
+        .w-mode-tab.active { color: #1a1816; border-bottom-color: #1a1816; }
+
+        .w-modes-wrap {
+          position: fixed;
+          top: clamp(44px, 6vh, 64px);
+          left: 0; right: 0;
+          z-index: 280;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 6px;
+          pointer-events: none;
+        }
+        .w-modes-label {
+          font-size: clamp(7px, 0.95vw, 8px);
+          letter-spacing: 3px;
+          text-transform: uppercase;
+          color: #8a8680;
+          text-shadow: 0 0 10px rgba(255,255,255,0.9);
+        }
+        .w-modes-inner {
+          display: flex;
+          justify-content: center;
+          gap: clamp(10px, 2vw, 24px);
+          flex-wrap: wrap;
+          padding: 0 clamp(16px, 4vw, 32px);
+          pointer-events: none;
+        }
+
+        /* ── Collection jump (several collections in one mode) ── */
+        .w-bottom-stack {
+          position: fixed;
+          bottom: clamp(14px, 3.5vh, 28px);
+          left: 50%;
+          transform: translateX(-50%);
+          z-index: 290;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 10px;
+          max-width: min(96vw, 720px);
+          pointer-events: none;
+        }
+        .w-section-nav-label {
+          font-size: clamp(7px, 0.95vw, 8px);
+          letter-spacing: 3px;
+          text-transform: uppercase;
+          color: #8a8680;
+          text-shadow: 0 0 10px rgba(255,255,255,0.9);
+          align-self: center;
+        }
+        .w-section-pills {
+          display: flex;
+          flex-wrap: wrap;
+          justify-content: center;
+          gap: 8px;
+          pointer-events: auto;
+        }
+        .w-section-pill {
+          font-size: clamp(7px, 1vw, 9px);
+          letter-spacing: 2px;
+          text-transform: uppercase;
+          color: #5a5854;
+          background: rgba(255,252,245,0.72);
+          border: 1px solid rgba(26,24,22,0.12);
+          border-radius: 999px;
+          padding: 8px 14px;
+          cursor: pointer;
+          font-family: inherit;
+          max-width: min(42vw, 220px);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          box-shadow: 0 2px 16px rgba(255,255,255,0.6);
+          transition: color 0.2s, border-color 0.2s, background 0.2s;
+        }
+        .w-section-pill:hover {
+          color: #1a1816;
+          border-color: rgba(26,24,22,0.35);
+          background: rgba(255,252,245,0.92);
+        }
+
+        /* ── Outro card ── */
+        .w-outro-card {
+          width: min(720px, 86vw);
+          padding: clamp(28px, 5vw, 56px) clamp(20px, 4vw, 40px);
+          text-align: center;
+        }
+        .w-outro-rule {
+          width: clamp(40px, 6vw, 64px); height: 1px;
+          background: rgba(20,24,22,0.35);
+          margin: 0 auto clamp(20px, 3vw, 32px);
+        }
+        .w-outro-text {
+          font-family: 'Instrument Serif', serif;
+          font-size: clamp(15px, 2.2vw, 22px);
+          line-height: 1.6; color: #1a1816;
+          font-style: italic; letter-spacing: -0.005em;
+          text-shadow: 0 0 24px rgba(255,255,255,1), 0 0 48px rgba(255,255,255,0.85);
+        }
+        .w-outro-text p + p { margin-top: 1em; }
       `}</style>
 
       <div className="w-paper-bg" />
       <div className="grain-overlay" id="grain" />
       <PublicNav active="works" prefix="w" />
+
+      {safeModes.length > 1 && (
+        <div className="w-modes-wrap">
+          <span className="w-modes-label">{t('pub_works_views_label')}</span>
+          <div className="w-modes-inner">
+            {safeModes.map((m, i) => {
+              const label = lang === 'en' ? (m.label_en || m.label_fr) : (m.label_fr || m.label_en)
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  className={`w-mode-tab${i === activeModeIdx ? ' active' : ''}`}
+                  title={lang === 'en' ? 'Switch work layout' : 'Changer de présentation des œuvres'}
+                  onClick={() => {
+                    if (i === activeModeIdx) return
+                    setActiveModeIdx(i)
+                    targetDepth.current = 0
+                    currentDepth.current = 0
+                    setDisplayDepth(0)
+                    setEndOpacity(0)
+                    setActiveWork(null)
+                    setCaptionOpacity(0)
+                  }}
+                >{label || `Mode ${i + 1}`}</button>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="w-viewport">
         {sequence.map((item, idx) => {
@@ -408,6 +613,24 @@ export default function WorksClient({ works, collections }: Props) {
                 <div className="w-parallax-header">
                   <h1 className="w-header-title">{item.title}</h1>
                   {item.subtitle && <FlameText text={item.subtitle} />}
+                </div>
+              </div>
+            )
+          }
+
+          if (item.type === 'outro') {
+            const html = lang === 'en' ? (item.html_en || item.html_fr) : (item.html_fr || item.html_en)
+            // Fade in only while approaching from above; stay solid once centered or scrolled past
+            const outroOpacity = dist < 0 ? Math.max(0, 1 + dist / 3500) : 1
+            return (
+              <div key={`outro-${idx}`} className="w-depth-item" style={{
+                opacity: outroOpacity,
+                transform: `translate3d(0, 0, ${translateZ * 1.2}px) scale(${scale * 0.85})`,
+                zIndex: 252, pointerEvents: Math.abs(dist) < 2000 ? 'auto' : 'none',
+              }}>
+                <div className="w-outro-card">
+                  <div className="w-outro-rule" />
+                  <div className="w-outro-text" dangerouslySetInnerHTML={{ __html: html }} />
                 </div>
               </div>
             )
@@ -498,8 +721,34 @@ export default function WorksClient({ works, collections }: Props) {
         </div>
       </div>
 
-      <div className="w-scroll-hint" style={{ opacity: displayDepth < 200 ? undefined : 0 }}>
-        ↓ scroll
+      <div className="w-bottom-stack">
+        {collectionSections.length > 1 && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, pointerEvents: 'none' }}>
+            <span className="w-section-nav-label">{t('pub_works_collections')}</span>
+            <div className="w-section-pills" aria-label={lang === 'en' ? 'Jump to collection' : 'Aller à une collection'}>
+              {collectionSections.map((s) => (
+                <button
+                  key={s.seqIdx}
+                  type="button"
+                  className="w-section-pill"
+                  title={lang === 'en' ? `Jump to: ${s.title}` : `Aller à : ${s.title}`}
+                  onClick={() => {
+                    const pos = s.seqIdx * STEP
+                    targetDepth.current = pos
+                    currentDepth.current = pos
+                    setDisplayDepth(pos)
+                    setEndOpacity(0)
+                  }}
+                >
+                  {s.title || '—'}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        <div className="w-scroll-hint" style={{ opacity: displayDepth < 200 ? undefined : 0, pointerEvents: 'none' }}>
+          ↓ scroll
+        </div>
       </div>
     </div>
   )

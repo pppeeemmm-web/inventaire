@@ -1,7 +1,7 @@
 'use server'
 
 // Portfolio PDF export — server-side pdfkit + sharp.
-// Full-bleed artwork pages, offset image, texture detail crop, gold accent.
+// Full-bleed artwork pages (orientation-aware crop), texture strip, gold accent.
 // Supports A4 portrait/landscape, US Letter portrait, A3 landscape.
 // Note: maxDuration must be set on a route segment, not here.
 // On Vercel free the function timeout is 60s — sufficient for ≤8 works at full quality.
@@ -21,6 +21,19 @@ const WHITE    = '#ffffff'
 const OFF_WHITE = '#f5f3f0'
 const DARK     = '#1a1816'
 const GREY     = '#8a8680'
+
+/** pdfkit treats `#RRGGBBAA` as a single int → RGB channels wrong (e.g. `#000000cc` → blue). Use fillColor + opacity. */
+const A = (byte: number) => byte / 255
+
+function pageIsLandscape(pw: number, ph: number): boolean {
+  return pw >= ph
+}
+
+function imageMatchesPageOrientation(imgW: number, imgH: number, pw: number, ph: number): boolean {
+  const imgWide = imgW >= imgH
+  const pageWide = pageIsLandscape(pw, ph)
+  return imgWide === pageWide
+}
 
 function dims(w: PdfWork): string {
   const p = [w.Hauteur, w.Largeur, w.Profondeur].filter(Boolean)
@@ -47,6 +60,7 @@ export async function generatePortfolioPdf(
     const sharp = (await import('sharp')).default
     const imageMap   = new Map<number, Buffer>()
     const textureMap = new Map<number, Buffer>()
+    const dimMap     = new Map<number, { w: number; h: number }>()
 
     // Fetch + process images — 4 at a time to avoid memory spikes
     const CONCURRENCY = 4
@@ -76,6 +90,8 @@ export async function generatePortfolioPdf(
             .jpeg({ quality: 92, mozjpeg: true })
             .toBuffer()
           imageMap.set(w.OeuvreID, resized)
+          const d = await sharp(resized).metadata()
+          dimMap.set(w.OeuvreID, { w: d.width ?? 1, h: d.height ?? 1 })
 
           // Texture crop: bottom-left region, blurred + darkened
           const fw       = meta.width  ?? 400
@@ -90,7 +106,7 @@ export async function generatePortfolioPdf(
             })
             .resize(800, 300, { fit: 'cover' })
             .blur(12)
-            .modulate({ brightness: 0.35 })
+            .modulate({ brightness: 0.48 })
             .jpeg({ quality: 60 })
             .toBuffer()
           textureMap.set(w.OeuvreID, texture)
@@ -101,7 +117,7 @@ export async function generatePortfolioPdf(
       }))
     }
 
-    const b64 = await buildPortfolioPdf(capped, cfg, preset, imageMap, textureMap)
+    const b64 = await buildPortfolioPdf(capped, cfg, preset, imageMap, textureMap, dimMap)
 
     const safeName = (cfg.artist_name || 'portfolio')
       .toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
@@ -127,6 +143,7 @@ async function buildPortfolioPdf(
   preset:     PresetConfig,
   imageMap:   Map<number, Buffer>,
   textureMap: Map<number, Buffer>,
+  dimMap:     Map<number, { w: number; h: number }>,
 ): Promise<string> {
   const PDFDocument = (await import('pdfkit')).default
   const fmt = FORMATS[preset.format]
@@ -150,6 +167,18 @@ async function buildPortfolioPdf(
     doc.on('end',   () => resolve(Buffer.concat(chunks).toString('base64')))
     doc.on('error', reject)
 
+    function placeWorkImage(buf: Buffer, oeuvreId: number) {
+      const dim   = dimMap.get(oeuvreId)
+      const match = dim ? imageMatchesPageOrientation(dim.w, dim.h, PW, PH) : true
+      const hAlign = match ? 'center' : 'left'
+      doc.image(buf, 0, 0, {
+        width: PW, height: PH,
+        cover: [PW, PH],
+        align: hAlign as 'center' | 'left',
+        valign: 'center',
+      })
+    }
+
     const lang    = preset.lang
     const tagline = lang === 'fr' ? cfg.media_tagline_fr : cfg.media_tagline_en
     const intro   = lang === 'fr' ? cfg.intro_fr         : cfg.intro_en
@@ -160,16 +189,18 @@ async function buildPortfolioPdf(
 
       const firstImg = works.find(w => imageMap.has(w.OeuvreID))
       if (firstImg) {
-        doc.image(imageMap.get(firstImg.OeuvreID)!, -40, 0, {
-          width: PW + 80, height: PH, cover: [PW + 80, PH],
-        })
+        placeWorkImage(imageMap.get(firstImg.OeuvreID)!, firstImg.OeuvreID)
       } else {
         doc.rect(0, 0, PW, PH).fill(DARK)
       }
 
-      // Overlays
-      doc.rect(0, 0, PW, PH).fill('#00000066')
-      doc.rect(0, PH * 0.55, PW, PH * 0.45).fill('#000000aa')
+      // Overlays — lighter so artwork stays visible
+      doc.save()
+      doc.fillColor('#000000', A(0x38)).rect(0, 0, PW, PH).fill()
+      doc.restore()
+      doc.save()
+      doc.fillColor('#000000', A(0x58)).rect(0, PH * 0.55, PW, PH * 0.45).fill()
+      doc.restore()
 
       // Gold rule
       doc.moveTo(60, PH * 0.55).lineTo(180, PH * 0.55)
@@ -184,7 +215,7 @@ async function buildPortfolioPdf(
       }
 
       // Year
-      doc.fontSize(7).fillColor('#ffffff55').font('Helvetica')
+      doc.fontSize(7).fillColor(WHITE, A(0x55)).font('Helvetica')
         .text(String(new Date().getFullYear()), PW - 80, PH - 36, { width: 60, align: 'right', characterSpacing: 1 })
     }
 
@@ -212,14 +243,8 @@ async function buildPortfolioPdf(
       const img     = imageMap.get(w.OeuvreID)
       const texture = textureMap.get(w.OeuvreID)
 
-      // Full-bleed image — 5% right offset for visual tension
       if (img) {
-        const ox = PW * 0.05
-        doc.image(img, -ox, 0, {
-          width: PW + ox, height: PH,
-          cover: [PW + ox, PH],
-          align: 'center', valign: 'center',
-        })
+        placeWorkImage(img, w.OeuvreID)
       } else {
         doc.rect(0, 0, PW, PH).fill('#2a2826')
       }
@@ -231,9 +256,13 @@ async function buildPortfolioPdf(
         doc.image(texture, 0, texY, { width: PW, height: texH, cover: [PW, texH] })
       }
 
-      // Gradient overlays
-      doc.rect(0, 0, PW, PH * 0.5).fill('#00000011')
-      doc.rect(0, PH * 0.55, PW, PH * 0.45).fill('#000000cc')
+      // Light vignette for text legibility (not heavy)
+      doc.save()
+      doc.fillColor('#000000', A(0x08)).rect(0, 0, PW, PH * 0.45).fill()
+      doc.restore()
+      doc.save()
+      doc.fillColor('#000000', A(0x52)).rect(0, PH * 0.52, PW, PH * 0.48).fill()
+      doc.restore()
 
       // Gold rule + metadata
       const metaY = texY + 20
@@ -253,7 +282,7 @@ async function buildPortfolioPdf(
       if (dm) { doc.fontSize(7).fillColor('#888888').font('Helvetica').text(dm, 48, dy, { characterSpacing: 0.3 }) }
 
       // Artist hairline top-left
-      doc.fontSize(6).fillColor('#ffffff44').font('Helvetica')
+      doc.fontSize(6).fillColor(WHITE, A(0x44)).font('Helvetica')
         .text((cfg.artist_name || '').toUpperCase(), 48, 28, { characterSpacing: 1.5, lineBreak: false })
     }
 
@@ -295,7 +324,7 @@ async function buildPortfolioPdf(
       doc.switchToPage(i)
       if (i >= workStart && i <= workEnd) {
         const wi = i - workStart
-        doc.fontSize(6).fillColor('#ffffff44').font('Helvetica')
+        doc.fontSize(6).fillColor(WHITE, A(0x44)).font('Helvetica')
           .text(`${wi + 1} / ${works.length}`, PW - 80, PH - 28, { width: 60, align: 'right', characterSpacing: 1 })
       }
     }

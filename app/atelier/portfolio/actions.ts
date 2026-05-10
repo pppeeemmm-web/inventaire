@@ -5,6 +5,10 @@
 
 import { createServiceClient } from '@/lib/supabase/server'
 import {
+  syncFirstWorksModeToSections,
+  syncSectionsToFirstWorksMode,
+} from '@/lib/portfolio-sync'
+import {
   S3Client, PutObjectCommand, GetObjectCommand,
 } from '@aws-sdk/client-s3'
 
@@ -83,6 +87,7 @@ export async function loadPortfolioConfig(): Promise<LoadConfigResult> {
       general: { artist_name: '', about_intro: '', contact_email: '', instagram: '' },
       sections: [],
       works_collections: [],
+      works_modes: [],
       statement_doc_id: null,
       cv_doc_id: null,
     }
@@ -99,6 +104,7 @@ export async function loadPortfolioConfig(): Promise<LoadConfigResult> {
             practice:          parsed.practice          || null,
             sections:          parsed.sections          || [],
             works_collections: parsed.works_collections || [],
+            works_modes:       Array.isArray(parsed.works_modes) ? parsed.works_modes : [],
             statement_doc_id:  parsed.statement_doc_id  || null,
             cv_doc_id:         parsed.cv_doc_id         || null,
           }
@@ -142,6 +148,18 @@ export async function extractDocumentText(formData: FormData): Promise<ExtractTe
     console.error('[extractDocumentText]', e)
     return { error: e.message ?? String(e) }
   }
+}
+
+/** Publier — « Sections Portfolio » remplace les collections du mode 1 /works (+ mirror legacy). */
+export async function publishPortfolioToWorks(config: unknown): Promise<SaveConfigResult> {
+  const merged = syncSectionsToFirstWorksMode(config as never)
+  return savePortfolioConfig(merged)
+}
+
+/** Publier — les collections du mode 1 /works remplacent les blocs « Sections Portfolio » (+ mirror legacy). */
+export async function publishWorksToPortfolio(config: unknown): Promise<SaveConfigResult> {
+  const merged = syncFirstWorksModeToSections(config as never)
+  return savePortfolioConfig(merged)
 }
 
 export async function savePortfolioConfig(config: unknown): Promise<SaveConfigResult> {

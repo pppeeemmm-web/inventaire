@@ -15,11 +15,12 @@ export default function PublicNav({ active, prefix = 'n' }: Props) {
   return (
     <nav className={`${p}-nav`}>
       <Link href="/" className={`${p}-logo`}>Atelier PEM</Link>
-      <div className={`${p}-navlinks`}>
+      <div className={`${p}-navlinks`} style={{ flexWrap: 'wrap', justifyContent: 'flex-end', rowGap: 6 }}>
         <Link href="/works"     className={`${p}-navlink${active === 'works'     ? ` active` : ''}`}>{t('pub_works')}</Link>
         <Link href="/about"     className={`${p}-navlink${active === 'about'     ? ` active` : ''}`}>{t('pub_about')}</Link>
         <Link href="/practice"  className={`${p}-navlink${active === 'practice'  ? ` active` : ''}`}>{t('pub_practice')}</Link>
         <Link href="/enquiry"   className={`${p}-navlink${active === 'enquiry'   ? ` active` : ''}`}>{t('pub_enquiry')}</Link>
+        <Link href="/portfolio" className={`${p}-navlink${active === 'portfolio' ? ` active` : ''}`}>{t('pub_portfolio')}</Link>
         <button
           onClick={() => setLang(lang === 'fr' ? 'en' : 'fr')}
           className={`${p}-lang`}

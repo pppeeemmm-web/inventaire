@@ -2,8 +2,11 @@
 
 import React from 'react'
 import Link from 'next/link'
-import { thumbUrl, yearOf } from '@/lib/data'
+import { yearOf } from '@/lib/data'
 import { WorkThumb } from '../atelier/WorkThumb'
+import { useUserRecordDone } from '@/components/UserRecordDoneProvider'
+import { USER_RECORD_SCOPE } from '@/lib/user-record-scope'
+import { useI18n } from '@/lib/i18n/context'
 
 interface Work {
   OeuvreID:         number
@@ -23,6 +26,14 @@ interface Props {
 }
 
 export default function PortalLayout({ title, subtitle, works, userName }: Props) {
+  const { t } = useI18n()
+  const { isDone, toggle } = useUserRecordDone()
+  const scope = USER_RECORD_SCOPE.oeuvre
+
+  function marked(wid: number) {
+    return isDone(scope, String(wid))
+  }
+
   return (
     <div style={{ minHeight: '100vh', background: '#edeae4', color: '#6b6760', fontFamily: 'JetBrains Mono, monospace' }}>
       
@@ -54,6 +65,36 @@ export default function PortalLayout({ title, subtitle, works, userName }: Props
                   aspectRatio: '4/5', background: '#f5f3f0', overflow: 'hidden', 
                   border: '1px solid rgba(0,0,0,0.03)', position: 'relative' 
                 }}>
+                  <button
+                    type="button"
+                    title={t('recordDonePersonal')}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      void toggle(scope, String(w.OeuvreID))
+                    }}
+                    style={{
+                      position: 'absolute',
+                      top: 10,
+                      right: 10,
+                      zIndex: 3,
+                      width: 28,
+                      height: 28,
+                      borderRadius: 4,
+                      border: `1.5px solid ${marked(w.OeuvreID) ? '#8a8580' : '#dedad4'}`,
+                      background: marked(w.OeuvreID) ? '#6b6760' : 'rgba(237,234,228,0.92)',
+                      color: marked(w.OeuvreID) ? '#edeae4' : '#b0aca6',
+                      cursor: 'pointer',
+                      fontSize: 14,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      lineHeight: 1,
+                      padding: 0,
+                    }}
+                  >
+                    {marked(w.OeuvreID) ? '✓' : ''}
+                  </button>
                   {w.txtImageNameLink ? (
                     <WorkThumb 
                       file={w.txtImageNameLink} 

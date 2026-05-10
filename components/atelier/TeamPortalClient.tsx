@@ -521,7 +521,9 @@ export function TeamPortalClient({
               contacts={contacts}
               oeuvres={oeuvres}
               tM={tM}
+              thM={thM}
               statusLabelMap={statusLabelMap}
+              oeuvreThemeMap={oeuvreThemeMap}
               onOpenContact={(id) => {
                 handleSetTab('contacts')
                 // ContactsTab reads openContactId from sessionStorage

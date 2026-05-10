@@ -11,6 +11,8 @@ import { useI18n } from '@/lib/i18n/context'
 import { saveWork, createLookup } from '@/app/atelier/works/actions'
 import type { Oeuvre } from '@/lib/types/database'
 import { WorkThumb } from './WorkThumb'
+import { useUserRecordDone } from '@/components/UserRecordDoneProvider'
+import { USER_RECORD_SCOPE } from '@/lib/user-record-scope'
 
 /* ──────────────────────────────────────────────────────────────────
    WorkDrawer — unified detail panel.
@@ -239,6 +241,7 @@ function DrawerContent({
   const { t } = useI18n()
   const router = useRouter()
   const isPanel = mode === 'panel'
+  const { isDone: isUserRecordDone, toggle: toggleUserRecordDone } = useUserRecordDone()
 
   // ── Form State (always editable) ───────────────────────
   const [isSaving, startSave] = useTransition()
@@ -459,12 +462,40 @@ function DrawerContent({
     setNewC({ inst: '', prenom: '', nom: '', role: '', email: '', phone: '', ville: '', pays: '', notes: '' })
   }
 
+  const userMarkedRecordDone = isUserRecordDone(USER_RECORD_SCOPE.oeuvre, String(o.OeuvreID))
+
   return (
     <>
       {/* Header */}
       <div className="row between" style={{ marginBottom: 10 }}>
         <div className="row gap-sm" style={{ alignItems: 'center' }}>
           <div className="t-eyebrow" style={{ color: 'var(--tx3)' }}>#{o.OeuvreID}</div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              void toggleUserRecordDone(USER_RECORD_SCOPE.oeuvre, String(o.OeuvreID))
+            }}
+            title={t('recordDonePersonal')}
+            style={{
+              width: 26,
+              height: 26,
+              borderRadius: 4,
+              flexShrink: 0,
+              border: `1.5px solid ${userMarkedRecordDone ? 'var(--ac)' : 'var(--bd2)'}`,
+              background: userMarkedRecordDone ? 'var(--ac)' : 'transparent',
+              color: userMarkedRecordDone ? 'var(--bg0)' : 'var(--tx3)',
+              cursor: 'pointer',
+              fontSize: 13,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              lineHeight: 1,
+              padding: 0,
+            }}
+          >
+            {userMarkedRecordDone ? '✓' : ''}
+          </button>
         </div>
         <div className="row gap-sm">
           {imgZoom > 1 && (

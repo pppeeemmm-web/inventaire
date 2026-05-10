@@ -14,6 +14,8 @@ import Image from 'next/image'
 import { stringifyError } from '@/lib/error'
 import type { Oeuvre } from '@/lib/types/database'
 import { WorkDrawer } from './WorkDrawer'
+import { useUserRecordDone } from '@/components/UserRecordDoneProvider'
+import { USER_RECORD_SCOPE } from '@/lib/user-record-scope'
 
 // ── Types ───────────────────────────────────────────────────────────
 
@@ -962,9 +964,11 @@ function InvList({
   publicMode?:    boolean
 }) {
   const { t } = useI18n()
+  const { isDone: isUserRecordDone, toggle: toggleUserRecordDone } = useUserRecordDone()
   const lastSelIdxRef = useRef<number | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const visible = rows
+  const RSCOPE = USER_RECORD_SCOPE.oeuvre
 
   // Restore scroll position on mount
   useEffect(() => {
@@ -1029,6 +1033,9 @@ function InvList({
                 {visible.length > 0 && visible.every(o => selection.has(o.OeuvreID)) ? '✓' : ''}
               </div>
             </th>
+            <th style={{ width: 28, textAlign: 'center' }} title={t('recordDonePersonal')}>
+              <span className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 10 }}>◇</span>
+            </th>
             <th style={{ width: 22 }}></th>
             <th onClick={() => toggleSort('OeuvreID')} style={{ width: 40, color: 'var(--tx3)', fontSize: 12, cursor: 'pointer' }}>ID <SortInd k="OeuvreID" current={sortKey} dir={sortDir} /></th>
             <th style={{ width: 44 }}></th>
@@ -1082,6 +1089,33 @@ function InvList({
                     }} onClick={(e) => handleCheck(e, o.OeuvreID, idx)}>
                       {isSel ? '✓' : ''}
                     </div>
+                  </td>
+                  <td style={{ textAlign: 'center', padding: '0 4px', verticalAlign: 'middle' }}>
+                    <button
+                      type="button"
+                      title={t('recordDonePersonal')}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        void toggleUserRecordDone(RSCOPE, String(o.OeuvreID))
+                      }}
+                      style={{
+                        width: 18,
+                        height: 18,
+                        margin: '0 auto',
+                        border: `1.5px solid ${isUserRecordDone(RSCOPE, String(o.OeuvreID)) ? 'var(--ac)' : 'var(--bd2)'}`,
+                        background: isUserRecordDone(RSCOPE, String(o.OeuvreID)) ? 'var(--ac)' : 'transparent',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: 10,
+                        color: isUserRecordDone(RSCOPE, String(o.OeuvreID)) ? 'var(--bg0)' : 'var(--tx3)',
+                        cursor: 'pointer',
+                        padding: 0,
+                        borderRadius: 2,
+                      }}
+                    >
+                      {isUserRecordDone(RSCOPE, String(o.OeuvreID)) ? '✓' : ''}
+                    </button>
                   </td>
                   <td style={{ padding: '0 2px' }}>
                     <button onClick={(e) => { e.stopPropagation(); router.push(`/atelier/works/${o.OeuvreID}/edit`) }} style={{ color: 'var(--tx3)', fontSize: 12 }}>✎</button>
@@ -1189,6 +1223,10 @@ function InvGrid({
   toggleInSel:    (oid: number) => void
   onOpen:         (o: Oeuvre) => void
 }) {
+  const { t } = useI18n()
+  const { isDone: isUserRecordDone, toggle: toggleUserRecordDone } = useUserRecordDone()
+  const RSCOPE = USER_RECORD_SCOPE.oeuvre
+
   return (
     <div
       style={{
@@ -1250,6 +1288,31 @@ function InvGrid({
                 }}
               >
                 {isSel ? '✓' : ''}
+              </div>
+            </div>
+            <div
+              style={{ position: 'absolute', top: 6, right: 6, zIndex: 2 }}
+              onClick={(e) => {
+                e.stopPropagation()
+                void toggleUserRecordDone(RSCOPE, String(o.OeuvreID))
+              }}
+              title={t('recordDonePersonal')}
+            >
+              <div
+                style={{
+                  width: 16,
+                  height: 16,
+                  border: `1.5px solid ${isUserRecordDone(RSCOPE, String(o.OeuvreID)) ? 'var(--ac)' : 'var(--bd2)'}`,
+                  background: isUserRecordDone(RSCOPE, String(o.OeuvreID)) ? 'var(--ac)' : 'transparent',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 11,
+                  color: 'var(--bg0)',
+                  cursor: 'pointer',
+                }}
+              >
+                {isUserRecordDone(RSCOPE, String(o.OeuvreID)) ? '✓' : ''}
               </div>
             </div>
             <div

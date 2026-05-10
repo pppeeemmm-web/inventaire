@@ -54,6 +54,7 @@ export type DictKey =
   | 'imageFormat' | 'square' | 'original' | 'images' | 'highRes' | 'lowRes'
   | 'embedHeavyWarning' | 'paperFormat' | 'savedThemes' | 'noThemesSaved'
   | 'generating' | 'batchSuccess' | 'selectAll' | 'renameFile' | 'filters'
+  | 'recordDonePersonal'
   // ── Public site ────────────────────────────────────────────────────────
   | 'pub_works' | 'pub_about' | 'pub_practice' | 'pub_enquiry' | 'pub_portfolio'
   | 'pub_biography' | 'pub_exhibitions_selected' | 'pub_education' | 'pub_contact'
@@ -64,6 +65,7 @@ export type DictKey =
   | 'pub_read_statement' | 'pub_download_cv'
   | 'pub_not_available' | 'pub_approach_tab' | 'pub_works_tab'
   | 'pub_full_name' | 'pub_your_enquiry'
+  | 'pub_works_collections' | 'pub_works_views_label'
 
 type Dictionary = Record<DictKey, string>
 
@@ -173,6 +175,7 @@ export const dict: Record<Lang, Dictionary> = {
     noThemesSaved: 'Aucun thème enregistré.', generating: 'Génération…',
     batchSuccess: 'Modifications appliquées.', selectAll: 'Tout sélectionner',
     renameFile: 'Renommer le fichier', filters: 'Filtres',
+    recordDonePersonal: 'Marqué comme vu (vous)',
     // Public site
     pub_works: 'Oeuvres', pub_about: 'À propos', pub_practice: 'Pratique',
     pub_enquiry: 'Contact', pub_portfolio: 'Portfolio',
@@ -193,6 +196,8 @@ export const dict: Record<Lang, Dictionary> = {
     pub_works_tab: 'Œuvres',
     pub_full_name: 'Nom complet',
     pub_your_enquiry: 'Votre demande...',
+    pub_works_collections: 'Collections',
+    pub_works_views_label: 'Vues',
   },
   en: {
     hub: 'Studio', tagline: 'Inventory · Production · Curation · Relations',
@@ -298,6 +303,7 @@ export const dict: Record<Lang, Dictionary> = {
     noThemesSaved: 'No saved themes.', generating: 'Generating…',
     batchSuccess: 'Changes applied.', selectAll: 'Select all',
     renameFile: 'Rename file', filters: 'Filters',
+    recordDonePersonal: 'Marked done (personal)',
     // Public site
     pub_works: 'Works', pub_about: 'About', pub_practice: 'Practice',
     pub_enquiry: 'Enquiry', pub_portfolio: 'Portfolio',
@@ -318,5 +324,7 @@ export const dict: Record<Lang, Dictionary> = {
     pub_works_tab: 'Works',
     pub_full_name: 'Full name',
     pub_your_enquiry: 'Your enquiry...',
+    pub_works_collections: 'Collections',
+    pub_works_views_label: 'Views',
   },
 }

@@ -41,6 +41,9 @@ function migrateConfig(raw: any): any {
       theme:          s.theme          ?? null,
       sort_order:     s.sort_order     ?? 0,
       is_active:      s.is_active      ?? true,
+      manual_work_order: Array.isArray(s.manual_work_order)
+        ? s.manual_work_order.map((n: any) => Number(n)).filter((n: number) => Number.isFinite(n))
+        : [],
     })),
     works_collections: (raw.works_collections ?? []).map((s: any) => ({
       id:             s.id             ?? crypto.randomUUID(),
@@ -51,6 +54,9 @@ function migrateConfig(raw: any): any {
       theme:          s.theme          ?? null,
       sort_order:     s.sort_order     ?? 0,
       is_active:      s.is_active      ?? true,
+      manual_work_order: Array.isArray(s.manual_work_order)
+        ? s.manual_work_order.map((n: any) => Number(n)).filter((n: number) => Number.isFinite(n))
+        : [],
     })),
   }
 }
@@ -109,7 +115,7 @@ export default async function PortfolioPage() {
 
   const cfgResult = await loadPortfolioConfig()
   const rawConfig = 'ok' in cfgResult ? cfgResult.config : {
-    general: { artist_name: 'Pierre Emmanuel Moulin', about_intro: '', contact_email: '', instagram: '' },
+    general: { artist_name: '', about_intro: '', contact_email: '', instagram: '' },
     sections: [],
     works_collections: [],
     statement_doc_id: null,
