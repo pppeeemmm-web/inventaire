@@ -55,6 +55,14 @@ export function decadeOf(year: number | null): string | null {
 export const STATUS_ID_ARCHIVE_ARTISTE = 3
 
 /**
+ * Status IDs that flip `Oeuvres.is_public = true` via the DB trigger
+ * `sync_is_public_from_status()`. Mirror in code so we can predict the
+ * trigger outcome (e.g. for visibility-gate event logging).
+ *  2 Disponible · 4 Réservé · 6 Vendu · 7 Consigné · 8 Prêt · 11 Don
+ */
+export const STATUS_IDS_PUBLIC: readonly number[] = [2, 4, 6, 7, 8, 11]
+
+/**
  * Canonical work state.
  *
  * Production states (derived from booleans when statusId resolves to en_production/available):

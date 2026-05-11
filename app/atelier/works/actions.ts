@@ -6,7 +6,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { makeFilename, seqFromFilename, STATUS_ID_ARCHIVE_ARTISTE } from '@/lib/data'
+import { makeFilename, seqFromFilename, STATUS_ID_ARCHIVE_ARTISTE, STATUS_IDS_PUBLIC } from '@/lib/data'
 import type { WorkImage } from '@/lib/types/database'
 import crypto from 'crypto'
 import sharp from 'sharp'
@@ -16,41 +16,46 @@ async function syncPipelineWithBooleans(
   supabase: any,
   oid: number,
   flags: { catalogued: boolean; needsPhotograph: boolean }
-) {
-  const setAction = async (actionId: number, state: 'done' | 'pending' | 'remove') => {
+): Promise<{ error: string } | { ok: true }> {
+  const setAction = async (actionId: number, state: 'done' | 'pending' | 'remove'): Promise<{ error: string } | { ok: true }> => {
     if (state === 'remove') {
-      await supabase.from('work_action').delete().eq('oeuvre_id', oid).eq('action_type_id', actionId)
-      return
+      const { error } = await supabase.from('work_action').delete().eq('oeuvre_id', oid).eq('action_type_id', actionId)
+      if (error) return { error: error.message }
+      return { ok: true }
     }
     const isDone = state === 'done'
-    const { data: existing } = await supabase
+    const { data: existing, error: selErr } = await supabase
       .from('work_action')
       .select('id, done')
       .eq('oeuvre_id', oid)
       .eq('action_type_id', actionId)
       .maybeSingle()
+    if (selErr) return { error: selErr.message }
 
     if (existing) {
       if (existing.done !== isDone) {
-        await supabase.from('work_action').update({ done: isDone }).eq('id', existing.id)
+        const { error } = await supabase.from('work_action').update({ done: isDone }).eq('id', existing.id)
+        if (error) return { error: error.message }
       }
     } else {
-      await supabase.from('work_action').insert({ oeuvre_id: oid, action_type_id: actionId, done: isDone })
+      const { error } = await supabase.from('work_action').insert({ oeuvre_id: oid, action_type_id: actionId, done: isDone })
+      if (error) return { error: error.message }
     }
+    return { ok: true }
   }
 
   // Action IDs: 6 = Photographier, 9 = Cataloguer
-  if (!flags.catalogued) {
-    await setAction(9, 'pending')
-    await setAction(6, 'remove')
-  } else if (flags.catalogued && flags.needsPhotograph) {
-    await setAction(9, 'done')
-    await setAction(6, 'pending')
-  } else {
-    // "Disponible" (Catalogued and NO photo needed)
-    await setAction(9, 'done')
-    await setAction(6, 'done')
+  const steps: Array<[number, 'done' | 'pending' | 'remove']> = !flags.catalogued
+    ? [[9, 'pending'], [6, 'remove']]
+    : flags.needsPhotograph
+      ? [[9, 'done'], [6, 'pending']]
+      : [[9, 'done'], [6, 'done']]  // "Disponible" (Catalogued + no photo needed)
+
+  for (const [aId, state] of steps) {
+    const r = await setAction(aId, state)
+    if ('error' in r) return { error: `pipeline action ${aId}: ${r.error}` }
   }
+  return { ok: true }
 }
 
 export type SaveResult   = { error: string } | { ok: true; newId?: number }
@@ -60,10 +65,13 @@ export type ImageResult  = { error: string } | { ok: true; image: WorkImage }
 export async function deleteWork(oid: number): Promise<DeleteResult> {
   const supabase = await createClient()
   const svc = createServiceClient()
-  await supabase.from('tblrelations').delete().or(`source_id.eq.${oid},target_id.eq.${oid}`)
-  await svc.from('oeuvre_theme').delete().eq('oeuvre_id', oid)
+  const { error: relErr } = await supabase.from('tblrelations').delete().or(`source_id.eq.${oid},target_id.eq.${oid}`)
+  if (relErr) return { error: relErr.message }
+  const { error: themeErr } = await svc.from('oeuvre_theme').delete().eq('oeuvre_id', oid)
+  if (themeErr) return { error: themeErr.message }
   const { error } = await supabase.from('Oeuvres').delete().eq('OeuvreID', oid)
   if (error) return { error: error.message }
+  revalidatePath('/atelier')
   return { ok: true }
 }
 
@@ -72,8 +80,10 @@ export async function deleteSelectedWorks(ids: number[]): Promise<DeleteResult> 
   const svc = createServiceClient()
   // Delete all relations for all selected works
   for (const id of ids) {
-    await supabase.from('tblrelations').delete().or(`source_id.eq.${id},target_id.eq.${id}`)
-    await svc.from('oeuvre_theme').delete().eq('oeuvre_id', id)
+    const { error: relErr } = await supabase.from('tblrelations').delete().or(`source_id.eq.${id},target_id.eq.${id}`)
+    if (relErr) return { error: relErr.message }
+    const { error: themeErr } = await svc.from('oeuvre_theme').delete().eq('oeuvre_id', id)
+    if (themeErr) return { error: themeErr.message }
   }
   const { error } = await supabase.from('Oeuvres').delete().in('OeuvreID', ids)
   if (error) return { error: error.message }
@@ -244,7 +254,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
         SeqNo:            1,
         DateAdded:        new Date().toISOString(),
       })
-      if (imgErr) console.error('tblImage insert:', imgErr.message)
+      if (imgErr) return { error: `tblImage: ${imgErr.message}` }
     }
 
     // Insert themes
@@ -256,7 +266,8 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
     }
 
     // Sync pipeline actions with production booleans
-    await syncPipelineWithBooleans(supabase, oid, { catalogued, needsPhotograph })
+    const pipeRes = await syncPipelineWithBooleans(supabase, oid, { catalogued, needsPhotograph })
+    if ('error' in pipeRes) return { error: pipeRes.error }
 
     revalidatePath('/atelier')
     return { ok: true, newId: oid }
@@ -296,7 +307,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
     const isAnonymous  = formData.get('is_anonymous') === '1'
 
     // is_public is managed by DB trigger sync_is_public_from_status() — not set manually.
-    const willBePublic = [2, 4, 6, 7, 8, 11].includes(statusId)
+    const willBePublic = STATUS_IDS_PUBLIC.includes(statusId)
 
     // Build update payload.
     const updatePayload: Record<string, unknown> = {
@@ -362,7 +373,8 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
     }
 
     // Sync pipeline actions with production booleans
-    await syncPipelineWithBooleans(supabase, oid, { catalogued, needsPhotograph })
+    const pipeRes = await syncPipelineWithBooleans(supabase, oid, { catalogued, needsPhotograph })
+    if ('error' in pipeRes) return { error: pipeRes.error }
 
     // Replace themes: delete + reinsert
     await svc.from('oeuvre_theme').delete().eq('oeuvre_id', oid)
@@ -547,18 +559,21 @@ async function uploadImage(
 // ── Image management (tblImage) ───────────────────────────────────────────
 
 // Helper: sync Oeuvres.txtImageNameLink to the last image (highest SeqNo = cover)
-async function syncCover(supabase: SupabaseClient, oeuvreId: number) {
-  const { data } = await supabase
+async function syncCover(supabase: SupabaseClient, oeuvreId: number): Promise<{ error: string } | { ok: true }> {
+  const { data, error: selErr } = await supabase
     .from('tblImage')
     .select('txtImageNameLink')
     .eq('OeuvreID', oeuvreId)
     .order('SeqNo', { ascending: false })
     .limit(1)
-    .single()
-  await supabase
+    .maybeSingle()
+  if (selErr) return { error: `syncCover read: ${selErr.message}` }
+  const { error: updErr } = await supabase
     .from('Oeuvres')
     .update({ txtImageNameLink: data?.txtImageNameLink ?? null })
     .eq('OeuvreID', oeuvreId)
+  if (updErr) return { error: `syncCover write: ${updErr.message}` }
+  return { ok: true }
 }
 
 // Add a new image to a work. FormData: { oeuvre_id, image (File) }
@@ -571,24 +586,26 @@ export async function addWorkImage(formData: FormData): Promise<ImageResult> {
   const file     = formData.get('image') as File | null
   if (isNaN(oeuvreId) || !file || file.size === 0) return { error: 'Paramètres invalides' }
 
-  // Next SeqNo = current max + 1
-  const { data: maxRow } = await supabase
-    .from('tblImage')
-    .select('SeqNo')
-    .eq('OeuvreID', oeuvreId)
-    .order('SeqNo', { ascending: false })
-    .limit(1)
-    .single()
-  const seqNo = ((maxRow?.SeqNo ?? 0) as number) + 1
-
-  // Next ImageID (no sequence in this table)
-  const { data: maxId } = await supabase
-    .from('tblImage')
-    .select('ImageID')
-    .order('ImageID', { ascending: false })
-    .limit(1)
-    .single()
-  const imageId = ((maxId?.ImageID ?? 200) as number) + 1
+  // Next SeqNo (per-work) + ImageID (global) in parallel — neither table has a sequence.
+  const [seqRes, idRes] = await Promise.all([
+    supabase
+      .from('tblImage')
+      .select('SeqNo')
+      .eq('OeuvreID', oeuvreId)
+      .order('SeqNo', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from('tblImage')
+      .select('ImageID')
+      .order('ImageID', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ])
+  if (seqRes.error) return { error: `tblImage seq: ${seqRes.error.message}` }
+  if (idRes.error)  return { error: `tblImage id: ${idRes.error.message}` }
+  const seqNo   = ((seqRes.data?.SeqNo ?? 0) as number) + 1
+  const imageId = ((idRes.data?.ImageID ?? 200) as number) + 1
 
   const filename = makeFilename(oeuvreId, seqNo, file.name)
   const uploadResult = await uploadImage(supabase, file, filename)
@@ -600,7 +617,6 @@ export async function addWorkImage(formData: FormData): Promise<ImageResult> {
       ImageID:          imageId,
       OeuvreID:         oeuvreId,
       txtImageNameLink: filename,
-      txtImageName:     file.name,
       SeqNo:            seqNo,
       DateAdded:        new Date().toISOString(),
     })
@@ -633,10 +649,11 @@ export async function addWorkImage(formData: FormData): Promise<ImageResult> {
     .eq('OeuvreID', oeuvreId)
 
   if (workState) {
-    await syncPipelineWithBooleans(supabase, oeuvreId, { 
-      catalogued: !!workState['Catalogué'], 
-      needsPhotograph: false 
+    const pipeRes = await syncPipelineWithBooleans(supabase, oeuvreId, {
+      catalogued: !!workState['Catalogué'],
+      needsPhotograph: false,
     })
+    if ('error' in pipeRes) return { error: pipeRes.error }
   }
 
   revalidatePath('/atelier')

@@ -9,7 +9,6 @@ export interface Oeuvre {
   Largeur: string | null;
   Profondeur: string | null;
   Dimensions: string | null;
-  Statut: string | null;
   statusId: number | null;
   is_public: boolean | null;
   Catalogué: boolean;
@@ -27,22 +26,20 @@ export interface Oeuvre {
   Encadree?: boolean | null;
   Montee?: boolean | null;
   DateLivraison?: string | null;
-  DateStatut?: string | null;
   ReturnDate?: string | null;
   Commentaires?: string | null;
   Historique?: string | null;
   PresentationID?: number | null;
   StageProduction?: string | null;
-  NomOriginal?: string | null;
   anonymity_level?: number | null;
   is_paid?: boolean | null;
   is_gift?: boolean | null;
   commercial_status?: string | null;
-  Poids?: string | null;
-  Tirage?: string | null;
   ImageURL: string | null;
   // Kept in DB for historical reference, not used by app logic:
   // commercial_status, StageProduction
+  // Dead per CLAUDE.md cemetery, removed from this interface:
+  // Statut, DateStatut, NomOriginal, Poids, Tirage
 }
 
 export interface Contact {
@@ -67,7 +64,6 @@ export interface WorkImage {
   ImageID: number;
   OeuvreID: number;
   txtImageNameLink: string | null;
-  txtImageName: string | null;
   SeqNo: number | null;
   DateAdded: string | null;
 }

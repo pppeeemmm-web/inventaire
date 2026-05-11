@@ -130,9 +130,8 @@ export async function uploadFloorplan(layoutId: string, formData: FormData): Pro
   const buf  = Buffer.from(await file.arrayBuffer())
 
   const bucketName = process.env.R2_BUCKET ?? 'paintings'
-  console.log('[exhibitions] uploading to bucket:', bucketName, 'key:', key)
-  try { 
-    await r2Upload(key, buf, file.type) 
+  try {
+    await r2Upload(key, buf, file.type)
   } catch (e) {
     console.error('[exhibitions] upload error:', String(e))
     return { error: `Upload R2 (bucket="${bucketName}"): ${String(e)}` }

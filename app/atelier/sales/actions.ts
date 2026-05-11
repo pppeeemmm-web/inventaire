@@ -151,14 +151,12 @@ async function r2Get(key: string, bucketName: string = BUCKET): Promise<Buffer |
 
     headers['Authorization'] = `AWS4-HMAC-SHA256 Credential=${accessKey}/${credScope}, SignedHeaders=${signedHeaderStr}, Signature=${sig}`
 
-    console.log(`[PDF] Fetching ${url}...`)
     const res = await fetch(url, { headers })
     if (!res.ok) {
       console.error(`[PDF] Fetch FAILED ${res.status} for ${key}`)
       return null
     }
     const buf = Buffer.from(await res.arrayBuffer())
-    console.log(`[PDF] Fetched ${buf.length} bytes for ${key}`)
     return buf
   } catch (e) {
     console.error(`[PDF] R2 Get failed: ${key}`, e)

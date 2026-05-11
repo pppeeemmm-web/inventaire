@@ -9,6 +9,11 @@ export const dynamic = 'force-dynamic'
 export default async function AtelierPage() {
   const supabase = await createClient()
 
+  const queryLabels = [
+    'Oeuvres', 'Technique', 'Support', 'Format', 'theme', 'Contact',
+    'OeuvreStatus', 'working_group', 'tblPresentation', 'exhibition',
+    'oeuvre_theme', 'working_group_work', 'contact_addresses',
+  ] as const
   const results = await Promise.all([
     supabase
       .from('Oeuvres')
@@ -23,11 +28,16 @@ export default async function AtelierPage() {
     supabase.from('OeuvreStatus').select('id, label').order('id'),
     supabase.from('working_group').select('id, name, created_at').order('created_at', { ascending: false }).limit(100),
     supabase.from('tblPresentation').select('PresentationID, Nom').order('PresentationID'),
-    supabase.from('exhibition').select('*').order('date_debut', { ascending: false }),
+    supabase.from('exhibition').select('*').order('date_debut', { ascending: false }).limit(500),
     supabase.from('oeuvre_theme').select('oeuvre_id, theme_id'),
     supabase.from('working_group_work').select('group_id, oeuvre_id'),
     supabase.from('contact_addresses').select('*'),
   ])
+
+  // Surface query errors to the server console so silent RLS / schema regressions don't render as empty tabs.
+  results.forEach((r, i) => {
+    if (r?.error) console.error(`[atelier loader] ${queryLabels[i]}:`, r.error.message)
+  })
 
   const oeuvres        = results[0]?.data
   const techniques     = results[1]?.data
