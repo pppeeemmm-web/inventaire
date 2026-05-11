@@ -308,6 +308,7 @@ function DrawerContent({
   const { t } = useI18n()
   const router = useRouter()
   const isPanel = mode === 'panel'
+  const narrow = useMediaQuery('(max-width: 767px)')
 
   // ── Form State (always editable) ───────────────────────
   const [isSaving, startSave] = useTransition()
