@@ -121,6 +121,30 @@ function cap(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
+/** First primary or first row, else legacy Contact.Email */
+function primaryListEmail(
+  id: number,
+  extra: Record<number, ContactRow>,
+  byContact: Record<number, ContactEmail[]>,
+): string {
+  const list = byContact[id] ?? []
+  const prim = list.find((e) => e.is_primary)
+  return prim?.email ?? list[0]?.email ?? extra[id]?.Email ?? ''
+}
+
+/** First primary or first phone row, else legacy Téléphone1 */
+function primaryListPhone(
+  id: number,
+  extra: Record<number, ContactRow>,
+  byContact: Record<number, ContactPhone[]>,
+): string {
+  const list = byContact[id] ?? []
+  const prim = list.find((p) => p.is_primary)
+  const row = prim ?? list[0]
+  if (row) return fmtPhone(row.country_code, row.phone) ?? row.phone
+  return fmtPhone(extra[id]?.IndicatifPays1, extra[id]?.Téléphone1) ?? ''
+}
+
 // ── Component ────────────────────────────────────────────────────────
 
 export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = [] }: Props) {
@@ -269,21 +293,43 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
     return [...set].sort((a, b) => a.localeCompare(b, 'fr'))
   }, [contacts, allRoles])
 
+  const listVille = useCallback((id: number): string => {
+    const addrs = addresses[id]
+    if (addrs && addrs.length > 0) {
+      const cities = addrs.map((a) => a.ville).filter(Boolean) as string[]
+      if (cities.length > 0) return cities.join(' / ')
+    }
+    return extra[id]?.Ville ?? '—'
+  }, [addresses, extra])
+
   const filtered = useMemo(() => {
     const sq = q.trim().toLowerCase()
     const base = contacts.filter((c) => {
       if (role !== 'all' && c.Role !== role) return false
       if (sq) {
-        const ex = extra[c.ContactID]
-        const addrs = addresses[c.ContactID] ?? []
+        const id = c.ContactID
+        const ex = extra[id]
+        const addrs = addresses[id] ?? []
         const addrStr = addrs.map((a) => [a.ville, a.pays, a.adresse, a.label].filter(Boolean).join(' ')).join(' ')
-        
+        const emailRows = emails[id] ?? []
+        const phoneRows = phones[id] ?? []
+        const webRows = websites[id] ?? []
+        const socialRows = socials[id] ?? []
+        const multiEmailStr = emailRows.map((e) => e.email).join(' ')
+        const multiPhoneStr = phoneRows.map((p) => fmtPhone(p.country_code, p.phone) ?? p.phone).join(' ')
+        const webStr = webRows.map((w) => `${w.url} ${w.label}`).join(' ')
+        const socialStr = socialRows.map((s) => `${s.platform} ${s.handle}`).join(' ')
+
         let target = ''
         if (searchBy === 'all') {
           target = [
             c.NomInstitution, c.Nom, c.Prénom, c.Role,
-            ex?.Email, ex?.Téléphone1, ex?.Website, ex?.Notes,
+            multiEmailStr, ex?.Email,
+            multiPhoneStr, ex?.Téléphone1, ex?.Téléphone2,
+            webStr, ex?.Website,
+            ex?.Notes,
             ex?.Instagram, ex?.LinkedIn, ex?.Facebook, ex?.Twitter,
+            socialStr,
             ex?.PersonneResponsable, ex?.RoleResponsable,
             addrStr,
           ].filter(Boolean).join(' ')
@@ -292,7 +338,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
         } else if (searchBy === 'city') {
           target = addrStr || [c.Ville, c.Pays].filter(Boolean).join(' ')
         } else if (searchBy === 'email') {
-          target = ex?.Email || ''
+          target = [multiEmailStr, ex?.Email].filter(Boolean).join(' ')
         } else if (searchBy === 'notes') {
           target = ex?.Notes || ''
         }
@@ -322,14 +368,14 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
         return listVille(a.ContactID).localeCompare(listVille(b.ContactID), 'fr') * dir
       }
       if (sortKey === 'email') {
-        const ea = extra[a.ContactID]?.Email || ''
-        const eb = extra[b.ContactID]?.Email || ''
-        return ea.localeCompare(eb) * dir
+        const ea = primaryListEmail(a.ContactID, extra, emails)
+        const eb = primaryListEmail(b.ContactID, extra, emails)
+        return ea.localeCompare(eb, 'fr') * dir
       }
       if (sortKey === 'phone') {
-        const pa = extra[a.ContactID]?.Téléphone1 || ''
-        const pb = extra[b.ContactID]?.Téléphone1 || ''
-        return pa.localeCompare(pb) * dir
+        const pa = primaryListPhone(a.ContactID, extra, phones)
+        const pb = primaryListPhone(b.ContactID, extra, phones)
+        return pa.localeCompare(pb, 'fr') * dir
       }
       if (sortKey === 'works') {
         return ((workCounts.owner[a.ContactID] || 0) - (workCounts.owner[b.ContactID] || 0)) * dir
@@ -343,19 +389,9 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
       return 0
     })
     return list
-  }, [contacts, q, role, sortKey, sortDir, extra, addresses, workCounts])
+  }, [contacts, q, role, searchBy, sortKey, sortDir, extra, addresses, emails, phones, websites, socials, workCounts, listVille])
 
   const active = filtered.find((c) => c.ContactID === activeId) ?? filtered[0] ?? null
-
-  // Ville for list view: prefer first contact_address, fallback to Contact.Ville
-  function listVille(id: number): string {
-    const addrs = addresses[id]
-    if (addrs && addrs.length > 0) {
-      const cities = addrs.map((a) => a.ville).filter(Boolean) as string[]
-      if (cities.length > 0) return cities.join(' / ')
-    }
-    return extra[id]?.Ville ?? '—'
-  }
 
   const handleCreated = useCallback((c: ContactRow, addrs: ContactAddress[], e: ContactEmail[], p: ContactPhone[], w: ContactWebsite[], s: ContactSocial[]) => {
     setContacts((prev) => [...prev, c])
@@ -553,7 +589,8 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
             <button
               key={s}
               className="btn ghost sm"
-              onClick={() => { setSortKey(s); setSortDir('asc') }}
+              type="button"
+              onClick={() => toggleSort(s)}
               style={{
                 padding: '6px 12px', fontSize: 11, letterSpacing: 1,
                 opacity: sortKey === s ? 1 : 0.4,
@@ -562,6 +599,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
               }}
             >
               {s === 'alpha' ? 'A–Z' : 'Rôle'}
+              {sortKey === s ? <span style={{ marginLeft: 4, color: 'var(--ac)', fontSize: 11 }}>{sortDir === 'asc' ? '↑' : '↓'}</span> : null}
             </button>
           ))}
         </div>
@@ -715,6 +753,8 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
               {filtered.map((c) => {
                 const isFoc    = c.ContactID === (active?.ContactID ?? -1)
                 const ex       = extra[c.ContactID]
+                const rowEmail = primaryListEmail(c.ContactID, extra, emails)
+                const rowPhone = primaryListPhone(c.ContactID, extra, phones)
                 const inactive = ex?.Actif === false
                 return (
                   <tr
@@ -740,8 +780,8 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
                     </td>
                     <td style={{ color: 'var(--tx3)', fontSize: 12 }}>{c.Role ?? '—'}</td>
                     <td style={{ color: 'var(--tx3)', fontSize: 12 }}>{listVille(c.ContactID)}</td>
-                    <td style={{ color: 'var(--tx3)', fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ex?.Email ?? <span style={{ opacity: 0.3 }}>…</span>}</td>
-                    <td style={{ color: 'var(--tx3)', fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{fmtPhone(ex?.IndicatifPays1, ex?.Téléphone1) ?? '—'}</td>
+                    <td style={{ color: 'var(--tx3)', fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{rowEmail || <span style={{ opacity: 0.3 }}>…</span>}</td>
+                    <td style={{ color: 'var(--tx3)', fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{rowPhone || '—'}</td>
                     <td className="num">{workCounts.owner[c.ContactID] ?? '—'}</td>
                     <td className="num" style={{ color: 'var(--tx3)' }}>{workCounts.loc[c.ContactID] ?? '—'}</td>
                     <td className="num" style={{ color: 'var(--tx3)' }}>{workCounts.buyer[c.ContactID] ?? '—'}</td>

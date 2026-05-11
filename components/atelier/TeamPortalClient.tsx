@@ -5,7 +5,7 @@
 // Manages global state: active tab, work drawer, selection, working groups.
 // Heavy tab panels load on demand (next/dynamic). SystemTab is eager-loaded to avoid dev ChunkLoadError on that chunk.
 
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { useState, useMemo, useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -15,11 +15,13 @@ import type { Oeuvre } from '@/lib/types/database'
 import type { TeamPortalClientProps } from '@/components/atelier/team-portal-types'
 import { yearOf, formatInventoryDims } from '@/lib/data'
 
+import { useMediaQuery } from '@/lib/useMediaQuery'
 import { WorkDrawer, type WorkDrawerGuardHandle } from '@/components/atelier/WorkDrawer'
 import { CurationDock }        from '@/components/atelier/CurationDock'
 import { fetchContactConflicts } from '@/app/atelier/contacts/conflicts-actions'
 import { loadOeuvreLongText } from '@/app/atelier/works/actions'
 import { createWorkingGroupWithOeuvres } from '@/app/atelier/selection/actions'
+import { PemThemeToggle } from '@/components/PemThemeToggle'
 import { ExhibitionsTabSkeleton } from '@/components/atelier/ExhibitionsTabSkeleton'
 import { SystemTab } from '@/components/atelier/SystemTab'
 
@@ -96,13 +98,10 @@ export function TeamPortalClient({
   // Restore last tab from localStorage after first paint.
   const [tab,            setTab]          = useState<Tab>('overview')
   const [reminderCount,  setReminderCount] = useState(0)
-  const [theme,          setTheme]          = useState<'dark' | 'light'>('dark')
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const savedTab = localStorage.getItem('pem_team_tab') as Tab | null
     if (savedTab) setTab(savedTab)
-    const savedTheme = localStorage.getItem('pem_theme') as 'dark' | 'light' | null
-    if (savedTheme) setTheme(savedTheme)
   }, [])
 
   // Warm exhibitions chunk after paint — reduces flash when opening Commercial → Exhibitions
@@ -116,11 +115,6 @@ export function TeamPortalClient({
     id = setTimeout(run, 1200)
     return () => clearTimeout(id as ReturnType<typeof setTimeout>)
   }, [])
-
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme)
-    localStorage.setItem('pem_theme', theme)
-  }, [theme])
 
   // Poll unread reminders for the landing badge
   useEffect(() => {
@@ -143,6 +137,12 @@ export function TeamPortalClient({
 
   const [showCompare, setShowCompare] = useState(false)
   const [toast,         setToast]        = useState<string | null>(null)
+  const atelierNarrow = useMediaQuery('(max-width: 767px)')
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  useEffect(() => {
+    if (!atelierNarrow) setSidebarOpen(false)
+  }, [atelierNarrow])
 
   const oeuvreThemeMap = useMemo(() => {
     const m = new Map<number, number[]>()
@@ -186,6 +186,7 @@ export function TeamPortalClient({
   function handleSetTab(next: Tab) {
     setTab(next)
     localStorage.setItem('pem_team_tab', next)
+    setSidebarOpen(false)
   }
 
   // ── Derived lookup maps ────────────────────────────────────────
@@ -308,35 +309,61 @@ export function TeamPortalClient({
   return (
     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', flexDirection: 'column', background: 'var(--bg0)', overflow: 'hidden' }}>
       
-      <div style={{ flexShrink: 0, borderBottom: '1px solid var(--bd)', background: 'var(--bg1)', padding: '12px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{
+        flexShrink: 0,
+        borderBottom: '1px solid var(--bd)',
+        background: 'var(--bg1)',
+        padding: atelierNarrow ? '10px max(12px, env(safe-area-inset-right)) 10px max(12px, env(safe-area-inset-left))' : '12px 28px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 8,
+        minWidth: 0,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flex: 1 }}>
+          {atelierNarrow && (
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(true)}
+              aria-label="Open navigation menu"
+              style={{
+                flexShrink: 0,
+                fontSize: 18,
+                lineHeight: 1,
+                color: 'var(--tx2)',
+                background: 'var(--bg0)',
+                border: '1px solid var(--bd)',
+                padding: '6px 10px',
+                cursor: 'pointer',
+              }}
+            >
+              ☰
+            </button>
+          )}
           <button onClick={() => router.push('/hub')} 
             className="t-mono-sm" 
-            style={{ color: 'var(--tx3)', cursor: 'pointer', background: 'none', border: 'none', padding: 0, fontSize: 9, letterSpacing: 1.5, textTransform: 'uppercase', opacity: 0.7 }}>
+            style={{ color: 'var(--tx3)', cursor: 'pointer', background: 'none', border: 'none', padding: 0, fontSize: 9, letterSpacing: 1.5, textTransform: 'uppercase', opacity: 0.7, flexShrink: 0 }}>
             Hub
           </button>
-          <span style={{ color: 'var(--tx3)', fontSize: 10, opacity: 0.3 }}>/</span>
-          <div className="serif" style={{ fontSize: 24, letterSpacing: '-0.01em', color: 'var(--tx)' }}>Atelier</div>
-          <span style={{ color: 'var(--tx3)', fontSize: 10, opacity: 0.3 }}>/</span>
-          <div className="t-eyebrow" style={{ color: 'var(--ac)', fontSize: 10 }}>{activeTabLabel}</div>
-          <div className="vline" style={{ height: 16, opacity: 0.3, marginLeft: 8 }} />
-          <div className="t-mono-sm" style={{ opacity: 0.5, fontSize: 9 }}>{oeuvres.length} ŒUVRES</div>
+          <span style={{ color: 'var(--tx3)', fontSize: 10, opacity: 0.3, flexShrink: 0 }}>/</span>
+          {!atelierNarrow && (
+            <>
+              <div className="serif" style={{ fontSize: 24, letterSpacing: '-0.01em', color: 'var(--tx)', flexShrink: 0 }}>Atelier</div>
+              <span style={{ color: 'var(--tx3)', fontSize: 10, opacity: 0.3 }}>/</span>
+            </>
+          )}
+          <div className="t-eyebrow" style={{ color: 'var(--ac)', fontSize: 10, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{activeTabLabel}</div>
+          {!atelierNarrow && (
+            <>
+              <div className="vline" style={{ height: 16, opacity: 0.3, marginLeft: 8 }} />
+              <div className="t-mono-sm" style={{ opacity: 0.5, fontSize: 9, flexShrink: 0 }}>{oeuvres.length} ŒUVRES</div>
+            </>
+          )}
         </div>
 
-        <div className="row gap-sm">
+        <div className="row gap-sm" style={{ flexShrink: 0 }}>
           <div style={{ display: 'flex', border: '1px solid var(--bd)', fontSize: 10, letterSpacing: 1 }}>
-            <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              style={{
-                padding: '4px 10px',
-                background: 'transparent',
-                color: 'var(--tx2)',
-                fontWeight: 600,
-                borderRight: '1px solid var(--bd)',
-                display: 'flex', alignItems: 'center', gap: 6
-              }}>
-              {theme === 'dark' ? '🌙' : '☀️'}
-              <span>{theme === 'dark' ? 'NIGHT' : 'DAY'}</span>
-            </button>
+            <PemThemeToggle showLabels={!atelierNarrow} />
             {(['fr', 'en'] as const).map((l) => (
               <button key={l} onClick={() => setLang(l)}
                 style={{
@@ -349,13 +376,85 @@ export function TeamPortalClient({
               >{l.toUpperCase()}</button>
             ))}
           </div>
-          <button className="btn ghost sm" onClick={() => router.push('/atelier/works/new')}>+ {t('newWork')}</button>
+          <button className="btn ghost sm" onClick={() => router.push('/atelier/works/new')} title={t('newWork')}>
+            {atelierNarrow ? '+' : `+ ${t('newWork')}`}
+          </button>
         </div>
       </div>
 
-      <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-        
-        <div style={{ width: 200, flexShrink: 0, borderRight: '1px solid var(--bd)', background: 'var(--bg1)', overflow: 'hidden', display: 'flex', flexDirection: 'column', padding: '24px 0' }}>
+      <div style={{ flex: 1, display: 'flex', minHeight: 0, minWidth: 0 }}>
+        {atelierNarrow && sidebarOpen && (
+          <div
+            role="presentation"
+            aria-hidden
+            onClick={() => setSidebarOpen(false)}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 140,
+              background: 'rgba(0,0,0,0.45)',
+            }}
+          />
+        )}
+        <div style={{
+          width: atelierNarrow ? 0 : 200,
+          flexShrink: 0,
+          borderRight: atelierNarrow ? 'none' : '1px solid var(--bd)',
+          overflow: 'visible',
+          position: 'relative',
+          zIndex: atelierNarrow ? 150 : undefined,
+        }}>
+          <div style={{
+            ...(atelierNarrow
+              ? {
+                  position: 'fixed',
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: 'min(300px, 88vw)',
+                  background: 'var(--bg1)',
+                  borderRight: '1px solid var(--bd)',
+                  overflow: 'auto',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  padding: 'max(24px, env(safe-area-inset-top)) 0 24px',
+                  transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
+                  transition: 'transform 0.2s ease',
+                  boxShadow: sidebarOpen ? '8px 0 28px rgba(0,0,0,0.35)' : undefined,
+                }
+              : {
+                  width: 200,
+                  height: '100%',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  padding: '24px 0',
+                  background: 'var(--bg1)',
+                }),
+          }}>
+            <div style={{ padding: '0 16px 12px', borderBottom: '1px solid var(--bd)', marginBottom: 8, display: atelierNarrow ? 'flex' : 'none', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span className="serif" style={{ fontSize: 18, color: 'var(--tx)' }}>Atelier</span>
+              <button
+                type="button"
+                onClick={() => setSidebarOpen(false)}
+                style={{
+                  fontSize: 10,
+                  letterSpacing: 1,
+                  textTransform: 'uppercase',
+                  color: 'var(--tx2)',
+                  background: 'transparent',
+                  border: '1px solid var(--bd)',
+                  padding: '6px 10px',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}
+              >
+                {lang === 'fr' ? 'Fermer' : 'Close'}
+              </button>
+            </div>
+            <div className="t-mono-sm" style={{ display: atelierNarrow ? 'block' : 'none', padding: '0 20px 16px', fontSize: 9, opacity: 0.5 }}>
+              {oeuvres.length} ŒUVRES
+            </div>
           {GROUPS.map((g) => (
             <div key={g.label} style={{ marginBottom: 20 }}>
               <div className="t-eyebrow" style={{ padding: '0 20px', marginBottom: 8, color: 'var(--tx2)', fontSize: 9, letterSpacing: '2px', fontWeight: 600, opacity: 0.8 }}>{g.label}</div>
@@ -398,6 +497,7 @@ export function TeamPortalClient({
               </div>
             </div>
           ))}
+          </div>
         </div>
 
         {/* ── Content ────────────────────────────────────────────── */}

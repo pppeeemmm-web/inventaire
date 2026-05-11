@@ -186,7 +186,7 @@ interface SharedProps {
 type View = 'list' | 'grid' | 'graph'
 
 const INV_LIST_ROW_H = 44
-const INV_TABLE_COLS = 13
+const INV_TABLE_COLS = 14
 const INV_GRID_GAP = 12
 const INV_GRID_PAD = 16
 const INV_GRID_MIN_CELL = 140
@@ -216,6 +216,28 @@ export function InventoryTab({
   const { t } = useI18n()
 
   const router = useRouter()
+
+  const headerBase: React.CSSProperties = {
+    padding: '0 4px',
+    color: 'var(--tx)',
+    fontSize: 12,
+    fontWeight: 600,
+    whiteSpace: 'nowrap',
+    verticalAlign: 'bottom',
+  }
+
+  const compactHeader: React.CSSProperties = {
+    ...headerBase,
+    height: 72,
+    overflow: 'visible',
+    textAlign: 'left',
+  }
+
+  const slantedHeaderInner: React.CSSProperties = {
+    display: 'inline-block',
+    transform: 'translateY(10px) rotate(-35deg)',
+    transformOrigin: 'bottom left',
+  }
   const [q,           setQ]           = useState('')
   const [tech,        setTech]        = useState('all')
   const [support,     setSupport]     = useState('all')
@@ -1031,6 +1053,28 @@ function InvList({
 
   const router = useRouter()
 
+  const headerBase: React.CSSProperties = {
+    padding: '0 4px',
+    color: 'var(--tx)',
+    fontSize: 12,
+    fontWeight: 600,
+    whiteSpace: 'nowrap',
+    verticalAlign: 'bottom',
+  }
+
+  const compactHeader: React.CSSProperties = {
+    ...headerBase,
+    height: 72,
+    overflow: 'visible',
+    textAlign: 'left',
+  }
+
+  const slantedHeaderInner: React.CSSProperties = {
+    display: 'inline-block',
+    transform: 'translateY(10px) rotate(-35deg)',
+    transformOrigin: 'bottom left',
+  }
+
   return (
     <div
       ref={scrollRef}
@@ -1049,8 +1093,8 @@ function InvList({
         fontSize: 14,
       }}>
         <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--bg0)' }}>
-          <tr style={{ height: 28, borderBottom: '1px solid var(--bd)' }}>
-            <th style={{ width: 30 }}>
+          <tr style={{ height: 72, borderBottom: '1px solid var(--bd)' }}>
+            <th style={{ width: 30, ...headerBase }}>
               <div style={{
                 width: 12, height: 12, margin: '0 auto',
                 border: `1.5px solid ${visible.length > 0 && visible.every(o => selection.has(o.OeuvreID)) ? 'var(--ac)' : 'var(--bd2)'}`,
@@ -1067,30 +1111,38 @@ function InvList({
                 {visible.length > 0 && visible.every(o => selection.has(o.OeuvreID)) ? '✓' : ''}
               </div>
             </th>
-            <th style={{ width: 22 }}></th>
-            <th onClick={() => toggleSort('OeuvreID')} style={{ width: 40, color: 'var(--tx3)', fontSize: 12, cursor: 'pointer' }}>ID <SortInd k="OeuvreID" current={sortKey} dir={sortDir} /></th>
-            <th style={{ width: 44 }}></th>
-            <th onClick={() => toggleSort('Titre')} style={{ textAlign: 'left', padding: '0 4px', width: '15%', cursor: 'pointer' }}>{t('title')} <SortInd k="Titre" current={sortKey} dir={sortDir} /></th>
-            <th style={{ textAlign: 'left', padding: '0 4px', width: '20%' }}>Médium</th>
-            <th style={{ textAlign: 'left', padding: '0 4px', width: 60 }}>Dims</th>
-            <th onClick={() => toggleSort('Année')} style={{ textAlign: 'left', padding: '0 4px', width: 35, cursor: 'pointer' }}>Année <SortInd k="Année" current={sortKey} dir={sortDir} /></th>
-            <th onClick={() => toggleSort('Prix')} style={{ textAlign: 'left', padding: '0 4px', width: 60, cursor: 'pointer' }}>Prix <SortInd k="Prix" current={sortKey} dir={sortDir} /></th>
-            <th onClick={() => toggleSort('Contact')} style={{ textAlign: 'left', padding: '0 4px', width: 80, cursor: 'pointer' }}>Contact <SortInd k="Contact" current={sortKey} dir={sortDir} /></th>
-            <th onClick={() => toggleSort('Custodian')} style={{ textAlign: 'left', padding: '0 4px', width: 85, cursor: 'pointer' }}>Emplacement <SortInd k="Custodian" current={sortKey} dir={sortDir} /></th>
+            <th style={{ width: 22, ...headerBase }}></th>
+            <th onClick={() => toggleSort('OeuvreID')} style={{ ...headerBase, width: 44, color: 'var(--tx3)', cursor: 'pointer' }}>ID <SortInd k="OeuvreID" current={sortKey} dir={sortDir} /></th>
+            <th style={{ width: 44, ...headerBase }}></th>
+            <th onClick={() => toggleSort('Titre')} style={{ ...headerBase, textAlign: 'left', width: '18%', cursor: 'pointer' }}>{t('title')} <SortInd k="Titre" current={sortKey} dir={sortDir} /></th>
+            <th style={{ ...headerBase, textAlign: 'left', width: '22%' }}>Médium</th>
+            <th style={{ ...headerBase, textAlign: 'left', width: 70 }}>Dims</th>
+            <th onClick={() => toggleSort('Année')} style={{ ...compactHeader, width: 48, cursor: 'pointer' }}>
+              <span style={slantedHeaderInner}>Année <SortInd k="Année" current={sortKey} dir={sortDir} /></span>
+            </th>
+            <th onClick={() => toggleSort('Prix')} style={{ ...compactHeader, width: 80, cursor: 'pointer' }}>
+              <span style={slantedHeaderInner}>Prix <SortInd k="Prix" current={sortKey} dir={sortDir} /></span>
+            </th>
+            <th onClick={() => toggleSort('Contact')} style={{ ...compactHeader, width: 100, cursor: 'pointer' }}>
+              <span style={slantedHeaderInner}>Contact <SortInd k="Contact" current={sortKey} dir={sortDir} /></span>
+            </th>
+            <th onClick={() => toggleSort('Custodian')} style={{ ...compactHeader, width: 110, cursor: 'pointer' }}>
+              <span style={slantedHeaderInner}>Emplacement <SortInd k="Custodian" current={sortKey} dir={sortDir} /></span>
+            </th>
             <th
               colSpan={2}
               onClick={() => toggleSort('Status')}
-              style={{ textAlign: 'left', padding: '0 4px', minWidth: 168, cursor: 'pointer' }}
+              style={{ ...compactHeader, width: 160, cursor: 'pointer' }}
               title="État commercial (disponible, production, réservé, vendu…)"
             >
-              État <SortInd k="Status" current={sortKey === 'Stage' ? 'Status' : sortKey} dir={sortDir} />
+              <span style={slantedHeaderInner}>État <SortInd k="Status" current={sortKey === 'Stage' ? 'Status' : sortKey} dir={sortDir} /></span>
             </th>
             <th
               onClick={() => toggleSort('Comm')}
-              style={{ textAlign: 'left', padding: '0 4px', width: 72, cursor: 'pointer' }}
+              style={{ ...compactHeader, width: 80, cursor: 'pointer' }}
               title="Rappel si réservé (l’état détaillé est dans la colonne État)"
             >
-              Réserve <SortInd k="Comm" current={sortKey} dir={sortDir} />
+              <span style={slantedHeaderInner}>Réserve <SortInd k="Comm" current={sortKey} dir={sortDir} /></span>
             </th>
           </tr>
         </thead>

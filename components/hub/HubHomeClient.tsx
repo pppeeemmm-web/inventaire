@@ -1,10 +1,13 @@
 'use client'
 
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useI18n } from '@/lib/i18n/context'
+import { useMediaQuery } from '@/lib/useMediaQuery'
 import { thumbUrl } from '@/lib/data'
-import { WorkThumb } from '../atelier/WorkThumb'
+import { PemThemeToggle } from '@/components/PemThemeToggle'
+import { WorkThumb } from '@/components/atelier/WorkThumb'
 
 interface SystemLogEntry {
   id: number
@@ -34,6 +37,8 @@ function priorityColor(p: string | null | undefined) {
 export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas, systemLogs }: Props) {
   const { lang, setLang, t } = useI18n()
   const router = useRouter()
+  const hubNavCompact = useMediaQuery('(max-width: 720px)')
+  const [hubMenuOpen, setHubMenuOpen] = useState(false)
 
   const dateLabel = new Date().toLocaleDateString(
     lang === 'fr' ? 'fr-FR' : 'en-GB',
@@ -46,35 +51,151 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg0)' }}>
 
       {/* Top bar */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 28px', borderBottom: '1px solid var(--bd)' }}>
-        <div className="row gap-md">
-          <div style={{ width: 24, height: 24, border: '1px solid var(--ac)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ac)', fontSize: 11, fontFamily: "'Instrument Serif', serif", lineHeight: 1 }}>P</div>
-          <div className="t-eyebrow" style={{ color: 'var(--tx)' }}>{t('hub')}</div>
-          <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>— {t('tagline')}</div>
-        </div>
-        <div className="row gap-md">
-          <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>{t('signedAs')} · atelier</div>
-          <Link href="/Atelier_Studio_Bible.pdf" target="_blank" className="t-mono-sm" style={{ color: 'var(--tx2)', textDecoration: 'none', marginLeft: 12 }}>
-            Studio Bible 📕
-          </Link>
-          <div className="vline" style={{ height: 12, margin: '0 12px', opacity: 0.3 }} />
-          <Link href="/atelier?tab=system" className="t-mono-sm" style={{ color: 'var(--tx2)', textDecoration: 'none' }}>
-            Suggestions 💡
-          </Link>
-          <div className="vline" style={{ height: 12, margin: '0 12px', opacity: 0.3 }} />
-          <Link href="/" className="t-mono-sm" style={{ color: 'var(--ac)', textDecoration: 'none', border: '1px solid var(--ac)', padding: '2px 8px' }}>
-            {lang === 'fr' ? 'Site Public' : 'Public Site'}
-          </Link>
-          <div style={{ display: 'flex', border: '1px solid var(--bd)' }}>
-            {(['fr', 'en'] as const).map((l) => (
-              <button key={l} onClick={() => setLang(l)}
-                style={{ padding: '4px 10px', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, color: lang === l ? 'var(--ac)' : 'var(--tx3)', background: lang === l ? 'var(--bg2)' : 'transparent', borderRight: l === 'fr' ? '1px solid var(--bd)' : 'none' }}>
-                {l}
-              </button>
-            ))}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 12,
+        padding: hubNavCompact ? '12px max(16px, env(safe-area-inset-right)) 12px max(16px, env(safe-area-inset-left))' : '16px 28px',
+        borderBottom: '1px solid var(--bd)',
+        minWidth: 0,
+      }}>
+        <div className="row gap-md" style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ width: 24, height: 24, flexShrink: 0, border: '1px solid var(--ac)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ac)', fontSize: 11, fontFamily: "'Instrument Serif', serif", lineHeight: 1 }}>P</div>
+          <div style={{ minWidth: 0 }}>
+            <div className="t-eyebrow" style={{ color: 'var(--tx)' }}>{t('hub')}</div>
+            {!hubNavCompact && (
+              <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>— {t('tagline')}</div>
+            )}
           </div>
         </div>
+        {hubNavCompact ? (
+          <div className="row gap-sm" style={{ flexShrink: 0 }}>
+            <div style={{ display: 'flex', border: '1px solid var(--bd)', fontSize: 10, letterSpacing: 1 }}>
+              <PemThemeToggle showLabels={false} />
+            </div>
+            <button
+              type="button"
+              onClick={() => setHubMenuOpen(true)}
+              aria-expanded={hubMenuOpen}
+              aria-controls="hub-drawer-nav"
+              style={{
+                flexShrink: 0,
+                padding: '8px 14px',
+                fontSize: 10,
+                letterSpacing: 1,
+                textTransform: 'uppercase',
+                color: 'var(--tx2)',
+                background: 'var(--bg2)',
+                border: '1px solid var(--bd)',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
+              Menu
+            </button>
+          </div>
+        ) : (
+          <div className="row gap-md" style={{ flexShrink: 0 }}>
+            <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>{t('signedAs')} · atelier</div>
+            <Link href="/Atelier_Studio_Bible.pdf" target="_blank" className="t-mono-sm" style={{ color: 'var(--tx2)', textDecoration: 'none', marginLeft: 12 }}>
+              Studio Bible 📕
+            </Link>
+            <div className="vline" style={{ height: 12, margin: '0 12px', opacity: 0.3 }} />
+            <Link href="/atelier?tab=system" className="t-mono-sm" style={{ color: 'var(--tx2)', textDecoration: 'none' }}>
+              Suggestions 💡
+            </Link>
+            <div className="vline" style={{ height: 12, margin: '0 12px', opacity: 0.3 }} />
+            <Link href="/" className="t-mono-sm" style={{ color: 'var(--ac)', textDecoration: 'none', border: '1px solid var(--ac)', padding: '2px 8px' }}>
+              {lang === 'fr' ? 'Site Public' : 'Public Site'}
+            </Link>
+            <div style={{ display: 'flex', border: '1px solid var(--bd)', fontSize: 10, letterSpacing: 1 }}>
+              <PemThemeToggle showLabels={!hubNavCompact} />
+              {(['fr', 'en'] as const).map((l) => (
+                <button key={l} onClick={() => setLang(l)}
+                  style={{ padding: '4px 10px', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, color: lang === l ? 'var(--ac)' : 'var(--tx3)', background: lang === l ? 'var(--bg2)' : 'transparent', borderRight: l === 'fr' ? '1px solid var(--bd)' : 'none' }}>
+                  {l}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
+
+      {hubNavCompact && hubMenuOpen && (
+        <>
+          <div
+            role="presentation"
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 400,
+              background: 'rgba(0,0,0,0.45)',
+            }}
+            onClick={() => setHubMenuOpen(false)}
+          />
+          <nav
+            id="hub-drawer-nav"
+            aria-label="Hub"
+            style={{
+              position: 'fixed',
+              top: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: 401,
+              width: 'min(320px, calc(100vw - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)))',
+              paddingTop: 'max(20px, env(safe-area-inset-top, 0px))',
+              paddingBottom: 'max(20px, env(safe-area-inset-bottom, 0px))',
+              paddingLeft: 20,
+              paddingRight: 'max(20px, env(safe-area-inset-right, 0px))',
+              background: 'var(--bg1)',
+              borderLeft: '1px solid var(--bd)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 16,
+              boxShadow: '-12px 0 32px rgba(0,0,0,0.35)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span className="t-mono-sm" style={{ color: 'var(--tx3)' }}>{t('signedAs')} · atelier</span>
+              <button
+                type="button"
+                onClick={() => setHubMenuOpen(false)}
+                style={{
+                  padding: '6px 12px',
+                  fontSize: 10,
+                  letterSpacing: 1,
+                  textTransform: 'uppercase',
+                  color: 'var(--tx2)',
+                  background: 'transparent',
+                  border: '1px solid var(--bd)',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}
+              >
+                {lang === 'fr' ? 'Fermer' : 'Close'}
+              </button>
+            </div>
+            <Link href="/Atelier_Studio_Bible.pdf" target="_blank" onClick={() => setHubMenuOpen(false)} className="t-mono-sm" style={{ color: 'var(--tx2)', textDecoration: 'none' }}>
+              Studio Bible 📕
+            </Link>
+            <Link href="/atelier?tab=system" onClick={() => setHubMenuOpen(false)} className="t-mono-sm" style={{ color: 'var(--tx2)', textDecoration: 'none' }}>
+              Suggestions 💡
+            </Link>
+            <Link href="/" onClick={() => setHubMenuOpen(false)} className="t-mono-sm" style={{ color: 'var(--ac)', textDecoration: 'none', border: '1px solid var(--ac)', padding: '8px 12px', alignSelf: 'flex-start' }}>
+              {lang === 'fr' ? 'Site Public' : 'Public Site'}
+            </Link>
+            <div style={{ display: 'flex', border: '1px solid var(--bd)', alignSelf: 'flex-start' }}>
+              {(['fr', 'en'] as const).map((l) => (
+                <button key={l} onClick={() => setLang(l)}
+                  style={{ padding: '8px 14px', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, color: lang === l ? 'var(--ac)' : 'var(--tx3)', background: lang === l ? 'var(--bg2)' : 'transparent', borderRight: l === 'fr' ? '1px solid var(--bd)' : 'none' }}>
+                  {l}
+                </button>
+              ))}
+            </div>
+          </nav>
+        </>
+      )}
 
       {/* Main Content Area */}
       <div style={{

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { I18nProvider } from '@/lib/i18n/context'
+import { ThemePathSync } from '@/components/ThemePathSync'
 import { Analytics } from '@vercel/analytics/react'
 
 export const viewport: Viewport = {
@@ -22,7 +23,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning data-theme="light">
       <head>
         {/* Self-host fonts in production — for now load from Google Fonts */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -36,7 +37,11 @@ export default function RootLayout({
             __html: `
               (function() {
                 try {
-                  var theme = localStorage.getItem('pem_theme') || 'dark';
+                  var p = location.pathname || '';
+                  var internal = /^\\/(atelier|hub|galerie)(\\/|$)/.test(p);
+                  var raw = localStorage.getItem('pem_theme');
+                  var normalized = (raw === 'dark' || raw === 'light' || raw === 'standard') ? raw : 'light';
+                  var theme = internal ? normalized : 'light';
                   document.documentElement.setAttribute('data-theme', theme);
                 } catch (e) {}
               })();
@@ -45,6 +50,7 @@ export default function RootLayout({
         />
       </head>
       <body style={{ minHeight: '100dvh' }} suppressHydrationWarning>
+        <ThemePathSync />
         <I18nProvider>
           {children}
         </I18nProvider>

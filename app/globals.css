@@ -51,6 +51,37 @@
   color-scheme: light;
 }
 
+/* Internal "standard" — mid-grey studio */
+[data-theme='standard'] {
+  --bg0: #93928d;
+  --bg1: color-mix(in srgb, #93928d 88%, #fff);
+  --bg2: color-mix(in srgb, #93928d 82%, #000);
+  --bg3: color-mix(in srgb, #93928d 72%, #000);
+  --bd:  color-mix(in srgb, #93928d 55%, #000);
+  --bd2: color-mix(in srgb, #93928d 45%, #000);
+  --bd3: color-mix(in srgb, #93928d 35%, #000);
+  --tx:  #0a0a0a;
+  --tx2: #242422;
+  --tx3: #3a3a36;
+  --mt:  #5c5b57;
+  --ac:  #8a6a24;
+  --ac2: #6b5218;
+  --cyan: oklch(0.52 0.1 200);
+  --rust: oklch(0.5 0.14 35);
+  --sage: oklch(0.52 0.08 140);
+  --dust: oklch(0.52 0.05 60);
+  --green: #5a7038;
+  color-scheme: light;
+}
+
+html[data-theme='standard'],
+html[data-theme='standard'] body {
+  font-size: 16px;
+}
+
+html[data-theme='standard'] .t-mono-sm { font-size: 13px; }
+html[data-theme='standard'] .t-mono    { font-size: 15px; }
+
 :root {
   color-scheme: dark;
 }
@@ -109,7 +140,7 @@ input, textarea, select { font: inherit; color: inherit; background: transparent
 .chip {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 5px 12px; font-size: 11px; letter-spacing: 0.5px; text-transform: uppercase;
-  border: 1px solid var(--bd); color: var(--tx2); background: rgba(255,255,255,0.04); font-weight: 600;
+  border: 1px solid var(--bd); color: var(--tx2); background: color-mix(in srgb, var(--tx) 7%, transparent); font-weight: 600;
   border-radius: 2px;
 }
 .chip.active { border-color: var(--ac); color: var(--ac); background: color-mix(in srgb, var(--ac) 12%, transparent); }

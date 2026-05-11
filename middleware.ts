@@ -53,6 +53,8 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|_next/webpack-hmr|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    // Exclude all of `/_next/*` (not only `_next/static`) so dev chunks, CSS, Turbopack, etc.
+    // never hit this middleware — avoids spurious 404s / broken RSC when new subpaths appear.
+    '/((?!_next/|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
