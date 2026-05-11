@@ -4,8 +4,10 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useI18n } from '@/lib/i18n/context'
 
 export default function LoginPage() {
+  const { t, lang, setLang } = useI18n()
   const [showMagic, setShowMagic] = useState(false)
   const [email, setEmail]         = useState('')
   const [sent, setSent]           = useState(false)
@@ -19,7 +21,7 @@ export default function LoginPage() {
 
     const q = new URLSearchParams(search)
     if (q.get('error') === 'auth') {
-      setError('La session n’a pas pu être créée. Vérifiez la configuration Google + Supabase (voir documentation), ou réessayez.')
+      setError(t('auth_err_session'))
     }
 
     if (!hash || hash.length < 2) return
@@ -30,11 +32,11 @@ export default function LoginPage() {
     if (desc || err) {
       const msg = desc
         ? decodeURIComponent(desc.replace(/\+/g, ' '))
-        : err ?? code ?? 'Erreur d’authentification'
+        : err ?? code ?? t('auth_err_generic')
       setError(msg)
     }
     window.history.replaceState(null, '', pathname + search)
-  }, [])
+  }, [t])
 
   async function handleGoogle() {
     setLoading(true)
@@ -67,10 +69,32 @@ export default function LoginPage() {
       <div style={{ width: 320 }}>
 
         {/* Header */}
-        <div style={{ marginBottom: 32 }}>
+        <div style={{ marginBottom: 24 }}>
           <div style={{ width: 32, height: 32, border: '1px solid var(--ac)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ac)', fontSize: 14, fontFamily: "'Instrument Serif', serif", marginBottom: 20 }}>P</div>
-          <div className="serif s-md" style={{ marginBottom: 8 }}>Atelier</div>
-          <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>Accès restreint.</div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+            <div style={{ display: 'flex', border: '1px solid var(--bd)', fontSize: 10, letterSpacing: 1 }}>
+              {(['fr', 'en'] as const).map((l) => (
+                <button
+                  key={l}
+                  type="button"
+                  onClick={() => setLang(l)}
+                  style={{
+                    padding: '4px 10px',
+                    background: lang === l ? 'var(--ac)' : 'transparent',
+                    color: lang === l ? 'var(--bg0)' : 'var(--tx3)',
+                    fontWeight: lang === l ? 600 : 400,
+                    border: 'none',
+                    borderRight: l === 'fr' ? '1px solid var(--bd)' : 'none',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {l.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="serif s-md" style={{ marginBottom: 8 }}>{t('atelier')}</div>
+          <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>{t('login_restricted')}</div>
         </div>
 
         {error && (
@@ -104,17 +128,18 @@ export default function LoginPage() {
             <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
             <path fill="none" d="M0 0h48v48H0z"/>
           </svg>
-          {loading ? 'Redirection…' : 'Continuer avec Google'}
+          {loading ? t('login_redirecting') : t('login_continue_google')}
         </button>
 
         {/* Magic link fallback */}
         {!showMagic && !sent && (
           <div style={{ textAlign: 'center' }}>
             <button
+              type="button"
               onClick={() => setShowMagic(true)}
               style={{ background: 'none', border: 'none', color: 'var(--tx3)', fontSize: 10, cursor: 'pointer', textDecoration: 'underline' }}
             >
-              Connexion par lien e-mail
+              {t('login_magic_link')}
             </button>
           </div>
         )}
@@ -126,21 +151,21 @@ export default function LoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="votre@email.com"
+                placeholder={t('login_email_placeholder')}
                 required
                 style={{ width: '100%', padding: '10px 12px', border: '1px solid var(--bd2)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 12 }}
               />
             </div>
             <button type="submit" className="btn primary" style={{ width: '100%', justifyContent: 'center' }} disabled={loading}>
-              {loading ? 'Envoi…' : 'Envoyer le lien'}
+              {loading ? t('login_sending') : t('login_send_link')}
             </button>
           </form>
         )}
 
         {sent && (
           <div style={{ border: '1px solid var(--bd)', padding: '16px 20px' }}>
-            <div className="t-mono-sm" style={{ color: 'var(--sage)' }}>Lien envoyé.</div>
-            <div className="t-mono-sm" style={{ marginTop: 6 }}>Vérifiez votre boîte mail.</div>
+            <div className="t-mono-sm" style={{ color: 'var(--sage)' }}>{t('login_link_sent')}</div>
+            <div className="t-mono-sm" style={{ marginTop: 6 }}>{t('login_check_inbox')}</div>
           </div>
         )}
 

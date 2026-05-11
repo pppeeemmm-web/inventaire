@@ -59,7 +59,7 @@ export function LogisticsTab({ cM }: Props) {
         .limit(200)
 
       if (err || !shipments) {
-        if (!cancelled) setError(err?.message ?? 'Error')
+        if (!cancelled) setError(err?.message ?? t('error'))
         setLoading(false)
         return
       }
@@ -86,7 +86,7 @@ export function LogisticsTab({ cM }: Props) {
     }
     load()
     return () => { cancelled = true }
-  }, [])
+  }, [t])
 
   const upcoming = rows.filter((r) => !r.delivered_at && r.status !== 'delivered')
   const past     = rows.filter((r) =>  r.delivered_at || r.status === 'delivered')

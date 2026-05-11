@@ -26,9 +26,10 @@ import { ExhibitionsTabSkeleton } from '@/components/atelier/ExhibitionsTabSkele
 import { SystemTab } from '@/components/atelier/SystemTab'
 
 function TabPanelFallback() {
+  const { t } = useI18n()
   return (
     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 240, color: 'var(--tx3)' }}>
-      <span className="t-mono-sm">Loading...</span>
+      <span className="t-mono-sm">{t('loading')}</span>
     </div>
   )
 }
@@ -258,10 +259,9 @@ export function TeamPortalClient({
     return (
       <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg0)', color: 'var(--tx)', textAlign: 'center', padding: 40 }}>
         <div>
-          <h2 style={{ color: 'var(--rust)', marginBottom: 20 }}>Configuration Error</h2>
+          <h2 style={{ color: 'var(--rust)', marginBottom: 20 }}>{t('config_error_title')}</h2>
           <p style={{ opacity: 0.7, maxWidth: 400, margin: '0 auto', fontSize: 14 }}>
-            The application is missing its connection keys. 
-            Please ensure <strong>NEXT_PUBLIC_SUPABASE_URL</strong> and <strong>NEXT_PUBLIC_SUPABASE_ANON_KEY</strong> are set in Vercel.
+            {t('config_error_body')}
           </p>
         </div>
       </div>
@@ -286,22 +286,22 @@ export function TeamPortalClient({
     ['fiscal',        t('fiscal')],
     ['concepts',      t('concepts')],
     ['themes',        t('themes')],
-    ['portfolio',     'Public'],
-    ['stock',         'Stock'],
-    ['stock-take',    'Stock-take'],
-    ['system',        'System'],
-    ['audit',         'Audit Log'],
+    ['portfolio',     t('tab_portfolio')],
+    ['stock',         t('tab_stock')],
+    ['stock-take',    t('tab_stock_take')],
+    ['system',        t('tab_system')],
+    ['audit',         t('tab_audit')],
   ]
 
   const activeTabLabel = TABS_RAW.find(x => x[0] === tab)?.[1] ?? ''
 
   const GROUPS: { label: string, tabs: Tab[] }[] = [
-    { label: 'Gestion', tabs: ['overview', 'inventory', 'contacts', 'vault'] },
-    { label: 'Opérations', tabs: ['production', 'logistics', 'stock', 'stock-take'] },
-    { label: 'Vision', tabs: ['constellation', 'concepts', 'themes', 'map'] },
-    { label: 'Commercial', tabs: ['sales', 'exhibitions', 'pipeline', 'fiscal'] },
-    { label: 'Diffusion', tabs: ['portfolio'] },
-    { label: 'Config', tabs: isAdmin ? ['system', 'audit'] : ['system'] },
+    { label: t('nav_group_management'), tabs: ['overview', 'inventory', 'contacts', 'vault'] },
+    { label: t('nav_group_operations'), tabs: ['production', 'logistics', 'stock', 'stock-take'] },
+    { label: t('nav_group_vision'), tabs: ['constellation', 'concepts', 'themes', 'map'] },
+    { label: t('nav_group_commercial'), tabs: ['sales', 'exhibitions', 'pipeline', 'fiscal'] },
+    { label: t('nav_group_diffusion'), tabs: ['portfolio'] },
+    { label: t('nav_group_config'), tabs: isAdmin ? ['system', 'audit'] : ['system'] },
   ]
 
   const showDock = selection.size > 0 && tab !== 'constellation'
@@ -325,7 +325,7 @@ export function TeamPortalClient({
             <button
               type="button"
               onClick={() => setSidebarOpen(true)}
-              aria-label="Open navigation menu"
+              aria-label={t('aria_open_navigation')}
               style={{
                 flexShrink: 0,
                 fontSize: 18,
@@ -348,7 +348,7 @@ export function TeamPortalClient({
           <span style={{ color: 'var(--tx3)', fontSize: 10, opacity: 0.3, flexShrink: 0 }}>/</span>
           {!atelierNarrow && (
             <>
-              <div className="serif" style={{ fontSize: 24, letterSpacing: '-0.01em', color: 'var(--tx)', flexShrink: 0 }}>Atelier</div>
+              <div className="serif" style={{ fontSize: 24, letterSpacing: '-0.01em', color: 'var(--tx)', flexShrink: 0 }}>{t('atelier')}</div>
               <span style={{ color: 'var(--tx3)', fontSize: 10, opacity: 0.3 }}>/</span>
             </>
           )}
@@ -356,7 +356,7 @@ export function TeamPortalClient({
           {!atelierNarrow && (
             <>
               <div className="vline" style={{ height: 16, opacity: 0.3, marginLeft: 8 }} />
-              <div className="t-mono-sm" style={{ opacity: 0.5, fontSize: 9, flexShrink: 0 }}>{oeuvres.length} ŒUVRES</div>
+              <div className="t-mono-sm" style={{ opacity: 0.5, fontSize: 9, flexShrink: 0 }}>{oeuvres.length} {t('inventoryWorksBadge')}</div>
             </>
           )}
         </div>
@@ -433,7 +433,7 @@ export function TeamPortalClient({
                 }),
           }}>
             <div style={{ padding: '0 16px 12px', borderBottom: '1px solid var(--bd)', marginBottom: 8, display: atelierNarrow ? 'flex' : 'none', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span className="serif" style={{ fontSize: 18, color: 'var(--tx)' }}>Atelier</span>
+              <span className="serif" style={{ fontSize: 18, color: 'var(--tx)' }}>{t('atelier')}</span>
               <button
                 type="button"
                 onClick={() => setSidebarOpen(false)}
@@ -449,11 +449,11 @@ export function TeamPortalClient({
                   fontFamily: 'inherit',
                 }}
               >
-                {lang === 'fr' ? 'Fermer' : 'Close'}
+                {t('close')}
               </button>
             </div>
             <div className="t-mono-sm" style={{ display: atelierNarrow ? 'block' : 'none', padding: '0 20px 16px', fontSize: 9, opacity: 0.5 }}>
-              {oeuvres.length} ŒUVRES
+              {oeuvres.length} {t('inventoryWorksBadge')}
             </div>
           {GROUPS.map((g) => (
             <div key={g.label} style={{ marginBottom: 20 }}>
@@ -863,15 +863,15 @@ function OverviewTab({
         
         {/* Row 1: Executive Stats */}
         <div>
-          <div className="t-eyebrow" style={{ marginBottom: 24, opacity: 0.6 }}>Executive Summary</div>
+          <div className="t-eyebrow" style={{ marginBottom: 24, opacity: 0.6 }}>{t('ov_executive_summary')}</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 1, border: '1px solid var(--bd)', background: 'var(--bd)' }}>
             {[
               { l: t('works_cap'),                    v: oeuvres.length },
               { l: `${t('thisYear')} (${thisYear})`,  v: byYear },
-              { l: 'Available',                        v: available },
+              { l: t('ov_stat_available'),              v: available },
               { l: t('exposable'),                    v: exposable },
               { l: t('priced'),                       v: withPrice },
-              { l: 'Total Value',                     v: `€ ${Math.round(oeuvres.reduce((s,o) => s+(o.Prix||0), 0)/1000)}k` },
+              { l: t('ov_stat_total_value'),           v: `€ ${Math.round(oeuvres.reduce((s,o) => s+(o.Prix||0), 0)/1000)}k` },
             ].map(({ l, v }) => (
               <div key={l} style={{ padding: '20px 24px', background: 'var(--bg1)' }}>
                 <div className="stat">
@@ -886,15 +886,15 @@ function OverviewTab({
         {/* Row 1.5: Financial Pulse */}
         <div>
           <div className="row gap-sm" style={{ justifyContent: 'space-between', marginBottom: 20 }}>
-            <div className="t-eyebrow" style={{ opacity: 0.6 }}>Financial Pulse · {thisYear}</div>
-            <button className="t-mono-sm" onClick={() => onGoTab('fiscal')} style={{ background: 'none', border: 'none', color: 'var(--ac)', cursor: 'pointer', fontSize: 9, letterSpacing: 1 }}>MANAGE REVENUES →</button>
+            <div className="t-eyebrow" style={{ opacity: 0.6 }}>{t('ov_financial_pulse_fmt').replace(/\{year\}/g, String(thisYear))}</div>
+            <button className="t-mono-sm" onClick={() => onGoTab('fiscal')} style={{ background: 'none', border: 'none', color: 'var(--ac)', cursor: 'pointer', fontSize: 9, letterSpacing: 1 }}>{t('ov_manage_revenues')}</button>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40, padding: 24, background: 'var(--bg1)', border: '1px solid var(--bd)' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div className="t-label" style={{ fontSize: 10, color: 'var(--tx3)' }}>Income vs Expenses</div>
+              <div className="t-label" style={{ fontSize: 10, color: 'var(--tx3)' }}>{t('ov_income_vs_expenses')}</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
-                  <span>Income (Sales)</span>
+                  <span>{t('ov_income_sales')}</span>
                   <span style={{ color: 'var(--green)' }}>€ {Math.round(soldIncomeThisYear).toLocaleString()}</span>
                 </div>
                 <div style={{ height: 4, background: 'var(--bg2)', borderRadius: 2 }}>
@@ -902,7 +902,7 @@ function OverviewTab({
                 </div>
                 
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginTop: 4 }}>
-                  <span>Expenses</span>
+                  <span>{t('ov_expenses')}</span>
                   <span style={{ color: 'var(--rust)' }}>€ {Math.round(expenseTotal).toLocaleString()}</span>
                 </div>
                 <div style={{ height: 4, background: 'var(--bg2)', borderRadius: 2 }}>
@@ -912,15 +912,15 @@ function OverviewTab({
             </div>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, borderLeft: '1px solid var(--bd)', paddingLeft: 40 }}>
-              <div className="t-label" style={{ fontSize: 10, color: 'var(--tx3)' }}>Cash Health</div>
+              <div className="t-label" style={{ fontSize: 10, color: 'var(--tx3)' }}>{t('ov_cash_health')}</div>
               <div style={{ display: 'flex', alignItems: 'end', gap: 12 }}>
                 <div style={{ fontSize: 32, fontWeight: 700 }}>
                   € {Math.round(soldIncomeThisYear - expenseTotal).toLocaleString()}
                 </div>
-                <div className="t-mono-sm" style={{ marginBottom: 8, color: 'var(--tx3)' }}>NET BNC ESTIMATE</div>
+                <div className="t-mono-sm" style={{ marginBottom: 8, color: 'var(--tx3)' }}>{t('ov_net_bnc')}</div>
               </div>
               <div style={{ fontSize: 9, color: 'var(--tx3)', fontStyle: 'italic' }}>
-                * Based on sold works delivered in {thisYear} and recorded expenses.
+                {t('ov_financial_note_fmt').replace(/\{year\}/g, String(thisYear))}
               </div>
             </div>
           </div>
@@ -929,8 +929,8 @@ function OverviewTab({
         {/* Row 2: Visual Grid (Recent Documentation) */}
         <div>
           <div className="row gap-sm" style={{ justifyContent: 'space-between', marginBottom: 20 }}>
-            <div className="t-eyebrow" style={{ opacity: 0.6 }}>Recent Documentation</div>
-            <button className="t-mono-sm" onClick={() => onGoTab('inventory')} style={{ background: 'none', border: 'none', color: 'var(--ac)', cursor: 'pointer', fontSize: 9, letterSpacing: 1 }}>VIEW ALL →</button>
+            <div className="t-eyebrow" style={{ opacity: 0.6 }}>{t('ov_recent_docs')}</div>
+            <button className="t-mono-sm" onClick={() => onGoTab('inventory')} style={{ background: 'none', border: 'none', color: 'var(--ac)', cursor: 'pointer', fontSize: 9, letterSpacing: 1 }}>{t('ov_view_all')}</button>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 12 }}>
             {recentWorks.map((o) => (
@@ -938,7 +938,7 @@ function OverviewTab({
                 {o.txtImageNameLink ? (
                   <WorkThumb file={o.txtImageNameLink} size={256} alt="" />
                 ) : (
-                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--tx3)', fontSize: 10 }}>NO IMG</div>
+                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--tx3)', fontSize: 10 }}>{t('ov_no_image_placeholder')}</div>
                 )}
                 <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '4px 6px', background: 'linear-gradient(transparent, color-mix(in srgb, var(--bg0) 80%, transparent))', color: 'var(--tx)', fontSize: 8, fontFamily: 'var(--font-mono)' }}>
                   #{o.OeuvreID}
@@ -972,11 +972,11 @@ function OverviewTab({
           {/* Production & Health Summary */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 20 }}>
              <div style={{ padding: '16px', background: 'var(--bg1)', border: '1px solid var(--bd)' }}>
-                <div className="t-eyebrow" style={{ fontSize: 8, marginBottom: 12, color: 'var(--tx3)' }}>Studio Health</div>
+                <div className="t-eyebrow" style={{ fontSize: 8, marginBottom: 12, color: 'var(--tx3)' }}>{t('ov_studio_health')}</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <HealthRow label="Missing Dimensions" count={missingDims} color={missingDims > 0 ? 'var(--rust)' : 'var(--tx3)'} />
-                  <HealthRow label="Missing Photos" count={missingImages} color={missingImages > 0 ? 'var(--rust)' : 'var(--tx3)'} />
-                  <HealthRow label="No Location Set" count={missingLoc} color={missingLoc > 0 ? 'var(--rust)' : 'var(--tx3)'} />
+                  <HealthRow label={t('ov_health_missing_dims')} count={missingDims} color={missingDims > 0 ? 'var(--rust)' : 'var(--tx3)'} />
+                  <HealthRow label={t('ov_health_missing_photos')} count={missingImages} color={missingImages > 0 ? 'var(--rust)' : 'var(--tx3)'} />
+                  <HealthRow label={t('ov_health_missing_loc')} count={missingLoc} color={missingLoc > 0 ? 'var(--rust)' : 'var(--tx3)'} />
                 </div>
              </div>
           </div>
@@ -990,18 +990,21 @@ function OverviewTab({
         {isAdmin && conflicts.length > 0 && (
           <div style={{ padding: 16, background: 'var(--rust)11', border: '1px solid var(--rust)44' }}>
             <div className="t-eyebrow" style={{ color: 'var(--rust)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 14 }}>⚠</span> Integrity Alerts
+              <span style={{ fontSize: 14 }}>⚠</span> {t('ov_integrity_title')}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {conflicts.map(c => (
                 <div key={c.id} style={{ fontSize: 11, color: 'var(--tx2)', lineHeight: 1.4 }}>
-                  <strong style={{ color: 'var(--tx)' }}>Contact Collision:</strong><br/>
-                  Public entry <em>&quot;{c.public?.NomInstitution || c.public?.Nom}&quot;</em> matches a hidden private record. 
+                  <strong style={{ color: 'var(--tx)' }}>{t('ov_integrity_collision')}</strong><br/>
+                  {t('ov_integrity_match_line').replace(
+                    /\{name\}/g,
+                    String(c.public?.NomInstitution || c.public?.Nom || ''),
+                  )}
                   <button 
                     onClick={() => onGoTab('contacts')}
                     style={{ display: 'block', marginTop: 4, background: 'none', border: 'none', color: 'var(--ac)', padding: 0, fontSize: 10, cursor: 'pointer' }}
                   >
-                    RESOLVE IN CONTACTS →
+                    {t('ov_integrity_resolve')}
                   </button>
                 </div>
               ))}
@@ -1013,7 +1016,7 @@ function OverviewTab({
         {reminders.length > 0 && (
           <div>
             <div className="t-eyebrow" style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-              Reminders
+              {t('ov_reminders_title')}
               {reminderCount > 0 && <span style={{ background: 'var(--ac)', color: 'var(--bg0)', padding: '1px 6px', borderRadius: 10, fontSize: 8 }}>{reminderCount}</span>}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -1023,7 +1026,13 @@ function OverviewTab({
                   <div key={r.id} style={{ padding: '10px 12px', background: 'var(--bg1)', border: '1px solid var(--bd2)', borderLeft: `2px solid var(--ac)` }}>
                     <div style={{ fontSize: 10, color: 'var(--tx)', lineHeight: 1.4 }}>{r.message}</div>
                     <div style={{ fontSize: 8, color: urgencyColor(days), marginTop: 4, letterSpacing: 0.5, textTransform: 'uppercase' }}>
-                      {days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : days < 0 ? `${Math.abs(days)}d ago` : `in ${days}d`}
+                      {days === 0
+                        ? t('ov_reminder_today')
+                        : days === 1
+                          ? t('ov_reminder_tomorrow')
+                          : days < 0
+                            ? t('ov_reminder_days_ago_fmt').replace(/\{days\}/g, String(Math.abs(days)))
+                            : t('ov_reminder_in_days_fmt').replace(/\{days\}/g, String(days))}
                     </div>
                   </div>
                 )
@@ -1035,7 +1044,7 @@ function OverviewTab({
         {/* Pipeline Pulse */}
         <div>
           <div className="t-eyebrow" style={{ marginBottom: 16, cursor: 'pointer' }} onClick={() => onGoTab('pipeline')}>
-            Active Pipeline →
+            {t('ov_active_pipeline')}
           </div>
           {upcoming.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -1050,14 +1059,18 @@ function OverviewTab({
                   }}>
                     <div style={{ fontSize: 10, fontWeight: 500, color: 'var(--tx)' }}>{p.nom}</div>
                     <div style={{ fontSize: 8, color: col, marginTop: 4, letterSpacing: 0.5 }}>
-                      {days < 0 ? `${Math.abs(days)}d OVERDUE` : days === 0 ? 'DUE TODAY' : `IN ${days} DAYS`}
+                      {days < 0
+                        ? t('ov_pulse_deadline_overdue_fmt').replace(/\{days\}/g, String(Math.abs(days)))
+                        : days === 0
+                          ? t('ov_pulse_deadline_due_today')
+                          : t('ov_pulse_deadline_in_days_fmt').replace(/\{days\}/g, String(days))}
                     </div>
                   </div>
                 )
               })}
             </div>
           ) : (
-            <div className="t-mono-sm" style={{ opacity: 0.4, padding: 12, border: '1px dashed var(--bd2)', textAlign: 'center' }}>No active deadlines</div>
+            <div className="t-mono-sm" style={{ opacity: 0.4, padding: 12, border: '1px dashed var(--bd2)', textAlign: 'center' }}>{t('ov_no_deadlines')}</div>
           )}
         </div>
 
@@ -1065,7 +1078,7 @@ function OverviewTab({
         {burningConcepts.length > 0 && (
           <div>
             <div className="t-eyebrow" style={{ marginBottom: 16, cursor: 'pointer' }} onClick={() => onGoTab('concepts')}>
-              Burning Ideas →
+              {t('ov_burning_ideas')}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {burningConcepts.map((c) => (
@@ -1076,7 +1089,7 @@ function OverviewTab({
                 }}>
                   <div style={{ fontSize: 10, fontWeight: 500, color: 'var(--tx)' }}>{c.titre}</div>
                   <div style={{ fontSize: 8, color: 'var(--tx3)', marginTop: 4, letterSpacing: 1 }}>
-                    {'●'.repeat(c.energie)} <span style={{ marginLeft: 4 }}>{['Vague', 'Naissante', 'Active', 'Urgente', 'Brûlante'][c.energie - 1]}</span>
+                    {'●'.repeat(c.energie)} <span style={{ marginLeft: 4 }}>{[t('ov_energy_1'), t('ov_energy_2'), t('ov_energy_3'), t('ov_energy_4'), t('ov_energy_5')][c.energie - 1]}</span>
                   </div>
                 </div>
               ))}
@@ -1144,7 +1157,7 @@ function CompareModal({ ids, oeuvres, tM, sM, contacts, addresses, statusLabelMa
   }
 
   const resolveLocation = (cid: any) => {
-    if (!cid) return 'Atelier (Marseille)'
+    if (!cid) return t('defaultStudioLocation')
     const c = contacts.find(x => String(x.ContactID) === String(cid))
     if (!c) return `#${cid}`
     

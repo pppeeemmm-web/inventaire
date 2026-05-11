@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useI18n } from '@/lib/i18n/context'
 import { fetchSystemLogs, type AuditLogEntry } from '@/app/atelier/audit/actions'
 
 export function AuditTab() {
+  const { t } = useI18n()
   const [logs, setLogs] = useState<AuditLogEntry[]>([])
   const [filter, setFilter] = useState('ALL')
   const [busy, setBusy] = useState(true)
@@ -37,19 +39,19 @@ export function AuditTab() {
       <div style={{ padding: '12px 28px', borderBottom: '1px solid var(--bd)', display: 'flex', alignItems: 'center', gap: 20 }}>
         <div className="t-eyebrow" style={{ fontSize: 10 }}>Audit Ledger</div>
         <div style={{ display: 'flex', gap: 8 }}>
-          {eventTypes.map(t => (
+          {eventTypes.map((evt) => (
             <button
-              key={t}
-              onClick={() => setFilter(t)}
+              key={evt}
+              onClick={() => setFilter(evt)}
               className="btn ghost sm"
               style={{
                 fontSize: 9, letterSpacing: 1,
-                border: filter === t ? '1px solid var(--bd)' : '1px solid transparent',
-                opacity: filter === t ? 1 : 0.5,
-                background: filter === t ? 'var(--bg1)' : 'transparent'
+                border: filter === evt ? '1px solid var(--bd)' : '1px solid transparent',
+                opacity: filter === evt ? 1 : 0.5,
+                background: filter === evt ? 'var(--bg1)' : 'transparent'
               }}
             >
-              {t.replace('_', ' ')}
+              {evt.replace('_', ' ')}
             </button>
           ))}
         </div>
@@ -84,7 +86,7 @@ export function AuditTab() {
                     {l.event_type}
                   </span>
                 </td>
-                <td style={{ color: 'var(--tx2)' }}>{l.user_email?.split('@')[0] || 'System'}</td>
+                <td style={{ color: 'var(--tx2)' }}>{l.user_email?.split('@')[0] || t('audit_actor_system')}</td>
                 <td style={{ opacity: 0.6, fontSize: 10 }}>{l.table_name || '—'}</td>
                 <td>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>

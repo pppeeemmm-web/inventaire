@@ -4,6 +4,7 @@
 // No options UI. For atelier tuning use PdfExportDrawer instead.
 
 import { useState } from 'react'
+import { useI18n } from '@/lib/i18n/context'
 import { generatePortfolioPdf } from '@/app/atelier/portfolio/pdf-action'
 import { PRESET_DEFAULTS, type PdfPreset } from '@/lib/portfolio-pdf-types'
 import type { Lang } from '@/lib/i18n/dictionary'
@@ -35,6 +36,7 @@ const PRESETS: { id: Exclude<PdfPreset, 'custom'>; labelFr: string; labelEn: str
 ]
 
 export default function LandingPdfPopup({ open, onClose, lang }: Props) {
+  const { t } = useI18n()
   const [busyId,   setBusyId]   = useState<PdfPreset | null>(null)
   const [phase,    setPhase]    = useState<Phase>('idle')
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
@@ -110,7 +112,7 @@ export default function LandingPdfPopup({ open, onClose, lang }: Props) {
         fontFamily: 'JetBrains Mono, ui-monospace, monospace',
         boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
       }}>
-        <button onClick={() => !busy && onClose()} aria-label="Close" style={{
+        <button onClick={() => !busy && onClose()} aria-label={t('close')} style={{
           position: 'absolute', top: 10, right: 14,
           background: 'none', border: 'none',
           fontSize: 18, color: '#8a8680', padding: 4,
@@ -122,13 +124,13 @@ export default function LandingPdfPopup({ open, onClose, lang }: Props) {
           fontSize: 9, letterSpacing: 3, textTransform: 'uppercase',
           color: '#8a8680', marginBottom: 4,
         }}>
-          {T('Télécharger', 'Download')}
+          {t('landing_pdf_download_strip')}
         </div>
         <div style={{
           fontSize: 16, color: '#1a1816', marginBottom: 22,
           fontFamily: 'Instrument Serif, serif', letterSpacing: '-0.01em',
         }}>
-          Portfolio PDF
+          {t('landing_pdf_modal_title')}
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -168,7 +170,7 @@ export default function LandingPdfPopup({ open, onClose, lang }: Props) {
           <div style={{
             marginTop: 14, fontSize: 9, color: '#c05050', lineHeight: 1.5,
           }}>
-            {T('Erreur :', 'Error:')} {errorMsg}
+            {t('error_prefix')} {errorMsg}
           </div>
         )}
 
@@ -176,7 +178,7 @@ export default function LandingPdfPopup({ open, onClose, lang }: Props) {
           marginTop: 18, fontSize: 8, color: '#bbb',
           letterSpacing: 1, textTransform: 'uppercase', textAlign: 'center',
         }}>
-          A4 · {lang === 'fr' ? 'Français' : 'English'}
+          A4 · {lang === 'fr' ? t('locale_fr_short') : t('locale_en_short')}
         </div>
       </div>
     </>

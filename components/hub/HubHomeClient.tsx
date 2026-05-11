@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useI18n } from '@/lib/i18n/context'
 import { useMediaQuery } from '@/lib/useMediaQuery'
-import { thumbUrl } from '@/lib/data'
 import { PemThemeToggle } from '@/components/PemThemeToggle'
 import { WorkThumb } from '@/components/atelier/WorkThumb'
 
@@ -92,22 +91,22 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
                 fontFamily: 'inherit',
               }}
             >
-              Menu
+              {t('hub_menu')}
             </button>
           </div>
         ) : (
           <div className="row gap-md" style={{ flexShrink: 0 }}>
-            <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>{t('signedAs')} · atelier</div>
+            <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>{t('signedAs')} · {t('hub_nav_signature_suffix')}</div>
             <Link href="/Atelier_Studio_Bible.pdf" target="_blank" className="t-mono-sm" style={{ color: 'var(--tx2)', textDecoration: 'none', marginLeft: 12 }}>
-              Studio Bible 📕
+              {t('hub_studio_bible')}
             </Link>
             <div className="vline" style={{ height: 12, margin: '0 12px', opacity: 0.3 }} />
             <Link href="/atelier?tab=system" className="t-mono-sm" style={{ color: 'var(--tx2)', textDecoration: 'none' }}>
-              Suggestions 💡
+              {t('hub_suggestions')}
             </Link>
             <div className="vline" style={{ height: 12, margin: '0 12px', opacity: 0.3 }} />
             <Link href="/" className="t-mono-sm" style={{ color: 'var(--ac)', textDecoration: 'none', border: '1px solid var(--ac)', padding: '2px 8px' }}>
-              {lang === 'fr' ? 'Site Public' : 'Public Site'}
+              {t('hub_public_site')}
             </Link>
             <div style={{ display: 'flex', border: '1px solid var(--bd)', fontSize: 10, letterSpacing: 1 }}>
               <PemThemeToggle showLabels={!hubNavCompact} />
@@ -136,7 +135,7 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
           />
           <nav
             id="hub-drawer-nav"
-            aria-label="Hub"
+            aria-label={t('hub_drawer_aria')}
             style={{
               position: 'fixed',
               top: 0,
@@ -157,7 +156,7 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span className="t-mono-sm" style={{ color: 'var(--tx3)' }}>{t('signedAs')} · atelier</span>
+              <span className="t-mono-sm" style={{ color: 'var(--tx3)' }}>{t('signedAs')} · {t('hub_nav_signature_suffix')}</span>
               <button
                 type="button"
                 onClick={() => setHubMenuOpen(false)}
@@ -173,17 +172,17 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
                   fontFamily: 'inherit',
                 }}
               >
-                {lang === 'fr' ? 'Fermer' : 'Close'}
+                {t('close')}
               </button>
             </div>
             <Link href="/Atelier_Studio_Bible.pdf" target="_blank" onClick={() => setHubMenuOpen(false)} className="t-mono-sm" style={{ color: 'var(--tx2)', textDecoration: 'none' }}>
-              Studio Bible 📕
+              {t('hub_studio_bible')}
             </Link>
             <Link href="/atelier?tab=system" onClick={() => setHubMenuOpen(false)} className="t-mono-sm" style={{ color: 'var(--tx2)', textDecoration: 'none' }}>
-              Suggestions 💡
+              {t('hub_suggestions')}
             </Link>
             <Link href="/" onClick={() => setHubMenuOpen(false)} className="t-mono-sm" style={{ color: 'var(--ac)', textDecoration: 'none', border: '1px solid var(--ac)', padding: '8px 12px', alignSelf: 'flex-start' }}>
-              {lang === 'fr' ? 'Site Public' : 'Public Site'}
+              {t('hub_public_site')}
             </Link>
             <div style={{ display: 'flex', border: '1px solid var(--bd)', alignSelf: 'flex-start' }}>
               {(['fr', 'en'] as const).map((l) => (
@@ -257,11 +256,11 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
           borderBottom: '1px solid var(--bd)',
         }}>
           <PortalTile code="01" title={t('team')} desc={t('teamDesc')} href="/atelier"
-            detail={{ works: stats.total, caption: t('works_cap') }} lang={lang} />
+            detail={{ works: stats.total, caption: t('works_cap') }} />
           <PortalTile code="02" title={t('public')} desc={t('publicDesc')} href="/works"
-            detail={{ works: stats.publicWorks, caption: t('hubWorksOnline') }} lang={lang} />
-          <PortalTile code="03" title={t('clients')} desc={t('clientsDesc')} href="/collection" lang={lang} wip />
-          <PortalTile code="04" title={t('galleries')} desc={t('galleriesDesc')} href="/galerie" lang={lang} wip />
+            detail={{ works: stats.publicWorks, caption: t('hubWorksOnline') }} />
+          <PortalTile code="03" title={t('clients')} desc={t('clientsDesc')} href="/collection" wip />
+          <PortalTile code="04" title={t('galleries')} desc={t('galleriesDesc')} href="/galerie" wip />
         </div>
 
         {/* Section 3: Live Pulse */}
@@ -294,7 +293,7 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
               {burningIdeas.slice(0, 4).map(i => (
                 <div key={i.id} onClick={() => router.push('/atelier?tab=concepts')} 
                   style={{ padding: '12px 16px', background: 'var(--bg1)', border: '1px solid var(--bd2)', cursor: 'pointer', transition: 'border-color .2s' }}>
-                  <div className="t-mono-sm" style={{ fontSize: 8, color: 'var(--tx3)', marginBottom: 4, textTransform: 'uppercase' }}>{i.medium || 'Concept'}</div>
+                  <div className="t-mono-sm" style={{ fontSize: 8, color: 'var(--tx3)', marginBottom: 4, textTransform: 'uppercase' }}>{i.medium || t('hub_concept_fallback')}</div>
                   <div className="serif" style={{ fontSize: 15, color: 'var(--tx)' }}>{i.title}</div>
                 </div>
               ))}
@@ -303,10 +302,10 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
 
           {/* System Ledger */}
           <div>
-            <div className="t-eyebrow" style={{ marginBottom: 24, opacity: 0.5 }}>03 · Ledger</div>
+            <div className="t-eyebrow" style={{ marginBottom: 24, opacity: 0.5 }}>03 · {t('hub_pulse_ledger')}</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {displayLogs.length === 0 ? (
-                <div className="t-mono-sm" style={{ color: 'var(--tx3)', opacity: 0.5 }}>No entries yet</div>
+                <div className="t-mono-sm" style={{ color: 'var(--tx3)', opacity: 0.5 }}>{t('hub_ledger_empty')}</div>
               ) : displayLogs.slice(0, 6).map(log => (
                 <div key={log.id} onClick={() => router.push('/atelier?tab=system')}
                   style={{ display: 'flex', gap: 10, alignItems: 'flex-start', borderBottom: '1px solid var(--bd2)', paddingBottom: 10, cursor: 'pointer' }}>
@@ -322,7 +321,7 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
             </div>
             <div onClick={() => router.push('/atelier?tab=system')}
               style={{ marginTop: 16, fontSize: 8, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--tx3)', cursor: 'pointer' }}>
-              View all →
+              {t('hub_ledger_view_all')}
             </div>
           </div>
 
@@ -353,7 +352,7 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
 
       {/* Footer */}
       <div style={{ padding: '10px 28px', borderTop: '1px solid var(--bd)', display: 'flex', justifyContent: 'space-between', color: 'var(--tx3)', fontSize: 9, letterSpacing: 1 }}>
-        <span>PEM · Atelier interne</span>
+        <span>{t('hub_footer_internal')}</span>
         <span>v0.1 · {new Date().toISOString().slice(0, 10)}</span>
       </div>
     </div>
@@ -361,12 +360,13 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
 }
 
 function PortalTile({
-  code, title, desc, href, emphasis, detail, lang, wip
+  code, title, desc, href, emphasis, detail, wip
 }: {
   code: string; title: string; desc: string; href: string
-  emphasis?: boolean; detail?: { works: number; caption: string }; lang: string; wip?: boolean
+  emphasis?: boolean; detail?: { works: number; caption: string }; wip?: boolean
 }) {
   const router = useRouter()
+  const { t } = useI18n()
   return (
     <button onClick={() => !wip && router.push(href)}
       style={{
@@ -390,7 +390,7 @@ function PortalTile({
             color: 'var(--bg0)', background: 'var(--ac)', 
             padding: '2px 6px', fontWeight: 600 
           }}>
-            WIP
+            {t('hub_tile_wip')}
           </span>
         )}
       </div>
@@ -405,7 +405,7 @@ function PortalTile({
         </div>
       )}
       <div className="row gap-sm" style={{ marginTop: detail ? 0 : 'auto', color: wip ? 'var(--tx3)' : 'var(--ac)', fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', fontWeight: 600 }}>
-        <span>{wip ? (lang === 'fr' ? 'Bientôt' : 'Soon') : (lang === 'fr' ? 'Entrer' : 'Enter')}</span>{!wip && <span>→</span>}
+        <span>{wip ? t('hub_tile_soon') : t('hub_tile_enter')}</span>{!wip && <span>→</span>}
       </div>
     </button>
   )

@@ -22,7 +22,7 @@ Worktree edits → copy to real app (dev server runs from real app).
 - Server Components fetch data, pass to Client Components
 - Mutations: Server Actions ('use server') in app/**/actions.ts only. No API routes.
 - Auth: Supabase SSR middleware enforces auth on all /atelier /hub /galerie routes
-- i18n: useI18n() hook from lib/i18n/context.tsx (fr/en via localStorage)
+- i18n: useI18n().t(key) + lib/i18n/dictionary.ts — both fr and en for every key; default fr; no hardcoded UI French/English (DB copy & proper nouns excepted)
 - Image upload: Sharp → 400px AVIF thumb → R2 via AWS S3 SDK
 - Supabase clients: createClient() (anon, RLS enforced) · createServiceClient() (service_role, admin bypass)
 

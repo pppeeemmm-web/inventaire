@@ -19,24 +19,6 @@ import { useUnsavedCloseGuard } from '@/hooks/useUnsavedCloseGuard'
 
 // ── Config ────────────────────────────────────────────────────────────────
 
-const PRODUCTION_STAGES = [
-  { id: 'atelier',    label: 'En production', desc: 'Travail en cours'    },
-  { id: 'catalogued', label: 'Catalogué',     desc: 'Photo en attente'    },
-  { id: 'available',  label: 'Disponible',    desc: 'Prêt pour diffusion' },
-]
-
-// Ownership stages: artist = statusId 1 (en production) or 2 (available);
-// others map 1-to-1 to OeuvreStatus rows.
-const OWNERSHIP_STAGES = [
-  { id: 'artist',         label: 'Atelier (Pem)',  desc: 'Propriété totale'            },
-  { id: 'reserved',       label: 'Réservé',        desc: 'Vente en cours'              },
-  { id: 'consigned',      label: 'Consigné',       desc: 'Galerie / sans transfert'    },
-  { id: 'loan',           label: 'Prêt',           desc: 'Institution / sans transfert'},
-  { id: 'sold',           label: 'Vendu',          desc: 'Transfert propriété'         },
-  { id: 'gift',           label: 'Don',            desc: 'Transfert propriété'         },
-  { id: 'artist_archive', label: 'Archive (Pem)',  desc: 'Retiré de la diffusion'      },
-]
-
 // statusId lookup for ownership stages (statusId 1/2 handled via prod logic)
 const OWN_TO_STATUS_ID: Record<string, number> = {
   reserved:       4,
@@ -97,6 +79,34 @@ export function WorkForm({
   action,
 }: Props) {
   const { t } = useI18n()
+  const PRODUCTION_STAGES = useMemo(
+    () => [
+      { id: 'atelier' as const, label: t('wf_prod_atelier_l'), desc: t('wf_prod_atelier_d') },
+      { id: 'catalogued' as const, label: t('wf_prod_cat_l'), desc: t('wf_prod_cat_d') },
+      { id: 'available' as const, label: t('wf_prod_avail_l'), desc: t('wf_prod_avail_d') },
+    ],
+    [t],
+  )
+  const OWNERSHIP_STAGES = useMemo(
+    () => [
+      { id: 'artist', label: t('wf_own_artist_l'), desc: t('wf_own_artist_d') },
+      { id: 'reserved', label: t('wf_own_reserved_l'), desc: t('wf_own_reserved_d') },
+      { id: 'consigned', label: t('wf_own_consigned_l'), desc: t('wf_own_consigned_d') },
+      { id: 'loan', label: t('wf_own_loan_l'), desc: t('wf_own_loan_d') },
+      { id: 'sold', label: t('wf_own_sold_l'), desc: t('wf_own_sold_d') },
+      { id: 'gift', label: t('wf_own_gift_l'), desc: t('wf_own_gift_d') },
+      { id: 'artist_archive', label: t('wf_own_archive_l'), desc: t('wf_own_archive_d') },
+    ],
+    [t],
+  )
+  const visibilityOptions = useMemo(
+    () => [
+      { level: 0, label: t('wf_vis_public'), desc: t('wf_vis_public_d') },
+      { level: 1, label: t('wf_vis_masked'), desc: t('wf_vis_masked_d') },
+      { level: 2, label: t('wf_vis_private'), desc: t('wf_vis_private_d') },
+    ],
+    [t],
+  )
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const formRef = useRef<HTMLFormElement>(null)
@@ -174,10 +184,10 @@ export function WorkForm({
   )
 
   const currentLoc = useMemo(() => {
-    if (ownStage === 'artist' || ownStage === 'artist_archive') {
+      if (ownStage === 'artist' || ownStage === 'artist_archive') {
       return pemContact?.Ville
         ? `${pemContact.Ville}, ${pemContact.Pays ?? ''}`
-        : 'Atelier'
+        : t('atelier')
     }
     if (ownStage === 'reserved') {
       if (currentOwner) {
@@ -204,7 +214,7 @@ export function WorkForm({
       return loc || `${currentOwner.NomInstitution ?? currentOwner.Nom ?? 'Acheteur'} (localisation TBD)`
     }
     return '—'
-  }, [ownStage, currentOwner, pemContact, activeConsignment, isOwnershipTransferred])
+  }, [ownStage, currentOwner, pemContact, activeConsignment, isOwnershipTransferred, t])
 
   // ── Automations ───────────────────────────────────────────────────
 
@@ -295,7 +305,7 @@ export function WorkForm({
 
     startTransition(async () => {
       const res = await action(fd)
-      if ('error' in res) alert('Erreur : ' + res.error)
+      if ('error' in res) alert(`${t('error_prefix')} ${res.error}`)
       else { router.push('/atelier'); router.refresh() }
     })
   }
@@ -303,7 +313,7 @@ export function WorkForm({
   async function saveLookup(table: string, name: string) {
     if (!name) return
     const res = await createLookup(table, cap(name))
-    if ('error' in res) { alert('Erreur : ' + res.error); return }
+    if ('error' in res) { alert(`${t('error_prefix')} ${res.error}`); return }
     if (table === 'Technique') { setLocalTechniques(p => [...p, { TechniqueID: res.id, Technique: cap(name) }]); setTechniqueId(String(res.id)) }
     else if (table === 'Support') { setLocalSupports(p => [...p, { SupportID: res.id, Support: cap(name) }]); setSupportId(String(res.id)) }
     else if (table === 'Format') { setLocalFormats(p => [...p, { FormatID: res.id, Format: cap(name) }]); setFormatId(String(res.id)) }
@@ -316,21 +326,23 @@ export function WorkForm({
       {/* Header */}
       <div style={{ flexShrink: 0, padding: '12px 28px', borderBottom: '1px solid var(--bd)', background: 'var(--bg1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div className="row gap-md">
-          <button type="button" className="btn ghost sm" onClick={() => router.back()}>← Retour</button>
-          <div className="t-eyebrow" style={{ color: 'var(--ac)' }}>{oeuvre ? `Modifier #${oeuvre.OeuvreID}` : 'Nouvelle œuvre'}</div>
+          <button type="button" className="btn ghost sm" onClick={() => router.back()}>← {t('back')}</button>
+          <div className="t-eyebrow" style={{ color: 'var(--ac)' }}>
+            {oeuvre ? `${t('wf_modify_label')} #${oeuvre.OeuvreID}` : t('newWork')}
+          </div>
           {isOwnershipTransferred && (
             <div className="t-eyebrow" style={{ color: 'var(--rust)', background: 'var(--rust)22', padding: '2px 6px' }}>
-              {ownStage === 'gift' ? 'Don' : 'Vendu'}
+              {ownStage === 'gift' ? t('wf_badge_gift') : t('wf_badge_sold')}
             </div>
           )}
           {isArchived && (
             <div className="t-eyebrow" style={{ color: 'var(--mt)', background: 'var(--mt)22', padding: '2px 6px' }}>
-              Archive
+              {t('wf_badge_archive')}
             </div>
           )}
         </div>
         <button type="button" className="btn primary sm" onClick={handleSubmit} disabled={isPending}>
-          {isPending ? 'Enregistrement…' : 'Enregistrer'}
+          {isPending ? t('savingRecord') : t('save')}
         </button>
       </div>
 
@@ -342,7 +354,7 @@ export function WorkForm({
           <ImageManager oeuvreId={oeuvre?.OeuvreID ?? 0} initialImages={initialImages} />
 
           <div style={{ marginTop: 32 }}>
-            <div className="t-eyebrow" style={{ marginBottom: 12, fontSize: 11 }}>Thèmes / Séries</div>
+            <div className="t-eyebrow" style={{ marginBottom: 12, fontSize: 11 }}>{t('wf_themes_series')}</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {allThemes.map(th => (
                 <button key={th.id} type="button"
@@ -355,17 +367,17 @@ export function WorkForm({
           </div>
 
           <div style={{ marginTop: 32, borderTop: '1px solid var(--bd)', paddingTop: 24 }}>
-            <div className="t-eyebrow" style={{ marginBottom: 12, fontSize: 11 }}>Commentaires</div>
+            <div className="t-eyebrow" style={{ marginBottom: 12, fontSize: 11 }}>{t('wf_comments')}</div>
             <textarea value={commentaires} onChange={e => setCommentaires(e.target.value)}
-              style={{ ...FIS, height: 120, resize: 'vertical', fontSize: 13 }} placeholder="Notes internes…" />
+              style={{ ...FIS, height: 120, resize: 'vertical', fontSize: 13 }} placeholder={t('wf_comments_placeholder')} />
           </div>
 
           <div style={{ marginTop: 32, borderTop: '1px solid var(--bd)', paddingTop: 24 }}>
-            <div className="t-eyebrow" style={{ marginBottom: 12, fontSize: 11 }}>Historique / Provenance</div>
+            <div className="t-eyebrow" style={{ marginBottom: 12, fontSize: 11 }}>{t('wf_history_title')}</div>
             <textarea value={historique} onChange={e => setHistorique(e.target.value)}
-              style={{ ...FIS, height: 140, resize: 'vertical', fontSize: 12, fontFamily: 'var(--font-mono)' }} placeholder="Historique des mouvements…" />
+              style={{ ...FIS, height: 140, resize: 'vertical', fontSize: 12, fontFamily: 'var(--font-mono)' }} placeholder={t('wf_history_placeholder')} />
             <div style={{ marginTop: 10, fontSize: 11, color: 'var(--tx3)', lineHeight: 1.4 }}>
-              Les changements de localisation sont ajoutés automatiquement si le contact change.
+              {t('wf_history_hint')}
             </div>
           </div>
         </div>
@@ -376,19 +388,19 @@ export function WorkForm({
 
             {/* 1. Identity */}
             <section>
-              <SectionHeader title="1. Identité" />
+              <SectionHeader title={t('wf_section_identity')} />
               <div style={{ display: 'grid', gridTemplateColumns: '3fr 1fr', gap: 20 }}>
-                <Field label="Titre"><input name="titre" value={titre} onChange={e => setTitre(cap(e.target.value))} style={FIS} /></Field>
-                <Field label="Année (AAAA/MM/JJ)"><input name="annee" value={annee} onChange={e => setAnnee(e.target.value)} style={FIS} placeholder="1999/10/31" /></Field>
+                <Field label={t('wf_field_title')}><input name="titre" value={titre} onChange={e => setTitre(cap(e.target.value))} style={FIS} /></Field>
+                <Field label={t('wf_field_year')}><input name="annee" value={annee} onChange={e => setAnnee(e.target.value)} style={FIS} placeholder="1999/10/31" /></Field>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20, marginTop: 16 }}>
-                <Field label="Technique">
+                <Field label={t('technique')}>
                   <CreatableSelect value={techniqueId} options={localTechniques.map(t => ({ id: String(t.TechniqueID), label: t.Technique ?? '' }))} onChange={setTechniqueId} onAdd={name => saveLookup('Technique', name)} name="technique" />
                 </Field>
-                <Field label="Support">
+                <Field label={t('support')}>
                   <CreatableSelect value={supportId} options={localSupports.map(s => ({ id: String(s.SupportID), label: s.Support ?? '' }))} onChange={setSupportId} onAdd={name => saveLookup('Support', name)} name="support" />
                 </Field>
-                <Field label="Format">
+                <Field label={t('wf_field_format')}>
                   <CreatableSelect value={formatId} options={localFormats.map(f => ({ id: String(f.FormatID), label: f.Format ?? '' }))} onChange={setFormatId} onAdd={name => saveLookup('Format', name)} name="format" />
                 </Field>
               </div>
@@ -411,7 +423,7 @@ export function WorkForm({
                           setLargeur(v)
                         }}
                         style={FIS}
-                        title="Diamètre"
+                        title={t('wf_diameter_tt')}
                       />
                     </Field>
                     <Field label="D (cm)"><input name="profondeur" value={profondeur} onChange={e => setProfondeur(e.target.value)} style={FIS} /></Field>
@@ -426,7 +438,7 @@ export function WorkForm({
               </div>
               {isDigital && (
                 <div style={{ marginTop: 24, padding: 24, border: '1px solid var(--bd)', background: 'var(--bg2)' }}>
-                  <div className="t-eyebrow" style={{ fontSize: 11, marginBottom: 16 }}>Format numérique</div>
+                  <div className="t-eyebrow" style={{ fontSize: 11, marginBottom: 16 }}>{t('wf_fmt_digital')}</div>
                   <div className="t-mono-xs" style={{ color: 'var(--ac)', fontSize: 12 }}>≈ {pxToCm(hauteur)} × {pxToCm(largeur)} cm (@300dpi)</div>
                 </div>
               )}
@@ -434,28 +446,28 @@ export function WorkForm({
 
             {/* 2. Production State */}
             <section style={{ opacity: (isOwnershipTransferred || isArchived) ? 0.5 : 1 }}>
-              <SectionHeader title="2. État de production" />
+              <SectionHeader title={t('wf_section_production')} />
               <PipeProgress stages={PRODUCTION_STAGES} current={prodStage} onSelect={id => {
                 if (isOwnershipTransferred || isArchived) return
                 setProdStage(id)
               }} color="var(--sage)" />
               <div style={{ display: 'flex', gap: 32, marginTop: 20 }}>
-                <Switch label="Photo requise" checked={needsPhoto} onChange={v => {
+                <Switch label={t('wf_photo_required')} checked={needsPhoto} onChange={v => {
                   if (isOwnershipTransferred || isArchived) return
                   setNeedsPhoto(v)
                 }} />
-                <Switch label="Exposable" checked={exposable} onChange={setExposable} />
+                <Switch label={t('wf_exposable')} checked={exposable} onChange={setExposable} />
               </div>
               {needsPhoto && prodStage === 'catalogued' && (
                 <div style={{ marginTop: 12, padding: '8px 14px', background: 'var(--dust)22', border: '1px solid var(--dust)44', fontSize: 12, color: 'var(--tx2)' }}>
-                  En attente de photographie — décocher &quot;Photo requise&quot; pour passer en Disponible.
+                  {t('wf_photo_pending_hint')}
                 </div>
               )}
             </section>
 
             {/* 3. Ownership & Flow */}
             <section>
-              <SectionHeader title="3. Propriété et circulation" />
+              <SectionHeader title={t('wf_section_ownership')} />
               <PipeProgress
                 stages={OWNERSHIP_STAGES.map(s => ({
                   ...s,
@@ -466,7 +478,7 @@ export function WorkForm({
                 color="var(--cyan)"
               />
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginTop: 24 }}>
-                <Field label={ownStage === 'consigned' || ownStage === 'loan' ? 'Dépositaire' : ownStage === 'reserved' ? 'Acheteur pressenti' : 'Contact / Acquéreur'}>
+                <Field label={ownStage === 'consigned' || ownStage === 'loan' ? t('wf_contact_custodian') : ownStage === 'reserved' ? t('wf_contact_buyer_intent') : t('wf_contact_acquire')}>
                   {ownStage === 'artist' || ownStage === 'artist_archive' ? (
                     <div style={{ ...FIS, display: 'flex', alignItems: 'center', background: 'var(--bg2)44', opacity: 0.8, cursor: 'default' }}>
                       {pemContact?.NomInstitution ?? 'Pem (Artiste)'}
@@ -474,7 +486,7 @@ export function WorkForm({
                   ) : (
                     <div style={{ display: 'flex', gap: 8 }}>
                       <select value={contactId} onChange={e => setContactId(e.target.value)} style={FIS}>
-                        <option value="">— Sélectionner —</option>
+                        <option value="">{t('select_option_placeholder')}</option>
                         {localContacts.map(c => (
                           <option key={c.ContactID} value={c.ContactID}>
                             {c.NomInstitution ?? `${c.Prénom ?? ''} ${c.Nom ?? ''}`.trim()}
@@ -486,23 +498,19 @@ export function WorkForm({
                   )}
                 </Field>
                 <div style={{ background: 'var(--bg1)', padding: 20, border: '1px solid var(--bd)', alignSelf: 'flex-end' }}>
-                  <div className="t-label" style={{ fontSize: 10, marginBottom: 6 }}>LOCALISATION ACTUELLE</div>
+                  <div className="t-label" style={{ fontSize: 10, marginBottom: 6 }}>{t('wf_localisation_now')}</div>
                   <div className="t-mono-sm" style={{ color: 'var(--ac)', fontSize: 12 }}>{currentLoc}</div>
                 </div>
               </div>
 
               {/* Visibilité du contact — défaut public, choix du propriétaire */}
               <div style={{ marginTop: 24, borderTop: '1px solid var(--bd)', paddingTop: 20 }}>
-                <div className="t-eyebrow" style={{ fontSize: 11, marginBottom: 4 }}>VISIBILITÉ DU CONTACT</div>
+                <div className="t-eyebrow" style={{ fontSize: 11, marginBottom: 4 }}>{t('wf_visibility_hdr')}</div>
                 <div style={{ fontSize: 11, color: 'var(--tx3)', marginBottom: 12, lineHeight: 1.5 }}>
-                  Par défaut public ; vous pouvez masquer ou restreindre l\u2019affichage du contact à tout moment.
+                  {t('wf_visibility_blurb')}
                 </div>
                 <div style={{ display: 'flex', gap: 6 }}>
-                  {[
-                    { level: 0, label: '🌐 Public',   desc: 'Contact visible publiquement' },
-                    { level: 1, label: '👤 Masqué',   desc: 'Contact masqué — nom seul visible admin' },
-                    { level: 2, label: '🔒 Privé',    desc: 'Contact confidentiel — admin seulement' },
-                  ].map(({ level, label, desc }) => {
+                  {visibilityOptions.map(({ level, label, desc }) => {
                     const isActive = anonymityLevel === level
                     return (
                       <button
@@ -528,15 +536,15 @@ export function WorkForm({
 
             {/* 4. Financials */}
             <section style={{ background: paymentDone ? 'transparent' : 'var(--rust)08', border: `1px solid ${paymentDone ? 'var(--bd)' : 'var(--rust)44'}`, padding: 24 }}>
-              <SectionHeader title="4. Finances" />
+              <SectionHeader title={t('wf_section_finance')} />
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24 }}>
-                <Field label="Prix de base (€)">
+                <Field label={t('wf_price')}>
                   <input value={prix} onChange={e => setPrix(e.target.value)} style={FIS} disabled={ownStage === 'gift'} />
                 </Field>
-                <Field label="Remise (%)">
+                <Field label={t('wf_discount')}>
                   <input value={discount} onChange={e => setDiscount(e.target.value)} style={FIS} disabled={ownStage === 'gift'} />
                 </Field>
-                <Field label="TVA (%)">
+                <Field label={t('wf_vat')}>
                   <input
                     type="number"
                     min={0}
@@ -557,25 +565,25 @@ export function WorkForm({
                   </datalist>
                 </Field>
                 <div style={{ alignSelf: 'flex-end' }}>
-                  <div className="t-label" style={{ fontSize: 11, color: paymentDone ? 'var(--tx3)' : 'var(--rust)', marginBottom: 6 }}>MONTANT FINAL (HT)</div>
+                  <div className="t-label" style={{ fontSize: 11, color: paymentDone ? 'var(--tx3)' : 'var(--rust)', marginBottom: 6 }}>{t('wf_final_ht')}</div>
                   <div className="t-mono-md" style={{ fontWeight: 700, fontSize: 18 }}>€ {prixFinal.toLocaleString()}</div>
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 32, marginTop: 24 }}>
-                <Switch label="Paiement reçu" checked={paymentDone} onChange={setPaymentDone} disabled={ownStage === 'gift'} />
+                <Switch label={t('wf_payment_rcvd')} checked={paymentDone} onChange={setPaymentDone} disabled={ownStage === 'gift'} />
               </div>
               {isOwnershipTransferred && ownStage !== 'gift' && (
                 <div style={{ marginTop: 24, padding: 16, background: 'var(--bg2)', borderLeft: `3px solid ${paymentDone ? 'var(--ac)' : 'var(--rust)'}` }}>
-                  <div className="t-eyebrow" style={{ fontSize: 11, marginBottom: 8 }}>Règlement</div>
+                  <div className="t-eyebrow" style={{ fontSize: 11, marginBottom: 8 }}>{t('wf_settlement')}</div>
                   <div style={{ display: 'flex', gap: 24, color: 'var(--tx2)' }}>
-                    <div className="t-mono-xs" style={{ fontSize: 12 }}>Payé : € {(paymentDone ? prixFinal : 0).toLocaleString()}</div>
-                    <div className="t-mono-xs" style={{ fontSize: 12 }}>Dû : € {(paymentDone ? 0 : prixFinal).toLocaleString()}</div>
+                    <div className="t-mono-xs" style={{ fontSize: 12 }}>{t('wf_paid')} : € {(paymentDone ? prixFinal : 0).toLocaleString()}</div>
+                    <div className="t-mono-xs" style={{ fontSize: 12 }}>{t('wf_due')} : € {(paymentDone ? 0 : prixFinal).toLocaleString()}</div>
                   </div>
                 </div>
               )}
 
               <div style={{ marginTop: 32, borderTop: '1px solid var(--bd)', paddingTop: 24 }}>
-                <Field label="Groupes">
+                <Field label={t('wf_groups')}>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     {localGroups.map(g => {
                       const isSel = selGroups.has(g.id)
@@ -661,12 +669,13 @@ function Switch({ label, checked, onChange, disabled = false }: { label: string;
 }
 
 function CreatableSelect({ value, options, onChange, onAdd, name }: { value: string; options: { id: string; label: string }[]; onChange: (v: string) => void; onAdd: (v: string) => void; name: string }) {
+  const { t } = useI18n()
   const [isAdding, setIsAdding] = useState(false)
   const [newVal, setNewVal] = useState('')
   if (isAdding) {
     return (
       <div style={{ display: 'flex', gap: 4 }}>
-        <input value={newVal} onChange={e => setNewVal(e.target.value)} style={{ ...FIS, height: 42 }} placeholder="Nouveau…" autoFocus />
+        <input value={newVal} onChange={e => setNewVal(e.target.value)} style={{ ...FIS, height: 42 }} placeholder={t('wf_placeholder_new')} autoFocus />
         <button type="button" className="btn primary sm" onClick={() => { onAdd(newVal); setIsAdding(false); setNewVal('') }}>OK</button>
         <button type="button" className="btn ghost sm" onClick={() => setIsAdding(false)}>✕</button>
       </div>
@@ -675,7 +684,7 @@ function CreatableSelect({ value, options, onChange, onAdd, name }: { value: str
   return (
     <div style={{ display: 'flex', gap: 4 }}>
       <select name={name} value={value} onChange={e => onChange(e.target.value)} style={FIS}>
-        <option value="">— Sélectionner —</option>
+        <option value="">{t('select_option_placeholder')}</option>
         {options.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
       </select>
       <button type="button" className="btn ghost sm" onClick={() => setIsAdding(true)} style={{ padding: '0 8px' }}>+</button>
@@ -684,6 +693,7 @@ function CreatableSelect({ value, options, onChange, onAdd, name }: { value: str
 }
 
 function ImageManager({ oeuvreId, initialImages }: { oeuvreId: number; initialImages: WorkImage[] }) {
+  const { t } = useI18n()
   const [imgs, setImgs] = useState(initialImages)
   const [busy, setBusy] = useState(false)
   async function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -693,12 +703,12 @@ function ImageManager({ oeuvreId, initialImages }: { oeuvreId: number; initialIm
     const res = await addWorkImage(fd); if ('image' in res) setImgs(p => [...p, res.image]); setBusy(false)
   }
   async function onDelete(id: number) {
-    if (!confirm('Supprimer cette image ?')) return
+    if (!confirm(t('confirm_delete_image'))) return
     const res = await deleteWorkImage(id, oeuvreId); if ('ok' in res) setImgs(p => p.filter(img => img.ImageID !== id))
   }
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div className="t-eyebrow" style={{ fontSize: 12 }}>Images</div>
+      <div className="t-eyebrow" style={{ fontSize: 12 }}>{t('wf_images_heading')}</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
         {imgs.map(img => (
           <div key={img.ImageID} style={{ position: 'relative', aspectRatio: '1', background: 'var(--bg2)', border: '1px solid var(--bd)' }}>
@@ -718,6 +728,7 @@ function ImageManager({ oeuvreId, initialImages }: { oeuvreId: number; initialIm
 }
 
 function ContactModal({ onClose, onCreated }: { onClose: () => void; onCreated: (c: any) => void }) {
+  const { t } = useI18n()
   const [form, setForm] = useState({ NomInstitution: '', Nom: '', Prénom: '', Role: '', Ville: '', Pays: '', Email: '', Téléphone1: '', Website: '', Adresse: '' })
   const [busy, setBusy] = useState(false)
   const emptySnap = useMemo(() => JSON.stringify({ NomInstitution: '', Nom: '', Prénom: '', Role: '', Ville: '', Pays: '', Email: '', Téléphone1: '', Website: '', Adresse: '' }), [])
@@ -758,7 +769,7 @@ function ContactModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
       onClick={attemptClose}
     >
       <div style={{ background: 'var(--bg1)', border: '1px solid var(--bd)', padding: 40, width: 720, boxShadow: '0 30px 60px rgba(0,0,0,0.5)' }} onClick={(e) => e.stopPropagation()}>
-        <div className="t-eyebrow" style={{ marginBottom: 24, fontSize: 13, color: 'var(--ac)' }}>Nouveau contact</div>
+        <div className="t-eyebrow" style={{ marginBottom: 24, fontSize: 13, color: 'var(--ac)' }}>{t('wf_new_contact')}</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
           <Field label="INSTITUTION"><input value={form.NomInstitution} onChange={e => setForm(p => ({ ...p, NomInstitution: cap(e.target.value) }))} style={FIS} autoFocus /></Field>
           <Field label="RÔLE"><input value={form.Role} onChange={e => setForm(p => ({ ...p, Role: cap(e.target.value) }))} style={FIS} /></Field>
@@ -772,8 +783,8 @@ function ContactModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
           <Field label="PAYS"><input value={form.Pays} onChange={e => setForm(p => ({ ...p, Pays: cap(e.target.value) }))} style={FIS} /></Field>
         </div>
         <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
-          <button type="button" className="btn ghost sm" onClick={attemptClose} style={{ flex: 1 }}>Annuler</button>
-          <button type="button" className="btn primary sm" onClick={() => void handleSave()} style={{ flex: 1, background: 'var(--ac)' }} disabled={busy}>Enregistrer</button>
+          <button type="button" className="btn ghost sm" onClick={attemptClose} style={{ flex: 1 }}>{t('cancel')}</button>
+          <button type="button" className="btn primary sm" onClick={() => void handleSave()} style={{ flex: 1, background: 'var(--ac)' }} disabled={busy}>{t('save')}</button>
         </div>
       </div>
     </div>

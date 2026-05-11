@@ -3,6 +3,7 @@
 // PipelineTab — parallel process tracker: Gantt + deadline sidebar + reminder panel.
 
 import { useState, useEffect, useCallback, useMemo, useLayoutEffect } from 'react'
+import { useI18n } from '@/lib/i18n/context'
 import { createClient } from '@/lib/supabase/client'
 import { stringifyError } from '@/lib/error'
 
@@ -137,21 +138,6 @@ export const TYPE_COLORS: Record<ProcessType, string> = {
   autre:           '#888888',
 }
 
-const STATUT_LABELS: Record<ProcessStatut, string> = {
-  en_cours: 'In progress',
-  gagne:    'Won / Selected',
-  perdu:    'Not selected',
-  annule:   'Cancelled',
-  termine:  'Completed',
-}
-
-const ETAPE_STATUT_LABELS: Record<EtapeStatut, string> = {
-  a_faire:  'À faire',
-  en_cours: 'En cours',
-  fait:     'Fait',
-  bloque:   'Bloqué',
-}
-
 const ETAPE_STATUT_COLORS: Record<EtapeStatut, string> = {
   a_faire:  'var(--tx3)',
   en_cours: '#c0a030',
@@ -160,6 +146,36 @@ const ETAPE_STATUT_COLORS: Record<EtapeStatut, string> = {
 }
 
 const ETAPE_STATUT_ORDER: EtapeStatut[] = ['a_faire', 'en_cours', 'fait', 'bloque']
+
+function useSuiviLabels() {
+  const { t, lang } = useI18n()
+  const statutLabels = useMemo(
+    () =>
+      ({
+        en_cours: t('proc_stat_en_cours'),
+        gagne: t('proc_stat_gagne'),
+        perdu: t('proc_stat_perdu'),
+        annule: t('proc_stat_annule'),
+        termine: t('proc_stat_termine'),
+      }) as Record<ProcessStatut, string>,
+    [t],
+  )
+  const etapeLabels = useMemo(
+    () =>
+      ({
+        a_faire: t('etape_stat_a_faire'),
+        en_cours: t('etape_stat_en_cours'),
+        fait: t('etape_stat_fait'),
+        bloque: t('etape_stat_bloque'),
+      }) as Record<EtapeStatut, string>,
+    [t],
+  )
+  const typeLabel = useCallback(
+    (typ: ProcessType) => (lang === 'en' ? TYPE_LABELS_EN[typ] : TYPE_LABELS[typ]),
+    [lang],
+  )
+  return { statutLabels, etapeLabels, typeLabel, t, lang }
+}
 
 function nextEtapeStatut(current: EtapeStatut): EtapeStatut {
   const i = ETAPE_STATUT_ORDER.indexOf(current)
@@ -201,9 +217,10 @@ function urgencyColor(days: number): string {
   return 'var(--tx3)'
 }
 
-function fmtDate(s: string, includeTime?: string | null): string {
+function fmtDate(s: string, includeTime?: string | null, locale: 'fr' | 'en' = 'fr'): string {
   const d = new Date(s)
-  const base = d.toLocaleDateString('fr', { day: 'numeric', month: 'short', year: 'numeric' })
+  const loc = locale === 'en' ? 'en-GB' : 'fr-FR'
+  const base = d.toLocaleDateString(loc, { day: 'numeric', month: 'short', year: 'numeric' })
   return includeTime ? `${base} · ${includeTime}` : base
 }
 
@@ -211,6 +228,7 @@ function fmtDate(s: string, includeTime?: string | null): string {
 // ── Main component ─────────────────────────────────────────────────────
 
 export function PipelineTab({ oeuvres, contacts, groups }: Props) {
+  const { statutLabels, etapeLabels, typeLabel, t } = useSuiviLabels()
   const [processes,   setProcesses]   = useState<Process[]>([])
   const [reminders,   setReminders]   = useState<Reminder[]>([])
   const [typeFilter,  setTypeFilter]  = useState<ProcessType | 'all'>('all')
@@ -290,14 +308,14 @@ export function PipelineTab({ oeuvres, contacts, groups }: Props) {
 
   async function tickEtape(etapeId: string) {
     const { error } = await (createClient().from('suivi_etape') as any).update({ statut: 'fait' }).eq('id', etapeId)
-    if (error) alert(`Erreur : ${stringifyError(error)}`)
+    if (error) alert(`${t('error_prefix')} ${stringifyError(error)}`)
     await load()
   }
   async function cycleEtapeStatut(etapeId: string, current: EtapeStatut) {
     const next = nextEtapeStatut(current)
     const { error } = await (createClient().from('suivi_etape') as any).update({ statut: next }).eq('id', etapeId)
     if (error) {
-      alert(`Erreur : ${stringifyError(error)}`)
+      alert(`${t('error_prefix')} ${stringifyError(error)}`)
       return
     }
     // Optimistic patch — drawer re-renders immediately without a round-trip
@@ -309,7 +327,7 @@ export function PipelineTab({ oeuvres, contacts, groups }: Props) {
   async function toggleOverdueOverride(etapeId: string, current: boolean) {
     const { error } = await (createClient().from('suivi_etape') as any).update({ overdue_override: !current }).eq('id', etapeId)
     if (error) {
-      alert(`Erreur : ${stringifyError(error)}`)
+      alert(`${t('error_prefix')} ${stringifyError(error)}`)
       return
     }
     setProcesses(prev => prev.map(p => ({
@@ -321,13 +339,13 @@ export function PipelineTab({ oeuvres, contacts, groups }: Props) {
     const order: ProcessStatut[] = ['en_cours', 'gagne', 'termine', 'perdu', 'annule']
     const next = order[(order.indexOf(current) + 1) % order.length]
     const { error } = await (createClient().from('suivi_process') as any).update({ statut: next }).eq('id', processId)
-    if (error) alert(`Erreur : ${stringifyError(error)}`)
+    if (error) alert(`${t('error_prefix')} ${stringifyError(error)}`)
     await load()
   }
 
   const cM = useMemo(() => Object.fromEntries(contacts.map(c => [c.ContactID, c.NomInstitution || `${c.Prénom ?? ''} ${c.Nom ?? ''}`.trim() || String(c.ContactID)])), [contacts])
 
-  if (loading) return <div style={{ padding: 40 }} className="t-mono-sm">Loading…</div>
+  if (loading) return <div style={{ padding: 40 }} className="t-mono-sm">{t('pipeline_loading')}</div>
 
   return (
     <div style={{ display: 'flex', height: '100%', minHeight: 0 }}>
@@ -343,25 +361,25 @@ export function PipelineTab({ oeuvres, contacts, groups }: Props) {
         }}>
           <button className="btn ghost sm"
             style={{ background: typeFilter==='all' ? 'var(--ac)' : undefined, color: typeFilter==='all' ? 'var(--bg0)' : undefined }}
-            onClick={() => setTypeFilter('all')}>All</button>
-          {SORTED_TYPES.map((t) => (
-            <button key={t} className="btn ghost sm"
+            onClick={() => setTypeFilter('all')}>{t('pipeline_filter_all')}</button>
+          {SORTED_TYPES.map((typ) => (
+            <button key={typ} className="btn ghost sm"
               style={{
-                background: typeFilter===t ? TYPE_COLORS[t] : undefined,
-                color: typeFilter===t ? '#111' : undefined,
-                borderColor: `${TYPE_COLORS[t]}88`,
-                opacity: typeFilter!=='all' && typeFilter!==t ? 0.35 : 1,
+                background: typeFilter===typ ? TYPE_COLORS[typ] : undefined,
+                color: typeFilter===typ ? '#111' : undefined,
+                borderColor: `${TYPE_COLORS[typ]}88`,
+                opacity: typeFilter!=='all' && typeFilter!==typ ? 0.35 : 1,
               }}
-              onClick={() => setTypeFilter(typeFilter===t ? 'all' : t)}>
-              {TYPE_LABELS[t]}
+              onClick={() => setTypeFilter(typeFilter===typ ? 'all' : typ)}>
+              {typeLabel(typ)}
             </button>
           ))}
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--tx3)', cursor: 'pointer' }}>
               <input type="checkbox" checked={showDone} onChange={(e) => setShowDone(e.target.checked)} />
-              Show completed
+              {t('pipeline_show_completed')}
             </label>
-            <button className="btn ghost sm" onClick={() => setEditing('new')}>+ New process</button>
+            <button className="btn ghost sm" onClick={() => setEditing('new')}>{t('pipeline_new_process')}</button>
           </div>
         </div>
 
@@ -385,7 +403,7 @@ export function PipelineTab({ oeuvres, contacts, groups }: Props) {
         {/* Gantt */}
         <div style={{ flex: 1, overflow: 'auto', padding: '20px 28px' }}>
           {filtered.length === 0
-            ? <div className="t-mono-sm" style={{ color:'var(--tx3)', paddingTop:40, textAlign:'center' }}>No active processes.</div>
+            ? <div className="t-mono-sm" style={{ color:'var(--tx3)', paddingTop:40, textAlign:'center' }}>{t('pipeline_no_processes')}</div>
             : <GanttView processes={filtered} onSelect={p=>setInspectedId(p.id)} onEdit={setEditing} onRefresh={load} onCycleStatut={cycleStatut} />
           }
         </div>
@@ -394,9 +412,9 @@ export function PipelineTab({ oeuvres, contacts, groups }: Props) {
       {/* ── Right sidebar ────────────────────────────────────────── */}
       <div style={{ width: 280, flexShrink: 0, borderLeft: '1px solid var(--bd)', display: 'flex', flexDirection: 'column', background: 'var(--bg1)', overflow: 'auto' }}>
         <div style={{ padding: '16px 16px 0' }}>
-          <div className="t-eyebrow" style={{ marginBottom: 12 }}>Upcoming deadlines</div>
+          <div className="t-eyebrow" style={{ marginBottom: 12 }}>{t('pipeline_upcoming_deadlines')}</div>
           {upcoming.length === 0
-            ? <div className="t-mono-sm" style={{ color:'var(--tx3)' }}>None in 60 days.</div>
+            ? <div className="t-mono-sm" style={{ color:'var(--tx3)' }}>{t('pipeline_no_upcoming_60')}</div>
             : <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
                 {upcoming.slice(0,20).map((item,i) => {
                   const days = daysUntil(item.date)
@@ -406,7 +424,11 @@ export function PipelineTab({ oeuvres, contacts, groups }: Props) {
                       <div style={{ flex:1, minWidth:0 }}>
                         <div style={{ fontSize:13, color:'var(--tx)', fontWeight:500, lineHeight:1.3 }}>{item.label}</div>
                         <div style={{ fontSize:11, color:col, fontWeight:days<=7?700:400, marginTop:4 }}>
-                          {days<0 ? `${Math.abs(days)}d overdue` : days===0 ? 'Today' : `in ${days}d`}
+                          {days < 0
+                            ? t('pipeline_sidebar_overdue_fmt').replace(/\{days\}/g, String(Math.abs(days)))
+                            : days === 0
+                              ? t('pipeline_sidebar_today')
+                              : t('pipeline_sidebar_in_days_fmt').replace(/\{days\}/g, String(days))}
                           {' · '}{new Date(item.date).toLocaleDateString('en',{day:'numeric',month:'short'})}
                           {item.time ? ` · ${item.time}` : ''}
                         </div>
@@ -417,10 +439,10 @@ export function PipelineTab({ oeuvres, contacts, groups }: Props) {
                             try {
                               await tickEtape(item.etapeId!)
                             } catch (err) {
-                              alert(`Error: ${stringifyError(err)}`)
+                              alert(`${t('error_prefix')} ${stringifyError(err)}`)
                             }
                           }}
-                          title="Marquer comme fait"
+                          title={t('pipeline_etape_tick_title')}
                           style={{ flexShrink:0, width:24, height:24, border:'1px solid var(--bd)', background:'var(--bg1)', color:'var(--tx3)', cursor:'pointer', fontSize:13, display:'flex', alignItems:'center', justifyContent:'center', marginTop:1 }}
                         >✓</button>
                       )}
@@ -433,7 +455,7 @@ export function PipelineTab({ oeuvres, contacts, groups }: Props) {
 
         {reminders.length > 0 && (
           <div style={{ padding:'16px 16px 0', marginTop:12 }}>
-            <div className="t-eyebrow" style={{ marginBottom:12 }}>Reminders</div>
+            <div className="t-eyebrow" style={{ marginBottom:12 }}>{t('pipeline_reminders_header')}</div>
             <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
               {reminders.map((r) => {
                 const days = daysUntil(r.remind_at)
@@ -452,7 +474,7 @@ export function PipelineTab({ oeuvres, contacts, groups }: Props) {
                           await (createClient().from('suivi_reminder') as any).update({lu:true}).eq('id',r.id)
                           setReminders(p => p.filter(x => x.id !== r.id))
                         } catch (err) {
-                          alert("Error: " + (err instanceof Error ? err.message : String(err)))
+                          alert(`${t('error_prefix')} ${err instanceof Error ? err.message : String(err)}`)
                         }
                       }}>✕</button>
                   </div>
@@ -484,6 +506,7 @@ export function PipelineTab({ oeuvres, contacts, groups }: Props) {
 function GanttView({ processes, onSelect, onEdit, onRefresh, onCycleStatut }: {
   processes: Process[]; onSelect:(p:Process)=>void; onEdit:(p:Process)=>void; onRefresh:()=>void; onCycleStatut:(id:string,s:ProcessStatut)=>void
 }) {
+  const { statutLabels, etapeLabels, typeLabel, t } = useSuiviLabels()
   const today = new Date(); today.setHours(0,0,0,0)
   const allDates = processes.flatMap(p=>[p.date_debut,p.date_fin].filter(Boolean) as string[])
   const minDate  = new Date(allDates.length>0 ? Math.min(...allDates.map(d=>new Date(d).getTime())) : today)
@@ -517,12 +540,12 @@ function GanttView({ processes, onSelect, onEdit, onRefresh, onCycleStatut }: {
               <div style={{ width:240, flexShrink:0, paddingRight:16 }}>
                 <div style={{ fontSize:13, color:'var(--tx)', fontWeight:500, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', cursor:'pointer' }} onClick={()=>onSelect(p)}>{p.nom}</div>
                 <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:4 }}>
-                  <span style={{ fontSize:11, color }}>{TYPE_LABELS[p.type as ProcessType]}</span>
+                  <span style={{ fontSize:11, color }}>{typeLabel(p.type as ProcessType)}</span>
                   <button
                     onClick={() => onCycleStatut(p.id, p.statut)}
-                    title={`Statut : ${STATUT_LABELS[p.statut]} — cliquer pour changer`}
+                    title={`Statut : ${statutLabels[p.statut]} — cliquer pour changer`}
                     style={{ fontSize:10, padding:'2px 8px', background:'var(--bg0)', border:`1px solid ${color}55`, color, cursor:'pointer', letterSpacing:'0.04em', textTransform:'uppercase', flexShrink:0 }}
-                  >{STATUT_LABELS[p.statut]}</button>
+                  >{statutLabels[p.statut]}</button>
                 </div>
               </div>
               <div style={{ flex:1, position:'relative', height:28 }}>
@@ -543,7 +566,7 @@ function GanttView({ processes, onSelect, onEdit, onRefresh, onCycleStatut }: {
                     const markerColor = isOverdue ? '#c06060' : isFait ? color : isBloque ? '#c06060' : isEnCours ? '#c0a030' : `${color}66`
                     return (
                       <div key={e.id}
-                        title={`${e.nom} · ${ETAPE_STATUT_LABELS[e.statut]}${isOverdue?' ⚠ overdue':''} — cliquer pour changer`}
+                        title={`${e.nom} · ${etapeLabels[e.statut]}${isOverdue ? t('pipeline_gantt_overdue_suffix') : ''} — cliquer pour changer`}
                         onClick={async(ev)=>{
                           ev.stopPropagation()
                           try {
@@ -551,7 +574,7 @@ function GanttView({ processes, onSelect, onEdit, onRefresh, onCycleStatut }: {
                             await (createClient().from('suivi_etape') as any).update({statut:next}).eq('id',e.id)
                             onRefresh()
                           } catch (err) {
-                            alert(`Error: ${stringifyError(err)}`)
+                            alert(`${t('error_prefix')} ${stringifyError(err)}`)
                           }
                         }}
                         style={{ position:'absolute', left:`${leftPct}%`, top:0, bottom:0, width:12, transform:'translateX(-50%)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1 }}
@@ -568,7 +591,7 @@ function GanttView({ processes, onSelect, onEdit, onRefresh, onCycleStatut }: {
                 </div>
                 {p.statut!=='en_cours' && (
                   <div style={{ position:'absolute', left:`${barR+0.5}%`, top:'50%', transform:'translateY(-50%)', fontSize:10, color, fontWeight:700, letterSpacing:'0.05em', textTransform:'uppercase', whiteSpace:'nowrap', paddingLeft:8 }}>
-                    {STATUT_LABELS[p.statut]}
+                    {statutLabels[p.statut]}
                   </div>
                 )}
               </div>
@@ -587,6 +610,8 @@ function ProcessDrawer({ process, onClose, onEdit, onRefresh, onCycleEtape, onOv
   onCycleEtape:(id:string,current:EtapeStatut)=>Promise<void>
   onOverdueOverride:(id:string,current:boolean)=>Promise<void>
 }) {
+  const { statutLabels, etapeLabels, typeLabel, t, lang } = useSuiviLabels()
+  const dateLocale = lang === 'en' ? 'en' : 'fr'
   const color = TYPE_COLORS[process.type as ProcessType]??'#888'
 
   function Row({label,value,href}:{label:string;value?:string|null;href?:string}) {
@@ -607,18 +632,18 @@ function ProcessDrawer({ process, onClose, onEdit, onRefresh, onCycleEtape, onOv
         <div>
           <div style={{ fontWeight:700, fontSize:18 }}>{process.nom}</div>
           <div style={{ fontSize:11, color, marginTop:4, textTransform:'uppercase', letterSpacing:'0.1em' }}>
-            {TYPE_LABELS[process.type as ProcessType]} · {STATUT_LABELS[process.statut]}
+            {typeLabel(process.type as ProcessType)} · {statutLabels[process.statut]}
           </div>
         </div>
         <div style={{ display:'flex', gap:8 }}>
-          <button className="btn ghost sm" onClick={onEdit}>Edit</button>
+          <button className="btn ghost sm" onClick={onEdit}>{t('edit')}</button>
           <button className="btn ghost sm" onClick={onClose}>✕</button>
         </div>
       </div>
 
-      <Row label="Location"     value={process.localisation} />
-      <Row label="URL"          value={process.url} href={process.url?.startsWith('http')?process.url:`https://${process.url}`} />
-      {process.date_debut && <Row label="Start"  value={fmtDate(process.date_debut)} />}
+      <Row label={t('pd_row_location')} value={process.localisation} />
+      <Row label={t('pd_row_url')} value={process.url} href={process.url?.startsWith('http')?process.url:`https://${process.url}`} />
+      {process.date_debut && <Row label={t('pd_row_start')} value={fmtDate(process.date_debut, undefined, dateLocale)} />}
       {process.date_fin   && (() => {
         const days = daysUntil(process.date_fin);
         const hasCompletedSameDay = process.etapes.some(e => e.statut === 'fait' && e.date_echeance === process.date_fin);
@@ -627,22 +652,26 @@ function ProcessDrawer({ process, onClose, onEdit, onRefresh, onCycleEtape, onOv
         const color = isOverdue ? '#c06060' : (days >= 0 ? urgencyColor(days) : 'var(--tx)');
         return (
           <div style={{ display:'flex', gap:8, padding:'8px 0', borderBottom:'1px solid var(--bd)' }}>
-            <div className="t-mono-sm" style={{ color:'var(--tx3)', minWidth:140, flexShrink:0 }}>Deadline</div>
+            <div className="t-mono-sm" style={{ color:'var(--tx3)', minWidth:140, flexShrink:0 }}>{t('pd_row_deadline')}</div>
             <div style={{ fontSize:13, color, fontWeight:600 }}>
-              {fmtDate(process.date_fin, process.deadline_time)}
+              {fmtDate(process.date_fin, process.deadline_time, dateLocale)}
               <span style={{ fontSize:11, fontWeight:400, marginLeft:6, color:'var(--tx3)' }}>
-                {days >= 0 ? `(in ${days}d)` : isOverdue ? `(${Math.abs(days)}d overdue)` : `(On track)`}
+                {days >= 0
+                  ? t('pd_deadline_in_days_paren').replace(/\{days\}/g, String(days))
+                  : isOverdue
+                    ? t('pd_deadline_overdue_paren').replace(/\{days\}/g, String(Math.abs(days)))
+                    : t('pd_deadline_on_track')}
               </span>
             </div>
           </div>
         )
       })()}
-      <Row label="Scope"        value={process.scope} />
-      <Row label="Stakeholders" value={process.stakeholders} />
+      <Row label={t('pd_row_scope')} value={process.scope} />
+      <Row label={t('pd_row_stakeholders')} value={process.stakeholders} />
 
       {process.responsables?.length > 0 && (
         <div style={{ padding:'8px 0', borderBottom:'1px solid var(--bd)' }}>
-          <div className="t-mono-sm" style={{ color:'var(--tx3)', marginBottom:6 }}>In charge</div>
+          <div className="t-mono-sm" style={{ color:'var(--tx3)', marginBottom:6 }}>{t('pd_in_charge')}</div>
           {process.responsables.map((r,i)=>(
             <div key={i} style={{ fontSize:13, padding:'4px 0' }}>{r.nom} <span style={{ color:'var(--tx3)', fontSize:11 }}>· {r.role}</span></div>
           ))}
@@ -651,7 +680,7 @@ function ProcessDrawer({ process, onClose, onEdit, onRefresh, onCycleEtape, onOv
 
       {process.vault_path && (
         <div style={{ padding:'8px 0', borderBottom:'1px solid var(--bd)' }}>
-          <div className="t-mono-sm" style={{ color:'var(--tx3)', marginBottom:6 }}>Dossier vault</div>
+          <div className="t-mono-sm" style={{ color:'var(--tx3)', marginBottom:6 }}>{t('pd_vault_folder')}</div>
           <a
             href={process.vault_path.startsWith('http') ? process.vault_path : `https://${process.vault_path}`}
             target="_blank" rel="noopener noreferrer"
@@ -664,7 +693,7 @@ function ProcessDrawer({ process, onClose, onEdit, onRefresh, onCycleEtape, onOv
       )}
       {process.vault_tags?.length > 0 && (
         <div style={{ padding:'8px 0', borderBottom:'1px solid var(--bd)' }}>
-          <div className="t-mono-sm" style={{ color:'var(--tx3)', marginBottom:6 }}>Assets / Tags</div>
+          <div className="t-mono-sm" style={{ color:'var(--tx3)', marginBottom:6 }}>{t('pd_assets_tags')}</div>
           <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
             {process.vault_tags.map(tag=>(
               <span key={tag} style={{ fontSize:11, padding:'3px 10px', border:'1px solid var(--bd)', color:'var(--tx3)' }}>{tag}</span>
@@ -672,27 +701,27 @@ function ProcessDrawer({ process, onClose, onEdit, onRefresh, onCycleEtape, onOv
           </div>
         </div>
       )}
-      {process.asset_notes && <Row label="Asset notes" value={process.asset_notes} />}
+      {process.asset_notes && <Row label={t('pd_asset_notes')} value={process.asset_notes} />}
 
       {process.pdf_path && (
         <div style={{ marginTop: 20, padding: 16, background: 'rgba(34,211,238,0.05)', border: '1px solid rgba(34,211,238,0.2)' }}>
-          <div className="t-label" style={{ marginBottom: 8, color: 'var(--cyan)' }}>COMMERCIAL BOND / PDF</div>
+          <div className="t-label" style={{ marginBottom: 8, color: 'var(--cyan)' }}>{t('pd_commercial_bond_pdf')}</div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button 
               onClick={async (e) => {
-                if (!confirm("Re-générer le PDF avec le nouveau layout et les images ?")) return
+                if (!confirm(t('pd_confirm_regenerate_pdf'))) return
                 const btn = (e.currentTarget as HTMLButtonElement)
                 const old = btn.innerText
-                btn.innerText = 'BUSY...'
+                btn.innerText = t('pd_operation_in_progress')
                 btn.disabled = true
                 try {
                   const res = await regenerateConsignmentPdf(process.id)
                   if (res.ok) {
-                    alert("PDF mis à jour. Rechargez pour télécharger.")
+                    alert(t('pd_pdf_updated_reload'))
                     await onRefresh()
                   } else alert(res.error)
                 } catch (err) {
-                  alert("Error: " + (err instanceof Error ? err.message : String(err)))
+                  alert(`${t('error_prefix')} ${err instanceof Error ? err.message : String(err)}`)
                 } finally {
                   btn.innerText = old
                   btn.disabled = false
@@ -701,7 +730,7 @@ function ProcessDrawer({ process, onClose, onEdit, onRefresh, onCycleEtape, onOv
               className="btn ghost sm"
               style={{ flex: 1, fontSize: 12, border: '1px solid rgba(34,211,238,0.3)' }}
             >
-              ↻ Re-générer
+              {t('pd_regenerate_pdf_btn')}
             </button>
             <button 
               onClick={async () => {
@@ -710,36 +739,40 @@ function ProcessDrawer({ process, onClose, onEdit, onRefresh, onCycleEtape, onOv
                   if ('url' in res) window.open(res.url, '_blank')
                   else alert(res.error)
                 } catch (err) {
-                  alert("Error: " + (err instanceof Error ? err.message : String(err)))
+                  alert(`${t('error_prefix')} ${err instanceof Error ? err.message : String(err)}`)
                 }
               }}
               className="btn primary sm"
               style={{ flex: 1, display: 'flex', justifyContent: 'center', gap: 10, padding: '8px 12px' }}
             >
               <span style={{ fontSize: 20 }}>↓</span>
-              <span style={{ fontSize: 14 }}>Télécharger</span>
+              <span style={{ fontSize: 14 }}>{t('pd_download_pdf_btn')}</span>
             </button>
           </div>
           {process.type === 'consignment' && (
             <div style={{ marginTop: 10 }}>
               <button
                 onClick={async (e) => {
-                  if (!confirm("Clôturer cette consignation ?\nLes œuvres encore en statut Consigné/Prêt repasseront à Disponible (Atelier).\nLes œuvres déjà engagées dans une vente ne sont pas touchées.")) return
+                  if (!confirm(t('pd_confirm_close_consignment'))) return
                   const btn = (e.currentTarget as HTMLButtonElement)
                   const old = btn.innerText
-                  btn.innerText = 'BUSY...'
+                  btn.innerText = t('pd_operation_in_progress')
                   btn.disabled = true
                   try {
                     const res = await closeConsignmentByPdfPath(process.pdf_path!)
                     if ('ok' in res) {
-                      const msg = res.reverted.length > 0
-                        ? `Clôturée. ${res.reverted.length} œuvre(s) repassée(s) en Atelier.${res.skipped.length > 0 ? ` ${res.skipped.length} laissée(s) en l'état (vente en cours).` : ''}`
-                        : `Clôturée.${res.skipped.length > 0 ? ` ${res.skipped.length} œuvre(s) laissée(s) en l'état (vente en cours).` : ''}`
-                      alert(msg)
+                      let msg = t('pd_close_consignment_intro')
+                      if (res.reverted.length > 0) {
+                        msg += ` ${t('pd_consignment_reverted_line').replace(/\{n\}/g, String(res.reverted.length))}`
+                      }
+                      if (res.skipped.length > 0) {
+                        msg += ` ${t('pd_consignment_skipped_line').replace(/\{n\}/g, String(res.skipped.length))}`
+                      }
+                      alert(msg.trim())
                       await onRefresh()
                     } else alert(res.error)
                   } catch (err) {
-                    alert("Error: " + (err instanceof Error ? err.message : String(err)))
+                    alert(`${t('error_prefix')} ${err instanceof Error ? err.message : String(err)}`)
                   } finally {
                     btn.innerText = old
                     btn.disabled = false
@@ -748,7 +781,7 @@ function ProcessDrawer({ process, onClose, onEdit, onRefresh, onCycleEtape, onOv
                 className="btn ghost sm"
                 style={{ width: '100%', fontSize: 12, color: 'var(--rust)', border: '1px solid rgba(202,89,73,0.4)' }}
               >
-                ✕ Clôturer la consignation
+                {t('pd_close_consignment_btn')}
               </button>
             </div>
           )}
@@ -757,7 +790,7 @@ function ProcessDrawer({ process, onClose, onEdit, onRefresh, onCycleEtape, onOv
 
       {process.etapes.length > 0 && (
         <div style={{ marginTop:16 }}>
-          <div className="t-label" style={{ marginBottom:8 }}>Étapes</div>
+          <div className="t-label" style={{ marginBottom:8 }}>{t('pd_steps_section')}</div>
           <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
             {process.etapes.map(e=>{
               const days      = e.date_echeance ? daysUntil(e.date_echeance) : null
@@ -769,7 +802,7 @@ function ProcessDrawer({ process, onClose, onEdit, onRefresh, onCycleEtape, onOv
               return (
                 <div key={e.id} style={{ display:'flex', alignItems:'flex-start', gap:8, padding:'8px 10px', background:'var(--bg0)', opacity:isFait?0.5:1 }}>
                   <button
-                    title={`Statut : ${ETAPE_STATUT_LABELS[e.statut]} — cliquer pour avancer`}
+                    title={t('pd_etape_cycle_hint').replace(/\{status\}/g, etapeLabels[e.statut])}
                     onClick={()=>void onCycleEtape(e.id, e.statut)}
                     style={{ width:20, height:20, border:`1.5px solid ${statColor}`, background:isFait?statColor:'transparent', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, cursor:'pointer', marginTop:1, color:isFait?'#111':statColor, fontSize:12 }}
                   >
@@ -779,27 +812,31 @@ function ProcessDrawer({ process, onClose, onEdit, onRefresh, onCycleEtape, onOv
                     <div style={{ fontSize:13, textDecoration:isFait?'line-through':'none', color:'var(--tx)' }}>{e.nom}</div>
                     <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:4, flexWrap:'wrap' }}>
                       <span style={{ fontSize:11, color:statColor, textTransform:'uppercase', letterSpacing:'0.06em' }}>
-                        {ETAPE_STATUT_LABELS[e.statut]}
+                        {etapeLabels[e.statut]}
                       </span>
                       {e.date_echeance && days !== null && (
                         <span style={{ fontSize:11, color: isFait ? 'var(--tx3)' : isOverdue ? '#c06060' : urgencyColor(days) }}>
-                          {new Date(e.date_echeance).toLocaleDateString('fr',{day:'numeric',month:'short'})}
-                          {days>=0 ? ` · J-${days}` : isOverdue ? ` · ${Math.abs(days)}j dépassé` : ''}
+                          {new Date(e.date_echeance).toLocaleDateString(dateLocale === 'en' ? 'en-GB' : 'fr-FR',{day:'numeric',month:'short'})}
+                          {days !== null && days >= 0
+                            ? t('pd_etape_days_remaining').replace(/\{days\}/g, String(days))
+                            : isOverdue && days !== null
+                              ? t('pd_etape_days_overdue_label').replace(/\{days\}/g, String(Math.abs(days)))
+                              : ''}
                         </span>
                       )}
                       {isOverdue && (
                         <button
-                          title="Ignorer l'alerte de dépassement"
+                          title={t('pd_ignore_overdue_title')}
                           onClick={()=>void onOverdueOverride(e.id, e.overdue_override)}
                           style={{ fontSize:11, color:'var(--tx3)', background:'none', border:'1px solid var(--bd)', padding:'2px 8px', cursor:'pointer' }}
-                        >ignorer ⚠</button>
+                        >{t('pd_ignore_overdue_btn')}</button>
                       )}
                       {e.overdue_override && !isFait && (
                         <button
-                          title="Réactiver l'alerte de dépassement"
+                          title={t('pd_restore_overdue_title')}
                           onClick={()=>void onOverdueOverride(e.id, e.overdue_override)}
                           style={{ fontSize:11, color:'var(--tx3)', background:'none', border:'1px solid var(--bd)', padding:'2px 8px', cursor:'pointer' }}
-                        >⚠ ignoré</button>
+                        >{t('pd_overdue_ignored_btn')}</button>
                       )}
                     </div>
                   </div>
@@ -812,7 +849,7 @@ function ProcessDrawer({ process, onClose, onEdit, onRefresh, onCycleEtape, onOv
 
       {process.notes && (
         <div style={{ marginTop:24 }}>
-          <div className="t-label" style={{ marginBottom:10 }}>Notes</div>
+          <div className="t-label" style={{ marginBottom:10 }}>{t('notes')}</div>
           <div style={{ fontSize:14, color:'var(--tx2)', lineHeight:1.6, whiteSpace:'pre-wrap' }}>{process.notes}</div>
         </div>
       )}
@@ -830,6 +867,7 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved }: 
   onClose:     () => void
   onSaved:     () => Promise<void>
 }) {
+  const { typeLabel, t } = useSuiviLabels()
   const isNew = !process
   const [nom,          setNom]          = useState(process?.nom           ?? '')
   const [type,         setType]         = useState<ProcessType>(process?.type as ProcessType ?? 'prix')
@@ -889,9 +927,9 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved }: 
     setSelectedGroup('') // Reset dropdown
   }
 
-  function handleTypeChange(t:ProcessType) {
-    setType(t)
-    if(isNew) setEtapes(DEFAULT_ETAPES[t].map(n=>({nom:n, date_echeance:'', statut:'a_faire'})))
+  function handleTypeChange(nextType: ProcessType) {
+    setType(nextType)
+    if(isNew) setEtapes(DEFAULT_ETAPES[nextType].map(n=>({nom:n, date_echeance:'', statut:'a_faire'})))
   }
 
   function handleExhibitionProcessSelect(id: string) {
@@ -903,7 +941,7 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved }: 
       if (ex.date_debut) setDebut(ex.date_debut)
       if (ex.date_fin)   setFin(ex.date_fin)
       if (ex.localisation) setLocalisation(ex.localisation)
-      if (!nom.trim())    setNom(ex.nom ? `Exposition : ${ex.nom}` : nom)
+      if (!nom.trim())    setNom(ex.nom ? t('pm_exhibition_auto_title_fmt').replace(/\{name\}/g, ex.nom) : nom)
     }
   }
 
@@ -940,7 +978,7 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved }: 
   }, [catalogPrice, discount])
 
   async function handleSave(): Promise<boolean> {
-    if(!nom.trim()){ setErr('Name is required.'); return false }
+    if(!nom.trim()){ setErr(t('pm_err_name_required')); return false }
     setBusy(true); setErr(null)
     try {
       const sb = createClient()
@@ -956,12 +994,12 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved }: 
           created_at: new Date().toISOString()
         }).select('ContactID').single()
         
-        if (ncErr) throw new Error("Contact creation failed: " + ncErr.message)
+        if (ncErr) throw new Error(t('pm_err_contact_create_prefix') + ncErr.message)
         effectiveContactId = (nc as any).ContactID
       }
 
       if (!effectiveContactId && type !== 'autre') {
-        throw new Error("A contact (existing or new) is required for this process type.")
+        throw new Error(t('pm_err_contact_required'))
       }
 
       const tags = vaultTags.split(',').map(t=>t.trim()).filter(Boolean)
@@ -1088,8 +1126,8 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved }: 
       >
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:32 }}>
           <div>
-            <div style={{ fontSize:9, letterSpacing:'0.2em', textTransform:'uppercase', color:'var(--ac)', fontWeight: 700, marginBottom: 8 }}>PROCESS MANAGEMENT</div>
-            <div style={{ fontSize: 24, fontWeight: 300, color: '#fff' }}>{isNew ? 'Initialize New Track' : `Refine Process · ${process!.nom}`}</div>
+            <div style={{ fontSize:9, letterSpacing:'0.2em', textTransform:'uppercase', color:'var(--ac)', fontWeight: 700, marginBottom: 8 }}>{t('pm_header_kicker')}</div>
+            <div style={{ fontSize: 24, fontWeight: 300, color: '#fff' }}>{isNew ? t('pm_title_new') : t('pm_title_edit').replace(/\{name\}/g, process!.nom)}</div>
           </div>
           <button type="button" onClick={attemptClose} disabled={busy} style={{ background: 'none', border: 'none', color: 'var(--tx3)', fontSize: 32, cursor: 'pointer' }}>×</button>
         </div>
@@ -1097,21 +1135,21 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved }: 
         <div style={{ display:'flex', flexDirection:'column', gap:32 }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 200px', gap: 20 }}>
             <div>
-              <div className="t-label" style={{marginBottom:6, opacity: 0.5}}>Process Name</div>
-              <input value={nom} onChange={e=>setNom(e.target.value)} style={{...FIS, fontSize: 16, padding: '12px 16px', background: 'var(--bg2)'}} placeholder="e.g. Consignment to Gagosian London" />
+              <div className="t-label" style={{marginBottom:6, opacity: 0.5}}>{t('pm_label_process_name')}</div>
+              <input value={nom} onChange={e=>setNom(e.target.value)} style={{...FIS, fontSize: 16, padding: '12px 16px', background: 'var(--bg2)'}} placeholder={t('pm_placeholder_process_name')} />
             </div>
             <div>
-              <div className="t-label" style={{marginBottom:6, opacity: 0.5}}>Category</div>
+              <div className="t-label" style={{marginBottom:6, opacity: 0.5}}>{t('category')}</div>
               <select value={type} onChange={e=>handleTypeChange(e.target.value as ProcessType)} style={{...FIS, fontSize: 13, height: 44, background: 'var(--bg2)'}}>
-                {SORTED_TYPES.map(t=><option key={t} value={t}>{TYPE_LABELS[t]}</option>)}
+                {SORTED_TYPES.map((typ) => <option key={typ} value={typ}>{typeLabel(typ)}</option>)}
               </select>
             </div>
           </div>
 
           <div style={{ padding: 16, background: 'rgba(200,168,110,0.05)', border: '1px solid rgba(200,168,110,0.2)', borderRadius: 2 }}>
-            <div className="t-label" style={{marginBottom:8, color: 'var(--ac)'}}>Link to exhibition process (optional)</div>
+            <div className="t-label" style={{marginBottom:8, color: 'var(--ac)'}}>{t('pm_exhibition_link')}</div>
             <select value={exhibitionProcessId || ''} onChange={e => handleExhibitionProcessSelect(e.target.value)} style={{...FIS, background: 'var(--bg1)'}}>
-              <option value="">— No link —</option>
+              <option value="">{t('pm_exhibition_no_link')}</option>
               {exhibitionProcessOptions
                 .filter((ex) => !process?.id || ex.id !== process.id)
                 .map((ex) => (
@@ -1125,8 +1163,8 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved }: 
           <div style={{ padding: 24, background: 'var(--bg2)', border: '1px solid var(--bd2)', borderRadius: 2, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
             <div style={{ position: 'relative' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <div className="t-label">Selected Works ({oeuvreIds.length})</div>
-                <div className="t-mono-sm" style={{ fontSize: 8, color: 'var(--ac)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>— BATCH MODE ACTIVE —</div>
+                <div className="t-label">{t('pm_selected_works').replace(/\{count\}/g, String(oeuvreIds.length))}</div>
+                <div className="t-mono-sm" style={{ fontSize: 8, color: 'var(--ac)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('pm_batch_mode')}</div>
               </div>
 
               <div style={{ 
@@ -1156,12 +1194,12 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved }: 
                         ) : null}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 10, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--tx1)' }}>{o?.Titre || 'Untitled'}</div>
-                        <div className="t-mono-sm" style={{ fontSize: 9, color: 'var(--tx3)', marginTop: 1 }}>ID: {id}</div>
+                        <div style={{ fontSize: 10, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--tx1)' }}>{o?.Titre || t('untitled')}</div>
+                        <div className="t-mono-sm" style={{ fontSize: 9, color: 'var(--tx3)', marginTop: 1 }}>{t('pm_work_id_label')}: {id}</div>
                       </div>
                       <button 
                         onClick={() => setOeuvreIds(p => p.filter(x => x !== id))}
-                        title="Remove from batch"
+                        title={t('pm_remove_batch_title')}
                         style={{ position: 'absolute', top: -6, right: -6, width: 16, height: 16, borderRadius: '50%', background: 'var(--rust)', color: 'white', border: '1px solid var(--bg0)', cursor: 'pointer', fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1 }}
                       >
                         ×
@@ -1174,7 +1212,7 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved }: 
               <input 
                 value={workSearch} 
                 onChange={e => setWorkSearch(e.target.value)} 
-                placeholder="Search title or ID to add to batch..." 
+                placeholder={t('pm_search_works_ph')} 
                 style={{ ...FIS, background: 'var(--bg1)', borderStyle: 'dashed' }} 
               />
               
@@ -1196,36 +1234,36 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved }: 
 
             <div style={{ position: 'relative' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <div className="t-label">Principal Contact / Gallery</div>
+                <div className="t-label">{t('pm_principal_contact')}</div>
                 <button 
                   onClick={() => setIsNewContact(!isNewContact)} 
                   style={{ fontSize: 9, background: isNewContact ? 'var(--ac)' : 'transparent', border: '1px solid var(--bd)', color: isNewContact ? '#111' : 'var(--ac)', cursor: 'pointer', padding: '2px 6px' }}
                 >
-                  {isNewContact ? '× USE EXISTING' : '+ NEW CONTACT'}
+                  {isNewContact ? t('pm_contact_use_existing') : t('pm_contact_new')}
                 </button>
               </div>
 
               {isNewContact ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: 'rgba(200,168,110,0.05)', padding: 12, border: '1px solid rgba(200,168,110,0.2)' }}>
-                  <input value={newContactName} onChange={e => setNewContactName(e.target.value)} placeholder="Company / Gallery Name..." style={FIS} />
+                  <input value={newContactName} onChange={e => setNewContactName(e.target.value)} placeholder={t('pm_placeholder_company')} style={FIS} />
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px', gap: 8 }}>
-                    <input value={newContactEmail} onChange={e => setNewContactEmail(e.target.value)} placeholder="Email address..." style={FIS} />
+                    <input value={newContactEmail} onChange={e => setNewContactEmail(e.target.value)} placeholder={t('pm_placeholder_email')} style={FIS} />
                     <select value={newContactType} onChange={e => setNewContactType(e.target.value)} style={FIS}>
-                      <option value="Galerie">Gallery</option>
-                      <option value="Musée">Museum</option>
-                      <option value="Collectionneur">Collector</option>
-                      <option value="Transporteur">Shipper</option>
+                      <option value="Galerie">{t('pm_contact_type_gallery')}</option>
+                      <option value="Musée">{t('pm_contact_type_museum')}</option>
+                      <option value="Collectionneur">{t('pm_contact_type_collector')}</option>
+                      <option value="Transporteur">{t('pm_contact_type_shipper')}</option>
                     </select>
                   </div>
                 </div>
               ) : contactId ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--bg1)', padding: '6px 12px', border: '1px solid var(--ac)', height: 32 }}>
-                  <div style={{ fontSize: 11, flex: 1, fontWeight: 500 }}>{contacts?.find(c => c.ContactID === contactId)?.NomInstitution || 'Selected Contact'}</div>
+                  <div style={{ fontSize: 11, flex: 1, fontWeight: 500 }}>{contacts?.find(c => c.ContactID === contactId)?.NomInstitution || t('pm_selected_contact_fallback')}</div>
                   <button onClick={() => setContactId(null)} style={{ background: 'none', border: 'none', color: 'var(--rust)', cursor: 'pointer', fontSize: 14 }}>×</button>
                 </div>
               ) : (
                 <>
-                  <input value={contactSearch} onChange={e => setContactSearch(e.target.value)} placeholder="Search gallery..." style={{ ...FIS, background: 'var(--bg1)', borderStyle: 'dashed' }} />
+                  <input value={contactSearch} onChange={e => setContactSearch(e.target.value)} placeholder={t('pm_search_gallery_ph')} style={{ ...FIS, background: 'var(--bg1)', borderStyle: 'dashed' }} />
                   {contactSearch.trim() && (
                     <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--bg1)', border: '1px solid var(--ac)', zIndex: 300, maxHeight: 200, overflow: 'auto' }}>
                       {filteredContacts.map(c => (
@@ -1240,13 +1278,13 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved }: 
 
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 20 }}>
             <div style={{ flex: 1 }}>
-              <div className="t-label" style={{marginBottom:6, opacity: 0.5}}>Import depuis Groupe</div>
+              <div className="t-label" style={{marginBottom:6, opacity: 0.5}}>{t('pm_import_group_label')}</div>
               <select 
                 value={selectedGroup} 
                 onChange={e => handleGroupSelect(e.target.value)} 
                 style={{ ...FIS, border: '1px solid var(--ac)', color: 'var(--ac)' }}
               >
-                <option value="">— Sélectionner un groupe pour ajouter ses œuvres</option>
+                <option value="">{t('pm_group_placeholder')}</option>
                 {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
               </select>
             </div>
@@ -1255,28 +1293,28 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved }: 
           {type === 'vente' && (
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:20, background:'rgba(34,197,94,0.05)', padding:24, border:'1px solid rgba(34,197,94,0.2)', marginBottom: 20 }}>
               <div>
-                <div className="t-label" style={{marginBottom:8}}>Batch Total (Catalog)</div>
+                <div className="t-label" style={{marginBottom:8}}>{t('pm_vente_batch_total')}</div>
                 <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                   <span style={{ fontSize:12, color: 'var(--tx3)' }}>€</span>
                   <input value={catalogPrice} onChange={e=>setCatalogPrice(e.target.value)} style={{...FIS, fontSize: 16, fontWeight: 700, background:'transparent', border:'none', borderBottom:'1px solid var(--bd)'}} placeholder="0.00" />
                 </div>
               </div>
               <div>
-                <div className="t-label" style={{marginBottom:8}}>Discount (%)</div>
+                <div className="t-label" style={{marginBottom:8}}>{t('pm_vente_discount')}</div>
                 <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                   <input value={discount} onChange={e=>setDiscount(e.target.value)} style={{...FIS, fontSize: 16, fontWeight: 700, background:'transparent', border:'none', borderBottom:'1px solid var(--bd)', textAlign: 'center'}} placeholder="0" />
                   <span style={{ fontSize:12, color: 'var(--tx3)' }}>%</span>
                 </div>
               </div>
               <div>
-                <div className="t-label" style={{marginBottom:8, color: 'var(--green)'}}>Final Net Total</div>
+                <div className="t-label" style={{marginBottom:8, color: 'var(--green)'}}>{t('pm_vente_final_net')}</div>
                 <div style={{ display:'flex', alignItems:'center', gap:8, color:'var(--green)' }}>
                   <span style={{ fontSize:12 }}>€</span>
                   <input value={prixFinal} onChange={e=>setPrixFinal(e.target.value)} style={{...FIS, fontSize: 20, fontWeight: 800, background:'transparent', border:'none', borderBottom:'1px solid var(--bd)', color:'inherit'}} placeholder="0.00" />
                 </div>
               </div>
               <div style={{ gridColumn: '1 / -1', fontSize: 9, color: 'var(--tx3)', fontStyle: 'italic', marginTop: 8 }}>
-                * Automatic calculation active: Sum of catalog prices for {oeuvreIds.length} works.
+                {t('pm_vente_calc_footnote').replace(/\{n\}/g, String(oeuvreIds.length))}
               </div>
             </div>
           )}
@@ -1284,7 +1322,7 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved }: 
           {type === 'consignment' && (
             <div style={{ display:'grid', gridTemplateColumns:'1fr', gap:20, background:'rgba(200,168,110,0.06)', padding:24, border:'1px solid rgba(200,168,110,0.25)', marginBottom: 20 }}>
               <div>
-                <div className="t-label" style={{marginBottom:8}}>Commission galerie (%)</div>
+                <div className="t-label" style={{marginBottom:8}}>{t('pm_consignment_commission')}</div>
                 <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                   <input
                     type="number"
@@ -1296,30 +1334,30 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved }: 
                     style={{...FIS, fontSize: 16, fontWeight: 700, background:'transparent', border:'none', borderBottom:'1px solid var(--bd)', textAlign: 'center', maxWidth: 140}}
                     placeholder="0"
                   />
-                  <span style={{ fontSize:12, color: 'var(--tx3)' }}>% du prix de vente net</span>
+                  <span style={{ fontSize:12, color: 'var(--tx3)' }}>{t('pm_consignment_net_suffix')}</span>
                 </div>
                 <div style={{ fontSize: 10, color: 'var(--tx3)', fontStyle: 'italic', marginTop: 6 }}>
-                  Prélevée automatiquement à la clôture d&apos;une vente passée par cette consignation.
+                  {t('pm_consignment_hint')}
                 </div>
               </div>
             </div>
           )}
 
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 120px', gap:20 }}>
-            <div><div className="t-label" style={{marginBottom:6}}>Commencement</div><input type="date" value={debut} onChange={e=>setDebut(e.target.value)} style={FIS} /></div>
-            <div><div className="t-label" style={{marginBottom:6}}>Deadline</div><input type="date" value={fin} onChange={e=>setFin(e.target.value)} style={FIS} /></div>
-            <div><div className="t-label" style={{marginBottom:6}}>Time</div><input value={deadlineTime} onChange={e=>setDeadlineTime(e.target.value)} style={FIS} placeholder="23:59" /></div>
+            <div><div className="t-label" style={{marginBottom:6}}>{t('pm_date_start')}</div><input type="date" value={debut} onChange={e=>setDebut(e.target.value)} style={FIS} /></div>
+            <div><div className="t-label" style={{marginBottom:6}}>{t('pm_date_deadline')}</div><input type="date" value={fin} onChange={e=>setFin(e.target.value)} style={FIS} /></div>
+            <div><div className="t-label" style={{marginBottom:6}}>{t('pm_time_label')}</div><input value={deadlineTime} onChange={e=>setDeadlineTime(e.target.value)} style={FIS} placeholder="23:59" /></div>
           </div>
 
           <div style={{ borderTop: '1px solid var(--bd)', paddingTop: 32 }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
-              <div className="t-eyebrow">Pipeline Steps</div>
-              <button className="btn ghost sm" onClick={()=>setEtapes(p=>[...p,{nom:'',date_echeance:'',statut:'a_faire'}])}>+ ADD STEP</button>
+              <div className="t-eyebrow">{t('pm_pipeline_steps')}</div>
+              <button className="btn ghost sm" onClick={()=>setEtapes(p=>[...p,{nom:'',date_echeance:'',statut:'a_faire'}])}>{t('pm_add_step')}</button>
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
               {etapes.map((e,i)=>(
                 <div key={i} style={{ display:'flex', gap:12, alignItems:'center', background: 'var(--bg0)', padding: '4px 12px' }}>
-                  <input value={e.nom} onChange={ev=>{const v=ev.target.value;setEtapes(p=>p.map((x,j)=>j===i?{...x,nom:v}:x))}} style={{...FIS, border: 'none', background: 'transparent', flex: 1}} placeholder="Step name..." />
+                  <input value={e.nom} onChange={ev=>{const v=ev.target.value;setEtapes(p=>p.map((x,j)=>j===i?{...x,nom:v}:x))}} style={{...FIS, border: 'none', background: 'transparent', flex: 1}} placeholder={t('pm_step_name_ph')} />
                   <input type="date" value={e.date_echeance} onChange={ev=>{const v=ev.target.value;setEtapes(p=>p.map((x,j)=>j===i?{...x,date_echeance:v}:x))}} style={{...FIS, width:130, border: 'none', background: 'transparent'}} />
                   <button onClick={()=>setEtapes(p=>p.filter((_,j)=>j!==i))} style={{ background: 'none', border: 'none', color: 'var(--tx3)', cursor: 'pointer' }}>×</button>
                 </div>
@@ -1328,8 +1366,8 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved }: 
           </div>
 
           <div>
-            <div className="t-label" style={{marginBottom:6, opacity: 0.5}}>Internal Strategic Notes</div>
-            <textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={4} style={{...FIS, resize:'vertical', lineHeight:1.6, background: 'var(--bg2)', padding: 16}} placeholder="Context..." />
+            <div className="t-label" style={{marginBottom:6, opacity: 0.5}}>{t('pm_internal_notes')}</div>
+            <textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={4} style={{...FIS, resize:'vertical', lineHeight:1.6, background: 'var(--bg2)', padding: 16}} placeholder={t('pm_notes_ph')} />
           </div>
 
           {err && <div style={{ fontSize:11, color:'var(--rust)', padding: 12, border: '1px solid var(--rust)' }}>{err}</div>}
@@ -1340,7 +1378,7 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved }: 
                 className="btn ghost" 
                 style={{ color: 'var(--rust)', marginRight: 'auto' }} 
                 onClick={async () => {
-                  if (!confirm("Are you sure you want to delete this process? This will also remove all associated steps and reminders.")) return
+                  if (!confirm(t('pm_confirm_delete_process'))) return
                   setBusy(true)
                   const sb = createClient()
                   const { error } = await (sb.from('suivi_process') as any).delete().eq('id', process.id)
@@ -1353,11 +1391,11 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved }: 
                 }}
                 disabled={busy}
               >
-                DELETE PROCESS
+                {t('pm_delete_process')}
               </button>
             )}
-            <button type="button" className="btn ghost" onClick={attemptClose} disabled={busy}>Discard</button>
-            <button type="button" className="btn primary" onClick={()=>void handleSave()} disabled={busy}>{busy ? 'SYNCHRONIZING…' : 'COMMIT UPDATES'}</button>
+            <button type="button" className="btn ghost" onClick={attemptClose} disabled={busy}>{t('pm_discard')}</button>
+            <button type="button" className="btn primary" onClick={()=>void handleSave()} disabled={busy}>{busy ? t('pm_synchronizing') : t('pm_commit')}</button>
           </div>
         </div>
       </div>

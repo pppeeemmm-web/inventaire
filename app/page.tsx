@@ -206,7 +206,7 @@ export default function LandingPage() {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <span style={{ fontSize: 9, letterSpacing: 3, textTransform: 'uppercase', color: '#b0aca6' }}>
-                {lang === 'fr' ? 'Navigation' : 'Navigate'}
+                {t('pub_mobile_nav_heading')}
               </span>
               <button
                 type="button"
@@ -223,7 +223,7 @@ export default function LandingPage() {
                   fontFamily: 'inherit',
                 }}
               >
-                {lang === 'fr' ? 'Fermer' : 'Close'}
+                {t('close')}
               </button>
             </div>
             {([
@@ -269,7 +269,7 @@ export default function LandingPage() {
                 textAlign: 'left',
               }}
             >
-              {lang === 'fr' ? 'Portfolio PDF' : 'Portfolio PDF'}
+              {t('pub_portfolio_pdf_strip')}
             </button>
             <Link
               href="/hub"
