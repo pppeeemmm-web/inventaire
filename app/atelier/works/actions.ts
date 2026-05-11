@@ -63,6 +63,29 @@ export type SaveResult   = { error: string } | { ok: true; newId?: number }
 export type DeleteResult = { error: string } | { ok: true }
 export type ImageResult  = { error: string } | { ok: true; image: WorkImage }
 
+/** Remove every tblImage row for these works and best-effort R2 objects (original + AVIF thumb). */
+async function deleteAllImagesForOeuvres(
+  supabase: SupabaseClient,
+  oeuvreIds: number[],
+): Promise<DeleteResult> {
+  if (oeuvreIds.length === 0) return { ok: true }
+  const { data: rows, error: selErr } = await supabase
+    .from('tblImage')
+    .select('txtImageNameLink')
+    .in('OeuvreID', oeuvreIds)
+  if (selErr) return { error: selErr.message }
+  const { error: delErr } = await supabase.from('tblImage').delete().in('OeuvreID', oeuvreIds)
+  if (delErr) return { error: delErr.message }
+  for (const r of rows ?? []) {
+    const filename = r.txtImageNameLink as string | null
+    if (!filename) continue
+    const thumbName = `thumbs/${filename.replace(/\.[^.]+$/, '')}.avif`
+    try { await r2Delete(filename) } catch { /* R2 optional */ }
+    try { await r2Delete(thumbName) } catch { /* R2 optional */ }
+  }
+  return { ok: true }
+}
+
 export async function deleteWork(oid: number): Promise<DeleteResult> {
   const supabase = await createClient()
   const svc = createServiceClient()
@@ -70,6 +93,8 @@ export async function deleteWork(oid: number): Promise<DeleteResult> {
   if (relErr) return { error: relErr.message }
   const { error: themeErr } = await svc.from('oeuvre_theme').delete().eq('oeuvre_id', oid)
   if (themeErr) return { error: themeErr.message }
+  const imgDel = await deleteAllImagesForOeuvres(supabase, [oid])
+  if ('error' in imgDel) return imgDel
   const { error } = await supabase.from('Oeuvres').delete().eq('OeuvreID', oid)
   if (error) return { error: error.message }
   revalidatePath('/atelier')
@@ -86,6 +111,8 @@ export async function deleteSelectedWorks(ids: number[]): Promise<DeleteResult> 
     const { error: themeErr } = await svc.from('oeuvre_theme').delete().eq('oeuvre_id', id)
     if (themeErr) return { error: themeErr.message }
   }
+  const imgDel = await deleteAllImagesForOeuvres(supabase, ids)
+  if ('error' in imgDel) return imgDel
   const { error } = await supabase.from('Oeuvres').delete().in('OeuvreID', ids)
   if (error) return { error: error.message }
   revalidatePath('/atelier')
