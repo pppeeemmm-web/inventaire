@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 
 interface LogEntry {
-  eventType: 'STATUS_CHANGE' | 'LOCATION_MOVE' | 'PRICE_CHANGE' | 'VAULT_UPLOAD' | 'ORDER_CREATED' | 'SYSTEM_CONFIG' | 'VISIBILITY_GATE' | 'GATE_BYPASS' | 'PAYMENT_GRAIN' | 'ATELIER_VIEW'
+  eventType: 'STATUS_CHANGE' | 'LOCATION_MOVE' | 'PRICE_CHANGE' | 'VAULT_UPLOAD' | 'ORDER_CREATED' | 'SYSTEM_CONFIG' | 'VISIBILITY_GATE' | 'GATE_BYPASS' | 'PAYMENT_GRAIN'
   tableName?: string
   rowId?: string | number
   oldValue?: any

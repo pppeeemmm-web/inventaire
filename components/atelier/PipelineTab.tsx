@@ -2,11 +2,13 @@
 
 // PipelineTab — parallel process tracker: Gantt + deadline sidebar + reminder panel.
 
-import { useState, useEffect, useCallback, useMemo, useLayoutEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo, useLayoutEffect, useTransition } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { createClient } from '@/lib/supabase/client'
 import { stringifyError } from '@/lib/error'
 import type { Lang } from '@/lib/i18n/dictionary'
+import { AsyncButton } from '@/components/ui/AsyncButton'
+import { toast } from '@/lib/ui/toast'
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -61,7 +63,6 @@ import { createConsignmentOrder, regenerateConsignmentPdf, closeConsignmentByPdf
 import { createSaleOrder } from '@/app/atelier/sales/actions'
 import { getSignedUrl } from '@/app/atelier/vault/actions'
 import type { Oeuvre } from '@/lib/types/database'
-import { EXHIBITION_READY_TYPES } from '@/lib/data'
 import { WorkThumb } from './WorkThumb'
 import { useUnsavedCloseGuard } from '@/hooks/useUnsavedCloseGuard'
 
@@ -625,6 +626,15 @@ function ProcessDrawer({ process, onClose, onEdit, onRefresh, onCycleEtape, onOv
   const { statutLabels, etapeLabels, typeLabel, t, lang } = useSuiviLabels()
   const dateLocale = lang === 'en' ? 'en' : 'fr'
   const color = TYPE_COLORS[process.type as ProcessType]??'#888'
+  const [regenPending, startRegen] = useTransition()
+  const [closePending, startClose] = useTransition()
+  const [downloadPending, startDownload] = useTransition()
+
+  const openExhibitionProject = useCallback(() => {
+    const id = (process as any).exhibition_process_id as string | null | undefined
+    if (!id) return
+    window.location.assign(`/atelier?tab=exhibitions&exhibition=${encodeURIComponent(id)}`)
+  }, [process])
 
   function Row({label,value,href}:{label:string;value?:string|null;href?:string}) {
     if(!value) return null
@@ -648,6 +658,11 @@ function ProcessDrawer({ process, onClose, onEdit, onRefresh, onCycleEtape, onOv
           </div>
         </div>
         <div style={{ display:'flex', gap:8 }}>
+          {(process as any).exhibition_process_id && (
+            <button className="btn ghost sm" onClick={openExhibitionProject}>
+              {t('pipeline_open_exhibition_project')}
+            </button>
+          )}
           <button className="btn ghost sm" onClick={onEdit}>{t('edit')}</button>
           <button className="btn ghost sm" onClick={onClose}>✕</button>
         </div>
@@ -719,82 +734,86 @@ function ProcessDrawer({ process, onClose, onEdit, onRefresh, onCycleEtape, onOv
         <div style={{ marginTop: 20, padding: 16, background: 'rgba(34,211,238,0.05)', border: '1px solid rgba(34,211,238,0.2)' }}>
           <div className="t-label" style={{ marginBottom: 8, color: 'var(--cyan)' }}>{t('pd_commercial_bond_pdf')}</div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button 
-              onClick={async (e) => {
+            <AsyncButton
+              pending={regenPending}
+              pendingText={t('pd_operation_in_progress')}
+              onClick={() => {
                 if (!confirm(t('pd_confirm_regenerate_pdf'))) return
-                const btn = (e.currentTarget as HTMLButtonElement)
-                const old = btn.innerText
-                btn.innerText = t('pd_operation_in_progress')
-                btn.disabled = true
-                try {
-                  const res = await regenerateConsignmentPdf(process.id)
-                  if (res.ok) {
-                    alert(t('pd_pdf_updated_reload'))
-                    await onRefresh()
-                  } else alert(res.error)
-                } catch (err) {
-                  alert(`${t('error_prefix')} ${err instanceof Error ? err.message : String(err)}`)
-                } finally {
-                  btn.innerText = old
-                  btn.disabled = false
-                }
+                startRegen(() => {
+                  void (async () => {
+                    try {
+                      const res = await regenerateConsignmentPdf(process.id)
+                      if (res.ok) {
+                        toast.success(t('pd_pdf_updated_reload'))
+                        await onRefresh()
+                          } else toast.error(res.error ?? t('error'))
+                    } catch (err) {
+                      toast.error(`${t('error_prefix')} ${err instanceof Error ? err.message : String(err)}`)
+                    }
+                  })()
+                })
               }}
               className="btn ghost sm"
               style={{ flex: 1, fontSize: 12, border: '1px solid rgba(34,211,238,0.3)' }}
             >
               {t('pd_regenerate_pdf_btn')}
-            </button>
-            <button 
-              onClick={async () => {
-                try {
-                  const res = await getSignedUrl(process.pdf_path!)
-                  if ('url' in res) window.open(res.url, '_blank')
-                  else alert(res.error)
-                } catch (err) {
-                  alert(`${t('error_prefix')} ${err instanceof Error ? err.message : String(err)}`)
-                }
+            </AsyncButton>
+            <AsyncButton
+              pending={downloadPending}
+              pendingText={t('pd_operation_in_progress')}
+              onClick={() => {
+                startDownload(() => {
+                  void (async () => {
+                    try {
+                      const res = await getSignedUrl(process.pdf_path!)
+                      if ('url' in res) window.open(res.url, '_blank')
+                      else toast.error(res.error ?? t('error'))
+                    } catch (err) {
+                      toast.error(`${t('error_prefix')} ${err instanceof Error ? err.message : String(err)}`)
+                    }
+                  })()
+                })
               }}
               className="btn primary sm"
               style={{ flex: 1, display: 'flex', justifyContent: 'center', gap: 10, padding: '8px 12px' }}
             >
               <span style={{ fontSize: 20 }}>↓</span>
               <span style={{ fontSize: 14 }}>{t('pd_download_pdf_btn')}</span>
-            </button>
+            </AsyncButton>
           </div>
           {process.type === 'consignment' && (
             <div style={{ marginTop: 10 }}>
-              <button
-                onClick={async (e) => {
+              <AsyncButton
+                pending={closePending}
+                pendingText={t('pd_operation_in_progress')}
+                onClick={() => {
                   if (!confirm(t('pd_confirm_close_consignment'))) return
-                  const btn = (e.currentTarget as HTMLButtonElement)
-                  const old = btn.innerText
-                  btn.innerText = t('pd_operation_in_progress')
-                  btn.disabled = true
-                  try {
-                    const res = await closeConsignmentByPdfPath(process.pdf_path!)
-                    if ('ok' in res) {
-                      let msg = t('pd_close_consignment_intro')
-                      if (res.reverted.length > 0) {
-                        msg += ` ${t('pd_consignment_reverted_line').replace(/\{n\}/g, String(res.reverted.length))}`
+                  startClose(() => {
+                    void (async () => {
+                      try {
+                        const res = await closeConsignmentByPdfPath(process.pdf_path!)
+                        if ('ok' in res) {
+                          let msg = t('pd_close_consignment_intro')
+                          if (res.reverted.length > 0) {
+                            msg += ` ${t('pd_consignment_reverted_line').replace(/\{n\}/g, String(res.reverted.length))}`
+                          }
+                          if (res.skipped.length > 0) {
+                            msg += ` ${t('pd_consignment_skipped_line').replace(/\{n\}/g, String(res.skipped.length))}`
+                          }
+                          toast.success(msg.trim())
+                          await onRefresh()
+                        } else toast.error((res as any).error ?? t('error'))
+                      } catch (err) {
+                        toast.error(`${t('error_prefix')} ${err instanceof Error ? err.message : String(err)}`)
                       }
-                      if (res.skipped.length > 0) {
-                        msg += ` ${t('pd_consignment_skipped_line').replace(/\{n\}/g, String(res.skipped.length))}`
-                      }
-                      alert(msg.trim())
-                      await onRefresh()
-                    } else alert(res.error)
-                  } catch (err) {
-                    alert(`${t('error_prefix')} ${err instanceof Error ? err.message : String(err)}`)
-                  } finally {
-                    btn.innerText = old
-                    btn.disabled = false
-                  }
+                    })()
+                  })
                 }}
                 className="btn ghost sm"
                 style={{ width: '100%', fontSize: 12, color: 'var(--rust)', border: '1px solid rgba(202,89,73,0.4)' }}
               >
                 {t('pd_close_consignment_btn')}
-              </button>
+              </AsyncButton>
             </div>
           )}
         </div>
@@ -961,12 +980,59 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved }: 
     const sb = createClient()
     ;(sb.from('suivi_process') as any)
       .select('id, nom, localisation, contact_id, date_debut, date_fin')
-      .in('type', EXHIBITION_READY_TYPES)
+      .eq('type', 'exposition')
       .order('date_fin', { ascending: false, nullsFirst: false })
       .then(({ data }: { data: typeof exhibitionProcessOptions | null }) => {
         setExhibitionProcessOptions(data ?? [])
       })
   }, [])
+
+  async function handleCreateExhibitionProject() {
+    if (isNew) {
+      toast.error(t('pipeline_exhibition_create_requires_save'))
+      return
+    }
+    if (exhibitionProcessId) return
+
+    const hasSchedule = Boolean((debut && debut.trim()) || (fin && fin.trim()))
+    if (!hasSchedule) {
+      toast.error(t('pipeline_exhibition_create_requires_dates'))
+      return
+    }
+
+    const sb = createClient()
+    try {
+      const payload = {
+        nom: (nom || '').trim() || t('pipeline_exhibition_project_default_name'),
+        type: 'exposition',
+        statut: 'prevue',
+        date_debut: debut || null,
+        date_fin: fin || null,
+        contact_id: contactId || null,
+        localisation: localisation || null,
+        url: url || null,
+        notes: notes || null,
+      }
+      const { data: ex, error: exErr } = await (sb.from('suivi_process') as any).insert(payload).select('id, nom, localisation, contact_id, date_debut, date_fin').single()
+      if (exErr || !ex?.id) {
+        toast.error(`${t('error_prefix')} ${exErr?.message ?? 'Insert failed'}`)
+        return
+      }
+
+      // Link current pipeline process → exhibition project
+      const { error: linkErr } = await (sb.from('suivi_process') as any).update({ exhibition_process_id: ex.id }).eq('id', process.id)
+      if (linkErr) {
+        toast.error(`${t('error_prefix')} ${linkErr.message}`)
+        return
+      }
+
+      setExhibitionProcessId(ex.id)
+      setExhibitionProcessOptions((prev) => [ex, ...prev.filter((p) => p.id !== ex.id)])
+      toast.success(t('pipeline_exhibition_project_created'))
+    } catch (err) {
+      toast.error(`${t('error_prefix')} ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
 
   useEffect(() => {
     setExhibitionProcessId(process?.exhibition_process_id ?? null)
@@ -1160,16 +1226,30 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved }: 
 
           <div style={{ padding: 16, background: 'rgba(200,168,110,0.05)', border: '1px solid rgba(200,168,110,0.2)', borderRadius: 2 }}>
             <div className="t-label" style={{marginBottom:8, color: 'var(--ac)'}}>{t('pm_exhibition_link')}</div>
-            <select value={exhibitionProcessId || ''} onChange={e => handleExhibitionProcessSelect(e.target.value)} style={{...FIS, background: 'var(--bg1)'}}>
-              <option value="">{t('pm_exhibition_no_link')}</option>
-              {exhibitionProcessOptions
-                .filter((ex) => !process?.id || ex.id !== process.id)
-                .map((ex) => (
-                  <option key={ex.id} value={ex.id}>
-                    {ex.nom}{ex.localisation ? ` (${ex.localisation})` : ''}
-                  </option>
-                ))}
-            </select>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <select value={exhibitionProcessId || ''} onChange={e => handleExhibitionProcessSelect(e.target.value)} style={{...FIS, background: 'var(--bg1)'}}>
+                <option value="">{t('pm_exhibition_no_link')}</option>
+                {exhibitionProcessOptions
+                  .filter((ex) => !process?.id || ex.id !== process.id)
+                  .map((ex) => (
+                    <option key={ex.id} value={ex.id}>
+                      {ex.nom}{ex.localisation ? ` (${ex.localisation})` : ''}
+                    </option>
+                  ))}
+              </select>
+              {!exhibitionProcessId && (
+                <button
+                  type="button"
+                  className="btn ghost sm"
+                  onClick={() => void handleCreateExhibitionProject()}
+                  disabled={busy}
+                  title={t('pipeline_exhibition_create_btn')}
+                  style={{ whiteSpace: 'nowrap' }}
+                >
+                  {t('pipeline_exhibition_create_btn')}
+                </button>
+              )}
+            </div>
           </div>
 
           <div style={{ padding: 24, background: 'var(--bg2)', border: '1px solid var(--bd2)', borderRadius: 2, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>

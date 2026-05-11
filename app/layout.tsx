@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { I18nProvider } from '@/lib/i18n/context'
 import { ThemePathSync } from '@/components/ThemePathSync'
+import { ToastHost } from '@/components/ui/ToastHost'
+import { RouteProgress } from '@/components/ui/RouteProgress'
 import { Analytics } from '@vercel/analytics/react'
 
 export const viewport: Viewport = {
@@ -50,10 +52,12 @@ export default function RootLayout({
         />
       </head>
       <body style={{ minHeight: '100dvh' }} suppressHydrationWarning>
+        <RouteProgress />
         <ThemePathSync />
         <I18nProvider>
           {children}
         </I18nProvider>
+        <ToastHost />
         {/* Only on Vercel deployments — avoids 404 + console noise on localhost */}
         {process.env.VERCEL === '1' ? <Analytics /> : null}
       </body>

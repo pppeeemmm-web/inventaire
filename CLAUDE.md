@@ -12,6 +12,7 @@ COMMIT COMPLETE: Before every commit, run git diff --stat. Stage ALL modified so
 WORKTREE CLEANUP: At session end, remove all claude/* worktrees and branches except the active one. git worktree remove --force + git branch -D + git worktree prune.
 CAVEMAN CHAT: Stop verbosity. No "I've updated..." or "Here is...". Code only. 1-3 word status max.
 UI: bilingual only — obey 🌐 UI COPY when touching user-facing text.
+RESPONSIVE: any UI change must work on small-screen phones (≈360px width). No horizontal scroll, no clipped controls, preserve core actions in compact layouts.
 
 🛠️ CMDS
 Next.js 15 (port 3000). npm dev | build | lint. No tests.
@@ -33,6 +34,16 @@ All user-visible copy → `useI18n().t(key)` + `lib/i18n/dictionary.ts` (**DictK
 **Label maps:** if UI showed one static language map → wrong; use **`lang`** branch or paired dict keys (see `pipelineTypeLabel`).
 **Server Components:** no `useI18n` → pass translated strings down, client leaf, or `dict[lang][key]` at read time. **Speed:** add all keys for the feature in one edit; copy patterns from `TeamPortalClient` · `PipelineTab`.
 
+📱 MOBILE FIELD-TOOL CONTRACT (iPhone SE / small viewport)
+Phone is an **atelier tool**: capture + update in the field. PR/public relations stays desktop/web.
+- **Breakpoints**: treat `<= 767px` as mobile; iPhone SE baseline `<= 375px`.
+- **No desktop-only fixed layout**: any `width: 460`, `padding: 60px`, multi-column grids, or side-rails must have a narrow branch (use `useMediaQuery('(max-width: 767px)')`).
+- **Tap targets**: minimum 44px hit area for primary actions (buttons, toggles, image-add).
+- **Sticky primary action on forms**: Save must be reachable without scrolling; respect `env(safe-area-inset-bottom)`.
+- **Safe-area always**: top/bottom bars must pad for `env(safe-area-inset-*)`.
+- **Capture-first uploads**: on mobile image inputs may use `capture="environment"` when appropriate.
+- **Downstream check**: if `/hub` adds/changes a mobile entrypoint, verify downstream screens remain usable on small viewport (`WorkForm`, `WorkDrawer`, and at least open Inventory).
+
 📁 KEY FILES
 - lib/i18n/dictionary.ts · context.tsx — all UI strings (fr/en)
 - lib/data.ts — imageUrl(), thumbUrl(), yearOf(), statusOf(), makeFilename()
@@ -41,7 +52,8 @@ All user-visible copy → `useI18n().t(key)` + `lib/i18n/dictionary.ts` (**DictK
 - app/atelier/page.tsx — loads all reference data in parallel (up to 5000 rows), builds lookup maps
 - components/atelier/TeamPortalClient.tsx — main orchestrator (tabs, selection, drawer)
 - components/atelier/InventoryTab.tsx — inventory list + panel
-- components/atelier/WorkDrawer.tsx — detail/edit panel with pipeline bar, anonymity gate, zoom
+- components/atelier/WorkDrawer.tsx — detail/edit panel with pipeline bar, anonymity gate, zoom (hub overlay + inventory panel; same `saveWork`; re-sends current Catalogué/NeedsPhotograph so pipeline flags are not wiped)
+- components/atelier/WorkForm.tsx — full-page create/edit (`/atelier/works/new`, `/atelier/works/[id]/edit`); simplified prod + ownership UI; same `saveWork`. Hub list pencil opens this route, not the drawer.
 - app/atelier/works/actions.ts — image upload, delete, work CRUD
 
 💾 DATA LOGIC

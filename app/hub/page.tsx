@@ -50,8 +50,10 @@ export default async function HubPage() {
       .limit(4),
     supabase
       .from('system_log')
-      .select('id, created_at, action, details, type, status, priority')
+      .select('id, created_at, action, details, type, status, priority, event_type, table_name, row_id, metadata')
       .not('action', 'is', null)
+      // Exclude sensitive view-style breadcrumbs (historical rows too).
+      .or('event_type.is.null,event_type.neq.ATELIER_VIEW')
       .order('created_at', { ascending: false })
       .limit(8),
   ])
@@ -84,6 +86,10 @@ export default async function HubPage() {
         type:       l.type   as string | null,
         status:     l.status as string | null,
         priority:   l.priority as string | null,
+        event_type: l.event_type as string | null,
+        table_name: l.table_name as string | null,
+        row_id:     l.row_id as string | null,
+        metadata:   l.metadata as any,
         created_at: l.created_at as string,
       }))}
     />

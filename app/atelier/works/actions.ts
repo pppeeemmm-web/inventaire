@@ -306,11 +306,25 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
     if (isNaN(oid)) return { error: 'ID invalide' }
 
     // Fetch current record to compare statusId + ContactID for history
+    type CurrentOeuvre = {
+      statusId: number | null
+      ContactID: number | null
+      LocalisationID: number | null
+      Prix: number | null
+      PrixFinal: number | null
+      Historique: string | null
+      Catalogué: boolean | null
+      NeedsPhotograph: boolean | null
+      is_public: boolean | null
+      anonymity_level: string | null
+      admin_override_anonymity: boolean | null
+    }
+
     const { data: current } = await supabase
       .from('Oeuvres')
-      .select('statusId, ContactID, Historique, "Catalogué", "NeedsPhotograph", is_public')
+      .select('statusId, ContactID, LocalisationID, Prix, PrixFinal, txtImageNameLink, Historique, "Catalogué", "NeedsPhotograph", is_public, anonymity_level, admin_override_anonymity')
       .eq('OeuvreID', oid)
-      .single()
+      .single<CurrentOeuvre>()
 
     // Use the user's edited text as the base (form field wins over DB).
     // Append the auto-generated location-change entry on top if contact changed.
@@ -378,6 +392,17 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
 
     if (updateErr) return { error: updateErr.message }
 
+    // ── Log Significant Event: Image Upload (form) ──
+    if (formUploadedNewImage) {
+      await logSystemEvent({
+        eventType: 'VAULT_UPLOAD',
+        tableName: 'Oeuvres',
+        rowId: oid,
+        newValue: imageName,
+        metadata: { titre, source: 'work_form' },
+      })
+    }
+
     // ── Log Significant Event: Visibility Release ──
     if (willBePublic && (!current || !current.is_public)) {
       await logSystemEvent({
@@ -398,6 +423,41 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
         oldValue: current.statusId,
         newValue: statusId,
         metadata: { titre }
+      })
+    }
+
+    // ── Log Significant Event: Location Move ──
+    if (current && localisationId !== current.LocalisationID) {
+      await logSystemEvent({
+        eventType: 'LOCATION_MOVE',
+        tableName: 'Oeuvres',
+        rowId: oid,
+        oldValue: current.LocalisationID,
+        newValue: localisationId,
+        metadata: { titre },
+      })
+    }
+
+    // ── Log Significant Event: Price Change ──
+    if (current && (prixFinal !== current.PrixFinal || prix !== current.Prix)) {
+      await logSystemEvent({
+        eventType: 'PRICE_CHANGE',
+        tableName: 'Oeuvres',
+        rowId: oid,
+        oldValue: { Prix: current.Prix, PrixFinal: current.PrixFinal },
+        newValue: { Prix: prix, PrixFinal: prixFinal },
+        metadata: { titre },
+      })
+    }
+
+    // ── Log Significant Event: Admin Anonymity Override ──
+    if (adminOverrideAnonymity && !current?.admin_override_anonymity) {
+      await logSystemEvent({
+        eventType: 'GATE_BYPASS',
+        tableName: 'Oeuvres',
+        rowId: oid,
+        newValue: true,
+        metadata: { titre, anonymity_level: anonymityLevel },
       })
     }
 
@@ -686,6 +746,14 @@ export async function addWorkImage(formData: FormData): Promise<ImageResult> {
     .from('Oeuvres')
     .update(coverUpdate)
     .eq('OeuvreID', oeuvreId)
+
+  await logSystemEvent({
+    eventType: 'VAULT_UPLOAD',
+    tableName: 'Oeuvres',
+    rowId: oeuvreId,
+    newValue: inserted.txtImageNameLink,
+    metadata: { source: 'image_manager', wasInPhotoGate },
+  })
 
   if (workState) {
     const pipeRes = await syncPipelineWithBooleans(supabase, oeuvreId, {

@@ -16,6 +16,7 @@ import { WorkThumb } from './WorkThumb'
 import { addWorkImage, deleteWorkImage, createLookup, reorderWorkImages } from '@/app/atelier/works/actions'
 import { createClient } from '@/lib/supabase/client'
 import { useUnsavedCloseGuard } from '@/hooks/useUnsavedCloseGuard'
+import { useMediaQuery } from '@/lib/useMediaQuery'
 
 // ── Config ────────────────────────────────────────────────────────────────
 
@@ -79,6 +80,7 @@ export function WorkForm({
   action,
 }: Props) {
   const { t } = useI18n()
+  const narrow = useMediaQuery('(max-width: 767px)')
   const PRODUCTION_STAGES = useMemo(
     () => [
       { id: 'atelier' as const, label: t('wf_prod_atelier_l'), desc: t('wf_prod_atelier_d') },
@@ -330,7 +332,7 @@ export function WorkForm({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg0)', overflow: 'hidden' }}>
       {/* Header */}
-      <div style={{ flexShrink: 0, padding: '12px 28px', borderBottom: '1px solid var(--bd)', background: 'var(--bg1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ flexShrink: 0, padding: narrow ? '10px max(12px, env(safe-area-inset-right)) 10px max(12px, env(safe-area-inset-left))' : '12px 28px', borderBottom: '1px solid var(--bd)', background: 'var(--bg1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
         <div className="row gap-md">
           <button type="button" className="btn ghost sm" onClick={() => router.back()}>← {t('back')}</button>
           <div className="t-eyebrow" style={{ color: 'var(--ac)' }}>
@@ -347,17 +349,19 @@ export function WorkForm({
             </div>
           )}
         </div>
-        <button type="button" className="btn primary sm" onClick={handleSubmit} disabled={isPending}>
-          {isPending ? t('savingRecord') : t('save')}
-        </button>
+        {!narrow && (
+          <button type="button" className="btn primary sm" onClick={handleSubmit} disabled={isPending}>
+            {isPending ? t('savingRecord') : t('save')}
+          </button>
+        )}
       </div>
 
-      <form id="work-form" ref={formRef} onSubmit={handleSubmit} style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+      <form id="work-form" ref={formRef} onSubmit={handleSubmit} style={{ flex: 1, display: 'flex', flexDirection: narrow ? 'column' : 'row', overflow: 'hidden' }}>
         <input type="hidden" name="oeuvre_id" value={oeuvre?.OeuvreID ?? ''} />
 
         {/* Left sidebar: images, themes, notes */}
-        <div style={{ width: 340, borderRight: '1px solid var(--bd)', background: 'var(--bg1)', padding: 24, overflow: 'auto' }}>
-          <ImageManager oeuvreId={oeuvre?.OeuvreID ?? 0} initialImages={initialImages} />
+        <div style={{ width: narrow ? '100%' : 340, borderRight: narrow ? 'none' : '1px solid var(--bd)', borderBottom: narrow ? '1px solid var(--bd)' : 'none', background: 'var(--bg1)', padding: narrow ? 16 : 24, overflow: 'auto' }}>
+          <ImageManager oeuvreId={oeuvre?.OeuvreID ?? 0} initialImages={initialImages} narrow={narrow} />
 
           <div style={{ marginTop: 32 }}>
             <div className="t-eyebrow" style={{ marginBottom: 12, fontSize: 11 }}>{t('wf_themes_series')}</div>
@@ -389,17 +393,17 @@ export function WorkForm({
         </div>
 
         {/* Main form */}
-        <div style={{ flex: 1, padding: '40px 60px', overflow: 'auto' }}>
-          <div style={{ maxWidth: 800, display: 'flex', flexDirection: 'column', gap: 56 }}>
+        <div style={{ flex: 1, padding: narrow ? '18px max(16px, env(safe-area-inset-right)) 24px max(16px, env(safe-area-inset-left))' : '40px 60px', overflow: 'auto' }}>
+          <div style={{ maxWidth: 800, display: 'flex', flexDirection: 'column', gap: narrow ? 32 : 56 }}>
 
             {/* 1. Identity */}
             <section>
               <SectionHeader title={t('wf_section_identity')} />
-              <div style={{ display: 'grid', gridTemplateColumns: '3fr 1fr', gap: 20 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr' : '3fr 1fr', gap: 20 }}>
                 <Field label={t('wf_field_title')}><input name="titre" value={titre} onChange={e => setTitre(cap(e.target.value))} style={FIS} /></Field>
                 <Field label={t('wf_field_year')}><input name="annee" value={annee} onChange={e => setAnnee(e.target.value)} style={FIS} placeholder="1999/10/31" /></Field>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20, marginTop: 16 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr' : '1fr 1fr 1fr', gap: 20, marginTop: 16 }}>
                 <Field label={t('technique')}>
                   <CreatableSelect value={techniqueId} options={localTechniques.map(t => ({ id: String(t.TechniqueID), label: t.Technique ?? '' }))} onChange={setTechniqueId} onAdd={name => saveLookup('Technique', name)} name="technique" />
                 </Field>
@@ -413,7 +417,7 @@ export function WorkForm({
               {circularPlanar && <input type="hidden" name="largeur" value={largeur} readOnly aria-hidden />}
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: circularPlanar ? '1fr 1fr' : '1fr 1fr 1fr',
+                gridTemplateColumns: narrow ? '1fr' : (circularPlanar ? '1fr 1fr' : '1fr 1fr 1fr'),
                 gap: 20,
                 marginTop: 16,
               }}>
@@ -483,7 +487,7 @@ export function WorkForm({
                 onSelect={setOwnStage}
                 color="var(--cyan)"
               />
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginTop: 24 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr' : '1fr 1fr', gap: 24, marginTop: 24 }}>
                 <Field label={ownStage === 'consigned' || ownStage === 'loan' ? t('wf_contact_custodian') : ownStage === 'reserved' ? t('wf_contact_buyer_intent') : t('wf_contact_acquire')}>
                   {ownStage === 'artist' || ownStage === 'artist_archive' ? (
                     <div style={{ ...FIS, display: 'flex', alignItems: 'center', background: 'var(--bg2)44', opacity: 0.8, cursor: 'default' }}>
@@ -543,7 +547,7 @@ export function WorkForm({
             {/* 4. Financials */}
             <section style={{ background: paymentDone ? 'transparent' : 'var(--rust)08', border: `1px solid ${paymentDone ? 'var(--bd)' : 'var(--rust)44'}`, padding: 24 }}>
               <SectionHeader title={t('wf_section_finance')} />
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr' : 'repeat(3, 1fr)', gap: 24 }}>
                 <Field label={t('wf_price')}>
                   <input value={prix} onChange={e => setPrix(e.target.value)} style={FIS} disabled={ownStage === 'gift'} />
                 </Field>
@@ -609,6 +613,27 @@ export function WorkForm({
           </div>
         </div>
       </form>
+
+      {narrow && (
+        <div style={{
+          position: 'sticky',
+          bottom: 0,
+          zIndex: 50,
+          borderTop: '1px solid var(--bd)',
+          background: 'var(--bg1)',
+          padding: '10px max(12px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left))',
+          display: 'flex',
+          gap: 10,
+          alignItems: 'center',
+        }}>
+          <button type="button" className="btn ghost sm" onClick={() => router.back()} style={{ flexShrink: 0 }}>
+            ← {t('back')}
+          </button>
+          <button type="button" className="btn primary" onClick={handleSubmit} disabled={isPending} style={{ flex: 1 }}>
+            {isPending ? t('savingRecord') : t('save')}
+          </button>
+        </div>
+      )}
 
       {showContactModal && (
         <ContactModal
@@ -698,7 +723,7 @@ function CreatableSelect({ value, options, onChange, onAdd, name }: { value: str
   )
 }
 
-function ImageManager({ oeuvreId, initialImages }: { oeuvreId: number; initialImages: WorkImage[] }) {
+function ImageManager({ oeuvreId, initialImages, narrow }: { oeuvreId: number; initialImages: WorkImage[]; narrow: boolean }) {
   const { t } = useI18n()
   const [imgs, setImgs] = useState(initialImages)
   const [busy, setBusy] = useState(false)
@@ -813,6 +838,7 @@ function ImageManager({ oeuvreId, initialImages }: { oeuvreId: number; initialIm
               ref={fileRef}
               type="file"
               accept="image/*"
+              capture={narrow ? 'environment' : undefined}
               style={{ display: 'none' }}
               onChange={onUpload}
               tabIndex={-1}

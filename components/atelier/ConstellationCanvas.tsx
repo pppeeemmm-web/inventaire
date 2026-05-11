@@ -371,6 +371,26 @@ export function ConstellationCanvas({
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const wrapRef   = useRef<HTMLDivElement>(null)
 
+  const initialGroupBy = useMemo<GroupBy>(() => {
+    try {
+      const raw = localStorage.getItem('pem_const_groupBy') as GroupBy | null
+      if (raw === 'year' || raw === 'theme' || raw === 'workgroup' || raw === 'none' || raw === 'custom') return raw
+    } catch {}
+    // Default: open Constellation scoped (fast) instead of full.
+    return 'theme'
+  }, [])
+
+  const initialThemeId = useMemo<number | null>(() => {
+    try {
+      const raw = localStorage.getItem('pem_const_selectedThemeId')
+      if (!raw) return null
+      const n = Number(raw)
+      return Number.isFinite(n) ? n : null
+    } catch {
+      return null
+    }
+  }, [])
+
   // Refs for stale-closure-safe event handlers
   const vpRef       = useRef<VP>({ x: 40, y: 40, z: 1 })
   const posRef      = useRef<NodeMap>(new Map())
@@ -382,11 +402,11 @@ export function ConstellationCanvas({
   // keyed by `${oeuvreId}_${tier}` so each zoom tier has its own cache entry
   const imagesRef   = useRef<Map<string, HTMLImageElement>>(new Map())
   const selRef      = useRef(selection)
-  const groupByRef  = useRef<GroupBy>('year')
+  const groupByRef  = useRef<GroupBy>(initialGroupBy)
   useEffect(() => { selRef.current = selection }, [selection])
   // React state
   const [tick,      setTick]      = useState(0)
-  const [groupBy,   setGroupBy]   = useState<GroupBy>('year')
+  const [groupBy,   setGroupBy]   = useState<GroupBy>(initialGroupBy)
   const [linkType,  setLinkType]  = useState<LinkType>('influence')
   const [loading,   setLoading]   = useState(true)
   const [tool,      setTool]      = useState<Tool>('move')
@@ -410,7 +430,9 @@ export function ConstellationCanvas({
   const [pickerQ,          setPickerQ]          = useState('')
   const [spacePressed, setSpacePressed] = useState(false)
   // Theme mode: optional single-theme filter
-  const [selectedThemeId,  setSelectedThemeId]  = useState<number | null>(null)
+  const [selectedThemeId,  setSelectedThemeId]  = useState<number | null>(
+    initialGroupBy === 'theme' ? initialThemeId : null,
+  )
   const [selectedGroupId,   setSelectedGroupId]  = useState<string | null>(null)
   const [groupWork,         setGroupWork]         = useState<Map<string, Set<number>>>(new Map())
 
@@ -454,6 +476,28 @@ export function ConstellationCanvas({
     if (groupBy !== 'workgroup') setSelectedGroupId(null)
     if (groupBy === 'theme' || groupBy === 'workgroup') setPanelNode(null)
   }, [groupBy])
+
+  // Persist the last view mode + selected theme (helps open “scoped” next time).
+  useEffect(() => {
+    try { localStorage.setItem('pem_const_groupBy', groupBy) } catch {}
+    groupByRef.current = groupBy
+  }, [groupBy])
+  useEffect(() => {
+    if (groupBy !== 'theme') return
+    try {
+      if (selectedThemeId == null) localStorage.removeItem('pem_const_selectedThemeId')
+      else localStorage.setItem('pem_const_selectedThemeId', String(selectedThemeId))
+    } catch {}
+  }, [groupBy, selectedThemeId])
+
+  // If we open in theme mode with no theme selected, restore the last one if it still exists.
+  useEffect(() => {
+    if (groupBy !== 'theme') return
+    if (selectedThemeId != null) return
+    if (initialThemeId == null) return
+    if (!themes.some((t) => t.id === initialThemeId)) return
+    setSelectedThemeId(initialThemeId)
+  }, [groupBy, selectedThemeId, initialThemeId, themes])
   useEffect(() => {
     // Clear the old monolithic theme cache key (before filter-aware keys were introduced).
     try { localStorage.removeItem('pem_const_pos_theme') } catch {}

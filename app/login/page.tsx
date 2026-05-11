@@ -3,11 +3,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useI18n } from '@/lib/i18n/context'
 
 export default function LoginPage() {
   const { t, lang, setLang } = useI18n()
+  const searchParams = useSearchParams()
   const [showMagic, setShowMagic] = useState(false)
   const [email, setEmail]         = useState('')
   const [sent, setSent]           = useState(false)
@@ -42,9 +44,10 @@ export default function LoginPage() {
     setLoading(true)
     setError(null)
     const supabase = createClient()
+    const next = searchParams.get('next') || '/atelier'
     const { error: err } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback?next=/atelier` },
+      options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}` },
     })
     if (err) { setError(err.message); setLoading(false) }
     // on success browser redirects — no further action needed
@@ -55,9 +58,10 @@ export default function LoginPage() {
     setLoading(true)
     setError(null)
     const supabase = createClient()
+    const next = searchParams.get('next') || '/atelier'
     const { error: err } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=/atelier` },
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}` },
     })
     if (err) setError(err.message)
     else setSent(true)

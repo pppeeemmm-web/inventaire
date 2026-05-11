@@ -3,7 +3,7 @@
 // Atelier-side PDF preview drawer. Self-contained: server action loads
 // config + works internally — this component just collects user options.
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { generatePortfolioPdf } from '@/app/atelier/portfolio/pdf-action'
 import {
@@ -22,21 +22,21 @@ interface Props {
 
 type Phase = 'idle' | 'building' | 'done' | 'error'
 
-const FORMATS: { id: PdfFormat; label: string }[] = [
-  { id: 'a4p', label: 'A4 Portrait' },
-  { id: 'a4l', label: 'A4 Paysage'  },
-  { id: 'usl', label: 'US Letter'   },
-  { id: 'a3l', label: 'A3 Paysage'  },
+const FORMATS: { id: PdfFormat; labelKey: 'pdf_format_a4p' | 'pdf_format_a4l' | 'pdf_format_usl' | 'pdf_format_a3l' }[] = [
+  { id: 'a4p', labelKey: 'pdf_format_a4p' },
+  { id: 'a4l', labelKey: 'pdf_format_a4l' },
+  { id: 'usl', labelKey: 'pdf_format_usl' },
+  { id: 'a3l', labelKey: 'pdf_format_a3l' },
 ]
 
-const PRESETS: { id: Exclude<PdfPreset, 'custom'>; label: string; sub: string }[] = [
-  { id: 'galerie',        label: 'Galerie',        sub: 'Toutes les œuvres · À propos · Démarche · Contact' },
-  { id: 'collectionneur', label: 'Collectionneur', sub: '8 œuvres max · À propos · Contact'                 },
-  { id: 'presse',         label: 'Presse',         sub: '3 œuvres · Contact uniquement'                     },
+const PRESETS: { id: Exclude<PdfPreset, 'custom'>; labelKey: 'pdf_preset_gallery' | 'pdf_preset_collector' | 'pdf_preset_press'; subKey: 'pdf_preset_gallery_sub' | 'pdf_preset_collector_sub' | 'pdf_preset_press_sub' }[] = [
+  { id: 'galerie',        labelKey: 'pdf_preset_gallery',   subKey: 'pdf_preset_gallery_sub' },
+  { id: 'collectionneur', labelKey: 'pdf_preset_collector', subKey: 'pdf_preset_collector_sub' },
+  { id: 'presse',         labelKey: 'pdf_preset_press',     subKey: 'pdf_preset_press_sub' },
 ]
 
 export default function PdfExportDrawer({ open, onClose }: Props) {
-  const { lang } = useI18n()
+  const { t, lang } = useI18n()
 
   const [preset,          setPreset]          = useState<Exclude<PdfPreset, 'custom'>>('galerie')
   const [format,          setFormat]          = useState<PdfFormat>('a4p')
@@ -48,10 +48,11 @@ export default function PdfExportDrawer({ open, onClose }: Props) {
   const [maxWorks,        setMaxWorks]        = useState<number | null>(null)
 
   const [phase,    setPhase]    = useState<Phase>('idle')
-  const [progress, setProgress] = useState(0)
-  const [message,  setMessage]  = useState('')
+  const [progress, setProgress] = useState<number | null>(null) // null = indeterminate (honest)
+  const [message,  setMessage]  = useState<string>('')
   const [warning,  setWarning]  = useState<string | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const phaseTimerRef = useRef<number | null>(null)
 
   // Sync export lang to UI lang when drawer opens
   useEffect(() => { if (open) setExportLang(lang) }, [open, lang])
@@ -66,10 +67,16 @@ export default function PdfExportDrawer({ open, onClose }: Props) {
     setMaxWorks(d.maxWorks)
   }, [])
 
+  useEffect(() => {
+    return () => {
+      if (phaseTimerRef.current != null) window.clearInterval(phaseTimerRef.current)
+    }
+  }, [])
+
   async function handleExport() {
     setPhase('building')
-    setProgress(5)
-    setMessage('Préparation des images…')
+    setProgress(null)
+    setMessage(t('pdf_progress_preparing'))
     setWarning(null)
     setErrorMsg(null)
 
@@ -79,33 +86,33 @@ export default function PdfExportDrawer({ open, onClose }: Props) {
       maxWorks, collectionFilter: null,
     }
 
-    const tick = setInterval(() => {
-      setProgress(p => {
-        if (p < 40) return p + 3
-        if (p < 70) return p + 1.5
-        if (p < 88) return p + 0.5
-        return p
-      })
-      setMessage(prev =>
-        progress < 30 ? 'Chargement des images…'
-        : progress < 60 ? 'Traitement qualité…'
-        : progress < 80 ? 'Composition des pages…'
-        : 'Finalisation…')
-    }, 400)
+    if (phaseTimerRef.current != null) window.clearInterval(phaseTimerRef.current)
+    const steps = [
+      t('pdf_progress_loading_images'),
+      t('pdf_progress_processing'),
+      t('pdf_progress_layout'),
+      t('pdf_progress_finalizing'),
+    ]
+    let i = 0
+    phaseTimerRef.current = window.setInterval(() => {
+      i = (i + 1) % steps.length
+      setMessage(steps[i]!)
+    }, 1200)
 
     try {
       const result = await generatePortfolioPdf(opts)
-      clearInterval(tick)
+      if (phaseTimerRef.current != null) window.clearInterval(phaseTimerRef.current)
+      phaseTimerRef.current = null
 
       if ('error' in result) {
         setPhase('error')
         setErrorMsg(result.error)
-        setProgress(0)
+        setProgress(null)
         return
       }
 
       setProgress(100)
-      setMessage('PDF prêt')
+      setMessage(t('pdf_ready'))
       setPhase('done')
 
       if (result.warned && result.warningMsg) setWarning(result.warningMsg)
@@ -121,10 +128,11 @@ export default function PdfExportDrawer({ open, onClose }: Props) {
       a.click()
       URL.revokeObjectURL(url)
     } catch (e: any) {
-      clearInterval(tick)
+      if (phaseTimerRef.current != null) window.clearInterval(phaseTimerRef.current)
+      phaseTimerRef.current = null
       setPhase('error')
       setErrorMsg(e?.message ?? String(e))
-      setProgress(0)
+      setProgress(null)
     }
   }
 
@@ -154,10 +162,10 @@ export default function PdfExportDrawer({ open, onClose }: Props) {
         }}>
           <div>
             <div style={{ fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: '#1a1816', fontWeight: 600 }}>
-              Export PDF
+              {t('pdf_export_title')}
             </div>
             <div style={{ fontSize: 10, color: '#8a8680', marginTop: 4 }}>
-              Aperçu du portfolio (configuration atelier)
+              {t('pdf_export_subtitle')}
             </div>
           </div>
           <button onClick={() => !busy && onClose()} style={{
@@ -168,7 +176,7 @@ export default function PdfExportDrawer({ open, onClose }: Props) {
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px' }}>
 
-          <Section label="Destinataire">
+          <Section label={t('pdf_section_recipient')}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {PRESETS.map(p => (
                 <button key={p.id} onClick={() => applyPreset(p.id)} disabled={busy} style={{
@@ -182,17 +190,17 @@ export default function PdfExportDrawer({ open, onClose }: Props) {
                     fontSize: 10, fontWeight: 600, letterSpacing: 1.5,
                     textTransform: 'uppercase',
                     color: preset === p.id ? '#ffffff' : '#1a1816',
-                  }}>{p.label}</div>
+                  }}>{t(p.labelKey)}</div>
                   <div style={{
                     fontSize: 9, marginTop: 3,
                     color: preset === p.id ? '#8a8680' : '#aaa',
-                  }}>{p.sub}</div>
+                  }}>{t(p.subKey)}</div>
                 </button>
               ))}
             </div>
           </Section>
 
-          <Section label="Format">
+          <Section label={t('pdf_section_format')}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
               {FORMATS.map(f => (
                 <button key={f.id} onClick={() => setFormat(f.id)} disabled={busy} style={{
@@ -203,12 +211,12 @@ export default function PdfExportDrawer({ open, onClose }: Props) {
                   fontSize: 9, letterSpacing: 1, textTransform: 'uppercase',
                   cursor: busy ? 'default' : 'pointer', fontFamily: 'inherit',
                   transition: 'all 0.15s',
-                }}>{f.label}</button>
+                }}>{t(f.labelKey)}</button>
               ))}
             </div>
           </Section>
 
-          <Section label="Langue">
+          <Section label={t('pdf_section_language')}>
             <div style={{ display: 'flex', gap: 6 }}>
               {(['fr', 'en'] as Lang[]).map(l => (
                 <button key={l} onClick={() => setExportLang(l)} disabled={busy} style={{
@@ -219,18 +227,18 @@ export default function PdfExportDrawer({ open, onClose }: Props) {
                   borderRadius: 4, padding: '8px 10px',
                   fontSize: 9, letterSpacing: 2, textTransform: 'uppercase',
                   cursor: busy ? 'default' : 'pointer', fontFamily: 'inherit',
-                }}>{l === 'fr' ? 'Français' : 'English'}</button>
+                }}>{l === 'fr' ? t('locale_fr_short') : t('locale_en_short')}</button>
               ))}
             </div>
           </Section>
 
-          <Section label="Contenu">
+          <Section label={t('pdf_section_content')}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {[
-                ['cover',    includeCover,    setIncludeCover,    'Couverture'] as const,
-                ['about',    includeAbout,    setIncludeAbout,    'Page « À propos »'] as const,
-                ['practice', includePractice, setIncludePractice, 'Page « Démarche »'] as const,
-                ['contact',  includeContact,  setIncludeContact,  'Page contact'] as const,
+                ['cover',    includeCover,    setIncludeCover,    t('pdf_content_cover')] as const,
+                ['about',    includeAbout,    setIncludeAbout,    t('pdf_content_about')] as const,
+                ['practice', includePractice, setIncludePractice, t('pdf_content_practice')] as const,
+                ['contact',  includeContact,  setIncludeContact,  t('pdf_content_contact')] as const,
               ].map(([key, val, set, label]) => (
                 <label key={key} style={{
                   display: 'flex', alignItems: 'center', gap: 10,
@@ -244,11 +252,11 @@ export default function PdfExportDrawer({ open, onClose }: Props) {
             </div>
           </Section>
 
-          <Section label="Œuvres (max)">
+          <Section label={t('pdf_section_max_works')}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <input type="number" min={1} max={MAX_WORKS}
                 value={maxWorks ?? ''}
-                placeholder={`Max ${MAX_WORKS}`}
+                placeholder={t('pdf_max_works_placeholder').replace(/\{max\}/g, String(MAX_WORKS))}
                 onChange={e => setMaxWorks(e.target.value ? Math.min(parseInt(e.target.value), MAX_WORKS) : null)}
                 disabled={busy}
                 style={{
@@ -258,12 +266,14 @@ export default function PdfExportDrawer({ open, onClose }: Props) {
                 }}
               />
               <span style={{ fontSize: 9, color: '#8a8680' }}>
-                {maxWorks ?? `≤ ${MAX_WORKS}`} œuvres
+                {t('pdf_max_works_summary_fmt')
+                  .replace(/\{n\}/g, String(maxWorks ?? MAX_WORKS))
+                  .replace(/\{max\}/g, String(MAX_WORKS))}
               </span>
             </div>
             <div style={{ marginTop: 8, fontSize: 8, color: '#bbb', lineHeight: 1.6 }}>
-              Sections et ordre des œuvres : configurés depuis l’onglet <strong>Portfolio</strong>.
-              Images JPEG 92 % · 2100 px · Imprimable A4 standard.
+              {t('pdf_max_works_help_1')} <strong>{t('tab_portfolio')}</strong>.<br />
+              {t('pdf_max_works_help_2')}
             </div>
           </Section>
         </div>
@@ -273,15 +283,19 @@ export default function PdfExportDrawer({ open, onClose }: Props) {
             <div style={{ marginBottom: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                 <span style={{ fontSize: 9, color: '#8a8680', letterSpacing: 0.5 }}>{message}</span>
-                <span style={{ fontSize: 9, color: '#8a8680' }}>{Math.round(progress)}%</span>
+                <span style={{ fontSize: 9, color: '#8a8680' }}>{progress == null ? '…' : `${Math.round(progress)}%`}</span>
               </div>
-              <div style={{ height: 2, background: 'rgba(0,0,0,0.06)', borderRadius: 2 }}>
-                <div style={{
-                  height: '100%', borderRadius: 2,
-                  background: phase === 'done' ? '#6a9e6a' : '#1a1816',
-                  width: `${progress}%`,
-                  transition: 'width 0.4s ease, background 0.3s',
-                }} />
+              <div className="pem-progressTrack" style={{ height: 2 }}>
+                {progress == null ? (
+                  <div className="pem-progressIndeterminate" style={{ background: phase === 'done' ? '#6a9e6a' : '#1a1816' }} />
+                ) : (
+                  <div style={{
+                    height: '100%', borderRadius: 2,
+                    background: phase === 'done' ? '#6a9e6a' : '#1a1816',
+                    width: `${progress}%`,
+                    transition: 'width 0.35s ease, background 0.25s',
+                  }} />
+                )}
               </div>
             </div>
           )}
@@ -294,7 +308,7 @@ export default function PdfExportDrawer({ open, onClose }: Props) {
 
           {errorMsg && (
             <div style={{ marginBottom: 12, fontSize: 9, color: '#c05050', lineHeight: 1.5 }}>
-              Erreur : {errorMsg}
+              {t('error_prefix')} {errorMsg}
             </div>
           )}
 
@@ -308,12 +322,12 @@ export default function PdfExportDrawer({ open, onClose }: Props) {
             cursor: busy ? 'default' : 'pointer',
             transition: 'all 0.2s',
           }}>
-            {busy ? 'Génération…' : phase === 'done' ? '↓ Télécharger à nouveau' : '↓ Générer le PDF'}
+            {busy ? t('generating') : phase === 'done' ? t('pdf_download_again') : t('pdf_generate')}
           </button>
 
           {phase === 'done' && (
             <div style={{ marginTop: 10, fontSize: 9, color: '#6a9e6a', textAlign: 'center', letterSpacing: 0.5 }}>
-              PDF téléchargé avec succès
+              {t('pdf_downloaded_ok')}
             </div>
           )}
         </div>

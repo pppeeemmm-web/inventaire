@@ -15,6 +15,7 @@ import Image from 'next/image'
 import { stringifyError } from '@/lib/error'
 import type { Oeuvre } from '@/lib/types/database'
 import { WorkDrawer, type WorkDrawerGuardHandle } from './WorkDrawer'
+import { useMediaQuery } from '@/lib/useMediaQuery'
 
 // ── Types ───────────────────────────────────────────────────────────
 
@@ -215,6 +216,7 @@ export function InventoryTab({
   const { t } = useI18n()
 
   const router = useRouter()
+  const narrow = useMediaQuery('(max-width: 767px)')
 
   const headerBase: React.CSSProperties = {
     padding: '0 4px',
@@ -518,7 +520,7 @@ export function InventoryTab({
         display: 'flex',
         flexWrap: 'wrap',
         gap: 8,
-        padding: '12px 28px',
+        padding: narrow ? '10px 12px' : '12px 28px',
         borderBottom: '1px solid var(--bd)',
         alignItems: 'center',
         background: 'var(--bg1)',
@@ -535,7 +537,7 @@ export function InventoryTab({
           placeholder={`${t('search')} (ex: #1-10, 20...)`}
           style={{
             flex: 1,
-            minWidth: 200,
+            minWidth: narrow ? 140 : 200,
             padding: '10px 14px',
             background: 'var(--bg2)',
             border: '1px solid var(--bd)',
@@ -715,6 +717,7 @@ export function InventoryTab({
           tM={tM} sM={sM} cM={cM} thM={thM} pM={pM} statusLabelMap={statusLabelMap}
           groups={groups}
           allFields={allFields}
+          narrow={narrow}
         />
       )}
 
@@ -730,7 +733,7 @@ export function InventoryTab({
               onImageDoubleClick={() => { setShowPreview(true); setPreviewExpanded(true) }}
               onOpen={onOpen}
             />
-            {showPreview && (
+            {showPreview && !narrow && (
               <WorkDrawer
                 ref={panelDrawerGuardRef}
                 o={focused}
@@ -781,7 +784,8 @@ export function InventoryTab({
 function CriteriaPanel({
   criteria, setCriteria, nextCritId,
   setQ,
-  tM, sM, cM, thM, pM, statusLabelMap, groups, allFields
+  tM, sM, cM, thM, pM, statusLabelMap, groups, allFields,
+  narrow = false,
 }: {
   criteria:       Criterion[]
   setCriteria:    (c: Criterion[]) => void
@@ -795,6 +799,7 @@ function CriteriaPanel({
   statusLabelMap: Record<number, string>
   groups:         { id: string; name: string }[]
   allFields:      FieldDef[]
+  narrow?:        boolean
 }) {
   const { t } = useI18n()
   const FIS: React.CSSProperties = {
@@ -843,7 +848,7 @@ function CriteriaPanel({
   return (
     <div style={{
       borderBottom: '1px solid var(--bd)',
-      padding: '8px 28px 10px',
+      padding: narrow ? '8px 12px 10px' : '8px 28px 10px',
       background: 'var(--bg0)',
       display: 'flex', flexDirection: 'column', gap: 6,
     }}>
@@ -854,7 +859,7 @@ function CriteriaPanel({
         const ops  = opsForType(fld.t)
         const opts = lookupOpts(c.field)
         return (
-          <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
             {/* Field */}
             <select
               value={c.field}

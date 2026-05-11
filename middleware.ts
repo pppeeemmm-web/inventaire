@@ -43,7 +43,33 @@ export async function middleware(request: NextRequest) {
 
   // Refresh session — do not remove this line
   try {
-    await supabase.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    // Auth gating: only redirect on real document navigations (never on RSC/SA),
+    // otherwise Next can throw "unexpected response" for Flight streams.
+    const accept = h.get('accept') ?? ''
+    const secFetchDest = h.get('sec-fetch-dest') ?? ''
+    const isDocNav =
+      request.method === 'GET' &&
+      (secFetchDest === 'document' || accept.includes('text/html'))
+
+    const isProtected =
+      p === '/atelier' || p.startsWith('/atelier/') ||
+      p === '/hub' || p.startsWith('/hub/') ||
+      p === '/galerie' || p.startsWith('/galerie/') ||
+      p === '/collection' || p.startsWith('/collection/')
+
+    const isAuthRoute =
+      p === '/login' || p.startsWith('/login/') ||
+      p === '/auth/callback' || p.startsWith('/auth/callback/')
+
+    if (!user && isDocNav && isProtected && !isAuthRoute) {
+      const next = request.nextUrl.pathname + request.nextUrl.search
+      const login = request.nextUrl.clone()
+      login.pathname = '/login'
+      login.searchParams.set('next', next)
+      return NextResponse.redirect(login)
+    }
   } catch (e) {
     console.error('[middleware] supabase.auth.getUser()', e)
   }

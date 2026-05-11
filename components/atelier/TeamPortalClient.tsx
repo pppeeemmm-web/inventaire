@@ -24,12 +24,22 @@ import { createWorkingGroupWithOeuvres } from '@/app/atelier/selection/actions'
 import { PemThemeToggle } from '@/components/PemThemeToggle'
 import { ExhibitionsTabSkeleton } from '@/components/atelier/ExhibitionsTabSkeleton'
 import { SystemTab } from '@/components/atelier/SystemTab'
+import { Skeleton } from '@/components/ui/Skeleton'
+import { toast } from '@/lib/ui/toast'
 
 function TabPanelFallback() {
   const { t } = useI18n()
   return (
-    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 240, color: 'var(--tx3)' }}>
-      <span className="t-mono-sm">{t('loading')}</span>
+    <div className="pem-fadeIn" style={{ flex: 1, minHeight: 240, padding: 40, display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="row between" style={{ opacity: 0.75 }}>
+        <span className="t-mono-sm">{t('loading')}</span>
+        <Skeleton w={64} h={10} radius={2} />
+      </div>
+      <Skeleton w="100%" h={12} radius={2} />
+      <Skeleton w="92%" h={12} radius={2} />
+      <Skeleton w="88%" h={12} radius={2} />
+      <div style={{ height: 18 }} />
+      <Skeleton w="100%" h={120} radius={4} />
     </div>
   )
 }
@@ -101,6 +111,13 @@ export function TeamPortalClient({
   const [reminderCount,  setReminderCount] = useState(0)
 
   useLayoutEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const fromUrl = params.get('tab') as Tab | null
+    if (fromUrl) {
+      setTab(fromUrl)
+      localStorage.setItem('pem_team_tab', fromUrl)
+      return
+    }
     const savedTab = localStorage.getItem('pem_team_tab') as Tab | null
     if (savedTab) setTab(savedTab)
   }, [])
@@ -137,7 +154,6 @@ export function TeamPortalClient({
   }, [])
 
   const [showCompare, setShowCompare] = useState(false)
-  const [toast,         setToast]        = useState<string | null>(null)
   const atelierNarrow = useMediaQuery('(max-width: 767px)')
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
@@ -177,10 +193,9 @@ export function TeamPortalClient({
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('batch') === 'success') {
-      setToast(t('batchSuccess'))
+      toast.success(t('batchSuccess'))
       // Clean up URL without reload
       window.history.replaceState({}, '', window.location.pathname)
-      setTimeout(() => setToast(null), 4000)
     }
   }, [t])
 
@@ -729,27 +744,6 @@ export function TeamPortalClient({
         />
       )}
 
-      {/* ── Toast Notification ──────────────────────────────────── */}
-      {toast && (
-        <div style={{
-          position: 'fixed', bottom: 32, right: 32, zIndex: 200,
-          background: 'var(--bg2)', border: '1px solid var(--ac)',
-          padding: '12px 20px', borderRadius: 2,
-          boxShadow: '0 8px 40px rgba(0,0,0,0.5)',
-          color: 'var(--ac)', display: 'flex', alignItems: 'center', gap: 12,
-          animation: 'toastIn 0.3s ease-out',
-        }}>
-          <span style={{ fontSize: 16 }}>✓</span>
-          <span className="t-mono-sm" style={{ fontWeight: 600 }}>{toast}</span>
-        </div>
-      )}
-
-      <style jsx>{`
-        @keyframes toastIn {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
     </div>
   </div>
 )

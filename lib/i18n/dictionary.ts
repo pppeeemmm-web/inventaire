@@ -10,6 +10,7 @@ export type DictKey =
   | 'team' | 'clients' | 'galleries' | 'public'
   | 'teamDesc' | 'clientsDesc' | 'galleriesDesc' | 'publicDesc'
   | 'hubWorksOnline' | 'hubLastLog' | 'hubStockLow'
+  | 'hub_continue' | 'hub_capture' | 'hub_alerts' | 'hub_recent_images' | 'hub_swipe_cards'
   | 'overview' | 'inventory' | 'inv_refinement_gate' | 'constellation' | 'production'
   | 'logistics' | 'sales' | 'exhibitions' | 'vault'
   | 'works' | 'works_cap' | 'catalogued' | 'exposable' | 'montee'
@@ -136,6 +137,12 @@ export type DictKey =
   | 'pipeline_sidebar_overdue_fmt' | 'pipeline_sidebar_today' | 'pipeline_sidebar_in_days_fmt'
   | 'pipeline_etape_tick_title' | 'pipeline_gantt_overdue_suffix'
   | 'pipeline_gantt_process_statut_title' | 'pipeline_gantt_etape_marker_title'
+  | 'pipeline_open_exhibition_project'
+  | 'pipeline_exhibition_create_btn'
+  | 'pipeline_exhibition_create_requires_save'
+  | 'pipeline_exhibition_create_requires_dates'
+  | 'pipeline_exhibition_project_default_name'
+  | 'pipeline_exhibition_project_created'
   | 'pem_theme_toggle_day' | 'pem_theme_toggle_night' | 'pem_theme_toggle_std'
   | 'proc_stat_en_cours' | 'proc_stat_gagne' | 'proc_stat_perdu' | 'proc_stat_annule' | 'proc_stat_termine'
   | 'etape_stat_a_faire' | 'etape_stat_en_cours' | 'etape_stat_fait' | 'etape_stat_bloque'
@@ -167,6 +174,16 @@ export type DictKey =
   | 'pm_internal_notes' | 'pm_notes_ph'
   | 'pm_err_name_required' | 'pm_err_contact_create_prefix' | 'pm_err_contact_required'
   | 'pm_confirm_delete_process' | 'pm_delete_process' | 'pm_discard' | 'pm_synchronizing' | 'pm_commit'
+  // PDF export drawer (Atelier / Portfolio tab)
+  | 'pdf_export_title' | 'pdf_export_subtitle'
+  | 'pdf_section_recipient' | 'pdf_section_format' | 'pdf_section_language' | 'pdf_section_content' | 'pdf_section_max_works'
+  | 'pdf_preset_gallery' | 'pdf_preset_collector' | 'pdf_preset_press'
+  | 'pdf_preset_gallery_sub' | 'pdf_preset_collector_sub' | 'pdf_preset_press_sub'
+  | 'pdf_format_a4p' | 'pdf_format_a4l' | 'pdf_format_usl' | 'pdf_format_a3l'
+  | 'pdf_content_cover' | 'pdf_content_about' | 'pdf_content_practice' | 'pdf_content_contact'
+  | 'pdf_max_works_placeholder' | 'pdf_max_works_summary_fmt' | 'pdf_max_works_help_1' | 'pdf_max_works_help_2'
+  | 'pdf_progress_preparing' | 'pdf_progress_loading_images' | 'pdf_progress_processing' | 'pdf_progress_layout' | 'pdf_progress_finalizing'
+  | 'pdf_ready' | 'pdf_generate' | 'pdf_download_again' | 'pdf_downloaded_ok'
 
 type Dictionary = Record<DictKey, string>
 
@@ -182,6 +199,11 @@ export const dict: Record<Lang, Dictionary> = {
     galleriesDesc: 'Consignations, listes partagées, oeuvres co-gérées.',
     publicDesc: 'Site public, portfolio, expositions, presse.',
     hubWorksOnline: 'En ligne', hubLastLog: 'Dernier journal', hubStockLow: 'Stock bas',
+    hub_continue: 'Continuer',
+    hub_capture: 'Capturer',
+    hub_alerts: 'Alertes',
+    hub_recent_images: 'Photos récentes',
+    hub_swipe_cards: 'Glisser →',
     overview: "Vue d'ensemble", inventory: 'Inventaire',
     inv_refinement_gate:
       'Statut « Disponible » en base, mais l’œuvre reste traitée comme « En production » tant que le catalogue ou la photo ne sont pas validés.',
@@ -525,6 +547,12 @@ export const dict: Record<Lang, Dictionary> = {
     pipeline_gantt_overdue_suffix: ' ⚠ retard',
     pipeline_gantt_process_statut_title: 'Statut : {status} — cliquer pour changer',
     pipeline_gantt_etape_marker_title: '{step} · {stepStatus}{overdue} — cliquer pour changer',
+    pipeline_open_exhibition_project: 'Ouvrir le projet expo',
+    pipeline_exhibition_create_btn: 'Créer le projet expo',
+    pipeline_exhibition_create_requires_save: 'Enregistrez d’abord le processus.',
+    pipeline_exhibition_create_requires_dates: 'Ajoutez une date (début ou échéance) pour planifier.',
+    pipeline_exhibition_project_default_name: 'Projet exposition',
+    pipeline_exhibition_project_created: 'Projet exposition créé.',
     proc_stat_en_cours: 'En cours',
     proc_stat_gagne: 'Gagné / sélectionné',
     proc_stat_perdu: 'Non retenu',
@@ -630,6 +658,41 @@ export const dict: Record<Lang, Dictionary> = {
     pm_discard: 'Abandonner',
     pm_synchronizing: 'SYNCHRONISATION…',
     pm_commit: 'ENREGISTRER',
+
+    pdf_export_title: 'Export PDF',
+    pdf_export_subtitle: 'Aperçu du portfolio (configuration atelier)',
+    pdf_section_recipient: 'Destinataire',
+    pdf_section_format: 'Format',
+    pdf_section_language: 'Langue',
+    pdf_section_content: 'Contenu',
+    pdf_section_max_works: 'Œuvres (max)',
+    pdf_preset_gallery: 'Galerie',
+    pdf_preset_collector: 'Collectionneur',
+    pdf_preset_press: 'Presse',
+    pdf_preset_gallery_sub: 'Toutes les œuvres · À propos · Démarche · Contact',
+    pdf_preset_collector_sub: '8 œuvres max · À propos · Contact',
+    pdf_preset_press_sub: '3 œuvres · Contact uniquement',
+    pdf_format_a4p: 'A4 portrait',
+    pdf_format_a4l: 'A4 paysage',
+    pdf_format_usl: 'US Letter',
+    pdf_format_a3l: 'A3 paysage',
+    pdf_content_cover: 'Couverture',
+    pdf_content_about: 'Page « À propos »',
+    pdf_content_practice: 'Page « Démarche »',
+    pdf_content_contact: 'Page contact',
+    pdf_max_works_placeholder: 'Max {max}',
+    pdf_max_works_summary_fmt: '{n} / {max} œuvres',
+    pdf_max_works_help_1: 'Sections et ordre des œuvres : configurés depuis l’onglet',
+    pdf_max_works_help_2: 'Images JPEG 92 % · 2100 px · Imprimable A4 standard.',
+    pdf_progress_preparing: 'Préparation…',
+    pdf_progress_loading_images: 'Chargement des images…',
+    pdf_progress_processing: 'Traitement qualité…',
+    pdf_progress_layout: 'Composition des pages…',
+    pdf_progress_finalizing: 'Finalisation…',
+    pdf_ready: 'PDF prêt',
+    pdf_generate: '↓ Générer le PDF',
+    pdf_download_again: '↓ Télécharger à nouveau',
+    pdf_downloaded_ok: 'PDF téléchargé avec succès',
   },
   en: {
     hub: 'Studio', tagline: 'Inventory · Production · Curation · Relations',
@@ -641,6 +704,11 @@ export const dict: Record<Lang, Dictionary> = {
     galleriesDesc: 'Consignments, shared checklists, co-managed works.',
     publicDesc: 'Public site, portfolio, exhibitions, press.',
     hubWorksOnline: 'Online', hubLastLog: 'Last log', hubStockLow: 'Low stock',
+    hub_continue: 'Continue',
+    hub_capture: 'Capture',
+    hub_alerts: 'Alerts',
+    hub_recent_images: 'Recent photos',
+    hub_swipe_cards: 'Swipe →',
     overview: 'Overview', inventory: 'Inventory',
     inv_refinement_gate:
       'Database status is « Available », but the work stays « In production » until cataloguing and photography gates are cleared.',
@@ -983,6 +1051,12 @@ export const dict: Record<Lang, Dictionary> = {
     pipeline_gantt_overdue_suffix: ' ⚠ overdue',
     pipeline_gantt_process_statut_title: 'Status: {status} — click to cycle',
     pipeline_gantt_etape_marker_title: '{step} · {stepStatus}{overdue} — click to cycle',
+    pipeline_open_exhibition_project: 'Open exhibition project',
+    pipeline_exhibition_create_btn: 'Create exhibition project',
+    pipeline_exhibition_create_requires_save: 'Save the process first.',
+    pipeline_exhibition_create_requires_dates: 'Add a date (start or deadline) to schedule.',
+    pipeline_exhibition_project_default_name: 'Exhibition project',
+    pipeline_exhibition_project_created: 'Exhibition project created.',
     proc_stat_en_cours: 'In progress',
     proc_stat_gagne: 'Won / selected',
     proc_stat_perdu: 'Not selected',
@@ -1087,5 +1161,40 @@ export const dict: Record<Lang, Dictionary> = {
     pm_discard: 'Discard',
     pm_synchronizing: 'SYNCHRONIZING…',
     pm_commit: 'COMMIT UPDATES',
+
+    pdf_export_title: 'PDF export',
+    pdf_export_subtitle: 'Portfolio preview (studio configuration)',
+    pdf_section_recipient: 'Recipient',
+    pdf_section_format: 'Format',
+    pdf_section_language: 'Language',
+    pdf_section_content: 'Content',
+    pdf_section_max_works: 'Works (max)',
+    pdf_preset_gallery: 'Gallery',
+    pdf_preset_collector: 'Collector',
+    pdf_preset_press: 'Press',
+    pdf_preset_gallery_sub: 'All works · About · Statement · Contact',
+    pdf_preset_collector_sub: '8 works max · About · Contact',
+    pdf_preset_press_sub: '3 works · Contact only',
+    pdf_format_a4p: 'A4 portrait',
+    pdf_format_a4l: 'A4 landscape',
+    pdf_format_usl: 'US Letter',
+    pdf_format_a3l: 'A3 landscape',
+    pdf_content_cover: 'Cover',
+    pdf_content_about: 'About page',
+    pdf_content_practice: 'Statement page',
+    pdf_content_contact: 'Contact page',
+    pdf_max_works_placeholder: 'Max {max}',
+    pdf_max_works_summary_fmt: '{n} / {max} works',
+    pdf_max_works_help_1: 'Sections and work order: configured from the',
+    pdf_max_works_help_2: 'Images JPEG 92% · 2100 px · Printable A4 standard.',
+    pdf_progress_preparing: 'Preparing…',
+    pdf_progress_loading_images: 'Loading images…',
+    pdf_progress_processing: 'Processing quality…',
+    pdf_progress_layout: 'Laying out pages…',
+    pdf_progress_finalizing: 'Finalizing…',
+    pdf_ready: 'PDF ready',
+    pdf_generate: '↓ Generate PDF',
+    pdf_download_again: '↓ Download again',
+    pdf_downloaded_ok: 'PDF downloaded successfully',
   },
 }

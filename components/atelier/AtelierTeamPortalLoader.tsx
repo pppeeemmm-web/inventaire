@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic'
 import { useI18n } from '@/lib/i18n/context'
 import type { TeamPortalClientProps } from '@/components/atelier/team-portal-types'
+import { InlineSpinner } from '@/components/ui/InlineSpinner'
 
 function AtelierBootSplash() {
   const { t } = useI18n()
@@ -19,7 +20,10 @@ function AtelierBootSplash() {
       }}
       className="t-mono-sm"
     >
-      {t('loadingAtelier')}
+      <span className="row gap-sm" style={{ alignItems: 'center' }}>
+        <InlineSpinner size={14} />
+        <span>{t('loadingAtelier')}</span>
+      </span>
     </div>
   )
 }

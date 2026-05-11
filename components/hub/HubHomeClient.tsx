@@ -15,6 +15,10 @@ interface SystemLogEntry {
   type: string | null
   status: string | null
   priority: string | null
+  event_type: string | null
+  table_name: string | null
+  row_id: string | null
+  metadata: unknown
   created_at: string
 }
 
@@ -44,7 +48,30 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
     { weekday: 'long', day: 'numeric', month: 'long' }
   )
 
+  function logScore(l: SystemLogEntry): number {
+    // Higher = more important.
+    if (l.event_type === 'GATE_BYPASS') return 100
+    if (l.event_type === 'VISIBILITY_GATE') return 95
+    if (l.event_type === 'PAYMENT_GRAIN') return 92
+    if (l.event_type === 'ORDER_CREATED') return 90
+    if (l.event_type === 'STATUS_CHANGE') return 80
+    if (l.event_type === 'LOCATION_MOVE') return 72
+    if (l.event_type === 'PRICE_CHANGE') return 70
+    if (l.type === 'bug') return 68
+    if (l.type === 'maintenance') return 60
+    if (l.type === 'improvement') return 55
+    if (l.type === 'suggestion') return 40
+    return 50
+  }
+
   const displayLogs: SystemLogEntry[] = systemLogs
+    .filter((l) => l.event_type !== 'ATELIER_VIEW')
+    .slice()
+    .sort((a, b) => {
+      const ds = logScore(b) - logScore(a)
+      if (ds !== 0) return ds
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    })
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg0)' }}>
@@ -199,148 +226,273 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
       {/* Main Content Area */}
       <div style={{
         flex: 1,
-        padding: '32px clamp(18px, 3vw, 40px)',
+        padding: hubNavCompact ? '18px max(16px, env(safe-area-inset-right)) 22px max(16px, env(safe-area-inset-left))' : '32px clamp(18px, 3vw, 40px)',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'auto',
-        gap: 40,
+        gap: hubNavCompact ? 18 : 40,
         width: '100%',
         maxWidth: 1440,
         margin: '0 auto',
         boxSizing: 'border-box',
       }}>
-        
-        {/* Section 1: Executive Summary */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-          gap: 'clamp(24px, 4vw, 48px)',
-          alignItems: 'end',
-        }}>
-          <div>
-            <div className="serif" style={{ fontSize: 'clamp(32px, 4vw, 48px)', color: 'var(--tx)', marginBottom: 8, letterSpacing: '-0.03em' }}>
-              {t('hub')}
+        {hubNavCompact ? (
+          <>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div className="serif" style={{ fontSize: 28, color: 'var(--tx)', letterSpacing: '-0.03em', lineHeight: 1.05 }}>
+                {t('hub')}
+              </div>
+              <div className="t-eyebrow" style={{ color: 'var(--tx3)', letterSpacing: 2 }}>
+                {dateLabel} · {stats.total} {t('works_cap')} · {stats.publicWorks} {t('hubWorksOnline')}
+              </div>
             </div>
-            <div className="t-eyebrow" style={{ color: 'var(--tx3)', letterSpacing: 2 }}>
-              {dateLabel} · {stats.total} {t('works_cap')} · {stats.publicWorks} {t('hubWorksOnline')}
+
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+              gap: 12,
+              marginTop: 8,
+            }}>
+              <MobileActionTile
+                title={t('hub_continue')}
+                subtitle={t('inventory')}
+                onClick={() => router.push('/atelier')}
+              />
+              <MobileActionTile
+                title={t('newWork')}
+                subtitle={t('hub_capture')}
+                onClick={() => router.push('/atelier/works/new')}
+              />
+              <MobileActionTile
+                title={t('pipeline')}
+                subtitle={t('hub_swipe_cards')}
+                onClick={() => router.push('/atelier?tab=pipeline')}
+              />
+              <MobileActionTile
+                title={`${t('hub_alerts')}${stats.stockAlerts > 0 ? ` · ${stats.stockAlerts}` : ''}`}
+                subtitle={t('tab_system')}
+                onClick={() => router.push('/atelier?tab=system')}
+                emphasis={stats.stockAlerts > 0}
+              />
             </div>
-          </div>
-          
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'clamp(16px, 3vw, 28px)', paddingBottom: 6, alignItems: 'flex-end' }}>
-            <div className="stat-v2">
-              <span className="label">{t('thisYear')}</span>
-              <span className="value">{stats.thisYear}</span>
+
+            <div style={{ marginTop: 6 }}>
+              <div className="t-eyebrow" style={{ marginBottom: 10, opacity: 0.55 }}>
+                {t('hub_swipe_cards')}
+              </div>
+              <div style={{
+                display: 'flex',
+                gap: 12,
+                overflowX: 'auto',
+                paddingBottom: 6,
+                scrollSnapType: 'x mandatory',
+                WebkitOverflowScrolling: 'touch',
+              }}>
+                <MobileSwipeCard
+                  kicker={`01 · ${t('pipeline')}`}
+                  onClick={() => router.push('/atelier?tab=pipeline')}
+                  items={recentProcess.slice(0, 3).map((p) => ({
+                    a: p.label,
+                    b: p.status,
+                    c: new Date(p.created_at).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB'),
+                  }))}
+                  emptyLabel={t('empty')}
+                />
+                <MobileSwipeCard
+                  kicker={`02 · ${t('concepts')}`}
+                  onClick={() => router.push('/atelier?tab=concepts')}
+                  items={burningIdeas.slice(0, 3).map((i) => ({
+                    a: i.title,
+                    b: i.medium || t('hub_concept_fallback'),
+                    c: i.energy != null ? `E${i.energy}` : '—',
+                  }))}
+                  emptyLabel={t('empty')}
+                />
+                <MobileSwipeCard
+                  kicker={`03 · ${t('hub_pulse_ledger')}`}
+                  onClick={() => router.push('/atelier?tab=system')}
+                  items={displayLogs.slice(0, 3).map((l) => ({
+                    a: l.action,
+                    b: l.priority ?? 'P3',
+                    c: new Date(l.created_at).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB'),
+                  }))}
+                  emptyLabel={t('hub_ledger_empty')}
+                />
+              </div>
             </div>
-            <div className="vline" style={{ height: 32, opacity: 0.1 }} />
-            <div className="stat-v2">
-              <span className="label">{t('hubLastLog')}</span>
-              <span className="value" style={{ fontSize: 14, fontFamily: 'monospace', letterSpacing: 0 }}>{displayLogs[0]?.action ?? '—'}</span>
+
+            <div style={{ marginTop: 2 }}>
+              <div className="t-eyebrow" style={{ marginBottom: 10, opacity: 0.55 }}>
+                {t('hub_recent_images')}
+              </div>
+              <div style={{
+                display: 'flex',
+                gap: 10,
+                overflowX: 'auto',
+                paddingBottom: 8,
+                WebkitOverflowScrolling: 'touch',
+              }}>
+                {recentImages.slice(0, 12).map((o) => (
+                  <button
+                    key={o.OeuvreID}
+                    type="button"
+                    onClick={() => router.push('/atelier?tab=inventory')}
+                    style={{
+                      width: 88,
+                      height: 88,
+                      flexShrink: 0,
+                      background: 'var(--bg1)',
+                      border: '1px solid var(--bd2)',
+                      overflow: 'hidden',
+                      position: 'relative',
+                      cursor: 'pointer',
+                      padding: 0,
+                    }}
+                    aria-label={`#${o.OeuvreID}`}
+                  >
+                    {o.txtImageNameLink
+                      ? <WorkThumb file={o.txtImageNameLink} size={256} alt="" />
+                      : <div style={{ width: '100%', height: '100%', background: 'var(--bg2)' }} />}
+                  </button>
+                ))}
+              </div>
             </div>
-            {stats.stockAlerts > 0 && (
-              <>
+          </>
+        ) : (
+          <>
+            {/* Section 1: Executive Summary */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+              gap: 'clamp(24px, 4vw, 48px)',
+              alignItems: 'end',
+            }}>
+              <div>
+                <div className="serif" style={{ fontSize: 'clamp(32px, 4vw, 48px)', color: 'var(--tx)', marginBottom: 8, letterSpacing: '-0.03em' }}>
+                  {t('hub')}
+                </div>
+                <div className="t-eyebrow" style={{ color: 'var(--tx3)', letterSpacing: 2 }}>
+                  {dateLabel} · {stats.total} {t('works_cap')} · {stats.publicWorks} {t('hubWorksOnline')}
+                </div>
+              </div>
+              
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'clamp(16px, 3vw, 28px)', paddingBottom: 6, alignItems: 'flex-end' }}>
+                <div className="stat-v2">
+                  <span className="label">{t('thisYear')}</span>
+                  <span className="value">{stats.thisYear}</span>
+                </div>
                 <div className="vline" style={{ height: 32, opacity: 0.1 }} />
                 <div className="stat-v2">
-                  <span className="label">{t('hubStockLow')}</span>
-                  <span className="value" style={{ color: 'var(--ac)' }}>{stats.stockAlerts}</span>
+                  <span className="label">{t('hubLastLog')}</span>
+                  <span className="value" style={{ fontSize: 14, fontFamily: 'monospace', letterSpacing: 0 }}>{displayLogs[0]?.action ?? '—'}</span>
                 </div>
-              </>
-            )}
-          </div>
-        </div>
+                {stats.stockAlerts > 0 && (
+                  <>
+                    <div className="vline" style={{ height: 32, opacity: 0.1 }} />
+                    <div className="stat-v2">
+                      <span className="label">{t('hubStockLow')}</span>
+                      <span className="value" style={{ color: 'var(--ac)' }}>{stats.stockAlerts}</span>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
 
-        {/* Section 2: Navigation Matrix (The 4 Portals) — Relations publiques second (moved left) */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          borderTop: '1px solid var(--bd)',
-          borderBottom: '1px solid var(--bd)',
-        }}>
-          <PortalTile code="01" title={t('team')} desc={t('teamDesc')} href="/atelier"
-            detail={{ works: stats.total, caption: t('works_cap') }} />
-          <PortalTile code="02" title={t('public')} desc={t('publicDesc')} href="/works"
-            detail={{ works: stats.publicWorks, caption: t('hubWorksOnline') }} />
-          <PortalTile code="03" title={t('clients')} desc={t('clientsDesc')} href="/collection" wip />
-          <PortalTile code="04" title={t('galleries')} desc={t('galleriesDesc')} href="/galerie" wip />
-        </div>
+            {/* Section 2: Navigation Matrix (The 4 Portals) — Relations publiques second (moved left) */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              borderTop: '1px solid var(--bd)',
+              borderBottom: '1px solid var(--bd)',
+            }}>
+              <PortalTile code="01" title={t('team')} desc={t('teamDesc')} href="/atelier"
+                detail={{ works: stats.total, caption: t('works_cap') }} />
+              <PortalTile code="02" title={t('public')} desc={t('publicDesc')} href="/works"
+                detail={{ works: stats.publicWorks, caption: t('hubWorksOnline') }} />
+              <PortalTile code="03" title={t('clients')} desc={t('clientsDesc')} href="/collection" wip />
+              <PortalTile code="04" title={t('galleries')} desc={t('galleriesDesc')} href="/galerie" wip />
+            </div>
 
-        {/* Section 3: Live Pulse */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: 'clamp(28px, 4vw, 48px)',
-        }}>
-          
-          {/* Suivi / Pipeline */}
-          <div>
-            <div className="t-eyebrow" style={{ marginBottom: 24, opacity: 0.5 }}>01 · {t('pipeline')}</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {recentProcess.slice(0, 6).map(p => (
-                <div key={p.id} onClick={() => router.push('/atelier?tab=pipeline')} style={{ cursor: 'pointer', borderBottom: '1px solid var(--bd2)', paddingBottom: 12 }}>
-                  <div className="serif" style={{ fontSize: 16, color: 'var(--tx)', marginBottom: 4 }}>{p.label}</div>
-                  <div className="row gap-sm" style={{ justifyContent: 'space-between' }}>
-                    <span className="t-mono-sm" style={{ color: 'var(--ac)', letterSpacing: 1 }}>{p.status}</span>
-                    <span className="t-mono-sm" style={{ color: 'var(--tx3)' }}>{new Date(p.created_at).toLocaleDateString()}</span>
-                  </div>
+            {/* Section 3: Live Pulse */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+              gap: 'clamp(28px, 4vw, 48px)',
+            }}>
+              
+              {/* Suivi / Pipeline */}
+              <div>
+                <div className="t-eyebrow" style={{ marginBottom: 24, opacity: 0.5 }}>01 · {t('pipeline')}</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  {recentProcess.slice(0, 6).map(p => (
+                    <div key={p.id} onClick={() => router.push('/atelier?tab=pipeline')} style={{ cursor: 'pointer', borderBottom: '1px solid var(--bd2)', paddingBottom: 12 }}>
+                      <div className="serif" style={{ fontSize: 16, color: 'var(--tx)', marginBottom: 4 }}>{p.label}</div>
+                      <div className="row gap-sm" style={{ justifyContent: 'space-between' }}>
+                        <span className="t-mono-sm" style={{ color: 'var(--ac)', letterSpacing: 1 }}>{p.status}</span>
+                        <span className="t-mono-sm" style={{ color: 'var(--tx3)' }}>{new Date(p.created_at).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB')}</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
+              </div>
 
-          {/* Concepts */}
-          <div>
-            <div className="t-eyebrow" style={{ marginBottom: 24, opacity: 0.5 }}>02 · {t('concepts')}</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {burningIdeas.slice(0, 4).map(i => (
-                <div key={i.id} onClick={() => router.push('/atelier?tab=concepts')} 
-                  style={{ padding: '12px 16px', background: 'var(--bg1)', border: '1px solid var(--bd2)', cursor: 'pointer', transition: 'border-color .2s' }}>
-                  <div className="t-mono-sm" style={{ fontSize: 8, color: 'var(--tx3)', marginBottom: 4, textTransform: 'uppercase' }}>{i.medium || t('hub_concept_fallback')}</div>
-                  <div className="serif" style={{ fontSize: 15, color: 'var(--tx)' }}>{i.title}</div>
+              {/* Concepts */}
+              <div>
+                <div className="t-eyebrow" style={{ marginBottom: 24, opacity: 0.5 }}>02 · {t('concepts')}</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {burningIdeas.slice(0, 4).map(i => (
+                    <div key={i.id} onClick={() => router.push('/atelier?tab=concepts')} 
+                      style={{ padding: '12px 16px', background: 'var(--bg1)', border: '1px solid var(--bd2)', cursor: 'pointer', transition: 'border-color .2s' }}>
+                      <div className="t-mono-sm" style={{ fontSize: 8, color: 'var(--tx3)', marginBottom: 4, textTransform: 'uppercase' }}>{i.medium || t('hub_concept_fallback')}</div>
+                      <div className="serif" style={{ fontSize: 15, color: 'var(--tx)' }}>{i.title}</div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
+              </div>
 
-          {/* System Ledger */}
-          <div>
-            <div className="t-eyebrow" style={{ marginBottom: 24, opacity: 0.5 }}>03 · {t('hub_pulse_ledger')}</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {displayLogs.length === 0 ? (
-                <div className="t-mono-sm" style={{ color: 'var(--tx3)', opacity: 0.5 }}>{t('hub_ledger_empty')}</div>
-              ) : displayLogs.slice(0, 6).map(log => (
-                <div key={log.id} onClick={() => router.push('/atelier?tab=system')}
-                  style={{ display: 'flex', gap: 10, alignItems: 'flex-start', borderBottom: '1px solid var(--bd2)', paddingBottom: 10, cursor: 'pointer' }}>
-                  <span style={{ fontWeight: 700, fontSize: 9, color: priorityColor(log.priority), letterSpacing: 0.5, paddingTop: 2, flexShrink: 0 }}>
-                    {log.priority ?? 'P3'}
-                  </span>
-                  <div style={{ minWidth: 0 }}>
-                    <div className="t-mono" style={{ fontSize: 10, fontWeight: 600, color: 'var(--tx)', lineHeight: 1.3 }}>{log.action}</div>
-                    {log.type && <div style={{ fontSize: 8, color: 'var(--tx3)', textTransform: 'uppercase', letterSpacing: 1, marginTop: 3 }}>{log.type}</div>}
-                  </div>
+              {/* System Ledger */}
+              <div>
+                <div className="t-eyebrow" style={{ marginBottom: 24, opacity: 0.5 }}>03 · {t('hub_pulse_ledger')}</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {displayLogs.length === 0 ? (
+                    <div className="t-mono-sm" style={{ color: 'var(--tx3)', opacity: 0.5 }}>{t('hub_ledger_empty')}</div>
+                  ) : displayLogs.slice(0, 6).map(log => (
+                    <div key={log.id} onClick={() => router.push('/atelier?tab=system')}
+                      style={{ display: 'flex', gap: 10, alignItems: 'flex-start', borderBottom: '1px solid var(--bd2)', paddingBottom: 10, cursor: 'pointer' }}>
+                      <span style={{ fontWeight: 700, fontSize: 9, color: priorityColor(log.priority), letterSpacing: 0.5, paddingTop: 2, flexShrink: 0 }}>
+                        {log.priority ?? 'P3'}
+                      </span>
+                      <div style={{ minWidth: 0 }}>
+                        <div className="t-mono" style={{ fontSize: 10, fontWeight: 600, color: 'var(--tx)', lineHeight: 1.3 }}>{log.action}</div>
+                        {log.type && <div style={{ fontSize: 8, color: 'var(--tx3)', textTransform: 'uppercase', letterSpacing: 1, marginTop: 3 }}>{log.type}</div>}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <div onClick={() => router.push('/atelier?tab=system')}
-              style={{ marginTop: 16, fontSize: 8, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--tx3)', cursor: 'pointer' }}>
-              {t('hub_ledger_view_all')}
-            </div>
-          </div>
-
-          {/* Recently Added */}
-          <div>
-            <div className="t-eyebrow" style={{ marginBottom: 24, opacity: 0.5 }}>04 · {t('recentlyAdded')}</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 8 }}>
-              {recentImages.slice(0, 16).map((o) => (
-                <div key={o.OeuvreID} onClick={() => router.push('/atelier?tab=inventory')}
-                  style={{ aspectRatio: '1', background: 'var(--bg1)', border: '1px solid var(--bd2)', overflow: 'hidden', position: 'relative', cursor: 'pointer' }}>
-                  {o.txtImageNameLink
-                    ? <WorkThumb file={o.txtImageNameLink} size={256} alt="" />
-                    : <div style={{ width: '100%', height: '100%', background: 'var(--bg2)' }} />}
+                <div onClick={() => router.push('/atelier?tab=system')}
+                  style={{ marginTop: 16, fontSize: 8, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--tx3)', cursor: 'pointer' }}>
+                  {t('hub_ledger_view_all')}
                 </div>
-              ))}
-            </div>
-          </div>
+              </div>
 
-        </div>
+              {/* Recently Added */}
+              <div>
+                <div className="t-eyebrow" style={{ marginBottom: 24, opacity: 0.5 }}>04 · {t('recentlyAdded')}</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 8 }}>
+                  {recentImages.slice(0, 16).map((o) => (
+                    <div key={o.OeuvreID} onClick={() => router.push('/atelier?tab=inventory')}
+                      style={{ aspectRatio: '1', background: 'var(--bg1)', border: '1px solid var(--bd2)', overflow: 'hidden', position: 'relative', cursor: 'pointer' }}>
+                      {o.txtImageNameLink
+                        ? <WorkThumb file={o.txtImageNameLink} size={256} alt="" />
+                        : <div style={{ width: '100%', height: '100%', background: 'var(--bg2)' }} />}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+            </div>
+          </>
+        )}
 
       </div>
 
@@ -356,6 +508,96 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
         <span>v0.1 · {new Date().toISOString().slice(0, 10)}</span>
       </div>
     </div>
+  )
+}
+
+function MobileActionTile({
+  title,
+  subtitle,
+  onClick,
+  emphasis,
+}: {
+  title: string
+  subtitle: string
+  onClick: () => void
+  emphasis?: boolean
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        background: emphasis ? 'color-mix(in srgb, var(--ac) 12%, var(--bg1))' : 'var(--bg1)',
+        border: emphasis ? '1px solid color-mix(in srgb, var(--ac) 55%, var(--bd))' : '1px solid var(--bd)',
+        padding: '14px 14px 12px',
+        textAlign: 'left',
+        cursor: 'pointer',
+        minHeight: 74,
+      }}
+    >
+      <div className="serif" style={{ fontSize: 18, color: 'var(--tx)', letterSpacing: '-0.02em', lineHeight: 1.1 }}>
+        {title}
+      </div>
+      <div className="t-mono-sm" style={{ marginTop: 6, fontSize: 9, letterSpacing: 1.5, textTransform: 'uppercase', color: 'var(--tx3)' }}>
+        {subtitle}
+      </div>
+    </button>
+  )
+}
+
+function MobileSwipeCard({
+  kicker,
+  items,
+  onClick,
+  emptyLabel,
+}: {
+  kicker: string
+  items: { a: string; b: string; c: string }[]
+  onClick: () => void
+  emptyLabel: string
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        width: 286,
+        flexShrink: 0,
+        scrollSnapAlign: 'start',
+        background: 'var(--bg1)',
+        border: '1px solid var(--bd)',
+        padding: 14,
+        textAlign: 'left',
+        cursor: 'pointer',
+      }}
+    >
+      <div className="t-eyebrow" style={{ opacity: 0.55, marginBottom: 12 }}>
+        {kicker}
+      </div>
+      {items.length === 0 ? (
+        <div className="t-mono-sm" style={{ color: 'var(--tx3)', opacity: 0.6 }}>
+          {emptyLabel}
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {items.map((x, idx) => (
+            <div key={idx} style={{ borderBottom: idx === items.length - 1 ? 'none' : '1px solid var(--bd2)', paddingBottom: idx === items.length - 1 ? 0 : 10 }}>
+              <div className="serif" style={{ fontSize: 14, color: 'var(--tx)', lineHeight: 1.15 }}>
+                {x.a}
+              </div>
+              <div className="row gap-sm" style={{ justifyContent: 'space-between', marginTop: 6 }}>
+                <span className="t-mono-sm" style={{ color: 'var(--ac)', letterSpacing: 1, fontSize: 9 }}>
+                  {x.b}
+                </span>
+                <span className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 9 }}>
+                  {x.c}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </button>
   )
 }
 

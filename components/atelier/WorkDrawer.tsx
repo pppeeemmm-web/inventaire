@@ -14,7 +14,7 @@ import { saveWork, createLookup, addWorkImage, reorderWorkImages } from '@/app/a
 import { markAsGift } from '@/app/atelier/works/gift-actions'
 import type { Oeuvre } from '@/lib/types/database'
 import { WorkThumb } from './WorkThumb'
-import { logAtelierOeuvreView } from '@/app/atelier/audit/log-view'
+import { useMediaQuery } from '@/lib/useMediaQuery'
 
 function setsEqualNum(a: Set<number>, b: Set<number>): boolean {
   if (a.size !== b.size) return false
@@ -79,6 +79,7 @@ export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function Work
   mode = 'overlay', expanded: expandedProp = false, setExpanded: setExpandedProp,
 }, ref) {
   const isPanel = mode === 'panel'
+  const narrow = useMediaQuery('(max-width: 767px)')
 
   /** Wired by DrawerContent — backdrop / × call this to guard unsaved edits (overlay + panel). */
   const closeAttemptRef = useRef<(() => void) | null>(null)
@@ -165,7 +166,7 @@ export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function Work
 
   if (!o) {
     return isPanel
-      ? <div style={{ flex: '0 0 35%', minWidth: 320, padding: 20, color: 'var(--tx3)' }} className="t-mono-sm">—</div>
+      ? <div style={{ flex: '0 0 35%', minWidth: narrow ? 0 : 320, padding: 20, color: 'var(--tx3)' }} className="t-mono-sm">—</div>
       : null
   }
 
@@ -184,11 +185,11 @@ export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function Work
     return (
       <div ref={panelRef} style={{
         flex: `0 0 ${isExpanded ? '55vw' : '35%'}`,
-        minWidth: 320,
+        minWidth: narrow ? 0 : 320,
         padding: 0, overflow: 'auto', background: 'var(--bg1)',
         borderLeft: '1px solid var(--bd)',
         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        boxShadow: isExpanded ? '-10px 0 40px rgba(0,0,0,0.4)' : 'none',
+        boxShadow: expandedProp && imgZoom <= 1 ? '-10px 0 40px rgba(0,0,0,0.4)' : 'none',
         maxHeight: '100%',
         height: isExpanded ? '100%' : undefined,
         minHeight: 0,
@@ -241,14 +242,14 @@ export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function Work
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          width: 460,
-          maxWidth: '50vw',
-          maxHeight: overlayTall ? 'calc(100dvh - 8px)' : '75vh',
-          height: overlayTall ? '100%' : 'fit-content',
+          width: narrow ? '100vw' : 460,
+          maxWidth: narrow ? '100vw' : '50vw',
+          maxHeight: narrow ? '100dvh' : (overlayTall ? 'calc(100dvh - 8px)' : '75vh'),
+          height: narrow ? '100dvh' : (overlayTall ? '100%' : 'fit-content'),
           minHeight: overlayTall ? 0 : undefined,
           background: 'var(--bg1)',
           border: '1px solid var(--bd)',
-          borderRadius: '16px 0 0 16px',
+          borderRadius: narrow ? 0 : '16px 0 0 16px',
           padding: 0,
           overflow: 'auto',
           display: 'flex',
@@ -257,7 +258,7 @@ export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function Work
           margin: 0,
         }}
       >
-        <div style={{ padding: 28 }}>
+        <div style={{ padding: narrow ? 'max(14px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left))' : 28 }}>
           <DrawerContent
             o={o} tM={tM} sM={sM} cM={cM} pM={pM} fM={fM} locMap={locMap}
             statusLabelMap={statusLabelMap} selection={selection} setSelection={setSelection}
@@ -307,16 +308,6 @@ function DrawerContent({
   const { t } = useI18n()
   const router = useRouter()
   const isPanel = mode === 'panel'
-
-  useEffect(() => {
-    if (!o?.OeuvreID) return
-    const k = `pem_atelier_view_${o.OeuvreID}`
-    try {
-      if (sessionStorage.getItem(k)) return
-      sessionStorage.setItem(k, '1')
-    } catch { /* private mode */ }
-    void logAtelierOeuvreView(o.OeuvreID)
-  }, [o?.OeuvreID])
 
   // ── Form State (always editable) ───────────────────────
   const [isSaving, startSave] = useTransition()
@@ -776,6 +767,7 @@ function DrawerContent({
         ref={drawerImageFileRef}
         type="file"
         accept="image/*"
+        capture={narrow ? 'environment' : undefined}
         style={{ display: 'none' }}
         onChange={onDrawerImageFileChange}
         tabIndex={-1}

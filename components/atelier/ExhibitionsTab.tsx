@@ -13,7 +13,6 @@ import {
   type ExhibitionLayout, type Wall, type Placement,
 } from '@/app/atelier/exhibitions/actions'
 import { createClient } from '@/lib/supabase/client'
-import { EXHIBITION_READY_TYPES } from '@/lib/data'
 import { pipelineTypeLabel, type ProcessType } from './PipelineTab'
 import { useI18n } from '@/lib/i18n/context'
 import { ConstellationCanvas, type NodeMap, type Pt } from './ConstellationCanvas'
@@ -973,15 +972,26 @@ export function ExhibitionsTab({ oeuvres, contacts, themes, tM, selection, setSe
   const [showNew,     setShowNew]     = useState(false)
   const [newNom,      setNewNom]      = useState('')
   const [newType,     setNewType]     = useState('exposition')
+  const [deepLinkId,  setDeepLinkId]  = useState<string | null>(null)
 
   const supabase = useMemo(() => createClient(), [])
+
+  // Optional deep-link: /atelier?tab=exhibitions&exhibition=<processId>
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const id = params.get('exhibition')
+    if (id) setDeepLinkId(id)
+  }, [])
 
   const load = useCallback(async () => {
     setLoading(true)
     const { data: processes } = await supabase
       .from('suivi_process')
       .select('id, nom, type, statut, date_debut, date_fin, contact_id, localisation, url, notes, created_at')
-      .in('type', EXHIBITION_READY_TYPES)
+      // Exhibition Projects only: keep Pipeline as the broad tracker
+      .eq('type', 'exposition')
+      // Only scheduled / active projects belong here (start or end date present)
+      .or('date_debut.not.is.null,date_fin.not.is.null')
       .order('date_fin', { ascending: false, nullsFirst: false })
 
     const { data: steps } = await supabase
@@ -995,9 +1005,12 @@ export function ExhibitionsTab({ oeuvres, contacts, themes, tM, selection, setSe
     }))
 
     setExhibitions(list)
-    if (list.length > 0 && !selected) setSelected(list[0])
+    if (list.length > 0 && !selected) {
+      const fromDeepLink = deepLinkId ? (list.find((x) => x.id === deepLinkId) ?? null) : null
+      setSelected(fromDeepLink ?? list[0])
+    }
     setLoading(false)
-  }, [selected, supabase])
+  }, [selected, supabase, deepLinkId])
 
   useEffect(() => { load() }, [load])
 
@@ -1128,9 +1141,7 @@ export function ExhibitionsTab({ oeuvres, contacts, themes, tM, selection, setSe
           <form onSubmit={handleCreate} style={{ padding: '10px 12px', borderBottom: '1px solid var(--bd)', display: 'flex', flexDirection: 'column', gap: 6 }}>
             <input name="nom" value={newNom} onChange={(e) => setNewNom(e.target.value)} placeholder="Nom de l'exposition…" style={inputSt} autoFocus />
             <select value={newType} onChange={(e) => setNewType(e.target.value)} style={inputSt}>
-              {EXHIBITION_READY_TYPES.map((pty) => (
-                <option key={pty} value={pty}>{pipelineTypeLabel(pty as ProcessType, lang)}</option>
-              ))}
+              <option value="exposition">{pipelineTypeLabel('exposition' as ProcessType, lang)}</option>
             </select>
             <div style={{ display: 'flex', gap: 6 }}>
               <button type="submit" disabled={creating} className="btn sm" style={{ flex: 1 }}>Créer</button>
