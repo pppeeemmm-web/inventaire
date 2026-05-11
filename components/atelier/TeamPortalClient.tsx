@@ -3,9 +3,10 @@
 // TeamPortalClient — fully interactive shell for the /atelier team portal.
 // Receives pre-fetched reference data from app/atelier/page.tsx.
 // Manages global state: active tab, work drawer, selection, working groups.
-// Heavy tab panels load on demand (next/dynamic). SystemTab is eager-loaded to avoid dev ChunkLoadError on that chunk.
+// Heavy tab panels load on demand (next/dynamic). SystemTab + ContactsTab eager-loaded to avoid dev ChunkLoadError on those chunks.
 
 import { useState, useMemo, useCallback, useEffect, useLayoutEffect, useRef } from 'react'
+import { useUnsavedActionGuard } from '@/hooks/useUnsavedActionGuard'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -24,6 +25,7 @@ import { createWorkingGroupWithOeuvres } from '@/app/atelier/selection/actions'
 import { PemThemeToggle } from '@/components/PemThemeToggle'
 import { ExhibitionsTabSkeleton } from '@/components/atelier/ExhibitionsTabSkeleton'
 import { SystemTab } from '@/components/atelier/SystemTab'
+import { ContactsTab } from '@/components/atelier/ContactsTab'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { toast } from '@/lib/ui/toast'
 import { consumeUndo, isUndoKeyBlockedTarget, peekUndo } from '@/lib/ui/undo'
@@ -52,7 +54,6 @@ const VaultTab = dynamic(() => import('@/components/atelier/VaultTab').then((m) 
 const ProductionTab = dynamic(() => import('@/components/atelier/ProductionTab').then((m) => ({ default: m.ProductionTab })), { loading: () => <TabPanelFallback />, ssr: false })
 const LogisticsTab = dynamic(() => import('@/components/atelier/LogisticsTab').then((m) => ({ default: m.LogisticsTab })), { loading: () => <TabPanelFallback />, ssr: false })
 const SalesTab = dynamic(() => import('@/components/atelier/SalesTab').then((m) => ({ default: m.SalesTab })), { loading: () => <TabPanelFallback />, ssr: false })
-const ContactsTab = dynamic(() => import('@/components/atelier/ContactsTab').then((m) => ({ default: m.ContactsTab })), { loading: () => <TabPanelFallback />, ssr: false })
 const WorldMapTab = dynamic(() => import('@/components/atelier/WorldMapTab').then((m) => ({ default: m.WorldMapTab })), { loading: () => <TabPanelFallback />, ssr: false })
 const PipelineTab = dynamic(() => import('@/components/atelier/PipelineTab').then((m) => ({ default: m.PipelineTab })), { loading: () => <TabPanelFallback />, ssr: false })
 const FiscalTab = dynamic(() => import('@/components/atelier/FiscalTab').then((m) => ({ default: m.FiscalTab })), { loading: () => <TabPanelFallback />, ssr: false })
@@ -92,6 +93,65 @@ export function TeamPortalClient({
   
   const [inspected,  setInspected]  = useState<Oeuvre | null>(null)
   const workDrawerGuardRef = useRef<WorkDrawerGuardHandle>(null)
+  const [drawerDirty, setDrawerDirty] = useState(false)
+  const pendingNavRef = useRef<(() => void) | null>(null)
+
+  const runPendingNav = useCallback(() => {
+    const fn = pendingNavRef.current
+    pendingNavRef.current = null
+    fn?.()
+  }, [])
+
+  const performDrawerSave = useCallback(async () => {
+    return (await workDrawerGuardRef.current?.performSave()) ?? false
+  }, [])
+
+  const { attemptAction: attemptNavigateWithDrawerGuard, unsavedDialog: drawerLeaveDialog } = useUnsavedActionGuard({
+    isDirty: drawerDirty,
+    onProceed: runPendingNav,
+    performSave: performDrawerSave,
+  })
+
+  useEffect(() => {
+    if (!inspected) setDrawerDirty(false)
+  }, [inspected])
+
+  useEffect(() => {
+    if (!drawerDirty) return
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [drawerDirty])
+
+  useLayoutEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const wid = params.get('work')
+    if (!wid) return
+    const oid = parseInt(wid, 10)
+    if (Number.isNaN(oid)) return
+    const found = oeuvres.find((x) => x.OeuvreID === oid)
+    if (!found) return
+
+    const stripWorkFromUrl = () => {
+      const p = new URLSearchParams(window.location.search)
+      p.delete('work')
+      const qs = p.toString()
+      window.history.replaceState({}, '', qs ? `${window.location.pathname}?${qs}` : window.location.pathname)
+    }
+
+    const open = () => {
+      setInspected(found)
+      stripWorkFromUrl()
+    }
+
+    const g = workDrawerGuardRef.current
+    if (g) g.runGuarded(open)
+    else open()
+  }, [oeuvres])
 
   const openInspected = useCallback((next: Oeuvre | null) => {
     if (next && inspected && next.OeuvreID === inspected.OeuvreID) return
@@ -331,18 +391,32 @@ export function TeamPortalClient({
 
   const activeTabLabel = TABS_RAW.find(x => x[0] === tab)?.[1] ?? ''
 
-  const GROUPS: { label: string, tabs: Tab[] }[] = [
-    { label: t('nav_group_management'), tabs: ['overview', 'inventory', 'contacts', 'vault'] },
-    { label: t('nav_group_operations'), tabs: ['production', 'logistics', 'stock', 'stock-take'] },
-    { label: t('nav_group_vision'), tabs: ['constellation', 'concepts', 'themes', 'map'] },
-    { label: t('nav_group_commercial'), tabs: ['sales', 'exhibitions', 'pipeline', 'fiscal'] },
-    { label: t('nav_group_diffusion'), tabs: ['portfolio'] },
-    { label: t('nav_group_config'), tabs: isAdmin ? ['system', 'audit'] : ['system'] },
-  ]
+  /** Desktop: classic studio order. Narrow (`<=767px`): field-tool first — inventory-led; ops split so each tab appears once. */
+  const configNavTabs: Tab[] = isAdmin ? ['system', 'audit'] : ['system']
+  const GROUPS: { label: string; tabs: Tab[] }[] = atelierNarrow
+    ? [
+        { label: t('nav_group_field'), tabs: ['inventory', 'production', 'stock-take', 'overview'] },
+        { label: t('nav_group_operations'), tabs: ['logistics', 'stock'] },
+        { label: t('nav_group_management'), tabs: ['contacts', 'vault'] },
+        { label: t('nav_group_vision'), tabs: ['constellation', 'concepts', 'themes', 'map'] },
+        { label: t('nav_group_commercial'), tabs: ['sales', 'exhibitions', 'pipeline', 'fiscal'] },
+        { label: t('nav_group_diffusion'), tabs: ['portfolio'] },
+        { label: t('nav_group_config'), tabs: configNavTabs },
+      ]
+    : [
+        { label: t('nav_group_management'), tabs: ['overview', 'inventory', 'contacts', 'vault'] },
+        { label: t('nav_group_operations'), tabs: ['production', 'logistics', 'stock', 'stock-take'] },
+        { label: t('nav_group_vision'), tabs: ['constellation', 'concepts', 'themes', 'map'] },
+        { label: t('nav_group_commercial'), tabs: ['sales', 'exhibitions', 'pipeline', 'fiscal'] },
+        { label: t('nav_group_diffusion'), tabs: ['portfolio'] },
+        { label: t('nav_group_config'), tabs: configNavTabs },
+      ]
 
   const showDock = selection.size > 0 && tab !== 'constellation'
 
   return (
+    <>
+      {drawerLeaveDialog}
     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', flexDirection: 'column', background: 'var(--bg0)', overflow: 'hidden' }}>
       
       <div style={{
@@ -376,9 +450,15 @@ export function TeamPortalClient({
               ☰
             </button>
           )}
-          <button onClick={() => router.push('/hub')} 
-            className="t-mono-sm" 
-            style={{ color: 'var(--tx3)', cursor: 'pointer', background: 'none', border: 'none', padding: 0, fontSize: 9, letterSpacing: 1.5, textTransform: 'uppercase', opacity: 0.7, flexShrink: 0 }}>
+          <button
+            type="button"
+            onClick={() => {
+              pendingNavRef.current = () => router.push('/hub')
+              attemptNavigateWithDrawerGuard()
+            }}
+            className="t-mono-sm"
+            style={{ color: 'var(--tx3)', cursor: 'pointer', background: 'none', border: 'none', padding: 0, fontSize: 9, letterSpacing: 1.5, textTransform: 'uppercase', opacity: 0.7, flexShrink: 0 }}
+          >
             Hub
           </button>
           <span style={{ color: 'var(--tx3)', fontSize: 10, opacity: 0.3, flexShrink: 0 }}>/</span>
@@ -491,6 +571,7 @@ export function TeamPortalClient({
             <div className="t-mono-sm" style={{ display: atelierNarrow ? 'block' : 'none', padding: '0 20px 16px', fontSize: 9, opacity: 0.5 }}>
               {oeuvres.length} {t('inventoryWorksBadge')}
             </div>
+          <div data-testid="atelier-nav-groups">
           {GROUPS.map((g) => (
             <div key={g.label} style={{ marginBottom: 20 }}>
               <div className="t-eyebrow" style={{ padding: '0 20px', marginBottom: 8, color: 'var(--tx2)', fontSize: 9, letterSpacing: '2px', fontWeight: 600, opacity: 0.8 }}>{g.label}</div>
@@ -533,6 +614,7 @@ export function TeamPortalClient({
               </div>
             </div>
           ))}
+          </div>
           </div>
         </div>
 
@@ -701,31 +783,28 @@ export function TeamPortalClient({
         )}
       </div>
 
-      {/* ── Work Drawer ─────────────────────────────────────────── */}
-      {inspected && (
-        <WorkDrawer
-          ref={workDrawerGuardRef}
-          o={inspected}
-          tM={tM} sM={sM} cM={cM} pM={pM}
-          statusLabelMap={statusLabelMap}
-          selection={selection}
-          setSelection={setSelection}
-          onClose={() => setInspected(null)}
-          // Curation props
-          thM={thM}
-          oeuvreThemeMap={oeuvreThemeMap}
-          oeuvreGroupMap={oeuvreGroupMap}
-          groupNameMap={groupNameMap}
-          // Reference data for editing
-          techniques={techniques}
-          supports={supports}
-          formats={formats}
-          themes={themes}
-          contacts={contacts}
-          groups={groups}
-          presentations={presentations}
-        />
-      )}
+      {/* ── Work Drawer (always mounted so ref/guards work for ?work= deep links) ── */}
+      <WorkDrawer
+        ref={workDrawerGuardRef}
+        o={inspected}
+        tM={tM} sM={sM} cM={cM} pM={pM}
+        statusLabelMap={statusLabelMap}
+        selection={selection}
+        setSelection={setSelection}
+        onClose={() => setInspected(null)}
+        onDrawerDirtyChange={setDrawerDirty}
+        thM={thM}
+        oeuvreThemeMap={oeuvreThemeMap}
+        oeuvreGroupMap={oeuvreGroupMap}
+        groupNameMap={groupNameMap}
+        techniques={techniques}
+        supports={supports}
+        formats={formats}
+        themes={themes}
+        contacts={contacts}
+        groups={groups}
+        presentations={presentations}
+      />
 
       {/* ── Curation Dock (non-constellation tabs with selection) ── */}
       {showDock && (
@@ -767,7 +846,8 @@ export function TeamPortalClient({
 
     </div>
   </div>
-)
+    </>
+  )
 }
 
 // ── Overview tab ─────────────────────────────────────────────────────

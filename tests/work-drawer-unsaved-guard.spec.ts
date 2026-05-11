@@ -27,4 +27,22 @@ test.describe('Work drawer unsaved guard', () => {
 
     await expect(page.getByText(/Modifications non enregistrées|Unsaved changes/)).toBeVisible()
   })
+
+  test('?work= opens drawer (deep link)', async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('pem_team_tab', 'inventory')
+    })
+    await page.goto('/atelier')
+    await expect(page.getByTestId('inventory-virtual-scroll')).toBeVisible({ timeout: 45_000 })
+
+    const dataRows = page.locator('tbody tr').filter({ has: page.locator('button', { hasText: '✎' }) })
+    await expect(dataRows.first()).toBeVisible({ timeout: 15_000 })
+    const idCell = dataRows.first().locator('td').nth(2)
+    const idText = (await idCell.innerText()).trim().replace(/\s*🔒\s*/g, '').trim()
+    const workId = parseInt(idText, 10)
+    test.skip(Number.isNaN(workId), 'Could not read work id from first inventory row.')
+
+    await page.goto(`/atelier?work=${workId}`)
+    await expect(page.getByTestId('work-drawer-overlay')).toBeVisible({ timeout: 15_000 })
+  })
 })

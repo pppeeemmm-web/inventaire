@@ -1,22 +1,38 @@
 'use client'
 
-import { imageUrl, thumbUrl, yearOf, statusOf, DIAMETER_SIGN, isCircularSupport, STATUS_ID_ARCHIVE_ARTISTE, pipelineHighlightStatusId, statusDrawerShowCommercialEffectiveSplit, commercialPipelineSegmentId } from '@/lib/data'
+import { imageUrl, thumbUrl, DIAMETER_SIGN, isCircularSupport, STATUS_ID_ARCHIVE_ARTISTE } from '@/lib/data'
 
-import { StatusChip } from '@/components/ui/StatusChip'
-import { WorkStateChip } from './WorkStateChip'
-import { deleteWork, restoreSoftDeletedWorks, revertWorkSnapshot, type WorkRevertSnapshot } from '@/app/atelier/works/actions'
+import { deleteWork, restoreSoftDeletedWorks, revertWorkSnapshot, loadOeuvreLongText, type WorkRevertSnapshot } from '@/app/atelier/works/actions'
 import { createClient } from '@/lib/supabase/client'
-import { getWorkActionTypes } from '@/lib/work-action-type-cache'
 import { useRouter } from 'next/navigation'
 import { useEffect, useLayoutEffect, useState, useTransition, useCallback, useRef, useMemo, forwardRef, useImperativeHandle } from 'react'
+import type { MutableRefObject } from 'react'
 import { useI18n } from '@/lib/i18n/context'
-import { saveWork, createLookup, addWorkImage, reorderWorkImages } from '@/app/atelier/works/actions'
+import { saveWork, createLookup, addWorkImage, reorderWorkImages, deleteWorkImage } from '@/app/atelier/works/actions'
 import { toast } from '@/lib/ui/toast'
 import { registerUndo, consumeUndo } from '@/lib/ui/undo'
 import { markAsGift } from '@/app/atelier/works/gift-actions'
 import type { Oeuvre } from '@/lib/types/database'
 import { WorkThumb } from './WorkThumb'
 import { useMediaQuery } from '@/lib/useMediaQuery'
+import {
+  downscaleImageFileForMobileIfNeeded,
+  startEstimatedUploadProgress,
+  withUploadRetry,
+} from '@/lib/mobile/image-upload-client'
+import {
+  computeStatusId as computeWorkStatusId,
+  ownStageFromStatusId,
+  prodStageFromOeuvre,
+  type OwnStageId,
+  type ProdStageId,
+} from '@/lib/work-editor-model'
+import { draftStorageKey, type WorkFormDraftPayload } from '@/lib/mobile/work-form-draft'
+import {
+  enqueueOfflineWorkSave,
+  formDataToStringRecord,
+  isLikelyOfflineSaveError,
+} from '@/lib/mobile/offline-work-queue'
 
 function setsEqualNum(a: Set<number>, b: Set<number>): boolean {
   if (a.size !== b.size) return false
@@ -65,12 +81,20 @@ interface Props {
   mode?:          'panel' | 'overlay'
   expanded?:      boolean
   setExpanded?:   (b: boolean) => void
+  /** Route-leave / parent guards */
+  guardApiRef?: MutableRefObject<{
+    isDirty: () => boolean
+    performSave: () => Promise<boolean>
+  }>
+  onDrawerDirtyChange?: (dirty: boolean) => void
 }
 
-interface ActionType { id: number; label: string; color: string; field_key: string | null; sort_order: number }
-
 /** Parent can call `runGuarded(() => …)` before changing the open work (e.g. list click) so unsaved edits prompt first. */
-export type WorkDrawerGuardHandle = { runGuarded: (fn: () => void) => void }
+export type WorkDrawerGuardHandle = {
+  runGuarded: (fn: () => void) => void
+  isDirty: () => boolean
+  performSave: () => Promise<boolean>
+}
 
 export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function WorkDrawer({
   o, tM, sM, cM, pM, fM, locMap, statusLabelMap, selection, setSelection, toggleInSel, onClose, onEdit,
@@ -79,6 +103,8 @@ export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function Work
   themes: initialThemes, contacts: initialContacts, groups: initialGroups,
   presentations: initialPresentations,
   mode = 'overlay', expanded: expandedProp = false, setExpanded: setExpandedProp,
+  guardApiRef: guardApiRefProp,
+  onDrawerDirtyChange,
 }, ref) {
   const isPanel = mode === 'panel'
   const narrow = useMediaQuery('(max-width: 767px)')
@@ -86,10 +112,18 @@ export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function Work
   /** Wired by DrawerContent — backdrop / × call this to guard unsaved edits (overlay + panel). */
   const closeAttemptRef = useRef<(() => void) | null>(null)
 
+  const internalGuardApiRef = useRef({
+    isDirty: () => false,
+    performSave: async () => true as boolean,
+  })
+  const guardApiRef = guardApiRefProp ?? internalGuardApiRef
+
   const runGuardedSlot = useRef<(fn: () => void) => void>((fn) => { fn() })
   useImperativeHandle(ref, () => ({
     runGuarded: (fn) => runGuardedSlot.current(fn),
-  }), [])
+    isDirty: () => guardApiRef.current.isDirty(),
+    performSave: () => guardApiRef.current.performSave(),
+  }), [guardApiRef])
 
   const panelRef = useRef<HTMLDivElement>(null)
   useEffect(() => { panelRef.current?.scrollTo(0, 0) }, [o?.OeuvreID])
@@ -173,10 +207,6 @@ export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function Work
   }
 
   const isSel  = selection.has(o.OeuvreID)
-  const st     = statusOf(o, statusLabelMap)
-  const isSold = st === 'sold'
-  const isLoan = st === 'loan' || st === 'consigned'
-
   const isExpanded = isPanel ? (expandedProp || imgZoom > 1) : false
   const activeImgPath = workImagesSorted.length > 0 && activeImgIdx >= 0
     ? workImagesSorted[activeImgIdx]?.txtImageNameLink ?? o.txtImageNameLink
@@ -216,9 +246,11 @@ export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function Work
             workImages={workImages} setWorkImages={setWorkImages} activeImgIdx={activeImgIdx} setActiveImgIdx={setActiveImgIdx}
             imgContainerRef={imgContainerRef} isDragging={isDragging} dragStart={dragStart}
             activeImgPath={activeImgPath}
-            isSel={isSel} st={st} isSold={isSold} isLoan={isLoan}
+            isSel={isSel}
             closeAttemptRef={closeAttemptRef}
             runGuardedSlot={runGuardedSlot}
+            guardApiRef={guardApiRef}
+            onDrawerDirtyChange={onDrawerDirtyChange}
           />
         </div>
       </div>
@@ -226,9 +258,10 @@ export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function Work
   }
 
   // Overlay mode — dimmed backdrop catches outside clicks; panel stops propagation.
-  const overlayTall = imgZoom > 1
+  // Full-viewport-height rail + internal scroll: avoids a transparent gap under a short
+  // `75vh`/`fit-content` panel (grid bleeding through) and keeps form fields scrollable.
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 60, display: 'flex', justifyContent: 'flex-end', alignItems: overlayTall ? 'stretch' : 'flex-start' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 60, display: 'flex', justifyContent: 'flex-end', alignItems: 'stretch', background: 'rgba(0,0,0,0.35)' }}>
       <div
         role="presentation"
         aria-hidden
@@ -237,18 +270,18 @@ export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function Work
           flex: 1,
           minWidth: 0,
           alignSelf: 'stretch',
-          background: 'rgba(0,0,0,0.35)',
           cursor: 'default',
         }}
       />
       <div
+        data-testid="work-drawer-overlay"
         onClick={(e) => e.stopPropagation()}
         style={{
           width: narrow ? '100vw' : 460,
           maxWidth: narrow ? '100vw' : '50vw',
-          maxHeight: narrow ? '100dvh' : (overlayTall ? 'calc(100dvh - 8px)' : '75vh'),
-          height: narrow ? '100dvh' : (overlayTall ? '100%' : 'fit-content'),
-          minHeight: overlayTall ? 0 : undefined,
+          maxHeight: '100dvh',
+          height: '100dvh',
+          minHeight: 0,
           background: 'var(--bg1)',
           border: '1px solid var(--bd)',
           borderRadius: narrow ? 0 : '16px 0 0 16px',
@@ -278,9 +311,11 @@ export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function Work
             workImages={workImages} setWorkImages={setWorkImages} activeImgIdx={activeImgIdx} setActiveImgIdx={setActiveImgIdx}
             imgContainerRef={imgContainerRef} isDragging={isDragging} dragStart={dragStart}
             activeImgPath={activeImgPath}
-            isSel={isSel} st={st} isSold={isSold} isLoan={isLoan}
+            isSel={isSel}
             closeAttemptRef={closeAttemptRef}
             runGuardedSlot={runGuardedSlot}
+            guardApiRef={guardApiRef}
+            onDrawerDirtyChange={onDrawerDirtyChange}
           />
         </div>
       </div>
@@ -294,6 +329,16 @@ WorkDrawer.displayName = 'WorkDrawer'
    DrawerContent — shared inner body
    ══════════════════════════════════════════════════════════════════ */
 
+type DrawerContactRow = {
+  ContactID: number
+  NomInstitution: string | null
+  Nom: string | null
+  Prénom: string | null
+  Role: string | null
+  Ville?: string | null
+  Pays?: string | null
+}
+
 function DrawerContent({
   o, tM, sM, cM, pM, statusLabelMap, selection, setSelection, toggleInSel, onClose, onEdit,
   thM, oeuvreThemeMap, oeuvreGroupMap, groupNameMap,
@@ -303,11 +348,13 @@ function DrawerContent({
   imgZoom, setImgZoom, imgPan, setImgPan, naturalSize, setNaturalSize,
   workImages, setWorkImages, activeImgIdx, setActiveImgIdx,
   imgContainerRef, isDragging, dragStart, activeImgPath,
-  isSel, st, isSold, isLoan,
+  isSel,
   closeAttemptRef,
   runGuardedSlot,
+  guardApiRef,
+  onDrawerDirtyChange,
 }: any) {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const router = useRouter()
   const isPanel = mode === 'panel'
   const narrow = useMediaQuery('(max-width: 767px)')
@@ -323,16 +370,25 @@ function DrawerContent({
   const [largeur,     setLargeur]     = useState(String(o.Largeur ?? ''))
   const [profondeur,  setProfondeur]  = useState(String(o.Profondeur ?? ''))
   const [presentationId, setPresentationId] = useState(String((o as any).PresentationID ?? ''))
-  const [statusId,    setStatusId]    = useState(String(o.statusId ?? ''))
-  const [contactId,   setContactId]   = useState(String(o.ContactID ?? ''))
-  const [locId,       setLocId]       = useState(String(o.LocalisationID ?? ''))
+  const [prodStage, setProdStage] = useState<ProdStageId>(() => prodStageFromOeuvre(o))
+  const [needsPhoto, setNeedsPhoto] = useState(!!((o as { NeedsPhotograph?: boolean }).NeedsPhotograph ?? false))
+  const [ownStage, setOwnStage] = useState<OwnStageId>(() => ownStageFromStatusId(o.statusId))
+  const [contactId, setContactId] = useState(String(o.LocalisationID ?? ''))
   const [exposable,   setExposable]   = useState(!!o.Exposable)
   const [encadree,    setEncadree]    = useState(!!o.Encadree)
-  const [prix,        setPrix]        = useState(String(o.Prix ?? ''))
-  const [prixFinal,   setPrixFinal]   = useState(String((o as any).PrixFinal ?? ''))
+  const [prix,        setPrix]        = useState(String(o.Prix ?? '0'))
+  const [tvaRate, setTvaRate] = useState(String((o as { tva_rate?: number | null }).tva_rate ?? '0'))
+  const [discount, setDiscount] = useState(String((o as { Discount?: number | null }).Discount ?? '0'))
+  const [paymentDone, setPaymentDone] = useState(!!((o as { PaymentDone?: boolean; is_paid?: boolean | null }).PaymentDone ?? (o as { is_paid?: boolean | null }).is_paid ?? false))
+  const [commentaires, setCommentaires] = useState('')
+  const [historique, setHistorique] = useState('')
+  const [activeConsignment, setActiveConsignment] = useState<{
+    label?: string | null
+    Contact?: { NomInstitution?: string | null; Nom?: string | null; Prénom?: string | null; Ville?: string | null; Pays?: string | null }
+  } | null>(null)
   const [selThemes, setSelThemes] = useState<Set<number>>(new Set())
   const [selGroups, setSelGroups] = useState<Set<string>>(new Set())
-  const [localContacts, setLocalContacts] = useState(initialContacts)
+  const [localContacts, setLocalContacts] = useState<DrawerContactRow[]>(initialContacts as DrawerContactRow[])
   const [showNewContact, setShowNewContact] = useState(false)
   const [newC, setNewC] = useState({ inst: '', prenom: '', nom: '', role: '', email: '', phone: '', ville: '', pays: '', notes: '' })
   const [creatingContact, setCreatingContact] = useState(false)
@@ -345,6 +401,10 @@ function DrawerContent({
   const [giftNotes, setGiftNotes]               = useState('')
   const [giftBusy, setGiftBusy]                 = useState(false)
   const [giftError, setGiftError]               = useState<string | null>(null)
+  const [noteBaseline, setNoteBaseline] = useState({ c: '', h: '' })
+
+  const draftKey = useMemo(() => draftStorageKey(o.OeuvreID), [o.OeuvreID])
+  const draftPromptedForKey = useRef<string | null>(null)
 
   const [showUnsavedModal, setShowUnsavedModal] = useState(false)
   const [savingExit, setSavingExit]             = useState(false)
@@ -353,7 +413,12 @@ function DrawerContent({
   const panRafId = useRef<number | null>(null)
   const latestMouseRef = useRef({ x: 0, y: 0 })
   const drawerImageFileRef = useRef<HTMLInputElement>(null)
+  const drawerUploadCancelRef = useRef(false)
   const [drawerImageBusy, setDrawerImageBusy] = useState(false)
+  const [drawerUploadPct, setDrawerUploadPct] = useState(0)
+  const [drawerUploadName, setDrawerUploadName] = useState('')
+  const [drawerUploadIndex, setDrawerUploadIndex] = useState(0)
+  const [drawerUploadTotal, setDrawerUploadTotal] = useState(0)
 
   const drawerSorted = useMemo(
     () => [...workImages].sort((a, b) => (a.SeqNo ?? 0) - (b.SeqNo ?? 0)),
@@ -366,7 +431,7 @@ function DrawerContent({
     const currentId = before[activeImgIdx]?.ImageID
     const res = await reorderWorkImages(o.OeuvreID, ids)
     if ('error' in res) {
-      alert(`${t('error_prefix')} ${res.error}`)
+      toast.error(`${t('error_prefix')} ${res.error}`)
       return
     }
     const map = new Map(before.map((row) => [row.ImageID, row]))
@@ -396,26 +461,75 @@ function DrawerContent({
     void drawerPersistOrder(ids)
   }
 
+  async function drawerDeleteImage(imageId: number) {
+    if (!o?.OeuvreID) return
+    if (!window.confirm(t('confirm_delete_image'))) return
+    const res = await deleteWorkImage(imageId, o.OeuvreID)
+    if ('error' in res) {
+      toast.error(`${t('error_prefix')} ${res.error}`)
+      return
+    }
+    setWorkImages((prev: { ImageID: number; txtImageNameLink: string | null; SeqNo: number | null }[]) => {
+      const next = prev.filter((row) => row.ImageID !== imageId)
+      setActiveImgIdx((ai: number) => {
+        if (next.length === 0) return -1
+        return Math.min(Math.max(0, ai), next.length - 1)
+      })
+      return next
+    })
+    router.refresh()
+  }
+
   async function onDrawerImageFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file || !o?.OeuvreID) return
+    const files = Array.from(e.target.files ?? [])
+    e.target.value = ''
+    if (!files.length || !o?.OeuvreID) return
+    drawerUploadCancelRef.current = false
     setDrawerImageBusy(true)
+    setDrawerUploadTotal(files.length)
     try {
-      const fd = new FormData()
-      fd.append('image', file)
-      fd.append('oeuvre_id', String(o.OeuvreID))
-      const res = await addWorkImage(fd)
-      if ('error' in res) {
-        alert(`${t('error_prefix')} ${res.error}`)
-      } else {
-        const nextIdx = workImages.length
-        setWorkImages((prev) => [...prev, res.image].sort((a, b) => (a.SeqNo ?? 0) - (b.SeqNo ?? 0)))
-        setActiveImgIdx(nextIdx)
-        router.refresh()
+      for (let i = 0; i < files.length; i++) {
+        if (drawerUploadCancelRef.current) break
+        const file = files[i]!
+        setDrawerUploadIndex(i + 1)
+        setDrawerUploadName(file.name)
+        const prepared = await downscaleImageFileForMobileIfNeeded(file, narrow)
+        const stopTick = startEstimatedUploadProgress(prepared.size, setDrawerUploadPct)
+        try {
+          const res = await withUploadRetry(
+            async () => {
+              const fd = new FormData()
+              fd.append('image', prepared)
+              fd.append('oeuvre_id', String(o.OeuvreID))
+              return addWorkImage(fd)
+            },
+            { onRetry: () => toast.info(t('upload_retry_toast')) },
+          )
+          if ('error' in res) {
+            toast.error(`${t('error_prefix')} ${res.error}`)
+            break
+          }
+          setWorkImages((prev: { ImageID: number; txtImageNameLink: string | null; SeqNo: number | null }[]) => {
+            const next = [...prev, res.image].sort((a, b) => (a.SeqNo ?? 0) - (b.SeqNo ?? 0))
+            const ai = next.findIndex((x) => x.ImageID === res.image.ImageID)
+            if (ai >= 0) setActiveImgIdx(ai)
+            return next
+          })
+          router.refresh()
+        } catch (err) {
+          toast.error(`${t('error_prefix')} ${String(err)}`)
+          break
+        } finally {
+          stopTick()
+          setDrawerUploadPct(0)
+        }
       }
     } finally {
       setDrawerImageBusy(false)
-      e.target.value = ''
+      setDrawerUploadTotal(0)
+      setDrawerUploadIndex(0)
+      setDrawerUploadName('')
+      setDrawerUploadPct(0)
     }
   }
 
@@ -430,22 +544,54 @@ function DrawerContent({
     setLargeur(String(o.Largeur ?? ''))
     setProfondeur(String(o.Profondeur ?? ''))
     setPresentationId(String((o as any).PresentationID ?? ''))
-    setStatusId(String(o.statusId ?? ''))
-    setContactId(String(o.ContactID ?? ''))
-    setLocId(String(o.LocalisationID ?? ''))
+    setProdStage(prodStageFromOeuvre(o))
+    setNeedsPhoto(!!((o as { NeedsPhotograph?: boolean }).NeedsPhotograph ?? false))
+    setOwnStage(ownStageFromStatusId(o.statusId))
+    setContactId(String(o.LocalisationID ?? ''))
     setExposable(o.statusId === STATUS_ID_ARCHIVE_ARTISTE ? false : !!o.Exposable)
     setEncadree(!!o.Encadree)
-    setPrix(String(o.Prix ?? ''))
-    setPrixFinal(String((o as any).PrixFinal ?? ''))
+    setPrix(String(o.Prix ?? '0'))
+    setTvaRate(String((o as { tva_rate?: number | null }).tva_rate ?? '0'))
+    setDiscount(String((o as { Discount?: number | null }).Discount ?? '0'))
+    setPaymentDone(!!((o as { PaymentDone?: boolean; is_paid?: boolean | null }).PaymentDone ?? (o as { is_paid?: boolean | null }).is_paid ?? false))
     setSelThemes(new Set(oeuvreThemeMap.get(o.OeuvreID) ?? []))
     setSelGroups(new Set(oeuvreGroupMap.get(o.OeuvreID) ?? []))
-    setAnonymityLevel((o as any).anonymity_level ?? 0)
+    setAnonymityLevel((o as { anonymity_level?: number }).anonymity_level ?? 0)
     setLocalContacts(initialContacts)
+    setCommentaires('')
+    setHistorique('')
+    void (async () => {
+      const r = await loadOeuvreLongText(o.OeuvreID)
+      if (!('error' in r)) {
+        const c = r.Commentaires ?? ''
+        const h = r.Historique ?? ''
+        setCommentaires(c)
+        setHistorique(h)
+        setNoteBaseline({ c, h })
+      } else {
+        setNoteBaseline({ c: '', h: '' })
+      }
+    })()
   }, [o.OeuvreID, oeuvreThemeMap, oeuvreGroupMap, o, initialContacts])
 
   useEffect(() => {
-    if (Number(statusId) === STATUS_ID_ARCHIVE_ARTISTE && exposable) setExposable(false)
-  }, [statusId, exposable])
+    if (ownStage !== 'loan' && ownStage !== 'consigned') {
+      setActiveConsignment(null)
+      return
+    }
+    const sb = createClient()
+    void sb
+      .from('consignment')
+      .select('*, Contact(NomInstitution, Nom, Prénom, Ville, Pays)')
+      .eq('oeuvre_id', o.OeuvreID)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (!error && data) setActiveConsignment(data as { label?: string | null; Contact?: { NomInstitution?: string | null; Nom?: string | null; Prénom?: string | null; Ville?: string | null; Pays?: string | null } })
+        else setActiveConsignment(null)
+      })
+  }, [ownStage, o.OeuvreID])
 
   useEffect(() => {
     pendingAfterGuardRef.current = null
@@ -470,14 +616,121 @@ function DrawerContent({
     return hauteur || largeur
   }, [circularPlanar, hauteur, largeur])
 
+  const isDigital = techniqueId === '19'
+  const pxToCm = (px: string) => (px ? (parseFloat(px) / (300 / 2.54)).toFixed(1) : '')
+
+  const PRODUCTION_STAGES = useMemo(
+    () => [
+      { id: 'atelier' as const, label: t('wf_prod_atelier_l'), desc: t('wf_prod_atelier_d') },
+      { id: 'catalogued' as const, label: t('wf_prod_cat_l'), desc: t('wf_prod_cat_d') },
+      { id: 'available' as const, label: t('wf_prod_avail_l'), desc: t('wf_prod_avail_d') },
+    ],
+    [t],
+  )
+  const OWNERSHIP_STAGES = useMemo(
+    () => [
+      { id: 'artist' as const, label: t('wf_own_artist_l'), desc: t('wf_own_artist_d') },
+      { id: 'reserved' as const, label: t('wf_own_reserved_l'), desc: t('wf_own_reserved_d') },
+      { id: 'consigned' as const, label: t('wf_own_consigned_l'), desc: t('wf_own_consigned_d') },
+      { id: 'loan' as const, label: t('wf_own_loan_l'), desc: t('wf_own_loan_d') },
+      { id: 'sold' as const, label: t('wf_own_sold_l'), desc: t('wf_own_sold_d') },
+      { id: 'gift' as const, label: t('wf_own_gift_l'), desc: t('wf_own_gift_d') },
+      { id: 'artist_archive' as const, label: t('wf_own_archive_l'), desc: t('wf_own_archive_d') },
+    ],
+    [t],
+  )
+
+  const pemContact = useMemo(
+    () => localContacts.find((c: DrawerContactRow) => (c.NomInstitution ?? '').toLowerCase().includes('pem')),
+    [localContacts],
+  )
+  const currentOwner = useMemo(
+    () => localContacts.find((c: DrawerContactRow) => String(c.ContactID) === contactId),
+    [localContacts, contactId],
+  )
+
+  const prixVal = parseFloat(prix) || 0
+  const discVal = parseFloat(discount) || 0
+  const prixFinalComputed = ownStage === 'gift' ? 0 : prixVal * (1 - discVal / 100)
+
+  const isOwnershipTransferred = ownStage === 'sold' || ownStage === 'gift'
+  const isArchived = ownStage === 'artist_archive'
+
+  const currentLoc = useMemo(() => {
+    if (ownStage === 'artist' || ownStage === 'artist_archive') {
+      return pemContact?.Ville ? `${pemContact.Ville}, ${pemContact.Pays ?? ''}` : t('atelier')
+    }
+    if (ownStage === 'reserved') {
+      if (currentOwner) {
+        const loc = [currentOwner.Ville, currentOwner.Pays].filter(Boolean).join(', ')
+        return `${t('wf_own_reserved_l')} — ${currentOwner.NomInstitution ?? currentOwner.Nom ?? '?'} (${loc || '?'})`
+      }
+      return `${t('wf_own_reserved_l')} — ${t('buyer')} (?)`
+    }
+    if (ownStage === 'consigned' || ownStage === 'loan') {
+      if (activeConsignment) {
+        const c = activeConsignment.Contact
+        const loc = [c?.Ville, c?.Pays].filter(Boolean).join(', ')
+        return `${activeConsignment.label ?? t('wf_own_consigned_l')} · ${c?.NomInstitution ?? c?.Nom ?? '—'} (${loc || '?'})`
+      }
+      if (currentOwner) {
+        const loc = [currentOwner.Ville, currentOwner.Pays].filter(Boolean).join(', ')
+        return `${currentOwner.NomInstitution ?? currentOwner.Nom ?? '?'} (${loc || '?'})`
+      }
+      return `${t('wf_own_consigned_l')} / ${t('wf_own_loan_l')}`
+    }
+    if (isOwnershipTransferred) {
+      if (!currentOwner) return `${t('buyer')} (?)`
+      const loc = [currentOwner.Ville, currentOwner.Pays].filter(Boolean).join(', ')
+      return loc || `${currentOwner.NomInstitution ?? currentOwner.Nom ?? t('buyer')}`
+    }
+    return '—'
+  }, [ownStage, currentOwner, pemContact, activeConsignment, isOwnershipTransferred, t])
+
+  useEffect(() => {
+    if (prodStage === 'catalogued') setNeedsPhoto(true)
+    else setNeedsPhoto(false)
+  }, [prodStage])
+
+  const prevNeedsPhoto = useRef(needsPhoto)
+  useEffect(() => {
+    if (!needsPhoto && prevNeedsPhoto.current === true) setProdStage('available')
+    prevNeedsPhoto.current = needsPhoto
+  }, [needsPhoto])
+
+  useEffect(() => {
+    if (ownStage === 'gift') {
+      setPrix('0')
+      setDiscount('0')
+    }
+  }, [ownStage])
+
+  useEffect(() => {
+    if (isArchived && pemContact) setContactId(String(pemContact.ContactID))
+  }, [isArchived, pemContact])
+
+  useEffect(() => {
+    if (isOwnershipTransferred && prodStage === 'atelier') setProdStage('available')
+  }, [isOwnershipTransferred, prodStage])
+
+  useEffect(() => {
+    if ((ownStage === 'artist' || ownStage === 'artist_archive') && pemContact) {
+      setContactId(String(pemContact.ContactID))
+    }
+  }, [ownStage, pemContact])
+
   const baselineThemes = useMemo(
-    () => new Set(oeuvreThemeMap.get(o.OeuvreID) ?? []),
+    () => new Set<number>(oeuvreThemeMap.get(o.OeuvreID) ?? []),
     [o.OeuvreID, oeuvreThemeMap],
   )
   const baselineGroups = useMemo(
-    () => new Set(oeuvreGroupMap.get(o.OeuvreID) ?? []),
+    () => new Set<string>(oeuvreGroupMap.get(o.OeuvreID) ?? []),
     [o.OeuvreID, oeuvreGroupMap],
   )
+
+  const baselineOwn = useMemo(() => ownStageFromStatusId(o.statusId), [o.statusId])
+  const baselineProd = useMemo(() => prodStageFromOeuvre(o), [o])
+  const baselineNeeds = !!((o as { NeedsPhotograph?: boolean }).NeedsPhotograph ?? false)
 
   const isDirty = useMemo(() => {
     if ((o.Titre ?? '') !== titre) return true
@@ -489,16 +742,22 @@ function DrawerContent({
     if (String(o.Largeur ?? '') !== largeur) return true
     if (String(o.Profondeur ?? '') !== profondeur) return true
     if (String((o as { PresentationID?: number }).PresentationID ?? '') !== presentationId) return true
-    if (String(o.statusId ?? '') !== statusId) return true
-    if (String(o.ContactID ?? '') !== contactId) return true
-    if (String(o.LocalisationID ?? '') !== locId) return true
+    if (ownStage !== baselineOwn) return true
+    if (prodStage !== baselineProd) return true
+    if (needsPhoto !== baselineNeeds) return true
+    if (String(o.LocalisationID ?? '') !== contactId) return true
     if (!!o.Exposable !== exposable) return true
     if (!!o.Encadree !== encadree) return true
-    if (String(o.Prix ?? '') !== prix) return true
-    if (String((o as { PrixFinal?: number }).PrixFinal ?? '') !== prixFinal) return true
+    if (String(o.Prix ?? '0') !== prix) return true
+    if (String((o as { Discount?: number | null }).Discount ?? '0') !== discount) return true
+    if (String((o as { tva_rate?: number | null }).tva_rate ?? '0') !== tvaRate) return true
+    const baselinePaid = !!((o as { PaymentDone?: boolean; is_paid?: boolean | null }).PaymentDone ?? (o as { is_paid?: boolean | null }).is_paid ?? false)
+    if (paymentDone !== baselinePaid) return true
     if (((o as { anonymity_level?: number }).anonymity_level ?? 0) !== anonymityLevel) return true
     if (!setsEqualNum(selThemes, baselineThemes)) return true
     if (!setsEqualStr(selGroups, baselineGroups)) return true
+    if (commentaires !== noteBaseline.c) return true
+    if (historique !== noteBaseline.h) return true
     return false
   }, [
     o,
@@ -511,18 +770,27 @@ function DrawerContent({
     largeur,
     profondeur,
     presentationId,
-    statusId,
+    ownStage,
+    baselineOwn,
+    prodStage,
+    baselineProd,
+    needsPhoto,
+    baselineNeeds,
     contactId,
-    locId,
     exposable,
     encadree,
     prix,
-    prixFinal,
+    discount,
+    tvaRate,
+    paymentDone,
     anonymityLevel,
     selThemes,
     selGroups,
     baselineThemes,
     baselineGroups,
+    commentaires,
+    historique,
+    noteBaseline,
   ])
 
   const runGuarded = useCallback((fn: () => void) => {
@@ -554,52 +822,18 @@ function DrawerContent({
   async function saveLookup(table: string, name: string) {
     if (!name) return
     const res = await createLookup(table, cap(name))
-    if ('error' in res) { alert('Erreur : ' + res.error); return }
+    if ('error' in res) {
+      toast.error(`${t('error_prefix')} ${res.error}`)
+      return
+    }
     if (table === 'Technique') { setLocalTechniques((p: any) => [...p, { TechniqueID: res.id, Technique: cap(name) }]); setTechniqueId(String(res.id)) }
     else if (table === 'Support') { setLocalSupports((p: any) => [...p, { SupportID: res.id, Support: cap(name) }]); setSupportId(String(res.id)) }
     else if (table === 'Format') { setLocalFormats((p: any) => [...p, { FormatID: res.id, Format: cap(name) }]); setFormatId(String(res.id)) }
   }
 
-  // ── Pipeline ───────────────────────────────────────────
-  const [pipeline,    setPipeline]    = useState<ActionType[]>([])
-  const [workActions, setWorkActions] = useState<Record<number, boolean>>({})
-
-  const loadPipeline = useCallback(async () => {
-    const sb = createClient()
-    const [types, { data: acts }] = await Promise.all([
-      getWorkActionTypes(sb),
-      sb.from('work_action').select('action_type_id, done').eq('oeuvre_id', o.OeuvreID),
-    ])
-    setPipeline((types ?? []) as ActionType[])
-    if (acts) {
-      const m: Record<number, boolean> = {}
-      acts.forEach((a: any) => { m[a.action_type_id] = a.done })
-      setWorkActions(m)
-    }
-  }, [o.OeuvreID])
-
-  useEffect(() => { loadPipeline() }, [loadPipeline])
-
-  async function toggleAction(type: ActionType) {
-    const sb = createClient()
-    const isDone = workActions[type.id] ?? false
-    const nextDone = !isDone
-    setWorkActions(prev => ({ ...prev, [type.id]: nextDone }))
-    await sb.from('work_action').upsert({
-      oeuvre_id: o.OeuvreID,
-      action_type_id: type.id,
-      done: nextDone,
-      done_at: nextDone ? new Date().toISOString() : null
-    }, { onConflict: 'oeuvre_id,action_type_id' })
-    if (type.field_key) {
-      await sb.from('Oeuvres').update({ [type.field_key]: nextDone }).eq('OeuvreID', o.OeuvreID)
-    }
-    router.refresh()
-  }
-
-  // ── Save ───────────────────────────────────────────────
   function buildFormData(): FormData {
     const fd = new FormData()
+    const sid = computeWorkStatusId(ownStage, prodStage)
     fd.append('oeuvre_id', String(o.OeuvreID))
     fd.append('titre', titre)
     fd.append('annee', annee)
@@ -610,24 +844,38 @@ function DrawerContent({
     fd.append('largeur', largeur)
     fd.append('profondeur', profondeur)
     fd.append('presentation_id', presentationId)
-    fd.append('status_id', statusId)
+    fd.append('status_id', String(sid))
     fd.append('contact_id', contactId)
-    fd.append('localisation_id', locId)
+    fd.append('localisation_id', contactId)
     fd.append('exposable', exposable ? '1' : '0')
     fd.append('encadree', encadree ? '1' : '0')
+    fd.append('montee', (o as { Montee?: boolean }).Montee ? '1' : '0')
+    fd.append('is_commission', (o as { IsCommission?: boolean }).IsCommission ? '1' : '0')
     fd.append('prix', prix)
-    fd.append('prix_final', prixFinal)
+    fd.append('discount', discount)
+    fd.append('prix_final', String(prixFinalComputed))
+    fd.append('tva_rate', tvaRate)
+    fd.append('is_paid', paymentDone ? '1' : '0')
+    fd.append('is_gift', ownStage === 'gift' ? '1' : '0')
+    fd.append('commentaires', commentaires)
+    fd.append('historique', historique)
+    fd.append('catalogued', prodStage !== 'atelier' ? '1' : '0')
+    fd.append('needs_photograph', needsPhoto ? '1' : '0')
     fd.append('anonymity_level', String(anonymityLevel))
     fd.append('admin_override_anonymity', '0')
-    // Preserve production booleans — saveWork defaults missing keys to false and would wipe gates/pipeline sync.
-    fd.append('catalogued', (o as { Catalogué?: boolean }).Catalogué ? '1' : '0')
-    fd.append('needs_photograph', (o as { NeedsPhotograph?: boolean }).NeedsPhotograph ? '1' : '0')
+    const locParsed = parseInt(contactId, 10)
+    if (contactId && !Number.isNaN(locParsed) && o.LocalisationID !== locParsed) {
+      const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '/')
+      const locStr = `${dateStr} - ${currentOwner?.NomInstitution ?? currentOwner?.Nom ?? '—'} - ${currentOwner?.Ville ?? '?'}/${currentOwner?.Pays ?? '?'}`
+      fd.append('historique_append', locStr)
+    }
     selThemes.forEach((id) => fd.append('themes', String(id)))
     selGroups.forEach((id) => fd.append('groups', id))
     return fd
   }
 
-  async function performSave(): Promise<boolean> {
+  /* eslint-disable react-hooks/exhaustive-deps -- deps mirror inline buildFormData() captures */
+  const performSave = useCallback(async (): Promise<boolean> => {
     const snapshot: WorkRevertSnapshot = {
       statusId: o.statusId ?? null,
       catalogued: !!(o as { Catalogué?: boolean }).Catalogué,
@@ -636,40 +884,174 @@ function DrawerContent({
       groupIds: Array.from(baselineGroups),
     }
     const oid = o.OeuvreID
-    const res = await saveWork(buildFormData())
-    if ('error' in res) {
-      alert(res.error)
+    const fd = buildFormData()
+    try {
+      const res = await saveWork(fd)
+      if ('error' in res) {
+        toast.error(`${t('error_prefix')} ${res.error}`)
+        return false
+      }
+      try {
+        sessionStorage.removeItem(draftKey)
+      } catch { /* ignore */ }
+      setNoteBaseline({ c: commentaires, h: historique })
+      router.refresh()
+      const runUndo = () => {
+        void (async () => {
+          try {
+            const ok = await consumeUndo()
+            if (!ok) return
+          } catch {
+            toast.error(t('undoFailed'))
+          }
+        })()
+      }
+      const tid = toast.success(t('saveDoneUndoHint'), {
+        ttlMs: 8000,
+        action: { label: t('undo'), onClick: runUndo },
+      })
+      registerUndo({
+        ttlMs: 8000,
+        linkedToastId: tid,
+        undo: async () => {
+          const r = await revertWorkSnapshot(oid, snapshot)
+          if ('error' in r) {
+            toast.error(t('revertWorkFailed'))
+            throw new Error(r.error)
+          }
+          router.refresh()
+        },
+      })
+      return true
+    } catch (e) {
+      if (isLikelyOfflineSaveError(e)) {
+        try {
+          await enqueueOfflineWorkSave(formDataToStringRecord(fd))
+          toast.info(t('offline_save_queued'))
+        } catch {
+          toast.error(t('offline_sync_failed'))
+        }
+        return false
+      }
+      toast.error(`${t('error_prefix')} ${String(e)}`)
       return false
     }
-    router.refresh()
-    const runUndo = () => {
-      void (async () => {
-        try {
-          const ok = await consumeUndo()
-          if (!ok) return
-        } catch {
-          toast.error(t('undoFailed'))
-        }
-      })()
+  }, [
+    o,
+    titre,
+    annee,
+    techniqueId,
+    supportId,
+    formatId,
+    hauteur,
+    largeur,
+    profondeur,
+    presentationId,
+    ownStage,
+    prodStage,
+    needsPhoto,
+    contactId,
+    exposable,
+    encadree,
+    prix,
+    discount,
+    tvaRate,
+    paymentDone,
+    commentaires,
+    historique,
+    anonymityLevel,
+    selThemes,
+    selGroups,
+    baselineThemes,
+    baselineGroups,
+    currentOwner,
+    draftKey,
+    t,
+    prixFinalComputed,
+    router,
+  ])
+  /* eslint-enable react-hooks/exhaustive-deps */
+
+  useLayoutEffect(() => {
+    if (guardApiRef) {
+      guardApiRef.current.isDirty = () => isDirty
+      guardApiRef.current.performSave = performSave
     }
-    const tid = toast.success(t('saveDoneUndoHint'), {
-      ttlMs: 8000,
-      action: { label: t('undo'), onClick: runUndo },
-    })
-    registerUndo({
-      ttlMs: 8000,
-      linkedToastId: tid,
-      undo: async () => {
-        const r = await revertWorkSnapshot(oid, snapshot)
-        if ('error' in r) {
-          toast.error(t('revertWorkFailed'))
-          throw new Error(r.error)
-        }
-        router.refresh()
-      },
-    })
-    return true
-  }
+  }, [guardApiRef, isDirty, performSave])
+
+  useEffect(() => {
+    onDrawerDirtyChange?.(isDirty)
+  }, [isDirty, onDrawerDirtyChange])
+
+  useLayoutEffect(() => {
+    if (typeof window === 'undefined') return
+    if (draftPromptedForKey.current === draftKey) return
+    draftPromptedForKey.current = draftKey
+    const raw = sessionStorage.getItem(draftKey)
+    if (!raw) return
+    let d: WorkFormDraftPayload
+    try {
+      d = JSON.parse(raw) as WorkFormDraftPayload
+    } catch {
+      sessionStorage.removeItem(draftKey)
+      return
+    }
+    if (Date.now() - (d.savedAt ?? 0) > 7 * 24 * 60 * 60 * 1000) {
+      sessionStorage.removeItem(draftKey)
+      return
+    }
+    const msg = `${t('wf_draft_restore_title')}\n\n${t('wf_draft_restore_body')}`
+    if (!window.confirm(msg)) {
+      sessionStorage.removeItem(draftKey)
+      return
+    }
+    setTitre(d.titre ?? '')
+    setAnnee(d.annee ?? '')
+    setTechniqueId(d.techniqueId ?? '')
+    setSupportId(d.supportId ?? '')
+    setFormatId(d.formatId ?? '')
+    setHauteur(d.hauteur ?? '')
+    setLargeur(d.largeur ?? '')
+    setProfondeur(d.profondeur ?? '')
+    setProdStage((d.prodStage as ProdStageId) || 'atelier')
+    setNeedsPhoto(!!d.needsPhoto)
+    setOwnStage((d.ownStage as OwnStageId) || 'artist')
+    setContactId(d.contactId ?? '')
+    setAnonymityLevel(typeof d.anonymityLevel === 'number' ? d.anonymityLevel : 0)
+    setPrix(d.prix ?? '0')
+    setTvaRate(d.tvaRate ?? '0')
+    setDiscount(d.discount ?? '0')
+    setPaymentDone(!!d.paymentDone)
+    setExposable(!!d.exposable)
+    setCommentaires(d.commentaires ?? '')
+    setHistorique(d.historique ?? '')
+    setSelThemes(new Set(d.selThemes ?? []))
+    setSelGroups(new Set(d.selGroups ?? []))
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot restore per draftKey
+  }, [draftKey, t])
+
+  const draftSnapshot = useMemo((): Omit<WorkFormDraftPayload, 'savedAt'> => ({
+    titre, annee, techniqueId, supportId, formatId, hauteur, largeur, profondeur,
+    prodStage, needsPhoto, ownStage, contactId, anonymityLevel,
+    prix, tvaRate, discount, paymentDone, exposable,
+    commentaires, historique,
+    selThemes: Array.from(selThemes), selGroups: Array.from(selGroups),
+  }), [
+    titre, annee, techniqueId, supportId, formatId, hauteur, largeur, profondeur,
+    prodStage, needsPhoto, ownStage, contactId, anonymityLevel,
+    prix, tvaRate, discount, paymentDone, exposable,
+    commentaires, historique, selThemes, selGroups,
+  ])
+
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      try {
+        const payload: WorkFormDraftPayload = { ...draftSnapshot, savedAt: Date.now() }
+        sessionStorage.setItem(draftKey, JSON.stringify(payload))
+      } catch { /* quota */ }
+    }, 600)
+    return () => clearTimeout(id)
+  }, [draftKey, draftSnapshot])
 
   function handleSubmit() {
     startSave(async () => {
@@ -751,10 +1133,7 @@ function DrawerContent({
     setSelection(next)
   }
 
-  const doneCount = pipeline.filter(at => workActions[at.id]).length
-  const totalSteps = pipeline.length
-
-  const cName = (c: typeof localContacts[0]) => c.NomInstitution || `${c.Prénom ?? ''} ${c.Nom ?? ''}`.trim() || `#${c.ContactID}`
+  const cName = (c: DrawerContactRow) => c.NomInstitution || `${c.Prénom ?? ''} ${c.Nom ?? ''}`.trim() || `#${c.ContactID}`
   const sortedContacts = [...localContacts].sort((a, b) => cName(a).localeCompare(cName(b), 'fr'))
 
   const useFullResPreview = imgZoom > 1
@@ -762,6 +1141,8 @@ function DrawerContent({
     ? ((useFullResPreview ? imageUrl(activeImgPath) : thumbUrl(activeImgPath)) ?? '')
     : ''
   const previewImgKey = activeImgPath ? `${activeImgPath}-${useFullResPreview ? 'full' : 'thumb'}` : ''
+  /** Overlay rail is narrow: cap hero image so pipeline + fields stay reachable without huge scroll. */
+  const previewMaxHeight = isPanel ? '70vh' : narrow ? '56vh' : 'min(44vh, 400px)'
 
   useEffect(() => () => {
     if (panRafId.current != null) cancelAnimationFrame(panRafId.current)
@@ -788,7 +1169,10 @@ function DrawerContent({
     }
     const { error } = await sb.from('Contact').insert(payload)
     setCreatingContact(false)
-    if (error) { alert('Erreur : ' + error.message); return }
+    if (error) {
+      toast.error(`${t('error_prefix')} ${error.message}`)
+      return
+    }
     const newEntry = { ContactID: newId, NomInstitution: newC.inst || null, Prénom: newC.prenom || null, Nom: newC.nom || null, Role: newC.role || null, Ville: newC.ville || null, Pays: newC.pays || null }
     setLocalContacts((prev: any) => [...prev, newEntry])
     setContactId(String(newId))
@@ -831,11 +1215,30 @@ function DrawerContent({
         ref={drawerImageFileRef}
         type="file"
         accept="image/*"
+        multiple={narrow}
         capture={narrow ? 'environment' : undefined}
         style={{ display: 'none' }}
         onChange={onDrawerImageFileChange}
         tabIndex={-1}
       />
+      {drawerImageBusy && (drawerUploadPct > 0 || drawerUploadName) && (
+        <div className="t-mono-sm" style={{ color: 'var(--tx2)', marginBottom: 8 }} role="status">
+          <div>{t('wf_images_upload_status').replace('{name}', drawerUploadName)}</div>
+          <div style={{ marginTop: 4, height: 4, background: 'var(--bg2)', borderRadius: 2, overflow: 'hidden' }}>
+            <div style={{ width: `${Math.round(drawerUploadPct * 100)}%`, height: '100%', background: 'var(--ac)' }} />
+          </div>
+          {drawerUploadTotal > 1 && (
+            <div style={{ marginTop: 4, color: 'var(--tx3)' }}>
+              {drawerUploadIndex}/{drawerUploadTotal}
+            </div>
+          )}
+        </div>
+      )}
+      {drawerImageBusy && drawerUploadTotal > 1 && (
+        <button type="button" className="btn ghost sm" style={{ marginBottom: 8 }} onClick={() => { drawerUploadCancelRef.current = true }}>
+          {t('wf_images_upload_cancel')}
+        </button>
+      )}
       <div
         ref={imgContainerRef}
         style={{ width: '100%', overflow: 'hidden', background: 'transparent', cursor: imgZoom > 1 ? 'grab' : 'default', userSelect: 'none', marginBottom: 16 }}
@@ -875,7 +1278,7 @@ function DrawerContent({
                 style={{
                   width: '100%',
                   height: 'auto',
-                  maxHeight: '70vh',
+                  maxHeight: previewMaxHeight,
                   objectFit: 'contain',
                   display: 'block',
                   transform: `translate(${imgPan.x}px, ${imgPan.y}px) scale(${imgZoom})`,
@@ -972,6 +1375,15 @@ function DrawerContent({
                   >
                     ★
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => void drawerDeleteImage(img.ImageID)}
+                    aria-label={t('confirm_delete_image')}
+                    className="btn ghost sm"
+                    style={{ padding: '0 4px', fontSize: 11, minHeight: 22, color: 'var(--rust)' }}
+                  >
+                    ×
+                  </button>
                 </div>
               )}
             </div>
@@ -1000,172 +1412,124 @@ function DrawerContent({
         placeholder={t('untitled')}
       />
 
-      {/* ═══ STATUS BAR ═══ */}
-      {(() => {
-        const STATUS_STAGES: { id: number; label: string; short: string; color: string }[] = [
-          { id: 1,  label: 'En production', short: 'Prod',    color: 'var(--rust)' },
-          { id: 2,  label: 'Disponible',    short: 'Dispo',   color: 'var(--sage)' },
-          { id: 4,  label: 'Réservé',       short: 'Rés.',    color: 'var(--dust)' },
-          { id: 7,  label: 'Consigné',      short: 'Cons.',   color: 'var(--dust)' },
-          { id: 8,  label: 'Prêt',          short: 'Prêt',    color: 'var(--cyan)' },
-          { id: 6,  label: 'Vendu',         short: 'Vendu',   color: 'var(--mt)'   },
-          { id: 11, label: 'Gift',          short: 'Don',     color: 'var(--mt)'   },
-          { id: STATUS_ID_ARCHIVE_ARTISTE, label: 'Archive artiste', short: 'Arch.', color: 'var(--mt)'   },
-          { id: 5,  label: 'Archive privée',  short: 'Priv.', color: 'var(--mt)'   },
-          { id: 9,  label: 'Destroyed',     short: 'Détruit', color: '#555'        },
-          { id: 10, label: 'Lost',          short: 'Perdu',   color: '#555'        },
-        ].filter(s => statusLabelMap[s.id] != null)
-        const effectiveId = pipelineHighlightStatusId(o, statusLabelMap, statusId)
-        const showSplit = statusDrawerShowCommercialEffectiveSplit(o, statusLabelMap, statusId)
-        const commercialSavedId = showSplit ? commercialPipelineSegmentId(o, statusLabelMap) : null
-        const effStage = STATUS_STAGES.find(x => x.id === effectiveId)
-        const comStage = commercialSavedId != null ? STATUS_STAGES.find(x => x.id === commercialSavedId) : null
-        return (
-          <section
-            style={{ marginBottom: 16 }}
-            data-testid="work-drawer-status-bar"
-            data-status-split={showSplit ? 'true' : 'false'}
-          >
-            {showSplit && effStage && comStage && (
-              <div className="t-mono-sm" style={{ fontSize: 10, color: 'var(--tx3)', marginBottom: 8, lineHeight: 1.45 }}>
-                <span style={{ color: 'var(--tx2)', fontWeight: 600 }}>{t('workDrawerStatusLegendEffective')}:</span>{' '}
-                {effStage.label}
-                <span style={{ opacity: 0.45, margin: '0 0.35em' }}>·</span>
-                <span style={{ color: 'var(--tx2)', fontWeight: 600 }}>{t('workDrawerStatusLegendCommercial')}:</span>{' '}
-                {comStage.label}
-              </div>
-            )}
-            <div style={{ display: 'flex', height: 32, borderRadius: 3, overflow: 'hidden', border: '1px solid var(--bd)' }}>
-              {STATUS_STAGES.map((s, i) => {
-                const filledEffective = s.id === effectiveId
-                const savedCommercialHighlight =
-                  showSplit && commercialSavedId != null && s.id === commercialSavedId && !filledEffective
-                const bg = filledEffective
-                  ? s.color
-                  : savedCommercialHighlight
-                    ? `color-mix(in srgb, ${s.color} 30%, var(--bg0))`
-                    : 'var(--bg0)'
-                const insetRing = savedCommercialHighlight ? 'inset 0 0 0 2px var(--ac)' : undefined
-                return (
-                  <div
-                    key={s.id}
-                    onClick={() => setStatusId(String(s.id))}
-                    title={s.label}
-                    style={{
-                      flex: 1,
-                      background: bg,
-                      boxShadow: insetRing,
-                      cursor: 'pointer',
-                      borderRight: i < STATUS_STAGES.length - 1 ? '1px solid var(--bd)' : 'none',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      transition: 'background 0.15s',
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontSize: 10,
-                        fontWeight: 700,
-                        color: filledEffective ? 'rgba(0,0,0,0.7)' : 'var(--tx3)',
-                        overflow: 'hidden',
-                        whiteSpace: 'nowrap',
-                        padding: '0 1px',
-                      }}
-                    >
-                      {(filledEffective || savedCommercialHighlight) ? s.short : s.short.charAt(0)}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
-            <div style={{ display: 'flex', marginTop: 3 }}>
-              {STATUS_STAGES.map(s => {
-                const onEff = s.id === effectiveId
-                const onSavedComOnly =
-                  commercialSavedId != null && s.id === commercialSavedId && s.id !== effectiveId
-                return (
-                  <span
-                    key={s.id}
-                    style={{
-                      flex: 1,
-                      fontSize: 9,
-                      textAlign: 'center',
-                      color: onEff || onSavedComOnly ? 'var(--tx2)' : 'var(--tx3)',
-                      overflow: 'hidden',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {s.short}
-                  </span>
-                )
-              })}
-            </div>
-          </section>
-        )
-      })()}
-
-      {/* ═══ PIPELINE BAR ═══ */}
-      <section style={{ marginBottom: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-          <span style={{ fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--tx3)' }}>Pipeline</span>
-          <span style={{ fontSize: 10, color: 'var(--tx3)', marginLeft: 'auto' }}>{doneCount}/{totalSteps}</span>
-        </div>
-        <div style={{ display: 'flex', height: 30, borderRadius: 3, overflow: 'hidden', border: '1px solid var(--bd)' }}>
-          {pipeline.map((at, i) => {
-            const isDone = workActions[at.id] ?? false
-            return (
-              <div key={at.id} onClick={() => toggleAction(at)} title={at.label}
-                style={{ flex: 1, background: isDone ? at.color : 'var(--bg0)', cursor: 'pointer', borderRight: i < pipeline.length - 1 ? '1px solid var(--bd)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s ease' }}
-              >
-                <span style={{ fontSize: 10, color: isDone ? 'rgba(0,0,0,0.6)' : 'var(--tx3)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: '0 2px' }}>
-                  {isDone ? '✓' : at.label.charAt(0)}
-                </span>
-              </div>
-            )
-          })}
-        </div>
-        <div style={{ display: 'flex', gap: 2, marginTop: 4 }}>
-          {pipeline.map(at => (
-            <span key={at.id} style={{ flex: 1, fontSize: 9, textAlign: 'center', color: (workActions[at.id] ?? false) ? 'var(--tx2)' : 'var(--tx3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {at.label}
-            </span>
-          ))}
+      <section style={{ marginBottom: 12 }} data-testid="work-drawer-status-bar">
+        <div className="t-mono-sm" style={{ fontSize: 10, color: 'var(--tx3)' }}>
+          {statusLabelMap[computeWorkStatusId(ownStage, prodStage)] ?? `ID ${computeWorkStatusId(ownStage, prodStage)}`}
         </div>
       </section>
 
-      {/* ═══ Confidentiality (contact disclosure) ═══ */}
-      <section style={{ marginBottom: 20 }}>
-        <div style={{ marginBottom: 8 }}>
-          <span style={{ fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--tx3)' }}>{t('confidentiality')}</span>
+      <section style={{ marginBottom: 16, opacity: (isOwnershipTransferred || isArchived) ? 0.55 : 1 }}>
+        <SectionTitle title={t('wf_section_production')} />
+        <WfPipeProgress
+          stages={PRODUCTION_STAGES}
+          current={prodStage}
+          onSelect={(id) => {
+            if (isOwnershipTransferred || isArchived) return
+            setProdStage(id as ProdStageId)
+          }}
+          color="var(--sage)"
+        />
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 12 }}>
+          <WfSwitch
+            label={t('wf_photo_required')}
+            checked={needsPhoto}
+            onChange={(v) => {
+              if (isOwnershipTransferred || isArchived) return
+              setNeedsPhoto(v)
+            }}
+            disabled={isOwnershipTransferred || isArchived}
+          />
         </div>
-        <div style={{ display: 'flex', borderRadius: 3, overflow: 'hidden', border: '1px solid var(--bd)' }}>
-          {[
-            { level: 0, label: t('wf_vis_chip_public'), color: '#4caf50' },
-            { level: 1, label: t('wf_vis_chip_masked'), color: '#ff9800' },
-            { level: 2, label: t('wf_vis_chip_private'), color: '#f44336' },
-          ].map(opt => {
-            const active = anonymityLevel === opt.level
-            return (
-              <button key={opt.level} type="button"
-                onClick={() => setAnonymityLevel(opt.level)}
-                style={{ flex: 1, padding: '6px 0', fontSize: 10, fontWeight: 600, letterSpacing: '0.05em', border: 'none', cursor: 'pointer', background: active ? opt.color : 'var(--bg0)', color: active ? '#fff' : 'var(--tx2)', transition: 'all 0.15s ease' }}
-              >{opt.label}</button>
-            )
-          })}
-        </div>
-        {anonymityLevel === 2 && (
-          <div style={{ marginTop: 6, fontSize: 9, color: '#c88c28', display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#c88c28' }} />
-            {t('wf_vis_private_banner')}
+        {needsPhoto && prodStage === 'catalogued' && (
+          <div style={{ marginTop: 8, padding: '8px 12px', background: 'var(--dust)22', border: '1px solid var(--dust)44', fontSize: 11, color: 'var(--tx2)' }}>
+            {t('wf_photo_pending_hint')}
           </div>
         )}
       </section>
 
+      <section style={{ marginBottom: 16 }}>
+        <SectionTitle title={t('wf_section_ownership')} />
+        <WfPipeProgress
+          stages={OWNERSHIP_STAGES.map((s) => ({
+            ...s,
+            disabled: isOwnershipTransferred && s.id !== 'sold' && s.id !== 'gift',
+          }))}
+          current={ownStage}
+          onSelect={(id) => setOwnStage(id as OwnStageId)}
+          color="var(--cyan)"
+        />
+        <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr' : '1fr 1fr', gap: 12, marginTop: 12 }}>
+          <div>
+            <div className="t-label" style={{ fontSize: 10, marginBottom: 4 }}>
+              {ownStage === 'consigned' || ownStage === 'loan' ? t('wf_contact_custodian') : ownStage === 'reserved' ? t('wf_contact_buyer_intent') : t('wf_contact_acquire')}
+            </div>
+            {ownStage === 'artist' || ownStage === 'artist_archive' ? (
+              <div style={{ ...FIS, display: 'flex', alignItems: 'center', background: 'var(--bg2)44', opacity: 0.85, minHeight: 36 }}>
+                {pemContact?.NomInstitution ?? 'Pem'}
+              </div>
+            ) : (
+              <div style={{ display: 'flex', gap: 6 }}>
+                <select className="input" value={contactId} onChange={(e) => setContactId(e.target.value)} style={{ ...FIS, flex: 1 }}>
+                  <option value="">{t('select_option_placeholder')}</option>
+                  {sortedContacts.map((c) => (
+                    <option key={c.ContactID} value={c.ContactID}>{cName(c)}</option>
+                  ))}
+                </select>
+                <button type="button" className="btn ghost sm" style={{ flexShrink: 0, minHeight: 44, minWidth: 44 }} onClick={() => setShowNewContact(true)}>+</button>
+              </div>
+            )}
+          </div>
+          <div style={{ background: 'var(--bg2)', padding: 12, border: '1px solid var(--bd)', borderRadius: 4 }}>
+            <div className="t-label" style={{ fontSize: 9, marginBottom: 4 }}>{t('wf_localisation_now')}</div>
+            <div className="t-mono-sm" style={{ fontSize: 11, color: 'var(--ac)' }}>{currentLoc}</div>
+          </div>
+        </div>
+        <div style={{ marginTop: 14, borderTop: '1px solid var(--bd)', paddingTop: 12 }}>
+          <div className="t-label" style={{ fontSize: 10, marginBottom: 6 }}>{t('wf_visibility_hdr')}</div>
+          <div style={{ fontSize: 10, color: 'var(--tx3)', marginBottom: 8, lineHeight: 1.45 }}>{t('wf_visibility_blurb')}</div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {[
+              { level: 0, label: t('wf_vis_public'), desc: t('wf_vis_public_d') },
+              { level: 1, label: t('wf_vis_masked'), desc: t('wf_vis_masked_d') },
+              { level: 2, label: t('wf_vis_private'), desc: t('wf_vis_private_d') },
+            ].map(({ level, label, desc }) => {
+              const active = anonymityLevel === level
+              return (
+                <button
+                  key={level}
+                  type="button"
+                  title={desc}
+                  onClick={() => setAnonymityLevel(level)}
+                  style={{
+                    flex: 1,
+                    minWidth: 72,
+                    padding: '8px 6px',
+                    fontSize: 10,
+                    border: `1px solid ${active ? 'var(--ac)' : 'var(--bd)'}`,
+                    background: active ? 'var(--ac)22' : 'var(--bg2)',
+                    color: active ? 'var(--ac)' : 'var(--tx2)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      </section>
+
+      {anonymityLevel === 2 && (
+        <div style={{ marginBottom: 14, fontSize: 10, color: 'var(--rust)', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--rust)' }} />
+          {t('wf_vis_private_banner')}
+        </div>
+      )}
+
       {/* ═══ EDITABLE FIELDS ═══ */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
         <section>
-          <SectionTitle title="Identité" />
+          <SectionTitle title={t('wf_section_identity')} />
           <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: '6px 12px', fontSize: 12 }}>
             <Label>{t('year')}</Label>
             <input className="input" value={annee} onChange={e => setAnnee(e.target.value)} style={FIS} placeholder="YYYY-MM-DD" />
@@ -1180,7 +1544,7 @@ function DrawerContent({
             <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
               {circularPlanar ? (
                 <>
-                  <span style={{ color: 'var(--tx3)', fontSize: 12, lineHeight: 1 }} title="Diamètre (U+2300)">{DIAMETER_SIGN}</span>
+                  <span style={{ color: 'var(--tx3)', fontSize: 12, lineHeight: 1 }} title={t('wf_diameter_tt')}>{DIAMETER_SIGN}</span>
                   <input
                     className="input"
                     value={diameterFieldValue}
@@ -1197,13 +1561,24 @@ function DrawerContent({
                 </>
               ) : (
                 <>
-                  <input className="input" value={hauteur} onChange={e => setHauteur(e.target.value)} style={{ ...FIS, width: '30%' }} placeholder="H" />
+                  <input className="input" value={hauteur} onChange={e => setHauteur(e.target.value)} style={{ ...FIS, width: '30%' }} placeholder={isDigital ? 'H (px)' : 'H'} />
                   <span style={{ color: 'var(--tx3)', fontSize: 10 }}>×</span>
-                  <input className="input" value={largeur} onChange={e => setLargeur(e.target.value)} style={{ ...FIS, width: '30%' }} placeholder="W" />
+                  <input className="input" value={largeur} onChange={e => setLargeur(e.target.value)} style={{ ...FIS, width: '30%' }} placeholder={isDigital ? 'W (px)' : 'W'} />
                   <span style={{ color: 'var(--tx3)', fontSize: 10 }}>×</span>
                   <input className="input" value={profondeur} onChange={e => setProfondeur(e.target.value)} style={{ ...FIS, width: '30%' }} placeholder="D" />
                 </>
               )}
+            </div>
+            {isDigital && (
+              <div style={{ gridColumn: '1 / -1', marginTop: 4, padding: 10, border: '1px solid var(--bd)', background: 'var(--bg2)', fontSize: 11 }}>
+                <div className="t-eyebrow" style={{ marginBottom: 6 }}>{t('wf_fmt_digital')}</div>
+                <div className="t-mono-xs" style={{ color: 'var(--ac)' }}>≈ {pxToCm(hauteur)} × {pxToCm(largeur)} cm (@300dpi)</div>
+              </div>
+            )}
+
+            <Label>{t('framed')}</Label>
+            <div style={{ paddingTop: 2 }}>
+              <Switch checked={encadree} onChange={setEncadree} />
             </div>
 
             <Label>Présentation</Label>
@@ -1226,82 +1601,52 @@ function DrawerContent({
               })}
             </div>
 
-            <Label>Groupes</Label>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-              {initialGroups.map((g: any) => {
-                const active = selGroups.has(g.id)
-                return (
-                  <button key={g.id} type="button"
-                    onClick={() => setSelGroups((p: Set<string>) => { const s = new Set(p); if (s.has(g.id)) s.delete(g.id); else s.add(g.id); return s })}
-                    style={{ padding: '2px 7px', fontSize: 9, borderRadius: 2, border: '1px solid var(--bd)', background: active ? 'var(--ac)44' : 'var(--bg2)', color: active ? 'var(--ac)' : 'var(--tx3)', cursor: 'pointer' }}>
-                    {g.name}
-                  </button>
-                )
-              })}
+          </div>
+        </section>
+
+        <section>
+          <SectionTitle title={t('wf_section_finance')} />
+          <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr' : '80px 1fr 80px 1fr', gap: '8px 10px', fontSize: 12 }}>
+            <Label>{t('wf_price')}</Label>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <span style={{ color: 'var(--tx3)', fontSize: 11 }}>€</span>
+              <input className="input" value={prix} onChange={e => setPrix(e.target.value)} style={FIS} disabled={ownStage === 'gift'} />
+            </div>
+            <Label>{t('wf_discount')}</Label>
+            <input className="input" value={discount} onChange={e => setDiscount(e.target.value)} style={FIS} disabled={ownStage === 'gift'} />
+            <Label>{t('wf_vat')}</Label>
+            <input className="input" type="number" min={0} max={100} step={0.01} value={tvaRate} onChange={e => setTvaRate(e.target.value)} style={FIS} disabled={ownStage === 'gift'} />
+            <Label>{t('wf_final_ht')}</Label>
+            <div className="t-mono-md" style={{ fontWeight: 700, paddingTop: 4 }}>€ {prixFinalComputed.toLocaleString(lang === 'en' ? 'en-GB' : 'fr-FR')}</div>
+            <div style={{ gridColumn: narrow ? '1 / -1' : '1 / -1', marginTop: 4 }}>
+              <WfSwitch label={t('wf_payment_rcvd')} checked={paymentDone} onChange={setPaymentDone} disabled={ownStage === 'gift'} />
             </div>
           </div>
         </section>
 
         <section>
-          <SectionTitle title="Logistique" />
-          <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: '6px 12px', fontSize: 12 }}>
-            <Label>{t('contact')}</Label>
-            <div>
-              <div style={{ display: 'flex', gap: 4 }}>
-                <select className="input" value={contactId} onChange={e => setContactId(e.target.value)} style={{ ...FIS, width: 'auto', flex: 1 }}>
-                  <option value="">—</option>
-                  {sortedContacts.map((c: any) => (
-                    <option key={c.ContactID} value={c.ContactID}>{cName(c)}</option>
-                  ))}
-                </select>
-                <button type="button" className="btn ghost sm" style={{ height: 28, padding: '0 7px', fontSize: 13, flexShrink: 0 }} onClick={() => setShowNewContact(true)} title="Nouveau contact">+</button>
-              </div>
-              {contactId && sortedContacts.find((c: any) => String(c.ContactID) === contactId) && (
-                <div style={{ fontSize: 10, color: 'var(--tx2)', marginTop: 3, paddingLeft: 2 }}>
-                  {cName(sortedContacts.find((c: any) => String(c.ContactID) === contactId)!)}
-                </div>
-              )}
-            </div>
-
-            <Label>{t('localisation')}</Label>
-            <div>
-              <select className="input" value={locId} onChange={e => setLocId(e.target.value)} style={FIS}>
-                <option value="">—</option>
-                {sortedContacts.map((c: any) => (
-                  <option key={c.ContactID} value={c.ContactID}>
-                    {[cName(c), c.Ville, c.Pays].filter(Boolean).join(' — ')}
-                  </option>
-                ))}
-              </select>
-              {locId && sortedContacts.find((c: any) => String(c.ContactID) === locId) && (
-                <div style={{ fontSize: 10, color: 'var(--tx2)', marginTop: 3, paddingLeft: 2 }}>
-                  {[cName(sortedContacts.find((c: any) => String(c.ContactID) === locId)!), sortedContacts.find((c: any) => String(c.ContactID) === locId)?.Ville, sortedContacts.find((c: any) => String(c.ContactID) === locId)?.Pays].filter(Boolean).join(' — ')}
-                </div>
-              )}
-            </div>
-
-            <Label>Encadrée</Label>
-            <Switch checked={encadree} onChange={setEncadree} />
-
-            <Label>Exposable</Label>
-            <Switch checked={exposable} onChange={setExposable} />
+          <SectionTitle title={t('wf_groups')} />
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 12 }}>
+            {initialGroups.map((g: { id: string; name: string }) => {
+              const active = selGroups.has(g.id)
+              return (
+                <button key={g.id} type="button"
+                  onClick={() => setSelGroups((p: Set<string>) => { const s = new Set(p); if (s.has(g.id)) s.delete(g.id); else s.add(g.id); return s })}
+                  style={{ padding: '4px 10px', fontSize: 10, borderRadius: 12, border: `1px solid ${active ? 'var(--ac)' : 'var(--bd)'}`, background: active ? 'var(--ac)22' : 'var(--bg2)', color: active ? 'var(--ac)' : 'var(--tx3)', cursor: 'pointer' }}>
+                  {g.name}
+                </button>
+              )
+            })}
           </div>
         </section>
 
         <section>
-          <SectionTitle title="Financier" />
-          <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: '6px 12px', fontSize: 12 }}>
-            <Label>{t('price')}</Label>
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <span style={{ color: 'var(--tx3)', fontSize: 11 }}>€</span>
-              <input className="input" value={prix} onChange={e => setPrix(e.target.value)} style={FIS} placeholder="Base" />
-            </div>
-
-            <Label>Final</Label>
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <span style={{ color: 'var(--tx3)', fontSize: 11 }}>€</span>
-              <input className="input" value={prixFinal} onChange={e => setPrixFinal(e.target.value)} style={FIS} placeholder="Final" />
-            </div>
+          <SectionTitle title={t('wf_comments')} />
+          <textarea className="input" value={commentaires} onChange={e => setCommentaires(e.target.value)} style={{ ...FIS, minHeight: 80, resize: 'vertical', fontSize: 12 }} placeholder={t('wf_comments_placeholder')} />
+          <div style={{ marginTop: 12 }}>
+            <div className="t-label" style={{ fontSize: 10, marginBottom: 4 }}>{t('wf_history_title')}</div>
+            <textarea className="input" value={historique} onChange={e => setHistorique(e.target.value)} style={{ ...FIS, minHeight: 88, resize: 'vertical', fontSize: 11, fontFamily: 'var(--font-mono)' }} placeholder={t('wf_history_placeholder')} />
+            <div className="t-mono-xs" style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 6 }}>{t('wf_history_hint')}</div>
           </div>
         </section>
       </div>
@@ -1309,17 +1654,18 @@ function DrawerContent({
       {/* ═══ ACTIONS ═══ */}
       <div style={{ marginTop: 20, paddingTop: 14, borderTop: '1px solid var(--bd)' }}>
         <div className="row gap-sm" style={{ flexWrap: 'wrap' }}>
-          <button className="btn primary" onClick={handleSubmit} disabled={isSaving} style={{ fontSize: 11 }}>
-            {isSaving ? '…' : 'Sauvegarder'}
+          <button className="btn primary" onClick={handleSubmit} disabled={isSaving} style={{ fontSize: 11, minHeight: 44 }}>
+            {isSaving ? '…' : t('save')}
           </button>
           <button className={`btn ${isSel ? 'primary' : 'ghost'}`} onClick={handleToggleSel} style={{ fontSize: 11 }}>
             {isSel ? '✓ Sél.' : '+ Sél.'}
           </button>
           {/* Direct gift path — disabled when ownership has already moved or work is archived */}
-          {!([3, 5, 6, 11].includes(Number(statusId))) && (
+          {!(ownStage === 'sold' || ownStage === 'gift' || ownStage === 'artist_archive') && (
             <button
               className="btn ghost sm"
-              style={{ fontSize: 11, color: 'var(--ac)', borderColor: 'rgba(200,168,110,0.4)' }}
+              style={{ fontSize: 11, color: 'var(--ac)', borderColor: 'rgba(200,168,110,0.4)', minHeight: 44 }}
+              type="button"
               onClick={() => {
                 setGiftRecipientId('')
                 setGiftDeliveryDate(new Date().toISOString().slice(0, 10))
@@ -1327,9 +1673,9 @@ function DrawerContent({
                 setGiftError(null)
                 setShowGiftModal(true)
               }}
-              title="Transférer en don (sans contrepartie)"
+              title={t('workDrawer_gift_body')}
             >
-              ⊕ Don
+              ⊕ {t('workDrawer_gift_cta')}
             </button>
           )}
           {!confirmDelete ? (
@@ -1489,16 +1835,16 @@ function DrawerContent({
           <div onClick={e => e.stopPropagation()}
             style={{ background: 'var(--bg1)', border: '1px solid var(--ac)', borderRadius: 8, padding: 24, width: '100%', maxWidth: 480, display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div>
-              <div style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ac)' }}>Marquer comme don</div>
+              <div style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ac)' }}>{t('workDrawer_gift_title')}</div>
               <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 4 }}>
-                Transfert de propriété sans contrepartie financière. Génère un Bordereau de Don dans le coffre.
+                {t('workDrawer_gift_body')}
               </div>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ fontSize: 10, color: 'var(--tx3)' }}>Bénéficiaire *</label>
+              <label style={{ fontSize: 10, color: 'var(--tx3)' }}>{t('workDrawer_gift_recipient')} *</label>
               <select className="input" value={giftRecipientId} onChange={e => setGiftRecipientId(e.target.value)} style={FIS} autoFocus>
-                <option value="">— Sélectionner un contact —</option>
+                <option value="">{t('workDrawer_gift_recipient_ph')}</option>
                 {sortedContacts.map((c: any) => (
                   <option key={c.ContactID} value={c.ContactID}>{cName(c)}</option>
                 ))}
@@ -1506,20 +1852,21 @@ function DrawerContent({
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ fontSize: 10, color: 'var(--tx3)' }}>Date de remise</label>
+              <label style={{ fontSize: 10, color: 'var(--tx3)' }}>{t('workDrawer_gift_delivery')}</label>
               <input type="date" className="input" value={giftDeliveryDate} onChange={e => setGiftDeliveryDate(e.target.value)} style={FIS} />
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ fontSize: 10, color: 'var(--tx3)' }}>Notes</label>
-              <textarea className="input" value={giftNotes} onChange={e => setGiftNotes(e.target.value)} style={{ ...FIS, height: 72, resize: 'vertical' }} placeholder="Contexte, occasion, conditions…" />
+              <label style={{ fontSize: 10, color: 'var(--tx3)' }}>{t('wf_comments')}</label>
+              <textarea className="input" value={giftNotes} onChange={e => setGiftNotes(e.target.value)} style={{ ...FIS, height: 72, resize: 'vertical' }} placeholder={t('workDrawer_gift_notes_ph')} />
             </div>
 
             {giftError && <div style={{ color: '#c0392b', fontSize: 10 }}>{giftError}</div>}
 
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button className="btn ghost sm" disabled={giftBusy} onClick={() => setShowGiftModal(false)} style={{ fontSize: 11 }}>Annuler</button>
+              <button type="button" className="btn ghost sm" disabled={giftBusy} onClick={() => setShowGiftModal(false)} style={{ fontSize: 11 }}>{t('workDrawer_gift_cancel')}</button>
               <button
+                type="button"
                 className="btn primary sm"
                 disabled={giftBusy || !giftRecipientId}
                 onClick={async () => {
@@ -1545,7 +1892,7 @@ function DrawerContent({
                 }}
                 style={{ fontSize: 11 }}
               >
-                {giftBusy ? '…' : 'Confirmer le don'}
+                {giftBusy ? '…' : t('workDrawer_gift_confirm')}
               </button>
             </div>
           </div>
@@ -1556,6 +1903,90 @@ function DrawerContent({
 }
 
 // ── Sub-components ───────────────────────────────────────
+
+function WfPipeProgress({
+  stages,
+  current,
+  onSelect,
+  color,
+}: {
+  stages: { id: string; label: string; desc?: string; disabled?: boolean }[]
+  current: string
+  onSelect: (id: string) => void
+  color: string
+}) {
+  const idxCurrent = stages.findIndex((x) => x.id === current)
+  return (
+    <div style={{ display: 'flex', gap: 4, width: '100%', flexWrap: 'wrap' }}>
+      {stages.map((s, i) => {
+        const isActive = s.id === current
+        const isPast = idxCurrent >= i
+        const isDisabled = !!s.disabled
+        return (
+          <div
+            key={s.id}
+            onClick={() => !isDisabled && onSelect(s.id)}
+            onKeyDown={(e) => {
+              if ((e.key === 'Enter' || e.key === ' ') && !isDisabled) {
+                e.preventDefault()
+                onSelect(s.id)
+              }
+            }}
+            role="button"
+            tabIndex={isDisabled ? -1 : 0}
+            style={{
+              flex: '1 1 72px',
+              minWidth: 64,
+              cursor: isDisabled ? 'not-allowed' : 'pointer',
+              borderBottom: `3px solid ${isPast ? color : 'var(--bd)'}`,
+              padding: '6px 2px',
+              opacity: isDisabled ? 0.25 : isPast ? 1 : 0.45,
+            }}
+          >
+            <div style={{ fontSize: 10, fontWeight: isActive ? 700 : 400, color: 'var(--tx)', whiteSpace: 'normal', overflowWrap: 'anywhere', lineHeight: 1.25 }}>{s.label}</div>
+            {s.desc && <div style={{ fontSize: 9, color: 'var(--tx3)', marginTop: 2, whiteSpace: 'normal', overflowWrap: 'anywhere', lineHeight: 1.25 }}>{s.desc}</div>}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function WfSwitch({
+  label,
+  checked,
+  onChange,
+  disabled = false,
+}: {
+  label: string
+  checked: boolean
+  onChange: (v: boolean) => void
+  disabled?: boolean
+}) {
+  return (
+    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: disabled ? 'default' : 'pointer', fontSize: 12, opacity: disabled ? 0.45 : 1 }}>
+      <div
+        onClick={() => !disabled && onChange(!checked)}
+        role="checkbox"
+        aria-checked={checked}
+        style={{
+          width: 18,
+          height: 18,
+          border: '1px solid var(--bd)',
+          background: checked ? 'var(--ac)' : 'transparent',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'var(--bg0)',
+          fontSize: 11,
+        }}
+      >
+        {checked ? '✓' : ''}
+      </div>
+      <span style={{ color: checked ? 'var(--tx)' : 'var(--tx3)' }}>{label}</span>
+    </label>
+  )
+}
 
 function SectionTitle({ title }: { title: string }) {
   return (

@@ -207,6 +207,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
   const adminOverrideAnonymity = formData.get('admin_override_anonymity') === '1'
   const isPaid         = formData.get('is_paid') === '1'
   const isGift         = formData.get('is_gift') === '1'
+  const presentationId = numOrNull(formData.get('presentation_id'))
 
   const themeIds: number[] = (formData.getAll('themes') as string[])
     .map(Number)
@@ -313,6 +314,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       tva_rate:          tvaRate,
       is_paid:           isPaid,
       is_gift:           isGift,
+      PresentationID:  presentationId,
       txtImageNameLink:  imageName,
     })
 
@@ -427,6 +429,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       tva_rate:          tvaRate,
       is_paid:           isPaid,
       is_gift:           isGift,
+      PresentationID:    presentationId,
     }
     if (formUploadedNewImage) {
       updatePayload.txtImageNameLink = imageName

@@ -40,7 +40,7 @@ function priorityColor(p: string | null | undefined) {
 export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas, systemLogs }: Props) {
   const { lang, setLang, t } = useI18n()
   const router = useRouter()
-  const hubNavCompact = useMediaQuery('(max-width: 720px)')
+  const hubNavCompact = useMediaQuery('(max-width: 767px)')
   const [hubMenuOpen, setHubMenuOpen] = useState(false)
 
   const dateLabel = new Date().toLocaleDateString(
@@ -206,7 +206,9 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
               {t('hub_studio_bible')}
             </Link>
             <Link href="/atelier?tab=system" onClick={() => setHubMenuOpen(false)} className="t-mono-sm" style={{ color: 'var(--tx2)', textDecoration: 'none' }}>
-              {t('hub_suggestions')}
+              {t('hub_drawer_alerts_link')}
+              {stats.stockAlerts > 0 ? ` · ${stats.stockAlerts}` : ''}
+              <span style={{ display: 'block', opacity: 0.65, fontSize: 9, marginTop: 4 }}>{t('hub_suggestions')}</span>
             </Link>
             <Link href="/" onClick={() => setHubMenuOpen(false)} className="t-mono-sm" style={{ color: 'var(--ac)', textDecoration: 'none', border: '1px solid var(--ac)', padding: '8px 12px', alignSelf: 'flex-start' }}>
               {t('hub_public_site')}
@@ -254,25 +256,46 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
               marginTop: 8,
             }}>
               <MobileActionTile
+                dataTestId="hub-tile-atelier"
                 title={t('hub_continue')}
                 subtitle={t('inventory')}
                 onClick={() => router.push('/atelier')}
               />
               <MobileActionTile
+                dataTestId="hub-tile-new-work"
                 title={t('newWork')}
                 subtitle={t('hub_capture')}
                 onClick={() => router.push('/atelier/works/new')}
               />
               <MobileActionTile
+                dataTestId="hub-tile-pipeline"
                 title={t('pipeline')}
-                subtitle={t('hub_swipe_cards')}
+                subtitle={t('hub_tile_pipeline_sub')}
                 onClick={() => router.push('/atelier?tab=pipeline')}
               />
               <MobileActionTile
-                title={`${t('hub_alerts')}${stats.stockAlerts > 0 ? ` · ${stats.stockAlerts}` : ''}`}
-                subtitle={t('tab_system')}
-                onClick={() => router.push('/atelier?tab=system')}
-                emphasis={stats.stockAlerts > 0}
+                dataTestId="hub-tile-production"
+                title={t('production')}
+                subtitle={t('hub_tile_production_sub')}
+                onClick={() => router.push('/atelier?tab=production')}
+              />
+              <MobileActionTile
+                dataTestId="hub-tile-concepts"
+                title={t('concepts')}
+                subtitle={t('hub_tile_concepts_sub')}
+                onClick={() => router.push('/atelier?tab=concepts')}
+              />
+              <MobileActionTile
+                dataTestId="hub-tile-contacts"
+                title={t('contacts')}
+                subtitle={t('hub_tile_contacts_sub')}
+                onClick={() => router.push('/atelier?tab=contacts')}
+              />
+              <MobileActionTile
+                dataTestId="hub-tile-scan"
+                title={t('scan_page_title')}
+                subtitle={t('hub_tile_scan_sub')}
+                onClick={() => router.push('/atelier/scan')}
               />
             </div>
 
@@ -516,15 +539,18 @@ function MobileActionTile({
   subtitle,
   onClick,
   emphasis,
+  dataTestId,
 }: {
   title: string
   subtitle: string
   onClick: () => void
   emphasis?: boolean
+  dataTestId?: string
 }) {
   return (
     <button
       type="button"
+      data-testid={dataTestId}
       onClick={onClick}
       style={{
         background: emphasis ? 'color-mix(in srgb, var(--ac) 12%, var(--bg1))' : 'var(--bg1)',
@@ -532,7 +558,8 @@ function MobileActionTile({
         padding: '14px 14px 12px',
         textAlign: 'left',
         cursor: 'pointer',
-        minHeight: 74,
+        minHeight: 76,
+        minWidth: 0,
       }}
     >
       <div className="serif" style={{ fontSize: 18, color: 'var(--tx)', letterSpacing: '-0.02em', lineHeight: 1.1 }}>

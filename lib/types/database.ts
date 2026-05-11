@@ -33,6 +33,8 @@ export interface Oeuvre {
   StageProduction?: string | null;
   anonymity_level?: number | null;
   is_paid?: boolean | null;
+  /** VAT rate (percent or fraction per saveWork). */
+  tva_rate?: number | null;
   is_gift?: boolean | null;
   commercial_status?: string | null;
   ImageURL: string | null;

@@ -505,7 +505,7 @@ function WorkCard({ o, tM, onMarkDone, onOpen }: {
           >✓</button>
           {/* Edit */}
           <button
-            onClick={(e) => { e.stopPropagation(); router.push(`/atelier/works/${o.OeuvreID}/edit`) }}
+            onClick={(e) => { e.stopPropagation(); router.push(`/atelier?work=${o.OeuvreID}`) }}
             title="Éditer"
             style={{
               fontSize: 12, padding: '2px 6px', color: 'var(--tx3)',

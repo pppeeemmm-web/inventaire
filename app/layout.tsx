@@ -27,6 +27,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning data-theme="light">
       <head>
+        <link rel="apple-touch-icon" href="/pwa-icon-192.png" />
         {/* Self-host fonts in production — for now load from Google Fonts */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />

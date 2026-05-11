@@ -19,38 +19,24 @@ import { useUnsavedCloseGuard } from '@/hooks/useUnsavedCloseGuard'
 import { toast } from '@/lib/ui/toast'
 import { registerUndo, consumeUndo } from '@/lib/ui/undo'
 import { useMediaQuery } from '@/lib/useMediaQuery'
-
-// ── Config ────────────────────────────────────────────────────────────────
-
-// statusId lookup for ownership stages (statusId 1/2 handled via prod logic)
-const OWN_TO_STATUS_ID: Record<string, number> = {
-  reserved:       4,
-  consigned:      7,
-  loan:           8,
-  sold:           6,
-  gift:           11,
-  artist_archive: 3,
-}
-
-function ownStageFromStatusId(statusId: number | null | undefined): string {
-  if (statusId === null || statusId === undefined) return 'artist'
-  switch (statusId) {
-    case 4:  return 'reserved'
-    case 7:  return 'consigned'
-    case 8:  return 'loan'
-    case 6:  return 'sold'
-    case 11: return 'gift'
-    case 3:  return 'artist_archive'
-    case 5:  return 'artist_archive' // private_archive → treat as artist_archive in UI
-    default: return 'artist'         // 1, 2 → artist still owns
-  }
-}
-
-function prodStageFromOeuvre(o: Oeuvre | null): string {
-  if (!o || !o.Catalogué) return 'atelier'
-  if ((o as any).NeedsPhotograph) return 'catalogued'
-  return 'available'
-}
+import {
+  downscaleImageFileForMobileIfNeeded,
+  startEstimatedUploadProgress,
+  withUploadRetry,
+} from '@/lib/mobile/image-upload-client'
+import { draftStorageKey, type WorkFormDraftPayload } from '@/lib/mobile/work-form-draft'
+import {
+  enqueueOfflineWorkSave,
+  formDataToStringRecord,
+  isLikelyOfflineSaveError,
+} from '@/lib/mobile/offline-work-queue'
+import {
+  computeStatusId as computeWorkStatusId,
+  ownStageFromStatusId,
+  prodStageFromOeuvre,
+  type OwnStageId,
+  type ProdStageId,
+} from '@/lib/work-editor-model'
 
 // ── Props ─────────────────────────────────────────────────────────────────
 
@@ -115,6 +101,8 @@ export function WorkForm({
   const [isPending, startTransition] = useTransition()
   const formRef = useRef<HTMLFormElement>(null)
   const undoBaselineRef = useRef<WorkRevertSnapshot | null>(null)
+  const draftKey = useMemo(() => draftStorageKey(oeuvre?.OeuvreID ?? null), [oeuvre?.OeuvreID])
+  const draftPromptedForKey = useRef<string | null>(null)
 
   useLayoutEffect(() => {
     if (!oeuvre) {
@@ -141,11 +129,11 @@ export function WorkForm({
   const [profondeur,  setProfondeur]  = useState(String((oeuvre as any)?.Profondeur ?? ''))
 
   // ── Production state (derived from booleans) ──────────────────────
-  const [prodStage,  setProdStage]  = useState(() => prodStageFromOeuvre(oeuvre))
+  const [prodStage,  setProdStage]  = useState<ProdStageId>(() => prodStageFromOeuvre(oeuvre))
   const [needsPhoto, setNeedsPhoto] = useState(!!((oeuvre as any)?.NeedsPhotograph ?? false))
 
   // ── Ownership / flow state ────────────────────────────────────────
-  const [ownStage,      setOwnStage]      = useState(() => ownStageFromStatusId(oeuvre?.statusId))
+  const [ownStage,      setOwnStage]      = useState<OwnStageId>(() => ownStageFromStatusId(oeuvre?.statusId))
   const [contactId,     setContactId]     = useState(String(oeuvre?.LocalisationID ?? ''))
   const [anonymityLevel, setAnonymityLevel] = useState<number>((oeuvre as any)?.anonymity_level ?? 0)
   const [showContactModal, setShowContactModal] = useState(false)
@@ -168,6 +156,76 @@ export function WorkForm({
   const [selThemes, setSelThemes] = useState<Set<number>>(new Set(currentThemeIds))
   const [commentaires, setCommentaires] = useState((oeuvre as any)?.Commentaires ?? '')
   const [historique,   setHistorique]   = useState((oeuvre as any)?.Historique ?? '')
+
+  const draftSnapshot = useMemo((): Omit<WorkFormDraftPayload, 'savedAt'> => ({
+    titre, annee, techniqueId, supportId, formatId, hauteur, largeur, profondeur,
+    prodStage, needsPhoto, ownStage, contactId, anonymityLevel,
+    prix, tvaRate, discount, paymentDone, exposable,
+    commentaires, historique,
+    selThemes: Array.from(selThemes), selGroups: Array.from(selGroups),
+  }), [
+    titre, annee, techniqueId, supportId, formatId, hauteur, largeur, profondeur,
+    prodStage, needsPhoto, ownStage, contactId, anonymityLevel,
+    prix, tvaRate, discount, paymentDone, exposable,
+    commentaires, historique, selThemes, selGroups,
+  ])
+
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      try {
+        const payload: WorkFormDraftPayload = { ...draftSnapshot, savedAt: Date.now() }
+        sessionStorage.setItem(draftKey, JSON.stringify(payload))
+      } catch { /* quota */ }
+    }, 600)
+    return () => clearTimeout(id)
+  }, [draftKey, draftSnapshot])
+
+  useLayoutEffect(() => {
+    if (typeof window === 'undefined') return
+    if (draftPromptedForKey.current === draftKey) return
+    draftPromptedForKey.current = draftKey
+    const raw = sessionStorage.getItem(draftKey)
+    if (!raw) return
+    let d: WorkFormDraftPayload
+    try {
+      d = JSON.parse(raw) as WorkFormDraftPayload
+    } catch {
+      sessionStorage.removeItem(draftKey)
+      return
+    }
+    if (Date.now() - (d.savedAt ?? 0) > 7 * 24 * 60 * 60 * 1000) {
+      sessionStorage.removeItem(draftKey)
+      return
+    }
+    const msg = `${t('wf_draft_restore_title')}\n\n${t('wf_draft_restore_body')}`
+    if (!window.confirm(msg)) {
+      sessionStorage.removeItem(draftKey)
+      return
+    }
+    setTitre(d.titre ?? '')
+    setAnnee(d.annee ?? '')
+    setTechniqueId(d.techniqueId ?? '')
+    setSupportId(d.supportId ?? '')
+    setFormatId(d.formatId ?? '')
+    setHauteur(d.hauteur ?? '')
+    setLargeur(d.largeur ?? '')
+    setProfondeur(d.profondeur ?? '')
+    setProdStage((d.prodStage as ProdStageId) || 'atelier')
+    setNeedsPhoto(!!d.needsPhoto)
+    setOwnStage((d.ownStage as OwnStageId) || 'artist')
+    setContactId(d.contactId ?? '')
+    setAnonymityLevel(typeof d.anonymityLevel === 'number' ? d.anonymityLevel : 0)
+    setPrix(d.prix ?? '0')
+    setTvaRate(d.tvaRate ?? '0')
+    setDiscount(d.discount ?? '0')
+    setPaymentDone(!!d.paymentDone)
+    setExposable(!!d.exposable)
+    setCommentaires(d.commentaires ?? '')
+    setHistorique(d.historique ?? '')
+    setSelThemes(new Set(d.selThemes ?? []))
+    setSelGroups(new Set(d.selGroups ?? []))
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot restore per draftKey; setters stable
+  }, [draftKey, t])
 
   // ── Derived ───────────────────────────────────────────────────────
   const isDigital  = techniqueId === '19'
@@ -284,14 +342,6 @@ export function WorkForm({
     }
   }, [ownStage, pemContact])
 
-  // ── Computed statusId ─────────────────────────────────────────────
-  function computeStatusId(): number {
-    if (ownStage !== 'artist') return OWN_TO_STATUS_ID[ownStage] ?? 1
-    // artist + prodStage
-    if (prodStage === 'available') return 2
-    return 1  // atelier or catalogued → en production
-  }
-
   // ── Submit ────────────────────────────────────────────────────────
 
   async function handleSubmit(e: any) {
@@ -307,7 +357,7 @@ export function WorkForm({
     fd.set('historique', historique)
     fd.set('contact_id', contactId)
     fd.set('localisation_id', contactId)
-    fd.set('status_id', String(computeStatusId()))
+    fd.set('status_id', String(computeWorkStatusId(ownStage, prodStage)))
     fd.set('tva_rate', tvaRate)
 
     // Ownership change history
@@ -324,50 +374,69 @@ export function WorkForm({
 
     startTransition(async () => {
       const prevSnap = oeuvre ? undoBaselineRef.current : null
-      const res = await action(fd)
-      if ('error' in res) alert(`${t('error_prefix')} ${res.error}`)
-      else if (typeof res.newId === 'number') {
-        router.push(`/atelier/works/${res.newId}/edit`)
-        router.refresh()
-      } else {
-        if (oeuvre && prevSnap) {
-          const oid = oeuvre.OeuvreID
-          const runUndo = () => {
-            void (async () => {
-              try {
-                const ok = await consumeUndo()
-                if (!ok) return
-              } catch {
-                toast.error(t('undoFailed'))
-              }
-            })()
+      try {
+        const res = await action(fd)
+        if ('error' in res) {
+          alert(`${t('error_prefix')} ${res.error}`)
+          return
+        }
+        try {
+          sessionStorage.removeItem(draftKey)
+        } catch { /* ignore */ }
+        if (typeof res.newId === 'number') {
+          router.push(`/atelier?work=${res.newId}`)
+          router.refresh()
+        } else {
+          if (oeuvre && prevSnap) {
+            const oid = oeuvre.OeuvreID
+            const runUndo = () => {
+              void (async () => {
+                try {
+                  const ok = await consumeUndo()
+                  if (!ok) return
+                } catch {
+                  toast.error(t('undoFailed'))
+                }
+              })()
+            }
+            const tid = toast.success(t('saveDoneUndoHint'), {
+              ttlMs: 8000,
+              action: { label: t('undo'), onClick: runUndo },
+            })
+            registerUndo({
+              ttlMs: 8000,
+              linkedToastId: tid,
+              undo: async () => {
+                const r = await revertWorkSnapshot(oid, prevSnap)
+                if ('error' in r) {
+                  toast.error(t('revertWorkFailed'))
+                  throw new Error(r.error)
+                }
+                router.refresh()
+              },
+            })
           }
-          const tid = toast.success(t('saveDoneUndoHint'), {
-            ttlMs: 8000,
-            action: { label: t('undo'), onClick: runUndo },
-          })
-          registerUndo({
-            ttlMs: 8000,
-            linkedToastId: tid,
-            undo: async () => {
-              const r = await revertWorkSnapshot(oid, prevSnap)
-              if ('error' in r) {
-                toast.error(t('revertWorkFailed'))
-                throw new Error(r.error)
-              }
-              router.refresh()
-            },
-          })
+          undoBaselineRef.current = {
+            statusId: computeWorkStatusId(ownStage, prodStage),
+            catalogued: prodStage !== 'atelier',
+            needsPhotograph: needsPhoto,
+            themeIds: Array.from(selThemes),
+            groupIds: Array.from(selGroups),
+          }
+          router.push('/atelier')
+          router.refresh()
         }
-        undoBaselineRef.current = {
-          statusId: computeStatusId(),
-          catalogued: prodStage !== 'atelier',
-          needsPhotograph: needsPhoto,
-          themeIds: Array.from(selThemes),
-          groupIds: Array.from(selGroups),
+      } catch (e) {
+        if (isLikelyOfflineSaveError(e)) {
+          try {
+            await enqueueOfflineWorkSave(formDataToStringRecord(fd))
+            toast.info(t('offline_save_queued'))
+          } catch {
+            toast.error(t('offline_sync_failed'))
+          }
+          return
         }
-        router.push('/atelier')
-        router.refresh()
+        alert(`${t('error_prefix')} ${String(e)}`)
       }
     })
   }
@@ -384,7 +453,7 @@ export function WorkForm({
   // ── Render ────────────────────────────────────────────────────────
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg0)', overflow: 'hidden' }}>
+    <div data-testid="work-form-root" style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg0)', overflow: 'hidden' }}>
       {/* Header */}
       <div style={{ flexShrink: 0, padding: narrow ? '10px max(12px, env(safe-area-inset-right)) 10px max(12px, env(safe-area-inset-left))' : '12px 28px', borderBottom: '1px solid var(--bd)', background: 'var(--bg1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
         <div className="row gap-md">
@@ -781,6 +850,11 @@ function ImageManager({ oeuvreId, initialImages, narrow }: { oeuvreId: number; i
   const { t } = useI18n()
   const [imgs, setImgs] = useState(initialImages)
   const [busy, setBusy] = useState(false)
+  const [uploadPct, setUploadPct] = useState(0)
+  const [uploadName, setUploadName] = useState('')
+  const [uploadIndex, setUploadIndex] = useState(0)
+  const [uploadTotal, setUploadTotal] = useState(0)
+  const cancelQueueRef = useRef(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const sorted = useMemo(() => [...imgs].sort((a, b) => (a.SeqNo ?? 0) - (b.SeqNo ?? 0)), [imgs])
@@ -824,25 +898,56 @@ function ImageManager({ oeuvreId, initialImages, narrow }: { oeuvreId: number; i
   }
 
   async function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file || oeuvreId <= 0) return
+    const list = Array.from(e.target.files ?? [])
+    e.target.value = ''
+    if (!oeuvreId || list.length === 0) return
+    cancelQueueRef.current = false
     setBusy(true)
+    setUploadTotal(list.length)
     try {
-      const fd = new FormData()
-      fd.append('image', file)
-      fd.append('oeuvre_id', String(oeuvreId))
-      const res = await addWorkImage(fd)
-      if ('error' in res) alert(`${t('error_prefix')} ${res.error}`)
-      else setImgs((p) => [...p, res.image].sort((a, b) => (a.SeqNo ?? 0) - (b.SeqNo ?? 0)))
+      for (let i = 0; i < list.length; i++) {
+        if (cancelQueueRef.current) break
+        const file = list[i]!
+        setUploadIndex(i + 1)
+        setUploadName(file.name)
+        const prepared = await downscaleImageFileForMobileIfNeeded(file, narrow)
+        const stopTick = startEstimatedUploadProgress(prepared.size, setUploadPct)
+        try {
+          const res = await withUploadRetry(
+            async () => {
+              const fd = new FormData()
+              fd.append('image', prepared)
+              fd.append('oeuvre_id', String(oeuvreId))
+              return addWorkImage(fd)
+            },
+            { onRetry: () => toast.info(t('upload_retry_toast')) },
+          )
+          if ('error' in res) {
+            toast.error(`${t('error_prefix')} ${res.error}`)
+            break
+          }
+          setImgs((p) => [...p, res.image].sort((a, b) => (a.SeqNo ?? 0) - (b.SeqNo ?? 0)))
+        } catch (err) {
+          toast.error(`${t('error_prefix')} ${String(err)}`)
+          break
+        } finally {
+          stopTick()
+          setUploadPct(0)
+        }
+      }
     } finally {
       setBusy(false)
-      e.target.value = ''
+      setUploadIndex(0)
+      setUploadTotal(0)
+      setUploadName('')
+      setUploadPct(0)
     }
   }
   async function onDelete(id: number) {
     if (!confirm(t('confirm_delete_image'))) return
     const res = await deleteWorkImage(id, oeuvreId); if ('ok' in res) setImgs(p => p.filter(img => img.ImageID !== id))
   }
+  const pctLabel = Math.round(uploadPct * 100)
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div className="t-eyebrow" style={{ fontSize: 12 }}>{t('wf_images_heading')}</div>
@@ -855,6 +960,24 @@ function ImageManager({ oeuvreId, initialImages, narrow }: { oeuvreId: number; i
         <div style={{ fontSize: 11, color: 'var(--tx3)', lineHeight: 1.45 }}>
           {t('wf_images_save_first_hint')}
         </div>
+      )}
+      {busy && (uploadPct > 0 || uploadName) && (
+        <div style={{ fontSize: 11, color: 'var(--tx2)', lineHeight: 1.4 }} role="status">
+          <div>{t('wf_images_upload_status').replace('{name}', uploadName)}</div>
+          <div style={{ marginTop: 4, height: 4, background: 'var(--bg2)', borderRadius: 2, overflow: 'hidden' }}>
+            <div style={{ width: `${pctLabel}%`, height: '100%', background: 'var(--ac)', transition: 'width 0.12s linear' }} />
+          </div>
+          {uploadTotal > 1 && (
+            <div style={{ marginTop: 4, color: 'var(--tx3)' }}>
+              {uploadIndex}/{uploadTotal}
+            </div>
+          )}
+        </div>
+      )}
+      {busy && uploadTotal > 1 && (
+        <button type="button" className="btn ghost sm" onClick={() => { cancelQueueRef.current = true }}>
+          {t('wf_images_upload_cancel')}
+        </button>
       )}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
         {sorted.map((img, si) => (
@@ -892,6 +1015,7 @@ function ImageManager({ oeuvreId, initialImages, narrow }: { oeuvreId: number; i
               ref={fileRef}
               type="file"
               accept="image/*"
+              multiple={narrow}
               capture={narrow ? 'environment' : undefined}
               style={{ display: 'none' }}
               onChange={onUpload}

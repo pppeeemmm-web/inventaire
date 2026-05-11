@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type ProcessType =
+export type PipelineProcessType =
   | 'prix' | 'residence' | 'expedition' | 'consignment' | 'exposition'
   | 'pr' | 'visite_atelier' | 'salon' | 'livre' | 'collaboration'
   | 'evenement' | 'correspondance' | 'autre'
@@ -38,7 +38,7 @@ async function guardTeam() {
 
 // ── Convert Concept to Process ──────────────────────────────────────────────
 
-export async function convertConceptToProcess(conceptId: string, type: ProcessType) {
+export async function convertConceptToProcess(conceptId: string, type: PipelineProcessType) {
   const { error: authErr, supabase } = await guardTeam()
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
 

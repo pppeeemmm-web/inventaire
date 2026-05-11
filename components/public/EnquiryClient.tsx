@@ -43,8 +43,24 @@ export default function EnquiryClient() {
         body { background: #edeae4; font-family: 'JetBrains Mono', monospace; color: #6b6760; }
         .stage {
           position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-          display: flex; flex-direction: column; align-items: center; justify-content: center;
-          padding: clamp(16px, 5vw, 40px);
+          display: flex; flex-direction: column;
+          padding: 0;
+          padding-top: env(safe-area-inset-top, 0px);
+          padding-bottom: env(safe-area-inset-bottom, 0px);
+          padding-left: env(safe-area-inset-left, 0px);
+          padding-right: env(safe-area-inset-right, 0px);
+        }
+        .stage-scroll {
+          flex: 1;
+          min-height: 0;
+          overflow-y: auto;
+          overflow-x: hidden;
+          -webkit-overflow-scrolling: touch;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: flex-start;
+          padding: clamp(72px, 14vw, 104px) clamp(16px, 5vw, 40px) clamp(32px, 8vh, 64px);
         }
         .wordmark {
           position: absolute; top: clamp(16px, 3.5vw, 28px); left: clamp(16px, 4vw, 32px);
@@ -90,7 +106,8 @@ export default function EnquiryClient() {
         .btn-submit:disabled { opacity: 0.5; cursor: default; }
         .success-msg { font-style: italic; font-size: 14px; color: #9a9690; line-height: 1.8; }
         .back-link {
-          position: absolute; bottom: clamp(20px, 5vw, 40px);
+          margin-top: 28px;
+          align-self: flex-start;
           font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
           color: #b0aca6; text-decoration: none;
           min-height: 44px; display: inline-flex; align-items: center;
@@ -108,43 +125,45 @@ export default function EnquiryClient() {
           {lang === 'fr' ? 'EN' : 'FR'}
         </button>
 
-        <div className="form-container">
-          <span className="label">{t('pub_enquiry')}</span>
-          
-          {(contactEmail || contactPhone) && (
-            <div className="contact-info">
-              {contactEmail && <div>EMAIL &nbsp; <a href={`mailto:${contactEmail}`}>{contactEmail}</a></div>}
-              {contactPhone && <div>PHONE &nbsp; {contactPhone}</div>}
-            </div>
-          )}
+        <div className="stage-scroll" data-testid="enquiry-scroll">
+          <div className="form-container">
+            <span className="label">{t('pub_enquiry')}</span>
 
-          {sent ? (
-            <div className="success-msg">{t('pub_thank_you')}</div>
-          ) : (
-            <form onSubmit={handleSubmit}>
-              <input
-                placeholder={t('pub_name').toUpperCase()}
-                value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
-                required
-              />
-              <input
-                type="email" placeholder={t('pub_email').toUpperCase()}
-                value={form.email} onChange={e => setForm({ ...form, email: e.target.value })}
-                required
-              />
-              <textarea
-                placeholder={t('pub_message').toUpperCase()}
-                value={form.message} onChange={e => setForm({ ...form, message: e.target.value })}
-                required
-              />
-              <button type="submit" className="btn-submit" disabled={loading}>
-                {loading ? t('pub_sending').toUpperCase() : t('pub_send').toUpperCase()}
-              </button>
-            </form>
-          )}
+            {(contactEmail || contactPhone) && (
+              <div className="contact-info">
+                {contactEmail && <div>EMAIL &nbsp; <a href={`mailto:${contactEmail}`}>{contactEmail}</a></div>}
+                {contactPhone && <div>PHONE &nbsp; {contactPhone}</div>}
+              </div>
+            )}
+
+            {sent ? (
+              <div className="success-msg">{t('pub_thank_you')}</div>
+            ) : (
+              <form onSubmit={handleSubmit}>
+                <input
+                  placeholder={t('pub_name').toUpperCase()}
+                  value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
+                  required
+                />
+                <input
+                  type="email" placeholder={t('pub_email').toUpperCase()}
+                  value={form.email} onChange={e => setForm({ ...form, email: e.target.value })}
+                  required
+                />
+                <textarea
+                  placeholder={t('pub_message').toUpperCase()}
+                  value={form.message} onChange={e => setForm({ ...form, message: e.target.value })}
+                  required
+                />
+                <button type="submit" className="btn-submit" disabled={loading}>
+                  {loading ? t('pub_sending').toUpperCase() : t('pub_send').toUpperCase()}
+                </button>
+              </form>
+            )}
+          </div>
+
+          <Link href="/" className="back-link">{t('pub_back')}</Link>
         </div>
-
-        <Link href="/" className="back-link">{t('pub_back')}</Link>
       </div>
     </>
   )

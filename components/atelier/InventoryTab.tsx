@@ -1265,7 +1265,7 @@ function InvList({
                     </div>
                   </td>
                   <td style={{ padding: '0 2px', ...cellDivider, verticalAlign: 'middle' }}>
-                    <button onClick={(e) => { e.stopPropagation(); router.push(`/atelier/works/${o.OeuvreID}/edit`) }} style={{ color: 'var(--tx3)', fontSize: 12 }}>✎</button>
+                    <button onClick={(e) => { e.stopPropagation(); router.push(`/atelier?work=${o.OeuvreID}`) }} style={{ color: 'var(--tx3)', fontSize: 12 }}>✎</button>
                   </td>
                   <td style={{ color: 'var(--tx3)', fontSize: 11, padding: '0 2px', whiteSpace: 'nowrap', ...cellDivider, verticalAlign: 'middle' }}>
                     {o.OeuvreID}
