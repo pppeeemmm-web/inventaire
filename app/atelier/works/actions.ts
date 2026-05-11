@@ -63,6 +63,15 @@ export type SaveResult   = { error: string } | { ok: true; newId?: number }
 export type DeleteResult = { error: string } | { ok: true }
 export type ImageResult  = { error: string } | { ok: true; image: WorkImage }
 
+/** Minimal snapshot for undo after save (status + pipeline booleans + junctions). */
+export type WorkRevertSnapshot = {
+  statusId: number | null
+  catalogued: boolean
+  needsPhotograph: boolean
+  themeIds: number[]
+  groupIds: string[]
+}
+
 /** Remove every tblImage row for these works and best-effort R2 objects (original + AVIF thumb). */
 async function deleteAllImagesForOeuvres(
   supabase: SupabaseClient,
@@ -86,7 +95,8 @@ async function deleteAllImagesForOeuvres(
   return { ok: true }
 }
 
-export async function deleteWork(oid: number): Promise<DeleteResult> {
+/** Permanent delete (R2 + DB). Use after trash TTL or explicit purge. */
+export async function purgeWorkPermanently(oid: number): Promise<DeleteResult> {
   const supabase = await createClient()
   const svc = createServiceClient()
   const { error: relErr } = await supabase.from('tblrelations').delete().or(`source_id.eq.${oid},target_id.eq.${oid}`)
@@ -101,21 +111,55 @@ export async function deleteWork(oid: number): Promise<DeleteResult> {
   return { ok: true }
 }
 
-export async function deleteSelectedWorks(ids: number[]): Promise<DeleteResult> {
+/** Soft-delete: set `deleted_at` (requires column — see `supabase/sql/oeuvres_deleted_at.sql`). */
+export async function deleteWork(oid: number): Promise<DeleteResult> {
   const supabase = await createClient()
-  const svc = createServiceClient()
-  // Delete all relations for all selected works
-  for (const id of ids) {
-    const { error: relErr } = await supabase.from('tblrelations').delete().or(`source_id.eq.${id},target_id.eq.${id}`)
-    if (relErr) return { error: relErr.message }
-    const { error: themeErr } = await svc.from('oeuvre_theme').delete().eq('oeuvre_id', id)
-    if (themeErr) return { error: themeErr.message }
-  }
-  const imgDel = await deleteAllImagesForOeuvres(supabase, ids)
-  if ('error' in imgDel) return imgDel
-  const { error } = await supabase.from('Oeuvres').delete().in('OeuvreID', ids)
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié' }
+  const ts = new Date().toISOString()
+  const { error } = await supabase
+    .from('Oeuvres')
+    .update({ deleted_at: ts })
+    .eq('OeuvreID', oid)
+    .is('deleted_at', null)
   if (error) return { error: error.message }
   revalidatePath('/atelier')
+  revalidatePath('/hub')
+  revalidatePath('/works')
+  return { ok: true }
+}
+
+export async function deleteSelectedWorks(ids: number[]): Promise<DeleteResult> {
+  if (ids.length === 0) return { ok: true }
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié' }
+  const ts = new Date().toISOString()
+  const { error } = await supabase
+    .from('Oeuvres')
+    .update({ deleted_at: ts })
+    .in('OeuvreID', ids)
+    .is('deleted_at', null)
+  if (error) return { error: error.message }
+  revalidatePath('/atelier')
+  revalidatePath('/hub')
+  revalidatePath('/works')
+  return { ok: true }
+}
+
+export async function restoreSoftDeletedWorks(ids: number[]): Promise<DeleteResult> {
+  if (ids.length === 0) return { ok: true }
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié' }
+  const { error } = await supabase
+    .from('Oeuvres')
+    .update({ deleted_at: null })
+    .in('OeuvreID', ids)
+  if (error) return { error: error.message }
+  revalidatePath('/atelier')
+  revalidatePath('/hub')
+  revalidatePath('/works')
   return { ok: true }
 }
 
@@ -388,7 +432,11 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       updatePayload.txtImageNameLink = imageName
     }
 
-    const { error: updateErr } = await supabase.from('Oeuvres').update(updatePayload).eq('OeuvreID', oid)
+    const { error: updateErr } = await supabase
+      .from('Oeuvres')
+      .update(updatePayload)
+      .eq('OeuvreID', oid)
+      .is('deleted_at', null)
 
     if (updateErr) return { error: updateErr.message }
 
@@ -485,6 +533,48 @@ async function saveWorkGroups(supabase: SupabaseClient, oid: number, gids: strin
   if (gids.length > 0) {
     await supabase.from('working_group_work').insert(gids.map(gid => ({ oeuvre_id: oid, group_id: gid })))
   }
+}
+
+/** Restore status + pipeline flags + theme/group junctions to a prior snapshot. */
+export async function revertWorkSnapshot(
+  oeuvreId: number,
+  snapshot: WorkRevertSnapshot,
+): Promise<SaveResult> {
+  const supabase = await createClient()
+  const svc = createServiceClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié' }
+
+  const { error: uErr } = await supabase
+    .from('Oeuvres')
+    .update({
+      statusId: snapshot.statusId,
+      Catalogué: snapshot.catalogued,
+      NeedsPhotograph: snapshot.needsPhotograph,
+    })
+    .eq('OeuvreID', oeuvreId)
+    .is('deleted_at', null)
+  if (uErr) return { error: uErr.message }
+
+  const pipeRes = await syncPipelineWithBooleans(supabase, oeuvreId, {
+    catalogued: snapshot.catalogued,
+    needsPhotograph: snapshot.needsPhotograph,
+  })
+  if ('error' in pipeRes) return { error: pipeRes.error }
+
+  await svc.from('oeuvre_theme').delete().eq('oeuvre_id', oeuvreId)
+  if (snapshot.themeIds.length > 0) {
+    const { error: insT } = await svc
+      .from('oeuvre_theme')
+      .insert(snapshot.themeIds.map((tid) => ({ oeuvre_id: oeuvreId, theme_id: tid })))
+    if (insT) return { error: insT.message }
+  }
+
+  await saveWorkGroups(svc, oeuvreId, snapshot.groupIds)
+
+  revalidatePath('/atelier')
+  revalidatePath(`/atelier/works/${oeuvreId}/edit`)
+  return { ok: true }
 }
 
 export async function createLookup(table: string, name: string): Promise<{ id: number } | { error: string }> {

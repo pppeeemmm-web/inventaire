@@ -18,6 +18,7 @@ export default async function AtelierPage() {
     supabase
       .from('Oeuvres')
       .select('OeuvreID, Titre, Technique, Support, Année, Format, Hauteur, Largeur, Profondeur, Exposable, Prix, PrixFinal, Discount, statusId, Catalogué, txtImageNameLink, ContactID, LocalisationID, LocalisationDetail, is_public, Encadree, IsCommission, PresentationID, ReturnDate, DateLivraison, AcheteurID, NeedsPhotograph, anonymity_level, admin_override_anonymity')
+      .is('deleted_at', null)
       .order('OeuvreID', { ascending: false })
       .range(0, 4999),
     supabase.from('Technique').select('TechniqueID, Technique').order('TechniqueID'),

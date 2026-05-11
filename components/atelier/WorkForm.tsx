@@ -11,11 +11,13 @@ import { useRouter } from 'next/navigation'
 import { thumbUrl, isCircularSupport, DIAMETER_SIGN } from '@/lib/data'
 import { useI18n } from '@/lib/i18n/context'
 import type { Oeuvre, WorkImage } from '@/lib/types/database'
-import type { SaveResult } from '@/app/atelier/works/actions'
+import type { SaveResult, WorkRevertSnapshot } from '@/app/atelier/works/actions'
+import { addWorkImage, deleteWorkImage, createLookup, reorderWorkImages, revertWorkSnapshot } from '@/app/atelier/works/actions'
 import { WorkThumb } from './WorkThumb'
-import { addWorkImage, deleteWorkImage, createLookup, reorderWorkImages } from '@/app/atelier/works/actions'
 import { createClient } from '@/lib/supabase/client'
 import { useUnsavedCloseGuard } from '@/hooks/useUnsavedCloseGuard'
+import { toast } from '@/lib/ui/toast'
+import { registerUndo, consumeUndo } from '@/lib/ui/undo'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 
 // ── Config ────────────────────────────────────────────────────────────────
@@ -112,6 +114,21 @@ export function WorkForm({
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const formRef = useRef<HTMLFormElement>(null)
+  const undoBaselineRef = useRef<WorkRevertSnapshot | null>(null)
+
+  useLayoutEffect(() => {
+    if (!oeuvre) {
+      undoBaselineRef.current = null
+      return
+    }
+    undoBaselineRef.current = {
+      statusId: oeuvre.statusId ?? null,
+      catalogued: prodStageFromOeuvre(oeuvre) !== 'atelier',
+      needsPhotograph: !!((oeuvre as { NeedsPhotograph?: boolean }).NeedsPhotograph ?? false),
+      themeIds: [...currentThemeIds],
+      groupIds: [...currentGroupIds],
+    }
+  }, [oeuvre, currentThemeIds, currentGroupIds])
 
   // ── Identity ──────────────────────────────────────────────────────
   const [titre,       setTitre]       = useState(oeuvre?.Titre ?? '')
@@ -306,12 +323,49 @@ export function WorkForm({
     selGroups.forEach(id => fd.append('groups', id))
 
     startTransition(async () => {
+      const prevSnap = oeuvre ? undoBaselineRef.current : null
       const res = await action(fd)
       if ('error' in res) alert(`${t('error_prefix')} ${res.error}`)
       else if (typeof res.newId === 'number') {
         router.push(`/atelier/works/${res.newId}/edit`)
         router.refresh()
       } else {
+        if (oeuvre && prevSnap) {
+          const oid = oeuvre.OeuvreID
+          const runUndo = () => {
+            void (async () => {
+              try {
+                const ok = await consumeUndo()
+                if (!ok) return
+              } catch {
+                toast.error(t('undoFailed'))
+              }
+            })()
+          }
+          const tid = toast.success(t('saveDoneUndoHint'), {
+            ttlMs: 8000,
+            action: { label: t('undo'), onClick: runUndo },
+          })
+          registerUndo({
+            ttlMs: 8000,
+            linkedToastId: tid,
+            undo: async () => {
+              const r = await revertWorkSnapshot(oid, prevSnap)
+              if ('error' in r) {
+                toast.error(t('revertWorkFailed'))
+                throw new Error(r.error)
+              }
+              router.refresh()
+            },
+          })
+        }
+        undoBaselineRef.current = {
+          statusId: computeStatusId(),
+          catalogued: prodStage !== 'atelier',
+          needsPhotograph: needsPhoto,
+          themeIds: Array.from(selThemes),
+          groupIds: Array.from(selGroups),
+        }
         router.push('/atelier')
         router.refresh()
       }

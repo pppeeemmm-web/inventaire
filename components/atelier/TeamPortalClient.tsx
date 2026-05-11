@@ -26,6 +26,7 @@ import { ExhibitionsTabSkeleton } from '@/components/atelier/ExhibitionsTabSkele
 import { SystemTab } from '@/components/atelier/SystemTab'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { toast } from '@/lib/ui/toast'
+import { consumeUndo, isUndoKeyBlockedTarget, peekUndo } from '@/lib/ui/undo'
 
 function TabPanelFallback() {
   const { t } = useI18n()
@@ -197,6 +198,26 @@ export function TeamPortalClient({
       // Clean up URL without reload
       window.history.replaceState({}, '', window.location.pathname)
     }
+  }, [t])
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!peekUndo()) return
+      if (isUndoKeyBlockedTarget(e.target)) return
+      if (e.shiftKey) return
+      if (e.key !== 'z' && e.key !== 'Z') return
+      if (!e.ctrlKey && !e.metaKey) return
+      e.preventDefault()
+      void (async () => {
+        try {
+          await consumeUndo()
+        } catch {
+          toast.error(t('undoFailed'))
+        }
+      })()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
   }, [t])
 
   function handleSetTab(next: Tab) {

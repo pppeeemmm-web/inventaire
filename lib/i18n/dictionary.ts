@@ -68,6 +68,8 @@ export type DictKey =
   | 'exportThemeRequired' | 'exportGroupRequired' | 'exportPersistError'
   | 'curationDockAttach' | 'catalogAttachBlurb'
   | 'generating' | 'batchSuccess' | 'selectAll' | 'renameFile' | 'filters'
+  | 'undo' | 'undoFailed' | 'selectionUndoHint' | 'workTrashHint' | 'restoreWorkFailed'
+  | 'revertWorkFailed' | 'revertWorkDone' | 'confirmMoveWorksToTrash' | 'saveDoneUndoHint'
   | 'auditAttributedHint'
   | 'workDrawerUnsavedTitle' | 'workDrawerUnsavedBody' | 'workDrawerDiscard'
   | 'workDrawerStatusLegendEffective' | 'workDrawerStatusLegendCommercial'
@@ -324,6 +326,12 @@ export const dict: Record<Lang, Dictionary> = {
     exportPersistError: 'Fichier téléchargé, mais la sauvegarde a échoué :',
     generating: 'Génération…',
     batchSuccess: 'Modifications appliquées.', selectAll: 'Tout sélectionner',
+    undo: 'Annuler', undoFailed: 'Annulation impossible.', selectionUndoHint: 'Sélection mise à jour.',
+    workTrashHint: 'Œuvre(s) placée(s) à la corbeille. Vous pouvez annuler.',
+    restoreWorkFailed: 'Restauration impossible.',
+    revertWorkFailed: 'Retour arrière impossible.', revertWorkDone: 'État précédent restauré.',
+    confirmMoveWorksToTrash: 'Placer ces œuvres à la corbeille ? Vous pourrez annuler peu après.',
+    saveDoneUndoHint: 'Enregistré. Annuler pour revenir à l’état précédent.',
     renameFile: 'Renommer le fichier', filters: 'Filtres',
     auditAttributedHint: 'Enregistrements importants (statut, confidentialité, ventes…) attribués à votre compte dans le journal système.',
     workDrawerUnsavedTitle: 'Modifications non enregistrées',
@@ -829,6 +837,12 @@ export const dict: Record<Lang, Dictionary> = {
     exportPersistError: 'Download succeeded, but saving failed:',
     generating: 'Generating…',
     batchSuccess: 'Changes applied.', selectAll: 'Select all',
+    undo: 'Undo', undoFailed: 'Could not undo.', selectionUndoHint: 'Selection updated.',
+    workTrashHint: 'Work(s) moved to trash. You can undo shortly.',
+    restoreWorkFailed: 'Could not restore.',
+    revertWorkFailed: 'Could not revert.', revertWorkDone: 'Previous state restored.',
+    confirmMoveWorksToTrash: 'Move these works to trash? You can undo shortly after.',
+    saveDoneUndoHint: 'Saved. Undo to restore the previous state.',
     renameFile: 'Rename file', filters: 'Filters',
     auditAttributedHint: 'Important saves (status, confidentiality, sales…) are attributed to your account in the system log.',
     workDrawerUnsavedTitle: 'Unsaved changes',

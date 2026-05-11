@@ -36,6 +36,8 @@ export interface Oeuvre {
   is_gift?: boolean | null;
   commercial_status?: string | null;
   ImageURL: string | null;
+  /** Soft-delete marker — null = active (apply migration `oeuvres_deleted_at.sql`). */
+  deleted_at?: string | null;
   // Kept in DB for historical reference, not used by app logic:
   // commercial_status, StageProduction
   // Dead per CLAUDE.md cemetery, removed from this interface:

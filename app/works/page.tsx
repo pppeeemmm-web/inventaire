@@ -84,6 +84,7 @@ export default async function WorksPage({
   // 3. Works — fetch ALL public works, not just those with a theme assignment
   const { data: rawWorks } = await (supabase.from('Oeuvres') as any)
     .select('OeuvreID, Titre, Année, Hauteur, Largeur, txtImageNameLink, Support')
+    .is('deleted_at', null)
     .eq('is_public', true)
     .order('Année', { ascending: false })
 

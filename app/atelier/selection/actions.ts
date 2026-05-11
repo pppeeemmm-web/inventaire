@@ -144,6 +144,7 @@ export async function batchEdit(ids: number[], changes: BatchChanges): Promise<B
       .from('Oeuvres')
       .update(update)
       .in('OeuvreID', ids)
+      .is('deleted_at', null)
       .select('OeuvreID', { count: 'exact', head: true })
     if (error) return { error: error.message }
     count = c ?? ids.length
@@ -154,6 +155,7 @@ export async function batchEdit(ids: number[], changes: BatchChanges): Promise<B
       .from('Oeuvres')
       .update({ Exposable: false })
       .in('OeuvreID', ids)
+      .is('deleted_at', null)
       .eq('statusId', STATUS_ID_ARCHIVE_ARTISTE)
     if (archErr) return { error: archErr.message }
   }
@@ -379,6 +381,7 @@ export async function generateExport(
     .from('Oeuvres')
     .select('OeuvreID, Titre, Année, Technique, Support, Format, Hauteur, Largeur, Profondeur, Prix, PrixFinal, Discount, statusId, Exposable, Catalogué, txtImageNameLink, Commentaires, is_public')
     .in('OeuvreID', ids)
+    .is('deleted_at', null)
     .order('OeuvreID', { ascending: false })
 
   if (fetchErr || !oeuvres) return { error: fetchErr?.message ?? 'Fetch failed' }

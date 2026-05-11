@@ -214,6 +214,7 @@ export async function setWorkPublic(oeuvreId: number): Promise<{ ok: true } | { 
     const { error } = await (sb.from('Oeuvres') as any)
       .update({ statusId: 2 })
       .eq('OeuvreID', oeuvreId)
+      .is('deleted_at', null)
     if (error) throw error
     return { ok: true }
   } catch (e: any) {

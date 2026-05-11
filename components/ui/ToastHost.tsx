@@ -13,14 +13,28 @@ export function ToastHost() {
   return (
     <div className="pem-toastHost" aria-live="polite" aria-relevant="additions">
       {items.map((t) => (
-        <div key={t.id} className={`pem-toast pem-toast--${t.kind}`} role="status">
+        <div
+          key={t.id}
+          className={`pem-toast pem-toast--${t.kind}${t.action ? ' pem-toast--interactive' : ''}`}
+          role="status"
+        >
           <span className="pem-toastIcon" aria-hidden>
             {t.kind === 'success' ? '✓' : t.kind === 'error' ? '!' : 'i'}
           </span>
-          <span className="t-mono-sm pem-toastMsg">{t.message}</span>
+          <div className="pem-toastBody">
+            <span className="t-mono-sm pem-toastMsg">{t.message}</span>
+            {t.action ? (
+              <button
+                type="button"
+                className="pem-toastAction t-mono-sm"
+                onClick={() => t.action?.onClick()}
+              >
+                {t.action.label}
+              </button>
+            ) : null}
+          </div>
         </div>
       ))}
     </div>
   )
 }
-

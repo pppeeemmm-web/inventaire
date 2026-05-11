@@ -18,18 +18,21 @@ export default async function HubPage() {
     { data: burningIdeas },
     { data: systemLogs },
   ] = await Promise.all([
-    supabase.from('Oeuvres').select('*', { count: 'exact', head: true }),
+    supabase.from('Oeuvres').select('*', { count: 'exact', head: true }).is('deleted_at', null),
     supabase
       .from('Oeuvres')
       .select('*', { count: 'exact', head: true })
+      .is('deleted_at', null)
       .gte('Année', yearStart),
     supabase
       .from('Oeuvres')
       .select('*', { count: 'exact', head: true })
+      .is('deleted_at', null)
       .eq('is_public', true),
     supabase
       .from('Oeuvres')
       .select('OeuvreID, txtImageNameLink')
+      .is('deleted_at', null)
       .not('txtImageNameLink', 'is', null)
       .order('OeuvreID', { ascending: false })
       .limit(16),

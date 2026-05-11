@@ -57,6 +57,7 @@ export async function markAsGift(formData: FormData): Promise<GiftResult> {
     .from('Oeuvres')
     .select('OeuvreID, Titre, Année, Technique, Support, Hauteur, Largeur, Profondeur, txtImageNameLink, statusId, Historique')
     .eq('OeuvreID', oeuvre_id)
+    .is('deleted_at', null)
     .single()
   if (workErr || !work) return { error: 'Œuvre introuvable' }
 
@@ -94,6 +95,7 @@ export async function markAsGift(formData: FormData): Promise<GiftResult> {
       Historique:     newHistorique,
     })
     .eq('OeuvreID', oeuvre_id)
+    .is('deleted_at', null)
   if (updateErr) return { error: updateErr.message }
 
   // Build + store the bordereau. PDF failure is logged but does not roll back

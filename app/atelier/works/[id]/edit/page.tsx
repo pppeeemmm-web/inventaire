@@ -16,7 +16,7 @@ export default async function EditWorkPage({ params }: Props) {
   const supabase = await createClient()
 
   const results = await Promise.all([
-    supabase.from('Oeuvres').select('*').eq('OeuvreID', oid).single(),
+    supabase.from('Oeuvres').select('*').eq('OeuvreID', oid).is('deleted_at', null).single(),
     supabase.from('OeuvreTheme').select('ThemeID').eq('OeuvreID', oid),
     supabase.from('Technique').select('TechniqueID, Technique').order('Technique', { ascending: true }),
     supabase.from('Support').select('SupportID, Support').order('Support', { ascending: true }),

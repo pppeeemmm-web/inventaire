@@ -4,13 +4,15 @@ import { imageUrl, thumbUrl, yearOf, statusOf, DIAMETER_SIGN, isCircularSupport,
 
 import { StatusChip } from '@/components/ui/StatusChip'
 import { WorkStateChip } from './WorkStateChip'
-import { deleteWork } from '@/app/atelier/works/actions'
+import { deleteWork, restoreSoftDeletedWorks, revertWorkSnapshot, type WorkRevertSnapshot } from '@/app/atelier/works/actions'
 import { createClient } from '@/lib/supabase/client'
 import { getWorkActionTypes } from '@/lib/work-action-type-cache'
 import { useRouter } from 'next/navigation'
 import { useEffect, useLayoutEffect, useState, useTransition, useCallback, useRef, useMemo, forwardRef, useImperativeHandle } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { saveWork, createLookup, addWorkImage, reorderWorkImages } from '@/app/atelier/works/actions'
+import { toast } from '@/lib/ui/toast'
+import { registerUndo, consumeUndo } from '@/lib/ui/undo'
 import { markAsGift } from '@/app/atelier/works/gift-actions'
 import type { Oeuvre } from '@/lib/types/database'
 import { WorkThumb } from './WorkThumb'
@@ -626,12 +628,46 @@ function DrawerContent({
   }
 
   async function performSave(): Promise<boolean> {
+    const snapshot: WorkRevertSnapshot = {
+      statusId: o.statusId ?? null,
+      catalogued: !!(o as { Catalogué?: boolean }).Catalogué,
+      needsPhotograph: !!(o as { NeedsPhotograph?: boolean }).NeedsPhotograph,
+      themeIds: Array.from(baselineThemes),
+      groupIds: Array.from(baselineGroups),
+    }
+    const oid = o.OeuvreID
     const res = await saveWork(buildFormData())
     if ('error' in res) {
       alert(res.error)
       return false
     }
     router.refresh()
+    const runUndo = () => {
+      void (async () => {
+        try {
+          const ok = await consumeUndo()
+          if (!ok) return
+        } catch {
+          toast.error(t('undoFailed'))
+        }
+      })()
+    }
+    const tid = toast.success(t('saveDoneUndoHint'), {
+      ttlMs: 8000,
+      action: { label: t('undo'), onClick: runUndo },
+    })
+    registerUndo({
+      ttlMs: 8000,
+      linkedToastId: tid,
+      undo: async () => {
+        const r = await revertWorkSnapshot(oid, snapshot)
+        if ('error' in r) {
+          toast.error(t('revertWorkFailed'))
+          throw new Error(r.error)
+        }
+        router.refresh()
+      },
+    })
     return true
   }
 
@@ -671,10 +707,37 @@ function DrawerContent({
   function handleDelete() {
     startDelete(async () => {
       try {
-        const result = await deleteWork(o.OeuvreID)
+        const oid = o.OeuvreID
+        const result = await deleteWork(oid)
         if ('error' in result) { setDeleteError(result.error); return }
         onClose()
         router.refresh()
+        const runUndo = () => {
+          void (async () => {
+            try {
+              const ok = await consumeUndo()
+              if (!ok) return
+            } catch {
+              toast.error(t('undoFailed'))
+            }
+          })()
+        }
+        const tid = toast.success(t('workTrashHint'), {
+          ttlMs: 8000,
+          action: { label: t('undo'), onClick: runUndo },
+        })
+        registerUndo({
+          ttlMs: 8000,
+          linkedToastId: tid,
+          undo: async () => {
+            const r = await restoreSoftDeletedWorks([oid])
+            if ('error' in r) {
+              toast.error(t('restoreWorkFailed'))
+              throw new Error(r.error)
+            }
+            router.refresh()
+          },
+        })
       } catch (e: any) { setDeleteError(e?.message ?? String(e)) }
     })
   }

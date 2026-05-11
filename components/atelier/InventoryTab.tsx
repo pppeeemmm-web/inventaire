@@ -13,6 +13,8 @@ import { MissingThumb, WorkThumb } from './WorkThumb'
 import { WorkStateChip } from './WorkStateChip'
 import Image from 'next/image'
 import { stringifyError } from '@/lib/error'
+import { toast } from '@/lib/ui/toast'
+import { registerUndo, consumeUndo } from '@/lib/ui/undo'
 import type { Oeuvre } from '@/lib/types/database'
 import { WorkDrawer, type WorkDrawerGuardHandle } from './WorkDrawer'
 import { useMediaQuery } from '@/lib/useMediaQuery'
@@ -21,6 +23,12 @@ import { useMediaQuery } from '@/lib/useMediaQuery'
 
 // PEM's own ContactID — default owner when ContactID FIS null
 const PEM_CONTACT_ID = 13
+
+function setsEqualNum(a: Set<number>, b: Set<number>): boolean {
+  if (a.size !== b.size) return false
+  for (const x of a) if (!b.has(x)) return false
+  return true
+}
 
 function SortInd({ k, current, dir }: { k: string; current: string; dir: 'asc' | 'desc' }) {
   if (k !== current) return <span style={{ opacity: 0.2, marginLeft: 4, fontSize: 13 }}>↕</span>
@@ -216,6 +224,33 @@ export function InventoryTab({
   const { t } = useI18n()
 
   const router = useRouter()
+
+  const offerSelectionUndo = useCallback(
+    (prev: Set<number>) => {
+      const runUndo = () => {
+        void (async () => {
+          try {
+            const ok = await consumeUndo()
+            if (!ok) return
+          } catch {
+            toast.error(t('undoFailed'))
+          }
+        })()
+      }
+      const tid = toast.success(t('selectionUndoHint'), {
+        ttlMs: 8000,
+        action: { label: t('undo'), onClick: runUndo },
+      })
+      registerUndo({
+        ttlMs: 8000,
+        linkedToastId: tid,
+        undo: () => {
+          setSelection(new Set(prev))
+        },
+      })
+    },
+    [setSelection, t],
+  )
   const narrow = useMediaQuery('(max-width: 767px)')
 
   const headerBase: React.CSSProperties = {
@@ -323,13 +358,18 @@ export function InventoryTab({
     
     if (data) {
       if (mode === 'select') {
-        setSelection(new Set((data as { oeuvre_id: number }[]).map((r) => r.oeuvre_id)))
+        const prev = new Set(selection)
+        const next = new Set((data as { oeuvre_id: number }[]).map((r) => r.oeuvre_id))
+        if (!setsEqualNum(prev, next)) {
+          setSelection(next)
+          offerSelectionUndo(prev)
+        }
       } else {
         setFilterGroup(id)
       }
     }
     setLoadingGrp(null)
-  }, [setSelection])
+  }, [setSelection, selection, offerSelectionUndo])
 
   const oeuvreThemeMap = useMemo(() => {
     const m = new Map<number, number[]>()
@@ -595,9 +635,12 @@ export function InventoryTab({
         {/* Select all filtered */}
         <button
           onClick={() => {
+            const prev = new Set(selection)
             const next = new Set(selection)
             filtered.forEach(o => next.add(o.OeuvreID))
+            if (setsEqualNum(prev, next)) return
             setSelection(next)
+            offerSelectionUndo(prev)
           }}
           className="btn sm"
           style={{ 
@@ -617,11 +660,42 @@ export function InventoryTab({
           <div className="row gap-sm" style={{ borderLeft: '1px solid var(--bd)', paddingLeft: 12, marginLeft: 4 }}>
             <button
               onClick={async () => {
-                if (!confirm(`Confirmer la suppression de ${selection.size} œuvre(s) ?\nCette action est irréversible.`)) return
-                const { deleteSelectedWorks } = await import('@/app/atelier/works/actions')
-                const res = await deleteSelectedWorks(Array.from(selection))
-                if ('error' in res) alert(`Erreur : ${stringifyError(res.error)}`)
-                else { setSelection(new Set()); router.refresh() }
+                if (!confirm(t('confirmMoveWorksToTrash'))) return
+                const ids = Array.from(selection)
+                const { deleteSelectedWorks, restoreSoftDeletedWorks } = await import('@/app/atelier/works/actions')
+                const res = await deleteSelectedWorks(ids)
+                if ('error' in res) {
+                  alert(`${t('error')}: ${stringifyError(res.error)}`)
+                  return
+                }
+                setSelection(new Set())
+                router.refresh()
+                const runUndo = () => {
+                  void (async () => {
+                    try {
+                      const ok = await consumeUndo()
+                      if (!ok) return
+                    } catch {
+                      toast.error(t('undoFailed'))
+                    }
+                  })()
+                }
+                const tid = toast.success(t('workTrashHint'), {
+                  ttlMs: 8000,
+                  action: { label: t('undo'), onClick: runUndo },
+                })
+                registerUndo({
+                  ttlMs: 8000,
+                  linkedToastId: tid,
+                  undo: async () => {
+                    const r = await restoreSoftDeletedWorks(ids)
+                    if ('error' in r) {
+                      toast.error(t('restoreWorkFailed'))
+                      throw new Error(r.error)
+                    }
+                    router.refresh()
+                  },
+                })
               }}
               className="btn sm"
               style={{ fontSize: 12, padding: '8px 16px', background: 'var(--rust)22', color: 'var(--rust)', border: '1px solid var(--rust)44' }}
