@@ -3,7 +3,7 @@
 // ContactsTab — searchable, filterable contact list with full field set + edit/create.
 // Supports multiple addresses per contact via contact_addresses table.
 
-import { useState, useMemo, useEffect, useCallback, useLayoutEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback, useLayoutEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
   checkOllamaListening,
@@ -11,14 +11,30 @@ import {
   importGoogleContacts,
   mergeContacts,
   previewContactFromUrl,
+  saveContactWithConflictCheck,
   type ImportedContact,
   type UrlEnrichMeta,
 } from '@/app/atelier/contacts/actions'
 import { runOllamaInstructionScript } from '@/app/atelier/ollama/actions'
 import { OLLAMA_SCRIPT_INSTRUCTIONS } from '@/lib/ollama-script'
 import { useI18n } from '@/lib/i18n/context'
+import { useMediaQuery } from '@/lib/useMediaQuery'
+import { toast } from '@/lib/ui/toast'
+import { useUnsavedActionGuard } from '@/hooks/useUnsavedActionGuard'
 import { useUnsavedCloseGuard } from '@/hooks/useUnsavedCloseGuard'
 import type { Oeuvre } from '@/lib/types/database'
+import {
+  ContactEditorPanel,
+  type ContactEditorPanelHandle,
+} from '@/components/atelier/ContactEditorPanel'
+import type {
+  ContactAddress,
+  ContactEmail,
+  ContactPhone,
+  ContactRow,
+  ContactSocial,
+  ContactWebsite,
+} from '@/components/atelier/contact-editor-types'
 
 function SortInd({ k, current, dir }: { k: string; current: string; dir: 'asc' | 'desc' }) {
   if (k !== current) return <span style={{ opacity: 0.2, marginLeft: 4, fontSize: 13 }}>↕</span>
@@ -26,78 +42,6 @@ function SortInd({ k, current, dir }: { k: string; current: string; dir: 'asc' |
 }
 
 // ── Types ────────────────────────────────────────────────────────────
-
-interface ContactRow {
-  ContactID:          number
-  NomInstitution:     string | null
-  Nom:                string | null
-  Prénom:             string | null
-  Role:               string | null
-  Genre?:             string | null
-  TypeContact?:       number | null
-  Email?:             string | null
-  IndicatifPays1?:    string | null
-  Téléphone1?:        string | null
-  IndicatifPays2?:    string | null
-  Téléphone2?:        string | null
-  Website?:           string | null
-  Adresse?:           string | null
-  CodePostal?:        string | null
-  Ville?:             string | null
-  Pays?:              string | null
-  Notes?:             string | null
-  Instagram?:         string | null
-  LinkedIn?:          string | null
-  Facebook?:          string | null
-  Twitter?:           string | null
-  PersonneResponsable?: string | null
-  RoleResponsable?:   string | null
-  Actif?:             boolean | null
-  is_private?:        boolean | null
-}
-
-interface ContactAddress {
-  id?:         number
-  contact_id:  number
-  label:       string
-  adresse:     string | null
-  code_postal: string | null
-  ville:       string | null
-  pays:        string | null
-  position:    number
-  shipping_notes?: string | null
-}
-
-interface ContactEmail {
-  id?: number
-  contact_id: number
-  email: string
-  label: string
-  is_primary: boolean
-}
-
-interface ContactPhone {
-  id?: number
-  contact_id: number
-  country_code?: string | null
-  phone: string
-  label: string
-  is_primary: boolean
-}
-
-interface ContactWebsite {
-  id?: number
-  contact_id: number
-  url: string
-  label: string
-}
-
-interface ContactSocial {
-  id?: number
-  contact_id: number
-  platform: string
-  handle: string
-}
 
 interface Props {
   contacts: ContactRow[]
@@ -114,11 +58,6 @@ function displayName(c: ContactRow): string {
 function fmtPhone(ind: string | null | undefined, num: string | null | undefined): string | null {
   if (!num) return null
   return ind ? `${ind} ${num}` : num
-}
-
-function cap(s: string): string {
-  if (!s) return s
-  return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
 /** First primary or first row, else legacy Contact.Email */
@@ -149,6 +88,9 @@ function primaryListPhone(
 
 export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = [] }: Props) {
   const { t, lang } = useI18n()
+  const listLocale = lang === 'fr' ? 'fr-FR' : 'en-GB'
+  const narrow = useMediaQuery('(max-width: 767px)')
+  const [quickBusy, setQuickBusy] = useState(false)
   const [isAdmin,    setIsAdmin]    = useState(false)
   const [contacts,   setContacts]   = useState<ContactRow[]>(initialContacts)
   const [q,          setQ]          = useState('')
@@ -165,7 +107,15 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
     }
   }
   const [activeId,   setActiveId]   = useState<number | null>(null)
-  const [editing,    setEditing]    = useState<ContactRow | 'new' | null>(null)
+  const [isCreating, setIsCreating] = useState(false)
+  const [editorNonce, setEditorNonce] = useState(0)
+  const [editorDirty, setEditorDirty] = useState(false)
+  const editorRef = useRef<ContactEditorPanelHandle | null>(null)
+  const pendingProceedRef = useRef<(() => void) | null>(null)
+  const activeIdRef = useRef<number | null>(null)
+  useEffect(() => {
+    activeIdRef.current = activeId
+  }, [activeId])
   const [selected,   setSelected]   = useState<Set<number>>(new Set())
   const [busy,       setBusy]       = useState(false)
   const [importing,  setImporting]  = useState(false)
@@ -290,8 +240,8 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
   const roles = useMemo(() => {
     const set = new Set<string>(allRoles)
     contacts.forEach((c) => { if (c.Role) set.add(c.Role) })
-    return [...set].sort((a, b) => a.localeCompare(b, 'fr'))
-  }, [contacts, allRoles])
+    return [...set].sort((a, b) => a.localeCompare(b, listLocale))
+  }, [contacts, allRoles, listLocale])
 
   const listVille = useCallback((id: number): string => {
     const addrs = addresses[id]
@@ -353,29 +303,29 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
       const dir = sortDir === 'asc' ? 1 : -1
       
       if (sortKey === 'alpha') {
-        return displayName(a).localeCompare(displayName(b), 'fr') * dir
+        return displayName(a).localeCompare(displayName(b), listLocale) * dir
       }
       if (sortKey === 'role') {
         const ra = (a.Role || 'Zzz').toLowerCase()
         const rb = (b.Role || 'Zzz').toLowerCase()
-        if (ra !== rb) return ra.localeCompare(rb, 'fr') * dir
-        return displayName(a).localeCompare(displayName(b), 'fr') * dir
+        if (ra !== rb) return ra.localeCompare(rb, listLocale) * dir
+        return displayName(a).localeCompare(displayName(b), listLocale) * dir
       }
       if (sortKey === 'ContactID') {
         return (a.ContactID - b.ContactID) * dir
       }
       if (sortKey === 'ville') {
-        return listVille(a.ContactID).localeCompare(listVille(b.ContactID), 'fr') * dir
+        return listVille(a.ContactID).localeCompare(listVille(b.ContactID), listLocale) * dir
       }
       if (sortKey === 'email') {
         const ea = primaryListEmail(a.ContactID, extra, emails)
         const eb = primaryListEmail(b.ContactID, extra, emails)
-        return ea.localeCompare(eb, 'fr') * dir
+        return ea.localeCompare(eb, listLocale) * dir
       }
       if (sortKey === 'phone') {
         const pa = primaryListPhone(a.ContactID, extra, phones)
         const pb = primaryListPhone(b.ContactID, extra, phones)
-        return pa.localeCompare(pb, 'fr') * dir
+        return pa.localeCompare(pb, listLocale) * dir
       }
       if (sortKey === 'works') {
         return ((workCounts.owner[a.ContactID] || 0) - (workCounts.owner[b.ContactID] || 0)) * dir
@@ -389,9 +339,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
       return 0
     })
     return list
-  }, [contacts, q, role, searchBy, sortKey, sortDir, extra, addresses, emails, phones, websites, socials, workCounts, listVille])
-
-  const active = filtered.find((c) => c.ContactID === activeId) ?? filtered[0] ?? null
+  }, [contacts, q, role, searchBy, sortKey, sortDir, extra, addresses, emails, phones, websites, socials, workCounts, listVille, listLocale])
 
   const handleCreated = useCallback((c: ContactRow, addrs: ContactAddress[], e: ContactEmail[], p: ContactPhone[], w: ContactWebsite[], s: ContactSocial[]) => {
     setContacts((prev) => [...prev, c])
@@ -402,7 +350,8 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
     setWebsites((prev) => ({ ...prev, [c.ContactID]: w }))
     setSocials((prev) => ({ ...prev, [c.ContactID]: s }))
     setActiveId(c.ContactID)
-    setEditing(null)
+    setIsCreating(false)
+    setEditorNonce((n) => n + 1)
   }, [])
 
   const handleUpdated = useCallback((c: ContactRow, addrs: ContactAddress[], e: ContactEmail[], p: ContactPhone[], w: ContactWebsite[], s: ContactSocial[]) => {
@@ -413,8 +362,79 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
     setPhones((prev) => ({ ...prev, [c.ContactID]: p }))
     setWebsites((prev) => ({ ...prev, [c.ContactID]: w }))
     setSocials((prev) => ({ ...prev, [c.ContactID]: s }))
-    setEditing(null)
+    setEditorNonce((n) => n + 1)
   }, [])
+
+  const dismissEditor = useCallback(() => {
+    setIsCreating(false)
+    setActiveId(null)
+  }, [])
+
+  const { attemptAction: attemptUnsavedProceed, unsavedDialog: navUnsavedDialog } = useUnsavedActionGuard({
+    isDirty: editorDirty,
+    onProceed: () => {
+      pendingProceedRef.current?.()
+      pendingProceedRef.current = null
+    },
+    performSave: async () => editorRef.current?.save() ?? Promise.resolve(false),
+  })
+
+  const requestSelectContact = useCallback(
+    (id: number) => {
+      if (id === activeId && !isCreating) return
+      const go = () => {
+        setActiveId(id)
+        setIsCreating(false)
+      }
+      if (!editorDirty) {
+        go()
+        return
+      }
+      pendingProceedRef.current = go
+      attemptUnsavedProceed()
+    },
+    [activeId, attemptUnsavedProceed, editorDirty, isCreating],
+  )
+
+  const requestStartCreate = useCallback(() => {
+    const go = () => {
+      setIsCreating(true)
+      setActiveId(null)
+    }
+    if (!editorDirty) {
+      go()
+      return
+    }
+    pendingProceedRef.current = go
+    attemptUnsavedProceed()
+  }, [attemptUnsavedProceed, editorDirty])
+
+  const requestOpenBatch = useCallback(() => {
+    const go = () => setBatchEditing(true)
+    if (!editorDirty) {
+      go()
+      return
+    }
+    pendingProceedRef.current = go
+    attemptUnsavedProceed()
+  }, [attemptUnsavedProceed, editorDirty])
+
+  const requestOpenMerge = useCallback(
+    (pair: [number, number], keepId: number) => {
+      const go = () => {
+        setMergePair(pair)
+        setMergeKeepId(keepId)
+        setMergeOpen(true)
+      }
+      if (!editorDirty) {
+        go()
+        return
+      }
+      pendingProceedRef.current = go
+      attemptUnsavedProceed()
+    },
+    [attemptUnsavedProceed, editorDirty],
+  )
 
   const toggleAll = () => {
     if (selected.size === filtered.length) setSelected(new Set())
@@ -482,43 +502,103 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
 
   async function handleDeleteSelected() {
     if (!selected.size) return
-    if (!confirm(`Supprimer ${selected.size} contacts ?`)) return
+    if (!confirm(t('contacts_delete_n_confirm_fmt').replace('{n}', String(selected.size)))) return
     setBusy(true)
     const ids = Array.from(selected)
     const res = await deleteContacts(ids)
     if ('error' in res) { alert(`${t('error_prefix')} ${res.error}`); setBusy(false); return }
     setContacts(prev => prev.filter(c => !selected.has(c.ContactID)))
     setSelected(new Set())
-    if (activeId && selected.has(activeId)) setActiveId(null)
+    if (activeId && selected.has(activeId)) {
+      setActiveId(null)
+      setIsCreating(false)
+    }
     setBusy(false)
   }
 
-  async function handleDeleteOne(id: number) {
-    if (!confirm('Supprimer ce contact ?')) return
+  async function handleQuickAdd(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setQuickBusy(true)
+    const fd = new FormData(e.currentTarget)
+    const res = await saveContactWithConflictCheck(fd)
+    setQuickBusy(false)
+    if ('error' in res) {
+      toast.error(`${t('error_prefix')} ${res.error}`)
+      return
+    }
+    toast.success(t('saveDoneUndoHint'))
+    e.currentTarget.reset()
+    refreshContactsClientData()
+    window.setTimeout(() => setActiveId(res.id), 500)
+  }
+
+  const handleDeleteOne = useCallback(async (id: number) => {
+    if (!confirm(t('contactDeleteOneConfirm'))) return
     setBusy(true)
     const res = await deleteContacts([id])
     if ('error' in res) { alert(`${t('error_prefix')} ${res.error}`); setBusy(false); return }
     setContacts(prev => prev.filter(c => c.ContactID !== id))
-    if (activeId === id) setActiveId(null)
+    if (activeIdRef.current === id) {
+      setActiveId(null)
+      setIsCreating(false)
+    }
     setBusy(false)
-  }
+  }, [t])
+
+  const requestDeleteActive = useCallback(() => {
+    if (activeId == null) return
+    const id = activeId
+    const go = () => void handleDeleteOne(id)
+    if (!editorDirty) {
+      void go()
+      return
+    }
+    pendingProceedRef.current = go
+    attemptUnsavedProceed()
+  }, [activeId, attemptUnsavedProceed, editorDirty, handleDeleteOne])
+
+  const showEditor = isCreating || activeId != null
+  const editorSourceRow = activeId != null ? contacts.find((c) => c.ContactID === activeId) ?? null : null
+  const editorContactResolved: ContactRow | null =
+    !isCreating && activeId != null && editorSourceRow ? { ...editorSourceRow, ...extra[activeId] } : null
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
 
-      {editing !== null && (
-        <ContactEditModal
-          contact={editing === 'new' ? null : { ...editing, ...extra[editing.ContactID] }}
-          initialAddresses={editing === 'new' ? [] : (addresses[(editing as ContactRow).ContactID] ?? [])}
-          initialEmails={editing === 'new' ? [] : (emails[(editing as ContactRow).ContactID] ?? [])}
-          initialPhones={editing === 'new' ? [] : (phones[(editing as ContactRow).ContactID] ?? [])}
-          initialWebsites={editing === 'new' ? [] : (websites[(editing as ContactRow).ContactID] ?? [])}
-          initialSocials={editing === 'new' ? [] : (socials[(editing as ContactRow).ContactID] ?? [])}
-          onClose={() => setEditing(null)}
-          onCreated={handleCreated}
-          onUpdated={handleUpdated}
-          isAdminUser={isAdmin}
-        />
+      {navUnsavedDialog}
+
+      {narrow && !showEditor && (
+        <div
+          data-testid="contacts-quick-add"
+          style={{
+            flexShrink: 0,
+            borderBottom: '1px solid var(--bd)',
+            padding: '12px max(12px, env(safe-area-inset-right)) 14px max(12px, env(safe-area-inset-left))',
+            background: 'var(--bg1)',
+          }}
+        >
+          <div className="t-eyebrow" style={{ marginBottom: 10, color: 'var(--tx3)' }}>{t('contacts_quick_title')}</div>
+          <form onSubmit={(e) => void handleQuickAdd(e)} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <input name="institution" placeholder={t('contacts_quick_inst')} style={{ ...FIS, minHeight: 44 }} />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <input name="prenom" placeholder={t('contacts_quick_first')} style={{ ...FIS, minHeight: 44 }} />
+              <input name="nom" placeholder={t('contacts_quick_last')} style={{ ...FIS, minHeight: 44 }} />
+            </div>
+            <input name="email" type="email" placeholder={t('contacts_quick_email')} style={{ ...FIS, minHeight: 44 }} />
+            <label className="t-mono-sm" style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', color: 'var(--tx2)' }}>
+              <input type="checkbox" name="is_private" value="true" style={{ width: 18, height: 18 }} />
+              {t('contacts_quick_private')}
+            </label>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', paddingBottom: 'max(4px, env(safe-area-inset-bottom, 0px))' }}>
+              <button type="submit" className="btn sm" disabled={quickBusy} style={{ minHeight: 44, flex: 1 }}>
+                {quickBusy ? t('contacts_quick_saving') : t('contacts_quick_save')}
+              </button>
+              <button type="button" className="btn ghost sm" style={{ minHeight: 44, flex: 1 }} onClick={requestStartCreate}>
+                {t('contacts_quick_full')}
+              </button>
+            </div>
+          </form>
+        </div>
       )}
 
       {batchEditing && (
@@ -534,7 +614,8 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
       {/* Filter bar */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 8,
-        padding: '12px 28px', borderBottom: '1px solid var(--bd)', flexShrink: 0,
+        padding: narrow ? '10px max(12px, env(safe-area-inset-right)) 10px max(12px, env(safe-area-inset-left))' : '12px 28px',
+        borderBottom: '1px solid var(--bd)', flexShrink: 0, flexWrap: 'wrap',
       }}>
         <div className="t-mono-sm" style={{ color: 'var(--tx3)', whiteSpace: 'nowrap' }}>
           {filtered.length}<span style={{ opacity: 0.5 }}>/{contacts.length}</span>
@@ -543,7 +624,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder={t('searchPlaceholderContacts')}
-          style={{ ...FIS, flex: 1, minWidth: 200 }}
+          style={{ ...FIS, flex: 1, minWidth: narrow ? 0 : 200, width: narrow ? '100%' : undefined }}
         />
         <select value={searchBy} onChange={(e) => setSearchBy(e.target.value)} style={{ ...FIS, maxWidth: 110 }}>
           <option value="all">{t('searchFieldAll')}</option>
@@ -559,8 +640,8 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
 
         {selected.size > 0 && (
           <div style={{ display: 'flex', gap: 4 }}>
-            <button className="btn sm" onClick={() => setBatchEditing(true)} disabled={busy} style={{ background: 'var(--ac)', borderColor: 'var(--ac)' }}>
-              Modifier ({selected.size})
+            <button className="btn sm" onClick={requestOpenBatch} disabled={busy} style={{ background: 'var(--ac)', borderColor: 'var(--ac)' }}>
+              {t('contacts_bulk_modify_fmt').replace('{n}', String(selected.size))}
             </button>
             {selected.size === 2 && (
               <button
@@ -568,18 +649,16 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
                 className="btn sm"
                 onClick={() => {
                   const sorted = Array.from(selected).sort((a, b) => a - b)
-                  setMergePair([sorted[0], sorted[1]])
-                  setMergeKeepId(sorted[0])
-                  setMergeOpen(true)
+                  requestOpenMerge([sorted[0], sorted[1]], sorted[0])
                 }}
                 disabled={busy}
                 style={{ background: 'var(--bg2)', borderColor: 'var(--bd)' }}
               >
-                Fusionner
+                {t('contacts_bulk_merge')}
               </button>
             )}
             <button className="btn sm" onClick={handleDeleteSelected} disabled={busy} style={{ background: 'var(--rust)', borderColor: 'var(--rust)' }}>
-              Suppr.
+              {t('contacts_bulk_delete_short')}
             </button>
           </div>
         )}
@@ -598,30 +677,30 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
                 borderRight: s === 'alpha' ? '1px solid var(--bd)' : 'none',
               }}
             >
-              {s === 'alpha' ? 'A–Z' : 'Rôle'}
+              {s === 'alpha' ? t('contacts_sort_alpha') : t('contactEditorRole')}
               {sortKey === s ? <span style={{ marginLeft: 4, color: 'var(--ac)', fontSize: 11 }}>{sortDir === 'asc' ? '↑' : '↓'}</span> : null}
             </button>
           ))}
         </div>
         <button
           className="btn ghost sm"
-          onClick={() => setEditing('new')}
+          onClick={requestStartCreate}
           style={{ whiteSpace: 'nowrap', flexShrink: 0 }}
         >
-          + Nouveau contact
+          {t('contacts_new_btn')}
         </button>
         <button
           className="btn ghost sm"
           onClick={() => setImporting(true)}
           style={{ whiteSpace: 'nowrap', flexShrink: 0 }}
         >
-          ↑ Google CSV
+          {t('contacts_google_csv')}
         </button>
         <button
           className="btn ghost sm"
           onClick={() => setUrlModalOpen(true)}
           style={{ whiteSpace: 'nowrap', flexShrink: 0 }}
-          title="Extraire institution, emails, tel. depuis une page web (+ IA optionnelle)"
+          title={t('contacts_url_tooltip')}
         >
           URL
         </button>
@@ -668,10 +747,10 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
             }}
           >
             <div id="merge-title" className="t-eyebrow" style={{ marginBottom: 12 }}>
-              Fusionner deux contacts
+              {t('contacts_merge_title')}
             </div>
             <p className="t-mono-sm" style={{ color: 'var(--tx3)', lineHeight: 1.6, marginBottom: 16 }}>
-              Conserver un contact : l&apos;autre sera supprimé après transfert des œuvres, commandes, documents et champs vides.
+              {t('contacts_merge_body')}
             </p>
             {[mergePair[0], mergePair[1]].map((id) => {
               const base = contacts.find((c) => c.ContactID === id)
@@ -698,7 +777,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
             })}
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
               <button type="button" className="btn ghost sm" onClick={() => setMergeOpen(false)} disabled={busy}>
-                Annuler
+                {t('cancel')}
               </button>
               <button
                 type="button"
@@ -722,36 +801,67 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
                   setMergePair(null)
                 }}
               >
-                {busy ? '…' : 'Fusionner'}
+                {busy ? t('loading') : t('contacts_merge_submit')}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Table + detail */}
-      <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-        <div style={{ flex: 1, overflow: 'auto', borderRight: '1px solid var(--bd)' }}>
-          <table className="tbl" style={{ width: '100%', tableLayout: 'fixed' }}>
+      {/* Table + editor drawer */}
+      <div
+        style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: narrow && showEditor ? 'column' : 'row',
+          minHeight: 0,
+          minWidth: 0,
+        }}
+      >
+        <div
+          style={{
+            flex: 1,
+            minWidth: 0,
+            overflow: narrow ? 'auto' : 'auto',
+            overflowX: narrow ? 'auto' : undefined,
+            borderRight: narrow ? 'none' : '1px solid var(--bd)',
+            borderBottom: narrow && showEditor ? '1px solid var(--bd)' : undefined,
+            maxHeight: narrow && showEditor ? 'min(42vh, 360px)' : undefined,
+          }}
+        >
+          <table
+            className="tbl"
+            style={{
+              width: '100%',
+              tableLayout: 'fixed',
+              /* Fixed sibling cols sum ~886px; without a floor the lone `auto` name col collapses + clips on mid-width panes */
+              minWidth: narrow ? Math.max(720, 886 + 168) : 886 + 168,
+            }}
+          >
             <thead>
               <tr>
                 <th style={{ width: 40 }}>
                   <input type="checkbox" checked={selected.size > 0 && selected.size === filtered.length} onChange={toggleAll} />
                 </th>
-                <th onClick={() => toggleSort('ContactID')} style={{ width: 46, cursor: 'pointer' }}>ID <SortInd k="ContactID" current={sortKey} dir={sortDir} /></th>
-                <th onClick={() => toggleSort('alpha')} style={{ width: 'auto', cursor: 'pointer' }}>Nom / Institution <SortInd k="alpha" current={sortKey} dir={sortDir} /></th>
-                <th onClick={() => toggleSort('role')} style={{ width: 120, cursor: 'pointer' }}>Rôle <SortInd k="role" current={sortKey} dir={sortDir} /></th>
-                <th onClick={() => toggleSort('ville')} style={{ width: 180, cursor: 'pointer' }}>Ville(s) <SortInd k="ville" current={sortKey} dir={sortDir} /></th>
-                <th onClick={() => toggleSort('email')} style={{ width: 220, cursor: 'pointer' }}>Email <SortInd k="email" current={sortKey} dir={sortDir} /></th>
-                <th onClick={() => toggleSort('phone')} style={{ width: 160, cursor: 'pointer' }}>Tél. <SortInd k="phone" current={sortKey} dir={sortDir} /></th>
-                <th onClick={() => toggleSort('works')} style={{ width: 40, cursor: 'pointer' }} className="num" title="Oeuvres associées">Œ <SortInd k="works" current={sortKey} dir={sortDir} /></th>
-                <th onClick={() => toggleSort('loc')} style={{ width: 40, cursor: 'pointer' }} className="num" title="En localisation">Loc <SortInd k="loc" current={sortKey} dir={sortDir} /></th>
-                <th onClick={() => toggleSort('buyer')} style={{ width: 40, cursor: 'pointer' }} className="num" title="Achats">Ach <SortInd k="buyer" current={sortKey} dir={sortDir} /></th>
+                <th onClick={() => toggleSort('ContactID')} style={{ width: 46, cursor: 'pointer' }}>{t('contacts_col_id')} <SortInd k="ContactID" current={sortKey} dir={sortDir} /></th>
+                <th
+                  onClick={() => toggleSort('alpha')}
+                  style={{ width: 'auto', minWidth: 168, cursor: 'pointer' }}
+                >
+                  {t('contacts_col_name_institution')} <SortInd k="alpha" current={sortKey} dir={sortDir} />
+                </th>
+                <th onClick={() => toggleSort('role')} style={{ width: 120, cursor: 'pointer' }}>{t('contactEditorRole')} <SortInd k="role" current={sortKey} dir={sortDir} /></th>
+                <th onClick={() => toggleSort('ville')} style={{ width: 180, cursor: 'pointer' }}>{t('contacts_col_cities')} <SortInd k="ville" current={sortKey} dir={sortDir} /></th>
+                <th onClick={() => toggleSort('email')} style={{ width: 220, cursor: 'pointer' }}>{t('contacts_col_email')} <SortInd k="email" current={sortKey} dir={sortDir} /></th>
+                <th onClick={() => toggleSort('phone')} style={{ width: 160, cursor: 'pointer' }}>{t('contacts_col_phone_abbr')} <SortInd k="phone" current={sortKey} dir={sortDir} /></th>
+                <th onClick={() => toggleSort('works')} style={{ width: 40, cursor: 'pointer' }} className="num" title={t('contactEditorWorksLinked')}>{t('contacts_col_works_abbr')} <SortInd k="works" current={sortKey} dir={sortDir} /></th>
+                <th onClick={() => toggleSort('loc')} style={{ width: 40, cursor: 'pointer' }} className="num" title={t('contactEditorWorksLoc')}>{t('contacts_col_loc_abbr')} <SortInd k="loc" current={sortKey} dir={sortDir} /></th>
+                <th onClick={() => toggleSort('buyer')} style={{ width: 40, cursor: 'pointer' }} className="num" title={t('contactEditorWorksBuyer')}>{t('contacts_col_buyer_abbr')} <SortInd k="buyer" current={sortKey} dir={sortDir} /></th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((c) => {
-                const isFoc    = c.ContactID === (active?.ContactID ?? -1)
+                const isFoc    = c.ContactID === activeId && !isCreating
                 const ex       = extra[c.ContactID]
                 const rowEmail = primaryListEmail(c.ContactID, extra, emails)
                 const rowPhone = primaryListPhone(c.ContactID, extra, phones)
@@ -759,7 +869,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
                 return (
                   <tr
                     key={c.ContactID}
-                    onClick={() => setActiveId(c.ContactID)}
+                    onClick={() => requestSelectContact(c.ContactID)}
                     style={{ cursor: 'pointer', background: isFoc ? 'var(--bg2)' : '', opacity: inactive ? 0.45 : 1 }}
                   >
                     <td>
@@ -770,16 +880,25 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
                       />
                     </td>
                     <td style={{ color: 'var(--tx3)', fontSize: 11 }}>{c.ContactID}</td>
-                    <td style={{ fontWeight: isFoc ? 600 : undefined, fontSize: 13 }}>
+                    <td
+                      style={{
+                        fontWeight: isFoc ? 600 : undefined,
+                        fontSize: 13,
+                        minWidth: 168,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
                       {displayName(c)}
                       {conflicts.some(conf => conf.public_contact_id === c.ContactID) && (
                         <span style={{ marginLeft: 8, background: 'var(--rust)', color: '#fff', fontSize: 8, padding: '1px 4px', borderRadius: 2, letterSpacing: 0.5, verticalAlign: 'middle' }}>
-                          CONFLICT
+                          {t('contacts_conflict_badge')}
                         </span>
                       )}
                     </td>
-                    <td style={{ color: 'var(--tx3)', fontSize: 12 }}>{c.Role ?? '—'}</td>
-                    <td style={{ color: 'var(--tx3)', fontSize: 12 }}>{listVille(c.ContactID)}</td>
+                    <td style={{ color: 'var(--tx3)', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.Role ?? '—'}</td>
+                    <td style={{ color: 'var(--tx3)', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{listVille(c.ContactID)}</td>
                     <td style={{ color: 'var(--tx3)', fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{rowEmail || <span style={{ opacity: 0.3 }}>…</span>}</td>
                     <td style={{ color: 'var(--tx3)', fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{rowPhone || '—'}</td>
                     <td className="num">{workCounts.owner[c.ContactID] ?? '—'}</td>
@@ -792,265 +911,45 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
           </table>
         </div>
 
-        {active ? (
-          <ContactDetail
-            contact={{ ...active, ...extra[active.ContactID] }}
-            addresses={addresses[active.ContactID] ?? []}
-            emails={emails[active.ContactID] ?? []}
-            phones={phones[active.ContactID] ?? []}
-            websites={websites[active.ContactID] ?? []}
-            socials={socials[active.ContactID] ?? []}
-            workCounts={workCounts}
+        {showEditor && (isCreating || (activeId != null && editorContactResolved)) ? (
+          <ContactEditorPanel
+            key={`${isCreating ? 'new' : activeId}-${editorNonce}`}
+            ref={editorRef}
+            contact={isCreating ? null : editorContactResolved}
+            initialAddresses={isCreating || activeId == null ? [] : (addresses[activeId] ?? [])}
+            initialEmails={isCreating || activeId == null ? [] : (emails[activeId] ?? [])}
+            initialPhones={isCreating || activeId == null ? [] : (phones[activeId] ?? [])}
+            initialWebsites={isCreating || activeId == null ? [] : (websites[activeId] ?? [])}
+            initialSocials={isCreating || activeId == null ? [] : (socials[activeId] ?? [])}
+            roleOptions={roles}
+            isAdminUser={isAdmin}
+            narrow={narrow}
             oeuvres={oeuvres}
-            onEdit={() => setEditing({ ...active, ...extra[active.ContactID] })}
-            onDelete={() => handleDeleteOne(active.ContactID)}
+            onDirtyChange={setEditorDirty}
+            onCreated={handleCreated}
+            onUpdated={handleUpdated}
+            onDismissEditor={dismissEditor}
+            onDeleteContact={!isCreating && activeId != null ? requestDeleteActive : undefined}
+            baselineEpoch={editorNonce}
           />
         ) : (
-          <div style={{ width: 340, padding: 20, color: 'var(--tx3)' }} className="t-mono-sm">—</div>
+          !narrow && (
+            <div style={{ width: 120, flexShrink: 0, padding: 20, color: 'var(--tx3)' }} className="t-mono-sm">
+              —
+            </div>
+          )
         )}
       </div>
     </div>
   )
 }
 
-// ── Detail panel ─────────────────────────────────────────────────────
-
-function ContactDetail({
-  contact, addresses, emails, phones, websites, socials, workCounts, oeuvres, onEdit, onDelete,
-}: {
-  contact:    ContactRow
-  addresses:  ContactAddress[]
-  emails:     ContactEmail[]
-  phones:     ContactPhone[]
-  websites:   ContactWebsite[]
-  socials:    ContactSocial[]
-  workCounts: { owner: Record<number, number>; loc: Record<number, number>; buyer: Record<number, number> }
-  oeuvres:    Oeuvre[]
-  onEdit:     () => void
-  onDelete:   () => void
-}) {
-  const { t } = useI18n()
-  const id   = contact.ContactID
-  const works = oeuvres.filter((o) => o.ContactID === id)
-  const locs  = oeuvres.filter((o) => o.LocalisationID === id)
-  const buys  = oeuvres.filter((o) => o.AcheteurID === id)
-  
-  function Row({ label, value, href, icon }: { label: string; value: React.ReactNode; href?: string; icon?: string }) {
-    if (!value && value !== 0) return null
-    return (
-      <div style={{ display: 'flex', gap: 8, padding: '5px 0', borderBottom: '1px solid var(--bd)' }}>
-        <div className="t-mono-sm" style={{ color: 'var(--tx3)', minWidth: 120, flexShrink: 0 }}>
-          {icon && <span style={{ marginRight: 6, opacity: 0.7 }}>{icon}</span>}
-          {label}
-        </div>
-        <div style={{ fontSize: 13, color: 'var(--tx)', wordBreak: 'break-word', flex: 1 }}>
-          {href
-            ? <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--ac)', textDecoration: 'none' }}>{value}</a>
-            : value}
-        </div>
-      </div>
-    )
-  }
-
-  // Fallback to legacy single fields if new lists are empty
-  const hasMultiContact = emails.length > 0 || phones.length > 0 || websites.length > 0 || socials.length > 0
-  const legacyEmail = contact.Email
-  const legacyPhone1 = fmtPhone(contact.IndicatifPays1, contact.Téléphone1)
-  const legacyPhone2 = fmtPhone(contact.IndicatifPays2, contact.Téléphone2)
-  const legacyWeb = contact.Website
-
-  return (
-    <div style={{ width: 340, flexShrink: 0, overflow: 'auto', padding: 20 }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8 }}>
-        <div style={{ fontWeight: 700, fontSize: 18, color: 'var(--tx)', flex: 1, marginRight: 8 }}>
-          {displayName(contact)}
-        </div>
-        <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-          <button type="button" className="btn ghost sm" onClick={onEdit}>{t('edit')}</button>
-          <button type="button" className="btn ghost sm" onClick={onDelete} style={{ color: 'var(--rust)' }}>{t('delete')}</button>
-        </div>
-      </div>
-
-      {contact.Actif === false && (
-        <div className="t-mono-sm" style={{ color: 'var(--tx3)', marginBottom: 8 }}>Inactif</div>
-      )}
-
-      {/* Identity */}
-      <div style={{ marginBottom: 12 }}>
-        <Row label="ID"           value={contact.ContactID} />
-        <Row label="Institution"  value={contact.NomInstitution} />
-        <Row label="Nom"          value={[contact.Prénom, contact.Nom].filter(Boolean).join(' ')} />
-        <Row label="Rôle"         value={contact.Role} />
-        <Row label="Genre"        value={contact.Genre} />
-        {contact.PersonneResponsable && (
-          <Row label="Responsable" value={`${contact.PersonneResponsable}${contact.RoleResponsable ? ` · ${contact.RoleResponsable}` : ''}`} />
-        )}
-      </div>
-
-      {/* Contact details */}
-      <div style={{ marginBottom: 12 }}>
-        <div className="t-label" style={{ marginBottom: 4 }}>Contact</div>
-        
-        {emails.length > 0 ? (
-          emails.map((e, idx) => <Row key={idx} label={e.label || 'Email'} value={e.email} href={`mailto:${e.email}`} icon="✉" />)
-        ) : legacyEmail && (
-          <Row label="Email" value={legacyEmail} href={`mailto:${legacyEmail}`} icon="✉" />
-        )}
-
-        {phones.length > 0 ? (
-          phones.map((p, idx) => (
-            <Row key={idx} label={p.label || 'Tél.'} value={fmtPhone(p.country_code, p.phone)} href={`tel:${p.phone}`} icon="☏" />
-          ))
-        ) : (legacyPhone1 || legacyPhone2) && (
-          <>
-            {legacyPhone1 && <Row label="Tél. 1" value={legacyPhone1} href={`tel:${legacyPhone1.replace(/\s/g, '')}`} icon="☏" />}
-            {legacyPhone2 && <Row label="Tél. 2" value={legacyPhone2} href={`tel:${legacyPhone2.replace(/\s/g, '')}`} icon="☏" />}
-          </>
-        )}
-
-        {websites.length > 0 ? (
-          websites.map((w, idx) => (
-            <Row key={idx} label={w.label || 'Web'} value={w.url} href={w.url.startsWith('http') ? w.url : `https://${w.url}`} icon="🌐" />
-          ))
-        ) : legacyWeb && (
-          <Row label="Web" value={legacyWeb} href={legacyWeb.startsWith('http') ? legacyWeb : `https://${legacyWeb}`} icon="🌐" />
-        )}
-      </div>
-
-      {/* Multiple addresses */}
-      {addresses.length > 0 ? (
-        <div style={{ marginBottom: 12 }}>
-          <div className="t-label" style={{ marginBottom: 4 }}>
-            {addresses.length === 1 ? 'Adresse' : `Adresses (${addresses.length})`}
-          </div>
-          {addresses.map((addr, i) => {
-            const parts = [
-              addr.adresse,
-              [addr.code_postal, addr.ville].filter(Boolean).join(' '),
-              addr.pays,
-            ].filter(Boolean)
-            if (parts.length === 0) return null
-            return (
-              <div key={addr.id ?? i} style={{ marginBottom: i < addresses.length - 1 ? 18 : 0, padding: '8px 12px', background: 'var(--bg1)', borderRadius: 2 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                  <div className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase' }}>
-                    {addr.label || 'Principal'}
-                  </div>
-                </div>
-                <div style={{ fontSize: 13, color: 'var(--tx)', lineHeight: 1.6 }}>
-                  {parts.map((line, li) => <div key={li}>{line}</div>)}
-                </div>
-                {addr.shipping_notes && (
-                  <div style={{ marginTop: 8, paddingTop: 6, borderTop: '1px dashed var(--bd)', fontSize: 12, color: 'var(--ac)', fontStyle: 'italic' }}>
-                    <span style={{ fontWeight: 600, textTransform: 'uppercase', fontSize: 10 }}>Logistique : </span>
-                    {addr.shipping_notes}
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      ) : (contact.Adresse || contact.CodePostal || contact.Ville || contact.Pays) ? (
-        <div style={{ marginBottom: 12 }}>
-          <div className="t-label" style={{ marginBottom: 4 }}>Adresse</div>
-          <div style={{ fontSize: 13, color: 'var(--tx)', lineHeight: 1.6 }}>
-            {[
-              contact.Adresse,
-              [contact.CodePostal, contact.Ville].filter(Boolean).join(' '),
-              contact.Pays,
-            ]
-              .filter(Boolean)
-              .map((line, i) => (
-                <div key={i}>{line}</div>
-              ))}
-          </div>
-        </div>
-      ) : null}
-
-      {/* Social */}
-      {(socials.length > 0 || contact.Instagram || contact.LinkedIn || contact.Facebook || contact.Twitter) && (
-        <div style={{ marginBottom: 12 }}>
-          <div className="t-label" style={{ marginBottom: 4 }}>Réseaux</div>
-          {socials.map((s, idx) => {
-            const baseUrl = s.platform.toLowerCase() === 'instagram' ? 'https://instagram.com/' :
-                            s.platform.toLowerCase() === 'linkedin' ? 'https://linkedin.com/in/' :
-                            s.platform.toLowerCase() === 'facebook' ? 'https://facebook.com/' :
-                            s.platform.toLowerCase() === 'x' ? 'https://x.com/' : ''
-            const url = s.handle.startsWith('http') ? s.handle : `${baseUrl}${s.handle.replace('@', '')}`
-            return <Row key={idx} label={s.platform} value={s.handle} href={url} />
-          })}
-          {socials.length === 0 && (
-            <>
-              {contact.Instagram && <Row label="Instagram" value={contact.Instagram} href={`https://instagram.com/${contact.Instagram.replace('@', '')}`} />}
-              {contact.LinkedIn && <Row label="LinkedIn" value={contact.LinkedIn} href={`https://linkedin.com/in/${contact.LinkedIn}`} />}
-              {contact.Facebook && <Row label="Facebook" value={contact.Facebook} href={`https://facebook.com/${contact.Facebook}`} />}
-              {contact.Twitter && <Row label="Twitter / X" value={contact.Twitter} href={`https://x.com/${contact.Twitter.replace('@', '')}`} />}
-            </>
-          )}
-        </div>
-      )}
-
-      {/* Notes */}
-      {contact.Notes && (
-        <div style={{ marginBottom: 16 }}>
-          <div className="t-label" style={{ marginBottom: 6 }}>Notes</div>
-          <div style={{ fontSize: 13, color: 'var(--tx2)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{contact.Notes}</div>
-        </div>
-      )}
-
-      {/* Works */}
-      {works.length > 0 && (
-        <div style={{ marginBottom: 14 }}>
-          <WorkMini label="Oeuvres associées" items={works} />
-          <button className="btn sm ghost" onClick={() => {
-            const win = (window as any)
-            if (win.setSelection) {
-              win.setSelection(new Set(works.map(o => o.OeuvreID)))
-              alert(`${works.length} œuvres sélectionnées dans l'inventaire.`)
-            }
-          }} style={{ width: '100%', fontSize: 9 }}>Sélectionner ces {works.length} œuvres</button>
-        </div>
-      )}
-      {locs.length  > 0 && <WorkMini label="En localisation"   items={locs}  />}
-      {buys.length  > 0 && <WorkMini label="Achats"             items={buys}  />}
-    </div>
-  )
-}
-
-function WorkMini({ label, items }: { label: string; items: Oeuvre[] }) {
-  return (
-    <div style={{ marginBottom: 14 }}>
-      <div className="t-label" style={{ marginBottom: 6 }}>{label} ({items.length})</div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 140, overflow: 'auto' }}>
-        {items.slice(0, 30).map((o) => (
-          <div key={o.OeuvreID} className="t-mono-sm" style={{ color: 'var(--tx2)' }}>
-            #{o.OeuvreID} {o.Titre ?? '—'}
-          </div>
-        ))}
-        {items.length > 30 && (
-          <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>+ {items.length - 30} autres</div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-// ── Modal sub-components ──────────────────────────────────────────────
+// ── Modal sub-components (batch edit) ───────────────────────────────
 
 const FIS: React.CSSProperties = {
   width: '100%', padding: '6px 8px', fontSize: 11,
   background: 'var(--bg0)', border: '1px solid var(--bd)',
   color: 'var(--tx)', outline: 'none',
-}
-
-function Section({ title }: { title: string }) {
-  return (
-    <div style={{
-      fontSize: 8, letterSpacing: '0.12em', textTransform: 'uppercase',
-      color: 'var(--tx3)', marginTop: 16, marginBottom: 8,
-      paddingBottom: 4, borderBottom: '1px solid var(--bd)',
-    }}>{title}</div>
-  )
 }
 
 function FRow({ label, children }: { label: string; children: React.ReactNode }) {
@@ -1062,541 +961,12 @@ function FRow({ label, children }: { label: string; children: React.ReactNode })
   )
 }
 
-function Grid2({ children }: { children: React.ReactNode }) {
-  return <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 12px' }}>{children}</div>
-}
-
-// ── ContactEditModal ──────────────────────────────────────────────────
-
-type FormState = {
-  NomInstitution: string; Nom: string; Prénom: string; Genre: string; Role: string
-  Email: string; IndicatifPays1: string; Téléphone1: string; IndicatifPays2: string; Téléphone2: string
-  Website: string
-  Instagram: string; LinkedIn: string; Facebook: string; Twitter: string
-  PersonneResponsable: string; RoleResponsable: string; Notes: string; Actif: boolean
-  is_private: boolean
-}
-
-type AddrForm = {
-  id?:         number
-  label:       string
-  adresse:     string
-  code_postal: string
-  ville:       string
-  pays:        string
-  shipping_notes: string
-}
-
-function emptyAddr(): AddrForm {
-  return { label: '', adresse: '', code_postal: '', ville: '', pays: '', shipping_notes: '' }
-}
-
-function ContactEditModal({
-  contact, initialAddresses, initialEmails, initialPhones, initialWebsites, initialSocials, onClose, onCreated, onUpdated, isAdminUser,
-}: {
-  contact?:          ContactRow | null
-  initialAddresses:  ContactAddress[]
-  initialEmails:     ContactEmail[]
-  initialPhones:     ContactPhone[]
-  initialWebsites:   ContactWebsite[]
-  initialSocials:    ContactSocial[]
-  onClose:           () => void
-  onCreated:         (c: ContactRow, addrs: ContactAddress[], e: ContactEmail[], p: ContactPhone[], w: ContactWebsite[], s: ContactSocial[]) => void
-  onUpdated:         (c: ContactRow, addrs: ContactAddress[], e: ContactEmail[], p: ContactPhone[], w: ContactWebsite[], s: ContactSocial[]) => void
-  isAdminUser:       boolean
-}) {
-  const isNew = !contact
-
-  const [roleOptions, setRoleOptions] = useState<string[]>([])
-  useEffect(() => {
-    ;(createClient().from('tblRole') as any)
-      .select('Nom').order('Nom')
-      .then(({ data }: { data: { Nom: string }[] | null }) => {
-        const defaults = ['Team', 'Client', 'Gallery', 'Artist', 'Supplier', 'Press', 'Museum', 'Collector', 'Restorer', 'Framer']
-        const fetched = data ? data.map((r) => r.Nom) : []
-        const merged = Array.from(new Set([...defaults, ...fetched])).sort()
-        setRoleOptions(merged)
-      })
-  }, [])
-
-  const [form, setForm] = useState<FormState>({
-    NomInstitution:     contact?.NomInstitution     ?? '',
-    Nom:                contact?.Nom                ?? '',
-    Prénom:             contact?.Prénom             ?? '',
-    Genre:              contact?.Genre              ?? '',
-    Role:               contact?.Role               ?? '',
-    Email:              contact?.Email              ?? '',
-    IndicatifPays1:     contact?.IndicatifPays1     ?? '',
-    Téléphone1:         contact?.Téléphone1         ?? '',
-    IndicatifPays2:     contact?.IndicatifPays2     ?? '',
-    Téléphone2:         contact?.Téléphone2         ?? '',
-    Website:            contact?.Website            ?? '',
-    Instagram:          contact?.Instagram          ?? '',
-    LinkedIn:           contact?.LinkedIn           ?? '',
-    Facebook:           contact?.Facebook           ?? '',
-    Twitter:            contact?.Twitter            ?? '',
-    PersonneResponsable: contact?.PersonneResponsable ?? '',
-    RoleResponsable:    contact?.RoleResponsable    ?? '',
-    Notes:              contact?.Notes              ?? '',
-    Actif:              contact?.Actif              ?? true,
-    is_private:         contact?.is_private         ?? false,
-  })
-
-  const [addrList, setAddrList] = useState<AddrForm[]>(
-    initialAddresses.length > 0
-      ? initialAddresses.map((a) => ({
-          id:          a.id,
-          label:       a.label ?? '',
-          adresse:     a.adresse ?? '',
-          code_postal: a.code_postal ?? '',
-          ville:       a.ville ?? '',
-          pays:        a.pays ?? '',
-          shipping_notes: a.shipping_notes ?? '',
-        }))
-      : [{
-          label:       'Principal',
-          adresse:     contact?.Adresse ?? '',
-          code_postal: contact?.CodePostal ?? '',
-          ville:       contact?.Ville ?? '',
-          pays:        contact?.Pays ?? '',
-          shipping_notes: '',
-        }]
-  )
-
-  const [emailList, setEmailList] = useState<ContactEmail[]>(initialEmails)
-  const [phoneList, setPhoneList] = useState<ContactPhone[]>(initialPhones)
-  const [webList,   setWebList]   = useState<ContactWebsite[]>(initialWebsites)
-  const [socialList, setSocialList] = useState<ContactSocial[]>(initialSocials)
-
-  const [busy, setBusy] = useState(false)
-  const [err,  setErr]  = useState<string | null>(null)
-
-  function f(k: keyof Omit<FormState, 'Actif'>) {
-    return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-      setForm((p) => ({ ...p, [k]: e.target.value }))
-    }
-  }
-
-  function b(k: keyof Omit<FormState, 'Actif' | 'Email' | 'Website' | 'Instagram' | 'LinkedIn' | 'Facebook' | 'Twitter' | 'Notes'>) {
-    return (e: React.FocusEvent<HTMLInputElement>) => {
-      setForm((p) => ({ ...p, [k]: cap(e.target.value) }))
-    }
-  }
-
-  function addAddr() {
-    setAddrList((prev) => [...prev, emptyAddr()])
-  }
-
-  function removeAddr(i: number) {
-    setAddrList((prev) => prev.filter((_, j) => j !== i))
-  }
-
-  function updateAddr(i: number, k: keyof AddrForm, v: string) {
-    setAddrList((prev) => {
-      const next = prev.map((a, j) => j === i ? { ...a, [k]: v } : a)
-      // Address induction for FR
-      if (k === 'code_postal' && v.length === 5 && /^\d+$/.test(v)) {
-        fetch(`https://api-adresse.data.gouv.fr/search/?q=${v}&type=municipality&limit=1`)
-          .then(r => r.json())
-          .then(data => {
-            const feat = data.features?.[0]
-            if (feat) {
-              const city = feat.properties.city
-              setAddrList(cur => cur.map((a, j) => j === i ? { ...a, ville: city, pays: 'France' } : a))
-            }
-          })
-          .catch(() => {
-             // Fallback to international zip
-             fetch(`https://api.zippopotam.us/fr/${v}`)
-              .then(r => r.json())
-              .then(data => {
-                if (data.places?.[0]) {
-                  const city = data.places[0]['place name']
-                  setAddrList(cur => cur.map((a, j) => j === i ? { ...a, ville: city, pays: 'France' } : a))
-                }
-              }).catch(() => {})
-          })
-      }
-      return next
-    })
-  }
-
-  async function handleSave(): Promise<boolean> {
-    setBusy(true)
-    setErr(null)
-    try {
-      const sb = createClient()
-      // Filter out completely empty address blocks
-      const validAddrs = addrList.filter((a) => a.adresse || a.ville || a.pays || a.code_postal)
-
-      // Sync primary Ville/Pays to Contact table for map/list compat
-      const primaryVille = validAddrs[0]?.ville || null
-      const primaryPays  = validAddrs[0]?.pays  || null
-
-      const payload: Record<string, unknown> = {
-        NomInstitution:     form.NomInstitution     || null,
-        Nom:                form.Nom                || null,
-        Prénom:             form.Prénom             || null,
-        Genre:              form.Genre              || null,
-        Role:               form.Role               || null,
-        Email:              form.Email              || null,
-        IndicatifPays1:     form.IndicatifPays1     || null,
-        Téléphone1:         form.Téléphone1         || null,
-        IndicatifPays2:     form.IndicatifPays2     || null,
-        Téléphone2:         form.Téléphone2         || null,
-        Website:            form.Website            || null,
-        Adresse:            validAddrs[0]?.adresse  || null,
-        CodePostal:         validAddrs[0]?.code_postal || null,
-        Ville:              primaryVille,
-        Pays:               primaryPays,
-        Instagram:          form.Instagram          || null,
-        LinkedIn:           form.LinkedIn           || null,
-        Facebook:           form.Facebook           || null,
-        Twitter:            form.Twitter            || null,
-        PersonneResponsable: form.PersonneResponsable || null,
-        RoleResponsable:    form.RoleResponsable    || null,
-        Notes:              form.Notes              || null,
-        Actif:              form.Actif,
-        is_private:         isAdminUser ? form.is_private : false,
-      }
-
-      let contactId: number
-      const normalizedRole = form.Role === 'Encadreur' ? 'Framer' : form.Role
-      payload.Role = normalizedRole
-
-      if (isNew) {
-        const { data: maxRow } = await (sb.from('Contact') as any)
-          .select('ContactID').order('ContactID', { ascending: false }).limit(1).single()
-        contactId = ((maxRow as any)?.ContactID ?? 0) + 1
-        payload.ContactID = contactId
-        const { error } = await (sb.from('Contact') as any).insert(payload)
-        if (error) throw new Error((error as any).message)
-      } else {
-        contactId = contact!.ContactID
-        const { error } = await (sb.from('Contact') as any)
-          .update(payload).eq('ContactID', contactId)
-        if (error) throw new Error((error as any).message)
-      }
-
-      // Replace all sub-data for this contact
-      await Promise.all([
-        (sb.from('contact_addresses') as any).delete().eq('contact_id', contactId),
-        (sb.from('contact_emails') as any).delete().eq('contact_id', contactId),
-        (sb.from('contact_phones') as any).delete().eq('contact_id', contactId),
-        (sb.from('contact_websites') as any).delete().eq('contact_id', contactId),
-        (sb.from('contact_socials') as any).delete().eq('contact_id', contactId),
-      ])
-
-      let savedAddrs: ContactAddress[] = []
-      if (validAddrs.length > 0) {
-        const insertRows = validAddrs.map((a, i) => ({
-          contact_id:  contactId,
-          label:       a.label || (validAddrs.length === 1 ? 'Principal' : `Adresse ${i + 1}`),
-          adresse:     a.adresse  || null,
-          code_postal: a.code_postal || null,
-          ville:       a.ville    || null,
-          pays:        a.pays     || null,
-          position:    i,
-          shipping_notes: a.shipping_notes || null,
-        }))
-        const { data, error } = await (sb.from('contact_addresses') as any).insert(insertRows).select()
-        if (error) throw error
-        savedAddrs = data || []
-      }
-
-      let savedEmails: ContactEmail[] = []
-      if (emailList.length > 0) {
-        const rows = emailList.map(e => ({ contact_id: contactId, email: e.email, label: e.label, is_primary: e.is_primary }))
-        const { data, error } = await (sb.from('contact_emails') as any).insert(rows).select()
-        if (error) throw error
-        savedEmails = data || []
-      }
-
-      let savedPhones: ContactPhone[] = []
-      if (phoneList.length > 0) {
-        const rows = phoneList.map(p => ({ contact_id: contactId, phone: p.phone, country_code: p.country_code, label: p.label, is_primary: p.is_primary }))
-        const { data, error } = await (sb.from('contact_phones') as any).insert(rows).select()
-        if (error) throw error
-        savedPhones = data || []
-      }
-
-      let savedWebs: ContactWebsite[] = []
-      if (webList.length > 0) {
-        const rows = webList.map(w => ({ contact_id: contactId, url: w.url, label: w.label }))
-        const { data, error } = await (sb.from('contact_websites') as any).insert(rows).select()
-        if (error) throw error
-        savedWebs = data || []
-      }
-
-      let savedSocials: ContactSocial[] = []
-      if (socialList.length > 0) {
-        const rows = socialList.map(s => ({ contact_id: contactId, platform: s.platform, handle: s.handle }))
-        const { data, error } = await (sb.from('contact_socials') as any).insert(rows).select()
-        if (error) throw error
-        savedSocials = data || []
-      }
-
-      const savedContact = { ContactID: contactId, ...payload } as ContactRow
-      if (isNew) {
-        onCreated(savedContact, savedAddrs, savedEmails, savedPhones, savedWebs, savedSocials)
-      } else {
-        onUpdated(savedContact, savedAddrs, savedEmails, savedPhones, savedWebs, savedSocials)
-      }
-      return true
-    } catch (e) {
-      setErr(String(e))
-      return false
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const contactKey = contact?.ContactID ?? 'new'
-  const formPayload = useMemo(
-    () => JSON.stringify({ form, addrList, emailList, phoneList, webList, socialList }),
-    [form, addrList, emailList, phoneList, webList, socialList],
-  )
-  const [baselinePayload, setBaselinePayload] = useState<string | null>(null)
-  useLayoutEffect(() => {
-    setBaselinePayload(formPayload)
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- baseline only when switching contact
-  }, [contactKey])
-  const isDirty = baselinePayload != null && formPayload !== baselinePayload
-
-  const performSave = async () => handleSave()
-
-  const { attemptClose, unsavedDialog } = useUnsavedCloseGuard({
-    isDirty,
-    onClose,
-    performSave,
-  })
-
-  return (
-    <>
-      {unsavedDialog}
-      <div
-        style={{
-          position: 'fixed', inset: 0, zIndex: 200,
-          background: 'rgba(0,0,0,0.6)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          padding: 24,
-        }}
-        onClick={attemptClose}
-      >
-      <div
-        style={{
-          background: 'var(--bg1)', border: '1px solid var(--bd)',
-          width: '100%', maxWidth: 600,
-          maxHeight: '90vh', overflow: 'auto',
-          padding: 28,
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <div style={{ fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--tx3)' }}>
-            {isNew ? 'Nouveau contact' : `Modifier · #${contact!.ContactID}`}
-          </div>
-          <button type="button" className="btn ghost sm" onClick={attemptClose} disabled={busy}>✕</button>
-        </div>
-
-        {/* Identité */}
-        <Section title="Identité" />
-        <Grid2>
-          <FRow label="Institution"><input value={form.NomInstitution} onChange={f('NomInstitution')} style={FIS} /></FRow>
-          <FRow label="Rôle">
-            <select value={form.Role} onChange={f('Role')} style={FIS}>
-              <option value="">— Choisir</option>
-              {form.Role && !roleOptions.includes(form.Role) && (
-                <option value={form.Role}>{form.Role}</option>
-              )}
-              {roleOptions.map((r) => <option key={r} value={r}>{r}</option>)}
-            </select>
-          </FRow>
-          <FRow label="Prénom"><input value={form.Prénom} onChange={f('Prénom')} onBlur={b('Prénom')} style={FIS} /></FRow>
-          <FRow label="Nom"><input value={form.Nom} onChange={f('Nom')} onBlur={b('Nom')} style={FIS} /></FRow>
-          <FRow label="Genre">
-            <select value={form.Genre} onChange={f('Genre')} style={FIS}>
-              <option value="">—</option>
-              <option value="M.">M.</option>
-              <option value="Mme">Mme</option>
-              <option value="Mx">Mx</option>
-            </select>
-          </FRow>
-          <FRow label="Actif">
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, fontSize: 11, cursor: 'pointer' }}>
-              <input type="checkbox" checked={form.Actif} onChange={(e) => setForm((p) => ({ ...p, Actif: e.target.checked }))} />
-              Actif
-            </label>
-          </FRow>
-        </Grid2>
-        {isAdminUser && (
-          <FRow label="Privé">
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, fontSize: 11, cursor: 'pointer' }}>
-              <input type="checkbox" checked={form.is_private ?? false} onChange={(e) => setForm((p) => ({ ...p, is_private: e.target.checked }))} />
-              Contact privé (visible uniquement par l&apos;admin)
-            </label>
-          </FRow>
-        )}
-
-        <Grid2>
-          <FRow label="Personne responsable"><input value={form.PersonneResponsable} onChange={f('PersonneResponsable')} style={FIS} /></FRow>
-          <FRow label="Rôle responsable"><input value={form.RoleResponsable} onChange={f('RoleResponsable')} style={FIS} /></FRow>
-        </Grid2>
-
-        {/* Contact — Multi-emails */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Section title="Emails" />
-          <button className="btn ghost sm" onClick={() => setEmailList([...emailList, { contact_id: 0, email: '', label: '', is_primary: false }])} style={{ fontSize: 9 }}>+</button>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {emailList.map((e, i) => (
-            <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <input value={e.email} onChange={(ev) => setEmailList(emailList.map((x, j) => i === j ? { ...x, email: ev.target.value } : x))} placeholder="Email" style={{ ...FIS, flex: 2 }} />
-              <input value={e.label} onChange={(ev) => setEmailList(emailList.map((x, j) => i === j ? { ...x, label: ev.target.value } : x))} placeholder="Label (Pro, Perso...)" style={{ ...FIS, flex: 1 }} />
-              <button className="btn ghost sm" onClick={() => setEmailList(emailList.filter((_, j) => i !== j))}>✕</button>
-            </div>
-          ))}
-          {emailList.length === 0 && <div className="t-mono-sm" style={{ color: 'var(--tx3)', opacity: 0.5 }}>Aucun email</div>}
-        </div>
-
-        {/* Contact — Multi-phones */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Section title="Téléphones" />
-          <button className="btn ghost sm" onClick={() => setPhoneList([...phoneList, { contact_id: 0, phone: '', label: '', is_primary: false }])} style={{ fontSize: 9 }}>+</button>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {phoneList.map((p, i) => (
-            <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <input value={p.country_code || ''} onChange={(ev) => setPhoneList(phoneList.map((x, j) => i === j ? { ...x, country_code: ev.target.value } : x))} placeholder="+33" style={{ ...FIS, width: 50 }} />
-              <input value={p.phone} onChange={(ev) => setPhoneList(phoneList.map((x, j) => i === j ? { ...x, phone: ev.target.value } : x))} placeholder="Numéro" style={{ ...FIS, flex: 2 }} />
-              <input value={p.label} onChange={(ev) => setPhoneList(phoneList.map((x, j) => i === j ? { ...x, label: ev.target.value } : x))} placeholder="Label" style={{ ...FIS, flex: 1 }} />
-              <button className="btn ghost sm" onClick={() => setPhoneList(phoneList.filter((_, j) => i !== j))}>✕</button>
-            </div>
-          ))}
-          {phoneList.length === 0 && <div className="t-mono-sm" style={{ color: 'var(--tx3)', opacity: 0.5 }}>Aucun téléphone</div>}
-        </div>
-
-        {/* Contact — Multi-websites */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Section title="Sites Web" />
-          <button className="btn ghost sm" onClick={() => setWebList([...webList, { contact_id: 0, url: '', label: '' }])} style={{ fontSize: 9 }}>+</button>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {webList.map((w, i) => (
-            <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <input value={w.url} onChange={(ev) => setWebList(webList.map((x, j) => i === j ? { ...x, url: ev.target.value } : x))} placeholder="https://..." style={{ ...FIS, flex: 2 }} />
-              <input value={w.label} onChange={(ev) => setWebList(webList.map((x, j) => i === j ? { ...x, label: ev.target.value } : x))} placeholder="Label" style={{ ...FIS, flex: 1 }} />
-              <button className="btn ghost sm" onClick={() => setWebList(webList.filter((_, j) => i !== j))}>✕</button>
-            </div>
-          ))}
-          {webList.length === 0 && <div className="t-mono-sm" style={{ color: 'var(--tx3)', opacity: 0.5 }}>Aucun site web</div>}
-        </div>
-
-        {/* Contact — Multi-socials (Dropdown) */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Section title="Réseaux Sociaux" />
-          <button className="btn ghost sm" onClick={() => setSocialList([...socialList, { contact_id: 0, platform: 'Instagram', handle: '' }])} style={{ fontSize: 9 }}>+</button>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {socialList.map((s, i) => (
-            <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <select value={s.platform} onChange={(ev) => setSocialList(socialList.map((x, j) => i === j ? { ...x, platform: ev.target.value } : x))} style={{ ...FIS, flex: 1 }}>
-                <option value="Instagram">Instagram</option>
-                <option value="LinkedIn">LinkedIn</option>
-                <option value="Facebook">Facebook</option>
-                <option value="X">X (Twitter)</option>
-                <option value="Behance">Behance</option>
-                <option value="Vimeo">Vimeo</option>
-                <option value="Pinterest">Pinterest</option>
-                <option value="Autre">Autre</option>
-              </select>
-              <input value={s.handle} onChange={(ev) => setSocialList(socialList.map((x, j) => i === j ? { ...x, handle: ev.target.value } : x))} placeholder="@handle or URL" style={{ ...FIS, flex: 2 }} />
-              <button className="btn ghost sm" onClick={() => setSocialList(socialList.filter((_, j) => i !== j))}>✕</button>
-            </div>
-          ))}
-          {socialList.length === 0 && <div className="t-mono-sm" style={{ color: 'var(--tx3)', opacity: 0.5 }}>Aucun réseau</div>}
-        </div>
-
-        {/* Adresses — multiple */}
-        <Section title="Adresses" />
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {addrList.map((addr, i) => (
-            <div
-              key={i}
-              style={{
-                border: '1px solid var(--bd)', padding: '14px 16px',
-                background: 'var(--bg0)', position: 'relative',
-                marginBottom: 4,
-              }}
-            >
-              {addrList.length > 1 && (
-                <button
-                  onClick={() => removeAddr(i)}
-                  style={{
-                    position: 'absolute', top: 8, right: 8,
-                    background: 'none', border: 'none',
-                    color: 'var(--tx3)', cursor: 'pointer', fontSize: 10,
-                  }}
-                >✕</button>
-              )}
-              <Grid2>
-                <FRow label="Libellé (ex: Principal)"><input value={addr.label} onChange={(e) => updateAddr(i, 'label', e.target.value)} onBlur={e => updateAddr(i, 'label', cap(e.target.value))} placeholder="Bureau, Domicile..." style={FIS} /></FRow>
-                <FRow label="Code Postal"><input value={addr.code_postal} onChange={(e) => updateAddr(i, 'code_postal', e.target.value)} placeholder="75001..." style={FIS} /></FRow>
-                <FRow label="Ville"><input value={addr.ville} onChange={(e) => updateAddr(i, 'ville', e.target.value)} onBlur={e => updateAddr(i, 'ville', cap(e.target.value))} style={FIS} /></FRow>
-                <FRow label="Pays"><input value={addr.pays} onChange={(e) => updateAddr(i, 'pays', e.target.value)} onBlur={e => updateAddr(i, 'pays', cap(e.target.value))} style={FIS} /></FRow>
-              </Grid2>
-              <div style={{ marginTop: 8 }}>
-                <FRow label="Adresse (rue, n°, etc.)"><input value={addr.adresse} onChange={(e) => updateAddr(i, 'adresse', e.target.value)} onBlur={e => updateAddr(i, 'adresse', cap(e.target.value))} style={FIS} /></FRow>
-              </div>
-              <div style={{ marginTop: 8 }}>
-                <FRow label="Notes d'expédition / Logistique"><input value={addr.shipping_notes} onChange={(e) => updateAddr(i, 'shipping_notes', e.target.value)} placeholder="Interphone, code, instructions de livraison..." style={FIS} /></FRow>
-              </div>
-            </div>
-          ))}
-          <button
-            onClick={addAddr}
-            style={{
-              background: 'none', border: '1px dashed var(--bd)',
-              color: 'var(--tx3)', padding: '8px',
-              cursor: 'pointer', fontSize: 10, letterSpacing: 0.5,
-              textAlign: 'center' as const,
-            }}
-          >
-            + Ajouter une adresse
-          </button>
-        </div>
-
-
-        {/* Notes */}
-        <Section title="Notes" />
-        <textarea
-          value={form.Notes}
-          onChange={f('Notes')}
-          rows={3}
-          style={{ ...FIS, resize: 'vertical', lineHeight: 1.6 }}
-          placeholder="Notes libres..."
-        />
-
-        {err && <div style={{ fontSize: 11, color: 'var(--rust)', marginTop: 10 }}>{err}</div>}
-
-        <div className="row gap-sm" style={{ marginTop: 20, justifyContent: 'flex-end' }}>
-          <button type="button" className="btn ghost sm" onClick={attemptClose} disabled={busy}>Annuler</button>
-          <button type="button" className="btn primary sm" onClick={() => void handleSave()} disabled={busy}>
-            {busy ? '...' : isNew ? 'Créer' : 'Enregistrer'}
-          </button>
-        </div>
-      </div>
-    </div>
-    </>
-  )
-}
-
 function BatchEditModal({
   count, roleOptions, onClose, onSave, busy
 }: {
   count: number; roleOptions: string[]; onClose: () => void; onSave: (data: any) => Promise<boolean>; busy: boolean
 }) {
+  const { t } = useI18n()
   const [role,   setRole]   = useState<string | undefined>()
   const [actif,  setActif]  = useState<'unchanged' | 'true' | 'false'>('unchanged')
   const [notes,  setNotes]  = useState<string | undefined>()
@@ -1638,45 +1008,45 @@ function BatchEditModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div style={{ fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--tx3)', marginBottom: 20 }}>
-          Batch Edit · {count} contact{count > 1 ? 's' : ''}
+          {t('batchEdit')} · {count} {count === 1 ? t('contacts_batch_unit') : t('contacts_batch_unit_plural')}
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <FRow label="Rôle">
+          <FRow label={t('contactEditorRole')}>
             <select value={role ?? ''} onChange={e => setRole(e.target.value || undefined)} style={FIS}>
-              <option value="">— Ne pas modifier</option>
+              <option value="">{t('contacts_batch_no_change')}</option>
               {roleOptions.map(r => <option key={r} value={r}>{r}</option>)}
             </select>
           </FRow>
 
-          <FRow label="Actif">
+          <FRow label={t('contactEditorActive')}>
             <select value={actif} onChange={e => setActif(e.target.value as any)} style={FIS}>
-              <option value="unchanged">— Ne pas modifier</option>
-              <option value="true">Actif</option>
-              <option value="false">Inactif</option>
+              <option value="unchanged">{t('contacts_batch_no_change')}</option>
+              <option value="true">{t('contactEditorActiveLabel')}</option>
+              <option value="false">{t('contacts_batch_inactive')}</option>
             </select>
           </FRow>
 
-          <FRow label="Notes">
+          <FRow label={t('contactEditorSectionNotes')}>
             <textarea
               value={notes ?? ''}
               onChange={e => setNotes(e.target.value || undefined)}
-              placeholder="Texte à ajouter ou remplacer..."
+              placeholder={t('contacts_batch_notes_placeholder')}
               style={{ ...FIS, height: 80, resize: 'vertical' }}
             />
             {notes && (
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, fontSize: 10, color: 'var(--tx3)', cursor: 'pointer' }}>
                 <input type="checkbox" checked={append} onChange={e => setAppend(e.target.checked)} />
-                Ajouter à la fin (ne pas écraser)
+                {t('contacts_batch_append_label')}
               </label>
             )}
           </FRow>
         </div>
 
         <div style={{ display: 'flex', gap: 8, marginTop: 24 }}>
-          <button type="button" className="btn sm ghost" onClick={attemptClose} disabled={busy} style={{ flex: 1 }}>Annuler</button>
+          <button type="button" className="btn sm ghost" onClick={attemptClose} disabled={busy} style={{ flex: 1 }}>{t('cancel')}</button>
           <button type="button" className="btn sm" onClick={() => void applyBatch()} disabled={busy || !hasChange} style={{ flex: 1, background: 'var(--ac)', borderColor: 'var(--ac)' }}>
-            {busy ? '...' : 'Appliquer'}
+            {busy ? t('modifying') : t('contacts_batch_apply')}
           </button>
         </div>
       </div>
@@ -1813,6 +1183,7 @@ function parseGoogleCSV(text: string): ImportedContact[] {
 const PEM_HIDE_OLLAMA_TIP = 'pem_hide_ollama_url_tip'
 
 function ImportUrlModal({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
+  const { t } = useI18n()
   const [url, setUrl] = useState('')
   const [refineLlm, setRefineLlm] = useState(true)
   const [busy, setBusy] = useState(false)
@@ -1919,17 +1290,14 @@ function ImportUrlModal({ onClose, onDone }: { onClose: () => void; onDone: () =
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div className="t-eyebrow">Importer depuis une URL</div>
+          <div className="t-eyebrow">{t('contacts_url_title')}</div>
           <button type="button" className="btn ghost sm" onClick={onClose}>
             ✕
           </button>
         </div>
 
         <div className="t-mono-sm" style={{ color: 'var(--tx3)', lineHeight: 1.6 }}>
-          Extraction JSON-LD, meta, liens mailto/tel, puis optionnellement un modèle{' '}
-          <strong>Ollama</strong> local (<code style={{ fontSize: 10 }}>:11435</code> par défaut) ou{' '}
-          <strong>OpenAI</strong> (clé + URL de base). Import{' '}
-          <strong>privé</strong>, comme le CSV Google.
+          {t('contacts_url_intro')}
         </div>
 
         {!result ? (
@@ -1949,25 +1317,25 @@ function ImportUrlModal({ onClose, onDone }: { onClose: () => void; onDone: () =
                 {ollamaPing.phase === 'checking' ? (
                   <span style={{ opacity: 0.45 }}>◌</span>
                 ) : ollamaPing.phase === 'done' && ollamaPing.ok ? (
-                  <span style={{ color: '#2ecc71' }} title="Ollama répond">●</span>
+                  <span style={{ color: '#2ecc71' }} title={t('contacts_url_ollama_dot_ok_title')}>●</span>
                 ) : (
-                  <span style={{ color: 'var(--rust)' }} title="Ollama ne répond pas">●</span>
+                  <span style={{ color: 'var(--rust)' }} title={t('contacts_url_ollama_dot_fail_title')}>●</span>
                 )}
               </span>
               <div style={{ flex: 1, minWidth: 200 }}>
                 <div className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx)', lineHeight: 1.45 }}>
                   {ollamaPing.phase === 'checking' ? (
-                    <>Vérification Ollama…</>
+                    <>{t('contacts_url_ollama_checking')}</>
                   ) : ollamaPing.phase === 'done' && ollamaPing.ok ? (
                     <>
-                      <strong>À l&apos;écoute</strong>
+                      <strong>{t('contacts_url_ollama_up')}</strong>
                       {' · '}
                       <code style={{ fontSize: 10 }}>{ollamaPing.host}</code>
-                      <span style={{ color: 'var(--tx3)', marginLeft: 6 }}>(/api/tags OK)</span>
+                      <span style={{ color: 'var(--tx3)', marginLeft: 6 }}>{t('contacts_url_ollama_tags_ok')}</span>
                     </>
                   ) : ollamaPing.phase === 'done' ? (
                     <>
-                      <strong>Hors ligne</strong>
+                      <strong>{t('contacts_url_ollama_down')}</strong>
                       {ollamaPing.host ? (
                         <>
                           {' · '}
@@ -1983,18 +1351,18 @@ function ImportUrlModal({ onClose, onDone }: { onClose: () => void; onDone: () =
                   ) : null}
                 </div>
                 <div className="t-mono-sm" style={{ fontSize: 9, color: 'var(--tx3)', marginTop: 4, lineHeight: 1.4 }}>
-                  Test depuis le serveur Next.js (en dev local = votre PC). Déployé dans le cloud, ce test ne voit pas Ollama sur votre machine.
+                  {t('contacts_url_server_note')}
                 </div>
               </div>
               <button type="button" className="btn ghost sm" onClick={() => runOllamaPing()} disabled={ollamaPing.phase === 'checking'}>
-                Vérifier
+                {t('contacts_url_verify')}
               </button>
             </div>
 
             {showOllamaTip && (
               <div
                 role="dialog"
-                aria-label="Rappel Ollama"
+                aria-label={t('contacts_url_tip_title')}
                 style={{
                   position: 'relative',
                   padding: '14px 16px',
@@ -2006,10 +1374,10 @@ function ImportUrlModal({ onClose, onDone }: { onClose: () => void; onDone: () =
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 10 }}>
                   <div className="t-eyebrow" style={{ margin: 0 }}>
-                    Ollama — démarrage (PowerShell)
+                    {t('contacts_url_tip_title')}
                   </div>
                   <button type="button" className="btn ghost sm" onClick={dismissOllamaTip} style={{ flexShrink: 0 }}>
-                    Masquer
+                    {t('contacts_url_tip_hide')}
                   </button>
                 </div>
                 <pre
@@ -2026,30 +1394,13 @@ function ImportUrlModal({ onClose, onDone }: { onClose: () => void; onDone: () =
                     wordBreak: 'break-all',
                   }}
                 >
-                  {`In Powershell terminal run:
-
-$env:OLLAMA_HOST="127.0.0.1:11435"; ollama serve
-
-Autre fenêtre PowerShell — une fois : télécharger le modèle, vérifier le nom exact :
-ollama pull llama3.2:1b
-ollama list
-
-Test interactif (optionnel) :
-$env:OLLAMA_HOST="127.0.0.1:11435"; ollama run llama3.2:1b`}
+                  {t('contacts_url_ollama_pre')}
                 </pre>
                 <p className="t-mono-sm" style={{ margin: '12px 0 0', color: 'var(--tx3)', fontSize: 10, lineHeight: 1.6 }}>
-                  Dans <code style={{ fontSize: 10 }}>.env.local</code> à la racine du projet :{' '}
-                  <code style={{ fontSize: 10 }}>OLLAMA_ORIGIN=http://127.0.0.1:11435</code> (prioritaire pour Next.js). Évitez{' '}
-                  <code style={{ fontSize: 10 }}>OLLAMA_HOST</code> dans ce fichier si vous faites{' '}
-                  <code style={{ fontSize: 10 }}>$env:OLLAMA_HOST=...</code> dans le même PowerShell — la session peut écraser{' '}
-                  <code style={{ fontSize: 10 }}>.env.local</code> et fausser le port.
+                  {t('contacts_url_env_note')}
                 </p>
                 <p className="t-mono-sm" style={{ margin: '10px 0 0', color: 'var(--tx3)', fontSize: 10, lineHeight: 1.6 }}>
-                  <strong>Modèle IA</strong> : la valeur doit être <strong>strictement identique</strong> à un nom affiché par{' '}
-                  <code style={{ fontSize: 10 }}>ollama list</code> (ex. <code style={{ fontSize: 10 }}>llama3.2:1b</code>, pas{' '}
-                  <code style={{ fontSize: 10 }}>llama3.2</code> seul). Dans <code style={{ fontSize: 10 }}>.env.local</code> :{' '}
-                  <code style={{ fontSize: 10 }}>OLLAMA_MODEL=llama3.2:1b</code>, puis redémarrer <code style={{ fontSize: 10 }}>npm run dev</code>.
-                  Sans modèle téléchargé ou avec un mauvais nom, l&apos;extraction HTML fonctionne mais l&apos;affinage IA renvoie une erreur « model not found ».
+                  {t('contacts_url_model_note')}
                 </p>
               </div>
             )}
@@ -2058,7 +1409,7 @@ $env:OLLAMA_HOST="127.0.0.1:11435"; ollama run llama3.2:1b`}
               type="url"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://…"
+              placeholder={t('contacts_url_url_ph')}
               style={{
                 width: '100%',
                 padding: '10px 12px',
@@ -2070,20 +1421,20 @@ $env:OLLAMA_HOST="127.0.0.1:11435"; ollama run llama3.2:1b`}
             />
             <label style={{ display: 'flex', gap: 10, alignItems: 'center', cursor: 'pointer' }}>
               <input type="checkbox" checked={refineLlm} onChange={(e) => setRefineLlm(e.target.checked)} />
-              <span className="t-mono-sm">Affiner avec l&apos;IA (si configurée côté serveur)</span>
+              <span className="t-mono-sm">{t('contacts_url_refine_llm')}</span>
             </label>
 
             <button type="button" className="btn sm" onClick={handleExtract} disabled={busy || !url.trim()} style={{ alignSelf: 'flex-start' }}>
-              {busy && !parsed ? 'Extraction…' : 'Extraire'}
+              {busy && !parsed ? t('contacts_url_extracting') : t('contacts_url_extract')}
             </button>
 
             {meta && (
               <div className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 10, lineHeight: 1.6 }}>
                 <div>
-                  <strong>Sources</strong>: {meta.sources.length ? meta.sources.join(' · ') : '—'}
+                  <strong>{t('contacts_url_sources')}</strong>: {meta.sources.length ? meta.sources.join(' · ') : '—'}
                 </div>
                 <div>
-                  <strong>IA</strong>: {meta.llm}
+                  <strong>{t('contacts_url_llm')}</strong>: {meta.llm}
                   {meta.llmNote ? ` — ${meta.llmNote}` : ''}
                 </div>
               </div>
@@ -2094,12 +1445,12 @@ $env:OLLAMA_HOST="127.0.0.1:11435"; ollama run llama3.2:1b`}
                 <div><strong>{[parsed.prenom, parsed.nom].filter(Boolean).join(' ') || '—'}</strong></div>
                 <div>{parsed.institution || '—'}</div>
                 <div style={{ color: 'var(--tx3)', marginTop: 6 }}>
-                  {parsed.emails.length > 0 && <div>Email: {parsed.emails.map((e) => e.email).join(', ')}</div>}
-                  {parsed.phones.length > 0 && <div>Tél.: {parsed.phones.map((p) => p.phone).join(', ')}</div>}
-                  {parsed.websites.length > 0 && <div>Web: {parsed.websites.map((w) => w.url).join(', ')}</div>}
-                  {parsed.role && <div>Rôle: {parsed.role}</div>}
+                  {parsed.emails.length > 0 && <div>{t('contacts_url_preview_email')} {parsed.emails.map((e) => e.email).join(', ')}</div>}
+                  {parsed.phones.length > 0 && <div>{t('contacts_url_preview_phone')} {parsed.phones.map((p) => p.phone).join(', ')}</div>}
+                  {parsed.websites.length > 0 && <div>{t('contacts_url_preview_web')} {parsed.websites.map((w) => w.url).join(', ')}</div>}
+                  {parsed.role && <div>{t('contacts_url_preview_role')} {parsed.role}</div>}
                   {parsed.notes && (
-                    <div style={{ marginTop: 6, maxHeight: 100, overflow: 'auto' }}>Notes: {parsed.notes}</div>
+                    <div style={{ marginTop: 6, maxHeight: 100, overflow: 'auto' }}>{t('contacts_url_preview_notes')} {parsed.notes}</div>
                   )}
                 </div>
               </div>
@@ -2109,7 +1460,7 @@ $env:OLLAMA_HOST="127.0.0.1:11435"; ollama run llama3.2:1b`}
 
             <div style={{ display: 'flex', gap: 8 }}>
               <button type="button" className="btn ghost sm" onClick={onClose} style={{ flex: 1 }}>
-                Annuler
+                {t('cancel')}
               </button>
               <button
                 type="button"
@@ -2118,7 +1469,7 @@ $env:OLLAMA_HOST="127.0.0.1:11435"; ollama run llama3.2:1b`}
                 disabled={!parsed || busy}
                 style={{ flex: 1, background: 'var(--ac)', borderColor: 'var(--ac)' }}
               >
-                {busy && parsed ? 'Import…' : 'Importer ce contact'}
+                {busy && parsed ? t('contacts_url_importing') : t('contacts_url_import_this')}
               </button>
             </div>
           </>
@@ -2126,24 +1477,29 @@ $env:OLLAMA_HOST="127.0.0.1:11435"; ollama run llama3.2:1b`}
           <>
             <div className="t-mono-sm" style={{ lineHeight: 1.8 }}>
               <div>
-                ✓ <strong>{result.imported}</strong> contact importé
+                ✓{' '}
+                {result.imported === 1
+                  ? t('contacts_url_done_imported_1')
+                  : t('contacts_url_done_imported_n').replace('{n}', String(result.imported))}
               </div>
               {result.skipped > 0 && (
-                <div style={{ color: 'var(--tx3)' }}>↷ {result.skipped} ignoré (doublon ou vide)</div>
+                <div style={{ color: 'var(--tx3)' }}>
+                  {t('contacts_url_done_skipped_fmt').replace('{n}', String(result.skipped))}
+                </div>
               )}
             </div>
             <button type="button" className="btn sm" onClick={onDone} style={{ background: 'var(--ac)', borderColor: 'var(--ac)' }}>
-              Fermer
+              {t('close')}
             </button>
           </>
         )}
 
         <div style={{ borderTop: '1px solid var(--bd)', paddingTop: 14 }}>
           <div className="t-eyebrow" style={{ marginBottom: 8 }}>
-            Script Ollama
+            {t('contacts_url_script_heading')}
           </div>
           <div className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 10, marginBottom: 8, lineHeight: 1.45 }}>
-            Instructions (modifiable dans <code style={{ fontSize: 9 }}>lib/ollama-script.ts</code>) :
+            {t('contacts_url_script_inline_code_help')}
           </div>
           <pre
             className="t-mono-sm"
@@ -2170,7 +1526,7 @@ $env:OLLAMA_HOST="127.0.0.1:11435"; ollama run llama3.2:1b`}
             disabled={scriptBusy}
             style={{ background: 'var(--bg2)', borderColor: 'var(--bd)' }}
           >
-            {scriptBusy ? 'Exécution…' : 'Lancer le script'}
+            {scriptBusy ? t('contacts_url_script_running') : t('contacts_url_run_script')}
           </button>
           {scriptOut && (
             <div
@@ -2199,6 +1555,7 @@ $env:OLLAMA_HOST="127.0.0.1:11435"; ollama run llama3.2:1b`}
 }
 
 function ImportGoogleModal({ onClose, onDone }: { onClose: () => void; onDone: (n: number) => void }) {
+  const { t } = useI18n()
   const [parsed,  setParsed]  = useState<ImportedContact[] | null>(null)
   const [busy,    setBusy]    = useState(false)
   const [result,  setResult]  = useState<{ imported: number; skipped: number } | null>(null)
@@ -2231,13 +1588,12 @@ function ImportGoogleModal({ onClose, onDone }: { onClose: () => void; onDone: (
       <div onClick={e => e.stopPropagation()} style={{ background: 'var(--bg1)', border: '1px solid var(--bd)', width: 440, padding: 28, display: 'flex', flexDirection: 'column', gap: 20 }}>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div className="t-eyebrow">Importer Google Contacts</div>
+          <div className="t-eyebrow">{t('contacts_import_google_title')}</div>
           <button className="btn ghost sm" onClick={onClose}>✕</button>
         </div>
 
         <div className="t-mono-sm" style={{ color: 'var(--tx3)', lineHeight: 1.6 }}>
-          Exporter depuis Google Contacts → <strong>Exporter</strong> → <strong>Google CSV</strong>.
-          Tous les contacts importés seront marqués <strong>Privé</strong>.
+          {t('contacts_import_google_help')}
         </div>
 
         {!result ? (
@@ -2245,24 +1601,24 @@ function ImportGoogleModal({ onClose, onDone }: { onClose: () => void; onDone: (
             <label style={{ cursor: 'pointer' }}>
               <input type="file" accept=".csv" onChange={handleFile} style={{ display: 'none' }} />
               <div className="btn ghost sm" style={{ display: 'inline-block' }}>
-                Choisir un fichier CSV…
+                {t('contacts_import_pick_csv')}
               </div>
             </label>
 
             {parsed !== null && (
               <div className="t-mono-sm" style={{ color: 'var(--tx)', lineHeight: 1.8 }}>
-                <div><strong>{parsed.length}</strong> contacts trouvés dans le fichier.</div>
+                <div><strong>{parsed.length}</strong> {t('contacts_import_found_tail')}</div>
                 {parsed.length > 0 && (
                   <div style={{ color: 'var(--tx3)', fontSize: 9, marginTop: 6, lineHeight: 1.6 }}>
                     {parsed.slice(0, 5).map((c, i) => (
                       <div key={i}>{[c.prenom, c.nom, c.institution].filter(Boolean).join(' ') || '—'}</div>
                     ))}
-                    {parsed.length > 5 && <div>… +{parsed.length - 5} autres</div>}
+                    {parsed.length > 5 && <div>{t('contacts_import_more_fmt').replace('{n}', String(parsed.length - 5))}</div>}
                   </div>
                 )}
                 {parsed.length === 0 && (
                   <div style={{ color: 'var(--rust)', marginTop: 4 }}>
-                    Aucun contact reconnu — vérifiez que c&apos;est bien un export Google CSV (pas Outlook).
+                    {t('contacts_import_none_recognized')}
                   </div>
                 )}
               </div>
@@ -2271,25 +1627,34 @@ function ImportGoogleModal({ onClose, onDone }: { onClose: () => void; onDone: (
             {err && <div className="t-mono-sm" style={{ color: 'var(--rust)' }}>{err}</div>}
 
             <div style={{ display: 'flex', gap: 8 }}>
-              <button className="btn ghost sm" onClick={onClose} style={{ flex: 1 }}>Annuler</button>
+              <button className="btn ghost sm" onClick={onClose} style={{ flex: 1 }}>{t('cancel')}</button>
               <button
                 className="btn sm"
                 onClick={handleImport}
                 disabled={!parsed || busy}
                 style={{ flex: 1, background: 'var(--ac)', borderColor: 'var(--ac)' }}
               >
-                {busy ? 'Import en cours…' : `Importer ${parsed ? parsed.length : ''}`}
+                {busy ? t('contacts_import_busy') : t('contacts_import_btn_fmt').replace('{n}', String(parsed?.length ?? 0))}
               </button>
             </div>
           </>
         ) : (
           <>
             <div className="t-mono-sm" style={{ lineHeight: 1.8 }}>
-              <div>✓ <strong>{result.imported}</strong> contacts importés</div>
-              {result.skipped > 0 && <div style={{ color: 'var(--tx3)' }}>↷ {result.skipped} ignorés (doublons ou vides)</div>}
+              <div>
+                ✓{' '}
+                {result.imported === 1
+                  ? t('contacts_import_done_1')
+                  : t('contacts_import_done_n').replace('{n}', String(result.imported))}
+              </div>
+              {result.skipped > 0 && (
+                <div style={{ color: 'var(--tx3)' }}>
+                  {t('contacts_import_skipped_fmt').replace('{n}', String(result.skipped))}
+                </div>
+              )}
             </div>
             <button className="btn sm" onClick={() => onDone(result.imported)} style={{ background: 'var(--ac)', borderColor: 'var(--ac)' }}>
-              Fermer
+              {t('close')}
             </button>
           </>
         )}
