@@ -11,6 +11,7 @@ CONFIRM DELETE: Always ask.
 COMMIT COMPLETE: Before every commit, run git diff --stat. Stage ALL modified source files. Never partial-commit. Exclude only build artifacts (tsconfig.tsbuildinfo, .next/).
 WORKTREE CLEANUP: At session end, remove all claude/* worktrees and branches except the active one. git worktree remove --force + git branch -D + git worktree prune.
 CAVEMAN CHAT: Stop verbosity. No "I've updated..." or "Here is...". Code only. 1-3 word status max.
+UI: bilingual only — obey 🌐 UI COPY when touching user-facing text.
 
 🛠️ CMDS
 Next.js 15 (port 3000). npm dev | build | lint. No tests.
@@ -22,11 +23,18 @@ Worktree edits → copy to real app (dev server runs from real app).
 - Server Components fetch data, pass to Client Components
 - Mutations: Server Actions ('use server') in app/**/actions.ts only. No API routes.
 - Auth: Supabase SSR middleware enforces auth on all /atelier /hub /galerie routes
-- i18n: useI18n().t(key) + lib/i18n/dictionary.ts — both fr and en for every key; default fr; no hardcoded UI French/English (DB copy & proper nouns excepted)
+- i18n: see **🌐 UI COPY** below (non-negotiable for anything user-facing)
 - Image upload: Sharp → 400px AVIF thumb → R2 via AWS S3 SDK
 - Supabase clients: createClient() (anon, RLS enforced) · createServiceClient() (service_role, admin bypass)
 
+🌐 UI COPY (bilingual — non-negotiable)
+All user-visible copy → `useI18n().t(key)` + `lib/i18n/dictionary.ts` (**DictKey** + **`dict.fr` + `dict.en`** each time). Exceptions: DB text, proper nouns, immutable data. **Scrutiny:** before finish, sweep the diff for JSX string literals & `alert`/`confirm`/titles/placeholders — hardcoded FR/EN = fix.
+**Locale:** `toLocale*` / Intl → drive from **`lang`** (`fr-FR` vs `en-GB`), not a hardcoded locale.
+**Label maps:** if UI showed one static language map → wrong; use **`lang`** branch or paired dict keys (see `pipelineTypeLabel`).
+**Server Components:** no `useI18n` → pass translated strings down, client leaf, or `dict[lang][key]` at read time. **Speed:** add all keys for the feature in one edit; copy patterns from `TeamPortalClient` · `PipelineTab`.
+
 📁 KEY FILES
+- lib/i18n/dictionary.ts · context.tsx — all UI strings (fr/en)
 - lib/data.ts — imageUrl(), thumbUrl(), yearOf(), statusOf(), makeFilename()
 - lib/supabase/client.ts — browser client
 - lib/supabase/server.ts — server + service client

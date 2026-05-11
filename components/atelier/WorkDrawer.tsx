@@ -1,6 +1,7 @@
 'use client'
 
-import { imageUrl, thumbUrl, yearOf, statusOf, DIAMETER_SIGN, isCircularSupport, STATUS_ID_ARCHIVE_ARTISTE } from '@/lib/data'
+import { imageUrl, thumbUrl, yearOf, statusOf, DIAMETER_SIGN, isCircularSupport, STATUS_ID_ARCHIVE_ARTISTE, pipelineHighlightStatusId, statusDrawerShowCommercialEffectiveSplit, commercialPipelineSegmentId } from '@/lib/data'
+
 import { StatusChip } from '@/components/ui/StatusChip'
 import { WorkStateChip } from './WorkStateChip'
 import { deleteWork } from '@/app/atelier/works/actions'
@@ -772,29 +773,91 @@ function DrawerContent({
           { id: 9,  label: 'Destroyed',     short: 'Détruit', color: '#555'        },
           { id: 10, label: 'Lost',          short: 'Perdu',   color: '#555'        },
         ].filter(s => statusLabelMap[s.id] != null)
-        const curId = Number(statusId)
+        const effectiveId = pipelineHighlightStatusId(o, statusLabelMap, statusId)
+        const showSplit = statusDrawerShowCommercialEffectiveSplit(o, statusLabelMap, statusId)
+        const commercialSavedId = showSplit ? commercialPipelineSegmentId(o, statusLabelMap) : null
+        const effStage = STATUS_STAGES.find(x => x.id === effectiveId)
+        const comStage = commercialSavedId != null ? STATUS_STAGES.find(x => x.id === commercialSavedId) : null
         return (
-          <section style={{ marginBottom: 16 }}>
+          <section
+            style={{ marginBottom: 16 }}
+            data-testid="work-drawer-status-bar"
+            data-status-split={showSplit ? 'true' : 'false'}
+          >
+            {showSplit && effStage && comStage && (
+              <div className="t-mono-sm" style={{ fontSize: 10, color: 'var(--tx3)', marginBottom: 8, lineHeight: 1.45 }}>
+                <span style={{ color: 'var(--tx2)', fontWeight: 600 }}>{t('workDrawerStatusLegendEffective')}:</span>{' '}
+                {effStage.label}
+                <span style={{ opacity: 0.45, margin: '0 0.35em' }}>·</span>
+                <span style={{ color: 'var(--tx2)', fontWeight: 600 }}>{t('workDrawerStatusLegendCommercial')}:</span>{' '}
+                {comStage.label}
+              </div>
+            )}
             <div style={{ display: 'flex', height: 32, borderRadius: 3, overflow: 'hidden', border: '1px solid var(--bd)' }}>
               {STATUS_STAGES.map((s, i) => {
-                const active = s.id === curId
+                const filledEffective = s.id === effectiveId
+                const savedCommercialHighlight =
+                  showSplit && commercialSavedId != null && s.id === commercialSavedId && !filledEffective
+                const bg = filledEffective
+                  ? s.color
+                  : savedCommercialHighlight
+                    ? `color-mix(in srgb, ${s.color} 30%, var(--bg0))`
+                    : 'var(--bg0)'
+                const insetRing = savedCommercialHighlight ? 'inset 0 0 0 2px var(--ac)' : undefined
                 return (
-                  <div key={s.id} onClick={() => setStatusId(String(s.id))} title={s.label}
-                    style={{ flex: 1, background: active ? s.color : 'var(--bg0)', cursor: 'pointer', borderRight: i < STATUS_STAGES.length - 1 ? '1px solid var(--bd)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s' }}
+                  <div
+                    key={s.id}
+                    onClick={() => setStatusId(String(s.id))}
+                    title={s.label}
+                    style={{
+                      flex: 1,
+                      background: bg,
+                      boxShadow: insetRing,
+                      cursor: 'pointer',
+                      borderRight: i < STATUS_STAGES.length - 1 ? '1px solid var(--bd)' : 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'background 0.15s',
+                    }}
                   >
-                    <span style={{ fontSize: 10, fontWeight: 700, color: active ? 'rgba(0,0,0,0.7)' : 'var(--tx3)', overflow: 'hidden', whiteSpace: 'nowrap', padding: '0 1px' }}>
-                      {active ? s.short : s.short.charAt(0)}
+                    <span
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        color: filledEffective ? 'rgba(0,0,0,0.7)' : 'var(--tx3)',
+                        overflow: 'hidden',
+                        whiteSpace: 'nowrap',
+                        padding: '0 1px',
+                      }}
+                    >
+                      {(filledEffective || savedCommercialHighlight) ? s.short : s.short.charAt(0)}
                     </span>
                   </div>
                 )
               })}
             </div>
             <div style={{ display: 'flex', marginTop: 3 }}>
-              {STATUS_STAGES.map(s => (
-                <span key={s.id} style={{ flex: 1, fontSize: 9, textAlign: 'center', color: s.id === curId ? 'var(--tx2)' : 'var(--tx3)', overflow: 'hidden', whiteSpace: 'nowrap' }}>
-                  {s.short}
-                </span>
-              ))}
+              {STATUS_STAGES.map(s => {
+                const onEff = s.id === effectiveId
+                const onSavedComOnly =
+                  commercialSavedId != null && s.id === commercialSavedId && s.id !== effectiveId
+                return (
+                  <span
+                    key={s.id}
+                    style={{
+                      flex: 1,
+                      fontSize: 9,
+                      textAlign: 'center',
+                      color: onEff || onSavedComOnly ? 'var(--tx2)' : 'var(--tx3)',
+                      overflow: 'hidden',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {s.short}
+                  </span>
+                )
+              })}
             </div>
           </section>
         )

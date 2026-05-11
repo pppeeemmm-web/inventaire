@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useState } from 'react'
 import { normalizePemTheme, type PemTheme } from '@/lib/theme-path'
+import { useI18n } from '@/lib/i18n/context'
 
 type Props = {
   /** When false, only emoji (narrow header / mobile drawer). */
@@ -11,6 +12,7 @@ type Props = {
 }
 
 export function PemThemeToggle({ showLabels = true, padding }: Props) {
+  const { t } = useI18n()
   const pad = padding ?? (showLabels ? '4px 10px' : '4px 8px')
   const [theme, setTheme] = useState<PemTheme>('light')
 
@@ -66,7 +68,13 @@ export function PemThemeToggle({ showLabels = true, padding }: Props) {
     >
       {theme === 'dark' ? '🌙' : theme === 'light' ? '☀️' : '◼'}
       {showLabels && (
-        <span>{theme === 'dark' ? 'NIGHT' : theme === 'light' ? 'DAY' : 'STD'}</span>
+        <span>
+          {theme === 'dark'
+            ? t('pem_theme_toggle_night')
+            : theme === 'light'
+              ? t('pem_theme_toggle_day')
+              : t('pem_theme_toggle_std')}
+        </span>
       )}
     </button>
   )

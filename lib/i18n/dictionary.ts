@@ -10,7 +10,7 @@ export type DictKey =
   | 'team' | 'clients' | 'galleries' | 'public'
   | 'teamDesc' | 'clientsDesc' | 'galleriesDesc' | 'publicDesc'
   | 'hubWorksOnline' | 'hubLastLog' | 'hubStockLow'
-  | 'overview' | 'inventory' | 'constellation' | 'production'
+  | 'overview' | 'inventory' | 'inv_refinement_gate' | 'constellation' | 'production'
   | 'logistics' | 'sales' | 'exhibitions' | 'vault'
   | 'works' | 'works_cap' | 'catalogued' | 'exposable' | 'montee'
   | 'unpriced' | 'noImage' | 'thisYear' | 'wip' | 'consigned'
@@ -69,6 +69,7 @@ export type DictKey =
   | 'generating' | 'batchSuccess' | 'selectAll' | 'renameFile' | 'filters'
   | 'auditAttributedHint'
   | 'workDrawerUnsavedTitle' | 'workDrawerUnsavedBody' | 'workDrawerDiscard'
+  | 'workDrawerStatusLegendEffective' | 'workDrawerStatusLegendCommercial'
   // ── Public site ────────────────────────────────────────────────────────
   | 'pub_works' | 'pub_about' | 'pub_practice' | 'pub_enquiry'
   | 'pub_biography' | 'pub_exhibitions_selected' | 'pub_education' | 'pub_contact'
@@ -129,6 +130,8 @@ export type DictKey =
   | 'pipeline_no_processes' | 'pipeline_upcoming_deadlines' | 'pipeline_no_upcoming_60' | 'pipeline_reminders_header'
   | 'pipeline_sidebar_overdue_fmt' | 'pipeline_sidebar_today' | 'pipeline_sidebar_in_days_fmt'
   | 'pipeline_etape_tick_title' | 'pipeline_gantt_overdue_suffix'
+  | 'pipeline_gantt_process_statut_title' | 'pipeline_gantt_etape_marker_title'
+  | 'pem_theme_toggle_day' | 'pem_theme_toggle_night' | 'pem_theme_toggle_std'
   | 'proc_stat_en_cours' | 'proc_stat_gagne' | 'proc_stat_perdu' | 'proc_stat_annule' | 'proc_stat_termine'
   | 'etape_stat_a_faire' | 'etape_stat_en_cours' | 'etape_stat_fait' | 'etape_stat_bloque'
   | 'pub_mobile_nav_heading' | 'pub_portfolio_pdf_strip'
@@ -175,6 +178,8 @@ export const dict: Record<Lang, Dictionary> = {
     publicDesc: 'Site public, portfolio, expositions, presse.',
     hubWorksOnline: 'En ligne', hubLastLog: 'Dernier journal', hubStockLow: 'Stock bas',
     overview: "Vue d'ensemble", inventory: 'Inventaire',
+    inv_refinement_gate:
+      'Statut « Disponible » en base, mais l’œuvre reste traitée comme « En production » tant que le catalogue ou la photo ne sont pas validés.',
     constellation: 'Constellation', production: 'Production',
     logistics: 'Logistique', sales: 'Ventes',
     exhibitions: 'Expositions', vault: 'Coffre',
@@ -297,6 +302,8 @@ export const dict: Record<Lang, Dictionary> = {
     workDrawerUnsavedTitle: 'Modifications non enregistrées',
     workDrawerUnsavedBody: 'Enregistrer avant de fermer la fiche ?',
     workDrawerDiscard: 'Quitter sans enregistrer',
+    workDrawerStatusLegendEffective: 'État affiché (catalogue / photo)',
+    workDrawerStatusLegendCommercial: 'Statut commercial enregistré',
     // Public site
     pub_works: 'Oeuvres', pub_about: 'À propos', pub_practice: 'Pratique',
     pub_enquiry: 'Contact',
@@ -492,6 +499,8 @@ export const dict: Record<Lang, Dictionary> = {
     pipeline_sidebar_in_days_fmt: 'dans {days} j',
     pipeline_etape_tick_title: 'Marquer comme fait',
     pipeline_gantt_overdue_suffix: ' ⚠ retard',
+    pipeline_gantt_process_statut_title: 'Statut : {status} — cliquer pour changer',
+    pipeline_gantt_etape_marker_title: '{step} · {stepStatus}{overdue} — cliquer pour changer',
     proc_stat_en_cours: 'En cours',
     proc_stat_gagne: 'Gagné / sélectionné',
     proc_stat_perdu: 'Non retenu',
@@ -507,6 +516,9 @@ export const dict: Record<Lang, Dictionary> = {
     landing_pdf_modal_title: 'Portfolio PDF',
     locale_fr_short: 'Français',
     locale_en_short: 'English',
+    pem_theme_toggle_day: 'JOUR',
+    pem_theme_toggle_night: 'NUIT',
+    pem_theme_toggle_std: 'STD',
     pd_row_location: 'Localisation',
     pd_row_url: 'URL',
     pd_row_start: 'Début',
@@ -606,6 +618,8 @@ export const dict: Record<Lang, Dictionary> = {
     publicDesc: 'Public site, portfolio, exhibitions, press.',
     hubWorksOnline: 'Online', hubLastLog: 'Last log', hubStockLow: 'Low stock',
     overview: 'Overview', inventory: 'Inventory',
+    inv_refinement_gate:
+      'Database status is « Available », but the work stays « In production » until cataloguing and photography gates are cleared.',
     constellation: 'Constellation', production: 'Production',
     logistics: 'Logistics', sales: 'Sales',
     exhibitions: 'Exhibitions', vault: 'Vault',
@@ -728,6 +742,8 @@ export const dict: Record<Lang, Dictionary> = {
     workDrawerUnsavedTitle: 'Unsaved changes',
     workDrawerUnsavedBody: 'Save before closing this work?',
     workDrawerDiscard: 'Close without saving',
+    workDrawerStatusLegendEffective: 'Shown state (catalogue / photo gates)',
+    workDrawerStatusLegendCommercial: 'Saved commercial status',
     // Public site
     pub_works: 'Works', pub_about: 'About', pub_practice: 'Practice',
     pub_enquiry: 'Enquiry',
@@ -922,6 +938,8 @@ export const dict: Record<Lang, Dictionary> = {
     pipeline_sidebar_in_days_fmt: 'in {days}d',
     pipeline_etape_tick_title: 'Mark as done',
     pipeline_gantt_overdue_suffix: ' ⚠ overdue',
+    pipeline_gantt_process_statut_title: 'Status: {status} — click to cycle',
+    pipeline_gantt_etape_marker_title: '{step} · {stepStatus}{overdue} — click to cycle',
     proc_stat_en_cours: 'In progress',
     proc_stat_gagne: 'Won / selected',
     proc_stat_perdu: 'Not selected',
@@ -937,6 +955,9 @@ export const dict: Record<Lang, Dictionary> = {
     landing_pdf_modal_title: 'Portfolio PDF',
     locale_fr_short: 'French',
     locale_en_short: 'English',
+    pem_theme_toggle_day: 'DAY',
+    pem_theme_toggle_night: 'NIGHT',
+    pem_theme_toggle_std: 'STD',
     pd_row_location: 'Location',
     pd_row_url: 'URL',
     pd_row_start: 'Start',

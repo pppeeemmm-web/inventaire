@@ -10,7 +10,8 @@ import {
   type ConceptRow,
 } from '@/app/atelier/concepts/actions'
 import { convertConceptToProcess } from '@/app/atelier/pipeline/actions'
-import { TYPE_LABELS as PIPELINE_LABELS } from './PipelineTab'
+import { TYPE_LABELS, pipelineTypeLabel, type ProcessType } from './PipelineTab'
+import { useI18n } from '@/lib/i18n/context'
 import { stringifyError } from '@/lib/error'
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -163,6 +164,7 @@ function ConceptCard({ concept, onUpdated, onDeleted }: {
   onUpdated: (c: ConceptRow) => void
   onDeleted: (id: string) => void
 }) {
+  const { lang } = useI18n()
   const [expanded, setExpanded] = useState(false)
   const [editing,  setEditing]  = useState(false)
   const [busy,     setBusy]     = useState(false)
@@ -435,8 +437,8 @@ function ConceptCard({ concept, onUpdated, onDeleted }: {
                   <div style={labelSt}>Convertir en projet</div>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <select style={{ ...inputSt, flex: 1 }} value={targetType} onChange={(e) => setTargetType(e.target.value)}>
-                      {Object.entries(PIPELINE_LABELS).map(([k, v]) => (
-                        <option key={k} value={k}>{v}</option>
+                      {(Object.keys(TYPE_LABELS) as ProcessType[]).map((typ) => (
+                        <option key={typ} value={typ}>{pipelineTypeLabel(typ, lang)}</option>
                       ))}
                     </select>
                     <button className="btn sm" onClick={handleConvert} disabled={busy}>Go</button>

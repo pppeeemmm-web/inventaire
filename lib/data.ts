@@ -133,6 +133,89 @@ export function statusOf(
   return 'available'
 }
 
+/** Commercial status from `Oeuvres.statusId` only — no Catalogué / NeedsPhotograph refinement. */
+export function commercialStatusKeyFromRow(
+  o: { statusId?: number | null },
+  statusLabelMap: Record<number, string> = {},
+): StatusKey {
+  if (o.statusId === null || o.statusId === undefined) return 'en_production'
+  const label = statusLabelMap[o.statusId]
+  if (label) return statusKeyFromLabel(label)
+  return 'en_production'
+}
+
+/** OeuvreStatus.id used by WorkDrawer pipeline segments (matches STATUS_STAGES ids). */
+export function statusKeyToOeuvreStatusId(key: StatusKey): number {
+  switch (key) {
+    case 'en_production': return 1
+    case 'available': return 2
+    case 'reserved': return 4
+    case 'consigned': return 7
+    case 'loan': return 8
+    case 'sold': return 6
+    case 'gift': return 11
+    case 'artist_archive': return STATUS_ID_ARCHIVE_ARTISTE
+    case 'private_archive': return 5
+    default: return 1
+  }
+}
+
+/**
+ * Which pipeline segment should appear selected: follows `statusOf` when the form matches saved row,
+ * else the user's pending `statusId` while editing.
+ */
+export function pipelineHighlightStatusId(
+  o: { statusId?: number | null; Catalogué?: boolean; NeedsPhotograph?: boolean; needsphotograph?: boolean },
+  statusLabelMap: Record<number, string>,
+  localStatusIdStr: string,
+): number {
+  if (String(o.statusId ?? '') !== localStatusIdStr && localStatusIdStr !== '') {
+    const n = Number(localStatusIdStr)
+    if (Number.isFinite(n) && n > 0) return n
+  }
+  return statusKeyToOeuvreStatusId(statusOf(o, statusLabelMap))
+}
+
+/** DB says « Disponible » but gates keep effective state in production (catalogue / photo). */
+export function isAvailabilityRefinedToProduction(
+  o: { statusId?: number | null; Catalogué?: boolean; NeedsPhotograph?: boolean; needsphotograph?: boolean },
+  statusLabelMap: Record<number, string>,
+): boolean {
+  return (
+    statusOf(o, statusLabelMap) === 'en_production' &&
+    commercialStatusKeyFromRow(o, statusLabelMap) === 'available'
+  )
+}
+
+/** Saved commercial segment id (from `Oeuvres.statusId`) — ignores catalogue/photo refinement. */
+export function commercialPipelineSegmentId(
+  o: { statusId?: number | null },
+  statusLabelMap: Record<number, string>,
+): number {
+  const k = commercialStatusKeyFromRow(o, statusLabelMap)
+  return statusKeyToOeuvreStatusId(k)
+}
+
+/** Effective segment after refinement (gates) — mirrors `statusOf` bar mapping. */
+export function effectivePipelineSegmentId(
+  o: { statusId?: number | null; Catalogué?: boolean; NeedsPhotograph?: boolean; needsphotograph?: boolean },
+  statusLabelMap: Record<number, string>,
+): number {
+  return statusKeyToOeuvreStatusId(statusOf(o, statusLabelMap))
+}
+
+/**
+ * Show both markers on the drawer bar when saved commercial step ≠ effective refined step while the form matches DB.
+ */
+export function statusDrawerShowCommercialEffectiveSplit(
+  o: { statusId?: number | null; Catalogué?: boolean; NeedsPhotograph?: boolean; needsphotograph?: boolean },
+  statusLabelMap: Record<number, string>,
+  localStatusIdStr: string,
+): boolean {
+  if (String(o.statusId ?? '') !== localStatusIdStr || localStatusIdStr === '') return false
+  return commercialPipelineSegmentId(o, statusLabelMap) !== effectivePipelineSegmentId(o, statusLabelMap)
+}
+
 /** Color for a StatusKey — used for row/grid tinting in InventoryTab */
 export function statusColor(key: StatusKey): string {
   switch (key) {

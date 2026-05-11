@@ -8,7 +8,7 @@ import { useVirtualizer } from '@tanstack/react-virtual'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
-import { imageUrl, thumbUrl, yearOf, statusOf, statusColor, stageOf, type StatusKey, formatInventoryDims } from '@/lib/data'
+import { imageUrl, thumbUrl, yearOf, statusOf, statusColor, stageOf, type StatusKey, formatInventoryDims, isAvailabilityRefinedToProduction } from '@/lib/data'
 import { MissingThumb, WorkThumb } from './WorkThumb'
 import { WorkStateChip } from './WorkStateChip'
 import Image from 'next/image'
@@ -1053,26 +1053,21 @@ function InvList({
 
   const router = useRouter()
 
+  const cellDivider: React.CSSProperties = {
+    borderRight: '1px solid var(--bd)',
+  }
+
   const headerBase: React.CSSProperties = {
-    padding: '0 4px',
+    ...cellDivider,
+    padding: '10px 6px',
     color: 'var(--tx)',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: 600,
     whiteSpace: 'nowrap',
-    verticalAlign: 'bottom',
-  }
-
-  const compactHeader: React.CSSProperties = {
-    ...headerBase,
-    height: 72,
-    overflow: 'visible',
+    verticalAlign: 'middle',
     textAlign: 'left',
-  }
-
-  const slantedHeaderInner: React.CSSProperties = {
-    display: 'inline-block',
-    transform: 'translateY(10px) rotate(-35deg)',
-    transformOrigin: 'bottom left',
+    lineHeight: 1.2,
+    background: 'var(--bg1)',
   }
 
   return (
@@ -1092,9 +1087,9 @@ function InvList({
         background: 'var(--bg1)',
         fontSize: 14,
       }}>
-        <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--bg0)' }}>
-          <tr style={{ height: 72, borderBottom: '1px solid var(--bd)' }}>
-            <th style={{ width: 30, ...headerBase }}>
+        <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
+          <tr style={{ borderBottom: '1px solid var(--bd)' }}>
+            <th style={{ width: 30, textAlign: 'center', padding: '8px 4px', ...cellDivider, background: 'var(--bg1)' }}>
               <div style={{
                 width: 12, height: 12, margin: '0 auto',
                 border: `1.5px solid ${visible.length > 0 && visible.every(o => selection.has(o.OeuvreID)) ? 'var(--ac)' : 'var(--bd2)'}`,
@@ -1111,38 +1106,38 @@ function InvList({
                 {visible.length > 0 && visible.every(o => selection.has(o.OeuvreID)) ? '✓' : ''}
               </div>
             </th>
-            <th style={{ width: 22, ...headerBase }}></th>
+            <th style={{ width: 22, padding: '8px 2px', ...cellDivider, background: 'var(--bg1)' }} />
             <th onClick={() => toggleSort('OeuvreID')} style={{ ...headerBase, width: 44, color: 'var(--tx3)', cursor: 'pointer' }}>ID <SortInd k="OeuvreID" current={sortKey} dir={sortDir} /></th>
-            <th style={{ width: 44, ...headerBase }}></th>
-            <th onClick={() => toggleSort('Titre')} style={{ ...headerBase, textAlign: 'left', width: '18%', cursor: 'pointer' }}>{t('title')} <SortInd k="Titre" current={sortKey} dir={sortDir} /></th>
-            <th style={{ ...headerBase, textAlign: 'left', width: '22%' }}>Médium</th>
-            <th style={{ ...headerBase, textAlign: 'left', width: 70 }}>Dims</th>
-            <th onClick={() => toggleSort('Année')} style={{ ...compactHeader, width: 48, cursor: 'pointer' }}>
-              <span style={slantedHeaderInner}>Année <SortInd k="Année" current={sortKey} dir={sortDir} /></span>
+            <th style={{ width: 44, padding: '8px 2px', ...cellDivider, background: 'var(--bg1)' }} />
+            <th onClick={() => toggleSort('Titre')} style={{ ...headerBase, width: '18%', cursor: 'pointer' }}>{t('title')} <SortInd k="Titre" current={sortKey} dir={sortDir} /></th>
+            <th style={{ ...headerBase, width: '22%' }}>Médium</th>
+            <th style={{ ...headerBase, width: 70 }}>Dims</th>
+            <th onClick={() => toggleSort('Année')} style={{ ...headerBase, width: 48, cursor: 'pointer' }}>
+              Année <SortInd k="Année" current={sortKey} dir={sortDir} />
             </th>
-            <th onClick={() => toggleSort('Prix')} style={{ ...compactHeader, width: 80, cursor: 'pointer' }}>
-              <span style={slantedHeaderInner}>Prix <SortInd k="Prix" current={sortKey} dir={sortDir} /></span>
+            <th onClick={() => toggleSort('Prix')} style={{ ...headerBase, width: 80, cursor: 'pointer' }}>
+              Prix <SortInd k="Prix" current={sortKey} dir={sortDir} />
             </th>
-            <th onClick={() => toggleSort('Contact')} style={{ ...compactHeader, width: 100, cursor: 'pointer' }}>
-              <span style={slantedHeaderInner}>Contact <SortInd k="Contact" current={sortKey} dir={sortDir} /></span>
+            <th onClick={() => toggleSort('Contact')} style={{ ...headerBase, width: 100, cursor: 'pointer' }}>
+              Contact <SortInd k="Contact" current={sortKey} dir={sortDir} />
             </th>
-            <th onClick={() => toggleSort('Custodian')} style={{ ...compactHeader, width: 110, cursor: 'pointer' }}>
-              <span style={slantedHeaderInner}>Emplacement <SortInd k="Custodian" current={sortKey} dir={sortDir} /></span>
+            <th onClick={() => toggleSort('Custodian')} style={{ ...headerBase, width: 110, cursor: 'pointer' }}>
+              Emplacement <SortInd k="Custodian" current={sortKey} dir={sortDir} />
             </th>
             <th
               colSpan={2}
               onClick={() => toggleSort('Status')}
-              style={{ ...compactHeader, width: 160, cursor: 'pointer' }}
+              style={{ ...headerBase, width: 160, cursor: 'pointer' }}
               title="État commercial (disponible, production, réservé, vendu…)"
             >
-              <span style={slantedHeaderInner}>État <SortInd k="Status" current={sortKey === 'Stage' ? 'Status' : sortKey} dir={sortDir} /></span>
+              État <SortInd k="Status" current={sortKey === 'Stage' ? 'Status' : sortKey} dir={sortDir} />
             </th>
             <th
               onClick={() => toggleSort('Comm')}
-              style={{ ...compactHeader, width: 80, cursor: 'pointer' }}
+              style={{ ...headerBase, width: 80, cursor: 'pointer', borderRight: 'none' }}
               title="Rappel si réservé (l’état détaillé est dans la colonne État)"
             >
-              <span style={slantedHeaderInner}>Réserve <SortInd k="Comm" current={sortKey} dir={sortDir} /></span>
+              Réserve <SortInd k="Comm" current={sortKey} dir={sortDir} />
             </th>
           </tr>
         </thead>
@@ -1180,7 +1175,7 @@ function InvList({
                     height: 44,
                   }}
                 >
-                  <td style={{ textAlign: 'center', padding: '0 8px' }}>
+                  <td style={{ textAlign: 'center', padding: '0 8px', ...cellDivider, verticalAlign: 'middle' }}>
                     <div style={{
                       width: 14, height: 14, margin: '0 auto',
                       border: `1.5px solid ${isSel ? 'var(--ac)' : 'var(--bd2)'}`,
@@ -1191,24 +1186,26 @@ function InvList({
                       {isSel ? '✓' : ''}
                     </div>
                   </td>
-                  <td style={{ padding: '0 2px' }}>
+                  <td style={{ padding: '0 2px', ...cellDivider, verticalAlign: 'middle' }}>
                     <button onClick={(e) => { e.stopPropagation(); router.push(`/atelier/works/${o.OeuvreID}/edit`) }} style={{ color: 'var(--tx3)', fontSize: 12 }}>✎</button>
                   </td>
-                  <td style={{ color: 'var(--tx3)', fontSize: 11, padding: '0 2px', whiteSpace: 'nowrap' }}>
+                  <td style={{ color: 'var(--tx3)', fontSize: 11, padding: '0 2px', whiteSpace: 'nowrap', ...cellDivider, verticalAlign: 'middle' }}>
                     {o.OeuvreID}
                     {(() => {
                       if (!(o as any).is_public) {
                         return <span title="Œuvre privée (Non publique)" style={{ marginLeft: 4, opacity: 0.6 }}>🔒</span>
                       }
-                      
-                      // Photography Gate Indicator
+                      if (isAvailabilityRefinedToProduction(o, statusLabelMap)) {
+                        return <span title={t('inv_refinement_gate')} style={{ marginLeft: 4, opacity: 0.65 }}>🔒</span>
+                      }
+                      // Photography Gate Indicator (explicit « En production » + HR pending)
                       if (!o.Catalogué && o.statusId === 1 && o.txtImageNameLink) {
                         return <span title="En attente de validation Haute-Résolution" style={{ marginLeft: 6, color: 'var(--ac)', fontSize: 9, fontWeight: 700 }}>● GATE</span>
                       }
                       return null
                     })()}
                   </td>
-                  <td style={{ padding: '2px' }}>
+                  <td style={{ padding: '2px', ...cellDivider, verticalAlign: 'middle' }}>
                     <div 
                       className="thumb" 
                       style={{ 
@@ -1227,15 +1224,15 @@ function InvList({
                         : <MissingThumb id={o.OeuvreID} onOpen={() => onOpen(o)} />}
                     </div>
                   </td>
-                  <td style={{ color: 'var(--tx)', padding: '0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.Titre || '—'}</td>
-                  <td style={{ padding: '0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: 0.8 }}>
+                  <td style={{ color: 'var(--tx)', padding: '0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', ...cellDivider, verticalAlign: 'middle' }}>{o.Titre || '—'}</td>
+                  <td style={{ padding: '0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: 0.8, ...cellDivider, verticalAlign: 'middle' }}>
                     {o.Technique != null ? (tM[o.Technique] ?? '') : ''} 
                     {o.Support != null ? ` · ${sM[o.Support] ?? ''}` : ''}
                   </td>
-                  <td style={{ padding: '0 4px', whiteSpace: 'nowrap', opacity: 0.8 }}>{dims}</td>
-                  <td style={{ padding: '0 4px', opacity: 0.8 }}>{yearOf(o.Année) ?? '—'}</td>
-                  <td style={{ padding: '0 4px', whiteSpace: 'nowrap', opacity: 0.8 }}>{o.Prix ? `€ ${Number(o.Prix).toLocaleString('fr-FR')}` : '—'}</td>
-                  <td style={{ padding: '0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: 0.8 }}>
+                  <td style={{ padding: '0 4px', whiteSpace: 'nowrap', opacity: 0.8, ...cellDivider, verticalAlign: 'middle' }}>{dims}</td>
+                  <td style={{ padding: '0 4px', opacity: 0.8, ...cellDivider, verticalAlign: 'middle' }}>{yearOf(o.Année) ?? '—'}</td>
+                  <td style={{ padding: '0 4px', whiteSpace: 'nowrap', opacity: 0.8, ...cellDivider, verticalAlign: 'middle' }}>{o.Prix ? `€ ${Number(o.Prix).toLocaleString('fr-FR')}` : '—'}</td>
+                  <td style={{ padding: '0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: 0.8, ...cellDivider, verticalAlign: 'middle' }}>
                     {(() => {
                       const level = (o as any).anonymity_level ?? 0
                       const contactName = o.ContactID != null ? (cM[o.ContactID] ?? '—') : 'Pem'
@@ -1251,7 +1248,7 @@ function InvList({
                       )
                     })()}
                   </td>
-                  <td style={{ padding: '0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: 0.8 }}>
+                  <td style={{ padding: '0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: 0.8, ...cellDivider, verticalAlign: 'middle' }}>
                     {(() => {
                       // TRUTH ENFORCEMENT: If the status implies it's gone (Consigned, Loaned, Sold, Gifted), 
                       // we MUST show the actual location. Otherwise, it is at the Atelier.
@@ -1260,10 +1257,10 @@ function InvList({
                       return ((o as any).LocalisationID != null ? locMap[(o as any).LocalisationID] : 'Pem - Atelier') || '—'
                     })()}
                   </td>
-                  <td style={{ padding: '0 4px', whiteSpace: 'nowrap', verticalAlign: 'middle' }} colSpan={2}>
+                  <td style={{ padding: '0 4px', whiteSpace: 'nowrap', verticalAlign: 'middle', ...cellDivider }} colSpan={2}>
                     <WorkStateChip o={o} statusLabelMap={statusLabelMap} />
                   </td>
-                  <td style={{ padding: '0 4px' }}>
+                  <td style={{ padding: '0 4px', verticalAlign: 'middle', borderRight: 'none' }}>
                     {st === 'reserved' && <span className="chip dust" style={{ fontSize: 10 }}>RÉSERVÉ</span>}
                   </td>
                 </tr>

@@ -14,7 +14,8 @@ import {
 } from '@/app/atelier/exhibitions/actions'
 import { createClient } from '@/lib/supabase/client'
 import { EXHIBITION_READY_TYPES } from '@/lib/data'
-import { TYPE_LABELS as PIPELINE_LABELS } from './PipelineTab'
+import { pipelineTypeLabel, type ProcessType } from './PipelineTab'
+import { useI18n } from '@/lib/i18n/context'
 import { ConstellationCanvas, type NodeMap, type Pt } from './ConstellationCanvas'
 import { WorkThumb } from './WorkThumb'
 import { ExhibitionsTabSkeleton } from './ExhibitionsTabSkeleton'
@@ -963,6 +964,7 @@ export function ExhibitionsTab({ oeuvres, contacts, themes, tM, selection, setSe
   selection: Set<number>; 
   setSelection: any
 }) {
+  const { lang } = useI18n()
   const [exhibitions, setExhibitions] = useState<Exhibition[]>([])
   const [selected,    setSelected]    = useState<Exhibition | null>(null)
   const [loading,     setLoading]     = useState(true)
@@ -1126,8 +1128,8 @@ export function ExhibitionsTab({ oeuvres, contacts, themes, tM, selection, setSe
           <form onSubmit={handleCreate} style={{ padding: '10px 12px', borderBottom: '1px solid var(--bd)', display: 'flex', flexDirection: 'column', gap: 6 }}>
             <input name="nom" value={newNom} onChange={(e) => setNewNom(e.target.value)} placeholder="Nom de l'exposition…" style={inputSt} autoFocus />
             <select value={newType} onChange={(e) => setNewType(e.target.value)} style={inputSt}>
-              {EXHIBITION_READY_TYPES.map(t => (
-                <option key={t} value={t}>{PIPELINE_LABELS[t as any] || t}</option>
+              {EXHIBITION_READY_TYPES.map((pty) => (
+                <option key={pty} value={pty}>{pipelineTypeLabel(pty as ProcessType, lang)}</option>
               ))}
             </select>
             <div style={{ display: 'flex', gap: 6 }}>

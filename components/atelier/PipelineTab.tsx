@@ -6,10 +6,11 @@ import { useState, useEffect, useCallback, useMemo, useLayoutEffect } from 'reac
 import { useI18n } from '@/lib/i18n/context'
 import { createClient } from '@/lib/supabase/client'
 import { stringifyError } from '@/lib/error'
+import type { Lang } from '@/lib/i18n/dictionary'
 
 // ── Types ──────────────────────────────────────────────────────────────
 
-type ProcessType =
+export type ProcessType =
   | 'prix' | 'residence' | 'expedition' | 'consignment' | 'exposition'
   | 'pr' | 'visite_atelier' | 'salon' | 'livre' | 'collaboration'
   | 'evenement' | 'correspondance' | 'vente' | 'autre'
@@ -89,7 +90,7 @@ const FIS: React.CSSProperties = {
 
 export const TYPE_LABELS: Record<ProcessType, string> = {
   collaboration:   'Collaboration',
-  consignment:     'Consignment',
+  consignment:     'Consignation',
   correspondance:  'Correspondance',
   evenement:       'Événement',
   expedition:      'Expédition',
@@ -119,6 +120,10 @@ export const TYPE_LABELS_EN: Record<ProcessType, string> = {
   visite_atelier:  'Studio Visit',
   vente:           'Sale',
   autre:           'Other',
+}
+
+export function pipelineTypeLabel(typ: ProcessType, lang: Lang): string {
+  return lang === 'en' ? TYPE_LABELS_EN[typ] : TYPE_LABELS[typ]
 }
 
 export const TYPE_COLORS: Record<ProcessType, string> = {
@@ -170,10 +175,7 @@ function useSuiviLabels() {
       }) as Record<EtapeStatut, string>,
     [t],
   )
-  const typeLabel = useCallback(
-    (typ: ProcessType) => (lang === 'en' ? TYPE_LABELS_EN[typ] : TYPE_LABELS[typ]),
-    [lang],
-  )
+  const typeLabel = useCallback((typ: ProcessType) => pipelineTypeLabel(typ, lang), [lang])
   return { statutLabels, etapeLabels, typeLabel, t, lang }
 }
 
@@ -217,6 +219,10 @@ function urgencyColor(days: number): string {
   return 'var(--tx3)'
 }
 
+function dateLocaleTag(lang: Lang): 'fr-FR' | 'en-GB' {
+  return lang === 'en' ? 'en-GB' : 'fr-FR'
+}
+
 function fmtDate(s: string, includeTime?: string | null, locale: 'fr' | 'en' = 'fr'): string {
   const d = new Date(s)
   const loc = locale === 'en' ? 'en-GB' : 'fr-FR'
@@ -228,7 +234,8 @@ function fmtDate(s: string, includeTime?: string | null, locale: 'fr' | 'en' = '
 // ── Main component ─────────────────────────────────────────────────────
 
 export function PipelineTab({ oeuvres, contacts, groups }: Props) {
-  const { statutLabels, etapeLabels, typeLabel, t } = useSuiviLabels()
+  const { statutLabels, etapeLabels, typeLabel, t, lang } = useSuiviLabels()
+  const dateLocTag = dateLocaleTag(lang)
   const [processes,   setProcesses]   = useState<Process[]>([])
   const [reminders,   setReminders]   = useState<Reminder[]>([])
   const [typeFilter,  setTypeFilter]  = useState<ProcessType | 'all'>('all')
@@ -404,7 +411,7 @@ export function PipelineTab({ oeuvres, contacts, groups }: Props) {
         <div style={{ flex: 1, overflow: 'auto', padding: '20px 28px' }}>
           {filtered.length === 0
             ? <div className="t-mono-sm" style={{ color:'var(--tx3)', paddingTop:40, textAlign:'center' }}>{t('pipeline_no_processes')}</div>
-            : <GanttView processes={filtered} onSelect={p=>setInspectedId(p.id)} onEdit={setEditing} onRefresh={load} onCycleStatut={cycleStatut} />
+            : <GanttView processes={filtered} dateLocaleTag={dateLocTag} onSelect={p=>setInspectedId(p.id)} onEdit={setEditing} onRefresh={load} onCycleStatut={cycleStatut} />
           }
         </div>
       </div>
@@ -429,7 +436,7 @@ export function PipelineTab({ oeuvres, contacts, groups }: Props) {
                             : days === 0
                               ? t('pipeline_sidebar_today')
                               : t('pipeline_sidebar_in_days_fmt').replace(/\{days\}/g, String(days))}
-                          {' · '}{new Date(item.date).toLocaleDateString('en',{day:'numeric',month:'short'})}
+                          {' · '}{new Date(item.date).toLocaleDateString(dateLocTag,{day:'numeric',month:'short'})}
                           {item.time ? ` · ${item.time}` : ''}
                         </div>
                       </div>
@@ -465,7 +472,7 @@ export function PipelineTab({ oeuvres, contacts, groups }: Props) {
                     <div style={{ flex:1 }}>
                       <div style={{ fontSize:13, color:'var(--tx)', lineHeight:1.3 }}>{r.message}</div>
                       <div style={{ fontSize:11, color:'var(--tx3)', marginTop:4 }}>
-                        {new Date(r.remind_at).toLocaleDateString('en',{day:'numeric',month:'short'})}
+                        {new Date(r.remind_at).toLocaleDateString(dateLocTag,{day:'numeric',month:'short'})}
                       </div>
                     </div>
                     <button style={{ fontSize:12, color:'var(--tx3)', flexShrink:0 }}
@@ -503,8 +510,10 @@ export function PipelineTab({ oeuvres, contacts, groups }: Props) {
 
 // ── Gantt ──────────────────────────────────────────────────────────────
 
-function GanttView({ processes, onSelect, onEdit, onRefresh, onCycleStatut }: {
-  processes: Process[]; onSelect:(p:Process)=>void; onEdit:(p:Process)=>void; onRefresh:()=>void; onCycleStatut:(id:string,s:ProcessStatut)=>void
+function GanttView({ processes, dateLocaleTag: ganttDateLoc, onSelect, onEdit, onRefresh, onCycleStatut }: {
+  processes: Process[]
+  dateLocaleTag: 'fr-FR' | 'en-GB'
+  onSelect:(p:Process)=>void; onEdit:(p:Process)=>void; onRefresh:()=>void; onCycleStatut:(id:string,s:ProcessStatut)=>void
 }) {
   const { statutLabels, etapeLabels, typeLabel, t } = useSuiviLabels()
   const today = new Date(); today.setHours(0,0,0,0)
@@ -516,7 +525,7 @@ function GanttView({ processes, onSelect, onEdit, onRefresh, onCycleStatut }: {
   function pct(d:Date|string){ return Math.max(0,Math.min(100,(new Date(d).getTime()-minDate.getTime())/totalMs*100)) }
   const months:{ label:string;left:number }[] = []
   const cur = new Date(minDate); cur.setDate(1)
-  while(cur<=maxDate){ months.push({label:cur.toLocaleDateString('en',{month:'short',year:'2-digit'}),left:pct(cur)}); cur.setMonth(cur.getMonth()+1) }
+  while(cur<=maxDate){ months.push({label:cur.toLocaleDateString(ganttDateLoc,{month:'short',year:'2-digit'}),left:pct(cur)}); cur.setMonth(cur.getMonth()+1) }
   const todayPct = pct(today)
 
   return (
@@ -543,7 +552,7 @@ function GanttView({ processes, onSelect, onEdit, onRefresh, onCycleStatut }: {
                   <span style={{ fontSize:11, color }}>{typeLabel(p.type as ProcessType)}</span>
                   <button
                     onClick={() => onCycleStatut(p.id, p.statut)}
-                    title={`Statut : ${statutLabels[p.statut]} — cliquer pour changer`}
+                    title={t('pipeline_gantt_process_statut_title').replace(/\{status\}/g, statutLabels[p.statut])}
                     style={{ fontSize:10, padding:'2px 8px', background:'var(--bg0)', border:`1px solid ${color}55`, color, cursor:'pointer', letterSpacing:'0.04em', textTransform:'uppercase', flexShrink:0 }}
                   >{statutLabels[p.statut]}</button>
                 </div>
@@ -566,7 +575,10 @@ function GanttView({ processes, onSelect, onEdit, onRefresh, onCycleStatut }: {
                     const markerColor = isOverdue ? '#c06060' : isFait ? color : isBloque ? '#c06060' : isEnCours ? '#c0a030' : `${color}66`
                     return (
                       <div key={e.id}
-                        title={`${e.nom} · ${etapeLabels[e.statut]}${isOverdue ? t('pipeline_gantt_overdue_suffix') : ''} — cliquer pour changer`}
+                        title={t('pipeline_gantt_etape_marker_title')
+                          .replace(/\{step\}/g, e.nom)
+                          .replace(/\{stepStatus\}/g, etapeLabels[e.statut])
+                          .replace(/\{overdue\}/g, isOverdue ? t('pipeline_gantt_overdue_suffix') : '')}
                         onClick={async(ev)=>{
                           ev.stopPropagation()
                           try {
