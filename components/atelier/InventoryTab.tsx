@@ -57,7 +57,6 @@ const FIELD_LABELS: Record<string, string> = {
   LocalisationID:  'Localisation',
   AcheteurID:      'Acheteur',
   ReturnDate:      'Date retour',
-  anonymity_level: 'Visibilité',
   txtImageNameLink: 'Image',
   IsCommission:    'Commission',
   DateLivraison:   'Deadline',
@@ -302,7 +301,7 @@ export function InventoryTab({
       ].includes(k))
       .map(k => ({
         k,
-        l: FIELD_LABELS[k] || k,
+        l: k === 'anonymity_level' ? t('confidentiality') : (FIELD_LABELS[k] || k),
         t: getFieldType(k, (sample as any)[k])
       }))
 
@@ -311,7 +310,7 @@ export function InventoryTab({
     fields.push({ k: '_group', l: 'Groupe', t: 'lookup' })
 
     return fields
-  }, [oeuvres])
+  }, [oeuvres, t])
 
   const handleLoadGroup = useCallback(async (id: string, mode: 'select' | 'filter' = 'select') => {
     setLoadingGrp(id)
@@ -815,7 +814,7 @@ function CriteriaPanel({
       LocalisationID:  cM,
       AcheteurID:      cM,
       PresentationID:  pM,
-      anonymity_level: { '0': 'Public', '1': 'Masqué', '2': 'Privé' }
+      anonymity_level: { '0': t('anon_lvl_0'), '1': t('anon_lvl_1'), '2': t('anon_lvl_2') }
     }
     const map = maps[field]
     if (map) {

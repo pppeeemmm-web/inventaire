@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { r2S3Hostname } from '@/lib/r2-s3-host'
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -56,7 +57,7 @@ function r2Client() {
   const accountId = process.env.R2_ACCOUNT_ID ?? ''
   return new S3Client({
     region: 'auto',
-    endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+    endpoint: `https://${r2S3Hostname(accountId)}`,
     credentials: {
       accessKeyId:     process.env.R2_ACCESS_KEY_ID     ?? '',
       secretAccessKey: process.env.R2_SECRET_ACCESS_KEY ?? '',

@@ -11,6 +11,7 @@ import type { WorkImage } from '@/lib/types/database'
 import crypto from 'crypto'
 import sharp from 'sharp'
 import { logSystemEvent } from '@/lib/utils/logging'
+import { r2S3Hostname } from '@/lib/r2-s3-host'
 
 async function syncPipelineWithBooleans(
   supabase: any,
@@ -270,6 +271,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
     if ('error' in pipeRes) return { error: pipeRes.error }
 
     revalidatePath('/atelier')
+    revalidatePath(`/atelier/works/${oid}/edit`)
     return { ok: true, newId: oid }
 
   } else {
@@ -426,12 +428,12 @@ function r2PutHeaders(
   filename: string,
   contentType: string,
 ): Record<string, string> {
-  const account   = process.env.R2_ACCOUNT_ID!
+  const account   = process.env.R2_ACCOUNT_ID ?? ''
   const accessKey = process.env.R2_ACCESS_KEY_ID!
   const secretKey = process.env.R2_SECRET_ACCESS_KEY!
-  const bucket    = process.env.R2_BUCKET ?? 'paintings'
-  const host      = `${account}.r2.cloudflarestorage.com`
-  const pathname  = `/${bucket}/${filename.split('/').map(encodeURIComponent).join('/')}`
+  const bucket    = (process.env.R2_BUCKET ?? 'paintings').trim()
+  const host       = r2S3Hostname(account)
+  const pathname   = `/${bucket}/${filename.split('/').map(encodeURIComponent).join('/')}`
 
   const now       = new Date()
   const amzDate   = now.toISOString().replace(/[:-]|\.\d{3}/g, '').slice(0, 15) + 'Z'
@@ -470,20 +472,30 @@ function r2PutHeaders(
 }
 
 async function r2Put(buf: Buffer, filename: string, contentType: string): Promise<void> {
-  const account = process.env.R2_ACCOUNT_ID!
-  const bucket  = process.env.R2_BUCKET ?? 'paintings'
-  const url     = `https://${account}.r2.cloudflarestorage.com/${bucket}/${filename.split('/').map(encodeURIComponent).join('/')}`
+  const account = process.env.R2_ACCOUNT_ID ?? ''
+  const bucket  = (process.env.R2_BUCKET ?? 'paintings').trim()
+  const host    = r2S3Hostname(account)
+  const url     = `https://${host}/${bucket}/${filename.split('/').map(encodeURIComponent).join('/')}`
   const headers = r2PutHeaders(buf, filename, contentType)
   const res     = await fetch(url, { method: 'PUT', headers, body: buf })
-  if (!res.ok) throw new Error(`R2 PUT ${res.status}: ${await res.text()}`)
+  if (!res.ok) {
+    const body = await res.text()
+    let msg = `R2 PUT ${res.status}: ${body}`
+    if (res.status === 404 && body.includes('NoSuchBucket')) {
+      msg += `\n— Check: R2_BUCKET="${bucket}" exists on this Cloudflare account.`
+      msg += `\n— EU buckets: set R2_JURISDICTION=eu or paste dashboard S3 API into R2_S3_API_URL= (hostname must include ".eu.").`
+      msg += `\n— R2_ACCOUNT_ID must match the id in that API URL. Current API host used: ${host}`
+    }
+    throw new Error(msg)
+  }
 }
 
 async function r2Delete(filename: string): Promise<void> {
-  const account   = process.env.R2_ACCOUNT_ID!
+  const account   = process.env.R2_ACCOUNT_ID ?? ''
   const accessKey = process.env.R2_ACCESS_KEY_ID!
   const secretKey = process.env.R2_SECRET_ACCESS_KEY!
-  const bucket    = process.env.R2_BUCKET ?? 'paintings'
-  const host      = `${account}.r2.cloudflarestorage.com`
+  const bucket      = (process.env.R2_BUCKET ?? 'paintings').trim()
+  const host        = r2S3Hostname(account)
   const encodedPath = `/${bucket}/${filename.split('/').map(encodeURIComponent).join('/')}`
 
   const now       = new Date()
@@ -703,9 +715,21 @@ export async function reorderWorkImages(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Non authentifié' }
 
-  // Update SeqNo for each image in the new order
+  const { data: rows, error: selErr } = await supabase
+    .from('tblImage')
+    .select('ImageID')
+    .eq('OeuvreID', oeuvreId)
+  if (selErr) return { error: selErr.message }
+  const allowed = new Set((rows ?? []).map((r: { ImageID: number }) => r.ImageID))
+  if (orderedIds.length !== allowed.size) {
+    return { error: 'Nombre d’images incorrect pour cette œuvre.' }
+  }
+  for (const id of orderedIds) {
+    if (!allowed.has(id)) return { error: 'Image hors de cette œuvre.' }
+  }
+
   const updates = orderedIds.map((id, i) =>
-    supabase.from('tblImage').update({ SeqNo: i + 1 }).eq('ImageID', id),
+    supabase.from('tblImage').update({ SeqNo: i + 1 }).eq('ImageID', id).eq('OeuvreID', oeuvreId),
   )
   await Promise.all(updates)
 

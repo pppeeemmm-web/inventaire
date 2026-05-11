@@ -13,7 +13,7 @@ import { useI18n } from '@/lib/i18n/context'
 import type { Oeuvre, WorkImage } from '@/lib/types/database'
 import type { SaveResult } from '@/app/atelier/works/actions'
 import { WorkThumb } from './WorkThumb'
-import { addWorkImage, deleteWorkImage, createLookup } from '@/app/atelier/works/actions'
+import { addWorkImage, deleteWorkImage, createLookup, reorderWorkImages } from '@/app/atelier/works/actions'
 import { createClient } from '@/lib/supabase/client'
 import { useUnsavedCloseGuard } from '@/hooks/useUnsavedCloseGuard'
 
@@ -306,7 +306,13 @@ export function WorkForm({
     startTransition(async () => {
       const res = await action(fd)
       if ('error' in res) alert(`${t('error_prefix')} ${res.error}`)
-      else { router.push('/atelier'); router.refresh() }
+      else if (typeof res.newId === 'number') {
+        router.push(`/atelier/works/${res.newId}/edit`)
+        router.refresh()
+      } else {
+        router.push('/atelier')
+        router.refresh()
+      }
     })
   }
 
@@ -503,7 +509,7 @@ export function WorkForm({
                 </div>
               </div>
 
-              {/* Visibilité du contact — défaut public, choix du propriétaire */}
+              {/* Confidentialité du contact — défaut public, choix du propriétaire */}
               <div style={{ marginTop: 24, borderTop: '1px solid var(--bd)', paddingTop: 20 }}>
                 <div className="t-eyebrow" style={{ fontSize: 11, marginBottom: 4 }}>{t('wf_visibility_hdr')}</div>
                 <div style={{ fontSize: 11, color: 'var(--tx3)', marginBottom: 12, lineHeight: 1.5 }}>
@@ -696,11 +702,63 @@ function ImageManager({ oeuvreId, initialImages }: { oeuvreId: number; initialIm
   const { t } = useI18n()
   const [imgs, setImgs] = useState(initialImages)
   const [busy, setBusy] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  const sorted = useMemo(() => [...imgs].sort((a, b) => (a.SeqNo ?? 0) - (b.SeqNo ?? 0)), [imgs])
+  const initialSnap = useMemo(
+    () => initialImages.map((i) => `${i.ImageID}:${i.SeqNo}`).join(','),
+    [initialImages],
+  )
+  useEffect(() => {
+    setImgs([...initialImages].sort((a, b) => (a.SeqNo ?? 0) - (b.SeqNo ?? 0)))
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- initialSnap encodes server rows; avoid initialImages identity churn
+  }, [initialSnap, oeuvreId])
+
+  async function persistOrder(ids: number[]) {
+    const res = await reorderWorkImages(oeuvreId, ids)
+    if ('error' in res) alert(`${t('error_prefix')} ${res.error}`)
+    else {
+      setImgs((prev) => {
+        const map = new Map(prev.map((r) => [r.ImageID, r]))
+        return ids.map((id, i) => ({ ...map.get(id)!, SeqNo: i + 1 }))
+      })
+    }
+  }
+
+  function nudge(sortedIndex: number, dir: -1 | 1) {
+    const j = sortedIndex + dir
+    if (j < 0 || j >= sorted.length) return
+    const ids = sorted.map((x) => x.ImageID)
+    const a = ids[sortedIndex]!
+    const b = ids[j]!
+    ids[sortedIndex] = b
+    ids[j] = a
+    void persistOrder(ids)
+  }
+
+  function makeCover(sortedIndex: number) {
+    if (sortedIndex < 0 || sortedIndex >= sorted.length) return
+    const ids = sorted.map((x) => x.ImageID)
+    const id = ids.splice(sortedIndex, 1)[0]!
+    ids.push(id)
+    void persistOrder(ids)
+  }
+
   async function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]; if (!file || !oeuvreId) return
+    const file = e.target.files?.[0]
+    if (!file || oeuvreId <= 0) return
     setBusy(true)
-    const fd = new FormData(); fd.append('image', file); fd.append('oeuvre_id', String(oeuvreId))
-    const res = await addWorkImage(fd); if ('image' in res) setImgs(p => [...p, res.image]); setBusy(false)
+    try {
+      const fd = new FormData()
+      fd.append('image', file)
+      fd.append('oeuvre_id', String(oeuvreId))
+      const res = await addWorkImage(fd)
+      if ('error' in res) alert(`${t('error_prefix')} ${res.error}`)
+      else setImgs((p) => [...p, res.image].sort((a, b) => (a.SeqNo ?? 0) - (b.SeqNo ?? 0)))
+    } finally {
+      setBusy(false)
+      e.target.value = ''
+    }
   }
   async function onDelete(id: number) {
     if (!confirm(t('confirm_delete_image'))) return
@@ -709,19 +767,78 @@ function ImageManager({ oeuvreId, initialImages }: { oeuvreId: number; initialIm
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div className="t-eyebrow" style={{ fontSize: 12 }}>{t('wf_images_heading')}</div>
+      {oeuvreId > 0 && sorted.length > 0 && (
+        <div style={{ fontSize: 11, color: 'var(--tx3)', lineHeight: 1.45, marginBottom: 4 }}>
+          {t('wf_images_reorder_hint')}
+        </div>
+      )}
+      {oeuvreId <= 0 && (
+        <div style={{ fontSize: 11, color: 'var(--tx3)', lineHeight: 1.45 }}>
+          {t('wf_images_save_first_hint')}
+        </div>
+      )}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
-        {imgs.map(img => (
+        {sorted.map((img, si) => (
           <div key={img.ImageID} style={{ position: 'relative', aspectRatio: '1', background: 'var(--bg2)', border: '1px solid var(--bd)' }}>
             <WorkThumb file={img.txtImageNameLink ?? ''} size={256} alt="" />
             <button type="button" onClick={() => onDelete(img.ImageID)}
               style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(0,0,0,0.5)', color: '#fff', border: 'none', borderRadius: '50%', width: 18, height: 18, fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               ✕
             </button>
+            {oeuvreId > 0 && sorted.length > 1 && (
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: 4,
+                  left: 4,
+                  right: 4,
+                  display: 'flex',
+                  gap: 4,
+                  justifyContent: 'center',
+                  background: 'rgba(0,0,0,0.45)',
+                  borderRadius: 4,
+                  padding: '2px 4px',
+                }}
+              >
+                <button type="button" disabled={si === 0} onClick={() => nudge(si, -1)} aria-label={t('wf_images_order_before_aria')} style={{ border: 'none', background: 'transparent', color: '#fff', cursor: si === 0 ? 'default' : 'pointer', fontSize: 12, padding: '0 4px', opacity: si === 0 ? 0.35 : 1 }}>←</button>
+                <button type="button" disabled={si === sorted.length - 1} onClick={() => nudge(si, 1)} aria-label={t('wf_images_order_after_aria')} style={{ border: 'none', background: 'transparent', color: '#fff', cursor: si === sorted.length - 1 ? 'default' : 'pointer', fontSize: 12, padding: '0 4px', opacity: si === sorted.length - 1 ? 0.35 : 1 }}>→</button>
+                <button type="button" disabled={si === sorted.length - 1} onClick={() => makeCover(si)} aria-label={t('wf_images_order_cover_aria')} style={{ border: 'none', background: 'transparent', color: '#fff', cursor: si === sorted.length - 1 ? 'default' : 'pointer', fontSize: 12, padding: '0 4px', opacity: si === sorted.length - 1 ? 0.35 : 1 }}>★</button>
+              </div>
+            )}
           </div>
         ))}
-        <label style={{ aspectRatio: '1', border: '1px dashed var(--bd)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, color: 'var(--tx3)', cursor: 'pointer' }}>
-          {busy ? '…' : '+'}<input type="file" hidden onChange={onUpload} accept="image/*" />
-        </label>
+        {oeuvreId > 0 && (
+          <>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              style={{ display: 'none' }}
+              onChange={onUpload}
+              tabIndex={-1}
+            />
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => fileRef.current?.click()}
+              aria-label={t('wf_images_add_aria')}
+              style={{
+                aspectRatio: '1',
+                border: '1px dashed var(--bd)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 20,
+                color: 'var(--tx3)',
+                cursor: busy ? 'wait' : 'pointer',
+                background: 'transparent',
+                padding: 0,
+              }}
+            >
+              {busy ? '…' : '+'}
+            </button>
+          </>
+        )}
       </div>
     </div>
   )

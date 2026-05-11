@@ -10,7 +10,7 @@ import { getWorkActionTypes } from '@/lib/work-action-type-cache'
 import { useRouter } from 'next/navigation'
 import { useEffect, useLayoutEffect, useState, useTransition, useCallback, useRef, useMemo, forwardRef, useImperativeHandle } from 'react'
 import { useI18n } from '@/lib/i18n/context'
-import { saveWork, createLookup } from '@/app/atelier/works/actions'
+import { saveWork, createLookup, addWorkImage, reorderWorkImages } from '@/app/atelier/works/actions'
 import { markAsGift } from '@/app/atelier/works/gift-actions'
 import type { Oeuvre } from '@/lib/types/database'
 import { WorkThumb } from './WorkThumb'
@@ -158,6 +158,11 @@ export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function Work
     }
   }, [o?.OeuvreID])
 
+  const workImagesSorted = useMemo(
+    () => [...workImages].sort((a, b) => (a.SeqNo ?? 0) - (b.SeqNo ?? 0)),
+    [workImages],
+  )
+
   if (!o) {
     return isPanel
       ? <div style={{ flex: '0 0 35%', minWidth: 320, padding: 20, color: 'var(--tx3)' }} className="t-mono-sm">—</div>
@@ -170,8 +175,8 @@ export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function Work
   const isLoan = st === 'loan' || st === 'consigned'
 
   const isExpanded = isPanel ? (expandedProp || imgZoom > 1) : false
-  const activeImgPath = workImages.length > 0 && activeImgIdx >= 0
-    ? workImages[activeImgIdx]?.txtImageNameLink ?? o.txtImageNameLink
+  const activeImgPath = workImagesSorted.length > 0 && activeImgIdx >= 0
+    ? workImagesSorted[activeImgIdx]?.txtImageNameLink ?? o.txtImageNameLink
     : o.txtImageNameLink
 
   // ── Wrapper ────────────────────────────────────────────
@@ -184,7 +189,9 @@ export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function Work
         borderLeft: '1px solid var(--bd)',
         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         boxShadow: isExpanded ? '-10px 0 40px rgba(0,0,0,0.4)' : 'none',
-        maxHeight: isExpanded ? '75vh' : '100%',
+        maxHeight: '100%',
+        height: isExpanded ? '100%' : undefined,
+        minHeight: 0,
         alignSelf: 'stretch',
         borderRadius: isExpanded ? '16px 0 0 16px' : '0',
       }}>
@@ -203,7 +210,7 @@ export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function Work
             imgZoom={imgZoom} setImgZoom={setImgZoom}
             imgPan={imgPan} setImgPan={setImgPan}
             naturalSize={naturalSize} setNaturalSize={setNaturalSize}
-            workImages={workImages} activeImgIdx={activeImgIdx} setActiveImgIdx={setActiveImgIdx}
+            workImages={workImages} setWorkImages={setWorkImages} activeImgIdx={activeImgIdx} setActiveImgIdx={setActiveImgIdx}
             imgContainerRef={imgContainerRef} isDragging={isDragging} dragStart={dragStart}
             activeImgPath={activeImgPath}
             isSel={isSel} st={st} isSold={isSold} isLoan={isLoan}
@@ -216,8 +223,9 @@ export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function Work
   }
 
   // Overlay mode — dimmed backdrop catches outside clicks; panel stops propagation.
+  const overlayTall = imgZoom > 1
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 60, display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-start' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 60, display: 'flex', justifyContent: 'flex-end', alignItems: overlayTall ? 'stretch' : 'flex-start' }}>
       <div
         role="presentation"
         aria-hidden
@@ -232,7 +240,22 @@ export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function Work
       />
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{ width: 460, maxWidth: '50vw', maxHeight: '75vh', height: 'fit-content', background: 'var(--bg1)', border: '1px solid var(--bd)', borderRadius: '16px 0 0 16px', padding: 0, overflow: 'auto', display: 'flex', flexDirection: 'column', boxShadow: '-10px 0 50px rgba(0,0,0,0.4)', margin: 0 }}
+        style={{
+          width: 460,
+          maxWidth: '50vw',
+          maxHeight: overlayTall ? 'calc(100dvh - 8px)' : '75vh',
+          height: overlayTall ? '100%' : 'fit-content',
+          minHeight: overlayTall ? 0 : undefined,
+          background: 'var(--bg1)',
+          border: '1px solid var(--bd)',
+          borderRadius: '16px 0 0 16px',
+          padding: 0,
+          overflow: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+          boxShadow: '-10px 0 50px rgba(0,0,0,0.4)',
+          margin: 0,
+        }}
       >
         <div style={{ padding: 28 }}>
           <DrawerContent
@@ -249,7 +272,7 @@ export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function Work
             imgZoom={imgZoom} setImgZoom={setImgZoom}
             imgPan={imgPan} setImgPan={setImgPan}
             naturalSize={naturalSize} setNaturalSize={setNaturalSize}
-            workImages={workImages} activeImgIdx={activeImgIdx} setActiveImgIdx={setActiveImgIdx}
+            workImages={workImages} setWorkImages={setWorkImages} activeImgIdx={activeImgIdx} setActiveImgIdx={setActiveImgIdx}
             imgContainerRef={imgContainerRef} isDragging={isDragging} dragStart={dragStart}
             activeImgPath={activeImgPath}
             isSel={isSel} st={st} isSold={isSold} isLoan={isLoan}
@@ -275,7 +298,7 @@ function DrawerContent({
   initialContacts, initialGroups, initialPresentations,
   mode, isExpanded, setExpanded,
   imgZoom, setImgZoom, imgPan, setImgPan, naturalSize, setNaturalSize,
-  workImages, activeImgIdx, setActiveImgIdx,
+  workImages, setWorkImages, activeImgIdx, setActiveImgIdx,
   imgContainerRef, isDragging, dragStart, activeImgPath,
   isSel, st, isSold, isLoan,
   closeAttemptRef,
@@ -335,6 +358,72 @@ function DrawerContent({
 
   const panRafId = useRef<number | null>(null)
   const latestMouseRef = useRef({ x: 0, y: 0 })
+  const drawerImageFileRef = useRef<HTMLInputElement>(null)
+  const [drawerImageBusy, setDrawerImageBusy] = useState(false)
+
+  const drawerSorted = useMemo(
+    () => [...workImages].sort((a, b) => (a.SeqNo ?? 0) - (b.SeqNo ?? 0)),
+    [workImages],
+  )
+
+  async function drawerPersistOrder(ids: number[]) {
+    if (!o?.OeuvreID || ids.length === 0) return
+    const before = [...drawerSorted]
+    const currentId = before[activeImgIdx]?.ImageID
+    const res = await reorderWorkImages(o.OeuvreID, ids)
+    if ('error' in res) {
+      alert(`${t('error_prefix')} ${res.error}`)
+      return
+    }
+    const map = new Map(before.map((row) => [row.ImageID, row]))
+    const nextRows = ids.map((id, i) => ({ ...map.get(id)!, SeqNo: i + 1 }))
+    setWorkImages(nextRows)
+    const ni = ids.findIndex((id) => id === currentId)
+    setActiveImgIdx(ni >= 0 ? ni : Math.max(0, ids.length - 1))
+    router.refresh()
+  }
+
+  function drawerNudge(sortedIndex: number, dir: -1 | 1) {
+    const j = sortedIndex + dir
+    if (j < 0 || j >= drawerSorted.length) return
+    const ids = drawerSorted.map((x) => x.ImageID)
+    const a = ids[sortedIndex]!
+    const b = ids[j]!
+    ids[sortedIndex] = b
+    ids[j] = a
+    void drawerPersistOrder(ids)
+  }
+
+  function drawerMakeCover(sortedIndex: number) {
+    if (sortedIndex < 0 || sortedIndex >= drawerSorted.length) return
+    const ids = drawerSorted.map((x) => x.ImageID)
+    const id = ids.splice(sortedIndex, 1)[0]!
+    ids.push(id)
+    void drawerPersistOrder(ids)
+  }
+
+  async function onDrawerImageFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !o?.OeuvreID) return
+    setDrawerImageBusy(true)
+    try {
+      const fd = new FormData()
+      fd.append('image', file)
+      fd.append('oeuvre_id', String(o.OeuvreID))
+      const res = await addWorkImage(fd)
+      if ('error' in res) {
+        alert(`${t('error_prefix')} ${res.error}`)
+      } else {
+        const nextIdx = workImages.length
+        setWorkImages((prev) => [...prev, res.image].sort((a, b) => (a.SeqNo ?? 0) - (b.SeqNo ?? 0)))
+        setActiveImgIdx(nextIdx)
+        router.refresh()
+      }
+    } finally {
+      setDrawerImageBusy(false)
+      e.target.value = ''
+    }
+  }
 
   // Sync on work change
   useEffect(() => {
@@ -683,6 +772,14 @@ function DrawerContent({
       </div>
 
       {/* Image */}
+      <input
+        ref={drawerImageFileRef}
+        type="file"
+        accept="image/*"
+        style={{ display: 'none' }}
+        onChange={onDrawerImageFileChange}
+        tabIndex={-1}
+      />
       <div
         ref={imgContainerRef}
         style={{ width: '100%', overflow: 'hidden', background: 'transparent', cursor: imgZoom > 1 ? 'grab' : 'default', userSelect: 'none', marginBottom: 16 }}
@@ -722,7 +819,7 @@ function DrawerContent({
                 style={{
                   width: '100%',
                   height: 'auto',
-                  maxHeight: '60vh',
+                  maxHeight: '70vh',
                   objectFit: 'contain',
                   display: 'block',
                   transform: `translate(${imgPan.x}px, ${imgPan.y}px) scale(${imgZoom})`,
@@ -732,21 +829,110 @@ function DrawerContent({
                 }}
               />
             )
-          : <div className="ph" style={{ height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--tx3)' }}>—</div>}
+          : (
+              <div
+                className="ph"
+                style={{
+                  minHeight: 120,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 10,
+                  color: 'var(--tx3)',
+                  border: '1px dashed var(--bd)',
+                  borderRadius: 4,
+                  padding: 16,
+                }}
+              >
+                <span style={{ fontSize: 12, textAlign: 'center', lineHeight: 1.45 }}>{t('workDrawer_add_photo')}</span>
+                <button
+                  type="button"
+                  data-testid="work-drawer-add-photo"
+                  disabled={drawerImageBusy}
+                  onClick={() => drawerImageFileRef.current?.click()}
+                  aria-label={t('workDrawer_add_photo_aria')}
+                  className="btn ghost sm"
+                >
+                  {drawerImageBusy ? '…' : '+'}
+                </button>
+              </div>
+            )}
       </div>
 
-      {/* Filmstrip */}
-      {workImages.length > 1 && (
-        <div style={{ display: 'flex', gap: 4, marginBottom: 12, flexWrap: 'wrap' }}>
-          {workImages.map((img: any, idx: number) => (
-            <button key={img.ImageID}
-              onClick={() => { setActiveImgIdx(idx); setImgZoom(1); setImgPan({ x: 0, y: 0 }) }}
-              style={{ width: 44, height: 44, padding: 0, border: `2px solid ${idx === activeImgIdx ? 'var(--ac)' : 'var(--bd)'}`, overflow: 'hidden', cursor: 'pointer', background: 'var(--bg0)', flexShrink: 0 }}
-              title={`Image ${idx + 1}${idx === workImages.length - 1 ? ' (couverture)' : ''}`}
-            >
-              {img.txtImageNameLink && <WorkThumb file={img.txtImageNameLink} alt={`Vue ${idx + 1}`} size={64} displaySize="44px" />}
-            </button>
+      {/* Filmstrip + add / reorder (cover = last in order) */}
+      {workImages.length >= 1 && (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+          {drawerSorted.map((img: { ImageID: number; txtImageNameLink: string | null; SeqNo: number | null }, idx: number) => (
+            <div key={img.ImageID} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+              <button
+                type="button"
+                onClick={() => { setActiveImgIdx(idx); setImgZoom(1); setImgPan({ x: 0, y: 0 }) }}
+                style={{ width: 44, height: 44, padding: 0, border: `2px solid ${idx === activeImgIdx ? 'var(--ac)' : 'var(--bd)'}`, overflow: 'hidden', cursor: 'pointer', background: 'var(--bg0)', flexShrink: 0 }}
+                title={
+                  `${t('wf_images_strip_alt').replace('{n}', String(idx + 1))}${
+                    idx === drawerSorted.length - 1 ? t('wf_images_strip_cover_suffix') : ''
+                  }`
+                }
+              >
+                {img.txtImageNameLink && (
+                  <WorkThumb
+                    file={img.txtImageNameLink}
+                    alt={t('wf_images_strip_alt').replace('{n}', String(idx + 1))}
+                    size={64}
+                    displaySize="44px"
+                  />
+                )}
+              </button>
+              {drawerSorted.length > 1 && (
+                <div className="row" style={{ gap: 2, flexWrap: 'wrap', justifyContent: 'center' }}>
+                  <button
+                    type="button"
+                    disabled={idx === 0}
+                    onClick={() => drawerNudge(idx, -1)}
+                    aria-label={t('wf_images_order_before_aria')}
+                    className="btn ghost sm"
+                    style={{ padding: '0 4px', fontSize: 11, minHeight: 22 }}
+                  >
+                    ←
+                  </button>
+                  <button
+                    type="button"
+                    disabled={idx === drawerSorted.length - 1}
+                    onClick={() => drawerNudge(idx, 1)}
+                    aria-label={t('wf_images_order_after_aria')}
+                    className="btn ghost sm"
+                    style={{ padding: '0 4px', fontSize: 11, minHeight: 22 }}
+                  >
+                    →
+                  </button>
+                  <button
+                    type="button"
+                    disabled={idx === drawerSorted.length - 1}
+                    onClick={() => drawerMakeCover(idx)}
+                    aria-label={t('wf_images_order_cover_aria')}
+                    className="btn ghost sm"
+                    style={{ padding: '0 4px', fontSize: 11, minHeight: 22 }}
+                  >
+                    ★
+                  </button>
+                </div>
+              )}
+            </div>
           ))}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+            <button
+              type="button"
+              data-testid="work-drawer-add-another-photo"
+              disabled={drawerImageBusy}
+              onClick={() => drawerImageFileRef.current?.click()}
+              aria-label={t('wf_images_add_aria')}
+              className="btn ghost sm"
+              style={{ width: 44, height: 44, padding: 0, border: '1px dashed var(--bd)', fontSize: 18 }}
+            >
+              {drawerImageBusy ? '…' : '+'}
+            </button>
+          </div>
         </div>
       )}
 
@@ -892,16 +1078,16 @@ function DrawerContent({
         </div>
       </section>
 
-      {/* ═══ VISIBILITY (contact disclosure) ═══ */}
+      {/* ═══ Confidentiality (contact disclosure) ═══ */}
       <section style={{ marginBottom: 20 }}>
         <div style={{ marginBottom: 8 }}>
-          <span style={{ fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--tx3)' }}>Visibility</span>
+          <span style={{ fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--tx3)' }}>{t('confidentiality')}</span>
         </div>
         <div style={{ display: 'flex', borderRadius: 3, overflow: 'hidden', border: '1px solid var(--bd)' }}>
           {[
-            { level: 0, label: 'PUBLIC', color: '#4caf50' },
-            { level: 1, label: 'MASQUÉ', color: '#ff9800' },
-            { level: 2, label: 'PRIVÉ', color: '#f44336' },
+            { level: 0, label: t('wf_vis_chip_public'), color: '#4caf50' },
+            { level: 1, label: t('wf_vis_chip_masked'), color: '#ff9800' },
+            { level: 2, label: t('wf_vis_chip_private'), color: '#f44336' },
           ].map(opt => {
             const active = anonymityLevel === opt.level
             return (
@@ -915,7 +1101,7 @@ function DrawerContent({
         {anonymityLevel === 2 && (
           <div style={{ marginTop: 6, fontSize: 9, color: '#c88c28', display: 'flex', alignItems: 'center', gap: 4 }}>
             <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#c88c28' }} />
-            CONFIDENTIEL
+            {t('wf_vis_private_banner')}
           </div>
         )}
       </section>

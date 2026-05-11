@@ -1200,9 +1200,9 @@ function CompareModal({ ids, oeuvres, tM, sM, contacts, addresses, statusLabelMa
     { l: 'Encadrée',       k: (o: any) => o.Encadree ? '✓' : '—' },
     { l: 'Montée',         k: (o: any) => o.Montee ? '✓' : '—' },
     { l: t('catalogued'),  k: (o: any) => o.Catalogué ? '✓' : '—' },
-    { l: 'Visibilité',     k: (o: any) => {
+    { l: t('confidentiality'), k: (o: any) => {
         const level = (o as any).anonymity_level ?? 0
-        return level === 0 ? 'Public' : level === 1 ? 'Masqué' : 'Privé'
+        return level === 0 ? t('anon_lvl_0') : level === 1 ? t('anon_lvl_1') : t('anon_lvl_2')
       }},
     { l: 'Commission',     k: (o: any) => o.IsCommission ? '✓' : '—' },
     {

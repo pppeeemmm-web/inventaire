@@ -42,7 +42,7 @@ export type DictKey =
   | 'sales' | 'revenue' | 'orders' | 'newOrder' | 'buyer'
   | 'concepts' | 'themes' | 'location' | 'tirage' | 'exhibitable' | 'image'
   | 'searchFieldAll' | 'searchFieldName' | 'searchFieldCity' | 'searchFieldEmail' | 'searchFieldNotes'
-  | 'identity' | 'depth' | 'visibility' | 'history' | 'save' | 'create'
+  | 'identity' | 'depth' | 'confidentiality' | 'history' | 'save' | 'create'
   | 'priced' | 'date' | 'label'
   | 'main' | 'ramifications' | 'import' | 'newFolder' | 'generateCoa'
   | 'selection' | 'modify' | 'export' | 'compare' | 'groupNamePlaceholder' | 'clear'
@@ -70,6 +70,7 @@ export type DictKey =
   | 'auditAttributedHint'
   | 'workDrawerUnsavedTitle' | 'workDrawerUnsavedBody' | 'workDrawerDiscard'
   | 'workDrawerStatusLegendEffective' | 'workDrawerStatusLegendCommercial'
+  | 'workDrawer_add_photo' | 'workDrawer_add_photo_aria'
   // ── Public site ────────────────────────────────────────────────────────
   | 'pub_works' | 'pub_about' | 'pub_practice' | 'pub_enquiry'
   | 'pub_biography' | 'pub_exhibitions_selected' | 'pub_education' | 'pub_contact'
@@ -108,9 +109,13 @@ export type DictKey =
   | 'wf_contact_custodian' | 'wf_contact_buyer_intent' | 'wf_contact_acquire'
   | 'wf_localisation_now' | 'wf_visibility_hdr' | 'wf_visibility_blurb'
   | 'wf_vis_public' | 'wf_vis_masked' | 'wf_vis_private' | 'wf_vis_public_d' | 'wf_vis_masked_d' | 'wf_vis_private_d'
+  | 'wf_vis_chip_public' | 'wf_vis_chip_masked' | 'wf_vis_chip_private' | 'wf_vis_private_banner'
+  | 'anon_lvl_0' | 'anon_lvl_1' | 'anon_lvl_2'
   | 'wf_fmt_digital' | 'wf_diameter_tt'
   | 'wf_groups' | 'wf_price' | 'wf_discount' | 'wf_vat' | 'wf_final_ht' | 'wf_payment_rcvd' | 'wf_settlement' | 'wf_paid' | 'wf_due'
-  | 'wf_new_contact' | 'wf_images_heading'
+  | 'wf_new_contact' | 'wf_images_heading' | 'wf_images_save_first_hint' | 'wf_images_add_aria'
+  | 'wf_images_reorder_hint' | 'wf_images_strip_alt' | 'wf_images_strip_cover_suffix'
+  | 'wf_images_order_before_aria' | 'wf_images_order_after_aria' | 'wf_images_order_cover_aria'
   | 'wf_badge_sold' | 'wf_badge_gift' | 'wf_badge_archive'
   | 'defaultStudioLocation'
   | 'wf_modify_label'
@@ -242,7 +247,7 @@ export const dict: Record<Lang, Dictionary> = {
     attributes: 'Attributs',
     searchFieldAll: 'Partout', searchFieldName: 'Nom', searchFieldCity: 'Ville',
     searchFieldEmail: 'Email', searchFieldNotes: 'Notes',
-    identity: 'Identité', depth: 'Profondeur', visibility: 'Visibilité',
+    identity: 'Identité', depth: 'Profondeur', confidentiality: 'Confidentialité',
     history: 'Historique', save: 'Enregistrer', create: 'Créer',
     priced: 'Évalué', date: 'Date', label: 'Libellé',
     selection: 'SÉLECTION', modify: 'MODIFIER', export: 'EXPORTER',
@@ -298,12 +303,14 @@ export const dict: Record<Lang, Dictionary> = {
     generating: 'Génération…',
     batchSuccess: 'Modifications appliquées.', selectAll: 'Tout sélectionner',
     renameFile: 'Renommer le fichier', filters: 'Filtres',
-    auditAttributedHint: 'Enregistrements importants (statut, visibilité, ventes…) attribués à votre compte dans le journal système.',
+    auditAttributedHint: 'Enregistrements importants (statut, confidentialité, ventes…) attribués à votre compte dans le journal système.',
     workDrawerUnsavedTitle: 'Modifications non enregistrées',
     workDrawerUnsavedBody: 'Enregistrer avant de fermer la fiche ?',
     workDrawerDiscard: 'Quitter sans enregistrer',
     workDrawerStatusLegendEffective: 'État affiché (catalogue / photo)',
     workDrawerStatusLegendCommercial: 'Statut commercial enregistré',
+    workDrawer_add_photo: 'Aucune image — ajoutez une photo pour cette œuvre.',
+    workDrawer_add_photo_aria: 'Ajouter une photo',
     // Public site
     pub_works: 'Oeuvres', pub_about: 'À propos', pub_practice: 'Pratique',
     pub_enquiry: 'Contact',
@@ -416,15 +423,22 @@ export const dict: Record<Lang, Dictionary> = {
     wf_contact_buyer_intent: 'Acheteur pressenti',
     wf_contact_acquire: 'Contact / Acquéreur',
     wf_localisation_now: 'LOCALISATION ACTUELLE',
-    wf_visibility_hdr: 'VISIBILITÉ DU CONTACT',
+    wf_visibility_hdr: 'CONFIDENTIALITÉ DU CONTACT',
     wf_visibility_blurb:
-      'Par défaut public ; vous pouvez masquer ou restreindre l’affichage du contact à tout moment.',
+      'Par défaut publique ; vous pouvez masquer ou restreindre la divulgation du contact à tout moment.',
     wf_vis_public: '🌐 Public',
     wf_vis_masked: '👤 Masqué',
     wf_vis_private: '🔒 Privé',
     wf_vis_public_d: 'Contact visible publiquement',
     wf_vis_masked_d: 'Contact masqué — nom seul visible admin',
     wf_vis_private_d: 'Contact confidentiel — admin seulement',
+    wf_vis_chip_public: 'PUBLIC',
+    wf_vis_chip_masked: 'MASQUÉ',
+    wf_vis_chip_private: 'PRIVÉ',
+    wf_vis_private_banner: 'CONFIDENTIEL',
+    anon_lvl_0: 'Public',
+    anon_lvl_1: 'Masqué',
+    anon_lvl_2: 'Privé',
     wf_fmt_digital: 'Format numérique',
     wf_diameter_tt: 'Diamètre',
     wf_groups: 'Groupes',
@@ -438,6 +452,16 @@ export const dict: Record<Lang, Dictionary> = {
     wf_due: 'Dû',
     wf_new_contact: 'Nouveau contact',
     wf_images_heading: 'Images',
+    wf_images_save_first_hint:
+      'Enregistrez la fiche pour obtenir un numéro d’œuvre, puis vous pourrez ajouter des photos ici.',
+    wf_images_add_aria: 'Ajouter une image',
+    wf_images_reorder_hint:
+      'La dernière image en grille est la couverture. ← → réordonnent, ★ envoie en couverture.',
+    wf_images_strip_alt: 'Image {n}',
+    wf_images_strip_cover_suffix: ' — couverture',
+    wf_images_order_before_aria: 'Reculer dans l’ordre',
+    wf_images_order_after_aria: 'Avancer dans l’ordre',
+    wf_images_order_cover_aria: 'Mettre en couverture (en dernière position)',
     wf_badge_sold: 'Vendu',
     wf_badge_gift: 'Don',
     wf_badge_archive: 'Archive',
@@ -682,7 +706,7 @@ export const dict: Record<Lang, Dictionary> = {
     attributes: 'Attributes',
     searchFieldAll: 'All', searchFieldName: 'Name', searchFieldCity: 'City',
     searchFieldEmail: 'Email', searchFieldNotes: 'Notes',
-    identity: 'Identity', depth: 'Depth', visibility: 'Visibility',
+    identity: 'Identity', depth: 'Depth', confidentiality: 'Confidentiality',
     history: 'History', save: 'Save', create: 'Create',
     priced: 'Priced', date: 'Date', label: 'Label',
     selection: 'SELECTION', modify: 'MODIFY', export: 'EXPORT',
@@ -738,12 +762,14 @@ export const dict: Record<Lang, Dictionary> = {
     generating: 'Generating…',
     batchSuccess: 'Changes applied.', selectAll: 'Select all',
     renameFile: 'Rename file', filters: 'Filters',
-    auditAttributedHint: 'Important saves (status, visibility, sales…) are attributed to your account in the system log.',
+    auditAttributedHint: 'Important saves (status, confidentiality, sales…) are attributed to your account in the system log.',
     workDrawerUnsavedTitle: 'Unsaved changes',
     workDrawerUnsavedBody: 'Save before closing this work?',
     workDrawerDiscard: 'Close without saving',
     workDrawerStatusLegendEffective: 'Shown state (catalogue / photo gates)',
     workDrawerStatusLegendCommercial: 'Saved commercial status',
+    workDrawer_add_photo: 'No image yet — add a photo for this work.',
+    workDrawer_add_photo_aria: 'Add photo',
     // Public site
     pub_works: 'Works', pub_about: 'About', pub_practice: 'Practice',
     pub_enquiry: 'Enquiry',
@@ -855,15 +881,22 @@ export const dict: Record<Lang, Dictionary> = {
     wf_contact_buyer_intent: 'Prospective buyer',
     wf_contact_acquire: 'Contact / acquirer',
     wf_localisation_now: 'CURRENT LOCATION',
-    wf_visibility_hdr: 'CONTACT VISIBILITY',
+    wf_visibility_hdr: 'CONTACT CONFIDENTIALITY',
     wf_visibility_blurb:
-      'Public by default; you can hide or restrict how the contact appears at any time.',
+      'Public by default; you can mask or restrict contact disclosure at any time.',
     wf_vis_public: '🌐 Public',
     wf_vis_masked: '👤 Masked',
     wf_vis_private: '🔒 Private',
     wf_vis_public_d: 'Contact visible publicly',
     wf_vis_masked_d: 'Contact masked — name visible to admins only',
     wf_vis_private_d: 'Confidential contact — admins only',
+    wf_vis_chip_public: 'PUBLIC',
+    wf_vis_chip_masked: 'MASKED',
+    wf_vis_chip_private: 'PRIVATE',
+    wf_vis_private_banner: 'CONFIDENTIAL',
+    anon_lvl_0: 'Public',
+    anon_lvl_1: 'Masked',
+    anon_lvl_2: 'Private',
     wf_fmt_digital: 'Digital file',
     wf_diameter_tt: 'Diameter',
     wf_groups: 'Groups',
@@ -877,6 +910,16 @@ export const dict: Record<Lang, Dictionary> = {
     wf_due: 'Due',
     wf_new_contact: 'New contact',
     wf_images_heading: 'Images',
+    wf_images_save_first_hint:
+      'Save the record to get a work ID, then you can add photos here.',
+    wf_images_add_aria: 'Add image',
+    wf_images_reorder_hint:
+      'The last image in the grid is the cover. ← → reorder; ★ moves to cover (end).',
+    wf_images_strip_alt: 'Image {n}',
+    wf_images_strip_cover_suffix: ' — cover',
+    wf_images_order_before_aria: 'Move earlier in order',
+    wf_images_order_after_aria: 'Move later in order',
+    wf_images_order_cover_aria: 'Set as cover (move to end)',
     wf_badge_sold: 'Sold',
     wf_badge_gift: 'Gift',
     wf_badge_archive: 'Archived',
