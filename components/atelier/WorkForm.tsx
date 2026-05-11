@@ -24,7 +24,13 @@ import {
   startEstimatedUploadProgress,
   withUploadRetry,
 } from '@/lib/mobile/image-upload-client'
-import { draftStorageKey, type WorkFormDraftPayload } from '@/lib/mobile/work-form-draft'
+import {
+  draftStorageKey,
+  type WorkFormDraftPayload,
+  type WorkFormDraftContent,
+  normalizeWorkFormDraftContent,
+  workFormDraftContentEquals,
+} from '@/lib/mobile/work-form-draft'
 import {
   enqueueOfflineWorkSave,
   formDataToStringRecord,
@@ -157,7 +163,7 @@ export function WorkForm({
   const [commentaires, setCommentaires] = useState((oeuvre as any)?.Commentaires ?? '')
   const [historique,   setHistorique]   = useState((oeuvre as any)?.Historique ?? '')
 
-  const draftSnapshot = useMemo((): Omit<WorkFormDraftPayload, 'savedAt'> => ({
+  const draftSnapshot = useMemo((): WorkFormDraftContent => ({
     titre, annee, techniqueId, supportId, formatId, hauteur, largeur, profondeur,
     prodStage, needsPhoto, ownStage, contactId, anonymityLevel,
     prix, tvaRate, discount, paymentDone, exposable,
@@ -170,15 +176,77 @@ export function WorkForm({
     commentaires, historique, selThemes, selGroups,
   ])
 
+  const committedDraftBaseline = useMemo((): WorkFormDraftContent => {
+    if (!oeuvre) {
+      return {
+        titre: '',
+        annee: '',
+        techniqueId: '',
+        supportId: '',
+        formatId: '',
+        hauteur: '',
+        largeur: '',
+        profondeur: '',
+        prodStage: 'atelier',
+        needsPhoto: false,
+        ownStage: 'artist',
+        contactId: '',
+        anonymityLevel: 0,
+        prix: '0',
+        tvaRate: '0',
+        discount: '0',
+        paymentDone: false,
+        exposable: false,
+        commentaires: '',
+        historique: '',
+        selThemes: [...currentThemeIds],
+        selGroups: [...currentGroupIds],
+      }
+    }
+    return {
+      titre: oeuvre.Titre ?? '',
+      annee: String(oeuvre.Année ?? ''),
+      techniqueId: String(oeuvre.Technique ?? ''),
+      supportId: String(oeuvre.Support ?? ''),
+      formatId: String(oeuvre.Format ?? ''),
+      hauteur: String((oeuvre as { Hauteur?: unknown }).Hauteur ?? ''),
+      largeur: String((oeuvre as { Largeur?: unknown }).Largeur ?? ''),
+      profondeur: String((oeuvre as { Profondeur?: unknown }).Profondeur ?? ''),
+      prodStage: prodStageFromOeuvre(oeuvre),
+      needsPhoto: !!((oeuvre as { NeedsPhotograph?: boolean }).NeedsPhotograph ?? false),
+      ownStage: ownStageFromStatusId(oeuvre.statusId),
+      contactId: String(oeuvre.LocalisationID ?? ''),
+      anonymityLevel: (oeuvre as { anonymity_level?: number }).anonymity_level ?? 0,
+      prix: String(oeuvre.Prix ?? '0'),
+      tvaRate: String((oeuvre as { tva_rate?: number | null }).tva_rate ?? '0'),
+      discount: String((oeuvre as { Discount?: number | null }).Discount ?? '0'),
+      paymentDone: !!((oeuvre as { PaymentDone?: boolean }).PaymentDone ?? false),
+      exposable: !!((oeuvre as { Exposable?: boolean }).Exposable ?? false),
+      commentaires: String((oeuvre as { Commentaires?: string | null }).Commentaires ?? ''),
+      historique: String((oeuvre as { Historique?: string | null }).Historique ?? ''),
+      selThemes: [...currentThemeIds],
+      selGroups: [...currentGroupIds],
+    }
+  }, [oeuvre, currentThemeIds, currentGroupIds])
+
+  const isDirty = !workFormDraftContentEquals(
+    normalizeWorkFormDraftContent(draftSnapshot),
+    normalizeWorkFormDraftContent(committedDraftBaseline),
+  )
+
   useEffect(() => {
     const id = window.setTimeout(() => {
       try {
-        const payload: WorkFormDraftPayload = { ...draftSnapshot, savedAt: Date.now() }
-        sessionStorage.setItem(draftKey, JSON.stringify(payload))
+        if (isDirty) {
+          const payload: WorkFormDraftPayload = { ...draftSnapshot, savedAt: Date.now() }
+          sessionStorage.setItem(draftKey, JSON.stringify(payload))
+        } else {
+          sessionStorage.removeItem(draftKey)
+        }
       } catch { /* quota */ }
     }, 600)
     return () => clearTimeout(id)
-  }, [draftKey, draftSnapshot])
+  }, [draftKey, draftSnapshot, isDirty])
 
   useLayoutEffect(() => {
     if (typeof window === 'undefined') return
@@ -194,6 +262,10 @@ export function WorkForm({
       return
     }
     if (Date.now() - (d.savedAt ?? 0) > 7 * 24 * 60 * 60 * 1000) {
+      sessionStorage.removeItem(draftKey)
+      return
+    }
+    if (workFormDraftContentEquals(normalizeWorkFormDraftContent(d), draftSnapshot)) {
       sessionStorage.removeItem(draftKey)
       return
     }

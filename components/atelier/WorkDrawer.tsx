@@ -27,7 +27,13 @@ import {
   type OwnStageId,
   type ProdStageId,
 } from '@/lib/work-editor-model'
-import { draftStorageKey, type WorkFormDraftPayload } from '@/lib/mobile/work-form-draft'
+import {
+  draftStorageKey,
+  type WorkFormDraftPayload,
+  type WorkFormDraftContent,
+  normalizeWorkFormDraftContent,
+  workFormDraftContentEquals,
+} from '@/lib/mobile/work-form-draft'
 import {
   enqueueOfflineWorkSave,
   formDataToStringRecord,
@@ -137,11 +143,19 @@ export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function Work
   const imgContainerRef = useRef<HTMLDivElement>(null)
   const isDragging = useRef(false)
   const dragStart = useRef({ x: 0, y: 0, px: 0, py: 0 })
-  const pendingWheelDy = useRef(0)
+  /** Wheel adjusts target; rAF chases with small steps (avoids one huge first commit + thumb→full swap shock). */
+  const zoomTargetRef = useRef(1)
+  const zoomCurrentRef = useRef(1)
   const wheelRafId = useRef<number | null>(null)
 
   // Reset on work change
   useEffect(() => {
+    zoomTargetRef.current = 1
+    zoomCurrentRef.current = 1
+    if (wheelRafId.current != null) {
+      cancelAnimationFrame(wheelRafId.current)
+      wheelRafId.current = null
+    }
     setImgZoom(1)
     setImgPan({ x: 0, y: 0 })
     setNaturalSize(null)
@@ -161,29 +175,50 @@ export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function Work
       })
   }, [o?.OeuvreID])
 
-  // Wheel zoom — accumulate delta, apply at most once per animation frame (fewer React commits).
+  // Mirror committed zoom into chase refs; pin target when snapped to 1× (do not cancel rAF here — imgZoom can lag one frame behind the chase).
+  useEffect(() => {
+    zoomCurrentRef.current = imgZoom
+    if (imgZoom <= 1) zoomTargetRef.current = 1
+  }, [imgZoom])
+
+  // Wheel zoom — update target from normalized deltas; rAF chases target with tight first steps.
   useLayoutEffect(() => {
     const el = imgContainerRef.current
     if (!el) return
 
-    const flushWheel = () => {
+    const normDy = (e: WheelEvent) => {
+      let d = e.deltaY
+      if (e.deltaMode === 1) d *= 16
+      else if (e.deltaMode === 2) d *= 800
+      return d
+    }
+
+    const chaseZoom = () => {
       wheelRafId.current = null
-      const dy = pendingWheelDy.current
-      pendingWheelDy.current = 0
-      if (dy === 0) return
-      setImgZoom(z => {
-        const next = Math.min(2, Math.max(1, z - dy * 0.003))
-        if (next <= 1) setImgPan({ x: 0, y: 0 })
-        return next
-      })
+      const z = zoomCurrentRef.current
+      const t = zoomTargetRef.current
+      const eps = 0.0012
+      if (Math.abs(t - z) < eps) return
+
+      const maxStep = z < 1.02 ? 0.021 : 0.065
+      const next = Math.min(2, Math.max(1, z + Math.sign(t - z) * Math.min(Math.abs(t - z), maxStep)))
+      zoomCurrentRef.current = next
+      setImgZoom(next)
+      if (next <= 1) setImgPan({ x: 0, y: 0 })
+      if (Math.abs(t - next) >= eps) {
+        wheelRafId.current = requestAnimationFrame(chaseZoom)
+      }
+    }
+
+    const scheduleChase = () => {
+      if (wheelRafId.current == null) wheelRafId.current = requestAnimationFrame(chaseZoom)
     }
 
     const onWheel = (e: WheelEvent) => {
       e.preventDefault()
-      pendingWheelDy.current += e.deltaY
-      if (wheelRafId.current == null) {
-        wheelRafId.current = requestAnimationFrame(flushWheel)
-      }
+      const sens = 0.00105
+      zoomTargetRef.current = Math.min(2, Math.max(1, zoomTargetRef.current - normDy(e) * sens))
+      scheduleChase()
     }
 
     el.addEventListener('wheel', onWheel, { passive: false })
@@ -191,7 +226,6 @@ export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function Work
       el.removeEventListener('wheel', onWheel)
       if (wheelRafId.current != null) cancelAnimationFrame(wheelRafId.current)
       wheelRafId.current = null
-      pendingWheelDy.current = 0
     }
   }, [o?.OeuvreID])
 
@@ -358,6 +392,8 @@ function DrawerContent({
   const router = useRouter()
   const isPanel = mode === 'panel'
   const narrow = useMediaQuery('(max-width: 767px)')
+  /** Full-res overlay fades in after decode (thumb stays underneath — no hard swap). */
+  const [fullPreviewReady, setFullPreviewReady] = useState(false)
 
   // ── Form State (always editable) ───────────────────────
   const [isSaving, startSave] = useTransition()
@@ -404,7 +440,8 @@ function DrawerContent({
   const [noteBaseline, setNoteBaseline] = useState({ c: '', h: '' })
 
   const draftKey = useMemo(() => draftStorageKey(o.OeuvreID), [o.OeuvreID])
-  const draftPromptedForKey = useRef<string | null>(null)
+  const draftRestoreHandledKeyRef = useRef<string | null>(null)
+  const [longTextReady, setLongTextReady] = useState(false)
 
   const [showUnsavedModal, setShowUnsavedModal] = useState(false)
   const [savingExit, setSavingExit]             = useState(false)
@@ -535,6 +572,7 @@ function DrawerContent({
 
   // Sync on work change
   useEffect(() => {
+    setLongTextReady(false)
     setTitre(o.Titre ?? '')
     setAnnee(o.Année ?? '')
     setTechniqueId(String(o.Technique ?? ''))
@@ -561,15 +599,19 @@ function DrawerContent({
     setCommentaires('')
     setHistorique('')
     void (async () => {
-      const r = await loadOeuvreLongText(o.OeuvreID)
-      if (!('error' in r)) {
-        const c = r.Commentaires ?? ''
-        const h = r.Historique ?? ''
-        setCommentaires(c)
-        setHistorique(h)
-        setNoteBaseline({ c, h })
-      } else {
-        setNoteBaseline({ c: '', h: '' })
+      try {
+        const r = await loadOeuvreLongText(o.OeuvreID)
+        if (!('error' in r)) {
+          const c = r.Commentaires ?? ''
+          const h = r.Historique ?? ''
+          setCommentaires(c)
+          setHistorique(h)
+          setNoteBaseline({ c, h })
+        } else {
+          setNoteBaseline({ c: '', h: '' })
+        }
+      } finally {
+        setLongTextReady(true)
       }
     })()
   }, [o.OeuvreID, oeuvreThemeMap, oeuvreGroupMap, o, initialContacts])
@@ -983,10 +1025,28 @@ function DrawerContent({
     onDrawerDirtyChange?.(isDirty)
   }, [isDirty, onDrawerDirtyChange])
 
-  useLayoutEffect(() => {
+  const draftSnapshot = useMemo((): WorkFormDraftContent => ({
+    titre, annee, techniqueId, supportId, formatId, hauteur, largeur, profondeur,
+    prodStage, needsPhoto, ownStage, contactId, anonymityLevel,
+    prix, tvaRate, discount, paymentDone, exposable,
+    commentaires, historique,
+    selThemes: Array.from(selThemes), selGroups: Array.from(selGroups),
+  }), [
+    titre, annee, techniqueId, supportId, formatId, hauteur, largeur, profondeur,
+    prodStage, needsPhoto, ownStage, contactId, anonymityLevel,
+    prix, tvaRate, discount, paymentDone, exposable,
+    commentaires, historique, selThemes, selGroups,
+  ])
+
+  useEffect(() => {
+    draftRestoreHandledKeyRef.current = null
+  }, [draftKey])
+
+  useEffect(() => {
     if (typeof window === 'undefined') return
-    if (draftPromptedForKey.current === draftKey) return
-    draftPromptedForKey.current = draftKey
+    if (!longTextReady) return
+    if (draftRestoreHandledKeyRef.current === draftKey) return
+    draftRestoreHandledKeyRef.current = draftKey
     const raw = sessionStorage.getItem(draftKey)
     if (!raw) return
     let d: WorkFormDraftPayload
@@ -997,6 +1057,10 @@ function DrawerContent({
       return
     }
     if (Date.now() - (d.savedAt ?? 0) > 7 * 24 * 60 * 60 * 1000) {
+      sessionStorage.removeItem(draftKey)
+      return
+    }
+    if (workFormDraftContentEquals(normalizeWorkFormDraftContent(d), draftSnapshot)) {
       sessionStorage.removeItem(draftKey)
       return
     }
@@ -1027,31 +1091,21 @@ function DrawerContent({
     setHistorique(d.historique ?? '')
     setSelThemes(new Set(d.selThemes ?? []))
     setSelGroups(new Set(d.selGroups ?? []))
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot restore per draftKey
-  }, [draftKey, t])
-
-  const draftSnapshot = useMemo((): Omit<WorkFormDraftPayload, 'savedAt'> => ({
-    titre, annee, techniqueId, supportId, formatId, hauteur, largeur, profondeur,
-    prodStage, needsPhoto, ownStage, contactId, anonymityLevel,
-    prix, tvaRate, discount, paymentDone, exposable,
-    commentaires, historique,
-    selThemes: Array.from(selThemes), selGroups: Array.from(selGroups),
-  }), [
-    titre, annee, techniqueId, supportId, formatId, hauteur, largeur, profondeur,
-    prodStage, needsPhoto, ownStage, contactId, anonymityLevel,
-    prix, tvaRate, discount, paymentDone, exposable,
-    commentaires, historique, selThemes, selGroups,
-  ])
+  }, [longTextReady, draftKey, draftSnapshot, t])
 
   useEffect(() => {
     const id = window.setTimeout(() => {
       try {
-        const payload: WorkFormDraftPayload = { ...draftSnapshot, savedAt: Date.now() }
-        sessionStorage.setItem(draftKey, JSON.stringify(payload))
+        if (isDirty) {
+          const payload: WorkFormDraftPayload = { ...draftSnapshot, savedAt: Date.now() }
+          sessionStorage.setItem(draftKey, JSON.stringify(payload))
+        } else if (longTextReady) {
+          sessionStorage.removeItem(draftKey)
+        }
       } catch { /* quota */ }
     }, 600)
     return () => clearTimeout(id)
-  }, [draftKey, draftSnapshot])
+  }, [draftKey, draftSnapshot, isDirty, longTextReady])
 
   function handleSubmit() {
     startSave(async () => {
@@ -1136,13 +1190,19 @@ function DrawerContent({
   const cName = (c: DrawerContactRow) => c.NomInstitution || `${c.Prénom ?? ''} ${c.Nom ?? ''}`.trim() || `#${c.ContactID}`
   const sortedContacts = [...localContacts].sort((a, b) => cName(a).localeCompare(cName(b), 'fr'))
 
-  const useFullResPreview = imgZoom > 1
-  const previewImgSrc = activeImgPath
-    ? ((useFullResPreview ? imageUrl(activeImgPath) : thumbUrl(activeImgPath)) ?? '')
-    : ''
-  const previewImgKey = activeImgPath ? `${activeImgPath}-${useFullResPreview ? 'full' : 'thumb'}` : ''
+  const thumbPreviewSrc = activeImgPath ? (thumbUrl(activeImgPath) ?? '') : ''
+  const fullPreviewSrc = activeImgPath ? (imageUrl(activeImgPath) ?? '') : ''
+  const showFullPreviewLayer = Boolean(activeImgPath && imgZoom > 1)
   /** Overlay rail is narrow: cap hero image so pipeline + fields stay reachable without huge scroll. */
   const previewMaxHeight = isPanel ? '70vh' : narrow ? '56vh' : 'min(44vh, 400px)'
+
+  useEffect(() => {
+    setFullPreviewReady(false)
+  }, [activeImgPath])
+
+  useEffect(() => {
+    if (!showFullPreviewLayer) setFullPreviewReady(false)
+  }, [showFullPreviewLayer])
 
   useEffect(() => () => {
     if (panRafId.current != null) cancelAnimationFrame(panRafId.current)
@@ -1266,27 +1326,60 @@ function DrawerContent({
       >
         {activeImgPath
           ? (
-              <img
-                key={previewImgKey}
-                draggable={false}
-                src={previewImgSrc}
-                alt={o.Titre ?? ''}
-                onLoad={e => {
-                  const el = e.currentTarget
-                  if (el.naturalWidth > 0) setNaturalSize({ w: el.naturalWidth, h: el.naturalHeight })
-                }}
+              <div
                 style={{
+                  position: 'relative',
                   width: '100%',
-                  height: 'auto',
-                  maxHeight: previewMaxHeight,
-                  objectFit: 'contain',
-                  display: 'block',
                   transform: `translate(${imgPan.x}px, ${imgPan.y}px) scale(${imgZoom})`,
                   transformOrigin: 'center center',
                   transition: 'none',
                   willChange: imgZoom > 1 ? 'transform' : 'auto',
                 }}
-              />
+              >
+                <img
+                  key={`drawer-thumb-${activeImgPath}`}
+                  draggable={false}
+                  src={thumbPreviewSrc}
+                  alt={o.Titre ?? ''}
+                  onLoad={e => {
+                    const el = e.currentTarget
+                    if (el.naturalWidth > 0) setNaturalSize({ w: el.naturalWidth, h: el.naturalHeight })
+                  }}
+                  style={{
+                    width: '100%',
+                    height: 'auto',
+                    maxHeight: previewMaxHeight,
+                    objectFit: 'contain',
+                    display: 'block',
+                  }}
+                />
+                {showFullPreviewLayer && fullPreviewSrc ? (
+                  <img
+                    key={`drawer-full-${activeImgPath}`}
+                    draggable={false}
+                    src={fullPreviewSrc}
+                    alt=""
+                    aria-hidden
+                    decoding="async"
+                    onLoad={e => {
+                      const el = e.currentTarget
+                      if (el.naturalWidth > 0) setNaturalSize({ w: el.naturalWidth, h: el.naturalHeight })
+                      setFullPreviewReady(true)
+                    }}
+                    style={{
+                      position: 'absolute',
+                      left: 0,
+                      top: 0,
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'contain',
+                      opacity: fullPreviewReady ? 1 : 0,
+                      transition: 'opacity 0.22s ease-out',
+                      pointerEvents: 'none',
+                    }}
+                  />
+                ) : null}
+              </div>
             )
           : (
               <div
