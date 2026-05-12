@@ -14,6 +14,7 @@ import { registerUndo, consumeUndo } from '@/lib/ui/undo'
 import { markAsGift } from '@/app/atelier/works/gift-actions'
 import type { Oeuvre } from '@/lib/types/database'
 import { WorkThumb } from './WorkThumb'
+import { WorkVersionHistory } from './WorkVersionHistory'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import {
   downscaleImageFileForMobileIfNeeded,
@@ -936,6 +937,11 @@ function DrawerContent({
       try {
         sessionStorage.removeItem(draftKey)
       } catch { /* ignore */ }
+      if (res.pending) {
+        setNoteBaseline({ c: commentaires, h: historique })
+        toast.success(t('wf_save_pending_toast'))
+        return true
+      }
       setNoteBaseline({ c: commentaires, h: historique })
       router.refresh()
       const runUndo = () => {
@@ -1742,6 +1748,8 @@ function DrawerContent({
             <div className="t-mono-xs" style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 6 }}>{t('wf_history_hint')}</div>
           </div>
         </section>
+
+        <WorkVersionHistory oeuvreId={o.OeuvreID} onRestored={() => router.refresh()} />
       </div>
 
       {/* ═══ ACTIONS ═══ */}

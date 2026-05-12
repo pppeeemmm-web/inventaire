@@ -23,7 +23,7 @@ Worktree edits → copy to real app (dev server runs from real app).
 - Next.js 15 App Router + Supabase + Cloudflare R2 (images)
 - Server Components fetch data, pass to Client Components
 - Mutations: Server Actions ('use server') in app/**/actions.ts only. No API routes.
-- Auth: Supabase SSR middleware enforces auth on all /atelier /hub /galerie routes
+- Auth: Supabase SSR middleware enforces auth on all /atelier /hub /galerie routes. Admin = `is_admin()` RPC (joins `Contact.is_admin` via `auth_user_id`); editors = team but not admin. Old `profiles.role` is dead.
 - i18n: see **🌐 UI COPY** below (non-negotiable for anything user-facing)
 - Image upload: Sharp → 400px AVIF thumb → R2 via AWS S3 SDK
 - Supabase clients: createClient() (anon, RLS enforced) · createServiceClient() (service_role, admin bypass)
@@ -63,7 +63,9 @@ All user-visible copy → `useI18n().t(key)` + `lib/i18n/dictionary.ts` (**DictK
 - components/atelier/WorkDrawer.tsx — **canonical edit** for existing works: prod/ownership pipes, finance, notes, themes/groups, images (incl. delete), gift flow, `saveWork` + guards (`runGuarded`, `?work=` deep link via `TeamPortalClient`). Overlay + inventory panel modes.
 - components/atelier/WorkForm.tsx — full-page **create only** at `/atelier/works/new` (shared `saveWork`). `/atelier/works/[id]/edit` redirects to `/atelier?work=<id>` (drawer).
 - components/atelier/ContactEditorPanel.tsx — Hub Contacts full editor in the right column / stacked on mobile (`ContactsTab` orchestrates selection, `useUnsavedActionGuard` on row switch / batch / merge).
-- app/atelier/works/actions.ts — image upload, delete, work CRUD
+- app/atelier/works/actions.ts — image upload, delete, work CRUD; `requireAdmin()` gates `purgeWorkPermanently` + `deleteWorkImage`; `saveWork` queues editor edits to `pending_changes` unless `__skip_review=1`.
+- app/atelier/audit/{actions,pending-actions,version-actions}.ts — audit ledger, approval queue, version history (all admin-gated via `is_admin()` RPC)
+- components/atelier/{AuditTab,PendingQueue,WorkVersionHistory}.tsx — admin protection UIs (Audit Log → Ledger / Review tabs; history panel inside WorkDrawer)
 
 💾 DATA LOGIC
 Status: Oeuvres.statusId (FK → OeuvreStatus.id).
@@ -72,6 +74,26 @@ Images: tblImage → trigger updates Oeuvres auto.
 Dates: Oeuvres.Année = DATE (YYYY-01-01). Use yearOf() in lib/data.ts.
 Sort: UI dropdowns = Alphabetical.
 Image URLs: imageUrl() / thumbUrl() from lib/data.ts. Never build R2 URLs manually.
+
+🛡️ ADMIN "LAST WORD" (data + asset protection)
+**Identity:** Admin = `Contact.is_admin = true` linked via `Contact.auth_user_id = auth.uid()`. RPC `is_admin()` is the single source of truth (server actions, RLS, sidebar `TeamPortalClient`). Old `profiles.role` is dead — never read.
+
+**Phase A — Hard delete = admin only.** `purgeWorkPermanently`, `deleteWorkImage` gated by `requireAdmin()` in `app/atelier/works/actions.ts`. RLS `DELETE` policy on `Oeuvres` + `tblImage` enforces `is_admin()` (defense-in-depth). Editors keep soft-delete (`Oeuvres.deleted_at`) — fully reversible. Migration: `supabase/sql/admin_only_hard_delete.sql`.
+
+**Phase B — Editor edits → approval queue.** Non-admin `saveWork` on existing oeuvres lands in `pending_changes` (jsonb payload + baseline snapshot). Admin reviews via Atelier > Audit Log > **Review** tab — approve replays payload through `saveWork` with `__skip_review=1`; reject marks row + reason. New-work creation stays unqueued (low risk). Migration: `supabase/sql/pending_changes.sql`. Files: `app/atelier/audit/pending-actions.ts`, `components/atelier/PendingQueue.tsx`.
+
+**Phase C — Pre-update version snapshots.** Trigger `oeuvre_version_snap` writes the OLD row to `oeuvre_versions` on every `Oeuvres` UPDATE. Admin-only collapsible panel at the bottom of `WorkDrawer` lists versions, diffs vs prior, restores via service-role `restoreOeuvreVersion(versionId)`. Restore itself is logged (creates new snapshot). Excluded from restore payload: `OeuvreID`, `is_public` (trigger), `txtImageNameLink` (trigger), `created_at`. Migration: `supabase/sql/oeuvre_versions.sql`. Files: `app/atelier/audit/version-actions.ts`, `components/atelier/WorkVersionHistory.tsx`.
+
+**Phase D — R2 image soft-delete (app-side, no Bucket Lock).**
+R2 has no S3-style Object Versioning and Bucket Lock is too rigid (locks the admin too). Pattern: every R2 delete from `app/atelier/works/actions.ts` goes through `r2SoftDelete(key)` which **server-side copies** the object to `recycle/<YYYY-MM-DD>/<key>` (S3 CopyObject via `x-amz-copy-source`, no bytes flow through Node) and only then deletes the original. Falls back to direct delete if the copy fails (object already gone).
+- **Cloudflare console step (one-time)**: bucket `paintings` → Object Lifecycle Rules → **Add** rule: prefix `recycle/`, action *Delete objects after 90 days*. Same on `vault` if it ever gets writes.
+- **Recovery**: copy the object back from `recycle/<date>/<key>` to its original key, or list `recycle/` via S3 API and POST back through `tblImage` if metadata also lost.
+- Helpers in [app/atelier/works/actions.ts](app/atelier/works/actions.ts): `r2Copy(src, dst)`, `r2SoftDelete(key)`. Editor-side delete is already blocked by Phase A `requireAdmin()`; soft-delete is the safety net for the admin's own mistakes.
+- Rotate R2 access keys yearly; document the rotation date in this section.
+
+**Phase E — Off-site backups (planned).** GitHub Actions cron → `pg_dump` → `art-db-backups` R2 bucket (separate write-only token, Object Lock compliance mode 30 days) → weekly mirror to second cloud (Backblaze B2). Recovery drill: `psql` against fresh Supabase project, verify Oeuvres row count.
+
+**Dev-only auto-login.** `middleware.ts` calls `signInWithPassword` when `NODE_ENV=development` AND `DEV_AUTO_LOGIN_EMAIL`/`_PASSWORD` set. Used in preview iframe to skip Google OAuth. Production never has these env vars set.
 
 🚫 CEMETERY (instant fail)
 DEAD COLUMNS: Oeuvres.Statut, Oeuvres.StatutID, tags, txtImageName, Emballage, DocsValidated, UniteDimension

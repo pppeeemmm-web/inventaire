@@ -13,6 +13,14 @@ import sharp from 'sharp'
 import { logSystemEvent } from '@/lib/utils/logging'
 import { r2S3Hostname } from '@/lib/r2-s3-host'
 
+/** Returns null if caller is admin, else error string. Use for hard-destructive ops. */
+async function requireAdmin(supabase: SupabaseClient): Promise<string | null> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return 'Non authentifié'
+  const { data: isAdmin } = await supabase.rpc('is_admin')
+  return isAdmin ? null : 'Action réservée à l’administrateur'
+}
+
 async function syncPipelineWithBooleans(
   supabase: any,
   oid: number,
@@ -59,7 +67,7 @@ async function syncPipelineWithBooleans(
   return { ok: true }
 }
 
-export type SaveResult   = { error: string } | { ok: true; newId?: number }
+export type SaveResult   = { error: string } | { ok: true; newId?: number; pending?: boolean }
 export type DeleteResult = { error: string } | { ok: true }
 export type ImageResult  = { error: string } | { ok: true; image: WorkImage }
 
@@ -89,15 +97,17 @@ async function deleteAllImagesForOeuvres(
     const filename = r.txtImageNameLink as string | null
     if (!filename) continue
     const thumbName = `thumbs/${filename.replace(/\.[^.]+$/, '')}.avif`
-    try { await r2Delete(filename) } catch { /* R2 optional */ }
-    try { await r2Delete(thumbName) } catch { /* R2 optional */ }
+    try { await r2SoftDelete(filename) } catch { /* R2 optional */ }
+    try { await r2SoftDelete(thumbName) } catch { /* R2 optional */ }
   }
   return { ok: true }
 }
 
-/** Permanent delete (R2 + DB). Use after trash TTL or explicit purge. */
+/** Permanent delete (R2 + DB). Admin only. Use after trash TTL or explicit purge. */
 export async function purgeWorkPermanently(oid: number): Promise<DeleteResult> {
   const supabase = await createClient()
+  const adminErr = await requireAdmin(supabase)
+  if (adminErr) return { error: adminErr }
   const svc = createServiceClient()
   const { error: relErr } = await supabase.from('tblrelations').delete().or(`source_id.eq.${oid},target_id.eq.${oid}`)
   if (relErr) return { error: relErr.message }
@@ -175,6 +185,33 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
   // ── Parse scalar fields ──────────────────────────────────────────────
   const oeuvreIdRaw  = (formData.get('oeuvre_id') as string | null)?.trim()
   const isNew        = !oeuvreIdRaw
+
+  // ── Editor approval gate (Phase B) ───────────────────────────────────
+  // Non-admin team edits to existing works are queued for admin review.
+  // New-work creation is allowed (low destructive risk; version trigger captures
+  // future updates). The `__skip_review` flag is set by approvePending() when
+  // the admin is replaying a previously-queued payload.
+  const skipReview = formData.get('__skip_review') === '1'
+  if (!isNew && !skipReview) {
+    const { data: isAdmin } = await supabase.rpc('is_admin')
+    if (!isAdmin) {
+      const oid = Number(oeuvreIdRaw)
+      const payload: Record<string, string> = {}
+      formData.forEach((v, k) => { if (typeof v === 'string') payload[k] = v })
+      const { data: baseline } = await supabase
+        .from('Oeuvres').select('*').eq('OeuvreID', oid).maybeSingle()
+      const { error: pErr } = await supabase.from('pending_changes').insert({
+        oeuvre_id: oid,
+        payload,
+        baseline,
+        author_id: user.id,
+        author_email: user.email ?? null,
+      })
+      if (pErr) return { error: pErr.message }
+      revalidatePath('/atelier/audit')
+      return { ok: true, pending: true }
+    }
+  }
 
   const titre        = (formData.get('titre')   as string | null)?.trim() || null
   const année        = (formData.get('annee')   as string | null)?.trim() || null
@@ -670,6 +707,67 @@ async function r2Put(buf: Buffer, filename: string, contentType: string): Promis
   }
 }
 
+/** Server-side R2 copy via S3 CopyObject (no bytes flow through this server). */
+async function r2Copy(srcKey: string, dstKey: string): Promise<void> {
+  const account   = process.env.R2_ACCOUNT_ID ?? ''
+  const accessKey = process.env.R2_ACCESS_KEY_ID!
+  const secretKey = process.env.R2_SECRET_ACCESS_KEY!
+  const bucket    = (process.env.R2_BUCKET ?? 'paintings').trim()
+  const host      = r2S3Hostname(account)
+  const encodedPath = `/${bucket}/${dstKey.split('/').map(encodeURIComponent).join('/')}`
+  const copySource  = `/${bucket}/${srcKey.split('/').map(encodeURIComponent).join('/')}`
+
+  const now       = new Date()
+  const amzDate   = now.toISOString().replace(/[:-]|\.\d{3}/g, '').slice(0, 15) + 'Z'
+  const dateStamp = amzDate.slice(0, 8)
+  const bodyHash  = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
+
+  const headers: Record<string, string> = {
+    'host':                  host,
+    'x-amz-copy-source':     copySource,
+    'x-amz-date':            amzDate,
+    'x-amz-content-sha256':  bodyHash,
+  }
+  const sortedKeys       = Object.keys(headers).sort()
+  const canonicalHeaders = sortedKeys.map(k => `${k}:${headers[k]}\n`).join('')
+  const signedHeaderStr  = sortedKeys.join(';')
+  const canonicalRequest = ['PUT', encodedPath, '', canonicalHeaders, signedHeaderStr, bodyHash].join('\n')
+
+  const region   = 'auto'
+  const service  = 's3'
+  const credScope = `${dateStamp}/${region}/${service}/aws4_request`
+  const strToSign = ['AWS4-HMAC-SHA256', amzDate, credScope,
+    crypto.createHash('sha256').update(canonicalRequest).digest('hex')].join('\n')
+
+  const hmac = (key: Buffer | string, data: string) => crypto.createHmac('sha256', key).update(data).digest()
+  const sigKey = hmac(hmac(hmac(hmac('AWS4' + secretKey, dateStamp), region), service), 'aws4_request')
+  const sig    = crypto.createHmac('sha256', sigKey).update(strToSign).digest('hex')
+
+  headers['Authorization'] =
+    `AWS4-HMAC-SHA256 Credential=${accessKey}/${credScope}, SignedHeaders=${signedHeaderStr}, Signature=${sig}`
+
+  const res = await fetch(`https://${host}${encodedPath}`, { method: 'PUT', headers })
+  if (!res.ok) throw new Error(`R2 COPY ${res.status}: ${await res.text()}`)
+}
+
+/**
+ * Phase D safety net: copy R2 object into `recycle/<YYYY-MM-DD>/<key>` before deleting.
+ * Lifecycle rule on R2 bucket auto-purges `recycle/*` after 90 days. Reversible window
+ * for accidental deletes — admin can copy back from recycle if needed.
+ * Falls back to direct delete if the copy fails (e.g. object already missing) so the
+ * primary delete path stays best-effort.
+ */
+async function r2SoftDelete(filename: string): Promise<void> {
+  const day = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
+  const dst = `recycle/${day}/${filename}`
+  try {
+    await r2Copy(filename, dst)
+  } catch (e) {
+    console.warn('[r2SoftDelete] copy failed, falling through to delete:', (e as Error).message)
+  }
+  await r2Delete(filename)
+}
+
 async function r2Delete(filename: string): Promise<void> {
   const account   = process.env.R2_ACCOUNT_ID ?? ''
   const accessKey = process.env.R2_ACCESS_KEY_ID!
@@ -860,14 +958,14 @@ export async function addWorkImage(formData: FormData): Promise<ImageResult> {
   return { ok: true, image: inserted as WorkImage }
 }
 
-// Delete one image from a work
+// Delete one image from a work. Admin only — image deletion is irreversible at R2 layer.
 export async function deleteWorkImage(
   imageId: number,
   oeuvreId: number,
 ): Promise<DeleteResult> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Non authentifié' }
+  const adminErr = await requireAdmin(supabase)
+  if (adminErr) return { error: adminErr }
 
   // Get the path before deleting
   const { data: img } = await supabase
@@ -883,9 +981,9 @@ export async function deleteWorkImage(
   if (img?.txtImageNameLink) {
     const filename = img.txtImageNameLink
     const thumbName = `thumbs/${filename.replace(/\.[^.]+$/, '')}.avif`
-    // Fire-and-forget — don't block on R2 delete errors
-    try { await r2Delete(filename) } catch {}
-    try { await r2Delete(thumbName) } catch {}
+    // Fire-and-forget — don't block on R2 errors. Soft-delete moves to recycle/<date>/ first.
+    try { await r2SoftDelete(filename) } catch {}
+    try { await r2SoftDelete(thumbName) } catch {}
   }
 
   await syncCover(supabase, oeuvreId)

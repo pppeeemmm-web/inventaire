@@ -3,19 +3,34 @@
 import { useState, useEffect } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { fetchSystemLogs, type AuditLogEntry } from '@/app/atelier/audit/actions'
+import { PendingQueue } from './PendingQueue'
 
 export function AuditTab() {
   const { t } = useI18n()
+  const [view, setView] = useState<'ledger' | 'pending'>('ledger')
   const [logs, setLogs] = useState<AuditLogEntry[]>([])
   const [filter, setFilter] = useState('ALL')
   const [busy, setBusy] = useState(true)
 
   useEffect(() => {
+    if (view !== 'ledger') return
     fetchSystemLogs(200).then(data => {
       setLogs(data)
       setBusy(false)
     })
-  }, [])
+  }, [view])
+
+  if (view === 'pending') {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <div style={{ padding: '12px 28px', borderBottom: '1px solid var(--bd)', display: 'flex', gap: 8 }}>
+          <button onClick={() => setView('ledger')} className="btn ghost sm" style={{ fontSize: 9, letterSpacing: 1, opacity: 0.5 }}>{t('audit_view_ledger')}</button>
+          <button onClick={() => setView('pending')} className="btn ghost sm" style={{ fontSize: 9, letterSpacing: 1, border: '1px solid var(--bd)', background: 'var(--bg1)' }}>{t('audit_view_pending')}</button>
+        </div>
+        <div style={{ flex: 1, overflow: 'hidden' }}><PendingQueue /></div>
+      </div>
+    )
+  }
 
   const filtered = logs.filter(l => filter === 'ALL' || l.event_type === filter)
 
@@ -37,7 +52,10 @@ export function AuditTab() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Header / Filter Bar */}
       <div style={{ padding: '12px 28px', borderBottom: '1px solid var(--bd)', display: 'flex', alignItems: 'center', gap: 20 }}>
-        <div className="t-eyebrow" style={{ fontSize: 10 }}>Audit Ledger</div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={() => setView('ledger')} className="btn ghost sm" style={{ fontSize: 9, letterSpacing: 1, border: '1px solid var(--bd)', background: 'var(--bg1)' }}>{t('audit_view_ledger')}</button>
+          <button onClick={() => setView('pending')} className="btn ghost sm" style={{ fontSize: 9, letterSpacing: 1, opacity: 0.5 }}>{t('audit_view_pending')}</button>
+        </div>
         <div style={{ display: 'flex', gap: 8 }}>
           {eventTypes.map((evt) => (
             <button

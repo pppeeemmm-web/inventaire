@@ -43,7 +43,7 @@ export async function middleware(request: NextRequest) {
 
   // Refresh session — do not remove this line
   try {
-    const { data: { user } } = await supabase.auth.getUser()
+    let { data: { user } } = await supabase.auth.getUser()
 
     // Auth gating: only redirect on real document navigations (never on RSC/SA),
     // otherwise Next can throw "unexpected response" for Flight streams.
@@ -62,6 +62,30 @@ export async function middleware(request: NextRequest) {
     const isAuthRoute =
       p === '/login' || p.startsWith('/login/') ||
       p === '/auth/callback' || p.startsWith('/auth/callback/')
+
+    // Dev-only auto-login: when no session and credentials are present in env,
+    // sign in transparently so the preview iframe doesn't have to traverse OAuth.
+    // NEVER triggers in production (env vars must be absent there).
+    if (
+      !user &&
+      isDocNav &&
+      isProtected &&
+      !isAuthRoute &&
+      process.env.NODE_ENV === 'development' &&
+      process.env.DEV_AUTO_LOGIN_EMAIL &&
+      process.env.DEV_AUTO_LOGIN_PASSWORD
+    ) {
+      const { error: signInErr } = await supabase.auth.signInWithPassword({
+        email: process.env.DEV_AUTO_LOGIN_EMAIL,
+        password: process.env.DEV_AUTO_LOGIN_PASSWORD,
+      })
+      if (signInErr) {
+        console.error('[middleware] dev auto-login failed:', signInErr.message)
+      } else {
+        const refreshed = await supabase.auth.getUser()
+        user = refreshed.data.user
+      }
+    }
 
     if (!user && isDocNav && isProtected && !isAuthRoute) {
       const next = request.nextUrl.pathname + request.nextUrl.search

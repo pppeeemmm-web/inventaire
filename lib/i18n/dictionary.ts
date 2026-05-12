@@ -128,6 +128,16 @@ export type DictKey =
   | 'config_error_title' | 'config_error_body'
   | 'ov_executive_summary' | 'ov_stat_available' | 'ov_stat_total_value'
   | 'audit_actor_system'
+  | 'audit_view_ledger' | 'audit_view_pending'
+  | 'pending_loading' | 'pending_empty' | 'pending_queue_title'
+  | 'pending_changes_count' | 'pending_approve' | 'pending_reject'
+  | 'pending_confirm_approve' | 'pending_confirm_reject'
+  | 'pending_reject_reason_placeholder'
+  | 'pending_field' | 'pending_before' | 'pending_after' | 'pending_no_changes'
+  | 'wf_save_pending_toast'
+  | 'history_section_title' | 'history_loading' | 'history_empty'
+  | 'history_changes_count' | 'history_restore' | 'history_confirm_restore'
+  | 'history_field' | 'history_before' | 'history_after' | 'history_no_changes'
   | 'ov_pulse_deadline_overdue_fmt' | 'ov_pulse_deadline_due_today' | 'ov_pulse_deadline_in_days_fmt'
   | 'ov_no_deadlines' | 'ov_burning_ideas' | 'ov_active_pipeline'
   | 'ov_reminders_title' | 'ov_reminder_today' | 'ov_reminder_tomorrow' | 'ov_reminder_days_ago_fmt' | 'ov_reminder_in_days_fmt'
@@ -535,6 +545,32 @@ export const dict: Record<Lang, Dictionary> = {
     ov_stat_available: 'Disponibles',
     ov_stat_total_value: 'Valeur totale',
     audit_actor_system: 'Système',
+    audit_view_ledger: 'Journal',
+    audit_view_pending: 'Validation',
+    pending_loading: 'Chargement de la file…',
+    pending_empty: 'Aucune proposition en attente.',
+    pending_queue_title: 'Propositions en attente',
+    pending_changes_count: 'champ(s) modifié(s)',
+    pending_approve: 'Approuver',
+    pending_reject: 'Rejeter',
+    pending_confirm_approve: 'Approuver et appliquer cette proposition ?',
+    pending_confirm_reject: 'Confirmer le rejet',
+    pending_reject_reason_placeholder: 'Raison du rejet (optionnel)',
+    pending_field: 'Champ',
+    pending_before: 'Avant',
+    pending_after: 'Proposé',
+    pending_no_changes: 'Aucun changement détecté.',
+    wf_save_pending_toast: 'Envoyé pour validation par l’administrateur',
+    history_section_title: 'Historique des versions',
+    history_loading: 'Chargement de l’historique…',
+    history_empty: 'Aucune version enregistrée.',
+    history_changes_count: 'champ(s) modifié(s)',
+    history_restore: 'Restaurer',
+    history_confirm_restore: 'Restaurer cette version ? Les valeurs actuelles seront remplacées (et conservées dans l’historique).',
+    history_field: 'Champ',
+    history_before: 'Précédent',
+    history_after: 'Cette version',
+    history_no_changes: 'Aucun changement par rapport à la version antérieure.',
     ov_pulse_deadline_overdue_fmt: '{days}j RETARD',
     ov_pulse_deadline_due_today: 'AUJOURD’HUI',
     ov_pulse_deadline_in_days_fmt: 'DANS {days} J',
@@ -1304,6 +1340,32 @@ $env:OLLAMA_HOST="127.0.0.1:11435"; ollama run llama3.2:1b`,
     ov_stat_available: 'Available',
     ov_stat_total_value: 'Total value',
     audit_actor_system: 'System',
+    audit_view_ledger: 'Ledger',
+    audit_view_pending: 'Review',
+    pending_loading: 'Loading queue…',
+    pending_empty: 'No pending proposals.',
+    pending_queue_title: 'Pending proposals',
+    pending_changes_count: 'field(s) changed',
+    pending_approve: 'Approve',
+    pending_reject: 'Reject',
+    pending_confirm_approve: 'Approve and apply this proposal?',
+    pending_confirm_reject: 'Confirm rejection',
+    pending_reject_reason_placeholder: 'Reason for rejection (optional)',
+    pending_field: 'Field',
+    pending_before: 'Before',
+    pending_after: 'Proposed',
+    pending_no_changes: 'No changes detected.',
+    wf_save_pending_toast: 'Submitted for admin review',
+    history_section_title: 'Version history',
+    history_loading: 'Loading history…',
+    history_empty: 'No versions recorded.',
+    history_changes_count: 'field(s) changed',
+    history_restore: 'Restore',
+    history_confirm_restore: 'Restore this version? Current values will be replaced (kept in history).',
+    history_field: 'Field',
+    history_before: 'Previous',
+    history_after: 'This version',
+    history_no_changes: 'No changes vs the prior version.',
     ov_pulse_deadline_overdue_fmt: '{days}d OVERDUE',
     ov_pulse_deadline_due_today: 'DUE TODAY',
     ov_pulse_deadline_in_days_fmt: 'IN {days} DAYS',

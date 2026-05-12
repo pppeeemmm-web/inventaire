@@ -243,12 +243,9 @@ export function TeamPortalClient({
 
   useEffect(() => {
     const sb = createClient()
-    sb.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return
-      sb.from('profiles').select('role').eq('id', user.id).maybeSingle()
-        .then(({ data: p }) => setIsAdmin(p?.role === 'admin'))
-        .catch((err) => console.error('Profile role:', err))
-    })
+    sb.rpc('is_admin')
+      .then(({ data }) => setIsAdmin(!!data))
+      .catch((err) => console.error('is_admin RPC:', err))
   }, [])
 
   useEffect(() => {
