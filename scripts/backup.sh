@@ -43,10 +43,9 @@ rclone version | head -1
 
 # Upload via rclone — AWS CLI v2's recent SigV4 additions break against R2.
 # rclone has a dedicated Cloudflare R2 provider profile and a stable upload path.
-JURI="${R2_BACKUP_JURISDICTION-eu}"
-JSUB=""
-[ -n "$JURI" ] && JSUB=".${JURI}"
-ENDPOINT="https://${R2_BACKUP_ACCOUNT_ID}${JSUB}.r2.cloudflarestorage.com"
+# Use the global R2 endpoint (no .eu. subdomain) + path-style addressing.
+# Virtual-hosted-style on the EU jurisdiction subdomain returns bare BadRequest 400.
+ENDPOINT="https://${R2_BACKUP_ACCOUNT_ID}.r2.cloudflarestorage.com"
 KEY="daily/${OUT}"
 
 mkdir -p "$HOME/.config/rclone"
@@ -59,11 +58,13 @@ secret_access_key = ${R2_BACKUP_SECRET_KEY}
 endpoint = ${ENDPOINT}
 region = auto
 acl = private
+force_path_style = true
+no_check_bucket = true
 EOF
 
-echo "[backup] endpoint host: ${R2_BACKUP_ACCOUNT_ID:0:4}…${JSUB}.r2.cloudflarestorage.com"
+echo "[backup] endpoint host: ${R2_BACKUP_ACCOUNT_ID:0:4}….r2.cloudflarestorage.com"
 echo "[backup] upload r2:${R2_BACKUP_BUCKET}/${KEY}"
-rclone --config "$HOME/.config/rclone/rclone.conf" \
+rclone --config "$HOME/.config/rclone/rclone.conf" --s3-no-head \
        copyto "$OUT" "r2:${R2_BACKUP_BUCKET}/${KEY}"
 
 echo "[backup] done."
