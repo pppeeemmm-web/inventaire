@@ -78,7 +78,7 @@ export function CurationDock({
         <div className="vline" style={{ height: 20 }} />
 
         {/* Batch edit */}
-        <button className="btn sm ghost" onClick={() => setShowBatch(true)}>
+        <button type="button" className="btn sm ghost" data-testid="curation-open-batch" onClick={() => setShowBatch(true)}>
           {t('modify')}
         </button>
 

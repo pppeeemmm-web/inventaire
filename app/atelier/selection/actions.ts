@@ -42,6 +42,7 @@ export interface BatchChanges {
   is_gift?:           boolean
   is_paid?:           boolean
   NeedsPhotograph?:   boolean
+  broadcast_ready?:   boolean
 }
 
 
@@ -129,6 +130,7 @@ export async function batchEdit(ids: number[], changes: BatchChanges): Promise<B
   if (changes.is_gift           !== undefined) update.is_gift           = changes.is_gift
   if (changes.is_paid           !== undefined) update.is_paid           = changes.is_paid
   if (changes.NeedsPhotograph   !== undefined) update.NeedsPhotograph   = changes.NeedsPhotograph
+  if (changes.broadcast_ready   !== undefined) update.broadcast_ready   = changes.broadcast_ready
 
   if (update.statusId === STATUS_ID_ARCHIVE_ARTISTE) update.Exposable = false
 

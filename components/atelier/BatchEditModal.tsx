@@ -76,6 +76,7 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, a
   const [isGift,       setIsGift]       = useState<Tri>(null)
   const [isPaid,       setIsPaid]       = useState<Tri>(null)
   const [needsPhoto,   setNeedsPhoto]   = useState<Tri>(null)
+  const [broadcastReady, setBroadcastReady] = useState<Tri>(null)
 
   // Theme junction — sets of IDs to add or remove
   const [addThemes,    setAddThemes]    = useState<Set<number>>(new Set())
@@ -132,6 +133,7 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, a
     annee !== '' || locDetail !== '' || commentaires !== '' ||
     exposable !== null || montee !== null || encadree !== null || catalogued !== null ||
     isCommission !== null || isGift !== null || isPaid !== null || needsPhoto !== null ||
+    broadcastReady !== null ||
     addThemes.size > 0 || removeThemes.size > 0 ||
     addGroups.size > 0 || removeGroups.size > 0 ||
     historiqueAppend !== ''
@@ -160,6 +162,7 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, a
     if (isGift       !== null) changes.is_gift        = isGift
     if (isPaid       !== null) changes.is_paid        = isPaid
     if (needsPhoto   !== null) changes.NeedsPhotograph = needsPhoto
+    if (broadcastReady !== null) changes.broadcast_ready = broadcastReady
 
     if (addThemes.size    > 0) changes.addThemeIds    = [...addThemes]
     if (removeThemes.size > 0) changes.removeThemeIds = [...removeThemes]
@@ -478,6 +481,13 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, a
         <TriField label={t('commission')}  value={isCommission} onChange={setIsCommission} t={t as any} />
         <TriField label={t('gift')}        value={isGift}       onChange={setIsGift}       t={t as any} />
         <TriField label={t('paid')}        value={isPaid}       onChange={setIsPaid}       t={t as any} />
+        <TriField
+          label={t('wf_broadcast_ready')}
+          value={broadcastReady}
+          onChange={setBroadcastReady}
+          t={t as any}
+          testId="batch-broadcast-ready-tri"
+        />
       </div>
 
       {!changed && (
@@ -522,9 +532,11 @@ function FieldWrap({ label, active, children, style }: { label: string; active: 
   )
 }
 
-function TriField({ label, value, onChange, t }: { label: string; value: Tri; onChange: (v: Tri) => void; t: (k: string) => string }) {
+function TriField({ label, value, onChange, t, testId }: { label: string; value: Tri; onChange: (v: Tri) => void; t: (k: string) => string; testId?: string }) {
   return (
-    <div style={{
+    <div
+      data-testid={testId}
+      style={{
       padding: '8px 10px', border: `1px solid ${value !== null ? 'var(--ac)' : 'var(--bd)'}`,
       cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       background: value === true ? 'rgba(100,180,100,0.05)' : value === false ? 'rgba(192,57,43,0.05)' : 'transparent'

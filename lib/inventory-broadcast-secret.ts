@@ -6,8 +6,9 @@ export function isInventoryBroadcastSecretConfigured(): boolean {
 
 /** Bearer token, or same value in `x-inventory-broadcast-secret` (some clients strip Authorization). */
 export function readInventoryBroadcastCredential(req: NextRequest): string {
-  const auth = req.headers.get('authorization')
-  if (auth?.startsWith('Bearer ')) return auth.slice(7).trim()
+  const auth = req.headers.get('authorization')?.trim()
+  // RFC 6757 uses "Bearer"; some UIs (e.g. Make) lowercase the scheme — accept both.
+  if (auth && /^Bearer\s+/i.test(auth)) return auth.replace(/^Bearer\s+/i, '').trim()
   const x = req.headers.get('x-inventory-broadcast-secret')
   if (x?.trim()) return x.trim()
   return ''
