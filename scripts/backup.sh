@@ -42,6 +42,10 @@ R2_BACKUP_BUCKET=$(printf '%s' "$R2_BACKUP_BUCKET" | tr -d '[:space:]')
 export AWS_ACCESS_KEY_ID="$R2_BACKUP_ACCESS_KEY"
 export AWS_SECRET_ACCESS_KEY="$R2_BACKUP_SECRET_KEY"
 export AWS_DEFAULT_REGION="auto"
+# AWS CLI v2 ≥ 2.23 auto-adds x-amz-checksum-* headers that R2 rejects with
+# "InvalidArgument / sigv4 header" — opt out unless server demands it.
+export AWS_REQUEST_CHECKSUM_CALCULATION=when_required
+export AWS_RESPONSE_CHECKSUM_VALIDATION=when_required
 
 JURI="${R2_BACKUP_JURISDICTION-eu}"
 JSUB=""
