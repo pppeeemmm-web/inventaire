@@ -34,7 +34,16 @@ fi
 
 # Trim any accidental whitespace pasted into secrets (e.g. trailing newline).
 R2_BACKUP_ACCOUNT_ID=$(printf '%s' "$R2_BACKUP_ACCOUNT_ID" | tr -d '[:space:]')
-R2_BACKUP_BUCKET=$(printf '%s' "$R2_BACKUP_BUCKET" | tr -d '[:space:]')
+R2_BACKUP_BUCKET=$(printf '%s'    "$R2_BACKUP_BUCKET"    | tr -d '[:space:]')
+R2_BACKUP_ACCESS_KEY=$(printf '%s' "$R2_BACKUP_ACCESS_KEY" | tr -d '[:space:]')
+R2_BACKUP_SECRET_KEY=$(printf '%s' "$R2_BACKUP_SECRET_KEY" | tr -d '[:space:]')
+
+# Length diagnostics — R2 access key is 32 hex chars, secret is 64. Anything else
+# means the GitHub secret value is wrong / has extra characters / is mistyped.
+echo "[backup] account id length: ${#R2_BACKUP_ACCOUNT_ID} (expect 32)"
+echo "[backup] access key length: ${#R2_BACKUP_ACCESS_KEY} (expect 32)"
+echo "[backup] secret key length: ${#R2_BACKUP_SECRET_KEY} (expect 64)"
+echo "[backup] bucket name:       ${R2_BACKUP_BUCKET}"
 
 # Install latest rclone from rclone.org. Ubuntu's apt ships 1.60 (2022) whose
 # R2 provider profile is too old; the upstream installer gives us a current build.
