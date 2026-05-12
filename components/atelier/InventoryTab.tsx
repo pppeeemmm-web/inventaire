@@ -18,6 +18,7 @@ import { registerUndo, consumeUndo } from '@/lib/ui/undo'
 import type { Oeuvre } from '@/lib/types/database'
 import { WorkDrawer, type WorkDrawerGuardHandle } from './WorkDrawer'
 import { useMediaQuery } from '@/lib/useMediaQuery'
+import { batchEdit } from '@/app/atelier/selection/actions'
 
 // ── Types ───────────────────────────────────────────────────────────
 
@@ -1074,6 +1075,25 @@ function InvList({
   const lastSelIdxRef = useRef<number | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const visible = rows
+  const isNarrow = useMediaQuery('(max-width: 359px)')
+  const [bcOverride, setBcOverride] = useState<Record<number, boolean>>({})
+  const [bcBusy, setBcBusy] = useState<number | null>(null)
+  const routerInv = useRouter()
+  async function toggleBroadcast(oid: number, next: boolean) {
+    setBcOverride((p) => ({ ...p, [oid]: next }))
+    setBcBusy(oid)
+    try {
+      const r = await batchEdit([oid], { broadcast_ready: next })
+      if ('error' in r) {
+        toast.error(r.error)
+        setBcOverride((p) => { const n = { ...p }; delete n[oid]; return n })
+        return
+      }
+      routerInv.refresh()
+    } finally {
+      setBcBusy(null)
+    }
+  }
 
   // Restore scroll position on mount
   useEffect(() => {
@@ -1339,7 +1359,37 @@ function InvList({
                     <WorkStateChip o={o} statusLabelMap={statusLabelMap} />
                   </td>
                   <td style={{ padding: '0 4px', verticalAlign: 'middle', borderRight: 'none' }}>
-                    {st === 'reserved' && <span className="chip dust" style={{ fontSize: 10 }}>RÉSERVÉ</span>}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+                      {st === 'reserved' && <span className="chip dust" style={{ fontSize: 10 }}>RÉSERVÉ</span>}
+                      {!isNarrow && (() => {
+                        const live = bcOverride[o.OeuvreID] ?? !!(o as { broadcast_ready?: boolean }).broadcast_ready
+                        const busy = bcBusy === o.OeuvreID
+                        return (
+                          <button
+                            type="button"
+                            data-testid={`inv-broadcast-toggle-${o.OeuvreID}`}
+                            onClick={(e) => { e.stopPropagation(); if (!busy) toggleBroadcast(o.OeuvreID, !live) }}
+                            disabled={busy}
+                            aria-label={t('bc_quick_toggle_aria')}
+                            aria-pressed={live}
+                            title={t('bc_quick_toggle')}
+                            style={{
+                              padding: '4px 6px',
+                              fontSize: 9,
+                              letterSpacing: 0.5,
+                              border: '1px solid var(--bd)',
+                              background: live ? 'var(--ac)' : 'var(--bg2)',
+                              color: live ? 'var(--bg1)' : 'var(--tx3)',
+                              cursor: busy ? 'wait' : 'pointer',
+                              opacity: busy ? 0.5 : 1,
+                              lineHeight: 1,
+                            }}
+                          >
+                            ◉
+                          </button>
+                        )
+                      })()}
+                    </div>
                   </td>
                 </tr>
             )

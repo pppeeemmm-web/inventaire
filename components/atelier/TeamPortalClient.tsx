@@ -64,12 +64,13 @@ const PortfolioTab = dynamic(() => import('@/components/atelier/PortfolioTab').t
 const SupplierHub = dynamic(() => import('@/components/atelier/SupplierHub').then((m) => ({ default: m.SupplierHub })), { loading: () => <TabPanelFallback />, ssr: false })
 const StockTakeTab = dynamic(() => import('@/components/atelier/StockTakeTab').then((m) => ({ default: m.StockTakeTab })), { loading: () => <TabPanelFallback />, ssr: false })
 const AuditTab = dynamic(() => import('@/components/atelier/AuditTab').then((m) => ({ default: m.AuditTab })), { loading: () => <TabPanelFallback />, ssr: false })
+const BroadcastTab = dynamic(() => import('@/components/atelier/BroadcastTab').then((m) => ({ default: m.BroadcastTab })), { loading: () => <TabPanelFallback />, ssr: false })
 
 // ── Types ────────────────────────────────────────────────────────────
 
 type Tab =
   | 'overview' | 'inventory' | 'constellation' | 'production'
-  | 'logistics' | 'sales' | 'exhibitions' | 'vault' | 'contacts' | 'map' | 'pipeline' | 'fiscal' | 'concepts' | 'themes' | 'stock' | 'stock-take' | 'system' | 'portfolio' | 'audit'
+  | 'logistics' | 'sales' | 'exhibitions' | 'vault' | 'contacts' | 'map' | 'pipeline' | 'fiscal' | 'concepts' | 'themes' | 'stock' | 'stock-take' | 'system' | 'portfolio' | 'audit' | 'broadcast'
 
 export type { TeamPortalClientProps }
 
@@ -380,6 +381,7 @@ export function TeamPortalClient({
     ['concepts',      t('concepts')],
     ['themes',        t('themes')],
     ['portfolio',     t('tab_portfolio')],
+    ['broadcast',     t('tab_broadcast')],
     ['stock',         t('tab_stock')],
     ['stock-take',    t('tab_stock_take')],
     ['system',        t('tab_system')],
@@ -397,7 +399,7 @@ export function TeamPortalClient({
         { label: t('nav_group_management'), tabs: ['contacts', 'vault'] },
         { label: t('nav_group_vision'), tabs: ['constellation', 'concepts', 'themes', 'map'] },
         { label: t('nav_group_commercial'), tabs: ['sales', 'exhibitions', 'pipeline', 'fiscal'] },
-        { label: t('nav_group_diffusion'), tabs: ['portfolio'] },
+        { label: t('nav_group_diffusion'), tabs: ['portfolio', 'broadcast'] },
         { label: t('nav_group_config'), tabs: configNavTabs },
       ]
     : [
@@ -405,7 +407,7 @@ export function TeamPortalClient({
         { label: t('nav_group_operations'), tabs: ['production', 'logistics', 'stock', 'stock-take'] },
         { label: t('nav_group_vision'), tabs: ['constellation', 'concepts', 'themes', 'map'] },
         { label: t('nav_group_commercial'), tabs: ['sales', 'exhibitions', 'pipeline', 'fiscal'] },
-        { label: t('nav_group_diffusion'), tabs: ['portfolio'] },
+        { label: t('nav_group_diffusion'), tabs: ['portfolio', 'broadcast'] },
         { label: t('nav_group_config'), tabs: configNavTabs },
       ]
 
@@ -710,6 +712,7 @@ export function TeamPortalClient({
           </div>
         )}
         {tab === 'audit' && <AuditTab />}
+        {tab === 'broadcast' && <BroadcastTab />}
         {tab === 'map' && (
           <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
             <WorldMapTab

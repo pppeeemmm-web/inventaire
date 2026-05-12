@@ -18,6 +18,8 @@ RESPONSIVE: obey **📱 MOBILE FIELD-TOOL** below (concept + contract; authorita
 Next.js 15 (port 3000). npm dev | build | lint. No tests.
 Real app path: C:\Users\pppee\Documents\Claude\Projects\Art db\app
 Worktree edits → copy to real app (dev server runs from real app).
+DEV SERVER: run `pwsh scripts/dev.ps1` from real app — kills port 3000, prints LAN IP for phone testing.
+WORKTREE START: immediately create `.claude/launch.json` = `{"version":"0.0.1","configurations":[]}` in the worktree root. This blocks the preview tool from walking up and stealing port 3000 with a no-env server.
 
 🏗️ ARCHITECTURE
 - Next.js 15 App Router + Supabase + Cloudflare R2 (images)

@@ -19,7 +19,7 @@ export default async function AtelierPage() {
     // `broadcast_ready` — column added in supabase/sql/oeuvre_broadcasts.sql; widen client until types regenerated.
     (supabase as any)
       .from('Oeuvres')
-      .select('OeuvreID, Titre, Technique, Support, Année, Format, Hauteur, Largeur, Profondeur, Exposable, broadcast_ready, Prix, PrixFinal, Discount, statusId, Catalogué, txtImageNameLink, ContactID, LocalisationID, LocalisationDetail, is_public, Encadree, IsCommission, PresentationID, ReturnDate, DateLivraison, AcheteurID, NeedsPhotograph, anonymity_level, admin_override_anonymity')
+      .select('OeuvreID, Titre, Technique, Support, Année, Format, Hauteur, Largeur, Profondeur, Exposable, broadcast_ready, broadcast_caption_seed, Prix, PrixFinal, Discount, statusId, Catalogué, txtImageNameLink, ContactID, LocalisationID, LocalisationDetail, is_public, Encadree, IsCommission, PresentationID, ReturnDate, DateLivraison, AcheteurID, NeedsPhotograph, anonymity_level, admin_override_anonymity')
       .is('deleted_at', null)
       .order('OeuvreID', { ascending: false })
       .range(0, 4999),

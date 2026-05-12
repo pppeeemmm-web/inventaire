@@ -413,6 +413,7 @@ function DrawerContent({
   const [contactId, setContactId] = useState(String(o.LocalisationID ?? ''))
   const [exposable,   setExposable]   = useState(!!o.Exposable)
   const [broadcastReady, setBroadcastReady] = useState(!!(o as { broadcast_ready?: boolean }).broadcast_ready)
+  const [broadcastCaptionSeed, setBroadcastCaptionSeed] = useState(String((o as { broadcast_caption_seed?: string | null }).broadcast_caption_seed ?? ''))
   const [encadree,    setEncadree]    = useState(!!o.Encadree)
   const [prix,        setPrix]        = useState(String(o.Prix ?? '0'))
   const [tvaRate, setTvaRate] = useState(String((o as { tva_rate?: number | null }).tva_rate ?? '0'))
@@ -590,6 +591,7 @@ function DrawerContent({
     setContactId(String(o.LocalisationID ?? ''))
     setExposable(o.statusId === STATUS_ID_ARCHIVE_ARTISTE ? false : !!o.Exposable)
     setBroadcastReady(!!(o as { broadcast_ready?: boolean }).broadcast_ready)
+    setBroadcastCaptionSeed(String((o as { broadcast_caption_seed?: string | null }).broadcast_caption_seed ?? ''))
     setEncadree(!!o.Encadree)
     setPrix(String(o.Prix ?? '0'))
     setTvaRate(String((o as { tva_rate?: number | null }).tva_rate ?? '0'))
@@ -793,6 +795,7 @@ function DrawerContent({
     if (String(o.LocalisationID ?? '') !== contactId) return true
     if (!!o.Exposable !== exposable) return true
     if (!!(o as { broadcast_ready?: boolean }).broadcast_ready !== broadcastReady) return true
+    if (String((o as { broadcast_caption_seed?: string | null }).broadcast_caption_seed ?? '') !== broadcastCaptionSeed) return true
     if (!!o.Encadree !== encadree) return true
     if (String(o.Prix ?? '0') !== prix) return true
     if (String((o as { Discount?: number | null }).Discount ?? '0') !== discount) return true
@@ -825,6 +828,7 @@ function DrawerContent({
     contactId,
     exposable,
     broadcastReady,
+    broadcastCaptionSeed,
     encadree,
     prix,
     discount,
@@ -896,6 +900,7 @@ function DrawerContent({
     fd.append('localisation_id', contactId)
     fd.append('exposable', exposable ? '1' : '0')
     fd.append('broadcast_ready', broadcastReady ? '1' : '0')
+    fd.append('broadcast_caption_seed', broadcastCaptionSeed ?? '')
     fd.append('encadree', encadree ? '1' : '0')
     fd.append('montee', (o as { Montee?: boolean }).Montee ? '1' : '0')
     fd.append('is_commission', (o as { IsCommission?: boolean }).IsCommission ? '1' : '0')
@@ -1697,6 +1702,24 @@ function DrawerContent({
               <div style={{ fontSize: 10, color: 'var(--tx3)', lineHeight: 1.4 }}>
                 {t('wf_broadcast_ready_hint')}
               </div>
+              {broadcastReady && (
+                <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <label style={{ fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', color: 'var(--tx3)' }}>
+                    {t('bc_caption_seed')}
+                  </label>
+                  <textarea
+                    data-testid="wf-broadcast-caption-seed"
+                    value={broadcastCaptionSeed}
+                    onChange={(e) => setBroadcastCaptionSeed(e.target.value.slice(0, 2000))}
+                    rows={3}
+                    className="input"
+                    style={{ ...FIS, height: 'auto', resize: 'vertical', minHeight: 64, padding: 8, fontSize: 12, lineHeight: 1.4 }}
+                  />
+                  <div style={{ fontSize: 10, color: 'var(--tx3)', lineHeight: 1.4 }}>
+                    {t('bc_caption_seed_hint')}
+                  </div>
+                </div>
+              )}
             </div>
 
             <Label>Présentation</Label>

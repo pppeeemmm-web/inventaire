@@ -151,6 +151,7 @@ export function WorkForm({
   const [paymentDone, setPaymentDone] = useState((oeuvre as any)?.PaymentDone ?? false)
   const [exposable,   setExposable]   = useState((oeuvre as any)?.Exposable ?? false)
   const [broadcastReady, setBroadcastReady] = useState(!!(oeuvre as { broadcast_ready?: boolean }).broadcast_ready)
+  const [broadcastCaptionSeed, setBroadcastCaptionSeed] = useState(String((oeuvre as { broadcast_caption_seed?: string | null })?.broadcast_caption_seed ?? ''))
 
   // ── Lookups ───────────────────────────────────────────────────────
   const [localTechniques, setLocalTechniques] = useState(initialTechniques)
@@ -436,6 +437,7 @@ export function WorkForm({
     fd.set('status_id', String(computeWorkStatusId(ownStage, prodStage)))
     fd.set('tva_rate', tvaRate)
     fd.set('broadcast_ready', broadcastReady ? '1' : '0')
+    fd.set('broadcast_caption_seed', broadcastCaptionSeed ?? '')
 
     // Ownership change history
     if (oeuvre?.LocalisationID !== parseInt(contactId)) {
@@ -678,6 +680,24 @@ export function WorkForm({
                 <div style={{ fontSize: 12, color: 'var(--tx3)', maxWidth: 520, lineHeight: 1.45 }}>
                   {t('wf_broadcast_ready_hint')}
                 </div>
+                {broadcastReady && (
+                  <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 520 }}>
+                    <label style={{ fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', color: 'var(--tx3)' }}>
+                      {t('bc_caption_seed')}
+                    </label>
+                    <textarea
+                      data-testid="wf-broadcast-caption-seed"
+                      value={broadcastCaptionSeed}
+                      onChange={(e) => setBroadcastCaptionSeed(e.target.value.slice(0, 2000))}
+                      rows={3}
+                      className="input"
+                      style={{ resize: 'vertical', minHeight: 64, padding: 8, fontSize: 12, lineHeight: 1.4 }}
+                    />
+                    <div style={{ fontSize: 11, color: 'var(--tx3)', lineHeight: 1.4 }}>
+                      {t('bc_caption_seed_hint')}
+                    </div>
+                  </div>
+                )}
               </div>
               {needsPhoto && prodStage === 'catalogued' && (
                 <div style={{ marginTop: 12, padding: '8px 14px', background: 'var(--dust)22', border: '1px solid var(--dust)44', fontSize: 12, color: 'var(--tx2)' }}>

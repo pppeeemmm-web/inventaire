@@ -9,6 +9,7 @@ export type BroadcastOeuvreRow = {
   is_public: boolean | null
   broadcast_ready: boolean | null
   txtImageNameLink: string | null
+  broadcast_caption_seed?: string | null
 }
 
 export function isBroadcastEligible(o: BroadcastOeuvreRow): boolean {
@@ -40,6 +41,7 @@ export type BroadcastFeedItem = {
   supportLabel: string | null
   imageUrl: string | null
   thumbUrl: string | null
+  captionSeed: string | null
 }
 
 export type BroadcastFeedWorkRow = BroadcastOeuvreRow & {
@@ -59,6 +61,7 @@ export function buildBroadcastFeedItem(
 ): BroadcastFeedItem {
   const file = row.txtImageNameLink
   const y = yearOf(row.Année ?? undefined)
+  const seed = (row.broadcast_caption_seed ?? '').toString().trim()
   return {
     oeuvreId: row.OeuvreID,
     titre: row.Titre ?? null,
@@ -71,5 +74,6 @@ export function buildBroadcastFeedItem(
     supportLabel,
     imageUrl: imageUrl(file),
     thumbUrl: thumbUrl(file),
+    captionSeed: seed || null,
   }
 }

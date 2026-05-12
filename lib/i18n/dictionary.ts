@@ -102,7 +102,15 @@ export type DictKey =
   | 'nav_group_management' | 'nav_group_operations' | 'nav_group_vision'
   | 'nav_group_field'
   | 'nav_group_commercial' | 'nav_group_diffusion' | 'nav_group_config'
-  | 'tab_portfolio' | 'tab_stock' | 'tab_stock_take' | 'tab_system' | 'tab_audit'
+  | 'tab_portfolio' | 'tab_stock' | 'tab_stock_take' | 'tab_system' | 'tab_audit' | 'tab_broadcast'
+  | 'bc_subtab_queue' | 'bc_subtab_posted' | 'bc_subtab_activity'
+  | 'bc_queue_empty' | 'bc_posted_empty' | 'bc_activity_empty'
+  | 'bc_filter_vip' | 'bc_filter_all'
+  | 'bc_caption_seed' | 'bc_caption_seed_hint'
+  | 'bc_quick_toggle' | 'bc_quick_toggle_aria'
+  | 'bc_attempts' | 'bc_queued_at' | 'bc_posted_at' | 'bc_clear_stuck' | 'bc_clear_stuck_confirm'
+  | 'bc_open_post' | 'bc_admin_only' | 'bc_count_queued' | 'bc_count_posted' | 'bc_count_vip'
+  | 'bc_caption_final' | 'bc_no_caption' | 'bc_event_type_label'
   | 'aria_open_navigation'
   | 'error_prefix' | 'savingRecord' | 'confirm_delete_image' | 'select_option_placeholder' | 'wf_placeholder_new'
   | 'wf_section_identity' | 'wf_section_production' | 'wf_section_ownership' | 'wf_section_finance'
@@ -491,6 +499,33 @@ export const dict: Record<Lang, Dictionary> = {
     wf_broadcast_ready: 'Prêt pour diffusion',
     wf_broadcast_ready_hint:
       'Autorise l’export vers les outils marketing (flux sécurisé) lorsque l’œuvre est publique avec visuel.',
+    tab_broadcast: 'Diffusion',
+    bc_subtab_queue: 'File',
+    bc_subtab_posted: 'Publiés',
+    bc_subtab_activity: 'Activité',
+    bc_queue_empty: 'Aucune œuvre en attente de publication.',
+    bc_posted_empty: 'Rien n’a encore été publié.',
+    bc_activity_empty: 'Aucun événement récent.',
+    bc_filter_vip: 'VIP',
+    bc_filter_all: 'Tout',
+    bc_caption_seed: 'Note de diffusion',
+    bc_caption_seed_hint:
+      'Une phrase, un souvenir, un repère — destiné au passage IA en aval. Pas un argumentaire de vente.',
+    bc_quick_toggle: 'Diffusion',
+    bc_quick_toggle_aria: 'Activer / désactiver la diffusion',
+    bc_attempts: 'tentatives',
+    bc_queued_at: 'mis en file',
+    bc_posted_at: 'publié',
+    bc_clear_stuck: 'Libérer',
+    bc_clear_stuck_confirm: 'Libérer cette mise en file ?',
+    bc_open_post: 'Voir',
+    bc_admin_only: 'Accès réservé à l’administrateur.',
+    bc_count_queued: 'en file',
+    bc_count_posted: 'publiés (50 récents)',
+    bc_count_vip: 'VIP récents',
+    bc_caption_final: 'Légende publiée',
+    bc_no_caption: '— sans légende —',
+    bc_event_type_label: 'Type',
     wf_photo_pending_hint:
       'En attente de photographie — décocher « Photo requise » pour passer en Disponible.',
     wf_contact_custodian: 'Dépositaire',
@@ -1289,6 +1324,33 @@ $env:OLLAMA_HOST="127.0.0.1:11435"; ollama run llama3.2:1b`,
     wf_broadcast_ready: 'Ready for broadcast',
     wf_broadcast_ready_hint:
       'Allows export to marketing tools (secure feed) when the work is public with a cover image.',
+    tab_broadcast: 'Broadcast',
+    bc_subtab_queue: 'Queue',
+    bc_subtab_posted: 'Posted',
+    bc_subtab_activity: 'Activity',
+    bc_queue_empty: 'Nothing in the queue.',
+    bc_posted_empty: 'Nothing posted yet.',
+    bc_activity_empty: 'No recent events.',
+    bc_filter_vip: 'VIP',
+    bc_filter_all: 'All',
+    bc_caption_seed: 'Broadcast note',
+    bc_caption_seed_hint:
+      'A phrase, a memory, a context cue — passed to the downstream AI. Not a sales pitch.',
+    bc_quick_toggle: 'Broadcast',
+    bc_quick_toggle_aria: 'Toggle broadcast ready',
+    bc_attempts: 'attempts',
+    bc_queued_at: 'queued',
+    bc_posted_at: 'posted',
+    bc_clear_stuck: 'Release',
+    bc_clear_stuck_confirm: 'Release this queued item?',
+    bc_open_post: 'Open',
+    bc_admin_only: 'Admin access only.',
+    bc_count_queued: 'in queue',
+    bc_count_posted: 'posted (last 50)',
+    bc_count_vip: 'recent VIP',
+    bc_caption_final: 'Posted caption',
+    bc_no_caption: '— no caption —',
+    bc_event_type_label: 'Type',
     wf_photo_pending_hint:
       'Awaiting photography — uncheck “Photo required” to move to Available.',
     wf_contact_custodian: 'Custodian',

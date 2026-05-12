@@ -33,9 +33,11 @@ export async function GET(req: NextRequest) {
 
   const sb = createServiceClient()
 
+  // Exclude posted rows always; exclude queued rows only within last 30 min so stuck queues self-recover.
+  const queueCutoff = new Date(Date.now() - 30 * 60 * 1000).toISOString()
   const { data: doneRows, error: doneErr } = await sb
     .from('oeuvre_broadcasts')
-    .select('oeuvre_id')
+    .select('oeuvre_id, status, queued_at')
     .eq('platform', platform)
 
   if (doneErr) {
@@ -43,12 +45,18 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: doneErr.message }, { status: 500 })
   }
 
-  const excludeIds = (doneRows ?? []).map((r: { oeuvre_id: number }) => r.oeuvre_id)
+  const excludeIds = (doneRows ?? [])
+    .filter((r: { status?: string | null; queued_at?: string | null }) => {
+      if (r.status === 'posted') return true
+      if (r.status === 'queued' && r.queued_at && r.queued_at > queueCutoff) return true
+      return false
+    })
+    .map((r: { oeuvre_id: number }) => r.oeuvre_id)
 
   let q = sb
     .from('Oeuvres')
     .select(
-      'OeuvreID, Titre, Année, Hauteur, Largeur, Profondeur, Technique, Support, txtImageNameLink, deleted_at, is_public, broadcast_ready',
+      'OeuvreID, Titre, Année, Hauteur, Largeur, Profondeur, Technique, Support, txtImageNameLink, deleted_at, is_public, broadcast_ready, broadcast_caption_seed',
     )
     .is('deleted_at', null)
     .eq('is_public', true)
