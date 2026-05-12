@@ -1,5 +1,7 @@
 # Broadcast Phase 2 — Verification Handover
 
+**Note:** For production rollout and middleware integration, use [BROADCAST_PHASE3_OPERATIONS.md](./BROADCAST_PHASE3_OPERATIONS.md). This document is a session log for the verification commit below.
+
 Session: Sonnet 4.6 · worktree `friendly-euclid-fa185b`
 Commit pushed: `70d5074` on `main`
 

@@ -70,7 +70,7 @@ All user-visible copy → `useI18n().t(key)` + `lib/i18n/dictionary.ts` (**DictK
 - app/atelier/audit/{actions,pending-actions,version-actions}.ts — audit ledger, approval queue, version history (all admin-gated via `is_admin()` RPC)
 - components/atelier/{AuditTab,PendingQueue,WorkVersionHistory}.tsx — admin protection UIs (Audit Log → Ledger / Review tabs; history panel inside WorkDrawer)
 - components/atelier/BroadcastTab.tsx — Diffusion tab (Queue / Publiés / Activité subtabs); admin-only via `requireAdminGuard()`
-- app/atelier/broadcast/actions.ts — `listBroadcastDashboard()`, `seedBroadcastCaption()` etc.; all admin-gated
+- app/atelier/broadcast/actions.ts — `listBroadcastDashboard()`, `clearStuckQueue()`; all admin-gated
 - app/api/inventory/broadcast/{feed,queue,confirm,event}/route.ts — Make/n8n API; Bearer `INVENTORY_BROADCAST_SECRET`; `broadcast_caption_seed` flows through feed → AI caption pipeline
 
 💾 DATA LOGIC

@@ -66,9 +66,14 @@ export function BroadcastTab() {
   }
 
   if (err) {
+    const adminGate = err === 'Accès réservé à l’administrateur'
     return (
-      <div style={{ padding: 40, fontSize: 12, color: 'var(--tx2)' }}>
-        {err === 'Accès réservé à l’administrateur' ? t('bc_admin_only') : err}
+      <div data-testid="broadcast-tab-root" style={{ padding: 40, fontSize: 12, color: 'var(--tx2)' }}>
+        {adminGate ? (
+          <span data-testid="broadcast-tab-admin-only">{t('bc_admin_only')}</span>
+        ) : (
+          err
+        )}
       </div>
     )
   }
@@ -80,7 +85,10 @@ export function BroadcastTab() {
   ]
 
   return (
-    <div style={{ padding: '20px max(16px, env(safe-area-inset-right)) 20px max(16px, env(safe-area-inset-left))', display: 'flex', flexDirection: 'column', gap: 16, fontSize: 12, color: 'var(--tx)' }}>
+    <div
+      data-testid="broadcast-tab-root"
+      style={{ padding: '20px max(16px, env(safe-area-inset-right)) 20px max(16px, env(safe-area-inset-left))', display: 'flex', flexDirection: 'column', gap: 16, fontSize: 12, color: 'var(--tx)' }}
+    >
       <div className="row gap-sm" style={{ flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
         {SUBTABS.map(([id, label, count]) => {
           const active = sub === id
@@ -88,6 +96,7 @@ export function BroadcastTab() {
             <button
               key={id}
               type="button"
+              data-testid={`broadcast-subtab-${id}`}
               onClick={() => setSub(id)}
               style={{
                 padding: '8px 14px',
@@ -108,6 +117,7 @@ export function BroadcastTab() {
         <div style={{ flex: 1 }} />
         <button
           type="button"
+          data-testid="broadcast-reload"
           onClick={reload}
           disabled={busy || pending}
           style={{ padding: '8px 12px', fontSize: 10, border: '1px solid var(--bd)', background: 'var(--bg1)', color: 'var(--tx2)', cursor: 'pointer', minHeight: 44 }}
@@ -288,6 +298,7 @@ function ActivityView({
       <div className="row gap-sm" style={{ alignItems: 'center' }}>
         <button
           type="button"
+          data-testid="broadcast-filter-vip"
           onClick={() => setVipOnly(true)}
           style={{ padding: '6px 12px', fontSize: 10, minHeight: 44, border: '1px solid var(--bd)', background: vipOnly ? 'var(--ac)' : 'var(--bg1)', color: vipOnly ? 'var(--bg1)' : 'var(--tx2)', cursor: 'pointer', letterSpacing: 1, textTransform: 'uppercase' }}
         >
@@ -295,6 +306,7 @@ function ActivityView({
         </button>
         <button
           type="button"
+          data-testid="broadcast-filter-all"
           onClick={() => setVipOnly(false)}
           style={{ padding: '6px 12px', fontSize: 10, minHeight: 44, border: '1px solid var(--bd)', background: !vipOnly ? 'var(--ac)' : 'var(--bg1)', color: !vipOnly ? 'var(--bg1)' : 'var(--tx2)', cursor: 'pointer', letterSpacing: 1, textTransform: 'uppercase' }}
         >
