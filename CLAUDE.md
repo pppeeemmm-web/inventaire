@@ -27,6 +27,7 @@ Worktree edits → copy to real app (dev server runs from real app).
 - i18n: see **🌐 UI COPY** below (non-negotiable for anything user-facing)
 - Image upload: Sharp → 400px AVIF thumb → R2 via AWS S3 SDK
 - Supabase clients: createClient() (anon, RLS enforced) · createServiceClient() (service_role, admin bypass)
+- **R2 endpoint: ALL buckets are EU jurisdiction** → always use `https://<account_id>.eu.r2.cloudflarestorage.com`. Never use the global endpoint (no `.eu.` = NoSuchBucket or BadRequest). Applies to app SDK config, backup scripts, and any new tooling.
 
 🌐 UI COPY (bilingual — non-negotiable)
 All user-visible copy → `useI18n().t(key)` + `lib/i18n/dictionary.ts` (**DictKey** + **`dict.fr` + `dict.en`** each time). Exceptions: DB text, proper nouns, immutable data. **Scrutiny:** before finish, sweep the diff for JSX string literals & `alert`/`confirm`/titles/placeholders — hardcoded FR/EN = fix.
@@ -91,7 +92,7 @@ R2 has no S3-style Object Versioning and Bucket Lock is too rigid (locks the adm
 - Helpers in [app/atelier/works/actions.ts](app/atelier/works/actions.ts): `r2Copy(src, dst)`, `r2SoftDelete(key)`. Editor-side delete is already blocked by Phase A `requireAdmin()`; soft-delete is the safety net for the admin's own mistakes.
 - Rotate R2 access keys yearly; document the rotation date in this section.
 
-**Phase E — Off-site DB backups.** `.github/workflows/backup.yml` runs `scripts/backup.sh` daily at 03:17 UTC: `pg_dump` Supabase → gzip → upload to second R2 bucket via scoped token. No Object Lock (same rigidity concern as Phase D); lifecycle rule auto-prunes `daily/*` after 90 days. Required GH secrets: `SUPABASE_DB_URL`, `R2_BACKUP_ACCOUNT_ID`, `R2_BACKUP_ACCESS_KEY`, `R2_BACKUP_SECRET_KEY`, `R2_BACKUP_BUCKET`. Full setup + recovery: [docs/BACKUP_RECOVERY.md](docs/BACKUP_RECOVERY.md). Quarterly recovery drill: restore latest dump into throwaway Supabase project, spot-check row counts.
+**Phase E — Off-site DB backups.** `.github/workflows/backup.yml` runs `scripts/backup.sh` daily at 03:17 UTC: `pg_dump` Supabase (Session Pooler URL, IPv4) → gzip → upload to `art-db-backups` R2 bucket (EU jurisdiction) via **boto3** (Python). AWS CLI v2 and rclone both produce malformed sigv4 credentials against R2 — boto3 with `region_name='auto'` + EU endpoint is the only confirmed-working upload path. No Object Lock; lifecycle rule auto-prunes `daily/*` after 90 days. GH secrets reuse main R2 credentials (`R2_ACCOUNT_ID` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` from `.env.local`) mapped to `R2_BACKUP_ACCOUNT_ID` / `R2_BACKUP_ACCESS_KEY` / `R2_BACKUP_SECRET_KEY`. Full setup + recovery: [docs/BACKUP_RECOVERY.md](docs/BACKUP_RECOVERY.md). Quarterly recovery drill: restore latest dump into throwaway Supabase project, spot-check row counts.
 
 **Dev-only auto-login.** `middleware.ts` calls `signInWithPassword` when `NODE_ENV=development` AND `DEV_AUTO_LOGIN_EMAIL`/`_PASSWORD` set. Used in preview iframe to skip Google OAuth. Production never has these env vars set.
 
