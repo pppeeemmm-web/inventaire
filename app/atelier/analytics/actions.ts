@@ -140,9 +140,9 @@ export async function getAnalyticsStats(
     topPages: top(pageCounts, 10).map(([path, views]) => ({ path, views: views as number })),
     topCountries: Object.entries(countryByLabel)
       .sort(([, a], [, b]) => b - a)
-      .slice(0, 8)
+      .slice(0, 10)
       .map(([country, views]) => ({ country, views })),
-    topReferrers: top(referrerCounts, 8).map(([referrer, views]) => ({ referrer, views: views as number })),
+    topReferrers: top(referrerCounts, 12).map(([referrer, views]) => ({ referrer, views: views as number })),
     trend,
   }
 }

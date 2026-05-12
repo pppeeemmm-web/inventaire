@@ -781,26 +781,37 @@ function BarList({ items, labelKey, valueKey, maxRows = 10 }: {
     <div className="t-mono-xs" style={{ color: 'var(--tx3)', opacity: 0.5 }}>Aucune donnée.</div>
   )
   return (
-    <div className="col" style={{ gap: 3 }}>
+    <div className="col" style={{ gap: 12 }}>
       {slice.map((item, i) => {
         const v = item[valueKey] as number
+        const label = String(item[labelKey])
         return (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div className="t-mono-sm" style={{
-              width: '42%', maxWidth: 160, color: 'var(--tx2)', flexShrink: 0,
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 11,
-            }}>
-              {String(item[labelKey])}
+          <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
+            <div
+              className="t-mono-sm"
+              title={label}
+              style={{
+                color: 'var(--tx2)',
+                fontSize: 12,
+                lineHeight: 1.4,
+                wordBreak: 'break-word',
+                overflowWrap: 'anywhere',
+                fontVariantNumeric: 'tabular-nums',
+              }}
+            >
+              {label}
             </div>
-            <div style={{ flex: 1, height: 3, background: 'var(--bd)', borderRadius: 2, minWidth: 0 }}>
-              <div style={{
-                width: `${(v / max) * 100}%`, height: '100%', background: 'var(--ac)', borderRadius: 2,
-              }} />
-            </div>
-            <div className="t-mono-sm" style={{
-              width: 44, textAlign: 'right', color: 'var(--tx)', flexShrink: 0, fontSize: 11, fontVariantNumeric: 'tabular-nums',
-            }}>
-              {v.toLocaleString('fr-FR')}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+              <div style={{ flex: 1, height: 6, background: 'var(--bd)', borderRadius: 3, minWidth: 0 }}>
+                <div style={{
+                  width: `${(v / max) * 100}%`, height: '100%', background: 'var(--ac)', borderRadius: 3,
+                }} />
+              </div>
+              <div className="t-mono-sm" style={{
+                minWidth: 52, textAlign: 'right', color: 'var(--tx)', flexShrink: 0, fontSize: 12, fontVariantNumeric: 'tabular-nums',
+              }}>
+                {v.toLocaleString('fr-FR')}
+              </div>
             </div>
           </div>
         )
@@ -809,20 +820,32 @@ function BarList({ items, labelKey, valueKey, maxRows = 10 }: {
   )
 }
 
-/** Labels at evenly spaced points so trend stays readable for 7–90 days. */
+function trendDayMonth(iso: string) {
+  const parts = iso.split('-')
+  if (parts.length < 3) return iso
+  const [, m, d] = parts
+  return `${d}/${m}`
+}
+
+/** SVG sparkline: uniform scaling + inset so edge value/date labels are not clipped. */
 function Sparkline({ trend }: { trend: { date: string; views: number }[] }) {
   if (trend.length === 0) return null
   const max = Math.max(...trend.map(d => d.views), 1)
-  const chartH = 38
-  const labelBand = 14
-  const w = 100
-  const h = chartH + labelBand
+  const padL = 44
+  const padR = 44
+  const padT = 22
+  const dateBand = 20
+  const chartH = 52
+  const vbW = 400
+  const vbH = padT + chartH + dateBand
+  const innerW = vbW - padL - padR
   const denom = Math.max(trend.length - 1, 1)
-  const pts = trend.map((d, i) => {
-    const x = (i / denom) * w
-    const y = chartH - (d.views / max) * (chartH - 4) - 2
-    return `${x},${y}`
-  }).join(' ')
+
+  const xAt = (i: number) => padL + (i / denom) * innerW
+  const yAt = (views: number) =>
+    padT + chartH - (views / max) * (chartH - 12) - 4
+
+  const pts = trend.map((d, i) => `${xAt(i)},${yAt(d.views)}`).join(' ')
 
   const labelCount = Math.min(9, trend.length)
   const labelIdx = new Set<number>()
@@ -835,54 +858,72 @@ function Sparkline({ trend }: { trend: { date: string; views: number }[] }) {
     }
   }
 
+  const dateY = padT + chartH + 13
+
   return (
     <svg
-      viewBox={`0 0 ${w} ${h}`}
-      preserveAspectRatio="none"
-      style={{ width: '100%', height: '100%', minHeight: 52, display: 'block' }}
+      viewBox={`0 0 ${vbW} ${vbH}`}
+      preserveAspectRatio="xMidYMid meet"
+      style={{ width: '100%', height: '100%', minHeight: 112, display: 'block', overflow: 'visible' }}
     >
       <polyline
         points={pts}
         fill="none"
         stroke="var(--ac)"
-        strokeWidth="1.2"
+        strokeWidth="2"
         strokeLinejoin="round"
+        strokeLinecap="round"
         vectorEffect="non-scaling-stroke"
       />
       {trend.map((d, i) => {
-        const x = (i / denom) * w
-        const y = chartH - (d.views / max) * (chartH - 4) - 2
+        const x = xAt(i)
+        const y = yAt(d.views)
         return (
-          <circle
-            key={d.date + i}
-            cx={x}
-            cy={y}
-            r={labelIdx.has(i) ? 1.4 : 0.9}
-            fill="var(--ac)"
-            stroke="var(--bg0)"
-            strokeWidth="0.35"
-            vectorEffect="non-scaling-stroke"
-          />
+          <g key={d.date + i}>
+            <title>{`${d.date} · ${d.views.toLocaleString('fr-FR')} vues`}</title>
+            <circle
+              cx={x}
+              cy={y}
+              r={labelIdx.has(i) ? 3.2 : 2}
+              fill="var(--ac)"
+              stroke="var(--bg0)"
+              strokeWidth="1"
+              vectorEffect="non-scaling-stroke"
+            />
+          </g>
         )
       })}
       {trend.map((d, i) => {
         if (!labelIdx.has(i)) return null
-        const x = (i / denom) * w
-        const y = chartH - (d.views / max) * (chartH - 4) - 2
+        const x = xAt(i)
+        const y = yAt(d.views)
         const n = d.views.toLocaleString('fr-FR')
+        const dm = trendDayMonth(d.date)
+        const valY = Math.max(y - 10, 12)
         return (
-          <text
-            key={`t-${d.date}-${i}`}
-            x={x}
-            y={Math.max(y - 3, 8)}
-            textAnchor="middle"
-            fill="var(--tx2)"
-            fontSize="3.2"
-            fontFamily="ui-monospace, monospace"
-            style={{ fontVariantNumeric: 'tabular-nums' }}
-          >
-            {n}
-          </text>
+          <g key={`t-${d.date}-${i}`}>
+            <text
+              x={x}
+              y={valY}
+              textAnchor="middle"
+              fill="var(--tx)"
+              fontSize="11"
+              fontFamily="ui-monospace, monospace"
+              style={{ fontVariantNumeric: 'tabular-nums' }}
+            >
+              {n}
+            </text>
+            <text
+              x={x}
+              y={dateY}
+              textAnchor="middle"
+              fill="var(--tx3)"
+              fontSize="9"
+              fontFamily="ui-monospace, monospace"
+            >
+              {dm}
+            </text>
+          </g>
         )
       })}
     </svg>
@@ -958,7 +999,7 @@ function AnalyticsPanel({
         <span className="t-mono-xs" style={{ color: 'var(--tx3)', letterSpacing: 1 }}>TRAFIC</span>
         {(['public_site', 'all'] as const).map((s) => (
           <button key={s} type="button" onClick={() => setScope(s)} style={{
-            padding: '4px 10px', fontSize: 8, letterSpacing: 1.2, textTransform: 'uppercase',
+            padding: '6px 12px', fontSize: 10, letterSpacing: 1.1, textTransform: 'uppercase',
             fontFamily: 'inherit', cursor: 'pointer', border: '1px solid var(--bd)',
             background: scope === s ? 'var(--ac)' : 'none',
             color: scope === s ? 'white' : 'var(--tx3)',
@@ -969,7 +1010,7 @@ function AnalyticsPanel({
         ))}
         {PERIODS.map((p) => (
           <button key={p.days} type="button" onClick={() => setDays(p.days)} style={{
-            padding: '4px 10px', fontSize: 8, letterSpacing: 1.5, textTransform: 'uppercase',
+            padding: '6px 12px', fontSize: 10, letterSpacing: 1.2, textTransform: 'uppercase',
             fontFamily: 'inherit', cursor: 'pointer', border: '1px solid var(--bd)',
             background: days === p.days ? 'var(--ac)' : 'none',
             color: days === p.days ? 'white' : 'var(--tx3)',
@@ -1010,8 +1051,7 @@ function AnalyticsPanel({
             gridTemplateColumns: 'minmax(120px, 170px) 1fr',
             gap: 8,
             flexShrink: 0,
-            minHeight: 92,
-            maxHeight: 128,
+            minHeight: 132,
           }}>
             <div style={{
               padding: '10px 12px',
@@ -1022,7 +1062,7 @@ function AnalyticsPanel({
               justifyContent: 'center',
               minHeight: 0,
             }}>
-              <div className="t-label" style={{ marginBottom: 4, fontSize: 8 }}>
+              <div className="t-label" style={{ marginBottom: 6, fontSize: 10 }}>
                 {result.scope === 'public_site' ? 'Pages vues (site)' : 'Pages vues (brut)'}
               </div>
               <div style={{
@@ -1049,9 +1089,10 @@ function AnalyticsPanel({
               minHeight: 0,
               display: 'flex',
               flexDirection: 'column',
+              overflow: 'visible',
             }}>
-              <div className="t-label" style={{ marginBottom: 4, fontSize: 8, flexShrink: 0 }}>Tendance (vues / jour)</div>
-              <div style={{ flex: 1, minHeight: 48 }}>
+              <div className="t-label" style={{ marginBottom: 6, fontSize: 10, flexShrink: 0 }}>Tendance (vues / jour)</div>
+              <div style={{ flex: 1, minHeight: 112, overflow: 'visible', padding: '2px 4px 0' }}>
                 <Sparkline trend={result.trend} />
               </div>
             </div>
@@ -1071,11 +1112,11 @@ function AnalyticsPanel({
               minHeight: 0,
               display: 'flex',
               flexDirection: 'column',
-              overflow: 'hidden',
+              overflow: 'auto',
             }}>
-              <div className="t-label" style={{ marginBottom: 6, fontSize: 8, flexShrink: 0 }}>Top pages</div>
-              <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-                <BarList items={result.topPages} labelKey="path" valueKey="views" maxRows={6} />
+              <div className="t-label" style={{ marginBottom: 8, fontSize: 10, flexShrink: 0 }}>Top pages</div>
+              <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+                <BarList items={result.topPages} labelKey="path" valueKey="views" maxRows={10} />
               </div>
             </div>
             <div style={{
@@ -1085,11 +1126,11 @@ function AnalyticsPanel({
               minHeight: 0,
               display: 'flex',
               flexDirection: 'column',
-              overflow: 'hidden',
+              overflow: 'auto',
             }}>
-              <div className="t-label" style={{ marginBottom: 6, fontSize: 8, flexShrink: 0 }}>Pays</div>
-              <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-                <BarList items={result.topCountries} labelKey="country" valueKey="views" maxRows={6} />
+              <div className="t-label" style={{ marginBottom: 8, fontSize: 10, flexShrink: 0 }}>Pays</div>
+              <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+                <BarList items={result.topCountries} labelKey="country" valueKey="views" maxRows={10} />
               </div>
             </div>
           </div>
@@ -1102,11 +1143,11 @@ function AnalyticsPanel({
             border: '1px solid var(--bd)',
             display: 'flex',
             flexDirection: 'column',
-            overflow: 'hidden',
+            overflow: 'auto',
           }}>
-            <div className="t-label" style={{ marginBottom: 6, fontSize: 8, flexShrink: 0 }}>Sources</div>
-            <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-              <BarList items={result.topReferrers} labelKey="referrer" valueKey="views" maxRows={6} />
+            <div className="t-label" style={{ marginBottom: 8, fontSize: 10, flexShrink: 0 }}>Sources</div>
+            <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+              <BarList items={result.topReferrers} labelKey="referrer" valueKey="views" maxRows={10} />
             </div>
           </div>
 
@@ -1116,8 +1157,8 @@ function AnalyticsPanel({
               color: 'var(--tx3)',
               opacity: 0.55,
               flexShrink: 0,
-              lineHeight: 1.3,
-              fontSize: 9,
+              lineHeight: 1.35,
+              fontSize: 10,
             }}
           >
             page_view · {result.scope === 'public_site'
