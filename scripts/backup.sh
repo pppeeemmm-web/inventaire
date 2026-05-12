@@ -45,30 +45,39 @@ echo "[backup] access key length: ${#R2_BACKUP_ACCESS_KEY} (expect 32)"
 echo "[backup] secret key length: ${#R2_BACKUP_SECRET_KEY} (expect 64)"
 echo "[backup] bucket name:       ${R2_BACKUP_BUCKET}"
 
-# Install latest rclone from rclone.org. Ubuntu's apt ships 1.60 (2022) whose
-# R2 provider profile is too old; the upstream installer gives us a current build.
-curl -fsSL https://rclone.org/install.sh | sudo bash >/dev/null
-rclone version | head -1
+# Upload via boto3 — rclone's S3 signing produces malformed sigv4 credentials
+# against R2 regardless of provider config. boto3 with region_name='auto' is the
+# documented working path for Cloudflare R2.
+pip install -q boto3
 
-# Upload via rclone — AWS CLI v2's recent SigV4 additions break against R2.
-# rclone has a dedicated Cloudflare R2 provider profile and a stable upload path.
-# Use the global R2 endpoint (no .eu. subdomain) + path-style addressing.
-# Virtual-hosted-style on the EU jurisdiction subdomain returns bare BadRequest 400.
 ENDPOINT="https://${R2_BACKUP_ACCOUNT_ID}.r2.cloudflarestorage.com"
 KEY="daily/${OUT}"
 
-echo "[backup] endpoint host: ${R2_BACKUP_ACCOUNT_ID:0:4}….r2.cloudflarestorage.com"
-echo "[backup] upload :s3:${R2_BACKUP_BUCKET}/${KEY}"
-rclone \
-  --s3-provider=Cloudflare \
-  --s3-access-key-id="${R2_BACKUP_ACCESS_KEY}" \
-  --s3-secret-access-key="${R2_BACKUP_SECRET_KEY}" \
-  --s3-endpoint="${ENDPOINT}" \
-  --s3-region=auto \
-  --s3-acl=private \
-  --s3-no-check-bucket \
-  --no-check-dest \
-  --ignore-checksum \
-  copyto "$OUT" ":s3:${R2_BACKUP_BUCKET}/${KEY}"
+echo "[backup] endpoint: ${R2_BACKUP_ACCOUNT_ID:0:4}….r2.cloudflarestorage.com"
+echo "[backup] upload ${R2_BACKUP_BUCKET}/${KEY}"
+
+R2_BACKUP_ACCOUNT_ID="$R2_BACKUP_ACCOUNT_ID" \
+R2_BACKUP_ACCESS_KEY="$R2_BACKUP_ACCESS_KEY" \
+R2_BACKUP_SECRET_KEY="$R2_BACKUP_SECRET_KEY" \
+R2_BACKUP_BUCKET="$R2_BACKUP_BUCKET" \
+BACKUP_ENDPOINT="$ENDPOINT" \
+BACKUP_SRC="$OUT" \
+BACKUP_KEY="$KEY" \
+python3 - <<'PYEOF'
+import boto3, os
+
+s3 = boto3.client(
+    's3',
+    endpoint_url=os.environ['BACKUP_ENDPOINT'],
+    aws_access_key_id=os.environ['R2_BACKUP_ACCESS_KEY'],
+    aws_secret_access_key=os.environ['R2_BACKUP_SECRET_KEY'],
+    region_name='auto',
+)
+bucket = os.environ['R2_BACKUP_BUCKET']
+key    = os.environ['BACKUP_KEY']
+src    = os.environ['BACKUP_SRC']
+s3.upload_file(src, bucket, key)
+print(f'[backup] done → {bucket}/{key}')
+PYEOF
 
 echo "[backup] done."
