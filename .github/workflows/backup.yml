@@ -1,0 +1,36 @@
+name: Daily Supabase backup
+
+# Phase E — off-site DB backup. Dumps full Supabase Postgres to a second R2 bucket.
+# Recovery: see docs/BACKUP_RECOVERY.md.
+on:
+  schedule:
+    # Daily at 03:17 UTC (off-peak; arbitrary minute to avoid the :00 stampede).
+    - cron: '17 3 * * *'
+  workflow_dispatch:  # allow manual runs from the Actions tab
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Postgres 16 client
+        run: |
+          sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-16
+
+      - name: Dump + upload
+        env:
+          SUPABASE_DB_URL:        ${{ secrets.SUPABASE_DB_URL }}
+          R2_BACKUP_ACCOUNT_ID:   ${{ secrets.R2_BACKUP_ACCOUNT_ID }}
+          R2_BACKUP_ACCESS_KEY:   ${{ secrets.R2_BACKUP_ACCESS_KEY }}
+          R2_BACKUP_SECRET_KEY:   ${{ secrets.R2_BACKUP_SECRET_KEY }}
+          R2_BACKUP_BUCKET:       ${{ secrets.R2_BACKUP_BUCKET }}
+        run: bash scripts/backup.sh

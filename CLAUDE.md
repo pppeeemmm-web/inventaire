@@ -91,7 +91,7 @@ R2 has no S3-style Object Versioning and Bucket Lock is too rigid (locks the adm
 - Helpers in [app/atelier/works/actions.ts](app/atelier/works/actions.ts): `r2Copy(src, dst)`, `r2SoftDelete(key)`. Editor-side delete is already blocked by Phase A `requireAdmin()`; soft-delete is the safety net for the admin's own mistakes.
 - Rotate R2 access keys yearly; document the rotation date in this section.
 
-**Phase E — Off-site backups (planned).** GitHub Actions cron → `pg_dump` → `art-db-backups` R2 bucket (separate write-only token, Object Lock compliance mode 30 days) → weekly mirror to second cloud (Backblaze B2). Recovery drill: `psql` against fresh Supabase project, verify Oeuvres row count.
+**Phase E — Off-site DB backups.** `.github/workflows/backup.yml` runs `scripts/backup.sh` daily at 03:17 UTC: `pg_dump` Supabase → gzip → upload to second R2 bucket via scoped token. No Object Lock (same rigidity concern as Phase D); lifecycle rule auto-prunes `daily/*` after 90 days. Required GH secrets: `SUPABASE_DB_URL`, `R2_BACKUP_ACCOUNT_ID`, `R2_BACKUP_ACCESS_KEY`, `R2_BACKUP_SECRET_KEY`, `R2_BACKUP_BUCKET`. Full setup + recovery: [docs/BACKUP_RECOVERY.md](docs/BACKUP_RECOVERY.md). Quarterly recovery drill: restore latest dump into throwaway Supabase project, spot-check row counts.
 
 **Dev-only auto-login.** `middleware.ts` calls `signInWithPassword` when `NODE_ENV=development` AND `DEV_AUTO_LOGIN_EMAIL`/`_PASSWORD` set. Used in preview iframe to skip Google OAuth. Production never has these env vars set.
 
