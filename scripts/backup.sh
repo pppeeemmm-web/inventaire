@@ -32,14 +32,24 @@ if [ "$SIZE" -lt 10000 ]; then
   exit 1
 fi
 
+# Trim any accidental whitespace pasted into secrets (e.g. trailing newline).
+R2_BACKUP_ACCOUNT_ID=$(printf '%s' "$R2_BACKUP_ACCOUNT_ID" | tr -d '[:space:]')
+R2_BACKUP_BUCKET=$(printf '%s' "$R2_BACKUP_BUCKET" | tr -d '[:space:]')
+
 # Upload via awscli with R2 S3-compatible endpoint.
+# Bucket lives in EU jurisdiction → endpoint must include `.eu.` subdomain.
+# Override with R2_BACKUP_JURISDICTION='' if you ever move to a global bucket.
 export AWS_ACCESS_KEY_ID="$R2_BACKUP_ACCESS_KEY"
 export AWS_SECRET_ACCESS_KEY="$R2_BACKUP_SECRET_KEY"
 export AWS_DEFAULT_REGION="auto"
 
-ENDPOINT="https://${R2_BACKUP_ACCOUNT_ID}.r2.cloudflarestorage.com"
+JURI="${R2_BACKUP_JURISDICTION-eu}"
+JSUB=""
+[ -n "$JURI" ] && JSUB=".${JURI}"
+ENDPOINT="https://${R2_BACKUP_ACCOUNT_ID}${JSUB}.r2.cloudflarestorage.com"
 KEY="daily/${OUT}"
 
+echo "[backup] endpoint host: ${R2_BACKUP_ACCOUNT_ID:0:4}…${JSUB}.r2.cloudflarestorage.com"
 echo "[backup] upload s3://${R2_BACKUP_BUCKET}/${KEY}"
 aws s3 cp "$OUT" "s3://${R2_BACKUP_BUCKET}/${KEY}" --endpoint-url "$ENDPOINT"
 
