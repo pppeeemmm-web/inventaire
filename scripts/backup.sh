@@ -52,7 +52,7 @@ mkdir -p "$HOME/.config/rclone"
 cat > "$HOME/.config/rclone/rclone.conf" <<EOF
 [r2]
 type = s3
-provider = Cloudflare
+provider = Other
 access_key_id = ${R2_BACKUP_ACCESS_KEY}
 secret_access_key = ${R2_BACKUP_SECRET_KEY}
 endpoint = ${ENDPOINT}
@@ -64,7 +64,8 @@ EOF
 
 echo "[backup] endpoint host: ${R2_BACKUP_ACCOUNT_ID:0:4}….r2.cloudflarestorage.com"
 echo "[backup] upload r2:${R2_BACKUP_BUCKET}/${KEY}"
-rclone --config "$HOME/.config/rclone/rclone.conf" --s3-no-head \
+rclone --config "$HOME/.config/rclone/rclone.conf" \
+       --s3-no-head --no-check-dest --ignore-checksum \
        copyto "$OUT" "r2:${R2_BACKUP_BUCKET}/${KEY}"
 
 echo "[backup] done."
