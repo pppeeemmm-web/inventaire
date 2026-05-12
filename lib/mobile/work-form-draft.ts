@@ -21,6 +21,7 @@ export type WorkFormDraftPayload = {
   discount: string
   paymentDone: boolean
   exposable: boolean
+  broadcastReady: boolean
   commentaires: string
   historique: string
   selThemes: number[]
@@ -62,6 +63,7 @@ export function normalizeWorkFormDraftContent(
     discount: String(p.discount ?? '0'),
     paymentDone: !!p.paymentDone,
     exposable: !!p.exposable,
+    broadcastReady: !!p.broadcastReady,
     commentaires: String(p.commentaires ?? ''),
     historique: String(p.historique ?? ''),
     selThemes: Array.isArray(p.selThemes) ? p.selThemes.map(Number) : [],
@@ -90,6 +92,7 @@ export function workFormDraftContentEquals(a: WorkFormDraftContent, b: WorkFormD
   if (na.discount !== nb.discount) return false
   if (na.paymentDone !== nb.paymentDone) return false
   if (na.exposable !== nb.exposable) return false
+  if (na.broadcastReady !== nb.broadcastReady) return false
   if (na.commentaires !== nb.commentaires) return false
   if (na.historique !== nb.historique) return false
   const ta = sortedNums(na.selThemes)

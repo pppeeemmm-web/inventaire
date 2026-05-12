@@ -150,6 +150,7 @@ export function WorkForm({
   const [discount,    setDiscount]    = useState(String((oeuvre as any)?.Discount ?? '0'))
   const [paymentDone, setPaymentDone] = useState((oeuvre as any)?.PaymentDone ?? false)
   const [exposable,   setExposable]   = useState((oeuvre as any)?.Exposable ?? false)
+  const [broadcastReady, setBroadcastReady] = useState(!!(oeuvre as { broadcast_ready?: boolean }).broadcast_ready)
 
   // ── Lookups ───────────────────────────────────────────────────────
   const [localTechniques, setLocalTechniques] = useState(initialTechniques)
@@ -166,13 +167,13 @@ export function WorkForm({
   const draftSnapshot = useMemo((): WorkFormDraftContent => ({
     titre, annee, techniqueId, supportId, formatId, hauteur, largeur, profondeur,
     prodStage, needsPhoto, ownStage, contactId, anonymityLevel,
-    prix, tvaRate, discount, paymentDone, exposable,
+    prix, tvaRate, discount, paymentDone, exposable, broadcastReady,
     commentaires, historique,
     selThemes: Array.from(selThemes), selGroups: Array.from(selGroups),
   }), [
     titre, annee, techniqueId, supportId, formatId, hauteur, largeur, profondeur,
     prodStage, needsPhoto, ownStage, contactId, anonymityLevel,
-    prix, tvaRate, discount, paymentDone, exposable,
+    prix, tvaRate, discount, paymentDone, exposable, broadcastReady,
     commentaires, historique, selThemes, selGroups,
   ])
 
@@ -197,6 +198,7 @@ export function WorkForm({
         discount: '0',
         paymentDone: false,
         exposable: false,
+        broadcastReady: false,
         commentaires: '',
         historique: '',
         selThemes: [...currentThemeIds],
@@ -222,6 +224,7 @@ export function WorkForm({
       discount: String((oeuvre as { Discount?: number | null }).Discount ?? '0'),
       paymentDone: !!((oeuvre as { PaymentDone?: boolean }).PaymentDone ?? false),
       exposable: !!((oeuvre as { Exposable?: boolean }).Exposable ?? false),
+      broadcastReady: !!((oeuvre as { broadcast_ready?: boolean }).broadcast_ready ?? false),
       commentaires: String((oeuvre as { Commentaires?: string | null }).Commentaires ?? ''),
       historique: String((oeuvre as { Historique?: string | null }).Historique ?? ''),
       selThemes: [...currentThemeIds],
@@ -292,6 +295,7 @@ export function WorkForm({
     setDiscount(d.discount ?? '0')
     setPaymentDone(!!d.paymentDone)
     setExposable(!!d.exposable)
+    setBroadcastReady(!!d.broadcastReady)
     setCommentaires(d.commentaires ?? '')
     setHistorique(d.historique ?? '')
     setSelThemes(new Set(d.selThemes ?? []))
@@ -431,6 +435,7 @@ export function WorkForm({
     fd.set('localisation_id', contactId)
     fd.set('status_id', String(computeWorkStatusId(ownStage, prodStage)))
     fd.set('tva_rate', tvaRate)
+    fd.set('broadcast_ready', broadcastReady ? '1' : '0')
 
     // Ownership change history
     if (oeuvre?.LocalisationID !== parseInt(contactId)) {
@@ -663,6 +668,17 @@ export function WorkForm({
                 }} />
                 <Switch label={t('wf_exposable')} checked={exposable} onChange={setExposable} />
               </div>
+              <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <Switch
+                  label={t('wf_broadcast_ready')}
+                  checked={broadcastReady}
+                  onChange={setBroadcastReady}
+                  testId="wf-broadcast-ready-switch"
+                />
+                <div style={{ fontSize: 12, color: 'var(--tx3)', maxWidth: 520, lineHeight: 1.45 }}>
+                  {t('wf_broadcast_ready_hint')}
+                </div>
+              </div>
               {needsPhoto && prodStage === 'catalogued' && (
                 <div style={{ marginTop: 12, padding: '8px 14px', background: 'var(--dust)22', border: '1px solid var(--dust)44', fontSize: 12, color: 'var(--tx2)' }}>
                   {t('wf_photo_pending_hint')}
@@ -882,9 +898,21 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
-function Switch({ label, checked, onChange, disabled = false }: { label: string; checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
+function Switch({
+  label,
+  checked,
+  onChange,
+  disabled = false,
+  testId,
+}: {
+  label: string
+  checked: boolean
+  onChange: (v: boolean) => void
+  disabled?: boolean
+  testId?: string
+}) {
   return (
-    <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: disabled ? 'default' : 'pointer', fontSize: 13, opacity: disabled ? 0.5 : 1 }}>
+    <label data-testid={testId} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: disabled ? 'default' : 'pointer', fontSize: 13, opacity: disabled ? 0.5 : 1 }}>
       <div onClick={() => !disabled && onChange(!checked)}
         style={{ width: 16, height: 16, border: '1px solid var(--bd)', background: checked ? 'var(--ac)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--bg0)', fontSize: 11 }}>
         {checked ? '✓' : ''}

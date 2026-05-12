@@ -111,7 +111,7 @@ export type DictKey =
   | 'wf_prod_atelier_l' | 'wf_prod_atelier_d' | 'wf_prod_cat_l' | 'wf_prod_cat_d' | 'wf_prod_avail_l' | 'wf_prod_avail_d'
   | 'wf_own_artist_l' | 'wf_own_artist_d' | 'wf_own_reserved_l' | 'wf_own_reserved_d' | 'wf_own_consigned_l' | 'wf_own_consigned_d'
   | 'wf_own_loan_l' | 'wf_own_loan_d' | 'wf_own_sold_l' | 'wf_own_sold_d' | 'wf_own_gift_l' | 'wf_own_gift_d' | 'wf_own_archive_l' | 'wf_own_archive_d'
-  | 'wf_photo_required' | 'wf_exposable' | 'wf_photo_pending_hint'
+  | 'wf_photo_required' | 'wf_exposable' | 'wf_broadcast_ready' | 'wf_broadcast_ready_hint' | 'wf_photo_pending_hint'
   | 'wf_contact_custodian' | 'wf_contact_buyer_intent' | 'wf_contact_acquire'
   | 'wf_localisation_now' | 'wf_visibility_hdr' | 'wf_visibility_blurb'
   | 'wf_vis_public' | 'wf_vis_masked' | 'wf_vis_private' | 'wf_vis_public_d' | 'wf_vis_masked_d' | 'wf_vis_private_d'
@@ -488,6 +488,9 @@ export const dict: Record<Lang, Dictionary> = {
     wf_own_archive_d: 'Retiré de la diffusion',
     wf_photo_required: 'Photo requise',
     wf_exposable: 'Exposable',
+    wf_broadcast_ready: 'Prêt pour diffusion',
+    wf_broadcast_ready_hint:
+      'Autorise l’export vers les outils marketing (flux sécurisé) lorsque l’œuvre est publique avec visuel.',
     wf_photo_pending_hint:
       'En attente de photographie — décocher « Photo requise » pour passer en Disponible.',
     wf_contact_custodian: 'Dépositaire',
@@ -1283,6 +1286,9 @@ $env:OLLAMA_HOST="127.0.0.1:11435"; ollama run llama3.2:1b`,
     wf_own_archive_d: 'Withdrawn from circulation',
     wf_photo_required: 'Photo required',
     wf_exposable: 'Exhibitable',
+    wf_broadcast_ready: 'Ready for broadcast',
+    wf_broadcast_ready_hint:
+      'Allows export to marketing tools (secure feed) when the work is public with a cover image.',
     wf_photo_pending_hint:
       'Awaiting photography — uncheck “Photo required” to move to Available.',
     wf_contact_custodian: 'Custodian',

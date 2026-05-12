@@ -412,6 +412,7 @@ function DrawerContent({
   const [ownStage, setOwnStage] = useState<OwnStageId>(() => ownStageFromStatusId(o.statusId))
   const [contactId, setContactId] = useState(String(o.LocalisationID ?? ''))
   const [exposable,   setExposable]   = useState(!!o.Exposable)
+  const [broadcastReady, setBroadcastReady] = useState(!!(o as { broadcast_ready?: boolean }).broadcast_ready)
   const [encadree,    setEncadree]    = useState(!!o.Encadree)
   const [prix,        setPrix]        = useState(String(o.Prix ?? '0'))
   const [tvaRate, setTvaRate] = useState(String((o as { tva_rate?: number | null }).tva_rate ?? '0'))
@@ -588,6 +589,7 @@ function DrawerContent({
     setOwnStage(ownStageFromStatusId(o.statusId))
     setContactId(String(o.LocalisationID ?? ''))
     setExposable(o.statusId === STATUS_ID_ARCHIVE_ARTISTE ? false : !!o.Exposable)
+    setBroadcastReady(!!(o as { broadcast_ready?: boolean }).broadcast_ready)
     setEncadree(!!o.Encadree)
     setPrix(String(o.Prix ?? '0'))
     setTvaRate(String((o as { tva_rate?: number | null }).tva_rate ?? '0'))
@@ -790,6 +792,7 @@ function DrawerContent({
     if (needsPhoto !== baselineNeeds) return true
     if (String(o.LocalisationID ?? '') !== contactId) return true
     if (!!o.Exposable !== exposable) return true
+    if (!!(o as { broadcast_ready?: boolean }).broadcast_ready !== broadcastReady) return true
     if (!!o.Encadree !== encadree) return true
     if (String(o.Prix ?? '0') !== prix) return true
     if (String((o as { Discount?: number | null }).Discount ?? '0') !== discount) return true
@@ -821,6 +824,7 @@ function DrawerContent({
     baselineNeeds,
     contactId,
     exposable,
+    broadcastReady,
     encadree,
     prix,
     discount,
@@ -891,6 +895,7 @@ function DrawerContent({
     fd.append('contact_id', contactId)
     fd.append('localisation_id', contactId)
     fd.append('exposable', exposable ? '1' : '0')
+    fd.append('broadcast_ready', broadcastReady ? '1' : '0')
     fd.append('encadree', encadree ? '1' : '0')
     fd.append('montee', (o as { Montee?: boolean }).Montee ? '1' : '0')
     fd.append('is_commission', (o as { IsCommission?: boolean }).IsCommission ? '1' : '0')
@@ -1000,6 +1005,7 @@ function DrawerContent({
     needsPhoto,
     contactId,
     exposable,
+    broadcastReady,
     encadree,
     prix,
     discount,
@@ -1034,13 +1040,13 @@ function DrawerContent({
   const draftSnapshot = useMemo((): WorkFormDraftContent => ({
     titre, annee, techniqueId, supportId, formatId, hauteur, largeur, profondeur,
     prodStage, needsPhoto, ownStage, contactId, anonymityLevel,
-    prix, tvaRate, discount, paymentDone, exposable,
+    prix, tvaRate, discount, paymentDone, exposable, broadcastReady,
     commentaires, historique,
     selThemes: Array.from(selThemes), selGroups: Array.from(selGroups),
   }), [
     titre, annee, techniqueId, supportId, formatId, hauteur, largeur, profondeur,
     prodStage, needsPhoto, ownStage, contactId, anonymityLevel,
-    prix, tvaRate, discount, paymentDone, exposable,
+    prix, tvaRate, discount, paymentDone, exposable, broadcastReady,
     commentaires, historique, selThemes, selGroups,
   ])
 
@@ -1093,6 +1099,7 @@ function DrawerContent({
     setDiscount(d.discount ?? '0')
     setPaymentDone(!!d.paymentDone)
     setExposable(!!d.exposable)
+    setBroadcastReady(!!d.broadcastReady)
     setCommentaires(d.commentaires ?? '')
     setHistorique(d.historique ?? '')
     setSelThemes(new Set(d.selThemes ?? []))
@@ -1680,6 +1687,18 @@ function DrawerContent({
               <Switch checked={encadree} onChange={setEncadree} />
             </div>
 
+            <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <WfSwitch
+                testId="wf-broadcast-ready-switch"
+                label={t('wf_broadcast_ready')}
+                checked={broadcastReady}
+                onChange={setBroadcastReady}
+              />
+              <div style={{ fontSize: 10, color: 'var(--tx3)', lineHeight: 1.4 }}>
+                {t('wf_broadcast_ready_hint')}
+              </div>
+            </div>
+
             <Label>Présentation</Label>
             <select className="input" value={presentationId} onChange={e => setPresentationId(e.target.value)} style={FIS}>
               <option value="">—</option>
@@ -2058,14 +2077,16 @@ function WfSwitch({
   checked,
   onChange,
   disabled = false,
+  testId,
 }: {
   label: string
   checked: boolean
   onChange: (v: boolean) => void
   disabled?: boolean
+  testId?: string
 }) {
   return (
-    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: disabled ? 'default' : 'pointer', fontSize: 12, opacity: disabled ? 0.45 : 1 }}>
+    <label data-testid={testId} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: disabled ? 'default' : 'pointer', fontSize: 12, opacity: disabled ? 0.45 : 1 }}>
       <div
         onClick={() => !disabled && onChange(!checked)}
         role="checkbox"

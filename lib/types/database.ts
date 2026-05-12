@@ -23,6 +23,8 @@ export interface Oeuvre {
   PrixFinal?: number | null;
   IsCommission?: boolean | null;
   Exposable?: boolean | null;
+  /** Operator gate for marketing export feed (with is_public + image). */
+  broadcast_ready?: boolean | null;
   Encadree?: boolean | null;
   Montee?: boolean | null;
   DateLivraison?: string | null;

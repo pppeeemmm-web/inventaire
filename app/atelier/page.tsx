@@ -2,6 +2,7 @@
 // fully-interactive client shell (tabs, constellation, drawer, etc.)
 import { createClient } from '@/lib/supabase/server'
 import { AtelierTeamPortalLoader } from '@/components/atelier/AtelierTeamPortalLoader'
+import type { Oeuvre } from '@/lib/types/database'
 
 /** Junction tables must always reflect DB after edits (theme/group removals, batch, etc.) */
 export const dynamic = 'force-dynamic'
@@ -15,9 +16,10 @@ export default async function AtelierPage() {
     'oeuvre_theme', 'working_group_work', 'contact_addresses',
   ] as const
   const results = await Promise.all([
-    supabase
+    // `broadcast_ready` — column added in supabase/sql/oeuvre_broadcasts.sql; widen client until types regenerated.
+    (supabase as any)
       .from('Oeuvres')
-      .select('OeuvreID, Titre, Technique, Support, Année, Format, Hauteur, Largeur, Profondeur, Exposable, Prix, PrixFinal, Discount, statusId, Catalogué, txtImageNameLink, ContactID, LocalisationID, LocalisationDetail, is_public, Encadree, IsCommission, PresentationID, ReturnDate, DateLivraison, AcheteurID, NeedsPhotograph, anonymity_level, admin_override_anonymity')
+      .select('OeuvreID, Titre, Technique, Support, Année, Format, Hauteur, Largeur, Profondeur, Exposable, broadcast_ready, Prix, PrixFinal, Discount, statusId, Catalogué, txtImageNameLink, ContactID, LocalisationID, LocalisationDetail, is_public, Encadree, IsCommission, PresentationID, ReturnDate, DateLivraison, AcheteurID, NeedsPhotograph, anonymity_level, admin_override_anonymity')
       .is('deleted_at', null)
       .order('OeuvreID', { ascending: false })
       .range(0, 4999),
@@ -40,7 +42,7 @@ export default async function AtelierPage() {
     if (r?.error) console.error(`[atelier loader] ${queryLabels[i]}:`, r.error.message)
   })
 
-  const oeuvres        = results[0]?.data
+  const oeuvres = (results[0]?.data ?? []) as unknown as Oeuvre[]
   const techniques     = results[1]?.data
   const supports       = results[2]?.data
   const formats        = results[3]?.data

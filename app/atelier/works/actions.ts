@@ -234,6 +234,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
 
   let exposable      = formData.get('exposable')     === '1'
   if (statusId === STATUS_ID_ARCHIVE_ARTISTE) exposable = false
+  const broadcastReady = formData.get('broadcast_ready') === '1'
   const montee       = formData.get('montee')      === '1'
   const encadree     = formData.get('encadree')      === '1'
   const catalogued   = formData.get('catalogued')    === '1'
@@ -346,6 +347,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       IsCommission:      isCommission,
       DateLivraison:     dateLivraison,
       NeedsPhotograph:   needsPhotograph,
+      broadcast_ready:   broadcastReady,
       anonymity_level:   anonymityLevel,
       admin_override_anonymity: adminOverrideAnonymity,
       tva_rate:          tvaRate,
@@ -467,6 +469,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       is_paid:           isPaid,
       is_gift:           isGift,
       PresentationID:    presentationId,
+      broadcast_ready:   broadcastReady,
     }
     if (formUploadedNewImage) {
       updatePayload.txtImageNameLink = imageName
