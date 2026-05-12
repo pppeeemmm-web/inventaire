@@ -61,13 +61,11 @@ mkdir -p "$HOME/.config/rclone"
 cat > "$HOME/.config/rclone/rclone.conf" <<EOF
 [r2]
 type = s3
-provider = Other
+provider = Cloudflare
 access_key_id = ${R2_BACKUP_ACCESS_KEY}
 secret_access_key = ${R2_BACKUP_SECRET_KEY}
 endpoint = ${ENDPOINT}
-region = auto
 acl = private
-force_path_style = true
 no_check_bucket = true
 EOF
 
