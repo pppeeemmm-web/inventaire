@@ -36,25 +36,32 @@ fi
 R2_BACKUP_ACCOUNT_ID=$(printf '%s' "$R2_BACKUP_ACCOUNT_ID" | tr -d '[:space:]')
 R2_BACKUP_BUCKET=$(printf '%s' "$R2_BACKUP_BUCKET" | tr -d '[:space:]')
 
-# Upload via awscli with R2 S3-compatible endpoint.
-# Bucket lives in EU jurisdiction → endpoint must include `.eu.` subdomain.
-# Override with R2_BACKUP_JURISDICTION='' if you ever move to a global bucket.
-export AWS_ACCESS_KEY_ID="$R2_BACKUP_ACCESS_KEY"
-export AWS_SECRET_ACCESS_KEY="$R2_BACKUP_SECRET_KEY"
-export AWS_DEFAULT_REGION="auto"
-# AWS CLI v2 ≥ 2.23 auto-adds x-amz-checksum-* headers that R2 rejects with
-# "InvalidArgument / sigv4 header" — opt out unless server demands it.
-export AWS_REQUEST_CHECKSUM_CALCULATION=when_required
-export AWS_RESPONSE_CHECKSUM_VALIDATION=when_required
+# Ensure rclone exists on the runner (ubuntu-latest usually has it).
+command -v rclone >/dev/null || { sudo apt-get update && sudo apt-get install -y rclone; }
 
+# Upload via rclone — AWS CLI v2's recent SigV4 additions break against R2.
+# rclone has a dedicated Cloudflare R2 provider profile and a stable upload path.
 JURI="${R2_BACKUP_JURISDICTION-eu}"
 JSUB=""
 [ -n "$JURI" ] && JSUB=".${JURI}"
 ENDPOINT="https://${R2_BACKUP_ACCOUNT_ID}${JSUB}.r2.cloudflarestorage.com"
 KEY="daily/${OUT}"
 
+mkdir -p "$HOME/.config/rclone"
+cat > "$HOME/.config/rclone/rclone.conf" <<EOF
+[r2]
+type = s3
+provider = Cloudflare
+access_key_id = ${R2_BACKUP_ACCESS_KEY}
+secret_access_key = ${R2_BACKUP_SECRET_KEY}
+endpoint = ${ENDPOINT}
+region = auto
+acl = private
+EOF
+
 echo "[backup] endpoint host: ${R2_BACKUP_ACCOUNT_ID:0:4}…${JSUB}.r2.cloudflarestorage.com"
-echo "[backup] upload s3://${R2_BACKUP_BUCKET}/${KEY}"
-aws s3 cp "$OUT" "s3://${R2_BACKUP_BUCKET}/${KEY}" --endpoint-url "$ENDPOINT"
+echo "[backup] upload r2:${R2_BACKUP_BUCKET}/${KEY}"
+rclone --config "$HOME/.config/rclone/rclone.conf" \
+       copyto "$OUT" "r2:${R2_BACKUP_BUCKET}/${KEY}"
 
 echo "[backup] done."
