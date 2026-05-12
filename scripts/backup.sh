@@ -36,8 +36,10 @@ fi
 R2_BACKUP_ACCOUNT_ID=$(printf '%s' "$R2_BACKUP_ACCOUNT_ID" | tr -d '[:space:]')
 R2_BACKUP_BUCKET=$(printf '%s' "$R2_BACKUP_BUCKET" | tr -d '[:space:]')
 
-# Ensure rclone exists on the runner (ubuntu-latest usually has it).
-command -v rclone >/dev/null || { sudo apt-get update && sudo apt-get install -y rclone; }
+# Install latest rclone from rclone.org. Ubuntu's apt ships 1.60 (2022) whose
+# R2 provider profile is too old; the upstream installer gives us a current build.
+curl -fsSL https://rclone.org/install.sh | sudo bash >/dev/null
+rclone version | head -1
 
 # Upload via rclone — AWS CLI v2's recent SigV4 additions break against R2.
 # rclone has a dedicated Cloudflare R2 provider profile and a stable upload path.
