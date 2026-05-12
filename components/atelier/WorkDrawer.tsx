@@ -1011,6 +1011,7 @@ function DrawerContent({
     contactId,
     exposable,
     broadcastReady,
+    broadcastCaptionSeed,
     encadree,
     prix,
     discount,
