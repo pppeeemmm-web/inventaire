@@ -50,7 +50,7 @@ echo "[backup] bucket name:       ${R2_BACKUP_BUCKET}"
 # documented working path for Cloudflare R2.
 pip install -q boto3
 
-ENDPOINT="https://${R2_BACKUP_ACCOUNT_ID}.r2.cloudflarestorage.com"
+ENDPOINT="https://${R2_BACKUP_ACCOUNT_ID}.eu.r2.cloudflarestorage.com"
 KEY="daily/${OUT}"
 
 echo "[backup] endpoint: ${R2_BACKUP_ACCOUNT_ID:0:4}….r2.cloudflarestorage.com"
