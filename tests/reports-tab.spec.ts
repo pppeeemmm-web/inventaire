@@ -15,4 +15,14 @@ test.describe('Reports tab', () => {
     const download = await downloadPromise
     expect(download.suggestedFilename()).toMatch(/works_report_\d{4}-\d{2}-\d{2}\.html/)
   })
+
+  test('exports PDF from reports tab', async ({ page }) => {
+    await page.goto('/atelier?tab=reports')
+    await expect(page.getByTestId('reports-root')).toBeVisible({ timeout: 45_000 })
+
+    const downloadPromise = page.waitForEvent('download')
+    await page.getByRole('button', { name: /Exporter PDF|Export PDF/i }).click()
+    const download = await downloadPromise
+    expect(download.suggestedFilename()).toMatch(/works_report_\d{4}-\d{2}-\d{2}\.pdf/)
+  })
 })

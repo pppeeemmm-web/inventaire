@@ -250,6 +250,7 @@ export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function Work
       <div
         role="presentation"
         aria-hidden
+        data-testid="work-drawer-dismiss-backdrop"
         onClick={() => closeAttemptRef.current?.()}
         style={{
           flex: 1,

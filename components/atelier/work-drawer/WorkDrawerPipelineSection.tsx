@@ -298,6 +298,8 @@ export function WorkDrawerPipelineSection({
                 <button
                   key={level}
                   type="button"
+                  data-testid={`work-drawer-anonymity-${level}`}
+                  aria-pressed={active}
                   title={desc}
                   onClick={() => setAnonymityLevel(level)}
                   style={{

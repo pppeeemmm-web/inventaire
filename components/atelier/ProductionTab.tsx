@@ -412,6 +412,8 @@ function ActionColumn({
   const [showAdd, setShowAdd] = useState(false)
   const [addQ,    setAddQ]    = useState('')
 
+  const columnTitle = workActionTypeDisplayLabel(actionType.id, actionType.label, t)
+
   const sortedWorks = useMemo(() => {
     return [...works].sort((a, b) => {
       const aDl = (a as any).DateLivraison
@@ -453,10 +455,14 @@ function ActionColumn({
         borderTop: `3px solid ${actionType.color}`,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
-          <span className="t-eyebrow" style={{ 
-            color: actionType.color, fontSize: 13, fontWeight: 700,
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
-          }}>{workActionTypeDisplayLabel(actionType.id, actionType.label, t)}</span>
+          <span
+            className="t-eyebrow"
+            title={columnTitle}
+            style={{
+              color: actionType.color, fontSize: 13, fontWeight: 700,
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}
+          >{columnTitle}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span className="t-mono-sm" style={{ color: 'var(--tx3)' }}>{works.length}</span>

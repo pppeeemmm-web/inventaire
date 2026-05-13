@@ -28,6 +28,46 @@ test.describe('Work drawer unsaved guard', () => {
     await expect(page.getByText(/Modifications non enregistrées|Unsaved changes/)).toBeVisible()
   })
 
+  test('discard close restores contact confidentiality (anonymity)', async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('pem_team_tab', 'inventory')
+    })
+    await page.goto('/atelier')
+    await expect(page.getByTestId('inventory-virtual-scroll')).toBeVisible({ timeout: 45_000 })
+
+    const dataRows = page.locator('tbody tr').filter({ has: page.locator('button', { hasText: '✎' }) })
+    await expect(dataRows.first()).toBeVisible({ timeout: 15_000 })
+
+    await dataRows.first().click()
+    await expect(page.getByTestId('work-drawer-overlay')).toBeVisible({ timeout: 15_000 })
+
+    const anon0 = page.getByTestId('work-drawer-anonymity-0')
+    const anon1 = page.getByTestId('work-drawer-anonymity-1')
+    const anon2 = page.getByTestId('work-drawer-anonymity-2')
+
+    const pressed = async (loc: ReturnType<typeof page.getByTestId>) =>
+      (await loc.getAttribute('aria-pressed')) === 'true'
+
+    let initial: 0 | 1 | 2 = 0
+    if (await pressed(anon1)) initial = 1
+    else if (await pressed(anon2)) initial = 2
+
+    const pickOther = initial === 0 ? anon1 : anon0
+    await pickOther.click()
+    await expect(pickOther).toHaveAttribute('aria-pressed', 'true')
+
+    await page.getByTestId('work-drawer-dismiss-backdrop').click({ position: { x: 4, y: 4 } })
+    await expect(page.getByText(/Modifications non enregistrées|Unsaved changes/)).toBeVisible()
+    await page.getByRole('button', { name: /Quitter sans enregistrer|Close without saving/ }).click()
+    await expect(page.getByTestId('work-drawer-overlay')).toBeHidden()
+
+    await dataRows.first().click()
+    await expect(page.getByTestId('work-drawer-overlay')).toBeVisible({ timeout: 15_000 })
+    if (initial === 0) await expect(anon0).toHaveAttribute('aria-pressed', 'true')
+    else if (initial === 1) await expect(anon1).toHaveAttribute('aria-pressed', 'true')
+    else await expect(anon2).toHaveAttribute('aria-pressed', 'true')
+  })
+
   test('?work= opens drawer (deep link)', async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.setItem('pem_team_tab', 'inventory')

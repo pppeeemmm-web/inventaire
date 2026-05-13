@@ -136,6 +136,8 @@ export function DrawerContent({
   const draftKey = useMemo(() => draftStorageKey(o.OeuvreID), [o.OeuvreID])
   const draftRestoreHandledKeyRef = useRef<string | null>(null)
   const [longTextReady, setLongTextReady] = useState(false)
+  /** Increment so long-text reload runs after discard-in-place (same OeuvreID). */
+  const [longTextReloadNonce, setLongTextReloadNonce] = useState(0)
 
   const [showUnsavedModal, setShowUnsavedModal] = useState(false)
   const [savingExit, setSavingExit]             = useState(false)
@@ -266,7 +268,7 @@ export function DrawerContent({
 
   // Sync on work change — layout pass resets state before effects (draft autosave) run,
   // and noteBaseline must match cleared notes or isDirty falsely trips during long-text load.
-  useLayoutEffect(() => {
+  const syncFormFieldsFromOeuvre = useCallback(() => {
     setLongTextReady(false)
     setNoteBaseline({ c: '', h: '' })
     setTitre(o.Titre ?? '')
@@ -296,7 +298,11 @@ export function DrawerContent({
     setLocalContacts(initialContacts)
     setCommentaires('')
     setHistorique('')
-  }, [o.OeuvreID, oeuvreThemeMap, oeuvreGroupMap, o, initialContacts])
+  }, [o, oeuvreThemeMap, oeuvreGroupMap, initialContacts])
+
+  useLayoutEffect(() => {
+    syncFormFieldsFromOeuvre()
+  }, [o.OeuvreID, oeuvreThemeMap, oeuvreGroupMap, syncFormFieldsFromOeuvre])
 
   useEffect(() => {
     let cancelled = false
@@ -320,7 +326,7 @@ export function DrawerContent({
     return () => {
       cancelled = true
     }
-  }, [o.OeuvreID])
+  }, [o.OeuvreID, longTextReloadNonce])
 
   useEffect(() => {
     if (ownStage !== 'loan' && ownStage !== 'consigned') {
@@ -829,6 +835,11 @@ export function DrawerContent({
   }
 
   function discardUnsavedClose() {
+    try {
+      sessionStorage.removeItem(draftKey)
+    } catch { /* ignore */ }
+    syncFormFieldsFromOeuvre()
+    setLongTextReloadNonce((n) => n + 1)
     setShowUnsavedModal(false)
     const run = pendingAfterGuardRef.current
     pendingAfterGuardRef.current = null

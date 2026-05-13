@@ -321,6 +321,13 @@ export function WorldMapTab({
     const locEntries: LocEntry[] = []
 
     if (addresses.length > 0) {
+      // Contacts with any ville/pays on an address row: never fall back to the Contact card for the map
+      // (keeps country-filter behaviour when rows exist but are filtered out). Placeholder-only rows
+      // (label/street, no city/country) must NOT block Contact.Ville/Pays.
+      const contactsWithGeocodableAddressRow = new Set<number>()
+      addresses.forEach((a) => {
+        if (a.ville || a.pays) contactsWithGeocodableAddressRow.add(a.contact_id)
+      })
       addresses.forEach(a => {
         if (a.ville || a.pays) {
           const contact = contactMap.get(a.contact_id)
@@ -329,10 +336,8 @@ export function WorldMapTab({
           locEntries.push({ contact_id: a.contact_id, ville: a.ville ?? '', pays: a.pays ?? '', label: a.label })
         }
       })
-      // Also include contacts with Ville/Pays that have NO entry in contact_addresses
-      const coveredIds = new Set(addresses.map(a => a.contact_id))
       contacts.forEach(c => {
-        if (!coveredIds.has(c.ContactID) && (c.Ville || c.Pays)) {
+        if (!contactsWithGeocodableAddressRow.has(c.ContactID) && (c.Ville || c.Pays)) {
           if (!passesContactFilters(c)) return
           if (!passesCountryOnEntry(c.Ville ?? '', c.Pays ?? '')) return
           locEntries.push({ contact_id: c.ContactID, ville: c.Ville ?? '', pays: c.Pays ?? '', label: null })

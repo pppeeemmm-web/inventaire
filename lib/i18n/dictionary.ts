@@ -320,6 +320,7 @@ export type DictKey =
   | 'prod_tab_col_manager_title' | 'prod_tab_auto_update_tt' | 'prod_tab_delete_column_title' | 'prod_tab_new_type_ph' | 'prod_tab_color'
   | 'prod_tab_automation' | 'prod_tab_automation_none' | 'prod_tab_automation_done_fmt' | 'prod_tab_saving_btn' | 'prod_tab_add_column_btn'
   | 'prod_tab_field_mounted' | 'prod_tab_field_framed' | 'prod_tab_field_exposable' | 'prod_tab_field_catalogued'
+  | 'wat_cataloguer' | 'wat_photographier' | 'wat_retoucher' | 'wat_a_monter' | 'wat_encadrer' | 'wat_exposer' | 'wat_a_expedier'
 
 type Dictionary = Record<DictKey, string>
 
@@ -1537,6 +1538,13 @@ $env:OLLAMA_HOST="127.0.0.1:11435"; ollama run llama3.2:1b`,
     prod_tab_field_framed: 'Encadrée',
     prod_tab_field_exposable: 'Exposable',
     prod_tab_field_catalogued: 'Cataloguée',
+    wat_cataloguer: 'Catalogue',
+    wat_photographier: 'Photographie',
+    wat_retoucher: 'Retoucher',
+    wat_a_monter: 'À monter',
+    wat_encadrer: 'Encadrer',
+    wat_exposer: 'Exposer',
+    wat_a_expedier: 'À expédier',
   },
   en: {
     hub: 'Studio', tagline: 'Inventory · Production · Curation · Relations',
@@ -2748,5 +2756,12 @@ $env:OLLAMA_HOST="127.0.0.1:11435"; ollama run llama3.2:1b`,
     prod_tab_field_framed: 'Framed',
     prod_tab_field_exposable: 'Exhibitable',
     prod_tab_field_catalogued: 'Catalogued',
+    wat_cataloguer: 'Catalogue',
+    wat_photographier: 'Photography',
+    wat_retoucher: 'Retouching',
+    wat_a_monter: 'Mounting',
+    wat_encadrer: 'Framing',
+    wat_exposer: 'Exhibition',
+    wat_a_expedier: 'Shipping',
   },
 }
