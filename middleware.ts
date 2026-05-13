@@ -4,6 +4,7 @@
 // never receive an HTML redirect from middleware (that causes "unexpected response").
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { requestPublicOrigin } from '@/lib/request-public-origin'
 
 /** Same-origin path only (blocks open redirects). */
 function safeRelativeNext(raw: string | null): string | null {
@@ -110,7 +111,7 @@ export async function middleware(request: NextRequest) {
         if (user && (p === '/login' || p.startsWith('/login/'))) {
           const dest =
             safeRelativeNext(request.nextUrl.searchParams.get('next')) ?? '/hub'
-          const redir = NextResponse.redirect(new URL(dest, request.url))
+          const redir = NextResponse.redirect(new URL(dest, requestPublicOrigin(request)))
           for (const c of supabaseResponse.cookies.getAll()) {
             redir.cookies.set(c.name, c.value)
           }
@@ -121,8 +122,7 @@ export async function middleware(request: NextRequest) {
 
     if (!user && isDocNav && isProtected && !isAuthRoute) {
       const next = request.nextUrl.pathname + request.nextUrl.search
-      const login = request.nextUrl.clone()
-      login.pathname = '/login'
+      const login = new URL('/login', requestPublicOrigin(request))
       login.searchParams.set('next', next)
       return NextResponse.redirect(login)
     }

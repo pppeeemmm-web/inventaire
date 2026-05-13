@@ -6,6 +6,7 @@
 
 import { NextResponse, type NextRequest } from 'next/server'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { requestPublicOrigin } from '@/lib/request-public-origin'
 
 function safeNext(param: string | null): string {
   const fallback = '/hub'
@@ -13,22 +14,15 @@ function safeNext(param: string | null): string {
   return param
 }
 
-/** Public origin the browser used (Vercel: prefer x-forwarded-* over internal request URL). */
-function publicOrigin(request: NextRequest): string {
-  const xfHost = request.headers.get('x-forwarded-host')?.split(',')[0]?.trim()
-  const xfProto = request.headers.get('x-forwarded-proto')?.split(',')[0]?.trim() || 'https'
-  if (xfHost) return `${xfProto}://${xfHost}`
-  return request.nextUrl.origin
-}
-
 export async function GET(request: NextRequest) {
   const url    = new URL(request.url)
   const code   = url.searchParams.get('code')
   const next   = safeNext(url.searchParams.get('next'))
-  const origin = publicOrigin(request)
+  const origin = requestPublicOrigin(request)
 
   if (code) {
     let response = NextResponse.redirect(`${origin}${next}`)
+    response.headers.set('Cache-Control', 'private, no-store, max-age=0, must-revalidate')
 
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -53,8 +47,12 @@ export async function GET(request: NextRequest) {
     }
 
     console.error('[auth/callback] exchangeCodeForSession:', error.message)
-    return NextResponse.redirect(`${origin}/login?error=auth`)
+    const errRes = NextResponse.redirect(`${origin}/login?error=auth`)
+    errRes.headers.set('Cache-Control', 'private, no-store, max-age=0, must-revalidate')
+    return errRes
   }
 
-  return NextResponse.redirect(`${origin}${next}`)
+  const done = NextResponse.redirect(`${origin}${next}`)
+  done.headers.set('Cache-Control', 'private, no-store, max-age=0, must-revalidate')
+  return done
 }
