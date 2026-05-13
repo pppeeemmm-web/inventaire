@@ -9,6 +9,9 @@ import { createClient } from '@/lib/supabase/client'
 import { useI18n } from '@/lib/i18n/context'
 import { useUnsavedCloseGuard } from '@/hooks/useUnsavedCloseGuard'
 import type { Oeuvre } from '@/lib/types/database'
+import type { Agg, Dim } from '@/lib/pivot'
+import { buildPivot } from '@/lib/pivot'
+import { PivotPanel } from './PivotPanel'
 
 // ── Constants ──────────────────────────────────────────────────────────
 
@@ -169,14 +172,61 @@ export function FiscalTab({ oeuvres, contacts = [] }: Props) {
   const tvaOk        = recettes < TVA_FRANCHISE
   const microOk      = recettes < MICRO_BNC_SEUIL
 
-  const catBreakdown = useMemo(() => {
-    const m = new Map<string, number>()
-    expenses.forEach((e) => {
-      const cat = e.category ?? 'Autres'
-      m.set(cat, (m.get(cat) ?? 0) + Number(e.montant_ttc))
-    })
-    return [...m.entries()].sort((a, b) => b[1] - a[1])
-  }, [expenses])
+  const catDim: Dim<Expense> = useMemo(
+    () => ({
+      id: 'category',
+      label: t('category'),
+      get: (e) => e.category ?? t('pivotOther'),
+    }),
+    [t],
+  )
+  const sumTtcAgg: Agg<Expense> = useMemo(
+    () => ({
+      id: 'sumTtc',
+      label: t('amount'),
+      kind: 'sum',
+      get: (e) => Number(e.montant_ttc),
+    }),
+    [t],
+  )
+
+  const fiscalPivotDims: Dim<Expense>[] = useMemo(
+    () => [
+      catDim,
+      {
+        id: 'month',
+        label: t('pivotDimMonth'),
+        get: (e) => (e.date?.length >= 7 ? e.date.slice(0, 7) : '—'),
+      },
+      {
+        id: 'kind',
+        label: t('pivotDimExpenseKind'),
+        get: (e) => e.type ?? '—',
+      },
+    ],
+    [t, catDim],
+  )
+
+  const fiscalPivotValues: Agg<Expense>[] = useMemo(
+    () => [
+      sumTtcAgg,
+      { id: 'countExp', label: t('pivotCount'), kind: 'count' },
+    ],
+    [t, sumTtcAgg],
+  )
+
+  const catPivot = useMemo(
+    () => buildPivot(expenses, { rowDims: [catDim], values: [sumTtcAgg] }),
+    [expenses, catDim, sumTtcAgg],
+  )
+
+  const catBreakdown = useMemo(
+    () =>
+      catPivot.rows
+        .map((name, i) => [name, catPivot.rowTotals[i][0] ?? 0] as [string, number])
+        .sort((a, b) => b[1] - a[1]),
+    [catPivot],
+  )
 
   const sortedExpenses = useMemo(() => {
     const list = [...expenses]
@@ -341,6 +391,21 @@ export function FiscalTab({ oeuvres, contacts = [] }: Props) {
               Barème IR selon votre tranche (non inclus ici).
             </div>
           </div>
+
+          <details style={{ marginTop: 20 }}>
+            <summary className="t-label" style={{ cursor: 'pointer', marginBottom: 8, listStylePosition: 'outside' }}>
+              {t('pivotAdvanced')}
+            </summary>
+            <PivotPanel<Expense>
+              rows={expenses}
+              availableDims={fiscalPivotDims}
+              availableValues={fiscalPivotValues}
+              defaultRowDimId="category"
+              defaultColDimId="month"
+              defaultValueIds={['sumTtc', 'countExp']}
+              exportFileName={`fiscal-expenses-${year}`}
+            />
+          </details>
         </div>
       )}
 

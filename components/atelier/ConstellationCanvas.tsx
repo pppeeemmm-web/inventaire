@@ -4,14 +4,28 @@
 // Nodes = thumbnails. Edges = tblrelations.
 // Grouped by year / theme / free. Zoom/pan. Drag-edge-to-link. Right-click edge to delete.
 
-import { useRef, useEffect, useState, useCallback, useMemo } from 'react'
+import { useRef, useEffect, useState, useCallback, useMemo, useId } from 'react'
 import { useRouter } from 'next/navigation'
+import { useI18n } from '@/lib/i18n/context'
+import type { DictKey } from '@/lib/i18n/dictionary'
 import { createClient } from '@/lib/supabase/client'
 import { imageUrl, thumbUrl } from '@/lib/data'
 import {
   removeOeuvreFromCatalogTheme,
   removeOeuvreFromWorkingGroup,
 } from '@/app/atelier/selection/actions'
+import {
+  listConstellationMaps,
+  saveConstellationMap,
+  loadConstellationMap,
+  deleteConstellationMap,
+  type ConstellationMapRow,
+} from '@/app/atelier/constellation/actions'
+import {
+  CONSTELLATION_MAP_VERSION,
+  type ConstellationMapDocument,
+  type ConstellationMapEdgeSnapshot,
+} from '@/lib/constellation-map-document'
 import { WorkThumb } from './WorkThumb'
 import type { Oeuvre }  from '@/lib/types/database'
 
@@ -57,6 +71,13 @@ export type NodeMap  = Map<number, Pt>
 type GroupBy  = 'year' | 'theme' | 'workgroup' | 'none' | 'custom'
 type LinkType = 'influence' | 'proximity' | 'series' | 'diptych'
 
+const LINK_LABEL_KEYS: Record<LinkType, DictKey> = {
+  influence: 'const_link_influence',
+  proximity: 'const_link_proximity',
+  series: 'const_link_series',
+  diptych: 'const_link_diptych',
+}
+
 interface VP { x: number; y: number; z: number }
 interface Edge {
   id:            string
@@ -65,6 +86,27 @@ interface Edge {
   relation_type: string | null
   strength:      number | null
   description:   string | null
+}
+
+function edgeSnapshotToEdges(snap: ConstellationMapEdgeSnapshot[]): Edge[] {
+  return snap.map((e, i) => ({
+    id:            `frozen-${i}`,
+    source:        e.source_id,
+    target:        e.target_id,
+    relation_type: e.relation_type,
+    strength:      e.strength,
+    description:   e.description,
+  }))
+}
+
+function edgesToSnapshot(edges: Edge[]): ConstellationMapEdgeSnapshot[] {
+  return edges.map(e => ({
+    source_id:     e.source,
+    target_id:     e.target,
+    relation_type: e.relation_type,
+    strength:      e.strength,
+    description:   e.description,
+  }))
 }
 interface Drag {
   mode:       'idle' | 'pan' | 'node' | 'link' | 'marquee' | 'draw' | 'line' | 'erase'
@@ -368,6 +410,8 @@ export function ConstellationCanvas({
   backgroundImage, backgroundOpacity = 1, onBackgroundOpacity, onDropExternal, hideToolbar, initialPositions
 }: Props) {
   const router = useRouter()
+  const { t, lang } = useI18n()
+  const locale = lang === 'fr' ? 'fr-FR' : 'en-GB'
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const wrapRef   = useRef<HTMLDivElement>(null)
 
@@ -395,6 +439,8 @@ export function ConstellationCanvas({
   const vpRef       = useRef<VP>({ x: 40, y: 40, z: 1 })
   const posRef      = useRef<NodeMap>(new Map())
   const edgesRef    = useRef<Edge[]>([])
+  /** When set, layout effect applies this document once (avoids overwriting cloud positions). */
+  const constellationImportPendingRef = useRef<ConstellationMapDocument | null>(null)
   const hovNodeRef  = useRef<number | null>(null)
   const hovEdgeRef  = useRef<Edge | null>(null)
   const dragRef     = useRef<Drag>({ mode: 'idle', startX: 0, startY: 0 })
@@ -425,6 +471,12 @@ export function ConstellationCanvas({
   const [snapshots,  setSnapshots]  = useState<Snapshot[]>(loadSnapshots)
   const [snapName,   setSnapName]   = useState('')
   const [snapSaved,  setSnapSaved]  = useState(false)
+  const [cloudMaps,  setCloudMaps]  = useState<ConstellationMapRow[]>([])
+  const [cloudSaved, setCloudSaved] = useState(false)
+  const [cloudBusy,  setCloudBusy]  = useState(false)
+  /** Frozen edge layer from a loaded cloud map (not DB); null = use live tblrelations. */
+  const [frozenEdges, setFrozenEdges] = useState<Edge[] | null>(null)
+  const [activeCloudMapId, setActiveCloudMapId] = useState<string | null>(null)
   // Custom (blank canvas) mode
   const [customIds,        setCustomIds]        = useState<Set<number>>(new Set())
   const [pickerQ,          setPickerQ]          = useState('')
@@ -435,9 +487,46 @@ export function ConstellationCanvas({
   )
   const [selectedGroupId,   setSelectedGroupId]  = useState<string | null>(null)
   const [groupWork,         setGroupWork]         = useState<Map<string, Set<number>>>(new Map())
+  const [toolShortcutsOpen, setToolShortcutsOpen] = useState(false)
+  const shortcutsPanelId = useId()
+  const shortcutsPanelRef = useRef<HTMLDivElement>(null)
+  const toolRailRef = useRef<HTMLDivElement>(null)
 
   const redraw = useCallback(() => setTick(t => t + 1), [])
+  const toolbarTools = useMemo(
+    () =>
+      [
+        { id: 'move' as const, l: '🖐️', tipKey: 'const_tool_move' as const },
+        { id: 'marquee' as const, l: '⬛', tipKey: 'const_tool_marquee' as const },
+        { id: 'draw' as const, l: '✏️', tipKey: 'const_tool_draw' as const },
+        { id: 'line' as const, l: '📏', tipKey: 'const_tool_line' as const },
+        { id: 'text' as const, l: 'T', tipKey: 'const_tool_text' as const },
+        { id: 'erase' as const, l: '🧹', tipKey: 'const_tool_erase' as const },
+      ] as const,
+    [lang],
+  )
   const oeuvresById = useMemo(() => new Map(oeuvres.map(o => [o.OeuvreID, o])), [oeuvres])
+
+  useEffect(() => {
+    if (!toolShortcutsOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setToolShortcutsOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [toolShortcutsOpen])
+
+  useEffect(() => {
+    if (!toolShortcutsOpen) return
+    const onDoc = (e: MouseEvent) => {
+      const node = e.target as Node
+      if (toolRailRef.current?.contains(node)) return
+      if (shortcutsPanelRef.current?.contains(node)) return
+      setToolShortcutsOpen(false)
+    }
+    document.addEventListener('mousedown', onDoc, true)
+    return () => document.removeEventListener('mousedown', onDoc, true)
+  }, [toolShortcutsOpen])
 
   // Background image ref
   const bgImgRef = useRef<HTMLImageElement | null>(null)
@@ -593,9 +682,64 @@ export function ConstellationCanvas({
     return () => { cancelled = true }
   }, [reloadGraphData])
 
+  const refreshCloudMaps = useCallback(async () => {
+    const r = await listConstellationMaps()
+    if ('ok' in r) setCloudMaps(r.maps)
+    else setCloudMaps([])
+  }, [])
+
+  useEffect(() => {
+    void refreshCloudMaps()
+  }, [refreshCloudMaps])
+
+  const applyConstellationCloudDoc = useCallback((doc: ConstellationMapDocument, mapId: string | null) => {
+    constellationImportPendingRef.current = doc
+    setFrozenEdges(edgeSnapshotToEdges(doc.edgesSnapshot))
+    setShapes(doc.shapes)
+    setSelectedThemeId(doc.selectedThemeId)
+    setSelectedGroupId(doc.selectedGroupId)
+    setCustomIds(new Set(doc.customWorkIds))
+    vpRef.current = { ...doc.viewport }
+    setActiveCloudMapId(mapId)
+    setGroupBy(doc.groupBy)
+    setTick(t => t + 1)
+  }, [])
+
+  const mapUrlBootstrappedRef = useRef(false)
+  useEffect(() => {
+    if (loading || mapUrlBootstrappedRef.current) return
+    if (typeof window === 'undefined') return
+    const id = new URLSearchParams(window.location.search).get('map')
+    if (!id) return
+    mapUrlBootstrappedRef.current = true
+    void (async () => {
+      setCloudBusy(true)
+      const r = await loadConstellationMap(id)
+      setCloudBusy(false)
+      if ('error' in r) {
+        mapUrlBootstrappedRef.current = false
+        alert(r.error)
+        return
+      }
+      applyConstellationCloudDoc(r.document, id)
+      const p = new URLSearchParams(window.location.search)
+      p.delete('map')
+      const qs = p.toString()
+      window.history.replaceState({}, '', qs ? `${window.location.pathname}?${qs}` : window.location.pathname)
+    })()
+  }, [loading, applyConstellationCloudDoc])
+
   // ── Layout ────────────────────────────────────────────────────
   useEffect(() => {
     if (loading) return
+    const pending = constellationImportPendingRef.current
+    if (pending) {
+      constellationImportPendingRef.current = null
+      groupByRef.current = pending.groupBy
+      posRef.current = objToPos(pending.positions)
+      redraw()
+      return
+    }
     groupByRef.current = groupBy
     if (groupBy === 'custom') {
       // Custom mode: positions are managed by addToCustom/removeFromCustom.
@@ -787,7 +931,7 @@ export function ConstellationCanvas({
         ctx.fillStyle = 'rgba(255,255,255,0.016)'
         ctx.fillRect(minX, -20, maxX - minX, ch / vp.z + 40)
         ctx.fillStyle = 'rgba(200,168,110,0.55)'
-        ctx.font = `${Math.max(7, 10 / vp.z)}px "JetBrains Mono", monospace`
+        ctx.font = `${Math.max(7, 10 / vp.z)}px "Sofia Sans", sans-serif`
         ctx.fillText(yr, minX + 4, minY - 10)
       }
     }
@@ -845,7 +989,7 @@ export function ConstellationCanvas({
         // Font size scales with theme size (8–14 logical px, adjusted for zoom)
         const t   = Math.sqrt(count / maxCount)   // 0..1, sqrt for perceptual scaling
         const fs  = (8 + 7 * t) / vp.z
-        ctx.font  = `${fs}px "JetBrains Mono", monospace`
+        ctx.font  = `${fs}px "Sofia Sans", sans-serif`
         const tw  = ctx.measureText(th.name).width
         const padH = (5 + 3 * t) / vp.z
         const padV = (3 + 2 * t) / vp.z
@@ -926,7 +1070,7 @@ export function ConstellationCanvas({
         ctx.stroke()
 
         // Label text
-        ctx.font      = `${fs}px "JetBrains Mono", monospace`
+        ctx.font      = `${fs}px "Sofia Sans", sans-serif`
         ctx.fillStyle = color
         ctx.fillText(lb.th.name, x, ry + fs + (h - fs) / 2)
         ctx.globalAlpha = 1
@@ -959,7 +1103,7 @@ export function ConstellationCanvas({
         const count = ids.length
         const t    = Math.sqrt(count / maxGW)
         const fs   = (8 + 7 * t) / vp.z
-        ctx.font   = `${fs}px "JetBrains Mono", monospace`
+        ctx.font   = `${fs}px "Sofia Sans", sans-serif`
         const tw   = ctx.measureText(gr.name).width
         const padH = (5 + 3 * t) / vp.z
         const padV = (3 + 2 * t) / vp.z
@@ -1027,7 +1171,7 @@ export function ConstellationCanvas({
         ctx.strokeStyle = color
         ctx.lineWidth   = (0.8 + 0.7 * Math.sqrt(lb.count / maxGW)) / vp.z
         ctx.stroke()
-        ctx.font      = `${fs}px "JetBrains Mono", monospace`
+        ctx.font      = `${fs}px "Sofia Sans", sans-serif`
         ctx.fillStyle = color
         ctx.fillText(lb.gr.name, x, ry + fs + (h - fs) / 2)
         ctx.globalAlpha = 1
@@ -1036,7 +1180,8 @@ export function ConstellationCanvas({
     }
 
     // ── Edges ────────────────────────────────────────────────────
-    for (const e of edgesRef.current) {
+    const edgesDraw = frozenEdges ?? edgesRef.current
+    for (const e of edgesDraw) {
       const a = pos.get(e.source), b = pos.get(e.target)
       if (!a || !b) continue
       const vis   = LINK_VIS[e.relation_type ?? ''] ?? LINK_DEF
@@ -1166,7 +1311,7 @@ export function ConstellationCanvas({
       // Small label below node
       if (vp.z > 0.4) {
         ctx.fillStyle = isSel ? 'var(--ac)' : isHov ? 'var(--tx)' : 'var(--tx3)'
-        ctx.font      = `${8 / vp.z}px "JetBrains Mono", monospace`
+        ctx.font      = `${8 / vp.z}px "Sofia Sans", sans-serif`
         ctx.textAlign = 'center'
         const short = o.Titre ? (o.Titre.length > 20 ? o.Titre.slice(0, 18) + '…' : o.Titre) : `#${id}`
         ctx.fillText(short, cx, cy + NR + 10 / vp.z)
@@ -1210,8 +1355,7 @@ export function ConstellationCanvas({
     ctx.restore()
  
     loadVisible()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tick, groupBy, linkType, oeuvres, themes, groups, themeWork, groupWork, oeuvresById, selectedThemeId, selectedGroupId, shapes, activeShape, marquee])
+  }, [tick, groupBy, linkType, oeuvres, themes, groups, themeWork, groupWork, oeuvresById, selectedThemeId, selectedGroupId, shapes, activeShape, marquee, frozenEdges])
 
   // ── Wheel (passive: false required for preventDefault) ────────
   useEffect(() => {
@@ -1318,7 +1462,7 @@ export function ConstellationCanvas({
     if (!hit) {
       dragRef.current = { mode: 'pan', startX: lx, startY: ly, panOrigin: { x: vpRef.current.x, y: vpRef.current.y } }
       if (canvasRef.current) canvasRef.current.style.cursor = 'grabbing'
-    } else if (hit.zone === 'ring') {
+    } else if (hit.zone === 'ring' && frozenEdges === null) {
       dragRef.current  = { mode: 'link', startX: lx, startY: ly, nodeId: hit.id }
       draftRef.current = { from: hit.id, toX: lx, toY: ly }
       if (canvasRef.current) canvasRef.current.style.cursor = 'crosshair'
@@ -1332,7 +1476,7 @@ export function ConstellationCanvas({
       dragRef.current = { mode: 'node', startX: lx, startY: ly, nodeId: hit.id, moveIds }
       if (canvasRef.current) canvasRef.current.style.cursor = 'grabbing'
     }
-  }, [tool, drawColor, drawWidth, spacePressed])
+  }, [tool, drawColor, drawWidth, spacePressed, frozenEdges])
 
   const onMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     const rect = canvasRef.current!.getBoundingClientRect()
@@ -1417,7 +1561,7 @@ export function ConstellationCanvas({
       // Idle hover
       const hit      = hitNode(lx, ly, posRef.current, vpRef.current)
       const newHovId = hit?.id ?? null
-      const newHovEd = hit ? null : hitEdge(lx, ly, edgesRef.current, posRef.current, vpRef.current)
+      const newHovEd = hit ? null : hitEdge(lx, ly, frozenEdges ?? edgesRef.current, posRef.current, vpRef.current)
       let needRedraw = false
 
       if (newHovId !== hovNodeRef.current) {
@@ -1436,14 +1580,14 @@ export function ConstellationCanvas({
       const c = canvasRef.current
       if (c) {
         if (spacePressed)            c.style.cursor = 'grab'
-        else if (hit?.zone === 'ring')    c.style.cursor = 'crosshair'
+        else if (hit?.zone === 'ring' && frozenEdges === null) c.style.cursor = 'crosshair'
         else if (hit?.zone === 'center') c.style.cursor = 'pointer'
         else if (newHovEd)          c.style.cursor = 'pointer'
         else                        c.style.cursor = 'grab'
       }
       if (needRedraw) setTick(t => t + 1)
     }
-  }, [oeuvresById, spacePressed, activeShape, groupBy, redraw])
+  }, [oeuvresById, spacePressed, activeShape, groupBy, redraw, frozenEdges])
 
   const onMouseUp = useCallback(async (e: React.MouseEvent<HTMLCanvasElement>) => {
     const rect = canvasRef.current!.getBoundingClientRect()
@@ -1539,7 +1683,7 @@ export function ConstellationCanvas({
       if (gb === 'custom') {
         removeFromCustom(nodeHit.id)
       } else if (gb === 'theme' && selectedThemeId) {
-        if (confirm("Retirer le thème de cette œuvre ?")) {
+        if (confirm(t('const_confirmRemoveTheme'))) {
           void (async () => {
             const res = await removeOeuvreFromCatalogTheme(nodeHit.id, selectedThemeId)
             if ('error' in res) {
@@ -1555,7 +1699,7 @@ export function ConstellationCanvas({
           })()
         }
       } else if (gb === 'workgroup' && selectedGroupId) {
-        if (confirm("Retirer cette œuvre du groupe de travail ?")) {
+        if (confirm(t('const_confirmRemoveWorkgroup'))) {
           void (async () => {
             const res = await removeOeuvreFromWorkingGroup(nodeHit.id, selectedGroupId)
             if ('error' in res) {
@@ -1597,7 +1741,9 @@ export function ConstellationCanvas({
       return
     }
 
-    const edge = hitEdge(lx, ly, edgesRef.current, posRef.current, vpRef.current)
+    const edge = frozenEdges === null
+      ? hitEdge(lx, ly, edgesRef.current, posRef.current, vpRef.current)
+      : null
     if (!edge) return
     const sb = createClient()
     sb.from('tblrelations').delete().eq('id', edge.id).then(() => {
@@ -1605,7 +1751,7 @@ export function ConstellationCanvas({
       if (hovEdgeRef.current === edge) hovEdgeRef.current = null
       setTick(t => t + 1)
     })
-  }, [removeFromCustom, tool, redraw, selectedThemeId, selectedGroupId, reloadGraphData, router, oeuvresById, onOpen])
+  }, [removeFromCustom, tool, redraw, selectedThemeId, selectedGroupId, reloadGraphData, router, oeuvresById, onOpen, t, frozenEdges])
 
   // ── Drag and Drop (Exhibition Floorplan integration) ──────────
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -1721,7 +1867,7 @@ export function ConstellationCanvas({
 
   // ── Snapshot: save current layout ──────────────────────────────
   function handleSaveSnapshot() {
-    const name = snapName.trim() || `Vue ${new Date().toLocaleDateString('fr-FR')}`
+    const name = snapName.trim() || `${t('const_defaultSnapshotPrefix')} ${new Date().toLocaleDateString(locale)}`
     const snap: Snapshot = {
       id:        Date.now().toString(),
       name,
@@ -1739,7 +1885,7 @@ export function ConstellationCanvas({
   }
 
   function handleResetLayout() {
-    if (!confirm("Réinitialiser le placement automatique ?")) return
+    if (!confirm(t('const_resetLayoutConfirm'))) return
     if (groupBy === 'year')  posRef.current = layoutYear(oeuvres)
     else if (groupBy === 'none') posRef.current = layoutGrid(oeuvres)
     else if (groupBy === 'theme') {
@@ -1786,6 +1932,8 @@ export function ConstellationCanvas({
   function handleLoadSnapshot(id: string) {
     const snap = snapshots.find(s => s.id === id)
     if (!snap) return
+    setFrozenEdges(null)
+    setActiveCloudMapId(null)
     groupByRef.current = snap.groupBy
     posRef.current = objToPos(snap.positions)
     setShapes(snap.shapes || [])
@@ -1801,6 +1949,68 @@ export function ConstellationCanvas({
     const updated = snapshots.filter(s => s.id !== id)
     persistSnapshots(updated)
     setSnapshots(updated)
+  }
+
+  async function handleSaveCloudMap() {
+    const title = snapName.trim() || `${t('const_defaultSnapshotPrefix')} ${new Date().toLocaleDateString(locale)}`
+    setCloudBusy(true)
+    const doc: ConstellationMapDocument = {
+      version: CONSTELLATION_MAP_VERSION,
+      groupBy,
+      selectedThemeId,
+      selectedGroupId,
+      customWorkIds: [...customIds],
+      positions: posToObj(posRef.current),
+      shapes,
+      edgesSnapshot: edgesToSnapshot(frozenEdges ?? edgesRef.current),
+      viewport: { ...vpRef.current },
+    }
+    const r = await saveConstellationMap(title, doc)
+    setCloudBusy(false)
+    if ('error' in r) {
+      alert(r.error)
+      return
+    }
+    await refreshCloudMaps()
+    setSnapName('')
+    setCloudSaved(true)
+    setTimeout(() => setCloudSaved(false), 2500)
+  }
+
+  async function handleLoadCloudMap(mapId: string) {
+    setCloudBusy(true)
+    const r = await loadConstellationMap(mapId)
+    setCloudBusy(false)
+    if ('error' in r) {
+      alert(r.error)
+      return
+    }
+    applyConstellationCloudDoc(r.document, mapId)
+  }
+
+  async function handleDeleteCloudMap(mapId: string) {
+    if (!confirm(t('const_cloudDeleteConfirm'))) return
+    setCloudBusy(true)
+    const res = await deleteConstellationMap(mapId)
+    setCloudBusy(false)
+    if ('error' in res) {
+      alert(t('const_cloudErrGeneric'))
+      return
+    }
+    if (activeCloudMapId === mapId) {
+      setFrozenEdges(null)
+      setActiveCloudMapId(null)
+      await reloadGraphData(false)
+    }
+    await refreshCloudMaps()
+    setTick(t => t + 1)
+  }
+
+  function exitFrozenLiveGraph() {
+    setFrozenEdges(null)
+    setActiveCloudMapId(null)
+    void reloadGraphData(false)
+    setTick(t => t + 1)
   }
 
   function handleAddText() {
@@ -1868,7 +2078,8 @@ export function ConstellationCanvas({
     // Draw edges first
     ctx.save()
     ctx.translate(PAD - minX, PAD - minY)
-    edgesRef.current.forEach(e => {
+    const edgesExport = frozenEdges ?? edgesRef.current
+    edgesExport.forEach(e => {
       const a = posRef.current.get(e.source), b = posRef.current.get(e.target)
       if (!a || !b) return
       const vis = LINK_VIS[e.relation_type ?? ''] ?? LINK_DEF
@@ -1979,7 +2190,8 @@ export function ConstellationCanvas({
     ctx.save()
     ctx.translate(PAD - minX, PAD - minY)
     // Edges
-    edgesRef.current.forEach(e => {
+    const edgesExportA4 = frozenEdges ?? edgesRef.current
+    edgesExportA4.forEach(e => {
       const a = posRef.current.get(e.source), b = posRef.current.get(e.target)
       if (!a || !b) return
       const vis = LINK_VIS[e.relation_type ?? ''] ?? LINK_DEF
@@ -2052,11 +2264,11 @@ export function ConstellationCanvas({
 
     // Open a print-ready window: one A4 landscape img per page
     const win = window.open('', '_blank')
-    if (!win) { alert('Autorisez les pop-ups pour exporter en A4.'); return }
+    if (!win) { alert(t('const_popupBlockedA4')); return }
     const date = new Date().toISOString().slice(0, 10)
     win.document.write(`<!DOCTYPE html><html><head>
       <meta charset="utf-8">
-      <title>Constellation ${date}</title>
+      <title>${t('constellation')} ${date}</title>
       <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #000; }
@@ -2070,7 +2282,7 @@ export function ConstellationCanvas({
     </head><body>
       ${dataUrls.map((url, i) => `
         <div class="page">
-          <img src="${url}" alt="Constellation page ${i + 1}">
+          <img src="${url}" alt="${t('const_printPageAlt')} ${i + 1}">
           <span class="lbl">${i + 1} / ${dataUrls.length} · ${date}</span>
         </div>`).join('')}
       <script>window.onload = () => setTimeout(() => window.print(), 400)<\/script>
@@ -2084,7 +2296,7 @@ export function ConstellationCanvas({
     const ids = [...selection]
     if (!ids.length) return
     setSaving(true)
-    const nm = groupName.trim() || `Groupe ${new Date().toLocaleDateString('fr-FR')}`
+    const nm = groupName.trim() || `${t('const_defaultGroupNamePrefix')} ${new Date().toLocaleDateString(locale)}`
     const id = await onSaveGroup(nm, ids)
     if (id) { setSavedName(nm); setGroupName(''); setTimeout(() => setSavedName(null), 3000) }
     setSaving(false)
@@ -2094,7 +2306,7 @@ export function ConstellationCanvas({
     const ids = Array.from(posRef.current.keys())
     if (!ids.length) return
     setSaving(true)
-    const nm = groupName.trim() || `Constellation ${new Date().toLocaleDateString('fr-FR')}`
+    const nm = groupName.trim() || `${t('constellation')} ${new Date().toLocaleDateString(locale)}`
     const id = await onSaveGroup(nm, ids)
     if (id) { setSavedName(nm); setGroupName(''); setTimeout(() => setSavedName(null), 3000) }
     setSaving(false)
@@ -2124,60 +2336,14 @@ export function ConstellationCanvas({
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
 
       {/* Toolbar */}
-      <div style={{ flexShrink: 0, height: 40, borderBottom: '1px solid var(--bd)', background: 'var(--bg1)', display: 'flex', alignItems: 'center', padding: '0 16px', gap: 10, overflow: 'hidden' }}>
-        <div className="t-label" style={{ color: 'var(--tx3)', whiteSpace: 'nowrap' }}>Outils</div>
-        {[
-          { id: 'move',    l: '🖐️',  t: 'Déplacer / Sélection' },
-          { id: 'marquee', l: '⬛',  t: 'Marquée' },
-          { id: 'draw',    l: '✏️',  t: 'Crayon' },
-          { id: 'line',    l: '📏',  t: 'Ligne' },
-          { id: 'text',    l: 'T',   t: 'Texte' },
-          { id: 'erase',   l: '🧹',  t: 'Effacer' },
-        ].map(t => (
-          <button key={t.id} className={`btn ghost sm ${tool === t.id ? 'active' : ''}`}
-            title={t.t}
-            style={{ padding: '0 8px', borderColor: tool === t.id ? 'var(--ac)' : undefined, color: tool === t.id ? 'var(--ac)' : undefined }}
-            onClick={() => setTool(t.id as Tool)}
-          >
-            {t.l}
-          </button>
-        ))}
-
-        <input
-          type="color"
-          value={drawColor}
-          onChange={e => setDrawColor(e.target.value)}
-          style={{ width: 20, height: 20, padding: 0, border: 'none', background: 'none', cursor: 'pointer' }}
-        />
-
-        <select 
-          value={drawWidth} 
-          onChange={e => setDrawWidth(Number(e.target.value))}
-          style={{ fontSize: 9, background: 'var(--bg0)', border: '1px solid var(--bd)', color: 'var(--tx)', padding: '1px 2px', cursor: 'pointer', height: 20 }}
-          title="Épaisseur du trait"
-        >
-          <option value="1">1px</option>
-          <option value="2">2px</option>
-          <option value="4">4px</option>
-          <option value="8">8px</option>
-          <option value="16">16px</option>
-        </select>
-
-        {shapes.length > 0 && (
-          <button className="btn ghost sm" onClick={() => { if (confirm("Effacer tous les dessins ?")) setShapes([]) }} style={{ padding: '0 6px', color: 'var(--rust)', borderColor: 'var(--rust)' }} title="Effacer tout le calque de dessin">
-            Effacer
-          </button>
-        )}
-
-        <div className="vline" style={{ height: 16 }} />
-
-        <div className="t-label" style={{ color: 'var(--tx3)', whiteSpace: 'nowrap' }}>Vue</div>
+      <div style={{ flexShrink: 0, minHeight: 40, borderBottom: '1px solid var(--bd)', background: 'var(--bg1)', display: 'flex', alignItems: 'center', padding: '8px 16px', gap: 10, overflowX: 'auto', overflowY: 'hidden' }}>
+        <div className="t-label" style={{ color: 'var(--tx3)', whiteSpace: 'nowrap' }}>{t('viewMode')}</div>
         {(['year', 'theme', 'workgroup', 'none'] as GroupBy[]).map(g => (
           <button key={g} className="btn ghost sm"
             style={{ borderColor: groupBy === g ? 'var(--ac)' : undefined, color: groupBy === g ? 'var(--ac)' : undefined, whiteSpace: 'nowrap' }}
             onClick={() => { groupByRef.current = g; setGroupBy(g) }}
           >
-            {g === 'year' ? 'Année' : g === 'theme' ? 'Thème' : g === 'workgroup' ? 'Groupe' : 'Global'}
+            {g === 'year' ? t('year') : g === 'theme' ? t('theme') : g === 'workgroup' ? t('const_viewGroup') : t('const_viewGlobal')}
           </button>
         ))}
         {groupBy === 'theme' && (
@@ -2186,7 +2352,7 @@ export function ConstellationCanvas({
             onChange={e => setSelectedThemeId(e.target.value ? Number(e.target.value) : null)}
             style={{ fontSize: 9, background: 'var(--bg0)', border: '1px solid var(--ac)', color: 'var(--tx)', padding: '2px 8px', cursor: 'pointer', maxWidth: 140 }}
           >
-            <option value="">Tous les thèmes ({[...themeWork.values()].reduce((a, s) => { s.forEach(id => a.add(id)); return a }, new Set()).size})</option>
+            <option value="">{t('const_allThemes')} ({[...themeWork.values()].reduce((a, s) => { s.forEach(id => a.add(id)); return a }, new Set()).size})</option>
             {themes.filter(th => (themeWork.get(th.id)?.size ?? 0) > 0).map(th => (
               <option key={th.id} value={th.id}>
                 {th.name} ({themeWork.get(th.id)?.size ?? 0})
@@ -2200,7 +2366,7 @@ export function ConstellationCanvas({
             onChange={e => setSelectedGroupId(e.target.value || null)}
             style={{ fontSize: 9, background: 'var(--bg0)', border: '1px solid var(--ac)', color: 'var(--tx)', padding: '2px 8px', cursor: 'pointer', maxWidth: 140 }}
           >
-            <option value="">Tous les groupes ({[...groupWork.values()].reduce((a, s) => { s.forEach(id => a.add(id)); return a }, new Set()).size})</option>
+            <option value="">{t('const_allGroups')} ({[...groupWork.values()].reduce((a, s) => { s.forEach(id => a.add(id)); return a }, new Set()).size})</option>
             {groups.filter(gr => (groupWork.get(gr.id)?.size ?? 0) > 0).map(gr => (
               <option key={gr.id} value={gr.id}>
                 {gr.name} ({groupWork.get(gr.id)?.size ?? 0})
@@ -2219,12 +2385,12 @@ export function ConstellationCanvas({
             setGroupBy('custom')
           }}
         >
-          + Vide
+          {t('const_blankCanvas')}
         </button>
 
         <div className="vline" style={{ height: 16 }} />
 
-        <div className="t-label" style={{ color: 'var(--tx3)', whiteSpace: 'nowrap' }}>Lien</div>
+        <div className="t-label" style={{ color: 'var(--tx3)', whiteSpace: 'nowrap' }}>{t('const_link')}</div>
         {(Object.keys(LINK_VIS) as LinkType[]).map(lt => {
           const vis = LINK_VIS[lt]
           return (
@@ -2232,7 +2398,7 @@ export function ConstellationCanvas({
               style={{ borderColor: linkType === lt ? vis.color : undefined, color: linkType === lt ? vis.color : undefined, whiteSpace: 'nowrap' }}
               onClick={() => setLinkType(lt)}
             >
-              {lt}
+              {t(LINK_LABEL_KEYS[lt])}
             </button>
           )
         })}
@@ -2240,14 +2406,14 @@ export function ConstellationCanvas({
         <div className="vline" style={{ height: 16 }} />
 
         {/* Snapshots */}
-        <div className="t-label" style={{ color: 'var(--tx3)', whiteSpace: 'nowrap' }}>Maps</div>
+        <div className="t-label" style={{ color: 'var(--tx3)', whiteSpace: 'nowrap' }}>{t('const_maps')}</div>
         {snapshots.length > 0 && (
           <select
             defaultValue=""
             onChange={e => { if (e.target.value) { handleLoadSnapshot(e.target.value); e.target.value = '' } }}
             style={{ fontSize: 9, background: 'var(--bg0)', border: '1px solid var(--bd)', color: 'var(--tx)', padding: '2px 6px', maxWidth: 110, cursor: 'pointer' }}
           >
-            <option value="">— Charger</option>
+            <option value="">{t('const_mapLoad')}</option>
             {snapshots.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         )}
@@ -2255,31 +2421,75 @@ export function ConstellationCanvas({
           value={snapName}
           onChange={e => setSnapName(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleSaveSnapshot()}
-          placeholder="Nom…"
+          placeholder={t('const_mapNamePlaceholder')}
           style={{ width: 80, fontSize: 9, background: 'var(--bg0)', border: '1px solid var(--bd)', color: 'var(--tx)', padding: '2px 6px' }}
         />
         <button className="btn ghost sm" onClick={handleSaveSnapshot} style={{ whiteSpace: 'nowrap', fontSize: 9 }}>
-          {snapSaved ? '✓ Ok' : 'Sauv.'}
+          {snapSaved ? t('const_savedOk') : t('const_saveShort')}
         </button>
 
         <div className="vline" style={{ height: 16 }} />
-        <button className="btn ghost sm" onClick={handleResetLayout} title="Réinitialiser le placement (Année/Thème)" style={{ whiteSpace: 'nowrap', fontSize: 9 }}>
-          ↺ Reset
+        <div className="t-label" style={{ color: 'var(--tx3)', whiteSpace: 'nowrap' }}>{t('const_cloudToolbar')}</div>
+        {cloudMaps.length > 0 && (
+          <select
+            defaultValue=""
+            onChange={e => {
+              const id = e.target.value
+              if (id) {
+                void handleLoadCloudMap(id)
+                e.target.value = ''
+              }
+            }}
+            disabled={cloudBusy}
+            data-testid="constellation-cloud-load"
+            style={{ fontSize: 9, background: 'var(--bg0)', border: '1px solid var(--bd)', color: 'var(--tx)', padding: '2px 6px', maxWidth: 100, cursor: 'pointer' }}
+          >
+            <option value="">{t('const_cloudLoad')}</option>
+            {cloudMaps.map(m => (
+              <option key={m.id} value={m.id}>{m.title}</option>
+            ))}
+          </select>
+        )}
+        <button
+          type="button"
+          className="btn ghost sm"
+          disabled={cloudBusy || posRef.current.size === 0}
+          onClick={() => void handleSaveCloudMap()}
+          data-testid="constellation-cloud-save"
+          style={{ whiteSpace: 'nowrap', fontSize: 9 }}
+        >
+          {cloudBusy ? t('const_cloudSaving') : cloudSaved ? t('const_cloudSavedOk') : t('const_cloudSave')}
         </button>
-        <button className="btn ghost sm" onClick={handleFitView} title="Centrer la vue sur les œuvres" style={{ whiteSpace: 'nowrap', fontSize: 9 }}>
-          ⛶ Centrer
+        {frozenEdges !== null && (
+          <button
+            type="button"
+            className="btn ghost sm"
+            onClick={() => exitFrozenLiveGraph()}
+            data-testid="constellation-cloud-live-graph"
+            style={{ whiteSpace: 'nowrap', fontSize: 9, borderColor: 'var(--ac)', color: 'var(--ac)' }}
+          >
+            {t('const_cloudUseLiveDb')}
+          </button>
+        )}
+
+        <div className="vline" style={{ height: 16 }} />
+        <button className="btn ghost sm" onClick={handleResetLayout} title={t('const_resetLayoutTitle')} style={{ whiteSpace: 'nowrap', fontSize: 9 }}>
+          {t('const_resetLayoutBtn')}
+        </button>
+        <button className="btn ghost sm" onClick={handleFitView} title={t('const_fitViewTitle')} style={{ whiteSpace: 'nowrap', fontSize: 9 }}>
+          {t('const_fitViewBtn')}
         </button>
         <button className="btn ghost sm" onClick={handleExportPng} style={{ whiteSpace: 'nowrap', fontSize: 9 }}>
-          ↓ PNG
+          {t('const_exportPng')}
         </button>
         <button className="btn ghost sm" onClick={handleExportTiledA4} style={{ whiteSpace: 'nowrap', fontSize: 9 }}>
-          ↓ A4
+          {t('const_exportA4')}
         </button>
 
         {backgroundImage && (
           <>
             <div className="vline" style={{ height: 16 }} />
-            <div className="t-label" style={{ color: 'var(--tx3)', whiteSpace: 'nowrap' }}>Plan</div>
+            <div className="t-label" style={{ color: 'var(--tx3)', whiteSpace: 'nowrap' }}>{t('const_floorplan')}</div>
             <input 
               type="range" min="0.1" max="1" step="0.05" 
               value={backgroundOpacity} 
@@ -2289,18 +2499,161 @@ export function ConstellationCanvas({
           </>
         )}
 
-        <div className="vline" style={{ height: 16 }} />
-        <div className="t-mono-sm" style={{ color: 'var(--tx3)', whiteSpace: 'nowrap', fontSize: 9 }}>
-          Bord → lier · Maj+clic/Marquée → sélect. · Balai → effacer · Œuvre : clic dr. retirer (thème/groupe) ou ouvrir (année/global) · Ctrl+clic dr. → ouvrir fiche
-        </div>
-        {loading && <div className="pulse t-mono-sm" style={{ color: 'var(--tx3)', marginLeft: 'auto', whiteSpace: 'nowrap' }}>Chargement…</div>}
+        {loading && <div className="pulse t-mono-sm" style={{ color: 'var(--tx3)', marginLeft: 'auto', whiteSpace: 'nowrap', alignSelf: 'center' }}>{t('const_loadingEllipsis')}</div>}
       </div>
 
-      {/* Canvas + right panel */}
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
+      {/* Canvas + tool rail + right panel */}
+      <div style={{ flex: 1, display: 'flex', minHeight: 0, minWidth: 0, position: 'relative', overflow: 'hidden' }}>
+        <div
+          ref={toolRailRef}
+          data-testid="constellation-tool-rail"
+          style={{
+            flexShrink: 0,
+            width: 52,
+            minWidth: 52,
+            borderRight: '1px solid var(--bd)',
+            background: 'var(--bg1)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'stretch',
+            padding: '6px 4px',
+            gap: 4,
+            overflowY: 'auto',
+            overflowX: 'hidden',
+          }}
+        >
+          <div className="t-label" style={{ textAlign: 'center', fontSize: 8, color: 'var(--tx3)', flexShrink: 0 }}>
+            {t('const_tools')}
+          </div>
+          {toolbarTools.map((row) => (
+            <button
+              key={row.id}
+              type="button"
+              className={`btn ghost sm ${tool === row.id ? 'active' : ''}`}
+              title={t(row.tipKey)}
+              style={{
+                flexShrink: 0,
+                minHeight: 44,
+                minWidth: 44,
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 0,
+                borderColor: tool === row.id ? 'var(--ac)' : undefined,
+                color: tool === row.id ? 'var(--ac)' : undefined,
+              }}
+              onClick={() => {
+                setTool(row.id)
+                setToolShortcutsOpen(false)
+              }}
+            >
+              {row.l}
+            </button>
+          ))}
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 44, flexShrink: 0 }}>
+            <input
+              type="color"
+              value={drawColor}
+              onChange={e => setDrawColor(e.target.value)}
+              title={t('const_tool_draw')}
+              style={{ width: 36, height: 36, padding: 0, border: 'none', background: 'none', cursor: 'pointer' }}
+            />
+          </div>
+          <select
+            value={drawWidth}
+            onChange={e => setDrawWidth(Number(e.target.value))}
+            style={{
+              fontSize: 9,
+              width: '100%',
+              minHeight: 44,
+              flexShrink: 0,
+              background: 'var(--bg0)',
+              border: '1px solid var(--bd)',
+              color: 'var(--tx)',
+              padding: '2px 4px',
+              cursor: 'pointer',
+              boxSizing: 'border-box',
+            }}
+            title={t('const_strokeWidthTitle')}
+          >
+            <option value="1">1px</option>
+            <option value="2">2px</option>
+            <option value="4">4px</option>
+            <option value="8">8px</option>
+            <option value="16">16px</option>
+          </select>
+          {shapes.length > 0 && (
+            <button
+              type="button"
+              className="btn ghost sm"
+              onClick={() => {
+                if (confirm(t('const_drawLayerClearAllConfirm'))) setShapes([])
+              }}
+              style={{
+                minHeight: 44,
+                width: '100%',
+                flexShrink: 0,
+                padding: '0 4px',
+                color: 'var(--rust)',
+                borderColor: 'var(--rust)',
+              }}
+              title={t('const_drawLayerClearAllTitle')}
+            >
+              {t('clearSel')}
+            </button>
+          )}
+          <div style={{ flex: 1, minHeight: 4 }} aria-hidden />
+          <button
+            type="button"
+            className="btn ghost sm"
+            aria-expanded={toolShortcutsOpen}
+            aria-controls={shortcutsPanelId}
+            aria-label={t('const_toolbarShortcutsToggle')}
+            title={t('const_toolbarShortcutsToggle')}
+            onClick={() => setToolShortcutsOpen(o => !o)}
+            style={{
+              flexShrink: 0,
+              minHeight: 44,
+              width: '100%',
+              fontSize: 15,
+              lineHeight: 1,
+              padding: 0,
+            }}
+          >
+            ⓘ
+          </button>
+        </div>
 
-        {/* Canvas */}
-        <div ref={wrapRef} style={{ flex: 1, overflow: 'hidden', position: 'relative', background: 'var(--bg0)' }}>
+        <div ref={wrapRef} style={{
+          flex: 1,
+          overflow: 'hidden',
+          position: 'relative',
+          background: 'var(--bg0)',
+          paddingTop: frozenEdges !== null ? 44 : 0,
+        }}>
+          {frozenEdges !== null && (
+            <div
+              role="status"
+              data-testid="constellation-frozen-banner"
+              style={{
+                position: 'absolute',
+                left: 0,
+                right: 0,
+                top: 0,
+                zIndex: 5,
+                padding: '6px 10px',
+                fontSize: 10,
+                lineHeight: 1.35,
+                color: 'var(--tx)',
+                background: 'rgba(200,168,110,0.12)',
+                borderBottom: '1px solid var(--bd)',
+                pointerEvents: 'none',
+              }}
+            >
+              {t('const_cloudFreezeBanner')}
+            </div>
+          )}
           <canvas
             ref={canvasRef}
             style={{ 
@@ -2321,19 +2674,19 @@ export function ConstellationCanvas({
           {textInput && (
             <div style={{ position: 'absolute', left: 0, top: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
               <div style={{ background: 'var(--bg1)', padding: 20, border: '1px solid var(--bd)', width: 300 }}>
-                <div className="t-eyebrow" style={{ marginBottom: 12 }}>Ajouter un texte</div>
+                <div className="t-eyebrow" style={{ marginBottom: 12 }}>{t('const_textModalTitle')}</div>
                 <input
                   autoFocus
                   className="input"
                   value={textVal}
                   onChange={e => setTextVal(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') handleAddText(); if (e.key === 'Escape') setTextInput(null) }}
-                  placeholder="Écrivez ici…"
+                  placeholder={t('const_textModalPlaceholder')}
                   style={{ width: '100%', marginBottom: 12 }}
                 />
                 <div className="row gap-sm j-end">
-                  <button className="btn ghost sm" onClick={() => setTextInput(null)}>Annuler</button>
-                  <button className="btn sm" onClick={handleAddText}>Ajouter</button>
+                  <button className="btn ghost sm" onClick={() => setTextInput(null)}>{t('cancel')}</button>
+                  <button className="btn sm" onClick={handleAddText}>{t('const_textAdd')}</button>
                 </div>
               </div>
             </div>
@@ -2343,14 +2696,14 @@ export function ConstellationCanvas({
           {groupBy === 'theme' && selectedThemeId === null && (
             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
               <div className="t-mono-sm" style={{ color: 'var(--tx3)', background: 'var(--bg1)', padding: '10px 20px', border: '1px solid var(--bd)', borderRadius: 2 }}>
-                Veuillez sélectionner un thème dans la barre d&apos;outils.
+                {t('const_pickThemeToolbar')}
               </div>
             </div>
           )}
           {groupBy === 'workgroup' && selectedGroupId === null && (
             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
               <div className="t-mono-sm" style={{ color: 'var(--tx3)', background: 'var(--bg1)', padding: '10px 20px', border: '1px solid var(--bd)', borderRadius: 2 }}>
-                Veuillez sélectionner un groupe de travail dans la barre d&apos;outils.
+                {t('const_pickGroupToolbar')}
               </div>
             </div>
           )}
@@ -2362,7 +2715,7 @@ export function ConstellationCanvas({
           {/* Node inspector */}
           {panelNode ? (
             <div style={{ padding: 16, borderBottom: '1px solid var(--bd)', flexShrink: 0 }}>
-              <div className="t-eyebrow" style={{ marginBottom: 10 }}>Œuvre</div>
+              <div className="t-eyebrow" style={{ marginBottom: 10 }}>{t('const_workEyebrow')}</div>
               <div style={{ background: 'var(--bg0)', height: 135, marginBottom: 10, overflow: 'hidden', position: 'relative' }}>
                 {panelNode.txtImageNameLink
                   ? <WorkThumb file={panelNode.txtImageNameLink} size={384} style={{ objectFit: 'contain' }} alt="" />
@@ -2382,7 +2735,7 @@ export function ConstellationCanvas({
                   setSelection(next)
                 }}
               >
-                {selection.has(panelNode.OeuvreID) ? '✓ Sélectionné' : '+ Sélectionner'}
+                {selection.has(panelNode.OeuvreID) ? t('const_selected') : t('const_selectPlus')}
               </button>
 
               {groupBy === 'custom' && (
@@ -2391,7 +2744,7 @@ export function ConstellationCanvas({
                   style={{ marginTop: 6, width: '100%', justifyContent: 'center', color: 'var(--rust)', borderColor: 'var(--rust)' }}
                   onClick={() => removeFromCustom(panelNode.OeuvreID)}
                 >
-                  ✕ Retirer du canvas
+                  {t('const_removeFromCanvas')}
                 </button>
               )}
             </div>
@@ -2400,9 +2753,9 @@ export function ConstellationCanvas({
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
               {/* Header */}
               <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--bd)', flexShrink: 0 }}>
-                <div className="t-eyebrow" style={{ marginBottom: 4 }}>Constellation vide</div>
+                <div className="t-eyebrow" style={{ marginBottom: 4 }}>{t('const_emptyConstellationTitle')}</div>
                 <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>
-                  {customIds.size} œuvre{customIds.size !== 1 ? 's' : ''} · {posRef.current.size} nœuds
+                  {customIds.size} {customIds.size === 1 ? t('const_work_unit') : t('const_work_unit_plural')} · {posRef.current.size} {t('const_nodes')}
                 </div>
               </div>
 
@@ -2411,7 +2764,7 @@ export function ConstellationCanvas({
                 <input
                   value={pickerQ}
                   onChange={e => setPickerQ(e.target.value)}
-                  placeholder="Titre, technique, année…"
+                  placeholder={t('const_pickerPlaceholder')}
                   style={{ width: '100%', padding: '5px 8px', fontSize: 10, background: 'var(--bg0)', border: '1px solid var(--bd)', color: 'var(--tx)' }}
                 />
                 {filteredForPicker.length > 0 && (
@@ -2420,7 +2773,7 @@ export function ConstellationCanvas({
                     onClick={addAllFiltered}
                     style={{ marginTop: 6, width: '100%', justifyContent: 'center', fontSize: 9 }}
                   >
-                    + Tout ajouter ({Math.min(filteredForPicker.length, 120)})
+                    {t('const_addAll')} ({Math.min(filteredForPicker.length, 120)})
                   </button>
                 )}
               </div>
@@ -2429,7 +2782,7 @@ export function ConstellationCanvas({
               <div style={{ flex: 1, overflowY: 'auto', padding: '6px 0' }}>
                 {filteredForPicker.length === 0 && (
                   <div className="t-mono-sm" style={{ padding: '10px 14px', color: 'var(--tx3)' }}>
-                    {pickerQ ? 'Aucun résultat' : 'Toutes les œuvres sont dans la constellation'}
+                    {pickerQ ? t('const_pickerNoResults') : t('const_pickerAllInConstellation')}
                   </div>
                 )}
                 {filteredForPicker.slice(0, 200).map(o => (
@@ -2437,7 +2790,7 @@ export function ConstellationCanvas({
                     key={o.OeuvreID}
                     style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 10px', cursor: 'pointer' }}
                     onClick={() => addToCustom(o.OeuvreID)}
-                    title="Cliquer pour ajouter"
+                    title={t('const_addToCanvasTitle')}
                   >
                     {o.txtImageNameLink
                       ? <div style={{ width: 24, height: 24, position: 'relative', flexShrink: 0, borderRadius: '50%', overflow: 'hidden' }}>
@@ -2458,7 +2811,7 @@ export function ConstellationCanvas({
                 ))}
                 {filteredForPicker.length > 200 && (
                   <div className="t-mono-sm" style={{ padding: '4px 14px', color: 'var(--tx3)' }}>
-                    +{filteredForPicker.length - 200} — affinez la recherche
+                    +{filteredForPicker.length - 200} {t('const_refineSearch')}
                   </div>
                 )}
 
@@ -2466,7 +2819,7 @@ export function ConstellationCanvas({
                 {customIds.size > 0 && (
                   <>
                     <div style={{ margin: '8px 10px 4px', borderTop: '1px solid var(--bd)', paddingTop: 8 }}>
-                      <span className="t-label" style={{ color: 'var(--tx3)', fontSize: 8 }}>Dans la constellation</span>
+                      <span className="t-label" style={{ color: 'var(--tx3)', fontSize: 8 }}>{t('const_inConstellation')}</span>
                     </div>
                     {[...customIds].map(id => {
                       const o = oeuvresById.get(id)
@@ -2479,7 +2832,7 @@ export function ConstellationCanvas({
                           <button
                             onClick={() => removeFromCustom(id)}
                             style={{ fontSize: 9, color: 'var(--tx3)', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', flexShrink: 0 }}
-                            title="Retirer"
+                            title={t('const_removeTitle')}
                           >✕</button>
                         </div>
                       )
@@ -2490,13 +2843,15 @@ export function ConstellationCanvas({
             </div>
           ) : (
             <div style={{ padding: 16, borderBottom: '1px solid var(--bd)', flexShrink: 0 }}>
-              <div className="t-eyebrow" style={{ marginBottom: 6 }}>Constellation</div>
+              <div className="t-eyebrow" style={{ marginBottom: 6 }}>{t('constellation')}</div>
               <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>
                 {groupBy === 'theme'
-                  ? `${constellationOeuvres.length} œuvre${constellationOeuvres.length !== 1 ? 's' : ''}${selectedThemeId !== null ? ` · ${themes.find(t => t.id === selectedThemeId)?.name ?? ''}` : ' thématisées'}`
+                  ? selectedThemeId !== null
+                    ? `${constellationOeuvres.length} ${constellationOeuvres.length === 1 ? t('const_work_unit') : t('const_work_unit_plural')} · ${themes.find(th => th.id === selectedThemeId)?.name ?? ''}`
+                    : `${constellationOeuvres.length} ${constellationOeuvres.length === 1 ? t('const_summaryThemedOne') : t('const_summaryThemedMany')}`
                   : groupBy === 'workgroup'
-                    ? `${constellationOeuvres.length} œuvre${constellationOeuvres.length !== 1 ? 's' : ''}${selectedGroupId !== null ? ` · ${groups.find(g => g.id === selectedGroupId)?.name ?? ''}` : ''}`
-                    : `${oeuvres.length} œuvres`}
+                    ? `${constellationOeuvres.length} ${constellationOeuvres.length === 1 ? t('const_work_unit') : t('const_work_unit_plural')}${selectedGroupId !== null ? ` · ${groups.find(g => g.id === selectedGroupId)?.name ?? ''}` : ''}`
+                    : `${oeuvres.length} ${t('const_work_unit_plural')}`}
               </div>
             </div>
           )}
@@ -2505,13 +2860,13 @@ export function ConstellationCanvas({
           <div style={{ flex: 1, overflow: 'auto', padding: 16 }}>
             {selection.size > 0 ? (
               <>
-                <div className="t-eyebrow" style={{ marginBottom: 10 }}>Sélection · {selection.size}</div>
+                <div className="t-eyebrow" style={{ marginBottom: 10 }}>{t('const_selectionLabel')} · {selection.size}</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 14 }}>
                   {[...selection].slice(0, 15).map(id => {
                     const o = oeuvresById.get(id)
                     return o ? (
                       <div key={id}
-                        title={`${o.Titre ?? '—'} — clic pour retirer`}
+                        title={`${o.Titre ?? '—'} ${t('const_clickRemoveThumbTitle')}`}
                         onClick={() => { const n = new Set(selRef.current); n.delete(id); setSelection(n) }}
                         style={{ width: 44, height: 33, background: 'var(--bg0)', border: '1px solid var(--bd)', overflow: 'hidden', cursor: 'pointer', flexShrink: 0 }}
                       >
@@ -2534,7 +2889,7 @@ export function ConstellationCanvas({
                       value={groupName}
                       onChange={e => setGroupName(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && handleSaveGroup()}
-                      placeholder="Nom du groupe…"
+                      placeholder={t('const_groupNamePlaceholderEllipsis')}
                       style={{ flex: 1, minWidth: 0, padding: '4px 8px', background: 'var(--bg0)', border: '1px solid var(--bd)', fontSize: 10, color: 'var(--tx)' }}
                     />
                     <button className="btn sm" onClick={handleSaveGroup} disabled={saving}>
@@ -2543,22 +2898,22 @@ export function ConstellationCanvas({
                   </div>
                 )}
                 <div style={{ display: 'flex', gap: 6 }}>
-                  <button className="btn ghost sm" style={{ flex: 1 }} onClick={() => setSelection(new Set())}>Effacer</button>
+                  <button className="btn ghost sm" style={{ flex: 1 }} onClick={() => setSelection(new Set())}>{t('clearSel')}</button>
                   {groupBy === 'custom' && posRef.current.size > 0 && (
-                    <button className="btn ghost sm" style={{ flex: 1, whiteSpace: 'nowrap' }} onClick={handleSaveAllAsGroup}>Tout sauv.</button>
+                    <button className="btn ghost sm" style={{ flex: 1, whiteSpace: 'nowrap' }} onClick={handleSaveAllAsGroup}>{t('const_saveAllShort')}</button>
                   )}
                 </div>
               </>
             ) : (
               <div className="t-mono-sm" style={{ color: 'var(--tx3)', lineHeight: 1.7 }}>
-                Maj+clic ou outil Marquée pour sélectionner des œuvres et créer un groupe.
+                {t('const_shiftMarqueeHint')}
               </div>
             )}
 
             {/* Saved constellation maps */}
             {snapshots.length > 0 && (
               <div style={{ marginTop: 20 }}>
-                <div className="t-eyebrow" style={{ marginBottom: 8 }}>Constellations</div>
+                <div className="t-eyebrow" style={{ marginBottom: 8 }}>{t('const_savedMapsTitle')}</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {snapshots.map(s => (
                     <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -2566,7 +2921,7 @@ export function ConstellationCanvas({
                         className="btn ghost sm"
                         onClick={() => handleLoadSnapshot(s.id)}
                         style={{ flex: 1, justifyContent: 'flex-start', fontSize: 9, textAlign: 'left', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}
-                        title={`${s.name} · ${s.groupBy} · ${new Date(s.savedAt).toLocaleDateString('fr-FR')}`}
+                        title={`${s.name} · ${s.groupBy} · ${new Date(s.savedAt).toLocaleDateString(locale)}`}
                       >
                         {s.name}
                       </button>
@@ -2574,7 +2929,39 @@ export function ConstellationCanvas({
                         className="btn ghost sm"
                         onClick={() => handleDeleteSnapshot(s.id)}
                         style={{ fontSize: 9, padding: '2px 5px', color: 'var(--tx3)', flexShrink: 0 }}
-                        title="Supprimer"
+                        title={t('const_deleteMapTitle')}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {cloudMaps.length > 0 && (
+              <div style={{ marginTop: 20 }}>
+                <div className="t-eyebrow" style={{ marginBottom: 8 }}>{t('const_cloudMapsSidebarTitle')}</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {cloudMaps.map(m => (
+                    <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <button
+                        type="button"
+                        className="btn ghost sm"
+                        disabled={cloudBusy}
+                        onClick={() => void handleLoadCloudMap(m.id)}
+                        style={{ flex: 1, justifyContent: 'flex-start', fontSize: 9, textAlign: 'left', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}
+                        title={new Date(m.updated_at).toLocaleString(locale)}
+                      >
+                        {m.title}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn ghost sm"
+                        disabled={cloudBusy}
+                        onClick={() => void handleDeleteCloudMap(m.id)}
+                        style={{ fontSize: 9, padding: '2px 5px', color: 'var(--tx3)', flexShrink: 0 }}
+                        title={t('const_deleteMapTitle')}
                       >
                         ✕
                       </button>
@@ -2585,6 +2972,31 @@ export function ConstellationCanvas({
             )}
           </div>
         </div>
+        {toolShortcutsOpen && (
+          <div
+            ref={shortcutsPanelRef}
+            id={shortcutsPanelId}
+            role="region"
+            aria-label={t('const_toolbarShortcutsPanelTitle')}
+            className="t-mono-sm"
+            style={{
+              position: 'absolute',
+              left: 56,
+              top: 8,
+              zIndex: 30,
+              maxWidth: 'min(300px, calc(100vw - 80px))',
+              padding: '10px 12px',
+              background: 'var(--bg1)',
+              border: '1px solid var(--bd)',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
+              fontSize: 10,
+              lineHeight: 1.5,
+              color: 'var(--tx2)',
+            }}
+          >
+            {t('const_toolbar_hint')}
+          </div>
+        )}
       </div>
     </div>
   )

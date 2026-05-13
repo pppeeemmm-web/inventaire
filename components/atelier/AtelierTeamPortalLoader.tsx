@@ -1,12 +1,19 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { useI18n } from '@/lib/i18n/context'
+import { useEffect, useState } from 'react'
+import { dict, type Lang } from '@/lib/i18n/dictionary'
 import type { TeamPortalClientProps } from '@/components/atelier/team-portal-types'
 import { InlineSpinner } from '@/components/ui/InlineSpinner'
 
+/** next/dynamic `loading` can render outside <I18nProvider>; mirror provider lang sync. */
 function AtelierBootSplash() {
-  const { t } = useI18n()
+  const [lang, setLang] = useState<Lang>('fr')
+  useEffect(() => {
+    const stored = localStorage.getItem('pem_lang') as Lang | null
+    if (stored === 'fr' || stored === 'en') setLang(stored)
+  }, [])
+  const label = dict[lang].loadingAtelier
   return (
     <div
       style={{
@@ -22,7 +29,7 @@ function AtelierBootSplash() {
     >
       <span className="row gap-sm" style={{ alignItems: 'center' }}>
         <InlineSpinner size={14} />
-        <span>{t('loadingAtelier')}</span>
+        <span>{label}</span>
       </span>
     </div>
   )

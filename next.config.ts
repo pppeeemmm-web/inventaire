@@ -1,6 +1,14 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
+  /** Dev: slow disk/AV can hit webpack’s default chunk fetch timeout → ChunkLoadError on `app/layout`. */
+  webpack: (config, { dev, isServer }) => {
+    if (dev && !isServer) {
+      config.output = { ...config.output, chunkLoadTimeout: 300_000 }
+    }
+    return config
+  },
+
   /** Browsers still request /favicon.ico by default */
   async redirects() {
     return [{ source: '/favicon.ico', destination: '/favicon.svg', permanent: false }]

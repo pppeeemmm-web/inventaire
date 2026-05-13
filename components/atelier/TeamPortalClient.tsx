@@ -15,6 +15,13 @@ import { WorkThumb } from './WorkThumb'
 import type { Oeuvre } from '@/lib/types/database'
 import type { TeamPortalClientProps } from '@/components/atelier/team-portal-types'
 import { yearOf, formatInventoryDims } from '@/lib/data'
+import { computePipelinePulseItems, daysUntil, type PipelinePulseItem } from '@/lib/pipeline-deadlines'
+import {
+  buildPipelineCalendarEvents,
+  filterEventsInDateKeyRange,
+  type PipelineCalendarEvent,
+} from '@/lib/pipeline-calendar'
+import type { Lang } from '@/lib/i18n/dictionary'
 
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { WorkDrawer, type WorkDrawerGuardHandle } from '@/components/atelier/WorkDrawer'
@@ -63,13 +70,14 @@ const ThemesTab = dynamic(() => import('@/components/atelier/ThemesTab').then((m
 const PortfolioTab = dynamic(() => import('@/components/atelier/PortfolioTab').then((m) => ({ default: m.PortfolioTab })), { loading: () => <TabPanelFallback />, ssr: false })
 const SupplierHub = dynamic(() => import('@/components/atelier/SupplierHub').then((m) => ({ default: m.SupplierHub })), { loading: () => <TabPanelFallback />, ssr: false })
 const StockTakeTab = dynamic(() => import('@/components/atelier/StockTakeTab').then((m) => ({ default: m.StockTakeTab })), { loading: () => <TabPanelFallback />, ssr: false })
+const ReportsTab = dynamic(() => import('@/components/atelier/ReportsTab').then((m) => ({ default: m.ReportsTab })), { loading: () => <TabPanelFallback />, ssr: false })
 const AuditTab = dynamic(() => import('@/components/atelier/AuditTab').then((m) => ({ default: m.AuditTab })), { loading: () => <TabPanelFallback />, ssr: false })
 const BroadcastTab = dynamic(() => import('@/components/atelier/BroadcastTab').then((m) => ({ default: m.BroadcastTab })), { loading: () => <TabPanelFallback />, ssr: false })
 
 // ── Types ────────────────────────────────────────────────────────────
 
 type Tab =
-  | 'overview' | 'inventory' | 'constellation' | 'production'
+  | 'overview' | 'inventory' | 'reports' | 'constellation' | 'production'
   | 'logistics' | 'sales' | 'exhibitions' | 'vault' | 'contacts' | 'map' | 'pipeline' | 'fiscal' | 'concepts' | 'themes' | 'stock' | 'stock-take' | 'system' | 'portfolio' | 'audit' | 'broadcast'
 
 export type { TeamPortalClientProps }
@@ -174,6 +182,11 @@ export function TeamPortalClient({
 
   useLayoutEffect(() => {
     const params = new URLSearchParams(window.location.search)
+    if (params.get('map')) {
+      setTab('constellation')
+      localStorage.setItem('pem_team_tab', 'constellation')
+      return
+    }
     const fromUrl = params.get('tab') as Tab | null
     if (fromUrl) {
       setTab(fromUrl)
@@ -181,7 +194,15 @@ export function TeamPortalClient({
       return
     }
     const savedTab = localStorage.getItem('pem_team_tab') as Tab | null
-    if (savedTab) setTab(savedTab)
+    if (savedTab) {
+      setTab(savedTab)
+      return
+    }
+    // Narrow + no saved tab: field-tool first (Overview stays desktop-first KPI; Hub is lobby pulse).
+    if (window.matchMedia('(max-width: 767px)').matches) {
+      setTab('inventory')
+      localStorage.setItem('pem_team_tab', 'inventory')
+    }
   }, [])
 
   // Warm exhibitions chunk after paint — reduces flash when opening Commercial → Exhibitions
@@ -368,6 +389,7 @@ export function TeamPortalClient({
   const TABS_RAW: [Tab, string, number?][] = [
     ['overview',      t('overview')],
     ['inventory',     t('inventory'), oeuvres.length],
+    ['reports',       t('tab_reports')],
     ['constellation', t('constellation')],
     ['production',    t('production')],
     ['logistics',     t('logistics')],
@@ -396,14 +418,14 @@ export function TeamPortalClient({
     ? [
         { label: t('nav_group_field'), tabs: ['inventory', 'production', 'stock-take', 'overview'] },
         { label: t('nav_group_operations'), tabs: ['logistics', 'stock'] },
-        { label: t('nav_group_management'), tabs: ['contacts', 'vault'] },
+        { label: t('nav_group_management'), tabs: ['contacts', 'reports', 'vault'] },
         { label: t('nav_group_vision'), tabs: ['constellation', 'concepts', 'themes', 'map'] },
         { label: t('nav_group_commercial'), tabs: ['sales', 'exhibitions', 'pipeline', 'fiscal'] },
         { label: t('nav_group_diffusion'), tabs: ['portfolio', 'broadcast'] },
         { label: t('nav_group_config'), tabs: configNavTabs },
       ]
     : [
-        { label: t('nav_group_management'), tabs: ['overview', 'inventory', 'contacts', 'vault'] },
+        { label: t('nav_group_management'), tabs: ['overview', 'inventory', 'reports', 'contacts', 'vault'] },
         { label: t('nav_group_operations'), tabs: ['production', 'logistics', 'stock', 'stock-take'] },
         { label: t('nav_group_vision'), tabs: ['constellation', 'concepts', 'themes', 'map'] },
         { label: t('nav_group_commercial'), tabs: ['sales', 'exhibitions', 'pipeline', 'fiscal'] },
@@ -625,6 +647,7 @@ export function TeamPortalClient({
             oeuvres={oeuvres}
             tM={tM}
             t={t as (k: string) => string}
+            lang={lang}
             onGoTab={handleSetTab}
             reminderCount={reminderCount}
             isAdmin={isAdmin}
@@ -650,6 +673,28 @@ export function TeamPortalClient({
             oeuvreThemeIdsByOeuvre={oeuvreThemeIdsByOeuvre}
             oeuvreGroupIdsByOeuvre={oeuvreGroupIdsByOeuvre}
           />
+        )}
+
+        {tab === 'reports' && (
+          <div style={{ flex: 1, display: 'flex', minHeight: 0, minWidth: 0 }}>
+            <ReportsTab
+              oeuvres={oeuvres}
+              techniques={sortedTechniques}
+              supports={sortedSupports}
+              formats={sortedFormats}
+              themes={sortedThemes}
+              groups={groups}
+              tM={tM}
+              sM={sM}
+              cM={cM}
+              pM={pM}
+              locMap={locMap}
+              statusLabelMap={statusLabelMap}
+              oeuvreThemeIdsByOeuvre={oeuvreThemeIdsByOeuvre}
+              oeuvreGroupIdsByOeuvre={oeuvreGroupIdsByOeuvre}
+              selection={selection}
+            />
+          </div>
         )}
 
         {tab === 'constellation' && (
@@ -852,12 +897,29 @@ export function TeamPortalClient({
 
 // ── Overview tab ─────────────────────────────────────────────────────
 
+function pad2Local(n: number) {
+  return String(n).padStart(2, '0')
+}
+
+function localDateKeyFromDate(d: Date) {
+  return `${d.getFullYear()}-${pad2Local(d.getMonth() + 1)}-${pad2Local(d.getDate())}`
+}
+
+function mondayStartOfWeek(d: Date) {
+  const x = new Date(d)
+  x.setHours(0, 0, 0, 0)
+  const mon = (x.getDay() + 6) % 7
+  x.setDate(x.getDate() - mon)
+  return x
+}
+
 function OverviewTab({
-  oeuvres, tM, t, onGoTab, reminderCount, isAdmin, conflicts,
+  oeuvres, tM, t, lang, onGoTab, reminderCount, isAdmin, conflicts,
 }: {
   oeuvres:       Oeuvre[]
   tM:            Record<number, string>
   t:             (k: string) => string
+  lang:          Lang
   onGoTab:       (tab: Tab) => void
   reminderCount: number
   isAdmin:       boolean
@@ -891,11 +953,23 @@ function OverviewTab({
 
   const recentWorks = [...oeuvres].sort((a, b) => b.OeuvreID - a.OeuvreID).slice(0, 6)
 
-  // Upcoming deadlines from pipeline
-  const [upcoming,  setUpcoming]  = useState<{ nom: string; date_fin: string; deadline_time: string | null; type: string }[]>([])
-  const [reminders, setReminders] = useState<{ id: string; message: string; remind_at: string }[]>([])
+  // Upcoming deadlines from pipeline (same derivation as Pipeline tab)
+  const [upcoming, setUpcoming] = useState<PipelinePulseItem[]>([])
+  const [reminders, setReminders] = useState<{ id: string; message: string; remind_at: string; process_id?: string | null }[]>([])
+  const [overviewCalEvents, setOverviewCalEvents] = useState<PipelineCalendarEvent[]>([])
   const [burningConcepts, setBurningConcepts] = useState<{ id: string; titre: string; energie: number }[]>([])
   const [expenseTotal, setExpenseTotal] = useState(0)
+  const ovNarrow = useMediaQuery('(max-width: 767px)')
+  const localeTagOv = lang === 'en' ? 'en-GB' : 'fr-FR'
+
+  const weekEvents = useMemo(() => {
+    const start = mondayStartOfWeek(new Date())
+    const end = new Date(start)
+    end.setDate(end.getDate() + 6)
+    const sk = localDateKeyFromDate(start)
+    const ek = localDateKeyFromDate(end)
+    return filterEventsInDateKeyRange(overviewCalEvents, sk, ek)
+  }, [overviewCalEvents])
 
   useEffect(() => {
     const sb = createClient()
@@ -907,25 +981,43 @@ function OverviewTab({
         if (data) setExpenseTotal(data.reduce((s, e) => s + (e.montant_ttc || 0), 0))
       })
 
-    ;(sb.from('suivi_process') as any)
-      .select('nom, date_fin, deadline_time, type, statut')
-      .not('date_fin', 'is', null)
-      .not('statut', 'in', '("perdu","annule","termine")')
-      .order('date_fin', { ascending: true })
-      .limit(8)
-      .then(({ data }: { data: any[] | null }) => {
-        if (data) setUpcoming(data.filter((p) => {
-          const d = new Date(p.date_fin); d.setHours(0,0,0,0)
-          const n = new Date(); n.setHours(0,0,0,0)
-          return Math.ceil((d.getTime()-n.getTime())/86400000) <= 45
-        }))
-      })
-    ;(sb.from('suivi_reminder') as any)
-      .select('id, message, remind_at')
-      .eq('lu', false)
-      .order('remind_at')
-      .limit(6)
-      .then(({ data }: { data: any[] | null }) => { if (data) setReminders(data) })
+    void (async () => {
+      const [{ data: procs }, { data: etapes }, { data: remAll }] = await Promise.all([
+        (sb.from('suivi_process') as any)
+          .select('id, nom, type, date_fin, deadline_time, statut')
+          .not('statut', 'in', '("perdu","annule","termine")'),
+        (sb.from('suivi_etape') as any).select('id, process_id, nom, statut, date_echeance, overdue_override, position').order('position'),
+        (sb.from('suivi_reminder') as any)
+          .select('id, message, remind_at, process_id')
+          .eq('lu', false)
+          .order('remind_at')
+          .limit(100),
+      ])
+      const etapeMap: Record<string, { id: string; nom: string; statut: string; date_echeance: string | null; overdue_override: boolean }[]> = {}
+      for (const e of etapes ?? []) {
+        if (!etapeMap[e.process_id]) etapeMap[e.process_id] = []
+        etapeMap[e.process_id].push({
+          id: e.id,
+          nom: e.nom,
+          statut: e.statut,
+          date_echeance: e.date_echeance,
+          overdue_override: e.overdue_override ?? false,
+        })
+      }
+      const processes = (procs ?? []).map((p: any) => ({
+        id: p.id,
+        nom: p.nom,
+        type: p.type,
+        statut: p.statut,
+        date_fin: p.date_fin,
+        deadline_time: p.deadline_time,
+        etapes: etapeMap[p.id] ?? [],
+      }))
+      setUpcoming(computePipelinePulseItems(processes).slice(0, 8))
+      const rems = remAll ?? []
+      setReminders(rems.slice(0, 6))
+      setOverviewCalEvents(buildPipelineCalendarEvents(processes, rems))
+    })()
     ;(sb.from('concept') as any)
       .select('id, titre, energie')
       .gte('energie', 4)
@@ -951,7 +1043,17 @@ function OverviewTab({
   }
 
   return (
-    <div style={{ padding: '32px 40px', display: 'grid', gridTemplateColumns: '1fr 300px', gap: 60, alignItems: 'start' }}>
+    <div
+      style={{
+        padding: ovNarrow ? '20px 16px' : '32px 40px',
+        display: 'grid',
+        gridTemplateColumns: ovNarrow ? '1fr' : '1fr 300px',
+        gap: ovNarrow ? 28 : 60,
+        alignItems: 'start',
+        maxWidth: '100%',
+        boxSizing: 'border-box',
+      }}
+    >
 
       {/* Left Column: Dashboard Pulse */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 48 }}>
@@ -959,7 +1061,7 @@ function OverviewTab({
         {/* Row 1: Executive Stats */}
         <div>
           <div className="t-eyebrow" style={{ marginBottom: 24, opacity: 0.6 }}>{t('ov_executive_summary')}</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 1, border: '1px solid var(--bd)', background: 'var(--bd)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: ovNarrow ? 'repeat(2, minmax(0, 1fr))' : 'repeat(6, 1fr)', gap: 1, border: '1px solid var(--bd)', background: 'var(--bd)' }}>
             {[
               { l: t('works_cap'),                    v: oeuvres.length },
               { l: `${t('thisYear')} (${thisYear})`,  v: byYear },
@@ -984,13 +1086,13 @@ function OverviewTab({
             <div className="t-eyebrow" style={{ opacity: 0.6 }}>{t('ov_financial_pulse_fmt').replace(/\{year\}/g, String(thisYear))}</div>
             <button className="t-mono-sm" onClick={() => onGoTab('fiscal')} style={{ background: 'none', border: 'none', color: 'var(--ac)', cursor: 'pointer', fontSize: 9, letterSpacing: 1 }}>{t('ov_manage_revenues')}</button>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40, padding: 24, background: 'var(--bg1)', border: '1px solid var(--bd)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: ovNarrow ? '1fr' : '1fr 1fr', gap: ovNarrow ? 20 : 40, padding: 24, background: 'var(--bg1)', border: '1px solid var(--bd)' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div className="t-label" style={{ fontSize: 10, color: 'var(--tx3)' }}>{t('ov_income_vs_expenses')}</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
                   <span>{t('ov_income_sales')}</span>
-                  <span style={{ color: 'var(--green)' }}>€ {Math.round(soldIncomeThisYear).toLocaleString()}</span>
+                  <span style={{ color: 'var(--green)' }}>€ {Math.round(soldIncomeThisYear).toLocaleString(localeTagOv)}</span>
                 </div>
                 <div style={{ height: 4, background: 'var(--bg2)', borderRadius: 2 }}>
                   <div style={{ height: '100%', width: '100%', background: 'var(--green)', borderRadius: 2 }} />
@@ -998,7 +1100,7 @@ function OverviewTab({
                 
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginTop: 4 }}>
                   <span>{t('ov_expenses')}</span>
-                  <span style={{ color: 'var(--rust)' }}>€ {Math.round(expenseTotal).toLocaleString()}</span>
+                  <span style={{ color: 'var(--rust)' }}>€ {Math.round(expenseTotal).toLocaleString(localeTagOv)}</span>
                 </div>
                 <div style={{ height: 4, background: 'var(--bg2)', borderRadius: 2 }}>
                   <div style={{ height: '100%', width: `${Math.min(100, (expenseTotal / Math.max(1, soldIncomeThisYear)) * 100)}%`, background: 'var(--rust)', borderRadius: 2 }} />
@@ -1006,11 +1108,11 @@ function OverviewTab({
               </div>
             </div>
             
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, borderLeft: '1px solid var(--bd)', paddingLeft: 40 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, borderLeft: ovNarrow ? 'none' : '1px solid var(--bd)', paddingLeft: ovNarrow ? 0 : 40, paddingTop: ovNarrow ? 12 : 0, borderTop: ovNarrow ? '1px solid var(--bd)' : 'none' }}>
               <div className="t-label" style={{ fontSize: 10, color: 'var(--tx3)' }}>{t('ov_cash_health')}</div>
               <div style={{ display: 'flex', alignItems: 'end', gap: 12 }}>
                 <div style={{ fontSize: 32, fontWeight: 700 }}>
-                  € {Math.round(soldIncomeThisYear - expenseTotal).toLocaleString()}
+                  € {Math.round(soldIncomeThisYear - expenseTotal).toLocaleString(localeTagOv)}
                 </div>
                 <div className="t-mono-sm" style={{ marginBottom: 8, color: 'var(--tx3)' }}>{t('ov_net_bnc')}</div>
               </div>
@@ -1027,7 +1129,7 @@ function OverviewTab({
             <div className="t-eyebrow" style={{ opacity: 0.6 }}>{t('ov_recent_docs')}</div>
             <button className="t-mono-sm" onClick={() => onGoTab('inventory')} style={{ background: 'none', border: 'none', color: 'var(--ac)', cursor: 'pointer', fontSize: 9, letterSpacing: 1 }}>{t('ov_view_all')}</button>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: ovNarrow ? 'repeat(3, minmax(0, 1fr))' : 'repeat(6, 1fr)', gap: 12 }}>
             {recentWorks.map((o) => (
               <div key={o.OeuvreID} style={{ aspectRatio: '1', background: 'var(--bg1)', border: '1px solid var(--bd2)', position: 'relative', overflow: 'hidden', cursor: 'pointer' }}>
                 {o.txtImageNameLink ? (
@@ -1044,7 +1146,7 @@ function OverviewTab({
         </div>
 
         {/* Row 3: Technique & Distribution */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: ovNarrow ? '1fr' : '1fr 1fr', gap: 40 }}>
           {/* Technique breakdown */}
           <div>
             <div className="t-label" style={{ marginBottom: 16, opacity: 0.8 }}>{t('byTechnique')}</div>
@@ -1052,7 +1154,7 @@ function OverviewTab({
               {topTechs.map(([techId, count]) => {
                 const pct = Math.round((count / oeuvres.length) * 100)
                 return (
-                  <div key={techId} style={{ display: 'grid', gridTemplateColumns: '120px 1fr 30px', alignItems: 'center', gap: 12 }}>
+                  <div key={techId} style={{ display: 'grid', gridTemplateColumns: ovNarrow ? 'minmax(0,1fr) minmax(0,2fr) 28px' : '120px 1fr 30px', alignItems: 'center', gap: 12 }}>
                     <div className="t-mono-sm" style={{ color: 'var(--tx2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tM[Number(techId)] ?? '—'}</div>
                     <div style={{ height: 3, background: 'var(--bg2)', position: 'relative' }}>
                       <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${pct}%`, background: 'var(--ac)' }} />
@@ -1079,7 +1181,49 @@ function OverviewTab({
       </div>
 
       {/* Right Column: Deadlines & Concepts */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 32, minWidth: 0 }}>
+        <div>
+          <button
+            type="button"
+            className="btn ghost sm"
+            onClick={() => onGoTab('pipeline')}
+            style={{ minHeight: 44, width: '100%', justifyContent: 'center' }}
+          >
+            {t('ov_pipeline_calendar_cta')}
+          </button>
+          <div className="t-eyebrow" style={{ marginTop: 16, marginBottom: 10 }}>
+            {t('ov_this_week')}
+          </div>
+          {weekEvents.length === 0 ? (
+            <div className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 11 }}>{t('ov_no_deadlines')}</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {weekEvents.slice(0, 12).map((ev) => {
+                const d = new Date(`${ev.dateKey}T12:00:00`)
+                const dayLine = d.toLocaleDateString(localeTagOv, { weekday: 'short', day: 'numeric', month: 'short' })
+                return (
+                  <button
+                    key={ev.id}
+                    type="button"
+                    onClick={() => onGoTab('pipeline')}
+                    style={{
+                      minHeight: 44,
+                      textAlign: 'left',
+                      padding: '10px 12px',
+                      background: 'var(--bg1)',
+                      border: '1px solid var(--bd2)',
+                      cursor: 'pointer',
+                      borderLeft: `2px solid ${ev.kind === 'reminder' ? 'var(--ac)' : 'var(--tx3)'}`,
+                    }}
+                  >
+                    <div className="t-mono-sm" style={{ fontSize: 9, color: 'var(--tx3)', marginBottom: 4 }}>{dayLine}</div>
+                    <div style={{ fontSize: 11, color: 'var(--tx)', lineHeight: 1.35 }}>{ev.label}</div>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
 
         {/* Integrity Sentry (Admin Only) */}
         {isAdmin && conflicts.length > 0 && (
@@ -1116,7 +1260,7 @@ function OverviewTab({
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {reminders.map((r) => {
-                const days = Math.ceil((new Date(r.remind_at).setHours(0,0,0,0) - new Date().setHours(0,0,0,0)) / 86400000)
+                const days = daysUntil(r.remind_at)
                 return (
                   <div key={r.id} style={{ padding: '10px 12px', background: 'var(--bg1)', border: '1px solid var(--bd2)', borderLeft: `2px solid var(--ac)` }}>
                     <div style={{ fontSize: 10, color: 'var(--tx)', lineHeight: 1.4 }}>{r.message}</div>
@@ -1143,16 +1287,20 @@ function OverviewTab({
           </div>
           {upcoming.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {upcoming.map((p, i) => {
-                const days = Math.ceil((new Date(p.date_fin).setHours(0,0,0,0) - new Date().setHours(0,0,0,0)) / 86400000)
-                const col  = urgencyColor(days)
+              {upcoming.map((p) => {
+                const days = daysUntil(p.date)
+                const col = urgencyColor(days)
                 return (
-                  <div key={i} onClick={() => onGoTab('pipeline')} style={{
+                  <div
+                    key={`${p.processId}-${p.etapeId ?? 'fin'}-${p.date}`}
+                    onClick={() => onGoTab('pipeline')}
+                    style={{
                     padding: '10px 12px', background: 'var(--bg1)',
                     border: '1px solid var(--bd2)', cursor: 'pointer',
                     borderLeft: `2px solid ${col}`,
-                  }}>
-                    <div style={{ fontSize: 10, fontWeight: 500, color: 'var(--tx)' }}>{p.nom}</div>
+                  }}
+                  >
+                    <div style={{ fontSize: 10, fontWeight: 500, color: 'var(--tx)' }}>{p.label}</div>
                     <div style={{ fontSize: 8, color: col, marginTop: 4, letterSpacing: 0.5 }}>
                       {days < 0
                         ? t('ov_pulse_deadline_overdue_fmt').replace(/\{days\}/g, String(Math.abs(days)))

@@ -21,7 +21,7 @@ export default function LandingPage() {
       <style>{`
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         html, body { width: 100%; min-height: 100dvh; overflow-x: hidden; overflow-y: auto; }
-        body { background: #edeae4; font-family: 'JetBrains Mono', monospace; color: #9a9690; }
+        body { background: #edeae4; font-family: var(--font-ui, 'Sofia Sans', ui-sans-serif, system-ui, sans-serif); color: #9a9690; }
         .stage {
           position: fixed; inset: 0; min-height: 100dvh;
           padding-top: env(safe-area-inset-top, 0px);

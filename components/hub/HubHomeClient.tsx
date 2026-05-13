@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useI18n } from '@/lib/i18n/context'
+import type { DictKey } from '@/lib/i18n/dictionary'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { PemThemeToggle } from '@/components/PemThemeToggle'
 import { WorkThumb } from '@/components/atelier/WorkThumb'
@@ -20,6 +21,7 @@ interface SystemLogEntry {
   row_id: string | null
   metadata: unknown
   created_at: string
+  feedSource: 'audit' | 'studio'
 }
 
 interface Props {
@@ -27,7 +29,8 @@ interface Props {
   recentImages: { OeuvreID: number; txtImageNameLink: string | null }[]
   recentProcess: { id: number; label: string; status: string; created_at: string }[]
   burningIdeas:  { id: number; title: string; energy: number | null; medium: string | null }[]
-  systemLogs:    SystemLogEntry[]
+  auditFeed:     SystemLogEntry[]
+  taskFeed:      SystemLogEntry[]
 }
 
 function priorityColor(p: string | null | undefined) {
@@ -37,7 +40,31 @@ function priorityColor(p: string | null | undefined) {
   return 'var(--ac)'
 }
 
-export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas, systemLogs }: Props) {
+const HUB_TASK_TYPE_KEYS: Partial<Record<string, DictKey>> = {
+  suggestion: 'system_task_type_suggestion',
+  improvement: 'system_task_type_improvement',
+  maintenance: 'system_task_type_maintenance',
+  backlog: 'system_task_type_backlog',
+  bug: 'system_task_type_bug',
+}
+
+function logScore(l: SystemLogEntry): number {
+  // Higher = more important.
+  if (l.event_type === 'GATE_BYPASS') return 100
+  if (l.event_type === 'VISIBILITY_GATE') return 95
+  if (l.event_type === 'PAYMENT_GRAIN') return 92
+  if (l.event_type === 'ORDER_CREATED') return 90
+  if (l.event_type === 'STATUS_CHANGE') return 80
+  if (l.event_type === 'LOCATION_MOVE') return 72
+  if (l.event_type === 'PRICE_CHANGE') return 70
+  if (l.type === 'bug') return 68
+  if (l.type === 'maintenance') return 60
+  if (l.type === 'improvement') return 55
+  if (l.type === 'suggestion') return 40
+  return 50
+}
+
+export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas, auditFeed, taskFeed }: Props) {
   const { lang, setLang, t } = useI18n()
   const router = useRouter()
   const hubNavCompact = useMediaQuery('(max-width: 767px)')
@@ -48,30 +75,29 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
     { weekday: 'long', day: 'numeric', month: 'long' }
   )
 
-  function logScore(l: SystemLogEntry): number {
-    // Higher = more important.
-    if (l.event_type === 'GATE_BYPASS') return 100
-    if (l.event_type === 'VISIBILITY_GATE') return 95
-    if (l.event_type === 'PAYMENT_GRAIN') return 92
-    if (l.event_type === 'ORDER_CREATED') return 90
-    if (l.event_type === 'STATUS_CHANGE') return 80
-    if (l.event_type === 'LOCATION_MOVE') return 72
-    if (l.event_type === 'PRICE_CHANGE') return 70
-    if (l.type === 'bug') return 68
-    if (l.type === 'maintenance') return 60
-    if (l.type === 'improvement') return 55
-    if (l.type === 'suggestion') return 40
-    return 50
+  const systemLogs = useMemo(() => [...auditFeed, ...taskFeed], [auditFeed, taskFeed])
+
+  function hubLogTypeLabel(log: SystemLogEntry): string | null {
+    if (!log.type) return null
+    if (log.feedSource === 'studio') {
+      const key = HUB_TASK_TYPE_KEYS[log.type]
+      if (key) return t(key)
+    }
+    return log.type
   }
 
-  const displayLogs: SystemLogEntry[] = systemLogs
-    .filter((l) => l.event_type !== 'ATELIER_VIEW')
-    .slice()
-    .sort((a, b) => {
-      const ds = logScore(b) - logScore(a)
-      if (ds !== 0) return ds
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    })
+  const displayLogs: SystemLogEntry[] = useMemo(
+    () =>
+      systemLogs
+        .filter((l) => l.event_type !== 'ATELIER_VIEW')
+        .slice()
+        .sort((a, b) => {
+          const ds = logScore(b) - logScore(a)
+          if (ds !== 0) return ds
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        }),
+    [systemLogs]
+  )
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg0)' }}>
@@ -407,7 +433,7 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
                 <div className="vline" style={{ height: 32, opacity: 0.1 }} />
                 <div className="stat-v2">
                   <span className="label">{t('hubLastLog')}</span>
-                  <span className="value" style={{ fontSize: 14, fontFamily: 'monospace', letterSpacing: 0 }}>{displayLogs[0]?.action ?? '—'}</span>
+                  <span className="value" style={{ fontSize: 14, fontFamily: 'var(--font-ui)', letterSpacing: 0 }}>{displayLogs[0]?.action ?? '—'}</span>
                 </div>
                 {stats.stockAlerts > 0 && (
                   <>
@@ -479,18 +505,20 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {displayLogs.length === 0 ? (
                     <div className="t-mono-sm" style={{ color: 'var(--tx3)', opacity: 0.5 }}>{t('hub_ledger_empty')}</div>
-                  ) : displayLogs.slice(0, 6).map(log => (
-                    <div key={log.id} onClick={() => router.push('/atelier?tab=system')}
+                  ) : displayLogs.slice(0, 6).map((log) => {
+                    const typeLine = hubLogTypeLabel(log)
+                    return (
+                    <div key={`${log.feedSource}-${log.id}`} onClick={() => router.push('/atelier?tab=system')}
                       style={{ display: 'flex', gap: 10, alignItems: 'flex-start', borderBottom: '1px solid var(--bd2)', paddingBottom: 10, cursor: 'pointer' }}>
                       <span style={{ fontWeight: 700, fontSize: 9, color: priorityColor(log.priority), letterSpacing: 0.5, paddingTop: 2, flexShrink: 0 }}>
                         {log.priority ?? 'P3'}
                       </span>
                       <div style={{ minWidth: 0 }}>
                         <div className="t-mono" style={{ fontSize: 10, fontWeight: 600, color: 'var(--tx)', lineHeight: 1.3 }}>{log.action}</div>
-                        {log.type && <div style={{ fontSize: 8, color: 'var(--tx3)', textTransform: 'uppercase', letterSpacing: 1, marginTop: 3 }}>{log.type}</div>}
+                        {typeLine && <div style={{ fontSize: 8, color: 'var(--tx3)', textTransform: 'uppercase', letterSpacing: 1, marginTop: 3 }}>{typeLine}</div>}
                       </div>
                     </div>
-                  ))}
+                  )})}
                 </div>
                 <div onClick={() => router.push('/atelier?tab=system')}
                   style={{ marginTop: 16, fontSize: 8, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--tx3)', cursor: 'pointer' }}>

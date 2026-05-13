@@ -9,11 +9,15 @@ import { useMemo, useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { useI18n } from '@/lib/i18n/context'
+import type { DictKey } from '@/lib/i18n/dictionary'
 import { createClient } from '@/lib/supabase/client'
 import { getWorkActionTypes, invalidateWorkActionTypesCache } from '@/lib/work-action-type-cache'
+import { workActionTypeDisplayLabel } from '@/lib/work-action-type-label'
 import { imageUrl, thumbUrl, yearOf, statusOf, type StatusKey } from '@/lib/data'
 import { MissingThumb, WorkThumb, SuggestionThumb } from './WorkThumb'
 import type { Oeuvre } from '@/lib/types/database'
+import type { Agg, Dim } from '@/lib/pivot'
+import { PivotPanel } from './PivotPanel'
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -126,7 +130,7 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
       .eq('action_type_id', actionTypeId)
 
     if (error) {
-      alert("Erreur lors de la mise à jour: " + error.message)
+      alert(t('prod_tab_err_update').replace('{msg}', error.message))
       return
     }
 
@@ -213,9 +217,61 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
   const soldCount       = localOeuvres.filter(o => statusOf(o, statusLabelMap) === 'sold').length
   const othersCount     = localOeuvres.length - (productionCount + availableCount + archivePemCount + soldCount)
 
+  const productionPivotRows = useMemo(
+    () =>
+      localOeuvres.filter(
+        (o) => !EXCLUDED_STATUSES.includes(statusOf(o, statusLabelMap)),
+      ),
+    [localOeuvres, statusLabelMap],
+  )
+
+  const prodPivotDims: Dim<Oeuvre>[] = useMemo(
+    () => [
+      {
+        id: 'status',
+        label: t('status'),
+        get: (o) => statusLabelMap[o.statusId ?? 0] ?? String(statusOf(o, statusLabelMap)),
+      },
+      {
+        id: 'month',
+        label: t('pivotDimMonth'),
+        get: (o) => {
+          const d = (o as { DateLivraison?: string | null }).DateLivraison
+          return d && d.length >= 7 ? d.slice(0, 7) : '—'
+        },
+      },
+      {
+        id: 'technique',
+        label: t('technique'),
+        get: (o) => (o.Technique != null ? (tM[o.Technique] ?? String(o.Technique)) : '—'),
+      },
+    ],
+    [t, tM, statusLabelMap],
+  )
+
+  const prodPivotValues: Agg<Oeuvre>[] = useMemo(
+    () => [{ id: 'count', label: t('pivotCount'), kind: 'count' }],
+    [t],
+  )
+
   if (loading) {
-    return <div className="t-mono-sm" style={{ padding: 40, color: 'var(--tx3)' }}>Chargement…</div>
+    return <div className="t-mono-sm" style={{ padding: 40, color: 'var(--tx3)' }}>{t('loading')}</div>
   }
+
+  const statParts = [
+    t('prod_tab_stat_wip').replace('{n}', String(active.length)),
+    t('prod_tab_stat_available').replace('{n}', String(availableCount)),
+    t('prod_tab_stat_archive_pem').replace('{n}', String(archivePemCount)),
+  ]
+  if (soldCount > 0) statParts.push(t('prod_tab_stat_sold').replace('{n}', String(soldCount)))
+  if (othersCount > 0) {
+    statParts.push(
+      othersCount === 1
+        ? t('prod_tab_stat_other_one').replace('{n}', String(othersCount))
+        : t('prod_tab_stat_others').replace('{n}', String(othersCount)),
+    )
+  }
+  const statLine = statParts.join(' · ')
 
   return (
     <div style={{ padding: '16px 28px 0', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%', flex: 1 }}>
@@ -225,13 +281,13 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
         <div>
           <div className="t-label">{t('production')}</div>
           <div className="t-mono-sm" style={{ color: 'var(--tx3)', marginTop: 3 }}>
-            {active.length} en production · {availableCount} disponibles · {archivePemCount} archive Pem {soldCount > 0 && `· ${soldCount} vendus`} {othersCount > 0 && `· ${othersCount} autres`}
+            {statLine}
           </div>
         </div>
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Filtrer…"
+          placeholder={t('prod_tab_filter_ph')}
           style={{
             marginLeft: 'auto', padding: '8px 14px', fontSize: 13,
             background: 'var(--bg1)', border: '1px solid var(--bd)',
@@ -246,9 +302,20 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
             background: editingTypes ? 'var(--bg2)' : 'transparent',
             border: '1px solid var(--bd)',
           }}
-          title="Gérer les types d'action"
-        >⚙ Colonnes</button>
+          title={t('prod_tab_manage_columns_title')}
+        >⚙ {t('prod_tab_columns_btn')}</button>
       </div>
+
+      <PivotPanel<Oeuvre>
+        rows={productionPivotRows}
+        availableDims={prodPivotDims}
+        availableValues={prodPivotValues}
+        defaultRowDimId="status"
+        defaultColDimId="month"
+        defaultValueIds={['count']}
+        title={t('pivot')}
+        exportFileName="production-throughput"
+      />
 
       {/* Action type manager */}
       {editingTypes && (
@@ -317,6 +384,7 @@ function ActionColumn({
   onAddAction: (oid: number) => void
   onOpen:      (o: Oeuvre) => void
 }) {
+  const { t } = useI18n()
   const [showAdd, setShowAdd] = useState(false)
   const [addQ,    setAddQ]    = useState('')
 
@@ -364,14 +432,14 @@ function ActionColumn({
           <span className="t-eyebrow" style={{ 
             color: actionType.color, fontSize: 13, fontWeight: 700,
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
-          }}>{actionType.label}</span>
+          }}>{workActionTypeDisplayLabel(actionType.id, actionType.label, t)}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span className="t-mono-sm" style={{ color: 'var(--tx3)' }}>{works.length}</span>
           <button
             onClick={() => { setShowAdd((v) => !v); setAddQ('') }}
             style={{ fontSize: 14, color: 'var(--tx3)', background: 'transparent', border: 'none', cursor: 'pointer', lineHeight: 1, padding: '0 2px' }}
-            title="Ajouter une œuvre à cette étape"
+            title={t('prod_tab_add_work_title')}
           >+</button>
         </div>
       </div>
@@ -383,7 +451,7 @@ function ActionColumn({
             autoFocus
             value={addQ}
             onChange={(e) => setAddQ(e.target.value)}
-            placeholder="Titre ou #ID…"
+            placeholder={t('prod_tab_add_work_ph')}
             style={{
               width: '100%', padding: '6px 10px', fontSize: 13,
               background: 'var(--bg0)', border: '1px solid var(--bd)',
@@ -412,7 +480,7 @@ function ActionColumn({
             </div>
           ))}
           {addQ.trim() && suggestions.length === 0 && (
-            <div className="t-mono-sm" style={{ padding: '5px 7px', color: 'var(--tx3)' }}>Aucun résultat</div>
+            <div className="t-mono-sm" style={{ padding: '5px 7px', color: 'var(--tx3)' }}>{t('prod_tab_no_results')}</div>
           )}
         </div>
       )}
@@ -444,6 +512,7 @@ function WorkCard({ o, tM, onMarkDone, onOpen }: {
   onMarkDone: () => void
   onOpen:     (o: Oeuvre) => void
 }) {
+  const { t, lang } = useI18n()
   const router     = useRouter()
   const techLabel  = o.Technique != null ? tM[o.Technique] : null
   const year       = yearOf(o.Année)
@@ -494,7 +563,7 @@ function WorkCard({ o, tM, onMarkDone, onOpen }: {
           {/* Mark done */}
           <button
             onClick={(e) => { e.stopPropagation(); onMarkDone() }}
-            title="Marquer comme fait"
+            title={t('prod_tab_mark_done_title')}
             style={{
               fontSize: 13, padding: '2px 6px', color: 'var(--tx3)',
               background: 'transparent', border: '1px solid transparent',
@@ -506,7 +575,7 @@ function WorkCard({ o, tM, onMarkDone, onOpen }: {
           {/* Edit */}
           <button
             onClick={(e) => { e.stopPropagation(); router.push(`/atelier?work=${o.OeuvreID}`) }}
-            title="Éditer"
+            title={t('edit')}
             style={{
               fontSize: 12, padding: '2px 6px', color: 'var(--tx3)',
               background: 'transparent', border: '1px solid transparent',
@@ -523,7 +592,7 @@ function WorkCard({ o, tM, onMarkDone, onOpen }: {
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', paddingLeft: 47 }}>
           {isFramed && (
             <span style={{ fontSize: 10, letterSpacing: 0.5, color: 'var(--tx3)', border: '1px solid var(--bd)', padding: '2px 6px' }}>
-              ENCADRÉE
+              {t('prod_tab_badge_framed')}
             </span>
           )}
           {isCommission && deadline && (
@@ -533,12 +602,12 @@ function WorkCard({ o, tM, onMarkDone, onOpen }: {
               border: `1px solid ${deadlinePast ? 'var(--rust)' : 'var(--ac)'}`,
             }}>
               {deadlinePast ? '⚠ ' : '⏱ '}
-              {new Date(deadline).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+              {new Date(deadline).toLocaleDateString(lang === 'en' ? 'en-GB' : 'fr-FR', { day: 'numeric', month: 'short' })}
             </span>
           )}
           {isCommission && !deadline && (
             <span style={{ fontSize: 10, letterSpacing: 0.5, color: 'var(--rust)', border: '1px solid var(--rust)', padding: '2px 6px' }}>
-              ⚠ COMMISSION SANS DATE
+              {t('prod_tab_commission_no_date')}
             </span>
           )}
         </div>
@@ -549,13 +618,13 @@ function WorkCard({ o, tM, onMarkDone, onOpen }: {
 
 // ── Action type manager ───────────────────────────────────────
 
-// Fields that can be written back on the Oeuvres table
-const FIELD_OPTIONS = [
-  { value: '',          label: '— aucun' },
-  { value: 'Montee',    label: 'Montée' },
-  { value: 'Encadree',  label: 'Encadrée' },
-  { value: 'Exposable', label: 'Exposable' },
-  { value: 'Catalogué', label: 'Cataloguée' },
+// Fields that can be written back on the Oeuvres table (automation dropdown)
+const FIELD_OPTIONS: readonly { value: string; labelKey: DictKey | null }[] = [
+  { value: '', labelKey: null },
+  { value: 'Montee', labelKey: 'prod_tab_field_mounted' },
+  { value: 'Encadree', labelKey: 'prod_tab_field_framed' },
+  { value: 'Exposable', labelKey: 'prod_tab_field_exposable' },
+  { value: 'Catalogué', labelKey: 'prod_tab_field_catalogued' },
 ]
 
 function ActionTypeManager({ actionTypes, onRefresh, onClose }: {
@@ -563,6 +632,7 @@ function ActionTypeManager({ actionTypes, onRefresh, onClose }: {
   onRefresh:   () => void
   onClose:     () => void
 }) {
+  const { t } = useI18n()
   const sb = createClient()
   const [newLabel,    setNewLabel]    = useState('')
   const [newColor,    setNewColor]    = useState('#6e7a8a')
@@ -579,7 +649,7 @@ function ActionTypeManager({ actionTypes, onRefresh, onClose }: {
       sort_order: actionTypes.length,
     })
     if (error) {
-      alert("Erreur lors de l'ajout: " + error.message)
+      alert(t('prod_tab_err_add_type').replace('{msg}', error.message))
     } else {
       setNewLabel('')
       setNewFieldKey('')
@@ -590,10 +660,10 @@ function ActionTypeManager({ actionTypes, onRefresh, onClose }: {
   }
 
   async function deleteType(id: number) {
-    if (!confirm("Supprimer cette colonne ? Les actions associées seront également effacées.")) return
+    if (!confirm(t('prod_tab_confirm_delete_column'))) return
     const { error } = await sb.from('work_action_type').delete().eq('id', id)
     if (error) {
-      alert("Erreur lors de la suppression: " + error.message)
+      alert(t('prod_tab_err_delete_type').replace('{msg}', error.message))
     } else {
       invalidateWorkActionTypesCache()
       onRefresh()
@@ -608,9 +678,9 @@ function ActionTypeManager({ actionTypes, onRefresh, onClose }: {
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <div style={{ fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', color: 'var(--tx3)' }}>
-          Gestion des colonnes de production
+          {t('prod_tab_col_manager_title')}
         </div>
-        <button onClick={onClose} style={{ padding: '6px 12px', fontSize: 12, cursor: 'pointer', background: 'transparent', border: '1px solid var(--bd)', color: 'var(--tx3)' }}>Fermer</button>
+        <button onClick={onClose} style={{ padding: '6px 12px', fontSize: 12, cursor: 'pointer', background: 'transparent', border: '1px solid var(--bd)', color: 'var(--tx3)' }}>{t('close')}</button>
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
@@ -621,13 +691,13 @@ function ActionTypeManager({ actionTypes, onRefresh, onClose }: {
             borderRadius: 2,
           }}>
             <span style={{ width: 10, height: 10, borderRadius: '50%', background: at.color }} />
-            <span style={{ fontSize: 13, color: 'var(--tx)', fontWeight: 500 }}>{at.label}</span>
+            <span style={{ fontSize: 13, color: 'var(--tx)', fontWeight: 500 }}>{workActionTypeDisplayLabel(at.id, at.label, t)}</span>
             {at.field_key && (
-              <span title={`Auto-update: ${at.field_key}`} style={{ fontSize: 11, color: 'var(--ac)', opacity: 0.8 }}>⚡</span>
+              <span title={t('prod_tab_auto_update_tt').replace('{field}', at.field_key)} style={{ fontSize: 11, color: 'var(--ac)', opacity: 0.8 }}>⚡</span>
             )}
             <button
               onClick={() => deleteType(at.id)}
-              title="Supprimer la colonne"
+              title={t('prod_tab_delete_column_title')}
               style={{ fontSize: 14, color: 'var(--tx3)', background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px', marginLeft: 8 }}
               onMouseEnter={(e) => (e.currentTarget.style.color = '#c06060')}
               onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--tx3)')}
@@ -638,34 +708,40 @@ function ActionTypeManager({ actionTypes, onRefresh, onClose }: {
 
       <div style={{ borderTop: '1px solid var(--bg1)', paddingTop: 12, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <div style={{ fontSize: 11, color: 'var(--tx3)', textTransform: 'uppercase' }}>Libellé</div>
+          <div style={{ fontSize: 11, color: 'var(--tx3)', textTransform: 'uppercase' }}>{t('label')}</div>
           <input
             value={newLabel}
             onChange={(e) => setNewLabel(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && addType()}
-            placeholder="Nouveau type…"
+            placeholder={t('prod_tab_new_type_ph')}
             style={{ padding: '8px 12px', fontSize: 13, background: 'var(--bg1)', border: '1px solid var(--bd)', color: 'var(--tx)', width: 180 }}
           />
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <div style={{ fontSize: 11, color: 'var(--tx3)', textTransform: 'uppercase' }}>Couleur</div>
+          <div style={{ fontSize: 11, color: 'var(--tx3)', textTransform: 'uppercase' }}>{t('prod_tab_color')}</div>
           <input type="color" value={newColor} onChange={(e) => setNewColor(e.target.value)}
             style={{ width: 32, height: 32, border: '1px solid var(--bd)', cursor: 'pointer', background: 'none', padding: 0 }} />
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <div style={{ fontSize: 11, color: 'var(--tx3)', textTransform: 'uppercase' }}>Automation (Auto-cochage)</div>
+          <div style={{ fontSize: 11, color: 'var(--tx3)', textTransform: 'uppercase' }}>{t('prod_tab_automation')}</div>
           <select
             value={newFieldKey}
             onChange={(e) => setNewFieldKey(e.target.value)}
             style={{ padding: '8px 12px', fontSize: 13, background: 'var(--bg1)', border: '1px solid var(--bd)', color: 'var(--tx)', outline: 'none' }}
           >
-            {FIELD_OPTIONS.map((f) => (
-              <option key={f.value} value={f.value}>
-                {f.label === '— aucun' ? 'Aucune automation' : `Fait ➜ ${f.label}`}
-              </option>
-            ))}
+            {FIELD_OPTIONS.map((f) => {
+              const label =
+                f.labelKey === null
+                  ? t('prod_tab_automation_none')
+                  : t('prod_tab_automation_done_fmt').replace('{field}', t(f.labelKey))
+              return (
+                <option key={f.value || '__none'} value={f.value}>
+                  {label}
+                </option>
+              )
+            })}
           </select>
         </div>
 
@@ -676,12 +752,8 @@ function ActionTypeManager({ actionTypes, onRefresh, onClose }: {
             background: 'var(--ac)', color: 'var(--bg0)', border: 'none',
             marginTop: 18, alignSelf: 'flex-start'
           }}
-        >{saving ? 'Enregistrement…' : '+ Ajouter la colonne'}</button>
+        >{saving ? t('prod_tab_saving_btn') : t('prod_tab_add_column_btn')}</button>
       </div>
     </div>
   )
 }
-
-
-
-function cap(s: string) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : '' }

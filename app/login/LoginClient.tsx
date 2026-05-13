@@ -44,7 +44,7 @@ export function LoginClient() {
     setLoading(true)
     setError(null)
     const supabase = createClient()
-    const next = searchParams.get('next') || '/atelier'
+    const next = searchParams.get('next') || '/hub'
     const { error: err } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}` },
@@ -58,7 +58,7 @@ export function LoginClient() {
     setLoading(true)
     setError(null)
     const supabase = createClient()
-    const next = searchParams.get('next') || '/atelier'
+    const next = searchParams.get('next') || '/hub'
     const { error: err } = await supabase.auth.signInWithOtp({
       email,
       options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}` },

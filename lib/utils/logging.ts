@@ -24,8 +24,7 @@ export async function logSystemEvent(entry: LogEntry) {
     return
   }
 
-  // `action` is the NOT-NULL human-readable label used by SystemTab. `event_type` is the
-  // machine category. Compose a short action string so logs are both queryable and readable.
+  // `action` is a short human-readable label; `event_type` is the machine category (audit-only system_log).
   const action = entry.tableName && entry.rowId != null
     ? `${entry.eventType} ${entry.tableName}#${entry.rowId}`
     : entry.eventType
@@ -33,7 +32,6 @@ export async function logSystemEvent(entry: LogEntry) {
   const { error } = await supabase.from('system_log').insert({
     user_id: user.id,
     action,
-    type: 'event',
     event_type: entry.eventType,
     table_name: entry.tableName,
     row_id: entry.rowId != null ? String(entry.rowId) : null,

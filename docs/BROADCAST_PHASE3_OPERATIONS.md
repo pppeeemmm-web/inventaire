@@ -1,4 +1,6 @@
-# Broadcast — production checklist and middleware (Make / n8n)
+# Broadcast — production checklist and middleware (**Make.com**)
+
+*n8n and other runners: repeat the same HTTP steps in §3; the outside-chain UI guide is Make-only:* [BROADCAST_OUTSIDE_CHAIN.md](./BROADCAST_OUTSIDE_CHAIN.md).
 
 Canonical feature summary: [BROADCAST_PHASE2_COMPLETE.md](./BROADCAST_PHASE2_COMPLETE.md).
 
@@ -30,15 +32,17 @@ Expect: `broadcast_caption_seed` present; all five columns on `oeuvre_broadcasts
 ## 2. Vercel and secrets
 
 - Set **`INVENTORY_BROADCAST_SECRET`** on the Vercel project (Production and Preview if previews should call the API).
-- Use a long random value; store the same value in Make/n8n as the Bearer token.
-- **Rotation:** generate a new secret in Vercel, update Make scenarios, deploy, then remove the old value from any stale env copies. Middleware calls fail closed with `401` if the secret mismatches.
+- Use a long random value; store the same value in **Make** (Tools → variables or scenario) as the Bearer token.
+- **Rotation:** generate a new secret in Vercel, update **Make** scenarios/variables, deploy, then remove the old value from any stale env copies. Middleware calls fail closed with `401` if the secret mismatches.
 
 Auth header options (see [lib/inventory-broadcast-secret.ts](../lib/inventory-broadcast-secret.ts)):
 
 - `Authorization: Bearer <secret>` (case-insensitive `Bearer`), or
 - `x-inventory-broadcast-secret: <secret>` (if the client strips `Authorization`).
 
-## 3. Make.com / n8n scenario (recommended flow)
+## 3. Make.com scenario (HTTP contract)
+
+**Build the full chain in Make:** [BROADCAST_OUTSIDE_CHAIN.md](./BROADCAST_OUTSIDE_CHAIN.md) (modules, Buffer, Slack, `confirm` loop).
 
 Base URL: `https://<your-deployment-host>` (no trailing slash).
 

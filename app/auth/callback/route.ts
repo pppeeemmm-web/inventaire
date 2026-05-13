@@ -2,13 +2,13 @@
 // Cookies MUST be attached to the same NextResponse as the redirect, otherwise
 // the session never reaches the browser and protected routes loop back to /login.
 //
-// Flow: signInWithOAuth / signInWithOtp → … → /auth/callback?code=xxx&next=/atelier
+// Flow: signInWithOAuth / signInWithOtp → … → /auth/callback?code=xxx&next=/hub
 
 import { NextResponse, type NextRequest } from 'next/server'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 
 function safeNext(param: string | null): string {
-  const fallback = '/atelier'
+  const fallback = '/hub'
   if (!param || !param.startsWith('/') || param.startsWith('//')) return fallback
   return param
 }

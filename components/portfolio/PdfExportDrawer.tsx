@@ -152,7 +152,7 @@ export default function PdfExportDrawer({ open, onClose }: Props) {
         width: 'clamp(320px, 36vw, 480px)',
         background: '#faf9f7', borderLeft: '1px solid rgba(0,0,0,0.08)',
         zIndex: 901, display: 'flex', flexDirection: 'column',
-        fontFamily: 'ui-monospace, monospace',
+        fontFamily: 'var(--font-ui)',
         boxShadow: '-8px 0 40px rgba(0,0,0,0.12)',
       }}>
 

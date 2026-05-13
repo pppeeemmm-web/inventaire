@@ -8,13 +8,21 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import Image from 'next/image'
 import type { Oeuvre } from '@/lib/types/database'
+import { thumbUrl } from '@/lib/data'
 import {
   fetchLayouts, createLayout, saveLayout, uploadFloorplan, deleteLayout, getFloorplanSignedUrl,
   type ExhibitionLayout, type Wall, type Placement,
 } from '@/app/atelier/exhibitions/actions'
+import {
+  disconnectCalendar,
+  getCalendarConnectStatus,
+  pushExhibitionToCalendars,
+  startCalendarOAuth,
+} from '@/app/atelier/calendar/actions'
 import { createClient } from '@/lib/supabase/client'
 import { pipelineTypeLabel, type ProcessType } from './PipelineTab'
 import { useI18n } from '@/lib/i18n/context'
+import type { DictKey } from '@/lib/i18n/dictionary'
 import { ConstellationCanvas, type NodeMap, type Pt } from './ConstellationCanvas'
 import { WorkThumb } from './WorkThumb'
 import { ExhibitionsTabSkeleton } from './ExhibitionsTabSkeleton'
@@ -277,7 +285,7 @@ function DefaultRoomSVG({ walls }: { walls: Wall[] }) {
   return (
     <svg width="100%" height="100%" viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid meet" style={{ background: '#0a0a0a' }}>
       <rect x="50" y="50" width="900" height="500" fill="none" stroke="#222" strokeWidth="2" />
-      <text x="500" y="310" textAnchor="middle" fill="#333" fontSize="18" fontFamily="monospace">CANVAS GLOBAL</text>
+      <text x="500" y="310" textAnchor="middle" fill="#333" fontSize="18" fontFamily="Sofia Sans, ui-sans-serif, sans-serif">CANVAS GLOBAL</text>
       {walls.map((w, i) => (
         <rect key={w.id} x={100 + i * 120} y={150} width="100" height="300" fill={w.color + '22'} stroke={w.color} strokeWidth="1" />
       ))}
@@ -628,6 +636,135 @@ function FloorPlanTool({ exhibitionId, oeuvres, themes, tM }: {
   )
 }
 
+// ── Calendar export (Google + Microsoft) ─────────────────────────────────────
+
+function CalendarExportStrip({ exhibition }: { exhibition: Exhibition }) {
+  const { t, lang } = useI18n()
+  const [google, setGoogle] = useState(false)
+  const [microsoft, setMicrosoft] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    const r = await getCalendarConnectStatus()
+    if (!r.ok) return
+    setGoogle(r.google)
+    setMicrosoft(r.microsoft)
+  }, [])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  const hasExportableDates = !!(
+    exhibition.date_debut ||
+    exhibition.date_fin ||
+    exhibition.steps.some((s) => s.date_echeance)
+  )
+
+  async function connect(provider: 'google' | 'microsoft') {
+    setMsg(null)
+    const r = await startCalendarOAuth(provider)
+    if (r.ok) {
+      window.location.href = r.url
+      return
+    }
+    setMsg(t(r.errKey as DictKey))
+  }
+
+  async function disconnect(provider: 'google' | 'microsoft') {
+    setMsg(null)
+    const r = await disconnectCalendar(provider)
+    if (!r.ok) {
+      setMsg(t(r.errKey as DictKey))
+      return
+    }
+    await load()
+  }
+
+  async function push() {
+    setMsg(null)
+    if (!hasExportableDates) {
+      setMsg(t('calendar_sync_nothing'))
+      return
+    }
+    if (!google && !microsoft) {
+      setMsg(t('calendar_err_no_accounts'))
+      return
+    }
+    setBusy(true)
+    const r = await pushExhibitionToCalendars(exhibition.id, lang)
+    setBusy(false)
+    if (!r.ok) {
+      const base = t(r.errKey as DictKey)
+      setMsg(r.detail ? `${base} (${r.detail})` : base)
+      return
+    }
+    if (r.pushed === 0) setMsg(t('calendar_sync_nothing'))
+    else setMsg(t('calendar_sync_done').replace('{n}', String(r.pushed)))
+  }
+
+  return (
+    <div
+      style={{
+        marginBottom: 24,
+        padding: 14,
+        border: '1px solid var(--bd)',
+        borderRadius: 6,
+        background: 'var(--bg1)',
+      }}
+    >
+      <div
+        style={{
+          fontSize: 11,
+          letterSpacing: 1,
+          textTransform: 'uppercase',
+          color: 'var(--tx3)',
+          marginBottom: 10,
+        }}
+      >
+        {t('calendar_export_heading')}
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+        {!google && (
+          <button type="button" className="btn sm" style={{ minHeight: 44 }} onClick={() => void connect('google')}>
+            {t('calendar_connect_google_btn')}
+          </button>
+        )}
+        {google && (
+          <button type="button" className="btn ghost sm" style={{ minHeight: 44 }} onClick={() => void disconnect('google')}>
+            {t('calendar_disconnect_google_btn')}
+          </button>
+        )}
+        {!microsoft && (
+          <button type="button" className="btn sm" style={{ minHeight: 44 }} onClick={() => void connect('microsoft')}>
+            {t('calendar_connect_microsoft_btn')}
+          </button>
+        )}
+        {microsoft && (
+          <button type="button" className="btn ghost sm" style={{ minHeight: 44 }} onClick={() => void disconnect('microsoft')}>
+            {t('calendar_disconnect_microsoft_btn')}
+          </button>
+        )}
+      </div>
+      <button
+        type="button"
+        className="btn primary sm"
+        style={{ minHeight: 44 }}
+        disabled={busy || (!google && !microsoft)}
+        onClick={() => void push()}
+      >
+        {busy ? t('calendar_sync_busy') : t('calendar_push_btn')}
+      </button>
+      {msg && (
+        <div style={{ marginTop: 10, fontSize: 12, color: 'var(--tx2)', whiteSpace: 'pre-wrap' }} role="status">
+          {msg}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── ExhibitionDetail ──────────────────────────────────────────────────────────
 
 function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, selection, setSelection, onDelete, onUpdate }: {
@@ -641,6 +778,7 @@ function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, selection
   onDelete:   () => void
   onUpdate:   (p: Partial<Exhibition>) => void
 }) {
+  const { t } = useI18n()
   const [activeTab, setActiveTab] = useState<'overview' | 'works' | 'floorplan' | 'calendar'>('overview')
 
   const contact = contacts.find((c) => c.ContactID === exhibition.contact_id)
@@ -660,11 +798,11 @@ function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, selection
   }, [oeuvres, exhibition.contact_id])
 
   const TABS = [
-    { id: 'overview',  label: 'Aperçu'       },
-    { id: 'calendar',  label: 'Calendrier'   },
-    { id: 'works',     label: `Œuvres${linkedWorks.length ? ` (${linkedWorks.length})` : ''}` },
-    { id: 'floorplan', label: 'Mise en espace'},
-  ] as const
+    { id: 'overview' as const, label: t('exhibition_tab_overview') },
+    { id: 'calendar' as const, label: t('exhibition_tab_calendar') },
+    { id: 'works' as const, label: t('exhibition_tab_works_label').replace('{n}', String(linkedWorks.length)) },
+    { id: 'floorplan' as const, label: t('exhibition_tab_floorplan') },
+  ]
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
@@ -714,14 +852,14 @@ function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, selection
 
         {/* Sub-tabs */}
         <div style={{ display: 'flex', gap: 0 }}>
-          {TABS.map((t) => (
-            <button key={t.id} onClick={() => setActiveTab(t.id as typeof activeTab)} style={{
+          {TABS.map((tab) => (
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
               padding: '8px 18px', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase',
               background: 'transparent', border: 'none',
-              borderBottom: activeTab === t.id ? '2px solid var(--ac)' : '2px solid transparent',
-              color: activeTab === t.id ? 'var(--tx)' : 'var(--tx3)', cursor: 'pointer',
+              borderBottom: activeTab === tab.id ? '2px solid var(--ac)' : '2px solid transparent',
+              color: activeTab === tab.id ? 'var(--tx)' : 'var(--tx3)', cursor: 'pointer',
             }}>
-              {t.label}
+              {tab.label}
             </button>
           ))}
         </div>
@@ -853,6 +991,7 @@ function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, selection
 
         {activeTab === 'calendar' && (
           <div style={{ padding: 24 }}>
+            <CalendarExportStrip exhibition={exhibition} />
             <div style={{ position: 'relative', borderLeft: '1px solid var(--bd)', paddingLeft: 24, display: 'flex', flexDirection: 'column', gap: 24 }}>
               {/* Start Date */}
               {exhibition.date_debut && (
@@ -963,7 +1102,8 @@ export function ExhibitionsTab({ oeuvres, contacts, themes, tM, selection, setSe
   selection: Set<number>; 
   setSelection: any
 }) {
-  const { lang } = useI18n()
+  const { lang, t } = useI18n()
+  const [oauthBanner, setOauthBanner] = useState<string | null>(null)
   const [exhibitions, setExhibitions] = useState<Exhibition[]>([])
   const [selected,    setSelected]    = useState<Exhibition | null>(null)
   const [loading,     setLoading]     = useState(true)
@@ -982,6 +1122,23 @@ export function ExhibitionsTab({ oeuvres, contacts, themes, tM, selection, setSe
     const id = params.get('exhibition')
     if (id) setDeepLinkId(id)
   }, [])
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const c = params.get('calendar')
+    if (!c) return
+    if (c === 'google_ok') setOauthBanner(t('calendar_oauth_ok_google'))
+    else if (c === 'microsoft_ok') setOauthBanner(t('calendar_oauth_ok_microsoft'))
+    else if (c === 'google_err' || c === 'microsoft_err') {
+      const d = params.get('calendar_detail')
+      setOauthBanner(d ? `${t('calendar_oauth_err')} (${d})` : t('calendar_oauth_err'))
+    }
+    const u = new URL(window.location.href)
+    u.searchParams.delete('calendar')
+    u.searchParams.delete('calendar_detail')
+    const q = u.searchParams.toString()
+    window.history.replaceState({}, '', `${u.pathname}${q ? `?${q}` : ''}${u.hash}`)
+  }, [t])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -1119,7 +1276,27 @@ export function ExhibitionsTab({ oeuvres, contacts, themes, tM, selection, setSe
   if (showInitialSkeleton) return <ExhibitionsTabSkeleton />
 
   return (
-    <div style={{ display: 'flex', height: '100%', minHeight: 0 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+      {oauthBanner && (
+        <div
+          style={{
+            padding: '8px 12px',
+            background: 'var(--bg2)',
+            borderBottom: '1px solid var(--bd)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: 8,
+            flexShrink: 0,
+          }}
+        >
+          <span style={{ fontSize: 12 }}>{oauthBanner}</span>
+          <button type="button" className="btn ghost sm" onClick={() => setOauthBanner(null)}>
+            {t('close')}
+          </button>
+        </div>
+      )}
+      <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
 
       {/* ── Sidebar ───────────────────────────────────────────── */}
       <div style={{ width: 240, flexShrink: 0, borderRight: '1px solid var(--bd)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -1213,6 +1390,7 @@ export function ExhibitionsTab({ oeuvres, contacts, themes, tM, selection, setSe
           Sélectionnez ou créez une exposition.
         </div>
       )}
+    </div>
     </div>
   )
 }

@@ -2,6 +2,23 @@
 import { createClient } from '@/lib/supabase/server'
 import { HubHomeClient } from '@/components/hub/HubHomeClient'
 
+function mapHubLogRow(l: Record<string, unknown>, feedSource: 'audit' | 'studio') {
+  return {
+    id: l.id as number,
+    action: l.action as string,
+    details: l.details as string | null,
+    type: l.type as string | null,
+    status: l.status as string | null,
+    priority: l.priority as string | null,
+    event_type: (l.event_type ?? null) as string | null,
+    table_name: (l.table_name ?? null) as string | null,
+    row_id: (l.row_id ?? null) as string | null,
+    metadata: l.metadata as unknown,
+    created_at: l.created_at as string,
+    feedSource,
+  }
+}
+
 export default async function HubPage() {
   const supabase = await createClient()
 
@@ -16,7 +33,8 @@ export default async function HubPage() {
     { count: stockAlerts },
     { data: recentProcess },
     { data: burningIdeas },
-    { data: systemLogs },
+    { data: auditFeedRaw },
+    { data: taskFeedRaw },
   ] = await Promise.all([
     supabase.from('Oeuvres').select('*', { count: 'exact', head: true }).is('deleted_at', null),
     supabase
@@ -55,11 +73,19 @@ export default async function HubPage() {
       .from('system_log')
       .select('id, created_at, action, details, type, status, priority, event_type, table_name, row_id, metadata')
       .not('action', 'is', null)
-      // Exclude sensitive view-style breadcrumbs (historical rows too).
-      .or('event_type.is.null,event_type.neq.ATELIER_VIEW')
+      .not('event_type', 'is', null)
+      .neq('event_type', 'ATELIER_VIEW')
       .order('created_at', { ascending: false })
-      .limit(8),
+      .limit(12),
+    supabase
+      .from('studio_task')
+      .select('id, created_at, action, details, type, status, priority')
+      .order('created_at', { ascending: false })
+      .limit(12),
   ])
+
+  const auditFeed = (auditFeedRaw ?? []).map((l) => mapHubLogRow(l as Record<string, unknown>, 'audit'))
+  const taskFeed = (taskFeedRaw ?? []).map((l) => mapHubLogRow(l as Record<string, unknown>, 'studio'))
 
   return (
     <HubHomeClient
@@ -70,31 +96,20 @@ export default async function HubPage() {
         publicWorks: publicWorks ?? 0,
       }}
       recentImages={recentImages ?? []}
-      recentProcess={(recentProcess ?? []).map((p: any) => ({
+      recentProcess={(recentProcess ?? []).map((p: { id: number; nom: string; statut: string; created_at: string }) => ({
         id: p.id,
         label: p.nom,
         status: p.statut,
         created_at: p.created_at
       }))}
-      burningIdeas={(burningIdeas ?? []).map((i: any) => ({
+      burningIdeas={(burningIdeas ?? []).map((i: { id: number; titre: string; energie: number | null; medium: string | null }) => ({
         id: i.id,
         title: i.titre,
         energy: i.energie,
         medium: i.medium
       }))}
-      systemLogs={(systemLogs ?? []).map((l: any) => ({
-        id:         l.id,
-        action:     l.action as string,
-        details:    l.details as string | null,
-        type:       l.type   as string | null,
-        status:     l.status as string | null,
-        priority:   l.priority as string | null,
-        event_type: l.event_type as string | null,
-        table_name: l.table_name as string | null,
-        row_id:     l.row_id as string | null,
-        metadata:   l.metadata as any,
-        created_at: l.created_at as string,
-      }))}
+      auditFeed={auditFeed}
+      taskFeed={taskFeed}
     />
   )
 }

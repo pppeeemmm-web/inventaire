@@ -57,7 +57,8 @@ export async function middleware(request: NextRequest) {
       p === '/atelier' || p.startsWith('/atelier/') ||
       p === '/hub' || p.startsWith('/hub/') ||
       p === '/galerie' || p.startsWith('/galerie/') ||
-      p === '/collection' || p.startsWith('/collection/')
+      p === '/collection' || p.startsWith('/collection/') ||
+      p === '/maps' || p.startsWith('/maps/')
 
     const isAuthRoute =
       p === '/login' || p.startsWith('/login/') ||

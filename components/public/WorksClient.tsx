@@ -34,7 +34,7 @@ function FlameText({ text }: { text: string }) {
       width: '100%', maxWidth: '100%', fontSize: 'clamp(9px, 1.1vw, 13px)',
       lineHeight: 1.9, letterSpacing: '0.18em', textTransform: 'uppercase',
       color: '#8a8680', textAlign: 'justify', wordSpacing: '0.3em',
-      fontFamily: 'JetBrains Mono, monospace', margin: 0,
+      fontFamily: 'var(--font-ui)', margin: 0,
     }}>
       {formatted}
     </p>
@@ -490,7 +490,7 @@ export default function WorksClient({
       <style>{`
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         html, body {
-          background: #e8e6e1; font-family: 'JetBrains Mono', monospace; color: #3a3834;
+          background: #e8e6e1; font-family: var(--font-ui); color: #3a3834;
           height: 100vh; overflow: hidden; -webkit-font-smoothing: antialiased;
         }
         @keyframes w-fadein { from { opacity: 0; } to { opacity: 1; } }

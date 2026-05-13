@@ -620,11 +620,11 @@ function buildHtml(
 <title>Export — Pierre Emmanuel Moulin</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Sofia+Sans:ital,wght@0,300..700;1,300..700&display=swap" rel="stylesheet">
 <style>
   ${paperCss}
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Inter', sans-serif;font-size:11px;color:#1a1a1a;background:#fff;padding:40px 80px 80px 80px}
+  body{font-family:'Sofia Sans',ui-sans-serif,system-ui,sans-serif;font-size:11px;color:#1a1a1a;background:#fff;padding:40px 80px 80px 80px}
   h1.header{font-size:8px;letter-spacing:4px;text-transform:uppercase;color:#ccc;margin-bottom:12px;text-align:center;font-weight:500}
   
   .header-group{display:flex;flex-direction:column;align-items:center;margin-bottom:60px;text-align:center}
@@ -665,13 +665,13 @@ function buildHtml(
   .grid .card .img-wrap.native img{object-fit:contain}
   
   .grid .card .meta{padding:0;text-align:left}
-  .grid .card .meta .ref-cap{font-size:6px;color:#ccc;font-family:ui-monospace, monospace;letter-spacing:0.5px;margin-bottom:2px}
+  .grid .card .meta .ref-cap{font-size:6px;color:#ccc;font-family:'Sofia Sans',ui-sans-serif,system-ui,sans-serif;letter-spacing:0.5px;margin-bottom:2px}
   .grid .card .meta .title-cap{font-family:'Instrument Serif', serif;font-size:11px;font-weight:400;line-height:1.1;color:#111;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
   
   /* Index grid — 3 columns, compact */
   .idx-grid{display:grid;grid-template-columns:repeat(3,1fr);column-gap:24px;row-gap:4px}
   .idx-item{display:flex;gap:8px;padding:4px 0;border-bottom:1px solid #f5f5f5;overflow:hidden;min-width:0}
-  .idx-ref{font-family:ui-monospace, monospace;font-size:8px;color:#ccc;flex-shrink:0;width:42px;padding-top:1px}
+  .idx-ref{font-family:'Sofia Sans',ui-sans-serif,system-ui,sans-serif;font-size:8px;color:#ccc;flex-shrink:0;width:42px;padding-top:1px}
   .idx-title{font-size:10px;color:#555;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   
   /* List */
@@ -682,8 +682,8 @@ function buildHtml(
   .list tr:hover td{background:#fcfcfc}
   
   /* Non-public badge */
-  .np-badge{display:inline-block;background:rgba(200,140,40,0.12);border:1px solid rgba(200,140,40,0.5);color:#c88a20;font-size:7px;padding:1px 5px;border-radius:2px;font-family:ui-monospace,monospace;letter-spacing:0.5px;vertical-align:middle;margin-left:6px}
-  .np-badge-block{display:block;background:rgba(200,140,40,0.10);border:1px solid rgba(200,140,40,0.4);color:#c88a20;font-size:7px;padding:2px 6px;border-radius:2px;font-family:ui-monospace,monospace;letter-spacing:0.5px;margin-bottom:4px}
+  .np-badge{display:inline-block;background:rgba(200,140,40,0.12);border:1px solid rgba(200,140,40,0.5);color:#c88a20;font-size:7px;padding:1px 5px;border-radius:2px;font-family:'Sofia Sans',ui-sans-serif,system-ui,sans-serif;letter-spacing:0.5px;vertical-align:middle;margin-left:6px}
+  .np-badge-block{display:block;background:rgba(200,140,40,0.10);border:1px solid rgba(200,140,40,0.4);color:#c88a20;font-size:7px;padding:2px 6px;border-radius:2px;font-family:'Sofia Sans',ui-sans-serif,system-ui,sans-serif;letter-spacing:0.5px;margin-bottom:4px}
 
   /* Print */
   @media print{

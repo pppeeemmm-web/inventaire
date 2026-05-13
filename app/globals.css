@@ -2,8 +2,12 @@
    Ported from source/theme.css. Extend, don't override.
    ------------------------------------------------------------------ */
 
-/* @import must precede all other rules (PostCSS requirement) */
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500&display=swap');
+/* @import must precede all other rules (PostCSS requirement)
+   UI: Sofia Sans (variable, GF — close to Sofia Pro). Optional licensed Sofia Pro:
+   @font-face { font-family:'Sofia Pro Variable'; font-weight:100 900; font-style:normal;
+     font-display:swap; src:url('/fonts/SofiaProVariable.woff2') format('woff2'); }
+   then prepend 'Sofia Pro Variable' to --font-ui. */
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Sofia+Sans:ital,wght@0,300..700;1,300..700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -79,11 +83,17 @@ html[data-theme='standard'] body {
   font-size: 16px;
 }
 
+html[data-theme='standard'] .t-mono-xs { font-size: 11px; }
 html[data-theme='standard'] .t-mono-sm { font-size: 13px; }
 html[data-theme='standard'] .t-mono    { font-size: 15px; }
+html[data-theme='standard'] .t-mono-md { font-size: 17px; }
 
 :root {
   color-scheme: dark;
+  --font-ui: 'Sofia Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-serif: 'Instrument Serif', 'Didot', Georgia, serif;
+  --font-mono: var(--font-ui);
+  --mono: var(--font-ui);
 }
 
 *, *::before, *::after { 
@@ -97,14 +107,14 @@ html, body {
   height: 100%;
   background: var(--bg0);
   color: var(--tx);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: var(--font-ui);
   font-size: 15px;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
 }
 
 .serif {
-  font-family: 'Instrument Serif', 'Didot', Georgia, serif;
+  font-family: var(--font-serif);
   font-weight: 400;
   letter-spacing: -0.01em;
 }
@@ -121,8 +131,10 @@ input, textarea, select { font: inherit; color: inherit; background: transparent
 /* ── Type scale ───────────────────────────────────────────── */
 .t-eyebrow { font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: var(--tx3); font-weight: 600; }
 .t-label   { font-size: 13px; letter-spacing: 0.5px; text-transform: uppercase; color: var(--tx3); font-weight: 600; }
-.t-mono-sm { font-size: 12px;   color: var(--tx2); font-family: 'JetBrains Mono', monospace; }
-.t-mono    { font-size: 14px; color: var(--tx2); font-family: 'JetBrains Mono', monospace; }
+.t-mono-xs { font-size: 10px; color: var(--tx2); font-family: inherit; font-variant-numeric: tabular-nums; }
+.t-mono-sm { font-size: 12px; color: var(--tx2); font-family: inherit; font-variant-numeric: tabular-nums; }
+.t-mono    { font-size: 14px; color: var(--tx2); font-family: inherit; font-variant-numeric: tabular-nums; }
+.t-mono-md { font-size: 16px; color: var(--tx2); font-family: inherit; font-variant-numeric: tabular-nums; }
 .t-num     { font-variant-numeric: tabular-nums; }
 
 .s-display { font-size: 72px; line-height: 0.95; letter-spacing: -0.03em; }
@@ -368,7 +380,7 @@ input, textarea, select { font: inherit; color: inherit; background: transparent
 .br { border-right:  1px solid var(--bd); }
 .bl { border-left:   1px solid var(--bd); }
 .panel { background: var(--bg1); border: 1px solid var(--bd); }
-.mono  { font-family: 'JetBrains Mono', 'SF Mono', ui-monospace, monospace; }
+.mono  { font-family: inherit; font-variant-numeric: tabular-nums; }
 
 /* Atelier sidebar — stable CSS (avoid styled-jsx global hydration edge cases) */
 .pem-sidebar-tab {

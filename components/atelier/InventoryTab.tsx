@@ -19,6 +19,8 @@ import type { Oeuvre } from '@/lib/types/database'
 import { WorkDrawer, type WorkDrawerGuardHandle } from './WorkDrawer'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { batchEdit } from '@/app/atelier/selection/actions'
+import type { Agg, Dim } from '@/lib/pivot'
+import { PivotPanel } from './PivotPanel'
 
 // ── Types ───────────────────────────────────────────────────────────
 
@@ -179,6 +181,11 @@ function parseIdRanges(input: string): Set<number> {
   return ids
 }
 
+/** Whole query is ID-list syntax only (digits + separators + #); must contain a digit. */
+function looksLikeIdOnlyQuery(s: string): boolean {
+  return /[\d]/.test(s) && /^[\d\s,\n\-–#]+$/.test(s)
+}
+
 interface SharedProps {
   oeuvres:        Oeuvre[]
   tM:             Record<number, string>
@@ -192,7 +199,7 @@ interface SharedProps {
   onOpen:         (o: Oeuvre) => void
 }
 
-type View = 'list' | 'grid' | 'graph'
+type View = 'list' | 'grid' | 'graph' | 'pivot'
 
 const INV_LIST_ROW_H = 44
 const INV_TABLE_COLS = 14
@@ -413,10 +420,13 @@ export function InventoryTab({
     const trimmedQ = q.trim()
     const sq = trimmedQ.toLowerCase()
     
-    // Support for "#ID, ID-ID" filtering
+    // ID list / ranges: leading #, or bare "1-10, 20" (digits + separators only)
     let idSet: Set<number> | null = null
     if (trimmedQ.startsWith('#') && trimmedQ.length > 1) {
       idSet = parseIdRanges(trimmedQ)
+    } else if (looksLikeIdOnlyQuery(trimmedQ)) {
+      const parsed = parseIdRanges(trimmedQ)
+      if (parsed.size > 0) idSet = parsed
     }
 
     return oeuvres.filter((o) => {
@@ -509,6 +519,77 @@ export function InventoryTab({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [oeuvres, q, tech, support, status, filterTheme, filterGroup, criteria, oeuvreThemeMap, oeuvreGroupMap, thM, groupNameMap, tM, sM, statusLabelMap, allFields, sortKey, sortDir, cM, locMap])
 
+  const invPivotDims: Dim<Oeuvre>[] = useMemo(
+    () => [
+      {
+        id: 'technique',
+        label: t('technique'),
+        get: (o) => (o.Technique != null ? (tM[o.Technique] ?? String(o.Technique)) : '—'),
+      },
+      {
+        id: 'year',
+        label: t('year'),
+        get: (o) => (yearOf(o.Année) != null ? String(yearOf(o.Année)) : '—'),
+      },
+      {
+        id: 'status',
+        label: t('status'),
+        get: (o) => statusLabelMap[o.statusId ?? 0] ?? String(statusOf(o, statusLabelMap)),
+      },
+      {
+        id: 'theme',
+        label: t('theme'),
+        get: (o) =>
+          (oeuvreThemeMap.get(o.OeuvreID) ?? [])
+            .map((tid) => thM[tid] ?? '')
+            .filter(Boolean)
+            .join(', ') || '—',
+      },
+      {
+        id: 'workgroup',
+        label: t('workingGroup'),
+        get: (o) =>
+          (oeuvreGroupMap.get(o.OeuvreID) ?? [])
+            .map((gid) => groupNameMap[gid] ?? '')
+            .filter(Boolean)
+            .join(', ') || '—',
+      },
+      {
+        id: 'location',
+        label: t('localisation'),
+        get: (o) =>
+          (o as { LocalisationID?: number | null }).LocalisationID != null
+            ? (locMap[(o as { LocalisationID?: number | null }).LocalisationID!] ?? '—')
+            : '—',
+      },
+      {
+        id: 'anonymity',
+        label: t('confidentiality'),
+        get: (o) => (o.anonymity_level != null ? String(o.anonymity_level) : '—'),
+      },
+    ],
+    [t, tM, thM, groupNameMap, oeuvreThemeMap, oeuvreGroupMap, locMap, statusLabelMap],
+  )
+
+  const invPivotValues: Agg<Oeuvre>[] = useMemo(
+    () => [
+      { id: 'count', label: t('pivotCount'), kind: 'count' },
+      {
+        id: 'sumPrice',
+        label: `${t('pivotSum')} (${t('price')})`,
+        kind: 'sum',
+        get: (o) => Number((o as { PrixFinal?: number | null }).PrixFinal ?? o.Prix ?? 0),
+      },
+      {
+        id: 'avgPrice',
+        label: `${t('pivotAverage')} (${t('price')})`,
+        kind: 'avg',
+        get: (o) => Number((o as { PrixFinal?: number | null }).PrixFinal ?? o.Prix ?? 0),
+      },
+    ],
+    [t],
+  )
+
   const activeStages = useMemo(() => {
     const present = new Set(oeuvres.map(o => statusOf(o, statusLabelMap)))
     return [
@@ -575,7 +656,7 @@ export function InventoryTab({
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder={`${t('search')} (ex: #1-10, 20...)`}
+          placeholder={`${t('search')}${t('inventorySearchIdHint')}`}
           style={{
             flex: 1,
             minWidth: narrow ? 140 : 200,
@@ -602,17 +683,25 @@ export function InventoryTab({
         />
 
         {/* View toggle */}
-        <div style={{ display: 'flex', border: '1px solid var(--bd)' }}>
-          {([['list', '≡', t('listView')], ['grid', '▦', t('gridView')]] as const).map(([k, glyph, title]) => (
+        <div style={{ display: 'flex', border: '1px solid var(--bd)', flexWrap: 'wrap' }}>
+          {(
+            [
+              ['list', '≡', t('listView')],
+              ['grid', '▦', t('gridView')],
+              ['pivot', '⊞', t('pivotView')],
+            ] as const
+          ).map(([k, glyph, title], i, arr) => (
             <button
               key={k}
+              type="button"
               onClick={() => setView(k)}
               title={title}
               style={{
                 padding: '8px 14px', fontSize: 14,
+                minHeight: 44,
                 color: view === k ? 'var(--ac)' : 'var(--tx3)',
                 background: view === k ? 'var(--bg2)' : 'transparent',
-                borderRight: k === 'list' ? '1px solid var(--bd)' : 'none',
+                borderRight: i < arr.length - 1 ? '1px solid var(--bd)' : 'none',
               }}
             >{glyph}</button>
           ))}
@@ -847,6 +936,20 @@ export function InventoryTab({
             <div className="t-mono-sm" style={{ color: 'var(--tx3)', marginTop: 8 }}>
               {t('clickToSelect')} · shift pour ajouter · lasso pour tracer une région
             </div>
+          </div>
+        )}
+        {view === 'pivot' && (
+          <div style={{ flex: 1, overflow: 'auto', padding: narrow ? 10 : 20, minHeight: 0 }}>
+            <PivotPanel<Oeuvre>
+              rows={filtered}
+              availableDims={invPivotDims}
+              availableValues={invPivotValues}
+              defaultRowDimId="technique"
+              defaultColDimId=""
+              defaultValueIds={['count', 'sumPrice']}
+              title={t('pivot')}
+              exportFileName="inventory-pivot"
+            />
           </div>
         )}
       </div>
@@ -1149,8 +1252,6 @@ function InvList({
     else focusRowAt(cur <= 0 ? 0 : cur - 1)
   }
 
-  const router = useRouter()
-
   const cellDivider: React.CSSProperties = {
     borderRight: '1px solid var(--bd)',
   }
@@ -1166,6 +1267,23 @@ function InvList({
     textAlign: 'left',
     lineHeight: 1.2,
     background: 'var(--bg1)',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  }
+
+  const sortThRow: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 4,
+    minWidth: 0,
+    width: '100%',
+  }
+  const sortThLabel: React.CSSProperties = {
+    minWidth: 0,
+    flex: '1 1 auto',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   }
 
   return (
@@ -1178,7 +1296,8 @@ function InvList({
       style={{ flex: 1, minWidth: 0, overflow: 'auto', borderRight: '1px solid var(--bd)', outline: 'none' }}
     >
       <table style={{ 
-        width: '100%', 
+        width: '100%',
+        minWidth: 900,
         tableLayout: 'fixed', 
         borderCollapse: 'collapse', 
         borderSpacing: 0,
@@ -1205,22 +1324,44 @@ function InvList({
               </div>
             </th>
             <th style={{ width: 22, padding: '8px 2px', ...cellDivider, background: 'var(--bg1)' }} />
-            <th onClick={() => toggleSort('OeuvreID')} style={{ ...headerBase, width: 44, color: 'var(--tx3)', cursor: 'pointer' }}>ID <SortInd k="OeuvreID" current={sortKey} dir={sortDir} /></th>
+            <th onClick={() => toggleSort('OeuvreID')} style={{ ...headerBase, width: 44, color: 'var(--tx3)', cursor: 'pointer' }}>
+              <div style={sortThRow}>
+                <span style={sortThLabel}>ID</span>
+                <span style={{ flexShrink: 0 }}><SortInd k="OeuvreID" current={sortKey} dir={sortDir} /></span>
+              </div>
+            </th>
             <th style={{ width: 44, padding: '8px 2px', ...cellDivider, background: 'var(--bg1)' }} />
-            <th onClick={() => toggleSort('Titre')} style={{ ...headerBase, width: '18%', cursor: 'pointer' }}>{t('title')} <SortInd k="Titre" current={sortKey} dir={sortDir} /></th>
-            <th style={{ ...headerBase, width: '22%' }}>Médium</th>
-            <th style={{ ...headerBase, width: 70 }}>Dims</th>
+            <th onClick={() => toggleSort('Titre')} style={{ ...headerBase, width: '18%', cursor: 'pointer' }}>
+              <div style={sortThRow}>
+                <span style={sortThLabel}>{t('title')}</span>
+                <span style={{ flexShrink: 0 }}><SortInd k="Titre" current={sortKey} dir={sortDir} /></span>
+              </div>
+            </th>
+            <th style={{ ...headerBase, width: '22%' }} title={t('concept_field_medium')}>{t('concept_field_medium')}</th>
+            <th style={{ ...headerBase, width: 70 }} title={t('dimensions')}>{t('dimensions')}</th>
             <th onClick={() => toggleSort('Année')} style={{ ...headerBase, width: 48, cursor: 'pointer' }}>
-              Année <SortInd k="Année" current={sortKey} dir={sortDir} />
+              <div style={sortThRow}>
+                <span style={sortThLabel}>Année</span>
+                <span style={{ flexShrink: 0 }}><SortInd k="Année" current={sortKey} dir={sortDir} /></span>
+              </div>
             </th>
             <th onClick={() => toggleSort('Prix')} style={{ ...headerBase, width: 80, cursor: 'pointer' }}>
-              Prix <SortInd k="Prix" current={sortKey} dir={sortDir} />
+              <div style={sortThRow}>
+                <span style={sortThLabel}>Prix</span>
+                <span style={{ flexShrink: 0 }}><SortInd k="Prix" current={sortKey} dir={sortDir} /></span>
+              </div>
             </th>
             <th onClick={() => toggleSort('Contact')} style={{ ...headerBase, width: 100, cursor: 'pointer' }}>
-              Contact <SortInd k="Contact" current={sortKey} dir={sortDir} />
+              <div style={sortThRow}>
+                <span style={sortThLabel}>Contact</span>
+                <span style={{ flexShrink: 0 }}><SortInd k="Contact" current={sortKey} dir={sortDir} /></span>
+              </div>
             </th>
             <th onClick={() => toggleSort('Custodian')} style={{ ...headerBase, width: 110, cursor: 'pointer' }}>
-              Emplacement <SortInd k="Custodian" current={sortKey} dir={sortDir} />
+              <div style={sortThRow}>
+                <span style={sortThLabel}>Emplacement</span>
+                <span style={{ flexShrink: 0 }}><SortInd k="Custodian" current={sortKey} dir={sortDir} /></span>
+              </div>
             </th>
             <th
               colSpan={2}
@@ -1228,14 +1369,20 @@ function InvList({
               style={{ ...headerBase, width: 160, cursor: 'pointer' }}
               title="État commercial (disponible, production, réservé, vendu…)"
             >
-              État <SortInd k="Status" current={sortKey === 'Stage' ? 'Status' : sortKey} dir={sortDir} />
+              <div style={sortThRow}>
+                <span style={sortThLabel}>État</span>
+                <span style={{ flexShrink: 0 }}><SortInd k="Status" current={sortKey === 'Stage' ? 'Status' : sortKey} dir={sortDir} /></span>
+              </div>
             </th>
             <th
               onClick={() => toggleSort('Comm')}
               style={{ ...headerBase, width: 80, cursor: 'pointer', borderRight: 'none' }}
               title="Rappel si réservé (l’état détaillé est dans la colonne État)"
             >
-              Réserve <SortInd k="Comm" current={sortKey} dir={sortDir} />
+              <div style={sortThRow}>
+                <span style={sortThLabel}>Réserve</span>
+                <span style={{ flexShrink: 0 }}><SortInd k="Comm" current={sortKey} dir={sortDir} /></span>
+              </div>
             </th>
           </tr>
         </thead>
@@ -1285,7 +1432,7 @@ function InvList({
                     </div>
                   </td>
                   <td style={{ padding: '0 2px', ...cellDivider, verticalAlign: 'middle' }}>
-                    <button onClick={(e) => { e.stopPropagation(); router.push(`/atelier?work=${o.OeuvreID}`) }} style={{ color: 'var(--tx3)', fontSize: 12 }}>✎</button>
+                    <button onClick={(e) => { e.stopPropagation(); routerInv.push(`/atelier?work=${o.OeuvreID}`) }} style={{ color: 'var(--tx3)', fontSize: 12 }}>✎</button>
                   </td>
                   <td style={{ color: 'var(--tx3)', fontSize: 11, padding: '0 2px', whiteSpace: 'nowrap', ...cellDivider, verticalAlign: 'middle' }}>
                     {o.OeuvreID}

@@ -573,9 +573,11 @@ function DrawerContent({
     }
   }
 
-  // Sync on work change
-  useEffect(() => {
+  // Sync on work change — layout pass resets state before effects (draft autosave) run,
+  // and noteBaseline must match cleared notes or isDirty falsely trips during long-text load.
+  useLayoutEffect(() => {
     setLongTextReady(false)
+    setNoteBaseline({ c: '', h: '' })
     setTitre(o.Titre ?? '')
     setAnnee(o.Année ?? '')
     setTechniqueId(String(o.Technique ?? ''))
@@ -603,9 +605,14 @@ function DrawerContent({
     setLocalContacts(initialContacts)
     setCommentaires('')
     setHistorique('')
+  }, [o.OeuvreID, oeuvreThemeMap, oeuvreGroupMap, o, initialContacts])
+
+  useEffect(() => {
+    let cancelled = false
     void (async () => {
       try {
         const r = await loadOeuvreLongText(o.OeuvreID)
+        if (cancelled) return
         if (!('error' in r)) {
           const c = r.Commentaires ?? ''
           const h = r.Historique ?? ''
@@ -616,10 +623,13 @@ function DrawerContent({
           setNoteBaseline({ c: '', h: '' })
         }
       } finally {
-        setLongTextReady(true)
+        if (!cancelled) setLongTextReady(true)
       }
     })()
-  }, [o.OeuvreID, oeuvreThemeMap, oeuvreGroupMap, o, initialContacts])
+    return () => {
+      cancelled = true
+    }
+  }, [o.OeuvreID])
 
   useEffect(() => {
     if (ownStage !== 'loan' && ownStage !== 'consigned') {
@@ -1115,10 +1125,11 @@ function DrawerContent({
   useEffect(() => {
     const id = window.setTimeout(() => {
       try {
+        if (!longTextReady) return
         if (isDirty) {
           const payload: WorkFormDraftPayload = { ...draftSnapshot, savedAt: Date.now() }
           sessionStorage.setItem(draftKey, JSON.stringify(payload))
-        } else if (longTextReady) {
+        } else {
           sessionStorage.removeItem(draftKey)
         }
       } catch { /* quota */ }

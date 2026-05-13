@@ -6,11 +6,14 @@ import { useMemo, useState, useEffect, useCallback, useRef } from 'react'
 import { useI18n }      from '@/lib/i18n/context'
 import { statusOf, yearOf, thumbUrl, type StatusKey } from '@/lib/data'
 import type { Oeuvre }  from '@/lib/types/database'
+import type { Agg, Dim } from '@/lib/pivot'
 import { createSaleOrder, updateOrderStatut, deleteSaleOrder, fetchOrders, regenerateOrderPdf, type SaleOrderRow } from '@/app/atelier/sales/actions'
 import { getSignedUrl } from '@/app/atelier/vault/actions'
 import { stringifyError } from '@/lib/error'
 import { WorkThumb } from './WorkThumb'
 import { useUnsavedCloseGuard } from '@/hooks/useUnsavedCloseGuard'
+import { PivotPanel } from './PivotPanel'
+import { useMediaQuery } from '@/lib/useMediaQuery'
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -57,6 +60,7 @@ const pulseAnim = `
 
 export function SalesTab({ oeuvres, statusLabelMap, contacts, groups, cM, tM }: Props) {
   const { t, lang } = useI18n()
+  const narrow = useMediaQuery('(max-width: 767px)')
   const [orders,    setOrders]    = useState<SaleOrderRow[]>([])
   const [sortKey,   setSortKey]   = useState<string>('date')
   const [sortDir,   setSortDir]   = useState<'asc' | 'desc'>('desc')
@@ -123,6 +127,42 @@ export function SalesTab({ oeuvres, statusLabelMap, contacts, groups, cM, tM }: 
     [contacts]
   )
 
+  const salesPivotDims: Dim<Oeuvre>[] = useMemo(
+    () => [
+      {
+        id: 'year',
+        label: t('year'),
+        get: (o) =>
+          String(o.DateLivraison ? o.DateLivraison.slice(0, 4) : yearOf(o.Année) ?? '—'),
+      },
+      {
+        id: 'buyer',
+        label: t('buyer'),
+        get: (o) =>
+          o.AcheteurID != null ? (cM[o.AcheteurID] ?? `#${o.AcheteurID}`) : '—',
+      },
+      {
+        id: 'technique',
+        label: t('technique'),
+        get: (o) => (o.Technique != null ? (tM[o.Technique] ?? String(o.Technique)) : '—'),
+      },
+    ],
+    [t, cM, tM],
+  )
+
+  const salesPivotValues: Agg<Oeuvre>[] = useMemo(
+    () => [
+      { id: 'count', label: t('pivotCount'), kind: 'count' },
+      {
+        id: 'sumRev',
+        label: `${t('pivotSum')} (${t('revenue')})`,
+        kind: 'sum',
+        get: (o) => Number(o.PrixFinal ?? o.Prix ?? 0),
+      },
+    ],
+    [t],
+  )
+
   const sortedOrders = useMemo(() => {
     const list = [...orders]
     list.sort((a, b) => {
@@ -162,19 +202,20 @@ export function SalesTab({ oeuvres, statusLabelMap, contacts, groups, cM, tM }: 
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
         <div style={{
-          display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
-          gap: 0, marginBottom: 24, minWidth: 800,
+          display: 'grid',
+          gridTemplateColumns: narrow ? 'repeat(2, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))',
+          gap: 0, marginBottom: 24,
           borderTop: '1px solid var(--bd)', borderBottom: '1px solid var(--bd)',
         }}>
-          <KpiCard label={t('sold')}  value={String(soldWorks.length)}  detail="œuvres vendues" />
-          <KpiCard label={t('revenue')}    value={fmt(totalRevenue)}          detail="prix final" border />
-          <KpiCard label="Prix moyen"      value={fmt(avgPrice)}              detail="par vente" border />
-          <KpiCard label={t('consigned')} value={String(consignedCount)}     detail="en galerie" border />
+          <KpiCard label={t('sold')}  value={String(soldWorks.length)}  detail={t('salesSoldWorksDetail')} />
+          <KpiCard label={t('revenue')}    value={fmt(totalRevenue)}          detail={t('salesRevenueDetail')} border />
+          <KpiCard label={t('salesAvgPriceLabel')}      value={fmt(avgPrice)}              detail={t('salesAvgPriceDetail')} border />
+          <KpiCard label={t('consigned')} value={String(consignedCount)}     detail={t('salesConsignedDetail')} border />
         </div>
 
         {byYear.length > 0 && (
           <div className="panel pad-md" style={{ marginBottom: 20 }}>
-            <div className="t-label" style={{ marginBottom: 12 }}>Revenu par année</div>
+            <div className="t-label" style={{ marginBottom: 12 }}>{t('salesRevenueByYear')}</div>
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, height: 120 }}>
               {byYear.map(([yr, { count, revenue }]) => {
                 const pct = maxRevYear > 0 ? (revenue / maxRevYear) * 100 : 0
@@ -192,6 +233,17 @@ export function SalesTab({ oeuvres, statusLabelMap, contacts, groups, cM, tM }: 
             </div>
           </div>
         )}
+
+        <PivotPanel<Oeuvre>
+          rows={soldWorks}
+          availableDims={salesPivotDims}
+          availableValues={salesPivotValues}
+          defaultRowDimId="year"
+          defaultColDimId="buyer"
+          defaultValueIds={['count', 'sumRev']}
+          title={t('pivot')}
+          exportFileName="sales-sold-pivot"
+        />
 
         <div className="panel pad-md" style={{ overflowX: 'auto' }}>
           <div className="t-label" style={{ marginBottom: 16, color: 'var(--ac)' }}>Commandes</div>

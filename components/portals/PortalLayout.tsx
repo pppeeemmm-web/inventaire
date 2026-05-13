@@ -24,7 +24,7 @@ interface Props {
 
 export default function PortalLayout({ title, subtitle, works, userName }: Props) {
   return (
-    <div style={{ minHeight: '100vh', background: '#edeae4', color: '#6b6760', fontFamily: 'JetBrains Mono, monospace' }}>
+    <div style={{ minHeight: '100vh', background: '#edeae4', color: '#6b6760', fontFamily: 'var(--font-ui)' }}>
       
       {/* Header */}
       <nav style={{ 
@@ -90,7 +90,7 @@ export default function PortalLayout({ title, subtitle, works, userName }: Props
       </footer>
 
       <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Sofia+Sans:ital,wght@0,300..700;1,300..700&display=swap');
         .serif { font-family: 'Instrument Serif', serif; }
       `}</style>
     </div>

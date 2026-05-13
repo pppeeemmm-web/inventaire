@@ -306,7 +306,7 @@ export function CurationPanel({
         {showLink && (
           <div style={{ marginTop: 10, padding: 10, background: 'var(--bg2)', border: '1px solid var(--bd2)' }}>
             <div
-              style={{ fontSize: 10, color: 'var(--ac)', fontFamily: 'monospace', wordBreak: 'break-all', cursor: 'pointer' }}
+              style={{ fontSize: 10, color: 'var(--ac)', fontFamily: 'var(--font-ui)', wordBreak: 'break-all', cursor: 'pointer' }}
               onClick={() => navigator.clipboard?.writeText(showLink.url)}
               title="Copier"
             >{showLink.url}</div>
@@ -376,7 +376,7 @@ function ChecklistPreview({
           style={{
             position: 'absolute', top: 12, right: 12,
             color: '#1a1a1a', borderColor: '#1a1a1a',
-            fontFamily: "'JetBrains Mono', monospace",
+            fontFamily: 'var(--font-ui)',
             padding: '4px 10px', fontSize: 10,
             background: 'transparent', border: '1px solid #1a1a1a',
             cursor: 'pointer',
@@ -384,13 +384,13 @@ function ChecklistPreview({
         >Fermer</button>
 
         <div style={{ padding: '56px 64px 40px' }}>
-          <div style={{ fontSize: 10, letterSpacing: 3, textTransform: 'uppercase', color: '#666', fontFamily: "'JetBrains Mono', monospace", marginBottom: 8 }}>
+          <div style={{ fontSize: 10, letterSpacing: 3, textTransform: 'uppercase', color: '#666', fontFamily: 'var(--font-ui)', marginBottom: 8 }}>
             Checklist
           </div>
           <div style={{ fontSize: 34, lineHeight: 1.1, letterSpacing: '-0.02em', marginBottom: 24 }}>
             Œuvres disponibles — sélection
           </div>
-          <div style={{ fontSize: 11, color: '#666', marginBottom: 40, fontFamily: "'JetBrains Mono', monospace" }}>
+          <div style={{ fontSize: 11, color: '#666', marginBottom: 40, fontFamily: 'var(--font-ui)' }}>
             {new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })} · {works.length} œuvres
           </div>
 
@@ -423,11 +423,11 @@ function ChecklistPreview({
                         marginLeft: 10, fontSize: 9,
                         background: 'rgba(200,140,40,0.15)', border: '1px solid rgba(200,140,40,0.5)',
                         color: '#c88a20', padding: '2px 6px', borderRadius: 2,
-                        fontFamily: 'monospace', verticalAlign: 'middle',
+                        fontFamily: 'var(--font-ui)', verticalAlign: 'middle',
                       }}>⚠ Non public</span>
                     )}
                   </div>
-                  <div style={{ fontSize: 11, color: '#555', fontFamily: "'JetBrains Mono', monospace" }}>
+                  <div style={{ fontSize: 11, color: '#555', fontFamily: 'var(--font-ui)' }}>
                     {o.Technique != null ? (tM[o.Technique] ?? '—') : '—'}
                     {o.Support != null && sM[o.Support] ? ` sur ${sM[o.Support].toLowerCase()}` : ''}
                     {o.Hauteur && o.Largeur ? ` · ${o.Hauteur} × ${o.Largeur} cm` : ''}
@@ -435,7 +435,7 @@ function ChecklistPreview({
                   </div>
                 </div>
                 {/* Price */}
-                <div style={{ textAlign: 'right', fontSize: 11, color: '#333', fontFamily: "'JetBrains Mono', monospace" }}>
+                <div style={{ textAlign: 'right', fontSize: 11, color: '#333', fontFamily: 'var(--font-ui)' }}>
                   {o.Prix && o.Prix > 0 ? `€${o.Prix.toLocaleString('fr-FR')}` : 'sur demande'}
                 </div>
               </div>
@@ -444,7 +444,7 @@ function ChecklistPreview({
 
           <div style={{
             marginTop: 40, fontSize: 10, color: '#666',
-            fontFamily: "'JetBrains Mono', monospace",
+            fontFamily: 'var(--font-ui)',
             display: 'flex', justifyContent: 'space-between',
           }}>
             <span>Atelier PEM</span>

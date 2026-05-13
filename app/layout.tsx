@@ -32,7 +32,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500;600;700&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Sofia+Sans:ital,wght@0,300..700;1,300..700&display=swap"
           rel="stylesheet"
         />
         <script
@@ -41,7 +41,7 @@ export default function RootLayout({
               (function() {
                 try {
                   var p = location.pathname || '';
-                  var internal = /^\\/(atelier|hub|galerie)(\\/|$)/.test(p);
+                  var internal = /^\\/(atelier|hub|galerie|maps)(\\/|$)/.test(p);
                   var raw = localStorage.getItem('pem_theme');
                   var normalized = (raw === 'dark' || raw === 'light' || raw === 'standard') ? raw : 'light';
                   var theme = internal ? normalized : 'light';

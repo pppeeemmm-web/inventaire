@@ -31,7 +31,8 @@ const config: Config = {
         dust:  'var(--dust)',
       },
       fontFamily: {
-        mono:  ['JetBrains Mono', 'SF Mono', 'ui-monospace', 'Consolas', 'monospace'],
+        sans:  ['var(--font-ui)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        mono:  ['var(--font-ui)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         serif: ['Instrument Serif', 'Didot', 'Georgia', 'serif'],
       },
       fontSize: {

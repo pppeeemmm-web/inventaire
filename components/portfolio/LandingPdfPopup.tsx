@@ -109,7 +109,7 @@ export default function LandingPdfPopup({ open, onClose, lang }: Props) {
         border: '1px solid rgba(0,0,0,0.08)',
         borderRadius: 6, padding: '28px 28px 24px',
         zIndex: 9001,
-        fontFamily: 'JetBrains Mono, ui-monospace, monospace',
+        fontFamily: 'var(--font-ui)',
         boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
       }}>
         <button onClick={() => !busy && onClose()} aria-label={t('close')} style={{

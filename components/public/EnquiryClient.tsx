@@ -40,7 +40,7 @@ export default function EnquiryClient() {
       <style>{`
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         html, body { width: 100%; height: 100%; overflow: hidden; }
-        body { background: #edeae4; font-family: 'JetBrains Mono', monospace; color: #6b6760; }
+        body { background: #edeae4; font-family: var(--font-ui, 'Sofia Sans', ui-sans-serif, system-ui, sans-serif); color: #6b6760; }
         .stage {
           position: fixed; top: 0; left: 0; right: 0; bottom: 0;
           display: flex; flex-direction: column;

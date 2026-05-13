@@ -19,12 +19,12 @@ export default function CardPage() {
         <meta name="viewport" content="width=device-width" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Sofia+Sans:ital,wght@0,300..700;1,300..700&display=swap" rel="stylesheet" />
         <style>{`
           *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
           body {
             background: #f5f0e8;
-            font-family: 'JetBrains Mono', monospace;
+            font-family: 'Sofia Sans', ui-sans-serif, system-ui, sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;

@@ -34,7 +34,7 @@ export default function AboutClient() {
       <style>{`
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         html { height: auto; }
-        html, body { background: #edeae4; font-family: 'JetBrains Mono', monospace; color: #6b6760; }
+        html, body { background: #edeae4; font-family: var(--font-ui, 'Sofia Sans', ui-sans-serif, system-ui, sans-serif); color: #6b6760; }
         body { overflow-y: auto; min-height: 100vh; }
         .a-nav {
           position: sticky; top: 0; z-index: 10;

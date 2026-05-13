@@ -195,7 +195,7 @@ function FlamePreview({ html }: { html: string }) {
   return (
     <div style={{
       border: '1px solid var(--bd)', borderRadius: 4, padding: '16px 20px',
-      background: '#f0ede8', fontFamily: 'JetBrains Mono, monospace',
+      background: '#f0ede8', fontFamily: 'var(--font-ui)',
       fontSize: 11, lineHeight: 2.0, letterSpacing: '0.15em',
       textTransform: 'uppercase', color: '#8a8680',
       textAlign: 'justify', wordSpacing: '0.3em',
@@ -908,7 +908,7 @@ function Sparkline({ trend }: { trend: { date: string; views: number }[] }) {
               textAnchor="middle"
               fill="var(--tx)"
               fontSize="11"
-              fontFamily="ui-monospace, monospace"
+              fontFamily="var(--font-ui)"
               style={{ fontVariantNumeric: 'tabular-nums' }}
             >
               {n}
@@ -919,7 +919,7 @@ function Sparkline({ trend }: { trend: { date: string; views: number }[] }) {
               textAnchor="middle"
               fill="var(--tx3)"
               fontSize="9"
-              fontFamily="ui-monospace, monospace"
+              fontFamily="var(--font-ui)"
             >
               {dm}
             </text>
@@ -1213,7 +1213,7 @@ function FileImportButton({ onText, lang }: { onText: (v: string) => void; lang:
           background: 'none', border: '1px solid var(--bd)', borderRadius: 3,
           padding: '2px 7px', fontSize: 8, cursor: busy ? 'default' : 'pointer',
           color: 'var(--tx3)', letterSpacing: 1, opacity: busy ? 0.5 : 1,
-          fontFamily: 'ui-monospace, monospace',
+          fontFamily: 'var(--font-ui)',
         }}
       >
         {busy ? '…' : '↑ fichier'}
