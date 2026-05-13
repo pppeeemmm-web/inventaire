@@ -1,8 +1,8 @@
 {
-  // Cloudflare Pages (OpenNext + wrangler deploy):
-  //   Build command:  npm run cf:build   (runs next build inside OpenNext — do NOT use plain "npm run build" here)
-  //   Deploy command: npx wrangler deploy
-  // Vercel / local:    npm run build → next build only
+  // Cloudflare Pages + wrangler deploy: default "npm run build" runs OpenNext (see package.json "build").
+  // Deploy command: npx wrangler deploy
+  //
+  // Vercel: vercel.json buildCommand uses build:next (plain next build), not OpenNext.
   "$schema": "node_modules/wrangler/config-schema.json",
   "main": ".open-next/worker.js",
   "name": "inventaire",
