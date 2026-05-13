@@ -1,14 +1,4 @@
 import type { NextConfig } from 'next'
-import { initOpenNextCloudflareForDev } from '@opennextjs/cloudflare'
-
-// OpenNext dev integration only — must not run during `next build` on Vercel/CI (can throw EPIPE).
-if (process.env.NODE_ENV === 'development') {
-  try {
-    initOpenNextCloudflareForDev()
-  } catch {
-    /* ignore when Wrangler / OpenNext dev tooling is absent */
-  }
-}
 
 const nextConfig: NextConfig = {
   /** Dev: slow disk/AV can hit webpack’s default chunk fetch timeout → ChunkLoadError on `app/layout`. */

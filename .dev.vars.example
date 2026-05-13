@@ -1,5 +1,0 @@
-# Copy to .dev.vars for `wrangler dev` / OpenNext local preview (never commit .dev.vars).
-NEXTJS_ENV=development
-# NEXT_PUBLIC_SUPABASE_URL=
-# NEXT_PUBLIC_SUPABASE_ANON_KEY=
-# SUPABASE_SERVICE_ROLE_KEY=

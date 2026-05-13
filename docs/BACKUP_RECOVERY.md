@@ -57,7 +57,7 @@ Open R2 → `art-db-backups/daily/` → confirm the `.sql.gz` is there and the s
 
 When you need to restore (test or real incident):
 
-1. Download the latest dump from R2 console (or `aws s3 cp ... --endpoint-url=https://<account>.r2.cloudflarestorage.com`).
+1. Download the latest dump from the Cloudflare R2 dashboard (or `aws s3 cp ... --endpoint-url=https://<account>.r2.cloudflarestorage.com`).
 2. Decompress: `gunzip art-db-<stamp>.sql.gz`.
 3. Spin up a **fresh** Supabase project (or local Postgres) — never restore into the live project unless you're sure.
 4. Restore: `psql "<NEW_PROJECT_CONNECTION_STRING>" < art-db-<stamp>.sql`

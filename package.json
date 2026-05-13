@@ -4,15 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "node scripts/run-dev.mjs",
-    "build": "opennextjs-cloudflare build",
-    "build:next": "next build",
+    "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test:e2e": "playwright test",
-    "cf:build": "npm run build",
-    "cf:deploy": "npm run build && wrangler deploy",
-    "cf:preview": "npm run build && wrangler dev"
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1039.0",
@@ -43,7 +39,6 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
-    "@opennextjs/cloudflare": "^1.19.9",
     "@playwright/test": "^1.59.1",
     "@types/leaflet": "^1.9.14",
     "@types/node": "^20.0.0",
@@ -56,7 +51,6 @@
     "eslint-config-next": "^15.5.18",
     "postcss": "^8.4.0",
     "tailwindcss": "^3.4.0",
-    "typescript": "^5.4.0",
-    "wrangler": "^4.90.0"
+    "typescript": "^5.4.0"
   }
 }
