@@ -87,3 +87,31 @@ export interface SuiviReminderListRow {
   remind_at: string
   lu: boolean
 }
+
+/** `suivi_process` columns used for overview / pipeline pulse (server + client). */
+export interface SuiviProcessPulseRow {
+  id: string
+  nom: string
+  type: string
+  date_fin: string | null
+  deadline_time: string | null
+  statut: string
+}
+
+/** `suivi_etape` columns used when building `PulseProcess` for overview / calendar. */
+export interface SuiviEtapePulseRow {
+  id: string
+  process_id: string
+  nom: string
+  statut: string
+  date_echeance: string | null
+  overdue_override: boolean | null
+  position: number
+}
+
+/** `concept` rows for overview “burning” strip. */
+export interface ConceptBurningRow {
+  id: string
+  titre: string
+  energie: number
+}

@@ -4,7 +4,7 @@
 
 import { createClient }  from '@/lib/supabase/server'
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3'
-import { logSystemEvent } from '@/lib/utils/logging'
+import { addCalendarDaysIso, parseSaleOrderBatchIds } from '@/lib/sale-return-window'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -36,6 +36,11 @@ export interface SaleOrderRow {
   commission_amount:    number | null
   updated_at?:          string | null
   payments?:            PaymentRow[]
+  /** Cooling-off length (calendar days); 0 disables auto archive. */
+  return_window_days?:        number | null
+  return_window_starts_at?:  string | null
+  return_window_skipped?:    boolean | null
+  completed_at?:             string | null
 }
 
 export interface PaymentRow {
@@ -296,10 +301,28 @@ export async function updateOrderStatut(id: string, statut: string, toggleField?
   const { error: authErr, supabase } = await guardTeam()
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
 
-  const payload: Record<string, any> = { statut }
+  const { data: before, error: bfErr } = await supabase.from('sale_order').select('*').eq('id', id).single()
+  if (bfErr || !before) return { error: bfErr?.message ?? 'Order not found' }
+
+  const payload: Record<string, unknown> = { statut }
   if (toggleField) payload[toggleField] = true
 
-  const { error } = await supabase.from('sale_order').update(payload).eq('id', id)
+  const b = before as Record<string, unknown>
+  if (b.statut !== 'completed' && statut === 'completed') {
+    payload.completed_at = new Date().toISOString()
+  }
+
+  if (toggleField === 'delivered') {
+    payload.delivered = true
+    if (!b.return_window_starts_at) {
+      const deliv = b.delivery_date as string | null | undefined
+      const ymd =
+        deliv && String(deliv).length >= 10 ? String(deliv).slice(0, 10) : new Date().toISOString().slice(0, 10)
+      payload.return_window_starts_at = ymd
+    }
+  }
+
+  const { error } = await supabase.from('sale_order').update(payload as any).eq('id', id)
   if (error) return { error: error.message }
 
   // On completion: transfer ownership — statusId 6 (Vendu) or 11 (Gift) per work
@@ -381,6 +404,130 @@ export async function updateOrderStatut(id: string, statut: string, toggleField?
   })
 
   return { ok: true }
+}
+
+export async function skipSaleReturnWindow(orderId: string): Promise<SimpleResult> {
+  const { error: authErr, supabase } = await guardTeam()
+  if (authErr || !supabase) return { error: authErr ?? 'Auth' }
+
+  const { error } = await supabase
+    .from('sale_order')
+    .update({ return_window_skipped: true } as any)
+    .eq('id', orderId)
+
+  if (error) return { error: error.message }
+
+  await logSystemEvent({
+    eventType: 'STATUS_CHANGE',
+    tableName: 'sale_order',
+    rowId: orderId,
+    newValue: 'return_window_skipped',
+    metadata: { trigger: 'manual_skip' },
+  })
+  return { ok: true }
+}
+
+export async function updateSaleReturnFields(
+  orderId: string,
+  fields: { return_window_days?: number; return_window_starts_at?: string | null },
+): Promise<SimpleResult> {
+  const { error: authErr, supabase } = await guardTeam()
+  if (authErr || !supabase) return { error: authErr ?? 'Auth' }
+
+  const patch: Record<string, unknown> = {}
+  if (fields.return_window_days !== undefined) patch.return_window_days = fields.return_window_days
+  if (fields.return_window_starts_at !== undefined) patch.return_window_starts_at = fields.return_window_starts_at
+
+  if (Object.keys(patch).length === 0) return { ok: true }
+
+  const { error } = await supabase.from('sale_order').update(patch as any).eq('id', orderId)
+  if (error) return { error: error.message }
+
+  await logSystemEvent({
+    eventType: 'SYSTEM_CONFIG',
+    tableName: 'sale_order',
+    rowId: orderId,
+    metadata: patch,
+  })
+  return { ok: true }
+}
+
+export type SaleReturnHint = {
+  orderId: string
+  daysTotal: number
+  startsAt: string | null
+  expiresOn: string | null
+  daysLeft: number | null
+  skipped: boolean
+  delivered: boolean
+  statut: string
+}
+
+export async function getReturnWindowHintForOeuvre(oeuvreId: number): Promise<SaleReturnHint | null> {
+  const { error: authErr, supabase } = await guardTeam()
+  if (authErr || !supabase) return null
+
+  const { data: orders } = await supabase
+    .from('sale_order')
+    .select('id, statut, notes, oeuvre_id, delivered, return_window_days, return_window_starts_at, return_window_skipped')
+    .eq('statut', 'completed')
+    .order('created_at', { ascending: false })
+    .limit(120)
+
+  const today = new Date().toISOString().slice(0, 10)
+
+  for (const row of (orders ?? []) as any[]) {
+    const ids = parseSaleOrderBatchIds(row.notes, row.oeuvre_id)
+    if (!ids.includes(oeuvreId)) continue
+
+    const daysTotal = Number(row.return_window_days ?? 14)
+    const skipped = Boolean(row.return_window_skipped)
+    const start: string | null = row.return_window_starts_at ?? null
+    const delivered = Boolean(row.delivered)
+
+    if (skipped || daysTotal <= 0) {
+      return {
+        orderId: row.id,
+        daysTotal,
+        startsAt: start,
+        expiresOn: null,
+        daysLeft: null,
+        skipped: true,
+        delivered,
+        statut: row.statut,
+      }
+    }
+
+    if (!start) {
+      return {
+        orderId: row.id,
+        daysTotal,
+        startsAt: null,
+        expiresOn: null,
+        daysLeft: null,
+        skipped: false,
+        delivered,
+        statut: row.statut,
+      }
+    }
+
+    const expiresOn = addCalendarDaysIso(start, daysTotal)
+    const ms = new Date(`${expiresOn}T12:00:00Z`).getTime() - new Date(`${today}T12:00:00Z`).getTime()
+    const daysLeft = Math.max(0, Math.ceil(ms / 86400000))
+
+    return {
+      orderId: row.id,
+      daysTotal,
+      startsAt: start,
+      expiresOn,
+      daysLeft,
+      skipped: false,
+      delivered,
+      statut: row.statut,
+    }
+  }
+
+  return null
 }
 
 export async function fetchPayments(order_id: string): Promise<PaymentRow[]> {

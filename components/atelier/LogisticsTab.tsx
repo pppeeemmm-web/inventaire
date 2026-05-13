@@ -3,8 +3,9 @@
 // LogisticsTab — shipments table, client-side fetch.
 // Reads shipment + shipment_work from Supabase, resolves contact names via cM.
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { markShipmentDelivered } from '@/app/atelier/logistics/actions'
 import { useI18n } from '@/lib/i18n/context'
 
 // ── Types ────────────────────────────────────────────────────
@@ -45,48 +46,42 @@ export function LogisticsTab({ cM }: Props) {
   const [loading, setLoading] = useState(true)
   const [error,   setError]   = useState<string | null>(null)
 
-  useEffect(() => {
-    let cancelled = false
-    async function load() {
-      setLoading(true)
-      const supabase = createClient()
+  const fetchShipments = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    const supabase = createClient()
 
-      // Fetch shipments ordered by upcoming first
-      const { data: shipments, error: err } = await supabase
-        .from('shipment')
-        .select('id, to_contact_id, kind, scheduled_for, shipped_at, delivered_at, status, note')
-        .order('scheduled_for', { ascending: true, nullsFirst: false })
-        .limit(200)
+    const { data: shipments, error: err } = await supabase
+      .from('shipment')
+      .select('id, to_contact_id, kind, scheduled_for, shipped_at, delivered_at, status, note')
+      .order('scheduled_for', { ascending: true, nullsFirst: false })
+      .limit(200)
 
-      if (err || !shipments) {
-        if (!cancelled) setError(err?.message ?? t('error'))
-        setLoading(false)
-        return
-      }
-
-      // Fetch work counts per shipment
-      const { data: workLinks } = await supabase
-        .from('shipment_work')
-        .select('shipment_id, oeuvre_id')
-
-      const countMap: Record<string, number> = {}
-      for (const link of workLinks ?? []) {
-        countMap[link.shipment_id] = (countMap[link.shipment_id] ?? 0) + 1
-      }
-
-      const enriched: ShipmentRow[] = shipments.map((s) => ({
-        ...s,
-        work_count: countMap[s.id] ?? 0,
-      }))
-
-      if (!cancelled) {
-        setRows(enriched)
-        setLoading(false)
-      }
+    if (err || !shipments) {
+      setError(err?.message ?? t('error'))
+      setLoading(false)
+      return
     }
-    load()
-    return () => { cancelled = true }
+
+    const { data: workLinks } = await supabase.from('shipment_work').select('shipment_id, oeuvre_id')
+
+    const countMap: Record<string, number> = {}
+    for (const link of workLinks ?? []) {
+      countMap[link.shipment_id] = (countMap[link.shipment_id] ?? 0) + 1
+    }
+
+    const enriched: ShipmentRow[] = shipments.map((s) => ({
+      ...s,
+      work_count: countMap[s.id] ?? 0,
+    }))
+
+    setRows(enriched)
+    setLoading(false)
   }, [t])
+
+  useEffect(() => {
+    void fetchShipments()
+  }, [fetchShipments])
 
   const upcoming = rows.filter((r) => !r.delivered_at && r.status !== 'delivered')
   const past     = rows.filter((r) =>  r.delivered_at || r.status === 'delivered')
@@ -132,6 +127,7 @@ export function LogisticsTab({ cM }: Props) {
               cM={cM}
               lang={lang}
               title={lang === 'fr' ? 'À venir' : 'Upcoming'}
+              onMarkDelivered={fetchShipments}
             />
           )}
 
@@ -156,14 +152,16 @@ export function LogisticsTab({ cM }: Props) {
 // ── Shipment table ────────────────────────────────────────────
 
 function ShipmentTable({
-  rows, cM, lang, title, muted = false,
+  rows, cM, lang, title, muted = false, onMarkDelivered,
 }: {
   rows:  ShipmentRow[]
   cM:    Record<number, string>
   lang:  string
   title: string
   muted?: boolean
+  onMarkDelivered?: () => void | Promise<void>
 }) {
+  const { t } = useI18n()
   return (
     <div>
       <div className="t-label" style={{ marginBottom: 10, color: muted ? 'var(--tx3)' : undefined }}>
@@ -178,6 +176,7 @@ function ShipmentTable({
               <th className="num">{lang === 'fr' ? 'Œuvres' : 'Works'}</th>
               <th className="num">{lang === 'fr' ? 'Date' : 'Date'}</th>
               <th>{lang === 'fr' ? 'Statut' : 'Status'}</th>
+              {!muted && onMarkDelivered ? <th>{lang === 'fr' ? 'Action' : 'Action'}</th> : null}
             </tr>
           </thead>
           <tbody>
@@ -195,6 +194,23 @@ function ShipmentTable({
                   <td>
                     <span className={`chip ${cfg.color}`}>{label}</span>
                   </td>
+                  {!muted && onMarkDelivered ? (
+                    <td>
+                      <button
+                        type="button"
+                        className="btn ghost sm"
+                        style={{ minHeight: 44 }}
+                        onClick={async () => {
+                          if (!confirm(t('logistics_mark_delivered_confirm'))) return
+                          const res = await markShipmentDelivered(r.id)
+                          if ('ok' in res) await onMarkDelivered()
+                          else alert(res.error)
+                        }}
+                      >
+                        {t('logistics_mark_delivered')}
+                      </button>
+                    </td>
+                  ) : null}
                 </tr>
               )
             })}

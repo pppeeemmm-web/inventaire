@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
 import { createClient } from '@/lib/supabase/client'
 
@@ -9,9 +10,11 @@ import { loadPortfolioConfig } from '@/app/atelier/portfolio/actions'
 
 export default function EnquiryClient() {
   const { lang, setLang, t } = useI18n()
+  const searchParams = useSearchParams()
   const [sent, setSent] = useState(false)
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({ name: '', email: '', message: '' })
+  const [category, setCategory] = useState('general')
   const [config, setConfig] = useState<any>(null)
   const sb = createClient()
 
@@ -26,11 +29,25 @@ export default function EnquiryClient() {
   const contactEmail = config?.general?.contact_email
   const contactPhone = config?.general?.phone
 
+  const oeuvreParam = searchParams.get('oeuvre_id')
+  const orderParam = searchParams.get('sale_order_id')
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!form.name || !form.email || !form.message) return
     setLoading(true)
-    const { error } = await sb.from('inquiry').insert([form])
+    const oeuvreId = oeuvreParam && /^\d+$/.test(oeuvreParam) ? Number(oeuvreParam) : null
+    const saleOrderId = orderParam && orderParam.length > 10 ? orderParam : null
+    const row: Record<string, unknown> = {
+      name: form.name,
+      email: form.email,
+      message: form.message,
+      category,
+      status: 'open',
+    }
+    if (oeuvreId != null) row.oeuvre_id = oeuvreId
+    if (saleOrderId) row.sale_order_id = saleOrderId
+    const { error } = await sb.from('inquiry').insert([row as any])
     setLoading(false)
     if (!error) setSent(true)
   }
@@ -136,10 +153,42 @@ export default function EnquiryClient() {
               </div>
             )}
 
+            {(oeuvreParam || orderParam) && (
+              <div className="contact-info" style={{ marginBottom: 16 }}>
+                {t('enquiry_optional_ids_hint')}
+                {oeuvreParam && <div>WORK #{oeuvreParam}</div>}
+                {orderParam && <div>ORDER {orderParam}</div>}
+              </div>
+            )}
+
             {sent ? (
               <div className="success-msg">{t('pub_thank_you')}</div>
             ) : (
               <form onSubmit={handleSubmit}>
+                <div style={{ marginBottom: 20 }}>
+                  <label className="label" style={{ display: 'block', marginBottom: 8 }}>{t('enquiry_category_label')}</label>
+                  <select
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    style={{
+                      width: '100%',
+                      background: 'none',
+                      border: '1px solid #dedad4',
+                      padding: '12px 8px',
+                      fontFamily: 'inherit',
+                      fontSize: 13,
+                      color: '#6b6760',
+                      borderRadius: 4,
+                      minHeight: 44,
+                    }}
+                  >
+                    <option value="general">{t('enquiry_category_general')}</option>
+                    <option value="question">{t('enquiry_category_question')}</option>
+                    <option value="complaint">{t('enquiry_category_complaint')}</option>
+                    <option value="shipping">{t('enquiry_category_shipping')}</option>
+                    <option value="other">{t('enquiry_category_other')}</option>
+                  </select>
+                </div>
                 <input
                   placeholder={t('pub_name').toUpperCase()}
                   value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}

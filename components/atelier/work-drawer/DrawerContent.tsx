@@ -38,6 +38,7 @@ import {
 import type { DrawerContentProps, DrawerContactRow } from './drawer-content-props'
 import { WorkDrawerImageArea } from './WorkDrawerImageArea'
 import { WorkDrawerPipelineSection } from './WorkDrawerPipelineSection'
+import { SaleReturnWindowBanner } from './SaleReturnWindowBanner'
 import { DrawerContentFinanceSection } from './DrawerContentFinanceSection'
 import { DrawerContentNotesVersionSection } from './DrawerContentNotesVersionSection'
 import { DrawerContentGroupsSection } from './DrawerContentGroupsSection'
@@ -1040,6 +1041,8 @@ export function DrawerContent({
         setAnonymityLevel={setAnonymityLevel}
         setShowNewContact={setShowNewContact}
       />
+
+      {ownStage === 'sold' ? <SaleReturnWindowBanner oeuvreId={o.OeuvreID} /> : null}
 
       {/* ═══ EDITABLE FIELDS ═══ */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>

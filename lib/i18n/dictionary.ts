@@ -114,6 +114,17 @@ export type DictKey =
   | 'bc_attempts' | 'bc_queued_at' | 'bc_posted_at' | 'bc_clear_stuck' | 'bc_clear_stuck_confirm'
   | 'bc_open_post' | 'bc_admin_only' | 'bc_count_queued' | 'bc_count_posted' | 'bc_count_vip'
   | 'bc_caption_final' | 'bc_no_caption' | 'bc_event_type_label'
+  | 'sales_confirm_delete_order' | 'sales_confirm_regenerate_pdf' | 'sales_pdf_regenerated_hint'
+  | 'sales_return_section_title' | 'sales_return_days_label' | 'sales_return_start_label'
+  | 'sales_return_countdown_fmt' | 'sales_return_no_start_hint' | 'sales_return_skipped_hint' | 'sales_return_days_zero_hint'
+  | 'sales_return_save_btn' | 'sales_return_skip_btn' | 'sales_return_skip_confirm'
+  | 'sales_mark_delivered_btn' | 'sales_mark_delivered_confirm'
+  | 'coa_verify_kicker' | 'coa_verify_title' | 'coa_verify_invalid_id' | 'coa_verify_not_found' | 'coa_verify_tampered' | 'coa_verify_config'
+  | 'coa_verify_badge_valid' | 'coa_verify_field_work' | 'coa_verify_field_year' | 'coa_verify_field_cert_id' | 'coa_verify_field_issued' | 'coa_verify_disclaimer'
+  | 'wf_return_window_banner_fmt' | 'wf_return_window_no_start' | 'wf_return_window_skipped'
+  | 'logistics_mark_delivered' | 'logistics_mark_delivered_confirm'
+  | 'enquiry_category_label' | 'enquiry_category_general' | 'enquiry_category_question' | 'enquiry_category_complaint' | 'enquiry_category_shipping' | 'enquiry_category_other'
+  | 'enquiry_optional_ids_hint'
   | 'aria_open_navigation'
   | 'error_prefix' | 'savingRecord' | 'confirm_delete_image' | 'select_option_placeholder' | 'wf_placeholder_new'
   | 'wf_section_identity' | 'wf_section_production' | 'wf_section_ownership' | 'wf_section_finance'
@@ -558,6 +569,46 @@ export const dict: Record<Lang, Dictionary> = {
     bc_caption_final: 'Légende publiée',
     bc_no_caption: '— sans légende —',
     bc_event_type_label: 'Type',
+    sales_confirm_delete_order:
+      'Supprimer définitivement cette commande ? Les œuvres repasseront en statut « Atelier ».',
+    sales_confirm_regenerate_pdf: 'Re-générer le PDF avec le nouveau layout et les images ?',
+    sales_pdf_regenerated_hint: 'PDF mis à jour. Rechargez la page ou recliquez sur Télécharger.',
+    sales_return_section_title: 'Délai de rétractation / archivage',
+    sales_return_days_label: 'Jours (0 = désactiver l’archivage auto)',
+    sales_return_start_label: 'Début (livraison)',
+    sales_return_countdown_fmt: '{days} jour(s) avant archivage auto prévu le {expires}.',
+    sales_return_no_start_hint: 'Indiquez la livraison sur la commande (ou une date de début) pour activer le compte à rebours.',
+    sales_return_skipped_hint: 'Archivage automatique désactivé pour cette commande.',
+    sales_return_days_zero_hint: 'Fenêtre à 0 jour — pas d’archivage automatique.',
+    sales_return_save_btn: 'Enregistrer fenêtre',
+    sales_return_skip_btn: 'Ignorer la fenêtre',
+    sales_return_skip_confirm: 'Désactiver l’archivage auto (œuvre reste « Vendu ») ?',
+    sales_mark_delivered_btn: 'Marquer livré',
+    sales_mark_delivered_confirm: 'Marquer la commande comme livrée et démarrer le délai ?',
+    coa_verify_kicker: 'Studio PEM',
+    coa_verify_title: 'Vérification du certificat',
+    coa_verify_invalid_id: 'Identifiant de certificat non reconnu.',
+    coa_verify_not_found: 'Aucun certificat correspondant.',
+    coa_verify_tampered: 'Les données de l’œuvre ne correspondent plus à l’empreinte du certificat.',
+    coa_verify_config: 'La vérification est temporairement indisponible.',
+    coa_verify_badge_valid: 'Certificat valide',
+    coa_verify_field_work: 'Œuvre',
+    coa_verify_field_year: 'Année',
+    coa_verify_field_cert_id: 'Identifiant',
+    coa_verify_field_issued: 'Émis le',
+    coa_verify_disclaimer: 'Ce résultat atteste que le certificat est enregistré au studio ; il ne constitue pas une expertise judiciaire.',
+    wf_return_window_banner_fmt: '{days} jour(s) avant archivage automatique (fin de délai).',
+    wf_return_window_no_start: 'Enregistrez la livraison sur la commande (onglet Ventes) pour démarrer le délai.',
+    wf_return_window_skipped: 'Archivage automatique désactivé sur la commande liée.',
+    logistics_mark_delivered: 'Marquer livré',
+    logistics_mark_delivered_confirm: 'Marquer ce mouvement comme livré ?',
+    enquiry_category_label: 'Motif',
+    enquiry_category_general: 'Message général',
+    enquiry_category_question: 'Question',
+    enquiry_category_complaint: 'Réclamation',
+    enquiry_category_shipping: 'Livraison / logistique',
+    enquiry_category_other: 'Autre',
+    enquiry_optional_ids_hint: 'Réf. optionnelles (préremplies si vous venez du site).',
     wf_photo_pending_hint:
       'En attente de photographie — décocher « Photo requise » pour passer en Disponible.',
     wf_contact_custodian: 'Dépositaire',
@@ -1443,6 +1494,46 @@ $env:OLLAMA_HOST="127.0.0.1:11435"; ollama run llama3.2:1b`,
     bc_caption_final: 'Posted caption',
     bc_no_caption: '— no caption —',
     bc_event_type_label: 'Type',
+    sales_confirm_delete_order:
+      'Permanently delete this order? Works will return to “Atelier” status.',
+    sales_confirm_regenerate_pdf: 'Regenerate the PDF with the new layout and images?',
+    sales_pdf_regenerated_hint: 'PDF updated. Reload the page or click Download again.',
+    sales_return_section_title: 'Return window / auto-archive',
+    sales_return_days_label: 'Days (0 disables auto-archive)',
+    sales_return_start_label: 'Start (delivery)',
+    sales_return_countdown_fmt: '{days} day(s) until automatic archive on {expires}.',
+    sales_return_no_start_hint: 'Mark the order as delivered (or set a start date) to activate the countdown.',
+    sales_return_skipped_hint: 'Automatic archive is turned off for this order.',
+    sales_return_days_zero_hint: 'Zero-day window — no automatic archive.',
+    sales_return_save_btn: 'Save window',
+    sales_return_skip_btn: 'Skip window',
+    sales_return_skip_confirm: 'Disable automatic archive (work stays “Sold”)?',
+    sales_mark_delivered_btn: 'Mark delivered',
+    sales_mark_delivered_confirm: 'Mark this order as delivered and start the return window?',
+    coa_verify_kicker: 'PEM Studio',
+    coa_verify_title: 'Certificate verification',
+    coa_verify_invalid_id: 'This certificate identifier is not valid.',
+    coa_verify_not_found: 'No matching certificate was found.',
+    coa_verify_tampered: 'Work data no longer matches the certificate fingerprint.',
+    coa_verify_config: 'Verification is temporarily unavailable.',
+    coa_verify_badge_valid: 'Certificate on file',
+    coa_verify_field_work: 'Work',
+    coa_verify_field_year: 'Year',
+    coa_verify_field_cert_id: 'Certificate ID',
+    coa_verify_field_issued: 'Issued on',
+    coa_verify_disclaimer: 'This result confirms the certificate is registered with the studio; it is not a legal appraisal.',
+    wf_return_window_banner_fmt: '{days} day(s) until automatic archive (end of return window).',
+    wf_return_window_no_start: 'Record delivery on the order (Sales tab) to start the window.',
+    wf_return_window_skipped: 'Automatic archive is disabled on the linked order.',
+    logistics_mark_delivered: 'Mark delivered',
+    logistics_mark_delivered_confirm: 'Mark this shipment as delivered?',
+    enquiry_category_label: 'Topic',
+    enquiry_category_general: 'General message',
+    enquiry_category_question: 'Question',
+    enquiry_category_complaint: 'Complaint',
+    enquiry_category_shipping: 'Shipping / logistics',
+    enquiry_category_other: 'Other',
+    enquiry_optional_ids_hint: 'Optional references (pre-filled when opened from the site).',
     wf_photo_pending_hint:
       'Awaiting photography — uncheck “Photo required” to move to Available.',
     wf_contact_custodian: 'Custodian',

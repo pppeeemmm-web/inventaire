@@ -457,7 +457,8 @@ async function buildCoaPdf(data: CoaData): Promise<Buffer> {
   const { certId, certHash, imageBuffer, titre, année, technique, support, dims } = data
 
   // Generate QR code synchronously BEFORE opening the PDF stream
-  const qrText = `https://pem.studio/verify/${certId}`
+  const siteOrigin = (process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://pem.studio').replace(/\/$/, '')
+  const qrText = `${siteOrigin}/verify/${certId}`
   const qrBuf: Buffer = await QRCode.toBuffer(qrText, { type: 'png', width: 72, margin: 1 })
 
   return new Promise((resolve, reject) => {

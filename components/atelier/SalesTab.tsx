@@ -3,11 +3,12 @@
 // SalesTab — KPI stats + order list + new order modal form.
 
 import { useMemo, useState, useEffect, useCallback, useRef } from 'react'
+import { addCalendarDaysIso } from '@/lib/sale-return-window'
 import { useI18n }      from '@/lib/i18n/context'
 import { statusOf, yearOf, thumbUrl, type StatusKey } from '@/lib/data'
 import type { Oeuvre }  from '@/lib/types/database'
 import type { Agg, Dim } from '@/lib/pivot'
-import { createSaleOrder, updateOrderStatut, deleteSaleOrder, fetchOrders, regenerateOrderPdf, type SaleOrderRow } from '@/app/atelier/sales/actions'
+import { createSaleOrder, updateOrderStatut, deleteSaleOrder, fetchOrders, regenerateOrderPdf, type SaleOrderRow, skipSaleReturnWindow, updateSaleReturnFields } from '@/app/atelier/sales/actions'
 import { getSignedUrl } from '@/app/atelier/vault/actions'
 import { stringifyError } from '@/lib/error'
 import { WorkThumb } from './WorkThumb'
@@ -296,9 +297,9 @@ export function SalesTab({ oeuvres, statusLabelMap, contacts, groups, cM, tM }: 
                               try {
                                 const res = await getSignedUrl(ord.pdf_path!)
                                 if ('url' in res) window.open(res.url, '_blank')
-                                else alert(`Erreur : ${stringifyError(res.error)}`)
+                                else alert(`${t('error_prefix')} ${stringifyError(res.error)}`)
                               } catch (err) {
-                                alert(`Error: ${stringifyError(err)}`)
+                                alert(`${t('error_prefix')} ${stringifyError(err)}`)
                               }
                             }}
                             className="t-mono-sm"
@@ -329,6 +330,7 @@ export function SalesTab({ oeuvres, statusLabelMap, contacts, groups, cM, tM }: 
       {inspected && (
         <OrderDetailPanel
           order={inspected} oeuvres={oeuvres} cM={cM}
+          setInspectedOrder={setInspected}
           onClose={() => setInspected(null)} onUpdated={loadOrders}
         />
       )}
@@ -595,18 +597,55 @@ function OrderFormModal({ oeuvres, contacts, groups, tM, onClose, onCreated }: {
 
 // ── Order detail panel ───────────────────────────────────────
 
-function OrderDetailPanel({ order, oeuvres, cM, onClose, onUpdated }: {
+function OrderDetailPanel({ order, oeuvres, cM, setInspectedOrder, onClose, onUpdated }: {
   order:     SaleOrderRow
   oeuvres:   Oeuvre[]
   cM:        Record<number, string>
+  setInspectedOrder: (o: SaleOrderRow) => void
   onClose:   () => void
   onUpdated: () => void
 }) {
+  const { t, lang } = useI18n()
   const [payments, setPayments] = useState<PaymentRow[]>([])
   const [loading,  setLoading]  = useState(true)
   const [adding,   setAdding]   = useState(false)
-  const [amt,      setAmt]      = useState('')
-  const [meth,     setMeth]     = useState('Virement')
+  const [retDays, setRetDays] = useState(String(order.return_window_days ?? 14))
+  const [retStart, setRetStart] = useState(
+    order.return_window_starts_at && order.return_window_starts_at.length >= 10
+      ? order.return_window_starts_at.slice(0, 10)
+      : '',
+  )
+
+  useEffect(() => {
+    setRetDays(String(order.return_window_days ?? 14))
+    setRetStart(
+      order.return_window_starts_at && order.return_window_starts_at.length >= 10
+        ? order.return_window_starts_at.slice(0, 10)
+        : '',
+    )
+  }, [order.id, order.return_window_days, order.return_window_starts_at])
+
+  const returnCountdown = useMemo(() => {
+    if (order.statut !== 'completed') return null
+    const daysTotal = Number(order.return_window_days ?? 14)
+    if (order.return_window_skipped) return t('sales_return_skipped_hint')
+    if (daysTotal <= 0) return t('sales_return_days_zero_hint')
+    if (!order.return_window_starts_at) return t('sales_return_no_start_hint')
+    const today = new Date().toISOString().slice(0, 10)
+    const expiresOn = addCalendarDaysIso(order.return_window_starts_at.slice(0, 10), daysTotal)
+    const ms = new Date(`${expiresOn}T12:00:00Z`).getTime() - new Date(`${today}T12:00:00Z`).getTime()
+    const daysLeft = Math.max(0, Math.ceil(ms / 86400000))
+    return t('sales_return_countdown_fmt')
+      .replace(/\{days\}/g, String(daysLeft))
+      .replace(/\{expires\}/g, expiresOn)
+  }, [order, t])
+
+  async function syncInspectedFromServer() {
+    const rows = await fetchOrders()
+    const row = rows.find((r) => r.id === order.id)
+    if (row) setInspectedOrder(row)
+    onUpdated()
+  }
 
   useEffect(() => {
     async function load() {
@@ -615,7 +654,7 @@ function OrderDetailPanel({ order, oeuvres, cM, onClose, onUpdated }: {
       setPayments(rows)
       setLoading(false)
     }
-    load()
+    void load()
   }, [order.id])
 
   const totalPaid = payments.reduce((acc, p) => acc + p.amount, 0)
@@ -637,7 +676,8 @@ function OrderDetailPanel({ order, oeuvres, cM, onClose, onUpdated }: {
 
   const work  = oeuvres.find((o) => o.OeuvreID === order.oeuvre_id)
   const buyer = order.buyer_id ? (cM[order.buyer_id] ?? `#${order.buyer_id}`) : '—'
-  const fmt   = (n: number | null) => n ? `€ ${Number(n).toLocaleString('fr-FR')}` : '—'
+  const fmt   = (n: number | null) =>
+    n ? `€ ${Number(n).toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-GB')}` : '—'
 
   async function advance() {
     const next: Record<string, [string, ('deposit_paid'|'balance_paid'|'delivered')?]> = {
@@ -648,7 +688,8 @@ function OrderDetailPanel({ order, oeuvres, cM, onClose, onUpdated }: {
     }
     const [statut, field] = next[order.statut] ?? ['completed']
     await updateOrderStatut(order.id, statut, field)
-    onUpdated(); onClose()
+    await syncInspectedFromServer()
+    onClose()
   }
 
   return (
@@ -725,6 +766,80 @@ function OrderDetailPanel({ order, oeuvres, cM, onClose, onUpdated }: {
             </button>
           </form>
         </div>
+
+        {order.statut === 'completed' && (
+          <div style={{ marginBottom: 24, padding: 14, border: '1px solid var(--bd2)', borderRadius: 8, background: 'var(--bg0)' }}>
+            <div className="t-label" style={{ marginBottom: 10, color: 'var(--tx2)' }}>{t('sales_return_section_title')}</div>
+            {returnCountdown && (
+              <div style={{ fontSize: 12, color: 'var(--tx2)', marginBottom: 12 }}>{returnCountdown}</div>
+            )}
+            {!order.delivered && (
+              <button
+                type="button"
+                className="btn ghost sm"
+                style={{ marginBottom: 12, minHeight: 44 }}
+                onClick={async () => {
+                  if (!confirm(t('sales_mark_delivered_confirm'))) return
+                  const res = await updateOrderStatut(order.id, order.statut, 'delivered')
+                  if ('ok' in res) await syncInspectedFromServer()
+                  else alert(`${t('error_prefix')} ${stringifyError(res.error)}`)
+                }}
+              >
+                {t('sales_mark_delivered_btn')}
+              </button>
+            )}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+              <div>
+                <div className="t-label" style={{ marginBottom: 4 }}>{t('sales_return_days_label')}</div>
+                <input
+                  type="number"
+                  min={0}
+                  max={365}
+                  value={retDays}
+                  onChange={(e) => setRetDays(e.target.value)}
+                  style={inputStyle}
+                />
+              </div>
+              <div>
+                <div className="t-label" style={{ marginBottom: 4 }}>{t('sales_return_start_label')}</div>
+                <input type="date" value={retStart} onChange={(e) => setRetStart(e.target.value)} style={inputStyle} />
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              <button
+                type="button"
+                className="btn primary sm"
+                style={{ minHeight: 44 }}
+                onClick={async () => {
+                  const d = Number(retDays)
+                  if (!Number.isFinite(d) || d < 0) return
+                  const res = await updateSaleReturnFields(order.id, {
+                    return_window_days: d,
+                    return_window_starts_at: retStart ? retStart : null,
+                  })
+                  if ('ok' in res) await syncInspectedFromServer()
+                  else alert(`${t('error_prefix')} ${stringifyError(res.error)}`)
+                }}
+              >
+                {t('sales_return_save_btn')}
+              </button>
+              <button
+                type="button"
+                className="btn ghost sm"
+                style={{ minHeight: 44 }}
+                onClick={async () => {
+                  if (!confirm(t('sales_return_skip_confirm'))) return
+                  const res = await skipSaleReturnWindow(order.id)
+                  if ('ok' in res) await syncInspectedFromServer()
+                  else alert(`${t('error_prefix')} ${stringifyError(res.error)}`)
+                }}
+              >
+                {t('sales_return_skip_btn')}
+              </button>
+            </div>
+          </div>
+        )}
+
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <span style={{
             fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase',
@@ -741,13 +856,13 @@ function OrderDetailPanel({ order, oeuvres, cM, onClose, onUpdated }: {
             <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
               <button 
                 onClick={async () => {
-                  if (!confirm("Supprimer définitivement cette commande ?\nLes œuvres repasseront en statut 'Atelier'.")) return
+                  if (!confirm(t('sales_confirm_delete_order'))) return
                   const res = await deleteSaleOrder(order.id)
                   if ('ok' in res) {
                     onUpdated()
                     onClose()
                   } else {
-                    alert(`Erreur : ${stringifyError(res.error)}`)
+                    alert(`${t('error_prefix')} ${stringifyError(res.error)}`)
                   }
                 }}
                 className="btn ghost sm"
@@ -757,7 +872,7 @@ function OrderDetailPanel({ order, oeuvres, cM, onClose, onUpdated }: {
               </button>
               <button 
                 onClick={async (e) => {
-                  if (!confirm("Re-générer le PDF avec le nouveau layout et les images ?")) return
+                  if (!confirm(t('sales_confirm_regenerate_pdf'))) return
                   const btn = (e.currentTarget as HTMLButtonElement)
                   const oldText = btn.innerText
                   btn.innerText = 'BUSY...'
@@ -765,11 +880,11 @@ function OrderDetailPanel({ order, oeuvres, cM, onClose, onUpdated }: {
                   try {
                     const res = await regenerateOrderPdf(order.id)
                     if (res.ok) {
-                      alert("PDF mis à jour. Rechargez la page ou recliquez sur Télécharger.")
+                      alert(t('sales_pdf_regenerated_hint'))
                       onUpdated() // refresh list
-                    } else alert(`Erreur : ${stringifyError(res.error)}`)
+                    } else alert(`${t('error_prefix')} ${stringifyError(res.error)}`)
                   } catch (err) {
-                    alert(`Error: ${stringifyError(err)}`)
+                    alert(`${t('error_prefix')} ${stringifyError(err)}`)
                   } finally {
                     btn.innerText = oldText
                     btn.disabled = false
@@ -785,9 +900,9 @@ function OrderDetailPanel({ order, oeuvres, cM, onClose, onUpdated }: {
                   try {
                     const res = await getSignedUrl(order.pdf_path!)
                     if ('url' in res) window.open(res.url, '_blank')
-                    else alert(`Erreur : ${stringifyError(res.error)}`)
+                    else alert(`${t('error_prefix')} ${stringifyError(res.error)}`)
                   } catch (err) {
-                    alert(`Error: ${stringifyError(err)}`)
+                    alert(`${t('error_prefix')} ${stringifyError(err)}`)
                   }
                 }}
                 className="btn ghost sm" 

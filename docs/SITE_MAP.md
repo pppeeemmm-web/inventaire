@@ -16,7 +16,8 @@
 | `/works` | Public works / portfolio layout (collections from atelier config) |
 | `/practice` | Artist practice / démarche |
 | `/about` | Biography / CV |
-| `/enquiry` | Visitor contact / enquiry |
+| `/enquiry` | Visitor contact / enquiry (optional `?oeuvre_id=` / `?sale_order_id=` for after-sales routing) |
+| `/verify/[certId]` | Certificate of authenticity verification (QR target; `SUPABASE_SERVICE_ROLE_KEY` required server-side) |
 | `/card` | Printable business card sheet (`noindex`) |
 | `/c/[token]` | Private selection link: validates `private_link` server-side, shows grouped works (`noindex`) |
 
@@ -31,7 +32,7 @@
 
 | Path | Purpose |
 |------|---------|
-| `/hub` | Executive dashboard: stats, feeds, tiles into Atelier & public site |
+| `/hub` | Executive dashboard: stats, feeds (`system_log` audit rows + `studio_task` suggestions), tiles into Atelier & public site |
 | `/atelier` | Main team portal (tabbed UI); see §3 |
 | `/atelier/works/new` | Create work (`WorkForm`) |
 | `/atelier/works/[id]/edit` | Redirects to `/atelier?work=<id>` (drawer) |
@@ -72,6 +73,18 @@ Orchestrator: [`components/atelier/TeamPortalClient.tsx`](../components/atelier/
 
 **RSC data spine (`app/atelier/page.tsx`):** parallel reference queries for the first œuvres keyset chunk + lookups (techniques, themes, junction tables, etc.). `exhibition` rows are **not** loaded here — [`ExhibitionsTab.tsx`](../components/atelier/ExhibitionsTab.tsx) fetches its own `suivi_process` list. `contact_addresses` loads **after first paint** via server action [`fetchAtelierContactAddresses`](../app/atelier/atelier-data-actions.ts) for curation/compare. Unread `suivi_reminder` rows are passed as `initialReminders` from [`listUnreadSuiviReminders`](../app/atelier/reminders-actions.ts) for overview + pipeline initial paint; mutations revalidate via `revalidateRemindersTag()` + `router.refresh()`.
 
+### Atelier bootstrap server modules (not HTTP routes)
+
+| Module | Role |
+|--------|------|
+| [`app/atelier/reminders-actions.ts`](../app/atelier/reminders-actions.ts) | `getUnreadReminderCountCached`, `listUnreadSuiviReminders`, `markSuiviReminderRead`, `insertSuiviReminder`, `revalidateRemindersTag` — RSC + client-refresh path for `suivi_reminder` |
+| [`app/atelier/atelier-data-actions.ts`](../app/atelier/atelier-data-actions.ts) | `fetchAtelierContactAddresses` — post–first-paint flat list for curation dock / compare modal |
+| [`app/atelier/system/ledger-attachment-actions.ts`](../app/atelier/system/ledger-attachment-actions.ts) | `uploadLedgerAttachment` — team-gated R2 upload for System Ledger screenshots (`ledger/*` keys; metadata in `system_log.attachments`) |
+| [`app/atelier/system-reference-actions.ts`](../app/atelier/system-reference-actions.ts) | `getSystemLedgerReferenceMarkdown` — reads `docs/SYSTEM_LEDGER.md` for copy/download on **System** tab |
+| [`app/atelier/system/actions.ts`](../app/atelier/system/actions.ts) | `deleteStudioTask` — admin-only delete on `studio_task` (Hub “pulse” task list) |
+
+These are **`'use server'`** modules (callable from Server Components and from the client after hydration), distinct from `app/api/**` route handlers. Domain **writes** for works, contacts, etc. remain in `app/**/actions.ts` per CLAUDE.md.
+
 ### Query string contract
 
 | Param | Behavior |
@@ -90,8 +103,9 @@ Orchestrator: [`components/atelier/TeamPortalClient.tsx`](../components/atelier/
 
 ### Major client surfaces
 
-- **WorkDrawer** — canonical edit: pipelines, finance, images, themes, audit history (admin), `saveWork` / pending changes.
+- **WorkDrawer** — canonical edit: shell in [`WorkDrawer.tsx`](../components/atelier/WorkDrawer.tsx); inner panels under [`components/atelier/work-drawer/`](../components/atelier/work-drawer/) (`DrawerContent`, pipeline, finance, notes/version, groups, images, `drawer-widgets`, `drawer-content-utils`).
 - **WorkForm** — create-only at `/atelier/works/new`.
+- **SystemTab** — [`SystemTab.tsx`](../components/atelier/SystemTab.tsx): manual **`system_log`** ledger (`event_type` null), optional **`attachments`** (R2 `ledger/*` via [`ledger-attachment-actions.ts`](../app/atelier/system/ledger-attachment-actions.ts)); site checklist PDF, Studio Bible vault, reference MD (`system-reference-actions`).
 - **BroadcastTab** — admin-only diffusion queue (server-gated).
 - **AuditTab** — admin ledger + pending review + version tooling entrypoints.
 - **VaultTab** — documents; bible regeneration from **System** tab (`vaultStudioBible`).
@@ -102,8 +116,9 @@ Orchestrator: [`components/atelier/TeamPortalClient.tsx`](../components/atelier/
 
 | Route | Auth | Purpose |
 |-------|------|---------|
+| `POST` | Bearer `CRON_SECRET` | [`app/api/cron/return-window/route.ts`](../app/api/cron/return-window/route.ts) — applies expired sale return windows (`sale_order` → archive sold works) |
 | `GET/POST` … | varies | [`app/api/geocode/route.ts`](../app/api/geocode/route.ts) — geocoding helper |
-| `GET` … | Bearer `INVENTORY_BROADCAST_SECRET` | [`feed`](../app/api/inventory/broadcast/feed/route.ts), [`queue`](../app/api/inventory/broadcast/queue/route.ts), [`confirm`](../app/api/inventory/broadcast/confirm/route.ts), [`event`](../app/api/inventory/broadcast/event/route.ts) — Make/n8n broadcast chain |
+| `GET` … | Bearer `INVENTORY_BROADCAST_SECRET` | [`feed`](../app/api/inventory/broadcast/feed/route.ts), [`queue`](../app/api/inventory/broadcast/queue/route.ts), [`confirm`](../app/api/inventory/broadcast/confirm/route.ts), [`event`](../app/api/inventory/broadcast/event/route.ts) — Make/n8n broadcast chain; shared in-process rate limit [`lib/inventory-broadcast-rate-limit.ts`](../lib/inventory-broadcast-rate-limit.ts) → HTTP 429 |
 | `GET` | OAuth state | [`app/api/calendar/google/callback/route.ts`](../app/api/calendar/google/callback/route.ts), [`microsoft/callback`](../app/api/calendar/microsoft/callback/route.ts) |
 
 Domain mutations remain in **`app/**/actions.ts`** server actions; these routes are integration/OAuth/read surfaces (see CLAUDE.md exception list).
@@ -197,9 +212,10 @@ flowchart LR
 
 - **Public images:** `NEXT_PUBLIC_R2_PUBLIC_URL` + keys from `lib/data.ts` helpers.
 - **Private vault / bible:** EU S3 endpoint `https://<account_id>.eu.r2.cloudflarestorage.com` only.
+- **System ledger screenshots:** object keys prefix **`ledger/`** on the main paintings bucket; **`system_log.attachments`** stores `{ key }[]`. Lifecycle (Cloudflare console): delete **`ledger/`** objects after **30 days** — see `CLAUDE.md` Phase D; UI tolerates expired keys (`onError` on thumbnails).
 
 ---
 
 ## 10. Changelog discipline
 
-When adding a **page**, **tab id**, or **API route**, update this file, the QA checklist PDF source (`lib/site-map-checklist-pdf.ts`), and regenerate the **Studio Bible** from Atelier → System if narrative sections should stay aligned.
+When adding a **page**, **tab id**, **API route**, or **Atelier bootstrap `app/atelier/*-actions.ts` module** surfaced to operators, update this file, the QA checklist PDF source (`lib/site-map-checklist-pdf.ts`), and regenerate the **Studio Bible** from Atelier → System if narrative sections should stay aligned.

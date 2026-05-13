@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { Suspense } from 'react'
 import EnquiryClient from '@/components/public/EnquiryClient'
 import { trackView } from '@/lib/track'
 
@@ -10,5 +11,9 @@ export const metadata: Metadata = {
 
 export default async function EnquiryPage() {
   await trackView('/enquiry')
-  return <EnquiryClient />
+  return (
+    <Suspense fallback={null}>
+      <EnquiryClient />
+    </Suspense>
+  )
 }
