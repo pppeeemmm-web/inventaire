@@ -73,7 +73,7 @@
 
 Orchestrator: [`components/atelier/TeamPortalClient.tsx`](../components/atelier/TeamPortalClient.tsx).
 
-**RSC data spine (`app/atelier/page.tsx`):** parallel reference queries for the first œuvres keyset chunk + lookups (techniques, themes, junction tables, etc.). `exhibition` rows are **not** loaded here — [`ExhibitionsTab.tsx`](../components/atelier/ExhibitionsTab.tsx) fetches its own `suivi_process` list. `contact_addresses` loads **after first paint** via server action [`fetchAtelierContactAddresses`](../app/atelier/atelier-data-actions.ts) for curation/compare. Unread `suivi_reminder` rows are passed as `initialReminders` from [`listUnreadSuiviReminders`](../app/atelier/reminders-actions.ts) for overview + pipeline initial paint; mutations revalidate via `revalidateRemindersTag()` + `router.refresh()`.
+**RSC data spine (`app/atelier/page.tsx`):** parallel reference queries for the first œuvres keyset chunk + lookups (techniques, themes, junction tables, etc.). `exhibition` rows are **not** loaded here — [`ExhibitionsTab.tsx`](../components/atelier/ExhibitionsTab.tsx) fetches its own `suivi_process` list. `contact_addresses` loads **after first paint** via server action [`fetchAtelierContactAddresses`](../app/atelier/atelier-data-actions.ts) for curation/compare. The **Carte** tab ([`WorldMapTab.tsx`](../components/atelier/WorldMapTab.tsx)) performs its **own** anon `contact_addresses` read for map pins (independent of that fetch). Unread `suivi_reminder` rows are passed as `initialReminders` from [`listUnreadSuiviReminders`](../app/atelier/reminders-actions.ts) for overview + pipeline initial paint; mutations revalidate via `revalidateRemindersTag()` + `router.refresh()`.
 
 **Partial catalogue (loaded œuvres fewer than DB total):** [`TeamPortalClient.tsx`](../components/atelier/TeamPortalClient.tsx) shows a top **subset** strip (`data-testid="atelier-oeuvres-subset-banner"`, optional second **Load next batch** control), keeps the existing bottom paging bar (`data-testid="atelier-oeuvres-paging-bar"`), and passes `oeuvresPaging.totalCount` into tabs so list/pivot/overview numbers are not mistaken for the full catalogue. Overview adds `data-testid="atelier-overview-subset-caption"` under the executive stat grid. Playwright: [`tests/atelier-oeuvres-paging-bar.spec.ts`](../tests/atelier-oeuvres-paging-bar.spec.ts).
 
@@ -86,6 +86,7 @@ Orchestrator: [`components/atelier/TeamPortalClient.tsx`](../components/atelier/
 | [`app/atelier/system/ledger-attachment-actions.ts`](../app/atelier/system/ledger-attachment-actions.ts) | `uploadLedgerAttachment` — team-gated R2 upload for System Ledger screenshots (`ledger/*` keys; metadata in `system_log.attachments`) |
 | [`app/atelier/system-reference-actions.ts`](../app/atelier/system-reference-actions.ts) | `getSystemLedgerReferenceMarkdown` — reads `docs/SYSTEM_LEDGER.md` for copy/download on **System** tab |
 | [`app/atelier/system/actions.ts`](../app/atelier/system/actions.ts) | `deleteStudioTask` — admin-only delete on `studio_task` (Hub “pulse” task list) |
+| [`app/atelier/reports/actions.ts`](../app/atelier/reports/actions.ts) | `generateWorksTablePdf` — pdfkit export for **Rapports** tab (invoked from client after hydration) |
 
 These are **`'use server'`** modules (callable from Server Components and from the client after hydration), distinct from `app/api/**` route handlers. Domain **writes** for works, contacts, etc. remain in `app/**/actions.ts` per CLAUDE.md.
 
@@ -103,11 +104,13 @@ These are **`'use server'`** modules (callable from Server Components and from t
 
 **Terrain / Field (narrow sidebar first):** `inventory`, `production`, `stock-take`, `overview` then operations, management, vision, commercial, diffusion, config.
 
-**Full tab ids:** `overview`, `inventory`, `constellation`, `production`, `logistics`, `sales`, `exhibitions`, `vault`, `contacts`, `map`, `pipeline`, `fiscal`, `concepts`, `themes`, `stock`, `stock-take`, `system`, `portfolio`, `audit` (admin), `broadcast` (admin).
+**Full tab ids:** `overview`, `inventory`, `reports`, `constellation`, `production`, `logistics`, `sales`, `exhibitions`, `vault`, `contacts`, `map`, `pipeline`, `fiscal`, `concepts`, `themes`, `stock`, `stock-take`, `system`, `portfolio`, `audit` (admin), `broadcast` (admin).
 
 ### Major client surfaces
 
 - **WorkDrawer** — canonical edit: shell in [`WorkDrawer.tsx`](../components/atelier/WorkDrawer.tsx); inner panels under [`components/atelier/work-drawer/`](../components/atelier/work-drawer/) (`DrawerContent`, pipeline, finance, notes/version, groups, images, `drawer-widgets`, `drawer-content-utils`).
+- **ReportsTab** — [`ReportsTab.tsx`](../components/atelier/ReportsTab.tsx) (`?tab=reports`): works table on the **currently loaded** œuvres batch; XLSX + PDF (`generateWorksTablePdf` in [`reports/actions.ts`](../app/atelier/reports/actions.ts)); column model in [`lib/reports/works-table.ts`](../lib/reports/works-table.ts). Playwright: [`tests/reports-tab.spec.ts`](../tests/reports-tab.spec.ts).
+- **WorldMapTab** — [`WorldMapTab.tsx`](../components/atelier/WorldMapTab.tsx) (`?tab=map`): Leaflet map; contacts vs œuvres mode; geocode via [`app/api/geocode/route.ts`](../app/api/geocode/route.ts) with client-side cache. Contact pins prefer `contact_addresses` rows with city/country, else **`Contact` card** `Ville`/`Pays` when no geocodable address row exists.
 - **WorkForm** — create-only at `/atelier/works/new`.
 - **SystemTab** — [`SystemTab.tsx`](../components/atelier/SystemTab.tsx): manual **`system_log`** ledger (`event_type` null), optional **`attachments`** (R2 `ledger/*` via [`ledger-attachment-actions.ts`](../app/atelier/system/ledger-attachment-actions.ts)); site checklist PDF, Studio Bible vault, reference MD (`system-reference-actions`).
 - **BroadcastTab** — admin-only diffusion queue (server-gated).
@@ -225,3 +228,5 @@ flowchart LR
 ## 10. Changelog discipline
 
 When adding a **page**, **tab id**, **API route**, or **Atelier bootstrap `app/atelier/*-actions.ts` module** surfaced to operators, update this file, the QA checklist PDF source (`lib/site-map-checklist-pdf.ts`), and regenerate the **Studio Bible** from Atelier → System if narrative sections should stay aligned.
+
+**Recent doc sync (2026-05-13):** documented `reports` tab, `reports/actions.ts`, **Carte** `WorldMapTab` + dual `contact_addresses` load (curation vs map), contact-pin fallback rules (see [`CLAUDE.md`](../CLAUDE.md) KEY FILES); [`lib/site-map-checklist-pdf.ts`](../lib/site-map-checklist-pdf.ts) tab list includes `reports`.

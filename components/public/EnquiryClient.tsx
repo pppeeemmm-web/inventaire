@@ -7,6 +7,7 @@ import { useI18n } from '@/lib/i18n/context'
 import { createClient } from '@/lib/supabase/client'
 
 import { loadPortfolioConfig } from '@/app/atelier/portfolio/actions'
+import { trackView } from '@/lib/track'
 
 export default function EnquiryClient() {
   const { lang, setLang, t } = useI18n()
@@ -19,6 +20,7 @@ export default function EnquiryClient() {
   const sb = createClient()
 
   useEffect(() => {
+    void trackView('/enquiry')
     async function fetchData() {
       const result = await loadPortfolioConfig()
       if ('ok' in result) setConfig(result.config)

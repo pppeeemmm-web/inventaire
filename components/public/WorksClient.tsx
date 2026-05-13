@@ -6,6 +6,7 @@ import { imageUrl, yearOf } from '@/lib/data'
 import { useEffect, useState, useRef, useMemo } from 'react'
 import PublicNav from './PublicNav'
 import type { WorksUxMode } from '@/lib/worksUx'
+import { trackView } from '@/lib/track'
 
 /** Virtual distance between sequence slide centers (wheel deltas map here). */
 const WORKS_STEP = 7200
@@ -278,6 +279,10 @@ export default function WorksClient({
   const mode = safeModes[Math.min(activeModeIdx, safeModes.length - 1)]
 
   const allActiveLen = useMemo(() => mode.collections.length, [mode.collections])
+
+  useEffect(() => {
+    void trackView('/works')
+  }, [])
 
   useEffect(() => {
     if (worksUxMode !== 'chapters') setActiveChapterIdx(0)

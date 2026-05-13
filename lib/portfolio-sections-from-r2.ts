@@ -25,11 +25,16 @@ export async function loadPortfolioSectionsFromR2(): Promise<{
   config: Record<string, unknown>
   documents: { id: string; name: string }[]
 }> {
-  const sb = createServiceClient()
+  const hasServiceCreds = Boolean(
+    process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() && process.env.SUPABASE_SERVICE_ROLE_KEY?.trim(),
+  )
+  const sb = hasServiceCreds ? createServiceClient() : null
   const s3 = createPortfolioConfigS3Client()
 
   const [docsResult, r2Result] = await Promise.allSettled([
-    (sb.from('document') as any).select('id, name').order('name'),
+    sb
+      ? (sb.from('document') as any).select('id, name').order('name')
+      : Promise.resolve({ data: [] as { id: string; name: string }[], error: null }),
     s3.send(new GetObjectCommand({ Bucket: PORTFOLIO_SECTIONS_BUCKET, Key: PORTFOLIO_SECTIONS_R2_KEY })),
   ])
 

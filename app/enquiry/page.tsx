@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import EnquiryClient from '@/components/public/EnquiryClient'
-import { trackView } from '@/lib/track'
 
 export const metadata: Metadata = {
   title: 'Enquiry — Pierre Emmanuel Moulin',
@@ -9,8 +8,7 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 }
 
-export default async function EnquiryPage() {
-  await trackView('/enquiry')
+export default function EnquiryPage() {
   return (
     <Suspense fallback={null}>
       <EnquiryClient />

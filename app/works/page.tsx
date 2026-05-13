@@ -2,7 +2,6 @@ import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import WorksClient from '@/components/public/WorksClient'
 import { loadPortfolioConfig } from '@/app/atelier/portfolio/actions'
-import { trackView } from '@/lib/track'
 import { resolveWorksUx } from '@/lib/worksUx'
 
 /** Allow ?worksUx= preview without static caching */
@@ -41,7 +40,6 @@ export default async function WorksPage({
 }: {
   searchParams?: Promise<{ worksUx?: string }>
 }) {
-  await trackView('/works')
   const supabase = await createClient()
 
   // 1. Config — same static import as portfolio/about/practice (avoids broken dynamic chunks for `use server` modules).

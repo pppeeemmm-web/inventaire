@@ -1,12 +1,14 @@
 'use server'
 
-import { createClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { isPublicSiteTrackedPath, normalizeTrackedPath } from '@/lib/public-site-paths'
 
-const sb = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+function getPageViewServiceClient(): SupabaseClient | null {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !key) return null
+  return createClient(url, key)
+}
 
 /** PostgREST default max rows — must paginate for correct totals / breakdowns */
 const PAGE_SIZE = 1000
@@ -49,7 +51,10 @@ function countryLabel(code: string): string {
   return code
 }
 
-async function fetchAllPageViews(since: string): Promise<{ rows: PageViewRow[] | null; error: string | null }> {
+async function fetchAllPageViews(
+  sb: SupabaseClient,
+  since: string
+): Promise<{ rows: PageViewRow[] | null; error: string | null }> {
   const rows: PageViewRow[] = []
   let from = 0
   for (;;) {
@@ -73,10 +78,13 @@ export async function getAnalyticsStats(
   days: number,
   opts?: { scope?: 'public_site' | 'all' }
 ): Promise<AnalyticsResult> {
+  const sb = getPageViewServiceClient()
+  if (!sb) return { error: 'Missing Supabase configuration.' }
+
   const scope = opts?.scope ?? 'public_site'
   const since = new Date(Date.now() - days * 86400 * 1000).toISOString()
 
-  const { rows, error } = await fetchAllPageViews(since)
+  const { rows, error } = await fetchAllPageViews(sb, since)
   if (error) return { error }
 
   const scopedRows =

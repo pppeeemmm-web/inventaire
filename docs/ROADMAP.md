@@ -9,7 +9,7 @@
 | Item | Source | Notes |
 |------|--------|--------|
 | **Per-tab lazy fetch** for Atelier reference payloads | architecture §2, §5 | First œuvres chunk + keyset “load more” shipped; junction + lookup tables still ride the RSC `Promise.all`. Splitting reduces TTI and coupling. |
-| **Reports / analytics** on same paging primitives | architecture §5.10 | Avoid duplicating heavy Supabase reads when catalogue grows. |
+| **Reports / analytics** aligned with paging primitives | architecture §5.10 | **Rapports** tab ships (XLSX + PDF on loaded batch via [`ReportsTab`](../components/atelier/ReportsTab.tsx) + [`app/atelier/reports/actions.ts`](../app/atelier/reports/actions.ts)). Remaining: avoid drift vs keyset catalogue totals, heavier server-side reports without duplicating unbounded reads. |
 | **Overview pipeline pulse** off client Supabase | architecture §4 | Historical smell; migrate remaining widgets to server + tags where feasible. |
 | **Full ruthless UX pass** | architecture §3 | Mobile contract, coherence, discoverability, bilingual leaks — incremental fixes only so far. |
 
@@ -65,4 +65,4 @@
 
 ---
 
-*Last updated when this file was introduced (roadmap + doc sync commit).*
+*Last updated: 2026-05-13 — doc sync (reports tab shipped wording, world map pin rules in CLAUDE/SITE_MAP).*

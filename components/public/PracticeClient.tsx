@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import PublicNav from './PublicNav'
 import { loadPortfolioConfig } from '@/app/atelier/portfolio/actions'
+import { trackView } from '@/lib/track'
 
 function hasContent(html: string | null | undefined): boolean {
   if (!html) return false
@@ -15,6 +16,7 @@ export default function PracticeClient() {
   const [config, setConfig] = useState<any>(null)
 
   useEffect(() => {
+    void trackView('/practice')
     async function fetchData() {
       const result = await loadPortfolioConfig()
       if ('ok' in result) setConfig(result.config)

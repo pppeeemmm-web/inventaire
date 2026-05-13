@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import PracticeClient from '@/components/public/PracticeClient'
-import { trackView } from '@/lib/track'
 
 export const metadata: Metadata = {
   title: 'Practice — Pierre Emmanuel Moulin',
@@ -8,7 +7,6 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 }
 
-export default async function PracticePage() {
-  await trackView('/practice')
+export default function PracticePage() {
   return <PracticeClient />
 }
