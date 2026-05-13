@@ -356,10 +356,10 @@ export function PipelineTab({ oeuvres, contacts, groups }: Props) {
   if (loading) return <div style={{ padding: 40 }} className="t-mono-sm">{t('pipeline_loading')}</div>
 
   return (
-    <div style={{ display: 'flex', height: '100%', minHeight: 0 }}>
+    <div style={{ display: 'flex', height: '100%', minHeight: 0, minWidth: 0 }}>
 
       {/* ── Main ────────────────────────────────────────────────── */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0, overflow: 'hidden' }}>
 
         {/* Toolbar */}
         <div style={{
@@ -392,7 +392,7 @@ export function PipelineTab({ oeuvres, contacts, groups }: Props) {
         </div>
 
         {/* ── Content ────────────────────────────────────────────── */}
-        <div style={{ flex: 1, overflow: 'auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: 1, overflow: 'auto', minHeight: 0, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
 
         {editing && (
           <ProcessModal
@@ -409,7 +409,7 @@ export function PipelineTab({ oeuvres, contacts, groups }: Props) {
         )}
 
         {/* Gantt */}
-        <div style={{ flex: 1, overflow: 'auto', padding: '20px 28px' }}>
+        <div style={{ flex: 1, overflow: 'auto', minHeight: 0, minWidth: 0, padding: '20px 28px' }}>
           {filtered.length === 0
             ? <div className="t-mono-sm" style={{ color:'var(--tx3)', paddingTop:40, textAlign:'center' }}>{t('pipeline_no_processes')}</div>
             : <GanttView processes={filtered} dateLocaleTag={dateLocTag} onSelect={p=>setInspectedId(p.id)} onEdit={setEditing} onRefresh={load} onCycleStatut={cycleStatut} />

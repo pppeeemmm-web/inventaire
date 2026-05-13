@@ -618,7 +618,7 @@ export function TeamPortalClient({
         </div>
 
         {/* ── Content ────────────────────────────────────────────── */}
-        <div style={{ flex: 1, overflow: 'auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: 1, overflow: 'auto', minHeight: 0, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
 
         {tab === 'overview' && (
           <OverviewTab
@@ -735,7 +735,7 @@ export function TeamPortalClient({
           </div>
         )}
         {tab === 'pipeline' && (
-          <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+          <div style={{ flex: 1, display: 'flex', minHeight: 0, minWidth: 0 }}>
             <PipelineTab oeuvres={oeuvres} contacts={contacts} groups={groups} />
           </div>
         )}
