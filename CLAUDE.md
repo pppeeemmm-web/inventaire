@@ -15,10 +15,10 @@ UI: bilingual only — obey 🌐 UI COPY when touching user-facing text.
 RESPONSIVE: obey **📱 MOBILE FIELD-TOOL** below (concept + contract; authoritative).
 
 🛠️ CMDS
-Next.js 15 (port 3000). npm dev | build | lint. No tests.
+Next.js 15 (port 3000). npm dev | build | lint. E2E: `npm run test:e2e` (Playwright; e.g. atelier œuvres paging bar).
 Real app path: C:\Users\pppee\Documents\Claude\Projects\Art db\app
 Worktree edits → copy to real app (dev server runs from real app).
-DEV SERVER: run `pwsh scripts/dev.ps1` from real app — kills port 3000, prints LAN IP for phone testing.
+DEV SERVER: run `pwsh scripts/dev.ps1` from real app — kills port 3000, prints LAN IP for phone testing. If `/_next/static/*` returns 404, restart dev from this root; delete `.next` and hard-reload if a stale tab outlived a rebuild.
 WORKTREE START: immediately create `.claude/launch.json` = `{"version":"0.0.1","configurations":[]}` in the worktree root. This blocks the preview tool from walking up and stealing port 3000 with a no-env server.
 
 🏗️ ARCHITECTURE
@@ -27,7 +27,7 @@ WORKTREE START: immediately create `.claude/launch.json` = `{"version":"0.0.1","
 - Mutations: Server Actions ('use server') in app/**/actions.ts only. **Exception:** Route Handlers for OAuth callbacks (`app/auth/callback`, `app/api/calendar/*/callback`), read-only or external integration routes under `app/api/` (e.g. geocode, inventory broadcast) — not a substitute for domain mutations in actions.
 - Auth: Supabase SSR middleware enforces auth on all /atelier /hub /galerie routes. Admin = `is_admin()` RPC (joins `Contact.is_admin` via `auth_user_id`); editors = team but not admin. Old `profiles.role` is dead.
 - i18n: see **🌐 UI COPY** below (non-negotiable for anything user-facing)
-- Image upload: Sharp → 400px AVIF thumb → R2 via AWS S3 SDK
+- Image upload: bytes validated as JPEG/PNG/WebP/GIF via Sharp before R2 PUT; storage keys `W_{oid}_{seq}_{hash8}.{ext}` (see lib/image-upload.ts). Sharp → 400px AVIF thumb → R2 via fetch + SigV4 (same pattern as AWS S3 SDK)
 - Supabase clients: createClient() (anon, RLS enforced) · createServiceClient() (service_role, admin bypass)
 - **R2 endpoint: ALL buckets are EU jurisdiction** → always use `https://<account_id>.eu.r2.cloudflarestorage.com`. Never use the global endpoint (no `.eu.` = NoSuchBucket or BadRequest). Applies to app SDK config, backup scripts, and any new tooling.
 
@@ -56,22 +56,25 @@ All user-visible copy → `useI18n().t(key)` + `lib/i18n/dictionary.ts` (**DictK
 
 📁 KEY FILES
 - lib/i18n/dictionary.ts · context.tsx — all UI strings (fr/en)
-- lib/data.ts — imageUrl(), thumbUrl(), yearOf(), statusOf(), makeFilename()
+- lib/data.ts — imageUrl(), thumbUrl(), yearOf(), statusOf(), seqFromFilename(). **Do not import `lib/i18n/dictionary` here** (this module is bundled on the client); status labels use a local FR+EN `STATUS_LABEL_MAP` → `StatusKey`, not dict keys.
+- lib/image-upload.ts — server-only: validateWorkImageBuffer() (Sharp allow-list), makeImageStorageFilename() (content hash + safe ext)
+- lib/work-pending-keys.ts — allow-listed FormData keys for `pending_changes` queue + admin replay
 - lib/supabase/client.ts — browser client
 - lib/supabase/server.ts — server + service client
 - lib/work-editor-model.ts — shared prod/ownership stages + `computeStatusId` for WorkForm + WorkDrawer
-- app/atelier/page.tsx — loads all reference data in parallel (up to 5000 rows), builds lookup maps
+- app/atelier/page.tsx — parallel reference loads + **first œuvres chunk** (`limit` + total count); more rows via `fetchOeuvresKeysetPage` in `TeamPortalClient` (no silent 5000-row cap).
 - components/atelier/TeamPortalClient.tsx — main orchestrator (tabs, selection, drawer); reads `?work=` on load (`runGuarded`); dirty drawer → unsaved prompt on Hub + `beforeunload` on tab close
-- components/atelier/InventoryTab.tsx — inventory list + panel
-- components/atelier/WorkDrawer.tsx — **canonical edit** for existing works: prod/ownership pipes, finance, notes, themes/groups, images (incl. delete), gift flow, `saveWork` + guards (`runGuarded`, `?work=` deep link via `TeamPortalClient`). Overlay + inventory panel modes.
+- components/atelier/InventoryTab.tsx — inventory list + panel; list/grid virtualized (`@tanstack/react-virtual`)
+- components/atelier/WorkDrawer.tsx — **canonical edit** for existing works: shell + zoom; inner editor under `components/atelier/work-drawer/` (`DrawerContent*.tsx`, pipeline, finance/notes+version sections, images, gift flow, `saveWork` + guards). Overlay + inventory panel modes.
 - components/atelier/WorkForm.tsx — full-page **create only** at `/atelier/works/new` (shared `saveWork`). `/atelier/works/[id]/edit` redirects to `/atelier?work=<id>` (drawer).
 - components/atelier/ContactEditorPanel.tsx — Hub Contacts full editor in the right column / stacked on mobile (`ContactsTab` orchestrates selection, `useUnsavedActionGuard` on row switch / batch / merge).
-- app/atelier/works/actions.ts — image upload, delete, work CRUD; `requireAdmin()` gates `purgeWorkPermanently` + `deleteWorkImage`; `saveWork` queues editor edits to `pending_changes` unless `__skip_review=1`.
+- app/atelier/works/actions.ts — image upload, delete, work CRUD; `requireAdmin()` gates `purgeWorkPermanently` + `deleteWorkImage`; `saveWork` queues editor edits to `pending_changes` unless `__skip_review=1`; **`fetchOeuvresKeysetPage`** for Atelier œuvres paging.
 - app/atelier/audit/{actions,pending-actions,version-actions}.ts — audit ledger, approval queue, version history (all admin-gated via `is_admin()` RPC)
 - components/atelier/{AuditTab,PendingQueue,WorkVersionHistory}.tsx — admin protection UIs (Audit Log → Ledger / Review tabs; history panel inside WorkDrawer)
 - components/atelier/BroadcastTab.tsx — Diffusion tab (Queue / Publiés / Activité subtabs); admin-only via `requireAdminGuard()`
 - app/atelier/broadcast/actions.ts — `listBroadcastDashboard()`, `clearStuckQueue()`; all admin-gated
-- app/api/inventory/broadcast/{feed,queue,confirm,event}/route.ts — Make/n8n API; Bearer `INVENTORY_BROADCAST_SECRET`; `broadcast_caption_seed` flows through feed → AI caption pipeline
+- app/api/inventory/broadcast/{feed,queue,confirm,event}/route.ts — Make/n8n API; Bearer `INVENTORY_BROADCAST_SECRET` validated with timing-safe SHA-256 compare (`lib/inventory-broadcast-secret.ts`); shared **rate limit** + 429 (`lib/inventory-broadcast-rate-limit.ts`). RLS: `broadcast_events` has admin + `is_team()` select (`supabase/sql/broadcast_phase2.sql`, `supabase/sql/broadcast_events_team_rls.sql`). `broadcast_caption_seed` flows through feed → AI caption pipeline
+- app/atelier/reminders-actions.ts — `revalidateRemindersTag()`; server unread count for Atelier shell (`getUnreadReminderCountCached`)
 - app/atelier/calendar/actions.ts + `lib/calendar/*` — exhibition (`suivi_process` / `suivi_etape`) → Google Calendar / Microsoft Graph (one-way export; manual sync in UI). Env: see **📅 CALENDAR SYNC** below.
 
 **Deferred integrations (no GO = do not implement)**  
@@ -80,14 +83,15 @@ All user-visible copy → `useI18n().t(key)` + `lib/i18n/dictionary.ts` (**DictK
 - **Transactional email (Resend/Postmark-class):** adopt when offline alerting or **external** recipients matter; if wired from DB webhooks use an **outbox + idempotency** pattern.
 
 📅 CALENDAR SYNC (Google + Microsoft, v1)  
-- **User tables:** `calendar_account`, `calendar_event_link` (migration `supabase/sql/calendar_sync.sql`). Tokens encrypted at rest (`CALENDAR_TOKEN_ENCRYPTION_KEY` = 32-byte secret, hex or raw).  
-- **OAuth:** `GOOGLE_CALENDAR_CLIENT_ID` / `GOOGLE_CALENDAR_CLIENT_SECRET`; `MICROSOFT_CALENDAR_CLIENT_ID` / `MICROSOFT_CALENDAR_CLIENT_SECRET`; `MICROSOFT_CALENDAR_TENANT` (often `common`). Redirect URIs: `{origin}/api/calendar/google/callback` and `{origin}/api/calendar/microsoft/callback`.  
+- **User tables:** `calendar_account`, `calendar_event_link` (migration `supabase/sql/calendar_sync.sql`). Refresh tokens: **AES-256-GCM** with key from **HKDF-SHA256** (`CALENDAR_TOKEN_ENCRYPTION_KEY` as IKM, per-row `token_salt`, info `atelier-calendar-refresh-v1`). Legacy rows with `token_salt` null still decrypt (single-key mode). Column + idempotent alter: `supabase/sql/calendar_token_salt.sql`. Implementation: `lib/calendar/token-crypto.ts`.  
+- **OAuth:** `GOOGLE_CALENDAR_CLIENT_ID` / `GOOGLE_CALENDAR_CLIENT_SECRET`; `MICROSOFT_CALENDAR_CLIENT_ID` / `MICROSOFT_CALENDAR_CLIENT_SECRET`; `MICROSOFT_CALENDAR_TENANT` (often `common`). Redirect URIs: `{origin}/api/calendar/google/callback` and `{origin}/api/calendar/microsoft/callback`. Failures redirect with opaque **`calendar_err_code`** only (details server-logged); UI reads code in `ExhibitionsTab` deep-link handler.  
 - **CSRF:** `CALENDAR_OAUTH_STATE_SECRET` (HMAC for `state` param).  
 - **App URL:** `NEXT_PUBLIC_SITE_URL` or `NEXT_PUBLIC_APP_URL` (origin for OAuth redirect allowlists).  
 - **Event copy:** sync uses viewer `lang` at click time for title/body where applicable.
 
 ## SITE MAP (routes & diagrams)
 
+- **Audit backlog vs shipped:** [architecture.md](architecture.md) (security/architecture/UX bullets + accomplished / partial / not).
 - **Canonical route list + Mermaid topology:** [docs/SITE_MAP.md](docs/SITE_MAP.md) (version control). Update it when adding pages, Atelier `?tab=` ids, or first-party `app/api` routes.
 - **QA checklist PDF:** Atelier → **System** tab → **Download site map checklist** — on-demand pdfkit export (`exportSiteMapChecklistPdf` in [app/atelier/vault/actions.ts](app/atelier/vault/actions.ts), builder in [lib/site-map-checklist-pdf.ts](lib/site-map-checklist-pdf.ts)).
 - **Vaulted narrative PDF:** `/Atelier_Studio_Bible.pdf` — latest `document.kind = 'bible'`; regenerate from System tab (`vaultStudioBible` in [app/atelier/vault/bible-action.ts](app/atelier/vault/bible-action.ts)).
@@ -112,7 +116,7 @@ Image URLs: imageUrl() / thumbUrl() from lib/data.ts. Never build R2 URLs manual
 
 **Phase A — Hard delete = admin only.** `purgeWorkPermanently`, `deleteWorkImage` gated by `requireAdmin()` in `app/atelier/works/actions.ts`. RLS `DELETE` policy on `Oeuvres` + `tblImage` enforces `is_admin()` (defense-in-depth). Editors keep soft-delete (`Oeuvres.deleted_at`) — fully reversible. Migration: `supabase/sql/admin_only_hard_delete.sql`.
 
-**Phase B — Editor edits → approval queue.** Non-admin `saveWork` on existing oeuvres lands in `pending_changes` (jsonb payload + baseline snapshot). Admin reviews via Atelier > Audit Log > **Review** tab — approve replays payload through `saveWork` with `__skip_review=1`; reject marks row + reason. New-work creation stays unqueued (low risk). Migration: `supabase/sql/pending_changes.sql`. Files: `app/atelier/audit/pending-actions.ts`, `components/atelier/PendingQueue.tsx`.
+**Phase B — Editor edits → approval queue.** Non-admin `saveWork` on existing oeuvres lands in `pending_changes` (jsonb payload + baseline snapshot). **Payload keys are allow-listed** (`lib/work-pending-keys.ts`); approve replays only those keys through `saveWork` with `__skip_review=1` (blocks arbitrary field injection). Admin reviews via Atelier > Audit Log > **Review** tab; reject marks row + reason. New-work creation stays unqueued (low risk). Migration: `supabase/sql/pending_changes.sql`. Files: `app/atelier/audit/pending-actions.ts`, `components/atelier/PendingQueue.tsx`.
 
 **Phase C — Pre-update version snapshots.** Trigger `oeuvre_version_snap` writes the OLD row to `oeuvre_versions` on every `Oeuvres` UPDATE. Admin-only collapsible panel at the bottom of `WorkDrawer` lists versions, diffs vs prior, restores via service-role `restoreOeuvreVersion(versionId)`. Restore itself is logged (creates new snapshot). Excluded from restore payload: `OeuvreID`, `is_public` (trigger), `txtImageNameLink` (trigger), `created_at`. Migration: `supabase/sql/oeuvre_versions.sql`. Files: `app/atelier/audit/version-actions.ts`, `components/atelier/WorkVersionHistory.tsx`.
 
@@ -125,7 +129,9 @@ R2 has no S3-style Object Versioning and Bucket Lock is too rigid (locks the adm
 
 **Phase E — Off-site DB backups.** `.github/workflows/backup.yml` runs `scripts/backup.sh` daily at 03:17 UTC: `pg_dump` Supabase (Session Pooler URL, IPv4) → gzip → upload to `art-db-backups` R2 bucket (EU jurisdiction) via **boto3** (Python). AWS CLI v2 and rclone both produce malformed sigv4 credentials against R2 — boto3 with `region_name='auto'` + EU endpoint is the only confirmed-working upload path. No Object Lock; lifecycle rule auto-prunes `daily/*` after 90 days. GH secrets reuse main R2 credentials (`R2_ACCOUNT_ID` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` from `.env.local`) mapped to `R2_BACKUP_ACCOUNT_ID` / `R2_BACKUP_ACCESS_KEY` / `R2_BACKUP_SECRET_KEY`. Full setup + recovery: [docs/BACKUP_RECOVERY.md](docs/BACKUP_RECOVERY.md). Quarterly recovery drill: restore latest dump into throwaway Supabase project, spot-check row counts.
 
-**Dev-only auto-login.** `middleware.ts` calls `signInWithPassword` when `NODE_ENV=development` AND `DEV_AUTO_LOGIN_EMAIL`/`_PASSWORD` set. Used in preview iframe to skip Google OAuth. Production never has these env vars set.
+**Dev-only auto-login.** `middleware.ts` calls `signInWithPassword` when `NODE_ENV=development` AND `DEV_AUTO_LOGIN_EMAIL`/`_PASSWORD` set. Used in preview iframe to skip Google OAuth. Production never has these env vars set. Login error logs mask email-shaped substrings.
+
+**Audit ledger actor emails.** `fetchSystemLogs` enriches `user_id` with `Contact.Email` batched by `auth_user_id` (RLS anon read; no service-role user API per row).
 
 🚫 CEMETERY (instant fail)
 DEAD COLUMNS: Oeuvres.Statut, Oeuvres.StatutID, tags, txtImageName, Emballage, DocsValidated, UniteDimension

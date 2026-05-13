@@ -39,7 +39,7 @@ The numbered sections below quote **without rephrasing** from the ruthless analy
 
 > - **`broadcast_events` / queue write path bypasses RLS.** Bearer-token routes in [app/api/inventory/broadcast/*](app/api/inventory/broadcast) use service-role and have no rate limit. Token leak = full broadcast spam. Add timing-safe comparison (`crypto.timingSafeEqual`) in [lib/inventory-broadcast-secret.ts](lib/inventory-broadcast-secret.ts) and an `is_team()` RLS policy as defense-in-depth.
 
-**Accomplished:** `validateInventoryBroadcastSecret` compares SHA-256 digests with `crypto.timingSafeEqual`; `supabase/sql/broadcast_events_team_rls.sql` policy `broadcast_events_team_select` using `is_team()`. Rate limit: not added.
+**Accomplished:** `validateInventoryBroadcastSecret` compares SHA-256 digests with `crypto.timingSafeEqual`; `supabase/sql/broadcast_events_team_rls.sql` policy `broadcast_events_team_select` using `is_team()`. **Rate limit:** shared helper [`lib/inventory-broadcast-rate-limit.ts`](lib/inventory-broadcast-rate-limit.ts) → HTTP 429 on `app/api/inventory/broadcast/{feed,queue,confirm,event}`.
 
 ### MEDIUM
 
@@ -49,7 +49,7 @@ The numbered sections below quote **without rephrasing** from the ruthless analy
 
 > - [app/atelier/audit/actions.ts](app/atelier/audit/actions.ts) uses service-role to enrich audit rows with `auth.users` emails. Prefer `Contact.email` joined via `auth_user_id` so service-role isn't reached for read-only enrichment.
 
-**Accomplished (partial):** enrichment uses `auth.admin.getUserById(id)` per `user_id` in the log batch — not full `listUsers`. **Not accomplished:** `Contact.email` join via `auth_user_id` (no schema change in repo).
+**Accomplished:** audit log enrichment loads `Contact.Email` in one query where `Contact.auth_user_id` ∈ distinct `user_id` values from the batch (RLS-scoped read; no service-role `getUserById` per row).
 
 > - Dev auto-login in [middleware.ts](middleware.ts) — confirmed `NODE_ENV==='development'` gated, but the failure log leaks the email. Mask before `console.error`.
 
@@ -71,9 +71,11 @@ The numbered sections below quote **without rephrasing** from the ruthless analy
 > - **[WorkDrawer.tsx](components/atelier/WorkDrawer.tsx) is 2 194 lines** — image zoom, form, audit panel, version history, undo, drafts, save lifecycle, all in one client component. State soup + prop drilling forces `(p: any)` casts (~line 890). Split into: `ImageViewer`, `WorkFormPanel`, `VersionHistoryPanel`, `OwnershipPipe`. Use the work-editor-model contract you already have.
 > - **Type erosion.** `(supabase as any).from('Oeuvres')` in [app/atelier/page.tsx](app/atelier/page.tsx:20) plus `as any[]` on addresses. Re-generate Supabase types and remove the casts — they hide schema drift at exactly the wrong layer.
 
-**Accomplished (partial) — WorkDrawer:** Shell [WorkDrawer.tsx](components/atelier/WorkDrawer.tsx) (~311 lines) owns zoom/wheel + `tblImage` fetch; inner editor lives under [components/atelier/work-drawer/](components/atelier/work-drawer/) — typed [drawer-content-props.ts](components/atelier/work-drawer/drawer-content-props.ts) (`DrawerContentProps`), [DrawerContent.tsx](components/atelier/work-drawer/DrawerContent.tsx) (~1 460 lines), [WorkDrawerImageArea.tsx](components/atelier/work-drawer/WorkDrawerImageArea.tsx), [WorkDrawerPipelineSection.tsx](components/atelier/work-drawer/WorkDrawerPipelineSection.tsx), shared [drawer-widgets.tsx](components/atelier/work-drawer/drawer-widgets.tsx). Drawer path `any` casts from the audit (e.g. `saveLookup` / contact row maps) removed or narrowed. **Remaining:** form/finance/notes/version/actions still monolithic inside `DrawerContent`; no `VersionHistoryPanel` / `WorkFormPanel` split yet; optional `useWorkDrawerImageZoom` hook not extracted.
+**Accomplished (partial) — WorkDrawer:** Shell [WorkDrawer.tsx](components/atelier/WorkDrawer.tsx) owns zoom/wheel + `tblImage` fetch; inner editor under [components/atelier/work-drawer/](components/atelier/work-drawer/) — typed [drawer-content-props.ts](components/atelier/work-drawer/drawer-content-props.ts), [DrawerContent.tsx](components/atelier/work-drawer/DrawerContent.tsx), [WorkDrawerImageArea.tsx](components/atelier/work-drawer/WorkDrawerImageArea.tsx), [WorkDrawerPipelineSection.tsx](components/atelier/work-drawer/WorkDrawerPipelineSection.tsx), [DrawerContentFinanceSection.tsx](components/atelier/work-drawer/DrawerContentFinanceSection.tsx), [DrawerContentNotesVersionSection.tsx](components/atelier/work-drawer/DrawerContentNotesVersionSection.tsx), [drawer-widgets.tsx](components/atelier/work-drawer/drawer-widgets.tsx). **Remaining:** core form / themes / images / save lifecycle still concentrated in `DrawerContent`; optional smaller hooks (e.g. image zoom) not extracted.
 
-**Not accomplished — mega-load / page.tsx casts:** `.range(0, 4999)` and Supabase `as any` on [app/atelier/page.tsx](app/atelier/page.tsx) unchanged.
+**Accomplished (partial) — œuvres mega-load:** [app/atelier/page.tsx](app/atelier/page.tsx) loads a **first chunk** of `Oeuvres` (`order` + `limit`, with exact **total count** for the UI). [TeamPortalClient.tsx](components/atelier/TeamPortalClient.tsx) calls server action [`fetchOeuvresKeysetPage`](app/atelier/works/actions.ts) for “load more” (keyset by `OeuvreID`) — no silent “everything loaded” at 5000 rows. Other parallel lookups still bounded (e.g. exhibitions `limit(500)`); not full lazy per-tab fetch.
+
+**Accomplished (partial) — page.tsx typing:** `Oeuvres` select uses generated `Oeuvre` typing (`as unknown as Oeuvre[]`). **`addresses` prop** still cast `as any[]` at the loader boundary.
 
 ### Good and worth keeping (verbatim)
 
@@ -89,13 +91,19 @@ The numbered sections below quote **without rephrasing** from the ruthless analy
 > - Status/label mapping (FR strings) baked into [lib/data.ts](lib/data.ts) `STATUS_LABEL_MAP`. Drive from `dictionary.ts` or the `OeuvreStatus` table with bilingual columns.
 > - Constellation / world-map tabs not audited in depth — likely candidates for `StageProduction` (dead enum?) leakage; quick grep before touching.
 
-**Not accomplished.**
+**Accomplished (partial) — reminders:** Initial unread badge count comes from the server ([`getUnreadReminderCountCached`](app/atelier/reminders-actions.ts) on Atelier load); [`revalidateRemindersTag()`](app/atelier/reminders-actions.ts) runs after pipeline reminder writes. **Still client-fetched:** overview tab pulls `suivi_reminder` rows (list widget) via browser Supabase alongside other pulse queries.
+
+**Accomplished (partial) — status labels:** [lib/data.ts](lib/data.ts) maps `OeuvreStatus.label` → `StatusKey` with a **bilingual** `STATUS_LABEL_MAP` (FR + EN spellings). **Not** wired through `dictionary.ts` — intentional: `lib/data.ts` is imported in many **client** bundles; importing the full dictionary graph previously broke webpack/RSC init (see comment in `data.ts`).
+
+**Accomplished (process):** Backlog grep of constellation / map / pipeline tabs for inappropriate `StageProduction` vs [`lib/work-editor-model.ts`](lib/work-editor-model.ts) — closed without code changes.
 
 ---
 
 ## 3. UX — biggest delta between intent and reality
 
-All bullets in the ruthless file under **Mobile contract violations**, **Coherence**, **Discoverability**, **Bilingual leaks**, **States** — **Not accomplished**, except where security work touched `WorkForm.tsx` (`fd.set` for `prix`, `discount`, `exposable` for pending parity with `saveWork`; not the sticky Save / mobile shell items).
+Ruthless file bullets under **Mobile contract violations**, **Coherence**, **Discoverability**, **Bilingual leaks**, **States** — largely **still open** as a full audit pass.
+
+**Accomplished (incremental UX pass):** narrow-viewport branches and safe-area aware patterns in the Atelier shell (`TeamPortalClient` / sidebar), **admin pending-review badge** on Audit entry, **i18n** additions for œuvres paging UI + drawer-adjacent copy, **Playwright** smoke [`tests/atelier-oeuvres-paging-bar.spec.ts`](tests/atelier-oeuvres-paging-bar.spec.ts). Inventory list/grid uses **virtualization** ([`InventoryTab.tsx`](components/atelier/InventoryTab.tsx) + `@tanstack/react-virtual`). This is not a claim that every ruthless UX bullet is closed.
 
 ---
 
@@ -108,9 +116,9 @@ Quoted verbatim:
 > Write path: leaf form → server action in `app/**/actions.ts` → branches on admin: admin writes directly to Postgres (RLS allows), editor writes to `pending_changes`. `Oeuvres` UPDATE triggers `oeuvre_versions` snapshot. Image writes go through Sharp → R2 with `r2SoftDelete` recycle prefix. External: calendar push via Google/Microsoft Graph one-way, inventory broadcast via Bearer-token API consumed by Make/n8n.
 >
 > What's load-bearing and currently fragile:
-> - The **single-load atelier page** is the spine; everything depends on it. It's also the scaling cliff.
-> - The **pending-changes payload** is replayed verbatim — that's the trust boundary where editor→admin elevation could happen.
-> - **R2 keys + Calendar tokens** are the secrets-at-rest story; one is rotated yearly, the other has weak KDF.
+> - The **single-load atelier page** is the spine; everything depends on it. It's also the scaling cliff. *(œuvres row cap removed in favor of counted first chunk + keyset “load more”; other reference tables still loaded in one round-trip.)*
+> - The **pending-changes payload** on approve is filtered to an allow-list before replay — residual risk is any bug in that filter, not arbitrary JSON injection.
+> - **R2 keys + Calendar tokens** are the secrets-at-rest story; one is rotated yearly; calendar refresh tokens use HKDF + per-row salt (see §1 HIGH).
 
 **Accomplishment delta vs “replay verbatim” / “weak KDF”:** pending payload allow-list + replay filter; calendar HKDF + per-row salt + legacy decrypt.
 
@@ -131,7 +139,7 @@ Ranked list quoted verbatim from ruthless analysis §5:
 9. **Vision/OCR field capture** (label scanning → draft fields, human confirm) — natural next step once mobile shell exists; aligns with the field-tool concept.
 10. **Reports/analytics pivot** could ride on the same paged-fetch infrastructure — saves duplicated heavy queries.
 
-**Accomplished from this list:** **3** and **7** (and scope adjacent to **1** only if interpreted narrowly — not done; Atelier page still mega-load). **2** (WorkDrawer decomposition): **partial** — see §2 WorkDrawer bullet above.
+**Accomplished from this list:** **3**, **7**; **1** (œuvres paging + total count + keyset continuation, not full per-tab lazy fetch); **2** (WorkDrawer): **partial** — shell + work-drawer modules + finance/notes/version sections; **4** / **5** / **6** (incremental — see §3 UX pass). **8**+ remain deferred per CLAUDE.md.
 
 Quoted verbatim:
 
@@ -145,12 +153,12 @@ Quoted verbatim:
 
 > For each direction picked: smoke the golden path on a real iPhone-SE viewport, run `npm run lint && npm run build`, then exercise WorkForm + WorkDrawer + Inventory on mobile and PendingQueue + AuditTab as admin. The on-demand QA checklist PDF in Atelier > System is the existing canonical test list — use it before claiming any of these "done".
 
-**Build:** `npm run build` has been run successfully after the security changes; full QA checklist pass not recorded in this file.
+**Build / lint:** `npm run build` and `npm run lint` have been run in the backlog wave that added paging, broadcast rate limit, audit Contact enrichment, and drawer splits; full Atelier **QA checklist PDF** pass is still manual — not recorded here.
 
 ---
 
 ## Repo documentation updated
 
-`CLAUDE.md` updated to reflect: `lib/image-upload.ts`, `lib/work-pending-keys.ts`, Phase B allow-list, calendar HKDF + `token_salt`, broadcast validation + RLS, OAuth opaque codes, audit `getUserById`, dev login log masking.
+`CLAUDE.md` reflects: `lib/image-upload.ts`, `lib/work-pending-keys.ts`, Phase B allow-list, calendar HKDF + `token_salt`, broadcast validation + RLS + **rate limit** (`lib/inventory-broadcast-rate-limit.ts`), OAuth opaque codes, audit **Contact** batch enrichment (not `getUserById`), dev login log masking, **chunked œuvres load + `fetchOeuvresKeysetPage`**, `lib/data.ts` **no dictionary import** + bilingual status map, Inventory virtualization, reminders server initial count + `revalidateRemindersTag`, Playwright / lint cmds, dev **404 on `/_next/static`** troubleshooting.
 
-**This file:** WorkDrawer split documented under §2 (shell + `components/atelier/work-drawer/*`).
+**This file:** Keep **Accomplished / partial / not** in sync when closing ruthless-audit items; §2–§5 updated May 2026 for the paging + UX + security follow-ups above.
