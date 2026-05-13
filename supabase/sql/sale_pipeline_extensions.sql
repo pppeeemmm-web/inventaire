@@ -1,5 +1,7 @@
 -- Sale pipeline extensions: return window, shipment↔order link, inquiry after-sales fields.
 -- Apply manually via Supabase SQL editor.
+--
+-- If `relation "inquiry" does not exist`: run `supabase/sql/inquiry.sql` first, then re-run this file.
 
 -- ── sale_order: cooling-off / return window (see work.md) ─────────────────
 ALTER TABLE sale_order
