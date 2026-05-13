@@ -150,7 +150,9 @@ export function WorkForm({
   const [discount,    setDiscount]    = useState(String((oeuvre as any)?.Discount ?? '0'))
   const [paymentDone, setPaymentDone] = useState((oeuvre as any)?.PaymentDone ?? false)
   const [exposable,   setExposable]   = useState((oeuvre as any)?.Exposable ?? false)
-  const [broadcastReady, setBroadcastReady] = useState(!!(oeuvre as { broadcast_ready?: boolean }).broadcast_ready)
+  const [broadcastReady, setBroadcastReady] = useState(
+    !!(oeuvre as { broadcast_ready?: boolean } | null)?.broadcast_ready,
+  )
   const [broadcastCaptionSeed, setBroadcastCaptionSeed] = useState(String((oeuvre as { broadcast_caption_seed?: string | null })?.broadcast_caption_seed ?? ''))
 
   // ── Lookups ───────────────────────────────────────────────────────
