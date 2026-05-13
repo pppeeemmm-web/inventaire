@@ -54,7 +54,10 @@ interface WorksMode {
 }
 
 interface LandingConfig {
-  /** Full public `https://…` URL for the landing circle hero; empty → default asset. */
+  /**
+   * Full public `https://…` URL for the landing circle hero; empty → default asset.
+   * Future: optional vault/R2 upload (same validation path as work images).
+   */
   hero_image_url: string
 }
 
@@ -624,7 +627,7 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
                       <div className="t-label" style={{ marginBottom: 8, fontSize: 9 }}>{t('atelier_pub_hero_preview_label')}</div>
                       <img
                         src={config.landing.hero_image_url.trim()}
-                        alt=""
+                        alt={t('atelier_pub_hero_preview_label')}
                         width={200}
                         height={200}
                         style={{

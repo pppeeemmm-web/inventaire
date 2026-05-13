@@ -6,11 +6,20 @@ import WavingCircle from '@/components/public/WavingCircle'
 import LandingPdfPopup from '@/components/portfolio/LandingPdfPopup'
 import { useI18n } from '@/lib/i18n/context'
 import { trackView } from '@/lib/track'
-import { LANDING_HERO_IMAGE_URL } from '@/lib/seo/landing-hero'
 
-const artistName = 'Pierre Emmanuel Moulin'
+type LandingPageProps = {
+  /** Resolved absolute URL (config or default). */
+  heroImageUrl: string
+  artistName: string
+  /** Custom hero hosts may be outside `images.remotePatterns`. */
+  heroImageUnoptimized: boolean
+}
 
-export default function LandingPage() {
+export default function LandingPage({
+  heroImageUrl,
+  artistName,
+  heroImageUnoptimized,
+}: LandingPageProps) {
   const { lang, setLang, t } = useI18n()
   const [pdfOpen, setPdfOpen] = useState(false)
   const [navOpen, setNavOpen] = useState(false)
@@ -155,10 +164,11 @@ export default function LandingPage() {
 
         <nav className="circle-wrap" aria-label={t('pub_mobile_nav_heading')}>
           <WavingCircle
-            src={LANDING_HERO_IMAGE_URL}
+            src={heroImageUrl}
             alt={artistName}
             priority
             sizes="(max-width: 480px) min(42vmin, calc(100vw - 48px)), min(38vmin, 520px)"
+            unoptimized={heroImageUnoptimized}
           />
           <Link href="/works" className="orb orb-top">
             {t('pub_works')}

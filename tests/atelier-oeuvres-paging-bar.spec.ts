@@ -19,5 +19,11 @@ test.describe('Atelier œuvres paging bar', () => {
       test.skip(true, 'No partial oeuvres load in this environment (≤ first page).')
     }
     await expect(bar.getByRole('button', { name: /Load next batch|Charger la tranche suivante/i })).toBeVisible()
+
+    const subsetBanner = page.getByTestId('atelier-oeuvres-subset-banner')
+    await expect(subsetBanner).toBeVisible()
+    await expect(
+      subsetBanner.getByRole('button', { name: /Load next batch|Charger la tranche suivante/i }),
+    ).toBeVisible()
   })
 })

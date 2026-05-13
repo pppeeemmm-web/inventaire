@@ -11,7 +11,7 @@ export type DictKey =
   | 'teamDesc' | 'clientsDesc' | 'galleriesDesc' | 'publicDesc'
   | 'hubWorksOnline' | 'hubLastLog' | 'hubStockLow'
   | 'hub_continue' | 'hub_capture' | 'hub_alerts' | 'hub_recent_images' | 'hub_swipe_cards'
-  | 'overview' | 'inventory' | 'inv_refinement_gate' | 'atelier_oeuvres_paging_hint' | 'atelier_oeuvres_load_more' | 'constellation' | 'production'
+  | 'overview' | 'inventory' | 'inv_refinement_gate' | 'atelier_oeuvres_paging_hint' | 'atelier_oeuvres_load_more' | 'atelier_oeuvres_subset_banner' | 'atelier_header_works_badge_title' | 'ov_loaded_subset_caption' | 'prod_tab_loaded_subset_note' | 'prod_tab_pivot_footnote_loaded_subset' | 'inv_loaded_batch_suffix' | 'constellation' | 'production'
   | 'logistics' | 'sales' | 'exhibitions' | 'vault'
   | 'works' | 'works_cap' | 'catalogued' | 'exposable' | 'montee'
   | 'unpriced' | 'noImage' | 'thisYear' | 'wip' | 'consigned'
@@ -340,7 +340,18 @@ export const dict: Record<Lang, Dictionary> = {
       'Statut « Disponible » en base, mais l’œuvre reste traitée comme « En production » tant que le catalogue ou la photo ne sont pas validés.',
     atelier_oeuvres_paging_hint:
       'Œuvres chargées : {loaded} sur {total}. Les totaux (vue d’ensemble, thèmes) portent sur les œuvres déjà chargées.',
+    atelier_oeuvres_subset_banner:
+      'Catalogue partiel : {loaded} / {total} œuvres chargées. Les totaux et listes suivent ce lot tant que la suite n’est pas chargée.',
+    atelier_header_works_badge_title:
+      'Œuvres affichées dans l’atelier (lot chargé). Chargez la tranche suivante pour rapprocher du catalogue complet.',
     atelier_oeuvres_load_more: 'Charger la tranche suivante',
+    ov_loaded_subset_caption:
+      'Chiffres ci-dessus : œuvres déjà chargées ({loaded} sur {total} au catalogue). Chargez la suite en bas de page pour élargir le lot.',
+    prod_tab_loaded_subset_note:
+      'Production et tableau croisé : données sur le lot chargé ({loaded} / {total} au catalogue).',
+    prod_tab_pivot_footnote_loaded_subset:
+      'Tableau : comptages sur le lot chargé ({loaded} / {total}).',
+    inv_loaded_batch_suffix: 'lot chargé',
     constellation: 'Constellation', production: 'Production',
     logistics: 'Logistique', sales: 'Ventes',
     exhibitions: 'Expositions', vault: 'Coffre',
@@ -1517,7 +1528,18 @@ $env:OLLAMA_HOST="127.0.0.1:11435"; ollama run llama3.2:1b`,
       'Database status is « Available », but the work stays « In production » until cataloguing and photography gates are cleared.',
     atelier_oeuvres_paging_hint:
       'Works loaded: {loaded} of {total}. Overview and theme totals reflect loaded works only.',
+    atelier_oeuvres_subset_banner:
+      'Partial catalogue: {loaded} / {total} works loaded. Totals and lists follow this batch until you load more.',
+    atelier_header_works_badge_title:
+      'Works currently held in the Atelier session (loaded batch). Use “Load next batch” to approach the full catalogue.',
     atelier_oeuvres_load_more: 'Load next batch',
+    ov_loaded_subset_caption:
+      'Figures above are for the loaded batch ({loaded} of {total} in the catalogue). Load more at the bottom of the page to widen the batch.',
+    prod_tab_loaded_subset_note:
+      'Production board and pivot use the loaded batch ({loaded} / {total} in the catalogue).',
+    prod_tab_pivot_footnote_loaded_subset:
+      'Pivot counts use the loaded batch ({loaded} / {total}).',
+    inv_loaded_batch_suffix: 'loaded batch',
     constellation: 'Constellation', production: 'Production',
     logistics: 'Logistics', sales: 'Sales',
     exhibitions: 'Exhibitions', vault: 'Vault',

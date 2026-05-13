@@ -75,6 +75,8 @@ Orchestrator: [`components/atelier/TeamPortalClient.tsx`](../components/atelier/
 
 **RSC data spine (`app/atelier/page.tsx`):** parallel reference queries for the first œuvres keyset chunk + lookups (techniques, themes, junction tables, etc.). `exhibition` rows are **not** loaded here — [`ExhibitionsTab.tsx`](../components/atelier/ExhibitionsTab.tsx) fetches its own `suivi_process` list. `contact_addresses` loads **after first paint** via server action [`fetchAtelierContactAddresses`](../app/atelier/atelier-data-actions.ts) for curation/compare. Unread `suivi_reminder` rows are passed as `initialReminders` from [`listUnreadSuiviReminders`](../app/atelier/reminders-actions.ts) for overview + pipeline initial paint; mutations revalidate via `revalidateRemindersTag()` + `router.refresh()`.
 
+**Partial catalogue (loaded œuvres fewer than DB total):** [`TeamPortalClient.tsx`](../components/atelier/TeamPortalClient.tsx) shows a top **subset** strip (`data-testid="atelier-oeuvres-subset-banner"`, optional second **Load next batch** control), keeps the existing bottom paging bar (`data-testid="atelier-oeuvres-paging-bar"`), and passes `oeuvresPaging.totalCount` into tabs so list/pivot/overview numbers are not mistaken for the full catalogue. Overview adds `data-testid="atelier-overview-subset-caption"` under the executive stat grid. Playwright: [`tests/atelier-oeuvres-paging-bar.spec.ts`](../tests/atelier-oeuvres-paging-bar.spec.ts).
+
 ### Atelier bootstrap server modules (not HTTP routes)
 
 | Module | Role |

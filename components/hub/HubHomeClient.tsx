@@ -254,13 +254,13 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
       {/* Main Content Area */}
       <div style={{
         flex: 1,
-        padding: hubNavCompact ? '18px max(16px, env(safe-area-inset-right)) 22px max(16px, env(safe-area-inset-left))' : '32px clamp(18px, 3vw, 40px)',
+        padding: hubNavCompact ? '18px max(16px, env(safe-area-inset-right)) 22px max(16px, env(safe-area-inset-left))' : '32px clamp(20px, 4vw, 56px)',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'auto',
         gap: hubNavCompact ? 18 : 40,
         width: '100%',
-        maxWidth: 1440,
+        maxWidth: 1920,
         margin: '0 auto',
         boxSizing: 'border-box',
       }}>
@@ -473,7 +473,7 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
               <div>
                 <div className="t-eyebrow" style={{ marginBottom: 24, opacity: 0.5 }}>01 · {t('pipeline')}</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  {recentProcess.slice(0, 6).map(p => (
+                  {recentProcess.slice(0, 12).map(p => (
                     <div key={p.id} onClick={() => router.push('/atelier?tab=pipeline')} style={{ cursor: 'pointer', borderBottom: '1px solid var(--bd2)', paddingBottom: 12 }}>
                       <div className="serif" style={{ fontSize: 16, color: 'var(--tx)', marginBottom: 4 }}>{p.label}</div>
                       <div className="row gap-sm" style={{ justifyContent: 'space-between' }}>
@@ -489,7 +489,7 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
               <div>
                 <div className="t-eyebrow" style={{ marginBottom: 24, opacity: 0.5 }}>02 · {t('concepts')}</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {burningIdeas.slice(0, 4).map(i => (
+                  {burningIdeas.slice(0, 8).map(i => (
                     <div key={i.id} onClick={() => router.push('/atelier?tab=concepts')} 
                       style={{ padding: '12px 16px', background: 'var(--bg1)', border: '1px solid var(--bd2)', cursor: 'pointer', transition: 'border-color .2s' }}>
                       <div className="t-mono-sm" style={{ fontSize: 8, color: 'var(--tx3)', marginBottom: 4, textTransform: 'uppercase' }}>{i.medium || t('hub_concept_fallback')}</div>
@@ -505,7 +505,7 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {displayLogs.length === 0 ? (
                     <div className="t-mono-sm" style={{ color: 'var(--tx3)', opacity: 0.5 }}>{t('hub_ledger_empty')}</div>
-                  ) : displayLogs.slice(0, 6).map((log) => {
+                  ) : displayLogs.slice(0, 10).map((log) => {
                     const typeLine = hubLogTypeLabel(log)
                     return (
                     <div key={`${log.feedSource}-${log.id}`} onClick={() => router.push('/atelier?tab=system')}
@@ -529,8 +529,8 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
               {/* Recently Added */}
               <div>
                 <div className="t-eyebrow" style={{ marginBottom: 24, opacity: 0.5 }}>04 · {t('recentlyAdded')}</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 8 }}>
-                  {recentImages.slice(0, 16).map((o) => (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(88px, 1fr))', gap: 8 }}>
+                  {recentImages.slice(0, 32).map((o) => (
                     <div key={o.OeuvreID} onClick={() => router.push('/atelier?tab=inventory')}
                       style={{ aspectRatio: '1', background: 'var(--bg1)', border: '1px solid var(--bd2)', overflow: 'hidden', position: 'relative', cursor: 'pointer' }}>
                       {o.txtImageNameLink

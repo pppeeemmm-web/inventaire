@@ -24,6 +24,8 @@ export type PivotPanelProps<R> = {
   collapsibleSection?: boolean
   /** Initial state for the section toggle; only used when `collapsibleSection` is true. */
   initialSectionCollapsed?: boolean
+  /** Optional note under the title row (e.g. subset scope). */
+  footnote?: string
 }
 
 export function PivotPanel<R>({
@@ -36,7 +38,9 @@ export function PivotPanel<R>({
   title,
   exportFileName = 'pivot',
   initialToolbarCollapsed = false,
-  initialBodyCollapsed = false,
+  collapsibleSection = false,
+  initialSectionCollapsed = false,
+  footnote,
 }: PivotPanelProps<R>) {
   const { t, lang } = useI18n()
   const narrow = useMediaQuery('(max-width: 767px)')
@@ -51,7 +55,7 @@ export function PivotPanel<R>({
   const [sectionExpanded, setSectionExpanded] = useState(
     () => !(collapsibleSection && initialSectionCollapsed),
   )
-  const [bodyCollapsed, setBodyCollapsed] = useState(Boolean(title) && initialBodyCollapsed)
+  const [bodyCollapsed, setBodyCollapsed] = useState(Boolean(title) && initialSectionCollapsed)
 
   const fmt = useCallback(
     (n: number | null, kind: string) => {
@@ -222,6 +226,21 @@ export function PivotPanel<R>({
           >
             {t('pivotExportXlsx')}
           </button>
+        </div>
+      )}
+
+      {title && footnote && bodyOpen && (
+        <div
+          className="t-mono-sm"
+          style={{
+            fontSize: 10,
+            color: 'var(--tx3)',
+            marginBottom: toolbarCollapsed ? 8 : 10,
+            lineHeight: 1.4,
+            wordBreak: 'break-word',
+          }}
+        >
+          {footnote}
         </div>
       )}
 

@@ -153,7 +153,10 @@ export function TeamPortalClient({
       setOeuvresMoreLoading(false)
     }
   }, [oeuvresNextCursor, oeuvresPaging, t])
-  
+
+  const oeuvresCataloguePartial =
+    oeuvresPaging != null && oeuvres.length < oeuvresPaging.totalCount
+
   const [inspected,  setInspected]  = useState<Oeuvre | null>(null)
   const workDrawerGuardRef = useRef<WorkDrawerGuardHandle>(null)
   const [drawerDirty, setDrawerDirty] = useState(false)
@@ -559,7 +562,16 @@ export function TeamPortalClient({
           {!atelierNarrow && (
             <>
               <div className="vline" style={{ height: 16, opacity: 0.3, marginLeft: 8 }} />
-              <div className="t-mono-sm" style={{ opacity: 0.5, fontSize: 9, flexShrink: 0 }}>{oeuvres.length} {t('inventoryWorksBadge')}</div>
+              <div
+                className="t-mono-sm"
+                style={{ opacity: 0.5, fontSize: 9, flexShrink: 0 }}
+                title={oeuvresCataloguePartial ? t('atelier_header_works_badge_title') : undefined}
+              >
+                {oeuvresCataloguePartial
+                  ? `${oeuvres.length} / ${oeuvresPaging!.totalCount}`
+                  : oeuvres.length}{' '}
+                {t('inventoryWorksBadge')}
+              </div>
             </>
           )}
         </div>
@@ -584,6 +596,41 @@ export function TeamPortalClient({
           </button>
         </div>
       </div>
+
+      {oeuvresCataloguePartial && oeuvresPaging && (
+        <div
+          data-testid="atelier-oeuvres-subset-banner"
+          className="t-mono-sm"
+          style={{
+            flexShrink: 0,
+            padding: '8px max(12px, env(safe-area-inset-right)) 8px max(12px, env(safe-area-inset-left))',
+            borderBottom: '1px solid var(--bd)',
+            background: 'var(--bg2)',
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            gap: 10,
+            rowGap: 8,
+          }}
+        >
+          <span style={{ color: 'var(--tx2)', fontSize: 11, flex: '1 1 220px', minWidth: 0 }}>
+            {t('atelier_oeuvres_subset_banner')
+              .replace('{loaded}', String(oeuvres.length))
+              .replace('{total}', String(oeuvresPaging.totalCount))}
+          </span>
+          {oeuvresNextCursor != null && (
+            <button
+              type="button"
+              className="btn primary sm"
+              disabled={oeuvresMoreLoading}
+              onClick={() => void loadMoreOeuvres()}
+              style={{ minHeight: 44, flexShrink: 0 }}
+            >
+              {oeuvresMoreLoading ? '…' : t('atelier_oeuvres_load_more')}
+            </button>
+          )}
+        </div>
+      )}
 
       {oeuvresPaging && oeuvresNextCursor != null && (
         <div
@@ -688,8 +735,15 @@ export function TeamPortalClient({
                 {t('close')}
               </button>
             </div>
-            <div className="t-mono-sm" style={{ display: atelierNarrow ? 'block' : 'none', padding: '0 20px 16px', fontSize: 9, opacity: 0.5 }}>
-              {oeuvres.length} {t('inventoryWorksBadge')}
+            <div
+              className="t-mono-sm"
+              style={{ display: atelierNarrow ? 'block' : 'none', padding: '0 20px 16px', fontSize: 9, opacity: 0.5 }}
+              title={oeuvresCataloguePartial ? t('atelier_header_works_badge_title') : undefined}
+            >
+              {oeuvresCataloguePartial && oeuvresPaging
+                ? `${oeuvres.length} / ${oeuvresPaging.totalCount}`
+                : oeuvres.length}{' '}
+              {t('inventoryWorksBadge')}
             </div>
           <div data-testid="atelier-nav-groups">
           {GROUPS.map((g) => (
@@ -753,6 +807,13 @@ export function TeamPortalClient({
             initialOverviewBootstrap={initialOverviewBootstrap}
             isAdmin={isAdmin}
             conflicts={conflicts}
+            subsetCaption={
+              oeuvresCataloguePartial && oeuvresPaging
+                ? t('ov_loaded_subset_caption')
+                    .replace('{loaded}', String(oeuvres.length))
+                    .replace('{total}', String(oeuvresPaging.totalCount))
+                : undefined
+            }
           />
         )}
 
@@ -773,6 +834,7 @@ export function TeamPortalClient({
             onOpen={onOpen}
             oeuvreThemeIdsByOeuvre={oeuvreThemeIdsByOeuvre}
             oeuvreGroupIdsByOeuvre={oeuvreGroupIdsByOeuvre}
+            oeuvresCatalogueTotal={oeuvresPaging?.totalCount}
           />
         )}
 
@@ -818,6 +880,7 @@ export function TeamPortalClient({
               tM={tM}
               statusLabelMap={statusLabelMap}
               onOpen={onOpen}
+              oeuvresPaging={oeuvresPaging}
             />
           </div>
         )}
@@ -1022,6 +1085,7 @@ function mondayStartOfWeek(d: Date) {
 
 function OverviewTab({
   oeuvres, tM, t, lang, onGoTab, reminderCount, initialReminders, initialOverviewBootstrap, isAdmin, conflicts,
+  subsetCaption,
 }: {
   oeuvres:       Oeuvre[]
   tM:            Record<number, string>
@@ -1033,6 +1097,7 @@ function OverviewTab({
   initialOverviewBootstrap: AtelierOverviewBootstrap
   isAdmin:       boolean
   conflicts:     any[]
+  subsetCaption?: string
 }) {
   const thisYear   = new Date().getFullYear()
   const yearPrefix = String(thisYear)
@@ -1139,6 +1204,15 @@ function OverviewTab({
               </div>
             ))}
           </div>
+          {subsetCaption ? (
+            <div
+              className="t-mono-sm"
+              data-testid="atelier-overview-subset-caption"
+              style={{ marginTop: 12, fontSize: 10, color: 'var(--tx3)', lineHeight: 1.45, maxWidth: 720 }}
+            >
+              {subsetCaption}
+            </div>
+          ) : null}
         </div>
 
         {/* Row 1.5: Financial Pulse */}

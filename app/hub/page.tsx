@@ -53,7 +53,7 @@ export default async function HubPage() {
       .is('deleted_at', null)
       .not('txtImageNameLink', 'is', null)
       .order('OeuvreID', { ascending: false })
-      .limit(16),
+      .limit(32),
     supabase
       .from('stock_item')
       .select('*', { count: 'exact', head: true })
@@ -62,13 +62,13 @@ export default async function HubPage() {
       .from('suivi_process')
       .select('id, nom, statut, created_at')
       .order('created_at', { ascending: false })
-      .limit(6),
+      .limit(12),
     supabase
       .from('concept')
       .select('id, titre, energie, medium')
       .not('statut', 'eq', 'archived')
       .order('created_at', { ascending: false })
-      .limit(4),
+      .limit(8),
     supabase
       .from('system_log')
       .select('id, created_at, action, details, type, status, priority, event_type, table_name, row_id, metadata')
@@ -76,12 +76,12 @@ export default async function HubPage() {
       .not('event_type', 'is', null)
       .neq('event_type', 'ATELIER_VIEW')
       .order('created_at', { ascending: false })
-      .limit(12),
+      .limit(20),
     supabase
       .from('studio_task')
       .select('id, created_at, action, details, type, status, priority')
       .order('created_at', { ascending: false })
-      .limit(12),
+      .limit(20),
   ])
 
   const auditFeed = (auditFeedRaw ?? []).map((l) => mapHubLogRow(l as Record<string, unknown>, 'audit'))

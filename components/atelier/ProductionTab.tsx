@@ -48,9 +48,11 @@ interface Props {
   tM:             Record<number, string>
   statusLabelMap: Record<number, string>
   onOpen:         (o: Oeuvre) => void
+  /** When the catalogue has more rows than loaded, UI clarifies subset scope. */
+  oeuvresPaging?: { totalCount: number; nextCursor: number | null; pageSize: number }
 }
 
-export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
+export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen, oeuvresPaging }: Props) {
   const { t } = useI18n()
   const router = useRouter()
   const [search,      setSearch]      = useState('')
@@ -273,6 +275,21 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
   }
   const statLine = statParts.join(' · ')
 
+  const cataloguePartial =
+    oeuvresPaging != null && oeuvres.length < oeuvresPaging.totalCount
+  const subsetNote =
+    cataloguePartial && oeuvresPaging
+      ? t('prod_tab_loaded_subset_note')
+          .replace('{loaded}', String(oeuvres.length))
+          .replace('{total}', String(oeuvresPaging.totalCount))
+      : ''
+  const pivotFootnote =
+    cataloguePartial && oeuvresPaging
+      ? t('prod_tab_pivot_footnote_loaded_subset')
+          .replace('{loaded}', String(oeuvres.length))
+          .replace('{total}', String(oeuvresPaging.totalCount))
+      : undefined
+
   return (
     <div style={{ padding: '16px 28px 0', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%', flex: 1 }}>
 
@@ -283,6 +300,11 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
           <div className="t-mono-sm" style={{ color: 'var(--tx3)', marginTop: 3 }}>
             {statLine}
           </div>
+          {subsetNote ? (
+            <div className="t-mono-sm" style={{ color: 'var(--tx3)', marginTop: 6, fontSize: 10, lineHeight: 1.4, maxWidth: 560 }}>
+              {subsetNote}
+            </div>
+          ) : null}
         </div>
         <input
           value={search}
@@ -312,6 +334,7 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
         availableValues={prodPivotValues}
         defaultRowDimId="status"
         defaultColDimId="month"
+        footnote={pivotFootnote}
         defaultValueIds={['count']}
         title={t('pivot')}
         exportFileName="production-throughput"

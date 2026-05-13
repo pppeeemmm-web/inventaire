@@ -217,6 +217,7 @@ export function InventoryTab({
   selection, setSelection, onOpen,
   oeuvreThemeIdsByOeuvre = {},
   oeuvreGroupIdsByOeuvre = {},
+  oeuvresCatalogueTotal,
 }: SharedProps & {
   techniques:     { TechniqueID: number; Technique: string | null }[]
   supports:       { SupportID:   number; Support:   string | null }[]
@@ -228,6 +229,8 @@ export function InventoryTab({
   /** From RSC (oeuvre_theme / working_group_work); avoids duplicate client fetch */
   oeuvreThemeIdsByOeuvre?: Record<number, number[]>
   oeuvreGroupIdsByOeuvre?: Record<number, string[]>
+  /** When set and greater than `oeuvres.length`, inventory counts are a loaded subset of the catalogue. */
+  oeuvresCatalogueTotal?: number
 }) {
   const { t } = useI18n()
 
@@ -260,6 +263,8 @@ export function InventoryTab({
     [setSelection, t],
   )
   const narrow = useMediaQuery('(max-width: 767px)')
+  const invCountDenominatorPartial =
+    oeuvresCatalogueTotal != null && oeuvres.length < oeuvresCatalogueTotal
 
   const headerBase: React.CSSProperties = {
     padding: '0 4px',
@@ -648,8 +653,20 @@ export function InventoryTab({
         background: 'var(--bg1)',
       }}>
         {/* Count */}
-        <div className="t-mono-sm" style={{ color: 'var(--tx3)', whiteSpace: 'nowrap', marginRight: 8 }}>
-          {filtered.length}<span style={{ opacity: 0.5 }}>/{oeuvres.length}</span>
+        <div
+          className="t-mono-sm"
+          style={{ color: 'var(--tx3)', whiteSpace: 'nowrap', marginRight: 8 }}
+          title={
+            invCountDenominatorPartial
+              ? `${filtered.length} / ${oeuvres.length} — ${t('inv_loaded_batch_suffix')}`
+              : undefined
+          }
+        >
+          {filtered.length}
+          <span style={{ opacity: 0.5 }}>/{oeuvres.length}</span>
+          {invCountDenominatorPartial ? (
+            <span style={{ opacity: 0.45, fontSize: 10, marginLeft: 4 }}>({t('inv_loaded_batch_suffix')})</span>
+          ) : null}
         </div>
 
         {/* Search */}
