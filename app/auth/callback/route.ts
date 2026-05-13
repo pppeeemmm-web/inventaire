@@ -13,11 +13,19 @@ function safeNext(param: string | null): string {
   return param
 }
 
+/** Public origin the browser used (Vercel: prefer x-forwarded-* over internal request URL). */
+function publicOrigin(request: NextRequest): string {
+  const xfHost = request.headers.get('x-forwarded-host')?.split(',')[0]?.trim()
+  const xfProto = request.headers.get('x-forwarded-proto')?.split(',')[0]?.trim() || 'https'
+  if (xfHost) return `${xfProto}://${xfHost}`
+  return request.nextUrl.origin
+}
+
 export async function GET(request: NextRequest) {
   const url    = new URL(request.url)
   const code   = url.searchParams.get('code')
   const next   = safeNext(url.searchParams.get('next'))
-  const origin = url.origin
+  const origin = publicOrigin(request)
 
   if (code) {
     let response = NextResponse.redirect(`${origin}${next}`)
