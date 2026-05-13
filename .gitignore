@@ -7,6 +7,11 @@ node_modules/
 .next/
 out/
 build/
+.open-next/
+
+# cloudflare / wrangler
+.wrangler/
+.dev.vars
 
 # env — never commit secrets
 .env.local
