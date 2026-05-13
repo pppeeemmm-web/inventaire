@@ -299,8 +299,14 @@ th{background:#f4f4f4}
   )
 
   const filterBarStyle: CSSProperties = narrow
-    ? { display: 'flex', flexDirection: 'column', gap: 10 }
-    : { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 }
+    ? { display: 'flex', flexDirection: 'column', gap: 8 }
+    : { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 8 }
+
+  const panelPad: CSSProperties = narrow
+    ? { padding: '10px 12px' }
+    : { padding: '12px 16px' }
+
+  const inputH: CSSProperties = { minHeight: narrow ? 44 : 38 }
 
   const safeBottom = 'max(12px, env(safe-area-inset-bottom))'
 
@@ -316,9 +322,9 @@ th{background:#f4f4f4}
         paddingBottom: narrow ? 88 : 0,
       }}
     >
-      <div className="panel pad-md" style={{ flexShrink: 0, marginBottom: 12 }}>
-        <div className="serif" style={{ fontSize: 22, color: 'var(--tx)', marginBottom: 6 }}>{t('report_title')}</div>
-        <div style={{ fontSize: 13, color: 'var(--tx3)', maxWidth: 720 }}>{t('report_subtitle')}</div>
+      <div className="panel" style={{ flexShrink: 0, marginBottom: 8, ...panelPad }}>
+        <div className="serif" style={{ fontSize: 20, color: 'var(--tx)', marginBottom: 4, lineHeight: 1.25 }}>{t('report_title')}</div>
+        <div style={{ fontSize: 13, color: 'var(--tx3)', maxWidth: 720, lineHeight: 1.35 }}>{t('report_subtitle')}</div>
       </div>
 
       {narrow && (
@@ -333,8 +339,8 @@ th{background:#f4f4f4}
       )}
 
       {(!narrow || filtersOpen) && (
-        <div className="panel pad-md" style={{ flexShrink: 0, marginBottom: 12 }}>
-          <div className="t-label" style={{ marginBottom: 10 }}>{t('report_filters_heading')}</div>
+        <div className="panel" style={{ flexShrink: 0, marginBottom: 8, ...panelPad }}>
+          <div className="t-label" style={{ marginBottom: 6 }}>{t('report_filters_heading')}</div>
           <div style={filterBarStyle}>
             <input
               className="input"
@@ -342,40 +348,40 @@ th{background:#f4f4f4}
               onChange={(e) => setQ(e.target.value)}
               placeholder={t('search')}
               aria-label={t('search')}
-              style={{ minHeight: 44, ...(narrow ? {} : { gridColumn: 'span 2' }) }}
+              style={{ ...inputH, ...(narrow ? {} : { gridColumn: 'span 2' }) }}
             />
-            <select className="input" value={tech} onChange={(e) => setTech(e.target.value)} style={{ minHeight: 44 }}>
+            <select className="input" value={tech} onChange={(e) => setTech(e.target.value)} style={inputH}>
               <option value="all">{t('allTech')}</option>
               {sortedTechniques.map((x) => (
                 <option key={x.TechniqueID} value={String(x.TechniqueID)}>{x.Technique ?? `#${x.TechniqueID}`}</option>
               ))}
             </select>
-            <select className="input" value={support} onChange={(e) => setSupport(e.target.value)} style={{ minHeight: 44 }}>
+            <select className="input" value={support} onChange={(e) => setSupport(e.target.value)} style={inputH}>
               <option value="all">{t('allSupports')}</option>
               {sortedSupports.map((x) => (
                 <option key={x.SupportID} value={String(x.SupportID)}>{x.Support ?? `#${x.SupportID}`}</option>
               ))}
             </select>
-            <select className="input" value={status} onChange={(e) => setStatus(e.target.value as StatusKey | 'all')} style={{ minHeight: 44 }}>
+            <select className="input" value={status} onChange={(e) => setStatus(e.target.value as StatusKey | 'all')} style={inputH}>
               <option value="all">{t('pipeline_filter_all')}</option>
               {ALL_STATUS_KEYS.map((k) => (
                 <option key={k} value={k}>{t(STATUS_FILTER_LABEL[k])}</option>
               ))}
             </select>
-            <select className="input" value={filterTheme} onChange={(e) => setFilterTheme(e.target.value)} style={{ minHeight: 44 }}>
+            <select className="input" value={filterTheme} onChange={(e) => setFilterTheme(e.target.value)} style={inputH}>
               <option value="all">{t('const_allThemes')}</option>
               {sortedThemes.map((th) => (
                 <option key={th.id} value={String(th.id)}>{th.name}</option>
               ))}
             </select>
-            <select className="input" value={filterGroup} onChange={(e) => setFilterGroup(e.target.value)} style={{ minHeight: 44 }}>
+            <select className="input" value={filterGroup} onChange={(e) => setFilterGroup(e.target.value)} style={inputH}>
               <option value="all">{t('const_allGroups')}</option>
               {sortedGroups.map((g) => (
                 <option key={g.id} value={g.id}>{g.name}</option>
               ))}
             </select>
             {selection.size > 0 && (
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 44, cursor: 'pointer' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, ...inputH, cursor: 'pointer' }}>
                 <input type="checkbox" checked={selectionOnly} onChange={(e) => setSelectionOnly(e.target.checked)} />
                 <span style={{ fontSize: 13 }}>{t('report_selection_only').replace('{n}', String(selection.size))}</span>
               </label>
@@ -384,11 +390,22 @@ th{background:#f4f4f4}
         </div>
       )}
 
-      <div className="panel pad-md" style={{ flexShrink: 0, marginBottom: 12 }}>
-        <div className="t-label" style={{ marginBottom: 10 }}>{t('report_columns_heading')}</div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 14px' }}>
+      <div className="panel" style={{ flexShrink: 0, marginBottom: 8, ...panelPad }}>
+        <div className="t-label" style={{ marginBottom: 6 }}>{t('report_columns_heading')}</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px' }}>
           {REPORT_COLUMN_ORDER.map((c) => (
-            <label key={c} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer', minHeight: 44 }}>
+            <label
+              key={c}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: 13,
+                cursor: 'pointer',
+                minHeight: narrow ? 44 : 36,
+                padding: narrow ? undefined : '2px 0',
+              }}
+            >
               <input type="checkbox" checked={visibleCols.has(c)} onChange={() => toggleCol(c)} />
               {t(REPORT_COLUMN_HEADER_KEY[c])}
             </label>
@@ -396,8 +413,11 @@ th{background:#f4f4f4}
         </div>
       </div>
 
-      <div className="panel pad-md" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', marginBottom: narrow ? 100 : 12 }}>
-        <div className="row between" style={{ marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
+      <div
+        className="panel"
+        style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', marginBottom: narrow ? 100 : 8, ...panelPad }}
+      >
+        <div className="row between" style={{ marginBottom: 8, flexWrap: 'wrap', gap: 6 }}>
           <div className="t-label">{t('report_preview_heading')}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <span className="t-mono-sm" style={{ color: 'var(--tx3)' }}>{t('report_row_count_fmt').replace('{n}', String(filtered.length))}</span>
@@ -419,7 +439,7 @@ th{background:#f4f4f4}
             <thead>
               <tr style={{ borderBottom: '1px solid var(--bd)' }}>
                 {columnsOrdered.map((c) => (
-                  <th key={c} style={{ textAlign: 'left', padding: '8px 6px', whiteSpace: 'nowrap', color: 'var(--tx2)' }}>
+                  <th key={c} style={{ textAlign: 'left', padding: '6px 4px', whiteSpace: 'nowrap', color: 'var(--tx2)' }}>
                     {t(REPORT_COLUMN_HEADER_KEY[c])}
                   </th>
                 ))}
@@ -429,7 +449,7 @@ th{background:#f4f4f4}
               {previewRows.map(({ o, cells }) => (
                 <tr key={o.OeuvreID} style={{ borderBottom: '1px solid var(--bd)' }}>
                   {columnsOrdered.map((c, ci) => (
-                    <td key={c} style={{ padding: '6px', verticalAlign: 'top', maxWidth: 220, wordBreak: 'break-word' }}>
+                    <td key={c} style={{ padding: '4px 6px', verticalAlign: 'top', maxWidth: 220, wordBreak: 'break-word' }}>
                       {cells[ci] ?? '—'}
                     </td>
                   ))}
@@ -450,7 +470,7 @@ th{background:#f4f4f4}
           left: narrow ? 0 : undefined,
           right: narrow ? 0 : undefined,
           zIndex: narrow ? 120 : 1,
-          padding: narrow ? `10px 12px calc(10px + ${safeBottom})` : '12px 0',
+          padding: narrow ? `10px 12px calc(10px + ${safeBottom})` : '8px 0',
           background: 'var(--bg1)',
           borderTop: narrow ? '1px solid var(--bd)' : 'none',
           display: 'flex',

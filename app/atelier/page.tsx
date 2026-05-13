@@ -13,6 +13,53 @@ export const dynamic = 'force-dynamic'
 /** First œuvres chunk (keyset continuation via `fetchOeuvresKeysetPage`). */
 const ATELIER_OEUVRE_PAGE = 1000
 
+/** PostgREST default max rows per response — paginate for full junction payloads */
+const SUPABASE_RANGE_PAGE = 1000
+
+async function fetchAllOeuvreThemeLinks(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+): Promise<{ oeuvre_id: number; theme_id: number }[]> {
+  const rows: { oeuvre_id: number; theme_id: number }[] = []
+  for (let from = 0; ; from += SUPABASE_RANGE_PAGE) {
+    const { data, error } = await supabase
+      .from('oeuvre_theme')
+      .select('oeuvre_id, theme_id')
+      .order('oeuvre_id', { ascending: true })
+      .order('theme_id', { ascending: true })
+      .range(from, from + SUPABASE_RANGE_PAGE - 1)
+    if (error) {
+      console.error('[atelier loader] oeuvre_theme:', error.message)
+      break
+    }
+    if (!data?.length) break
+    rows.push(...(data as { oeuvre_id: number; theme_id: number }[]))
+    if (data.length < SUPABASE_RANGE_PAGE) break
+  }
+  return rows
+}
+
+async function fetchAllWorkingGroupWorkLinks(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+): Promise<{ group_id: string; oeuvre_id: number }[]> {
+  const rows: { group_id: string; oeuvre_id: number }[] = []
+  for (let from = 0; ; from += SUPABASE_RANGE_PAGE) {
+    const { data, error } = await supabase
+      .from('working_group_work')
+      .select('group_id, oeuvre_id')
+      .order('oeuvre_id', { ascending: true })
+      .order('group_id', { ascending: true })
+      .range(from, from + SUPABASE_RANGE_PAGE - 1)
+    if (error) {
+      console.error('[atelier loader] working_group_work:', error.message)
+      break
+    }
+    if (!data?.length) break
+    rows.push(...(data as { group_id: string; oeuvre_id: number }[]))
+    if (data.length < SUPABASE_RANGE_PAGE) break
+  }
+  return rows
+}
+
 export default async function AtelierPage() {
   const supabase = await createClient()
   const {
@@ -59,25 +106,26 @@ export default async function AtelierPage() {
   const queryLabels = [
     'Oeuvres', 'Technique', 'Support', 'Format', 'theme', 'Contact',
     'OeuvreStatus', 'working_group', 'tblPresentation',
-    'oeuvre_theme', 'working_group_work',
   ] as const
-  const results = await Promise.all([
-    supabase
-      .from('Oeuvres')
-      .select('OeuvreID, Titre, Technique, Support, Année, Format, Hauteur, Largeur, Profondeur, Exposable, broadcast_ready, broadcast_caption_seed, Prix, PrixFinal, Discount, statusId, Catalogué, txtImageNameLink, ContactID, LocalisationID, LocalisationDetail, is_public, Encadree, IsCommission, PresentationID, ReturnDate, DateLivraison, AcheteurID, NeedsPhotograph, anonymity_level, admin_override_anonymity')
-      .is('deleted_at', null)
-      .order('OeuvreID', { ascending: false })
-      .limit(ATELIER_OEUVRE_PAGE),
-    supabase.from('Technique').select('TechniqueID, Technique').order('TechniqueID'),
-    supabase.from('Support').select('SupportID, Support').order('SupportID'),
-    supabase.from('Format').select('FormatID, Format').order('FormatID'),
-    supabase.from('theme').select('id, name').order('id'),
-    supabase.from('Contact').select('ContactID, NomInstitution, Nom, Prénom, Role, Ville, Pays').order('ContactID'),
-    supabase.from('OeuvreStatus').select('id, label').order('id'),
-    supabase.from('working_group').select('id, name, created_at').order('created_at', { ascending: false }).limit(100),
-    supabase.from('tblPresentation').select('PresentationID, Nom').order('PresentationID'),
-    supabase.from('oeuvre_theme').select('oeuvre_id, theme_id'),
-    supabase.from('working_group_work').select('group_id, oeuvre_id'),
+  const [results, oeuvreThemeRows, workingGroupWorkRows] = await Promise.all([
+    Promise.all([
+      supabase
+        .from('Oeuvres')
+        .select('OeuvreID, Titre, Technique, Support, Année, Format, Hauteur, Largeur, Profondeur, Exposable, broadcast_ready, broadcast_caption_seed, Prix, PrixFinal, Discount, statusId, Catalogué, txtImageNameLink, ContactID, LocalisationID, LocalisationDetail, is_public, Encadree, IsCommission, PresentationID, ReturnDate, DateLivraison, AcheteurID, NeedsPhotograph, anonymity_level, admin_override_anonymity')
+        .is('deleted_at', null)
+        .order('OeuvreID', { ascending: false })
+        .limit(ATELIER_OEUVRE_PAGE),
+      supabase.from('Technique').select('TechniqueID, Technique').order('TechniqueID'),
+      supabase.from('Support').select('SupportID, Support').order('SupportID'),
+      supabase.from('Format').select('FormatID, Format').order('FormatID'),
+      supabase.from('theme').select('id, name').order('id'),
+      supabase.from('Contact').select('ContactID, NomInstitution, Nom, Prénom, Role, Ville, Pays').order('ContactID'),
+      supabase.from('OeuvreStatus').select('id, label').order('id'),
+      supabase.from('working_group').select('id, name, created_at').order('created_at', { ascending: false }).limit(100),
+      supabase.from('tblPresentation').select('PresentationID, Nom').order('PresentationID'),
+    ]),
+    fetchAllOeuvreThemeLinks(supabase),
+    fetchAllWorkingGroupWorkLinks(supabase),
   ])
 
   // Surface query errors to the server console so silent RLS / schema regressions don't render as empty tabs.
@@ -103,8 +151,6 @@ export default async function AtelierPage() {
   const statuses       = results[6]?.data
   const groups         = results[7]?.data
   const presentations  = results[8]?.data
-  const themesLink     = results[9]
-  const _groups_link   = results[10]
 
   // Build a flat id→label map for fast status lookups on the client
   const statusLabelMap: Record<number, string> = {}
@@ -132,7 +178,7 @@ export default async function AtelierPage() {
   for (const o of (oeuvres ?? []) as { OeuvreID: number }[]) oeuvreMap[o.OeuvreID] = true
 
   // Canonical oeuvre_theme junction
-  for (const row of (themesLink?.data ?? []) as { oeuvre_id: number; theme_id: number }[]) {
+  for (const row of oeuvreThemeRows) {
     if (!oeuvreMap[row.oeuvre_id]) continue
     if (!themePublicStats[row.theme_id]) themePublicStats[row.theme_id] = { total: 0, pub: 0 }
     themePublicStats[row.theme_id].total++
@@ -146,7 +192,7 @@ export default async function AtelierPage() {
   }
 
   // Canonical working_group_work junction
-  for (const row of (_groups_link?.data ?? []) as { oeuvre_id: number; group_id: string }[]) {
+  for (const row of workingGroupWorkRows) {
     if (!oeuvreMap[row.oeuvre_id]) continue
     groupWorkCount[row.group_id] = (groupWorkCount[row.group_id] ?? 0) + 1
     if (!groupAllWorks[row.group_id]) groupAllWorks[row.group_id] = []

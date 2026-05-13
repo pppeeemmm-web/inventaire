@@ -11,7 +11,7 @@ export type DictKey =
   | 'teamDesc' | 'clientsDesc' | 'galleriesDesc' | 'publicDesc'
   | 'hubWorksOnline' | 'hubLastLog' | 'hubStockLow'
   | 'hub_continue' | 'hub_capture' | 'hub_alerts' | 'hub_recent_images' | 'hub_swipe_cards'
-  | 'overview' | 'inventory' | 'inv_refinement_gate' | 'atelier_oeuvres_paging_hint' | 'atelier_oeuvres_load_more' | 'atelier_oeuvres_subset_banner' | 'atelier_header_works_badge_title' | 'ov_loaded_subset_caption' | 'prod_tab_loaded_subset_note' | 'prod_tab_pivot_footnote_loaded_subset' | 'inv_loaded_batch_suffix' | 'constellation' | 'production'
+  | 'overview' | 'inventory' | 'inv_refinement_gate' | 'atelier_oeuvres_load_more' | 'atelier_oeuvres_subset_banner' | 'atelier_header_works_badge_title' | 'ov_loaded_subset_caption' | 'prod_tab_loaded_subset_note' | 'prod_tab_pivot_footnote_loaded_subset' | 'inv_loaded_batch_suffix' | 'constellation' | 'production'
   | 'logistics' | 'sales' | 'exhibitions' | 'vault'
   | 'works' | 'works_cap' | 'catalogued' | 'exposable' | 'montee'
   | 'unpriced' | 'noImage' | 'thisYear' | 'wip' | 'consigned'
@@ -343,10 +343,8 @@ export const dict: Record<Lang, Dictionary> = {
     overview: "Vue d'ensemble", inventory: 'Inventaire',
     inv_refinement_gate:
       'Statut « Disponible » en base, mais l’œuvre reste traitée comme « En production » tant que le catalogue ou la photo ne sont pas validés.',
-    atelier_oeuvres_paging_hint:
-      'Œuvres chargées : {loaded} sur {total}. Les totaux (vue d’ensemble, thèmes) portent sur les œuvres déjà chargées.',
     atelier_oeuvres_subset_banner:
-      'Catalogue partiel : {loaded} / {total} œuvres chargées. Les totaux et listes suivent ce lot tant que la suite n’est pas chargée.',
+      'Catalogue partiel : {loaded} / {total} œuvres chargées. Totaux (vue d’ensemble, thèmes), listes et indicateurs : ce lot uniquement, tant que la suite n’est pas chargée.',
     atelier_header_works_badge_title:
       'Œuvres affichées dans l’atelier (lot chargé). Chargez la tranche suivante pour rapprocher du catalogue complet.',
     atelier_oeuvres_load_more: 'Charger la tranche suivante',
@@ -1558,10 +1556,8 @@ $env:OLLAMA_HOST="127.0.0.1:11435"; ollama run llama3.2:1b`,
     overview: 'Overview', inventory: 'Inventory',
     inv_refinement_gate:
       'Database status is « Available », but the work stays « In production » until cataloguing and photography gates are cleared.',
-    atelier_oeuvres_paging_hint:
-      'Works loaded: {loaded} of {total}. Overview and theme totals reflect loaded works only.',
     atelier_oeuvres_subset_banner:
-      'Partial catalogue: {loaded} / {total} works loaded. Totals and lists follow this batch until you load more.',
+      'Partial catalogue: {loaded} / {total} works loaded. Overview, theme totals, lists, and KPIs use this batch only until you load the rest.',
     atelier_header_works_badge_title:
       'Works currently held in the Atelier session (loaded batch). Use “Load next batch” to approach the full catalogue.',
     atelier_oeuvres_load_more: 'Load next batch',

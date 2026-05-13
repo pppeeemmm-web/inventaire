@@ -420,10 +420,13 @@ export function TeamPortalClient({
     [selection],
   )
 
+  const oeuvresCatalogueCount =
+    oeuvresPaging != null ? oeuvresPaging.totalCount : oeuvres.length
+
   const TABS_RAW: [Tab, string, number?][] = useMemo(
     () => [
       ['overview',      t('overview')],
-      ['inventory',     t('inventory'), oeuvres.length],
+      ['inventory',     t('inventory'), oeuvresCatalogueCount],
       ['reports',       t('tab_reports')],
       ['constellation', t('constellation')],
       ['production',    t('production')],
@@ -448,7 +451,7 @@ export function TeamPortalClient({
         isAdmin && pendingReviewCount > 0 ? pendingReviewCount : undefined,
       ],
     ],
-    [t, oeuvres.length, contacts.length, isAdmin, pendingReviewCount],
+    [t, oeuvresCatalogueCount, contacts.length, isAdmin, pendingReviewCount],
   )
 
   const activeTabLabel = TABS_RAW.find((x) => x[0] === tab)?.[1] ?? ''
@@ -606,62 +609,42 @@ export function TeamPortalClient({
             padding: '8px max(12px, env(safe-area-inset-right)) 8px max(12px, env(safe-area-inset-left))',
             borderBottom: '1px solid var(--bd)',
             background: 'var(--bg2)',
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'center',
+            display: 'grid',
+            gridTemplateColumns:
+              oeuvresNextCursor != null && !atelierNarrow ? 'minmax(0, 1fr) auto' : 'minmax(0, 1fr)',
             gap: 10,
-            rowGap: 8,
+            alignItems: 'center',
           }}
         >
-          <span style={{ color: 'var(--tx2)', fontSize: 11, flex: '1 1 220px', minWidth: 0 }}>
+          <p
+            style={{
+              margin: 0,
+              color: 'var(--tx2)',
+              fontSize: 11,
+              minWidth: 0,
+              lineHeight: 1.45,
+            }}
+          >
             {t('atelier_oeuvres_subset_banner')
               .replace('{loaded}', String(oeuvres.length))
               .replace('{total}', String(oeuvresPaging.totalCount))}
-          </span>
-          {oeuvresNextCursor != null && (
+          </p>
+          {oeuvresNextCursor != null ? (
             <button
               type="button"
               className="btn primary sm"
               disabled={oeuvresMoreLoading}
               onClick={() => void loadMoreOeuvres()}
-              style={{ minHeight: 44, flexShrink: 0 }}
+              style={{
+                minHeight: 44,
+                flexShrink: 0,
+                width: atelierNarrow ? '100%' : 'auto',
+                justifySelf: atelierNarrow ? 'stretch' : 'end',
+              }}
             >
               {oeuvresMoreLoading ? '…' : t('atelier_oeuvres_load_more')}
             </button>
-          )}
-        </div>
-      )}
-
-      {oeuvresPaging && oeuvresNextCursor != null && (
-        <div
-          data-testid="atelier-oeuvres-paging-bar"
-          className="t-mono-sm"
-          style={{
-            flexShrink: 0,
-            padding: '8px max(12px, env(safe-area-inset-right)) 8px max(12px, env(safe-area-inset-left))',
-            borderBottom: '1px solid var(--bd)',
-            background: 'var(--bg2)',
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            gap: 10,
-            rowGap: 8,
-          }}
-        >
-          <span style={{ color: 'var(--tx2)', fontSize: 11, flex: '1 1 200px', minWidth: 0 }}>
-            {t('atelier_oeuvres_paging_hint')
-              .replace('{loaded}', String(oeuvres.length))
-              .replace('{total}', String(oeuvresPaging.totalCount))}
-          </span>
-          <button
-            type="button"
-            className="btn primary sm"
-            disabled={oeuvresMoreLoading}
-            onClick={() => void loadMoreOeuvres()}
-            style={{ minHeight: 44, flexShrink: 0 }}
-          >
-            {oeuvresMoreLoading ? '…' : t('atelier_oeuvres_load_more')}
-          </button>
+          ) : null}
         </div>
       )}
 
@@ -807,13 +790,6 @@ export function TeamPortalClient({
             initialOverviewBootstrap={initialOverviewBootstrap}
             isAdmin={isAdmin}
             conflicts={conflicts}
-            subsetCaption={
-              oeuvresCataloguePartial && oeuvresPaging
-                ? t('ov_loaded_subset_caption')
-                    .replace('{loaded}', String(oeuvres.length))
-                    .replace('{total}', String(oeuvresPaging.totalCount))
-                : undefined
-            }
           />
         )}
 
@@ -1085,7 +1061,6 @@ function mondayStartOfWeek(d: Date) {
 
 function OverviewTab({
   oeuvres, tM, t, lang, onGoTab, reminderCount, initialReminders, initialOverviewBootstrap, isAdmin, conflicts,
-  subsetCaption,
 }: {
   oeuvres:       Oeuvre[]
   tM:            Record<number, string>
@@ -1097,7 +1072,6 @@ function OverviewTab({
   initialOverviewBootstrap: AtelierOverviewBootstrap
   isAdmin:       boolean
   conflicts:     any[]
-  subsetCaption?: string
 }) {
   const thisYear   = new Date().getFullYear()
   const yearPrefix = String(thisYear)
@@ -1204,15 +1178,6 @@ function OverviewTab({
               </div>
             ))}
           </div>
-          {subsetCaption ? (
-            <div
-              className="t-mono-sm"
-              data-testid="atelier-overview-subset-caption"
-              style={{ marginTop: 12, fontSize: 10, color: 'var(--tx3)', lineHeight: 1.45, maxWidth: 720 }}
-            >
-              {subsetCaption}
-            </div>
-          ) : null}
         </div>
 
         {/* Row 1.5: Financial Pulse */}
