@@ -262,24 +262,6 @@ export function stageColor(stage: string | null | undefined): string {
 // ── Image filename helpers ────────────────────────────────────
 
 /**
- * Build a canonical storage filename for a work image.
- * Pattern: W_{oid}_{seq:02}_{sanitized}.{ext}
- * Example: W_2338_01_portrait_final.jpg
- */
-export function makeFilename(oid: number, seq: number, originalName: string): string {
-  const seqStr     = String(seq).padStart(2, '0')
-  const extMatch   = originalName.match(/\.([^.]+)$/)
-  const ext        = extMatch ? extMatch[1].toLowerCase() : 'jpg'
-  const sanitized  = originalName
-    .replace(/\.[^.]+$/, '')          // strip extension
-    .replace(/[^a-zA-Z0-9_-]/g, '_') // replace special chars
-    .replace(/_+/g, '_')              // collapse runs
-    .replace(/^_|_$/g, '')            // trim edge underscores
-    .slice(0, 60)
-  return `W_${oid}_${seqStr}_${sanitized}.${ext}`
-}
-
-/**
  * Parse the sequence number from an existing filename.
  * Returns 1 (first slot) if filename is null or unparseable.
  */

@@ -10,7 +10,7 @@ import {
   upsertMicrosoftEvent,
 } from '@/lib/calendar/microsoft-graph'
 import type { CalendarEventDraft, CalendarProvider } from '@/lib/calendar/types'
-import { decryptSecret } from '@/lib/calendar/token-crypto'
+import { decryptCalendarRefreshToken } from '@/lib/calendar/token-crypto'
 
 export type SyncLabels = {
   processSummary: (name: string) => string
@@ -68,6 +68,7 @@ type AccountRow = {
   provider: CalendarProvider
   refresh_token_encrypted: string
   tenant_id: string | null
+  token_salt: string | null
 }
 
 type LinkRow = {
@@ -84,7 +85,10 @@ function linkKey(row: LinkRow): string {
 }
 
 async function accessForAccount(acc: AccountRow): Promise<string> {
-  const refresh = decryptSecret(acc.refresh_token_encrypted)
+  const refresh = decryptCalendarRefreshToken(
+    acc.refresh_token_encrypted,
+    acc.token_salt,
+  )
   if (acc.provider === 'google') {
     const { access_token } = await refreshGoogleAccessToken(refresh)
     return access_token
@@ -117,7 +121,7 @@ export async function syncExhibitionProcess(
 ): Promise<{ ok: true; pushed: number } | { ok: false; message: string }> {
   const { data: accounts, error: accErr } = await supabase
     .from('calendar_account' as never)
-    .select('id, provider, refresh_token_encrypted, tenant_id')
+    .select('id, provider, refresh_token_encrypted, tenant_id, token_salt')
     .eq('auth_user_id', userId)
 
   if (accErr) return { ok: false, message: accErr.message }

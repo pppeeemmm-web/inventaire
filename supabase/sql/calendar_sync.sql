@@ -7,6 +7,7 @@ create table if not exists calendar_account (
   provider                text not null check (provider in ('google', 'microsoft')),
   tenant_id               text,
   refresh_token_encrypted text not null,
+  token_salt              text,
   scopes                  text,
   primary_calendar_id     text,
   created_at              timestamptz not null default now(),

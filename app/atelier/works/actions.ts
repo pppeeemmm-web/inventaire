@@ -6,7 +6,9 @@
 import { revalidatePath } from 'next/cache'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { makeFilename, seqFromFilename, STATUS_ID_ARCHIVE_ARTISTE, STATUS_IDS_PUBLIC } from '@/lib/data'
+import { seqFromFilename, STATUS_ID_ARCHIVE_ARTISTE, STATUS_IDS_PUBLIC } from '@/lib/data'
+import { makeImageStorageFilename, validateWorkImageBuffer } from '@/lib/image-upload'
+import { pendingPayloadFromFormData } from '@/lib/work-pending-keys'
 import type { WorkImage } from '@/lib/types/database'
 import crypto from 'crypto'
 import sharp from 'sharp'
@@ -196,8 +198,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
     const { data: isAdmin } = await supabase.rpc('is_admin')
     if (!isAdmin) {
       const oid = Number(oeuvreIdRaw)
-      const payload: Record<string, string> = {}
-      formData.forEach((v, k) => { if (typeof v === 'string') payload[k] = v })
+      const payload = pendingPayloadFromFormData(formData)
       const { data: baseline } = await supabase
         .from('Oeuvres').select('*').eq('OeuvreID', oid).maybeSingle()
       const { error: pErr } = await supabase.from('pending_changes').insert({
@@ -308,10 +309,9 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
 
     // Upload image if provided
     if (imageFile && imageFile.size > 0) {
-      const filename = makeFilename(oid, 1, imageFile.name)
-      const uploadResult = await uploadImage(supabase, imageFile, filename)
+      const uploadResult = await uploadImage(supabase, imageFile, oid, 1)
       if ('error' in uploadResult) return { error: uploadResult.error }
-      imageName = filename
+      imageName = uploadResult.filename
     }
 
     // Provenance seeding
@@ -426,10 +426,9 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
     let formUploadedNewImage = false
     if (imageFile && imageFile.size > 0) {
       const seq      = seqFromFilename(imageExisting)
-      const filename = makeFilename(oid, seq, imageFile.name)
-      const uploadResult = await uploadImage(supabase, imageFile, filename)
+      const uploadResult = await uploadImage(supabase, imageFile, oid, seq)
       if ('error' in uploadResult) return { error: uploadResult.error }
-      imageName = filename
+      imageName = uploadResult.filename
       formUploadedNewImage = true
     }
 
@@ -438,7 +437,8 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
     const isAnonymous  = formData.get('is_anonymous') === '1'
 
     // is_public is managed by DB trigger sync_is_public_from_status() — not set manually.
-    const willBePublic = STATUS_IDS_PUBLIC.includes(statusId)
+    const willBePublic =
+      statusId != null && STATUS_IDS_PUBLIC.includes(statusId)
 
     // Build update payload.
     const updatePayload: Record<string, unknown> = {
@@ -701,7 +701,11 @@ async function r2Put(buf: Buffer, filename: string, contentType: string): Promis
   const host    = r2S3Hostname(account)
   const url     = `https://${host}/${bucket}/${filename.split('/').map(encodeURIComponent).join('/')}`
   const headers = r2PutHeaders(buf, filename, contentType)
-  const res     = await fetch(url, { method: 'PUT', headers, body: buf })
+  const res     = await fetch(url, {
+    method: 'PUT',
+    headers,
+    body: new Uint8Array(buf),
+  })
   if (!res.ok) {
     const body = await res.text()
     let msg = `R2 PUT ${res.status}: ${body}`
@@ -824,13 +828,18 @@ async function r2Delete(filename: string): Promise<void> {
 async function uploadImage(
   _supabase: SupabaseClient,
   file: File,
-  filename: string,
-): Promise<{ ok: true } | { error: string }> {
+  oeuvreId: number,
+  seq: number,
+): Promise<{ ok: true; filename: string } | { error: string }> {
   try {
     const buf = Buffer.from(await file.arrayBuffer())
+    const validated = await validateWorkImageBuffer(buf)
+    if ('error' in validated) return { error: validated.error }
 
-    // Upload original
-    await r2Put(buf, filename, file.type || 'application/octet-stream')
+    const filename = makeImageStorageFilename(oeuvreId, seq, buf, validated.ext)
+
+    // Upload original (Content-Type from decoded image, not client file.type)
+    await r2Put(buf, filename, validated.mime)
 
     // Generate 400px thumbnail (AVIF); ensureAlpha + transparent resize bg preserve PNG/WebP alpha
     const thumbBuf  = await sharp(buf)
@@ -847,7 +856,7 @@ async function uploadImage(
     const thumbName = `thumbs/${filename.replace(/\.[^.]+$/, '')}.avif`
     await r2Put(thumbBuf, thumbName, 'image/avif')
 
-    return { ok: true }
+    return { ok: true, filename }
   } catch (e) {
     return { error: String(e) }
   }
@@ -904,9 +913,9 @@ export async function addWorkImage(formData: FormData): Promise<ImageResult> {
   const seqNo   = ((seqRes.data?.SeqNo ?? 0) as number) + 1
   const imageId = ((idRes.data?.ImageID ?? 200) as number) + 1
 
-  const filename = makeFilename(oeuvreId, seqNo, file.name)
-  const uploadResult = await uploadImage(supabase, file, filename)
+  const uploadResult = await uploadImage(supabase, file, oeuvreId, seqNo)
   if ('error' in uploadResult) return { error: uploadResult.error }
+  const filename = uploadResult.filename
 
   const { data: inserted, error: insertErr } = await supabase
     .from('tblImage')

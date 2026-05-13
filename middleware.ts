@@ -81,7 +81,11 @@ export async function middleware(request: NextRequest) {
         password: process.env.DEV_AUTO_LOGIN_PASSWORD,
       })
       if (signInErr) {
-        console.error('[middleware] dev auto-login failed:', signInErr.message)
+        const safeMsg = signInErr.message.replace(
+          /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g,
+          '[email]',
+        )
+        console.error('[middleware] dev auto-login failed:', safeMsg)
       } else {
         const refreshed = await supabase.auth.getUser()
         user = refreshed.data.user

@@ -1,3 +1,4 @@
+import crypto from 'crypto'
 import type { NextRequest } from 'next/server'
 
 export function isInventoryBroadcastSecretConfigured(): boolean {
@@ -18,7 +19,10 @@ export function validateInventoryBroadcastSecret(req: NextRequest): boolean {
   const secret = (process.env.INVENTORY_BROADCAST_SECRET ?? '').trim()
   if (!secret) return false
   const credential = readInventoryBroadcastCredential(req)
-  return credential === secret
+  if (!credential) return false
+  const hCred = crypto.createHash('sha256').update(credential, 'utf8').digest()
+  const hSec = crypto.createHash('sha256').update(secret, 'utf8').digest()
+  return crypto.timingSafeEqual(hCred, hSec)
 }
 
 /** Dev-only JSON body fragment to explain 401 without leaking secrets. */

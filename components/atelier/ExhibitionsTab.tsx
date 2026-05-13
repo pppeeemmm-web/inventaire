@@ -1130,11 +1130,15 @@ export function ExhibitionsTab({ oeuvres, contacts, themes, tM, selection, setSe
     if (c === 'google_ok') setOauthBanner(t('calendar_oauth_ok_google'))
     else if (c === 'microsoft_ok') setOauthBanner(t('calendar_oauth_ok_microsoft'))
     else if (c === 'google_err' || c === 'microsoft_err') {
-      const d = params.get('calendar_detail')
-      setOauthBanner(d ? `${t('calendar_oauth_err')} (${d})` : t('calendar_oauth_err'))
+      const code =
+        params.get('calendar_err_code') ?? params.get('calendar_detail')
+      setOauthBanner(
+        code ? `${t('calendar_oauth_err')} (${code})` : t('calendar_oauth_err'),
+      )
     }
     const u = new URL(window.location.href)
     u.searchParams.delete('calendar')
+    u.searchParams.delete('calendar_err_code')
     u.searchParams.delete('calendar_detail')
     const q = u.searchParams.toString()
     window.history.replaceState({}, '', `${u.pathname}${q ? `?${q}` : ''}${u.hash}`)

@@ -3,6 +3,10 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { saveWork } from '@/app/atelier/works/actions'
+import {
+  filterPendingPayloadForReplay,
+  formDataFromPendingPayload,
+} from '@/lib/work-pending-keys'
 
 export interface PendingChange {
   id:            number
@@ -65,11 +69,9 @@ export async function approvePendingChange(id: number): Promise<PendingResult> {
   if (selErr) return { error: selErr.message }
   if (!row || row.status !== 'pending') return { error: 'Proposition introuvable ou déjà traitée' }
 
-  // Replay payload through saveWork as the admin (skip_review bypasses the queue).
-  const fd = new FormData()
-  for (const [k, v] of Object.entries(row.payload as Record<string, string>)) {
-    fd.append(k, v)
-  }
+  // Replay allow-listed keys only (defense against tampered payload rows).
+  const filtered = filterPendingPayloadForReplay(row.payload as Record<string, unknown>)
+  const fd = formDataFromPendingPayload(filtered)
   fd.set('__skip_review', '1')
   const result = await saveWork(fd)
   if ('error' in result) return { error: result.error }

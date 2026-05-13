@@ -48,9 +48,10 @@ export async function fetchSystemLogs(limit = 100): Promise<AuditLogEntry[]> {
   const emailMap = new Map<string, string>()
   if (userIds.length > 0) {
     const svc = createServiceClient()
-    const { data: list } = await svc.auth.admin.listUsers({ perPage: 200 })
-    for (const u of list?.users ?? []) {
-      if (u.id && u.email && userIds.includes(u.id)) emailMap.set(u.id, u.email)
+    for (const id of userIds) {
+      const { data } = await svc.auth.admin.getUserById(id)
+      const email = data?.user?.email
+      if (email) emailMap.set(id, email)
     }
   }
 
