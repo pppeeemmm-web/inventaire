@@ -12,7 +12,7 @@
 
 | Path | Purpose |
 |------|---------|
-| `/` | Landing: navigation orbits, language toggle, optional portfolio PDF modal |
+| `/` | Landing: server `metadata` (indexable, OG/Twitter) in [`app/page.tsx`](../app/page.tsx); client shell in [`components/public/LandingPage.tsx`](../components/public/LandingPage.tsx) — orbits, language toggle, optional portfolio PDF modal |
 | `/works` | Public works / portfolio layout (collections from atelier config) |
 | `/practice` | Artist practice / démarche |
 | `/about` | Biography / CV |
@@ -50,6 +50,8 @@
 
 | Path | Purpose |
 |------|---------|
+| `/robots.txt` | [`app/robots.ts`](../app/robots.ts) — allow `/`; disallow atelier, hub, galerie, collection, maps, login, card, `c/`, `api/`, `auth`, `_next`; points to `sitemap.xml` |
+| `/sitemap.xml` | [`app/sitemap.ts`](../app/sitemap.ts) — indexable public URLs: `/`, `/works`, `/about`, `/practice`, `/enquiry` |
 | `/Atelier_Studio_Bible.pdf` | Redirects to short-lived signed URL for latest `document.kind = 'bible'` in vault |
 | `/manifest.webmanifest` | PWA manifest (`start_url: /hub`) |
 
@@ -147,6 +149,8 @@ flowchart TB
     enquiry["/enquiry"]
     card["/card"]
     plink["/c/token"]
+    robots["/robots.txt"]
+    smap["/sitemap.xml"]
   end
 
   subgraph auth ["Auth"]

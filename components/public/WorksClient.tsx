@@ -583,6 +583,10 @@ export default function WorksClient({
         .w-intro-prose p:last-child { margin-bottom: 0; }
         .w-intro-prose strong { font-weight: 600; }
         .w-intro-prose em { font-style: italic; }
+        .w-page-h1-sr-only {
+          position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+          overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+        }
         .w-header-title {
           font-family: 'Instrument Serif', serif; font-size: clamp(80px, 15vw, 240px);
           color: #1a1816; letter-spacing: -0.05em; line-height: 0.85;
@@ -802,6 +806,8 @@ export default function WorksClient({
       <div className="grain-overlay" id="grain" />
       <PublicNav active="works" prefix="w" />
 
+      <h1 className="w-page-h1-sr-only">{t('pub_works')}</h1>
+
       {worksUxMode !== 'default' && (
         <div
           className="t-mono-xs"
@@ -936,7 +942,7 @@ export default function WorksClient({
                 zIndex, pointerEvents: Math.abs(dist) < TEXT_BAND ? 'auto' : 'none',
               }}>
                 <div className="w-text-slide">
-                  {item.title?.trim() ? <h1 className="w-header-title">{item.title}</h1> : null}
+                  {item.title?.trim() ? <h2 className="w-header-title">{item.title}</h2> : null}
                   {item.subtitle ? (
                     item.type === 'intro' ? (
                       <div

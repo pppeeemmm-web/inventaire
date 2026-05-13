@@ -185,6 +185,9 @@ export type DictKey =
   | 'proc_stat_en_cours' | 'proc_stat_gagne' | 'proc_stat_perdu' | 'proc_stat_annule' | 'proc_stat_termine'
   | 'etape_stat_a_faire' | 'etape_stat_en_cours' | 'etape_stat_fait' | 'etape_stat_bloque'
   | 'pub_mobile_nav_heading' | 'pub_portfolio_pdf_strip'
+  | 'seo_home_meta_title' | 'seo_home_meta_description'
+  | 'pub_practice_hero_line1' | 'pub_practice_hero_em'
+  | 'pub_aria_switch_language'
   | 'landing_pdf_download_strip' | 'landing_pdf_modal_title'   | 'locale_fr_short' | 'locale_en_short'
   // Process drawer (PipelineTab)
   | 'pd_row_location' | 'pd_row_url' | 'pd_row_start' | 'pd_row_deadline' | 'pd_row_scope' | 'pd_row_stakeholders'
@@ -762,6 +765,12 @@ export const dict: Record<Lang, Dictionary> = {
     etape_stat_bloque: 'Bloqué',
     pub_mobile_nav_heading: 'Navigation',
     pub_portfolio_pdf_strip: 'Portfolio PDF',
+    seo_home_meta_title: 'Pierre Emmanuel Moulin — peintre',
+    seo_home_meta_description:
+      'Œuvres, parcours, pratique et contact — site officiel de Pierre Emmanuel Moulin.',
+    pub_practice_hero_line1: 'Des caprices',
+    pub_practice_hero_em: 'kaléidoscopiques',
+    pub_aria_switch_language: 'Changer de langue',
     landing_pdf_download_strip: 'Télécharger',
     landing_pdf_modal_title: 'Portfolio PDF',
     locale_fr_short: 'Français',
@@ -1687,6 +1696,12 @@ $env:OLLAMA_HOST="127.0.0.1:11435"; ollama run llama3.2:1b`,
     etape_stat_bloque: 'Blocked',
     pub_mobile_nav_heading: 'Navigate',
     pub_portfolio_pdf_strip: 'Portfolio PDF',
+    seo_home_meta_title: 'Pierre Emmanuel Moulin — painter',
+    seo_home_meta_description:
+      'Works, biography, practice, and enquiry — official site of Pierre Emmanuel Moulin.',
+    pub_practice_hero_line1: 'Kaleidoscopic',
+    pub_practice_hero_em: 'whims',
+    pub_aria_switch_language: 'Switch language',
     landing_pdf_download_strip: 'Download',
     landing_pdf_modal_title: 'Portfolio PDF',
     locale_fr_short: 'French',

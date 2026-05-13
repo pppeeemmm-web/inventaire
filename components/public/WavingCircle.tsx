@@ -6,9 +6,13 @@ interface Props {
   src: string
   alt: string
   className?: string
+  /** Set on LCP hero (e.g. landing) for faster image discovery. */
+  priority?: boolean
+  /** Passed to `next/image` when using `fill` — avoids over-fetching. */
+  sizes?: string
 }
 
-export default function WavingCircle({ src, alt, className }: Props) {
+export default function WavingCircle({ src, alt, className, priority, sizes }: Props) {
   return (
     <>
       <style>{`
@@ -26,6 +30,8 @@ export default function WavingCircle({ src, alt, className }: Props) {
           src={src}
           alt={alt}
           fill
+          priority={priority}
+          sizes={sizes}
           style={{
             objectFit: 'cover',
             display: 'block',

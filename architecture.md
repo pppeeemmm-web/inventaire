@@ -71,6 +71,8 @@ The numbered sections below quote **without rephrasing** from the ruthless analy
 > - **[WorkDrawer.tsx](components/atelier/WorkDrawer.tsx) is 2 194 lines** — image zoom, form, audit panel, version history, undo, drafts, save lifecycle, all in one client component. State soup + prop drilling forces `(p: any)` casts (~line 890). Split into: `ImageViewer`, `WorkFormPanel`, `VersionHistoryPanel`, `OwnershipPipe`. Use the work-editor-model contract you already have.
 > - **Type erosion.** `(supabase as any).from('Oeuvres')` in [app/atelier/page.tsx](app/atelier/page.tsx:20) plus `as any[]` on addresses. Re-generate Supabase types and remove the casts — they hide schema drift at exactly the wrong layer.
 
+**Tracking note:** The quoted **type erosion** bullet is frozen for audit traceability. Today: `Oeuvres` uses `as unknown as Oeuvre[]` at the loader boundary; **`contact_addresses` is no longer cast `as any[]`** on the main Atelier page (see Addresses accomplishment below). Full removal of casts awaits generated types that match the full `select()` list.
+
 **Accomplished (partial) — WorkDrawer:** Shell [WorkDrawer.tsx](components/atelier/WorkDrawer.tsx) owns zoom/wheel + `tblImage` fetch; inner editor under [components/atelier/work-drawer/](components/atelier/work-drawer/) — typed [drawer-content-props.ts](components/atelier/work-drawer/drawer-content-props.ts), [DrawerContent.tsx](components/atelier/work-drawer/DrawerContent.tsx), [WorkDrawerImageArea.tsx](components/atelier/work-drawer/WorkDrawerImageArea.tsx), [WorkDrawerPipelineSection.tsx](components/atelier/work-drawer/WorkDrawerPipelineSection.tsx), [DrawerContentFinanceSection.tsx](components/atelier/work-drawer/DrawerContentFinanceSection.tsx), [DrawerContentNotesVersionSection.tsx](components/atelier/work-drawer/DrawerContentNotesVersionSection.tsx), [DrawerContentGroupsSection.tsx](components/atelier/work-drawer/DrawerContentGroupsSection.tsx), [drawer-content-utils.ts](components/atelier/work-drawer/drawer-content-utils.ts), [drawer-widgets.tsx](components/atelier/work-drawer/drawer-widgets.tsx). **Remaining:** core identity form, theme chips, images, save/delete lifecycle still concentrated in `DrawerContent`; optional image-zoom hook not extracted.
 
 **Accomplished (partial) — œuvres mega-load:** [app/atelier/page.tsx](app/atelier/page.tsx) loads a **first chunk** of `Oeuvres` (`order` + `limit`, with exact **total count** for the UI). [TeamPortalClient.tsx](components/atelier/TeamPortalClient.tsx) calls server action [`fetchOeuvresKeysetPage`](app/atelier/works/actions.ts) for “load more” (keyset by `OeuvreID`) — no silent “everything loaded” at 5000 rows. **`exhibition` table** is no longer in the RSC `Promise.all` (dead prop — [ExhibitionsTab.tsx](components/atelier/ExhibitionsTab.tsx) loads its own data). Other parallel lookups (`oeuvre_theme`, `working_group_work`, reference tables) still ship in one round-trip — not full lazy per-tab fetch.
@@ -85,7 +87,13 @@ The numbered sections below quote **without rephrasing** from the ruthless analy
 
 **No change required** (documented as-is).
 
+### Public site — SEO / crawl hygiene *(post–ruthless-audit increment)*
+
+**Accomplished:** Indexable public home with server `metadata` ([`app/page.tsx`](app/page.tsx)) — title, description, robots, canonical, Open Graph / Twitter; `metadataBase` from [`lib/seo/site-url.ts`](lib/seo/site-url.ts) (`NEXT_PUBLIC_SITE_URL` or `NEXT_PUBLIC_APP_URL`, else localhost fallback — **set origin in Vercel for prod OG/sitemap**). Client shell: [`components/public/LandingPage.tsx`](components/public/LandingPage.tsx). Crawlers: [`app/robots.ts`](app/robots.ts) (allow `/`, disallow app/portals/API/auth/`_next`/private link prefix), [`app/sitemap.ts`](app/sitemap.ts) (public index list). Root layout: shared `metadataBase` + `next/font/google` (Sofia Sans / Instrument Serif) replacing blocking Google Fonts links. Public shells: semantic landmarks + single document `h1` strategy on landing and `/works` (see [`docs/SITE_MAP.md`](docs/SITE_MAP.md)). Playwright: [`tests/public-seo.spec.ts`](tests/public-seo.spec.ts), `webServer` in [`playwright.config.ts`](playwright.config.ts).
+
 ### Smells (verbatim)
+
+**Update vs first quoted smell:** Reminder **count** and **initial unread rows** are no longer loaded via client Supabase on Atelier mount; they come from [app/atelier/reminders-actions.ts](app/atelier/reminders-actions.ts) on the server and flow through `initialReminderUnread` / `initialReminders` props (see accomplishment block below). The first bullet remains quoted for audit history.
 
 > - [components/atelier/TeamPortalClient.tsx](components/atelier/TeamPortalClient.tsx) polls reminder count via the **client** Supabase (RLS round-trip on every mount, ~line 222). Move to a tagged server fetch with `revalidateTag('reminders')` after writes.
 > - Status/label mapping (FR strings) baked into [lib/data.ts](lib/data.ts) `STATUS_LABEL_MAP`. Drive from `dictionary.ts` or the `OeuvreStatus` table with bilingual columns.
@@ -122,6 +130,8 @@ Quoted verbatim:
 
 **Accomplishment delta vs “replay verbatim” / “weak KDF”:** pending payload allow-list + replay filter; calendar HKDF + per-row salt + legacy decrypt.
 
+**Read-path delta (Atelier):** Overview pipeline pulse still uses the browser Supabase client for `suivi_process` / `suivi_etape` (and other pulse widgets); **`suivi_reminder`** list data for overview + pipeline initial paint is server-sourced (`initialReminders`). Curation/compare addresses hydrate post-mount via `fetchAtelierContactAddresses`.
+
 ---
 
 ## 5. POTENTIALITIES — directions worth considering (not commitments)
@@ -153,12 +163,14 @@ Quoted verbatim:
 
 > For each direction picked: smoke the golden path on a real iPhone-SE viewport, run `npm run lint && npm run build`, then exercise WorkForm + WorkDrawer + Inventory on mobile and PendingQueue + AuditTab as admin. The on-demand QA checklist PDF in Atelier > System is the existing canonical test list — use it before claiming any of these "done".
 
-**Build / lint:** `npm run build` and `npm run lint` re-run after Atelier loader trim (`exhibition` / `contact_addresses` off the RSC bundle), reminders server list + mutations, typed addresses, and drawer module split; full Atelier **QA checklist PDF** pass is still manual — not recorded here.
+**Build / lint:** `npm run build` and `npm run lint` re-run after Atelier loader trim (`exhibition` / `contact_addresses` off the RSC bundle), reminders server list + mutations, typed addresses, drawer module split, and **public SEO** (home `metadata`, `robots`/`sitemap`, `next/font`); full Atelier **QA checklist PDF** pass is still manual — not recorded here.
 
 ---
 
 ## Repo documentation updated
 
-`CLAUDE.md` reflects: `lib/image-upload.ts`, `lib/work-pending-keys.ts`, Phase B allow-list, calendar HKDF + `token_salt`, broadcast validation + RLS + **rate limit** (`lib/inventory-broadcast-rate-limit.ts`), OAuth opaque codes, audit **Contact** batch enrichment (not `getUserById`), dev login log masking, **chunked œuvres load + `fetchOeuvresKeysetPage`**, `lib/data.ts` **no dictionary import** + bilingual status map, Inventory virtualization, reminders server initial count + **list + mark/insert actions** + `revalidateRemindersTag`, **`fetchAtelierContactAddresses`** post-paint, Playwright / lint cmds, dev **404 on `/_next/static`** troubleshooting.
+`CLAUDE.md` reflects: `lib/image-upload.ts`, `lib/work-pending-keys.ts`, `lib/types/database.ts` (`SuiviReminderListRow`, …), Phase B allow-list, calendar HKDF + `token_salt`, broadcast validation + RLS + **rate limit** (`lib/inventory-broadcast-rate-limit.ts`), OAuth opaque codes, audit **Contact** batch enrichment (not `getUserById`), dev login log masking, **chunked œuvres load + `fetchOeuvresKeysetPage`**, **`team-portal-types.ts`** for RSC→client props, `lib/data.ts` **no dictionary import** + bilingual status map, Inventory virtualization, reminders **server count + list + mark/insert** + `revalidateRemindersTag`, **`fetchAtelierContactAddresses`** post-paint, **reads/bootstrap** pattern in `app/atelier/*-actions.ts`, Playwright / lint cmds, dev **404 on `/_next/static`** troubleshooting, **public SEO** (`lib/seo/site-url.ts`, `app/robots.ts`, `app/sitemap.ts`, `app/page.tsx` + `components/public/LandingPage.tsx`, **`NEXT_PUBLIC_SITE_URL` / `NEXT_PUBLIC_APP_URL`** for canonical `metadataBase`).
 
-**This file:** Keep **Accomplished / partial / not** in sync when closing ruthless-audit items; §2–§5 updated May 2026 for loader trim, reminders path, addresses typing, drawer groups extract, and SITE_MAP loader note.
+[`docs/SITE_MAP.md`](docs/SITE_MAP.md) lists `/robots.txt`, `/sitemap.xml`, and the split home page.
+
+**This file:** Keep **Accomplished / partial / not** in sync when closing ruthless-audit items; §2–§5 updated May 2026 for loader trim, reminders path, addresses typing, drawer groups extract, SITE_MAP loader note, and **§2 public SEO / crawl hygiene** block.

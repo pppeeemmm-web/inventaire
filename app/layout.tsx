@@ -1,10 +1,28 @@
 import type { Metadata, Viewport } from 'next'
+import { Instrument_Serif, Sofia_Sans } from 'next/font/google'
 import './globals.css'
+import { getMetadataBase } from '@/lib/seo/site-url'
 import { I18nProvider } from '@/lib/i18n/context'
 import { ThemePathSync } from '@/components/ThemePathSync'
 import { ToastHost } from '@/components/ui/ToastHost'
 import { RouteProgress } from '@/components/ui/RouteProgress'
 import { Analytics } from '@vercel/analytics/react'
+
+const instrumentSerif = Instrument_Serif({
+  weight: '400',
+  style: ['normal', 'italic'],
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-instrument-next',
+})
+
+const sofiaSans = Sofia_Sans({
+  weight: ['300', '400', '500', '600', '700'],
+  style: ['normal', 'italic'],
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-sofia-next',
+})
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -13,6 +31,7 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
+  metadataBase: getMetadataBase(),
   title: 'PEM · Atelier',
   description: 'Outil d\'atelier interne — accès restreint',
   robots: { index: false, follow: false }, // never public
@@ -25,16 +44,14 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" suppressHydrationWarning data-theme="light">
+    <html
+      lang="en"
+      suppressHydrationWarning
+      data-theme="light"
+      className={`${instrumentSerif.variable} ${sofiaSans.variable}`}
+    >
       <head>
         <link rel="apple-touch-icon" href="/pwa-icon-192.png" />
-        {/* Self-host fonts in production — for now load from Google Fonts */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Sofia+Sans:ital,wght@0,300..700;1,300..700&display=swap"
-          rel="stylesheet"
-        />
         <script
           dangerouslySetInnerHTML={{
             __html: `

@@ -6,8 +6,8 @@
    UI: Sofia Sans (variable, GF — close to Sofia Pro). Optional licensed Sofia Pro:
    @font-face { font-family:'Sofia Pro Variable'; font-weight:100 900; font-style:normal;
      font-display:swap; src:url('/fonts/SofiaProVariable.woff2') format('woff2'); }
-   then prepend 'Sofia Pro Variable' to --font-ui. */
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Sofia+Sans:ital,wght@0,300..700;1,300..700&display=swap');
+   then prepend 'Sofia Pro Variable' to --font-ui.
+   Primary UI + serif: `next/font/google` in `app/layout.tsx` → --font-sofia-next / --font-instrument-next. */
 
 @tailwind base;
 @tailwind components;
@@ -90,8 +90,8 @@ html[data-theme='standard'] .t-mono-md { font-size: 17px; }
 
 :root {
   color-scheme: dark;
-  --font-ui: 'Sofia Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-serif: 'Instrument Serif', 'Didot', Georgia, serif;
+  --font-ui: var(--font-sofia-next), 'Sofia Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-serif: var(--font-instrument-next), 'Instrument Serif', 'Didot', Georgia, serif;
   --font-mono: var(--font-ui);
   --mono: var(--font-ui);
 }
@@ -249,6 +249,16 @@ input, textarea, select { font: inherit; color: inherit; background: transparent
 @keyframes pemFadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes pemSlideUpSm { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes pemScaleIn { from { opacity: 0; transform: scale(0.985); } to { opacity: 1; transform: scale(1); } }
+
+/* WorkDrawer zoom hero: full-res over thumb — tune duration / from-scale in keyframes (scale-only; opacity toggled in TSX) */
+.work-drawer-full-reveal {
+  transform-origin: center center;
+  animation: workDrawerFullReveal 240ms ease-out both;
+}
+@keyframes workDrawerFullReveal {
+  from { transform: scale(0.992); }
+  to { transform: scale(1); }
+}
 
 /* ── Reduced motion ───────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {

@@ -24,7 +24,8 @@ WORKTREE START: immediately create `.claude/launch.json` = `{"version":"0.0.1","
 🏗️ ARCHITECTURE
 - Next.js 15 App Router + Supabase + Cloudflare R2 (images)
 - Server Components fetch data, pass to Client Components
-- Mutations: Server Actions ('use server') in app/**/actions.ts only. **Exception:** Route Handlers for OAuth callbacks (`app/auth/callback`, `app/api/calendar/*/callback`), read-only or external integration routes under `app/api/` (e.g. geocode, inventory broadcast) — not a substitute for domain mutations in actions.
+- Mutations: Server Actions ('use server') in `app/**/actions.ts` only. **Exception:** Route Handlers for OAuth callbacks (`app/auth/callback`, `app/api/calendar/*/callback`), read-only or external integration routes under `app/api/` (e.g. geocode, inventory broadcast) — not a substitute for domain mutations in actions.
+- **Reads (bootstrap):** On-demand or RSC-time reads may live in other `'use server'` modules under `app/atelier/` (e.g. [`reminders-actions.ts`](app/atelier/reminders-actions.ts), [`atelier-data-actions.ts`](app/atelier/atelier-data-actions.ts)) so Server Components and the client shell do not duplicate Supabase `(as any)` queries. **Writes** for domain tables still go through `app/**/actions.ts` (or the route-handler exceptions above).
 - Auth: Supabase SSR middleware enforces auth on all /atelier /hub /galerie routes. Admin = `is_admin()` RPC (joins `Contact.is_admin` via `auth_user_id`); editors = team but not admin. Old `profiles.role` is dead.
 - i18n: see **🌐 UI COPY** below (non-negotiable for anything user-facing)
 - Image upload: bytes validated as JPEG/PNG/WebP/GIF via Sharp before R2 PUT; storage keys `W_{oid}_{seq}_{hash8}.{ext}` (see lib/image-upload.ts). Sharp → 400px AVIF thumb → R2 via fetch + SigV4 (same pattern as AWS S3 SDK)
@@ -55,17 +56,22 @@ All user-visible copy → `useI18n().t(key)` + `lib/i18n/dictionary.ts` (**DictK
 - Reference: `components/atelier/ContactsTab.tsx` + `ContactEditorPanel.tsx`.
 
 📁 KEY FILES
+- lib/seo/site-url.ts — `getMetadataBase()` for `metadataBase`, sitemap, robots; env: `NEXT_PUBLIC_SITE_URL` | `NEXT_PUBLIC_APP_URL` (see **App URL** under calendar block).
+- app/robots.ts · app/sitemap.ts — crawler rules + indexable public URL list (keep aligned with [`docs/SITE_MAP.md`](docs/SITE_MAP.md)).
+- app/page.tsx + components/public/LandingPage.tsx — public home: server `metadata` (title, robots index, OG/Twitter) + client shell.
 - lib/i18n/dictionary.ts · context.tsx — all UI strings (fr/en)
 - lib/data.ts — imageUrl(), thumbUrl(), yearOf(), statusOf(), seqFromFilename(). **Do not import `lib/i18n/dictionary` here** (this module is bundled on the client); status labels use a local FR+EN `STATUS_LABEL_MAP` → `StatusKey`, not dict keys.
 - lib/image-upload.ts — server-only: validateWorkImageBuffer() (Sharp allow-list), makeImageStorageFilename() (content hash + safe ext)
+- lib/types/database.ts — shared TS shapes consumed app-wide (e.g. `Oeuvre`, `SuiviReminderListRow`); not a full Supabase codegen dump
 - lib/work-pending-keys.ts — allow-listed FormData keys for `pending_changes` queue + admin replay
 - lib/supabase/client.ts — browser client
 - lib/supabase/server.ts — server + service client
 - lib/work-editor-model.ts — shared prod/ownership stages + `computeStatusId` for WorkForm + WorkDrawer
-- app/atelier/page.tsx — parallel reference loads + **first œuvres chunk** (`limit` + total count); more rows via `fetchOeuvresKeysetPage` in `TeamPortalClient` (no silent 5000-row cap).
-- components/atelier/TeamPortalClient.tsx — main orchestrator (tabs, selection, drawer); reads `?work=` on load (`runGuarded`); dirty drawer → unsaved prompt on Hub + `beforeunload` on tab close
+- app/atelier/page.tsx — parallel `Promise.all` reference loads + **first œuvres chunk** (`limit` + exact total count); **not** in this bundle: `exhibition` rows (ExhibitionsTab self-fetches), `contact_addresses` (post-paint via `fetchAtelierContactAddresses`). Passes `initialReminders` + unread count from `reminders-actions`. More œuvres via `fetchOeuvresKeysetPage` in `TeamPortalClient` (no silent 5000-row cap).
+- components/atelier/team-portal-types.ts — `TeamPortalClientProps`: serializable RSC → dynamic client shell props (keeps `app/atelier/page.tsx` from importing the full `TeamPortalClient` graph)
+- components/atelier/TeamPortalClient.tsx — main orchestrator (tabs, selection, drawer); reads `?work=` on load (`runGuarded`); dirty drawer → unsaved prompt on Hub + `beforeunload` on tab close; hydrates curation/compare addresses after mount
 - components/atelier/InventoryTab.tsx — inventory list + panel; list/grid virtualized (`@tanstack/react-virtual`)
-- components/atelier/WorkDrawer.tsx — **canonical edit** for existing works: shell + zoom; inner editor under `components/atelier/work-drawer/` (`DrawerContent*.tsx`, pipeline, finance/notes+version sections, images, gift flow, `saveWork` + guards). Overlay + inventory panel modes.
+- components/atelier/WorkDrawer.tsx — **canonical edit** for existing works: shell + zoom; inner editor under `components/atelier/work-drawer/` — `DrawerContent.tsx` (core form + themes + actions), `WorkDrawerImageArea`, `WorkDrawerPipelineSection`, `DrawerContentFinanceSection`, `DrawerContentNotesVersionSection`, `DrawerContentGroupsSection`, `drawer-content-utils.ts`, `drawer-widgets.tsx`; gift flow, `saveWork` + guards. Overlay + inventory panel modes.
 - components/atelier/WorkForm.tsx — full-page **create only** at `/atelier/works/new` (shared `saveWork`). `/atelier/works/[id]/edit` redirects to `/atelier?work=<id>` (drawer).
 - components/atelier/ContactEditorPanel.tsx — Hub Contacts full editor in the right column / stacked on mobile (`ContactsTab` orchestrates selection, `useUnsavedActionGuard` on row switch / batch / merge).
 - app/atelier/works/actions.ts — image upload, delete, work CRUD; `requireAdmin()` gates `purgeWorkPermanently` + `deleteWorkImage`; `saveWork` queues editor edits to `pending_changes` unless `__skip_review=1`; **`fetchOeuvresKeysetPage`** for Atelier œuvres paging.
@@ -77,6 +83,11 @@ All user-visible copy → `useI18n().t(key)` + `lib/i18n/dictionary.ts` (**DictK
 - app/atelier/reminders-actions.ts — `revalidateRemindersTag()`; server unread count (`getUnreadReminderCountCached`); `listUnreadSuiviReminders` / `markSuiviReminderRead` / `insertSuiviReminder` (overview + pipeline; no client `(as any)` on `suivi_reminder`)
 - app/atelier/atelier-data-actions.ts — `fetchAtelierContactAddresses()` (post–first-paint for curation/compare)
 - app/atelier/calendar/actions.ts + `lib/calendar/*` — exhibition (`suivi_process` / `suivi_etape`) → Google Calendar / Microsoft Graph (one-way export; manual sync in UI). Env: see **📅 CALENDAR SYNC** below.
+- components/atelier/SystemTab.tsx — **System** tab (`?tab=system`): manual **`system_log`** rows only (`event_type` null); CRUD + **`attachments`** jsonb (screenshots via paste/file → R2 keys `ledger/*`, `imageUrl()` in UI). Site checklist PDF, Studio Bible regen, reference MD copy/download.
+- app/atelier/system/ledger-attachment-actions.ts — `uploadLedgerAttachment` (team `is_team()`, `validateWorkImageBuffer`, `r2PutObject` under `ledger/`).
+- app/atelier/system-reference-actions.ts — `getSystemLedgerReferenceMarkdown()` (repo `docs/SYSTEM_LEDGER.md`).
+- app/atelier/system/actions.ts — `deleteStudioTask` (admin, `studio_task` table; Hub pulse feed).
+- supabase/sql/system_log_attachments.sql — adds **`system_log.attachments`** (`jsonb` default `[]`).
 
 **Deferred integrations (no GO = do not implement)**  
 - **Background jobs / queues:** long-running or retriable work off the Server Action path (timeouts, PDF at scale, bulk R2/geocode). Pointer: [`app/atelier/portfolio/pdf-action.ts`](app/atelier/portfolio/pdf-action.ts). `app/api/inventory/broadcast/` is for **external** callers, not an internal job runner.  
@@ -87,7 +98,7 @@ All user-visible copy → `useI18n().t(key)` + `lib/i18n/dictionary.ts` (**DictK
 - **User tables:** `calendar_account`, `calendar_event_link` (migration `supabase/sql/calendar_sync.sql`). Refresh tokens: **AES-256-GCM** with key from **HKDF-SHA256** (`CALENDAR_TOKEN_ENCRYPTION_KEY` as IKM, per-row `token_salt`, info `atelier-calendar-refresh-v1`). Legacy rows with `token_salt` null still decrypt (single-key mode). Column + idempotent alter: `supabase/sql/calendar_token_salt.sql`. Implementation: `lib/calendar/token-crypto.ts`.  
 - **OAuth:** `GOOGLE_CALENDAR_CLIENT_ID` / `GOOGLE_CALENDAR_CLIENT_SECRET`; `MICROSOFT_CALENDAR_CLIENT_ID` / `MICROSOFT_CALENDAR_CLIENT_SECRET`; `MICROSOFT_CALENDAR_TENANT` (often `common`). Redirect URIs: `{origin}/api/calendar/google/callback` and `{origin}/api/calendar/microsoft/callback`. Failures redirect with opaque **`calendar_err_code`** only (details server-logged); UI reads code in `ExhibitionsTab` deep-link handler.  
 - **CSRF:** `CALENDAR_OAUTH_STATE_SECRET` (HMAC for `state` param).  
-- **App URL:** `NEXT_PUBLIC_SITE_URL` or `NEXT_PUBLIC_APP_URL` (origin for OAuth redirect allowlists).  
+- **App URL:** `NEXT_PUBLIC_SITE_URL` or `NEXT_PUBLIC_APP_URL` — canonical **origin** (no trailing slash). Used for OAuth redirect allowlists, **`metadataBase`** (Open Graph / Twitter resolution), **`sitemap.xml`** / canonical URLs (`lib/seo/site-url.ts`). **Vercel Production:** set at least one of these to the live public origin (e.g. `https://<project>.vercel.app` or custom domain); if both are unset, metadata falls back to `http://localhost:3000` (wrong for prod OG/sitemap).  
 - **Event copy:** sync uses viewer `lang` at click time for title/body where applicable.
 
 ## SITE MAP (routes & diagrams)
@@ -96,11 +107,12 @@ All user-visible copy → `useI18n().t(key)` + `lib/i18n/dictionary.ts` (**DictK
 - **Canonical route list + Mermaid topology:** [docs/SITE_MAP.md](docs/SITE_MAP.md) (version control). Update it when adding pages, Atelier `?tab=` ids, or first-party `app/api` routes.
 - **QA checklist PDF:** Atelier → **System** tab → **Download site map checklist** — on-demand pdfkit export (`exportSiteMapChecklistPdf` in [app/atelier/vault/actions.ts](app/atelier/vault/actions.ts), builder in [lib/site-map-checklist-pdf.ts](lib/site-map-checklist-pdf.ts)).
 - **Vaulted narrative PDF:** `/Atelier_Studio_Bible.pdf` — latest `document.kind = 'bible'`; regenerate from System tab (`vaultStudioBible` in [app/atelier/vault/bible-action.ts](app/atelier/vault/bible-action.ts)).
+- **System Ledger (operator doc):** [docs/SYSTEM_LEDGER.md](docs/SYSTEM_LEDGER.md) — `system_log` manual rows, `attachments`, checklist/Bible/reference UX; keep aligned with [docs/SITE_MAP.md](docs/SITE_MAP.md) when behaviour changes.
 
 ## EXHIBITIONS ↔ PIPELINE
 
 - **Tables:** `suivi_process` (process rows: `vente`, `exposition`, `residence`, `expedition`, `consignment`, …) and `suivi_etape` (per-process steps).
-- **Exhibition hub:** Exhibitions tab lists `suivi_process` where `type = 'exposition'` (with schedule dates). Steps and calendar/floorplan tooling hang off that row.
+- **Exhibition hub:** [ExhibitionsTab.tsx](components/atelier/ExhibitionsTab.tsx) loads `suivi_process` (and related) **client-side** — lists rows where `type = 'exposition'` (with schedule dates); steps, calendar, and floorplan tooling hang off the selected row. The Atelier RSC page does **not** ship a preloaded `exhibition` table payload.
 - **Link from pipeline:** `suivi_process.exhibition_process_id` on a **commercial / pipeline** row points to the **`exposition`** row when the deal needs a full exhibition workstream (not a single étape). Created from **Pipeline** process modal: insert `exposition`, then set `exhibition_process_id` on the current process. **Pipeline drawer** → "Open exhibition project" → `/atelier?tab=exhibitions&exhibition=<id>` ([`PipelineTab.tsx`](components/atelier/PipelineTab.tsx)).
 - **Delete:** Clearing an exhibition nulls `exhibition_process_id` on referencing processes before delete ([`ExhibitionsTab.tsx`](components/atelier/ExhibitionsTab.tsx)).
 
@@ -124,6 +136,7 @@ Image URLs: imageUrl() / thumbUrl() from lib/data.ts. Never build R2 URLs manual
 **Phase D — R2 image soft-delete (app-side, no Bucket Lock).**
 R2 has no S3-style Object Versioning and Bucket Lock is too rigid (locks the admin too). Pattern: every R2 delete from `app/atelier/works/actions.ts` goes through `r2SoftDelete(key)` which **server-side copies** the object to `recycle/<YYYY-MM-DD>/<key>` (S3 CopyObject via `x-amz-copy-source`, no bytes flow through Node) and only then deletes the original. Falls back to direct delete if the copy fails (object already gone).
 - **Cloudflare console step (one-time)**: bucket `paintings` → Object Lifecycle Rules → **Add** rule: prefix `recycle/`, action *Delete objects after 90 days*. Same on `vault` if it ever gets writes.
+- **System ledger screenshots:** keys under prefix `ledger/` (see `app/atelier/system/ledger-attachment-actions.ts`). **Add** lifecycle rule: prefix `ledger/`, action *Delete objects after 30 days* (short-lived evidence; DB `system_log.attachments` may still list expired keys until edited).
 - **Recovery**: copy the object back from `recycle/<date>/<key>` to its original key, or list `recycle/` via S3 API and POST back through `tblImage` if metadata also lost.
 - Helpers in [app/atelier/works/actions.ts](app/atelier/works/actions.ts): `r2Copy(src, dst)`, `r2SoftDelete(key)`. Editor-side delete is already blocked by Phase A `requireAdmin()`; soft-delete is the safety net for the admin's own mistakes.
 - Rotate R2 access keys yearly; document the rotation date in this section.

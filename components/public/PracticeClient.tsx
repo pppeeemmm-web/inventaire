@@ -90,7 +90,11 @@ export default function PracticeClient() {
 
         <section className="p-section">
           <div className="p-section-label">{t('pub_approach')}</div>
-          <h1 className="p-title">Des caprices<br /><em>kaléidoscopiques</em></h1>
+          <h1 className="p-title">
+            {t('pub_practice_hero_line1')}
+            <br />
+            <em>{t('pub_practice_hero_em')}</em>
+          </h1>
 
           {hasContent(approach) && (
             <div className="p-text">

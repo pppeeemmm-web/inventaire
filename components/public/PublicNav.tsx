@@ -23,7 +23,7 @@ export default function PublicNav({ active, prefix = 'n' }: Props) {
         <button
           onClick={() => setLang(lang === 'fr' ? 'en' : 'fr')}
           className={`${p}-lang`}
-          aria-label="Switch language"
+          aria-label={t('pub_aria_switch_language')}
         >
           {lang === 'fr' ? 'EN' : 'FR'}
         </button>
