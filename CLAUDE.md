@@ -24,7 +24,7 @@ WORKTREE START: immediately create `.claude/launch.json` = `{"version":"0.0.1","
 🏗️ ARCHITECTURE
 - Next.js 15 App Router + Supabase + Cloudflare R2 (images)
 - Server Components fetch data, pass to Client Components
-- Mutations: Server Actions ('use server') in app/**/actions.ts only. No API routes.
+- Mutations: Server Actions ('use server') in app/**/actions.ts only. **Exception:** Route Handlers for OAuth callbacks (`app/auth/callback`, `app/api/calendar/*/callback`), read-only or external integration routes under `app/api/` (e.g. geocode, inventory broadcast) — not a substitute for domain mutations in actions.
 - Auth: Supabase SSR middleware enforces auth on all /atelier /hub /galerie routes. Admin = `is_admin()` RPC (joins `Contact.is_admin` via `auth_user_id`); editors = team but not admin. Old `profiles.role` is dead.
 - i18n: see **🌐 UI COPY** below (non-negotiable for anything user-facing)
 - Image upload: Sharp → 400px AVIF thumb → R2 via AWS S3 SDK
@@ -72,6 +72,32 @@ All user-visible copy → `useI18n().t(key)` + `lib/i18n/dictionary.ts` (**DictK
 - components/atelier/BroadcastTab.tsx — Diffusion tab (Queue / Publiés / Activité subtabs); admin-only via `requireAdminGuard()`
 - app/atelier/broadcast/actions.ts — `listBroadcastDashboard()`, `clearStuckQueue()`; all admin-gated
 - app/api/inventory/broadcast/{feed,queue,confirm,event}/route.ts — Make/n8n API; Bearer `INVENTORY_BROADCAST_SECRET`; `broadcast_caption_seed` flows through feed → AI caption pipeline
+- app/atelier/calendar/actions.ts + `lib/calendar/*` — exhibition (`suivi_process` / `suivi_etape`) → Google Calendar / Microsoft Graph (one-way export; manual sync in UI). Env: see **📅 CALENDAR SYNC** below.
+
+**Deferred integrations (no GO = do not implement)**  
+- **Background jobs / queues:** long-running or retriable work off the Server Action path (timeouts, PDF at scale, bulk R2/geocode). Pointer: [`app/atelier/portfolio/pdf-action.ts`](app/atelier/portfolio/pdf-action.ts). `app/api/inventory/broadcast/` is for **external** callers, not an internal job runner.  
+- **Vision / OCR:** field capture (labels, cards, forms) → draft fields + human confirm; mind EU/data sensitivity; align with **📱 MOBILE FIELD-TOOL** (same caution as Phase B — no silent commits).  
+- **Transactional email (Resend/Postmark-class):** adopt when offline alerting or **external** recipients matter; if wired from DB webhooks use an **outbox + idempotency** pattern.
+
+📅 CALENDAR SYNC (Google + Microsoft, v1)  
+- **User tables:** `calendar_account`, `calendar_event_link` (migration `supabase/sql/calendar_sync.sql`). Tokens encrypted at rest (`CALENDAR_TOKEN_ENCRYPTION_KEY` = 32-byte secret, hex or raw).  
+- **OAuth:** `GOOGLE_CALENDAR_CLIENT_ID` / `GOOGLE_CALENDAR_CLIENT_SECRET`; `MICROSOFT_CALENDAR_CLIENT_ID` / `MICROSOFT_CALENDAR_CLIENT_SECRET`; `MICROSOFT_CALENDAR_TENANT` (often `common`). Redirect URIs: `{origin}/api/calendar/google/callback` and `{origin}/api/calendar/microsoft/callback`.  
+- **CSRF:** `CALENDAR_OAUTH_STATE_SECRET` (HMAC for `state` param).  
+- **App URL:** `NEXT_PUBLIC_SITE_URL` or `NEXT_PUBLIC_APP_URL` (origin for OAuth redirect allowlists).  
+- **Event copy:** sync uses viewer `lang` at click time for title/body where applicable.
+
+## SITE MAP (routes & diagrams)
+
+- **Canonical route list + Mermaid topology:** [docs/SITE_MAP.md](docs/SITE_MAP.md) (version control). Update it when adding pages, Atelier `?tab=` ids, or first-party `app/api` routes.
+- **QA checklist PDF:** Atelier → **System** tab → **Download site map checklist** — on-demand pdfkit export (`exportSiteMapChecklistPdf` in [app/atelier/vault/actions.ts](app/atelier/vault/actions.ts), builder in [lib/site-map-checklist-pdf.ts](lib/site-map-checklist-pdf.ts)).
+- **Vaulted narrative PDF:** `/Atelier_Studio_Bible.pdf` — latest `document.kind = 'bible'`; regenerate from System tab (`vaultStudioBible` in [app/atelier/vault/bible-action.ts](app/atelier/vault/bible-action.ts)).
+
+## EXHIBITIONS ↔ PIPELINE
+
+- **Tables:** `suivi_process` (process rows: `vente`, `exposition`, `residence`, `expedition`, `consignment`, …) and `suivi_etape` (per-process steps).
+- **Exhibition hub:** Exhibitions tab lists `suivi_process` where `type = 'exposition'` (with schedule dates). Steps and calendar/floorplan tooling hang off that row.
+- **Link from pipeline:** `suivi_process.exhibition_process_id` on a **commercial / pipeline** row points to the **`exposition`** row when the deal needs a full exhibition workstream (not a single étape). Created from **Pipeline** process modal: insert `exposition`, then set `exhibition_process_id` on the current process. **Pipeline drawer** → "Open exhibition project" → `/atelier?tab=exhibitions&exhibition=<id>` ([`PipelineTab.tsx`](components/atelier/PipelineTab.tsx)).
+- **Delete:** Clearing an exhibition nulls `exhibition_process_id` on referencing processes before delete ([`ExhibitionsTab.tsx`](components/atelier/ExhibitionsTab.tsx)).
 
 💾 DATA LOGIC
 Status: Oeuvres.statusId (FK → OeuvreStatus.id).

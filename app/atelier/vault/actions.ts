@@ -6,6 +6,7 @@
 // R2:  npm install @aws-sdk/client-s3 @aws-sdk/s3-request-presigner
 
 import { createClient } from '@/lib/supabase/server'
+import { buildSiteMapChecklistPdf } from '@/lib/site-map-checklist-pdf'
 import { nanoid }       from 'nanoid'
 import { createHash }   from 'crypto'
 import {
@@ -82,6 +83,24 @@ async function guardTeam() {
   const { data: isTeam } = await supabase.rpc('is_team')
   if (!isTeam) return { error: 'Accès refusé' as const, supabase: null }
   return { error: null, supabase }
+}
+
+/** Browser downloads PDF via base64 → Blob (no vault upload). */
+export async function exportSiteMapChecklistPdf(): Promise<
+  { error: string } | { ok: true; base64: string; filename: string }
+> {
+  const { error: authErr } = await guardTeam()
+  if (authErr) return { error: authErr }
+  try {
+    const buf = await buildSiteMapChecklistPdf()
+    return {
+      ok: true,
+      base64: buf.toString('base64'),
+      filename: `PEM_Site_Map_QA_Checklist_${new Date().toISOString().slice(0, 10)}.pdf`,
+    }
+  } catch (e) {
+    return { error: `Checklist PDF: ${String(e)}` }
+  }
 }
 
 // ── Upload document ───────────────────────────────────────────────────────

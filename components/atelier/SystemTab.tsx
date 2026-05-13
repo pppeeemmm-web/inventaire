@@ -3,7 +3,9 @@
 import { useState, useEffect, useTransition } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { vaultStudioBible } from '@/app/atelier/vault/bible-action'
+import { exportSiteMapChecklistPdf } from '@/app/atelier/vault/actions'
 import { stringifyError } from '@/lib/error'
+import { useI18n } from '@/lib/i18n/context'
 
 const TYPES   = ['suggestion', 'improvement', 'maintenance', 'backlog', 'bug'] as const
 const STATUSES = ['active', 'requested', 'in-progress', 'completed', 'dismissed'] as const
@@ -55,10 +57,12 @@ const inputStyle: React.CSSProperties = {
 }
 
 export function SystemTab() {
+  const { t } = useI18n()
   const [logs, setLogs]         = useState<LogEntry[]>([])
   const [loading, setLoading]   = useState(true)
   const [busy, setBusy]         = useState(false)
   const [isPending, startTransition] = useTransition()
+  const [checklistPending, startChecklist] = useTransition()
 
   // Add form
   const [action,   setAction]   = useState('')
@@ -131,6 +135,27 @@ export function SystemTab() {
     if (!error) setLogs(logs.filter(l => l.id !== id))
   }
 
+  function handleDownloadChecklist() {
+    startChecklist(async () => {
+      const res = await exportSiteMapChecklistPdf()
+      if (!('ok' in res) || !res.ok) {
+        const err = 'error' in res ? res.error : 'Unknown'
+        alert(`${t('system_checklist_error_prefix')} ${stringifyError(err)}`)
+        return
+      }
+      const bin = atob(res.base64)
+      const bytes = new Uint8Array(bin.length)
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+      const blob = new Blob([bytes], { type: 'application/pdf' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = res.filename
+      a.click()
+      URL.revokeObjectURL(url)
+    })
+  }
+
   function handleRegenerateBible() {
     if (!confirm('Regenerate and Vault the Studio Bible PDF?')) return
     startTransition(async () => {
@@ -160,10 +185,21 @@ export function SystemTab() {
             <h2 className="serif" style={{ fontSize: 32, marginBottom: 8 }}>System Ledger</h2>
             <p className="t-mono-sm" style={{ color: 'var(--tx3)' }}>Record maintenance, improvements, and suggestions for the studio system.</p>
           </div>
-          <button className="btn ghost sm" onClick={handleRegenerateBible} disabled={isPending}
-            style={{ borderColor: 'var(--ac)', color: 'var(--ac)' }}>
-            {isPending ? 'Regenerating...' : '✦ Regenerate Studio Bible'}
-          </button>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'flex-end' }}>
+            <button
+              type="button"
+              className="btn ghost sm"
+              onClick={handleDownloadChecklist}
+              disabled={checklistPending}
+              style={{ borderColor: 'var(--bd)', color: 'var(--tx2)' }}
+            >
+              {checklistPending ? t('system_checklist_building') : t('system_download_site_checklist')}
+            </button>
+            <button className="btn ghost sm" onClick={handleRegenerateBible} disabled={isPending}
+              style={{ borderColor: 'var(--ac)', color: 'var(--ac)' }}>
+              {isPending ? 'Regenerating...' : '✦ Regenerate Studio Bible'}
+            </button>
+          </div>
         </div>
 
         {/* Add form */}

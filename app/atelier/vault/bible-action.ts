@@ -62,7 +62,7 @@ export async function vaultStudioBible() {
 
 async function buildBiblePdf(): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ size: 'A4', margin: 50 })
+    const doc = new PDFDocument({ size: 'A4', margin: 50, bufferPages: true })
     const chunks: Buffer[] = []
     doc.on('data', (c) => chunks.push(c))
     doc.on('end', () => resolve(Buffer.concat(chunks)))
@@ -73,12 +73,8 @@ async function buildBiblePdf(): Promise<Buffer> {
     const text   = '#1a1a1d'
     const gray   = '#888888'
 
-    // --- Content Generation ---
-    // Start after header space
-    let y = 100 
-
     // ── Title ───────────────────────────────────────────────────
-    doc.fontSize(32).fillColor(text).text('The Studio Bible', 50, y, { charSpacing: -1 })
+    doc.fontSize(32).fillColor(text).text('The Studio Bible', 50, 100, { charSpacing: -1 })
     doc.fontSize(12).fillColor(gray).text('The Comprehensive Operating Manual for the PEM Hub Infrastructure.', { lineGap: 10 })
     
     doc.moveDown(2)
@@ -90,42 +86,73 @@ async function buildBiblePdf(): Promise<Buffer> {
       { width: W, align: 'justify', lineGap: 4 }
     )
     doc.moveDown()
-    bullet(doc, 'The Atelier (Internal)', 'The nerve center. Used for inventory, sales, and logistics.')
+    bullet(doc, 'The Atelier (Internal)', 'The nerve center. Inventory, pipeline, CRM, vault, diffusion controls.')
     bullet(doc, 'Collectionneurs (Private)', 'A gated portal for VIP clients. Secure selection sharing.')
     bullet(doc, 'Galeries (Partner)', 'A collaborative surface for partners. Management of consignments.')
     bullet(doc, 'Portfolio (Public)', 'The editorial face. Features the "Polaroid" layout system.')
 
-    // ── 02. Tabs ───────────────────────────────────────────────
     doc.addPage()
-    section(doc, '02. The Atelier Portal: 16 Tabs of Power', accent)
-    
-    doc.fontSize(11).fillColor(text).font('Helvetica-Bold').text('Overview (Tableau de Bord)')
-    doc.font('Helvetica').fontSize(10).text('Displays "Live Intelligence"—counts of works, technique breakdowns, and urgent pipeline deadlines.', { lineGap: 2 })
-    
+    section(doc, '02. Atelier portal — tab map', accent)
+    doc.fontSize(10).fillColor(text).font('Helvetica').text(
+      'All tabs live under /atelier with ?tab=<id>. Mobile sidebar prioritises Field: inventory, production, stock-take, overview. Desktop groups: Management, Operations, Vision, Commercial, Diffusion, Config.',
+      { width: W, align: 'justify', lineGap: 4 },
+    )
     doc.moveDown()
-    doc.fontSize(11).font('Helvetica-Bold').text('Inventory (Inventaire)')
-    doc.font('Helvetica').fontSize(10).text('The master list of every artwork. Use the search bar to find works by Title or ID. Click a row to open the Work Drawer.', { lineGap: 2 })
-    
+    doc.font('Helvetica-Bold').fontSize(10).text('Terrain / Field & core:')
+    doc.font('Helvetica').text(
+      'overview · inventory (WorkDrawer) · production · stock-take · constellation (?map=) · logistics · stock (SupplierHub)',
+      { width: W, lineGap: 3 },
+    )
+    doc.moveDown(0.5)
+    doc.font('Helvetica-Bold').text('CRM & catalogue:')
+    doc.font('Helvetica').text('contacts · vault · themes · map (world) · sales · exhibitions', { width: W, lineGap: 3 })
+    doc.moveDown(0.5)
+    doc.font('Helvetica-Bold').text('Commercial & studio output:')
+    doc.font('Helvetica').text('pipeline · fiscal · concepts · portfolio (PDF + public ordering)', { width: W, lineGap: 3 })
+    doc.moveDown(0.5)
+    doc.font('Helvetica-Bold').text('Config & governance:')
+    doc.font('Helvetica').text('system (ledger + Bible + QA checklist download) · audit (admin) · broadcast (admin)', { width: W, lineGap: 3 })
     doc.moveDown()
-    doc.fontSize(11).font('Helvetica-Bold').text('Constellation')
-    doc.font('Helvetica').fontSize(10).text('A visual map where X = Time and Y = Technique. Use the Lasso to curate selections.', { lineGap: 2 })
+    doc.fontSize(9).fillColor(gray).text(
+      'Deep links: ?work=<OeuvreID> opens WorkDrawer; ?exhibition=<suivi_process id> opens Exhibitions; /atelier/scan and /maps support field and constellation map index.',
+      { width: W, lineGap: 3 },
+    )
 
-    doc.moveDown()
-    doc.fontSize(11).font('Helvetica-Bold').text('Production (Kanban)')
-    doc.font('Helvetica').fontSize(10).text('Tracks works in progress. Drag cards from Idée to Encadrement.', { lineGap: 2 })
-
-    // ── 03. Workflows ──────────────────────────────────────────
-    doc.moveDown(2)
-    section(doc, '03. Core Operational Workflows', accent)
-    
-    doc.fontSize(10).text('1. Selection: Choose works in the Inventory or Constellation.')
-    doc.text('2. The Dock: A black bar appears at the bottom for bulk actions.')
-    doc.text('3. Export PDF: Click to generate museum-standard checklists.')
-    doc.text('4. Private Link: Generate secret URLs for collectors.')
-
-    // ── 04. Data Standard ──────────────────────────────────────
     doc.addPage()
-    section(doc, '04. The Data Standard (Non-Negotiable)', accent)
+    section(doc, '03. Exhibition projects vs pipeline', accent)
+    doc.fontSize(10).fillColor(text).font('Helvetica').text(
+      'Pipeline processes live in suivi_process (types include vente, exposition, residence, expedition, consignment, …). An exhibition PROJECT is a dedicated suivi_process row with type = exposition, carrying its own suivi_etape checklist, calendar export, and floor plans in the Exhibitions tab.',
+      { width: W, align: 'justify', lineGap: 4 },
+    )
+    doc.moveDown()
+    doc.text(
+      'When a commercial pipeline row needs a full exhibition workstream (more than a single step), create the exposition from the Pipeline process modal: a new exposition row is inserted, and the current pipeline row stores exhibition_process_id pointing to it. The Pipeline drawer exposes "Open exhibition project" → /atelier?tab=exhibitions&exhibition=<id>. Deleting an exhibition clears exhibition_process_id on referencing rows before removing the exposition.',
+      { width: W, align: 'justify', lineGap: 4 },
+    )
+
+    doc.addPage()
+    section(doc, '04. Site map, QA checklist, integrations', accent)
+    doc.fontSize(10).fillColor(text).font('Helvetica').text(
+      'Authoritative route list and Mermaid diagrams: docs/SITE_MAP.md in the repository. QA smoke checklist PDF: Atelier → System → download button (generated on demand, not vaulted).',
+      { width: W, align: 'justify', lineGap: 4 },
+    )
+    doc.moveDown()
+    bullet(doc, 'Broadcast API', 'Bearer INVENTORY_BROADCAST_SECRET — feed, queue, confirm, event under /api/inventory/broadcast/.')
+    bullet(doc, 'Geocode', '/api/geocode for address tooling.')
+    bullet(doc, 'Calendar OAuth', '/api/calendar/google|microsoft/callback for exhibition calendar push.')
+    bullet(doc, 'Studio Bible URL', '/Atelier_Studio_Bible.pdf serves latest vaulted document kind=bible.')
+
+    doc.addPage()
+    section(doc, '05. Core operational workflows', accent)
+    doc.fontSize(10).fillColor(text).font('Helvetica')
+    doc.text('1. Selection: Choose works in Inventory or Constellation.')
+    doc.text('2. The Dock: bulk actions bar for the active selection.')
+    doc.text('3. Export PDF: Portfolio tab — museum-style PDF presets.')
+    doc.text('4. Private link: tokenised selections for external viewers (/c/:token).')
+    doc.text('5. Field capture: /atelier/scan resolves a work id into WorkDrawer.')
+
+    doc.addPage()
+    section(doc, '06. The data standard (non-negotiable)', accent)
     doc.fontSize(10).text('The system is only as good as the data entered. Follow these rules strictly:', { lineGap: 8 })
     
     doc.font('Helvetica-Bold').text('Typography:').font('Helvetica')
@@ -138,9 +165,8 @@ async function buildBiblePdf(): Promise<Buffer> {
     doc.text('• Format: .avif (Primary) or .webp.')
     doc.text('• Resolution: Minimum 2000px on the long edge.')
 
-    // ── 05. UI Standards ───────────────────────────────────────
-    doc.moveDown(2)
-    section(doc, '05. UI Standards & Aesthetics', accent)
+    doc.addPage()
+    section(doc, '07. UI standards & aesthetics', accent)
     doc.fontSize(10).font('Helvetica-Bold').text('The Polaroid System:').font('Helvetica')
     doc.text('A stable, column-based architecture. Works are framed with equal 24px margins (Top, Left, Right) to simulate the physical Polaroid look.', { lineGap: 4 })
     
@@ -155,7 +181,7 @@ async function buildBiblePdf(): Promise<Buffer> {
       
       // Header
       doc.fontSize(8).fillColor(gray).text('ATELIER PIERRE EMMANUEL MOULIN', 50, 40)
-      doc.text('SYSTEM DOCUMENTATION v1.0 — 2026', 50, 40, { align: 'right' })
+      doc.text('SYSTEM DOCUMENTATION v1.1 — 2026', 50, 40, { align: 'right' })
       doc.moveTo(50, 55).lineTo(50 + W, 55).lineWidth(0.5).strokeColor('#e0e0e0').stroke()
 
       // Footer

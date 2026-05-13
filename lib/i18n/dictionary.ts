@@ -44,6 +44,7 @@ export type DictKey =
   | 'concepts' | 'themes' | 'location' | 'tirage' | 'exhibitable' | 'image'
   | 'searchFieldAll' | 'searchFieldName' | 'searchFieldCity' | 'searchFieldEmail' | 'searchFieldNotes'
   | 'identity' | 'depth' | 'confidentiality' | 'history' | 'save' | 'create'
+  | 'system_download_site_checklist' | 'system_checklist_building' | 'system_checklist_error_prefix'
   | 'priced' | 'date' | 'label'
   | 'main' | 'ramifications' | 'import' | 'newFolder' | 'generateCoa'
   | 'selection' | 'modify' | 'export' | 'compare' | 'groupNamePlaceholder' | 'clear'
@@ -311,6 +312,9 @@ export const dict: Record<Lang, Dictionary> = {
     searchFieldEmail: 'Email', searchFieldNotes: 'Notes',
     identity: 'Identité', depth: 'Profondeur', confidentiality: 'Confidentialité',
     history: 'Historique', save: 'Enregistrer', create: 'Créer',
+    system_download_site_checklist: '✦ Télécharger la checklist site (PDF)',
+    system_checklist_building: 'Génération PDF…',
+    system_checklist_error_prefix: 'Erreur checklist :',
     priced: 'Évalué', date: 'Date', label: 'Libellé',
     selection: 'SÉLECTION', modify: 'MODIFIER', export: 'EXPORTER',
     compare: 'COMPARER', groupNamePlaceholder: 'Nom du groupe…', clear: 'Effacer',
@@ -1137,6 +1141,9 @@ $env:OLLAMA_HOST="127.0.0.1:11435"; ollama run llama3.2:1b`,
     searchFieldEmail: 'Email', searchFieldNotes: 'Notes',
     identity: 'Identity', depth: 'Depth', confidentiality: 'Confidentiality',
     history: 'History', save: 'Save', create: 'Create',
+    system_download_site_checklist: '✦ Download site map checklist (PDF)',
+    system_checklist_building: 'Building PDF…',
+    system_checklist_error_prefix: 'Checklist error:',
     priced: 'Priced', date: 'Date', label: 'Label',
     selection: 'SELECTION', modify: 'MODIFY', export: 'EXPORT',
     compare: 'COMPARE', groupNamePlaceholder: 'Group name…', clear: 'Clear',
