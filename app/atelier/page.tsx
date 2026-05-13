@@ -1,10 +1,11 @@
 // Team portal — loads all reference data server-side, hands off to the
 // fully-interactive client shell (tabs, constellation, drawer, etc.)
 import { createClient } from '@/lib/supabase/server'
-import { AtelierTeamPortalLoader } from '@/components/atelier/AtelierTeamPortalLoader'
-import type { Oeuvre } from '@/lib/types/database'
+import { fetchAtelierOverviewBootstrap } from '@/app/atelier/atelier-data-actions'
 import { getUnreadReminderCountCached, listUnreadSuiviReminders } from '@/app/atelier/reminders-actions'
-import type { SuiviReminderListRow } from '@/lib/types/database'
+import { AtelierTeamPortalLoader } from '@/components/atelier/AtelierTeamPortalLoader'
+import type { Oeuvre, SuiviReminderListRow } from '@/lib/types/database'
+import type { AtelierOverviewBootstrap } from '@/components/atelier/team-portal-types'
 
 /** Junction tables must always reflect DB after edits (theme/group removals, batch, etc.) */
 export const dynamic = 'force-dynamic'
@@ -26,6 +27,17 @@ export default async function AtelierPage() {
     ])
   }
 
+  const overviewYear = new Date().getFullYear()
+  let initialOverviewBootstrap: AtelierOverviewBootstrap = {
+    expenseTotalTtc: 0,
+    upcomingPulse: [],
+    overviewCalendarEvents: [],
+    burningConcepts: [],
+  }
+  if (user?.id != null) {
+    initialOverviewBootstrap = await fetchAtelierOverviewBootstrap(overviewYear, initialReminders)
+  }
+
   let initialPendingReviewCount = 0
   const { data: isAdminOnLoad } = await supabase.rpc('is_admin')
   if (isAdminOnLoad) {
@@ -43,6 +55,7 @@ export default async function AtelierPage() {
   if (oeCountErr) console.error('[atelier loader] Oeuvres count:', oeCountErr.message)
   const oeuvreTotalCount = oeuvreTotalCountRaw ?? 0
 
+  /** Reference tables + first œuvres chunk in one round-trip; optional per-tab lazy split deferred (architecture.md). */
   const queryLabels = [
     'Oeuvres', 'Technique', 'Support', 'Format', 'theme', 'Contact',
     'OeuvreStatus', 'working_group', 'tblPresentation',
@@ -164,6 +177,7 @@ export default async function AtelierPage() {
       initialPendingReviewCount={initialPendingReviewCount}
       initialReminderUnread={initialReminderUnread}
       initialReminders={initialReminders}
+      initialOverviewBootstrap={initialOverviewBootstrap}
       oeuvresPaging={oeuvresPaging}
       oeuvres={oeuvres ?? []}
       techniques={techniques ?? []}

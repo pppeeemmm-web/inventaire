@@ -30,8 +30,21 @@
   },
   "include": [
     "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
+    "middleware.ts",
+    "next.config.ts",
+    "tailwind.config.ts",
+    "playwright.config.ts",
+    "postcss.config.js",
+    "app/**/*.ts",
+    "app/**/*.tsx",
+    "components/**/*.ts",
+    "components/**/*.tsx",
+    "hooks/**/*.ts",
+    "hooks/**/*.tsx",
+    "lib/**/*.ts",
+    "lib/**/*.tsx",
+    "tests/**/*.ts",
+    "tests/**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],
@@ -42,7 +55,6 @@
     "scripts",
     "artifacts",
     "docs",
-    "imports",
-    "nice-yonath-e558bf"
+    "imports"
   ]
 }

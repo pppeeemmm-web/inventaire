@@ -6,6 +6,10 @@ import {
   type BroadcastOeuvreRow,
 } from '@/lib/broadcast-eligibility'
 import {
+  consumeInventoryBroadcastRateSlot,
+  inventoryBroadcastRateLimitRetryAfterSec,
+} from '@/lib/inventory-broadcast-rate-limit'
+import {
   inventoryBroadcastAuthDebug,
   isInventoryBroadcastSecretConfigured,
   validateInventoryBroadcastSecret,
@@ -71,6 +75,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       { error: 'Unauthorized', ...(debug ? { _debug: debug } : {}) },
       { status: 401 },
+    )
+  }
+  if (!consumeInventoryBroadcastRateSlot(req)) {
+    const ra = inventoryBroadcastRateLimitRetryAfterSec()
+    return NextResponse.json(
+      { error: 'Too many requests' },
+      { status: 429, headers: { 'Retry-After': String(ra) } },
     )
   }
 

@@ -60,7 +60,7 @@ export function BroadcastTab() {
     if (!confirm(t('bc_clear_stuck_confirm'))) return
     startTransition(async () => {
       const r = await clearStuckQueue(oeuvreId, platform)
-      if ('error' in r) alert(r.error)
+      if ('error' in r) alert(t('bc_error_fmt').replace('{msg}', typeof r.error === 'string' ? r.error : String(r.error)))
       reload()
     })
   }

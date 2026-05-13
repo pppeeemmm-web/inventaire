@@ -9,6 +9,7 @@ import {
 } from '@/app/atelier/portfolio/actions'
 import { getAnalyticsStats, type AnalyticsResult } from '@/app/atelier/analytics/actions'
 import { useRouter } from 'next/navigation'
+import { useI18n } from '@/lib/i18n/context'
 import { RichEditor, htmlToPlain } from '@/components/atelier/RichEditor'
 import { thumbUrl } from '@/lib/data'
 import type { Oeuvre } from '@/lib/types/database'
@@ -233,6 +234,7 @@ function ProsePreview({ html }: { html: string }) {
 // ── Component ─────────────────────────────────────────────────────────────
 
 export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePrivateWorks = {} }: Props) {
+  const { t, lang } = useI18n()
   const router = useRouter()
   const [config,     setConfig]     = useState<PortfolioConfig>(DEFAULT_CONFIG)
   const [loading,    setLoading]    = useState(true)
@@ -300,8 +302,8 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
     setSaveBusy(true)
     const result = await savePortfolioConfig(config)
     setSaveBusy(false)
-    if ('ok' in result) alert('Configuration enregistrée (y compris site public et portfolio).')
-    else alert(`Erreur : ${result.error}`)
+    if ('ok' in result) alert(t('portfolio_config_saved'))
+    else alert(`${t('error_prefix')} ${result.error}`)
   }
 
   const handleTransfer = (value: string) => {
@@ -342,8 +344,15 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
     setActiveMode(config.works_modes.length)
   }
   const deleteMode = (i: number) => {
-    if (config.works_modes.length <= 1) { alert('Au moins un mode requis.'); return }
-    if (!confirm(`Supprimer le mode "${config.works_modes[i].label_fr}" ?`)) return
+    if (config.works_modes.length <= 1) {
+      alert(t('portfolio_one_mode_required'))
+      return
+    }
+    const label =
+      lang === 'en'
+        ? config.works_modes[i].label_en || config.works_modes[i].label_fr
+        : config.works_modes[i].label_fr || config.works_modes[i].label_en
+    if (!confirm(t('portfolio_confirm_delete_mode_fmt').replace(/\{label\}/g, label))) return
     const modes = config.works_modes.filter((_, idx) => idx !== i).map((m, idx) => ({ ...m, sort_order: idx }))
     setConfig({ ...config, works_modes: modes })
     setActiveMode(Math.max(0, Math.min(activeMode, modes.length - 1)))
@@ -387,7 +396,10 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
 
   const handleMakePublic = async (oeuvreId: number) => {
     const res = await setWorkPublic(oeuvreId)
-    if ('error' in res) { alert(`Erreur : ${res.error}`); return }
+    if ('error' in res) {
+      alert(`${t('error_prefix')} ${res.error}`)
+      return
+    }
     router.refresh()
   }
 
@@ -1184,9 +1196,10 @@ function StatCard({ label, value }: { label: string; value: string }) {
 
 // ── UI sub-components ──────────────────────────────────────────────────────
 
-function FileImportButton({ onText, lang }: { onText: (v: string) => void; lang: 'fr' | 'en' }) {
+function FileImportButton({ onText, lang: _lang }: { onText: (v: string) => void; lang: 'fr' | 'en' }) {
   const ref      = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
+  const { t } = useI18n()
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -1197,7 +1210,7 @@ function FileImportButton({ onText, lang }: { onText: (v: string) => void; lang:
     const result = await extractDocumentText(fd)
     setBusy(false)
     if ('ok' in result) onText(result.text)
-    else alert(result.error)
+    else alert(`${t('error_prefix')} ${result.error}`)
     e.target.value = ''
   }
 

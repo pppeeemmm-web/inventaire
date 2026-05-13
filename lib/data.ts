@@ -1,5 +1,7 @@
 // Shared data helpers — mirrors source/data.js, typed for Next.js.
 // Use on the server (lib/supabase/server) or client (lib/supabase/client).
+// Do not import `lib/i18n/dictionary` here — this module loads in many client chunks;
+// pulling the full dict graph caused webpack runtime failures (undefined `.call`).
 
 const R2 = (process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? '').replace(/\/$/, '')
 
@@ -89,13 +91,18 @@ export type StatusKey =
   | 'artist_archive'
   | 'private_archive'
 
-/** Map OeuvreStatus.label → canonical StatusKey */
+/** OeuvreStatus.label → StatusKey (FR + EN DB spellings; keep in sync with `OeuvreStatus`). */
 const STATUS_LABEL_MAP: Record<string, StatusKey> = {
   'En production':   'en_production',
+  'In production':   'en_production',
   'Disponible':      'available',
+  'Available':       'available',
   'Réservé':         'reserved',
+  'Reserved':        'reserved',
   'Archive artiste': 'artist_archive',
+  'Artist archive':  'artist_archive',
   'Archive privée':  'private_archive',
+  'Private archive': 'private_archive',
   'Vendu':           'sold',
   'Sold':            'sold',
   'Consigné':        'consigned',

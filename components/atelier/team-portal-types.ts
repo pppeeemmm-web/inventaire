@@ -3,7 +3,16 @@
  * TeamPortalClient.tsx so thin wrappers (e.g. AtelierTeamPortalLoader) do not
  * pull the full client module graph at the server entry.
  */
-import type { Oeuvre, SuiviReminderListRow } from '@/lib/types/database'
+import type { Oeuvre, SuiviReminderListRow, ConceptBurningRow } from '@/lib/types/database'
+import type { PipelinePulseItem } from '@/lib/pipeline-deadlines'
+import type { PipelineCalendarEvent } from '@/lib/pipeline-calendar'
+
+export interface AtelierOverviewBootstrap {
+  expenseTotalTtc: number
+  upcomingPulse: PipelinePulseItem[]
+  overviewCalendarEvents: PipelineCalendarEvent[]
+  burningConcepts: ConceptBurningRow[]
+}
 
 export interface TeamPortalClientProps {
   /** Admin-only: pending `pending_changes` rows for Review tab badge. */
@@ -12,6 +21,8 @@ export interface TeamPortalClientProps {
   initialReminderUnread?: number
   /** Unread reminders for overview + pipeline initial paint (`listUnreadSuiviReminders`). */
   initialReminders?: SuiviReminderListRow[]
+  /** Overview tab: expense + pipeline calendar + pulse + concepts (RSC via `fetchAtelierOverviewBootstrap`). */
+  initialOverviewBootstrap?: AtelierOverviewBootstrap
   /** When more rows exist than the initial chunk, client loads further pages. */
   oeuvresPaging?: { totalCount: number; nextCursor: number | null; pageSize: number }
   oeuvres:        Oeuvre[]

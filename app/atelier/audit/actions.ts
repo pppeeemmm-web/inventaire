@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 
 export interface AuditLogEntry {
   id:          number
@@ -39,19 +39,21 @@ export async function fetchSystemLogs(limit = 100): Promise<AuditLogEntry[]> {
     return []
   }
 
-  // Enrich with user_email via service-role auth.admin lookup (cross-schema
-  // PostgREST joins to auth.users aren't supported).
+  // Enrich with team emails from Contact (auth_user_id → Email); no service-role.
   const rows = data ?? []
   const userIds = Array.from(new Set(
     rows.map((r) => (r as { user_id?: string | null }).user_id).filter((id): id is string => !!id)
   ))
   const emailMap = new Map<string, string>()
   if (userIds.length > 0) {
-    const svc = createServiceClient()
-    for (const id of userIds) {
-      const { data } = await svc.auth.admin.getUserById(id)
-      const email = data?.user?.email
-      if (email) emailMap.set(id, email)
+    const { data: contacts, error: cErr } = await supabase
+      .from('Contact')
+      .select('auth_user_id, Email')
+      .in('auth_user_id', userIds)
+    if (cErr) console.error('Audit contact email enrich:', cErr.message)
+    for (const row of contacts ?? []) {
+      const r = row as { auth_user_id?: string | null; Email?: string | null }
+      if (r.auth_user_id && r.Email?.trim()) emailMap.set(r.auth_user_id, r.Email.trim())
     }
   }
 

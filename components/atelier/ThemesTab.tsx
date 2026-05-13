@@ -84,7 +84,7 @@ export function ThemesTab({
     if (nm === null) return
     const trimmed = nm.trim()
     if (!trimmed || trimmed === currentName) return
-    if (!confirm(`Renommer « ${currentName} » en « ${trimmed} » ?`)) return
+    if (!confirm(t('themes_rename_confirm_fmt').replace('{from}', currentName).replace('{to}', trimmed))) return
     setBusy(true)
     const { error } = await (sb.from('theme') as any).update({ name: trimmed }).eq('id', id)
     if (!error) {
@@ -119,8 +119,8 @@ export function ThemesTab({
   async function confirmDeleteTheme(id: number, name: string, workCount: number) {
     const msg =
       workCount > 2
-        ? `Supprimer « ${name} » ? ${workCount} œuvres seront dissociées de ce thème catalogue.`
-        : `${t('delete')} « ${name} » ?`
+        ? t('themes_delete_catalog_many_fmt').replace('{name}', name).replace('{count}', String(workCount))
+        : t('themes_delete_named_confirm_fmt').replace('{name}', name)
     if (!confirm(msg)) return
     await runDeleteTheme(id)
   }
@@ -171,7 +171,7 @@ export function ThemesTab({
     if (nm === null) return
     const trimmed = nm.trim()
     if (!trimmed || trimmed === currentName) return
-    if (!confirm(`Renommer « ${currentName} » en « ${trimmed} » ?`)) return
+    if (!confirm(t('themes_rename_confirm_fmt').replace('{from}', currentName).replace('{to}', trimmed))) return
     setBusy(true)
     const { error } = await (sb.from('working_group') as any).update({ name: trimmed }).eq('id', id)
     if (!error) {
@@ -206,8 +206,8 @@ export function ThemesTab({
   async function confirmDeleteGroup(id: string, name: string, workCount: number) {
     const msg =
       workCount > 2
-        ? `Supprimer « ${name} » ? ${workCount} œuvres seront retirées de ce groupe de travail.`
-        : `${t('delete')} « ${name} » ?`
+        ? t('themes_delete_group_many_fmt').replace('{name}', name).replace('{count}', String(workCount))
+        : t('themes_delete_named_confirm_fmt').replace('{name}', name)
     if (!confirm(msg)) return
     await runDeleteGroup(id)
   }

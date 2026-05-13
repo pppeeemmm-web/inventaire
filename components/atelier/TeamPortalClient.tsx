@@ -13,13 +13,11 @@ import { createClient } from '@/lib/supabase/client'
 import { useI18n } from '@/lib/i18n/context'
 import { WorkThumb } from './WorkThumb'
 import type { Oeuvre, SuiviReminderListRow } from '@/lib/types/database'
-import type { TeamPortalClientProps } from '@/components/atelier/team-portal-types'
+import type { TeamPortalClientProps, AtelierOverviewBootstrap } from '@/components/atelier/team-portal-types'
 import { yearOf, formatInventoryDims } from '@/lib/data'
-import { computePipelinePulseItems, daysUntil, type PipelinePulseItem } from '@/lib/pipeline-deadlines'
+import { daysUntil } from '@/lib/pipeline-deadlines'
 import {
-  buildPipelineCalendarEvents,
   filterEventsInDateKeyRange,
-  type PipelineCalendarEvent,
 } from '@/lib/pipeline-calendar'
 import type { Lang } from '@/lib/i18n/dictionary'
 
@@ -86,12 +84,20 @@ type Tab =
 
 export type { TeamPortalClientProps }
 
+const DEFAULT_OVERVIEW_BOOTSTRAP: AtelierOverviewBootstrap = {
+  expenseTotalTtc: 0,
+  upcomingPulse: [],
+  overviewCalendarEvents: [],
+  burningConcepts: [],
+}
+
 // ── Component ────────────────────────────────────────────────────────
 
 export function TeamPortalClient({
   initialPendingReviewCount = 0,
   initialReminderUnread = 0,
   initialReminders = [],
+  initialOverviewBootstrap = DEFAULT_OVERVIEW_BOOTSTRAP,
   oeuvresPaging,
   oeuvres: oeuvresChunk, techniques, supports, formats, themes, contacts,
   statusLabelMap, initialGroups, presentations,
@@ -744,6 +750,7 @@ export function TeamPortalClient({
             onGoTab={handleSetTab}
             reminderCount={reminderCount}
             initialReminders={initialReminders}
+            initialOverviewBootstrap={initialOverviewBootstrap}
             isAdmin={isAdmin}
             conflicts={conflicts}
           />
@@ -1014,7 +1021,7 @@ function mondayStartOfWeek(d: Date) {
 }
 
 function OverviewTab({
-  oeuvres, tM, t, lang, onGoTab, reminderCount, initialReminders, isAdmin, conflicts,
+  oeuvres, tM, t, lang, onGoTab, reminderCount, initialReminders, initialOverviewBootstrap, isAdmin, conflicts,
 }: {
   oeuvres:       Oeuvre[]
   tM:            Record<number, string>
@@ -1023,6 +1030,7 @@ function OverviewTab({
   onGoTab:       (tab: Tab) => void
   reminderCount: number
   initialReminders: SuiviReminderListRow[]
+  initialOverviewBootstrap: AtelierOverviewBootstrap
   isAdmin:       boolean
   conflicts:     any[]
 }) {
@@ -1054,12 +1062,21 @@ function OverviewTab({
 
   const recentWorks = [...oeuvres].sort((a, b) => b.OeuvreID - a.OeuvreID).slice(0, 6)
 
-  // Upcoming deadlines from pipeline (same derivation as Pipeline tab)
-  const [upcoming, setUpcoming] = useState<PipelinePulseItem[]>([])
-  const [reminders, setReminders] = useState<{ id: string; message: string; remind_at: string; process_id?: string | null }[]>([])
-  const [overviewCalEvents, setOverviewCalEvents] = useState<PipelineCalendarEvent[]>([])
-  const [burningConcepts, setBurningConcepts] = useState<{ id: string; titre: string; energie: number }[]>([])
-  const [expenseTotal, setExpenseTotal] = useState(0)
+  const reminders = useMemo(
+    () =>
+      initialReminders.slice(0, 6).map((r) => ({
+        id: r.id,
+        message: r.message,
+        remind_at: r.remind_at,
+        process_id: r.process_id,
+      })),
+    [initialReminders],
+  )
+
+  const { expenseTotalTtc, upcomingPulse: upcoming, overviewCalendarEvents, burningConcepts } =
+    initialOverviewBootstrap
+  const expenseTotal = expenseTotalTtc
+
   const ovNarrow = useMediaQuery('(max-width: 767px)')
   const localeTagOv = lang === 'en' ? 'en-GB' : 'fr-FR'
 
@@ -1069,60 +1086,8 @@ function OverviewTab({
     end.setDate(end.getDate() + 6)
     const sk = localDateKeyFromDate(start)
     const ek = localDateKeyFromDate(end)
-    return filterEventsInDateKeyRange(overviewCalEvents, sk, ek)
-  }, [overviewCalEvents])
-
-  useEffect(() => {
-    const sb = createClient()
-    // Fetch total expenses for this year
-    ;(sb.from('expense') as any)
-      .select('montant_ttc')
-      .eq('fiscal_year', thisYear)
-      .then(({ data }: { data: { montant_ttc: number }[] | null }) => {
-        if (data) setExpenseTotal(data.reduce((s, e) => s + (e.montant_ttc || 0), 0))
-      })
-
-    void (async () => {
-      const [{ data: procs }, { data: etapes }] = await Promise.all([
-        (sb.from('suivi_process') as any)
-          .select('id, nom, type, date_fin, deadline_time, statut')
-          .not('statut', 'in', '("perdu","annule","termine")'),
-        (sb.from('suivi_etape') as any).select('id, process_id, nom, statut, date_echeance, overdue_override, position').order('position'),
-      ])
-      const etapeMap: Record<string, { id: string; nom: string; statut: string; date_echeance: string | null; overdue_override: boolean }[]> = {}
-      for (const e of etapes ?? []) {
-        if (!etapeMap[e.process_id]) etapeMap[e.process_id] = []
-        etapeMap[e.process_id].push({
-          id: e.id,
-          nom: e.nom,
-          statut: e.statut,
-          date_echeance: e.date_echeance,
-          overdue_override: e.overdue_override ?? false,
-        })
-      }
-      const processes = (procs ?? []).map((p: any) => ({
-        id: p.id,
-        nom: p.nom,
-        type: p.type,
-        statut: p.statut,
-        date_fin: p.date_fin,
-        deadline_time: p.deadline_time,
-        etapes: etapeMap[p.id] ?? [],
-      }))
-      setUpcoming(computePipelinePulseItems(processes).slice(0, 8))
-      const rems = initialReminders
-      setReminders(rems.slice(0, 6))
-      setOverviewCalEvents(buildPipelineCalendarEvents(processes, rems))
-    })()
-    ;(sb.from('concept') as any)
-      .select('id, titre, energie')
-      .gte('energie', 4)
-      .not('statut', 'eq', 'abandonne')
-      .not('statut', 'eq', 'devenu_oeuvre')
-      .order('energie', { ascending: false })
-      .limit(5)
-      .then(({ data }: { data: any[] | null }) => { if (data) setBurningConcepts(data) })
-  }, [thisYear, initialReminders])
+    return filterEventsInDateKeyRange(overviewCalendarEvents, sk, ek)
+  }, [overviewCalendarEvents])
 
   const byTech = oeuvres.reduce<Record<string, number>>((acc, o) => {
     const k = String(o.Technique ?? 'unknown')
@@ -1156,7 +1121,7 @@ function OverviewTab({
         
         {/* Row 1: Executive Stats */}
         <div>
-          <div className="t-eyebrow" style={{ marginBottom: 24, opacity: 0.6 }}>{t('ov_executive_summary')}</div>
+          <div className="t-eyebrow" style={{ marginBottom: 24, opacity: 0.6 }} data-testid="atelier-overview-executive">{t('ov_executive_summary')}</div>
           <div style={{ display: 'grid', gridTemplateColumns: ovNarrow ? 'repeat(2, minmax(0, 1fr))' : 'repeat(6, 1fr)', gap: 1, border: '1px solid var(--bd)', background: 'var(--bd)' }}>
             {[
               { l: t('works_cap'),                    v: oeuvres.length },

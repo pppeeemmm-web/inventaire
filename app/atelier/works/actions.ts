@@ -9,7 +9,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { seqFromFilename, STATUS_ID_ARCHIVE_ARTISTE, STATUS_IDS_PUBLIC } from '@/lib/data'
 import { makeImageStorageFilename, validateWorkImageBuffer } from '@/lib/image-upload'
 import { pendingPayloadFromFormData } from '@/lib/work-pending-keys'
-import type { WorkImage } from '@/lib/types/database'
+import type { WorkImage, Oeuvre } from '@/lib/types/database'
 import crypto from 'crypto'
 import sharp from 'sharp'
 import { logSystemEvent } from '@/lib/utils/logging'
@@ -1057,4 +1057,41 @@ export async function loadOeuvreLongText(
     Commentaires: data?.Commentaires ?? null,
     Historique: data?.Historique ?? null,
   }
+}
+
+const OEUVRES_KEYSET_SELECT =
+  'OeuvreID, Titre, Technique, Support, Année, Format, Hauteur, Largeur, Profondeur, Exposable, broadcast_ready, broadcast_caption_seed, Prix, PrixFinal, Discount, statusId, Catalogué, txtImageNameLink, ContactID, LocalisationID, LocalisationDetail, is_public, Encadree, IsCommission, PresentationID, ReturnDate, DateLivraison, AcheteurID, NeedsPhotograph, anonymity_level, admin_override_anonymity'
+
+export type OeuvresKeysetPageResult = {
+  rows: Oeuvre[]
+  nextCursor: number | null
+  hasMore: boolean
+}
+
+/** Keyset page: `OeuvreID` descending; `beforeId` = smallest id already loaded. */
+export async function fetchOeuvresKeysetPage(beforeId: number, limit: number): Promise<OeuvresKeysetPageResult> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { rows: [], nextCursor: null, hasMore: false }
+
+  const lim = Math.min(Math.max(1, limit), 2000)
+  const { data, error } = await supabase
+    .from('Oeuvres')
+    .select(OEUVRES_KEYSET_SELECT)
+    .is('deleted_at', null)
+    .order('OeuvreID', { ascending: false })
+    .lt('OeuvreID', beforeId)
+    .limit(lim + 1)
+
+  if (error) {
+    console.error('[fetchOeuvresKeysetPage]', error.message)
+    return { rows: [], nextCursor: null, hasMore: false }
+  }
+  const raw = (data ?? []) as Oeuvre[]
+  const hasMore = raw.length > lim
+  const rows = hasMore ? raw.slice(0, lim) : raw
+  const nextCursor = hasMore && rows.length > 0 ? rows[rows.length - 1]!.OeuvreID : null
+  return { rows, nextCursor, hasMore }
 }

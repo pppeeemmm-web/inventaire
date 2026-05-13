@@ -897,7 +897,7 @@ function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, selection
                           onUpdate({ steps: exhibition.steps.map(sx => sx.id === id ? { ...sx, nom: name } : sx) })
                         }}
                         onDelete={(id) => {
-                          if (confirm('Supprimer cette étape ?')) {
+                          if (confirm(t('exhib_step_delete_confirm'))) {
                             onUpdate({ steps: exhibition.steps.filter(sx => sx.id !== id) })
                           }
                         }}
@@ -1034,12 +1034,15 @@ function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, selection
                 <button
                   className="btn primary sm"
                   onClick={async () => {
-                    if (!exhibition.contact_id) { alert("Veuillez d'abord lier un contact à cette exposition."); return }
+                    if (!exhibition.contact_id) {
+                      alert(t('exhib_link_contact_first'))
+                      return
+                    }
                     const sb = createClient()
                     const ids = Array.from(selection)
                     const { error } = await sb.from('Oeuvres').update({ ContactID: exhibition.contact_id }).in('OeuvreID', ids)
                     if (!error) {
-                      alert(`${ids.length} œuvres ont été liées à cette exposition.`);
+                      alert(t('exhib_works_linked_count_fmt').replace('{n}', String(ids.length)))
                       window.location.reload() // lazy refresh
                     }
                   }}
@@ -1177,7 +1180,7 @@ export function ExhibitionsTab({ oeuvres, contacts, themes, tM, selection, setSe
 
   async function handleDelete() {
     if (!selected) return
-    if (!confirm(`Supprimer l'exposition "${selected.nom}" ? Cette action est irréversible.`)) return
+    if (!confirm(t('exhib_delete_confirm_fmt').replace(/\{name\}/g, selected.nom))) return
     setLoading(true)
     // Unlink any pipeline processes pointing at this exhibition project (do not delete those tracks).
     await supabase.from('suivi_process').update({ exhibition_process_id: null } as any).eq('exhibition_process_id', selected.id)

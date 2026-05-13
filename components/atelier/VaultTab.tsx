@@ -160,7 +160,7 @@ export function VaultTab({ oeuvres, tM }: Props) {
       a.click()
       document.body.removeChild(a)
     } else {
-      alert(`Erreur de téléchargement : ${res.error}`)
+      alert(t('vault_download_err_fmt').replace('{msg}', stringifyError(res.error)))
     }
   }
   
@@ -172,7 +172,7 @@ export function VaultTab({ oeuvres, tM }: Props) {
         if ('ok' in res) {
           setDocs(prev => prev.map(d => d.id === doc.id ? { ...d, name: newName } : d))
           if (selected?.id === doc.id) setSelected({ ...selected, name: newName })
-        } else alert(res.error)
+        } else alert(`${t('error_prefix')} ${stringifyError(res.error)}`)
       })
     }
   }
@@ -302,7 +302,7 @@ export function VaultTab({ oeuvres, tM }: Props) {
               startDel(async () => {
                 const res = await renameFolder(oldPath, newPath)
                 if ('ok' in res) fetchDocs()
-                else alert(res.error)
+                else alert(`${t('error_prefix')} ${stringifyError(res.error)}`)
               })
             }}
           />
@@ -340,7 +340,7 @@ export function VaultTab({ oeuvres, tM }: Props) {
               startDel(async () => {
                 const res = await createFolder(fullPath)
                 if ('ok' in res) fetchDocs()
-                else alert(res.error)
+                else alert(`${t('error_prefix')} ${stringifyError(res.error)}`)
               })
               setCurrentPath([...currentPath, name])
             }
@@ -391,7 +391,7 @@ export function VaultTab({ oeuvres, tM }: Props) {
                 className="btn ghost sm" 
                 style={{ color: '#ff8888' }}
                 onClick={() => {
-                  if (!confirm(`Supprimer ${selectedIds.length} documents ?`)) return
+                  if (!confirm(t('vault_confirm_delete_n').replace('{n}', String(selectedIds.length)))) return
                   startDel(async () => {
                     for (const id of selectedIds) {
                       const d = docs.find(x => x.id === id)
@@ -412,7 +412,7 @@ export function VaultTab({ oeuvres, tM }: Props) {
                     if ('ok' in res) {
                       setDocs(prev => prev.map(d => selectedIds.includes(d.id) ? { ...d, folder: target === '' ? null : target } : d))
                       setSelectedIds([])
-                    } else alert(res.error)
+                    } else alert(`${t('error_prefix')} ${stringifyError(res.error)}`)
                   })
                 }}
               >Déplacer</button>
@@ -498,7 +498,7 @@ export function VaultTab({ oeuvres, tM }: Props) {
                                 const newPath = currentFolderStr ? `${currentFolderStr}/${newName}` : newName
                                 const res = await renameFolder(oldPath, newPath)
                                 if ('ok' in res) fetchDocs()
-                                else alert(res.error)
+                                else alert(`${t('error_prefix')} ${stringifyError(res.error)}`)
                               })
                             }
                           }}
@@ -686,14 +686,14 @@ export function VaultTab({ oeuvres, tM }: Props) {
                 className="btn sm"
                 style={{ flex: 1, background: '#442222', color: '#ff8888' }}
                 onClick={() => {
-                  if (!confirm('Supprimer ce document ?')) return
+                  if (!confirm(t('vault_confirm_delete_one'))) return
                   startDel(async () => {
                     const r = await deleteDocument(selected.id, selected.storage_path)
                     if ('ok' in r) {
                       setDocs(prev => prev.filter(d => d.id !== selected.id))
                       setSelected(null)
                     } else {
-                      alert(`Erreur : ${stringifyError(r.error)}`)
+                      alert(`${t('error_prefix')} ${stringifyError(r.error)}`)
                     }
                   })
                 }}
@@ -769,7 +769,7 @@ function DocActions({ doc, onDownload, onRename, onDeleted }: { doc: VaultDoc; o
               startDelete(async () => {
                 const r = await deleteDocument(doc.id, doc.storage_path)
                 if ('ok' in r) onDeleted()
-                else alert(`Erreur : ${stringifyError(r.error)}`)
+                else alert(`${t('error_prefix')} ${stringifyError(r.error)}`)
               })
             }}>{pending ? '…' : 'Oui'}</button>
             <button className="btn ghost sm" onClick={(e) => { e.stopPropagation(); setConfirm(false) }}>Non</button>
