@@ -40,6 +40,11 @@ export function LoginClient() {
     window.history.replaceState(null, '', pathname + search)
   }, [t])
 
+  /** Same host as this page — PKCE verifier lives in host-only cookies; a different `NEXT_PUBLIC_SITE_URL` origin breaks exchange. */
+  function authCallbackUrl(next: string): string {
+    return `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
+  }
+
   async function handleGoogle() {
     setLoading(true)
     setError(null)
@@ -47,7 +52,7 @@ export function LoginClient() {
     const next = searchParams.get('next') || '/hub'
     const { error: err } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}` },
+      options: { redirectTo: authCallbackUrl(next) },
     })
     if (err) { setError(err.message); setLoading(false) }
     // on success browser redirects — no further action needed
@@ -61,7 +66,7 @@ export function LoginClient() {
     const next = searchParams.get('next') || '/hub'
     const { error: err } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}` },
+      options: { emailRedirectTo: authCallbackUrl(next) },
     })
     if (err) setError(err.message)
     else setSent(true)
