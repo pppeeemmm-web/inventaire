@@ -315,6 +315,7 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
         defaultValueIds={['count']}
         title={t('pivot')}
         exportFileName="production-throughput"
+        initialToolbarCollapsed
       />
 
       {/* Action type manager */}

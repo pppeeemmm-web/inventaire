@@ -53,6 +53,11 @@ interface WorksMode {
   outro_en:     string
 }
 
+interface LandingConfig {
+  /** Full public `https://…` URL for the landing circle hero; empty → default asset. */
+  hero_image_url: string
+}
+
 interface PortfolioConfig {
   general: {
     artist_name:       string
@@ -73,6 +78,7 @@ interface PortfolioConfig {
     materials_fr: string
     materials_en: string
   }
+  landing:           LandingConfig
   sections:          CollectionItem[]
   works_collections: CollectionItem[]   // legacy mirror of works_modes[0].collections
   works_modes:       WorksMode[]
@@ -93,6 +99,7 @@ const DEFAULT_CONFIG: PortfolioConfig = {
   general: { artist_name: '', contact_email: '', instagram: '', phone: '', media_tagline_fr: '', media_tagline_en: '' },
   about:   { intro_fr: '', intro_en: '' },
   practice:{ approach_fr: '', approach_en: '', themes: [], materials_fr: '', materials_en: '' },
+  landing: { hero_image_url: '' },
   sections: [],
   works_collections: [],
   works_modes: [{
@@ -145,6 +152,9 @@ function migrate(raw: any): PortfolioConfig {
       themes:       raw.practice?.themes       || [],
       materials_fr: raw.practice?.materials_fr || raw.practice?.materials || '',
       materials_en: raw.practice?.materials_en || '',
+    },
+    landing: {
+      hero_image_url: String(raw.landing?.hero_image_url ?? '').trim(),
     },
     sections:          oldSections.map(migrateCollection),
     works_collections: oldWorks.map(migrateCollection),
@@ -228,6 +238,46 @@ function ProsePreview({ html }: { html: string }) {
         color: 'var(--tx2)', minHeight: 60,
       }}
     />
+  )
+}
+
+function isHttpsHeroUrl(s: string): boolean {
+  const u = (s ?? '').trim()
+  return /^https:\/\//i.test(u)
+}
+
+function SitePublicSection({ title, icon, children, action, testId }: {
+  title: string
+  icon: string
+  children: React.ReactNode
+  action?: React.ReactNode
+  testId?: string
+}) {
+  return (
+    <section
+      data-testid={testId}
+      style={{
+        background: 'var(--bg1)',
+        border: '1px solid var(--bd)',
+        borderRadius: 8,
+        padding: 24,
+        boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+      }}
+    >
+      <div className="row between" style={{
+        paddingBottom: 14,
+        marginBottom: 20,
+        alignItems: 'center',
+        borderBottom: '1px solid var(--bd)',
+      }}>
+        <div className="row gap-md center">
+          <span style={{ fontSize: 18, color: 'var(--ac)' }}>{icon}</span>
+          <h3 className="serif" style={{ fontSize: 20 }}>{title}</h3>
+        </div>
+        {action}
+      </div>
+      {children}
+    </section>
   )
 }
 
@@ -536,22 +586,63 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
           display: activeTab === 'analytics' ? 'flex' : 'block',
           flexDirection: 'column',
         }}>
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: activeTab === 'analytics' ? 0 : 48,
-            flex: activeTab === 'analytics' ? 1 : undefined,
-            minHeight: activeTab === 'analytics' ? 0 : undefined,
-          }}>
+          <div
+            className={activeTab === 'website' ? 'portfolio-site-public' : undefined}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: activeTab === 'analytics' ? 0 : activeTab === 'website' ? 32 : 48,
+              flex: activeTab === 'analytics' ? 1 : undefined,
+              minHeight: activeTab === 'analytics' ? 0 : undefined,
+            }}
+          >
 
             {activeTab === 'website' && (
               <>
-                <p className="t-mono-xs" style={{ opacity: 0.55, marginBottom: 24, maxWidth: 720, lineHeight: 1.5 }}>
+                <p className="t-mono-xs" style={{ opacity: 0.55, marginBottom: 0, maxWidth: 720, lineHeight: 1.5 }}>
                   Onglet <strong>Site public</strong> : identité, pages <strong>À propos</strong> et <strong>Pratique</strong>, et les <strong>modes /works</strong> (chaque mode = un sous-onglet sur la page <code style={{ opacity: 0.85 }}>/works</code>). Les sections dédiées au flux portfolio sont dans l’onglet <strong>Portfolio</strong>.
                 </p>
-                {/* General identity */}
-                <PageSection title="Identité générale" icon="◈">
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
+
+                <SitePublicSection title={t('atelier_pub_hero_section_title')} icon="◎" testId="atelier-pub-hero-section">
+                  <p className="t-mono-xs" style={{ opacity: 0.55, marginBottom: 12, lineHeight: 1.5 }}>{t('atelier_pub_hero_url_help')}</p>
+                  <p className="t-mono-xs" style={{ opacity: 0.4, marginBottom: 16, fontSize: 9 }}>{t('atelier_pub_hero_r2_followup')}</p>
+                  <label className="t-label" style={{ display: 'block', marginBottom: 6, fontSize: 9 }}>{t('atelier_pub_hero_url_label')}</label>
+                  <input
+                    type="url"
+                    inputMode="url"
+                    autoComplete="off"
+                    className="input full"
+                    placeholder={t('atelier_pub_hero_url_placeholder')}
+                    value={config.landing.hero_image_url}
+                    onChange={e => setConfig({
+                      ...config,
+                      landing: { ...config.landing, hero_image_url: e.target.value },
+                    })}
+                  />
+                  {isHttpsHeroUrl(config.landing.hero_image_url) && (
+                    <div style={{ marginTop: 16 }}>
+                      <div className="t-label" style={{ marginBottom: 8, fontSize: 9 }}>{t('atelier_pub_hero_preview_label')}</div>
+                      <img
+                        src={config.landing.hero_image_url.trim()}
+                        alt=""
+                        width={200}
+                        height={200}
+                        style={{
+                          maxWidth: 200,
+                          maxHeight: 200,
+                          width: '100%',
+                          height: 'auto',
+                          objectFit: 'cover',
+                          borderRadius: 8,
+                          border: '1px solid var(--bd)',
+                        }}
+                      />
+                    </div>
+                  )}
+                </SitePublicSection>
+
+                <SitePublicSection title="Identité générale" icon="◈">
+                  <div className="site-pub-grid-2" style={{ marginBottom: 20 }}>
                     <Slot label="Nom de l'artiste">
                       <input className="input full" value={config.general.artist_name}
                         onChange={e => setConfig({ ...config, general: { ...config.general, artist_name: e.target.value } })} />
@@ -574,18 +665,16 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
                     onFr={v => setConfig({ ...config, general: { ...config.general, media_tagline_fr: v } })}
                     onEn={v => setConfig({ ...config, general: { ...config.general, media_tagline_en: v } })}
                     placeholder={{ fr: 'Peinture · Dessin · Sculpture', en: 'Painting · Drawing · Sculpture' }} />
-                </PageSection>
+                </SitePublicSection>
 
-                {/* About */}
-                <PageSection title="Page À propos" icon="✎">
+                <SitePublicSection title="Page À propos" icon="✎">
                   <DualField label="Texte d'introduction" rich allowImport preview="prose"
                     fr={config.about.intro_fr} en={config.about.intro_en}
                     onFr={v => setConfig({ ...config, about: { ...config.about, intro_fr: v } })}
                     onEn={v => setConfig({ ...config, about: { ...config.about, intro_en: v } })} />
-                </PageSection>
+                </SitePublicSection>
 
-                {/* Practice */}
-                <PageSection title="Page Pratique" icon="◉">
+                <SitePublicSection title="Page Pratique" icon="◉">
                   <DualField label="Approche / statement" rich allowImport preview="prose"
                     fr={config.practice.approach_fr} en={config.practice.approach_en}
                     onFr={v => setConfig({ ...config, practice: { ...config.practice, approach_fr: v } })}
@@ -615,17 +704,15 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
                       onFr={v => setConfig({ ...config, practice: { ...config.practice, materials_fr: v } })}
                       onEn={v => setConfig({ ...config, practice: { ...config.practice, materials_en: v } })} />
                   </div>
-                </PageSection>
+                </SitePublicSection>
 
-                {/* Works — multi-mode (tabs) */}
-                <PageSection title="Page /works — Modes (sous-onglets publics)" icon="▤"
+                <SitePublicSection title="Page /works — Modes (sous-onglets publics)" icon="▤"
                   action={<button className="btn sm ghost" onClick={addMode}>+ Mode</button>}>
                   <p className="t-mono-xs" style={{ opacity: 0.5, marginBottom: 16 }}>
                     Chaque mode devient un sous-onglet sur <code>/works</code>, avec ses collections et sa carte de clôture. Les sections du Portfolio (autre onglet) n’y sont pas mélangées.
                   </p>
 
-                  {/* Mode tab bar */}
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, borderBottom: '1px solid var(--bd)', marginBottom: 20, paddingBottom: 8 }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, borderBottom: '1px solid var(--bd)', marginBottom: 24, paddingBottom: 8 }}>
                     {config.works_modes.map((m, i) => {
                       const isActive = i === activeMode
                       return (
@@ -651,12 +738,11 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
                     })}
                   </div>
 
-                  {/* Active mode editor */}
                   {config.works_modes[activeMode] && (() => {
                     const mode = config.works_modes[activeMode]
                     return (
-                      <div className="col gap-lg">
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto auto', gap: 12, alignItems: 'end' }}>
+                      <div className="col gap-lg" style={{ gap: 28 }}>
+                        <div className="site-pub-grid-mode">
                           <div>
                             <label className="t-label" style={{ display: 'block', marginBottom: 4, fontSize: 9 }}>LIBELLÉ ONGLET FR</label>
                             <input className="input full" value={mode.label_fr} onChange={e => updateMode(activeMode, { label_fr: e.target.value })} />
@@ -712,7 +798,7 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
                       </div>
                     )
                   })()}
-                </PageSection>
+                </SitePublicSection>
               </>
             )}
 
@@ -766,6 +852,25 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
 
       <style jsx>{`
         .full { width: 100%; }
+        :global(.portfolio-site-public) .site-pub-grid-2 {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 20px;
+        }
+        :global(.portfolio-site-public) .site-pub-grid-mode {
+          display: grid;
+          grid-template-columns: 1fr 1fr auto auto;
+          gap: 12px;
+          align-items: end;
+        }
+        @media (max-width: 767px) {
+          :global(.portfolio-site-public) .site-pub-grid-2 {
+            grid-template-columns: 1fr;
+          }
+          :global(.portfolio-site-public) .site-pub-grid-mode {
+            grid-template-columns: 1fr;
+          }
+        }
       `}</style>
 
       <PdfExportDrawer open={pdfOpen} onClose={() => setPdfOpen(false)} />

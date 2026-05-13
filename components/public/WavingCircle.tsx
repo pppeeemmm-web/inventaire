@@ -10,9 +10,11 @@ interface Props {
   priority?: boolean
   /** Passed to `next/image` when using `fill` — avoids over-fetching. */
   sizes?: string
+  /** Allow arbitrary hero URLs without `images.remotePatterns` entries. */
+  unoptimized?: boolean
 }
 
-export default function WavingCircle({ src, alt, className, priority, sizes }: Props) {
+export default function WavingCircle({ src, alt, className, priority, sizes, unoptimized }: Props) {
   return (
     <>
       <style>{`
@@ -32,6 +34,7 @@ export default function WavingCircle({ src, alt, className, priority, sizes }: P
           fill
           priority={priority}
           sizes={sizes}
+          unoptimized={unoptimized}
           style={{
             objectFit: 'cover',
             display: 'block',

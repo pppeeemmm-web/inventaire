@@ -27,6 +27,18 @@ export const STOCK_CATEGORY_TO_KEY: Record<string, DictKey> = {
   Pinceau: 'stock_cat_brush',
   Primer: 'stock_cat_primer',
   Solvent: 'stock_cat_solvent',
+  /** DB may store dict-key slugs instead of canonical French labels */
+  stock_cat_additive: 'stock_cat_additive',
+  stock_cat_other: 'stock_cat_other',
+  stock_cat_oil_colour: 'stock_cat_oil_colour',
+  stock_cat_binder: 'stock_cat_binder',
+  stock_cat_linen: 'stock_cat_linen',
+  stock_cat_painting_medium: 'stock_cat_painting_medium',
+  stock_cat_paper: 'stock_cat_paper',
+  stock_cat_pigment: 'stock_cat_pigment',
+  stock_cat_brush: 'stock_cat_brush',
+  stock_cat_primer: 'stock_cat_primer',
+  stock_cat_solvent: 'stock_cat_solvent',
 }
 
 export function labelStockCategory(value: string, t: (k: DictKey) => string): string {

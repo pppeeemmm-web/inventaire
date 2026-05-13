@@ -5,6 +5,16 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+/** Same-origin path only (blocks open redirects). */
+function safeRelativeNext(raw: string | null): string | null {
+  if (raw == null || typeof raw !== 'string') return null
+  const trimmed = raw.trim()
+  if (!trimmed.startsWith('/')) return null
+  if (trimmed.startsWith('//') || trimmed.includes('://')) return null
+  if (trimmed.includes('\\')) return null
+  return trimmed
+}
+
 export async function middleware(request: NextRequest) {
   // Never touch Next internals / static assets (matcher should skip these; bail out hard if not).
   const p = request.nextUrl.pathname
@@ -64,21 +74,23 @@ export async function middleware(request: NextRequest) {
       p === '/login' || p.startsWith('/login/') ||
       p === '/auth/callback' || p.startsWith('/auth/callback/')
 
-    // Dev-only auto-login: when no session and credentials are present in env,
-    // sign in transparently so the preview iframe doesn't have to traverse OAuth.
+    // Dev-only auto-login: env creds sign you in without OAuth.
+    // - Protected URLs: session then continues to the page.
+    // - /login: was never "protected", so previews/bookmarks hit the gate; redirect to ?next= or /hub.
     // NEVER triggers in production (env vars must be absent there).
-    if (
-      !user &&
-      isDocNav &&
-      isProtected &&
-      !isAuthRoute &&
+    const devAutoLoginReady =
       process.env.NODE_ENV === 'development' &&
-      process.env.DEV_AUTO_LOGIN_EMAIL &&
-      process.env.DEV_AUTO_LOGIN_PASSWORD
-    ) {
+      Boolean(process.env.DEV_AUTO_LOGIN_EMAIL) &&
+      Boolean(process.env.DEV_AUTO_LOGIN_PASSWORD)
+
+    const tryDevLoginHere =
+      devAutoLoginReady &&
+      ((isProtected && !isAuthRoute) || p === '/login' || p.startsWith('/login/'))
+
+    if (!user && isDocNav && tryDevLoginHere) {
       const { error: signInErr } = await supabase.auth.signInWithPassword({
-        email: process.env.DEV_AUTO_LOGIN_EMAIL,
-        password: process.env.DEV_AUTO_LOGIN_PASSWORD,
+        email: process.env.DEV_AUTO_LOGIN_EMAIL!,
+        password: process.env.DEV_AUTO_LOGIN_PASSWORD!,
       })
       if (signInErr) {
         const safeMsg = signInErr.message.replace(
@@ -89,6 +101,15 @@ export async function middleware(request: NextRequest) {
       } else {
         const refreshed = await supabase.auth.getUser()
         user = refreshed.data.user
+        if (user && (p === '/login' || p.startsWith('/login/'))) {
+          const dest =
+            safeRelativeNext(request.nextUrl.searchParams.get('next')) ?? '/hub'
+          const redir = NextResponse.redirect(new URL(dest, request.url))
+          for (const c of supabaseResponse.cookies.getAll()) {
+            redir.cookies.set(c.name, c.value)
+          }
+          return redir
+        }
       }
     }
 

@@ -4,28 +4,17 @@
 // Uses service_role to bypass RLS on the document table.
 
 import { createServiceClient } from '@/lib/supabase/server'
+import { PutObjectCommand } from '@aws-sdk/client-s3'
 import {
-  S3Client, PutObjectCommand, GetObjectCommand,
-} from '@aws-sdk/client-s3'
+  createPortfolioConfigS3Client,
+  loadPortfolioSectionsFromR2,
+  PORTFOLIO_SECTIONS_BUCKET,
+  PORTFOLIO_SECTIONS_R2_KEY,
+} from '@/lib/portfolio-sections-from-r2'
 
 interface MammothLib {
   extractRawText(opts: { buffer: Buffer }): Promise<{ value: string }>
   convertToHtml(opts: { buffer: Buffer }): Promise<{ value: string; messages: any[] }>
-}
-
-const BUCKET     = process.env.R2_VAULT_BUCKET ?? 'vault'
-const CONFIG_KEY = 'portfolio_sections.json'
-
-function r2Client() {
-  const accountId = process.env.R2_ACCOUNT_ID ?? ''
-  return new S3Client({
-    region: 'auto',
-    endpoint: `https://${accountId}.eu.r2.cloudflarestorage.com`,
-    credentials: {
-      accessKeyId:     process.env.R2_ACCESS_KEY_ID     ?? '',
-      secretAccessKey: process.env.R2_SECRET_ACCESS_KEY ?? '',
-    },
-  })
 }
 
 export type SaveConfigResult     = { error: string } | { ok: true }
@@ -69,47 +58,7 @@ export async function getDocSignedUrls(
 
 export async function loadPortfolioConfig(): Promise<LoadConfigResult> {
   try {
-    const sb = createServiceClient()
-    const s3 = r2Client()
-
-    const [docsResult, r2Result] = await Promise.allSettled([
-      (sb.from('document') as any).select('id, name').order('name'),
-      s3.send(new GetObjectCommand({ Bucket: BUCKET, Key: CONFIG_KEY })),
-    ])
-
-    const documents = docsResult.status === 'fulfilled' ? (docsResult.value.data ?? []) : []
-
-    let config: any = {
-      general: { artist_name: '', about_intro: '', contact_email: '', instagram: '' },
-      sections: [],
-      works_collections: [],
-      works_modes: [],
-      statement_doc_id: null,
-      cv_doc_id: null,
-    }
-
-    if (r2Result.status === 'fulfilled') {
-      const body = r2Result.value.Body
-      if (body) {
-        const text = await body.transformToString('utf-8')
-        try {
-          const parsed = JSON.parse(text)
-          config = {
-            general:           parsed.general           || config.general,
-            about:             parsed.about             || null,
-            practice:          parsed.practice          || null,
-            sections:          parsed.sections          || [],
-            works_collections: parsed.works_collections || [],
-            works_modes:       Array.isArray(parsed.works_modes) ? parsed.works_modes : [],
-            statement_doc_id:  parsed.statement_doc_id  || null,
-            cv_doc_id:         parsed.cv_doc_id         || null,
-          }
-        } catch (e) {
-          console.error('[loadPortfolioConfig] JSON parse error:', e)
-        }
-      }
-    }
-
+    const { config, documents } = await loadPortfolioSectionsFromR2()
     return { ok: true, config, documents }
   } catch (e: any) {
     console.error('[loadPortfolioConfig]', e)
@@ -159,10 +108,10 @@ export async function savePortfolioConfig(config: unknown): Promise<SaveConfigRe
     const json = JSON.stringify(normalized, null, 2)
     const buf  = Buffer.from(json, 'utf-8')
 
-    const s3 = r2Client()
+    const s3 = createPortfolioConfigS3Client()
     await s3.send(new PutObjectCommand({
-      Bucket:      BUCKET,
-      Key:         CONFIG_KEY,
+      Bucket:      PORTFOLIO_SECTIONS_BUCKET,
+      Key:         PORTFOLIO_SECTIONS_R2_KEY,
       Body:        buf,
       ContentType: 'application/json',
     }))
@@ -170,12 +119,12 @@ export async function savePortfolioConfig(config: unknown): Promise<SaveConfigRe
     const sb = createServiceClient()
     const { data: existing } = await (sb.from('document') as any)
       .select('id')
-      .eq('name', CONFIG_KEY)
+      .eq('name', PORTFOLIO_SECTIONS_R2_KEY)
       .maybeSingle()
 
     const payload = {
-      name:         CONFIG_KEY,
-      storage_path: CONFIG_KEY,
+      name:         PORTFOLIO_SECTIONS_R2_KEY,
+      storage_path: PORTFOLIO_SECTIONS_R2_KEY,
       kind:         'autre',
       mime_type:    'application/json',
       file_size:    buf.byteLength,

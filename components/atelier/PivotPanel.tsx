@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, useCallback } from 'react'
+import { useMemo, useState, useCallback, type CSSProperties } from 'react'
 import * as XLSX from 'xlsx'
 import { useI18n } from '@/lib/i18n/context'
 import { useMediaQuery } from '@/lib/useMediaQuery'
@@ -18,6 +18,12 @@ export type PivotPanelProps<R> = {
   defaultValueIds?: string[]
   title?: string
   exportFileName?: string
+  /** When true, dimension controls start hidden (compact bar + table). */
+  initialToolbarCollapsed?: boolean
+  /** When true (requires `title`), user can hide/show the summary line + data table. */
+  collapsibleSection?: boolean
+  /** Initial state for the section toggle; only used when `collapsibleSection` is true. */
+  initialSectionCollapsed?: boolean
 }
 
 export function PivotPanel<R>({
@@ -29,6 +35,8 @@ export function PivotPanel<R>({
   defaultValueIds,
   title,
   exportFileName = 'pivot',
+  initialToolbarCollapsed = false,
+  initialBodyCollapsed = false,
 }: PivotPanelProps<R>) {
   const { t, lang } = useI18n()
   const narrow = useMediaQuery('(max-width: 767px)')
@@ -39,6 +47,11 @@ export function PivotPanel<R>({
   const [valueIds, setValueIds] = useState<string[]>(
     () => defaultValueIds ?? availableValues.map((v) => v.id),
   )
+  const [toolbarCollapsed, setToolbarCollapsed] = useState(initialToolbarCollapsed)
+  const [sectionExpanded, setSectionExpanded] = useState(
+    () => !(collapsibleSection && initialSectionCollapsed),
+  )
+  const [bodyCollapsed, setBodyCollapsed] = useState(Boolean(title) && initialBodyCollapsed)
 
   const fmt = useCallback(
     (n: number | null, kind: string) => {
@@ -60,6 +73,7 @@ export function PivotPanel<R>({
   const colD = colDimId ? availableDims.find((d) => d.id === colDimId) : undefined
   const singleColMode = !colD && pivot && pivot.cols.length <= 1
   const vals = availableValues.filter((v) => valueIds.includes(v.id))
+  const rowDim = availableDims.find((d) => d.id === rowDimId)
 
   const exportXlsx = useCallback(() => {
     if (!pivot) return
@@ -114,7 +128,7 @@ export function PivotPanel<R>({
     })
   }
 
-  const selStyle: React.CSSProperties = {
+  const selStyle: CSSProperties = {
     minHeight: 44,
     padding: '8px 12px',
     fontSize: 13,
@@ -125,70 +139,220 @@ export function PivotPanel<R>({
     width: narrow ? '100%' : 'auto',
   }
 
+  const summaryParts = [
+    rowDim?.label ?? '—',
+    colD ? colD.label : t('pivotNoColumn'),
+    vals.map((v) => v.label).join(', '),
+  ]
+  const summaryLine = summaryParts.join(' · ')
+
+  const sectionTotalsHint = useMemo(() => {
+    if (!pivot || pivot.rows.length === 0) return ''
+    return vals
+      .map((v, vi) => `${v.label}: ${fmt(pivot.grand[vi], v.kind)}`)
+      .join(' · ')
+  }, [pivot, vals, fmt])
+
+  const numCell: CSSProperties = {
+    width: '4.25rem',
+    maxWidth: '6rem',
+    textAlign: 'right',
+    whiteSpace: 'nowrap',
+  }
+
+  const bodyOpen = !bodyCollapsed
+
   return (
-    <div className="panel pad-md" style={{ marginTop: title ? 16 : 0 }}>
+    <div className="panel pad-sm" style={{ marginTop: title ? 8 : 0 }}>
       {title && (
-        <div className="t-label" style={{ marginBottom: 12, color: 'var(--ac)' }}>
-          {title}
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: bodyCollapsed ? 0 : toolbarCollapsed ? 8 : 10,
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setBodyCollapsed((c) => !c)}
+            aria-expanded={bodyOpen}
+            aria-label={bodyCollapsed ? t('pivotPanel_toggle_expand') : t('pivotPanel_toggle_collapse')}
+            title={bodyCollapsed ? t('pivotPanel_toggle_expand') : t('pivotPanel_toggle_collapse')}
+            style={{
+              minHeight: 44,
+              minWidth: 44,
+              flexShrink: 0,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 0,
+              fontSize: 14,
+              lineHeight: 1,
+              cursor: 'pointer',
+              background: 'var(--bg1)',
+              border: '1px solid var(--bd)',
+              borderRadius: 4,
+              color: 'var(--tx)',
+            }}
+          >
+            {bodyCollapsed ? '▶' : '▼'}
+          </button>
+          <div className="t-label" style={{ color: 'var(--ac)', flex: '1 1 auto', minWidth: 0 }}>
+            {title}
+          </div>
+          {bodyOpen && (
+            <button
+              type="button"
+              className="btn sm"
+              onClick={() => setToolbarCollapsed((c) => !c)}
+              aria-expanded={!toolbarCollapsed}
+              style={{ minHeight: 44, flexShrink: 0 }}
+            >
+              {toolbarCollapsed ? `▶ ${t('pivotToolbar_expand')}` : `▼ ${t('pivotToolbar_collapse')}`}
+            </button>
+          )}
+          <button
+            type="button"
+            className="btn sm"
+            onClick={exportXlsx}
+            disabled={!pivot}
+            style={{ minHeight: 44, flexShrink: 0 }}
+          >
+            {t('pivotExportXlsx')}
+          </button>
         </div>
       )}
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: narrow ? 'column' : 'row',
-          flexWrap: 'wrap',
-          gap: 12,
-          alignItems: narrow ? 'stretch' : 'flex-end',
-          marginBottom: 16,
-        }}
-      >
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: narrow ? undefined : 1, minWidth: narrow ? undefined : 140 }}>
-          <span className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 10 }}>{t('pivotGroupBy')}</span>
-          <select value={rowDimId} onChange={(e) => setRowDimId(e.target.value)} style={selStyle}>
-            {availableDims.map((d) => (
-              <option key={d.id} value={d.id}>{d.label}</option>
-            ))}
-          </select>
-        </label>
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: narrow ? undefined : 1, minWidth: narrow ? undefined : 140 }}>
-          <span className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 10 }}>{t('pivotCrossBy')}</span>
-          <select value={colDimId} onChange={(e) => setColDimId(e.target.value)} style={selStyle}>
-            <option value="">{t('pivotNoColumn')}</option>
-            {availableDims.filter((d) => d.id !== rowDimId).map((d) => (
-              <option key={d.id} value={d.id}>{d.label}</option>
-            ))}
-          </select>
-        </label>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: narrow ? undefined : 2, minWidth: 200 }}>
-          <span className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 10 }}>{t('pivotValues')}</span>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {availableValues.map((v) => (
-              <label key={v.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', minHeight: 44 }}>
-                <input
-                  type="checkbox"
-                  checked={valueIds.includes(v.id)}
-                  onChange={() => toggleValue(v.id)}
-                />
-                <span style={{ fontSize: 13 }}>{v.label}</span>
-              </label>
-            ))}
-          </div>
-        </div>
-        <button type="button" className="btn sm" onClick={exportXlsx} disabled={!pivot} style={{ minHeight: 44, alignSelf: narrow ? 'stretch' : 'center' }}>
-          {t('pivotExportXlsx')}
-        </button>
-      </div>
 
-      {!pivot || pivot.rows.length === 0 ? (
-        <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>{t('pivotEmpty')}</div>
+      {bodyOpen && toolbarCollapsed && (
+        <div
+          className="t-mono-sm"
+          style={{
+            color: 'var(--tx3)',
+            marginBottom: 8,
+            lineHeight: 1.35,
+            wordBreak: 'break-word',
+          }}
+        >
+          {summaryLine}
+        </div>
+      )}
+
+      {bodyOpen && !toolbarCollapsed && (
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: narrow ? 'column' : 'row',
+            flexWrap: 'wrap',
+            rowGap: 12,
+            columnGap: narrow ? 12 : 14,
+            alignItems: narrow ? 'stretch' : 'flex-end',
+            justifyContent: 'flex-start',
+            marginBottom: 10,
+          }}
+        >
+          <label
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 8,
+              width: narrow ? '100%' : 'auto',
+              minWidth: narrow ? undefined : 132,
+              maxWidth: narrow ? undefined : 220,
+              flexShrink: 0,
+            }}
+          >
+            <span className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 10 }}>{t('pivotGroupBy')}</span>
+            <select value={rowDimId} onChange={(e) => setRowDimId(e.target.value)} style={selStyle}>
+              {availableDims.map((d) => (
+                <option key={d.id} value={d.id}>{d.label}</option>
+              ))}
+            </select>
+          </label>
+          <label
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 8,
+              width: narrow ? '100%' : 'auto',
+              minWidth: narrow ? undefined : 132,
+              maxWidth: narrow ? undefined : 220,
+              flexShrink: 0,
+            }}
+          >
+            <span className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 10 }}>{t('pivotCrossBy')}</span>
+            <select value={colDimId} onChange={(e) => setColDimId(e.target.value)} style={selStyle}>
+              <option value="">{t('pivotNoColumn')}</option>
+              {availableDims.filter((d) => d.id !== rowDimId).map((d) => (
+                <option key={d.id} value={d.id}>{d.label}</option>
+              ))}
+            </select>
+          </label>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 8,
+              flex: narrow ? undefined : '1 1 200px',
+              minWidth: narrow ? undefined : 180,
+              maxWidth: narrow ? undefined : 400,
+            }}
+          >
+            <span className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 10 }}>{t('pivotValues')}</span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+              {availableValues.map((v) => (
+                <label key={v.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', minHeight: 44 }}>
+                  <input
+                    type="checkbox"
+                    checked={valueIds.includes(v.id)}
+                    onChange={() => toggleValue(v.id)}
+                  />
+                  <span style={{ fontSize: 13 }}>{v.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+          {!title && (
+            <button
+              type="button"
+              className="btn sm"
+              onClick={exportXlsx}
+              disabled={!pivot}
+              style={{ minHeight: 44, alignSelf: narrow ? 'stretch' : 'center', marginLeft: narrow ? 0 : 'auto' }}
+            >
+              {t('pivotExportXlsx')}
+            </button>
+          )}
+        </div>
+      )}
+
+      {bodyOpen && (!pivot || pivot.rows.length === 0 ? (
+        <div className="t-mono-sm" style={{ color: 'var(--tx3)', paddingBottom: 2 }}>{t('pivotEmpty')}</div>
       ) : (
         <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-          <table className="tbl" style={{ minWidth: narrow ? 320 : 480, fontSize: 12 }}>
+          <table
+            className="tbl"
+            style={{
+              width: '100%',
+              minWidth: narrow ? 260 : 320,
+              tableLayout: 'fixed',
+              fontSize: 12,
+            }}
+          >
             <thead>
-              {!singleColMode ? (
+              {!singleColMode && vals.length === 1 ? (
+                <tr>
+                  <th style={{ position: 'sticky', left: 0, background: 'var(--bg1)', zIndex: 1, width: '38%', maxWidth: 220 }}>{t('pivotGroupBy')}</th>
+                  {pivot.cols.map((colKey) => (
+                    <th key={colKey} className="num" style={numCell}>{colKey}</th>
+                  ))}
+                  <th className="num" style={numCell}>{t('pivotTotal')}</th>
+                </tr>
+              ) : !singleColMode ? (
                 <>
                   <tr>
-                    <th rowSpan={2} style={{ position: 'sticky', left: 0, background: 'var(--bg1)', zIndex: 1, verticalAlign: 'bottom' }}>
+                    <th rowSpan={2} style={{ position: 'sticky', left: 0, background: 'var(--bg1)', zIndex: 1, verticalAlign: 'bottom', width: '34%', maxWidth: 200 }}>
                       {t('pivotGroupBy')}
                     </th>
                     {pivot.cols.map((colKey) => (
@@ -196,24 +360,24 @@ export function PivotPanel<R>({
                         {colKey}
                       </th>
                     ))}
-                    <th colSpan={vals.length} className="num">{t('pivotTotal')}</th>
+                    <th colSpan={vals.length} className="num" style={{ borderBottom: '1px solid var(--bd)' }}>{t('pivotTotal')}</th>
                   </tr>
                   <tr>
                     {pivot.cols.flatMap((ck) =>
                       vals.map((v) => (
-                        <th key={`${ck}-${v.id}`} className="num" style={{ fontSize: 10, color: 'var(--tx3)' }}>{v.label}</th>
+                        <th key={`${ck}-${v.id}`} className="num" style={{ ...numCell, fontSize: 10, color: 'var(--tx3)' }}>{v.label}</th>
                       )),
                     )}
                     {vals.map((v) => (
-                      <th key={`tot-${v.id}`} className="num" style={{ fontSize: 10, color: 'var(--tx3)' }}>{v.label}</th>
+                      <th key={`tot-${v.id}`} className="num" style={{ ...numCell, fontSize: 10, color: 'var(--tx3)' }}>{v.label}</th>
                     ))}
                   </tr>
                 </>
               ) : (
                 <tr>
-                  <th style={{ position: 'sticky', left: 0, background: 'var(--bg1)', zIndex: 1 }}>{t('pivotGroupBy')}</th>
+                  <th style={{ position: 'sticky', left: 0, background: 'var(--bg1)', zIndex: 1, width: '42%', maxWidth: 240 }}>{t('pivotGroupBy')}</th>
                   {vals.map((v) => (
-                    <th key={v.id} className="num">{v.label}</th>
+                    <th key={v.id} className="num" style={numCell}>{v.label}</th>
                   ))}
                 </tr>
               )}
@@ -221,22 +385,22 @@ export function PivotPanel<R>({
             <tbody>
               {pivot.rows.map((rk, ri) => (
                 <tr key={rk}>
-                  <td style={{ position: 'sticky', left: 0, background: 'var(--bg1)', fontWeight: 500, whiteSpace: 'nowrap', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis' }} title={rk}>
+                  <td style={{ position: 'sticky', left: 0, background: 'var(--bg1)', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={rk}>
                     {rk}
                   </td>
                   {singleColMode ? (
                     vals.map((v, vi) => (
-                      <td key={v.id} className="num">{fmt(pivot.cells[ri][0][vi], v.kind)}</td>
+                      <td key={v.id} className="num" style={numCell}>{fmt(pivot.cells[ri][0][vi], v.kind)}</td>
                     ))
                   ) : (
                     <>
                       {pivot.cols.flatMap((_, ci) =>
                         vals.map((v, vi) => (
-                          <td key={`${ci}-${v.id}`} className="num">{fmt(pivot.cells[ri][ci][vi], v.kind)}</td>
+                          <td key={`${ci}-${v.id}`} className="num" style={numCell}>{fmt(pivot.cells[ri][ci][vi], v.kind)}</td>
                         )),
                       )}
                       {vals.map((v, vi) => (
-                        <td key={`rt-${v.id}`} className="num" style={{ fontWeight: 600 }}>{fmt(pivot.rowTotals[ri][vi], v.kind)}</td>
+                        <td key={`rt-${v.id}`} className="num" style={{ ...numCell, fontWeight: 600 }}>{fmt(pivot.rowTotals[ri][vi], v.kind)}</td>
                       ))}
                     </>
                   )}
@@ -246,17 +410,17 @@ export function PivotPanel<R>({
                 <td style={{ position: 'sticky', left: 0, background: 'var(--bg2)', fontWeight: 700 }}>{t('pivotGrandTotal')}</td>
                 {singleColMode ? (
                   vals.map((v, vi) => (
-                    <td key={v.id} className="num" style={{ fontWeight: 700 }}>{fmt(pivot.grand[vi], v.kind)}</td>
+                    <td key={v.id} className="num" style={{ ...numCell, fontWeight: 700 }}>{fmt(pivot.grand[vi], v.kind)}</td>
                   ))
                 ) : (
                   <>
                     {pivot.cols.flatMap((_, ci) =>
                       vals.map((v, vi) => (
-                        <td key={`${ci}-${v.id}`} className="num" style={{ fontWeight: 700 }}>{fmt(pivot.colTotals[ci][vi], v.kind)}</td>
+                        <td key={`${ci}-${v.id}`} className="num" style={{ ...numCell, fontWeight: 700 }}>{fmt(pivot.colTotals[ci][vi], v.kind)}</td>
                       )),
                     )}
                     {vals.map((v, vi) => (
-                      <td key={`g-${v.id}`} className="num" style={{ fontWeight: 700 }}>{fmt(pivot.grand[vi], v.kind)}</td>
+                      <td key={`g-${v.id}`} className="num" style={{ ...numCell, fontWeight: 700 }}>{fmt(pivot.grand[vi], v.kind)}</td>
                     ))}
                   </>
                 )}
@@ -264,7 +428,7 @@ export function PivotPanel<R>({
             </tbody>
           </table>
         </div>
-      )}
+      ))}
     </div>
   )
 }

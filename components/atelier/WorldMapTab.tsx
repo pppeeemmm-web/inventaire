@@ -74,25 +74,50 @@ export function roleColor(role: string | null): string {
   return (role && ROLE_COLORS[role]) ?? '#aaaaaa'
 }
 
-// ── Geocode cache — module-level (survives tab switches) + sessionStorage (survives page reload) ─
+// ── Geocode cache — module-level + localStorage (survives new browser sessions) ─
 const GEO_STORAGE_KEY = 'pem_geo_cache'
 const geoCache = new Map<string, [number, number] | null>()
 
-// Hydrate from sessionStorage on module load — skip null entries (stale failures)
+function readGeoStorage(): string | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const fromLocal = window.localStorage.getItem(GEO_STORAGE_KEY)
+    if (fromLocal) return fromLocal
+    const legacy = window.sessionStorage.getItem(GEO_STORAGE_KEY)
+    if (legacy) {
+      window.localStorage.setItem(GEO_STORAGE_KEY, legacy)
+      window.sessionStorage.removeItem(GEO_STORAGE_KEY)
+    }
+    return legacy
+  } catch {
+    return null
+  }
+}
+
+// Hydrate on module load — skip null entries (do not persist failed lookups)
 try {
-  const stored = sessionStorage.getItem(GEO_STORAGE_KEY)
+  const stored = readGeoStorage()
   if (stored) {
     const parsed = JSON.parse(stored) as Record<string, [number, number] | null>
-    Object.entries(parsed).forEach(([k, v]) => { if (v !== null) geoCache.set(k, v) })
+    Object.entries(parsed).forEach(([k, v]) => {
+      if (v !== null) geoCache.set(k, v)
+    })
   }
-} catch { /* SSR or private browsing */ }
+} catch {
+  /* invalid JSON */
+}
 
 function persistGeoCache() {
+  if (typeof window === 'undefined') return
   try {
     const obj: Record<string, [number, number] | null> = {}
-    geoCache.forEach((v, k) => { obj[k] = v })
-    sessionStorage.setItem(GEO_STORAGE_KEY, JSON.stringify(obj))
-  } catch { /* quota or SSR */ }
+    geoCache.forEach((v, k) => {
+      obj[k] = v
+    })
+    window.localStorage.setItem(GEO_STORAGE_KEY, JSON.stringify(obj))
+  } catch {
+    /* quota or private browsing */
+  }
 }
 
 async function geocode(city: string, country: string): Promise<[number, number] | null> {

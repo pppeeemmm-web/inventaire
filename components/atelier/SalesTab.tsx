@@ -201,11 +201,19 @@ export function SalesTab({ oeuvres, statusLabelMap, contacts, groups, cM, tM }: 
         </button>
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
+      <div style={{
+        flex: 1,
+        overflowY: 'auto',
+        padding: '16px 24px 20px',
+        minHeight: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 14,
+      }}>
         <div style={{
           display: 'grid',
           gridTemplateColumns: narrow ? 'repeat(2, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))',
-          gap: 0, marginBottom: 24,
+          gap: 0, flexShrink: 0,
           borderTop: '1px solid var(--bd)', borderBottom: '1px solid var(--bd)',
         }}>
           <KpiCard label={t('sold')}  value={String(soldWorks.length)}  detail={t('salesSoldWorksDetail')} />
@@ -215,7 +223,7 @@ export function SalesTab({ oeuvres, statusLabelMap, contacts, groups, cM, tM }: 
         </div>
 
         {byYear.length > 0 && (
-          <div className="panel pad-md" style={{ marginBottom: 20 }}>
+          <div className="panel pad-sm" style={{ flexShrink: 0 }}>
             <div className="t-label" style={{ marginBottom: 12 }}>{t('salesRevenueByYear')}</div>
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, height: 120 }}>
               {byYear.map(([yr, { count, revenue }]) => {
@@ -235,23 +243,36 @@ export function SalesTab({ oeuvres, statusLabelMap, contacts, groups, cM, tM }: 
           </div>
         )}
 
-        <PivotPanel<Oeuvre>
-          rows={soldWorks}
-          availableDims={salesPivotDims}
-          availableValues={salesPivotValues}
-          defaultRowDimId="year"
-          defaultColDimId="buyer"
-          defaultValueIds={['count', 'sumRev']}
-          title={t('pivot')}
-          exportFileName="sales-sold-pivot"
-        />
+        <div style={{ flexShrink: 0 }}>
+          <PivotPanel<Oeuvre>
+            rows={soldWorks}
+            availableDims={salesPivotDims}
+            availableValues={salesPivotValues}
+            defaultRowDimId="year"
+            defaultColDimId="buyer"
+            defaultValueIds={['count', 'sumRev']}
+            title={t('pivot')}
+            exportFileName="sales-sold-pivot"
+          />
+        </div>
 
-        <div className="panel pad-md" style={{ overflowX: 'auto' }}>
-          <div className="t-label" style={{ marginBottom: 16, color: 'var(--ac)' }}>Commandes</div>
+        <div
+          className="panel pad-sm"
+          style={{
+            flex: 1,
+            minHeight: 0,
+            overflowX: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <div className="t-label" style={{ marginBottom: 10, color: 'var(--ac)', flexShrink: 0 }}>{t('orders')}</div>
           {loading ? (
-            <div style={{ color: 'var(--tx3)', fontSize: 13 }}>Chargement…</div>
+            <div style={{ color: 'var(--tx3)', fontSize: 13, flexShrink: 0 }}>{t('loading')}</div>
           ) : orders.length === 0 ? (
-            <div style={{ color: 'var(--tx3)', fontSize: 13 }}>Aucune commande. Créez la première via &quot;+ Nouvelle commande&quot;.</div>
+            <div style={{ color: 'var(--tx3)', fontSize: 13, flexShrink: 0 }}>
+              {t('salesOrdersEmpty').replace(/\{label\}/g, t('newOrder'))}
+            </div>
           ) : (
             <table className="tbl" style={{ minWidth: 800 }}>
               <thead>
