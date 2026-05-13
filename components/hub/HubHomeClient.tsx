@@ -529,8 +529,8 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
               {/* Recently Added */}
               <div>
                 <div className="t-eyebrow" style={{ marginBottom: 24, opacity: 0.5 }}>04 · {t('recentlyAdded')}</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(88px, 1fr))', gap: 8 }}>
-                  {recentImages.slice(0, 32).map((o) => (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 8 }}>
+                  {recentImages.slice(0, 16).map((o) => (
                     <div key={o.OeuvreID} onClick={() => router.push('/atelier?tab=inventory')}
                       style={{ aspectRatio: '1', background: 'var(--bg1)', border: '1px solid var(--bd2)', overflow: 'hidden', position: 'relative', cursor: 'pointer' }}>
                       {o.txtImageNameLink

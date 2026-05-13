@@ -53,7 +53,7 @@ export default async function HubPage() {
       .is('deleted_at', null)
       .not('txtImageNameLink', 'is', null)
       .order('OeuvreID', { ascending: false })
-      .limit(32),
+      .limit(16),
     supabase
       .from('stock_item')
       .select('*', { count: 'exact', head: true })
