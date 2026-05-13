@@ -6,6 +6,7 @@
 // Heavy tab panels load on demand (next/dynamic). SystemTab + ContactsTab eager-loaded to avoid dev ChunkLoadError on those chunks.
 
 import { useState, useMemo, useCallback, useEffect, useLayoutEffect, useRef } from 'react'
+import { CommandPalette } from './CommandPalette'
 import { useUnsavedActionGuard } from '@/hooks/useUnsavedActionGuard'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
@@ -310,6 +311,7 @@ export function TeamPortalClient({
   const [conflicts,      setConflicts]      = useState<any[]>([])
   const [isAdmin,        setIsAdmin]        = useState(false)
   const [curationAddresses, setCurationAddresses] = useState<ContactAddress[]>([])
+  const [paletteOpen,    setPaletteOpen]    = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -341,6 +343,20 @@ export function TeamPortalClient({
       window.history.replaceState({}, '', window.location.pathname)
     }
   }, [t])
+
+  useEffect(() => {
+    const onPaletteKey = (e: KeyboardEvent) => {
+      // ⌘K / Ctrl+K / `/` opens palette
+      if (e.key === '/' && !e.ctrlKey && !e.metaKey && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
+        e.preventDefault(); setPaletteOpen(true)
+      }
+      if ((e.key === 'k' || e.key === 'K') && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault(); setPaletteOpen(p => !p)
+      }
+    }
+    window.addEventListener('keydown', onPaletteKey)
+    return () => window.removeEventListener('keydown', onPaletteKey)
+  }, [])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -484,32 +500,34 @@ export function TeamPortalClient({
 
   // ── Tab definitions (GROUPS) ───────────────────────────────────
 
-  /** Desktop: classic studio order. Narrow (`<=767px`): field-tool first — inventory-led; ops split so each tab appears once. */
-  const configNavTabs: Tab[] = isAdmin ? ['system', 'audit'] : ['system']
-  const GROUPS: { label: string; tabs: Tab[] }[] = atelierNarrow
-    ? [
-        { label: t('nav_group_field'), tabs: ['inventory', 'production', 'stock-take', 'overview'] },
-        { label: t('nav_group_operations'), tabs: ['logistics', 'stock'] },
-        { label: t('nav_group_management'), tabs: ['contacts', 'reports', 'vault'] },
-        { label: t('nav_group_vision'), tabs: ['constellation', 'concepts', 'themes', 'map'] },
-        { label: t('nav_group_commercial'), tabs: ['sales', 'exhibitions', 'pipeline', 'fiscal'] },
-        { label: t('nav_group_diffusion'), tabs: ['portfolio', 'broadcast'] },
-        { label: t('nav_group_config'), tabs: configNavTabs },
-      ]
-    : [
-        { label: t('nav_group_management'), tabs: ['overview', 'inventory', 'reports', 'contacts', 'vault'] },
-        { label: t('nav_group_operations'), tabs: ['production', 'logistics', 'stock', 'stock-take'] },
-        { label: t('nav_group_vision'), tabs: ['constellation', 'concepts', 'themes', 'map'] },
-        { label: t('nav_group_commercial'), tabs: ['sales', 'exhibitions', 'pipeline', 'fiscal'] },
-        { label: t('nav_group_diffusion'), tabs: ['portfolio', 'broadcast'] },
-        { label: t('nav_group_config'), tabs: configNavTabs },
-      ]
+  /** 6 rooms — same structure on narrow and wide; narrow puts Field first. */
+  const adminTabs: Tab[] = isAdmin ? ['system', 'audit', 'broadcast'] : ['system']
+  const GROUPS: { label: string; tabs: Tab[] }[] = [
+    { label: t('nav_group_field'),        tabs: ['inventory', 'production', 'stock-take', 'map'] },
+    { label: t('nav_group_studio'),       tabs: ['overview', 'pipeline', 'exhibitions', 'concepts'] },
+    { label: t('nav_group_catalogue'),    tabs: ['reports', 'themes', 'stock', 'constellation'] },
+    { label: t('nav_group_commercial'),   tabs: ['sales', 'logistics', 'fiscal', 'vault'] },
+    { label: t('nav_group_public_tab'),   tabs: ['portfolio'] },
+    { label: t('nav_group_admin'),        tabs: ['contacts', ...adminTabs] },
+  ]
 
   const showDock = selection.size > 0 && tab !== 'constellation'
 
   return (
     <>
       {drawerLeaveDialog}
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        tabs={TABS_RAW.map(([id, label]) => ({ id, label }))}
+        oeuvres={oeuvres}
+        contacts={contacts}
+        onGoTab={(t) => { handleSetTab(t as Tab); setPaletteOpen(false) }}
+        onGoWork={(id) => { const o = oeuvres.find(x => x.OeuvreID === id); if (o) setInspected(o); setPaletteOpen(false) }}
+        onNewWork={() => router.push('/atelier/works/new')}
+        onExportXlsx={() => { handleSetTab('reports') }}
+        onRegenBible={() => { handleSetTab('system') }}
+      />
     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', flexDirection: 'column', background: 'var(--bg0)', overflow: 'hidden' }}>
       
       <div style={{
@@ -594,6 +612,9 @@ export function TeamPortalClient({
               >{l.toUpperCase()}</button>
             ))}
           </div>
+          <button className="btn ghost sm" title="⌘K" onClick={() => setPaletteOpen(true)} style={{ fontSize: 11, letterSpacing: 1 }}>
+            ⌘K
+          </button>
           <button className="btn ghost sm" onClick={() => router.push('/atelier/works/new')} title={t('newWork')}>
             {atelierNarrow ? '+' : `+ ${t('newWork')}`}
           </button>

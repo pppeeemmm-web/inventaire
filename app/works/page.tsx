@@ -3,14 +3,36 @@ import { createClient } from '@/lib/supabase/server'
 import WorksClient from '@/components/public/WorksClient'
 import { loadPortfolioConfig } from '@/app/atelier/portfolio/actions'
 import { resolveWorksUx } from '@/lib/worksUx'
+import { dict } from '@/lib/i18n/dictionary'
+import { getMetadataBase } from '@/lib/seo/site-url'
 
 /** Allow ?worksUx= preview without static caching */
 export const dynamic = 'force-dynamic'
 
-export const metadata: Metadata = {
-  title: 'Works — Pierre Emmanuel Moulin',
-  description: 'Selected works by Pierre Emmanuel Moulin.',
-  robots: { index: true, follow: true },
+export function generateMetadata(): Metadata {
+  const base = getMetadataBase()
+  return {
+    metadataBase: base,
+    title: dict.en.seo_works_meta_title,
+    description: dict.en.seo_works_meta_description,
+    robots: { index: true, follow: true },
+    alternates: {
+      canonical: '/works',
+      languages: { 'fr': '/works?lang=fr', 'en': '/works?lang=en' },
+    },
+    openGraph: {
+      type: 'website',
+      locale: 'en_GB',
+      url: '/works',
+      title: dict.en.seo_works_meta_title,
+      description: dict.en.seo_works_meta_description,
+    },
+    twitter: {
+      card: 'summary',
+      title: dict.en.seo_works_meta_title,
+      description: dict.en.seo_works_meta_description,
+    },
+  }
 }
 
 function mapCollections(raw: any[]) {

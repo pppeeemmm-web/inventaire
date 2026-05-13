@@ -1213,6 +1213,29 @@ export function DrawerContent({
           <button className="btn primary" onClick={handleSubmit} disabled={isSaving} style={{ fontSize: 11, minHeight: 44 }}>
             {isSaving ? '…' : t('save')}
           </button>
+          {narrow && (
+            <>
+              <button
+                type="button"
+                className="btn ghost sm"
+                style={{ minHeight: 44, fontSize: 18 }}
+                aria-label={t('wf_mobile_add_photo')}
+                onClick={() => drawerImageFileRef.current?.click()}
+              >
+                {t('wf_mobile_add_photo')}
+              </button>
+              <button
+                type="button"
+                className="btn ghost sm"
+                style={{ minHeight: 44, fontSize: 18 }}
+                aria-label={t('wf_mobile_pipeline_bump_aria')}
+                title={t('wf_mobile_pipeline_bump_aria')}
+                onClick={() => setProdStage(s => s === 'atelier' ? 'catalogued' : s === 'catalogued' ? 'available' : 'atelier')}
+              >
+                {t('wf_mobile_pipeline_bump')}
+              </button>
+            </>
+          )}
           <button className={`btn ${isSel ? 'primary' : 'ghost'}`} onClick={handleToggleSel} style={{ fontSize: 11, minHeight: 44 }}>
             {isSel ? t('wf_in_selection_short') : t('wf_add_selection_short')}
           </button>

@@ -8,6 +8,7 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase/client'
 import type { Oeuvre } from '@/lib/types/database'
+import { LoadingShell } from '@/components/shared/LoadingShell'
 
 interface ContactRow {
   ContactID:      number
@@ -504,7 +505,7 @@ export function WorldMapTab({
           </div>
         )}
         {!loading && !dataReady && (
-          <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>Chargement…</div>
+          <LoadingShell />
         )}
         {!loading && dataReady && (
           <button className="btn ghost sm" onClick={() => {

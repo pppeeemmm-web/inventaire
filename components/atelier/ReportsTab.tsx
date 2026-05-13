@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState, useTransition, type CSSProperties } from 'react'
 import * as XLSX from 'xlsx'
 import { useI18n } from '@/lib/i18n/context'
+import { EmptyState } from '@/components/shared/EmptyState'
 import type { DictKey, Lang } from '@/lib/i18n/dictionary'
 import type { Oeuvre } from '@/lib/types/database'
 import type { StatusKey } from '@/lib/data'
@@ -434,7 +435,8 @@ th{background:#f4f4f4}
             </select>
           </div>
         </div>
-        <div style={{ flex: 1, minHeight: 0, overflow: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        {filtered.length === 0 && <EmptyState title={t('shell_empty')} />}
+        <div style={{ flex: 1, minHeight: 0, overflow: 'auto', WebkitOverflowScrolling: 'touch', display: filtered.length === 0 ? 'none' : undefined }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--bd)' }}>

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { fetchSystemLogs, type AuditLogEntry } from '@/app/atelier/audit/actions'
 import { PendingQueue } from './PendingQueue'
+import { LoadingShell } from '@/components/shared/LoadingShell'
 
 export function AuditTab() {
   const { t } = useI18n()
@@ -46,7 +47,7 @@ export function AuditTab() {
     }
   }
 
-  if (busy) return <div style={{ padding: 40, opacity: 0.5 }} className="t-mono-sm">LOADING AUDIT VAULT...</div>
+  if (busy) return <LoadingShell title={t('shell_loading')} />
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>

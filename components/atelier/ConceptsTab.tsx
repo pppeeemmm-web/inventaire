@@ -1,6 +1,7 @@
 'use client'
 
 // ConceptsTab — ideas before works: energy, medium, themes, optional sketch upload (R2 AVIF).
+// TODO(block-B-followup): concept_themes junction table — link concept.themes[] to OeuvreTheme ids for cross-tab filtering.
 
 import { useState, useEffect, useCallback } from 'react'
 import { fetchConcepts, type ConceptRow } from '@/app/atelier/concepts/actions'

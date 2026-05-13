@@ -321,6 +321,27 @@ export type DictKey =
   | 'prod_tab_automation' | 'prod_tab_automation_none' | 'prod_tab_automation_done_fmt' | 'prod_tab_saving_btn' | 'prod_tab_add_column_btn'
   | 'prod_tab_field_mounted' | 'prod_tab_field_framed' | 'prod_tab_field_exposable' | 'prod_tab_field_catalogued'
   | 'wat_cataloguer' | 'wat_photographier' | 'wat_retoucher' | 'wat_a_monter' | 'wat_encadrer' | 'wat_exposer' | 'wat_a_expedier'
+  // ── Block B — Command Palette ─────────────────────────────────────────────
+  | 'cmd_palette_placeholder' | 'cmd_palette_no_results'
+  | 'cmd_palette_group_tabs' | 'cmd_palette_group_works' | 'cmd_palette_group_contacts' | 'cmd_palette_group_actions'
+  | 'cmd_palette_action_new_work' | 'cmd_palette_action_export_xlsx' | 'cmd_palette_action_regen_bible'
+  // ── Block B — Nav group labels (6-room) ──────────────────────────────────
+  | 'nav_group_studio' | 'nav_group_catalogue' | 'nav_group_public_tab' | 'nav_group_admin'
+  // ── Block B — Private link (/c/[token]) bilingual ─────────────────────────
+  | 'pl_private_selection' | 'pl_for' | 'pl_no_share' | 'pl_price_on_request'
+  // ── Block B — Works page SEO ──────────────────────────────────────────────
+  | 'seo_works_meta_title' | 'seo_works_meta_description'
+  // ── Block B — Hub launcher ───────────────────────────────────────────────
+  | 'hub_launcher_title' | 'hub_launcher_subtitle'
+  | 'hub_launcher_field' | 'hub_launcher_field_sub'
+  | 'hub_launcher_studio' | 'hub_launcher_studio_sub'
+  | 'hub_launcher_commercial' | 'hub_launcher_commercial_sub'
+  | 'hub_launcher_admin' | 'hub_launcher_admin_sub'
+  | 'hub_launcher_enter_atelier'
+  // ── Block B — Drawer mobile bar ──────────────────────────────────────────
+  | 'wf_mobile_add_photo' | 'wf_mobile_pipeline_bump' | 'wf_mobile_pipeline_bump_aria'
+  // ── Block B — Shared shells ──────────────────────────────────────────────
+  | 'shell_loading' | 'shell_empty'
 
 type Dictionary = Record<DictKey, string>
 
@@ -624,9 +645,9 @@ export const dict: Record<Lang, Dictionary> = {
     nav_group_diffusion: 'Diffusion',
     nav_group_config: 'Config',
     tab_portfolio: 'Public',
-    tab_stock: 'Stock',
+    tab_stock: 'Fournisseurs',
     tab_stock_take: 'Stock-take',
-    stock_title: 'Stock atelier',
+    stock_title: 'Fournisseurs & matériaux',
     stock_items_count_fmt: '{n} article(s)',
     stock_new_item: 'Nouvel article',
     stock_confirm_delete: 'Supprimer cet article du stock ?',
@@ -1545,6 +1566,42 @@ $env:OLLAMA_HOST="127.0.0.1:11435"; ollama run llama3.2:1b`,
     wat_encadrer: 'Encadrer',
     wat_exposer: 'Exposer',
     wat_a_expedier: 'À expédier',
+    // Block B
+    cmd_palette_placeholder: 'Aller à un onglet, une œuvre, un contact…',
+    cmd_palette_no_results: 'Aucun résultat',
+    cmd_palette_group_tabs: 'Onglets',
+    cmd_palette_group_works: 'Œuvres',
+    cmd_palette_group_contacts: 'Contacts',
+    cmd_palette_group_actions: 'Actions rapides',
+    cmd_palette_action_new_work: 'Nouvelle œuvre',
+    cmd_palette_action_export_xlsx: 'Exporter rapport XLSX',
+    cmd_palette_action_regen_bible: 'Régénérer la Studio Bible',
+    nav_group_studio: 'Studio',
+    nav_group_catalogue: 'Catalogue',
+    nav_group_public_tab: 'Public',
+    nav_group_admin: 'Admin',
+    pl_private_selection: 'Sélection privée',
+    pl_for: 'Pour',
+    pl_price_on_request: 'Prix sur demande',
+    pl_no_share: 'Lien privé · ne pas partager',
+    seo_works_meta_title: 'Œuvres — Pierre Emmanuel Moulin',
+    seo_works_meta_description: "Sélection d’œuvres de Pierre Emmanuel Moulin, peintre.",
+    hub_launcher_title: 'Atelier',
+    hub_launcher_subtitle: 'Tableau de bord interne',
+    hub_launcher_field: 'Terrain',
+    hub_launcher_field_sub: 'Inventaire · Production · Stock',
+    hub_launcher_studio: 'Studio',
+    hub_launcher_studio_sub: "Vue d'ensemble · Suivi · Concepts",
+    hub_launcher_commercial: 'Commercial',
+    hub_launcher_commercial_sub: 'Ventes · Logistique · Fiscal',
+    hub_launcher_admin: 'Admin',
+    hub_launcher_admin_sub: 'Contacts · Système · Audit',
+    hub_launcher_enter_atelier: "Entrer dans l'atelier →",
+    wf_mobile_add_photo: '📷',
+    wf_mobile_pipeline_bump: '→',
+    wf_mobile_pipeline_bump_aria: 'Avancer le stade de production',
+    shell_loading: 'Chargement…',
+    shell_empty: 'Aucune donnée',
   },
   en: {
     hub: 'Studio', tagline: 'Inventory · Production · Curation · Relations',
@@ -1844,9 +1901,9 @@ $env:OLLAMA_HOST="127.0.0.1:11435"; ollama run llama3.2:1b`,
     nav_group_diffusion: 'Outreach',
     nav_group_config: 'Config',
     tab_portfolio: 'Public',
-    tab_stock: 'Stock',
+    tab_stock: 'Suppliers',
     tab_stock_take: 'Stock-take',
-    stock_title: 'Studio stock',
+    stock_title: 'Suppliers & materials',
     stock_items_count_fmt: '{n} item(s)',
     stock_new_item: 'New item',
     stock_confirm_delete: 'Delete this stock item?',
@@ -2763,5 +2820,41 @@ $env:OLLAMA_HOST="127.0.0.1:11435"; ollama run llama3.2:1b`,
     wat_encadrer: 'Framing',
     wat_exposer: 'Exhibition',
     wat_a_expedier: 'Shipping',
+    // Block B
+    cmd_palette_placeholder: 'Go to a tab, work, or contact…',
+    cmd_palette_no_results: 'No results',
+    cmd_palette_group_tabs: 'Tabs',
+    cmd_palette_group_works: 'Works',
+    cmd_palette_group_contacts: 'Contacts',
+    cmd_palette_group_actions: 'Quick actions',
+    cmd_palette_action_new_work: 'New work',
+    cmd_palette_action_export_xlsx: 'Export XLSX report',
+    cmd_palette_action_regen_bible: 'Regenerate Studio Bible',
+    nav_group_studio: 'Studio',
+    nav_group_catalogue: 'Catalogue',
+    nav_group_public_tab: 'Public',
+    nav_group_admin: 'Admin',
+    pl_private_selection: 'Private selection',
+    pl_for: 'For',
+    pl_price_on_request: 'Price on request',
+    pl_no_share: 'Private link · do not share',
+    seo_works_meta_title: 'Works — Pierre Emmanuel Moulin',
+    seo_works_meta_description: 'Selected works by Pierre Emmanuel Moulin, painter.',
+    hub_launcher_title: 'Studio',
+    hub_launcher_subtitle: 'Internal dashboard',
+    hub_launcher_field: 'Field',
+    hub_launcher_field_sub: 'Inventory · Production · Stock',
+    hub_launcher_studio: 'Studio',
+    hub_launcher_studio_sub: 'Overview · Pipeline · Concepts',
+    hub_launcher_commercial: 'Commercial',
+    hub_launcher_commercial_sub: 'Sales · Logistics · Fiscal',
+    hub_launcher_admin: 'Admin',
+    hub_launcher_admin_sub: 'Contacts · System · Audit',
+    hub_launcher_enter_atelier: 'Enter studio →',
+    wf_mobile_add_photo: '📷',
+    wf_mobile_pipeline_bump: '→',
+    wf_mobile_pipeline_bump_aria: 'Advance production stage',
+    shell_loading: 'Loading…',
+    shell_empty: 'No data',
   },
 }

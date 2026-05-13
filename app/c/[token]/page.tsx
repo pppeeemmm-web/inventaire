@@ -5,13 +5,20 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import { PRIVATE_LINK_SELECTION_CSS } from '@/lib/private-link-layout-css'
 import { WorkThumb } from '@/components/atelier/WorkThumb'
+import { dict } from '@/lib/i18n/dictionary'
+import type { Lang } from '@/lib/i18n/dictionary'
 
 export default async function PrivateLinkPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ token: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   const { token } = await params
+  const sp = await searchParams
+  const lang: Lang = sp['lang'] === 'en' ? 'en' : 'fr'
+  const d = dict[lang]
   const supabase = createServiceClient()
 
   // Validate token
@@ -46,10 +53,10 @@ export default async function PrivateLinkPage({
       <style dangerouslySetInnerHTML={{ __html: PRIVATE_LINK_SELECTION_CSS }} />
       <div className="pl-root">
         <div className="pl-header">
-          <div className="t-eyebrow" style={{ marginBottom: 12 }}>Sélection privée · Pierre Emmanuel Moulin</div>
-          <div className="serif s-lg">{(link as Record<string, unknown>)['working_group'] ? ((link as Record<string, unknown>)['working_group'] as Record<string, unknown>)['name'] as string : 'Sélection'}</div>
+          <div className="t-eyebrow" style={{ marginBottom: 12 }}>{d.pl_private_selection} · Pierre Emmanuel Moulin</div>
+          <div className="serif s-lg">{(link as Record<string, unknown>)['working_group'] ? ((link as Record<string, unknown>)['working_group'] as Record<string, unknown>)['name'] as string : d.pl_private_selection}</div>
           {link.recipient_name && (
-            <div className="t-mono-sm" style={{ marginTop: 8 }}>Pour {link.recipient_name}</div>
+            <div className="t-mono-sm" style={{ marginTop: 8 }}>{d.pl_for} {link.recipient_name}</div>
           )}
         </div>
 
@@ -68,7 +75,7 @@ export default async function PrivateLinkPage({
                   <div className="t-mono-sm">{o['Hauteur'] as string} × {o['Largeur'] as string} cm</div>
                 )}
                 <div className="t-mono" style={{ marginTop: 24, color: 'var(--tx3)', fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase' }}>
-                  Prix sur demande
+                  {d.pl_price_on_request}
                 </div>
               </div>
             </div>
@@ -77,7 +84,7 @@ export default async function PrivateLinkPage({
 
         <div className="pl-footer">
           <div>Pierre Emmanuel Moulin · Atelier</div>
-          <div style={{ marginTop: 4 }}>Lien privé · ne pas partager</div>
+          <div style={{ marginTop: 4 }}>{d.pl_no_share}</div>
         </div>
       </div>
     </>

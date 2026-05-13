@@ -151,6 +151,10 @@ Ranked list quoted verbatim from ruthless analysis §5:
 
 **Accomplished from this list:** **3**, **7**; **1** (œuvres paging + total count + keyset continuation; **trimmed** dead `exhibition` row fetch from RSC loader — ExhibitionsTab already self-fetches; `contact_addresses` deferred to post-paint server action; not full per-tab lazy fetch); **2** (WorkDrawer): **partial** — shell + work-drawer modules + finance/notes/version/**groups** slice + shared set helpers; **4** / **5** / **6** (incremental — see §3 UX pass). **8**+ remain deferred per CLAUDE.md.
 
+### Hub vs Overview (Block B decision)
+
+`/hub` is a **thin launcher** (4 tiles → `/atelier?tab=<room>`; one CTA → `/atelier`). No Supabase queries at hub load time. The executive dashboard (stats, charts, pipeline pulse) lives at **`/atelier?tab=overview`** as the canonical entry point for the team. Rationale: the data-heavy hub RSC was redundant with the overview tab and introduced a parallel query budget. Hub is now a navigation aid; overview is the KPI surface. Documented in [`app/hub/page.tsx`](app/hub/page.tsx) + [`components/hub/HubLauncherClient.tsx`](components/hub/HubLauncherClient.tsx).
+
 Quoted verbatim:
 
 > What I'd not chase yet: RTL i18n, full design-system rewrite, multi-tenant. Premature for this audience.
