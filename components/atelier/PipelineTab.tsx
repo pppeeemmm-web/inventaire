@@ -66,7 +66,11 @@ import { useMediaQuery } from '@/lib/useMediaQuery'
 import { PipelineCalendarView } from '@/components/atelier/PipelineCalendarView'
 import { createConsignmentOrder, regenerateConsignmentPdf, closeConsignmentByPdfPath } from '@/app/atelier/consignments/actions'
 import { createSaleOrder } from '@/app/atelier/sales/actions'
-import { getSignedUrl } from '@/app/atelier/vault/actions'
+import {
+  listUnreadSuiviReminders,
+  markSuiviReminderRead,
+  insertSuiviReminder,
+} from '@/app/atelier/reminders-actions'
 import type { Oeuvre } from '@/lib/types/database'
 import { WorkThumb } from './WorkThumb'
 import { useUnsavedCloseGuard } from '@/hooks/useUnsavedCloseGuard'
@@ -75,6 +79,10 @@ interface Props {
   oeuvres:     Oeuvre[]
   contacts:    any[]
   groups:      { id: string; name: string }[]
+  /** Server-loaded unread reminders; refreshed via `load` + `router.refresh`. */
+  initialReminders: Reminder[]
+  /** After marking reminders read / creating one — revalidates server count + RSC. */
+  onRemindersMutated?: () => Promise<void>
 }
 
 interface Reminder {
@@ -251,12 +259,12 @@ function processToPulseProcess(p: Process): PulseProcess {
   }
 }
 
-export function PipelineTab({ oeuvres, contacts, groups }: Props) {
+export function PipelineTab({ oeuvres, contacts, groups, initialReminders, onRemindersMutated }: Props) {
   const { statutLabels, etapeLabels, typeLabel, t, lang } = useSuiviLabels()
   const dateLocTag = dateLocaleTag(lang)
   const atelierNarrow = useMediaQuery('(max-width: 767px)')
   const [processes,   setProcesses]   = useState<Process[]>([])
-  const [reminders,   setReminders]   = useState<Reminder[]>([])
+  const [reminders,   setReminders]   = useState<Reminder[]>(initialReminders)
   const [typeFilter,  setTypeFilter]  = useState<ProcessType | 'all'>('all')
   const [showDone,    setShowDone]    = useState(false)
   const [mainView,    setMainView]    = useState<'gantt' | 'calendar'>('gantt')
@@ -269,12 +277,16 @@ export function PipelineTab({ oeuvres, contacts, groups }: Props) {
   const [inspectedId, setInspectedId] = useState<string | null>(null)
   const [loading,     setLoading]     = useState(true)
 
+  useEffect(() => {
+    setReminders(initialReminders)
+  }, [initialReminders])
+
   const load = useCallback(async () => {
     const sb = createClient()
-    const [{ data: procs }, { data: etapes }, { data: rems }] = await Promise.all([
+    const [{ data: procs }, { data: etapes }, rems] = await Promise.all([
       (sb.from('suivi_process')  as any).select('*').order('date_fin', { ascending: true, nullsFirst: false }),
       (sb.from('suivi_etape')    as any).select('*').order('position'),
-      (sb.from('suivi_reminder') as any).select('*').eq('lu', false).order('remind_at'),
+      listUnreadSuiviReminders(500),
     ])
     const etapeMap: Record<string, Etape[]> = {}
     ;(etapes ?? []).forEach((e: Etape) => {
@@ -291,7 +303,7 @@ export function PipelineTab({ oeuvres, contacts, groups }: Props) {
         overdue_override: e.overdue_override ?? false,
       })),
     })))
-    setReminders(rems ?? [])
+    setReminders(rems as Reminder[])
     setLoading(false)
   }, [])
 
@@ -512,6 +524,7 @@ export function PipelineTab({ oeuvres, contacts, groups }: Props) {
             groups={groups}
             process={editing === 'new' ? null : editing}
             onClose={() => setEditing(null)}
+            onRemindersMutated={onRemindersMutated}
             onSaved={async () => {
               setEditing(null)
               await load()
@@ -535,8 +548,13 @@ export function PipelineTab({ oeuvres, contacts, groups }: Props) {
               onOpenProcess={(id) => setInspectedId(id)}
               onTickEtape={tickEtape}
               onDismissReminder={async (rid) => {
-                await (createClient().from('suivi_reminder') as any).update({ lu: true }).eq('id', rid)
+                const res = await markSuiviReminderRead(rid)
+                if (!res.ok) {
+                  toast.error(`${t('error_prefix')} ${res.error}`)
+                  return
+                }
                 setReminders((p) => p.filter((x) => x.id !== rid))
+                await onRemindersMutated?.()
               }}
             />
           ) : filtered.length === 0 ? (
@@ -647,8 +665,13 @@ export function PipelineTab({ oeuvres, contacts, groups }: Props) {
                     <button style={{ fontSize:12, color:'var(--tx3)', flexShrink:0 }}
                       onClick={async() => {
                         try {
-                          await (createClient().from('suivi_reminder') as any).update({lu:true}).eq('id',r.id)
+                          const res = await markSuiviReminderRead(r.id)
+                          if (!res.ok) {
+                            alert(`${t('error_prefix')} ${res.error}`)
+                            return
+                          }
                           setReminders(p => p.filter(x => x.id !== r.id))
+                          await onRemindersMutated?.()
                         } catch (err) {
                           alert(`${t('error_prefix')} ${err instanceof Error ? err.message : String(err)}`)
                         }
@@ -1416,13 +1439,14 @@ function ProcessDrawer({ process, onClose, onEdit, onRefresh, onCycleEtape, onOv
 
 // ── Create / edit modal ────────────────────────────────────────────────
 
-function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved }: {
+function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved, onRemindersMutated }: {
   oeuvres:     any[]
   contacts:    any[]
   groups:      { id: string; name: string }[]
   process:     any | null
   onClose:     () => void
   onSaved:     () => Promise<void>
+  onRemindersMutated?: () => Promise<void>
 }) {
   const { typeLabel, t } = useSuiviLabels()
   const isNew = !process
@@ -1659,9 +1683,16 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved }: 
       const rows = etapes.filter(e=>e.nom.trim()).map((e,i)=>({process_id:pid,nom:e.nom,date_echeance:e.date_echeance||null,statut:e.statut,position:i}))
       if(rows.length>0) await(sb.from('suivi_etape')as any).insert(rows)
 
-      if(reminderMsg.trim()&&reminderDate)
-        await(sb.from('suivi_reminder')as any).insert({process_id:pid,message:reminderMsg,remind_at:reminderDate})
-      
+      if (reminderMsg.trim() && reminderDate) {
+        const ins = await insertSuiviReminder({
+          process_id: pid,
+          message: reminderMsg.trim(),
+          remind_at: reminderDate,
+        })
+        if (!ins.ok) throw new Error(ins.error)
+        await onRemindersMutated?.()
+      }
+
       await onSaved()
       return true
     } catch(e){ setErr(String(e)); return false } finally { setBusy(false) }

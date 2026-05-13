@@ -25,6 +25,8 @@ export interface Oeuvre {
   Exposable?: boolean | null;
   /** Operator gate for marketing export feed (with is_public + image). */
   broadcast_ready?: boolean | null;
+  /** Optional seed text for broadcast / AI caption workflows. */
+  broadcast_caption_seed?: string | null;
   Encadree?: boolean | null;
   Montee?: boolean | null;
   DateLivraison?: string | null;
@@ -55,6 +57,8 @@ export interface Contact {
   NomInstitution: string | null;
   Email: string | null;
   Type: string | null;
+  /** Supabase auth user id when this contact can sign in */
+  auth_user_id?: string | null;
 }
 
 export interface Exhibition {
@@ -72,4 +76,14 @@ export interface WorkImage {
   txtImageNameLink: string | null;
   SeqNo: number | null;
   DateAdded: string | null;
+}
+
+/** `suivi_reminder` rows as listed in Atelier overview / pipeline (RLS team read). */
+export interface SuiviReminderListRow {
+  id: string
+  process_id: string | null
+  etape_id: string | null
+  message: string
+  remind_at: string
+  lu: boolean
 }

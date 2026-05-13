@@ -110,7 +110,13 @@ export function Switch({ checked, onChange }: { checked: boolean; onChange: (v: 
   )
 }
 
-export const FIS: CSSProperties = { fontSize: 12, outline: 'none', height: 28, width: '100%' }
+export const FIS: CSSProperties = {
+  fontSize: 12,
+  outline: 'none',
+  width: '100%',
+  boxSizing: 'border-box',
+  lineHeight: 1.35,
+}
 
 export function CreatableSelect({
   value,
@@ -128,19 +134,19 @@ export function CreatableSelect({
   if (isAdding) {
     return (
       <div style={{ display: 'flex', gap: 4 }}>
-        <input className="input" value={newVal} onChange={e => setNewVal(e.target.value)} style={{ ...FIS, padding: '0 6px' }} placeholder="Nouveau…" autoFocus />
-        <button type="button" className="btn primary sm" style={{ height: 28, padding: '0 6px', fontSize: 10 }} onClick={() => { onAdd(newVal); setIsAdding(false); setNewVal('') }}>OK</button>
-        <button type="button" className="btn ghost sm" style={{ height: 28, padding: '0 6px', fontSize: 10 }} onClick={() => setIsAdding(false)}>×</button>
+        <input className="input" value={newVal} onChange={e => setNewVal(e.target.value)} style={{ ...FIS, padding: '8px 10px', minHeight: 40 }} placeholder="Nouveau…" autoFocus />
+        <button type="button" className="btn primary sm" style={{ minHeight: 40, padding: '0 10px', fontSize: 10 }} onClick={() => { onAdd(newVal); setIsAdding(false); setNewVal('') }}>OK</button>
+        <button type="button" className="btn ghost sm" style={{ minHeight: 40, padding: '0 10px', fontSize: 10 }} onClick={() => setIsAdding(false)}>×</button>
       </div>
     )
   }
   return (
     <div style={{ display: 'flex', gap: 4 }}>
-      <select className="input" value={value} onChange={e => onChange(e.target.value)} style={{ ...FIS, padding: '0 6px' }}>
+      <select className="input" value={value} onChange={e => onChange(e.target.value)} style={{ ...FIS, padding: '8px 10px', minHeight: 40 }}>
         <option value="">—</option>
         {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
       </select>
-      <button type="button" className="btn ghost sm" style={{ height: 28, padding: '0 6px', fontSize: 10 }} onClick={() => setIsAdding(true)}>+</button>
+      <button type="button" className="btn ghost sm" style={{ minHeight: 40, minWidth: 40, padding: 0, fontSize: 10 }} onClick={() => setIsAdding(true)}>+</button>
     </div>
   )
 }

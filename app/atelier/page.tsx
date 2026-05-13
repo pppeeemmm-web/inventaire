@@ -3,26 +3,58 @@
 import { createClient } from '@/lib/supabase/server'
 import { AtelierTeamPortalLoader } from '@/components/atelier/AtelierTeamPortalLoader'
 import type { Oeuvre } from '@/lib/types/database'
+import { getUnreadReminderCountCached, listUnreadSuiviReminders } from '@/app/atelier/reminders-actions'
+import type { SuiviReminderListRow } from '@/lib/types/database'
 
 /** Junction tables must always reflect DB after edits (theme/group removals, batch, etc.) */
 export const dynamic = 'force-dynamic'
 
+/** First œuvres chunk (keyset continuation via `fetchOeuvresKeysetPage`). */
+const ATELIER_OEUVRE_PAGE = 1000
+
 export default async function AtelierPage() {
   const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  let initialReminderUnread = 0
+  let initialReminders: SuiviReminderListRow[] = []
+  if (user?.id != null) {
+    ;[initialReminderUnread, initialReminders] = await Promise.all([
+      getUnreadReminderCountCached(user.id),
+      listUnreadSuiviReminders(100),
+    ])
+  }
+
+  let initialPendingReviewCount = 0
+  const { data: isAdminOnLoad } = await supabase.rpc('is_admin')
+  if (isAdminOnLoad) {
+    const { count: pendCount } = await supabase
+      .from('pending_changes')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'pending')
+    initialPendingReviewCount = pendCount ?? 0
+  }
+
+  const { count: oeuvreTotalCountRaw, error: oeCountErr } = await supabase
+    .from('Oeuvres')
+    .select('OeuvreID', { count: 'exact', head: true })
+    .is('deleted_at', null)
+  if (oeCountErr) console.error('[atelier loader] Oeuvres count:', oeCountErr.message)
+  const oeuvreTotalCount = oeuvreTotalCountRaw ?? 0
 
   const queryLabels = [
     'Oeuvres', 'Technique', 'Support', 'Format', 'theme', 'Contact',
-    'OeuvreStatus', 'working_group', 'tblPresentation', 'exhibition',
-    'oeuvre_theme', 'working_group_work', 'contact_addresses',
+    'OeuvreStatus', 'working_group', 'tblPresentation',
+    'oeuvre_theme', 'working_group_work',
   ] as const
   const results = await Promise.all([
-    // `broadcast_ready` — column added in supabase/sql/oeuvre_broadcasts.sql; widen client until types regenerated.
-    (supabase as any)
+    supabase
       .from('Oeuvres')
       .select('OeuvreID, Titre, Technique, Support, Année, Format, Hauteur, Largeur, Profondeur, Exposable, broadcast_ready, broadcast_caption_seed, Prix, PrixFinal, Discount, statusId, Catalogué, txtImageNameLink, ContactID, LocalisationID, LocalisationDetail, is_public, Encadree, IsCommission, PresentationID, ReturnDate, DateLivraison, AcheteurID, NeedsPhotograph, anonymity_level, admin_override_anonymity')
       .is('deleted_at', null)
       .order('OeuvreID', { ascending: false })
-      .range(0, 4999),
+      .limit(ATELIER_OEUVRE_PAGE),
     supabase.from('Technique').select('TechniqueID, Technique').order('TechniqueID'),
     supabase.from('Support').select('SupportID, Support').order('SupportID'),
     supabase.from('Format').select('FormatID, Format').order('FormatID'),
@@ -31,10 +63,8 @@ export default async function AtelierPage() {
     supabase.from('OeuvreStatus').select('id, label').order('id'),
     supabase.from('working_group').select('id, name, created_at').order('created_at', { ascending: false }).limit(100),
     supabase.from('tblPresentation').select('PresentationID, Nom').order('PresentationID'),
-    supabase.from('exhibition').select('*').order('date_debut', { ascending: false }).limit(500),
     supabase.from('oeuvre_theme').select('oeuvre_id, theme_id'),
     supabase.from('working_group_work').select('group_id, oeuvre_id'),
-    supabase.from('contact_addresses').select('*'),
   ])
 
   // Surface query errors to the server console so silent RLS / schema regressions don't render as empty tabs.
@@ -43,6 +73,15 @@ export default async function AtelierPage() {
   })
 
   const oeuvres = (results[0]?.data ?? []) as unknown as Oeuvre[]
+  const oeuvresPaging =
+    oeuvres.length < oeuvreTotalCount
+      ? {
+          totalCount: oeuvreTotalCount,
+          nextCursor: oeuvres.length > 0 ? oeuvres[oeuvres.length - 1]!.OeuvreID : null,
+          pageSize: ATELIER_OEUVRE_PAGE,
+        }
+      : undefined
+
   const techniques     = results[1]?.data
   const supports       = results[2]?.data
   const formats        = results[3]?.data
@@ -51,10 +90,8 @@ export default async function AtelierPage() {
   const statuses       = results[6]?.data
   const groups         = results[7]?.data
   const presentations  = results[8]?.data
-  const exhibitions    = results[9]?.data
-  const themesLink     = results[10]
-  const _groups_link   = results[11]
-  const addresses      = results[12]?.data
+  const themesLink     = results[9]
+  const _groups_link   = results[10]
 
   // Build a flat id→label map for fast status lookups on the client
   const statusLabelMap: Record<number, string> = {}
@@ -124,17 +161,19 @@ export default async function AtelierPage() {
 
   return (
     <AtelierTeamPortalLoader
+      initialPendingReviewCount={initialPendingReviewCount}
+      initialReminderUnread={initialReminderUnread}
+      initialReminders={initialReminders}
+      oeuvresPaging={oeuvresPaging}
       oeuvres={oeuvres ?? []}
       techniques={techniques ?? []}
       supports={supports ?? []}
       formats={formats ?? []}
       themes={themes ?? []}
       contacts={contacts ?? []}
-      addresses={(addresses ?? []) as any[]}
       statusLabelMap={statusLabelMap}
       initialGroups={(groups ?? [] as { id: string; name: string; created_at: string }[]).map((g) => ({ id: g.id, name: g.name }))}
       presentations={presentations ?? []}
-      exhibitions={exhibitions ?? []}
       themePublicStats={themePublicStats}
       themePrivateWorks={themeAllWorks}
       themeWorkCount={themeWorkCount}

@@ -10,7 +10,6 @@ import { saveWork, createLookup, addWorkImage, reorderWorkImages, deleteWorkImag
 import { toast } from '@/lib/ui/toast'
 import { registerUndo, consumeUndo } from '@/lib/ui/undo'
 import { markAsGift } from '@/app/atelier/works/gift-actions'
-import { WorkVersionHistory } from '../WorkVersionHistory'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import {
   downscaleImageFileForMobileIfNeeded,
@@ -39,19 +38,11 @@ import {
 import type { DrawerContentProps, DrawerContactRow } from './drawer-content-props'
 import { WorkDrawerImageArea } from './WorkDrawerImageArea'
 import { WorkDrawerPipelineSection } from './WorkDrawerPipelineSection'
+import { DrawerContentFinanceSection } from './DrawerContentFinanceSection'
+import { DrawerContentNotesVersionSection } from './DrawerContentNotesVersionSection'
+import { DrawerContentGroupsSection } from './DrawerContentGroupsSection'
+import { setsEqualNum, setsEqualStr } from './drawer-content-utils'
 import { CreatableSelect, FIS, Label, SectionTitle, Switch, WfSwitch, cap } from './drawer-widgets'
-
-function setsEqualNum(a: Set<number>, b: Set<number>): boolean {
-  if (a.size !== b.size) return false
-  for (const x of a) if (!b.has(x)) return false
-  return true
-}
-
-function setsEqualStr(a: Set<string>, b: Set<string>): boolean {
-  if (a.size !== b.size) return false
-  for (const x of a) if (!b.has(x)) return false
-  return true
-}
 
 export function DrawerContent({
   o,
@@ -971,7 +962,7 @@ export function DrawerContent({
             <button
               onClick={() => setExpanded(!isExpanded)}
               style={{ background: 'transparent', border: '1px solid var(--bd)', color: 'var(--tx3)', cursor: 'pointer', fontSize: 13, padding: '4px 8px', marginRight: 4 }}
-              title={isExpanded ? 'Réduire' : 'Agrandir'}
+              title={isExpanded ? t('wf_drawer_collapse') : t('wf_drawer_expand')}
             >{isExpanded ? '◀' : '▶'}</button>
           )}
           <button type="button" onClick={attemptClose} style={{ background: 'transparent', border: 'none', color: 'var(--tx3)', cursor: 'pointer', fontSize: 24, padding: '0 6px' }}>×</button>
@@ -1135,13 +1126,13 @@ export function DrawerContent({
               )}
             </div>
 
-            <Label>Présentation</Label>
+            <Label>{t('presentation')}</Label>
             <select className="input" value={presentationId} onChange={e => setPresentationId(e.target.value)} style={FIS}>
               <option value="">—</option>
               {initialPresentations.map((p) => <option key={p.PresentationID} value={p.PresentationID}>{p.Nom}</option>)}
             </select>
 
-            <Label>Thèmes</Label>
+            <Label>{t('concept_view_themes')}</Label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
               {initialThemes.map((th) => {
                 const active = selThemes.has(th.id)
@@ -1158,63 +1149,58 @@ export function DrawerContent({
           </div>
         </section>
 
-        <section>
-          <SectionTitle title={t('wf_section_finance')} />
-          <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr' : '80px 1fr 80px 1fr', gap: '8px 10px', fontSize: 12 }}>
-            <Label>{t('wf_price')}</Label>
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <span style={{ color: 'var(--tx3)', fontSize: 11 }}>€</span>
-              <input className="input" value={prix} onChange={e => setPrix(e.target.value)} style={FIS} disabled={ownStage === 'gift'} />
-            </div>
-            <Label>{t('wf_discount')}</Label>
-            <input className="input" value={discount} onChange={e => setDiscount(e.target.value)} style={FIS} disabled={ownStage === 'gift'} />
-            <Label>{t('wf_vat')}</Label>
-            <input className="input" type="number" min={0} max={100} step={0.01} value={tvaRate} onChange={e => setTvaRate(e.target.value)} style={FIS} disabled={ownStage === 'gift'} />
-            <Label>{t('wf_final_ht')}</Label>
-            <div className="t-mono-md" style={{ fontWeight: 700, paddingTop: 4 }}>€ {prixFinalComputed.toLocaleString(lang === 'en' ? 'en-GB' : 'fr-FR')}</div>
-            <div style={{ gridColumn: narrow ? '1 / -1' : '1 / -1', marginTop: 4 }}>
-              <WfSwitch label={t('wf_payment_rcvd')} checked={paymentDone} onChange={setPaymentDone} disabled={ownStage === 'gift'} />
-            </div>
-          </div>
-        </section>
+        <DrawerContentFinanceSection
+          narrow={narrow}
+          lang={lang}
+          t={t}
+          prix={prix}
+          setPrix={setPrix}
+          discount={discount}
+          setDiscount={setDiscount}
+          tvaRate={tvaRate}
+          setTvaRate={setTvaRate}
+          prixFinalComputed={prixFinalComputed}
+          paymentDone={paymentDone}
+          setPaymentDone={setPaymentDone}
+          ownStage={ownStage}
+        />
 
-        <section>
-          <SectionTitle title={t('wf_groups')} />
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 12 }}>
-            {initialGroups.map((g: { id: string; name: string }) => {
-              const active = selGroups.has(g.id)
-              return (
-                <button key={g.id} type="button"
-                  onClick={() => setSelGroups((p: Set<string>) => { const s = new Set(p); if (s.has(g.id)) s.delete(g.id); else s.add(g.id); return s })}
-                  style={{ padding: '4px 10px', fontSize: 10, borderRadius: 12, border: `1px solid ${active ? 'var(--ac)' : 'var(--bd)'}`, background: active ? 'var(--ac)22' : 'var(--bg2)', color: active ? 'var(--ac)' : 'var(--tx3)', cursor: 'pointer' }}>
-                  {g.name}
-                </button>
-              )
-            })}
-          </div>
-        </section>
+        <DrawerContentGroupsSection t={t} initialGroups={initialGroups} selGroups={selGroups} setSelGroups={setSelGroups} />
 
-        <section>
-          <SectionTitle title={t('wf_comments')} />
-          <textarea className="input" value={commentaires} onChange={e => setCommentaires(e.target.value)} style={{ ...FIS, minHeight: 80, resize: 'vertical', fontSize: 12 }} placeholder={t('wf_comments_placeholder')} />
-          <div style={{ marginTop: 12 }}>
-            <div className="t-label" style={{ fontSize: 10, marginBottom: 4 }}>{t('wf_history_title')}</div>
-            <textarea className="input" value={historique} onChange={e => setHistorique(e.target.value)} style={{ ...FIS, minHeight: 88, resize: 'vertical', fontSize: 11, fontFamily: 'var(--font-mono)' }} placeholder={t('wf_history_placeholder')} />
-            <div className="t-mono-xs" style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 6 }}>{t('wf_history_hint')}</div>
-          </div>
-        </section>
-
-        <WorkVersionHistory oeuvreId={o.OeuvreID} onRestored={() => router.refresh()} />
+        <DrawerContentNotesVersionSection
+          oeuvreId={o.OeuvreID}
+          t={t}
+          commentaires={commentaires}
+          setCommentaires={setCommentaires}
+          historique={historique}
+          setHistorique={setHistorique}
+          onVersionRestored={() => router.refresh()}
+        />
       </div>
 
       {/* ═══ ACTIONS ═══ */}
-      <div style={{ marginTop: 20, paddingTop: 14, borderTop: '1px solid var(--bd)' }}>
+      <div
+        style={{
+          marginTop: 20,
+          paddingTop: 14,
+          borderTop: '1px solid var(--bd)',
+          ...(narrow
+            ? {
+                position: 'sticky',
+                bottom: 0,
+                zIndex: 4,
+                background: 'var(--bg1)',
+                paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
+              }
+            : {}),
+        }}
+      >
         <div className="row gap-sm" style={{ flexWrap: 'wrap' }}>
           <button className="btn primary" onClick={handleSubmit} disabled={isSaving} style={{ fontSize: 11, minHeight: 44 }}>
             {isSaving ? '…' : t('save')}
           </button>
-          <button className={`btn ${isSel ? 'primary' : 'ghost'}`} onClick={handleToggleSel} style={{ fontSize: 11 }}>
-            {isSel ? '✓ Sél.' : '+ Sél.'}
+          <button className={`btn ${isSel ? 'primary' : 'ghost'}`} onClick={handleToggleSel} style={{ fontSize: 11, minHeight: 44 }}>
+            {isSel ? t('wf_in_selection_short') : t('wf_add_selection_short')}
           </button>
           {/* Direct gift path — disabled when ownership has already moved or work is archived */}
           {!(ownStage === 'sold' || ownStage === 'gift' || ownStage === 'artist_archive') && (
@@ -1235,13 +1221,13 @@ export function DrawerContent({
             </button>
           )}
           {!confirmDelete ? (
-            <button className="btn ghost sm" style={{ marginLeft: 'auto', color: 'var(--tx3)', fontSize: 10 }} onClick={() => setConfirmDelete(true)}>
-              Supprimer
+            <button className="btn ghost sm" style={{ marginLeft: 'auto', color: 'var(--tx3)', fontSize: 10, minHeight: 44 }} onClick={() => setConfirmDelete(true)}>
+              {t('delete')}
             </button>
           ) : (
             <div className="row gap-sm" style={{ marginLeft: 'auto', alignItems: 'center' }}>
-              <button className="btn ghost sm" style={{ color: '#c0392b' }} disabled={deleting} onClick={handleDelete}>
-                {deleting ? '…' : 'Confirmer'}
+              <button className="btn ghost sm" style={{ color: '#c0392b', minHeight: 44 }} disabled={deleting} onClick={handleDelete}>
+                {deleting ? '…' : t('btn_confirm')}
               </button>
               <button className="btn ghost sm" onClick={() => { setConfirmDelete(false); setDeleteError(null) }}>×</button>
             </div>
@@ -1256,60 +1242,60 @@ export function DrawerContent({
           onClick={() => setShowNewContact(false)}>
           <div onClick={e => e.stopPropagation()}
             style={{ background: 'var(--bg1)', border: '1px solid var(--bd)', borderRadius: 8, padding: 24, width: '100%', maxWidth: 520, maxHeight: '85vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <div style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--tx3)' }}>Nouveau contact</div>
+            <div style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--tx3)' }}>{t('wf_new_contact')}</div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ fontSize: 10, color: 'var(--tx3)' }}>Institution</label>
-              <input className="input" value={newC.inst} onChange={e => setNewC(p => ({ ...p, inst: e.target.value }))} style={FIS} placeholder="Nom institution" autoFocus />
+              <label style={{ fontSize: 10, color: 'var(--tx3)' }}>{t('contactEditorInstitution')}</label>
+              <input className="input" value={newC.inst} onChange={e => setNewC(p => ({ ...p, inst: e.target.value }))} style={FIS} placeholder={t('contacts_quick_inst')} autoFocus />
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label style={{ fontSize: 10, color: 'var(--tx3)' }}>Prénom</label>
+                <label style={{ fontSize: 10, color: 'var(--tx3)' }}>{t('contactEditorFirstName')}</label>
                 <input className="input" value={newC.prenom} onChange={e => setNewC(p => ({ ...p, prenom: e.target.value }))} style={FIS} />
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label style={{ fontSize: 10, color: 'var(--tx3)' }}>Nom</label>
+                <label style={{ fontSize: 10, color: 'var(--tx3)' }}>{t('contactEditorLastName')}</label>
                 <input className="input" value={newC.nom} onChange={e => setNewC(p => ({ ...p, nom: e.target.value }))} style={FIS} />
               </div>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ fontSize: 10, color: 'var(--tx3)' }}>Rôle</label>
-              <input className="input" value={newC.role} onChange={e => setNewC(p => ({ ...p, role: e.target.value }))} style={FIS} placeholder="Collectionneur, Galerie, Musée…" />
+              <label style={{ fontSize: 10, color: 'var(--tx3)' }}>{t('contactEditorRole')}</label>
+              <input className="input" value={newC.role} onChange={e => setNewC(p => ({ ...p, role: e.target.value }))} style={FIS} placeholder={t('contactEditorRolePick')} />
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label style={{ fontSize: 10, color: 'var(--tx3)' }}>Email</label>
+                <label style={{ fontSize: 10, color: 'var(--tx3)' }}>{t('contactEditorEmailPh')}</label>
                 <input className="input" type="email" value={newC.email} onChange={e => setNewC(p => ({ ...p, email: e.target.value }))} style={FIS} />
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label style={{ fontSize: 10, color: 'var(--tx3)' }}>Téléphone</label>
+                <label style={{ fontSize: 10, color: 'var(--tx3)' }}>{t('contactEditorPhonePh')}</label>
                 <input className="input" type="tel" value={newC.phone} onChange={e => setNewC(p => ({ ...p, phone: e.target.value }))} style={FIS} />
               </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label style={{ fontSize: 10, color: 'var(--tx3)' }}>Ville</label>
+                <label style={{ fontSize: 10, color: 'var(--tx3)' }}>{t('contactEditorCity')}</label>
                 <input className="input" value={newC.ville} onChange={e => setNewC(p => ({ ...p, ville: e.target.value }))} style={FIS} />
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label style={{ fontSize: 10, color: 'var(--tx3)' }}>Pays</label>
+                <label style={{ fontSize: 10, color: 'var(--tx3)' }}>{t('contactEditorCountry')}</label>
                 <input className="input" value={newC.pays} onChange={e => setNewC(p => ({ ...p, pays: e.target.value }))} style={FIS} />
               </div>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ fontSize: 10, color: 'var(--tx3)' }}>Notes</label>
+              <label style={{ fontSize: 10, color: 'var(--tx3)' }}>{t('notes')}</label>
               <textarea className="input" value={newC.notes} onChange={e => setNewC(p => ({ ...p, notes: e.target.value }))} style={{ ...FIS, height: 72, resize: 'vertical' }} />
             </div>
 
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button className="btn ghost sm" onClick={() => { setShowNewContact(false); setNewC({ inst: '', prenom: '', nom: '', role: '', email: '', phone: '', ville: '', pays: '', notes: '' }) }} style={{ fontSize: 11 }}>Annuler</button>
+              <button className="btn ghost sm" onClick={() => { setShowNewContact(false); setNewC({ inst: '', prenom: '', nom: '', role: '', email: '', phone: '', ville: '', pays: '', notes: '' }) }} style={{ fontSize: 11 }}>{t('cancel')}</button>
               <button className="btn primary sm" onClick={handleCreateContact} disabled={creatingContact || (!newC.inst && !newC.prenom && !newC.nom)} style={{ fontSize: 11 }}>
-                {creatingContact ? '…' : 'Créer'}
+                {creatingContact ? '…' : t('contactEditorCreate')}
               </button>
             </div>
           </div>

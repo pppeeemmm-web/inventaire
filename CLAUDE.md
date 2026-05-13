@@ -74,7 +74,8 @@ All user-visible copy → `useI18n().t(key)` + `lib/i18n/dictionary.ts` (**DictK
 - components/atelier/BroadcastTab.tsx — Diffusion tab (Queue / Publiés / Activité subtabs); admin-only via `requireAdminGuard()`
 - app/atelier/broadcast/actions.ts — `listBroadcastDashboard()`, `clearStuckQueue()`; all admin-gated
 - app/api/inventory/broadcast/{feed,queue,confirm,event}/route.ts — Make/n8n API; Bearer `INVENTORY_BROADCAST_SECRET` validated with timing-safe SHA-256 compare (`lib/inventory-broadcast-secret.ts`); shared **rate limit** + 429 (`lib/inventory-broadcast-rate-limit.ts`). RLS: `broadcast_events` has admin + `is_team()` select (`supabase/sql/broadcast_phase2.sql`, `supabase/sql/broadcast_events_team_rls.sql`). `broadcast_caption_seed` flows through feed → AI caption pipeline
-- app/atelier/reminders-actions.ts — `revalidateRemindersTag()`; server unread count for Atelier shell (`getUnreadReminderCountCached`)
+- app/atelier/reminders-actions.ts — `revalidateRemindersTag()`; server unread count (`getUnreadReminderCountCached`); `listUnreadSuiviReminders` / `markSuiviReminderRead` / `insertSuiviReminder` (overview + pipeline; no client `(as any)` on `suivi_reminder`)
+- app/atelier/atelier-data-actions.ts — `fetchAtelierContactAddresses()` (post–first-paint for curation/compare)
 - app/atelier/calendar/actions.ts + `lib/calendar/*` — exhibition (`suivi_process` / `suivi_etape`) → Google Calendar / Microsoft Graph (one-way export; manual sync in UI). Env: see **📅 CALENDAR SYNC** below.
 
 **Deferred integrations (no GO = do not implement)**  

@@ -11,7 +11,7 @@ export type DictKey =
   | 'teamDesc' | 'clientsDesc' | 'galleriesDesc' | 'publicDesc'
   | 'hubWorksOnline' | 'hubLastLog' | 'hubStockLow'
   | 'hub_continue' | 'hub_capture' | 'hub_alerts' | 'hub_recent_images' | 'hub_swipe_cards'
-  | 'overview' | 'inventory' | 'inv_refinement_gate' | 'constellation' | 'production'
+  | 'overview' | 'inventory' | 'inv_refinement_gate' | 'atelier_oeuvres_paging_hint' | 'atelier_oeuvres_load_more' | 'constellation' | 'production'
   | 'logistics' | 'sales' | 'exhibitions' | 'vault'
   | 'works' | 'works_cap' | 'catalogued' | 'exposable' | 'montee'
   | 'unpriced' | 'noImage' | 'thisYear' | 'wip' | 'consigned'
@@ -43,8 +43,10 @@ export type DictKey =
   | 'sales' | 'revenue' | 'orders' | 'newOrder' | 'buyer'
   | 'concepts' | 'themes' | 'location' | 'tirage' | 'exhibitable' | 'image'
   | 'searchFieldAll' | 'searchFieldName' | 'searchFieldCity' | 'searchFieldEmail' | 'searchFieldNotes'
-  | 'identity' | 'depth' | 'confidentiality' | 'history' | 'save' | 'create'
+  | 'identity' | 'depth' | 'confidentiality' | 'history' | 'save' | 'btn_confirm' | 'create'
   | 'system_download_site_checklist' | 'system_checklist_building' | 'system_checklist_error_prefix'
+  | 'system_ledger_ref_copy' | 'system_ledger_ref_download' | 'system_ledger_ref_loading'
+  | 'system_ledger_ref_error_prefix' | 'system_ledger_ref_clipboard_ok' | 'system_ledger_ref_clipboard_failed'
   | 'priced' | 'date' | 'label'
   | 'main' | 'ramifications' | 'import' | 'newFolder' | 'generateCoa'
   | 'selection' | 'modify' | 'export' | 'compare' | 'groupNamePlaceholder' | 'clear'
@@ -115,6 +117,7 @@ export type DictKey =
   | 'aria_open_navigation'
   | 'error_prefix' | 'savingRecord' | 'confirm_delete_image' | 'select_option_placeholder' | 'wf_placeholder_new'
   | 'wf_section_identity' | 'wf_section_production' | 'wf_section_ownership' | 'wf_section_finance'
+  | 'wf_in_selection_short' | 'wf_add_selection_short'
   | 'wf_themes_series' | 'wf_comments' | 'wf_comments_placeholder' | 'wf_history_title' | 'wf_history_placeholder' | 'wf_history_hint'
   | 'wf_field_title' | 'wf_field_year' | 'wf_field_format'
   | 'wf_prod_atelier_l' | 'wf_prod_atelier_d' | 'wf_prod_cat_l' | 'wf_prod_cat_d' | 'wf_prod_avail_l' | 'wf_prod_avail_d'
@@ -128,7 +131,7 @@ export type DictKey =
   | 'anon_lvl_0' | 'anon_lvl_1' | 'anon_lvl_2'
   | 'wf_fmt_digital' | 'wf_diameter_tt'
   | 'wf_groups' | 'wf_price' | 'wf_discount' | 'wf_vat' | 'wf_final_ht' | 'wf_payment_rcvd' | 'wf_settlement' | 'wf_paid' | 'wf_due'
-  | 'wf_new_contact' | 'wf_images_heading' | 'wf_images_save_first_hint' | 'wf_images_add_aria'
+  | 'wf_new_contact' | 'wf_drawer_expand' | 'wf_drawer_collapse' | 'wf_images_heading' | 'wf_images_save_first_hint' | 'wf_images_add_aria'
   | 'wf_images_reorder_hint' | 'wf_images_strip_alt' | 'wf_images_strip_cover_suffix'
   | 'wf_images_order_before_aria' | 'wf_images_order_after_aria' | 'wf_images_order_cover_aria'
   | 'wf_badge_sold' | 'wf_badge_gift' | 'wf_badge_archive'
@@ -225,6 +228,20 @@ export type DictKey =
   | 'contacts_url_title' | 'contacts_url_intro' | 'contacts_url_ollama_checking' | 'contacts_url_ollama_up' | 'contacts_url_ollama_down' | 'contacts_url_ollama_tags_ok' | 'contacts_url_ollama_dot_ok_title' | 'contacts_url_ollama_dot_fail_title' | 'contacts_url_server_note' | 'contacts_url_verify' | 'contacts_url_tip_title' | 'contacts_url_tip_hide' | 'contacts_url_ollama_pre' | 'contacts_url_env_note' | 'contacts_url_model_note' | 'contacts_url_url_ph' | 'contacts_url_refine_llm' | 'contacts_url_extract' | 'contacts_url_extracting' | 'contacts_url_sources' | 'contacts_url_llm' | 'contacts_url_preview_email' | 'contacts_url_preview_phone' | 'contacts_url_preview_web' | 'contacts_url_preview_role' | 'contacts_url_preview_notes' | 'contacts_url_import_this' | 'contacts_url_importing' | 'contacts_url_done_imported_1' | 'contacts_url_done_imported_n' | 'contacts_url_done_skipped_fmt' | 'contacts_url_script_heading' | 'contacts_url_script_inline_code_help' | 'contacts_url_run_script' | 'contacts_url_script_running' | 'contacts_conflict_badge'
   | 'contactEditorNew' | 'contactEditorEdit' | 'contactEditorSectionIdentity' | 'contactEditorInstitution' | 'contactEditorRole' | 'contactEditorRolePick' | 'contactEditorFirstName' | 'contactEditorLastName' | 'contactEditorGenre' | 'contactEditorActive' | 'contactEditorActiveLabel' | 'contactEditorPrivate' | 'contactEditorPrivateHint' | 'contactEditorResponsible' | 'contactEditorResponsibleRole' | 'contactEditorSectionEmails' | 'contactEditorEmailPh' | 'contactEditorEmailLabelPh' | 'contactEditorNoEmails' | 'contactEditorSectionPhones' | 'contactEditorPhonePh' | 'contactEditorLabelPh' | 'contactEditorNoPhones' | 'contactEditorSectionWebsites' | 'contactEditorNoWebsites' | 'contactEditorSectionSocials' | 'contactEditorNoSocials' | 'contactEditorSectionAddresses' | 'contactEditorAddrLabel' | 'contactEditorAddrLabelPh' | 'contactEditorPostal' | 'contactEditorCity' | 'contactEditorCountry' | 'contactEditorStreet' | 'contactEditorShippingNotes' | 'contactEditorShippingNotesPh' | 'contactEditorAddAddress' | 'contactEditorSectionNotes' | 'contactEditorNotesPh' | 'contactEditorWorksLinked' | 'contactEditorWorksLoc' | 'contactEditorWorksBuyer' | 'contactEditorWorksSelectedTail' | 'contactEditorSelectWorks' | 'contactEditorCreate'
   | 'concept_new_heading' | 'concept_field_title' | 'concept_ph_title' | 'concept_field_medium' | 'concept_field_energy' | 'concept_field_category' | 'concept_field_desc' | 'concept_ph_desc' | 'concept_field_themes' | 'concept_ph_themes' | 'concept_field_visual' | 'concept_ph_visual' | 'concept_field_notes' | 'concept_sketch_btn' | 'concept_sketch_uploading' | 'concept_sketch_hint' | 'concept_btn_create' | 'concept_btn_creating' | 'concept_btn_cancel' | 'concept_search_ph' | 'concept_btn_new' | 'concept_btn_close_new' | 'concept_loading' | 'concept_empty_filtered' | 'concept_empty_none' | 'concept_filters_aria' | 'concept_stat_heading' | 'concept_stat_total' | 'concept_stat_active' | 'concept_stat_burning' | 'concept_stat_converted' | 'concept_filter_all' | 'concept_status_idee' | 'concept_status_exploration' | 'concept_status_en_cours' | 'concept_status_abandonne' | 'concept_status_devenu_oeuvre' | 'concept_cat_artistic' | 'concept_cat_business' | 'concept_cat_logistics' | 'concept_cat_other' | 'concept_med_peinture' | 'concept_med_dessin' | 'concept_med_gravure' | 'concept_med_sculpture' | 'concept_med_installation' | 'concept_med_video' | 'concept_med_photo' | 'concept_med_autre' | 'concept_en_1' | 'concept_en_2' | 'concept_en_3' | 'concept_en_4' | 'concept_en_5' | 'concept_edit_title' | 'concept_edit_save' | 'concept_edit_saving' | 'concept_edit_cancel' | 'concept_view_edit' | 'concept_view_pipeline' | 'concept_view_delete' | 'concept_convert_heading' | 'concept_convert_go' | 'concept_view_became_work' | 'concept_view_visual' | 'concept_view_notes' | 'concept_view_energy' | 'concept_view_medium' | 'concept_view_themes' | 'concept_view_created' | 'concept_view_updated' | 'concept_delete_confirm' | 'concept_convert_ok'   | 'concept_convert_err' | 'concept_tab_aria' | 'concept_sketch_stored'
+  // ── Atelier > Reports tab ───────────────────────────────────────────────
+  | 'tab_reports'
+  | 'const_allThemes' | 'const_allGroups'
+  | 'report_title' | 'report_subtitle'
+  | 'report_filters_heading' | 'report_columns_heading' | 'report_preview_heading'
+  | 'report_selection_only' | 'report_row_count_fmt' | 'report_preview_truncated'
+  | 'report_sort_label' | 'report_sort_id' | 'report_sort_title' | 'report_sort_year' | 'report_sort_price'
+  | 'report_export_xlsx' | 'report_export_html' | 'report_export_pdf'
+  | 'report_pdf_no_columns' | 'report_pdf_empty' | 'report_pdf_too_many' | 'report_pdf_auth' | 'report_pdf_fail'
+  | 'report_status_private_archive'
+  | 'report_col_id' | 'report_col_title' | 'report_col_year' | 'report_col_technique' | 'report_col_support'
+  | 'report_col_format' | 'report_col_dimensions' | 'report_col_price' | 'report_col_status'
+  | 'report_col_contact' | 'report_col_buyer' | 'report_col_location'
+  | 'report_col_themes' | 'report_col_groups' | 'report_col_catalogued' | 'report_col_exposable' | 'report_col_notes'
 
 type Dictionary = Record<DictKey, string>
 
@@ -248,6 +265,9 @@ export const dict: Record<Lang, Dictionary> = {
     overview: "Vue d'ensemble", inventory: 'Inventaire',
     inv_refinement_gate:
       'Statut « Disponible » en base, mais l’œuvre reste traitée comme « En production » tant que le catalogue ou la photo ne sont pas validés.',
+    atelier_oeuvres_paging_hint:
+      'Œuvres chargées : {loaded} sur {total}. Les totaux (vue d’ensemble, thèmes) portent sur les œuvres déjà chargées.',
+    atelier_oeuvres_load_more: 'Charger la tranche suivante',
     constellation: 'Constellation', production: 'Production',
     logistics: 'Logistique', sales: 'Ventes',
     exhibitions: 'Expositions', vault: 'Coffre',
@@ -311,10 +331,16 @@ export const dict: Record<Lang, Dictionary> = {
     searchFieldAll: 'Partout', searchFieldName: 'Nom', searchFieldCity: 'Ville',
     searchFieldEmail: 'Email', searchFieldNotes: 'Notes',
     identity: 'Identité', depth: 'Profondeur', confidentiality: 'Confidentialité',
-    history: 'Historique', save: 'Enregistrer', create: 'Créer',
+    history: 'Historique', save: 'Enregistrer', btn_confirm: 'Confirmer', create: 'Créer',
     system_download_site_checklist: '✦ Télécharger la checklist site (PDF)',
     system_checklist_building: 'Génération PDF…',
     system_checklist_error_prefix: 'Erreur checklist :',
+    system_ledger_ref_copy: 'Copier la référence (Markdown)',
+    system_ledger_ref_download: 'Télécharger la référence (.md)',
+    system_ledger_ref_loading: 'Chargement…',
+    system_ledger_ref_error_prefix: 'Référence :',
+    system_ledger_ref_clipboard_ok: 'Copié dans le presse-papiers.',
+    system_ledger_ref_clipboard_failed: 'Impossible d’écrire dans le presse-papiers (permissions ou contexte non sécurisé).',
     priced: 'Évalué', date: 'Date', label: 'Libellé',
     selection: 'SÉLECTION', modify: 'MODIFIER', export: 'EXPORTER',
     compare: 'COMPARER', groupNamePlaceholder: 'Nom du groupe…', clear: 'Effacer',
@@ -468,6 +494,8 @@ export const dict: Record<Lang, Dictionary> = {
     wf_section_production: '2. État de production',
     wf_section_ownership: '3. Propriété et circulation',
     wf_section_finance: '4. Finances',
+    wf_in_selection_short: '✓ Sél.',
+    wf_add_selection_short: '+ Sél.',
     wf_themes_series: 'Thèmes / Séries',
     wf_comments: 'Commentaires',
     wf_comments_placeholder: 'Notes internes…',
@@ -564,6 +592,8 @@ export const dict: Record<Lang, Dictionary> = {
     wf_paid: 'Payé',
     wf_due: 'Dû',
     wf_new_contact: 'Nouveau contact',
+    wf_drawer_expand: 'Agrandir le panneau',
+    wf_drawer_collapse: 'Réduire le panneau',
     wf_images_heading: 'Images',
     wf_images_save_first_hint:
       'Enregistrez la fiche pour obtenir un numéro d’œuvre, puis vous pourrez ajouter des photos ici.',
@@ -1058,6 +1088,50 @@ $env:OLLAMA_HOST="127.0.0.1:11435"; ollama run llama3.2:1b`,
     concept_convert_err: 'Échec de la conversion',
     concept_tab_aria: 'Concepts et idées',
     concept_sketch_stored: 'Scan enregistré (stockage)',
+    tab_reports: 'Rapports',
+    const_allThemes: 'Tous les thèmes',
+    const_allGroups: 'Tous les groupes',
+    report_title: 'Rapports d’œuvres',
+    report_subtitle:
+      'Filtrez l’inventaire, choisissez les colonnes, puis exportez en XLSX, HTML ou PDF.',
+    report_filters_heading: 'Filtres',
+    report_columns_heading: 'Colonnes',
+    report_preview_heading: 'Aperçu',
+    report_selection_only: 'Sélection uniquement ({n})',
+    report_row_count_fmt: '{n} lignes',
+    report_preview_truncated:
+      'Aperçu limité à 200 lignes — l’export contient toutes les lignes filtrées.',
+    report_sort_label: 'Trier par',
+    report_sort_id: 'ID',
+    report_sort_title: 'Titre',
+    report_sort_year: 'Année',
+    report_sort_price: 'Prix',
+    report_export_xlsx: 'Exporter XLSX',
+    report_export_html: 'Exporter HTML',
+    report_export_pdf: 'Exporter PDF',
+    report_pdf_no_columns: 'Au moins une colonne doit être visible.',
+    report_pdf_empty: 'Aucune œuvre ne correspond aux filtres.',
+    report_pdf_too_many: 'Trop de lignes pour le PDF (limite {max}). Affinez les filtres.',
+    report_pdf_auth: 'Connexion requise pour générer le PDF.',
+    report_pdf_fail: 'Échec de la génération du PDF.',
+    report_status_private_archive: 'Archive privée',
+    report_col_id: 'ID',
+    report_col_title: 'Titre',
+    report_col_year: 'Année',
+    report_col_technique: 'Technique',
+    report_col_support: 'Support',
+    report_col_format: 'Format',
+    report_col_dimensions: 'Dimensions',
+    report_col_price: 'Prix',
+    report_col_status: 'Statut',
+    report_col_contact: 'Contact',
+    report_col_buyer: 'Acheteur',
+    report_col_location: 'Localisation',
+    report_col_themes: 'Thèmes',
+    report_col_groups: 'Groupes',
+    report_col_catalogued: 'Catalogué',
+    report_col_exposable: 'Exposable',
+    report_col_notes: 'Notes',
   },
   en: {
     hub: 'Studio', tagline: 'Inventory · Production · Curation · Relations',
@@ -1077,6 +1151,9 @@ $env:OLLAMA_HOST="127.0.0.1:11435"; ollama run llama3.2:1b`,
     overview: 'Overview', inventory: 'Inventory',
     inv_refinement_gate:
       'Database status is « Available », but the work stays « In production » until cataloguing and photography gates are cleared.',
+    atelier_oeuvres_paging_hint:
+      'Works loaded: {loaded} of {total}. Overview and theme totals reflect loaded works only.',
+    atelier_oeuvres_load_more: 'Load next batch',
     constellation: 'Constellation', production: 'Production',
     logistics: 'Logistics', sales: 'Sales',
     exhibitions: 'Exhibitions', vault: 'Vault',
@@ -1140,10 +1217,16 @@ $env:OLLAMA_HOST="127.0.0.1:11435"; ollama run llama3.2:1b`,
     searchFieldAll: 'All', searchFieldName: 'Name', searchFieldCity: 'City',
     searchFieldEmail: 'Email', searchFieldNotes: 'Notes',
     identity: 'Identity', depth: 'Depth', confidentiality: 'Confidentiality',
-    history: 'History', save: 'Save', create: 'Create',
+    history: 'History', save: 'Save', btn_confirm: 'Confirm', create: 'Create',
     system_download_site_checklist: '✦ Download site map checklist (PDF)',
     system_checklist_building: 'Building PDF…',
     system_checklist_error_prefix: 'Checklist error:',
+    system_ledger_ref_copy: 'Copy reference (Markdown)',
+    system_ledger_ref_download: 'Download reference (.md)',
+    system_ledger_ref_loading: 'Loading…',
+    system_ledger_ref_error_prefix: 'Reference:',
+    system_ledger_ref_clipboard_ok: 'Copied to clipboard.',
+    system_ledger_ref_clipboard_failed: 'Could not write to the clipboard (permissions or insecure context).',
     priced: 'Priced', date: 'Date', label: 'Label',
     selection: 'SELECTION', modify: 'MODIFY', export: 'EXPORT',
     compare: 'COMPARE', groupNamePlaceholder: 'Group name…', clear: 'Clear',
@@ -1297,6 +1380,8 @@ $env:OLLAMA_HOST="127.0.0.1:11435"; ollama run llama3.2:1b`,
     wf_section_production: '2. Production state',
     wf_section_ownership: '3. Ownership & circulation',
     wf_section_finance: '4. Finances',
+    wf_in_selection_short: '✓ Sel.',
+    wf_add_selection_short: '+ Sel.',
     wf_themes_series: 'Themes / series',
     wf_comments: 'Comments',
     wf_comments_placeholder: 'Internal notes…',
@@ -1392,6 +1477,8 @@ $env:OLLAMA_HOST="127.0.0.1:11435"; ollama run llama3.2:1b`,
     wf_paid: 'Paid',
     wf_due: 'Due',
     wf_new_contact: 'New contact',
+    wf_drawer_expand: 'Expand panel',
+    wf_drawer_collapse: 'Collapse panel',
     wf_images_heading: 'Images',
     wf_images_save_first_hint:
       'Save the record to get a work ID, then you can add photos here.',
@@ -1885,5 +1972,49 @@ $env:OLLAMA_HOST="127.0.0.1:11435"; ollama run llama3.2:1b`,
     concept_convert_err: 'Conversion failed',
     concept_tab_aria: 'Concepts and ideas',
     concept_sketch_stored: 'Scan stored',
+    tab_reports: 'Reports',
+    const_allThemes: 'All themes',
+    const_allGroups: 'All groups',
+    report_title: 'Works reports',
+    report_subtitle:
+      'Filter the inventory, choose columns, then export to XLSX, HTML or PDF.',
+    report_filters_heading: 'Filters',
+    report_columns_heading: 'Columns',
+    report_preview_heading: 'Preview',
+    report_selection_only: 'Selection only ({n})',
+    report_row_count_fmt: '{n} rows',
+    report_preview_truncated:
+      'Preview limited to 200 rows — the export contains every filtered row.',
+    report_sort_label: 'Sort by',
+    report_sort_id: 'ID',
+    report_sort_title: 'Title',
+    report_sort_year: 'Year',
+    report_sort_price: 'Price',
+    report_export_xlsx: 'Export XLSX',
+    report_export_html: 'Export HTML',
+    report_export_pdf: 'Export PDF',
+    report_pdf_no_columns: 'At least one column must be visible.',
+    report_pdf_empty: 'No works match the filters.',
+    report_pdf_too_many: 'Too many rows for PDF (limit {max}). Narrow the filters.',
+    report_pdf_auth: 'Sign-in required to generate the PDF.',
+    report_pdf_fail: 'Failed to generate the PDF.',
+    report_status_private_archive: 'Private archive',
+    report_col_id: 'ID',
+    report_col_title: 'Title',
+    report_col_year: 'Year',
+    report_col_technique: 'Technique',
+    report_col_support: 'Support',
+    report_col_format: 'Format',
+    report_col_dimensions: 'Dimensions',
+    report_col_price: 'Price',
+    report_col_status: 'Status',
+    report_col_contact: 'Contact',
+    report_col_buyer: 'Buyer',
+    report_col_location: 'Location',
+    report_col_themes: 'Themes',
+    report_col_groups: 'Groups',
+    report_col_catalogued: 'Catalogued',
+    report_col_exposable: 'Exhibitable',
+    report_col_notes: 'Notes',
   },
 }

@@ -114,7 +114,7 @@ export function WorkDrawerImageArea(p: WorkDrawerImageAreaProps) {
       )}
       <div
         ref={imgContainerRef}
-        style={{ width: '100%', overflow: 'hidden', background: 'transparent', cursor: imgZoom > 1 ? 'grab' : 'default', userSelect: 'none', marginBottom: 16 }}
+        style={{ width: '100%', overflow: 'hidden', background: 'var(--bg1)', cursor: imgZoom > 1 ? 'grab' : 'default', userSelect: 'none', marginBottom: 16 }}
         onMouseDown={(e) => {
           if (imgZoom > 1) {
             isDragging.current = true
@@ -163,12 +163,16 @@ export function WorkDrawerImageArea(p: WorkDrawerImageAreaProps) {
                     height: 'auto',
                     maxHeight: previewMaxHeight,
                     objectFit: 'contain',
+                    objectPosition: 'center',
                     display: 'block',
+                    opacity: showFullPreviewLayer && fullPreviewReady ? 0 : 1,
+                    transition: 'opacity 120ms ease-out',
                   }}
                 />
                 {showFullPreviewLayer && fullPreviewSrc ? (
                   <img
                     key={`drawer-full-${activeImgPath}`}
+                    className={fullPreviewReady ? 'work-drawer-full-reveal' : undefined}
                     draggable={false}
                     src={fullPreviewSrc}
                     alt=""
@@ -183,11 +187,16 @@ export function WorkDrawerImageArea(p: WorkDrawerImageAreaProps) {
                       position: 'absolute',
                       left: 0,
                       top: 0,
-                      width: '100%',
-                      height: '100%',
+                      right: 0,
+                      bottom: 0,
+                      width: 'auto',
+                      height: 'auto',
+                      maxWidth: '100%',
+                      maxHeight: '100%',
+                      margin: 'auto',
                       objectFit: 'contain',
+                      objectPosition: 'center',
                       opacity: fullPreviewReady ? 1 : 0,
-                      transition: 'opacity 0.22s ease-out',
                       pointerEvents: 'none',
                     }}
                   />

@@ -43,6 +43,7 @@ import {
   type OwnStageId,
   type ProdStageId,
 } from '@/lib/work-editor-model'
+import type { ContactAddress } from '@/components/atelier/contact-editor-types'
 
 // ── Props ─────────────────────────────────────────────────────────────────
 
@@ -55,7 +56,7 @@ interface Props {
   themes:          { id:          number; name:      string        }[]
   contacts:        any[]
   initialImages?:  WorkImage[]
-  addresses?:      any[]
+  addresses?:      ContactAddress[]
   groups:          { id: string; name: string }[]
   currentGroupIds: string[]
   activeConsignment?: any

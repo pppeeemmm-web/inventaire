@@ -12,7 +12,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useI18n } from '@/lib/i18n/context'
 import { WorkThumb } from './WorkThumb'
-import type { Oeuvre } from '@/lib/types/database'
+import type { Oeuvre, SuiviReminderListRow } from '@/lib/types/database'
 import type { TeamPortalClientProps } from '@/components/atelier/team-portal-types'
 import { yearOf, formatInventoryDims } from '@/lib/data'
 import { computePipelinePulseItems, daysUntil, type PipelinePulseItem } from '@/lib/pipeline-deadlines'
@@ -28,6 +28,10 @@ import { WorkDrawer, type WorkDrawerGuardHandle } from '@/components/atelier/Wor
 import { CurationDock }        from '@/components/atelier/CurationDock'
 import { fetchContactConflicts } from '@/app/atelier/contacts/conflicts-actions'
 import { loadOeuvreLongText } from '@/app/atelier/works/actions'
+import { fetchOeuvresKeysetPage } from '@/app/atelier/works/actions'
+import { revalidateRemindersTag } from '@/app/atelier/reminders-actions'
+import { fetchAtelierContactAddresses } from '@/app/atelier/atelier-data-actions'
+import type { ContactAddress } from '@/components/atelier/contact-editor-types'
 import { createWorkingGroupWithOeuvres } from '@/app/atelier/selection/actions'
 import { PemThemeToggle } from '@/components/PemThemeToggle'
 import { ExhibitionsTabSkeleton } from '@/components/atelier/ExhibitionsTabSkeleton'
@@ -85,10 +89,13 @@ export type { TeamPortalClientProps }
 // ── Component ────────────────────────────────────────────────────────
 
 export function TeamPortalClient({
-  oeuvres, techniques, supports, formats, themes, contacts,
-  statusLabelMap, initialGroups, presentations, exhibitions,
+  initialPendingReviewCount = 0,
+  initialReminderUnread = 0,
+  initialReminders = [],
+  oeuvresPaging,
+  oeuvres: oeuvresChunk, techniques, supports, formats, themes, contacts,
+  statusLabelMap, initialGroups, presentations,
   themeWorkCount = {}, groupWorkCount = {},
-  addresses = [],
   themePublicStats = {},
   themePrivateWorks = {},
   groupPrivateWorks = {},
@@ -99,6 +106,47 @@ export function TeamPortalClient({
 }: TeamPortalClientProps) {
   const { t, lang, setLang } = useI18n()
   const router = useRouter()
+
+  const [pendingReviewCount, setPendingReviewCount] = useState(initialPendingReviewCount)
+  useEffect(() => {
+    setPendingReviewCount(initialPendingReviewCount)
+  }, [initialPendingReviewCount])
+
+  const onRemindersMutated = useCallback(async () => {
+    await revalidateRemindersTag()
+    router.refresh()
+  }, [router])
+
+  const [oeuvres, setOeuvres] = useState<Oeuvre[]>(oeuvresChunk)
+  const [oeuvresNextCursor, setOeuvresNextCursor] = useState<number | null>(oeuvresPaging?.nextCursor ?? null)
+  const [oeuvresMoreLoading, setOeuvresMoreLoading] = useState(false)
+
+  useEffect(() => {
+    setOeuvres(oeuvresChunk)
+    setOeuvresNextCursor(oeuvresPaging?.nextCursor ?? null)
+  }, [oeuvresChunk, oeuvresPaging])
+
+  const loadMoreOeuvres = useCallback(async () => {
+    if (oeuvresNextCursor == null || oeuvresPaging == null) return
+    setOeuvresMoreLoading(true)
+    try {
+      const { rows, nextCursor, hasMore } = await fetchOeuvresKeysetPage(
+        oeuvresNextCursor,
+        oeuvresPaging.pageSize,
+      )
+      setOeuvres((prev) => {
+        const seen = new Set(prev.map((o) => o.OeuvreID))
+        const add = rows.filter((o) => !seen.has(o.OeuvreID))
+        return [...prev, ...add]
+      })
+      setOeuvresNextCursor(hasMore ? nextCursor : null)
+    } catch (e) {
+      console.error('loadMoreOeuvres', e)
+      toast.error(t('error'))
+    } finally {
+      setOeuvresMoreLoading(false)
+    }
+  }, [oeuvresNextCursor, oeuvresPaging, t])
   
   const [inspected,  setInspected]  = useState<Oeuvre | null>(null)
   const workDrawerGuardRef = useRef<WorkDrawerGuardHandle>(null)
@@ -178,7 +226,7 @@ export function TeamPortalClient({
   // Always start with 'overview' on server and client — prevents hydration mismatch.
   // Restore last tab from localStorage after first paint.
   const [tab,            setTab]          = useState<Tab>('overview')
-  const [reminderCount,  setReminderCount] = useState(0)
+  const [reminderCount,  setReminderCount] = useState(initialReminderUnread)
 
   useLayoutEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -217,15 +265,9 @@ export function TeamPortalClient({
     return () => clearTimeout(id as ReturnType<typeof setTimeout>)
   }, [])
 
-  // Poll unread reminders for the landing badge
   useEffect(() => {
-    const sb = createClient()
-    ;(sb.from('suivi_reminder') as any)
-      .select('id', { count: 'exact', head: true })
-      .eq('lu', false)
-      .then(({ count }: { count: number | null }) => setReminderCount(count ?? 0))
-      .catch(err => console.error("Reminder Poll Error:", err))
-  }, [])
+    setReminderCount(initialReminderUnread)
+  }, [initialReminderUnread])
 
   const [selection,  setSelection]  = useState<Set<number>>(new Set())
   const [groups,     setGroups]     = useState<{ id: string; name: string }[]>(
@@ -258,6 +300,18 @@ export function TeamPortalClient({
 
   const [conflicts,      setConflicts]      = useState<any[]>([])
   const [isAdmin,        setIsAdmin]        = useState(false)
+  const [curationAddresses, setCurationAddresses] = useState<ContactAddress[]>([])
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const rows = await fetchAtelierContactAddresses()
+      if (!cancelled) setCurationAddresses(rows)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     fetchContactConflicts().then(setConflicts).catch((err) => console.error('Contact conflicts:', err))
@@ -357,6 +411,39 @@ export function TeamPortalClient({
     [selection],
   )
 
+  const TABS_RAW: [Tab, string, number?][] = useMemo(
+    () => [
+      ['overview',      t('overview')],
+      ['inventory',     t('inventory'), oeuvres.length],
+      ['reports',       t('tab_reports')],
+      ['constellation', t('constellation')],
+      ['production',    t('production')],
+      ['logistics',     t('logistics')],
+      ['sales',         t('sales')],
+      ['exhibitions',   t('exhibitions')],
+      ['vault',         t('vault')],
+      ['contacts',      t('contacts'), contacts.length],
+      ['pipeline',      t('pipeline')],
+      ['map',           t('map')],
+      ['fiscal',        t('fiscal')],
+      ['concepts',      t('concepts')],
+      ['themes',        t('themes')],
+      ['portfolio',     t('tab_portfolio')],
+      ['broadcast',     t('tab_broadcast')],
+      ['stock',         t('tab_stock')],
+      ['stock-take',    t('tab_stock_take')],
+      ['system',        t('tab_system')],
+      [
+        'audit',
+        t('tab_audit'),
+        isAdmin && pendingReviewCount > 0 ? pendingReviewCount : undefined,
+      ],
+    ],
+    [t, oeuvres.length, contacts.length, isAdmin, pendingReviewCount],
+  )
+
+  const activeTabLabel = TABS_RAW.find((x) => x[0] === tab)?.[1] ?? ''
+
   // ── Save working group (Supabase) ──────────────────────────────
 
   const handleSaveGroup = useCallback(async (name: string, ids: number[]): Promise<string | null> => {
@@ -383,34 +470,7 @@ export function TeamPortalClient({
     )
   }
 
-  // ── Tab definitions ────────────────────────────────────────────
-
-
-  const TABS_RAW: [Tab, string, number?][] = [
-    ['overview',      t('overview')],
-    ['inventory',     t('inventory'), oeuvres.length],
-    ['reports',       t('tab_reports')],
-    ['constellation', t('constellation')],
-    ['production',    t('production')],
-    ['logistics',     t('logistics')],
-    ['sales',         t('sales')],
-    ['exhibitions',   t('exhibitions')],
-    ['vault',         t('vault')],
-    ['contacts',      t('contacts'), contacts.length],
-    ['pipeline',      t('pipeline')],
-    ['map',           t('map')],
-    ['fiscal',        t('fiscal')],
-    ['concepts',      t('concepts')],
-    ['themes',        t('themes')],
-    ['portfolio',     t('tab_portfolio')],
-    ['broadcast',     t('tab_broadcast')],
-    ['stock',         t('tab_stock')],
-    ['stock-take',    t('tab_stock_take')],
-    ['system',        t('tab_system')],
-    ['audit',         t('tab_audit')],
-  ]
-
-  const activeTabLabel = TABS_RAW.find(x => x[0] === tab)?.[1] ?? ''
+  // ── Tab definitions (GROUPS) ───────────────────────────────────
 
   /** Desktop: classic studio order. Narrow (`<=767px`): field-tool first — inventory-led; ops split so each tab appears once. */
   const configNavTabs: Tab[] = isAdmin ? ['system', 'audit'] : ['system']
@@ -518,6 +578,39 @@ export function TeamPortalClient({
           </button>
         </div>
       </div>
+
+      {oeuvresPaging && oeuvresNextCursor != null && (
+        <div
+          data-testid="atelier-oeuvres-paging-bar"
+          className="t-mono-sm"
+          style={{
+            flexShrink: 0,
+            padding: '8px max(12px, env(safe-area-inset-right)) 8px max(12px, env(safe-area-inset-left))',
+            borderBottom: '1px solid var(--bd)',
+            background: 'var(--bg2)',
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            gap: 10,
+            rowGap: 8,
+          }}
+        >
+          <span style={{ color: 'var(--tx2)', fontSize: 11, flex: '1 1 200px', minWidth: 0 }}>
+            {t('atelier_oeuvres_paging_hint')
+              .replace('{loaded}', String(oeuvres.length))
+              .replace('{total}', String(oeuvresPaging.totalCount))}
+          </span>
+          <button
+            type="button"
+            className="btn primary sm"
+            disabled={oeuvresMoreLoading}
+            onClick={() => void loadMoreOeuvres()}
+            style={{ minHeight: 44, flexShrink: 0 }}
+          >
+            {oeuvresMoreLoading ? '…' : t('atelier_oeuvres_load_more')}
+          </button>
+        </div>
+      )}
 
       <div style={{ flex: 1, display: 'flex', minHeight: 0, minWidth: 0 }}>
         {atelierNarrow && sidebarOpen && (
@@ -650,6 +743,7 @@ export function TeamPortalClient({
             lang={lang}
             onGoTab={handleSetTab}
             reminderCount={reminderCount}
+            initialReminders={initialReminders}
             isAdmin={isAdmin}
             conflicts={conflicts}
           />
@@ -781,7 +875,13 @@ export function TeamPortalClient({
         )}
         {tab === 'pipeline' && (
           <div style={{ flex: 1, display: 'flex', minHeight: 0, minWidth: 0 }}>
-            <PipelineTab oeuvres={oeuvres} contacts={contacts} groups={groups} />
+            <PipelineTab
+              oeuvres={oeuvres}
+              contacts={contacts}
+              groups={groups}
+              initialReminders={initialReminders}
+              onRemindersMutated={onRemindersMutated}
+            />
           </div>
         )}
         {tab === 'fiscal' && (
@@ -870,7 +970,7 @@ export function TeamPortalClient({
             sessionStorage.setItem('pem_curation_trigger', 'true')
             handleSetTab('constellation')
           }}
-          addresses={addresses ?? []}
+          addresses={curationAddresses}
           onSaveGroup={handleSaveGroup}
           onCompare={() => setShowCompare(true)}
         />
@@ -883,7 +983,7 @@ export function TeamPortalClient({
           oeuvres={oeuvres}
           tM={tM} sM={sM}
           contacts={contacts}
-          addresses={addresses}
+          addresses={curationAddresses}
           statusLabelMap={statusLabelMap}
           onClose={() => setShowCompare(false)}
         />
@@ -914,7 +1014,7 @@ function mondayStartOfWeek(d: Date) {
 }
 
 function OverviewTab({
-  oeuvres, tM, t, lang, onGoTab, reminderCount, isAdmin, conflicts,
+  oeuvres, tM, t, lang, onGoTab, reminderCount, initialReminders, isAdmin, conflicts,
 }: {
   oeuvres:       Oeuvre[]
   tM:            Record<number, string>
@@ -922,6 +1022,7 @@ function OverviewTab({
   lang:          Lang
   onGoTab:       (tab: Tab) => void
   reminderCount: number
+  initialReminders: SuiviReminderListRow[]
   isAdmin:       boolean
   conflicts:     any[]
 }) {
@@ -982,16 +1083,11 @@ function OverviewTab({
       })
 
     void (async () => {
-      const [{ data: procs }, { data: etapes }, { data: remAll }] = await Promise.all([
+      const [{ data: procs }, { data: etapes }] = await Promise.all([
         (sb.from('suivi_process') as any)
           .select('id, nom, type, date_fin, deadline_time, statut')
           .not('statut', 'in', '("perdu","annule","termine")'),
         (sb.from('suivi_etape') as any).select('id, process_id, nom, statut, date_echeance, overdue_override, position').order('position'),
-        (sb.from('suivi_reminder') as any)
-          .select('id, message, remind_at, process_id')
-          .eq('lu', false)
-          .order('remind_at')
-          .limit(100),
       ])
       const etapeMap: Record<string, { id: string; nom: string; statut: string; date_echeance: string | null; overdue_override: boolean }[]> = {}
       for (const e of etapes ?? []) {
@@ -1014,7 +1110,7 @@ function OverviewTab({
         etapes: etapeMap[p.id] ?? [],
       }))
       setUpcoming(computePipelinePulseItems(processes).slice(0, 8))
-      const rems = remAll ?? []
+      const rems = initialReminders
       setReminders(rems.slice(0, 6))
       setOverviewCalEvents(buildPipelineCalendarEvents(processes, rems))
     })()
@@ -1026,7 +1122,7 @@ function OverviewTab({
       .order('energie', { ascending: false })
       .limit(5)
       .then(({ data }: { data: any[] | null }) => { if (data) setBurningConcepts(data) })
-  }, [thisYear])
+  }, [thisYear, initialReminders])
 
   const byTech = oeuvres.reduce<Record<string, number>>((acc, o) => {
     const k = String(o.Technique ?? 'unknown')
@@ -1363,7 +1459,7 @@ function CompareModal({ ids, oeuvres, tM, sM, contacts, addresses, statusLabelMa
   tM:              Record<number, string>
   sM:              Record<number, string>
   contacts:        any[]
-  addresses:       any[]
+  addresses:       ContactAddress[]
   statusLabelMap:  Record<number, string>
   onClose:         () => void
 }) {

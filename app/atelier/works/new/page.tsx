@@ -36,7 +36,7 @@ export default async function NewWorkPage() {
       themes={themes ?? []}
       contacts={contacts ?? []}
       statuses={statuses ?? []}
-      addresses={addresses ?? []}
+      addresses={(addresses ?? []) as import('@/components/atelier/contact-editor-types').ContactAddress[]}
       groups={groups ?? []}
       currentGroupIds={[]}
       activeConsignment={null}
