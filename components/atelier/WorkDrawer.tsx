@@ -1,6 +1,6 @@
 'use client'
 
-import { createClient } from '@/lib/supabase/client'
+import { listWorkDrawerImages } from '@/app/atelier/works/actions'
 import {
   useEffect,
   useLayoutEffect,
@@ -119,17 +119,18 @@ export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function Work
     setWorkImages([])
     setActiveImgIdx(-1)
     if (!o?.OeuvreID) return
-    createClient()
-      .from('tblImage')
-      .select('ImageID, txtImageNameLink, SeqNo')
-      .eq('OeuvreID', o.OeuvreID)
-      .order('SeqNo', { ascending: true })
-      .then(({ data }) => {
-        if (data && data.length > 0) {
-          setWorkImages(data)
-          setActiveImgIdx(data.length - 1)
-        }
-      })
+    const id = o.OeuvreID
+    let cancelled = false
+    void listWorkDrawerImages(id).then((rows) => {
+      if (cancelled) return
+      if (rows.length > 0) {
+        setWorkImages(rows)
+        setActiveImgIdx(rows.length - 1)
+      }
+    })
+    return () => {
+      cancelled = true
+    }
   }, [o?.OeuvreID])
 
   useEffect(() => {

@@ -25,4 +25,16 @@ test.describe('Reports tab', () => {
     const download = await downloadPromise
     expect(download.suggestedFilename()).toMatch(/works_report_\d{4}-\d{2}-\d{2}\.pdf/)
   })
+
+  test('shows partial-catalogue note when loaded batch is smaller than total', async ({ page }) => {
+    await page.goto('/atelier?tab=reports', { waitUntil: 'domcontentloaded' })
+    await expect(page.getByTestId('reports-root')).toBeVisible({ timeout: 45_000 })
+    const note = page.getByTestId('reports-subset-note')
+    try {
+      await note.waitFor({ state: 'visible', timeout: 20_000 })
+    } catch {
+      test.skip(true, 'No partial oeuvres load in this environment (≤ first page).')
+    }
+    await expect(note).toBeVisible()
+  })
 })

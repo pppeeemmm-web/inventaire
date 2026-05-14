@@ -2,6 +2,7 @@ import { useState, useMemo, type MouseEvent } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { thumbUrl } from '@/lib/data'
 import { useI18n } from '@/lib/i18n/context'
+import { useMediaQuery } from '@/lib/useMediaQuery'
 import type { Oeuvre } from '@/lib/types/database'
 
 interface Theme  { id: number; name: string }
@@ -17,6 +18,8 @@ interface Props {
   themeToGroups?:      Record<number, string[]>
   groupToThemes?:      Record<string, number[]>
   oeuvres:             Oeuvre[]
+  /** When set and greater than `oeuvres.length`, show partial-catalogue note. */
+  oeuvresCatalogueTotal?: number
   onOpen:              (o: Oeuvre) => void
   tM:                  Record<number, string>
 }
@@ -25,10 +28,11 @@ export function ThemesTab({
   initialThemes, initialGroups, themeWorkCount, groupWorkCount,
   themePrivateWorks = {}, groupPrivateWorks = {},
   themeToGroups = {}, groupToThemes = {},
-  oeuvres, onOpen, tM
+  oeuvres, oeuvresCatalogueTotal, onOpen, tM
 }: Props) {
   const sb = createClient()
   const { t } = useI18n()
+  const narrow = useMediaQuery('(max-width: 767px)')
 
   const [themes,     setThemes]     = useState<Theme[]>(initialThemes)
   const [groups,     setGroups]     = useState<Group[]>(initialGroups)
@@ -247,24 +251,91 @@ export function ThemesTab({
 
   const previewWorks = allWorksInCategory
 
+  const mosaicColCount = useMemo(() => {
+    const n = previewWorks.length
+    let c = 1
+    if (n > 1) c = 2
+    if (n > 4) c = 3
+    if (n > 9) c = 4
+    if (n > 16) c = 5
+    if (n > 25) c = 6
+    if (n > 36) c = 7
+    if (n > 49) c = 8
+    if (n > 64) c = 10
+    if (n > 100) c = 12
+    return narrow ? Math.min(c, 3) : c
+  }, [previewWorks.length, narrow])
+
+  const padX = narrow
+    ? 'max(12px, env(safe-area-inset-left)) max(12px, env(safe-area-inset-right))'
+    : '40px'
+  const padY = narrow ? 'max(12px, env(safe-area-inset-top))' : '40px'
+
   return (
-    <div style={{ padding: '40px', width: '100%', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, background: 'var(--bg0)' }}>
+    <div
+      style={{
+        padding: `${padY} ${padX}`,
+        width: '100%',
+        maxWidth: '100%',
+        boxSizing: 'border-box',
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: 0,
+        background: 'var(--bg0)',
+        overflowX: 'hidden',
+      }}
+    >
       {msg && <div className="flash-msg">{msg.toUpperCase()}</div>}
 
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: '280px 1fr 300px', 
-        gap: '40px', 
-        width: '100%', 
-        flex: 1,
-        minHeight: 0,
-        alignItems: 'start'
-      }}>
+      {oeuvresCatalogueTotal != null && oeuvresCatalogueTotal > oeuvres.length && (
+        <div
+          data-testid="atelier-themes-subset-note"
+          className="t-mono-sm"
+          style={{
+            marginBottom: 12,
+            padding: `8px max(12px, env(safe-area-inset-left)) 8px max(12px, env(safe-area-inset-right))`,
+            border: '1px solid var(--bd)',
+            background: 'var(--bg2)',
+            color: 'var(--tx2)',
+            fontSize: 11,
+            lineHeight: 1.45,
+            maxWidth: '100%',
+          }}
+        >
+          {t('atelier_oeuvres_subset_banner')
+            .replace('{loaded}', String(oeuvres.length))
+            .replace('{total}', String(oeuvresCatalogueTotal))}
+        </div>
+      )}
+
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: narrow ? 'minmax(0, 1fr)' : '280px 1fr 300px',
+          gap: narrow ? 20 : 40,
+          width: '100%',
+          flex: 1,
+          minHeight: 0,
+          minWidth: 0,
+          alignItems: 'start',
+        }}
+      >
 
         {/* ── LEFT: THEMES ── */}
-        <section style={{ position: 'sticky', top: 0, maxHeight: 'calc(100vh - 160px)', overflowY: 'auto', paddingRight: 10 }}>
-          <header style={{ marginBottom: 32, paddingBottom: 16, borderBottom: '1px solid var(--bd)' }}>
-            <h2 className="serif" style={{ fontSize: 28, margin: 0, color: 'var(--tx)' }}>{t('themesSection')}</h2>
+        <section
+          style={{
+            position: narrow ? 'static' : 'sticky',
+            top: 0,
+            maxHeight: narrow ? 'none' : 'calc(100vh - 160px)',
+            overflowY: narrow ? 'visible' : 'auto',
+            paddingRight: narrow ? 0 : 10,
+            width: '100%',
+            minWidth: 0,
+          }}
+        >
+          <header style={{ marginBottom: narrow ? 16 : 32, paddingBottom: 16, borderBottom: '1px solid var(--bd)' }}>
+            <h2 className="serif" style={{ fontSize: narrow ? 22 : 28, margin: 0, color: 'var(--tx)' }}>{t('themesSection')}</h2>
             <div className="t-mono-sm" style={{ fontSize: 9, color: 'var(--tx3)', letterSpacing: 2, marginTop: 8 }}>{themes.length} COLLECTIONS</div>
           </header>
           
@@ -276,29 +347,35 @@ export function ThemesTab({
                 <div key={t_.id} 
                   className={`row-item ${isHov ? 'hov' : ''} ${isRel ? 'rel' : ''}`}
                   onMouseEnter={() => { setHoverTheme(t_.id); setHoverGroup(null) }} 
+                  onClick={() => {
+                    if (!narrow || editTheme === t_.id) return
+                    setHoverTheme(t_.id)
+                    setHoverGroup(null)
+                  }}
                   onContextMenu={(e) => onThemeRowContextMenu(t_, e)}
                   title="Clic droit : renommer · Ctrl+clic droit : supprimer"
                   style={{ 
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '12px 16px', borderRadius: 4, transition: 'all 0.2s',
+                    minHeight: narrow ? 44 : undefined,
+                    padding: narrow ? '10px 12px' : '12px 16px', borderRadius: 4, transition: 'all 0.2s',
                     background: isHov ? 'var(--bg1)' : isRel ? 'rgba(var(--ac-rgb), 0.05)' : 'transparent',
                     borderLeft: isRel ? '2px solid var(--ac)' : '2px solid transparent',
                     cursor: 'default'
                   }}
                 >
                   {editTheme === t_.id ? (
-                    <div style={{ display: 'flex', gap: 8, flex: 1 }}>
-                      <input autoFocus value={editVal} onChange={e => setEditVal(cap(e.target.value))} style={{ flex: 1, fontSize: 13, background: 'var(--bg2)', border: '1px solid var(--bd)', color: 'var(--tx)', padding: '4px 8px' }} onKeyDown={e => e.key === 'Enter' && saveTheme(t_.id)} />
-                      <button className="btn sm primary" onClick={() => saveTheme(t_.id)}>OK</button>
+                    <div style={{ display: 'flex', gap: 8, flex: 1, minWidth: 0 }}>
+                      <input autoFocus value={editVal} onChange={e => setEditVal(cap(e.target.value))} style={{ flex: 1, minWidth: 0, fontSize: 13, background: 'var(--bg2)', border: '1px solid var(--bd)', color: 'var(--tx)', padding: '4px 8px' }} onKeyDown={e => e.key === 'Enter' && saveTheme(t_.id)} />
+                      <button type="button" className="btn sm primary" style={{ minHeight: 44, flexShrink: 0 }} onClick={() => saveTheme(t_.id)}>OK</button>
                     </div>
                   ) : (
                     <>
-                      <span style={{ fontSize: 14, fontWeight: isHov ? 600 : 400, color: isHov ? 'var(--tx)' : 'var(--tx2)' }}>{t_.name}</span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <span style={{ fontSize: 14, fontWeight: isHov ? 600 : 400, color: isHov ? 'var(--tx)' : 'var(--tx2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, paddingRight: 8 }}>{t_.name}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
                         <span className="t-mono-sm" style={{ fontSize: 11, opacity: 0.4 }}>{themeWorkCount[t_.id] ?? 0}</span>
-                        <div className="item-actions" style={{ display: 'flex', gap: 4, opacity: isHov ? 1 : 0 }}>
-                          <button onClick={() => { setEditTheme(t_.id); setEditVal(t_.name) }} style={{ background: 'none', border: 'none', color: 'var(--tx3)', cursor: 'pointer', padding: 4 }}>✎</button>
-                          <button onClick={() => deleteTheme(t_.id)} style={{ background: 'none', border: 'none', color: 'var(--rust)', cursor: 'pointer', padding: 4 }}>✕</button>
+                        <div className="item-actions" style={{ display: 'flex', gap: 4, opacity: narrow || isHov ? 1 : 0 }}>
+                          <button type="button" aria-label={t('edit')} onClick={(e) => { e.stopPropagation(); setEditTheme(t_.id); setEditVal(t_.name) }} style={{ minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', color: 'var(--tx3)', cursor: 'pointer', padding: 0 }}>✎</button>
+                          <button type="button" aria-label={t('delete')} onClick={(e) => { e.stopPropagation(); deleteTheme(t_.id) }} style={{ minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', color: 'var(--rust)', cursor: 'pointer', padding: 0 }}>✕</button>
                         </div>
                       </div>
                     </>
@@ -308,15 +385,15 @@ export function ThemesTab({
             })}
           </div>
 
-          <div style={{ marginTop: 32, padding: 20, background: 'var(--bg1)', border: '1px solid var(--bd)', borderRadius: 4 }}>
+          <div style={{ marginTop: narrow ? 20 : 32, padding: narrow ? 14 : 20, background: 'var(--bg1)', border: '1px solid var(--bd)', borderRadius: 4 }}>
             <input 
               placeholder={t('newTheme')} 
               value={newTheme} 
               onChange={e => setNewTheme(cap(e.target.value))} 
               onKeyDown={e => e.key === 'Enter' && addTheme()} 
-              style={{ width: '100%', marginBottom: 12, fontSize: 13, background: 'var(--bg0)', border: '1px solid var(--bd)', padding: '10px 14px', color: 'var(--tx)' }} 
+              style={{ width: '100%', boxSizing: 'border-box', marginBottom: 12, fontSize: 13, background: 'var(--bg0)', border: '1px solid var(--bd)', padding: '10px 14px', color: 'var(--tx)' }} 
             />
-            <button className="btn primary block sm" onClick={addTheme} disabled={busy || !newTheme.trim()} style={{ width: '100%', fontSize: 10, letterSpacing: 1.5 }}>
+            <button type="button" className="btn primary block sm" onClick={addTheme} disabled={busy || !newTheme.trim()} style={{ width: '100%', minHeight: 44, fontSize: 10, letterSpacing: 1.5 }}>
               + {t('create').toUpperCase()}
             </button>
           </div>
@@ -326,16 +403,18 @@ export function ThemesTab({
         <div style={{ 
           display: 'flex', 
           flexDirection: 'column', 
-          gap: 32, 
+          gap: narrow ? 16 : 32, 
           width: '100%', 
           minHeight: 0,
-          maxHeight: 'calc(100vh - 160px)' 
+          minWidth: 0,
+          maxHeight: narrow ? 'min(55vh, 520px)' : 'calc(100vh - 160px)',
         }}>
           <div style={{ 
             flex: 1, 
             display: 'flex', 
             flexDirection: 'column', 
             minHeight: 0,
+            minWidth: 0,
             background: 'var(--bg1)', 
             border: '1px solid var(--bd)', 
             borderRadius: 8,
@@ -343,22 +422,11 @@ export function ThemesTab({
             boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
           }}>
             {previewWorks.length > 0 ? (
-              <div className="mosaic-scroll" style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+              <div className="mosaic-scroll" style={{ flex: 1, overflowY: 'auto', padding: narrow ? 12 : 24 }}>
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: `repeat(${
-                    previewWorks.length <= 1 ? 1
-                    : previewWorks.length <= 4 ? 2
-                    : previewWorks.length <= 9 ? 3
-                    : previewWorks.length <= 16 ? 4
-                    : previewWorks.length <= 25 ? 5
-                    : previewWorks.length <= 36 ? 6
-                    : previewWorks.length <= 49 ? 7
-                    : previewWorks.length <= 64 ? 8
-                    : previewWorks.length <= 100 ? 10
-                    : 12
-                  }, 1fr)`,
-                  gap: previewWorks.length <= 4 ? 20 : previewWorks.length <= 16 ? 12 : 6,
+                  gridTemplateColumns: `repeat(${mosaicColCount}, minmax(0, 1fr))`,
+                  gap: previewWorks.length <= 4 ? (narrow ? 10 : 20) : previewWorks.length <= 16 ? 12 : 6,
                   width: '100%',
                   alignContent: 'start'
                 }}>
@@ -398,17 +466,19 @@ export function ThemesTab({
             
             {allWorksInCategory.length > 0 && (
               <div style={{ 
-                padding: '16px 24px', 
+                padding: narrow ? '12px 14px' : '16px 24px', 
                 borderTop: '1px solid var(--bd)', 
                 background: 'var(--bg2)', 
                 display: 'flex', 
                 justifyContent: 'space-between', 
-                alignItems: 'center'
+                alignItems: 'center',
+                gap: 10,
+                flexWrap: narrow ? 'wrap' : 'nowrap',
               }}>
-                <div className="t-mono-sm" style={{ fontSize: 10, letterSpacing: 1, color: 'var(--tx)' }}>
+                <div className="t-mono-sm" style={{ fontSize: 10, letterSpacing: 1, color: 'var(--tx)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {hoverTheme ? themes.find(t => t.id === hoverTheme)?.name : hoverGroup ? groups.find(g => g.id === hoverGroup)?.name : ''}
                 </div>
-                <div className="t-mono-sm" style={{ fontSize: 10, letterSpacing: 1.5, fontWeight: 700, color: 'var(--ac)' }}>
+                <div className="t-mono-sm" style={{ fontSize: 10, letterSpacing: 1.5, fontWeight: 700, color: 'var(--ac)', flexShrink: 0 }}>
                   {allWorksInCategory.length} WORKS DISPLAYED
                 </div>
               </div>
@@ -417,12 +487,24 @@ export function ThemesTab({
         </div>
 
         {/* ── RIGHT: GROUPS & ANALYTICS ── */}
-        <aside style={{ position: 'sticky', top: 0, maxHeight: 'calc(100vh - 160px)', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 32 }}>
+        <aside
+          style={{
+            position: narrow ? 'static' : 'sticky',
+            top: 0,
+            maxHeight: narrow ? 'none' : 'calc(100vh - 160px)',
+            overflowY: narrow ? 'visible' : 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: narrow ? 20 : 32,
+            width: '100%',
+            minWidth: 0,
+          }}
+        >
           
           {/* GROUPS */}
           <section>
             <header style={{ marginBottom: 24, paddingBottom: 16, borderBottom: '1px solid var(--bd)' }}>
-              <h2 className="serif" style={{ fontSize: 22, margin: 0, color: 'var(--tx)' }}>{t('workingGroups')}</h2>
+              <h2 className="serif" style={{ fontSize: narrow ? 20 : 22, margin: 0, color: 'var(--tx)' }}>{t('workingGroups')}</h2>
               <div className="t-mono-sm" style={{ fontSize: 9, color: 'var(--tx3)', letterSpacing: 2, marginTop: 8 }}>{groups.length} ACTIVE GROUPS</div>
             </header>
             
@@ -434,29 +516,35 @@ export function ThemesTab({
                   <div key={g_.id} 
                     className={`row-item ${isHov ? 'hov' : ''} ${isRel ? 'rel' : ''}`}
                     onMouseEnter={() => { setHoverGroup(g_.id); setHoverTheme(null) }} 
+                    onClick={() => {
+                      if (!narrow || editGroup === g_.id) return
+                      setHoverGroup(g_.id)
+                      setHoverTheme(null)
+                    }}
                     onContextMenu={(e) => onGroupRowContextMenu(g_, e)}
                     title="Clic droit : renommer · Ctrl+clic droit : supprimer"
                     style={{ 
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      padding: '10px 14px', borderRadius: 4, transition: 'all 0.2s',
+                      minHeight: narrow ? 44 : undefined,
+                      padding: narrow ? '10px 12px' : '10px 14px', borderRadius: 4, transition: 'all 0.2s',
                       background: isHov ? 'var(--bg1)' : isRel ? 'rgba(var(--ac-rgb), 0.05)' : 'transparent',
                       borderLeft: isRel ? '2px solid var(--ac)' : '2px solid transparent',
                       cursor: 'default'
                     }}
                   >
                     {editGroup === g_.id ? (
-                      <div style={{ display: 'flex', gap: 8, flex: 1 }}>
-                        <input autoFocus value={editVal} onChange={e => setEditVal(cap(e.target.value))} style={{ flex: 1, fontSize: 12, background: 'var(--bg2)', border: '1px solid var(--bd)', color: 'var(--tx)', padding: '4px 8px' }} onKeyDown={e => e.key === 'Enter' && saveGroup(g_.id)} />
-                        <button className="btn sm primary" onClick={() => saveGroup(g_.id)}>OK</button>
+                      <div style={{ display: 'flex', gap: 8, flex: 1, minWidth: 0 }}>
+                        <input autoFocus value={editVal} onChange={e => setEditVal(cap(e.target.value))} style={{ flex: 1, minWidth: 0, fontSize: 12, background: 'var(--bg2)', border: '1px solid var(--bd)', color: 'var(--tx)', padding: '4px 8px' }} onKeyDown={e => e.key === 'Enter' && saveGroup(g_.id)} />
+                        <button type="button" className="btn sm primary" style={{ minHeight: 44, flexShrink: 0 }} onClick={() => saveGroup(g_.id)}>OK</button>
                       </div>
                     ) : (
                       <>
-                        <span style={{ fontSize: 13, fontWeight: isHov ? 600 : 400, color: isHov ? 'var(--tx)' : 'var(--tx2)' }}>{g_.name}</span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ fontSize: 13, fontWeight: isHov ? 600 : 400, color: isHov ? 'var(--tx)' : 'var(--tx2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, paddingRight: 8 }}>{g_.name}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
                           <span className="t-mono-sm" style={{ fontSize: 10, opacity: 0.4 }}>{groupWorkCount[g_.id] ?? 0}</span>
-                          <div className="item-actions" style={{ display: 'flex', gap: 4, opacity: isHov ? 1 : 0 }}>
-                            <button onClick={() => { setEditGroup(g_.id); setEditVal(g_.name) }} style={{ background: 'none', border: 'none', color: 'var(--tx3)', cursor: 'pointer', padding: 4 }}>✎</button>
-                            <button onClick={() => deleteGroup(g_.id)} style={{ background: 'none', border: 'none', color: 'var(--rust)', cursor: 'pointer', padding: 4 }}>✕</button>
+                          <div className="item-actions" style={{ display: 'flex', gap: 4, opacity: narrow || isHov ? 1 : 0 }}>
+                            <button type="button" aria-label={t('edit')} onClick={(e) => { e.stopPropagation(); setEditGroup(g_.id); setEditVal(g_.name) }} style={{ minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', color: 'var(--tx3)', cursor: 'pointer', padding: 0 }}>✎</button>
+                            <button type="button" aria-label={t('delete')} onClick={(e) => { e.stopPropagation(); deleteGroup(g_.id) }} style={{ minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', color: 'var(--rust)', cursor: 'pointer', padding: 0 }}>✕</button>
                           </div>
                         </div>
                       </>
@@ -492,16 +580,16 @@ export function ThemesTab({
             })
 
             return (
-              <div style={{ background: 'var(--bg1)', border: '1px solid var(--bd)', padding: 24, borderRadius: 8 }}>
+              <div style={{ background: 'var(--bg1)', border: '1px solid var(--bd)', padding: narrow ? 16 : 24, borderRadius: 8, maxWidth: '100%', boxSizing: 'border-box' }}>
                 <header style={{ marginBottom: 20, paddingBottom: 12, borderBottom: '1px solid var(--bd)' }}>
                   <div className="t-mono-sm" style={{ fontSize: 9, color: 'var(--tx3)', letterSpacing: 2, marginBottom: 8 }}>DATA INSIGHTS</div>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--tx)', textTransform: 'uppercase' }}>
+                  <div style={{ fontSize: narrow ? 13 : 15, fontWeight: 700, color: 'var(--tx)', textTransform: 'uppercase', wordBreak: 'break-word' }}>
                     {hoverTheme ? themes.find(t => t.id === hoverTheme)?.name : groups.find(g => g.id === hoverGroup)?.name}
                   </div>
                 </header>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: narrow ? 'minmax(0, 1fr)' : '1fr 1fr', gap: 12 }}>
                     <div>
                       <div className="t-mono-sm" style={{ fontSize: 8, color: 'var(--tx3)', marginBottom: 4 }}>VALEUR (HT)</div>
                       <div style={{ fontSize: 18, fontWeight: 700 }}>€{Math.round(totalHT / 1000)}k</div>
@@ -532,7 +620,7 @@ export function ThemesTab({
       </div>
 
       <style jsx>{`
-        .flash-msg { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%); background: var(--ac); color: #000; padding: 12px 28px; font-size: 11px; z-index: 999; font-weight: 700; letter-spacing: 2px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); border-radius: 4px; }
+        .flash-msg { position: fixed; bottom: max(32px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); max-width: calc(100vw - 24px); box-sizing: border-box; background: var(--ac); color: #000; padding: 12px 20px; font-size: 11px; z-index: 999; font-weight: 700; letter-spacing: 2px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); border-radius: 4px; text-align: center; }
         .row-item:hover .item-actions { opacity: 1 !important; }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         section::-webkit-scrollbar, aside::-webkit-scrollbar, .mosaic-scroll::-webkit-scrollbar { width: 4px; }

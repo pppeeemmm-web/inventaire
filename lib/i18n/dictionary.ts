@@ -324,7 +324,7 @@ export type DictKey =
   | 'const_selectionLabel' | 'const_clickRemoveThumbTitle' | 'const_groupNamePlaceholderEllipsis' | 'const_saveAllShort' | 'const_shiftMarqueeHint'
   | 'const_savedMapsTitle' | 'const_deleteMapTitle' | 'const_cloudMapsSidebarTitle'
   | 'const_toolbarShortcutsPanelTitle' | 'const_toolbar_hint'
-  | 'report_title' | 'report_subtitle'
+  | 'report_title' | 'report_subtitle' | 'report_loaded_subset_note'
   | 'report_filters_heading' | 'report_columns_heading' | 'report_preview_heading'
   | 'report_selection_only' | 'report_row_count_fmt' | 'report_preview_truncated'
   | 'report_sort_label' | 'report_sort_id' | 'report_sort_title' | 'report_sort_year' | 'report_sort_price'
@@ -1597,6 +1597,8 @@ $env:OLLAMA_HOST="127.0.0.1:11435"; ollama run llama3.2:1b`,
     report_title: 'Rapports d’œuvres',
     report_subtitle:
       'Filtrez l’inventaire, choisissez les colonnes, puis exportez en XLSX, HTML ou PDF.',
+    report_loaded_subset_note:
+      'Source : lot chargé uniquement ({loaded} / {total} œuvres au catalogue). Exportez après « Charger la tranche suivante » pour élargir le lot.',
     report_filters_heading: 'Filtres',
     report_columns_heading: 'Colonnes',
     report_preview_heading: 'Aperçu',
@@ -2955,6 +2957,8 @@ $env:OLLAMA_HOST="127.0.0.1:11435"; ollama run llama3.2:1b`,
     report_title: 'Works reports',
     report_subtitle:
       'Filter the inventory, choose columns, then export to XLSX, HTML or PDF.',
+    report_loaded_subset_note:
+      'Source: loaded batch only ({loaded} / {total} works in the catalogue). Use “Load next batch” at the bottom to widen the batch before exporting.',
     report_filters_heading: 'Filters',
     report_columns_heading: 'Columns',
     report_preview_heading: 'Preview',

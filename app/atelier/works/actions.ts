@@ -6,6 +6,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '@/lib/types/supabase.generated'
 import { seqFromFilename, STATUS_ID_ARCHIVE_ARTISTE, STATUS_IDS_PUBLIC } from '@/lib/data'
 import { makeImageStorageFilename, validateWorkImageBuffer } from '@/lib/image-upload'
 import { pendingPayloadFromFormData } from '@/lib/work-pending-keys'
@@ -24,7 +25,7 @@ async function requireAdmin(supabase: SupabaseClient): Promise<string | null> {
 }
 
 async function syncPipelineWithBooleans(
-  supabase: any,
+  supabase: SupabaseClient<Database>,
   oid: number,
   flags: { catalogued: boolean; needsPhotograph: boolean }
 ): Promise<{ error: string } | { ok: true }> {
@@ -1038,6 +1039,32 @@ export async function reorderWorkImages(
   await syncCover(supabase, oeuvreId)
   revalidatePath('/atelier')
   return { ok: true }
+}
+
+export type WorkDrawerImageRow = Pick<
+  Database['public']['Tables']['tblImage']['Row'],
+  'ImageID' | 'txtImageNameLink' | 'SeqNo'
+>
+
+/** Drawer image rail — RLS `tblImage` read (same fields as legacy client fetch). */
+export async function listWorkDrawerImages(oeuvreId: number): Promise<WorkDrawerImageRow[]> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const { data, error } = await supabase
+    .from('tblImage')
+    .select('ImageID, txtImageNameLink, SeqNo')
+    .eq('OeuvreID', oeuvreId)
+    .order('SeqNo', { ascending: true })
+
+  if (error) {
+    console.error('[listWorkDrawerImages]', error.message)
+    return []
+  }
+  return (data ?? []) as WorkDrawerImageRow[]
 }
 
 /** Long text fields omitted from the bulk Atelier payload — fetch when comparing works or full edit. */

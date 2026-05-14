@@ -70,6 +70,8 @@ type Props = {
   oeuvreThemeIdsByOeuvre: Record<number, number[]>
   oeuvreGroupIdsByOeuvre: Record<number, string[]>
   selection: Set<number>
+  oeuvresLoadedCount?: number
+  oeuvresCatalogueTotal?: number
 }
 
 export function ReportsTab({
@@ -88,6 +90,8 @@ export function ReportsTab({
   oeuvreThemeIdsByOeuvre,
   oeuvreGroupIdsByOeuvre,
   selection,
+  oeuvresLoadedCount,
+  oeuvresCatalogueTotal,
 }: Props) {
   const { t, lang } = useI18n()
   const narrow = useMediaQuery('(max-width: 767px)')
@@ -326,6 +330,19 @@ th{background:#f4f4f4}
       <div className="panel" style={{ flexShrink: 0, marginBottom: 8, ...panelPad }}>
         <div className="serif" style={{ fontSize: 20, color: 'var(--tx)', marginBottom: 4, lineHeight: 1.25 }}>{t('report_title')}</div>
         <div style={{ fontSize: 13, color: 'var(--tx3)', maxWidth: 720, lineHeight: 1.35 }}>{t('report_subtitle')}</div>
+        {oeuvresCatalogueTotal != null &&
+          oeuvresLoadedCount != null &&
+          oeuvresCatalogueTotal > oeuvresLoadedCount && (
+            <div
+              className="t-mono-sm"
+              style={{ marginTop: 8, fontSize: 11, color: 'var(--tx3)', lineHeight: 1.35, maxWidth: 720 }}
+              data-testid="reports-subset-note"
+            >
+              {t('report_loaded_subset_note')
+                .replace('{loaded}', String(oeuvresLoadedCount))
+                .replace('{total}', String(oeuvresCatalogueTotal))}
+            </div>
+          )}
       </div>
 
       {narrow && (

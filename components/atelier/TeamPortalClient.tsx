@@ -10,7 +10,6 @@ import { CommandPalette } from './CommandPalette'
 import { useUnsavedActionGuard } from '@/hooks/useUnsavedActionGuard'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import { useI18n } from '@/lib/i18n/context'
 import { WorkThumb } from './WorkThumb'
 import type { Oeuvre, SuiviReminderListRow } from '@/lib/types/database'
@@ -29,7 +28,9 @@ import { fetchContactConflicts } from '@/app/atelier/contacts/conflicts-actions'
 import { loadOeuvreLongText } from '@/app/atelier/works/actions'
 import { fetchOeuvresKeysetPage } from '@/app/atelier/works/actions'
 import { revalidateRemindersTag } from '@/app/atelier/reminders-actions'
-import { fetchAtelierContactAddresses } from '@/app/atelier/atelier-data-actions'
+import { fetchAtelierShellPostPaint, fetchAtelierJunctionHydrationForOeuvreIds } from '@/app/atelier/atelier-data-actions'
+import type { AtelierJunctionDerived } from '@/lib/atelier/atelier-junction-bootstrap'
+import { mergeAtelierJunctionDerived } from '@/lib/atelier/atelier-junction-bootstrap'
 import type { ContactAddress } from '@/components/atelier/contact-editor-types'
 import { createWorkingGroupWithOeuvres } from '@/app/atelier/selection/actions'
 import { PemThemeToggle } from '@/components/PemThemeToggle'
@@ -92,6 +93,20 @@ const DEFAULT_OVERVIEW_BOOTSTRAP: AtelierOverviewBootstrap = {
   burningConcepts: [],
 }
 
+function junctionFromServerInitial(init: Partial<AtelierJunctionDerived>): AtelierJunctionDerived {
+  return {
+    themePublicStats: { ...init.themePublicStats },
+    themePrivateWorks: { ...init.themePrivateWorks },
+    themeWorkCount: { ...init.themeWorkCount },
+    groupWorkCount: { ...init.groupWorkCount },
+    groupPrivateWorks: { ...init.groupPrivateWorks },
+    oeuvreThemeIdsByOeuvre: { ...init.oeuvreThemeIdsByOeuvre },
+    oeuvreGroupIdsByOeuvre: { ...init.oeuvreGroupIdsByOeuvre },
+    themeToGroups: { ...init.themeToGroups },
+    groupToThemes: { ...init.groupToThemes },
+  }
+}
+
 // ── Component ────────────────────────────────────────────────────────
 
 export function TeamPortalClient({
@@ -100,17 +115,81 @@ export function TeamPortalClient({
   initialReminders = [],
   initialOverviewBootstrap = DEFAULT_OVERVIEW_BOOTSTRAP,
   oeuvresPaging,
-  oeuvres: oeuvresChunk, techniques, supports, formats, themes, contacts,
-  statusLabelMap, initialGroups, presentations,
-  themeWorkCount = {}, groupWorkCount = {},
-  themePublicStats = {},
-  themePrivateWorks = {},
-  groupPrivateWorks = {},
-  themeToGroups = {},
-  groupToThemes = {},
-  oeuvreThemeIdsByOeuvre = {},
-  oeuvreGroupIdsByOeuvre = {},
+  atelierShellNonce = 0,
+  initialIsAdmin = false,
+  oeuvres: oeuvresChunk,
+  techniques: techniquesInitial,
+  supports: supportsInitial,
+  formats: formatsInitial,
+  themes: themesInitial,
+  contacts: contactsInitial,
+  initialGroups,
+  presentations: presentationsInitial,
+  themeWorkCount: initialThemeWorkCount = {},
+  groupWorkCount: initialGroupWorkCount = {},
+  themePublicStats: initialThemePublicStats = {},
+  themePrivateWorks: initialThemePrivateWorks = {},
+  groupPrivateWorks: initialGroupPrivateWorks = {},
+  themeToGroups: initialThemeToGroups = {},
+  groupToThemes: initialGroupToThemes = {},
+  oeuvreThemeIdsByOeuvre: initialOeuvreThemeIdsByOeuvre = {},
+  oeuvreGroupIdsByOeuvre: initialOeuvreGroupIdsByOeuvre = {},
 }: TeamPortalClientProps) {
+  const junctionHydratedIdsRef = useRef<Set<number>>(new Set())
+  const [junction, setJunction] = useState<AtelierJunctionDerived>(() =>
+    junctionFromServerInitial({
+      themePublicStats: initialThemePublicStats,
+      themePrivateWorks: initialThemePrivateWorks,
+      themeWorkCount: initialThemeWorkCount,
+      groupWorkCount: initialGroupWorkCount,
+      groupPrivateWorks: initialGroupPrivateWorks,
+      oeuvreThemeIdsByOeuvre: initialOeuvreThemeIdsByOeuvre,
+      oeuvreGroupIdsByOeuvre: initialOeuvreGroupIdsByOeuvre,
+      themeToGroups: initialThemeToGroups,
+      groupToThemes: initialGroupToThemes,
+    }),
+  )
+
+  const [contacts, setContacts] = useState(contactsInitial)
+  const [techniques, setTechniques] = useState(techniquesInitial)
+  const [supports, setSupports] = useState(supportsInitial)
+  const [formats, setFormats] = useState(formatsInitial)
+  const [themes, setThemes] = useState(themesInitial)
+  const [statuses, setStatuses] = useState<{ id: number; label: string }[]>([])
+  const [presentations, setPresentations] = useState(presentationsInitial)
+  const [groups, setGroups] = useState<{ id: string; name: string }[]>(() =>
+    [...initialGroups].sort((a, b) => a.name.localeCompare(b.name, 'fr')),
+  )
+  const [curationAddresses, setCurationAddresses] = useState<ContactAddress[]>([])
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const p = await fetchAtelierShellPostPaint()
+      if (cancelled) return
+      setContacts(p.contacts)
+      setCurationAddresses(p.addresses)
+      setTechniques(p.techniques)
+      setSupports(p.supports)
+      setFormats(p.formats)
+      setThemes(p.themes)
+      setStatuses(p.statuses)
+      setPresentations(p.presentations)
+      setGroups(
+        [...p.groups.map((g) => ({ id: g.id, name: g.name }))].sort((a, b) => a.name.localeCompare(b.name, 'fr')),
+      )
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [atelierShellNonce])
+
+  const statusLabelMap = useMemo(() => {
+    const m: Record<number, string> = {}
+    for (const s of statuses) m[s.id] = s.label
+    return m
+  }, [statuses])
+
   const { t, lang, setLang } = useI18n()
   const router = useRouter()
 
@@ -131,7 +210,49 @@ export function TeamPortalClient({
   useEffect(() => {
     setOeuvres(oeuvresChunk)
     setOeuvresNextCursor(oeuvresPaging?.nextCursor ?? null)
+    setJunction(
+      junctionFromServerInitial({
+        themePublicStats: initialThemePublicStats,
+        themePrivateWorks: initialThemePrivateWorks,
+        themeWorkCount: initialThemeWorkCount,
+        groupWorkCount: initialGroupWorkCount,
+        groupPrivateWorks: initialGroupPrivateWorks,
+        oeuvreThemeIdsByOeuvre: initialOeuvreThemeIdsByOeuvre,
+        oeuvreGroupIdsByOeuvre: initialOeuvreGroupIdsByOeuvre,
+        themeToGroups: initialThemeToGroups,
+        groupToThemes: initialGroupToThemes,
+      }),
+    )
+    const seed = new Set<number>()
+    for (const o of oeuvresChunk) {
+      const th = initialOeuvreThemeIdsByOeuvre[o.OeuvreID]
+      const gr = initialOeuvreGroupIdsByOeuvre[o.OeuvreID]
+      if ((th?.length ?? 0) > 0 || (gr?.length ?? 0) > 0) seed.add(o.OeuvreID)
+    }
+    junctionHydratedIdsRef.current = seed
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- initials follow `oeuvresChunk` from RSC; avoid `{}` identity churn
   }, [oeuvresChunk, oeuvresPaging])
+
+  useEffect(() => {
+    const pending = oeuvres
+      .map((o) => o.OeuvreID)
+      .filter((id) => !junctionHydratedIdsRef.current.has(id))
+    if (pending.length === 0) return
+    let cancelled = false
+    void (async () => {
+      const res = await fetchAtelierJunctionHydrationForOeuvreIds(pending)
+      if (cancelled) return
+      if (!res.ok) {
+        console.error('[atelier junction hydrate]', res.error)
+        return
+      }
+      for (const id of pending) junctionHydratedIdsRef.current.add(id)
+      setJunction((prev) => mergeAtelierJunctionDerived(prev, res.data))
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [oeuvres])
 
   const loadMoreOeuvres = useCallback(async () => {
     if (oeuvresNextCursor == null || oeuvresPaging == null) return
@@ -280,9 +401,6 @@ export function TeamPortalClient({
   }, [initialReminderUnread])
 
   const [selection,  setSelection]  = useState<Set<number>>(new Set())
-  const [groups,     setGroups]     = useState<{ id: string; name: string }[]>(
-    [...initialGroups].sort((a, b) => a.name.localeCompare(b.name, 'fr'))
-  )
 
   useEffect(() => {
     (window as any).setSelection = setSelection
@@ -295,6 +413,18 @@ export function TeamPortalClient({
   useEffect(() => {
     if (!atelierNarrow) setSidebarOpen(false)
   }, [atelierNarrow])
+
+  const {
+    themePublicStats,
+    themePrivateWorks,
+    themeWorkCount,
+    groupWorkCount,
+    groupPrivateWorks,
+    oeuvreThemeIdsByOeuvre,
+    oeuvreGroupIdsByOeuvre,
+    themeToGroups,
+    groupToThemes,
+  } = junction
 
   const oeuvreThemeMap = useMemo(() => {
     const m = new Map<number, number[]>()
@@ -309,30 +439,15 @@ export function TeamPortalClient({
   }, [oeuvreGroupIdsByOeuvre])
 
   const [conflicts,      setConflicts]      = useState<any[]>([])
-  const [isAdmin,        setIsAdmin]        = useState(false)
-  const [curationAddresses, setCurationAddresses] = useState<ContactAddress[]>([])
+  const [isAdmin,        setIsAdmin]        = useState(initialIsAdmin)
   const [paletteOpen,    setPaletteOpen]    = useState(false)
 
   useEffect(() => {
-    let cancelled = false
-    void (async () => {
-      const rows = await fetchAtelierContactAddresses()
-      if (!cancelled) setCurationAddresses(rows)
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [])
+    setIsAdmin(initialIsAdmin)
+  }, [initialIsAdmin])
 
   useEffect(() => {
     fetchContactConflicts().then(setConflicts).catch((err) => console.error('Contact conflicts:', err))
-  }, [])
-
-  useEffect(() => {
-    const sb = createClient()
-    void Promise.resolve(sb.rpc('is_admin'))
-      .then(({ data }) => setIsAdmin(!!data))
-      .catch((err: unknown) => console.error('is_admin RPC:', err))
   }, [])
 
   useEffect(() => {
@@ -812,6 +927,8 @@ export function TeamPortalClient({
             initialOverviewBootstrap={initialOverviewBootstrap}
             isAdmin={isAdmin}
             conflicts={conflicts}
+            oeuvresCataloguePartial={oeuvresCataloguePartial}
+            oeuvresCatalogueTotal={oeuvresPaging?.totalCount}
           />
         )}
 
@@ -854,6 +971,8 @@ export function TeamPortalClient({
               oeuvreThemeIdsByOeuvre={oeuvreThemeIdsByOeuvre}
               oeuvreGroupIdsByOeuvre={oeuvreGroupIdsByOeuvre}
               selection={selection}
+              oeuvresLoadedCount={oeuvres.length}
+              oeuvresCatalogueTotal={oeuvresPaging?.totalCount}
             />
           </div>
         )}
@@ -915,7 +1034,13 @@ export function TeamPortalClient({
         {tab === 'contacts' && <ContactsTab contacts={contacts} oeuvres={oeuvres} conflicts={conflicts} />}
         {tab === 'portfolio' && (
           <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-            <PortfolioTab oeuvres={oeuvres} themes={themes} themePublicStats={themePublicStats} themePrivateWorks={themePrivateWorks} />
+            <PortfolioTab
+              oeuvres={oeuvres}
+              themes={themes}
+              themePublicStats={themePublicStats}
+              themePrivateWorks={themePrivateWorks}
+              oeuvresCatalogueTotal={oeuvresPaging?.totalCount}
+            />
           </div>
         )}
         {tab === 'audit' && <AuditTab />}
@@ -970,6 +1095,7 @@ export function TeamPortalClient({
             oeuvres={oeuvres}
             onOpen={onOpen}
             tM={tM}
+            oeuvresCatalogueTotal={oeuvresPaging?.totalCount}
           />
         )}
 
@@ -1083,6 +1209,8 @@ function mondayStartOfWeek(d: Date) {
 
 function OverviewTab({
   oeuvres, tM, t, lang, onGoTab, reminderCount, initialReminders, initialOverviewBootstrap, isAdmin, conflicts,
+  oeuvresCataloguePartial,
+  oeuvresCatalogueTotal,
 }: {
   oeuvres:       Oeuvre[]
   tM:            Record<number, string>
@@ -1094,6 +1222,8 @@ function OverviewTab({
   initialOverviewBootstrap: AtelierOverviewBootstrap
   isAdmin:       boolean
   conflicts:     any[]
+  oeuvresCataloguePartial?: boolean
+  oeuvresCatalogueTotal?: number
 }) {
   const thisYear   = new Date().getFullYear()
   const yearPrefix = String(thisYear)
@@ -1200,6 +1330,17 @@ function OverviewTab({
               </div>
             ))}
           </div>
+          {oeuvresCataloguePartial && oeuvresCatalogueTotal != null && oeuvresCatalogueTotal > oeuvres.length && (
+            <div
+              className="t-mono-sm"
+              style={{ marginTop: 10, fontSize: 10, color: 'var(--tx3)', lineHeight: 1.35, maxWidth: 720 }}
+              data-testid="atelier-overview-subset-caption"
+            >
+              {t('ov_loaded_subset_caption')
+                .replace('{loaded}', String(oeuvres.length))
+                .replace('{total}', String(oeuvresCatalogueTotal))}
+            </div>
+          )}
         </div>
 
         {/* Row 1.5: Financial Pulse */}

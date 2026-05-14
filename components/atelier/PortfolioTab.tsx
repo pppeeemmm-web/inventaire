@@ -10,6 +10,7 @@ import {
 import { getAnalyticsStats, type AnalyticsResult } from '@/app/atelier/analytics/actions'
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
+import { useMediaQuery } from '@/lib/useMediaQuery'
 import { RichEditor, htmlToPlain } from '@/components/atelier/RichEditor'
 import { thumbUrl } from '@/lib/data'
 import type { Oeuvre } from '@/lib/types/database'
@@ -97,6 +98,8 @@ interface Props {
   themes:  { id: number; name: string }[]
   themePublicStats?: Record<number, { total: number; pub: number }>
   themePrivateWorks?: Record<number, number[]>
+  /** When set and greater than `oeuvres.length`, show partial-catalogue note. */
+  oeuvresCatalogueTotal?: number
 }
 
 // ── Defaults ───────────────────────────────────────────────────────────────
@@ -289,8 +292,15 @@ function SitePublicSection({ title, icon, children, action, testId }: {
 
 // ── Component ─────────────────────────────────────────────────────────────
 
-export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePrivateWorks = {} }: Props) {
+export function PortfolioTab({
+  oeuvres,
+  themes,
+  themePublicStats = {},
+  themePrivateWorks = {},
+  oeuvresCatalogueTotal,
+}: Props) {
   const { t, lang } = useI18n()
+  const narrow = useMediaQuery('(max-width: 767px)')
   const router = useRouter()
   const [config,     setConfig]     = useState<PortfolioConfig>(DEFAULT_CONFIG)
   const [loading,    setLoading]    = useState(true)
@@ -479,34 +489,74 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
     setConfig({ ...config, [target]: next })
   }
 
-  if (loading) return <div className="pad-lg t-mono-sm">Chargement...</div>
+  if (loading) return <div className="pad-lg t-mono-sm">{t('loading')}</div>
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg0)', overflow: 'hidden' }}>
 
+      {oeuvresCatalogueTotal != null && oeuvresCatalogueTotal > oeuvres.length && (
+        <div
+          data-testid="atelier-portfolio-subset-note"
+          className="t-mono-sm"
+          style={{
+            flexShrink: 0,
+            padding: `8px max(12px, env(safe-area-inset-right)) 8px max(12px, env(safe-area-inset-left))`,
+            paddingTop: 'max(8px, env(safe-area-inset-top))',
+            borderBottom: '1px solid var(--bd)',
+            background: 'var(--bg2)',
+            color: 'var(--tx2)',
+            fontSize: 11,
+            lineHeight: 1.45,
+            maxWidth: '100%',
+            boxSizing: 'border-box',
+          }}
+        >
+          {t('atelier_oeuvres_subset_banner')
+            .replace('{loaded}', String(oeuvres.length))
+            .replace('{total}', String(oeuvresCatalogueTotal))}
+        </div>
+      )}
+
       {/* ── Top bar ── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 40px', borderBottom: '1px solid var(--bd)', background: 'var(--bg1)', flexShrink: 0 }}>
-        <div style={{ display: 'flex' }}>
+      <div
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: narrow ? 10 : 0,
+          padding: narrow
+            ? '10px max(12px, env(safe-area-inset-right)) 10px max(12px, env(safe-area-inset-left))'
+            : '0 40px',
+          paddingTop: narrow ? 'max(10px, env(safe-area-inset-top))' : undefined,
+          borderBottom: '1px solid var(--bd)',
+          background: 'var(--bg1)',
+          flexShrink: 0,
+          minWidth: 0,
+        }}
+      >
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: narrow ? 4 : 0, minWidth: 0 }}>
           {(['website', 'portfolio', 'analytics'] as const).map(tab => (
-            <button key={tab} onClick={() => setActiveTab(tab)} style={{
-              padding: '16px 24px', background: 'none', border: 'none',
+            <button key={tab} type="button" onClick={() => setActiveTab(tab)} style={{
+              padding: narrow ? '12px 14px' : '16px 24px', background: 'none', border: 'none',
               borderBottom: activeTab === tab ? '2px solid var(--ac)' : '2px solid transparent',
               color: activeTab === tab ? 'var(--ac)' : 'var(--tx3)',
               cursor: 'pointer', fontSize: 9, letterSpacing: 3, textTransform: 'uppercase',
               fontFamily: 'inherit', fontWeight: activeTab === tab ? 600 : 400,
-              transition: 'all 0.2s'
+              transition: 'all 0.2s',
+              minHeight: 44,
             }}>
               {tab === 'website' ? 'Site public' : tab === 'portfolio' ? 'Portfolio' : 'Analytiques'}
             </button>
           ))}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: narrow ? 8 : 12, flexWrap: 'wrap', justifyContent: narrow ? 'flex-end' : 'flex-start' }}>
           <a
             href="/"
             target="_blank"
             rel="noopener noreferrer"
             className="btn ghost sm"
-            style={{ fontSize: 9, letterSpacing: 2, textDecoration: 'none' }}
+            style={{ fontSize: 9, letterSpacing: 2, textDecoration: 'none', minHeight: 44, display: 'inline-flex', alignItems: 'center' }}
             title="Ouvrir la page d’accueil (site public)"
           >
             Site
@@ -515,7 +565,7 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
             type="button"
             onClick={() => setPdfOpen(true)}
             className="btn ghost sm"
-            style={{ fontSize: 9, letterSpacing: 2 }}
+            style={{ fontSize: 9, letterSpacing: 2, minHeight: 44 }}
             title="Aperçu PDF (sections + œuvres configurées ici)"
           >
             ↓ PDF
@@ -525,7 +575,7 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
             target="_blank"
             rel="noopener noreferrer"
             className="btn ghost sm"
-            style={{ fontSize: 9, letterSpacing: 2, textDecoration: 'none' }}
+            style={{ fontSize: 9, letterSpacing: 2, textDecoration: 'none', minHeight: 44, display: 'inline-flex', alignItems: 'center' }}
             title="Aperçu catalogue (/works)"
           >
             /works
@@ -537,7 +587,7 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
               title="Écrit le fichier de configuration (R2) : identité, /works, sections portfolio (JSON)"
               onClick={handleSave}
               disabled={saveBusy}
-              style={{ fontSize: 9, letterSpacing: 1.5 }}
+              style={{ fontSize: 9, letterSpacing: 1.5, minHeight: 44 }}
             >
               {saveBusy ? 'Enregistrement…' : 'Enregistrer'}
             </button>
@@ -546,17 +596,40 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
       </div>
 
       {/* ── Body ── */}
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+      <div
+        style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: narrow ? 'column' : 'row',
+          overflow: 'hidden',
+          minHeight: 0,
+          minWidth: 0,
+        }}
+      >
 
-        {/* Left sidebar — sources (hidden on analytics tab) */}
-        <div style={{ width: activeTab === 'analytics' ? 0 : 280, borderRight: activeTab === 'analytics' ? 'none' : '1px solid var(--bd)', background: 'var(--bg1)', display: activeTab === 'analytics' ? 'none' : 'flex', flexDirection: 'column', flexShrink: 0 }}>
+        {/* Left sidebar — sources (hidden on analytics tab); below main on narrow */}
+        <div
+          style={{
+            width: activeTab === 'analytics' ? 0 : narrow ? '100%' : 280,
+            maxHeight: activeTab === 'analytics' ? 0 : narrow ? 'min(38vh, 260px)' : undefined,
+            borderRight: activeTab === 'analytics' || narrow ? 'none' : '1px solid var(--bd)',
+            borderBottom: activeTab === 'analytics' || !narrow ? 'none' : '1px solid var(--bd)',
+            background: 'var(--bg1)',
+            display: activeTab === 'analytics' ? 'none' : 'flex',
+            flexDirection: 'column',
+            flexShrink: 0,
+            minHeight: 0,
+            order: narrow ? 2 : 0,
+            overflow: 'hidden',
+          }}
+        >
           <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--bd)' }}>
             <div className="t-eyebrow" style={{ marginBottom: 4 }}>Sources</div>
             <p className="t-mono-xs" style={{ opacity: 0.4 }}>
               {activeSlot ? 'Sélectionner une cible' : 'Cliquer pour assigner'}
             </p>
           </div>
-          <div style={{ flex: 1, overflowY: 'auto', padding: 16 }} className="col gap-lg">
+          <div style={{ flex: 1, overflowY: 'auto', padding: narrow ? '12px 14px' : 16 }} className="col gap-lg">
             <div>
               <div className="t-label" style={{ marginBottom: 8, fontSize: 10 }}>THÈMES & GROUPES</div>
               <div className="col gap-xs">
@@ -575,23 +648,34 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
             </div>
           </div>
           {activeSlot && (
-            <div style={{ padding: 16, background: 'var(--ac)', color: 'white', textAlign: 'center' }}>
+            <div style={{ padding: 16, paddingBottom: 'max(16px, env(safe-area-inset-bottom))', background: 'var(--ac)', color: 'white', textAlign: 'center' }}>
               <p className="t-mono-sm" style={{ fontWeight: 600, marginBottom: 8 }}>CLIQUER UNE CIBLE</p>
-              <button className="btn sm ghost" style={{ color: 'white', borderColor: 'white' }} onClick={() => setActiveSlot(null)}>Annuler</button>
+              <button type="button" className="btn sm ghost" style={{ color: 'white', borderColor: 'white', minHeight: 44 }} onClick={() => setActiveSlot(null)}>Annuler</button>
             </div>
           )}
         </div>
 
         {/* Main content — no maxWidth constraint (analytics: single viewport, no scroll) */}
-        <div style={{
-          flex: 1,
-          minHeight: 0,
-          overflowY: activeTab === 'analytics' ? 'hidden' : 'auto',
-          overflowX: 'hidden',
-          padding: activeTab === 'analytics' ? '10px 14px' : '32px 40px',
-          display: activeTab === 'analytics' ? 'flex' : 'block',
-          flexDirection: 'column',
-        }}>
+        <div
+          style={{
+            flex: 1,
+            minHeight: 0,
+            minWidth: 0,
+            overflowY: activeTab === 'analytics' ? 'hidden' : 'auto',
+            overflowX: 'hidden',
+            padding:
+              activeTab === 'analytics'
+                ? narrow
+                  ? '10px max(12px, env(safe-area-inset-right)) 10px max(12px, env(safe-area-inset-left))'
+                  : '10px 14px'
+                : narrow
+                  ? '16px max(12px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left))'
+                  : '32px 40px',
+            display: activeTab === 'analytics' ? 'flex' : 'block',
+            flexDirection: 'column',
+            order: narrow ? 1 : 0,
+          }}
+        >
           <div
             className={activeTab === 'website' ? 'portfolio-site-public' : undefined}
             style={{
@@ -1069,6 +1153,8 @@ function AnalyticsPanel({
   oeuvres: Oeuvre[]
   themePublicStats: Record<number, { total: number; pub: number }>
 }) {
+  const { t, lang } = useI18n()
+  const narrow = useMediaQuery('(max-width: 767px)')
   const [days, setDays] = useState(30)
   const [scope, setScope] = useState<'public_site' | 'all'>('public_site')
   const [result, setResult] = useState<AnalyticsResult | null>(null)
@@ -1112,15 +1198,19 @@ function AnalyticsPanel({
         display: 'flex',
         flexWrap: 'wrap',
         alignItems: 'center',
-        gap: '8px 14px',
-        padding: '8px 10px',
+        gap: '8px 10px',
+        padding: narrow
+          ? '10px max(12px, env(safe-area-inset-right)) 10px max(12px, env(safe-area-inset-left))'
+          : '8px 10px',
         background: 'var(--bg0)',
         border: '1px solid var(--bd)',
         flexShrink: 0,
+        maxWidth: '100%',
+        boxSizing: 'border-box',
       }}>
         <span className="t-mono-xs" style={{ color: 'var(--tx3)', letterSpacing: 1 }}>CATALOGUE</span>
         <span style={{ fontSize: 13, fontWeight: 600, fontFamily: 'var(--font-serif, serif)' }}>
-          {cataloguePublic.toLocaleString('fr-FR')} / {oeuvres.length.toLocaleString('fr-FR')}
+          {cataloguePublic.toLocaleString(lang === 'en' ? 'en-GB' : 'fr-FR')} / {oeuvres.length.toLocaleString(lang === 'en' ? 'en-GB' : 'fr-FR')}
         </span>
         <span className="t-mono-xs" style={{ color: 'var(--tx3)' }}>
           · {themeRows.length} thème{themeRows.length !== 1 ? 's' : ''}
@@ -1129,22 +1219,24 @@ function AnalyticsPanel({
         <span className="t-mono-xs" style={{ color: 'var(--tx3)', letterSpacing: 1 }}>TRAFIC</span>
         {(['public_site', 'all'] as const).map((s) => (
           <button key={s} type="button" onClick={() => setScope(s)} style={{
-            padding: '6px 12px', fontSize: 10, letterSpacing: 1.1, textTransform: 'uppercase',
+            padding: narrow ? '10px 12px' : '6px 12px', fontSize: 10, letterSpacing: 1.1, textTransform: 'uppercase',
             fontFamily: 'inherit', cursor: 'pointer', border: '1px solid var(--bd)',
             background: scope === s ? 'var(--ac)' : 'none',
             color: scope === s ? 'white' : 'var(--tx3)',
             borderColor: scope === s ? 'var(--ac)' : 'var(--bd)',
+            minHeight: 44,
           }}>
             {s === 'public_site' ? 'Pages site' : 'Tout brut'}
           </button>
         ))}
         {PERIODS.map((p) => (
           <button key={p.days} type="button" onClick={() => setDays(p.days)} style={{
-            padding: '6px 12px', fontSize: 10, letterSpacing: 1.2, textTransform: 'uppercase',
+            padding: narrow ? '10px 12px' : '6px 12px', fontSize: 10, letterSpacing: 1.2, textTransform: 'uppercase',
             fontFamily: 'inherit', cursor: 'pointer', border: '1px solid var(--bd)',
             background: days === p.days ? 'var(--ac)' : 'none',
             color: days === p.days ? 'white' : 'var(--tx3)',
             borderColor: days === p.days ? 'var(--ac)' : 'var(--bd)',
+            minHeight: 44,
           }}>
             {p.label}
           </button>
@@ -1152,7 +1244,7 @@ function AnalyticsPanel({
       </div>
 
       {loading && (
-        <div className="t-mono-sm" style={{ color: 'var(--tx3)', padding: 12 }}>Chargement…</div>
+        <div className="t-mono-sm" style={{ color: 'var(--tx3)', padding: 12 }}>{t('loading')}</div>
       )}
 
       {!loading && result && 'error' in result && (
