@@ -17,6 +17,12 @@ build/
 *.pem
 npm-debug.log*
 
+# TypeScript / local tooling
+tsconfig.tsbuildinfo
+scratch/
+test-results/
+supabase/.temp/
+
 .vercel
 .claude/
 components/public/WorksClient_clean.tsx
