@@ -148,7 +148,7 @@ export default function LandingPage({
           onClick={() => setLang(lang === 'fr' ? 'en' : 'fr')}
           aria-label={t('pub_aria_switch_language')}
         >
-          {lang === 'fr' ? 'EN' : 'FR'}
+          {t(lang === 'fr' ? 'pub_lang_target_en' : 'pub_lang_target_fr')}
         </button>
 
         <button
@@ -157,9 +157,9 @@ export default function LandingPage({
           onClick={() => setNavOpen(true)}
           aria-expanded={navOpen}
           aria-controls="landing-site-nav"
-          aria-label={lang === 'fr' ? 'Menu navigation du site' : 'Site navigation menu'}
+          aria-label={t('pub_aria_open_site_menu')}
         >
-          {lang === 'fr' ? 'Menu' : 'Menu'}
+          {t('pub_menu_button')}
         </button>
 
         <nav className="circle-wrap" aria-label={t('pub_mobile_nav_heading')}>
@@ -188,13 +188,13 @@ export default function LandingPage({
           type="button"
           className="pdf-link"
           onClick={() => setPdfOpen(true)}
-          aria-label={lang === 'fr' ? 'Télécharger le portfolio PDF' : 'Download portfolio PDF'}
+          aria-label={t('pub_aria_download_portfolio_pdf')}
         >
-          [ {lang === 'fr' ? 'Portfolio PDF' : 'Portfolio PDF'} ]
+          [ {t('pub_portfolio_pdf_strip')} ]
         </button>
 
         <Link href="/hub" className="hub-link">
-          [ Hub ]
+          {t('pub_hub_link_strip')}
         </Link>
       </main>
 
@@ -214,7 +214,7 @@ export default function LandingPage({
           />
           <nav
             id="landing-site-nav"
-            aria-label={lang === 'fr' ? 'Navigation du site' : 'Site navigation'}
+            aria-label={t('pub_aria_site_navigation_drawer')}
             style={{
               position: 'fixed',
               top: 0,
@@ -316,7 +316,7 @@ export default function LandingPage({
                 padding: '14px 8px',
               }}
             >
-              Hub
+              {t('pub_hub_short')}
             </Link>
           </nav>
         </>

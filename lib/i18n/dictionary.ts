@@ -238,6 +238,8 @@ export type DictKey =
   | 'proc_stat_en_cours' | 'proc_stat_gagne' | 'proc_stat_perdu' | 'proc_stat_annule' | 'proc_stat_termine'
   | 'etape_stat_a_faire' | 'etape_stat_en_cours' | 'etape_stat_fait' | 'etape_stat_bloque'
   | 'pub_mobile_nav_heading' | 'pub_portfolio_pdf_strip'
+  | 'pub_aria_open_site_menu' | 'pub_menu_button' | 'pub_aria_download_portfolio_pdf' | 'pub_aria_site_navigation_drawer'
+  | 'pub_lang_target_en' | 'pub_lang_target_fr' | 'pub_hub_link_strip' | 'pub_hub_short'
   | 'seo_home_meta_title' | 'seo_home_meta_description'
   | 'pub_practice_hero_line1' | 'pub_practice_hero_em'
   | 'pub_aria_switch_language'
@@ -1095,6 +1097,14 @@ export const dict: Record<Lang, Dictionary> = {
     etape_stat_bloque: 'Bloqué',
     pub_mobile_nav_heading: 'Navigation',
     pub_portfolio_pdf_strip: 'Portfolio PDF',
+    pub_aria_open_site_menu: 'Ouvrir le menu de navigation du site',
+    pub_menu_button: 'Menu',
+    pub_aria_download_portfolio_pdf: 'Télécharger le portfolio PDF',
+    pub_aria_site_navigation_drawer: 'Navigation du site',
+    pub_lang_target_en: 'EN',
+    pub_lang_target_fr: 'FR',
+    pub_hub_link_strip: '[ Hub ]',
+    pub_hub_short: 'Hub',
     seo_home_meta_title: 'Pierre Emmanuel Moulin — peintre',
     seo_home_meta_description:
       'Œuvres, parcours, pratique et contact — site officiel de Pierre Emmanuel Moulin.',
@@ -2430,6 +2440,14 @@ $env:OLLAMA_HOST="127.0.0.1:11435"; ollama run llama3.2:1b`,
     etape_stat_bloque: 'Blocked',
     pub_mobile_nav_heading: 'Navigate',
     pub_portfolio_pdf_strip: 'Portfolio PDF',
+    pub_aria_open_site_menu: 'Open site navigation menu',
+    pub_menu_button: 'Menu',
+    pub_aria_download_portfolio_pdf: 'Download portfolio PDF',
+    pub_aria_site_navigation_drawer: 'Site navigation',
+    pub_lang_target_en: 'EN',
+    pub_lang_target_fr: 'FR',
+    pub_hub_link_strip: '[ Hub ]',
+    pub_hub_short: 'Hub',
     seo_home_meta_title: 'Pierre Emmanuel Moulin — painter',
     seo_home_meta_description:
       'Works, biography, practice, and enquiry — official site of Pierre Emmanuel Moulin.',
