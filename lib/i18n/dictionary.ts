@@ -161,6 +161,7 @@ export type DictKey =
   | 'logistics_status_packed' | 'logistics_status_ready' | 'logistics_status_scheduled' | 'logistics_status_transit' | 'logistics_status_delivered'
   | 'enquiry_category_label' | 'enquiry_category_general' | 'enquiry_category_question' | 'enquiry_category_complaint' | 'enquiry_category_shipping' | 'enquiry_category_other'
   | 'enquiry_optional_ids_hint'
+  | 'enquiry_kicker_email' | 'enquiry_kicker_phone' | 'enquiry_ref_work_fmt' | 'enquiry_ref_order_prefix'
   | 'aria_open_navigation'
   | 'error_prefix' | 'savingRecord' | 'confirm_delete_image' | 'select_option_placeholder' | 'wf_placeholder_new'
   | 'wf_section_identity' | 'wf_section_production' | 'wf_section_ownership' | 'wf_section_finance'
@@ -244,6 +245,9 @@ export type DictKey =
   | 'pub_practice_hero_line1' | 'pub_practice_hero_em'
   | 'pub_aria_switch_language'
   | 'landing_pdf_download_strip' | 'landing_pdf_modal_title'   | 'locale_fr_short' | 'locale_en_short'
+  | 'landing_pdf_preset_galerie_title' | 'landing_pdf_preset_galerie_sub'
+  | 'landing_pdf_preset_collectionneur_title' | 'landing_pdf_preset_collectionneur_sub'
+  | 'landing_pdf_preset_presse_title' | 'landing_pdf_preset_presse_sub'
   // Process drawer (PipelineTab)
   | 'pd_row_location' | 'pd_row_url' | 'pd_row_start' | 'pd_row_deadline' | 'pd_row_scope' | 'pd_row_stakeholders'
   | 'pd_deadline_in_days_paren' | 'pd_deadline_overdue_paren' | 'pd_deadline_on_track'
@@ -882,6 +886,10 @@ export const dict: Record<Lang, Dictionary> = {
     enquiry_category_shipping: 'Livraison / logistique',
     enquiry_category_other: 'Autre',
     enquiry_optional_ids_hint: 'Réf. optionnelles (préremplies si vous venez du site).',
+    enquiry_kicker_email: 'EMAIL',
+    enquiry_kicker_phone: 'TÉL.',
+    enquiry_ref_work_fmt: 'ŒUVRE n° {n}',
+    enquiry_ref_order_prefix: 'COMMANDE',
     wf_photo_pending_hint:
       'En attente de photographie — décocher « Photo requise » pour passer en Disponible.',
     wf_contact_custodian: 'Dépositaire',
@@ -1113,6 +1121,12 @@ export const dict: Record<Lang, Dictionary> = {
     pub_aria_switch_language: 'Changer de langue',
     landing_pdf_download_strip: 'Télécharger',
     landing_pdf_modal_title: 'Portfolio PDF',
+    landing_pdf_preset_galerie_title: 'Galerie',
+    landing_pdf_preset_galerie_sub: 'Sélection complète',
+    landing_pdf_preset_collectionneur_title: 'Collectionneur',
+    landing_pdf_preset_collectionneur_sub: '8 œuvres curées',
+    landing_pdf_preset_presse_title: 'Presse',
+    landing_pdf_preset_presse_sub: '3 œuvres · aperçu',
     locale_fr_short: 'Français',
     locale_en_short: 'English',
     pem_theme_toggle_day: 'JOUR',
@@ -2225,6 +2239,10 @@ $env:OLLAMA_HOST="127.0.0.1:11435"; ollama run llama3.2:1b`,
     enquiry_category_shipping: 'Shipping / logistics',
     enquiry_category_other: 'Other',
     enquiry_optional_ids_hint: 'Optional references (pre-filled when opened from the site).',
+    enquiry_kicker_email: 'EMAIL',
+    enquiry_kicker_phone: 'PHONE',
+    enquiry_ref_work_fmt: 'Work no. {n}',
+    enquiry_ref_order_prefix: 'ORDER',
     wf_photo_pending_hint:
       'Awaiting photography — uncheck “Photo required” to move to Available.',
     wf_contact_custodian: 'Custodian',
@@ -2456,6 +2474,12 @@ $env:OLLAMA_HOST="127.0.0.1:11435"; ollama run llama3.2:1b`,
     pub_aria_switch_language: 'Switch language',
     landing_pdf_download_strip: 'Download',
     landing_pdf_modal_title: 'Portfolio PDF',
+    landing_pdf_preset_galerie_title: 'Gallery',
+    landing_pdf_preset_galerie_sub: 'Full selection',
+    landing_pdf_preset_collectionneur_title: 'Collector',
+    landing_pdf_preset_collectionneur_sub: '8 curated works',
+    landing_pdf_preset_presse_title: 'Press',
+    landing_pdf_preset_presse_sub: '3 works · preview',
     locale_fr_short: 'French',
     locale_en_short: 'English',
     pem_theme_toggle_day: 'DAY',

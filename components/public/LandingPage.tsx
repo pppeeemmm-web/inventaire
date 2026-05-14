@@ -322,7 +322,7 @@ export default function LandingPage({
         </>
       )}
 
-      <LandingPdfPopup open={pdfOpen} onClose={() => setPdfOpen(false)} lang={lang} />
+      <LandingPdfPopup open={pdfOpen} onClose={() => setPdfOpen(false)} />
     </>
   )
 }

@@ -139,9 +139,9 @@ export default function EnquiryClient() {
         <button
           className="lang-btn"
           onClick={() => setLang(lang === 'fr' ? 'en' : 'fr')}
-          aria-label="Switch language"
+          aria-label={t('pub_aria_switch_language')}
         >
-          {lang === 'fr' ? 'EN' : 'FR'}
+          {t(lang === 'fr' ? 'pub_lang_target_en' : 'pub_lang_target_fr')}
         </button>
 
         <div className="stage-scroll" data-testid="enquiry-scroll">
@@ -150,16 +150,28 @@ export default function EnquiryClient() {
 
             {(contactEmail || contactPhone) && (
               <div className="contact-info">
-                {contactEmail && <div>EMAIL &nbsp; <a href={`mailto:${contactEmail}`}>{contactEmail}</a></div>}
-                {contactPhone && <div>PHONE &nbsp; {contactPhone}</div>}
+                {contactEmail && (
+                  <div>
+                    {t('enquiry_kicker_email')} &nbsp; <a href={`mailto:${contactEmail}`}>{contactEmail}</a>
+                  </div>
+                )}
+                {contactPhone && (
+                  <div>
+                    {t('enquiry_kicker_phone')} &nbsp; {contactPhone}
+                  </div>
+                )}
               </div>
             )}
 
             {(oeuvreParam || orderParam) && (
               <div className="contact-info" style={{ marginBottom: 16 }}>
                 {t('enquiry_optional_ids_hint')}
-                {oeuvreParam && <div>WORK #{oeuvreParam}</div>}
-                {orderParam && <div>ORDER {orderParam}</div>}
+                {oeuvreParam && <div>{t('enquiry_ref_work_fmt').replace('{n}', oeuvreParam)}</div>}
+                {orderParam && (
+                  <div>
+                    {t('enquiry_ref_order_prefix')} {orderParam}
+                  </div>
+                )}
               </div>
             )}
 

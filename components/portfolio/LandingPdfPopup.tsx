@@ -5,45 +5,32 @@
 
 import { useState } from 'react'
 import { useI18n } from '@/lib/i18n/context'
+import type { DictKey } from '@/lib/i18n/dictionary'
 import { generatePortfolioPdf } from '@/app/atelier/portfolio/pdf-action'
 import { PRESET_DEFAULTS, type PdfPreset } from '@/lib/portfolio-pdf-types'
-import type { Lang } from '@/lib/i18n/dictionary'
 
 interface Props {
   open:    boolean
   onClose: () => void
-  lang:    Lang
 }
 
 type Phase = 'idle' | 'building' | 'error'
 
-const PRESETS: { id: Exclude<PdfPreset, 'custom'>; labelFr: string; labelEn: string; subFr: string; subEn: string }[] = [
-  {
-    id: 'galerie',
-    labelFr: 'Galerie', labelEn: 'Gallery',
-    subFr: 'Sélection complète',  subEn: 'Full selection',
-  },
-  {
-    id: 'collectionneur',
-    labelFr: 'Collectionneur', labelEn: 'Collector',
-    subFr: '8 œuvres curées',  subEn: '8 curated works',
-  },
-  {
-    id: 'presse',
-    labelFr: 'Presse', labelEn: 'Press',
-    subFr: '3 œuvres · aperçu', subEn: '3 works · preview',
-  },
-]
+const PRESET_IDS = ['galerie', 'collectionneur', 'presse'] as const satisfies readonly Exclude<PdfPreset, 'custom'>[]
 
-export default function LandingPdfPopup({ open, onClose, lang }: Props) {
-  const { t } = useI18n()
+const PRESET_LABEL_KEYS: Record<(typeof PRESET_IDS)[number], { title: DictKey; sub: DictKey }> = {
+  galerie:        { title: 'landing_pdf_preset_galerie_title',        sub: 'landing_pdf_preset_galerie_sub' },
+  collectionneur: { title: 'landing_pdf_preset_collectionneur_title', sub: 'landing_pdf_preset_collectionneur_sub' },
+  presse:         { title: 'landing_pdf_preset_presse_title',         sub: 'landing_pdf_preset_presse_sub' },
+}
+
+export default function LandingPdfPopup({ open, onClose }: Props) {
+  const { t, lang } = useI18n()
   const [busyId,   setBusyId]   = useState<PdfPreset | null>(null)
   const [phase,    setPhase]    = useState<Phase>('idle')
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   if (!open) return null
-
-  const T = (fr: string, en: string) => lang === 'fr' ? fr : en
 
   async function handlePick(presetId: Exclude<PdfPreset, 'custom'>) {
     setBusyId(presetId)
@@ -85,9 +72,9 @@ export default function LandingPdfPopup({ open, onClose, lang }: Props) {
       setBusyId(null)
       setPhase('idle')
       onClose()
-    } catch (e: any) {
+    } catch (e: unknown) {
       setPhase('error')
-      setErrorMsg(e?.message ?? String(e))
+      setErrorMsg(e instanceof Error ? e.message : String(e))
       setBusyId(null)
     }
   }
@@ -112,7 +99,7 @@ export default function LandingPdfPopup({ open, onClose, lang }: Props) {
         fontFamily: 'var(--font-ui)',
         boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
       }}>
-        <button onClick={() => !busy && onClose()} aria-label={t('close')} style={{
+        <button type="button" onClick={() => !busy && onClose()} aria-label={t('close')} style={{
           position: 'absolute', top: 10, right: 14,
           background: 'none', border: 'none',
           fontSize: 18, color: '#8a8680', padding: 4,
@@ -134,36 +121,39 @@ export default function LandingPdfPopup({ open, onClose, lang }: Props) {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {PRESETS.map(p => (
-            <button key={p.id} onClick={() => handlePick(p.id)} disabled={busy} style={{
-              background: busyId === p.id ? '#1a1816' : '#fff',
-              color:      busyId === p.id ? '#fff'    : '#1a1816',
-              border: '1px solid rgba(0,0,0,0.1)',
-              borderRadius: 4, padding: '12px 14px',
-              cursor: busy ? 'default' : 'pointer',
-              textAlign: 'left',
-              transition: 'all .15s',
-              fontFamily: 'inherit',
-              opacity: busy && busyId !== p.id ? 0.4 : 1,
-            }}>
-              <div style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                fontSize: 10, fontWeight: 600, letterSpacing: 1.5,
-                textTransform: 'uppercase',
+          {PRESET_IDS.map((id) => {
+            const keys = PRESET_LABEL_KEYS[id]
+            return (
+              <button key={id} type="button" onClick={() => handlePick(id)} disabled={busy} style={{
+                background: busyId === id ? '#1a1816' : '#fff',
+                color:      busyId === id ? '#fff'    : '#1a1816',
+                border: '1px solid rgba(0,0,0,0.1)',
+                borderRadius: 4, padding: '12px 14px',
+                cursor: busy ? 'default' : 'pointer',
+                textAlign: 'left',
+                transition: 'all .15s',
+                fontFamily: 'inherit',
+                opacity: busy && busyId !== id ? 0.4 : 1,
               }}>
-                <span>{T(p.labelFr, p.labelEn)}</span>
-                <span style={{ opacity: 0.5, fontSize: 10 }}>
-                  {busyId === p.id ? '…' : '↓'}
-                </span>
-              </div>
-              <div style={{
-                fontSize: 9, marginTop: 4,
-                color: busyId === p.id ? '#bcb8b1' : '#aaa',
-              }}>
-                {T(p.subFr, p.subEn)}
-              </div>
-            </button>
-          ))}
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  fontSize: 10, fontWeight: 600, letterSpacing: 1.5,
+                  textTransform: 'uppercase',
+                }}>
+                  <span>{t(keys.title)}</span>
+                  <span style={{ opacity: 0.5, fontSize: 10 }}>
+                    {busyId === id ? '…' : '↓'}
+                  </span>
+                </div>
+                <div style={{
+                  fontSize: 9, marginTop: 4,
+                  color: busyId === id ? '#bcb8b1' : '#aaa',
+                }}>
+                  {t(keys.sub)}
+                </div>
+              </button>
+            )
+          })}
         </div>
 
         {phase === 'error' && errorMsg && (

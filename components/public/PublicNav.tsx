@@ -25,7 +25,7 @@ export default function PublicNav({ active, prefix = 'n' }: Props) {
           className={`${p}-lang`}
           aria-label={t('pub_aria_switch_language')}
         >
-          {lang === 'fr' ? 'EN' : 'FR'}
+          {t(lang === 'fr' ? 'pub_lang_target_en' : 'pub_lang_target_fr')}
         </button>
       </div>
     </nav>
