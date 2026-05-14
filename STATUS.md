@@ -1,6 +1,16 @@
 # PEM Hub — status
 
-_Generated 2026-05-14. Non-binding. Source of truth for current session work._
+_Generated 2026-05-14; Block A + Block C partial updated 2026-05-15. Non-binding. Source of truth for current session work._
+
+---
+
+## Done (2026-05-15 — Block C partial)
+
+| Item | File(s) |
+|------|---------|
+| **`pipeline-shared.ts`** — `ProcessType`, étape/process statut types, `pipelineTypeLabel`, `TYPE_LABELS` / EN, colour maps, narrow MQ constant | `components/atelier/pipeline/pipeline-shared.ts` |
+| **Pipeline imports** — `PipelineTab`, `ExhibitionsListPanel`, `ConceptCard` consume shared module instead of duplicating types/labels from `PipelineTab` | `PipelineTab.tsx`, `exhibitions/ExhibitionsListPanel.tsx`, `concepts/ConceptCard.tsx` |
+| **`ExhibitionsTab` floor-plan UI** — removed dead `WallStrip` / `DefaultRoomSVG`; dropped orphan `dragOeuvreId` after handler removal (drag still sets `dataTransfer`) | `ExhibitionsTab.tsx` |
 
 ---
 
@@ -30,20 +40,20 @@ Worktree commit: `4d407f3`. **Not yet committed in real app** — pending review
 
 ### Block A — agility (no user-visible behavior change)
 
-- [ ] **A0** Regenerate Supabase types (`supabase gen types`) + remove `as any` / `as unknown as` from `app/works/page.tsx`, `components/atelier/ThemesTab.tsx`, atelier loader.
+- [ ] **A0** Regenerate Supabase types (`supabase gen types`) + remove `as any` / `as unknown as` from `components/atelier/ThemesTab.tsx`, atelier loader — *partial 2026-05-15: `app/works/page.tsx` typed `works_modes` / legacy collections.*
 - [ ] **A0'** Pre-Oct-30 GRANT audit (see §9 below) — run query, write remediation migrations for any gaps, add `🛂 SUPABASE GRANTS` block to `CLAUDE.md`.
-- [ ] **A1** Move `ExhibitionsTab` + `CurationPanel` client-side Supabase mutations to server actions — `app/atelier/exhibitions/actions.ts` + `app/atelier/curation/actions.ts`. RLS stays as defense-in-depth.
-- [ ] **A2** Switch `/works` from `force-dynamic` to RSC + `revalidateTag('portfolio')` called from `savePortfolioConfig`.
+- [x] **A1** Move `ExhibitionsTab` + `CurationPanel` client-side Supabase mutations to server actions — **`app/atelier/exhibitions/actions.ts`** + **`app/atelier/curation/actions.ts`** (already wired in tab code). *2026-05-15:* constellation graph reads + `tblrelations` edge insert/delete also moved to **`app/atelier/constellation/actions.ts`** (`fetchConstellationGraphBundle`, `insertConstellationRelation`, `deleteConstellationRelation`).
+- [x] **A2** Switch `/works` from `force-dynamic` to RSC + `revalidateTag('portfolio')` called from `savePortfolioConfig` *(2026-05-15: `loadPortfolioSectionsCached` + tag on save; page still dynamic via `cookies()`).*
 - [ ] **A3** Add R2 JSON optimistic-concurrency to `savePortfolioConfig` (etag or `updated_at` round-trip) — prevents lost edits when two browser tabs are open.
-- [ ] **A4** Sanitize RichEditor HTML server-side in `savePortfolioConfig` before R2 PUT.
-- [ ] **A5** Replace silent `catch {}` with logged variant in `app/page.tsx` + calendar OAuth callbacks.
+- [x] **A4** Sanitize RichEditor HTML server-side in `savePortfolioConfig` before R2 PUT (`sanitizePortfolioConfigForPersist`).
+- [x] **A5** Replace silent `catch {}` with logged variant in `app/page.tsx` + calendar OAuth callbacks *(2026-05-15: also `selection/actions` PDF images, `works/actions` `r2SoftDelete`).*
 
 ### Block C — decomposition (largest files)
 
-- [ ] **C1** `PortfolioTab.tsx` (1 772 lines) → `PortfolioLandingPanel`, `PortfolioCollectionsPanel`, `PortfolioWorksManager` + thin orchestrator.
-- [ ] **C2** `PipelineTab.tsx` (2 054 lines) → `PipelineGanttView`, `PipelineDeadlineSidebar`, `PipelineRemindersPanel`. Also: add `AbortController` to `useEffect` fetches (stale-data risk on fast tab switches).
-- [ ] **C3** `ExhibitionsTab.tsx` (1 403 lines) → `ExhibitionsListPanel`, `ExhibitionStepsPanel`, `ExhibitionFloorPlanEditor`. Combine with A1 (server actions) in one pass.
-- [ ] **C4** Write `docs/CONSTELLATION.md` (purpose, user story, data model) before any further investment in the 3 003-line canvas.
+- [ ] **C1** `PortfolioTab.tsx` (~1 954 lines) → `PortfolioLandingPanel`, `PortfolioCollectionsPanel`, `PortfolioWorksManager` + thin orchestrator.
+- [ ] **C2** `PipelineTab.tsx` (~1 984 lines; shared types in `pipeline/pipeline-shared.ts`) → `PipelineGanttView`, `PipelineDeadlineSidebar`, `PipelineRemindersPanel`. Also: add `AbortController` to `useEffect` fetches (stale-data risk on fast tab switches).
+- [ ] **C3** `ExhibitionsTab.tsx` (~1 174 lines; list sidebar already `exhibitions/ExhibitionsListPanel.tsx`) → `ExhibitionStepsPanel`, `ExhibitionFloorPlanEditor` + thinner shell. *A1 server actions already shipped.*
+- [x] **C4** Write `docs/CONSTELLATION.md` (purpose, user story, data model) before any further investment in the 3 003-line canvas — **doc shipped**; *2026-05-15* updated for server-side graph bundle + edge mutations.
 
 ### Deferred features (roadmap — no GO without decision)
 
@@ -72,13 +82,13 @@ Worktree commit: `4d407f3`. **Not yet committed in real app** — pending review
 ### Architecture
 - **Single RSC spine** (`app/atelier/page.tsx`) is still a parallel `Promise.all` for all reference tables. First-chunk œuvres is paged; lookups (techniques, themes, junction tables) still ride the same round-trip → stale-blocks TTI on slow connections. Fix is per-table `cache()` + `revalidateTag()` (Block A).
 - **R2-backed portfolio config** is a single JSON blob; no versioning. Two browser tabs editing simultaneously will silently lose one set of changes. Fix: etag/`updated_at` round-trip (Block A, A3).
-- **Client-side Supabase mutations** in `ExhibitionsTab` + `CurationPanel` are an architecture rule violation (CLAUDE.md: domain mutations → `app/**/actions.ts`). RLS is the only gate today. Fix: Block A A1.
-- **`force-dynamic` on `/works`** means every public visitor pays a cold render. Fix: Block A A2.
-- **`ConstellationCanvas` (3 003 lines)** has no written spec, no tests, no purpose statement anywhere in docs. Blocking further investment.
+- **Client-side Supabase mutations** in `ExhibitionsTab` + `CurationPanel` — **addressed** via `app/atelier/exhibitions/actions.ts` + `app/atelier/curation/actions.ts`. *2026-05-15:* `ConstellationCanvas` graph bootstrap + edge persistence moved to `app/atelier/constellation/actions.ts` (canvas file still large — Block C split remains).
+- **`ConstellationCanvas` (~3k lines)** — `docs/CONSTELLATION.md` defines contract; server actions cover graph reads + `tblrelations` writes; module split still pending (C1-style decomposition).
+- **Pipeline / exhibitions cross-imports** — label maps and process types now centralized in `pipeline-shared.ts`; full tab splits (C2/C3) still open.
 
 ### Security
 - **Supabase GRANT change (May 30 / Oct 30 2026):** New tables need explicit `GRANT` + RLS + policies or PostgREST returns 42501. Existing tables enforce Oct 30. Must audit before then. See `docs/rationalization-plan.md` §9.
-- **`dangerouslySetInnerHTML`** in `PortfolioTab.tsx` for RichEditor HTML — no visible server-side sanitization in `savePortfolioConfig`. Fix: Block A A4.
+- **`dangerouslySetInnerHTML`** in `PortfolioTab.tsx` for RichEditor HTML — server-side sanitization exists in `savePortfolioConfig` (`sanitizePortfolioConfigForPersist`); keep PortfolioTab aligned if new HTML surfaces appear.
 - **37 `as any` Supabase casts** across the app (6 on the public `/works` surface alone) — schema drift is silent. Fix: Block A A0 (types regen).
 - **`ThemesTab` `as any` on static table names** — orphan symptom of stale generated types.
 

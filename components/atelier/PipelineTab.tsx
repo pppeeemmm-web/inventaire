@@ -11,57 +11,22 @@ import { getSignedUrl } from '@/app/atelier/vault/actions'
 import type { Lang } from '@/lib/i18n/dictionary'
 import { AsyncButton } from '@/components/ui/AsyncButton'
 import { toast } from '@/lib/ui/toast'
-
-const ATELIER_NARROW_MQ = '(max-width: 767px)'
-
-// ── Types ──────────────────────────────────────────────────────────────
-
-export type ProcessType =
-  | 'prix' | 'residence' | 'expedition' | 'consignment' | 'exposition'
-  | 'pr' | 'visite_atelier' | 'salon' | 'livre' | 'collaboration'
-  | 'evenement' | 'correspondance' | 'vente' | 'autre'
-
-type ProcessStatut = 'en_cours' | 'gagne' | 'perdu' | 'annule' | 'termine'
-type EtapeStatut   = 'a_faire' | 'en_cours' | 'fait' | 'bloque'
-
-interface Etape {
-  id:               string
-  process_id:       string
-  nom:              string
-  date_echeance:    string | null
-  statut:           EtapeStatut
-  position:         number
-  notes:            string | null
-  overdue_override: boolean
-}
-
-interface Responsable { nom: string; contact_id: number | null; role: string }
-
-interface Process {
-  id:             string
-  nom:            string
-  type:           ProcessType
-  date_debut:     string | null
-  date_fin:       string | null
-  deadline_time:  string | null
-  statut:         ProcessStatut
-  notes:          string | null
-  localisation:   string | null
-  url:            string | null
-  scope:          string | null
-  stakeholders:   string | null
-  responsables:   Responsable[]
-  vault_tags:     string[]
-  vault_path:     string | null
-  pdf_path:       string | null
-  asset_notes:    string | null
-  oeuvre_id:      number | null
-  contact_id:     number | null
-  /** Optional link to an exhibition-hub process (same table); cleared if that project is deleted. */
-  exhibition_process_id?: string | null
-  created_at:     string
-  etapes:         Etape[]
-}
+import {
+  ATELIER_NARROW_MQ,
+  ETAPE_STATUT_COLORS,
+  ETAPE_STATUT_ORDER,
+  TYPE_COLORS,
+  TYPE_LABELS,
+  TYPE_LABELS_EN,
+  type Etape,
+  type EtapeStatut,
+  type Process,
+  type ProcessStatut,
+  type ProcessType,
+  type Reminder,
+  type Responsable,
+  pipelineTypeLabel,
+} from '@/components/atelier/pipeline/pipeline-shared'
 
 import { computePipelinePulseItems, daysUntil, type PulseProcess } from '@/lib/pipeline-deadlines'
 import { buildPipelineCalendarEvents, normalizePipelineCalendarAnchor, type PipelineCalendarRange } from '@/lib/pipeline-calendar'
@@ -91,86 +56,11 @@ interface Props {
   onRemindersMutated?: () => Promise<void>
 }
 
-interface Reminder {
-  id:         string
-  process_id: string | null
-  etape_id:   string | null
-  message:    string
-  remind_at:  string
-  lu:         boolean
-}
-
 const FIS: React.CSSProperties = {
   padding: '8px 12px', fontSize: 13,
   background: 'var(--bg0)', border: '1px solid var(--bd)',
   color: 'var(--tx)', outline: 'none', width: '100%',
 }
-
-// ── Config ─────────────────────────────────────────────────────────────
-
-export const TYPE_LABELS: Record<ProcessType, string> = {
-  collaboration:   'Collaboration',
-  consignment:     'Consignation',
-  correspondance:  'Correspondance',
-  evenement:       'Événement',
-  expedition:      'Expédition',
-  exposition:      'Exposition',
-  livre:           'Livre / Publication',
-  pr:              'Relations publiques',
-  prix:            'Prix',
-  residence:       'Résidence / Bourse',
-  salon:           'Salon / Foire',
-  visite_atelier:  'Visite d\'atelier',
-  vente:           'Vente',
-  autre:           'Autre',
-}
-
-export const TYPE_LABELS_EN: Record<ProcessType, string> = {
-  collaboration:   'Collaboration',
-  consignment:     'Consignment',
-  correspondance:  'Correspondence',
-  evenement:       'Event',
-  expedition:      'Shipment',
-  exposition:      'Exhibition',
-  livre:           'Book / Publication',
-  pr:              'Public Relations',
-  prix:            'Prize / Award',
-  residence:       'Residency / Grant',
-  salon:           'Art Fair',
-  visite_atelier:  'Studio Visit',
-  vente:           'Sale',
-  autre:           'Other',
-}
-
-export function pipelineTypeLabel(typ: ProcessType, lang: Lang): string {
-  return lang === 'en' ? TYPE_LABELS_EN[typ] : TYPE_LABELS[typ]
-}
-
-export const TYPE_COLORS: Record<ProcessType, string> = {
-  collaboration:   '#b07040',
-  consignment:     '#c08080',
-  correspondance:  '#708090',
-  evenement:       '#80a060',
-  expedition:      '#80c090',
-  exposition:      '#a060c0',
-  livre:           '#c0a030',
-  pr:              '#60b0c0',
-  prix:            '#c0a060',
-  residence:       '#6090c0',
-  salon:           '#c06090',
-  visite_atelier:  '#70b080',
-  vente:           '#60a060',
-  autre:           '#888888',
-}
-
-const ETAPE_STATUT_COLORS: Record<EtapeStatut, string> = {
-  a_faire:  'var(--tx3)',
-  en_cours: '#c0a030',
-  fait:     '#60a060',
-  bloque:   '#c06060',
-}
-
-const ETAPE_STATUT_ORDER: EtapeStatut[] = ['a_faire', 'en_cours', 'fait', 'bloque']
 
 function useSuiviLabels() {
   const { t, lang } = useI18n()
@@ -418,19 +308,29 @@ export function PipelineTab({ oeuvres, contacts, groups, initialReminders, onRem
           padding: atelierNarrow ? '10px 16px' : '10px 28px', borderBottom: '1px solid var(--bd)',
           background: 'var(--bg1)', flexShrink: 0,
         }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: atelierNarrow ? 10 : 14,
-            flexWrap: 'wrap',
-            width: '100%',
-          }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: atelierNarrow ? 10 : 14,
+              flexWrap: atelierNarrow ? 'nowrap' : 'wrap',
+              width: '100%',
+              minWidth: 0,
+              ...(atelierNarrow
+                ? {
+                    overflowX: 'auto',
+                    WebkitOverflowScrolling: 'touch' as const,
+                    paddingBottom: 2,
+                  }
+                : {}),
+            }}
+          >
             <div
               role="group"
               aria-label={t('pipeline_view_mode_aria')}
               style={{
                 display: 'flex',
-                width: atelierNarrow ? '100%' : 'auto',
+                width: atelierNarrow ? 'auto' : 'auto',
                 padding: 3,
                 gap: 0,
                 background: 'var(--bg0)',
@@ -490,20 +390,23 @@ export function PipelineTab({ oeuvres, contacts, groups, initialReminders, onRem
             {!atelierNarrow && (
               <div aria-hidden style={{ width: 1, height: 32, background: 'var(--bd)', flexShrink: 0 }} />
             )}
+            {atelierNarrow ? (
+              <div aria-hidden style={{ width: 1, height: 28, background: 'var(--bd)', flexShrink: 0 }} />
+            ) : null}
             <div
               className="t-mono-sm"
               style={{
                 display: 'flex',
                 flexWrap: atelierNarrow ? 'nowrap' : 'wrap',
-                overflowX: atelierNarrow ? 'auto' : 'visible',
+                overflowX: atelierNarrow ? 'visible' : 'visible',
                 WebkitOverflowScrolling: 'touch',
                 alignItems: 'center',
                 gap: 6,
-                flex: atelierNarrow ? '1 1 100%' : 1,
+                flex: atelierNarrow ? '0 0 auto' : 1,
                 minWidth: atelierNarrow ? 0 : undefined,
                 maxWidth: '100%',
                 color: 'var(--tx3)', fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase',
-                marginTop: atelierNarrow ? 2 : 0,
+                marginTop: 0,
               }}
             >
               <span style={{ marginRight: 6, flexShrink: 0 }}>{t('pipeline_filter_group_label')}</span>

@@ -309,9 +309,30 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen, oeuvresPagi
       >
         <div>
           <div className="t-label">{t('production')}</div>
-          <div className="t-mono-sm" style={{ color: 'var(--tx3)', marginTop: 3 }}>
-            {statLine}
-          </div>
+          {narrow ? (
+            <ul
+              className="t-mono-sm"
+              style={{
+                margin: '8px 0 0',
+                padding: 0,
+                listStyle: 'none',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 6,
+                color: 'var(--tx3)',
+                fontSize: 11,
+                lineHeight: 1.35,
+              }}
+            >
+              {statParts.map((part, i) => (
+                <li key={`prod-stat-${i}`}>{part}</li>
+              ))}
+            </ul>
+          ) : (
+            <div className="t-mono-sm" style={{ color: 'var(--tx3)', marginTop: 3 }}>
+              {statLine}
+            </div>
+          )}
           {subsetNote ? (
             <div className="t-mono-sm" style={{ color: 'var(--tx3)', marginTop: 6, fontSize: 10, lineHeight: 1.4, maxWidth: 560 }}>
               {subsetNote}

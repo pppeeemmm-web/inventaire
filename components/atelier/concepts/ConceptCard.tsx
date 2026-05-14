@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react'
 import { updateConcept, deleteConcept, uploadConceptSketch, type ConceptRow } from '@/app/atelier/concepts/actions'
 import { convertConceptToProcess, type PipelineProcessType } from '@/app/atelier/pipeline/actions'
-import { TYPE_LABELS, pipelineTypeLabel, type ProcessType } from '../PipelineTab'
+import { TYPE_LABELS, pipelineTypeLabel, type ProcessType } from '@/components/atelier/pipeline/pipeline-shared'
 import { useI18n } from '@/lib/i18n/context'
 import { stringifyError } from '@/lib/error'
 import { imageUrl } from '@/lib/data'

@@ -2,7 +2,7 @@
 
 import type { CSSProperties } from 'react'
 import { useI18n } from '@/lib/i18n/context'
-import { pipelineTypeLabel, type ProcessType } from '@/components/atelier/PipelineTab'
+import { pipelineTypeLabel, type ProcessType } from '@/components/atelier/pipeline/pipeline-shared'
 
 const inputSt: CSSProperties = {
   width: '100%',

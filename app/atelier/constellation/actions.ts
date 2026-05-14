@@ -31,6 +31,30 @@ export type ConstellationMapLoadResult =
 
 export type SimpleResult = { error: string } | { ok: true }
 
+/** Rows for constellation graph reload (matches prior client `createClient()` selects). */
+export interface ConstellationGraphBundle {
+  relations: {
+    id: string
+    source_id: number | null
+    target_id: number | null
+    relation_type: string | null
+    strength: number | null
+    description: string | null
+  }[]
+  oeuvreThemes: { oeuvre_id: number; theme_id: number }[]
+  workingGroupWork: { oeuvre_id: number; group_id: string }[]
+}
+
+export type ConstellationRelationRow = ConstellationGraphBundle['relations'][number]
+
+export type ConstellationGraphFetchResult =
+  | { error: string }
+  | { ok: true; bundle: ConstellationGraphBundle }
+
+export type ConstellationRelationInsertResult =
+  | { error: string }
+  | { ok: true; row: ConstellationRelationRow }
+
 async function guardTeam() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -42,6 +66,61 @@ async function guardTeam() {
 
 function r2KeyForMap(id: string) {
   return `constellation-maps/${id}.json`
+}
+
+export async function fetchConstellationGraphBundle(): Promise<ConstellationGraphFetchResult> {
+  const { error: authErr, supabase } = await guardTeam()
+  if (authErr || !supabase) return { error: authErr ?? 'Auth' }
+
+  const [relsRes, otRes, wgRes] = await Promise.all([
+    supabase
+      .from('tblrelations')
+      .select('id, source_id, target_id, relation_type, strength, description')
+      .range(0, 9999),
+    supabase.from('oeuvre_theme').select('oeuvre_id, theme_id').range(0, 49999),
+    supabase.from('working_group_work').select('oeuvre_id, group_id').range(0, 49999),
+  ])
+  if (relsRes.error) return { error: relsRes.error.message }
+  if (otRes.error) return { error: otRes.error.message }
+  if (wgRes.error) return { error: wgRes.error.message }
+
+  return {
+    ok: true,
+    bundle: {
+      relations: (relsRes.data ?? []) as ConstellationGraphBundle['relations'],
+      oeuvreThemes: (otRes.data ?? []) as ConstellationGraphBundle['oeuvreThemes'],
+      workingGroupWork: (wgRes.data ?? []) as ConstellationGraphBundle['workingGroupWork'],
+    },
+  }
+}
+
+export async function insertConstellationRelation(payload: {
+  source_id: number
+  target_id: number
+  relation_type: string | null
+}): Promise<ConstellationRelationInsertResult> {
+  const { error: authErr, supabase } = await guardTeam()
+  if (authErr || !supabase) return { error: authErr ?? 'Auth' }
+
+  const { data, error } = await supabase
+    .from('tblrelations')
+    .insert({
+      source_id: payload.source_id,
+      target_id: payload.target_id,
+      relation_type: payload.relation_type,
+    })
+    .select('id, source_id, target_id, relation_type, strength, description')
+    .single()
+  if (error || !data) return { error: error?.message ?? 'Insert failed' }
+  return { ok: true, row: data as ConstellationRelationRow }
+}
+
+export async function deleteConstellationRelation(edgeId: string): Promise<SimpleResult> {
+  const { error: authErr, supabase } = await guardTeam()
+  if (authErr || !supabase) return { error: authErr ?? 'Auth' }
+  const { error } = await supabase.from('tblrelations').delete().eq('id', edgeId)
+  if (error) return { error: error.message }
+  return { ok: true }
 }
 
 export async function listConstellationMaps(): Promise<ConstellationMapListResult> {

@@ -29,8 +29,8 @@ As a curator, I can:
 
 - `Oeuvres` rows passed from the Atelier loader.
 - `theme` and `working_group` metadata to scope clusters.
-- `oeuvre_theme` and `working_group_work` junctions for membership.
-- Relationship rows (`tblrelations`) for edge graph.
+- `oeuvre_theme` and `working_group_work` junctions for membership (also loaded server-side with relations for the canvas graph).
+- Relationship rows (`tblrelations`) for edge graph (loaded via `fetchConstellationGraphBundle`).
 
 ### Persisted states
 
@@ -47,9 +47,13 @@ Cloud payload schema is versioned by `CONSTELLATION_MAP_VERSION` and represented
 
 ### Write side-effects
 
-- Edge edits mutate relationship records.
+- Edge edits mutate relationship records **via server actions** `insertConstellationRelation` and `deleteConstellationRelation` in [`app/atelier/constellation/actions.ts`](../atelier/constellation/actions.ts) (team-gated; no browser `createClient()` on `tblrelations`).
 - Optional membership edits can remove works from theme/group via server actions.
 - Saving cloud maps writes only map state, not domain metadata.
+
+### Graph bootstrap (read path, server)
+
+- `fetchConstellationGraphBundle` loads `tblrelations`, `oeuvre_theme`, and `working_group_work` in one server round-trip (same row caps as the legacy client selects). Used by `ConstellationCanvas` on load and after membership removals.
 
 ## UX Contract
 

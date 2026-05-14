@@ -859,7 +859,9 @@ async function buildPdf(
                   background: { r: 255, g: 255, b: 255, alpha: 0 }
                 }).toBuffer()
               doc.image(processed, cx, y, { width: cellW, height: imgH })
-            } catch {}
+            } catch (e) {
+              console.warn('[selection/pdf] grid cell image', o.OeuvreID, e)
+            }
           }
         }
 
@@ -937,7 +939,9 @@ async function buildPdf(
             try {
               const imgBuf = Buffer.from(imgSrc.split(',')[1], 'base64')
               doc.image(imgBuf, margin, y, { cover: [imgW, imgH], align: 'center', valign: 'center' })
-            } catch {}
+            } catch (e) {
+              console.warn('[selection/pdf] card image', o.OeuvreID, e)
+            }
           }
         }
 

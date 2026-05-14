@@ -100,8 +100,16 @@ async function deleteAllImagesForOeuvres(
     const filename = r.txtImageNameLink as string | null
     if (!filename) continue
     const thumbName = `thumbs/${filename.replace(/\.[^.]+$/, '')}.avif`
-    try { await r2SoftDelete(filename) } catch { /* R2 optional */ }
-    try { await r2SoftDelete(thumbName) } catch { /* R2 optional */ }
+    try {
+      await r2SoftDelete(filename)
+    } catch (e) {
+      console.warn('[works/actions] r2SoftDelete original', filename, e)
+    }
+    try {
+      await r2SoftDelete(thumbName)
+    } catch (e) {
+      console.warn('[works/actions] r2SoftDelete thumb', thumbName, e)
+    }
   }
   return { ok: true }
 }
@@ -1020,8 +1028,16 @@ export async function deleteWorkImage(
     const filename = img.txtImageNameLink
     const thumbName = `thumbs/${filename.replace(/\.[^.]+$/, '')}.avif`
     // Fire-and-forget — don't block on R2 errors. Soft-delete moves to recycle/<date>/ first.
-    try { await r2SoftDelete(filename) } catch {}
-    try { await r2SoftDelete(thumbName) } catch {}
+    try {
+      await r2SoftDelete(filename)
+    } catch (e) {
+      console.warn('[works/actions] deleteWorkImage r2SoftDelete original', filename, e)
+    }
+    try {
+      await r2SoftDelete(thumbName)
+    } catch (e) {
+      console.warn('[works/actions] deleteWorkImage r2SoftDelete thumb', thumbName, e)
+    }
   }
 
   await syncCover(supabase, oeuvreId)

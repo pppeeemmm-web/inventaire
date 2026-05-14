@@ -173,6 +173,7 @@ export type DictKey =
   | 'enquiry_optional_ids_hint'
   | 'enquiry_kicker_email' | 'enquiry_kicker_phone' | 'enquiry_ref_work_fmt' | 'enquiry_ref_order_prefix'
   | 'aria_open_navigation'
+  | 'aria_command_palette'
   | 'error_prefix' | 'savingRecord' | 'confirm_delete_image' | 'select_option_placeholder' | 'wf_placeholder_new'
   | 'wf_section_identity' | 'wf_section_production' | 'wf_section_ownership' | 'wf_section_finance'
   | 'wf_in_selection_short' | 'wf_add_selection_short'
@@ -401,7 +402,9 @@ export type DictKey =
   | 'hub_field_document' | 'hub_field_document_sub'
   | 'hub_field_issue' | 'hub_field_issue_sub'
   | 'hub_field_more' | 'hub_field_more_sub'
+  | 'ring_b_bar_toolbar_aria'
   | 'ring_b_bar_capture_aria' | 'ring_b_bar_scan_aria' | 'ring_b_bar_note_aria' | 'ring_b_bar_reminders_aria'
+  | 'ring_b_bar_new_work_aria'
   | 'ring_b_voice_sheet_title' | 'ring_b_voice_sheet_body' | 'ring_b_voice_sheet_close'
   // ── Ring C — Hub-linked field verb routes (stub pages until flows ship) ────
   | 'field_stub_title' | 'field_stub_body' | 'field_stub_cta_atelier' | 'field_stub_cta_hub'

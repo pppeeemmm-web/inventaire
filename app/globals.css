@@ -406,3 +406,19 @@ input, textarea, select { font: inherit; color: inherit; background: transparent
 .pem-sidebar-tab:not(.pem-sidebar-tab--on):hover {
   background: var(--bg2);
 }
+
+/* Ring D — honour reduced motion on Atelier narrow sidebar slide */
+@media (prefers-reduced-motion: reduce) {
+  .pem-atelier-sidebar {
+    transition: none !important;
+  }
+}
+
+/* Ring D — narrow: form controls ≥16px (iOS avoids focus zoom on small fonts) */
+@media (max-width: 767px) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='hidden']),
+  select,
+  textarea {
+    font-size: max(16px, 1rem);
+  }
+}

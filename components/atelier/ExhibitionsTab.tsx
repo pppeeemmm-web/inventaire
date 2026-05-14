@@ -5,7 +5,7 @@
 // Right: selected exhibition detail — steps progress, linked works, contact,
 //        dates, notes, and (inside "Mise en espace" sub-tab) the floor plan tool.
 
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import Image from 'next/image'
 import type { Oeuvre } from '@/lib/types/database'
 import { thumbUrl } from '@/lib/data'
@@ -205,101 +205,6 @@ function WorkChip({ oeuvre, onDragStart }: { oeuvre: Oeuvre; onDragStart: (id: n
   )
 }
 
-// ── WallStrip ─────────────────────────────────────────────────────────────────
-
-function WallStrip({ wall, placements, oeuvres, onDrop, onRemove, onReorder }: {
-  wall: Wall; placements: Placement[]; oeuvres: Oeuvre[]
-  onDrop: (wallId: string, oeuvreId: number) => void
-  onRemove: (wallId: string, oeuvreId: number) => void
-  onReorder: (wallId: string, fromIdx: number, toIdx: number) => void
-}) {
-  const [over, setOver] = useState(false)
-  const dragIdx = useRef<number | null>(null)
-  const wallPlacements = placements.filter((p) => p.wall_id === wall.id)
-
-  function handleDrop(e: React.DragEvent) {
-    e.preventDefault(); setOver(false)
-    const id = Number(e.dataTransfer.getData('oeuvre_id'))
-    if (id) onDrop(wall.id, id)
-  }
-
-  return (
-    <div style={{ marginBottom: 12 }}>
-      <div style={{ fontSize: 11, letterSpacing: 1, color: wall.color, textTransform: 'uppercase', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: wall.color, flexShrink: 0 }} />
-        {wall.nom}
-        <span style={{ color: 'var(--tx3)', fontWeight: 400 }}>({wallPlacements.length})</span>
-      </div>
-      <div
-        onDragOver={(e) => { e.preventDefault(); setOver(true) }}
-        onDragLeave={() => setOver(false)}
-        onDrop={handleDrop}
-        style={{
-          minHeight: 56, display: 'flex', flexWrap: 'wrap', gap: 4, padding: 6,
-          border: `1px dashed ${over ? wall.color : 'var(--bd)'}`,
-          background: over ? 'var(--bg2)' : 'var(--bg0)',
-          borderRadius: 2, transition: 'all .15s',
-        }}
-      >
-        {wallPlacements.length === 0 && (
-          <div style={{ fontSize: 11, color: 'var(--tx3)', alignSelf: 'center', padding: '0 4px' }}>
-            Déposer des œuvres ici
-          </div>
-        )}
-        {wallPlacements.map((p, idx) => {
-          const o = oeuvres.find((x) => x.OeuvreID === p.oeuvre_id)
-          const thumb = o?.txtImageNameLink
-          return (
-            <div
-              key={p.oeuvre_id}
-              draggable
-              onDragStart={(e) => { e.dataTransfer.setData('wall_move', '1'); dragIdx.current = idx }}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => {
-                e.stopPropagation()
-                if (dragIdx.current !== null && dragIdx.current !== idx) {
-                  onReorder(wall.id, dragIdx.current, idx)
-                  dragIdx.current = null
-                }
-              }}
-              style={{ position: 'relative', cursor: 'grab' }}
-              title={o?.Titre ?? `#${p.oeuvre_id}`}
-            >
-              {thumb ? (
-                <div style={{ width: 64, height: 64, position: 'relative' }}>
-                  <WorkThumb file={thumb} size={256} alt="" />
-                </div>
-              ) : (
-                <div style={{ width: 64, height: 64, background: 'var(--bg2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: 'var(--tx3)' }}>
-                  #{p.oeuvre_id}
-                </div>
-              )}
-              <button
-                onClick={() => onRemove(wall.id, p.oeuvre_id)}
-                style={{ position: 'absolute', top: 2, right: 2, width: 16, height: 16, borderRadius: '50%', background: '#c00', color: '#fff', border: 'none', fontSize: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
-              >×</button>
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-// ── DefaultRoomSVG ────────────────────────────────────────────────────────────
-
-function DefaultRoomSVG({ walls }: { walls: Wall[] }) {
-  return (
-    <svg width="100%" height="100%" viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid meet" style={{ background: '#0a0a0a' }}>
-      <rect x="50" y="50" width="900" height="500" fill="none" stroke="#222" strokeWidth="2" />
-      <text x="500" y="310" textAnchor="middle" fill="#333" fontSize="18" fontFamily="Sofia Sans, ui-sans-serif, sans-serif">CANVAS GLOBAL</text>
-      {walls.map((w, i) => (
-        <rect key={w.id} x={100 + i * 120} y={150} width="100" height="300" fill={w.color + '22'} stroke={w.color} strokeWidth="1" />
-      ))}
-    </svg>
-  )
-}
-
 // ── FloorPlanTool ─────────────────────────────────────────────────────────────
 
 function FloorPlanTool({ exhibitionId, oeuvres, themes, tM }: { 
@@ -317,7 +222,6 @@ function FloorPlanTool({ exhibitionId, oeuvres, themes, tM }: {
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [subTab, setSubTab]     = useState<'murs' | 'parametres'>('murs')
   const [bgOpacity, setBgOpacity] = useState(0.7)
-  const dragOeuvreId = useRef<number | null>(null)
 
   const load = useCallback(async () => {
     const ls = await fetchLayouts()
@@ -379,40 +283,6 @@ function FloorPlanTool({ exhibitionId, oeuvres, themes, tM }: {
       setUploading(false)
       e.target.value = ''
     }
-  }
-
-  function handleDragStart(oeuvreId: number) {
-    dragOeuvreId.current = oeuvreId
-  }
-
-  function handleDropOnCanvas(e: React.DragEvent) {
-    if (!layout) return
-    const idStr = e.dataTransfer.getData('oeuvre_id')
-    const id = Number(idStr)
-    if (!id) return
-    
-    const rect = e.currentTarget.getBoundingClientRect()
-    const x = ((e.clientX - rect.left) / rect.width) * 100
-    const y = ((e.clientY - rect.top) / rect.height) * 100
-
-    const existingIdx = layout.placements.findIndex(p => p.oeuvre_id === id)
-    if (existingIdx >= 0) {
-      const next = [...layout.placements]
-      next[existingIdx] = { ...next[existingIdx], x, y }
-      patchLocal({ placements: next })
-    } else {
-      patchLocal({ placements: [...layout.placements, { oeuvre_id: id, wall_id: 'canvas', position: 50, scale: 1, x, y }] })
-    }
-  }
-
-  function handleReorder(wallId: string, fromIdx: number, toIdx: number) {
-    if (!layout) return
-    const wallPlacements = layout.placements.filter((p) => p.wall_id === wallId)
-    const others = layout.placements.filter((p) => p.wall_id !== wallId)
-    const moved = [...wallPlacements]
-    const [item] = moved.splice(fromIdx, 1)
-    moved.splice(toIdx, 0, item)
-    patchLocal({ placements: [...others, ...moved] })
   }
 
   function addWall() {
@@ -523,7 +393,6 @@ function FloorPlanTool({ exhibitionId, oeuvres, themes, tM }: {
             <div style={{ flex: 1, overflowY: 'auto', padding: 6 }}>
               {exposable.map((o) => (
                 <WorkChip key={o.OeuvreID} oeuvre={o} onDragStart={(id, e) => {
-                  dragOeuvreId.current = id
                   e.dataTransfer.setData('oeuvre_id', String(id))
                 }} />
               ))}

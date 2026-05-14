@@ -85,19 +85,22 @@ type Tab =
   | 'overview' | 'inventory' | 'reports' | 'constellation' | 'production'
   | 'logistics' | 'sales' | 'exhibitions' | 'vault' | 'contacts' | 'map' | 'pipeline' | 'fiscal' | 'concepts' | 'themes' | 'stock' | 'stock-take' | 'system' | 'portfolio' | 'audit' | 'broadcast'
 
-/** Desktop top bar + narrow drawer row — same handlers, drawer uses 44px tap targets. */
+/** Desktop top bar + narrow drawer row — same handlers, drawer uses 44px tap targets. Ring A.1: new work lives on `MobileActionBar`, not here, when `hideNewWork`. */
 function AtelierHeaderChrome({
   variant,
   lang,
   setLang,
   onPaletteOpen,
   onNewWork,
+  hideNewWork,
 }: {
   variant: 'desktop' | 'drawer'
   lang: Lang
   setLang: (l: Lang) => void
   onPaletteOpen: () => void
   onNewWork: () => void
+  /** Narrow: + New work is on the bottom field bar, not in the drawer chrome. */
+  hideNewWork?: boolean
 }) {
   const { t } = useI18n()
   const compact = variant === 'drawer'
@@ -138,6 +141,7 @@ function AtelierHeaderChrome({
         type="button"
         className="btn ghost sm"
         title="⌘K"
+        aria-label={t('aria_command_palette')}
         onClick={onPaletteOpen}
         style={{
           fontSize: 11,
@@ -147,19 +151,22 @@ function AtelierHeaderChrome({
       >
         ⌘K
       </button>
-      <button
-        type="button"
-        className="btn ghost sm"
-        onClick={onNewWork}
-        title={t('newWork')}
-        style={
-          compact
-            ? { minHeight: 44, minWidth: 44, boxSizing: 'border-box', fontSize: 11, letterSpacing: 1 }
-            : undefined
-        }
-      >
-        {`+ ${t('newWork')}`}
-      </button>
+      {!hideNewWork ? (
+        <button
+          type="button"
+          className="btn ghost sm"
+          onClick={onNewWork}
+          title={t('newWork')}
+          aria-label={t('newWork')}
+          style={
+            compact
+              ? { minHeight: 44, minWidth: 44, boxSizing: 'border-box', fontSize: 11, letterSpacing: 1 }
+              : undefined
+          }
+        >
+          {`+ ${t('newWork')}`}
+        </button>
+      ) : null}
     </div>
   )
 }
@@ -187,19 +194,21 @@ function junctionFromServerInitial(init: Partial<AtelierJunctionDerived>): Ateli
   }
 }
 
-/** Ring B.2 — fixed bottom bar (narrow only; hidden when WorkDrawer open). */
+/** Ring B.2 — fixed bottom bar (narrow only; hidden when WorkDrawer open). Ring A.1: includes new work (+). */
 function MobileActionBar({
   t,
   onCapture,
   onScan,
   onNote,
   onReminders,
+  onNewWork,
 }: {
   t: (k: string) => string
   onCapture: () => void
   onScan: () => void
   onNote: () => void
   onReminders: () => void
+  onNewWork: () => void
 }) {
   return (
     <div
@@ -213,11 +222,11 @@ function MobileActionBar({
         bottom: 0,
         zIndex: 50,
         display: 'grid',
-        gridTemplateColumns: 'repeat(4, 1fr)',
-        gap: 6,
+        gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
+        gap: 4,
         paddingTop: 8,
-        paddingLeft: 'max(8px, env(safe-area-inset-left, 0px))',
-        paddingRight: 'max(8px, env(safe-area-inset-right, 0px))',
+        paddingLeft: 'max(6px, env(safe-area-inset-left, 0px))',
+        paddingRight: 'max(6px, env(safe-area-inset-right, 0px))',
         paddingBottom: 'max(8px, env(safe-area-inset-bottom, 0px))',
         background: 'var(--bg1)',
         borderTop: '1px solid var(--bd)',
@@ -229,7 +238,7 @@ function MobileActionBar({
         aria-label={t('ring_b_bar_capture_aria')}
         title={t('ring_b_bar_capture_aria')}
         onClick={onCapture}
-        style={{ minHeight: 44, minWidth: 44, fontSize: 18, padding: 4 }}
+        style={{ minHeight: 44, minWidth: 0, fontSize: 18, padding: 4 }}
       >
         📷
       </button>
@@ -239,7 +248,7 @@ function MobileActionBar({
         aria-label={t('ring_b_bar_scan_aria')}
         title={t('ring_b_bar_scan_aria')}
         onClick={onScan}
-        style={{ minHeight: 44, minWidth: 44, fontSize: 18, padding: 4 }}
+        style={{ minHeight: 44, minWidth: 0, fontSize: 18, padding: 4 }}
       >
         🔍
       </button>
@@ -249,7 +258,7 @@ function MobileActionBar({
         aria-label={t('ring_b_bar_note_aria')}
         title={t('ring_b_bar_note_aria')}
         onClick={onNote}
-        style={{ minHeight: 44, minWidth: 44, fontSize: 18, padding: 4 }}
+        style={{ minHeight: 44, minWidth: 0, fontSize: 18, padding: 4 }}
       >
         🎤
       </button>
@@ -259,9 +268,20 @@ function MobileActionBar({
         aria-label={t('ring_b_bar_reminders_aria')}
         title={t('ring_b_bar_reminders_aria')}
         onClick={onReminders}
-        style={{ minHeight: 44, minWidth: 44, fontSize: 18, padding: 4 }}
+        style={{ minHeight: 44, minWidth: 0, fontSize: 18, padding: 4 }}
       >
         ⏰
+      </button>
+      <button
+        type="button"
+        data-testid="atelier-mobile-bar-new-work"
+        className="btn ghost sm"
+        aria-label={t('ring_b_bar_new_work_aria')}
+        title={t('ring_b_bar_new_work_aria')}
+        onClick={onNewWork}
+        style={{ minHeight: 44, minWidth: 0, fontSize: 18, padding: 4 }}
+      >
+        ➕
       </button>
     </div>
   )
@@ -1056,7 +1076,7 @@ export function TeamPortalClient({
           position: 'relative',
           zIndex: atelierNarrow ? 150 : undefined,
         }}>
-          <div style={{
+          <div className="pem-atelier-sidebar" style={{
             ...(atelierNarrow
               ? {
                   position: 'fixed',
@@ -1155,6 +1175,7 @@ export function TeamPortalClient({
                   setLang={setLang}
                   onPaletteOpen={() => setPaletteOpen(true)}
                   onNewWork={() => void router.push('/atelier/works/new')}
+                  hideNewWork
                 />
               </div>
             )}
@@ -1513,6 +1534,7 @@ export function TeamPortalClient({
               document.getElementById('atelier-field-reminders')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
             })
           }}
+          onNewWork={() => void router.push('/atelier/works/new')}
         />
       )}
 

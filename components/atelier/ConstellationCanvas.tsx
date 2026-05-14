@@ -8,13 +8,15 @@ import { useRef, useEffect, useState, useCallback, useMemo, useId } from 'react'
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
 import type { DictKey } from '@/lib/i18n/dictionary'
-import { createClient } from '@/lib/supabase/client'
 import { imageUrl, thumbUrl } from '@/lib/data'
 import {
   removeOeuvreFromCatalogTheme,
   removeOeuvreFromWorkingGroup,
 } from '@/app/atelier/selection/actions'
 import {
+  fetchConstellationGraphBundle,
+  insertConstellationRelation,
+  deleteConstellationRelation,
   listConstellationMaps,
   saveConstellationMap,
   loadConstellationMap,
@@ -644,12 +646,14 @@ export function ConstellationCanvas({
 
   // ── Graph + junction data (reload after theme/group removal so UI matches DB) ─
   const reloadGraphData = useCallback(async (completeInitialLoad = false) => {
-    const sb = createClient()
-    const [{ data: rels }, { data: ot }, { data: wg }] = await Promise.all([
-      sb.from('tblrelations').select('id, source_id, target_id, relation_type, strength, description').range(0, 9999),
-      sb.from('oeuvre_theme').select('oeuvre_id, theme_id').range(0, 49999),
-      sb.from('working_group_work').select('oeuvre_id, group_id').range(0, 49999),
-    ])
+    const result = await fetchConstellationGraphBundle()
+    if ('error' in result) {
+      console.warn('[constellation] reloadGraphData', result.error)
+      if (completeInitialLoad) setLoading(false)
+      redraw()
+      return
+    }
+    const { relations: rels, oeuvreThemes: ot, workingGroupWork: wg } = result.bundle
 
     edgesRef.current = (rels ?? [])
       .filter(r => r.source_id && r.target_id)
@@ -1616,13 +1620,15 @@ export function ConstellationCanvas({
       hovNodeRef.current = null
       const hit = hitNode(lx, ly, posRef.current, vpRef.current)
       if (hit && hit.id !== drag.nodeId) {
-        // Persist
-        const sb = createClient()
-        const { data } = await sb.from('tblrelations')
-          .insert({ source_id: drag.nodeId!, target_id: hit.id, relation_type: linkType })
-          .select('id, source_id, target_id, relation_type, strength, description')
-          .single()
-        if (data) {
+        const ins = await insertConstellationRelation({
+          source_id: drag.nodeId!,
+          target_id: hit.id,
+          relation_type: linkType,
+        })
+        if ('error' in ins) {
+          console.warn('[constellation] insert relation', ins.error)
+        } else {
+          const data = ins.row
           edgesRef.current = [...edgesRef.current, {
             id: data.id, source: data.source_id!, target: data.target_id!,
             relation_type: data.relation_type, strength: data.strength, description: data.description,
@@ -1745,12 +1751,16 @@ export function ConstellationCanvas({
       ? hitEdge(lx, ly, edgesRef.current, posRef.current, vpRef.current)
       : null
     if (!edge) return
-    const sb = createClient()
-    sb.from('tblrelations').delete().eq('id', edge.id).then(() => {
-      edgesRef.current   = edgesRef.current.filter(e2 => e2.id !== edge.id)
+    void (async () => {
+      const res = await deleteConstellationRelation(edge.id)
+      if ('error' in res) {
+        console.warn('[constellation] delete edge', res.error)
+        return
+      }
+      edgesRef.current = edgesRef.current.filter(e2 => e2.id !== edge.id)
       if (hovEdgeRef.current === edge) hovEdgeRef.current = null
       setTick(t => t + 1)
-    })
+    })()
   }, [removeFromCustom, tool, redraw, selectedThemeId, selectedGroupId, reloadGraphData, router, oeuvresById, onOpen, t, frozenEdges])
 
   // ── Drag and Drop (Exhibition Floorplan integration) ──────────

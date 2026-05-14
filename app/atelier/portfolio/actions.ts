@@ -4,6 +4,7 @@
 // TipTap HTML fields are sanitized server-side before persistence (see lib/portfolio-html-sanitize.ts).
 // Uses service_role to bypass RLS on the document table.
 
+import { revalidateTag } from 'next/cache'
 import { createServiceClient } from '@/lib/supabase/server'
 import { PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3'
 import {
@@ -189,6 +190,8 @@ export async function savePortfolioConfig(
         .insert(payload)
       if (error) throw error
     }
+
+    revalidateTag('portfolio')
 
     return { ok: true, etag: newEtag }
   } catch (e: any) {

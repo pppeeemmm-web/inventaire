@@ -1,11 +1,8 @@
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import WorksClient from '@/components/public/WorksClient'
-import { loadPortfolioConfig } from '@/app/atelier/portfolio/actions'
+import { loadPortfolioSectionsCached } from '@/lib/portfolio-sections-from-r2'
 import { routeMetadata } from '@/lib/i18n/route-metadata'
-
-/** Allow ?worksUx= preview without static caching */
-export const dynamic = 'force-dynamic'
 
 export function generateMetadata(): Metadata {
   const base = routeMetadata('works', 'en')
@@ -50,6 +47,29 @@ type WorksPublicRow = {
   Support: number | null
 }
 
+function isWorksModeRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null && !Array.isArray(v)
+}
+
+/** Portfolio JSON may omit or mistype legacy arrays — never pass non-arrays to mapCollections. */
+function asCollectionRecords(v: unknown): Array<Record<string, unknown>> {
+  if (!Array.isArray(v)) return []
+  return v.filter(isWorksModeRecord)
+}
+
+function strOrEmpty(v: unknown): string {
+  if (typeof v === 'string') return v
+  if (typeof v === 'number' && Number.isFinite(v)) return String(v)
+  return ''
+}
+
+function worksModeId(m: Record<string, unknown>, index: number): string {
+  const id = m.id
+  if (typeof id === 'string' && id.trim()) return id
+  if (typeof id === 'number' && Number.isFinite(id)) return String(id)
+  return `mode-${index}`
+}
+
 function mapCollections(raw: Array<Record<string, unknown>>): WorksCollection[] {
   const asStr = (v: unknown) => (typeof v === 'string' ? v : String(v ?? ''))
   return raw
@@ -76,37 +96,41 @@ function mapCollections(raw: Array<Record<string, unknown>>): WorksCollection[] 
 export default async function WorksPage() {
   const supabase = await createClient()
 
-  // 1. Config — same static import as portfolio/about/practice (avoids broken dynamic chunks for `use server` modules).
+  // 1. Config — cached R2 JSON (`revalidateTag('portfolio')` on save in portfolio actions).
   let modes: WorksMode[] = []
-  const result = await loadPortfolioConfig()
-  if ('ok' in result) {
-    const cfg = result.config
-    /** /works modes come from Diffusion (atelier); separate from card-page section blocks. */
-    const rawModes = Array.isArray(cfg.works_modes) ? cfg.works_modes : []
-    if (rawModes.length > 0) {
-      modes = rawModes
-        .filter((m: any) => m.is_active !== false)
-        .slice()
-        .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
-        .map((m: any, i: number): WorksMode => ({
-          id:          m.id || `mode-${i}`,
-          label_fr:    m.label_fr || m.label || (i === 0 ? 'Œuvres' : `Mode ${i + 1}`),
-          label_en:    m.label_en || m.label || (i === 0 ? 'Works'  : `Mode ${i + 1}`),
-          collections: mapCollections(Array.isArray(m.collections) ? m.collections : []),
-          outro_fr:    m.outro_fr || '',
-          outro_en:    m.outro_en || '',
-        }))
-    }
-    if (modes.length === 0) {
-      const fromLegacy = mapCollections(cfg.works_collections || [])
-      const fromSections = mapCollections(Array.isArray(cfg.sections) ? cfg.sections : [])
-      const cols = fromLegacy.length > 0 ? fromLegacy : fromSections
-      modes = [{
-        id: 'default', label_fr: 'Œuvres', label_en: 'Works',
-        collections: cols,
-        outro_fr: '', outro_en: '',
-      }]
-    }
+  const { config: cfg } = await loadPortfolioSectionsCached()
+  /** /works modes come from Diffusion (atelier); separate from card-page section blocks. */
+  const rawModes = Array.isArray(cfg.works_modes) ? cfg.works_modes : []
+  if (rawModes.length > 0) {
+    modes = rawModes
+      .filter(isWorksModeRecord)
+      .filter((m) => m.is_active !== false)
+      .slice()
+      .sort((a, b) => Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0))
+      .map((m, i): WorksMode => ({
+        id: worksModeId(m, i),
+        label_fr:
+          strOrEmpty(m.label_fr) ||
+          strOrEmpty(m.label) ||
+          (i === 0 ? 'Œuvres' : `Mode ${i + 1}`),
+        label_en:
+          strOrEmpty(m.label_en) ||
+          strOrEmpty(m.label) ||
+          (i === 0 ? 'Works' : `Mode ${i + 1}`),
+        collections: mapCollections(asCollectionRecords(m.collections)),
+        outro_fr: strOrEmpty(m.outro_fr),
+        outro_en: strOrEmpty(m.outro_en),
+      }))
+  }
+  if (modes.length === 0) {
+    const fromLegacy = mapCollections(asCollectionRecords(cfg.works_collections))
+    const fromSections = mapCollections(asCollectionRecords(cfg.sections))
+    const cols = fromLegacy.length > 0 ? fromLegacy : fromSections
+    modes = [{
+      id: 'default', label_fr: 'Œuvres', label_en: 'Works',
+      collections: cols,
+      outro_fr: '', outro_en: '',
+    }]
   }
 
   // 2. Themes + OeuvreTheme junction

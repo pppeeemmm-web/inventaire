@@ -3,6 +3,7 @@
  * Plain server module (no `'use server'`) so `generateMetadata` and server pages can import it.
  */
 
+import { unstable_cache } from 'next/cache'
 import { createServiceClient } from '@/lib/supabase/server'
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3'
 
@@ -99,3 +100,10 @@ export async function loadPortfolioSectionsFromR2(): Promise<{
 
   return { config, documents, objectEtag }
 }
+
+/** Cached R2 + document list; invalidated from `savePortfolioConfig` via `revalidateTag('portfolio')`. */
+export const loadPortfolioSectionsCached = unstable_cache(
+  async () => loadPortfolioSectionsFromR2(),
+  ['portfolio-sections-from-r2'],
+  { tags: ['portfolio'] },
+)
