@@ -321,7 +321,7 @@ export function VaultTab({ oeuvres, tM }: Props) {
                 onClick={() => { setKindFilter(value); setCurrentPath([]) }}
                 style={{ paddingLeft: 20, textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10 }}
               >
-                <div style={{ width: 8, height: 8, borderRadius: '50%', background: kindColor(value) }} />
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: kindColor(value).bg }} />
                 <span style={{ flex: 1 }}>{label}</span>
                 <span style={{ fontSize: 10, opacity: 0.4 }}>{count || ''}</span>
               </button>
@@ -557,7 +557,7 @@ export function VaultTab({ oeuvres, tM }: Props) {
                               {kindLabel(doc.kind)}
                             </span>
                           )}
-                          <span style={{ fontSize: 11, color: 'var(--tx3)' }}>{formatSize(doc.file_size)}</span>
+                          <span style={{ fontSize: 11, color: 'var(--tx3)' }}>{formatSize(doc.file_size ?? 0)}</span>
                         </div>
                       </td>
                       <td style={{ padding: '10px 16px' }}>
@@ -754,6 +754,7 @@ function Row({ label, value }: { label: string; value: string | React.ReactNode 
 }
 
 function DocActions({ doc, onDownload, onRename, onDeleted }: { doc: VaultDoc; onDownload: () => void; onRename: () => void; onDeleted: () => void }) {
+  const { t } = useI18n()
   const [confirm,  setConfirm]  = useState(false)
   const [pending,  startDelete] = useTransition()
 
@@ -994,7 +995,7 @@ function VaultGrid({
                 {doc.name}
               </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ fontSize: 11, color: 'var(--tx3)' }}>{formatSize(doc.file_size)}</div>
+                  <div style={{ fontSize: 11, color: 'var(--tx3)' }}>{formatSize(doc.file_size ?? 0)}</div>
                   <div style={{ display: 'flex', gap: 2 }}>
                     <button 
                       className="btn ghost sm" 

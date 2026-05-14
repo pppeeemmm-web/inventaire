@@ -64,13 +64,13 @@ export async function generateWorksTablePdf(
     session.from('theme').select('id, name'),
     session.from('working_group').select('id, name'),
     session.from('OeuvreStatus').select('id, label'),
-    (session as any).from('Contact').select('ContactID, NomInstitution, Nom, Prénom, Ville, Pays'),
+    (session as any).from('Contact').select('ContactID, NomInstitution, Nom, "Prénom", Ville, Pays'),
     session.from('oeuvre_theme').select('oeuvre_id, theme_id').in('oeuvre_id', uniq),
     session.from('working_group_work').select('oeuvre_id, group_id').in('oeuvre_id', uniq),
     (session as any)
       .from('Oeuvres')
       .select(
-        'OeuvreID, Titre, Année, Technique, Support, Format, Hauteur, Largeur, Profondeur, statusId, Catalogué, NeedsPhotograph, Exposable, Commentaires, Prix, PrixFinal, Discount, ContactID, LocalisationID, LocalisationDetail, AcheteurID',
+        'OeuvreID, Titre, "Année", Technique, Support, Format, Hauteur, Largeur, Profondeur, statusId, "Catalogué", NeedsPhotograph, Exposable, Commentaires, Prix, PrixFinal, Discount, ContactID, LocalisationID, LocalisationDetail, AcheteurID',
       )
       .in('OeuvreID', uniq)
       .is('deleted_at', null),

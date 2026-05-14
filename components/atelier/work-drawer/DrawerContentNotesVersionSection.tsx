@@ -13,7 +13,7 @@ export function DrawerContentNotesVersionSection({
   onVersionRestored,
 }: {
   oeuvreId: number
-  t: (k: string) => string
+  t: (k: import('@/lib/i18n/dictionary').DictKey) => string
   commentaires: string
   setCommentaires: (v: string) => void
   historique: string

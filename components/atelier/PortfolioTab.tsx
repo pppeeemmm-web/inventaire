@@ -15,6 +15,9 @@ import { thumbUrl } from '@/lib/data'
 import type { Oeuvre } from '@/lib/types/database'
 import { WorkThumb, MissingThumb } from './WorkThumb'
 import PdfExportDrawer from '@/components/portfolio/PdfExportDrawer'
+import { PortfolioLandingPanel } from '@/components/atelier/portfolio/PortfolioLandingPanel'
+import { PortfolioCollectionsPanel } from '@/components/atelier/portfolio/PortfolioCollectionsPanel'
+import { PortfolioWorksManager } from '@/components/atelier/portfolio/PortfolioWorksManager'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -606,6 +609,7 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
                   Onglet <strong>Site public</strong> : identité, pages <strong>À propos</strong> et <strong>Pratique</strong>, et les <strong>modes /works</strong> (chaque mode = un sous-onglet sur la page <code style={{ opacity: 0.85 }}>/works</code>). Les sections dédiées au flux portfolio sont dans l’onglet <strong>Portfolio</strong>.
                 </p>
 
+                <PortfolioLandingPanel>
                 <SitePublicSection title={t('atelier_pub_hero_section_title')} icon="◎" testId="atelier-pub-hero-section">
                   <p className="t-mono-xs" style={{ opacity: 0.55, marginBottom: 12, lineHeight: 1.5 }}>{t('atelier_pub_hero_url_help')}</p>
                   <p className="t-mono-xs" style={{ opacity: 0.4, marginBottom: 16, fontSize: 9 }}>{t('atelier_pub_hero_r2_followup')}</p>
@@ -709,6 +713,9 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
                   </div>
                 </SitePublicSection>
 
+                </PortfolioLandingPanel>
+
+                <PortfolioWorksManager>
                 <SitePublicSection title="Page /works — Modes (sous-onglets publics)" icon="▤"
                   action={<button className="btn sm ghost" onClick={addMode}>+ Mode</button>}>
                   <p className="t-mono-xs" style={{ opacity: 0.5, marginBottom: 16 }}>
@@ -802,6 +809,7 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
                     )
                   })()}
                 </SitePublicSection>
+                </PortfolioWorksManager>
               </>
             )}
 
@@ -810,6 +818,7 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
                 <p className="t-mono-xs" style={{ opacity: 0.55, marginBottom: 24, maxWidth: 720, lineHeight: 1.5 }}>
                   Onglet <strong>Portfolio</strong> : sections enregistrées dans le JSON (R2). Elles alimentent le <strong>PDF téléchargeable</strong> (lien sur la page d’accueil et bouton <code>↓ PDF</code> ci-dessus). Utiliser <code>/works</code> pour l’aperçu du catalogue défilant.
                 </p>
+                <PortfolioCollectionsPanel>
                 <PageSection title="Sections Portfolio" icon="◪"
                   action={<button className="btn sm ghost" onClick={() => addItem('sections')}>+ Ajouter</button>}>
                   <p className="t-mono-xs" style={{ opacity: 0.5, marginBottom: 20 }}>
@@ -836,6 +845,7 @@ export function PortfolioTab({ oeuvres, themes, themePublicStats = {}, themePriv
                     )}
                   </div>
                 </PageSection>
+                </PortfolioCollectionsPanel>
               </>
             )}
 

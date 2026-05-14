@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useTransition, useRef, type SyntheticEvent } from 'react'
+import { useState, useEffect, useTransition, useRef, type SyntheticEvent, type ClipboardEvent } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { vaultStudioBible } from '@/app/atelier/vault/bible-action'
 import { exportSiteMapChecklistPdf } from '@/app/atelier/vault/actions'
@@ -393,10 +393,10 @@ export function SystemTab() {
     })
   }
 
-  function handleDetailsPaste(e: SyntheticEvent<HTMLTextAreaElement>, target: 'new' | 'edit') {
+  function handleDetailsPaste(e: ClipboardEvent<HTMLTextAreaElement>, target: 'new' | 'edit') {
     const cb = e.clipboardData
     if (!cb?.files?.length) return
-    const imgs = Array.from(cb.files).filter((f) => f.type.startsWith('image/'))
+    const imgs = Array.from(cb.files).filter((f: File) => f.type.startsWith('image/'))
     if (!imgs.length) return
     e.preventDefault()
     attachTargetRef.current = target

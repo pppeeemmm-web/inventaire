@@ -94,7 +94,7 @@ export function RichEditor({ value, onChange, placeholder = '', minHeight = 160 
     if (!editor) return
     const current = editor.isEmpty ? '' : editor.getHTML()
     if (current !== value) {
-      editor.commands.setContent(value || '', false)
+      editor.commands.setContent(value || '', { emitUpdate: false })
     }
   }, [value, editor])
 

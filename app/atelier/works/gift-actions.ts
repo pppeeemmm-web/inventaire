@@ -55,7 +55,7 @@ export async function markAsGift(formData: FormData): Promise<GiftResult> {
 
   const { data: work, error: workErr } = await supabase
     .from('Oeuvres')
-    .select('OeuvreID, Titre, Année, Technique, Support, Hauteur, Largeur, Profondeur, txtImageNameLink, statusId, Historique')
+    .select('OeuvreID, Titre, "Année", Technique, Support, Hauteur, Largeur, Profondeur, txtImageNameLink, statusId, Historique')
     .eq('OeuvreID', oeuvre_id)
     .is('deleted_at', null)
     .single()
@@ -67,7 +67,7 @@ export async function markAsGift(formData: FormData): Promise<GiftResult> {
 
   const { data: recipient, error: recErr } = await supabase
     .from('Contact')
-    .select('ContactID, Nom, Prénom, NomInstitution, Ville, Pays')
+    .select('ContactID, Nom, "Prénom", NomInstitution, Ville, Pays')
     .eq('ContactID', recipient_id)
     .single()
   if (recErr || !recipient) return { error: 'Bénéficiaire introuvable' }

@@ -53,7 +53,7 @@ export function ThemesTab({
     const name = newTheme.trim()
     if (!name) return
     setBusy(true)
-    const { data, error } = await (sb.from('theme') as any).insert({ name }).select('id, name').single()
+    const { data, error } = await sb.from('theme').insert({ name }).select('id, name').single()
     if (!error && data) { 
       setThemes(t_ => [...t_, data].sort((a,b) => a.name.localeCompare(b.name)))
       setNewTheme('')
@@ -68,7 +68,7 @@ export function ThemesTab({
     const name = editVal.trim()
     if (!name) return
     setBusy(true)
-    const { error } = await (sb.from('theme') as any).update({ name }).eq('id', id)
+    const { error } = await sb.from('theme').update({ name }).eq('id', id)
     if (!error) { 
       setThemes(t_ => t_.map(x => x.id === id ? { ...x, name } : x))
       setEditTheme(null)
@@ -86,7 +86,7 @@ export function ThemesTab({
     if (!trimmed || trimmed === currentName) return
     if (!confirm(t('themes_rename_confirm_fmt').replace('{from}', currentName).replace('{to}', trimmed))) return
     setBusy(true)
-    const { error } = await (sb.from('theme') as any).update({ name: trimmed }).eq('id', id)
+    const { error } = await sb.from('theme').update({ name: trimmed }).eq('id', id)
     if (!error) {
       setThemes((t_) => t_.map((x) => (x.id === id ? { ...x, name: trimmed } : x)))
       flash(t('batchSuccess'))
@@ -98,8 +98,8 @@ export function ThemesTab({
 
   async function runDeleteTheme(id: number) {
     setBusy(true)
-    await (sb.from('oeuvre_theme') as any).delete().eq('theme_id', id)
-    const { error } = await (sb.from('theme') as any).delete().eq('id', id)
+    await sb.from('oeuvre_theme').delete().eq('theme_id', id)
+    const { error } = await sb.from('theme').delete().eq('id', id)
     if (!error) {
       setThemes((t_) => t_.filter((x) => x.id !== id))
       setEditTheme((cur) => (cur === id ? null : cur))
@@ -140,7 +140,7 @@ export function ThemesTab({
     const name = newGroup.trim()
     if (!name) return
     setBusy(true)
-    const { data, error } = await (sb.from('working_group') as any).insert({ name }).select('id, name').single()
+    const { data, error } = await sb.from('working_group').insert({ name }).select('id, name').single()
     if (!error && data) { 
       setGroups(g_ => [...g_, data].sort((a,b) => a.name.localeCompare(b.name)))
       setNewGroup('')
@@ -155,7 +155,7 @@ export function ThemesTab({
     const name = editVal.trim()
     if (!name) return
     setBusy(true)
-    const { error } = await (sb.from('working_group') as any).update({ name }).eq('id', id)
+    const { error } = await sb.from('working_group').update({ name }).eq('id', id)
     if (!error) { 
       setGroups(g_ => g_.map(x => x.id === id ? { ...x, name } : x))
       setEditGroup(null)
@@ -173,7 +173,7 @@ export function ThemesTab({
     if (!trimmed || trimmed === currentName) return
     if (!confirm(t('themes_rename_confirm_fmt').replace('{from}', currentName).replace('{to}', trimmed))) return
     setBusy(true)
-    const { error } = await (sb.from('working_group') as any).update({ name: trimmed }).eq('id', id)
+    const { error } = await sb.from('working_group').update({ name: trimmed }).eq('id', id)
     if (!error) {
       setGroups((g_) => g_.map((x) => (x.id === id ? { ...x, name: trimmed } : x)))
       flash(t('batchSuccess'))
@@ -185,8 +185,8 @@ export function ThemesTab({
 
   async function runDeleteGroup(id: string) {
     setBusy(true)
-    await (sb.from('working_group_work') as any).delete().eq('group_id', id)
-    const { error } = await (sb.from('working_group') as any).delete().eq('id', id)
+    await sb.from('working_group_work').delete().eq('group_id', id)
+    const { error } = await sb.from('working_group').delete().eq('id', id)
     if (!error) {
       setGroups((g_) => g_.filter((x) => x.id !== id))
       setEditGroup((cur) => (cur === id ? null : cur))
@@ -377,7 +377,7 @@ export function ThemesTab({
                         if (fullWork) onOpen(fullWork)
                       }}
                     >
-                      <img src={thumbUrl(w.txtImageNameLink)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <img src={thumbUrl(w.txtImageNameLink) ?? ''} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       <div style={{ 
                         position: 'absolute', top: 8, right: 8, 
                         width: 8, height: 8, borderRadius: '50%',
@@ -477,7 +477,7 @@ export function ThemesTab({
               const full = oeuvreById.get(w.OeuvreID)
               if (full) {
                 const prixHT = (full.Prix || 0)
-                const tvaRate = (full as any).tva_rate || 0
+                const tvaRate = full.tva_rate || 0
                 const prixTTC = prixHT * (1 + tvaRate / 100)
                 
                 totalHT += prixHT

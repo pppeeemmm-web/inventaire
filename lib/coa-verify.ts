@@ -47,7 +47,7 @@ export async function verifyCoaByCertId(rawCertId: string): Promise<CoaVerifyOut
   }
 
   const { data: o, error: oErr } = await (supabase.from('Oeuvres') as any)
-    .select('OeuvreID, Titre, Année, Technique, Support, Hauteur, Largeur, Profondeur')
+    .select('OeuvreID, Titre, "Année", Technique, Support, Hauteur, Largeur, Profondeur')
     .eq('OeuvreID', doc.oeuvre_id)
     .single()
 

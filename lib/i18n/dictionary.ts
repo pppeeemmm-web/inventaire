@@ -213,6 +213,22 @@ export type DictKey =
   | 'pipeline_exhibition_create_requires_dates'
   | 'pipeline_exhibition_project_default_name'
   | 'pipeline_exhibition_project_created'
+  | 'calendar_sync_process_title' | 'calendar_sync_step_title'
+  | 'calendar_sync_nothing' | 'calendar_err_no_accounts' | 'calendar_sync_done'
+  | 'calendar_export_heading' | 'calendar_connect_google_btn' | 'calendar_disconnect_google_btn'
+  | 'calendar_connect_microsoft_btn' | 'calendar_disconnect_microsoft_btn' | 'calendar_sync_busy' | 'calendar_push_btn'
+  | 'exhibition_tab_overview' | 'exhibition_tab_calendar' | 'exhibition_tab_works_label' | 'exhibition_tab_floorplan'
+  | 'exhib_step_delete_confirm' | 'exhib_link_contact_first' | 'exhib_works_linked_count_fmt'
+  | 'calendar_oauth_ok_google' | 'calendar_oauth_ok_microsoft' | 'calendar_oauth_err' | 'exhib_delete_confirm_fmt'
+  | 'pipeline_view_mode_aria' | 'pipeline_view_gantt' | 'pipeline_view_calendar' | 'pipeline_filter_group_label'
+  | 'pipeline_sidebar_open_process_aria' | 'pipeline_gantt_popover_aria' | 'pipeline_gantt_peek_heading'
+  | 'pipeline_cal_open_process' | 'pipeline_gantt_zoom_label' | 'pipeline_gantt_peek_toggle_aria' | 'pipeline_gantt_peek_empty'
+  | 'portfolio_config_saved' | 'portfolio_one_mode_required' | 'portfolio_confirm_delete_mode_fmt'
+  | 'salesSoldWorksDetail' | 'salesRevenueDetail' | 'salesAvgPriceLabel' | 'salesAvgPriceDetail' | 'salesConsignedDetail' | 'salesRevenueByYear'
+  | 'inventorySearchIdHint' | 'bc_error_fmt'
+  | 'themes_rename_confirm_fmt' | 'themes_delete_catalog_many_fmt' | 'themes_delete_named_confirm_fmt' | 'themes_delete_group_many_fmt'
+  | 'vault_download_err_fmt' | 'vault_confirm_delete_n' | 'vault_confirm_delete_one'
+  | 'maps_back_atelier' | 'maps_page_title' | 'maps_page_desc' | 'maps_error_list' | 'maps_empty' | 'maps_col_title' | 'maps_col_updated' | 'maps_openInAtelier'
   | 'pem_theme_toggle_day' | 'pem_theme_toggle_night' | 'pem_theme_toggle_std'
   | 'proc_stat_en_cours' | 'proc_stat_gagne' | 'proc_stat_perdu' | 'proc_stat_annule' | 'proc_stat_termine'
   | 'etape_stat_a_faire' | 'etape_stat_en_cours' | 'etape_stat_fait' | 'etape_stat_bloque'
@@ -310,7 +326,7 @@ export type DictKey =
   // ── Pivot (Inventory / Sales / Fiscal / Production) ─────────────────────
   | 'pivot' | 'pivotGroupBy' | 'pivotCrossBy' | 'pivotNoColumn' | 'pivotValues' | 'pivotExportXlsx' | 'pivotEmpty'
   | 'pivotTotal' | 'pivotGrandTotal' | 'pivotCount' | 'pivotSum' | 'pivotAverage' | 'pivotDimMonth' | 'pivotDimExpenseKind'
-  | 'pivotOther' | 'pivotAdvanced' | 'pivotView' | 'pivotToolbar_expand' | 'pivotToolbar_collapse'
+  | 'pivotOther' | 'pivotAdvanced' | 'pivotView' | 'pivotToolbar_expand' | 'pivotToolbar_collapse' | 'pivotSection_hide' | 'pivotSection_show'
   | 'pivotPanel_toggle_expand' | 'pivotPanel_toggle_collapse'
   // ── Atelier > Production tab ───────────────────────────────────────────
   | 'prod_tab_stat_wip' | 'prod_tab_stat_available' | 'prod_tab_stat_archive_pem' | 'prod_tab_stat_sold'
@@ -983,6 +999,66 @@ export const dict: Record<Lang, Dictionary> = {
     pipeline_exhibition_create_requires_dates: 'Ajoutez une date (début ou échéance) pour planifier.',
     pipeline_exhibition_project_default_name: 'Projet exposition',
     pipeline_exhibition_project_created: 'Projet exposition créé.',
+    calendar_sync_process_title: '{name} — exposition',
+    calendar_sync_step_title: '{process} — {step}',
+    calendar_sync_nothing: 'Aucun événement calendrier à pousser.',
+    calendar_err_no_accounts: 'Aucun compte calendrier connecté.',
+    calendar_sync_done: '{n} événement(s) synchronisé(s).',
+    calendar_export_heading: 'Calendrier',
+    calendar_connect_google_btn: 'Connecter Google Calendar',
+    calendar_disconnect_google_btn: 'Déconnecter Google',
+    calendar_connect_microsoft_btn: 'Connecter Outlook / Microsoft',
+    calendar_disconnect_microsoft_btn: 'Déconnecter Microsoft',
+    calendar_sync_busy: 'Synchronisation…',
+    calendar_push_btn: 'Pousser vers les calendriers',
+    exhibition_tab_overview: 'Vue d’ensemble',
+    exhibition_tab_calendar: 'Calendrier',
+    exhibition_tab_works_label: 'Œuvres ({n})',
+    exhibition_tab_floorplan: 'Plan de salle',
+    exhib_step_delete_confirm: 'Supprimer cette étape ?',
+    exhib_link_contact_first: 'Associez d’abord un contact à l’exposition.',
+    exhib_works_linked_count_fmt: '{n} œuvre(s) liée(s).',
+    calendar_oauth_ok_google: 'Google Calendar connecté.',
+    calendar_oauth_ok_microsoft: 'Microsoft Outlook connecté.',
+    calendar_oauth_err: 'Connexion calendrier refusée ou interrompue.',
+    exhib_delete_confirm_fmt: 'Supprimer l’exposition « {name} » ?',
+    pipeline_view_mode_aria: 'Mode d’affichage du pipeline',
+    pipeline_view_gantt: 'Gantt',
+    pipeline_view_calendar: 'Calendrier',
+    pipeline_filter_group_label: 'Groupe',
+    pipeline_sidebar_open_process_aria: 'Ouvrir le processus',
+    pipeline_gantt_popover_aria: 'Détails du processus',
+    pipeline_gantt_peek_heading: 'Aperçu',
+    pipeline_cal_open_process: 'Ouvrir',
+    pipeline_gantt_zoom_label: 'Zoom',
+    pipeline_gantt_peek_toggle_aria: 'Afficher ou masquer l’aperçu',
+    pipeline_gantt_peek_empty: 'Aucune étape à afficher.',
+    portfolio_config_saved: 'Configuration enregistrée.',
+    portfolio_one_mode_required: 'Gardez au moins un mode d’affichage actif.',
+    portfolio_confirm_delete_mode_fmt: 'Supprimer le mode « {label} » ?',
+    salesSoldWorksDetail: 'Œuvres marquées vendues dans le lot chargé.',
+    salesRevenueDetail: 'Somme des prix finaux (commandes du lot affiché).',
+    salesAvgPriceLabel: 'Prix moyen',
+    salesAvgPriceDetail: 'Revenu / œuvres vendues (lot affiché).',
+    salesConsignedDetail: 'Œuvres en consignation dans le lot chargé.',
+    salesRevenueByYear: 'Revenus par année de vente',
+    inventorySearchIdHint: ' · #id',
+    bc_error_fmt: 'Erreur diffusion : {msg}',
+    themes_rename_confirm_fmt: 'Renommer « {from} » en « {to} » ?',
+    themes_delete_catalog_many_fmt: 'Supprimer le thème catalogue « {name} » et retirer {count} œuvre(s) ?',
+    themes_delete_named_confirm_fmt: 'Supprimer le thème « {name} » ?',
+    themes_delete_group_many_fmt: 'Supprimer le groupe « {name} » et retirer {count} œuvre(s) ?',
+    vault_download_err_fmt: 'Téléchargement impossible : {msg}',
+    vault_confirm_delete_n: 'Supprimer ces documents ?',
+    vault_confirm_delete_one: 'Supprimer ce document ?',
+    maps_back_atelier: 'Retour atelier',
+    maps_page_title: 'Cartes',
+    maps_page_desc: 'Plans de salle et cartes liés aux expositions.',
+    maps_error_list: 'Impossible de charger la liste des cartes.',
+    maps_empty: 'Aucune carte enregistrée.',
+    maps_col_title: 'Titre',
+    maps_col_updated: 'Mise à jour',
+    maps_openInAtelier: 'Ouvrir dans l’atelier',
     proc_stat_en_cours: 'En cours',
     proc_stat_gagne: 'Gagné / sélectionné',
     proc_stat_perdu: 'Non retenu',
@@ -2238,6 +2314,66 @@ $env:OLLAMA_HOST="127.0.0.1:11435"; ollama run llama3.2:1b`,
     pipeline_exhibition_create_requires_dates: 'Add a date (start or deadline) to schedule.',
     pipeline_exhibition_project_default_name: 'Exhibition project',
     pipeline_exhibition_project_created: 'Exhibition project created.',
+    calendar_sync_process_title: '{name} — exhibition',
+    calendar_sync_step_title: '{process} — {step}',
+    calendar_sync_nothing: 'Nothing to push to calendars.',
+    calendar_err_no_accounts: 'No calendar accounts connected.',
+    calendar_sync_done: '{n} event(s) synced.',
+    calendar_export_heading: 'Calendar',
+    calendar_connect_google_btn: 'Connect Google Calendar',
+    calendar_disconnect_google_btn: 'Disconnect Google',
+    calendar_connect_microsoft_btn: 'Connect Outlook / Microsoft',
+    calendar_disconnect_microsoft_btn: 'Disconnect Microsoft',
+    calendar_sync_busy: 'Syncing…',
+    calendar_push_btn: 'Push to calendars',
+    exhibition_tab_overview: 'Overview',
+    exhibition_tab_calendar: 'Calendar',
+    exhibition_tab_works_label: 'Works ({n})',
+    exhibition_tab_floorplan: 'Floor plan',
+    exhib_step_delete_confirm: 'Delete this step?',
+    exhib_link_contact_first: 'Link a contact to the exhibition first.',
+    exhib_works_linked_count_fmt: '{n} work(s) linked.',
+    calendar_oauth_ok_google: 'Google Calendar connected.',
+    calendar_oauth_ok_microsoft: 'Microsoft Outlook connected.',
+    calendar_oauth_err: 'Calendar connection failed or was cancelled.',
+    exhib_delete_confirm_fmt: 'Delete exhibition “{name}”?',
+    pipeline_view_mode_aria: 'Pipeline view mode',
+    pipeline_view_gantt: 'Gantt',
+    pipeline_view_calendar: 'Calendar',
+    pipeline_filter_group_label: 'Group',
+    pipeline_sidebar_open_process_aria: 'Open process',
+    pipeline_gantt_popover_aria: 'Process details',
+    pipeline_gantt_peek_heading: 'Peek',
+    pipeline_cal_open_process: 'Open',
+    pipeline_gantt_zoom_label: 'Zoom',
+    pipeline_gantt_peek_toggle_aria: 'Toggle peek panel',
+    pipeline_gantt_peek_empty: 'No steps to show.',
+    portfolio_config_saved: 'Configuration saved.',
+    portfolio_one_mode_required: 'Keep at least one display mode enabled.',
+    portfolio_confirm_delete_mode_fmt: 'Delete mode “{label}”?',
+    salesSoldWorksDetail: 'Works marked sold in the loaded batch.',
+    salesRevenueDetail: 'Sum of final prices (orders in the current list).',
+    salesAvgPriceLabel: 'Average price',
+    salesAvgPriceDetail: 'Revenue / sold works (loaded batch).',
+    salesConsignedDetail: 'Consigned works in the loaded batch.',
+    salesRevenueByYear: 'Revenue by sale year',
+    inventorySearchIdHint: ' · #id',
+    bc_error_fmt: 'Broadcast error: {msg}',
+    themes_rename_confirm_fmt: 'Rename “{from}” to “{to}”?',
+    themes_delete_catalog_many_fmt: 'Delete catalog theme “{name}” and detach {count} work(s)?',
+    themes_delete_named_confirm_fmt: 'Delete theme “{name}”?',
+    themes_delete_group_many_fmt: 'Delete group “{name}” and detach {count} work(s)?',
+    vault_download_err_fmt: 'Download failed: {msg}',
+    vault_confirm_delete_n: 'Delete these documents?',
+    vault_confirm_delete_one: 'Delete this document?',
+    maps_back_atelier: 'Back to Atelier',
+    maps_page_title: 'Maps',
+    maps_page_desc: 'Floor plans and maps linked to exhibitions.',
+    maps_error_list: 'Could not load the map list.',
+    maps_empty: 'No maps saved yet.',
+    maps_col_title: 'Title',
+    maps_col_updated: 'Updated',
+    maps_openInAtelier: 'Open in Atelier',
     proc_stat_en_cours: 'In progress',
     proc_stat_gagne: 'Won / selected',
     proc_stat_perdu: 'Not selected',

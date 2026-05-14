@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom'
 import { useI18n } from '@/lib/i18n/context'
 import { createClient } from '@/lib/supabase/client'
 import { stringifyError } from '@/lib/error'
+import { getSignedUrl } from '@/app/atelier/vault/actions'
 import type { Lang } from '@/lib/i18n/dictionary'
 import { AsyncButton } from '@/components/ui/AsyncButton'
 import { toast } from '@/lib/ui/toast'
@@ -64,6 +65,9 @@ import { computePipelinePulseItems, daysUntil, type PulseProcess } from '@/lib/p
 import { buildPipelineCalendarEvents, normalizePipelineCalendarAnchor, type PipelineCalendarRange } from '@/lib/pipeline-calendar'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { PipelineCalendarView } from '@/components/atelier/PipelineCalendarView'
+import { PipelineGanttView } from '@/components/atelier/pipeline/PipelineGanttView'
+import { PipelineDeadlineSidebar } from '@/components/atelier/pipeline/PipelineDeadlineSidebar'
+import { PipelineRemindersPanel } from '@/components/atelier/pipeline/PipelineRemindersPanel'
 import { createConsignmentOrder, regenerateConsignmentPdf, closeConsignmentByPdfPath } from '@/app/atelier/consignments/actions'
 import { createSaleOrder } from '@/app/atelier/sales/actions'
 import {
@@ -281,13 +285,20 @@ export function PipelineTab({ oeuvres, contacts, groups, initialReminders, onRem
     setReminders(initialReminders)
   }, [initialReminders])
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (signal?: AbortSignal) => {
     const sb = createClient()
+    const processQuery = (sb.from('suivi_process')  as any).select('*').order('date_fin', { ascending: true, nullsFirst: false })
+    const etapeQuery = (sb.from('suivi_etape')    as any).select('*').order('position')
+    if (signal) {
+      processQuery.abortSignal?.(signal)
+      etapeQuery.abortSignal?.(signal)
+    }
     const [{ data: procs }, { data: etapes }, rems] = await Promise.all([
-      (sb.from('suivi_process')  as any).select('*').order('date_fin', { ascending: true, nullsFirst: false }),
-      (sb.from('suivi_etape')    as any).select('*').order('position'),
+      processQuery,
+      etapeQuery,
       listUnreadSuiviReminders(500),
     ])
+    if (signal?.aborted) return
     const etapeMap: Record<string, Etape[]> = {}
     ;(etapes ?? []).forEach((e: Etape) => {
       if (!etapeMap[e.process_id]) etapeMap[e.process_id] = []
@@ -307,7 +318,11 @@ export function PipelineTab({ oeuvres, contacts, groups, initialReminders, onRem
     setLoading(false)
   }, [])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    const controller = new AbortController()
+    void load(controller.signal)
+    return () => controller.abort()
+  }, [load])
 
   // Derive the open drawer's process from live state — always fresh after optimistic updates
   const inspected = useMemo(
@@ -562,7 +577,7 @@ export function PipelineTab({ oeuvres, contacts, groups, initialReminders, onRem
               {t('pipeline_no_processes')}
             </div>
           ) : (
-            <div style={{ flex: 1, overflow: 'auto', padding: atelierNarrow ? '16px' : '20px 28px' }}>
+            <PipelineGanttView narrow={atelierNarrow}>
               <GanttView
                 processes={filtered}
                 dateLocaleTag={dateLocTag}
@@ -572,24 +587,14 @@ export function PipelineTab({ oeuvres, contacts, groups, initialReminders, onRem
                 onRefresh={load}
                 onCycleStatut={cycleStatut}
               />
-            </div>
+            </PipelineGanttView>
           )}
         </div>
       </div>
     </div>
 
       {/* ── Right sidebar ────────────────────────────────────────── */}
-      <div style={{
-        width: atelierNarrow ? '100%' : 280,
-        maxHeight: atelierNarrow ? 320 : undefined,
-        flexShrink: 0,
-        borderLeft: atelierNarrow ? 'none' : '1px solid var(--bd)',
-        borderTop: atelierNarrow ? '1px solid var(--bd)' : undefined,
-        display: 'flex',
-        flexDirection: 'column',
-        background: 'var(--bg1)',
-        overflow: 'auto',
-      }}>
+      <PipelineDeadlineSidebar narrow={atelierNarrow}>
         <div style={{ padding: '16px 16px 0' }}>
           <div className="t-eyebrow" style={{ marginBottom: 12 }}>{t('pipeline_upcoming_deadlines')}</div>
           {upcoming.length === 0
@@ -648,7 +653,7 @@ export function PipelineTab({ oeuvres, contacts, groups, initialReminders, onRem
         </div>
 
         {reminders.length > 0 && (
-          <div style={{ padding:'16px 16px 0', marginTop:12 }}>
+          <PipelineRemindersPanel>
             <div className="t-eyebrow" style={{ marginBottom:12 }}>{t('pipeline_reminders_header')}</div>
             <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
               {reminders.map((r) => {
@@ -680,9 +685,9 @@ export function PipelineTab({ oeuvres, contacts, groups, initialReminders, onRem
                 )
               })}
             </div>
-          </div>
+          </PipelineRemindersPanel>
         )}
-      </div>
+      </PipelineDeadlineSidebar>
 
       {/* Modals */}
       {inspected !== null && (
@@ -1466,7 +1471,7 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved, on
   const [assetNotes,   setAssetNotes]   = useState(process?.asset_notes   ?? '')
   const [notes,        setNotes]        = useState(process?.notes         ?? '')
   const [etapes,       setEtapes]       = useState<{ nom:string; date_echeance:string; statut:EtapeStatut }[]>(
-    process?.etapes?.map(e=>({nom:e.nom, date_echeance:e.date_echeance??'', statut:e.statut})) ??
+    process?.etapes?.map((e: Etape) => ({ nom: e.nom, date_echeance: e.date_echeance ?? '', statut: e.statut })) ??
     DEFAULT_ETAPES['prix'].map(n=>({nom:n, date_echeance:'', statut:'a_faire'}))
   )
   
@@ -1528,13 +1533,16 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved, on
 
   useEffect(() => {
     const sb = createClient()
-    ;(sb.from('suivi_process') as any)
+    const controller = new AbortController()
+    const query = (sb.from('suivi_process') as any)
       .select('id, nom, localisation, contact_id, date_debut, date_fin')
       .eq('type', 'exposition')
       .order('date_fin', { ascending: false, nullsFirst: false })
-      .then(({ data }: { data: typeof exhibitionProcessOptions | null }) => {
-        setExhibitionProcessOptions(data ?? [])
-      })
+    query.abortSignal?.(controller.signal)
+    query.then(({ data }: { data: typeof exhibitionProcessOptions | null }) => {
+      if (!controller.signal.aborted) setExhibitionProcessOptions(data ?? [])
+    })
+    return () => controller.abort()
   }, [])
 
   async function handleCreateExhibitionProject() {
@@ -1630,7 +1638,7 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved, on
         throw new Error(t('pm_err_contact_required'))
       }
 
-      const tags = vaultTags.split(',').map(t=>t.trim()).filter(Boolean)
+      const tags = vaultTags.split(',').map((tag: string) => tag.trim()).filter(Boolean)
       const payload = {
         nom, type, date_debut:debut||null, date_fin:fin||null, deadline_time:deadlineTime||null,
         statut, localisation:localisation||null, url:url||null, scope:scope||null,

@@ -665,9 +665,9 @@ export function WorkForm({
             {/* 2. Production State */}
             <section style={{ opacity: (isOwnershipTransferred || isArchived) ? 0.5 : 1 }}>
               <SectionHeader title={t('wf_section_production')} />
-              <PipeProgress stages={PRODUCTION_STAGES} current={prodStage} onSelect={id => {
+              <PipeProgress stages={PRODUCTION_STAGES} current={prodStage} onSelect={(id) => {
                 if (isOwnershipTransferred || isArchived) return
-                setProdStage(id)
+                setProdStage(id as ProdStageId)
               }} color="var(--sage)" />
               <div style={{ display: 'flex', gap: 32, marginTop: 20 }}>
                 <Switch label={t('wf_photo_required')} checked={needsPhoto} onChange={v => {
@@ -721,7 +721,7 @@ export function WorkForm({
                   disabled: isOwnershipTransferred && s.id !== 'sold' && s.id !== 'gift',
                 }))}
                 current={ownStage}
-                onSelect={setOwnStage}
+                onSelect={(id) => setOwnStage(id as OwnStageId)}
                 color="var(--cyan)"
               />
               <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr' : '1fr 1fr', gap: 24, marginTop: 24 }}>

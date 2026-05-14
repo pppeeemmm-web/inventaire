@@ -111,7 +111,7 @@ export default async function AtelierPage() {
     Promise.all([
       supabase
         .from('Oeuvres')
-        .select('OeuvreID, Titre, Technique, Support, Année, Format, Hauteur, Largeur, Profondeur, Exposable, broadcast_ready, broadcast_caption_seed, Prix, PrixFinal, Discount, statusId, Catalogué, txtImageNameLink, ContactID, LocalisationID, LocalisationDetail, is_public, Encadree, IsCommission, PresentationID, ReturnDate, DateLivraison, AcheteurID, NeedsPhotograph, anonymity_level, admin_override_anonymity')
+        .select('OeuvreID, Titre, Technique, Support, "Année", Format, Hauteur, Largeur, Profondeur, Exposable, broadcast_ready, broadcast_caption_seed, Prix, PrixFinal, Discount, statusId, "Catalogué", txtImageNameLink, ContactID, LocalisationID, LocalisationDetail, is_public, Encadree, IsCommission, PresentationID, ReturnDate, DateLivraison, AcheteurID, NeedsPhotograph, anonymity_level, admin_override_anonymity')
         .is('deleted_at', null)
         .order('OeuvreID', { ascending: false })
         .limit(ATELIER_OEUVRE_PAGE),
@@ -119,7 +119,7 @@ export default async function AtelierPage() {
       supabase.from('Support').select('SupportID, Support').order('SupportID'),
       supabase.from('Format').select('FormatID, Format').order('FormatID'),
       supabase.from('theme').select('id, name').order('id'),
-      supabase.from('Contact').select('ContactID, NomInstitution, Nom, Prénom, Role, Ville, Pays').order('ContactID'),
+      supabase.from('Contact').select('ContactID, NomInstitution, Nom, "Prénom", Role, Ville, Pays').order('ContactID'),
       supabase.from('OeuvreStatus').select('id, label').order('id'),
       supabase.from('working_group').select('id, name, created_at').order('created_at', { ascending: false }).limit(100),
       supabase.from('tblPresentation').select('PresentationID, Nom').order('PresentationID'),
@@ -133,7 +133,9 @@ export default async function AtelierPage() {
     if (r?.error) console.error(`[atelier loader] ${queryLabels[i]}:`, r.error.message)
   })
 
-  const oeuvres = (results[0]?.data ?? []) as unknown as Oeuvre[]
+  const oeuvres: Oeuvre[] = Array.isArray(results[0]?.data)
+    ? results[0]!.data.flatMap((row) => (typeof row === 'object' && row != null ? [row as unknown as Oeuvre] : []))
+    : []
   const oeuvresPaging =
     oeuvres.length < oeuvreTotalCount
       ? {

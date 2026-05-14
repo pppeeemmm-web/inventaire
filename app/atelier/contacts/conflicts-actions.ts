@@ -13,7 +13,7 @@ export async function fetchContactConflicts() {
 
   const { data } = await supabase
     .from('contact_conflicts')
-    .select('*, public:public_contact_id(ContactID, Nom, Prénom, NomInstitution), private:private_contact_id(ContactID, Nom, Prénom, NomInstitution)')
+    .select('*, public:public_contact_id(ContactID, Nom, "Prénom", NomInstitution), private:private_contact_id(ContactID, Nom, "Prénom", NomInstitution)')
     .eq('resolved', false)
 
   return data ?? []

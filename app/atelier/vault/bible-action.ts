@@ -74,7 +74,7 @@ async function buildBiblePdf(): Promise<Buffer> {
     const gray   = '#888888'
 
     // ── Title ───────────────────────────────────────────────────
-    doc.fontSize(32).fillColor(text).text('The Studio Bible', 50, 100, { charSpacing: -1 })
+    doc.fontSize(32).fillColor(text).text('The Studio Bible', 50, 100)
     doc.fontSize(12).fillColor(gray).text('The Comprehensive Operating Manual for the PEM Hub Infrastructure.', { lineGap: 10 })
     
     doc.moveDown(2)

@@ -1060,7 +1060,7 @@ export async function loadOeuvreLongText(
 }
 
 const OEUVRES_KEYSET_SELECT =
-  'OeuvreID, Titre, Technique, Support, Année, Format, Hauteur, Largeur, Profondeur, Exposable, broadcast_ready, broadcast_caption_seed, Prix, PrixFinal, Discount, statusId, Catalogué, txtImageNameLink, ContactID, LocalisationID, LocalisationDetail, is_public, Encadree, IsCommission, PresentationID, ReturnDate, DateLivraison, AcheteurID, NeedsPhotograph, anonymity_level, admin_override_anonymity'
+  'OeuvreID, Titre, Technique, Support, "Année", Format, Hauteur, Largeur, Profondeur, Exposable, broadcast_ready, broadcast_caption_seed, Prix, PrixFinal, Discount, statusId, "Catalogué", txtImageNameLink, ContactID, LocalisationID, LocalisationDetail, is_public, Encadree, IsCommission, PresentationID, ReturnDate, DateLivraison, AcheteurID, NeedsPhotograph, anonymity_level, admin_override_anonymity'
 
 export type OeuvresKeysetPageResult = {
   rows: Oeuvre[]
@@ -1089,7 +1089,7 @@ export async function fetchOeuvresKeysetPage(beforeId: number, limit: number): P
     console.error('[fetchOeuvresKeysetPage]', error.message)
     return { rows: [], nextCursor: null, hasMore: false }
   }
-  const raw = (data ?? []) as Oeuvre[]
+  const raw = (data ?? []) as unknown as Oeuvre[]
   const hasMore = raw.length > lim
   const rows = hasMore ? raw.slice(0, lim) : raw
   const nextCursor = hasMore && rows.length > 0 ? rows[rows.length - 1]!.OeuvreID : null

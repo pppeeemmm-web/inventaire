@@ -23,7 +23,7 @@ interface Props {
   tM:                 Record<number, string>
   sM:                 Record<number, string>
   statusLabelMap:     Record<number, string>
-  addresses?:         { id: number; contact_id: number; label: string; adresse: string | null; ville: string | null; pays: string | null }[]
+  addresses?:         { id?: number; contact_id: number; label: string; adresse: string | null; ville: string | null; pays: string | null }[]
   onGoConstellation:  () => void
   onSaveGroup:        (name: string, ids: number[]) => Promise<string | null>
   onCompare:          () => void

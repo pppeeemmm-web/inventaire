@@ -87,10 +87,11 @@ export async function getAnalyticsStats(
   const { rows, error } = await fetchAllPageViews(sb, since)
   if (error) return { error }
 
+  const allRows = rows ?? []
   const scopedRows =
-    scope === 'public_site' ? rows.filter((r) => isPublicSiteTrackedPath(r.path)) : rows
+    scope === 'public_site' ? allRows.filter((r) => isPublicSiteTrackedPath(r.path)) : allRows
   const offSitePageviews =
-    scope === 'public_site' ? rows.length - scopedRows.length : undefined
+    scope === 'public_site' ? allRows.length - scopedRows.length : undefined
 
   const pageviews = scopedRows.length
 

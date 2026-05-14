@@ -114,7 +114,7 @@ function matchesCriterion(o: Oeuvre, c: Criterion, allFields: FieldDef[]): boole
     return c.op === '= vrai' ? val : !val
   }
 
-  const raw = (o as Record<string, unknown>)[c.field]
+  const raw = (o as unknown as Record<string, unknown>)[c.field]
   const val = raw != null ? String(raw) : ''
   const cv  = c.value ?? ''
 

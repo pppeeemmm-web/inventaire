@@ -35,25 +35,58 @@ export function generateMetadata(): Metadata {
   }
 }
 
-function mapCollections(raw: any[]) {
+type WorksThemeRow = { ThemeID: number; Nom: string | null }
+type WorksThemeLinkRow = { OeuvreID: number; ThemeID: number }
+type WorksCollection = {
+  id: string
+  title_fr: string
+  title_en: string
+  description_fr: string
+  description_en: string
+  theme: string | null
+  is_active: boolean
+  manual_work_order: number[]
+  intro_fr: string
+  intro_en: string
+}
+type WorksMode = {
+  id: string
+  label_fr: string
+  label_en: string
+  collections: WorksCollection[]
+  outro_fr: string
+  outro_en: string
+}
+type WorksPublicRow = {
+  OeuvreID: number
+  Titre: string | null
+  Année: string | null
+  Hauteur: string | null
+  Largeur: string | null
+  txtImageNameLink: string | null
+  Support: number | null
+}
+
+function mapCollections(raw: Array<Record<string, unknown>>): WorksCollection[] {
+  const asStr = (v: unknown) => (typeof v === 'string' ? v : String(v ?? ''))
   return raw
     /** Match atelier migrate: missing flag means active (raw JSON often omits it). */
-    .filter((c: any) => c.is_active !== false)
+    .filter((c) => c.is_active !== false)
     .slice()
-    .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
-    .map((c: any) => ({
-      id:             c.id,
-      title_fr:       c.title_fr  || c.title  || '',
-      title_en:       c.title_en  || c.title  || '',
-      description_fr: c.description_fr || c.description || '',
-      description_en: c.description_en || c.description || '',
-      theme:          c.theme ?? null,
+    .sort((a, b) => Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0))
+    .map((c) => ({
+      id:             asStr(c.id),
+      title_fr:       asStr(c.title_fr ?? c.title),
+      title_en:       asStr(c.title_en ?? c.title),
+      description_fr: asStr(c.description_fr ?? c.description),
+      description_en: asStr(c.description_en ?? c.description),
+      theme:          typeof c.theme === 'string' ? c.theme : null,
       is_active:      true,
       manual_work_order: Array.isArray(c.manual_work_order)
-        ? c.manual_work_order.map((n: any) => Number(n)).filter((n: number) => Number.isFinite(n))
+        ? c.manual_work_order.map((n) => Number(n)).filter((n) => Number.isFinite(n))
         : [],
-      intro_fr: c.intro_fr ?? '',
-      intro_en: c.intro_en ?? '',
+      intro_fr: asStr(c.intro_fr),
+      intro_en: asStr(c.intro_en),
     }))
 }
 
@@ -65,7 +98,7 @@ export default async function WorksPage({
   const supabase = await createClient()
 
   // 1. Config — same static import as portfolio/about/practice (avoids broken dynamic chunks for `use server` modules).
-  let modes: any[] = []
+  let modes: WorksMode[] = []
   const result = await loadPortfolioConfig()
   if ('ok' in result) {
     const cfg = result.config
@@ -76,7 +109,7 @@ export default async function WorksPage({
         .filter((m: any) => m.is_active !== false)
         .slice()
         .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
-        .map((m: any, i: number) => ({
+        .map((m: any, i: number): WorksMode => ({
           id:          m.id || `mode-${i}`,
           label_fr:    m.label_fr || m.label || (i === 0 ? 'Œuvres' : `Mode ${i + 1}`),
           label_en:    m.label_en || m.label || (i === 0 ? 'Works'  : `Mode ${i + 1}`),
@@ -98,12 +131,13 @@ export default async function WorksPage({
   }
 
   // 2. Themes + OeuvreTheme junction
-  const { data: themeRecords } = await (supabase.from('tblTheme') as any).select('ThemeID, Nom')
-  const { data: oeuvreThemes } = await (supabase.from('OeuvreTheme') as any).select('OeuvreID, ThemeID')
+  const { data: themeRecords } = await supabase.from('tblTheme').select('ThemeID, Nom')
+  const { data: oeuvreThemes } = await supabase.from('OeuvreTheme').select('OeuvreID, ThemeID')
 
   // 3. Works — fetch ALL public works, not just those with a theme assignment
-  const { data: rawWorks } = await (supabase.from('Oeuvres') as any)
-    .select('OeuvreID, Titre, Année, Hauteur, Largeur, txtImageNameLink, Support')
+  const { data: rawWorks } = await supabase
+    .from('Oeuvres')
+    .select('OeuvreID, Titre, "Année", Hauteur, Largeur, txtImageNameLink, Support')
     .is('deleted_at', null)
     .eq('is_public', true)
     .order('Année', { ascending: false })
@@ -111,8 +145,10 @@ export default async function WorksPage({
   // Build OeuvreID → theme names map
   const oeuvreThemeMap = new Map<number, string[]>()
   if (themeRecords && oeuvreThemes) {
-    const idToName = Object.fromEntries((themeRecords as any[]).map(r => [r.ThemeID, r.Nom]))
-    ;(oeuvreThemes as any[]).forEach((ot: any) => {
+    const typedThemeRecords = themeRecords as WorksThemeRow[]
+    const typedOeuvreThemes = oeuvreThemes as WorksThemeLinkRow[]
+    const idToName = Object.fromEntries(typedThemeRecords.map((r) => [r.ThemeID, r.Nom]))
+    typedOeuvreThemes.forEach((ot) => {
       if (!oeuvreThemeMap.has(ot.OeuvreID)) oeuvreThemeMap.set(ot.OeuvreID, [])
       const name = idToName[ot.ThemeID]
       if (name) oeuvreThemeMap.get(ot.OeuvreID)!.push(name)
@@ -120,16 +156,22 @@ export default async function WorksPage({
   }
 
   const ROUND_SUPPORT_ID = 16
-  const works = ((rawWorks || []) as any[]).map(w => ({
-    OeuvreID:         w.OeuvreID         as number,
-    Titre:            w.Titre             as string | null,
-    Annee:            w['Année']          as string | null,
-    Hauteur:          w.Hauteur           as string | null,
-    Largeur:          w.Largeur           as string | null,
-    txtImageNameLink: w.txtImageNameLink  as string | null,
-    themes:           oeuvreThemeMap.get(w.OeuvreID) ?? [],
-    isRound:          w.Support === ROUND_SUPPORT_ID,
-  }))
+  const works = Array.isArray(rawWorks)
+    ? rawWorks.flatMap((row) => {
+        const w = row as Partial<WorksPublicRow>
+        if (typeof w.OeuvreID !== 'number') return []
+        return [{
+          OeuvreID: w.OeuvreID,
+          Titre: w.Titre ?? null,
+          Annee: w['Année'] ?? null,
+          Hauteur: w.Hauteur ?? null,
+          Largeur: w.Largeur ?? null,
+          txtImageNameLink: w.txtImageNameLink ?? null,
+          themes: oeuvreThemeMap.get(w.OeuvreID) ?? [],
+          isRound: w.Support === ROUND_SUPPORT_ID,
+        }]
+      })
+    : []
 
   // Fallback: open bucket only — never substitute blocks from other site surfaces
   const anyCol = modes.some(m => m.collections.length > 0)

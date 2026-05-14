@@ -26,7 +26,7 @@ export default async function GaleriePage({
 
   const { data: consignments } = await supabase
     .from('consignment')
-    .select('*, Oeuvres(OeuvreID, Titre, Année, Hauteur, Largeur, Profondeur, txtImageNameLink)')
+    .select('*, Oeuvres(OeuvreID, Titre, "Année", Hauteur, Largeur, Profondeur, txtImageNameLink)')
     .eq('gallery_contact_id', parseInt(gallery_id))
     .is('ended_at', null)
     .order('since', { ascending: false }) as any

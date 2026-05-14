@@ -6,10 +6,13 @@
 //          private link generation (→ Supabase) · checklist preview modal.
 
 import { useState, useMemo } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { thumbUrl, yearOf } from '@/lib/data'
 import { WorkThumb } from './WorkThumb'
 import type { Oeuvre } from '@/lib/types/database'
+import {
+  createPrivateLinkForGroup,
+  createWorkingGroupFromSelection,
+} from '@/app/atelier/curation/actions'
 
 interface Props {
   selection:    Set<number>
@@ -65,30 +68,21 @@ export function CurationPanel({
 
   async function handleSaveGroup(): Promise<string | null> {
     setSaving(true)
-    const supabase = createClient()
-    const nm = name.trim() || `Sélection du ${new Date().toLocaleDateString('fr-FR')}`
-
-    const { data: grp, error: gErr } = await supabase
-      .from('working_group')
-      .insert({ name: nm })
-      .select('id')
-      .single()
-
-    if (gErr || !grp) {
+    const result = await createWorkingGroupFromSelection({
+      name,
+      oeuvreIds: ids,
+    })
+    if (!('ok' in result)) {
       setSaving(false)
       return null
     }
 
-    await supabase.from('working_group_work').insert(
-      ids.map((id, i) => ({ group_id: grp.id, oeuvre_id: id, position: i })),
-    )
-
-    setSavedGrpId(grp.id)
-    setSavedGrpNm(nm)
-    onGroupSaved(grp.id, nm)
+    setSavedGrpId(result.groupId)
+    setSavedGrpNm(result.groupName)
+    onGroupSaved(result.groupId, result.groupName)
     setName('')
     setSaving(false)
-    return grp.id
+    return result.groupId
   }
 
   // ── Generate private link ──────────────────────────────────────
@@ -108,27 +102,19 @@ export function CurationPanel({
       }
     }
 
-    // nanoid: 12 chars, URL-safe
-    const { nanoid } = await import('nanoid')
-    const token      = nanoid(12)
-    const expiresAt  = new Date(Date.now() + parseInt(expires) * 86_400_000).toISOString()
-
-    const supabase   = createClient()
-    const { error }  = await supabase.from('private_link').insert({
-      token,
-      recipient_name: recipient.trim() || null,
-      group_id:       gid,
-      expires_at:     expiresAt,
+    const result = await createPrivateLinkForGroup({
+      groupId: gid,
+      recipientName: recipient.trim() || null,
+      expiresDays: parseInt(expires, 10),
     })
-
-    if (error) {
-      setLinkError(error.message)
+    if (!('ok' in result)) {
+      setLinkError(result.error)
       setLinkLoading(false)
       return
     }
 
     setShowLink({
-      url:       `${window.location.origin}/c/${token}`,
+      url:       `${window.location.origin}/c/${result.token}`,
       recipient: recipient.trim() || '—',
       expires,
     })
@@ -178,7 +164,7 @@ export function CurationPanel({
             {o.txtImageNameLink
               ? <WorkThumb file={o.txtImageNameLink} size={128} alt="" />
               : <div className="ph" style={{ fontSize: 8 }}>—</div>}
-            {(o as any).anonymity_level === 2 && (
+            {o.anonymity_level === 2 && (
               <div style={{
                 position: 'absolute', bottom: 2, left: 2,
                 fontSize: 7, background: 'rgba(200,140,40,0.85)',
@@ -225,7 +211,7 @@ export function CurationPanel({
             <span style={{ flex: 1, color: 'var(--tx)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {o.Titre || '—'}
             </span>
-            {(o as any).anonymity_level === 2 && (
+            {o.anonymity_level === 2 && (
               <span style={{
                 fontSize: 8, background: 'rgba(200,140,40,0.12)',
                 border: '1px solid rgba(200,140,40,0.5)', color: '#c88a20',

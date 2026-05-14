@@ -84,7 +84,7 @@ export default function AboutClient() {
         <section className="a-section">
           <div className="a-section-label">{t('pub_biography')}</div>
           <h1 className="a-name">
-            {artistName.split(' ').map((part, i) => <span key={i}>{part}<br /></span>)}
+            {artistName.split(' ').map((part: string, i: number) => <span key={i}>{part}<br /></span>)}
           </h1>
           <div className="a-bio">
             {hasContent(bioIntro) ? (

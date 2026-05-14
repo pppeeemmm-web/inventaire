@@ -41,7 +41,7 @@ export default async function PrivateLinkPage({
   const { data: groupWorks } = link.group_id
     ? await supabase
         .from('working_group_work')
-        .select('position, Oeuvres(OeuvreID, Titre, Technique, Support, Année, Hauteur, Largeur, Profondeur, txtImageNameLink, Prix)')
+        .select('position, Oeuvres(OeuvreID, Titre, Technique, Support, "Année", Hauteur, Largeur, Profondeur, txtImageNameLink, Prix)')
         .eq('group_id', link.group_id)
         .order('position')
     : { data: [] }
@@ -61,7 +61,7 @@ export default async function PrivateLinkPage({
         </div>
 
         <div className="pl-works">
-          {oeuvres.map((o) => (
+          {oeuvres.map((o: Record<string, unknown>) => (
             <div key={o['OeuvreID'] as number} className="pl-row">
               <div className="thumb pl-thumb">
                 {o['txtImageNameLink']
@@ -71,7 +71,7 @@ export default async function PrivateLinkPage({
               <div className="pl-meta">
                 <div className="serif s-md" style={{ marginBottom: 16 }}>{o['Titre'] as string ?? '—'}</div>
                 <div className="t-mono-sm" style={{ marginBottom: 8 }}>{String(o['Année'] ?? '').slice(0, 4)}</div>
-                {(o['Hauteur'] || o['Largeur']) && (
+                {!!(o['Hauteur'] || o['Largeur']) && (
                   <div className="t-mono-sm">{o['Hauteur'] as string} × {o['Largeur'] as string} cm</div>
                 )}
                 <div className="t-mono" style={{ marginTop: 24, color: 'var(--tx3)', fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase' }}>

@@ -336,7 +336,7 @@ export function DrawerContent({
     const sb = createClient()
     void sb
       .from('consignment')
-      .select('*, Contact(NomInstitution, Nom, Prénom, Ville, Pays)')
+      .select('*, Contact(NomInstitution, Nom, "Prénom", Ville, Pays)')
       .eq('oeuvre_id', o.OeuvreID)
       .order('created_at', { ascending: false })
       .limit(1)

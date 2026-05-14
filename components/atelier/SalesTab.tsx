@@ -8,7 +8,7 @@ import { useI18n }      from '@/lib/i18n/context'
 import { statusOf, yearOf, thumbUrl, type StatusKey } from '@/lib/data'
 import type { Oeuvre }  from '@/lib/types/database'
 import type { Agg, Dim } from '@/lib/pivot'
-import { createSaleOrder, updateOrderStatut, deleteSaleOrder, fetchOrders, regenerateOrderPdf, type SaleOrderRow, skipSaleReturnWindow, updateSaleReturnFields } from '@/app/atelier/sales/actions'
+import { createSaleOrder, updateOrderStatut, deleteSaleOrder, fetchOrders, regenerateOrderPdf, type SaleOrderRow, type PaymentRow, skipSaleReturnWindow, updateSaleReturnFields } from '@/app/atelier/sales/actions'
 import { getSignedUrl } from '@/app/atelier/vault/actions'
 import { stringifyError } from '@/lib/error'
 import { WorkThumb } from './WorkThumb'
@@ -630,6 +630,8 @@ function OrderDetailPanel({ order, oeuvres, cM, setInspectedOrder, onClose, onUp
   const [payments, setPayments] = useState<PaymentRow[]>([])
   const [loading,  setLoading]  = useState(true)
   const [adding,   setAdding]   = useState(false)
+  const [amt, setAmt] = useState('')
+  const [meth, setMeth] = useState('Virement')
   const [retDays, setRetDays] = useState(String(order.return_window_days ?? 14))
   const [retStart, setRetStart] = useState(
     order.return_window_starts_at && order.return_window_starts_at.length >= 10
@@ -900,10 +902,10 @@ function OrderDetailPanel({ order, oeuvres, cM, setInspectedOrder, onClose, onUp
                   btn.disabled = true
                   try {
                     const res = await regenerateOrderPdf(order.id)
-                    if (res.ok) {
+                    if ('ok' in res && res.ok) {
                       alert(t('sales_pdf_regenerated_hint'))
                       onUpdated() // refresh list
-                    } else alert(`${t('error_prefix')} ${stringifyError(res.error)}`)
+                    } else alert(`${t('error_prefix')} ${stringifyError('error' in res ? res.error : res)}`)
                   } catch (err) {
                     alert(`${t('error_prefix')} ${stringifyError(err)}`)
                   } finally {
@@ -1011,12 +1013,4 @@ function PaymentProgress({ order }: { order: SaleOrderRow }) {
       </div>
     </div>
   )
-}
-
-interface PaymentRow {
-  id: number
-  order_id: string
-  amount: number
-  method: string
-  payment_date: string
 }

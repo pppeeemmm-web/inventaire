@@ -112,7 +112,7 @@ export async function listBroadcastDashboard(): Promise<BroadcastDashboardResult
   if (oeuvreIds.size > 0) {
     const { data: wRows, error: wErr } = await sb
       .from('Oeuvres')
-      .select('OeuvreID, Titre, Année, txtImageNameLink')
+      .select('OeuvreID, Titre, "Année", txtImageNameLink')
       .in('OeuvreID', [...oeuvreIds])
     if (wErr) return { error: wErr.message }
     works = wRows ?? []

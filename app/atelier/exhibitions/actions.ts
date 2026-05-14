@@ -39,6 +39,32 @@ export interface ExhibitionLayout {
 export type LayoutResult = { error: string } | { ok: true; layout: ExhibitionLayout }
 export type SimpleResult = { error: string } | { ok: true }
 export type UploadResult = { error: string } | { ok: true; key: string }
+export interface ExhibitionStepRow {
+  id: string
+  process_id: string
+  nom: string
+  statut: string
+  date_echeance: string | null
+  position: number
+  notes: string | null
+  overdue_override: boolean | null
+}
+export interface ExhibitionProcessRow {
+  id: string
+  nom: string
+  type: string | null
+  statut: string
+  date_debut: string | null
+  date_fin: string | null
+  contact_id: number | null
+  localisation: string | null
+  url: string | null
+  notes: string | null
+  created_at: string
+}
+export interface ExhibitionProcessWithSteps extends ExhibitionProcessRow {
+  steps: ExhibitionStepRow[]
+}
 
 // ── Auth guard ────────────────────────────────────────────────────────────────
 
@@ -194,4 +220,117 @@ export async function fetchExhibitionProcesses(): Promise<{ id: string; nom: str
     .eq('type', 'exposition')
     .order('date_fin', { ascending: false })
   return (data ?? []) as { id: string; nom: string }[]
+}
+
+export async function listExhibitionsWithSteps(): Promise<
+  { ok: true; exhibitions: ExhibitionProcessWithSteps[] } | { error: string }
+> {
+  const { error: authErr, supabase } = await guardTeam()
+  if (authErr || !supabase) return { error: authErr ?? 'Auth' }
+
+  const { data: processes, error: pErr } = await supabase
+    .from('suivi_process')
+    .select('id, nom, type, statut, date_debut, date_fin, contact_id, localisation, url, notes, created_at')
+    .eq('type', 'exposition')
+    .or('date_debut.not.is.null,date_fin.not.is.null')
+    .order('date_fin', { ascending: false, nullsFirst: false })
+  if (pErr) return { error: pErr.message }
+
+  const { data: steps, error: sErr } = await supabase
+    .from('suivi_etape')
+    .select('id, process_id, nom, statut, date_echeance, position, notes, overdue_override')
+    .order('position')
+  if (sErr) return { error: sErr.message }
+
+  const typedProcesses = (processes ?? []) as ExhibitionProcessRow[]
+  const typedSteps = (steps ?? []) as ExhibitionStepRow[]
+  const exhibitions: ExhibitionProcessWithSteps[] = typedProcesses.map((p) => ({
+    ...p,
+    steps: typedSteps.filter((s) => s.process_id === p.id),
+  }))
+  return { ok: true, exhibitions }
+}
+
+export async function createExhibitionProcess(payload: {
+  nom: string
+  type?: string
+}): Promise<{ ok: true; exhibition: ExhibitionProcessWithSteps } | { error: string }> {
+  const { error: authErr, supabase } = await guardTeam()
+  if (authErr || !supabase) return { error: authErr ?? 'Auth' }
+
+  const { data, error } = await supabase
+    .from('suivi_process')
+    .insert({ nom: payload.nom, type: payload.type ?? 'exposition', statut: 'prevue' })
+    .select('id, nom, type, statut, date_debut, date_fin, contact_id, localisation, url, notes, created_at')
+    .single()
+  if (error || !data) return { error: error?.message ?? 'Insert failed' }
+  return { ok: true, exhibition: { ...(data as ExhibitionProcessRow), steps: [] } }
+}
+
+export async function deleteExhibitionProcess(exhibitionId: string): Promise<SimpleResult> {
+  const { error: authErr, supabase } = await guardTeam()
+  if (authErr || !supabase) return { error: authErr ?? 'Auth' }
+
+  await supabase
+    .from('suivi_process')
+    .update({ exhibition_process_id: null })
+    .eq('exhibition_process_id', exhibitionId)
+  const { error } = await supabase.from('suivi_process').delete().eq('id', exhibitionId)
+  if (error) return { error: error.message }
+  return { ok: true }
+}
+
+export async function updateExhibitionProcess(payload: {
+  exhibitionId: string
+  patch: Partial<ExhibitionProcessRow> & { _isEditing?: boolean; steps?: ExhibitionStepRow[] }
+  currentSteps: ExhibitionStepRow[]
+}): Promise<{ ok: true; steps?: ExhibitionStepRow[] } | { error: string }> {
+  const { error: authErr, supabase } = await guardTeam()
+  if (authErr || !supabase) return { error: authErr ?? 'Auth' }
+
+  const { steps, _isEditing: _ignored, ...processPatch } = payload.patch
+  if (Object.keys(processPatch).length > 0) {
+    const { error } = await supabase.from('suivi_process').update(processPatch).eq('id', payload.exhibitionId)
+    if (error) return { error: error.message }
+  }
+
+  if (!steps) return { ok: true }
+  const deletedIds = payload.currentSteps
+    .filter((current) => !steps.find((s) => s.id === current.id))
+    .map((s) => s.id)
+  if (deletedIds.length > 0) {
+    const { error } = await supabase.from('suivi_etape').delete().in('id', deletedIds)
+    if (error) return { error: error.message }
+  }
+
+  const finalSteps: ExhibitionStepRow[] = []
+  for (const step of steps) {
+    const isNew = String(step.id).startsWith('s')
+    if (isNew) {
+      const { id: _temp, ...insertStep } = step
+      const { data, error } = await supabase.from('suivi_etape').insert(insertStep).select().single()
+      if (error || !data) return { error: error?.message ?? 'Insert step failed' }
+      finalSteps.push(data as ExhibitionStepRow)
+    } else {
+      const { error } = await supabase.from('suivi_etape').update(step).eq('id', step.id)
+      if (error) return { error: error.message }
+      finalSteps.push(step)
+    }
+  }
+
+  return { ok: true, steps: finalSteps }
+}
+
+export async function assignWorksToExhibitionContact(payload: {
+  oeuvreIds: number[]
+  contactId: number
+}): Promise<SimpleResult> {
+  const { error: authErr, supabase } = await guardTeam()
+  if (authErr || !supabase) return { error: authErr ?? 'Auth' }
+  const { error } = await supabase
+    .from('Oeuvres')
+    .update({ ContactID: payload.contactId })
+    .in('OeuvreID', payload.oeuvreIds)
+  if (error) return { error: error.message }
+  return { ok: true }
 }

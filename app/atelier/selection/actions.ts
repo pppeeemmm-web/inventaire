@@ -142,14 +142,14 @@ export async function batchEdit(ids: number[], changes: BatchChanges): Promise<B
   let count = ids.length
 
   if (hasScalarChanges) {
-    const { error, count: c } = await supabase
+    const { error, data: updatedIds } = await supabase
       .from('Oeuvres')
       .update(update)
       .in('OeuvreID', ids)
       .is('deleted_at', null)
-      .select('OeuvreID', { count: 'exact', head: true })
+      .select('OeuvreID')
     if (error) return { error: error.message }
-    count = c ?? ids.length
+    count = updatedIds?.length ?? ids.length
   }
 
   if (changes.Exposable === true) {
@@ -381,7 +381,7 @@ export async function generateExport(
   // Fetch selected works
   const { data: oeuvres, error: fetchErr } = await supabase
     .from('Oeuvres')
-    .select('OeuvreID, Titre, Année, Technique, Support, Format, Hauteur, Largeur, Profondeur, Prix, PrixFinal, Discount, statusId, Exposable, Catalogué, txtImageNameLink, Commentaires, is_public')
+    .select('OeuvreID, Titre, "Année", Technique, Support, Format, Hauteur, Largeur, Profondeur, Prix, PrixFinal, Discount, statusId, Exposable, "Catalogué", txtImageNameLink, Commentaires, is_public')
     .in('OeuvreID', ids)
     .is('deleted_at', null)
     .order('OeuvreID', { ascending: false })
@@ -418,7 +418,7 @@ export async function generateExport(
             
             // PDF: pdfkit only supports JPEG and PNG. Convert others (AVIF, etc) to JPEG.
             if (config.format === 'pdf') {
-              buf = await sharp(buf).jpeg({ quality: 85 }).toBuffer()
+              buf = Buffer.from(await sharp(buf).jpeg({ quality: 85 }).toBuffer())
             }
 
             const mime = config.format === 'pdf' ? 'image/jpeg' : (res.headers.get('content-type') ?? 'image/jpeg')
@@ -858,7 +858,7 @@ async function buildPdf(
                   fit: cfg.imageCrop === 'native' ? 'inside' : 'cover',
                   background: { r: 255, g: 255, b: 255, alpha: 0 }
                 }).toBuffer()
-              doc.image(processed, cx, y, { width: cellW, height: imgH, align: 'left', valign: 'top' })
+              doc.image(processed, cx, y, { width: cellW, height: imgH })
             } catch {}
           }
         }
@@ -874,7 +874,7 @@ async function buildPdf(
           ty += fSmall + 2
         }
         if (f.title) {
-          doc.fontSize(fTitle).fillColor('#111111').font('Helvetica-Bold').text(o.Titre ?? '—', cx, ty, { width: cellW, align: 'left', lineBreak: true, ellipsis: true, maxLines: 1 })
+          doc.fontSize(fTitle).fillColor('#111111').font('Helvetica-Bold').text(o.Titre ?? '—', cx, ty, { width: cellW, align: 'left', lineBreak: true, ellipsis: true })
           doc.font('Helvetica')
           ty += fTitle + 2
         }

@@ -1,9 +1,8 @@
 'use client'
 
-import type { WheelEvent } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { imageUrl, yearOf } from '@/lib/data'
-import { useEffect, useState, useRef, useMemo } from 'react'
+import { useEffect, useState, useRef, useMemo, type WheelEvent as ReactWheelEvent } from 'react'
 import PublicNav from './PublicNav'
 import type { WorksUxMode } from '@/lib/worksUx'
 import { trackView } from '@/lib/track'
@@ -354,7 +353,8 @@ export default function WorksClient({
 
     const softClamp = (v: number) => Math.max(0, Math.min(v, maxScroll))
 
-    const handleWheel = (e: WheelEvent) => {
+    const handleWheel = (ev: Event) => {
+      const e = ev as WheelEvent
       targetDepth.current = softClamp(targetDepth.current + e.deltaY * 2.5)
     }
     const handleTouchStart = (e: TouchEvent) => {
@@ -478,7 +478,7 @@ export default function WorksClient({
   }
 
   /** Wheel inside scrollable prose should scroll text, not advance the slide stack */
-  const absorbNestedWheel = (e: WheelEvent<HTMLDivElement>) => {
+  const absorbNestedWheel = (e: ReactWheelEvent<HTMLDivElement>) => {
     const t = e.currentTarget
     const { scrollTop, scrollHeight, clientHeight } = t
     if (scrollHeight <= clientHeight + 2) return

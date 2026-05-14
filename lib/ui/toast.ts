@@ -19,7 +19,7 @@ type Subscriber = (items: ToastItem[]) => void
 let items: ToastItem[] = []
 const subs = new Set<Subscriber>()
 
-const timers = new Map<string, ReturnType<typeof setTimeout>>()
+const timers = new Map<string, number>()
 
 function emit() {
   for (const fn of subs) fn(items)

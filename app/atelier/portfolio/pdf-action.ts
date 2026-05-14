@@ -151,7 +151,7 @@ async function loadPublicWorks(): Promise<{ works: PdfWork[] } | { error: string
       { data: oeuvreThemes },
     ] = await Promise.all([
       sb.from('Oeuvres')
-        .select('OeuvreID, Titre, Année, Hauteur, Largeur, Profondeur, txtImageNameLink, Technique, statusId')
+        .select('OeuvreID, Titre, "Année", Hauteur, Largeur, Profondeur, txtImageNameLink, Technique, statusId')
         .is('deleted_at', null)
         .eq('is_public', true)
         .order('Année', { ascending: false }),

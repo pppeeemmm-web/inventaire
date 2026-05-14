@@ -46,8 +46,8 @@ export async function importGoogleContacts(contacts: ImportedContact[]): Promise
       .from('contact_emails')
       .select('email')
       .in('email', allEmails)
-    existingMain?.forEach(r => r.Email && existingEmails.add(r.Email.toLowerCase()))
-    existingTable?.forEach(r => r.email && existingEmails.add(r.email.toLowerCase()))
+    existingMain?.forEach((r: { Email: string | null }) => r.Email && existingEmails.add(r.Email.toLowerCase()))
+    existingTable?.forEach((r: { email: string | null }) => r.email && existingEmails.add(r.email.toLowerCase()))
   }
 
   let imported = 0
@@ -475,7 +475,7 @@ export async function saveContactWithConflictCheck(formData: FormData): Promise<
     const { data: matches } = await query
     
     // We found a match that the current user might not see
-    const privateMatch = matches?.find(m => m.is_private)
+    const privateMatch = matches?.find((m: { ContactID: number; is_private: boolean | null }) => m.is_private)
     if (privateMatch) {
       conflictWithId = privateMatch.ContactID
     }

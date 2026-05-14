@@ -345,7 +345,7 @@ export async function generateCOA(oeuvreId: number): Promise<CoaResult> {
   // Fetch work data
   const { data: o, error: fetchErr } = await (supabase
     .from('Oeuvres') as any)
-    .select('OeuvreID, Titre, Année, Technique, Support, Hauteur, Largeur, Profondeur, txtImageNameLink')
+    .select('OeuvreID, Titre, "Année", Technique, Support, Hauteur, Largeur, Profondeur, txtImageNameLink')
     .eq('OeuvreID', oeuvreId)
     .single()
 

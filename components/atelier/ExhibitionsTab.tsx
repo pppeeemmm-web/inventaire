@@ -11,6 +11,11 @@ import type { Oeuvre } from '@/lib/types/database'
 import { thumbUrl } from '@/lib/data'
 import {
   fetchLayouts, createLayout, saveLayout, uploadFloorplan, deleteLayout, getFloorplanSignedUrl,
+  listExhibitionsWithSteps,
+  createExhibitionProcess,
+  deleteExhibitionProcess,
+  updateExhibitionProcess,
+  assignWorksToExhibitionContact,
   type ExhibitionLayout, type Wall, type Placement,
 } from '@/app/atelier/exhibitions/actions'
 import {
@@ -19,24 +24,26 @@ import {
   pushExhibitionToCalendars,
   startCalendarOAuth,
 } from '@/app/atelier/calendar/actions'
-import { createClient } from '@/lib/supabase/client'
-import { pipelineTypeLabel, type ProcessType } from './PipelineTab'
 import { useI18n } from '@/lib/i18n/context'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import { ConstellationCanvas, type NodeMap, type Pt } from './ConstellationCanvas'
 import { WorkThumb } from './WorkThumb'
 import { ExhibitionsTabSkeleton } from './ExhibitionsTabSkeleton'
+import { ExhibitionsListPanel } from './exhibitions/ExhibitionsListPanel'
+import { ExhibitionStepsPanel } from './exhibitions/ExhibitionStepsPanel'
+import { ExhibitionFloorPlanEditor } from './exhibitions/ExhibitionFloorPlanEditor'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface Step {
   id:               string
+  process_id:       string
   nom:              string
   statut:           string
   date_echeance:    string | null
   position:         number
   notes:            string | null
-  overdue_override: boolean
+  overdue_override: boolean | null
 }
 
 interface Exhibition {
@@ -776,7 +783,7 @@ function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, selection
   selection:  Set<number>
   setSelection: (s: Set<number>) => void
   onDelete:   () => void
-  onUpdate:   (p: Partial<Exhibition>) => void
+  onUpdate:   (p: Partial<Exhibition> & { _isEditing?: boolean }) => void
 }) {
   const { t } = useI18n()
   const [activeTab, setActiveTab] = useState<'overview' | 'works' | 'floorplan' | 'calendar'>('overview')
@@ -868,7 +875,7 @@ function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, selection
       {/* Body */}
       <div style={{ flex: 1, minHeight: 0, display: activeTab === 'floorplan' ? 'none' : 'block', overflow: 'auto' }}>
         {activeTab === 'overview' && (
-          <div style={{ padding: 20 }}>
+          <ExhibitionStepsPanel>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40 }}>
               {/* Steps Management */}
               <div>
@@ -876,7 +883,7 @@ function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, selection
                   <div style={{ fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', color: 'var(--tx3)' }}>Étapes</div>
                   <button 
                     onClick={() => {
-                      const newStep: Step = { id: `s${Date.now()}`, nom: 'Nouvelle étape', statut: 'a_faire', date_echeance: null, position: exhibition.steps.length, notes: null, overdue_override: false }
+                      const newStep: Step = { id: `s${Date.now()}`, process_id: exhibition.id, nom: 'Nouvelle étape', statut: 'a_faire', date_echeance: null, position: exhibition.steps.length, notes: null, overdue_override: false }
                       onUpdate({ steps: [...exhibition.steps, newStep] })
                     }}
                     className="btn sm" style={{ fontSize: 11, padding: '4px 10px' }}>+ Ajouter</button>
@@ -986,7 +993,7 @@ function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, selection
                 </div>
               </div>
             </div>
-          </div>
+          </ExhibitionStepsPanel>
         )}
 
         {activeTab === 'calendar' && (
@@ -1038,10 +1045,12 @@ function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, selection
                       alert(t('exhib_link_contact_first'))
                       return
                     }
-                    const sb = createClient()
                     const ids = Array.from(selection)
-                    const { error } = await sb.from('Oeuvres').update({ ContactID: exhibition.contact_id }).in('OeuvreID', ids)
-                    if (!error) {
+                    const result = await assignWorksToExhibitionContact({
+                      oeuvreIds: ids,
+                      contactId: exhibition.contact_id,
+                    })
+                    if ('ok' in result) {
                       alert(t('exhib_works_linked_count_fmt').replace('{n}', String(ids.length)))
                       window.location.reload() // lazy refresh
                     }
@@ -1058,7 +1067,7 @@ function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, selection
             ) : (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
                 {linkedWorks.map((o) => {
-                  const thumb = thumbUrl(o)
+                  const thumb = thumbUrl(o.txtImageNameLink)
                   return (
                     <div key={o.OeuvreID} style={{ width: 120, flexShrink: 0 }}>
                       <div style={{ width: 120, height: 120, background: 'var(--bg2)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 4, overflow: 'hidden', position: 'relative' }}>
@@ -1066,7 +1075,7 @@ function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, selection
                           ? <Image src={thumb} alt={o.Titre ?? ''} fill sizes="120px" style={{ objectFit: 'cover' }} />
                           : <span style={{ fontSize: 9, color: 'var(--tx3)' }}>#{o.OeuvreID}</span>}
                       </div>
-                      {(o as any).anonymity_level === 2 && (
+                      {o.anonymity_level === 2 && (
                         <div style={{
                           fontSize: 8, background: 'rgba(200,140,40,0.12)',
                           border: '1px solid rgba(200,140,40,0.5)', color: '#c88a20',
@@ -1087,9 +1096,9 @@ function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, selection
 
       {/* Floor plan — outside scroll container so it can fill remaining height */}
       {activeTab === 'floorplan' && (
-        <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <ExhibitionFloorPlanEditor>
           <FloorPlanTool exhibitionId={exhibition.id} oeuvres={oeuvres} themes={themes} tM={tM} />
-        </div>
+        </ExhibitionFloorPlanEditor>
       )}
     </div>
   )
@@ -1099,11 +1108,11 @@ function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, selection
 
 export function ExhibitionsTab({ oeuvres, contacts, themes, tM, selection, setSelection }: {
   oeuvres: Oeuvre[]; 
-  contacts: any[]; 
+  contacts: { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null; Email?: string | null; Tel?: string | null }[]; 
   themes: { id: number; name: string }[];
   tM: Record<number, string>;
   selection: Set<number>; 
-  setSelection: any
+  setSelection: (next: Set<number>) => void
 }) {
   const { lang, t } = useI18n()
   const [oauthBanner, setOauthBanner] = useState<string | null>(null)
@@ -1116,8 +1125,6 @@ export function ExhibitionsTab({ oeuvres, contacts, themes, tM, selection, setSe
   const [newNom,      setNewNom]      = useState('')
   const [newType,     setNewType]     = useState('exposition')
   const [deepLinkId,  setDeepLinkId]  = useState<string | null>(null)
-
-  const supabase = useMemo(() => createClient(), [])
 
   // Optional deep-link: /atelier?tab=exhibitions&exhibition=<processId>
   useEffect(() => {
@@ -1149,24 +1156,10 @@ export function ExhibitionsTab({ oeuvres, contacts, themes, tM, selection, setSe
 
   const load = useCallback(async () => {
     setLoading(true)
-    const { data: processes } = await supabase
-      .from('suivi_process')
-      .select('id, nom, type, statut, date_debut, date_fin, contact_id, localisation, url, notes, created_at')
-      // Exhibition Projects only: keep Pipeline as the broad tracker
-      .eq('type', 'exposition')
-      // Only scheduled / active projects belong here (start or end date present)
-      .or('date_debut.not.is.null,date_fin.not.is.null')
-      .order('date_fin', { ascending: false, nullsFirst: false })
-
-    const { data: steps } = await supabase
-      .from('suivi_etape')
-      .select('id, process_id, nom, statut, date_echeance, position, notes, overdue_override')
-      .order('position')
-
-    const list: Exhibition[] = (processes ?? []).map((p: any) => ({
-      ...p,
-      steps: (steps ?? []).filter((s: any) => s.process_id === p.id),
-    }))
+    const result = await listExhibitionsWithSteps()
+    const list: Exhibition[] = 'ok' in result
+      ? result.exhibitions.map((ex) => ({ ...ex, steps: ex.steps as Step[] }))
+      : []
 
     setExhibitions(list)
     if (list.length > 0 && !selected) {
@@ -1174,7 +1167,7 @@ export function ExhibitionsTab({ oeuvres, contacts, themes, tM, selection, setSe
       setSelected(fromDeepLink ?? list[0])
     }
     setLoading(false)
-  }, [selected, supabase, deepLinkId])
+  }, [selected, deepLinkId])
 
   useEffect(() => { load() }, [load])
 
@@ -1182,10 +1175,8 @@ export function ExhibitionsTab({ oeuvres, contacts, themes, tM, selection, setSe
     if (!selected) return
     if (!confirm(t('exhib_delete_confirm_fmt').replace(/\{name\}/g, selected.nom))) return
     setLoading(true)
-    // Unlink any pipeline processes pointing at this exhibition project (do not delete those tracks).
-    await supabase.from('suivi_process').update({ exhibition_process_id: null } as any).eq('exhibition_process_id', selected.id)
-    const { error } = await supabase.from('suivi_process').delete().eq('id', selected.id)
-    if (!error) {
+    const result = await deleteExhibitionProcess(selected.id)
+    if ('ok' in result) {
       const next = exhibitions.filter(e => e.id !== selected.id)
       setExhibitions(next)
       setSelected(next[0] ?? null)
@@ -1200,65 +1191,31 @@ export function ExhibitionsTab({ oeuvres, contacts, themes, tM, selection, setSe
     const nom = String(new FormData(e.currentTarget).get('nom') ?? '').trim()
     if (!nom) return
     setCreating(true)
-    const { data, error } = await supabase
-      .from('suivi_process')
-      .insert({ nom, type: newType, statut: 'prevue' }) // Start as Planned
-      .select()
-      .single()
+    const result = await createExhibitionProcess({ nom, type: newType })
     setCreating(false)
-    if (!error && data) {
-      const ex: Exhibition = { ...data, steps: [] }
-      setExhibitions((prev) => [ex, ...prev])
-      setSelected(ex)
+    if ('ok' in result) {
+      setExhibitions((prev) => [result.exhibition as Exhibition, ...prev])
+      setSelected(result.exhibition as Exhibition)
       setNewNom(''); setShowNew(false)
     }
   }
 
-  async function handleUpdateStatus(id: string, patch: any) {
-    // 1. Separate steps from main process patch
-    const { steps, ...processPatch } = patch
-
-    // 2. Update main process if needed
-    if (Object.keys(processPatch).length > 0) {
-      // Remove any UI-only helper keys
-      delete (processPatch as any)._isEditing
-      const { error } = await supabase.from('suivi_process').update(processPatch).eq('id', id)
-      if (error) { console.error('Process Update Error:', error); return }
+  async function handleUpdateStatus(id: string, patch: Partial<Exhibition> & { _isEditing?: boolean }) {
+    const current = exhibitions.find((e) => e.id === id)?.steps ?? []
+    const result = await updateExhibitionProcess({
+      exhibitionId: id,
+      patch: { ...patch, steps: patch.steps as Step[] | undefined },
+      currentSteps: current,
+    })
+    if (!('ok' in result)) {
+      console.error('[exhibitions] update error:', result.error)
+      return
     }
+    const syncedPatch = result.steps ? { ...patch, steps: result.steps as Step[] } : patch
 
-    // 3. Handle steps sync if provided
-    if (steps) {
-      const current = exhibitions.find(e => e.id === id)?.steps ?? []
-      
-      // Identify deleted steps
-      const deletedIds = current.filter(c => !steps.find((s: any) => s.id === c.id)).map(c => c.id)
-      if (deletedIds.length > 0) {
-        await supabase.from('suivi_etape').delete().in('id', deletedIds)
-      }
-
-      // Upsert remaining steps
-      const finalSteps = []
-      for (const s of steps) {
-        const isNew = String(s.id).startsWith('s')
-        if (isNew) {
-          const { id: _t, ...newStep } = s
-          const { data, error } = await supabase.from('suivi_etape').insert(newStep).select().single()
-          if (!error && data) finalSteps.push(data)
-          else finalSteps.push(s) // fallback
-        } else {
-          await supabase.from('suivi_etape').update(s).eq('id', s.id)
-          finalSteps.push(s)
-        }
-      }
-      // Replace steps with the ones that have real IDs
-      patch.steps = finalSteps
-    }
-
-    // 4. Update local state
     setExhibitions(prev => prev.map(e => {
       if (e.id === id) {
-        const updated = { ...e, ...processPatch }
-        if (patch.steps) updated.steps = patch.steps
+        const updated = { ...e, ...syncedPatch }
         return updated
       }
       return e
@@ -1266,8 +1223,7 @@ export function ExhibitionsTab({ oeuvres, contacts, themes, tM, selection, setSe
     if (selected?.id === id) {
       setSelected(prev => {
         if (!prev) return null
-        const updated = { ...prev, ...processPatch }
-        if (patch.steps) updated.steps = patch.steps
+        const updated = { ...prev, ...syncedPatch }
         return updated
       })
     }
@@ -1305,78 +1261,24 @@ export function ExhibitionsTab({ oeuvres, contacts, themes, tM, selection, setSe
       )}
       <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
 
-      {/* ── Sidebar ───────────────────────────────────────────── */}
-      <div style={{ width: 240, flexShrink: 0, borderRight: '1px solid var(--bd)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-
-        {/* Toolbar */}
-        <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--bd)', display: 'flex', gap: 6, alignItems: 'center' }}>
-          <button onClick={() => setShowNew((v) => !v)} className="btn sm" style={{ flexShrink: 0 }}>+ Nouveau</button>
-          <select value={filter} onChange={(e) => setFilter(e.target.value as any)}
-            style={{ ...inputSt, fontSize: 9, flex: 1, padding: '4px 6px' }}>
-            <option value="all">Tous</option>
-            {Object.entries(STATUT_LABELS).map(([k, v]) => (
-              <option key={k} value={k}>{v}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* New form */}
-        {showNew && (
-          <form onSubmit={handleCreate} style={{ padding: '10px 12px', borderBottom: '1px solid var(--bd)', display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <input name="nom" value={newNom} onChange={(e) => setNewNom(e.target.value)} placeholder="Nom de l'exposition…" style={inputSt} autoFocus />
-            <select value={newType} onChange={(e) => setNewType(e.target.value)} style={inputSt}>
-              <option value="exposition">{pipelineTypeLabel('exposition' as ProcessType, lang)}</option>
-            </select>
-            <div style={{ display: 'flex', gap: 6 }}>
-              <button type="submit" disabled={creating} className="btn sm" style={{ flex: 1 }}>Créer</button>
-              <button type="button" onClick={() => setShowNew(false)} className="btn sm">Annuler</button>
-            </div>
-          </form>
-        )}
-
-        {/* Exhibition list */}
-        <div style={{ flex: 1, overflowY: 'auto' }}>
-          {filtered.length === 0 ? (
-            <div style={{ padding: '20px 14px', fontSize: 10, color: 'var(--tx3)', fontStyle: 'italic' }}>Aucune exposition.</div>
-          ) : filtered.map((ex) => {
-            const done  = ex.steps.filter((s) => s.statut === 'fait').length
-            const total = ex.steps.length
-            const pct   = total > 0 ? Math.round((done / total) * 100) : 0
-            const accentColor = STATUT_COLORS[ex.statut] ?? 'var(--bd)'
-            return (
-              <button key={ex.id} onClick={() => setSelected(ex)} style={{
-                width: '100%', textAlign: 'left', padding: '10px 12px',
-                background: selected?.id === ex.id ? 'var(--bg2)' : 'transparent',
-                border: 'none', borderBottom: '1px solid var(--bd)', cursor: 'pointer',
-                borderLeft: selected?.id === ex.id ? `3px solid ${accentColor}` : '3px solid transparent',
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 6 }}>
-                  <div style={{ fontSize: 11, color: 'var(--tx)', fontWeight: selected?.id === ex.id ? 500 : 400, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {ex.nom}
-                  </div>
-                  <div style={{ fontSize: 8, color: accentColor, flexShrink: 0, letterSpacing: 0.5 }}>
-                    {pct}%
-                  </div>
-                </div>
-                <div style={{ marginTop: 4, height: 2, background: 'var(--bg2)', borderRadius: 1 }}>
-                  <div style={{ height: '100%', width: `${pct}%`, background: accentColor, borderRadius: 1 }} />
-                </div>
-                <div style={{ marginTop: 3, fontSize: 8, color: 'var(--tx3)' }}>
-                  {ex.type ?? 'exposition'}
-                  {ex.date_fin && <span> · {fmtDate(ex.date_fin)}</span>}
-                </div>
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Stats footer */}
-        <div style={{ padding: '8px 12px', borderTop: '1px solid var(--bd)', display: 'flex', gap: 12, fontSize: 9, color: 'var(--tx3)' }}>
-          <span>{exhibitions.filter((e) => e.statut === 'en_cours').length} en cours</span>
-          <span>{exhibitions.filter((e) => e.statut === 'gagne').length} gagnés</span>
-          <span>{exhibitions.filter((e) => e.statut === 'termine').length} terminés</span>
-        </div>
-      </div>
+      <ExhibitionsListPanel
+        selectedId={selected?.id ?? null}
+        exhibitions={exhibitions}
+        filteredExhibitions={filtered}
+        filter={filter}
+        showNew={showNew}
+        creating={creating}
+        newNom={newNom}
+        newType={newType}
+        lang={lang}
+        onSelect={(id) => setSelected(exhibitions.find((ex) => ex.id === id) ?? null)}
+        onToggleNew={() => setShowNew((v) => !v)}
+        onSetFilter={setFilter}
+        onCreate={handleCreate}
+        onCancelCreate={() => setShowNew(false)}
+        onSetNewNom={setNewNom}
+        onSetNewType={setNewType}
+      />
 
       {/* ── Detail ────────────────────────────────────────────── */}
       {selected ? (

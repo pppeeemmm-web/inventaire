@@ -330,9 +330,9 @@ export function TeamPortalClient({
 
   useEffect(() => {
     const sb = createClient()
-    sb.rpc('is_admin')
+    void Promise.resolve(sb.rpc('is_admin'))
       .then(({ data }) => setIsAdmin(!!data))
-      .catch((err) => console.error('is_admin RPC:', err))
+      .catch((err: unknown) => console.error('is_admin RPC:', err))
   }, [])
 
   useEffect(() => {

@@ -7,7 +7,7 @@ import { useState, useTransition } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { batchEdit, createTheme, type BatchChanges } from '@/app/atelier/selection/actions'
 
-type ContactAddress = { id: number; contact_id: number; label: string; adresse: string | null; ville: string | null; pays: string | null }
+type ContactAddress = { id?: number; contact_id: number; label: string; adresse: string | null; ville: string | null; pays: string | null }
 
 interface Props {
   ids:            number[]

@@ -41,7 +41,9 @@ export function WorkVersionHistory({ oeuvreId, onRestored }: { oeuvreId: number;
   const [pending, startTransition] = useTransition()
 
   useEffect(() => {
-    createClient().rpc('is_admin').then(({ data }) => setIsAdmin(!!data)).catch(() => setIsAdmin(false))
+    void Promise.resolve(createClient().rpc('is_admin'))
+      .then(({ data }) => setIsAdmin(!!data))
+      .catch(() => setIsAdmin(false))
   }, [])
 
   useEffect(() => {

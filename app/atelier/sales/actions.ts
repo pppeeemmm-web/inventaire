@@ -3,6 +3,7 @@
 // Sale order server actions — create, update status, generate PDF order form.
 
 import { createClient }  from '@/lib/supabase/server'
+import { logSystemEvent } from '@/lib/utils/logging'
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3'
 import { addCalendarDaysIso, parseSaleOrderBatchIds } from '@/lib/sale-return-window'
 
@@ -636,11 +637,11 @@ export async function buildOrderPdf(order: SaleOrderRow, supabase: any): Promise
   // Fetch all works
   const { data: works } = await supabase
     .from('Oeuvres')
-    .select('OeuvreID, Titre, Année, Technique, Support, Hauteur, Largeur, Profondeur, txtImageNameLink, Prix')
+    .select('OeuvreID, Titre, "Année", Technique, Support, Hauteur, Largeur, Profondeur, txtImageNameLink, Prix')
     .in('OeuvreID', ids)
 
   const { data: buyer } = order.buyer_id
-    ? await supabase.from('Contact').select('Nom, Prénom, NomInstitution, Ville, Pays').eq('ContactID', order.buyer_id).single()
+    ? await supabase.from('Contact').select('Nom, "Prénom", NomInstitution, Ville, Pays').eq('ContactID', order.buyer_id).single()
     : { data: null }
 
   // If routed through a consignment, fetch its commission rate to render on the bond.
@@ -655,16 +656,23 @@ export async function buildOrderPdf(order: SaleOrderRow, supabase: any): Promise
 
   // Fetch techniques/supports for all works to avoid repeated calls or just use names if available
   // To keep it simple and fast, we'll fetch them once if possible
-  const techIds = [...new Set(works?.map(w => w.Technique).filter(Boolean))]
-  const suppIds = [...new Set(works?.map(w => w.Support).filter(Boolean))]
+  type OrderWorkRow = {
+    OeuvreID: number
+    Technique: number | null
+    Support: number | null
+    txtImageNameLink: string | null
+  }
+  const workList = (works ?? []) as OrderWorkRow[]
+  const techIds = [...new Set(workList.map((w) => w.Technique).filter((x): x is number => x != null))]
+  const suppIds = [...new Set(workList.map((w) => w.Support).filter((x): x is number => x != null))]
   
   const [{ data: techs }, { data: supps }] = await Promise.all([
-    techIds.length > 0 ? supabase.from('Technique').select('TechniqueID, Technique').in('TechniqueID', techIds) : Promise.resolve({ data: [] }),
-    suppIds.length > 0 ? supabase.from('Support').select('SupportID, Support').in('SupportID', suppIds) : Promise.resolve({ data: [] }),
+    techIds.length > 0 ? supabase.from('Technique').select('TechniqueID, Technique').in('TechniqueID', techIds) : Promise.resolve({ data: [] as { TechniqueID: number; Technique: string }[] }),
+    suppIds.length > 0 ? supabase.from('Support').select('SupportID, Support').in('SupportID', suppIds) : Promise.resolve({ data: [] as { SupportID: number; Support: string }[] }),
   ])
 
-  const tM = Object.fromEntries((techs ?? []).map(t => [t.TechniqueID, t.Technique]))
-  const sM = Object.fromEntries((supps ?? []).map(s => [s.SupportID, s.Support]))
+  const tM = Object.fromEntries((techs ?? []).map((t: { TechniqueID: number; Technique: string }) => [t.TechniqueID, t.Technique]))
+  const sM = Object.fromEntries((supps ?? []).map((s: { SupportID: number; Support: string }) => [s.SupportID, s.Support]))
 
   const buyerName = (buyer as any)?.NomInstitution
     || `${(buyer as any)?.Prénom ?? ''} ${(buyer as any)?.Nom ?? ''}`.trim()
@@ -676,7 +684,7 @@ export async function buildOrderPdf(order: SaleOrderRow, supabase: any): Promise
   const workImages: Record<number, Buffer> = {}
   const sharp = (await import('sharp')).default
   
-  await Promise.all((works ?? []).map(async (w) => {
+  await Promise.all(workList.map(async (w) => {
     if (w.txtImageNameLink) {
       const thumbName = `thumbs/${w.txtImageNameLink.replace(/\.[^.]+$/, '')}.avif`
       let buf = await r2Get(thumbName, IMAGE_BUCKET)

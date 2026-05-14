@@ -1,7 +1,7 @@
 'use client'
 
 import type { OwnStageId } from '@/lib/work-editor-model'
-import type { Lang } from '@/lib/i18n/dictionary'
+import type { DictKey, Lang } from '@/lib/i18n/dictionary'
 import { FIS, Label, SectionTitle, WfSwitch } from './drawer-widgets'
 
 export function DrawerContentFinanceSection({
@@ -21,7 +21,7 @@ export function DrawerContentFinanceSection({
 }: {
   narrow: boolean
   lang: Lang
-  t: (k: string) => string
+  t: (k: DictKey) => string
   prix: string
   setPrix: (v: string) => void
   discount: string
