@@ -766,7 +766,8 @@ export function TeamPortalClient({
                       onClick={() => handleSetTab(key)}
                       className={isActive ? 'pem-sidebar-tab pem-sidebar-tab--on' : 'pem-sidebar-tab'}
                       style={{
-                        padding: '6px 20px',
+                        padding: atelierNarrow ? '10px 20px' : '6px 20px',
+                        minHeight: atelierNarrow ? 44 : undefined,
                         fontSize: 11,
                         textAlign: 'left',
                         border: 'none',
