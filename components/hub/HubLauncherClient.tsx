@@ -5,6 +5,7 @@ import { useI18n } from '@/lib/i18n/context'
 import { useRouter } from 'next/navigation'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import type { DictKey } from '@/lib/i18n/dictionary'
+import { VoiceNoteSheet } from '@/components/shared/VoiceNoteSheet'
 
 const LEGACY_TILES = [
   { key: 'hub_launcher_field' as const, subKey: 'hub_launcher_field_sub' as const, tab: 'inventory' },
@@ -13,16 +14,20 @@ const LEGACY_TILES = [
   { key: 'hub_launcher_admin' as const, subKey: 'hub_launcher_admin_sub' as const, tab: 'contacts' },
 ]
 
+type FieldRow =
+  | { kind: 'link'; testId: string; emoji: string; labelKey: DictKey; subKey: DictKey; href: string }
+  | { kind: 'note'; testId: string; emoji: string; labelKey: DictKey; subKey: DictKey }
+
 /** Ring B.1 — field verbs first; order matches iPhone SE plan. */
-const FIELD_ROWS: { labelKey: DictKey; subKey: DictKey; href: string }[] = [
-  { labelKey: 'hub_field_session', subKey: 'hub_field_session_sub', href: '/atelier/session/new' },
-  { labelKey: 'hub_field_note', subKey: 'hub_field_note_sub', href: '/atelier/share-triage' },
-  { labelKey: 'hub_field_scan_doc', subKey: 'hub_field_scan_doc_sub', href: '/atelier/capture?mode=doc' },
-  { labelKey: 'hub_field_pipeline', subKey: 'hub_field_pipeline_sub', href: '/atelier?tab=pipeline' },
-  { labelKey: 'hub_field_triage', subKey: 'hub_field_triage_sub', href: '/atelier/triage' },
-  { labelKey: 'hub_field_contact', subKey: 'hub_field_contact_sub', href: '/atelier/capture?mode=card' },
-  { labelKey: 'hub_field_document', subKey: 'hub_field_document_sub', href: '/atelier/documents/new' },
-  { labelKey: 'hub_field_issue', subKey: 'hub_field_issue_sub', href: '/atelier/issue/new' },
+const FIELD_ROWS: FieldRow[] = [
+  { kind: 'link', testId: 'hub-field-verb-session', emoji: '📷', labelKey: 'hub_field_session', subKey: 'hub_field_session_sub', href: '/atelier/session/new' },
+  { kind: 'note', testId: 'hub-field-verb-note', emoji: '🎤', labelKey: 'hub_field_note', subKey: 'hub_field_note_sub' },
+  { kind: 'link', testId: 'hub-field-verb-scan-doc', emoji: '📄', labelKey: 'hub_field_scan_doc', subKey: 'hub_field_scan_doc_sub', href: '/atelier/capture?mode=doc' },
+  { kind: 'link', testId: 'hub-field-verb-pipeline', emoji: '📅', labelKey: 'hub_field_pipeline', subKey: 'hub_field_pipeline_sub', href: '/atelier?tab=pipeline' },
+  { kind: 'link', testId: 'hub-field-verb-triage', emoji: '📣', labelKey: 'hub_field_triage', subKey: 'hub_field_triage_sub', href: '/atelier/triage' },
+  { kind: 'link', testId: 'hub-field-verb-contact', emoji: '👤', labelKey: 'hub_field_contact', subKey: 'hub_field_contact_sub', href: '/atelier/capture?mode=card' },
+  { kind: 'link', testId: 'hub-field-verb-document', emoji: '✍️', labelKey: 'hub_field_document', subKey: 'hub_field_document_sub', href: '/atelier/documents/new' },
+  { kind: 'link', testId: 'hub-field-verb-issue', emoji: '⚠️', labelKey: 'hub_field_issue', subKey: 'hub_field_issue_sub', href: '/atelier/issue/new' },
 ]
 
 export function HubLauncherClient() {
@@ -30,6 +35,7 @@ export function HubLauncherClient() {
   const router = useRouter()
   const narrow = useMediaQuery('(max-width: 767px)')
   const [legacyOpen, setLegacyOpen] = useState(false)
+  const [voiceOpen, setVoiceOpen] = useState(false)
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, gap: 32 }}>
@@ -38,14 +44,21 @@ export function HubLauncherClient() {
         <div className="serif s-lg" style={{ marginTop: 8 }}>{t('hub_launcher_title')}</div>
       </div>
 
+      <VoiceNoteSheet open={voiceOpen} onClose={() => setVoiceOpen(false)} />
+
       {narrow ? (
-        <div style={{ width: '100%', maxWidth: 420, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div data-testid="hub-field-launcher-root" style={{ width: '100%', maxWidth: 420, display: 'flex', flexDirection: 'column', gap: 10 }}>
           {FIELD_ROWS.map((row) => (
             <button
               key={row.labelKey}
               type="button"
               className="btn ghost"
-              onClick={() => void router.push(row.href)}
+              data-testid={row.testId}
+              aria-label={`${t(row.labelKey)}. ${t(row.subKey)}`}
+              onClick={() => {
+                if (row.kind === 'note') setVoiceOpen(true)
+                else void router.push(row.href)
+              }}
               style={{
                 minHeight: 64,
                 width: '100%',
@@ -58,9 +71,12 @@ export function HubLauncherClient() {
                 gap: 12,
               }}
             >
-              <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4, minWidth: 0 }}>
-                <span style={{ fontSize: 14, fontWeight: 600 }}>{t(row.labelKey)}</span>
-                <span style={{ fontSize: 10, opacity: 0.55, letterSpacing: 0.4 }}>{t(row.subKey)}</span>
+              <span style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 12, minWidth: 0, flex: 1 }}>
+                <span style={{ fontSize: 20, flexShrink: 0, lineHeight: 1 }} aria-hidden>{row.emoji}</span>
+                <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4, minWidth: 0 }}>
+                  <span style={{ fontSize: 14, fontWeight: 600 }}>{t(row.labelKey)}</span>
+                  <span style={{ fontSize: 10, opacity: 0.55, letterSpacing: 0.4 }}>{t(row.subKey)}</span>
+                </span>
               </span>
               <span style={{ fontSize: 14, opacity: 0.35, flexShrink: 0 }} aria-hidden>›</span>
             </button>
@@ -69,10 +85,11 @@ export function HubLauncherClient() {
           <button
             type="button"
             className="btn ghost"
+            data-testid="hub-field-more-toggle"
             onClick={() => setLegacyOpen((v) => !v)}
             aria-expanded={legacyOpen}
             style={{
-              minHeight: 52,
+              minHeight: 44,
               width: '100%',
               display: 'flex',
               flexDirection: 'row',
@@ -96,6 +113,7 @@ export function HubLauncherClient() {
                   key={key}
                   type="button"
                   className="btn ghost"
+                  aria-label={`${t(key)}. ${t(subKey)}`}
                   onClick={() => void router.push(`/atelier?tab=${tab}`)}
                   style={{
                     minHeight: 56,
@@ -130,6 +148,7 @@ export function HubLauncherClient() {
               key={key}
               type="button"
               className="btn ghost"
+              aria-label={`${t(key)}. ${t(subKey)}`}
               onClick={() => void router.push(`/atelier?tab=${tab}`)}
               style={{
                 minHeight: 80,

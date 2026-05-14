@@ -12,6 +12,8 @@ import type { Lang } from '@/lib/i18n/dictionary'
 import { AsyncButton } from '@/components/ui/AsyncButton'
 import { toast } from '@/lib/ui/toast'
 
+const ATELIER_NARROW_MQ = '(max-width: 767px)'
+
 // ── Types ──────────────────────────────────────────────────────────────
 
 export type ProcessType =
@@ -266,12 +268,14 @@ function processToPulseProcess(p: Process): PulseProcess {
 export function PipelineTab({ oeuvres, contacts, groups, initialReminders, onRemindersMutated }: Props) {
   const { statutLabels, etapeLabels, typeLabel, t, lang } = useSuiviLabels()
   const dateLocTag = dateLocaleTag(lang)
-  const atelierNarrow = useMediaQuery('(max-width: 767px)')
+  const atelierNarrow = useMediaQuery(ATELIER_NARROW_MQ)
   const [processes,   setProcesses]   = useState<Process[]>([])
   const [reminders,   setReminders]   = useState<Reminder[]>(initialReminders)
   const [typeFilter,  setTypeFilter]  = useState<ProcessType | 'all'>('all')
   const [showDone,    setShowDone]    = useState(false)
-  const [mainView,    setMainView]    = useState<'gantt' | 'calendar'>('gantt')
+  const [mainView,    setMainView]    = useState<'gantt' | 'calendar'>(() =>
+    typeof window !== 'undefined' && window.matchMedia(ATELIER_NARROW_MQ).matches ? 'calendar' : 'gantt',
+  )
   const [calendarRange, setCalendarRange] = useState<PipelineCalendarRange>('month')
   const [calendarAnchor, setCalendarAnchor] = useState(() => {
     const n = new Date()
@@ -280,10 +284,6 @@ export function PipelineTab({ oeuvres, contacts, groups, initialReminders, onRem
   const [editing,     setEditing]     = useState<Process | 'new' | null>(null)
   const [inspectedId, setInspectedId] = useState<string | null>(null)
   const [loading,     setLoading]     = useState(true)
-
-  useEffect(() => {
-    if (atelierNarrow) setMainView('calendar')
-  }, [atelierNarrow])
 
   useEffect(() => {
     setReminders(initialReminders)

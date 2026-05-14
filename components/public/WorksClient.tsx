@@ -1,53 +1,17 @@
 'use client'
 
 import { useI18n } from '@/lib/i18n/context'
-import { imageUrl, yearOf } from '@/lib/data'
-import { useEffect, useState, useRef, useMemo, type WheelEvent as ReactWheelEvent } from 'react'
+import { imageUrl, thumbUrl, yearOf } from '@/lib/data'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import PublicNav from './PublicNav'
-import type { WorksUxMode } from '@/lib/worksUx'
 import { trackView } from '@/lib/track'
 import { getOrCreatePublicVisitorId } from '@/lib/public-visitor-id'
-
-/** Virtual distance between sequence slide centers (wheel deltas map here). */
-const WORKS_STEP = 7200
-/** Matches slide spacing — keeps birth / micro transitions proportional. */
-const WORKS_BIRTH_DIST = WORKS_STEP * 10
-/** Scroll budget past the last slide center (end hint + “retour”), then hard stop — no infinite wheel. */
-const WORKS_END_TAIL = 1.22
-
-function htmlToPlain(html: string): string {
-  if (!html) return ''
-  return html
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/p>/gi, '\n')
-    .replace(/<\/h[1-6]>/gi, '\n')
-    .replace(/<\/li>/gi, '\n')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ')
-    .replace(/\n{3,}/g, '\n\n').trim()
-}
-
-function FlameText({ text }: { text: string }) {
-  const plain = htmlToPlain(text)
-  const formatted = plain.replace(/\./g, ' /').replace(/\n/g, ' █ ')
-  return (
-    <p style={{
-      width: '100%', maxWidth: '100%', fontSize: 'clamp(9px, 1.1vw, 13px)',
-      lineHeight: 1.9, letterSpacing: '0.18em', textTransform: 'uppercase',
-      color: '#8a8680', textAlign: 'justify', wordSpacing: '0.3em',
-      fontFamily: 'var(--font-ui)', margin: 0,
-    }}>
-      {formatted}
-    </p>
-  )
-}
 
 function normalizeTheme(s: string | null | undefined): string {
   if (!s) return ''
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
 }
 
-/** Bidirectional substring match on normalized theme names */
 function workMatchesCollectionTheme(workThemes: string[], collectionTheme: string | null | undefined): boolean {
   if (!collectionTheme?.trim()) return true
   const sMatch = normalizeTheme(collectionTheme)
@@ -81,17 +45,6 @@ interface Collection {
   manual_work_order?: number[]
 }
 
-type SequenceItem =
-  /** leadInCollection: first image of this collection — micro-scale birth transition */
-  | { type: 'work'; data: Work; collectionId?: string; workIndex: number; leadInCollection: boolean }
-  /** Closing prose after works (FlameText) */
-  | { type: 'header'; title: string; subtitle?: string; collectionId?: string }
-  /** Opening HTML before works (matches Diffusion rich editor) */
-  | { type: 'intro'; title: string; subtitle?: string; collectionId?: string }
-  /** Between collections when worksUx=bridge */
-  | { type: 'bridge'; nextTitle: string }
-  | { type: 'outro'; html_fr: string; html_en: string }
-
 interface WorksMode {
   id: string
   label_fr: string
@@ -104,129 +57,9 @@ interface WorksMode {
 interface Props {
   works: Work[]
   modes: WorksMode[]
-  /** default | bridge | intro | chapters — query ?worksUx= or NEXT_PUBLIC_WORKS_UX_MODE */
-  worksUxMode?: WorksUxMode
-  /** Removed UI; optional so stale bundles / partial merges never ReferenceError */
-  showUxPicker?: boolean
-  uxPickerSticky?: boolean
 }
 
-type SectionPill = { seqIdx: number; title: string; chapterIdx: number }
-
-function buildWorksSequence(
-  works: Work[],
-  mode: WorksMode,
-  lang: 'fr' | 'en',
-  worksUxMode: WorksUxMode,
-  activeChapterIdx: number,
-): { sequence: SequenceItem[]; curatedGroupsNomatch: boolean; collectionSections: SectionPill[] } {
-  const items: SequenceItem[] = []
-  /** Preserve Diffusion order (sort_order). Each collection lists its own works — no cross-collection stealing. */
-  const allActive = mode.collections
-
-  let activeCollections = allActive
-  if (worksUxMode === 'chapters') {
-    const pick = allActive[activeChapterIdx]
-    activeCollections = pick ? [pick] : []
-  }
-
-  for (let i = 0; i < activeCollections.length; i++) {
-    const col = activeCollections[i]
-    let colWorks = worksForCollection(col, works)
-
-    const orderIds = col.manual_work_order ?? []
-    if (orderIds.length > 0 && colWorks.length > 0) {
-      const rank = new Map(orderIds.map((id, idx) => [id, idx]))
-      colWorks = colWorks.slice().sort((a, b) => {
-        const ai = rank.has(a.OeuvreID) ? rank.get(a.OeuvreID)! : Number.POSITIVE_INFINITY
-        const bi = rank.has(b.OeuvreID) ? rank.get(b.OeuvreID)! : Number.POSITIVE_INFINITY
-        return ai - bi
-      })
-    }
-
-    const title = lang === 'en' ? (col.title_en || col.title_fr) : (col.title_fr || col.title_en)
-    const subtitleClosing = lang === 'en' ? (col.description_en || col.description_fr) : (col.description_fr || col.description_en)
-    const introHtml = lang === 'en' ? (col.intro_en ?? '') : (col.intro_fr ?? '')
-    const hasIntro = Boolean(introHtml && htmlToPlain(introHtml).trim())
-    const hasClosing = Boolean((title && title.trim()) || (subtitleClosing && htmlToPlain(subtitleClosing).trim()))
-
-    if (colWorks.length === 0 && !hasClosing && !hasIntro) continue
-
-    if (worksUxMode === 'bridge' && i > 0) {
-      items.push({ type: 'bridge', nextTitle: title?.trim() || '—' })
-    }
-
-    if (hasIntro) {
-      items.push({
-        type: 'intro',
-        title: title?.trim() ? title : '',
-        subtitle: introHtml,
-        collectionId: col.id,
-      })
-    }
-
-    colWorks.forEach((w, wi) => {
-      const workIndex = items.filter(x => x.type === 'work').length
-      items.push({
-        type: 'work',
-        data: w,
-        collectionId: col.id,
-        workIndex,
-        leadInCollection: wi === 0,
-      })
-    })
-
-    if (hasClosing) {
-      items.push({
-        type: 'header',
-        title: title?.trim() ? title : '',
-        subtitle: subtitleClosing,
-        collectionId: col.id,
-      })
-    }
-  }
-
-  if (items.length === 0 && allActive.length === 0) {
-    works.filter(w => w.txtImageNameLink).forEach((w, i) => {
-      items.push({ type: 'work', data: w, workIndex: i, leadInCollection: i === 0 })
-    })
-  }
-
-  const curatedGroupsNomatch = items.length === 0 && allActive.length > 0
-
-  const itemsBeforeOutro = items.slice()
-
-  if (mode.outro_fr || mode.outro_en) {
-    items.push({ type: 'outro', html_fr: mode.outro_fr, html_en: mode.outro_en })
-  }
-
-  const sectionPills: SectionPill[] = []
-  allActive.forEach((col, chapterIdx) => {
-    const label = lang === 'en' ? (col.title_en || col.title_fr) : (col.title_fr || col.title_en)
-    if (worksUxMode === 'chapters') {
-      sectionPills.push({ seqIdx: 0, title: label?.trim() || '—', chapterIdx })
-      return
-    }
-    const intros = itemsBeforeOutro.findIndex(
-      it => it.type === 'intro' && it.collectionId === col.id,
-    )
-    const wrk = itemsBeforeOutro.findIndex(
-      it => it.type === 'work' && it.collectionId === col.id,
-    )
-    const hdr = itemsBeforeOutro.findIndex(
-      it => it.type === 'header' && it.collectionId === col.id,
-    )
-    let seqIdx = -1
-    if (intros >= 0) seqIdx = intros
-    else if (wrk >= 0) seqIdx = wrk
-    else seqIdx = hdr
-    if (seqIdx >= 0) sectionPills.push({ seqIdx, title: label?.trim() || '—', chapterIdx })
-  })
-
-  return { sequence: items, curatedGroupsNomatch, collectionSections: sectionPills }
-}
-
-/** Membership per collection only (no global de-dupe across sequences). */
+/** Manual order first, then theme-matched residuals. Only works with images. */
 function worksForCollection(col: Collection, works: Work[]): Work[] {
   const seenHere = new Set<number>()
   const orderIds = col.manual_work_order ?? []
@@ -250,882 +83,560 @@ function worksForCollection(col: Collection, works: Work[]): Work[] {
     }
     return out
   }
-
   return works.filter(w => {
     if (!w.txtImageNameLink) return false
     if (!workMatchesCollectionTheme(w.themes, col.theme)) return false
-    return true
-  }).filter(w => {
     if (seenHere.has(w.OeuvreID)) return false
     seenHere.add(w.OeuvreID)
     return true
   })
 }
 
-export default function WorksClient({
-  works,
-  modes,
-  worksUxMode = 'default',
-  showUxPicker = false,
-  uxPickerSticky = false,
-}: Props) {
+/** Per-card 3D transform. Center = face-on, neighbors rotate so inner edge faces viewer. */
+function cardTransform(offset: number, reducedMotion: boolean): {
+  transform: string
+  opacity: number
+  zIndex: number
+  visible: boolean
+} {
+  const abs = Math.abs(offset)
+  if (abs > 3) return { transform: '', opacity: 0, zIndex: 0, visible: false }
+  const tx = offset * 780
+  const ty = -abs * 240
+  const ry = reducedMotion ? 0 : offset * 32
+  const opacity = Math.max(0, 1 - abs * 0.22)
+  const zIndex = 100 - abs
+  const transform = `translate3d(${tx}px, 0, ${ty}px) rotateY(${ry}deg)`
+  return { transform, opacity, zIndex, visible: true }
+}
+
+export default function WorksClient({ works, modes }: Props) {
   const { t, lang } = useI18n()
-  const [activeModeIdx, setActiveModeIdx] = useState(0)
-  const [activeChapterIdx, setActiveChapterIdx] = useState(0)
-  const safeModes = modes.length > 0 ? modes : [{
+  const safeModes: WorksMode[] = modes.length > 0 ? modes : [{
     id: 'default', label_fr: 'Œuvres', label_en: 'Works',
     collections: [], outro_fr: '', outro_en: '',
   }]
-  const mode = safeModes[Math.min(activeModeIdx, safeModes.length - 1)]
+  const mode = safeModes[0]
 
-  const allActiveLen = useMemo(() => mode.collections.length, [mode.collections])
+  const [activeChapterIdx, setActiveChapterIdx] = useState(0)
+  const [activeIndex, setActiveIndex] = useState(0)
+  const [isZoomed, setIsZoomed] = useState(false)
+  const [trackFade, setTrackFade] = useState(false)
+
+  const reducedMotion = false // TEMP debug; revert
 
   useEffect(() => {
     void trackView('/works', null, null, getOrCreatePublicVisitorId())
   }, [])
 
-  useEffect(() => {
-    if (worksUxMode !== 'chapters') setActiveChapterIdx(0)
-  }, [worksUxMode])
+  const chapter = mode.collections[Math.min(activeChapterIdx, Math.max(0, mode.collections.length - 1))]
+  const chapterWorks = useMemo(() => {
+    if (!chapter) {
+      // Fallback: no curated chapters → all public works
+      return works.filter(w => w.txtImageNameLink)
+    }
+    return worksForCollection(chapter, works)
+  }, [chapter, works])
 
+  const curatedGroupsNomatch = Boolean(chapter && chapterWorks.length === 0)
+
+  /** Reset slot + zoom when chapter changes; play a brief cross-fade. */
   useEffect(() => {
-    setActiveChapterIdx(i => {
-      if (allActiveLen <= 0) return 0
-      return Math.min(i, allActiveLen - 1)
+    setActiveIndex(0)
+    setIsZoomed(false)
+    setTrackFade(true)
+    const id = window.setTimeout(() => setTrackFade(false), 220)
+    return () => window.clearTimeout(id)
+  }, [activeChapterIdx])
+
+  /** Clamp active slot inside the new list. */
+  useEffect(() => {
+    setActiveIndex(i => Math.max(0, Math.min(i, Math.max(0, chapterWorks.length - 1))))
+  }, [chapterWorks.length])
+
+  const stepBy = useCallback((delta: number) => {
+    if (chapterWorks.length === 0) return
+    setActiveIndex(i => {
+      const next = i + delta
+      if (next < 0) return 0
+      if (next > chapterWorks.length - 1) return chapterWorks.length - 1
+      return next
     })
-  }, [allActiveLen])
+  }, [chapterWorks.length])
 
-  const { sequence, curatedGroupsNomatch, collectionSections } = useMemo(
-    () => buildWorksSequence(works, mode, lang as 'fr' | 'en', worksUxMode, activeChapterIdx),
-    [works, mode, lang, worksUxMode, activeChapterIdx],
-  )
-
-  // Last "scrollable" index: last work, or outro card if present (so end overlay
-  // appears AFTER the closing text, not over it).
-  const lastWorkIdx = useMemo(() =>
-    sequence.reduce((acc, s, i) => (s.type === 'work' || s.type === 'outro') ? i : acc, -1)
-  , [sequence])
-
-  const targetDepth  = useRef(0)
-  const currentDepth = useRef(0)
-  const [displayDepth, setDisplayDepth] = useState(0)
-  const [activeWork, setActiveWork]     = useState<Work | null>(null)
-  const [captionOpacity, setCaptionOpacity] = useState(0)
-  const [endOpacity, setEndOpacity]     = useState(0)
-
-  const burnZooms  = useRef<Map<number, number>>(new Map())
-  const burnTicks  = useRef(0)
-  const settledIdx = useRef<number>(-1)
-  const activePainting = useRef<number>(-1)
-
-  const STEP       = WORKS_STEP
-  const BIRTH_DIST = WORKS_BIRTH_DIST
-  /** Narrow focus band — less stacking ghost between neighbours */
-  const WORK_IN    = STEP * 0.17
-  const WORK_OUT   = STEP * 0.21
-  /** Text slides: slightly tighter than 0.2×STEP for cleaner hand-offs */
-  const TEXT_BAND  = STEP * 0.175
-  /** First image of each collection: start ~micro, grow across full approach */
-  const LEAD_MICRO = 0.028
-  /** Extra depth (px, more negative) so the lead painting begins farther “back” in Z */
-  const LEAD_Z_PUSH = 38000
-
-  const touchLastY  = useRef<number | null>(null)
-  const touchVelY   = useRef(0)
-
-  /** After sequence changes (mode/tab), keep depth inside the new stack — no runaway target. */
+  /** Keyboard nav + Esc to exit zoom. */
   useEffect(() => {
-    const maxScroll =
-      sequence.length === 0
-        ? 0
-        : (sequence.length - 1) * WORKS_STEP + WORKS_STEP * WORKS_END_TAIL
-    if (targetDepth.current > maxScroll) {
-      targetDepth.current = maxScroll
-      currentDepth.current = maxScroll
-      setDisplayDepth(maxScroll)
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isZoomed) {
+        setIsZoomed(false)
+        e.preventDefault()
+        return
+      }
+      if (isZoomed) return
+      if (e.key === 'ArrowRight') { stepBy(1); e.preventDefault() }
+      else if (e.key === 'ArrowLeft') { stepBy(-1); e.preventDefault() }
     }
-  }, [sequence])
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [isZoomed, stepBy])
 
+  /** Wheel + trackpad: dominant axis decides step; debounce ~250ms. */
+  const wheelLockRef = useRef(0)
   useEffect(() => {
-    const maxScroll =
-      sequence.length === 0
-        ? 0
-        : (sequence.length - 1) * STEP + STEP * WORKS_END_TAIL
-
-    const softClamp = (v: number) => Math.max(0, Math.min(v, maxScroll))
-
-    const handleWheel = (ev: Event) => {
-      const e = ev as WheelEvent
-      targetDepth.current = softClamp(targetDepth.current + e.deltaY * 2.5)
+    const onWheel = (e: WheelEvent) => {
+      if (isZoomed) return
+      const now = performance.now()
+      if (now - wheelLockRef.current < 240) return
+      const dx = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY
+      if (Math.abs(dx) < 8) return
+      wheelLockRef.current = now
+      stepBy(dx > 0 ? 1 : -1)
     }
-    const handleTouchStart = (e: TouchEvent) => {
-      touchLastY.current = e.touches[0].clientY
-      touchVelY.current  = 0
-    }
-    const handleTouchMove = (e: TouchEvent) => {
-      if (touchLastY.current === null) return
-      const dy = touchLastY.current - e.touches[0].clientY
-      touchVelY.current  = dy
-      touchLastY.current = e.touches[0].clientY
-      targetDepth.current = softClamp(targetDepth.current + dy * 6)
-    }
-    const handleTouchEnd = () => {
-      const coast = () => {
-        if (Math.abs(touchVelY.current) < 0.5) return
-        touchVelY.current *= 0.92
-        targetDepth.current = softClamp(targetDepth.current + touchVelY.current * 4)
-        requestAnimationFrame(coast)
-      }
-      requestAnimationFrame(coast)
-    }
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowDown' || e.key === 'ArrowRight') targetDepth.current = softClamp(targetDepth.current + STEP)
-      else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') targetDepth.current = softClamp(targetDepth.current - STEP)
-    }
+    window.addEventListener('wheel', onWheel, { passive: true })
+    return () => window.removeEventListener('wheel', onWheel)
+  }, [isZoomed, stepBy])
 
-    window.addEventListener('wheel',      handleWheel,      { passive: true })
-    window.addEventListener('touchstart', handleTouchStart, { passive: true })
-    window.addEventListener('touchmove',  handleTouchMove,  { passive: true })
-    window.addEventListener('touchend',   handleTouchEnd)
-    window.addEventListener('keydown',    handleKey)
-
-    let rafId: number
-    const animate = () => {
-      currentDepth.current += (targetDepth.current - currentDepth.current) * 0.04
-      setDisplayDepth(currentDepth.current)
-      document.getElementById('grain')?.style.setProperty('--scroll-y', currentDepth.current.toString())
-
-      const activeIdx = Math.round(currentDepth.current / STEP)
-      const item = sequence[activeIdx]
-
-      // End overlay: driven by targetDepth — reaches 1 without viscosity lag
-      const lastCenter  = lastWorkIdx * STEP
-      const endProgress = Math.max(0, Math.min(1, (targetDepth.current - lastCenter - STEP * 0.3) / (STEP * 0.7)))
-      setEndOpacity(endProgress)
-
-      // Caption
-      if (endProgress > 0) {
-        setCaptionOpacity(0)
-      } else if (item?.type === 'work') {
-        const dist = currentDepth.current - activeIdx * STEP
-        setCaptionOpacity(Math.max(0, 1 - Math.abs(dist / 1200)))
-        if (activePainting.current !== activeIdx) {
-          setActiveWork(item.data)
-          activePainting.current = activeIdx
-        }
-      } else {
-        setCaptionOpacity(0)
-      }
-
-      // Ken Burns
-      const nearestWorkIdx = Math.round(currentDepth.current / STEP)
-      const nearestItem    = sequence[nearestWorkIdx]
-      const distToCenter   = Math.abs(currentDepth.current - nearestWorkIdx * STEP)
-      const settled        = distToCenter < STEP * 0.25
-
-      if (nearestItem?.type === 'work' && settled) {
-        if (settledIdx.current !== nearestWorkIdx) {
-          settledIdx.current = nearestWorkIdx
-          burnTicks.current  = 0
-          burnZooms.current.set(nearestWorkIdx, 1)
-        }
-        burnTicks.current += 1
-        const t = 1 - Math.exp(-burnTicks.current / 180)
-        burnZooms.current.set(nearestWorkIdx, 1 + 0.48 * t)
-      } else if (nearestItem?.type === 'work' && targetDepth.current < nearestWorkIdx * STEP) {
-        // Scrolling back up — decay zoom
-        const cur = burnZooms.current.get(nearestWorkIdx) ?? 1
-        burnZooms.current.set(nearestWorkIdx, cur > 1.001 ? 1 + (cur - 1) * 0.94 : 1)
-      }
-
-      rafId = requestAnimationFrame(animate)
-    }
-    rafId = requestAnimationFrame(animate)
-
-    return () => {
-      window.removeEventListener('wheel',      handleWheel)
-      window.removeEventListener('touchstart', handleTouchStart)
-      window.removeEventListener('touchmove',  handleTouchMove)
-      window.removeEventListener('touchend',   handleTouchEnd)
-      window.removeEventListener('keydown',    handleKey)
-      cancelAnimationFrame(rafId)
-    }
-  }, [sequence, lastWorkIdx, STEP])
-
-  const [burnSnapshot, setBurnSnapshot] = useState<Map<number, number>>(new Map())
-  useEffect(() => {
-    let raf: number
-    const tick = () => { setBurnSnapshot(new Map(burnZooms.current)); raf = requestAnimationFrame(tick) }
-    raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
-  }, [])
-
-  const opacityBirth = (dist: number) =>
-    Math.pow(Math.max(0, (dist + BIRTH_DIST) / BIRTH_DIST), 4)
-  const workSlideOpacity = (dist: number) =>
-    dist < 0 ? opacityBirth(dist) : Math.max(0, 1 - Math.max(0, dist - WORK_IN) / WORK_OUT)
-  const textSlideOpacity = (dist: number) =>
-    dist < 0 ? opacityBirth(dist) : Math.max(0, 1 - Math.abs(dist) / TEXT_BAND)
-
-  /**
-   * After intro/bridge, the next work used to “peek” at ~60%+ opacity while intro was still
-   * centered (birth curve at dist = −STEP). This gates the painting to 0 until scroll gets
-   * within `gate` of the work center, then ramps — proper sequence: text alone → then image.
-   */
-  function workRevealAfterTextSlide(dist: number, gate: number): number {
-    if (dist >= 0) return 1
-    if (dist <= -gate) return 0
-    return (dist + gate) / gate
+  /** Touch swipe: 60px threshold = ±1 step. */
+  const touchStartXRef = useRef<number | null>(null)
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchStartXRef.current = e.touches[0]?.clientX ?? null
+  }
+  const onTouchEnd = (e: React.TouchEvent) => {
+    const x0 = touchStartXRef.current
+    touchStartXRef.current = null
+    if (x0 == null || isZoomed) return
+    const x1 = e.changedTouches[0]?.clientX ?? x0
+    const dx = x1 - x0
+    if (Math.abs(dx) < 60) return
+    stepBy(dx < 0 ? 1 : -1)
   }
 
-  /** Wheel inside scrollable prose should scroll text, not advance the slide stack */
-  const absorbNestedWheel = (e: ReactWheelEvent<HTMLDivElement>) => {
-    const t = e.currentTarget
-    const { scrollTop, scrollHeight, clientHeight } = t
-    if (scrollHeight <= clientHeight + 2) return
-    const dy = e.deltaY
-    const atTop = scrollTop <= 1
-    const atBottom = scrollTop + clientHeight >= scrollHeight - 2
-    if ((dy < 0 && !atTop) || (dy > 0 && !atBottom)) {
-      e.stopPropagation()
-    }
-  }
+  const activeWork: Work | undefined = chapterWorks[activeIndex]
+  const chapterTitle = chapter
+    ? (lang === 'en' ? (chapter.title_en || chapter.title_fr) : (chapter.title_fr || chapter.title_en))
+    : ''
 
   return (
     <div className="w-page-enter">
       <style>{`
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        *, *::before, *::after { box-sizing: border-box; }
         html, body {
-          background: #e8e6e1; font-family: var(--font-ui); color: #3a3834;
+          background: #fafafa; font-family: var(--font-ui); color: #2a2826;
           height: 100vh; overflow: hidden; -webkit-font-smoothing: antialiased;
         }
         @keyframes w-fadein { from { opacity: 0; } to { opacity: 1; } }
-        .w-page-enter { animation: w-fadein 2s ease forwards; }
+        .w-page-enter { animation: w-fadein 1.2s ease forwards; }
 
-        .w-viewport {
-          position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-          overflow: hidden; pointer-events: none; z-index: 10;
-          display: flex; align-items: center; justify-content: center;
-          perspective: 1200px; perspective-origin: center; transform-style: preserve-3d;
-        }
-        .grain-overlay {
-          position: fixed; top: 0; left: 0; width: 100%; height: 200%;
-          pointer-events: none; z-index: 5; opacity: 0.04;
-          background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-          transform: translateY(calc(var(--scroll-y, 0) * -0.05px));
-        }
-        .w-paper-bg {
+        .w-stage {
           position: fixed; inset: 0;
-          background:
-            radial-gradient(ellipse 60% 50% at 50% 60%, rgba(255,252,245,0.85) 0%, transparent 80%),
-            radial-gradient(circle at center, #f8f5ef 0%, #e0ddd6 100%);
-          z-index: 1; pointer-events: none;
+          background: linear-gradient(to top, #e6e6e8 0%, #f1f1f3 50%, #fafafa 100%);
+          overflow: hidden;
+          touch-action: pan-y;
         }
-        .w-depth-item {
+        .w-track-wrap {
           position: absolute; inset: 0;
           display: flex; align-items: center; justify-content: center;
-          will-change: transform, opacity; pointer-events: none; transform-style: preserve-3d;
+          perspective: 2400px;
+          perspective-origin: 50% 55%;
+          transition: opacity 220ms ease;
         }
-        .w-artwork-wrap {
-          position: relative; width: 100vw; height: 100vh;
+        .w-track-wrap.fading { opacity: 0; }
+        .w-track {
+          position: relative;
+          width: 100%; height: 100%;
+          transform-style: preserve-3d;
+        }
+        .w-card {
+          --thickness: 42px;
+          position: absolute;
+          top: 46%; left: 50%;
+          width: min(25vw, 400px);
+          height: min(42vh, 460px);
+          margin-left: calc(-1 * min(25vw, 400px) / 2);
+          margin-top:  calc(-1 * min(42vh, 460px) / 2);
+          transform-style: preserve-3d;
+          transform-origin: 50% 50%;
+          transition: transform 900ms cubic-bezier(.22,.61,.36,1),
+                      opacity 700ms ease,
+                      filter 700ms ease;
+          will-change: transform, opacity;
+        }
+        .w-card-inner {
+          position: relative;
+          width: 100%; height: 100%;
+          transform-style: preserve-3d;
+        }
+        /* Box faces — front carries the image, side panels give the object real thickness on Z */
+        .w-face {
+          position: absolute;
+          backface-visibility: hidden;
+        }
+        .w-face.front {
+          top: 0; left: 0;
+          width: 100%; height: 100%;
+          transform: translateZ(calc(var(--thickness) / 2));
           display: flex; align-items: center; justify-content: center;
         }
-        .w-image-container {
-          position: relative; display: flex; align-items: center; justify-content: center;
-          filter: var(--painting-filter, none);
-          isolation: isolate;
+        .w-face.right {
+          top: 0; left: calc(100% - var(--thickness));
+          width: var(--thickness); height: 100%;
+          transform-origin: 100% 50%;
+          transform: rotateY(-90deg);
+          background: linear-gradient(to bottom, #c2b9a4 0%, #9c917b 55%, #6e6553 100%);
+          box-shadow: inset 0 0 0 1px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.18);
         }
-        .w-img-clip {
-          border-radius: var(--img-radius);
-          overflow: hidden;
+        .w-face.left {
+          top: 0; left: 0;
+          width: var(--thickness); height: 100%;
+          transform-origin: 0 50%;
+          transform: rotateY(90deg);
+          background: linear-gradient(to bottom, #c2b9a4 0%, #9c917b 55%, #6e6553 100%);
+          box-shadow: inset 0 0 0 1px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.18);
         }
-        .w-main-img {
-          width: auto; height: auto;
-          max-width: min(94vw, 1600px); max-height: min(86vh, 1200px);
-          display: block; image-rendering: high-quality; backface-visibility: hidden;
-          transform-origin: center center; transform: scale(var(--burns-zoom, 1));
-          will-change: transform;
+        .w-face.top {
+          top: 0; left: 0;
+          width: 100%; height: var(--thickness);
+          transform-origin: 50% 0;
+          transform: rotateX(90deg);
+          background: linear-gradient(to right, #b6ad97 0%, #cec3ad 50%, #b6ad97 100%);
+          box-shadow: inset 0 0 0 1px rgba(0,0,0,0.10);
         }
-        /* Full-viewport typography slides — isolated from image stack, long copy scrolls */
-        .w-text-slide {
-          position: relative; width: 100%; min-height: 100vh;
-          display: flex; flex-direction: column; align-items: center; justify-content: center;
-          text-align: center;
-          padding: clamp(88px, 11vh, 120px) clamp(24px, 6vw, 96px) clamp(96px, 14vh, 140px);
+        .w-face.bottom {
+          top: calc(100% - var(--thickness)); left: 0;
+          width: 100%; height: var(--thickness);
+          transform-origin: 50% 100%;
+          transform: rotateX(-90deg);
+          background: linear-gradient(to right, #8a8170 0%, #9c917b 50%, #8a8170 100%);
+          box-shadow: inset 0 0 0 1px rgba(0,0,0,0.22);
+        }
+        .w-card-img {
+          width: 100%; height: 100%;
+          object-fit: contain;
+          display: block;
+          image-rendering: high-quality;
+          backface-visibility: hidden;
+        }
+        .w-card-img.round { border-radius: 50%; overflow: hidden; }
+        .w-card.center { cursor: zoom-in; }
+        .w-card.side   { cursor: pointer; }
+        .w-card.zoomed { cursor: zoom-out; }
+        .w-card.zoomed-out { opacity: 0.04 !important; pointer-events: none; }
+
+        /* Drop-shadow rakes the silhouette so the work reads as a hung object */
+        .w-card.center .w-card-img {
+          filter: drop-shadow(0 22px 32px rgba(15,15,20,0.34))
+                  drop-shadow(0 6px 10px rgba(15,15,20,0.22));
+        }
+        .w-card.side.left .w-card-img {
+          filter: drop-shadow(-14px 18px 26px rgba(0,0,0,0.30))
+                  drop-shadow(0 14px 22px rgba(15,15,20,0.20));
+        }
+        .w-card.side.right .w-card-img {
+          filter: drop-shadow(14px 18px 26px rgba(0,0,0,0.30))
+                  drop-shadow(0 14px 22px rgba(15,15,20,0.20));
+        }
+
+        .w-zoom-backdrop {
+          position: fixed; inset: 0; z-index: 150;
+          background: rgba(245,245,247,0.92);
+          backdrop-filter: blur(6px);
+          -webkit-backdrop-filter: blur(6px);
+          opacity: 0;
+          transition: opacity 320ms ease;
           pointer-events: none;
         }
-        .w-text-slide-scroll {
-          width: 100%; max-width: min(680px, 92vw);
-          max-height: min(70vh, 640px);
-          overflow-y: auto; overflow-x: hidden;
-          -webkit-overflow-scrolling: touch;
-          pointer-events: auto;
-          cursor: auto;
-          padding: clamp(18px, 2.8vw, 32px) clamp(14px, 2.5vw, 24px);
-          margin-top: clamp(10px, 2vh, 28px);
-          background: rgba(248, 245, 239, 0.96);
-          border: 1px solid rgba(26, 24, 22, 0.07);
-          border-radius: 3px;
-          box-shadow:
-            0 12px 56px rgba(248, 245, 239, 0.98),
-            0 0 0 1px rgba(255, 252, 245, 0.5);
-        }
-        .w-text-slide-scroll:first-child { margin-top: 0; }
-        .w-bridge-inner {
-          max-height: none;
-          padding: clamp(22px, 3vw, 36px) clamp(20px, 4vw, 40px);
-        }
-        /* Intro from CMS rich editor — readable, matches Atelier preview */
-        .w-intro-prose {
-          font-family: 'Instrument Serif', serif;
-          font-size: clamp(17px, 2.4vw, 26px);
-          line-height: 1.5;
-          color: #252320;
+        .w-zoom-backdrop.on { opacity: 1; pointer-events: auto; cursor: zoom-out; }
+
+        .w-caption {
+          position: fixed;
+          left: 50%; bottom: clamp(96px, 14vh, 140px);
+          transform: translateX(-50%);
           text-align: center;
-          font-weight: 400;
+          z-index: 220;
+          pointer-events: none;
+          transition: opacity 420ms ease;
+          max-width: min(620px, 92vw);
         }
-        .w-intro-prose p { margin: 0.45em 0; }
-        .w-intro-prose p:first-child { margin-top: 0; }
-        .w-intro-prose p:last-child { margin-bottom: 0; }
-        .w-intro-prose strong { font-weight: 600; }
-        .w-intro-prose em { font-style: italic; }
+        .w-work-title {
+          font-family: 'Instrument Serif', serif;
+          font-size: clamp(20px, 3.2vw, 40px);
+          color: #1a1816; font-weight: 400;
+          letter-spacing: -0.02em; line-height: 1.1;
+          margin: 0 0 8px 0;
+        }
+        .w-work-details {
+          font-size: 9px; letter-spacing: 4px; text-transform: uppercase; color: #6a6660;
+          display: inline-flex; gap: 12px; flex-wrap: wrap; justify-content: center;
+        }
+        .w-zoom-hint {
+          margin-top: 10px;
+          font-size: 8px; letter-spacing: 3px; text-transform: uppercase;
+          color: #9a958f; opacity: 0.85;
+        }
+
+        .w-arrow {
+          position: fixed;
+          top: 50%; transform: translateY(-50%);
+          z-index: 230;
+          width: 56px; height: 56px;
+          min-width: 44px; min-height: 44px;
+          display: flex; align-items: center; justify-content: center;
+          background: rgba(255,255,255,0.55);
+          border: 1px solid rgba(0,0,0,0.08);
+          border-radius: 999px;
+          color: #1a1816;
+          font-family: 'Instrument Serif', serif;
+          font-size: 26px; line-height: 1;
+          cursor: pointer;
+          transition: background 0.2s, border-color 0.2s, opacity 0.2s;
+          pointer-events: auto;
+        }
+        .w-arrow:hover { background: rgba(255,255,255,0.9); border-color: rgba(0,0,0,0.16); }
+        .w-arrow:disabled { opacity: 0.25; cursor: default; }
+        .w-arrow.prev { left: clamp(14px, 3vw, 32px); }
+        .w-arrow.next { right: clamp(14px, 3vw, 32px); }
+
+        .w-bottom-stack {
+          position: fixed;
+          left: 50%;
+          bottom: max(clamp(14px, 3.5vh, 32px), env(safe-area-inset-bottom));
+          transform: translateX(-50%);
+          z-index: 240;
+          display: flex; flex-direction: column; align-items: center; gap: 8px;
+          max-width: min(96vw, 720px);
+        }
+        .w-section-nav-label {
+          font-size: 8px; letter-spacing: 3px; text-transform: uppercase;
+          color: #8a8680;
+        }
+        .w-section-pills {
+          display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;
+        }
+        .w-section-pill {
+          font-size: clamp(8px, 1vw, 9px);
+          letter-spacing: 2px; text-transform: uppercase;
+          color: #5a5854;
+          background: rgba(255,255,255,0.72);
+          border: 1px solid rgba(26,24,22,0.12);
+          border-radius: 999px;
+          padding: 10px 14px;
+          min-height: 44px;
+          cursor: pointer;
+          font-family: inherit;
+          max-width: min(42vw, 220px);
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+          transition: color 0.2s, border-color 0.2s, background 0.2s;
+        }
+        .w-section-pill:hover { color: #1a1816; border-color: rgba(26,24,22,0.35); background: rgba(255,255,255,0.92); }
+        .w-section-pill.active { color: #1a1816; border-color: rgba(26,24,22,0.45); background: rgba(255,255,255,0.98); }
+
         .w-page-h1-sr-only {
           position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
           overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
         }
-        .w-header-title {
-          font-family: 'Instrument Serif', serif; font-size: clamp(80px, 15vw, 240px);
-          color: #1a1816; letter-spacing: -0.05em; line-height: 0.85;
-          margin-bottom: clamp(12px, 2vh, 32px);
-          transition: opacity 0.3s;
-          pointer-events: none;
-        }
-        .w-text-slide:hover .w-header-title { opacity: 0.72; }
 
-        /* ── Nav ── */
-        .w-nav {
-          position: fixed; top: 0; left: 0; right: 0; z-index: 300;
-          display: flex; align-items: center; justify-content: space-between;
-          padding: 24px clamp(24px, 5vw, 64px); pointer-events: auto;
-        }
-        .w-logo {
-          font-family: 'Instrument Serif', serif; font-size: 16px;
-          color: #1a1816; text-decoration: none; letter-spacing: 0.04em;
-          text-shadow: 0 0 20px rgba(255,255,255,0.9), 0 0 40px rgba(255,255,255,0.6);
-          transition: opacity 0.2s;
-        }
-        .w-logo:hover { opacity: 0.5; }
-        .w-navlinks { display: flex; align-items: center; gap: clamp(20px, 3vw, 40px); }
-        .w-navlink {
-          font-size: clamp(8px, 1.1vw, 9px); letter-spacing: 4px; text-transform: uppercase;
-          color: #6a6660; text-decoration: none;
-          text-shadow: 0 0 12px rgba(255,255,255,1), 0 0 24px rgba(255,255,255,0.8);
-          transition: color 0.2s;
-        }
-        .w-navlink:hover, .w-navlink.active { color: #1a1816; }
-        .w-lang {
-          font-size: clamp(8px, 1.1vw, 9px); letter-spacing: 4px; text-transform: uppercase;
-          color: #6a6660; background: none; border: none; cursor: pointer;
-          text-shadow: 0 0 12px rgba(255,255,255,1), 0 0 24px rgba(255,255,255,0.8);
-          font-family: inherit; padding: 0; transition: color 0.2s;
-          min-height: 44px; min-width: 44px; display: inline-flex; align-items: center; justify-content: center;
-        }
-        .w-lang:hover { color: #1a1816; }
-
-        /* ── Caption ── */
-        .w-caption {
-          position: fixed; top: 50%; left: clamp(24px, 5vw, 64px); transform: translateY(-50%);
-          width: clamp(140px, 28vw, 560px); z-index: 200; pointer-events: auto; cursor: pointer;
-        }
-        @media (max-width: 640px) {
-          .w-caption {
-            top: auto; bottom: clamp(60px, 10vh, 100px);
-            left: 50%; transform: translateX(-50%); width: 90vw; text-align: center;
+        @media (max-width: 767px) {
+          .w-card {
+            width: min(86vw, 520px);
+            height: min(54vh, 540px);
+            margin-left: calc(-1 * min(86vw, 520px) / 2);
+            margin-top:  calc(-1 * min(54vh, 540px) / 2);
           }
-        }
-        .w-caption:hover .w-work-title { opacity: 0.55; }
-        .w-work-title {
-          font-family: 'Instrument Serif', serif; font-size: clamp(20px, 3.5vw, 56px);
-          color: #1a1816; font-weight: 400; margin-bottom: 16px;
-          letter-spacing: -0.04em; line-height: 1;
-          text-shadow: 0 0 24px rgba(255,255,255,1), 0 0 48px rgba(255,255,255,0.9), 0 0 80px rgba(255,255,255,0.6);
-          transition: opacity 0.25s;
-        }
-        .w-work-details {
-          display: flex; flex-direction: column; gap: 8px;
-          font-size: 9px; letter-spacing: 5px; text-transform: uppercase; color: #6a6660;
-          text-shadow: 0 0 12px rgba(255,255,255,1), 0 0 24px rgba(255,255,255,0.8);
+          .w-arrow { width: 48px; height: 48px; font-size: 22px; }
+          .w-arrow.prev { left: 8px; }
+          .w-arrow.next { right: 8px; }
+          .w-caption { bottom: clamp(110px, 16vh, 160px); }
         }
 
-        /* ── Scroll hint ── */
-        @keyframes w-hint-pulse {
-          0%, 100% { opacity: 0.25; transform: translateY(0); }
-          50%       { opacity: 0.5;  transform: translateY(4px); }
+        @media (prefers-reduced-motion: reduce) {
+          .w-card { transition: transform 250ms ease, opacity 250ms ease; }
         }
-        .w-scroll-hint {
-          font-size: clamp(7px, 1vw, 8px); letter-spacing: 4px; color: #b0aca6; text-transform: uppercase;
-          animation: w-hint-pulse 2.4s ease-in-out infinite;
-          text-shadow: 0 0 12px rgba(255,255,255,1); transition: opacity 0.6s;
-          text-align: center;
-        }
-        @media (max-width: 640px) {
-          .w-navlinks { gap: clamp(12px, 2.5vw, 20px); }
-          .w-nav { padding: 16px clamp(16px, 4vw, 24px); }
-        }
-
-        /* ── Mode tab bar ── */
-        .w-mode-tab {
-          pointer-events: auto;
-          font-size: clamp(8px, 1.05vw, 9px); letter-spacing: 3px; text-transform: uppercase;
-          color: #6a6660; background: none; border: none; padding: 8px 4px; cursor: pointer;
-          font-family: inherit; transition: color 0.2s;
-          text-shadow: 0 0 12px rgba(255,255,255,1), 0 0 24px rgba(255,255,255,0.8);
-          min-height: 36px; display: inline-flex; align-items: center;
-          border-bottom: 1px solid transparent;
-        }
-        .w-mode-tab:hover { color: #1a1816; }
-        .w-mode-tab.active { color: #1a1816; border-bottom-color: #1a1816; }
-
-        .w-modes-wrap {
-          position: fixed;
-          top: clamp(44px, 6vh, 64px);
-          left: 0; right: 0;
-          z-index: 280;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 6px;
-          pointer-events: none;
-        }
-        .w-modes-label {
-          font-size: clamp(7px, 0.95vw, 8px);
-          letter-spacing: 3px;
-          text-transform: uppercase;
-          color: #8a8680;
-          text-shadow: 0 0 10px rgba(255,255,255,0.9);
-        }
-        .w-modes-inner {
-          display: flex;
-          justify-content: center;
-          gap: clamp(10px, 2vw, 24px);
-          flex-wrap: wrap;
-          padding: 0 clamp(16px, 4vw, 32px);
-          pointer-events: none;
-        }
-
-        /* ── Collection jump (several collections in one mode) ── */
-        .w-bottom-stack {
-          position: fixed;
-          bottom: clamp(14px, 3.5vh, 28px);
-          left: 50%;
-          transform: translateX(-50%);
-          z-index: 290;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 10px;
-          max-width: min(96vw, 720px);
-          pointer-events: none;
-        }
-        .w-section-nav-label {
-          font-size: clamp(7px, 0.95vw, 8px);
-          letter-spacing: 3px;
-          text-transform: uppercase;
-          color: #8a8680;
-          text-shadow: 0 0 10px rgba(255,255,255,0.9);
-          align-self: center;
-        }
-        .w-section-pills {
-          display: flex;
-          flex-wrap: wrap;
-          justify-content: center;
-          gap: 8px;
-          pointer-events: auto;
-        }
-        .w-section-pill {
-          font-size: clamp(7px, 1vw, 9px);
-          letter-spacing: 2px;
-          text-transform: uppercase;
-          color: #5a5854;
-          background: rgba(255,252,245,0.72);
-          border: 1px solid rgba(26,24,22,0.12);
-          border-radius: 999px;
-          padding: 8px 14px;
-          cursor: pointer;
-          font-family: inherit;
-          max-width: min(42vw, 220px);
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          box-shadow: 0 2px 16px rgba(255,255,255,0.6);
-          transition: color 0.2s, border-color 0.2s, background 0.2s;
-        }
-        .w-section-pill:hover {
-          color: #1a1816;
-          border-color: rgba(26,24,22,0.35);
-          background: rgba(255,252,245,0.92);
-        }
-        .w-section-pill.active {
-          color: #1a1816;
-          border-color: rgba(26,24,22,0.45);
-          background: rgba(255,252,245,0.98);
-          box-shadow: 0 0 0 1px rgba(26,24,22,0.08);
-        }
-
-        /* ── Outro card ── */
-        .w-outro-card {
-          width: min(720px, 86vw);
-          max-height: min(82vh, 800px);
-          padding: clamp(28px, 5vw, 56px) clamp(20px, 4vw, 40px);
-          text-align: center;
-          display: flex; flex-direction: column;
-          background: rgba(248, 245, 239, 0.55);
-          border-radius: 4px;
-          pointer-events: auto;
-        }
-        .w-outro-rule {
-          flex-shrink: 0;
-          width: clamp(40px, 6vw, 64px); height: 1px;
-          background: rgba(20,24,22,0.35);
-          margin: 0 auto clamp(16px, 2.5vw, 28px);
-        }
-        .w-outro-scroll-body {
-          flex: 1;
-          min-height: 0;
-          overflow-y: auto;
-          overflow-x: hidden;
-          -webkit-overflow-scrolling: touch;
-          padding-right: 4px;
-          margin-right: -4px;
-        }
-        .w-outro-text {
-          font-family: 'Instrument Serif', serif;
-          font-size: clamp(15px, 2.2vw, 22px);
-          line-height: 1.6; color: #1a1816;
-          font-style: italic; letter-spacing: -0.005em;
-          text-shadow: 0 0 24px rgba(255,255,255,1), 0 0 48px rgba(255,255,255,0.85);
-        }
-        .w-outro-text p + p { margin-top: 1em; }
       `}</style>
 
-      <div className="w-paper-bg" />
-      <div className="grain-overlay" id="grain" />
       <PublicNav active="works" prefix="w" />
 
       <h1 className="w-page-h1-sr-only">{t('pub_works')}</h1>
 
-      {worksUxMode !== 'default' && (
-        <div
-          className="t-mono-xs"
-          style={{
-            position: 'fixed', top: 14, left: 14, zIndex: 400,
-            padding: '6px 10px', borderRadius: 4,
-            background: 'rgba(248,245,239,0.92)', border: '1px solid rgba(26,24,22,0.12)',
-            fontSize: 9, letterSpacing: 2, color: '#6a6660', textTransform: 'uppercase',
-            pointerEvents: 'none',
-          }}
-        >
-          {t('pub_works_preview_badge')} · {worksUxMode}
-        </div>
-      )}
-
-      {curatedGroupsNomatch && (
-        <div
-          role="status"
-          style={{
-            position: 'fixed', left: '50%', top: '50%', transform: 'translate(-50%, -50%)',
-            zIndex: 400, maxWidth: 'min(420px, 88vw)', textAlign: 'center',
-            fontSize: 12, letterSpacing: '0.08em', lineHeight: 1.65, color: '#6a6660',
-            pointerEvents: 'none',
-          }}
-        >
-          {t('pub_works_groups_nomatch')}
-        </div>
-      )}
-
-      {safeModes.length > 1 && (
-        <div className="w-modes-wrap">
-          <span className="w-modes-label">{t('pub_works_views_label')}</span>
-          <div className="w-modes-inner">
-            {safeModes.map((m, i) => {
-              const label = lang === 'en' ? (m.label_en || m.label_fr) : (m.label_fr || m.label_en)
-              return (
-                <button
-                  key={m.id}
-                  type="button"
-                  className={`w-mode-tab${i === activeModeIdx ? ' active' : ''}`}
-                  title={t('pub_works_aria_mode_layout')}
-                  onClick={() => {
-                    if (i === activeModeIdx) return
-                    setActiveModeIdx(i)
-                    setActiveChapterIdx(0)
-                    targetDepth.current = 0
-                    currentDepth.current = 0
-                    setDisplayDepth(0)
-                    setEndOpacity(0)
-                    setActiveWork(null)
-                    setCaptionOpacity(0)
-                  }}
-                >{label || t('pub_works_mode_fallback_fmt').replace('{n}', String(i + 1))}</button>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      <div className="w-viewport">
-        {sequence.map((item, idx) => {
-          const centerPos = idx * STEP
-          const dist      = displayDepth - centerPos
-
-          const prevItem = idx > 0 ? sequence[idx - 1] : undefined
-          const afterIntroOrBridge =
-            item.type === 'work'
-            && prevItem
-            && (prevItem.type === 'intro' || prevItem.type === 'bridge')
-
-          const AFTER_TEXT_GATE = STEP * 0.44
-
-          let opacity =
-            item.type === 'work'
-              ? workSlideOpacity(dist)
-              : item.type === 'bridge' || item.type === 'intro' || item.type === 'header' || item.type === 'outro'
-                ? textSlideOpacity(dist)
-                : 0
-
-          if (afterIntroOrBridge) {
-            opacity *= workRevealAfterTextSlide(dist, AFTER_TEXT_GATE)
-          }
-
-          let translateZ = 0
-          let scale = 1
-          if (dist < 0) {
-            const progress  = Math.max(0, (dist + BIRTH_DIST) / BIRTH_DIST)
-            translateZ      = -BIRTH_DIST + BIRTH_DIST * progress
-            const remapped  = Math.max(0, (progress - 0.6) / 0.4)
-            scale           = Math.pow(remapped, 1.8)
-          }
-
-          if (opacity <= 0 && Math.abs(dist) > BIRTH_DIST + 5000) return null
-
-          let zIndex = 1000 - Math.floor(Math.abs(dist) / 50)
-          if (
-            item.type !== 'work'
-            && Math.abs(dist) < STEP * 0.32
-          ) {
-            zIndex = Math.max(zIndex, 920)
-          }
-
-          if (item.type === 'bridge') {
-            return (
-              <div key={`bridge-${idx}`} className="w-depth-item" style={{
-                opacity,
-                transform: `translate3d(0, 0, ${translateZ * 1.15}px) scale(${scale * 0.82})`,
-                zIndex, pointerEvents: Math.abs(dist) < TEXT_BAND ? 'auto' : 'none',
-              }}>
-                <div className="w-text-slide">
-                  <div className="w-text-slide-scroll w-bridge-inner">
-                  <div style={{
-                    fontSize: 'clamp(8px, 1vw, 10px)', letterSpacing: '0.35em', textTransform: 'uppercase',
-                    color: '#9a9690', marginBottom: 14,
-                  }}>{t('pub_works_bridge_label')}</div>
-                  <div style={{
-                    fontFamily: 'Instrument Serif, serif', fontSize: 'clamp(22px, 4vw, 34px)',
-                    color: '#3a3834', lineHeight: 1.25,
-                  }}>{item.nextTitle}</div>
-                  </div>
-                </div>
-              </div>
-            )
-          }
-
-          if (item.type === 'header' || item.type === 'intro') {
-            const k = item.type === 'intro' ? `intro-${item.collectionId ?? idx}` : `header-${item.collectionId ?? idx}`
-            return (
-              <div key={k} className="w-depth-item" style={{
-                opacity,
-                transform: `translate3d(0, 0, ${translateZ * 1.2}px) scale(${scale * 0.8})`,
-                zIndex, pointerEvents: Math.abs(dist) < TEXT_BAND ? 'auto' : 'none',
-              }}>
-                <div className="w-text-slide">
-                  {item.title?.trim() ? <h2 className="w-header-title">{item.title}</h2> : null}
-                  {item.subtitle ? (
-                    item.type === 'intro' ? (
-                      <div
-                        className="w-text-slide-scroll w-intro-prose"
-                        onWheel={absorbNestedWheel}
-                        dangerouslySetInnerHTML={{ __html: item.subtitle }}
-                      />
-                    ) : (
-                      <div className="w-text-slide-scroll" onWheel={absorbNestedWheel}>
-                        <FlameText text={item.subtitle} />
-                      </div>
-                    )
-                  ) : null}
-                </div>
-              </div>
-            )
-          }
-
-          if (item.type === 'outro') {
-            const html = lang === 'en' ? (item.html_en || item.html_fr) : (item.html_fr || item.html_en)
-            return (
-              <div key={`outro-${idx}`} className="w-depth-item" style={{
-                opacity,
-                transform: `translate3d(0, 0, ${translateZ * 1.2}px) scale(${scale * 0.85})`,
-                zIndex, pointerEvents: Math.abs(dist) < TEXT_BAND ? 'auto' : 'none',
-              }}>
-                <div className="w-outro-card">
-                  <div className="w-outro-rule" />
-                  <div className="w-outro-scroll-body" onWheel={absorbNestedWheel}>
-                    <div className="w-outro-text" dangerouslySetInnerHTML={{ __html: html }} />
-                  </div>
-                </div>
-              </div>
-            )
-          }
-
-          if (item.type !== 'work') return null
-
-          const work = item.data
-          const isLead = item.leadInCollection
-          let slideTranslateX = 0, slideRotateY = 0
-          if (isLead && dist < 0) {
-            const p     = Math.max(0, Math.min(1, (dist + BIRTH_DIST) / BIRTH_DIST))
-            const eased = Math.pow(p, 0.5)
-            slideTranslateX = (1 - eased) * 160
-            slideRotateY    = (1 - eased) * 42
-          }
-
-          let paintScale = scale
-          if (isLead && dist < 0) {
-            const p = Math.max(0, Math.min(1, (dist + BIRTH_DIST) / BIRTH_DIST))
-            paintScale = LEAD_MICRO + (1 - LEAD_MICRO) * Math.pow(p, 0.42)
-          }
-
-          /** Lead: extra negative Z at birth so it reads deeper in the stack */
-          let translateZPaint = translateZ
-          if (isLead && dist < 0) {
-            const birthP = Math.max(0, Math.min(1, (dist + BIRTH_DIST) / BIRTH_DIST))
-            translateZPaint = translateZ - LEAD_Z_PUSH * (1 - birthP)
-          }
-
-          const approachWindow = STEP * 2
-          const shapeProgress  = dist < 0 ? Math.max(0, Math.min(1, (dist + approachWindow) / approachWindow)) : 1
-          /** Lead rectangles: stay pill-round longer; others keep slide window curve */
-          let cornerRadius: number
-          if (work.isRound) {
-            cornerRadius = 50
-          } else if (isLead && dist < 0) {
-            const birthP = Math.max(0, Math.min(1, (dist + BIRTH_DIST) / BIRTH_DIST))
-            const roundHold = Math.pow(1 - birthP, 0.48)
-            cornerRadius = Math.round(roundHold * 50)
-          } else {
-            cornerRadius = Math.round((1 - shapeProgress) * 50)
-          }
-
-          const shadowIntensity = Math.max(0, 1 - Math.abs(dist) / (STEP * 1.5))
-          const shadowBlur      = Math.round(shadowIntensity * 80)
-          const shadowAlpha     = (shadowIntensity * 0.45).toFixed(2)
-          const paintingFilter  = shadowIntensity > 0.05
-            ? `drop-shadow(-${Math.round(shadowIntensity * 28)}px ${Math.round(shadowIntensity * 36)}px ${shadowBlur}px rgba(20,16,10,${shadowAlpha})) drop-shadow(-${Math.round(shadowIntensity * 8)}px ${Math.round(shadowIntensity * 12)}px ${Math.round(shadowIntensity * 22)}px rgba(20,16,10,${(shadowIntensity * 0.25).toFixed(2)}))`
-            : 'none'
-
-          const imgSrc = imageUrl(work.txtImageNameLink) ?? undefined
-          const itemTransform = isLead
-            ? `translate3d(${slideTranslateX}vw, 0, ${translateZPaint}px) rotateY(${slideRotateY}deg) scale(${paintScale})`
-            : `translate3d(0, 0, ${translateZ}px) scale(${paintScale})`
-
-          return (
-            <div key={`work-${idx}-${work.OeuvreID}`} className="w-depth-item" style={{ opacity, transform: itemTransform, zIndex }}>
-              <div className="w-artwork-wrap">
-                <div className="w-image-container" style={{
-                  '--painting-filter': paintingFilter,
-                } as React.CSSProperties}>
-                  <div className="w-img-clip" style={{
-                    '--img-radius': cornerRadius > 0 ? `${cornerRadius}%` : '5px',
-                  } as React.CSSProperties}>
-                    <img
-                      src={imgSrc}
-                      alt={work.Titre ?? ''}
-                      className="w-main-img"
-                      style={{ 
-                        '--burns-zoom': burnSnapshot.get(idx) ?? 1,
-                        objectFit: 'contain'
-                      } as React.CSSProperties}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          )
-        })}
-      </div>
-
-      {/* Work caption */}
-      {activeWork && (
-        <div className="w-caption" style={{ opacity: endOpacity > 0 ? 0 : captionOpacity, pointerEvents: endOpacity > 0 ? 'none' : 'auto' }}>
-          <h3 className="w-work-title">{activeWork.Titre ?? t('pub_untitled')}</h3>
-          <div className="w-work-details">
-            <span>{yearOf(activeWork.Annee)}</span>
-            {activeWork.Hauteur && activeWork.Largeur && (
-              <span>{activeWork.Hauteur} × {activeWork.Largeur} cm</span>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Retour button — shown when at end, above everything */}
       <div
-        onClick={() => { if (endOpacity > 0) targetDepth.current = 0 }}
-        style={{
-          position: 'fixed', bottom: 48, right: 'clamp(24px, 5vw, 64px)',
-          zIndex: 300, opacity: endOpacity,
-          pointerEvents: endOpacity > 0 ? 'auto' : 'none',
-          cursor: endOpacity > 0 ? 'pointer' : 'default',
-          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
-        }}
+        className="w-stage"
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
       >
-        <div style={{
-          fontFamily: 'Instrument Serif, serif', fontSize: 32,
-          color: '#1a1816', lineHeight: 1,
-        }}>↑</div>
-        <div style={{ fontSize: 9, letterSpacing: 4, textTransform: 'uppercase', color: '#6a6660' }}>
-          {t('pub_works_end_return')}
-        </div>
-      </div>
+        {curatedGroupsNomatch && (
+          <div
+            role="status"
+            style={{
+              position: 'absolute', left: '50%', top: '50%',
+              transform: 'translate(-50%, -50%)',
+              maxWidth: 'min(420px, 88vw)', textAlign: 'center',
+              fontSize: 12, letterSpacing: '0.08em', lineHeight: 1.65, color: '#6a6660',
+            }}
+          >
+            {t('pub_works_groups_nomatch')}
+          </div>
+        )}
 
-      <div className="w-bottom-stack">
-        {worksUxMode === 'chapters' && collectionSections.length >= 2 && (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-            <span className="w-section-nav-label">{t('pub_works_collections')}</span>
-            <div className="w-section-pills" aria-label={t('pub_works_aria_switch_chapter')}>
-              {collectionSections.map((s) => (
-                <button
-                  key={`pill-${s.chapterIdx}`}
-                  type="button"
-                  className={`w-section-pill${s.chapterIdx === activeChapterIdx ? ' active' : ''}`}
-                  title={t('pub_works_chapter_open_fmt').replace('{title}', s.title ?? '')}
-                  onClick={() => {
-                    setActiveChapterIdx(s.chapterIdx)
-                    targetDepth.current = 0
-                    currentDepth.current = 0
-                    setDisplayDepth(0)
-                    setEndOpacity(0)
-                    setActiveWork(null)
-                    setCaptionOpacity(0)
-                  }}
-                >
-                  {s.title || '—'}
-                </button>
-              ))}
+        {!curatedGroupsNomatch && chapterWorks.length > 0 && (
+          <div
+            className={`w-track-wrap${trackFade ? ' fading' : ''}`}
+            role="region"
+            aria-roledescription="carousel"
+            aria-label={t('pub_works')}
+            style={{ zIndex: isZoomed ? 200 : 'auto' }}
+          >
+            <div className="w-track">
+              {chapterWorks.map((w, i) => {
+                const offset = i - activeIndex
+                const { transform, opacity, zIndex, visible } = cardTransform(offset, reducedMotion)
+                if (!visible) return null
+                const isCenter = offset === 0
+                const isSide = !isCenter
+                const sideClass = offset < 0 ? 'left' : 'right'
+                const src = isCenter
+                  ? (imageUrl(w.txtImageNameLink) ?? undefined)
+                  : (thumbUrl(w.txtImageNameLink) ?? imageUrl(w.txtImageNameLink) ?? undefined)
+
+                let finalTransform = transform
+                let finalZ = zIndex
+                if (isCenter && isZoomed) {
+                  // Compensate for the card's top:46% so the zoomed image lands in true viewport center
+                  finalTransform = `translate3d(0, 4vh, 0) scale(${reducedMotion ? 2.4 : 3.6})`
+                  finalZ = 200
+                }
+
+                const classes = [
+                  'w-card',
+                  isCenter ? 'center' : `side ${sideClass}`,
+                  isCenter && isZoomed ? 'zoomed' : '',
+                  isSide && isZoomed ? 'zoomed-out' : '',
+                ].filter(Boolean).join(' ')
+
+                return (
+                  <div
+                    key={`work-${w.OeuvreID}`}
+                    className={classes}
+                    role="group"
+                    aria-roledescription="slide"
+                    aria-label={w.Titre ?? t('pub_untitled')}
+                    style={{ transform: finalTransform, opacity, zIndex: finalZ }}
+                    onClick={() => {
+                      if (isCenter) setIsZoomed(z => !z)
+                      else setActiveIndex(i)
+                    }}
+                  >
+                    <div className="w-card-inner">
+                      <div className="w-face left" aria-hidden />
+                      <div className="w-face right" aria-hidden />
+                      <div className="w-face top" aria-hidden />
+                      <div className="w-face bottom" aria-hidden />
+                      <div className="w-face front">
+                        <img
+                          src={src}
+                          alt={w.Titre ?? ''}
+                          className={`w-card-img${w.isRound ? ' round' : ''}`}
+                          draggable={false}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
         )}
-        <div className="w-scroll-hint" style={{ opacity: displayDepth < 200 ? undefined : 0, pointerEvents: 'none' }}>
-          {t('pub_works_scroll_hint')}
-        </div>
+
+        <div
+          className={`w-zoom-backdrop${isZoomed ? ' on' : ''}`}
+          onClick={() => setIsZoomed(false)}
+          aria-label={t('pub_works_zoom_exit')}
+          role="button"
+        />
+
+        {activeWork && !isZoomed && (
+          <div
+            className="w-caption"
+            style={{ opacity: 1, zIndex: 220 }}
+          >
+            <h3 className="w-work-title">{activeWork.Titre ?? t('pub_untitled')}</h3>
+            <div className="w-work-details">
+              {yearOf(activeWork.Annee) && <span>{yearOf(activeWork.Annee)}</span>}
+              {activeWork.Hauteur && activeWork.Largeur && (
+                <span>
+                  {Number(activeWork.Hauteur).toLocaleString(lang === 'en' ? 'en-GB' : 'fr-FR')}
+                  {' × '}
+                  {Number(activeWork.Largeur).toLocaleString(lang === 'en' ? 'en-GB' : 'fr-FR')}
+                  {' cm'}
+                </span>
+              )}
+            </div>
+            <div className="w-zoom-hint">{t('pub_works_zoom_hint')}</div>
+          </div>
+        )}
+
+        {chapterWorks.length > 1 && !isZoomed && (
+          <>
+            <button
+              type="button"
+              className="w-arrow prev"
+              aria-label={t('pub_works_carousel_prev')}
+              disabled={activeIndex <= 0}
+              onClick={() => stepBy(-1)}
+            >‹</button>
+            <button
+              type="button"
+              className="w-arrow next"
+              aria-label={t('pub_works_carousel_next')}
+              disabled={activeIndex >= chapterWorks.length - 1}
+              onClick={() => stepBy(1)}
+            >›</button>
+          </>
+        )}
+
+        {mode.collections.length > 1 && !isZoomed && (
+          <div className="w-bottom-stack">
+            <span className="w-section-nav-label">{t('pub_works_collections')}</span>
+            <div
+              className="w-section-pills"
+              aria-label={t('pub_works_aria_switch_chapter')}
+            >
+              {mode.collections.map((c, idx) => {
+                const label = lang === 'en' ? (c.title_en || c.title_fr) : (c.title_fr || c.title_en)
+                return (
+                  <button
+                    key={`pill-${c.id || idx}`}
+                    type="button"
+                    className={`w-section-pill${idx === activeChapterIdx ? ' active' : ''}`}
+                    title={t('pub_works_chapter_open_fmt').replace('{title}', label || '')}
+                    onClick={() => setActiveChapterIdx(idx)}
+                  >
+                    {label || '—'}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Visually-hidden chapter title for screen readers */}
+        {chapterTitle && (
+          <span style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0,0,0,0)' }}>
+            {chapterTitle}
+          </span>
+        )}
       </div>
     </div>
   )
+}
+
+function useReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(false)
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const update = () => setReduced(mq.matches)
+    update()
+    mq.addEventListener?.('change', update)
+    return () => mq.removeEventListener?.('change', update)
+  }, [])
+  return reduced
 }

@@ -2,7 +2,6 @@ import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import WorksClient from '@/components/public/WorksClient'
 import { loadPortfolioConfig } from '@/app/atelier/portfolio/actions'
-import { resolveWorksUx } from '@/lib/worksUx'
 import { routeMetadata } from '@/lib/i18n/route-metadata'
 
 /** Allow ?worksUx= preview without static caching */
@@ -74,11 +73,7 @@ function mapCollections(raw: Array<Record<string, unknown>>): WorksCollection[] 
     }))
 }
 
-export default async function WorksPage({
-  searchParams,
-}: {
-  searchParams?: Promise<{ worksUx?: string }>
-}) {
+export default async function WorksPage() {
   const supabase = await createClient()
 
   // 1. Config — same static import as portfolio/about/practice (avoids broken dynamic chunks for `use server` modules).
@@ -171,8 +166,5 @@ export default async function WorksPage({
     }]
   }
 
-  const sp = searchParams ? await searchParams : {}
-  const worksUxMode = resolveWorksUx(sp.worksUx)
-
-  return <WorksClient works={works} modes={modes} worksUxMode={worksUxMode} />
+  return <WorksClient works={works} modes={modes} />
 }

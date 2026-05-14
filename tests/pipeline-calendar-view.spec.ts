@@ -10,6 +10,15 @@ test.describe('Pipeline calendar view', () => {
     'Set ATELIER_E2E=1 with a logged-in app session to run atelier E2E.',
   )
 
+  test('narrow viewport opens pipeline on calendar by default', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto('/atelier?tab=pipeline', { waitUntil: 'domcontentloaded' })
+    const cal = page.getByRole('button', { name: /Calendar|Calendrier/i })
+    await expect(cal).toBeVisible({ timeout: 45_000 })
+    await expect(cal).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.getByRole('button', { name: /Today|Aujourd/i })).toBeVisible()
+  })
+
   test('Pipeline tab exposes Gantt and Calendar toggles', async ({ page }) => {
     await page.goto('/atelier', { waitUntil: 'domcontentloaded' })
     await page.getByRole('button', { name: /^Pipeline$/i }).click()

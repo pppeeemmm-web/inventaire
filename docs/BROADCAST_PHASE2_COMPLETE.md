@@ -1,6 +1,6 @@
 # Broadcast — Phase 2 Complete
 
-**See also:** [BROADCAST_PHASE3_OPERATIONS.md](./BROADCAST_PHASE3_OPERATIONS.md) — production checklist and Make/n8n HTTP contract.
+**See also:** Production host checklist + curl patterns — keep aligned with live `app/api/inventory/broadcast/*` route handlers; historical narrative in this file. *(A separate `BROADCAST_PHASE3_OPERATIONS.md` may exist in backups/worktrees.)*
 
 Session: Sonnet 4.6 · worktree `amazing-swirles-6480c6`
 Commit pushed: `12cb1f6` on `main`

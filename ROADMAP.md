@@ -1,6 +1,6 @@
 # PEM Hub — roadmap (non-binding)
 
-**Purpose:** consolidate **future** work mentioned in [`CLAUDE.md`](../CLAUDE.md) (deferred integrations, scaling notes), [`architecture.md`](../architecture.md) (ruthless audit / potentialities), and [`docs/SITE_MAP.md`](SITE_MAP.md) (surface inventory). This is **not** a commitment order; pick items by risk and studio need.
+**Purpose:** consolidate **future** work mentioned in [`CLAUDE.md`](../CLAUDE.md) (deferred integrations, scaling notes), [`architecture.md`](../architecture.md) (ruthless audit / potentialities), and [`SITE_MAP.md`](SITE_MAP.md) (surface inventory). This is **not** a commitment order; pick items by risk and studio need.
 
 ---
 
@@ -39,7 +39,7 @@
 
 | Item | Source | Notes |
 |------|--------|--------|
-| **Mobile-primary** polish (`TeamPortalClient`, `WorkForm`, capture inputs) | architecture §5.4, CLAUDE **📱 MOBILE FIELD-TOOL** | Golden path: iPhone SE / ~360px. |
+| **Mobile-primary** polish (`TeamPortalClient`, `WorkForm`, capture inputs) | architecture §5.4, CLAUDE **📱 MOBILE FIELD-TOOL** | **Shipped (2026-05-14):** Ring A/B narrow chrome + hub field launcher + `MobileActionBar` + `VoiceNoteSheet`; PWA `share_target`; Ring C verb stubs + issue → `studio_task`; `pwa-icon-180` + `npm run test:e2e:field`. Deeper verbs (session DB, voice tab, triage deck) still open — see [SITE_MAP.md](SITE_MAP.md). |
 | **Subset disclosure** follow-through | Atelier shell | When new tabs show catalogue-wide KPIs, reuse the same “loaded vs total” pattern (`oeuvresPaging.totalCount`) so numbers stay honest. |
 | **Bilingual sweep** | architecture §5.6 | Grep for JSX literals / `alert` / placeholders outside `dictionary.ts`. |
 
@@ -51,7 +51,7 @@
 |------|--------|
 | **Quarterly** DB backup recovery drill | [`CLAUDE.md`](../CLAUDE.md) Phase E |
 | **R2 key rotation** (annual) | Document rotation date in CLAUDE Phase D |
-| Keep **[`docs/SITE_MAP.md`](SITE_MAP.md)** and **[`docs/SYSTEM_LEDGER.md`](SYSTEM_LEDGER.md)** aligned when routes or System-tab behaviour change. |
+| Keep **[`SITE_MAP.md`](SITE_MAP.md)** and **[`docs/SYSTEM_LEDGER.md`](docs/SYSTEM_LEDGER.md)** aligned when routes or System-tab behaviour change. |
 | **QA checklist PDF** (Atelier → System) before claiming large releases | architecture Verification |
 
 ---
@@ -65,4 +65,4 @@
 
 ---
 
-*Last updated: 2026-05-13 — doc sync (reports tab shipped wording, world map pin rules in CLAUDE/SITE_MAP).*
+*Last updated: 2026-05-14 — mobile field-tool shipped slice (SITE_MAP §0 checklist, PWA share target, Ring C stubs + issue form, apple-touch 180, `test:e2e:field`); roadmap purpose link uses root SITE_MAP.*

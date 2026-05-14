@@ -2,7 +2,18 @@
 
 **Audience:** engineers and studio operators. **Companion:** QA checklist PDF (Atelier → System → download). **Diagrams:** Mermaid blocks below render on GitHub and most Markdown previews.
 
-**Stack:** Next.js 15 App Router, Supabase auth, R2 (EU endpoint). **i18n:** user-facing UI is FR/EN via `lib/i18n/dictionary.ts`.
+**Stack:** Next.js 15 App Router, Supabase auth, R2 (EU endpoint). **i18n:** user-facing UI is FR/EN via `lib/i18n/dictionary.ts` (modular [`lib/i18n/dictionary/`](../lib/i18n/dictionary/) + barrel [`dictionary.ts`](../lib/i18n/dictionary.ts)).
+
+---
+
+## 0. Supabase / GitHub operator checklist (repo ships SQL — you apply in project)
+
+| Step | Artifact | Notes |
+|------|----------|--------|
+| Dead schema drop | [`supabase/sql/dead_columns_drop.sql`](../supabase/sql/dead_columns_drop.sql) | Run in Supabase SQL Editor; then [`grant_audit_queries.sql`](../supabase/sql/grant_audit_queries.sql). Recreate any view dropped by `CASCADE` without removed columns. |
+| Audit TTL + prune | [`supabase/sql/audit_log_ttl.sql`](../supabase/sql/audit_log_ttl.sql) | Defines `audit_log_prune()`. Run SQL once; smoke `select audit_log_prune();` |
+| Weekly prune automation | [`.github/workflows/audit-prune.yml`](../.github/workflows/audit-prune.yml) | Requires repo secret `SUPABASE_DB_URL` (same pattern as backup). Enable after first manual prune succeeds. |
+| Share inbox (share target / triage) | [`supabase/sql/share_inbox.sql`](../supabase/sql/share_inbox.sql) | Required for [`share-receive`](../app/atelier/share-receive/route.ts) inserts. |
 
 ---
 
@@ -37,8 +48,13 @@
 | `/atelier/works/new` | Create work (`WorkForm`) |
 | `/atelier/works/[id]/edit` | Redirects to `/atelier?work=<id>` (drawer) |
 | `/atelier/scan` | Mobile scan / manual ID → open work drawer |
-| `/atelier/share-receive` | Web Share Target **POST** (`multipart/form-data`) — stores payload in `share_inbox` + R2, redirects to triage ([`app/atelier/share-receive/route.ts`](../app/atelier/share-receive/route.ts); requires [`supabase/sql/share_inbox.sql`](../supabase/sql/share_inbox.sql)) |
-| `/atelier/share-triage` | Triage UI for received shares ([`app/atelier/share-triage/page.tsx`](../app/atelier/share-triage/page.tsx), [`ShareTriageClient.tsx`](../components/atelier/ShareTriageClient.tsx)) |
+| `/atelier/share-receive` | **POST** `multipart/form-data` — PWA **Web Share Target** or browser form from share triage (`files` optional; `title` / `text` / `url` optional). Persists to `share_inbox` + R2, **303** to triage. **GET** → redirect share triage ([`app/atelier/share-receive/route.ts`](../app/atelier/share-receive/route.ts); requires [`supabase/sql/share_inbox.sql`](../supabase/sql/share_inbox.sql)) |
+| `/atelier/share-triage` | Lists `share_inbox` rows; detail view + **device import** form (files / title / text / URL) for iOS and parity with share target ([`app/atelier/share-triage/page.tsx`](../app/atelier/share-triage/page.tsx), [`ShareTriageClient.tsx`](../components/atelier/ShareTriageClient.tsx)) |
+| `/atelier/session/new` | Ring C **session** — verb-specific stub + deep links ([`FieldToolStubPage`](../components/atelier/FieldToolStubPage.tsx) `kind="session"`) until session flow ships |
+| `/atelier/capture` | Ring C **capture** — stub + links (`kind="capture"`); `?mode=` reserved for doc/card |
+| `/atelier/documents/new` | Ring C **documents** — stub + links (`kind="documents"`) until COA / paperwork flow ships |
+| `/atelier/issue/new` | Ring C **issue** — maintenance report form → `studio_task` ([`IssueNewForm`](../components/atelier/IssueNewForm.tsx), [`field/actions`](../app/atelier/field/actions.ts)) |
+| `/atelier/triage` | Ring C **broadcast triage** — stub + links (`kind="triage"`) distinct from **share-triage** |
 | `/maps` | Index of saved constellation maps → open in Atelier (`noindex`) |
 
 ### Partner portals (login + row-level checks in page)
@@ -55,7 +71,8 @@
 | `/robots.txt` | [`app/robots.ts`](../app/robots.ts) — allow `/`; disallow atelier, hub, galerie, collection, maps, login, card, `c/`, `api/`, `auth`, `_next`; points to `sitemap.xml` |
 | `/sitemap.xml` | [`app/sitemap.ts`](../app/sitemap.ts) — indexable public URLs: `/`, `/works`, `/about`, `/practice`, `/enquiry` |
 | `/Atelier_Studio_Bible.pdf` | Redirects to short-lived signed URL for latest `document.kind = 'bible'` in vault |
-| `/manifest.webmanifest` | PWA manifest (`start_url: /hub`; **`share_target`** → `/atelier/share-receive`) |
+| `/manifest.webmanifest` | Next route [`app/manifest.ts`](../app/manifest.ts): `start_url` `/hub`, icons, **`share_target`** POST → [`/atelier/share-receive`](../app/atelier/share-receive/route.ts) (same field names as that handler: `title`, `text`, `url`, file parts). Static copy: [`public/manifest.webmanifest`](../public/manifest.webmanifest) — keep in sync when editing manifest fields. |
+| Apple touch (iOS home screen) | [`app/layout.tsx`](../app/layout.tsx) — `link rel="apple-touch-icon"` → **`/pwa-icon-180.png`** (180×180 PNG; generated from `pwa-icon-192.png` via Sharp). Manifest icons stay 192 / 512 in `app/manifest.ts`. |
 
 ---
 
@@ -104,7 +121,7 @@ These are **`'use server'`** modules (callable from Server Components and from t
 
 ### Tab list (desktop group order)
 
-**Terrain / Field (narrow sidebar first):** `inventory`, `production`, `stock-take`, `overview` then operations, management, vision, commercial, diffusion, config.
+**Terrain / Field (narrow sidebar first):** `inventory`, `production`, `stock-take`, `map` — then Studio, Catalogue, Commercial, Public, Admin groups (`TeamPortalClient` `GROUPS`).
 
 **Full tab ids:** `overview`, `inventory`, `reports`, `constellation`, `production`, `logistics`, `sales`, `exhibitions`, `vault`, `contacts`, `map`, `pipeline`, `fiscal`, `concepts`, `themes`, `stock`, `stock-take`, `system`, `portfolio`, `audit` (admin), `broadcast` (admin).
 
@@ -173,6 +190,7 @@ flowchart TB
     shareRecv["/atelier/share-receive"]
     shareTri["/atelier/share-triage"]
     maps["/maps"]
+    hub -.->|"field row"| shareTri
   end
 
   subgraph portals ["Partner portals"]
@@ -236,3 +254,5 @@ flowchart LR
 When adding a **page**, **tab id**, **API route**, or **Atelier bootstrap `app/atelier/*-actions.ts` module** surfaced to operators, update this file, the QA checklist PDF source (`lib/site-map-checklist-pdf.ts`), and regenerate the **Studio Bible** from Atelier → System if narrative sections should stay aligned.
 
 **Recent doc sync (2026-05-13):** documented `reports` tab, `reports/actions.ts`, **Carte** `WorldMapTab` + dual `contact_addresses` load (curation vs map), contact-pin fallback rules (see [`CLAUDE.md`](../CLAUDE.md) KEY FILES); [`lib/site-map-checklist-pdf.ts`](../lib/site-map-checklist-pdf.ts) tab list includes `reports`.
+
+**Recent doc sync (2026-05-14):** §0 Supabase operator checklist; share receive/triage; PWA `share_target` in `app/manifest.ts` + static mirror; Ring C verb stubs (`FieldToolStubPage` kinds) + `/atelier/issue/new` → `studio_task`; narrow Field tab order **`map`**; hub → share triage in topology; checklist + §1 dictionary folder note; **`public/pwa-icon-180.png`** + `app/layout.tsx` apple-touch-icon; **`npm run test:e2e:field`** + [`scripts/run-atelier-e2e.mjs`](scripts/run-atelier-e2e.mjs); CLAUDE CMDS for atelier-gated Playwright.

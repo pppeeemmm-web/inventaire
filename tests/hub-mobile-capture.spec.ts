@@ -1,10 +1,10 @@
 import { test, expect } from '@playwright/test'
 
 /**
- * Hub compact layout (≤767px): capture tiles deep-link into Atelier.
+ * Hub + atelier narrow flows. Hub uses Ring B.1 field launcher (see hub-field-launcher.spec.ts).
  * Requires authenticated session — same as other ATELIER_E2E tests.
  */
-test.describe('Hub mobile capture tiles', () => {
+test.describe('Hub mobile + atelier narrow', () => {
   test.skip(
     !process.env.ATELIER_E2E,
     'Set ATELIER_E2E=1 with a logged-in app session to run atelier E2E.',
@@ -12,22 +12,17 @@ test.describe('Hub mobile capture tiles', () => {
 
   test.use({ viewport: { width: 375, height: 812 } })
 
-  test('tiles open new work, pipeline, and concepts on small viewport', async ({ page }) => {
+  test('hub field launcher is visible on small viewport', async ({ page }) => {
     await page.goto('/hub')
-    await expect(page.getByTestId('hub-tile-atelier')).toBeVisible({ timeout: 45_000 })
+    await expect(page.getByTestId('hub-field-launcher-root')).toBeVisible({ timeout: 45_000 })
+    await expect(page.getByTestId('hub-field-verb-pipeline')).toBeVisible()
+  })
 
-    await page.getByTestId('hub-tile-new-work').click()
-    await expect(page).toHaveURL(/\/atelier\/works\/new/)
-
+  test('pipeline field row opens pipeline tab', async ({ page }) => {
     await page.goto('/hub')
-    await expect(page.getByTestId('hub-tile-pipeline')).toBeVisible({ timeout: 15_000 })
-    await page.getByTestId('hub-tile-pipeline').click()
+    await expect(page.getByTestId('hub-field-launcher-root')).toBeVisible({ timeout: 45_000 })
+    await page.getByTestId('hub-field-verb-pipeline').click()
     await expect(page).toHaveURL(/[?&]tab=pipeline/)
-
-    await page.goto('/hub')
-    await page.getByTestId('hub-tile-concepts').click()
-    await expect(page).toHaveURL(/[?&]tab=concepts/)
-    await expect(page.getByTestId('concepts-tab-root')).toBeVisible({ timeout: 30_000 })
   })
 
   test('concepts tab fits viewport width without horizontal overflow', async ({ page }) => {
@@ -47,10 +42,7 @@ test.describe('Hub mobile capture tiles', () => {
   })
 
   test('new work page fits viewport width without horizontal overflow', async ({ page }) => {
-    await page.goto('/hub')
-    await expect(page.getByTestId('hub-tile-new-work')).toBeVisible({ timeout: 45_000 })
-    await page.getByTestId('hub-tile-new-work').click()
-    await expect(page).toHaveURL(/\/atelier\/works\/new/)
+    await page.goto('/atelier/works/new')
     const root = page.getByTestId('work-form-root')
     await expect(root).toBeVisible({ timeout: 45_000 })
     const { scrollWidth, clientWidth } = await root.evaluate((el) => ({
@@ -60,10 +52,8 @@ test.describe('Hub mobile capture tiles', () => {
     expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 1)
   })
 
-  test('scan tile opens atelier scan route', async ({ page }) => {
-    await page.goto('/hub')
-    await expect(page.getByTestId('hub-tile-scan')).toBeVisible({ timeout: 45_000 })
-    await page.getByTestId('hub-tile-scan').click()
+  test('atelier scan route renders on narrow viewport', async ({ page }) => {
+    await page.goto('/atelier/scan')
     await expect(page).toHaveURL(/\/atelier\/scan/)
     await expect(page.getByTestId('atelier-scan-root')).toBeVisible({ timeout: 30_000 })
   })

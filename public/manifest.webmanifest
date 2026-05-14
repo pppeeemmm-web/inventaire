@@ -1,0 +1,45 @@
+{
+  "name": "PEM · Atelier",
+  "short_name": "Atelier",
+  "description": "Outil d'atelier — accès restreint",
+  "start_url": "/hub",
+  "display": "standalone",
+  "background_color": "#101011",
+  "theme_color": "#101011",
+  "icons": [
+    {
+      "src": "/pwa-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "share_target": {
+    "action": "/atelier/share-receive",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [
+        {
+          "name": "files",
+          "accept": ["image/*", "application/pdf"]
+        }
+      ]
+    }
+  }
+}

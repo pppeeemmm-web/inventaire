@@ -17,7 +17,7 @@ RESPONSIVE: obey **📱 MOBILE FIELD-TOOL** below (concept + contract; authorita
 **Agent pace (owner preference):** Parallelize independent reads/tools until the slice is done; no fake deadlines. Fast *and* correct — non‑negotiables stay non‑negotiable (RLS/grants, auth, data loss, 🌐 UI COPY).
 
 🛠️ CMDS
-Next.js 15 (port 3000). npm dev | build | lint. E2E: `npm run test:e2e` (Playwright; e.g. atelier œuvres paging bar).
+Next.js 15 (port 3000). npm dev | build | lint. E2E: `npm run test:e2e` (Playwright). Hub / mobile bar / field launcher (auth-gated): `npm run test:e2e:field` — sets `ATELIER_E2E=1` via [`scripts/run-atelier-e2e.mjs`](scripts/run-atelier-e2e.mjs); log in once in the dev server profile the tests use. Full suite: `npm run test:e2e` (e.g. atelier œuvres paging bar).
 Real app path: C:\Users\pppee\Documents\Claude\Projects\Art db\app
 Worktree edits → copy to real app (dev server runs from real app).
 DEV SERVER: run `pwsh scripts/dev.ps1` from real app — kills port 3000, prints LAN IP for phone testing. If `/_next/static/*` returns 404, restart dev from this root; delete `.next` and hard-reload if a stale tab outlived a rebuild.
@@ -29,7 +29,7 @@ WORKTREE START: immediately create `.claude/launch.json` = `{"version":"0.0.1","
 - Mutations: Server Actions ('use server') in `app/**/actions.ts` only. **Exception:** Route Handlers for OAuth callbacks (`app/auth/callback`, `app/api/calendar/*/callback`), read-only or external integration routes under `app/api/` (e.g. geocode, inventory broadcast) — not a substitute for domain mutations in actions.
 - **Reads (bootstrap):** On-demand or RSC-time reads may live in other `'use server'` modules under `app/atelier/` (e.g. [`reminders-actions.ts`](app/atelier/reminders-actions.ts), [`atelier-data-actions.ts`](app/atelier/atelier-data-actions.ts)) so Server Components and the client shell do not duplicate Supabase `(as any)` queries. **Writes** for domain tables still go through `app/**/actions.ts` (or the route-handler exceptions above).
 - Auth: Supabase SSR middleware enforces auth on all /atelier /hub /galerie routes. Admin = `is_admin()` RPC (joins `Contact.is_admin` via `auth_user_id`); editors = team but not admin. Old `profiles.role` is dead.
-- i18n: see **🌐 UI COPY** below (non-negotiable for anything user-facing)
+- i18n: see **🌐 UI COPY** below (non-negotiable for anything user-facing). **Dictionary modularization (shipped):** keys in [`lib/i18n/dictionary/keys.ts`](lib/i18n/dictionary/keys.ts); copy in [`fr.ts`](lib/i18n/dictionary/fr.ts) / [`en.ts`](lib/i18n/dictionary/en.ts); barrel [`lib/i18n/dictionary.ts`](lib/i18n/dictionary.ts) re-exports `dict` + `DictKey`. Add new keys in **all three** (`keys.ts` union + `fr` + `en`).
 - **ESLint:** `eslint-plugin-pem-i18n` (`file:eslint-rules`) — rule `pem-i18n/no-hardcoded-jsx-text` flags sentence-like JSX literals; legacy allow-off in [`.eslintrc.json`](.eslintrc.json) overrides (SalesTab, …). **Public route metadata:** [`lib/i18n/route-metadata.ts`](lib/i18n/route-metadata.ts) `routeMetadata(route, lang)` + `dict` keys `seo_*`; do not hand-roll duplicate EN blocks on new `page.tsx`.
 - Image upload: bytes validated as JPEG/PNG/WebP/GIF/AVIF/HEIC via Sharp before R2 PUT; stored originals normalized to **2100px long-side AVIF** q=50 + Artist/Copyright EXIF only (`uploadImage` in `app/atelier/works/actions.ts`); storage keys `W_{oid}_{seq}_{hash8}.avif` (hash from **raw** input bytes — `lib/image-upload.ts`). Sharp → 400px AVIF thumb → R2 via fetch + SigV4 (same pattern as AWS S3 SDK)
 - Supabase clients: createClient() (anon, RLS enforced) · createServiceClient() (service_role, admin bypass)
@@ -62,7 +62,7 @@ All user-visible copy → `useI18n().t(key)` + `lib/i18n/dictionary.ts` (**DictK
 
 📁 KEY FILES
 - lib/seo/site-url.ts — `getMetadataBase()` for `metadataBase`, sitemap, robots; env: `NEXT_PUBLIC_SITE_URL` | `NEXT_PUBLIC_APP_URL` (see **App URL** under calendar block).
-- app/robots.ts · app/sitemap.ts — crawler rules + indexable public URL list (keep aligned with [`docs/SITE_MAP.md`](docs/SITE_MAP.md)).
+- app/robots.ts · app/sitemap.ts — crawler rules + indexable public URL list (keep aligned with [`SITE_MAP.md`](SITE_MAP.md)).
 - app/page.tsx + components/public/LandingPage.tsx — public home: server `metadata` (title, robots index, OG/Twitter) + client shell.
 - lib/i18n/dictionary.ts · context.tsx — all UI strings (fr/en)
 - lib/data.ts — imageUrl(), thumbUrl(), yearOf(), statusOf(), seqFromFilename(). **Do not import `lib/i18n/dictionary` here** (this module is bundled on the client); status labels use a local FR+EN `STATUS_LABEL_MAP` → `StatusKey`, not dict keys.
@@ -81,6 +81,9 @@ All user-visible copy → `useI18n().t(key)` + `lib/i18n/dictionary.ts` (**DictK
 - components/atelier/WorldMapTab.tsx — **Carte** (`?tab=map`): client `contact_addresses` select + [`app/api/geocode/route.ts`](app/api/geocode/route.ts) with module **`localStorage`** cache (`pem_geo_cache`). **Contact pins:** use address rows that have `ville` or `pays`; if a contact has **no** such row, fall back to **`Contact.Ville` / `Contact.Pays`** (placeholder-only address rows must not hide the pin). **Works** mode builds a per-contact city/country map (card first, then address supplement). Toolbar **↺ Rafraîchir** clears the geocode cache.
 - components/atelier/WorkDrawer.tsx — **canonical edit** for existing works: shell + zoom; image list via server action **`listWorkDrawerImages`** (no browser `tblImage` read). Inner editor under `components/atelier/work-drawer/` — `DrawerContent.tsx` (core form + themes + actions), `WorkDrawerImageArea`, `WorkDrawerPipelineSection`, `DrawerContentFinanceSection`, `DrawerContentNotesVersionSection`, `DrawerContentGroupsSection`, `drawer-content-utils.ts`, `drawer-widgets.tsx`; gift flow, `saveWork` + guards. Overlay + inventory panel modes.
 - components/atelier/FieldToolStubPage.tsx — **Ring C** placeholder shell for hub-linked field verbs (links back to Atelier + Hub); used by `session/new`, `capture`, `documents/new`, `issue/new`, `triage` routes until shipped.
+- components/atelier/CommandPalette.tsx — **⌘K palette** (Block B): tab jump, work/contact fuzzy search, quick actions (New work, Export XLSX, Regen bible). Smoke: `tests/command-palette.spec.ts`.
+- components/hub/HubLauncherClient.tsx — `/hub` thin launcher (4 tiles + CTA, zero DB queries). Narrow branch `FIELD_ROWS` = Ring B field launcher (8 verbs).
+- components/shared/{LoadingShell,EmptyState}.tsx — shared placeholders; used by AuditTab, ReportsTab zero-results, WorldMapTab pre-pins. Reuse — do not roll new spinners/empty messages.
 - components/atelier/WorkForm.tsx — full-page **create only** at `/atelier/works/new` (shared `saveWork`). `/atelier/works/[id]/edit` redirects to `/atelier?work=<id>` (drawer).
 - components/atelier/ContactEditorPanel.tsx — Hub Contacts full editor in the right column / stacked on mobile (`ContactsTab` orchestrates selection, `useUnsavedActionGuard` on row switch / batch / merge).
 - app/atelier/works/actions.ts — image upload, delete, work CRUD; `requireAdmin()` gates `purgeWorkPermanently` + `deleteWorkImage`; `saveWork` queues editor edits to `pending_changes` unless `__skip_review=1`; **`fetchOeuvresKeysetPage`** for Atelier œuvres paging; **`listWorkDrawerImages`** for drawer image rail.
@@ -113,11 +116,12 @@ All user-visible copy → `useI18n().t(key)` + `lib/i18n/dictionary.ts` (**DictK
 ## SITE MAP (routes & diagrams)
 
 - **Audit backlog vs shipped:** [architecture.md](architecture.md) (security/architecture/UX bullets + accomplished / partial / not).
-- **Canonical route list + Mermaid topology:** [docs/SITE_MAP.md](docs/SITE_MAP.md) (version control). Update it when adding pages, Atelier `?tab=` ids, or first-party `app/api` routes.
+- **Canonical route list + Mermaid topology:** [`SITE_MAP.md`](SITE_MAP.md) (repo root). Update it when adding pages, Atelier `?tab=` ids, or first-party `app/api` routes.
 - **Prioritised future work (non-binding):** [docs/ROADMAP.md](docs/ROADMAP.md) — aggregates deferred integrations from this file, [`architecture.md`](architecture.md), and site-map surfaces.
+- **Consolidated status (2026-05-14):** `C:\Users\pppee\Desktop\DONE.md` (shipped) + `C:\Users\pppee\Desktop\TODO.md` (pending). Merged from `iphone-se-plan.md`, `app/STATUS.md`, `app/PROJECT_SYNTHESIS.md`, `app/ROADMAP.md`; DB-verified. Refresh after each phase ships.
 - **QA checklist PDF:** Atelier → **System** tab → **Download site map checklist** — on-demand pdfkit export (`exportSiteMapChecklistPdf` in [app/atelier/vault/actions.ts](app/atelier/vault/actions.ts), builder in [lib/site-map-checklist-pdf.ts](lib/site-map-checklist-pdf.ts)).
 - **Vaulted narrative PDF:** `/Atelier_Studio_Bible.pdf` — latest `document.kind = 'bible'`; regenerate from System tab (`vaultStudioBible` in [app/atelier/vault/bible-action.ts](app/atelier/vault/bible-action.ts)).
-- **System Ledger (operator doc):** [docs/SYSTEM_LEDGER.md](docs/SYSTEM_LEDGER.md) — `system_log` manual rows, `attachments`, checklist/Bible/reference UX; keep aligned with [docs/SITE_MAP.md](docs/SITE_MAP.md) when behaviour changes.
+- **System Ledger (operator doc):** [docs/SYSTEM_LEDGER.md](docs/SYSTEM_LEDGER.md) — `system_log` manual rows, `attachments`, checklist/Bible/reference UX; keep aligned with [`SITE_MAP.md`](SITE_MAP.md) when behaviour changes.
 
 ## EXHIBITIONS ↔ PIPELINE
 
@@ -160,7 +164,7 @@ R2 has no S3-style Object Versioning and Bucket Lock is too rigid (locks the adm
 **Audit ledger actor emails.** `fetchSystemLogs` enriches `user_id` with `Contact.Email` batched by `auth_user_id` (RLS anon read; no service-role user API per row).
 
 🚫 CEMETERY (instant fail)
-**Dropped from DB** (`supabase/sql/dead_columns_drop.sql`): legacy `Oeuvres` columns `Statut`, `StatutID`, `tags`, `txtImageName`, `Emballage`, `DocsValidated`, `UniteDimension`, `NomOriginal`, `Poids`, `Tirage`; obsolete tables `OeuvreRelationships` and quoted `"tblRelations"` if present. **Live** `public.tblrelations` (lowercase, constellation edges) — never drop. If a view (e.g. `OeuvresComplete`) referenced dropped columns, `DROP COLUMN … CASCADE` removes that view; recreate in Supabase without those columns if still needed.
+**Dropped from DB 2026-05-14** (`supabase/sql/dead_columns_drop.sql`, verified): `Oeuvres.{Statut,StatutID,tags,txtImageName,Emballage,DocsValidated,UniteDimension,NomOriginal,Poids,Tirage}` + tables `OeuvreRelationships` + quoted `"tblRelations"`. Do not reintroduce. **Live & keep:** `public.tblrelations` (lowercase, constellation edges). If a view (e.g. `OeuvresComplete`) referenced dropped columns, `DROP COLUMN … CASCADE` removed it; recreate without those columns if still needed.
 NEVER WRITE: Oeuvres.is_public (trigger), Oeuvres.txtImageNameLink (trigger tblimage_cover_sync)
 NEW TABLES: snake_case only. No tbl prefix. No CamelCase.
 

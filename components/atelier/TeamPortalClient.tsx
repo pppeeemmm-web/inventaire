@@ -40,6 +40,7 @@ import { ContactsTab } from '@/components/atelier/ContactsTab'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { toast } from '@/lib/ui/toast'
 import { consumeUndo, isUndoKeyBlockedTarget, peekUndo } from '@/lib/ui/undo'
+import { VoiceNoteSheet } from '@/components/shared/VoiceNoteSheet'
 
 function TabPanelFallback() {
   const { t } = useI18n()
@@ -84,6 +85,85 @@ type Tab =
   | 'overview' | 'inventory' | 'reports' | 'constellation' | 'production'
   | 'logistics' | 'sales' | 'exhibitions' | 'vault' | 'contacts' | 'map' | 'pipeline' | 'fiscal' | 'concepts' | 'themes' | 'stock' | 'stock-take' | 'system' | 'portfolio' | 'audit' | 'broadcast'
 
+/** Desktop top bar + narrow drawer row — same handlers, drawer uses 44px tap targets. */
+function AtelierHeaderChrome({
+  variant,
+  lang,
+  setLang,
+  onPaletteOpen,
+  onNewWork,
+}: {
+  variant: 'desktop' | 'drawer'
+  lang: Lang
+  setLang: (l: Lang) => void
+  onPaletteOpen: () => void
+  onNewWork: () => void
+}) {
+  const { t } = useI18n()
+  const compact = variant === 'drawer'
+  return (
+    <div className="row gap-sm" style={{ flexShrink: 0, flexWrap: compact ? 'wrap' : undefined, alignItems: 'center' }}>
+      <div style={{ display: 'flex', border: '1px solid var(--bd)', fontSize: 10, letterSpacing: 1, alignItems: 'stretch' }}>
+        {compact ? (
+          <div style={{ display: 'flex', alignItems: 'center', minHeight: 44, boxSizing: 'border-box' }}>
+            <PemThemeToggle showLabels={false} padding="10px 12px" />
+          </div>
+        ) : (
+          <PemThemeToggle showLabels />
+        )}
+        {(['fr', 'en'] as const).map((l) => (
+          <button
+            key={l}
+            type="button"
+            onClick={() => setLang(l)}
+            style={{
+              padding: compact ? '10px 14px' : '4px 10px',
+              minHeight: compact ? 44 : undefined,
+              minWidth: compact ? 44 : undefined,
+              boxSizing: 'border-box',
+              background: lang === l ? 'var(--ac)' : 'transparent',
+              color: lang === l ? 'var(--bg0)' : 'var(--tx3)',
+              fontWeight: lang === l ? 600 : 400,
+              border: 'none',
+              borderRight: l === 'fr' ? '1px solid var(--bd)' : 'none',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+            }}
+          >
+            {l.toUpperCase()}
+          </button>
+        ))}
+      </div>
+      <button
+        type="button"
+        className="btn ghost sm"
+        title="⌘K"
+        onClick={onPaletteOpen}
+        style={{
+          fontSize: 11,
+          letterSpacing: 1,
+          ...(compact ? { minHeight: 44, minWidth: 44, boxSizing: 'border-box' as const } : {}),
+        }}
+      >
+        ⌘K
+      </button>
+      <button
+        type="button"
+        className="btn ghost sm"
+        onClick={onNewWork}
+        title={t('newWork')}
+        style={
+          compact
+            ? { minHeight: 44, minWidth: 44, boxSizing: 'border-box', fontSize: 11, letterSpacing: 1 }
+            : undefined
+        }
+      >
+        {`+ ${t('newWork')}`}
+      </button>
+    </div>
+  )
+}
+
 export type { TeamPortalClientProps }
 
 const DEFAULT_OVERVIEW_BOOTSTRAP: AtelierOverviewBootstrap = {
@@ -105,6 +185,86 @@ function junctionFromServerInitial(init: Partial<AtelierJunctionDerived>): Ateli
     themeToGroups: { ...init.themeToGroups },
     groupToThemes: { ...init.groupToThemes },
   }
+}
+
+/** Ring B.2 — fixed bottom bar (narrow only; hidden when WorkDrawer open). */
+function MobileActionBar({
+  t,
+  onCapture,
+  onScan,
+  onNote,
+  onReminders,
+}: {
+  t: (k: string) => string
+  onCapture: () => void
+  onScan: () => void
+  onNote: () => void
+  onReminders: () => void
+}) {
+  return (
+    <div
+      data-testid="atelier-mobile-action-bar"
+      role="toolbar"
+      aria-label={t('ring_b_bar_toolbar_aria')}
+      style={{
+        position: 'fixed',
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 50,
+        display: 'grid',
+        gridTemplateColumns: 'repeat(4, 1fr)',
+        gap: 6,
+        paddingTop: 8,
+        paddingLeft: 'max(8px, env(safe-area-inset-left, 0px))',
+        paddingRight: 'max(8px, env(safe-area-inset-right, 0px))',
+        paddingBottom: 'max(8px, env(safe-area-inset-bottom, 0px))',
+        background: 'var(--bg1)',
+        borderTop: '1px solid var(--bd)',
+      }}
+    >
+      <button
+        type="button"
+        className="btn ghost sm"
+        aria-label={t('ring_b_bar_capture_aria')}
+        title={t('ring_b_bar_capture_aria')}
+        onClick={onCapture}
+        style={{ minHeight: 44, minWidth: 44, fontSize: 18, padding: 4 }}
+      >
+        📷
+      </button>
+      <button
+        type="button"
+        className="btn ghost sm"
+        aria-label={t('ring_b_bar_scan_aria')}
+        title={t('ring_b_bar_scan_aria')}
+        onClick={onScan}
+        style={{ minHeight: 44, minWidth: 44, fontSize: 18, padding: 4 }}
+      >
+        🔍
+      </button>
+      <button
+        type="button"
+        className="btn ghost sm"
+        aria-label={t('ring_b_bar_note_aria')}
+        title={t('ring_b_bar_note_aria')}
+        onClick={onNote}
+        style={{ minHeight: 44, minWidth: 44, fontSize: 18, padding: 4 }}
+      >
+        🎤
+      </button>
+      <button
+        type="button"
+        className="btn ghost sm"
+        aria-label={t('ring_b_bar_reminders_aria')}
+        title={t('ring_b_bar_reminders_aria')}
+        onClick={onReminders}
+        style={{ minHeight: 44, minWidth: 44, fontSize: 18, padding: 4 }}
+      >
+        ⏰
+      </button>
+    </div>
+  )
 }
 
 // ── Component ────────────────────────────────────────────────────────
@@ -744,28 +904,13 @@ export function TeamPortalClient({
         </div>
 
         {!atelierNarrow && (
-        <div className="row gap-sm" style={{ flexShrink: 0 }}>
-          <div style={{ display: 'flex', border: '1px solid var(--bd)', fontSize: 10, letterSpacing: 1 }}>
-            <PemThemeToggle showLabels={!atelierNarrow} />
-            {(['fr', 'en'] as const).map((l) => (
-              <button key={l} onClick={() => setLang(l)}
-                style={{
-                  padding: '4px 10px',
-                  background: lang === l ? 'var(--ac)' : 'transparent',
-                  color: lang === l ? 'var(--bg0)' : 'var(--tx3)',
-                  fontWeight: lang === l ? 600 : 400,
-                  borderRight: l === 'fr' ? '1px solid var(--bd)' : 'none',
-                }}
-              >{l.toUpperCase()}</button>
-            ))}
-          </div>
-          <button className="btn ghost sm" title="⌘K" onClick={() => setPaletteOpen(true)} style={{ fontSize: 11, letterSpacing: 1 }}>
-            ⌘K
-          </button>
-          <button className="btn ghost sm" onClick={() => router.push('/atelier/works/new')} title={t('newWork')}>
-            {`+ ${t('newWork')}`}
-          </button>
-        </div>
+          <AtelierHeaderChrome
+            variant="desktop"
+            lang={lang}
+            setLang={setLang}
+            onPaletteOpen={() => setPaletteOpen(true)}
+            onNewWork={() => void router.push('/atelier/works/new')}
+          />
         )}
       </div>
 
@@ -990,6 +1135,29 @@ export function TeamPortalClient({
                 {t('close')}
               </button>
             </div>
+            {atelierNarrow && sidebarOpen && (
+              <div
+                style={{
+                  padding: '0 16px 12px',
+                  borderBottom: '1px solid var(--bd)',
+                  marginBottom: 8,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'flex-start',
+                  minWidth: 0,
+                  flexWrap: 'wrap',
+                  gap: 8,
+                }}
+              >
+                <AtelierHeaderChrome
+                  variant="drawer"
+                  lang={lang}
+                  setLang={setLang}
+                  onPaletteOpen={() => setPaletteOpen(true)}
+                  onNewWork={() => void router.push('/atelier/works/new')}
+                />
+              </div>
+            )}
             <div
               className="t-mono-sm"
               style={{ display: atelierNarrow ? 'block' : 'none', padding: '0 20px 16px', fontSize: 9, opacity: 0.5 }}
@@ -1000,67 +1168,6 @@ export function TeamPortalClient({
                 : oeuvres.length}{' '}
               {t('inventoryWorksBadge')}
             </div>
-            {atelierNarrow && (
-              <div
-                style={{
-                  padding: '0 16px 16px',
-                  borderBottom: '1px solid var(--bd)',
-                  marginBottom: 8,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 12,
-                }}
-              >
-                <PemThemeToggle showLabels />
-                <div style={{ display: 'flex', border: '1px solid var(--bd)', fontSize: 10, letterSpacing: 1, width: 'fit-content' }}>
-                  {(['fr', 'en'] as const).map((l) => (
-                    <button
-                      key={l}
-                      type="button"
-                      onClick={() => setLang(l)}
-                      style={{
-                        padding: '8px 14px',
-                        minHeight: 44,
-                        minWidth: 44,
-                        boxSizing: 'border-box',
-                        background: lang === l ? 'var(--ac)' : 'transparent',
-                        color: lang === l ? 'var(--bg0)' : 'var(--tx3)',
-                        fontWeight: lang === l ? 600 : 400,
-                        border: 'none',
-                        borderRight: l === 'fr' ? '1px solid var(--bd)' : 'none',
-                        cursor: 'pointer',
-                        fontFamily: 'inherit',
-                      }}
-                    >
-                      {l.toUpperCase()}
-                    </button>
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  className="btn ghost sm"
-                  title="⌘K"
-                  onClick={() => {
-                    setPaletteOpen(true)
-                    setSidebarOpen(false)
-                  }}
-                  style={{ fontSize: 11, letterSpacing: 1, alignSelf: 'flex-start', minHeight: 44, padding: '0 14px' }}
-                >
-                  ⌘K
-                </button>
-                <button
-                  type="button"
-                  className="btn primary sm"
-                  onClick={() => {
-                    void router.push('/atelier/works/new')
-                    setSidebarOpen(false)
-                  }}
-                  style={{ minHeight: 44, alignSelf: 'stretch' }}
-                >
-                  + {t('newWork')}
-                </button>
-              </div>
-            )}
           <div data-testid="atelier-nav-groups">
           {GROUPS.map((g) => (
             <div key={g.label} style={{ marginBottom: 20 }}>
@@ -1392,115 +1499,21 @@ export function TeamPortalClient({
         />
       )}
 
-      {voiceNoteSheetOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="ring-b-voice-title"
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 155,
-            background: 'rgba(0,0,0,0.45)',
-            display: 'flex',
-            alignItems: 'flex-end',
-            justifyContent: 'center',
-          }}
-          onClick={() => setVoiceNoteSheetOpen(false)}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              width: '100%',
-              maxWidth: 480,
-              background: 'var(--bg1)',
-              borderTopLeftRadius: 16,
-              borderTopRightRadius: 16,
-              padding: '20px 20px max(20px, env(safe-area-inset-bottom))',
-              borderTop: '1px solid var(--bd)',
-              boxShadow: '0 -8px 32px rgba(0,0,0,0.25)',
-            }}
-          >
-            <div id="ring-b-voice-title" className="serif" style={{ fontSize: 18, marginBottom: 10 }}>
-              {t('ring_b_voice_sheet_title')}
-            </div>
-            <p className="t-mono-sm" style={{ color: 'var(--tx2)', fontSize: 12, lineHeight: 1.5, marginBottom: 16 }}>
-              {t('ring_b_voice_sheet_body')}
-            </p>
-            <button
-              type="button"
-              className="btn primary"
-              style={{ minHeight: 44, width: '100%' }}
-              onClick={() => setVoiceNoteSheetOpen(false)}
-            >
-              {t('ring_b_voice_sheet_close')}
-            </button>
-          </div>
-        </div>
-      )}
+      <VoiceNoteSheet open={voiceNoteSheetOpen} onClose={() => setVoiceNoteSheetOpen(false)} />
 
       {showMobileActionBar && (
-        <div
-          style={{
-            position: 'fixed',
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 50,
-            display: 'grid',
-            gridTemplateColumns: 'repeat(4, 1fr)',
-            gap: 6,
-            padding: 'max(8px, env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left)) max(8px, env(safe-area-inset-right))',
-            background: 'var(--bg1)',
-            borderTop: '1px solid var(--bd)',
+        <MobileActionBar
+          t={t as (k: string) => string}
+          onCapture={() => void router.push('/atelier/session/new')}
+          onScan={() => void router.push('/atelier/scan')}
+          onNote={() => setVoiceNoteSheetOpen(true)}
+          onReminders={() => {
+            handleSetTab('overview')
+            requestAnimationFrame(() => {
+              document.getElementById('atelier-field-reminders')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            })
           }}
-        >
-          <button
-            type="button"
-            className="btn ghost sm"
-            aria-label={t('ring_b_bar_capture_aria')}
-            title={t('ring_b_bar_capture_aria')}
-            onClick={() => void router.push('/atelier/session/new')}
-            style={{ minHeight: 48, fontSize: 18, padding: 4 }}
-          >
-            📷
-          </button>
-          <button
-            type="button"
-            className="btn ghost sm"
-            aria-label={t('ring_b_bar_scan_aria')}
-            title={t('ring_b_bar_scan_aria')}
-            onClick={() => void router.push('/atelier/scan')}
-            style={{ minHeight: 48, fontSize: 18, padding: 4 }}
-          >
-            🔍
-          </button>
-          <button
-            type="button"
-            className="btn ghost sm"
-            aria-label={t('ring_b_bar_note_aria')}
-            title={t('ring_b_bar_note_aria')}
-            onClick={() => setVoiceNoteSheetOpen(true)}
-            style={{ minHeight: 48, fontSize: 18, padding: 4 }}
-          >
-            🎤
-          </button>
-          <button
-            type="button"
-            className="btn ghost sm"
-            aria-label={t('ring_b_bar_reminders_aria')}
-            title={t('ring_b_bar_reminders_aria')}
-            onClick={() => {
-              handleSetTab('overview')
-              requestAnimationFrame(() => {
-                document.getElementById('atelier-field-reminders')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-              })
-            }}
-            style={{ minHeight: 48, fontSize: 18, padding: 4 }}
-          >
-            ⏰
-          </button>
-        </div>
+        />
       )}
 
     </div>

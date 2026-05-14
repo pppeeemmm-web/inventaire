@@ -1,5 +1,5 @@
-import { FieldToolStubPage } from '@/components/atelier/FieldToolStubPage'
+import { IssueNewForm } from '@/components/atelier/IssueNewForm'
 
 export default function IssueNewPage() {
-  return <FieldToolStubPage />
+  return <IssueNewForm />
 }

@@ -55,7 +55,10 @@ export default function RootLayout({
       className={`${instrumentSerif.variable} ${sofiaSans.variable}`}
     >
       <head>
-        <link rel="apple-touch-icon" href="/pwa-icon-192.png" />
+        <link rel="manifest" href="/manifest.webmanifest" />
+        <link rel="apple-touch-icon" href="/pwa-icon-180.png" sizes="180x180" />
+        <meta name="theme-color" content="#edeae4" media="(prefers-color-scheme: light)" />
+        <meta name="theme-color" content="#101011" media="(prefers-color-scheme: dark)" />
         <script
           dangerouslySetInnerHTML={{
             __html: `

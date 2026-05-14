@@ -1,6 +1,6 @@
 # Building the outside chain — **Make.com only** (Make → Buffer → Slack)
 
-This doc is the **Make.com** build guide for middleware and Slack. Your app’s HTTP contract stays in [BROADCAST_PHASE3_OPERATIONS.md](./BROADCAST_PHASE3_OPERATIONS.md) §3. (Other tools: same HTTP calls; this file does not walk them.)
+This doc is the **Make.com** build guide for middleware and Slack. Your app’s HTTP contract is summarised in [docs/BROADCAST_PHASE2_COMPLETE.md](./docs/BROADCAST_PHASE2_COMPLETE.md) and implemented under `app/api/inventory/broadcast/`. (Other tools: same HTTP calls; this file does not walk them.)
 
 ---
 
