@@ -14,6 +14,8 @@ CAVEMAN CHAT: Stop verbosity. No "I've updated..." or "Here is...". Code only. 1
 UI: bilingual only — obey 🌐 UI COPY when touching user-facing text.
 RESPONSIVE: obey **📱 MOBILE FIELD-TOOL** below (concept + contract; authoritative).
 
+**Agent pace (owner preference):** Parallelize independent reads/tools until the slice is done; no fake deadlines. Fast *and* correct — non‑negotiables stay non‑negotiable (RLS/grants, auth, data loss, 🌐 UI COPY).
+
 🛠️ CMDS
 Next.js 15 (port 3000). npm dev | build | lint. E2E: `npm run test:e2e` (Playwright; e.g. atelier œuvres paging bar).
 Real app path: C:\Users\pppee\Documents\Claude\Projects\Art db\app
@@ -28,7 +30,8 @@ WORKTREE START: immediately create `.claude/launch.json` = `{"version":"0.0.1","
 - **Reads (bootstrap):** On-demand or RSC-time reads may live in other `'use server'` modules under `app/atelier/` (e.g. [`reminders-actions.ts`](app/atelier/reminders-actions.ts), [`atelier-data-actions.ts`](app/atelier/atelier-data-actions.ts)) so Server Components and the client shell do not duplicate Supabase `(as any)` queries. **Writes** for domain tables still go through `app/**/actions.ts` (or the route-handler exceptions above).
 - Auth: Supabase SSR middleware enforces auth on all /atelier /hub /galerie routes. Admin = `is_admin()` RPC (joins `Contact.is_admin` via `auth_user_id`); editors = team but not admin. Old `profiles.role` is dead.
 - i18n: see **🌐 UI COPY** below (non-negotiable for anything user-facing)
-- Image upload: bytes validated as JPEG/PNG/WebP/GIF via Sharp before R2 PUT; storage keys `W_{oid}_{seq}_{hash8}.{ext}` (see lib/image-upload.ts). Sharp → 400px AVIF thumb → R2 via fetch + SigV4 (same pattern as AWS S3 SDK)
+- **ESLint:** `eslint-plugin-pem-i18n` (`file:eslint-rules`) — rule `pem-i18n/no-hardcoded-jsx-text` flags sentence-like JSX literals; legacy allow-off in [`.eslintrc.json`](.eslintrc.json) overrides (SalesTab, …). **Public route metadata:** [`lib/i18n/route-metadata.ts`](lib/i18n/route-metadata.ts) `routeMetadata(route, lang)` + `dict` keys `seo_*`; do not hand-roll duplicate EN blocks on new `page.tsx`.
+- Image upload: bytes validated as JPEG/PNG/WebP/GIF/AVIF/HEIC via Sharp before R2 PUT; stored originals normalized to **2100px long-side AVIF** q=50 + Artist/Copyright EXIF only (`uploadImage` in `app/atelier/works/actions.ts`); storage keys `W_{oid}_{seq}_{hash8}.avif` (hash from **raw** input bytes — `lib/image-upload.ts`). Sharp → 400px AVIF thumb → R2 via fetch + SigV4 (same pattern as AWS S3 SDK)
 - Supabase clients: createClient() (anon, RLS enforced) · createServiceClient() (service_role, admin bypass)
 - **🛂 SUPABASE GRANTS (PostgREST):** Supabase requires explicit **`GRANT`** on `public` tables/views for roles PostgREST uses (`authenticated`, `anon` where the public site writes). Missing privilege → **42501** from the API even when RLS policies exist. **New `public` tables:** same migration (or an adjacent `*_grants.sql` in `supabase/sql/`) must ship `ENABLE ROW LEVEL SECURITY`, policies, and the right `GRANT` lines — copy [`supabase/sql/inquiry.sql`](supabase/sql/inquiry.sql). **Audit (pre–Oct 30 2026 / new-project deadline):** run the read-only queries in [`supabase/sql/grant_audit_queries.sql`](supabase/sql/grant_audit_queries.sql) in the SQL Editor after schema changes; add migrations for any rows returned. **Calendar tables:** if audit flags them, apply [`supabase/sql/calendar_sync_grants.sql`](supabase/sql/calendar_sync_grants.sql) after [`supabase/sql/calendar_sync.sql`](supabase/sql/calendar_sync.sql). **Consignment / logistics:** if audit lists `consignment_order` / `shipment` / `shipment_work` with RLS on and zero policies, apply [`supabase/sql/consignment_shipment_rls.sql`](supabase/sql/consignment_shipment_rls.sql). Tables intentionally **service_role–only** may appear in the audit — document them in the migration comment rather than widening `GRANT`.
 - **R2 endpoint: ALL buckets are EU jurisdiction** → always use `https://<account_id>.eu.r2.cloudflarestorage.com`. Never use the global endpoint (no `.eu.` = NoSuchBucket or BadRequest). Applies to app SDK config, backup scripts, and any new tooling.
@@ -148,14 +151,14 @@ R2 has no S3-style Object Versioning and Bucket Lock is too rigid (locks the adm
 
 **Phase E — Off-site DB backups.** `.github/workflows/backup.yml` runs `scripts/backup.sh` daily at 03:17 UTC: `pg_dump` Supabase (Session Pooler URL, IPv4) → gzip → upload to `art-db-backups` R2 bucket (EU jurisdiction) via **boto3** (Python). AWS CLI v2 and rclone both produce malformed sigv4 credentials against R2 — boto3 with `region_name='auto'` + EU endpoint is the only confirmed-working upload path. No Object Lock; lifecycle rule auto-prunes `daily/*` after 90 days. GH secrets reuse main R2 credentials (`R2_ACCOUNT_ID` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` from `.env.local`) mapped to `R2_BACKUP_ACCOUNT_ID` / `R2_BACKUP_ACCESS_KEY` / `R2_BACKUP_SECRET_KEY`. Full setup + recovery: [docs/BACKUP_RECOVERY.md](docs/BACKUP_RECOVERY.md). Quarterly recovery drill: restore latest dump into throwaway Supabase project, spot-check row counts.
 
+**Audit / ledger TTL.** [`supabase/sql/audit_log_ttl.sql`](supabase/sql/audit_log_ttl.sql) defines `public.audit_log_prune()` (retention: 365d `oeuvre_versions` + automated `system_log`; 180d closed `pending_changes` + non-error `broadcast_events`; **never** auto-deletes `system_log` rows with `event_type IS NULL`, or `broadcast_events` with `event_type` case-insensitively `error`). Weekly GitHub Actions: [`.github/workflows/audit-prune.yml`](.github/workflows/audit-prune.yml) — same `SUPABASE_DB_URL` secret as backup; run the SQL in Supabase before enabling the workflow. **New append-only audit tables:** extend `audit_log_prune()` in the same file from day one (do not grow unbounded).
+
 **Dev-only auto-login.** `middleware.ts` calls `signInWithPassword` when `NODE_ENV=development` AND `DEV_AUTO_LOGIN_EMAIL`/`_PASSWORD` set. Used in preview iframe to skip Google OAuth. Production never has these env vars set. Login error logs mask email-shaped substrings.
 
 **Audit ledger actor emails.** `fetchSystemLogs` enriches `user_id` with `Contact.Email` batched by `auth_user_id` (RLS anon read; no service-role user API per row).
 
 🚫 CEMETERY (instant fail)
-DEAD COLUMNS: Oeuvres.Statut, Oeuvres.StatutID, tags, txtImageName, Emballage, DocsValidated, UniteDimension
-ORPHAN COLS: NomOriginal (→ Titre), Poids, Tirage
-DEAD TABLES: tblRelations (→ tblrelations), OeuvreRelationships
+**Dropped from DB** (`supabase/sql/dead_columns_drop.sql`): legacy `Oeuvres` columns `Statut`, `StatutID`, `tags`, `txtImageName`, `Emballage`, `DocsValidated`, `UniteDimension`, `NomOriginal`, `Poids`, `Tirage`; obsolete tables `OeuvreRelationships` and quoted `"tblRelations"` if present. **Live** `public.tblrelations` (lowercase, constellation edges) — never drop. If a view (e.g. `OeuvresComplete`) referenced dropped columns, `DROP COLUMN … CASCADE` removes that view; recreate in Supabase without those columns if still needed.
 NEVER WRITE: Oeuvres.is_public (trigger), Oeuvres.txtImageNameLink (trigger tblimage_cover_sync)
 NEW TABLES: snake_case only. No tbl prefix. No CamelCase.
 

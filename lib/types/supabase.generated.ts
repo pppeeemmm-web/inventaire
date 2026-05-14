@@ -1051,9 +1051,7 @@ export type Database = {
           LocalisationID: number | null
           Montee: boolean | null
           NeedsPhotograph: boolean | null
-          NomOriginal: string | null
           OeuvreID: number
-          Poids: string | null
           PresentationID: number | null
           Prix: number | null
           PrixFinal: number | null
@@ -1063,7 +1061,6 @@ export type Database = {
           statusId: number | null
           Support: number | null
           Technique: number | null
-          Tirage: string | null
           Titre: string | null
           tva_rate: number | null
           txtImageNameLink: string | null
@@ -1097,9 +1094,7 @@ export type Database = {
           LocalisationID?: number | null
           Montee?: boolean | null
           NeedsPhotograph?: boolean | null
-          NomOriginal?: string | null
           OeuvreID: number
-          Poids?: string | null
           PresentationID?: number | null
           Prix?: number | null
           PrixFinal?: number | null
@@ -1109,7 +1104,6 @@ export type Database = {
           statusId?: number | null
           Support?: number | null
           Technique?: number | null
-          Tirage?: string | null
           Titre?: string | null
           tva_rate?: number | null
           txtImageNameLink?: string | null
@@ -1143,9 +1137,7 @@ export type Database = {
           LocalisationID?: number | null
           Montee?: boolean | null
           NeedsPhotograph?: boolean | null
-          NomOriginal?: string | null
           OeuvreID?: number
-          Poids?: string | null
           PresentationID?: number | null
           Prix?: number | null
           PrixFinal?: number | null
@@ -1155,7 +1147,6 @@ export type Database = {
           statusId?: number | null
           Support?: number | null
           Technique?: number | null
-          Tirage?: string | null
           Titre?: string | null
           tva_rate?: number | null
           txtImageNameLink?: string | null
@@ -1241,6 +1232,8 @@ export type Database = {
           id: number
           path: string
           referrer: string | null
+          visitor_id: string | null
+          is_team_session: boolean
         }
         Insert: {
           country?: string | null
@@ -1248,6 +1241,8 @@ export type Database = {
           id?: number
           path: string
           referrer?: string | null
+          visitor_id?: string | null
+          is_team_session?: boolean
         }
         Update: {
           country?: string | null
@@ -1255,6 +1250,8 @@ export type Database = {
           id?: number
           path?: string
           referrer?: string | null
+          visitor_id?: string | null
+          is_team_session?: boolean
         }
         Relationships: []
       }
@@ -2311,9 +2308,7 @@ export type Database = {
           Hauteur: string | null
           Historique: string | null
           Largeur: string | null
-          NomOriginal: string | null
           OeuvreID: number | null
-          Poids: string | null
           Prix: number | null
           PrixFinal: number | null
           Profondeur: string | null
@@ -2321,7 +2316,6 @@ export type Database = {
           statusLabel: string | null
           Support: number | null
           Technique: number | null
-          Tirage: string | null
           Titre: string | null
           txtImageNameLink: string | null
         }

@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 
 import { loadPortfolioConfig } from '@/app/atelier/portfolio/actions'
 import { trackView } from '@/lib/track'
+import { getOrCreatePublicVisitorId } from '@/lib/public-visitor-id'
 
 export default function EnquiryClient() {
   const { lang, setLang, t } = useI18n()
@@ -20,7 +21,7 @@ export default function EnquiryClient() {
   const sb = createClient()
 
   useEffect(() => {
-    void trackView('/enquiry')
+    void trackView('/enquiry', null, null, getOrCreatePublicVisitorId())
     async function fetchData() {
       const result = await loadPortfolioConfig()
       if ('ok' in result) setConfig(result.config)

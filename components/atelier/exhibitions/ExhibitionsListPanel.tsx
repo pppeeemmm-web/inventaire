@@ -1,6 +1,7 @@
 'use client'
 
 import type { CSSProperties } from 'react'
+import { useI18n } from '@/lib/i18n/context'
 import { pipelineTypeLabel, type ProcessType } from '@/components/atelier/PipelineTab'
 
 const inputSt: CSSProperties = {
@@ -77,6 +78,7 @@ export function ExhibitionsListPanel({
   onSetNewNom: (name: string) => void
   onSetNewType: (type: string) => void
 }) {
+  const { t } = useI18n()
   return (
     <div style={{ width: 240, flexShrink: 0, borderRight: '1px solid var(--bd)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--bd)', display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -108,7 +110,7 @@ export function ExhibitionsListPanel({
 
       <div style={{ flex: 1, overflowY: 'auto' }}>
         {filteredExhibitions.length === 0 ? (
-          <div style={{ padding: '20px 14px', fontSize: 10, color: 'var(--tx3)', fontStyle: 'italic' }}>Aucune exposition.</div>
+          <div style={{ padding: '20px 14px', fontSize: 10, color: 'var(--tx3)', fontStyle: 'italic' }}>{t('exhibitions_list_empty')}</div>
         ) : filteredExhibitions.map((ex) => {
           const done = ex.steps.filter((s) => s.statut === 'fait').length
           const total = ex.steps.length

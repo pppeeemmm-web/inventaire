@@ -1,0 +1,31 @@
+name: Weekly audit log prune
+
+# Calls public.audit_log_prune() — see supabase/sql/audit_log_ttl.sql.
+# Requires same secret as backup: SUPABASE_DB_URL (Session Pooler or direct Postgres URL with rights to DELETE).
+on:
+  schedule:
+    - cron: '13 4 * * 0' # 04:13 UTC Sundays (off-peak minute; weekly)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prune:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Install Postgres client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Run audit_log_prune
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "SUPABASE_DB_URL secret is not set" >&2
+            exit 1
+          fi
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -c "select * from public.audit_log_prune();"

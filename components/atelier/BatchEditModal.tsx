@@ -216,7 +216,7 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, a
       </div>
 
       {/* ── Section: Classification ─────────────────────────────── */}
-      <SectionLabel>Classification</SectionLabel>
+      <SectionLabel>{t('batch_edit_section_classification')}</SectionLabel>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 20px', marginBottom: 20 }}>
 
         <FieldWrap label={t('title')} active={titre !== ''} style={{ gridColumn: 'span 2' }}>

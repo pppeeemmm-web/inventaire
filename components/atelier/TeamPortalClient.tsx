@@ -302,6 +302,7 @@ export function TeamPortalClient({
 
   useEffect(() => {
     if (!inspected) setDrawerDirty(false)
+    if (inspected) setVoiceNoteSheetOpen(false)
   }, [inspected])
 
   useEffect(() => {
@@ -499,6 +500,12 @@ export function TeamPortalClient({
     setSidebarOpen(false)
   }
 
+  const [subsetChipExpanded, setSubsetChipExpanded] = useState(false)
+  const [voiceNoteSheetOpen, setVoiceNoteSheetOpen] = useState(false)
+  useEffect(() => {
+    setSubsetChipExpanded(false)
+  }, [tab])
+
   // ── Derived lookup maps ────────────────────────────────────────
 
   const sortedTechniques = useMemo(() => [...techniques].sort((a, b) => (a.Technique ?? '').localeCompare(b.Technique ?? '', 'fr')), [techniques])
@@ -628,6 +635,14 @@ export function TeamPortalClient({
 
   const showDock = selection.size > 0 && tab !== 'constellation'
 
+  /** Ring A.2 — hide subset chrome on tabs that do not depend on the loaded œuvres batch. */
+  const showSubsetBanner =
+    oeuvresCataloguePartial &&
+    oeuvresPaging != null &&
+    !(['system', 'audit', 'broadcast'] as Tab[]).includes(tab)
+
+  const showMobileActionBar = atelierNarrow && !inspected
+
   return (
     <>
       {drawerLeaveDialog}
@@ -671,30 +686,46 @@ export function TeamPortalClient({
                 border: '1px solid var(--bd)',
                 padding: '6px 10px',
                 cursor: 'pointer',
+                minWidth: 44,
+                minHeight: 44,
+                boxSizing: 'border-box',
               }}
             >
               ☰
             </button>
           )}
-          <button
-            type="button"
-            onClick={() => {
-              pendingNavRef.current = () => router.push('/hub')
-              attemptNavigateWithDrawerGuard()
-            }}
-            className="t-mono-sm"
-            style={{ color: 'var(--tx3)', cursor: 'pointer', background: 'none', border: 'none', padding: 0, fontSize: 9, letterSpacing: 1.5, textTransform: 'uppercase', opacity: 0.7, flexShrink: 0 }}
-          >
-            Hub
-          </button>
-          <span style={{ color: 'var(--tx3)', fontSize: 10, opacity: 0.3, flexShrink: 0 }}>/</span>
           {!atelierNarrow && (
             <>
+              <button
+                type="button"
+                onClick={() => {
+                  pendingNavRef.current = () => router.push('/hub')
+                  attemptNavigateWithDrawerGuard()
+                }}
+                className="t-mono-sm"
+                style={{ color: 'var(--tx3)', cursor: 'pointer', background: 'none', border: 'none', padding: 0, fontSize: 9, letterSpacing: 1.5, textTransform: 'uppercase', opacity: 0.7, flexShrink: 0 }}
+              >
+                Hub
+              </button>
+              <span style={{ color: 'var(--tx3)', fontSize: 10, opacity: 0.3, flexShrink: 0 }}>/</span>
               <div className="serif" style={{ fontSize: 24, letterSpacing: '-0.01em', color: 'var(--tx)', flexShrink: 0 }}>{t('atelier')}</div>
               <span style={{ color: 'var(--tx3)', fontSize: 10, opacity: 0.3 }}>/</span>
             </>
           )}
-          <div className="t-eyebrow" style={{ color: 'var(--ac)', fontSize: 10, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{activeTabLabel}</div>
+          <div
+            className="t-eyebrow"
+            style={{
+              color: 'var(--ac)',
+              fontSize: 10,
+              overflow: atelierNarrow ? 'visible' : 'hidden',
+              textOverflow: atelierNarrow ? 'clip' : 'ellipsis',
+              whiteSpace: atelierNarrow ? 'normal' : 'nowrap',
+              lineHeight: atelierNarrow ? 1.25 : undefined,
+              minWidth: 0,
+            }}
+          >
+            {activeTabLabel}
+          </div>
           {!atelierNarrow && (
             <>
               <div className="vline" style={{ height: 16, opacity: 0.3, marginLeft: 8 }} />
@@ -712,6 +743,7 @@ export function TeamPortalClient({
           )}
         </div>
 
+        {!atelierNarrow && (
         <div className="row gap-sm" style={{ flexShrink: 0 }}>
           <div style={{ display: 'flex', border: '1px solid var(--bd)', fontSize: 10, letterSpacing: 1 }}>
             <PemThemeToggle showLabels={!atelierNarrow} />
@@ -731,12 +763,13 @@ export function TeamPortalClient({
             ⌘K
           </button>
           <button className="btn ghost sm" onClick={() => router.push('/atelier/works/new')} title={t('newWork')}>
-            {atelierNarrow ? '+' : `+ ${t('newWork')}`}
+            {`+ ${t('newWork')}`}
           </button>
         </div>
+        )}
       </div>
 
-      {oeuvresCataloguePartial && oeuvresPaging && (
+      {showSubsetBanner && oeuvresPaging && (
         <div
           data-testid="atelier-oeuvres-subset-banner"
           className="t-mono-sm"
@@ -745,42 +778,114 @@ export function TeamPortalClient({
             padding: '8px max(12px, env(safe-area-inset-right)) 8px max(12px, env(safe-area-inset-left))',
             borderBottom: '1px solid var(--bd)',
             background: 'var(--bg2)',
-            display: 'grid',
-            gridTemplateColumns:
-              oeuvresNextCursor != null && !atelierNarrow ? 'minmax(0, 1fr) auto' : 'minmax(0, 1fr)',
-            gap: 10,
-            alignItems: 'center',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: atelierNarrow ? 8 : 10,
           }}
         >
-          <p
-            style={{
-              margin: 0,
-              color: 'var(--tx2)',
-              fontSize: 11,
-              minWidth: 0,
-              lineHeight: 1.45,
-            }}
-          >
-            {t('atelier_oeuvres_subset_banner')
-              .replace('{loaded}', String(oeuvres.length))
-              .replace('{total}', String(oeuvresPaging.totalCount))}
-          </p>
-          {oeuvresNextCursor != null ? (
-            <button
-              type="button"
-              className="btn primary sm"
-              disabled={oeuvresMoreLoading}
-              onClick={() => void loadMoreOeuvres()}
+          {atelierNarrow ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setSubsetChipExpanded((v) => !v)}
+                aria-expanded={subsetChipExpanded}
+                aria-label={t('atelier_subset_batch_toggle_aria')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  width: '100%',
+                  minHeight: 44,
+                  padding: '0 4px',
+                  margin: 0,
+                  background: 'transparent',
+                  border: 'none',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  color: 'var(--tx)',
+                  font: 'inherit',
+                  textAlign: 'left',
+                }}
+              >
+                <span style={{ fontSize: 12, letterSpacing: 0.04, fontWeight: 600 }}>
+                  {oeuvres.length} / {oeuvresPaging.totalCount}
+                  <span aria-hidden style={{ marginLeft: 6, opacity: 0.6 }}>{subsetChipExpanded ? '▴' : '▾'}</span>
+                </span>
+              </button>
+              {subsetChipExpanded ? (
+                <>
+                  <p
+                    style={{
+                      margin: 0,
+                      color: 'var(--tx2)',
+                      fontSize: 11,
+                      minWidth: 0,
+                      lineHeight: 1.45,
+                    }}
+                  >
+                    {t('atelier_oeuvres_subset_banner')
+                      .replace('{loaded}', String(oeuvres.length))
+                      .replace('{total}', String(oeuvresPaging.totalCount))}
+                  </p>
+                  {oeuvresNextCursor != null ? (
+                    <button
+                      type="button"
+                      className="btn primary sm"
+                      disabled={oeuvresMoreLoading}
+                      onClick={() => void loadMoreOeuvres()}
+                      style={{
+                        minHeight: 44,
+                        flexShrink: 0,
+                        width: '100%',
+                      }}
+                    >
+                      {oeuvresMoreLoading ? '…' : t('atelier_oeuvres_load_more')}
+                    </button>
+                  ) : null}
+                </>
+              ) : null}
+            </>
+          ) : (
+            <div
               style={{
-                minHeight: 44,
-                flexShrink: 0,
-                width: atelierNarrow ? '100%' : 'auto',
-                justifySelf: atelierNarrow ? 'stretch' : 'end',
+                display: 'grid',
+                gridTemplateColumns:
+                  oeuvresNextCursor != null ? 'minmax(0, 1fr) auto' : 'minmax(0, 1fr)',
+                gap: 10,
+                alignItems: 'center',
               }}
             >
-              {oeuvresMoreLoading ? '…' : t('atelier_oeuvres_load_more')}
-            </button>
-          ) : null}
+              <p
+                style={{
+                  margin: 0,
+                  color: 'var(--tx2)',
+                  fontSize: 11,
+                  minWidth: 0,
+                  lineHeight: 1.45,
+                }}
+              >
+                {t('atelier_oeuvres_subset_banner')
+                  .replace('{loaded}', String(oeuvres.length))
+                  .replace('{total}', String(oeuvresPaging.totalCount))}
+              </p>
+              {oeuvresNextCursor != null ? (
+                <button
+                  type="button"
+                  className="btn primary sm"
+                  disabled={oeuvresMoreLoading}
+                  onClick={() => void loadMoreOeuvres()}
+                  style={{
+                    minHeight: 44,
+                    flexShrink: 0,
+                    width: 'auto',
+                    justifySelf: 'end',
+                  }}
+                >
+                  {oeuvresMoreLoading ? '…' : t('atelier_oeuvres_load_more')}
+                </button>
+              ) : null}
+            </div>
+          )}
         </div>
       )}
 
@@ -864,6 +969,67 @@ export function TeamPortalClient({
                 : oeuvres.length}{' '}
               {t('inventoryWorksBadge')}
             </div>
+            {atelierNarrow && (
+              <div
+                style={{
+                  padding: '0 16px 16px',
+                  borderBottom: '1px solid var(--bd)',
+                  marginBottom: 8,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 12,
+                }}
+              >
+                <PemThemeToggle showLabels />
+                <div style={{ display: 'flex', border: '1px solid var(--bd)', fontSize: 10, letterSpacing: 1, width: 'fit-content' }}>
+                  {(['fr', 'en'] as const).map((l) => (
+                    <button
+                      key={l}
+                      type="button"
+                      onClick={() => setLang(l)}
+                      style={{
+                        padding: '8px 14px',
+                        minHeight: 44,
+                        minWidth: 44,
+                        boxSizing: 'border-box',
+                        background: lang === l ? 'var(--ac)' : 'transparent',
+                        color: lang === l ? 'var(--bg0)' : 'var(--tx3)',
+                        fontWeight: lang === l ? 600 : 400,
+                        border: 'none',
+                        borderRight: l === 'fr' ? '1px solid var(--bd)' : 'none',
+                        cursor: 'pointer',
+                        fontFamily: 'inherit',
+                      }}
+                    >
+                      {l.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  className="btn ghost sm"
+                  title="⌘K"
+                  onClick={() => {
+                    setPaletteOpen(true)
+                    setSidebarOpen(false)
+                  }}
+                  style={{ fontSize: 11, letterSpacing: 1, alignSelf: 'flex-start', minHeight: 44, padding: '0 14px' }}
+                >
+                  ⌘K
+                </button>
+                <button
+                  type="button"
+                  className="btn primary sm"
+                  onClick={() => {
+                    void router.push('/atelier/works/new')
+                    setSidebarOpen(false)
+                  }}
+                  style={{ minHeight: 44, alignSelf: 'stretch' }}
+                >
+                  + {t('newWork')}
+                </button>
+              </div>
+            )}
           <div data-testid="atelier-nav-groups">
           {GROUPS.map((g) => (
             <div key={g.label} style={{ marginBottom: 20 }}>
@@ -913,7 +1079,19 @@ export function TeamPortalClient({
         </div>
 
         {/* ── Content ────────────────────────────────────────────── */}
-        <div style={{ flex: 1, overflow: 'auto', minHeight: 0, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+        <div
+          style={{
+            flex: 1,
+            overflow: 'auto',
+            minHeight: 0,
+            minWidth: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            paddingBottom: showMobileActionBar
+              ? 'max(12px, calc(68px + env(safe-area-inset-bottom, 0px)))'
+              : undefined,
+          }}
+        >
 
         {tab === 'overview' && (
           <OverviewTab
@@ -1181,6 +1359,117 @@ export function TeamPortalClient({
           statusLabelMap={statusLabelMap}
           onClose={() => setShowCompare(false)}
         />
+      )}
+
+      {voiceNoteSheetOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="ring-b-voice-title"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 155,
+            background: 'rgba(0,0,0,0.45)',
+            display: 'flex',
+            alignItems: 'flex-end',
+            justifyContent: 'center',
+          }}
+          onClick={() => setVoiceNoteSheetOpen(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: '100%',
+              maxWidth: 480,
+              background: 'var(--bg1)',
+              borderTopLeftRadius: 16,
+              borderTopRightRadius: 16,
+              padding: '20px 20px max(20px, env(safe-area-inset-bottom))',
+              borderTop: '1px solid var(--bd)',
+              boxShadow: '0 -8px 32px rgba(0,0,0,0.25)',
+            }}
+          >
+            <div id="ring-b-voice-title" className="serif" style={{ fontSize: 18, marginBottom: 10 }}>
+              {t('ring_b_voice_sheet_title')}
+            </div>
+            <p className="t-mono-sm" style={{ color: 'var(--tx2)', fontSize: 12, lineHeight: 1.5, marginBottom: 16 }}>
+              {t('ring_b_voice_sheet_body')}
+            </p>
+            <button
+              type="button"
+              className="btn primary"
+              style={{ minHeight: 44, width: '100%' }}
+              onClick={() => setVoiceNoteSheetOpen(false)}
+            >
+              {t('ring_b_voice_sheet_close')}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showMobileActionBar && (
+        <div
+          style={{
+            position: 'fixed',
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 50,
+            display: 'grid',
+            gridTemplateColumns: 'repeat(4, 1fr)',
+            gap: 6,
+            padding: 'max(8px, env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left)) max(8px, env(safe-area-inset-right))',
+            background: 'var(--bg1)',
+            borderTop: '1px solid var(--bd)',
+          }}
+        >
+          <button
+            type="button"
+            className="btn ghost sm"
+            aria-label={t('ring_b_bar_capture_aria')}
+            title={t('ring_b_bar_capture_aria')}
+            onClick={() => void router.push('/atelier/session/new')}
+            style={{ minHeight: 48, fontSize: 18, padding: 4 }}
+          >
+            📷
+          </button>
+          <button
+            type="button"
+            className="btn ghost sm"
+            aria-label={t('ring_b_bar_scan_aria')}
+            title={t('ring_b_bar_scan_aria')}
+            onClick={() => void router.push('/atelier/scan')}
+            style={{ minHeight: 48, fontSize: 18, padding: 4 }}
+          >
+            🔍
+          </button>
+          <button
+            type="button"
+            className="btn ghost sm"
+            aria-label={t('ring_b_bar_note_aria')}
+            title={t('ring_b_bar_note_aria')}
+            onClick={() => setVoiceNoteSheetOpen(true)}
+            style={{ minHeight: 48, fontSize: 18, padding: 4 }}
+          >
+            🎤
+          </button>
+          <button
+            type="button"
+            className="btn ghost sm"
+            aria-label={t('ring_b_bar_reminders_aria')}
+            title={t('ring_b_bar_reminders_aria')}
+            onClick={() => {
+              handleSetTab('overview')
+              requestAnimationFrame(() => {
+                document.getElementById('atelier-field-reminders')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              })
+            }}
+            style={{ minHeight: 48, fontSize: 18, padding: 4 }}
+          >
+            ⏰
+          </button>
+        </div>
       )}
 
     </div>
@@ -1514,7 +1803,8 @@ function OverviewTab({
           </div>
         )}
 
-        {/* Reminders Pulse */}
+        {/* Reminders Pulse — scroll target for Ring B mobile bar */}
+        <div id="atelier-field-reminders" style={{ scrollMarginTop: 96 }}>
         {reminders.length > 0 && (
           <div>
             <div className="t-eyebrow" style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1542,6 +1832,7 @@ function OverviewTab({
             </div>
           </div>
         )}
+        </div>
 
         {/* Pipeline Pulse */}
         <div>
@@ -1695,7 +1986,6 @@ function CompareModal({ ids, oeuvres, tM, sM, contacts, addresses, statusLabelMa
         return raw === '—' ? '—' : `${raw} cm`
       } },
     { l: t('depth'),       k: (o: any) => o.Profondeur ? `${o.Profondeur} cm` : '—' },
-    { l: t('tirage'),      k: (o: any) => o.Tirage || '—' },
     { l: t('status'),      k: (o: any) => (o.statusId != null ? statusLabelMap[o.statusId] : null) ?? '—' },
     { l: t('contact'),     k: (o: any) => contactName(o.ContactID) },
     { l: t('location'),    k: (o: any) => resolveLocation(o.LocalisationID) },

@@ -1,18 +1,35 @@
 'use client'
 
+import { useState } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { useRouter } from 'next/navigation'
+import { useMediaQuery } from '@/lib/useMediaQuery'
+import type { DictKey } from '@/lib/i18n/dictionary'
 
-const TILES = [
-  { key: 'hub_launcher_field',      subKey: 'hub_launcher_field_sub',      tab: 'inventory' },
-  { key: 'hub_launcher_studio',     subKey: 'hub_launcher_studio_sub',     tab: 'overview' },
-  { key: 'hub_launcher_commercial', subKey: 'hub_launcher_commercial_sub', tab: 'pipeline' },
-  { key: 'hub_launcher_admin',      subKey: 'hub_launcher_admin_sub',      tab: 'contacts' },
-] as const
+const LEGACY_TILES = [
+  { key: 'hub_launcher_field' as const, subKey: 'hub_launcher_field_sub' as const, tab: 'inventory' },
+  { key: 'hub_launcher_studio' as const, subKey: 'hub_launcher_studio_sub' as const, tab: 'overview' },
+  { key: 'hub_launcher_commercial' as const, subKey: 'hub_launcher_commercial_sub' as const, tab: 'pipeline' },
+  { key: 'hub_launcher_admin' as const, subKey: 'hub_launcher_admin_sub' as const, tab: 'contacts' },
+]
+
+/** Ring B.1 — field verbs first; order matches iPhone SE plan. */
+const FIELD_ROWS: { labelKey: DictKey; subKey: DictKey; href: string }[] = [
+  { labelKey: 'hub_field_session', subKey: 'hub_field_session_sub', href: '/atelier/session/new' },
+  { labelKey: 'hub_field_note', subKey: 'hub_field_note_sub', href: '/atelier/share-triage' },
+  { labelKey: 'hub_field_scan_doc', subKey: 'hub_field_scan_doc_sub', href: '/atelier/capture?mode=doc' },
+  { labelKey: 'hub_field_pipeline', subKey: 'hub_field_pipeline_sub', href: '/atelier?tab=pipeline' },
+  { labelKey: 'hub_field_triage', subKey: 'hub_field_triage_sub', href: '/atelier/triage' },
+  { labelKey: 'hub_field_contact', subKey: 'hub_field_contact_sub', href: '/atelier/capture?mode=card' },
+  { labelKey: 'hub_field_document', subKey: 'hub_field_document_sub', href: '/atelier/documents/new' },
+  { labelKey: 'hub_field_issue', subKey: 'hub_field_issue_sub', href: '/atelier/issue/new' },
+]
 
 export function HubLauncherClient() {
   const { t } = useI18n()
   const router = useRouter()
+  const narrow = useMediaQuery('(max-width: 767px)')
+  const [legacyOpen, setLegacyOpen] = useState(false)
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, gap: 32 }}>
@@ -21,33 +38,120 @@ export function HubLauncherClient() {
         <div className="serif s-lg" style={{ marginTop: 8 }}>{t('hub_launcher_title')}</div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, width: '100%', maxWidth: 480 }}>
-        {TILES.map(({ key, subKey, tab }) => (
+      {narrow ? (
+        <div style={{ width: '100%', maxWidth: 420, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {FIELD_ROWS.map((row) => (
+            <button
+              key={row.labelKey}
+              type="button"
+              className="btn ghost"
+              onClick={() => void router.push(row.href)}
+              style={{
+                minHeight: 64,
+                width: '100%',
+                display: 'flex',
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '14px 18px',
+                textAlign: 'left',
+                gap: 12,
+              }}
+            >
+              <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4, minWidth: 0 }}>
+                <span style={{ fontSize: 14, fontWeight: 600 }}>{t(row.labelKey)}</span>
+                <span style={{ fontSize: 10, opacity: 0.55, letterSpacing: 0.4 }}>{t(row.subKey)}</span>
+              </span>
+              <span style={{ fontSize: 14, opacity: 0.35, flexShrink: 0 }} aria-hidden>›</span>
+            </button>
+          ))}
+
           <button
-            key={key}
             type="button"
             className="btn ghost"
-            onClick={() => router.push(`/atelier?tab=${tab}`)}
+            onClick={() => setLegacyOpen((v) => !v)}
+            aria-expanded={legacyOpen}
             style={{
-              minHeight: 80,
+              minHeight: 52,
+              width: '100%',
               display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'flex-start',
-              padding: '16px 18px',
-              gap: 6,
-              textAlign: 'left',
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '12px 18px',
+              marginTop: 4,
             }}
           >
-            <span style={{ fontSize: 13, fontWeight: 600 }}>{t(key)}</span>
-            <span style={{ fontSize: 10, opacity: 0.5, letterSpacing: 0.5 }}>{t(subKey)}</span>
+            <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}>
+              <span style={{ fontSize: 13, fontWeight: 600 }}>{t('hub_field_more')}</span>
+              <span style={{ fontSize: 10, opacity: 0.5 }}>{t('hub_field_more_sub')}</span>
+            </span>
+            <span style={{ fontSize: 12, opacity: 0.45 }} aria-hidden>{legacyOpen ? '▴' : '▾'}</span>
           </button>
-        ))}
-      </div>
+
+          {legacyOpen ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 4 }}>
+              {LEGACY_TILES.map(({ key, subKey, tab }) => (
+                <button
+                  key={key}
+                  type="button"
+                  className="btn ghost"
+                  onClick={() => void router.push(`/atelier?tab=${tab}`)}
+                  style={{
+                    minHeight: 56,
+                    width: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-start',
+                    padding: '14px 18px',
+                    gap: 6,
+                    textAlign: 'left',
+                  }}
+                >
+                  <span style={{ fontSize: 13, fontWeight: 600 }}>{t(key)}</span>
+                  <span style={{ fontSize: 10, opacity: 0.5, letterSpacing: 0.5 }}>{t(subKey)}</span>
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, 1fr)',
+            gap: 16,
+            width: '100%',
+            maxWidth: 480,
+          }}
+        >
+          {LEGACY_TILES.map(({ key, subKey, tab }) => (
+            <button
+              key={key}
+              type="button"
+              className="btn ghost"
+              onClick={() => void router.push(`/atelier?tab=${tab}`)}
+              style={{
+                minHeight: 80,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'flex-start',
+                padding: '16px 18px',
+                gap: 6,
+                textAlign: 'left',
+              }}
+            >
+              <span style={{ fontSize: 13, fontWeight: 600 }}>{t(key)}</span>
+              <span style={{ fontSize: 10, opacity: 0.5, letterSpacing: 0.5 }}>{t(subKey)}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       <button
         type="button"
         className="btn primary"
-        onClick={() => router.push('/atelier')}
+        onClick={() => void router.push('/atelier')}
         style={{ minHeight: 44, fontSize: 12, letterSpacing: 1 }}
       >
         {t('hub_launcher_enter_atelier')}

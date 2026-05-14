@@ -22,8 +22,8 @@ export async function generateMetadata(): Promise<Metadata> {
     const l = config.landing as { hero_image_url?: string } | undefined
     heroUrl = resolveLandingHeroImageUrl(l?.hero_image_url)
     siteName = resolveArtistDisplayName(g?.artist_name)
-  } catch {
-    /* fall back to defaults */
+  } catch (e) {
+    console.error('[HomePage] generateMetadata: portfolio sections load failed', e)
   }
 
   return {

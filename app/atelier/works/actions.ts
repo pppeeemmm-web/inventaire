@@ -823,8 +823,8 @@ async function r2Delete(filename: string): Promise<void> {
 }
 
 /**
- * Upload original to R2 and generate + upload a 400px AVIF thumbnail
- * to thumbs/<base>.avif — automatically for every new image.
+ * Normalize upload to 2100px long-side AVIF (q=50), strip EXIF except Artist/Copyright,
+ * upload to R2 + 400px AVIF thumb. Filename hash uses raw input bytes (stable across encoders).
  */
 async function uploadImage(
   _supabase: SupabaseClient,
@@ -834,16 +834,37 @@ async function uploadImage(
 ): Promise<{ ok: true; filename: string } | { error: string }> {
   try {
     const buf = Buffer.from(await file.arrayBuffer())
-    const validated = await validateWorkImageBuffer(buf)
-    if ('error' in validated) return { error: validated.error }
+    const check = await validateWorkImageBuffer(buf)
+    if ('error' in check) return { error: check.error }
 
-    const filename = makeImageStorageFilename(oeuvreId, seq, buf, validated.ext)
+    const artist =
+      process.env.IMAGE_EXIF_ARTIST?.trim() || 'PierreEmmanuelMoulin'
+    const copyright =
+      process.env.IMAGE_EXIF_COPYRIGHT?.trim() ||
+      '© PierreEmmanuelMoulin · pppeeemmm@gmail.com'
 
-    // Upload original (Content-Type from decoded image, not client file.type)
-    await r2Put(buf, filename, validated.mime)
+    const avifBuf = await sharp(buf)
+      .rotate()
+      .resize({
+        width: 2100,
+        height: 2100,
+        fit: 'inside',
+        withoutEnlargement: true,
+      })
+      .keepIccProfile()
+      .withExif({
+        IFD0: {
+          Artist: artist,
+          Copyright: copyright,
+        },
+      })
+      .avif({ quality: 50, effort: 4, chromaSubsampling: '4:4:4' })
+      .toBuffer()
 
-    // Generate 400px thumbnail (AVIF); ensureAlpha + transparent resize bg preserve PNG/WebP alpha
-    const thumbBuf  = await sharp(buf)
+    const filename = makeImageStorageFilename(oeuvreId, seq, buf, 'avif')
+    await r2Put(avifBuf, filename, 'image/avif')
+
+    const thumbBuf = await sharp(avifBuf)
       .ensureAlpha()
       .resize({
         width: 400,

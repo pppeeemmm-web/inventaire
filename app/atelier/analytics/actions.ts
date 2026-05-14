@@ -2,6 +2,13 @@
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { isPublicSiteTrackedPath, normalizeTrackedPath } from '@/lib/public-site-paths'
+import { dict, type Lang } from '@/lib/i18n/dictionary'
+import { missingPageViewVisitorColumns } from '@/lib/page-view-schema'
+
+/** Internal bucket keys (not hostnames) — mapped to UI copy via `dict[lang]`. */
+const REF_BUCKET_DIRECT = '__pem_analytics_direct__'
+const REF_BUCKET_INVALID = '__pem_analytics_bad_ref__'
+const COUNTRY_UNKNOWN_CODE = '__pem_unknown_country__'
 
 function getPageViewServiceClient(): SupabaseClient | null {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -18,6 +25,8 @@ type PageViewRow = {
   referrer: string | null
   country: string | null
   created_at: string
+  visitor_id: string | null
+  is_team_session: boolean | null
 }
 
 export type DayCount = { date: string; views: number }
@@ -28,6 +37,10 @@ export type AnalyticsResult =
       ok: true
       /** Views counted toward aggregates (see scope) */
       pageviews: number
+      /** Distinct non-null visitor_id in scope (browser localStorage id). */
+      uniqueVisitors: number
+      /** Distinct visitor_id excluding team Atelier sessions and ANALYTICS_EXCLUDE_VISITOR_IDS. */
+      netUniqueVisitors: number
       /** Rows whose path is not a known public route — only when scope is public_site */
       offSitePageviews?: number
       scope: 'public_site' | 'all'
@@ -37,13 +50,24 @@ export type AnalyticsResult =
       trend: DayCount[]
     }
 
-const regionFr = new Intl.DisplayNames(['fr'], { type: 'region' })
+function parseExcludedVisitorIds(): Set<string> {
+  const raw = process.env.ANALYTICS_EXCLUDE_VISITOR_IDS?.trim()
+  if (!raw) return new Set()
+  return new Set(
+    raw
+      .split(/[\s,;]+/)
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean)
+  )
+}
 
-function countryLabel(code: string): string {
-  if (code === 'Inconnu') return 'Inconnu'
+function countryLabel(code: string, lang: Lang): string {
+  const d = dict[lang]
+  if (code === COUNTRY_UNKNOWN_CODE) return d.analytics_country_unknown
   if (/^[A-Za-z]{2}$/.test(code)) {
     try {
-      return regionFr.of(code.toUpperCase()) ?? code
+      const loc = lang === 'en' ? 'en-GB' : 'fr-FR'
+      return new Intl.DisplayNames([loc], { type: 'region' }).of(code.toUpperCase()) ?? code
     } catch {
       return code
     }
@@ -51,23 +75,63 @@ function countryLabel(code: string): string {
   return code
 }
 
+function referrerBucketLabel(key: string, lang: Lang): string {
+  const d = dict[lang]
+  if (key === REF_BUCKET_DIRECT) return d.analytics_referrer_direct
+  if (key === REF_BUCKET_INVALID) return d.analytics_referrer_invalid
+  return key
+}
+
+const PAGE_VIEW_SELECT_LEGACY = 'path, referrer, country, created_at' as const
+
 async function fetchAllPageViews(
   sb: SupabaseClient,
   since: string
 ): Promise<{ rows: PageViewRow[] | null; error: string | null }> {
   const rows: PageViewRow[] = []
   let from = 0
-  for (;;) {
-    const { data, error } = await sb
-      .from('page_view')
-      .select('path, referrer, country, created_at')
-      .gte('created_at', since)
-      .order('created_at', { ascending: true })
-      .range(from, from + PAGE_SIZE - 1)
+  let useLegacy = false
 
-    if (error) return { rows: null, error: error.message }
+  for (;;) {
+    const res = useLegacy
+      ? await sb
+          .from('page_view')
+          .select(PAGE_VIEW_SELECT_LEGACY)
+          .gte('created_at', since)
+          .order('created_at', { ascending: true })
+          .range(from, from + PAGE_SIZE - 1)
+      : await sb
+          .from('page_view')
+          .select('path, referrer, country, created_at, visitor_id, is_team_session')
+          .gte('created_at', since)
+          .order('created_at', { ascending: true })
+          .range(from, from + PAGE_SIZE - 1)
+
+    const { data, error } = res
+
+    if (error) {
+      if (from === 0 && !useLegacy && missingPageViewVisitorColumns(error.message)) {
+        useLegacy = true
+        continue
+      }
+      return { rows: null, error: error.message }
+    }
     if (!data?.length) break
-    rows.push(...(data as PageViewRow[]))
+
+    if (useLegacy) {
+      for (const r of data as { path: string; referrer: string | null; country: string | null; created_at: string | null }[]) {
+        rows.push({
+          path: r.path,
+          referrer: r.referrer,
+          country: r.country,
+          created_at: r.created_at ?? '',
+          visitor_id: null,
+          is_team_session: null,
+        })
+      }
+    } else {
+      rows.push(...(data as PageViewRow[]))
+    }
     if (data.length < PAGE_SIZE) break
     from += PAGE_SIZE
   }
@@ -76,11 +140,12 @@ async function fetchAllPageViews(
 
 export async function getAnalyticsStats(
   days: number,
-  opts?: { scope?: 'public_site' | 'all' }
+  opts?: { scope?: 'public_site' | 'all'; lang?: Lang }
 ): Promise<AnalyticsResult> {
   const sb = getPageViewServiceClient()
   if (!sb) return { error: 'Missing Supabase configuration.' }
 
+  const lang: Lang = opts?.lang === 'en' ? 'en' : 'fr'
   const scope = opts?.scope ?? 'public_site'
   const since = new Date(Date.now() - days * 86400 * 1000).toISOString()
 
@@ -95,6 +160,20 @@ export async function getAnalyticsStats(
 
   const pageviews = scopedRows.length
 
+  const excludedIds = parseExcludedVisitorIds()
+  const uniqueSet = new Set<string>()
+  const netSet = new Set<string>()
+  for (const row of scopedRows) {
+    const vid = row.visitor_id?.trim()
+    if (!vid) continue
+    uniqueSet.add(vid)
+    if (row.is_team_session === true) continue
+    if (excludedIds.has(vid.toLowerCase())) continue
+    netSet.add(vid)
+  }
+  const uniqueVisitors = uniqueSet.size
+  const netUniqueVisitors = netSet.size
+
   const pageCounts: Record<string, number> = {}
   const countryByCode: Record<string, number> = {}
   const referrerCounts: Record<string, number> = {}
@@ -104,7 +183,7 @@ export async function getAnalyticsStats(
     const path = normalizeTrackedPath(row.path)
     pageCounts[path] = (pageCounts[path] ?? 0) + 1
 
-    const code = row.country?.trim() || 'Inconnu'
+    const code = row.country?.trim() || COUNTRY_UNKNOWN_CODE
     countryByCode[code] = (countryByCode[code] ?? 0) + 1
 
     const refRaw = row.referrer?.trim()
@@ -113,10 +192,10 @@ export async function getAnalyticsStats(
         const host = new URL(refRaw).hostname.replace(/^www\./, '')
         referrerCounts[host] = (referrerCounts[host] ?? 0) + 1
       } catch {
-        referrerCounts['Référent invalide'] = (referrerCounts['Référent invalide'] ?? 0) + 1
+        referrerCounts[REF_BUCKET_INVALID] = (referrerCounts[REF_BUCKET_INVALID] ?? 0) + 1
       }
     } else {
-      referrerCounts['Direct'] = (referrerCounts['Direct'] ?? 0) + 1
+      referrerCounts[REF_BUCKET_DIRECT] = (referrerCounts[REF_BUCKET_DIRECT] ?? 0) + 1
     }
 
     const day = row.created_at.slice(0, 10)
@@ -130,7 +209,7 @@ export async function getAnalyticsStats(
 
   const countryByLabel: Record<string, number> = {}
   for (const [code, v] of Object.entries(countryByCode)) {
-    const label = countryLabel(code)
+    const label = countryLabel(code, lang)
     countryByLabel[label] = (countryByLabel[label] ?? 0) + v
   }
 
@@ -144,6 +223,8 @@ export async function getAnalyticsStats(
   return {
     ok: true,
     pageviews,
+    uniqueVisitors,
+    netUniqueVisitors,
     ...(offSitePageviews !== undefined && offSitePageviews > 0 ? { offSitePageviews } : {}),
     scope,
     topPages: top(pageCounts, 10).map(([path, views]) => ({ path, views: views as number })),
@@ -151,7 +232,10 @@ export async function getAnalyticsStats(
       .sort(([, a], [, b]) => b - a)
       .slice(0, 10)
       .map(([country, views]) => ({ country, views })),
-    topReferrers: top(referrerCounts, 12).map(([referrer, views]) => ({ referrer, views: views as number })),
+    topReferrers: top(referrerCounts, 12).map(([referrer, views]) => ({
+      referrer: referrerBucketLabel(referrer, lang),
+      views: views as number,
+    })),
     trend,
   }
 }

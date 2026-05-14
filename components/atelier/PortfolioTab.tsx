@@ -7,6 +7,7 @@ import {
   extractDocumentText,
   setWorkPublic,
 } from '@/app/atelier/portfolio/actions'
+import { PORTFOLIO_SAVE_ERR } from '@/lib/portfolio-save-errors'
 import { getAnalyticsStats, type AnalyticsResult } from '@/app/atelier/analytics/actions'
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
@@ -314,6 +315,7 @@ export function PortfolioTab({
   } | null>(null)
   const [saveBusy, setSaveBusy] = useState(false)
   const [pdfOpen,  setPdfOpen]  = useState(false)
+  const [portfolioEtag, setPortfolioEtag] = useState<string | null>(null)
 
   const themeNames = themes.map(t => t.name).sort((a, b) => a.localeCompare(b, 'fr'))
 
@@ -358,6 +360,7 @@ export function PortfolioTab({
     const result = await loadPortfolioConfig()
     if ('ok' in result) {
       setConfig(migrate(result.config))
+      setPortfolioEtag(result.etag)
     }
     setLoading(false)
   }, [])
@@ -366,10 +369,18 @@ export function PortfolioTab({
 
   const handleSave = async () => {
     setSaveBusy(true)
-    const result = await savePortfolioConfig(config)
+    const result = await savePortfolioConfig(config, { ifMatch: portfolioEtag })
     setSaveBusy(false)
-    if ('ok' in result) alert(t('portfolio_config_saved'))
-    else alert(`${t('error_prefix')} ${result.error}`)
+    if ('ok' in result) {
+      setPortfolioEtag(result.etag)
+      alert(t('portfolio_config_saved'))
+    } else if (result.error === PORTFOLIO_SAVE_ERR.ETAG_MISMATCH) {
+      alert(t('portfolio_save_etag_conflict'))
+    } else if (result.error === PORTFOLIO_SAVE_ERR.OBJECT_EXISTS) {
+      alert(t('portfolio_save_object_exists'))
+    } else {
+      alert(`${t('error_prefix')} ${result.error}`)
+    }
   }
 
   const handleTransfer = (value: string) => {
@@ -494,7 +505,9 @@ export function PortfolioTab({
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg0)', overflow: 'hidden' }}>
 
-      {oeuvresCatalogueTotal != null && oeuvresCatalogueTotal > oeuvres.length && (
+      {activeTab !== 'analytics' &&
+        oeuvresCatalogueTotal != null &&
+        oeuvresCatalogueTotal > oeuvres.length && (
         <div
           data-testid="atelier-portfolio-subset-note"
           className="t-mono-sm"
@@ -546,7 +559,7 @@ export function PortfolioTab({
               transition: 'all 0.2s',
               minHeight: 44,
             }}>
-              {tab === 'website' ? 'Site public' : tab === 'portfolio' ? 'Portfolio' : 'Analytiques'}
+              {tab === 'website' ? t('portfolio_subtab_website') : tab === 'portfolio' ? t('portfolio_subtab_portfolio') : t('portfolio_subtab_analytics')}
             </button>
           ))}
         </div>
@@ -566,7 +579,7 @@ export function PortfolioTab({
             onClick={() => setPdfOpen(true)}
             className="btn ghost sm"
             style={{ fontSize: 9, letterSpacing: 2, minHeight: 44 }}
-            title="Aperçu PDF (sections + œuvres configurées ici)"
+            title={t('portfolio_pdf_preview_tooltip')}
           >
             ↓ PDF
           </button>
@@ -576,7 +589,7 @@ export function PortfolioTab({
             rel="noopener noreferrer"
             className="btn ghost sm"
             style={{ fontSize: 9, letterSpacing: 2, textDecoration: 'none', minHeight: 44, display: 'inline-flex', alignItems: 'center' }}
-            title="Aperçu catalogue (/works)"
+            title={t('portfolio_catalog_tooltip')}
           >
             /works
           </a>
@@ -584,12 +597,12 @@ export function PortfolioTab({
             <button
               type="button"
               className="btn primary sm"
-              title="Écrit le fichier de configuration (R2) : identité, /works, sections portfolio (JSON)"
+              title={t('portfolio_save_config_tooltip')}
               onClick={handleSave}
               disabled={saveBusy}
               style={{ fontSize: 9, letterSpacing: 1.5, minHeight: 44 }}
             >
-              {saveBusy ? 'Enregistrement…' : 'Enregistrer'}
+              {saveBusy ? t('savingRecord') : t('save')}
             </button>
           )}
         </div>
@@ -624,14 +637,14 @@ export function PortfolioTab({
           }}
         >
           <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--bd)' }}>
-            <div className="t-eyebrow" style={{ marginBottom: 4 }}>Sources</div>
+            <div className="t-eyebrow" style={{ marginBottom: 4 }}>{t('portfolio_panel_sources')}</div>
             <p className="t-mono-xs" style={{ opacity: 0.4 }}>
-              {activeSlot ? 'Sélectionner une cible' : 'Cliquer pour assigner'}
+              {activeSlot ? t('portfolio_sources_hint_pick') : t('portfolio_sources_hint_click')}
             </p>
           </div>
           <div style={{ flex: 1, overflowY: 'auto', padding: narrow ? '12px 14px' : 16 }} className="col gap-lg">
             <div>
-              <div className="t-label" style={{ marginBottom: 8, fontSize: 10 }}>THÈMES & GROUPES</div>
+              <div className="t-label" style={{ marginBottom: 8, fontSize: 10 }}>{t('portfolio_themes_groups_heading')}</div>
               <div className="col gap-xs">
                 {themeNames.map(name => {
                   const s = themeNameStats[name]
@@ -649,8 +662,8 @@ export function PortfolioTab({
           </div>
           {activeSlot && (
             <div style={{ padding: 16, paddingBottom: 'max(16px, env(safe-area-inset-bottom))', background: 'var(--ac)', color: 'white', textAlign: 'center' }}>
-              <p className="t-mono-sm" style={{ fontWeight: 600, marginBottom: 8 }}>CLIQUER UNE CIBLE</p>
-              <button type="button" className="btn sm ghost" style={{ color: 'white', borderColor: 'white', minHeight: 44 }} onClick={() => setActiveSlot(null)}>Annuler</button>
+              <p className="t-mono-sm" style={{ fontWeight: 600, marginBottom: 8 }}>{t('portfolio_slot_click_target')}</p>
+              <button type="button" className="btn sm ghost" style={{ color: 'white', borderColor: 'white', minHeight: 44 }} onClick={() => setActiveSlot(null)}>{t('cancel')}</button>
             </div>
           )}
         </div>
@@ -977,22 +990,18 @@ export function PortfolioTab({
 
 // ── AnalyticsPanel ────────────────────────────────────────────────────────
 
-const PERIODS = [
-  { label: '7 jours',  days: 7 },
-  { label: '30 jours', days: 30 },
-  { label: '90 jours', days: 90 },
-]
-
 function BarList({ items, labelKey, valueKey, maxRows = 10 }: {
   items: Record<string, unknown>[]
   labelKey: string
   valueKey: string
   maxRows?: number
 }) {
+  const { t, lang } = useI18n()
+  const numLocale = lang === 'en' ? 'en-GB' : 'fr-FR'
   const slice = items.slice(0, maxRows)
   const max = slice[0]?.[valueKey] as number | undefined ?? 1
   if (slice.length === 0) return (
-    <div className="t-mono-xs" style={{ color: 'var(--tx3)', opacity: 0.5 }}>Aucune donnée.</div>
+    <div className="t-mono-xs" style={{ color: 'var(--tx3)', opacity: 0.5 }}>{t('analytics_barlist_empty')}</div>
   )
   return (
     <div className="col" style={{ gap: 12 }}>
@@ -1024,7 +1033,7 @@ function BarList({ items, labelKey, valueKey, maxRows = 10 }: {
               <div className="t-mono-sm" style={{
                 minWidth: 52, textAlign: 'right', color: 'var(--tx)', flexShrink: 0, fontSize: 12, fontVariantNumeric: 'tabular-nums',
               }}>
-                {v.toLocaleString('fr-FR')}
+                {v.toLocaleString(numLocale)}
               </div>
             </div>
           </div>
@@ -1043,6 +1052,8 @@ function trendDayMonth(iso: string) {
 
 /** SVG sparkline: uniform scaling + inset so edge value/date labels are not clipped. */
 function Sparkline({ trend }: { trend: { date: string; views: number }[] }) {
+  const { t, lang } = useI18n()
+  const numLocale = lang === 'en' ? 'en-GB' : 'fr-FR'
   if (trend.length === 0) return null
   const max = Math.max(...trend.map(d => d.views), 1)
   const padL = 44
@@ -1094,7 +1105,9 @@ function Sparkline({ trend }: { trend: { date: string; views: number }[] }) {
         const y = yAt(d.views)
         return (
           <g key={d.date + i}>
-            <title>{`${d.date} · ${d.views.toLocaleString('fr-FR')} vues`}</title>
+            <title>{t('analytics_sparkline_point_title_fmt')
+              .replace('{date}', d.date)
+              .replace('{views}', d.views.toLocaleString(numLocale))}</title>
             <circle
               cx={x}
               cy={y}
@@ -1111,7 +1124,7 @@ function Sparkline({ trend }: { trend: { date: string; views: number }[] }) {
         if (!labelIdx.has(i)) return null
         const x = xAt(i)
         const y = yAt(d.views)
-        const n = d.views.toLocaleString('fr-FR')
+        const n = d.views.toLocaleString(numLocale)
         const dm = trendDayMonth(d.date)
         const valY = Math.max(y - 10, 12)
         return (
@@ -1154,7 +1167,16 @@ function AnalyticsPanel({
   themePublicStats: Record<number, { total: number; pub: number }>
 }) {
   const { t, lang } = useI18n()
+  const numLocale = lang === 'en' ? 'en-GB' : 'fr-FR'
   const narrow = useMediaQuery('(max-width: 767px)')
+  const periods = useMemo(
+    () => [
+      { days: 7 as const, label: t('analytics_period_7d') },
+      { days: 30 as const, label: t('analytics_period_30d') },
+      { days: 90 as const, label: t('analytics_period_90d') },
+    ],
+    [t],
+  )
   const [days, setDays] = useState(30)
   const [scope, setScope] = useState<'public_site' | 'all'>('public_site')
   const [result, setResult] = useState<AnalyticsResult | null>(null)
@@ -1177,11 +1199,11 @@ function AnalyticsPanel({
 
   const load = useCallback(async (d: number, sc: 'public_site' | 'all') => {
     setLoading(true)
-    setResult(await getAnalyticsStats(d, { scope: sc }))
+    setResult(await getAnalyticsStats(d, { scope: sc, lang }))
     setLoading(false)
-  }, [])
+  }, [lang])
 
-  useEffect(() => { load(days, scope) }, [load, days, scope])
+  useEffect(() => { load(days, scope) }, [load, days, scope, lang])
 
   return (
     <div style={{
@@ -1208,15 +1230,18 @@ function AnalyticsPanel({
         maxWidth: '100%',
         boxSizing: 'border-box',
       }}>
-        <span className="t-mono-xs" style={{ color: 'var(--tx3)', letterSpacing: 1 }}>CATALOGUE</span>
+        <span className="t-mono-xs" style={{ color: 'var(--tx3)', letterSpacing: 1 }}>{t('analytics_toolbar_catalogue')}</span>
         <span style={{ fontSize: 13, fontWeight: 600, fontFamily: 'var(--font-serif, serif)' }}>
           {cataloguePublic.toLocaleString(lang === 'en' ? 'en-GB' : 'fr-FR')} / {oeuvres.length.toLocaleString(lang === 'en' ? 'en-GB' : 'fr-FR')}
         </span>
         <span className="t-mono-xs" style={{ color: 'var(--tx3)' }}>
-          · {themeRows.length} thème{themeRows.length !== 1 ? 's' : ''}
+          {' · '}
+          {themeRows.length === 1
+            ? t('analytics_themes_one').replace('{n}', String(themeRows.length))
+            : t('analytics_themes_other').replace('{n}', String(themeRows.length))}
         </span>
         <span style={{ width: 1, height: 14, background: 'var(--bd)', flexShrink: 0 }} aria-hidden />
-        <span className="t-mono-xs" style={{ color: 'var(--tx3)', letterSpacing: 1 }}>TRAFIC</span>
+        <span className="t-mono-xs" style={{ color: 'var(--tx3)', letterSpacing: 1 }}>{t('analytics_toolbar_traffic')}</span>
         {(['public_site', 'all'] as const).map((s) => (
           <button key={s} type="button" onClick={() => setScope(s)} style={{
             padding: narrow ? '10px 12px' : '6px 12px', fontSize: 10, letterSpacing: 1.1, textTransform: 'uppercase',
@@ -1226,10 +1251,10 @@ function AnalyticsPanel({
             borderColor: scope === s ? 'var(--ac)' : 'var(--bd)',
             minHeight: 44,
           }}>
-            {s === 'public_site' ? 'Pages site' : 'Tout brut'}
+            {s === 'public_site' ? t('analytics_scope_public_site') : t('analytics_scope_all_raw')}
           </button>
         ))}
-        {PERIODS.map((p) => (
+        {periods.map((p) => (
           <button key={p.days} type="button" onClick={() => setDays(p.days)} style={{
             padding: narrow ? '10px 12px' : '6px 12px', fontSize: 10, letterSpacing: 1.2, textTransform: 'uppercase',
             fontFamily: 'inherit', cursor: 'pointer', border: '1px solid var(--bd)',
@@ -1269,11 +1294,12 @@ function AnalyticsPanel({
           gap: 8,
         }}>
           <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'minmax(120px, 170px) 1fr',
+            display: narrow ? 'flex' : 'grid',
+            flexDirection: narrow ? 'column' : undefined,
+            gridTemplateColumns: narrow ? undefined : 'minmax(104px, 1fr) minmax(104px, 1fr) minmax(104px, 1fr) minmax(160px, 2fr)',
             gap: 8,
             flexShrink: 0,
-            minHeight: 132,
+            minHeight: narrow ? undefined : 132,
           }}>
             <div style={{
               padding: '10px 12px',
@@ -1285,10 +1311,10 @@ function AnalyticsPanel({
               minHeight: 0,
             }}>
               <div className="t-label" style={{ marginBottom: 6, fontSize: 10 }}>
-                {result.scope === 'public_site' ? 'Pages vues (site)' : 'Pages vues (brut)'}
+                {result.scope === 'public_site' ? t('analytics_page_views_site') : t('analytics_page_views_raw')}
               </div>
               <div style={{
-                fontSize: 24,
+                fontSize: 22,
                 fontWeight: 300,
                 lineHeight: 1,
                 color: 'var(--tx)',
@@ -1296,13 +1322,64 @@ function AnalyticsPanel({
                 letterSpacing: -0.5,
                 fontVariantNumeric: 'tabular-nums',
               }}>
-                {result.pageviews.toLocaleString('fr-FR')}
+                {result.pageviews.toLocaleString(numLocale)}
               </div>
               {result.scope === 'public_site' && result.offSitePageviews != null && result.offSitePageviews > 0 && (
                 <div className="t-mono-xs" style={{ color: 'var(--tx3)', marginTop: 6, lineHeight: 1.35 }}>
-                  +{result.offSitePageviews.toLocaleString('fr-FR')} hors routes
+                  {t('analytics_off_routes_plus_fmt').replace('{count}', result.offSitePageviews.toLocaleString(numLocale))}
                 </div>
               )}
+            </div>
+            <div style={{
+              padding: '10px 12px',
+              background: 'var(--bg0)',
+              border: '1px solid var(--bd)',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              minHeight: 0,
+            }}>
+              <div className="t-label" style={{ marginBottom: 6, fontSize: 10 }}>
+                {t('analytics_unique_visitors')}
+              </div>
+              <div style={{
+                fontSize: 22,
+                fontWeight: 300,
+                lineHeight: 1,
+                color: 'var(--tx)',
+                fontFamily: 'var(--font-serif, serif)',
+                letterSpacing: -0.5,
+                fontVariantNumeric: 'tabular-nums',
+              }}>
+                {result.uniqueVisitors.toLocaleString(numLocale)}
+              </div>
+            </div>
+            <div style={{
+              padding: '10px 12px',
+              background: 'var(--bg0)',
+              border: '1px solid var(--bd)',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'flex-start',
+              minHeight: 0,
+            }}>
+              <div className="t-label" style={{ marginBottom: 6, fontSize: 10 }}>
+                {t('analytics_net_visitors')}
+              </div>
+              <div style={{
+                fontSize: 22,
+                fontWeight: 300,
+                lineHeight: 1,
+                color: 'var(--tx)',
+                fontFamily: 'var(--font-serif, serif)',
+                letterSpacing: -0.5,
+                fontVariantNumeric: 'tabular-nums',
+              }}>
+                {result.netUniqueVisitors.toLocaleString(numLocale)}
+              </div>
+              <div className="t-mono-xs" style={{ color: 'var(--tx3)', marginTop: 6, lineHeight: 1.3, fontSize: 9 }}>
+                {t('analytics_net_visitors_hint')}
+              </div>
             </div>
             <div style={{
               padding: '8px 12px',
@@ -1313,12 +1390,17 @@ function AnalyticsPanel({
               flexDirection: 'column',
               overflow: 'visible',
             }}>
-              <div className="t-label" style={{ marginBottom: 6, fontSize: 10, flexShrink: 0 }}>Tendance (vues / jour)</div>
+              <div className="t-label" style={{ marginBottom: 6, fontSize: 10, flexShrink: 0 }}>{t('analytics_trend_views_per_day')}</div>
               <div style={{ flex: 1, minHeight: 112, overflow: 'visible', padding: '2px 4px 0' }}>
                 <Sparkline trend={result.trend} />
               </div>
             </div>
           </div>
+          {result.pageviews > 0 && result.uniqueVisitors === 0 && (
+            <div className="t-mono-xs" style={{ color: 'var(--tx3)', padding: '0 2px', lineHeight: 1.35 }}>
+              {t('analytics_visitor_coverage_note')}
+            </div>
+          )}
 
           <div style={{
             flex: '1 1 0',
@@ -1336,7 +1418,7 @@ function AnalyticsPanel({
               flexDirection: 'column',
               overflow: 'auto',
             }}>
-              <div className="t-label" style={{ marginBottom: 8, fontSize: 10, flexShrink: 0 }}>Top pages</div>
+              <div className="t-label" style={{ marginBottom: 8, fontSize: 10, flexShrink: 0 }}>{t('analytics_top_pages')}</div>
               <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
                 <BarList items={result.topPages} labelKey="path" valueKey="views" maxRows={10} />
               </div>
@@ -1350,7 +1432,7 @@ function AnalyticsPanel({
               flexDirection: 'column',
               overflow: 'auto',
             }}>
-              <div className="t-label" style={{ marginBottom: 8, fontSize: 10, flexShrink: 0 }}>Pays</div>
+              <div className="t-label" style={{ marginBottom: 8, fontSize: 10, flexShrink: 0 }}>{t('analytics_top_countries')}</div>
               <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
                 <BarList items={result.topCountries} labelKey="country" valueKey="views" maxRows={10} />
               </div>
@@ -1367,7 +1449,7 @@ function AnalyticsPanel({
             flexDirection: 'column',
             overflow: 'auto',
           }}>
-            <div className="t-label" style={{ marginBottom: 8, fontSize: 10, flexShrink: 0 }}>Sources</div>
+            <div className="t-label" style={{ marginBottom: 8, fontSize: 10, flexShrink: 0 }}>{t('analytics_top_sources')}</div>
             <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
               <BarList items={result.topReferrers} labelKey="referrer" valueKey="views" maxRows={10} />
             </div>
@@ -1383,9 +1465,7 @@ function AnalyticsPanel({
               fontSize: 10,
             }}
           >
-            page_view · {result.scope === 'public_site'
-              ? 'routes lib/public-site-paths'
-              : 'sans filtre route'} · UTC
+            {t('analytics_data_footnote')}
           </div>
         </div>
       )}

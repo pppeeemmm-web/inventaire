@@ -4,6 +4,7 @@ import React from 'react'
 import Link from 'next/link'
 import { yearOf } from '@/lib/data'
 import { WorkThumb } from '../atelier/WorkThumb'
+import { useI18n } from '@/lib/i18n/context'
 
 interface Work {
   OeuvreID:         number
@@ -23,6 +24,7 @@ interface Props {
 }
 
 export default function PortalLayout({ title, subtitle, works, userName }: Props) {
+  const { t } = useI18n()
   return (
     <div style={{ minHeight: '100vh', background: '#edeae4', color: '#6b6760', fontFamily: 'var(--font-ui)' }}>
       
@@ -38,7 +40,7 @@ export default function PortalLayout({ title, subtitle, works, userName }: Props
           <div className="serif" style={{ fontFamily: 'Instrument Serif, serif', fontSize: 20, color: '#3a3834' }}>{subtitle}</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-          <div style={{ fontSize: 9, letterSpacing: 1, color: '#b0aca6' }}>Connecté en tant que: {userName}</div>
+          <div style={{ fontSize: 9, letterSpacing: 1, color: '#b0aca6' }}>{t('portal_connected_as')} {userName}</div>
           <Link href="/hub" style={{ fontSize: 9, letterSpacing: 2, color: '#b0aca6', textDecoration: 'none', border: '1px solid #dedad4', padding: '6px 12px' }}>HUB</Link>
         </div>
       </nav>

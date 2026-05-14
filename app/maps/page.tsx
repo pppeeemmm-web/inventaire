@@ -1,11 +1,9 @@
 import type { Metadata } from 'next'
 import { listConstellationMaps } from '@/app/atelier/constellation/actions'
 import { MapsIndexClient } from '@/components/maps/MapsIndexClient'
+import { routeMetadata } from '@/lib/i18n/route-metadata'
 
-export const metadata: Metadata = {
-  title: 'Maps · PEM',
-  robots: { index: false, follow: false },
-}
+export const metadata: Metadata = routeMetadata('maps', 'en')
 
 export const dynamic = 'force-dynamic'
 

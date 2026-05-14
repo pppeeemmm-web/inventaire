@@ -11,6 +11,7 @@ test.describe('Atelier œuvres subset banner', () => {
   )
 
   test('load-more control is present when catalogue is partial', async ({ page }) => {
+    await page.setViewportSize({ width: 1200, height: 800 })
     await page.goto('/atelier', { waitUntil: 'domcontentloaded' })
     const banner = page.getByTestId('atelier-oeuvres-subset-banner')
     try {

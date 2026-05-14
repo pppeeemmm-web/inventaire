@@ -24,6 +24,8 @@ export function createPortfolioConfigS3Client(): S3Client {
 export async function loadPortfolioSectionsFromR2(): Promise<{
   config: Record<string, unknown>
   documents: { id: string; name: string }[]
+  /** Strong ETag of `portfolio_sections.json` in R2, or null if object missing / unread. */
+  objectEtag: string | null
 }> {
   const hasServiceCreds = Boolean(
     process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() && process.env.SUPABASE_SERVICE_ROLE_KEY?.trim(),
@@ -57,8 +59,14 @@ export async function loadPortfolioSectionsFromR2(): Promise<{
     cv_doc_id:         null,
   }
 
+  let objectEtag: string | null = null
+
   if (r2Result.status === 'fulfilled') {
-    const body = r2Result.value.Body
+    const res = r2Result.value
+    if (typeof res.ETag === 'string') {
+      objectEtag = res.ETag.replace(/^"|"$/g, '')
+    }
+    const body = res.Body
     if (body) {
       const text = await body.transformToString('utf-8')
       try {
@@ -89,5 +97,5 @@ export async function loadPortfolioSectionsFromR2(): Promise<{
     }
   }
 
-  return { config, documents }
+  return { config, documents, objectEtag }
 }

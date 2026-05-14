@@ -6,6 +6,7 @@ import { useEffect, useState, useRef, useMemo, type WheelEvent as ReactWheelEven
 import PublicNav from './PublicNav'
 import type { WorksUxMode } from '@/lib/worksUx'
 import { trackView } from '@/lib/track'
+import { getOrCreatePublicVisitorId } from '@/lib/public-visitor-id'
 
 /** Virtual distance between sequence slide centers (wheel deltas map here). */
 const WORKS_STEP = 7200
@@ -280,7 +281,7 @@ export default function WorksClient({
   const allActiveLen = useMemo(() => mode.collections.length, [mode.collections])
 
   useEffect(() => {
-    void trackView('/works')
+    void trackView('/works', null, null, getOrCreatePublicVisitorId())
   }, [])
 
   useEffect(() => {

@@ -37,6 +37,8 @@
 | `/atelier/works/new` | Create work (`WorkForm`) |
 | `/atelier/works/[id]/edit` | Redirects to `/atelier?work=<id>` (drawer) |
 | `/atelier/scan` | Mobile scan / manual ID → open work drawer |
+| `/atelier/share-receive` | Web Share Target **POST** (`multipart/form-data`) — stores payload in `share_inbox` + R2, redirects to triage ([`app/atelier/share-receive/route.ts`](../app/atelier/share-receive/route.ts); requires [`supabase/sql/share_inbox.sql`](../supabase/sql/share_inbox.sql)) |
+| `/atelier/share-triage` | Triage UI for received shares ([`app/atelier/share-triage/page.tsx`](../app/atelier/share-triage/page.tsx), [`ShareTriageClient.tsx`](../components/atelier/ShareTriageClient.tsx)) |
 | `/maps` | Index of saved constellation maps → open in Atelier (`noindex`) |
 
 ### Partner portals (login + row-level checks in page)
@@ -53,7 +55,7 @@
 | `/robots.txt` | [`app/robots.ts`](../app/robots.ts) — allow `/`; disallow atelier, hub, galerie, collection, maps, login, card, `c/`, `api/`, `auth`, `_next`; points to `sitemap.xml` |
 | `/sitemap.xml` | [`app/sitemap.ts`](../app/sitemap.ts) — indexable public URLs: `/`, `/works`, `/about`, `/practice`, `/enquiry` |
 | `/Atelier_Studio_Bible.pdf` | Redirects to short-lived signed URL for latest `document.kind = 'bible'` in vault |
-| `/manifest.webmanifest` | PWA manifest (`start_url: /hub`) |
+| `/manifest.webmanifest` | PWA manifest (`start_url: /hub`; **`share_target`** → `/atelier/share-receive`) |
 
 ---
 
@@ -168,6 +170,8 @@ flowchart TB
     atelier["/atelier"]
     worksNew["/atelier/works/new"]
     scan["/atelier/scan"]
+    shareRecv["/atelier/share-receive"]
+    shareTri["/atelier/share-triage"]
     maps["/maps"]
   end
 
@@ -188,6 +192,8 @@ flowchart TB
   hub --> atelier
   atelier --> worksNew
   atelier --> scan
+  atelier --> shareTri
+  shareRecv --> shareTri
   maps --> atelier
   login --> oauthcb
   oauthcb --> hub

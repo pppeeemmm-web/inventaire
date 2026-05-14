@@ -1,11 +1,9 @@
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import { LoginClient } from './LoginClient'
+import { routeMetadata } from '@/lib/i18n/route-metadata'
 
-export const metadata: Metadata = {
-  title: 'Login — PEM',
-  robots: { index: false, follow: false },
-}
+export const metadata: Metadata = routeMetadata('login', 'en')
 
 export default function LoginPage() {
   return (

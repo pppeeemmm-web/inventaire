@@ -1,24 +1,24 @@
 'use server'
 
 // Portfolio server action — saves config JSON to R2 and upserts document record.
+// TipTap HTML fields are sanitized server-side before persistence (see lib/portfolio-html-sanitize.ts).
 // Uses service_role to bypass RLS on the document table.
 
 import { createServiceClient } from '@/lib/supabase/server'
-import { PutObjectCommand } from '@aws-sdk/client-s3'
+import { PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3'
 import {
   createPortfolioConfigS3Client,
   loadPortfolioSectionsFromR2,
   PORTFOLIO_SECTIONS_BUCKET,
   PORTFOLIO_SECTIONS_R2_KEY,
 } from '@/lib/portfolio-sections-from-r2'
+import { sanitizePortfolioConfigForPersist } from '@/lib/portfolio-html-sanitize'
+import { PORTFOLIO_SAVE_ERR } from '@/lib/portfolio-save-errors'
 
-interface MammothLib {
-  extractRawText(opts: { buffer: Buffer }): Promise<{ value: string }>
-  convertToHtml(opts: { buffer: Buffer }): Promise<{ value: string; messages: any[] }>
-}
-
-export type SaveConfigResult     = { error: string } | { ok: true }
-export type LoadConfigResult     = { error: string } | { ok: true; config: any; documents: any[] }
+export type SaveConfigResult =
+  | { error: string }
+  | { ok: true; etag: string | null }
+export type LoadConfigResult = { error: string } | { ok: true; config: any; documents: any[]; etag: string | null }
 export type ExtractTextResult    = { error: string } | { ok: true; text: string }
 export type DocSignedUrlsResult  = { statementUrl: string | null; cvUrl: string | null }
 
@@ -58,8 +58,8 @@ export async function getDocSignedUrls(
 
 export async function loadPortfolioConfig(): Promise<LoadConfigResult> {
   try {
-    const { config, documents } = await loadPortfolioSectionsFromR2()
-    return { ok: true, config, documents }
+    const { config, documents, objectEtag } = await loadPortfolioSectionsFromR2()
+    return { ok: true, config, documents, etag: objectEtag }
   } catch (e: any) {
     console.error('[loadPortfolioConfig]', e)
     return { error: e.message ?? String(e) }
@@ -95,7 +95,25 @@ export async function extractDocumentText(formData: FormData): Promise<ExtractTe
   }
 }
 
-export async function savePortfolioConfig(config: unknown): Promise<SaveConfigResult> {
+function stripS3Etag(etag: string | undefined): string | null {
+  if (!etag || typeof etag !== 'string') return null
+  const t = etag.replace(/^"|"$/g, '')
+  return t || null
+}
+
+function isS3NotFound(err: unknown): boolean {
+  const e = err as { name?: string; Code?: string; $metadata?: { httpStatusCode?: number } }
+  return (
+    e?.name === 'NotFound' ||
+    e?.Code === 'NoSuchKey' ||
+    e?.$metadata?.httpStatusCode === 404
+  )
+}
+
+export async function savePortfolioConfig(
+  config: unknown,
+  opts?: { ifMatch?: string | null }
+): Promise<SaveConfigResult> {
   try {
     const c = config as Record<string, unknown>
     const modes = Array.isArray(c.works_modes) ? (c.works_modes as { collections?: unknown[] }[]) : []
@@ -105,16 +123,47 @@ export async function savePortfolioConfig(config: unknown): Promise<SaveConfigRe
         ? { ...c, works_collections: JSON.parse(JSON.stringify(m0.collections)) as unknown }
         : { ...c }
 
-    const json = JSON.stringify(normalized, null, 2)
+    const sanitized = sanitizePortfolioConfigForPersist(normalized as Record<string, unknown>)
+    const json = JSON.stringify(sanitized, null, 2)
     const buf  = Buffer.from(json, 'utf-8')
 
     const s3 = createPortfolioConfigS3Client()
-    await s3.send(new PutObjectCommand({
-      Bucket:      PORTFOLIO_SECTIONS_BUCKET,
-      Key:         PORTFOLIO_SECTIONS_R2_KEY,
-      Body:        buf,
-      ContentType: 'application/json',
-    }))
+
+    const ifMatch = opts?.ifMatch
+    if (ifMatch !== undefined) {
+      let headEtag: string | null = null
+      try {
+        const head = await s3.send(
+          new HeadObjectCommand({
+            Bucket: PORTFOLIO_SECTIONS_BUCKET,
+            Key: PORTFOLIO_SECTIONS_R2_KEY,
+          }),
+        )
+        headEtag = stripS3Etag(head.ETag)
+      } catch (e) {
+        if (!isS3NotFound(e)) throw e
+        headEtag = null
+      }
+
+      if (ifMatch === null) {
+        if (headEtag !== null) {
+          return { error: PORTFOLIO_SAVE_ERR.OBJECT_EXISTS }
+        }
+      } else if (headEtag !== ifMatch) {
+        return { error: PORTFOLIO_SAVE_ERR.ETAG_MISMATCH }
+      }
+    }
+
+    const putOut = await s3.send(
+      new PutObjectCommand({
+        Bucket: PORTFOLIO_SECTIONS_BUCKET,
+        Key: PORTFOLIO_SECTIONS_R2_KEY,
+        Body: buf,
+        ContentType: 'application/json',
+      }),
+    )
+
+    const newEtag = stripS3Etag(putOut.ETag)
 
     const sb = createServiceClient()
     const { data: existing } = await (sb.from('document') as any)
@@ -141,7 +190,7 @@ export async function savePortfolioConfig(config: unknown): Promise<SaveConfigRe
       if (error) throw error
     }
 
-    return { ok: true }
+    return { ok: true, etag: newEtag }
   } catch (e: any) {
     console.error('[savePortfolioConfig]', e)
     return { error: e.message ?? String(e) }

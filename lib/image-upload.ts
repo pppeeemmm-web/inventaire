@@ -10,6 +10,8 @@ const ALLOWED_FORMATS = new Map<
   ['png', { ext: 'png', mime: 'image/png' }],
   ['webp', { ext: 'webp', mime: 'image/webp' }],
   ['gif', { ext: 'gif', mime: 'image/gif' }],
+  ['avif', { ext: 'avif', mime: 'image/avif' }],
+  ['heif', { ext: 'heic', mime: 'image/heic' }],
 ])
 
 export type ValidatedWorkImage = { ext: string; mime: string }
@@ -28,7 +30,7 @@ export async function validateWorkImageBuffer(
     if (!fmt || !ALLOWED_FORMATS.has(fmt)) {
       return {
         error:
-          'Format image non autorisé (JPEG, PNG, WebP ou GIF uniquement).',
+          'Format image non autorisé (JPEG, PNG, WebP, GIF, AVIF ou HEIC uniquement).',
       }
     }
     const spec = ALLOWED_FORMATS.get(fmt)!

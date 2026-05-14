@@ -70,7 +70,8 @@ export async function GET(request: NextRequest) {
 
   try {
     verifyOAuthState(state, user.id, 'google')
-  } catch {
+  } catch (e) {
+    console.warn('[calendar/google/callback] oauth state verify failed', e)
     response = calendarFail(origin, 'state')
     return response
   }

@@ -9,6 +9,7 @@ import { useMemo, useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { useI18n } from '@/lib/i18n/context'
+import { useMediaQuery } from '@/lib/useMediaQuery'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import { createClient } from '@/lib/supabase/client'
 import { getWorkActionTypes, invalidateWorkActionTypesCache } from '@/lib/work-action-type-cache'
@@ -256,6 +257,8 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen, oeuvresPagi
     [t],
   )
 
+  const narrow = useMediaQuery('(max-width: 767px)')
+
   if (loading) {
     return <div className="t-mono-sm" style={{ padding: 40, color: 'var(--tx3)' }}>{t('loading')}</div>
   }
@@ -293,8 +296,17 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen, oeuvresPagi
   return (
     <div style={{ padding: '16px 28px 0', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%', flex: 1 }}>
 
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, flexShrink: 0 }}>
+      {/* Header — Ring A.3: stack on narrow (field terminal) */}
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: narrow ? 'column' : 'row',
+          alignItems: narrow ? 'stretch' : 'center',
+          gap: narrow ? 10 : 12,
+          marginBottom: 14,
+          flexShrink: 0,
+        }}
+      >
         <div>
           <div className="t-label">{t('production')}</div>
           <div className="t-mono-sm" style={{ color: 'var(--tx3)', marginTop: 3 }}>
@@ -311,21 +323,34 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen, oeuvresPagi
           onChange={(e) => setSearch(e.target.value)}
           placeholder={t('prod_tab_filter_ph')}
           style={{
-            marginLeft: 'auto', padding: '8px 14px', fontSize: 13,
-            background: 'var(--bg1)', border: '1px solid var(--bd)',
-            color: 'var(--tx)', width: 220,
+            marginLeft: narrow ? 0 : 'auto',
+            padding: '8px 14px',
+            fontSize: 13,
+            background: 'var(--bg1)',
+            border: '1px solid var(--bd)',
+            color: 'var(--tx)',
+            width: narrow ? '100%' : 220,
+            minWidth: 0,
+            boxSizing: 'border-box',
           }}
         />
         <button
+          type="button"
           onClick={() => setEditingTypes((v) => !v)}
           style={{
-            padding: '8px 12px', fontSize: 12, cursor: 'pointer',
+            padding: '8px 12px',
+            fontSize: 12,
+            cursor: 'pointer',
             color: editingTypes ? 'var(--ac)' : 'var(--tx3)',
             background: editingTypes ? 'var(--bg2)' : 'transparent',
             border: '1px solid var(--bd)',
+            minHeight: 44,
+            alignSelf: narrow ? 'stretch' : undefined,
           }}
           title={t('prod_tab_manage_columns_title')}
-        >⚙ {t('prod_tab_columns_btn')}</button>
+        >
+          ⚙ {t('prod_tab_columns_btn')}
+        </button>
       </div>
 
       <PivotPanel<Oeuvre>

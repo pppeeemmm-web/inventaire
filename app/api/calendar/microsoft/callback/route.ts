@@ -68,7 +68,8 @@ export async function GET(request: NextRequest) {
 
   try {
     verifyOAuthState(state, user.id, 'microsoft')
-  } catch {
+  } catch (e) {
+    console.warn('[calendar/microsoft/callback] oauth state verify failed', e)
     response = calendarFail(origin, 'state')
     return response
   }

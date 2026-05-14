@@ -1,7 +1,19 @@
 import type { MetadataRoute } from 'next'
 import { dict } from '@/lib/i18n/dictionary'
 
-/** PWA install metadata — uses default atelier locale (fr). */
+const SHARE_TARGET = {
+  action: '/atelier/share-receive',
+  method: 'POST' as const,
+  enctype: 'multipart/form-data',
+  params: {
+    title: 'title',
+    text: 'text',
+    url: 'url',
+    files: [{ name: 'files', accept: ['image/*', 'application/pdf'] as string[] }],
+  },
+}
+
+/** PWA install metadata — uses default atelier locale (fr). Web Share Target (Ring B.3). */
 export default function manifest(): MetadataRoute.Manifest {
   const m = dict.fr
   return {
@@ -17,5 +29,6 @@ export default function manifest(): MetadataRoute.Manifest {
       { src: '/pwa-icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
       { src: '/pwa-icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
     ],
-  }
+    share_target: SHARE_TARGET,
+  } as MetadataRoute.Manifest
 }

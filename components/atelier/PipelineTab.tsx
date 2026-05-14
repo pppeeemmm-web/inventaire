@@ -282,6 +282,10 @@ export function PipelineTab({ oeuvres, contacts, groups, initialReminders, onRem
   const [loading,     setLoading]     = useState(true)
 
   useEffect(() => {
+    if (atelierNarrow) setMainView('calendar')
+  }, [atelierNarrow])
+
+  useEffect(() => {
     setReminders(initialReminders)
   }, [initialReminders])
 
@@ -489,15 +493,30 @@ export function PipelineTab({ oeuvres, contacts, groups, initialReminders, onRem
             <div
               className="t-mono-sm"
               style={{
-                display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6,
+                display: 'flex',
+                flexWrap: atelierNarrow ? 'nowrap' : 'wrap',
+                overflowX: atelierNarrow ? 'auto' : 'visible',
+                WebkitOverflowScrolling: 'touch',
+                alignItems: 'center',
+                gap: 6,
                 flex: atelierNarrow ? '1 1 100%' : 1,
-                minWidth: atelierNarrow ? '100%' : 0,
+                minWidth: atelierNarrow ? 0 : undefined,
+                maxWidth: '100%',
                 color: 'var(--tx3)', fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase',
                 marginTop: atelierNarrow ? 2 : 0,
               }}
             >
               <span style={{ marginRight: 6, flexShrink: 0 }}>{t('pipeline_filter_group_label')}</span>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  flexWrap: atelierNarrow ? 'nowrap' : 'wrap',
+                  gap: 6,
+                  alignItems: 'center',
+                  flex: atelierNarrow ? '1 1 auto' : undefined,
+                  minWidth: 0,
+                }}
+              >
                 <button type="button" className="btn ghost sm"
                   style={{ background: typeFilter==='all' ? 'var(--ac)' : undefined, color: typeFilter==='all' ? 'var(--bg0)' : undefined }}
                   onClick={() => setTypeFilter('all')}>{t('pipeline_filter_all')}</button>

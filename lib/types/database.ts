@@ -46,8 +46,7 @@ export interface Oeuvre {
   deleted_at?: string | null;
   // Kept in DB for historical reference, not used by app logic:
   // commercial_status, StageProduction
-  // Dead per CLAUDE.md cemetery, removed from this interface:
-  // Statut, DateStatut, NomOriginal, Poids, Tirage
+  // Dead columns dropped in DB (`supabase/sql/dead_columns_drop.sql`); not in this interface.
 }
 
 export interface Contact {
@@ -114,4 +113,13 @@ export interface ConceptBurningRow {
   id: string
   titre: string
   energie: number
+}
+
+/** `share_inbox` row (Web Share Target triage). */
+export interface ShareInboxRow {
+  id: string
+  created_at: string
+  expires_at: string
+  user_id: string
+  payload: unknown
 }

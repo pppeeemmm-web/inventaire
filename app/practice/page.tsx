@@ -1,11 +1,8 @@
 import type { Metadata } from 'next'
 import PracticeClient from '@/components/public/PracticeClient'
+import { routeMetadata } from '@/lib/i18n/route-metadata'
 
-export const metadata: Metadata = {
-  title: 'Practice — Pierre Emmanuel Moulin',
-  description: 'Démarche artistique de Pierre Emmanuel Moulin.',
-  robots: { index: true, follow: true },
-}
+export const metadata: Metadata = routeMetadata('practice', 'en')
 
 export default function PracticePage() {
   return <PracticeClient />

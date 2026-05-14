@@ -31,6 +31,8 @@ export async function buildSiteMapChecklistPdf(): Promise<Buffer> {
         'New work /atelier/works/new',
         'Edit redirect /atelier/works/:id/edit → ?work=',
         'Field scan /atelier/scan',
+        'Share receive POST /atelier/share-receive (PWA share_target)',
+        'Share triage /atelier/share-triage',
         'Maps index /maps',
       ],
     },

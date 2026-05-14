@@ -1,12 +1,14 @@
 // /card — printable business card for Pierre Emmanuel Moulin
 // Two cards per sheet (front + back), print-optimised.
 // QR code generated via free qrserver.com API — no key needed.
-export const metadata = {
-  title: 'PEM · Carte de visite',
-  robots: { index: false, follow: false },
-}
 
+import type { Metadata } from 'next'
 import Image from 'next/image'
+import { dict } from '@/lib/i18n/dictionary'
+import { routeMetadata } from '@/lib/i18n/route-metadata'
+
+export const metadata: Metadata = routeMetadata('card', 'en')
+
 const PUBLIC_WORKS_URL = 'https://pem-hub.vercel.app/works'  // update when deployed
 const EMAIL         = 'pppeeemmm@gmail.com'
 const QR_URL        = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(PUBLIC_WORKS_URL)}&color=ece7da&bgcolor=0a0a0b&margin=8`
@@ -183,7 +185,7 @@ export default function CardPage() {
               </div>
               <div className="detail-row" style={{ marginTop: '1mm' }}>
                 <span className="detail-label" style={{ color: '#4c4a44' }}>—</span>
-                <span style={{ fontSize: '5pt', color: '#4c4a44', fontStyle: 'italic' }}>Pas de réseaux sociaux, par choix.</span>
+                <span style={{ fontSize: '5pt', color: '#4c4a44', fontStyle: 'italic' }}>{dict.fr.card_print_no_social_fr}</span>
               </div>
             </div>
           </div>
@@ -199,7 +201,7 @@ export default function CardPage() {
               <div className="monogram">PEM</div>
               <div className="back-name">Pierre Emmanuel<br />Moulin</div>
               <div className="back-url">{PUBLIC_WORKS_URL.replace('https://', '')}</div>
-              <div className="no-social">No social media, by choice.</div>
+              <div className="no-social">{dict.en.card_print_no_social_en}</div>
             </div>
           </div>
         </div>

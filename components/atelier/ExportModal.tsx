@@ -377,7 +377,7 @@ export function ExportModal({
               {cfg.layout === 'grid' && (
                 <div style={{ marginTop: 10 }}>
                   <div className="row gap-sm" style={{ flexWrap: 'wrap' }}>
-                    <span className="t-label">Lignes / page :</span>
+                    <span className="t-label">{t('export_rows_per_page_label')}</span>
                     {([2, 3, 4, 5, 6, 8, 10] as const).map((n) => (
                       <button key={n} className={`btn sm ${cfg.rowsPerPage === n ? 'primary' : 'ghost'}`}
                         onClick={() => set('rowsPerPage', n)}>{n}</button>
