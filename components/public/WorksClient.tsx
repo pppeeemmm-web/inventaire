@@ -853,7 +853,7 @@ export default function WorksClient({
                   key={m.id}
                   type="button"
                   className={`w-mode-tab${i === activeModeIdx ? ' active' : ''}`}
-                  title={lang === 'en' ? 'Switch work layout' : 'Changer de présentation des œuvres'}
+                  title={t('pub_works_aria_mode_layout')}
                   onClick={() => {
                     if (i === activeModeIdx) return
                     setActiveModeIdx(i)
@@ -865,7 +865,7 @@ export default function WorksClient({
                     setActiveWork(null)
                     setCaptionOpacity(0)
                   }}
-                >{label || `Mode ${i + 1}`}</button>
+                >{label || t('pub_works_mode_fallback_fmt').replace('{n}', String(i + 1))}</button>
               )
             })}
           </div>
@@ -1090,7 +1090,7 @@ export default function WorksClient({
           color: '#1a1816', lineHeight: 1,
         }}>↑</div>
         <div style={{ fontSize: 9, letterSpacing: 4, textTransform: 'uppercase', color: '#6a6660' }}>
-          retour
+          {t('pub_works_end_return')}
         </div>
       </div>
 
@@ -1098,13 +1098,13 @@ export default function WorksClient({
         {worksUxMode === 'chapters' && collectionSections.length >= 2 && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
             <span className="w-section-nav-label">{t('pub_works_collections')}</span>
-            <div className="w-section-pills" aria-label={lang === 'en' ? 'Switch chapter' : 'Changer de séquence'}>
+            <div className="w-section-pills" aria-label={t('pub_works_aria_switch_chapter')}>
               {collectionSections.map((s) => (
                 <button
                   key={`pill-${s.chapterIdx}`}
                   type="button"
                   className={`w-section-pill${s.chapterIdx === activeChapterIdx ? ' active' : ''}`}
-                  title={lang === 'en' ? `Open: ${s.title}` : `Ouvrir : ${s.title}`}
+                  title={t('pub_works_chapter_open_fmt').replace('{title}', s.title ?? '')}
                   onClick={() => {
                     setActiveChapterIdx(s.chapterIdx)
                     targetDepth.current = 0
@@ -1122,7 +1122,7 @@ export default function WorksClient({
           </div>
         )}
         <div className="w-scroll-hint" style={{ opacity: displayDepth < 200 ? undefined : 0, pointerEvents: 'none' }}>
-          ↓ scroll
+          {t('pub_works_scroll_hint')}
         </div>
       </div>
     </div>

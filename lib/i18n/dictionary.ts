@@ -103,6 +103,7 @@ export type DictKey =
   | 'pub_not_available' | 'pub_approach_tab' | 'pub_works_tab'
   | 'pub_full_name' | 'pub_your_enquiry'
   | 'pub_works_collections' | 'pub_works_views_label'
+  | 'pub_works_aria_mode_layout' | 'pub_works_mode_fallback_fmt' | 'pub_works_end_return' | 'pub_works_aria_switch_chapter' | 'pub_works_chapter_open_fmt' | 'pub_works_scroll_hint'
   | 'atelier_pub_hero_section_title' | 'atelier_pub_hero_url_label' | 'atelier_pub_hero_url_placeholder'
   | 'atelier_pub_hero_url_help' | 'atelier_pub_hero_preview_label' | 'atelier_pub_hero_r2_followup'
   | 'pub_works_bridge_label' | 'pub_works_preview_badge'
@@ -626,6 +627,12 @@ export const dict: Record<Lang, Dictionary> = {
     pub_your_enquiry: 'Votre demande...',
     pub_works_collections: 'Collections',
     pub_works_views_label: 'Vues',
+    pub_works_aria_mode_layout: 'Changer de présentation des œuvres',
+    pub_works_mode_fallback_fmt: 'Mode {n}',
+    pub_works_end_return: 'retour',
+    pub_works_aria_switch_chapter: 'Changer de séquence',
+    pub_works_chapter_open_fmt: 'Ouvrir : {title}',
+    pub_works_scroll_hint: '↓ défiler',
     atelier_pub_hero_section_title: 'Accueil — image héros',
     atelier_pub_hero_url_label: 'URL de l’image (HTTPS)',
     atelier_pub_hero_url_placeholder: 'https://…',
@@ -1980,6 +1987,12 @@ $env:OLLAMA_HOST="127.0.0.1:11435"; ollama run llama3.2:1b`,
     pub_your_enquiry: 'Your enquiry...',
     pub_works_collections: 'Collections',
     pub_works_views_label: 'Views',
+    pub_works_aria_mode_layout: 'Switch work layout',
+    pub_works_mode_fallback_fmt: 'Mode {n}',
+    pub_works_end_return: 'back',
+    pub_works_aria_switch_chapter: 'Switch chapter',
+    pub_works_chapter_open_fmt: 'Open: {title}',
+    pub_works_scroll_hint: '↓ scroll',
     atelier_pub_hero_section_title: 'Home — hero image',
     atelier_pub_hero_url_label: 'Image URL (HTTPS)',
     atelier_pub_hero_url_placeholder: 'https://…',
