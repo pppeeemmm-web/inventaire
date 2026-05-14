@@ -7,6 +7,7 @@
 import { useEffect, useMemo, useState, useTransition } from 'react'
 import Image from 'next/image'
 import { useI18n } from '@/lib/i18n/context'
+import type { DictKey } from '@/lib/i18n/dictionary'
 import {
   listBroadcastDashboard,
   clearStuckQueue,
@@ -15,19 +16,19 @@ import {
 
 type SubTab = 'queue' | 'posted' | 'activity'
 
-function rel(date: string | null, lang: string): string {
+function broadcastRelTime(date: string | null, t: (key: DictKey) => string): string {
   if (!date) return '—'
-  const t = new Date(date).getTime()
-  if (!Number.isFinite(t)) return '—'
-  const diff = (Date.now() - t) / 1000
-  if (diff < 60) return lang === 'fr' ? 'à l’instant' : 'just now'
-  if (diff < 3600) return `${Math.floor(diff / 60)} min`
-  if (diff < 86400) return `${Math.floor(diff / 3600)} h`
-  return `${Math.floor(diff / 86400)} j`
+  const ts = new Date(date).getTime()
+  if (!Number.isFinite(ts)) return '—'
+  const diff = (Date.now() - ts) / 1000
+  if (diff < 60) return t('bc_rel_just_now')
+  if (diff < 3600) return t('bc_rel_minutes_fmt').replace('{n}', String(Math.floor(diff / 60)))
+  if (diff < 86400) return t('bc_rel_hours_fmt').replace('{n}', String(Math.floor(diff / 3600)))
+  return t('bc_rel_days_fmt').replace('{n}', String(Math.floor(diff / 86400)))
 }
 
 export function BroadcastTab() {
-  const { t, lang } = useI18n()
+  const { t } = useI18n()
   const [sub, setSub] = useState<SubTab>('queue')
   const [data, setData] = useState<BroadcastDashboard | null>(null)
   const [err, setErr] = useState<string | null>(null)
@@ -129,11 +130,11 @@ export function BroadcastTab() {
       {busy && !data && <div style={{ opacity: 0.6 }}>{t('loading')}</div>}
 
       {sub === 'queue' && data && (
-        <QueueView rows={data.queue} onClear={handleClearStuck} pending={pending} lang={lang} t={t} />
+        <QueueView rows={data.queue} onClear={handleClearStuck} pending={pending} t={t} />
       )}
 
       {sub === 'posted' && data && (
-        <PostedView rows={data.posted} lang={lang} t={t} />
+        <PostedView rows={data.posted} t={t} />
       )}
 
       {sub === 'activity' && data && (
@@ -141,7 +142,6 @@ export function BroadcastTab() {
           rows={filteredEvents}
           vipOnly={vipOnly}
           setVipOnly={setVipOnly}
-          lang={lang}
           t={t}
         />
       )}
@@ -179,12 +179,11 @@ function Thumb({ src, alt }: { src: string | null; alt: string | null }) {
 }
 
 function QueueView({
-  rows, onClear, pending, lang, t,
+  rows, onClear, pending, t,
 }: {
   rows: import('@/app/atelier/broadcast/actions').BroadcastQueueRow[]
   onClear: (id: number, platform: string) => void
   pending: boolean
-  lang: string
   t: ReturnType<typeof useI18n>['t']
 }) {
   if (rows.length === 0) {
@@ -211,7 +210,7 @@ function QueueView({
             </div>
             <div style={{ marginTop: 4, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, fontSize: 10, color: 'var(--tx3)' }}>
               <PlatformChip p={r.platform} />
-              <span>{t('bc_queued_at')} · {rel(r.queuedAt, lang)}</span>
+              <span>{t('bc_queued_at')} · {broadcastRelTime(r.queuedAt, t)}</span>
               <span>· {r.attemptCount} {t('bc_attempts')}</span>
             </div>
           </div>
@@ -230,10 +229,9 @@ function QueueView({
 }
 
 function PostedView({
-  rows, lang, t,
+  rows, t,
 }: {
   rows: import('@/app/atelier/broadcast/actions').BroadcastPostedRow[]
-  lang: string
   t: ReturnType<typeof useI18n>['t']
 }) {
   if (rows.length === 0) {
@@ -260,7 +258,7 @@ function PostedView({
             </div>
             <div style={{ marginTop: 4, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, fontSize: 10, color: 'var(--tx3)' }}>
               <PlatformChip p={r.platform} />
-              <span>{t('bc_posted_at')} · {rel(r.broadcastAt, lang)}</span>
+              <span>{t('bc_posted_at')} · {broadcastRelTime(r.broadcastAt, t)}</span>
             </div>
             {r.captionFinal && (
               <div style={{ marginTop: 6, fontSize: 11, color: 'var(--tx2)', lineHeight: 1.45, whiteSpace: 'pre-wrap', maxHeight: 64, overflow: 'hidden' }}>
@@ -285,12 +283,11 @@ function PostedView({
 }
 
 function ActivityView({
-  rows, vipOnly, setVipOnly, lang, t,
+  rows, vipOnly, setVipOnly, t,
 }: {
   rows: import('@/app/atelier/broadcast/actions').BroadcastEventRow[]
   vipOnly: boolean
   setVipOnly: (b: boolean) => void
-  lang: string
   t: ReturnType<typeof useI18n>['t']
 }) {
   return (
@@ -333,7 +330,7 @@ function ActivityView({
               <div className="row gap-sm" style={{ flexWrap: 'wrap', alignItems: 'center', fontSize: 10, color: 'var(--tx3)' }}>
                 <PlatformChip p={e.platform} />
                 <span style={{ textTransform: 'uppercase', letterSpacing: 1 }}>{e.eventType}</span>
-                <span>· {rel(e.createdAt, lang)}</span>
+                <span>· {broadcastRelTime(e.createdAt, t)}</span>
                 {e.titre && <span>· #{e.oeuvreId} {e.titre}</span>}
               </div>
               {e.summary && (

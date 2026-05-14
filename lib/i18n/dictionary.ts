@@ -144,6 +144,7 @@ export type DictKey =
   | 'bc_attempts' | 'bc_queued_at' | 'bc_posted_at' | 'bc_clear_stuck' | 'bc_clear_stuck_confirm'
   | 'bc_open_post' | 'bc_admin_only' | 'bc_count_queued' | 'bc_count_posted' | 'bc_count_vip'
   | 'bc_caption_final' | 'bc_no_caption' | 'bc_event_type_label'
+  | 'bc_rel_just_now' | 'bc_rel_minutes_fmt' | 'bc_rel_hours_fmt' | 'bc_rel_days_fmt'
   | 'sales_confirm_delete_order' | 'sales_confirm_regenerate_pdf' | 'sales_pdf_regenerated_hint'
   | 'sales_return_section_title' | 'sales_return_days_label' | 'sales_return_start_label'
   | 'sales_return_countdown_fmt' | 'sales_return_no_start_hint' | 'sales_return_skipped_hint' | 'sales_return_days_zero_hint'
@@ -817,6 +818,10 @@ export const dict: Record<Lang, Dictionary> = {
     bc_caption_final: 'Légende publiée',
     bc_no_caption: '— sans légende —',
     bc_event_type_label: 'Type',
+    bc_rel_just_now: 'à l’instant',
+    bc_rel_minutes_fmt: '{n} min',
+    bc_rel_hours_fmt: '{n} h',
+    bc_rel_days_fmt: '{n} j',
     sales_confirm_delete_order:
       'Supprimer définitivement cette commande ? Les œuvres repasseront en statut « Atelier ».',
     sales_confirm_regenerate_pdf: 'Re-générer le PDF avec le nouveau layout et les images ?',
@@ -2148,6 +2153,10 @@ $env:OLLAMA_HOST="127.0.0.1:11435"; ollama run llama3.2:1b`,
     bc_caption_final: 'Posted caption',
     bc_no_caption: '— no caption —',
     bc_event_type_label: 'Type',
+    bc_rel_just_now: 'just now',
+    bc_rel_minutes_fmt: '{n} min',
+    bc_rel_hours_fmt: '{n} h',
+    bc_rel_days_fmt: '{n} d',
     sales_confirm_delete_order:
       'Permanently delete this order? Works will return to “Atelier” status.',
     sales_confirm_regenerate_pdf: 'Regenerate the PDF with the new layout and images?',
