@@ -99,6 +99,72 @@ export function ShareTriageClient(props: {
         </div>
       ) : null}
 
+      <div
+        data-testid="share-triage-import-form"
+        style={{
+          border: '1px solid var(--bd)',
+          padding: 14,
+          borderRadius: 8,
+          background: 'var(--bg1)',
+        }}
+      >
+        <div className="t-eyebrow" style={{ marginBottom: 10 }}>{t('share_triage_import_heading')}</div>
+        <form
+          action="/atelier/share-receive"
+          method="post"
+          encType="multipart/form-data"
+          style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
+        >
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12 }}>
+            <span>{t('share_triage_field_title')}</span>
+            <input
+              type="text"
+              name="title"
+              maxLength={500}
+              autoComplete="off"
+              style={{ minHeight: 44, fontSize: 14, width: '100%', boxSizing: 'border-box', padding: '10px 12px', border: '1px solid var(--bd)', borderRadius: 6, background: 'var(--bg0)', color: 'var(--tx)' }}
+            />
+          </label>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12 }}>
+            <span>{t('share_triage_field_text')}</span>
+            <textarea
+              name="text"
+              maxLength={12_000}
+              rows={4}
+              style={{ minHeight: 88, fontSize: 14, width: '100%', boxSizing: 'border-box', padding: '10px 12px', border: '1px solid var(--bd)', borderRadius: 6, background: 'var(--bg0)', color: 'var(--tx)', resize: 'vertical', fontFamily: 'inherit' }}
+            />
+          </label>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12 }}>
+            <span>{t('share_triage_field_urls')}</span>
+            <input
+              type="text"
+              name="url"
+              inputMode="url"
+              maxLength={4000}
+              autoComplete="off"
+              placeholder={t('share_triage_import_url_placeholder')}
+              style={{ minHeight: 44, fontSize: 14, width: '100%', boxSizing: 'border-box', padding: '10px 12px', border: '1px solid var(--bd)', borderRadius: 6, background: 'var(--bg0)', color: 'var(--tx)' }}
+            />
+          </label>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12 }}>
+            <span>{t('share_triage_import_files_label')}</span>
+            <input
+              type="file"
+              name="files"
+              multiple
+              accept="image/*,application/pdf"
+              style={{ minHeight: 44, fontSize: 14, width: '100%' }}
+            />
+          </label>
+          <button type="submit" className="btn primary" style={{ minHeight: 44 }}>
+            {t('share_triage_import_submit')}
+          </button>
+        </form>
+        <p className="t-mono-sm" style={{ marginTop: 10, marginBottom: 0, fontSize: 11, color: 'var(--tx3)', lineHeight: 1.45 }}>
+          {t('share_triage_import_hint')}
+        </p>
+      </div>
+
       {showNotFound ? (
         <div role="alert" style={{ padding: 12, border: '1px solid var(--bd)', fontSize: 12 }}>
           {t('share_triage_err_not_found')}

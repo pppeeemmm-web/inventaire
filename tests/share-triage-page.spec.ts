@@ -9,5 +9,9 @@ test.describe('Share triage page', () => {
   test('loads inbox shell when authenticated', async ({ page }) => {
     await page.goto('/atelier/share-triage')
     await expect(page.getByTestId('share-triage-root')).toBeVisible({ timeout: 45_000 })
+    await expect(page.getByTestId('share-triage-import-form').locator('input[name="title"]')).toBeVisible()
+    await expect(page.getByTestId('share-triage-import-form').locator('textarea[name="text"]')).toBeVisible()
+    await expect(page.getByTestId('share-triage-import-form').locator('input[name="url"]')).toBeVisible()
+    await expect(page.getByTestId('share-triage-import-form').locator('input[name="files"]')).toBeVisible()
   })
 })

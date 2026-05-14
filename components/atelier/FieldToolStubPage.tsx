@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useI18n } from '@/lib/i18n/context'
 
-/** Placeholder for Ring C verb routes — avoids 404 until sessions/notes/etc. ship. */
+/** Ring C — hub-linked field verb routes; stub until real flows ship. See CLAUDE **📱 MOBILE FIELD-TOOL** → Rings. */
 export function FieldToolStubPage() {
   const { t } = useI18n()
   return (

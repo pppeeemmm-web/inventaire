@@ -939,8 +939,39 @@ export function TeamPortalClient({
                   background: 'var(--bg1)',
                 }),
           }}>
-            <div style={{ padding: '0 16px 12px', borderBottom: '1px solid var(--bd)', marginBottom: 8, display: atelierNarrow ? 'flex' : 'none', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span className="serif" style={{ fontSize: 18, color: 'var(--tx)' }}>{t('atelier')}</span>
+            <div style={{ padding: '0 16px 12px', borderBottom: '1px solid var(--bd)', marginBottom: 8, display: atelierNarrow ? 'flex' : 'none', justifyContent: 'space-between', alignItems: 'center', gap: 10, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', minWidth: 0 }}>
+                <span className="serif" style={{ fontSize: 18, color: 'var(--tx)' }}>{t('atelier')}</span>
+                <span style={{ color: 'var(--tx3)', fontSize: 10, opacity: 0.35 }} aria-hidden>/</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    pendingNavRef.current = () => {
+                      setSidebarOpen(false)
+                      router.push('/hub')
+                    }
+                    attemptNavigateWithDrawerGuard()
+                  }}
+                  className="t-mono-sm"
+                  style={{
+                    color: 'var(--tx3)',
+                    cursor: 'pointer',
+                    background: 'none',
+                    border: 'none',
+                    padding: '10px 4px',
+                    margin: '-10px 0',
+                    minHeight: 44,
+                    minWidth: 44,
+                    boxSizing: 'border-box',
+                    fontSize: 10,
+                    letterSpacing: 1.2,
+                    textTransform: 'uppercase',
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  {t('pub_hub_short')}
+                </button>
+              </div>
               <button
                 type="button"
                 onClick={() => setSidebarOpen(false)}

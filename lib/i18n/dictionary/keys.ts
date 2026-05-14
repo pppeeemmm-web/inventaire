@@ -402,12 +402,14 @@ export type DictKey =
   | 'hub_field_more' | 'hub_field_more_sub'
   | 'ring_b_bar_capture_aria' | 'ring_b_bar_scan_aria' | 'ring_b_bar_note_aria' | 'ring_b_bar_reminders_aria'
   | 'ring_b_voice_sheet_title' | 'ring_b_voice_sheet_body' | 'ring_b_voice_sheet_close'
+  // ── Ring C — Hub-linked field verb routes (stub pages until flows ship) ────
   | 'field_stub_title' | 'field_stub_body' | 'field_stub_cta_atelier' | 'field_stub_cta_hub'
   // ── Ring B.3 — Web Share Target + triage ───────────────────────────────────
   | 'share_triage_meta_title' | 'share_triage_meta_description'
   | 'share_triage_title' | 'share_triage_intro' | 'share_triage_recent_heading'
   | 'share_triage_empty_hint' | 'share_triage_err_empty' | 'share_triage_err_not_found' | 'share_triage_err_schema' | 'share_triage_err_save'
   | 'share_triage_err_payload'
+  | 'share_triage_import_heading' | 'share_triage_import_files_label' | 'share_triage_import_submit' | 'share_triage_import_hint' | 'share_triage_import_url_placeholder'
   | 'share_triage_field_title' | 'share_triage_field_text' | 'share_triage_field_urls'
   | 'share_triage_files_heading' | 'share_triage_open_r2' | 'share_triage_dismiss'
   | 'share_triage_attach_work' | 'share_triage_attach_contact' | 'share_triage_attach_vault' | 'share_triage_attach_note'
