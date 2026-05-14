@@ -55,6 +55,10 @@ The numbered sections below quote **without rephrasing** from the ruthless analy
 
 **Accomplished:** email-shaped substrings masked in the dev auto-login failure log.
 
+> - **RLS enabled with zero policies** on `public.consignment_order`, `public.shipment`, `public.shipment_work` (Supabase grant/RLS audit) — PostgREST blocks signed-in team until policies + `GRANT` exist.
+
+**Accomplished (repo SQL; apply per environment):** [`supabase/sql/consignment_shipment_rls.sql`](supabase/sql/consignment_shipment_rls.sql) — `is_team()` read/write, `is_admin()` delete on `consignment_order` only; `authenticated` table grants. Re-check with [`supabase/sql/grant_audit_queries.sql`](supabase/sql/grant_audit_queries.sql).
+
 ### Not actually a finding (verbatim)
 
 > - "R2 secrets hardcoded in 20 files" — they read `process.env.R2_*` per file, which is normal for serverless edge bundles. Rotation is the real control; the `.env.local` is gitignored.

@@ -3,6 +3,10 @@
 import { createClient } from '@/lib/supabase/server'
 import { fetchAtelierOverviewBootstrap } from '@/app/atelier/atelier-data-actions'
 import { getUnreadReminderCountCached, listUnreadSuiviReminders } from '@/app/atelier/reminders-actions'
+import {
+  fetchAllOeuvreThemeLinks,
+  fetchAllWorkingGroupWorkLinks,
+} from '@/lib/atelier/atelier-junction-bootstrap'
 import { AtelierTeamPortalLoader } from '@/components/atelier/AtelierTeamPortalLoader'
 import type { Oeuvre, SuiviReminderListRow } from '@/lib/types/database'
 import type { AtelierOverviewBootstrap } from '@/components/atelier/team-portal-types'
@@ -12,53 +16,6 @@ export const dynamic = 'force-dynamic'
 
 /** First œuvres chunk (keyset continuation via `fetchOeuvresKeysetPage`). */
 const ATELIER_OEUVRE_PAGE = 1000
-
-/** PostgREST default max rows per response — paginate for full junction payloads */
-const SUPABASE_RANGE_PAGE = 1000
-
-async function fetchAllOeuvreThemeLinks(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-): Promise<{ oeuvre_id: number; theme_id: number }[]> {
-  const rows: { oeuvre_id: number; theme_id: number }[] = []
-  for (let from = 0; ; from += SUPABASE_RANGE_PAGE) {
-    const { data, error } = await supabase
-      .from('oeuvre_theme')
-      .select('oeuvre_id, theme_id')
-      .order('oeuvre_id', { ascending: true })
-      .order('theme_id', { ascending: true })
-      .range(from, from + SUPABASE_RANGE_PAGE - 1)
-    if (error) {
-      console.error('[atelier loader] oeuvre_theme:', error.message)
-      break
-    }
-    if (!data?.length) break
-    rows.push(...(data as { oeuvre_id: number; theme_id: number }[]))
-    if (data.length < SUPABASE_RANGE_PAGE) break
-  }
-  return rows
-}
-
-async function fetchAllWorkingGroupWorkLinks(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-): Promise<{ group_id: string; oeuvre_id: number }[]> {
-  const rows: { group_id: string; oeuvre_id: number }[] = []
-  for (let from = 0; ; from += SUPABASE_RANGE_PAGE) {
-    const { data, error } = await supabase
-      .from('working_group_work')
-      .select('group_id, oeuvre_id')
-      .order('oeuvre_id', { ascending: true })
-      .order('group_id', { ascending: true })
-      .range(from, from + SUPABASE_RANGE_PAGE - 1)
-    if (error) {
-      console.error('[atelier loader] working_group_work:', error.message)
-      break
-    }
-    if (!data?.length) break
-    rows.push(...(data as { group_id: string; oeuvre_id: number }[]))
-    if (data.length < SUPABASE_RANGE_PAGE) break
-  }
-  return rows
-}
 
 export default async function AtelierPage() {
   const supabase = await createClient()

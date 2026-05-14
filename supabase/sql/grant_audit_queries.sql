@@ -7,7 +7,9 @@
 -- ~2026-10-30 — see 🛂 SUPABASE GRANTS in CLAUDE.md.
 --
 -- Remediation: add GRANT + RLS + policies in the same migration that creates
--- the table. Template: supabase/sql/inquiry.sql
+-- the table. Templates: supabase/sql/inquiry.sql (public inserts + team reads),
+-- supabase/sql/consignment_shipment_rls.sql (consignment_order / shipment /
+-- shipment_work — team + admin delete on consignment only).
 -- =============================================================================
 
 -- 1) public.base tables where role "authenticated" has no SELECT privilege
