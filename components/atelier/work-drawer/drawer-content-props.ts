@@ -68,4 +68,6 @@ export type DrawerContentProps = {
     performSave: () => Promise<boolean>
   }>
   onDrawerDirtyChange?: (dirty: boolean) => void
+  /** Admin-only affordances inside the drawer (e.g. delete field sessions). */
+  isAdmin?: boolean
 }

@@ -78,12 +78,13 @@ const StockTakeTab = dynamic(() => import('@/components/atelier/StockTakeTab').t
 const ReportsTab = dynamic(() => import('@/components/atelier/ReportsTab').then((m) => ({ default: m.ReportsTab })), { loading: () => <TabPanelFallback />, ssr: false })
 const AuditTab = dynamic(() => import('@/components/atelier/AuditTab').then((m) => ({ default: m.AuditTab })), { loading: () => <TabPanelFallback />, ssr: false })
 const BroadcastTab = dynamic(() => import('@/components/atelier/BroadcastTab').then((m) => ({ default: m.BroadcastTab })), { loading: () => <TabPanelFallback />, ssr: false })
+const NotesTab = dynamic(() => import('@/components/atelier/NotesTab').then((m) => ({ default: m.NotesTab })), { loading: () => <TabPanelFallback />, ssr: false })
 
 // ── Types ────────────────────────────────────────────────────────────
 
 type Tab =
   | 'overview' | 'inventory' | 'reports' | 'constellation' | 'production'
-  | 'logistics' | 'sales' | 'exhibitions' | 'vault' | 'contacts' | 'map' | 'pipeline' | 'fiscal' | 'concepts' | 'themes' | 'stock' | 'stock-take' | 'system' | 'portfolio' | 'audit' | 'broadcast'
+  | 'logistics' | 'sales' | 'exhibitions' | 'vault' | 'contacts' | 'map' | 'pipeline' | 'fiscal' | 'concepts' | 'themes' | 'stock' | 'stock-take' | 'notes' | 'system' | 'portfolio' | 'audit' | 'broadcast'
 
 /** Desktop top bar + narrow drawer row — same handlers, drawer uses 44px tap targets. Ring A.1: new work lives on `MobileActionBar`, not here, when `hideNewWork`. */
 function AtelierHeaderChrome({
@@ -682,6 +683,7 @@ export function TeamPortalClient({
 
   const [subsetChipExpanded, setSubsetChipExpanded] = useState(false)
   const [voiceNoteSheetOpen, setVoiceNoteSheetOpen] = useState(false)
+  const [voiceNotesTick, setVoiceNotesTick] = useState(0)
   useEffect(() => {
     setSubsetChipExpanded(false)
   }, [tab])
@@ -762,6 +764,7 @@ export function TeamPortalClient({
       ['broadcast',     t('tab_broadcast')],
       ['stock',         t('tab_stock')],
       ['stock-take',    t('tab_stock_take')],
+      ['notes',         t('tab_notes')],
       ['system',        t('tab_system')],
       [
         'audit',
@@ -805,7 +808,7 @@ export function TeamPortalClient({
   /** 6 rooms — same structure on narrow and wide; narrow puts Field first. */
   const adminTabs: Tab[] = isAdmin ? ['system', 'audit', 'broadcast'] : ['system']
   const GROUPS: { label: string; tabs: Tab[] }[] = [
-    { label: t('nav_group_field'),        tabs: ['inventory', 'production', 'stock-take', 'map'] },
+    { label: t('nav_group_field'),        tabs: ['inventory', 'production', 'stock-take', 'notes', 'map'] },
     { label: t('nav_group_studio'),       tabs: ['overview', 'pipeline', 'exhibitions', 'concepts'] },
     { label: t('nav_group_catalogue'),    tabs: ['reports', 'themes', 'stock', 'constellation'] },
     { label: t('nav_group_commercial'),   tabs: ['sales', 'logistics', 'fiscal', 'vault'] },
@@ -819,7 +822,7 @@ export function TeamPortalClient({
   const showSubsetBanner =
     oeuvresCataloguePartial &&
     oeuvresPaging != null &&
-    !(['system', 'audit', 'broadcast'] as Tab[]).includes(tab)
+    !(['system', 'audit', 'broadcast', 'notes'] as Tab[]).includes(tab)
 
   const showMobileActionBar = atelierNarrow && !inspected
 
@@ -1287,6 +1290,7 @@ export function TeamPortalClient({
             oeuvreThemeIdsByOeuvre={oeuvreThemeIdsByOeuvre}
             oeuvreGroupIdsByOeuvre={oeuvreGroupIdsByOeuvre}
             oeuvresCatalogueTotal={oeuvresPaging?.totalCount}
+            isAdmin={isAdmin}
           />
         )}
 
@@ -1452,6 +1456,11 @@ export function TeamPortalClient({
             <StockTakeTab contacts={contacts} />
           </div>
         )}
+        {tab === 'notes' && (
+          <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+            <NotesTab refreshTick={voiceNotesTick} oeuvres={oeuvres} />
+          </div>
+        )}
         {tab === 'system' && (
           <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
             <SystemTab />
@@ -1469,6 +1478,7 @@ export function TeamPortalClient({
         setSelection={setSelection}
         onClose={() => setInspected(null)}
         onDrawerDirtyChange={setDrawerDirty}
+        isAdmin={isAdmin}
         thM={thM}
         oeuvreThemeMap={oeuvreThemeMap}
         oeuvreGroupMap={oeuvreGroupMap}
@@ -1520,7 +1530,12 @@ export function TeamPortalClient({
         />
       )}
 
-      <VoiceNoteSheet open={voiceNoteSheetOpen} onClose={() => setVoiceNoteSheetOpen(false)} />
+      <VoiceNoteSheet
+        open={voiceNoteSheetOpen}
+        onClose={() => setVoiceNoteSheetOpen(false)}
+        oeuvreOptions={oeuvres.map((o) => ({ OeuvreID: o.OeuvreID, Titre: o.Titre }))}
+        onSaved={() => setVoiceNotesTick((n) => n + 1)}
+      />
 
       {showMobileActionBar && (
         <MobileActionBar

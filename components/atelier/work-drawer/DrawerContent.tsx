@@ -41,6 +41,7 @@ import { WorkDrawerPipelineSection } from './WorkDrawerPipelineSection'
 import { SaleReturnWindowBanner } from './SaleReturnWindowBanner'
 import { DrawerContentFinanceSection } from './DrawerContentFinanceSection'
 import { DrawerContentNotesVersionSection } from './DrawerContentNotesVersionSection'
+import { DrawerWorkSessionsSection } from './DrawerWorkSessionsSection'
 import { DrawerContentGroupsSection } from './DrawerContentGroupsSection'
 import { setsEqualNum, setsEqualStr } from './drawer-content-utils'
 import { CreatableSelect, FIS, Label, SectionTitle, Switch, WfSwitch, cap } from './drawer-widgets'
@@ -79,6 +80,7 @@ export function DrawerContent({
   runGuardedSlot,
   guardApiRef,
   onDrawerDirtyChange,
+  isAdmin = false,
 }: DrawerContentProps) {
   const { t, lang } = useI18n()
   const router = useRouter()
@@ -1180,6 +1182,8 @@ export function DrawerContent({
         />
 
         <DrawerContentGroupsSection t={t} initialGroups={initialGroups} selGroups={selGroups} setSelGroups={setSelGroups} />
+
+        <DrawerWorkSessionsSection oeuvreId={o.OeuvreID} isAdmin={isAdmin} lang={lang} t={t} />
 
         <DrawerContentNotesVersionSection
           oeuvreId={o.OeuvreID}

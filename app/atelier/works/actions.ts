@@ -947,15 +947,36 @@ export async function addWorkImage(formData: FormData): Promise<ImageResult> {
   if ('error' in uploadResult) return { error: uploadResult.error }
   const filename = uploadResult.filename
 
+  let captureMeta: Record<string, unknown> | null = null
+  const captureMetaRaw = formData.get('image_capture_meta')
+  if (typeof captureMetaRaw === 'string' && captureMetaRaw.trim()) {
+    try {
+      const parsed: unknown = JSON.parse(captureMetaRaw)
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        captureMeta = parsed as Record<string, unknown>
+      }
+    } catch {
+      /* ignore invalid JSON */
+    }
+  }
+  const imageSha256 =
+    typeof formData.get('image_sha256') === 'string'
+      ? (formData.get('image_sha256') as string).trim().slice(0, 64) || null
+      : null
+
+  const insertRow: Record<string, unknown> = {
+    ImageID: imageId,
+    OeuvreID: oeuvreId,
+    txtImageNameLink: filename,
+    SeqNo: seqNo,
+    DateAdded: new Date().toISOString(),
+  }
+  if (captureMeta) insertRow.capture_meta = captureMeta
+  if (imageSha256) insertRow.sha256 = imageSha256
+
   const { data: inserted, error: insertErr } = await supabase
     .from('tblImage')
-    .insert({
-      ImageID:          imageId,
-      OeuvreID:         oeuvreId,
-      txtImageNameLink: filename,
-      SeqNo:            seqNo,
-      DateAdded:        new Date().toISOString(),
-    })
+    .insert(insertRow as never)
     .select()
     .single()
 

@@ -115,6 +115,18 @@ export interface ConceptBurningRow {
   energie: number
 }
 
+/** `work_session` field capture row (Verb 1). */
+export interface WorkSessionRow {
+  id: string
+  created_at: string
+  updated_at: string
+  expires_at: string
+  user_id: string
+  oeuvre_id: number | null
+  status: 'draft' | 'pending_review' | 'applied' | 'rejected' | 'abandoned'
+  payload: unknown
+}
+
 /** `share_inbox` row (Web Share Target triage). */
 export interface ShareInboxRow {
   id: string
@@ -122,4 +134,31 @@ export interface ShareInboxRow {
   expires_at: string
   user_id: string
   payload: unknown
+}
+
+/** `sketchbook` row (Verb 2 — future drawing parent). */
+export interface SketchbookRow {
+  id: string
+  created_at: string
+  updated_at: string
+  user_id: string
+  name: string
+}
+
+/** `voice_note` row (Verb 2 — field audio + transcript). */
+export interface VoiceNoteRow {
+  id: string
+  created_at: string
+  updated_at: string
+  user_id: string
+  kind: 'memo' | 'dictation' | 'meeting' | 'field'
+  bucket: 'terrain' | 'studio' | 'commercial' | 'general'
+  subject: string | null
+  transcript: string
+  audio_r2_key: string | null
+  audio_mime: string | null
+  duration_ms: number | null
+  oeuvre_id: number | null
+  process_id: string | null
+  sketchbook_id: string | null
 }

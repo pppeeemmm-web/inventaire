@@ -25,7 +25,7 @@ test.describe('Hub field launcher (Ring B.1)', () => {
     await expect(page.getByTestId('hub-field-verb-issue')).toBeVisible()
   })
 
-  test('session row navigates to session capture stub', async ({ page }) => {
+  test('session row navigates to field session flow', async ({ page }) => {
     await page.goto('/hub')
     await expect(page.getByTestId('hub-field-launcher-root')).toBeVisible({ timeout: 45_000 })
     await page.getByTestId('hub-field-verb-session').click()

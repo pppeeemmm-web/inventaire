@@ -216,6 +216,7 @@ export function InventoryTab({
   oeuvreThemeIdsByOeuvre = {},
   oeuvreGroupIdsByOeuvre = {},
   oeuvresCatalogueTotal,
+  isAdmin = false,
 }: SharedProps & {
   techniques:     { TechniqueID: number; Technique: string | null }[]
   supports:       { SupportID:   number; Support:   string | null }[]
@@ -229,6 +230,8 @@ export function InventoryTab({
   oeuvreGroupIdsByOeuvre?: Record<number, string[]>
   /** When set and greater than `oeuvres.length`, inventory counts are a loaded subset of the catalogue. */
   oeuvresCatalogueTotal?: number
+  /** Admin-only controls in embedded WorkDrawer (field sessions, etc.). */
+  isAdmin?: boolean
 }) {
   const { t } = useI18n()
 
@@ -929,6 +932,7 @@ export function InventoryTab({
                 presentations={presentations}
                 expanded={previewExpanded}
                 setExpanded={setPreviewExpanded}
+                isAdmin={isAdmin}
               />
             )}
           </>

@@ -44,7 +44,7 @@ export function HubLauncherClient() {
         <div className="serif s-lg" style={{ marginTop: 8 }}>{t('hub_launcher_title')}</div>
       </div>
 
-      <VoiceNoteSheet open={voiceOpen} onClose={() => setVoiceOpen(false)} />
+      <VoiceNoteSheet open={voiceOpen} onClose={() => setVoiceOpen(false)} oeuvreOptions={[]} />
 
       {narrow ? (
         <div data-testid="hub-field-launcher-root" style={{ width: '100%', maxWidth: 420, display: 'flex', flexDirection: 'column', gap: 10 }}>

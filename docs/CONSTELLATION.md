@@ -81,3 +81,7 @@ Cloud payload schema is versioned by `CONSTELLATION_MAP_VERSION` and represented
 - Preserve persisted key compatibility or include deterministic migration.
 - Isolate server mutations in `app/**/actions.ts` (no new client-side domain writes).
 - Add focused tests for save/load/frozen-mode and edge edit flows when decomposition starts.
+
+## Repository copy
+
+Maintain this document only at **`docs/CONSTELLATION.md`** in the app repository root. Nested git worktrees should link here instead of keeping a second file.

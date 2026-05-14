@@ -54,6 +54,8 @@ interface Props {
     performSave: () => Promise<boolean>
   }>
   onDrawerDirtyChange?: (dirty: boolean) => void
+  /** Enables admin-only controls inside the editor (field sessions, etc.). */
+  isAdmin?: boolean
 }
 
 /** Parent can call `runGuarded(() => …)` before changing the open work (e.g. list click) so unsaved edits prompt first. */
@@ -72,6 +74,7 @@ export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function Work
   mode = 'overlay', expanded: expandedProp = false, setExpanded: setExpandedProp,
   guardApiRef: guardApiRefProp,
   onDrawerDirtyChange,
+  isAdmin = false,
 }, ref) {
   const isPanel = mode === 'panel'
   const narrow = useMediaQuery('(max-width: 767px)')
@@ -240,6 +243,7 @@ export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function Work
             runGuardedSlot={runGuardedSlot}
             guardApiRef={guardApiRef}
             onDrawerDirtyChange={onDrawerDirtyChange}
+            isAdmin={isAdmin}
           />
         </div>
       </div>
@@ -303,6 +307,7 @@ export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function Work
             runGuardedSlot={runGuardedSlot}
             guardApiRef={guardApiRef}
             onDrawerDirtyChange={onDrawerDirtyChange}
+            isAdmin={isAdmin}
           />
         </div>
       </div>

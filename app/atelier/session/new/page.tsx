@@ -1,5 +1,10 @@
-import { FieldToolStubPage } from '@/components/atelier/FieldToolStubPage'
+import { Suspense } from 'react'
+import { SessionNewClient } from '@/components/atelier/session/SessionNewClient'
 
 export default function SessionNewPage() {
-  return <FieldToolStubPage kind="session" />
+  return (
+    <Suspense fallback={null}>
+      <SessionNewClient />
+    </Suspense>
+  )
 }
