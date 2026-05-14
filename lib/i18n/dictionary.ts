@@ -154,6 +154,10 @@ export type DictKey =
   | 'coa_verify_badge_valid' | 'coa_verify_field_work' | 'coa_verify_field_year' | 'coa_verify_field_cert_id' | 'coa_verify_field_issued' | 'coa_verify_disclaimer'
   | 'wf_return_window_banner_fmt' | 'wf_return_window_no_start' | 'wf_return_window_skipped'
   | 'logistics_mark_delivered' | 'logistics_mark_delivered_confirm'
+  | 'logistics_upcoming_subtitle' | 'logistics_new_movement' | 'logistics_empty'
+  | 'logistics_section_upcoming' | 'logistics_section_history'
+  | 'logistics_col_recipient' | 'logistics_col_type' | 'logistics_col_works' | 'logistics_col_date' | 'logistics_col_status' | 'logistics_col_action'
+  | 'logistics_status_packed' | 'logistics_status_ready' | 'logistics_status_scheduled' | 'logistics_status_transit' | 'logistics_status_delivered'
   | 'enquiry_category_label' | 'enquiry_category_general' | 'enquiry_category_question' | 'enquiry_category_complaint' | 'enquiry_category_shipping' | 'enquiry_category_other'
   | 'enquiry_optional_ids_hint'
   | 'aria_open_navigation'
@@ -848,6 +852,22 @@ export const dict: Record<Lang, Dictionary> = {
     wf_return_window_skipped: 'Archivage automatique désactivé sur la commande liée.',
     logistics_mark_delivered: 'Marquer livré',
     logistics_mark_delivered_confirm: 'Marquer ce mouvement comme livré ?',
+    logistics_upcoming_subtitle: 'mouvements à venir',
+    logistics_new_movement: 'nouveau mouvement',
+    logistics_empty: 'Aucun mouvement enregistré.',
+    logistics_section_upcoming: 'À venir',
+    logistics_section_history: 'Historique',
+    logistics_col_recipient: 'Destinataire',
+    logistics_col_type: 'Type',
+    logistics_col_works: 'Œuvres',
+    logistics_col_date: 'Date',
+    logistics_col_status: 'Statut',
+    logistics_col_action: 'Action',
+    logistics_status_packed: 'Conditionné',
+    logistics_status_ready: 'Prêt',
+    logistics_status_scheduled: 'Planifié',
+    logistics_status_transit: 'En transit',
+    logistics_status_delivered: 'Livré',
     enquiry_category_label: 'Motif',
     enquiry_category_general: 'Message général',
     enquiry_category_question: 'Question',
@@ -2163,6 +2183,22 @@ $env:OLLAMA_HOST="127.0.0.1:11435"; ollama run llama3.2:1b`,
     wf_return_window_skipped: 'Automatic archive is disabled on the linked order.',
     logistics_mark_delivered: 'Mark delivered',
     logistics_mark_delivered_confirm: 'Mark this shipment as delivered?',
+    logistics_upcoming_subtitle: 'upcoming movements',
+    logistics_new_movement: 'new movement',
+    logistics_empty: 'No shipments recorded yet.',
+    logistics_section_upcoming: 'Upcoming',
+    logistics_section_history: 'History',
+    logistics_col_recipient: 'Recipient',
+    logistics_col_type: 'Type',
+    logistics_col_works: 'Works',
+    logistics_col_date: 'Date',
+    logistics_col_status: 'Status',
+    logistics_col_action: 'Action',
+    logistics_status_packed: 'Packed',
+    logistics_status_ready: 'Ready',
+    logistics_status_scheduled: 'Scheduled',
+    logistics_status_transit: 'In transit',
+    logistics_status_delivered: 'Delivered',
     enquiry_category_label: 'Topic',
     enquiry_category_general: 'General message',
     enquiry_category_question: 'Question',
