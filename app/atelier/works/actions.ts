@@ -831,7 +831,7 @@ async function r2Delete(filename: string): Promise<void> {
 }
 
 /**
- * Normalize upload to 2100px long-side AVIF (q=50), strip EXIF except Artist/Copyright,
+ * Normalize upload to 4000px long-side AVIF (q=50), strip EXIF except Artist/Copyright,
  * upload to R2 + 400px AVIF thumb. Filename hash uses raw input bytes (stable across encoders).
  */
 async function uploadImage(
@@ -854,8 +854,8 @@ async function uploadImage(
     const avifBuf = await sharp(buf)
       .rotate()
       .resize({
-        width: 2100,
-        height: 2100,
+        width: 4000,
+        height: 4000,
         fit: 'inside',
         withoutEnlargement: true,
       })
