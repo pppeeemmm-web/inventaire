@@ -437,7 +437,7 @@ export default function WorksClient({ works, modes }: Props) {
         .w-card.center.is-zoomed { cursor: zoom-out; }
         .w-card.center.is-zoomed:active { cursor: grabbing; }
         .w-card.side            { cursor: pointer; }
-        .w-card.text            { width: min(36vw, 480px); height: min(62vh, 580px); margin-left: calc(-1 * min(36vw, 480px) / 2); margin-top: calc(-1 * min(62vh, 580px) / 2); cursor: default; }
+        .w-card.text            { width: min(36vw, 480px); height: auto; max-height: min(80vh, 720px); margin-left: calc(-1 * min(36vw, 480px) / 2); margin-top: 0; cursor: default; }
         .w-card.zoomed-out      { pointer-events: none; }
 
         /* Drop-shadow rakes the silhouette so the work reads as a hung object */
@@ -519,7 +519,6 @@ export default function WorksClient({ works, modes }: Props) {
           padding: clamp(20px, 6%, 40px) clamp(16px, 5%, 32px);
           background: #f5f2ed;
           border: 1px solid rgba(26,24,22,0.10);
-          text-align: center;
           overflow-y: auto;
           scrollbar-width: none;
         }
@@ -530,11 +529,14 @@ export default function WorksClient({ works, modes }: Props) {
           color: #1a1816; font-weight: 400;
           letter-spacing: -0.01em; line-height: 1.2;
           margin: 0 0 12px 0;
+          text-align: center;
         }
         .w-text-card-body {
           font-size: clamp(10px, 1.1vw, 13px);
           line-height: 1.7; color: #5a5652;
           margin: 0;
+          text-align: left;
+          width: 100%;
         }
 
         .w-arrow {
@@ -849,7 +851,7 @@ export default function WorksClient({ works, modes }: Props) {
                   <div
                     key="text-card"
                     className="w-card side text"
-                    style={{ transform: isZoomed ? `translateZ(-${zoomZ}px) ${transform}` : transform, opacity, zIndex }}
+                    style={{ transform: `translateY(-50%) ${isZoomed ? `translateZ(-${zoomZ}px) ${transform}` : transform}`, opacity, zIndex }}
                   >
                     <div className="w-card-inner">
                       <div className="w-face left" aria-hidden />
