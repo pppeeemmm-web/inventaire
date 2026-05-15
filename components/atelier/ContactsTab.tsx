@@ -1589,7 +1589,7 @@ function ImportGoogleModal({ onClose, onDone }: { onClose: () => void; onDone: (
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div className="t-eyebrow">{t('contacts_import_google_title')}</div>
-          <button className="btn ghost sm" onClick={onClose}>✕</button>
+          <button type="button" className="btn ghost sm" onClick={onClose} aria-label={t('close')}>✕</button>
         </div>
 
         <div className="t-mono-sm" style={{ color: 'var(--tx3)', lineHeight: 1.6 }}>

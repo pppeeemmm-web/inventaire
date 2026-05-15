@@ -76,3 +76,16 @@ create trigger studio_task_touch
 
 comment on table studio_task is
   'Manual studio ledger (tasks/suggestions). Audit trail stays in system_log.';
+
+grant select, insert, update on public.studio_task to authenticated;
+grant delete on public.studio_task to authenticated;
+
+-- Verb 8 field columns (idempotent; safe to re-run)
+alter table public.studio_task
+  add column if not exists kind text not null default 'studio',
+  add column if not exists severity text check (severity in ('low', 'medium', 'high', 'critical')),
+  add column if not exists photo_r2_key text;
+
+comment on column public.studio_task.kind is 'studio | field | …';
+comment on column public.studio_task.severity is 'low | medium | high | critical';
+comment on column public.studio_task.photo_r2_key is 'Dedicated R2 key for issue photo (replaces [photo:…] in details when set).';

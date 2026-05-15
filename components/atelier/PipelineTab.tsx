@@ -33,6 +33,7 @@ import { buildPipelineCalendarEvents, normalizePipelineCalendarAnchor, type Pipe
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { PipelineCalendarView } from '@/components/atelier/PipelineCalendarView'
 import { PipelineGanttView } from '@/components/atelier/pipeline/PipelineGanttView'
+import { PipelineProcessSwipe } from '@/components/atelier/pipeline/PipelineProcessSwipe'
 import { PipelineDeadlineSidebar } from '@/components/atelier/pipeline/PipelineDeadlineSidebar'
 import { PipelineRemindersPanel } from '@/components/atelier/pipeline/PipelineRemindersPanel'
 import { createConsignmentOrder, regenerateConsignmentPdf, closeConsignmentByPdfPath } from '@/app/atelier/consignments/actions'
@@ -309,6 +310,7 @@ export function PipelineTab({ oeuvres, contacts, groups, initialReminders, onRem
           background: 'var(--bg1)', flexShrink: 0,
         }}>
           <div
+            data-testid={atelierNarrow ? 'pipeline-toolbar-scroll' : undefined}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -398,13 +400,12 @@ export function PipelineTab({ oeuvres, contacts, groups, initialReminders, onRem
               style={{
                 display: 'flex',
                 flexWrap: atelierNarrow ? 'nowrap' : 'wrap',
-                overflowX: atelierNarrow ? 'visible' : 'visible',
-                WebkitOverflowScrolling: 'touch',
                 alignItems: 'center',
                 gap: 6,
                 flex: atelierNarrow ? '0 0 auto' : 1,
-                minWidth: atelierNarrow ? 0 : undefined,
-                maxWidth: '100%',
+                flexShrink: atelierNarrow ? 0 : undefined,
+                minWidth: atelierNarrow ? undefined : 0,
+                maxWidth: atelierNarrow ? undefined : '100%',
                 color: 'var(--tx3)', fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase',
                 marginTop: 0,
               }}
@@ -413,11 +414,10 @@ export function PipelineTab({ oeuvres, contacts, groups, initialReminders, onRem
               <div
                 style={{
                   display: 'flex',
-                  flexWrap: atelierNarrow ? 'nowrap' : 'wrap',
+                  flexWrap: 'nowrap',
                   gap: 6,
                   alignItems: 'center',
-                  flex: atelierNarrow ? '1 1 auto' : undefined,
-                  minWidth: 0,
+                  flexShrink: 0,
                 }}
               >
                 <button type="button" className="btn ghost sm"
@@ -589,7 +589,7 @@ export function PipelineTab({ oeuvres, contacts, groups, initialReminders, onRem
                         {new Date(r.remind_at).toLocaleDateString(dateLocTag,{day:'numeric',month:'short'})}
                       </div>
                     </div>
-                    <button style={{ fontSize:12, color:'var(--tx3)', flexShrink:0 }}
+                    <button type="button" aria-label={t('delete')} style={{ fontSize:12, color:'var(--tx3)', flexShrink:0, minHeight: 44, minWidth: 44 }}
                       onClick={async() => {
                         try {
                           const res = await markSuiviReminderRead(r.id)
@@ -920,7 +920,8 @@ function GanttView({
           const progress= p.etapes.length>0 ? done/p.etapes.length : 0
           const peekSteps = expandedPeekId === p.id ? upcomingEtapesForPeek(p, 4) : []
           return (
-            <div key={p.id} style={{ display:'flex', alignItems:'flex-start', opacity:isDone?0.5:1 }}>
+            <PipelineProcessSwipe key={p.id} processId={p.id} enabled={narrow} onRefresh={onRefresh} t={t}>
+            <div style={{ display:'flex', alignItems:'flex-start', opacity:isDone?0.5:1 }}>
               <div style={{ width:240, flexShrink:0, paddingRight:16, display:'flex', flexDirection:'column', gap:6 }}>
                 <div style={{ display:'flex', alignItems:'flex-start', gap:4 }}>
                   <button
@@ -1069,6 +1070,7 @@ function GanttView({
                 )}
               </div>
             </div>
+            </PipelineProcessSwipe>
           )
         })}
       </div>
@@ -1140,7 +1142,7 @@ function ProcessDrawer({ process, onClose, onEdit, onRefresh, onCycleEtape, onOv
             </button>
           )}
           <button className="btn ghost sm" onClick={onEdit}>{t('edit')}</button>
-          <button className="btn ghost sm" onClick={onClose}>✕</button>
+          <button type="button" className="btn ghost sm" onClick={onClose} aria-label={t('close')}>✕</button>
         </div>
       </div>
 
@@ -1694,7 +1696,7 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved, on
             <div style={{ fontSize:9, letterSpacing:'0.2em', textTransform:'uppercase', color:'var(--ac)', fontWeight: 700, marginBottom: 8 }}>{t('pm_header_kicker')}</div>
             <div style={{ fontSize: 24, fontWeight: 300, color: '#fff' }}>{isNew ? t('pm_title_new') : t('pm_title_edit').replace(/\{name\}/g, process!.nom)}</div>
           </div>
-          <button type="button" onClick={attemptClose} disabled={busy} style={{ background: 'none', border: 'none', color: 'var(--tx3)', fontSize: 32, cursor: 'pointer' }}>×</button>
+          <button type="button" onClick={attemptClose} disabled={busy} aria-label={t('close')} style={{ background: 'none', border: 'none', color: 'var(--tx3)', fontSize: 32, cursor: 'pointer', minHeight: 44, minWidth: 44 }}>×</button>
         </div>
 
         <div style={{ display:'flex', flexDirection:'column', gap:32 }}>
@@ -1838,7 +1840,7 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved, on
               ) : contactId ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--bg1)', padding: '6px 12px', border: '1px solid var(--ac)', height: 32 }}>
                   <div style={{ fontSize: 11, flex: 1, fontWeight: 500 }}>{contacts?.find(c => c.ContactID === contactId)?.NomInstitution || t('pm_selected_contact_fallback')}</div>
-                  <button onClick={() => setContactId(null)} style={{ background: 'none', border: 'none', color: 'var(--rust)', cursor: 'pointer', fontSize: 14 }}>×</button>
+                  <button type="button" onClick={() => setContactId(null)} aria-label={t('delete')} style={{ background: 'none', border: 'none', color: 'var(--rust)', cursor: 'pointer', fontSize: 14, minHeight: 44, minWidth: 44 }}>×</button>
                 </div>
               ) : (
                 <>
@@ -1938,7 +1940,7 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved, on
                 <div key={i} style={{ display:'flex', gap:12, alignItems:'center', background: 'var(--bg0)', padding: '4px 12px' }}>
                   <input value={e.nom} onChange={ev=>{const v=ev.target.value;setEtapes(p=>p.map((x,j)=>j===i?{...x,nom:v}:x))}} style={{...FIS, border: 'none', background: 'transparent', flex: 1}} placeholder={t('pm_step_name_ph')} />
                   <input type="date" value={e.date_echeance} onChange={ev=>{const v=ev.target.value;setEtapes(p=>p.map((x,j)=>j===i?{...x,date_echeance:v}:x))}} style={{...FIS, width:130, border: 'none', background: 'transparent'}} />
-                  <button onClick={()=>setEtapes(p=>p.filter((_,j)=>j!==i))} style={{ background: 'none', border: 'none', color: 'var(--tx3)', cursor: 'pointer' }}>×</button>
+                  <button type="button" onClick={()=>setEtapes(p=>p.filter((_,j)=>j!==i))} aria-label={t('delete')} style={{ background: 'none', border: 'none', color: 'var(--tx3)', cursor: 'pointer', minHeight: 44, minWidth: 44 }}>×</button>
                 </div>
               ))}
             </div>

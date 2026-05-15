@@ -294,7 +294,7 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen, oeuvresPagi
       : undefined
 
   return (
-    <div style={{ padding: '16px 28px 0', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%', flex: 1 }}>
+    <div style={{ padding: narrow ? '12px 16px 0' : '16px 28px 0', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%', flex: 1 }}>
 
       {/* Header — Ring A.3: stack on narrow (field terminal) */}
       <div
@@ -408,9 +408,11 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen, oeuvresPagi
         <div style={{
           display: 'flex',
           gap: 1,
-          height: '100%', 
-          flex: 1,
+          height: '100%',
+          flex: narrow ? '0 0 auto' : 1,
           alignItems: 'stretch',
+          width: narrow ? 'max-content' : undefined,
+          minWidth: narrow ? '100%' : undefined,
         }}>
           {actionTypes.map((at) => {
             const ids   = actionMap.get(at.id) ?? new Set<number>()
@@ -420,7 +422,17 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen, oeuvresPagi
               return ids.has(o.OeuvreID) || (isPhotoColumn && needsPhoto)
             })
             return (
-              <div key={at.id} style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 120, height: '100%' }}>
+              <div
+                key={at.id}
+                style={{
+                  flex: narrow ? '0 0 auto' : 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  minWidth: narrow ? 'min(72vw, 240px)' : 120,
+                  width: narrow ? 'min(72vw, 240px)' : undefined,
+                  height: '100%',
+                }}
+              >
                 <ActionColumn
                   actionType={at}
                   works={works}
@@ -772,9 +784,11 @@ function ActionTypeManager({ actionTypes, onRefresh, onClose }: {
               <span title={t('prod_tab_auto_update_tt').replace('{field}', at.field_key)} style={{ fontSize: 11, color: 'var(--ac)', opacity: 0.8 }}>⚡</span>
             )}
             <button
+              type="button"
               onClick={() => deleteType(at.id)}
               title={t('prod_tab_delete_column_title')}
-              style={{ fontSize: 14, color: 'var(--tx3)', background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px', marginLeft: 8 }}
+              aria-label={t('prod_tab_delete_column_title')}
+              style={{ fontSize: 14, color: 'var(--tx3)', background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px', marginLeft: 8, minHeight: 44, minWidth: 44 }}
               onMouseEnter={(e) => (e.currentTarget.style.color = '#c06060')}
               onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--tx3)')}
             >✕</button>

@@ -334,6 +334,7 @@ export type Database = {
           PropriétaireOeuvre: boolean | null
           Role: string | null
           RoleResponsable: string | null
+          signature_r2_key: string | null
           Téléphone1: string | null
           Téléphone2: string | null
           Twitter: string | null
@@ -370,6 +371,7 @@ export type Database = {
           PropriétaireOeuvre?: boolean | null
           Role?: string | null
           RoleResponsable?: string | null
+          signature_r2_key?: string | null
           Téléphone1?: string | null
           Téléphone2?: string | null
           Twitter?: string | null
@@ -406,6 +408,7 @@ export type Database = {
           PropriétaireOeuvre?: boolean | null
           Role?: string | null
           RoleResponsable?: string | null
+          signature_r2_key?: string | null
           Téléphone1?: string | null
           Téléphone2?: string | null
           Twitter?: string | null
@@ -1619,6 +1622,54 @@ export type Database = {
             referencedColumns: ["ContactID"]
           },
         ]
+      }
+      studio_task: {
+        Row: {
+          action: string
+          author_id: string | null
+          completed_at: string | null
+          created_at: string
+          details: string | null
+          id: number
+          kind: string
+          photo_r2_key: string | null
+          priority: string | null
+          severity: string | null
+          status: string | null
+          type: string | null
+          updated_at: string
+        }
+        Insert: {
+          action: string
+          author_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          details?: string | null
+          id?: number
+          kind?: string
+          photo_r2_key?: string | null
+          priority?: string | null
+          severity?: string | null
+          status?: string | null
+          type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          action?: string
+          author_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          details?: string | null
+          id?: number
+          kind?: string
+          photo_r2_key?: string | null
+          priority?: string | null
+          severity?: string | null
+          status?: string | null
+          type?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       suivi_etape: {
         Row: {

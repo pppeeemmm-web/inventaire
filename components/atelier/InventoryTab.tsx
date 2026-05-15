@@ -1122,8 +1122,10 @@ function CriteriaPanel({
 
             {/* Remove */}
             <button
+              type="button"
               onClick={() => removeCriterion(c.id)}
-              style={{ ...FIS, cursor: 'pointer', color: 'var(--tx3)' }}
+              aria-label={t('delete')}
+              style={{ ...FIS, cursor: 'pointer', color: 'var(--tx3)', minHeight: 44, minWidth: 44 }}
             >✕</button>
           </div>
         )

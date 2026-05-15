@@ -1,5 +1,5 @@
-import { FieldToolStubPage } from '@/components/atelier/FieldToolStubPage'
+import { TriageDeckClient } from '@/components/atelier/TriageDeckClient'
 
 export default function TriagePage() {
-  return <FieldToolStubPage kind="triage" />
+  return <TriageDeckClient />
 }

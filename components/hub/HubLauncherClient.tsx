@@ -37,8 +37,31 @@ export function HubLauncherClient() {
   const [legacyOpen, setLegacyOpen] = useState(false)
   const [voiceOpen, setVoiceOpen] = useState(false)
 
+  const rootPad = narrow
+    ? {
+        paddingTop: 'max(20px, env(safe-area-inset-top, 0px))',
+        paddingRight: 'max(16px, env(safe-area-inset-right, 0px))',
+        paddingBottom: 'max(16px, env(safe-area-inset-bottom, 0px))',
+        paddingLeft: 'max(16px, env(safe-area-inset-left, 0px))',
+      }
+    : { padding: 24 }
+
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, gap: 32 }}>
+    <div
+      style={{
+        minHeight: '100dvh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: narrow ? 'flex-start' : 'center',
+        overflowY: 'auto',
+        overflowX: 'hidden',
+        width: '100%',
+        boxSizing: 'border-box',
+        gap: narrow ? 20 : 32,
+        ...rootPad,
+      }}
+    >
       <div style={{ textAlign: 'center' }}>
         <div className="t-label" style={{ fontSize: 11, letterSpacing: 2, opacity: 0.5 }}>{t('hub_launcher_subtitle')}</div>
         <div className="serif s-lg" style={{ marginTop: 8 }}>{t('hub_launcher_title')}</div>
@@ -170,8 +193,18 @@ export function HubLauncherClient() {
       <button
         type="button"
         className="btn primary"
+        data-testid="hub-launcher-enter-atelier"
         onClick={() => void router.push('/atelier')}
-        style={{ minHeight: 44, fontSize: 12, letterSpacing: 1 }}
+        style={{
+          minHeight: 44,
+          fontSize: 12,
+          letterSpacing: 1,
+          width: narrow ? '100%' : undefined,
+          maxWidth: narrow ? 420 : undefined,
+          marginTop: narrow ? 'auto' : undefined,
+          flexShrink: 0,
+          paddingBottom: narrow ? 'max(4px, env(safe-area-inset-bottom, 0px))' : undefined,
+        }}
       >
         {t('hub_launcher_enter_atelier')}
       </button>

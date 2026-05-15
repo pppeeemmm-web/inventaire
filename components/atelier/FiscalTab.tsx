@@ -687,7 +687,7 @@ function ExpenseModal({
           <div style={{ fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--tx3)' }}>
             {isNew ? 'Nouvelle dépense' : `Modifier dépense #${expense!.id}`}
           </div>
-          <button type="button" className="btn ghost sm" onClick={attemptClose} disabled={busy}>✕</button>
+          <button type="button" className="btn ghost sm" onClick={attemptClose} disabled={busy} aria-label={t('close')}>✕</button>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

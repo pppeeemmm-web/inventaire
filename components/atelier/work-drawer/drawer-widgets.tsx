@@ -2,6 +2,7 @@
 
 import type { CSSProperties, ReactNode } from 'react'
 import { useState } from 'react'
+import { useI18n } from '@/lib/i18n/context'
 
 export function WfPipeProgress({
   stages,
@@ -129,6 +130,7 @@ export function CreatableSelect({
   onChange: (v: string) => void
   onAdd: (v: string) => void
 }) {
+  const { t } = useI18n()
   const [isAdding, setIsAdding] = useState(false)
   const [newVal, setNewVal] = useState('')
   if (isAdding) {
@@ -136,7 +138,7 @@ export function CreatableSelect({
       <div style={{ display: 'flex', gap: 4 }}>
         <input className="input" value={newVal} onChange={e => setNewVal(e.target.value)} style={{ ...FIS, padding: '8px 10px', minHeight: 40 }} placeholder="Nouveau…" autoFocus />
         <button type="button" className="btn primary sm" style={{ minHeight: 40, padding: '0 10px', fontSize: 10 }} onClick={() => { onAdd(newVal); setIsAdding(false); setNewVal('') }}>OK</button>
-        <button type="button" className="btn ghost sm" style={{ minHeight: 40, padding: '0 10px', fontSize: 10 }} onClick={() => setIsAdding(false)}>×</button>
+        <button type="button" className="btn ghost sm" aria-label={t('cancel')} style={{ minHeight: 40, padding: '0 10px', fontSize: 10 }} onClick={() => setIsAdding(false)}>×</button>
       </div>
     )
   }

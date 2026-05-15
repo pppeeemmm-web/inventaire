@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { validateWorkImageBuffer } from '@/lib/image-upload'
 import { r2PutObject } from '@/lib/r2-s3-object'
+import { logSystemEvent } from '@/lib/utils/logging'
 
 const TASK_TYPES = new Set(['suggestion', 'improvement', 'maintenance', 'backlog', 'bug'])
 
@@ -36,7 +37,7 @@ export async function createFieldIssueReport(formData: FormData): Promise<Create
 
   if (!title) return { ok: false, error: 'missing_title' }
 
-  let detailsOut = details
+  let photo_r2_key: string | null = null
   const file = formData.get('photo')
   if (file instanceof File && file.size > 0) {
     const buf = Buffer.from(await file.arrayBuffer())
@@ -49,23 +50,33 @@ export async function createFieldIssueReport(formData: FormData): Promise<Create
     } catch {
       return { ok: false, error: 'r2_failed' }
     }
-    const photoNote = detailsOut ? `\n\n[photo:${key}]` : `[photo:${key}]`
-    detailsOut = `${detailsOut}${photoNote}`.slice(0, 12_000)
+    photo_r2_key = key
   }
 
+  const severity =
+    type === 'bug' ? 'high' : type === 'maintenance' ? 'medium' : 'low'
   const priority = type === 'bug' ? 'P2' : 'P3'
   const { error } = await supabase.from('studio_task').insert({
     action: title,
-    details: detailsOut || null,
+    details: details || null,
     type,
     priority,
     status: 'requested',
+    kind: 'field',
+    severity,
+    photo_r2_key,
   })
 
   if (error) {
     console.error('[createFieldIssueReport]', error)
     return { ok: false, error: 'insert_failed' }
   }
+
+  await logSystemEvent({
+    eventType: 'SYSTEM_CONFIG',
+    tableName: 'studio_task',
+    metadata: { source: 'field_issue', type, severity, photo_r2_key },
+  })
 
   revalidatePath('/hub')
   revalidatePath('/atelier')

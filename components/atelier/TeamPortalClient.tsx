@@ -2101,7 +2101,7 @@ function CompareModal({ ids, oeuvres, tM, sM, contacts, addresses, statusLabelMa
     }} onClick={onClose}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div className="t-eyebrow" style={{ color: '#fff' }}>{t('compare')} — {ids.length} {t('works')}</div>
-        <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: 24, cursor: 'pointer' }}>×</button>
+        <button type="button" onClick={onClose} aria-label={t('close')} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: 24, cursor: 'pointer', minHeight: 44, minWidth: 44 }}>×</button>
       </div>
 
       <div style={{

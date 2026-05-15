@@ -452,7 +452,7 @@ function OrderFormModal({ oeuvres, contacts, groups, tM, onClose, onCreated }: {
       <div style={{ width: 680, maxHeight: '90vh', overflowY: 'auto', background: 'var(--bg1)', border: '1px solid var(--bd)', padding: 28 }} onClick={(e) => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
           <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--tx)' }}>Nouvelle commande</div>
-          <button type="button" onClick={attemptClose} style={{ background: 'none', border: 'none', color: 'var(--tx3)', cursor: 'pointer', fontSize: 24 }}>×</button>
+          <button type="button" onClick={attemptClose} aria-label={t('close')} style={{ background: 'none', border: 'none', color: 'var(--tx3)', cursor: 'pointer', fontSize: 24, minHeight: 44, minWidth: 44 }}>×</button>
         </div>
         <form ref={formRef} onSubmit={handleSubmit} onChange={() => setDirty(true)}>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 20 }}>
@@ -726,7 +726,7 @@ function OrderDetailPanel({ order, oeuvres, cM, setInspectedOrder, onClose, onUp
             <div style={{ fontFamily: 'var(--font-mono)', color: 'var(--ac)', fontSize: 13 }}>{order.order_ref}</div>
             <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--tx)', marginTop: 4 }}>{work?.Titre ?? `Œuvre #${order.oeuvre_id}`}</div>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--tx3)', cursor: 'pointer', fontSize: 24 }}>×</button>
+          <button type="button" onClick={onClose} aria-label={t('close')} style={{ background: 'none', border: 'none', color: 'var(--tx3)', cursor: 'pointer', fontSize: 24, minHeight: 44, minWidth: 44 }}>×</button>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 20px', fontSize: 13, marginBottom: 24 }}>
           <span style={{ color: 'var(--tx3)' }}>Acheteur</span>       <span>{buyer}</span>

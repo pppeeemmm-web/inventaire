@@ -1,5 +1,5 @@
-import { FieldToolStubPage } from '@/components/atelier/FieldToolStubPage'
+import { DocumentsNewClient } from '@/components/atelier/documents/DocumentsNewClient'
 
 export default function DocumentsNewPage() {
-  return <FieldToolStubPage kind="documents" />
+  return <DocumentsNewClient />
 }

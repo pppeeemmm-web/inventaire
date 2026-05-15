@@ -974,12 +974,14 @@ export function DrawerContent({
           )}
           {isPanel && setExpanded && (
             <button
+              type="button"
               onClick={() => setExpanded(!isExpanded)}
-              style={{ background: 'transparent', border: '1px solid var(--bd)', color: 'var(--tx3)', cursor: 'pointer', fontSize: 13, padding: '4px 8px', marginRight: 4 }}
+              aria-label={isExpanded ? t('wf_drawer_collapse') : t('wf_drawer_expand')}
+              style={{ background: 'transparent', border: '1px solid var(--bd)', color: 'var(--tx3)', cursor: 'pointer', fontSize: 13, padding: '4px 8px', marginRight: 4, minHeight: 44, minWidth: 44 }}
               title={isExpanded ? t('wf_drawer_collapse') : t('wf_drawer_expand')}
             >{isExpanded ? '◀' : '▶'}</button>
           )}
-          <button type="button" onClick={attemptClose} style={{ background: 'transparent', border: 'none', color: 'var(--tx3)', cursor: 'pointer', fontSize: 24, padding: '0 6px' }}>×</button>
+          <button type="button" onClick={attemptClose} aria-label={t('close')} style={{ background: 'transparent', border: 'none', color: 'var(--tx3)', cursor: 'pointer', fontSize: 24, padding: '0 6px', minHeight: 44, minWidth: 44 }}>×</button>
         </div>
       </div>
 
@@ -1270,7 +1272,7 @@ export function DrawerContent({
               <button className="btn ghost sm" style={{ color: '#c0392b', minHeight: 44 }} disabled={deleting} onClick={handleDelete}>
                 {deleting ? '…' : t('btn_confirm')}
               </button>
-              <button className="btn ghost sm" onClick={() => { setConfirmDelete(false); setDeleteError(null) }}>×</button>
+              <button type="button" className="btn ghost sm" aria-label={t('cancel')} onClick={() => { setConfirmDelete(false); setDeleteError(null) }}>×</button>
             </div>
           )}
         </div>

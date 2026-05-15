@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { logSystemEvent } from '@/lib/utils/logging'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -83,4 +84,48 @@ export async function convertConceptToProcess(conceptId: string, type: PipelineP
     .eq('id', conceptId)
 
   return { ok: true, processId: process.id }
+}
+
+/** Field Verb 4 — append an étape to the active process (mobile swipe-nudge). */
+export async function quickAddEtape(processId: string): Promise<{ ok: true } | { error: string }> {
+  const { error: authErr, supabase } = await guardTeam()
+  if (authErr || !supabase) return { error: authErr ?? 'Auth' }
+
+  const { data: steps } = await supabase
+    .from('suivi_etape')
+    .select('id, position')
+    .eq('process_id', processId)
+    .order('position', { ascending: false })
+    .limit(1)
+
+  const nextPos = ((steps?.[0]?.position as number | undefined) ?? 0) + 1
+  const { error } = await supabase.from('suivi_etape').insert({
+    process_id: processId,
+    nom: `Étape ${nextPos}`,
+    position: nextPos,
+    statut: 'a_faire',
+  })
+  if (error) return { error: error.message }
+  await logSystemEvent({
+    eventType: 'SYSTEM_CONFIG',
+    tableName: 'suivi_etape',
+    metadata: { action: 'quick_add_etape', processId },
+  })
+  return { ok: true }
+}
+
+/** Field Verb 4 — mark process terminé from swipe-right nudge. */
+export async function quickMarkProcessDone(processId: string): Promise<{ ok: true } | { error: string }> {
+  const { error: authErr, supabase } = await guardTeam()
+  if (authErr || !supabase) return { error: authErr ?? 'Auth' }
+
+  const { error } = await supabase.from('suivi_process').update({ statut: 'termine' }).eq('id', processId)
+  if (error) return { error: error.message }
+  await logSystemEvent({
+    eventType: 'SYSTEM_CONFIG',
+    tableName: 'suivi_process',
+    rowId: processId,
+    metadata: { action: 'quick_mark_done' },
+  })
+  return { ok: true }
 }

@@ -12,6 +12,17 @@ test.describe('Hub field launcher (Ring B.1)', () => {
 
   test.use({ viewport: { width: 375, height: 812 } })
 
+  test('enter atelier CTA stays in viewport', async ({ page }) => {
+    await page.goto('/hub')
+    await expect(page.getByTestId('hub-field-launcher-root')).toBeVisible({ timeout: 45_000 })
+    const cta = page.getByTestId('hub-launcher-enter-atelier')
+    await cta.scrollIntoViewIfNeeded()
+    await expect(cta).toBeInViewport()
+    const box = await cta.boundingBox()
+    expect(box).not.toBeNull()
+    if (box) expect(box.height).toBeGreaterThanOrEqual(44)
+  })
+
   test('narrow hub shows eight field verb rows', async ({ page }) => {
     await page.goto('/hub')
     await expect(page.getByTestId('hub-field-launcher-root')).toBeVisible({ timeout: 45_000 })

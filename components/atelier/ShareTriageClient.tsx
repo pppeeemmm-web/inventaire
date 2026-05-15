@@ -8,6 +8,7 @@ import { useI18n } from '@/lib/i18n/context'
 import { imageUrl } from '@/lib/data'
 import { toast } from '@/lib/ui/toast'
 import { deleteShareInboxEntry, type ShareInboxListRow } from '@/app/atelier/share-inbox-actions'
+import { ShareAttachPanel } from '@/components/atelier/ShareAttachPanel'
 import type { ShareInboxPayloadV1 } from '@/lib/share-inbox-types'
 import { isShareInboxPayloadV1 } from '@/lib/share-inbox-types'
 
@@ -64,7 +65,12 @@ export function ShareTriageClient(props: {
     [router, t],
   )
 
-  const stub = () => toast.info(t('share_triage_coming_soon_toast'))
+  const onAttachDone = useCallback(() => {
+    startTransition(() => {
+      router.replace('/atelier/share-triage')
+      router.refresh()
+    })
+  }, [router])
 
   return (
     <div
@@ -193,7 +199,7 @@ export function ShareTriageClient(props: {
           pending={pending}
           busyId={busyId}
           onDismiss={onDismiss}
-          stub={stub}
+          onAttachDone={onAttachDone}
           t={t}
         />
       ) : null}
@@ -237,10 +243,10 @@ function ParsedShareDetail(props: {
   pending: boolean
   busyId: string | null
   onDismiss: (id: string) => void
-  stub: () => void
+  onAttachDone: () => void
   t: (k: DictKey) => string
 }) {
-  const { parsed, detail, pending, busyId, onDismiss, stub, t } = props
+  const { parsed, detail, pending, busyId, onDismiss, onAttachDone, t } = props
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       {parsed.title ? (
@@ -319,20 +325,7 @@ function ParsedShareDetail(props: {
         </div>
       ) : null}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <button type="button" className="btn ghost sm" style={{ minHeight: 44 }} onClick={stub}>
-          {t('share_triage_attach_work')}
-        </button>
-        <button type="button" className="btn ghost sm" style={{ minHeight: 44 }} onClick={stub}>
-          {t('share_triage_attach_contact')}
-        </button>
-        <button type="button" className="btn ghost sm" style={{ minHeight: 44 }} onClick={stub}>
-          {t('share_triage_attach_vault')}
-        </button>
-        <button type="button" className="btn ghost sm" style={{ minHeight: 44 }} onClick={stub}>
-          {t('share_triage_attach_note')}
-        </button>
-      </div>
+      <ShareAttachPanel inboxId={detail.id} onDone={onAttachDone} />
 
       <button
         type="button"

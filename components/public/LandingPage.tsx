@@ -209,6 +209,7 @@ export default function LandingPage({
 
       {pubNarrow && (
         <div
+          data-testid="landing-mobile-toolbar"
           role="toolbar"
           aria-label={t('pub_mobile_nav_heading')}
           style={{
