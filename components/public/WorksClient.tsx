@@ -247,7 +247,7 @@ export default function WorksClient({ works, modes }: Props) {
           transform-style: preserve-3d;
         }
         .w-card {
-          --thickness: 42px;
+          --thickness: 20px;
           position: absolute;
           top: 46%; left: 50%;
           width: min(25vw, 400px);
@@ -270,44 +270,41 @@ export default function WorksClient({ works, modes }: Props) {
         .w-face {
           position: absolute;
           backface-visibility: hidden;
+          box-shadow: inset 0 0 15px rgba(0,0,0,0.18);
         }
         .w-face.front {
-          top: 0; left: 0;
           width: 100%; height: 100%;
           transform: translateZ(calc(var(--thickness) / 2));
           display: flex; align-items: center; justify-content: center;
+          box-shadow: none;
         }
         .w-face.right {
-          top: 0; left: calc(100% - var(--thickness));
           width: var(--thickness); height: 100%;
-          transform-origin: 100% 50%;
-          transform: rotateY(-90deg);
-          background: linear-gradient(to bottom, #c2b9a4 0%, #9c917b 55%, #6e6553 100%);
-          box-shadow: inset 0 0 0 1px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.18);
+          left: calc(100% - var(--thickness) / 2);
+          top: 0;
+          transform: rotateY(90deg);
+          background: linear-gradient(to bottom, #d6cdb8 0%, #b3a98f 55%, #837a64 100%);
         }
         .w-face.left {
-          top: 0; left: 0;
           width: var(--thickness); height: 100%;
-          transform-origin: 0 50%;
-          transform: rotateY(90deg);
-          background: linear-gradient(to bottom, #c2b9a4 0%, #9c917b 55%, #6e6553 100%);
-          box-shadow: inset 0 0 0 1px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.18);
+          left: calc(var(--thickness) / -2);
+          top: 0;
+          transform: rotateY(-90deg);
+          background: linear-gradient(to bottom, #d6cdb8 0%, #b3a98f 55%, #837a64 100%);
         }
         .w-face.top {
-          top: 0; left: 0;
           width: 100%; height: var(--thickness);
-          transform-origin: 50% 0;
+          top: calc(var(--thickness) / -2);
+          left: 0;
           transform: rotateX(90deg);
-          background: linear-gradient(to right, #b6ad97 0%, #cec3ad 50%, #b6ad97 100%);
-          box-shadow: inset 0 0 0 1px rgba(0,0,0,0.10);
+          background: linear-gradient(to right, #c6bda5 0%, #d8cfb7 50%, #c6bda5 100%);
         }
         .w-face.bottom {
-          top: calc(100% - var(--thickness)); left: 0;
           width: 100%; height: var(--thickness);
-          transform-origin: 50% 100%;
+          top: calc(100% - var(--thickness) / 2);
+          left: 0;
           transform: rotateX(-90deg);
-          background: linear-gradient(to right, #8a8170 0%, #9c917b 50%, #8a8170 100%);
-          box-shadow: inset 0 0 0 1px rgba(0,0,0,0.22);
+          background: linear-gradient(to right, #7a7160 0%, #8c8270 50%, #7a7160 100%);
         }
         .w-card-img {
           width: 100%; height: 100%;
@@ -498,10 +495,12 @@ export default function WorksClient({ works, modes }: Props) {
 
                 let finalTransform = transform
                 let finalZ = zIndex
+                const zoomStyle: React.CSSProperties = {}
                 if (isCenter && isZoomed) {
-                  // Compensate for the card's top:46% so the zoomed image lands in true viewport center
-                  finalTransform = `translate3d(0, 4vh, 0) scale(${reducedMotion ? 2.4 : 3.6})`
+                  finalTransform = `translate3d(0, 4vh, 0) scale(${reducedMotion ? 1.5 : 2})`
                   finalZ = 200
+                  zoomStyle.maxWidth = '70vw'
+                  zoomStyle.maxHeight = '90vh'
                 }
 
                 const classes = [
@@ -518,7 +517,7 @@ export default function WorksClient({ works, modes }: Props) {
                     role="group"
                     aria-roledescription="slide"
                     aria-label={w.Titre ?? t('pub_untitled')}
-                    style={{ transform: finalTransform, opacity, zIndex: finalZ }}
+                    style={{ transform: finalTransform, opacity, zIndex: finalZ, ...zoomStyle }}
                     onClick={() => {
                       if (isCenter) setIsZoomed(z => !z)
                       else setActiveIndex(i)
