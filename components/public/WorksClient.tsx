@@ -2,7 +2,7 @@
 
 import { useI18n } from '@/lib/i18n/context'
 import { imageUrl, thumbUrl, yearOf } from '@/lib/data'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import PublicNav from './PublicNav'
 import { trackView } from '@/lib/track'
 import { getOrCreatePublicVisitorId } from '@/lib/public-visitor-id'
@@ -110,6 +110,9 @@ function cardTransform(offset: number, reducedMotion: boolean): {
   return { transform, opacity, zIndex, visible: true }
 }
 
+// Grain SVG data URI — shared between CSS and 3D wall plane
+const GRAIN_BG = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E")`
+
 export default function WorksClient({ works, modes }: Props) {
   const { t, lang } = useI18n()
   const safeModes: WorksMode[] = modes.length > 0 ? modes : [{
@@ -128,11 +131,19 @@ export default function WorksClient({ works, modes }: Props) {
   const rafRef = useRef<number | undefined>(undefined)
   const totalSlotsRef = useRef(0)
 
-  const [zoomScale, setZoomScale] = useState(1)
+  // z-axis zoom: viewer approaches the gallery wall
+  const zoomZRef = useRef(0)
+  const [zoomZ, setZoomZ] = useState(0)
+  const MAX_Z = 1800   // perspective 2400 → apparent scale 2400/600 = 4× at max
+
   const [zoomPan, setZoomPan] = useState({ x: 0, y: 0 })
+  // Track which work's full-res image has loaded (gates zoom entry)
+  const [loadedWorkId, setLoadedWorkId] = useState<number | null>(null)
+  // Natural dimensions of the loaded center image — used for hi-res rasterization trick
+  const [centerNaturalSize, setCenterNaturalSize] = useState<{ w: number; h: number } | null>(null)
+
   const dragRef = useRef<{ mx: number; my: number; px: number; py: number } | null>(null)
   const didDragRef = useRef(false)
-  const MAX_ZOOM = 3.0
   const isZoomedRef = useRef(false)
 
   const reducedMotion = useReducedMotion()
@@ -144,7 +155,6 @@ export default function WorksClient({ works, modes }: Props) {
   const chapter = mode.collections[Math.min(activeChapterIdx, Math.max(0, mode.collections.length - 1))]
   const chapterWorks = useMemo(() => {
     if (!chapter) {
-      // Fallback: no curated chapters → all public works
       return works.filter(w => w.txtImageNameLink)
     }
     return worksForCollection(chapter, works)
@@ -152,13 +162,39 @@ export default function WorksClient({ works, modes }: Props) {
 
   const curatedGroupsNomatch = Boolean(chapter && chapterWorks.length === 0)
 
+  const activeWork: Work | undefined = chapterWorks[activeIndex]
+  // Derived: center card's full-res image is ready
+  const centerImgLoaded = activeWork?.OeuvreID === loadedWorkId
+
+  // Oversized-image rasterization trick: lay out img at its natural pixel dimensions,
+  // scale it down to fit the card via transform — browser holds the full-res GPU texture.
+  const hiResImgStyle = useMemo((): CSSProperties | undefined => {
+    if (!centerNaturalSize || typeof window === 'undefined') return undefined
+    const cardW = Math.min(window.innerWidth * 0.25, 400)
+    const cardH = Math.min(window.innerHeight * 0.42, 460)
+    const scale = Math.min(cardW / centerNaturalSize.w, cardH / centerNaturalSize.h)
+    return {
+      width: centerNaturalSize.w,
+      height: centerNaturalSize.h,
+      maxWidth: 'none',
+      objectFit: undefined,
+      transform: `scale(${scale})`,
+      transformOrigin: 'center center',
+    }
+  }, [centerNaturalSize])
+
   /** Reset slot + zoom when chapter changes; play a brief cross-fade. */
   useEffect(() => {
     posRef.current = 0
     velRef.current = 0
     setActiveIndex(0)
     setIsZoomed(false)
-    setZoomScale(1)
+    isZoomedRef.current = false
+    zoomZRef.current = 0
+    setZoomZ(0)
+    setZoomPan({ x: 0, y: 0 })
+    setLoadedWorkId(null)
+    setCenterNaturalSize(null)
     setTrackFade(true)
     const id = window.setTimeout(() => setTrackFade(false), 220)
     return () => window.clearTimeout(id)
@@ -170,6 +206,9 @@ export default function WorksClient({ works, modes }: Props) {
     velRef.current = 0
     setActiveIndex(Math.round(posRef.current))
   }, [chapterWorks.length])
+
+  /** Reset hi-res rasterization state when active work changes. */
+  useEffect(() => { setCenterNaturalSize(null) }, [activeIndex])
 
   /** Start the RAF momentum loop if not already running. */
   const kickRaf = useCallback(() => {
@@ -196,34 +235,54 @@ export default function WorksClient({ works, modes }: Props) {
     kickRaf()
   }, [kickRaf])
 
+  // Discrete single-step for arrow buttons and keyboard — no momentum carry
+  const jumpBy = useCallback((delta: number) => {
+    if (totalSlotsRef.current === 0) return
+    const next = Math.max(0, Math.min(Math.round(posRef.current) + delta, totalSlotsRef.current - 1))
+    posRef.current = next
+    velRef.current = 0
+    if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = undefined }
+    setActiveIndex(next)
+  }, [])
+
+  const exitZoom = useCallback(() => {
+    setIsZoomed(false)
+    isZoomedRef.current = false
+    zoomZRef.current = 0
+    setZoomZ(0)
+    setZoomPan({ x: 0, y: 0 })
+  }, [])
+
   /** Keyboard nav + Esc to exit zoom. */
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isZoomed) {
-        setIsZoomed(false)
-        setZoomScale(1)
-        setZoomPan({ x: 0, y: 0 })
+        exitZoom()
         e.preventDefault()
         return
       }
       if (isZoomed) return
-      if (e.key === 'ArrowRight') { stepBy(1); e.preventDefault() }
-      else if (e.key === 'ArrowLeft') { stepBy(-1); e.preventDefault() }
+      if (e.key === 'ArrowRight') { jumpBy(1); e.preventDefault() }
+      else if (e.key === 'ArrowLeft') { jumpBy(-1); e.preventDefault() }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [isZoomed, stepBy])
+  }, [isZoomed, stepBy, jumpBy, exitZoom])
 
   // Keep ref in sync so the passive:false wheel handler reads current state
   useEffect(() => { isZoomedRef.current = isZoomed }, [isZoomed])
 
-  /** Wheel + trackpad: zoom when in zoom mode, otherwise drift the wall. */
+  /** Wheel + trackpad: viewer approaches the wall in zoom mode, otherwise drift the carousel. */
   useEffect(() => {
     const onWheel = (e: WheelEvent) => {
       if (isZoomedRef.current) {
         e.preventDefault()
         const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY
-        setZoomScale(s => Math.max(1, Math.min(s + d * 0.0009, MAX_ZOOM)))
+        // Scroll UP = negative deltaY → viewer approaches → scene z increases
+        const next = zoomZRef.current + (-d) * 0.4
+        if (next < -40) { exitZoom(); return }
+        zoomZRef.current = Math.max(0, Math.min(next, MAX_Z))
+        setZoomZ(zoomZRef.current)
         return
       }
       let raw = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY
@@ -235,7 +294,7 @@ export default function WorksClient({ works, modes }: Props) {
     }
     window.addEventListener('wheel', onWheel, { passive: false })
     return () => window.removeEventListener('wheel', onWheel)
-  }, [kickRaf])
+  }, [kickRaf, exitZoom])
 
   /** Touch swipe: 60px threshold = ±1 step. */
   const touchStartXRef = useRef<number | null>(null)
@@ -252,7 +311,6 @@ export default function WorksClient({ works, modes }: Props) {
     stepBy(dx < 0 ? 1 : -1)
   }
 
-  const activeWork: Work | undefined = chapterWorks[activeIndex]
   const chapterTitle = chapter
     ? (lang === 'en' ? (chapter.title_en || chapter.title_fr) : (chapter.title_fr || chapter.title_en))
     : ''
@@ -278,29 +336,15 @@ export default function WorksClient({ works, modes }: Props) {
 
         .w-stage {
           position: fixed; inset: 0;
-          background: linear-gradient(to top, #e6e6e8 0%, #f1f1f3 50%, #fafafa 100%);
+          background: linear-gradient(to top, #d0ccc6 0%, #dedad4 50%, #edeae4 100%);
           overflow: hidden;
           touch-action: pan-y;
-        }
-        /* Paper-grain texture — subtle, kills the vinyl look */
-        .w-stage::before {
-          content: '';
-          position: absolute; inset: 0; z-index: 1; pointer-events: none;
-          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
-          opacity: 0.10;
-          mix-blend-mode: multiply;
-        }
-        /* Soft overhead light well */
-        .w-stage::after {
-          content: '';
-          position: absolute; inset: 0; z-index: 2; pointer-events: none;
-          background: radial-gradient(ellipse 80% 55% at 50% 0%, rgba(255,252,245,0.38) 0%, transparent 100%);
         }
         .w-track-wrap {
           position: absolute; inset: 0; z-index: 3;
           display: flex; align-items: center; justify-content: center;
           perspective: 2400px;
-          perspective-origin: 50% 55%;
+          perspective-origin: 50% 46%;
           transition: opacity 220ms ease;
         }
         .w-track-wrap.fading { opacity: 0; }
@@ -324,6 +368,7 @@ export default function WorksClient({ works, modes }: Props) {
                       filter 700ms ease;
           will-change: transform, opacity;
         }
+        .w-card.is-zoomed { transition: none; }
         .w-card-inner {
           position: relative;
           width: 100%; height: 100%;
@@ -378,54 +423,63 @@ export default function WorksClient({ works, modes }: Props) {
           display: block;
           image-rendering: high-quality;
           backface-visibility: hidden;
+          will-change: transform;
         }
         .w-card-img.round { border-radius: 50%; overflow: hidden; }
-        .w-card.center { cursor: zoom-in; }
-        .w-card.side   { cursor: pointer; }
-        .w-card.text   { width: min(36vw, 480px); height: min(62vh, 580px); margin-left: calc(-1 * min(36vw, 480px) / 2); margin-top: calc(-1 * min(62vh, 580px) / 2); cursor: default; }
-        .w-card.zoomed { cursor: zoom-out; }
-        .w-card.zoomed:active { cursor: grabbing; }
-        .w-card.zoomed-out { opacity: 0.04 !important; pointer-events: none; }
+        /* Prevent bilinear blur at high perspective magnification */
+        .w-card-img.zoomed {
+          image-rendering: -webkit-optimize-contrast;
+          image-rendering: crisp-edges;
+        }
+        /* Cursor states */
+        .w-card.center          { cursor: default; }
+        .w-card.center.img-ready { cursor: zoom-in; }
+        .w-card.center.is-zoomed { cursor: zoom-out; }
+        .w-card.center.is-zoomed:active { cursor: grabbing; }
+        .w-card.side            { cursor: pointer; }
+        .w-card.text            { width: min(36vw, 480px); height: min(62vh, 580px); margin-left: calc(-1 * min(36vw, 480px) / 2); margin-top: calc(-1 * min(62vh, 580px) / 2); cursor: default; }
+        .w-card.zoomed-out      { pointer-events: none; }
 
         /* Drop-shadow rakes the silhouette so the work reads as a hung object */
         .w-card.center .w-card-img {
-          filter: drop-shadow(0 22px 32px rgba(15,15,20,0.34))
-                  drop-shadow(0 6px 10px rgba(15,15,20,0.22));
+          filter: drop-shadow(0 15px 22px rgba(15,15,20,0.34))
+                  drop-shadow(0 4px 7px rgba(15,15,20,0.22));
         }
         .w-card.side.left .w-card-img {
-          filter: drop-shadow(-14px 18px 26px rgba(0,0,0,0.30))
-                  drop-shadow(0 14px 22px rgba(15,15,20,0.20));
+          filter: drop-shadow(-10px 13px 18px rgba(0,0,0,0.30))
+                  drop-shadow(0 10px 15px rgba(15,15,20,0.20));
         }
         .w-card.side.right .w-card-img {
-          filter: drop-shadow(14px 18px 26px rgba(0,0,0,0.30))
-                  drop-shadow(0 14px 22px rgba(15,15,20,0.20));
+          filter: drop-shadow(10px 13px 18px rgba(0,0,0,0.30))
+                  drop-shadow(0 10px 15px rgba(15,15,20,0.20));
         }
 
 
         .w-caption {
           position: fixed;
-          left: 50%; bottom: clamp(96px, 14vh, 140px);
-          transform: translateX(-50%);
-          text-align: center;
+          right: calc(50% + min(12.5vw, 200px) + 24px);
+          top: 46%;
+          transform: translateY(-50%);
+          text-align: right;
           z-index: 220;
           pointer-events: none;
           transition: opacity 420ms ease;
-          max-width: min(620px, 92vw);
+          max-width: min(160px, 14vw);
         }
         .w-work-title {
           font-family: 'Instrument Serif', serif;
-          font-size: clamp(20px, 3.2vw, 40px);
+          font-size: 11px;
           color: #1a1816; font-weight: 400;
-          letter-spacing: -0.02em; line-height: 1.1;
-          margin: 0 0 8px 0;
+          letter-spacing: 0; line-height: 1.35;
+          margin: 0 0 5px 0;
         }
         .w-work-details {
-          font-size: 9px; letter-spacing: 4px; text-transform: uppercase; color: #6a6660;
-          display: inline-flex; gap: 12px; flex-wrap: wrap; justify-content: center;
+          font-size: 7px; letter-spacing: 2px; text-transform: uppercase; color: #6a6660;
+          display: flex; flex-direction: column; gap: 2px; align-items: flex-end;
         }
         .w-zoom-hint {
-          margin-top: 10px;
-          font-size: 8px; letter-spacing: 3px; text-transform: uppercase;
+          margin-top: 6px;
+          font-size: 7px; letter-spacing: 2px; text-transform: uppercase;
           color: #9a958f; opacity: 0.85;
         }
         .w-lean-hint {
@@ -439,23 +493,23 @@ export default function WorksClient({ works, modes }: Props) {
 
         .w-chapter-header {
           position: fixed;
-          top: clamp(60px, 8vh, 96px);
-          left: 50%; transform: translateX(-50%);
-          text-align: center;
+          left: clamp(24px, 4vw, 56px);
+          top: 50%; transform: translateY(-50%);
+          text-align: left;
           z-index: 200;
           pointer-events: none;
-          max-width: min(640px, 88vw);
+          max-width: min(180px, 16vw);
           transition: opacity 420ms ease;
         }
         .w-chapter-name {
           font-family: 'Instrument Serif', serif;
-          font-size: clamp(22px, 3.6vw, 46px);
+          font-size: clamp(13px, 1.4vw, 20px);
           color: #1a1816; font-weight: 400;
-          letter-spacing: -0.02em; line-height: 1.1;
+          letter-spacing: -0.01em; line-height: 1.2;
           margin: 0 0 6px 0;
         }
         .w-chapter-intro {
-          font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+          font-size: 7px; letter-spacing: 2px; text-transform: uppercase;
           color: #7a7570; margin: 0;
         }
         .w-text-card-front {
@@ -524,20 +578,41 @@ export default function WorksClient({ works, modes }: Props) {
         .w-section-pill {
           font-size: clamp(8px, 1vw, 9px);
           letter-spacing: 2px; text-transform: uppercase;
-          color: #5a5854;
-          background: rgba(255,255,255,0.72);
-          border: 1px solid rgba(26,24,22,0.12);
-          border-radius: 999px;
-          padding: 10px 14px;
+          color: #7a7570;
+          background: none;
+          border: none;
+          border-bottom: 1px solid transparent;
+          padding: 8px 4px;
           min-height: 44px;
           cursor: pointer;
           font-family: inherit;
           max-width: min(42vw, 220px);
           white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-          transition: color 0.2s, border-color 0.2s, background 0.2s;
+          transition: color 0.2s, border-color 0.2s;
         }
-        .w-section-pill:hover { color: #1a1816; border-color: rgba(26,24,22,0.35); background: rgba(255,255,255,0.92); }
-        .w-section-pill.active { color: #1a1816; border-color: rgba(26,24,22,0.45); background: rgba(255,255,255,0.98); }
+        .w-section-pill:hover { color: #1a1816; }
+        .w-section-pill.active { color: #1a1816; border-bottom-color: rgba(26,24,22,0.5); }
+
+        .w-nav {
+          position: fixed; top: 0; left: 0; right: 0; z-index: 300;
+          display: flex; align-items: center; justify-content: space-between;
+          padding: clamp(12px, 2vw, 18px) clamp(16px, 4vw, 36px);
+          pointer-events: auto;
+          transition: opacity 300ms ease;
+        }
+        .w-logo { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: #8a8680; text-decoration: none; transition: color .15s; }
+        .w-logo:hover { color: #1a1816; }
+        .w-navlinks { display: flex; gap: clamp(14px, 2.5vw, 28px); align-items: center; }
+        .w-navlink { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: #8a8680; text-decoration: none; transition: color .15s; }
+        .w-navlink:hover { color: #1a1816; }
+        .w-navlink.active { color: #3a3632; }
+        .w-lang {
+          font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
+          color: #8a8680; background: none; border: 1px solid rgba(26,24,22,0.15);
+          padding: 3px 8px; cursor: pointer; transition: all .15s; font-family: inherit;
+          min-height: 32px; display: inline-flex; align-items: center;
+        }
+        .w-lang:hover { color: #1a1816; border-color: rgba(26,24,22,0.4); }
 
         .w-page-h1-sr-only {
           position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
@@ -571,6 +646,12 @@ export default function WorksClient({ works, modes }: Props) {
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >
+        {/* Gentle spotlight centred on the works plane */}
+        <div aria-hidden style={{
+          position: 'absolute', inset: 0, zIndex: 2, pointerEvents: 'none',
+          background: 'radial-gradient(ellipse 38% 48% at 50% 46%, rgba(255,248,232,0.18) 0%, transparent 70%)',
+        }} />
+
         {curatedGroupsNomatch && (
           <div
             role="status"
@@ -593,7 +674,96 @@ export default function WorksClient({ works, modes }: Props) {
             aria-label={t('pub_works')}
             style={{ zIndex: 'auto' }}
           >
-            <div className="w-track">
+            {/*
+              Scene container. translateZ here = viewer approaching the entire wall.
+              All child z-planes (artworks at z=0, wall texture at z=-10) move together,
+              each scaling according to the perspective projection — correct parallax.
+            */}
+            <div
+              className="w-track"
+              style={isZoomed
+                ? { transform: `translateZ(${zoomZ}px)`, transition: 'transform 0.10s ease-out' }
+                : undefined}
+            >
+              {/* Wall plane: grain texture — lives slightly behind artworks (z=-10) so it zooms at the same rate */}
+              <div
+                aria-hidden
+                style={{
+                  position: 'absolute',
+                  top: '-50%', right: '-50%', bottom: '-50%', left: '-50%',
+                  transform: 'translateZ(-10px)',
+                  backgroundImage: GRAIN_BG,
+                  backgroundSize: '200px 200px',
+                  opacity: 0.28,
+                  pointerEvents: 'none',
+                }}
+              />
+              {/* Wall plane: overhead light well — at 25% of oversized element ≈ viewport top */}
+              <div
+                aria-hidden
+                style={{
+                  position: 'absolute',
+                  top: '-50%', right: '-50%', bottom: '-50%', left: '-50%',
+                  transform: 'translateZ(-10px)',
+                  background: 'radial-gradient(ellipse 110% 70% at 50% 0%, rgba(255,252,245,0.92) 0%, transparent 100%)',
+                  pointerEvents: 'none',
+                }}
+              />
+
+              {/* Wall-mounted cartel — lives in 3D scene, left of center card, zooms with the wall */}
+              {activeWork && (
+                <div
+                  aria-hidden
+                  style={{
+                    position: 'absolute',
+                    right: 'calc(50% + min(12.5vw, 200px) + 24px)',
+                    top: '46%',
+                    transform: 'translateY(-50%)',
+                    width: 'min(160px, 14vw)',
+                    textAlign: 'right',
+                    pointerEvents: 'none',
+                    zIndex: 220,
+                  }}
+                >
+                  <h3 style={{ fontFamily: "'Instrument Serif', serif", fontSize: 11, fontWeight: 400, color: '#1a1816', letterSpacing: 0, lineHeight: 1.35, margin: '0 0 5px 0' }}>
+                    {activeWork.Titre ?? t('pub_untitled')}
+                  </h3>
+                  <div style={{ fontSize: 7, letterSpacing: 2, textTransform: 'uppercase', color: '#6a6660', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                    {yearOf(activeWork.Annee) && <span>{yearOf(activeWork.Annee)}</span>}
+                    {activeWork.Hauteur && activeWork.Largeur && (
+                      <span>
+                        {Number(activeWork.Hauteur).toLocaleString(lang === 'en' ? 'en-GB' : 'fr-FR')}
+                        {' × '}
+                        {Number(activeWork.Largeur).toLocaleString(lang === 'en' ? 'en-GB' : 'fr-FR')}
+                        {' cm'}
+                      </span>
+                    )}
+                    {centerImgLoaded && !isZoomed && (
+                      <span style={{ marginTop: 4, color: '#9a958f' }}>{t('pub_works_zoom_hint')}</span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Collection title — on the wall, zooms with the scene */}
+              {chapterTitle && (
+                <div aria-hidden style={{
+                  position: 'absolute',
+                  left: '50%', top: 'clamp(60px, 10vh, 96px)',
+                  transform: 'translateX(-50%)',
+                  textAlign: 'center',
+                  pointerEvents: 'none',
+                  zIndex: 10,
+                  opacity: isZoomed ? 0 : 1,
+                  transition: 'opacity 300ms ease',
+                }}>
+                  <p style={{ fontFamily: "'Instrument Serif', serif", fontSize: 'clamp(13px,1.4vw,20px)', fontWeight: 400, color: '#1a1816', letterSpacing: '-0.01em', lineHeight: 1.2, margin: 0 }}>
+                    {chapterTitle}
+                  </p>
+                  {chapterIntro && <p style={{ fontSize: 7, letterSpacing: '2px', textTransform: 'uppercase', color: '#7a7570', margin: '5px 0 0' }}>{chapterIntro}</p>}
+                </div>
+              )}
+
               {chapterWorks.map((w, i) => {
                 const offset = i - activeIndex
                 const { transform, opacity, zIndex, visible } = cardTransform(offset, reducedMotion)
@@ -601,31 +771,19 @@ export default function WorksClient({ works, modes }: Props) {
                 const isCenter = offset === 0
                 const isSide = !isCenter
                 const sideClass = offset < 0 ? 'left' : 'right'
-                const src = isCenter
-                  ? (imageUrl(w.txtImageNameLink) ?? undefined)
-                  : (thumbUrl(w.txtImageNameLink) ?? imageUrl(w.txtImageNameLink) ?? undefined)
+                const src = imageUrl(w.txtImageNameLink) ?? undefined
 
-                let finalTransform = transform
-                let finalZ = zIndex
-                let zoomSizeStyle: React.CSSProperties = {}
-                if (isCenter && isZoomed) {
-                  // Expand element to viewport size so browser renders image at source res,
-                  // then scale() provides additional zoom on top of full-quality pixels
-                  const vw = 'min(92vw, 1400px)'
-                  const vh = 'min(88vh, 1000px)'
-                  zoomSizeStyle = {
-                    width: vw, height: vh,
-                    marginLeft: `calc(-1 * ${vw} / 2)`,
-                    marginTop: `calc(-1 * ${vh} / 2)`,
-                  }
-                  finalTransform = `translate(${zoomPan.x}px, ${zoomPan.y}px) scale(${zoomScale})`
-                  finalZ = 300
-                }
+                // Pan offset applied on top of card's native 3D transform in zoom mode
+                const finalTransform = isCenter && isZoomed && (zoomPan.x !== 0 || zoomPan.y !== 0)
+                  ? `translate(${zoomPan.x}px, ${zoomPan.y}px) ${transform}`
+                  : transform
+                const finalZ = isCenter && isZoomed ? 300 : zIndex
 
                 const classes = [
                   'w-card',
                   isCenter ? 'center' : `side ${sideClass}`,
-                  isCenter && isZoomed ? 'zoomed' : '',
+                  isCenter && centerImgLoaded && !isZoomed ? 'img-ready' : '',
+                  isCenter && isZoomed ? 'is-zoomed' : '',
                   isSide && isZoomed ? 'zoomed-out' : '',
                 ].filter(Boolean).join(' ')
 
@@ -636,13 +794,20 @@ export default function WorksClient({ works, modes }: Props) {
                     role="group"
                     aria-roledescription="slide"
                     aria-label={w.Titre ?? t('pub_untitled')}
-                    style={{ transform: finalTransform, opacity, zIndex: finalZ, ...zoomSizeStyle }}
+                    style={{ transform: finalTransform, opacity, zIndex: finalZ }}
                     onClick={() => {
                       if (didDragRef.current) { didDragRef.current = false; return }
                       if (isCenter && isZoomed) {
-                        setIsZoomed(false); setZoomScale(1); setZoomPan({ x: 0, y: 0 })
+                        exitZoom()
                       } else if (isCenter) {
-                        setIsZoomed(true); setZoomScale(1)
+                        if (!centerImgLoaded) return
+                        // Stop any active carousel momentum before entering zoom
+                        velRef.current = 0
+                        if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = undefined }
+                        setIsZoomed(true)
+                        isZoomedRef.current = true
+                        zoomZRef.current = 0
+                        setZoomZ(0)
                       } else {
                         setActiveIndex(i)
                       }
@@ -664,8 +829,11 @@ export default function WorksClient({ works, modes }: Props) {
                         <img
                           src={src}
                           alt={w.Titre ?? ''}
-                          className={`w-card-img${w.isRound ? ' round' : ''}`}
+                          className={`w-card-img${w.isRound ? ' round' : ''}${isCenter && isZoomed ? ' zoomed' : ''}`}
                           draggable={false}
+                          style={isCenter && hiResImgStyle ? hiResImgStyle : undefined}
+                          ref={isCenter ? (el) => { if (el?.complete && el.naturalWidth > 0 && loadedWorkId !== w.OeuvreID) { setLoadedWorkId(w.OeuvreID); setCenterNaturalSize({ w: el.naturalWidth, h: el.naturalHeight }) } } : undefined}
+                          onLoad={isCenter ? (e) => { const t = e.currentTarget; setLoadedWorkId(w.OeuvreID); setCenterNaturalSize({ w: t.naturalWidth, h: t.naturalHeight }) } : undefined}
                         />
                       </div>
                     </div>
@@ -681,7 +849,7 @@ export default function WorksClient({ works, modes }: Props) {
                   <div
                     key="text-card"
                     className="w-card side text"
-                    style={{ transform, opacity, zIndex }}
+                    style={{ transform: isZoomed ? `translateZ(-${zoomZ}px) ${transform}` : transform, opacity, zIndex }}
                   >
                     <div className="w-card-inner">
                       <div className="w-face left" aria-hidden />
@@ -703,36 +871,10 @@ export default function WorksClient({ works, modes }: Props) {
           </div>
         )}
 
-        {chapterTitle && !isZoomed && (
-          <div className="w-chapter-header">
-            <h2 className="w-chapter-name">{chapterTitle}</h2>
-            {chapterIntro && <p className="w-chapter-intro">{chapterIntro}</p>}
-          </div>
-        )}
 
-        {activeWork && !isZoomed && (
-          <div
-            className="w-caption"
-            style={{ opacity: 1, zIndex: 220 }}
-          >
-            <h3 className="w-work-title">{activeWork.Titre ?? t('pub_untitled')}</h3>
-            <div className="w-work-details">
-              {yearOf(activeWork.Annee) && <span>{yearOf(activeWork.Annee)}</span>}
-              {activeWork.Hauteur && activeWork.Largeur && (
-                <span>
-                  {Number(activeWork.Hauteur).toLocaleString(lang === 'en' ? 'en-GB' : 'fr-FR')}
-                  {' × '}
-                  {Number(activeWork.Largeur).toLocaleString(lang === 'en' ? 'en-GB' : 'fr-FR')}
-                  {' cm'}
-                </span>
-              )}
-            </div>
-            <div className="w-zoom-hint">{t('pub_works_zoom_hint')}</div>
-          </div>
-        )}
 
         {isZoomed && (
-          <div className="w-lean-hint" style={{ opacity: zoomScale <= 1.05 ? 1 : 0 }}>
+          <div className="w-lean-hint" style={{ opacity: zoomZ <= 50 ? 1 : 0 }}>
             {t('pub_works_zoom_hint')}
           </div>
         )}
@@ -744,14 +886,14 @@ export default function WorksClient({ works, modes }: Props) {
               className="w-arrow prev"
               aria-label={t('pub_works_carousel_prev')}
               disabled={activeIndex <= 0}
-              onClick={() => stepBy(-1)}
+              onClick={() => jumpBy(-1)}
             >‹</button>
             <button
               type="button"
               className="w-arrow next"
               aria-label={t('pub_works_carousel_next')}
               disabled={activeIndex >= totalSlots - 1}
-              onClick={() => stepBy(1)}
+              onClick={() => jumpBy(1)}
             >›</button>
           </>
         )}
@@ -778,6 +920,39 @@ export default function WorksClient({ works, modes }: Props) {
                 )
               })}
             </div>
+          </div>
+        )}
+
+        {/* Life-size visitor silhouette — top aligns with artwork top, runs to viewport floor */}
+        <img
+          aria-hidden
+          src="/silhouette.avif"
+          alt=""
+          style={{
+            position: 'fixed',
+            left: 0,
+            top: 'calc(46vh - min(21vh, 230px) - 12vh)',
+            height: 'calc(66vh + min(21vh, 230px))',
+            width: 'auto',
+            objectFit: 'contain',
+            objectPosition: 'top left',
+            opacity: isZoomed ? 0 : 0.125,
+            mixBlendMode: 'multiply',
+            transition: 'opacity 400ms ease',
+            pointerEvents: 'none',
+            zIndex: 5,
+            userSelect: 'none',
+          }}
+        />
+
+        {/* Navigation instructions */}
+        {!isZoomed && (
+          <div aria-hidden style={{
+            position: 'fixed', bottom: 'clamp(14px, 3vh, 28px)', left: 'clamp(24px, 4vw, 48px)',
+            zIndex: 240, pointerEvents: 'none',
+            fontSize: 7, letterSpacing: '2.5px', textTransform: 'uppercase', color: '#9a958f',
+          }}>
+            {t('pub_works_nav_hint')}
           </div>
         )}
 

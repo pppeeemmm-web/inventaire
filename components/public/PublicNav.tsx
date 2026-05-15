@@ -14,7 +14,7 @@ export default function PublicNav({ active, prefix = 'n' }: Props) {
   const p = prefix
   return (
     <nav className={`${p}-nav`}>
-      <Link href="/" className={`${p}-logo`}>Atelier PEM</Link>
+      <Link href="/" className={`${p}-logo`}>The pem workshop</Link>
       <div className={`${p}-navlinks`} style={{ flexWrap: 'wrap', justifyContent: 'flex-end', rowGap: 6 }}>
         <Link href="/works"     className={`${p}-navlink${active === 'works'     ? ` active` : ''}`}>{t('pub_works')}</Link>
         <Link href="/about"     className={`${p}-navlink${active === 'about'     ? ` active` : ''}`}>{t('pub_about')}</Link>
