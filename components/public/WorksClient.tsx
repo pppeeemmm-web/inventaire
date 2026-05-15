@@ -103,7 +103,7 @@ function cardTransform(offset: number, reducedMotion: boolean): {
   if (abs > 3) return { transform: '', opacity: 0, zIndex: 0, visible: false }
   const tx = offset * 780
   const ty = -abs * 240
-  const ry = reducedMotion ? 0 : offset * 32
+  const ry = reducedMotion ? 0 : Math.sign(offset) * Math.min(abs, 1) * 5
   const opacity = Math.max(0, 1 - abs * 0.22)
   const zIndex = 100 - abs
   const transform = `translate3d(${tx}px, 0, ${ty}px) rotateY(${ry}deg)`
@@ -123,7 +123,19 @@ export default function WorksClient({ works, modes }: Props) {
   const [isZoomed, setIsZoomed] = useState(false)
   const [trackFade, setTrackFade] = useState(false)
 
-  const reducedMotion = false // TEMP debug; revert
+  const posRef = useRef(0)
+  const velRef = useRef(0)
+  const rafRef = useRef<number | undefined>(undefined)
+  const totalSlotsRef = useRef(0)
+
+  const [zoomScale, setZoomScale] = useState(1)
+  const [zoomPan, setZoomPan] = useState({ x: 0, y: 0 })
+  const dragRef = useRef<{ mx: number; my: number; px: number; py: number } | null>(null)
+  const didDragRef = useRef(false)
+  const MAX_ZOOM = 3.0
+  const isZoomedRef = useRef(false)
+
+  const reducedMotion = useReducedMotion()
 
   useEffect(() => {
     void trackView('/works', null, null, getOrCreatePublicVisitorId())
@@ -142,8 +154,11 @@ export default function WorksClient({ works, modes }: Props) {
 
   /** Reset slot + zoom when chapter changes; play a brief cross-fade. */
   useEffect(() => {
+    posRef.current = 0
+    velRef.current = 0
     setActiveIndex(0)
     setIsZoomed(false)
+    setZoomScale(1)
     setTrackFade(true)
     const id = window.setTimeout(() => setTrackFade(false), 220)
     return () => window.clearTimeout(id)
@@ -151,24 +166,43 @@ export default function WorksClient({ works, modes }: Props) {
 
   /** Clamp active slot inside the new list. */
   useEffect(() => {
-    setActiveIndex(i => Math.max(0, Math.min(i, Math.max(0, chapterWorks.length - 1))))
+    posRef.current = Math.max(0, Math.min(posRef.current, Math.max(0, chapterWorks.length - 1)))
+    velRef.current = 0
+    setActiveIndex(Math.round(posRef.current))
   }, [chapterWorks.length])
 
+  /** Start the RAF momentum loop if not already running. */
+  const kickRaf = useCallback(() => {
+    if (rafRef.current) return
+    const max = totalSlotsRef.current - 1
+    const tick = () => {
+      if (Math.abs(velRef.current) < 0.005) {
+        velRef.current = 0
+        rafRef.current = undefined
+        return
+      }
+      velRef.current *= 0.97
+      posRef.current = Math.max(0, Math.min(posRef.current + velRef.current, max))
+      setActiveIndex(Math.round(posRef.current))
+      rafRef.current = requestAnimationFrame(tick)
+    }
+    rafRef.current = requestAnimationFrame(tick)
+  }, [])
+
   const stepBy = useCallback((delta: number) => {
-    if (chapterWorks.length === 0) return
-    setActiveIndex(i => {
-      const next = i + delta
-      if (next < 0) return 0
-      if (next > chapterWorks.length - 1) return chapterWorks.length - 1
-      return next
-    })
-  }, [chapterWorks.length])
+    if (totalSlotsRef.current === 0) return
+    posRef.current = Math.max(0, Math.min(Math.round(posRef.current), totalSlotsRef.current - 1))
+    velRef.current = delta * 0.25
+    kickRaf()
+  }, [kickRaf])
 
   /** Keyboard nav + Esc to exit zoom. */
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isZoomed) {
         setIsZoomed(false)
+        setZoomScale(1)
+        setZoomPan({ x: 0, y: 0 })
         e.preventDefault()
         return
       }
@@ -180,21 +214,28 @@ export default function WorksClient({ works, modes }: Props) {
     return () => window.removeEventListener('keydown', onKey)
   }, [isZoomed, stepBy])
 
-  /** Wheel + trackpad: dominant axis decides step; debounce ~250ms. */
-  const wheelLockRef = useRef(0)
+  // Keep ref in sync so the passive:false wheel handler reads current state
+  useEffect(() => { isZoomedRef.current = isZoomed }, [isZoomed])
+
+  /** Wheel + trackpad: zoom when in zoom mode, otherwise drift the wall. */
   useEffect(() => {
     const onWheel = (e: WheelEvent) => {
-      if (isZoomed) return
-      const now = performance.now()
-      if (now - wheelLockRef.current < 240) return
-      const dx = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY
-      if (Math.abs(dx) < 8) return
-      wheelLockRef.current = now
-      stepBy(dx > 0 ? 1 : -1)
+      if (isZoomedRef.current) {
+        e.preventDefault()
+        const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY
+        setZoomScale(s => Math.max(1, Math.min(s + d * 0.0009, MAX_ZOOM)))
+        return
+      }
+      let raw = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY
+      if (e.deltaMode === 1) raw *= 40
+      else if (e.deltaMode === 2) raw *= 600
+      const impulse = raw * 0.00025
+      velRef.current = Math.max(-1.5, Math.min(velRef.current + impulse, 1.5))
+      kickRaf()
     }
-    window.addEventListener('wheel', onWheel, { passive: true })
+    window.addEventListener('wheel', onWheel, { passive: false })
     return () => window.removeEventListener('wheel', onWheel)
-  }, [isZoomed, stepBy])
+  }, [kickRaf])
 
   /** Touch swipe: 60px threshold = ±1 step. */
   const touchStartXRef = useRef<number | null>(null)
@@ -215,6 +256,14 @@ export default function WorksClient({ works, modes }: Props) {
   const chapterTitle = chapter
     ? (lang === 'en' ? (chapter.title_en || chapter.title_fr) : (chapter.title_fr || chapter.title_en))
     : ''
+  const chapterIntro = chapter
+    ? (lang === 'en' ? (chapter.intro_en || chapter.intro_fr || '') : (chapter.intro_fr || chapter.intro_en || ''))
+    : ''
+  const chapterDesc = chapter
+    ? (lang === 'en' ? (chapter.description_en || chapter.description_fr || '') : (chapter.description_fr || chapter.description_en || ''))
+    : ''
+  const totalSlots = chapterWorks.length + (chapterDesc ? 1 : 0)
+  totalSlotsRef.current = totalSlots
 
   return (
     <div className="w-page-enter">
@@ -233,8 +282,22 @@ export default function WorksClient({ works, modes }: Props) {
           overflow: hidden;
           touch-action: pan-y;
         }
+        /* Paper-grain texture — subtle, kills the vinyl look */
+        .w-stage::before {
+          content: '';
+          position: absolute; inset: 0; z-index: 1; pointer-events: none;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+          opacity: 0.10;
+          mix-blend-mode: multiply;
+        }
+        /* Soft overhead light well */
+        .w-stage::after {
+          content: '';
+          position: absolute; inset: 0; z-index: 2; pointer-events: none;
+          background: radial-gradient(ellipse 80% 55% at 50% 0%, rgba(255,252,245,0.38) 0%, transparent 100%);
+        }
         .w-track-wrap {
-          position: absolute; inset: 0;
+          position: absolute; inset: 0; z-index: 3;
           display: flex; align-items: center; justify-content: center;
           perspective: 2400px;
           perspective-origin: 50% 55%;
@@ -319,7 +382,9 @@ export default function WorksClient({ works, modes }: Props) {
         .w-card-img.round { border-radius: 50%; overflow: hidden; }
         .w-card.center { cursor: zoom-in; }
         .w-card.side   { cursor: pointer; }
+        .w-card.text   { width: min(36vw, 480px); height: min(62vh, 580px); margin-left: calc(-1 * min(36vw, 480px) / 2); margin-top: calc(-1 * min(62vh, 580px) / 2); cursor: default; }
         .w-card.zoomed { cursor: zoom-out; }
+        .w-card.zoomed:active { cursor: grabbing; }
         .w-card.zoomed-out { opacity: 0.04 !important; pointer-events: none; }
 
         /* Drop-shadow rakes the silhouette so the work reads as a hung object */
@@ -336,16 +401,6 @@ export default function WorksClient({ works, modes }: Props) {
                   drop-shadow(0 14px 22px rgba(15,15,20,0.20));
         }
 
-        .w-zoom-backdrop {
-          position: fixed; inset: 0; z-index: 150;
-          background: rgba(245,245,247,0.92);
-          backdrop-filter: blur(6px);
-          -webkit-backdrop-filter: blur(6px);
-          opacity: 0;
-          transition: opacity 320ms ease;
-          pointer-events: none;
-        }
-        .w-zoom-backdrop.on { opacity: 1; pointer-events: auto; cursor: zoom-out; }
 
         .w-caption {
           position: fixed;
@@ -372,6 +427,60 @@ export default function WorksClient({ works, modes }: Props) {
           margin-top: 10px;
           font-size: 8px; letter-spacing: 3px; text-transform: uppercase;
           color: #9a958f; opacity: 0.85;
+        }
+        .w-lean-hint {
+          position: fixed; bottom: clamp(24px, 5vh, 48px); left: 50%;
+          transform: translateX(-50%);
+          z-index: 250; pointer-events: none;
+          font-size: 8px; letter-spacing: 3px; text-transform: uppercase;
+          color: #8a8680;
+          transition: opacity 400ms ease;
+        }
+
+        .w-chapter-header {
+          position: fixed;
+          top: clamp(60px, 8vh, 96px);
+          left: 50%; transform: translateX(-50%);
+          text-align: center;
+          z-index: 200;
+          pointer-events: none;
+          max-width: min(640px, 88vw);
+          transition: opacity 420ms ease;
+        }
+        .w-chapter-name {
+          font-family: 'Instrument Serif', serif;
+          font-size: clamp(22px, 3.6vw, 46px);
+          color: #1a1816; font-weight: 400;
+          letter-spacing: -0.02em; line-height: 1.1;
+          margin: 0 0 6px 0;
+        }
+        .w-chapter-intro {
+          font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+          color: #7a7570; margin: 0;
+        }
+        .w-text-card-front {
+          width: 100%; height: 100%;
+          display: flex; flex-direction: column;
+          align-items: center; justify-content: flex-start;
+          padding: clamp(20px, 6%, 40px) clamp(16px, 5%, 32px);
+          background: #f5f2ed;
+          border: 1px solid rgba(26,24,22,0.10);
+          text-align: center;
+          overflow-y: auto;
+          scrollbar-width: none;
+        }
+        .w-text-card-front::-webkit-scrollbar { display: none; }
+        .w-text-card-title {
+          font-family: 'Instrument Serif', serif;
+          font-size: clamp(14px, 2vw, 22px);
+          color: #1a1816; font-weight: 400;
+          letter-spacing: -0.01em; line-height: 1.2;
+          margin: 0 0 12px 0;
+        }
+        .w-text-card-body {
+          font-size: clamp(10px, 1.1vw, 13px);
+          line-height: 1.7; color: #5a5652;
+          margin: 0;
         }
 
         .w-arrow {
@@ -482,7 +591,7 @@ export default function WorksClient({ works, modes }: Props) {
             role="region"
             aria-roledescription="carousel"
             aria-label={t('pub_works')}
-            style={{ zIndex: isZoomed ? 200 : 'auto' }}
+            style={{ zIndex: 'auto' }}
           >
             <div className="w-track">
               {chapterWorks.map((w, i) => {
@@ -498,10 +607,19 @@ export default function WorksClient({ works, modes }: Props) {
 
                 let finalTransform = transform
                 let finalZ = zIndex
+                let zoomSizeStyle: React.CSSProperties = {}
                 if (isCenter && isZoomed) {
-                  // Compensate for the card's top:46% so the zoomed image lands in true viewport center
-                  finalTransform = `translate3d(0, 4vh, 0) scale(${reducedMotion ? 2.4 : 3.6})`
-                  finalZ = 200
+                  // Expand element to viewport size so browser renders image at source res,
+                  // then scale() provides additional zoom on top of full-quality pixels
+                  const vw = 'min(92vw, 1400px)'
+                  const vh = 'min(88vh, 1000px)'
+                  zoomSizeStyle = {
+                    width: vw, height: vh,
+                    marginLeft: `calc(-1 * ${vw} / 2)`,
+                    marginTop: `calc(-1 * ${vh} / 2)`,
+                  }
+                  finalTransform = `translate(${zoomPan.x}px, ${zoomPan.y}px) scale(${zoomScale})`
+                  finalZ = 300
                 }
 
                 const classes = [
@@ -518,11 +636,24 @@ export default function WorksClient({ works, modes }: Props) {
                     role="group"
                     aria-roledescription="slide"
                     aria-label={w.Titre ?? t('pub_untitled')}
-                    style={{ transform: finalTransform, opacity, zIndex: finalZ }}
+                    style={{ transform: finalTransform, opacity, zIndex: finalZ, ...zoomSizeStyle }}
                     onClick={() => {
-                      if (isCenter) setIsZoomed(z => !z)
-                      else setActiveIndex(i)
+                      if (didDragRef.current) { didDragRef.current = false; return }
+                      if (isCenter && isZoomed) {
+                        setIsZoomed(false); setZoomScale(1); setZoomPan({ x: 0, y: 0 })
+                      } else if (isCenter) {
+                        setIsZoomed(true); setZoomScale(1)
+                      } else {
+                        setActiveIndex(i)
+                      }
                     }}
+                    onMouseDown={isCenter && isZoomed ? (e) => { dragRef.current = { mx: e.clientX, my: e.clientY, px: zoomPan.x, py: zoomPan.y }; didDragRef.current = false; e.preventDefault() } : undefined}
+                    onMouseMove={isCenter && isZoomed ? (e) => { if (!dragRef.current) return; didDragRef.current = true; setZoomPan({ x: dragRef.current.px + e.clientX - dragRef.current.mx, y: dragRef.current.py + e.clientY - dragRef.current.my }) } : undefined}
+                    onMouseUp={isCenter && isZoomed ? () => { dragRef.current = null } : undefined}
+                    onMouseLeave={isCenter && isZoomed ? () => { dragRef.current = null } : undefined}
+                    onTouchStart={isCenter && isZoomed ? (e) => { const t = e.touches[0]; dragRef.current = { mx: t.clientX, my: t.clientY, px: zoomPan.x, py: zoomPan.y }; didDragRef.current = false } : undefined}
+                    onTouchMove={isCenter && isZoomed ? (e) => { if (!dragRef.current) return; didDragRef.current = true; const t = e.touches[0]; setZoomPan({ x: dragRef.current.px + t.clientX - dragRef.current.mx, y: dragRef.current.py + t.clientY - dragRef.current.my }); e.stopPropagation() } : undefined}
+                    onTouchEnd={isCenter && isZoomed ? () => { dragRef.current = null } : undefined}
                   >
                     <div className="w-card-inner">
                       <div className="w-face left" aria-hidden />
@@ -541,16 +672,43 @@ export default function WorksClient({ works, modes }: Props) {
                   </div>
                 )
               })}
+              {chapterDesc && (() => {
+                const i = chapterWorks.length
+                const offset = i - activeIndex
+                const { transform, opacity, zIndex, visible } = cardTransform(offset, reducedMotion)
+                if (!visible) return null
+                return (
+                  <div
+                    key="text-card"
+                    className="w-card side text"
+                    style={{ transform, opacity, zIndex }}
+                  >
+                    <div className="w-card-inner">
+                      <div className="w-face left" aria-hidden />
+                      <div className="w-face right" aria-hidden />
+                      <div className="w-face top" aria-hidden />
+                      <div className="w-face bottom" aria-hidden />
+                      <div className="w-text-card-front">
+                        {chapterTitle && <p className="w-text-card-title">{chapterTitle}</p>}
+                        <div
+                          className="w-text-card-body"
+                          dangerouslySetInnerHTML={{ __html: chapterDesc.replace(/\n/g, '<br>') }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
           </div>
         )}
 
-        <div
-          className={`w-zoom-backdrop${isZoomed ? ' on' : ''}`}
-          onClick={() => setIsZoomed(false)}
-          aria-label={t('pub_works_zoom_exit')}
-          role="button"
-        />
+        {chapterTitle && !isZoomed && (
+          <div className="w-chapter-header">
+            <h2 className="w-chapter-name">{chapterTitle}</h2>
+            {chapterIntro && <p className="w-chapter-intro">{chapterIntro}</p>}
+          </div>
+        )}
 
         {activeWork && !isZoomed && (
           <div
@@ -573,6 +731,12 @@ export default function WorksClient({ works, modes }: Props) {
           </div>
         )}
 
+        {isZoomed && (
+          <div className="w-lean-hint" style={{ opacity: zoomScale <= 1.05 ? 1 : 0 }}>
+            {t('pub_works_zoom_hint')}
+          </div>
+        )}
+
         {chapterWorks.length > 1 && !isZoomed && (
           <>
             <button
@@ -586,7 +750,7 @@ export default function WorksClient({ works, modes }: Props) {
               type="button"
               className="w-arrow next"
               aria-label={t('pub_works_carousel_next')}
-              disabled={activeIndex >= chapterWorks.length - 1}
+              disabled={activeIndex >= totalSlots - 1}
               onClick={() => stepBy(1)}
             >›</button>
           </>
@@ -617,12 +781,6 @@ export default function WorksClient({ works, modes }: Props) {
           </div>
         )}
 
-        {/* Visually-hidden chapter title for screen readers */}
-        {chapterTitle && (
-          <span style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0,0,0,0)' }}>
-            {chapterTitle}
-          </span>
-        )}
       </div>
     </div>
   )
