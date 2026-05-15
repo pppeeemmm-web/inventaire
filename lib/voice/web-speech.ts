@@ -2,16 +2,39 @@
 
 /**
  * Browser capture helpers for Verb 2 — Web Speech API + MediaRecorder.
- * SpeechRecognition is vendor-prefixed on some engines.
+ * SpeechRecognition is vendor-prefixed on some engines; types are narrowed locally
+ * so `tsc` stays strict without relying on optional DOM lib entries.
  */
 
-export function getSpeechRecognitionCtor(): (new () => SpeechRecognition) | null {
+type SpeechRecResult = { isFinal: boolean; 0: { transcript: string } }
+
+type SpeechRecResultList = {
+  length: number
+  [index: number]: SpeechRecResult
+}
+
+type SpeechRecEvent = {
+  resultIndex: number
+  results: SpeechRecResultList
+}
+
+type SpeechRecErrorEvent = {
+  error: string
+}
+
+type SpeechRecognitionLike = {
+  lang: string
+  interimResults: boolean
+  continuous: boolean
+  start: () => void
+  stop: () => void
+  onresult: ((ev: SpeechRecEvent) => void) | null
+  onerror: ((ev: SpeechRecErrorEvent) => void) | null
+}
+
+export function getSpeechRecognitionCtor(): (new () => SpeechRecognitionLike) | null {
   if (typeof window === 'undefined') return null
-  const w = window as Window &
-    typeof globalThis & {
-      SpeechRecognition?: new () => SpeechRecognition
-      webkitSpeechRecognition?: new () => SpeechRecognition
-    }
+  const w = window as Window & { SpeechRecognition?: new () => SpeechRecognitionLike; webkitSpeechRecognition?: new () => SpeechRecognitionLike }
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null
 }
 
@@ -52,7 +75,7 @@ export function startLiveDictation(lang: string, handlers: LiveDictationHandlers
   rec.lang = lang
   rec.interimResults = true
   rec.continuous = true
-  rec.onresult = (ev: SpeechRecognitionEvent) => {
+  rec.onresult = (ev: SpeechRecEvent) => {
     let interim = ''
     let finalChunk = ''
     for (let i = ev.resultIndex; i < ev.results.length; i++) {
@@ -64,7 +87,7 @@ export function startLiveDictation(lang: string, handlers: LiveDictationHandlers
     if (interim) handlers.onInterim(interim)
     if (finalChunk) handlers.onFinal(finalChunk)
   }
-  rec.onerror = (ev: SpeechRecognitionErrorEvent) => {
+  rec.onerror = (ev: SpeechRecErrorEvent) => {
     if (ev.error === 'aborted' || ev.error === 'no-speech') return
     handlers.onError?.(ev.error)
   }

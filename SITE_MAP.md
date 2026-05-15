@@ -121,15 +121,16 @@ These are **`'use server'`** modules (callable from Server Components and from t
 
 ### Tab list (desktop group order)
 
-**Terrain / Field (narrow sidebar first):** `inventory`, `production`, `stock-take`, `map` — then Studio, Catalogue, Commercial, Public, Admin groups (`TeamPortalClient` `GROUPS`).
+**Terrain / Field (narrow sidebar first):** `inventory`, `production`, `stock-take`, `notes`, `map` — then Studio, Catalogue, Commercial, Public, Admin groups (`TeamPortalClient` `GROUPS`).
 
-**Full tab ids:** `overview`, `inventory`, `reports`, `constellation`, `production`, `logistics`, `sales`, `exhibitions`, `vault`, `contacts`, `map`, `pipeline`, `fiscal`, `concepts`, `themes`, `stock`, `stock-take`, `system`, `portfolio`, `audit` (admin), `broadcast` (admin).
+**Full tab ids:** `overview`, `inventory`, `reports`, `constellation`, `production`, `logistics`, `sales`, `exhibitions`, `vault`, `contacts`, `map`, `pipeline`, `fiscal`, `concepts`, `themes`, `stock`, `stock-take`, `notes`, `system`, `portfolio`, `audit` (admin), `broadcast` (admin).
 
 ### Major client surfaces
 
 - **WorkDrawer** — canonical edit: shell in [`WorkDrawer.tsx`](../components/atelier/WorkDrawer.tsx); inner panels under [`components/atelier/work-drawer/`](../components/atelier/work-drawer/) (`DrawerContent`, pipeline, finance, notes/version, groups, images, `drawer-widgets`, `drawer-content-utils`).
 - **ReportsTab** — [`ReportsTab.tsx`](../components/atelier/ReportsTab.tsx) (`?tab=reports`): works table on the **currently loaded** œuvres batch; XLSX + PDF (`generateWorksTablePdf` in [`reports/actions.ts`](../app/atelier/reports/actions.ts)); column model in [`lib/reports/works-table.ts`](../lib/reports/works-table.ts). Playwright: [`tests/reports-tab.spec.ts`](../tests/reports-tab.spec.ts).
 - **WorldMapTab** — [`WorldMapTab.tsx`](../components/atelier/WorldMapTab.tsx) (`?tab=map`): Leaflet map; contacts vs œuvres mode; geocode via [`app/api/geocode/route.ts`](../app/api/geocode/route.ts) with client-side cache. Contact pins prefer `contact_addresses` rows with city/country, else **`Contact` card** `Ville`/`Pays` when no geocodable address row exists.
+- **NotesTab** — [`NotesTab.tsx`](../components/atelier/NotesTab.tsx) (`?tab=notes`): chronological voice notes (`public.voice_note`); filters, transcript edit, delete, optional `<audio>` via `imageUrl` + public R2. Capture: [`VoiceNoteSheet`](../components/shared/VoiceNoteSheet.tsx) + [`app/atelier/notes/actions.ts`](../app/atelier/notes/actions.ts). Playwright: [`tests/voice-notes.spec.ts`](../tests/voice-notes.spec.ts).
 - **WorkForm** — create-only at `/atelier/works/new`.
 - **SystemTab** — [`SystemTab.tsx`](../components/atelier/SystemTab.tsx): manual **`system_log`** ledger (`event_type` null), optional **`attachments`** (R2 `ledger/*` via [`ledger-attachment-actions.ts`](../app/atelier/system/ledger-attachment-actions.ts)); site checklist PDF, Studio Bible vault, reference MD (`system-reference-actions`).
 - **BroadcastTab** — admin-only diffusion queue (server-gated).

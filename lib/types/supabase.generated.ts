@@ -56,13 +56,6 @@ export type Database = {
             referencedRelation: "Oeuvres"
             referencedColumns: ["OeuvreID"]
           },
-          {
-            foreignKeyName: "broadcast_events_oeuvre_id_fkey"
-            columns: ["oeuvre_id"]
-            isOneToOne: false
-            referencedRelation: "OeuvresComplete"
-            referencedColumns: ["OeuvreID"]
-          },
         ]
       }
       calendar_account: {
@@ -220,13 +213,6 @@ export type Database = {
             referencedRelation: "Oeuvres"
             referencedColumns: ["OeuvreID"]
           },
-          {
-            foreignKeyName: "concept_oeuvre_id_fkey"
-            columns: ["oeuvre_id"]
-            isOneToOne: false
-            referencedRelation: "OeuvresComplete"
-            referencedColumns: ["OeuvreID"]
-          },
         ]
       }
       consignment_order: {
@@ -281,13 +267,6 @@ export type Database = {
             columns: ["oeuvre_id"]
             isOneToOne: false
             referencedRelation: "Oeuvres"
-            referencedColumns: ["OeuvreID"]
-          },
-          {
-            foreignKeyName: "consignment_order_oeuvre_id_fkey"
-            columns: ["oeuvre_id"]
-            isOneToOne: false
-            referencedRelation: "OeuvresComplete"
             referencedColumns: ["OeuvreID"]
           },
           {
@@ -692,13 +671,6 @@ export type Database = {
             referencedColumns: ["OeuvreID"]
           },
           {
-            foreignKeyName: "document_oeuvre_id_fkey"
-            columns: ["oeuvre_id"]
-            isOneToOne: false
-            referencedRelation: "OeuvresComplete"
-            referencedColumns: ["OeuvreID"]
-          },
-          {
             foreignKeyName: "document_process_id_fkey"
             columns: ["process_id"]
             isOneToOne: false
@@ -885,13 +857,6 @@ export type Database = {
             referencedColumns: ["OeuvreID"]
           },
           {
-            foreignKeyName: "inquiry_oeuvre_id_fkey"
-            columns: ["oeuvre_id"]
-            isOneToOne: false
-            referencedRelation: "OeuvresComplete"
-            referencedColumns: ["OeuvreID"]
-          },
-          {
             foreignKeyName: "inquiry_sale_order_id_fkey"
             columns: ["sale_order_id"]
             isOneToOne: false
@@ -948,13 +913,6 @@ export type Database = {
             referencedRelation: "Oeuvres"
             referencedColumns: ["OeuvreID"]
           },
-          {
-            foreignKeyName: "oeuvre_broadcasts_oeuvre_id_fkey"
-            columns: ["oeuvre_id"]
-            isOneToOne: false
-            referencedRelation: "OeuvresComplete"
-            referencedColumns: ["OeuvreID"]
-          },
         ]
       }
       oeuvre_theme: {
@@ -976,13 +934,6 @@ export type Database = {
             columns: ["oeuvre_id"]
             isOneToOne: false
             referencedRelation: "Oeuvres"
-            referencedColumns: ["OeuvreID"]
-          },
-          {
-            foreignKeyName: "OeuvreTheme_OeuvreID_fkey"
-            columns: ["oeuvre_id"]
-            isOneToOne: false
-            referencedRelation: "OeuvresComplete"
             referencedColumns: ["OeuvreID"]
           },
           {
@@ -1230,28 +1181,28 @@ export type Database = {
           country: string | null
           created_at: string | null
           id: number
+          is_team_session: boolean
           path: string
           referrer: string | null
           visitor_id: string | null
-          is_team_session: boolean
         }
         Insert: {
           country?: string | null
           created_at?: string | null
           id?: number
+          is_team_session?: boolean
           path: string
           referrer?: string | null
           visitor_id?: string | null
-          is_team_session?: boolean
         }
         Update: {
           country?: string | null
           created_at?: string | null
           id?: number
+          is_team_session?: boolean
           path?: string
           referrer?: string | null
           visitor_id?: string | null
-          is_team_session?: boolean
         }
         Relationships: []
       }
@@ -1301,13 +1252,6 @@ export type Database = {
             columns: ["oeuvre_id"]
             isOneToOne: false
             referencedRelation: "Oeuvres"
-            referencedColumns: ["OeuvreID"]
-          },
-          {
-            foreignKeyName: "pending_changes_oeuvre_id_fkey"
-            columns: ["oeuvre_id"]
-            isOneToOne: false
-            referencedRelation: "OeuvresComplete"
             referencedColumns: ["OeuvreID"]
           },
         ]
@@ -1486,14 +1430,31 @@ export type Database = {
             referencedRelation: "Oeuvres"
             referencedColumns: ["OeuvreID"]
           },
-          {
-            foreignKeyName: "sale_order_oeuvre_id_fkey"
-            columns: ["oeuvre_id"]
-            isOneToOne: false
-            referencedRelation: "OeuvresComplete"
-            referencedColumns: ["OeuvreID"]
-          },
         ]
+      }
+      share_inbox: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          payload: Json
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          payload?: Json
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          payload?: Json
+          user_id?: string
+        }
+        Relationships: []
       }
       shipment: {
         Row: {
@@ -1577,13 +1538,6 @@ export type Database = {
             referencedColumns: ["OeuvreID"]
           },
           {
-            foreignKeyName: "shipment_work_oeuvre_id_fkey"
-            columns: ["oeuvre_id"]
-            isOneToOne: false
-            referencedRelation: "OeuvresComplete"
-            referencedColumns: ["OeuvreID"]
-          },
-          {
             foreignKeyName: "shipment_work_shipment_id_fkey"
             columns: ["shipment_id"]
             isOneToOne: false
@@ -1591,6 +1545,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sketchbook: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       stock_item: {
         Row: {
@@ -1789,13 +1767,6 @@ export type Database = {
             referencedRelation: "Oeuvres"
             referencedColumns: ["OeuvreID"]
           },
-          {
-            foreignKeyName: "suivi_process_oeuvre_id_fkey"
-            columns: ["oeuvre_id"]
-            isOneToOne: false
-            referencedRelation: "OeuvresComplete"
-            referencedColumns: ["OeuvreID"]
-          },
         ]
       }
       suivi_reminder: {
@@ -1924,32 +1895,38 @@ export type Database = {
       }
       tblImage: {
         Row: {
+          capture_meta: Json | null
           DateAdded: string | null
           ImageID: number
           ImageNote: string | null
           is_cover: boolean
           OeuvreID: number | null
           SeqNo: number | null
+          sha256: string | null
           txtImageName: string | null
           txtImageNameLink: string | null
         }
         Insert: {
+          capture_meta?: Json | null
           DateAdded?: string | null
           ImageID?: number
           ImageNote?: string | null
           is_cover?: boolean
           OeuvreID?: number | null
           SeqNo?: number | null
+          sha256?: string | null
           txtImageName?: string | null
           txtImageNameLink?: string | null
         }
         Update: {
+          capture_meta?: Json | null
           DateAdded?: string | null
           ImageID?: number
           ImageNote?: string | null
           is_cover?: boolean
           OeuvreID?: number | null
           SeqNo?: number | null
+          sha256?: string | null
           txtImageName?: string | null
           txtImageNameLink?: string | null
         }
@@ -1959,13 +1936,6 @@ export type Database = {
             columns: ["OeuvreID"]
             isOneToOne: false
             referencedRelation: "Oeuvres"
-            referencedColumns: ["OeuvreID"]
-          },
-          {
-            foreignKeyName: "fk_tblimage_oeuvre"
-            columns: ["OeuvreID"]
-            isOneToOne: false
-            referencedRelation: "OeuvresComplete"
             referencedColumns: ["OeuvreID"]
           },
         ]
@@ -2022,24 +1992,10 @@ export type Database = {
             referencedColumns: ["OeuvreID"]
           },
           {
-            foreignKeyName: "tblrelations_source_id_fkey"
-            columns: ["source_id"]
-            isOneToOne: false
-            referencedRelation: "OeuvresComplete"
-            referencedColumns: ["OeuvreID"]
-          },
-          {
             foreignKeyName: "tblrelations_target_id_fkey"
             columns: ["target_id"]
             isOneToOne: false
             referencedRelation: "Oeuvres"
-            referencedColumns: ["OeuvreID"]
-          },
-          {
-            foreignKeyName: "tblrelations_target_id_fkey"
-            columns: ["target_id"]
-            isOneToOne: false
-            referencedRelation: "OeuvresComplete"
             referencedColumns: ["OeuvreID"]
           },
         ]
@@ -2113,6 +2069,86 @@ export type Database = {
         }
         Relationships: []
       }
+      voice_note: {
+        Row: {
+          audio_mime: string | null
+          audio_r2_key: string | null
+          bucket: string
+          created_at: string
+          duration_ms: number | null
+          id: string
+          kind: string
+          oeuvre_id: number | null
+          process_id: string | null
+          sketchbook_id: string | null
+          subject: string | null
+          transcript: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          audio_mime?: string | null
+          audio_r2_key?: string | null
+          bucket?: string
+          created_at?: string
+          duration_ms?: number | null
+          id?: string
+          kind?: string
+          oeuvre_id?: number | null
+          process_id?: string | null
+          sketchbook_id?: string | null
+          subject?: string | null
+          transcript?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          audio_mime?: string | null
+          audio_r2_key?: string | null
+          bucket?: string
+          created_at?: string
+          duration_ms?: number | null
+          id?: string
+          kind?: string
+          oeuvre_id?: number | null
+          process_id?: string | null
+          sketchbook_id?: string | null
+          subject?: string | null
+          transcript?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voice_note_oeuvre_id_fkey"
+            columns: ["oeuvre_id"]
+            isOneToOne: false
+            referencedRelation: "Oeuvres"
+            referencedColumns: ["OeuvreID"]
+          },
+          {
+            foreignKeyName: "voice_note_process_id_fkey"
+            columns: ["process_id"]
+            isOneToOne: false
+            referencedRelation: "exhibition"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voice_note_process_id_fkey"
+            columns: ["process_id"]
+            isOneToOne: false
+            referencedRelation: "suivi_process"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voice_note_sketchbook_id_fkey"
+            columns: ["sketchbook_id"]
+            isOneToOne: false
+            referencedRelation: "sketchbook"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       work_action: {
         Row: {
           action_type_id: number
@@ -2156,13 +2192,6 @@ export type Database = {
             referencedRelation: "Oeuvres"
             referencedColumns: ["OeuvreID"]
           },
-          {
-            foreignKeyName: "work_action_oeuvre_id_fkey"
-            columns: ["oeuvre_id"]
-            isOneToOne: false
-            referencedRelation: "OeuvresComplete"
-            referencedColumns: ["OeuvreID"]
-          },
         ]
       }
       work_action_type: {
@@ -2191,6 +2220,47 @@ export type Database = {
           sort_order?: number
         }
         Relationships: []
+      }
+      work_session: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          oeuvre_id: number | null
+          payload: Json
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          oeuvre_id?: number | null
+          payload?: Json
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          oeuvre_id?: number | null
+          payload?: Json
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_session_oeuvre_id_fkey"
+            columns: ["oeuvre_id"]
+            isOneToOne: false
+            referencedRelation: "Oeuvres"
+            referencedColumns: ["OeuvreID"]
+          },
+        ]
       }
       working_group: {
         Row: {
@@ -2250,13 +2320,6 @@ export type Database = {
             referencedRelation: "Oeuvres"
             referencedColumns: ["OeuvreID"]
           },
-          {
-            foreignKeyName: "working_group_work_oeuvre_id_fkey"
-            columns: ["oeuvre_id"]
-            isOneToOne: false
-            referencedRelation: "OeuvresComplete"
-            referencedColumns: ["OeuvreID"]
-          },
         ]
       }
     }
@@ -2296,69 +2359,17 @@ export type Database = {
           },
         ]
       }
-      OeuvresComplete: {
-        Row: {
-          Année: string | null
-          Catalogué: boolean | null
-          Commentaires: string | null
-          ContactID: number | null
-          Discount: number | null
-          Exposable: boolean | null
-          Format: number | null
-          Hauteur: string | null
-          Historique: string | null
-          Largeur: string | null
-          OeuvreID: number | null
-          Prix: number | null
-          PrixFinal: number | null
-          Profondeur: string | null
-          statusId: number | null
-          statusLabel: string | null
-          Support: number | null
-          Technique: number | null
-          Titre: string | null
-          txtImageNameLink: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "fk_oeuvres_contact"
-            columns: ["ContactID"]
-            isOneToOne: false
-            referencedRelation: "Contact"
-            referencedColumns: ["ContactID"]
-          },
-          {
-            foreignKeyName: "fk_oeuvres_format"
-            columns: ["Format"]
-            isOneToOne: false
-            referencedRelation: "Format"
-            referencedColumns: ["FormatID"]
-          },
-          {
-            foreignKeyName: "fk_oeuvres_support"
-            columns: ["Support"]
-            isOneToOne: false
-            referencedRelation: "Support"
-            referencedColumns: ["SupportID"]
-          },
-          {
-            foreignKeyName: "fk_oeuvres_technique"
-            columns: ["Technique"]
-            isOneToOne: false
-            referencedRelation: "Technique"
-            referencedColumns: ["TechniqueID"]
-          },
-          {
-            foreignKeyName: "Oeuvres_statusId_fkey"
-            columns: ["statusId"]
-            isOneToOne: false
-            referencedRelation: "OeuvreStatus"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
     }
     Functions: {
+      audit_log_prune: {
+        Args: never
+        Returns: {
+          deleted_broadcast_events: number
+          deleted_oeuvre_versions: number
+          deleted_pending_changes: number
+          deleted_system_log: number
+        }[]
+      }
       is_admin: { Args: never; Returns: boolean }
       is_team: { Args: never; Returns: boolean }
       my_contact_id: { Args: never; Returns: number }

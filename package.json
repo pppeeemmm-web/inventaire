@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit -p tsconfig.json",
+    "gen:types": "node scripts/gen-supabase-types.mjs",
     "test:e2e": "playwright test",
     "test:e2e:field": "node scripts/run-atelier-e2e.mjs"
   },

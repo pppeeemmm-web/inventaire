@@ -73,12 +73,12 @@ _Checklist complete (2026-05-15). Optional polish remains on the route bullet (c
 
 ### Phase 4 — Verb 2 Voice notes (~14–16 h)
 
-- [ ] **Migration:** `supabase/sql/voice_note.sql` + `supabase/sql/sketchbook.sql` with RLS and grants — needs migration. *(iphone-se-plan Verb 2)*
-- [ ] Types: `VoiceNote`, `Sketchbook` in `lib/types/database.ts`. *(iphone-se-plan Verb 2)*
-- [ ] `lib/voice/web-speech.ts` — Web Speech API wrapper + `MediaRecorder` audio capture. *(iphone-se-plan Verb 2)*
-- [ ] Bottom-sheet voice UI: record/transcribe, kind chips, subject, project bucket, optional link picker. *(iphone-se-plan Verb 2)*
-- [ ] Server action `createVoiceNote` in `app/atelier/notes/actions.ts`. *(iphone-se-plan Verb 2)*
-- [ ] New `?tab=notes` chronological list with filters; drawer audio playback + transcript edit. *(iphone-se-plan Verb 2)*
+- [x] **Migration:** `supabase/sql/voice_note.sql` + `supabase/sql/sketchbook.sql` with RLS and grants — **SQL shipped**; operator applies in Supabase then `supabase gen types`. *(iphone-se-plan Verb 2)*
+- [x] Types: `VoiceNoteRow`, `SketchbookRow` in `lib/types/database.ts`. *(iphone-se-plan Verb 2)*
+- [x] `lib/voice/web-speech.ts` — Web Speech API wrapper + `MediaRecorder` audio capture. *(iphone-se-plan Verb 2)*
+- [x] Bottom-sheet voice UI: record/transcribe, kind chips, subject, project bucket, optional œuvre link — [`VoiceNoteSheet`](../components/shared/VoiceNoteSheet.tsx). *(iphone-se-plan Verb 2)*
+- [x] Server actions in `app/atelier/notes/actions.ts` — `createVoiceNote`, `listVoiceNotes`, `updateVoiceNoteTranscript`, `deleteVoiceNote`. *(iphone-se-plan Verb 2)*
+- [x] `?tab=notes` — [`NotesTab`](../components/atelier/NotesTab.tsx): list + filters + transcript edit + delete + audio playback. *(iphone-se-plan Verb 2)*
 
 ### Phase 5 — Verb 3 Doc capture + Share Target full (~10–12 h)
 
