@@ -70,7 +70,7 @@ export function HubLauncherClient() {
       <VoiceNoteSheet open={voiceOpen} onClose={() => setVoiceOpen(false)} oeuvreOptions={[]} />
 
       {narrow ? (
-        <div data-testid="hub-field-launcher-root" style={{ width: '100%', maxWidth: 420, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div data-testid="hub-field-launcher-root" data-hub-copy-rev="2026-05-15" style={{ width: '100%', maxWidth: 420, display: 'flex', flexDirection: 'column', gap: 10 }}>
           {FIELD_ROWS.map((row) => (
             <button
               key={row.labelKey}

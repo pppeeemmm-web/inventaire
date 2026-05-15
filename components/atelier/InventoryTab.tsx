@@ -659,15 +659,12 @@ export function InventoryTab({
           style={{ color: 'var(--tx3)', whiteSpace: 'nowrap', marginRight: 8 }}
           title={
             invCountDenominatorPartial
-              ? `${filtered.length} / ${oeuvres.length} — ${t('inv_loaded_batch_suffix')}`
+              ? t('atelier_header_works_badge_title')
               : undefined
           }
         >
           {filtered.length}
           <span style={{ opacity: 0.5 }}>/{oeuvres.length}</span>
-          {invCountDenominatorPartial ? (
-            <span style={{ opacity: 0.45, fontSize: 10, marginLeft: 4 }}>({t('inv_loaded_batch_suffix')})</span>
-          ) : null}
         </div>
 
         {/* Search */}

@@ -280,12 +280,6 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen, oeuvresPagi
 
   const cataloguePartial =
     oeuvresPaging != null && oeuvres.length < oeuvresPaging.totalCount
-  const subsetNote =
-    cataloguePartial && oeuvresPaging
-      ? t('prod_tab_loaded_subset_note')
-          .replace('{loaded}', String(oeuvres.length))
-          .replace('{total}', String(oeuvresPaging.totalCount))
-      : ''
   const pivotFootnote =
     cataloguePartial && oeuvresPaging
       ? t('prod_tab_pivot_footnote_loaded_subset')
@@ -333,11 +327,6 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen, oeuvresPagi
               {statLine}
             </div>
           )}
-          {subsetNote ? (
-            <div className="t-mono-sm" style={{ color: 'var(--tx3)', marginTop: 6, fontSize: 10, lineHeight: 1.4, maxWidth: 560 }}>
-              {subsetNote}
-            </div>
-          ) : null}
         </div>
         <input
           value={search}

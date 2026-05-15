@@ -18,4 +18,12 @@ test.describe('Atelier mobile action bar', () => {
     await expect(bar).toBeVisible({ timeout: 45_000 })
     await expect(page.getByTestId('atelier-mobile-bar-new-work')).toBeVisible()
   })
+
+  test('narrow atelier header exposes hub launchpad', async ({ page }) => {
+    await page.goto('/atelier?tab=inventory', { waitUntil: 'domcontentloaded' })
+    const hub = page.getByTestId('atelier-header-hub')
+    await expect(hub).toBeVisible({ timeout: 45_000 })
+    await hub.click()
+    await expect(page).toHaveURL(/\/hub/)
+  })
 })

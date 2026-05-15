@@ -79,12 +79,15 @@ console.log('  Local : http://localhost:3000')
 if (ip) console.log(`  Phone : http://${ip}:3000`)
 console.log('')
 
+const devEnv = { ...process.env }
+if (ip) devEnv.DEV_LAN_HOST = ip
+
 const require = createRequire(import.meta.url)
 const nextCli = require.resolve('next/dist/bin/next')
 const child = spawn(process.execPath, [nextCli, 'dev', '-H', '0.0.0.0', '-p', '3000'], {
   cwd: root,
   stdio: 'inherit',
-  env: process.env,
+  env: devEnv,
 })
 child.on('exit', (code, signal) => {
   if (signal) process.kill(process.pid, signal)

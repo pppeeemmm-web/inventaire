@@ -65,4 +65,18 @@ test.describe('Hub field launcher (Ring B.1)', () => {
     await page.getByTestId('hub-field-verb-scan-doc').click()
     await expect(page).toHaveURL(/\/atelier\/capture\?.*mode=doc/)
   })
+
+  test('triage row opens field triage deck', async ({ page }) => {
+    await page.goto('/hub')
+    await expect(page.getByTestId('hub-field-launcher-root')).toBeVisible({ timeout: 45_000 })
+    await page.getByTestId('hub-field-verb-triage').click()
+    await expect(page).toHaveURL(/\/atelier\/triage/)
+  })
+
+  test('issue row opens studio issue form', async ({ page }) => {
+    await page.goto('/hub')
+    await expect(page.getByTestId('hub-field-launcher-root')).toBeVisible({ timeout: 45_000 })
+    await page.getByTestId('hub-field-verb-issue').click()
+    await expect(page).toHaveURL(/\/atelier\/issue\/new/)
+  })
 })

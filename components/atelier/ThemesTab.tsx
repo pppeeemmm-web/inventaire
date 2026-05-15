@@ -288,27 +288,6 @@ export function ThemesTab({
     >
       {msg && <div className="flash-msg">{msg.toUpperCase()}</div>}
 
-      {oeuvresCatalogueTotal != null && oeuvresCatalogueTotal > oeuvres.length && (
-        <div
-          data-testid="atelier-themes-subset-note"
-          className="t-mono-sm"
-          style={{
-            marginBottom: 12,
-            padding: `8px max(12px, env(safe-area-inset-left)) 8px max(12px, env(safe-area-inset-right))`,
-            border: '1px solid var(--bd)',
-            background: 'var(--bg2)',
-            color: 'var(--tx2)',
-            fontSize: 11,
-            lineHeight: 1.45,
-            maxWidth: '100%',
-          }}
-        >
-          {t('atelier_oeuvres_subset_banner')
-            .replace('{loaded}', String(oeuvres.length))
-            .replace('{total}', String(oeuvresCatalogueTotal))}
-        </div>
-      )}
-
       <div
         style={{
           display: 'grid',

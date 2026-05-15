@@ -505,31 +505,6 @@ export function PortfolioTab({
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg0)', overflow: 'hidden' }}>
 
-      {activeTab !== 'analytics' &&
-        oeuvresCatalogueTotal != null &&
-        oeuvresCatalogueTotal > oeuvres.length && (
-        <div
-          data-testid="atelier-portfolio-subset-note"
-          className="t-mono-sm"
-          style={{
-            flexShrink: 0,
-            padding: `8px max(12px, env(safe-area-inset-right)) 8px max(12px, env(safe-area-inset-left))`,
-            paddingTop: 'max(8px, env(safe-area-inset-top))',
-            borderBottom: '1px solid var(--bd)',
-            background: 'var(--bg2)',
-            color: 'var(--tx2)',
-            fontSize: 11,
-            lineHeight: 1.45,
-            maxWidth: '100%',
-            boxSizing: 'border-box',
-          }}
-        >
-          {t('atelier_oeuvres_subset_banner')
-            .replace('{loaded}', String(oeuvres.length))
-            .replace('{total}', String(oeuvresCatalogueTotal))}
-        </div>
-      )}
-
       {/* ── Top bar ── */}
       <div
         style={{

@@ -15,5 +15,8 @@ test.describe('Work session (Verb 1)', () => {
     await page.goto('/atelier/session/new')
     await expect(page.getByTestId('session-new-root')).toBeVisible({ timeout: 45_000 })
     await expect(page.getByTestId('session-field-context-capture')).toBeVisible()
+    await expect(page.getByTestId('session-work-mode-existing')).toBeVisible()
+    await expect(page.getByTestId('session-work-mode-new')).toBeVisible()
+    await expect(page.getByTestId('field-hub-back')).toBeVisible()
   })
 })

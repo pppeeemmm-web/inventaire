@@ -29,12 +29,12 @@ test.describe('Reports tab', () => {
   test('shows partial-catalogue note when loaded batch is smaller than total', async ({ page }) => {
     await page.goto('/atelier?tab=reports', { waitUntil: 'domcontentloaded' })
     await expect(page.getByTestId('reports-root')).toBeVisible({ timeout: 45_000 })
-    const note = page.getByTestId('reports-subset-note')
+    const totalBadge = page.getByTestId('atelier-catalogue-total')
     try {
-      await note.waitFor({ state: 'visible', timeout: 20_000 })
+      await totalBadge.waitFor({ state: 'visible', timeout: 20_000 })
     } catch {
       test.skip(true, 'No partial oeuvres load in this environment (≤ first page).')
     }
-    await expect(note).toBeVisible()
+    await expect(totalBadge).toBeVisible()
   })
 })

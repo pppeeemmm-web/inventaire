@@ -9,6 +9,7 @@ import { imageUrl } from '@/lib/data'
 import { toast } from '@/lib/ui/toast'
 import { deleteShareInboxEntry, type ShareInboxListRow } from '@/app/atelier/share-inbox-actions'
 import { ShareAttachPanel } from '@/components/atelier/ShareAttachPanel'
+import { FieldHubBackLink } from '@/components/shared/FieldHubBackLink'
 import type { ShareInboxPayloadV1 } from '@/lib/share-inbox-types'
 import { isShareInboxPayloadV1 } from '@/lib/share-inbox-types'
 
@@ -233,6 +234,7 @@ export function ShareTriageClient(props: {
       <Link href="/atelier" className="btn ghost" style={{ minHeight: 44, textAlign: 'center' }}>
         {t('field_stub_cta_atelier')}
       </Link>
+      <FieldHubBackLink style={{ marginTop: 8 }} />
     </div>
   )
 }

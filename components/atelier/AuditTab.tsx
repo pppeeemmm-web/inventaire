@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { fetchSystemLogs, type AuditLogEntry } from '@/app/atelier/audit/actions'
 import { PendingQueue } from './PendingQueue'
+import { PendingWorkSessions } from './PendingWorkSessions'
 import { LoadingShell } from '@/components/shared/LoadingShell'
 
 export function AuditTab() {
@@ -28,7 +29,10 @@ export function AuditTab() {
           <button onClick={() => setView('ledger')} className="btn ghost sm" style={{ fontSize: 9, letterSpacing: 1, opacity: 0.5 }}>{t('audit_view_ledger')}</button>
           <button onClick={() => setView('pending')} className="btn ghost sm" style={{ fontSize: 9, letterSpacing: 1, border: '1px solid var(--bd)', background: 'var(--bg1)' }}>{t('audit_view_pending')}</button>
         </div>
-        <div style={{ flex: 1, overflow: 'hidden' }}><PendingQueue /></div>
+        <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+          <PendingQueue />
+          <PendingWorkSessions />
+        </div>
       </div>
     )
   }

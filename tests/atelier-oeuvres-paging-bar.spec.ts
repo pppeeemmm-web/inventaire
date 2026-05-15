@@ -12,7 +12,7 @@ test.describe('Atelier œuvres subset banner', () => {
 
   test('load-more control is present when catalogue is partial', async ({ page }) => {
     await page.setViewportSize({ width: 1200, height: 800 })
-    await page.goto('/atelier', { waitUntil: 'domcontentloaded' })
+    await page.goto('/atelier?tab=inventory', { waitUntil: 'domcontentloaded' })
     const banner = page.getByTestId('atelier-oeuvres-subset-banner')
     try {
       await banner.waitFor({ state: 'visible', timeout: 20_000 })
@@ -20,7 +20,7 @@ test.describe('Atelier œuvres subset banner', () => {
       test.skip(true, 'No partial oeuvres load in this environment (≤ first page).')
     }
     const loadBtn = banner.getByRole('button', {
-      name: /Load next batch|Charger la tranche suivante/i,
+      name: /^(More|Suite|Load next batch|Charger la tranche suivante)$/i,
     })
     await expect(loadBtn).toBeVisible()
     await expect(loadBtn).toHaveCount(1)

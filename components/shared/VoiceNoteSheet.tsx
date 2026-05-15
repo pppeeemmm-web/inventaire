@@ -54,6 +54,7 @@ export function VoiceNoteSheet({
   const { t, lang } = useI18n()
   const closeRef = useRef<HTMLButtonElement>(null)
   const dictStopRef = useRef<(() => void) | null>(null)
+  const interimRef = useRef('')
   const recordStartedAt = useRef<number | null>(null)
   const recorderSessionRef = useRef<Awaited<ReturnType<typeof startMicRecorder>> | null>(null)
 
@@ -120,36 +121,76 @@ export function VoiceNoteSheet({
     resetForm()
   }, [open, resetForm])
 
+  const appendTranscript = useCallback((prev: string, bit: string) => {
+    const chunk = bit.trim()
+    if (!chunk) return prev
+    if (!prev) return chunk
+    const join = prev.endsWith(' ') || prev.endsWith('\n') ? '' : ' '
+    return `${prev}${join}${chunk}`
+  }, [])
+
+  const toastDictationError = useCallback(
+    (code: string) => {
+      if (code === 'insecure') toast.error(t('voice_dictate_insecure'))
+      else if (code === 'not-allowed' || code === 'audio-capture') toast.error(t('voice_mic_error'))
+      else if (code === 'network' || code === 'service-not-available') toast.error(t('voice_dictate_unavailable'))
+      else toast.error(t('voice_dictate_unsupported'))
+    },
+    [t],
+  )
+
   const stopDictation = useCallback(() => {
     dictStopRef.current?.()
     dictStopRef.current = null
     setDictating(false)
+    const tail = interimRef.current.trim()
+    interimRef.current = ''
     setInterim('')
-  }, [])
+    if (tail) setTranscript((prev) => appendTranscript(prev, tail))
+  }, [appendTranscript])
 
-  const startDictation = useCallback(() => {
+  const startDictation = useCallback(async () => {
     stopDictation()
-    const { stop } = startLiveDictation(speechLang, {
-      onInterim: (txt) => setInterim(txt),
+    if (recording && recorderSessionRef.current) {
+      const session = recorderSessionRef.current
+      recorderSessionRef.current = null
+      setRecording(false)
+      try {
+        await session.stop()
+      } catch {
+        /* ignore — dictation needs exclusive mic */
+      }
+    }
+    const session = await startLiveDictation(speechLang, {
+      onInterim: (txt) => {
+        interimRef.current = txt
+        setInterim(txt)
+      },
       onFinal: (txt) => {
-        setTranscript((prev) => {
-          const bit = txt.trim()
-          if (!bit) return prev
-          if (!prev) return bit
-          const join = prev.endsWith(' ') || prev.endsWith('\n') ? '' : ' '
-          return `${prev}${join}${bit}`
-        })
+        interimRef.current = ''
         setInterim('')
+        setTranscript((prev) => appendTranscript(prev, txt))
       },
       onError: (code) => {
-        if (code === 'unsupported' || code === 'start-failed') toast.error(t('voice_dictate_unsupported'))
+        dictStopRef.current = null
+        setDictating(false)
+        interimRef.current = ''
+        setInterim('')
+        toastDictationError(code)
       },
     })
-    dictStopRef.current = stop
+    if (!session.ok) return
+    dictStopRef.current = session.stop
     setDictating(true)
-  }, [speechLang, stopDictation, t])
+  }, [appendTranscript, recording, speechLang, stopDictation, toastDictationError])
+
+  const transcriptDisplay =
+    dictating && interim
+      ? appendTranscript(transcript, interim)
+      : transcript
 
   const toggleRecord = async () => {
+    if (dictating) stopDictation()
     if (recording) {
       const session = recorderSessionRef.current
       recorderSessionRef.current = null
@@ -334,7 +375,7 @@ export function VoiceNoteSheet({
             data-testid="ring-b-voice-dictate-toggle"
             aria-pressed={dictating}
             aria-label={dictating ? t('voice_dictate_stop_aria') : t('voice_dictate_start_aria')}
-            onClick={() => (dictating ? stopDictation() : startDictation())}
+            onClick={() => void (dictating ? stopDictation() : startDictation())}
             style={{ minHeight: 44, flex: '1 1 140px' }}
           >
             {dictating ? t('voice_dictate_stop') : t('voice_dictate_start')}
@@ -345,18 +386,17 @@ export function VoiceNoteSheet({
         <textarea
           id="voice-note-transcript"
           className="input"
-          value={transcript}
-          onChange={(e) => setTranscript(e.target.value)}
+          value={transcriptDisplay}
+          onChange={(e) => {
+            interimRef.current = ''
+            setInterim('')
+            setTranscript(e.target.value)
+          }}
           placeholder={t('voice_transcript_ph')}
           rows={5}
-          style={{ width: '100%', marginBottom: interim ? 6 : 12, fontSize: 13, lineHeight: 1.5, minHeight: 100 }}
+          aria-live={dictating ? 'polite' : undefined}
+          style={{ width: '100%', marginBottom: 12, fontSize: 13, lineHeight: 1.5, minHeight: 100 }}
         />
-        {interim ? (
-          <div className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx2)', marginBottom: 12, lineHeight: 1.45 }} aria-live="polite">
-            {interim}
-          </div>
-        ) : null}
-
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <button
             type="button"

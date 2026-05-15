@@ -69,7 +69,7 @@ export type WorkSessionDraftFields = {
 }
 
 export async function getWorkSessionDraftFields(sessionId: string): Promise<
-  { ok: true; fields: WorkSessionDraftFields } | { error: string }
+  { ok: true; fields: WorkSessionDraftFields; oeuvre_id: number | null } | { error: string }
 > {
   const supabase = await createClient()
   const {
@@ -77,14 +77,16 @@ export async function getWorkSessionDraftFields(sessionId: string): Promise<
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Non authentifié' }
   const { data, error } = await workSessionTable(supabase)
-    .select('payload')
+    .select('payload,oeuvre_id')
     .eq('id', sessionId)
     .eq('user_id', user.id)
     .maybeSingle()
   if (error || !data) return { error: error?.message ?? 'Session introuvable' }
   const p = parseWorkSessionPayload(data.payload)
+  const oeuvreId = data.oeuvre_id
   return {
     ok: true,
+    oeuvre_id: typeof oeuvreId === 'number' && oeuvreId > 0 ? oeuvreId : null,
     fields: {
       notes: p.notes ?? '',
       title_hint: p.title_hint ?? '',
@@ -268,6 +270,86 @@ export async function uploadWorkSessionShot(
   return { ok: true }
 }
 
+export async function createAndLinkWorkFromSession(
+  sessionId: string,
+  fields: {
+    title_hint: string
+    notes?: string
+    width_cm?: string
+    height_cm?: string
+    field_context?: WorkSessionFieldContext | null
+  },
+): Promise<{ ok: true; oeuvreId: number } | { error: string }> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié' }
+
+  const titre = fields.title_hint.trim()
+  if (!titre) return { error: 'Titre requis pour créer une œuvre' }
+
+  const { data: row, error: selErr } = await workSessionTable(supabase)
+    .select('id,user_id,status,payload,oeuvre_id')
+    .eq('id', sessionId)
+    .maybeSingle()
+  if (selErr || !row) return { error: selErr?.message ?? 'Session introuvable' }
+  if (row.user_id !== user.id) return { error: 'Accès refusé' }
+  if (row.status !== 'draft') return { error: 'Session non modifiable' }
+  if (row.oeuvre_id) return { error: 'Œuvre déjà associée' }
+
+  const metaPatch = {
+    notes: fields.notes ?? '',
+    title_hint: titre,
+    width_cm: fields.width_cm ?? '',
+    height_cm: fields.height_cm ?? '',
+    ...(fields.field_context != null ? { field_context: fields.field_context } : {}),
+  }
+  const metaRes = await updateWorkSessionMetadata(sessionId, metaPatch)
+  if ('error' in metaRes) return metaRes
+
+  const { data: maxRow } = await supabase
+    .from('Oeuvres')
+    .select('OeuvreID')
+    .order('OeuvreID', { ascending: false })
+    .limit(1)
+    .single()
+  const oid = (maxRow?.OeuvreID ?? 2337) + 1
+
+  const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '/')
+  const originEntry = `[${dateStr}] Session terrain`
+  const notesTrim = (fields.notes ?? '').trim()
+  const historique = notesTrim ? `${originEntry}\n${notesTrim}` : originEntry
+
+  const largeur = (fields.width_cm ?? '').trim() || null
+  const hauteur = (fields.height_cm ?? '').trim() || null
+
+  const { error: insertErr } = await supabase.from('Oeuvres').insert({
+    OeuvreID: oid,
+    Titre: titre,
+    Largeur: largeur,
+    Hauteur: hauteur,
+    Commentaires: notesTrim || null,
+    Historique: historique,
+    statusId: 1,
+    NeedsPhotograph: true,
+    Exposable: false,
+    Catalogué: false,
+  })
+  if (insertErr) return { error: insertErr.message }
+
+  const { error: linkErr } = await workSessionTable(supabase)
+    .update({ oeuvre_id: oid })
+    .eq('id', sessionId)
+    .eq('user_id', user.id)
+    .eq('status', 'draft')
+  if (linkErr) return { error: linkErr.message }
+
+  revalidatePath('/atelier')
+  revalidatePath('/atelier/session/new')
+  return { ok: true, oeuvreId: oid }
+}
+
 export async function linkWorkSessionToOeuvre(
   sessionId: string,
   oeuvreId: number,
@@ -449,19 +531,76 @@ export async function deleteWorkSessionAdmin(sessionId: string): Promise<Session
   return { ok: true }
 }
 
-export async function listPendingWorkSessionsAdmin(): Promise<WorkSessionRow[]> {
+export type WorkSessionQueueRow = WorkSessionRow & {
+  oeuvre_title: string | null
+  shot_count: number
+  author_email: string | null
+}
+
+async function enrichWorkSessionQueueRows(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  rows: WorkSessionRow[],
+): Promise<WorkSessionQueueRow[]> {
+  if (rows.length === 0) return []
+  const oeuvreIds = Array.from(
+    new Set(rows.map((r) => r.oeuvre_id).filter((id): id is number => typeof id === 'number' && id > 0)),
+  )
+  const userIds = Array.from(new Set(rows.map((r) => r.user_id)))
+  let titleMap = new Map<number, string | null>()
+  if (oeuvreIds.length > 0) {
+    const { data: titles } = await supabase
+      .from('Oeuvres')
+      .select('OeuvreID, Titre')
+      .in('OeuvreID', oeuvreIds)
+    titleMap = new Map(
+      (titles ?? []).map((t: { OeuvreID: number; Titre: string | null }) => [t.OeuvreID, t.Titre]),
+    )
+  }
+  let emailMap = new Map<string, string | null>()
+  if (userIds.length > 0) {
+    const { data: contacts } = await supabase
+      .from('Contact')
+      .select('auth_user_id, Email')
+      .in('auth_user_id', userIds)
+    emailMap = new Map(
+      (contacts ?? []).map((c: { auth_user_id: string | null; Email: string | null }) => [
+        c.auth_user_id ?? '',
+        c.Email,
+      ]),
+    )
+  }
+  return rows.map((row) => ({
+    ...row,
+    oeuvre_title: row.oeuvre_id ? titleMap.get(row.oeuvre_id) ?? null : null,
+    shot_count: parseWorkSessionPayload(row.payload).shots.length,
+    author_email: emailMap.get(row.user_id) ?? null,
+  }))
+}
+
+/** Admin review queue: editor submissions + drafts with photos ready to apply. */
+export async function listWorkSessionsForAdminReview(): Promise<WorkSessionQueueRow[]> {
   const supabase = await createClient()
   if (!(await rpcIsAdmin(supabase))) return []
   const { data, error } = await workSessionTable(supabase)
     .select('*')
-    .eq('status', 'pending_review')
+    .in('status', ['pending_review', 'draft'])
+    .not('oeuvre_id', 'is', null)
     .order('updated_at', { ascending: false })
     .limit(100)
   if (error) {
-    console.error('[work_session] listPending', error.message)
+    console.error('[work_session] listForAdminReview', error.message)
     return []
   }
-  return (data ?? []) as WorkSessionRow[]
+  const withShots = ((data ?? []) as WorkSessionRow[]).filter(
+    (row) => parseWorkSessionPayload(row.payload).shots.length > 0,
+  )
+  return enrichWorkSessionQueueRows(supabase, withShots)
+}
+
+/** @deprecated Prefer listWorkSessionsForAdminReview — kept for callers that only need pending_review. */
+export async function listPendingWorkSessionsAdmin(): Promise<WorkSessionRow[]> {
+  const rows = await listWorkSessionsForAdminReview()
+  return rows.filter((r) => r.status === 'pending_review')
 }
 
 export async function listWorkSessionsForOeuvre(oeuvreId: number): Promise<WorkSessionRow[]> {

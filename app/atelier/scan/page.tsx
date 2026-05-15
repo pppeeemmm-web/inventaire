@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
 import { parseWorkIdFromScanText } from '@/lib/mobile/parse-work-id-from-scan'
+import { FieldHubBackLink } from '@/components/shared/FieldHubBackLink'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 
 export default function AtelierScanPage() {
@@ -172,6 +173,8 @@ export default function AtelierScanPage() {
           {t('scan_go')}
         </button>
       </form>
+
+      <FieldHubBackLink />
     </div>
   )
 }

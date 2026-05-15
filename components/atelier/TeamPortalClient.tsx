@@ -22,6 +22,8 @@ import {
 import type { Lang } from '@/lib/i18n/dictionary'
 
 import { useMediaQuery } from '@/lib/useMediaQuery'
+import { OeuvresSubsetBanner } from '@/components/atelier/OeuvresSubsetBanner'
+import { AtelierCatalogueTotalBadge } from '@/components/atelier/AtelierCatalogueTotalBadge'
 import { WorkDrawer, type WorkDrawerGuardHandle } from '@/components/atelier/WorkDrawer'
 import { CurationDock }        from '@/components/atelier/CurationDock'
 import { fetchContactConflicts } from '@/app/atelier/contacts/conflicts-actions'
@@ -818,11 +820,9 @@ export function TeamPortalClient({
 
   const showDock = selection.size > 0 && tab !== 'constellation'
 
-  /** Ring A.2 — hide subset chrome on tabs that do not depend on the loaded œuvres batch. */
+  /** Partial-catalogue strip — Inventaire only; total count stays in header. */
   const showSubsetBanner =
-    oeuvresCataloguePartial &&
-    oeuvresPaging != null &&
-    !(['system', 'audit', 'broadcast', 'notes'] as Tab[]).includes(tab)
+    tab === 'inventory' && oeuvresCataloguePartial && oeuvresPaging != null
 
   const showMobileActionBar = atelierNarrow && !inspected
 
@@ -909,152 +909,67 @@ export function TeamPortalClient({
           >
             {activeTabLabel}
           </div>
-          {!atelierNarrow && (
-            <>
-              <div className="vline" style={{ height: 16, opacity: 0.3, marginLeft: 8 }} />
-              <div
-                className="t-mono-sm"
-                style={{ opacity: 0.5, fontSize: 9, flexShrink: 0 }}
-                title={oeuvresCataloguePartial ? t('atelier_header_works_badge_title') : undefined}
-              >
-                {oeuvresCataloguePartial
-                  ? `${oeuvres.length} / ${oeuvresPaging!.totalCount}`
-                  : oeuvres.length}{' '}
-                {t('inventoryWorksBadge')}
-              </div>
-            </>
-          )}
         </div>
 
-        {!atelierNarrow && (
-          <AtelierHeaderChrome
-            variant="desktop"
-            lang={lang}
-            setLang={setLang}
-            onPaletteOpen={() => setPaletteOpen(true)}
-            onNewWork={() => void router.push('/atelier/works/new')}
-          />
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: atelierNarrow ? 8 : 12, flexShrink: 0 }}>
+          {oeuvresPaging ? (
+            <AtelierCatalogueTotalBadge
+              total={oeuvresPaging.totalCount}
+              loaded={oeuvres.length}
+              partial={oeuvresCataloguePartial}
+              compact={atelierNarrow}
+            />
+          ) : null}
+          {atelierNarrow ? (
+          <button
+            type="button"
+            data-testid="atelier-header-hub"
+            onClick={() => {
+              pendingNavRef.current = () => router.push('/hub')
+              attemptNavigateWithDrawerGuard()
+            }}
+            className="t-mono-sm"
+            aria-label={t('field_stub_cta_hub')}
+            style={{
+              flexShrink: 0,
+              color: 'var(--tx3)',
+              cursor: 'pointer',
+              background: 'var(--bg0)',
+              border: '1px solid var(--bd)',
+              padding: '8px 12px',
+              minHeight: 44,
+              minWidth: 44,
+              boxSizing: 'border-box',
+              fontSize: 10,
+              letterSpacing: 1.2,
+              textTransform: 'uppercase',
+              fontFamily: 'inherit',
+            }}
+          >
+            {t('pub_hub_short')}
+          </button>
+          ) : (
+            <AtelierHeaderChrome
+              variant="desktop"
+              lang={lang}
+              setLang={setLang}
+              onPaletteOpen={() => setPaletteOpen(true)}
+              onNewWork={() => void router.push('/atelier/works/new')}
+            />
+          )}
+        </div>
       </div>
 
       {showSubsetBanner && oeuvresPaging && (
-        <div
-          data-testid="atelier-oeuvres-subset-banner"
-          className="t-mono-sm"
-          style={{
-            flexShrink: 0,
-            padding: '8px max(12px, env(safe-area-inset-right)) 8px max(12px, env(safe-area-inset-left))',
-            borderBottom: '1px solid var(--bd)',
-            background: 'var(--bg2)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: atelierNarrow ? 8 : 10,
-          }}
-        >
-          {atelierNarrow ? (
-            <>
-              <button
-                type="button"
-                onClick={() => setSubsetChipExpanded((v) => !v)}
-                aria-expanded={subsetChipExpanded}
-                aria-label={t('atelier_subset_batch_toggle_aria')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  width: '100%',
-                  minHeight: 44,
-                  padding: '0 4px',
-                  margin: 0,
-                  background: 'transparent',
-                  border: 'none',
-                  borderRadius: 6,
-                  cursor: 'pointer',
-                  color: 'var(--tx)',
-                  font: 'inherit',
-                  textAlign: 'left',
-                }}
-              >
-                <span style={{ fontSize: 12, letterSpacing: 0.04, fontWeight: 600 }}>
-                  {oeuvres.length} / {oeuvresPaging.totalCount}
-                  <span aria-hidden style={{ marginLeft: 6, opacity: 0.6 }}>{subsetChipExpanded ? '▴' : '▾'}</span>
-                </span>
-              </button>
-              {subsetChipExpanded ? (
-                <>
-                  <p
-                    style={{
-                      margin: 0,
-                      color: 'var(--tx2)',
-                      fontSize: 11,
-                      minWidth: 0,
-                      lineHeight: 1.45,
-                    }}
-                  >
-                    {t('atelier_oeuvres_subset_banner')
-                      .replace('{loaded}', String(oeuvres.length))
-                      .replace('{total}', String(oeuvresPaging.totalCount))}
-                  </p>
-                  {oeuvresNextCursor != null ? (
-                    <button
-                      type="button"
-                      className="btn primary sm"
-                      disabled={oeuvresMoreLoading}
-                      onClick={() => void loadMoreOeuvres()}
-                      style={{
-                        minHeight: 44,
-                        flexShrink: 0,
-                        width: '100%',
-                      }}
-                    >
-                      {oeuvresMoreLoading ? '…' : t('atelier_oeuvres_load_more')}
-                    </button>
-                  ) : null}
-                </>
-              ) : null}
-            </>
-          ) : (
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns:
-                  oeuvresNextCursor != null ? 'minmax(0, 1fr) auto' : 'minmax(0, 1fr)',
-                gap: 10,
-                alignItems: 'center',
-              }}
-            >
-              <p
-                style={{
-                  margin: 0,
-                  color: 'var(--tx2)',
-                  fontSize: 11,
-                  minWidth: 0,
-                  lineHeight: 1.45,
-                }}
-              >
-                {t('atelier_oeuvres_subset_banner')
-                  .replace('{loaded}', String(oeuvres.length))
-                  .replace('{total}', String(oeuvresPaging.totalCount))}
-              </p>
-              {oeuvresNextCursor != null ? (
-                <button
-                  type="button"
-                  className="btn primary sm"
-                  disabled={oeuvresMoreLoading}
-                  onClick={() => void loadMoreOeuvres()}
-                  style={{
-                    minHeight: 44,
-                    flexShrink: 0,
-                    width: 'auto',
-                    justifySelf: 'end',
-                  }}
-                >
-                  {oeuvresMoreLoading ? '…' : t('atelier_oeuvres_load_more')}
-                </button>
-              ) : null}
-            </div>
-          )}
-        </div>
+        <OeuvresSubsetBanner
+          loaded={oeuvres.length}
+          total={oeuvresPaging.totalCount}
+          hasMore={oeuvresNextCursor != null}
+          loading={oeuvresMoreLoading}
+          expanded={subsetChipExpanded}
+          onToggleExpanded={() => setSubsetChipExpanded((v) => !v)}
+          onLoadMore={() => void loadMoreOeuvres()}
+        />
       )}
 
       <div style={{ flex: 1, display: 'flex', minHeight: 0, minWidth: 0 }}>
@@ -1685,32 +1600,33 @@ function OverviewTab({
           <div className="t-eyebrow" style={{ marginBottom: 24, opacity: 0.6 }} data-testid="atelier-overview-executive">{t('ov_executive_summary')}</div>
           <div style={{ display: 'grid', gridTemplateColumns: ovNarrow ? 'repeat(2, minmax(0, 1fr))' : 'repeat(6, 1fr)', gap: 1, border: '1px solid var(--bd)', background: 'var(--bd)' }}>
             {[
-              { l: t('works_cap'),                    v: oeuvres.length },
+              {
+                l: t('works_cap'),
+                v: oeuvresCatalogueTotal ?? oeuvres.length,
+                hint:
+                  oeuvresCataloguePartial && oeuvresCatalogueTotal != null
+                    ? t('ov_works_loaded_hint').replace('{loaded}', String(oeuvres.length))
+                    : undefined,
+              },
               { l: `${t('thisYear')} (${thisYear})`,  v: byYear },
               { l: t('ov_stat_available'),              v: available },
               { l: t('exposable'),                    v: exposable },
               { l: t('priced'),                       v: withPrice },
               { l: t('ov_stat_total_value'),           v: `€ ${Math.round(oeuvres.reduce((s,o) => s+(o.Prix||0), 0)/1000)}k` },
-            ].map(({ l, v }) => (
+            ].map(({ l, v, hint }) => (
               <div key={l} style={{ padding: '20px 24px', background: 'var(--bg1)' }}>
                 <div className="stat">
                   <span className="l" style={{ fontSize: 9, letterSpacing: 1.5 }}>{l}</span>
                   <span className="v" style={{ fontSize: 24 }}>{v}</span>
+                  {hint ? (
+                    <span className="t-mono-sm" style={{ fontSize: 9, color: 'var(--tx3)', marginTop: 4, display: 'block' }}>
+                      {hint}
+                    </span>
+                  ) : null}
                 </div>
               </div>
             ))}
           </div>
-          {oeuvresCataloguePartial && oeuvresCatalogueTotal != null && oeuvresCatalogueTotal > oeuvres.length && (
-            <div
-              className="t-mono-sm"
-              style={{ marginTop: 10, fontSize: 10, color: 'var(--tx3)', lineHeight: 1.35, maxWidth: 720 }}
-              data-testid="atelier-overview-subset-caption"
-            >
-              {t('ov_loaded_subset_caption')
-                .replace('{loaded}', String(oeuvres.length))
-                .replace('{total}', String(oeuvresCatalogueTotal))}
-            </div>
-          )}
         </div>
 
         {/* Row 1.5: Financial Pulse */}

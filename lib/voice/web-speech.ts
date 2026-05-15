@@ -30,20 +30,20 @@ type SpeechRecognitionLike = {
   stop: () => void
   onresult: ((ev: SpeechRecEvent) => void) | null
   onerror: ((ev: SpeechRecErrorEvent) => void) | null
+  onend: (() => void) | null
 }
 
 export function getSpeechRecognitionCtor(): (new () => SpeechRecognitionLike) | null {
   if (typeof window === 'undefined') return null
-  const w = window as Window & { SpeechRecognition?: new () => SpeechRecognitionLike; webkitSpeechRecognition?: new () => SpeechRecognitionLike }
+  const w = window as Window & {
+    SpeechRecognition?: new () => SpeechRecognitionLike
+    webkitSpeechRecognition?: new () => SpeechRecognitionLike
+  }
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null
 }
 
 export function pickMediaRecorderMime(): string {
-  const candidates = [
-    'audio/webm;codecs=opus',
-    'audio/webm',
-    'audio/mp4',
-  ]
+  const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4']
   if (typeof MediaRecorder === 'undefined') return 'audio/webm'
   for (const c of candidates) {
     try {
@@ -61,43 +61,99 @@ export type LiveDictationHandlers = {
   onError?: (message: string) => void
 }
 
+function transcriptFromResult(r: SpeechRecResult): string {
+  try {
+    return r[0]?.transcript ?? ''
+  } catch {
+    return ''
+  }
+}
+
+function applyResults(ev: SpeechRecEvent, handlers: LiveDictationHandlers) {
+  let interim = ''
+  let finalChunk = ''
+  for (let i = ev.resultIndex; i < ev.results.length; i++) {
+    const r = ev.results[i]
+    if (!r) continue
+    const tx = transcriptFromResult(r)
+    if (!tx) continue
+    if (r.isFinal) finalChunk += tx
+    else interim += tx
+  }
+  if (interim) handlers.onInterim(interim)
+  if (finalChunk) handlers.onFinal(finalChunk)
+}
+
+/** Warm up mic permission — helps iOS grant speech after a user gesture. */
+async function preflightMicAccess(): Promise<'ok' | 'denied' | 'unavailable'> {
+  if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) return 'unavailable'
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    stream.getTracks().forEach((t) => t.stop())
+    return 'ok'
+  } catch {
+    return 'denied'
+  }
+}
+
 /**
  * Starts continuous dictation in the given BCP-47 `lang` (e.g. fr-FR, en-GB).
- * Returns `stop` to end the session (no-op if SpeechRecognition unavailable).
+ * Restarts on `onend` (mobile engines stop after each phrase). Returns `stop` to end.
  */
-export function startLiveDictation(lang: string, handlers: LiveDictationHandlers): { stop: () => void } {
-  const Ctor = getSpeechRecognitionCtor()
-  if (!Ctor) {
-    handlers.onError?.('unsupported')
-    return { stop: () => {} }
+export type LiveDictationSession = { stop: () => void; ok: boolean }
+
+export async function startLiveDictation(
+  lang: string,
+  handlers: LiveDictationHandlers,
+): Promise<LiveDictationSession> {
+  const fail = (code: string): LiveDictationSession => {
+    handlers.onError?.(code)
+    return { stop: () => {}, ok: false }
   }
+  if (typeof window === 'undefined' || !window.isSecureContext) return fail('insecure')
+  const Ctor = getSpeechRecognitionCtor()
+  if (!Ctor) return fail('unsupported')
+
+  const mic = await preflightMicAccess()
+  if (mic === 'denied') return fail('not-allowed')
+  if (mic === 'unavailable') return fail('audio-capture')
+
   const rec = new Ctor()
   rec.lang = lang
   rec.interimResults = true
   rec.continuous = true
-  rec.onresult = (ev: SpeechRecEvent) => {
-    let interim = ''
-    let finalChunk = ''
-    for (let i = ev.resultIndex; i < ev.results.length; i++) {
-      const r = ev.results[i]
-      const tx = r[0]?.transcript ?? ''
-      if (r.isFinal) finalChunk += tx
-      else interim += tx
+
+  let manualStop = false
+
+  const restart = () => {
+    if (manualStop) return
+    try {
+      rec.start()
+    } catch {
+      handlers.onError?.('start-failed')
     }
-    if (interim) handlers.onInterim(interim)
-    if (finalChunk) handlers.onFinal(finalChunk)
   }
+
+  rec.onresult = (ev: SpeechRecEvent) => applyResults(ev, handlers)
   rec.onerror = (ev: SpeechRecErrorEvent) => {
     if (ev.error === 'aborted' || ev.error === 'no-speech') return
     handlers.onError?.(ev.error)
   }
+  rec.onend = () => {
+    if (!manualStop) window.setTimeout(restart, 120)
+  }
+
   try {
     rec.start()
   } catch {
-    handlers.onError?.('start-failed')
+    return fail('start-failed')
   }
+
   return {
+    ok: true,
     stop: () => {
+      manualStop = true
+      rec.onend = null
       try {
         rec.stop()
       } catch {

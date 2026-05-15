@@ -1,6 +1,11 @@
 import type { NextConfig } from 'next'
 
+/** Set by `npm run dev` → scripts/run-dev.mjs (LAN IP for phone testing). */
+const lanDevHost = process.env.DEV_LAN_HOST?.trim()
+
 const nextConfig: NextConfig = {
+  /** Phone opens http://<LAN>:3000 — allow dev chunks/HMR from that origin (Next 15+). */
+  ...(lanDevHost ? { allowedDevOrigins: [lanDevHost] } : {}),
   /** Dev: slow disk/AV can hit webpack’s default chunk fetch timeout → ChunkLoadError on `app/layout`. */
   webpack: (config, { dev, isServer }) => {
     if (dev && !isServer) {

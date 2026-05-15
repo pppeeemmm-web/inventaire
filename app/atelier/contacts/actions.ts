@@ -17,7 +17,9 @@ export type { UrlEnrichMeta } from '@/lib/contact-url-enrich'
 
 // ── Google Contacts CSV Import ────────────────────────────────────────────────
 
-export type ImportResult = { ok: true; imported: number; skipped: number } | { error: string }
+export type ImportResult =
+  | { ok: true; imported: number; skipped: number; contactIds: number[] }
+  | { error: string }
 
 export async function importGoogleContacts(contacts: ImportedContact[]): Promise<ImportResult> {
   const supabase = await createClient()
@@ -28,7 +30,7 @@ export async function importGoogleContacts(contacts: ImportedContact[]): Promise
   // but imported contacts should be private. Service client bypasses RLS.
   const svc = createServiceClient()
 
-  if (!contacts.length) return { ok: true, imported: 0, skipped: 0 }
+  if (!contacts.length) return { ok: true, imported: 0, skipped: 0, contactIds: [] }
 
   // Collect all emails from the batch to check for duplicates (via service client to see all)
   const allEmails = contacts
@@ -52,6 +54,7 @@ export async function importGoogleContacts(contacts: ImportedContact[]): Promise
 
   let imported = 0
   let skipped  = 0
+  const contactIds: number[] = []
 
   for (const c of contacts) {
     // Skip if any email already exists
@@ -142,10 +145,11 @@ export async function importGoogleContacts(contacts: ImportedContact[]): Promise
     }
 
     imported++
+    contactIds.push(cid)
   }
 
   revalidatePath('/atelier')
-  return { ok: true, imported, skipped }
+  return { ok: true, imported, skipped, contactIds }
 }
 
 export type ContactDeleteResult = { error: string } | { ok: true }
