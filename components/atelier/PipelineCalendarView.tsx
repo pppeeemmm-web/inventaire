@@ -409,18 +409,19 @@ export function PipelineCalendarView({
     })
   }, [anchor])
 
-  const rangeLabel = (r: PipelineCalendarRange) => {
+  const rangeLabel = (r: PipelineCalendarRange, short?: boolean) => {
+    const suffix = short ? '_short' : ''
     switch (r) {
       case 'week':
-        return t('pipeline_cal_range_week')
+        return t(`pipeline_cal_range_week${suffix}`)
       case 'month':
-        return t('pipeline_cal_range_month')
+        return t(`pipeline_cal_range_month${suffix}`)
       case 'quarter':
-        return t('pipeline_cal_range_quarter')
+        return t(`pipeline_cal_range_quarter${suffix}`)
       case 'semester':
-        return t('pipeline_cal_range_semester')
+        return t(`pipeline_cal_range_semester${suffix}`)
       case 'year':
-        return t('pipeline_cal_range_year')
+        return t(`pipeline_cal_range_year${suffix}`)
       default:
         return r
     }
@@ -435,32 +436,57 @@ export function PipelineCalendarView({
         padding: narrow ? '12px 16px' : '20px 28px',
         minWidth: 0,
         width: '100%',
+        maxWidth: '100%',
         boxSizing: 'border-box',
+        overflowX: 'hidden',
       }}
     >
+      {/* Range selector */}
       <div
         role="group"
         aria-label={t('pipeline_cal_range_group_aria')}
-        style={{
+        style={narrow ? {
+          display: 'flex',
+          width: '100%',
+          padding: 3,
+          gap: 0,
+          background: 'var(--bg0)',
+          border: '1px solid var(--bd)',
+          borderRadius: 10,
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
+        } : {
           display: 'flex',
           flexWrap: 'wrap',
           alignItems: 'center',
           gap: 8,
-          padding: narrow ? '0 0 4px' : '0 0 6px',
+          padding: '0 0 6px',
           borderBottom: '1px solid var(--bd2)',
         }}
       >
-        {RANGE_SEQUENCE.map((r) => (
+        {RANGE_SEQUENCE.map((r, i) => (
           <button
             key={r}
             type="button"
-            className="btn ghost sm"
+            className={narrow ? undefined : 'btn ghost sm'}
             aria-pressed={range === r}
-            onClick={() => {
-              if (r === range) return
-              onRangeChange(r)
-            }}
-            style={{
+            aria-label={narrow ? rangeLabel(r) : undefined}
+            onClick={() => { if (r !== range) onRangeChange(r) }}
+            style={narrow ? {
+              flex: 1,
+              minWidth: 0,
+              minHeight: 44,
+              padding: '10px 4px',
+              fontSize: 12,
+              fontWeight: 700,
+              letterSpacing: '0.07em',
+              textTransform: 'uppercase',
+              border: 'none',
+              cursor: 'pointer',
+              background: range === r ? 'var(--ac)' : 'transparent',
+              color: range === r ? 'var(--bg0)' : 'var(--tx)',
+              borderRadius: i === 0 ? '7px 0 0 7px' : i === RANGE_SEQUENCE.length - 1 ? '0 7px 7px 0' : 0,
+              boxShadow: range === r ? '0 1px 3px rgba(0,0,0,0.2)' : undefined,
+            } : {
               minHeight: 44,
               background: range === r ? 'var(--ac)' : undefined,
               color: range === r ? 'var(--bg0)' : undefined,
@@ -469,19 +495,25 @@ export function PipelineCalendarView({
               letterSpacing: '0.05em',
             }}
           >
-            {rangeLabel(r)}
+            {rangeLabel(r, narrow)}
           </button>
         ))}
       </div>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'stretch', gap: 10 }}>
+      {/* Navigation: year badge + prev/title/next/today */}
+      <div style={{
+        display: 'flex',
+        flexWrap: narrow ? 'nowrap' : 'wrap',
+        alignItems: narrow ? 'center' : 'stretch',
+        gap: narrow ? 6 : 10,
+      }}>
         <div
           style={{
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'center',
-            minWidth: narrow ? 52 : 64,
-            padding: '8px 10px',
+            minWidth: narrow ? 44 : 64,
+            padding: narrow ? '6px 8px' : '8px 10px',
             background: 'var(--bg0)',
             border: '1px solid var(--bd2)',
             borderRadius: 8,
@@ -489,21 +521,37 @@ export function PipelineCalendarView({
             flexShrink: 0,
           }}
         >
-          <span style={{ fontSize: narrow ? 20 : 24, fontWeight: 700, lineHeight: 1.15, color: 'var(--tx)' }}>
+          <span style={{ fontSize: narrow ? 18 : 24, fontWeight: 700, lineHeight: 1.15, color: 'var(--tx)' }}>
             {displayYear}
           </span>
         </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, flex: '1 1 200px', minWidth: 0 }}>
+        <div style={{
+          display: 'flex',
+          flexWrap: 'nowrap',
+          alignItems: 'center',
+          gap: narrow ? 4 : 8,
+          flex: '1 1 200px',
+          minWidth: 0,
+        }}>
           <button
             type="button"
             className="btn ghost sm"
             aria-label={t('pipeline_cal_prev')}
             onClick={() => bump(-1)}
-            style={{ minWidth: 44, minHeight: 44 }}
+            style={{ minWidth: 44, minHeight: 44, flexShrink: 0 }}
           >
             ‹
           </button>
-          <div style={{ fontSize: narrow ? 14 : 16, fontWeight: 600, flex: '1 1 auto', textAlign: 'center', minWidth: 0 }}>
+          <div style={{
+            fontSize: narrow ? 13 : 16,
+            fontWeight: 600,
+            flex: '1 1 0',
+            textAlign: 'center',
+            minWidth: 0,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}>
             {rangeTitle}
           </div>
           <button
@@ -511,11 +559,12 @@ export function PipelineCalendarView({
             className="btn ghost sm"
             aria-label={t('pipeline_cal_next')}
             onClick={() => bump(1)}
-            style={{ minWidth: 44, minHeight: 44 }}
+            style={{ minWidth: 44, minHeight: 44, flexShrink: 0 }}
           >
             ›
           </button>
-          <button type="button" className="btn ghost sm" onClick={goToday} style={{ minHeight: 44 }}>
+          <button type="button" className="btn ghost sm" onClick={goToday}
+            style={{ minHeight: 44, flexShrink: 0, whiteSpace: 'nowrap' }}>
             {t('pipeline_cal_today')}
           </button>
         </div>
