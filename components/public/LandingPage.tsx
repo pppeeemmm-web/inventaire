@@ -132,12 +132,14 @@ export default function LandingPage({
           min-height: 44px;
         }
         .landing-nav-btn:hover { border-color: #b0aca6; color: #3a3834; }
-        @media (max-width: 480px) {
+        @media (max-width: 767px) {
           .orb { display: none !important; }
           .landing-nav-btn { display: inline-flex; align-items: center; justify-content: center; }
-          .circle-wrap {
-            --orbit: min(42vmin, calc(100vw - 48px), calc(100dvh - 200px), 520px);
-          }
+        }
+        @media (max-width: 767px) {
+          html, body { overflow: hidden; height: 100dvh; }
+          .wordmark { white-space: nowrap; font-size: 9px; letter-spacing: 2px; color: #6b6760; }
+          .circle-wrap { --orbit: min(76vw, calc(100dvh - 110px), 520px); }
         }
       `}</style>
 
@@ -219,14 +221,13 @@ export default function LandingPage({
             bottom: 0,
             zIndex: 200,
             display: 'flex',
-            flexWrap: 'wrap',
+            flexWrap: 'nowrap',
             alignItems: 'center',
             justifyContent: 'space-between',
-            gap: 8,
-            rowGap: 10,
-            paddingTop: 10,
+            gap: 4,
+            paddingTop: 8,
             paddingRight: 'max(12px, env(safe-area-inset-right, 0px))',
-            paddingBottom: 'max(10px, env(safe-area-inset-bottom, 0px))',
+            paddingBottom: 'max(8px, env(safe-area-inset-bottom, 0px))',
             paddingLeft: 'max(12px, env(safe-area-inset-left, 0px))',
             background: 'rgba(237, 234, 228, 0.96)',
             borderTop: '1px solid #dedad4',
@@ -235,84 +236,58 @@ export default function LandingPage({
         >
           <button
             type="button"
-            onClick={() => setPdfOpen(true)}
-            aria-label={t('pub_aria_download_portfolio_pdf')}
-            style={{
-              fontSize: 9,
-              letterSpacing: 2,
-              textTransform: 'uppercase',
-              color: '#6b6760',
-              background: 'none',
-              border: '1px solid #dedad4',
-              padding: '10px 12px',
-              minHeight: 44,
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-              fontWeight: 600,
-            }}
-          >
-            {t('pub_portfolio_pdf_strip')}
-          </button>
-          <Link
-            href="/hub"
-            style={{
-              fontSize: 9,
-              letterSpacing: 2,
-              textTransform: 'uppercase',
-              color: '#8a8680',
-              textDecoration: 'none',
-              padding: '10px 12px',
-              minHeight: 44,
-              display: 'inline-flex',
-              alignItems: 'center',
-              fontWeight: 600,
-              border: '1px solid #dedad4',
-            }}
-          >
-            {t('pub_hub_short')}
-          </Link>
-          <button
-            type="button"
-            onClick={() => setLang(lang === 'fr' ? 'en' : 'fr')}
-            aria-label={t('pub_aria_switch_language')}
-            style={{
-              fontSize: 9,
-              letterSpacing: 2,
-              textTransform: 'uppercase',
-              color: '#6b6760',
-              background: '#edeae4',
-              border: '1px solid #dedad4',
-              padding: '10px 12px',
-              minHeight: 44,
-              minWidth: 44,
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-            }}
-          >
-            {t(lang === 'fr' ? 'pub_lang_target_en' : 'pub_lang_target_fr')}
-          </button>
-          <button
-            type="button"
             onClick={() => setNavOpen(true)}
             aria-expanded={navOpen}
             aria-controls="landing-site-nav"
             aria-label={t('pub_aria_open_site_menu')}
             style={{
-              fontSize: 9,
-              letterSpacing: 2,
-              textTransform: 'uppercase',
-              color: '#6b6760',
-              background: '#edeae4',
-              border: '1px solid #dedad4',
-              padding: '10px 14px',
-              minHeight: 44,
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-              fontWeight: 600,
+              fontSize: 11, letterSpacing: 2, textTransform: 'uppercase',
+              color: '#3a3834', background: 'none', border: 'none',
+              padding: '10px 14px', minHeight: 44, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600,
             }}
           >
             {t('pub_menu_button')}
           </button>
+          <button
+            type="button"
+            onClick={() => setPdfOpen(true)}
+            aria-label={t('pub_aria_download_portfolio_pdf')}
+            style={{
+              fontSize: 11, letterSpacing: 2, textTransform: 'uppercase',
+              color: '#3a3834', background: 'none', border: 'none',
+              padding: '10px 12px', minHeight: 44, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600,
+            }}
+          >
+            {t('pub_portfolio_pdf_strip')}
+          </button>
+          <button
+            type="button"
+            onClick={() => setLang(lang === 'fr' ? 'en' : 'fr')}
+            aria-label={t('pub_aria_switch_language')}
+            style={{
+              fontSize: 11, letterSpacing: 2, textTransform: 'uppercase',
+              color: '#3a3834', background: 'none', border: 'none',
+              padding: '10px 12px', minHeight: 44, minWidth: 44, cursor: 'pointer', fontFamily: 'inherit',
+            }}
+          >
+            {t(lang === 'fr' ? 'pub_lang_target_en' : 'pub_lang_target_fr')}
+          </button>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, padding: '4px 0' }}>
+            <Link
+              href="/hub"
+              style={{
+                fontSize: 8, letterSpacing: 1, textTransform: 'uppercase',
+                color: '#b0aca6', textDecoration: 'none',
+                padding: '4px 4px', display: 'inline-flex', alignItems: 'center',
+                opacity: 0.55,
+              }}
+            >
+              [ {t('pub_hub_short')} ]
+            </Link>
+            <span style={{ fontSize: 7, letterSpacing: 0.5, color: '#c0bdb7', whiteSpace: 'nowrap' }}>
+              © {new Date().getFullYear()} the pem workshop
+            </span>
+          </div>
         </div>
       )}
 

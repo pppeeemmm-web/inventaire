@@ -9,6 +9,7 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "gen:types": "node scripts/gen-supabase-types.mjs",
+    "regen:work-thumbs": "node scripts/regen-work-thumbs.mjs",
     "test:e2e": "playwright test",
     "test:e2e:field": "node scripts/run-atelier-e2e.mjs"
   },
