@@ -1388,7 +1388,7 @@ export function TeamPortalClient({
         )}
         {tab === 'themes' && (
           <ThemesTab
-            initialThemes={[...themes].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '', 'fr'))}
+            initialThemes={sortedThemes}
             initialGroups={groups}
             themeWorkCount={themeWorkCount}
             groupWorkCount={groupWorkCount}

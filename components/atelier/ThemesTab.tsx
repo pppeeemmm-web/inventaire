@@ -1,4 +1,4 @@
-import { useState, useMemo, type MouseEvent } from 'react'
+import { useState, useMemo, useEffect, type MouseEvent } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { thumbUrl } from '@/lib/data'
 import { useI18n } from '@/lib/i18n/context'
@@ -44,6 +44,14 @@ export function ThemesTab({
   const [busy,       setBusy]       = useState(false)
   const [msg,        setMsg]        = useState<string | null>(null)
 
+  useEffect(() => {
+    setThemes(initialThemes)
+  }, [initialThemes])
+
+  useEffect(() => {
+    setGroups(initialGroups)
+  }, [initialGroups])
+
   // Interaction State
   const [hoverTheme, setHoverTheme] = useState<number | null>(null)
   const [hoverGroup, setHoverGroup] = useState<string | null>(null)
@@ -84,7 +92,7 @@ export function ThemesTab({
   }
 
   async function promptRenameTheme(id: number, currentName: string) {
-    const nm = window.prompt('Nouveau nom du thème :', currentName)
+    const nm = window.prompt(t('themes_rename_theme_prompt'), currentName)
     if (nm === null) return
     const trimmed = nm.trim()
     if (!trimmed || trimmed === currentName) return
@@ -171,7 +179,7 @@ export function ThemesTab({
   }
 
   async function promptRenameGroup(id: string, currentName: string) {
-    const nm = window.prompt('Nouveau nom du groupe de travail :', currentName)
+    const nm = window.prompt(t('themes_rename_group_prompt'), currentName)
     if (nm === null) return
     const trimmed = nm.trim()
     if (!trimmed || trimmed === currentName) return

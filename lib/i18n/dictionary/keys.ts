@@ -258,7 +258,7 @@ export type DictKey =
   | 'portfolio_save_etag_conflict' | 'portfolio_save_object_exists'
   | 'salesSoldWorksDetail' | 'salesRevenueDetail' | 'salesAvgPriceLabel' | 'salesAvgPriceDetail' | 'salesConsignedDetail' | 'salesRevenueByYear'
   | 'inventorySearchIdHint' | 'bc_error_fmt'
-  | 'themes_rename_confirm_fmt' | 'themes_delete_catalog_many_fmt' | 'themes_delete_named_confirm_fmt' | 'themes_delete_group_many_fmt'
+  | 'themes_rename_confirm_fmt' | 'themes_rename_theme_prompt' | 'themes_rename_group_prompt' | 'themes_delete_catalog_many_fmt' | 'themes_delete_named_confirm_fmt' | 'themes_delete_group_many_fmt'
   | 'vault_download_err_fmt' | 'vault_confirm_delete_n' | 'vault_confirm_delete_one'
   | 'vault_all_documents' | 'vault_types' | 'vault_document_one' | 'vault_document_many'
   | 'vault_selected_fmt' | 'vault_move' | 'vault_move_prompt' | 'vault_rename_folder_prompt' | 'vault_search_ph' | 'vault_loading'
