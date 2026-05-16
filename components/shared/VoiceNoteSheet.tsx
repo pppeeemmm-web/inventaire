@@ -129,6 +129,16 @@ export function VoiceNoteSheet({
     return `${prev}${join}${chunk}`
   }, [])
 
+  const flushInterimTranscript = useCallback((base: string) => {
+    const tail = interimRef.current.trim()
+    if (!tail) return base
+    interimRef.current = ''
+    setInterim('')
+    const next = appendTranscript(base, tail)
+    setTranscript(next)
+    return next
+  }, [appendTranscript])
+
   const toastDictationError = useCallback(
     (code: string) => {
       if (code === 'insecure') toast.error(t('voice_dictate_insecure'))
@@ -143,11 +153,8 @@ export function VoiceNoteSheet({
     dictStopRef.current?.()
     dictStopRef.current = null
     setDictating(false)
-    const tail = interimRef.current.trim()
-    interimRef.current = ''
-    setInterim('')
-    if (tail) setTranscript((prev) => appendTranscript(prev, tail))
-  }, [appendTranscript])
+    flushInterimTranscript(transcript)
+  }, [flushInterimTranscript, transcript])
 
   const startDictation = useCallback(async () => {
     stopDictation()
@@ -218,11 +225,12 @@ export function VoiceNoteSheet({
   const save = async () => {
     setSaving(true)
     try {
+      const transcriptForSave = flushInterimTranscript(transcript)
       const fd = new FormData()
       fd.append('kind', kind)
       fd.append('bucket', bucket)
       fd.append('subject', subject.trim())
-      fd.append('transcript', transcript)
+      fd.append('transcript', transcriptForSave)
       if (oeuvreId.trim()) fd.append('oeuvre_id', oeuvreId.trim())
       if (audioBlob) {
         const ext = audioBlob.mime.includes('mp4') ? 'm4a' : 'webm'

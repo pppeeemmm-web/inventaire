@@ -18,6 +18,69 @@ test.describe('Voice notes (Verb 2)', () => {
     await expect(page.getByTestId('ring-b-voice-record-toggle')).toBeVisible()
   })
 
+  test('dictation text lands in transcript field and persists after stop', async ({ page }) => {
+    await page.addInitScript(() => {
+      type MockSpeechResult = { isFinal: boolean; 0: { transcript: string } }
+      type MockSpeechEvent = {
+        resultIndex: number
+        results: { length: number; [index: number]: MockSpeechResult }
+      }
+
+      Object.defineProperty(window, 'isSecureContext', { value: true, configurable: true })
+      Object.defineProperty(navigator, 'mediaDevices', {
+        value: {
+          getUserMedia: async () => ({
+            getTracks: () => [{ stop() {} }],
+          }),
+        },
+        configurable: true,
+      })
+
+      class MockSpeechRecognition {
+        lang = ''
+        interimResults = false
+        continuous = false
+        onresult: ((ev: MockSpeechEvent) => void) | null = null
+        onerror: ((ev: { error: string }) => void) | null = null
+        onend: (() => void) | null = null
+
+        start() {
+          window.setTimeout(() => {
+            this.onresult?.({
+              resultIndex: 0,
+              results: {
+                length: 1,
+                0: { isFinal: false, 0: { transcript: 'bonjour atelier' } },
+              },
+            })
+          }, 100)
+        }
+
+        stop() {
+          this.onend?.()
+        }
+      }
+
+      const w = window as Window & {
+        SpeechRecognition?: new () => MockSpeechRecognition
+        webkitSpeechRecognition?: new () => MockSpeechRecognition
+      }
+      w.SpeechRecognition = MockSpeechRecognition
+      w.webkitSpeechRecognition = MockSpeechRecognition
+    })
+
+    await page.goto('/hub')
+    await page.getByTestId('hub-field-verb-note').click({ timeout: 45_000 })
+    await page.getByTestId('ring-b-voice-dictate-toggle').click()
+
+    const transcript = page.locator('#voice-note-transcript')
+    await expect(transcript).toHaveValue(/bonjour atelier/)
+
+    await page.getByTestId('ring-b-voice-dictate-toggle').click()
+    await expect(page.getByTestId('ring-b-voice-dictate-toggle')).toHaveAttribute('aria-pressed', 'false')
+    await expect(transcript).toHaveValue(/bonjour atelier/)
+  })
+
   test('atelier notes tab loads shell', async ({ page }) => {
     await page.goto('/atelier?tab=notes')
     await expect(page.getByTestId('notes-tab-root')).toBeVisible({ timeout: 45_000 })
