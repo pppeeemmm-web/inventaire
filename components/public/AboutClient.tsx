@@ -27,7 +27,7 @@ export default function AboutClient() {
     fetchData()
   }, [])
 
-  const artistName = config?.general?.artist_name || 'Pierre Emmanuel Moulin'
+  const artistName = config?.general?.artist_name || 'the pem workshop'
   const bioIntro = lang === 'en'
     ? (config?.about?.intro_en || config?.about?.intro_fr)
     : (config?.about?.intro_fr || config?.about?.intro_en)
@@ -123,7 +123,7 @@ export default function AboutClient() {
       </div>
 
       <footer className="a-footer">
-        &copy; {new Date().getFullYear()} Pierre Emmanuel Moulin
+        &copy; {new Date().getFullYear()} the pem workshop
       </footer>
     </>
   )

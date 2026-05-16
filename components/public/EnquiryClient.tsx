@@ -136,7 +136,7 @@ export default function EnquiryClient() {
       `}</style>
 
       <div className="stage">
-        <Link href="/" className="wordmark">Atelier PEM</Link>
+        <Link href="/" className="wordmark">the pem workshop</Link>
         <button
           className="lang-btn"
           onClick={() => setLang(lang === 'fr' ? 'en' : 'fr')}

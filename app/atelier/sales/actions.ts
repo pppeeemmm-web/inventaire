@@ -840,7 +840,7 @@ export async function buildOrderPdf(order: SaleOrderRow, supabase: any): Promise
         doc.restore()
       }
 
-      doc.fontSize(7).fillColor(tx2).text('PIERRE EMMANUEL MOULIN', 40, 40)
+      doc.fontSize(7).fillColor(tx2).text('THE PEM WORKSHOP', 40, 40)
       doc.fontSize(16).fillColor('#222').text(`Bon de commande`, 40, 54)
       doc.fontSize(9).fillColor(ac).text(`${order.order_ref} · PAGE ${i + 1} / ${pages.count}`, 40, 74)
       doc.fontSize(7).fillColor(tx2).text(`Date : ${new Date(order.created_at || '').toLocaleDateString('fr-FR')}`, 40 + W - 100, 40, { align: 'right' })

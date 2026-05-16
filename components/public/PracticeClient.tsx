@@ -129,7 +129,7 @@ export default function PracticeClient() {
       </div>
 
       <footer className="p-footer">
-        &copy; {new Date().getFullYear()} Pierre Emmanuel Moulin
+        &copy; {new Date().getFullYear()} the pem workshop
       </footer>
     </>
   )

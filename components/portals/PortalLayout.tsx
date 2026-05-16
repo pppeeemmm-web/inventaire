@@ -88,7 +88,7 @@ export default function PortalLayout({ title, subtitle, works, userName }: Props
       </main>
 
       <footer style={{ padding: '80px 40px', borderTop: '1px solid #dedad4', textAlign: 'center' }}>
-        <div style={{ fontSize: 9, letterSpacing: 3, color: '#b0aca6' }}>© {new Date().getFullYear()} PIERRE EMMANUEL MOULIN · ATELIER</div>
+        <div style={{ fontSize: 9, letterSpacing: 3, color: '#b0aca6' }}>© {new Date().getFullYear()} THE PEM WORKSHOP</div>
       </footer>
 
       <style jsx global>{`

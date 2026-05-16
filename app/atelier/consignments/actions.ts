@@ -380,7 +380,7 @@ async function buildConsignmentPdf(order: ConsignmentOrderRow, oeuvre_ids: numbe
     const pages = doc.bufferedPageRange()
     for (let i = 0; i < pages.count; i++) {
       doc.switchToPage(i)
-      doc.fontSize(7).fillColor(tx2).text('PIERRE EMMANUEL MOULIN', 56, 40)
+      doc.fontSize(7).fillColor(tx2).text('THE PEM WORKSHOP', 56, 40)
       doc.fontSize(16).fillColor('#000').text(isLoan ? 'Bordereau de Prêt' : 'Bordereau de Dépôt', 56, 54)
       doc.fontSize(9).fillColor(ac).text(`${order.order_ref} · PAGE ${i + 1} / ${pages.count}`, 56, 74)
       

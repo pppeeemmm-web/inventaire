@@ -251,7 +251,7 @@ async function buildGiftPdf(args: BuildGiftPdfArgs): Promise<Buffer> {
     const pages = doc.bufferedPageRange()
     for (let i = 0; i < pages.count; i++) {
       doc.switchToPage(i)
-      doc.fontSize(7).fillColor(tx2).text('PIERRE EMMANUEL MOULIN', 56, 40)
+      doc.fontSize(7).fillColor(tx2).text('THE PEM WORKSHOP', 56, 40)
       doc.fontSize(16).fillColor('#000').text('Bordereau de Don', 56, 54)
       doc.fontSize(9).fillColor(ac).text(`${orderRef} · PAGE ${i + 1} / ${pages.count}`, 56, 74)
       doc.fontSize(6).fillColor('#ccc').text(

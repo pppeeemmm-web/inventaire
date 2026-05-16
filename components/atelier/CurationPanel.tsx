@@ -433,7 +433,7 @@ function ChecklistPreview({
             fontFamily: 'var(--font-ui)',
             display: 'flex', justifyContent: 'space-between',
           }}>
-            <span>Atelier PEM</span>
+            <span>the pem workshop</span>
             <span>Document confidentiel — ne pas diffuser</span>
           </div>
         </div>

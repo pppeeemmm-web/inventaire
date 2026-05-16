@@ -53,7 +53,7 @@ export default async function PrivateLinkPage({
       <style dangerouslySetInnerHTML={{ __html: PRIVATE_LINK_SELECTION_CSS }} />
       <div className="pl-root">
         <div className="pl-header">
-          <div className="t-eyebrow" style={{ marginBottom: 12 }}>{d.pl_private_selection} · Pierre Emmanuel Moulin</div>
+          <div className="t-eyebrow" style={{ marginBottom: 12 }}>{d.pl_private_selection} · the pem workshop</div>
           <div className="serif s-lg">{(link as Record<string, unknown>)['working_group'] ? ((link as Record<string, unknown>)['working_group'] as Record<string, unknown>)['name'] as string : d.pl_private_selection}</div>
           {link.recipient_name && (
             <div className="t-mono-sm" style={{ marginTop: 8 }}>{d.pl_for} {link.recipient_name}</div>
@@ -83,7 +83,7 @@ export default async function PrivateLinkPage({
         </div>
 
         <div className="pl-footer">
-          <div>Pierre Emmanuel Moulin · Atelier</div>
+          <div>the pem workshop</div>
           <div style={{ marginTop: 4 }}>{d.pl_no_share}</div>
         </div>
       </div>

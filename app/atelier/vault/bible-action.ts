@@ -180,13 +180,13 @@ async function buildBiblePdf(): Promise<Buffer> {
       doc.switchToPage(i)
       
       // Header
-      doc.fontSize(8).fillColor(gray).text('ATELIER PIERRE EMMANUEL MOULIN', 50, 40)
+      doc.fontSize(8).fillColor(gray).text('THE PEM WORKSHOP', 50, 40)
       doc.text('SYSTEM DOCUMENTATION v1.1 — 2026', 50, 40, { align: 'right' })
       doc.moveTo(50, 55).lineTo(50 + W, 55).lineWidth(0.5).strokeColor('#e0e0e0').stroke()
 
       // Footer
       doc.fontSize(8).fillColor(gray).text(
-        `Confidential. Property of Atelier Pierre Emmanuel Moulin. Page ${i + 1} of ${pages.count}`,
+        `Confidential. Property of the pem workshop. Page ${i + 1} of ${pages.count}`,
         50, 780, { align: 'center' }
       )
     }

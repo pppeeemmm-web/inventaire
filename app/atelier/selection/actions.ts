@@ -617,7 +617,7 @@ function buildHtml(
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Export — Pierre Emmanuel Moulin</title>
+<title>Export — the pem workshop</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Sofia+Sans:ital,wght@0,300..700;1,300..700&display=swap" rel="stylesheet">
@@ -695,7 +695,7 @@ function buildHtml(
 </head>
 <body>
   <div class="header-group">
-    <h1 class="header" style="margin-bottom:0">Pierre Emmanuel Moulin</h1>
+    <h1 class="header" style="margin-bottom:0">the pem workshop</h1>
     <div class="header-sep"></div>
     ${cfg.exportTitle ? `<h2 class="header-title">${cfg.exportTitle}</h2>` : ''}
     <p class="header-meta">
@@ -747,7 +747,7 @@ async function buildPdf(
     const stampHeader = () => {
       pageNum++
       const savedY = doc.y
-      doc.fontSize(6).fillColor('#bbbbbb').text('PIERRE EMMANUEL MOULIN', margin, margin - 10, { characterSpacing: 1.5, lineBreak: false })
+      doc.fontSize(6).fillColor('#bbbbbb').text('THE PEM WORKSHOP', margin, margin - 10, { characterSpacing: 1.5, lineBreak: false })
       let headY = margin - 2
       if (cfg.exportTitle) {
         doc.fontSize(16).fillColor('#111111').text(cfg.exportTitle, margin, headY, { lineBreak: false })

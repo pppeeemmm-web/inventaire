@@ -476,7 +476,7 @@ async function buildCoaPdf(data: CoaData): Promise<Buffer> {
        .text('CERTIFICAT D\'AUTHENTICITÉ', col, 60, { characterSpacing: 2 })
 
     doc.fontSize(22).fillColor('#1a1a1a')
-       .text('Pierre Emmanuel Moulin', col, 76)
+       .text('the pem workshop', col, 76)
 
     doc.moveTo(col, 110).lineTo(col + W, 110).lineWidth(0.5).strokeColor('#cccccc').stroke()
 
