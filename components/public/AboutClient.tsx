@@ -80,7 +80,7 @@ export default function AboutClient() {
 
       <PublicNav active="about" prefix="a" />
 
-      <div className="a-body">
+      <div className="a-body pem-fadeIn pem-grain">
 
         <section className="a-section">
           <div className="a-section-label">{t('pub_biography')}</div>

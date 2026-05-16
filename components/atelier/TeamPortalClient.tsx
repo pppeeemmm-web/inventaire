@@ -40,7 +40,7 @@ import { ExhibitionsTabSkeleton } from '@/components/atelier/ExhibitionsTabSkele
 import { SystemTab } from '@/components/atelier/SystemTab'
 import { ContactsTab } from '@/components/atelier/ContactsTab'
 import { Skeleton } from '@/components/ui/Skeleton'
-import { toast } from '@/lib/ui/toast'
+import { toast, dismissToast } from '@/lib/ui/toast'
 import { consumeUndo, isUndoKeyBlockedTarget, peekUndo } from '@/lib/ui/undo'
 import { VoiceNoteSheet } from '@/components/shared/VoiceNoteSheet'
 
@@ -458,6 +458,44 @@ export function TeamPortalClient({
       setOeuvresMoreLoading(false)
     }
   }, [oeuvresNextCursor, oeuvresPaging, t])
+
+  // Background eager-load: fetch remaining pages automatically after first paint.
+  // The loop runs once on mount; cursor is managed locally to avoid stale-closure issues.
+  useEffect(() => {
+    if (oeuvresPaging == null) return
+    if (oeuvres.length >= oeuvresPaging.totalCount) return
+    const initialCursor = oeuvresPaging.nextCursor
+    if (initialCursor == null) return
+
+    const toastId = toast.info(t('catalogue_loading'), { ttlMs: 120_000 })
+    let cancelled = false
+
+    ;(async () => {
+      let cursor: number | null = initialCursor
+      while (cursor != null && !cancelled) {
+        try {
+          const { rows, nextCursor, hasMore } = await fetchOeuvresKeysetPage(cursor, 500)
+          if (cancelled) break
+          setOeuvres((prev) => {
+            const seen = new Set(prev.map((o) => o.OeuvreID))
+            return [...prev, ...rows.filter((o) => !seen.has(o.OeuvreID))]
+          })
+          setOeuvresNextCursor(hasMore ? nextCursor : null)
+          cursor = hasMore ? nextCursor : null
+        } catch (e) {
+          console.error('[atelier bg load]', e)
+          break
+        }
+      }
+      if (!cancelled) dismissToast(toastId)
+    })()
+
+    return () => {
+      cancelled = true
+      dismissToast(toastId)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run once on mount with SSR values
+  }, [])
 
   const oeuvresCataloguePartial =
     oeuvresPaging != null && oeuvres.length < oeuvresPaging.totalCount
@@ -1205,6 +1243,7 @@ export function TeamPortalClient({
             oeuvreThemeIdsByOeuvre={oeuvreThemeIdsByOeuvre}
             oeuvreGroupIdsByOeuvre={oeuvreGroupIdsByOeuvre}
             oeuvresCatalogueTotal={oeuvresPaging?.totalCount}
+            onLoadMore={oeuvresNextCursor != null ? loadMoreOeuvres : undefined}
             isAdmin={isAdmin}
           />
         )}

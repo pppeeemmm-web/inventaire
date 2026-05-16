@@ -545,7 +545,7 @@ export function PortfolioTab({
             rel="noopener noreferrer"
             className="btn ghost sm"
             style={{ fontSize: 9, letterSpacing: 2, textDecoration: 'none', minHeight: 44, display: 'inline-flex', alignItems: 'center' }}
-            title="Ouvrir la page d’accueil (site public)"
+            title="Ouvrir la page d'accueil (site public)"
           >
             Site
           </a>
@@ -678,7 +678,7 @@ export function PortfolioTab({
             {activeTab === 'website' && (
               <>
                 <p className="t-mono-xs" style={{ opacity: 0.55, marginBottom: 0, maxWidth: 720, lineHeight: 1.5 }}>
-                  Onglet <strong>Site public</strong> : identité, pages <strong>À propos</strong> et <strong>Pratique</strong>, et les <strong>modes /works</strong> (chaque mode = un sous-onglet sur la page <code style={{ opacity: 0.85 }}>/works</code>). Les sections dédiées au flux portfolio sont dans l’onglet <strong>Portfolio</strong>.
+                  Onglet <strong>Site public</strong> : identité, pages <strong>À propos</strong> et <strong>Pratique</strong>, et les <strong>modes /works</strong> (chaque mode = un sous-onglet sur la page <code style={{ opacity: 0.85 }}>/works</code>). Les sections dédiées au flux portfolio sont dans l&apos;onglet <strong>Portfolio</strong>.
                 </p>
 
                 <PortfolioLandingPanel>
@@ -700,22 +700,32 @@ export function PortfolioTab({
                   />
                   {isHttpsHeroUrl(config.landing.hero_image_url) && (
                     <div style={{ marginTop: 16 }}>
-                      <div className="t-label" style={{ marginBottom: 8, fontSize: 9 }}>{t('atelier_pub_hero_preview_label')}</div>
-                      <img
-                        src={config.landing.hero_image_url.trim()}
-                        alt={t('atelier_pub_hero_preview_label')}
-                        width={200}
-                        height={200}
-                        style={{
-                          maxWidth: 200,
-                          maxHeight: 200,
-                          width: '100%',
-                          height: 'auto',
-                          objectFit: 'cover',
-                          borderRadius: 8,
-                          border: '1px solid var(--bd)',
-                        }}
-                      />
+                      <div className="t-label" style={{ marginBottom: 4, fontSize: 9 }}>{t('atelier_pub_hero_preview_label')}</div>
+                      <p className="t-mono-xs" style={{ opacity: 0.45, marginBottom: 12, fontSize: 9, wordBreak: 'break-all' }}>
+                        {config.landing.hero_image_url.trim().replace(/^https?:\/\/[^/]+/, '')}
+                      </p>
+                      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ fontSize: 8, letterSpacing: 1, color: 'var(--tx3)', marginBottom: 6 }}>CERCLE</div>
+                          <img src={config.landing.hero_image_url.trim()} alt="circle crop"
+                            style={{ width: 120, height: 120, objectFit: 'cover', borderRadius: '50%', border: '1px solid var(--bd)' }} />
+                        </div>
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ fontSize: 8, letterSpacing: 1, color: 'var(--tx3)', marginBottom: 6 }}>1:1</div>
+                          <img src={config.landing.hero_image_url.trim()} alt="1:1 crop"
+                            style={{ width: 120, height: 120, objectFit: 'cover', borderRadius: 4, border: '1px solid var(--bd)' }} />
+                        </div>
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ fontSize: 8, letterSpacing: 1, color: 'var(--tx3)', marginBottom: 6 }}>4:3</div>
+                          <img src={config.landing.hero_image_url.trim()} alt="4:3 crop"
+                            style={{ width: 160, height: 120, objectFit: 'cover', borderRadius: 4, border: '1px solid var(--bd)' }} />
+                        </div>
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ fontSize: 8, letterSpacing: 1, color: 'var(--tx3)', marginBottom: 6 }}>3:4</div>
+                          <img src={config.landing.hero_image_url.trim()} alt="3:4 crop"
+                            style={{ width: 90, height: 120, objectFit: 'cover', borderRadius: 4, border: '1px solid var(--bd)' }} />
+                        </div>
+                      </div>
                     </div>
                   )}
                 </SitePublicSection>
@@ -788,67 +798,80 @@ export function PortfolioTab({
                 </PortfolioLandingPanel>
 
                 <PortfolioWorksManager>
-                <SitePublicSection title="Page /works — Modes (sous-onglets publics)" icon="▤"
-                  action={<button className="btn sm ghost" onClick={addMode}>+ Mode</button>}>
-                  <p className="t-mono-xs" style={{ opacity: 0.5, marginBottom: 16 }}>
-                    Chaque mode devient un sous-onglet sur <code>/works</code>, avec ses collections et sa carte de clôture. Les sections du Portfolio (autre onglet) n’y sont pas mélangées.
-                  </p>
+                <SitePublicSection title={config.works_modes.length > 1 ? 'Page /works — Modes' : 'Page /works — Collections'} icon="▤"
+                  action={config.works_modes.length > 1 ? <button className="btn sm ghost" onClick={addMode}>+ Mode</button> : undefined}>
+                  {config.works_modes.length <= 1 && (
+                    <p className="t-mono-xs" style={{ opacity: 0.5, marginBottom: 16, maxWidth: 720, lineHeight: 1.45 }}>
+                      {`Séquences de la page `}<code style={{ opacity: 0.85 }}>/works</code>{` et carte de clôture.`}
+                    </p>
+                  )}
+                  {config.works_modes.length > 1 && (
+                    <p className="t-mono-xs" style={{ opacity: 0.5, marginBottom: 16 }}>
+                      Chaque mode devient un sous-onglet sur <code>/works</code>, avec ses collections et sa carte de cl&#xF4;ture.
+                    </p>
+                  )}
 
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, borderBottom: '1px solid var(--bd)', marginBottom: 24, paddingBottom: 8 }}>
-                    {config.works_modes.map((m, i) => {
-                      const isActive = i === activeMode
-                      return (
-                        <div key={m.id} style={{
-                          display: 'inline-flex', alignItems: 'center', gap: 6,
-                          padding: '6px 10px', borderRadius: 4,
-                          background: isActive ? 'var(--ac)' : 'var(--bg1)',
-                          border: '1px solid ' + (isActive ? 'var(--ac)' : 'var(--bd)'),
-                          color: isActive ? '#fff' : 'var(--tx2)',
-                          opacity: m.is_active ? 1 : 0.5,
-                        }}>
-                          <button onClick={() => setActiveMode(i)} className="t-mono-xs"
-                            style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: 10, letterSpacing: 1, fontFamily: 'inherit', textTransform: 'uppercase' }}>
-                            {m.label_fr || m.label_en || `Mode ${i + 1}`}
-                          </button>
-                          <span className="t-mono-xs" style={{ fontSize: 8, opacity: 0.6 }}>{i + 1}/{config.works_modes.length}</span>
-                          <button onClick={() => moveMode(i, i - 1)} disabled={i === 0}
-                            title="Déplacer à gauche" style={{ ...moveBtnStyle(i === 0), width: 16, height: 16, fontSize: 9 }}>←</button>
-                          <button onClick={() => moveMode(i, i + 1)} disabled={i === config.works_modes.length - 1}
-                            title="Déplacer à droite" style={{ ...moveBtnStyle(i === config.works_modes.length - 1), width: 16, height: 16, fontSize: 9 }}>→</button>
-                        </div>
-                      )
-                    })}
-                  </div>
+                  {config.works_modes.length > 1 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, borderBottom: '1px solid var(--bd)', marginBottom: 24, paddingBottom: 8 }}>
+                      {config.works_modes.map((m, i) => {
+                        const isActive = i === activeMode
+                        return (
+                          <div key={m.id} style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 6,
+                            padding: '6px 10px', borderRadius: 4,
+                            background: isActive ? 'var(--ac)' : 'var(--bg1)',
+                            border: '1px solid ' + (isActive ? 'var(--ac)' : 'var(--bd)'),
+                            color: isActive ? '#fff' : 'var(--tx2)',
+                            opacity: m.is_active ? 1 : 0.5,
+                          }}>
+                            <button onClick={() => setActiveMode(i)} className="t-mono-xs"
+                              style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: 10, letterSpacing: 1, fontFamily: 'inherit', textTransform: 'uppercase' }}>
+                              {m.label_fr || m.label_en || `Mode ${i + 1}`}
+                            </button>
+                            <span className="t-mono-xs" style={{ fontSize: 8, opacity: 0.6 }}>{i + 1}/{config.works_modes.length}</span>
+                            <button onClick={() => moveMode(i, i - 1)} disabled={i === 0}
+                              title="D&#xE9;placer &#xE0; gauche" style={{ ...moveBtnStyle(i === 0), width: 16, height: 16, fontSize: 9 }}>{'←'}</button>
+                            <button onClick={() => moveMode(i, i + 1)} disabled={i === config.works_modes.length - 1}
+                              title="D&#xE9;placer &#xE0; droite" style={{ ...moveBtnStyle(i === config.works_modes.length - 1), width: 16, height: 16, fontSize: 9 }}>{'→'}</button>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
 
                   {config.works_modes[activeMode] && (() => {
                     const mode = config.works_modes[activeMode]
                     return (
                       <div className="col gap-lg" style={{ gap: 28 }}>
-                        <div className="site-pub-grid-mode">
-                          <div>
-                            <label className="t-label" style={{ display: 'block', marginBottom: 4, fontSize: 9 }}>LIBELLÉ ONGLET FR</label>
-                            <input className="input full" value={mode.label_fr} onChange={e => updateMode(activeMode, { label_fr: e.target.value })} />
+                        {config.works_modes.length > 1 && (
+                          <div className="site-pub-grid-mode">
+                            <div>
+                              <label className="t-label" style={{ display: 'block', marginBottom: 4, fontSize: 9 }}>{`LIBELLÉ ONGLET FR`}</label>
+                              <input className="input full" value={mode.label_fr} onChange={e => updateMode(activeMode, { label_fr: e.target.value })} />
+                            </div>
+                            <div>
+                              <label className="t-label" style={{ display: 'block', marginBottom: 4, fontSize: 9 }}>{`LIBELLÉ ONGLET EN`}</label>
+                              <input className="input full" value={mode.label_en} onChange={e => updateMode(activeMode, { label_en: e.target.value })} />
+                            </div>
+                            <label className="row gap-xs pointer center" style={{ paddingBottom: 6 }}>
+                              <input type="checkbox" checked={mode.is_active} onChange={e => updateMode(activeMode, { is_active: e.target.checked })} />
+                              <span className="t-mono-xs" style={{ fontSize: 9 }}>ACTIF</span>
+                            </label>
+                            <button className="t-mono-sm" style={{ color: 'var(--rust)', cursor: 'pointer', border: 'none', background: 'none', paddingBottom: 6, fontSize: 11 }}
+                              onClick={() => deleteMode(activeMode)}
+                              disabled={config.works_modes.length <= 1}
+                              title={config.works_modes.length <= 1 ? 'Au moins un mode requis' : 'Supprimer ce mode'}>
+                              Supprimer mode
+                            </button>
                           </div>
-                          <div>
-                            <label className="t-label" style={{ display: 'block', marginBottom: 4, fontSize: 9 }}>LIBELLÉ ONGLET EN</label>
-                            <input className="input full" value={mode.label_en} onChange={e => updateMode(activeMode, { label_en: e.target.value })} />
-                          </div>
-                          <label className="row gap-xs pointer center" style={{ paddingBottom: 6 }}>
-                            <input type="checkbox" checked={mode.is_active} onChange={e => updateMode(activeMode, { is_active: e.target.checked })} />
-                            <span className="t-mono-xs" style={{ fontSize: 9 }}>ACTIF</span>
-                          </label>
-                          <button className="t-mono-sm" style={{ color: 'var(--rust)', cursor: 'pointer', border: 'none', background: 'none', paddingBottom: 6, fontSize: 11 }}
-                            onClick={() => deleteMode(activeMode)}
-                            disabled={config.works_modes.length <= 1}
-                            title={config.works_modes.length <= 1 ? 'Au moins un mode requis' : 'Supprimer ce mode'}>
-                            Supprimer mode
-                          </button>
-                        </div>
+                        )}
 
                         <div>
-                          <div className="t-label" style={{ marginBottom: 8, fontSize: 9 }}>COLLECTIONS DU MODE ({mode.collections.length})</div>
+                          {config.works_modes.length > 1 && (
+                            <div className="t-label" style={{ marginBottom: 8, fontSize: 9 }}>COLLECTIONS DU MODE ({mode.collections.length})</div>
+                          )}
                           <p className="t-mono-xs" style={{ opacity: 0.5, marginBottom: 12, maxWidth: 720, lineHeight: 1.45 }}>
-                            Ordre vertical sur <code style={{ opacity: 0.85 }}>/works</code> (ex. Purinos puis COG). Glisser ⋮⋮ ou ↑↓ pour réordonner les séquences.
+                            {`Glisser ⦂⦂ ou ↑↓ pour réordonner.`}
                           </p>
                           <div className="col gap-md">
                             {mode.collections.map((item, i) => (
@@ -880,6 +903,12 @@ export function PortfolioTab({
                       </div>
                     )
                   })()}
+                  {config.works_modes.length <= 1 && (
+                    <button type="button" className="t-mono-xs" onClick={addMode}
+                      style={{ marginTop: 20, background: 'none', border: 'none', color: 'var(--tx3)', cursor: 'pointer', fontSize: 9, letterSpacing: 1, opacity: 0.6 }}>
+                      + Ajouter un mode (sous-onglets)
+                    </button>
+                  )}
                 </SitePublicSection>
                 </PortfolioWorksManager>
               </>
@@ -888,13 +917,13 @@ export function PortfolioTab({
             {activeTab === 'portfolio' && (
               <>
                 <p className="t-mono-xs" style={{ opacity: 0.55, marginBottom: 24, maxWidth: 720, lineHeight: 1.5 }}>
-                  Onglet <strong>Portfolio</strong> : sections enregistrées dans le JSON (R2). Elles alimentent le <strong>PDF téléchargeable</strong> (lien sur la page d’accueil et bouton <code>↓ PDF</code> ci-dessus). Utiliser <code>/works</code> pour l’aperçu du catalogue défilant.
+                  Onglet <strong>Portfolio</strong> : sections enregistrées dans le JSON (R2). Elles alimentent le <strong>PDF téléchargeable</strong> (lien sur la page d&apos;accueil et bouton <code>↓ PDF</code> ci-dessus). Utiliser <code>/works</code> pour l&apos;aperçu du catalogue défilant.
                 </p>
                 <PortfolioCollectionsPanel>
                 <PageSection title="Sections Portfolio" icon="◪"
                   action={<button className="btn sm ghost" onClick={() => addItem('sections')}>+ Ajouter</button>}>
                   <p className="t-mono-xs" style={{ opacity: 0.5, marginBottom: 20 }}>
-                    Données de section (titres, textes, thème, ordre des œuvres) — consommées par le PDF (titre · intro · œuvres dans l’ordre choisi).
+                    Données de section (titres, textes, thème, ordre des œuvres) — consommées par le PDF (titre · intro · œuvres dans l&apos;ordre choisi).
                   </p>
                   <div className="col gap-md">
                     {config.sections.map((item, i) => (
@@ -1619,6 +1648,8 @@ function CollectionRow({ item, index, total, sequenceLabel, onMove, isTarget, on
   onMakePublic?: (id: number) => void
 }) {
   const [dragging, setDragging] = useState(false)
+  const hasTextContent = !!(htmlToPlain(item.intro_fr) || htmlToPlain(item.intro_en) || htmlToPlain(item.description_fr) || htmlToPlain(item.description_en))
+  const [textExpanded, setTextExpanded] = useState(hasTextContent)
   return (
     <div
       className="panel pad-md col gap-md"
@@ -1683,62 +1714,10 @@ function CollectionRow({ item, index, total, sequenceLabel, onMove, isTarget, on
         </div>
       </div>
 
-      {sequenceLabel && (
-        <>
-          <div className="t-label" style={{ fontSize: 9, opacity: 0.75 }}>INTRO (optionnel) — affichée sur /works avant les œuvres de cette séquence lorsque le champ est rempli</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                <span className="t-label" style={{ fontSize: 9 }}>INTRO FR</span>
-                <FileImportButton onText={v => onUpdate({ intro_fr: v })} lang="fr" />
-              </div>
-              <RichEditor value={item.intro_fr} onChange={v => onUpdate({ intro_fr: v })} minHeight={100} />
-            </div>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                <span className="t-label" style={{ fontSize: 9 }}>INTRO EN</span>
-                <FileImportButton onText={v => onUpdate({ intro_en: v })} lang="en" />
-              </div>
-              <RichEditor value={item.intro_en} onChange={v => onUpdate({ intro_en: v })} minHeight={100} />
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* Descriptions — rich editors side by side (closing text after works on /works) */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            <span className="t-label" style={{ fontSize: 9 }}>{sequenceLabel ? 'TEXTE FR — après les œuvres' : 'TEXTE FR'}</span>
-            <FileImportButton onText={v => onUpdate({ description_fr: v })} lang="fr" />
-          </div>
-          <RichEditor value={item.description_fr} onChange={v => onUpdate({ description_fr: v })} minHeight={120} />
-        </div>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            <span className="t-label" style={{ fontSize: 9 }}>{sequenceLabel ? 'TEXTE EN — après les œuvres' : 'TEXTE EN'}</span>
-            <FileImportButton onText={v => onUpdate({ description_en: v })} lang="en" />
-          </div>
-          <RichEditor value={item.description_en} onChange={v => onUpdate({ description_en: v })} minHeight={120} />
-        </div>
-      </div>
-
-      {/* FlameText previews */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <div>
-          <div style={{ fontSize: 8, letterSpacing: 2, color: 'var(--tx3)', marginBottom: 4 }}>APERÇU FR</div>
-          <FlamePreview html={item.description_fr} />
-        </div>
-        <div>
-          <div style={{ fontSize: 8, letterSpacing: 2, color: 'var(--tx3)', marginBottom: 4 }}>APERÇU EN</div>
-          <FlamePreview html={item.description_en} />
-        </div>
-      </div>
-
-      {/* Theme + controls */}
+      {/* Theme + active toggle (always visible) */}
       <div className="row gap-md" style={{ alignItems: 'flex-end' }}>
         <div style={{ flex: 1 }}>
-          <label className="t-label" style={{ display: 'block', marginBottom: 4, fontSize: 9 }}>THÈME / GROUPE ASSIGNÉ</label>
+          <label className="t-label" style={{ display: 'block', marginBottom: 4, fontSize: 9 }}>{'THÈME / GROUPE ASSIGNÉ'}</label>
           <div onClick={onAssign} style={{
             height: 36, border: `1px ${item.theme ? 'solid' : 'dashed'} ${isTarget ? 'var(--ac)' : 'var(--bd)'}`,
             borderRadius: 4, padding: '0 12px', display: 'flex', alignItems: 'center', cursor: 'pointer',
@@ -1748,20 +1727,92 @@ function CollectionRow({ item, index, total, sequenceLabel, onMove, isTarget, on
               {item.theme || (isTarget ? 'PRÊT POUR THÈME' : 'CLIQUER POUR CHOISIR')}
             </span>
           </div>
-          {privateWorks && privateWorks.length > 0 && (
-            <WorksReorder
-              privateWorks={privateWorks}
-              orderIds={item.manual_work_order ?? []}
-              onReorder={ids => onUpdate({ manual_work_order: ids })}
-              onMakePublic={onMakePublic}
-            />
-          )}
         </div>
         <label className="row gap-xs pointer center" style={{ paddingBottom: 6 }}>
           <input type="checkbox" checked={item.is_active} onChange={e => onUpdate({ is_active: e.target.checked })} />
           <span className="t-mono-xs" style={{ fontSize: 9 }}>ACTIF</span>
         </label>
       </div>
+
+      {/* Works thumbnail strip — primary reorder interface */}
+      {privateWorks && privateWorks.length > 0 && (
+        <WorksReorder
+          privateWorks={privateWorks}
+          orderIds={item.manual_work_order ?? []}
+          onReorder={ids => onUpdate({ manual_work_order: ids })}
+          onMakePublic={onMakePublic}
+        />
+      )}
+
+      {/* Text fields — collapsed by default when empty */}
+      <button
+        type="button"
+        onClick={() => setTextExpanded(!textExpanded)}
+        style={{
+          background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0',
+          display: 'flex', alignItems: 'center', gap: 6, color: 'var(--tx3)', fontSize: 9, letterSpacing: 1,
+          fontFamily: 'inherit',
+        }}
+      >
+        <span style={{ fontSize: 10, transition: 'transform .15s', transform: textExpanded ? 'rotate(90deg)' : 'none', display: 'inline-block' }}>{'▸'}</span>
+        {textExpanded ? 'MASQUER TEXTES' : hasTextContent ? 'TEXTES (remplis)' : 'AJOUTER INTRO / TEXTE'}
+      </button>
+
+      {textExpanded && (
+        <>
+          {sequenceLabel && (
+            <>
+              <div className="t-label" style={{ fontSize: 9, opacity: 0.75 }}>{'INTRO (optionnel)'}</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <span className="t-label" style={{ fontSize: 9 }}>INTRO FR</span>
+                    <FileImportButton onText={v => onUpdate({ intro_fr: v })} lang="fr" />
+                  </div>
+                  <RichEditor value={item.intro_fr} onChange={v => onUpdate({ intro_fr: v })} minHeight={100} />
+                </div>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <span className="t-label" style={{ fontSize: 9 }}>INTRO EN</span>
+                    <FileImportButton onText={v => onUpdate({ intro_en: v })} lang="en" />
+                  </div>
+                  <RichEditor value={item.intro_en} onChange={v => onUpdate({ intro_en: v })} minHeight={100} />
+                </div>
+              </div>
+            </>
+          )}
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <span className="t-label" style={{ fontSize: 9 }}>{sequenceLabel ? 'TEXTE FR' : 'TEXTE FR'}</span>
+                <FileImportButton onText={v => onUpdate({ description_fr: v })} lang="fr" />
+              </div>
+              <RichEditor value={item.description_fr} onChange={v => onUpdate({ description_fr: v })} minHeight={120} />
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <span className="t-label" style={{ fontSize: 9 }}>{sequenceLabel ? 'TEXTE EN' : 'TEXTE EN'}</span>
+                <FileImportButton onText={v => onUpdate({ description_en: v })} lang="en" />
+              </div>
+              <RichEditor value={item.description_en} onChange={v => onUpdate({ description_en: v })} minHeight={120} />
+            </div>
+          </div>
+
+          {(htmlToPlain(item.description_fr) || htmlToPlain(item.description_en)) && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div>
+                <div style={{ fontSize: 8, letterSpacing: 2, color: 'var(--tx3)', marginBottom: 4 }}>{'APERÇU FR'}</div>
+                <FlamePreview html={item.description_fr} />
+              </div>
+              <div>
+                <div style={{ fontSize: 8, letterSpacing: 2, color: 'var(--tx3)', marginBottom: 4 }}>{'APERÇU EN'}</div>
+                <FlamePreview html={item.description_en} />
+              </div>
+            </div>
+          )}
+        </>
+      )}
     </div>
   )
 }

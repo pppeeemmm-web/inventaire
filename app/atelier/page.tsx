@@ -21,7 +21,7 @@ import {
 export const dynamic = 'force-dynamic'
 
 /** First œuvres chunk (keyset continuation via `fetchOeuvresKeysetPage`). */
-const ATELIER_OEUVRE_PAGE = 1000
+const ATELIER_OEUVRE_PAGE = 50
 
 export default async function AtelierPage() {
   const supabase = await createClient()
@@ -84,7 +84,7 @@ export default async function AtelierPage() {
       ? {
           totalCount: oeuvreTotalCount,
           nextCursor: oeuvres.length > 0 ? oeuvres[oeuvres.length - 1]!.OeuvreID : null,
-          pageSize: ATELIER_OEUVRE_PAGE,
+          pageSize: 500,
         }
       : undefined
 

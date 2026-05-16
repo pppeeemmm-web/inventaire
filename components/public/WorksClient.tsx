@@ -93,18 +93,20 @@ function worksForCollection(col: Collection, works: Work[]): Work[] {
 }
 
 /** Per-card 3D transform. Center = face-on, neighbors rotate so inner edge faces viewer. */
-function cardTransform(offset: number, reducedMotion: boolean): {
+function cardTransform(offset: number, reducedMotion: boolean, spacing = 780): {
   transform: string
   opacity: number
   zIndex: number
   visible: boolean
 } {
   const abs = Math.abs(offset)
-  if (abs > 3) return { transform: '', opacity: 0, zIndex: 0, visible: false }
-  const tx = offset * 780
-  const ty = -abs * 240
+  const isMobileSpacing = spacing > 900
+  const maxVisible = isMobileSpacing ? 1 : 3
+  if (abs > maxVisible) return { transform: '', opacity: 0, zIndex: 0, visible: false }
+  const tx = offset * spacing
+  const ty = -abs * (isMobileSpacing ? 300 : 240)
   const ry = reducedMotion ? 0 : Math.sign(offset) * Math.min(abs, 1) * 5
-  const opacity = Math.max(0, 1 - abs * 0.22)
+  const opacity = isMobileSpacing ? (abs === 0 ? 1 : 0.35) : Math.max(0, 1 - abs * 0.22)
   const zIndex = 100 - abs
   const transform = `translate3d(${tx}px, 0, ${ty}px) rotateY(${ry}deg)`
   return { transform, opacity, zIndex, visible: true }
@@ -125,6 +127,14 @@ export default function WorksClient({ works, modes }: Props) {
   const [activeIndex, setActiveIndex] = useState(0)
   const [isZoomed, setIsZoomed] = useState(false)
   const [trackFade, setTrackFade] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
 
   const posRef = useRef(0)
   const velRef = useRef(0)
@@ -296,19 +306,36 @@ export default function WorksClient({ works, modes }: Props) {
     return () => window.removeEventListener('wheel', onWheel)
   }, [kickRaf, exitZoom])
 
-  /** Touch swipe: 60px threshold = ±1 step. */
+  /** Touch swipe: 60px threshold = ±1 step; tap (short + still) = zoom center card. */
   const touchStartXRef = useRef<number | null>(null)
+  const touchStartTimeRef = useRef<number>(0)
   const onTouchStart = (e: React.TouchEvent) => {
     touchStartXRef.current = e.touches[0]?.clientX ?? null
+    touchStartTimeRef.current = Date.now()
   }
   const onTouchEnd = (e: React.TouchEvent) => {
     const x0 = touchStartXRef.current
     touchStartXRef.current = null
-    if (x0 == null || isZoomed) return
+    if (x0 == null) return
     const x1 = e.changedTouches[0]?.clientX ?? x0
     const dx = x1 - x0
+    const elapsed = Date.now() - touchStartTimeRef.current
+    // Tap: short duration, minimal movement → toggle zoom on center card
+    if (Math.abs(dx) < 20 && elapsed < 300) {
+      if (isZoomed) { exitZoom(); return }
+      if (centerImgLoaded) {
+        velRef.current = 0
+        if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = undefined }
+        setIsZoomed(true)
+        isZoomedRef.current = true
+        zoomZRef.current = 0
+        setZoomZ(0)
+      }
+      return
+    }
+    if (isZoomed) return
     if (Math.abs(dx) < 60) return
-    stepBy(dx < 0 ? 1 : -1)
+    jumpBy(dx < 0 ? 1 : -1)
   }
 
   const chapterTitle = chapter
@@ -632,6 +659,18 @@ export default function WorksClient({ works, modes }: Props) {
           .w-arrow.prev { left: 8px; }
           .w-arrow.next { right: 8px; }
           .w-caption { bottom: clamp(110px, 16vh, 160px); }
+          .w-cartel {
+            right: auto !important;
+            top: auto !important;
+            bottom: clamp(28px, 6vh, 64px);
+            left: 50%;
+            transform: translateX(-50%) !important;
+            text-align: center !important;
+            width: min(88vw, 400px) !important;
+          }
+          .w-cartel .w-work-details {
+            align-items: center !important;
+          }
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -644,7 +683,7 @@ export default function WorksClient({ works, modes }: Props) {
       <h1 className="w-page-h1-sr-only">{t('pub_works')}</h1>
 
       <div
-        className="w-stage"
+        className="w-stage pem-grain"
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >
@@ -715,6 +754,7 @@ export default function WorksClient({ works, modes }: Props) {
               {/* Wall-mounted cartel — lives in 3D scene, left of center card, zooms with the wall */}
               {activeWork && (
                 <div
+                  className="w-cartel"
                   aria-hidden
                   style={{
                     position: 'absolute',
@@ -730,7 +770,7 @@ export default function WorksClient({ works, modes }: Props) {
                   <h3 style={{ fontFamily: "'Instrument Serif', serif", fontSize: 11, fontWeight: 400, color: '#1a1816', letterSpacing: 0, lineHeight: 1.35, margin: '0 0 5px 0' }}>
                     {activeWork.Titre ?? t('pub_untitled')}
                   </h3>
-                  <div style={{ fontSize: 7, letterSpacing: 2, textTransform: 'uppercase', color: '#6a6660', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                  <div className="w-work-details" style={{ fontSize: 7, letterSpacing: 2, textTransform: 'uppercase', color: '#6a6660', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
                     {yearOf(activeWork.Annee) && <span>{yearOf(activeWork.Annee)}</span>}
                     {activeWork.Hauteur && activeWork.Largeur && (
                       <span>
@@ -768,7 +808,7 @@ export default function WorksClient({ works, modes }: Props) {
 
               {chapterWorks.map((w, i) => {
                 const offset = i - activeIndex
-                const { transform, opacity, zIndex, visible } = cardTransform(offset, reducedMotion)
+                const { transform, opacity, zIndex, visible } = cardTransform(offset, reducedMotion, isMobile ? 1100 : 780)
                 if (!visible) return null
                 const isCenter = offset === 0
                 const isSide = !isCenter
@@ -845,7 +885,7 @@ export default function WorksClient({ works, modes }: Props) {
               {chapterDesc && (() => {
                 const i = chapterWorks.length
                 const offset = i - activeIndex
-                const { transform, opacity, zIndex, visible } = cardTransform(offset, reducedMotion)
+                const { transform, opacity, zIndex, visible } = cardTransform(offset, reducedMotion, isMobile ? 1100 : 780)
                 if (!visible) return null
                 return (
                   <div
@@ -874,6 +914,24 @@ export default function WorksClient({ works, modes }: Props) {
         )}
 
 
+
+        {isZoomed && (
+          <button
+            type="button"
+            onClick={exitZoom}
+            aria-label={t('pub_works_zoom_close_aria')}
+            style={{
+              position: 'fixed', top: 16, right: 16, zIndex: 400,
+              width: 48, height: 48, minWidth: 44, minHeight: 44,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'rgba(255,255,255,0.70)',
+              border: '1px solid rgba(0,0,0,0.10)',
+              borderRadius: '50%',
+              fontSize: 22, lineHeight: 1, color: '#1a1816',
+              cursor: 'pointer',
+            }}
+          >×</button>
+        )}
 
         {isZoomed && (
           <div className="w-lean-hint" style={{ opacity: zoomZ <= 50 ? 1 : 0 }}>

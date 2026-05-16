@@ -89,7 +89,7 @@ export default function PracticeClient() {
 
       <PublicNav active="practice" prefix="p" />
 
-      <div className="p-body">
+      <div className="p-body pem-fadeIn pem-grain">
 
         <section className="p-section">
           <div className="p-section-label">{t('pub_approach')}</div>

@@ -144,7 +144,7 @@ export default function LandingPage({
       `}</style>
 
       <main
-        className="stage"
+        className="stage pem-fadeIn pem-grain"
         style={pubNarrow ? { paddingBottom: 'calc(56px + env(safe-area-inset-bottom, 0px))' } : undefined}
       >
         <h1 className="wordmark">

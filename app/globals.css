@@ -255,6 +255,21 @@ input, textarea, select { font: inherit; color: inherit; background: transparent
 .pulse { animation: pls 1.6s infinite ease-in-out; }
 @keyframes pls { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
 
+/* ── Grain texture overlay (public pages) ────────────── */
+.pem-grain {
+  position: relative;
+}
+.pem-grain::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.18;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+}
+
 /* ── Motion primitives (opacity/transform only) ────────────── */
 .pem-fadeIn    { animation: pemFadeIn 140ms ease-out both; }
 .pem-slideUpSm { animation: pemSlideUpSm 180ms ease-out both; }
@@ -426,6 +441,12 @@ input, textarea, select { font: inherit; color: inherit; background: transparent
   .pem-atelier-sidebar {
     transition: none !important;
   }
+}
+
+/* Public nav — home arrow: visible on mobile only */
+.pub-logo-arrow { display: none; }
+@media (max-width: 767px) {
+  .pub-logo-arrow { display: inline; margin-right: 4px; }
 }
 
 /* Ring D — narrow: form controls ≥16px (iOS avoids focus zoom on small fonts) */

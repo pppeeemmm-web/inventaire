@@ -216,6 +216,7 @@ export function InventoryTab({
   oeuvreThemeIdsByOeuvre = {},
   oeuvreGroupIdsByOeuvre = {},
   oeuvresCatalogueTotal,
+  onLoadMore,
   isAdmin = false,
 }: SharedProps & {
   techniques:     { TechniqueID: number; Technique: string | null }[]
@@ -230,6 +231,8 @@ export function InventoryTab({
   oeuvreGroupIdsByOeuvre?: Record<number, string[]>
   /** When set and greater than `oeuvres.length`, inventory counts are a loaded subset of the catalogue. */
   oeuvresCatalogueTotal?: number
+  /** Called when the user scrolls near the bottom of the list — triggers next page load. */
+  onLoadMore?: () => void
   /** Admin-only controls in embedded WorkDrawer (field sessions, etc.). */
   isAdmin?: boolean
 }) {
@@ -911,6 +914,7 @@ export function InventoryTab({
               sortKey={sortKey} sortDir={sortDir} toggleSort={toggleSort}
               onImageDoubleClick={() => { setShowPreview(true); setPreviewExpanded(true) }}
               onOpen={onOpen}
+              onLoadMore={onLoadMore}
             />
             {showPreview && !narrow && (
               <WorkDrawer
@@ -1171,9 +1175,9 @@ function InvSelect({
 // ── InvList ─────────────────────────────────────────────────────────
 
 function InvList({
-  rows, tM, sM, cM, locMap, statusLabelMap, focused, setFocused, selection, setSelection, 
+  rows, tM, sM, cM, locMap, statusLabelMap, focused, setFocused, selection, setSelection,
   sortKey, sortDir, toggleSort,
-  onImageDoubleClick, onOpen, publicMode,
+  onImageDoubleClick, onOpen, publicMode, onLoadMore,
 }: {
   rows:           Oeuvre[]
   tM:             Record<number, string>
@@ -1191,12 +1195,25 @@ function InvList({
   onImageDoubleClick: () => void
   onOpen:         (o: Oeuvre) => void
   publicMode?:    boolean
+  onLoadMore?:    () => void
 }) {
   const { t } = useI18n()
   const lastSelIdxRef = useRef<number | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const sentinelRef = useRef<HTMLDivElement>(null)
   const visible = rows
   const isNarrow = useMediaQuery('(max-width: 359px)')
+
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el || !onLoadMore) return
+    const obs = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) onLoadMore() },
+      { rootMargin: '300px' },
+    )
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [onLoadMore])
   const [bcOverride, setBcOverride] = useState<Record<number, boolean>>({})
   const [bcBusy, setBcBusy] = useState<number | null>(null)
   const routerInv = useRouter()
@@ -1571,6 +1588,7 @@ function InvList({
           {rows.length} œuvres affichées
         </div>
       )}
+      <div ref={sentinelRef} style={{ height: 1 }} />
     </div>
   )
 }

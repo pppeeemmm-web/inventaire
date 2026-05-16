@@ -145,7 +145,7 @@ export default function EnquiryClient() {
           {t(lang === 'fr' ? 'pub_lang_target_en' : 'pub_lang_target_fr')}
         </button>
 
-        <div className="stage-scroll" data-testid="enquiry-scroll">
+        <div className="stage-scroll pem-grain" data-testid="enquiry-scroll">
           <div className="form-container">
             <span className="label">{t('pub_enquiry')}</span>
 
