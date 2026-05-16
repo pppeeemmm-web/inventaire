@@ -394,7 +394,7 @@ export type DictKey =
   | 'hub_launcher_studio' | 'hub_launcher_studio_sub'
   | 'hub_launcher_commercial' | 'hub_launcher_commercial_sub'
   | 'hub_launcher_admin' | 'hub_launcher_admin_sub'
-  | 'hub_launcher_enter_atelier' | 'hub_desktop_redirecting'
+  | 'hub_launcher_enter_atelier'
   // ── Block B — Drawer mobile bar ──────────────────────────────────────────
   | 'wf_mobile_add_photo' | 'wf_mobile_pipeline_bump' | 'wf_mobile_pipeline_bump_aria'
   // ── Block B — Shared shells ──────────────────────────────────────────────

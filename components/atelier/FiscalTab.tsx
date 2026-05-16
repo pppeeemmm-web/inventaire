@@ -566,6 +566,7 @@ function ExpenseModal({
   onSaved:   (e: Expense) => void
   onDeleted: (id: number) => void
 }) {
+  const { t } = useI18n()
   const isNew = !expense
   
 

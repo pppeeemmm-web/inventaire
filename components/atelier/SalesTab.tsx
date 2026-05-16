@@ -369,6 +369,7 @@ function OrderFormModal({ oeuvres, contacts, groups, tM, onClose, onCreated }: {
   onClose:   () => void
   onCreated: () => void
 }) {
+  const { t } = useI18n()
   const [saving,      setSaving]      = useState(false)
   const [error,       setError]       = useState<string | null>(null)
   const [oeuvreIds,   setOeuvreIds]   = useState<number[]>([])

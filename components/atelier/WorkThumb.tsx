@@ -3,6 +3,7 @@
 import { useState } from 'react'
 
 import { thumbUrl, imageUrl } from '@/lib/data'
+import { useI18n } from '@/lib/i18n/context'
 
 export function WorkThumb({ 
   file, alt, size = 128, displaySize = "40px", className, style, priority 
@@ -35,6 +36,8 @@ export function SuggestionThumb({ file, alt }: { file: string; alt: string }) {
 }
 
 export function MissingThumb({ id, onOpen }: { id: number; onOpen?: () => void }) {
+  const { t } = useI18n()
+
   return (
     <div style={{
       width: '100%', height: '100%', position: 'relative', overflow: 'hidden',
@@ -48,7 +51,7 @@ export function MissingThumb({ id, onOpen }: { id: number; onOpen?: () => void }
       {onOpen && (
         <button
           onClick={e => { e.stopPropagation(); onOpen() }}
-          title="Ajouter une image"
+          title={t('work_thumb_add_image')}
           style={{
             position: 'absolute', bottom: 2, right: 2,
             background: 'rgba(0,0,0,0.45)', color: 'rgba(255,255,255,0.8)',

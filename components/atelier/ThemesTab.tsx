@@ -84,7 +84,7 @@ export function ThemesTab({
   }
 
   async function promptRenameTheme(id: number, currentName: string) {
-    const nm = window.prompt('Nouveau nom du thème :', currentName)
+    const nm = window.prompt(t('themes_prompt_rename_theme'), currentName)
     if (nm === null) return
     const trimmed = nm.trim()
     if (!trimmed || trimmed === currentName) return
@@ -171,7 +171,7 @@ export function ThemesTab({
   }
 
   async function promptRenameGroup(id: string, currentName: string) {
-    const nm = window.prompt('Nouveau nom du groupe de travail :', currentName)
+    const nm = window.prompt(t('themes_prompt_rename_group'), currentName)
     if (nm === null) return
     const trimmed = nm.trim()
     if (!trimmed || trimmed === currentName) return

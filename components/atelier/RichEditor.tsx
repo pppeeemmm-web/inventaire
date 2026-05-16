@@ -5,6 +5,7 @@ import StarterKit from '@tiptap/starter-kit'
 import TextAlign from '@tiptap/extension-text-align'
 import { TextStyle } from '@tiptap/extension-text-style'
 import { useEffect } from 'react'
+import { useI18n } from '@/lib/i18n/context'
 
 // ── Toolbar button ─────────────────────────────────────────────────────────
 
@@ -61,6 +62,7 @@ interface Props {
 }
 
 export function RichEditor({ value, onChange, placeholder = '', minHeight = 160 }: Props) {
+  const { t } = useI18n()
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
@@ -142,10 +144,10 @@ export function RichEditor({ value, onChange, placeholder = '', minHeight = 160 
 
         <Sep />
 
-        <Btn title="Liste à puces" active={e.isActive('bulletList')} onClick={() => e.chain().focus().toggleBulletList().run()}>
+        <Btn title={t('rich_toolbar_bullet_list')} active={e.isActive('bulletList')} onClick={() => e.chain().focus().toggleBulletList().run()}>
           ≡
         </Btn>
-        <Btn title="Liste numérotée" active={e.isActive('orderedList')} onClick={() => e.chain().focus().toggleOrderedList().run()}>
+        <Btn title={t('rich_toolbar_ordered_list')} active={e.isActive('orderedList')} onClick={() => e.chain().focus().toggleOrderedList().run()}>
           1≡
         </Btn>
         <Btn title="Citation" active={e.isActive('blockquote')} onClick={() => e.chain().focus().toggleBlockquote().run()}>
@@ -154,7 +156,7 @@ export function RichEditor({ value, onChange, placeholder = '', minHeight = 160 
 
         <Sep />
 
-        <Btn title="Aligner à gauche" active={e.isActive({ textAlign: 'left' })} onClick={() => e.chain().focus().setTextAlign('left').run()}>
+        <Btn title={t('rich_toolbar_align_left')} active={e.isActive({ textAlign: 'left' })} onClick={() => e.chain().focus().setTextAlign('left').run()}>
           ⬤◯◯
         </Btn>
         <Btn title="Centrer" active={e.isActive({ textAlign: 'center' })} onClick={() => e.chain().focus().setTextAlign('center').run()}>
@@ -175,7 +177,7 @@ export function RichEditor({ value, onChange, placeholder = '', minHeight = 160 
 
         <Sep />
 
-        <Btn title="Effacer le formatage" onClick={() => e.chain().focus().clearNodes().unsetAllMarks().run()}>
+        <Btn title={t('rich_toolbar_clear_formatting')} onClick={() => e.chain().focus().clearNodes().unsetAllMarks().run()}>
           ✕fmt
         </Btn>
       </div>
