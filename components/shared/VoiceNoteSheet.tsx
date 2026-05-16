@@ -143,7 +143,7 @@ export function VoiceNoteSheet({
     (code: string) => {
       if (code === 'insecure') toast.error(t('voice_dictate_insecure'))
       else if (code === 'not-allowed' || code === 'audio-capture') toast.error(t('voice_mic_error'))
-      else if (code === 'network' || code === 'service-not-available') toast.error(t('voice_dictate_unavailable'))
+      else if (code === 'network' || code === 'service-not-available' || code === 'start-failed') toast.error(t('voice_dictate_unavailable'))
       else toast.error(t('voice_dictate_unsupported'))
     },
     [t],

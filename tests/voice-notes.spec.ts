@@ -18,7 +18,7 @@ test.describe('Voice notes (Verb 2)', () => {
     await expect(page.getByTestId('ring-b-voice-record-toggle')).toBeVisible()
   })
 
-  test('dictation text lands in transcript field and persists after stop', async ({ page }) => {
+  test('dictation text lands in transcript field even if mic preflight would fail', async ({ page }) => {
     await page.addInitScript(() => {
       type MockSpeechResult = { isFinal: boolean; 0: { transcript: string } }
       type MockSpeechEvent = {
@@ -29,9 +29,9 @@ test.describe('Voice notes (Verb 2)', () => {
       Object.defineProperty(window, 'isSecureContext', { value: true, configurable: true })
       Object.defineProperty(navigator, 'mediaDevices', {
         value: {
-          getUserMedia: async () => ({
-            getTracks: () => [{ stop() {} }],
-          }),
+          getUserMedia: async () => {
+            throw new DOMException('Permission preflight rejected', 'NotAllowedError')
+          },
         },
         configurable: true,
       })

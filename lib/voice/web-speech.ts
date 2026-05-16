@@ -84,18 +84,6 @@ function applyResults(ev: SpeechRecEvent, handlers: LiveDictationHandlers) {
   if (finalChunk) handlers.onFinal(finalChunk)
 }
 
-/** Warm up mic permission — helps iOS grant speech after a user gesture. */
-async function preflightMicAccess(): Promise<'ok' | 'denied' | 'unavailable'> {
-  if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) return 'unavailable'
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-    stream.getTracks().forEach((t) => t.stop())
-    return 'ok'
-  } catch {
-    return 'denied'
-  }
-}
-
 /**
  * Starts continuous dictation in the given BCP-47 `lang` (e.g. fr-FR, en-GB).
  * Restarts on `onend` (mobile engines stop after each phrase). Returns `stop` to end.
@@ -113,10 +101,6 @@ export async function startLiveDictation(
   if (typeof window === 'undefined' || !window.isSecureContext) return fail('insecure')
   const Ctor = getSpeechRecognitionCtor()
   if (!Ctor) return fail('unsupported')
-
-  const mic = await preflightMicAccess()
-  if (mic === 'denied') return fail('not-allowed')
-  if (mic === 'unavailable') return fail('audio-capture')
 
   const rec = new Ctor()
   rec.lang = lang
