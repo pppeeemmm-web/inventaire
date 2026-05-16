@@ -4,12 +4,13 @@ import {
   createContext, useContext, useState, useEffect,
   type ReactNode,
 } from 'react'
+import { interpolateMessage, type MessageVars } from './message-core'
 import { dict, type Lang, type DictKey } from './dictionary'
 
 interface I18nContextValue {
   lang: Lang
   setLang: (l: Lang) => void
-  t: (key: DictKey) => string
+  t: (key: DictKey, vars?: MessageVars) => string
 }
 
 const I18nContext = createContext<I18nContextValue | null>(null)
@@ -27,8 +28,8 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('pem_lang', l)
   }
 
-  function t(key: DictKey): string {
-    return dict[lang][key] ?? dict.fr[key] ?? key
+  function t(key: DictKey, vars?: MessageVars): string {
+    return interpolateMessage(dict[lang][key] ?? dict.fr[key] ?? key, vars)
   }
 
   return (

@@ -11,14 +11,18 @@ import { useMediaQuery } from '@/lib/useMediaQuery'
 import { toast } from '@/lib/ui/toast'
 import {
   DEFAULT_VISIBLE_REPORT_COLUMNS,
+  REPORT_PRESETS,
   REPORT_COLUMN_ORDER,
   REPORT_COLUMN_HEADER_KEY,
   REPORT_PDF_MAX_ROWS,
   buildReportRows,
   filterWorksForReport,
+  getReportPreset,
   sortWorksForReport,
   type ReportColumnId,
   type ReportMaps,
+  type ReportPresetId,
+  type ReportSortKey,
 } from '@/lib/reports/works-table'
 import { generateWorksTablePdf } from '@/app/atelier/reports/actions'
 
@@ -104,7 +108,8 @@ export function ReportsTab({
   const [filterTheme, setFilterTheme] = useState('all')
   const [filterGroup, setFilterGroup] = useState('all')
   const [selectionOnly, setSelectionOnly] = useState(false)
-  const [sortKey, setSortKey] = useState<'OeuvreID' | 'Titre' | 'year' | 'PrixFinal'>('OeuvreID')
+  const [selectedPreset, setSelectedPreset] = useState<ReportPresetId>('custom')
+  const [sortKey, setSortKey] = useState<ReportSortKey>('OeuvreID')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const [visibleCols, setVisibleCols] = useState<Set<ReportColumnId>>(
     () => new Set(DEFAULT_VISIBLE_REPORT_COLUMNS),
@@ -148,6 +153,27 @@ export function ReportsTab({
     [tM, sM, fM, cM, pM, locMap, statusLabelMap, thM, groupNameMap, oeuvreThemeMap, oeuvreGroupMap],
   )
 
+  const activePreset = useMemo(() => getReportPreset(selectedPreset), [selectedPreset])
+
+  const applyPreset = useCallback((id: ReportPresetId) => {
+    const preset = getReportPreset(id)
+    setSelectedPreset(id)
+    setQ(preset.filters?.q ?? '')
+    setTech(preset.filters?.tech ?? 'all')
+    setSupport(preset.filters?.support ?? 'all')
+    setStatus(preset.filters?.status ?? 'all')
+    setFilterTheme(preset.filters?.filterTheme ?? 'all')
+    setFilterGroup(preset.filters?.filterGroup ?? 'all')
+    setVisibleCols(new Set(preset.columns))
+    setSortKey(preset.sortKey)
+    setSortDir(preset.sortDir)
+    if (narrow) setFiltersOpen(false)
+  }, [narrow])
+
+  const loadedCount = oeuvresLoadedCount ?? oeuvres.length
+  const totalCount = oeuvresCatalogueTotal ?? loadedCount
+  const hasPartialCatalogue = totalCount > loadedCount
+
   const filtered = useMemo(() => {
     const raw = filterWorksForReport(oeuvres, maps, {
       q,
@@ -158,6 +184,7 @@ export function ReportsTab({
       filterGroup,
       selectionOnly,
       selection,
+      presetId: selectedPreset,
     })
     return sortWorksForReport(raw, sortKey, sortDir)
   }, [
@@ -171,6 +198,7 @@ export function ReportsTab({
     filterGroup,
     selectionOnly,
     selection,
+    selectedPreset,
     sortKey,
     sortDir,
   ])
@@ -330,6 +358,75 @@ th{background:#f4f4f4}
       <div className="panel" style={{ flexShrink: 0, marginBottom: 8, ...panelPad }}>
         <div className="serif" style={{ fontSize: 20, color: 'var(--tx)', marginBottom: 4, lineHeight: 1.25 }}>{t('report_title')}</div>
         <div style={{ fontSize: 13, color: 'var(--tx3)', maxWidth: 720, lineHeight: 1.35 }}>{t('report_subtitle')}</div>
+        {hasPartialCatalogue && (
+          <div
+            className="t-mono-sm"
+            data-testid="report-loaded-subset-note"
+            style={{
+              marginTop: 8,
+              padding: '8px 10px',
+              border: '1px solid var(--bd)',
+              background: 'var(--bg2)',
+              color: 'var(--tx2)',
+              lineHeight: 1.35,
+            }}
+          >
+            {t('report_loaded_subset_note')
+              .replace('{loaded}', String(loadedCount))
+              .replace('{total}', String(totalCount))}
+          </div>
+        )}
+      </div>
+
+      <div className="panel" style={{ flexShrink: 0, marginBottom: 8, ...panelPad }}>
+        <div className="t-label" style={{ marginBottom: 6 }}>{t('report_presets_heading')}</div>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: narrow ? '1fr' : 'repeat(auto-fit, minmax(210px, 1fr))',
+            gap: 8,
+          }}
+        >
+          {REPORT_PRESETS.map((preset) => {
+            const active = selectedPreset === preset.id
+            return (
+              <button
+                key={preset.id}
+                type="button"
+                onClick={() => applyPreset(preset.id)}
+                data-testid={`report-preset-${preset.id}`}
+                style={{
+                  minHeight: 44,
+                  textAlign: 'left',
+                  padding: '10px 12px',
+                  border: `1px solid ${active ? 'var(--ac)' : 'var(--bd)'}`,
+                  background: active ? 'var(--bg2)' : 'var(--bg1)',
+                  color: 'var(--tx)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 4,
+                }}
+              >
+                <span style={{ fontSize: 13, fontWeight: 600 }}>
+                  {active ? '✓ ' : ''}{t(preset.titleKey)}
+                </span>
+                <span style={{ fontSize: 12, color: 'var(--tx3)', lineHeight: 1.35 }}>
+                  {t(preset.descriptionKey)}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+        <div
+          className="t-mono-sm"
+          data-testid="report-active-preset"
+          style={{ marginTop: 8, color: 'var(--tx3)', lineHeight: 1.35 }}
+        >
+          {t('report_active_preset')
+            .replace('{preset}', t(activePreset.titleKey))
+            .replace('{n}', String(filtered.length))}
+        </div>
       </div>
 
       {narrow && (

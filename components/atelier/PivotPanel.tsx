@@ -133,14 +133,19 @@ export function PivotPanel<R>({
   }
 
   const selStyle: CSSProperties = {
-    minHeight: 44,
-    padding: '8px 12px',
+    minHeight: 36,
+    padding: '0 32px 0 12px',
     fontSize: 13,
     background: 'var(--bg0)',
     border: '1px solid var(--bd)',
     color: 'var(--tx)',
-    borderRadius: 4,
+    borderRadius: 8,
     width: narrow ? '100%' : 'auto',
+    cursor: 'pointer',
+    appearance: 'none',
+    backgroundImage: `url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%23888888' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`,
+    backgroundRepeat: 'no-repeat',
+    backgroundPosition: 'right 12px center',
   }
 
   const summaryParts = [
@@ -275,14 +280,13 @@ export function PivotPanel<R>({
             style={{
               display: 'flex',
               flexDirection: 'column',
-              gap: 8,
+              gap: 6,
               width: narrow ? '100%' : 'auto',
-              minWidth: narrow ? undefined : 132,
-              maxWidth: narrow ? undefined : 220,
+              minWidth: narrow ? undefined : 160,
               flexShrink: 0,
             }}
           >
-            <span className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 10 }}>{t('pivotGroupBy')}</span>
+            <span className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('pivotGroupBy')}</span>
             <select value={rowDimId} onChange={(e) => setRowDimId(e.target.value)} style={selStyle}>
               {availableDims.map((d) => (
                 <option key={d.id} value={d.id}>{d.label}</option>
@@ -293,14 +297,13 @@ export function PivotPanel<R>({
             style={{
               display: 'flex',
               flexDirection: 'column',
-              gap: 8,
+              gap: 6,
               width: narrow ? '100%' : 'auto',
-              minWidth: narrow ? undefined : 132,
-              maxWidth: narrow ? undefined : 220,
+              minWidth: narrow ? undefined : 160,
               flexShrink: 0,
             }}
           >
-            <span className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 10 }}>{t('pivotCrossBy')}</span>
+            <span className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('pivotCrossBy')}</span>
             <select value={colDimId} onChange={(e) => setColDimId(e.target.value)} style={selStyle}>
               <option value="">{t('pivotNoColumn')}</option>
               {availableDims.filter((d) => d.id !== rowDimId).map((d) => (
@@ -312,24 +315,40 @@ export function PivotPanel<R>({
             style={{
               display: 'flex',
               flexDirection: 'column',
-              gap: 8,
-              flex: narrow ? undefined : '1 1 200px',
-              minWidth: narrow ? undefined : 180,
-              maxWidth: narrow ? undefined : 400,
+              gap: 6,
+              flex: narrow ? undefined : '1 1 auto',
             }}
           >
-            <span className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 10 }}>{t('pivotValues')}</span>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-              {availableValues.map((v) => (
-                <label key={v.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', minHeight: 44 }}>
-                  <input
-                    type="checkbox"
-                    checked={valueIds.includes(v.id)}
-                    onChange={() => toggleValue(v.id)}
-                  />
-                  <span style={{ fontSize: 13 }}>{v.label}</span>
-                </label>
-              ))}
+            <span className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('pivotValues')}</span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+              {availableValues.map((v) => {
+                const isActive = valueIds.includes(v.id)
+                return (
+                  <button
+                    key={v.id}
+                    type="button"
+                    onClick={() => toggleValue(v.id)}
+                    style={{
+                      minHeight: 36,
+                      padding: '0 16px',
+                      fontSize: 13,
+                      borderRadius: 18,
+                      border: '1px solid',
+                      borderColor: isActive ? 'var(--ac)' : 'var(--bd)',
+                      background: isActive ? 'var(--ac)' : 'var(--bg0)',
+                      color: isActive ? 'var(--bg0)' : 'var(--tx)',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontWeight: isActive ? 500 : 400,
+                    }}
+                  >
+                    {v.label}
+                  </button>
+                )
+              })}
             </div>
           </div>
           {!title && (
@@ -338,7 +357,7 @@ export function PivotPanel<R>({
               className="btn sm"
               onClick={exportXlsx}
               disabled={!pivot}
-              style={{ minHeight: 44, alignSelf: narrow ? 'stretch' : 'center', marginLeft: narrow ? 0 : 'auto' }}
+              style={{ minHeight: 36, alignSelf: narrow ? 'stretch' : 'flex-end', marginLeft: narrow ? 0 : 'auto', borderRadius: 8 }}
             >
               {t('pivotExportXlsx')}
             </button>

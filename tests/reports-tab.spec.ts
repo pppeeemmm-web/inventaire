@@ -26,15 +26,23 @@ test.describe('Reports tab', () => {
     expect(download.suggestedFilename()).toMatch(/works_report_\d{4}-\d{2}-\d{2}\.pdf/)
   })
 
+  test('applies a report preset', async ({ page }) => {
+    await page.goto('/atelier?tab=reports')
+    await expect(page.getByTestId('reports-root')).toBeVisible({ timeout: 45_000 })
+
+    await page.getByTestId('report-preset-missing_metadata').click()
+    await expect(page.getByTestId('report-active-preset')).toContainText(/Métadonnées manquantes|Missing metadata/)
+  })
+
   test('shows partial-catalogue note when loaded batch is smaller than total', async ({ page }) => {
     await page.goto('/atelier?tab=reports', { waitUntil: 'domcontentloaded' })
     await expect(page.getByTestId('reports-root')).toBeVisible({ timeout: 45_000 })
-    const totalBadge = page.getByTestId('atelier-catalogue-total')
+    const subsetNote = page.getByTestId('report-loaded-subset-note')
     try {
-      await totalBadge.waitFor({ state: 'visible', timeout: 20_000 })
+      await subsetNote.waitFor({ state: 'visible', timeout: 20_000 })
     } catch {
       test.skip(true, 'No partial oeuvres load in this environment (≤ first page).')
     }
-    await expect(totalBadge).toBeVisible()
+    await expect(subsetNote).toBeVisible()
   })
 })

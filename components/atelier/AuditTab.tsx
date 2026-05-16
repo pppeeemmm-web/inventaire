@@ -1,26 +1,29 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useCallback, useState } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { fetchSystemLogs, type AuditLogEntry } from '@/app/atelier/audit/actions'
 import { PendingQueue } from './PendingQueue'
 import { PendingWorkSessions } from './PendingWorkSessions'
 import { LoadingShell } from '@/components/shared/LoadingShell'
+import { useAtelierTabResource } from '@/hooks/useAtelierTabResource'
+import { ATELIER_TAB_CACHE_POLICY, atelierTabCacheKey } from '@/lib/atelier/tab-cache-policy'
 
 export function AuditTab() {
   const { t } = useI18n()
   const [view, setView] = useState<'ledger' | 'pending'>('ledger')
-  const [logs, setLogs] = useState<AuditLogEntry[]>([])
   const [filter, setFilter] = useState('ALL')
-  const [busy, setBusy] = useState(true)
 
-  useEffect(() => {
-    if (view !== 'ledger') return
-    fetchSystemLogs(200).then(data => {
-      setLogs(data)
-      setBusy(false)
-    })
-  }, [view])
+  const loadLogs = useCallback(() => fetchSystemLogs(200), [])
+  const logsResource = useAtelierTabResource<AuditLogEntry[]>({
+    cacheKey: atelierTabCacheKey('audit', 'ledger'),
+    staleMs: ATELIER_TAB_CACHE_POLICY.audit.staleMs,
+    load: loadLogs,
+    enabled: view === 'ledger',
+    initialData: [],
+  })
+  const logs = logsResource.data ?? []
+  const busy = logsResource.loading
 
   if (view === 'pending') {
     return (

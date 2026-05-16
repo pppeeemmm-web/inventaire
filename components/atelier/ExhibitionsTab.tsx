@@ -32,6 +32,8 @@ import { ExhibitionsTabSkeleton } from './ExhibitionsTabSkeleton'
 import { ExhibitionsListPanel } from './exhibitions/ExhibitionsListPanel'
 import { ExhibitionStepsPanel } from './exhibitions/ExhibitionStepsPanel'
 import { ExhibitionFloorPlanEditor } from './exhibitions/ExhibitionFloorPlanEditor'
+import { useAtelierTabResource } from '@/hooks/useAtelierTabResource'
+import { ATELIER_TAB_CACHE_POLICY, atelierTabCacheKey } from '@/lib/atelier/tab-cache-policy'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -985,9 +987,7 @@ export function ExhibitionsTab({ oeuvres, contacts, themes, tM, selection, setSe
 }) {
   const { lang, t } = useI18n()
   const [oauthBanner, setOauthBanner] = useState<string | null>(null)
-  const [exhibitions, setExhibitions] = useState<Exhibition[]>([])
   const [selected,    setSelected]    = useState<Exhibition | null>(null)
-  const [loading,     setLoading]     = useState(true)
   const [filter,      setFilter]      = useState<'all' | 'en_cours' | 'gagne' | 'termine'>('all')
   const [creating,    setCreating]    = useState(false)
   const [showNew,     setShowNew]     = useState(false)
@@ -1024,33 +1024,50 @@ export function ExhibitionsTab({ oeuvres, contacts, themes, tM, selection, setSe
   }, [t])
 
   const load = useCallback(async () => {
-    setLoading(true)
     const result = await listExhibitionsWithSteps()
     const list: Exhibition[] = 'ok' in result
       ? result.exhibitions.map((ex) => ({ ...ex, steps: ex.steps as Step[] }))
       : []
+    return list
+  }, [])
 
-    setExhibitions(list)
-    if (list.length > 0 && !selected) {
-      const fromDeepLink = deepLinkId ? (list.find((x) => x.id === deepLinkId) ?? null) : null
-      setSelected(fromDeepLink ?? list[0])
+  const exhibitionsResource = useAtelierTabResource<Exhibition[]>({
+    cacheKey: atelierTabCacheKey('exhibitions'),
+    staleMs: ATELIER_TAB_CACHE_POLICY.exhibitions.staleMs,
+    load,
+    initialData: [],
+  })
+  const exhibitions = useMemo(() => exhibitionsResource.data ?? [], [exhibitionsResource.data])
+  const setExhibitions = exhibitionsResource.setCachedData
+  const loading = exhibitionsResource.loading
+
+  useEffect(() => {
+    const onOpen = (event: Event) => {
+      const id = (event as CustomEvent<{ id?: string }>).detail?.id
+      if (!id) return
+      setDeepLinkId(id)
+      const found = exhibitions.find((x) => x.id === id)
+      if (found) setSelected(found)
     }
-    setLoading(false)
-  }, [selected, deepLinkId])
+    window.addEventListener('pem-open-exhibition', onOpen)
+    return () => window.removeEventListener('pem-open-exhibition', onOpen)
+  }, [exhibitions])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    if (selected || exhibitions.length === 0) return
+    const fromDeepLink = deepLinkId ? (exhibitions.find((x) => x.id === deepLinkId) ?? null) : null
+    setSelected(fromDeepLink ?? exhibitions[0] ?? null)
+  }, [deepLinkId, exhibitions, selected])
 
   async function handleDelete() {
     if (!selected) return
     if (!confirm(t('exhib_delete_confirm_fmt').replace(/\{name\}/g, selected.nom))) return
-    setLoading(true)
     const result = await deleteExhibitionProcess(selected.id)
     if ('ok' in result) {
       const next = exhibitions.filter(e => e.id !== selected.id)
       setExhibitions(next)
       setSelected(next[0] ?? null)
     }
-    setLoading(false)
   }
 
   async function handleCreate(e: React.FormEvent<HTMLFormElement>) {

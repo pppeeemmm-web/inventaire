@@ -43,7 +43,7 @@
 
 | Path | Purpose |
 |------|---------|
-| `/hub` | Executive dashboard: stats, feeds (`system_log` audit rows + `studio_task` suggestions), tiles into Atelier & public site |
+| `/hub` | Mobile/PWA field launcher; desktop redirects to `/atelier?tab=overview` |
 | `/atelier` | Main team portal (tabbed UI); see §3 |
 | `/atelier/works/new` | Create work (`WorkForm`) |
 | `/atelier/works/[id]/edit` | Redirects to `/atelier?work=<id>` (drawer) |

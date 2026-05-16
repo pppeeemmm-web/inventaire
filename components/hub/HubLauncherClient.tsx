@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useI18n } from '@/lib/i18n/context'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import type { DictKey } from '@/lib/i18n/dictionary'
@@ -34,8 +35,18 @@ export function HubLauncherClient() {
   const { t } = useI18n()
   const router = useRouter()
   const narrow = useMediaQuery('(max-width: 767px)')
+  const [viewportReady, setViewportReady] = useState(false)
   const [legacyOpen, setLegacyOpen] = useState(false)
   const [voiceOpen, setVoiceOpen] = useState(false)
+
+  useEffect(() => {
+    setViewportReady(true)
+  }, [])
+
+  useEffect(() => {
+    if (!viewportReady || narrow) return
+    router.replace('/atelier?tab=overview')
+  }, [narrow, router, viewportReady])
 
   const rootPad = narrow
     ? {
@@ -45,6 +56,33 @@ export function HubLauncherClient() {
         paddingLeft: 'max(16px, env(safe-area-inset-left, 0px))',
       }
     : { padding: 24 }
+
+  if (!viewportReady || !narrow) {
+    return (
+      <div
+        data-testid="hub-desktop-redirecting"
+        style={{
+          minHeight: '100dvh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 24,
+          textAlign: 'center',
+          color: 'var(--tx2)',
+          boxSizing: 'border-box',
+        }}
+      >
+        <div>
+          <div className="t-label" style={{ fontSize: 11, letterSpacing: 2, opacity: 0.5 }}>
+            {t('hub_launcher_subtitle')}
+          </div>
+          <div className="serif s-lg" style={{ marginTop: 8 }}>
+            {t('hub_desktop_redirecting')}
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div
@@ -71,39 +109,63 @@ export function HubLauncherClient() {
 
       {narrow ? (
         <div data-testid="hub-field-launcher-root" data-hub-copy-rev="2026-05-15" style={{ width: '100%', maxWidth: 420, display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {FIELD_ROWS.map((row) => (
-            <button
-              key={row.labelKey}
-              type="button"
-              className="btn ghost"
-              data-testid={row.testId}
-              aria-label={`${t(row.labelKey)}. ${t(row.subKey)}`}
-              onClick={() => {
-                if (row.kind === 'note') setVoiceOpen(true)
-                else void router.push(row.href)
-              }}
-              style={{
-                minHeight: 64,
-                width: '100%',
-                display: 'flex',
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '14px 18px',
-                textAlign: 'left',
-                gap: 12,
-              }}
-            >
-              <span style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 12, minWidth: 0, flex: 1 }}>
-                <span style={{ fontSize: 20, flexShrink: 0, lineHeight: 1 }} aria-hidden>{row.emoji}</span>
-                <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4, minWidth: 0 }}>
-                  <span style={{ fontSize: 14, fontWeight: 600 }}>{t(row.labelKey)}</span>
-                  <span style={{ fontSize: 10, opacity: 0.55, letterSpacing: 0.4 }}>{t(row.subKey)}</span>
+          {FIELD_ROWS.map((row) => {
+            const content = (
+              <>
+                <span style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 12, minWidth: 0, flex: 1 }}>
+                  <span style={{ fontSize: 20, flexShrink: 0, lineHeight: 1 }} aria-hidden>{row.emoji}</span>
+                  <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4, minWidth: 0 }}>
+                    <span style={{ fontSize: 14, fontWeight: 600 }}>{t(row.labelKey)}</span>
+                    <span style={{ fontSize: 10, opacity: 0.55, letterSpacing: 0.4 }}>{t(row.subKey)}</span>
+                  </span>
                 </span>
-              </span>
-              <span style={{ fontSize: 14, opacity: 0.35, flexShrink: 0 }} aria-hidden>›</span>
-            </button>
-          ))}
+                <span style={{ fontSize: 14, opacity: 0.35, flexShrink: 0 }} aria-hidden>›</span>
+              </>
+            )
+            const rowStyle = {
+              minHeight: 64,
+              width: '100%',
+              display: 'flex',
+              flexDirection: 'row' as const,
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '14px 18px',
+              textAlign: 'left' as const,
+              gap: 12,
+              color: 'inherit',
+              textDecoration: 'none',
+              boxSizing: 'border-box' as const,
+            }
+
+            if (row.kind === 'link') {
+              return (
+                <Link
+                  key={row.labelKey}
+                  href={row.href}
+                  className="btn ghost"
+                  data-testid={row.testId}
+                  aria-label={`${t(row.labelKey)}. ${t(row.subKey)}`}
+                  style={rowStyle}
+                >
+                  {content}
+                </Link>
+              )
+            }
+
+            return (
+              <button
+                key={row.labelKey}
+                type="button"
+                className="btn ghost"
+                data-testid={row.testId}
+                aria-label={`${t(row.labelKey)}. ${t(row.subKey)}`}
+                onClick={() => setVoiceOpen(true)}
+                style={rowStyle}
+              >
+                {content}
+              </button>
+            )
+          })}
 
           <button
             type="button"

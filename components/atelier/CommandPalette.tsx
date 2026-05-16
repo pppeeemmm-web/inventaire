@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
 import type { Oeuvre } from '@/lib/types/database'
+import { fuzzySearch } from '@/lib/fuzzy-search'
 
 interface Contact { ContactID: number; Nom: string | null; Prénom: string | null; NomInstitution: string | null }
 
@@ -34,6 +35,7 @@ export function CommandPalette({
   onGoTab, onGoWork, onNewWork, onExportXlsx, onRegenBible,
 }: Props) {
   const { t } = useI18n()
+  const router = useRouter()
   const [q, setQ] = useState('')
   const [idx, setIdx] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -45,52 +47,67 @@ export function CommandPalette({
 
   const items: Item[] = useMemo(() => {
     const result: Item[] = []
-    const qLow = q.toLowerCase()
-
-    // Tabs
-    for (const tab of tabs) {
-      if (!q || tab.label.toLowerCase().includes(qLow) || tab.id.toLowerCase().includes(qLow)) {
-        result.push({ id: `tab:${tab.id}`, label: tab.label, group: t('cmd_palette_group_tabs'), action: () => { onGoTab(tab.id); onClose() } })
-      }
-    }
-
-    // Works (search by title, min 2 chars)
-    if (q.length >= 2) {
-      let wCount = 0
-      for (const o of oeuvres) {
-        if ((o.Titre ?? '').toLowerCase().includes(qLow)) {
-          result.push({ id: `work:${o.OeuvreID}`, label: o.Titre ?? `#${o.OeuvreID}`, group: t('cmd_palette_group_works'), action: () => { onGoWork(o.OeuvreID); onClose() } })
-          if (++wCount >= 6) break
-        }
-      }
-    }
-
-    // Contacts (search by name, min 2 chars)
-    if (q.length >= 2) {
-      let cCount = 0
-      for (const c of contacts) {
-        const name = [c.Prénom, c.Nom, c.NomInstitution].filter(Boolean).join(' ')
-        if (name.toLowerCase().includes(qLow)) {
-          result.push({ id: `contact:${c.ContactID}`, label: name || `#${c.ContactID}`, group: t('cmd_palette_group_contacts'), action: () => { onGoTab('contacts'); onClose() } })
-          if (++cCount >= 4) break
-        }
-      }
-    }
+    const qTrim = q.trim()
 
     // Quick actions
     const actionDefs = [
       { id: 'act:new-work',    label: t('cmd_palette_action_new_work'),    action: () => { onNewWork(); onClose() } },
+      { id: 'act:new-session', label: t('cmd_palette_action_new_session'), action: () => { router.push('/atelier/session/new'); onClose() } },
+      { id: 'act:capture',     label: t('cmd_palette_action_capture'),     action: () => { router.push('/atelier/capture'); onClose() } },
+      { id: 'act:new-issue',   label: t('cmd_palette_action_new_issue'),   action: () => { router.push('/atelier/issue/new'); onClose() } },
+      { id: 'act:new-doc',     label: t('cmd_palette_action_new_document'), action: () => { router.push('/atelier/documents/new'); onClose() } },
+      { id: 'act:triage',      label: t('cmd_palette_action_triage'),      action: () => { router.push('/atelier/triage'); onClose() } },
+      { id: 'act:scan',        label: t('cmd_palette_action_scan'),        action: () => { router.push('/atelier/scan'); onClose() } },
       { id: 'act:export-xlsx', label: t('cmd_palette_action_export_xlsx'), action: () => { onExportXlsx(); onClose() } },
       { id: 'act:regen-bible', label: t('cmd_palette_action_regen_bible'), action: () => { onRegenBible(); onClose() } },
     ]
-    for (const a of actionDefs) {
-      if (!q || a.label.toLowerCase().includes(qLow)) {
-        result.push({ ...a, group: t('cmd_palette_group_actions') })
+    const actionMatches = qTrim
+      ? fuzzySearch(actionDefs, qTrim, { keys: ['label'] })
+      : actionDefs
+    for (const a of actionMatches) {
+      result.push({ ...a, group: t('cmd_palette_group_actions') })
+    }
+
+    // Tabs
+    const tabMatches = qTrim
+      ? fuzzySearch(tabs, qTrim, { keys: [{ name: 'label', weight: 0.75 }, { name: 'id', weight: 0.25 }] })
+      : tabs
+    for (const tab of tabMatches) {
+      result.push({ id: `tab:${tab.id}`, label: tab.label, group: t('cmd_palette_group_tabs'), action: () => { onGoTab(tab.id); onClose() } })
+    }
+
+    // Works (search by title, min 2 chars)
+    if (qTrim.length >= 2) {
+      const workDocs = oeuvres.map((work) => ({
+        id: String(work.OeuvreID),
+        title: work.Titre ?? '',
+        work,
+      }))
+      for (const doc of fuzzySearch(workDocs, qTrim, {
+        keys: [{ name: 'title', weight: 0.85 }, { name: 'id', weight: 0.15 }],
+      }).slice(0, 6)) {
+        const o = doc.work
+        result.push({ id: `work:${o.OeuvreID}`, label: o.Titre ?? `#${o.OeuvreID}`, group: t('cmd_palette_group_works'), action: () => { onGoWork(o.OeuvreID); onClose() } })
+      }
+    }
+
+    // Contacts (search by name, min 2 chars)
+    if (qTrim.length >= 2) {
+      const contactDocs = contacts.map((contact) => {
+        const name = [contact.Prénom, contact.Nom, contact.NomInstitution].filter(Boolean).join(' ')
+        return { id: String(contact.ContactID), name, contact }
+      })
+      for (const doc of fuzzySearch(contactDocs, qTrim, {
+        keys: [{ name: 'name', weight: 0.85 }, { name: 'id', weight: 0.15 }],
+      }).slice(0, 4)) {
+        const c = doc.contact
+        const name = [c.Prénom, c.Nom, c.NomInstitution].filter(Boolean).join(' ')
+        result.push({ id: `contact:${c.ContactID}`, label: name || `#${c.ContactID}`, group: t('cmd_palette_group_contacts'), action: () => { onGoTab('contacts'); onClose() } })
       }
     }
 
     return result
-  }, [q, tabs, oeuvres, contacts, t, onGoTab, onGoWork, onClose, onNewWork, onExportXlsx, onRegenBible])
+  }, [q, tabs, oeuvres, contacts, t, router, onGoTab, onGoWork, onClose, onNewWork, onExportXlsx, onRegenBible])
 
   const clampedIdx = Math.min(idx, Math.max(0, items.length - 1))
 

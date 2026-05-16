@@ -3,12 +3,14 @@
 // LogisticsTab — shipments table, client-side fetch.
 // Reads shipment + shipment_work from Supabase, resolves contact names via cM.
 
-import { useState, useEffect, useCallback } from 'react'
+import { useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { markShipmentDelivered } from '@/app/atelier/logistics/actions'
 import { useI18n } from '@/lib/i18n/context'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import { stringifyError } from '@/lib/error'
+import { useAtelierTabResource } from '@/hooks/useAtelierTabResource'
+import { ATELIER_TAB_CACHE_POLICY, atelierTabCacheKey } from '@/lib/atelier/tab-cache-policy'
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -49,13 +51,8 @@ const STATUS_LABEL_KEY: Record<string, DictKey> = {
 
 export function LogisticsTab({ cM }: Props) {
   const { t } = useI18n()
-  const [rows,    setRows]    = useState<ShipmentRow[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error,   setError]   = useState<string | null>(null)
 
   const fetchShipments = useCallback(async () => {
-    setLoading(true)
-    setError(null)
     const supabase = createClient()
 
     const { data: shipments, error: err } = await supabase
@@ -65,9 +62,7 @@ export function LogisticsTab({ cM }: Props) {
       .limit(200)
 
     if (err || !shipments) {
-      setError(err?.message ?? t('error'))
-      setLoading(false)
-      return
+      throw new Error(err?.message ?? t('error'))
     }
 
     const { data: workLinks } = await supabase.from('shipment_work').select('shipment_id, oeuvre_id')
@@ -82,13 +77,21 @@ export function LogisticsTab({ cM }: Props) {
       work_count: countMap[s.id] ?? 0,
     }))
 
-    setRows(enriched)
-    setLoading(false)
+    return enriched
   }, [t])
 
-  useEffect(() => {
-    void fetchShipments()
-  }, [fetchShipments])
+  const shipmentsResource = useAtelierTabResource<ShipmentRow[]>({
+    cacheKey: atelierTabCacheKey('logistics'),
+    staleMs: ATELIER_TAB_CACHE_POLICY.logistics.staleMs,
+    load: fetchShipments,
+    initialData: [],
+  })
+  const rows = shipmentsResource.data ?? []
+  const loading = shipmentsResource.loading
+  const error = shipmentsResource.error
+  const refreshShipments = useCallback(async () => {
+    await shipmentsResource.refresh({ force: true })
+  }, [shipmentsResource])
 
   const upcoming = rows.filter((r) => !r.delivered_at && r.status !== 'delivered')
   const past     = rows.filter((r) =>  r.delivered_at || r.status === 'delivered')
@@ -133,7 +136,7 @@ export function LogisticsTab({ cM }: Props) {
               rows={upcoming}
               cM={cM}
               title={t('logistics_section_upcoming')}
-              onMarkDelivered={fetchShipments}
+              onMarkDelivered={refreshShipments}
             />
           )}
 

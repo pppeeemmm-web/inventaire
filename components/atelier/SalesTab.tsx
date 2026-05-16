@@ -15,6 +15,8 @@ import { WorkThumb } from './WorkThumb'
 import { useUnsavedCloseGuard } from '@/hooks/useUnsavedCloseGuard'
 import { PivotPanel } from './PivotPanel'
 import { useMediaQuery } from '@/lib/useMediaQuery'
+import { useAtelierTabResource } from '@/hooks/useAtelierTabResource'
+import { ATELIER_TAB_CACHE_POLICY, atelierTabCacheKey } from '@/lib/atelier/tab-cache-policy'
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -62,7 +64,6 @@ const pulseAnim = `
 export function SalesTab({ oeuvres, statusLabelMap, contacts, groups, cM, tM }: Props) {
   const { t, lang } = useI18n()
   const narrow = useMediaQuery('(max-width: 767px)')
-  const [orders,    setOrders]    = useState<SaleOrderRow[]>([])
   const [sortKey,   setSortKey]   = useState<string>('date')
   const [sortDir,   setSortDir]   = useState<'asc' | 'desc'>('desc')
   const toggleSort = (k: string) => {
@@ -74,17 +75,23 @@ export function SalesTab({ oeuvres, statusLabelMap, contacts, groups, cM, tM }: 
     }
   }
   const [showForm,  setShowForm]  = useState(false)
-  const [loading,   setLoading]   = useState(true)
   const [inspected, setInspected] = useState<SaleOrderRow | null>(null)
 
   const loadOrders = useCallback(async () => {
-    setLoading(true)
-    const rows = await fetchOrders()
-    setOrders(rows)
-    setLoading(false)
+    return fetchOrders()
   }, [])
 
-  useEffect(() => { loadOrders() }, [loadOrders])
+  const ordersResource = useAtelierTabResource<SaleOrderRow[]>({
+    cacheKey: atelierTabCacheKey('sales'),
+    staleMs: ATELIER_TAB_CACHE_POLICY.sales.staleMs,
+    load: loadOrders,
+    initialData: [],
+  })
+  const orders = useMemo(() => ordersResource.data ?? [], [ordersResource.data])
+  const loading = ordersResource.loading
+  const refreshOrders = useCallback(() => {
+    void ordersResource.refresh({ force: true })
+  }, [ordersResource])
 
   const { soldWorks, consignedCount, totalRevenue, avgPrice, byYear } = useMemo(() => {
     const sold: Oeuvre[] = []
@@ -345,7 +352,7 @@ export function SalesTab({ oeuvres, statusLabelMap, contacts, groups, cM, tM }: 
         <OrderFormModal
           oeuvres={availableWorks} contacts={sortedContacts} groups={groups} tM={tM}
           onClose={() => setShowForm(false)}
-          onCreated={() => { setShowForm(false); loadOrders() }}
+          onCreated={() => { setShowForm(false); refreshOrders() }}
         />
       )}
       {inspected && (
@@ -369,6 +376,7 @@ function OrderFormModal({ oeuvres, contacts, groups, tM, onClose, onCreated }: {
   onClose:   () => void
   onCreated: () => void
 }) {
+  const { t } = useI18n()
   const [saving,      setSaving]      = useState(false)
   const [error,       setError]       = useState<string | null>(null)
   const [oeuvreIds,   setOeuvreIds]   = useState<number[]>([])

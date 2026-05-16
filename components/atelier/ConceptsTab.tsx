@@ -3,7 +3,7 @@
 // ConceptsTab — ideas before works: energy, medium, themes, optional sketch upload (R2 AVIF).
 // TODO(block-B-followup): concept_themes junction table — link concept.themes[] to OeuvreTheme ids for cross-tab filtering.
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { fetchConcepts, type ConceptRow } from '@/app/atelier/concepts/actions'
 import { useI18n } from '@/lib/i18n/context'
 import { useMediaQuery } from '@/lib/useMediaQuery'
@@ -11,24 +11,29 @@ import { CATEGORY_IDS, CATEGORY_KEYS, STATUT_KEYS } from './concepts/concept-con
 import { inputSt } from './concepts/concept-form-styles'
 import { NewConceptForm } from './concepts/NewConceptForm'
 import { ConceptCard } from './concepts/ConceptCard'
+import { useAtelierTabResource } from '@/hooks/useAtelierTabResource'
+import { ATELIER_TAB_CACHE_POLICY, atelierTabCacheKey } from '@/lib/atelier/tab-cache-policy'
 
 export function ConceptsTab() {
   const { t } = useI18n()
   const narrow = useMediaQuery('(max-width: 767px)')
-  const [concepts,  setConcepts]  = useState<ConceptRow[]>([])
-  const [loading,   setLoading]   = useState(true)
   const [showForm,  setShowForm]  = useState(false)
   const [filter,    setFilter]    = useState<string>('all')
   const [search,    setSearch]    = useState('')
 
   const load = useCallback(async () => {
-    setLoading(true)
-    const rows = await fetchConcepts()
-    setConcepts(rows)
-    setLoading(false)
+    return fetchConcepts()
   }, [])
 
-  useEffect(() => { void load() }, [load])
+  const conceptsResource = useAtelierTabResource<ConceptRow[]>({
+    cacheKey: atelierTabCacheKey('concepts'),
+    staleMs: ATELIER_TAB_CACHE_POLICY.concepts.staleMs,
+    load,
+    initialData: [],
+  })
+  const concepts = conceptsResource.data ?? []
+  const setConcepts = conceptsResource.setCachedData
+  const loading = conceptsResource.loading
 
   function handleCreated(c: ConceptRow) {
     setConcepts((prev) => [c, ...prev])

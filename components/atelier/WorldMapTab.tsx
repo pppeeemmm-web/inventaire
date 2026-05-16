@@ -510,7 +510,10 @@ export function WorldMapTab({
         {!loading && dataReady && (
           <button className="btn ghost sm" onClick={() => {
             geoCache.clear()
-            try { sessionStorage.removeItem(GEO_STORAGE_KEY) } catch { /* */ }
+            try {
+              localStorage.removeItem(GEO_STORAGE_KEY)
+              sessionStorage.removeItem(GEO_STORAGE_KEY)
+            } catch { /* */ }
             setDataReady(false)
             setTimeout(() => setDataReady(true), 10)
           }} style={{ opacity: 0.5, fontSize: 9 }}>

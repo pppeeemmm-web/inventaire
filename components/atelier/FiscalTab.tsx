@@ -4,7 +4,7 @@
 // Régimes: Micro-BNC (abattement 34%) or Déclaration contrôlée (réel).
 // URSSAF cotisations ~21.1%. TVA franchise thresholds.
 
-import { useState, useEffect, useMemo, useLayoutEffect } from 'react'
+import { useState, useMemo, useLayoutEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useI18n } from '@/lib/i18n/context'
 import { useUnsavedCloseGuard } from '@/hooks/useUnsavedCloseGuard'
@@ -12,6 +12,8 @@ import type { Oeuvre } from '@/lib/types/database'
 import type { Agg, Dim } from '@/lib/pivot'
 import { buildPivot } from '@/lib/pivot'
 import { PivotPanel } from './PivotPanel'
+import { useAtelierTabResource } from '@/hooks/useAtelierTabResource'
+import { ATELIER_TAB_CACHE_POLICY, atelierTabCacheKey } from '@/lib/atelier/tab-cache-policy'
 
 // ── Constants ──────────────────────────────────────────────────────────
 
@@ -103,7 +105,6 @@ export function FiscalTab({ oeuvres, contacts = [] }: Props) {
   const { t } = useI18n()
   const [year,     setYear]     = useState(YEAR_NOW)
   const [regime,   setRegime]   = useState<'micro' | 'reel'>('micro')
-  const [expenses, setExpenses] = useState<Expense[]>([])
   const [sortKey,  setSortKey]  = useState<string>('date')
   const [sortDir,  setSortDir]  = useState<'asc' | 'desc'>('desc')
   const toggleSort = (k: string) => {
@@ -114,29 +115,34 @@ export function FiscalTab({ oeuvres, contacts = [] }: Props) {
       setSortDir('asc')
     }
   }
-  const [loading,  setLoading]  = useState(true)
   const [section,  setSection]  = useState<'dashboard' | 'expenses' | 'framework'>('dashboard')
   const [editing,  setEditing]  = useState<Expense | 'new' | null>(null)
 
-  useEffect(() => {
-    setLoading(true)
+  const loadExpenses = useCallback(async () => {
     const sb = createClient()
-    ;(sb.from('expense') as any)
+    const { data, error } = await (sb.from('expense') as any)
       .select('*')
       .eq('fiscal_year', year)
       .order('date', { ascending: false })
-      .then(({ data, error }: { data: Expense[] | null; error: { message: string } | null }) => {
-        if (error) {
-          console.error('[FiscalTab] expense fetch error:', error.message)
-          // Table may not exist yet — surface a clear message instead of empty list
-          if (error.message?.includes('does not exist')) {
-            console.warn('[FiscalTab] Table `expense` missing in DB. Run fix_expense_and_document.sql.')
-          }
-        }
-        setExpenses(data ?? [])
-        setLoading(false)
-      })
+    if (error) {
+      console.error('[FiscalTab] expense fetch error:', error.message)
+      // Table may not exist yet — surface a clear message instead of empty list
+      if (error.message?.includes('does not exist')) {
+        console.warn('[FiscalTab] Table `expense` missing in DB. Run fix_expense_and_document.sql.')
+      }
+    }
+    return (data ?? []) as Expense[]
   }, [year])
+
+  const expensesResource = useAtelierTabResource<Expense[]>({
+    cacheKey: atelierTabCacheKey('fiscal', String(year)),
+    staleMs: ATELIER_TAB_CACHE_POLICY.fiscal.staleMs,
+    load: loadExpenses,
+    initialData: [],
+  })
+  const expenses = useMemo(() => expensesResource.data ?? [], [expensesResource.data])
+  const setExpenses = expensesResource.setCachedData
+  const loading = expensesResource.loading
 
   // Recettes: sold works this year (statusId 4 = Sold)
   const recettes = useMemo(() =>
@@ -566,6 +572,7 @@ function ExpenseModal({
   onSaved:   (e: Expense) => void
   onDeleted: (id: number) => void
 }) {
+  const { t } = useI18n()
   const isNew = !expense
   
 

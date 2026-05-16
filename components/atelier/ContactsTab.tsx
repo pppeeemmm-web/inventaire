@@ -35,6 +35,7 @@ import type {
   ContactSocial,
   ContactWebsite,
 } from '@/components/atelier/contact-editor-types'
+import { fuzzySearch } from '@/lib/fuzzy-search'
 
 function SortInd({ k, current, dir }: { k: string; current: string; dir: 'asc' | 'desc' }) {
   if (k !== current) return <span style={{ opacity: 0.2, marginLeft: 4, fontSize: 13 }}>↕</span>
@@ -48,6 +49,8 @@ interface Props {
   oeuvres:  Oeuvre[]
   conflicts?: any[]
 }
+
+type ContactSearchBy = 'all' | 'name' | 'city' | 'email' | 'notes'
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
@@ -94,7 +97,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
   const [isAdmin,    setIsAdmin]    = useState(false)
   const [contacts,   setContacts]   = useState<ContactRow[]>(initialContacts)
   const [q,          setQ]          = useState('')
-  const [searchBy,   setSearchBy]   = useState('all')
+  const [searchBy,   setSearchBy]   = useState<ContactSearchBy>('all')
   const [role,       setRole]       = useState('all')
   const [sortKey,    setSortKey]    = useState<string>('alpha')
   const [sortDir,    setSortDir]    = useState<'asc' | 'desc'>('asc')
@@ -217,11 +220,19 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
 
   // Auto-open a contact card when navigated from Map
   useEffect(() => {
-    const raw = sessionStorage.getItem('pem_open_contact')
-    if (!raw) return
+    const openContact = (raw: string | null) => {
+      if (!raw) return
+      const id = parseInt(raw)
+      if (!isNaN(id)) setActiveId(id)
+    }
+    openContact(sessionStorage.getItem('pem_open_contact'))
     sessionStorage.removeItem('pem_open_contact')
-    const id = parseInt(raw)
-    if (!isNaN(id)) setActiveId(id)
+    const onOpen = (event: Event) => {
+      const id = (event as CustomEvent<{ id?: number }>).detail?.id
+      if (typeof id === 'number') setActiveId(id)
+    }
+    window.addEventListener('pem-open-contact', onOpen)
+    return () => window.removeEventListener('pem-open-contact', onOpen)
   }, [])
 
   // Work counts
@@ -253,10 +264,10 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
   }, [addresses, extra])
 
   const filtered = useMemo(() => {
-    const sq = q.trim().toLowerCase()
-    const base = contacts.filter((c) => {
-      if (role !== 'all' && c.Role !== role) return false
-      if (sq) {
+    const sq = q.trim()
+    const roleFiltered = contacts.filter((c) => role === 'all' || c.Role === role)
+    const base = sq
+      ? fuzzySearch(roleFiltered.map((c) => {
         const id = c.ContactID
         const ex = extra[id]
         const addrs = addresses[id] ?? []
@@ -269,10 +280,11 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
         const multiPhoneStr = phoneRows.map((p) => fmtPhone(p.country_code, p.phone) ?? p.phone).join(' ')
         const webStr = webRows.map((w) => `${w.url} ${w.label}`).join(' ')
         const socialStr = socialRows.map((s) => `${s.platform} ${s.handle}`).join(' ')
-
-        let target = ''
-        if (searchBy === 'all') {
-          target = [
+        const name = [c.NomInstitution, c.Nom, c.Prénom].filter(Boolean).join(' ')
+        const city = addrStr || [c.Ville, c.Pays].filter(Boolean).join(' ')
+        const email = [multiEmailStr, ex?.Email].filter(Boolean).join(' ')
+        const notes = ex?.Notes || ''
+        const all = [
             c.NomInstitution, c.Nom, c.Prénom, c.Role,
             multiEmailStr, ex?.Email,
             multiPhoneStr, ex?.Téléphone1, ex?.Téléphone2,
@@ -283,20 +295,19 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
             ex?.PersonneResponsable, ex?.RoleResponsable,
             addrStr,
           ].filter(Boolean).join(' ')
-        } else if (searchBy === 'name') {
-          target = [c.NomInstitution, c.Nom, c.Prénom].filter(Boolean).join(' ')
-        } else if (searchBy === 'city') {
-          target = addrStr || [c.Ville, c.Pays].filter(Boolean).join(' ')
-        } else if (searchBy === 'email') {
-          target = [multiEmailStr, ex?.Email].filter(Boolean).join(' ')
-        } else if (searchBy === 'notes') {
-          target = ex?.Notes || ''
-        }
-
-        if (!target.toLowerCase().includes(sq)) return false
-      }
-      return true
-    })
+        return { all, city, contact: c, email, name, notes }
+      }), sq, {
+        keys: searchBy === 'all'
+          ? [
+              { name: 'name', weight: 0.35 },
+              { name: 'email', weight: 0.2 },
+              { name: 'city', weight: 0.15 },
+              { name: 'notes', weight: 0.1 },
+              { name: 'all', weight: 0.2 },
+            ]
+          : [searchBy],
+      }).map((doc) => doc.contact)
+      : roleFiltered
     
     const list = [...base]
     list.sort((a, b) => {
@@ -626,7 +637,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
           placeholder={t('searchPlaceholderContacts')}
           style={{ ...FIS, flex: 1, minWidth: narrow ? 0 : 200, width: narrow ? '100%' : undefined }}
         />
-        <select value={searchBy} onChange={(e) => setSearchBy(e.target.value)} style={{ ...FIS, maxWidth: 110 }}>
+        <select value={searchBy} onChange={(e) => setSearchBy(e.target.value as ContactSearchBy)} style={{ ...FIS, maxWidth: 110 }}>
           <option value="all">{t('searchFieldAll')}</option>
           <option value="name">{t('searchFieldName')}</option>
           <option value="city">{t('searchFieldCity')}</option>
@@ -824,7 +835,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
             minWidth: 0,
             overflow: narrow ? 'auto' : 'auto',
             overflowX: narrow ? 'auto' : undefined,
-            borderRight: narrow ? 'none' : '1px solid var(--bd)',
+            borderRight: !narrow && showEditor ? '1px solid var(--bd)' : 'none',
             borderBottom: narrow && showEditor ? '1px solid var(--bd)' : undefined,
             maxHeight: narrow && showEditor ? 'min(42vh, 360px)' : undefined,
           }}
@@ -932,13 +943,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
             onDeleteContact={!isCreating && activeId != null ? requestDeleteActive : undefined}
             baselineEpoch={editorNonce}
           />
-        ) : (
-          !narrow && (
-            <div style={{ width: 120, flexShrink: 0, padding: 20, color: 'var(--tx3)' }} className="t-mono-sm">
-              —
-            </div>
-          )
-        )}
+        ) : null}
       </div>
     </div>
   )

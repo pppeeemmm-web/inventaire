@@ -23,12 +23,9 @@ export function OeuvresSubsetBanner({
   onLoadMore,
 }: Props) {
   const { t } = useI18n()
-  const chip = t('atelier_oeuvres_subset_chip')
-    .replace('{loaded}', String(loaded))
-    .replace('{total}', String(total))
-  const detail = t('atelier_oeuvres_subset_banner')
-    .replace('{loaded}', String(loaded))
-    .replace('{total}', String(total))
+  const batchVars = { loaded, total }
+  const chip = t('atelier_oeuvres_subset_chip', batchVars)
+  const detail = t('atelier_oeuvres_subset_banner', batchVars)
 
   return (
     <div

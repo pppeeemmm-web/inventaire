@@ -79,6 +79,105 @@ export const DEFAULT_VISIBLE_REPORT_COLUMNS: ReportColumnId[] = [
   'themes',
 ]
 
+export type ReportSortKey = 'OeuvreID' | 'Titre' | 'year' | 'PrixFinal'
+
+export type ReportPresetId =
+  | 'custom'
+  | 'valuation'
+  | 'missing_metadata'
+  | 'location_consignment'
+  | 'exhibition_checklist'
+  | 'sales_sold'
+
+export type ReportPreset = {
+  id: ReportPresetId
+  titleKey: DictKey
+  descriptionKey: DictKey
+  columns: ReportColumnId[]
+  filters?: Partial<Pick<ReportFilterState, 'q' | 'tech' | 'support' | 'status' | 'filterTheme' | 'filterGroup'>>
+  sortKey: ReportSortKey
+  sortDir: 'asc' | 'desc'
+  predicate?: (work: Oeuvre, maps: ReportMaps) => boolean
+}
+
+function hasMissingCoreMetadata(o: Oeuvre): boolean {
+  const hasDimensions =
+    Boolean(String(o.Hauteur ?? '').trim()) ||
+    Boolean(String(o.Largeur ?? '').trim()) ||
+    Boolean(String(o.Dimensions ?? '').trim())
+  const hasPrice = o.PrixFinal != null || o.Prix != null
+
+  return (
+    !(o.Titre ?? '').trim() ||
+    yearOf(o.Année) == null ||
+    o.Technique == null ||
+    o.Support == null ||
+    !hasDimensions ||
+    !hasPrice ||
+    !o.Catalogué ||
+    Boolean(o.NeedsPhotograph) ||
+    !o.ImageURL
+  )
+}
+
+export const REPORT_PRESETS: ReportPreset[] = [
+  {
+    id: 'custom',
+    titleKey: 'report_preset_custom_title',
+    descriptionKey: 'report_preset_custom_desc',
+    columns: DEFAULT_VISIBLE_REPORT_COLUMNS,
+    sortKey: 'OeuvreID',
+    sortDir: 'desc',
+  },
+  {
+    id: 'valuation',
+    titleKey: 'report_preset_valuation_title',
+    descriptionKey: 'report_preset_valuation_desc',
+    columns: ['id', 'title', 'year', 'technique', 'support', 'dimensions', 'status', 'location', 'price'],
+    sortKey: 'Titre',
+    sortDir: 'asc',
+  },
+  {
+    id: 'missing_metadata',
+    titleKey: 'report_preset_missing_title',
+    descriptionKey: 'report_preset_missing_desc',
+    columns: ['id', 'title', 'year', 'technique', 'support', 'dimensions', 'price', 'catalogued', 'exposable', 'notes'],
+    sortKey: 'OeuvreID',
+    sortDir: 'desc',
+    predicate: hasMissingCoreMetadata,
+  },
+  {
+    id: 'location_consignment',
+    titleKey: 'report_preset_location_title',
+    descriptionKey: 'report_preset_location_desc',
+    columns: ['id', 'title', 'year', 'status', 'contact', 'location', 'groups', 'notes'],
+    sortKey: 'Titre',
+    sortDir: 'asc',
+  },
+  {
+    id: 'exhibition_checklist',
+    titleKey: 'report_preset_exhibition_title',
+    descriptionKey: 'report_preset_exhibition_desc',
+    columns: ['id', 'title', 'year', 'technique', 'dimensions', 'status', 'location', 'exposable', 'catalogued', 'notes'],
+    sortKey: 'Titre',
+    sortDir: 'asc',
+    predicate: (o) => Boolean(o.Exposable),
+  },
+  {
+    id: 'sales_sold',
+    titleKey: 'report_preset_sales_title',
+    descriptionKey: 'report_preset_sales_desc',
+    columns: ['id', 'title', 'year', 'technique', 'price', 'buyer', 'contact', 'status', 'notes'],
+    sortKey: 'PrixFinal',
+    sortDir: 'desc',
+    predicate: (o, maps) => statusOf(o, maps.statusLabelMap) === 'sold',
+  },
+]
+
+export function getReportPreset(id: ReportPresetId): ReportPreset {
+  return REPORT_PRESETS.find((preset) => preset.id === id) ?? REPORT_PRESETS[0]
+}
+
 export function parseIdRanges(input: string): Set<number> {
   const ids = new Set<number>()
   const parts = input.split(/[,\s\n]+/)
@@ -125,6 +224,7 @@ export type ReportFilterState = {
   filterGroup: string
   selectionOnly: boolean
   selection: Set<number>
+  presetId?: ReportPresetId
 }
 
 export function filterWorksForReport(
@@ -173,13 +273,16 @@ export function filterWorksForReport(
 
     if (f.selectionOnly && f.selection.size > 0 && !f.selection.has(o.OeuvreID)) return false
 
+    const preset = f.presetId ? getReportPreset(f.presetId) : null
+    if (preset?.predicate && !preset.predicate(o, maps)) return false
+
     return true
   })
 }
 
 export function sortWorksForReport(
   rows: Oeuvre[],
-  sortKey: 'OeuvreID' | 'Titre' | 'year' | 'PrixFinal',
+  sortKey: ReportSortKey,
   dir: 'asc' | 'desc',
 ): Oeuvre[] {
   const m = dir === 'asc' ? 1 : -1

@@ -21,6 +21,7 @@ import { useMediaQuery } from '@/lib/useMediaQuery'
 import { batchEdit } from '@/app/atelier/selection/actions'
 import type { Agg, Dim } from '@/lib/pivot'
 import { PivotPanel } from './PivotPanel'
+import { fuzzySearch } from '@/lib/fuzzy-search'
 
 // ── Types ───────────────────────────────────────────────────────────
 
@@ -74,9 +75,18 @@ const FIELD_LABELS: Record<string, string> = {
 
 interface FieldDef { k: string; l: string; t: 'num' | 'text' | 'bool' | 'lookup' | 'year' }
 
+const LOOKUP_FIELD_KEYS = new Set([
+  'statusId',
+  'ContactID',
+  'LocalisationID',
+  'AcheteurID',
+  'PresentationID',
+  'anonymity_level',
+])
+
 function getFieldType(k: string, sampleValue: any): FieldDef['t'] {
   if (k === 'Année') return 'year'
-  if (k.toLowerCase().includes('status') || k.toLowerCase().includes('id')) return 'lookup'
+  if (LOOKUP_FIELD_KEYS.has(k)) return 'lookup'
   if (typeof sampleValue === 'number') return 'num'
   if (typeof sampleValue === 'boolean') return 'bool'
   return 'text'
@@ -438,14 +448,38 @@ export function InventoryTab({
       if (parsed.size > 0) idSet = parsed
     }
 
+    const fuzzyMatchedIds = !idSet && sq
+      ? new Set(fuzzySearch(oeuvres.map((o) => {
+          const themeNames = (oeuvreThemeMap.get(o.OeuvreID) ?? []).map(tid => thM[tid] ?? '').join(' ')
+          const groupNames = (oeuvreGroupMap.get(o.OeuvreID) ?? []).map(gid => groupNameMap[gid] ?? '').join(' ')
+          return {
+            id: String(o.OeuvreID),
+            hashId: `#${o.OeuvreID}`,
+            title: o.Titre ?? '',
+            technique: o.Technique != null ? (tM[o.Technique] ?? '') : '',
+            support: o.Support != null ? (sM[o.Support] ?? '') : '',
+            themes: themeNames,
+            groups: groupNames,
+            work: o,
+          }
+        }), trimmedQ, {
+          keys: [
+            { name: 'title', weight: 0.45 },
+            { name: 'id', weight: 0.15 },
+            { name: 'hashId', weight: 0.15 },
+            { name: 'technique', weight: 0.1 },
+            { name: 'support', weight: 0.05 },
+            { name: 'themes', weight: 0.05 },
+            { name: 'groups', weight: 0.05 },
+          ],
+        }).map((doc) => doc.work.OeuvreID))
+      : null
+
     return oeuvres.filter((o) => {
       if (idSet) {
         if (!idSet.has(o.OeuvreID)) return false
-      } else if (sq) {
-        const themeNames = (oeuvreThemeMap.get(o.OeuvreID) ?? []).map(tid => thM[tid] ?? '').join(' ')
-        const groupNames = (oeuvreGroupMap.get(o.OeuvreID) ?? []).map(gid => groupNameMap[gid] ?? '').join(' ')
-        const bag = `${o.Titre ?? ''} #${o.OeuvreID} ${o.Technique != null ? (tM[o.Technique] ?? '') : ''} ${o.Support != null ? (sM[o.Support] ?? '') : ''} ${themeNames} ${groupNames}`.toLowerCase()
-        if (!bag.includes(sq)) return false
+      } else if (fuzzyMatchedIds && !fuzzyMatchedIds.has(o.OeuvreID)) {
+        return false
       }
       if (tech !== 'all' && String(o.Technique ?? '') !== tech) return false
       if (support !== 'all' && String(o.Support ?? '') !== support) return false

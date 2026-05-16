@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useTransition, useRef, type SyntheticEvent, type ClipboardEvent } from 'react'
+import { useState, useCallback, useTransition, useRef, type SyntheticEvent, type ClipboardEvent } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { vaultStudioBible } from '@/app/atelier/vault/bible-action'
 import { exportSiteMapChecklistPdf } from '@/app/atelier/vault/actions'
@@ -11,6 +11,8 @@ import { useI18n } from '@/lib/i18n/context'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import { imageUrl } from '@/lib/data'
 import { useMediaQuery } from '@/lib/useMediaQuery'
+import { useAtelierTabResource } from '@/hooks/useAtelierTabResource'
+import { ATELIER_TAB_CACHE_POLICY, atelierTabCacheKey } from '@/lib/atelier/tab-cache-policy'
 
 const TYPES = ['suggestion', 'improvement', 'maintenance', 'backlog', 'bug'] as const
 const STATUSES = ['active', 'requested', 'in-progress', 'completed', 'dismissed'] as const
@@ -134,8 +136,6 @@ function LedgerThumb({
 export function SystemTab() {
   const { t, lang } = useI18n()
   const narrow = useMediaQuery('(max-width: 767px)')
-  const [logs, setLogs] = useState<LogEntry[]>([])
-  const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [checklistPending, startChecklist] = useTransition()
@@ -158,16 +158,24 @@ export function SystemTab() {
 
   const locale = lang === 'fr' ? 'fr-FR' : 'en-GB'
 
-  useEffect(() => {
-    void fetchLogs()
-  }, [])
-
-  async function fetchLogs() {
+  const fetchLogs = useCallback(async () => {
     const sb = createClient()
     const { data } = await sb.from('system_log').select('*').is('event_type', null).order('id', { ascending: false })
-    setLogs(data ?? [])
-    setLoading(false)
-  }
+    return data ?? []
+  }, [])
+
+  const logsResource = useAtelierTabResource<LogEntry[]>({
+    cacheKey: atelierTabCacheKey('system'),
+    staleMs: ATELIER_TAB_CACHE_POLICY.system.staleMs,
+    load: fetchLogs,
+    initialData: [],
+  })
+  const logs = logsResource.data ?? []
+  const setLogs = logsResource.setCachedData
+  const loading = logsResource.loading
+  const refreshLogs = useCallback(() => {
+    void logsResource.refresh({ force: true })
+  }, [logsResource])
 
   function uploadErrorAlert(code: string) {
     const key = `system_ledger_upload_${code}` as DictKey
@@ -388,7 +396,7 @@ export function SystemTab() {
             attachments: [],
           },
         ])
-        void fetchLogs()
+        refreshLogs()
       }
     })
   }

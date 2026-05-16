@@ -30,6 +30,17 @@ type PageViewRow = {
 }
 
 export type DayCount = { date: string; views: number }
+export type AnalyticsComparison = {
+  current: number
+  previous: number
+  deltaPercent: number | null
+}
+export type AnalyticsSourceQuality = {
+  referrer: string
+  views: number
+  netVisitors: number
+  viewsPerVisitor: number | null
+}
 
 export type AnalyticsResult =
   | { error: string }
@@ -44,9 +55,22 @@ export type AnalyticsResult =
       /** Rows whose path is not a known public route — only when scope is public_site */
       offSitePageviews?: number
       scope: 'public_site' | 'all'
+      comparisons: {
+        pageviews: AnalyticsComparison
+        netUniqueVisitors: AnalyticsComparison
+        viewsPerNetVisitor: AnalyticsComparison
+      }
+      viewsPerNetVisitor: number | null
+      returningVisitors: number
+      returningVisitorRate: number | null
+      onePageVisitors: number
+      onePageVisitorRate: number | null
+      browsingDepth: { bucket: '1' | '2_3' | '4_7' | '8_plus'; visitors: number }[]
       topPages: { path: string; views: number }[]
+      topLandingPages: { path: string; visitors: number }[]
       topCountries: { country: string; views: number }[]
       topReferrers: { referrer: string; views: number }[]
+      sourceQuality: AnalyticsSourceQuality[]
       trend: DayCount[]
     }
 
@@ -80,6 +104,36 @@ function referrerBucketLabel(key: string, lang: Lang): string {
   if (key === REF_BUCKET_DIRECT) return d.analytics_referrer_direct
   if (key === REF_BUCKET_INVALID) return d.analytics_referrer_invalid
   return key
+}
+
+function referrerBucket(row: PageViewRow): string {
+  const refRaw = row.referrer?.trim()
+  if (!refRaw) return REF_BUCKET_DIRECT
+  try {
+    return new URL(refRaw).hostname.replace(/^www\./, '')
+  } catch {
+    return REF_BUCKET_INVALID
+  }
+}
+
+function percentDelta(current: number, previous: number): number | null {
+  if (previous === 0) return current === 0 ? 0 : null
+  return Math.round(((current - previous) / previous) * 100)
+}
+
+function perVisitor(views: number, visitors: number): number | null {
+  if (visitors <= 0) return null
+  return Math.round((views / visitors) * 10) / 10
+}
+
+function comparison(current: number | null, previous: number | null): AnalyticsComparison {
+  const c = current ?? 0
+  const p = previous ?? 0
+  return {
+    current: c,
+    previous: p,
+    deltaPercent: percentDelta(c, p),
+  }
 }
 
 const PAGE_VIEW_SELECT_LEGACY = 'path, referrer, country, created_at' as const
@@ -147,22 +201,39 @@ export async function getAnalyticsStats(
 
   const lang: Lang = opts?.lang === 'en' ? 'en' : 'fr'
   const scope = opts?.scope ?? 'public_site'
-  const since = new Date(Date.now() - days * 86400 * 1000).toISOString()
+  const now = Date.now()
+  const currentSinceMs = now - days * 86400 * 1000
+  const previousSinceMs = now - days * 2 * 86400 * 1000
+  const since = new Date(previousSinceMs).toISOString()
 
   const { rows, error } = await fetchAllPageViews(sb, since)
   if (error) return { error }
 
   const allRows = rows ?? []
-  const scopedRows =
+  const scopedAllRows =
     scope === 'public_site' ? allRows.filter((r) => isPublicSiteTrackedPath(r.path)) : allRows
+  const scopedRows = scopedAllRows.filter((r) => {
+    const time = Date.parse(r.created_at)
+    return Number.isFinite(time) && time >= currentSinceMs
+  })
+  const previousRows = scopedAllRows.filter((r) => {
+    const time = Date.parse(r.created_at)
+    return Number.isFinite(time) && time >= previousSinceMs && time < currentSinceMs
+  })
   const offSitePageviews =
-    scope === 'public_site' ? allRows.length - scopedRows.length : undefined
+    scope === 'public_site'
+      ? allRows.filter((r) => {
+          const time = Date.parse(r.created_at)
+          return Number.isFinite(time) && time >= currentSinceMs && !isPublicSiteTrackedPath(r.path)
+        }).length
+      : undefined
 
   const pageviews = scopedRows.length
 
   const excludedIds = parseExcludedVisitorIds()
   const uniqueSet = new Set<string>()
   const netSet = new Set<string>()
+  const previousNetSet = new Set<string>()
   for (const row of scopedRows) {
     const vid = row.visitor_id?.trim()
     if (!vid) continue
@@ -171,13 +242,28 @@ export async function getAnalyticsStats(
     if (excludedIds.has(vid.toLowerCase())) continue
     netSet.add(vid)
   }
+  for (const row of previousRows) {
+    const vid = row.visitor_id?.trim()
+    if (!vid) continue
+    if (row.is_team_session === true) continue
+    if (excludedIds.has(vid.toLowerCase())) continue
+    previousNetSet.add(vid)
+  }
   const uniqueVisitors = uniqueSet.size
   const netUniqueVisitors = netSet.size
+  const previousPageviews = previousRows.length
+  const previousNetUniqueVisitors = previousNetSet.size
+  const viewsPerNetVisitor = perVisitor(pageviews, netUniqueVisitors)
+  const previousViewsPerNetVisitor = perVisitor(previousPageviews, previousNetUniqueVisitors)
 
   const pageCounts: Record<string, number> = {}
   const countryByCode: Record<string, number> = {}
   const referrerCounts: Record<string, number> = {}
   const dayCounts: Record<string, number> = {}
+  const viewsByNetVisitor: Record<string, number> = {}
+  const firstSeenByNetVisitor: Record<string, PageViewRow> = {}
+  const sourceViews: Record<string, number> = {}
+  const sourceVisitors: Record<string, Set<string>> = {}
 
   for (const row of scopedRows) {
     const path = normalizeTrackedPath(row.path)
@@ -186,20 +272,23 @@ export async function getAnalyticsStats(
     const code = row.country?.trim() || COUNTRY_UNKNOWN_CODE
     countryByCode[code] = (countryByCode[code] ?? 0) + 1
 
-    const refRaw = row.referrer?.trim()
-    if (refRaw) {
-      try {
-        const host = new URL(refRaw).hostname.replace(/^www\./, '')
-        referrerCounts[host] = (referrerCounts[host] ?? 0) + 1
-      } catch {
-        referrerCounts[REF_BUCKET_INVALID] = (referrerCounts[REF_BUCKET_INVALID] ?? 0) + 1
-      }
-    } else {
-      referrerCounts[REF_BUCKET_DIRECT] = (referrerCounts[REF_BUCKET_DIRECT] ?? 0) + 1
-    }
+    const source = referrerBucket(row)
+    referrerCounts[source] = (referrerCounts[source] ?? 0) + 1
 
     const day = row.created_at.slice(0, 10)
     dayCounts[day] = (dayCounts[day] ?? 0) + 1
+
+    const vid = row.visitor_id?.trim()
+    if (!vid || !netSet.has(vid)) continue
+
+    viewsByNetVisitor[vid] = (viewsByNetVisitor[vid] ?? 0) + 1
+    const first = firstSeenByNetVisitor[vid]
+    if (!first || row.created_at < first.created_at) {
+      firstSeenByNetVisitor[vid] = row
+    }
+    sourceViews[source] = (sourceViews[source] ?? 0) + 1
+    sourceVisitors[source] ??= new Set<string>()
+    sourceVisitors[source].add(vid)
   }
 
   const top = <T extends string>(counts: Record<T, number>, n: number) =>
@@ -236,6 +325,48 @@ export async function getAnalyticsStats(
       referrer: referrerBucketLabel(referrer, lang),
       views: views as number,
     })),
+    sourceQuality: Object.entries(sourceViews)
+      .map(([referrer, views]) => {
+        const visitors = sourceVisitors[referrer]?.size ?? 0
+        return {
+          referrer: referrerBucketLabel(referrer, lang),
+          views,
+          netVisitors: visitors,
+          viewsPerVisitor: perVisitor(views, visitors),
+        }
+      })
+      .sort((a, b) => b.netVisitors - a.netVisitors || b.views - a.views)
+      .slice(0, 8),
+    topLandingPages: top(
+      Object.values(firstSeenByNetVisitor).reduce<Record<string, number>>((acc, row) => {
+        const path = normalizeTrackedPath(row.path)
+        acc[path] = (acc[path] ?? 0) + 1
+        return acc
+      }, {}),
+      8
+    ).map(([path, visitors]) => ({ path, visitors: visitors as number })),
+    comparisons: {
+      pageviews: comparison(pageviews, previousPageviews),
+      netUniqueVisitors: comparison(netUniqueVisitors, previousNetUniqueVisitors),
+      viewsPerNetVisitor: comparison(viewsPerNetVisitor, previousViewsPerNetVisitor),
+    },
+    viewsPerNetVisitor,
+    returningVisitors: [...netSet].filter((vid) => previousNetSet.has(vid)).length,
+    returningVisitorRate:
+      netUniqueVisitors > 0
+        ? Math.round((([...netSet].filter((vid) => previousNetSet.has(vid)).length / netUniqueVisitors) * 100))
+        : null,
+    onePageVisitors: Object.values(viewsByNetVisitor).filter((v) => v === 1).length,
+    onePageVisitorRate:
+      netUniqueVisitors > 0
+        ? Math.round((Object.values(viewsByNetVisitor).filter((v) => v === 1).length / netUniqueVisitors) * 100)
+        : null,
+    browsingDepth: [
+      { bucket: '1', visitors: Object.values(viewsByNetVisitor).filter((v) => v === 1).length },
+      { bucket: '2_3', visitors: Object.values(viewsByNetVisitor).filter((v) => v >= 2 && v <= 3).length },
+      { bucket: '4_7', visitors: Object.values(viewsByNetVisitor).filter((v) => v >= 4 && v <= 7).length },
+      { bucket: '8_plus', visitors: Object.values(viewsByNetVisitor).filter((v) => v >= 8).length },
+    ],
     trend,
   }
 }

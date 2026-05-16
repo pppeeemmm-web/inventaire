@@ -8,7 +8,7 @@ import {
   setWorkPublic,
 } from '@/app/atelier/portfolio/actions'
 import { PORTFOLIO_SAVE_ERR } from '@/lib/portfolio-save-errors'
-import { getAnalyticsStats, type AnalyticsResult } from '@/app/atelier/analytics/actions'
+import { getAnalyticsStats, type AnalyticsComparison, type AnalyticsResult } from '@/app/atelier/analytics/actions'
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
 import { useMediaQuery } from '@/lib/useMediaQuery'
@@ -1161,6 +1161,124 @@ function Sparkline({ trend }: { trend: { date: string; views: number }[] }) {
   )
 }
 
+function AnalyticsMetricCard({
+  label,
+  value,
+  comparison,
+  hint,
+}: {
+  label: string
+  value: string
+  comparison?: AnalyticsComparison
+  hint?: string
+}) {
+  const { t } = useI18n()
+  const delta = comparison?.deltaPercent
+  const deltaText =
+    delta == null
+      ? t('analytics_delta_no_baseline')
+      : t('analytics_delta_previous_period').replace('{delta}', `${delta > 0 ? '+' : ''}${delta}%`)
+  const deltaColor = delta == null || delta === 0 ? 'var(--tx3)' : delta > 0 ? 'var(--sage)' : 'var(--rust)'
+
+  return (
+    <div style={{
+      padding: '10px 12px',
+      background: 'var(--bg0)',
+      border: '1px solid var(--bd)',
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'center',
+      minHeight: 0,
+    }}>
+      <div className="t-label" style={{ marginBottom: 6, fontSize: 10 }}>
+        {label}
+      </div>
+      <div style={{
+        fontSize: 22,
+        fontWeight: 300,
+        lineHeight: 1,
+        color: 'var(--tx)',
+        fontFamily: 'var(--font-serif, serif)',
+        letterSpacing: -0.5,
+        fontVariantNumeric: 'tabular-nums',
+      }}>
+        {value}
+      </div>
+      {comparison && (
+        <div className="t-mono-xs" style={{ color: deltaColor, marginTop: 6, lineHeight: 1.35, fontSize: 9 }}>
+          {deltaText}
+        </div>
+      )}
+      {hint && (
+        <div className="t-mono-xs" style={{ color: 'var(--tx3)', marginTop: 6, lineHeight: 1.3, fontSize: 9 }}>
+          {hint}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function SourceQualityList({
+  items,
+}: {
+  items: { referrer: string; views: number; netVisitors: number; viewsPerVisitor: number | null }[]
+}) {
+  const { t, lang } = useI18n()
+  const numLocale = lang === 'en' ? 'en-GB' : 'fr-FR'
+  if (items.length === 0) return (
+    <div className="t-mono-xs" style={{ color: 'var(--tx3)', opacity: 0.5 }}>{t('analytics_barlist_empty')}</div>
+  )
+
+  return (
+    <div className="col" style={{ gap: 10 }}>
+      {items.map((item) => (
+        <div key={item.referrer} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 10, alignItems: 'baseline' }}>
+          <div className="t-mono-sm" title={item.referrer} style={{ color: 'var(--tx2)', fontSize: 12, overflowWrap: 'anywhere' }}>
+            {item.referrer}
+          </div>
+          <div className="t-mono-xs" style={{ color: 'var(--tx3)', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+            {t('analytics_source_quality_row_fmt')
+              .replace('{visitors}', item.netVisitors.toLocaleString(numLocale))
+              .replace('{viewsPerVisitor}', item.viewsPerVisitor == null ? '—' : item.viewsPerVisitor.toLocaleString(numLocale))}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function BrowsingDepthList({
+  items,
+}: {
+  items: { bucket: '1' | '2_3' | '4_7' | '8_plus'; visitors: number }[]
+}) {
+  const { t, lang } = useI18n()
+  const numLocale = lang === 'en' ? 'en-GB' : 'fr-FR'
+  const labels = {
+    '1': t('analytics_depth_1'),
+    '2_3': t('analytics_depth_2_3'),
+    '4_7': t('analytics_depth_4_7'),
+    '8_plus': t('analytics_depth_8_plus'),
+  }
+  const max = Math.max(...items.map((item) => item.visitors), 1)
+
+  return (
+    <div className="col" style={{ gap: 10 }}>
+      {items.map((item) => (
+        <div key={item.bucket} style={{ display: 'grid', gridTemplateColumns: '76px minmax(0, 1fr) 44px', gap: 8, alignItems: 'center' }}>
+          <div className="t-mono-xs" style={{ color: 'var(--tx3)' }}>{labels[item.bucket]}</div>
+          <div style={{ height: 6, background: 'var(--bd)', borderRadius: 3, minWidth: 0 }}>
+            <div style={{ width: `${(item.visitors / max) * 100}%`, height: '100%', background: 'var(--ac)', borderRadius: 3 }} />
+          </div>
+          <div className="t-mono-xs" style={{ color: 'var(--tx)', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+            {item.visitors.toLocaleString(numLocale)}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function AnalyticsPanel({
   themes,
   oeuvres,
@@ -1300,90 +1418,59 @@ function AnalyticsPanel({
           <div style={{
             display: narrow ? 'flex' : 'grid',
             flexDirection: narrow ? 'column' : undefined,
-            gridTemplateColumns: narrow ? undefined : 'minmax(104px, 1fr) minmax(104px, 1fr) minmax(104px, 1fr) minmax(160px, 2fr)',
+            gridTemplateColumns: narrow ? undefined : 'repeat(4, minmax(104px, 1fr))',
             gap: 8,
             flexShrink: 0,
             minHeight: narrow ? undefined : 132,
           }}>
+            <AnalyticsMetricCard
+              label={result.scope === 'public_site' ? t('analytics_page_views_site') : t('analytics_page_views_raw')}
+              value={result.pageviews.toLocaleString(numLocale)}
+              comparison={result.comparisons.pageviews}
+              hint={
+                result.scope === 'public_site' && result.offSitePageviews != null && result.offSitePageviews > 0
+                  ? t('analytics_off_routes_plus_fmt').replace('{count}', result.offSitePageviews.toLocaleString(numLocale))
+                  : undefined
+              }
+            />
+            <AnalyticsMetricCard
+              label={t('analytics_net_visitors')}
+              value={result.netUniqueVisitors.toLocaleString(numLocale)}
+              comparison={result.comparisons.netUniqueVisitors}
+              hint={t('analytics_net_visitors_hint')}
+            />
+            <AnalyticsMetricCard
+              label={t('analytics_views_per_net_visitor')}
+              value={result.viewsPerNetVisitor == null ? '—' : result.viewsPerNetVisitor.toLocaleString(numLocale)}
+              comparison={result.comparisons.viewsPerNetVisitor}
+            />
+            <AnalyticsMetricCard
+              label={t('analytics_returning_visitors')}
+              value={result.returningVisitorRate == null ? '—' : `${result.returningVisitorRate.toLocaleString(numLocale)}%`}
+              hint={t('analytics_returning_visitors_hint').replace('{count}', result.returningVisitors.toLocaleString(numLocale))}
+            />
+          </div>
+
+          <div style={{
+            display: narrow ? 'flex' : 'grid',
+            flexDirection: narrow ? 'column' : undefined,
+            gridTemplateColumns: narrow ? undefined : 'minmax(148px, 1fr) minmax(148px, 1fr) minmax(220px, 2fr)',
+            gap: 8,
+            flexShrink: 0,
+          }}>
+            <AnalyticsMetricCard
+              label={t('analytics_one_page_visitors')}
+              value={result.onePageVisitorRate == null ? '—' : `${result.onePageVisitorRate.toLocaleString(numLocale)}%`}
+              hint={t('analytics_one_page_visitors_hint').replace('{count}', result.onePageVisitors.toLocaleString(numLocale))}
+            />
             <div style={{
               padding: '10px 12px',
               background: 'var(--bg0)',
               border: '1px solid var(--bd)',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center',
               minHeight: 0,
             }}>
-              <div className="t-label" style={{ marginBottom: 6, fontSize: 10 }}>
-                {result.scope === 'public_site' ? t('analytics_page_views_site') : t('analytics_page_views_raw')}
-              </div>
-              <div style={{
-                fontSize: 22,
-                fontWeight: 300,
-                lineHeight: 1,
-                color: 'var(--tx)',
-                fontFamily: 'var(--font-serif, serif)',
-                letterSpacing: -0.5,
-                fontVariantNumeric: 'tabular-nums',
-              }}>
-                {result.pageviews.toLocaleString(numLocale)}
-              </div>
-              {result.scope === 'public_site' && result.offSitePageviews != null && result.offSitePageviews > 0 && (
-                <div className="t-mono-xs" style={{ color: 'var(--tx3)', marginTop: 6, lineHeight: 1.35 }}>
-                  {t('analytics_off_routes_plus_fmt').replace('{count}', result.offSitePageviews.toLocaleString(numLocale))}
-                </div>
-              )}
-            </div>
-            <div style={{
-              padding: '10px 12px',
-              background: 'var(--bg0)',
-              border: '1px solid var(--bd)',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center',
-              minHeight: 0,
-            }}>
-              <div className="t-label" style={{ marginBottom: 6, fontSize: 10 }}>
-                {t('analytics_unique_visitors')}
-              </div>
-              <div style={{
-                fontSize: 22,
-                fontWeight: 300,
-                lineHeight: 1,
-                color: 'var(--tx)',
-                fontFamily: 'var(--font-serif, serif)',
-                letterSpacing: -0.5,
-                fontVariantNumeric: 'tabular-nums',
-              }}>
-                {result.uniqueVisitors.toLocaleString(numLocale)}
-              </div>
-            </div>
-            <div style={{
-              padding: '10px 12px',
-              background: 'var(--bg0)',
-              border: '1px solid var(--bd)',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'flex-start',
-              minHeight: 0,
-            }}>
-              <div className="t-label" style={{ marginBottom: 6, fontSize: 10 }}>
-                {t('analytics_net_visitors')}
-              </div>
-              <div style={{
-                fontSize: 22,
-                fontWeight: 300,
-                lineHeight: 1,
-                color: 'var(--tx)',
-                fontFamily: 'var(--font-serif, serif)',
-                letterSpacing: -0.5,
-                fontVariantNumeric: 'tabular-nums',
-              }}>
-                {result.netUniqueVisitors.toLocaleString(numLocale)}
-              </div>
-              <div className="t-mono-xs" style={{ color: 'var(--tx3)', marginTop: 6, lineHeight: 1.3, fontSize: 9 }}>
-                {t('analytics_net_visitors_hint')}
-              </div>
+              <div className="t-label" style={{ marginBottom: 8, fontSize: 10 }}>{t('analytics_browsing_depth')}</div>
+              <BrowsingDepthList items={result.browsingDepth} />
             </div>
             <div style={{
               padding: '8px 12px',
@@ -1410,7 +1497,7 @@ function AnalyticsPanel({
             flex: '1 1 0',
             minHeight: 0,
             display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
+            gridTemplateColumns: narrow ? '1fr' : '1fr 1fr',
             gap: 8,
           }}>
             <div style={{
@@ -1436,26 +1523,56 @@ function AnalyticsPanel({
               flexDirection: 'column',
               overflow: 'auto',
             }}>
+              <div className="t-label" style={{ marginBottom: 8, fontSize: 10, flexShrink: 0 }}>{t('analytics_landing_pages')}</div>
+              <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+                <BarList items={result.topLandingPages} labelKey="path" valueKey="visitors" maxRows={8} />
+              </div>
+            </div>
+            <div style={{
+              padding: '8px 10px',
+              background: 'var(--bg0)',
+              border: '1px solid var(--bd)',
+              minHeight: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'auto',
+            }}>
               <div className="t-label" style={{ marginBottom: 8, fontSize: 10, flexShrink: 0 }}>{t('analytics_top_countries')}</div>
               <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
                 <BarList items={result.topCountries} labelKey="country" valueKey="views" maxRows={10} />
               </div>
             </div>
-          </div>
-
-          <div style={{
-            flex: '1 1 0',
-            minHeight: 0,
-            padding: '8px 10px',
-            background: 'var(--bg0)',
-            border: '1px solid var(--bd)',
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'auto',
-          }}>
-            <div className="t-label" style={{ marginBottom: 8, fontSize: 10, flexShrink: 0 }}>{t('analytics_top_sources')}</div>
-            <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
-              <BarList items={result.topReferrers} labelKey="referrer" valueKey="views" maxRows={10} />
+            <div style={{
+              padding: '8px 10px',
+              background: 'var(--bg0)',
+              border: '1px solid var(--bd)',
+              minHeight: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'auto',
+            }}>
+              <div className="t-label" style={{ marginBottom: 8, fontSize: 10, flexShrink: 0 }}>{t('analytics_top_sources')}</div>
+              <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+                <BarList items={result.topReferrers} labelKey="referrer" valueKey="views" maxRows={10} />
+              </div>
+            </div>
+            <div style={{
+              padding: '8px 10px',
+              background: 'var(--bg0)',
+              border: '1px solid var(--bd)',
+              minHeight: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'auto',
+              gridColumn: narrow ? undefined : '1 / -1',
+            }}>
+              <div className="t-label" style={{ marginBottom: 4, fontSize: 10, flexShrink: 0 }}>{t('analytics_source_quality')}</div>
+              <div className="t-mono-xs" style={{ color: 'var(--tx3)', marginBottom: 8, lineHeight: 1.35 }}>
+                {t('analytics_source_quality_hint')}
+              </div>
+              <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+                <SourceQualityList items={result.sourceQuality} />
+              </div>
             </div>
           </div>
 

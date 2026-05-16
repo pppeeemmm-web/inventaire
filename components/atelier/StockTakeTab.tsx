@@ -12,6 +12,8 @@ import {
   type StockContactLike,
   supplierDisplayName,
 } from '@/lib/stock-item'
+import { useAtelierTabResource } from '@/hooks/useAtelierTabResource'
+import { ATELIER_TAB_CACHE_POLICY, atelierTabCacheKey } from '@/lib/atelier/tab-cache-policy'
 
 const UNCATEGORIZED_BUCKET = '__stock_uc__'
 
@@ -27,8 +29,6 @@ interface Props {
 export function StockTakeTab({ contacts }: Props) {
   const { t, lang } = useI18n()
   const narrow = useMediaQuery('(max-width: 767px)')
-  const [items, setItems] = useState<StockItemRow[]>([])
-  const [loading, setLoading] = useState(true)
   const [counts, setCounts] = useState<Record<number, number>>({})
   const [busy, setBusy] = useState(false)
   const [search, setSearch] = useState('')
@@ -36,7 +36,6 @@ export function StockTakeTab({ contacts }: Props) {
   const [applyModal, setApplyModal] = useState(false)
 
   const load = useCallback(async () => {
-    setLoading(true)
     const sb = createClient()
     const { data, error } = await sb
       .from('stock_item')
@@ -45,22 +44,38 @@ export function StockTakeTab({ contacts }: Props) {
       .order('name')
     if (error) {
       toast.error(`${t('error_prefix')} ${stringifyError(error)}`)
-      setItems([])
-    } else if (data) {
-      const rows = data as StockItemRow[]
-      setItems(rows)
-      const initial: Record<number, number> = {}
-      rows.forEach((it) => {
-        initial[it.id] = it.quantity
-      })
-      setCounts(initial)
+      return []
     }
-    setLoading(false)
+    return (data ?? []) as StockItemRow[]
   }, [t])
 
+  const stockTakeResource = useAtelierTabResource<StockItemRow[]>({
+    cacheKey: atelierTabCacheKey('stock-take'),
+    staleMs: ATELIER_TAB_CACHE_POLICY['stock-take'].staleMs,
+    load,
+    initialData: [],
+  })
+  const items = useMemo(() => stockTakeResource.data ?? [], [stockTakeResource.data])
+  const loading = stockTakeResource.loading
+  const refreshItems = useCallback(async () => {
+    const rows = await stockTakeResource.refresh({ force: true })
+    const initial: Record<number, number> = {}
+    rows.forEach((it) => {
+      initial[it.id] = it.quantity
+    })
+    setCounts(initial)
+  }, [stockTakeResource])
+
   useEffect(() => {
-    void load()
-  }, [load])
+    setCounts((prev) => {
+      if (Object.keys(prev).length > 0 || items.length === 0) return prev
+      const initial: Record<number, number> = {}
+      items.forEach((it) => {
+        initial[it.id] = it.quantity
+      })
+      return initial
+    })
+  }, [items])
 
   const searchNorm = search.trim().toLowerCase()
 
@@ -117,7 +132,7 @@ export function StockTakeTab({ contacts }: Props) {
       toast.success(
         t('stock_take_ok_fmt').replace(/\{n\}/g, String(updates.length)),
       )
-      await load()
+      await refreshItems()
     }
     setBusy(false)
     setApplyModal(false)
@@ -165,7 +180,7 @@ export function StockTakeTab({ contacts }: Props) {
               type="button"
               className="btn ghost sm"
               style={{ minHeight: 44 }}
-              onClick={() => void load()}
+              onClick={() => void refreshItems()}
             >
               {t('stock_take_refresh')}
             </button>
@@ -444,7 +459,7 @@ export function StockTakeTab({ contacts }: Props) {
             type="button"
             className="btn ghost sm"
             style={{ flex: 1, minHeight: 44 }}
-            onClick={() => void load()}
+            onClick={() => void refreshItems()}
           >
             {t('stock_take_refresh')}
           </button>

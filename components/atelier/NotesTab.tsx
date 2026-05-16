@@ -15,6 +15,8 @@ import { EmptyState } from '@/components/shared/EmptyState'
 import { toast } from '@/lib/ui/toast'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import { useMediaQuery } from '@/lib/useMediaQuery'
+import { useAtelierTabResource } from '@/hooks/useAtelierTabResource'
+import { ATELIER_TAB_CACHE_POLICY, atelierTabCacheKey } from '@/lib/atelier/tab-cache-policy'
 
 function voiceKindKey(k: VoiceNoteKind): DictKey {
   switch (k) {
@@ -54,9 +56,6 @@ export function NotesTab({ refreshTick, oeuvres }: { refreshTick: number; oeuvre
   const { t, lang } = useI18n()
   const narrow = useMediaQuery('(max-width: 767px)')
   const locale = lang === 'fr' ? 'fr-FR' : 'en-GB'
-  const [rows, setRows] = useState<VoiceNoteRow[]>([])
-  const [loading, setLoading] = useState(true)
-  const [err, setErr] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [kindFilter, setKindFilter] = useState<string>('')
   const [bucketFilter, setBucketFilter] = useState<string>('')
@@ -66,23 +65,38 @@ export function NotesTab({ refreshTick, oeuvres }: { refreshTick: number; oeuvre
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
-    setLoading(true)
-    setErr(null)
     const res = await listVoiceNotes(300)
-    if ('error' in res) {
-      setErr(res.error)
-      setRows([])
-    } else {
-      setRows(res.rows)
-    }
-    setLoading(false)
+    if ('error' in res) throw new Error(res.error)
+    return res.rows
   }, [])
 
-  useEffect(() => {
-    void load()
-  }, [load, refreshTick])
+  const notesResource = useAtelierTabResource<VoiceNoteRow[]>({
+    cacheKey: atelierTabCacheKey('notes'),
+    staleMs: ATELIER_TAB_CACHE_POLICY.notes.staleMs,
+    load,
+    refreshToken: refreshTick,
+    initialData: [],
+  })
+  const rows = useMemo(() => notesResource.data ?? [], [notesResource.data])
+  const setRows = notesResource.setCachedData
+  const loading = notesResource.loading
+  const err = notesResource.error
 
   const selected = useMemo(() => rows.find((r) => r.id === selectedId) ?? null, [rows, selectedId])
+
+  useEffect(() => {
+    const raw = sessionStorage.getItem('pem_open_voice_note')
+    if (raw) {
+      setSelectedId(raw)
+      sessionStorage.removeItem('pem_open_voice_note')
+    }
+    const onOpen = (event: Event) => {
+      const id = (event as CustomEvent<{ id?: string }>).detail?.id
+      if (id) setSelectedId(id)
+    }
+    window.addEventListener('pem-open-voice-note', onOpen)
+    return () => window.removeEventListener('pem-open-voice-note', onOpen)
+  }, [])
 
   useEffect(() => {
     if (selected) setDraftTranscript(selected.transcript ?? '')
@@ -163,7 +177,7 @@ export function NotesTab({ refreshTick, oeuvres }: { refreshTick: number; oeuvre
         <div style={{ padding: 12, borderBottom: '1px solid var(--bd)', display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div className="serif" style={{ fontSize: 18 }}>{t('tab_notes')}</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-            <button type="button" className="btn ghost sm" onClick={() => void load()} disabled={loading}>
+            <button type="button" className="btn ghost sm" onClick={() => void notesResource.refresh({ force: true })} disabled={loading || notesResource.refreshing}>
               {t('notes_refresh')}
             </button>
             <input

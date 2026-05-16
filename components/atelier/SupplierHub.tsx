@@ -2,7 +2,6 @@
 
 import {
   useState,
-  useEffect,
   useCallback,
   useMemo,
   useLayoutEffect,
@@ -21,6 +20,8 @@ import {
   formatStockCurrency,
   pricedInventoryValueEur,
 } from '@/lib/stock-item'
+import { useAtelierTabResource } from '@/hooks/useAtelierTabResource'
+import { ATELIER_TAB_CACHE_POLICY, atelierTabCacheKey } from '@/lib/atelier/tab-cache-policy'
 
 const UNCATEGORIZED = '__stock_uc__'
 
@@ -55,8 +56,6 @@ function downloadCsv(filename: string, lines: string[]) {
 export function SupplierHub({ contacts }: Props) {
   const { t, lang } = useI18n()
   const narrow = useMediaQuery('(max-width: 767px)')
-  const [items, setItems] = useState<StockItemRow[]>([])
-  const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState<StockEdit | null>(null)
   const [busy, setBusy] = useState(false)
   const [search, setSearch] = useState('')
@@ -76,21 +75,27 @@ export function SupplierHub({ contacts }: Props) {
   )
 
   const load = useCallback(async () => {
-    setLoading(true)
     const sb = createClient()
     const { data, error } = await sb.from('stock_item').select('*').order('name')
     if (error) {
       toast.error(`${t('error_prefix')} ${stringifyError(error)}`)
-      setItems([])
-    } else if (data) {
-      setItems(data as StockItemRow[])
+      return []
     }
-    setLoading(false)
+    return (data ?? []) as StockItemRow[]
   }, [t])
 
-  useEffect(() => {
-    void load()
-  }, [load])
+  const stockResource = useAtelierTabResource<StockItemRow[]>({
+    cacheKey: atelierTabCacheKey('stock'),
+    staleMs: ATELIER_TAB_CACHE_POLICY.stock.staleMs,
+    load,
+    initialData: [],
+  })
+  const items = useMemo(() => stockResource.data ?? [], [stockResource.data])
+  const setItems = stockResource.setCachedData
+  const loading = stockResource.loading
+  const refreshItems = useCallback(async () => {
+    await stockResource.refresh({ force: true })
+  }, [stockResource])
 
   const filteredSorted = useMemo(() => {
     let rows = items.filter((it) => matchesSearch(it, search))
@@ -181,7 +186,7 @@ export function SupplierHub({ contacts }: Props) {
         const { error } = await sb.from('stock_item').insert(payload)
         if (error) throw error
       }
-      await load()
+      await refreshItems()
       toast.success(t('stock_toast_saved'))
       setEditing(null)
       return true
@@ -201,7 +206,7 @@ export function SupplierHub({ contacts }: Props) {
       toast.error(`${t('error_prefix')} ${stringifyError(error)}`)
     } else {
       toast.success(t('stock_toast_deleted'))
-      await load()
+      await refreshItems()
       setEditing(null)
     }
     setBusy(false)

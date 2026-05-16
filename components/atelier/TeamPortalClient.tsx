@@ -26,6 +26,7 @@ import { OeuvresSubsetBanner } from '@/components/atelier/OeuvresSubsetBanner'
 import { AtelierCatalogueTotalBadge } from '@/components/atelier/AtelierCatalogueTotalBadge'
 import { WorkDrawer, type WorkDrawerGuardHandle } from '@/components/atelier/WorkDrawer'
 import { CurationDock }        from '@/components/atelier/CurationDock'
+import { AtelierResearchBar } from '@/components/atelier/AtelierResearchBar'
 import { fetchContactConflicts } from '@/app/atelier/contacts/conflicts-actions'
 import { loadOeuvreLongText } from '@/app/atelier/works/actions'
 import { fetchOeuvresKeysetPage } from '@/app/atelier/works/actions'
@@ -43,6 +44,7 @@ import { Skeleton } from '@/components/ui/Skeleton'
 import { toast, dismissToast } from '@/lib/ui/toast'
 import { consumeUndo, isUndoKeyBlockedTarget, peekUndo } from '@/lib/ui/undo'
 import { VoiceNoteSheet } from '@/components/shared/VoiceNoteSheet'
+import type { AtelierTabId } from '@/lib/atelier/tab-cache-policy'
 
 function TabPanelFallback() {
   const { t } = useI18n()
@@ -84,9 +86,16 @@ const NotesTab = dynamic(() => import('@/components/atelier/NotesTab').then((m) 
 
 // ── Types ────────────────────────────────────────────────────────────
 
-type Tab =
-  | 'overview' | 'inventory' | 'reports' | 'constellation' | 'production'
-  | 'logistics' | 'sales' | 'exhibitions' | 'vault' | 'contacts' | 'map' | 'pipeline' | 'fiscal' | 'concepts' | 'themes' | 'stock' | 'stock-take' | 'notes' | 'system' | 'portfolio' | 'audit' | 'broadcast'
+type Tab = AtelierTabId
+
+const CATALOGUE_EXPANSION_TABS = new Set<Tab>([
+  'inventory',
+  'reports',
+  'themes',
+  'portfolio',
+  'constellation',
+  'production',
+])
 
 /** Desktop top bar + narrow drawer row — same handlers, drawer uses 44px tap targets. Ring A.1: new work lives on `MobileActionBar`, not here, when `hideNewWork`. */
 function AtelierHeaderChrome({
@@ -143,7 +152,7 @@ function AtelierHeaderChrome({
       <button
         type="button"
         className="btn ghost sm"
-        title="⌘K"
+        title="Ctrl+K"
         aria-label={t('aria_command_palette')}
         onClick={onPaletteOpen}
         style={{
@@ -152,7 +161,7 @@ function AtelierHeaderChrome({
           ...(compact ? { minHeight: 44, minWidth: 44, boxSizing: 'border-box' as const } : {}),
         }}
       >
-        ⌘K
+        Ctrl+K
       </button>
       {!hideNewWork ? (
         <button
@@ -389,6 +398,9 @@ export function TeamPortalClient({
   const [oeuvres, setOeuvres] = useState<Oeuvre[]>(oeuvresChunk)
   const [oeuvresNextCursor, setOeuvresNextCursor] = useState<number | null>(oeuvresPaging?.nextCursor ?? null)
   const [oeuvresMoreLoading, setOeuvresMoreLoading] = useState(false)
+  // Always start with 'overview' on server and client — prevents hydration mismatch.
+  // Restore last tab from localStorage after first paint.
+  const [tab,            setTab]          = useState<Tab>('overview')
 
   useEffect(() => {
     setOeuvres(oeuvresChunk)
@@ -459,9 +471,10 @@ export function TeamPortalClient({
     }
   }, [oeuvresNextCursor, oeuvresPaging, t])
 
-  // Background eager-load: fetch remaining pages automatically after first paint.
-  // The loop runs once on mount; cursor is managed locally to avoid stale-closure issues.
+  // Background eager-load only when a catalogue-heavy tab is opened. Dashboard and
+  // cold tabs keep the initial first page until the user asks for catalogue scope.
   useEffect(() => {
+    if (!CATALOGUE_EXPANSION_TABS.has(tab)) return
     if (oeuvresPaging == null) return
     if (oeuvres.length >= oeuvresPaging.totalCount) return
     const initialCursor = oeuvresPaging.nextCursor
@@ -494,8 +507,7 @@ export function TeamPortalClient({
       cancelled = true
       dismissToast(toastId)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run once on mount with SSR values
-  }, [])
+  }, [oeuvres.length, oeuvresPaging, t, tab])
 
   const oeuvresCataloguePartial =
     oeuvresPaging != null && oeuvres.length < oeuvresPaging.totalCount
@@ -576,9 +588,6 @@ export function TeamPortalClient({
 
   // ── Global state ───────────────────────────────────────────────
 
-  // Always start with 'overview' on server and client — prevents hydration mismatch.
-  // Restore last tab from localStorage after first paint.
-  const [tab,            setTab]          = useState<Tab>('overview')
   const [reminderCount,  setReminderCount] = useState(initialReminderUnread)
 
   useLayoutEffect(() => {
@@ -683,7 +692,7 @@ export function TeamPortalClient({
 
   useEffect(() => {
     const onPaletteKey = (e: KeyboardEvent) => {
-      // ⌘K / Ctrl+K / `/` opens palette
+      // Ctrl+K / Cmd+K / `/` opens palette
       if (e.key === '/' && !e.ctrlKey && !e.metaKey && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
         e.preventDefault(); setPaletteOpen(true)
       }
@@ -846,14 +855,14 @@ export function TeamPortalClient({
   // ── Tab definitions (GROUPS) ───────────────────────────────────
 
   /** 6 rooms — same structure on narrow and wide; narrow puts Field first. */
-  const adminTabs: Tab[] = isAdmin ? ['system', 'audit', 'broadcast'] : ['system']
+  const adminTabs: Tab[] = isAdmin ? ['system', 'audit'] : ['system']
   const GROUPS: { label: string; tabs: Tab[] }[] = [
     { label: t('nav_group_field'),        tabs: ['inventory', 'production', 'stock-take', 'notes', 'map'] },
     { label: t('nav_group_studio'),       tabs: ['overview', 'pipeline', 'exhibitions', 'concepts'] },
     { label: t('nav_group_catalogue'),    tabs: ['reports', 'themes', 'stock', 'constellation'] },
     { label: t('nav_group_commercial'),   tabs: ['sales', 'logistics', 'fiscal', 'vault'] },
     { label: t('nav_group_public_tab'),   tabs: ['portfolio'] },
-    { label: t('nav_group_admin'),        tabs: ['contacts', ...adminTabs] },
+    { label: t('nav_group_admin'),        tabs: ['contacts', 'broadcast', ...adminTabs] },
   ]
 
   const showDock = selection.size > 0 && tab !== 'constellation'
@@ -1339,7 +1348,7 @@ export function TeamPortalClient({
           </div>
         )}
         {tab === 'audit' && <AuditTab />}
-        {tab === 'broadcast' && <BroadcastTab />}
+        {tab === 'broadcast' && <BroadcastTab isAdmin={isAdmin} />}
         {tab === 'map' && (
           <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
             <WorldMapTab
@@ -1489,6 +1498,43 @@ export function TeamPortalClient({
         onClose={() => setVoiceNoteSheetOpen(false)}
         oeuvreOptions={oeuvres.map((o) => ({ OeuvreID: o.OeuvreID, Titre: o.Titre }))}
         onSaved={() => setVoiceNotesTick((n) => n + 1)}
+      />
+
+      <AtelierResearchBar
+        tabs={TABS_RAW.map(([id, label]) => ({ id, label }))}
+        oeuvres={oeuvres}
+        contacts={contacts}
+        selectionCount={selection.size}
+        curationDockVisible={showDock}
+        onGoTab={(next) => handleSetTab(next)}
+        onOpenWork={(id) => {
+          const found = oeuvres.find((x) => x.OeuvreID === id)
+          if (found) openInspected(found)
+        }}
+        onOpenContact={(id) => {
+          sessionStorage.setItem('pem_open_contact', String(id))
+          handleSetTab('contacts')
+          window.dispatchEvent(new CustomEvent('pem-open-contact', { detail: { id } }))
+        }}
+        onOpenExhibition={(id) => {
+          const params = new URLSearchParams(window.location.search)
+          params.set('tab', 'exhibitions')
+          params.set('exhibition', id)
+          window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`)
+          handleSetTab('exhibitions')
+          window.dispatchEvent(new CustomEvent('pem-open-exhibition', { detail: { id } }))
+        }}
+        onOpenProcess={(id) => {
+          sessionStorage.setItem('pem_open_process', id)
+          handleSetTab('pipeline')
+          window.dispatchEvent(new CustomEvent('pem-open-process', { detail: { id } }))
+        }}
+        onOpenNotes={(id) => {
+          if (id) sessionStorage.setItem('pem_open_voice_note', id)
+          handleSetTab('notes')
+          if (id) window.dispatchEvent(new CustomEvent('pem-open-voice-note', { detail: { id } }))
+        }}
+        onOpenReports={() => handleSetTab('reports')}
       />
 
       {showMobileActionBar && (

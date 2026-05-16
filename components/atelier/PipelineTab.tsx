@@ -46,6 +46,7 @@ import {
 import type { Oeuvre } from '@/lib/types/database'
 import { WorkThumb } from './WorkThumb'
 import { useUnsavedCloseGuard } from '@/hooks/useUnsavedCloseGuard'
+import { fuzzySearch } from '@/lib/fuzzy-search'
 
 interface Props {
   oeuvres:     Oeuvre[]
@@ -224,6 +225,21 @@ export function PipelineTab({ oeuvres, contacts, groups, initialReminders, onRem
     () => inspectedId ? (processes.find(p => p.id === inspectedId) ?? null) : null,
     [inspectedId, processes]
   )
+
+  useEffect(() => {
+    const openProcess = (id: string | null) => {
+      if (!id) return
+      setInspectedId(id)
+    }
+    openProcess(sessionStorage.getItem('pem_open_process'))
+    sessionStorage.removeItem('pem_open_process')
+    const onOpen = (event: Event) => {
+      const id = (event as CustomEvent<{ id?: string }>).detail?.id
+      if (id) setInspectedId(id)
+    }
+    window.addEventListener('pem-open-process', onOpen)
+    return () => window.removeEventListener('pem-open-process', onOpen)
+  }, [])
 
   const filtered = useMemo(() => processes.filter((p) => {
     if (!showDone && ['perdu','annule','termine'].includes(p.statut)) return false
@@ -1633,20 +1649,29 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved, on
   const [workSearch, setWorkSearch] = useState('')
   const filteredWorks = useMemo(() => {
     const list = oeuvres || []
-    if (!workSearch.trim()) return list.slice(0, 10)
-    const q = workSearch.toLowerCase()
-    return list.filter(o => o.Titre?.toLowerCase().includes(q) || String(o.OeuvreID).includes(q)).slice(0, 10)
+    const query = workSearch.trim()
+    if (!query) return list.slice(0, 10)
+    return fuzzySearch(list.map((work) => ({
+      id: String(work.OeuvreID),
+      title: work.Titre ?? '',
+      work,
+    })), query, {
+      keys: [{ name: 'title', weight: 0.85 }, { name: 'id', weight: 0.15 }],
+    }).map((doc) => doc.work).slice(0, 10)
   }, [oeuvres, workSearch])
 
   const [contactSearch, setContactSearch] = useState('')
   const filteredContacts = useMemo(() => {
     const list = contacts || []
-    if (!contactSearch.trim()) return list.slice(0, 10)
-    const q = contactSearch.toLowerCase()
-    return list.filter(c => {
-      const name = (c.NomInstitution || `${c.Prénom ?? ''} ${c.Nom ?? ''}`).toLowerCase()
-      return name.includes(q)
-    }).slice(0, 10)
+    const query = contactSearch.trim()
+    if (!query) return list.slice(0, 10)
+    return fuzzySearch(list.map((contact) => ({
+      id: String(contact.ContactID),
+      name: contact.NomInstitution || `${contact.Prénom ?? ''} ${contact.Nom ?? ''}`.trim(),
+      contact,
+    })), query, {
+      keys: [{ name: 'name', weight: 0.85 }, { name: 'id', weight: 0.15 }],
+    }).map((doc) => doc.contact).slice(0, 10)
   }, [contacts, contactSearch])
 
   const processSnapshot = useMemo(() => JSON.stringify({
