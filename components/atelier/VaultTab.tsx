@@ -125,7 +125,7 @@ export function VaultTab({ oeuvres, tM }: Props) {
 
     docs.forEach(d => {
       if (d.name === '.keep') return // Hide system folder markers from list
-      
+
       const folderPath = d.folder || ''
       const searchMatch = !search || d.name.toLowerCase().includes(search.toLowerCase())
       const kindMatch = !kindFilter || d.kind === kindFilter
@@ -161,9 +161,9 @@ export function VaultTab({ oeuvres, tM }: Props) {
       }
     })
 
-    return { 
-      visibleFolders: Array.from(folderSet).sort(), 
-      visibleDocs: docsInDir 
+    return {
+      visibleFolders: Array.from(folderSet).sort(),
+      visibleDocs: docsInDir
     }
   }, [docs, currentFolderStr, search, kindFilter])
 
@@ -181,7 +181,7 @@ export function VaultTab({ oeuvres, tM }: Props) {
       alert(t('vault_download_err_fmt').replace('{msg}', stringifyError(res.error)))
     }
   }
-  
+
   const handleRenameFile = async (doc: VaultDoc) => {
     const newName = prompt(t('renameFile') || 'Renommer le fichier :', doc.name)
     if (newName && newName !== doc.name) {
@@ -221,7 +221,7 @@ export function VaultTab({ oeuvres, tM }: Props) {
 
     list.sort((a, b) => {
       const dir = sortDir === 'asc' ? 1 : -1
-      
+
       if (sortKey === 'name') {
         return a.name.localeCompare(b.name) * dir
       }
@@ -243,7 +243,7 @@ export function VaultTab({ oeuvres, tM }: Props) {
       }
       return 0
     })
-    
+
     return list
   }, [visibleDocs, sortKey, sortDir, oeuvres])
 
@@ -270,14 +270,13 @@ export function VaultTab({ oeuvres, tM }: Props) {
       {/* ── Sidebar ── */}
       <div style={{
         width: narrow ? '100%' : 280,
-        maxHeight: narrow ? 250 : undefined,
         background: 'linear-gradient(180deg, var(--bg1), var(--bg0))',
         borderRight: narrow ? 'none' : '1px solid var(--bd)',
         borderBottom: narrow ? '1px solid var(--bd)' : 'none',
         display: 'flex',
         flexDirection: 'column',
         gap: 0,
-        overflow: 'hidden',
+        overflow: narrow ? 'visible' : 'hidden',
         flexShrink: 0,
       }}>
         <div style={{ padding: narrow ? '14px 16px 8px' : '20px 18px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
@@ -294,15 +293,15 @@ export function VaultTab({ oeuvres, tM }: Props) {
         <button
           className={`vault-kind ${!kindFilter && currentPath.length === 0 ? 'active' : ''}`}
           onClick={() => { setKindFilter(null); setCurrentPath([]) }}
-          style={{ margin: '0 10px 8px', minHeight: 40, borderRadius: 8, paddingLeft: 12, textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10 }}
+          style={{ margin: '0 10px 8px', minHeight: 40, borderRadius: 8, paddingLeft: 12, textAlign: 'left', display: narrow ? 'none' : 'flex', alignItems: 'center', gap: 10 }}
         >
           <span>📂</span> {t('overview')} ({docs.length})
         </button>
 
-        <div className="t-eyebrow" style={{ padding: '14px 18px 8px', fontSize: 10, opacity: 0.5, letterSpacing: 1.5 }}>
+        <div className="t-eyebrow" style={{ display: narrow ? 'none' : 'block', padding: '14px 18px 8px', fontSize: 10, opacity: 0.5, letterSpacing: 1.5 }}>
           {t('ramifications').toUpperCase()}
         </div>
-        <div style={{ flex: 1, overflow: 'auto', padding: '0 10px', minHeight: 0 }}>
+        <div style={{ display: narrow ? 'none' : 'block', flex: 1, overflow: 'auto', padding: '0 10px', minHeight: 0 }}>
           <button
             className={`vault-kind ${currentPath.length === 0 && !kindFilter ? 'active' : ''}`}
             onClick={() => { setCurrentPath([]); setKindFilter(null) }}
@@ -313,9 +312,9 @@ export function VaultTab({ oeuvres, tM }: Props) {
               const res = await moveDocuments([draggedDoc.id], null)
               if ('ok' in res) setDocs(prev => prev.map(d => d.id === draggedDoc.id ? { ...d, folder: null } : d))
             }}
-            style={{ 
-              width: '100%', 
-              borderRadius: 8, 
+            style={{
+              width: '100%',
+              borderRadius: 8,
               marginBottom: 4,
               paddingLeft: 12,
               textAlign: 'left',
@@ -330,11 +329,11 @@ export function VaultTab({ oeuvres, tM }: Props) {
             <span style={{ fontSize: 16 }}>🏠</span>
             <span>{t('main')}</span>
           </button>
-          <FolderTree 
-            tree={folderTree} 
+          <FolderTree
+            tree={folderTree}
             level={1}
-            currentPath={currentPath} 
-            onSelect={(path) => { setCurrentPath(path); setKindFilter(null) }} 
+            currentPath={currentPath}
+            onSelect={(path) => { setCurrentPath(path); setKindFilter(null) }}
             onDrop={async (doc, target) => {
               const res = await moveDocuments([doc.id], target)
               if ('ok' in res) setDocs(prev => prev.map(d => d.id === doc.id ? { ...d, folder: target } : d))
@@ -349,10 +348,10 @@ export function VaultTab({ oeuvres, tM }: Props) {
           />
         </div>
 
-        <div className="t-eyebrow" style={{ padding: '14px 18px 8px', fontSize: 10, opacity: 0.5, letterSpacing: 1.5 }}>
+        <div className="t-eyebrow" style={{ display: narrow ? 'none' : 'block', padding: '14px 18px 8px', fontSize: 10, opacity: 0.5, letterSpacing: 1.5 }}>
           {t('vault_types')}
         </div>
-        <div style={{ padding: '0 10px 16px' }}>
+        <div style={{ display: narrow ? 'none' : 'block', padding: '0 10px 16px' }}>
           {DOC_KINDS.map(({ value, labelKey }) => {
             const count = docs.filter((d) => d.kind === value).length
             return (
@@ -370,11 +369,11 @@ export function VaultTab({ oeuvres, tM }: Props) {
           })}
         </div>
 
-        <div style={{ marginTop: 'auto', padding: narrow ? 12 : 16, display: 'flex', flexDirection: narrow ? 'row' : 'column', gap: 8, borderTop: '1px solid var(--bd)', background: 'rgba(0,0,0,0.08)' }}>
-          <button className="btn primary sm" style={{ flex: narrow ? 1 : undefined, minHeight: 40, width: narrow ? undefined : '100%', justifyContent: 'flex-start' }} onClick={() => setShowUpload(true)}>
+        <div style={{ marginTop: narrow ? 0 : 'auto', padding: narrow ? '8px 12px 12px' : 16, display: 'flex', flexDirection: narrow ? 'row' : 'column', gap: 8, borderTop: narrow ? 'none' : '1px solid var(--bd)', background: narrow ? 'transparent' : 'rgba(0,0,0,0.08)' }}>
+          <button className="btn primary sm" style={{ flex: narrow ? 1 : undefined, minHeight: narrow ? 44 : 40, width: narrow ? undefined : '100%', justifyContent: narrow ? 'center' : 'flex-start' }} onClick={() => setShowUpload(true)}>
             + {t('import')}
           </button>
-          <button className="btn ghost sm" style={{ flex: narrow ? 1 : undefined, minHeight: 40, width: narrow ? undefined : '100%', justifyContent: 'flex-start' }} onClick={() => {
+          <button className="btn ghost sm" style={{ flex: narrow ? 1 : undefined, minHeight: narrow ? 44 : 40, width: narrow ? undefined : '100%', justifyContent: narrow ? 'center' : 'flex-start' }} onClick={() => {
             const name = prompt(t('newFolder') + ' :')
             if (name) {
               const fullPath = currentFolderStr ? `${currentFolderStr}/${name}` : name
@@ -388,7 +387,7 @@ export function VaultTab({ oeuvres, tM }: Props) {
           }}>
             📁 {t('newFolder')}
           </button>
-          <button className="btn ghost sm" style={{ flex: narrow ? 1 : undefined, minHeight: 40, width: narrow ? undefined : '100%' }} onClick={() => setShowCoa(true)}>
+          <button className="btn ghost sm" style={{ flex: narrow ? 1 : undefined, minHeight: narrow ? 44 : 40, width: narrow ? undefined : '100%' }} onClick={() => setShowCoa(true)}>
             ✦ {t('generateCoa')}
           </button>
         </div>
@@ -397,29 +396,29 @@ export function VaultTab({ oeuvres, tM }: Props) {
       {/* ── Centre: document list ──────────────────────────────── */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0, background: 'var(--bg1)' }}>
         {/* Breadcrumbs & Toolbar */}
-        <div style={{ 
-          padding: narrow ? '12px 14px' : '14px 20px', 
-          borderBottom: '1px solid var(--bd)', 
-          flexShrink: 0, 
-          display: 'flex', 
+        <div style={{
+          padding: narrow ? '12px 14px' : '14px 20px',
+          borderBottom: '1px solid var(--bd)',
+          flexShrink: 0,
+          display: 'flex',
           flexDirection: narrow ? 'column' : 'row',
-          gap: narrow ? 10 : 12, 
+          gap: narrow ? 10 : 12,
           alignItems: narrow ? 'stretch' : 'center',
           background: 'var(--bg1)',
           boxShadow: '0 1px 0 rgba(255,255,255,0.02)',
         }}>
           <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, overflowX: 'auto' }}>
-            <span 
-              onClick={() => setCurrentPath([])} 
+            <span
+              onClick={() => setCurrentPath([])}
               style={{ cursor: 'pointer', color: currentPath.length === 0 ? 'var(--tx)' : 'var(--tx3)', whiteSpace: 'nowrap' }}
             >{t('vault')}</span>
             {currentPath.map((part, i) => (
               <React.Fragment key={i}>
                 <span style={{ opacity: 0.3 }}>/</span>
-                <span 
+                <span
                   onClick={() => setCurrentPath(currentPath.slice(0, i + 1))}
-                  style={{ 
-                    cursor: 'pointer', 
+                  style={{
+                    cursor: 'pointer',
                     fontWeight: i === currentPath.length - 1 ? 500 : 400,
                     color: i === currentPath.length - 1 ? 'var(--tx)' : 'var(--tx3)'
                   }}
@@ -437,8 +436,8 @@ export function VaultTab({ oeuvres, tM }: Props) {
               <span className="t-mono-sm" style={{ alignSelf: 'center', color: 'var(--tx3)' }}>
                 {t('vault_selected_fmt').replace('{n}', String(selectedIds.length))}
               </span>
-              <button 
-                className="btn ghost sm" 
+              <button
+                className="btn ghost sm"
                 style={{ color: '#ff8888', minHeight: 36 }}
                 onClick={() => {
                   if (!confirm(t('vault_confirm_delete_n').replace('{n}', String(selectedIds.length)))) return
@@ -452,7 +451,7 @@ export function VaultTab({ oeuvres, tM }: Props) {
                   })
                 }}
               >{t('delete')}</button>
-              <button 
+              <button
                 className="btn ghost sm"
                 style={{ minHeight: 36 }}
                 onClick={() => {
@@ -485,18 +484,18 @@ export function VaultTab({ oeuvres, tM }: Props) {
             </label>
 
           <div aria-label={t('viewMode')} style={{ display: 'flex', border: '1px solid var(--bd)', borderRadius: 8, overflow: 'hidden', background: 'var(--bg0)' }}>
-            <button 
+            <button
               onClick={() => setView('list')}
               title={t('listView')}
-              style={{ 
+              style={{
                 minHeight: 40, minWidth: 42, padding: '6px 12px', background: view === 'list' ? 'var(--bg2)' : 'transparent',
                 color: view === 'list' ? 'var(--ac)' : 'var(--tx3)', border: 'none', cursor: 'pointer'
               }}
             >≡</button>
-            <button 
+            <button
               onClick={() => setView('grid')}
               title={t('gridView')}
-              style={{ 
+              style={{
                 minHeight: 40, minWidth: 42, padding: '6px 12px', background: view === 'grid' ? 'var(--bg2)' : 'transparent',
                 color: view === 'grid' ? 'var(--ac)' : 'var(--tx3)', border: 'none', cursor: 'pointer'
               }}
@@ -505,7 +504,7 @@ export function VaultTab({ oeuvres, tM }: Props) {
           </div>
         </div>
 
-        <div style={{ flex: 1, overflow: 'auto', minHeight: 0, background: 'var(--bg0)' }}>
+        <div style={{ flex: 1, overflow: 'auto', minHeight: 0, background: 'var(--bg0)', WebkitOverflowScrolling: 'touch' }}>
           {loading ? (
             <LoadingShell title={t('vault_loading')} />
           ) : filtered.length === 0 ? (
@@ -516,6 +515,30 @@ export function VaultTab({ oeuvres, tM }: Props) {
               />
             </div>
           ) : view === 'list' ? (
+            narrow ? (
+              <VaultMobileList
+                folders={visibleFolders}
+                docs={filtered}
+                selectedId={selected?.id}
+                selectedIds={selectedIds}
+                onEnterFolder={(f) => setCurrentPath([...currentPath, f])}
+                onSelect={(doc) => setSelected(selected?.id === doc.id ? null : doc)}
+                onToggleSelect={(id) => setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
+                onDownload={handleDownload}
+                onRename={handleRenameFile}
+                onRenameFolder={(oldName, newName) => {
+                  startDel(async () => {
+                    const oldPath = currentFolderStr ? `${currentFolderStr}/${oldName}` : oldName
+                    const newPath = currentFolderStr ? `${currentFolderStr}/${newName}` : newName
+                    const res = await renameFolder(oldPath, newPath)
+                    if ('ok' in res) reloadDocs()
+                    else alert(`${t('error_prefix')} ${stringifyError(res.error)}`)
+                  })
+                }}
+                kindLabel={docKindLabel}
+                kindColor={kindColor}
+              />
+            ) : (
             <table style={{ width: '100%', minWidth: narrow ? 620 : undefined, borderCollapse: 'separate', borderSpacing: 0, fontSize: 13 }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--bd)', background: 'var(--bg1)' }}>
@@ -526,8 +549,8 @@ export function VaultTab({ oeuvres, tM }: Props) {
               </thead>
               <tbody>
                 {visibleFolders.map(f => (
-                  <tr 
-                    key={`folder-${f}`} 
+                  <tr
+                    key={`folder-${f}`}
                     onClick={() => setCurrentPath([...currentPath, f])}
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={async (e) => {
@@ -548,8 +571,8 @@ export function VaultTab({ oeuvres, tM }: Props) {
                           <span style={{ marginRight: 8 }}>📁</span>
                           {f}
                         </div>
-                        <button 
-                          className="btn ghost sm" 
+                        <button
+                          className="btn ghost sm"
                           onClick={(e) => {
                             e.stopPropagation()
                             const newName = prompt(t('vault_rename_folder_prompt'), f)
@@ -595,10 +618,10 @@ export function VaultTab({ oeuvres, tM }: Props) {
                     >
                       <td style={{ padding: '12px 18px', color: 'var(--tx)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                          <input 
-                            type="checkbox" 
-                            checked={isChecked} 
-                            onChange={() => setSelectedIds(prev => prev.includes(doc.id) ? prev.filter(x => x !== doc.id) : [...prev, doc.id])} 
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => setSelectedIds(prev => prev.includes(doc.id) ? prev.filter(x => x !== doc.id) : [...prev, doc.id])}
                             onClick={e => e.stopPropagation()}
                           />
                           <span>{mimeIcon(doc.mime_type)}</span>
@@ -621,11 +644,11 @@ export function VaultTab({ oeuvres, tM }: Props) {
                         </div>
                       </td>
                       <td style={{ padding: '10px 18px' }}>
-                        <DocActions 
-                          doc={doc} 
+                        <DocActions
+                          doc={doc}
                           onDownload={() => handleDownload(doc)}
                           onRename={() => handleRenameFile(doc)}
-                          onDeleted={() => { setDocs((prev) => prev.filter((d) => d.id !== doc.id)); if (selected?.id === doc.id) setSelected(null) }} 
+                          onDeleted={() => { setDocs((prev) => prev.filter((d) => d.id !== doc.id)); if (selected?.id === doc.id) setSelected(null) }}
                         />
                       </td>
                     </tr>
@@ -633,13 +656,14 @@ export function VaultTab({ oeuvres, tM }: Props) {
                 })}
               </tbody>
             </table>
+            )
           ) : (
-            <VaultGrid 
+            <VaultGrid
               folders={visibleFolders}
-              docs={filtered} 
-              selectedId={selected?.id} 
+              docs={filtered}
+              selectedId={selected?.id}
               selectedIds={selectedIds}
-              onSelect={setSelected} 
+              onSelect={setSelected}
               onToggleSelect={(id) => setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
               onEnterFolder={(f) => setCurrentPath([...currentPath, f])}
               onDownload={handleDownload}
@@ -692,12 +716,12 @@ export function VaultTab({ oeuvres, tM }: Props) {
                 : isImage(selected.mime_type)
                   ? (
                     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-                      <Image 
-                        src={previewUrl} 
-                        alt={selected.name} 
+                      <Image
+                        src={previewUrl}
+                        alt={selected.name}
                         fill
                         unoptimized={true}
-                        style={{ objectFit: 'contain' }} 
+                        style={{ objectFit: 'contain' }}
                       />
                     </div>
                   )
@@ -712,9 +736,9 @@ export function VaultTab({ oeuvres, tM }: Props) {
               <Row label={t('vault_type')} value={docKindLabel(selected.kind)} />
             )}
             {selected.oeuvre_ids && selected.oeuvre_ids.length > 0 ? (
-              <Row 
-                label={selected.oeuvre_ids.length > 1 ? t('works_cap') : t('vault_work')} 
-                value={selected.oeuvre_ids.map(id => oeuvres.find(o => o.OeuvreID === id)?.Titre || `#${id}`).join(', ')} 
+              <Row
+                label={selected.oeuvre_ids.length > 1 ? t('works_cap') : t('vault_work')}
+                value={selected.oeuvre_ids.map(id => oeuvres.find(o => o.OeuvreID === id)?.Titre || `#${id}`).join(', ')}
               />
             ) : linkedWork && (
               <Row label={t('vault_work')} value={linkedWork.Titre ?? `#${linkedWork.OeuvreID}`} />
@@ -775,7 +799,7 @@ export function VaultTab({ oeuvres, tM }: Props) {
       )}
 
       {showEdit && editingDoc && (
-        <EditModal 
+        <EditModal
           doc={editingDoc}
           oeuvres={oeuvres}
           onClose={() => { setShowEdit(false); setEditingDoc(null); }}
@@ -848,10 +872,156 @@ function DocActions({ doc, onDownload, onRename, onDeleted }: { doc: VaultDoc; o
   )
 }
 
-function FolderTree({ 
-  tree, level, currentPath, onSelect, onDrop, onRename, parentPath = [] 
-}: { 
-  tree: any; level: number; currentPath: string[]; onSelect: (path: string[]) => void; onDrop: (d: VaultDoc, target: string) => void; onRename: (old: string, newP: string) => void; parentPath?: string[] 
+function VaultMobileList({
+  folders,
+  docs,
+  selectedId,
+  selectedIds,
+  onEnterFolder,
+  onSelect,
+  onToggleSelect,
+  onDownload,
+  onRename,
+  onRenameFolder,
+  kindLabel,
+  kindColor,
+}: {
+  folders: string[]
+  docs: VaultDoc[]
+  selectedId?: number
+  selectedIds: number[]
+  onEnterFolder: (folder: string) => void
+  onSelect: (doc: VaultDoc) => void
+  onToggleSelect: (id: number) => void
+  onDownload: (doc: VaultDoc) => void
+  onRename: (doc: VaultDoc) => void
+  onRenameFolder: (oldName: string, newName: string) => void
+  kindLabel: (kind: string) => string
+  kindColor: (kind: string) => { bg: string; tx: string }
+}) {
+  const { t } = useI18n()
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '12px max(12px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left))' }}>
+      {folders.map((folder) => (
+        <div
+          key={`folder-${folder}`}
+          role="button"
+          tabIndex={0}
+          onClick={() => onEnterFolder(folder)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') onEnterFolder(folder)
+          }}
+          style={{
+            minHeight: 64,
+            border: '1px solid var(--bd)',
+            borderRadius: 12,
+            background: 'rgba(200, 168, 110, 0.05)',
+            padding: '10px 12px',
+            display: 'grid',
+            gridTemplateColumns: 'minmax(0, 1fr) auto',
+            gap: 10,
+            alignItems: 'center',
+            color: 'var(--ac)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+            <span style={{ fontSize: 20 }}>📁</span>
+            <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>{folder}</span>
+          </div>
+          <button
+            type="button"
+            className="btn ghost sm"
+            onClick={(event) => {
+              event.stopPropagation()
+              const nextName = prompt(t('vault_rename_folder_prompt'), folder)
+              if (nextName && nextName !== folder) onRenameFolder(folder, nextName)
+            }}
+            style={{ minWidth: 44, minHeight: 44 }}
+            aria-label={t('vault_rename_folder_prompt')}
+          >
+            ✎
+          </button>
+        </div>
+      ))}
+
+      {docs.map((doc) => {
+        const active = selectedId === doc.id
+        const checked = selectedIds.includes(doc.id)
+        const colors = doc.kind ? kindColor(doc.kind) : null
+
+        return (
+          <div
+            key={doc.id}
+            role="button"
+            tabIndex={0}
+            onClick={() => onSelect(doc)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') onSelect(doc)
+            }}
+            style={{
+              border: checked ? '1px solid var(--ac)' : active ? '1px solid var(--ac)66' : '1px solid var(--bd)',
+              borderRadius: 12,
+              background: checked ? 'rgba(200, 168, 110, 0.1)' : active ? 'var(--bg2)' : 'var(--bg1)',
+              padding: 12,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 10,
+              minWidth: 0,
+            }}
+          >
+            <div style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', gap: 10, alignItems: 'start' }}>
+              <input
+                type="checkbox"
+                checked={checked}
+                onChange={() => onToggleSelect(doc.id)}
+                onClick={(event) => event.stopPropagation()}
+                aria-label={doc.name}
+                style={{ width: 22, height: 22, marginTop: 2 }}
+              />
+              <div style={{ minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                  <span>{mimeIcon(doc.mime_type)}</span>
+                  <span style={{ color: 'var(--tx)', fontWeight: 600, overflowWrap: 'anywhere' }}>{doc.name}</span>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8, alignItems: 'center' }}>
+                  {doc.kind && colors && (
+                    <span style={{
+                      fontSize: 10,
+                      padding: '3px 7px',
+                      borderRadius: 999,
+                      background: colors.bg,
+                      color: colors.tx,
+                      textTransform: 'uppercase',
+                      letterSpacing: 0.5,
+                      fontWeight: 600,
+                    }}>
+                      {kindLabel(doc.kind)}
+                    </span>
+                  )}
+                  <span className="t-mono-xs" style={{ color: 'var(--tx3)' }}>{formatSize(doc.file_size ?? 0)}</span>
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
+              <button type="button" className="btn ghost sm" onClick={(event) => { event.stopPropagation(); onRename(doc) }} style={{ minHeight: 44 }}>
+                ✎ {t('renameFile')}
+              </button>
+              <button type="button" className="btn ghost sm" onClick={(event) => { event.stopPropagation(); onDownload(doc) }} style={{ minHeight: 44 }}>
+                ↓ {t('vault_download')}
+              </button>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function FolderTree({
+  tree, level, currentPath, onSelect, onDrop, onRename, parentPath = []
+}: {
+  tree: any; level: number; currentPath: string[]; onSelect: (path: string[]) => void; onDrop: (d: VaultDoc, target: string) => void; onRename: (old: string, newP: string) => void; parentPath?: string[]
 }) {
   const { t } = useI18n()
   const children = Object.values(tree.children).sort((a: any, b: any) => a.name.localeCompare(b.name))
@@ -879,7 +1049,7 @@ function FolderTree({
                 // For simplicity, we assume VaultTab provides the onDrop handler
                 // and we'll trigger it with the global 'draggedDoc' which we can move to a higher state or context
               }}
-              style={{ 
+              style={{
                 paddingLeft: 12 + level * 16,
                 fontSize: 12,
                 opacity: isActive ? 1 : 0.8,
@@ -898,9 +1068,9 @@ function FolderTree({
                 {Object.keys(child.children).length > 0 ? (isExpanded ? '▼' : '▶') : '•'}
               </span>
               <span style={{ fontSize: 14 }}>{isExpanded ? '📂' : '📁'}</span>
-              <span style={{ 
-                overflow: 'hidden', 
-                textOverflow: 'ellipsis', 
+              <span style={{
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
                 fontWeight: isActive ? 600 : 400
               }}>{child.name}</span>
@@ -928,11 +1098,11 @@ function FolderTree({
               >✎</span>
             </button>
             {isExpanded && Object.keys(child.children).length > 0 && (
-              <FolderTree 
-                tree={child} 
-                level={level + 1} 
-                currentPath={currentPath} 
-                onSelect={onSelect} 
+              <FolderTree
+                tree={child}
+                level={level + 1}
+                currentPath={currentPath}
+                onSelect={onSelect}
                 onDrop={onDrop}
                 onRename={onRename}
                 parentPath={fullPath}
@@ -945,20 +1115,23 @@ function FolderTree({
   )
 }
 
-function VaultGrid({ 
+function VaultGrid({
   folders, docs, selectedId, selectedIds, onSelect, onToggleSelect, onEnterFolder, onDownload, onRename, onDrop, onRenameFolder, kindLabel
-}: { 
+}: {
   folders: string[]; docs: VaultDoc[]; selectedId?: number; selectedIds: number[]; onSelect: (d: VaultDoc) => void; onToggleSelect: (id: number) => void; onEnterFolder: (f: string) => void; onDownload: (d: VaultDoc) => void; onRename: (d: VaultDoc) => void; onDrop: (d: VaultDoc, f: string) => void; onRenameFolder: (o: string, n: string) => void; kindLabel: (kind: string) => string
 }) {
   const { t } = useI18n()
+  const narrow = useMediaQuery('(max-width: 767px)')
   const [dragged, setDragged] = useState<VaultDoc | null>(null)
 
   return (
     <div style={{
       display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))',
-      gap: 18,
-      padding: 20,
+      gridTemplateColumns: narrow ? '1fr' : 'repeat(auto-fill, minmax(190px, 1fr))',
+      gap: narrow ? 12 : 18,
+      padding: narrow
+        ? '12px max(12px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left))'
+        : 20,
     }}>
       {folders.map(f => (
         <div
@@ -986,9 +1159,9 @@ function VaultGrid({
           </div>
           <div style={{ padding: 12, fontSize: 13, fontWeight: 500, color: 'var(--ac)', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
             {f}
-            <button 
-              className="btn ghost sm" 
-              style={{ padding: '2px 4px', fontSize: 10, minHeight: 28 }}
+            <button
+              className="btn ghost sm"
+              style={{ padding: '2px 8px', fontSize: 10, minHeight: narrow ? 44 : 28, minWidth: narrow ? 44 : undefined }}
               onClick={(e) => {
                 e.stopPropagation()
                 const n = prompt(t('vault_rename_folder_prompt'), f)
@@ -1026,14 +1199,14 @@ function VaultGrid({
             onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
             onMouseLeave={e => e.currentTarget.style.transform = 'none'}
           >
-            <div 
-              style={{ position: 'absolute', top: 8, left: 8, zIndex: 2 }}
+            <div
+              style={{ position: 'absolute', top: 8, left: 8, zIndex: 2, minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-start' }}
               onClick={e => e.stopPropagation()}
             >
-              <input 
-                type="checkbox" 
-                checked={checked} 
-                onChange={() => onToggleSelect(doc.id)} 
+              <input
+                type="checkbox"
+                checked={checked}
+                onChange={() => onToggleSelect(doc.id)}
               />
             </div>
 
@@ -1059,24 +1232,24 @@ function VaultGrid({
               )}
             </div>
             <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <div style={{ 
-                fontSize: 13, fontWeight: 500, color: 'var(--tx)', 
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' 
+              <div style={{
+                fontSize: 13, fontWeight: 500, color: 'var(--tx)',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
               }}>
                 {doc.name}
               </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ fontSize: 11, color: 'var(--tx3)' }}>{formatSize(doc.file_size ?? 0)}</div>
                   <div style={{ display: 'flex', gap: 2 }}>
-                    <button 
-                      className="btn ghost sm" 
+                    <button
+                      className="btn ghost sm"
                       onClick={e => { e.stopPropagation(); onRename(doc) }}
-                      style={{ padding: '2px 6px', minHeight: 28 }}
+                      style={{ padding: '2px 8px', minHeight: narrow ? 44 : 28, minWidth: narrow ? 44 : undefined }}
                     >✎</button>
-                    <button 
-                      className="btn ghost sm" 
+                    <button
+                      className="btn ghost sm"
                       onClick={e => { e.stopPropagation(); onDownload(doc) }}
-                      style={{ padding: '2px 6px', minHeight: 28 }}
+                      style={{ padding: '2px 8px', minHeight: narrow ? 44 : 28, minWidth: narrow ? 44 : undefined }}
                     >↓</button>
                   </div>
                 </div>
@@ -1106,9 +1279,9 @@ function UploadModal({
   const [showCust, setShowCust] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const filtered = q.trim() 
-    ? oeuvres.filter(o => 
-        (o.Titre?.toLowerCase().includes(q.toLowerCase())) || 
+  const filtered = q.trim()
+    ? oeuvres.filter(o =>
+        (o.Titre?.toLowerCase().includes(q.toLowerCase())) ||
         (String(o.OeuvreID) === q.trim())
       ).slice(0, 8)
     : []
@@ -1157,9 +1330,9 @@ function UploadModal({
 
         <div>
           <label className="t-label" style={{ display: 'block', marginBottom: 6 }}>Type</label>
-          <select 
-            name="kind" 
-            className="input" 
+          <select
+            name="kind"
+            className="input"
             style={{ width: '100%' }}
             onChange={(e) => setShowCust(e.target.value === 'custom')}
           >
@@ -1170,10 +1343,10 @@ function UploadModal({
             <option value="custom" style={{ color: 'var(--ac)' }}>+ Autre...</option>
           </select>
           {showCust && (
-            <input 
-              name="custom_kind" 
-              className="input" 
-              placeholder="Saisir le type..." 
+            <input
+              name="custom_kind"
+              className="input"
+              placeholder="Saisir le type..."
               style={{ width: '100%', marginTop: 8 }}
               autoFocus
             />
@@ -1183,22 +1356,22 @@ function UploadModal({
         <div>
           <label className="t-label" style={{ display: 'block', marginBottom: 6 }}>Œuvre(s) associée(s)</label>
           <div style={{ border: '1px solid var(--bd)', padding: 8, background: 'var(--bg0)' }}>
-            <input 
-              className="input sm" 
-              placeholder="Rechercher une œuvre..." 
+            <input
+              className="input sm"
+              placeholder="Rechercher une œuvre..."
               value={q}
               onChange={e => setQ(e.target.value)}
               style={{ width: '100%', marginBottom: 8, fontSize: 11 }}
             />
-            
+
             {filtered.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 8, borderBottom: '1px solid var(--bd)', paddingBottom: 8 }}>
                 {filtered.map(o => (
-                  <button 
+                  <button
                     key={o.OeuvreID}
                     type="button"
                     onClick={() => toggleId(o.OeuvreID)}
-                    style={{ 
+                    style={{
                       textAlign: 'left', padding: '6px 10px', fontSize: 12, background: 'var(--bg1)', border: 'none',
                       color: selIds.includes(o.OeuvreID) ? 'var(--ac)' : 'var(--tx2)', cursor: 'pointer'
                     }}
@@ -1227,10 +1400,10 @@ function UploadModal({
 
         <div>
           <label className="t-label" style={{ display: 'block', marginBottom: 6 }}>Dossier</label>
-          <input 
-            name="folder" 
-            className="input" 
-            placeholder="Ex: Projet 2026, FacturesJackson..." 
+          <input
+            name="folder"
+            className="input"
+            placeholder="Ex: Projet 2026, FacturesJackson..."
             style={{ width: '100%' }}
           />
         </div>
@@ -1343,19 +1516,33 @@ function CoaModal({
 // ── Shared overlay wrapper ────────────────────────────────────────────────
 
 function Overlay({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+  const narrow = useMediaQuery('(max-width: 767px)')
+
   return (
     <div
       onClick={onClose}
       style={{
         position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
-        zIndex: 80, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        zIndex: 80,
+        display: 'flex',
+        alignItems: narrow ? 'flex-end' : 'center',
+        justifyContent: 'center',
+        padding: narrow
+          ? 'max(12px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left))'
+          : 0,
       }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
           background: 'var(--bg1)', border: '1px solid var(--bd)',
-          padding: 32, width: 480, maxWidth: '95vw', maxHeight: '90vh', overflow: 'auto',
+          padding: narrow ? 18 : 32,
+          width: narrow ? '100%' : 480,
+          maxWidth: narrow ? '100%' : '95vw',
+          maxHeight: narrow ? 'calc(100dvh - max(24px, env(safe-area-inset-top)) - max(14px, env(safe-area-inset-bottom)))' : '90vh',
+          overflow: 'auto',
+          borderRadius: narrow ? 16 : 0,
+          WebkitOverflowScrolling: 'touch',
         }}
       >
         {children}
@@ -1370,11 +1557,11 @@ function EditModal({ doc, oeuvres, onClose, onUpdated }: { doc: VaultDoc; oeuvre
   const [error,   setError]    = useState<string | null>(null)
   const [q,       setQ]        = useState('')
   const [selIds,  setSelIds]   = useState<number[]>(doc.oeuvre_ids || (doc.oeuvre_id ? [doc.oeuvre_id] : []))
-  
+
   const isCustomType = !DOC_KINDS.find(k => k.value === doc.kind)
   const [showCust, setShowCust] = useState(isCustomType)
 
-  const filtered = q.trim() 
+  const filtered = q.trim()
     ? oeuvres.filter(o => (o.Titre?.toLowerCase().includes(q.toLowerCase())) || (String(o.OeuvreID) === q.trim())).slice(0, 8)
     : []
 
@@ -1403,9 +1590,9 @@ function EditModal({ doc, oeuvres, onClose, onUpdated }: { doc: VaultDoc; oeuvre
 
         <div>
           <label className="t-label" style={{ display: 'block', marginBottom: 6 }}>Type</label>
-          <select 
-            name="kind" 
-            className="input" 
+          <select
+            name="kind"
+            className="input"
             style={{ width: '100%' }}
             defaultValue={isCustomType ? 'custom' : (doc.kind || '')}
             onChange={(e) => setShowCust(e.target.value === 'custom')}
@@ -1417,11 +1604,11 @@ function EditModal({ doc, oeuvres, onClose, onUpdated }: { doc: VaultDoc; oeuvre
             <option value="custom" style={{ color: 'var(--ac)' }}>+ Autre...</option>
           </select>
           {showCust && (
-            <input 
-              name="custom_kind" 
-              className="input" 
+            <input
+              name="custom_kind"
+              className="input"
               defaultValue={isCustomType ? (doc.kind || '') : ''}
-              placeholder="Saisir le type..." 
+              placeholder="Saisir le type..."
               style={{ width: '100%', marginTop: 8 }}
               autoFocus
             />
@@ -1430,11 +1617,11 @@ function EditModal({ doc, oeuvres, onClose, onUpdated }: { doc: VaultDoc; oeuvre
 
         <div>
           <label className="t-label" style={{ display: 'block', marginBottom: 6 }}>Dossier</label>
-          <input 
-            name="folder" 
-            className="input" 
+          <input
+            name="folder"
+            className="input"
             defaultValue={doc.folder || ''}
-            placeholder="Ex: Projet 2026, FacturesJackson..." 
+            placeholder="Ex: Projet 2026, FacturesJackson..."
             style={{ width: '100%' }}
           />
         </div>
@@ -1442,9 +1629,9 @@ function EditModal({ doc, oeuvres, onClose, onUpdated }: { doc: VaultDoc; oeuvre
         <div>
           <label className="t-label" style={{ display: 'block', marginBottom: 6 }}>Œuvre(s) associée(s)</label>
           <div style={{ border: '1px solid var(--bd)', padding: 8, background: 'var(--bg0)' }}>
-            <input 
-              className="input sm" 
-              placeholder="Rechercher une œuvre..." 
+            <input
+              className="input sm"
+              placeholder="Rechercher une œuvre..."
               value={q}
               onChange={e => setQ(e.target.value)}
               style={{ width: '100%', marginBottom: 10, fontSize: 13, padding: '6px 10px' }}
