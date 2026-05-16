@@ -9,7 +9,9 @@ NO AUTONOMY: No "GO" = No file edit.
 KISS: Minimal code. 50 lines > 200 lines. No bloat.
 CONFIRM DELETE: Always ask.
 COMMIT COMPLETE: Before every commit, run git diff --stat. Stage ALL modified source files. Never partial-commit. Exclude only build artifacts (tsconfig.tsbuildinfo, .next/).
-WORKTREE CLEANUP: At session end, remove all claude/* worktrees and branches except the active one. git worktree remove --force + git branch -D + git worktree prune.
+MAIN TRUTH: `origin/main` is the only release truth. Default work happens on real `main` tracking `origin/main`; checkpoint branches/worktrees are scratch only, never "done".
+DONE = PUSHED: Do not say done/clean/shipped unless intended changes are committed, checks are known, and `origin/main` contains the commit. If work is not on `origin/main`, call it "local draft".
+NO CHECKPOINT DRIFT: Do not create or rely on checkpoint branches/worktrees unless the repo owner explicitly asks. If temporary isolation is needed, merge/push back to `origin/main` before final.
 CAVEMAN CHAT: Stop verbosity. No "I've updated..." or "Here is...". Code only. 1-3 word status max.
 UI: bilingual only — obey 🌐 UI COPY when touching user-facing text.
 RESPONSIVE: obey **📱 MOBILE FIELD-TOOL** below (concept + contract; authoritative).
@@ -19,7 +21,7 @@ RESPONSIVE: obey **📱 MOBILE FIELD-TOOL** below (concept + contract; authorita
 🛠️ CMDS
 Next.js 15 (port 3000). npm dev | build | lint | **typecheck** (`npm run typecheck`). **Supabase TS types:** `npm run gen:types` — writes `lib/types/supabase.generated.ts` from the hosted project (requires `SUPABASE_ACCESS_TOKEN` + `NEXT_PUBLIC_SUPABASE_URL` in `.env.local`; see `.env.local.example`). E2E: `npm run test:e2e` (Playwright). Hub / mobile bar / field launcher (auth-gated): `npm run test:e2e:field` — sets `ATELIER_E2E=1` via [`scripts/run-atelier-e2e.mjs`](scripts/run-atelier-e2e.mjs); log in once in the dev server profile the tests use. Full suite: `npm run test:e2e` (e.g. atelier œuvres paging bar).
 Real app path: C:\Users\pppee\Documents\Claude\Projects\Art db\app
-Worktree edits → copy to real app (dev server runs from real app).
+Source of truth: real `main` + `origin/main`. If a temporary worktree is used for safety, it must be reconciled into `origin/main`; copying files is last-resort and must be reported.
 DEV SERVER: run `pwsh scripts/dev.ps1` from real app — kills port 3000, prints LAN IP for phone testing. If `/_next/static/*` returns 404, restart dev from this root; delete `.next` and hard-reload if a stale tab outlived a rebuild.
 WORKTREE START: immediately create `.claude/launch.json` = `{"version":"0.0.1","configurations":[]}` in the worktree root. This blocks the preview tool from walking up and stealing port 3000 with a no-env server.
 
@@ -29,7 +31,7 @@ WORKTREE START: immediately create `.claude/launch.json` = `{"version":"0.0.1","
 - Mutations: Server Actions ('use server') in `app/**/actions.ts` only. **Exception:** Route Handlers for OAuth callbacks (`app/auth/callback`, `app/api/calendar/*/callback`), read-only or external integration routes under `app/api/` (e.g. geocode, inventory broadcast) — not a substitute for domain mutations in actions.
 - **Reads (bootstrap):** On-demand or RSC-time reads may live in other `'use server'` modules under `app/atelier/` (e.g. [`reminders-actions.ts`](app/atelier/reminders-actions.ts), [`atelier-data-actions.ts`](app/atelier/atelier-data-actions.ts)) so Server Components and the client shell do not duplicate Supabase `(as any)` queries. **Writes** for domain tables still go through `app/**/actions.ts` (or the route-handler exceptions above).
 - Auth: Supabase SSR middleware enforces auth on all /atelier /hub /galerie routes. Admin = `is_admin()` RPC (joins `Contact.is_admin` via `auth_user_id`); editors = team but not admin. Old `profiles.role` is dead.
-- i18n: see **🌐 UI COPY** below (non-negotiable for anything user-facing). **Dictionary modularization (shipped):** keys in [`lib/i18n/dictionary/keys.ts`](lib/i18n/dictionary/keys.ts); copy in [`fr.ts`](lib/i18n/dictionary/fr.ts) / [`en.ts`](lib/i18n/dictionary/en.ts); barrel [`lib/i18n/dictionary.ts`](lib/i18n/dictionary.ts) re-exports `dict` + `DictKey`. Add new keys in **all three** (`keys.ts` union + `fr` + `en`).
+- i18n: see **🌐 UI COPY** below (non-negotiable for anything user-facing). New feature copy lives in one module under [`lib/i18n/messages/`](lib/i18n/messages/) via `defineMessages()` with FR+EN together. Legacy dictionary keys remain in [`lib/i18n/dictionary/`](lib/i18n/dictionary/) until touched; do not add new feature copy to the old three-file dictionary unless maintaining a legacy surface.
 - **ESLint:** `eslint-plugin-pem-i18n` (`file:eslint-rules`) — rule `pem-i18n/no-hardcoded-jsx-text` flags sentence-like JSX literals; legacy allow-off in [`.eslintrc.json`](.eslintrc.json) overrides (SalesTab, …). **Public route metadata:** [`lib/i18n/route-metadata.ts`](lib/i18n/route-metadata.ts) `routeMetadata(route, lang)` + `dict` keys `seo_*`; do not hand-roll duplicate EN blocks on new `page.tsx`.
 - Image upload: bytes validated as JPEG/PNG/WebP/GIF/AVIF/HEIC via Sharp before R2 PUT; stored originals normalized to **2100px long-side AVIF** q=50 + Artist/Copyright EXIF only (`uploadImage` in `app/atelier/works/actions.ts`); storage keys `W_{oid}_{seq}_{hash8}.avif` (hash from **raw** input bytes — `lib/image-upload.ts`). Sharp → 400px AVIF thumb → R2 via fetch + SigV4 (same pattern as AWS S3 SDK)
 - Supabase clients: createClient() (anon, RLS enforced) · createServiceClient() (service_role, admin bypass)
@@ -37,7 +39,7 @@ WORKTREE START: immediately create `.claude/launch.json` = `{"version":"0.0.1","
 - **R2 endpoint: ALL buckets are EU jurisdiction** → always use `https://<account_id>.eu.r2.cloudflarestorage.com`. Never use the global endpoint (no `.eu.` = NoSuchBucket or BadRequest). Applies to app SDK config, backup scripts, and any new tooling.
 
 🌐 UI COPY (bilingual — non-negotiable)
-All user-visible copy → `useI18n().t(key)` + `lib/i18n/dictionary.ts` (**DictKey** + **`dict.fr` + `dict.en`** each time). Exceptions: DB text, proper nouns, immutable data. **Scrutiny:** before finish, sweep the diff for JSX string literals & `alert`/`confirm`/titles/placeholders — hardcoded FR/EN = fix.
+All user-visible copy → `useI18n().t(key)` + `lib/i18n/messages/*.messages.ts` for new copy (FR+EN side by side). Exceptions: DB text, proper nouns, immutable data. **Scrutiny:** before finish, run `npm run i18n:check`, `npm run typecheck`, and `npm run lint`; sweep the diff for JSX string literals & `alert`/`confirm`/titles/placeholders — hardcoded FR/EN = fix.
 **Locale:** `toLocale*` / Intl → drive from **`lang`** (`fr-FR` vs `en-GB`), not a hardcoded locale.
 **Label maps:** if UI showed one static language map → wrong; use **`lang`** branch or paired dict keys (see `pipelineTypeLabel`).
 **Server Components:** no `useI18n` → pass translated strings down, client leaf, or `dict[lang][key]` at read time. **Speed:** add all keys for the feature in one edit; copy patterns from `TeamPortalClient` · `PipelineTab`.

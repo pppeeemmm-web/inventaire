@@ -1,0 +1,13 @@
+---
+description: Keep release work on origin/main
+alwaysApply: true
+---
+
+# Main Release Truth
+
+- `origin/main` is the only release truth. Work from real `main` tracking `origin/main` by default.
+- Checkpoint branches/worktrees are scratch only. Do not call them clean, done, shipped, or production truth.
+- Before final, run `git status --short --branch` and `git log --oneline origin/main..HEAD`.
+- If `main` is ahead, push it. If work is not on `origin/main`, report it as local draft and explain why.
+- Do not create checkpoint branches/worktrees unless the repo owner explicitly asks. If temporary isolation is needed, reconcile it into `origin/main` before final.
+- New UI copy goes in `lib/i18n/messages/*.messages.ts` with FR+EN together via `defineMessages()`. Avoid the legacy `keys.ts` + `fr.ts` + `en.ts` path for new feature copy.

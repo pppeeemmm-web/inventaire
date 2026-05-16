@@ -5,6 +5,14 @@
 - **Style:** Functional components; avoid `any` in TypeScript.
 - **Verification:** Before finishing a task, run `npm run lint`.
 
+## Source Of Truth
+
+- **`origin/main` is release truth.** Work from real `main` tracking `origin/main` by default; checkpoint branches/worktrees are scratch only and never count as done.
+- **Done means pushed.** Do not report a task as done/clean/shipped unless intended changes are committed, checks are known, and the commit is on `origin/main`. Otherwise call it a local draft.
+- **No branch maze.** Do not create or rely on checkpoint branches/worktrees unless the repo owner explicitly asks. If temporary isolation is needed, merge/push back to `origin/main` before final.
+- **Final git sanity:** before finishing, check `git status --short --branch` and `git log --oneline origin/main..HEAD`; if ahead, push `main` or clearly report why it is not production truth.
+- **New UI copy:** use `lib/i18n/messages/*.messages.ts` with `defineMessages()` for FR+EN together. Do not add new feature copy through the legacy `keys.ts` + `fr.ts` + `en.ts` triple path unless maintaining old legacy copy.
+
 ## Working agreement (repo owner)
 
 - **Parallelize** independent reads, searches, and edits until the current slice is complete.
