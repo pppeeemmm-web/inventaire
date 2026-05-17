@@ -5,22 +5,27 @@ import { useState } from 'react'
 import { thumbUrl, imageUrl } from '@/lib/data'
 import { useI18n } from '@/lib/i18n/context'
 
-export function WorkThumb({ 
-  file, alt, size = 128, displaySize = "40px", className, style, priority 
-}: { 
-  file: string; alt: string; size?: number; displaySize?: string; className?: string; style?: React.CSSProperties; priority?: boolean 
+function withCacheKey(src: string, cacheKey?: string): string {
+  if (!src || !cacheKey) return src
+  return `${src}${src.includes('?') ? '&' : '?'}v=${encodeURIComponent(cacheKey)}`
+}
+
+export function WorkThumb({
+  file, alt, size = 128, displaySize = "40px", className, style, priority, cacheKey
+}: {
+  file: string; alt: string; size?: number; displaySize?: string; className?: string; style?: React.CSSProperties; priority?: boolean; cacheKey?: string
 }) {
   const [errorFile, setErrorFile] = useState<string | null>(null)
 
-  const defaultSrc = (size > 400 ? imageUrl(file) : thumbUrl(file, size)) ?? ''
-  const fullSrc = imageUrl(file) ?? ''
-  
+  const defaultSrc = withCacheKey((size > 400 ? imageUrl(file) : thumbUrl(file, size)) ?? '', cacheKey)
+  const fullSrc = withCacheKey(imageUrl(file) ?? '', cacheKey)
+
   const src = errorFile === file ? fullSrc : defaultSrc
 
   return (
-    <img 
-      src={src} 
-      alt={alt} 
+    <img
+      src={src}
+      alt={alt}
       className={className}
       style={{ width: '100%', height: '100%', objectFit: 'cover', ...style }}
       loading={priority ? 'eager' : 'lazy'}

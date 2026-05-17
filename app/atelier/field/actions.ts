@@ -12,10 +12,67 @@ const TASK_TYPES = new Set(['suggestion', 'improvement', 'maintenance', 'backlog
 
 export type CreateFieldIssueResult = { ok: true } | { ok: false; error: string }
 
+function parseOptionalPositiveInt(raw: FormDataEntryValue | null): number | null {
+  if (typeof raw !== 'string' || raw.trim() === '') return null
+  const n = Number(raw)
+  return Number.isInteger(n) && n > 0 ? n : null
+}
+
 function makeIssuePhotoKey(buf: Buffer, extWithoutDot: string): string {
   const hash8 = crypto.createHash('sha256').update(buf).digest('hex').slice(0, 8)
   const safeExt = extWithoutDot.replace(/[^a-z0-9]/gi, '').slice(0, 4) || 'jpg'
   return `field-issue/${randomUUID()}_${hash8}.${safeExt}`
+}
+
+async function addProductionActionFromIssue({
+  supabase,
+  oeuvreId,
+  actionTypeId,
+  note,
+}: {
+  supabase: Awaited<ReturnType<typeof createClient>>
+  oeuvreId: number
+  actionTypeId: number
+  note: string
+}): Promise<boolean> {
+  const { data: existing, error: existingError } = await supabase
+    .from('work_action')
+    .select('id,note')
+    .eq('oeuvre_id', oeuvreId)
+    .eq('action_type_id', actionTypeId)
+    .eq('done', false)
+    .limit(1)
+    .maybeSingle()
+
+  if (existingError) {
+    console.error('[createFieldIssueReport:work_action:select]', existingError)
+    return false
+  }
+
+  if (existing) {
+    const mergedNote = [existing.note, note].filter(Boolean).join('\n\n---\n\n')
+    const { error: updateError } = await supabase
+      .from('work_action')
+      .update({ note: mergedNote })
+      .eq('id', existing.id)
+    if (updateError) {
+      console.error('[createFieldIssueReport:work_action:update]', updateError)
+      return false
+    }
+    return true
+  }
+
+  const { error: insertError } = await supabase.from('work_action').insert({
+    oeuvre_id: oeuvreId,
+    action_type_id: actionTypeId,
+    done: false,
+    note,
+  })
+  if (insertError) {
+    console.error('[createFieldIssueReport:work_action:insert]', insertError)
+    return false
+  }
+  return true
 }
 
 export async function createFieldIssueReport(formData: FormData): Promise<CreateFieldIssueResult> {
@@ -34,8 +91,28 @@ export async function createFieldIssueReport(formData: FormData): Promise<Create
   const title = typeof titleRaw === 'string' ? titleRaw.trim().slice(0, 300) : ''
   const details = typeof detailsRaw === 'string' ? detailsRaw.trim().slice(0, 12_000) : ''
   const type = typeof typeRaw === 'string' && TASK_TYPES.has(typeRaw) ? typeRaw : 'maintenance'
+  const oeuvreId = parseOptionalPositiveInt(formData.get('oeuvre_id'))
+  const actionTypeId = oeuvreId ? parseOptionalPositiveInt(formData.get('action_type_id')) : null
 
   if (!title) return { ok: false, error: 'missing_title' }
+
+  if (oeuvreId) {
+    const { data: work, error: workError } = await supabase
+      .from('Oeuvres')
+      .select('OeuvreID')
+      .eq('OeuvreID', oeuvreId)
+      .maybeSingle()
+    if (workError || !work) return { ok: false, error: 'invalid_link' }
+  }
+
+  if (actionTypeId) {
+    const { data: actionType, error: actionTypeError } = await supabase
+      .from('work_action_type')
+      .select('id')
+      .eq('id', actionTypeId)
+      .maybeSingle()
+    if (actionTypeError || !actionType) return { ok: false, error: 'invalid_link' }
+  }
 
   let photo_r2_key: string | null = null
   const file = formData.get('photo')
@@ -62,7 +139,7 @@ export async function createFieldIssueReport(formData: FormData): Promise<Create
   const severity =
     type === 'bug' ? 'high' : type === 'maintenance' ? 'medium' : 'low'
   const priority = type === 'bug' ? 'P2' : 'P3'
-  const { error } = await supabase.from('studio_task').insert({
+  const { data: task, error } = await supabase.from('studio_task').insert({
     action: title,
     details: details || null,
     type,
@@ -71,17 +148,40 @@ export async function createFieldIssueReport(formData: FormData): Promise<Create
     kind: 'field',
     severity,
     photo_r2_key,
-  })
+    oeuvre_id: oeuvreId,
+    work_action_type_id: actionTypeId,
+  }).select('id').single()
 
   if (error) {
     console.error('[createFieldIssueReport]', error)
     return { ok: false, error: 'insert_failed' }
   }
 
+  let productionActionOk: boolean | undefined
+  if (oeuvreId && actionTypeId) {
+    const noteParts = [`Signalement #${task.id}: ${title}`]
+    if (details) noteParts.push(details.slice(0, 500))
+    productionActionOk = await addProductionActionFromIssue({
+      supabase,
+      oeuvreId,
+      actionTypeId,
+      note: noteParts.join('\n\n'),
+    })
+  }
+
   await logSystemEvent({
     eventType: 'SYSTEM_CONFIG',
     tableName: 'studio_task',
-    metadata: { source: 'field_issue', type, severity, photo_r2_key },
+    rowId: String(task.id),
+    metadata: {
+      source: 'field_issue',
+      type,
+      severity,
+      photo_r2_key,
+      oeuvre_id: oeuvreId,
+      work_action_type_id: actionTypeId,
+      production_action_ok: productionActionOk,
+    },
   })
 
   revalidatePath('/hub')

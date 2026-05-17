@@ -38,6 +38,20 @@ interface WorkAction {
   note:           string | null
 }
 
+interface FieldIssue {
+  id:                  number
+  created_at:          string
+  action:              string
+  details:             string | null
+  type:                string | null
+  status:              string | null
+  priority:            string | null
+  severity:            string | null
+  oeuvre_id:           number | null
+  work_action_type_id: number | null
+  photo_r2_key:        string | null
+}
+
 const EXCLUDED_STATUSES: StatusKey[] = ['sold', 'gift', 'artist_archive', 'private_archive']
 
 
@@ -59,6 +73,7 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen, oeuvresPagi
   const [search,      setSearch]      = useState('')
   const [actionTypes, setActionTypes] = useState<ActionType[]>([])
   const [actions,     setActions]     = useState<WorkAction[]>([])
+  const [fieldIssues, setFieldIssues] = useState<FieldIssue[]>([])
   const [localOeuvres, setLocalOeuvres] = useState<Oeuvre[]>(oeuvres)
   const [loading,     setLoading]     = useState(true)
   const [editingTypes, setEditingTypes] = useState(false)
@@ -71,12 +86,21 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen, oeuvresPagi
   const sb = createClient()
 
   const loadData = useCallback(async () => {
-    const [types, { data: acts }] = await Promise.all([
+    const [types, { data: acts }, { data: issues }] = await Promise.all([
       getWorkActionTypes(sb),
       sb.from('work_action').select('*').eq('done', false),
+      sb
+        .from('studio_task')
+        .select('id,created_at,action,details,type,status,priority,severity,oeuvre_id,work_action_type_id,photo_r2_key')
+        .eq('kind', 'field')
+        .neq('status', 'completed')
+        .neq('status', 'dismissed')
+        .order('created_at', { ascending: false })
+        .limit(12),
     ])
     setActionTypes(types as ActionType[])
     if (acts) setActions(acts)
+    setFieldIssues((issues ?? []) as FieldIssue[])
     setLoading(false)
   }, [sb])
 
@@ -362,6 +386,13 @@ export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen, oeuvresPagi
           ⚙ {t('prod_tab_columns_btn')}
         </button>
       </div>
+
+      <MaterialOverview
+        fieldIssues={fieldIssues}
+        actionTypes={actionTypes}
+        oeuvresById={oeuvresById}
+        onOpen={onOpen}
+      />
 
       <PivotPanel<Oeuvre>
         rows={productionPivotRows}
@@ -690,6 +721,160 @@ function WorkCard({ o, tM, onMarkDone, onOpen }: {
         </div>
       )}
     </div>
+  )
+}
+
+const FIELD_ISSUE_TYPE_KEYS: Partial<Record<string, DictKey>> = {
+  suggestion: 'system_task_type_suggestion',
+  improvement: 'system_task_type_improvement',
+  maintenance: 'system_task_type_maintenance',
+  backlog: 'system_task_type_backlog',
+  bug: 'system_task_type_bug',
+}
+
+function issuePriorityColor(priority: string | null): string {
+  if (priority === 'P1') return '#e05252'
+  if (priority === 'P2') return '#d4843a'
+  if (priority === 'P4') return 'var(--tx3)'
+  return 'var(--ac)'
+}
+
+function MaterialOverview({
+  fieldIssues,
+  actionTypes,
+  oeuvresById,
+  onOpen,
+}: {
+  fieldIssues: FieldIssue[]
+  actionTypes: ActionType[]
+  oeuvresById: Map<number, Oeuvre>
+  onOpen: (o: Oeuvre) => void
+}) {
+  const { t, lang } = useI18n()
+  const linkedCount = fieldIssues.filter((issue) => issue.oeuvre_id && issue.work_action_type_id).length
+  const highCount = fieldIssues.filter((issue) => issue.severity === 'high' || issue.severity === 'critical').length
+  const unlinkedCount = fieldIssues.filter((issue) => !issue.oeuvre_id || !issue.work_action_type_id).length
+  const locale = lang === 'en' ? 'en-GB' : 'fr-FR'
+
+  return (
+    <section
+      aria-labelledby="material-overview-heading"
+      style={{
+        flexShrink: 0,
+        margin: '0 0 12px',
+        padding: 12,
+        border: '1px solid var(--bd)',
+        background: 'var(--bg0)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10,
+      }}
+    >
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '6px 12px' }}>
+        <div id="material-overview-heading" className="t-label">
+          {t('material_overview_title')}
+        </div>
+        <div className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 11 }}>
+          {t('material_overview_stats')
+            .replace('{open}', String(fieldIssues.length))
+            .replace('{high}', String(highCount))
+            .replace('{unlinked}', String(unlinkedCount))}
+        </div>
+      </div>
+      <div className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 11, lineHeight: 1.4 }}>
+        {t('material_overview_subtitle')}
+      </div>
+
+      {fieldIssues.length === 0 ? (
+        <div className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 11 }}>
+          {t('material_overview_empty')}
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 8 }}>
+          {fieldIssues.slice(0, 6).map((issue) => {
+            const work = issue.oeuvre_id ? oeuvresById.get(issue.oeuvre_id) : undefined
+            const actionType = issue.work_action_type_id
+              ? actionTypes.find((at) => at.id === issue.work_action_type_id)
+              : undefined
+            const typeKey = issue.type ? FIELD_ISSUE_TYPE_KEYS[issue.type] : undefined
+            const photoSrc = issue.photo_r2_key ? thumbUrl(issue.photo_r2_key) ?? imageUrl(issue.photo_r2_key) : null
+            const linkedLabel = work && actionType
+              ? t('material_overview_linked')
+                  .replace('{work}', `#${work.OeuvreID}${work.Titre ? ` · ${work.Titre}` : ''}`)
+                  .replace('{step}', workActionTypeDisplayLabel(actionType.id, actionType.label, t))
+              : issue.oeuvre_id
+                ? t('material_overview_work_only').replace('{id}', String(issue.oeuvre_id))
+                : t('material_overview_needs_triage')
+
+            return (
+              <article
+                key={issue.id}
+                style={{
+                  border: '1px solid var(--bd)',
+                  background: 'var(--bg1)',
+                  padding: 10,
+                  display: 'flex',
+                  gap: 10,
+                  minWidth: 0,
+                }}
+              >
+                {photoSrc ? (
+                  <Image
+                    src={photoSrc}
+                    alt=""
+                    width={54}
+                    height={54}
+                    unoptimized
+                    loading="lazy"
+                    style={{ width: 54, height: 54, objectFit: 'cover', border: '1px solid var(--bd)', flexShrink: 0 }}
+                  />
+                ) : null}
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', marginBottom: 5 }}>
+                    <span className="t-mono-sm" style={{ color: issuePriorityColor(issue.priority), fontSize: 10 }}>
+                      {issue.priority ?? 'P3'}
+                    </span>
+                    <span className="t-mono-sm" style={{ color: issue.severity === 'high' ? '#d4843a' : 'var(--tx3)', fontSize: 10 }}>
+                      {issue.severity ?? 'low'}
+                    </span>
+                    {typeKey ? (
+                      <span className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 10 }}>
+                        {t(typeKey)}
+                      </span>
+                    ) : null}
+                    <span className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 10 }}>
+                      {new Date(issue.created_at).toLocaleDateString(locale, { day: 'numeric', month: 'short' })}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--tx)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {issue.action}
+                  </div>
+                  <div className="t-mono-sm" style={{ color: work && actionType ? 'var(--ac)' : 'var(--rust)', fontSize: 10, marginTop: 5, lineHeight: 1.35 }}>
+                    {linkedLabel}
+                  </div>
+                  {work ? (
+                    <button
+                      type="button"
+                      className="btn ghost sm"
+                      onClick={() => onOpen(work)}
+                      style={{ marginTop: 8, minHeight: 32, fontSize: 11 }}
+                    >
+                      {t('material_overview_open_work')}
+                    </button>
+                  ) : null}
+                </div>
+              </article>
+            )
+          })}
+        </div>
+      )}
+
+      {linkedCount > 0 ? (
+        <div className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 10 }}>
+          {t('material_overview_linked_count').replace('{n}', String(linkedCount))}
+        </div>
+      ) : null}
+    </section>
   )
 }
 

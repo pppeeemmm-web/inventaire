@@ -74,6 +74,7 @@ async function syncPipelineWithBooleans(
 export type SaveResult   = { error: string } | { ok: true; newId?: number; pending?: boolean }
 export type DeleteResult = { error: string } | { ok: true }
 export type ImageResult  = { error: string } | { ok: true; image: WorkImage }
+export type ImageReplaceResult = { error: string } | { ok: true; image: WorkImage; cacheKey: string }
 
 /** Minimal snapshot for undo after save (status + pipeline booleans + junctions). */
 export type WorkRevertSnapshot = {
@@ -328,7 +329,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
     const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '/')
     const originEntry = `[${dateStr}] Atelier`
     const historiqueAppend = formData.get('historique_append') as string | null
-    const initialHistorique = historiqueAppend 
+    const initialHistorique = historiqueAppend
       ? `${originEntry}\n${historiqueAppend}`
       : originEntry
 
@@ -871,17 +872,22 @@ async function r2Delete(filename: string): Promise<void> {
   if (!res.ok && res.status !== 404) throw new Error(`R2 DELETE ${res.status}: ${await res.text()}`)
 }
 
+type PreparedWorkImageUpload = {
+  sourceBuf: Buffer
+  sourceSha256: string
+  avifBuf: Buffer
+  thumbBuf: Buffer
+}
+
+function thumbNameFor(filename: string): string {
+  return `thumbs/${filename.replace(/\.[^.]+$/, '')}.avif`
+}
+
 /**
  * Normalize upload to 4000px long-side AVIF (q=50), strip EXIF except Artist/Copyright,
- * upload to R2 + 400px AVIF thumb. Filename hash uses raw input bytes (stable across encoders).
+ * and build the 400px AVIF thumb. Filename hash uses raw input bytes (stable across encoders).
  */
-async function uploadImage(
-  _supabase: SupabaseClient,
-  file: File,
-  oeuvreId: number,
-  seq: number,
-  uploadedBy?: string | null,
-): Promise<{ ok: true; filename: string } | { error: string }> {
+async function prepareWorkImageUpload(file: File): Promise<PreparedWorkImageUpload | { error: string }> {
   try {
     const buf = Buffer.from(await file.arrayBuffer())
     const check = await validateWorkImageBuffer(buf)
@@ -911,15 +917,6 @@ async function uploadImage(
       .avif({ quality: 50, effort: 4, chromaSubsampling: '4:4:4' })
       .toBuffer()
 
-    const filename = makeImageStorageFilename(oeuvreId, seq, buf, 'avif')
-    await r2Put(avifBuf, filename, 'image/avif', {
-      source: 'work_image',
-      classification: 'linked',
-      linkedRefs: [{ table: 'Oeuvres', column: 'OeuvreID', row_id: oeuvreId }],
-      uploadedBy,
-      metadata: { seq },
-    })
-
     const thumbBuf = await sharp(avifBuf)
       .ensureAlpha()
       .resize({
@@ -931,15 +928,89 @@ async function uploadImage(
       })
       .avif({ quality: 70, effort: 3, chromaSubsampling: '4:4:4' })
       .toBuffer()
-    const thumbName = `thumbs/${filename.replace(/\.[^.]+$/, '')}.avif`
-    await r2Put(thumbBuf, thumbName, 'image/avif', {
-      source: 'work_image_thumb',
-      classification: 'linked',
-      linkedRefs: [{ table: 'Oeuvres', column: 'OeuvreID', row_id: oeuvreId }],
-      uploadedBy,
-      metadata: { original_key: filename, seq },
-    })
 
+    return {
+      sourceBuf: buf,
+      sourceSha256: crypto.createHash('sha256').update(buf).digest('hex'),
+      avifBuf,
+      thumbBuf,
+    }
+  } catch (e) {
+    return { error: String(e) }
+  }
+}
+
+async function putPreparedWorkImage(
+  prepared: PreparedWorkImageUpload,
+  filename: string,
+  oeuvreId: number,
+  seq: number,
+  uploadedBy?: string | null,
+  source: 'work_image' | 'work_image_retouch' = 'work_image',
+): Promise<void> {
+  await r2Put(prepared.avifBuf, filename, 'image/avif', {
+    source,
+    classification: 'linked',
+    linkedRefs: [{ table: 'Oeuvres', column: 'OeuvreID', row_id: oeuvreId }],
+    uploadedBy,
+    metadata: { seq },
+  })
+
+  const thumbName = thumbNameFor(filename)
+  await r2Put(prepared.thumbBuf, thumbName, 'image/avif', {
+    source: `${source}_thumb`,
+    classification: 'linked',
+    linkedRefs: [{ table: 'Oeuvres', column: 'OeuvreID', row_id: oeuvreId }],
+    uploadedBy,
+    metadata: { original_key: filename, seq },
+  })
+}
+
+async function backupRetouchObject(
+  filename: string,
+  oeuvreId: number,
+  imageId: number,
+  uploadedBy?: string | null,
+  kind: 'original' | 'thumb' = 'original',
+): Promise<string | null> {
+  const day = new Date().toISOString().slice(0, 10)
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-')
+  const dst = `recycle/${day}/retouch/${stamp}/${filename}`
+  const bucket = (process.env.R2_BUCKET ?? 'paintings').trim()
+  try {
+    await r2Copy(filename, dst)
+    await recordStorageObject({
+      bucket,
+      objectKey: dst,
+      source: 'work_image_retouch_backup',
+      classification: 'recycle',
+      status: 'present',
+      linkedRefs: [{ table: 'tblImage', column: 'ImageID', row_id: imageId }],
+      uploadedBy,
+      metadata: { original_key: filename, oeuvre_id: oeuvreId, kind },
+    })
+    return dst
+  } catch (e) {
+    console.warn('[works/actions] backupRetouchObject', filename, e)
+    return null
+  }
+}
+
+/**
+ * Normalize upload and add it as a new R2 work image + thumb.
+ */
+async function uploadImage(
+  _supabase: SupabaseClient,
+  file: File,
+  oeuvreId: number,
+  seq: number,
+  uploadedBy?: string | null,
+): Promise<{ ok: true; filename: string } | { error: string }> {
+  const prepared = await prepareWorkImageUpload(file)
+  if ('error' in prepared) return prepared
+  const filename = makeImageStorageFilename(oeuvreId, seq, prepared.sourceBuf, 'avif')
+  try {
+    await putPreparedWorkImage(prepared, filename, oeuvreId, seq, uploadedBy)
     return { ok: true, filename }
   } catch (e) {
     return { error: String(e) }
@@ -1077,6 +1148,76 @@ export async function addWorkImage(formData: FormData): Promise<ImageResult> {
 
   revalidatePath('/atelier')
   return { ok: true, image: inserted as WorkImage }
+}
+
+// Replace an existing image slot after external retouching.
+// Preserves ImageID, txtImageNameLink, and SeqNo so ordering, cover selection, and public URLs stay stable.
+export async function replaceWorkImage(formData: FormData): Promise<ImageReplaceResult> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié' }
+
+  const oeuvreId = parseInt(formData.get('oeuvre_id') as string, 10)
+  const imageId = parseInt(formData.get('image_id') as string, 10)
+  const file = formData.get('image') as File | null
+  if (isNaN(oeuvreId) || isNaN(imageId) || !file || file.size === 0) {
+    return { error: 'Paramètres invalides' }
+  }
+
+  const { data: img, error: imgErr } = await supabase
+    .from('tblImage')
+    .select('ImageID, OeuvreID, txtImageNameLink, SeqNo, DateAdded')
+    .eq('ImageID', imageId)
+    .eq('OeuvreID', oeuvreId)
+    .maybeSingle()
+  if (imgErr) return { error: `tblImage: ${imgErr.message}` }
+  if (!img?.txtImageNameLink || img.SeqNo == null) return { error: 'Image introuvable pour cette œuvre.' }
+
+  const prepared = await prepareWorkImageUpload(file)
+  if ('error' in prepared) return prepared
+
+  const filename = img.txtImageNameLink
+  const thumbName = thumbNameFor(filename)
+  const [originalBackup, thumbBackup] = await Promise.all([
+    backupRetouchObject(filename, oeuvreId, imageId, user.id, 'original'),
+    backupRetouchObject(thumbName, oeuvreId, imageId, user.id, 'thumb'),
+  ])
+
+  try {
+    await putPreparedWorkImage(prepared, filename, oeuvreId, img.SeqNo, user.id, 'work_image_retouch')
+  } catch (e) {
+    return { error: String(e) }
+  }
+
+  const updateRow: Record<string, unknown> = {
+    DateAdded: new Date().toISOString(),
+    sha256: prepared.sourceSha256,
+  }
+
+  const { data: updated, error: updateErr } = await supabase
+    .from('tblImage')
+    .update(updateRow as never)
+    .eq('ImageID', imageId)
+    .eq('OeuvreID', oeuvreId)
+    .select('ImageID, OeuvreID, txtImageNameLink, SeqNo, DateAdded')
+    .single()
+  if (updateErr || !updated) return { error: updateErr?.message ?? 'Erreur mise à jour image' }
+
+  await logSystemEvent({
+    eventType: 'VAULT_UPLOAD',
+    tableName: 'tblImage',
+    rowId: imageId,
+    newValue: filename,
+    metadata: {
+      source: 'image_retouch',
+      oeuvreId,
+      originalBackup,
+      thumbBackup,
+    },
+  })
+
+  revalidatePath('/atelier')
+  return { ok: true, image: updated as WorkImage, cacheKey: prepared.sourceSha256.slice(0, 12) }
 }
 
 // Delete one image from a work. Admin only — image deletion is irreversible at R2 layer.

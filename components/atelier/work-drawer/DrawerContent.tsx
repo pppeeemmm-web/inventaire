@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useEffect, useLayoutEffect, useState, useTransition, useCallback, useRef, useMemo } from 'react'
 import { useI18n } from '@/lib/i18n/context'
-import { saveWork, createLookup, addWorkImage, reorderWorkImages, deleteWorkImage } from '@/app/atelier/works/actions'
+import { saveWork, createLookup, addWorkImage, reorderWorkImages, deleteWorkImage, replaceWorkImage } from '@/app/atelier/works/actions'
 import { toast } from '@/lib/ui/toast'
 import { registerUndo, consumeUndo } from '@/lib/ui/undo'
 import { markAsGift } from '@/app/atelier/works/gift-actions'
@@ -45,6 +45,11 @@ import { DrawerWorkSessionsSection } from './DrawerWorkSessionsSection'
 import { DrawerContentGroupsSection } from './DrawerContentGroupsSection'
 import { setsEqualNum, setsEqualStr } from './drawer-content-utils'
 import { CreatableSelect, FIS, Label, SectionTitle, Switch, WfSwitch, cap } from './drawer-widgets'
+
+function withCacheKey(src: string, cacheKey?: string): string {
+  if (!src || !cacheKey) return src
+  return `${src}${src.includes('?') ? '&' : '?'}v=${encodeURIComponent(cacheKey)}`
+}
 
 export function DrawerContent({
   o,
@@ -148,12 +153,15 @@ export function DrawerContent({
   const panRafId = useRef<number | null>(null)
   const latestMouseRef = useRef({ x: 0, y: 0 })
   const drawerImageFileRef = useRef<HTMLInputElement>(null)
+  const retouchImageFileRef = useRef<HTMLInputElement>(null)
+  const retouchImageTargetRef = useRef<number | null>(null)
   const drawerUploadCancelRef = useRef(false)
   const [drawerImageBusy, setDrawerImageBusy] = useState(false)
   const [drawerUploadPct, setDrawerUploadPct] = useState(0)
   const [drawerUploadName, setDrawerUploadName] = useState('')
   const [drawerUploadIndex, setDrawerUploadIndex] = useState(0)
   const [drawerUploadTotal, setDrawerUploadTotal] = useState(0)
+  const [imageCacheKeys, setImageCacheKeys] = useState<Record<number, string>>({})
 
   const drawerSorted = useMemo(
     () => [...workImages].sort((a, b) => (a.SeqNo ?? 0) - (b.SeqNo ?? 0)),
@@ -215,6 +223,11 @@ export function DrawerContent({
     router.refresh()
   }
 
+  function drawerStartRetouch(imageId: number) {
+    retouchImageTargetRef.current = imageId
+    retouchImageFileRef.current?.click()
+  }
+
   async function onDrawerImageFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? [])
     e.target.value = ''
@@ -268,6 +281,54 @@ export function DrawerContent({
     }
   }
 
+  async function onRetouchImageFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] ?? null
+    e.target.value = ''
+    const imageId = retouchImageTargetRef.current
+    retouchImageTargetRef.current = null
+    if (!file || !o?.OeuvreID || !imageId) return
+
+    setDrawerImageBusy(true)
+    setDrawerUploadTotal(1)
+    setDrawerUploadIndex(1)
+    setDrawerUploadName(file.name)
+    const stopTick = startEstimatedUploadProgress(file.size, setDrawerUploadPct)
+    try {
+      const res = await withUploadRetry(
+        async () => {
+          const fd = new FormData()
+          fd.append('image', file)
+          fd.append('oeuvre_id', String(o.OeuvreID))
+          fd.append('image_id', String(imageId))
+          return replaceWorkImage(fd)
+        },
+        { onRetry: () => toast.info(t('upload_retry_toast')) },
+      )
+      if ('error' in res) {
+        toast.error(`${t('error_prefix')} ${res.error}`)
+        return
+      }
+      setWorkImages((prev: { ImageID: number; txtImageNameLink: string | null; SeqNo: number | null }[]) =>
+        prev.map((row) => (row.ImageID === imageId ? { ...row, ...res.image } : row)),
+      )
+      setImageCacheKeys((prev) => ({
+        ...prev,
+        [imageId]: res.cacheKey || String(Date.now()),
+      }))
+      toast.success(t('wf_images_retouch_uploaded'))
+      router.refresh()
+    } catch (err) {
+      toast.error(`${t('error_prefix')} ${String(err)}`)
+    } finally {
+      stopTick()
+      setDrawerImageBusy(false)
+      setDrawerUploadTotal(0)
+      setDrawerUploadIndex(0)
+      setDrawerUploadName('')
+      setDrawerUploadPct(0)
+    }
+  }
+
   // Sync on work change — layout pass resets state before effects (draft autosave) run,
   // and noteBaseline must match cleared notes or isDirty falsely trips during long-text load.
   const syncFormFieldsFromOeuvre = useCallback(() => {
@@ -300,6 +361,7 @@ export function DrawerContent({
     setLocalContacts(initialContacts)
     setCommentaires('')
     setHistorique('')
+    setImageCacheKeys({})
   }, [o, oeuvreThemeMap, oeuvreGroupMap, initialContacts])
 
   useLayoutEffect(() => {
@@ -903,15 +965,17 @@ export function DrawerContent({
   const cName = (c: DrawerContactRow) => c.NomInstitution || `${c.Prénom ?? ''} ${c.Nom ?? ''}`.trim() || `#${c.ContactID}`
   const sortedContacts = [...localContacts].sort((a, b) => cName(a).localeCompare(cName(b), 'fr'))
 
-  const thumbPreviewSrc = activeImgPath ? (thumbUrl(activeImgPath) ?? '') : ''
-  const fullPreviewSrc = activeImgPath ? (imageUrl(activeImgPath) ?? '') : ''
+  const activeImage = activeImgIdx >= 0 ? drawerSorted[activeImgIdx] : null
+  const activeImageCacheKey = activeImage ? imageCacheKeys[activeImage.ImageID] : undefined
+  const thumbPreviewSrc = activeImgPath ? withCacheKey(thumbUrl(activeImgPath) ?? '', activeImageCacheKey) : ''
+  const fullPreviewSrc = activeImgPath ? withCacheKey(imageUrl(activeImgPath) ?? '', activeImageCacheKey) : ''
   const showFullPreviewLayer = Boolean(activeImgPath && imgZoom > 1)
   /** Overlay rail is narrow: cap hero image so pipeline + fields stay reachable without huge scroll. */
   const previewMaxHeight = isPanel ? '70vh' : narrow ? '56vh' : 'min(44vh, 400px)'
 
   useEffect(() => {
     setFullPreviewReady(false)
-  }, [activeImgPath])
+  }, [activeImgPath, activeImageCacheKey])
 
   useEffect(() => {
     if (!showFullPreviewLayer) setFullPreviewReady(false)
@@ -1007,6 +1071,8 @@ export function DrawerContent({
         previewMaxHeight={previewMaxHeight}
         drawerImageFileRef={drawerImageFileRef}
         onDrawerImageFileChange={onDrawerImageFileChange}
+        retouchImageFileRef={retouchImageFileRef}
+        onRetouchImageFileChange={onRetouchImageFileChange}
         drawerImageBusy={drawerImageBusy}
         drawerUploadPct={drawerUploadPct}
         drawerUploadName={drawerUploadName}
@@ -1017,9 +1083,11 @@ export function DrawerContent({
         drawerSorted={drawerSorted}
         activeImgIdx={activeImgIdx}
         setActiveImgIdx={setActiveImgIdx}
+        imageCacheKeys={imageCacheKeys}
         drawerNudge={drawerNudge}
         drawerMakeCover={drawerMakeCover}
         drawerDeleteImage={drawerDeleteImage}
+        drawerStartRetouch={drawerStartRetouch}
       />
 
       {/* Title (inline edit) */}

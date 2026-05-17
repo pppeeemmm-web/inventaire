@@ -7,11 +7,30 @@ import { useCallback, useState } from 'react'
 import { createFieldIssueReport } from '@/app/atelier/field/actions'
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from '@/lib/ui/toast'
+import { workActionTypeDisplayLabel } from '@/lib/work-action-type-label'
 
-export function IssueNewForm() {
+export type IssueWorkOption = {
+  id: number
+  label: string
+}
+
+export type IssueActionTypeOption = {
+  id: number
+  label: string
+  color: string
+  sort_order: number
+}
+
+type IssueNewFormProps = {
+  workOptions: IssueWorkOption[]
+  actionTypeOptions: IssueActionTypeOption[]
+}
+
+export function IssueNewForm({ workOptions, actionTypeOptions }: IssueNewFormProps) {
   const { t } = useI18n()
   const router = useRouter()
   const [pending, setPending] = useState(false)
+  const [linkedWorkId, setLinkedWorkId] = useState('')
 
   const onSubmit = useCallback(
     async (e: React.FormEvent<HTMLFormElement>) => {
@@ -92,6 +111,48 @@ export function IssueNewForm() {
             <option value="backlog">{t('issue_type_backlog')}</option>
             <option value="suggestion">{t('issue_type_suggestion')}</option>
           </select>
+        </label>
+
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12 }}>
+          <span>{t('issue_field_work_label')}</span>
+          <select
+            name="oeuvre_id"
+            className="input"
+            value={linkedWorkId}
+            onChange={(e) => setLinkedWorkId(e.target.value)}
+            style={{ minHeight: 44, fontSize: 16 }}
+            aria-label={t('issue_field_work_label')}
+            data-testid="issue-work-select"
+          >
+            <option value="">{t('issue_field_work_none')}</option>
+            {workOptions.map((work) => (
+              <option key={work.id} value={work.id}>
+                {work.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12 }}>
+          <span>{t('issue_field_action_type_label')}</span>
+          <select
+            name="action_type_id"
+            className="input"
+            disabled={!linkedWorkId || actionTypeOptions.length === 0}
+            style={{ minHeight: 44, fontSize: 16, opacity: !linkedWorkId ? 0.65 : 1 }}
+            aria-label={t('issue_field_action_type_label')}
+            data-testid="issue-action-type-select"
+          >
+            <option value="">{t('issue_field_action_type_none')}</option>
+            {actionTypeOptions.map((actionType) => (
+              <option key={actionType.id} value={actionType.id}>
+                {workActionTypeDisplayLabel(actionType.id, actionType.label, t)}
+              </option>
+            ))}
+          </select>
+          <span className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 11, lineHeight: 1.35 }}>
+            {t('issue_field_link_hint')}
+          </span>
         </label>
 
         <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12 }}>

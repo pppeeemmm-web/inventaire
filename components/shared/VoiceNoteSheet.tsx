@@ -5,8 +5,43 @@ import { useI18n } from '@/lib/i18n/context'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import { createVoiceNote } from '@/app/atelier/notes/actions'
 import { VOICE_NOTE_BUCKETS, VOICE_NOTE_KINDS, type VoiceNoteBucket, type VoiceNoteKind } from '@/lib/voice-note-domain'
-import { startLiveDictation, startMicRecorder } from '@/lib/voice/web-speech'
+import { getLiveDictationAvailability, startLiveDictation, startMicRecorder } from '@/lib/voice/web-speech'
 import { toast } from '@/lib/ui/toast'
+
+type NextActionKey = 'today' | 'tomorrow' | 'week' | 'waiting' | 'none'
+
+const DRAFT_KEY = 'pem.voice-note.draft.v1'
+const NEXT_ACTIONS: NextActionKey[] = ['today', 'tomorrow', 'week', 'waiting', 'none']
+
+function nextActionLabelKey(k: NextActionKey): DictKey {
+  switch (k) {
+    case 'today':
+      return 'voice_next_action_today'
+    case 'tomorrow':
+      return 'voice_next_action_tomorrow'
+    case 'week':
+      return 'voice_next_action_week'
+    case 'waiting':
+      return 'voice_next_action_waiting'
+    case 'none':
+      return 'voice_next_action_none'
+  }
+}
+
+function dueForNextAction(k: NextActionKey): string | null {
+  const d = new Date()
+  if (k === 'none') return null
+  if (k === 'today') d.setHours(d.getHours() + 2)
+  if (k === 'tomorrow') {
+    d.setDate(d.getDate() + 1)
+    d.setHours(9, 0, 0, 0)
+  }
+  if (k === 'week' || k === 'waiting') {
+    d.setDate(d.getDate() + 7)
+    d.setHours(9, 0, 0, 0)
+  }
+  return d.toISOString()
+}
 
 function kindKey(k: VoiceNoteKind): DictKey {
   switch (k) {
@@ -66,6 +101,10 @@ export function VoiceNoteSheet({
   const [oeuvreId, setOeuvreId] = useState('')
   const [recording, setRecording] = useState(false)
   const [dictating, setDictating] = useState(false)
+  const [nextAction, setNextAction] = useState<NextActionKey>('tomorrow')
+  const [online, setOnline] = useState(true)
+  const [dictationAvailability, setDictationAvailability] =
+    useState<ReturnType<typeof getLiveDictationAvailability>>('unsupported')
   const [saving, setSaving] = useState(false)
   const [audioBlob, setAudioBlob] = useState<{ blob: Blob; mime: string } | null>(null)
 
@@ -78,22 +117,72 @@ export function VoiceNoteSheet({
     setTranscript('')
     setInterim('')
     setOeuvreId('')
+    setNextAction('tomorrow')
     setAudioBlob(null)
     recordStartedAt.current = null
   }, [])
 
   useEffect(() => {
     if (!open) return
+    setDictationAvailability(getLiveDictationAvailability())
+    setOnline(typeof navigator === 'undefined' ? true : navigator.onLine)
     const id = window.setTimeout(() => closeRef.current?.focus(), 0)
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
     }
+    const onOnline = () => setOnline(true)
+    const onOffline = () => setOnline(false)
     window.addEventListener('keydown', onKey)
+    window.addEventListener('online', onOnline)
+    window.addEventListener('offline', onOffline)
     return () => {
       window.clearTimeout(id)
       window.removeEventListener('keydown', onKey)
+      window.removeEventListener('online', onOnline)
+      window.removeEventListener('offline', onOffline)
     }
   }, [open, onClose])
+
+  useEffect(() => {
+    if (!open) return
+    try {
+      const raw = window.localStorage.getItem(DRAFT_KEY)
+      if (!raw) return
+      const draft = JSON.parse(raw) as Partial<{
+        kind: VoiceNoteKind
+        bucket: VoiceNoteBucket
+        subject: string
+        transcript: string
+        oeuvreId: string
+        nextAction: NextActionKey
+      }>
+      if (draft.kind && VOICE_NOTE_KINDS.includes(draft.kind)) setKind(draft.kind)
+      if (draft.bucket && VOICE_NOTE_BUCKETS.includes(draft.bucket)) setBucket(draft.bucket)
+      if (typeof draft.subject === 'string') setSubject(draft.subject)
+      if (typeof draft.transcript === 'string') setTranscript(draft.transcript)
+      if (typeof draft.oeuvreId === 'string') setOeuvreId(draft.oeuvreId)
+      if (draft.nextAction && NEXT_ACTIONS.includes(draft.nextAction)) setNextAction(draft.nextAction)
+    } catch {
+      /* ignore malformed local draft */
+    }
+  }, [open])
+
+  useEffect(() => {
+    if (!open) return
+    const hasDraft = subject.trim() || transcript.trim() || oeuvreId.trim() || audioBlob
+    try {
+      if (!hasDraft) {
+        window.localStorage.removeItem(DRAFT_KEY)
+        return
+      }
+      window.localStorage.setItem(
+        DRAFT_KEY,
+        JSON.stringify({ kind, bucket, subject, transcript, oeuvreId, nextAction }),
+      )
+    } catch {
+      /* localStorage can be unavailable in private contexts */
+    }
+  }, [audioBlob, bucket, kind, nextAction, oeuvreId, open, subject, transcript])
 
   useEffect(() => {
     if (!open) return
@@ -150,6 +239,12 @@ export function VoiceNoteSheet({
   }, [appendTranscript])
 
   const startDictation = useCallback(async () => {
+    const availability = getLiveDictationAvailability()
+    setDictationAvailability(availability)
+    if (availability !== 'ready') {
+      toastDictationError(availability)
+      return
+    }
     stopDictation()
     if (recording && recorderSessionRef.current) {
       const session = recorderSessionRef.current
@@ -189,6 +284,13 @@ export function VoiceNoteSheet({
       ? appendTranscript(transcript, interim)
       : transcript
 
+  const dictationUnavailableMessage =
+    dictationAvailability === 'insecure'
+      ? t('voice_dictate_insecure')
+      : dictationAvailability === 'unsupported'
+        ? t('voice_dictate_unsupported')
+        : null
+
   const toggleRecord = async () => {
     if (dictating) stopDictation()
     if (recording) {
@@ -218,11 +320,36 @@ export function VoiceNoteSheet({
   const save = async () => {
     setSaving(true)
     try {
+      const tail = interimRef.current.trim()
+      const transcriptForSave = tail ? appendTranscript(transcript, tail) : transcript
+      if (tail) {
+        interimRef.current = ''
+        setInterim('')
+        setTranscript(transcriptForSave)
+      }
+      if (!online) {
+        try {
+          window.localStorage.setItem(
+            DRAFT_KEY,
+            JSON.stringify({ kind, bucket, subject, transcript: transcriptForSave, oeuvreId, nextAction }),
+          )
+        } catch {
+          /* ignore */
+        }
+        toast.success(t('voice_offline_draft_saved'))
+        onClose()
+        return
+      }
       const fd = new FormData()
       fd.append('kind', kind)
       fd.append('bucket', bucket)
       fd.append('subject', subject.trim())
-      fd.append('transcript', transcript)
+      fd.append('transcript', transcriptForSave)
+      const followUpDue = dueForNextAction(nextAction)
+      if (followUpDue) {
+        fd.append('follow_up_due', followUpDue)
+        fd.append('follow_up_label', subject.trim() || t(nextActionLabelKey(nextAction)))
+      }
       if (oeuvreId.trim()) fd.append('oeuvre_id', oeuvreId.trim())
       if (audioBlob) {
         const ext = audioBlob.mime.includes('mp4') ? 'm4a' : 'webm'
@@ -238,6 +365,12 @@ export function VoiceNoteSheet({
         return
       }
       toast.success(t('voice_note_saved'))
+      if (res.followUpOk === false) toast.error(t('voice_follow_up_save_failed'))
+      try {
+        window.localStorage.removeItem(DRAFT_KEY)
+      } catch {
+        /* ignore */
+      }
       onSaved?.()
       onClose()
     } finally {
@@ -377,10 +510,21 @@ export function VoiceNoteSheet({
             aria-label={dictating ? t('voice_dictate_stop_aria') : t('voice_dictate_start_aria')}
             onClick={() => void (dictating ? stopDictation() : startDictation())}
             style={{ minHeight: 44, flex: '1 1 140px' }}
+            disabled={!dictating && dictationAvailability !== 'ready'}
           >
             {dictating ? t('voice_dictate_stop') : t('voice_dictate_start')}
           </button>
         </div>
+        {dictationUnavailableMessage ? (
+          <p className="t-mono-sm" style={{ color: 'var(--rust)', fontSize: 11, lineHeight: 1.45, margin: '-4px 0 12px' }}>
+            {dictationUnavailableMessage}
+          </p>
+        ) : null}
+        {!online ? (
+          <p className="t-mono-sm" role="status" style={{ color: 'var(--rust)', fontSize: 11, lineHeight: 1.45, margin: '-4px 0 12px' }}>
+            {t('voice_offline_banner')}
+          </p>
+        ) : null}
 
         <label className="t-label" style={{ display: 'block', marginBottom: 6 }} htmlFor="voice-note-transcript">{t('voice_transcript_label')}</label>
         <textarea
@@ -397,6 +541,25 @@ export function VoiceNoteSheet({
           aria-live={dictating ? 'polite' : undefined}
           style={{ width: '100%', marginBottom: 12, fontSize: 13, lineHeight: 1.5, minHeight: 100 }}
         />
+        <div className="t-label" style={{ marginBottom: 6 }}>{t('voice_next_action_label')}</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+          {NEXT_ACTIONS.map((action) => (
+            <button
+              key={action}
+              type="button"
+              className="btn sm"
+              onClick={() => setNextAction(action)}
+              style={{
+                minHeight: 40,
+                background: nextAction === action ? 'var(--ac)' : 'var(--bg0)',
+                color: nextAction === action ? 'var(--bg1)' : 'var(--tx)',
+                border: `1px solid ${nextAction === action ? 'var(--ac)' : 'var(--bd)'}`,
+              }}
+            >
+              {t(nextActionLabelKey(action))}
+            </button>
+          ))}
+        </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <button
             type="button"

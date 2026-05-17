@@ -81,12 +81,13 @@ const ReportsTab = dynamic(() => import('@/components/atelier/ReportsTab').then(
 const AuditTab = dynamic(() => import('@/components/atelier/AuditTab').then((m) => ({ default: m.AuditTab })), { loading: () => <TabPanelFallback />, ssr: false })
 const BroadcastTab = dynamic(() => import('@/components/atelier/BroadcastTab').then((m) => ({ default: m.BroadcastTab })), { loading: () => <TabPanelFallback />, ssr: false })
 const NotesTab = dynamic(() => import('@/components/atelier/NotesTab').then((m) => ({ default: m.NotesTab })), { loading: () => <TabPanelFallback />, ssr: false })
+const SessionJournalTab = dynamic(() => import('@/components/atelier/SessionJournalTab').then((m) => ({ default: m.SessionJournalTab })), { loading: () => <TabPanelFallback />, ssr: false })
 
 // ── Types ────────────────────────────────────────────────────────────
 
 type Tab =
   | 'overview' | 'inventory' | 'reports' | 'constellation' | 'production'
-  | 'logistics' | 'sales' | 'exhibitions' | 'vault' | 'contacts' | 'map' | 'pipeline' | 'fiscal' | 'concepts' | 'themes' | 'stock' | 'stock-take' | 'notes' | 'system' | 'portfolio' | 'audit' | 'broadcast'
+  | 'logistics' | 'sales' | 'exhibitions' | 'vault' | 'contacts' | 'map' | 'pipeline' | 'fiscal' | 'concepts' | 'themes' | 'stock' | 'stock-take' | 'notes' | 'journal' | 'system' | 'portfolio' | 'audit' | 'broadcast'
 
 /** Desktop top bar + narrow drawer row — same handlers, drawer uses 44px tap targets. Ring A.1: new work lives on `MobileActionBar`, not here, when `hideNewWork`. */
 function AtelierHeaderChrome({
@@ -805,6 +806,7 @@ export function TeamPortalClient({
       ['stock',         t('tab_stock')],
       ['stock-take',    t('tab_stock_take')],
       ['notes',         t('tab_notes')],
+      ['journal',       t('tab_journal')],
       ['system',        t('tab_system')],
       [
         'audit',
@@ -848,7 +850,7 @@ export function TeamPortalClient({
   /** 6 rooms — same structure on narrow and wide; narrow puts Field first. */
   const adminTabs: Tab[] = isAdmin ? ['system', 'audit', 'broadcast'] : ['system']
   const GROUPS: { label: string; tabs: Tab[] }[] = [
-    { label: t('nav_group_field'),        tabs: ['inventory', 'production', 'stock-take', 'notes', 'map'] },
+    { label: t('nav_group_field'),        tabs: ['inventory', 'production', 'stock-take', 'journal', 'notes', 'map'] },
     { label: t('nav_group_studio'),       tabs: ['overview', 'pipeline', 'exhibitions', 'concepts'] },
     { label: t('nav_group_catalogue'),    tabs: ['reports', 'themes', 'stock', 'constellation'] },
     { label: t('nav_group_commercial'),   tabs: ['sales', 'logistics', 'fiscal', 'vault'] },
@@ -1413,6 +1415,11 @@ export function TeamPortalClient({
         {tab === 'notes' && (
           <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
             <NotesTab refreshTick={voiceNotesTick} oeuvres={oeuvres} />
+          </div>
+        )}
+        {tab === 'journal' && (
+          <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+            <SessionJournalTab />
           </div>
         )}
         {tab === 'system' && (

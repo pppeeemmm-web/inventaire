@@ -1630,14 +1630,17 @@ export type Database = {
           completed_at: string | null
           created_at: string
           details: string | null
+          due_at: string | null
           id: number
           kind: string
+          oeuvre_id: number | null
           photo_r2_key: string | null
           priority: string | null
           severity: string | null
           status: string | null
           type: string | null
           updated_at: string
+          work_action_type_id: number | null
         }
         Insert: {
           action: string
@@ -1645,14 +1648,17 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           details?: string | null
+          due_at?: string | null
           id?: number
           kind?: string
+          oeuvre_id?: number | null
           photo_r2_key?: string | null
           priority?: string | null
           severity?: string | null
           status?: string | null
           type?: string | null
           updated_at?: string
+          work_action_type_id?: number | null
         }
         Update: {
           action?: string
@@ -1660,16 +1666,34 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           details?: string | null
+          due_at?: string | null
           id?: number
           kind?: string
+          oeuvre_id?: number | null
           photo_r2_key?: string | null
           priority?: string | null
           severity?: string | null
           status?: string | null
           type?: string | null
           updated_at?: string
+          work_action_type_id?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "studio_task_oeuvre_id_fkey"
+            columns: ["oeuvre_id"]
+            isOneToOne: false
+            referencedRelation: "Oeuvres"
+            referencedColumns: ["OeuvreID"]
+          },
+          {
+            foreignKeyName: "studio_task_work_action_type_id_fkey"
+            columns: ["work_action_type_id"]
+            isOneToOne: false
+            referencedRelation: "work_action_type"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       suivi_etape: {
         Row: {

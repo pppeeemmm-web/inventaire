@@ -13,6 +13,8 @@ const defaultSpecs = [
   'tests/mobile-sale.spec.ts',
   'tests/hub-mobile-capture.spec.ts',
   'tests/atelier-mobile-action-bar.spec.ts',
+  'tests/session-new.spec.ts',
+  'tests/session-journal.spec.ts',
 ]
 const pwArgs = userArgs.length > 0 ? userArgs : defaultSpecs
 const r = spawnSync('npx', ['playwright', 'test', ...pwArgs], {

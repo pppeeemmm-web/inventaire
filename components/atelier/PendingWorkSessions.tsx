@@ -78,7 +78,7 @@ export function PendingWorkSessions() {
           <div key={row.id} style={{ borderBottom: '1px solid var(--bd)', padding: '12px 28px' }}>
             <div>
               <div style={{ fontSize: 12, color: 'var(--tx)' }}>
-                #{row.oeuvre_id} · {row.oeuvre_title || '—'}
+                {row.item_count} {t('session_journal_items_count')} · {row.oeuvre_title || '—'}
               </div>
               <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 2 }}>
                 {row.author_email || row.user_id.slice(0, 8)} ·{' '}
@@ -88,6 +88,21 @@ export function PendingWorkSessions() {
                   ? t('session_status_pending_review')
                   : t('session_status_draft')}
               </div>
+              {row.journal_notes ? (
+                <div style={{ fontSize: 10, color: 'var(--tx2)', marginTop: 6, lineHeight: 1.4 }}>
+                  {row.journal_notes}
+                </div>
+              ) : null}
+              {row.item_summaries.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: 8 }}>
+                  {row.item_summaries.map((item, idx) => (
+                    <div key={item.id} style={{ fontSize: 10, color: 'var(--tx3)' }}>
+                      {t('session_painting_label')} {idx + 1}: {item.oeuvre_id ? `#${item.oeuvre_id}` : item.title_hint || '—'} ·{' '}
+                      {item.shot_count + item.applied_shot_count} {t('drawer_work_sessions_shots')} · {t(item.status === 'applied' ? 'session_status_applied' : 'session_status_draft')}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
               <button

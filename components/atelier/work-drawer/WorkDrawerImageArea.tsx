@@ -2,6 +2,7 @@
 
 import type { ChangeEvent, Dispatch, MutableRefObject, SetStateAction } from 'react'
 import { useI18n } from '@/lib/i18n/context'
+import { imageUrl } from '@/lib/data'
 import type { Oeuvre } from '@/lib/types/database'
 import { WorkThumb } from '../WorkThumb'
 import type { WorkImageRow } from './drawer-content-props'
@@ -28,6 +29,8 @@ export type WorkDrawerImageAreaProps = {
   previewMaxHeight: string
   drawerImageFileRef: MutableRefObject<HTMLInputElement | null>
   onDrawerImageFileChange: (e: ChangeEvent<HTMLInputElement>) => void
+  retouchImageFileRef: MutableRefObject<HTMLInputElement | null>
+  onRetouchImageFileChange: (e: ChangeEvent<HTMLInputElement>) => void
   drawerImageBusy: boolean
   drawerUploadPct: number
   drawerUploadName: string
@@ -38,9 +41,11 @@ export type WorkDrawerImageAreaProps = {
   drawerSorted: WorkImageRow[]
   activeImgIdx: number
   setActiveImgIdx: Dispatch<SetStateAction<number>>
+  imageCacheKeys: Record<number, string>
   drawerNudge: (sortedIndex: number, dir: -1 | 1) => void
   drawerMakeCover: (sortedIndex: number) => void
   drawerDeleteImage: (imageId: number) => void | Promise<void>
+  drawerStartRetouch: (imageId: number) => void
 }
 
 export function WorkDrawerImageArea(p: WorkDrawerImageAreaProps) {
@@ -67,6 +72,8 @@ export function WorkDrawerImageArea(p: WorkDrawerImageAreaProps) {
     previewMaxHeight,
     drawerImageFileRef,
     onDrawerImageFileChange,
+    retouchImageFileRef,
+    onRetouchImageFileChange,
     drawerImageBusy,
     drawerUploadPct,
     drawerUploadName,
@@ -77,10 +84,14 @@ export function WorkDrawerImageArea(p: WorkDrawerImageAreaProps) {
     drawerSorted,
     activeImgIdx,
     setActiveImgIdx,
+    imageCacheKeys,
     drawerNudge,
     drawerMakeCover,
     drawerDeleteImage,
+    drawerStartRetouch,
   } = p
+  const activeImage = activeImgIdx >= 0 ? drawerSorted[activeImgIdx] : null
+  const activeDownloadUrl = activeImgPath ? imageUrl(activeImgPath) : null
 
   return (
     <>
@@ -92,6 +103,14 @@ export function WorkDrawerImageArea(p: WorkDrawerImageAreaProps) {
         capture={narrow ? 'environment' : undefined}
         style={{ display: 'none' }}
         onChange={onDrawerImageFileChange}
+        tabIndex={-1}
+      />
+      <input
+        ref={retouchImageFileRef}
+        type="file"
+        accept="image/*"
+        style={{ display: 'none' }}
+        onChange={onRetouchImageFileChange}
         tabIndex={-1}
       />
       {drawerImageBusy && (drawerUploadPct > 0 || drawerUploadName) && (
@@ -111,6 +130,27 @@ export function WorkDrawerImageArea(p: WorkDrawerImageAreaProps) {
         <button type="button" className="btn ghost sm" style={{ marginBottom: 8 }} onClick={() => { drawerUploadCancelRef.current = true }}>
           {t('wf_images_upload_cancel')}
         </button>
+      )}
+      {activeImage && activeDownloadUrl && (
+        <div className="row" style={{ gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+          <a
+            href={activeDownloadUrl}
+            download={activeImgPath ?? undefined}
+            className="btn ghost sm"
+            data-testid="work-drawer-download-image"
+          >
+            {t('wf_images_download_original')}
+          </a>
+          <button
+            type="button"
+            className="btn ghost sm"
+            data-testid="work-drawer-retouch-image"
+            disabled={drawerImageBusy}
+            onClick={() => drawerStartRetouch(activeImage.ImageID)}
+          >
+            {drawerImageBusy ? '…' : t('wf_images_replace_retouched')}
+          </button>
+        </div>
       )}
       <div
         ref={imgContainerRef}
@@ -254,6 +294,7 @@ export function WorkDrawerImageArea(p: WorkDrawerImageAreaProps) {
                     alt={t('wf_images_strip_alt').replace('{n}', String(idx + 1))}
                     size={64}
                     displaySize="44px"
+                    cacheKey={imageCacheKeys[img.ImageID]}
                   />
                 )}
               </button>

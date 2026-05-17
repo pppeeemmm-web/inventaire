@@ -73,9 +73,101 @@ export const atelierMessages = defineMessages({
     fr: 'Ajouter une image',
     en: 'Add image',
   },
+  wf_images_download_original: {
+    fr: 'Télécharger',
+    en: 'Download',
+  },
+  wf_images_replace_retouched: {
+    fr: 'Remplacer retouchée',
+    en: 'Replace retouched',
+  },
+  wf_images_retouch_uploaded: {
+    fr: 'Image retouchée mise à jour.',
+    en: 'Retouched image updated.',
+  },
   research_remote_error: {
     fr: 'Recherche distante indisponible.',
     en: 'Remote search unavailable.',
+  },
+  session_new_intro: {
+    fr: 'Journal de session : ajoutez une entrée par peinture touchée, liez une œuvre existante ou notez une nouvelle œuvre, puis ajoutez les photos et les suivis.',
+    en: 'Session journal: add one entry for each painting touched, link an existing work or mark a new work, then add photos and follow-up notes.',
+  },
+  session_journal_items_heading: {
+    fr: 'Peintures dans cette session',
+    en: 'Paintings in this session',
+  },
+  session_journal_items_count: {
+    fr: 'entrées',
+    en: 'entries',
+  },
+  session_add_painting: {
+    fr: 'Ajouter peinture',
+    en: 'Add painting',
+  },
+  session_painting_label: {
+    fr: 'Peinture',
+    en: 'Painting',
+  },
+  session_work_search_label: {
+    fr: 'Chercher une œuvre',
+    en: 'Search for a work',
+  },
+  session_work_search_placeholder: {
+    fr: 'Titre, ID, dimensions...',
+    en: 'Title, ID, dimensions...',
+  },
+  session_item_notes_label: {
+    fr: 'Notes pour cette peinture',
+    en: 'Notes for this painting',
+  },
+  tab_journal: {
+    fr: 'Journal',
+    en: 'Journal',
+  },
+  journal_tab_title: {
+    fr: 'Journal de session',
+    en: 'Session journal',
+  },
+  journal_tab_intro: {
+    fr: 'Sessions datées, peintures touchées, photos et comparaison avant / après.',
+    en: 'Dated sessions, paintings touched, photos, and before / after comparison.',
+  },
+  journal_empty: {
+    fr: 'Aucune session enregistrée.',
+    en: 'No sessions recorded.',
+  },
+  journal_session_date: {
+    fr: 'Date de session',
+    en: 'Session date',
+  },
+  journal_no_items: {
+    fr: 'Aucune peinture détaillée dans cette session.',
+    en: 'No detailed painting entries in this session.',
+  },
+  journal_compare_cta: {
+    fr: 'Comparer avant / après',
+    en: 'Compare before / after',
+  },
+  journal_compare_before: {
+    fr: 'Avant',
+    en: 'Before',
+  },
+  journal_compare_after: {
+    fr: 'Après',
+    en: 'After',
+  },
+  journal_compare_current: {
+    fr: 'État actuel',
+    en: 'Current state',
+  },
+  journal_compare_empty: {
+    fr: 'Aucune différence enregistrée autour de cette session.',
+    en: 'No recorded difference around this session.',
+  },
+  journal_item_delete_confirm: {
+    fr: 'Supprimer cette entrée du journal ? Les photos déjà appliquées aux œuvres sont conservées.',
+    en: 'Delete this journal entry? Photos already applied to works are kept.',
   },
   research_group_actions: {
     fr: 'Actions',
@@ -152,5 +244,97 @@ export const atelierMessages = defineMessages({
   research_detail_note: {
     fr: 'Note vocale',
     en: 'Voice note',
+  },
+  issue_field_work_label: {
+    fr: 'Œuvre liée',
+    en: 'Linked work',
+  },
+  issue_field_work_none: {
+    fr: 'Aucune œuvre liée',
+    en: 'No linked work',
+  },
+  issue_field_action_type_label: {
+    fr: 'Étape production',
+    en: 'Production step',
+  },
+  issue_field_action_type_none: {
+    fr: 'Aucune étape',
+    en: 'No step',
+  },
+  issue_field_link_hint: {
+    fr: 'Si une œuvre et une étape sont choisies, le signalement apparaîtra dans Production.',
+    en: 'If a work and step are selected, the issue will appear in Production.',
+  },
+  material_overview_title: {
+    fr: 'Vue matière',
+    en: 'Material overview',
+  },
+  material_overview_subtitle: {
+    fr: 'Signalements terrain ouverts : interventions, anomalies et points à trier côté matériel.',
+    en: 'Open field reports: material interventions, issues, and items still needing triage.',
+  },
+  material_overview_stats: {
+    fr: '{open} ouverts · {high} hauts · {unlinked} à trier',
+    en: '{open} open · {high} high · {unlinked} to triage',
+  },
+  material_overview_empty: {
+    fr: 'Aucun signalement matériel ouvert.',
+    en: 'No open material reports.',
+  },
+  material_overview_linked: {
+    fr: '{work} · {step}',
+    en: '{work} · {step}',
+  },
+  material_overview_work_only: {
+    fr: 'Œuvre #{id} · étape à choisir',
+    en: 'Work #{id} · choose a step',
+  },
+  material_overview_needs_triage: {
+    fr: 'À trier : lier à une œuvre ou traiter comme tâche atelier.',
+    en: 'Needs triage: link to a work or handle as a studio task.',
+  },
+  material_overview_linked_count: {
+    fr: '{n} signalement(s) alimentent aussi Production.',
+    en: '{n} report(s) also feed Production.',
+  },
+  material_overview_open_work: {
+    fr: 'Ouvrir',
+    en: 'Open',
+  },
+  voice_next_action_label: {
+    fr: 'Prochaine action',
+    en: 'Next action',
+  },
+  voice_next_action_today: {
+    fr: "Aujourd'hui",
+    en: 'Today',
+  },
+  voice_next_action_tomorrow: {
+    fr: 'Demain',
+    en: 'Tomorrow',
+  },
+  voice_next_action_week: {
+    fr: 'Cette semaine',
+    en: 'This week',
+  },
+  voice_next_action_waiting: {
+    fr: 'En attente',
+    en: 'Waiting',
+  },
+  voice_next_action_none: {
+    fr: 'Pas de suivi',
+    en: 'No follow-up',
+  },
+  voice_offline_banner: {
+    fr: 'Hors ligne : la note texte reste en brouillon local et pourra être enregistrée au retour du réseau.',
+    en: 'Offline: the text note stays as a local draft and can be saved when the network returns.',
+  },
+  voice_offline_draft_saved: {
+    fr: 'Brouillon local conservé.',
+    en: 'Local draft kept.',
+  },
+  voice_follow_up_save_failed: {
+    fr: 'Note enregistrée, mais le suivi n’a pas pu être créé.',
+    en: 'Note saved, but the follow-up could not be created.',
   },
 })

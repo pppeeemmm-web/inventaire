@@ -42,6 +42,13 @@ export function getSpeechRecognitionCtor(): (new () => SpeechRecognitionLike) | 
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null
 }
 
+export type LiveDictationAvailability = 'ready' | 'insecure' | 'unsupported'
+
+export function getLiveDictationAvailability(): LiveDictationAvailability {
+  if (typeof window === 'undefined' || !window.isSecureContext) return 'insecure'
+  return getSpeechRecognitionCtor() ? 'ready' : 'unsupported'
+}
+
 export function pickMediaRecorderMime(): string {
   const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4']
   if (typeof MediaRecorder === 'undefined') return 'audio/webm'
@@ -110,7 +117,8 @@ export async function startLiveDictation(
     handlers.onError?.(code)
     return { stop: () => {}, ok: false }
   }
-  if (typeof window === 'undefined' || !window.isSecureContext) return fail('insecure')
+  const availability = getLiveDictationAvailability()
+  if (availability !== 'ready') return fail(availability)
   const Ctor = getSpeechRecognitionCtor()
   if (!Ctor) return fail('unsupported')
 
@@ -137,6 +145,8 @@ export async function startLiveDictation(
   rec.onresult = (ev: SpeechRecEvent) => applyResults(ev, handlers)
   rec.onerror = (ev: SpeechRecErrorEvent) => {
     if (ev.error === 'aborted' || ev.error === 'no-speech') return
+    manualStop = true
+    rec.onend = null
     handlers.onError?.(ev.error)
   }
   rec.onend = () => {

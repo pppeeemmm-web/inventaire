@@ -71,7 +71,8 @@ export function DrawerWorkSessionsSection({
         {!loading &&
           rows.map((row) => {
             const payload = parseWorkSessionPayload(row.payload)
-            const n = payload.shots?.length ?? 0
+            const n = payload.shots.length + payload.items.reduce((sum, item) => sum + item.shots.length + (item.applied_shot_count ?? 0), 0)
+            const itemCount = payload.items.length || (payload.shots.length > 0 ? 1 : 0)
             const updated = row.updated_at
               ? new Date(row.updated_at).toLocaleString(locale, {
                   dateStyle: 'short',
@@ -91,7 +92,22 @@ export function DrawerWorkSessionsSection({
                 }}
               >
                 <span style={{ flex: '1 1 140px', minWidth: 0 }}>
-                  {updated} · {t(statusKey(row.status))} · {n} {t('drawer_work_sessions_shots')}
+                  {updated} · {t(statusKey(row.status))} · {itemCount} {t('session_journal_items_count')} · {n} {t('drawer_work_sessions_shots')}
+                  {payload.notes ? (
+                    <span style={{ display: 'block', marginTop: 4, color: 'var(--tx3)' }}>
+                      {payload.notes}
+                    </span>
+                  ) : null}
+                  {payload.items.length > 0 ? (
+                    <span style={{ display: 'block', marginTop: 6 }}>
+                      {payload.items.map((item, idx) => (
+                        <span key={item.id} style={{ display: 'block', color: 'var(--tx3)' }}>
+                          {t('session_painting_label')} {idx + 1}: {item.oeuvre_id ? `#${item.oeuvre_id}` : item.title_hint || '—'} ·{' '}
+                          {item.shots.length + (item.applied_shot_count ?? 0)} {t('drawer_work_sessions_shots')}
+                        </span>
+                      ))}
+                    </span>
+                  ) : null}
                 </span>
                 {isAdmin ? (
                   <button

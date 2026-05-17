@@ -20,6 +20,7 @@ function voiceNoteTable(supabase: Awaited<ReturnType<typeof createClient>>) {
 
 const MAX_TRANSCRIPT = 100_000
 const MAX_AUDIO_BYTES = 20 * 1024 * 1024
+const MAX_FOLLOW_UP_LABEL = 300
 
 function allowedAudioMime(m: string): boolean {
   const x = m.toLowerCase().split(';')[0]?.trim() ?? ''
@@ -32,6 +33,7 @@ async function rpcIsAdmin(supabase: Awaited<ReturnType<typeof createClient>>): P
 }
 
 export type NotesActionErr = { error: string }
+export type CreateVoiceNoteResult = { ok: true; id: string; followUpOk?: boolean }
 
 export async function listVoiceNotes(limit = 200): Promise<{ rows: VoiceNoteRow[] } | NotesActionErr> {
   const supabase = await createClient()
@@ -53,7 +55,7 @@ export async function listVoiceNotes(limit = 200): Promise<{ rows: VoiceNoteRow[
   return { rows }
 }
 
-export async function createVoiceNote(formData: FormData): Promise<{ ok: true; id: string } | NotesActionErr> {
+export async function createVoiceNote(formData: FormData): Promise<CreateVoiceNoteResult | NotesActionErr> {
   const supabase = await createClient()
   const {
     data: { user },
@@ -88,6 +90,14 @@ export async function createVoiceNote(formData: FormData): Promise<{ ok: true; i
   if (durationRaw) {
     const d = parseInt(durationRaw, 10)
     if (Number.isFinite(d) && d >= 0 && d < 24 * 60 * 60 * 1000) duration_ms = d
+  }
+
+  const followUpDueRaw = (formData.get('follow_up_due') as string | null)?.trim() || null
+  const followUpLabelRaw = (formData.get('follow_up_label') as string | null)?.trim() || null
+  let followUpDue: string | null = null
+  if (followUpDueRaw) {
+    const d = new Date(followUpDueRaw)
+    if (Number.isFinite(d.getTime())) followUpDue = d.toISOString()
   }
 
   const id = crypto.randomUUID()
@@ -134,8 +144,30 @@ export async function createVoiceNote(formData: FormData): Promise<{ ok: true; i
     return { error: error.message }
   }
 
+  let followUpOk: boolean | undefined
+  if (followUpDue) {
+    const action = (followUpLabelRaw || subjectRaw || 'Voice note follow-up').slice(0, MAX_FOLLOW_UP_LABEL)
+    const details = [`Voice note: ${id}`, transcript ? transcript.slice(0, 600) : null]
+      .filter(Boolean)
+      .join('\n\n')
+    const { error: followUpError } = await supabase.from('studio_task').insert({
+      action,
+      details: details || null,
+      due_at: followUpDue,
+      type: 'backlog',
+      priority: 'P3',
+      status: 'requested',
+      kind: 'field',
+      severity: 'low',
+    })
+    followUpOk = !followUpError
+    if (followUpError) console.error('[createVoiceNote follow-up]', followUpError.message)
+  }
+
   revalidatePath('/atelier')
-  return { ok: true, id }
+  revalidatePath('/hub')
+  revalidatePath('/atelier/field-inbox')
+  return { ok: true, id, followUpOk }
 }
 
 export async function updateVoiceNoteTranscript(

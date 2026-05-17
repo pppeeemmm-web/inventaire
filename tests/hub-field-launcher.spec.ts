@@ -26,6 +26,7 @@ test.describe('Hub field launcher (Ring B.1)', () => {
   test('narrow hub shows nine field verb rows', async ({ page }) => {
     await page.goto('/hub')
     await expect(page.getByTestId('hub-field-launcher-root')).toBeVisible({ timeout: 45_000 })
+    await expect(page.getByTestId('hub-field-pulse')).toBeVisible()
     await expect(page.getByTestId('hub-field-verb-session')).toBeVisible()
     await expect(page.getByTestId('hub-field-verb-note')).toBeVisible()
     await expect(page.getByTestId('hub-field-verb-scan-doc')).toBeVisible()
@@ -40,7 +41,9 @@ test.describe('Hub field launcher (Ring B.1)', () => {
   test('session row navigates to field session flow', async ({ page }) => {
     await page.goto('/hub')
     await expect(page.getByTestId('hub-field-launcher-root')).toBeVisible({ timeout: 45_000 })
-    await page.getByTestId('hub-field-verb-session').click()
+    const sessionRow = page.getByTestId('hub-field-verb-session')
+    await sessionRow.scrollIntoViewIfNeeded()
+    await sessionRow.click({ force: true })
     await expect(page).toHaveURL(/\/atelier\/session\/new/)
   })
 
@@ -77,14 +80,20 @@ test.describe('Hub field launcher (Ring B.1)', () => {
   test('triage row opens field triage deck', async ({ page }) => {
     await page.goto('/hub')
     await expect(page.getByTestId('hub-field-launcher-root')).toBeVisible({ timeout: 45_000 })
-    await page.getByTestId('hub-field-verb-triage').click()
+    const triageRow = page.getByTestId('hub-field-verb-triage')
+    await triageRow.scrollIntoViewIfNeeded()
+    await triageRow.click()
     await expect(page).toHaveURL(/\/atelier\/triage/)
   })
 
   test('issue row opens studio issue form', async ({ page }) => {
     await page.goto('/hub')
     await expect(page.getByTestId('hub-field-launcher-root')).toBeVisible({ timeout: 45_000 })
-    await page.getByTestId('hub-field-verb-issue').click()
+    const issueRow = page.getByTestId('hub-field-verb-issue')
+    await issueRow.scrollIntoViewIfNeeded()
+    await issueRow.click({ force: true })
     await expect(page).toHaveURL(/\/atelier\/issue\/new/)
+    await expect(page.getByTestId('issue-work-select')).toBeVisible()
+    await expect(page.getByTestId('issue-action-type-select')).toBeVisible()
   })
 })

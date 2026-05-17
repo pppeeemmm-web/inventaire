@@ -16,6 +16,7 @@ test.describe('Voice notes (Verb 2)', () => {
     await page.getByTestId('hub-field-verb-note').click({ timeout: 45_000 })
     await expect(page.getByTestId('ring-b-voice-sheet')).toBeVisible()
     await expect(page.getByTestId('ring-b-voice-record-toggle')).toBeVisible()
+    await expect(page.getByText(/Demain|Tomorrow/)).toBeVisible()
   })
 
   test('atelier notes tab loads shell', async ({ page }) => {

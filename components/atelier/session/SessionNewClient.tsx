@@ -9,22 +9,27 @@ import { useMediaQuery } from '@/lib/useMediaQuery'
 import { toast } from '@/lib/ui/toast'
 import {
   applyWorkSessionToOeuvre,
-  createAndLinkWorkFromSession,
+  createAndLinkWorkFromSessionItem,
   createWorkSessionDraft,
+  createWorkSessionItemAction,
   getSessionNewPageContext,
   getWorkSessionDraftFields,
-  getWorkSessionShotCount,
+  linkWorkSessionItemToOeuvre,
   linkWorkSessionToOeuvre,
   listWorkSessionsForAdminReview,
   rejectWorkSession,
+  searchWorksForSession,
   submitWorkSessionForReview,
   updateWorkSessionMetadata,
-  uploadWorkSessionShot,
+  updateWorkSessionItemMetadata,
+  uploadWorkSessionItemShot,
+  type WorkSessionWorkOption,
 } from '@/app/atelier/session/actions'
 import type { WorkSessionQueueRow } from '@/app/atelier/session/actions'
 import { FieldHubBackLink } from '@/components/shared/FieldHubBackLink'
 import { captureFieldContext, type CaptureFieldContextErrorCode } from '@/lib/field-context'
-import { parseWorkSessionPayload, type WorkSessionFieldContext } from '@/lib/work-session-payload'
+import { thumbUrl } from '@/lib/data'
+import type { WorkSessionFieldContext, WorkSessionItem, WorkSessionItemMode } from '@/lib/work-session-payload'
 
 export function SessionNewClient() {
   const { t, lang } = useI18n()
@@ -35,26 +40,49 @@ export function SessionNewClient() {
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [authed, setAuthed] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
-  const [oeuvreInput, setOeuvreInput] = useState('')
   const [notes, setNotes] = useState('')
-  const [titleHint, setTitleHint] = useState('')
-  const [widthCm, setWidthCm] = useState('')
-  const [heightCm, setHeightCm] = useState('')
-  const [shotCount, setShotCount] = useState(0)
+  const [items, setItems] = useState<WorkSessionItem[]>([])
+  const [activeItemId, setActiveItemId] = useState<string | null>(null)
+  const [workSearch, setWorkSearch] = useState('')
+  const [workResults, setWorkResults] = useState<WorkSessionWorkOption[]>([])
+  const [workIdFallback, setWorkIdFallback] = useState('')
   const [pending, setPending] = useState<WorkSessionQueueRow[]>([])
   const [hydrated, setHydrated] = useState(false)
   const [fieldContext, setFieldContext] = useState<WorkSessionFieldContext | null>(null)
-  const [workMode, setWorkMode] = useState<'existing' | 'new'>('existing')
-  const [linkedOeuvreId, setLinkedOeuvreId] = useState<number | null>(null)
 
   const workQ = sp.get('work')?.trim()
   const initialOeuvre = workQ ? Number.parseInt(workQ, 10) : NaN
   const initialOk = Number.isFinite(initialOeuvre) && initialOeuvre > 0
+  const activeItem = items.find((item) => item.id === activeItemId) ?? items[0] ?? null
+  const shotCount = items.reduce((sum, item) => sum + item.shots.length + (item.applied_shot_count ?? 0), 0)
+  const stagedShotCount = items.reduce((sum, item) => sum + item.shots.length, 0)
 
   const refreshPending = useCallback(() => {
     if (!isAdmin) return
     void listWorkSessionsForAdminReview().then(setPending)
   }, [isAdmin])
+
+  const refreshDraft = useCallback(async (id: string) => {
+    const df = await getWorkSessionDraftFields(id)
+    if ('error' in df) {
+      toast.error(df.error)
+      return
+    }
+    setNotes(df.fields.notes)
+    setFieldContext(df.fields.field_context)
+    if (df.items.length === 0) {
+      const created = await createWorkSessionItemAction(id, 'existing')
+      if ('error' in created) {
+        toast.error(created.error)
+        return
+      }
+      setItems([created.item])
+      setActiveItemId(created.item.id)
+      return
+    }
+    setItems(df.items)
+    setActiveItemId((current) => current && df.items.some((item) => item.id === current) ? current : df.items[0]?.id ?? null)
+  }, [])
 
   useEffect(() => {
     startBoot(() => {
@@ -72,35 +100,34 @@ export function SessionNewClient() {
           return
         }
         setSessionId(r.id)
-        if (initialOk) {
-          setOeuvreInput(String(initialOeuvre))
-          setLinkedOeuvreId(initialOeuvre)
-        }
-        const df = await getWorkSessionDraftFields(r.id)
-        if ('ok' in df && df.ok) {
-          setNotes(df.fields.notes)
-          setTitleHint(df.fields.title_hint)
-          setWidthCm(df.fields.width_cm)
-          setHeightCm(df.fields.height_cm)
-          setFieldContext(df.fields.field_context)
-          if (df.oeuvre_id) {
-            setLinkedOeuvreId(df.oeuvre_id)
-            setOeuvreInput(String(df.oeuvre_id))
-          }
-        }
-        const n = await getWorkSessionShotCount(r.id)
-        setShotCount(n)
+        await refreshDraft(r.id)
         if (ctx.isAdmin) {
           const rows = await listWorkSessionsForAdminReview()
           setPending(rows)
         }
       })().finally(() => setHydrated(true))
     })
-  }, [initialOk, initialOeuvre])
+  }, [initialOk, initialOeuvre, refreshDraft])
 
   useEffect(() => {
     refreshPending()
   }, [refreshPending])
+
+  useEffect(() => {
+    setWorkSearch('')
+    setWorkIdFallback(activeItem?.oeuvre_id ? String(activeItem.oeuvre_id) : '')
+  }, [activeItem?.id, activeItem?.oeuvre_id])
+
+  useEffect(() => {
+    if (!activeItem || activeItem.mode !== 'existing' || activeItem.oeuvre_id) {
+      setWorkResults([])
+      return
+    }
+    const timer = window.setTimeout(() => {
+      void searchWorksForSession(workSearch).then(setWorkResults)
+    }, 180)
+    return () => window.clearTimeout(timer)
+  }, [activeItem, workSearch])
 
   const fieldContextErrorToast = useCallback(
     (code: CaptureFieldContextErrorCode) => {
@@ -119,14 +146,30 @@ export function SessionNewClient() {
     if (!sessionId) return
     const r = await updateWorkSessionMetadata(sessionId, {
       notes,
-      title_hint: titleHint,
-      width_cm: widthCm,
-      height_cm: heightCm,
       ...(fieldContext != null ? { field_context: fieldContext } : {}),
     })
     if ('error' in r) toast.error(r.error)
     else toast.success(t('session_toast_saved'))
-  }, [sessionId, notes, titleHint, widthCm, heightCm, fieldContext, t])
+  }, [sessionId, notes, fieldContext, t])
+
+  const updateLocalItem = (itemId: string, patch: Partial<WorkSessionItem>) => {
+    setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, ...patch } : item)))
+  }
+
+  const saveItem = useCallback(
+    async (item: WorkSessionItem) => {
+      if (!sessionId) return
+      const r = await updateWorkSessionItemMetadata(sessionId, item.id, {
+        mode: item.mode,
+        notes: item.notes ?? '',
+        title_hint: item.title_hint ?? '',
+        width_cm: item.width_cm ?? '',
+        height_cm: item.height_cm ?? '',
+      })
+      if ('error' in r) toast.error(r.error)
+    },
+    [sessionId],
+  )
 
   const captureEnv = () => {
     if (!sessionId) return
@@ -140,9 +183,6 @@ export function SessionNewClient() {
         setFieldContext(r.snapshot)
         const save = await updateWorkSessionMetadata(sessionId, {
           notes,
-          title_hint: titleHint,
-          width_cm: widthCm,
-          height_cm: heightCm,
           field_context: r.snapshot,
         })
         if ('error' in save) {
@@ -155,64 +195,80 @@ export function SessionNewClient() {
   }
 
   const onUploadFiles = (files: FileList | null) => {
-    if (!sessionId || !files?.length) return
+    if (!sessionId || !activeItem || !files?.length) return
     startBusy(() => {
       void (async () => {
         for (const file of Array.from(files)) {
           const fd = new FormData()
           fd.set('image', file)
-          const r = await uploadWorkSessionShot(sessionId, fd)
+          const r = await uploadWorkSessionItemShot(sessionId, activeItem.id, fd)
           if ('error' in r) {
             toast.error(r.error)
             return
           }
         }
-        const n = await getWorkSessionShotCount(sessionId)
-        setShotCount(n)
+        await refreshDraft(sessionId)
         toast.success(t('session_toast_saved'))
       })()
     })
   }
 
-  const linkOeuvre = () => {
+  const linkOeuvre = (item: WorkSessionItem, rawId: string) => {
     if (!sessionId) return
-    const oid = Number.parseInt(oeuvreInput.trim(), 10)
+    const oid = Number.parseInt(rawId.trim(), 10)
     if (!Number.isFinite(oid) || oid <= 0) {
       toast.error(t('session_toast_error'))
       return
     }
     startBusy(() => {
-      void linkWorkSessionToOeuvre(sessionId, oid).then((r) => {
+      const action = item.id ? linkWorkSessionItemToOeuvre(sessionId, item.id, oid) : linkWorkSessionToOeuvre(sessionId, oid)
+      void action.then(async (r) => {
         if ('error' in r) toast.error(r.error)
         else {
-          setLinkedOeuvreId(oid)
+          await refreshDraft(sessionId)
           toast.success(t('session_toast_saved'))
         }
       })
     })
   }
 
-  const createAndLink = () => {
+  const changeItemMode = (item: WorkSessionItem, mode: WorkSessionItemMode) => {
     if (!sessionId) return
-    const titre = titleHint.trim()
+    updateLocalItem(item.id, { mode, oeuvre_id: mode === 'new' ? null : item.oeuvre_id })
+    startBusy(() => {
+      void updateWorkSessionItemMetadata(sessionId, item.id, { mode }).then((r) => {
+        if ('error' in r) toast.error(r.error)
+        else void refreshDraft(sessionId)
+      })
+    })
+  }
+
+  const createAndLink = (item: WorkSessionItem) => {
+    if (!sessionId) return
+    const titre = item.title_hint?.trim()
     if (!titre) {
       toast.error(t('session_err_title_required'))
       return
     }
     startBusy(() => {
-      void createAndLinkWorkFromSession(sessionId, {
-        title_hint: titre,
-        notes,
-        width_cm: widthCm,
-        height_cm: heightCm,
-        field_context: fieldContext,
-      }).then((r) => {
+      void createAndLinkWorkFromSessionItem(sessionId, item.id).then(async (r) => {
         if ('error' in r) toast.error(r.error)
         else {
-          setLinkedOeuvreId(r.oeuvreId)
-          setOeuvreInput(String(r.oeuvreId))
-          setWorkMode('existing')
+          await refreshDraft(sessionId)
           toast.success(t('session_toast_saved'))
+        }
+      })
+    })
+  }
+
+  const addItem = (mode: WorkSessionItemMode = 'existing') => {
+    if (!sessionId) return
+    startBusy(() => {
+      void createWorkSessionItemAction(sessionId, mode).then((r) => {
+        if ('error' in r) toast.error(r.error)
+        else {
+          setItems((prev) => [...prev, r.item])
+          setActiveItemId(r.item.id)
         }
       })
     })
@@ -238,7 +294,7 @@ export function SessionNewClient() {
         if ('error' in r) toast.error(r.error)
         else {
           toast.success(t('session_toast_saved'))
-          setShotCount(0)
+          void refreshDraft(sessionId)
           refreshPending()
         }
       })
@@ -304,6 +360,7 @@ export function SessionNewClient() {
   }
 
   const locale = lang === 'fr' ? 'fr-FR' : 'en-GB'
+  const actionableCount = items.filter((item) => item.shots.length > 0 && (item.oeuvre_id || (item.mode === 'new' && item.title_hint?.trim()))).length
 
   return (
     <main
@@ -326,114 +383,193 @@ export function SessionNewClient() {
         {t('session_new_intro')}
       </p>
 
-      <div role="group" aria-label={t('session_oeuvre_id_label')} className="row gap-sm" style={{ flexWrap: 'wrap' }}>
-        <button
-          type="button"
-          className={workMode === 'existing' ? 'btn primary' : 'btn ghost'}
-          data-testid="session-work-mode-existing"
-          disabled={busy || linkedOeuvreId != null}
-          onClick={() => setWorkMode('existing')}
-          style={{ minHeight: 44, flex: 1 }}
-        >
-          {t('session_work_mode_existing')}
-        </button>
-        <button
-          type="button"
-          className={workMode === 'new' ? 'btn primary' : 'btn ghost'}
-          data-testid="session-work-mode-new"
-          disabled={busy || linkedOeuvreId != null}
-          onClick={() => setWorkMode('new')}
-          style={{ minHeight: 44, flex: 1 }}
-        >
-          {t('session_work_mode_new')}
-        </button>
-      </div>
-
-      {linkedOeuvreId != null ? (
-        <p className="t-mono-sm" data-testid="session-linked-work" style={{ fontSize: 12, color: 'var(--tx2)', margin: 0 }}>
-          {t('session_linked_work')}: #{linkedOeuvreId}
-        </p>
-      ) : workMode === 'existing' ? (
-        <>
-          <label className="t-mono-sm" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <span>{t('session_oeuvre_id_label')}</span>
-            <input
-              className="input"
-              inputMode="numeric"
-              value={oeuvreInput}
-              onChange={(e) => setOeuvreInput(e.target.value)}
-              placeholder={t('session_oeuvre_id_placeholder')}
-              style={{ minHeight: 44 }}
-            />
-          </label>
-          <button type="button" className="btn ghost" disabled={busy} onClick={linkOeuvre} style={{ minHeight: 44 }}>
-            {t('session_oeuvre_link')}
-          </button>
-        </>
-      ) : (
-        <>
-          <label className="t-mono-sm" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <span>{t('session_title_required_label')}</span>
-            <input
-              className="input"
-              value={titleHint}
-              onChange={(e) => setTitleHint(e.target.value)}
-              style={{ minHeight: 44 }}
-            />
-          </label>
-          <button
-            type="button"
-            className="btn ghost"
-            data-testid="session-create-work-link"
-            disabled={busy}
-            onClick={createAndLink}
-            style={{ minHeight: 44 }}
-          >
-            {t('session_create_work_link')}
-          </button>
-        </>
-      )}
-
       <label className="t-mono-sm" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         <span>{t('session_notes_label')}</span>
         <textarea className="input" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} onBlur={() => void pushMeta()} />
       </label>
-      {workMode === 'existing' && linkedOeuvreId == null ? (
-        <label className="t-mono-sm" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <span>{t('session_title_hint_label')}</span>
-          <input
-            className="input"
-            value={titleHint}
-            onChange={(e) => setTitleHint(e.target.value)}
-            onBlur={() => void pushMeta()}
-            style={{ minHeight: 44 }}
-          />
-        </label>
+
+      <section style={{ border: '1px solid var(--bd)', borderRadius: 10, padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div className="row gap-sm" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <div className="t-eyebrow">{t('session_journal_items_heading')}</div>
+            <div className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx2)', marginTop: 4 }}>
+              {items.length} {t('session_journal_items_count')} · {stagedShotCount} {t('drawer_work_sessions_shots')}
+            </div>
+          </div>
+          <button type="button" className="btn ghost sm" disabled={busy} onClick={() => addItem('existing')} style={{ minHeight: 44 }}>
+            {t('session_add_painting')}
+          </button>
+        </div>
+        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 2 }}>
+          {items.map((item, idx) => (
+            <button
+              key={item.id}
+              type="button"
+              className={item.id === activeItem?.id ? 'btn primary sm' : 'btn ghost sm'}
+              data-testid={`session-item-tab-${idx + 1}`}
+              onClick={() => setActiveItemId(item.id)}
+              style={{ minHeight: 44, flex: '0 0 auto' }}
+            >
+              {t('session_painting_label')} {idx + 1} · {item.shots.length + (item.applied_shot_count ?? 0)}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {activeItem ? (
+        <section data-testid="session-active-item" style={{ border: '1px solid var(--bd)', borderRadius: 10, padding: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div className="t-eyebrow">{t('session_painting_label')} {items.findIndex((item) => item.id === activeItem.id) + 1}</div>
+          <div role="group" aria-label={t('session_oeuvre_id_label')} className="row gap-sm" style={{ flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className={activeItem.mode === 'existing' ? 'btn primary' : 'btn ghost'}
+              data-testid="session-work-mode-existing"
+              disabled={busy || activeItem.status === 'applied'}
+              onClick={() => changeItemMode(activeItem, 'existing')}
+              style={{ minHeight: 44, flex: 1 }}
+            >
+              {t('session_work_mode_existing')}
+            </button>
+            <button
+              type="button"
+              className={activeItem.mode === 'new' ? 'btn primary' : 'btn ghost'}
+              data-testid="session-work-mode-new"
+              disabled={busy || activeItem.status === 'applied'}
+              onClick={() => changeItemMode(activeItem, 'new')}
+              style={{ minHeight: 44, flex: 1 }}
+            >
+              {t('session_work_mode_new')}
+            </button>
+          </div>
+
+          {activeItem.oeuvre_id ? (
+            <p className="t-mono-sm" data-testid="session-linked-work" style={{ fontSize: 12, color: 'var(--tx2)', margin: 0 }}>
+              {t('session_linked_work')}: #{activeItem.oeuvre_id}{activeItem.oeuvre_title ? ` · ${activeItem.oeuvre_title}` : ''}
+            </p>
+          ) : activeItem.mode === 'existing' ? (
+            <>
+              <label className="t-mono-sm" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <span>{t('session_work_search_label')}</span>
+                <input
+                  className="input"
+                  data-testid="session-work-search-input"
+                  value={workSearch}
+                  onChange={(e) => setWorkSearch(e.target.value)}
+                  placeholder={t('session_work_search_placeholder')}
+                  style={{ minHeight: 44 }}
+                />
+              </label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {workResults.map((work) => (
+                  <button
+                    key={work.OeuvreID}
+                    type="button"
+                    className="btn ghost"
+                    disabled={busy}
+                    onClick={() => linkOeuvre(activeItem, String(work.OeuvreID))}
+                    data-testid="session-work-search-result"
+                    style={{ minHeight: 56, textAlign: 'left', justifyContent: 'flex-start', display: 'flex', alignItems: 'center', gap: 10 }}
+                  >
+                    {work.txtImageNameLink ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={thumbUrl(work.txtImageNameLink, 96) ?? ''}
+                        alt=""
+                        style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 4, border: '1px solid var(--bd)', flexShrink: 0 }}
+                      />
+                    ) : (
+                      <span
+                        aria-hidden
+                        style={{ width: 44, height: 44, borderRadius: 4, border: '1px solid var(--bd)', background: 'var(--bg2)', flexShrink: 0 }}
+                      />
+                    )}
+                    <span style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        #{work.OeuvreID} · {work.Titre || t('untitled')}
+                      </span>
+                      <span style={{ color: 'var(--tx3)', fontSize: 10 }}>
+                        {work.Largeur || work.Hauteur ? `${work.Largeur ?? '?'} × ${work.Hauteur ?? '?'} cm` : work.Année?.slice(0, 4) ?? '—'}
+                      </span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <label className="t-mono-sm" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <span>{t('session_oeuvre_id_label')}</span>
+                <input
+                  className="input"
+                  inputMode="numeric"
+                  value={workIdFallback}
+                  onChange={(e) => setWorkIdFallback(e.target.value)}
+                  placeholder={t('session_oeuvre_id_placeholder')}
+                  style={{ minHeight: 44 }}
+                />
+              </label>
+              <button type="button" className="btn ghost" disabled={busy} onClick={() => linkOeuvre(activeItem, workIdFallback)} style={{ minHeight: 44 }}>
+                {t('session_oeuvre_link')}
+              </button>
+            </>
+          ) : (
+            <>
+              <label className="t-mono-sm" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <span>{t('session_title_required_label')}</span>
+                <input
+                  className="input"
+                  value={activeItem.title_hint ?? ''}
+                  onChange={(e) => updateLocalItem(activeItem.id, { title_hint: e.target.value })}
+                  onBlur={(e) => void saveItem({ ...activeItem, title_hint: e.currentTarget.value })}
+                  style={{ minHeight: 44 }}
+                />
+              </label>
+              <button
+                type="button"
+                className="btn ghost"
+                data-testid="session-create-work-link"
+                disabled={busy}
+                onClick={() => createAndLink(activeItem)}
+                style={{ minHeight: 44 }}
+              >
+                {t('session_create_work_link')}
+              </button>
+            </>
+          )}
+
+          <label className="t-mono-sm" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <span>{t('session_item_notes_label')}</span>
+            <textarea
+              className="input"
+              rows={3}
+              value={activeItem.notes ?? ''}
+              onChange={(e) => updateLocalItem(activeItem.id, { notes: e.target.value })}
+              onBlur={(e) => void saveItem({ ...activeItem, notes: e.currentTarget.value })}
+            />
+          </label>
+          <div className="row gap-sm" style={{ flexWrap: 'wrap' }}>
+            <label className="t-mono-sm" style={{ flex: 1, minWidth: 120 }}>
+              {t('session_dims_label')}
+              <input
+                className="input"
+                value={activeItem.width_cm ?? ''}
+                onChange={(e) => updateLocalItem(activeItem.id, { width_cm: e.target.value })}
+                onBlur={(e) => void saveItem({ ...activeItem, width_cm: e.currentTarget.value })}
+                placeholder="W"
+                style={{ minHeight: 44, marginTop: 6 }}
+              />
+            </label>
+            <label className="t-mono-sm" style={{ flex: 1, minWidth: 120 }}>
+              <span style={{ opacity: 0 }}>.</span>
+              <input
+                className="input"
+                value={activeItem.height_cm ?? ''}
+                onChange={(e) => updateLocalItem(activeItem.id, { height_cm: e.target.value })}
+                onBlur={(e) => void saveItem({ ...activeItem, height_cm: e.currentTarget.value })}
+                placeholder="H"
+                style={{ minHeight: 44, marginTop: 6 }}
+              />
+            </label>
+          </div>
+        </section>
       ) : null}
-      <div className="row gap-sm" style={{ flexWrap: 'wrap' }}>
-        <label className="t-mono-sm" style={{ flex: 1, minWidth: 120 }}>
-          {t('session_dims_label')}
-          <input
-            className="input"
-            value={widthCm}
-            onChange={(e) => setWidthCm(e.target.value)}
-            onBlur={() => void pushMeta()}
-            placeholder="W"
-            style={{ minHeight: 44, marginTop: 6 }}
-          />
-        </label>
-        <label className="t-mono-sm" style={{ flex: 1, minWidth: 120 }}>
-          <span style={{ opacity: 0 }}>.</span>
-          <input
-            className="input"
-            value={heightCm}
-            onChange={(e) => setHeightCm(e.target.value)}
-            onBlur={() => void pushMeta()}
-            placeholder="H"
-            style={{ minHeight: 44, marginTop: 6 }}
-          />
-        </label>
-      </div>
 
       <div className="t-mono-sm" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <p style={{ color: 'var(--tx2)', fontSize: 11, lineHeight: 1.4, margin: 0 }}>{t('session_field_context_hint')}</p>
@@ -489,7 +625,7 @@ export function SessionNewClient() {
           accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,.heic"
           multiple
           capture={narrow ? 'environment' : undefined}
-          disabled={busy}
+          disabled={busy || !activeItem || activeItem.status === 'applied'}
           onChange={(e) => {
             onUploadFiles(e.target.files)
             e.target.value = ''
@@ -501,7 +637,7 @@ export function SessionNewClient() {
         {t('session_shots_label')}: {shotCount}
       </div>
 
-      {shotCount > 0 && linkedOeuvreId != null ? (
+      {stagedShotCount > 0 && actionableCount > 0 ? (
         <p
           data-testid="session-photos-staged-hint"
           className="t-mono-sm"
@@ -516,7 +652,7 @@ export function SessionNewClient() {
           <button
             type="button"
             className="btn primary"
-            disabled={busy || linkedOeuvreId == null || shotCount === 0}
+            disabled={busy || actionableCount === 0}
             onClick={submitReview}
             style={{ minHeight: 44 }}
           >
@@ -528,7 +664,7 @@ export function SessionNewClient() {
               type="button"
               className="btn primary"
               data-testid="session-apply-now"
-              disabled={busy || linkedOeuvreId == null || shotCount === 0}
+              disabled={busy || actionableCount === 0}
               onClick={applyNow}
               style={{ minHeight: 44 }}
             >
@@ -562,8 +698,8 @@ export function SessionNewClient() {
                   }}
                 >
                   <span className="t-mono-sm" style={{ fontSize: 11 }}>
-                    #{row.oeuvre_id ?? '—'} · {row.oeuvre_title || '—'} · {row.shot_count}{' '}
-                    {t('drawer_work_sessions_shots')} · {t(row.status === 'pending_review' ? 'session_status_pending_review' : 'session_status_draft')}
+                    {row.item_count} {t('session_journal_items_count')} · {row.shot_count}{' '}
+                    {t('drawer_work_sessions_shots')} · {row.oeuvre_title || '—'} · {t(row.status === 'pending_review' ? 'session_status_pending_review' : 'session_status_draft')}
                   </span>
                   <div className="row gap-sm">
                     <button type="button" className="btn primary" style={{ minHeight: 44 }} disabled={busy} onClick={() => approveOther(row.id)}>
