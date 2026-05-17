@@ -3,6 +3,7 @@
 // ContactsTab — searchable, filterable contact list with full field set + edit/create.
 // Supports multiple addresses per contact via contact_addresses table.
 
+import Link from 'next/link'
 import { useState, useMemo, useEffect, useCallback, useLayoutEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -593,6 +594,13 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
               <button type="submit" className="btn sm" disabled={quickBusy} style={{ minHeight: 44, flex: 1 }}>
                 {quickBusy ? t('contacts_quick_saving') : t('contacts_quick_save')}
               </button>
+              <Link
+                href="/atelier/capture?mode=card#capture-card-live-text"
+                className="btn ghost sm"
+                style={{ minHeight: 44, flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                {t('contacts_quick_live_text')}
+              </Link>
               <button type="button" className="btn ghost sm" style={{ minHeight: 44, flex: 1 }} onClick={requestStartCreate}>
                 {t('contacts_quick_full')}
               </button>

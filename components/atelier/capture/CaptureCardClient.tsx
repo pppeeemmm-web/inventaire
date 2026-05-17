@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useCallback, useState, useTransition, type CSSProperties } from 'react'
+import { useCallback, useEffect, useRef, useState, useTransition, type CSSProperties } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { toast } from '@/lib/ui/toast'
@@ -85,6 +85,7 @@ export function CaptureCardClient() {
   const [parsed, setParsed] = useState<ImportedContact | null>(null)
   const [meta, setMeta] = useState<CardCaptureMeta | null>(null)
   const [busy, startBusy] = useTransition()
+  const textRef = useRef<HTMLTextAreaElement | null>(null)
 
   const inputStyle: CSSProperties = {
     minHeight: 120,
@@ -121,6 +122,15 @@ export function CaptureCardClient() {
   }, [])
 
   const canAnalyze = Boolean(shot || text.trim())
+
+  useEffect(() => {
+    if (window.location.hash !== '#capture-card-live-text') return
+    textRef.current?.scrollIntoView({ block: 'center' })
+  }, [])
+
+  const focusLiveText = () => {
+    textRef.current?.focus()
+  }
 
   const analyze = () => {
     if (!canAnalyze) {
@@ -223,7 +233,18 @@ export function CaptureCardClient() {
           </button>
         </div>
       ) : null}
+      <button
+        type="button"
+        className="btn ghost"
+        data-testid="capture-card-live-text-focus"
+        onClick={focusLiveText}
+        style={{ minHeight: 44, width: '100%', marginBottom: 8 }}
+      >
+        {t('capture_card_live_text_focus')}
+      </button>
       <textarea
+        id="capture-card-live-text"
+        ref={textRef}
         value={text}
         onChange={(e) => {
           setText(e.target.value)
