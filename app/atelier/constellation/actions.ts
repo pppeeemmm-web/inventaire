@@ -160,7 +160,12 @@ export async function saveConstellationMap(
   if (insErr) return { error: insErr.message }
 
   try {
-    await r2PutObject(buf, r2_key, 'application/json')
+    await r2PutObject(buf, r2_key, 'application/json', {
+      source: 'constellation_map',
+      classification: 'linked',
+      linkedRefs: [{ table: 'constellation_map', column: 'r2_key', row_id: id }],
+      uploadedBy: user.id,
+    })
   } catch (e) {
     await supabase.from('constellation_map').delete().eq('id', id)
     return { error: e instanceof Error ? e.message : 'R2 upload failed' }

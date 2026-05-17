@@ -15,6 +15,7 @@ import crypto from 'crypto'
 import sharp from 'sharp'
 import { logSystemEvent } from '@/lib/utils/logging'
 import { r2S3Hostname } from '@/lib/r2-s3-host'
+import { markStorageObject, recordStorageObject } from '@/lib/storage-object-ledger'
 
 /** Returns null if caller is admin, else error string. Use for hard-destructive ops. */
 async function requireAdmin(supabase: SupabaseClient): Promise<string | null> {
@@ -318,7 +319,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
 
     // Upload image if provided
     if (imageFile && imageFile.size > 0) {
-      const uploadResult = await uploadImage(supabase, imageFile, oid, 1)
+      const uploadResult = await uploadImage(supabase, imageFile, oid, 1, user.id)
       if ('error' in uploadResult) return { error: uploadResult.error }
       imageName = uploadResult.filename
     }
@@ -435,7 +436,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
     let formUploadedNewImage = false
     if (imageFile && imageFile.size > 0) {
       const seq      = seqFromFilename(imageExisting)
-      const uploadResult = await uploadImage(supabase, imageFile, oid, seq)
+      const uploadResult = await uploadImage(supabase, imageFile, oid, seq, user.id)
       if ('error' in uploadResult) return { error: uploadResult.error }
       imageName = uploadResult.filename
       formUploadedNewImage = true
@@ -704,7 +705,18 @@ function r2PutHeaders(
   return headers
 }
 
-async function r2Put(buf: Buffer, filename: string, contentType: string): Promise<void> {
+async function r2Put(
+  buf: Buffer,
+  filename: string,
+  contentType: string,
+  ledger?: {
+    source?: string
+    classification?: 'linked' | 'unidentified' | 'transient' | 'recycle' | 'backup' | 'ignored'
+    linkedRefs?: Array<{ table: string; column: string; row_id?: string | number | null; label?: string | null }>
+    uploadedBy?: string | null
+    metadata?: Record<string, string | number | boolean | null>
+  },
+): Promise<void> {
   const account = process.env.R2_ACCOUNT_ID ?? ''
   const bucket  = (process.env.R2_BUCKET ?? 'paintings').trim()
   const host    = r2S3Hostname(account)
@@ -725,6 +737,17 @@ async function r2Put(buf: Buffer, filename: string, contentType: string): Promis
     }
     throw new Error(msg)
   }
+  await recordStorageObject({
+    bucket,
+    objectKey: filename,
+    sizeBytes: buf.length,
+    contentType,
+    source: ledger?.source,
+    classification: ledger?.classification,
+    linkedRefs: ledger?.linkedRefs,
+    uploadedBy: ledger?.uploadedBy,
+    metadata: ledger?.metadata,
+  })
 }
 
 /** Server-side R2 copy via S3 CopyObject (no bytes flow through this server). */
@@ -780,12 +803,30 @@ async function r2Copy(srcKey: string, dstKey: string): Promise<void> {
 async function r2SoftDelete(filename: string): Promise<void> {
   const day = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
   const dst = `recycle/${day}/${filename}`
+  const bucket = (process.env.R2_BUCKET ?? 'paintings').trim()
+  let copiedToRecycle = false
   try {
     await r2Copy(filename, dst)
+    copiedToRecycle = true
+    await recordStorageObject({
+      bucket,
+      objectKey: dst,
+      source: 'r2_soft_delete',
+      classification: 'recycle',
+      status: 'present',
+      linkedRefs: [{ table: 'storage_object_ledger', column: 'object_key', row_id: filename, label: 'source' }],
+      metadata: { original_key: filename },
+    })
   } catch (e) {
     console.warn('[r2SoftDelete] copy failed, falling through to delete:', (e as Error).message)
   }
   await r2Delete(filename)
+  await markStorageObject({
+    bucket,
+    objectKey: filename,
+    status: copiedToRecycle ? 'recycled' : 'deleted',
+    metadata: copiedToRecycle ? { recycle_key: dst } : { recycle_failed: true },
+  })
 }
 
 async function r2Delete(filename: string): Promise<void> {
@@ -839,6 +880,7 @@ async function uploadImage(
   file: File,
   oeuvreId: number,
   seq: number,
+  uploadedBy?: string | null,
 ): Promise<{ ok: true; filename: string } | { error: string }> {
   try {
     const buf = Buffer.from(await file.arrayBuffer())
@@ -870,7 +912,13 @@ async function uploadImage(
       .toBuffer()
 
     const filename = makeImageStorageFilename(oeuvreId, seq, buf, 'avif')
-    await r2Put(avifBuf, filename, 'image/avif')
+    await r2Put(avifBuf, filename, 'image/avif', {
+      source: 'work_image',
+      classification: 'linked',
+      linkedRefs: [{ table: 'Oeuvres', column: 'OeuvreID', row_id: oeuvreId }],
+      uploadedBy,
+      metadata: { seq },
+    })
 
     const thumbBuf = await sharp(avifBuf)
       .ensureAlpha()
@@ -884,7 +932,13 @@ async function uploadImage(
       .avif({ quality: 70, effort: 3, chromaSubsampling: '4:4:4' })
       .toBuffer()
     const thumbName = `thumbs/${filename.replace(/\.[^.]+$/, '')}.avif`
-    await r2Put(thumbBuf, thumbName, 'image/avif')
+    await r2Put(thumbBuf, thumbName, 'image/avif', {
+      source: 'work_image_thumb',
+      classification: 'linked',
+      linkedRefs: [{ table: 'Oeuvres', column: 'OeuvreID', row_id: oeuvreId }],
+      uploadedBy,
+      metadata: { original_key: filename, seq },
+    })
 
     return { ok: true, filename }
   } catch (e) {
@@ -943,7 +997,7 @@ export async function addWorkImage(formData: FormData): Promise<ImageResult> {
   const seqNo   = ((seqRes.data?.SeqNo ?? 0) as number) + 1
   const imageId = ((idRes.data?.ImageID ?? 200) as number) + 1
 
-  const uploadResult = await uploadImage(supabase, file, oeuvreId, seqNo)
+  const uploadResult = await uploadImage(supabase, file, oeuvreId, seqNo, user.id)
   if ('error' in uploadResult) return { error: uploadResult.error }
   const filename = uploadResult.filename
 

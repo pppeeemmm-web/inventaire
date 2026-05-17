@@ -4,6 +4,7 @@
 import { createClient }  from '@/lib/supabase/server'
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 import { logSystemEvent } from '@/lib/utils/logging'
+import { recordStorageObject } from '@/lib/storage-object-ledger'
 
 export interface ConsignmentOrderRow {
   id:               string
@@ -45,7 +46,7 @@ async function guardTeam() {
   return { error: null, supabase }
 }
 
-async function r2UploadPdf(key: string, body: Buffer) {
+async function r2UploadPdf(key: string, body: Buffer, rowId?: string | null) {
   const accountId = process.env.R2_ACCOUNT_ID ?? ''
   const s3 = new S3Client({
     region: 'auto',
@@ -62,6 +63,18 @@ async function r2UploadPdf(key: string, body: Buffer) {
     Body:        body,
     ContentType: 'application/pdf',
   }))
+  await recordStorageObject({
+    bucket,
+    objectKey: key,
+    sizeBytes: body.length,
+    contentType: 'application/pdf',
+    source: 'consignment_pdf',
+    classification: 'linked',
+    linkedRefs: [
+      { table: 'consignment_order', column: 'pdf_path', row_id: rowId ?? null },
+      { table: 'document', column: 'storage_path' },
+    ],
+  })
 }
 
 export async function createConsignmentOrder(formData: FormData): Promise<ConsignmentResult> {
@@ -116,7 +129,7 @@ export async function createConsignmentOrder(formData: FormData): Promise<Consig
     const folder  = kind === 'loan' ? 'loans' : 'consignments'
     const docName = kind === 'loan' ? 'BORDEREAU_PRET' : 'BORDEREAU'
     const key     = `${folder}/${docName}_${order.order_ref}.pdf`
-    await r2UploadPdf(key, pdf)
+    await r2UploadPdf(key, pdf, order.id)
 
     await supabase.from('consignment_order').update({ pdf_path: key }).eq('id', order.id)
     ;(order as ConsignmentOrderRow).pdf_path = key
@@ -158,7 +171,7 @@ export async function regenerateConsignmentPdf(id: string): Promise<{ error?: st
 
   try {
     const pdf = await buildConsignmentPdf(order as ConsignmentOrderRow, oeuvre_ids, supabase)
-    await r2UploadPdf(key, pdf)
+    await r2UploadPdf(key, pdf, id)
     await supabase.from('consignment_order').update({ pdf_path: key }).eq('id', id)
 
     // Re-point the document row at the new key so vault links keep working

@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { r2S3Hostname } from '@/lib/r2-s3-host'
+import { markStorageObject, recordStorageObject } from '@/lib/storage-object-ledger'
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -93,15 +94,32 @@ function r2Client() {
 
 async function r2Upload(key: string, body: Buffer, contentType: string) {
   const s3 = r2Client()
+  const bucket = process.env.R2_BUCKET ?? 'paintings'
   await s3.send(new PutObjectCommand({
-    Bucket: process.env.R2_BUCKET ?? 'paintings',
+    Bucket: bucket,
     Key: key, Body: body, ContentType: contentType,
   }))
+  await recordStorageObject({
+    bucket,
+    objectKey: key,
+    sizeBytes: body.length,
+    contentType,
+    source: 'exhibition_floorplan',
+    classification: 'linked',
+    linkedRefs: [{ table: 'exhibition_layout', column: 'floorplan_path' }],
+  })
 }
 
 async function r2Delete(key: string) {
   const s3 = r2Client()
-  await s3.send(new DeleteObjectCommand({ Bucket: process.env.R2_BUCKET ?? 'paintings', Key: key }))
+  const bucket = process.env.R2_BUCKET ?? 'paintings'
+  await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }))
+  await markStorageObject({
+    bucket,
+    objectKey: key,
+    status: 'deleted',
+    metadata: { source: 'exhibition_floorplan_delete' },
+  })
 }
 
 // ── Fetch layouts ─────────────────────────────────────────────────────────────

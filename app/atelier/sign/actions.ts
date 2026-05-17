@@ -23,7 +23,12 @@ export async function saveContactSignature(
 
   const key = `signatures/contact_${contactId}_${Date.now()}.png`
   try {
-    await r2PutObject(buf, key, 'image/png')
+    await r2PutObject(buf, key, 'image/png', {
+      source: 'contact_signature',
+      classification: 'linked',
+      linkedRefs: [{ table: 'Contact', column: 'signature_r2_key', row_id: contactId }],
+      uploadedBy: user.id,
+    })
   } catch {
     return { error: 'r2_failed' }
   }

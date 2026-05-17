@@ -46,7 +46,13 @@ export async function createFieldIssueReport(formData: FormData): Promise<Create
     if ('error' in validated) return { ok: false, error: 'invalid_photo' }
     const key = makeIssuePhotoKey(buf, validated.ext)
     try {
-      await r2PutObject(buf, key, validated.mime)
+      await r2PutObject(buf, key, validated.mime, {
+        source: 'field_issue',
+        classification: 'linked',
+        linkedRefs: [{ table: 'studio_task', column: 'photo_r2_key' }],
+        uploadedBy: user.id,
+        metadata: { type },
+      })
     } catch {
       return { ok: false, error: 'r2_failed' }
     }

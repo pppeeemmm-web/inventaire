@@ -97,7 +97,13 @@ export async function createVoiceNote(formData: FormData): Promise<{ ok: true; i
     const ext = audioMime.includes('mp4') ? 'm4a' : audioMime.includes('ogg') ? 'ogg' : 'webm'
     audio_r2_key = `voice-note/${id}/recording.${ext}`
     try {
-      await r2PutObject(audioBuf, audio_r2_key, audioMime)
+      await r2PutObject(audioBuf, audio_r2_key, audioMime, {
+        source: 'voice_note',
+        classification: 'linked',
+        linkedRefs: [{ table: 'voice_note', column: 'audio_r2_key', row_id: id }],
+        uploadedBy: user.id,
+        metadata: { kind, bucket, duration_ms },
+      })
     } catch (e) {
       return { error: String(e) }
     }

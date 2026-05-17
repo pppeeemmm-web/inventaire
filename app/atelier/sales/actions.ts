@@ -6,6 +6,7 @@ import { createClient }  from '@/lib/supabase/server'
 import { logSystemEvent } from '@/lib/utils/logging'
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3'
 import { addCalendarDaysIso, parseSaleOrderBatchIds } from '@/lib/sale-return-window'
+import { recordStorageObject } from '@/lib/storage-object-ledger'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -170,7 +171,7 @@ async function r2Get(key: string, bucketName: string = BUCKET): Promise<Buffer |
   }
 }
 
-async function r2UploadPdf(key: string, body: Buffer) {
+async function r2UploadPdf(key: string, body: Buffer, rowId?: string | null) {
   const s3 = r2Client()
   await s3.send(new PutObjectCommand({
     Bucket:      BUCKET,
@@ -178,6 +179,18 @@ async function r2UploadPdf(key: string, body: Buffer) {
     Body:        body,
     ContentType: 'application/pdf',
   }))
+  await recordStorageObject({
+    bucket: BUCKET,
+    objectKey: key,
+    sizeBytes: body.length,
+    contentType: 'application/pdf',
+    source: 'sale_order_pdf',
+    classification: 'linked',
+    linkedRefs: [
+      { table: 'sale_order', column: 'pdf_path', row_id: rowId ?? null },
+      { table: 'document', column: 'storage_path' },
+    ],
+  })
 }
 
 // ── Create order ──────────────────────────────────────────────────────────────
@@ -249,7 +262,7 @@ export async function createSaleOrder(formData: FormData): Promise<OrderResult> 
   try {
     const pdf = await buildOrderPdf(orderWithIds, supabase)
     const key = `orders/ORDER_${order.order_ref}.pdf`
-    await r2UploadPdf(key, pdf)
+    await r2UploadPdf(key, pdf, order.id)
     
     // Update order record
     await supabase.from('sale_order').update({ pdf_path: key }).eq('id', order.id)
@@ -599,7 +612,7 @@ export async function regenerateOrderPdf(id: string): Promise<SimpleResult> {
   try {
     const pdf = await buildOrderPdf(order as SaleOrderRow, supabase)
     const key = `orders/ORDER_${order.order_ref}.pdf`
-    await r2UploadPdf(key, pdf)
+    await r2UploadPdf(key, pdf, id)
     await supabase.from('sale_order').update({ pdf_path: key }).eq('id', id)
     return { ok: true }
   } catch (err) {

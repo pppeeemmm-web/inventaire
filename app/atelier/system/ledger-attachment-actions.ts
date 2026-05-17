@@ -51,7 +51,12 @@ export async function uploadLedgerAttachment(formData: FormData): Promise<Upload
   const key = makeLedgerKey(buf, validated.ext)
 
   try {
-    await r2PutObject(buf, key, validated.mime)
+    await r2PutObject(buf, key, validated.mime, {
+      source: 'system_log_attachment',
+      classification: 'linked',
+      linkedRefs: [{ table: 'system_log', column: 'attachments' }],
+      uploadedBy: user.id,
+    })
   } catch {
     return { ok: false, code: 'r2_failed' }
   }

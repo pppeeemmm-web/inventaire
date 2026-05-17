@@ -10,6 +10,7 @@ import { isShareInboxPayloadV1 } from '@/lib/share-inbox-types'
 import { deleteShareInboxEntry } from '@/app/atelier/share-inbox-actions'
 import { addWorkImage } from '@/app/atelier/works/actions'
 import { logSystemEvent } from '@/lib/utils/logging'
+import { recordStorageObject } from '@/lib/storage-object-ledger'
 import {
   S3Client,
   PutObjectCommand,
@@ -71,7 +72,13 @@ function appendBlock(existing: string | null | undefined, block: string): string
   return `${prev}\n\n---\n[Share]\n${block}`
 }
 
-async function vaultR2Upload(key: string, body: Buffer, contentType: string): Promise<void> {
+async function vaultR2Upload(
+  key: string,
+  body: Buffer,
+  contentType: string,
+  uploadedBy: string,
+  source: string,
+): Promise<void> {
   const accountId = process.env.R2_ACCOUNT_ID ?? ''
   const s3 = new S3Client({
     region: 'auto',
@@ -89,6 +96,16 @@ async function vaultR2Upload(key: string, body: Buffer, contentType: string): Pr
       ContentType: contentType,
     }),
   )
+  await recordStorageObject({
+    bucket: VAULT_BUCKET,
+    objectKey: key,
+    sizeBytes: body.length,
+    contentType,
+    source,
+    classification: 'linked',
+    linkedRefs: [{ table: 'document', column: 'storage_path' }],
+    uploadedBy,
+  })
 }
 
 function isPdfBuffer(buf: Buffer): boolean {
@@ -202,7 +219,7 @@ export async function attachShareInboxToWork(
     if (isPdfBuffer(buf)) {
       const path = `${new Date().toISOString().slice(0, 10)}_scan_share_${oeuvreId}_${f.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`
       try {
-        await vaultR2Upload(path, buf, 'application/pdf')
+        await vaultR2Upload(path, buf, 'application/pdf', g.user.id, 'share_inbox_work_pdf')
       } catch (e) {
         return { error: String(e) }
       }
@@ -317,7 +334,7 @@ export async function attachShareInboxToVault(
     const path = `${dateStr}_scan_${safe}`
     const mime = f.mime || (isPdfBuffer(buf) ? 'application/pdf' : 'application/octet-stream')
     try {
-      await vaultR2Upload(path, buf, mime)
+      await vaultR2Upload(path, buf, mime, g.user.id, 'share_inbox_vault')
     } catch (e) {
       return { error: String(e) }
     }

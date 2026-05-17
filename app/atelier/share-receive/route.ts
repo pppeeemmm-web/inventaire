@@ -126,7 +126,13 @@ export async function POST(request: NextRequest) {
 
     const r2Key = `share-inbox/${inboxId}/${r2KeySuffix}`
     try {
-      await r2PutObject(buf, r2Key, mime)
+      await r2PutObject(buf, r2Key, mime, {
+        source: 'share_inbox',
+        classification: 'transient',
+        linkedRefs: [{ table: 'share_inbox', column: 'payload.files.r2_key', row_id: inboxId }],
+        uploadedBy: user.id,
+        metadata: { original_name: value.name || r2KeySuffix },
+      })
     } catch (e) {
       console.error('[share-receive] R2 put failed', r2Key, e)
       for (const f of filesOut) {

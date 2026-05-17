@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { validateWorkImageBuffer } from '@/lib/image-upload'
 import { logSystemEvent } from '@/lib/utils/logging'
+import { recordStorageObject } from '@/lib/storage-object-ledger'
 import {
   S3Client,
   PutObjectCommand,
@@ -24,7 +25,13 @@ async function guardTeam() {
   return { error: null, supabase, user }
 }
 
-async function vaultR2Upload(key: string, body: Buffer, contentType: string): Promise<void> {
+async function vaultR2Upload(
+  key: string,
+  body: Buffer,
+  contentType: string,
+  uploadedBy?: string | null,
+  pages?: number,
+): Promise<void> {
   const accountId = process.env.R2_ACCOUNT_ID ?? ''
   const s3 = new S3Client({
     region: 'auto',
@@ -35,6 +42,17 @@ async function vaultR2Upload(key: string, body: Buffer, contentType: string): Pr
     },
   })
   await s3.send(new PutObjectCommand({ Bucket: VAULT_BUCKET, Key: key, Body: body, ContentType: contentType }))
+  await recordStorageObject({
+    bucket: VAULT_BUCKET,
+    objectKey: key,
+    sizeBytes: body.length,
+    contentType,
+    source: 'capture_doc',
+    classification: 'linked',
+    linkedRefs: [{ table: 'document', column: 'storage_path' }],
+    uploadedBy,
+    metadata: { pages: pages ?? 0 },
+  })
 }
 
 async function buildScanPdf(jpegPages: Buffer[]): Promise<Buffer> {
@@ -83,7 +101,7 @@ export async function submitDocScanCapture(formData: FormData): Promise<{ ok: tr
   const path = `${dateStr}_scan_${safeTitle}_${crypto.randomBytes(4).toString('hex')}.pdf`
 
   try {
-    await vaultR2Upload(path, pdfBuf, 'application/pdf')
+    await vaultR2Upload(path, pdfBuf, 'application/pdf', g.user?.id ?? null, files.length)
   } catch (e) {
     return { error: String(e) }
   }

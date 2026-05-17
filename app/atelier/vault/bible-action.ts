@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 import PDFDocument from 'pdfkit'
+import { recordStorageObject } from '@/lib/storage-object-ledger'
 
 const BUCKET = process.env.R2_VAULT_BUCKET ?? 'vault'
 
@@ -37,6 +38,16 @@ export async function vaultStudioBible() {
       Body: pdfBuffer,
       ContentType: 'application/pdf',
     }))
+    await recordStorageObject({
+      bucket: BUCKET,
+      objectKey: filename,
+      sizeBytes: pdfBuffer.length,
+      contentType: 'application/pdf',
+      source: 'studio_bible',
+      classification: 'linked',
+      linkedRefs: [{ table: 'document', column: 'storage_path' }],
+      uploadedBy: user.id,
+    })
   } catch (e) {
     return { error: `R2 Upload failed: ${String(e)}` }
   }

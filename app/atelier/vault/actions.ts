@@ -14,6 +14,7 @@ import {
 } from '@aws-sdk/client-s3'
 import { getSignedUrl as awsGetSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { GetObjectCommand } from '@aws-sdk/client-s3'
+import { markStorageObject, recordStorageObject } from '@/lib/storage-object-ledger'
 
 const BUCKET = process.env.R2_VAULT_BUCKET ?? 'vault'
 
@@ -30,7 +31,18 @@ function r2Client() {
   })
 }
 
-async function r2Upload(key: string, body: Buffer, contentType: string) {
+async function r2Upload(
+  key: string,
+  body: Buffer,
+  contentType: string,
+  ledger?: {
+    source?: string
+    classification?: 'linked' | 'unidentified' | 'transient' | 'recycle' | 'backup' | 'ignored'
+    linkedRefs?: Array<{ table: string; column: string; row_id?: string | number | null; label?: string | null }>
+    uploadedBy?: string | null
+    metadata?: Record<string, string | number | boolean | null>
+  },
+) {
   const s3 = r2Client()
   await s3.send(new PutObjectCommand({
     Bucket:      BUCKET,
@@ -38,11 +50,28 @@ async function r2Upload(key: string, body: Buffer, contentType: string) {
     Body:        body,
     ContentType: contentType,
   }))
+  await recordStorageObject({
+    bucket: BUCKET,
+    objectKey: key,
+    sizeBytes: body.length,
+    contentType,
+    source: ledger?.source,
+    classification: ledger?.classification,
+    linkedRefs: ledger?.linkedRefs,
+    uploadedBy: ledger?.uploadedBy,
+    metadata: ledger?.metadata,
+  })
 }
 
 async function r2Delete(key: string) {
   const s3 = r2Client()
   await s3.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: key }))
+  await markStorageObject({
+    bucket: BUCKET,
+    objectKey: key,
+    status: 'deleted',
+    metadata: { source: 'vault_delete' },
+  })
 }
 
 async function r2SignedUrl(key: string, expiresIn = 3600): Promise<string> {
@@ -79,10 +108,10 @@ export interface VaultDoc {
 async function guardTeam() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Non authentifié' as const, supabase: null }
+  if (!user) return { error: 'Non authentifié' as const, supabase: null, user: null }
   const { data: isTeam } = await supabase.rpc('is_team')
-  if (!isTeam) return { error: 'Accès refusé' as const, supabase: null }
-  return { error: null, supabase }
+  if (!isTeam) return { error: 'Accès refusé' as const, supabase: null, user: null }
+  return { error: null, supabase, user }
 }
 
 /** Browser downloads PDF via base64 → Blob (no vault upload). */
@@ -106,7 +135,7 @@ export async function exportSiteMapChecklistPdf(): Promise<
 // ── Upload document ───────────────────────────────────────────────────────
 
 export async function uploadDocument(formData: FormData): Promise<UploadResult> {
-  const { error: authErr, supabase } = await guardTeam()
+  const { error: authErr, supabase, user } = await guardTeam()
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
 
   const file        = formData.get('file') as File | null
@@ -121,7 +150,6 @@ export async function uploadDocument(formData: FormData): Promise<UploadResult> 
   if (!file || file.size === 0) return { error: 'Aucun fichier sélectionné' }
 
   // 1. Get Uploader Name
-  const { data: { user } } = await supabase.auth.getUser()
   const { data: profile } = await (supabase.from('profiles') as any).select('full_name').eq('id', user?.id ?? '').single()
   const uploader = (profile?.full_name || user?.email?.split('@')[0] || 'User').replace(/\s+/g, '_')
 
@@ -140,7 +168,13 @@ export async function uploadDocument(formData: FormData): Promise<UploadResult> 
 
   const buf = Buffer.from(await file.arrayBuffer())
   try {
-    await r2Upload(finalPath, buf, file.type)
+    await r2Upload(finalPath, buf, file.type, {
+      source: 'vault_upload',
+      classification: 'linked',
+      linkedRefs: [{ table: 'document', column: 'storage_path' }],
+      uploadedBy: user?.id ?? null,
+      metadata: { document_name: docName, kind: typeStr },
+    })
   } catch (e) {
     return { error: `Upload R2 : ${String(e)}` }
   }
@@ -175,7 +209,7 @@ export async function uploadDocument(formData: FormData): Promise<UploadResult> 
 }
 
 export async function updateDocument(id: number, formData: FormData): Promise<UploadResult> {
-  const { error: authErr, supabase } = await guardTeam()
+  const { error: authErr, supabase, user } = await guardTeam()
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
 
   const name        = (formData.get('name') as string | null)?.trim()      || null
@@ -339,7 +373,7 @@ export async function getSignedUrl(storagePath: string): Promise<{ url: string }
 // ── Generate Certificate of Authenticity ─────────────────────────────────
 
 export async function generateCOA(oeuvreId: number): Promise<CoaResult> {
-  const { error: authErr, supabase } = await guardTeam()
+  const { error: authErr, supabase, user } = await guardTeam()
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
 
   // Fetch work data
@@ -409,7 +443,16 @@ export async function generateCOA(oeuvreId: number): Promise<CoaResult> {
   // Upload to R2 vault
   const filename = `COA_${certId}.pdf`
   try {
-    await r2Upload(filename, pdfBuffer, 'application/pdf')
+    await r2Upload(filename, pdfBuffer, 'application/pdf', {
+      source: 'coa',
+      classification: 'linked',
+      linkedRefs: [
+        { table: 'document', column: 'storage_path' },
+        { table: 'Oeuvres', column: 'OeuvreID', row_id: oeuvreId },
+      ],
+      uploadedBy: user?.id ?? null,
+      metadata: { cert_id: certId },
+    })
   } catch (e) {
     return { error: `Upload COA R2 : ${String(e)}` }
   }

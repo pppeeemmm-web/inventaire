@@ -4,6 +4,20 @@
  */
 import crypto from 'crypto'
 import { r2S3Hostname } from '@/lib/r2-s3-host'
+import {
+  markStorageObject,
+  recordStorageObject,
+  type StorageObjectClassification,
+  type StorageObjectLinkedRef,
+} from '@/lib/storage-object-ledger'
+
+export type R2PutObjectLedgerOptions = {
+  source?: string
+  classification?: StorageObjectClassification
+  linkedRefs?: StorageObjectLinkedRef[]
+  uploadedBy?: string | null
+  metadata?: Record<string, string | number | boolean | null>
+}
 
 function r2PutHeaders(buf: Buffer, filename: string, contentType: string): Record<string, string> {
   const account = process.env.R2_ACCOUNT_ID ?? ''
@@ -49,7 +63,12 @@ function r2PutHeaders(buf: Buffer, filename: string, contentType: string): Recor
   return headers
 }
 
-export async function r2PutObject(buf: Buffer, filename: string, contentType: string): Promise<void> {
+export async function r2PutObject(
+  buf: Buffer,
+  filename: string,
+  contentType: string,
+  ledger?: R2PutObjectLedgerOptions,
+): Promise<void> {
   const account = process.env.R2_ACCOUNT_ID ?? ''
   const bucket = (process.env.R2_BUCKET ?? 'paintings').trim()
   const host = r2S3Hostname(account)
@@ -60,6 +79,17 @@ export async function r2PutObject(buf: Buffer, filename: string, contentType: st
     const body = await res.text()
     throw new Error(`R2 PUT ${res.status}: ${body}`)
   }
+  await recordStorageObject({
+    bucket,
+    objectKey: filename,
+    sizeBytes: buf.length,
+    contentType,
+    source: ledger?.source,
+    classification: ledger?.classification,
+    linkedRefs: ledger?.linkedRefs,
+    uploadedBy: ledger?.uploadedBy,
+    metadata: ledger?.metadata,
+  })
 }
 
 export async function r2DeleteObject(filename: string): Promise<void> {
@@ -102,6 +132,12 @@ export async function r2DeleteObject(filename: string): Promise<void> {
   const url = `https://${host}${encodedPath}`
   const res = await fetch(url, { method: 'DELETE', headers })
   if (!res.ok && res.status !== 404) throw new Error(`R2 DELETE ${res.status}: ${await res.text()}`)
+  await markStorageObject({
+    bucket,
+    objectKey: filename,
+    status: 'deleted',
+    metadata: { source: 'r2DeleteObject', http_status: res.status },
+  })
 }
 
 /** SigV4 GET — returns object bytes (used to finalize staged `work-session/*` keys). */

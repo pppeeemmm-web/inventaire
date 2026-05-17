@@ -8,6 +8,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 import { logSystemEvent } from '@/lib/utils/logging'
+import { recordStorageObject } from '@/lib/storage-object-ledger'
 
 export type GiftResult = { error: string } | { ok: true; pdfPath: string }
 
@@ -39,6 +40,15 @@ async function r2UploadPdf(key: string, body: Buffer) {
     Body:        body,
     ContentType: 'application/pdf',
   }))
+  await recordStorageObject({
+    bucket,
+    objectKey: key,
+    sizeBytes: body.length,
+    contentType: 'application/pdf',
+    source: 'gift_pdf',
+    classification: 'linked',
+    linkedRefs: [{ table: 'document', column: 'storage_path' }],
+  })
 }
 
 export async function markAsGift(formData: FormData): Promise<GiftResult> {

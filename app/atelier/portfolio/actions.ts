@@ -15,6 +15,7 @@ import {
 } from '@/lib/portfolio-sections-from-r2'
 import { sanitizePortfolioConfigForPersist } from '@/lib/portfolio-html-sanitize'
 import { PORTFOLIO_SAVE_ERR } from '@/lib/portfolio-save-errors'
+import { recordStorageObject } from '@/lib/storage-object-ledger'
 
 export type SaveConfigResult =
   | { error: string }
@@ -165,6 +166,16 @@ export async function savePortfolioConfig(
     )
 
     const newEtag = stripS3Etag(putOut.ETag)
+    await recordStorageObject({
+      bucket: PORTFOLIO_SECTIONS_BUCKET,
+      objectKey: PORTFOLIO_SECTIONS_R2_KEY,
+      sizeBytes: buf.byteLength,
+      contentType: 'application/json',
+      etag: newEtag,
+      source: 'portfolio_config',
+      classification: 'linked',
+      linkedRefs: [{ table: 'document', column: 'storage_path' }],
+    })
 
     const sb = createServiceClient()
     const { data: existing } = await (sb.from('document') as any)

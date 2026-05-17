@@ -133,7 +133,11 @@ export async function uploadConceptSketch(
       .rotate()
       .avif({ quality: 70, effort: 3, chromaSubsampling: '4:4:4' })
       .toBuffer()
-    await r2PutObject(avif, filename, 'image/avif')
+    await r2PutObject(avif, filename, 'image/avif', {
+      source: 'concept_sketch',
+      classification: 'linked',
+      linkedRefs: [{ table: 'concept', column: 'image_note' }],
+    })
     revalidatePath('/atelier')
     return { ok: true, storagePath: filename }
   } catch (e) {

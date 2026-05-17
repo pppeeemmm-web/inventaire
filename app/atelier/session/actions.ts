@@ -172,6 +172,8 @@ async function putAvifPair(
   rawBuf: Buffer,
   mainKey: string,
   thumbKey: string,
+  sessionId: string,
+  uploadedBy: string,
 ): Promise<{ error: string } | { ok: true }> {
   const artist =
     process.env.IMAGE_EXIF_ARTIST?.trim() || 'PierreEmmanuelMoulin'
@@ -197,7 +199,13 @@ async function putAvifPair(
       .avif({ quality: 50, effort: 4, chromaSubsampling: '4:4:4' })
       .toBuffer()
 
-    await r2PutObject(avifBuf, mainKey, 'image/avif')
+    await r2PutObject(avifBuf, mainKey, 'image/avif', {
+      source: 'work_session',
+      classification: 'transient',
+      linkedRefs: [{ table: 'work_session', column: 'payload.shots.r2_key', row_id: sessionId }],
+      uploadedBy,
+      metadata: { role: 'main' },
+    })
 
     const thumbBuf = await sharp(avifBuf)
       .ensureAlpha()
@@ -210,7 +218,13 @@ async function putAvifPair(
       })
       .avif({ quality: 70, effort: 3, chromaSubsampling: '4:4:4' })
       .toBuffer()
-    await r2PutObject(thumbBuf, thumbKey, 'image/avif')
+    await r2PutObject(thumbBuf, thumbKey, 'image/avif', {
+      source: 'work_session_thumb',
+      classification: 'transient',
+      linkedRefs: [{ table: 'work_session', column: 'payload.shots.thumb_r2_key', row_id: sessionId }],
+      uploadedBy,
+      metadata: { role: 'thumb', original_key: mainKey },
+    })
     return { ok: true }
   } catch (e) {
     return { error: String(e) }
@@ -247,7 +261,7 @@ export async function uploadWorkSessionShot(
   const mainKey = `work-session/${sessionId}/${hash8}_main.avif`
   const thumbKey = `thumbs/work-session/${sessionId}/${hash8}_thumb.avif`
 
-  const put = await putAvifPair(rawBuf, mainKey, thumbKey)
+  const put = await putAvifPair(rawBuf, mainKey, thumbKey, sessionId, user.id)
   if ('error' in put) return { error: put.error }
 
   const payload = parseWorkSessionPayload(row.payload)
