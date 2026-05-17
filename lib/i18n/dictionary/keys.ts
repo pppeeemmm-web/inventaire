@@ -477,6 +477,7 @@ export type DictKey =
   | 'capture_card_err_duplicate' | 'capture_card_analyzing' | 'capture_card_creating'
   | 'documents_new_title' | 'documents_new_intro' | 'documents_new_type_coa' | 'documents_new_type_consignment' | 'documents_new_type_invoice'
   | 'documents_new_oeuvre_label' | 'documents_new_generate' | 'documents_new_ok' | 'documents_new_preview'
+  | 'documents_new_order_guidance' | 'documents_new_pipeline_link' | 'documents_new_vault_link'
   | 'sign_setup_title' | 'sign_setup_intro' | 'sign_setup_contact_label' | 'sign_setup_clear' | 'sign_setup_save' | 'sign_setup_ok'
   | 'pipeline_swipe_add_etape' | 'pipeline_swipe_done'
 

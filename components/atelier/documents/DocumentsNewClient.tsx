@@ -4,11 +4,10 @@ import Link from 'next/link'
 import { useState, useTransition, type CSSProperties } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from '@/lib/ui/toast'
-import { generateFieldDocument, type FieldDocType } from '@/app/atelier/documents/actions'
+import { generateFieldDocument } from '@/app/atelier/documents/actions'
 
 export function DocumentsNewClient() {
   const { t } = useI18n()
-  const [docType, setDocType] = useState<FieldDocType>('coa')
   const [oeuvreId, setOeuvreId] = useState('')
   const [busy, startBusy] = useTransition()
 
@@ -31,7 +30,7 @@ export function DocumentsNewClient() {
       return
     }
     startBusy(async () => {
-      const res = await generateFieldDocument(docType, id)
+      const res = await generateFieldDocument('coa', id)
       if ('error' in res) {
         toast.error(res.error)
         return
@@ -55,24 +54,8 @@ export function DocumentsNewClient() {
         {t('documents_new_intro')}
       </p>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
-        {(
-          [
-            ['coa', 'documents_new_type_coa'],
-            ['consignment', 'documents_new_type_consignment'],
-            ['invoice', 'documents_new_type_invoice'],
-          ] as const
-        ).map(([val, key]) => (
-          <button
-            key={val}
-            type="button"
-            className={`btn ghost sm${docType === val ? ' primary' : ''}`}
-            style={{ minHeight: 44, justifyContent: 'flex-start' }}
-            onClick={() => setDocType(val)}
-          >
-            {t(key)}
-          </button>
-        ))}
+      <div className="btn ghost sm primary" style={{ minHeight: 44, justifyContent: 'flex-start', marginBottom: 16 }}>
+        {t('documents_new_type_coa')}
       </div>
 
       <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, marginBottom: 12 }}>
@@ -91,6 +74,31 @@ export function DocumentsNewClient() {
       <button type="button" className="btn primary" style={{ minHeight: 44, width: '100%' }} disabled={busy} onClick={submit}>
         {t('documents_new_generate')}
       </button>
+
+      <div
+        className="t-mono-sm"
+        style={{
+          marginTop: 18,
+          padding: 14,
+          border: '1px solid var(--bd)',
+          borderRadius: 6,
+          background: 'var(--bg1)',
+          color: 'var(--tx2)',
+          fontSize: 11,
+          lineHeight: 1.55,
+        }}
+      >
+        {t('documents_new_order_guidance')}
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+        <Link href="/atelier?tab=pipeline" className="btn ghost" style={{ minHeight: 44, flex: 1, textAlign: 'center' }}>
+          {t('documents_new_pipeline_link')}
+        </Link>
+        <Link href="/atelier?tab=vault" className="btn ghost" style={{ minHeight: 44, flex: 1, textAlign: 'center' }}>
+          {t('documents_new_vault_link')}
+        </Link>
+      </div>
 
       <Link href="/hub" className="btn ghost" style={{ minHeight: 44, marginTop: 12, display: 'block', textAlign: 'center' }}>
         {t('field_stub_cta_hub')}
