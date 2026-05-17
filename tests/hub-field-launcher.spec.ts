@@ -23,13 +23,14 @@ test.describe('Hub field launcher (Ring B.1)', () => {
     if (box) expect(box.height).toBeGreaterThanOrEqual(44)
   })
 
-  test('narrow hub shows eight field verb rows', async ({ page }) => {
+  test('narrow hub shows nine field verb rows', async ({ page }) => {
     await page.goto('/hub')
     await expect(page.getByTestId('hub-field-launcher-root')).toBeVisible({ timeout: 45_000 })
     await expect(page.getByTestId('hub-field-verb-session')).toBeVisible()
     await expect(page.getByTestId('hub-field-verb-note')).toBeVisible()
     await expect(page.getByTestId('hub-field-verb-scan-doc')).toBeVisible()
     await expect(page.getByTestId('hub-field-verb-pipeline')).toBeVisible()
+    await expect(page.getByTestId('hub-field-verb-sale')).toBeVisible()
     await expect(page.getByTestId('hub-field-verb-triage')).toBeVisible()
     await expect(page.getByTestId('hub-field-verb-contact')).toBeVisible()
     await expect(page.getByTestId('hub-field-verb-document')).toBeVisible()
@@ -57,6 +58,13 @@ test.describe('Hub field launcher (Ring B.1)', () => {
     await expect(page.getByTestId('hub-field-launcher-root')).toBeVisible({ timeout: 45_000 })
     await page.getByTestId('hub-field-verb-pipeline').click()
     await expect(page).toHaveURL(/[?&]tab=pipeline/)
+  })
+
+  test('sale row opens mobile sale flow', async ({ page }) => {
+    await page.goto('/hub')
+    await expect(page.getByTestId('hub-field-launcher-root')).toBeVisible({ timeout: 45_000 })
+    await page.getByTestId('hub-field-verb-sale').click()
+    await expect(page).toHaveURL(/\/atelier\/sale\/new/)
   })
 
   test('scan doc row opens capture with doc mode', async ({ page }) => {

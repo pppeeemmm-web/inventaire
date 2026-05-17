@@ -10,6 +10,7 @@ const env = { ...process.env, ATELIER_E2E: '1' }
 const userArgs = process.argv.slice(2)
 const defaultSpecs = [
   'tests/hub-field-launcher.spec.ts',
+  'tests/mobile-sale.spec.ts',
   'tests/hub-mobile-capture.spec.ts',
   'tests/atelier-mobile-action-bar.spec.ts',
 ]
