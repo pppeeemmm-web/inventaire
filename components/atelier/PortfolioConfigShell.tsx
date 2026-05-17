@@ -26,19 +26,19 @@ import { SourceItem } from '@/components/atelier/portfolio/shared/SourceItem'
 
 // ── Component ─────────────────────────────────────────────────────────────
 
-export function PortfolioTab({
+export function PortfolioConfigShell({
+  tab: activeTab,
   oeuvres,
   themes,
   themePublicStats = {},
   themePrivateWorks = {},
   oeuvresCatalogueTotal,
-}: PortfolioTabProps) {
+}: PortfolioTabProps & { tab: 'site' | 'portfolio' | 'analytics' }) {
   const { t, lang } = useI18n()
   const narrow = useMediaQuery('(max-width: 767px)')
   const router = useRouter()
   const [config,     setConfig]     = useState<PortfolioConfig>(DEFAULT_CONFIG)
   const [loading,    setLoading]    = useState(true)
-  const [activeTab,  setActiveTab]  = useState<'website' | 'portfolio' | 'analytics'>('website')
   const [activeMode, setActiveMode] = useState(0)
   const [activeSlot, setActiveSlot] = useState<{
     type: 'theme'
@@ -245,39 +245,24 @@ export function PortfolioTab({
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg0)', overflow: 'hidden' }}>
 
-      {/* ── Top bar ── */}
+      {/* ── Action bar ── */}
+      {activeTab !== 'analytics' && (
       <div
         style={{
           display: 'flex',
           flexWrap: 'wrap',
           alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: narrow ? 10 : 0,
+          justifyContent: 'flex-end',
+          gap: narrow ? 8 : 12,
           padding: narrow
             ? '10px max(12px, env(safe-area-inset-right)) 10px max(12px, env(safe-area-inset-left))'
-            : '0 40px',
-          paddingTop: narrow ? 'max(10px, env(safe-area-inset-top))' : undefined,
+            : '8px 40px',
           borderBottom: '1px solid var(--bd)',
           background: 'var(--bg1)',
           flexShrink: 0,
           minWidth: 0,
         }}
       >
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: narrow ? 4 : 0, minWidth: 0 }}>
-          {(['website', 'portfolio', 'analytics'] as const).map(tab => (
-            <button key={tab} type="button" onClick={() => setActiveTab(tab)} style={{
-              padding: narrow ? '12px 14px' : '16px 24px', background: 'none', border: 'none',
-              borderBottom: activeTab === tab ? '2px solid var(--ac)' : '2px solid transparent',
-              color: activeTab === tab ? 'var(--ac)' : 'var(--tx3)',
-              cursor: 'pointer', fontSize: 9, letterSpacing: 3, textTransform: 'uppercase',
-              fontFamily: 'inherit', fontWeight: activeTab === tab ? 600 : 400,
-              transition: 'all 0.2s',
-              minHeight: 44,
-            }}>
-              {tab === 'website' ? t('portfolio_subtab_website') : tab === 'portfolio' ? t('portfolio_subtab_portfolio') : t('portfolio_subtab_analytics')}
-            </button>
-          ))}
-        </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: narrow ? 8 : 12, flexWrap: 'wrap', justifyContent: narrow ? 'flex-end' : 'flex-start' }}>
           <a
             href="/"
@@ -308,20 +293,19 @@ export function PortfolioTab({
           >
             /works
           </a>
-          {activeTab !== 'analytics' && (
-            <button
-              type="button"
-              className="btn primary sm"
-              title={t('portfolio_save_config_tooltip')}
-              onClick={handleSave}
-              disabled={saveBusy}
-              style={{ fontSize: 9, letterSpacing: 1.5, minHeight: 44 }}
-            >
-              {saveBusy ? t('savingRecord') : t('save')}
-            </button>
-          )}
+          <button
+            type="button"
+            className="btn primary sm"
+            title={t('portfolio_save_config_tooltip')}
+            onClick={handleSave}
+            disabled={saveBusy}
+            style={{ fontSize: 9, letterSpacing: 1.5, minHeight: 44 }}
+          >
+            {saveBusy ? t('savingRecord') : t('save')}
+          </button>
         </div>
       </div>
+      )}
 
       {/* ── Body ── */}
       <div
@@ -405,17 +389,17 @@ export function PortfolioTab({
           }}
         >
           <div
-            className={activeTab === 'website' ? 'portfolio-site-public' : undefined}
+            className={activeTab === 'site' ? 'portfolio-site-public' : undefined}
             style={{
               display: 'flex',
               flexDirection: 'column',
-              gap: activeTab === 'analytics' ? 0 : activeTab === 'website' ? 32 : 48,
+              gap: activeTab === 'analytics' ? 0 : activeTab === 'site' ? 32 : 48,
               flex: activeTab === 'analytics' ? 1 : undefined,
               minHeight: activeTab === 'analytics' ? 0 : undefined,
             }}
           >
 
-            {activeTab === 'website' && (
+            {activeTab === 'site' && (
               <SiteEditorPanel
                 config={config} setConfig={setConfig}
                 activeMode={activeMode} setActiveMode={setActiveMode}

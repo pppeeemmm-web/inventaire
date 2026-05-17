@@ -74,7 +74,7 @@ const FiscalTab = dynamic(() => import('@/components/atelier/FiscalTab').then((m
 const ConceptsTab = dynamic(() => import('@/components/atelier/ConceptsTab').then((m) => ({ default: m.ConceptsTab })), { loading: () => <TabPanelFallback />, ssr: false })
 const ExhibitionsTab = dynamic(() => import('@/components/atelier/ExhibitionsTab').then((m) => ({ default: m.ExhibitionsTab })), { loading: () => <ExhibitionsTabSkeleton />, ssr: false })
 const ThemesTab = dynamic(() => import('@/components/atelier/ThemesTab').then((m) => ({ default: m.ThemesTab })), { loading: () => <TabPanelFallback />, ssr: false })
-const PortfolioTab = dynamic(() => import('@/components/atelier/PortfolioTab').then((m) => ({ default: m.PortfolioTab })), { loading: () => <TabPanelFallback />, ssr: false })
+const PortfolioConfigShell = dynamic(() => import('@/components/atelier/PortfolioConfigShell').then((m) => ({ default: m.PortfolioConfigShell })), { loading: () => <TabPanelFallback />, ssr: false })
 const SupplierHub = dynamic(() => import('@/components/atelier/SupplierHub').then((m) => ({ default: m.SupplierHub })), { loading: () => <TabPanelFallback />, ssr: false })
 const StockTakeTab = dynamic(() => import('@/components/atelier/StockTakeTab').then((m) => ({ default: m.StockTakeTab })), { loading: () => <TabPanelFallback />, ssr: false })
 const ReportsTab = dynamic(() => import('@/components/atelier/ReportsTab').then((m) => ({ default: m.ReportsTab })), { loading: () => <TabPanelFallback />, ssr: false })
@@ -87,7 +87,7 @@ const SessionJournalTab = dynamic(() => import('@/components/atelier/SessionJour
 
 type Tab =
   | 'overview' | 'inventory' | 'reports' | 'constellation' | 'production'
-  | 'logistics' | 'sales' | 'exhibitions' | 'vault' | 'contacts' | 'map' | 'pipeline' | 'fiscal' | 'concepts' | 'themes' | 'stock' | 'stock-take' | 'notes' | 'journal' | 'system' | 'portfolio' | 'audit' | 'broadcast'
+  | 'logistics' | 'sales' | 'exhibitions' | 'vault' | 'contacts' | 'map' | 'pipeline' | 'fiscal' | 'concepts' | 'themes' | 'stock' | 'stock-take' | 'notes' | 'journal' | 'system' | 'site' | 'portfolio' | 'analytics' | 'audit' | 'broadcast'
 
 /** Desktop top bar + narrow drawer row — same handlers, drawer uses 44px tap targets. Ring A.1: new work lives on `MobileActionBar`, not here, when `hideNewWork`. */
 function AtelierHeaderChrome({
@@ -801,7 +801,9 @@ export function TeamPortalClient({
       ['fiscal',        t('fiscal')],
       ['concepts',      t('concepts')],
       ['themes',        t('themes')],
-      ['portfolio',     t('tab_portfolio')],
+      ['site',          t('portfolio_subtab_website')],
+      ['portfolio',     t('portfolio_subtab_portfolio')],
+      ['analytics',     t('portfolio_subtab_analytics')],
       ['broadcast',     t('tab_broadcast')],
       ['stock',         t('tab_stock')],
       ['stock-take',    t('tab_stock_take')],
@@ -854,7 +856,7 @@ export function TeamPortalClient({
     { label: t('nav_group_studio'),       tabs: ['overview', 'pipeline', 'exhibitions', 'concepts'] },
     { label: t('nav_group_catalogue'),    tabs: ['reports', 'themes', 'stock', 'constellation'] },
     { label: t('nav_group_commercial'),   tabs: ['sales', 'logistics', 'fiscal', 'vault'] },
-    { label: t('nav_group_public_tab'),   tabs: ['portfolio'] },
+    { label: t('nav_group_public_tab'),   tabs: ['site', 'portfolio', 'analytics'] },
     { label: t('nav_group_admin'),        tabs: ['contacts', ...adminTabs] },
   ]
 
@@ -1329,9 +1331,10 @@ export function TeamPortalClient({
           </div>
         )}
         {tab === 'contacts' && <ContactsTab contacts={contacts} oeuvres={oeuvres} conflicts={conflicts} />}
-        {tab === 'portfolio' && (
+        {(tab === 'site' || tab === 'portfolio' || tab === 'analytics') && (
           <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-            <PortfolioTab
+            <PortfolioConfigShell
+              tab={tab}
               oeuvres={oeuvres}
               themes={themes}
               themePublicStats={themePublicStats}
