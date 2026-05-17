@@ -21,6 +21,14 @@ Repo operating guide. If conflict: ask owner before edit.
 - Dev server: Next.js 15, port 3000. If `/_next/static/*` 404: restart dev from real root; delete `.next`; hard reload.
 - Temp worktree only if explicitly needed: create `.claude/launch.json` = `{"version":"0.0.1","configurations":[]}`.
 
+## Verification Tiers
+- Docs/rules only: read back changed lines + `git diff --check`; no full app gates unless scripts/config changed.
+- Code, no UI copy/DB/risky path: `npm run typecheck` + targeted lint/read-lints; run `npm run lint` before push if shared/UI code.
+- UI copy: `npm run i18n:check`, `npm run typecheck`, `npm run lint`.
+- DB/RLS/grants/auth/delete/R2: full relevant checks + SQL/RLS/grant review.
+- Mobile UI: add targeted mobile smoke/Playwright when behavior/layout changes.
+- Hung tool: kill after 60s no output unless build/test known long-running.
+
 ## Final / Git Discipline
 - Start: `git status --short --branch`.
 - Finish: `git status --short --branch` + `git log --oneline origin/main..HEAD`.
