@@ -310,21 +310,14 @@ export function PipelineTab({ oeuvres, contacts, groups, initialReminders, onRem
           background: 'var(--bg1)', flexShrink: 0,
         }}>
           <div
-            data-testid={atelierNarrow ? 'pipeline-toolbar-scroll' : undefined}
+            data-testid={atelierNarrow ? 'pipeline-toolbar-compact' : undefined}
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: atelierNarrow ? 10 : 14,
+              gap: atelierNarrow ? 8 : 14,
               flexWrap: atelierNarrow ? 'nowrap' : 'wrap',
               width: '100%',
               minWidth: 0,
-              ...(atelierNarrow
-                ? {
-                    overflowX: 'auto',
-                    WebkitOverflowScrolling: 'touch' as const,
-                    paddingBottom: 2,
-                  }
-                : {}),
             }}
           >
             <div
@@ -332,14 +325,16 @@ export function PipelineTab({ oeuvres, contacts, groups, initialReminders, onRem
               aria-label={t('pipeline_view_mode_aria')}
               style={{
                 display: 'flex',
-                width: atelierNarrow ? 'auto' : 'auto',
+                width: atelierNarrow ? 'min(100%, 220px)' : 'auto',
                 padding: 3,
                 gap: 0,
                 background: 'var(--bg0)',
                 border: '1px solid var(--bd)',
                 borderRadius: 10,
                 boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
-                flexShrink: 0,
+                flex: atelierNarrow ? '1 1 auto' : undefined,
+                minWidth: 0,
+                flexShrink: atelierNarrow ? 1 : 0,
               }}
             >
               <button
@@ -389,66 +384,117 @@ export function PipelineTab({ oeuvres, contacts, groups, initialReminders, onRem
                 {t('pipeline_view_calendar')}
               </button>
             </div>
+            {atelierNarrow ? (
+              <button
+                type="button"
+                className="btn ghost sm"
+                aria-label={t('pipeline_new_process')}
+                onClick={() => setEditing('new')}
+                style={{ minWidth: 44, minHeight: 44, flexShrink: 0, fontSize: 18, padding: 4 }}
+              >
+                +
+              </button>
+            ) : null}
             {!atelierNarrow && (
               <div aria-hidden style={{ width: 1, height: 32, background: 'var(--bd)', flexShrink: 0 }} />
             )}
-            {atelierNarrow ? (
-              <div aria-hidden style={{ width: 1, height: 28, background: 'var(--bd)', flexShrink: 0 }} />
+            {!atelierNarrow ? (
+              <div
+                className="t-mono-sm"
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  gap: 6,
+                  flex: 1,
+                  minWidth: 0,
+                  maxWidth: '100%',
+                  color: 'var(--tx3)', fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase',
+                  marginTop: 0,
+                }}
+              >
+                <span style={{ marginRight: 6, flexShrink: 0 }}>{t('pipeline_filter_group_label')}</span>
+                <div
+                  style={{
+                    display: 'flex',
+                    flexWrap: 'nowrap',
+                    gap: 6,
+                    alignItems: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <button type="button" className="btn ghost sm"
+                    style={{ background: typeFilter==='all' ? 'var(--ac)' : undefined, color: typeFilter==='all' ? 'var(--bg0)' : undefined }}
+                    onClick={() => setTypeFilter('all')}>{t('pipeline_filter_all')}</button>
+                  {SORTED_TYPES.map((typ) => (
+                    <button key={typ} type="button" className="btn ghost sm"
+                      style={{
+                        background: typeFilter===typ ? TYPE_COLORS[typ] : undefined,
+                        color: typeFilter===typ ? '#111' : undefined,
+                        borderColor: `${TYPE_COLORS[typ]}88`,
+                        opacity: typeFilter!=='all' && typeFilter!==typ ? 0.35 : 1,
+                      }}
+                      onClick={() => setTypeFilter(typeFilter===typ ? 'all' : typ)}>
+                      {typeLabel(typ)}
+                    </button>
+                  ))}
+                </div>
+              </div>
             ) : null}
+          </div>
+          {atelierNarrow ? (
             <div
+              data-testid="pipeline-toolbar-scroll"
               className="t-mono-sm"
               style={{
                 display: 'flex',
-                flexWrap: atelierNarrow ? 'nowrap' : 'wrap',
+                flexWrap: 'nowrap',
                 alignItems: 'center',
                 gap: 6,
-                flex: atelierNarrow ? '0 0 auto' : 1,
-                flexShrink: atelierNarrow ? 0 : undefined,
-                minWidth: atelierNarrow ? undefined : 0,
-                maxWidth: atelierNarrow ? undefined : '100%',
+                width: '100%',
+                maxWidth: '100%',
+                minWidth: 0,
+                overflowX: 'auto',
+                WebkitOverflowScrolling: 'touch' as const,
+                paddingBottom: 2,
                 color: 'var(--tx3)', fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase',
-                marginTop: 0,
               }}
             >
-              <span style={{ marginRight: 6, flexShrink: 0 }}>{t('pipeline_filter_group_label')}</span>
-              <div
-                style={{
-                  display: 'flex',
-                  flexWrap: 'nowrap',
-                  gap: 6,
-                  alignItems: 'center',
-                  flexShrink: 0,
-                }}
-              >
-                <button type="button" className="btn ghost sm"
-                  style={{ background: typeFilter==='all' ? 'var(--ac)' : undefined, color: typeFilter==='all' ? 'var(--bg0)' : undefined }}
-                  onClick={() => setTypeFilter('all')}>{t('pipeline_filter_all')}</button>
-                {SORTED_TYPES.map((typ) => (
-                  <button key={typ} type="button" className="btn ghost sm"
-                    style={{
-                      background: typeFilter===typ ? TYPE_COLORS[typ] : undefined,
-                      color: typeFilter===typ ? '#111' : undefined,
-                      borderColor: `${TYPE_COLORS[typ]}88`,
-                      opacity: typeFilter!=='all' && typeFilter!==typ ? 0.35 : 1,
-                    }}
-                    onClick={() => setTypeFilter(typeFilter===typ ? 'all' : typ)}>
-                    {typeLabel(typ)}
-                  </button>
-                ))}
-              </div>
+              <button type="button" className="btn ghost sm"
+                style={{ flexShrink: 0, background: typeFilter==='all' ? 'var(--ac)' : undefined, color: typeFilter==='all' ? 'var(--bg0)' : undefined }}
+                onClick={() => setTypeFilter('all')}>{t('pipeline_filter_all')}</button>
+              {SORTED_TYPES.map((typ) => (
+                <button key={typ} type="button" className="btn ghost sm"
+                  style={{
+                    flexShrink: 0,
+                    background: typeFilter===typ ? TYPE_COLORS[typ] : undefined,
+                    color: typeFilter===typ ? '#111' : undefined,
+                    borderColor: `${TYPE_COLORS[typ]}88`,
+                    opacity: typeFilter!=='all' && typeFilter!==typ ? 0.35 : 1,
+                  }}
+                  onClick={() => setTypeFilter(typeFilter===typ ? 'all' : typ)}>
+                  {typeLabel(typ)}
+                </button>
+              ))}
             </div>
-          </div>
-          <div style={{
-            marginLeft: atelierNarrow ? 0 : 'auto',
-            display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap',
-            justifyContent: atelierNarrow ? 'flex-end' : undefined,
-          }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--tx3)', cursor: 'pointer' }}>
+          ) : null}
+          {!atelierNarrow ? (
+            <div style={{
+              marginLeft: 'auto',
+              display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap',
+            }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--tx3)', cursor: 'pointer' }}>
+                <input type="checkbox" checked={showDone} onChange={(e) => setShowDone(e.target.checked)} />
+                {t('pipeline_show_completed')}
+              </label>
+              <button type="button" className="btn ghost sm" onClick={() => setEditing('new')}>{t('pipeline_new_process')}</button>
+            </div>
+          ) : (
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--tx3)', cursor: 'pointer', alignSelf: 'flex-start' }}>
               <input type="checkbox" checked={showDone} onChange={(e) => setShowDone(e.target.checked)} />
               {t('pipeline_show_completed')}
             </label>
-            <button type="button" className="btn ghost sm" onClick={() => setEditing('new')}>{t('pipeline_new_process')}</button>
-          </div>
+          )}
         </div>
 
         {/* ── Content ────────────────────────────────────────────── */}

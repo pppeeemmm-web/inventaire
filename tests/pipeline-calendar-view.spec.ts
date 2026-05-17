@@ -19,9 +19,33 @@ test.describe('Pipeline calendar view', () => {
     await expect(page.getByRole('button', { name: /Today|Aujourd/i })).toBeVisible()
   })
 
+  test('narrow calendar does not overflow horizontally', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 667 })
+    await page.goto('/atelier?tab=pipeline', { waitUntil: 'domcontentloaded' })
+    await expect(page.getByTestId('pipeline-calendar-root')).toBeVisible({ timeout: 45_000 })
+    await page.getByRole('button', { name: /Month|Mois/i }).click()
+
+    const overflow = await page.evaluate(() => {
+      const doc = document.documentElement
+      const calendar = document.querySelector<HTMLElement>('[data-testid="pipeline-calendar-root"]')
+      const toolbar = document.querySelector<HTMLElement>('[data-testid="pipeline-toolbar-compact"]')
+      const monthGrid = document.querySelector<HTMLElement>('[data-testid="pipeline-cal-month-grid"]')
+      return {
+        page: doc.scrollWidth - doc.clientWidth,
+        calendar: calendar ? calendar.scrollWidth - calendar.clientWidth : 0,
+        toolbar: toolbar ? toolbar.scrollWidth - toolbar.clientWidth : 0,
+        monthGrid: monthGrid ? monthGrid.scrollWidth - monthGrid.clientWidth : 0,
+      }
+    })
+
+    expect(overflow.page).toBeLessThanOrEqual(2)
+    expect(overflow.calendar).toBeLessThanOrEqual(2)
+    expect(overflow.toolbar).toBeLessThanOrEqual(2)
+    expect(overflow.monthGrid).toBeLessThanOrEqual(2)
+  })
+
   test('Pipeline tab exposes Gantt and Calendar toggles', async ({ page }) => {
-    await page.goto('/atelier', { waitUntil: 'domcontentloaded' })
-    await page.getByRole('button', { name: /^Pipeline$/i }).click()
+    await page.goto('/atelier?tab=pipeline', { waitUntil: 'domcontentloaded' })
     await expect(page.getByRole('button', { name: /Gantt|gantt/i })).toBeVisible({ timeout: 45_000 })
     await expect(page.getByRole('button', { name: /Calendar|Calendrier/i })).toBeVisible()
     await page.getByRole('button', { name: /Calendar|Calendrier/i }).click()
@@ -36,8 +60,7 @@ test.describe('Pipeline calendar view', () => {
 
   test('Month grid keeps day columns equal width (Sunday not squeezed)', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 720 })
-    await page.goto('/atelier', { waitUntil: 'domcontentloaded' })
-    await page.getByRole('button', { name: /^Pipeline$/i }).click()
+    await page.goto('/atelier?tab=pipeline', { waitUntil: 'domcontentloaded' })
     await expect(page.getByRole('button', { name: /Calendar|Calendrier/i })).toBeVisible({ timeout: 45_000 })
     await page.getByRole('button', { name: /Calendar|Calendrier/i }).click()
     await page.getByRole('button', { name: /Month|Mois/i }).click()
@@ -59,8 +82,7 @@ test.describe('Pipeline calendar view', () => {
   })
 
   test('Gantt zoom buttons are visible when processes exist', async ({ page }) => {
-    await page.goto('/atelier', { waitUntil: 'domcontentloaded' })
-    await page.getByRole('button', { name: /^Pipeline$/i }).click()
+    await page.goto('/atelier?tab=pipeline', { waitUntil: 'domcontentloaded' })
     await expect(page.getByRole('button', { name: /Gantt|gantt/i })).toBeVisible({ timeout: 45_000 })
     const zoomIn = page.getByRole('button', { name: /Zoom in|Zoom avant/i })
     if ((await zoomIn.count()) > 0) {
@@ -69,8 +91,7 @@ test.describe('Pipeline calendar view', () => {
   })
 
   test('Gantt view exposes step peek toggle when processes exist', async ({ page }) => {
-    await page.goto('/atelier', { waitUntil: 'domcontentloaded' })
-    await page.getByRole('button', { name: /^Pipeline$/i }).click()
+    await page.goto('/atelier?tab=pipeline', { waitUntil: 'domcontentloaded' })
     await expect(page.getByRole('button', { name: /Gantt|gantt/i })).toBeVisible({ timeout: 45_000 })
     const peek = page.getByTestId('pipeline-gantt-peek')
     if ((await peek.count()) > 0) {

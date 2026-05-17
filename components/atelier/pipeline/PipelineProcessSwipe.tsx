@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, type ReactNode } from 'react'
-import { quickAddEtape, quickMarkProcessDone } from '@/app/atelier/pipeline/actions'
+import { quickAddEtape } from '@/app/atelier/pipeline/actions'
 import { toast } from '@/lib/ui/toast'
 import type { DictKey } from '@/lib/i18n/dictionary'
 
@@ -15,7 +15,7 @@ type Props = {
   children: ReactNode
 }
 
-/** Narrow Gantt row — swipe right adds étape, swipe left marks process done. */
+/** Narrow Gantt row — swipe right adds étape. Completion stays on explicit controls. */
 export function PipelineProcessSwipe({ processId, enabled, onRefresh, t, children }: Props) {
   const start = useRef<{ x: number; y: number } | null>(null)
 
@@ -38,20 +38,13 @@ export function PipelineProcessSwipe({ processId, enabled, onRefresh, t, childre
         const dx = touch.clientX - s.x
         const dy = touch.clientY - s.y
         if (Math.abs(dx) < SWIPE_MIN_PX || Math.abs(dx) < Math.abs(dy)) return
-        if (dx > 0) {
-          const res = await quickAddEtape(processId)
-          if ('error' in res) toast.error(res.error)
-          else {
-            toast.success(t('pipeline_swipe_add_etape'))
-            onRefresh()
-          }
-        } else {
-          const res = await quickMarkProcessDone(processId)
-          if ('error' in res) toast.error(res.error)
-          else {
-            toast.success(t('pipeline_swipe_done'))
-            onRefresh()
-          }
+        if (dx < 0) return
+
+        const res = await quickAddEtape(processId)
+        if ('error' in res) toast.error(res.error)
+        else {
+          toast.success(t('pipeline_swipe_add_etape'))
+          onRefresh()
         }
       }}
     >
