@@ -3,7 +3,7 @@
 import crypto from 'crypto'
 import sharp from 'sharp'
 import { revalidatePath } from 'next/cache'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { validateWorkImageBuffer } from '@/lib/image-upload'
 import { r2PutObject, r2DeleteObject, r2GetObjectBuffer } from '@/lib/r2-s3-object'
 import { addWorkImage } from '@/app/atelier/works/actions'
@@ -367,6 +367,45 @@ export async function updateWorkSessionMetadata(
     .eq('user_id', user.id)
     .eq('status', 'draft')
   if (upErr) return { error: upErr.message }
+  return { ok: true }
+}
+
+export async function updateWorkSessionJournalMetadata(
+  sessionId: string,
+  patch: {
+    notes?: string
+    session_at?: string
+  },
+): Promise<SessionActionResult> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié' }
+
+  const { data: row, error: selErr } = await workSessionTable(supabase)
+    .select('id,user_id,status,payload')
+    .eq('id', sessionId)
+    .maybeSingle()
+  if (selErr || !row) return { error: selErr?.message ?? 'Session introuvable' }
+
+  const isAdmin = await rpcIsAdmin(supabase)
+  if (!isAdmin && row.user_id !== user.id) return { error: 'Accès refusé' }
+  if (!isAdmin && row.status !== 'draft') return { error: 'Session non modifiable' }
+
+  const payload = parseWorkSessionPayload(row.payload)
+  if (typeof patch.session_at === 'string') {
+    const sessionAt = normalizeSessionAt(patch.session_at)
+    if (!sessionAt) return { error: 'Date de session invalide' }
+    payload.session_at = sessionAt
+  }
+  if (typeof patch.notes === 'string') payload.notes = patch.notes
+
+  const { error: upErr } = await workSessionTable(supabase)
+    .update({ payload: asPayloadRecord(payload) })
+    .eq('id', sessionId)
+  if (upErr) return { error: upErr.message }
+  revalidatePath('/atelier')
   return { ok: true }
 }
 
@@ -1313,8 +1352,9 @@ export async function rejectWorkSession(sessionId: string, reason: string): Prom
 export async function deleteWorkSessionAdmin(sessionId: string): Promise<SessionActionResult> {
   const supabase = await createClient()
   if (!(await rpcIsAdmin(supabase))) return { error: 'Action réservée à l’administrateur' }
+  const svc = createServiceClient()
 
-  const { data: row, error: selErr } = await workSessionTable(supabase)
+  const { data: row, error: selErr } = await workSessionTable(svc)
     .select('id,payload')
     .eq('id', sessionId)
     .maybeSingle()
@@ -1332,8 +1372,14 @@ export async function deleteWorkSessionAdmin(sessionId: string): Promise<Session
       /* ignore */
     }
   }
-  const { error } = await workSessionTable(supabase).delete().eq('id', sessionId)
+  const { data: deleted, error } = await workSessionTable(svc)
+    .delete()
+    .eq('id', sessionId)
+    .select('id')
+    .maybeSingle()
   if (error) return { error: error.message }
+  if (!deleted) return { error: 'Session non supprimée' }
+  revalidatePath('/atelier')
   revalidatePath('/atelier/session/new')
   revalidatePath('/atelier/audit')
   return { ok: true }

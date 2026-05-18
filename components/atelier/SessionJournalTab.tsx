@@ -6,9 +6,11 @@ import type { DictKey } from '@/lib/i18n/dictionary'
 import { imageUrl, thumbUrl } from '@/lib/data'
 import { toast } from '@/lib/ui/toast'
 import {
+  deleteWorkSessionAdmin,
   deleteWorkSessionItem,
   fetchSessionItemVersionCompare,
   listWorkSessionJournal,
+  updateWorkSessionJournalMetadata,
   updateWorkSessionItemMetadata,
   type WorkSessionJournalItem,
   type WorkSessionJournalRow,
@@ -31,6 +33,21 @@ function itemTitle(item: WorkSessionJournalItem, fallback: string): string {
 function formatDate(value: string | null, locale: string): string {
   if (!value) return '—'
   return new Date(value).toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'short' })
+}
+
+function toDateInputValue(value: string): string {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function dateInputToSessionIso(value: string): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null
+  const date = new Date(`${value}T12:00:00`)
+  return Number.isNaN(date.getTime()) ? null : date.toISOString()
 }
 
 function FieldValue({ value }: { value: unknown }) {
@@ -279,6 +296,10 @@ export function SessionJournalTab() {
   const [rows, setRows] = useState<WorkSessionJournalRow[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [editingSession, setEditingSession] = useState(false)
+  const [sessionDateInput, setSessionDateInput] = useState('')
+  const [sessionNotesInput, setSessionNotesInput] = useState('')
+  const [sessionPending, startSessionTransition] = useTransition()
   const locale = lang === 'fr' ? 'fr-FR' : 'en-GB'
 
   const reload = useCallback(() => {
@@ -304,6 +325,57 @@ export function SessionJournalTab() {
   }, [locale, rows])
 
   const selected = rows.find((row) => row.id === selectedId) ?? rows[0] ?? null
+  const selectedSessionId = selected?.id ?? null
+  const selectedSessionAt = selected?.session_at ?? null
+  const selectedJournalNotes = selected?.journal_notes ?? null
+
+  useEffect(() => {
+    if (!selectedSessionId || !selectedSessionAt) {
+      setEditingSession(false)
+      setSessionDateInput('')
+      setSessionNotesInput('')
+      return
+    }
+    setEditingSession(false)
+    setSessionDateInput(toDateInputValue(selectedSessionAt))
+    setSessionNotesInput(selectedJournalNotes ?? '')
+  }, [selectedJournalNotes, selectedSessionAt, selectedSessionId])
+
+  const saveSessionEdit = () => {
+    if (!selected) return
+    const sessionAt = dateInputToSessionIso(sessionDateInput)
+    if (!sessionAt) {
+      toast.error(t('session_toast_error'))
+      return
+    }
+    startSessionTransition(async () => {
+      const res = await updateWorkSessionJournalMetadata(selected.id, {
+        session_at: sessionAt,
+        notes: sessionNotesInput,
+      })
+      if ('error' in res) {
+        toast.error(res.error)
+        return
+      }
+      toast.success(t('session_toast_saved'))
+      setEditingSession(false)
+      reload()
+    })
+  }
+
+  const deleteSession = () => {
+    if (!selected) return
+    if (!window.confirm(t('journal_session_delete_confirm'))) return
+    startSessionTransition(async () => {
+      const res = await deleteWorkSessionAdmin(selected.id)
+      if ('error' in res) {
+        toast.error(res.error)
+        return
+      }
+      toast.success(t('session_toast_saved'))
+      reload()
+    })
+  }
 
   return (
     <div
@@ -371,6 +443,47 @@ export function SessionJournalTab() {
               {selected.item_count} {t('session_journal_items_count')} · {selected.staged_shot_count + selected.applied_shot_count}{' '}
               {t('drawer_work_sessions_shots')} · {t(statusKey(selected.status))}
             </div>
+            {editingSession ? (
+              <div style={{ border: '1px solid var(--bd)', borderRadius: 10, padding: 12, marginTop: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <label className="t-mono-sm" style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11 }}>
+                  {t('session_date_label')}
+                  <input
+                    className="input"
+                    data-testid="journal-session-date-input"
+                    type="date"
+                    value={sessionDateInput}
+                    onChange={(e) => setSessionDateInput(e.target.value)}
+                    style={{ minHeight: 36 }}
+                  />
+                </label>
+                <label className="t-mono-sm" style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11 }}>
+                  {t('session_notes_label')}
+                  <textarea
+                    className="input"
+                    rows={3}
+                    value={sessionNotesInput}
+                    onChange={(e) => setSessionNotesInput(e.target.value)}
+                  />
+                </label>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button type="button" className="btn primary sm" disabled={sessionPending} onClick={saveSessionEdit} style={{ minHeight: 36 }}>
+                    {t('save')}
+                  </button>
+                  <button type="button" className="btn ghost sm" disabled={sessionPending} onClick={() => setEditingSession(false)} style={{ minHeight: 36 }}>
+                    {t('cancel')}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14 }}>
+                <button type="button" className="btn ghost sm" disabled={sessionPending} onClick={() => setEditingSession(true)} style={{ minHeight: 36 }}>
+                  {t('journal_session_edit')}
+                </button>
+                <button type="button" className="btn ghost sm" disabled={sessionPending} onClick={deleteSession} style={{ minHeight: 36 }}>
+                  {t('journal_session_delete')}
+                </button>
+              </div>
+            )}
             {selected.field_context ? (
               <div className="t-mono-sm" style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 8 }}>
                 {selected.field_context.latitude.toFixed(5)}, {selected.field_context.longitude.toFixed(5)}

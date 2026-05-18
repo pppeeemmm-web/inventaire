@@ -185,6 +185,18 @@ export const atelierMessages = defineMessages({
     fr: 'Date de session',
     en: 'Session date',
   },
+  journal_session_edit: {
+    fr: 'Modifier la session',
+    en: 'Edit session',
+  },
+  journal_session_delete: {
+    fr: 'Supprimer la session',
+    en: 'Delete session',
+  },
+  journal_session_delete_confirm: {
+    fr: 'Supprimer cette session ? Les photos déjà appliquées aux œuvres sont conservées.',
+    en: 'Delete this session? Photos already applied to works are kept.',
+  },
   journal_no_items: {
     fr: 'Aucune peinture détaillée dans cette session.',
     en: 'No detailed painting entries in this session.',
