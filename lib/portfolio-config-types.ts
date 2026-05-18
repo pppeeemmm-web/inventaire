@@ -2,6 +2,17 @@ import type { Oeuvre } from '@/lib/types/database'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
+export type SiteBlockKind = 'hero' | 'identity' | 'about' | 'practice' | 'works_modes'
+
+export interface SiteBlock {
+  kind: SiteBlockKind
+  visible: boolean
+}
+
+export const SITE_BLOCK_KINDS: SiteBlockKind[] = ['hero', 'identity', 'about', 'practice', 'works_modes']
+
+export const DEFAULT_SITE_BLOCKS: SiteBlock[] = SITE_BLOCK_KINDS.map(k => ({ kind: k, visible: true }))
+
 export interface CollectionItem {
   id:              string
   title_fr:        string
@@ -55,6 +66,7 @@ export interface PortfolioConfig {
   sections:          CollectionItem[]
   works_collections: CollectionItem[]
   works_modes:       WorksMode[]
+  site_blocks:       SiteBlock[]
 }
 
 export type ThemeWork = { OeuvreID: number; txtImageNameLink: string | null; isPublic: boolean }
@@ -76,6 +88,7 @@ export const DEFAULT_CONFIG: PortfolioConfig = {
   landing: { hero_image_url: '' },
   sections: [],
   works_collections: [],
+  site_blocks: DEFAULT_SITE_BLOCKS,
   works_modes: [{
     id: 'default', label_fr: 'Œuvres', label_en: 'Works',
     is_active: true, sort_order: 0,
@@ -155,6 +168,22 @@ function migrateModes(raw: any, fallbackCollections: CollectionItem[]): WorksMod
   }))
 }
 
+function migrateSiteBlocks(raw: any): SiteBlock[] {
+  if (!Array.isArray(raw?.site_blocks)) return DEFAULT_SITE_BLOCKS.map(b => ({ ...b }))
+  const seen = new Set<SiteBlockKind>()
+  const result: SiteBlock[] = []
+  for (const b of raw.site_blocks) {
+    if (b && typeof b.kind === 'string' && SITE_BLOCK_KINDS.includes(b.kind) && !seen.has(b.kind)) {
+      seen.add(b.kind)
+      result.push({ kind: b.kind, visible: b.visible !== false })
+    }
+  }
+  for (const k of SITE_BLOCK_KINDS) {
+    if (!seen.has(k)) result.push({ kind: k, visible: true })
+  }
+  return result
+}
+
 export function migrate(raw: any): PortfolioConfig {
   const isOldArray = Array.isArray(raw)
   const oldSections = isOldArray ? raw : (raw.sections || [])
@@ -186,5 +215,6 @@ export function migrate(raw: any): PortfolioConfig {
     sections:          oldSections.map(migrateCollection),
     works_collections: oldWorks.map(migrateCollection),
     works_modes:       migrateModes(raw, oldWorks.map(migrateCollection)),
+    site_blocks:       migrateSiteBlocks(raw),
   }
 }
