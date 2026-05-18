@@ -12,9 +12,18 @@ Repo operating guide. If conflict: ask owner before edit.
 - Hung tool: kill after 60s no output unless build/test known long-running.
 - Do not implement deferred features (background queues, OCR capture, transactional email) without owner GO.
 
+## Parallel Sessions and Tool Isolation
+- One IDE per checkout, ever. Never Cursor + Claude (or Antigravity + Claude) in the same working directory.
+- For parallel work, spin up a worktree: `git worktree add ../app-wt-<name> -b wt-<name> origin/main`. Open exactly one tool inside it.
+- Worktree branches stay local. `origin/main` is the only push target — pre-push refuses non-main pushes by design.
+- Reconcile from the main checkout: `git merge --ff-only wt-<name>`, then push. Rebase the worktree onto main first if FF is impossible.
+- Remove a worktree only after committing or stashing: `git worktree remove ../app-wt-<name>`. Never `--force` with uncommitted changes — that is how work vanishes.
+- State unclear? `git worktree list` and `pwsh scripts/release-truth.ps1` from inside the worktree.
+- CLAUDE.md is the source of truth for this workflow. If a hook or rule conflicts, this section wins.
+
 ## Commands
 - Dev: `pwsh scripts/dev.ps1` from `C:\Users\pppee\Documents\Claude\Projects\Art db\app`.
-- Checks: `npm run i18n:check`, `npm run typecheck`, `npm run lint`. [pre-push hook-enforced: typecheck + lint]
+- Checks: `npm run i18n:check`, `npm run typecheck`, `npm run lint`. Pre-push hook only verifies branch + clean tree; run checks manually before pushing.
 - E2E: `npm run test:e2e`; field/mobile gated: `npm run test:e2e:field` (`ATELIER_E2E=1`, logged-in dev profile).
 - Supabase types: `npm run gen:types` after SQL applied; needs `SUPABASE_ACCESS_TOKEN` + `NEXT_PUBLIC_SUPABASE_URL` in `.env.local`.
 - Dev server: Next.js 15, port 3000. If `/_next/static/*` 404: restart dev from real root; delete `.next`; hard reload.
@@ -37,7 +46,7 @@ Repo operating guide. If conflict: ask owner before edit.
 - Keep `SITE_MAP.md`, `docs/ROADMAP.md`, `docs/TODO.md`, `docs/SYSTEM_LEDGER.md` in sync when routes/features change.
 
 ## UI Copy / i18n
-- All user copy: `useI18n().t(key)`. No hardcoded JSX/alert/confirm/title/placeholder copy. [hook-enforced: `.claude/hooks/i18n-guard.ps1`]
+- All user copy: `useI18n().t(key)`. No hardcoded JSX/alert/confirm/title/placeholder copy.
 - New copy: one module in `lib/i18n/messages/*.messages.ts` via `defineMessages()` with FR+EN together.
 - Legacy dictionary under `lib/i18n/dictionary/` stays until touched. Do not add new feature copy via old pattern unless maintaining legacy surface.
 - Server Components: pass translated strings, use client leaf, or `dict[lang][key]`.
