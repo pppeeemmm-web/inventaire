@@ -8,15 +8,14 @@ import { useI18n } from '@/lib/i18n/context'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { getOrCreatePublicVisitorId } from '@/lib/public-visitor-id'
 import { trackView } from '@/lib/track'
+import { DEFAULT_NAV_ORDER } from '@/lib/site-block-visibility'
 
 type LandingPageProps = {
-  /** Resolved absolute URL (config or default). */
   heroImageUrl: string
   artistName: string
-  /** Custom hero hosts may be outside `images.remotePatterns`. */
   heroImageUnoptimized: boolean
-  /** Routes to hide from navigation (e.g. ['/about', '/practice']). */
   hiddenNavRoutes?: string[]
+  navOrder?: string[]
 }
 
 export default function LandingPage({
@@ -24,12 +23,25 @@ export default function LandingPage({
   artistName,
   heroImageUnoptimized,
   hiddenNavRoutes = [],
+  navOrder,
 }: LandingPageProps) {
   const { lang, setLang, t } = useI18n()
   const [pdfOpen, setPdfOpen] = useState(false)
   const [navOpen, setNavOpen] = useState(false)
   const pubNarrow = useMediaQuery('(max-width: 767px)')
   const hiddenSet = useMemo(() => new Set(hiddenNavRoutes), [hiddenNavRoutes])
+
+  const drawerLinks = useMemo(() => {
+    const labels: Record<string, string> = {
+      '/works': t('pub_works'),
+      '/about': t('pub_about'),
+      '/practice': t('pub_practice'),
+      '/enquiry': t('pub_enquiry'),
+    }
+    return (navOrder ?? DEFAULT_NAV_ORDER)
+      .filter(href => !hiddenSet.has(href) && labels[href])
+      .map(href => [href, labels[href]] as [string, string])
+  }, [navOrder, hiddenSet, t])
 
   useEffect(() => {
     void trackView('/', document.referrer || null, null, getOrCreatePublicVisitorId())
@@ -361,14 +373,7 @@ export default function LandingPage({
                 {t('close')}
               </button>
             </div>
-            {(
-              [
-                ['/works', t('pub_works')],
-                ['/about', t('pub_about')],
-                ['/practice', t('pub_practice')],
-                ['/enquiry', t('pub_enquiry')],
-              ] as const
-            ).filter(([href]) => !hiddenSet.has(href)).map(([href, label]) => (
+            {drawerLinks.map(([href, label]) => (
               <Link
                 key={href}
                 href={href}

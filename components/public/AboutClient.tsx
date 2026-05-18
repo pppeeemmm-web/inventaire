@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import PublicNav from './PublicNav'
 import { loadPortfolioConfig } from '@/app/atelier/portfolio/actions'
-import { hiddenNavRoutes } from '@/lib/site-block-visibility'
+import { hiddenNavRoutes, orderedNavRoutes } from '@/lib/site-block-visibility'
 import type { SiteBlock } from '@/lib/portfolio-config-types'
 import { trackView } from '@/lib/track'
 import { getOrCreatePublicVisitorId } from '@/lib/public-visitor-id'
@@ -31,6 +31,10 @@ export default function AboutClient() {
 
   const hidden = useMemo(
     () => config?.site_blocks ? hiddenNavRoutes(config.site_blocks as SiteBlock[]) : [],
+    [config],
+  )
+  const navOrder = useMemo(
+    () => config?.site_blocks ? orderedNavRoutes(config.site_blocks as SiteBlock[]) : undefined,
     [config],
   )
   const artistName = config?.general?.artist_name || 'the pem workshop'
@@ -84,7 +88,7 @@ export default function AboutClient() {
         }
       `}</style>
 
-      <PublicNav active="about" prefix="a" hiddenNavRoutes={hidden} />
+      <PublicNav active="about" prefix="a" hiddenNavRoutes={hidden} navOrder={navOrder} />
 
       <div className="a-body pem-fadeIn pem-grain">
 

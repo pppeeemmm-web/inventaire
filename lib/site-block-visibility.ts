@@ -9,7 +9,8 @@ const BLOCK_ROUTE: Record<string, string | null> = {
   identity:    null,
 }
 
-/** Returns the list of routes that should be hidden from navigation. */
+export const DEFAULT_NAV_ORDER = ['/works', '/about', '/practice', '/enquiry'] as const
+
 export function hiddenNavRoutes(blocks: SiteBlock[]): string[] {
   const routes: string[] = []
   for (const b of blocks) {
@@ -18,5 +19,17 @@ export function hiddenNavRoutes(blocks: SiteBlock[]): string[] {
       if (route) routes.push(route)
     }
   }
+  return routes
+}
+
+export function orderedNavRoutes(blocks: SiteBlock[]): string[] {
+  const routes: string[] = []
+  for (const b of blocks) {
+    if (b.visible) {
+      const route = BLOCK_ROUTE[b.kind]
+      if (route) routes.push(route)
+    }
+  }
+  if (!routes.includes('/enquiry')) routes.push('/enquiry')
   return routes
 }

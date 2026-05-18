@@ -9,7 +9,7 @@ import {
   resolveArtistDisplayName,
 } from '@/lib/seo/landing-hero'
 import { loadPortfolioSectionsFromR2 } from '@/lib/portfolio-sections-from-r2'
-import { hiddenNavRoutes } from '@/lib/site-block-visibility'
+import { hiddenNavRoutes, orderedNavRoutes, DEFAULT_NAV_ORDER } from '@/lib/site-block-visibility'
 import type { SiteBlock } from '@/lib/portfolio-config-types'
 
 const getPortfolioSectionsCached = cache(loadPortfolioSectionsFromR2)
@@ -64,6 +64,7 @@ export default async function HomePage() {
   let artistName = resolveArtistDisplayName(undefined)
   let heroImageUnoptimized = false
   let hidden: string[] = []
+  let navOrder: string[] = [...DEFAULT_NAV_ORDER]
   try {
     const { config } = await getPortfolioSectionsCached()
     const g = config.general as { artist_name?: string } | undefined
@@ -72,7 +73,10 @@ export default async function HomePage() {
     heroImageUrl = resolveLandingHeroImageUrl(l?.hero_image_url)
     artistName = resolveArtistDisplayName(g?.artist_name)
     const blocks = config.site_blocks as SiteBlock[] | undefined
-    if (blocks) hidden = hiddenNavRoutes(blocks)
+    if (blocks) {
+      hidden = hiddenNavRoutes(blocks)
+      navOrder = orderedNavRoutes(blocks)
+    }
   } catch (e) {
     console.error('[HomePage] portfolio sections load failed', e)
   }
@@ -83,6 +87,7 @@ export default async function HomePage() {
       artistName={artistName}
       heroImageUnoptimized={heroImageUnoptimized}
       hiddenNavRoutes={hidden}
+      navOrder={navOrder}
     />
   )
 }

@@ -58,6 +58,7 @@ interface Props {
   works: Work[]
   modes: WorksMode[]
   hiddenNavRoutes?: string[]
+  navOrder?: string[]
 }
 
 /** Manual order first, then theme-matched residuals. Only works with images. */
@@ -116,7 +117,7 @@ function cardTransform(offset: number, reducedMotion: boolean, spacing = 780): {
 // Grain SVG data URI — shared between CSS and 3D wall plane
 const GRAIN_BG = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E")`
 
-export default function WorksClient({ works, modes, hiddenNavRoutes }: Props) {
+export default function WorksClient({ works, modes, hiddenNavRoutes, navOrder }: Props) {
   const { t, lang } = useI18n()
   const safeModes: WorksMode[] = modes.length > 0 ? modes : [{
     id: 'default', label_fr: 'Œuvres', label_en: 'Works',
@@ -679,7 +680,7 @@ export default function WorksClient({ works, modes, hiddenNavRoutes }: Props) {
         }
       `}</style>
 
-      <PublicNav active="works" prefix="w" hiddenNavRoutes={hiddenNavRoutes} />
+      <PublicNav active="works" prefix="w" hiddenNavRoutes={hiddenNavRoutes} navOrder={navOrder} />
 
       <h1 className="w-page-h1-sr-only">{t('pub_works')}</h1>
 

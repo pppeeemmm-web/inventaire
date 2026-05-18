@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import WorksClient from '@/components/public/WorksClient'
 import { loadPortfolioSectionsCached } from '@/lib/portfolio-sections-from-r2'
-import { hiddenNavRoutes } from '@/lib/site-block-visibility'
+import { hiddenNavRoutes, orderedNavRoutes } from '@/lib/site-block-visibility'
 import type { SiteBlock } from '@/lib/portfolio-config-types'
 import { routeMetadata } from '@/lib/i18n/route-metadata'
 
@@ -194,6 +194,7 @@ export default async function WorksPage() {
 
   const blocks = cfg.site_blocks as SiteBlock[] | undefined
   const hidden = blocks ? hiddenNavRoutes(blocks) : []
+  const navOrder = blocks ? orderedNavRoutes(blocks) : ['/works', '/about', '/practice', '/enquiry']
 
-  return <WorksClient works={works} modes={modes} hiddenNavRoutes={hidden} />
+  return <WorksClient works={works} modes={modes} hiddenNavRoutes={hidden} navOrder={navOrder} />
 }

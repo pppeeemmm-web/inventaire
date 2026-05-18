@@ -1,7 +1,7 @@
 'use client'
 
 import {
-  createContext, useContext, useState, useEffect,
+  createContext, useContext, useState, useEffect, useCallback,
   type ReactNode,
 } from 'react'
 import { dict, type Lang, type DictKey } from './dictionary'
@@ -27,9 +27,10 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('pem_lang', l)
   }
 
-  function t(key: DictKey): string {
-    return dict[lang][key] ?? dict.fr[key] ?? key
-  }
+  const t = useCallback(
+    (key: DictKey): string => dict[lang][key] ?? dict.fr[key] ?? key,
+    [lang],
+  )
 
   return (
     <I18nContext.Provider value={{ lang, setLang, t }}>
