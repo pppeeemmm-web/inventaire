@@ -254,13 +254,16 @@ export async function listExhibitionsWithSteps(): Promise<
     .order('date_fin', { ascending: false, nullsFirst: false })
   if (pErr) return { error: pErr.message }
 
+  const typedProcesses = (processes ?? []) as ExhibitionProcessRow[]
+  if (typedProcesses.length === 0) return { ok: true, exhibitions: [] }
+
   const { data: steps, error: sErr } = await supabase
     .from('suivi_etape')
     .select('id, process_id, nom, statut, date_echeance, position, notes, overdue_override')
+    .in('process_id', typedProcesses.map((p) => p.id))
     .order('position')
   if (sErr) return { error: sErr.message }
 
-  const typedProcesses = (processes ?? []) as ExhibitionProcessRow[]
   const typedSteps = (steps ?? []) as ExhibitionStepRow[]
   const exhibitions: ExhibitionProcessWithSteps[] = typedProcesses.map((p) => ({
     ...p,

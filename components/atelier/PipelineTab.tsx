@@ -901,10 +901,12 @@ function GanttView({
   }, [allProcessTimes, zoomIdx, ganttDateLoc])
 
   const { pct, months, todayPct, mondayTicks, showWeekTicks } = timeline
+  const labelColWidth = narrow ? '100%' : 240
+  const rowGap = narrow ? 8 : 0
 
   return (
     <>
-    <div>
+    <div style={{ width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box' }}>
       <div
         style={{
           display: 'flex',
@@ -950,12 +952,22 @@ function GanttView({
           }}
         />
       </div>
-      <div style={{ position:'relative', height:24, marginBottom:8, marginLeft:240 }}>
+      <div
+        style={{
+          position:'relative',
+          height:24,
+          marginBottom:8,
+          marginLeft: narrow ? 0 : 240,
+          minWidth: 0,
+          maxWidth: '100%',
+          overflow: 'hidden',
+        }}
+      >
         {months.map(m=>(
           <div key={m.k} style={{ position:'absolute', left:`${m.left}%`, fontSize:11, color:'var(--tx3)', letterSpacing:'0.05em', transform:'translateX(-50%)' }}>{m.label}</div>
         ))}
       </div>
-      <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
+      <div style={{ display:'flex', flexDirection:'column', gap: narrow ? 10 : 5, minWidth: 0, width: '100%' }}>
         {processes.map(p=>{
           const color   = TYPE_COLORS[p.type as ProcessType]??'#888'
           const isDone  = ['perdu','annule','termine'].includes(p.statut)
@@ -967,8 +979,32 @@ function GanttView({
           const peekSteps = expandedPeekId === p.id ? upcomingEtapesForPeek(p, 4) : []
           return (
             <PipelineProcessSwipe key={p.id} processId={p.id} enabled={narrow} onRefresh={onRefresh} t={t}>
-            <div style={{ display:'flex', alignItems:'flex-start', opacity:isDone?0.5:1 }}>
-              <div style={{ width:240, flexShrink:0, paddingRight:16, display:'flex', flexDirection:'column', gap:6 }}>
+            <div
+              style={{
+                display:'flex',
+                flexDirection: narrow ? 'column' : 'row',
+                alignItems:'flex-start',
+                gap: rowGap,
+                opacity:isDone?0.5:1,
+                minWidth: 0,
+                width: '100%',
+                maxWidth: '100%',
+                boxSizing: 'border-box',
+              }}
+            >
+              <div
+                style={{
+                  width: labelColWidth,
+                  flexShrink:0,
+                  paddingRight: narrow ? 0 : 16,
+                  display:'flex',
+                  flexDirection:'column',
+                  gap:6,
+                  minWidth: 0,
+                  maxWidth: '100%',
+                  boxSizing: 'border-box',
+                }}
+              >
                 <div style={{ display:'flex', alignItems:'flex-start', gap:4 }}>
                   <button
                     type="button"
@@ -1006,7 +1042,7 @@ function GanttView({
                     role="region"
                     data-testid="pipeline-gantt-peek-panel"
                     aria-labelledby={`gantt-peek-btn-${p.id}`}
-                    style={{ marginLeft:48, paddingBottom:2 }}
+                    style={{ marginLeft: narrow ? 0 : 48, paddingBottom:2, minWidth: 0, maxWidth: '100%', overflowWrap: 'anywhere' }}
                   >
                     <div className="t-mono-sm" style={{ fontSize:10, color:'var(--tx3)', marginBottom:4 }}>
                       {t('pipeline_gantt_peek_heading')}
@@ -1035,7 +1071,15 @@ function GanttView({
                 )}
               </div>
               <div
-                style={{ flex:1, position:'relative', height:28 }}
+                style={{
+                  flex:1,
+                  position:'relative',
+                  height:28,
+                  minWidth:0,
+                  width:'100%',
+                  maxWidth:'100%',
+                  overflow:'hidden',
+                }}
                 {...(showHoverPopover
                   ? {
                       onMouseEnter: (e: { clientX: number; clientY: number }) => {
@@ -1109,7 +1153,7 @@ function GanttView({
                     )
                   })}
                 </div>
-                {p.statut!=='en_cours' && (
+                {!narrow && p.statut!=='en_cours' && (
                   <div style={{ position:'absolute', left:`${barR+0.5}%`, top:'50%', transform:'translateY(-50%)', fontSize:10, color, fontWeight:700, letterSpacing:'0.05em', textTransform:'uppercase', whiteSpace:'nowrap', paddingLeft:8 }}>
                     {statutLabels[p.statut]}
                   </div>

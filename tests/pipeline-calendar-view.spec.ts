@@ -1,4 +1,21 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
+
+async function expectNoHorizontalOverflow(page: Page, selectors: Record<string, string>) {
+  const overflow = await page.evaluate((targets) => {
+    const doc = document.documentElement
+    return Object.fromEntries([
+      ['page', doc.scrollWidth - doc.clientWidth],
+      ...Object.entries(targets).map(([key, selector]) => {
+        const el = document.querySelector<HTMLElement>(selector)
+        return [key, el ? el.scrollWidth - el.clientWidth : 0]
+      }),
+    ])
+  }, selectors)
+
+  for (const [key, value] of Object.entries(overflow)) {
+    expect(value, `${key} horizontal overflow`).toBeLessThanOrEqual(2)
+  }
+}
 
 /**
  * Requires an authenticated session for `/atelier`.
@@ -23,25 +40,30 @@ test.describe('Pipeline calendar view', () => {
     await page.setViewportSize({ width: 375, height: 667 })
     await page.goto('/atelier?tab=pipeline', { waitUntil: 'domcontentloaded' })
     await expect(page.getByTestId('pipeline-calendar-root')).toBeVisible({ timeout: 45_000 })
-    await page.getByRole('button', { name: /Month|Mois/i }).click()
+    const ranges = [/Week|Semaine/i, /Month|Mois/i, /Quarter|Trimestre/i, /Semester|Semestre/i, /Year|Année/i]
 
-    const overflow = await page.evaluate(() => {
-      const doc = document.documentElement
-      const calendar = document.querySelector<HTMLElement>('[data-testid="pipeline-calendar-root"]')
-      const toolbar = document.querySelector<HTMLElement>('[data-testid="pipeline-toolbar-compact"]')
-      const monthGrid = document.querySelector<HTMLElement>('[data-testid="pipeline-cal-month-grid"]')
-      return {
-        page: doc.scrollWidth - doc.clientWidth,
-        calendar: calendar ? calendar.scrollWidth - calendar.clientWidth : 0,
-        toolbar: toolbar ? toolbar.scrollWidth - toolbar.clientWidth : 0,
-        monthGrid: monthGrid ? monthGrid.scrollWidth - monthGrid.clientWidth : 0,
-      }
+    for (const range of ranges) {
+      await page.getByRole('button', { name: range }).click()
+      await expectNoHorizontalOverflow(page, {
+        calendar: '[data-testid="pipeline-calendar-root"]',
+        toolbar: '[data-testid="pipeline-toolbar-compact"]',
+        monthGrid: '[data-testid="pipeline-cal-month-grid"]',
+      })
+    }
+  })
+
+  test('narrow Gantt does not overflow horizontally', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 667 })
+    await page.goto('/atelier?tab=pipeline', { waitUntil: 'domcontentloaded' })
+    const gantt = page.getByRole('button', { name: /Gantt|gantt/i })
+    await expect(gantt).toBeVisible({ timeout: 45_000 })
+    await gantt.click()
+    await expect(gantt).toHaveAttribute('aria-pressed', 'true')
+
+    await expectNoHorizontalOverflow(page, {
+      gantt: '[data-testid="pipeline-gantt-root"]',
+      toolbar: '[data-testid="pipeline-toolbar-compact"]',
     })
-
-    expect(overflow.page).toBeLessThanOrEqual(2)
-    expect(overflow.calendar).toBeLessThanOrEqual(2)
-    expect(overflow.toolbar).toBeLessThanOrEqual(2)
-    expect(overflow.monthGrid).toBeLessThanOrEqual(2)
   })
 
   test('Pipeline tab exposes Gantt and Calendar toggles', async ({ page }) => {

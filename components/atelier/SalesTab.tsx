@@ -86,6 +86,16 @@ export function SalesTab({ oeuvres, statusLabelMap, contacts, groups, cM, tM }: 
 
   useEffect(() => { loadOrders() }, [loadOrders])
 
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem('pem_sales_open_new_order') !== '1') return
+      sessionStorage.removeItem('pem_sales_open_new_order')
+      setShowForm(true)
+    } catch {
+      /* ignore storage availability */
+    }
+  }, [])
+
   const { soldWorks, consignedCount, totalRevenue, avgPrice, byYear } = useMemo(() => {
     const sold: Oeuvre[] = []
     let consigned = 0

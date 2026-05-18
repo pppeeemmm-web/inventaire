@@ -37,6 +37,42 @@ export const atelierMessages = defineMessages({
     fr: 'Fermer la recherche',
     en: 'Close search',
   },
+  atelier_quick_search_shortcut: {
+    fr: 'Recherche (Ctrl+K)',
+    en: 'Search (Ctrl+K)',
+  },
+  atelier_quick_studio_bible: {
+    fr: 'Bible Atelier',
+    en: 'Studio Bible',
+  },
+  cmd_palette_action_capture_session: {
+    fr: 'Capturer une session',
+    en: 'Capture session',
+  },
+  cmd_palette_action_scan_qr: {
+    fr: 'Scanner QR',
+    en: 'Scan QR',
+  },
+  cmd_palette_action_field_note: {
+    fr: 'Note terrain',
+    en: 'Field note',
+  },
+  cmd_palette_action_reminders: {
+    fr: 'Voir les rappels',
+    en: 'Review reminders',
+  },
+  cmd_palette_action_new_sale: {
+    fr: 'Nouvelle commande',
+    en: 'New sale / order',
+  },
+  cmd_palette_action_stock_take: {
+    fr: 'Inventaire terrain',
+    en: 'Start stock take',
+  },
+  cmd_palette_action_pending_approvals: {
+    fr: 'Validations en attente',
+    en: 'Pending approvals',
+  },
   research_loading: {
     fr: 'Recherche...',
     en: 'Searching...',

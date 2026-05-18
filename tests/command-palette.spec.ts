@@ -4,11 +4,11 @@ test.describe('Command Palette', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/atelier')
     // Wait for the atelier shell to load
-    await page.waitForSelector('[title="⌘K"]', { timeout: 10000 })
+    await page.getByRole('button', { name: /Ouvrir la palette de commandes|Open command palette/ }).waitFor({ timeout: 10000 })
   })
 
-  test('opens on ⌘K button click', async ({ page }) => {
-    await page.click('[title="⌘K"]')
+  test('opens on search button click', async ({ page }) => {
+    await page.getByRole('button', { name: /Ouvrir la palette de commandes|Open command palette/ }).click()
     await expect(page.locator('input[type="search"]').first()).toBeVisible()
   })
 
@@ -18,21 +18,21 @@ test.describe('Command Palette', () => {
   })
 
   test('closes on Escape', async ({ page }) => {
-    await page.click('[title="⌘K"]')
+    await page.getByRole('button', { name: /Ouvrir la palette de commandes|Open command palette/ }).click()
     await expect(page.locator('input[type="search"]').first()).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(page.locator('input[type="search"]').first()).not.toBeVisible()
   })
 
-  test('shows tab entries by default', async ({ page }) => {
-    await page.click('[title="⌘K"]')
-    // The tabs group header should be visible
-    const tabGroup = page.getByText(/Onglets|Tabs/).first()
-    await expect(tabGroup).toBeVisible()
+  test('shows quick actions first by default', async ({ page }) => {
+    await page.getByRole('button', { name: /Ouvrir la palette de commandes|Open command palette/ }).click()
+    const firstGroup = page.locator('input[type="search"] + div .t-mono-sm').first()
+    await expect(firstGroup).toHaveText(/Actions rapides|Quick actions/)
+    await expect(page.getByRole('button', { name: /Capturer une session|Capture session/ })).toBeVisible()
   })
 
   test('filters results on input', async ({ page }) => {
-    await page.click('[title="⌘K"]')
+    await page.getByRole('button', { name: /Ouvrir la palette de commandes|Open command palette/ }).click()
     await page.locator('input[type="search"]').first().fill('inv')
     // Should show inventory tab match
     await expect(page.locator('button').filter({ hasText: /[Ii]nventaire|[Ii]nventory/ }).first()).toBeVisible()

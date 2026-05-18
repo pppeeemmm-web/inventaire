@@ -17,7 +17,14 @@ interface Props {
   contacts: Contact[]
   onGoTab: (tab: string) => void
   onGoWork: (id: number) => void
+  onCaptureSession: () => void
+  onScanQr: () => void
+  onFieldNote: () => void
+  onReminders: () => void
   onNewWork: () => void
+  onNewSale: () => void
+  onStockTake: () => void
+  onPendingApprovals?: () => void
   onExportXlsx: () => void
   onRegenBible: () => void
 }
@@ -31,7 +38,8 @@ interface Item {
 
 export function CommandPalette({
   open, onClose, tabs, oeuvres, contacts,
-  onGoTab, onGoWork, onNewWork, onExportXlsx, onRegenBible,
+  onGoTab, onGoWork, onCaptureSession, onScanQr, onFieldNote, onReminders,
+  onNewWork, onNewSale, onStockTake, onPendingApprovals, onExportXlsx, onRegenBible,
 }: Props) {
   const { t } = useI18n()
   const [q, setQ] = useState('')
@@ -46,6 +54,27 @@ export function CommandPalette({
   const items: Item[] = useMemo(() => {
     const result: Item[] = []
     const qLow = q.toLowerCase()
+
+    // Quick actions first: navigation tabs already live in the left rail.
+    const actionDefs = [
+      { id: 'act:capture-session', label: t('cmd_palette_action_capture_session'), action: () => { onCaptureSession(); onClose() } },
+      { id: 'act:scan-qr',         label: t('cmd_palette_action_scan_qr'),         action: () => { onScanQr(); onClose() } },
+      { id: 'act:field-note',      label: t('cmd_palette_action_field_note'),      action: () => { onFieldNote(); onClose() } },
+      { id: 'act:reminders',       label: t('cmd_palette_action_reminders'),       action: () => { onReminders(); onClose() } },
+      { id: 'act:new-work',    label: t('cmd_palette_action_new_work'),    action: () => { onNewWork(); onClose() } },
+      { id: 'act:new-sale',    label: t('cmd_palette_action_new_sale'),    action: () => { onNewSale(); onClose() } },
+      { id: 'act:stock-take',  label: t('cmd_palette_action_stock_take'),  action: () => { onStockTake(); onClose() } },
+      ...(onPendingApprovals
+        ? [{ id: 'act:pending-approvals', label: t('cmd_palette_action_pending_approvals'), action: () => { onPendingApprovals(); onClose() } }]
+        : []),
+      { id: 'act:export-xlsx', label: t('cmd_palette_action_export_xlsx'), action: () => { onExportXlsx(); onClose() } },
+      { id: 'act:regen-bible', label: t('cmd_palette_action_regen_bible'), action: () => { onRegenBible(); onClose() } },
+    ]
+    for (const a of actionDefs) {
+      if (!q || a.label.toLowerCase().includes(qLow)) {
+        result.push({ ...a, group: t('cmd_palette_group_actions') })
+      }
+    }
 
     // Tabs
     for (const tab of tabs) {
@@ -77,20 +106,12 @@ export function CommandPalette({
       }
     }
 
-    // Quick actions
-    const actionDefs = [
-      { id: 'act:new-work',    label: t('cmd_palette_action_new_work'),    action: () => { onNewWork(); onClose() } },
-      { id: 'act:export-xlsx', label: t('cmd_palette_action_export_xlsx'), action: () => { onExportXlsx(); onClose() } },
-      { id: 'act:regen-bible', label: t('cmd_palette_action_regen_bible'), action: () => { onRegenBible(); onClose() } },
-    ]
-    for (const a of actionDefs) {
-      if (!q || a.label.toLowerCase().includes(qLow)) {
-        result.push({ ...a, group: t('cmd_palette_group_actions') })
-      }
-    }
-
     return result
-  }, [q, tabs, oeuvres, contacts, t, onGoTab, onGoWork, onClose, onNewWork, onExportXlsx, onRegenBible])
+  }, [
+    q, tabs, oeuvres, contacts, t, onGoTab, onGoWork, onClose,
+    onCaptureSession, onScanQr, onFieldNote, onReminders, onNewWork, onNewSale,
+    onStockTake, onPendingApprovals, onExportXlsx, onRegenBible,
+  ])
 
   const clampedIdx = Math.min(idx, Math.max(0, items.length - 1))
 

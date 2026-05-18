@@ -98,7 +98,7 @@ function MonthMiniGrid({
   const wkNumFontSize = compact ? 9 : 10
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: compact ? 6 : 8 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: compact ? 6 : 8, minWidth: 0, maxWidth: '100%' }}>
       <div
         className="t-mono-sm"
         style={{
@@ -191,6 +191,7 @@ function MonthMiniGrid({
                       minHeight: cellMinH,
                       minWidth: 0,
                       padding: cellPad,
+                      boxSizing: 'border-box',
                       border: `1px solid ${isSel ? 'var(--ac)' : 'var(--bd2)'}`,
                       background: isSel ? 'var(--bg1)' : isToday ? 'var(--bg1)' : 'var(--bg0)',
                       borderRadius: 4,
@@ -449,12 +450,15 @@ export function PipelineCalendarView({
         style={narrow ? {
           display: 'flex',
           width: '100%',
+          maxWidth: '100%',
+          minWidth: 0,
           padding: 3,
           gap: 0,
           background: 'var(--bg0)',
           border: '1px solid var(--bd)',
           borderRadius: 10,
           boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
+          boxSizing: 'border-box',
         } : {
           display: 'flex',
           flexWrap: 'wrap',
@@ -487,6 +491,8 @@ export function PipelineCalendarView({
               color: range === r ? 'var(--bg0)' : 'var(--tx)',
               borderRadius: i === 0 ? '7px 0 0 7px' : i === RANGE_SEQUENCE.length - 1 ? '0 7px 7px 0' : 0,
               boxShadow: range === r ? '0 1px 3px rgba(0,0,0,0.2)' : undefined,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
             } : {
               minHeight: 44,
               background: range === r ? 'var(--ac)' : undefined,
@@ -704,6 +710,7 @@ export function PipelineCalendarView({
                   minHeight: cellMinH,
                   minWidth: 0,
                   padding: cellPad,
+                  boxSizing: 'border-box',
                   border: `1px solid ${isSel ? 'var(--ac)' : 'var(--bd2)'}`,
                   background: isSel ? 'var(--bg1)' : isToday ? 'var(--bg1)' : 'var(--bg0)',
                   borderRadius: 4,
@@ -839,6 +846,7 @@ export function PipelineCalendarView({
                           minHeight: cellMinH,
                           minWidth: 0,
                           padding: cellPad,
+                          boxSizing: 'border-box',
                           border: `1px solid ${isSel ? 'var(--ac)' : 'var(--bd2)'}`,
                           background: isSel ? 'var(--bg1)' : isToday ? 'var(--bg1)' : 'var(--bg0)',
                           borderRadius: 4,
@@ -900,6 +908,9 @@ export function PipelineCalendarView({
                 : 'repeat(3, minmax(0, 1fr))',
             gap: narrow ? 14 : 16,
             width: '100%',
+            maxWidth: '100%',
+            minWidth: 0,
+            boxSizing: 'border-box',
           }}
         >
           {(() => {
@@ -957,9 +968,12 @@ export function PipelineCalendarView({
           borderTop: '1px solid var(--bd)',
           paddingTop: 12,
           paddingBottom: 'max(12px, env(safe-area-inset-bottom, 0px))',
+          minWidth: 0,
+          maxWidth: '100%',
+          boxSizing: 'border-box',
         }}
       >
-        <div className="t-eyebrow" style={{ marginBottom: 10 }}>
+        <div className="t-eyebrow" style={{ marginBottom: 10, overflowWrap: 'anywhere' }}>
           {selectedKey
             ? new Date(`${selectedKey}T12:00:00`).toLocaleDateString(localeTag, {
                 weekday: 'long',
@@ -976,7 +990,7 @@ export function PipelineCalendarView({
           </div>
         )}
         {selectedKey && selectedEvents.length > 0 && (
-          <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0, maxWidth: '100%' }}>
             {selectedEvents.map((ev) => (
               <li
                 key={ev.id}
@@ -988,20 +1002,23 @@ export function PipelineCalendarView({
                   display: 'flex',
                   flexDirection: 'column',
                   gap: 8,
+                  minWidth: 0,
+                  maxWidth: '100%',
+                  boxSizing: 'border-box',
                 }}
               >
-                <div style={{ fontSize: 13, color: 'var(--tx)', lineHeight: 1.35 }}>{ev.label}</div>
+                <div style={{ fontSize: 13, color: 'var(--tx)', lineHeight: 1.35, minWidth: 0, overflowWrap: 'anywhere' }}>{ev.label}</div>
                 {ev.deadlineTime && (
-                  <div className="t-mono-sm" style={{ fontSize: 10, color: 'var(--tx3)' }}>
+                  <div className="t-mono-sm" style={{ fontSize: 10, color: 'var(--tx3)', overflowWrap: 'anywhere' }}>
                     {ev.deadlineTime}
                   </div>
                 )}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, minWidth: 0, maxWidth: '100%' }}>
                   {ev.processId && (
                     <button
                       type="button"
                       className="btn ghost sm"
-                      style={{ minHeight: 44 }}
+                      style={{ minHeight: 44, minWidth: 0, overflowWrap: 'anywhere' }}
                       onClick={() => onOpenProcess(ev.processId!)}
                     >
                       {t('pipeline_cal_open_process')}
@@ -1011,7 +1028,7 @@ export function PipelineCalendarView({
                     <button
                       type="button"
                       className="btn ghost sm"
-                      style={{ minHeight: 44 }}
+                      style={{ minHeight: 44, minWidth: 0, overflowWrap: 'anywhere' }}
                       onClick={() => void onTickEtape(ev.etapeId!)}
                     >
                       {t('pipeline_etape_tick_title')}
@@ -1021,7 +1038,7 @@ export function PipelineCalendarView({
                     <button
                       type="button"
                       className="btn ghost sm"
-                      style={{ minHeight: 44 }}
+                      style={{ minHeight: 44, minWidth: 0, overflowWrap: 'anywhere' }}
                       onClick={() => void onDismissReminder(ev.reminderId!)}
                     >
                       {t('pipeline_cal_dismiss_reminder')}

@@ -96,6 +96,8 @@ function AtelierHeaderChrome({
   setLang,
   onPaletteOpen,
   onNewWork,
+  onReports,
+  onStudioBible,
   hideNewWork,
 }: {
   variant: 'desktop' | 'drawer'
@@ -103,13 +105,68 @@ function AtelierHeaderChrome({
   setLang: (l: Lang) => void
   onPaletteOpen: () => void
   onNewWork: () => void
+  onReports: () => void
+  onStudioBible: () => void
   /** Narrow: + New work is on the bottom field bar, not in the drawer chrome. */
   hideNewWork?: boolean
 }) {
   const { t } = useI18n()
   const compact = variant === 'drawer'
+  const actionStyle = compact
+    ? { minHeight: 44, minWidth: 44, boxSizing: 'border-box' as const, fontSize: 11, letterSpacing: 1 }
+    : { fontSize: 11, letterSpacing: 1 }
+
   return (
-    <div className="row gap-sm" style={{ flexShrink: 0, flexWrap: compact ? 'wrap' : undefined, alignItems: 'center' }}>
+    <div className="row gap-sm" style={{ flexShrink: 0, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end' }}>
+      <div
+        role="toolbar"
+        aria-label={t('quickActions')}
+        className="row gap-xs"
+        style={{ flexWrap: 'wrap', justifyContent: 'flex-end' }}
+      >
+        <button
+          type="button"
+          className="btn ghost sm"
+          title={t('atelier_quick_search_shortcut')}
+          aria-label={t('aria_command_palette')}
+          onClick={onPaletteOpen}
+          style={actionStyle}
+        >
+          {t('search')}
+        </button>
+        {!hideNewWork ? (
+          <button
+            type="button"
+            className="btn ghost sm"
+            onClick={onNewWork}
+            title={t('newWork')}
+            aria-label={t('newWork')}
+            style={actionStyle}
+          >
+            {`+ ${t('newWork')}`}
+          </button>
+        ) : null}
+        <button
+          type="button"
+          className="btn ghost sm"
+          onClick={onReports}
+          title={t('tab_reports')}
+          aria-label={t('tab_reports')}
+          style={actionStyle}
+        >
+          {t('tab_reports')}
+        </button>
+        <button
+          type="button"
+          className="btn ghost sm"
+          onClick={onStudioBible}
+          title={t('atelier_quick_studio_bible')}
+          aria-label={t('atelier_quick_studio_bible')}
+          style={actionStyle}
+        >
+          {t('atelier_quick_studio_bible')}
+        </button>
+      </div>
       <div style={{ display: 'flex', border: '1px solid var(--bd)', fontSize: 10, letterSpacing: 1, alignItems: 'stretch' }}>
         {compact ? (
           <div style={{ display: 'flex', alignItems: 'center', minHeight: 44, boxSizing: 'border-box' }}>
@@ -141,36 +198,6 @@ function AtelierHeaderChrome({
           </button>
         ))}
       </div>
-      <button
-        type="button"
-        className="btn ghost sm"
-        title="⌘K"
-        aria-label={t('aria_command_palette')}
-        onClick={onPaletteOpen}
-        style={{
-          fontSize: 11,
-          letterSpacing: 1,
-          ...(compact ? { minHeight: 44, minWidth: 44, boxSizing: 'border-box' as const } : {}),
-        }}
-      >
-        ⌘K
-      </button>
-      {!hideNewWork ? (
-        <button
-          type="button"
-          className="btn ghost sm"
-          onClick={onNewWork}
-          title={t('newWork')}
-          aria-label={t('newWork')}
-          style={
-            compact
-              ? { minHeight: 44, minWidth: 44, boxSizing: 'border-box', fontSize: 11, letterSpacing: 1 }
-              : undefined
-          }
-        >
-          {`+ ${t('newWork')}`}
-        </button>
-      ) : null}
     </div>
   )
 }
@@ -868,6 +895,22 @@ export function TeamPortalClient({
 
   const showMobileActionBar = atelierNarrow && !inspected
 
+  function openFieldReminders() {
+    handleSetTab('overview')
+    requestAnimationFrame(() => {
+      document.getElementById('atelier-field-reminders')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }
+
+  function openNewSaleOrder() {
+    try {
+      sessionStorage.setItem('pem_sales_open_new_order', '1')
+    } catch {
+      /* ignore storage availability */
+    }
+    handleSetTab('sales')
+  }
+
   return (
     <>
       {drawerLeaveDialog}
@@ -879,7 +922,14 @@ export function TeamPortalClient({
         contacts={contacts}
         onGoTab={(t) => { handleSetTab(t as Tab); setPaletteOpen(false) }}
         onGoWork={(id) => { const o = oeuvres.find(x => x.OeuvreID === id); if (o) setInspected(o); setPaletteOpen(false) }}
+        onCaptureSession={() => void router.push('/atelier/session/new')}
+        onScanQr={() => void router.push('/atelier/scan')}
+        onFieldNote={() => setVoiceNoteSheetOpen(true)}
+        onReminders={openFieldReminders}
         onNewWork={() => router.push('/atelier/works/new')}
+        onNewSale={openNewSaleOrder}
+        onStockTake={() => handleSetTab('stock-take')}
+        onPendingApprovals={isAdmin ? () => handleSetTab('audit') : undefined}
         onExportXlsx={() => { handleSetTab('reports') }}
         onRegenBible={() => { handleSetTab('system') }}
       />
@@ -997,6 +1047,8 @@ export function TeamPortalClient({
               setLang={setLang}
               onPaletteOpen={() => setPaletteOpen(true)}
               onNewWork={() => void router.push('/atelier/works/new')}
+              onReports={() => handleSetTab('reports')}
+              onStudioBible={() => handleSetTab('system')}
             />
           )}
         </div>
@@ -1135,6 +1187,8 @@ export function TeamPortalClient({
                   setLang={setLang}
                   onPaletteOpen={() => setPaletteOpen(true)}
                   onNewWork={() => void router.push('/atelier/works/new')}
+                  onReports={() => handleSetTab('reports')}
+                  onStudioBible={() => handleSetTab('system')}
                   hideNewWork
                 />
               </div>
@@ -1507,12 +1561,7 @@ export function TeamPortalClient({
           onCapture={() => void router.push('/atelier/session/new')}
           onScan={() => void router.push('/atelier/scan')}
           onNote={() => setVoiceNoteSheetOpen(true)}
-          onReminders={() => {
-            handleSetTab('overview')
-            requestAnimationFrame(() => {
-              document.getElementById('atelier-field-reminders')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-            })
-          }}
+          onReminders={openFieldReminders}
           onNewWork={() => void router.push('/atelier/works/new')}
         />
       )}
