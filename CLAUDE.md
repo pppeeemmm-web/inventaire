@@ -5,17 +5,17 @@ Repo operating guide. If conflict: ask owner before edit.
 ## Hard Rules
 - CAUTION > SPEED. Think first. Surgical edits. Small diffs. No bloat.
 - No file edit without explicit GO. Confirm deletes.
-- Before commit: stage all modified source files; exclude build artifacts. [hook-enforced: `.claude/hooks/commit-guard.ps1`]
+- Before commit: stage all modified source files; exclude build artifacts. Do not assume local hook enforcement unless the hook file exists in this checkout.
 - `origin/main` = only release truth. Checkpoint branches/worktrees = scratch only; reconcile before final.
 - Done/clean/shipped only when intended change committed, checks known, and commit on `origin/main`.
 - Precise wording = truth: never say done/clean/shipped/pushed/deployed/online/implemented/fixed/verified/safe unless evidence proves that exact state. If evidence is missing or a tool is blocked, say `I cannot prove this; treat it as not done.`
 - Hung tool: kill after 60s no output unless build/test known long-running.
-- Do not implement deferred features (background queues, OCR capture, transactional email) without owner GO.
+- Do not implement deferred features (background queues, broad field OCR, transactional email) without owner GO. Existing business-card capture OCR may be maintained, not expanded silently.
 
 ## Parallel Sessions and Tool Isolation
 - One IDE per checkout, ever. Never Cursor + Claude (or Antigravity + Claude) in the same working directory.
 - For parallel work, spin up a worktree: `git worktree add ../app-wt-<name> -b wt-<name> origin/main`. Open exactly one tool inside it.
-- Worktree branches stay local. `origin/main` is the only push target — pre-push refuses non-main pushes by design.
+- Worktree branches stay local. `origin/main` is the only push target. If a pre-push hook exists, it should refuse non-main pushes; still verify manually.
 - Reconcile from the main checkout: `git merge --ff-only wt-<name>`, then push. Rebase the worktree onto main first if FF is impossible.
 - Remove a worktree only after committing or stashing: `git worktree remove ../app-wt-<name>`. Never `--force` with uncommitted changes — that is how work vanishes.
 - State unclear? `git worktree list` and `pwsh scripts/release-truth.ps1` from inside the worktree.
@@ -23,16 +23,23 @@ Repo operating guide. If conflict: ask owner before edit.
 
 ## Commands
 - Dev: `pwsh scripts/dev.ps1` from `C:\Users\pppee\Documents\Claude\Projects\Art db\app`.
-- Checks: `npm run i18n:check`, `npm run typecheck`, `npm run lint`. Pre-push hook only verifies branch + clean tree; run checks manually before pushing.
+- Checks: `npm run i18n:check`, `npm run typecheck`, `npm run lint`. Hooks are not a substitute for manual verification.
 - E2E: `npm run test:e2e`; field/mobile gated: `npm run test:e2e:field` (`ATELIER_E2E=1`, logged-in dev profile).
 - Supabase types: `npm run gen:types` after SQL applied; needs `SUPABASE_ACCESS_TOKEN` + `NEXT_PUBLIC_SUPABASE_URL` in `.env.local`.
 - Dev server: Next.js 15, port 3000. If `/_next/static/*` 404: restart dev from real root; delete `.next`; hard reload.
+
+## Verification Tiers
+- Docs-only: review diff + `git status --short --branch`; run heavier checks only if docs drive generated code or routes.
+- UI/copy changes: `npm run i18n:check`, `npm run lint`; add `npm run test:e2e:field` for mobile field chrome or `/hub` entry changes when a logged-in dev session is available.
+- Type/data flow changes: `npm run typecheck`, `npm run lint`; add focused Playwright where user-facing behavior changed.
+- SQL/RLS/storage changes: apply or review migration path, audit `GRANT` + RLS, run `npm run gen:types` after SQL is live, then `npm run typecheck`.
+- Before any push/production claim: run `pwsh scripts/release-truth.ps1` with checks/deploy SHA evidence appropriate to the claim.
 
 ## Final / Git Discipline
 - Start: `git status --short --branch`.
 - Finish: `git status --short --branch` + `git log --oneline origin/main..HEAD`.
 - Before completion wording, run or derive the same fields as `pwsh scripts/release-truth.ps1`: branch, HEAD SHA, origin/main SHA, HEAD==origin/main, working tree, checks, deploy SHA when claiming online/deployed.
-- If `main` ahead: push. If not on `origin/main`: say local draft.
+- Push only when owner requested commit/push. If `main` is ahead but push was not requested, say `committed locally` or `local draft` as applicable. If not on `origin/main`: say local draft.
 - Status words must be exact: `local draft`, `committed locally`, `pushed to origin/main`, `deployed`, or `verified`. Do not widen the claim beyond the evidence.
 - Never destructive git (`reset --hard`, `checkout --`, force push) unless owner explicitly approves.
 
@@ -41,9 +48,10 @@ Repo operating guide. If conflict: ask owner before edit.
 - Server Components fetch, pass to Client Components.
 - Mutations: Server Actions in `app/**/actions.ts`. Exceptions: OAuth callbacks, read-only/external `app/api/*` routes (geocode, inventory broadcast).
 - Bootstrap reads may live in `'use server'` modules under `app/atelier/`. Domain writes still actions.
-- Auth: Supabase SSR middleware protects `/atelier`, `/hub`, `/galerie`. Admin = `is_admin()` RPC via `Contact.is_admin` + `auth_user_id`. Old `profiles.role` dead.
+- Auth: Supabase SSR middleware protects `/atelier`, `/hub`, `/galerie`, `/collection`, `/maps`; document redirects only, never RSC/Flight/Server Action redirects. Admin = `is_admin()` RPC via `Contact.is_admin` + `auth_user_id`. Old `profiles.role` dead.
 - Supabase clients: `createClient()` anon/RLS; `createServiceClient()` service-role/admin bypass.
-- Keep `SITE_MAP.md`, `docs/ROADMAP.md`, `docs/TODO.md`, `docs/SYSTEM_LEDGER.md` in sync when routes/features change.
+- Atelier shell: first paint loads exact `Oeuvres` count + first keyset chunk; references hydrate post-paint via `fetchAtelierShellPostPaint`; subset UI must disclose loaded batch vs catalogue total.
+- Keep `SITE_MAP.md`, `docs/ROADMAP.md`, `docs/TODO.md`, `docs/SYSTEM_LEDGER.md` in sync when routes/features change, but do not trust them over live code when stale.
 
 ## UI Copy / i18n
 - All user copy: `useI18n().t(key)`. No hardcoded JSX/alert/confirm/title/placeholder copy.
@@ -61,7 +69,7 @@ Repo operating guide. If conflict: ask owner before edit.
 - Mobile image capture may use `capture="environment"`.
 - If `/hub` mobile entry changes: smoke WorkForm, WorkDrawer, Inventory small viewport.
 - Narrow Atelier sidebar first group Field: `inventory` → `production` → `stock-take` → `notes` → `map`.
-- Rings: A Atelier narrow chrome; B Hub field launcher + mobile bar + `VoiceNoteSheet`; B.3 PWA share target; C field verb routes/stubs.
+- Rings: A Atelier narrow chrome; B Hub field launcher + mobile bar + `VoiceNoteSheet`; B.3 PWA share target; C field verb routes/stubs plus business-card capture at `/atelier/capture?mode=card`.
 
 ## Drawer / Panel Guard
 - Serialize form + nested lists to baseline; dirty when current != baseline.

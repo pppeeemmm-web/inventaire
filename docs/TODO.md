@@ -23,8 +23,8 @@ _Version-controlled checklist. Prefer this file over a Desktop mirror._
 
 - [ ] **O1** Pre-Oct-30 2026 Supabase GRANT audit. Run [`supabase/sql/grant_audit_queries.sql`](../supabase/sql/grant_audit_queries.sql), write remediation migrations.
 - [ ] **O2** R2 access key rotation; document rotation date in `CLAUDE.md` Phase D.
-- [ ] **O3** Broadcast Bearer token rotation runbook → `docs/SYSTEM_LEDGER.md`.
-- [ ] **O4** Quarterly DB backup recovery drill (per `docs/BACKUP_RECOVERY.md`).
+- [ ] **O3** Broadcast Bearer token rotation runbook → `SYSTEM_LEDGER.md`.
+- [ ] **O4** Quarterly DB backup recovery drill (per `BACKUP_RECOVERY.md`).
 - [ ] **Vercel** `NEXT_PUBLIC_SITE_URL` / `NEXT_PUBLIC_APP_URL` on production (metadataBase / OG / sitemap).
 
 ## Manual Supabase / Cloudflare
@@ -96,7 +96,7 @@ _Version-controlled checklist. Prefer this file over a Desktop mirror._
 
 ## Roadmap (no GO without decision)
 
-- [ ] **F2**–**F10** — see prior ROADMAP / `STATUS.md` (preview token, quick-add, saved searches, share kit, flags, digest, outbox, OCR, concept_themes).
+- [ ] **F2**–**F10** — see [ROADMAP.md](ROADMAP.md) / archived [STATUS.md](archive/STATUS.md) (preview token, quick-add, saved searches, share kit, flags, digest, outbox, OCR, concept_themes).
 
 ## Broadcast follow-ups (optional)
 

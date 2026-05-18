@@ -2,7 +2,7 @@
 
 **Purpose:** One place to re-orient on stack, boundaries, and where truth lives. Update this file when you add major features, new env vars, production-impacting migrations, or new first-party API surfaces.
 
-**Authoritative detail:** [CLAUDE.md](../CLAUDE.md) (agent + repo rules). **Route / tab map + Mermaid:** [SITE_MAP.md](./SITE_MAP.md) (repo root). If your checkout includes `AGENTS.md` (e.g. parent of `app/`), use it for lint / Playwright policy.
+**Authoritative detail:** [CLAUDE.md](../CLAUDE.md) (agent + repo rules). **Route / tab map + Mermaid:** [SITE_MAP.md](../SITE_MAP.md) (repo root). If your checkout includes `AGENTS.md` (e.g. parent of `app/`), use it for lint / Playwright policy.
 
 ---
 
@@ -25,7 +25,7 @@
 ## Plan for the rest
 
 1. **Evidence pack (optional but clarifying)** — One nominal path written down: eligible work → `queue` → Buffer publish → `confirm` shows in **Publiés**; optional `event` in **Activité**. Screenshot or Make scenario export; lives in your wiki / Notion if you want, not necessarily in git.
-2. **§2 — Repo quality (done)** — `ATELIER_E2E=1` Playwright (includes `tests/broadcast-tab.spec.ts`); **`npm run test:e2e:field`** runs hub / mobile-bar / field-launcher specs with env set via [`scripts/run-atelier-e2e.mjs`](./scripts/run-atelier-e2e.mjs); `npm run lint` on merges.
+2. **§2 — Repo quality (done)** — `ATELIER_E2E=1` Playwright (includes `tests/broadcast-tab.spec.ts`); **`npm run test:e2e:field`** runs hub / mobile-bar / field-launcher specs with env set via [`scripts/run-atelier-e2e.mjs`](../scripts/run-atelier-e2e.mjs); `npm run lint` on merges.
 3. **Make resilience** — Error branches (API 5xx, 409 duplicate confirm), retries, alerting when feed is empty vs. misconfigured secret; document who owns the scenario.
 4. **Buffer** — Approval habit, which profiles, second network (e.g. LinkedIn) if needed; all in Buffer + Make settings.
 5. **Slack** — Which `event` types map to which channel; webhook rotation if exposed.
@@ -41,9 +41,9 @@ Use this as the **forward queue**. Check items off when done; add dates in paren
 
 ### 1 — Operations (done 2026-09-01)
 
-- [x] **Production DB:** Confirm `supabase/sql/broadcast_phase2.sql` is applied on **production** Supabase (same checks as dev). HTTP contract + curl patterns: [docs/BROADCAST_PHASE2_COMPLETE.md](./docs/BROADCAST_PHASE2_COMPLETE.md) and route sources under `app/api/inventory/broadcast/`.
+- [x] **Production DB:** Confirm `supabase/sql/broadcast_phase2.sql` is applied on **production** Supabase (same checks as dev). HTTP contract + curl patterns: [BROADCAST_PHASE2_COMPLETE.md](./BROADCAST_PHASE2_COMPLETE.md) and route sources under `app/api/inventory/broadcast/`.
 - [x] **Vercel:** Set `INVENTORY_BROADCAST_SECRET` on Production (and Preview only if previews should hit the API). Same value will go into Make.
-- [x] **Make / n8n:** Implement the live scenario — `GET feed` → `POST queue` per item → your AI + Buffer → `POST confirm` → optional `POST event`. Contract: [docs/BROADCAST_PHASE2_COMPLETE.md](./docs/BROADCAST_PHASE2_COMPLETE.md) + [`BROADCAST_OUTSIDE_CHAIN.md`](./BROADCAST_OUTSIDE_CHAIN.md).
+- [x] **Make / n8n:** Implement the live scenario — `GET feed` → `POST queue` per item → your AI + Buffer → `POST confirm` → optional `POST event`. Contract: [BROADCAST_PHASE2_COMPLETE.md](./BROADCAST_PHASE2_COMPLETE.md) + [`BROADCAST_OUTSIDE_CHAIN.md`](./BROADCAST_OUTSIDE_CHAIN.md).
 - [x] **Smoke:** Exercise feed/queue/confirm/event against production host once secrets match (examples in Phase 2 doc + route handlers).
 
 ### 2 — Quality / regression (repo) (done)
@@ -108,7 +108,7 @@ flowchart LR
   Make --> Slack
 ```
 
-HTTP contract (endpoints + Bearer secret): [docs/BROADCAST_PHASE2_COMPLETE.md](./docs/BROADCAST_PHASE2_COMPLETE.md). **Build Make → Buffer → Slack:** [BROADCAST_OUTSIDE_CHAIN.md](./BROADCAST_OUTSIDE_CHAIN.md) *(Make.com only; file at repo root when present)*.
+HTTP contract (endpoints + Bearer secret): [BROADCAST_PHASE2_COMPLETE.md](./BROADCAST_PHASE2_COMPLETE.md). **Build Make → Buffer → Slack:** [BROADCAST_OUTSIDE_CHAIN.md](./BROADCAST_OUTSIDE_CHAIN.md) *(Make.com only)*.
 
 ---
 
@@ -119,9 +119,9 @@ HTTP contract (endpoints + Bearer secret): [docs/BROADCAST_PHASE2_COMPLETE.md](.
 | Framework | Next.js 15 App Router, React 19, TypeScript |
 | Data | Supabase (Postgres + Auth + RLS) |
 | Images | Cloudflare R2 via AWS S3 SDK; Sharp → AVIF thumbs |
-| i18n | `lib/i18n/dictionary/` (`keys.ts`, `fr.ts`, `en.ts`) + barrel [`lib/i18n/dictionary.ts`](./lib/i18n/dictionary.ts) + `useI18n()` — **fr + en** for all user-visible copy |
-| E2E | Playwright (`npm run test:e2e`); atelier flows gated on `ATELIER_E2E=1`; **`npm run test:e2e:field`** for hub field launcher + mobile action bar specs ([`scripts/run-atelier-e2e.mjs`](./scripts/run-atelier-e2e.mjs)) |
-| PWA / iOS | [`app/manifest.ts`](./app/manifest.ts) (`/manifest.webmanifest`), `share_target` → `/atelier/share-receive`; static mirror [`public/manifest.webmanifest`](./public/manifest.webmanifest); **Apple touch** `public/pwa-icon-180.png` + [`app/layout.tsx`](./app/layout.tsx) |
+| i18n | `lib/i18n/dictionary/` (`keys.ts`, `fr.ts`, `en.ts`) + barrel [`lib/i18n/dictionary.ts`](../lib/i18n/dictionary.ts) + `useI18n()` — **fr + en** for all user-visible copy |
+| E2E | Playwright (`npm run test:e2e`); atelier flows gated on `ATELIER_E2E=1`; **`npm run test:e2e:field`** for hub field launcher + mobile action bar specs ([`scripts/run-atelier-e2e.mjs`](../scripts/run-atelier-e2e.mjs)) |
+| PWA / iOS | [`app/manifest.ts`](../app/manifest.ts) (`/manifest.webmanifest`), `share_target` → `/atelier/share-receive`; static mirror [`public/manifest.webmanifest`](../public/manifest.webmanifest); **Apple touch** `public/pwa-icon-180.png` + [`app/layout.tsx`](../app/layout.tsx) |
 
 ---
 
@@ -134,7 +134,7 @@ From repo root: `pwsh scripts/dev.ps1` (frees port 3000, prints LAN URL for mobi
 ## Architecture rules (short)
 
 - **Mutations:** Server Actions in `app/**/actions.ts` only — not ad-hoc API routes for app CRUD.
-- **Exception:** `app/api/inventory/broadcast/*` — Bearer-authenticated JSON for **Make/n8n** only (see [docs/BROADCAST_PHASE2_COMPLETE.md](./docs/BROADCAST_PHASE2_COMPLETE.md)).
+- **Exception:** `app/api/inventory/broadcast/*` — Bearer-authenticated JSON for **Make/n8n** only (see [BROADCAST_PHASE2_COMPLETE.md](./BROADCAST_PHASE2_COMPLETE.md)).
 - **Auth:** Middleware protects `/atelier`, `/hub`, `/galerie`. **Admin** = `is_admin()` RPC (`Contact.is_admin` + `auth_user_id`). Do not use legacy `profiles.role`.
 - **R2:** EU endpoint only — `https://<account_id>.eu.r2.cloudflarestorage.com` (see CLAUDE.md).
 
@@ -154,7 +154,7 @@ From repo root: `pwsh scripts/dev.ps1` (frees port 3000, prints LAN URL for mobi
 | Hub field launcher + voice sheet (narrow) | `components/hub/HubLauncherClient.tsx`, `components/shared/VoiceNoteSheet.tsx` |
 | Atelier mobile bottom bar (narrow) | `MobileActionBar` in `components/atelier/TeamPortalClient.tsx` |
 | Share inbox (PWA / form) | `app/atelier/share-receive/route.ts`, `app/atelier/share-triage/*`, `share_inbox` SQL |
-| Ring C field routes | `/atelier/session/new`, `/capture`, `/documents/new`, `/triage` — [`FieldToolStubPage`](./components/atelier/FieldToolStubPage.tsx) verb kinds + links; **`/atelier/issue/new`** → [`IssueNewForm`](./components/atelier/IssueNewForm.tsx) + [`app/atelier/field/actions.ts`](./app/atelier/field/actions.ts) (`studio_task`) |
+| Ring C field routes | `/atelier/session/new`, `/capture`, `/documents/new`, `/triage` — [`FieldToolStubPage`](../components/atelier/FieldToolStubPage.tsx) verb kinds + links; **`/atelier/issue/new`** → [`IssueNewForm`](../components/atelier/IssueNewForm.tsx) + [`app/atelier/field/actions.ts`](../app/atelier/field/actions.ts) (`studio_task`) |
 | Public site / galerie | `app/galerie/*` (and related) |
 
 ---
@@ -190,10 +190,10 @@ Document full list in `.env.local.example`. Critical groups:
 | Doc | Contents |
 |-----|----------|
 | [CLAUDE.md](../CLAUDE.md) | Full conventions, mobile contract, PDF/R2 gotchas, cemetery columns |
-| [SITE_MAP.md](./SITE_MAP.md) | Routes, tabs, Mermaid topology, operator checklist pointers |
-| [docs/BROADCAST_PHASE2_COMPLETE.md](./docs/BROADCAST_PHASE2_COMPLETE.md) | Broadcast feature “done” snapshot + API table |
+| [SITE_MAP.md](../SITE_MAP.md) | Routes, tabs, Mermaid topology, operator checklist pointers |
+| [BROADCAST_PHASE2_COMPLETE.md](./BROADCAST_PHASE2_COMPLETE.md) | Broadcast feature “done” snapshot + API table |
 | [BROADCAST_OUTSIDE_CHAIN.md](./BROADCAST_OUTSIDE_CHAIN.md) | **Make.com only** — Buffer + Slack + close `confirm` loop |
-| [docs/BACKUP_RECOVERY.md](./docs/BACKUP_RECOVERY.md) | Off-site DB backups + restore |
+| [BACKUP_RECOVERY.md](./BACKUP_RECOVERY.md) | Off-site DB backups + restore |
 
 ---
 
@@ -206,4 +206,4 @@ Document full list in `.env.local.example`. Critical groups:
 - [ ] New first-party HTTP API besides broadcast.
 - [ ] Major orchestrator change (e.g. no longer `TeamPortalClient`-centric).
 
-**Last reviewed (2026-05-14):** Mobile field-tool slice — Ring A/B chrome + hub launcher + `MobileActionBar`, PWA `share_target`, Ring C verb stubs + issue → `studio_task`, `pwa-icon-180` + `test:e2e:field`; doc links fixed to [SITE_MAP.md](./SITE_MAP.md) and [docs/BROADCAST_PHASE2_COMPLETE.md](./docs/BROADCAST_PHASE2_COMPLETE.md) (removed stale `BROADCAST_PHASE3_OPERATIONS.md` paths from this file).
+**Last reviewed (2026-05-14):** Mobile field-tool slice — Ring A/B chrome + hub launcher + `MobileActionBar`, PWA `share_target`, Ring C verb stubs + issue → `studio_task`, `pwa-icon-180` + `test:e2e:field`; doc links fixed to [SITE_MAP.md](../SITE_MAP.md) and [BROADCAST_PHASE2_COMPLETE.md](./BROADCAST_PHASE2_COMPLETE.md) (removed stale `BROADCAST_PHASE3_OPERATIONS.md` paths from this file).

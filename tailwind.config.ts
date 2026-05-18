@@ -8,7 +8,7 @@ const config: Config = {
   ],
   theme: {
     extend: {
-      // Reference the CSS variables from globals.css so Tailwind
+      // Reference the CSS variables from app/globals.css so Tailwind
       // utility classes like text-tx, bg-bg2, border-bd work alongside
       // the hand-rolled component classes (btn, chip, stat, etc.)
       colors: {

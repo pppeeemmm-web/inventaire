@@ -22,6 +22,7 @@ tsconfig.tsbuildinfo
 scratch/
 test-results/
 supabase/.temp/
+.wrangler/
 
 .vercel
 .claude/

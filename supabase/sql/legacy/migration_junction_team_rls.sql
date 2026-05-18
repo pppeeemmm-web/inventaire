@@ -1,4 +1,4 @@
--- Optional: align DB RLS with other team tables (migration_v3_rls_fix.sql uses is_team()).
+-- Optional: align DB RLS with other team tables (legacy/migration_v3_rls_fix.sql uses is_team()).
 -- The app also writes junctions via SUPABASE_SERVICE_ROLE_KEY server-side so rows persist
 -- even before these policies exist.
 --

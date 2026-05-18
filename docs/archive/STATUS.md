@@ -66,7 +66,7 @@ Worktree commit: `4d407f3`. **Not yet committed in real app** — pending review
 - [ ] **C1** `PortfolioTab.tsx` (~1 851 lines) → `PortfolioLandingPanel`, `PortfolioCollectionsPanel`, `PortfolioWorksManager` + thin orchestrator.
 - [ ] **C2** `PipelineTab.tsx` (~1 877 lines; shared types in `pipeline/pipeline-shared.ts`) → `PipelineGanttView`, `PipelineDeadlineSidebar`, `PipelineRemindersPanel`. Also: add `AbortController` to `useEffect` fetches (stale-data risk on fast tab switches).
 - [ ] **C3** `ExhibitionsTab.tsx` (~1 086 lines; list sidebar already `exhibitions/ExhibitionsListPanel.tsx`) → `ExhibitionStepsPanel`, `ExhibitionFloorPlanEditor` + thinner shell. *A1 server actions already shipped.*
-- [x] **C4** Write `docs/CONSTELLATION.md` (purpose, user story, data model) before any further investment in the 3 003-line canvas — **doc in repo** [`docs/CONSTELLATION.md`](docs/CONSTELLATION.md); *2026-05-15* updated for server-side graph bundle + edge mutations.
+- [x] **C4** Write `docs/CONSTELLATION.md` (purpose, user story, data model) before any further investment in the 3 003-line canvas — **doc in repo** [`docs/CONSTELLATION.md`](../CONSTELLATION.md); *2026-05-15* updated for server-side graph bundle + edge mutations.
 
 ### Deferred features (roadmap — no GO without decision)
 
@@ -86,7 +86,7 @@ Worktree commit: `4d407f3`. **Not yet committed in real app** — pending review
 - [ ] **O1** Pre-Oct-30 Supabase GRANT audit (deadline: 2026-10-30 for existing projects; May 30 for new). Run the audit SQL, write remediation migrations. See §9 in the rationalization plan.
 - [ ] **O2** R2 access key rotation — document rotation date in `CLAUDE.md` Phase D.
 - [ ] **O3** `broadcast` Bearer token rotation runbook → `docs/SYSTEM_LEDGER.md`.
-- [ ] **O4** Quarterly DB backup recovery drill (next due: see `docs/BACKUP_RECOVERY.md`).
+- [ ] **O4** Quarterly DB backup recovery drill (next due: see [`docs/BACKUP_RECOVERY.md`](../BACKUP_RECOVERY.md)).
 
 ---
 
@@ -96,7 +96,7 @@ Worktree commit: `4d407f3`. **Not yet committed in real app** — pending review
 - **Single RSC spine** (`app/atelier/page.tsx`) is still a parallel `Promise.all` for all reference tables. First-chunk œuvres is paged; lookups (techniques, themes, junction tables) still ride the same round-trip → stale-blocks TTI on slow connections. Fix is per-table `cache()` + `revalidateTag()` (Block A).
 - **R2-backed portfolio config** is a single JSON blob; no versioning. Two browser tabs editing simultaneously will silently lose one set of changes. Fix: etag/`updated_at` round-trip (Block A, A3).
 - **Client-side Supabase mutations** in `ExhibitionsTab` + `CurationPanel` — **addressed** via `app/atelier/exhibitions/actions.ts` + `app/atelier/curation/actions.ts`. *2026-05-15:* `ConstellationCanvas` graph bootstrap + edge persistence moved to `app/atelier/constellation/actions.ts` (canvas file still large — Block C split remains).
-- **`ConstellationCanvas` (~3k lines)** — [`docs/CONSTELLATION.md`](docs/CONSTELLATION.md) defines contract; server actions cover graph reads + `tblrelations` writes; module split still pending (C1-style decomposition).
+- **`ConstellationCanvas` (~3k lines)** — [`docs/CONSTELLATION.md`](../CONSTELLATION.md) defines contract; server actions cover graph reads + `tblrelations` writes; module split still pending (C1-style decomposition).
 - **Pipeline / exhibitions cross-imports** — label maps and process types now centralized in `pipeline-shared.ts`; full tab splits (C2/C3) still open.
 
 ### Security
@@ -122,6 +122,6 @@ Worktree commit: `4d407f3`. **Not yet committed in real app** — pending review
 ## Reference
 - Full rationalization plan: `C:\Users\pppee\.claude\plans\rationalize-claude-md-read-roadmap-md-rippling-cook.md`
 - Architecture audit: `architecture.md`
-- Route inventory: `docs/SITE_MAP.md`
-- Deferred work: `docs/ROADMAP.md`
-- Consolidated checklist (pending work): [docs/TODO.md](docs/TODO.md)
+- Route inventory: [`SITE_MAP.md`](../../SITE_MAP.md)
+- Deferred work: [`docs/ROADMAP.md`](../ROADMAP.md)
+- Consolidated checklist (pending work): [`docs/TODO.md`](../TODO.md)
