@@ -1,0 +1,24 @@
+---
+description: Streamlined Windows commit and push protocol
+alwaysApply: true
+---
+
+# Windows Commit / Push Protocol
+
+When committing or pushing from Windows/Cursor:
+
+- Use PowerShell-native commands. Do not use `bash -lc` for git commits or heredocs.
+- Batch read-only git checks in parallel where possible: `git status --short --branch`, relevant `git diff`, and recent `git log`.
+- Reuse checks already run after the final code edit; do not rerun expensive checks during commit unless files changed after those checks.
+- Stage exact intended files. Avoid repeated status loops once the commit set is clear.
+- Use a PowerShell here-string for commit messages:
+
+```powershell
+$msg = @'
+Commit message
+
+'@
+git commit -m $msg
+```
+
+- After commit, push with `git push origin main`, then run the repo release-truth/status command once.
