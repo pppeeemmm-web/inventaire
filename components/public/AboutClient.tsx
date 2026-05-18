@@ -1,9 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import PublicNav from './PublicNav'
 import { loadPortfolioConfig } from '@/app/atelier/portfolio/actions'
+import { hiddenNavRoutes } from '@/lib/site-block-visibility'
+import type { SiteBlock } from '@/lib/portfolio-config-types'
 import { trackView } from '@/lib/track'
 import { getOrCreatePublicVisitorId } from '@/lib/public-visitor-id'
 
@@ -27,6 +29,10 @@ export default function AboutClient() {
     fetchData()
   }, [])
 
+  const hidden = useMemo(
+    () => config?.site_blocks ? hiddenNavRoutes(config.site_blocks as SiteBlock[]) : [],
+    [config],
+  )
   const artistName = config?.general?.artist_name || 'the pem workshop'
   const bioIntro = lang === 'en'
     ? (config?.about?.intro_en || config?.about?.intro_fr)
@@ -78,7 +84,7 @@ export default function AboutClient() {
         }
       `}</style>
 
-      <PublicNav active="about" prefix="a" />
+      <PublicNav active="about" prefix="a" hiddenNavRoutes={hidden} />
 
       <div className="a-body pem-fadeIn pem-grain">
 

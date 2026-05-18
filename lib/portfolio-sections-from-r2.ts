@@ -6,6 +6,8 @@
 import { unstable_cache } from 'next/cache'
 import { createServiceClient } from '@/lib/supabase/server'
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3'
+import { SITE_BLOCK_KINDS, DEFAULT_SITE_BLOCKS } from '@/lib/portfolio-config-types'
+import type { SiteBlock, SiteBlockKind } from '@/lib/portfolio-config-types'
 
 export const PORTFOLIO_SECTIONS_BUCKET = process.env.R2_VAULT_BUCKET ?? 'vault'
 export const PORTFOLIO_SECTIONS_R2_KEY = 'portfolio_sections.json'
@@ -81,6 +83,25 @@ export async function loadPortfolioSectionsFromR2(): Promise<{
             }
           : { hero_image_url: '' }
 
+        // Extract site_blocks with same logic as migrateSiteBlocks
+        let siteBlocks: SiteBlock[]
+        if (Array.isArray(parsed.site_blocks)) {
+          const seen = new Set<SiteBlockKind>()
+          const result: SiteBlock[] = []
+          for (const b of parsed.site_blocks as any[]) {
+            if (b && typeof b.kind === 'string' && SITE_BLOCK_KINDS.includes(b.kind as SiteBlockKind) && !seen.has(b.kind as SiteBlockKind)) {
+              seen.add(b.kind as SiteBlockKind)
+              result.push({ kind: b.kind as SiteBlockKind, visible: b.visible !== false })
+            }
+          }
+          for (const k of SITE_BLOCK_KINDS) {
+            if (!seen.has(k)) result.push({ kind: k, visible: true })
+          }
+          siteBlocks = result
+        } else {
+          siteBlocks = DEFAULT_SITE_BLOCKS.map(b => ({ ...b }))
+        }
+
         config = {
           general:           parsed.general           || config.general,
           landing,
@@ -89,6 +110,7 @@ export async function loadPortfolioSectionsFromR2(): Promise<{
           sections:          parsed.sections          || [],
           works_collections: parsed.works_collections || [],
           works_modes:       Array.isArray(parsed.works_modes) ? parsed.works_modes : [],
+          site_blocks:       siteBlocks,
           statement_doc_id:  parsed.statement_doc_id  || null,
           cv_doc_id:         parsed.cv_doc_id         || null,
         }

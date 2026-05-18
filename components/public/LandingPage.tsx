@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import WavingCircle from '@/components/public/WavingCircle'
 import LandingPdfPopup from '@/components/portfolio/LandingPdfPopup'
@@ -15,17 +15,21 @@ type LandingPageProps = {
   artistName: string
   /** Custom hero hosts may be outside `images.remotePatterns`. */
   heroImageUnoptimized: boolean
+  /** Routes to hide from navigation (e.g. ['/about', '/practice']). */
+  hiddenNavRoutes?: string[]
 }
 
 export default function LandingPage({
   heroImageUrl,
   artistName,
   heroImageUnoptimized,
+  hiddenNavRoutes = [],
 }: LandingPageProps) {
   const { lang, setLang, t } = useI18n()
   const [pdfOpen, setPdfOpen] = useState(false)
   const [navOpen, setNavOpen] = useState(false)
   const pubNarrow = useMediaQuery('(max-width: 767px)')
+  const hiddenSet = useMemo(() => new Set(hiddenNavRoutes), [hiddenNavRoutes])
 
   useEffect(() => {
     void trackView('/', document.referrer || null, null, getOrCreatePublicVisitorId())
@@ -180,18 +184,26 @@ export default function LandingPage({
             sizes="(max-width: 480px) min(42vmin, calc(100vw - 48px)), min(38vmin, 520px)"
             unoptimized={heroImageUnoptimized}
           />
-          <Link href="/works" className="orb orb-top">
-            {t('pub_works')}
-          </Link>
-          <Link href="/about" className="orb orb-left">
-            {t('pub_about')}
-          </Link>
-          <Link href="/practice" className="orb orb-right">
-            {t('pub_practice')}
-          </Link>
-          <Link href="/enquiry" className="orb orb-bottom">
-            {t('pub_enquiry')}
-          </Link>
+          {!hiddenSet.has('/works') && (
+            <Link href="/works" className="orb orb-top">
+              {t('pub_works')}
+            </Link>
+          )}
+          {!hiddenSet.has('/about') && (
+            <Link href="/about" className="orb orb-left">
+              {t('pub_about')}
+            </Link>
+          )}
+          {!hiddenSet.has('/practice') && (
+            <Link href="/practice" className="orb orb-right">
+              {t('pub_practice')}
+            </Link>
+          )}
+          {!hiddenSet.has('/enquiry') && (
+            <Link href="/enquiry" className="orb orb-bottom">
+              {t('pub_enquiry')}
+            </Link>
+          )}
         </nav>
 
         <button
@@ -356,7 +368,7 @@ export default function LandingPage({
                 ['/practice', t('pub_practice')],
                 ['/enquiry', t('pub_enquiry')],
               ] as const
-            ).map(([href, label]) => (
+            ).filter(([href]) => !hiddenSet.has(href)).map(([href, label]) => (
               <Link
                 key={href}
                 href={href}

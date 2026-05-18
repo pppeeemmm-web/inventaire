@@ -1,9 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import PublicNav from './PublicNav'
 import { loadPortfolioConfig } from '@/app/atelier/portfolio/actions'
+import { hiddenNavRoutes } from '@/lib/site-block-visibility'
+import type { SiteBlock } from '@/lib/portfolio-config-types'
 import { trackView } from '@/lib/track'
 import { getOrCreatePublicVisitorId } from '@/lib/public-visitor-id'
 
@@ -25,6 +27,10 @@ export default function PracticeClient() {
     fetchData()
   }, [])
 
+  const hidden = useMemo(
+    () => config?.site_blocks ? hiddenNavRoutes(config.site_blocks as SiteBlock[]) : [],
+    [config],
+  )
   const approach = lang === 'en'
     ? (config?.practice?.approach_en || config?.practice?.approach_fr)
     : (config?.practice?.approach_fr || config?.practice?.approach_en)
@@ -87,7 +93,7 @@ export default function PracticeClient() {
         }
       `}</style>
 
-      <PublicNav active="practice" prefix="p" />
+      <PublicNav active="practice" prefix="p" hiddenNavRoutes={hidden} />
 
       <div className="p-body pem-fadeIn pem-grain">
 
