@@ -35,6 +35,26 @@ function expiresAtIso(): string {
   return new Date(Date.now() + DRAFT_TTL_MS).toISOString()
 }
 
+function normalizeSessionAt(value: string | null | undefined): string | null {
+  if (!value) return null
+  const time = Date.parse(value)
+  if (Number.isNaN(time)) return null
+  return new Date(time).toISOString()
+}
+
+function sessionAtForPayload(payload: WorkSessionPayload, rowCreatedAt?: string | null): string {
+  return normalizeSessionAt(payload.session_at) ?? normalizeSessionAt(rowCreatedAt) ?? new Date().toISOString()
+}
+
+function formatSessionHistoryDate(value: string): string {
+  return new Intl.DateTimeFormat('fr-CA', {
+    timeZone: 'Europe/Paris',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date(value)).replace(/-/g, '/')
+}
+
 async function rpcIsAdmin(supabase: Awaited<ReturnType<typeof createClient>>): Promise<boolean> {
   const { data } = await supabase.rpc('is_admin')
   return !!data
@@ -78,6 +98,7 @@ export type WorkSessionJournalItem = {
 }
 
 export type WorkSessionJournalRow = WorkSessionRow & {
+  session_at: string
   journal_notes: string | null
   field_context: WorkSessionFieldContext | null
   item_count: number
@@ -166,6 +187,7 @@ async function createWorkFromSessionFields(
     notes?: string
     width_cm?: string
     height_cm?: string
+    session_at?: string
   },
 ): Promise<{ ok: true; oeuvreId: number } | { error: string }> {
   const titre = fields.title_hint.trim()
@@ -179,7 +201,8 @@ async function createWorkFromSessionFields(
     .single()
   const oid = (maxRow?.OeuvreID ?? 2337) + 1
 
-  const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '/')
+  const sessionAt = normalizeSessionAt(fields.session_at) ?? new Date().toISOString()
+  const dateStr = formatSessionHistoryDate(sessionAt)
   const originEntry = `[${dateStr}] Session terrain`
   const notesTrim = (fields.notes ?? '').trim()
   const historique = notesTrim ? `${originEntry}\n${notesTrim}` : originEntry
@@ -225,6 +248,7 @@ export async function getWorkSessionShotCount(sessionId: string): Promise<number
 }
 
 export type WorkSessionDraftFields = {
+  session_at: string
   notes: string
   title_hint: string
   width_cm: string
@@ -241,7 +265,7 @@ export async function getWorkSessionDraftFields(sessionId: string): Promise<
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Non authentifié' }
   const { data, error } = await workSessionTable(supabase)
-    .select('payload,oeuvre_id')
+    .select('payload,oeuvre_id,created_at')
     .eq('id', sessionId)
     .eq('user_id', user.id)
     .maybeSingle()
@@ -253,6 +277,7 @@ export async function getWorkSessionDraftFields(sessionId: string): Promise<
     oeuvre_id: typeof oeuvreId === 'number' && oeuvreId > 0 ? oeuvreId : null,
     items: p.items,
     fields: {
+      session_at: sessionAtForPayload(p, data.created_at as string | null),
       notes: p.notes ?? '',
       title_hint: p.title_hint ?? '',
       width_cm: p.width_cm ?? '',
@@ -272,6 +297,7 @@ export async function createWorkSessionDraft(oeuvreId: number | null): Promise<
   if (!user) return { error: 'Non authentifié' }
 
   const payload = emptyWorkSessionPayload()
+  payload.session_at = new Date().toISOString()
   const firstItem = createWorkSessionItem(oeuvreId && oeuvreId > 0 ? 'existing' : 'existing')
   if (oeuvreId && oeuvreId > 0) firstItem.oeuvre_id = oeuvreId
   payload.items = [firstItem]
@@ -296,6 +322,7 @@ export async function updateWorkSessionMetadata(
   sessionId: string,
   patch: {
     notes?: string
+    session_at?: string
     title_hint?: string
     width_cm?: string
     height_cm?: string
@@ -317,6 +344,11 @@ export async function updateWorkSessionMetadata(
   if (row.status !== 'draft') return { error: 'Session non modifiable' }
 
   const payload = parseWorkSessionPayload(row.payload)
+  if (typeof patch.session_at === 'string') {
+    const sessionAt = normalizeSessionAt(patch.session_at)
+    if (!sessionAt) return { error: 'Date de session invalide' }
+    payload.session_at = sessionAt
+  }
   if (typeof patch.notes === 'string') payload.notes = patch.notes
   if (typeof patch.title_hint === 'string') payload.title_hint = patch.title_hint
   if (typeof patch.width_cm === 'string') payload.width_cm = patch.width_cm
@@ -611,6 +643,7 @@ export async function listWorkSessionJournal(limit = 100): Promise<WorkSessionJo
     })
     return {
       ...row,
+      session_at: sessionAtForPayload(payload, row.created_at),
       journal_notes: payload.notes ?? null,
       field_context: payload.field_context ?? null,
       item_count: countWorkSessionItems(payload),
@@ -618,7 +651,7 @@ export async function listWorkSessionJournal(limit = 100): Promise<WorkSessionJo
       applied_shot_count: payload.items.reduce((sum, item) => sum + (item.applied_shot_count ?? 0), 0),
       items,
     }
-  })
+  }).sort((a, b) => Date.parse(b.session_at) - Date.parse(a.session_at))
 }
 
 function diffVersionSnapshots(
@@ -887,6 +920,7 @@ export async function createAndLinkWorkFromSession(
     notes?: string
     width_cm?: string
     height_cm?: string
+    session_at?: string
     field_context?: WorkSessionFieldContext | null
   },
 ): Promise<{ ok: true; oeuvreId: number } | { error: string }> {
@@ -910,6 +944,7 @@ export async function createAndLinkWorkFromSession(
 
   const metaPatch = {
     notes: fields.notes ?? '',
+    ...(fields.session_at ? { session_at: fields.session_at } : {}),
     title_hint: titre,
     width_cm: fields.width_cm ?? '',
     height_cm: fields.height_cm ?? '',
@@ -953,6 +988,7 @@ export async function createAndLinkWorkFromSessionItem(
   if ((row as SessionMutableRow).status !== 'draft') return { error: 'Session non modifiable' }
 
   const payload = parseWorkSessionPayload((row as SessionMutableRow).payload)
+  const sessionAt = sessionAtForPayload(payload)
   const idx = findItemIndex(payload, itemId)
   if (idx < 0) return { error: 'Entrée introuvable' }
   const item = payload.items[idx]
@@ -961,6 +997,7 @@ export async function createAndLinkWorkFromSessionItem(
     notes: item.notes ?? payload.notes,
     width_cm: item.width_cm,
     height_cm: item.height_cm,
+    session_at: sessionAt,
   })
   if ('error' in created) return created
 
@@ -1062,7 +1099,7 @@ export async function applyWorkSessionToOeuvre(sessionId: string): Promise<Sessi
   if (!(await rpcIsAdmin(supabase))) return { error: 'Action réservée à l’administrateur' }
 
   const { data: row, error: selErr } = await workSessionTable(supabase)
-    .select('id,status,payload,oeuvre_id')
+    .select('id,status,payload,oeuvre_id,created_at')
     .eq('id', sessionId)
     .maybeSingle()
   if (selErr || !row) return { error: selErr?.message ?? 'Session introuvable' }
@@ -1070,6 +1107,7 @@ export async function applyWorkSessionToOeuvre(sessionId: string): Promise<Sessi
     return { error: 'Session déjà traitée' }
   }
   const payload = parseWorkSessionPayload(row.payload)
+  const sessionAt = sessionAtForPayload(payload, row.created_at as string | null)
   if (countWorkSessionShots(payload) === 0) return { error: 'Aucune photo à appliquer' }
 
   let appliedCount = 0
@@ -1115,6 +1153,7 @@ export async function applyWorkSessionToOeuvre(sessionId: string): Promise<Sessi
           notes: item.notes ?? payload.notes,
           width_cm: item.width_cm,
           height_cm: item.height_cm,
+          session_at: sessionAt,
         })
         if ('error' in created) return created
         oeuvreId = created.oeuvreId
@@ -1135,6 +1174,7 @@ export async function applyWorkSessionToOeuvre(sessionId: string): Promise<Sessi
       const captureMeta = {
         source: 'work_session',
         session_id: sessionId,
+        session_at: sessionAt,
         item_id: item.id,
         notes: item.notes ?? payload.notes ?? null,
         title_hint: item.title_hint ?? null,
@@ -1188,6 +1228,7 @@ export async function applyWorkSessionToOeuvre(sessionId: string): Promise<Sessi
   const captureMeta = {
     source: 'work_session',
     session_id: sessionId,
+    session_at: sessionAt,
     notes: payload.notes ?? null,
     title_hint: payload.title_hint ?? null,
     width_cm: payload.width_cm ?? null,
@@ -1219,6 +1260,7 @@ export async function applyWorkSessionToOeuvre(sessionId: string): Promise<Sessi
 
   const donePayload: Record<string, unknown> = {
     notes: payload.notes ?? null,
+    session_at: sessionAt,
     title_hint: payload.title_hint ?? null,
     width_cm: payload.width_cm ?? null,
     height_cm: payload.height_cm ?? null,

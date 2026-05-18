@@ -297,7 +297,7 @@ export function SessionJournalTab() {
   const grouped = useMemo(() => {
     const groups = new Map<string, WorkSessionJournalRow[]>()
     for (const row of rows) {
-      const key = new Date(row.created_at).toLocaleDateString(locale, { dateStyle: 'medium' })
+      const key = new Date(row.session_at).toLocaleDateString(locale, { dateStyle: 'medium' })
       groups.set(key, [...(groups.get(key) ?? []), row])
     }
     return Array.from(groups.entries())
@@ -349,7 +349,7 @@ export function SessionJournalTab() {
                       cursor: 'pointer',
                     }}
                   >
-                    <div style={{ fontSize: 12 }}>{formatDate(row.created_at, locale)}</div>
+                    <div style={{ fontSize: 12 }}>{formatDate(row.session_at, locale)}</div>
                     <div className="t-mono-sm" style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 4 }}>
                       {row.item_count} {t('session_journal_items_count')} · {row.staged_shot_count + row.applied_shot_count}{' '}
                       {t('drawer_work_sessions_shots')} · {t(statusKey(row.status))}
@@ -366,7 +366,7 @@ export function SessionJournalTab() {
         {selected ? (
           <div style={{ padding: 28, maxWidth: 980 }}>
             <div className="t-eyebrow" style={{ color: 'var(--tx3)', marginBottom: 8 }}>{t('journal_session_date')}</div>
-            <h1 className="serif" style={{ fontSize: 28, margin: 0 }}>{formatDate(selected.created_at, locale)}</h1>
+            <h1 className="serif" style={{ fontSize: 28, margin: 0 }}>{formatDate(selected.session_at, locale)}</h1>
             <div className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 11, marginTop: 8 }}>
               {selected.item_count} {t('session_journal_items_count')} · {selected.staged_shot_count + selected.applied_shot_count}{' '}
               {t('drawer_work_sessions_shots')} · {t(statusKey(selected.status))}
@@ -388,7 +388,7 @@ export function SessionJournalTab() {
                   key={item.id}
                   item={item}
                   sessionId={selected.id}
-                  sessionDate={selected.created_at}
+                  sessionDate={selected.session_at}
                   onChanged={reload}
                 />
               ))}

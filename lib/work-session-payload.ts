@@ -46,6 +46,7 @@ export interface WorkSessionItem {
 }
 
 export interface WorkSessionPayload {
+  session_at?: string
   notes?: string
   title_hint?: string
   width_cm?: string
@@ -168,6 +169,7 @@ export function parseWorkSessionPayload(raw: unknown): WorkSessionPayload {
     ? o.items.map(parseWorkSessionItem).filter((item): item is WorkSessionItem => item != null)
     : []
   const out: WorkSessionPayload = { shots, items }
+  if (typeof o.session_at === 'string') out.session_at = o.session_at
   if (typeof o.notes === 'string') out.notes = o.notes
   if (typeof o.title_hint === 'string') out.title_hint = o.title_hint
   if (typeof o.width_cm === 'string') out.width_cm = o.width_cm

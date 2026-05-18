@@ -93,6 +93,14 @@ export const atelierMessages = defineMessages({
     fr: 'Journal de session : ajoutez une entrée par peinture touchée, liez une œuvre existante ou notez une nouvelle œuvre, puis ajoutez les photos et les suivis.',
     en: 'Session journal: add one entry for each painting touched, link an existing work or mark a new work, then add photos and follow-up notes.',
   },
+  session_date_label: {
+    fr: 'Date de la session',
+    en: 'Session date',
+  },
+  session_date_hint: {
+    fr: 'Changez cette date pour rattraper une session faite hier ou un autre jour.',
+    en: 'Change this date when catching up a session from yesterday or another day.',
+  },
   session_journal_items_heading: {
     fr: 'Peintures dans cette session',
     en: 'Paintings in this session',

@@ -31,6 +31,21 @@ import { captureFieldContext, type CaptureFieldContextErrorCode } from '@/lib/fi
 import { thumbUrl } from '@/lib/data'
 import type { WorkSessionFieldContext, WorkSessionItem, WorkSessionItemMode } from '@/lib/work-session-payload'
 
+function toDateInputValue(value: string): string {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function dateInputToSessionIso(value: string): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null
+  const date = new Date(`${value}T12:00:00`)
+  return Number.isNaN(date.getTime()) ? null : date.toISOString()
+}
+
 export function SessionNewClient() {
   const { t, lang } = useI18n()
   const sp = useSearchParams()
@@ -40,6 +55,7 @@ export function SessionNewClient() {
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [authed, setAuthed] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [sessionDate, setSessionDate] = useState('')
   const [notes, setNotes] = useState('')
   const [items, setItems] = useState<WorkSessionItem[]>([])
   const [activeItemId, setActiveItemId] = useState<string | null>(null)
@@ -68,6 +84,7 @@ export function SessionNewClient() {
       toast.error(df.error)
       return
     }
+    setSessionDate(toDateInputValue(df.fields.session_at))
     setNotes(df.fields.notes)
     setFieldContext(df.fields.field_context)
     if (df.items.length === 0) {
@@ -144,13 +161,15 @@ export function SessionNewClient() {
 
   const pushMeta = useCallback(async () => {
     if (!sessionId) return
+    const sessionAt = dateInputToSessionIso(sessionDate)
     const r = await updateWorkSessionMetadata(sessionId, {
+      ...(sessionAt ? { session_at: sessionAt } : {}),
       notes,
       ...(fieldContext != null ? { field_context: fieldContext } : {}),
     })
     if ('error' in r) toast.error(r.error)
     else toast.success(t('session_toast_saved'))
-  }, [sessionId, notes, fieldContext, t])
+  }, [sessionId, sessionDate, notes, fieldContext, t])
 
   const updateLocalItem = (itemId: string, patch: Partial<WorkSessionItem>) => {
     setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, ...patch } : item)))
@@ -181,7 +200,9 @@ export function SessionNewClient() {
           return
         }
         setFieldContext(r.snapshot)
+        const sessionAt = dateInputToSessionIso(sessionDate)
         const save = await updateWorkSessionMetadata(sessionId, {
+          ...(sessionAt ? { session_at: sessionAt } : {}),
           notes,
           field_context: r.snapshot,
         })
@@ -382,6 +403,20 @@ export function SessionNewClient() {
       <p className="t-mono-sm" style={{ color: 'var(--tx2)', fontSize: 12, lineHeight: 1.5 }}>
         {t('session_new_intro')}
       </p>
+
+      <label className="t-mono-sm" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <span>{t('session_date_label')}</span>
+        <input
+          className="input"
+          data-testid="session-date-input"
+          type="date"
+          value={sessionDate}
+          onChange={(e) => setSessionDate(e.target.value)}
+          onBlur={() => void pushMeta()}
+          style={{ minHeight: 44 }}
+        />
+        <span style={{ color: 'var(--tx3)', fontSize: 10, lineHeight: 1.4 }}>{t('session_date_hint')}</span>
+      </label>
 
       <label className="t-mono-sm" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         <span>{t('session_notes_label')}</span>
