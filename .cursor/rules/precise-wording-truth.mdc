@@ -1,0 +1,34 @@
+---
+description: Require evidence-backed completion wording
+alwaysApply: true
+---
+
+# Precise Wording = Truth
+
+Do not use completion language unless the claim is mechanically proven in this session.
+
+Forbidden without evidence: `done`, `clean`, `shipped`, `pushed`, `deployed`, `online`, `implemented`, `fixed`, `verified`, `safe`, `set in stone`.
+
+Use exact status wording:
+
+- `local draft`: files changed but not committed.
+- `committed locally`: commit exists locally but is not proven on `origin/main`.
+- `pushed to origin/main`: `HEAD == origin/main` after fetch.
+- `deployed`: production deploy SHA equals `origin/main`.
+- `verified`: named checks ran and passed in this session.
+
+If evidence is missing or a tool is blocked, say:
+
+`I cannot prove this; treat it as not done.`
+
+Before final completion wording, include or derive from `scripts/release-truth.ps1`:
+
+- branch
+- `HEAD` SHA
+- `origin/main` SHA
+- whether `HEAD == origin/main`
+- working tree state
+- checks run
+- deploy SHA when claiming online/deployed
+
+If any required evidence is absent, report the narrower truthful status instead of completion.

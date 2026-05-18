@@ -526,8 +526,22 @@ export function DrawerContent({
   )
 
   const baselineOwn = useMemo(() => ownStageFromStatusId(o.statusId), [o.statusId])
-  const baselineProd = useMemo(() => prodStageFromOeuvre(o), [o])
-  const baselineNeeds = !!((o as { NeedsPhotograph?: boolean }).NeedsPhotograph ?? false)
+  const rawBaselineProd = useMemo(() => prodStageFromOeuvre(o), [o])
+  const baselineOwnershipTransferred = baselineOwn === 'sold' || baselineOwn === 'gift'
+  const baselineProd = useMemo(
+    () => (baselineOwnershipTransferred && rawBaselineProd === 'atelier' ? 'available' : rawBaselineProd),
+    [baselineOwnershipTransferred, rawBaselineProd],
+  )
+  const baselineNeeds = baselineProd === 'catalogued'
+  const baselineContactId = useMemo(() => {
+    if ((baselineOwn === 'artist' || baselineOwn === 'artist_archive') && pemContact) {
+      return String(pemContact.ContactID)
+    }
+    return String(o.LocalisationID ?? '')
+  }, [baselineOwn, o.LocalisationID, pemContact])
+  const baselineExposable = baselineOwn === 'artist_archive' ? false : !!o.Exposable
+  const baselinePrix = baselineOwn === 'gift' ? '0' : String(o.Prix ?? '0')
+  const baselineDiscount = baselineOwn === 'gift' ? '0' : String((o as { Discount?: number | null }).Discount ?? '0')
 
   const isDirty = useMemo(() => {
     if ((o.Titre ?? '') !== titre) return true
@@ -542,13 +556,13 @@ export function DrawerContent({
     if (ownStage !== baselineOwn) return true
     if (prodStage !== baselineProd) return true
     if (needsPhoto !== baselineNeeds) return true
-    if (String(o.LocalisationID ?? '') !== contactId) return true
-    if (!!o.Exposable !== exposable) return true
+    if (baselineContactId !== contactId) return true
+    if (baselineExposable !== exposable) return true
     if (!!(o as { broadcast_ready?: boolean }).broadcast_ready !== broadcastReady) return true
     if (String((o as { broadcast_caption_seed?: string | null }).broadcast_caption_seed ?? '') !== broadcastCaptionSeed) return true
     if (!!o.Encadree !== encadree) return true
-    if (String(o.Prix ?? '0') !== prix) return true
-    if (String((o as { Discount?: number | null }).Discount ?? '0') !== discount) return true
+    if (baselinePrix !== prix) return true
+    if (baselineDiscount !== discount) return true
     if (String((o as { tva_rate?: number | null }).tva_rate ?? '0') !== tvaRate) return true
     const baselinePaid = !!((o as { PaymentDone?: boolean; is_paid?: boolean | null }).PaymentDone ?? (o as { is_paid?: boolean | null }).is_paid ?? false)
     if (paymentDone !== baselinePaid) return true
@@ -576,12 +590,16 @@ export function DrawerContent({
     needsPhoto,
     baselineNeeds,
     contactId,
+    baselineContactId,
     exposable,
+    baselineExposable,
     broadcastReady,
     broadcastCaptionSeed,
     encadree,
     prix,
+    baselinePrix,
     discount,
+    baselineDiscount,
     tvaRate,
     paymentDone,
     anonymityLevel,
