@@ -3,53 +3,43 @@
 Repo operating guide. If conflict: ask owner before edit.
 
 ## Hard Rules
-- CAUTION > SPEED. Think first. Surgical edits.
-- No file edit without explicit GO.
-- KISS. Small diffs. No bloat.
-- Confirm deletes.
-- Before commit: `git diff --stat`; stage all modified source files; exclude build artifacts (`.next/`, `tsconfig.tsbuildinfo`).
-- `origin/main` = only release truth. Work on real `main` tracking `origin/main` by default.
+- CAUTION > SPEED. Think first. Surgical edits. Small diffs. No bloat.
+- No file edit without explicit GO. Confirm deletes.
+- Before commit: stage all modified source files; exclude build artifacts. [hook-enforced: `.claude/hooks/commit-guard.ps1`]
+- `origin/main` = only release truth. Checkpoint branches/worktrees = scratch only; reconcile before final.
 - Done/clean/shipped only when intended change committed, checks known, and commit on `origin/main`.
-- Checkpoint branches/worktrees = scratch only. Do not create/use unless owner explicitly asks. If temp isolation used, reconcile to `origin/main` before final.
-- UI copy bilingual. Mobile contract obey.
+- Precise wording = truth: never say done/clean/shipped/pushed/deployed/online/implemented/fixed/verified/safe unless evidence proves that exact state. If evidence is missing or a tool is blocked, say `I cannot prove this; treat it as not done.`
+- Hung tool: kill after 60s no output unless build/test known long-running.
+- Do not implement deferred features (background queues, OCR capture, transactional email) without owner GO.
 
 ## Commands
 - Dev: `pwsh scripts/dev.ps1` from `C:\Users\pppee\Documents\Claude\Projects\Art db\app`.
-- Checks: `npm run i18n:check`, `npm run typecheck`, `npm run lint`.
+- Checks: `npm run i18n:check`, `npm run typecheck`, `npm run lint`. [pre-push hook-enforced: typecheck + lint]
 - E2E: `npm run test:e2e`; field/mobile gated: `npm run test:e2e:field` (`ATELIER_E2E=1`, logged-in dev profile).
 - Supabase types: `npm run gen:types` after SQL applied; needs `SUPABASE_ACCESS_TOKEN` + `NEXT_PUBLIC_SUPABASE_URL` in `.env.local`.
 - Dev server: Next.js 15, port 3000. If `/_next/static/*` 404: restart dev from real root; delete `.next`; hard reload.
-- Temp worktree only if explicitly needed: create `.claude/launch.json` = `{"version":"0.0.1","configurations":[]}`.
-
-## Verification Tiers
-- Docs/rules only: read back changed lines + `git diff --check`; no full app gates unless scripts/config changed.
-- Code, no UI copy/DB/risky path: `npm run typecheck` + targeted lint/read-lints; run `npm run lint` before push if shared/UI code.
-- UI copy: `npm run i18n:check`, `npm run typecheck`, `npm run lint`.
-- DB/RLS/grants/auth/delete/R2: full relevant checks + SQL/RLS/grant review.
-- Mobile UI: add targeted mobile smoke/Playwright when behavior/layout changes.
-- Hung tool: kill after 60s no output unless build/test known long-running.
 
 ## Final / Git Discipline
 - Start: `git status --short --branch`.
 - Finish: `git status --short --branch` + `git log --oneline origin/main..HEAD`.
+- Before completion wording, run or derive the same fields as `pwsh scripts/release-truth.ps1`: branch, HEAD SHA, origin/main SHA, HEAD==origin/main, working tree, checks, deploy SHA when claiming online/deployed.
 - If `main` ahead: push. If not on `origin/main`: say local draft.
-- Never call checkpoint/worktree clean as release truth.
+- Status words must be exact: `local draft`, `committed locally`, `pushed to origin/main`, `deployed`, or `verified`. Do not widen the claim beyond the evidence.
 - Never destructive git (`reset --hard`, `checkout --`, force push) unless owner explicitly approves.
 
 ## Architecture
 - Next.js 15 App Router + Supabase + Cloudflare R2.
 - Server Components fetch, pass to Client Components.
 - Mutations: Server Actions in `app/**/actions.ts`. Exceptions: OAuth callbacks, read-only/external `app/api/*` routes (geocode, inventory broadcast).
-- Bootstrap reads may live in `'use server'` modules under `app/atelier/` (`reminders-actions.ts`, `atelier-data-actions.ts`). Domain writes still actions.
+- Bootstrap reads may live in `'use server'` modules under `app/atelier/`. Domain writes still actions.
 - Auth: Supabase SSR middleware protects `/atelier`, `/hub`, `/galerie`. Admin = `is_admin()` RPC via `Contact.is_admin` + `auth_user_id`. Old `profiles.role` dead.
 - Supabase clients: `createClient()` anon/RLS; `createServiceClient()` service-role/admin bypass.
+- Keep `SITE_MAP.md`, `docs/ROADMAP.md`, `docs/TODO.md`, `docs/SYSTEM_LEDGER.md` in sync when routes/features change.
 
 ## UI Copy / i18n
-- All user copy: `useI18n().t(key)`.
+- All user copy: `useI18n().t(key)`. No hardcoded JSX/alert/confirm/title/placeholder copy. [hook-enforced: `.claude/hooks/i18n-guard.ps1`]
 - New copy: one module in `lib/i18n/messages/*.messages.ts` via `defineMessages()` with FR+EN together.
-- Legacy dictionary under `lib/i18n/dictionary/` stays until touched. Do not add new feature copy via old `keys.ts` + `fr.ts` + `en.ts` unless maintaining legacy surface.
-- Run `npm run i18n:check`, `npm run typecheck`, `npm run lint` after copy work.
-- No hardcoded JSX/alert/confirm/title/placeholder copy.
+- Legacy dictionary under `lib/i18n/dictionary/` stays until touched. Do not add new feature copy via old pattern unless maintaining legacy surface.
 - Server Components: pass translated strings, use client leaf, or `dict[lang][key]`.
 - `toLocale*` / Intl locale from `lang` (`fr-FR` / `en-GB`), not hardcoded.
 
@@ -69,7 +59,6 @@ Repo operating guide. If conflict: ask owner before edit.
 - Save persists then proceeds. Discard proceeds without save. Cancel closes dialog only.
 - Use `hooks/useUnsavedActionGuard.tsx`; `useUnsavedCloseGuard` for close overlay.
 - Narrow: sticky primary actions + safe-area padding. No read-only text/input overlap in table cells.
-- Reference: `ContactsTab.tsx`, `ContactEditorPanel.tsx`.
 
 ## Data / Storage Rules
 - New public tables: RLS + policies + explicit `GRANT` for PostgREST roles (`authenticated`, `anon` where public writes). Missing grant => 42501 despite RLS.
@@ -88,23 +77,7 @@ Repo operating guide. If conflict: ask owner before edit.
 - Sort UI dropdowns alphabetically.
 - Never write `Oeuvres.is_public` or `Oeuvres.txtImageNameLink` (triggers).
 - New tables: snake_case only. No `tbl` prefix. No CamelCase.
-
-## Key Files
-- `app/atelier/page.tsx`: slim RSC, first œuvres chunk, post-paint shell via `fetchAtelierShellPostPaint`, keyset paging via `fetchOeuvresKeysetPage`.
-- `components/atelier/TeamPortalClient.tsx`: main Atelier shell, tabs, selection, drawer, dirty guard, post-paint hydration.
-- `components/atelier/WorkDrawer.tsx`: canonical edit for existing works; images via `listWorkDrawerImages`.
-- `components/atelier/WorkForm.tsx`: create-only `/atelier/works/new`.
-- `app/atelier/works/actions.ts`: work CRUD, image upload/delete, pending editor queue, drawer images, paging.
-- `app/atelier/notes/actions.ts` + `components/shared/VoiceNoteSheet.tsx` + `components/atelier/NotesTab.tsx`: voice notes.
-- `components/hub/HubLauncherClient.tsx`: `/hub` mobile field launcher; desktop redirects to Atelier overview.
-- `components/atelier/FieldToolStubPage.tsx`: stubs for `/atelier/capture`, `/atelier/documents/new`, `/atelier/triage`.
-- `components/atelier/session/SessionNewClient.tsx`: `/atelier/session/new` Verb 1.
-- `components/atelier/IssueNewForm.tsx`: `/atelier/issue/new`.
-- `components/shared/{LoadingShell,EmptyState}.tsx`: reuse placeholders.
-- `lib/i18n/messages/`: new copy modules.
-- `lib/types/database.ts`: shared app shapes, not full Supabase dump.
-- `lib/types/supabase.generated.ts`: generated Supabase Database type.
-- `SITE_MAP.md`, `docs/ROADMAP.md`, `docs/TODO.md`, `docs/SYSTEM_LEDGER.md`: keep in sync when routes/features change.
+- Live keep: lowercase `public.tblrelations`. Recreate dropped views without dead columns if needed.
 
 ## Admin / Audit Protection
 - Admin identity = `Contact.is_admin = true` linked to `auth.uid()`. `is_admin()` single source.
@@ -116,21 +89,8 @@ Repo operating guide. If conflict: ask owner before edit.
 - Audit prune: `supabase/sql/audit_log_ttl.sql`; never auto-delete manual `system_log` (`event_type IS NULL`) or error broadcast events.
 
 ## Calendar Sync
-- Tables: `calendar_account`, `calendar_event_link`; migration `supabase/sql/calendar_sync.sql`.
-- Refresh tokens: AES-256-GCM, HKDF-SHA256, `CALENDAR_TOKEN_ENCRYPTION_KEY`, per-row `token_salt`; see `lib/calendar/token-crypto.ts`.
-- OAuth env: Google/Microsoft client IDs/secrets, `MICROSOFT_CALENDAR_TENANT`, `CALENDAR_OAUTH_STATE_SECRET`.
+- Tables: `calendar_account`, `calendar_event_link`. Env: `CALENDAR_TOKEN_ENCRYPTION_KEY`, `CALENDAR_OAUTH_STATE_SECRET`, Google/Microsoft OAuth secrets, `MICROSOFT_CALENDAR_TENANT`.
 - Origin env: `NEXT_PUBLIC_SITE_URL` or `NEXT_PUBLIC_APP_URL`, no trailing slash. Required for OAuth, metadata, sitemap.
-
-## Deferred / No GO
-- Background jobs/queues for long/retriable work.
-- Vision/OCR field capture -> draft + human confirm.
-- Transactional email -> outbox + idempotency.
-- Do not implement deferred integrations without owner GO.
-
-## Cemetery
-- Dropped 2026-05-14: `Oeuvres.{Statut,StatutID,tags,txtImageName,Emballage,DocsValidated,UniteDimension,NomOriginal,Poids,Tirage}`, `OeuvreRelationships`, quoted `"tblRelations"`.
-- Live keep: lowercase `public.tblrelations`.
-- Recreate dropped views without dead columns if needed.
 
 ## Portfolio PDF
 - Engine: `app/atelier/portfolio/pdf-action.ts` → `generatePortfolioPdf(opts)`.

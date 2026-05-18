@@ -27,12 +27,15 @@ export interface CollectionItem {
   manual_work_order?: number[]
 }
 
+export type WorksLayout = 'carousel' | 'grid'
+
 export interface WorksMode {
   id:           string
   label_fr:     string
   label_en:     string
   is_active:    boolean
   sort_order:   number
+  layout:       WorksLayout
   collections:  CollectionItem[]
   outro_fr:     string
   outro_en:     string
@@ -91,7 +94,7 @@ export const DEFAULT_CONFIG: PortfolioConfig = {
   site_blocks: DEFAULT_SITE_BLOCKS,
   works_modes: [{
     id: 'default', label_fr: 'Œuvres', label_en: 'Works',
-    is_active: true, sort_order: 0,
+    is_active: true, sort_order: 0, layout: 'carousel',
     collections: [], outro_fr: '', outro_en: '',
   }],
 }
@@ -136,7 +139,7 @@ function migrateModes(raw: any, fallbackCollections: CollectionItem[]): WorksMod
   if (list.length === 0) {
     return [{
       id: 'default', label_fr: 'Œuvres', label_en: 'Works',
-      is_active: true, sort_order: 0,
+      is_active: true, sort_order: 0, layout: 'carousel' as const,
       collections: fallbackCollections,
       outro_fr: raw.works_outro_fr ?? '',
       outro_en: raw.works_outro_en ?? '',
@@ -148,6 +151,7 @@ function migrateModes(raw: any, fallbackCollections: CollectionItem[]): WorksMod
     label_en:    m.label_en || m.label || (i === 0 ? 'Works'  : `Mode ${i + 1}`),
     is_active:   m.is_active ?? true,
     sort_order:  m.sort_order ?? i,
+    layout:      m.layout === 'grid' ? 'grid' : 'carousel',
     collections: Array.isArray(m.collections) ? m.collections.map((c: any) => ({
       id:             c.id || Math.random().toString(36).slice(2),
       title_fr:       c.title_fr || c.title || '',

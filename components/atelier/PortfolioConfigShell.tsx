@@ -161,6 +161,7 @@ export function PortfolioConfigShell({
       label_en: `Mode ${config.works_modes.length + 1}`,
       is_active: true,
       sort_order: config.works_modes.length,
+      layout: 'carousel',
       collections: [],
       outro_fr: '', outro_en: '',
     }

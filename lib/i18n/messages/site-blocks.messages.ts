@@ -37,4 +37,16 @@ export const siteBlocksMessages = defineMessages({
     fr: 'Déplacer vers le bas',
     en: 'Move down',
   },
+  site_works_layout_label: {
+    fr: 'Présentation',
+    en: 'Layout',
+  },
+  site_works_layout_carousel: {
+    fr: 'Carrousel',
+    en: 'Carousel',
+  },
+  site_works_layout_grid: {
+    fr: 'Grille',
+    en: 'Grid',
+  },
 })

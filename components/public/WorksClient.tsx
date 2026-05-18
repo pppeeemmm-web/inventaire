@@ -4,94 +4,17 @@ import { useI18n } from '@/lib/i18n/context'
 import { imageUrl, thumbUrl, yearOf } from '@/lib/data'
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import PublicNav from './PublicNav'
+import WorksGrid from './WorksGrid'
 import { trackView } from '@/lib/track'
 import { getOrCreatePublicVisitorId } from '@/lib/public-visitor-id'
-
-function normalizeTheme(s: string | null | undefined): string {
-  if (!s) return ''
-  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
-}
-
-function workMatchesCollectionTheme(workThemes: string[], collectionTheme: string | null | undefined): boolean {
-  if (!collectionTheme?.trim()) return true
-  const sMatch = normalizeTheme(collectionTheme)
-  return workThemes.some((th) => {
-    const wMatch = normalizeTheme(th)
-    return wMatch.includes(sMatch) || sMatch.includes(wMatch)
-  })
-}
-
-interface Work {
-  OeuvreID: number
-  Titre: string | null
-  Annee: string | null
-  Hauteur: string | null
-  Largeur: string | null
-  txtImageNameLink: string | null
-  themes: string[]
-  isRound: boolean
-}
-
-interface Collection {
-  id: string
-  title_fr: string
-  title_en: string
-  intro_fr?: string
-  intro_en?: string
-  description_fr: string
-  description_en: string
-  theme?: string | null
-  is_active: boolean
-  manual_work_order?: number[]
-}
-
-interface WorksMode {
-  id: string
-  label_fr: string
-  label_en: string
-  collections: Collection[]
-  outro_fr: string
-  outro_en: string
-}
+import { worksForCollection } from './works-utils'
+import type { Work, WorksMode, Collection } from './works-utils'
 
 interface Props {
   works: Work[]
   modes: WorksMode[]
   hiddenNavRoutes?: string[]
   navOrder?: string[]
-}
-
-/** Manual order first, then theme-matched residuals. Only works with images. */
-function worksForCollection(col: Collection, works: Work[]): Work[] {
-  const seenHere = new Set<number>()
-  const orderIds = col.manual_work_order ?? []
-  const byId = new Map(works.map(w => [w.OeuvreID, w]))
-
-  if (orderIds.length > 0) {
-    const out: Work[] = []
-    for (const id of orderIds) {
-      const w = byId.get(id)
-      if (!w?.txtImageNameLink) continue
-      if (seenHere.has(w.OeuvreID)) continue
-      seenHere.add(w.OeuvreID)
-      out.push(w)
-    }
-    for (const w of works) {
-      if (!w.txtImageNameLink) continue
-      if (seenHere.has(w.OeuvreID)) continue
-      if (!workMatchesCollectionTheme(w.themes, col.theme)) continue
-      seenHere.add(w.OeuvreID)
-      out.push(w)
-    }
-    return out
-  }
-  return works.filter(w => {
-    if (!w.txtImageNameLink) return false
-    if (!workMatchesCollectionTheme(w.themes, col.theme)) return false
-    if (seenHere.has(w.OeuvreID)) return false
-    seenHere.add(w.OeuvreID)
-    return true
-  })
 }
 
 /** Per-card 3D transform. Center = face-on, neighbors rotate so inner edge faces viewer. */
@@ -121,9 +44,10 @@ export default function WorksClient({ works, modes, hiddenNavRoutes, navOrder }:
   const { t, lang } = useI18n()
   const safeModes: WorksMode[] = modes.length > 0 ? modes : [{
     id: 'default', label_fr: 'Œuvres', label_en: 'Works',
-    collections: [], outro_fr: '', outro_en: '',
+    layout: 'carousel', collections: [], outro_fr: '', outro_en: '',
   }]
   const mode = safeModes[0]
+  const layout = mode.layout ?? 'carousel'
 
   const [activeChapterIdx, setActiveChapterIdx] = useState(0)
   const [activeIndex, setActiveIndex] = useState(0)
@@ -684,6 +608,14 @@ export default function WorksClient({ works, modes, hiddenNavRoutes, navOrder }:
 
       <h1 className="w-page-h1-sr-only">{t('pub_works')}</h1>
 
+      {layout === 'grid' ? (
+        <WorksGrid
+          works={works}
+          mode={mode}
+          activeChapterIdx={activeChapterIdx}
+          onChapterChange={setActiveChapterIdx}
+        />
+      ) : (
       <div
         className="w-stage pem-grain"
         onTouchStart={onTouchStart}
@@ -1019,6 +951,7 @@ export default function WorksClient({ works, modes, hiddenNavRoutes, navOrder }:
         )}
 
       </div>
+      )}
     </div>
   )
 }

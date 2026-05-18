@@ -214,6 +214,33 @@ export function SiteEditorPanel({
                 {`Séquences de la page `}<code style={{ opacity: 0.85 }}>/works</code>{` et carte de clôture.`}
               </p>
             )}
+
+            {/* Layout selector — always visible */}
+            {mode && (
+              <div style={{ marginBottom: 20 }}>
+                <div className="t-label" style={{ marginBottom: 8, fontSize: 9 }}>{t('site_works_layout_label').toUpperCase()}</div>
+                <div style={{ display: 'inline-flex', border: '1px solid var(--bd)', borderRadius: 4, overflow: 'hidden' }}>
+                  {(['carousel', 'grid'] as const).map(v => {
+                    const active = (mode.layout || 'carousel') === v
+                    return (
+                      <button key={v} type="button"
+                        className="t-mono-xs"
+                        onClick={() => updateMode(activeMode, { layout: v })}
+                        style={{
+                          padding: '6px 14px', minHeight: 36,
+                          fontSize: 9, letterSpacing: 1, fontFamily: 'inherit', textTransform: 'uppercase',
+                          border: 'none', cursor: 'pointer',
+                          background: active ? 'var(--ac)' : 'var(--bg1)',
+                          color: active ? '#fff' : 'var(--tx2)',
+                          transition: 'background 0.15s, color 0.15s',
+                        }}>
+                        {t(v === 'carousel' ? 'site_works_layout_carousel' : 'site_works_layout_grid')}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
             {/* eslint-disable pem-i18n/no-hardcoded-jsx-text */}
             {config.works_modes.length > 1 && (
               <p className="t-mono-xs" style={{ opacity: 0.5, marginBottom: 16 }}>

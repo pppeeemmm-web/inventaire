@@ -35,6 +35,7 @@ type WorksMode = {
   id: string
   label_fr: string
   label_en: string
+  layout: 'carousel' | 'grid'
   collections: WorksCollection[]
   outro_fr: string
   outro_en: string
@@ -119,6 +120,7 @@ export default async function WorksPage() {
           strOrEmpty(m.label_en) ||
           strOrEmpty(m.label) ||
           (i === 0 ? 'Works' : `Mode ${i + 1}`),
+        layout: m.layout === 'grid' ? 'grid' as const : 'carousel' as const,
         collections: mapCollections(asCollectionRecords(m.collections)),
         outro_fr: strOrEmpty(m.outro_fr),
         outro_en: strOrEmpty(m.outro_en),
@@ -130,6 +132,7 @@ export default async function WorksPage() {
     const cols = fromLegacy.length > 0 ? fromLegacy : fromSections
     modes = [{
       id: 'default', label_fr: 'Œuvres', label_en: 'Works',
+      layout: 'carousel' as const,
       collections: cols,
       outro_fr: '', outro_en: '',
     }]
@@ -183,6 +186,7 @@ export default async function WorksPage() {
   if (!anyCol && works.length > 0) {
     modes = [{
       id: 'default', label_fr: 'Œuvres', label_en: 'Works',
+      layout: 'carousel' as const,
       collections: [{
         id: 'default', title_fr: 'Œuvres', title_en: 'Works',
         description_fr: '', description_en: '', theme: null, is_active: true, manual_work_order: [],
