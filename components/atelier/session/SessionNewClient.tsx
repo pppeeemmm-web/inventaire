@@ -23,10 +23,13 @@ import {
   updateWorkSessionMetadata,
   updateWorkSessionItemMetadata,
   uploadWorkSessionItemShot,
+  removeWorkSessionItemShot,
   type WorkSessionWorkOption,
 } from '@/app/atelier/session/actions'
 import type { WorkSessionQueueRow } from '@/app/atelier/session/actions'
+import { SessionPhotoCapture } from '@/components/atelier/session/SessionPhotoCapture'
 import { FieldHubBackLink } from '@/components/shared/FieldHubBackLink'
+import { downscaleImageFileForMobileIfNeeded } from '@/lib/mobile/image-upload-client'
 import { captureFieldContext, type CaptureFieldContextErrorCode } from '@/lib/field-context'
 import { thumbUrl } from '@/lib/data'
 import type { WorkSessionFieldContext, WorkSessionItem, WorkSessionItemMode } from '@/lib/work-session-payload'
@@ -224,13 +227,14 @@ export function SessionNewClient() {
     })
   }
 
-  const onUploadFiles = (files: FileList | null) => {
-    if (!sessionId || !activeItem || !files?.length) return
+  const onUploadFiles = (files: File[]) => {
+    if (!sessionId || !activeItem || files.length === 0) return
     startBusy(() => {
       void (async () => {
-        for (const file of Array.from(files)) {
+        for (const file of files) {
+          const prepared = await downscaleImageFileForMobileIfNeeded(file, narrow)
           const fd = new FormData()
-          fd.set('image', file)
+          fd.set('image', prepared)
           const r = await uploadWorkSessionItemShot(sessionId, activeItem.id, fd)
           if ('error' in r) {
             toast.error(r.error)
@@ -240,6 +244,19 @@ export function SessionNewClient() {
         await refreshDraft(sessionId)
         toast.success(t('session_toast_saved'))
       })()
+    })
+  }
+
+  const onRemoveStagedShot = (sha256: string) => {
+    if (!sessionId || !activeItem) return
+    startBusy(() => {
+      void removeWorkSessionItemShot(sessionId, activeItem.id, sha256).then(async (r) => {
+        if ('error' in r) toast.error(r.error)
+        else {
+          await refreshDraft(sessionId)
+          toast.success(t('session_toast_saved'))
+        }
+      })
     })
   }
 
@@ -673,21 +690,15 @@ export function SessionNewClient() {
         ) : null}
       </div>
 
-      <label className="t-mono-sm" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <span>{t('session_upload_label')}</span>
-        <input
-          type="file"
-          accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,.heic"
-          multiple
-          capture={narrow ? 'environment' : undefined}
-          disabled={busy || !activeItem || activeItem.status === 'applied'}
-          onChange={(e) => {
-            onUploadFiles(e.target.files)
-            e.target.value = ''
-          }}
-          style={{ minHeight: 44 }}
+      {activeItem ? (
+        <SessionPhotoCapture
+          disabled={activeItem.status === 'applied'}
+          busy={busy}
+          stagedShots={activeItem.shots}
+          onUpload={onUploadFiles}
+          onRemoveStaged={onRemoveStagedShot}
         />
-      </label>
+      ) : null}
       <div className="t-mono-sm" style={{ opacity: 0.75 }}>
         {t('session_shots_label')}: {shotCount}
       </div>

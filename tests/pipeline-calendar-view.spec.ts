@@ -27,43 +27,30 @@ test.describe('Pipeline calendar view', () => {
     'Set ATELIER_E2E=1 with a logged-in app session to run atelier E2E.',
   )
 
-  test('narrow viewport opens pipeline on calendar by default', async ({ page }) => {
+  test('narrow viewport opens pipeline as mobile pulse list', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto('/atelier?tab=pipeline', { waitUntil: 'domcontentloaded' })
-    const cal = page.getByRole('button', { name: /Calendar|Calendrier/i })
-    await expect(cal).toBeVisible({ timeout: 45_000 })
-    await expect(cal).toHaveAttribute('aria-pressed', 'true')
-    await expect(page.getByRole('button', { name: /Today|Aujourd/i })).toBeVisible()
+    await expect(page.getByTestId('pipeline-mobile-pulse')).toBeVisible({ timeout: 45_000 })
+    await expect(page.getByRole('button', { name: /Gantt|gantt/i })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: /Calendar|Calendrier/i })).toHaveCount(0)
+    await expect(page.getByText(/Upcoming deadlines|Échéances à venir/i).first()).toBeVisible()
   })
 
-  test('narrow calendar does not overflow horizontally', async ({ page }) => {
+  test('narrow mobile pulse does not overflow horizontally', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 })
     await page.goto('/atelier?tab=pipeline', { waitUntil: 'domcontentloaded' })
-    await expect(page.getByTestId('pipeline-calendar-root')).toBeVisible({ timeout: 45_000 })
-    const ranges = [/Week|Semaine/i, /Month|Mois/i, /Quarter|Trimestre/i, /Semester|Semestre/i, /Year|Année/i]
-
-    for (const range of ranges) {
-      await page.getByRole('button', { name: range }).click()
-      await expectNoHorizontalOverflow(page, {
-        calendar: '[data-testid="pipeline-calendar-root"]',
-        toolbar: '[data-testid="pipeline-toolbar-compact"]',
-        monthGrid: '[data-testid="pipeline-cal-month-grid"]',
-      })
-    }
-  })
-
-  test('narrow Gantt does not overflow horizontally', async ({ page }) => {
-    await page.setViewportSize({ width: 375, height: 667 })
-    await page.goto('/atelier?tab=pipeline', { waitUntil: 'domcontentloaded' })
-    const gantt = page.getByRole('button', { name: /Gantt|gantt/i })
-    await expect(gantt).toBeVisible({ timeout: 45_000 })
-    await gantt.click()
-    await expect(gantt).toHaveAttribute('aria-pressed', 'true')
-
+    await expect(page.getByTestId('pipeline-mobile-pulse')).toBeVisible({ timeout: 45_000 })
     await expectNoHorizontalOverflow(page, {
-      gantt: '[data-testid="pipeline-gantt-root"]',
+      pulse: '[data-testid="pipeline-mobile-pulse"]',
       toolbar: '[data-testid="pipeline-toolbar-compact"]',
     })
+  })
+
+  test('narrow viewport hides the desktop Gantt switch', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 667 })
+    await page.goto('/atelier?tab=pipeline', { waitUntil: 'domcontentloaded' })
+    await expect(page.getByTestId('pipeline-mobile-pulse')).toBeVisible({ timeout: 45_000 })
+    await expect(page.getByRole('button', { name: /Gantt|gantt/i })).toHaveCount(0)
   })
 
   test('Pipeline tab exposes Gantt and Calendar toggles', async ({ page }) => {

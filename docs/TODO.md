@@ -113,4 +113,4 @@ _Version-controlled checklist. Prefer this file over a Desktop mirror._
 ## Guardrails (not tasks)
 
 RLS + `GRANT` on new tables · EU R2 endpoint · bilingual `dict` · 375px / 44px mobile contract · extend `audit_log_prune()` for new audit tables.
-
+

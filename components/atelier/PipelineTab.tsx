@@ -35,6 +35,7 @@ import { PipelineCalendarView } from '@/components/atelier/PipelineCalendarView'
 import { PipelineGanttView } from '@/components/atelier/pipeline/PipelineGanttView'
 import { PipelineProcessSwipe } from '@/components/atelier/pipeline/PipelineProcessSwipe'
 import { PipelineDeadlineSidebar } from '@/components/atelier/pipeline/PipelineDeadlineSidebar'
+import { PipelineMobilePulse } from '@/components/atelier/pipeline/PipelineMobilePulse'
 import { PipelineRemindersPanel } from '@/components/atelier/pipeline/PipelineRemindersPanel'
 import { createConsignmentOrder, regenerateConsignmentPdf, closeConsignmentByPdfPath } from '@/app/atelier/consignments/actions'
 import { createSaleOrder } from '@/app/atelier/sales/actions'
@@ -232,12 +233,21 @@ export function PipelineTab({ oeuvres, contacts, groups, initialReminders, onRem
   }), [processes, typeFilter, showDone])
 
   const upcoming = useMemo(() => computePipelinePulseItems(processes), [processes])
+  const upcomingFiltered = useMemo(
+    () => computePipelinePulseItems(filtered.map(processToPulseProcess)),
+    [filtered],
+  )
+  const remindersFiltered = useMemo(() => {
+    const allowed = new Set(filtered.map((p) => p.id))
+    return reminders.filter((r) => !r.process_id || allowed.has(r.process_id))
+  }, [reminders, filtered])
 
   const calendarEvents = useMemo(() => {
     const pulseProcs = filtered.map(processToPulseProcess)
     const allowed = new Set(filtered.map((p) => p.id))
     return buildPipelineCalendarEvents(pulseProcs, reminders, { allowedProcessIds: allowed })
   }, [filtered, reminders])
+  const activeMainView = atelierNarrow ? 'calendar' : mainView
 
   const resolveCalendarColor = useCallback(
     (processType: string) => {
@@ -320,70 +330,69 @@ export function PipelineTab({ oeuvres, contacts, groups, initialReminders, onRem
               minWidth: 0,
             }}
           >
-            <div
-              role="group"
-              aria-label={t('pipeline_view_mode_aria')}
-              style={{
-                display: 'flex',
-                width: atelierNarrow ? 'min(100%, 220px)' : 'auto',
-                padding: 3,
-                gap: 0,
-                background: 'var(--bg0)',
-                border: '1px solid var(--bd)',
-                borderRadius: 10,
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
-                flex: atelierNarrow ? '1 1 auto' : undefined,
-                minWidth: 0,
-                flexShrink: atelierNarrow ? 1 : 0,
-              }}
-            >
-              <button
-                type="button"
-                aria-pressed={mainView === 'gantt'}
-                onClick={() => setMainView('gantt')}
+            {!atelierNarrow ? (
+              <div
+                role="group"
+                aria-label={t('pipeline_view_mode_aria')}
                 style={{
-                  flex: atelierNarrow ? 1 : undefined,
-                  minWidth: atelierNarrow ? 0 : 100,
-                  minHeight: 44,
-                  padding: '10px 14px',
-                  fontSize: 12,
-                  fontWeight: 700,
-                  letterSpacing: '0.07em',
-                  textTransform: 'uppercase',
-                  border: 'none',
-                  cursor: 'pointer',
-                  background: mainView === 'gantt' ? 'var(--ac)' : 'transparent',
-                  color: mainView === 'gantt' ? 'var(--bg0)' : 'var(--tx)',
-                  borderRadius: '7px 0 0 7px',
-                  boxShadow: mainView === 'gantt' ? '0 1px 3px rgba(0,0,0,0.2)' : undefined,
+                  display: 'flex',
+                  width: 'auto',
+                  padding: 3,
+                  gap: 0,
+                  background: 'var(--bg0)',
+                  border: '1px solid var(--bd)',
+                  borderRadius: 10,
+                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
+                  minWidth: 0,
+                  flexShrink: 0,
                 }}
               >
-                {t('pipeline_view_gantt')}
-              </button>
-              <button
-                type="button"
-                aria-pressed={mainView === 'calendar'}
-                onClick={() => setMainView('calendar')}
-                style={{
-                  flex: atelierNarrow ? 1 : undefined,
-                  minWidth: atelierNarrow ? 0 : 100,
-                  minHeight: 44,
-                  padding: '10px 14px',
-                  fontSize: 12,
-                  fontWeight: 700,
-                  letterSpacing: '0.07em',
-                  textTransform: 'uppercase',
-                  border: 'none',
-                  cursor: 'pointer',
-                  background: mainView === 'calendar' ? 'var(--ac)' : 'transparent',
-                  color: mainView === 'calendar' ? 'var(--bg0)' : 'var(--tx)',
-                  borderRadius: '0 7px 7px 0',
-                  boxShadow: mainView === 'calendar' ? '0 1px 3px rgba(0,0,0,0.2)' : undefined,
-                }}
-              >
-                {t('pipeline_view_calendar')}
-              </button>
-            </div>
+                <button
+                  type="button"
+                  aria-pressed={mainView === 'gantt'}
+                  onClick={() => setMainView('gantt')}
+                  style={{
+                    minWidth: 100,
+                    minHeight: 44,
+                    padding: '10px 14px',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    letterSpacing: '0.07em',
+                    textTransform: 'uppercase',
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: mainView === 'gantt' ? 'var(--ac)' : 'transparent',
+                    color: mainView === 'gantt' ? 'var(--bg0)' : 'var(--tx)',
+                    borderRadius: '7px 0 0 7px',
+                    boxShadow: mainView === 'gantt' ? '0 1px 3px rgba(0,0,0,0.2)' : undefined,
+                  }}
+                >
+                  {t('pipeline_view_gantt')}
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={mainView === 'calendar'}
+                  onClick={() => setMainView('calendar')}
+                  style={{
+                    minWidth: 100,
+                    minHeight: 44,
+                    padding: '10px 14px',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    letterSpacing: '0.07em',
+                    textTransform: 'uppercase',
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: mainView === 'calendar' ? 'var(--ac)' : 'transparent',
+                    color: mainView === 'calendar' ? 'var(--bg0)' : 'var(--tx)',
+                    borderRadius: '0 7px 7px 0',
+                    boxShadow: mainView === 'calendar' ? '0 1px 3px rgba(0,0,0,0.2)' : undefined,
+                  }}
+                >
+                  {t('pipeline_view_calendar')}
+                </button>
+              </div>
+            ) : null}
             {atelierNarrow ? (
               <button
                 type="button"
@@ -515,9 +524,27 @@ export function PipelineTab({ oeuvres, contacts, groups, initialReminders, onRem
           />
         )}
 
-        {/* Gantt or calendar */}
+        {/* Gantt, calendar (desktop), or pulse list (mobile) */}
         <div style={{ flex: 1, overflow: 'auto', minHeight: 0, minWidth: 0 }}>
-          {mainView === 'calendar' ? (
+          {atelierNarrow ? (
+            <PipelineMobilePulse
+              upcoming={upcomingFiltered}
+              reminders={remindersFiltered}
+              dateLocTag={dateLocTag}
+              t={t as (k: string) => string}
+              onOpenProcess={(id) => setInspectedId(id)}
+              onTickEtape={tickEtape}
+              onDismissReminder={async (rid) => {
+                const res = await markSuiviReminderRead(rid)
+                if (!res.ok) {
+                  toast.error(`${t('error_prefix')} ${res.error}`)
+                  return
+                }
+                setReminders((p) => p.filter((x) => x.id !== rid))
+                await onRemindersMutated?.()
+              }}
+            />
+          ) : activeMainView === 'calendar' ? (
             <PipelineCalendarView
               events={calendarEvents}
               range={calendarRange}
@@ -526,7 +553,7 @@ export function PipelineTab({ oeuvres, contacts, groups, initialReminders, onRem
               onRangeChange={onCalendarRangeChange}
               localeTag={dateLocTag}
               t={t as (k: string) => string}
-              narrow={atelierNarrow}
+              narrow={false}
               resolveTypeColor={resolveCalendarColor}
               onOpenProcess={(id) => setInspectedId(id)}
               onTickEtape={tickEtape}
@@ -562,6 +589,7 @@ export function PipelineTab({ oeuvres, contacts, groups, initialReminders, onRem
     </div>
 
       {/* ── Right sidebar ────────────────────────────────────────── */}
+      {!atelierNarrow && (
       <PipelineDeadlineSidebar narrow={atelierNarrow}>
         <div style={{ padding: '16px 16px 0' }}>
           <div className="t-eyebrow" style={{ marginBottom: 12 }}>{t('pipeline_upcoming_deadlines')}</div>
@@ -656,6 +684,7 @@ export function PipelineTab({ oeuvres, contacts, groups, initialReminders, onRem
           </PipelineRemindersPanel>
         )}
       </PipelineDeadlineSidebar>
+      )}
 
       {/* Modals */}
       {inspected !== null && (
@@ -1488,7 +1517,7 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved, on
     process?.etapes?.map((e: Etape) => ({ nom: e.nom, date_echeance: e.date_echeance ?? '', statut: e.statut })) ??
     DEFAULT_ETAPES['prix'].map(n=>({nom:n, date_echeance:'', statut:'a_faire'}))
   )
-  
+
   const [oeuvreIds,    setOeuvreIds]    = useState<number[]>(process?.oeuvre_id ? [process.oeuvre_id] : [])
   const [contactId,    setContactId]    = useState<number | null>(process?.contact_id ?? null)
   const [exhibitionProcessId, setExhibitionProcessId] = useState<string | null>(process?.exhibition_process_id ?? null)
@@ -1503,7 +1532,7 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved, on
 
   const [reminderMsg,  setReminderMsg]  = useState('')
   const [reminderDate, setReminderDate] = useState('')
-  
+
   // New Contact Quick-Add
   const [isNewContact, setIsNewContact] = useState(false)
   const [newContactName, setNewContactName] = useState('')
@@ -1632,9 +1661,9 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved, on
     setBusy(true); setErr(null)
     try {
       const sb = createClient()
-      
+
       let effectiveContactId = contactId
-      
+
       // AUTO-CREATE CONTACT IF NEW
       if (isNewContact && newContactName.trim()) {
         const { data: nc, error: ncErr } = await (sb.from('contacts') as any).insert({
@@ -1643,7 +1672,7 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved, on
           Type: newContactType,
           created_at: new Date().toISOString()
         }).select('ContactID').single()
-        
+
         if (ncErr) throw new Error(t('pm_err_contact_create_prefix') + ncErr.message)
         effectiveContactId = (nc as any).ContactID
       }
@@ -1669,7 +1698,7 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved, on
         const {data,error} = await(sb.from('suivi_process')as any).insert(payload).select('id').single()
         if(error) throw new Error(error.message)
         pid = (data as any).id
-        
+
         if (type === 'consignment' && oeuvreIds.length > 0 && effectiveContactId) {
           const fd = new FormData()
           oeuvreIds.forEach(id => fd.append('oeuvre_ids', String(id)))
@@ -1838,10 +1867,10 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved, on
                 <div className="t-mono-sm" style={{ fontSize: 8, color: 'var(--ac)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('pm_batch_mode')}</div>
               </div>
 
-              <div style={{ 
-                display: 'grid', 
-                gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', 
-                gap: 8, 
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+                gap: 8,
                 marginBottom: oeuvreIds.length > 0 ? 12 : 0,
                 maxHeight: 240,
                 overflowY: 'auto',
@@ -1850,12 +1879,12 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved, on
                 {oeuvreIds.map(id => {
                   const o = oeuvres?.find(x => x.OeuvreID === id)
                   return (
-                    <div key={id} style={{ 
-                      display: 'flex', 
-                      gap: 10, 
-                      background: 'var(--bg1)', 
-                      padding: 6, 
-                      border: '1px solid var(--bd)', 
+                    <div key={id} style={{
+                      display: 'flex',
+                      gap: 10,
+                      background: 'var(--bg1)',
+                      padding: 6,
+                      border: '1px solid var(--bd)',
                       position: 'relative',
                       boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
                     }}>
@@ -1868,7 +1897,7 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved, on
                         <div style={{ fontSize: 10, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--tx1)' }}>{o?.Titre || t('untitled')}</div>
                         <div className="t-mono-sm" style={{ fontSize: 9, color: 'var(--tx3)', marginTop: 1 }}>{t('pm_work_id_label')}: {id}</div>
                       </div>
-                      <button 
+                      <button
                         onClick={() => setOeuvreIds(p => p.filter(x => x !== id))}
                         title={t('pm_remove_batch_title')}
                         style={{ position: 'absolute', top: -6, right: -6, width: 16, height: 16, borderRadius: '50%', background: 'var(--rust)', color: 'white', border: '1px solid var(--bg0)', cursor: 'pointer', fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1 }}
@@ -1880,13 +1909,13 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved, on
                 })}
               </div>
 
-              <input 
-                value={workSearch} 
-                onChange={e => setWorkSearch(e.target.value)} 
-                placeholder={t('pm_search_works_ph')} 
-                style={{ ...FIS, background: 'var(--bg1)', borderStyle: 'dashed' }} 
+              <input
+                value={workSearch}
+                onChange={e => setWorkSearch(e.target.value)}
+                placeholder={t('pm_search_works_ph')}
+                style={{ ...FIS, background: 'var(--bg1)', borderStyle: 'dashed' }}
               />
-              
+
               {workSearch.trim() && (
                 <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--bg1)', border: '1px solid var(--ac)', zIndex: 300, maxHeight: 200, overflow: 'auto', boxShadow: '0 10px 20px rgba(0,0,0,0.2)' }}>
                   {filteredWorks.filter(o => !oeuvreIds.includes(o.OeuvreID)).map(o => (
@@ -1906,8 +1935,8 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved, on
             <div style={{ position: 'relative' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                 <div className="t-label">{t('pm_principal_contact')}</div>
-                <button 
-                  onClick={() => setIsNewContact(!isNewContact)} 
+                <button
+                  onClick={() => setIsNewContact(!isNewContact)}
                   style={{ fontSize: 9, background: isNewContact ? 'var(--ac)' : 'transparent', border: '1px solid var(--bd)', color: isNewContact ? '#111' : 'var(--ac)', cursor: 'pointer', padding: '2px 6px' }}
                 >
                   {isNewContact ? t('pm_contact_use_existing') : t('pm_contact_new')}
@@ -1950,9 +1979,9 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved, on
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 20 }}>
             <div style={{ flex: 1 }}>
               <div className="t-label" style={{marginBottom:6, opacity: 0.5}}>{t('pm_import_group_label')}</div>
-              <select 
-                value={selectedGroup} 
-                onChange={e => handleGroupSelect(e.target.value)} 
+              <select
+                value={selectedGroup}
+                onChange={e => handleGroupSelect(e.target.value)}
                 style={{ ...FIS, border: '1px solid var(--ac)', color: 'var(--ac)' }}
               >
                 <option value="">{t('pm_group_placeholder')}</option>
@@ -2042,12 +2071,12 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved, on
           </div>
 
           {err && <div style={{ fontSize:11, color:'var(--rust)', padding: 12, border: '1px solid var(--rust)' }}>{err}</div>}
-          
+
           <div className="row gap-md" style={{ marginTop:20, justifyContent:'flex-end' }}>
             {!isNew && (
-              <button 
-                className="btn ghost" 
-                style={{ color: 'var(--rust)', marginRight: 'auto' }} 
+              <button
+                className="btn ghost"
+                style={{ color: 'var(--rust)', marginRight: 'auto' }}
                 onClick={async () => {
                   if (!confirm(t('pm_confirm_delete_process'))) return
                   setBusy(true)

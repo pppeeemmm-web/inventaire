@@ -979,6 +979,57 @@ export async function uploadWorkSessionItemShot(
   return { ok: true }
 }
 
+export async function removeWorkSessionItemShot(
+  sessionId: string,
+  itemId: string,
+  shotSha256: string,
+): Promise<SessionActionResult> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié' }
+
+  const sha = shotSha256.trim()
+  if (!/^[a-f0-9]{64}$/i.test(sha)) return { error: 'Photo introuvable' }
+
+  const { data: row, error: selErr } = await workSessionTable(supabase)
+    .select('id,user_id,status,payload')
+    .eq('id', sessionId)
+    .maybeSingle()
+  if (selErr || !row) return { error: selErr?.message ?? 'Session introuvable' }
+  if ((row as SessionMutableRow).user_id !== user.id) return { error: 'Accès refusé' }
+  if ((row as SessionMutableRow).status !== 'draft') return { error: 'Session non modifiable' }
+
+  const payload = parseWorkSessionPayload((row as SessionMutableRow).payload)
+  const idx = findItemIndex(payload, itemId)
+  if (idx < 0) return { error: 'Entrée introuvable' }
+
+  const item = payload.items[idx]
+  const shotIdx = item.shots.findIndex((s) => s.sha256 === sha)
+  if (shotIdx < 0) return { error: 'Photo introuvable' }
+
+  const [removed] = item.shots.splice(shotIdx, 1)
+  try {
+    await r2DeleteObject(removed.r2_key)
+    if (removed.thumb_r2_key) await r2DeleteObject(removed.thumb_r2_key)
+  } catch {
+    /* best-effort staged object cleanup */
+  }
+
+  payload.items[idx] = touchItem({ ...item, shots: item.shots })
+
+  const { error: upErr } = await workSessionTable(supabase)
+    .update({ payload: asPayloadRecord(payload) })
+    .eq('id', sessionId)
+    .eq('user_id', user.id)
+    .eq('status', 'draft')
+  if (upErr) return { error: upErr.message }
+
+  revalidatePath('/atelier/session/new')
+  return { ok: true }
+}
+
 export async function createAndLinkWorkFromSession(
   sessionId: string,
   fields: {

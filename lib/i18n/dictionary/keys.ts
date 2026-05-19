@@ -443,6 +443,8 @@ export type DictKey =
   | 'session_oeuvre_link' | 'session_create_work_link' | 'session_linked_work' | 'session_err_title_required'
   | 'session_title_required_label' | 'session_notes_label' | 'session_title_hint_label' | 'session_dims_label'
   | 'session_upload_label' | 'session_shots_label'
+  | 'session_photo_take' | 'session_photo_choose_library' | 'session_photo_pending_heading'
+  | 'session_photo_upload' | 'session_photo_staged_heading' | 'session_photo_remove_aria'
   | 'session_submit_review' | 'session_apply_now' | 'session_toast_saved' | 'session_toast_error'
   | 'session_admin_pending_heading' | 'session_admin_apply' | 'session_admin_reject' | 'session_reject_prompt'
   | 'session_status_draft' | 'session_status_pending_review' | 'session_status_applied' | 'session_status_rejected'

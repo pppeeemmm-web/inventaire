@@ -245,12 +245,28 @@ function MonthMiniGrid({
 
 const RANGE_SEQUENCE: PipelineCalendarRange[] = ['week', 'month', 'quarter', 'semester', 'year']
 
+type PipelineCalendarViewProps = {
+  events: PipelineCalendarEvent[]
+  range: PipelineCalendarRange
+  anchor: Date
+  onAnchorChange: (d: Date) => void
+  onRangeChange: (r: PipelineCalendarRange) => void
+  localeTag: 'fr-FR' | 'en-GB'
+  t: (k: string) => string
+  narrow: boolean
+  resolveTypeColor: (processType: string) => string
+  onOpenProcess: (processId: string) => void
+  onTickEtape: (etapeId: string) => Promise<void> | void
+  onDismissReminder: (reminderId: string) => Promise<void> | void
+}
+
 function weekdayHeaders(localeTag: 'fr-FR' | 'en-GB') {
   const base = new Date(2024, 0, 1)
   return Array.from({ length: 7 }, (_, i) =>
     new Intl.DateTimeFormat(localeTag, { weekday: 'short' }).format(new Date(base.getTime() + i * 86400000)),
   )
 }
+
 
 export function PipelineCalendarView({
   events,
@@ -265,20 +281,7 @@ export function PipelineCalendarView({
   onOpenProcess,
   onTickEtape,
   onDismissReminder,
-}: {
-  events: PipelineCalendarEvent[]
-  range: PipelineCalendarRange
-  anchor: Date
-  onAnchorChange: (d: Date) => void
-  onRangeChange: (r: PipelineCalendarRange) => void
-  localeTag: 'fr-FR' | 'en-GB'
-  t: (k: string) => string
-  narrow: boolean
-  resolveTypeColor: (processType: string) => string
-  onOpenProcess: (processId: string) => void
-  onTickEtape: (etapeId: string) => Promise<void> | void
-  onDismissReminder: (reminderId: string) => Promise<void> | void
-}) {
+}: PipelineCalendarViewProps) {
   const todayKey = toLocalDateKey(new Date().toISOString())
   const byDay = useMemo(() => groupPipelineCalendarEventsByDateKey(events), [events])
 

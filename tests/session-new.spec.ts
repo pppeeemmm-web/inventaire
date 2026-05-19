@@ -22,5 +22,8 @@ test.describe('Work session (Verb 1)', () => {
     await expect(page.getByTestId('session-item-tab-1')).toBeVisible()
     await expect(page.getByTestId('session-work-search-input')).toBeVisible()
     await expect(page.getByTestId('field-hub-back')).toBeVisible()
+    await expect(page.getByTestId('session-photo-capture')).toBeVisible()
+    await expect(page.getByTestId('session-photo-take')).toBeVisible()
+    await expect(page.getByTestId('session-photo-library')).toBeVisible()
   })
 })
