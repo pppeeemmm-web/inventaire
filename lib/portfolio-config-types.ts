@@ -1,4 +1,5 @@
 import type { Oeuvre } from '@/lib/types/database'
+import type { PdfProfileMatrix } from '@/lib/portfolio-pdf-types'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -70,6 +71,7 @@ export interface PortfolioConfig {
   works_collections: CollectionItem[]
   works_modes:       WorksMode[]
   site_blocks:       SiteBlock[]
+  pdf_profiles:      PdfProfileMatrix
 }
 
 export type ThemeWork = { OeuvreID: number; txtImageNameLink: string | null; isPublic: boolean }
@@ -91,6 +93,7 @@ export const DEFAULT_CONFIG: PortfolioConfig = {
   landing: { hero_image_url: '' },
   sections: [],
   works_collections: [],
+  pdf_profiles: {},
   site_blocks: DEFAULT_SITE_BLOCKS,
   works_modes: [{
     id: 'default', label_fr: 'Œuvres', label_en: 'Works',
@@ -220,5 +223,6 @@ export function migrate(raw: any): PortfolioConfig {
     works_collections: oldWorks.map(migrateCollection),
     works_modes:       migrateModes(raw, oldWorks.map(migrateCollection)),
     site_blocks:       migrateSiteBlocks(raw),
+    pdf_profiles:      raw.pdf_profiles && typeof raw.pdf_profiles === 'object' ? raw.pdf_profiles : {},
   }
 }

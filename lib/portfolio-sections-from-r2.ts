@@ -58,6 +58,7 @@ export async function loadPortfolioSectionsFromR2(): Promise<{
     sections:          [],
     works_collections: [],
     works_modes:       [],
+    pdf_profiles:      {},
     statement_doc_id:  null,
     cv_doc_id:         null,
   }
@@ -110,6 +111,7 @@ export async function loadPortfolioSectionsFromR2(): Promise<{
           sections:          parsed.sections          || [],
           works_collections: parsed.works_collections || [],
           works_modes:       Array.isArray(parsed.works_modes) ? parsed.works_modes : [],
+          pdf_profiles:      parsed.pdf_profiles && typeof parsed.pdf_profiles === 'object' ? parsed.pdf_profiles : {},
           site_blocks:       siteBlocks,
           statement_doc_id:  parsed.statement_doc_id  || null,
           cv_doc_id:         parsed.cv_doc_id         || null,

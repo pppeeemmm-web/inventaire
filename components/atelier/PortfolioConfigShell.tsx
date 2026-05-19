@@ -16,6 +16,7 @@ import {
   type PortfolioTabProps,
   DEFAULT_CONFIG, migrate, reorder,
 } from '@/lib/portfolio-config-types'
+import type { PdfCollectionCandidate, PdfCollectionStatement, PdfFormat, PdfProfileSettings, PdfPurpose, PdfWorkCandidate } from '@/lib/portfolio-pdf-types'
 
 import { SiteEditorPanel } from '@/components/atelier/site/SiteEditorPanel'
 import { AnalyticsPanel } from '@/components/atelier/analytics/AnalyticsPanel'
@@ -49,6 +50,33 @@ export function PortfolioConfigShell({
   const [saveBusy, setSaveBusy] = useState(false)
   const [pdfOpen,  setPdfOpen]  = useState(false)
   const [portfolioEtag, setPortfolioEtag] = useState<string | null>(null)
+
+  const savePdfProfile = useCallback(async (purpose: PdfPurpose, format: PdfFormat, settings: PdfProfileSettings) => {
+    const next: PortfolioConfig = {
+      ...config,
+      pdf_profiles: {
+        ...(config.pdf_profiles ?? {}),
+        [purpose]: {
+          ...(config.pdf_profiles?.[purpose] ?? {}),
+          [format]: settings,
+        },
+      },
+    }
+    setConfig(next)
+    setSaveBusy(true)
+    const result = await savePortfolioConfig(next, { ifMatch: portfolioEtag })
+    setSaveBusy(false)
+    if ('ok' in result) {
+      setPortfolioEtag(result.etag)
+      alert(t('portfolio_config_saved'))
+    } else if (result.error === PORTFOLIO_SAVE_ERR.ETAG_MISMATCH) {
+      alert(t('portfolio_save_etag_conflict'))
+    } else if (result.error === PORTFOLIO_SAVE_ERR.OBJECT_EXISTS) {
+      alert(t('portfolio_save_object_exists'))
+    } else {
+      alert(`${t('error_prefix')} ${result.error}`)
+    }
+  }, [config, portfolioEtag, t])
 
   const themeNames = themes.map(t => t.name).sort((a, b) => a.localeCompare(b, 'fr'))
 
@@ -87,6 +115,85 @@ export function PortfolioConfigShell({
     }
     return map
   }, [themes, themePrivateWorks, oeuvreThemeLite])
+
+  const workById = useMemo(() => new Map(oeuvres.map(o => [o.OeuvreID, o])), [oeuvres])
+
+  const worksForCollectionItem = useCallback((item: CollectionItem): PdfWorkCandidate[] => {
+    const manualIds = Array.isArray(item.manual_work_order)
+      ? item.manual_work_order.map(Number).filter(Number.isFinite)
+      : []
+    const visible = item.theme
+      ? (themeNamePrivateWorksMap[item.theme] ?? []).filter(w => w.isPublic)
+      : []
+    const seen = new Set<number>()
+    const orderedIds: number[] = []
+    for (const id of manualIds) {
+      const work = workById.get(id)
+      const isPublic = !!(work as { is_public?: boolean } | undefined)?.is_public
+      if (work?.txtImageNameLink && isPublic && !seen.has(id)) {
+        seen.add(id)
+        orderedIds.push(id)
+      }
+    }
+    for (const w of visible) {
+      if (!seen.has(w.OeuvreID)) {
+        seen.add(w.OeuvreID)
+        orderedIds.push(w.OeuvreID)
+      }
+    }
+    return orderedIds.flatMap(id => {
+      const work = workById.get(id)
+      if (!work?.txtImageNameLink) return []
+      return [{
+        OeuvreID: work.OeuvreID,
+        Titre: work.Titre,
+        Annee: work.Année,
+        Hauteur: work.Hauteur,
+        Largeur: work.Largeur,
+        txtImageNameLink: work.txtImageNameLink,
+      }]
+    })
+  }, [themeNamePrivateWorksMap, workById])
+
+  const pdfCollectionItems = activeTab === 'portfolio'
+    ? config.sections
+    : (config.works_modes[activeMode]?.collections ?? [])
+  const initialPdfCollectionId = pdfCollectionItems[0]?.id ?? null
+  const initialPdfCollections: PdfCollectionCandidate[] = pdfCollectionItems
+    .filter(collection => collection.is_active !== false)
+    .map(collection => ({
+      id: collection.id,
+      title: lang === 'en'
+        ? collection.title_en || collection.title_fr || collection.id
+        : collection.title_fr || collection.title_en || collection.id,
+      worksCount: worksForCollectionItem(collection).length,
+    }))
+  const initialPdfWorksByCollection = Object.fromEntries(
+    pdfCollectionItems
+      .filter(collection => collection.is_active !== false)
+      .map(collection => [collection.id, worksForCollectionItem(collection)])
+  )
+  const initialPdfStatementsByCollection: Record<string, Record<'fr' | 'en', PdfCollectionStatement>> = Object.fromEntries(
+    pdfCollectionItems
+      .filter(collection => collection.is_active !== false)
+      .map(collection => [
+        collection.id,
+        {
+          fr: {
+            id: collection.id,
+            title: collection.title_fr || collection.title_en || collection.id,
+            intro: collection.intro_fr || collection.intro_en || '',
+            description: collection.description_fr || collection.description_en || '',
+          },
+          en: {
+            id: collection.id,
+            title: collection.title_en || collection.title_fr || collection.id,
+            intro: collection.intro_en || collection.intro_fr || '',
+            description: collection.description_en || collection.description_fr || '',
+          },
+        },
+      ])
+  )
 
   // ── Data loading ──
 
@@ -487,7 +594,16 @@ export function PortfolioConfigShell({
         }
       `}</style>
 
-      <PdfExportDrawer open={pdfOpen} onClose={() => setPdfOpen(false)} />
+      <PdfExportDrawer
+        open={pdfOpen}
+        onClose={() => setPdfOpen(false)}
+        initialCollectionId={initialPdfCollectionId}
+        initialCollections={initialPdfCollections}
+        initialWorksByCollection={initialPdfWorksByCollection}
+        initialStatementsByCollection={initialPdfStatementsByCollection}
+        pdfProfiles={config.pdf_profiles}
+        onSaveProfile={savePdfProfile}
+      />
     </div>
   )
 }

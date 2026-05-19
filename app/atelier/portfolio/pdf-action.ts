@@ -2,18 +2,22 @@
 
 // Portfolio PDF export — self-contained server action.
 // Loads atelier config + public works server-side, builds structured PDF
-// (cover → about → [section title → works] → practice → contact).
-// Layout: full-bleed artwork pages with offset, texture detail crop, gold accents.
+// (title → selected works → approach → succinct CV → contact/thanks).
+// Layout: one artwork per page, with orientation-aware A4 portrait handling.
 // Vercel free function timeout 60s — sufficient for ≤16 works at full quality.
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { loadPortfolioConfig } from './actions'
 import {
   MAX_WORKS, FORMATS,
   type PdfRequestOptions,
+  type PdfWorkLayout,
   type PdfWork,
+  type PdfWorkCandidate,
+  type PdfCollectionCandidate,
   type PdfSection,
   type PdfPortfolioConfig,
+  type PdfProfileSettings,
   type PortfolioPdfResult,
 } from '@/lib/portfolio-pdf-types'
 import type { Lang } from '@/lib/i18n/dictionary'
@@ -54,6 +58,34 @@ function yearOf(a: string | null | undefined): string {
   return Number.isFinite(y) && y > 1900 && y < 2100 ? String(y) : ''
 }
 
+function translateTechnique(name: string | null | undefined, lang: Lang): string {
+  if (!name) return ''
+  if (lang === 'fr') return name
+  const normalized = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+  const exact: Record<string, string> = {
+    huile: 'Oil',
+    'huile sur toile': 'Oil on canvas',
+    acrylique: 'Acrylic',
+    'acrylique sur toile': 'Acrylic on canvas',
+    aquarelle: 'Watercolour',
+    encre: 'Ink',
+    fusain: 'Charcoal',
+    pastel: 'Pastel',
+    crayon: 'Pencil',
+    graphite: 'Graphite',
+    collage: 'Collage',
+    photographie: 'Photography',
+    photo: 'Photography',
+    sculpture: 'Sculpture',
+    installation: 'Installation',
+    gravure: 'Engraving',
+    dessin: 'Drawing',
+    mixte: 'Mixed media',
+    'technique mixte': 'Mixed media',
+  }
+  return exact[normalized] ?? name
+}
+
 function normalizeTheme(s: string | null | undefined): string {
   if (!s) return ''
   return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
@@ -92,6 +124,7 @@ export async function generatePortfolioPdf(
 
     // 2. Build lang-resolved config
     const cfg = resolveConfig(rawConfig, opts.lang)
+    opts = applySavedPdfProfile(rawConfig, opts)
 
     // 3. Resolve sections (atelier-driven structure)
     let sections = resolveSections(rawConfig, allWorks, opts)
@@ -109,6 +142,23 @@ export async function generatePortfolioPdf(
       }]
     }
 
+    const statementSections = opts.collectionStatements?.length
+      ? opts.collectionStatements.map(s => ({
+          id: s.id,
+          title: htmlToPlain(s.title),
+          intro: htmlToPlain(s.intro),
+          description: htmlToPlain(s.description),
+          outro: '',
+          works: [],
+        }))
+      : sections
+
+    if (Array.isArray(opts.workSequence)) {
+      if (opts.workSequence.length === 0) return { error: 'Aucune œuvre sélectionnée pour le PDF.' }
+      sections = resolveExplicitSequence(opts.workSequence, allWorks)
+      if (sections[0]?.works.length === 0) return { error: 'Aucune œuvre sélectionnée ne correspond aux œuvres publiques disponibles.' }
+    }
+
     // 4. Apply global cap across sections
     const cap        = opts.maxWorks ?? MAX_WORKS
     const totalWorks = sections.reduce((acc, s) => acc + s.works.length, 0)
@@ -117,10 +167,11 @@ export async function generatePortfolioPdf(
 
     // 5. Pre-fetch + process images
     const flatWorks = cappedSections.flatMap(s => s.works)
-    const imageMap  = await prefetchImages(flatWorks)
+    const { imageMap, imageAspectMap } = await prefetchImages(flatWorks)
 
     // 6. Build PDF
-    const b64 = await buildPortfolioPdf(cfg, cappedSections, opts, imageMap)
+    const cvText = opts.includeCv === false ? '' : await loadCvText(rawConfig, opts.lang)
+    const b64 = await buildPortfolioPdf(cfg, cappedSections, opts, imageMap, imageAspectMap, cvText, statementSections)
 
     const safeName = (cfg.artist_name || 'portfolio')
       .toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
@@ -135,6 +186,87 @@ export async function generatePortfolioPdf(
     }
   } catch (e: any) {
     console.error('[portfolio-pdf]', e)
+    return { error: e?.message ?? String(e) }
+  }
+}
+
+function applySavedPdfProfile(rawConfig: any, opts: PdfRequestOptions): PdfRequestOptions {
+  if (Array.isArray(opts.workSequence) && opts.workSequence.length > 0) return opts
+  if (opts.preset === 'custom') return opts
+  const profile = rawConfig?.pdf_profiles?.[opts.preset]?.[opts.format] as PdfProfileSettings | undefined
+  if (!profile) return opts
+  return {
+    ...opts,
+    collectionFilter: profile.collectionFilter,
+    workSequence: profile.workSequence,
+    workLayouts: profile.workLayouts,
+    includeCollectionText: profile.includeCollectionText,
+    includePractice: profile.includePractice,
+    includeCv: profile.includeCv,
+    includeContact: profile.includeContact,
+    maxWorks: profile.maxWorks,
+  }
+}
+
+export async function getPortfolioPdfWorkCandidates(
+  opts: Pick<PdfRequestOptions, 'lang' | 'collectionFilter'>,
+): Promise<{ works: PdfWorkCandidate[]; collections: PdfCollectionCandidate[] } | { error: string }> {
+  try {
+    const [cfgResult, worksResult] = await Promise.all([
+      loadPortfolioConfig(),
+      loadPublicWorks(),
+    ])
+
+    if ('error' in cfgResult) return { error: `Config load failed: ${cfgResult.error}` }
+    if ('error' in worksResult) return { error: `Works load failed: ${worksResult.error}` }
+
+    const baseOpts: PdfRequestOptions = {
+      preset: 'custom',
+      format: 'a4p',
+      lang: opts.lang,
+      includeCover: true,
+      includeAbout: false,
+      includeCollectionText: false,
+      includePractice: true,
+      includeCv: true,
+      includeContact: true,
+      maxWorks: null,
+      collectionFilter: null,
+    }
+    const allSections = resolveSections(cfgResult.config, worksResult.works, baseOpts)
+    const collections = allSections.flatMap((section): PdfCollectionCandidate[] => {
+      if (!section.id || section.works.length === 0) return []
+      return [{
+        id: section.id,
+        title: section.title || section.id,
+        worksCount: section.works.length,
+      }]
+    })
+
+    const sections = opts.collectionFilter
+      ? resolveSections(cfgResult.config, worksResult.works, { ...baseOpts, collectionFilter: opts.collectionFilter })
+      : allSections
+
+    const ordered = sections.length > 0
+      ? sections.flatMap(s => s.works)
+      : worksResult.works
+    const seen = new Set<number>()
+    const works = ordered.flatMap((w): PdfWorkCandidate[] => {
+      if (seen.has(w.OeuvreID)) return []
+      seen.add(w.OeuvreID)
+      return [{
+        OeuvreID: w.OeuvreID,
+        Titre: w.Titre,
+        Annee: w.Annee,
+        Hauteur: w.Hauteur,
+        Largeur: w.Largeur,
+        txtImageNameLink: w.txtImageNameLink,
+      }]
+    })
+
+    return { works, collections }
+  } catch (e: any) {
+    console.error('[getPortfolioPdfWorkCandidates]', e)
     return { error: e?.message ?? String(e) }
   }
 }
@@ -318,11 +450,84 @@ function capSections(sections: PdfSection[], cap: number): PdfSection[] {
   })
 }
 
+function resolveExplicitSequence(orderIds: number[], allWorks: PdfWork[]): PdfSection[] {
+  const byId = new Map(allWorks.map(w => [w.OeuvreID, w]))
+  const seen = new Set<number>()
+  const works: PdfWork[] = []
+  for (const rawId of orderIds) {
+    const id = Number(rawId)
+    if (!Number.isFinite(id) || seen.has(id)) continue
+    const work = byId.get(id)
+    if (!work) continue
+    seen.add(id)
+    works.push(work)
+  }
+  return [{ id: '__sequence__', title: '', description: '', intro: '', outro: '', works }]
+}
+
+async function loadCvText(rawConfig: any, lang: Lang): Promise<string> {
+  const docId = rawConfig?.cv_doc_id
+  if (!docId) return ''
+  try {
+    const sb = createServiceClient()
+    const { data: doc, error } = await (sb.from('document') as any)
+      .select('name, storage_path, mime_type')
+      .eq('id', docId)
+      .maybeSingle()
+    if (error || !doc?.storage_path) return ''
+
+    const { data, error: dlErr } = await sb.storage.from('vault').download(doc.storage_path)
+    if (dlErr || !data) return ''
+
+    const buf = Buffer.from(await data.arrayBuffer())
+    const name = String(doc.name ?? doc.storage_path ?? '').toLowerCase()
+    const mime = String(doc.mime_type ?? '').toLowerCase()
+    let text = ''
+
+    if (name.endsWith('.docx') || mime.includes('wordprocessingml')) {
+      const mammoth = await import('mammoth')
+      const result = await mammoth.convertToHtml({ buffer: buf })
+      text = htmlToPlain(result.value)
+    } else if (name.endsWith('.txt') || mime.startsWith('text/')) {
+      text = buf.toString('utf-8')
+    } else {
+      console.warn('[portfolio-pdf] CV extraction skipped; use .txt or .docx for succinct CV text.')
+      return ''
+    }
+
+    return condenseCvText(text, lang)
+  } catch (e) {
+    console.error('[portfolio-pdf] CV load failed:', e)
+    return ''
+  }
+}
+
+function condenseCvText(input: string, lang: Lang): string {
+  const cleaned = htmlToPlain(input)
+    .split('\n')
+    .map(line => line.replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+    .filter(line => !/^(curriculum vitae|cv)$/i.test(line))
+
+  const maxLines = lang === 'fr' ? 18 : 18
+  const maxChars = 1400
+  const lines: string[] = []
+  let chars = 0
+  for (const line of cleaned) {
+    if (lines.length >= maxLines) break
+    if (chars + line.length > maxChars) break
+    lines.push(line)
+    chars += line.length
+  }
+  return lines.join('\n')
+}
+
 // ── Image processing ───────────────────────────────────────────────────────
 
-async function prefetchImages(works: PdfWork[]): Promise<Map<number, Buffer>> {
+async function prefetchImages(works: PdfWork[]): Promise<{ imageMap: Map<number, Buffer>; imageAspectMap: Map<number, number> }> {
   const sharp = (await import('sharp')).default
   const imageMap = new Map<number, Buffer>()
+  const imageAspectMap = new Map<number, number>()
 
   const CONCURRENCY = 4
   for (let i = 0; i < works.length; i += CONCURRENCY) {
@@ -339,6 +544,7 @@ async function prefetchImages(works: PdfWork[]): Promise<Map<number, Buffer>> {
         const raw = Buffer.from(await res.arrayBuffer())
 
         const meta   = await sharp(raw).metadata()
+        if (meta.width && meta.height) imageAspectMap.set(w.OeuvreID, meta.width / meta.height)
         const isWide = (meta.width ?? 0) >= (meta.height ?? 0)
         const resized = await sharp(raw)
           .resize(
@@ -356,7 +562,7 @@ async function prefetchImages(works: PdfWork[]): Promise<Map<number, Buffer>> {
     }))
   }
 
-  return imageMap
+  return { imageMap, imageAspectMap }
 }
 
 // ── PDF builder ────────────────────────────────────────────────────────────
@@ -366,6 +572,9 @@ async function buildPortfolioPdf(
   sections: PdfSection[],
   opts:     PdfRequestOptions,
   imageMap: Map<number, Buffer>,
+  imageAspectMap: Map<number, number>,
+  cvText:   string,
+  statementSections: PdfSection[],
 ): Promise<string> {
   const PDFDocument = (await import('pdfkit')).default
   const fmt = FORMATS[opts.format]
@@ -389,124 +598,58 @@ async function buildPortfolioPdf(
     doc.on('end',   () => resolve(Buffer.concat(chunks).toString('base64')))
     doc.on('error', reject)
 
-    const allWorksFlat = sections.flatMap(s => s.works)
-
-    // Cover work: pick first work whose image actually loaded.
-    // Then EXCLUDE it from the work pages so no image is used twice.
-    const coverWork = opts.includeCover
-      ? allWorksFlat.find(w => imageMap.has(w.OeuvreID)) ?? null
-      : null
-    const coverId = coverWork?.OeuvreID
-
-    const sectionsForPages = coverId != null
-      ? sections.map(s => ({ ...s, works: s.works.filter(w => w.OeuvreID !== coverId) }))
-      : sections
-
-    const pageWorks  = sectionsForPages.flatMap(s => s.works)
+    const pageWorks  = sections.flatMap(s => s.works)
     const totalWorks = pageWorks.length
 
-    // ── Cover ────────────────────────────────────────────────────────────
-    if (opts.includeCover) {
-      doc.addPage()
+    // ── Title ────────────────────────────────────────────────────────────
+    drawTitlePage(doc, PW, PH, cfg, opts.lang)
 
-      if (coverWork) {
-        doc.image(imageMap.get(coverWork.OeuvreID)!, -40, 0, {
-          width: PW + 80, height: PH, cover: [PW + 80, PH],
-        })
-      } else {
-        doc.rect(0, 0, PW, PH).fill(DARK)
-      }
-
-      // Slim bottom strip — let artwork breathe.
-      const bandY = PH * 0.78
-      const bandH = PH - bandY
-      doc.fillOpacity(0.55).rect(0, bandY, PW, bandH).fill('#000000')
-      doc.fillOpacity(1)
-
-      doc.moveTo(60, bandY + 20).lineTo(140, bandY + 20)
-        .lineWidth(0.75).strokeColor(GOLD).stroke()
-
-      doc.fontSize(22).fillColor(WHITE).font('Helvetica-Bold')
-        .text(cfg.artist_name || 'Artiste', 60, bandY + 32, { lineBreak: false })
-
-      if (cfg.media_tagline) {
-        doc.fontSize(7).fillColor(GOLD).font('Helvetica')
-          .text(cfg.media_tagline.toUpperCase(), 60, bandY + 62, { characterSpacing: 2, lineBreak: false })
-      }
-
-      doc.fillOpacity(0.5)
-      doc.fontSize(7).fillColor('#ffffff').font('Helvetica')
-        .text(String(new Date().getFullYear()), PW - 80, PH - 28, { width: 60, align: 'right', characterSpacing: 1 })
-      doc.fillOpacity(1)
-    }
-
-    // ── About ────────────────────────────────────────────────────────────
-    if (opts.includeAbout && cfg.about_intro) {
-      drawTextPage(doc, PW, PH, {
-        eyebrow: (cfg.artist_name || '').toUpperCase(),
-        body:    cfg.about_intro,
-      })
-    }
-
-    // ── Sections + works ─────────────────────────────────────────────────
-    let workCounter = 0
-
-    for (const sec of sectionsForPages) {
-      if (sec.works.length === 0) continue
-
-      if (sec.title || sec.description || sec.intro) {
+    // ── Optional collection statement(s) ─────────────────────────────────
+    if (opts.includeCollectionText) {
+      for (const sec of statementSections) {
+        const body = sec.intro || sec.description
+        if (!body) continue
         drawTextPage(doc, PW, PH, {
           eyebrow: opts.lang === 'fr' ? 'COLLECTION' : 'COLLECTION',
           title:   sec.title,
-          body:    sec.intro || sec.description,
+          body,
         })
-      }
-
-      for (const w of sec.works) {
-        workCounter++
-        drawWorkPage(doc, PW, PH, cfg, w, workCounter, totalWorks, imageMap)
-      }
-
-      if (sec.outro) {
-        drawTextPage(doc, PW, PH, { body: sec.outro })
       }
     }
 
-    // ── Practice page (config.practice.approach) ────────────────────────
+    // ── Image sequence ───────────────────────────────────────────────────
+    let workCounter = 0
+
+    for (const sec of sections) {
+      if (sec.works.length === 0) continue
+
+      for (const w of sec.works) {
+        workCounter++
+        drawWorkPage(doc, PW, PH, cfg, w, workCounter, totalWorks, imageMap, imageAspectMap, opts.lang, opts.workLayouts?.[w.OeuvreID])
+      }
+    }
+
+    // ── Approach page (config.practice.approach) ────────────────────────
     if (opts.includePractice && cfg.practice_intro) {
       drawTextPage(doc, PW, PH, {
         eyebrow: opts.lang === 'fr' ? 'DÉMARCHE' : 'PRACTICE',
+        title:   opts.lang === 'fr' ? 'Approche' : 'Approach',
         body:    cfg.practice_intro,
       })
     }
 
-    // ── Contact ──────────────────────────────────────────────────────────
+    // ── Succinct CV page ─────────────────────────────────────────────────
+    if (opts.includeCv !== false && cvText) {
+      drawTextPage(doc, PW, PH, {
+        eyebrow: opts.lang === 'fr' ? 'PARCOURS' : 'CV',
+        title:   opts.lang === 'fr' ? 'CV succinct' : 'Selected CV',
+        body:    cvText,
+      })
+    }
+
+    // ── Contact + thanks ─────────────────────────────────────────────────
     if (opts.includeContact) {
-      doc.addPage()
-      doc.rect(0, 0, PW, PH).fill(OFF_WHITE)
-
-      doc.moveTo(60, 72).lineTo(100, 72).lineWidth(0.75).strokeColor(GOLD).stroke()
-
-      doc.fontSize(8).fillColor(GOLD).font('Helvetica')
-        .text(opts.lang === 'fr' ? 'CONTACT' : 'ENQUIRY', 60, 82, { characterSpacing: 3 })
-
-      doc.fontSize(22).fillColor(DARK).font('Helvetica-Bold')
-        .text(cfg.artist_name || 'Artiste', 60, 120)
-
-      let cy = 168
-      if (cfg.contact_email) {
-        doc.fontSize(10).fillColor(DARK).font('Helvetica').text(cfg.contact_email, 60, cy); cy += 22
-      }
-      if (cfg.instagram) {
-        doc.fontSize(9).fillColor(GREY).font('Helvetica')
-          .text(`@${cfg.instagram.replace(/^@/, '')}`, 60, cy, { characterSpacing: 0.3 }); cy += 18
-      }
-      if (cfg.phone) {
-        doc.fontSize(9).fillColor(GREY).font('Helvetica').text(cfg.phone, 60, cy)
-      }
-
-      doc.fontSize(7).fillColor('#cccccc').font('Helvetica')
-        .text(`© ${new Date().getFullYear()} ${cfg.artist_name}`, 60, PH - 48, { characterSpacing: 1 })
+      drawContactPage(doc, PW, PH, cfg, opts.lang)
     }
 
     doc.end()
@@ -514,6 +657,78 @@ async function buildPortfolioPdf(
 }
 
 // ── Page helpers ───────────────────────────────────────────────────────────
+
+function drawTitlePage(
+  doc: any,
+  PW: number,
+  PH: number,
+  cfg: PdfPortfolioConfig,
+  lang: Lang,
+) {
+  doc.addPage()
+  doc.rect(0, 0, PW, PH).fill(OFF_WHITE)
+
+  const name = cfg.artist_name || 'Artiste'
+  const title = lang === 'fr' ? 'Portfolio' : 'Portfolio'
+  const centerY = PH * 0.44
+
+  doc.moveTo(PW / 2 - 42, centerY - 44).lineTo(PW / 2 + 42, centerY - 44)
+    .lineWidth(0.75).strokeColor(GOLD).stroke()
+
+  doc.fontSize(34).fillColor(DARK).font('Helvetica-Bold')
+    .text(name, 60, centerY - 20, { width: PW - 120, align: 'center' })
+
+  doc.fontSize(8).fillColor(GREY).font('Helvetica')
+    .text(title.toUpperCase(), 60, doc.y + 12, { width: PW - 120, align: 'center', characterSpacing: 3 })
+
+  if (cfg.media_tagline) {
+    doc.fontSize(7).fillColor(GOLD).font('Helvetica')
+      .text(cfg.media_tagline.toUpperCase(), 60, doc.y + 22, { width: PW - 120, align: 'center', characterSpacing: 2 })
+  }
+
+  doc.fontSize(7).fillColor('#c8c4be').font('Helvetica')
+    .text(String(new Date().getFullYear()), 60, PH - 54, { width: PW - 120, align: 'center', characterSpacing: 1 })
+}
+
+function drawContactPage(
+  doc: any,
+  PW: number,
+  PH: number,
+  cfg: PdfPortfolioConfig,
+  lang: Lang,
+) {
+  doc.addPage()
+  doc.rect(0, 0, PW, PH).fill(OFF_WHITE)
+
+  doc.moveTo(60, 72).lineTo(100, 72).lineWidth(0.75).strokeColor(GOLD).stroke()
+
+  doc.fontSize(8).fillColor(GOLD).font('Helvetica')
+    .text(lang === 'fr' ? 'CONTACT' : 'ENQUIRY', 60, 82, { characterSpacing: 3 })
+
+  doc.fontSize(22).fillColor(DARK).font('Helvetica-Bold')
+    .text(cfg.artist_name || 'Artiste', 60, 120)
+
+  doc.fontSize(12).fillColor(DARK).font('Helvetica')
+    .text(lang === 'fr' ? 'Merci pour votre attention.' : 'Thank you for your attention.', 60, 164, {
+      width: PW - 120,
+      lineGap: 4,
+    })
+
+  let cy = 232
+  if (cfg.contact_email) {
+    doc.fontSize(10).fillColor(DARK).font('Helvetica').text(cfg.contact_email, 60, cy); cy += 24
+  }
+  if (cfg.instagram) {
+    doc.fontSize(9).fillColor(GREY).font('Helvetica')
+      .text(`@${cfg.instagram.replace(/^@/, '')}`, 60, cy, { characterSpacing: 0.3 }); cy += 20
+  }
+  if (cfg.phone) {
+    doc.fontSize(9).fillColor(GREY).font('Helvetica').text(cfg.phone, 60, cy)
+  }
+
+  doc.fontSize(7).fillColor('#cccccc').font('Helvetica')
+    .text(`© ${new Date().getFullYear()} ${cfg.artist_name}`, 60, PH - 48, { characterSpacing: 1 })
+}
 
 function drawTextPage(
   doc:  any,
@@ -563,6 +778,13 @@ function workIsPortrait(w: PdfWork): boolean {
   return H >= W
 }
 
+function workShape(w: PdfWork, imageAspect?: number): 'portrait' | 'landscape' | 'square' {
+  const aspect = imageAspect ?? workAspect(w)
+  if (aspect == null) return workIsPortrait(w) ? 'portrait' : 'landscape'
+  if (Math.abs(aspect - 1) <= 0.04) return 'square'
+  return aspect > 1 ? 'landscape' : 'portrait'
+}
+
 function drawWorkPage(
   doc:      any,
   PW:       number,
@@ -572,158 +794,209 @@ function drawWorkPage(
   index:    number,
   total:    number,
   imageMap: Map<number, Buffer>,
+  imageAspectMap: Map<number, number>,
+  lang:     Lang,
+  layout?:  PdfWorkLayout,
 ) {
   const pagePortrait = PH >= PW
-  const artPortrait  = workIsPortrait(w)
-  const fullBleed    = pagePortrait === artPortrait
-
-  if (fullBleed) {
-    drawWorkFullBleed(doc, PW, PH, cfg, w, index, total, imageMap)
-  } else if (pagePortrait) {
-    // portrait page + landscape art → image tucked top, text below
-    drawWorkTopContained(doc, PW, PH, cfg, w, index, total, imageMap)
+  const shape = workShape(w, imageAspectMap.get(w.OeuvreID))
+  const artPortrait = shape === 'portrait'
+  const forceLandscapeBleed = !pagePortrait && (shape === 'landscape' || shape === 'square')
+  if (layout?.mode === 'bleed') {
+    drawWorkFullBleed(doc, PW, PH, cfg, w, index, total, imageMap, lang, layout)
+  } else if (layout?.mode === 'contain' && !forceLandscapeBleed) {
+    drawWorkContained(doc, PW, PH, cfg, w, index, total, imageMap, lang)
+  } else if (forceLandscapeBleed) {
+    drawWorkFullBleed(doc, PW, PH, cfg, w, index, total, imageMap, lang, layout)
+  } else if (pagePortrait && artPortrait) {
+    drawWorkFullBleed(doc, PW, PH, cfg, w, index, total, imageMap, lang, layout)
+  } else if (pagePortrait && !artPortrait) {
+    drawWorkLandscapeOnPortrait(doc, PW, PH, cfg, w, index, total, imageMap, lang)
   } else {
-    // landscape page + portrait art → image tucked left, text right
-    drawWorkLeftContained(doc, PW, PH, cfg, w, index, total, imageMap)
+    drawWorkContained(doc, PW, PH, cfg, w, index, total, imageMap, lang)
   }
 }
 
-/** Full bleed: artwork fills page, solid white metadata band at bottom (museum-catalogue style). */
+/** Full bleed: portrait artwork fills A4 portrait page; metadata stays discreet. */
 function drawWorkFullBleed(
   doc: any, PW: number, PH: number,
   cfg: PdfPortfolioConfig, w: PdfWork,
   index: number, total: number,
   imageMap: Map<number, Buffer>,
+  lang: Lang,
+  layout?: PdfWorkLayout,
 ) {
   doc.addPage()
 
   const img = imageMap.get(w.OeuvreID)
   if (img) {
-    doc.image(img, 0, 0, { width: PW, height: PH, cover: [PW, PH], align: 'center', valign: 'center' })
+    doc.image(img, 0, 0, {
+      width: PW,
+      height: PH,
+      cover: [PW, PH],
+      align: pdfKitAlign(layout?.x),
+      valign: pdfKitValign(layout?.y),
+    })
   } else {
     doc.rect(0, 0, PW, PH).fill('#2a2826')
   }
 
-  // Solid white bottom band — black text on white, like a printed catalogue plate.
-  const bandY = PH * 0.78
-  doc.rect(0, bandY, PW, PH - bandY).fill(OFF_WHITE)
+  drawWorkOverlayMeta(doc, PW, PH, w, index, total, lang)
 
-  // Gold rule + title + meta inside band
-  doc.moveTo(48, bandY + 18).lineTo(128, bandY + 18)
-    .lineWidth(0.5).strokeColor(GOLD).stroke()
-
-  doc.fontSize(16).fillColor(DARK).font('Helvetica-Bold')
-    .text(w.Titre || '—', 48, bandY + 26, { width: PW - 96, lineBreak: false, ellipsis: true })
-
-  const meta = [yearOf(w.Annee), w.techniqueName ?? '', dims(w)].filter(Boolean).join('  ·  ')
-  if (meta) {
-    doc.fontSize(8).fillColor(GREY).font('Helvetica')
-      .text(meta, 48, bandY + 50, { width: PW - 96, characterSpacing: 0.3, lineBreak: false, ellipsis: true })
-  }
-
-  // Hairline artist name top-left (white on artwork, low opacity)
   doc.fillOpacity(0.35)
   doc.fontSize(6).fillColor('#ffffff').font('Helvetica')
     .text((cfg.artist_name || '').toUpperCase(), 28, 28, { characterSpacing: 1.5, lineBreak: false })
   doc.fillOpacity(1)
-
-  if (total > 1) {
-    doc.fontSize(6).fillColor(GREY).font('Helvetica')
-      .text(`${index} / ${total}`, PW - 80, PH - 18, { width: 60, align: 'right', characterSpacing: 1 })
-  }
 }
 
-/** Portrait page + landscape art: image at top ~55%, off-white text panel below. */
-function drawWorkTopContained(
+/** A4 portrait + landscape artwork: image full page width, metadata below, no overlap. */
+function drawWorkLandscapeOnPortrait(
   doc: any, PW: number, PH: number,
   cfg: PdfPortfolioConfig, w: PdfWork,
   index: number, total: number,
   imageMap: Map<number, Buffer>,
+  lang: Lang,
 ) {
   doc.addPage()
   doc.rect(0, 0, PW, PH).fill(OFF_WHITE)
 
-  // Image area: top portion, leaving room for text below
-  const imgAreaH = PH * 0.55
-  const margin   = 32
+  const aspect = workAspect(w) ?? 1.45
+  const imgW = PW
+  const imgH = Math.min(PH * 0.62, imgW / aspect)
+  const imgY = Math.max(120, PH * 0.32 - imgH / 2)
   const img = imageMap.get(w.OeuvreID)
   if (img) {
-    doc.image(img, margin, margin, {
-      fit:    [PW - margin * 2, imgAreaH - margin],
-      align:  'center',
-      valign: 'top',
-    })
+    doc.image(img, 0, imgY, { width: imgW, height: imgH, cover: [imgW, imgH], align: 'center', valign: 'center' })
   } else {
-    doc.rect(margin, margin, PW - margin * 2, imgAreaH - margin).fill('#2a2826')
+    doc.rect(0, imgY, imgW, imgH).fill('#2a2826')
   }
 
-  // Text panel below
-  const textY = imgAreaH + 16
-  doc.moveTo(48, textY).lineTo(128, textY).lineWidth(0.5).strokeColor(GOLD).stroke()
+  drawWorkMetaBlock(doc, PW, PH, imgY + imgH + 28, w, index, total, lang, 48, PW - 96, 'center')
 
-  doc.fontSize(20).fillColor(DARK).font('Helvetica-Bold')
-    .text(w.Titre || '—', 48, textY + 14, { width: PW - 96 })
-
-  let dy = doc.y + 12
-  const yr = yearOf(w.Annee)
-  if (yr) { doc.fontSize(9).fillColor(GREY).font('Helvetica').text(yr, 48, dy, { characterSpacing: 0.5 }); dy += 16 }
-  if (w.techniqueName) { doc.fontSize(9).fillColor(GREY).font('Helvetica').text(w.techniqueName, 48, dy, { characterSpacing: 0.3 }); dy += 14 }
-  const dm = dims(w)
-  if (dm) { doc.fontSize(8).fillColor('#aaaaaa').font('Helvetica').text(dm, 48, dy, { characterSpacing: 0.3 }) }
-
-  // Hairline artist top-left
   doc.fontSize(6).fillColor('#bbbbbb').font('Helvetica')
     .text((cfg.artist_name || '').toUpperCase(), 28, 28, { characterSpacing: 1.5, lineBreak: false })
-
-  if (total > 1) {
-    doc.fontSize(6).fillColor('#bbbbbb').font('Helvetica')
-      .text(`${index} / ${total}`, PW - 80, PH - 28, { width: 60, align: 'right', characterSpacing: 1 })
-  }
 }
 
-/** Landscape page + portrait art: image left ~55% width, text panel right. */
-function drawWorkLeftContained(
+function drawWorkContained(
   doc: any, PW: number, PH: number,
   cfg: PdfPortfolioConfig, w: PdfWork,
   index: number, total: number,
   imageMap: Map<number, Buffer>,
+  lang: Lang,
 ) {
   doc.addPage()
   doc.rect(0, 0, PW, PH).fill(OFF_WHITE)
 
-  const margin    = 32
-  const imgAreaW  = PW * 0.55
+  const artPortrait = workIsPortrait(w)
+  const imgAreaW  = artPortrait ? PW * 0.52 : PW * 0.62
   const img = imageMap.get(w.OeuvreID)
   if (img) {
-    doc.image(img, margin, margin, {
-      fit:    [imgAreaW - margin, PH - margin * 2],
-      align:  'left',
+    doc.image(img, 0, 0, {
+      width: imgAreaW,
+      height: PH,
+      cover: [imgAreaW, PH],
+      align:  'center',
       valign: 'center',
     })
   } else {
-    doc.rect(margin, margin, imgAreaW - margin, PH - margin * 2).fill('#2a2826')
+    doc.rect(0, 0, imgAreaW, PH).fill('#2a2826')
   }
 
-  const textX = imgAreaW + 16
-  const textY = PH * 0.30
-
-  doc.moveTo(textX, textY).lineTo(textX + 80, textY).lineWidth(0.5).strokeColor(GOLD).stroke()
-
-  doc.fontSize(22).fillColor(DARK).font('Helvetica-Bold')
-    .text(w.Titre || '—', textX, textY + 14, { width: PW - textX - margin })
-
-  let dy = doc.y + 14
-  const yr = yearOf(w.Annee)
-  if (yr) { doc.fontSize(10).fillColor(GREY).font('Helvetica').text(yr, textX, dy, { characterSpacing: 0.5 }); dy += 18 }
-  if (w.techniqueName) { doc.fontSize(9).fillColor(GREY).font('Helvetica').text(w.techniqueName, textX, dy, { characterSpacing: 0.3 }); dy += 16 }
-  const dm = dims(w)
-  if (dm) { doc.fontSize(9).fillColor('#aaaaaa').font('Helvetica').text(dm, textX, dy, { characterSpacing: 0.3 }) }
+  const textX = imgAreaW + 24
+  const textW = PW - textX - 24
+  const textY = PH / 2 - 28
+  drawWorkMetaBlock(doc, PW, PH, textY, w, index, total, lang, textX, textW, 'center')
 
   doc.fontSize(6).fillColor('#bbbbbb').font('Helvetica')
     .text((cfg.artist_name || '').toUpperCase(), 28, 28, { characterSpacing: 1.5, lineBreak: false })
+}
+
+function workAspect(w: PdfWork): number | null {
+  const parse = (s: string | null | undefined): number | null => {
+    if (s == null || String(s).trim() === '') return null
+    const n = parseFloat(String(s).replace(',', '.'))
+    return Number.isFinite(n) && n > 0 ? n : null
+  }
+  const H = parse(w.Hauteur)
+  const W = parse(w.Largeur)
+  if (!H || !W) return null
+  return W / H
+}
+
+function pdfKitAlign(pos: PdfWorkLayout['x'] | undefined): 'left' | 'center' | 'right' {
+  if (pos === 'start') return 'left'
+  if (pos === 'end') return 'right'
+  return 'center'
+}
+
+function pdfKitValign(pos: PdfWorkLayout['y'] | undefined): 'top' | 'center' | 'bottom' {
+  if (pos === 'start') return 'top'
+  if (pos === 'end') return 'bottom'
+  return 'center'
+}
+
+function workMeta(w: PdfWork, lang: Lang): string {
+  return [yearOf(w.Annee), translateTechnique(w.techniqueName, lang), dims(w)].filter(Boolean).join('  ·  ')
+}
+
+function drawWorkMetaBlock(
+  doc: any,
+  PW: number,
+  PH: number,
+  y: number,
+  w: PdfWork,
+  index: number,
+  total: number,
+  lang: Lang,
+  x = 48,
+  width = PW - 96,
+  align: 'left' | 'center' = 'left',
+) {
+  const title = (w.Titre ?? '').trim()
+  let metaY = y
+  if (title) {
+    doc.fontSize(20).fillColor(DARK).font(align === 'center' ? 'Times-Roman' : 'Helvetica-Bold')
+      .text(title, x, y, { width, align, lineBreak: false, ellipsis: true })
+    metaY = doc.y + 8
+  }
+
+  const meta = workMeta(w, lang)
+  if (meta) {
+    doc.fontSize(7).fillColor(GREY).font('Helvetica')
+      .text(meta, x, metaY, { width, align, characterSpacing: 0.3, lineBreak: false, ellipsis: true })
+  }
 
   if (total > 1) {
     doc.fontSize(6).fillColor('#bbbbbb').font('Helvetica')
       .text(`${index} / ${total}`, PW - 80, PH - 28, { width: 60, align: 'right', characterSpacing: 1 })
+  }
+}
+
+function drawWorkOverlayMeta(
+  doc: any,
+  PW: number,
+  PH: number,
+  w: PdfWork,
+  index: number,
+  total: number,
+  lang: Lang,
+) {
+  const bandH = 58
+  const bandY = PH - bandH
+  doc.fillOpacity(0.72).rect(0, bandY, PW, bandH).fill('#ffffff')
+  doc.fillOpacity(1)
+
+  doc.fontSize(11).fillColor(DARK).font('Helvetica-Bold')
+    .text(w.Titre || '—', 36, bandY + 14, { width: PW - 120, lineBreak: false, ellipsis: true })
+
+  const meta = workMeta(w, lang)
+  if (meta) {
+    doc.fontSize(6).fillColor(GREY).font('Helvetica')
+      .text(meta, 36, bandY + 31, { width: PW - 120, characterSpacing: 0.2, lineBreak: false, ellipsis: true })
+  }
+
+  if (total > 1) {
+    doc.fontSize(6).fillColor(GREY).font('Helvetica')
+      .text(`${index} / ${total}`, PW - 80, PH - 20, { width: 60, align: 'right', characterSpacing: 1 })
   }
 }

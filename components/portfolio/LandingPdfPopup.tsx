@@ -1,13 +1,15 @@
 'use client'
 
-// Landing-page mini PDF popup — 3 preset buttons → instant download.
-// No options UI. For atelier tuning use PdfExportDrawer instead.
+// Public PDF popup: visitors choose purpose, A4 format, and language only.
+// Curatorial sequencing/layout/content is resolved from saved Atelier profiles.
 
 import { useState } from 'react'
+import type { CSSProperties } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import { generatePortfolioPdf } from '@/app/atelier/portfolio/pdf-action'
-import { PRESET_DEFAULTS, type PdfPreset } from '@/lib/portfolio-pdf-types'
+import { PRESET_DEFAULTS, type PdfFormat, type PdfPreset } from '@/lib/portfolio-pdf-types'
+import type { Lang } from '@/lib/i18n/dictionary'
 
 interface Props {
   open:    boolean
@@ -17,6 +19,7 @@ interface Props {
 type Phase = 'idle' | 'building' | 'error'
 
 const PRESET_IDS = ['galerie', 'collectionneur', 'presse'] as const satisfies readonly Exclude<PdfPreset, 'custom'>[]
+const FORMAT_IDS = ['a4p', 'a4l'] as const satisfies readonly PdfFormat[]
 
 const PRESET_LABEL_KEYS: Record<(typeof PRESET_IDS)[number], { title: DictKey; sub: DictKey }> = {
   galerie:        { title: 'landing_pdf_preset_galerie_title',        sub: 'landing_pdf_preset_galerie_sub' },
@@ -26,26 +29,31 @@ const PRESET_LABEL_KEYS: Record<(typeof PRESET_IDS)[number], { title: DictKey; s
 
 export default function LandingPdfPopup({ open, onClose }: Props) {
   const { t, lang } = useI18n()
-  const [busyId,   setBusyId]   = useState<PdfPreset | null>(null)
+  const [preset,   setPreset]   = useState<Exclude<PdfPreset, 'custom'>>('galerie')
+  const [format,   setFormat]   = useState<PdfFormat>('a4p')
+  const [pdfLang,  setPdfLang]  = useState<Lang>(lang)
+  const [busy,     setBusy]     = useState(false)
   const [phase,    setPhase]    = useState<Phase>('idle')
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   if (!open) return null
 
-  async function handlePick(presetId: Exclude<PdfPreset, 'custom'>) {
-    setBusyId(presetId)
+  async function handleDownload() {
+    setBusy(true)
     setPhase('building')
     setErrorMsg(null)
 
     try {
-      const d = PRESET_DEFAULTS[presetId]
+      const d = PRESET_DEFAULTS[preset]
       const result = await generatePortfolioPdf({
-        preset:           presetId,
-        format:           'a4p',
-        lang,
+        preset,
+        format,
+        lang:             pdfLang,
         includeCover:     d.includeCover,
         includeAbout:     d.includeAbout,
+        includeCollectionText: false,
         includePractice:  d.includePractice,
+        includeCv:        true,
         includeContact:   d.includeContact,
         maxWorks:         d.maxWorks,
         collectionFilter: null,
@@ -54,7 +62,7 @@ export default function LandingPdfPopup({ open, onClose }: Props) {
       if ('error' in result) {
         setPhase('error')
         setErrorMsg(result.error)
-        setBusyId(null)
+        setBusy(false)
         return
       }
 
@@ -69,17 +77,15 @@ export default function LandingPdfPopup({ open, onClose }: Props) {
       a.click()
       URL.revokeObjectURL(url)
 
-      setBusyId(null)
+      setBusy(false)
       setPhase('idle')
       onClose()
     } catch (e: unknown) {
       setPhase('error')
       setErrorMsg(e instanceof Error ? e.message : String(e))
-      setBusyId(null)
+      setBusy(false)
     }
   }
-
-  const busy = busyId !== null
 
   return (
     <>
@@ -124,16 +130,16 @@ export default function LandingPdfPopup({ open, onClose }: Props) {
           {PRESET_IDS.map((id) => {
             const keys = PRESET_LABEL_KEYS[id]
             return (
-              <button key={id} type="button" onClick={() => handlePick(id)} disabled={busy} style={{
-                background: busyId === id ? '#1a1816' : '#fff',
-                color:      busyId === id ? '#fff'    : '#1a1816',
+              <button key={id} type="button" onClick={() => setPreset(id)} disabled={busy} style={{
+                background: preset === id ? '#1a1816' : '#fff',
+                color:      preset === id ? '#fff'    : '#1a1816',
                 border: '1px solid rgba(0,0,0,0.1)',
                 borderRadius: 4, padding: '12px 14px',
                 cursor: busy ? 'default' : 'pointer',
                 textAlign: 'left',
                 transition: 'all .15s',
                 fontFamily: 'inherit',
-                opacity: busy && busyId !== id ? 0.4 : 1,
+                opacity: busy && preset !== id ? 0.4 : 1,
               }}>
                 <div style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -141,13 +147,10 @@ export default function LandingPdfPopup({ open, onClose }: Props) {
                   textTransform: 'uppercase',
                 }}>
                   <span>{t(keys.title)}</span>
-                  <span style={{ opacity: 0.5, fontSize: 10 }}>
-                    {busyId === id ? '…' : '↓'}
-                  </span>
                 </div>
                 <div style={{
                   fontSize: 9, marginTop: 4,
-                  color: busyId === id ? '#bcb8b1' : '#aaa',
+                  color: preset === id ? '#bcb8b1' : '#aaa',
                 }}>
                   {t(keys.sub)}
                 </div>
@@ -155,6 +158,41 @@ export default function LandingPdfPopup({ open, onClose }: Props) {
             )
           })}
         </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginTop: 16 }}>
+          {FORMAT_IDS.map(id => (
+            <button key={id} type="button" onClick={() => setFormat(id)} disabled={busy} style={choiceStyle(format === id, busy)}>
+              {t(id === 'a4p' ? 'pdf_format_a4p' : 'pdf_format_a4l')}
+            </button>
+          ))}
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginTop: 8 }}>
+          {(['fr', 'en'] as Lang[]).map(id => (
+            <button key={id} type="button" onClick={() => setPdfLang(id)} disabled={busy} style={choiceStyle(pdfLang === id, busy)}>
+              {id === 'fr' ? t('locale_fr_short') : t('locale_en_short')}
+            </button>
+          ))}
+        </div>
+
+        <button type="button" onClick={handleDownload} disabled={busy} style={{
+          width: '100%',
+          marginTop: 16,
+          background: '#1a1816',
+          color: '#fff',
+          border: 'none',
+          borderRadius: 4,
+          padding: '12px 14px',
+          fontSize: 10,
+          fontWeight: 600,
+          letterSpacing: 2,
+          textTransform: 'uppercase',
+          fontFamily: 'inherit',
+          cursor: busy ? 'default' : 'pointer',
+          opacity: busy ? 0.6 : 1,
+        }}>
+          {busy ? t('generating') : t('pdf_generate')}
+        </button>
 
         {phase === 'error' && errorMsg && (
           <div style={{
@@ -168,9 +206,24 @@ export default function LandingPdfPopup({ open, onClose }: Props) {
           marginTop: 18, fontSize: 8, color: '#bbb',
           letterSpacing: 1, textTransform: 'uppercase', textAlign: 'center',
         }}>
-          A4 · {lang === 'fr' ? t('locale_fr_short') : t('locale_en_short')}
+          {format === 'a4p' ? t('pdf_format_a4p') : t('pdf_format_a4l')} · {pdfLang === 'fr' ? t('locale_fr_short') : t('locale_en_short')}
         </div>
       </div>
     </>
   )
+}
+
+function choiceStyle(active: boolean, busy: boolean): CSSProperties {
+  return {
+    background: active ? '#1a1816' : '#fff',
+    color: active ? '#ffffff' : '#1a1816',
+    border: `1px solid ${active ? '#1a1816' : 'rgba(0,0,0,0.1)'}`,
+    borderRadius: 4,
+    padding: '8px 10px',
+    fontSize: 9,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    cursor: busy ? 'default' : 'pointer',
+    fontFamily: 'inherit',
+  }
 }
