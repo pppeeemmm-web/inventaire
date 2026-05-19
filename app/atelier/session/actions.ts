@@ -30,6 +30,8 @@ function workSessionTable(supabase: Awaited<ReturnType<typeof createClient>>) {
 }
 
 const DRAFT_TTL_MS = 7 * 24 * 60 * 60 * 1000
+const SESSION_WORK_FETCH_PAGE_SIZE = 1000
+const SESSION_WORK_EXCLUDED_STATUS_IDS = new Set([3, 5, 6, 11])
 
 function expiresAtIso(): string {
   return new Date(Date.now() + DRAFT_TTL_MS).toISOString()
@@ -76,6 +78,9 @@ export type WorkSessionWorkOption = {
   Année: string | null
   Hauteur: string | null
   Largeur: string | null
+  statusId: number | null
+  Catalogué: boolean | null
+  NeedsPhotograph: boolean | null
   txtImageNameLink: string | null
 }
 
@@ -156,6 +161,14 @@ function itemHasApplyTarget(item: WorkSessionItem): boolean {
 
 function itemIsActionable(item: WorkSessionItem): boolean {
   return item.status !== 'applied' && item.shots.length > 0 && itemHasApplyTarget(item)
+}
+
+function isSessionWorkCandidate(work: Pick<WorkSessionWorkOption, 'statusId'>): boolean {
+  return work.statusId == null || !SESSION_WORK_EXCLUDED_STATUS_IDS.has(work.statusId)
+}
+
+function isSessionWorkInProgress(work: Pick<WorkSessionWorkOption, 'statusId' | 'Catalogué' | 'NeedsPhotograph'>): boolean {
+  return isSessionWorkCandidate(work) && (work.statusId === 1 || work.statusId == null || !work.Catalogué || !!work.NeedsPhotograph)
 }
 
 function actionableItemCount(payload: WorkSessionPayload): number {
@@ -583,27 +596,41 @@ export async function searchWorksForSession(query: string): Promise<WorkSessionW
   if (!user) return []
 
   const q = query.trim()
-  let req = supabase
-    .from('Oeuvres')
-    .select('OeuvreID,Titre,"Année",Hauteur,Largeur,txtImageNameLink')
-    .is('deleted_at', null)
-    .order('OeuvreID', { ascending: false })
-    .limit(12)
+  const rows: WorkSessionWorkOption[] = []
+  for (let from = 0; ; from += SESSION_WORK_FETCH_PAGE_SIZE) {
+    let req = supabase
+      .from('Oeuvres')
+      .select('OeuvreID,Titre,"Année",Hauteur,Largeur,statusId,"Catalogué",NeedsPhotograph,txtImageNameLink')
+      .is('deleted_at', null)
+      .order('OeuvreID', { ascending: false })
+      .range(from, from + SESSION_WORK_FETCH_PAGE_SIZE - 1)
 
-  if (q) {
-    const n = Number.parseInt(q, 10)
-    const safe = q.replace(/[%_,]/g, '')
-    req = Number.isFinite(n) && String(n) === q
-      ? req.eq('OeuvreID', n)
-      : req.or(`Titre.ilike.%${safe}%,Largeur.ilike.%${safe}%,Hauteur.ilike.%${safe}%`)
+    if (q) {
+      const n = Number.parseInt(q, 10)
+      const safe = q.replace(/[%_,]/g, '')
+      req = Number.isFinite(n) && String(n) === q
+        ? req.eq('OeuvreID', n)
+        : req.or(`Titre.ilike.%${safe}%,Largeur.ilike.%${safe}%,Hauteur.ilike.%${safe}%`)
+    }
+
+    const { data, error } = await req
+    if (error) {
+      console.error('[work_session] searchWorksForSession', error.message)
+      return []
+    }
+
+    rows.push(...((data ?? []) as WorkSessionWorkOption[]))
+    if (!data || data.length < SESSION_WORK_FETCH_PAGE_SIZE) break
   }
 
-  const { data, error } = await req
-  if (error) {
-    console.error('[work_session] searchWorksForSession', error.message)
-    return []
-  }
-  return (data ?? []) as WorkSessionWorkOption[]
+  return rows
+    .filter(isSessionWorkCandidate)
+    .sort((a, b) => {
+      const aInProgress = isSessionWorkInProgress(a)
+      const bInProgress = isSessionWorkInProgress(b)
+      if (aInProgress !== bInProgress) return aInProgress ? -1 : 1
+      return b.OeuvreID - a.OeuvreID
+    })
 }
 
 async function workMapsForIds(

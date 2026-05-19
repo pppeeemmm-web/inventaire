@@ -46,6 +46,15 @@ function dateInputToSessionIso(value: string): string | null {
   return Number.isNaN(date.getTime()) ? null : date.toISOString()
 }
 
+const SESSION_WORK_EXCLUDED_STATUS_IDS = new Set([3, 5, 6, 11])
+
+function workIsInProgress(work: WorkSessionWorkOption): boolean {
+  return (
+    (work.statusId == null || !SESSION_WORK_EXCLUDED_STATUS_IDS.has(work.statusId))
+    && (work.statusId === 1 || work.statusId == null || !work.Catalogué || !!work.NeedsPhotograph)
+  )
+}
+
 export function SessionNewClient() {
   const { t, lang } = useI18n()
   const sp = useSearchParams()
@@ -494,7 +503,18 @@ export function SessionNewClient() {
                   style={{ minHeight: 44 }}
                 />
               </label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div
+                data-testid="session-work-search-results"
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 6,
+                  maxHeight: narrow ? 'min(44dvh, 360px)' : 360,
+                  overflowY: 'auto',
+                  overscrollBehavior: 'contain',
+                  paddingRight: 2,
+                }}
+              >
                 {workResults.map((work) => (
                   <button
                     key={work.OeuvreID}
@@ -524,6 +544,7 @@ export function SessionNewClient() {
                       </span>
                       <span style={{ color: 'var(--tx3)', fontSize: 10 }}>
                         {work.Largeur || work.Hauteur ? `${work.Largeur ?? '?'} × ${work.Hauteur ?? '?'} cm` : work.Année?.slice(0, 4) ?? '—'}
+                        {workIsInProgress(work) ? ` · ${t('stage_wip')}` : ''}
                       </span>
                     </span>
                   </button>
@@ -579,29 +600,28 @@ export function SessionNewClient() {
               onBlur={(e) => void saveItem({ ...activeItem, notes: e.currentTarget.value })}
             />
           </label>
-          <div className="row gap-sm" style={{ flexWrap: 'wrap' }}>
-            <label className="t-mono-sm" style={{ flex: 1, minWidth: 120 }}>
-              {t('session_dims_label')}
+          <div className="t-mono-sm" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <span>{t('session_dims_label')}</span>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 10 }}>
               <input
                 className="input"
+                aria-label={`${t('session_dims_label')} W`}
                 value={activeItem.width_cm ?? ''}
                 onChange={(e) => updateLocalItem(activeItem.id, { width_cm: e.target.value })}
                 onBlur={(e) => void saveItem({ ...activeItem, width_cm: e.currentTarget.value })}
                 placeholder="W"
-                style={{ minHeight: 44, marginTop: 6 }}
+                style={{ height: 44, width: '100%', boxSizing: 'border-box' }}
               />
-            </label>
-            <label className="t-mono-sm" style={{ flex: 1, minWidth: 120 }}>
-              <span style={{ opacity: 0 }}>.</span>
               <input
                 className="input"
+                aria-label={`${t('session_dims_label')} H`}
                 value={activeItem.height_cm ?? ''}
                 onChange={(e) => updateLocalItem(activeItem.id, { height_cm: e.target.value })}
                 onBlur={(e) => void saveItem({ ...activeItem, height_cm: e.currentTarget.value })}
                 placeholder="H"
-                style={{ minHeight: 44, marginTop: 6 }}
+                style={{ height: 44, width: '100%', boxSizing: 'border-box' }}
               />
-            </label>
+            </div>
           </div>
         </section>
       ) : null}
