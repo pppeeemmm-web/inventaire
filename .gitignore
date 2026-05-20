@@ -24,6 +24,9 @@ test-results/
 supabase/.temp/
 .wrangler/
 
+# graphify — generated knowledge graph output
+graphify-out/
+
 .vercel
 .claude/
 components/public/WorksClient_clean.tsx
