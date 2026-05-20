@@ -10,7 +10,7 @@ import { routeMetadata } from '@/lib/i18n/route-metadata'
 export const metadata: Metadata = routeMetadata('card', 'en')
 
 const PUBLIC_WORKS_URL = 'https://pem-hub.vercel.app/works'  // update when deployed
-const EMAIL         = 'pppeeemmm@gmail.com'
+const EMAIL = process.env.PUBLIC_CONTACT_EMAIL?.trim() ?? ''
 const QR_URL        = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(PUBLIC_WORKS_URL)}&color=ece7da&bgcolor=0a0a0b&margin=8`
 
 export default function CardPage() {
@@ -171,10 +171,12 @@ export default function CardPage() {
               <div className="discipline">Peintre · Dessinateur · Sculpteur</div>
             </div>
             <div className="details">
-              <div className="detail-row">
-                <span className="detail-label">Email</span>
-                <span className="accent">{EMAIL}</span>
-              </div>
+              {EMAIL ? (
+                <div className="detail-row">
+                  <span className="detail-label">Email</span>
+                  <span className="accent">{EMAIL}</span>
+                </div>
+              ) : null}
               <div className="detail-row">
                 <span className="detail-label">Web</span>
                 <span>{PUBLIC_WORKS_URL.replace('https://', '')}</span>
@@ -207,7 +209,7 @@ export default function CardPage() {
         </div>
 
         <div className="print-note" style={{ marginTop: 8 }}>
-          Update PUBLIC_WORKS_URL in /app/card/page.tsx when deploying to production.
+          Set PUBLIC_CONTACT_EMAIL and update PUBLIC_WORKS_URL in /app/card/page.tsx for production.
         </div>
       </body>
     </html>
