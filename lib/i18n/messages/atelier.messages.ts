@@ -278,8 +278,8 @@ export const atelierMessages = defineMessages({
     en: 'Delete session',
   },
   journal_session_delete_confirm: {
-    fr: 'Supprimer cette session ? Les photos déjà appliquées aux œuvres sont conservées.',
-    en: 'Delete this session? Photos already applied to works are kept.',
+    fr: 'Supprimer toute la journée de capture ? Les photos déjà appliquées aux œuvres sont conservées.',
+    en: 'Delete the entire capture day? Photos already applied to works are kept.',
   },
   journal_select_all: {
     fr: 'Tout sélectionner',
@@ -294,8 +294,8 @@ export const atelierMessages = defineMessages({
     en: 'Delete selected ({n})',
   },
   journal_delete_selected_confirm: {
-    fr: 'Supprimer {n} session(s) ? Les photos déjà appliquées aux œuvres sont conservées.',
-    en: 'Delete {n} session(s)? Photos already applied to works are kept.',
+    fr: 'Supprimer {n} journée(s) de capture ? Les photos déjà appliquées aux œuvres sont conservées.',
+    en: 'Delete {n} capture day(s)? Photos already applied to works are kept.',
   },
   journal_bulk_deleted_toast: {
     fr: '{n} session(s) supprimée(s).',

@@ -1598,6 +1598,47 @@ async function purgeWorkSessionStagingShots(payload: WorkSessionPayload): Promis
   }
 }
 
+/** All work_session rows sharing a calendar day with any seed row (journal is one row per day). */
+async function workSessionIdsForJournalCalendarDays(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  seedSessionIds: string[],
+): Promise<{ ids: string[]; error?: string }> {
+  const uniqueSeeds = Array.from(new Set(seedSessionIds.filter(Boolean)))
+  if (uniqueSeeds.length === 0) return { ids: [], error: 'Aucune session sélectionnée' }
+
+  const { data: seedRows, error: seedErr } = await workSessionTable(supabase)
+    .select('id,payload,created_at')
+    .in('id', uniqueSeeds)
+  if (seedErr) return { ids: [], error: seedErr.message }
+  if (!seedRows?.length) return { ids: [], error: 'Session introuvable' }
+
+  const targetDays = new Set<string>()
+  for (const row of seedRows) {
+    const payload = parseWorkSessionPayload(row.payload)
+    const day = sessionDayForPayload(payload, row.created_at as string | null)
+    if (day) targetDays.add(day)
+  }
+  if (targetDays.size === 0) {
+    return { ids: seedRows.map((row) => row.id as string) }
+  }
+
+  const { data: allRows, error: listErr } = await workSessionTable(supabase)
+    .select('id,payload,created_at')
+    .order('updated_at', { ascending: false })
+    .limit(500)
+  if (listErr) return { ids: [], error: listErr.message }
+
+  const ids = (allRows ?? [])
+    .filter((row) => {
+      const payload = parseWorkSessionPayload(row.payload)
+      const day = sessionDayForPayload(payload, row.created_at as string | null)
+      return day != null && targetDays.has(day)
+    })
+    .map((row) => row.id as string)
+
+  return { ids: Array.from(new Set(ids)) }
+}
+
 async function deleteWorkSessionRows(
   supabase: Awaited<ReturnType<typeof createClient>>,
   sessionIds: string[],
@@ -1639,6 +1680,27 @@ export async function deleteWorkSessionsAdmin(sessionIds: string[]): Promise<Ses
   const supabase = await createClient()
   if (!(await rpcIsAdmin(supabase))) return { error: 'Action réservée à l’administrateur' }
   return deleteWorkSessionRows(supabase, sessionIds)
+}
+
+/** Journal delete: remove every work_session row for the seed row’s calendar day (hidden duplicates included). */
+export async function deleteWorkSessionJournalEntry(
+  sessionId: string,
+): Promise<SessionActionResult & { deletedCount?: number }> {
+  const supabase = await createClient()
+  if (!(await rpcIsAdmin(supabase))) return { error: 'Action réservée à l’administrateur' }
+  const collected = await workSessionIdsForJournalCalendarDays(supabase, [sessionId])
+  if (collected.error) return { error: collected.error }
+  return deleteWorkSessionRows(supabase, collected.ids)
+}
+
+export async function deleteWorkSessionJournalEntries(
+  sessionIds: string[],
+): Promise<SessionActionResult & { deletedCount?: number }> {
+  const supabase = await createClient()
+  if (!(await rpcIsAdmin(supabase))) return { error: 'Action réservée à l’administrateur' }
+  const collected = await workSessionIdsForJournalCalendarDays(supabase, sessionIds)
+  if (collected.error) return { error: collected.error }
+  return deleteWorkSessionRows(supabase, collected.ids)
 }
 
 export type WorkSessionQueueRow = WorkSessionRow & {

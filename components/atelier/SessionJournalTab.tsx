@@ -9,9 +9,9 @@ import { useMediaQuery } from '@/lib/useMediaQuery'
 import { imageUrl, thumbUrl } from '@/lib/data'
 import { toast } from '@/lib/ui/toast'
 import {
-  deleteWorkSessionAdmin,
   deleteWorkSessionItem,
-  deleteWorkSessionsAdmin,
+  deleteWorkSessionJournalEntries,
+  deleteWorkSessionJournalEntry,
   fetchSessionItemVersionCompare,
   getSessionNewPageContext,
   listWorkSessionJournal,
@@ -650,7 +650,7 @@ export function SessionJournalTab() {
     if (!selected || !isAdmin) return
     if (!window.confirm(t('journal_session_delete_confirm'))) return
     startSessionTransition(async () => {
-      const res = await deleteWorkSessionAdmin(selected.id)
+      const res = await deleteWorkSessionJournalEntry(selected.id)
       if ('error' in res) {
         toast.error(res.error)
         return
@@ -660,7 +660,8 @@ export function SessionJournalTab() {
         next.delete(selected.id)
         return next
       })
-      toast.success(t('session_toast_saved'))
+      const n = res.deletedCount ?? 1
+      toast.success(t('journal_bulk_deleted_toast').replace('{n}', String(n)))
       reload()
     })
   }
@@ -671,7 +672,7 @@ export function SessionJournalTab() {
     const confirmText = t('journal_delete_selected_confirm').replace('{n}', String(ids.length))
     if (!window.confirm(confirmText)) return
     startSessionTransition(async () => {
-      const res = await deleteWorkSessionsAdmin(ids)
+      const res = await deleteWorkSessionJournalEntries(ids)
       if ('error' in res) {
         toast.error(res.error)
         return
