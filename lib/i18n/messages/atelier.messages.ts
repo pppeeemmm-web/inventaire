@@ -134,16 +134,28 @@ export const atelierMessages = defineMessages({
     en: 'Session date',
   },
   session_date_hint: {
-    fr: 'Une session par date. Modifiez la date ou utilisez les raccourcis ci-dessous.',
-    en: 'One session per date. Change the date or use the shortcuts below.',
+    fr: 'Une session par date — changez la date pour une autre journée.',
+    en: 'One session per date — change the date to switch days.',
   },
-  session_open_today: {
-    fr: 'Aujourd’hui',
-    en: 'Today',
+  session_flow_steps: {
+    fr: 'Date → Œuvre → Photos → Appliquer sur la fiche',
+    en: 'Date → Work → Photos → Apply to catalogue',
   },
-  session_view_journal: {
-    fr: 'Voir le journal',
-    en: 'View journal',
+  session_back_journal: {
+    fr: '← Journal des dates',
+    en: '← Date journal',
+  },
+  session_photo_uploading: {
+    fr: 'Envoi des photos…',
+    en: 'Uploading photos…',
+  },
+  journal_capture_today: {
+    fr: 'Capturer aujourd’hui',
+    en: 'Capture today',
+  },
+  journal_open_day_capture: {
+    fr: 'Ouvre la capture pour cette date',
+    en: 'Opens capture for this date',
   },
   session_journal_items_heading: {
     fr: 'Peintures dans cette session',

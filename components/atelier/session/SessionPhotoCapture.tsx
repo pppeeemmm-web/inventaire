@@ -15,6 +15,8 @@ import type { WorkSessionShot } from '@/lib/work-session-payload'
 export type SessionPhotoCaptureProps = {
   disabled?: boolean
   busy?: boolean
+  /** When true, photos upload immediately after pick (no extra confirm step). */
+  instantUpload?: boolean
   stagedShots: WorkSessionShot[]
   onUpload: (files: File[]) => void | Promise<void>
   onRemoveStaged: (sha256: string) => void | Promise<void>
@@ -23,6 +25,7 @@ export type SessionPhotoCaptureProps = {
 export function SessionPhotoCapture({
   disabled = false,
   busy = false,
+  instantUpload = false,
   stagedShots,
   onUpload,
   onRemoveStaged,
@@ -51,13 +54,22 @@ export function SessionPhotoCapture({
     })
   }, [stagedShots.length])
 
+  const flushFiles = (files: FileList | null) => {
+    if (!files?.length) return
+    if (instantUpload) {
+      void onUpload(Array.from(files))
+      return
+    }
+    addFiles(files)
+  }
+
   const onCameraChange = (e: ChangeEvent<HTMLInputElement>) => {
-    addFiles(e.target.files)
+    flushFiles(e.target.files)
     e.target.value = ''
   }
 
   const onLibraryChange = (e: ChangeEvent<HTMLInputElement>) => {
-    addFiles(e.target.files)
+    flushFiles(e.target.files)
     e.target.value = ''
   }
 
@@ -129,7 +141,13 @@ export function SessionPhotoCapture({
         </button>
       </div>
 
-      {pending.length > 0 ? (
+      {busy && instantUpload ? (
+        <p className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx2)', margin: 0 }}>
+          {t('session_photo_uploading')}
+        </p>
+      ) : null}
+
+      {!instantUpload && pending.length > 0 ? (
         <div data-testid="session-photo-pending">
           <div className="t-eyebrow" style={{ marginBottom: 6, fontSize: 10 }}>
             {t('session_photo_pending_heading')}

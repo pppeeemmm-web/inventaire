@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import type { DictKey } from '@/lib/i18n/dictionary'
@@ -41,6 +42,14 @@ function formatDayShort(value: string, locale: string): string {
 
 function monthGroupLabel(value: string, locale: string): string {
   return new Date(value).toLocaleDateString(locale, { month: 'long', year: 'numeric' })
+}
+
+function localCalendarDay(): string {
+  const d = new Date()
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 function sessionDayParam(sessionAt: string): string {
@@ -535,13 +544,14 @@ function JournalDayPage({
 
 export function SessionJournalTab() {
   const { t, lang } = useI18n()
+  const router = useRouter()
   const narrow = useMediaQuery('(max-width: 767px)')
+  const todayDay = localCalendarDay()
   const [rows, setRows] = useState<WorkSessionJournalRow[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [checkedIds, setCheckedIds] = useState<Set<string>>(() => new Set())
   const [isAdmin, setIsAdmin] = useState(false)
   const [showManage, setShowManage] = useState(false)
-  const [mobileShowDay, setMobileShowDay] = useState(false)
   const [loading, setLoading] = useState(true)
   const [editingSession, setEditingSession] = useState(false)
   const [sessionDateInput, setSessionDateInput] = useState('')
@@ -597,9 +607,21 @@ export function SessionJournalTab() {
     setSessionNotesInput(selected.journal_notes ?? '')
   }, [selected])
 
-  const selectDay = (id: string) => {
-    setSelectedId(id)
-    if (narrow) setMobileShowDay(true)
+  const selectDay = (row: WorkSessionJournalRow) => {
+    if (narrow && showManage) {
+      setCheckedIds((prev) => {
+        const next = new Set(prev)
+        if (next.has(row.id)) next.delete(row.id)
+        else next.add(row.id)
+        return next
+      })
+      return
+    }
+    if (narrow) {
+      router.push(`/atelier/session/new?date=${sessionDayParam(row.session_at)}`)
+      return
+    }
+    setSelectedId(row.id)
   }
 
   const saveSessionEdit = () => {
@@ -639,7 +661,6 @@ export function SessionJournalTab() {
         return next
       })
       toast.success(t('session_toast_saved'))
-      if (narrow) setMobileShowDay(false)
       reload()
     })
   }
@@ -662,8 +683,7 @@ export function SessionJournalTab() {
     })
   }
 
-  const showIndex = !narrow || !mobileShowDay
-  const showPage = !narrow || mobileShowDay
+  const showPage = !narrow
 
   return (
     <div
@@ -677,8 +697,7 @@ export function SessionJournalTab() {
         background: 'var(--bg0)',
       }}
     >
-      {showIndex ? (
-        <aside
+      <aside
           data-testid="journal-index"
           style={{
             borderRight: narrow ? 'none' : '1px solid var(--bd)',
@@ -696,9 +715,19 @@ export function SessionJournalTab() {
             <p className="t-mono-sm" style={{ color: 'var(--tx2)', lineHeight: 1.5, fontSize: 11, margin: '8px 0 12px' }}>
               {t('journal_tab_intro')}
             </p>
-            <Link href="/atelier/session/new" className="btn primary sm" style={{ minHeight: 40, width: '100%' }}>
-              {t('journal_new_day')}
+            <Link
+              href={`/atelier/session/new?date=${todayDay}`}
+              className="btn primary sm"
+              data-testid="journal-capture-today"
+              style={{ minHeight: 44, width: '100%' }}
+            >
+              {t('journal_capture_today')}
             </Link>
+            {narrow ? (
+              <p className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 10, margin: '8px 0 0', lineHeight: 1.4 }}>
+                {t('journal_open_day_capture')}
+              </p>
+            ) : null}
           </div>
 
           {loading ? (
@@ -738,7 +767,8 @@ export function SessionJournalTab() {
                         key={row.id}
                         type="button"
                         data-testid={`journal-session-row-${row.id.slice(0, 8)}`}
-                        onClick={() => selectDay(row.id)}
+                        onClick={() => selectDay(row)}
+                        aria-label={`${formatDayShort(row.session_at, locale)} — ${t('journal_continue_capture')}`}
                         style={{
                           width: '100%',
                           textAlign: 'left',
@@ -834,18 +864,10 @@ export function SessionJournalTab() {
             </div>
           ) : null}
         </aside>
-      ) : null}
 
       {showPage ? (
         <main data-testid="journal-day-panel" style={{ overflow: 'auto', minWidth: 0, minHeight: 0 }}>
-          {narrow && mobileShowDay ? (
-            <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--bd)' }}>
-              <button type="button" className="btn ghost sm" onClick={() => setMobileShowDay(false)} style={{ minHeight: 40 }}>
-                ← {t('journal_back_to_days')}
-              </button>
-            </div>
-          ) : null}
-          <div style={{ padding: narrow ? '20px 16px 32px' : '32px 40px 48px' }}>
+          <div style={{ padding: '32px 40px 48px' }}>
             {selected ? (
               <JournalDayPage
                 row={selected}

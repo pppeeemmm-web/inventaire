@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { useCallback, useEffect, useState, useTransition } from 'react'
+import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import { useMediaQuery } from '@/lib/useMediaQuery'
@@ -85,6 +85,7 @@ export function SessionNewClient() {
   const [pending, setPending] = useState<WorkSessionQueueRow[]>([])
   const [hydrated, setHydrated] = useState(false)
   const [fieldContext, setFieldContext] = useState<WorkSessionFieldContext | null>(null)
+  const daySwitchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const workQ = sp.get('work')?.trim()
   const dateQ = sp.get('date')?.trim() ?? ''
@@ -443,23 +444,90 @@ export function SessionNewClient() {
 
   const locale = lang === 'fr' ? 'fr-FR' : 'en-GB'
   const actionableCount = items.filter((item) => item.shots.length > 0 && (item.oeuvre_id || (item.mode === 'new' && item.title_hint?.trim()))).length
-  const introKey = isAdmin ? 'session_new_intro_admin' : 'session_new_intro'
   const stagedHintKey = isAdmin ? 'session_photos_staged_hint_admin' : 'session_photos_staged_hint'
   const oeuvreLabelKey = isAdmin ? 'session_oeuvre_id_label_admin' : 'session_oeuvre_id_label'
-  const todayCalendarDay = localCalendarDay()
-  const isTodaySession = sessionDate === todayCalendarDay
 
-  const openToday = () => {
-    if (isTodaySession) return
-    startBusy(() => {
-      void (async () => {
-        const id = await openDaySession(todayCalendarDay)
-        if (!id) return
-        setSessionDate(todayCalendarDay)
-        await refreshDraft(id)
-      })()
-    })
+  const onSessionDateChange = (value: string) => {
+    setSessionDate(value)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return
+    if (daySwitchTimer.current) clearTimeout(daySwitchTimer.current)
+    daySwitchTimer.current = setTimeout(() => {
+      startBusy(() => {
+        void (async () => {
+          const id = await openDaySession(value, { quiet: true })
+          if (!id) return
+          if (id !== sessionId) {
+            await refreshDraft(id)
+            return
+          }
+          const sessionAt = dateInputToSessionIso(value)
+          if (!sessionAt || !sessionId) return
+          const r = await updateWorkSessionMetadata(sessionId, {
+            session_at: sessionAt,
+            notes,
+            ...(fieldContext != null ? { field_context: fieldContext } : {}),
+          })
+          if ('error' in r) toast.error(r.error)
+        })()
+      })
+    }, 350)
   }
+
+  const applyBar = (
+    <div
+      data-testid="session-apply-bar"
+      style={{
+        position: 'sticky',
+        bottom: 0,
+        marginTop: 8,
+        paddingTop: 12,
+        paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
+        background: 'linear-gradient(to top, var(--bg0) 72%, transparent)',
+        borderTop: stagedShotCount > 0 ? '1px solid var(--bd)' : 'none',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8,
+      }}
+    >
+      {stagedShotCount > 0 && actionableCount > 0 ? (
+        <p
+          data-testid="session-photos-staged-hint"
+          className="t-mono-sm"
+          style={{ fontSize: 11, color: 'var(--tx2)', lineHeight: 1.45, margin: 0 }}
+        >
+          {t(stagedHintKey)}
+        </p>
+      ) : null}
+      {!isAdmin ? (
+        <button
+          type="button"
+          className="btn primary"
+          disabled={busy || actionableCount === 0}
+          onClick={submitReview}
+          style={{ minHeight: 48 }}
+        >
+          {t('session_submit_review')}
+        </button>
+      ) : (
+        <>
+          <button
+            type="button"
+            className="btn primary"
+            data-testid="session-apply-now"
+            disabled={busy || actionableCount === 0}
+            onClick={applyNow}
+            style={{ minHeight: 48 }}
+            aria-busy={busy}
+          >
+            {busy ? t('session_apply_busy') : t('session_apply_now')}
+          </button>
+          <p className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx2)', lineHeight: 1.4, margin: 0 }}>
+            {t('session_apply_photos_hint')}
+          </p>
+        </>
+      )}
+    </div>
+  )
 
   return (
     <main
@@ -475,14 +543,24 @@ export function SessionNewClient() {
         gap: 14,
       }}
     >
-      <h1 className="serif" style={{ fontSize: 22, lineHeight: 1.2 }}>
-        {sessionDate && !Number.isNaN(Date.parse(`${sessionDate}T12:00:00`))
-          ? new Date(`${sessionDate}T12:00:00`).toLocaleDateString(locale, { dateStyle: 'full' })
-          : t('session_new_title')}
-      </h1>
-      <p className="t-mono-sm" style={{ color: 'var(--tx2)', fontSize: 12, lineHeight: 1.5 }}>
-        {t(introKey)}
-      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <Link
+          href="/atelier?tab=journal"
+          className="t-mono-sm"
+          data-testid="session-back-journal"
+          style={{ fontSize: 11, color: 'var(--ac)', textDecoration: 'none', minHeight: 32, display: 'inline-flex', alignItems: 'center' }}
+        >
+          {t('session_back_journal')}
+        </Link>
+        <h1 className="serif" style={{ fontSize: 22, lineHeight: 1.2, margin: 0 }}>
+          {sessionDate && !Number.isNaN(Date.parse(`${sessionDate}T12:00:00`))
+            ? new Date(`${sessionDate}T12:00:00`).toLocaleDateString(locale, { dateStyle: 'full' })
+            : t('session_new_title')}
+        </h1>
+        <p className="t-eyebrow" style={{ margin: 0, color: 'var(--tx3)' }}>
+          {t('session_flow_steps')}
+        </p>
+      </div>
 
       <label className="t-mono-sm" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         <span>{t('session_date_label')}</span>
@@ -491,35 +569,11 @@ export function SessionNewClient() {
           data-testid="session-date-input"
           type="date"
           value={sessionDate}
-          onChange={(e) => setSessionDate(e.target.value)}
-          onBlur={() => void pushMeta()}
+          onChange={(e) => onSessionDateChange(e.target.value)}
           style={{ minHeight: 44 }}
         />
         <span style={{ color: 'var(--tx3)', fontSize: 10, lineHeight: 1.4 }}>{t('session_date_hint')}</span>
       </label>
-
-      <div className="row gap-sm" style={{ flexWrap: 'wrap', marginTop: -4 }}>
-        <Link
-          href="/atelier?tab=journal"
-          className="btn ghost sm"
-          data-testid="session-view-journal"
-          style={{ minHeight: 44, flex: '1 1 140px' }}
-        >
-          {t('session_view_journal')}
-        </Link>
-        {!isTodaySession ? (
-          <button
-            type="button"
-            className="btn primary sm"
-            data-testid="session-open-today"
-            disabled={busy}
-            onClick={openToday}
-            style={{ minHeight: 44, flex: '1 1 140px' }}
-          >
-            {t('session_open_today')}
-          </button>
-        ) : null}
-      </div>
 
       <label className="t-mono-sm" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         <span>{t('session_notes_label')}</span>
@@ -772,6 +826,7 @@ export function SessionNewClient() {
         <SessionPhotoCapture
           disabled={activeItem.status === 'applied'}
           busy={busy}
+          instantUpload={narrow}
           stagedShots={activeItem.shots}
           onUpload={onUploadFiles}
           onRemoveStaged={onRemoveStagedShot}
@@ -781,46 +836,7 @@ export function SessionNewClient() {
         {t('session_shots_label')}: {shotCount}
       </div>
 
-      {stagedShotCount > 0 && actionableCount > 0 ? (
-        <p
-          data-testid="session-photos-staged-hint"
-          className="t-mono-sm"
-          style={{ fontSize: 11, color: 'var(--tx2)', lineHeight: 1.45, margin: 0 }}
-        >
-          {t(stagedHintKey)}
-        </p>
-      ) : null}
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {!isAdmin ? (
-          <button
-            type="button"
-            className="btn primary"
-            disabled={busy || actionableCount === 0}
-            onClick={submitReview}
-            style={{ minHeight: 44 }}
-          >
-            {t('session_submit_review')}
-          </button>
-        ) : (
-          <>
-            <button
-              type="button"
-              className="btn primary"
-              data-testid="session-apply-now"
-              disabled={busy || actionableCount === 0}
-              onClick={applyNow}
-              style={{ minHeight: 44 }}
-              aria-busy={busy}
-            >
-              {busy ? t('session_apply_busy') : t('session_apply_now')}
-            </button>
-            <p className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx2)', lineHeight: 1.4, margin: 0 }}>
-              {t('session_apply_photos_hint')}
-            </p>
-          </>
-        )}
-      </div>
+      {applyBar}
 
       {isAdmin && !narrow && pending.filter((row) => row.id !== sessionId).length > 0 ? (
         <section style={{ borderTop: '1px solid var(--bd)', paddingTop: 16 }}>
