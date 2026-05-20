@@ -46,6 +46,8 @@ export interface WorkSessionItem {
 }
 
 export interface WorkSessionPayload {
+  /** Civil day key (YYYY-MM-DD, Europe/Paris) — one capture session per day. */
+  session_day?: string
   session_at?: string
   notes?: string
   title_hint?: string

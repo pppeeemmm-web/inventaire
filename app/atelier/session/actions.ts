@@ -3,7 +3,7 @@
 import crypto from 'crypto'
 import sharp from 'sharp'
 import { revalidatePath } from 'next/cache'
-import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import { validateWorkImageBuffer } from '@/lib/image-upload'
 import { r2PutObject, r2DeleteObject, r2GetObjectBuffer } from '@/lib/r2-s3-object'
 import { addWorkImage } from '@/app/atelier/works/actions'
@@ -46,6 +46,51 @@ function normalizeSessionAt(value: string | null | undefined): string | null {
 
 function sessionAtForPayload(payload: WorkSessionPayload, rowCreatedAt?: string | null): string {
   return normalizeSessionAt(payload.session_at) ?? normalizeSessionAt(rowCreatedAt) ?? new Date().toISOString()
+}
+
+/** YYYY-MM-DD in Europe/Paris for one-session-per-day matching. */
+function sessionCalendarDayKey(iso: string | null | undefined): string | null {
+  const normalized = normalizeSessionAt(iso ?? '')
+  if (!normalized) return null
+  return new Intl.DateTimeFormat('fr-CA', {
+    timeZone: 'Europe/Paris',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date(normalized))
+}
+
+function sessionDayForPayload(payload: WorkSessionPayload, rowCreatedAt?: string | null): string | null {
+  if (payload.session_day && /^\d{4}-\d{2}-\d{2}$/.test(payload.session_day)) return payload.session_day
+  return sessionCalendarDayKey(sessionAtForPayload(payload, rowCreatedAt))
+}
+
+function sessionAtForCalendarDay(calendarDay: string): string {
+  const noon = Date.parse(`${calendarDay}T12:00:00`)
+  return Number.isNaN(noon) ? new Date().toISOString() : new Date(noon).toISOString()
+}
+
+function sessionStatusRank(status: string): number {
+  if (status === 'draft') return 4
+  if (status === 'applied') return 3
+  if (status === 'abandoned' || status === 'rejected') return 2
+  if (status === 'pending_review') return 1
+  return 0
+}
+
+function pickSessionForDay<T extends { id: string; status: string; updated_at?: string | null }>(
+  rows: T[],
+): T | null {
+  if (rows.length === 0) return null
+  return rows.reduce((best, row) => {
+    const bestRank = sessionStatusRank(best.status)
+    const rowRank = sessionStatusRank(row.status)
+    if (rowRank > bestRank) return row
+    if (rowRank < bestRank) return best
+    const bestTs = Date.parse(best.updated_at ?? '') || 0
+    const rowTs = Date.parse(row.updated_at ?? '') || 0
+    return rowTs > bestTs ? row : best
+  })
 }
 
 function formatSessionHistoryDate(value: string): string {
@@ -270,7 +315,7 @@ export type WorkSessionDraftFields = {
 }
 
 export async function getWorkSessionDraftFields(sessionId: string): Promise<
-  { ok: true; fields: WorkSessionDraftFields; oeuvre_id: number | null; items: WorkSessionItem[] } | { error: string }
+  { ok: true; status: string; fields: WorkSessionDraftFields; oeuvre_id: number | null; items: WorkSessionItem[] } | { error: string }
 > {
   const supabase = await createClient()
   const {
@@ -278,15 +323,17 @@ export async function getWorkSessionDraftFields(sessionId: string): Promise<
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Non authentifié' }
   const { data, error } = await workSessionTable(supabase)
-    .select('payload,oeuvre_id,created_at')
+    .select('payload,oeuvre_id,created_at,status')
     .eq('id', sessionId)
     .eq('user_id', user.id)
     .maybeSingle()
   if (error || !data) return { error: error?.message ?? 'Session introuvable' }
   const p = parseWorkSessionPayload(data.payload)
   const oeuvreId = data.oeuvre_id
+  const status = (data.status as string) ?? 'draft'
   return {
     ok: true,
+    status,
     oeuvre_id: typeof oeuvreId === 'number' && oeuvreId > 0 ? oeuvreId : null,
     items: p.items,
     fields: {
@@ -300,18 +347,90 @@ export async function getWorkSessionDraftFields(sessionId: string): Promise<
   }
 }
 
-export async function createWorkSessionDraft(oeuvreId: number | null): Promise<
-  { ok: true; id: string } | { error: string }
-> {
+async function ensureWorkSessionHasItem(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  sessionId: string,
+  oeuvreId: number | null,
+): Promise<SessionActionResult> {
+  const { data: row, error: selErr } = await workSessionTable(supabase)
+    .select('id,payload')
+    .eq('id', sessionId)
+    .maybeSingle()
+  if (selErr || !row) return { error: selErr?.message ?? 'Session introuvable' }
+  const payload = parseWorkSessionPayload(row.payload)
+  if (payload.items.length === 0) {
+    const firstItem = createWorkSessionItem('existing')
+    if (oeuvreId && oeuvreId > 0) firstItem.oeuvre_id = oeuvreId
+    payload.items = [firstItem]
+  } else if (oeuvreId && oeuvreId > 0 && !payload.items.some((item) => item.oeuvre_id === oeuvreId)) {
+    const first = payload.items[0]
+    if (!first.oeuvre_id) {
+      payload.items[0] = touchItem({ ...first, oeuvre_id: oeuvreId })
+    }
+  }
+  const topLevelOeuvreId = listWorkSessionLinkedOeuvreIds(payload)[0] ?? (oeuvreId && oeuvreId > 0 ? oeuvreId : null)
+  const { error: upErr } = await workSessionTable(supabase)
+    .update({ payload: asPayloadRecord(payload), oeuvre_id: topLevelOeuvreId })
+    .eq('id', sessionId)
+  if (upErr) return { error: upErr.message }
+  return { ok: true }
+}
+
+/** One field session per calendar day (YYYY-MM-DD); reopens the same row to add more works/photos. */
+export async function openWorkSessionForDay(
+  oeuvreId: number | null,
+  calendarDay: string,
+): Promise<{ ok: true; id: string; reopened: boolean } | { error: string }> {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(calendarDay)) return { error: 'Date de session invalide' }
+
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Non authentifié' }
 
+  const { data: rows, error: listErr } = await workSessionTable(supabase)
+    .select('id,status,payload,created_at,updated_at')
+    .eq('user_id', user.id)
+    .in('status', ['draft', 'applied', 'abandoned', 'rejected'])
+    .order('updated_at', { ascending: false })
+    .limit(120)
+  if (listErr) return { error: listErr.message }
+
+  const sameDay = (rows ?? []).filter((row) => {
+    const payload = parseWorkSessionPayload(row.payload)
+    return sessionDayForPayload(payload, row.created_at as string | null) === calendarDay
+  })
+  type DayRow = { id: string; status: string; payload: unknown; created_at: string | null; updated_at?: string | null }
+  const existing = pickSessionForDay(sameDay as DayRow[]) as DayRow | null
+
+  if (existing) {
+    let reopened = false
+    if (existing.status !== 'draft') {
+      const { error: reopenErr } = await workSessionTable(supabase)
+        .update({ status: 'draft', expires_at: expiresAtIso() })
+        .eq('id', existing.id)
+      if (reopenErr) return { error: reopenErr.message }
+      reopened = true
+    }
+    const payload = parseWorkSessionPayload(existing.payload)
+    if (!payload.session_day) {
+      payload.session_day = calendarDay
+      if (!payload.session_at) payload.session_at = sessionAtForCalendarDay(calendarDay)
+      await workSessionTable(supabase)
+        .update({ payload: asPayloadRecord(payload) })
+        .eq('id', existing.id)
+    }
+    const itemRes = await ensureWorkSessionHasItem(supabase, existing.id, oeuvreId)
+    if ('error' in itemRes) return itemRes
+    revalidatePath('/atelier/session/new')
+    return { ok: true, id: existing.id, reopened }
+  }
+
   const payload = emptyWorkSessionPayload()
-  payload.session_at = new Date().toISOString()
-  const firstItem = createWorkSessionItem(oeuvreId && oeuvreId > 0 ? 'existing' : 'existing')
+  payload.session_day = calendarDay
+  payload.session_at = sessionAtForCalendarDay(calendarDay)
+  const firstItem = createWorkSessionItem('existing')
   if (oeuvreId && oeuvreId > 0) firstItem.oeuvre_id = oeuvreId
   payload.items = [firstItem]
 
@@ -328,7 +447,19 @@ export async function createWorkSessionDraft(oeuvreId: number | null): Promise<
 
   if (error || !data) return { error: error?.message ?? 'work_session insert failed' }
   revalidatePath('/atelier/session/new')
-  return { ok: true, id: data.id as string }
+  return { ok: true, id: data.id as string, reopened: false }
+}
+
+/** @deprecated Prefer openWorkSessionForDay with an explicit YYYY-MM-DD calendar day. */
+export async function createWorkSessionDraft(oeuvreId: number | null): Promise<
+  { ok: true; id: string } | { error: string }
+> {
+  const day =
+    sessionCalendarDayKey(new Date().toISOString())
+    ?? new Date().toISOString().slice(0, 10)
+  const opened = await openWorkSessionForDay(oeuvreId, day)
+  if ('error' in opened) return opened
+  return { ok: true, id: opened.id }
 }
 
 export async function updateWorkSessionMetadata(
@@ -361,6 +492,8 @@ export async function updateWorkSessionMetadata(
     const sessionAt = normalizeSessionAt(patch.session_at)
     if (!sessionAt) return { error: 'Date de session invalide' }
     payload.session_at = sessionAt
+    const day = sessionCalendarDayKey(sessionAt)
+    if (day) payload.session_day = day
   }
   if (typeof patch.notes === 'string') payload.notes = patch.notes
   if (typeof patch.title_hint === 'string') payload.title_hint = patch.title_hint
@@ -411,6 +544,8 @@ export async function updateWorkSessionJournalMetadata(
     const sessionAt = normalizeSessionAt(patch.session_at)
     if (!sessionAt) return { error: 'Date de session invalide' }
     payload.session_at = sessionAt
+    const day = sessionCalendarDayKey(sessionAt)
+    if (day) payload.session_day = day
   }
   if (typeof patch.notes === 'string') payload.notes = patch.notes
 
@@ -685,7 +820,7 @@ export async function listWorkSessionJournal(limit = 100): Promise<WorkSessionJo
   })))
   const { titleMap, thumbMap } = await workMapsForIds(supabase, oeuvreIds)
 
-  return rows.map((row) => {
+  const mapped = rows.map((row) => {
     const payload = parsed.get(row.id) ?? emptyWorkSessionPayload()
     const items = payload.items.map((item): WorkSessionJournalItem => {
       const oid = item.oeuvre_id ?? null
@@ -717,7 +852,28 @@ export async function listWorkSessionJournal(limit = 100): Promise<WorkSessionJo
       applied_shot_count: payload.items.reduce((sum, item) => sum + (item.applied_shot_count ?? 0), 0),
       items,
     }
-  }).sort((a, b) => Date.parse(b.session_at) - Date.parse(a.session_at))
+  })
+  return dedupeJournalRowsByDay(
+    mapped.sort((a, b) => Date.parse(b.session_at) - Date.parse(a.session_at)),
+  )
+}
+
+function dedupeJournalRowsByDay(rows: WorkSessionJournalRow[]): WorkSessionJournalRow[] {
+  const byDay = new Map<string, WorkSessionJournalRow>()
+  for (const row of rows) {
+    const day = sessionCalendarDayKey(row.session_at) ?? row.id
+    const existing = byDay.get(day)
+    if (!existing || sessionStatusRank(row.status) > sessionStatusRank(existing.status)) {
+      byDay.set(day, row)
+      continue
+    }
+    if (sessionStatusRank(row.status) === sessionStatusRank(existing.status)) {
+      const existingTs = Date.parse(existing.updated_at ?? '') || 0
+      const rowTs = Date.parse(row.updated_at ?? '') || 0
+      if (rowTs > existingTs) byDay.set(day, row)
+    }
+  }
+  return Array.from(byDay.values()).sort((a, b) => Date.parse(b.session_at) - Date.parse(a.session_at))
 }
 
 function diffVersionSnapshots(
@@ -1322,8 +1478,8 @@ export async function applyWorkSessionToOeuvre(sessionId: string): Promise<Sessi
     if (appliedCount === 0) return { error: 'Aucune entrée complète à appliquer' }
     payload.applied_at = appliedAt
     payload.applied_by = user.id
-    const remainingShots = countWorkSessionShots(payload)
-    const nextStatus = remainingShots > 0 ? row.status : 'applied'
+    // Journal multi-peinture: garder le brouillon ouvert pour ajouter d'autres œuvres après application.
+    const nextStatus = 'draft'
     const topLevelOeuvreId = listWorkSessionLinkedOeuvreIds(payload)[0] ?? row.oeuvre_id ?? null
     const { error: finErr } = await workSessionTable(supabase)
       .update({
@@ -1427,17 +1583,7 @@ export async function rejectWorkSession(sessionId: string, reason: string): Prom
   return { ok: true }
 }
 
-export async function deleteWorkSessionAdmin(sessionId: string): Promise<SessionActionResult> {
-  const supabase = await createClient()
-  if (!(await rpcIsAdmin(supabase))) return { error: 'Action réservée à l’administrateur' }
-  const svc = createServiceClient()
-
-  const { data: row, error: selErr } = await workSessionTable(svc)
-    .select('id,payload')
-    .eq('id', sessionId)
-    .maybeSingle()
-  if (selErr || !row) return { error: selErr?.message ?? 'Session introuvable' }
-  const payload = parseWorkSessionPayload(row.payload)
+async function purgeWorkSessionStagingShots(payload: WorkSessionPayload): Promise<void> {
   const allShots = [
     ...payload.shots,
     ...payload.items.flatMap((item) => item.shots),
@@ -1447,20 +1593,52 @@ export async function deleteWorkSessionAdmin(sessionId: string): Promise<Session
       await r2DeleteObject(shot.r2_key)
       if (shot.thumb_r2_key) await r2DeleteObject(shot.thumb_r2_key)
     } catch {
-      /* ignore */
+      /* best-effort staged object cleanup */
     }
   }
-  const { data: deleted, error } = await workSessionTable(svc)
+}
+
+async function deleteWorkSessionRows(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  sessionIds: string[],
+): Promise<SessionActionResult & { deletedCount?: number }> {
+  const uniqueIds = Array.from(new Set(sessionIds.filter(Boolean)))
+  if (uniqueIds.length === 0) return { error: 'Aucune session sélectionnée' }
+
+  const { data: rows, error: selErr } = await workSessionTable(supabase)
+    .select('id,payload')
+    .in('id', uniqueIds)
+  if (selErr) return { error: selErr.message }
+  if (!rows?.length) return { error: 'Session introuvable' }
+
+  for (const row of rows) {
+    await purgeWorkSessionStagingShots(parseWorkSessionPayload(row.payload))
+  }
+
+  const { data: deleted, error } = await workSessionTable(supabase)
     .delete()
-    .eq('id', sessionId)
+    .in('id', rows.map((row) => row.id as string))
     .select('id')
-    .maybeSingle()
   if (error) return { error: error.message }
-  if (!deleted) return { error: 'Session non supprimée' }
+  const deletedCount = deleted?.length ?? 0
+  if (deletedCount === 0) return { error: 'Session non supprimée' }
+
   revalidatePath('/atelier')
   revalidatePath('/atelier/session/new')
   revalidatePath('/atelier/audit')
-  return { ok: true }
+  return { ok: true, deletedCount }
+}
+
+export async function deleteWorkSessionAdmin(sessionId: string): Promise<SessionActionResult> {
+  const supabase = await createClient()
+  if (!(await rpcIsAdmin(supabase))) return { error: 'Action réservée à l’administrateur' }
+  return deleteWorkSessionRows(supabase, [sessionId])
+}
+
+export async function deleteWorkSessionsAdmin(sessionIds: string[]): Promise<SessionActionResult & { deletedCount?: number }> {
+  const supabase = await createClient()
+  if (!(await rpcIsAdmin(supabase))) return { error: 'Action réservée à l’administrateur' }
+  return deleteWorkSessionRows(supabase, sessionIds)
 }
 
 export type WorkSessionQueueRow = WorkSessionRow & {

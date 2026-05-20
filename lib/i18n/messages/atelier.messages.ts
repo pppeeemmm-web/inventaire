@@ -126,16 +126,24 @@ export const atelierMessages = defineMessages({
     en: 'Remote search unavailable.',
   },
   session_new_intro: {
-    fr: 'Journal de session : ajoutez une entrée par peinture touchée, liez une œuvre existante ou notez une nouvelle œuvre, puis ajoutez les photos et les suivis.',
-    en: 'Session journal: add one entry for each painting touched, link an existing work or mark a new work, then add photos and follow-up notes.',
+    fr: 'Une session par jour (date ci-dessous). Ajoutez une peinture par œuvre touchée, puis les photos.',
+    en: 'One session per day (date below). Add a painting entry per work, then photos.',
   },
   session_date_label: {
     fr: 'Date de la session',
     en: 'Session date',
   },
   session_date_hint: {
-    fr: 'Changez cette date pour rattraper une session faite hier ou un autre jour.',
-    en: 'Change this date when catching up a session from yesterday or another day.',
+    fr: 'Une session par date. Modifiez la date ou utilisez les raccourcis ci-dessous.',
+    en: 'One session per date. Change the date or use the shortcuts below.',
+  },
+  session_open_today: {
+    fr: 'Aujourd’hui',
+    en: 'Today',
+  },
+  session_view_journal: {
+    fr: 'Voir le journal',
+    en: 'View journal',
   },
   session_journal_items_heading: {
     fr: 'Peintures dans cette session',
@@ -170,16 +178,80 @@ export const atelierMessages = defineMessages({
     en: 'Journal',
   },
   journal_tab_title: {
-    fr: 'Journal de session',
-    en: 'Session journal',
+    fr: 'Journal de terrain',
+    en: 'Field journal',
   },
   journal_tab_intro: {
-    fr: 'Sessions datées, peintures touchées, photos et comparaison avant / après.',
-    en: 'Dated sessions, paintings touched, photos, and before / after comparison.',
+    fr: 'Chronique de vos journées sur le terrain — une entrée par date.',
+    en: 'A chronicle of your field days — one entry per date.',
+  },
+  journal_new_day: {
+    fr: 'Ouvrir la journée',
+    en: 'Open today',
+  },
+  journal_continue_capture: {
+    fr: 'Compléter cette journée',
+    en: 'Continue this day',
   },
   journal_empty: {
-    fr: 'Aucune session enregistrée.',
-    en: 'No sessions recorded.',
+    fr: 'Aucune journée enregistrée pour l’instant.',
+    en: 'No field days recorded yet.',
+  },
+  journal_empty_cta: {
+    fr: 'Commencer une journée',
+    en: 'Start a field day',
+  },
+  journal_pick_day: {
+    fr: 'Choisissez une date dans la liste.',
+    en: 'Choose a date from the list.',
+  },
+  journal_back_to_days: {
+    fr: 'Toutes les dates',
+    en: 'All dates',
+  },
+  journal_paintings_heading: {
+    fr: 'Peintures touchées',
+    en: 'Paintings touched',
+  },
+  journal_field_context_lede: {
+    fr: 'Conditions du terrain',
+    en: 'Field conditions',
+  },
+  journal_day_one_work: {
+    fr: '1 peinture',
+    en: '1 painting',
+  },
+  journal_day_works: {
+    fr: '{n} peintures',
+    en: '{n} paintings',
+  },
+  journal_day_one_photo: {
+    fr: '1 photo',
+    en: '1 photo',
+  },
+  journal_day_photos: {
+    fr: '{n} photos',
+    en: '{n} photos',
+  },
+  journal_day_empty_summary: {
+    fr: 'Journée ouverte',
+    en: 'Day opened',
+  },
+  journal_show_details: {
+    fr: 'Détails',
+    en: 'Details',
+  },
+  journal_hide_details: {
+    fr: 'Masquer les détails',
+    en: 'Hide details',
+  },
+  journal_manage: {
+    fr: 'Gestion',
+    en: 'Manage',
+  },
+  journal_hide_manage: {
+    fr: 'Masquer la gestion',
+    en: 'Hide manage',
   },
   journal_session_date: {
     fr: 'Date de session',
@@ -196,6 +268,26 @@ export const atelierMessages = defineMessages({
   journal_session_delete_confirm: {
     fr: 'Supprimer cette session ? Les photos déjà appliquées aux œuvres sont conservées.',
     en: 'Delete this session? Photos already applied to works are kept.',
+  },
+  journal_select_all: {
+    fr: 'Tout sélectionner',
+    en: 'Select all',
+  },
+  journal_clear_selection: {
+    fr: 'Effacer la sélection',
+    en: 'Clear selection',
+  },
+  journal_delete_selected: {
+    fr: 'Supprimer la sélection ({n})',
+    en: 'Delete selected ({n})',
+  },
+  journal_delete_selected_confirm: {
+    fr: 'Supprimer {n} session(s) ? Les photos déjà appliquées aux œuvres sont conservées.',
+    en: 'Delete {n} session(s)? Photos already applied to works are kept.',
+  },
+  journal_bulk_deleted_toast: {
+    fr: '{n} session(s) supprimée(s).',
+    en: '{n} session(s) deleted.',
   },
   journal_no_items: {
     fr: 'Aucune peinture détaillée dans cette session.',

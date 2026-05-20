@@ -8,6 +8,7 @@ import { useMediaQuery } from '@/lib/useMediaQuery'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import { VoiceNoteSheet } from '@/components/shared/VoiceNoteSheet'
 import type { FieldPulseCard, FieldPulseData, FieldPulseMetricKey } from '@/app/atelier/field-inbox/data'
+import { getSessionNewPageContext } from '@/app/atelier/session/actions'
 
 const LEGACY_TILES = [
   { key: 'hub_launcher_field' as const, subKey: 'hub_launcher_field_sub' as const, tab: 'inventory' },
@@ -38,6 +39,11 @@ const METRIC_LABELS: Record<FieldPulseMetricKey, DictKey> = {
   today: 'field_pulse_metric_today',
   pending_review: 'field_pulse_metric_pending_review',
   inbox: 'field_pulse_metric_inbox',
+}
+
+function fieldRowSubKey(row: FieldRow, isAdmin: boolean): DictKey {
+  if (isAdmin && row.testId === 'hub-field-verb-session') return 'hub_field_session_sub_admin'
+  return row.subKey
 }
 
 function renderCardText(card: FieldPulseCard, field: 'title' | 'detail', t: (key: DictKey) => string): string {
@@ -147,9 +153,14 @@ export function HubLauncherClient({ fieldPulse }: { fieldPulse: FieldPulseData }
   const [viewportReady, setViewportReady] = useState(false)
   const [legacyOpen, setLegacyOpen] = useState(false)
   const [voiceOpen, setVoiceOpen] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
     setViewportReady(true)
+  }, [])
+
+  useEffect(() => {
+    void getSessionNewPageContext().then((ctx) => setIsAdmin(ctx.isAdmin))
   }, [])
 
   useEffect(() => {
@@ -221,13 +232,14 @@ export function HubLauncherClient({ fieldPulse }: { fieldPulse: FieldPulseData }
           <FieldPulsePanel fieldPulse={fieldPulse} />
 
           {FIELD_ROWS.map((row) => {
+            const subKey = fieldRowSubKey(row, isAdmin)
             const content = (
               <>
                 <span style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 12, minWidth: 0, flex: 1 }}>
                   <span style={{ fontSize: 20, flexShrink: 0, lineHeight: 1 }} aria-hidden>{row.emoji}</span>
                   <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4, minWidth: 0 }}>
                     <span style={{ fontSize: 14, fontWeight: 600 }}>{t(row.labelKey)}</span>
-                    <span style={{ fontSize: 10, opacity: 0.55, letterSpacing: 0.4 }}>{t(row.subKey)}</span>
+                    <span style={{ fontSize: 10, opacity: 0.55, letterSpacing: 0.4 }}>{t(subKey)}</span>
                   </span>
                 </span>
                 <span style={{ fontSize: 14, opacity: 0.35, flexShrink: 0 }} aria-hidden>›</span>
@@ -255,7 +267,7 @@ export function HubLauncherClient({ fieldPulse }: { fieldPulse: FieldPulseData }
                   href={row.href}
                   className="btn ghost"
                   data-testid={row.testId}
-                  aria-label={`${t(row.labelKey)}. ${t(row.subKey)}`}
+                  aria-label={`${t(row.labelKey)}. ${t(subKey)}`}
                   style={rowStyle}
                 >
                   {content}
@@ -269,7 +281,7 @@ export function HubLauncherClient({ fieldPulse }: { fieldPulse: FieldPulseData }
                 type="button"
                 className="btn ghost"
                 data-testid={row.testId}
-                aria-label={`${t(row.labelKey)}. ${t(row.subKey)}`}
+                aria-label={`${t(row.labelKey)}. ${t(subKey)}`}
                 onClick={() => setVoiceOpen(true)}
                 style={rowStyle}
               >

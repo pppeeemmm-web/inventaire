@@ -10,7 +10,7 @@ import { toast } from '@/lib/ui/toast'
 import {
   applyWorkSessionToOeuvre,
   createAndLinkWorkFromSessionItem,
-  createWorkSessionDraft,
+  openWorkSessionForDay,
   createWorkSessionItemAction,
   getSessionNewPageContext,
   getWorkSessionDraftFields,
@@ -49,6 +49,14 @@ function dateInputToSessionIso(value: string): string | null {
   return Number.isNaN(date.getTime()) ? null : date.toISOString()
 }
 
+function localCalendarDay(): string {
+  const d = new Date()
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 const SESSION_WORK_EXCLUDED_STATUS_IDS = new Set([3, 5, 6, 11])
 
 function workIsInProgress(work: WorkSessionWorkOption): boolean {
@@ -79,16 +87,32 @@ export function SessionNewClient() {
   const [fieldContext, setFieldContext] = useState<WorkSessionFieldContext | null>(null)
 
   const workQ = sp.get('work')?.trim()
+  const dateQ = sp.get('date')?.trim() ?? ''
   const initialOeuvre = workQ ? Number.parseInt(workQ, 10) : NaN
   const initialOk = Number.isFinite(initialOeuvre) && initialOeuvre > 0
+  const initialCalendarDay = /^\d{4}-\d{2}-\d{2}$/.test(dateQ) ? dateQ : localCalendarDay()
   const activeItem = items.find((item) => item.id === activeItemId) ?? items[0] ?? null
   const shotCount = items.reduce((sum, item) => sum + item.shots.length + (item.applied_shot_count ?? 0), 0)
   const stagedShotCount = items.reduce((sum, item) => sum + item.shots.length, 0)
 
   const refreshPending = useCallback(() => {
-    if (!isAdmin) return
+    if (!isAdmin || narrow) return
     void listWorkSessionsForAdminReview().then(setPending)
-  }, [isAdmin])
+  }, [isAdmin, narrow])
+
+  const openDaySession = useCallback(
+    async (calendarDay: string, opts?: { quiet?: boolean }) => {
+      const r = await openWorkSessionForDay(initialOk ? initialOeuvre : null, calendarDay)
+      if ('error' in r) {
+        toast.error(r.error)
+        return null
+      }
+      setSessionId(r.id)
+      if (!opts?.quiet && r.reopened) toast.info(t('session_toast_reopened_same_day'))
+      return r.id
+    },
+    [initialOk, initialOeuvre, t],
+  )
 
   const refreshDraft = useCallback(async (id: string) => {
     const df = await getWorkSessionDraftFields(id)
@@ -123,20 +147,16 @@ export function SessionNewClient() {
           setSessionId(null)
           return
         }
-        const r = await createWorkSessionDraft(initialOk ? initialOeuvre : null)
-        if ('error' in r) {
-          toast.error(r.error)
-          return
-        }
-        setSessionId(r.id)
-        await refreshDraft(r.id)
-        if (ctx.isAdmin) {
+        const openedId = await openDaySession(initialCalendarDay, { quiet: true })
+        if (!openedId) return
+        await refreshDraft(openedId)
+        if (ctx.isAdmin && !narrow) {
           const rows = await listWorkSessionsForAdminReview()
           setPending(rows)
         }
       })().finally(() => setHydrated(true))
     })
-  }, [initialOk, initialOeuvre, refreshDraft])
+  }, [initialCalendarDay, initialOk, narrow, openDaySession, refreshDraft])
 
   useEffect(() => {
     refreshPending()
@@ -172,7 +192,13 @@ export function SessionNewClient() {
   )
 
   const pushMeta = useCallback(async () => {
-    if (!sessionId) return
+    if (!sessionId || !/^\d{4}-\d{2}-\d{2}$/.test(sessionDate)) return
+    const dayId = await openDaySession(sessionDate, { quiet: true })
+    if (!dayId) return
+    if (dayId !== sessionId) {
+      await refreshDraft(dayId)
+      return
+    }
     const sessionAt = dateInputToSessionIso(sessionDate)
     const r = await updateWorkSessionMetadata(sessionId, {
       ...(sessionAt ? { session_at: sessionAt } : {}),
@@ -181,7 +207,7 @@ export function SessionNewClient() {
     })
     if ('error' in r) toast.error(r.error)
     else toast.success(t('session_toast_saved'))
-  }, [sessionId, sessionDate, notes, fieldContext, t])
+  }, [openDaySession, refreshDraft, sessionId, sessionDate, notes, fieldContext, t])
 
   const updateLocalItem = (itemId: string, patch: Partial<WorkSessionItem>) => {
     setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, ...patch } : item)))
@@ -311,13 +337,22 @@ export function SessionNewClient() {
   const addItem = (mode: WorkSessionItemMode = 'existing') => {
     if (!sessionId) return
     startBusy(() => {
-      void createWorkSessionItemAction(sessionId, mode).then((r) => {
+      void (async () => {
+        let targetId = sessionId
+        let r = await createWorkSessionItemAction(targetId, mode)
+        if ('error' in r && r.error === 'Session non modifiable') {
+          const day = /^\d{4}-\d{2}-\d{2}$/.test(sessionDate) ? sessionDate : localCalendarDay()
+          const nextId = await openDaySession(day)
+          if (!nextId) return
+          targetId = nextId
+          r = await createWorkSessionItemAction(targetId, mode)
+        }
         if ('error' in r) toast.error(r.error)
         else {
           setItems((prev) => [...prev, r.item])
           setActiveItemId(r.item.id)
         }
-      })
+      })()
     })
   }
 
@@ -337,11 +372,11 @@ export function SessionNewClient() {
   const applyNow = () => {
     if (!sessionId) return
     startBusy(() => {
-      void applyWorkSessionToOeuvre(sessionId).then((r) => {
+      void applyWorkSessionToOeuvre(sessionId).then(async (r) => {
         if ('error' in r) toast.error(r.error)
         else {
-          toast.success(t('session_toast_saved'))
-          void refreshDraft(sessionId)
+          toast.success(t('session_toast_photos_applied'))
+          await refreshDraft(sessionId)
           refreshPending()
         }
       })
@@ -408,6 +443,23 @@ export function SessionNewClient() {
 
   const locale = lang === 'fr' ? 'fr-FR' : 'en-GB'
   const actionableCount = items.filter((item) => item.shots.length > 0 && (item.oeuvre_id || (item.mode === 'new' && item.title_hint?.trim()))).length
+  const introKey = isAdmin ? 'session_new_intro_admin' : 'session_new_intro'
+  const stagedHintKey = isAdmin ? 'session_photos_staged_hint_admin' : 'session_photos_staged_hint'
+  const oeuvreLabelKey = isAdmin ? 'session_oeuvre_id_label_admin' : 'session_oeuvre_id_label'
+  const todayCalendarDay = localCalendarDay()
+  const isTodaySession = sessionDate === todayCalendarDay
+
+  const openToday = () => {
+    if (isTodaySession) return
+    startBusy(() => {
+      void (async () => {
+        const id = await openDaySession(todayCalendarDay)
+        if (!id) return
+        setSessionDate(todayCalendarDay)
+        await refreshDraft(id)
+      })()
+    })
+  }
 
   return (
     <main
@@ -424,10 +476,12 @@ export function SessionNewClient() {
       }}
     >
       <h1 className="serif" style={{ fontSize: 22, lineHeight: 1.2 }}>
-        {t('session_new_title')}
+        {sessionDate && !Number.isNaN(Date.parse(`${sessionDate}T12:00:00`))
+          ? new Date(`${sessionDate}T12:00:00`).toLocaleDateString(locale, { dateStyle: 'full' })
+          : t('session_new_title')}
       </h1>
       <p className="t-mono-sm" style={{ color: 'var(--tx2)', fontSize: 12, lineHeight: 1.5 }}>
-        {t('session_new_intro')}
+        {t(introKey)}
       </p>
 
       <label className="t-mono-sm" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -443,6 +497,29 @@ export function SessionNewClient() {
         />
         <span style={{ color: 'var(--tx3)', fontSize: 10, lineHeight: 1.4 }}>{t('session_date_hint')}</span>
       </label>
+
+      <div className="row gap-sm" style={{ flexWrap: 'wrap', marginTop: -4 }}>
+        <Link
+          href="/atelier?tab=journal"
+          className="btn ghost sm"
+          data-testid="session-view-journal"
+          style={{ minHeight: 44, flex: '1 1 140px' }}
+        >
+          {t('session_view_journal')}
+        </Link>
+        {!isTodaySession ? (
+          <button
+            type="button"
+            className="btn primary sm"
+            data-testid="session-open-today"
+            disabled={busy}
+            onClick={openToday}
+            style={{ minHeight: 44, flex: '1 1 140px' }}
+          >
+            {t('session_open_today')}
+          </button>
+        ) : null}
+      </div>
 
       <label className="t-mono-sm" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         <span>{t('session_notes_label')}</span>
@@ -471,7 +548,8 @@ export function SessionNewClient() {
               onClick={() => setActiveItemId(item.id)}
               style={{ minHeight: 44, flex: '0 0 auto' }}
             >
-              {t('session_painting_label')} {idx + 1} · {item.shots.length + (item.applied_shot_count ?? 0)}
+              {t('session_painting_label')} {idx + 1}
+              {item.status === 'applied' ? ` · ${t('session_status_applied')}` : ''} · {item.shots.length + (item.applied_shot_count ?? 0)}
             </button>
           ))}
         </div>
@@ -480,7 +558,7 @@ export function SessionNewClient() {
       {activeItem ? (
         <section data-testid="session-active-item" style={{ border: '1px solid var(--bd)', borderRadius: 10, padding: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div className="t-eyebrow">{t('session_painting_label')} {items.findIndex((item) => item.id === activeItem.id) + 1}</div>
-          <div role="group" aria-label={t('session_oeuvre_id_label')} className="row gap-sm" style={{ flexWrap: 'wrap' }}>
+          <div role="group" aria-label={t(oeuvreLabelKey)} className="row gap-sm" style={{ flexWrap: 'wrap' }}>
             <button
               type="button"
               className={activeItem.mode === 'existing' ? 'btn primary' : 'btn ghost'}
@@ -568,7 +646,7 @@ export function SessionNewClient() {
                 ))}
               </div>
               <label className="t-mono-sm" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <span>{t('session_oeuvre_id_label')}</span>
+                <span>{t(oeuvreLabelKey)}</span>
                 <input
                   className="input"
                   inputMode="numeric"
@@ -709,7 +787,7 @@ export function SessionNewClient() {
           className="t-mono-sm"
           style={{ fontSize: 11, color: 'var(--tx2)', lineHeight: 1.45, margin: 0 }}
         >
-          {t('session_photos_staged_hint')}
+          {t(stagedHintKey)}
         </p>
       ) : null}
 
@@ -733,8 +811,9 @@ export function SessionNewClient() {
               disabled={busy || actionableCount === 0}
               onClick={applyNow}
               style={{ minHeight: 44 }}
+              aria-busy={busy}
             >
-              {t('session_apply_now')}
+              {busy ? t('session_apply_busy') : t('session_apply_now')}
             </button>
             <p className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx2)', lineHeight: 1.4, margin: 0 }}>
               {t('session_apply_photos_hint')}
@@ -743,7 +822,7 @@ export function SessionNewClient() {
         )}
       </div>
 
-      {isAdmin && pending.filter((row) => row.id !== sessionId).length > 0 ? (
+      {isAdmin && !narrow && pending.filter((row) => row.id !== sessionId).length > 0 ? (
         <section style={{ borderTop: '1px solid var(--bd)', paddingTop: 16 }}>
           <h2 className="serif" style={{ fontSize: 16 }}>
             {t('session_admin_pending_heading')}
