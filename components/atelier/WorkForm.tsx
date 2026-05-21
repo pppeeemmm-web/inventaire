@@ -445,13 +445,6 @@ export function WorkForm({
     fd.set('broadcast_ready', broadcastReady ? '1' : '0')
     fd.set('broadcast_caption_seed', broadcastCaptionSeed ?? '')
 
-    // Ownership change history
-    if (oeuvre?.LocalisationID !== parseInt(contactId)) {
-      const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '/')
-      const locStr = `${dateStr} - ${currentOwner?.NomInstitution ?? currentOwner?.Nom ?? 'Inconnu'} - ${currentOwner?.Ville ?? '?'}/${currentOwner?.Pays ?? '?'}`
-      fd.set('historique_append', locStr)
-    }
-
     fd.delete('themes')
     selThemes.forEach(id => fd.append('themes', String(id)))
     fd.delete('groups')

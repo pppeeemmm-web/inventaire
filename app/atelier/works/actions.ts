@@ -14,6 +14,10 @@ import type { WorkImage, Oeuvre } from '@/lib/types/database'
 import crypto from 'crypto'
 import sharp from 'sharp'
 import { logSystemEvent } from '@/lib/utils/logging'
+import {
+  historiqueLinesForOeuvreUpdate,
+  mergeHistoriqueLines,
+} from '@/lib/oeuvre-historique'
 import { r2S3Hostname } from '@/lib/r2-s3-host'
 import { markStorageObject, recordStorageObject } from '@/lib/storage-object-ledger'
 
@@ -425,12 +429,23 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       .eq('OeuvreID', oid)
       .single<CurrentOeuvre>()
 
-    // Use the user's edited text as the base (form field wins over DB).
-    // Append the auto-generated location-change entry on top if contact changed.
-    const historiqueAppend = formData.get('historique_append') as string | null
+    // User-edited base; server appends ownership / location lines when those fields change.
     let finalHistorique = historique ?? current?.Historique ?? ''
-    if (historiqueAppend) {
-      finalHistorique = finalHistorique ? `${finalHistorique}\n${historiqueAppend}` : historiqueAppend
+    if (current) {
+      const autoLines = await historiqueLinesForOeuvreUpdate(
+        supabase,
+        {
+          statusId: current.statusId,
+          ContactID: current.ContactID,
+          LocalisationID: current.LocalisationID,
+        },
+        {
+          statusId: statusId ?? null,
+          contactId: contactId ?? null,
+          localisationId: localisationId ?? null,
+        },
+      )
+      finalHistorique = mergeHistoriqueLines(finalHistorique, autoLines)
     }
 
     // Upload new image if provided via form (separate from ImageManager flow)

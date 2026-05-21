@@ -4,6 +4,10 @@
 import { createClient }  from '@/lib/supabase/server'
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 import { logSystemEvent } from '@/lib/utils/logging'
+import {
+  appendHistoriqueForOeuvres,
+  historiqueLinesForOeuvreUpdate,
+} from '@/lib/oeuvre-historique'
 import { recordStorageObject } from '@/lib/storage-object-ledger'
 
 export interface ConsignmentOrderRow {
@@ -113,6 +117,11 @@ export async function createConsignmentOrder(formData: FormData): Promise<Consig
   if (dbErr || !order) return { error: 'Database error: ' + dbErr?.message }
 
   // 2. LOGISTICS AUTOMATION: update work status + location
+  const { data: worksBefore } = await supabase
+    .from('Oeuvres')
+    .select('OeuvreID, statusId, ContactID, LocalisationID')
+    .in('OeuvreID', oeuvre_ids)
+
   await supabase
     .from('Oeuvres')
     .update({
@@ -122,6 +131,27 @@ export async function createConsignmentOrder(formData: FormData): Promise<Consig
       ReturnDate:     end_date,
     })
     .in('OeuvreID', oeuvre_ids)
+
+  if (partner_id && (worksBefore ?? []).length > 0) {
+    const histItems: { oeuvreId: number; lines: string[] }[] = []
+    for (const w of worksBefore ?? []) {
+      const lines = await historiqueLinesForOeuvreUpdate(
+        supabase,
+        {
+          statusId: w.statusId,
+          ContactID: w.ContactID,
+          LocalisationID: w.LocalisationID,
+        },
+        {
+          statusId,
+          contactId: partner_id,
+          localisationId: partner_id,
+        },
+      )
+      if (lines.length) histItems.push({ oeuvreId: w.OeuvreID, lines })
+    }
+    await appendHistoriqueForOeuvres(supabase, histItems)
+  }
 
   // 3. Generate PDF (Bordereau de Dépôt or Bordereau de Prêt)
   try {
@@ -213,10 +243,11 @@ export async function closeConsignmentOrder(id: string): Promise<CloseResult> {
   if (oeuvre_ids.length > 0) {
     const { data: works } = await supabase
       .from('Oeuvres')
-      .select('OeuvreID, statusId')
+      .select('OeuvreID, statusId, ContactID, LocalisationID')
       .in('OeuvreID', oeuvre_ids)
 
-    reverted = (works ?? []).filter(w => w.statusId === 7 || w.statusId === 8).map(w => w.OeuvreID)
+    const revertRows = (works ?? []).filter(w => w.statusId === 7 || w.statusId === 8)
+    reverted = revertRows.map(w => w.OeuvreID)
     skipped  = (works ?? []).filter(w => w.statusId !== 7 && w.statusId !== 8).map(w => w.OeuvreID)
 
     if (reverted.length > 0) {
@@ -229,6 +260,25 @@ export async function closeConsignmentOrder(id: string): Promise<CloseResult> {
           ReturnDate:     null,
         })
         .in('OeuvreID', reverted)
+
+      const histItems: { oeuvreId: number; lines: string[] }[] = []
+      for (const w of revertRows) {
+        const lines = await historiqueLinesForOeuvreUpdate(
+          supabase,
+          {
+            statusId: w.statusId,
+            ContactID: w.ContactID,
+            LocalisationID: w.LocalisationID,
+          },
+          {
+            statusId: 2,
+            contactId: PEM_CONTACT_ID,
+            localisationId: PEM_CONTACT_ID,
+          },
+        )
+        if (lines.length) histItems.push({ oeuvreId: w.OeuvreID, lines })
+      }
+      await appendHistoriqueForOeuvres(supabase, histItems)
     }
   }
 

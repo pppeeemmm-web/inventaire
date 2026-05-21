@@ -5,6 +5,10 @@
 
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { STATUS_ID_ARCHIVE_ARTISTE } from '@/lib/data'
+import {
+  appendHistoriqueForOeuvres,
+  historiqueLinesForOeuvreUpdate,
+} from '@/lib/oeuvre-historique'
 import { createHash }   from 'crypto'
 import { revalidatePath } from 'next/cache'
 import sharp from 'sharp'
@@ -126,6 +130,7 @@ export async function batchEdit(ids: number[], changes: BatchChanges): Promise<B
     update['Année'] = a
   }
   if (changes.LocalisationDetail !== undefined) update.LocalisationDetail = changes.LocalisationDetail
+  if (changes.LocalisationID     !== undefined) update.LocalisationID     = changes.LocalisationID
   if (changes.Commentaires      !== undefined) update.Commentaires      = changes.Commentaires
   if (changes.is_gift           !== undefined) update.is_gift           = changes.is_gift
   if (changes.is_paid           !== undefined) update.is_paid           = changes.is_paid
@@ -141,6 +146,27 @@ export async function batchEdit(ids: number[], changes: BatchChanges): Promise<B
 
   let count = ids.length
 
+  const historiqueRelevant =
+    changes.statusId !== undefined ||
+    changes.ContactID !== undefined ||
+    changes.LocalisationID !== undefined
+
+  let worksBefore: Array<{
+    OeuvreID: number
+    statusId: number | null
+    ContactID: number | null
+    LocalisationID: number | null
+  }> = []
+
+  if (hasScalarChanges && historiqueRelevant) {
+    const { data } = await supabase
+      .from('Oeuvres')
+      .select('OeuvreID, statusId, ContactID, LocalisationID')
+      .in('OeuvreID', ids)
+      .is('deleted_at', null)
+    worksBefore = (data ?? []) as typeof worksBefore
+  }
+
   if (hasScalarChanges) {
     const { error, data: updatedIds } = await supabase
       .from('Oeuvres')
@@ -150,6 +176,32 @@ export async function batchEdit(ids: number[], changes: BatchChanges): Promise<B
       .select('OeuvreID')
     if (error) return { error: error.message }
     count = updatedIds?.length ?? ids.length
+
+    if (historiqueRelevant && worksBefore.length > 0) {
+      const histItems: { oeuvreId: number; lines: string[] }[] = []
+      for (const w of worksBefore) {
+        const lines = await historiqueLinesForOeuvreUpdate(
+          supabase,
+          {
+            statusId: w.statusId,
+            ContactID: w.ContactID,
+            LocalisationID: w.LocalisationID,
+          },
+          {
+            statusId:
+              changes.statusId !== undefined ? changes.statusId : w.statusId,
+            contactId:
+              changes.ContactID !== undefined ? changes.ContactID : w.ContactID,
+            localisationId:
+              changes.LocalisationID !== undefined
+                ? changes.LocalisationID
+                : w.LocalisationID,
+          },
+        )
+        if (lines.length) histItems.push({ oeuvreId: w.OeuvreID, lines })
+      }
+      await appendHistoriqueForOeuvres(supabase, histItems)
+    }
   }
 
   if (changes.Exposable === true) {

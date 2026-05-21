@@ -8,6 +8,13 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 import { logSystemEvent } from '@/lib/utils/logging'
+import {
+  contactDisplayName,
+  formatGiftHistoriqueLine,
+  formatLocationHistoriqueLine,
+  mergeHistoriqueLines,
+  type HistoriqueContact,
+} from '@/lib/oeuvre-historique'
 import { recordStorageObject } from '@/lib/storage-object-ledger'
 
 export type GiftResult = { error: string } | { ok: true; pdfPath: string }
@@ -82,13 +89,13 @@ export async function markAsGift(formData: FormData): Promise<GiftResult> {
     .single()
   if (recErr || !recipient) return { error: 'Bénéficiaire introuvable' }
 
-  const recipientName = (recipient as any).NomInstitution
-    || `${(recipient as any).Prénom ?? ''} ${(recipient as any).Nom ?? ''}`.trim()
+  const recipientName = contactDisplayName(recipient as HistoriqueContact)
     || `Contact #${recipient_id}`
 
-  const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '/')
-  const giftEntry = `[${dateStr}] Don à ${recipientName}`
-  const newHistorique = work.Historique ? `${work.Historique}\n${giftEntry}` : giftEntry
+  const newHistorique = mergeHistoriqueLines(work.Historique, [
+    formatGiftHistoriqueLine(recipientName),
+    formatLocationHistoriqueLine(recipient as HistoriqueContact),
+  ])
 
   const { error: updateErr } = await supabase
     .from('Oeuvres')

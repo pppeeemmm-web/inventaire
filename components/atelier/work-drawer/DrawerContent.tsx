@@ -684,12 +684,6 @@ export function DrawerContent({
     fd.append('needs_photograph', needsPhoto ? '1' : '0')
     fd.append('anonymity_level', String(anonymityLevel))
     fd.append('admin_override_anonymity', '0')
-    const locParsed = parseInt(contactId, 10)
-    if (contactId && !Number.isNaN(locParsed) && o.LocalisationID !== locParsed) {
-      const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '/')
-      const locStr = `${dateStr} - ${currentOwner?.NomInstitution ?? currentOwner?.Nom ?? '—'} - ${currentOwner?.Ville ?? '?'}/${currentOwner?.Pays ?? '?'}`
-      fd.append('historique_append', locStr)
-    }
     selThemes.forEach((id) => fd.append('themes', String(id)))
     selGroups.forEach((id) => fd.append('groups', id))
     return fd
@@ -721,6 +715,7 @@ export function DrawerContent({
         return true
       }
       setNoteBaseline({ c: commentaires, h: historique })
+      setLongTextReloadNonce((n) => n + 1)
       router.refresh()
       const runUndo = () => {
         void (async () => {
@@ -1553,6 +1548,7 @@ export function DrawerContent({
                       setGiftError(res.error)
                     } else {
                       setShowGiftModal(false)
+                      setLongTextReloadNonce((n) => n + 1)
                       router.refresh()
                     }
                   } catch (err) {

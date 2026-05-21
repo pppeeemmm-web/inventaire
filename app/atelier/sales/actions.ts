@@ -4,6 +4,10 @@
 
 import { createClient }  from '@/lib/supabase/server'
 import { logSystemEvent } from '@/lib/utils/logging'
+import {
+  appendHistoriqueForOeuvres,
+  historiqueLinesForOeuvreUpdate,
+} from '@/lib/oeuvre-historique'
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3'
 import { addCalendarDaysIso, parseSaleOrderBatchIds } from '@/lib/sale-return-window'
 import { recordStorageObject } from '@/lib/storage-object-ledger'
@@ -359,7 +363,7 @@ export async function updateOrderStatut(id: string, statut: string, toggleField?
 
       const { data: works } = await supabase
         .from('Oeuvres')
-        .select('OeuvreID, is_gift')
+        .select('OeuvreID, is_gift, statusId, ContactID, LocalisationID')
         .in('OeuvreID', ids)
 
       const giftIds = (works ?? []).filter(w => w.is_gift).map(w => w.OeuvreID)
@@ -378,6 +382,28 @@ export async function updateOrderStatut(id: string, statut: string, toggleField?
           ContactID:     order.buyer_id,
           LocalisationID: order.buyer_id,
         }).in('OeuvreID', giftIds)
+      }
+
+      if (order.buyer_id && (works ?? []).length > 0) {
+        const histItems: { oeuvreId: number; lines: string[] }[] = []
+        for (const w of works ?? []) {
+          const toStatus = w.is_gift ? 11 : 6
+          const lines = await historiqueLinesForOeuvreUpdate(
+            supabase,
+            {
+              statusId: w.statusId,
+              ContactID: w.ContactID,
+              LocalisationID: w.LocalisationID,
+            },
+            {
+              statusId: toStatus,
+              contactId: order.buyer_id,
+              localisationId: order.buyer_id,
+            },
+          )
+          if (lines.length) histItems.push({ oeuvreId: w.OeuvreID, lines })
+        }
+        await appendHistoriqueForOeuvres(supabase, histItems)
       }
 
       // Compute & stamp gallery commission when sale was routed through a consignment.
