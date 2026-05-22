@@ -19,6 +19,10 @@ export type ValidatedWorkImage = { ext: string; mime: string }
 /**
  * Decode bytes as an image and ensure format is allow-listed (magic bytes via Sharp).
  * Rejects SVG and other formats even if the client sends a permissive Content-Type.
+ *
+ * AVIF input is supported (Sharp/libheif). After upload, `app/atelier/works/actions.ts`
+ * normalizes work images to long-edge AVIF and stamps Artist/Copyright EXIF before strip.
+ * Transparent or round artworks may need desktop upload if mobile share rejects the file.
  */
 export async function validateWorkImageBuffer(
   buf: Buffer,

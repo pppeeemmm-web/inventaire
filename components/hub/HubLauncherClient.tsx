@@ -7,8 +7,10 @@ import { useRouter } from 'next/navigation'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import { VoiceNoteSheet } from '@/components/shared/VoiceNoteSheet'
+import { tryOpenLightroomIosApp, LIGHTROOM_IOS_APP_STORE_URL } from '@/lib/mobile/lightroom-return'
 import type { FieldPulseCard, FieldPulseData, FieldPulseMetricKey } from '@/app/atelier/field-inbox/data'
 import { getSessionNewPageContext } from '@/app/atelier/session/actions'
+import { todayCalendarDayInParis } from '@/lib/session-calendar-day'
 
 const LEGACY_TILES = [
   { key: 'hub_launcher_field' as const, subKey: 'hub_launcher_field_sub' as const, tab: 'inventory' },
@@ -22,7 +24,10 @@ type FieldRow =
   | { kind: 'note'; testId: string; emoji: string; labelKey: DictKey; subKey: DictKey }
 
 /** Ring B.1 — field verbs first; order matches iPhone SE plan. */
+const LIGHTROOM_INTRO_KEY = 'pem_lightroom_intro_seen'
+
 const FIELD_ROWS: FieldRow[] = [
+  { kind: 'link', testId: 'hub-field-verb-lightroom', emoji: '🎨', labelKey: 'hub_field_lightroom', subKey: 'hub_field_lightroom_sub', href: '/atelier/share-triage' },
   { kind: 'link', testId: 'hub-field-verb-session', emoji: '📷', labelKey: 'hub_field_session', subKey: 'hub_field_session_sub', href: '/atelier/session/new' },
   { kind: 'note', testId: 'hub-field-verb-note', emoji: '🎤', labelKey: 'hub_field_note', subKey: 'hub_field_note_sub' },
   { kind: 'link', testId: 'hub-field-verb-scan-doc', emoji: '📄', labelKey: 'hub_field_scan_doc', subKey: 'hub_field_scan_doc_sub', href: '/atelier/capture?mode=doc' },
@@ -44,6 +49,14 @@ const METRIC_LABELS: Record<FieldPulseMetricKey, DictKey> = {
 function fieldRowSubKey(row: FieldRow, isAdmin: boolean): DictKey {
   if (isAdmin && row.testId === 'hub-field-verb-session') return 'hub_field_session_sub_admin'
   return row.subKey
+}
+
+function fieldRowHref(row: FieldRow, isAdmin: boolean): string {
+  if (row.kind === 'link' && row.testId === 'hub-field-verb-session') {
+    if (!isAdmin) return '/atelier?tab=journal'
+    return `/atelier/session/new?date=${todayCalendarDayInParis()}`
+  }
+  return row.kind === 'link' ? row.href : ''
 }
 
 function renderCardText(card: FieldPulseCard, field: 'title' | 'detail', t: (key: DictKey) => string): string {
@@ -154,6 +167,7 @@ export function HubLauncherClient({ fieldPulse }: { fieldPulse: FieldPulseData }
   const [legacyOpen, setLegacyOpen] = useState(false)
   const [voiceOpen, setVoiceOpen] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [lightroomModalOpen, setLightroomModalOpen] = useState(false)
 
   useEffect(() => {
     setViewportReady(true)
@@ -167,6 +181,16 @@ export function HubLauncherClient({ fieldPulse }: { fieldPulse: FieldPulseData }
     if (!viewportReady || narrow) return
     router.replace('/atelier?tab=overview')
   }, [narrow, router, viewportReady])
+
+  useEffect(() => {
+    if (!viewportReady || !narrow) return
+    try {
+      if (localStorage.getItem(LIGHTROOM_INTRO_KEY) === '1') return
+    } catch {
+      return
+    }
+    setLightroomModalOpen(true)
+  }, [viewportReady, narrow])
 
   const rootPad = narrow
     ? {
@@ -227,6 +251,96 @@ export function HubLauncherClient({ fieldPulse }: { fieldPulse: FieldPulseData }
 
       <VoiceNoteSheet open={voiceOpen} onClose={() => setVoiceOpen(false)} oeuvreOptions={[]} />
 
+      {lightroomModalOpen ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="hub-lightroom-modal-title"
+          data-testid="hub-lightroom-modal"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 200,
+            background: 'rgba(0,0,0,0.55)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 'max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left))',
+          }}
+          onClick={() => {
+            try {
+              localStorage.setItem(LIGHTROOM_INTRO_KEY, '1')
+            } catch { /* ignore */ }
+            setLightroomModalOpen(false)
+          }}
+        >
+          <div
+            style={{
+              maxWidth: 400,
+              width: '100%',
+              background: 'var(--bg1)',
+              border: '1px solid var(--bd)',
+              borderRadius: 12,
+              padding: 20,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 14,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="hub-lightroom-modal-title" className="serif" style={{ fontSize: 20, margin: 0 }}>
+              {t('hub_lightroom_modal_title')}
+            </h2>
+            <pre
+              style={{
+                whiteSpace: 'pre-wrap',
+                fontFamily: 'inherit',
+                fontSize: 13,
+                lineHeight: 1.5,
+                margin: 0,
+                color: 'var(--tx2)',
+              }}
+            >
+              {t('hub_lightroom_modal_body')}
+            </pre>
+            <button
+              type="button"
+              className="btn ghost"
+              style={{ minHeight: 44 }}
+              data-testid="hub-lightroom-try-open"
+              onClick={() => tryOpenLightroomIosApp()}
+            >
+              {t('lightroom_try_open_app')}
+            </button>
+            <p className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx3)', margin: 0, lineHeight: 1.45 }}>
+              {t('lightroom_open_failed_hint')}
+            </p>
+            <a
+              href={LIGHTROOM_IOS_APP_STORE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn ghost sm"
+              style={{ minHeight: 40, textAlign: 'center', textDecoration: 'none' }}
+            >
+              {t('lightroom_app_store')}
+            </a>
+            <button
+              type="button"
+              className="btn primary"
+              style={{ minHeight: 44 }}
+              onClick={() => {
+                try {
+                  localStorage.setItem(LIGHTROOM_INTRO_KEY, '1')
+                } catch { /* ignore */ }
+                setLightroomModalOpen(false)
+              }}
+            >
+              {t('hub_lightroom_modal_got_it')}
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       {narrow ? (
         <div data-testid="hub-field-launcher-root" data-hub-copy-rev="2026-05-15" style={{ width: '100%', maxWidth: 420, display: 'flex', flexDirection: 'column', gap: 10 }}>
           <FieldPulsePanel fieldPulse={fieldPulse} />
@@ -264,7 +378,7 @@ export function HubLauncherClient({ fieldPulse }: { fieldPulse: FieldPulseData }
               return (
                 <Link
                   key={row.labelKey}
-                  href={row.href}
+                  href={fieldRowHref(row, isAdmin)}
                   className="btn ghost"
                   data-testid={row.testId}
                   aria-label={`${t(row.labelKey)}. ${t(subKey)}`}

@@ -22,7 +22,9 @@ Repo operating guide. If conflict: ask owner before edit.
 - CLAUDE.md is the source of truth for this workflow. If a hook or rule conflicts, this section wins.
 
 ## Commands
-- Dev: `pwsh scripts/dev.ps1` from `C:\Users\pppee\Documents\Claude\Projects\Art db\app`.
+- Dev: `pwsh scripts/dev.ps1` from `C:\Users\pppee\Documents\Claude\Projects\Art db\app`. Prints `Phone : http://<LAN>:3000` for Wi‑Fi testing.
+- Phone/LAN dev: use `DEV_AUTO_LOGIN_*` in `.env.local` and open `/hub` on the LAN URL — do not use Google OAuth on `192.168.*` unless that URL is in Supabase Auth redirect allowlist (otherwise login returns to production). Use your **real PEM account email** in `DEV_AUTO_LOGIN_EMAIL` (with a dev password on that Supabase user) if you need the same `work_session` rows as production; a separate `dev@…` user only sees its own (often empty) drafts.
+- `work_session` journal: any `is_team()` user can **read** all team sessions; writes stay session-owner or admin. If journal looks empty for team members, run `supabase/sql/work_session_team_read.sql` on the project DB.
 - Checks: `npm run i18n:check`, `npm run typecheck`, `npm run lint`. Hooks are not a substitute for manual verification.
 - E2E: `npm run test:e2e`; field/mobile gated: `npm run test:e2e:field` (`ATELIER_E2E=1`, logged-in dev profile).
 - Supabase types: `npm run gen:types` after SQL applied; needs `SUPABASE_ACCESS_TOKEN` + `NEXT_PUBLIC_SUPABASE_URL` in `.env.local`.
@@ -66,7 +68,8 @@ Repo operating guide. If conflict: ask owner before edit.
 - Verify at 375px; ~360px minimum no-break.
 - No horizontal scroll, clipped controls, desktop fixed widths, unbranched side rails.
 - Primary taps >=44px. Save/primary action reachable. Sticky bars use safe-area padding (`max(..., env(safe-area-inset-bottom))`).
-- Mobile image capture may use `capture="environment"`.
+- **Phone work images:** canonical path is Lightroom Mobile → Export (JPEG) → iOS Share Sheet → PWA `share_target` → `/atelier/share-receive` → `WorkForm` or **work session** (`/atelier/session/new` → Lightroom workflow steps → Share back → triage **Add to work session**). Do not use `lightroom-cc://` from the PWA (iOS often refuses). Do not use native `capture="environment"` on work paths (`WorkForm`, `WorkDrawerImageArea`).
+- **Exceptions:** business-card capture at `/atelier/capture?mode=card` (`CaptureCardClient`) and session/concept native capture may still use `capture="environment"`.
 - If `/hub` mobile entry changes: smoke WorkForm, WorkDrawer, Inventory small viewport.
 - Narrow Atelier sidebar first group Field: `inventory` → `production` → `stock-take` → `notes` → `map`.
 - Rings: A Atelier narrow chrome; B Hub field launcher + mobile bar + `VoiceNoteSheet`; B.3 PWA share target; C field verb routes/stubs plus business-card capture at `/atelier/capture?mode=card`.

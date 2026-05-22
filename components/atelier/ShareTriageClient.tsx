@@ -2,14 +2,28 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useCallback, useMemo, useState, useTransition } from 'react'
+import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import { useI18n } from '@/lib/i18n/context'
 import { imageUrl } from '@/lib/data'
 import { toast } from '@/lib/ui/toast'
 import { deleteShareInboxEntry, type ShareInboxListRow } from '@/app/atelier/share-inbox-actions'
+import {
+  attachShareInboxToWork,
+  attachShareInboxToWorkSession,
+  createDraftWorkFromShareInbox,
+  splitShareInboxIntoDrafts,
+  type RecentWorkAttachRow,
+} from '@/app/atelier/share-triage/actions'
 import { ShareAttachPanel } from '@/components/atelier/ShareAttachPanel'
+import { useMediaQuery } from '@/lib/useMediaQuery'
+import { shareImageFiles } from '@/lib/share-inbox-titre'
 import { FieldHubBackLink } from '@/components/shared/FieldHubBackLink'
+import {
+  clearLightroomReturn,
+  readLightroomReturn,
+  type LightroomReturnContext,
+} from '@/lib/mobile/lightroom-return'
 import type { ShareInboxPayloadV1 } from '@/lib/share-inbox-types'
 import { isShareInboxPayloadV1 } from '@/lib/share-inbox-types'
 
@@ -33,11 +47,19 @@ export function ShareTriageClient(props: {
   requestedInboxId?: string | null
   detail: ShareTriageDetail
   recent: ShareInboxListRow[]
+  recentWorks?: RecentWorkAttachRow[]
 }) {
   const { t, lang } = useI18n()
   const router = useRouter()
+  const narrow = useMediaQuery('(max-width: 767px)')
   const [pending, startTransition] = useTransition()
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [autoNavDone, setAutoNavDone] = useState(false)
+  const [returnSession, setReturnSession] = useState<LightroomReturnContext | null>(null)
+
+  useEffect(() => {
+    setReturnSession(readLightroomReturn())
+  }, [])
 
   const errBanner = useMemo(() => errLabel(props.err, t), [props.err, t])
 
@@ -73,6 +95,37 @@ export function ShareTriageClient(props: {
     })
   }, [router])
 
+  const imageFiles = parsed ? shareImageFiles(parsed) : []
+
+  useEffect(() => {
+    if (returnSession) return
+    if (!narrow || autoNavDone || !props.detail?.id || !parsed) return
+    if (imageFiles.length !== 1) return
+    setAutoNavDone(true)
+    router.replace(`/atelier/works/new?shareInbox=${encodeURIComponent(props.detail.id)}`)
+  }, [returnSession, narrow, autoNavDone, props.detail?.id, parsed, imageFiles.length, router])
+
+  const attachToSession = useCallback(() => {
+    if (!returnSession || !props.detail?.id) return
+    startTransition(async () => {
+      const res = await attachShareInboxToWorkSession(
+        props.detail!.id,
+        returnSession.sessionId,
+        returnSession.itemId,
+        returnSession.date,
+      )
+      if ('error' in res) {
+        toast.error(`${t('error_prefix')} ${res.error}`)
+        return
+      }
+      clearLightroomReturn()
+      setReturnSession(null)
+      toast.success(t('share_triage_session_attached'))
+      if (res.href) router.push(res.href)
+      else router.refresh()
+    })
+  }, [props.detail, returnSession, router, t])
+
   return (
     <div
       data-testid="share-triage-root"
@@ -89,6 +142,46 @@ export function ShareTriageClient(props: {
       <p className="t-mono-sm" style={{ color: 'var(--tx2)', lineHeight: 1.5, fontSize: 12 }}>
         {t('share_triage_intro')}
       </p>
+
+      {returnSession ? (
+        <div
+          data-testid="share-triage-return-session"
+          style={{
+            border: '1px solid var(--ac)',
+            borderRadius: 10,
+            padding: 14,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 10,
+            background: 'var(--bg1)',
+          }}
+        >
+          <p className="t-mono-sm" style={{ fontSize: 12, color: 'var(--tx2)', margin: 0, lineHeight: 1.45 }}>
+            {t('share_triage_return_session_hint')}
+          </p>
+          {props.detail?.id && imageFiles.length > 0 ? (
+            <button
+              type="button"
+              className="btn primary"
+              style={{ minHeight: 44 }}
+              disabled={pending}
+              onClick={() => attachToSession()}
+              data-testid="share-triage-attach-session"
+            >
+              {t('share_triage_attach_session')}
+            </button>
+          ) : null}
+          <Link
+            href={`/atelier/session/new?date=${encodeURIComponent(returnSession.date)}`}
+            className="btn ghost"
+            style={{ minHeight: 44, textAlign: 'center', textDecoration: 'none' }}
+            onClick={() => clearLightroomReturn()}
+            data-testid="share-triage-return-session-link"
+          >
+            {t('share_triage_return_session')}
+          </Link>
+        </div>
+      ) : null}
 
       {errBanner ? (
         <div
@@ -201,7 +294,11 @@ export function ShareTriageClient(props: {
           busyId={busyId}
           onDismiss={onDismiss}
           onAttachDone={onAttachDone}
+          recentWorks={props.recentWorks ?? []}
+          narrow={narrow}
           t={t}
+          router={router}
+          startTransition={startTransition}
         />
       ) : null}
 
@@ -246,9 +343,70 @@ function ParsedShareDetail(props: {
   busyId: string | null
   onDismiss: (id: string) => void
   onAttachDone: () => void
+  recentWorks: RecentWorkAttachRow[]
+  narrow: boolean
   t: (k: DictKey) => string
+  router: ReturnType<typeof useRouter>
+  startTransition: (fn: () => void) => void
 }) {
-  const { parsed, detail, pending, busyId, onDismiss, onAttachDone, t } = props
+  const {
+    parsed,
+    detail,
+    pending,
+    busyId,
+    onDismiss,
+    onAttachDone,
+    recentWorks,
+    narrow,
+    t,
+    router,
+    startTransition,
+  } = props
+  const imageFiles = shareImageFiles(parsed)
+
+  function goNewWork() {
+    router.push(`/atelier/works/new?shareInbox=${encodeURIComponent(detail.id)}`)
+  }
+
+  async function runSplitAll() {
+    startTransition(async () => {
+      const res = await splitShareInboxIntoDrafts(detail.id)
+      if ('error' in res) {
+        toast.error(`${t('error_prefix')} ${res.error}`)
+        return
+      }
+      toast.success(t('share_triage_attach_ok'))
+      if (res.hrefs.length === 1 && res.hrefs[0]) {
+        window.location.href = res.hrefs[0]!
+      } else {
+        onAttachDone()
+      }
+    })
+  }
+
+  async function runCreateOne(fileIndex: number) {
+    startTransition(async () => {
+      const res = await createDraftWorkFromShareInbox(detail.id, { fileIndex })
+      if ('error' in res) {
+        toast.error(`${t('error_prefix')} ${res.error}`)
+        return
+      }
+      if (res.href) window.location.href = res.href
+    })
+  }
+
+  async function attachToWork(workId: number) {
+    startTransition(async () => {
+      const res = await attachShareInboxToWork(detail.id, workId)
+      if ('error' in res) {
+        toast.error(`${t('error_prefix')} ${res.error}`)
+        return
+      }
+      toast.success(t('share_triage_attach_ok'))
+      if (res.href) window.location.href = res.href
+      else onAttachDone()
+    })
+  }
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       {parsed.title ? (
@@ -323,6 +481,66 @@ function ParsedShareDetail(props: {
                 </div>
               )
             })}
+          </div>
+        </div>
+      ) : null}
+
+      {imageFiles.length > 0 ? (
+        <div
+          data-testid="share-triage-new-work"
+          style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
+        >
+          <div className="t-eyebrow">{t('share_triage_new_work')}</div>
+          <p className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx3)', margin: 0, lineHeight: 1.45 }}>
+            {t('share_triage_lightroom_hint')}
+          </p>
+          <button
+            type="button"
+            className="btn primary"
+            style={{ minHeight: 44 }}
+            disabled={pending}
+            onClick={() => (imageFiles.length === 1 ? goNewWork() : void runSplitAll())}
+          >
+            {imageFiles.length === 1 ? t('share_triage_new_work') : t('share_triage_split_all')}
+          </button>
+          {imageFiles.length > 1 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {imageFiles.map((f) => {
+                const idx = parsed.files.findIndex((x) => x.r2_key === f.r2_key)
+                return (
+                  <button
+                    key={f.r2_key}
+                    type="button"
+                    className="btn ghost sm"
+                    style={{ minHeight: 44, justifyContent: 'flex-start' }}
+                    disabled={pending}
+                    onClick={() => void runCreateOne(idx)}
+                  >
+                    {t('share_triage_split_one')}: {f.name}
+                  </button>
+                )
+              })}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {recentWorks.length > 0 && imageFiles.length > 0 ? (
+        <div data-testid="share-triage-recent-works">
+          <div className="t-eyebrow" style={{ marginBottom: 8 }}>{t('share_triage_recent_works')}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {recentWorks.map((w) => (
+              <button
+                key={w.id}
+                type="button"
+                className="btn ghost sm"
+                style={{ minHeight: 44, justifyContent: 'flex-start' }}
+                disabled={pending}
+                onClick={() => void attachToWork(w.id)}
+              >
+                {w.label}
+              </button>
+            ))}
           </div>
         </div>
       ) : null}

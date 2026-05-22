@@ -31,31 +31,21 @@ import { SessionPhotoCapture } from '@/components/atelier/session/SessionPhotoCa
 import { FieldHubBackLink } from '@/components/shared/FieldHubBackLink'
 import { downscaleImageFileForMobileIfNeeded } from '@/lib/mobile/image-upload-client'
 import { captureFieldContext, type CaptureFieldContextErrorCode } from '@/lib/field-context'
-import { thumbUrl } from '@/lib/data'
+import { imageUrl, thumbUrl } from '@/lib/data'
 import type { WorkSessionFieldContext, WorkSessionItem, WorkSessionItemMode } from '@/lib/work-session-payload'
-
-function toDateInputValue(value: string): string {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return ''
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
+import { sessionItemHasContent } from '@/lib/work-session-payload'
+import {
+  calendarDayInParisFromIso,
+  sessionAtIsoForCalendarDay,
+  todayCalendarDayInParis,
+} from '@/lib/session-calendar-day'
 
 function dateInputToSessionIso(value: string): string | null {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null
-  const date = new Date(`${value}T12:00:00`)
-  return Number.isNaN(date.getTime()) ? null : date.toISOString()
+  return sessionAtIsoForCalendarDay(value)
 }
 
-function localCalendarDay(): string {
-  const d = new Date()
-  const year = d.getFullYear()
-  const month = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
+const SESSION_ID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 const SESSION_WORK_EXCLUDED_STATUS_IDS = new Set([3, 5, 6, 11])
 
@@ -64,6 +54,29 @@ function workIsInProgress(work: WorkSessionWorkOption): boolean {
     (work.statusId == null || !SESSION_WORK_EXCLUDED_STATUS_IDS.has(work.statusId))
     && (work.statusId === 1 || work.statusId == null || !work.Catalogué || !!work.NeedsPhotograph)
   )
+}
+
+function sessionItemTitle(
+  item: WorkSessionItem,
+  index: number,
+  t: (key: DictKey) => string,
+): string {
+  const named = item.oeuvre_title?.trim() || item.title_hint?.trim()
+  if (named) return named
+  return `${t('session_painting_label')} ${index + 1}`
+}
+
+function sessionItemThumbSrc(item: WorkSessionItem): string | null {
+  if (item.work_thumb) return thumbUrl(item.work_thumb, 128)
+  const shot = item.shots[0]
+  if (!shot) return null
+  return imageUrl(shot.thumb_r2_key ?? shot.r2_key)
+}
+
+/** Show placeholder slots only while they are the active tab (user just added one). */
+function sessionItemIsShown(item: WorkSessionItem, activeItemId: string | null): boolean {
+  if (sessionItemHasContent(item)) return true
+  return Boolean(activeItemId && item.id === activeItemId)
 }
 
 export function SessionNewClient() {
@@ -85,16 +98,31 @@ export function SessionNewClient() {
   const [pending, setPending] = useState<WorkSessionQueueRow[]>([])
   const [hydrated, setHydrated] = useState(false)
   const [fieldContext, setFieldContext] = useState<WorkSessionFieldContext | null>(null)
+  const [isDevAutoProfile, setIsDevAutoProfile] = useState(false)
+  const [devProfileEmail, setDevProfileEmail] = useState<string | null>(null)
+  const [sessionReadOnly, setSessionReadOnly] = useState(false)
+  const [canCaptureSessions, setCanCaptureSessions] = useState(false)
   const daySwitchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const workQ = sp.get('work')?.trim()
   const dateQ = sp.get('date')?.trim() ?? ''
+  const sessionQ = sp.get('session')?.trim() ?? ''
+  const initialSessionId = SESSION_ID_RE.test(sessionQ) ? sessionQ : null
   const initialOeuvre = workQ ? Number.parseInt(workQ, 10) : NaN
   const initialOk = Number.isFinite(initialOeuvre) && initialOeuvre > 0
-  const initialCalendarDay = /^\d{4}-\d{2}-\d{2}$/.test(dateQ) ? dateQ : localCalendarDay()
-  const activeItem = items.find((item) => item.id === activeItemId) ?? items[0] ?? null
-  const shotCount = items.reduce((sum, item) => sum + item.shots.length + (item.applied_shot_count ?? 0), 0)
-  const stagedShotCount = items.reduce((sum, item) => sum + item.shots.length, 0)
+  const initialCalendarDay = /^\d{4}-\d{2}-\d{2}$/.test(dateQ) ? dateQ : todayCalendarDayInParis()
+  const visibleItems = items.filter((item) => sessionItemIsShown(item, activeItemId))
+  const activeItem =
+    (activeItemId ? visibleItems.find((item) => item.id === activeItemId) : null)
+    ?? visibleItems[0]
+    ?? null
+  const shotCount = visibleItems.reduce((sum, item) => sum + item.shots.length + (item.applied_shot_count ?? 0), 0)
+  const stagedShotCount = visibleItems.reduce((sum, item) => sum + item.shots.length, 0)
+
+  useEffect(() => {
+    if (!activeItemId || visibleItems.some((item) => item.id === activeItemId)) return
+    setActiveItemId(visibleItems[0]?.id ?? null)
+  }, [activeItemId, visibleItems])
 
   const refreshPending = useCallback(() => {
     if (!isAdmin || narrow) return
@@ -102,14 +130,18 @@ export function SessionNewClient() {
   }, [isAdmin, narrow])
 
   const openDaySession = useCallback(
-    async (calendarDay: string, opts?: { quiet?: boolean }) => {
-      const r = await openWorkSessionForDay(initialOk ? initialOeuvre : null, calendarDay)
+    async (calendarDay: string, opts?: { quiet?: boolean; preferredSessionId?: string | null }) => {
+      const r = await openWorkSessionForDay(initialOk ? initialOeuvre : null, calendarDay, {
+        preferredSessionId: opts?.preferredSessionId ?? null,
+      })
       if ('error' in r) {
         toast.error(r.error)
         return null
       }
       setSessionId(r.id)
+      setSessionReadOnly(r.readOnly)
       if (!opts?.quiet && r.reopened) toast.info(t('session_toast_reopened_same_day'))
+      if (!opts?.quiet && r.readOnly) toast.info(t('session_readonly_notice'))
       return r.id
     },
     [initialOk, initialOeuvre, t],
@@ -121,21 +153,16 @@ export function SessionNewClient() {
       toast.error(df.error)
       return
     }
-    setSessionDate(toDateInputValue(df.fields.session_at))
+    setSessionDate(df.fields.calendar_day || calendarDayInParisFromIso(df.fields.session_at))
     setNotes(df.fields.notes)
     setFieldContext(df.fields.field_context)
-    if (df.items.length === 0) {
-      const created = await createWorkSessionItemAction(id, 'existing')
-      if ('error' in created) {
-        toast.error(created.error)
-        return
-      }
-      setItems([created.item])
-      setActiveItemId(created.item.id)
-      return
-    }
     setItems(df.items)
-    setActiveItemId((current) => current && df.items.some((item) => item.id === current) ? current : df.items[0]?.id ?? null)
+    setSessionReadOnly(df.readOnly)
+    const shown = df.items.filter((item) => sessionItemHasContent(item))
+    setActiveItemId((current) => {
+      if (current && df.items.some((item) => item.id === current)) return current
+      return shown[0]?.id ?? null
+    })
   }, [])
 
   useEffect(() => {
@@ -144,20 +171,33 @@ export function SessionNewClient() {
         const ctx = await getSessionNewPageContext()
         setAuthed(ctx.authed)
         setIsAdmin(ctx.isAdmin)
+        setIsDevAutoProfile(ctx.isDevAutoProfile)
+        setDevProfileEmail(ctx.userEmail)
+        setCanCaptureSessions(ctx.canCaptureSessions)
         if (!ctx.authed) {
           setSessionId(null)
           return
         }
-        const openedId = await openDaySession(initialCalendarDay, { quiet: true })
-        if (!openedId) return
-        await refreshDraft(openedId)
+        let openedId: string | null = null
+        if (initialSessionId) {
+          setSessionId(initialSessionId)
+          await refreshDraft(initialSessionId)
+          openedId = initialSessionId
+        } else if (ctx.canCaptureSessions) {
+          openedId = await openDaySession(initialCalendarDay, {
+            quiet: true,
+            preferredSessionId: initialSessionId,
+          })
+          if (!openedId) return
+          await refreshDraft(openedId)
+        }
         if (ctx.isAdmin && !narrow) {
           const rows = await listWorkSessionsForAdminReview()
           setPending(rows)
         }
       })().finally(() => setHydrated(true))
     })
-  }, [initialCalendarDay, initialOk, narrow, openDaySession, refreshDraft])
+  }, [initialCalendarDay, initialOk, initialSessionId, narrow, openDaySession, refreshDraft])
 
   useEffect(() => {
     refreshPending()
@@ -193,21 +233,22 @@ export function SessionNewClient() {
   )
 
   const pushMeta = useCallback(async () => {
+    if (sessionReadOnly) return
     if (!sessionId || !/^\d{4}-\d{2}-\d{2}$/.test(sessionDate)) return
     const dayId = await openDaySession(sessionDate, { quiet: true })
     if (!dayId) return
-    if (dayId !== sessionId) {
-      await refreshDraft(dayId)
-      return
-    }
+    await refreshDraft(dayId)
     const sessionAt = dateInputToSessionIso(sessionDate)
-    const r = await updateWorkSessionMetadata(sessionId, {
+    const r = await updateWorkSessionMetadata(dayId, {
       ...(sessionAt ? { session_at: sessionAt } : {}),
       notes,
       ...(fieldContext != null ? { field_context: fieldContext } : {}),
     })
     if ('error' in r) toast.error(r.error)
-    else toast.success(t('session_toast_saved'))
+    else {
+      toast.success(t('session_toast_saved'))
+      await refreshDraft(dayId)
+    }
   }, [openDaySession, refreshDraft, sessionId, sessionDate, notes, fieldContext, t])
 
   const updateLocalItem = (itemId: string, patch: Partial<WorkSessionItem>) => {
@@ -255,14 +296,25 @@ export function SessionNewClient() {
   }
 
   const onUploadFiles = (files: File[]) => {
-    if (!sessionId || !activeItem || files.length === 0) return
+    if (!sessionId || files.length === 0) return
     startBusy(() => {
       void (async () => {
+        let targetItemId = activeItem?.id ?? null
+        if (!targetItemId) {
+          const created = await createWorkSessionItemAction(sessionId, 'existing')
+          if ('error' in created) {
+            toast.error(created.error)
+            return
+          }
+          targetItemId = created.item.id
+          setItems((prev) => [...prev, created.item])
+          setActiveItemId(created.item.id)
+        }
         for (const file of files) {
           const prepared = await downscaleImageFileForMobileIfNeeded(file, narrow)
           const fd = new FormData()
           fd.set('image', prepared)
-          const r = await uploadWorkSessionItemShot(sessionId, activeItem.id, fd)
+          const r = await uploadWorkSessionItemShot(sessionId, targetItemId!, fd)
           if ('error' in r) {
             toast.error(r.error)
             return
@@ -342,7 +394,7 @@ export function SessionNewClient() {
         let targetId = sessionId
         let r = await createWorkSessionItemAction(targetId, mode)
         if ('error' in r && r.error === 'Session non modifiable') {
-          const day = /^\d{4}-\d{2}-\d{2}$/.test(sessionDate) ? sessionDate : localCalendarDay()
+          const day = /^\d{4}-\d{2}-\d{2}$/.test(sessionDate) ? sessionDate : todayCalendarDayInParis()
           const nextId = await openDaySession(day)
           if (!nextId) return
           targetId = nextId
@@ -448,26 +500,27 @@ export function SessionNewClient() {
   const oeuvreLabelKey = isAdmin ? 'session_oeuvre_id_label_admin' : 'session_oeuvre_id_label'
 
   const onSessionDateChange = (value: string) => {
+    if (sessionReadOnly) return
     setSessionDate(value)
     if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return
     if (daySwitchTimer.current) clearTimeout(daySwitchTimer.current)
     daySwitchTimer.current = setTimeout(() => {
       startBusy(() => {
         void (async () => {
+          const prevId = sessionId
           const id = await openDaySession(value, { quiet: true })
           if (!id) return
-          if (id !== sessionId) {
-            await refreshDraft(id)
-            return
-          }
+          await refreshDraft(id)
+          if (id !== prevId) return
           const sessionAt = dateInputToSessionIso(value)
-          if (!sessionAt || !sessionId) return
-          const r = await updateWorkSessionMetadata(sessionId, {
+          if (!sessionAt) return
+          const r = await updateWorkSessionMetadata(id, {
             session_at: sessionAt,
             notes,
             ...(fieldContext != null ? { field_context: fieldContext } : {}),
           })
           if ('error' in r) toast.error(r.error)
+          else await refreshDraft(id)
         })()
       })
     }, 350)
@@ -498,7 +551,7 @@ export function SessionNewClient() {
           {t(stagedHintKey)}
         </p>
       ) : null}
-      {!isAdmin ? (
+      {!isAdmin && !sessionReadOnly ? (
         <button
           type="button"
           className="btn primary"
@@ -508,7 +561,7 @@ export function SessionNewClient() {
         >
           {t('session_submit_review')}
         </button>
-      ) : (
+      ) : isAdmin ? (
         <>
           <button
             type="button"
@@ -525,9 +578,38 @@ export function SessionNewClient() {
             {t('session_apply_photos_hint')}
           </p>
         </>
-      )}
+      ) : null}
     </div>
   )
+
+  if (hydrated && authed && !canCaptureSessions && !initialSessionId) {
+    return (
+      <main
+        data-testid="session-capture-admin-gate"
+        style={{
+          minHeight: '100dvh',
+          padding:
+            'max(20px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left))',
+          maxWidth: 440,
+          margin: '0 auto',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 16,
+          justifyContent: 'center',
+        }}
+      >
+        <h1 className="serif" style={{ fontSize: 22, margin: 0 }}>
+          {t('session_new_title')}
+        </h1>
+        <p className="t-mono-sm" style={{ margin: 0, color: 'var(--tx2)', lineHeight: 1.5, fontSize: 13 }}>
+          {t('session_capture_admin_only')}
+        </p>
+        <Link href="/atelier?tab=journal" className="btn primary" style={{ minHeight: 48, textAlign: 'center' }}>
+          {t('tab_journal')}
+        </Link>
+      </main>
+    )
+  }
 
   return (
     <main
@@ -570,14 +652,62 @@ export function SessionNewClient() {
           type="date"
           value={sessionDate}
           onChange={(e) => onSessionDateChange(e.target.value)}
+          readOnly={sessionReadOnly}
+          disabled={sessionReadOnly}
           style={{ minHeight: 44 }}
         />
         <span style={{ color: 'var(--tx3)', fontSize: 10, lineHeight: 1.4 }}>{t('session_date_hint')}</span>
       </label>
 
+      {sessionReadOnly ? (
+        <p
+          className="t-mono-sm"
+          data-testid="session-readonly-notice"
+          style={{
+            margin: 0,
+            padding: '10px 12px',
+            borderRadius: 8,
+            border: '1px solid var(--bd)',
+            background: 'var(--bg1)',
+            color: 'var(--tx2)',
+            fontSize: 11,
+            lineHeight: 1.45,
+          }}
+        >
+          {t('session_readonly_notice')}
+        </p>
+      ) : null}
+
+      {isDevAutoProfile && devProfileEmail ? (
+        <p
+          className="t-mono-sm"
+          data-testid="session-dev-profile-notice"
+          style={{
+            margin: 0,
+            padding: '10px 12px',
+            borderRadius: 8,
+            border: '1px solid var(--bd)',
+            background: 'var(--bg1)',
+            color: 'var(--tx2)',
+            fontSize: 11,
+            lineHeight: 1.45,
+          }}
+        >
+          {t('session_dev_profile_notice').replace('{email}', devProfileEmail)}
+        </p>
+      ) : null}
+
       <label className="t-mono-sm" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         <span>{t('session_notes_label')}</span>
-        <textarea className="input" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} onBlur={() => void pushMeta()} />
+        <textarea
+          className="input"
+          rows={3}
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          onBlur={() => void pushMeta()}
+          readOnly={sessionReadOnly}
+          disabled={sessionReadOnly}
+        />
       </label>
 
       <section style={{ border: '1px solid var(--bd)', borderRadius: 10, padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -585,33 +715,159 @@ export function SessionNewClient() {
           <div>
             <div className="t-eyebrow">{t('session_journal_items_heading')}</div>
             <div className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx2)', marginTop: 4 }}>
-              {items.length} {t('session_journal_items_count')} · {stagedShotCount} {t('drawer_work_sessions_shots')}
+              {visibleItems.length} {t('session_journal_items_count')} · {stagedShotCount} {t('drawer_work_sessions_shots')}
             </div>
           </div>
-          <button type="button" className="btn ghost sm" disabled={busy} onClick={() => addItem('existing')} style={{ minHeight: 44 }}>
+          <button
+            type="button"
+            className="btn ghost sm"
+            disabled={busy || sessionReadOnly}
+            onClick={() => addItem('existing')}
+            data-testid="session-add-painting"
+            style={{ minHeight: 44 }}
+          >
             {t('session_add_painting')}
           </button>
         </div>
-        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 2 }}>
-          {items.map((item, idx) => (
-            <button
-              key={item.id}
-              type="button"
-              className={item.id === activeItem?.id ? 'btn primary sm' : 'btn ghost sm'}
-              data-testid={`session-item-tab-${idx + 1}`}
-              onClick={() => setActiveItemId(item.id)}
-              style={{ minHeight: 44, flex: '0 0 auto' }}
-            >
-              {t('session_painting_label')} {idx + 1}
-              {item.status === 'applied' ? ` · ${t('session_status_applied')}` : ''} · {item.shots.length + (item.applied_shot_count ?? 0)}
-            </button>
-          ))}
+        {visibleItems.length === 0 ? (
+          <p className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx3)', margin: 0, lineHeight: 1.45 }}>
+            {t('session_no_painting_yet')}
+          </p>
+        ) : (
+        <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 2, overscrollBehavior: 'contain' }}>
+          {visibleItems.map((item, idx) => {
+            const isActive = item.id === activeItem?.id
+            const title = sessionItemTitle(item, idx, t)
+            const thumbSrc = sessionItemThumbSrc(item)
+            const photoCount = item.shots.length + (item.applied_shot_count ?? 0)
+            return (
+              <button
+                key={item.id}
+                type="button"
+                data-testid={`session-item-tab-${idx + 1}`}
+                onClick={() => setActiveItemId(item.id)}
+                aria-pressed={isActive}
+                aria-label={title}
+                style={{
+                  flex: '0 0 auto',
+                  width: 108,
+                  minHeight: 132,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'stretch',
+                  gap: 8,
+                  padding: 10,
+                  borderRadius: 10,
+                  border: `2px solid ${isActive ? 'var(--ac)' : 'var(--bd)'}`,
+                  background: isActive ? 'var(--bg2)' : 'var(--bg1)',
+                  color: 'var(--tx)',
+                  cursor: 'pointer',
+                  textAlign: 'center',
+                  boxSizing: 'border-box',
+                }}
+              >
+                <span
+                  className="serif"
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 600,
+                    lineHeight: 1.25,
+                    overflow: 'hidden',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    minHeight: 30,
+                  }}
+                >
+                  {title}
+                </span>
+                {thumbSrc ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={thumbSrc}
+                    alt=""
+                    style={{
+                      width: '100%',
+                      height: 72,
+                      objectFit: 'cover',
+                      borderRadius: 6,
+                      border: '1px solid var(--bd)',
+                    }}
+                  />
+                ) : (
+                  <div
+                    aria-hidden
+                    style={{
+                      width: '100%',
+                      height: 72,
+                      borderRadius: 6,
+                      border: '1px dashed var(--bd)',
+                      background: 'var(--bg0)',
+                    }}
+                  />
+                )}
+                <span className="t-mono-sm" style={{ fontSize: 9, color: 'var(--tx3)', lineHeight: 1.3 }}>
+                  {photoCount} {t('drawer_work_sessions_shots').toLowerCase()}
+                  {item.status === 'applied' ? ` · ${t('session_status_applied')}` : ''}
+                </span>
+              </button>
+            )
+          })}
         </div>
+        )}
       </section>
 
       {activeItem ? (
         <section data-testid="session-active-item" style={{ border: '1px solid var(--bd)', borderRadius: 10, padding: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div className="t-eyebrow">{t('session_painting_label')} {items.findIndex((item) => item.id === activeItem.id) + 1}</div>
+          {(() => {
+            const activeIdx = visibleItems.findIndex((item) => item.id === activeItem.id)
+            const activeTitle = sessionItemTitle(activeItem, activeIdx >= 0 ? activeIdx : 0, t)
+            const activeThumb = sessionItemThumbSrc(activeItem)
+            return (
+              <div
+                data-testid="session-active-item-header"
+                style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}
+              >
+                {activeThumb ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={activeThumb}
+                    alt=""
+                    style={{
+                      width: 72,
+                      height: 72,
+                      objectFit: 'cover',
+                      borderRadius: 6,
+                      border: '1px solid var(--bd)',
+                      flexShrink: 0,
+                    }}
+                  />
+                ) : (
+                  <div
+                    aria-hidden
+                    style={{
+                      width: 72,
+                      height: 72,
+                      borderRadius: 6,
+                      border: '1px dashed var(--bd)',
+                      background: 'var(--bg2)',
+                      flexShrink: 0,
+                    }}
+                  />
+                )}
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <h2 className="serif" style={{ fontSize: 20, margin: 0, lineHeight: 1.2, fontWeight: 500 }}>
+                    {activeTitle}
+                  </h2>
+                  {activeItem.oeuvre_id ? (
+                    <p className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx3)', margin: '6px 0 0' }}>
+                      #{activeItem.oeuvre_id}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            )
+          })()}
           <div role="group" aria-label={t(oeuvreLabelKey)} className="row gap-sm" style={{ flexWrap: 'wrap' }}>
             <button
               type="button"
@@ -824,9 +1080,14 @@ export function SessionNewClient() {
 
       {activeItem ? (
         <SessionPhotoCapture
-          disabled={activeItem.status === 'applied'}
+          disabled={sessionReadOnly || activeItem.status === 'applied'}
           busy={busy}
           instantUpload={narrow}
+          lightroomReturn={
+            sessionId && activeItem.id && /^\d{4}-\d{2}-\d{2}$/.test(sessionDate)
+              ? { kind: 'session', sessionId, itemId: activeItem.id, date: sessionDate }
+              : null
+          }
           stagedShots={activeItem.shots}
           onUpload={onUploadFiles}
           onRemoveStaged={onRemoveStagedShot}
@@ -836,7 +1097,7 @@ export function SessionNewClient() {
         {t('session_shots_label')}: {shotCount}
       </div>
 
-      {applyBar}
+      {!sessionReadOnly ? applyBar : null}
 
       {isAdmin && !narrow && pending.filter((row) => row.id !== sessionId).length > 0 ? (
         <section style={{ borderTop: '1px solid var(--bd)', paddingTop: 16 }}>

@@ -12,6 +12,12 @@ test.describe('Hub field launcher (Ring B.1)', () => {
 
   test.use({ viewport: { width: 375, height: 812 } })
 
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('pem_lightroom_intro_seen', '1')
+    })
+  })
+
   test('enter atelier CTA stays in viewport', async ({ page }) => {
     await page.goto('/hub')
     await expect(page.getByTestId('hub-field-launcher-root')).toBeVisible({ timeout: 45_000 })
@@ -23,10 +29,11 @@ test.describe('Hub field launcher (Ring B.1)', () => {
     if (box) expect(box.height).toBeGreaterThanOrEqual(44)
   })
 
-  test('narrow hub shows nine field verb rows', async ({ page }) => {
+  test('narrow hub shows field verb rows including Lightroom', async ({ page }) => {
     await page.goto('/hub')
     await expect(page.getByTestId('hub-field-launcher-root')).toBeVisible({ timeout: 45_000 })
     await expect(page.getByTestId('hub-field-pulse')).toBeVisible()
+    await expect(page.getByTestId('hub-field-verb-lightroom')).toBeVisible()
     await expect(page.getByTestId('hub-field-verb-session')).toBeVisible()
     await expect(page.getByTestId('hub-field-verb-note')).toBeVisible()
     await expect(page.getByTestId('hub-field-verb-scan-doc')).toBeVisible()

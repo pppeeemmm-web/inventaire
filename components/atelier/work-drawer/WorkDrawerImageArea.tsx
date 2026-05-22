@@ -100,7 +100,7 @@ export function WorkDrawerImageArea(p: WorkDrawerImageAreaProps) {
         type="file"
         accept="image/*"
         multiple={narrow}
-        capture={narrow ? 'environment' : undefined}
+        capture={undefined}
         style={{ display: 'none' }}
         onChange={onDrawerImageFileChange}
         tabIndex={-1}

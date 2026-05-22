@@ -1,20 +1,37 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useI18n } from '@/lib/i18n/context'
+
+function isLanDevHostname(hostname: string): boolean {
+  if (hostname === 'localhost' || hostname === '127.0.0.1') return true
+  if (/^192\.168\.\d{1,3}\.\d{1,3}$/.test(hostname)) return true
+  if (/^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname)) return true
+  if (/^172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}$/.test(hostname)) return true
+  return false
+}
 
 // Login page — Google OAuth (primary) + magic link fallback.
 // Only team members can access /atelier. No public sign-up.
 export function LoginClient() {
   const { t, lang, setLang } = useI18n()
   const searchParams = useSearchParams()
+  const nextPath = searchParams.get('next') || '/hub'
+  const [lanDev, setLanDev] = useState(false)
   const [showMagic, setShowMagic] = useState(false)
   const [email, setEmail]         = useState('')
   const [sent, setSent]           = useState(false)
   const [loading, setLoading]     = useState(false)
   const [error, setError]         = useState<string | null>(null)
+
+  useEffect(() => {
+    setLanDev(
+      process.env.NODE_ENV === 'development' && isLanDevHostname(window.location.hostname),
+    )
+  }, [])
 
   // Supabase/Google may return errors in the URL hash after a failed OAuth exchange
   useEffect(() => {
@@ -109,6 +126,34 @@ export function LoginClient() {
         {error && (
           <div style={{ color: 'var(--rust)', fontSize: 10, marginBottom: 14 }}>{error}</div>
         )}
+
+        {lanDev ? (
+          <div
+            data-testid="login-dev-lan-notice"
+            style={{
+              marginBottom: 16,
+              padding: 12,
+              border: '1px solid var(--bd)',
+              borderRadius: 8,
+              background: 'var(--bg1)',
+              fontSize: 10,
+              lineHeight: 1.5,
+              color: 'var(--tx2)',
+            }}
+          >
+            <div className="t-eyebrow" style={{ marginBottom: 6 }}>{t('login_dev_lan_title')}</div>
+            <p style={{ margin: '0 0 8px' }}>{t('login_dev_lan_oauth_warn')}</p>
+            <p style={{ margin: 0 }}>{t('login_dev_lan_auto_hint')}</p>
+            <Link
+              href={nextPath.startsWith('/') ? nextPath : '/hub'}
+              className="btn ghost sm"
+              style={{ marginTop: 10, minHeight: 40, display: 'inline-flex', textDecoration: 'none' }}
+              data-testid="login-dev-lan-continue"
+            >
+              {t('login_dev_lan_continue')}
+            </Link>
+          </div>
+        ) : null}
 
         {/* Google button — primary */}
         <button

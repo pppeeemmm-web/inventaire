@@ -17,7 +17,7 @@ interface Props {
   contacts: Contact[]
   onGoTab: (tab: string) => void
   onGoWork: (id: number) => void
-  onCaptureSession: () => void
+  onCaptureSession?: () => void
   onScanQr: () => void
   onFieldNote: () => void
   onReminders: () => void
@@ -57,7 +57,9 @@ export function CommandPalette({
 
     // Quick actions first: navigation tabs already live in the left rail.
     const actionDefs = [
-      { id: 'act:capture-session', label: t('cmd_palette_action_capture_session'), action: () => { onCaptureSession(); onClose() } },
+      ...(onCaptureSession
+        ? [{ id: 'act:capture-session', label: t('cmd_palette_action_capture_session'), action: () => { onCaptureSession(); onClose() } }]
+        : []),
       { id: 'act:scan-qr',         label: t('cmd_palette_action_scan_qr'),         action: () => { onScanQr(); onClose() } },
       { id: 'act:field-note',      label: t('cmd_palette_action_field_note'),      action: () => { onFieldNote(); onClose() } },
       { id: 'act:reminders',       label: t('cmd_palette_action_reminders'),       action: () => { onReminders(); onClose() } },

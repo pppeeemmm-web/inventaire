@@ -67,7 +67,13 @@ async function redirectWithSessionRefresh(
 
 export async function POST(request: NextRequest) {
   const origin = originFromRequest(request)
-  const triage = (q: string) => `${origin}/atelier/share-triage${q}`
+  const modeNewWork = request.nextUrl.searchParams.get('mode') === 'newWork'
+  const triage = (q: string) => {
+    const base = `${origin}/atelier/share-triage${q}`
+    if (!modeNewWork) return base
+    const sep = q.includes('?') ? '&' : '?'
+    return `${base}${sep}mode=newWork`
+  }
 
   const probe = NextResponse.redirect(
     `${origin}/login?next=${encodeURIComponent('/atelier/share-triage')}`,

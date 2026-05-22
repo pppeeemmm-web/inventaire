@@ -50,25 +50,22 @@ create policy "work_session_team_select"
   on public.work_session
   for select
   to authenticated
-  using (
-    is_team()
-    and (user_id = auth.uid() or is_admin())
-  );
+  using (is_team());
 
 drop policy if exists "work_session_team_insert" on public.work_session;
 create policy "work_session_team_insert"
   on public.work_session
   for insert
   to authenticated
-  with check (is_team() and user_id = auth.uid());
+  with check (is_team() and is_admin());
 
 drop policy if exists "work_session_team_update" on public.work_session;
 create policy "work_session_team_update"
   on public.work_session
   for update
   to authenticated
-  using (is_team() and (user_id = auth.uid() or is_admin()))
-  with check (is_team() and (user_id = auth.uid() or is_admin()));
+  using (is_team() and is_admin())
+  with check (is_team() and is_admin());
 
 drop policy if exists "work_session_team_delete" on public.work_session;
 create policy "work_session_team_delete"

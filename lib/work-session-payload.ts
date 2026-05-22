@@ -31,6 +31,8 @@ export interface WorkSessionItem {
   mode: WorkSessionItemMode
   oeuvre_id?: number | null
   oeuvre_title?: string | null
+  /** Enriched at read time from `Oeuvres.txtImageNameLink` — not stored in payload JSON. */
+  work_thumb?: string | null
   notes?: string
   title_hint?: string
   width_cm?: string
@@ -81,8 +83,20 @@ export function countWorkSessionShots(payload: WorkSessionPayload): number {
   return payload.shots.length + payload.items.reduce((sum, item) => sum + item.shots.length, 0)
 }
 
+/** True when the painting slot has a linked work, title, or at least one photo. */
+export function sessionItemHasContent(item: WorkSessionItem): boolean {
+  if (typeof item.oeuvre_id === 'number' && item.oeuvre_id > 0) return true
+  if (item.oeuvre_title?.trim()) return true
+  if (item.title_hint?.trim()) return true
+  if (item.shots.length > 0) return true
+  if ((item.applied_shot_count ?? 0) > 0) return true
+  return false
+}
+
 export function countWorkSessionItems(payload: WorkSessionPayload): number {
-  return payload.items.length || (payload.shots.length > 0 ? 1 : 0)
+  const withContent = payload.items.filter(sessionItemHasContent)
+  if (withContent.length > 0) return withContent.length
+  return payload.shots.length > 0 ? 1 : 0
 }
 
 export function listWorkSessionLinkedOeuvreIds(payload: WorkSessionPayload): number[] {
@@ -171,6 +185,9 @@ export function parseWorkSessionPayload(raw: unknown): WorkSessionPayload {
     ? o.items.map(parseWorkSessionItem).filter((item): item is WorkSessionItem => item != null)
     : []
   const out: WorkSessionPayload = { shots, items }
+  if (typeof o.session_day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(o.session_day)) {
+    out.session_day = o.session_day
+  }
   if (typeof o.session_at === 'string') out.session_at = o.session_at
   if (typeof o.notes === 'string') out.notes = o.notes
   if (typeof o.title_hint === 'string') out.title_hint = o.title_hint

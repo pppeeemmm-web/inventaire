@@ -11,12 +11,17 @@ import {
   type SessionPhotoPending,
 } from '@/lib/mobile/session-photo-pending'
 import type { WorkSessionShot } from '@/lib/work-session-payload'
+import type { LightroomReturnContext } from '@/lib/mobile/lightroom-return'
+import { setLightroomReturn } from '@/lib/mobile/lightroom-return'
+import { LightroomCaptureGuide } from '@/components/shared/LightroomCaptureGuide'
 
 export type SessionPhotoCaptureProps = {
   disabled?: boolean
   busy?: boolean
   /** When true, photos upload immediately after pick (no extra confirm step). */
   instantUpload?: boolean
+  /** When set, "Open Lightroom" remembers this session for share-return. */
+  lightroomReturn?: LightroomReturnContext | null
   stagedShots: WorkSessionShot[]
   onUpload: (files: File[]) => void | Promise<void>
   onRemoveStaged: (sha256: string) => void | Promise<void>
@@ -26,6 +31,7 @@ export function SessionPhotoCapture({
   disabled = false,
   busy = false,
   instantUpload = false,
+  lightroomReturn = null,
   stagedShots,
   onUpload,
   onRemoveStaged,
@@ -116,6 +122,13 @@ export function SessionPhotoCapture({
         onChange={onLibraryChange}
         tabIndex={-1}
         aria-hidden
+      />
+
+      <LightroomCaptureGuide
+        testId="session-photo-lightroom"
+        onPrepareReturn={
+          lightroomReturn ? () => setLightroomReturn(lightroomReturn) : undefined
+        }
       />
 
       <div className="row gap-sm" style={{ flexWrap: 'wrap' }}>

@@ -103,7 +103,7 @@ export function CaptureDocClient() {
           type="file"
           accept="image/*"
           multiple
-          capture={narrow ? 'environment' : undefined}
+          capture={undefined}
           onChange={onFiles}
           style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }}
           aria-label={t('capture_doc_add_shot')}

@@ -1,9 +1,18 @@
 // /atelier/works/new — create a new work
 import { createClient } from '@/lib/supabase/server'
-import { WorkForm }     from '@/components/atelier/WorkForm'
-import { saveWork }     from '@/app/atelier/works/actions'
+import { WorkForm } from '@/components/atelier/WorkForm'
+import { saveWork } from '@/app/atelier/works/actions'
+import { getShareInboxWorkPrefill } from '@/app/atelier/share-triage/actions'
+import type { ShareInboxWorkPrefill } from '@/app/atelier/share-triage/actions'
 
-export default async function NewWorkPage() {
+export default async function NewWorkPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ shareInbox?: string }>
+}) {
+  const sp = await searchParams
+  const shareInboxId = sp.shareInbox?.trim() || null
+
   const supabase = await createClient()
 
   const [
@@ -29,6 +38,12 @@ export default async function NewWorkPage() {
     name: (r as { Nom: string }).Nom,
   }))
 
+  let shareInboxPrefill: ShareInboxWorkPrefill | null = null
+  if (shareInboxId) {
+    const pre = await getShareInboxWorkPrefill(shareInboxId)
+    if ('prefill' in pre) shareInboxPrefill = pre.prefill
+  }
+
   return (
     <WorkForm
       oeuvre={null}
@@ -43,6 +58,7 @@ export default async function NewWorkPage() {
       currentGroupIds={[]}
       activeConsignment={null}
       action={saveWork}
+      shareInboxPrefill={shareInboxPrefill}
     />
   )
 }

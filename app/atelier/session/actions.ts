@@ -9,6 +9,7 @@ import { r2PutObject, r2DeleteObject, r2GetObjectBuffer } from '@/lib/r2-s3-obje
 import { addWorkImage } from '@/app/atelier/works/actions'
 import {
   countWorkSessionItems,
+  sessionItemHasContent,
   countWorkSessionShots,
   createWorkSessionItem,
   emptyWorkSessionPayload,
@@ -35,6 +36,170 @@ const SESSION_WORK_EXCLUDED_STATUS_IDS = new Set([3, 5, 6, 11])
 
 function expiresAtIso(): string {
   return new Date(Date.now() + DRAFT_TTL_MS).toISOString()
+}
+
+function isDevAutoProfileEmail(userEmail: string | null | undefined): boolean {
+  const devEmail = process.env.DEV_AUTO_LOGIN_EMAIL?.trim().toLowerCase() ?? ''
+  return (
+    process.env.NODE_ENV === 'development'
+    && Boolean(devEmail)
+    && userEmail?.toLowerCase() === devEmail
+  )
+}
+
+async function rpcIsTeam(supabase: Awaited<ReturnType<typeof createClient>>): Promise<boolean> {
+  const { data } = await supabase.rpc('is_team')
+  return !!data
+}
+
+/** Any authenticated team member may list/read all field sessions (RLS: work_session_team_select). */
+async function canReadTeamWorkSessions(supabase: Awaited<ReturnType<typeof createClient>>): Promise<boolean> {
+  return rpcIsTeam(supabase)
+}
+
+/** Field capture (create/upload/apply) — administrators only. */
+async function canCaptureWorkSession(supabase: Awaited<ReturnType<typeof createClient>>): Promise<boolean> {
+  return rpcIsAdmin(supabase)
+}
+
+/** Team + admin capture see every session for a calendar day (one canonical row per day). */
+async function teamWideSessionListing(supabase: Awaited<ReturnType<typeof createClient>>): Promise<boolean> {
+  return (await canReadTeamWorkSessions(supabase)) || (await canCaptureWorkSession(supabase))
+}
+
+function sessionRowIsEmpty(payload: WorkSessionPayload): boolean {
+  return countWorkSessionItems(payload) === 0 && payload.shots.length === 0
+}
+
+function mergeJournalNotes(into: string, extra: string): string {
+  const a = into.trim()
+  const b = extra.trim()
+  if (!b) return a
+  if (!a) return b
+  if (a.includes(b)) return a
+  return `${a}\n\n${b}`
+}
+
+function appendWorkSessionItemToPayload(keeper: WorkSessionPayload, item: WorkSessionItem): void {
+  if (!sessionItemHasContent(item)) return
+  const idx = findItemIndex(keeper, item.id)
+  if (idx >= 0) {
+    const existing = keeper.items[idx]!
+    const shotKeys = new Set(existing.shots.map((s) => s.sha256))
+    const newShots = item.shots.filter((s) => !shotKeys.has(s.sha256))
+    keeper.items[idx] = touchItem({
+      ...existing,
+      notes: existing.notes?.trim() ? existing.notes : item.notes,
+      title_hint: existing.title_hint?.trim() ? existing.title_hint : item.title_hint,
+      width_cm: existing.width_cm?.trim() ? existing.width_cm : item.width_cm,
+      height_cm: existing.height_cm?.trim() ? existing.height_cm : item.height_cm,
+      oeuvre_id: existing.oeuvre_id ?? item.oeuvre_id,
+      oeuvre_title: existing.oeuvre_title?.trim() ? existing.oeuvre_title : item.oeuvre_title,
+      shots: [...existing.shots, ...newShots],
+      applied_shot_count: Math.max(existing.applied_shot_count ?? 0, item.applied_shot_count ?? 0),
+    })
+    return
+  }
+  keeper.items.push(touchItem({ ...item }))
+}
+
+function absorbPayloadIntoKeeper(keeper: WorkSessionPayload, donor: WorkSessionPayload): void {
+  keeper.notes = mergeJournalNotes(keeper.notes ?? '', donor.notes ?? '')
+  if (!keeper.field_context && donor.field_context) keeper.field_context = donor.field_context
+  if (donor.title_hint?.trim() && !keeper.title_hint?.trim()) keeper.title_hint = donor.title_hint
+  if (donor.width_cm?.trim() && !keeper.width_cm?.trim()) keeper.width_cm = donor.width_cm
+  if (donor.height_cm?.trim() && !keeper.height_cm?.trim()) keeper.height_cm = donor.height_cm
+  for (const item of donor.items) appendWorkSessionItemToPayload(keeper, item)
+  if (donor.shots.length > 0) {
+    if (keeper.items.length === 0) {
+      const item = createWorkSessionItem('existing')
+      item.shots = [...donor.shots]
+      keeper.items.push(touchItem(item))
+    } else {
+      const existing = keeper.items[0]!
+      const shotKeys = new Set(existing.shots.map((s) => s.sha256))
+      const newShots = donor.shots.filter((s) => !shotKeys.has(s.sha256))
+      keeper.items[0] = touchItem({ ...existing, shots: [...existing.shots, ...newShots] })
+    }
+  }
+}
+
+/**
+ * Merge every work_session for a calendar day into one row (all paintings kept), delete duplicates.
+ * Admin capture only.
+ */
+async function consolidateSessionsForCalendarDay(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  calendarDay: string,
+  userId: string,
+): Promise<{ ok: true; keeperId: string | null } | { error: string }> {
+  if (!(await canCaptureWorkSession(supabase))) return { ok: true, keeperId: null }
+
+  const teamWide = await teamWideSessionListing(supabase)
+  const listed = await listWorkSessionsForCalendarDay(supabase, calendarDay, { userId, teamWide })
+  if ('error' in listed) return { error: listed.error }
+  if (listed.length === 0) return { ok: true, keeperId: null }
+
+  if (listed.length === 1) {
+    const row = listed[0]!
+    const payload = parseWorkSessionPayload(row.payload)
+    if (payload.session_day !== calendarDay || !payload.session_at) {
+      payload.session_day = calendarDay
+      if (!payload.session_at) payload.session_at = sessionAtForCalendarDay(calendarDay)
+      await workSessionTable(supabase)
+        .update({ payload: asPayloadRecord(payload) })
+        .eq('id', row.id)
+    }
+    return { ok: true, keeperId: row.id }
+  }
+
+  const keeper = pickSessionForDay(listed)!
+  let keeperPayload = parseWorkSessionPayload(keeper.payload)
+  keeperPayload.session_day = calendarDay
+  keeperPayload.session_at = sessionAtForCalendarDay(calendarDay)
+
+  const donorIds: string[] = []
+  for (const row of listed) {
+    if (row.id === keeper.id) continue
+    donorIds.push(row.id)
+    absorbPayloadIntoKeeper(keeperPayload, parseWorkSessionPayload(row.payload))
+  }
+
+  const topOid =
+    listWorkSessionLinkedOeuvreIds(keeperPayload)[0]
+    ?? (typeof keeper.oeuvre_id === 'number' && keeper.oeuvre_id > 0 ? keeper.oeuvre_id : null)
+
+  if (keeperPayload.shots.length > 0) {
+    keeperPayload = await migrateLegacySessionShotsToItems(supabase, keeper.id, keeperPayload, topOid)
+  }
+
+  const { error: upErr } = await workSessionTable(supabase)
+    .update({
+      payload: asPayloadRecord(keeperPayload),
+      oeuvre_id: topOid,
+      status: keeper.status === 'draft' ? 'draft' : keeper.status,
+    })
+    .eq('id', keeper.id)
+  if (upErr) return { error: upErr.message }
+
+  if (donorIds.length > 0) {
+    const del = await deleteWorkSessionRows(supabase, donorIds)
+    if ('error' in del) return del
+  }
+
+  revalidatePath('/atelier')
+  revalidatePath('/atelier/session/new')
+  revalidatePath('/atelier/audit')
+  return { ok: true, keeperId: keeper.id }
+}
+
+const CAPTURE_ADMIN_ONLY = 'Capture réservée aux administrateurs'
+
+async function assertCaptureAdmin(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+): Promise<{ error: string } | null> {
+  if (!(await canCaptureWorkSession(supabase))) return { error: CAPTURE_ADMIN_ONLY }
+  return null
 }
 
 function normalizeSessionAt(value: string | null | undefined): string | null {
@@ -78,11 +243,21 @@ function sessionStatusRank(status: string): number {
   return 0
 }
 
-function pickSessionForDay<T extends { id: string; status: string; updated_at?: string | null }>(
-  rows: T[],
-): T | null {
+function sessionPayloadContentScore(payload: WorkSessionPayload): number {
+  const shots = countWorkSessionShots(payload)
+  const items = countWorkSessionItems(payload)
+  return shots * 100 + items * 10 + payload.items.filter(sessionItemHasContent).length
+}
+
+function pickSessionForDay(rows: WorkSessionDayRow[]): WorkSessionDayRow | null {
   if (rows.length === 0) return null
   return rows.reduce((best, row) => {
+    const bestPayload = parseWorkSessionPayload(best.payload)
+    const rowPayload = parseWorkSessionPayload(row.payload)
+    const bestScore = sessionPayloadContentScore(bestPayload)
+    const rowScore = sessionPayloadContentScore(rowPayload)
+    if (rowScore > bestScore) return row
+    if (rowScore < bestScore) return best
     const bestRank = sessionStatusRank(best.status)
     const rowRank = sessionStatusRank(row.status)
     if (rowRank > bestRank) return row
@@ -131,6 +306,8 @@ export type WorkSessionWorkOption = {
 
 export type WorkSessionJournalItem = {
   id: string
+  /** work_session row that owns this item (required when journal merges multiple sessions per day). */
+  source_session_id: string
   mode: WorkSessionItemMode
   status: WorkSessionItem['status']
   oeuvre_id: number | null
@@ -149,6 +326,8 @@ export type WorkSessionJournalItem = {
 
 export type WorkSessionJournalRow = WorkSessionRow & {
   session_at: string
+  /** YYYY-MM-DD Europe/Paris — canonical day for links and grouping. */
+  calendar_day: string
   journal_notes: string | null
   field_context: WorkSessionFieldContext | null
   item_count: number
@@ -281,13 +460,42 @@ async function createWorkFromSessionFields(
   return { ok: true, oeuvreId: oid }
 }
 
-export async function getSessionNewPageContext(): Promise<{ authed: boolean; isAdmin: boolean }> {
+export async function getSessionNewPageContext(): Promise<{
+  authed: boolean
+  isAdmin: boolean
+  userEmail: string | null
+  /** True when middleware DEV_AUTO_LOGIN signed in (separate from production Google user). */
+  isDevAutoProfile: boolean
+  /** True when journal can list all team sessions (is_team). */
+  journalTeamReadAccess: boolean
+  /** True when user may run field capture (admin only). */
+  canCaptureSessions: boolean
+}> {
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) return { authed: false, isAdmin: false }
-  return { authed: true, isAdmin: await rpcIsAdmin(supabase) }
+  if (!user) {
+    return {
+      authed: false,
+      isAdmin: false,
+      userEmail: null,
+      isDevAutoProfile: false,
+      journalTeamReadAccess: false,
+      canCaptureSessions: false,
+    }
+  }
+  const userEmail = user.email ?? null
+  const isDevAutoProfile = isDevAutoProfileEmail(userEmail)
+  const isAdmin = await rpcIsAdmin(supabase)
+  return {
+    authed: true,
+    isAdmin,
+    userEmail,
+    isDevAutoProfile,
+    journalTeamReadAccess: await canReadTeamWorkSessions(supabase),
+    canCaptureSessions: isAdmin,
+  }
 }
 
 export async function getWorkSessionShotCount(sessionId: string): Promise<number> {
@@ -299,7 +507,6 @@ export async function getWorkSessionShotCount(sessionId: string): Promise<number
   const { data, error } = await workSessionTable(supabase)
     .select('payload')
     .eq('id', sessionId)
-    .eq('user_id', user.id)
     .maybeSingle()
   if (error || !data) return 0
   return countWorkSessionShots(parseWorkSessionPayload(data.payload))
@@ -307,6 +514,8 @@ export async function getWorkSessionShotCount(sessionId: string): Promise<number
 
 export type WorkSessionDraftFields = {
   session_at: string
+  /** YYYY-MM-DD Europe/Paris — use for date input, not raw session_at alone. */
+  calendar_day: string
   notes: string
   title_hint: string
   width_cm: string
@@ -314,8 +523,67 @@ export type WorkSessionDraftFields = {
   field_context: WorkSessionFieldContext | null
 }
 
+/** Older sessions stored photos on payload.shots with an empty items[]. */
+async function migrateLegacySessionShotsToItems(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  sessionId: string,
+  payload: WorkSessionPayload,
+  topLevelOeuvreId: number | null,
+): Promise<WorkSessionPayload> {
+  if (payload.shots.length === 0) return payload
+
+  const next = { ...payload, items: [...payload.items], shots: [] as WorkSessionPayload['shots'] }
+  const targetIdx = next.items.findIndex((item) => sessionItemHasContent(item))
+  const idx = targetIdx >= 0 ? targetIdx : 0
+
+  if (next.items.length === 0) {
+    const item = createWorkSessionItem('existing')
+    if (topLevelOeuvreId && topLevelOeuvreId > 0) item.oeuvre_id = topLevelOeuvreId
+    item.shots = [...payload.shots]
+    next.items = [touchItem(item)]
+  } else {
+    const existing = next.items[idx]!
+    next.items[idx] = touchItem({
+      ...existing,
+      shots: [...existing.shots, ...payload.shots],
+    })
+  }
+
+  const { error } = await workSessionTable(supabase)
+    .update({ payload: asPayloadRecord(next) })
+    .eq('id', sessionId)
+  if (error) {
+    console.error('[work_session] migrateLegacySessionShotsToItems', error.message)
+    return payload
+  }
+  return next
+}
+
+function enrichDraftItems(
+  payload: WorkSessionPayload,
+  titleMap: Map<number, string | null>,
+  thumbMap: Map<number, string | null>,
+): WorkSessionItem[] {
+  return payload.items.map((item) => {
+    const oid = item.oeuvre_id ?? null
+    return {
+      ...item,
+      oeuvre_title: oid ? titleMap.get(oid) ?? item.oeuvre_title ?? null : item.oeuvre_title ?? null,
+      work_thumb: oid ? thumbMap.get(oid) ?? null : null,
+    }
+  })
+}
+
 export async function getWorkSessionDraftFields(sessionId: string): Promise<
-  { ok: true; status: string; fields: WorkSessionDraftFields; oeuvre_id: number | null; items: WorkSessionItem[] } | { error: string }
+  | {
+    ok: true
+    status: string
+    fields: WorkSessionDraftFields
+    oeuvre_id: number | null
+    items: WorkSessionItem[]
+    readOnly: boolean
+  }
+  | { error: string }
 > {
   const supabase = await createClient()
   const {
@@ -323,27 +591,48 @@ export async function getWorkSessionDraftFields(sessionId: string): Promise<
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Non authentifié' }
   const { data, error } = await workSessionTable(supabase)
-    .select('payload,oeuvre_id,created_at,status')
+    .select('payload,oeuvre_id,created_at,status,user_id')
     .eq('id', sessionId)
-    .eq('user_id', user.id)
     .maybeSingle()
   if (error || !data) return { error: error?.message ?? 'Session introuvable' }
-  const p = parseWorkSessionPayload(data.payload)
+  let p = parseWorkSessionPayload(data.payload)
   const oeuvreId = data.oeuvre_id
   const status = (data.status as string) ?? 'draft'
+  const topOid = typeof oeuvreId === 'number' && oeuvreId > 0 ? oeuvreId : null
+  const rowUserId = (data as { user_id?: string }).user_id
+  const readOnly = !(await canCaptureWorkSession(supabase))
+
+  if (p.shots.length > 0 && !readOnly) {
+    p = await migrateLegacySessionShotsToItems(supabase, sessionId, p, topOid)
+  }
+
+  const linkedIds = [
+    ...listWorkSessionLinkedOeuvreIds(p),
+    ...(topOid ? [topOid] : []),
+  ]
+  const { titleMap, thumbMap } = await workMapsForIds(supabase, linkedIds)
+  const items = enrichDraftItems(p, titleMap, thumbMap)
+  const sessionAt = sessionAtForPayload(p, data.created_at as string | null)
+  const calendarDay =
+    p.session_day && /^\d{4}-\d{2}-\d{2}$/.test(p.session_day)
+      ? p.session_day
+      : sessionCalendarDayKey(sessionAt) ?? ''
+
   return {
     ok: true,
     status,
-    oeuvre_id: typeof oeuvreId === 'number' && oeuvreId > 0 ? oeuvreId : null,
-    items: p.items,
+    oeuvre_id: topOid,
+    items,
     fields: {
-      session_at: sessionAtForPayload(p, data.created_at as string | null),
+      session_at: sessionAt,
+      calendar_day: calendarDay,
       notes: p.notes ?? '',
       title_hint: p.title_hint ?? '',
       width_cm: p.width_cm ?? '',
       height_cm: p.height_cm ?? '',
       field_context: p.field_context ?? null,
     },
+    readOnly,
   }
 }
 
@@ -359,9 +648,11 @@ async function ensureWorkSessionHasItem(
   if (selErr || !row) return { error: selErr?.message ?? 'Session introuvable' }
   const payload = parseWorkSessionPayload(row.payload)
   if (payload.items.length === 0) {
-    const firstItem = createWorkSessionItem('existing')
-    if (oeuvreId && oeuvreId > 0) firstItem.oeuvre_id = oeuvreId
-    payload.items = [firstItem]
+    if (oeuvreId && oeuvreId > 0) {
+      const firstItem = createWorkSessionItem('existing')
+      firstItem.oeuvre_id = oeuvreId
+      payload.items = [firstItem]
+    }
   } else if (oeuvreId && oeuvreId > 0 && !payload.items.some((item) => item.oeuvre_id === oeuvreId)) {
     const first = payload.items[0]
     if (!first.oeuvre_id) {
@@ -376,11 +667,106 @@ async function ensureWorkSessionHasItem(
   return { ok: true }
 }
 
+const WORK_SESSION_OPEN_STATUSES = ['draft', 'applied', 'abandoned', 'rejected', 'pending_review'] as const
+
+type WorkSessionDayRow = {
+  id: string
+  status: string
+  payload: unknown
+  oeuvre_id?: number | null
+  user_id?: string
+  created_at: string | null
+  updated_at?: string | null
+}
+
+async function listWorkSessionsForCalendarDay(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  calendarDay: string,
+  opts: { userId: string; teamWide: boolean },
+): Promise<WorkSessionDayRow[] | { error: string }> {
+  const baseSelect = () =>
+    workSessionTable(supabase)
+      .select('id,status,payload,oeuvre_id,created_at,updated_at,user_id')
+      .in('status', [...WORK_SESSION_OPEN_STATUSES])
+
+  let byDayKey = baseSelect()
+    .filter('payload->>session_day', 'eq', calendarDay)
+    .order('updated_at', { ascending: false })
+    .limit(48)
+  if (!opts.teamWide) byDayKey = byDayKey.eq('user_id', opts.userId)
+
+  const { data: byStoredDay, error: keyErr } = await byDayKey
+  if (keyErr) return { error: keyErr.message }
+
+  let scan = baseSelect().order('updated_at', { ascending: false }).limit(400)
+  if (!opts.teamWide) scan = scan.eq('user_id', opts.userId)
+
+  const { data: rows, error: listErr } = await scan
+  if (listErr) return { error: listErr.message }
+
+  // Union keyed + scanned rows: an empty draft with session_day set must not hide
+  // an older session on the same Paris day that only has session_at.
+  const seen = new Set<string>()
+  const merged: WorkSessionDayRow[] = []
+  for (const row of [...(byStoredDay ?? []), ...(rows ?? [])]) {
+    const id = row.id as string
+    if (seen.has(id)) continue
+    const payload = parseWorkSessionPayload(row.payload)
+    const day = sessionDayForPayload(payload, row.created_at as string | null)
+    if (day !== calendarDay) continue
+    seen.add(id)
+    merged.push(row as WorkSessionDayRow)
+  }
+  return merged
+}
+
+async function reopenWorkSessionRow(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  existing: WorkSessionDayRow,
+  calendarDay: string,
+  oeuvreId: number | null,
+  opts?: { readOnly?: boolean },
+): Promise<{ ok: true; id: string; reopened: boolean; readOnly: boolean } | { error: string }> {
+  if (opts?.readOnly) {
+    revalidatePath('/atelier/session/new')
+    return { ok: true, id: existing.id, reopened: false, readOnly: true }
+  }
+
+  let reopened = false
+  if (existing.status !== 'draft') {
+    const { error: reopenErr } = await workSessionTable(supabase)
+      .update({ status: 'draft', expires_at: expiresAtIso() })
+      .eq('id', existing.id)
+    if (reopenErr) return { error: reopenErr.message }
+    reopened = true
+  }
+  let payload = parseWorkSessionPayload(existing.payload)
+  const topOid =
+    typeof existing.oeuvre_id === 'number' && existing.oeuvre_id > 0
+      ? existing.oeuvre_id
+      : (oeuvreId && oeuvreId > 0 ? oeuvreId : null)
+  if (payload.shots.length > 0) {
+    payload = await migrateLegacySessionShotsToItems(supabase, existing.id, payload, topOid)
+  }
+  if (!payload.session_day) {
+    payload.session_day = calendarDay
+    if (!payload.session_at) payload.session_at = sessionAtForCalendarDay(calendarDay)
+    await workSessionTable(supabase)
+      .update({ payload: asPayloadRecord(payload) })
+      .eq('id', existing.id)
+  }
+  const itemRes = await ensureWorkSessionHasItem(supabase, existing.id, oeuvreId)
+  if ('error' in itemRes) return itemRes
+  revalidatePath('/atelier/session/new')
+  return { ok: true, id: existing.id, reopened, readOnly: false }
+}
+
 /** One field session per calendar day (YYYY-MM-DD); reopens the same row to add more works/photos. */
 export async function openWorkSessionForDay(
   oeuvreId: number | null,
   calendarDay: string,
-): Promise<{ ok: true; id: string; reopened: boolean } | { error: string }> {
+  opts?: { preferredSessionId?: string | null },
+): Promise<{ ok: true; id: string; reopened: boolean; readOnly: boolean } | { error: string }> {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(calendarDay)) return { error: 'Date de session invalide' }
 
   const supabase = await createClient()
@@ -389,50 +775,40 @@ export async function openWorkSessionForDay(
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Non authentifié' }
 
-  const { data: rows, error: listErr } = await workSessionTable(supabase)
-    .select('id,status,payload,created_at,updated_at')
-    .eq('user_id', user.id)
-    .in('status', ['draft', 'applied', 'abandoned', 'rejected'])
-    .order('updated_at', { ascending: false })
-    .limit(120)
-  if (listErr) return { error: listErr.message }
+  const teamWide = await teamWideSessionListing(supabase)
+  const canCapture = await canCaptureWorkSession(supabase)
+  if (canCapture) {
+    const merged = await consolidateSessionsForCalendarDay(supabase, calendarDay, user.id)
+    if ('error' in merged) return { error: merged.error }
+  }
 
-  const sameDay = (rows ?? []).filter((row) => {
-    const payload = parseWorkSessionPayload(row.payload)
-    return sessionDayForPayload(payload, row.created_at as string | null) === calendarDay
+  const listed = await listWorkSessionsForCalendarDay(supabase, calendarDay, {
+    userId: user.id,
+    teamWide,
   })
-  type DayRow = { id: string; status: string; payload: unknown; created_at: string | null; updated_at?: string | null }
-  const existing = pickSessionForDay(sameDay as DayRow[]) as DayRow | null
+  if ('error' in listed) return { error: listed.error }
+
+  const preferredId = opts?.preferredSessionId?.trim() ?? ''
+  let existing = pickSessionForDay(listed)
+  if (preferredId) {
+    const preferred = listed.find((row) => row.id === preferredId)
+    if (preferred) existing = preferred
+  }
 
   if (existing) {
-    let reopened = false
-    if (existing.status !== 'draft') {
-      const { error: reopenErr } = await workSessionTable(supabase)
-        .update({ status: 'draft', expires_at: expiresAtIso() })
-        .eq('id', existing.id)
-      if (reopenErr) return { error: reopenErr.message }
-      reopened = true
-    }
-    const payload = parseWorkSessionPayload(existing.payload)
-    if (!payload.session_day) {
-      payload.session_day = calendarDay
-      if (!payload.session_at) payload.session_at = sessionAtForCalendarDay(calendarDay)
-      await workSessionTable(supabase)
-        .update({ payload: asPayloadRecord(payload) })
-        .eq('id', existing.id)
-    }
-    const itemRes = await ensureWorkSessionHasItem(supabase, existing.id, oeuvreId)
-    if ('error' in itemRes) return itemRes
-    revalidatePath('/atelier/session/new')
-    return { ok: true, id: existing.id, reopened }
+    return reopenWorkSessionRow(supabase, existing, calendarDay, oeuvreId, { readOnly: !canCapture })
   }
+
+  if (!canCapture) return { error: CAPTURE_ADMIN_ONLY }
 
   const payload = emptyWorkSessionPayload()
   payload.session_day = calendarDay
   payload.session_at = sessionAtForCalendarDay(calendarDay)
-  const firstItem = createWorkSessionItem('existing')
-  if (oeuvreId && oeuvreId > 0) firstItem.oeuvre_id = oeuvreId
-  payload.items = [firstItem]
+  if (oeuvreId && oeuvreId > 0) {
+    const firstItem = createWorkSessionItem('existing')
+    firstItem.oeuvre_id = oeuvreId
+    payload.items = [firstItem]
+  }
 
   const { data, error } = await workSessionTable(supabase)
     .insert({
@@ -447,13 +823,16 @@ export async function openWorkSessionForDay(
 
   if (error || !data) return { error: error?.message ?? 'work_session insert failed' }
   revalidatePath('/atelier/session/new')
-  return { ok: true, id: data.id as string, reopened: false }
+  return { ok: true, id: data.id as string, reopened: false, readOnly: false }
 }
 
 /** @deprecated Prefer openWorkSessionForDay with an explicit YYYY-MM-DD calendar day. */
 export async function createWorkSessionDraft(oeuvreId: number | null): Promise<
   { ok: true; id: string } | { error: string }
 > {
+  const supabase = await createClient()
+  const denied = await assertCaptureAdmin(supabase)
+  if (denied) return denied
   const day =
     sessionCalendarDayKey(new Date().toISOString())
     ?? new Date().toISOString().slice(0, 10)
@@ -478,13 +857,14 @@ export async function updateWorkSessionMetadata(
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Non authentifié' }
+  const denied = await assertCaptureAdmin(supabase)
+  if (denied) return denied
 
   const { data: row, error: selErr } = await workSessionTable(supabase)
     .select('id,user_id,status,payload')
     .eq('id', sessionId)
     .maybeSingle()
   if (selErr || !row) return { error: selErr?.message ?? 'Session introuvable' }
-  if (row.user_id !== user.id) return { error: 'Accès refusé' }
   if (row.status !== 'draft') return { error: 'Session non modifiable' }
 
   const payload = parseWorkSessionPayload(row.payload)
@@ -510,7 +890,6 @@ export async function updateWorkSessionMetadata(
   const { error: upErr } = await workSessionTable(supabase)
     .update({ payload: asPayloadRecord(payload) })
     .eq('id', sessionId)
-    .eq('user_id', user.id)
     .eq('status', 'draft')
   if (upErr) return { error: upErr.message }
   return { ok: true }
@@ -534,10 +913,9 @@ export async function updateWorkSessionJournalMetadata(
     .eq('id', sessionId)
     .maybeSingle()
   if (selErr || !row) return { error: selErr?.message ?? 'Session introuvable' }
-
-  const isAdmin = await rpcIsAdmin(supabase)
-  if (!isAdmin && row.user_id !== user.id) return { error: 'Accès refusé' }
-  if (!isAdmin && row.status !== 'draft') return { error: 'Session non modifiable' }
+  const denied = await assertCaptureAdmin(supabase)
+  if (denied) return denied
+  if (row.status !== 'draft') return { error: 'Session non modifiable' }
 
   const payload = parseWorkSessionPayload(row.payload)
   if (typeof patch.session_at === 'string') {
@@ -566,13 +944,14 @@ export async function createWorkSessionItemAction(
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Non authentifié' }
+  const denied = await assertCaptureAdmin(supabase)
+  if (denied) return denied
 
   const { data: row, error: selErr } = await workSessionTable(supabase)
     .select('id,user_id,status,payload')
     .eq('id', sessionId)
     .maybeSingle()
   if (selErr || !row) return { error: selErr?.message ?? 'Session introuvable' }
-  if ((row as SessionMutableRow).user_id !== user.id) return { error: 'Accès refusé' }
   if ((row as SessionMutableRow).status !== 'draft') return { error: 'Session non modifiable' }
 
   const payload = parseWorkSessionPayload((row as SessionMutableRow).payload)
@@ -581,7 +960,6 @@ export async function createWorkSessionItemAction(
   const { error: upErr } = await workSessionTable(supabase)
     .update({ payload: asPayloadRecord(payload) })
     .eq('id', sessionId)
-    .eq('user_id', user.id)
     .eq('status', 'draft')
   if (upErr) return { error: upErr.message }
   return { ok: true, item }
@@ -603,16 +981,15 @@ export async function updateWorkSessionItemMetadata(
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Non authentifié' }
+  const denied = await assertCaptureAdmin(supabase)
+  if (denied) return denied
 
   const { data: row, error: selErr } = await workSessionTable(supabase)
     .select('id,user_id,status,payload')
     .eq('id', sessionId)
     .maybeSingle()
   if (selErr || !row) return { error: selErr?.message ?? 'Session introuvable' }
-  const isAdmin = await rpcIsAdmin(supabase)
-  const canEdit = (row as SessionMutableRow).user_id === user.id || isAdmin
-  if (!canEdit) return { error: 'Accès refusé' }
-  if ((row as SessionMutableRow).status !== 'draft' && !isAdmin) return { error: 'Session non modifiable' }
+  if ((row as SessionMutableRow).status !== 'draft') return { error: 'Session non modifiable' }
 
   const payload = parseWorkSessionPayload((row as SessionMutableRow).payload)
   const idx = findItemIndex(payload, itemId)
@@ -645,6 +1022,8 @@ export async function deleteWorkSessionItem(
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Non authentifié' }
+  const denied = await assertCaptureAdmin(supabase)
+  if (denied) return denied
 
   const { data: row, error: selErr } = await workSessionTable(supabase)
     .select('id,user_id,status,payload,oeuvre_id')
@@ -652,7 +1031,6 @@ export async function deleteWorkSessionItem(
     .maybeSingle()
   if (selErr || !row) return { error: selErr?.message ?? 'Session introuvable' }
   const isAdmin = await rpcIsAdmin(supabase)
-  if ((row as SessionMutableRow).user_id !== user.id && !isAdmin) return { error: 'Accès refusé' }
   if ((row as SessionMutableRow).status !== 'draft' && !isAdmin) return { error: 'Session non modifiable' }
 
   const payload = parseWorkSessionPayload((row as SessionMutableRow).payload)
@@ -690,6 +1068,8 @@ export async function linkWorkSessionItemToOeuvre(
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Non authentifié' }
+  const denied = await assertCaptureAdmin(supabase)
+  if (denied) return denied
   if (!Number.isFinite(oeuvreId) || oeuvreId <= 0) return { error: 'Œuvre invalide' }
 
   const work = await selectWorkTitle(supabase, oeuvreId)
@@ -700,7 +1080,6 @@ export async function linkWorkSessionItemToOeuvre(
     .eq('id', sessionId)
     .maybeSingle()
   if (selErr || !row) return { error: selErr?.message ?? 'Session introuvable' }
-  if ((row as SessionMutableRow).user_id !== user.id) return { error: 'Accès refusé' }
   if ((row as SessionMutableRow).status !== 'draft') return { error: 'Session non modifiable' }
 
   const payload = parseWorkSessionPayload((row as SessionMutableRow).payload)
@@ -717,7 +1096,6 @@ export async function linkWorkSessionItemToOeuvre(
   const { error: upErr } = await workSessionTable(supabase)
     .update({ payload: asPayloadRecord(payload), oeuvre_id: topLevelOeuvreId })
     .eq('id', sessionId)
-    .eq('user_id', user.id)
     .eq('status', 'draft')
   if (upErr) return { error: upErr.message }
   return { ok: true }
@@ -793,17 +1171,23 @@ async function workMapsForIds(
   return { titleMap, thumbMap }
 }
 
-export async function listWorkSessionJournal(limit = 100): Promise<WorkSessionJournalRow[]> {
+export async function listWorkSessionJournal(
+  limit = 100,
+  opts?: { skipReconcile?: boolean },
+): Promise<WorkSessionJournalRow[]> {
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return []
 
+  const teamWide = await teamWideSessionListing(supabase)
+  const fetchLimit = teamWide ? Math.max(limit, 200) : limit
+
   const { data, error } = await workSessionTable(supabase)
     .select('*')
     .order('created_at', { ascending: false })
-    .limit(limit)
+    .limit(fetchLimit)
   if (error) {
     console.error('[work_session] journal list', error.message)
     return []
@@ -822,58 +1206,141 @@ export async function listWorkSessionJournal(limit = 100): Promise<WorkSessionJo
 
   const mapped = rows.map((row) => {
     const payload = parsed.get(row.id) ?? emptyWorkSessionPayload()
-    const items = payload.items.map((item): WorkSessionJournalItem => {
-      const oid = item.oeuvre_id ?? null
-      return {
-        id: item.id,
-        mode: item.mode,
-        status: item.status,
-        oeuvre_id: oid,
-        oeuvre_title: oid ? titleMap.get(oid) ?? item.oeuvre_title ?? null : item.oeuvre_title ?? null,
-        work_thumb: oid ? thumbMap.get(oid) ?? null : null,
-        title_hint: item.title_hint ?? null,
-        notes: item.notes ?? null,
-        width_cm: item.width_cm ?? null,
-        height_cm: item.height_cm ?? null,
-        staged_shots: item.shots.map((shot) => ({ r2_key: shot.r2_key, thumb_r2_key: shot.thumb_r2_key })),
-        applied_shot_count: item.applied_shot_count ?? 0,
-        created_at: item.created_at ?? null,
-        updated_at: item.updated_at ?? null,
-        applied_at: item.applied_at ?? null,
-      }
-    })
+    const items = journalItemsFromPayload(payload, titleMap, thumbMap, row.id)
+    const stagedFromItems = items.reduce((sum, item) => sum + item.staged_shots.length, 0)
+    const appliedFromItems = items.reduce((sum, item) => sum + item.applied_shot_count, 0)
+    const sessionAt = sessionAtForPayload(payload, row.created_at)
+    const calendarDay =
+      sessionDayForPayload(payload, row.created_at as string | null)
+      ?? sessionCalendarDayKey(sessionAt)
+      ?? ''
     return {
       ...row,
-      session_at: sessionAtForPayload(payload, row.created_at),
+      session_at: sessionAt,
+      calendar_day: calendarDay,
       journal_notes: payload.notes ?? null,
       field_context: payload.field_context ?? null,
-      item_count: countWorkSessionItems(payload),
-      staged_shot_count: payload.shots.length + payload.items.reduce((sum, item) => sum + item.shots.length, 0),
-      applied_shot_count: payload.items.reduce((sum, item) => sum + (item.applied_shot_count ?? 0), 0),
+      item_count: items.length,
+      staged_shot_count: stagedFromItems,
+      applied_shot_count: appliedFromItems,
       items,
     }
   })
-  return dedupeJournalRowsByDay(
-    mapped.sort((a, b) => Date.parse(b.session_at) - Date.parse(a.session_at)),
+
+  if (!opts?.skipReconcile && (await canCaptureWorkSession(supabase))) {
+    const dupDays = new Set<string>()
+    for (const row of mapped) {
+      if (!row.calendar_day) continue
+      const n = mapped.filter((r) => r.calendar_day === row.calendar_day).length
+      if (n > 1) dupDays.add(row.calendar_day)
+    }
+    if (dupDays.size > 0) {
+      for (const day of dupDays) {
+        const merged = await consolidateSessionsForCalendarDay(supabase, day, user.id)
+        if ('error' in merged) console.error('[work_session] journal reconcile', day, merged.error)
+      }
+      return listWorkSessionJournal(limit, { skipReconcile: true })
+    }
+  }
+
+  return mergeJournalRowsByDay(
+    mapped.sort((a, b) => {
+      const dayCmp = (b.calendar_day || '').localeCompare(a.calendar_day || '')
+      if (dayCmp !== 0) return dayCmp
+      return (Date.parse(b.updated_at ?? '') || 0) - (Date.parse(a.updated_at ?? '') || 0)
+    }),
   )
 }
 
-function dedupeJournalRowsByDay(rows: WorkSessionJournalRow[]): WorkSessionJournalRow[] {
-  const byDay = new Map<string, WorkSessionJournalRow>()
+/** One journal row per calendar day — items from every session that day (after DB consolidate: single source row). */
+function mergeJournalRowsByDay(rows: WorkSessionJournalRow[]): WorkSessionJournalRow[] {
+  const byDay = new Map<string, WorkSessionJournalRow[]>()
   for (const row of rows) {
-    const day = sessionCalendarDayKey(row.session_at) ?? row.id
-    const existing = byDay.get(day)
-    if (!existing || sessionStatusRank(row.status) > sessionStatusRank(existing.status)) {
-      byDay.set(day, row)
-      continue
-    }
-    if (sessionStatusRank(row.status) === sessionStatusRank(existing.status)) {
-      const existingTs = Date.parse(existing.updated_at ?? '') || 0
-      const rowTs = Date.parse(row.updated_at ?? '') || 0
-      if (rowTs > existingTs) byDay.set(day, row)
-    }
+    const day = row.calendar_day || sessionCalendarDayKey(row.session_at) || row.id
+    byDay.set(day, [...(byDay.get(day) ?? []), row])
   }
-  return Array.from(byDay.values()).sort((a, b) => Date.parse(b.session_at) - Date.parse(a.session_at))
+  const merged: WorkSessionJournalRow[] = []
+  for (const [day, dayRows] of byDay.entries()) {
+    const sorted = [...dayRows].sort((a, b) => {
+      const rank = sessionStatusRank(b.status) - sessionStatusRank(a.status)
+      if (rank !== 0) return rank
+      return (Date.parse(b.updated_at ?? '') || 0) - (Date.parse(a.updated_at ?? '') || 0)
+    })
+    const primary = sorted[0]
+    const seen = new Set<string>()
+    const items: WorkSessionJournalItem[] = []
+    for (const row of sorted) {
+      for (const item of row.items) {
+        if (seen.has(item.id)) continue
+        seen.add(item.id)
+        items.push(item)
+      }
+    }
+    const notesParts = sorted
+      .map((r) => r.journal_notes?.trim())
+      .filter((n): n is string => Boolean(n))
+    merged.push({
+      ...primary,
+      calendar_day: day,
+      journal_notes: notesParts.length > 0 ? [...new Set(notesParts)].join('\n\n') : null,
+      item_count: items.length,
+      staged_shot_count: items.reduce((sum, item) => sum + item.staged_shots.length, 0),
+      applied_shot_count: items.reduce((sum, item) => sum + item.applied_shot_count, 0),
+      items,
+    })
+  }
+  return merged.sort((a, b) => Date.parse(b.session_at) - Date.parse(a.session_at))
+}
+
+function journalItemsFromPayload(
+  payload: WorkSessionPayload,
+  titleMap: Map<number, string | null>,
+  thumbMap: Map<number, string | null>,
+  sourceSessionId: string,
+): WorkSessionJournalItem[] {
+  const fromItems = payload.items.filter(sessionItemHasContent).map((item): WorkSessionJournalItem => {
+    const oid = item.oeuvre_id ?? null
+    return {
+      id: item.id,
+      source_session_id: sourceSessionId,
+      mode: item.mode,
+      status: item.status,
+      oeuvre_id: oid,
+      oeuvre_title: oid ? titleMap.get(oid) ?? item.oeuvre_title ?? null : item.oeuvre_title ?? null,
+      work_thumb: oid ? thumbMap.get(oid) ?? null : null,
+      title_hint: item.title_hint ?? null,
+      notes: item.notes ?? null,
+      width_cm: item.width_cm ?? null,
+      height_cm: item.height_cm ?? null,
+      staged_shots: item.shots.map((shot) => ({ r2_key: shot.r2_key, thumb_r2_key: shot.thumb_r2_key })),
+      applied_shot_count: item.applied_shot_count ?? 0,
+      created_at: item.created_at ?? null,
+      updated_at: item.updated_at ?? null,
+      applied_at: item.applied_at ?? null,
+    }
+  })
+  if (fromItems.length > 0) return fromItems
+  if (payload.shots.length === 0) return []
+  return [
+    {
+      id: '__legacy_session_shots__',
+      source_session_id: sourceSessionId,
+      mode: 'existing',
+      status: 'draft',
+      oeuvre_id: null,
+      oeuvre_title: payload.title_hint?.trim() || null,
+      work_thumb: null,
+      title_hint: payload.title_hint ?? null,
+      notes: payload.notes ?? null,
+      width_cm: payload.width_cm ?? null,
+      height_cm: payload.height_cm ?? null,
+      staged_shots: payload.shots.map((shot) => ({ r2_key: shot.r2_key, thumb_r2_key: shot.thumb_r2_key })),
+      applied_shot_count: 0,
+      created_at: null,
+      updated_at: null,
+      applied_at: null,
+    },
+  ]
 }
 
 function diffVersionSnapshots(
@@ -1031,6 +1498,8 @@ export async function uploadWorkSessionShot(
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Non authentifié' }
+  const denied = await assertCaptureAdmin(supabase)
+  if (denied) return denied
 
   const file = formData.get('image') as File | null
   if (!file || file.size === 0) return { error: 'Image manquante' }
@@ -1040,7 +1509,6 @@ export async function uploadWorkSessionShot(
     .eq('id', sessionId)
     .maybeSingle()
   if (selErr || !row) return { error: selErr?.message ?? 'Session introuvable' }
-  if (row.user_id !== user.id) return { error: 'Accès refusé' }
   if (row.status !== 'draft') return { error: 'Session non modifiable' }
 
   const rawBuf = Buffer.from(await file.arrayBuffer())
@@ -1067,7 +1535,6 @@ export async function uploadWorkSessionShot(
   const { error: upErr } = await workSessionTable(supabase)
     .update({ payload: payload as unknown as Record<string, unknown> })
     .eq('id', sessionId)
-    .eq('user_id', user.id)
     .eq('status', 'draft')
   if (upErr) return { error: upErr.message }
 
@@ -1085,6 +1552,8 @@ export async function uploadWorkSessionItemShot(
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Non authentifié' }
+  const denied = await assertCaptureAdmin(supabase)
+  if (denied) return denied
 
   const file = formData.get('image') as File | null
   if (!file || file.size === 0) return { error: 'Image manquante' }
@@ -1094,7 +1563,6 @@ export async function uploadWorkSessionItemShot(
     .eq('id', sessionId)
     .maybeSingle()
   if (selErr || !row) return { error: selErr?.message ?? 'Session introuvable' }
-  if ((row as SessionMutableRow).user_id !== user.id) return { error: 'Accès refusé' }
   if ((row as SessionMutableRow).status !== 'draft') return { error: 'Session non modifiable' }
 
   const payload = parseWorkSessionPayload((row as SessionMutableRow).payload)
@@ -1127,7 +1595,6 @@ export async function uploadWorkSessionItemShot(
   const { error: upErr } = await workSessionTable(supabase)
     .update({ payload: asPayloadRecord(payload) })
     .eq('id', sessionId)
-    .eq('user_id', user.id)
     .eq('status', 'draft')
   if (upErr) return { error: upErr.message }
 
@@ -1145,6 +1612,8 @@ export async function removeWorkSessionItemShot(
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Non authentifié' }
+  const denied = await assertCaptureAdmin(supabase)
+  if (denied) return denied
 
   const sha = shotSha256.trim()
   if (!/^[a-f0-9]{64}$/i.test(sha)) return { error: 'Photo introuvable' }
@@ -1154,7 +1623,6 @@ export async function removeWorkSessionItemShot(
     .eq('id', sessionId)
     .maybeSingle()
   if (selErr || !row) return { error: selErr?.message ?? 'Session introuvable' }
-  if ((row as SessionMutableRow).user_id !== user.id) return { error: 'Accès refusé' }
   if ((row as SessionMutableRow).status !== 'draft') return { error: 'Session non modifiable' }
 
   const payload = parseWorkSessionPayload((row as SessionMutableRow).payload)
@@ -1178,7 +1646,6 @@ export async function removeWorkSessionItemShot(
   const { error: upErr } = await workSessionTable(supabase)
     .update({ payload: asPayloadRecord(payload) })
     .eq('id', sessionId)
-    .eq('user_id', user.id)
     .eq('status', 'draft')
   if (upErr) return { error: upErr.message }
 
@@ -1202,6 +1669,8 @@ export async function createAndLinkWorkFromSession(
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Non authentifié' }
+  const denied = await assertCaptureAdmin(supabase)
+  if (denied) return denied
 
   const titre = fields.title_hint.trim()
   if (!titre) return { error: 'Titre requis pour créer une œuvre' }
@@ -1211,7 +1680,6 @@ export async function createAndLinkWorkFromSession(
     .eq('id', sessionId)
     .maybeSingle()
   if (selErr || !row) return { error: selErr?.message ?? 'Session introuvable' }
-  if (row.user_id !== user.id) return { error: 'Accès refusé' }
   if (row.status !== 'draft') return { error: 'Session non modifiable' }
   if (row.oeuvre_id) return { error: 'Œuvre déjà associée' }
 
@@ -1233,7 +1701,6 @@ export async function createAndLinkWorkFromSession(
   const { error: linkErr } = await workSessionTable(supabase)
     .update({ oeuvre_id: oid })
     .eq('id', sessionId)
-    .eq('user_id', user.id)
     .eq('status', 'draft')
   if (linkErr) return { error: linkErr.message }
 
@@ -1251,13 +1718,14 @@ export async function createAndLinkWorkFromSessionItem(
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Non authentifié' }
+  const denied = await assertCaptureAdmin(supabase)
+  if (denied) return denied
 
   const { data: row, error: selErr } = await workSessionTable(supabase)
     .select('id,user_id,status,payload')
     .eq('id', sessionId)
     .maybeSingle()
   if (selErr || !row) return { error: selErr?.message ?? 'Session introuvable' }
-  if ((row as SessionMutableRow).user_id !== user.id) return { error: 'Accès refusé' }
   if ((row as SessionMutableRow).status !== 'draft') return { error: 'Session non modifiable' }
 
   const payload = parseWorkSessionPayload((row as SessionMutableRow).payload)
@@ -1284,7 +1752,6 @@ export async function createAndLinkWorkFromSessionItem(
   const { error: upErr } = await workSessionTable(supabase)
     .update({ payload: asPayloadRecord(payload), oeuvre_id: topLevelOeuvreId })
     .eq('id', sessionId)
-    .eq('user_id', user.id)
     .eq('status', 'draft')
   if (upErr) return { error: upErr.message }
 
@@ -1302,6 +1769,8 @@ export async function linkWorkSessionToOeuvre(
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Non authentifié' }
+  const denied = await assertCaptureAdmin(supabase)
+  if (denied) return denied
   if (!Number.isFinite(oeuvreId) || oeuvreId <= 0) return { error: 'Œuvre invalide' }
 
   const work = await selectWorkTitle(supabase, oeuvreId)
@@ -1325,7 +1794,6 @@ export async function linkWorkSessionToOeuvre(
   const { error } = await workSessionTable(supabase)
     .update({ oeuvre_id: oeuvreId, payload: asPayloadRecord(payload) })
     .eq('id', sessionId)
-    .eq('user_id', user.id)
     .eq('status', 'draft')
   if (error) return { error: error.message }
   return { ok: true }
@@ -1337,30 +1805,19 @@ export async function submitWorkSessionForReview(sessionId: string): Promise<Ses
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Non authentifié' }
+  const denied = await assertCaptureAdmin(supabase)
+  if (denied) return denied
 
   const { data: row, error: selErr } = await workSessionTable(supabase)
     .select('id,user_id,status,payload,oeuvre_id')
     .eq('id', sessionId)
     .maybeSingle()
   if (selErr || !row) return { error: selErr?.message ?? 'Session introuvable' }
-  if (row.user_id !== user.id) return { error: 'Accès refusé' }
   if (row.status !== 'draft') return { error: 'Session déjà envoyée' }
   const payload = parseWorkSessionPayload(row.payload)
   if (actionableItemCount(payload) === 0) return { error: 'Ajoutez au moins une photo et une œuvre à appliquer' }
 
-  const admin = await rpcIsAdmin(supabase)
-  if (admin) return { error: 'Les administrateurs appliquent directement ou abandonnent le brouillon' }
-
-  const { error: upErr } = await workSessionTable(supabase)
-    .update({ status: 'pending_review' })
-    .eq('id', sessionId)
-    .eq('user_id', user.id)
-    .eq('status', 'draft')
-  if (upErr) return { error: upErr.message }
-
-  revalidatePath('/atelier/session/new')
-  revalidatePath('/atelier/audit')
-  return { ok: true }
+  return { error: 'Les administrateurs appliquent directement ou abandonnent le brouillon' }
 }
 
 export async function applyWorkSessionToOeuvre(sessionId: string): Promise<SessionActionResult> {
@@ -1606,6 +2063,11 @@ async function workSessionIdsForJournalCalendarDays(
   const uniqueSeeds = Array.from(new Set(seedSessionIds.filter(Boolean)))
   if (uniqueSeeds.length === 0) return { ids: [], error: 'Aucune session sélectionnée' }
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { ids: [], error: 'Non authentifié' }
+
   const { data: seedRows, error: seedErr } = await workSessionTable(supabase)
     .select('id,payload,created_at')
     .in('id', uniqueSeeds)
@@ -1618,25 +2080,20 @@ async function workSessionIdsForJournalCalendarDays(
     const day = sessionDayForPayload(payload, row.created_at as string | null)
     if (day) targetDays.add(day)
   }
+
+  const ids = new Set<string>(seedRows.map((row) => row.id as string))
   if (targetDays.size === 0) {
-    return { ids: seedRows.map((row) => row.id as string) }
+    return { ids: Array.from(ids) }
   }
 
-  const { data: allRows, error: listErr } = await workSessionTable(supabase)
-    .select('id,payload,created_at')
-    .order('updated_at', { ascending: false })
-    .limit(500)
-  if (listErr) return { ids: [], error: listErr.message }
+  const teamWide = await teamWideSessionListing(supabase)
+  for (const day of targetDays) {
+    const listed = await listWorkSessionsForCalendarDay(supabase, day, { userId: user.id, teamWide })
+    if ('error' in listed) return { ids: [], error: listed.error }
+    for (const row of listed) ids.add(row.id)
+  }
 
-  const ids = (allRows ?? [])
-    .filter((row) => {
-      const payload = parseWorkSessionPayload(row.payload)
-      const day = sessionDayForPayload(payload, row.created_at as string | null)
-      return day != null && targetDays.has(day)
-    })
-    .map((row) => row.id as string)
-
-  return { ids: Array.from(new Set(ids)) }
+  return { ids: Array.from(ids) }
 }
 
 async function deleteWorkSessionRows(

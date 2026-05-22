@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { dict } from '@/lib/i18n/dictionary'
 import { ShareTriageClient } from '@/components/atelier/ShareTriageClient'
 import { listShareInboxForUser } from '@/app/atelier/share-inbox-actions'
+import { listRecentWorksForShareAttach } from '@/app/atelier/share-triage/actions'
 import type { ShareInboxRow } from '@/lib/types/database'
 
 type ShareTriageDetailRow = Pick<ShareInboxRow, 'id' | 'created_at' | 'expires_at' | 'payload'>
@@ -45,8 +46,16 @@ export default async function ShareTriagePage({
   }
 
   const recent = await listShareInboxForUser()
+  const recentWorksRes = await listRecentWorksForShareAttach(5)
+  const recentWorks = 'works' in recentWorksRes ? recentWorksRes.works : []
 
   return (
-    <ShareTriageClient err={err} requestedInboxId={inboxQ} detail={detail} recent={recent} />
+    <ShareTriageClient
+      err={err}
+      requestedInboxId={inboxQ}
+      detail={detail}
+      recent={recent}
+      recentWorks={recentWorks}
+    />
   )
 }

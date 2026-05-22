@@ -8,7 +8,7 @@
 
 import { useState, useEffect, useTransition, useRef, useMemo, useLayoutEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { thumbUrl, isCircularSupport, DIAMETER_SIGN } from '@/lib/data'
+import { thumbUrl, imageUrl, isCircularSupport, DIAMETER_SIGN } from '@/lib/data'
 import { useI18n } from '@/lib/i18n/context'
 import type { Oeuvre, WorkImage } from '@/lib/types/database'
 import type { SaveResult, WorkRevertSnapshot } from '@/app/atelier/works/actions'
@@ -44,6 +44,8 @@ import {
   type ProdStageId,
 } from '@/lib/work-editor-model'
 import type { ContactAddress } from '@/components/atelier/contact-editor-types'
+import type { ShareInboxWorkPrefill } from '@/app/atelier/share-triage/actions'
+import { attachShareInboxToWork } from '@/app/atelier/share-triage/actions'
 
 // ── Props ─────────────────────────────────────────────────────────────────
 
@@ -61,6 +63,7 @@ interface Props {
   currentGroupIds: string[]
   activeConsignment?: any
   action:          (fd: FormData) => Promise<SaveResult>
+  shareInboxPrefill?: ShareInboxWorkPrefill | null
 }
 
 export function WorkForm({
@@ -73,6 +76,7 @@ export function WorkForm({
   currentGroupIds,
   activeConsignment,
   action,
+  shareInboxPrefill = null,
 }: Props) {
   const { t } = useI18n()
   const narrow = useMediaQuery('(max-width: 767px)')
@@ -126,7 +130,7 @@ export function WorkForm({
   }, [oeuvre, currentThemeIds, currentGroupIds])
 
   // ── Identity ──────────────────────────────────────────────────────
-  const [titre,       setTitre]       = useState(oeuvre?.Titre ?? '')
+  const [titre,       setTitre]       = useState(oeuvre?.Titre ?? shareInboxPrefill?.titre ?? '')
   const [annee,       setAnnee]       = useState(oeuvre?.Année ?? '')
   const [techniqueId, setTechniqueId] = useState(String(oeuvre?.Technique ?? ''))
   const [supportId,   setSupportId]   = useState(String(oeuvre?.Support ?? ''))
@@ -462,6 +466,15 @@ export function WorkForm({
           sessionStorage.removeItem(draftKey)
         } catch { /* ignore */ }
         if (typeof res.newId === 'number') {
+          if (shareInboxPrefill?.inboxId) {
+            const attach = await attachShareInboxToWork(shareInboxPrefill.inboxId, res.newId)
+            if ('error' in attach) {
+              toast.error(`${t('error_prefix')} ${attach.error}`)
+              router.push(`/atelier?work=${res.newId}`)
+              router.refresh()
+              return
+            }
+          }
           router.push(`/atelier?work=${res.newId}`)
           router.refresh()
         } else {
@@ -562,7 +575,12 @@ export function WorkForm({
 
         {/* Left sidebar: images, themes, notes */}
         <div style={{ width: narrow ? '100%' : 340, borderRight: narrow ? 'none' : '1px solid var(--bd)', borderBottom: narrow ? '1px solid var(--bd)' : 'none', background: 'var(--bg1)', padding: narrow ? 16 : 24, overflow: 'auto' }}>
-          <ImageManager oeuvreId={oeuvre?.OeuvreID ?? 0} initialImages={initialImages} narrow={narrow} />
+          <ImageManager
+            oeuvreId={oeuvre?.OeuvreID ?? 0}
+            initialImages={initialImages}
+            narrow={narrow}
+            sharePendingFiles={shareInboxPrefill?.imageFiles}
+          />
 
           <div style={{ marginTop: 32 }}>
             <div className="t-eyebrow" style={{ marginBottom: 12, fontSize: 11 }}>{t('wf_themes_series')}</div>
@@ -965,7 +983,17 @@ function CreatableSelect({ value, options, onChange, onAdd, name }: { value: str
   )
 }
 
-function ImageManager({ oeuvreId, initialImages, narrow }: { oeuvreId: number; initialImages: WorkImage[]; narrow: boolean }) {
+function ImageManager({
+  oeuvreId,
+  initialImages,
+  narrow,
+  sharePendingFiles,
+}: {
+  oeuvreId: number
+  initialImages: WorkImage[]
+  narrow: boolean
+  sharePendingFiles?: Array<{ r2_key: string; name: string; mime: string }>
+}) {
   const { t } = useI18n()
   const [imgs, setImgs] = useState(initialImages)
   const [busy, setBusy] = useState(false)
@@ -1075,11 +1103,33 @@ function ImageManager({ oeuvreId, initialImages, narrow }: { oeuvreId: number; i
           {t('wf_images_reorder_hint')}
         </div>
       )}
-      {oeuvreId <= 0 && (
+      {oeuvreId <= 0 && sharePendingFiles && sharePendingFiles.length > 0 ? (
+        <div style={{ marginBottom: 8 }}>
+          <div className="t-eyebrow" style={{ fontSize: 11, marginBottom: 8 }}>{t('wf_share_pending_heading')}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+            {sharePendingFiles.map((f) => {
+              const href = imageUrl(f.r2_key)
+              return href ? (
+                <div
+                  key={f.r2_key}
+                  style={{ aspectRatio: '1', background: 'var(--bg2)', border: '1px solid var(--bd)' }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={href} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                </div>
+              ) : null
+            })}
+          </div>
+          <p style={{ fontSize: 11, color: 'var(--tx3)', lineHeight: 1.45, marginTop: 8 }}>
+            {t('wf_images_lightroom_hint')}
+          </p>
+        </div>
+      ) : null}
+      {oeuvreId <= 0 && (!sharePendingFiles || sharePendingFiles.length === 0) ? (
         <div style={{ fontSize: 11, color: 'var(--tx3)', lineHeight: 1.45 }}>
           {t('wf_images_save_first_hint')}
         </div>
-      )}
+      ) : null}
       {busy && (uploadPct > 0 || uploadName) && (
         <div style={{ fontSize: 11, color: 'var(--tx2)', lineHeight: 1.4 }} role="status">
           <div>{t('wf_images_upload_status').replace('{name}', uploadName)}</div>
@@ -1135,7 +1185,7 @@ function ImageManager({ oeuvreId, initialImages, narrow }: { oeuvreId: number; i
               type="file"
               accept="image/*"
               multiple={narrow}
-              capture={narrow ? 'environment' : undefined}
+              capture={undefined}
               style={{ display: 'none' }}
               onChange={onUpload}
               tabIndex={-1}

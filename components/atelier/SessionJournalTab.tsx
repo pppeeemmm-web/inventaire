@@ -22,6 +22,11 @@ import {
   type WorkSessionVersionCompare,
 } from '@/app/atelier/session/actions'
 import type { WorkSessionFieldContext } from '@/lib/work-session-payload'
+import {
+  calendarDayInParisFromIso,
+  sessionAtIsoForCalendarDay,
+  todayCalendarDayInParis,
+} from '@/lib/session-calendar-day'
 
 function formatDayLong(value: string, locale: string): string {
   return new Date(value).toLocaleDateString(locale, {
@@ -44,41 +49,40 @@ function monthGroupLabel(value: string, locale: string): string {
   return new Date(value).toLocaleDateString(locale, { month: 'long', year: 'numeric' })
 }
 
-function localCalendarDay(): string {
-  const d = new Date()
-  const year = d.getFullYear()
-  const month = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
-function sessionDayParam(sessionAt: string): string {
-  const date = new Date(sessionAt)
-  if (Number.isNaN(date.getTime())) return ''
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
-function toDateInputValue(value: string): string {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return ''
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
-function dateInputToSessionIso(value: string): string | null {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null
-  const date = new Date(`${value}T12:00:00`)
-  return Number.isNaN(date.getTime()) ? null : date.toISOString()
-}
-
 function itemTitle(item: WorkSessionJournalItem, fallback: string): string {
   if (item.oeuvre_id) return item.oeuvre_title?.trim() || fallback
   return item.title_hint?.trim() || fallback
+}
+
+function atelierInventoryWorkHref(oeuvreId: number): string {
+  return `/atelier?work=${oeuvreId}`
+}
+
+function JournalInventoryIdLink({
+  oeuvreId,
+  stopPropagation,
+}: {
+  oeuvreId: number
+  stopPropagation?: boolean
+}) {
+  const { t } = useI18n()
+  return (
+    <Link
+      href={atelierInventoryWorkHref(oeuvreId)}
+      className="t-mono-sm"
+      data-testid={`journal-inventory-link-${oeuvreId}`}
+      onClick={stopPropagation ? (e) => e.stopPropagation() : undefined}
+      style={{
+        fontSize: 'inherit',
+        color: 'var(--ac)',
+        textDecoration: 'underline',
+        textUnderlineOffset: 2,
+      }}
+      aria-label={t('journal_inventory_link_aria').replace('{id}', String(oeuvreId))}
+    >
+      #{oeuvreId}
+    </Link>
+  )
 }
 
 function daySummaryLine(
@@ -185,6 +189,7 @@ function JournalPaintingEntry({
   const [heightCm, setHeightCm] = useState(item.height_cm ?? '')
   const [pending, startTransition] = useTransition()
   const displayTitle = itemTitle(item, t('untitled'))
+  const itemSessionId = item.source_session_id || sessionId
   const totalPhotos = item.staged_shots.length + item.applied_shot_count
 
   useEffect(() => {
@@ -213,7 +218,7 @@ function JournalPaintingEntry({
 
   const saveEdit = () => {
     startTransition(async () => {
-      const res = await updateWorkSessionItemMetadata(sessionId, item.id, {
+      const res = await updateWorkSessionItemMetadata(itemSessionId, item.id, {
         title_hint: titleHint,
         notes,
         width_cm: widthCm,
@@ -230,9 +235,10 @@ function JournalPaintingEntry({
   }
 
   const deleteItem = () => {
+    if (item.id === '__legacy_session_shots__') return
     if (!window.confirm(t('journal_item_delete_confirm'))) return
     startTransition(async () => {
-      const res = await deleteWorkSessionItem(sessionId, item.id)
+      const res = await deleteWorkSessionItem(itemSessionId, item.id)
       if ('error' in res) {
         toast.error(res.error)
         return
@@ -254,39 +260,26 @@ function JournalPaintingEntry({
         gap: 10,
       }}
     >
-      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-        {item.work_thumb ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={thumbUrl(item.work_thumb, 128) ?? ''}
-            alt=""
-            style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 4, border: '1px solid var(--bd)', flexShrink: 0 }}
-          />
-        ) : (
-          <div
-            style={{
-              width: 64,
-              height: 64,
-              borderRadius: 4,
-              border: '1px dashed var(--bd)',
-              background: 'var(--bg2)',
-              flexShrink: 0,
-            }}
-          />
-        )}
-        <div style={{ minWidth: 0, flex: 1 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ minWidth: 0 }}>
           <h3 className="serif" style={{ fontSize: 17, margin: 0, lineHeight: 1.25, fontWeight: 500 }}>
             {item.oeuvre_id ? (
-              <>
+              <Link
+                href={atelierInventoryWorkHref(item.oeuvre_id)}
+                data-testid={`journal-painting-title-link-${item.oeuvre_id}`}
+                style={{ color: 'inherit', textDecoration: 'none' }}
+              >
                 {displayTitle}
-                <span className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx3)', marginLeft: 8 }}>
-                  #{item.oeuvre_id}
-                </span>
-              </>
+              </Link>
             ) : (
               displayTitle
             )}
           </h3>
+          {item.oeuvre_id ? (
+            <div className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 4 }}>
+              <JournalInventoryIdLink oeuvreId={item.oeuvre_id} />
+            </div>
+          ) : null}
           {(item.width_cm || item.height_cm) && (
             <div className="t-mono-sm" style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 4 }}>
               {item.width_cm ?? '?'} × {item.height_cm ?? '?'} cm
@@ -300,6 +293,32 @@ function JournalPaintingEntry({
             </div>
           ) : null}
         </div>
+        {item.work_thumb ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={thumbUrl(item.work_thumb, 128) ?? ''}
+            alt=""
+            style={{ width: '100%', maxWidth: 280, height: 160, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--bd)' }}
+          />
+        ) : item.staged_shots[0] ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={imageUrl(item.staged_shots[0].thumb_r2_key ?? item.staged_shots[0].r2_key) ?? ''}
+            alt=""
+            style={{ width: '100%', maxWidth: 280, height: 160, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--bd)' }}
+          />
+        ) : (
+          <div
+            style={{
+              width: '100%',
+              maxWidth: 280,
+              height: 120,
+              borderRadius: 6,
+              border: '1px dashed var(--bd)',
+              background: 'var(--bg2)',
+            }}
+          />
+        )}
       </div>
 
       {item.notes ? (
@@ -431,12 +450,12 @@ function JournalDayPage({
         </p>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 16 }}>
           <Link
-            href={`/atelier/session/new?date=${sessionDayParam(row.session_at)}`}
+            href={`/atelier/session/new?session=${row.id}&date=${row.calendar_day || calendarDayInParisFromIso(row.session_at)}`}
             className="btn primary"
-            data-testid="journal-continue-capture"
+            data-testid={isAdmin ? 'journal-continue-capture' : 'journal-view-session-day'}
             style={{ minHeight: 44, display: 'inline-flex', alignItems: 'center' }}
           >
-            {t('journal_continue_capture')}
+            {t(isAdmin ? 'journal_continue_capture' : 'journal_view_session_day')}
           </Link>
           {isAdmin && !editingSession ? (
             <button type="button" className="btn ghost sm" disabled={sessionPending} onClick={onEditStart} style={{ minHeight: 44 }}>
@@ -531,8 +550,8 @@ function JournalDayPage({
           ) : (
             <p className="t-mono-sm" style={{ color: 'var(--tx3)', lineHeight: 1.5 }}>
               {t('journal_no_items')}{' '}
-              <Link href={`/atelier/session/new?date=${sessionDayParam(row.session_at)}`} style={{ color: 'var(--ac)' }}>
-                {t('journal_continue_capture')}
+              <Link href={`/atelier/session/new?session=${row.id}&date=${row.calendar_day || calendarDayInParisFromIso(row.session_at)}`} style={{ color: 'var(--ac)' }}>
+                {t(isAdmin ? 'journal_continue_capture' : 'journal_view_session_day')}
               </Link>
             </p>
           )}
@@ -546,11 +565,12 @@ export function SessionJournalTab() {
   const { t, lang } = useI18n()
   const router = useRouter()
   const narrow = useMediaQuery('(max-width: 767px)')
-  const todayDay = localCalendarDay()
+  const todayDay = todayCalendarDayInParis()
   const [rows, setRows] = useState<WorkSessionJournalRow[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [checkedIds, setCheckedIds] = useState<Set<string>>(() => new Set())
   const [isAdmin, setIsAdmin] = useState(false)
+  const [journalTeamReadAccess, setJournalTeamReadAccess] = useState(false)
   const [showManage, setShowManage] = useState(false)
   const [loading, setLoading] = useState(true)
   const [editingSession, setEditingSession] = useState(false)
@@ -573,7 +593,10 @@ export function SessionJournalTab() {
   }, [reload])
 
   useEffect(() => {
-    void getSessionNewPageContext().then((ctx) => setIsAdmin(ctx.isAdmin))
+    void getSessionNewPageContext().then((ctx) => {
+      setIsAdmin(ctx.isAdmin)
+      setJournalTeamReadAccess(ctx.journalTeamReadAccess)
+    })
   }, [])
 
   useEffect(() => {
@@ -603,7 +626,7 @@ export function SessionJournalTab() {
       return
     }
     setEditingSession(false)
-    setSessionDateInput(toDateInputValue(selected.session_at))
+    setSessionDateInput(selected.calendar_day || calendarDayInParisFromIso(selected.session_at))
     setSessionNotesInput(selected.journal_notes ?? '')
   }, [selected])
 
@@ -617,16 +640,17 @@ export function SessionJournalTab() {
       })
       return
     }
-    if (narrow) {
-      router.push(`/atelier/session/new?date=${sessionDayParam(row.session_at)}`)
-      return
-    }
     setSelectedId(row.id)
+    if (narrow) {
+      requestAnimationFrame(() => {
+        document.getElementById('journal-day-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      })
+    }
   }
 
   const saveSessionEdit = () => {
     if (!selected) return
-    const sessionAt = dateInputToSessionIso(sessionDateInput)
+    const sessionAt = sessionAtIsoForCalendarDay(sessionDateInput)
     if (!sessionAt) {
       toast.error(t('session_toast_error'))
       return
@@ -660,7 +684,11 @@ export function SessionJournalTab() {
         next.delete(selected.id)
         return next
       })
-      const n = res.deletedCount ?? 1
+      const n = res.deletedCount ?? 0
+      if (n === 0) {
+        toast.error(t('journal_delete_failed'))
+        return
+      }
       toast.success(t('journal_bulk_deleted_toast').replace('{n}', String(n)))
       reload()
     })
@@ -677,14 +705,18 @@ export function SessionJournalTab() {
         toast.error(res.error)
         return
       }
-      const n = res.deletedCount ?? ids.length
+      const n = res.deletedCount ?? 0
+      if (n === 0) {
+        toast.error(t('journal_delete_failed'))
+        return
+      }
       toast.success(t('journal_bulk_deleted_toast').replace('{n}', String(n)))
       setCheckedIds(new Set())
       reload()
     })
   }
 
-  const showPage = !narrow
+  const showPage = Boolean(selected)
 
   return (
     <div
@@ -694,6 +726,7 @@ export function SessionJournalTab() {
         minHeight: 0,
         display: 'grid',
         gridTemplateColumns: narrow ? '1fr' : 'minmax(240px, 300px) minmax(0, 1fr)',
+        gridTemplateRows: narrow && showPage ? 'auto auto' : undefined,
         gap: 0,
         background: 'var(--bg0)',
       }}
@@ -716,15 +749,35 @@ export function SessionJournalTab() {
             <p className="t-mono-sm" style={{ color: 'var(--tx2)', lineHeight: 1.5, fontSize: 11, margin: '8px 0 12px' }}>
               {t('journal_tab_intro')}
             </p>
-            <Link
-              href={`/atelier/session/new?date=${todayDay}`}
-              className="btn primary sm"
-              data-testid="journal-capture-today"
-              style={{ minHeight: 44, width: '100%' }}
-            >
-              {t('journal_capture_today')}
-            </Link>
-            {narrow ? (
+            {journalTeamReadAccess && !isAdmin ? (
+              <p
+                className="t-mono-sm"
+                data-testid="journal-team-readonly-intro"
+                style={{
+                  color: 'var(--tx2)',
+                  fontSize: 10,
+                  lineHeight: 1.45,
+                  margin: '0 0 10px',
+                  padding: '8px 10px',
+                  borderRadius: 8,
+                  border: '1px solid var(--bd)',
+                  background: 'var(--bg0)',
+                }}
+              >
+                {t('journal_team_readonly_intro')}
+              </p>
+            ) : null}
+            {isAdmin ? (
+              <Link
+                href={`/atelier/session/new?date=${todayDay}`}
+                className="btn primary sm"
+                data-testid="journal-capture-today"
+                style={{ minHeight: 44, width: '100%' }}
+              >
+                {t('journal_capture_today')}
+              </Link>
+            ) : null}
+            {narrow && isAdmin ? (
               <p className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 10, margin: '8px 0 0', lineHeight: 1.4 }}>
                 {t('journal_open_day_capture')}
               </p>
@@ -740,9 +793,11 @@ export function SessionJournalTab() {
               <p className="t-mono-sm" style={{ color: 'var(--tx3)', lineHeight: 1.5 }}>
                 {t('journal_empty')}
               </p>
-              <Link href="/atelier/session/new" className="btn ghost sm" style={{ marginTop: 12, minHeight: 40 }}>
-                {t('journal_empty_cta')}
-              </Link>
+              {isAdmin ? (
+                <Link href="/atelier/session/new" className="btn ghost sm" style={{ marginTop: 12, minHeight: 40 }}>
+                  {t('journal_empty_cta')}
+                </Link>
+              ) : null}
             </div>
           ) : (
             <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -769,7 +824,7 @@ export function SessionJournalTab() {
                         type="button"
                         data-testid={`journal-session-row-${row.id.slice(0, 8)}`}
                         onClick={() => selectDay(row)}
-                        aria-label={`${formatDayShort(row.session_at, locale)} — ${t('journal_continue_capture')}`}
+                        aria-label={formatDayShort(row.session_at, locale)}
                         style={{
                           width: '100%',
                           textAlign: 'left',
@@ -787,6 +842,30 @@ export function SessionJournalTab() {
                         <div className="t-mono-sm" style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 5, lineHeight: 1.4 }}>
                           {daySummaryLine(row, t)}
                         </div>
+                        {row.items.length > 0 ? (
+                          <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            {row.items.slice(0, 3).map((item, idx) => (
+                              <div
+                                key={item.id}
+                                className="t-mono-sm"
+                                style={{ fontSize: 10, color: 'var(--tx2)', lineHeight: 1.35 }}
+                              >
+                                {itemTitle(item, `${t('session_painting_label')} ${idx + 1}`)}
+                                {item.oeuvre_id ? (
+                                  <>
+                                    {' · '}
+                                    <JournalInventoryIdLink oeuvreId={item.oeuvre_id} stopPropagation />
+                                  </>
+                                ) : null}
+                              </div>
+                            ))}
+                            {row.items.length > 3 ? (
+                              <div className="t-mono-sm" style={{ fontSize: 10, color: 'var(--tx3)' }}>
+                                +{row.items.length - 3}
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : null}
                         {row.journal_notes ? (
                           <div
                             style={{
@@ -867,8 +946,17 @@ export function SessionJournalTab() {
         </aside>
 
       {showPage ? (
-        <main data-testid="journal-day-panel" style={{ overflow: 'auto', minWidth: 0, minHeight: 0 }}>
-          <div style={{ padding: '32px 40px 48px' }}>
+        <main
+          id="journal-day-panel"
+          data-testid="journal-day-panel"
+          style={{
+            overflow: 'auto',
+            minWidth: 0,
+            minHeight: 0,
+            borderTop: narrow ? '1px solid var(--bd)' : undefined,
+          }}
+        >
+          <div style={{ padding: narrow ? '20px 16px 32px' : '32px 40px 48px' }}>
             {selected ? (
               <JournalDayPage
                 row={selected}

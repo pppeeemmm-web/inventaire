@@ -9,7 +9,9 @@ import type { ShareInboxPayloadV1 } from '@/lib/share-inbox-types'
 import { isShareInboxPayloadV1 } from '@/lib/share-inbox-types'
 import { deleteShareInboxEntry } from '@/app/atelier/share-inbox-actions'
 import { addWorkImage } from '@/app/atelier/works/actions'
+import { uploadWorkSessionItemShot } from '@/app/atelier/session/actions'
 import { logSystemEvent } from '@/lib/utils/logging'
+import { shareImageFiles, titreSeedFromSharePayload } from '@/lib/share-inbox-titre'
 import { recordStorageObject } from '@/lib/storage-object-ledger'
 import {
   S3Client,
@@ -382,4 +384,240 @@ export async function attachShareInboxToVoiceNote(inboxId: string): Promise<Shar
   const fin = await finishInbox(inboxId, { target: 'note', voiceNoteId: id })
   if (fin) return fin
   return { ok: true, href: '/atelier?tab=notes' }
+}
+
+// ── Slice 2: Lightroom / new-work from share inbox ───────────────────────────
+
+export type ShareInboxWorkPrefill = {
+  inboxId: string
+  titre: string
+  files: ShareInboxPayloadV1['files']
+  imageFiles: ShareInboxPayloadV1['files']
+}
+
+export type RecentWorkAttachRow = { id: number; label: string }
+
+export async function getShareInboxWorkPrefill(
+  inboxId: string,
+): Promise<{ prefill: ShareInboxWorkPrefill } | ShareActionErr> {
+  const g = await guardTeam()
+  if (g.error || !g.supabase || !g.user) return { error: g.error ?? 'auth' }
+
+  const loaded = await loadInbox(g.supabase, g.user.id, inboxId)
+  if ('error' in loaded) return loaded
+  const imageFiles = shareImageFiles(loaded.payload)
+  return {
+    prefill: {
+      inboxId,
+      titre: titreSeedFromSharePayload(loaded.payload, 0),
+      files: loaded.payload.files,
+      imageFiles,
+    },
+  }
+}
+
+export async function listRecentWorksForShareAttach(
+  limit = 5,
+): Promise<{ works: RecentWorkAttachRow[] } | ShareActionErr> {
+  const g = await guardTeam()
+  if (g.error || !g.supabase) return { error: g.error ?? 'auth' }
+
+  const { data, error } = await g.supabase
+    .from('Oeuvres')
+    .select('OeuvreID, Titre')
+    .is('deleted_at', null)
+    .order('OeuvreID', { ascending: false })
+    .limit(Math.min(Math.max(1, limit), 20))
+  if (error) return { error: error.message }
+
+  const works: RecentWorkAttachRow[] = (data ?? []).map((r) => ({
+    id: r.OeuvreID as number,
+    label: (r.Titre as string | null) || `#${r.OeuvreID}`,
+  }))
+  return { works }
+}
+
+async function nextOeuvreId(supabase: Awaited<ReturnType<typeof createClient>>): Promise<number | ShareActionErr> {
+  const { data: maxRow, error } = await supabase
+    .from('Oeuvres')
+    .select('OeuvreID')
+    .order('OeuvreID', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (error) return { error: error.message }
+  return (maxRow?.OeuvreID ?? 2337) + 1
+}
+
+async function attachInboxImageFilesToWork(
+  g: { supabase: Awaited<ReturnType<typeof createClient>>; user: { id: string } },
+  payload: ShareInboxPayloadV1,
+  oeuvreId: number,
+  inboxId: string,
+  fileIndexes?: number[],
+): Promise<ShareActionErr | null> {
+  const indexes =
+    fileIndexes ??
+    payload.files
+      .map((f, i) => (f.mime.startsWith('image/') ? i : -1))
+      .filter((i) => i >= 0)
+
+  for (const idx of indexes) {
+    const f = payload.files[idx]
+    if (!f || !f.mime.startsWith('image/')) continue
+
+    let buf: Buffer
+    try {
+      buf = await r2GetObjectBuffer(f.r2_key)
+    } catch (e) {
+      return { error: String(e) }
+    }
+    if (!buf) return { error: 'R2 fetch failed' }
+
+    const validated = await validateWorkImageBuffer(buf)
+    if ('error' in validated) continue
+
+    const file = new File([new Uint8Array(buf)], f.name || `share.${validated.ext}`, {
+      type: validated.mime,
+    })
+    const fd = new FormData()
+    fd.set('oeuvre_id', String(oeuvreId))
+    fd.set('image', file)
+    fd.set(
+      'image_capture_meta',
+      JSON.stringify({ source: 'share_inbox', inbox_id: inboxId, file: f.name }),
+    )
+    const res = await addWorkImage(fd)
+    if ('error' in res) return { error: res.error }
+  }
+  return null
+}
+
+/** Create a new œuvre and attach one or all inbox images (optional text block). */
+export async function createDraftWorkFromShareInbox(
+  inboxId: string,
+  opts?: { fileIndex?: number; appendShareText?: boolean; finishInbox?: boolean },
+): Promise<ShareActionOk | ShareActionErr> {
+  const g = await guardTeam()
+  if (g.error || !g.supabase || !g.user) return { error: g.error ?? 'auth' }
+
+  const loaded = await loadInbox(g.supabase, g.user.id, inboxId)
+  if ('error' in loaded) return loaded
+  const { payload } = loaded
+
+  const fileIndex = opts?.fileIndex ?? 0
+  const titre = titreSeedFromSharePayload(payload, fileIndex) || null
+  const oidRes = await nextOeuvreId(g.supabase)
+  if (typeof oidRes !== 'number') return oidRes
+  const oid = oidRes
+
+  const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '/')
+  let commentaires: string | null = null
+  if (opts?.appendShareText !== false) {
+    const block = formatShareInboxText(payload)
+    if (block) commentaires = appendBlock(null, block)
+  }
+
+  const { error: insertErr } = await g.supabase.from('Oeuvres').insert({
+    OeuvreID: oid,
+    Titre: titre,
+    Commentaires: commentaires,
+    Historique: `[${dateStr}] Atelier (share)`,
+    statusId: 1,
+    Catalogué: false,
+    NeedsPhotograph: false,
+    Exposable: false,
+  })
+  if (insertErr) return { error: insertErr.message }
+
+  const attachErr = await attachInboxImageFilesToWork(
+    g,
+    payload,
+    oid,
+    inboxId,
+    opts?.fileIndex != null ? [opts.fileIndex] : undefined,
+  )
+  if (attachErr) return attachErr
+
+  if (opts?.finishInbox !== false) {
+    const fin = await finishInbox(inboxId, { target: 'work', oeuvreId: oid, created: true })
+    if (fin) return fin
+  }
+
+  revalidatePath('/atelier')
+  return { ok: true, href: `/atelier?work=${oid}` }
+}
+
+/** One new œuvre per image file in the inbox. */
+export async function splitShareInboxIntoDrafts(
+  inboxId: string,
+): Promise<{ ok: true; hrefs: string[] } | ShareActionErr> {
+  const g = await guardTeam()
+  if (g.error || !g.supabase || !g.user) return { error: g.error ?? 'auth' }
+
+  const loaded = await loadInbox(g.supabase, g.user.id, inboxId)
+  if ('error' in loaded) return loaded
+
+  const imageIndexes = loaded.payload.files
+    .map((f, i) => (f.mime.startsWith('image/') ? i : -1))
+    .filter((i) => i >= 0)
+  if (imageIndexes.length === 0) return { error: 'empty' }
+
+  const hrefs: string[] = []
+  for (const idx of imageIndexes) {
+    const res = await createDraftWorkFromShareInbox(inboxId, {
+      fileIndex: idx,
+      appendShareText: idx === imageIndexes[0],
+      finishInbox: false,
+    })
+    if ('error' in res) return res
+    if (res.href) hrefs.push(res.href)
+  }
+
+  const fin = await finishInbox(inboxId, { target: 'work', split: imageIndexes.length })
+  if (fin) return fin
+
+  return { ok: true, hrefs }
+}
+
+/** Import share-inbox images into an open work-session item (Lightroom → Share → return). */
+export async function attachShareInboxToWorkSession(
+  inboxId: string,
+  sessionId: string,
+  itemId: string,
+  returnDate: string,
+): Promise<ShareActionOk | ShareActionErr> {
+  const g = await guardTeam()
+  if (g.error || !g.supabase || !g.user) return { error: g.error ?? 'auth' }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(returnDate.trim())) return { error: 'invalid_date' }
+
+  const loaded = await loadInbox(g.supabase, g.user.id, inboxId)
+  if ('error' in loaded) return loaded
+
+  const images = shareImageFiles(loaded.payload)
+  if (images.length === 0) return { error: 'empty' }
+
+  for (const f of images) {
+    let buf: Buffer
+    try {
+      buf = await r2GetObjectBuffer(f.r2_key)
+    } catch (e) {
+      return { error: String(e) }
+    }
+    const validated = await validateWorkImageBuffer(buf)
+    if ('error' in validated) continue
+
+    const file = new File([new Uint8Array(buf)], f.name || `share.${validated.ext}`, {
+      type: validated.mime,
+    })
+    const fd = new FormData()
+    fd.set('image', file)
+    const res = await uploadWorkSessionItemShot(sessionId, itemId, fd)
+    if ('error' in res) return { error: res.error }
+  }
+
+  const fin = await finishInbox(inboxId, { target: 'session', sessionId, itemId })
+  if (fin) return fin
+
+  revalidatePath('/atelier/session/new')
+  return { ok: true, href: `/atelier/session/new?date=${returnDate}` }
 }

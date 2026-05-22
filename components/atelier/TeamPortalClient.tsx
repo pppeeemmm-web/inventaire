@@ -922,7 +922,9 @@ export function TeamPortalClient({
         contacts={contacts}
         onGoTab={(t) => { handleSetTab(t as Tab); setPaletteOpen(false) }}
         onGoWork={(id) => { const o = oeuvres.find(x => x.OeuvreID === id); if (o) setInspected(o); setPaletteOpen(false) }}
-        onCaptureSession={() => void router.push('/atelier/session/new')}
+        onCaptureSession={
+          isAdmin ? () => void router.push('/atelier/session/new') : undefined
+        }
         onScanQr={() => void router.push('/atelier/scan')}
         onFieldNote={() => setVoiceNoteSheetOpen(true)}
         onReminders={openFieldReminders}
@@ -1558,7 +1560,7 @@ export function TeamPortalClient({
       {showMobileActionBar && (
         <MobileActionBar
           t={t as (k: string) => string}
-          onCapture={() => void router.push('/atelier/session/new')}
+          onCapture={() => void router.push(isAdmin ? '/atelier/session/new' : '/atelier?tab=journal')}
           onScan={() => void router.push('/atelier/scan')}
           onNote={() => setVoiceNoteSheetOpen(true)}
           onReminders={openFieldReminders}

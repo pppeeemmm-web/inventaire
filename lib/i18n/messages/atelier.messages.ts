@@ -137,6 +137,10 @@ export const atelierMessages = defineMessages({
     fr: 'Une session par date — changez la date pour une autre journée.',
     en: 'One session per date — change the date to switch days.',
   },
+  session_dev_profile_notice: {
+    fr: 'Profil dev LAN ({email}) : les sessions terrain sont liées à chaque compte. Pour revoir vos vraies captures (ex. 20/05), mettez votre e-mail PEM dans DEV_AUTO_LOGIN_EMAIL ou ouvrez le jour depuis le Journal.',
+    en: 'LAN dev profile ({email}): field sessions belong to each login. To see your real captures (e.g. 20 May), set your PEM email in DEV_AUTO_LOGIN_EMAIL or open the day from the Journal.',
+  },
   session_flow_steps: {
     fr: 'Date → Œuvre → Photos → Appliquer sur la fiche',
     en: 'Date → Work → Photos → Apply to catalogue',
@@ -157,6 +161,26 @@ export const atelierMessages = defineMessages({
     fr: 'Ouvre la capture pour cette date',
     en: 'Opens capture for this date',
   },
+  journal_team_readonly_intro: {
+    fr: 'Toute l’équipe peut consulter le journal. Seuls les administrateurs peuvent capturer ou modifier une session.',
+    en: 'The whole team can read the journal. Only administrators can capture or edit a session.',
+  },
+  session_readonly_notice: {
+    fr: 'Consultation seule — la capture terrain est réservée aux administrateurs.',
+    en: 'Read-only — field capture is limited to administrators.',
+  },
+  session_capture_admin_only: {
+    fr: 'La capture terrain est réservée aux administrateurs. Ouvrez une journée depuis le journal pour la consulter.',
+    en: 'Field capture is for administrators only. Open a day from the journal to view it.',
+  },
+  journal_view_session_day: {
+    fr: 'Voir cette journée',
+    en: 'View this day',
+  },
+  journal_inventory_link_aria: {
+    fr: 'Ouvrir l’œuvre #{id} dans l’inventaire',
+    en: 'Open work #{id} in inventory',
+  },
   session_journal_items_heading: {
     fr: 'Peintures dans cette session',
     en: 'Paintings in this session',
@@ -168,6 +192,10 @@ export const atelierMessages = defineMessages({
   session_add_painting: {
     fr: 'Ajouter peinture',
     en: 'Add painting',
+  },
+  session_no_painting_yet: {
+    fr: 'Aucune peinture pour l’instant — touchez « Ajouter peinture » pour commencer.',
+    en: 'No paintings yet — tap Add painting to start.',
   },
   session_painting_label: {
     fr: 'Peinture',
@@ -194,8 +222,8 @@ export const atelierMessages = defineMessages({
     en: 'Field journal',
   },
   journal_tab_intro: {
-    fr: 'Chronique de vos journées sur le terrain — une entrée par date.',
-    en: 'A chronicle of your field days — one entry per date.',
+    fr: 'Chronique de vos journées sur le terrain — une session par date ; les doublons du même jour sont fusionnés automatiquement.',
+    en: 'A chronicle of your field days — one session per date; duplicate rows for the same day are merged automatically.',
   },
   journal_new_day: {
     fr: 'Ouvrir la journée',
@@ -296,6 +324,10 @@ export const atelierMessages = defineMessages({
   journal_delete_selected_confirm: {
     fr: 'Supprimer {n} journée(s) de capture ? Les photos déjà appliquées aux œuvres sont conservées.',
     en: 'Delete {n} capture day(s)? Photos already applied to works are kept.',
+  },
+  journal_delete_failed: {
+    fr: 'Suppression impossible — vérifiez vos droits ou réessayez.',
+    en: 'Could not delete — check your permissions or try again.',
   },
   journal_bulk_deleted_toast: {
     fr: '{n} session(s) supprimée(s).',
