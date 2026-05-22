@@ -5,6 +5,7 @@
 // Uses service_role to bypass RLS on the document table.
 
 import { revalidateTag } from 'next/cache'
+import { logError } from '@/lib/error-reporter/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3'
 import {
@@ -53,7 +54,7 @@ export async function getDocSignedUrls(
     ])
     return { statementUrl, cvUrl }
   } catch (e) {
-    console.error('[getDocSignedUrls]', e)
+    await logError('getDocSignedUrls failed', e, { source: 'getDocSignedUrls' })
     return { statementUrl: null, cvUrl: null }
   }
 }

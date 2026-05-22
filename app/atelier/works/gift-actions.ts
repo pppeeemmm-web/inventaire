@@ -7,6 +7,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
+import { logError, logWarn } from '@/lib/error-reporter/server'
 import { logSystemEvent } from '@/lib/utils/logging'
 import {
   contactDisplayName,
@@ -167,7 +168,10 @@ async function r2GetImage(key: string): Promise<Buffer | null> {
     const res = await fetch(`${r2Public}/${encodeURIComponent(key)}`)
     if (!res.ok) return null
     return Buffer.from(await res.arrayBuffer())
-  } catch { return null }
+  } catch (err) {
+    await logWarn(`Gift PDF image fetch failed: ${key}`, err, { source: 'gift-actions.r2GetImage', metadata: { key } })
+    return null
+  }
 }
 
 interface BuildGiftPdfArgs {
@@ -225,7 +229,11 @@ async function buildGiftPdf(args: BuildGiftPdfArgs): Promise<Buffer> {
 
     const rowY = doc.y
     if (imageBuf) {
-      try { doc.image(imageBuf, 56, rowY, { width: 60, height: 60, fit: [60, 60] }) } catch {}
+      try {
+        doc.image(imageBuf, 56, rowY, { width: 60, height: 60, fit: [60, 60] })
+      } catch (err) {
+        void logWarn('Gift PDF thumbnail embed failed', err, { source: 'gift-actions.buildGiftPdf' })
+      }
     }
     const textX = imageBuf ? 130 : 56
     doc.fontSize(11).fillColor('#000').text(`${work.Titre || 'Sans titre'} (${String(work.Année || '').slice(0, 4)})`, textX, rowY)

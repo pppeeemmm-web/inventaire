@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { logError } from '@/lib/error-reporter/server'
 
 export interface AuditLogEntry {
   id:          number
@@ -35,7 +36,7 @@ export async function fetchSystemLogs(limit = 100): Promise<AuditLogEntry[]> {
     .limit(limit)
 
   if (error) {
-    console.error('Audit fetch error:', error.message)
+    await logError('Audit fetch failed', error, { source: 'fetchSystemLogs' })
     return []
   }
 

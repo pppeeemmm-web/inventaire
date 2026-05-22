@@ -1,6 +1,7 @@
 /**
  * GET from R2 paintings bucket (same EU endpoint as r2PutObject in r2-s3-object.ts).
  */
+import { logError } from '@/lib/error-reporter/server'
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3'
 
 let _s3: S3Client | null = null
@@ -27,7 +28,8 @@ export async function r2GetObjectBuffer(key: string): Promise<Buffer | null> {
     if (!out.Body) return null
     const bytes = await out.Body.transformToByteArray()
     return Buffer.from(bytes)
-  } catch {
+  } catch (err) {
+    await logError(`R2 get failed: ${key}`, err, { source: 'r2GetObjectBuffer', metadata: { key } })
     return null
   }
 }

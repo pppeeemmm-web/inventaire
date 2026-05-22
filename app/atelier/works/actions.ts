@@ -13,6 +13,7 @@ import { pendingPayloadFromFormData } from '@/lib/work-pending-keys'
 import type { WorkImage, Oeuvre } from '@/lib/types/database'
 import crypto from 'crypto'
 import sharp from 'sharp'
+import { logError } from '@/lib/error-reporter/server'
 import { logSystemEvent } from '@/lib/utils/logging'
 import {
   historiqueLinesForOeuvreUpdate,
@@ -1329,7 +1330,10 @@ export async function listWorkDrawerImages(oeuvreId: number): Promise<WorkDrawer
     .order('SeqNo', { ascending: true })
 
   if (error) {
-    console.error('[listWorkDrawerImages]', error.message)
+    await logError('listWorkDrawerImages failed', error, {
+      source: 'listWorkDrawerImages',
+      metadata: { oeuvreId },
+    })
     return []
   }
   return (data ?? []) as WorkDrawerImageRow[]
@@ -1381,7 +1385,10 @@ export async function fetchOeuvresKeysetPage(beforeId: number, limit: number): P
     .limit(lim + 1)
 
   if (error) {
-    console.error('[fetchOeuvresKeysetPage]', error.message)
+    await logError('fetchOeuvresKeysetPage failed', error, {
+      source: 'fetchOeuvresKeysetPage',
+      metadata: { beforeId, limit: lim },
+    })
     return { rows: [], nextCursor: null, hasMore: false }
   }
   const raw = (data ?? []) as unknown as Oeuvre[]

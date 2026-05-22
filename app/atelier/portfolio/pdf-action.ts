@@ -7,6 +7,7 @@
 // Vercel free function timeout 60s — sufficient for ≤16 works at full quality.
 
 import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { logError, logWarn } from '@/lib/error-reporter/server'
 import { loadPortfolioConfig } from './actions'
 import {
   MAX_WORKS, FORMATS,
@@ -497,7 +498,7 @@ async function loadCvText(rawConfig: any, lang: Lang): Promise<string> {
 
     return condenseCvText(text, lang)
   } catch (e) {
-    console.error('[portfolio-pdf] CV load failed:', e)
+    await logError('Portfolio PDF CV load failed', e, { source: 'portfolio-pdf.loadCvText' })
     return ''
   }
 }
@@ -557,7 +558,10 @@ async function prefetchImages(works: PdfWork[]): Promise<{ imageMap: Map<number,
           .toBuffer()
         imageMap.set(w.OeuvreID, resized)
       } catch (e) {
-        console.error(`[portfolio-pdf] image error #${w.OeuvreID}:`, e)
+        await logError(`Portfolio PDF image prefetch failed #${w.OeuvreID}`, e, {
+          source: 'portfolio-pdf.prefetchImages',
+          metadata: { oeuvreId: w.OeuvreID },
+        })
       }
     }))
   }

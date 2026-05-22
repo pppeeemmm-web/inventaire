@@ -2,7 +2,8 @@
   "extends": "next/core-web-vitals",
   "plugins": ["pem-i18n"],
   "rules": {
-    "pem-i18n/no-hardcoded-jsx-text": "off"
+    "pem-i18n/no-hardcoded-jsx-text": "off",
+    "pem-i18n/no-silent-catch": "warn"
   },
   "overrides": [
     {

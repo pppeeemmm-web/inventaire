@@ -3,6 +3,7 @@
 // Sale order server actions — create, update status, generate PDF order form.
 
 import { createClient }  from '@/lib/supabase/server'
+import { logError } from '@/lib/error-reporter/server'
 import { logSystemEvent } from '@/lib/utils/logging'
 import {
   appendHistoriqueForOeuvres,
@@ -284,7 +285,12 @@ export async function createSaleOrder(formData: FormData): Promise<OrderResult> 
       file_size:    pdf.length,
       mime_type:    'application/pdf',
     })
-  } catch(err) { console.error("PDF GEN ERR:", err) }
+  } catch (err) {
+    await logError('Sale order PDF generation failed', err, {
+      source: 'sales.createSaleOrder',
+      metadata: { orderId: order.id, orderRef: order.order_ref },
+    })
+  }
 
   return { ok: true, order: order as SaleOrderRow }
 }

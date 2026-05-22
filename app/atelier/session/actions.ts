@@ -4,6 +4,7 @@ import crypto from 'crypto'
 import sharp from 'sharp'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { logError, logWarn } from '@/lib/error-reporter/server'
 import { validateWorkImageBuffer } from '@/lib/image-upload'
 import { r2PutObject, r2DeleteObject, r2GetObjectBuffer } from '@/lib/r2-s3-object'
 import { addWorkImage } from '@/app/atelier/works/actions'
@@ -553,7 +554,10 @@ async function migrateLegacySessionShotsToItems(
     .update({ payload: asPayloadRecord(next) })
     .eq('id', sessionId)
   if (error) {
-    console.error('[work_session] migrateLegacySessionShotsToItems', error.message)
+    await logError('migrateLegacySessionShotsToItems failed', error, {
+      source: 'work_session.migrateLegacySessionShotsToItems',
+      metadata: { sessionId },
+    })
     return payload
   }
   return next
@@ -1041,8 +1045,11 @@ export async function deleteWorkSessionItem(
     try {
       await r2DeleteObject(shot.r2_key)
       if (shot.thumb_r2_key) await r2DeleteObject(shot.thumb_r2_key)
-    } catch {
-      /* best-effort staged object cleanup */
+    } catch (err) {
+      await logWarn('Session shot R2 cleanup failed (best-effort)', err, {
+        source: 'work_session.r2Cleanup',
+        metadata: { r2_key: shot.r2_key },
+      })
     }
   }
 
@@ -1128,7 +1135,7 @@ export async function searchWorksForSession(query: string): Promise<WorkSessionW
 
     const { data, error } = await req
     if (error) {
-      console.error('[work_session] searchWorksForSession', error.message)
+      await logError('searchWorksForSession failed', error, { source: 'work_session.searchWorksForSession' })
       return []
     }
 
@@ -1161,7 +1168,10 @@ async function workMapsForIds(
     .select('OeuvreID,Titre,txtImageNameLink')
     .in('OeuvreID', oeuvreIds)
   if (error) {
-    console.error('[work_session] workMapsForIds', error.message)
+    await logError('workMapsForIds failed', error, {
+      source: 'work_session.workMapsForIds',
+      metadata: { count: oeuvreIds.length },
+    })
     return { titleMap, thumbMap }
   }
   for (const row of (data ?? []) as Array<{ OeuvreID: number; Titre: string | null; txtImageNameLink: string | null }>) {
@@ -1189,7 +1199,7 @@ export async function listWorkSessionJournal(
     .order('created_at', { ascending: false })
     .limit(fetchLimit)
   if (error) {
-    console.error('[work_session] journal list', error.message)
+    await logError('work_session journal list failed', error, { source: 'work_session.listWorkSessionJournal' })
     return []
   }
 
@@ -1237,7 +1247,12 @@ export async function listWorkSessionJournal(
     if (dupDays.size > 0) {
       for (const day of dupDays) {
         const merged = await consolidateSessionsForCalendarDay(supabase, day, user.id)
-        if ('error' in merged) console.error('[work_session] journal reconcile', day, merged.error)
+        if ('error' in merged) {
+          await logError('journal reconcile failed', merged.error, {
+            source: 'work_session.listWorkSessionJournal',
+            metadata: { calendarDay: day },
+          })
+        }
       }
       return listWorkSessionJournal(limit, { skipReconcile: true })
     }
@@ -1485,6 +1500,10 @@ async function putAvifPair(
     })
     return { ok: true }
   } catch (e) {
+    await logError('Session thumb upload failed', e, {
+      source: 'work_session.uploadSessionThumb',
+      metadata: { sessionId, mainKey },
+    })
     return { error: String(e) }
   }
 }
@@ -1637,8 +1656,11 @@ export async function removeWorkSessionItemShot(
   try {
     await r2DeleteObject(removed.r2_key)
     if (removed.thumb_r2_key) await r2DeleteObject(removed.thumb_r2_key)
-  } catch {
-    /* best-effort staged object cleanup */
+  } catch (err) {
+    await logWarn('Session shot R2 cleanup failed (best-effort)', err, {
+      source: 'work_session.r2Cleanup',
+      metadata: { r2_key: removed.r2_key },
+    })
   }
 
   payload.items[idx] = touchItem({ ...item, shots: item.shots })
@@ -1851,6 +1873,10 @@ export async function applyWorkSessionToOeuvre(sessionId: string): Promise<Sessi
       try {
         buf = await r2GetObjectBuffer(shot.r2_key)
       } catch (e) {
+        await logError('Session apply: R2 read failed', e, {
+          source: 'work_session.applyShotsToWork',
+          metadata: { sessionId, r2_key: shot.r2_key, oeuvreId },
+        })
         return { error: `Lecture R2: ${String(e)}` }
       }
       const file = new File([new Uint8Array(buf)], 'session.avif', { type: 'image/avif' })
@@ -1864,8 +1890,11 @@ export async function applyWorkSessionToOeuvre(sessionId: string): Promise<Sessi
       try {
         await r2DeleteObject(shot.r2_key)
         if (shot.thumb_r2_key) await r2DeleteObject(shot.thumb_r2_key)
-      } catch {
-        /* best-effort cleanup */
+      } catch (err) {
+        await logWarn('Session shot R2 cleanup failed (best-effort)', err, {
+          source: 'work_session.r2Cleanup',
+          metadata: { r2_key: shot.r2_key },
+        })
       }
     }
     return { ok: true }
@@ -1970,6 +1999,10 @@ export async function applyWorkSessionToOeuvre(sessionId: string): Promise<Sessi
     try {
       buf = await r2GetObjectBuffer(shot.r2_key)
     } catch (e) {
+      await logError('Session legacy apply: R2 read failed', e, {
+        source: 'work_session.applyLegacySessionShots',
+        metadata: { sessionId, r2_key: shot.r2_key, oeuvreId },
+      })
       return { error: `Lecture R2: ${String(e)}` }
     }
     const file = new File([new Uint8Array(buf)], 'session.avif', { type: 'image/avif' })
@@ -1983,8 +2016,11 @@ export async function applyWorkSessionToOeuvre(sessionId: string): Promise<Sessi
     try {
       await r2DeleteObject(shot.r2_key)
       if (shot.thumb_r2_key) await r2DeleteObject(shot.thumb_r2_key)
-    } catch {
-      /* best-effort cleanup */
+    } catch (err) {
+      await logWarn('Session shot R2 cleanup failed (best-effort)', err, {
+        source: 'work_session.r2Cleanup',
+        metadata: { r2_key: shot.r2_key },
+      })
     }
   }
 
@@ -2049,8 +2085,11 @@ async function purgeWorkSessionStagingShots(payload: WorkSessionPayload): Promis
     try {
       await r2DeleteObject(shot.r2_key)
       if (shot.thumb_r2_key) await r2DeleteObject(shot.thumb_r2_key)
-    } catch {
-      /* best-effort staged object cleanup */
+    } catch (err) {
+      await logWarn('Session shot R2 cleanup failed (best-effort)', err, {
+        source: 'work_session.r2Cleanup',
+        metadata: { r2_key: shot.r2_key },
+      })
     }
   }
 }
@@ -2252,7 +2291,7 @@ export async function listWorkSessionsForAdminReview(): Promise<WorkSessionQueue
     .order('updated_at', { ascending: false })
     .limit(100)
   if (error) {
-    console.error('[work_session] listForAdminReview', error.message)
+    await logError('listForAdminReview failed', error, { source: 'work_session.listWorkSessionsForAdminReview' })
     return []
   }
   const withShots = ((data ?? []) as WorkSessionRow[]).filter(
@@ -2280,7 +2319,10 @@ export async function listWorkSessionsForOeuvre(oeuvreId: number): Promise<WorkS
     .order('updated_at', { ascending: false })
     .limit(100)
   if (directError) {
-    console.error('[work_session] listForOeuvre direct', directError.message)
+    await logError('listForOeuvre direct query failed', directError, {
+      source: 'work_session.listWorkSessionsForOeuvre',
+      metadata: { oeuvreId },
+    })
     return []
   }
 
@@ -2289,7 +2331,10 @@ export async function listWorkSessionsForOeuvre(oeuvreId: number): Promise<WorkS
     .order('updated_at', { ascending: false })
     .limit(1000)
   if (recentError) {
-    console.error('[work_session] listForOeuvre recent', recentError.message)
+    await logError('listForOeuvre recent query failed', recentError, {
+      source: 'work_session.listWorkSessionsForOeuvre',
+      metadata: { oeuvreId },
+    })
     return (directRows ?? []) as WorkSessionRow[]
   }
 

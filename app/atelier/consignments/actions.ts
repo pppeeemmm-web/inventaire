@@ -3,6 +3,7 @@
 
 import { createClient }  from '@/lib/supabase/server'
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
+import { logError } from '@/lib/error-reporter/server'
 import { logSystemEvent } from '@/lib/utils/logging'
 import {
   appendHistoriqueForOeuvres,
@@ -178,7 +179,10 @@ export async function createConsignmentOrder(formData: FormData): Promise<Consig
       mime_type:    'application/pdf',
     })
   } catch (e) {
-    console.error('PDF Error:', e)
+    await logError('Consignment PDF generation failed', e, {
+      source: 'consignments.createConsignmentOrder',
+      metadata: { orderId: order.id, orderRef: order.order_ref },
+    })
   }
 
   return { ok: true, order: order as ConsignmentOrderRow }

@@ -1,5 +1,7 @@
 /** Client-side image prep and upload helpers (mobile field tool). */
 
+import { surfaceWarn } from '@/lib/error-reporter/client'
+
 export const MOBILE_MAX_IMAGE_EDGE_PX = 3000
 
 export function isNetworkishFailure(err: unknown): boolean {
@@ -51,8 +53,11 @@ export async function downscaleImageFileForMobileIfNeeded(
     const base = file.name.replace(/\.[^.]+$/, '')
     const ext = mime === 'image/png' ? 'png' : 'jpg'
     return new File([blob], `${base}.${ext}`, { type: mime })
-  } catch {
+  } catch (err) {
     if (bmp) bmp.close()
+    surfaceWarn('Image downscale skipped; using original file', err, {
+      source: 'image-upload-client.downscaleImageFileForMobileIfNeeded',
+    })
     return file
   }
 }
