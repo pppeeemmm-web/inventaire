@@ -3,6 +3,7 @@
 import { createHash } from 'node:crypto'
 import { supabaseAdmin } from './supabase-admin.mjs'
 import { embedText, isOllamaConnectionError } from './ollama-client.mjs'
+import { ensureOllamaRunning } from './ensure-ollama.mjs'
 import { ensureCollection, upsertPoints, deletePoints, scrollAllPointIds } from './qdrant-client.mjs'
 import {
   BATCH_SIZE,
@@ -228,6 +229,7 @@ async function runReembedAll(supabase) {
 }
 
 async function main() {
+  await ensureOllamaRunning()
   const supabase = supabaseAdmin()
   await ensureCollection()
 
@@ -252,9 +254,14 @@ async function main() {
         }
       } catch (err) {
         if (isOllamaConnectionError(err)) {
-          if (!ollamaWarned) {
-            console.error('[embed-worker] Ollama ECONNREFUSED — sleep 60s')
-            ollamaWarned = true
+          try {
+            await ensureOllamaRunning()
+            continue
+          } catch (ensureErr) {
+            if (!ollamaWarned) {
+              console.error('[embed-worker] Ollama unavailable —', ensureErr.message)
+              ollamaWarned = true
+            }
           }
           await new Promise((r) => setTimeout(r, 60_000))
           continue

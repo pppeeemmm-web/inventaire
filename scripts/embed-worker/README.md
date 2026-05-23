@@ -5,7 +5,7 @@ Desktop bridge: Supabase `public.nodes` ↔ local Ollama ↔ Qdrant Cloud.
 ## Prerequisites
 
 1. Slice 5 + **07_embeddings.sql** + **09_query_embedding_cache.sql** applied on Supabase.
-2. `ollama pull nomic-embed-text` and `ollama serve` (default `http://127.0.0.1:11434`).
+2. `ollama pull nomic-embed-text` — **`ollama serve` is optional**: the worker auto-starts Ollama on `OLLAMA_ORIGIN` (default `127.0.0.1:11435`) when offline. Set `EMBED_WORKER_NO_OLLAMA_AUTOSTART=1` to disable.
 3. Qdrant Cloud cluster + `.env.local`:
 
 ```env
