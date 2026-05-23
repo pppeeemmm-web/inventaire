@@ -105,6 +105,26 @@ export const atelierMessages = defineMessages({
     fr: 'Nouveau nom du groupe de travail :',
     en: 'New working group name:',
   },
+  themes_collections_count_fmt: {
+    fr: '{count} collections',
+    en: '{count} collections',
+  },
+  themes_active_groups_count_fmt: {
+    fr: '{count} groupes actifs',
+    en: '{count} active groups',
+  },
+  themes_works_displayed_fmt: {
+    fr: '{count} œuvres affichées',
+    en: '{count} works displayed',
+  },
+  themes_mosaic_hover_hint: {
+    fr: 'Survoler un thème ou un groupe pour prévisualiser',
+    en: 'Hover a theme or group to preview',
+  },
+  themes_row_context_menu_title: {
+    fr: 'Clic droit : renommer · Ctrl+clic droit : supprimer',
+    en: 'Right-click: rename · Ctrl+right-click: delete',
+  },
   work_thumb_add_image: {
     fr: 'Ajouter une image',
     en: 'Add image',
