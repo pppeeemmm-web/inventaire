@@ -206,7 +206,7 @@ export async function getFieldPulseData(): Promise<FieldPulseData> {
       title: row.oeuvre_id ? `#${row.oeuvre_id}` : undefined,
       titleKey: row.oeuvre_id ? undefined : 'field_card_session_title',
       detailKey: 'field_card_session_detail',
-      href: '/atelier?tab=journal',
+      href: '/atelier/journal',
       dueAt: row.updated_at,
       priority: 2,
     })),

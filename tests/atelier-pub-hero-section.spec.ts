@@ -11,9 +11,10 @@ test.describe('Atelier Public tab — hero editor', () => {
   )
 
   test('Site public tab exposes hero section and HTTPS URL field', async ({ page }) => {
-    await page.goto('/atelier?tab=portfolio', { waitUntil: 'domcontentloaded' })
+    await page.goto('/atelier/portfolio', { waitUntil: 'domcontentloaded' })
     const hero = page.getByTestId('atelier-pub-hero-section')
     await expect(hero).toBeVisible({ timeout: 45_000 })
     await expect(hero.locator('input[type="url"]')).toBeVisible()
   })
 })
+

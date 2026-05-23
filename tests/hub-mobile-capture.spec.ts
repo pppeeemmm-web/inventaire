@@ -37,7 +37,7 @@ test.describe('Hub mobile + atelier narrow', () => {
   })
 
   test('contacts tab shows quick add panel on narrow viewport', async ({ page }) => {
-    await page.goto('/atelier?tab=contacts')
+    await page.goto('/atelier/contacts')
     await expect(page.getByTestId('contacts-quick-add')).toBeVisible({ timeout: 45_000 })
   })
 
@@ -58,3 +58,4 @@ test.describe('Hub mobile + atelier narrow', () => {
     await expect(page.getByTestId('atelier-scan-root')).toBeVisible({ timeout: 30_000 })
   })
 })
+

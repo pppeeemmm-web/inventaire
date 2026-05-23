@@ -7,7 +7,7 @@ test.describe('Contacts tab unsaved guard', () => {
   test.skip(!process.env.ATELIER_E2E, 'Set ATELIER_E2E=1 with a logged-in app session.')
 
   test('switching table row prompts after editing institution (contacts drawer)', async ({ page }) => {
-    await page.goto('/atelier?tab=contacts')
+    await page.goto('/atelier/contacts')
     await expect(page.locator('.tbl tbody tr').first()).toBeVisible({ timeout: 45_000 })
 
     const rows = page.locator('.tbl tbody tr')
@@ -23,3 +23,4 @@ test.describe('Contacts tab unsaved guard', () => {
     await expect(page.getByText(/Modifications non enregistrées|Unsaved changes/)).toBeVisible()
   })
 })
+

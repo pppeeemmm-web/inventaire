@@ -7,7 +7,8 @@ test.describe('Session journal tab', () => {
   )
 
   test('desktop journal tab renders dated session surface', async ({ page }) => {
-    await page.goto('/atelier?tab=journal')
+    await page.goto('/atelier/journal')
     await expect(page.getByTestId('session-journal-tab')).toBeVisible({ timeout: 45_000 })
   })
 })
+

@@ -1,5 +1,6 @@
-/** Tabs with dedicated App Router segments (Slice 3 migration). */
+/** Tabs with dedicated App Router segments (Slice 3 + 3B). */
 export type SegmentedAtelierTab =
+  | 'overview'
   | 'inventory'
   | 'sales'
   | 'pipeline'
@@ -16,8 +17,17 @@ export type SegmentedAtelierTab =
   | 'broadcast'
   | 'audit'
   | 'constellation'
+  | 'map'
+  | 'journal'
+  | 'system'
+  | 'portfolio'
+  | 'contacts'
+  | 'stock'
+  | 'site'
+  | 'analytics'
 
 export const ATELIER_SEGMENTED_TAB_ROUTES: Record<SegmentedAtelierTab, string> = {
+  overview: '/atelier/overview',
   inventory: '/atelier/inventory',
   sales: '/atelier/sales',
   pipeline: '/atelier/pipeline',
@@ -34,19 +44,27 @@ export const ATELIER_SEGMENTED_TAB_ROUTES: Record<SegmentedAtelierTab, string> =
   broadcast: '/atelier/broadcast',
   audit: '/atelier/audit',
   constellation: '/atelier/constellation',
+  map: '/atelier/map',
+  journal: '/atelier/journal',
+  system: '/atelier/system',
+  portfolio: '/atelier/portfolio',
+  contacts: '/atelier/contacts',
+  stock: '/atelier/stock',
+  site: '/atelier/site',
+  analytics: '/atelier/analytics',
 }
 
 export function isSegmentedAtelierTab(tab: string): tab is SegmentedAtelierTab {
   return tab in ATELIER_SEGMENTED_TAB_ROUTES
 }
 
-/** Canonical href for portal tab navigation (segment route or legacy query). */
+/** Canonical href for portal tab navigation. */
 export function atelierTabHref(tab: string): string {
   if (isSegmentedAtelierTab(tab)) return ATELIER_SEGMENTED_TAB_ROUTES[tab]
-  return `/atelier?tab=${encodeURIComponent(tab)}`
+  return `/atelier/overview`
 }
 
-/** Legacy `?tab=` links that should 308/redirect to a segment route. */
+/** Legacy `?tab=` links → segment route (308 on `/atelier`). */
 export function legacyTabRedirectPath(tab: string | undefined): string | null {
   if (tab && isSegmentedAtelierTab(tab)) return ATELIER_SEGMENTED_TAB_ROUTES[tab]
   return null

@@ -6,7 +6,8 @@ import { ExhibitionsTabSkeleton } from '@/components/atelier/ExhibitionsTabSkele
 import { useI18n } from '@/lib/i18n/context'
 import type { Oeuvre } from '@/lib/types/database'
 import type { SegmentedAtelierTab } from '@/lib/atelier/tab-routes'
-import type { TeamPortalClientProps } from '@/components/atelier/team-portal-types'
+import type { TeamPortalClientProps, AtelierOverviewBootstrap } from '@/components/atelier/team-portal-types'
+import type { Lang } from '@/lib/i18n/dictionary'
 
 function TabPanelFallback() {
   const { t } = useI18n()
@@ -41,6 +42,13 @@ const Reports = dynamic(() => import('@/app/atelier/reports/_components/Reports'
 const Audit = dynamic(() => import('@/app/atelier/audit/_components/Audit').then((m) => ({ default: m.Audit })), { loading: () => <TabPanelFallback />, ssr: false })
 const Broadcast = dynamic(() => import('@/app/atelier/broadcast/_components/Broadcast').then((m) => ({ default: m.Broadcast })), { loading: () => <TabPanelFallback />, ssr: false })
 const NotesTab = dynamic(() => import('@/app/atelier/notes/_components/Notes').then((m) => ({ default: m.Notes })), { loading: () => <TabPanelFallback />, ssr: false })
+const OverviewTab = dynamic(() => import('@/components/atelier/overview/OverviewTab').then((m) => ({ default: m.OverviewTab })), { loading: () => <TabPanelFallback />, ssr: false })
+const WorldMapTab = dynamic(() => import('@/components/atelier/WorldMapTab').then((m) => ({ default: m.WorldMapTab })), { loading: () => <TabPanelFallback />, ssr: false })
+const PortfolioConfigShell = dynamic(() => import('@/components/atelier/PortfolioConfigShell').then((m) => ({ default: m.PortfolioConfigShell })), { loading: () => <TabPanelFallback />, ssr: false })
+const SupplierHub = dynamic(() => import('@/components/atelier/SupplierHub').then((m) => ({ default: m.SupplierHub })), { loading: () => <TabPanelFallback />, ssr: false })
+const SessionJournalTab = dynamic(() => import('@/components/atelier/SessionJournalTab').then((m) => ({ default: m.SessionJournalTab })), { loading: () => <TabPanelFallback />, ssr: false })
+const SystemTab = dynamic(() => import('@/components/atelier/SystemTab').then((m) => ({ default: m.SystemTab })), { loading: () => <TabPanelFallback />, ssr: false })
+const ContactsTab = dynamic(() => import('@/components/atelier/ContactsTab').then((m) => ({ default: m.ContactsTab })), { loading: () => <TabPanelFallback />, ssr: false })
 
 export type SegmentRoutePanelProps = {
   tab: SegmentedAtelierTab
@@ -77,6 +85,16 @@ export type SegmentRoutePanelProps = {
   initialReminders: import('@/lib/types/database').SuiviReminderListRow[]
   onRemindersMutated: () => Promise<void>
   handleSaveGroup: (name: string, ids: number[]) => Promise<string | null>
+  lang: Lang
+  onGoTab: (tab: SegmentedAtelierTab) => void
+  initialOverviewBootstrap: AtelierOverviewBootstrap
+  reminderCount: number
+  conflicts: unknown[]
+  oeuvresCataloguePartial?: boolean
+  themePublicStats: Record<number, { total: number; pub: number }>
+  thM: Record<number, string>
+  oeuvreThemeMap: Map<number, number[]>
+  onOpenContactFromMap: (contactId: number) => void
 }
 
 export function SegmentRoutePanel({
@@ -114,8 +132,89 @@ export function SegmentRoutePanel({
   initialReminders,
   onRemindersMutated,
   handleSaveGroup,
+  lang,
+  onGoTab,
+  initialOverviewBootstrap,
+  reminderCount,
+  conflicts,
+  oeuvresCataloguePartial,
+  themePublicStats,
+  thM,
+  oeuvreThemeMap,
+  onOpenContactFromMap,
 }: SegmentRoutePanelProps) {
+  const { t } = useI18n()
   switch (tab) {
+    case 'overview':
+      return (
+        <OverviewTab
+          oeuvres={oeuvres}
+          tM={tM}
+          t={t as (k: string) => string}
+          lang={lang}
+          onGoTab={onGoTab}
+          reminderCount={reminderCount}
+          initialReminders={initialReminders}
+          initialOverviewBootstrap={initialOverviewBootstrap}
+          isAdmin={isAdmin}
+          conflicts={conflicts}
+          oeuvresCataloguePartial={oeuvresCataloguePartial}
+          oeuvresCatalogueTotal={oeuvresPaging?.totalCount}
+        />
+      )
+    case 'contacts':
+      return <ContactsTab contacts={contacts} oeuvres={oeuvres} conflicts={conflicts} />
+    case 'site':
+    case 'portfolio':
+    case 'analytics':
+      return (
+        <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+          <PortfolioConfigShell
+            tab={tab}
+            oeuvres={oeuvres}
+            themes={themes}
+            themePublicStats={themePublicStats}
+            themePrivateWorks={themePrivateWorks}
+            oeuvresCatalogueTotal={oeuvresPaging?.totalCount}
+          />
+        </div>
+      )
+    case 'map':
+      return (
+        <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+          <WorldMapTab
+            contacts={contacts}
+            oeuvres={oeuvres}
+            tM={tM}
+            thM={thM}
+            statusLabelMap={statusLabelMap}
+            oeuvreThemeMap={oeuvreThemeMap}
+            onOpenContact={onOpenContactFromMap}
+            onOpenOeuvreById={(id) => {
+              const o = oeuvres.find((x) => x.OeuvreID === id)
+              if (o) onOpen(o)
+            }}
+          />
+        </div>
+      )
+    case 'stock':
+      return (
+        <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+          <SupplierHub contacts={contacts} />
+        </div>
+      )
+    case 'journal':
+      return (
+        <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+          <SessionJournalTab />
+        </div>
+      )
+    case 'system':
+      return (
+        <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+          <SystemTab />
+        </div>
+      )
     case 'inventory':
       return (
         <InventoryTab

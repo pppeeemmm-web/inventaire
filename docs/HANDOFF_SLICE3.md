@@ -4,7 +4,9 @@
 
 **Slice 3 status:** **Complete** (2026-05-23) — 16 tab routes · QR Physical Bridge · `BottomStack` · `@container atelier` portal chrome · `TeamPortalClient` monolith trim (segment panels + legacy-only branches).
 
-**Follow-on:** Slice 4 i18n (core + CI ratchet shipped) — see [`HANDOFF_SLICE4.md`](./HANDOFF_SLICE4.md).
+**Slice 3B status:** **Complete** (2026-05-23) — legacy tabs segmented: `overview`, `map`, `journal`, `system`, `portfolio`, `contacts`, `stock`, `site`, `analytics`. Bare `/atelier` → `/atelier/overview`. `OverviewTab` extracted to `components/atelier/overview/`. Hub + capture links use segment paths.
+
+**Follow-on:** Slice 5 graph foundation — see [`PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md). Slice 4 i18n — [`HANDOFF_SLICE4.md`](./HANDOFF_SLICE4.md).
 
 ---
 
@@ -55,22 +57,29 @@ Each route: `app/atelier/<tab>/page.tsx` + `_components/<Tab>.tsx`, shell via `l
 
 ---
 
-## Remaining legacy `?tab=` (not segmented)
+## Slice 3B completed routes (9)
 
-Served from `/atelier` only (no segment panel mount on legacy shell):
+| Tab id | Path |
+|--------|------|
+| overview | `/atelier/overview` |
+| map | `/atelier/map` |
+| journal | `/atelier/journal` |
+| system | `/atelier/system` |
+| portfolio | `/atelier/portfolio` |
+| site | `/atelier/site` |
+| analytics | `/atelier/analytics` |
+| contacts | `/atelier/contacts` |
+| stock | `/atelier/stock` |
 
-- `overview`, `map`, `journal`, `system`, `portfolio`, `contacts`, `stock`
-- Aliases: `site`, `analytics`
+Legacy `?tab=<id>` on `/atelier` redirects via [`legacyTabRedirectPath`](../lib/atelier/tab-routes.ts) (query params except `tab` preserved).
 
 ---
 
 ## Next work (owner chooses)
 
-**Option A — Legacy tab segments** — overview, map, journal, system, portfolio, contacts, stock (+ site/analytics)
+**Slice 5** — graph foundation (`public.nodes`, …)
 
-**Option B — Slice 4 panels** — migrate allowlisted copy in `CurationPanel`, `PortfolioConfigShell`, `ContactEditorPanel`, `WorldMapTab` ([`HANDOFF_SLICE4.md`](./HANDOFF_SLICE4.md))
-
-**Option C — Slice 5** — graph foundation (`public.nodes`, …)
+**Post–V5** — atelier shell reload per segment tab hop ([`PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md) § Post–V5 backlog)
 
 **Deferred (not Slice 3):** per-route bundle ≤250 kB audit · drawer sticky save bars in `BottomStack` (z-index documented; drawer footers stay local) · Qdrant / SW · **atelier shell reload per segment tab** (post–V5 — [`PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md) § Post–V5 backlog)
 

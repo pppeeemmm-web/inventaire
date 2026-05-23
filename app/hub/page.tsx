@@ -1,5 +1,5 @@
 // Hub home — thin launcher redirecting into Atelier tab rooms.
-// Executive dashboard lives at /atelier?tab=overview (canonical).
+// Executive dashboard lives at /atelier/overview (canonical).
 import { HubLauncherClient } from '@/components/hub/HubLauncherClient'
 import { getFieldPulseData } from '@/app/atelier/field-inbox/data'
 

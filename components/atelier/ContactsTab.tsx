@@ -4,6 +4,7 @@
 // Supports multiple addresses per contact via contact_addresses table.
 
 import Link from 'next/link'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useState, useMemo, useEffect, useCallback, useLayoutEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -216,14 +217,28 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
     refreshContactsClientData()
   }, [refreshContactsClientData])
 
-  // Auto-open a contact card when navigated from Map
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
+  // Auto-open a contact card when navigated from Map / share-triage / capture
   useEffect(() => {
+    const fromQuery = searchParams.get('contact')
+    if (fromQuery) {
+      const id = parseInt(fromQuery, 10)
+      if (!isNaN(id)) setActiveId(id)
+      const next = new URLSearchParams(searchParams.toString())
+      next.delete('contact')
+      const q = next.toString()
+      router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false })
+      return
+    }
     const raw = sessionStorage.getItem('pem_open_contact')
     if (!raw) return
     sessionStorage.removeItem('pem_open_contact')
-    const id = parseInt(raw)
+    const id = parseInt(raw, 10)
     if (!isNaN(id)) setActiveId(id)
-  }, [])
+  }, [pathname, router, searchParams])
 
   // Work counts
   const workCounts = useMemo(() => {

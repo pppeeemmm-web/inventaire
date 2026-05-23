@@ -38,7 +38,7 @@ const KIND_COPY: Record<
     bodyKey: 'field_verb_documents_body',
     links: [
       { href: '/atelier/vault', labelKey: 'field_verb_link_vault' },
-      { href: '/atelier?tab=portfolio', labelKey: 'tab_portfolio' },
+      { href: '/atelier/portfolio', labelKey: 'tab_portfolio' },
     ],
   },
   triage: {

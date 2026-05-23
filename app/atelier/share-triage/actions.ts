@@ -279,7 +279,7 @@ export async function attachShareInboxToContact(
 
   const fin = await finishInbox(inboxId, { target: 'contact', contactId })
   if (fin) return fin
-  return { ok: true, href: `/atelier?tab=contacts&contact=${contactId}` }
+  return { ok: true, href: `/atelier/contacts?contact=${contactId}` }
 }
 
 export async function attachShareInboxToProcess(

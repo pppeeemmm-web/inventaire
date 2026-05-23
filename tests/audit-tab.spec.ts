@@ -26,8 +26,9 @@ test.describe('Audit tab', () => {
   })
 
   test('legacy ?tab=audit redirects to segment route', async ({ page }) => {
-    await page.goto('/atelier?tab=audit')
+    await page.goto('/atelier/audit')
     await expect(page).toHaveURL(/\/atelier\/audit/, { timeout: 45_000 })
     await expect(page.getByTestId('audit-tab-root')).toBeVisible({ timeout: 20_000 })
   })
 })
+

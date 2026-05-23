@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useI18n } from '@/lib/i18n/context'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import { useMediaQuery } from '@/lib/useMediaQuery'
+import { atelierTabHref } from '@/lib/atelier/tab-routes'
 import { PemThemeToggle } from '@/components/PemThemeToggle'
 import { WorkThumb } from '@/components/atelier/WorkThumb'
 
@@ -154,7 +155,7 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
               {t('hub_studio_bible')}
             </Link>
             <div className="vline" style={{ height: 12, margin: '0 12px', opacity: 0.3 }} />
-            <Link href="/atelier?tab=system" className="t-mono-sm" style={{ color: 'var(--tx2)', textDecoration: 'none' }}>
+            <Link href="/atelier/system" className="t-mono-sm" style={{ color: 'var(--tx2)', textDecoration: 'none' }}>
               {t('hub_suggestions')}
             </Link>
             <div className="vline" style={{ height: 12, margin: '0 12px', opacity: 0.3 }} />
@@ -231,7 +232,7 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
             <Link href="/Atelier_Studio_Bible.pdf" target="_blank" onClick={() => setHubMenuOpen(false)} className="t-mono-sm" style={{ color: 'var(--tx2)', textDecoration: 'none' }}>
               {t('hub_studio_bible')}
             </Link>
-            <Link href="/atelier?tab=system" onClick={() => setHubMenuOpen(false)} className="t-mono-sm" style={{ color: 'var(--tx2)', textDecoration: 'none' }}>
+            <Link href="/atelier/system" onClick={() => setHubMenuOpen(false)} className="t-mono-sm" style={{ color: 'var(--tx2)', textDecoration: 'none' }}>
               {t('hub_drawer_alerts_link')}
               {stats.stockAlerts > 0 ? ` · ${stats.stockAlerts}` : ''}
               <span style={{ display: 'block', opacity: 0.65, fontSize: 9, marginTop: 4 }}>{t('hub_suggestions')}</span>
@@ -315,7 +316,7 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
                 dataTestId="hub-tile-contacts"
                 title={t('contacts')}
                 subtitle={t('hub_tile_contacts_sub')}
-                onClick={() => router.push('/atelier?tab=contacts')}
+                onClick={() => router.push(atelierTabHref('contacts'))}
               />
               <MobileActionTile
                 dataTestId="hub-tile-scan"
@@ -359,7 +360,7 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
                 />
                 <MobileSwipeCard
                   kicker={`03 · ${t('hub_pulse_ledger')}`}
-                  onClick={() => router.push('/atelier?tab=system')}
+                  onClick={() => router.push('/atelier/system')}
                   items={displayLogs.slice(0, 3).map((l) => ({
                     a: l.action,
                     b: l.priority ?? 'P3',
@@ -508,7 +509,7 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
                   ) : displayLogs.slice(0, 10).map((log) => {
                     const typeLine = hubLogTypeLabel(log)
                     return (
-                    <div key={`${log.feedSource}-${log.id}`} onClick={() => router.push('/atelier?tab=system')}
+                    <div key={`${log.feedSource}-${log.id}`} onClick={() => router.push('/atelier/system')}
                       style={{ display: 'flex', gap: 10, alignItems: 'flex-start', borderBottom: '1px solid var(--bd2)', paddingBottom: 10, cursor: 'pointer' }}>
                       <span style={{ fontWeight: 700, fontSize: 9, color: priorityColor(log.priority), letterSpacing: 0.5, paddingTop: 2, flexShrink: 0 }}>
                         {log.priority ?? 'P3'}
@@ -520,7 +521,7 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
                     </div>
                   )})}
                 </div>
-                <div onClick={() => router.push('/atelier?tab=system')}
+                <div onClick={() => router.push('/atelier/system')}
                   style={{ marginTop: 16, fontSize: 8, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--tx3)', cursor: 'pointer' }}>
                   {t('hub_ledger_view_all')}
                 </div>

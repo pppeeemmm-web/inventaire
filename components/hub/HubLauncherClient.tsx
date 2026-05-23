@@ -11,6 +11,7 @@ import { tryOpenLightroomIosApp, LIGHTROOM_IOS_APP_STORE_URL } from '@/lib/mobil
 import type { FieldPulseCard, FieldPulseData, FieldPulseMetricKey } from '@/app/atelier/field-inbox/data'
 import { getSessionNewPageContext } from '@/app/atelier/session/actions'
 import { todayCalendarDayInParis } from '@/lib/session-calendar-day'
+import { atelierTabHref } from '@/lib/atelier/tab-routes'
 
 const LEGACY_TILES = [
   { key: 'hub_launcher_field' as const, subKey: 'hub_launcher_field_sub' as const, tab: 'inventory' },
@@ -53,7 +54,7 @@ function fieldRowSubKey(row: FieldRow, isAdmin: boolean): DictKey {
 
 function fieldRowHref(row: FieldRow, isAdmin: boolean): string {
   if (row.kind === 'link' && row.testId === 'hub-field-verb-session') {
-    if (!isAdmin) return '/atelier?tab=journal'
+    if (!isAdmin) return atelierTabHref('journal')
     return `/atelier/session/new?date=${todayCalendarDayInParis()}`
   }
   return row.kind === 'link' ? row.href : ''
@@ -179,7 +180,7 @@ export function HubLauncherClient({ fieldPulse }: { fieldPulse: FieldPulseData }
 
   useEffect(() => {
     if (!viewportReady || narrow) return
-    router.replace('/atelier?tab=overview')
+    router.replace(atelierTabHref('overview'))
   }, [narrow, router, viewportReady])
 
   useEffect(() => {
@@ -436,7 +437,7 @@ export function HubLauncherClient({ fieldPulse }: { fieldPulse: FieldPulseData }
                   type="button"
                   className="btn ghost"
                   aria-label={`${t(key)}. ${t(subKey)}`}
-                  onClick={() => void router.push(`/atelier?tab=${tab}`)}
+                  onClick={() => void router.push(atelierTabHref(tab))}
                   style={{
                     minHeight: 56,
                     width: '100%',
@@ -471,7 +472,7 @@ export function HubLauncherClient({ fieldPulse }: { fieldPulse: FieldPulseData }
               type="button"
               className="btn ghost"
               aria-label={`${t(key)}. ${t(subKey)}`}
-              onClick={() => void router.push(`/atelier?tab=${tab}`)}
+              onClick={() => void router.push(atelierTabHref(tab))}
               style={{
                 minHeight: 80,
                 display: 'flex',

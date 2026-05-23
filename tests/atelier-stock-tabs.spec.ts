@@ -11,7 +11,7 @@ test.describe('Atelier Stock + Stock-take tabs', () => {
   )
 
   test('Stock tab shows toolbar, table, and new-item control', async ({ page }) => {
-    await page.goto('/atelier?tab=stock', { waitUntil: 'domcontentloaded' })
+    await page.goto('/atelier/stock', { waitUntil: 'domcontentloaded' })
     await expect(page.getByTestId('atelier-stock-root')).toBeVisible({ timeout: 45_000 })
     await expect(page.getByTestId('atelier-stock-toolbar')).toBeVisible()
     await expect(page.getByTestId('atelier-stock-table')).toBeVisible()
@@ -28,3 +28,4 @@ test.describe('Atelier Stock + Stock-take tabs', () => {
     await expect(topApply.or(stickyApply)).toBeVisible()
   })
 })
+

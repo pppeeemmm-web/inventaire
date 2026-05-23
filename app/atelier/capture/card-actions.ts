@@ -144,5 +144,5 @@ export async function commitBusinessCardCapture(
   })
 
   revalidatePath('/atelier')
-  return { ok: true, href: `/atelier?tab=contacts&contact=${contactId}` }
+  return { ok: true, href: `/atelier/contacts?contact=${contactId}` }
 }

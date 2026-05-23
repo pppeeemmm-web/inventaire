@@ -1,6 +1,4 @@
 import { redirect } from 'next/navigation'
-import { AtelierTeamPortalLoader } from '@/components/atelier/AtelierTeamPortalLoader'
-import { loadAtelierShellProps } from '@/lib/atelier/load-atelier-shell-props'
 import { legacyTabRedirectPath } from '@/lib/atelier/tab-routes'
 
 export const dynamic = 'force-dynamic'
@@ -34,6 +32,5 @@ export default async function AtelierPage({ searchParams }: { searchParams: Sear
     redirect(q ? `/atelier/constellation?${q}` : '/atelier/constellation')
   }
 
-  const props = await loadAtelierShellProps()
-  return <AtelierTeamPortalLoader {...props} />
+  redirect('/atelier/overview')
 }

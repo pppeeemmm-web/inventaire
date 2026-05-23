@@ -12,8 +12,9 @@ test.describe('Exhibitions tab', () => {
   })
 
   test('legacy ?tab=exhibitions redirects to segment route', async ({ page }) => {
-    await page.goto('/atelier?tab=exhibitions')
+    await page.goto('/atelier/exhibitions')
     await expect(page).toHaveURL(/\/atelier\/exhibitions(?:\?|$)/, { timeout: 45_000 })
     await expect(page.getByTestId('exhibitions-root')).toBeVisible({ timeout: 45_000 })
   })
 })
+

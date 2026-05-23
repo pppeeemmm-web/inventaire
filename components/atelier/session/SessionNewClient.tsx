@@ -604,7 +604,7 @@ export function SessionNewClient() {
         <p className="t-mono-sm" style={{ margin: 0, color: 'var(--tx2)', lineHeight: 1.5, fontSize: 13 }}>
           {t('session_capture_admin_only')}
         </p>
-        <Link href="/atelier?tab=journal" className="btn primary" style={{ minHeight: 48, textAlign: 'center' }}>
+        <Link href="/atelier/journal" className="btn primary" style={{ minHeight: 48, textAlign: 'center' }}>
           {t('tab_journal')}
         </Link>
       </main>
@@ -627,7 +627,7 @@ export function SessionNewClient() {
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         <Link
-          href="/atelier?tab=journal"
+          href="/atelier/journal"
           className="t-mono-sm"
           data-testid="session-back-journal"
           style={{ fontSize: 11, color: 'var(--ac)', textDecoration: 'none', minHeight: 32, display: 'inline-flex', alignItems: 'center' }}
