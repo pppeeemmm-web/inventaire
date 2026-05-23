@@ -8,10 +8,7 @@ test.describe('Constellation cloud maps', () => {
   )
 
   test('constellation tab shows cloud save control', async ({ page }) => {
-    await page.addInitScript(() => {
-      localStorage.setItem('pem_team_tab', 'constellation')
-    })
-    await page.goto('/atelier')
+    await page.goto('/atelier/constellation')
     await expect(page.getByTestId('constellation-cloud-save')).toBeVisible({ timeout: 45_000 })
     await expect(page.getByTestId('constellation-tool-rail')).toBeVisible({ timeout: 45_000 })
   })

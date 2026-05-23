@@ -22,6 +22,18 @@ export default async function AtelierPage({ searchParams }: { searchParams: Sear
     redirect(q ? `${segmentRedirect}?${q}` : segmentRedirect)
   }
 
+  const map = typeof params.map === 'string' ? params.map : undefined
+  if (map) {
+    const qs = new URLSearchParams()
+    for (const [k, v] of Object.entries(params)) {
+      if (v == null) continue
+      if (Array.isArray(v)) v.forEach((x) => qs.append(k, x))
+      else qs.set(k, v)
+    }
+    const q = qs.toString()
+    redirect(q ? `/atelier/constellation?${q}` : '/atelier/constellation')
+  }
+
   const props = await loadAtelierShellProps()
   return <AtelierTeamPortalLoader {...props} />
 }

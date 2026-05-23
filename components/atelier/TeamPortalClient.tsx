@@ -64,7 +64,7 @@ function TabPanelFallback() {
 
 /** Lazy tabs: ssr:false — panel JS/CSS only runs client-side; avoids hydration mismatch (React #418) */
 const InventoryTab = dynamic(() => import('@/app/atelier/inventory/_components/Inventory').then((m) => ({ default: m.Inventory })), { loading: () => <TabPanelFallback />, ssr: false })
-const ConstellationCanvas = dynamic(() => import('@/components/atelier/ConstellationCanvas').then((m) => ({ default: m.ConstellationCanvas })), { loading: () => <TabPanelFallback />, ssr: false })
+const Constellation = dynamic(() => import('@/app/atelier/constellation/_components/Constellation').then((m) => ({ default: m.Constellation })), { loading: () => <TabPanelFallback />, ssr: false })
 const Vault = dynamic(() => import('@/app/atelier/vault/_components/Vault').then((m) => ({ default: m.Vault })), { loading: () => <TabPanelFallback />, ssr: false })
 const ProductionTab = dynamic(() => import('@/app/atelier/production/_components/Production').then((m) => ({ default: m.Production })), { loading: () => <TabPanelFallback />, ssr: false })
 const Logistics = dynamic(() => import('@/app/atelier/logistics/_components/Logistics').then((m) => ({ default: m.Logistics })), { loading: () => <TabPanelFallback />, ssr: false })
@@ -640,9 +640,12 @@ export function TeamPortalClient({
     }
   }, [routeTab, router])
 
-  // Warm exhibitions chunk after paint — reduces flash when opening Commercial → Exhibitions
+  // Warm exhibitions + constellation chunks after paint — reduces flash when opening those tabs
   useEffect(() => {
-    const run = () => void import('@/app/atelier/exhibitions/_components/Exhibitions')
+    const run = () => {
+      void import('@/app/atelier/exhibitions/_components/Exhibitions')
+      void import('@/app/atelier/constellation/_components/Constellation')
+    }
     let id: number | ReturnType<typeof setTimeout>
     if (typeof requestIdleCallback !== 'undefined') {
       id = requestIdleCallback(run, { timeout: 2500 })
@@ -1351,7 +1354,7 @@ export function TeamPortalClient({
         )}
 
         {tab === 'constellation' && (
-          <ConstellationCanvas
+          <Constellation
             oeuvres={oeuvres}
             tM={tM}
             themes={sortedThemes}

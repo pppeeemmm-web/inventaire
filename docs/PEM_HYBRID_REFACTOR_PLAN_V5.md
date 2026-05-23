@@ -181,7 +181,7 @@ The app is functionally complete; we are moving from a strict relational ledger 
 13. ✅ `fiscal` → `app/atelier/fiscal/page.tsx` + `_components/Fiscal.tsx` — **done** (2026-05-23)
 14. ✅ `broadcast` → `app/atelier/broadcast/page.tsx` + `_components/Broadcast.tsx` — **done** (2026-05-23)
 15. ✅ `audit` → `app/atelier/audit/page.tsx` + `_components/Audit.tsx` — **done** (2026-05-23)
-16. `constellation` (last; dynamic import gate; read-only list < 768 px)
+16. ✅ `constellation` → `app/atelier/constellation/page.tsx` + `_components/Constellation.tsx` (thin wrapper; canvas stays in `components/atelier/ConstellationCanvas.tsx`) — **done** (2026-05-23) — **ALL SLICE 3 TABS DONE**
 
 **Per-tab PR:**
 - Create `app/atelier/<tab>/page.tsx` + `_components/<Tab>.tsx` (move from `components/atelier/`).

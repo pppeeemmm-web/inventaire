@@ -60,7 +60,7 @@ export function MapsIndexClient({
                   </td>
                   <td style={{ padding: '10px 12px', verticalAlign: 'middle' }}>
                     <Link
-                      href={`/atelier?tab=constellation&map=${encodeURIComponent(m.id)}`}
+                      href={`/atelier/constellation?map=${encodeURIComponent(m.id)}`}
                       className="btn sm"
                       style={{ whiteSpace: 'nowrap' }}
                     >
