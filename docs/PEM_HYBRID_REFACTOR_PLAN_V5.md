@@ -177,7 +177,7 @@ The app is functionally complete; we are moving from a strict relational ledger 
 9. ✅ `concepts` → `app/atelier/concepts/page.tsx` + `_components/Concepts.tsx` — **done** (2026-05-23)
 10. ✅ `themes` → `app/atelier/themes/page.tsx` + `_components/Themes.tsx` — **done** (2026-05-23)
 11. ✅ `logistics` → `app/atelier/logistics/page.tsx` + `_components/Logistics.tsx` — **done** (2026-05-23)
-12. `vault`
+12. ✅ `vault` → `app/atelier/vault/page.tsx` + `_components/Vault.tsx` — **done** (2026-05-23)
 13. `fiscal`
 14. `broadcast`
 15. `audit`
@@ -425,6 +425,7 @@ Wrap the function return in `nullif(trim(…), '')` so all-empty inputs return `
 | Pipeline tab (Slice 3) | `app/atelier/pipeline/page.tsx`, `app/atelier/pipeline/_components/Pipeline.tsx` |
 | Concepts tab (Slice 3) | `app/atelier/concepts/page.tsx`, `app/atelier/concepts/_components/Concepts.tsx` |
 | Themes tab (Slice 3) | `app/atelier/themes/page.tsx`, `app/atelier/themes/_components/Themes.tsx` |
+| Vault tab (Slice 3) | `app/atelier/vault/page.tsx`, `app/atelier/vault/_components/Vault.tsx` |
 | Monolith to split | `components/atelier/TeamPortalClient.tsx` (2188 LOC) |
 | WorkForm | `components/atelier/WorkForm.tsx` (1243 LOC) |
 | Constellation | `components/atelier/ConstellationCanvas.tsx` (3013 LOC), `app/atelier/constellation/actions.ts` |

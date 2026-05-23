@@ -125,5 +125,5 @@ export async function submitDocScanCapture(formData: FormData): Promise<{ ok: tr
 
   revalidatePath('/atelier')
   revalidatePath('/atelier/capture')
-  return { ok: true, href: '/atelier?tab=vault' }
+  return { ok: true, href: '/atelier/vault' }
 }

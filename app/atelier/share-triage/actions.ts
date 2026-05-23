@@ -353,7 +353,7 @@ export async function attachShareInboxToVault(
 
   const fin = await finishInbox(inboxId, { target: 'vault' })
   if (fin) return fin
-  return { ok: true, href: '/atelier?tab=vault' }
+  return { ok: true, href: '/atelier/vault' }
 }
 
 export async function attachShareInboxToVoiceNote(inboxId: string): Promise<ShareActionOk | ShareActionErr> {

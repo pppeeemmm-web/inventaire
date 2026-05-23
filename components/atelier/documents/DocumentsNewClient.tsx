@@ -95,7 +95,7 @@ export function DocumentsNewClient() {
         <Link href="/atelier/pipeline" className="btn ghost" style={{ minHeight: 44, flex: 1, textAlign: 'center' }}>
           {t('documents_new_pipeline_link')}
         </Link>
-        <Link href="/atelier?tab=vault" className="btn ghost" style={{ minHeight: 44, flex: 1, textAlign: 'center' }}>
+        <Link href="/atelier/vault" className="btn ghost" style={{ minHeight: 44, flex: 1, textAlign: 'center' }}>
           {t('documents_new_vault_link')}
         </Link>
       </div>

@@ -33,5 +33,5 @@ export async function generateFieldDocument(
     metadata: { source: 'documents_new', type: docType, oeuvreId },
   })
   revalidatePath('/atelier/documents/new')
-  return { ok: true, href: '/atelier?tab=vault' }
+  return { ok: true, href: '/atelier/vault' }
 }
