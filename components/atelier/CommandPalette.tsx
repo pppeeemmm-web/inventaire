@@ -1,9 +1,12 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
+import type { DictKey } from '@/lib/i18n/dictionary'
 import type { Oeuvre } from '@/lib/types/database'
+import { searchSemanticAtelier, type SemanticSearchHit } from '@/app/atelier/search/actions'
+import { atelierTabHref } from '@/lib/atelier/tab-routes'
+import { isSegmentedAtelierTab } from '@/lib/atelier/tab-routes'
 
 interface Contact { ContactID: number; Nom: string | null; Prénom: string | null; NomInstitution: string | null }
 
@@ -42,14 +45,51 @@ export function CommandPalette({
   onNewWork, onNewSale, onStockTake, onPendingApprovals, onExportXlsx, onRegenBible,
 }: Props) {
   const { t } = useI18n()
+  const tk = (key: string) => t(key as DictKey)
   const [q, setQ] = useState('')
   const [idx, setIdx] = useState(0)
+  const [semanticHits, setSemanticHits] = useState<SemanticSearchHit[]>([])
+  const [semanticLoading, setSemanticLoading] = useState(false)
+  const [semanticUnavailable, setSemanticUnavailable] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (open) { setQ(''); setIdx(0); setTimeout(() => inputRef.current?.focus(), 10) }
+    if (open) {
+      setQ('')
+      setIdx(0)
+      setSemanticHits([])
+      setSemanticUnavailable(false)
+      setTimeout(() => inputRef.current?.focus(), 10)
+    }
   }, [open])
+
+  useEffect(() => {
+    const trimmed = q.trim()
+    if (!open || trimmed.length < 3) {
+      setSemanticHits([])
+      setSemanticLoading(false)
+      setSemanticUnavailable(false)
+      return
+    }
+    setSemanticLoading(true)
+    const timer = setTimeout(() => {
+      void searchSemanticAtelier(trimmed).then((res) => {
+        if ('error' in res) {
+          setSemanticHits([])
+          setSemanticUnavailable(false)
+        } else if (res.unavailable) {
+          setSemanticHits([])
+          setSemanticUnavailable(true)
+        } else {
+          setSemanticHits(res.hits)
+          setSemanticUnavailable(false)
+        }
+        setSemanticLoading(false)
+      })
+    }, 350)
+    return () => clearTimeout(timer)
+  }, [q, open])
 
   const items: Item[] = useMemo(() => {
     const result: Item[] = []
@@ -108,11 +148,47 @@ export function CommandPalette({
       }
     }
 
+    if (semanticLoading) {
+      result.push({
+        id: 'semantic:loading',
+        label: tk('search_semantic_loading'),
+        group: tk('search_semantic_group'),
+        action: () => {},
+      })
+    } else if (semanticUnavailable) {
+      result.push({
+        id: 'semantic:unavailable',
+        label: tk('search_semantic_unavailable'),
+        group: tk('search_semantic_group'),
+        action: () => {},
+      })
+    } else {
+      for (const hit of semanticHits.slice(0, 8)) {
+        result.push({
+          id: `semantic:${hit.nodeId}`,
+          label: `${hit.label} (${hit.nodeType})`,
+          group: tk('search_semantic_group'),
+          action: () => {
+            if (hit.nodeType === 'oeuvre' && hit.legacyIntId != null) {
+              onGoWork(hit.legacyIntId)
+            } else if (hit.nodeType === 'contact' && hit.legacyIntId != null) {
+              sessionStorage.setItem('pem_open_contact', String(hit.legacyIntId))
+              onGoTab('contacts')
+            } else if (isSegmentedAtelierTab(hit.nodeType)) {
+              window.location.href = atelierTabHref(hit.nodeType)
+            }
+            onClose()
+          },
+        })
+      }
+    }
+
     return result
   }, [
-    q, tabs, oeuvres, contacts, t, onGoTab, onGoWork, onClose,
+    q, tabs, oeuvres, contacts, t, tk, onGoTab, onGoWork, onClose,
     onCaptureSession, onScanQr, onFieldNote, onReminders, onNewWork, onNewSale,
     onStockTake, onPendingApprovals, onExportXlsx, onRegenBible,
+    semanticHits, semanticLoading, semanticUnavailable,
   ])
 
   const clampedIdx = Math.min(idx, Math.max(0, items.length - 1))

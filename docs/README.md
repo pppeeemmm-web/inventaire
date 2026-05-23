@@ -8,6 +8,7 @@
 | [`HANDOFF_SLICE4.md`](./HANDOFF_SLICE4.md) | **Slice 4 core (2026-05-23):** `defineMessages` precedence, segment-tab copy, `i18n:check` CI ratchet + allowlist |
 | [`HANDOFF_SLICE5.md`](./HANDOFF_SLICE5.md) | **Slice 5 (graph foundation):** `public.nodes`, triggers, `entity` view — SQL apply + `gen:types` checklist |
 | [`HANDOFF_SLICE6.md`](./HANDOFF_SLICE6.md) | **Slice 6 (Pivot Atlas):** `edge_fact` view + Reports graph pivots — apply `08` |
+| [`HANDOFF_SLICE8.md`](./HANDOFF_SLICE8.md) | **Slice 8 (Embeddings):** Ollama + Qdrant worker, semantic search — apply `07`+`09` |
 | [`TODO.md`](./TODO.md) | Version-controlled checklist (ops deadlines, dev blocks, optional follow-ups) |
 | [`PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md) | Active multi-slice refactor plan (Cursor execution); Slices 3–4 core **done**, panels / Slice 5 next |
 | [`PROJECT_SYNTHESIS.md`](./PROJECT_SYNTHESIS.md) | Onboarding: stack boundaries, broadcast chain, where truth lives |

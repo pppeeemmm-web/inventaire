@@ -196,7 +196,7 @@ The app is functionally complete; we are moving from a strict relational ledger 
 
 **Risk:** Highest slice — calendar driver is **PR count**, not LOC.
 
-**Post–Slice 6 (2026-05-23):** Slices 3–5 **live on DB** (owner). Slice 6 **Pivot Atlas** on `main` — apply [`08_edge_fact_view.sql`](../supabase/sql/graph_foundation/08_edge_fact_view.sql) + `gen:types` ([`HANDOFF_SLICE6.md`](./HANDOFF_SLICE6.md)). **Next:** Slice 8 embeddings.
+**Post–Slice 8 (2026-05-23):** Slices 3–6 on `main`. Slice 8 embeddings **on `main`** — apply [`07_embeddings.sql`](../supabase/sql/graph_foundation/07_embeddings.sql) + [`09_query_embedding_cache.sql`](../supabase/sql/graph_foundation/09_query_embedding_cache.sql), run [`embed-worker`](../scripts/embed-worker/README.md) ([`HANDOFF_SLICE8.md`](./HANDOFF_SLICE8.md)).
 
 ---
 

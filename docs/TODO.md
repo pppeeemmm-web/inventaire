@@ -122,7 +122,8 @@ _Version-controlled checklist + non-binding roadmap items. Prefer this file over
 - [x] **Slice 3 — Atelier tab route segmentation** (2026-05-23) — 16 segment routes, QR bridge, `BottomStack`, `@container atelier` portal chrome, `TeamPortalClient` trim. Handoff: [`HANDOFF_SLICE3.md`](./HANDOFF_SLICE3.md).
 - [x] **Slice 3B — Legacy tab segments** (2026-05-23) — `overview`, `map`, `journal`, `system`, `portfolio`, `contacts`, `stock`, `site`, `analytics`; `/atelier` → overview; `OverviewTab` extract. Handoff: [`HANDOFF_SLICE3.md`](./HANDOFF_SLICE3.md).
 - [x] **Slice 5 — Graph foundation** (2026-05-23) — SQL applied; `gen:types`; constellation bundle + insert uids. Handoff: [`HANDOFF_SLICE5.md`](./HANDOFF_SLICE5.md).
-- [ ] **Slice 6 — Pivot Atlas** — `08_edge_fact_view.sql`, Reports pivot atlas UI. Apply `08` on Supabase. Handoff: [`HANDOFF_SLICE6.md`](./HANDOFF_SLICE6.md).
+- [x] **Slice 6 — Pivot Atlas** (2026-05-23) — `08_edge_fact_view.sql`, Reports atlas. Handoff: [`HANDOFF_SLICE6.md`](./HANDOFF_SLICE6.md).
+- [ ] **Slice 8 — Embeddings** — `07`+`09` SQL, embed-worker, semantic palette search. Handoff: [`HANDOFF_SLICE8.md`](./HANDOFF_SLICE8.md).
 
 **Optional backlog (post–Slice 3, owner chooses vs Slice 4 i18n):**
 
@@ -135,9 +136,9 @@ _Version-controlled checklist + non-binding roadmap items. Prefer this file over
 - [x] **i18n CI ratchet** — `i18n:check` fails on blocking hardcoded hotspots; allowlist synced with ESLint overrides (`scripts/i18n-check-allowlist.json`); `.github/workflows/ci.yml`.
 - [x] **Slice 4 (panels)** — allowlist empty; `CurationPanel`, `PortfolioConfigShell`, `WorldMapTab` migrated (2026-05-23).
 
-**V5 sequence (locked):** Slice 4 ✓ → Slice 3B ✓ → Slice 5 ✓ → Slice 6 code on `main` (apply `08` + `gen:types`) → Slice 8 embeddings.
+**V5 sequence (locked):** Slices 3–6 ✓ on `main` · Slice 8 code on `main` (apply `07`+`09` SQL, worker, Ollama, Qdrant).
 
-Active plan: [`PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md) — **Slice 6** [`HANDOFF_SLICE6.md`](./HANDOFF_SLICE6.md).
+Active plan: [`HANDOFF_SLICE8.md`](./HANDOFF_SLICE8.md).
 
 ## Guardrails (not tasks)
 

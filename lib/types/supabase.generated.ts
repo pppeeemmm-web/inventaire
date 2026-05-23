@@ -2454,6 +2454,73 @@ export type Database = {
       }
     }
     Views: {
+      edge_fact: {
+        Row: {
+          description: string | null
+          edge_created_at: string | null
+          edge_id: string | null
+          legacy_source_oeuvre_id: number | null
+          legacy_target_oeuvre_id: number | null
+          relation_type: string | null
+          source_label: string | null
+          source_legacy_int_id: number | null
+          source_legacy_uuid: string | null
+          source_node_id: string | null
+          source_node_type: string | null
+          source_pk: string | null
+          strength: number | null
+          target_label: string | null
+          target_legacy_int_id: number | null
+          target_legacy_uuid: string | null
+          target_node_id: string | null
+          target_node_type: string | null
+          target_pk: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tblrelations_source_id_fkey"
+            columns: ["legacy_source_oeuvre_id"]
+            isOneToOne: false
+            referencedRelation: "Oeuvres"
+            referencedColumns: ["OeuvreID"]
+          },
+          {
+            foreignKeyName: "tblrelations_source_uid_fkey"
+            columns: ["source_node_id"]
+            isOneToOne: false
+            referencedRelation: "entity"
+            referencedColumns: ["node_id"]
+          },
+          {
+            foreignKeyName: "tblrelations_source_uid_fkey"
+            columns: ["source_node_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["node_id"]
+          },
+          {
+            foreignKeyName: "tblrelations_target_id_fkey"
+            columns: ["legacy_target_oeuvre_id"]
+            isOneToOne: false
+            referencedRelation: "Oeuvres"
+            referencedColumns: ["OeuvreID"]
+          },
+          {
+            foreignKeyName: "tblrelations_target_uid_fkey"
+            columns: ["target_node_id"]
+            isOneToOne: false
+            referencedRelation: "entity"
+            referencedColumns: ["node_id"]
+          },
+          {
+            foreignKeyName: "tblrelations_target_uid_fkey"
+            columns: ["target_node_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["node_id"]
+          },
+        ]
+      }
       entity: {
         Row: {
           created_at: string | null

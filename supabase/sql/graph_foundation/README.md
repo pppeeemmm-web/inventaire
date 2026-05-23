@@ -13,6 +13,8 @@ Apply **in this order** after a manual [`backup.yml`](../../../.github/workflows
 | 7 | `06_entity_view.sql` | `public.entity` unified read model |
 | 8 | `05b_backfill_synced_edges.sql` | Optional: backfill synced edges for existing junction/FK rows |
 | 9 | `08_edge_fact_view.sql` | **Slice 6** — `public.edge_fact` pivot/export view |
+| 10 | `07_embeddings.sql` | **Slice 8** — embedding columns, `node_search_text`, tombstones |
+| 11 | `09_query_embedding_cache.sql` | **Slice 8** — query embedding cache tables |
 
 **Note:** Step 5 and 6 both dedupe — run **04b** then **05**, or only **05** if you use a current `05` from `main`. If **05** already failed on `tblrelations_uid_pair_type_uniq`, run **04b** and re-run **05** from the `CREATE UNIQUE INDEX` line.
 

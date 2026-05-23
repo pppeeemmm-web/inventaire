@@ -14,6 +14,7 @@ import { vaultUiMessages } from './vault-ui.messages'
 import { curationUiMessages } from './curation-ui.messages'
 import { worldMapUiMessages } from './world-map-ui.messages'
 import { reportsPivotAtlasMessages } from './reports-pivot-atlas.messages'
+import { searchMessages } from './search.messages'
 
 export const featureMessages = {
   ...atelierMessages,
@@ -32,6 +33,7 @@ export const featureMessages = {
   ...curationUiMessages,
   ...worldMapUiMessages,
   ...reportsPivotAtlasMessages,
+  ...searchMessages,
 } as const
 
 export type MessageKey = keyof typeof featureMessages
