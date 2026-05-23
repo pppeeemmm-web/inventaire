@@ -129,6 +129,7 @@ _Version-controlled checklist + non-binding roadmap items. Prefer this file over
 
 - [x] **Slice 4 (core)** — `resolveMessage` + `t()` precedence (2026-05-23).
 - [x] **Slice 4 (segment tabs)** — Exhibitions / Fiscal / Inventory / Sales hardcoded copy → `defineMessages`; ESLint off removed for those paths.
+- [x] **i18n CI ratchet** — `i18n:check` fails on blocking hardcoded hotspots; allowlist synced with ESLint overrides (`scripts/i18n-check-allowlist.json`); `.github/workflows/ci.yml`.
 - [ ] **Slice 4 (panels)** — `CurationPanel`, `PortfolioConfigShell`, `ContactEditorPanel`, `WorldMapTab`; other tabs per `i18n:check`.
 
 Active plan: [`PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md) — Slice 4 finish or legacy tab cleanup.

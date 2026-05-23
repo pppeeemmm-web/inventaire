@@ -663,7 +663,7 @@ export function Vault({ oeuvres, tM }: Props) {
                   className="btn sm"
                   style={{ flex: 1, background: 'var(--bg2)', color: 'var(--tx1)' }}
                   onClick={() => window.open(previewUrl, '_blank')}
-                  title="Ouvrir dans un nouvel onglet"
+                  title={t('vault_open_new_tab')}
                 >
                   ↗ Voir
                 </button>
@@ -760,7 +760,7 @@ function DocActions({ doc, onDownload, onRename, onDeleted }: { doc: VaultDoc; o
 
   return (
     <div className="row gap-sm" onClick={(e) => e.stopPropagation()}>
-      <button className="btn ghost sm" onClick={onDownload} title="Télécharger">↓</button>
+      <button className="btn ghost sm" onClick={onDownload} title={t('vault_download')}>↓</button>
       <button className="btn ghost sm" onClick={onRename} title="Renommer">✎</button>
       {!confirm
         ? <button className="btn ghost sm" style={{ color: 'var(--tx3)' }} onClick={(e) => { e.stopPropagation(); setConfirm(true) }}>✕</button>
@@ -1102,7 +1102,7 @@ function UploadModal({
             <input 
               name="custom_kind" 
               className="input" 
-              placeholder="Saisir le type..." 
+              placeholder={t('vault_type_placeholder')}
               style={{ width: '100%', marginTop: 8 }}
               autoFocus
             />
@@ -1295,6 +1295,7 @@ function Overlay({ children, onClose }: { children: React.ReactNode; onClose: ()
 }
 
 function EditModal({ doc, oeuvres, onClose, onUpdated }: { doc: VaultDoc; oeuvres: any[]; onClose: () => void; onUpdated: (d: VaultDoc) => void }) {
+  const { t } = useI18n()
   const [pending, startUpdate] = useTransition()
   const [error,   setError]    = useState<string | null>(null)
   const [q,       setQ]        = useState('')
@@ -1350,7 +1351,7 @@ function EditModal({ doc, oeuvres, onClose, onUpdated }: { doc: VaultDoc; oeuvre
               name="custom_kind" 
               className="input" 
               defaultValue={isCustomType ? (doc.kind || '') : ''}
-              placeholder="Saisir le type..." 
+              placeholder={t('vault_type_placeholder')}
               style={{ width: '100%', marginTop: 8 }}
               autoFocus
             />

@@ -12,6 +12,7 @@ import {
 import { createHash }   from 'crypto'
 import { revalidatePath } from 'next/cache'
 import sharp from 'sharp'
+import { dict, type Lang } from '@/lib/i18n/dictionary'
 
 // ── Types ────────────────────────────────────────────────────────────────
 
@@ -424,6 +425,7 @@ export async function generateExport(
   tM:     Record<number, string>,
   sM:     Record<number, string>,
   statusLabelMap: Record<number, string>,
+  lang:   Lang = 'fr',
 ): Promise<ExportResult> {
   if (!ids.length) return { error: 'Aucune sélection' }
 
@@ -493,7 +495,7 @@ export async function generateExport(
   }
 
   if (config.format === 'html') {
-    const html = buildHtml(oeuvres, config, tM, sM, statusLabelMap, imageMap)
+    const html = buildHtml(oeuvres, config, tM, sM, statusLabelMap, imageMap, lang)
     const ts   = new Date().toISOString().slice(0, 10)
     return { ok: true, content: html, filename: `export_${ts}.html`, mime: 'text/html' }
   }
@@ -526,7 +528,9 @@ function buildHtml(
   sM:             Record<number, string>,
   statusLabelMap: Record<number, string>,
   imageMap:       Map<number, string>,
+  lang:           Lang,
 ): string {
+  const L = dict[lang]
   const f = cfg.fields
   const paperCss = cfg.paper === 'a3' ? '@page{size:A3}' : cfg.paper === 'a4' ? '@page{size:A4}' : ''
 
@@ -572,7 +576,7 @@ function buildHtml(
       f.id        && `<tr><td class="lbl">Réf.</td><td>#${o.OeuvreID}</td></tr>`,
       f.year      && o.Année && `<tr><td class="lbl">Année</td><td>${o.Année.slice(0,4)}</td></tr>`,
       f.technique && tech    && `<tr><td class="lbl">Technique</td><td>${tech}${supp ? `, ${supp}` : ''}</td></tr>`,
-      f.dims      && dims    && `<tr><td class="lbl">Dimensions</td><td>${dims}</td></tr>`,
+      f.dims      && dims    && `<tr><td class="lbl">${L.dimensions}</td><td>${dims}</td></tr>`,
       f.price     && price   && `<tr><td class="lbl">Prix</td><td>€\u202f${price.toLocaleString('fr-FR')}</td></tr>`,
       f.status    && status  && `<tr><td class="lbl">Statut</td><td>${status}</td></tr>`,
       f.notes     && o.Commentaires && `<tr><td class="lbl" colspan="2" style="padding-top:8px">${o.Commentaires}</td></tr>`,
@@ -619,7 +623,7 @@ function buildHtml(
     + (f.title     ? '<th>Titre</th>'      : '')
     + (f.year      ? '<th>Année</th>'      : '')
     + (f.technique ? '<th>Technique</th>'  : '')
-    + (f.dims      ? '<th>Dimensions</th>' : '')
+    + (f.dims      ? `<th>${L.dimensions}</th>` : '')
     + (f.price     ? '<th>Prix</th>'       : '')
     + (f.status    ? '<th>Statut</th>'     : '')
     + '</tr></thead><tbody>' + listRows + '</tbody></table>'

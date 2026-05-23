@@ -109,4 +109,8 @@ export const portfolioPdfMessages = defineMessages({
     fr: 'Bas',
     en: 'Bottom',
   },
+  portfolio_collection_drag_reorder: {
+    fr: 'Glisser pour réordonner',
+    en: 'Drag to reorder',
+  },
 })

@@ -29,4 +29,16 @@ export const vaultUiMessages = defineMessages({
     fr: 'Le certificat contiendra',
     en: 'The certificate will include',
   },
+  vault_open_new_tab: {
+    fr: 'Ouvrir dans un nouvel onglet',
+    en: 'Open in new tab',
+  },
+  vault_download: {
+    fr: 'Télécharger',
+    en: 'Download',
+  },
+  vault_type_placeholder: {
+    fr: 'Saisir le type...',
+    en: 'Enter type...',
+  },
 })

@@ -208,7 +208,8 @@ The app is functionally complete; we are moving from a strict relational ledger 
 - ✅ Wire `lib/i18n/messages/` via [`resolveMessage`](../lib/i18n/resolve-message.ts): feature messages first, legacy `fr.ts`/`en.ts` fallback, `console.warn` on both-miss (dev only). [`useI18n().t()`](../lib/i18n/context.tsx) and [`routeMetadata`](../lib/i18n/route-metadata.ts) use it; server `dict` stays merged for RSC.
 - ✅ Segment tabs (Exhibitions, Fiscal, Inventory, Sales): ESLint hotspots migrated to `defineMessages` modules; overrides removed for those paths.
 - [ ] Remove **off** for `CurationPanel`, `PortfolioConfigShell`, `ContactEditorPanel`, `WorldMapTab` once copy is migrated.
-- [ ] Remaining FR in other segment tabs (Pipeline, Vault, …) — migrate incrementally as `i18n:check` reports them.
+- [x] **CI ratchet** — `npm run i18n:check` exits non-zero on blocking hardcoded UI strings (allowlist = ESLint `no-hardcoded-jsx-text` overrides); GitHub `ci.yml` runs typecheck + lint + i18n:check.
+- [ ] Remaining FR in allowlisted panels and other surfaces — migrate incrementally; removing a path from `scripts/i18n-check-allowlist.json` requires zero hotspots there.
 - New copy: `defineMessages` only — do not extend legacy dictionary.
 
 **Runs parallel to:** Slice 3 (per tab).

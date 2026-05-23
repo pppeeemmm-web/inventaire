@@ -10,6 +10,19 @@ const ignoredParts = new Set(['node_modules', '.next', 'tests'])
 const uiCopy = /^[A-ZÀ-Ÿ][a-zà-ÿ\s'’,.!?\-:/]{2,}$/u
 const trademarkOk = /^(PDF|R2|API|GitHub|OAuth|JSON|CSV|XLSX|OG|SEO|PEM|URL|UUID|HTML|CSS|JS|TS|FR|EN|UK|EU|RGB|OGP)$/i
 
+function normalizePath(relativePath) {
+  return relativePath.replace(/\\/g, '/')
+}
+
+async function loadHotspotAllowlist() {
+  const raw = JSON.parse(await read('scripts/i18n-check-allowlist.json'))
+  return new Set((raw.paths ?? []).map(normalizePath))
+}
+
+function isHotspotAllowlisted(relativePath) {
+  return hotspotAllowlist.has(normalizePath(relativePath))
+}
+
 function shouldSkipCopy(value) {
   const trimmed = value.trim()
   if (!trimmed || trimmed.length < 4) return true
@@ -42,13 +55,21 @@ async function walk(dir) {
     if (ignoredParts.has(entry.name)) continue
     const relative = path.join(dir, entry.name)
     if (entry.isDirectory()) {
-      files.push(...await walk(relative))
+      files.push(...(await walk(relative)))
     } else if (sourceExts.has(path.extname(entry.name))) {
       files.push(relative)
     }
   }
 
   return files
+}
+
+async function listMessageFiles() {
+  const dir = path.join(root, 'lib/i18n/messages')
+  const entries = await fs.readdir(dir, { withFileTypes: true })
+  return entries
+    .filter((e) => e.isFile() && e.name.endsWith('.messages.ts'))
+    .map((e) => normalizePath(path.join('lib/i18n/messages', e.name)))
 }
 
 function parseLegacyKeys(source) {
@@ -141,7 +162,7 @@ function findHardcodedHotspots(source, relativePath) {
       const text = match[1]
       if (!looksLikeUiCopy(text)) continue
       const line = source.slice(0, match.index).split(/\r?\n/).length
-      hotspots.push(`${relativePath}:${line} ${text.trim()}`)
+      hotspots.push({ path: normalizePath(relativePath), line, text: text.trim() })
     }
   }
 
@@ -164,6 +185,10 @@ function collectUsedKeys(source) {
   return keys
 }
 
+function formatHotspot({ path: filePath, line, text }) {
+  return `${filePath}:${line} ${text}`
+}
+
 function printList(title, items, limit = 30) {
   if (!items.length) return
   console.log(`\n${title}`)
@@ -173,18 +198,13 @@ function printList(title, items, limit = 30) {
   if (items.length > limit) console.log(`- ... ${items.length - limit} more`)
 }
 
+const hotspotAllowlist = await loadHotspotAllowlist()
+
 const legacyKeys = parseLegacyKeys(await read('lib/i18n/dictionary/keys.ts'))
 const frKeys = parseExportedObjectKeys(await read('lib/i18n/dictionary/fr.ts'), 'fr')
 const enKeys = parseExportedObjectKeys(await read('lib/i18n/dictionary/en.ts'), 'en')
 
-const messageFiles = [
-  'lib/i18n/messages/atelier.messages.ts',
-  'lib/i18n/messages/public.messages.ts',
-  'lib/i18n/messages/hub.messages.ts',
-  'lib/i18n/messages/work-form.messages.ts',
-  'lib/i18n/messages/system.messages.ts',
-]
-
+const messageFiles = await listMessageFiles()
 const featureKeys = new Set()
 for (const file of messageFiles) {
   for (const key of parseDefineMessagesKeys(await read(file))) featureKeys.add(key)
@@ -197,14 +217,18 @@ const extraEn = [...enKeys].filter((key) => !legacyKeys.has(key))
 
 const allSourceFiles = (await Promise.all(sourceDirs.map(walk))).flat()
 const usedKeys = new Set()
-const hotspots = []
+const allHotspots = []
 
 for (const relativePath of allSourceFiles) {
   if (/\.spec\.(ts|tsx|js|jsx)$/.test(relativePath)) continue
+  if (normalizePath(relativePath).startsWith('lib/i18n/messages/')) continue
   const source = await read(relativePath)
   for (const key of collectUsedKeys(source)) usedKeys.add(key)
-  hotspots.push(...findHardcodedHotspots(source, relativePath))
+  allHotspots.push(...findHardcodedHotspots(source, relativePath))
 }
+
+const blockingHotspots = allHotspots.filter((h) => !isHotspotAllowlisted(h.path))
+const allowlistedHotspots = allHotspots.filter((h) => isHotspotAllowlisted(h.path))
 
 const allKeys = new Set([...legacyKeys, ...featureKeys])
 const unused = [...allKeys].filter((key) => !usedKeys.has(key)).sort()
@@ -212,17 +236,32 @@ const missing = [...missingFr.map((key) => `${key} missing in fr.ts`), ...missin
 
 console.log('i18n check')
 console.log(`- legacy keys: ${legacyKeys.size}`)
-console.log(`- feature message keys: ${featureKeys.size}`)
+console.log(`- feature message keys: ${featureKeys.size} (${messageFiles.length} modules)`)
 console.log(`- scanned source files: ${allSourceFiles.length}`)
+console.log(`- hardcoded hotspots: ${allHotspots.length} (${blockingHotspots.length} blocking, ${allowlistedHotspots.length} allowlisted)`)
 
 printList('Missing translations', missing)
 printList('Dictionary keys not declared in keys.ts', [
   ...extraFr.map((key) => `${key} in fr.ts`),
   ...extraEn.map((key) => `${key} in en.ts`),
 ])
-printList('Hardcoded copy hotspots', hotspots)
+printList('Hardcoded copy hotspots (blocking)', blockingHotspots.map(formatHotspot))
+printList('Hardcoded copy hotspots (allowlisted — fix before removing path)', allowlistedHotspots.map(formatHotspot))
 printList('Possibly unused keys', unused, 40)
 
+let failed = false
 if (missing.length) {
+  console.error(`\ni18n:check FAILED — ${missing.length} missing translation(s).`)
+  failed = true
+}
+if (blockingHotspots.length) {
+  console.error(
+    `\ni18n:check FAILED — ${blockingHotspots.length} hardcoded UI string(s) outside allowlist. Use t() / defineMessages.`,
+  )
+  failed = true
+}
+if (failed) {
   process.exitCode = 1
+} else if (allowlistedHotspots.length) {
+  console.log(`\ni18n:check passed (with ${allowlistedHotspots.length} allowlisted hotspot(s) still tracked).`)
 }

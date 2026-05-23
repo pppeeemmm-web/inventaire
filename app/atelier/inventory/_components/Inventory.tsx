@@ -759,7 +759,7 @@ export function Inventory({
             color: filtered.length > 0 ? 'var(--ac)' : 'var(--tx3)',
             cursor: 'pointer',
           }}
-          title="Sélectionner tous les résultats affichés"
+          title={t('inv_title_select_all_shown')}
         >
           {t('selectAll')} ({filtered.length})
         </button>
@@ -837,7 +837,7 @@ export function Inventory({
         <div style={{ position: 'relative' }}>
           <button
             onClick={() => setShowLegend((v) => !v)}
-            title="Légende des couleurs"
+            title={t('inv_title_color_legend')}
             style={{
               padding: '8px 16px', fontSize: 13, letterSpacing: 1,
               color: showLegend ? 'var(--ac)' : 'var(--tx3)',
@@ -879,7 +879,7 @@ export function Inventory({
             cursor: 'pointer',
             whiteSpace: 'nowrap',
           }}
-          title="Afficher/masquer l'aperçu latéral"
+          title={t('inv_title_toggle_side_preview')}
         >
           {showPreview ? 'Aperçu ◀' : 'Aperçu ▶'}
         </button>
@@ -1523,7 +1523,7 @@ function InvList({
                       return (
                         <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{contactName}</span>
-                          {level === 1 && <span title="Contact masqué" style={{ color: 'var(--ac)' }}>👤</span>}
+                          {level === 1 && <span title={t('inv_title_contact_hidden')} style={{ color: 'var(--ac)' }}>👤</span>}
                           {level === 2 && <span title="Privé (Confidentiel)" style={{ opacity: 0.6 }}>🔒</span>}
                         </span>
                       )

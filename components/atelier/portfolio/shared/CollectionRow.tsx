@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useI18n } from '@/lib/i18n/context'
 import type { CollectionItem, ThemeWork } from '@/lib/portfolio-config-types'
 import { RichEditor, htmlToPlain } from '@/components/atelier/RichEditor'
 import { FileImportButton } from './FileImportButton'
@@ -22,6 +23,7 @@ export function CollectionRow({ item, index, total, sequenceLabel, onMove, isTar
   privateWorks?: ThemeWork[]
   onMakePublic?: (id: number) => void
 }) {
+  const { t } = useI18n()
   const [dragging, setDragging] = useState(false)
   const hasTextContent = !!(htmlToPlain(item.intro_fr) || htmlToPlain(item.intro_en) || htmlToPlain(item.description_fr) || htmlToPlain(item.description_en))
   const [textExpanded, setTextExpanded] = useState(hasTextContent)
@@ -52,7 +54,7 @@ export function CollectionRow({ item, index, total, sequenceLabel, onMove, isTar
       {/* Reorder header */}
       <div className="row gap-md" style={{ alignItems: 'center', justifyContent: 'space-between' }}>
         <div className="row gap-xs" style={{ alignItems: 'center', flexWrap: 'wrap' }}>
-          <span title="Glisser pour réordonner" style={{
+          <span title={t('portfolio_collection_drag_reorder')} style={{
             cursor: 'grab', color: 'var(--tx3)', fontSize: 14, lineHeight: 1,
             padding: '2px 6px', borderRadius: 3, userSelect: 'none',
           }}>⋮⋮</span>

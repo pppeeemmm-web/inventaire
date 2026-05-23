@@ -268,9 +268,9 @@ export function SiteEditorPanel({
                       </button>
                       <span className="t-mono-xs" style={{ fontSize: 8, opacity: 0.6 }}>{i + 1}/{config.works_modes.length}</span>
                       <button onClick={() => moveMode(i, i - 1)} disabled={i === 0}
-                        title="Déplacer à gauche" style={{ ...moveBtnStyle(i === 0), width: 16, height: 16, fontSize: 9 }}>{'←'}</button>
+                        title={t('site_mode_move_left')} style={{ ...moveBtnStyle(i === 0), width: 16, height: 16, fontSize: 9 }}>{'←'}</button>
                       <button onClick={() => moveMode(i, i + 1)} disabled={i === config.works_modes.length - 1}
-                        title="Déplacer à droite" style={{ ...moveBtnStyle(i === config.works_modes.length - 1), width: 16, height: 16, fontSize: 9 }}>{'→'}</button>
+                        title={t('site_mode_move_right')} style={{ ...moveBtnStyle(i === config.works_modes.length - 1), width: 16, height: 16, fontSize: 9 }}>{'→'}</button>
                     </div>
                   )
                 })}

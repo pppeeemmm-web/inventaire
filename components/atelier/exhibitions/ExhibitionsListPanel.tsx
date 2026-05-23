@@ -97,7 +97,7 @@ export function ExhibitionsListPanel({
 
       {showNew && (
         <form onSubmit={onCreate} style={{ padding: '10px 12px', borderBottom: '1px solid var(--bd)', display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <input name="nom" value={newNom} onChange={(e) => onSetNewNom(e.target.value)} placeholder="Nom de l'exposition…" style={inputSt} autoFocus />
+          <input name="nom" value={newNom} onChange={(e) => onSetNewNom(e.target.value)} placeholder={t('exh_new_name_placeholder')} style={inputSt} autoFocus />
           <select value={newType} onChange={(e) => onSetNewType(e.target.value)} style={inputSt}>
             <option value="exposition">{pipelineTypeLabel('exposition' as ProcessType, lang)}</option>
           </select>

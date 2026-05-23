@@ -103,7 +103,7 @@ export function ExportModal({
   catalogGroups: initialCatalogGroups,
   onClose,
 }: Props) {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const [cfg,          setCfg]          = useState<ExportConfig>(DEFAULT_CONFIG)
 
   const FIELD_LABELS: Record<keyof ExportFields, string> = {
@@ -276,7 +276,7 @@ export function ExportModal({
 
     startExport(async () => {
       try {
-        const r = await generateExport(ids, cfg, tM, sM, statusLabelMap)
+        const r = await generateExport(ids, cfg, tM, sM, statusLabelMap, lang)
         setProgress('')
         if ('error' in r) {
           setError(stringifyError(r.error))

@@ -25,6 +25,10 @@ export const exhibitionsUiMessages = defineMessages({
     fr: 'Aucune étape définie.',
     en: 'No steps defined.',
   },
+  exh_new_name_placeholder: {
+    fr: "Nom de l'exposition…",
+    en: 'Exhibition name…',
+  },
   exh_calendar_start_label: {
     fr: "Début de l'exposition",
     en: 'Exhibition start',

@@ -37,6 +37,14 @@ export const siteBlocksMessages = defineMessages({
     fr: 'Déplacer vers le bas',
     en: 'Move down',
   },
+  site_mode_move_left: {
+    fr: 'Déplacer à gauche',
+    en: 'Move left',
+  },
+  site_mode_move_right: {
+    fr: 'Déplacer à droite',
+    en: 'Move right',
+  },
   site_works_layout_label: {
     fr: 'Présentation',
     en: 'Layout',

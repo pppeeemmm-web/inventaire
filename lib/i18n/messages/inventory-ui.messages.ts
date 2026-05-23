@@ -9,4 +9,20 @@ export const inventoryUiMessages = defineMessages({
     fr: '{count} œuvres affichées',
     en: '{count} works shown',
   },
+  inv_title_select_all_shown: {
+    fr: 'Sélectionner tous les résultats affichés',
+    en: 'Select all shown results',
+  },
+  inv_title_color_legend: {
+    fr: 'Légende des couleurs',
+    en: 'Color legend',
+  },
+  inv_title_toggle_side_preview: {
+    fr: "Afficher/masquer l'aperçu latéral",
+    en: 'Show/hide side preview',
+  },
+  inv_title_contact_hidden: {
+    fr: 'Contact masqué',
+    en: 'Contact hidden',
+  },
 })
