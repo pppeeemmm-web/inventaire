@@ -169,7 +169,7 @@ The app is functionally complete; we are moving from a strict relational ledger 
 1. ✅ `inventory` (template) → `app/atelier/inventory/page.tsx` + `_components/Inventory.tsx` — **done** (`8590d04` + `f7b8621`, 2026-05-23)
 2. ✅ `sales` → `app/atelier/sales/page.tsx` + `_components/Sales.tsx` — **done** (2026-05-23)
 3. ✅ `pipeline` → `app/atelier/pipeline/page.tsx` + `_components/Pipeline.tsx` — **done** (2026-05-23)
-4. `production`
+4. ✅ `production` → `app/atelier/production/page.tsx` + `_components/Production.tsx` — **done** (2026-05-23)
 5. `stock-take`
 6. `notes`
 7. `reports`

@@ -1,6 +1,6 @@
 'use client'
 
-// ProductionTab — action-based task board for works.
+// Production — action-based task board for works.
 // One column per work_action_type. A work appears in every column
 // where it has a pending (done=false) work_action.
 // Works that are Catalogué or sold/lost/destroyed are excluded.
@@ -15,10 +15,10 @@ import { createClient } from '@/lib/supabase/client'
 import { getWorkActionTypes, invalidateWorkActionTypesCache } from '@/lib/work-action-type-cache'
 import { workActionTypeDisplayLabel } from '@/lib/work-action-type-label'
 import { imageUrl, thumbUrl, yearOf, statusOf, type StatusKey } from '@/lib/data'
-import { MissingThumb, WorkThumb, SuggestionThumb } from './WorkThumb'
+import { MissingThumb, WorkThumb, SuggestionThumb } from '@/components/atelier/WorkThumb'
 import type { Oeuvre } from '@/lib/types/database'
 import type { Agg, Dim } from '@/lib/pivot'
-import { PivotPanel } from './PivotPanel'
+import { PivotPanel } from '@/components/atelier/PivotPanel'
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -67,7 +67,7 @@ interface Props {
   oeuvresPaging?: { totalCount: number; nextCursor: number | null; pageSize: number }
 }
 
-export function ProductionTab({ oeuvres, tM, statusLabelMap, onOpen, oeuvresPaging }: Props) {
+export function Production({ oeuvres, tM, statusLabelMap, onOpen, oeuvresPaging }: Props) {
   const { t } = useI18n()
   const router = useRouter()
   const [search,      setSearch]      = useState('')

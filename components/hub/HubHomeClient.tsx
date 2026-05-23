@@ -303,7 +303,7 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
                 dataTestId="hub-tile-production"
                 title={t('production')}
                 subtitle={t('hub_tile_production_sub')}
-                onClick={() => router.push('/atelier?tab=production')}
+                onClick={() => router.push('/atelier/production')}
               />
               <MobileActionTile
                 dataTestId="hub-tile-concepts"

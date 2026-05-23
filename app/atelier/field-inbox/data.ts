@@ -225,7 +225,7 @@ export async function getFieldPulseData(): Promise<FieldPulseData> {
       kind: 'field_issue' as const,
       title: row.action,
       detailKey: 'field_card_issue_detail',
-      href: '/atelier?tab=production',
+      href: '/atelier/production',
       dueAt: row.due_at ?? row.updated_at,
       priority: row.severity === 'critical' ? 0 : row.severity === 'high' ? 1 : 4,
     })),

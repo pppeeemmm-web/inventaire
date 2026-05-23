@@ -1,6 +1,6 @@
 /**
  * Session-level cache for `work_action_type` rows — avoids refetching on every
- * WorkDrawer open / ProductionTab poll when the lookup table is unchanged.
+ * WorkDrawer open / Production tab poll when the lookup table is unchanged.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 
