@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { importGoogleContacts } from '@/app/atelier/contacts/actions'
+import { importGoogleContacts } from '@/app/atelier/(portal)/contacts/actions'
 import type { ImportedContact } from '@/lib/contact-import-types'
 import {
   extractContactFromCardText,

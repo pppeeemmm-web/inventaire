@@ -7,7 +7,7 @@ import { useState } from 'react'
 import type { CSSProperties } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import type { DictKey } from '@/lib/i18n/dictionary'
-import { generatePortfolioPdf } from '@/app/atelier/portfolio/pdf-action'
+import { generatePortfolioPdf } from '@/app/atelier/(portal)/portfolio/pdf-action'
 import { PRESET_DEFAULTS, type PdfFormat, type PdfPreset } from '@/lib/portfolio-pdf-types'
 import type { Lang } from '@/lib/i18n/dictionary'
 

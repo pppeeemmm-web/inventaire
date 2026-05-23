@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { generateCOA } from '@/app/atelier/vault/actions'
+import { generateCOA } from '@/app/atelier/(portal)/vault/actions'
 import { logSystemEvent } from '@/lib/utils/logging'
 
 export type FieldDocType = 'coa'

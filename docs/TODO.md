@@ -130,7 +130,7 @@ _Version-controlled checklist + non-binding roadmap items. Prefer this file over
 
 - [ ] Segment remaining legacy `?tab=` tabs: overview, map, journal, system, portfolio, contacts, stock (+ site/analytics aliases)
 - [ ] Per-route bundle size check (aspirational ≤ 250 kB)
-- [ ] **Atelier shell reload on segment tab hop** — after V5 complete; see plan § *Post–V5 backlog — Atelier shell reload* ([`PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md)): stop re-fetching catalogue + postPaint on every `/atelier/<tab>` navigation; tab-specific or layout-once loaders.
+- [ ] **Atelier shell reload on segment tab hop** — **in progress (2026-05-23):** `(portal)/layout` persists `TeamPortalClient`; stable `atelierShellNonce`; catalogue merge + postPaint once per session. Remaining: slim/tab-specific RSC loaders to skip catalogue on Audit/Logistics.
 
 - [x] **Slice 4 (core)** — `resolveMessage` + `t()` precedence (2026-05-23).
 - [x] **Slice 4 (segment tabs)** — Exhibitions / Fiscal / Inventory / Sales hardcoded copy → `defineMessages`; ESLint off removed for those paths.

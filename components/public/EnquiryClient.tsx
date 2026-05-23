@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
 import { createClient } from '@/lib/supabase/client'
 
-import { loadPortfolioConfig } from '@/app/atelier/portfolio/actions'
+import { loadPortfolioConfig } from '@/app/atelier/(portal)/portfolio/actions'
 import { trackView } from '@/lib/track'
 import { getOrCreatePublicVisitorId } from '@/lib/public-visitor-id'
 

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { useMediaQuery } from '@/lib/useMediaQuery'
-import { getAnalyticsStats, type AnalyticsResult } from '@/app/atelier/analytics/actions'
+import { getAnalyticsStats, type AnalyticsResult } from '@/app/atelier/(portal)/analytics/actions'
 import type { Oeuvre } from '@/lib/types/database'
 import { BarList } from './BarList'
 import { Sparkline } from './Sparkline'

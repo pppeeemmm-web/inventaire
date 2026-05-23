@@ -1,6 +1,7 @@
 -- Slice 5 — unified entity read model for graph / search / constellation hydration.
 
-CREATE OR REPLACE VIEW public.entity AS
+CREATE OR REPLACE VIEW public.entity
+WITH (security_invoker = true) AS
 SELECT
   n.node_id,
   n.node_type,

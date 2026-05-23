@@ -9,7 +9,7 @@ import { useState, useMemo, useCallback, useEffect, useLayoutEffect, useRef } fr
 import { CommandPalette } from './CommandPalette'
 import { useUnsavedActionGuard } from '@/hooks/useUnsavedActionGuard'
 import dynamic from 'next/dynamic'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
 import { WorkThumb } from './WorkThumb'
 import type { Oeuvre, SuiviReminderListRow } from '@/lib/types/database'
@@ -18,6 +18,7 @@ import { yearOf, formatInventoryDims } from '@/lib/data'
 import { daysUntil } from '@/lib/pipeline-deadlines'
 import { atelierTabHref, isSegmentedAtelierTab } from '@/lib/atelier/tab-routes'
 import type { SegmentedAtelierTab } from '@/lib/atelier/tab-routes'
+import { routeTabFromPathname } from '@/lib/atelier/route-tab-from-pathname'
 import type { Lang } from '@/lib/i18n/dictionary'
 import { useAtelierNarrow } from '@/lib/atelier/use-atelier-narrow'
 import { useMediaQuery } from '@/lib/useMediaQuery'
@@ -27,7 +28,7 @@ import { OeuvresSubsetBanner } from '@/components/atelier/OeuvresSubsetBanner'
 import { AtelierCatalogueTotalBadge } from '@/components/atelier/AtelierCatalogueTotalBadge'
 import { WorkDrawer, type WorkDrawerGuardHandle } from '@/components/atelier/WorkDrawer'
 import { CurationDock }        from '@/components/atelier/CurationDock'
-import { fetchContactConflicts } from '@/app/atelier/contacts/conflicts-actions'
+import { fetchContactConflicts } from '@/app/atelier/(portal)/contacts/conflicts-actions'
 import { loadOeuvreLongText } from '@/app/atelier/works/actions'
 import { fetchOeuvresKeysetPage } from '@/app/atelier/works/actions'
 import { revalidateRemindersTag } from '@/app/atelier/reminders-actions'
@@ -320,7 +321,13 @@ export function TeamPortalClient({
   oeuvreThemeIdsByOeuvre: initialOeuvreThemeIdsByOeuvre = {},
   oeuvreGroupIdsByOeuvre: initialOeuvreGroupIdsByOeuvre = {},
   routeTab,
+  shellPersistsAcrossTabs = false,
 }: TeamPortalClientProps) {
+  const pathname = usePathname()
+  const routeTabFromUrl = routeTabFromPathname(pathname)
+  const effectiveRouteTab = shellPersistsAcrossTabs
+    ? (routeTabFromUrl ?? routeTab)
+    : routeTab
   const junctionHydratedIdsRef = useRef<Set<number>>(new Set())
   const [junction, setJunction] = useState<AtelierJunctionDerived>(() =>
     junctionFromServerInitial({
@@ -348,7 +355,10 @@ export function TeamPortalClient({
   )
   const [curationAddresses, setCurationAddresses] = useState<ContactAddress[]>([])
 
+  const postPaintLoadedRef = useRef(false)
+
   useEffect(() => {
+    if (shellPersistsAcrossTabs && postPaintLoadedRef.current) return
     let cancelled = false
     void (async () => {
       const p = await fetchAtelierShellPostPaint()
@@ -364,11 +374,12 @@ export function TeamPortalClient({
       setGroups(
         [...p.groups.map((g) => ({ id: g.id, name: g.name }))].sort((a, b) => a.name.localeCompare(b.name, 'fr')),
       )
+      postPaintLoadedRef.current = true
     })()
     return () => {
       cancelled = true
     }
-  }, [atelierShellNonce])
+  }, [atelierShellNonce, shellPersistsAcrossTabs])
 
   const statusLabelMap = useMemo(() => {
     const m: Record<number, string> = {}
@@ -394,30 +405,40 @@ export function TeamPortalClient({
   const [oeuvresMoreLoading, setOeuvresMoreLoading] = useState(false)
 
   useEffect(() => {
-    setOeuvres(oeuvresChunk)
-    setOeuvresNextCursor(oeuvresPaging?.nextCursor ?? null)
-    setJunction(
-      junctionFromServerInitial({
-        themePublicStats: initialThemePublicStats,
-        themePrivateWorks: initialThemePrivateWorks,
-        themeWorkCount: initialThemeWorkCount,
-        groupWorkCount: initialGroupWorkCount,
-        groupPrivateWorks: initialGroupPrivateWorks,
-        oeuvreThemeIdsByOeuvre: initialOeuvreThemeIdsByOeuvre,
-        oeuvreGroupIdsByOeuvre: initialOeuvreGroupIdsByOeuvre,
-        themeToGroups: initialThemeToGroups,
-        groupToThemes: initialGroupToThemes,
-      }),
+    setOeuvres((prev) => {
+      if (!shellPersistsAcrossTabs) return oeuvresChunk
+      const byId = new Map<number, Oeuvre>()
+      for (const o of prev) byId.set(o.OeuvreID, o)
+      for (const o of oeuvresChunk) byId.set(o.OeuvreID, o)
+      return [...byId.values()].sort((a, b) => b.OeuvreID - a.OeuvreID)
+    })
+    setOeuvresNextCursor((prev) =>
+      shellPersistsAcrossTabs && prev != null ? prev : (oeuvresPaging?.nextCursor ?? null),
     )
-    const seed = new Set<number>()
-    for (const o of oeuvresChunk) {
-      const th = initialOeuvreThemeIdsByOeuvre[o.OeuvreID]
-      const gr = initialOeuvreGroupIdsByOeuvre[o.OeuvreID]
-      if ((th?.length ?? 0) > 0 || (gr?.length ?? 0) > 0) seed.add(o.OeuvreID)
+    if (!shellPersistsAcrossTabs) {
+      setJunction(
+        junctionFromServerInitial({
+          themePublicStats: initialThemePublicStats,
+          themePrivateWorks: initialThemePrivateWorks,
+          themeWorkCount: initialThemeWorkCount,
+          groupWorkCount: initialGroupWorkCount,
+          groupPrivateWorks: initialGroupPrivateWorks,
+          oeuvreThemeIdsByOeuvre: initialOeuvreThemeIdsByOeuvre,
+          oeuvreGroupIdsByOeuvre: initialOeuvreGroupIdsByOeuvre,
+          themeToGroups: initialThemeToGroups,
+          groupToThemes: initialGroupToThemes,
+        }),
+      )
+      const seed = new Set<number>()
+      for (const o of oeuvresChunk) {
+        const th = initialOeuvreThemeIdsByOeuvre[o.OeuvreID]
+        const gr = initialOeuvreGroupIdsByOeuvre[o.OeuvreID]
+        if ((th?.length ?? 0) > 0 || (gr?.length ?? 0) > 0) seed.add(o.OeuvreID)
+      }
+      junctionHydratedIdsRef.current = seed
     }
-    junctionHydratedIdsRef.current = seed
     // eslint-disable-next-line react-hooks/exhaustive-deps -- initials follow `oeuvresChunk` from RSC; avoid `{}` identity churn
-  }, [oeuvresChunk, oeuvresPaging])
+  }, [oeuvresChunk, oeuvresPaging, shellPersistsAcrossTabs])
 
   useEffect(() => {
     const pending = oeuvres
@@ -585,9 +606,9 @@ export function TeamPortalClient({
   const [reminderCount,  setReminderCount] = useState(initialReminderUnread)
 
   useLayoutEffect(() => {
-    if (routeTab) {
-      setTab(routeTab)
-      localStorage.setItem('pem_team_tab', routeTab)
+    if (effectiveRouteTab) {
+      setTab(effectiveRouteTab)
+      localStorage.setItem('pem_team_tab', effectiveRouteTab)
       return
     }
     const params = new URLSearchParams(window.location.search)
@@ -610,7 +631,7 @@ export function TeamPortalClient({
     if (window.matchMedia('(max-width: 767px)').matches) {
       void router.replace('/atelier/inventory')
     }
-  }, [routeTab, router])
+  }, [effectiveRouteTab, router])
 
   useEffect(() => {
     setReminderCount(initialReminderUnread)
@@ -866,7 +887,7 @@ export function TeamPortalClient({
     { label: t('nav_group_admin'),        tabs: ['contacts', ...adminTabs] },
   ]
 
-  const activeTab = routeTab ?? tab
+  const activeTab = effectiveRouteTab ?? tab
   const showDock = selection.size > 0 && activeTab !== 'constellation'
 
   /** Partial-catalogue strip — Inventaire only; total count stays in header. */
@@ -1252,9 +1273,9 @@ export function TeamPortalClient({
           }}
         >
 
-        {routeTab ? (
+        {effectiveRouteTab ? (
           <SegmentRoutePanel
-            tab={routeTab}
+            tab={effectiveRouteTab}
             oeuvres={oeuvres}
             sortedTechniques={sortedTechniques}
             sortedSupports={sortedSupports}

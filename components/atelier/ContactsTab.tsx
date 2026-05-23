@@ -16,7 +16,7 @@ import {
   saveContactWithConflictCheck,
   type ImportedContact,
   type UrlEnrichMeta,
-} from '@/app/atelier/contacts/actions'
+} from '@/app/atelier/(portal)/contacts/actions'
 import { runOllamaInstructionScript } from '@/app/atelier/ollama/actions'
 import { OLLAMA_SCRIPT_INSTRUCTIONS } from '@/lib/ollama-script'
 import { useI18n } from '@/lib/i18n/context'

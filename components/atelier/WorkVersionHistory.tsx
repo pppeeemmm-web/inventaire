@@ -7,7 +7,7 @@ import {
   fetchOeuvreVersions,
   restoreOeuvreVersion,
   type OeuvreVersion,
-} from '@/app/atelier/audit/version-actions'
+} from '@/app/atelier/(portal)/audit/version-actions'
 
 const SHOW_FIELDS = [
   'Titre', 'Année', 'TechniqueID', 'SupportID', 'FormatID',

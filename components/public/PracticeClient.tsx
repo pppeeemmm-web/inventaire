@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import PublicNav from './PublicNav'
-import { loadPortfolioConfig } from '@/app/atelier/portfolio/actions'
+import { loadPortfolioConfig } from '@/app/atelier/(portal)/portfolio/actions'
 import { hiddenNavRoutes, orderedNavRoutes } from '@/lib/site-block-visibility'
 import type { SiteBlock } from '@/lib/portfolio-config-types'
 import { trackView } from '@/lib/track'

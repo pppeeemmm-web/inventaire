@@ -6,7 +6,7 @@ import {
   createSaleOrder,
   updateOrderStatut,
   type SaleOrderRow,
-} from '@/app/atelier/sales/actions'
+} from '@/app/atelier/(portal)/sales/actions'
 
 export type MobileSaleStatus = 'confirmed' | 'deposit_paid' | 'completed'
 

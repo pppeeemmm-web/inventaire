@@ -10,9 +10,10 @@ Apply **in this order** after a manual [`backup.yml`](../../../.github/workflows
 | 4 | `04_tblrelations_node_fks.sql` | `source_uid` / `target_uid` FKs + backfill from legacy oeuvre ids |
 | 5 | `04b_dedupe_tblrelations_uids.sql` | Remove duplicate `(source_uid, target_uid, relation_type)` before unique index |
 | 6 | `05_relation_sync_triggers.sql` | Same dedupe at top + unique index + junction/FK sync triggers |
-| 7 | `06_entity_view.sql` | `public.entity` unified read model |
+| 7 | `06_entity_view.sql` | `public.entity` unified read model (`security_invoker`) |
 | 8 | `05b_backfill_synced_edges.sql` | Optional: backfill synced edges for existing junction/FK rows |
-| 9 | `08_edge_fact_view.sql` | **Slice 6** — `public.edge_fact` pivot/export view |
+| 9 | `08_edge_fact_view.sql` | **Slice 6** — `public.edge_fact` pivot/export view (`security_invoker`) |
+| 9b | `08b_view_security_invoker.sql` | **If 06/08 already live** — flip `entity` + `edge_fact` to invoker (advisor 0010) |
 | 10 | `07_embeddings.sql` | **Slice 8** — embedding columns, `node_search_text`, tombstones |
 | 11 | `09_query_embedding_cache.sql` | **Slice 8** — query embedding cache tables |
 | 12 | `10_embedding_rls_policies.sql` | **Slice 8** — deny-client RLS + grants (clears `grant_audit_queries.sql`) |

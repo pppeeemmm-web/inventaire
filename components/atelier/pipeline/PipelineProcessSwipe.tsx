@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, type ReactNode } from 'react'
-import { quickAddEtape } from '@/app/atelier/pipeline/actions'
+import { quickAddEtape } from '@/app/atelier/(portal)/pipeline/actions'
 import { toast } from '@/lib/ui/toast'
 import type { DictKey } from '@/lib/i18n/dictionary'
 

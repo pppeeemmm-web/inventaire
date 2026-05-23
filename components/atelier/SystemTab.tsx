@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useTransition, useRef, type SyntheticEvent, type ClipboardEvent } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { vaultStudioBible } from '@/app/atelier/vault/bible-action'
-import { exportSiteMapChecklistPdf } from '@/app/atelier/vault/actions'
+import { vaultStudioBible } from '@/app/atelier/(portal)/vault/bible-action'
+import { exportSiteMapChecklistPdf } from '@/app/atelier/(portal)/vault/actions'
 import { getSystemLedgerReferenceMarkdown } from '@/app/atelier/system-reference-actions'
-import { uploadLedgerAttachment } from '@/app/atelier/system/ledger-attachment-actions'
+import { uploadLedgerAttachment } from '@/app/atelier/(portal)/system/ledger-attachment-actions'
 import { stringifyError } from '@/lib/error'
 import { useI18n } from '@/lib/i18n/context'
 import type { DictKey } from '@/lib/i18n/dictionary'

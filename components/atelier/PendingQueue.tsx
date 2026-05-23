@@ -7,7 +7,7 @@ import {
   approvePendingChange,
   rejectPendingChange,
   type PendingChange,
-} from '@/app/atelier/audit/pending-actions'
+} from '@/app/atelier/(portal)/audit/pending-actions'
 
 function diffEntries(baseline: Record<string, unknown> | null, payload: Record<string, string>) {
   if (!baseline) return Object.entries(payload).filter(([k]) => !k.startsWith('__'))

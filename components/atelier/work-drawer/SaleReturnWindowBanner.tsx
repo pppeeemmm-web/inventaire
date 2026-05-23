@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { getReturnWindowHintForOeuvre, type SaleReturnHint } from '@/app/atelier/sales/actions'
+import { getReturnWindowHintForOeuvre, type SaleReturnHint } from '@/app/atelier/(portal)/sales/actions'
 import { useI18n } from '@/lib/i18n/context'
 
 export function SaleReturnWindowBanner({ oeuvreId }: { oeuvreId: number }) {

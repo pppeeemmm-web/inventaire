@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { extractDocumentText } from '@/app/atelier/portfolio/actions'
+import { extractDocumentText } from '@/app/atelier/(portal)/portfolio/actions'
 import { useI18n } from '@/lib/i18n/context'
 
 export function FileImportButton({ onText, lang: _lang }: { onText: (v: string) => void; lang: 'fr' | 'en' }) {

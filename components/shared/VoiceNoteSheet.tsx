@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import type { DictKey } from '@/lib/i18n/dictionary'
-import { createVoiceNote } from '@/app/atelier/notes/actions'
+import { createVoiceNote } from '@/app/atelier/(portal)/notes/actions'
 import { VOICE_NOTE_BUCKETS, VOICE_NOTE_KINDS, type VoiceNoteBucket, type VoiceNoteKind } from '@/lib/voice-note-domain'
 import { getLiveDictationAvailability, startLiveDictation, startMicRecorder } from '@/lib/voice/web-speech'
 import { toast } from '@/lib/ui/toast'

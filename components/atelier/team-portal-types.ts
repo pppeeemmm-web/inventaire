@@ -33,6 +33,8 @@ export interface TeamPortalClientProps extends Partial<AtelierJunctionDerived> {
   atelierShellNonce?: number
   /** From `is_admin()` on the server — avoids a browser Supabase `is_admin` RPC on the shell. */
   initialIsAdmin?: boolean
+  /** Layout `(portal)` — catalogue + postPaint survive segment tab navigation. */
+  shellPersistsAcrossTabs?: boolean
   oeuvres:        Oeuvre[]
   techniques:     { TechniqueID: number; Technique: string | null }[]
   supports:       { SupportID:   number; Support:   string | null }[]

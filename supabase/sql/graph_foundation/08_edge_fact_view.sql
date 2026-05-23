@@ -1,6 +1,7 @@
 -- Slice 6 — flat edge rows for pivot / export (entity ⋈ tblrelations ⋈ entity).
 
-CREATE OR REPLACE VIEW public.edge_fact AS
+CREATE OR REPLACE VIEW public.edge_fact
+WITH (security_invoker = true) AS
 SELECT
   r.id AS edge_id,
   r.relation_type,

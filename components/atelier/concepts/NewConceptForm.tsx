@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { createConcept, uploadConceptSketch, type ConceptRow } from '@/app/atelier/concepts/actions'
+import { createConcept, uploadConceptSketch, type ConceptRow } from '@/app/atelier/(portal)/concepts/actions'
 import { useI18n } from '@/lib/i18n/context'
 import { stringifyError } from '@/lib/error'
 import { toast } from '@/lib/ui/toast'

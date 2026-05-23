@@ -22,7 +22,7 @@ import {
   loadConstellationMap,
   deleteConstellationMap,
   type ConstellationMapRow,
-} from '@/app/atelier/constellation/actions'
+} from '@/app/atelier/(portal)/constellation/actions'
 import {
   CONSTELLATION_MAP_VERSION,
   type ConstellationMapDocument,

@@ -5,7 +5,7 @@
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { useI18n } from '@/lib/i18n/context'
-import { generatePortfolioPdf, getPortfolioPdfWorkCandidates } from '@/app/atelier/portfolio/pdf-action'
+import { generatePortfolioPdf, getPortfolioPdfWorkCandidates } from '@/app/atelier/(portal)/portfolio/pdf-action'
 import { WorkThumb } from '@/components/atelier/WorkThumb'
 import { yearOf } from '@/lib/data'
 import {

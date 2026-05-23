@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { listConstellationMaps } from '@/app/atelier/constellation/actions'
+import { listConstellationMaps } from '@/app/atelier/(portal)/constellation/actions'
 import { MapsIndexClient } from '@/components/maps/MapsIndexClient'
 import { routeMetadata } from '@/lib/i18n/route-metadata'
 

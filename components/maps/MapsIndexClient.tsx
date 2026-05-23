@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import type { ConstellationMapRow } from '@/app/atelier/constellation/actions'
+import type { ConstellationMapRow } from '@/app/atelier/(portal)/constellation/actions'
 import { useI18n } from '@/lib/i18n/context'
 
 export function MapsIndexClient({

@@ -5,7 +5,7 @@ import {
   savePortfolioConfig,
   loadPortfolioConfig,
   setWorkPublic,
-} from '@/app/atelier/portfolio/actions'
+} from '@/app/atelier/(portal)/portfolio/actions'
 import { PORTFOLIO_SAVE_ERR } from '@/lib/portfolio-save-errors'
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'

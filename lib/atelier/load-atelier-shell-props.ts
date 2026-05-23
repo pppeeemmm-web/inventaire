@@ -27,11 +27,13 @@ const overviewDefault: AtelierOverviewBootstrap = {
 
 export type AtelierShellLoaderProps = TeamPortalClientProps & {
   routeTab?: SegmentedAtelierTab
+  /** When true, layout owns the shell; tab comes from URL; client keeps catalogue across hops. */
+  shellPersistsAcrossTabs?: boolean
 }
 
 /** Shared RSC loader for `/atelier` and segmented tab routes. */
 export async function loadAtelierShellProps(
-  opts?: { routeTab?: SegmentedAtelierTab },
+  opts?: { routeTab?: SegmentedAtelierTab; shellPersistsAcrossTabs?: boolean },
 ): Promise<AtelierShellLoaderProps> {
   const supabase = await createClient()
   const {
@@ -93,11 +95,12 @@ export async function loadAtelierShellProps(
 
   return {
     routeTab: opts?.routeTab,
+    shellPersistsAcrossTabs: opts?.shellPersistsAcrossTabs,
     initialPendingReviewCount,
     initialReminderUnread,
     initialReminders,
     initialOverviewBootstrap,
-    atelierShellNonce: Date.now(),
+    atelierShellNonce: 0,
     initialIsAdmin: !!isAdminOnLoad,
     oeuvresPaging,
     oeuvres: oeuvres ?? [],

@@ -7,7 +7,7 @@
 ## Apply
 
 1. Backup workflow.
-2. Run [`supabase/sql/graph_foundation/08_edge_fact_view.sql`](../supabase/sql/graph_foundation/08_edge_fact_view.sql) (after Slice 5 `01`–`06`).
+2. Run [`supabase/sql/graph_foundation/08_edge_fact_view.sql`](../supabase/sql/graph_foundation/08_edge_fact_view.sql) (after Slice 5 `01`–`06`). If the view already exists, run [`08b_view_security_invoker.sql`](../supabase/sql/graph_foundation/08b_view_security_invoker.sql) instead to clear advisor **0010**.
 3. `npm run gen:types` — removes `edge_fact` cast shim in `edge-fact-actions.ts`.
 4. `/atelier/reports` → **Pivot Atlas (graph)**.
 
