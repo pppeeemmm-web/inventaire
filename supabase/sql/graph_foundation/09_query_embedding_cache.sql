@@ -19,7 +19,7 @@ CREATE INDEX IF NOT EXISTS pending_query_embeddings_created_idx
 ALTER TABLE public.query_embedding_cache ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pending_query_embeddings ENABLE ROW LEVEL SECURITY;
 
--- Service-role worker + server actions write; no anon access.
+-- Grants below satisfy grant audit A; deny policies in 10_embedding_rls_policies.sql satisfy B.
 GRANT SELECT ON public.query_embedding_cache TO authenticated;
 GRANT SELECT, INSERT ON public.pending_query_embeddings TO authenticated;
 

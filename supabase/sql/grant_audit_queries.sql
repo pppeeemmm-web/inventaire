@@ -1,39 +1,90 @@
 -- =============================================================================
 -- Grant & RLS audit (read-only)
--- Run in Supabase SQL Editor (or psql) as a role that can read pg_catalog.
+-- Supabase SQL Editor: run the COMBINED REPORT below, or run A / B one at a time.
 --
--- PostgREST returns 42501 when the JWT role lacks table privileges, even if
--- RLS policies exist. Supabase enforcement: new projects ~2026-05-30; existing
--- ~2026-10-30 — see 🛂 SUPABASE GRANTS in CLAUDE.md.
+-- Success = zero rows for that check.
+-- PostgREST error 42501 often means a table failed check A and/or B.
+-- Deadline context: CLAUDE.md (Supabase GRANT enforcement ~Oct 2026).
 --
--- Remediation: add GRANT + RLS + policies in the same migration that creates
--- the table. Templates: supabase/sql/inquiry.sql (public inserts + team reads),
--- supabase/sql/consignment_shipment_rls.sql (consignment_order / shipment /
--- shipment_work — team + admin delete on consignment only).
+-- Fix templates:
+--   supabase/sql/inquiry.sql
+--   supabase/sql/consignment_shipment_rls.sql
 -- =============================================================================
 
--- 1) public.base tables where role "authenticated" has no SELECT privilege
---    (typical blocker for signed-in PostgREST / SSR anon key with user JWT).
-SELECT c.oid::regclass AS table_missing_authenticated_select
-FROM pg_class c
-JOIN pg_namespace n ON n.oid = c.relnamespace
-WHERE n.nspname = 'public'
-  AND c.relkind = 'r'
-  AND NOT has_table_privilege('authenticated', c.oid, 'SELECT')
-ORDER BY 1;
 
--- 2) public.base tables with RLS enabled but zero policies (locks out
---    non–service_role access until policies are added).
-SELECT c.oid::regclass AS table_rls_enabled_zero_policies
-FROM pg_class c
-JOIN pg_namespace n ON n.oid = c.relnamespace
-WHERE n.nspname = 'public'
-  AND c.relkind = 'r'
-  AND c.relrowsecurity
-  AND NOT EXISTS (
-    SELECT 1
-    FROM pg_policies p
-    WHERE p.schemaname = 'public'
-      AND p.tablename = c.relname
-  )
-ORDER BY 1;
+-- ─────────────────────────────────────────────────────────────────────────────
+-- COMBINED REPORT (recommended — one result grid)
+-- ─────────────────────────────────────────────────────────────────────────────
+
+SELECT
+  audit_check,
+  table_name,
+  what_to_do
+FROM (
+  -- A — logged-in users (role authenticated) cannot SELECT this table
+  SELECT
+    1 AS sort_key,
+    'A · no SELECT for logged-in users' AS audit_check,
+    c.oid::regclass::text AS table_name,
+    'GRANT SELECT ON table TO authenticated; add RLS policies if rows must be restricted' AS what_to_do
+  FROM pg_class c
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  WHERE n.nspname = 'public'
+    AND c.relkind = 'r'
+    AND NOT has_table_privilege('authenticated', c.oid, 'SELECT')
+
+  UNION ALL
+
+  -- B — RLS is ON but there are zero policies (blocks everyone except service_role)
+  SELECT
+    2 AS sort_key,
+    'B · RLS on, zero policies' AS audit_check,
+    c.oid::regclass::text AS table_name,
+    'Add RLS policies, OR revoke client grants and document as service-role-only worker table' AS what_to_do
+  FROM pg_class c
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  WHERE n.nspname = 'public'
+    AND c.relkind = 'r'
+    AND c.relrowsecurity
+    AND NOT EXISTS (
+      SELECT 1
+      FROM pg_policies p
+      WHERE p.schemaname = 'public'
+        AND p.tablename = c.relname
+    )
+) audit
+ORDER BY sort_key, table_name;
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- A alone — copy from here to the semicolon, then Run
+-- Question: which tables can a signed-in user not read at all?
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- SELECT c.oid::regclass::text AS table_name
+-- FROM pg_class c
+-- JOIN pg_namespace n ON n.oid = c.relnamespace
+-- WHERE n.nspname = 'public'
+--   AND c.relkind = 'r'
+--   AND NOT has_table_privilege('authenticated', c.oid, 'SELECT')
+-- ORDER BY 1;
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- B alone — uncomment and run
+-- Question: which tables have RLS enabled but no policy rows?
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- SELECT c.oid::regclass::text AS table_name
+-- FROM pg_class c
+-- JOIN pg_namespace n ON n.oid = c.relnamespace
+-- WHERE n.nspname = 'public'
+--   AND c.relkind = 'r'
+--   AND c.relrowsecurity
+--   AND NOT EXISTS (
+--     SELECT 1
+--     FROM pg_policies p
+--     WHERE p.schemaname = 'public'
+--       AND p.tablename = c.relname
+--   )
+-- ORDER BY 1;

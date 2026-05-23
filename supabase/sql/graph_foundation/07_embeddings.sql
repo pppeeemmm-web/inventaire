@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS public.node_embedding_tombstone (
 ALTER TABLE public.node_embedding_tombstone ENABLE ROW LEVEL SECURITY;
 
 COMMENT ON TABLE public.node_embedding_tombstone IS
-  'Drained by embed-worker: DELETE in Qdrant then remove row.';
+  'Drained by embed-worker: DELETE in Qdrant then remove row. Client deny RLS: 10_embedding_rls_policies.sql.';
 
 CREATE OR REPLACE FUNCTION public.graph_enqueue_embedding_tombstone()
 RETURNS trigger
