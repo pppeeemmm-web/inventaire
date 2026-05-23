@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, type MouseEvent } from 'react'
+import { useState, useMemo, useEffect, type MouseEvent } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { thumbUrl } from '@/lib/data'
 import { useI18n } from '@/lib/i18n/context'
@@ -51,6 +51,23 @@ export function Themes({
   const [hoverGroup, setHoverGroup] = useState<string | null>(null)
 
   const oeuvreById = useMemo(() => new Map(oeuvres.map((o) => [o.OeuvreID, o])), [oeuvres])
+
+  const initialThemesSig = useMemo(
+    () => initialThemes.map((t) => `${t.id}\u0001${t.name}`).join('\u0002'),
+    [initialThemes],
+  )
+  const initialGroupsSig = useMemo(
+    () => initialGroups.map((g) => `${g.id}\u0001${g.name}`).join('\u0002'),
+    [initialGroups],
+  )
+
+  useEffect(() => {
+    setThemes((prev) => mergeThemeLists(prev, initialThemes))
+  }, [initialThemesSig, initialThemes])
+
+  useEffect(() => {
+    setGroups((prev) => mergeGroupLists(prev, initialGroups))
+  }, [initialGroupsSig, initialGroups])
 
   function flash(m: string) { setMsg(m); setTimeout(() => setMsg(null), 2500) }
 
@@ -317,7 +334,9 @@ export function Themes({
         >
           <header style={{ marginBottom: narrow ? 16 : 32, paddingBottom: 16, borderBottom: '1px solid var(--bd)' }}>
             <h2 className="serif" style={{ fontSize: narrow ? 22 : 28, margin: 0, color: 'var(--tx)' }}>{t('themesSection')}</h2>
-            <div className="t-mono-sm" style={{ fontSize: 9, color: 'var(--tx3)', letterSpacing: 2, marginTop: 8 }}>{themes.length} COLLECTIONS</div>
+            <div className="t-mono-sm" style={{ fontSize: 9, color: 'var(--tx3)', letterSpacing: 2, marginTop: 8 }}>
+              {t('themes_collections_count_fmt').replace('{count}', String(themes.length)).toUpperCase()}
+            </div>
           </header>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -334,7 +353,7 @@ export function Themes({
                     setHoverGroup(null)
                   }}
                   onContextMenu={(e) => onThemeRowContextMenu(t_, e)}
-                  title="Clic droit : renommer · Ctrl+clic droit : supprimer"
+                  title={t('themes_row_context_menu_title')}
                   style={{ 
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     minHeight: narrow ? 44 : undefined,
@@ -441,7 +460,7 @@ export function Themes({
             ) : (
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--tx3)', gap: 16 }}>
                 <div style={{ fontSize: 32, opacity: 0.2 }}>✧</div>
-                <div style={{ fontSize: 11, letterSpacing: 4, fontWeight: 500 }}>{t('clickToSelect').toUpperCase()}</div>
+                <div className="t-mono-sm" style={{ fontSize: 11, letterSpacing: 4, fontWeight: 500 }}>{t('themes_mosaic_hover_hint').toUpperCase()}</div>
               </div>
             )}
             
@@ -460,7 +479,7 @@ export function Themes({
                   {hoverTheme ? themes.find(t => t.id === hoverTheme)?.name : hoverGroup ? groups.find(g => g.id === hoverGroup)?.name : ''}
                 </div>
                 <div className="t-mono-sm" style={{ fontSize: 10, letterSpacing: 1.5, fontWeight: 700, color: 'var(--ac)', flexShrink: 0 }}>
-                  {allWorksInCategory.length} WORKS DISPLAYED
+                  {t('themes_works_displayed_fmt').replace('{count}', String(allWorksInCategory.length)).toUpperCase()}
                 </div>
               </div>
             )}
@@ -486,7 +505,9 @@ export function Themes({
           <section>
             <header style={{ marginBottom: 24, paddingBottom: 16, borderBottom: '1px solid var(--bd)' }}>
               <h2 className="serif" style={{ fontSize: narrow ? 20 : 22, margin: 0, color: 'var(--tx)' }}>{t('workingGroups')}</h2>
-              <div className="t-mono-sm" style={{ fontSize: 9, color: 'var(--tx3)', letterSpacing: 2, marginTop: 8 }}>{groups.length} ACTIVE GROUPS</div>
+              <div className="t-mono-sm" style={{ fontSize: 9, color: 'var(--tx3)', letterSpacing: 2, marginTop: 8 }}>
+                {t('themes_active_groups_count_fmt').replace('{count}', String(groups.length)).toUpperCase()}
+              </div>
             </header>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -503,7 +524,7 @@ export function Themes({
                       setHoverTheme(null)
                     }}
                     onContextMenu={(e) => onGroupRowContextMenu(g_, e)}
-                    title="Clic droit : renommer · Ctrl+clic droit : supprimer"
+                    title={t('themes_row_context_menu_title')}
                     style={{ 
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                       minHeight: narrow ? 44 : undefined,
@@ -614,4 +635,38 @@ export function Themes({
 function cap(s: string): string {
   if (!s) return s
   return s.charAt(0).toUpperCase() + s.slice(1)
+}
+
+function mergeThemeLists(prev: Theme[], incoming: Theme[]): Theme[] {
+  if (incoming.length === 0) return prev
+  const byId = new Map<number, Theme>()
+  for (const item of incoming) byId.set(item.id, item)
+  for (const item of prev) {
+    if (!byId.has(item.id)) byId.set(item.id, item)
+  }
+  const merged = [...byId.values()].sort((a, b) => a.name.localeCompare(b.name, 'fr'))
+  if (
+    merged.length === prev.length &&
+    merged.every((item, i) => item.id === prev[i]?.id && item.name === prev[i]?.name)
+  ) {
+    return prev
+  }
+  return merged
+}
+
+function mergeGroupLists(prev: Group[], incoming: Group[]): Group[] {
+  if (incoming.length === 0) return prev
+  const byId = new Map<string, Group>()
+  for (const item of incoming) byId.set(item.id, item)
+  for (const item of prev) {
+    if (!byId.has(item.id)) byId.set(item.id, item)
+  }
+  const merged = [...byId.values()].sort((a, b) => a.name.localeCompare(b.name, 'fr'))
+  if (
+    merged.length === prev.length &&
+    merged.every((item, i) => item.id === prev[i]?.id && item.name === prev[i]?.name)
+  ) {
+    return prev
+  }
+  return merged
 }
