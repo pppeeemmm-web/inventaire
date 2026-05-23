@@ -22,6 +22,7 @@
         "app/atelier/pipeline/_components/Pipeline.tsx",
         "app/atelier/production/_components/Production.tsx",
         "app/atelier/stock-take/_components/StockTake.tsx",
+        "app/atelier/notes/_components/Notes.tsx",
         "components/atelier/FiscalTab.tsx",
         "components/atelier/VaultTab.tsx",
         "components/atelier/ExhibitionsTab.tsx",

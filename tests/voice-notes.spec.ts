@@ -20,7 +20,7 @@ test.describe('Voice notes (Verb 2)', () => {
   })
 
   test('atelier notes tab loads shell', async ({ page }) => {
-    await page.goto('/atelier?tab=notes')
+    await page.goto('/atelier/notes')
     await expect(page.getByTestId('notes-tab-root')).toBeVisible({ timeout: 45_000 })
   })
 })

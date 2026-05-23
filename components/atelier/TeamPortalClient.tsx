@@ -81,7 +81,7 @@ const StockTakeTab = dynamic(() => import('@/app/atelier/stock-take/_components/
 const ReportsTab = dynamic(() => import('@/components/atelier/ReportsTab').then((m) => ({ default: m.ReportsTab })), { loading: () => <TabPanelFallback />, ssr: false })
 const AuditTab = dynamic(() => import('@/components/atelier/AuditTab').then((m) => ({ default: m.AuditTab })), { loading: () => <TabPanelFallback />, ssr: false })
 const BroadcastTab = dynamic(() => import('@/components/atelier/BroadcastTab').then((m) => ({ default: m.BroadcastTab })), { loading: () => <TabPanelFallback />, ssr: false })
-const NotesTab = dynamic(() => import('@/components/atelier/NotesTab').then((m) => ({ default: m.NotesTab })), { loading: () => <TabPanelFallback />, ssr: false })
+const NotesTab = dynamic(() => import('@/app/atelier/notes/_components/Notes').then((m) => ({ default: m.Notes })), { loading: () => <TabPanelFallback />, ssr: false })
 const SessionJournalTab = dynamic(() => import('@/components/atelier/SessionJournalTab').then((m) => ({ default: m.SessionJournalTab })), { loading: () => <TabPanelFallback />, ssr: false })
 
 // ── Types ────────────────────────────────────────────────────────────

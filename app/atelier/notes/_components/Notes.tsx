@@ -50,7 +50,7 @@ function workLabel(oeuvres: Oeuvre[], id: number | null): string | null {
   return t || `#${id}`
 }
 
-export function NotesTab({ refreshTick, oeuvres }: { refreshTick: number; oeuvres: Oeuvre[] }) {
+export function Notes({ refreshTick, oeuvres }: { refreshTick: number; oeuvres: Oeuvre[] }) {
   const { t, lang } = useI18n()
   const narrow = useMediaQuery('(max-width: 767px)')
   const locale = lang === 'fr' ? 'fr-FR' : 'en-GB'

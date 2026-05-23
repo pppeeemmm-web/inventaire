@@ -383,7 +383,7 @@ export async function attachShareInboxToVoiceNote(inboxId: string): Promise<Shar
 
   const fin = await finishInbox(inboxId, { target: 'note', voiceNoteId: id })
   if (fin) return fin
-  return { ok: true, href: '/atelier?tab=notes' }
+  return { ok: true, href: '/atelier/notes' }
 }
 
 // ── Slice 2: Lightroom / new-work from share inbox ───────────────────────────
