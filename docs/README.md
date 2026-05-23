@@ -4,8 +4,9 @@
 
 | Doc | Use when |
 |-----|----------|
+| [`HANDOFF_SLICE3.md`](./HANDOFF_SLICE3.md) | **Slice 3 complete (2026-05-23):** 16 Atelier segment routes — cold-start boot sequence + next options |
 | [`TODO.md`](./TODO.md) | Version-controlled checklist (ops deadlines, dev blocks, optional follow-ups) |
-| [`PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md) | Active multi-slice refactor plan (Cursor execution) |
+| [`PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md) | Active multi-slice refactor plan (Cursor execution); Slice 3 tab migration **done** |
 | [`PROJECT_SYNTHESIS.md`](./PROJECT_SYNTHESIS.md) | Onboarding: stack boundaries, broadcast chain, where truth lives |
 | [`SYSTEM_LEDGER.md`](./SYSTEM_LEDGER.md) | System tab UI contract (also loaded in-app for reference MD) |
 | [`BACKUP_RECOVERY.md`](./BACKUP_RECOVERY.md) | Off-site DB backups + restore drill |

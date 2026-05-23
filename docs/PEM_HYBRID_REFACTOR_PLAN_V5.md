@@ -31,7 +31,7 @@ V3 was a planning doc; V5 is the executable plan after the codebase audit + the 
 - Share target + triage already exist (`app/manifest.ts`, `app/atelier/share-triage/`, `ShareTriageClient.tsx`). Slice 2 is now incremental — filename → Titre seed, hub tile, capture removal — not greenfield.
 - 7 files still use `capture="environment"` (4 unconditional, 3 narrow-only).
 - 8 `.messages.ts` files exist under `lib/i18n/messages/` but `lib/i18n/context.tsx` has no precedence wiring yet.
-- 11 atelier route directories contain only `actions.ts` — `page.tsx` files don't exist (except **`/atelier/inventory`** — Slice 3 PR 1 landed 2026-05-23).
+- ~~11 atelier route directories contain only `actions.ts`~~ — **Slice 3 complete (2026-05-23):** all 16 segmented tabs have `page.tsx` + `_components/` (see [`HANDOFF_SLICE3.md`](./HANDOFF_SLICE3.md)).
 - No `public.nodes`, no `tblrelations` node FKs, no `entity`/`edge_fact` views, no embedding columns anywhere.
 - `npm run typecheck` is already clean — Slice 0b fallout will be small.
 
@@ -195,6 +195,8 @@ The app is functionally complete; we are moving from a strict relational ledger 
 **Verification:** Per tab — `typecheck`, `lint`, `test:e2e:field`. Final — smoke each route at 375 px. Bundle ≤ 250 kB per route (aspirational).
 
 **Risk:** Highest slice — calendar driver is **PR count**, not LOC.
+
+**Post–Slice 3 (2026-05-23):** Tab route segmentation is **complete**. **QR Physical Bridge** on saved `WorkForm` (`WorkFormPhysicalQr` → `/atelier/works/:id`, client `qrcode`). Still open: `BottomStack`, `@container atelier`, monolith trim. Legacy `?tab=` on `/atelier` remains for: `overview`, `map`, `journal`, `system`, `portfolio`, `contacts`, `stock` (+ `site` / `analytics` aliases). Optional follow-up: segment those tabs or start Slice 4 i18n — owner chooses ([`HANDOFF_SLICE3.md`](./HANDOFF_SLICE3.md)).
 
 ---
 

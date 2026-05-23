@@ -142,7 +142,9 @@ From repo root: `pwsh scripts/dev.ps1` (frees port 3000, prints LAN URL for mobi
 
 ## Routes and modules
 
-**Canonical route / tab map:** [SITE_MAP.md](../SITE_MAP.md) (Mermaid, deep links, Slice 3 segment routes). **Pending work:** [TODO.md](./TODO.md). **Refactor plan:** [PEM_HYBRID_REFACTOR_PLAN_V5.md](./PEM_HYBRID_REFACTOR_PLAN_V5.md).
+**Slice 3 (2026-05-23):** All 16 Atelier tabs are App Router segment routes (`/atelier/inventory` … `/atelier/constellation`); legacy `?tab=` redirects for migrated ids; unmigrated tabs still on `/atelier?tab=`. **Handoff:** [HANDOFF_SLICE3.md](./HANDOFF_SLICE3.md).
+
+**Canonical route / tab map:** [SITE_MAP.md](../SITE_MAP.md) (Mermaid, deep links, segment routes). **Pending work:** [TODO.md](./TODO.md). **Refactor plan:** [PEM_HYBRID_REFACTOR_PLAN_V5.md](./PEM_HYBRID_REFACTOR_PLAN_V5.md).
 
 ---
 

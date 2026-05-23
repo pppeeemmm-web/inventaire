@@ -1,5 +1,7 @@
 # Constellation Canvas
 
+**Canonical URL:** `/atelier/constellation` (cloud map deep link: `/atelier/constellation?map=<uuid>`; bare `/atelier?map=` redirects to the segment route).
+
 This document defines the product intent and technical contract for the Atelier constellation surface before further feature work.
 
 ## Purpose

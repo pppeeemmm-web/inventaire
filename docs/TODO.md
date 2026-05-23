@@ -119,7 +119,15 @@ _Version-controlled checklist + non-binding roadmap items. Prefer this file over
 
 ## V5 refactor (see plan)
 
-Active execution: [`PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md) — Slice 3 tab routes **complete** (all 16 segmented tabs including `constellation`); legacy `?tab=` remains for overview, map, contacts, stock, system, portfolio, journal, etc.
+- [x] **Slice 3 — Atelier tab route segmentation** (2026-05-23) — all 16 tabs: inventory, sales, pipeline, production, stock-take, notes, reports, exhibitions, concepts, themes, logistics, vault, fiscal, broadcast, audit, constellation. Handoff: [`HANDOFF_SLICE3.md`](./HANDOFF_SLICE3.md).
+
+**Optional backlog (post–Slice 3, owner chooses vs Slice 4 i18n):**
+
+- [ ] Segment remaining legacy `?tab=` tabs: overview, map, journal, system, portfolio, contacts, stock (+ site/analytics aliases)
+- [x] QR Physical Bridge on `WorkForm` (V5 Slice 3 — `WorkFormPhysicalQr`, scan path `/atelier/works/:id`)
+- [ ] Per-route bundle size check (aspirational ≤ 250 kB)
+
+Active plan: [`PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md) — next slice **4** (i18n) or legacy tab cleanup.
 
 ## Guardrails (not tasks)
 

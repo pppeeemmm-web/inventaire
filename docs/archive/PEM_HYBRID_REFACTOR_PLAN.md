@@ -77,7 +77,7 @@
 
 Stay in `app/`. New: `lib/error-reporter/`, `eslint-rules/no-silent-catch.js`, `supabase/sql/graph_foundation/`, `public/sw/`, `lib/sw-install/`, `lib/graph/node-ref.ts`, `components/shared/BottomStack.tsx`.
 
-**Slice 3 correction:** Tab routes like `app/atelier/inventory/page.tsx` are created incrementally (Slice 3). **`/atelier/inventory`**, **`/atelier/sales`**, **`/atelier/pipeline`** landed 2026-05-23; other tabs still use `?tab=` on `/atelier` until migrated. Verb routes (`share-triage`, `capture`, `works/new`, …) unchanged.
+**Slice 3 correction (archived):** All **16** segmented Atelier tabs landed 2026-05-23 on `main` (see live [`PEM_HYBRID_REFACTOR_PLAN_V5.md`](../PEM_HYBRID_REFACTOR_PLAN_V5.md) + [`HANDOFF_SLICE3.md`](../HANDOFF_SLICE3.md)). Legacy `?tab=` remains for overview, map, journal, system, portfolio, contacts, stock. Verb routes unchanged.
 
 ---
 

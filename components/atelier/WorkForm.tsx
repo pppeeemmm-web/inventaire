@@ -46,6 +46,7 @@ import {
 import type { ContactAddress } from '@/components/atelier/contact-editor-types'
 import type { ShareInboxWorkPrefill } from '@/app/atelier/share-triage/actions'
 import { attachShareInboxToWork } from '@/app/atelier/share-triage/actions'
+import { WorkFormPhysicalQr } from '@/components/atelier/WorkFormPhysicalQr'
 
 // ── Props ─────────────────────────────────────────────────────────────────
 
@@ -581,6 +582,10 @@ export function WorkForm({
             narrow={narrow}
             sharePendingFiles={shareInboxPrefill?.imageFiles}
           />
+
+          {oeuvre?.OeuvreID ? (
+            <WorkFormPhysicalQr oeuvreId={oeuvre.OeuvreID} titre={oeuvre.Titre} />
+          ) : null}
 
           <div style={{ marginTop: 32 }}>
             <div className="t-eyebrow" style={{ marginBottom: 12, fontSize: 11 }}>{t('wf_themes_series')}</div>
