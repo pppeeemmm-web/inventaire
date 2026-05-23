@@ -19,6 +19,7 @@ import { daysUntil } from '@/lib/pipeline-deadlines'
 import {
   filterEventsInDateKeyRange,
 } from '@/lib/pipeline-calendar'
+import { atelierTabHref } from '@/lib/atelier/tab-routes'
 import type { Lang } from '@/lib/i18n/dictionary'
 
 import { useMediaQuery } from '@/lib/useMediaQuery'
@@ -62,7 +63,7 @@ function TabPanelFallback() {
 }
 
 /** Lazy tabs: ssr:false — panel JS/CSS only runs client-side; avoids hydration mismatch (React #418) */
-const InventoryTab = dynamic(() => import('@/components/atelier/InventoryTab').then((m) => ({ default: m.InventoryTab })), { loading: () => <TabPanelFallback />, ssr: false })
+const InventoryTab = dynamic(() => import('@/app/atelier/inventory/_components/Inventory').then((m) => ({ default: m.Inventory })), { loading: () => <TabPanelFallback />, ssr: false })
 const ConstellationCanvas = dynamic(() => import('@/components/atelier/ConstellationCanvas').then((m) => ({ default: m.ConstellationCanvas })), { loading: () => <TabPanelFallback />, ssr: false })
 const VaultTab = dynamic(() => import('@/components/atelier/VaultTab').then((m) => ({ default: m.VaultTab })), { loading: () => <TabPanelFallback />, ssr: false })
 const ProductionTab = dynamic(() => import('@/components/atelier/ProductionTab').then((m) => ({ default: m.ProductionTab })), { loading: () => <TabPanelFallback />, ssr: false })
@@ -345,6 +346,7 @@ export function TeamPortalClient({
   groupToThemes: initialGroupToThemes = {},
   oeuvreThemeIdsByOeuvre: initialOeuvreThemeIdsByOeuvre = {},
   oeuvreGroupIdsByOeuvre: initialOeuvreGroupIdsByOeuvre = {},
+  routeTab,
 }: TeamPortalClientProps) {
   const junctionHydratedIdsRef = useRef<Set<number>>(new Set())
   const [junction, setJunction] = useState<AtelierJunctionDerived>(() =>
@@ -610,6 +612,11 @@ export function TeamPortalClient({
   const [reminderCount,  setReminderCount] = useState(initialReminderUnread)
 
   useLayoutEffect(() => {
+    if (routeTab) {
+      setTab(routeTab)
+      localStorage.setItem('pem_team_tab', routeTab)
+      return
+    }
     const params = new URLSearchParams(window.location.search)
     if (params.get('map')) {
       setTab('constellation')
@@ -627,12 +634,11 @@ export function TeamPortalClient({
       setTab(savedTab)
       return
     }
-    // Narrow + no saved tab: field-tool first (Overview stays desktop-first KPI; Hub is lobby pulse).
+    // Narrow + no saved tab: field-tool first — use segmented inventory route.
     if (window.matchMedia('(max-width: 767px)').matches) {
-      setTab('inventory')
-      localStorage.setItem('pem_team_tab', 'inventory')
+      void router.replace('/atelier/inventory')
     }
-  }, [])
+  }, [routeTab, router])
 
   // Warm exhibitions chunk after paint — reduces flash when opening Commercial → Exhibitions
   useEffect(() => {
@@ -744,6 +750,18 @@ export function TeamPortalClient({
   }, [t])
 
   function handleSetTab(next: Tab) {
+    const href = atelierTabHref(next)
+    const currentPath = window.location.pathname
+    const currentSearch = window.location.search
+    const targetPath = href.split('?')[0]
+    const needsNavigation =
+      targetPath !== currentPath ||
+      (href.includes('?') && href !== `${currentPath}${currentSearch}`)
+
+    if (needsNavigation) {
+      router.push(href)
+      return
+    }
     setTab(next)
     localStorage.setItem('pem_team_tab', next)
     setSidebarOpen(false)

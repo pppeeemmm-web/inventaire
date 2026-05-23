@@ -385,7 +385,7 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
                   <button
                     key={o.OeuvreID}
                     type="button"
-                    onClick={() => router.push('/atelier?tab=inventory')}
+                    onClick={() => router.push('/atelier/inventory')}
                     style={{
                       width: 88,
                       height: 88,
@@ -531,7 +531,7 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
                 <div className="t-eyebrow" style={{ marginBottom: 24, opacity: 0.5 }}>04 · {t('recentlyAdded')}</div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 8 }}>
                   {recentImages.slice(0, 16).map((o) => (
-                    <div key={o.OeuvreID} onClick={() => router.push('/atelier?tab=inventory')}
+                    <div key={o.OeuvreID} onClick={() => router.push('/atelier/inventory')}
                       style={{ aspectRatio: '1', background: 'var(--bg1)', border: '1px solid var(--bd2)', overflow: 'hidden', position: 'relative', cursor: 'pointer' }}>
                       {o.txtImageNameLink
                         ? <WorkThumb file={o.txtImageNameLink} size={256} alt="" />

@@ -1,6 +1,6 @@
 'use client'
 
-// InventoryTab — filter bar + three views: list (table+preview), grid, graph placeholder.
+// Inventory — filter bar + three views: list (table+preview), grid, graph placeholder.
 // Mirrors source/team/inventory.jsx.
 
 import { useState, useMemo, useEffect, useLayoutEffect, useRef, useCallback } from 'react'
@@ -9,18 +9,18 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
 import { imageUrl, thumbUrl, yearOf, statusOf, statusColor, stageOf, type StatusKey, formatInventoryDims, isAvailabilityRefinedToProduction } from '@/lib/data'
-import { MissingThumb, WorkThumb } from './WorkThumb'
-import { WorkStateChip } from './WorkStateChip'
+import { MissingThumb, WorkThumb } from '@/components/atelier/WorkThumb'
+import { WorkStateChip } from '@/components/atelier/WorkStateChip'
 import Image from 'next/image'
 import { stringifyError } from '@/lib/error'
 import { toast } from '@/lib/ui/toast'
 import { registerUndo, consumeUndo } from '@/lib/ui/undo'
 import type { Oeuvre } from '@/lib/types/database'
-import { WorkDrawer, type WorkDrawerGuardHandle } from './WorkDrawer'
+import { WorkDrawer, type WorkDrawerGuardHandle } from '@/components/atelier/WorkDrawer'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { batchEdit } from '@/app/atelier/selection/actions'
 import type { Agg, Dim } from '@/lib/pivot'
-import { PivotPanel } from './PivotPanel'
+import { PivotPanel } from '@/components/atelier/PivotPanel'
 
 // ── Types ───────────────────────────────────────────────────────────
 
@@ -208,7 +208,7 @@ const INV_GRID_ROW_H = 228
 
 // ── Main component ──────────────────────────────────────────────────
 
-export function InventoryTab({
+export function Inventory({
   oeuvres, tM, sM, cM, pM, locMap, statusLabelMap,
   techniques, supports, formats = [], themes = [], groups = [],
   contacts = [], presentations = [],

@@ -7,6 +7,7 @@ import type { Oeuvre, SuiviReminderListRow, ConceptBurningRow } from '@/lib/type
 import type { PipelinePulseItem } from '@/lib/pipeline-deadlines'
 import type { PipelineCalendarEvent } from '@/lib/pipeline-calendar'
 import type { AtelierJunctionDerived } from '@/lib/atelier/atelier-junction-bootstrap'
+import type { SegmentedAtelierTab } from '@/lib/atelier/tab-routes'
 
 export interface AtelierOverviewBootstrap {
   expenseTotalTtc: number
@@ -24,6 +25,8 @@ export interface TeamPortalClientProps extends Partial<AtelierJunctionDerived> {
   initialReminders?: SuiviReminderListRow[]
   /** Overview tab: expense + pipeline calendar + pulse + concepts (RSC via `fetchAtelierOverviewBootstrap`). */
   initialOverviewBootstrap?: AtelierOverviewBootstrap
+  /** When set, this shell instance is pinned to a segmented tab route (Slice 3). */
+  routeTab?: SegmentedAtelierTab
   /** When more rows exist than the initial chunk, client loads further pages. */
   oeuvresPaging?: { totalCount: number; nextCursor: number | null; pageSize: number }
   /** Bumps on each RSC render so the client refetches deferred shell rows after `router.refresh()`. */

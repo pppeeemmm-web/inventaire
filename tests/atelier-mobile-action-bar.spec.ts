@@ -20,7 +20,7 @@ test.describe('Atelier mobile action bar', () => {
   })
 
   test('narrow atelier header exposes hub launchpad', async ({ page }) => {
-    await page.goto('/atelier?tab=inventory', { waitUntil: 'domcontentloaded' })
+    await page.goto('/atelier/inventory', { waitUntil: 'domcontentloaded' })
     const hub = page.getByTestId('atelier-header-hub')
     await expect(hub).toBeVisible({ timeout: 45_000 })
     await hub.click()

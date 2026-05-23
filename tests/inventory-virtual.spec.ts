@@ -14,7 +14,7 @@ test.describe('Inventory virtualization', () => {
     await page.addInitScript(() => {
       localStorage.setItem('pem_team_tab', 'inventory')
     })
-    await page.goto('/atelier')
+    await page.goto('/atelier/inventory')
     await expect(page.getByTestId('inventory-virtual-scroll')).toBeVisible({ timeout: 45_000 })
     await expect(page.getByRole('columnheader', { name: 'État' })).toBeVisible()
   })
@@ -24,7 +24,7 @@ test.describe('Inventory virtualization', () => {
     await page.addInitScript(() => {
       localStorage.setItem('pem_team_tab', 'inventory')
     })
-    await page.goto('/atelier')
+    await page.goto('/atelier/inventory')
     await expect(page.getByTestId('inventory-virtual-scroll')).toBeVisible({ timeout: 45_000 })
     await page.getByRole('button', { name: '▦' }).click()
     await expect(page.getByTestId('inventory-virtual-grid')).toBeVisible()

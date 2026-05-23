@@ -26,7 +26,7 @@
         "components/atelier/PortfolioTab.tsx",
         "components/atelier/ContactEditorPanel.tsx",
         "components/atelier/WorldMapTab.tsx",
-        "components/atelier/InventoryTab.tsx",
+        "app/atelier/inventory/_components/Inventory.tsx",
         "components/atelier/AuditTab.tsx",
         "**/*.spec.ts",
         "**/*.spec.tsx",
