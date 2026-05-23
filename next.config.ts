@@ -32,14 +32,10 @@ const nextConfig: NextConfig = {
   },
 
   typescript: {
-    // Type errors are tracked separately — don't block production builds.
-    // Re-enable once database.ts types are regenerated from live schema.
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   eslint: {
-    // There are many pre-existing lint errors (entities, missing alts, etc)
-    // that should be addressed in a dedicated task. Don't block the build.
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false,
   },
   // pdfkit → fontkit uses decorators incompatible with Turbopack's @swc/helpers.
   // Keep them as native Node.js requires instead of bundling.
