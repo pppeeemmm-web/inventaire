@@ -7,7 +7,7 @@ test.describe('Reports tab', () => {
   )
 
   test('opens reports tab and exports HTML', async ({ page }) => {
-    await page.goto('/atelier?tab=reports')
+    await page.goto('/atelier/reports')
     await expect(page.getByTestId('reports-root')).toBeVisible({ timeout: 45_000 })
 
     const downloadPromise = page.waitForEvent('download')
@@ -17,7 +17,7 @@ test.describe('Reports tab', () => {
   })
 
   test('exports PDF from reports tab', async ({ page }) => {
-    await page.goto('/atelier?tab=reports')
+    await page.goto('/atelier/reports')
     await expect(page.getByTestId('reports-root')).toBeVisible({ timeout: 45_000 })
 
     const downloadPromise = page.waitForEvent('download')
@@ -27,7 +27,7 @@ test.describe('Reports tab', () => {
   })
 
   test('shows partial-catalogue note when loaded batch is smaller than total', async ({ page }) => {
-    await page.goto('/atelier?tab=reports', { waitUntil: 'domcontentloaded' })
+    await page.goto('/atelier/reports', { waitUntil: 'domcontentloaded' })
     await expect(page.getByTestId('reports-root')).toBeVisible({ timeout: 45_000 })
     const totalBadge = page.getByTestId('atelier-catalogue-total')
     try {

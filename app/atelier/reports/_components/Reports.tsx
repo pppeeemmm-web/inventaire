@@ -74,7 +74,7 @@ type Props = {
   oeuvresCatalogueTotal?: number
 }
 
-export function ReportsTab({
+export function Reports({
   oeuvres,
   techniques,
   supports,

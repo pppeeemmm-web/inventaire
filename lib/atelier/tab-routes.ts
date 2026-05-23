@@ -1,5 +1,12 @@
 /** Tabs with dedicated App Router segments (Slice 3 migration). */
-export type SegmentedAtelierTab = 'inventory' | 'sales' | 'pipeline' | 'production' | 'stock-take' | 'notes'
+export type SegmentedAtelierTab =
+  | 'inventory'
+  | 'sales'
+  | 'pipeline'
+  | 'production'
+  | 'stock-take'
+  | 'notes'
+  | 'reports'
 
 export const ATELIER_SEGMENTED_TAB_ROUTES: Record<SegmentedAtelierTab, string> = {
   inventory: '/atelier/inventory',
@@ -8,6 +15,7 @@ export const ATELIER_SEGMENTED_TAB_ROUTES: Record<SegmentedAtelierTab, string> =
   production: '/atelier/production',
   'stock-take': '/atelier/stock-take',
   notes: '/atelier/notes',
+  reports: '/atelier/reports',
 }
 
 export function isSegmentedAtelierTab(tab: string): tab is SegmentedAtelierTab {

@@ -42,7 +42,7 @@ export async function buildSiteMapChecklistPdf(): Promise<Buffer> {
       lines: [
         'overview',
         'inventory + WorkDrawer',
-        'reports ReportsTab XLSX/PDF',
+        'reports Reports XLSX/PDF',
         'constellation + ?map=',
         'production',
         'logistics',
