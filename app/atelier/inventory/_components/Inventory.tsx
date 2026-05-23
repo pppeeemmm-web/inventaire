@@ -12,6 +12,9 @@ import { interpolateMessage } from '@/lib/i18n/message-core'
 import { imageUrl, thumbUrl, yearOf, statusOf, statusColor, stageOf, type StatusKey, formatInventoryDims, isAvailabilityRefinedToProduction } from '@/lib/data'
 import { MissingThumb, WorkThumb } from '@/components/atelier/WorkThumb'
 import { WorkStateChip } from '@/components/atelier/WorkStateChip'
+import { EmbeddingStatusBadge } from '@/components/atelier/EmbeddingStatusBadge'
+import { useNonOkEmbeddingStatuses } from '@/hooks/useNonOkEmbeddingStatuses'
+import type { OeuvreEmbeddingStatusMap } from '@/app/atelier/embedding-status-actions'
 import Image from 'next/image'
 import { stringifyError } from '@/lib/error'
 import { toast } from '@/lib/ui/toast'
@@ -238,6 +241,7 @@ export function Inventory({
   isAdmin?: boolean
 }) {
   const { t } = useI18n()
+  const embeddingStatusMap = useNonOkEmbeddingStatuses()
 
   const router = useRouter()
 
@@ -910,6 +914,7 @@ export function Inventory({
           <>
             <InvList
               rows={filtered} tM={tM} sM={sM} cM={cM} locMap={locMap} statusLabelMap={statusLabelMap}
+              embeddingStatusMap={embeddingStatusMap}
               focused={focused} setFocused={focusRowGuarded}
               selection={selection} setSelection={setSelection}
               sortKey={sortKey} sortDir={sortDir} toggleSort={toggleSort}
@@ -942,6 +947,7 @@ export function Inventory({
         {view === 'grid' && (
           <InvGrid
             rows={filtered} tM={tM} statusLabelMap={statusLabelMap}
+            embeddingStatusMap={embeddingStatusMap}
             selection={selection} toggleInSel={toggleInSel}
             onOpen={onOpen}
           />
@@ -1176,7 +1182,7 @@ function InvSelect({
 // ── InvList ─────────────────────────────────────────────────────────
 
 function InvList({
-  rows, tM, sM, cM, locMap, statusLabelMap, focused, setFocused, selection, setSelection,
+  rows, tM, sM, cM, locMap, statusLabelMap, embeddingStatusMap, focused, setFocused, selection, setSelection,
   sortKey, sortDir, toggleSort,
   onImageDoubleClick, onOpen, publicMode, onLoadMore,
 }: {
@@ -1186,6 +1192,7 @@ function InvList({
   cM:             Record<number, string>
   locMap:         Record<number, string>
   statusLabelMap: Record<number, string>
+  embeddingStatusMap: OeuvreEmbeddingStatusMap
   focused:        Oeuvre | null
   setFocused:     (o: Oeuvre) => void
   selection:      Set<number>
@@ -1543,6 +1550,10 @@ function InvList({
                   </td>
                   <td style={{ padding: '0 4px', verticalAlign: 'middle', borderRight: 'none' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+                      <EmbeddingStatusBadge
+                        oeuvreId={o.OeuvreID}
+                        status={embeddingStatusMap[o.OeuvreID]}
+                      />
                       {st === 'reserved' && <span className="chip dust" style={{ fontSize: 10 }}>RÉSERVÉ</span>}
                       {!isNarrow && (() => {
                         const live = bcOverride[o.OeuvreID] ?? !!(o as { broadcast_ready?: boolean }).broadcast_ready
@@ -1600,6 +1611,7 @@ function InvGrid({
   rows,
   tM,
   statusLabelMap,
+  embeddingStatusMap,
   selection,
   toggleInSel,
   onOpen,
@@ -1607,6 +1619,7 @@ function InvGrid({
   rows:           Oeuvre[]
   tM:             Record<number, string>
   statusLabelMap: Record<number, string>
+  embeddingStatusMap: OeuvreEmbeddingStatusMap
   selection:      Set<number>
   toggleInSel:    (oid: number) => void
   onOpen:         (o: Oeuvre) => void
@@ -1718,6 +1731,12 @@ function InvGrid({
           title={o.Titre ?? ''}
         >
           {o.Titre || '—'}
+        </div>
+        <div style={{ marginBottom: 4 }}>
+          <EmbeddingStatusBadge
+            oeuvreId={o.OeuvreID}
+            status={embeddingStatusMap[o.OeuvreID]}
+          />
         </div>
         <div style={{ fontSize: 11, color: 'var(--tx3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {o.Technique != null ? (tM[o.Technique] ?? '') : ''}

@@ -21,4 +21,12 @@ export const searchMessages = defineMessages({
     fr: 'Embedding en attente',
     en: 'Embedding pending',
   },
+  embedding_status_embedding: {
+    fr: 'Indexation…',
+    en: 'Indexing…',
+  },
+  embedding_status_error: {
+    fr: 'Embedding en erreur',
+    en: 'Embedding failed',
+  },
 })

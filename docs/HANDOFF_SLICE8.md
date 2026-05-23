@@ -26,7 +26,9 @@ After Slice 5 `01`–`06` and Slice 6 `08`:
 | `app/atelier/search/actions.ts` | `searchSemanticAtelier` (Ollama + Qdrant on server host) |
 | Command palette | Semantic group when query ≥ 3 chars |
 
-**Not in this slice:** public-site search UI (tables only), embedding pending badges on lists, ESLint service-role rule.
+**Not in this slice:** public-site search UI (tables only), ESLint service-role rule.
+
+**Follow-up (2026-05-23):** embedding pending/error badges on Inventory list + grid (`EmbeddingStatusBadge`).
 
 ---
 
