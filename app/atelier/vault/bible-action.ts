@@ -137,7 +137,7 @@ async function buildBiblePdf(): Promise<Buffer> {
     )
     doc.moveDown()
     doc.text(
-      'When a commercial pipeline row needs a full exhibition workstream (more than a single step), create the exposition from the Pipeline process modal: a new exposition row is inserted, and the current pipeline row stores exhibition_process_id pointing to it. The Pipeline drawer exposes "Open exhibition project" → /atelier?tab=exhibitions&exhibition=<id>. Deleting an exhibition clears exhibition_process_id on referencing rows before removing the exposition.',
+      'When a commercial pipeline row needs a full exhibition workstream (more than a single step), create the exposition from the Pipeline process modal: a new exposition row is inserted, and the current pipeline row stores exhibition_process_id pointing to it. The Pipeline drawer exposes "Open exhibition project" → /atelier/exhibitions?exhibition=<id>. Deleting an exhibition clears exhibition_process_id on referencing rows before removing the exposition.',
       { width: W, align: 'justify', lineGap: 4 },
     )
 

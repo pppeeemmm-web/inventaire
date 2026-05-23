@@ -47,7 +47,7 @@ export async function buildSiteMapChecklistPdf(): Promise<Buffer> {
         'production',
         'logistics',
         'sales',
-        'exhibitions + ?exhibition= + calendar OAuth strip',
+        'exhibitions /atelier/exhibitions + ?exhibition= + calendar OAuth strip',
         'vault',
         'contacts + ContactEditorPanel',
         'map WorldMapTab',

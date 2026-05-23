@@ -55,7 +55,7 @@ _Version-controlled checklist + non-binding roadmap items. Prefer this file over
 
 - [ ] **C1** `PortfolioTab.tsx` → panels + orchestrator.
 - [ ] **C2** `app/atelier/pipeline/_components/Pipeline.tsx` → Gantt / deadline / reminders panels; `AbortController` on fetches.
-- [ ] **C3** `ExhibitionsTab.tsx` → steps + floor-plan panels.
+- [ ] **C3** `Exhibitions.tsx` → steps + floor-plan panels.
 - [x] **C4** `docs/CONSTELLATION.md`.
 - [x] **C-partial** `pipeline-shared.ts`, list panel extractions.
 - [ ] WorkDrawer further decomposition (`DrawerContent`).
@@ -119,7 +119,7 @@ _Version-controlled checklist + non-binding roadmap items. Prefer this file over
 
 ## V5 refactor (see plan)
 
-Active execution: [`PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md) — Slice 3 tab routes in progress (`inventory`, `sales`, `pipeline`, `production`, `stock-take`, `notes`, `reports` segmented; next: `exhibitions`).
+Active execution: [`PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md) — Slice 3 tab routes in progress (`inventory`, `sales`, `pipeline`, `production`, `stock-take`, `notes`, `reports`, `exhibitions` segmented; next: `concepts`).
 
 ## Guardrails (not tasks)
 

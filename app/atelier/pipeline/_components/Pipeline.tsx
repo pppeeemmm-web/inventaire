@@ -1230,7 +1230,7 @@ function ProcessDrawer({ process, onClose, onEdit, onRefresh, onCycleEtape, onOv
   const openExhibitionProject = useCallback(() => {
     const id = (process as any).exhibition_process_id as string | null | undefined
     if (!id) return
-    window.location.assign(`/atelier?tab=exhibitions&exhibition=${encodeURIComponent(id)}`)
+    window.location.assign(`/atelier/exhibitions?exhibition=${encodeURIComponent(id)}`)
   }, [process])
 
   function Row({label,value,href}:{label:string;value?:string|null;href?:string}) {

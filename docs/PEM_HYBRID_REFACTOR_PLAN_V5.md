@@ -173,7 +173,7 @@ The app is functionally complete; we are moving from a strict relational ledger 
 5. ✅ `stock-take` → `app/atelier/stock-take/page.tsx` + `_components/StockTake.tsx` — **done** (2026-05-23)
 6. ✅ `notes` → `app/atelier/notes/page.tsx` + `_components/Notes.tsx` — **done** (2026-05-23)
 7. ✅ `reports` → `app/atelier/reports/page.tsx` + `_components/Reports.tsx` — **done** (2026-05-23)
-8. `exhibitions`
+8. ✅ `exhibitions` → `app/atelier/exhibitions/page.tsx` + `_components/Exhibitions.tsx` — **done** (2026-05-23)
 9. `concepts`
 10. `themes`
 11. `logistics`
@@ -204,7 +204,7 @@ The app is functionally complete; we are moving from a strict relational ledger 
 
 **Scope:**
 - Wire the 8 existing files in `lib/i18n/messages/` into the context: lookup messages first, fall back to `dict[lang][key]`, `logWarn` on both-miss.
-- Remove `off` overrides for tabs as they're migrated: `ExhibitionsTab`, `FiscalTab`, ~~`InventoryTab`~~ (`Inventory.tsx` migrated — override path updated), `CurationPanel`, `PortfolioConfigShell`.
+- Remove `off` overrides for tabs as they're migrated: ~~`ExhibitionsTab`~~ (`Exhibitions.tsx` migrated — override path updated), `FiscalTab`, ~~`InventoryTab`~~ (`Inventory.tsx` migrated — override path updated), `CurationPanel`, `PortfolioConfigShell`.
 - Tighten `no-hardcoded-jsx-text` for FR leaks.
 - New copy added in Slices 2 / 0a / 3 must use `defineMessages` — do not extend the legacy dictionary.
 

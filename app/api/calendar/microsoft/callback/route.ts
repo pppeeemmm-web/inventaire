@@ -9,8 +9,7 @@ import {
 } from '@/lib/calendar/token-crypto'
 
 function exhibitionsRedirect(origin: string, query: Record<string, string>) {
-  const u = new URL(`${origin}/atelier`)
-  u.searchParams.set('tab', 'exhibitions')
+  const u = new URL(`${origin}/atelier/exhibitions`)
   for (const [k, v] of Object.entries(query)) u.searchParams.set(k, v)
   return NextResponse.redirect(u.toString())
 }
