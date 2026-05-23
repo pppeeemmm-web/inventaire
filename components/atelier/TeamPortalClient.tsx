@@ -79,7 +79,7 @@ const PortfolioConfigShell = dynamic(() => import('@/components/atelier/Portfoli
 const SupplierHub = dynamic(() => import('@/components/atelier/SupplierHub').then((m) => ({ default: m.SupplierHub })), { loading: () => <TabPanelFallback />, ssr: false })
 const StockTakeTab = dynamic(() => import('@/app/atelier/stock-take/_components/StockTake').then((m) => ({ default: m.StockTake })), { loading: () => <TabPanelFallback />, ssr: false })
 const Reports = dynamic(() => import('@/app/atelier/reports/_components/Reports').then((m) => ({ default: m.Reports })), { loading: () => <TabPanelFallback />, ssr: false })
-const AuditTab = dynamic(() => import('@/components/atelier/AuditTab').then((m) => ({ default: m.AuditTab })), { loading: () => <TabPanelFallback />, ssr: false })
+const Audit = dynamic(() => import('@/app/atelier/audit/_components/Audit').then((m) => ({ default: m.Audit })), { loading: () => <TabPanelFallback />, ssr: false })
 const Broadcast = dynamic(() => import('@/app/atelier/broadcast/_components/Broadcast').then((m) => ({ default: m.Broadcast })), { loading: () => <TabPanelFallback />, ssr: false })
 const NotesTab = dynamic(() => import('@/app/atelier/notes/_components/Notes').then((m) => ({ default: m.Notes })), { loading: () => <TabPanelFallback />, ssr: false })
 const SessionJournalTab = dynamic(() => import('@/components/atelier/SessionJournalTab').then((m) => ({ default: m.SessionJournalTab })), { loading: () => <TabPanelFallback />, ssr: false })
@@ -1417,7 +1417,7 @@ export function TeamPortalClient({
             />
           </div>
         )}
-        {tab === 'audit' && <AuditTab />}
+        {tab === 'audit' && <Audit />}
         {tab === 'broadcast' && <Broadcast />}
         {tab === 'map' && (
           <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>

@@ -3,11 +3,11 @@
 import { useState, useEffect } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { fetchSystemLogs, type AuditLogEntry } from '@/app/atelier/audit/actions'
-import { PendingQueue } from './PendingQueue'
-import { PendingWorkSessions } from './PendingWorkSessions'
+import { PendingQueue } from '@/components/atelier/PendingQueue'
+import { PendingWorkSessions } from '@/components/atelier/PendingWorkSessions'
 import { LoadingShell } from '@/components/shared/LoadingShell'
 
-export function AuditTab() {
+export function Audit() {
   const { t } = useI18n()
   const [view, setView] = useState<'ledger' | 'pending'>('ledger')
   const [logs, setLogs] = useState<AuditLogEntry[]>([])
@@ -24,10 +24,10 @@ export function AuditTab() {
 
   if (view === 'pending') {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <div data-testid="audit-tab-root" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
         <div style={{ padding: '12px 28px', borderBottom: '1px solid var(--bd)', display: 'flex', gap: 8 }}>
-          <button onClick={() => setView('ledger')} className="btn ghost sm" style={{ fontSize: 9, letterSpacing: 1, opacity: 0.5 }}>{t('audit_view_ledger')}</button>
-          <button onClick={() => setView('pending')} className="btn ghost sm" style={{ fontSize: 9, letterSpacing: 1, border: '1px solid var(--bd)', background: 'var(--bg1)' }}>{t('audit_view_pending')}</button>
+          <button onClick={() => setView('ledger')} className="btn ghost sm" style={{ fontSize: 9, letterSpacing: 1, opacity: 0.5 }} data-testid="audit-subtab-ledger">{t('audit_view_ledger')}</button>
+          <button onClick={() => setView('pending')} className="btn ghost sm" style={{ fontSize: 9, letterSpacing: 1, border: '1px solid var(--bd)', background: 'var(--bg1)' }} data-testid="audit-subtab-pending">{t('audit_view_pending')}</button>
         </div>
         <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
           <PendingQueue />
@@ -54,12 +54,12 @@ export function AuditTab() {
   if (busy) return <LoadingShell title={t('shell_loading')} />
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div data-testid="audit-tab-root" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Header / Filter Bar */}
       <div style={{ padding: '12px 28px', borderBottom: '1px solid var(--bd)', display: 'flex', alignItems: 'center', gap: 20 }}>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => setView('ledger')} className="btn ghost sm" style={{ fontSize: 9, letterSpacing: 1, border: '1px solid var(--bd)', background: 'var(--bg1)' }}>{t('audit_view_ledger')}</button>
-          <button onClick={() => setView('pending')} className="btn ghost sm" style={{ fontSize: 9, letterSpacing: 1, opacity: 0.5 }}>{t('audit_view_pending')}</button>
+          <button onClick={() => setView('ledger')} className="btn ghost sm" style={{ fontSize: 9, letterSpacing: 1, border: '1px solid var(--bd)', background: 'var(--bg1)' }} data-testid="audit-subtab-ledger">{t('audit_view_ledger')}</button>
+          <button onClick={() => setView('pending')} className="btn ghost sm" style={{ fontSize: 9, letterSpacing: 1, opacity: 0.5 }} data-testid="audit-subtab-pending">{t('audit_view_pending')}</button>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           {eventTypes.map((evt) => (

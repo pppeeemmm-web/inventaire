@@ -36,7 +36,7 @@
         "components/atelier/ContactEditorPanel.tsx",
         "components/atelier/WorldMapTab.tsx",
         "app/atelier/inventory/_components/Inventory.tsx",
-        "components/atelier/AuditTab.tsx",
+        "app/atelier/audit/_components/Audit.tsx",
         "**/*.spec.ts",
         "**/*.spec.tsx",
         "tests/**/*"
