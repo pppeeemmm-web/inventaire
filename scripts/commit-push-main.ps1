@@ -89,6 +89,8 @@ if (-not $NoPush) {
   Write-Host "Pushed $head -> $Remote/$TargetBranch"
 }
 
-$truthArgs = @("-Checks", $Checks)
-if (-not $NoPush) { $truthArgs += "-RequirePushed" }
-& (Join-Path $PSScriptRoot "release-truth.ps1") @truthArgs
+$truthParams = @{
+  Checks = $Checks
+}
+if (-not $NoPush) { $truthParams.RequirePushed = $true }
+& (Join-Path $PSScriptRoot "release-truth.ps1") @truthParams
