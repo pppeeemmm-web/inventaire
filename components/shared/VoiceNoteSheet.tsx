@@ -7,6 +7,7 @@ import { createVoiceNote } from '@/app/atelier/notes/actions'
 import { VOICE_NOTE_BUCKETS, VOICE_NOTE_KINDS, type VoiceNoteBucket, type VoiceNoteKind } from '@/lib/voice-note-domain'
 import { getLiveDictationAvailability, startLiveDictation, startMicRecorder } from '@/lib/voice/web-speech'
 import { toast } from '@/lib/ui/toast'
+import { PEM_Z_INDEX } from '@/components/shared/BottomStack'
 
 type NextActionKey = 'today' | 'tomorrow' | 'week' | 'waiting' | 'none'
 
@@ -389,7 +390,7 @@ export function VoiceNoteSheet({
       style={{
         position: 'fixed',
         inset: 0,
-        zIndex: 155,
+        zIndex: PEM_Z_INDEX.voiceNoteSheet,
         background: 'rgba(0,0,0,0.45)',
         display: 'flex',
         alignItems: 'flex-end',

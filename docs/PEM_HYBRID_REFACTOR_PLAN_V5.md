@@ -196,7 +196,7 @@ The app is functionally complete; we are moving from a strict relational ledger 
 
 **Risk:** Highest slice — calendar driver is **PR count**, not LOC.
 
-**Post–Slice 3 (2026-05-23):** Tab route segmentation is **complete**. **QR Physical Bridge** on saved `WorkForm` (`WorkFormPhysicalQr` → `/atelier/works/:id`, client `qrcode`). Still open: `BottomStack`, `@container atelier`, monolith trim. Legacy `?tab=` on `/atelier` remains for: `overview`, `map`, `journal`, `system`, `portfolio`, `contacts`, `stock` (+ `site` / `analytics` aliases). Optional follow-up: segment those tabs or start Slice 4 i18n — owner chooses ([`HANDOFF_SLICE3.md`](./HANDOFF_SLICE3.md)).
+**Post–Slice 3 (2026-05-23):** Slice 3 **complete** — 16 routes, QR bridge, `BottomStack` + `PEM_Z_INDEX`, `@container atelier` + `useAtelierNarrow`, segment panels extracted (`team-portal-segment-panel.tsx`), legacy shell trimmed. Legacy `?tab=` on `/atelier`: `overview`, `map`, `journal`, `system`, `portfolio`, `contacts`, `stock` (+ `site` / `analytics`). Next: Slice 4 i18n or legacy tab segments — owner chooses ([`HANDOFF_SLICE3.md`](./HANDOFF_SLICE3.md)).
 
 ---
 

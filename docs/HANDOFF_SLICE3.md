@@ -1,17 +1,17 @@
 # Slice 3 completion handoff
 
-**Cold-start handoff** for the V5 Atelier tab route segmentation slice. Written 2026-05-23 at `9ee3efd` on `main`.
+**Cold-start handoff** for the V5 Atelier tab route segmentation slice.
 
-**Slice 3 status:** 16 tab routes ✅ · QR Physical Bridge on `WorkForm` ✅ (saved works only) · `BottomStack` / `@container atelier` / monolith trim still open.
+**Slice 3 status:** **Complete** (2026-05-23) — 16 tab routes · QR Physical Bridge · `BottomStack` · `@container atelier` portal chrome · `TeamPortalClient` monolith trim (segment panels + legacy-only branches).
 
 ---
 
 ## Boot sequence (read in order)
 
 1. [`docs/README.md`](./README.md) — doc index and truth order
-2. [`docs/PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md) — **Slice 3** section (all 16 tabs ✅)
+2. [`docs/PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md) — **Slice 3** section
 3. [`lib/atelier/tab-routes.ts`](../lib/atelier/tab-routes.ts) — `SegmentedAtelierTab`, `ATELIER_SEGMENTED_TAB_ROUTES`, `atelierTabHref`, `legacyTabRedirectPath`
-4. [`SITE_MAP.md`](../SITE_MAP.md) — § Atelier routes (segment routes + legacy `?tab=` table)
+4. [`SITE_MAP.md`](../SITE_MAP.md) — § Atelier routes
 
 ---
 
@@ -19,11 +19,12 @@
 
 | Decision | Detail |
 |----------|--------|
-| **16 segmented tabs** | Per V5 Slice 3 plan; canonical paths in `ATELIER_SEGMENTED_TAB_ROUTES` |
-| **Constellation layout** | `ConstellationCanvas` stays in `components/atelier/`; route folder has thin wrapper `app/atelier/constellation/_components/Constellation.tsx` |
-| **Legacy redirects** | `legacyTabRedirectPath` in [`app/atelier/page.tsx`](../app/atelier/page.tsx) — server `redirect()` from `?tab=<segmented>` to segment route (other query params preserved); bare `/atelier?map=` → `/atelier/constellation?map=` |
-| **Commit cadence** | One commit/push per tab on `main`; shell git only (not Cursor commit UI) |
-| **Release truth** | `pwsh scripts/release-truth.ps1` — branch, HEAD, origin/main match, working tree, checks; **no deploy SHA fields** |
+| **16 segmented tabs** | Canonical paths in `ATELIER_SEGMENTED_TAB_ROUTES` |
+| **Constellation layout** | `ConstellationCanvas` in `components/atelier/`; thin route wrapper |
+| **Legacy redirects** | `legacyTabRedirectPath` in [`app/atelier/page.tsx`](../app/atelier/page.tsx); client also replaces segmented `pem_team_tab` / `?tab=` on `/atelier` |
+| **Segment panels** | [`components/atelier/team-portal-segment-panel.tsx`](../components/atelier/team-portal-segment-panel.tsx) — lazy imports; rendered only when `routeTab` is set |
+| **Bottom chrome** | [`components/shared/BottomStack.tsx`](../components/shared/BottomStack.tsx) + `PEM_Z_INDEX` (mobile bar 50, drawer 60, dock 75, modals 80, voice 155) |
+| **Narrow shell** | `.atelier-portal-root` + `useAtelierNarrow(portalRef)` (`lib/atelier/use-atelier-narrow.ts`) |
 
 ---
 
@@ -48,40 +49,26 @@
 | audit | `/atelier/audit` |
 | constellation | `/atelier/constellation` |
 
-Each route: `app/atelier/<tab>/page.tsx` + `_components/<Tab>.tsx`, shared shell via `loadAtelierShellProps` + `TeamPortalClient` with `routeTab`.
+Each route: `app/atelier/<tab>/page.tsx` + `_components/<Tab>.tsx`, shell via `loadAtelierShellProps` + `TeamPortalClient` with `routeTab`.
 
 ---
 
 ## Remaining legacy `?tab=` (not segmented)
 
-Still served from `/atelier` via `TeamPortalClient` tab state:
+Served from `/atelier` only (no segment panel mount on legacy shell):
 
-- `overview`
-- `map`
-- `journal`
-- `system`
-- `portfolio`
-- `contacts`
-- `stock`
-- **Aliases:** `site`, `analytics` (same panels as other legacy ids where applicable)
-
-Navigation for segmented tabs uses `atelierTabHref()` → segment paths. Unmigrated tabs still use `/atelier?tab=<id>`.
+- `overview`, `map`, `journal`, `system`, `portfolio`, `contacts`, `stock`
+- Aliases: `site`, `analytics`
 
 ---
 
 ## Next work (owner chooses)
 
-**Option A — Post–Slice 3 tab cleanup**
+**Option A — Legacy tab segments** — overview, map, journal, system, portfolio, contacts, stock (+ site/analytics)
 
-- Segment remaining legacy tabs (overview, map, journal, system, portfolio, contacts, stock) using the inventory template
-- Trim dynamic imports / dead tab branches in `TeamPortalClient.tsx` as tabs move out
-- ~~QR Physical Bridge on `WorkForm`~~ — done (`WorkFormPhysicalQr`, URL `/atelier/works/:id`, scan via `/atelier/scan`)
+**Option B — V5 Slice 4 i18n** — `defineMessages` precedence in `lib/i18n/context.tsx`
 
-**Option B — V5 Slice 4 i18n**
-
-- Wire `defineMessages` precedence in `lib/i18n/context.tsx`
-- Remove ESLint `off` overrides for migrated tab components
-- See V5 Slice 4 section
+**Deferred (not Slice 3):** per-route bundle ≤250 kB audit · drawer sticky save bars in `BottomStack` (z-index documented; drawer footers stay local) · Slice 4 / Qdrant / SW
 
 ---
 
@@ -89,29 +76,16 @@ Navigation for segmented tabs uses `atelierTabHref()` → segment paths. Unmigra
 
 | Check | When |
 |-------|------|
-| `npm run typecheck` | Required after route/tab changes |
-| `npm run lint` | Required before handoff / push |
-| `npm run test:e2e:field` | Optional — hub / mobile bar / field launcher (`ATELIER_E2E=1`, logged-in dev session) |
-| Per-route 375px smoke | After new segment or chrome change |
-
----
-
-## Git state at handoff write
-
-```
-branch: main
-HEAD:   9ee3efd368281858c7dbf563bafa2a80727185e5
-origin/main: 9ee3efd368281858c7dbf563bafa2a80727185e5
-HEAD == origin/main: yes
-working tree: clean (before doc-only edits in this handoff pass)
-```
-
-Run `pwsh scripts/release-truth.ps1` before claiming pushed/release truth.
+| `npm run typecheck` | After route/tab changes |
+| `npm run lint` | Before push |
+| `npm run i18n:check` | UI/chrome changes |
+| `npm run test:e2e:field` | Optional — hub / mobile bar (`ATELIER_E2E=1`) |
 
 ---
 
 ## Related docs
 
-- [`docs/TODO.md`](./TODO.md) — backlog including optional legacy tab segments
-- [`docs/CONSTELLATION.md`](./CONSTELLATION.md) — constellation feature contract; canonical URL `/atelier/constellation?map=<uuid>`
-- [`docs/PROJECT_SYNTHESIS.md`](./PROJECT_SYNTHESIS.md) — stack onboarding
+- [`docs/TODO.md`](./TODO.md)
+- [`docs/CONSTELLATION.md`](./CONSTELLATION.md)
+
+Run `pwsh scripts/release-truth.ps1 -Checks` before claiming pushed/release truth.

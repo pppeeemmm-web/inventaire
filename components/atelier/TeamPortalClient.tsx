@@ -19,10 +19,13 @@ import { daysUntil } from '@/lib/pipeline-deadlines'
 import {
   filterEventsInDateKeyRange,
 } from '@/lib/pipeline-calendar'
-import { atelierTabHref } from '@/lib/atelier/tab-routes'
+import { atelierTabHref, isSegmentedAtelierTab } from '@/lib/atelier/tab-routes'
+import type { SegmentedAtelierTab } from '@/lib/atelier/tab-routes'
 import type { Lang } from '@/lib/i18n/dictionary'
-
+import { useAtelierNarrow } from '@/lib/atelier/use-atelier-narrow'
 import { useMediaQuery } from '@/lib/useMediaQuery'
+import { BottomStack, PEM_Z_INDEX } from '@/components/shared/BottomStack'
+import { SegmentRoutePanel } from '@/components/atelier/team-portal-segment-panel'
 import { OeuvresSubsetBanner } from '@/components/atelier/OeuvresSubsetBanner'
 import { AtelierCatalogueTotalBadge } from '@/components/atelier/AtelierCatalogueTotalBadge'
 import { WorkDrawer, type WorkDrawerGuardHandle } from '@/components/atelier/WorkDrawer'
@@ -37,7 +40,6 @@ import { mergeAtelierJunctionDerived } from '@/lib/atelier/atelier-junction-boot
 import type { ContactAddress } from '@/components/atelier/contact-editor-types'
 import { createWorkingGroupWithOeuvres } from '@/app/atelier/selection/actions'
 import { PemThemeToggle } from '@/components/PemThemeToggle'
-import { ExhibitionsTabSkeleton } from '@/components/atelier/ExhibitionsTabSkeleton'
 import { SystemTab } from '@/components/atelier/SystemTab'
 import { ContactsTab } from '@/components/atelier/ContactsTab'
 import { Skeleton } from '@/components/ui/Skeleton'
@@ -62,33 +64,20 @@ function TabPanelFallback() {
   )
 }
 
-/** Lazy tabs: ssr:false — panel JS/CSS only runs client-side; avoids hydration mismatch (React #418) */
-const InventoryTab = dynamic(() => import('@/app/atelier/inventory/_components/Inventory').then((m) => ({ default: m.Inventory })), { loading: () => <TabPanelFallback />, ssr: false })
-const Constellation = dynamic(() => import('@/app/atelier/constellation/_components/Constellation').then((m) => ({ default: m.Constellation })), { loading: () => <TabPanelFallback />, ssr: false })
-const Vault = dynamic(() => import('@/app/atelier/vault/_components/Vault').then((m) => ({ default: m.Vault })), { loading: () => <TabPanelFallback />, ssr: false })
-const ProductionTab = dynamic(() => import('@/app/atelier/production/_components/Production').then((m) => ({ default: m.Production })), { loading: () => <TabPanelFallback />, ssr: false })
-const Logistics = dynamic(() => import('@/app/atelier/logistics/_components/Logistics').then((m) => ({ default: m.Logistics })), { loading: () => <TabPanelFallback />, ssr: false })
-const SalesTab = dynamic(() => import('@/app/atelier/sales/_components/Sales').then((m) => ({ default: m.Sales })), { loading: () => <TabPanelFallback />, ssr: false })
+/** Legacy `/atelier` tabs only — segmented panels live in `team-portal-segment-panel.tsx`. */
 const WorldMapTab = dynamic(() => import('@/components/atelier/WorldMapTab').then((m) => ({ default: m.WorldMapTab })), { loading: () => <TabPanelFallback />, ssr: false })
-const PipelineTab = dynamic(() => import('@/app/atelier/pipeline/_components/Pipeline').then((m) => ({ default: m.Pipeline })), { loading: () => <TabPanelFallback />, ssr: false })
-const Fiscal = dynamic(() => import('@/app/atelier/fiscal/_components/Fiscal').then((m) => ({ default: m.Fiscal })), { loading: () => <TabPanelFallback />, ssr: false })
-const Concepts = dynamic(() => import('@/app/atelier/concepts/_components/Concepts').then((m) => ({ default: m.Concepts })), { loading: () => <TabPanelFallback />, ssr: false })
-const Exhibitions = dynamic(() => import('@/app/atelier/exhibitions/_components/Exhibitions').then((m) => ({ default: m.Exhibitions })), { loading: () => <ExhibitionsTabSkeleton />, ssr: false })
-const Themes = dynamic(() => import('@/app/atelier/themes/_components/Themes').then((m) => ({ default: m.Themes })), { loading: () => <TabPanelFallback />, ssr: false })
 const PortfolioConfigShell = dynamic(() => import('@/components/atelier/PortfolioConfigShell').then((m) => ({ default: m.PortfolioConfigShell })), { loading: () => <TabPanelFallback />, ssr: false })
 const SupplierHub = dynamic(() => import('@/components/atelier/SupplierHub').then((m) => ({ default: m.SupplierHub })), { loading: () => <TabPanelFallback />, ssr: false })
-const StockTakeTab = dynamic(() => import('@/app/atelier/stock-take/_components/StockTake').then((m) => ({ default: m.StockTake })), { loading: () => <TabPanelFallback />, ssr: false })
-const Reports = dynamic(() => import('@/app/atelier/reports/_components/Reports').then((m) => ({ default: m.Reports })), { loading: () => <TabPanelFallback />, ssr: false })
-const Audit = dynamic(() => import('@/app/atelier/audit/_components/Audit').then((m) => ({ default: m.Audit })), { loading: () => <TabPanelFallback />, ssr: false })
-const Broadcast = dynamic(() => import('@/app/atelier/broadcast/_components/Broadcast').then((m) => ({ default: m.Broadcast })), { loading: () => <TabPanelFallback />, ssr: false })
-const NotesTab = dynamic(() => import('@/app/atelier/notes/_components/Notes').then((m) => ({ default: m.Notes })), { loading: () => <TabPanelFallback />, ssr: false })
 const SessionJournalTab = dynamic(() => import('@/components/atelier/SessionJournalTab').then((m) => ({ default: m.SessionJournalTab })), { loading: () => <TabPanelFallback />, ssr: false })
 
 // ── Types ────────────────────────────────────────────────────────────
 
-type Tab =
-  | 'overview' | 'inventory' | 'reports' | 'constellation' | 'production'
-  | 'logistics' | 'sales' | 'exhibitions' | 'vault' | 'contacts' | 'map' | 'pipeline' | 'fiscal' | 'concepts' | 'themes' | 'stock' | 'stock-take' | 'notes' | 'journal' | 'system' | 'site' | 'portfolio' | 'analytics' | 'audit' | 'broadcast'
+type LegacyTab =
+  | 'overview' | 'map' | 'journal' | 'system' | 'portfolio' | 'contacts' | 'stock'
+  | 'site' | 'analytics'
+
+/** Sidebar + palette ids (segment routes + legacy query tabs). */
+type Tab = LegacyTab | SegmentedAtelierTab
 
 /** Desktop top bar + narrow drawer row — same handlers, drawer uses 44px tap targets. Ring A.1: new work lives on `MobileActionBar`, not here, when `hideNewWork`. */
 function AtelierHeaderChrome({
@@ -252,7 +241,7 @@ function MobileActionBar({
         left: 0,
         right: 0,
         bottom: 0,
-        zIndex: 50,
+        zIndex: PEM_Z_INDEX.mobileActionBar,
         display: 'grid',
         gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
         gap: 4,
@@ -623,15 +612,23 @@ export function TeamPortalClient({
       localStorage.setItem('pem_team_tab', 'constellation')
       return
     }
-    const fromUrl = params.get('tab') as Tab | null
+    const fromUrl = params.get('tab')
+    if (fromUrl && isSegmentedAtelierTab(fromUrl)) {
+      void router.replace(atelierTabHref(fromUrl))
+      return
+    }
     if (fromUrl) {
-      setTab(fromUrl)
+      setTab(fromUrl as Tab)
       localStorage.setItem('pem_team_tab', fromUrl)
       return
     }
-    const savedTab = localStorage.getItem('pem_team_tab') as Tab | null
+    const savedTab = localStorage.getItem('pem_team_tab')
+    if (savedTab && isSegmentedAtelierTab(savedTab)) {
+      void router.replace(atelierTabHref(savedTab))
+      return
+    }
     if (savedTab) {
-      setTab(savedTab)
+      setTab(savedTab as Tab)
       return
     }
     // Narrow + no saved tab: field-tool first — use segmented inventory route.
@@ -639,21 +636,6 @@ export function TeamPortalClient({
       void router.replace('/atelier/inventory')
     }
   }, [routeTab, router])
-
-  // Warm exhibitions + constellation chunks after paint — reduces flash when opening those tabs
-  useEffect(() => {
-    const run = () => {
-      void import('@/app/atelier/exhibitions/_components/Exhibitions')
-      void import('@/app/atelier/constellation/_components/Constellation')
-    }
-    let id: number | ReturnType<typeof setTimeout>
-    if (typeof requestIdleCallback !== 'undefined') {
-      id = requestIdleCallback(run, { timeout: 2500 })
-      return () => cancelIdleCallback(id as number)
-    }
-    id = setTimeout(run, 1200)
-    return () => clearTimeout(id as ReturnType<typeof setTimeout>)
-  }, [])
 
   useEffect(() => {
     setReminderCount(initialReminderUnread)
@@ -666,7 +648,8 @@ export function TeamPortalClient({
   }, [])
 
   const [showCompare, setShowCompare] = useState(false)
-  const atelierNarrow = useMediaQuery('(max-width: 767px)')
+  const portalRootRef = useRef<HTMLDivElement>(null)
+  const atelierNarrow = useAtelierNarrow(portalRootRef)
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
@@ -908,11 +891,12 @@ export function TeamPortalClient({
     { label: t('nav_group_admin'),        tabs: ['contacts', ...adminTabs] },
   ]
 
-  const showDock = selection.size > 0 && tab !== 'constellation'
+  const activeTab = routeTab ?? tab
+  const showDock = selection.size > 0 && activeTab !== 'constellation'
 
   /** Partial-catalogue strip — Inventaire only; total count stays in header. */
   const showSubsetBanner =
-    tab === 'inventory' && oeuvresCataloguePartial && oeuvresPaging != null
+    activeTab === 'inventory' && oeuvresCataloguePartial && oeuvresPaging != null
 
   const showMobileActionBar = atelierNarrow && !inspected
 
@@ -956,7 +940,11 @@ export function TeamPortalClient({
         onExportXlsx={() => { handleSetTab('reports') }}
         onRegenBible={() => { handleSetTab('system') }}
       />
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', flexDirection: 'column', background: 'var(--bg0)', overflow: 'hidden' }}>
+    <div
+      ref={portalRootRef}
+      className="atelier-portal-root"
+      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', flexDirection: 'column', background: 'var(--bg0)', overflow: 'hidden' }}
+    >
       
       <div style={{
         flexShrink: 0,
@@ -1289,7 +1277,46 @@ export function TeamPortalClient({
           }}
         >
 
-        {tab === 'overview' && (
+        {routeTab ? (
+          <SegmentRoutePanel
+            tab={routeTab}
+            oeuvres={oeuvres}
+            sortedTechniques={sortedTechniques}
+            sortedSupports={sortedSupports}
+            sortedFormats={sortedFormats}
+            sortedThemes={sortedThemes}
+            groups={groups}
+            contacts={contacts}
+            presentations={presentations}
+            tM={tM}
+            sM={sM}
+            cM={cM}
+            pM={pM}
+            locMap={locMap}
+            statusLabelMap={statusLabelMap}
+            selection={selection}
+            setSelection={setSelection}
+            onOpen={onOpen}
+            oeuvreThemeIdsByOeuvre={oeuvreThemeIdsByOeuvre}
+            oeuvreGroupIdsByOeuvre={oeuvreGroupIdsByOeuvre}
+            oeuvresPaging={oeuvresPaging}
+            onLoadMore={oeuvresNextCursor != null ? loadMoreOeuvres : undefined}
+            isAdmin={isAdmin}
+            themes={themes}
+            themeWorkCount={themeWorkCount}
+            groupWorkCount={groupWorkCount}
+            themePrivateWorks={themePrivateWorks}
+            groupPrivateWorks={groupPrivateWorks}
+            themeToGroups={themeToGroups}
+            groupToThemes={groupToThemes}
+            voiceNotesTick={voiceNotesTick}
+            initialReminders={initialReminders}
+            onRemindersMutated={() => onRemindersMutated()}
+            handleSaveGroup={handleSaveGroup}
+          />
+        ) : null}
+
+        {!routeTab && tab === 'overview' && (
           <OverviewTab
             oeuvres={oeuvres}
             tM={tM}
@@ -1306,109 +1333,8 @@ export function TeamPortalClient({
           />
         )}
 
-        {tab === 'inventory' && (
-          <InventoryTab
-            oeuvres={oeuvres}
-            techniques={sortedTechniques}
-            supports={sortedSupports}
-            formats={sortedFormats}
-            themes={sortedThemes}
-            groups={groups}
-            contacts={contacts}
-            presentations={presentations}
-            tM={tM} sM={sM} cM={cM} pM={pM} locMap={locMap}
-            statusLabelMap={statusLabelMap}
-            selection={selection}
-            setSelection={setSelection}
-            onOpen={onOpen}
-            oeuvreThemeIdsByOeuvre={oeuvreThemeIdsByOeuvre}
-            oeuvreGroupIdsByOeuvre={oeuvreGroupIdsByOeuvre}
-            oeuvresCatalogueTotal={oeuvresPaging?.totalCount}
-            onLoadMore={oeuvresNextCursor != null ? loadMoreOeuvres : undefined}
-            isAdmin={isAdmin}
-          />
-        )}
-
-        {tab === 'reports' && (
-          <div style={{ flex: 1, display: 'flex', minHeight: 0, minWidth: 0 }}>
-            <Reports
-              oeuvres={oeuvres}
-              techniques={sortedTechniques}
-              supports={sortedSupports}
-              formats={sortedFormats}
-              themes={sortedThemes}
-              groups={groups}
-              tM={tM}
-              sM={sM}
-              cM={cM}
-              pM={pM}
-              locMap={locMap}
-              statusLabelMap={statusLabelMap}
-              oeuvreThemeIdsByOeuvre={oeuvreThemeIdsByOeuvre}
-              oeuvreGroupIdsByOeuvre={oeuvreGroupIdsByOeuvre}
-              selection={selection}
-              oeuvresLoadedCount={oeuvres.length}
-              oeuvresCatalogueTotal={oeuvresPaging?.totalCount}
-            />
-          </div>
-        )}
-
-        {tab === 'constellation' && (
-          <Constellation
-            oeuvres={oeuvres}
-            tM={tM}
-            themes={sortedThemes}
-            groups={groups}
-            selection={selection}
-            setSelection={setSelection}
-            onOpen={onOpen}
-            onSaveGroup={handleSaveGroup}
-          />
-        )}
-
-        {tab === 'production' && (
-          <div style={{ flex: 1, display: 'flex', minHeight: 0, width: '100%' }}>
-            <ProductionTab
-              oeuvres={oeuvres}
-              tM={tM}
-              statusLabelMap={statusLabelMap}
-              onOpen={onOpen}
-              oeuvresPaging={oeuvresPaging}
-            />
-          </div>
-        )}
-        {tab === 'logistics' && (
-          <Logistics cM={cM} />
-        )}
-        {tab === 'sales' && (
-          <SalesTab
-            oeuvres={oeuvres}
-            statusLabelMap={statusLabelMap}
-            contacts={contacts}
-            groups={groups}
-            cM={cM}
-            tM={tM}
-          />
-        )}
-        {tab === 'exhibitions' && (
-          <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-            <Exhibitions
-              oeuvres={oeuvres}
-              contacts={contacts}
-              themes={sortedThemes}
-              tM={tM}
-              selection={selection}
-              setSelection={setSelection}
-            />
-          </div>
-        )}
-        {tab === 'vault' && (
-          <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-            <Vault oeuvres={oeuvres} tM={tM} />
-          </div>
-        )}
-        {tab === 'contacts' && <ContactsTab contacts={contacts} oeuvres={oeuvres} conflicts={conflicts} />}
-        {(tab === 'site' || tab === 'portfolio' || tab === 'analytics') && (
+        {!routeTab && tab === 'contacts' && <ContactsTab contacts={contacts} oeuvres={oeuvres} conflicts={conflicts} />}
+        {!routeTab && (tab === 'site' || tab === 'portfolio' || tab === 'analytics') && (
           <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
             <PortfolioConfigShell
               tab={tab}
@@ -1420,9 +1346,7 @@ export function TeamPortalClient({
             />
           </div>
         )}
-        {tab === 'audit' && <Audit />}
-        {tab === 'broadcast' && <Broadcast />}
-        {tab === 'map' && (
+        {!routeTab && tab === 'map' && (
           <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
             <WorldMapTab
               contacts={contacts}
@@ -1443,66 +1367,18 @@ export function TeamPortalClient({
             />
           </div>
         )}
-        {tab === 'pipeline' && (
-          <div style={{ flex: 1, display: 'flex', minHeight: 0, minWidth: 0 }}>
-            <PipelineTab
-              oeuvres={oeuvres}
-              contacts={contacts}
-              groups={groups}
-              initialReminders={initialReminders}
-              onRemindersMutated={onRemindersMutated}
-            />
-          </div>
-        )}
-        {tab === 'fiscal' && (
-          <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-            <Fiscal oeuvres={oeuvres} contacts={contacts} />
-          </div>
-        )}
-        {tab === 'themes' && (
-          <Themes
-            initialThemes={[...themes].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '', 'fr'))}
-            initialGroups={groups}
-            themeWorkCount={themeWorkCount}
-            groupWorkCount={groupWorkCount}
-            themePrivateWorks={themePrivateWorks}
-            groupPrivateWorks={groupPrivateWorks}
-            themeToGroups={themeToGroups}
-            groupToThemes={groupToThemes}
-            oeuvres={oeuvres}
-            onOpen={onOpen}
-            tM={tM}
-            oeuvresCatalogueTotal={oeuvresPaging?.totalCount}
-          />
-        )}
-
-        {tab === 'concepts' && (
-          <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-            <Concepts />
-          </div>
-        )}
-        {tab === 'stock' && (
+        {!routeTab && tab === 'stock' && (
           <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
             <SupplierHub contacts={contacts} />
           </div>
         )}
 
-        {tab === 'stock-take' && (
-          <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-            <StockTakeTab contacts={contacts} />
-          </div>
-        )}
-        {tab === 'notes' && (
-          <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-            <NotesTab refreshTick={voiceNotesTick} oeuvres={oeuvres} />
-          </div>
-        )}
-        {tab === 'journal' && (
+        {!routeTab && tab === 'journal' && (
           <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
             <SessionJournalTab />
           </div>
         )}
-        {tab === 'system' && (
+        {!routeTab && tab === 'system' && (
           <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
             <SystemTab />
           </div>
@@ -1533,31 +1409,6 @@ export function TeamPortalClient({
         presentations={presentations}
       />
 
-      {/* ── Curation Dock (non-constellation tabs with selection) ── */}
-      {showDock && (
-        <CurationDock
-          selection={selection}
-          setSelection={setSelection}
-          oeuvres={oeuvres}
-          techniques={techniques}
-          supports={supports}
-          formats={formats}
-          contacts={contacts}
-          themes={themes}
-          groups={groups}
-          tM={tM}
-          sM={sM}
-          statusLabelMap={statusLabelMap}
-          onGoConstellation={() => {
-            sessionStorage.setItem('pem_curation_trigger', 'true')
-            handleSetTab('constellation')
-          }}
-          addresses={curationAddresses}
-          onSaveGroup={handleSaveGroup}
-          onCompare={() => setShowCompare(true)}
-        />
-      )}
-
       {/* ── Compare Modal ────────────────────────────────────────── */}
       {showCompare && (
         <CompareModal
@@ -1571,23 +1422,49 @@ export function TeamPortalClient({
         />
       )}
 
-      <VoiceNoteSheet
-        open={voiceNoteSheetOpen}
-        onClose={() => setVoiceNoteSheetOpen(false)}
-        oeuvreOptions={oeuvres.map((o) => ({ OeuvreID: o.OeuvreID, Titre: o.Titre }))}
-        onSaved={() => setVoiceNotesTick((n) => n + 1)}
-      />
+      <BottomStack>
+        {showDock && (
+          <CurationDock
+            selection={selection}
+            setSelection={setSelection}
+            oeuvres={oeuvres}
+            techniques={techniques}
+            supports={supports}
+            formats={formats}
+            contacts={contacts}
+            themes={themes}
+            groups={groups}
+            tM={tM}
+            sM={sM}
+            statusLabelMap={statusLabelMap}
+            onGoConstellation={() => {
+              sessionStorage.setItem('pem_curation_trigger', 'true')
+              handleSetTab('constellation')
+            }}
+            addresses={curationAddresses}
+            onSaveGroup={handleSaveGroup}
+            onCompare={() => setShowCompare(true)}
+          />
+        )}
 
-      {showMobileActionBar && (
-        <MobileActionBar
-          t={t as (k: string) => string}
-          onCapture={() => void router.push(isAdmin ? '/atelier/session/new' : '/atelier?tab=journal')}
-          onScan={() => void router.push('/atelier/scan')}
-          onNote={() => setVoiceNoteSheetOpen(true)}
-          onReminders={openFieldReminders}
-          onNewWork={() => void router.push('/atelier/works/new')}
+        <VoiceNoteSheet
+          open={voiceNoteSheetOpen}
+          onClose={() => setVoiceNoteSheetOpen(false)}
+          oeuvreOptions={oeuvres.map((o) => ({ OeuvreID: o.OeuvreID, Titre: o.Titre }))}
+          onSaved={() => setVoiceNotesTick((n) => n + 1)}
         />
-      )}
+
+        {showMobileActionBar && (
+          <MobileActionBar
+            t={t as (k: string) => string}
+            onCapture={() => void router.push(isAdmin ? '/atelier/session/new' : '/atelier?tab=journal')}
+            onScan={() => void router.push('/atelier/scan')}
+            onNote={() => setVoiceNoteSheetOpen(true)}
+            onReminders={openFieldReminders}
+            onNewWork={() => void router.push('/atelier/works/new')}
+          />
+        )}
+      </BottomStack>
 
     </div>
   </div>

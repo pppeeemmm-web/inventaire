@@ -449,6 +449,12 @@ input, textarea, select { font: inherit; color: inherit; background: transparent
   .pub-logo-arrow { display: inline; margin-right: 4px; }
 }
 
+/* Atelier portal shell — @container atelier for narrow chrome (Slice 3) */
+.atelier-portal-root {
+  container-type: inline-size;
+  container-name: atelier;
+}
+
 /* Ring D — narrow: form controls ≥16px (iOS avoids focus zoom on small fonts) */
 @media (max-width: 767px) {
   input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='hidden']),

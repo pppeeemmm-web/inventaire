@@ -4,7 +4,7 @@
 
 | Doc | Use when |
 |-----|----------|
-| [`HANDOFF_SLICE3.md`](./HANDOFF_SLICE3.md) | **Slice 3 complete (2026-05-23):** 16 Atelier segment routes — cold-start boot sequence + next options |
+| [`HANDOFF_SLICE3.md`](./HANDOFF_SLICE3.md) | **Slice 3 complete (2026-05-23):** 16 routes + BottomStack + portal trim — boot sequence + next options |
 | [`TODO.md`](./TODO.md) | Version-controlled checklist (ops deadlines, dev blocks, optional follow-ups) |
 | [`PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md) | Active multi-slice refactor plan (Cursor execution); Slice 3 tab migration **done** |
 | [`PROJECT_SYNTHESIS.md`](./PROJECT_SYNTHESIS.md) | Onboarding: stack boundaries, broadcast chain, where truth lives |
