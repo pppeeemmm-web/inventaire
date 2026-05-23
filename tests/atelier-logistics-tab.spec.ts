@@ -11,7 +11,7 @@ test.describe('Atelier Logistics tab', () => {
   )
 
   test('Logistics tab shows shell and dictionary-backed copy (FR default)', async ({ page }) => {
-    await page.goto('/atelier?tab=logistics', { waitUntil: 'domcontentloaded' })
+    await page.goto('/atelier/logistics', { waitUntil: 'domcontentloaded' })
     const root = page.getByTestId('atelier-logistics-root')
     await expect(root).toBeVisible({ timeout: 45_000 })
     await expect(root.getByText('Logistique', { exact: true })).toBeVisible()

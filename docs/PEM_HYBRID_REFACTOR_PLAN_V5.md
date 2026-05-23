@@ -176,7 +176,7 @@ The app is functionally complete; we are moving from a strict relational ledger 
 8. ✅ `exhibitions` → `app/atelier/exhibitions/page.tsx` + `_components/Exhibitions.tsx` — **done** (2026-05-23)
 9. ✅ `concepts` → `app/atelier/concepts/page.tsx` + `_components/Concepts.tsx` — **done** (2026-05-23)
 10. ✅ `themes` → `app/atelier/themes/page.tsx` + `_components/Themes.tsx` — **done** (2026-05-23)
-11. `logistics`
+11. ✅ `logistics` → `app/atelier/logistics/page.tsx` + `_components/Logistics.tsx` — **done** (2026-05-23)
 12. `vault`
 13. `fiscal`
 14. `broadcast`
