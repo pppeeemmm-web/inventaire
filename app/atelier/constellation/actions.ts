@@ -10,6 +10,11 @@ import {
   type ConstellationMapDocument,
   isConstellationMapDocument,
 } from '@/lib/constellation-map-document'
+import {
+  collectRelationNodeIds,
+  dbEntityToEntityRow,
+} from '@/lib/graph/entity-rows'
+import type { EntityRow, GraphRelationRow } from '@/lib/graph/node-ref'
 
 export interface ConstellationMapRow {
   id: string
@@ -33,14 +38,9 @@ export type SimpleResult = { error: string } | { ok: true }
 
 /** Rows for constellation graph reload (matches prior client `createClient()` selects). */
 export interface ConstellationGraphBundle {
-  relations: {
-    id: string
-    source_id: number | null
-    target_id: number | null
-    relation_type: string | null
-    strength: number | null
-    description: string | null
-  }[]
+  relations: GraphRelationRow[]
+  /** Endpoints for uid-backed edges (themes, contacts, sync relations). */
+  entities: EntityRow[]
   oeuvreThemes: { oeuvre_id: number; theme_id: number }[]
   workingGroupWork: { oeuvre_id: number; group_id: string }[]
 }
@@ -75,7 +75,7 @@ export async function fetchConstellationGraphBundle(): Promise<ConstellationGrap
   const [relsRes, otRes, wgRes] = await Promise.all([
     supabase
       .from('tblrelations')
-      .select('id, source_id, target_id, relation_type, strength, description')
+      .select('id, source_id, target_id, source_uid, target_uid, relation_type, strength, description')
       .range(0, 9999),
     supabase.from('oeuvre_theme').select('oeuvre_id, theme_id').range(0, 49999),
     supabase.from('working_group_work').select('oeuvre_id, group_id').range(0, 49999),
@@ -84,10 +84,25 @@ export async function fetchConstellationGraphBundle(): Promise<ConstellationGrap
   if (otRes.error) return { error: otRes.error.message }
   if (wgRes.error) return { error: wgRes.error.message }
 
+  const relations = (relsRes.data ?? []) as GraphRelationRow[]
+  const nodeIds = collectRelationNodeIds(relations)
+  let entities: EntityRow[] = []
+  if (nodeIds.length > 0) {
+    const { data: entityRows, error: entErr } = await supabase
+      .from('entity')
+      .select('node_id, node_type, source_pk, created_at, display_label, title, is_public, legacy_int_id, legacy_uuid')
+      .in('node_id', nodeIds)
+    if (entErr) return { error: entErr.message }
+    entities = (entityRows ?? [])
+      .map((row) => dbEntityToEntityRow(row))
+      .filter((row): row is EntityRow => row != null)
+  }
+
   return {
     ok: true,
     bundle: {
-      relations: (relsRes.data ?? []) as ConstellationGraphBundle['relations'],
+      relations,
+      entities,
       oeuvreThemes: (otRes.data ?? []) as ConstellationGraphBundle['oeuvreThemes'],
       workingGroupWork: (wgRes.data ?? []) as ConstellationGraphBundle['workingGroupWork'],
     },
@@ -102,14 +117,23 @@ export async function insertConstellationRelation(payload: {
   const { error: authErr, supabase } = await guardTeam()
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
 
+  const [{ data: sourceUid, error: srcErr }, { data: targetUid, error: tgtErr }] = await Promise.all([
+    supabase.rpc('graph_node_id', { p_type: 'oeuvre', p_pk: String(payload.source_id) }),
+    supabase.rpc('graph_node_id', { p_type: 'oeuvre', p_pk: String(payload.target_id) }),
+  ])
+  if (srcErr) return { error: srcErr.message }
+  if (tgtErr) return { error: tgtErr.message }
+
   const { data, error } = await supabase
     .from('tblrelations')
     .insert({
       source_id: payload.source_id,
       target_id: payload.target_id,
+      source_uid: sourceUid,
+      target_uid: targetUid,
       relation_type: payload.relation_type,
     })
-    .select('id, source_id, target_id, relation_type, strength, description')
+    .select('id, source_id, target_id, source_uid, target_uid, relation_type, strength, description')
     .single()
   if (error || !data) return { error: error?.message ?? 'Insert failed' }
   return { ok: true, row: data as ConstellationRelationRow }

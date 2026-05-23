@@ -653,11 +653,19 @@ export function ConstellationCanvas({
       redraw()
       return
     }
-    const { relations: rels, oeuvreThemes: ot, workingGroupWork: wg } = result.bundle
+    const { relations: rels, entities: _graphEntities, oeuvreThemes: ot, workingGroupWork: wg } = result.bundle
+    void _graphEntities // hydrated for future multi-type layout; canvas still oeuvre–oeuvre positions
 
     edgesRef.current = (rels ?? [])
-      .filter(r => r.source_id && r.target_id)
-      .map(r => ({ id: r.id, source: r.source_id!, target: r.target_id!, relation_type: r.relation_type, strength: r.strength, description: r.description }))
+      .filter((r) => r.source_id != null && r.target_id != null)
+      .map((r) => ({
+        id: r.id,
+        source: r.source_id!,
+        target: r.target_id!,
+        relation_type: r.relation_type,
+        strength: r.strength,
+        description: r.description,
+      }))
 
     const tw = new Map<number, Set<number>>()
     for (const row of (ot ?? [])) {

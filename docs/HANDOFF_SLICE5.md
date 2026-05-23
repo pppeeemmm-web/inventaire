@@ -35,10 +35,11 @@
 
 ---
 
-## App follow-ups (post–gen:types)
+## App (on `main`)
 
-- Extend `fetchConstellationGraphBundle` to `select` `source_uid`, `target_uid`; hydrate via `entity` for multi-type glyphs ([`CONSTELLATION.md`](./CONSTELLATION.md)).
-- Constellation canvas still uses oeuvre integer positions for **manual** edges (`source_id` + `target_id`); uid-only synced edges (`theme`, `buyer`, …) need multi-type layout (Slice 5 UI tail or Slice 6).
+- `fetchConstellationGraphBundle` selects `source_uid` / `target_uid` and hydrates `entity` rows into `bundle.entities`.
+- `insertConstellationRelation` sets `source_uid` / `target_uid` via `graph_node_id` RPC.
+- Constellation canvas still draws **oeuvre–oeuvre** edges only; `bundle.entities` is ready for multi-type glyphs (Slice 6 / canvas tail).
 - **No app dual-writes** to `nodes` or sync edges — triggers own the graph.
 
 ---
