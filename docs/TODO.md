@@ -121,6 +121,7 @@ _Version-controlled checklist + non-binding roadmap items. Prefer this file over
 
 - [x] **Slice 3 — Atelier tab route segmentation** (2026-05-23) — 16 segment routes, QR bridge, `BottomStack`, `@container atelier` portal chrome, `TeamPortalClient` trim. Handoff: [`HANDOFF_SLICE3.md`](./HANDOFF_SLICE3.md).
 - [x] **Slice 3B — Legacy tab segments** (2026-05-23) — `overview`, `map`, `journal`, `system`, `portfolio`, `contacts`, `stock`, `site`, `analytics`; `/atelier` → overview; `OverviewTab` extract. Handoff: [`HANDOFF_SLICE3.md`](./HANDOFF_SLICE3.md).
+- [ ] **Slice 5 — Graph foundation** — SQL in [`supabase/sql/graph_foundation/`](../supabase/sql/graph_foundation/); `lib/graph/node-ref.ts`. **Apply SQL on Supabase**, then `npm run gen:types`. Handoff: [`HANDOFF_SLICE5.md`](./HANDOFF_SLICE5.md).
 
 **Optional backlog (post–Slice 3, owner chooses vs Slice 4 i18n):**
 
@@ -133,9 +134,9 @@ _Version-controlled checklist + non-binding roadmap items. Prefer this file over
 - [x] **i18n CI ratchet** — `i18n:check` fails on blocking hardcoded hotspots; allowlist synced with ESLint overrides (`scripts/i18n-check-allowlist.json`); `.github/workflows/ci.yml`.
 - [x] **Slice 4 (panels)** — allowlist empty; `CurationPanel`, `PortfolioConfigShell`, `WorldMapTab` migrated (2026-05-23).
 
-**V5 sequence (locked):** Slice 4 ✓ → Slice 3B ✓ → **Slice 5 graph** next.
+**V5 sequence (locked):** Slice 4 ✓ → Slice 3B ✓ → Slice 5 SQL **in repo** (apply on Supabase + `gen:types`) → Slice 8 embeddings.
 
-Active plan: [`PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md) — **Slice 5** ([`HANDOFF_SLICE3.md`](./HANDOFF_SLICE3.md) for tab routes).
+Active plan: [`PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md) — **Slice 5** handoff: [`HANDOFF_SLICE5.md`](./HANDOFF_SLICE5.md).
 
 ## Guardrails (not tasks)
 
