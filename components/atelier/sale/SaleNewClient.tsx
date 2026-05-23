@@ -250,7 +250,7 @@ export function SaleNewClient({ works, contacts, groups, groupLinks, statuses, t
             <Link className="btn primary" href="/hub" style={actionButtonStyle}>
               {t('sale_mobile_done_hub')}
             </Link>
-            <Link className="btn ghost" href="/atelier?tab=sales" style={actionButtonStyle}>
+            <Link className="btn ghost" href="/atelier/sales" style={actionButtonStyle}>
               {t('sale_mobile_done_sales')}
             </Link>
           </div>

@@ -75,7 +75,7 @@
 
 Stay in `app/`. New: `lib/error-reporter/`, `eslint-rules/no-silent-catch.js`, `supabase/sql/graph_foundation/`, `public/sw/`, `lib/sw-install/`, `lib/graph/node-ref.ts`, `components/shared/BottomStack.tsx`.
 
-**Slice 3 correction:** Tab routes like `app/atelier/inventory/page.tsx` **do not exist yet** — only verb routes (`share-triage`, `capture`, `works/new`, …). Slice 3 **creates** `app/atelier/<tab>/` + `_components/`, not “move into existing folders.”
+**Slice 3 correction:** Tab routes like `app/atelier/inventory/page.tsx` are created incrementally (Slice 3). **`/atelier/inventory`** landed 2026-05-23; other tabs still use `?tab=` on `/atelier` until migrated. Verb routes (`share-triage`, `capture`, `works/new`, …) unchanged.
 
 ---
 
@@ -192,8 +192,8 @@ Stay in `app/`. New: `lib/error-reporter/`, `eslint-rules/no-silent-catch.js`, `
 **Goal:** Split monolith tabs into routes; fix bottom-of-viewport collisions; optional WorkForm decomposition.
 
 **Tab migration order (one PR each):**
-1. `inventory` (template)
-2. `sales`
+1. ✅ `inventory` (template) — **done** 2026-05-23
+2. ✅ `sales` — **done** 2026-05-23
 3. `pipeline`
 4. `production`
 5. `stock-take`
@@ -312,7 +312,9 @@ Stay in `app/`. New: `lib/error-reporter/`, `eslint-rules/no-silent-catch.js`, `
 
 | Area | Path |
 |------|------|
-| Atelier bootstrap | `app/atelier/page.tsx` |
+| Atelier bootstrap | `app/atelier/page.tsx`, `lib/atelier/load-atelier-shell-props.ts` |
+| Inventory tab (Slice 3) | `app/atelier/inventory/page.tsx`, `app/atelier/inventory/_components/Inventory.tsx` |
+| Sales tab (Slice 3) | `app/atelier/sales/page.tsx`, `app/atelier/sales/_components/Sales.tsx` |
 | Monolith | `components/atelier/TeamPortalClient.tsx` |
 | Constellation | `components/atelier/ConstellationCanvas.tsx`, `app/atelier/constellation/actions.ts` |
 | Work form | `components/atelier/WorkForm.tsx` |

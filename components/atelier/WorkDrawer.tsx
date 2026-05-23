@@ -17,7 +17,7 @@ import { DrawerContent } from './work-drawer/DrawerContent'
 
 /* ──────────────────────────────────────────────────────────────────
    WorkDrawer — unified detail panel.
-   mode='panel'   → inline flex panel (InventoryTab Aperçu)
+   mode='panel'   → inline flex panel (Inventory Aperçu)
    mode='overlay'  → fixed right-rail overlay (TeamPortalClient)
    ────────────────────────────────────────────────────────────────── */
 

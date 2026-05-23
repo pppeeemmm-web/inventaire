@@ -18,7 +18,7 @@
     },
     {
       "files": [
-        "components/atelier/SalesTab.tsx",
+        "app/atelier/sales/_components/Sales.tsx",
         "components/atelier/FiscalTab.tsx",
         "components/atelier/VaultTab.tsx",
         "components/atelier/ExhibitionsTab.tsx",

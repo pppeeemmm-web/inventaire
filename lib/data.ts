@@ -231,7 +231,7 @@ export function statusDrawerShowCommercialEffectiveSplit(
   return commercialPipelineSegmentId(o, statusLabelMap) !== effectivePipelineSegmentId(o, statusLabelMap)
 }
 
-/** Color for a StatusKey — used for row/grid tinting in InventoryTab */
+/** Color for a StatusKey — used for row/grid tinting in Inventory */
 export function statusColor(key: StatusKey): string {
   switch (key) {
     case 'en_production':   return 'var(--rust)'

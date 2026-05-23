@@ -68,7 +68,7 @@ const ConstellationCanvas = dynamic(() => import('@/components/atelier/Constella
 const VaultTab = dynamic(() => import('@/components/atelier/VaultTab').then((m) => ({ default: m.VaultTab })), { loading: () => <TabPanelFallback />, ssr: false })
 const ProductionTab = dynamic(() => import('@/components/atelier/ProductionTab').then((m) => ({ default: m.ProductionTab })), { loading: () => <TabPanelFallback />, ssr: false })
 const LogisticsTab = dynamic(() => import('@/components/atelier/LogisticsTab').then((m) => ({ default: m.LogisticsTab })), { loading: () => <TabPanelFallback />, ssr: false })
-const SalesTab = dynamic(() => import('@/components/atelier/SalesTab').then((m) => ({ default: m.SalesTab })), { loading: () => <TabPanelFallback />, ssr: false })
+const SalesTab = dynamic(() => import('@/app/atelier/sales/_components/Sales').then((m) => ({ default: m.Sales })), { loading: () => <TabPanelFallback />, ssr: false })
 const WorldMapTab = dynamic(() => import('@/components/atelier/WorldMapTab').then((m) => ({ default: m.WorldMapTab })), { loading: () => <TabPanelFallback />, ssr: false })
 const PipelineTab = dynamic(() => import('@/components/atelier/PipelineTab').then((m) => ({ default: m.PipelineTab })), { loading: () => <TabPanelFallback />, ssr: false })
 const FiscalTab = dynamic(() => import('@/components/atelier/FiscalTab').then((m) => ({ default: m.FiscalTab })), { loading: () => <TabPanelFallback />, ssr: false })

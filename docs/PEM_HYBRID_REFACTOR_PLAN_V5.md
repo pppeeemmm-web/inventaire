@@ -31,7 +31,7 @@ V3 was a planning doc; V5 is the executable plan after the codebase audit + the 
 - Share target + triage already exist (`app/manifest.ts`, `app/atelier/share-triage/`, `ShareTriageClient.tsx`). Slice 2 is now incremental — filename → Titre seed, hub tile, capture removal — not greenfield.
 - 7 files still use `capture="environment"` (4 unconditional, 3 narrow-only).
 - 8 `.messages.ts` files exist under `lib/i18n/messages/` but `lib/i18n/context.tsx` has no precedence wiring yet.
-- 11 atelier route directories contain only `actions.ts` — `page.tsx` files don't exist.
+- 11 atelier route directories contain only `actions.ts` — `page.tsx` files don't exist (except **`/atelier/inventory`** — Slice 3 PR 1 landed 2026-05-23).
 - No `public.nodes`, no `tblrelations` node FKs, no `entity`/`edge_fact` views, no embedding columns anywhere.
 - `npm run typecheck` is already clean — Slice 0b fallout will be small.
 
@@ -166,8 +166,8 @@ The app is functionally complete; we are moving from a strict relational ledger 
 **Goal:** Split monolith `components/atelier/TeamPortalClient.tsx` (2188 LOC) into route segments. Introduce the Physical-to-Digital Bridge via QR codes.
 
 **Tab migration order** (one PR each):
-1. `inventory` (template) → `app/atelier/inventory/page.tsx` + `_components/Inventory.tsx`
-2. `sales`
+1. ✅ `inventory` (template) → `app/atelier/inventory/page.tsx` + `_components/Inventory.tsx` — **done** (`8590d04` + `f7b8621`, 2026-05-23)
+2. ✅ `sales` → `app/atelier/sales/page.tsx` + `_components/Sales.tsx` — **done** (2026-05-23)
 3. `pipeline`
 4. `production`
 5. `stock-take`
@@ -204,7 +204,7 @@ The app is functionally complete; we are moving from a strict relational ledger 
 
 **Scope:**
 - Wire the 8 existing files in `lib/i18n/messages/` into the context: lookup messages first, fall back to `dict[lang][key]`, `logWarn` on both-miss.
-- Remove `off` overrides for tabs as they're migrated: `ExhibitionsTab`, `FiscalTab`, `InventoryTab`, `CurationPanel`, `PortfolioConfigShell`.
+- Remove `off` overrides for tabs as they're migrated: `ExhibitionsTab`, `FiscalTab`, ~~`InventoryTab`~~ (`Inventory.tsx` migrated — override path updated), `CurationPanel`, `PortfolioConfigShell`.
 - Tighten `no-hardcoded-jsx-text` for FR leaks.
 - New copy added in Slices 2 / 0a / 3 must use `defineMessages` — do not extend the legacy dictionary.
 
@@ -418,7 +418,9 @@ Wrap the function return in `nullif(trim(…), '')` so all-empty inputs return `
 
 | Area | Path |
 |------|------|
-| Atelier bootstrap | `app/atelier/page.tsx` |
+| Atelier bootstrap | `app/atelier/page.tsx`, `lib/atelier/load-atelier-shell-props.ts` |
+| Inventory tab (Slice 3) | `app/atelier/inventory/page.tsx`, `app/atelier/inventory/_components/Inventory.tsx`, `lib/atelier/tab-routes.ts` |
+| Sales tab (Slice 3) | `app/atelier/sales/page.tsx`, `app/atelier/sales/_components/Sales.tsx` |
 | Monolith to split | `components/atelier/TeamPortalClient.tsx` (2188 LOC) |
 | WorkForm | `components/atelier/WorkForm.tsx` (1243 LOC) |
 | Constellation | `components/atelier/ConstellationCanvas.tsx` (3013 LOC), `app/atelier/constellation/actions.ts` |

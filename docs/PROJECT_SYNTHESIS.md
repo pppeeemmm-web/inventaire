@@ -145,7 +145,9 @@ From repo root: `pwsh scripts/dev.ps1` (frees port 3000, prints LAN URL for mobi
 | Area | Where |
 |------|--------|
 | Atelier shell + tabs + drawer | `components/atelier/TeamPortalClient.tsx` |
-| Big parallel data load | `app/atelier/page.tsx` |
+| Inventory tab (Slice 3) | `app/atelier/inventory/page.tsx`, `app/atelier/inventory/_components/Inventory.tsx` |
+| Sales tab (Slice 3) | `app/atelier/sales/page.tsx`, `app/atelier/sales/_components/Sales.tsx` |
+| Big parallel data load | `app/atelier/page.tsx`, `lib/atelier/load-atelier-shell-props.ts` |
 | Work create | `app/atelier/works/new`, `WorkForm.tsx` |
 | Work edit (canonical) | `WorkDrawer.tsx` + `?work=` deep link |
 | Work mutations + images | `app/atelier/works/actions.ts` |

@@ -1,6 +1,6 @@
 'use client'
 
-// SalesTab — KPI stats + order list + new order modal form.
+// Sales — KPI stats + order list + new order modal form.
 
 import { useMemo, useState, useEffect, useCallback, useRef } from 'react'
 import { addCalendarDaysIso } from '@/lib/sale-return-window'
@@ -11,9 +11,9 @@ import type { Agg, Dim } from '@/lib/pivot'
 import { createSaleOrder, updateOrderStatut, deleteSaleOrder, fetchOrders, regenerateOrderPdf, type SaleOrderRow, type PaymentRow, skipSaleReturnWindow, updateSaleReturnFields } from '@/app/atelier/sales/actions'
 import { getSignedUrl } from '@/app/atelier/vault/actions'
 import { stringifyError } from '@/lib/error'
-import { WorkThumb } from './WorkThumb'
+import { WorkThumb } from '@/components/atelier/WorkThumb'
 import { useUnsavedCloseGuard } from '@/hooks/useUnsavedCloseGuard'
-import { PivotPanel } from './PivotPanel'
+import { PivotPanel } from '@/components/atelier/PivotPanel'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 
 // ── Types ────────────────────────────────────────────────────
@@ -59,7 +59,7 @@ const pulseAnim = `
 
 // ── Component ────────────────────────────────────────────────
 
-export function SalesTab({ oeuvres, statusLabelMap, contacts, groups, cM, tM }: Props) {
+export function Sales({ oeuvres, statusLabelMap, contacts, groups, cM, tM }: Props) {
   const { t, lang } = useI18n()
   const narrow = useMediaQuery('(max-width: 767px)')
   const [orders,    setOrders]    = useState<SaleOrderRow[]>([])

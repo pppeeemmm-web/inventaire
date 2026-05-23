@@ -56,6 +56,6 @@ All 5 remaining tasks from the Phase 2 handover doc:
 - [`app/api/inventory/broadcast/queue/route.ts`](../app/api/inventory/broadcast/queue/route.ts)
 - [`app/api/inventory/broadcast/confirm/route.ts`](../app/api/inventory/broadcast/confirm/route.ts)
 - [`app/api/inventory/broadcast/event/route.ts`](../app/api/inventory/broadcast/event/route.ts)
-- [`components/atelier/InventoryTab.tsx`](../components/atelier/InventoryTab.tsx) — `◉` chip toggles `broadcast_ready`
+- [`app/atelier/inventory/_components/Inventory.tsx`](../app/atelier/inventory/_components/Inventory.tsx) — `◉` chip toggles `broadcast_ready`
 - [`supabase/sql/broadcast_phase2.sql`](../supabase/sql/broadcast_phase2.sql) — Phase 2 migration
 - [`supabase/sql/oeuvre_broadcasts.sql`](../supabase/sql/oeuvre_broadcasts.sql) — Phase 1 migration
