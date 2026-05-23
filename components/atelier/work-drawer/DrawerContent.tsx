@@ -45,6 +45,7 @@ import { DrawerWorkSessionsSection } from './DrawerWorkSessionsSection'
 import { DrawerContentGroupsSection } from './DrawerContentGroupsSection'
 import { setsEqualNum, setsEqualStr } from './drawer-content-utils'
 import { CreatableSelect, FIS, Label, SectionTitle, Switch, WfSwitch, cap } from './drawer-widgets'
+import { WorkFormPhysicalQr } from '@/components/atelier/WorkFormPhysicalQr'
 
 function withCacheKey(src: string, cacheKey?: string): string {
   if (!src || !cacheKey) return src
@@ -1102,6 +1103,8 @@ export function DrawerContent({
         drawerDeleteImage={drawerDeleteImage}
         drawerStartRetouch={drawerStartRetouch}
       />
+
+      <WorkFormPhysicalQr oeuvreId={o.OeuvreID} titre={titre || o.Titre} />
 
       {/* Title (inline edit) */}
       <input
