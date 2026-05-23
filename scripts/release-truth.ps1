@@ -2,9 +2,7 @@ param(
   [string]$Remote = "origin",
   [string]$Branch = "main",
   [string]$Checks = "",
-  [string]$DeploySha = "",
-  [switch]$RequirePushed,
-  [switch]$RequireDeploy
+  [switch]$RequirePushed
 )
 
 $ErrorActionPreference = "Stop"
@@ -45,19 +43,8 @@ $dirty = Git-Text @("status", "--porcelain")
 $ahead = Git-Text @("rev-list", "--count", "$remoteRef..HEAD")
 $behind = Git-Text @("rev-list", "--count", "HEAD..$remoteRef")
 
-if ([string]::IsNullOrWhiteSpace($DeploySha) -and -not [string]::IsNullOrWhiteSpace($env:VERCEL_GIT_COMMIT_SHA)) {
-  $DeploySha = $env:VERCEL_GIT_COMMIT_SHA
-}
-
 $headEqualsRemote = ($headSha -eq $remoteSha)
 $workingTree = if ([string]::IsNullOrWhiteSpace($dirty)) { "clean" } else { "dirty" }
-$deployStatus = if ([string]::IsNullOrWhiteSpace($DeploySha)) {
-  "unknown"
-} elseif ($DeploySha -eq $remoteSha) {
-  "matches origin/main"
-} else {
-  "differs from origin/main"
-}
 
 Write-Output "Release Truth"
 Write-Output "-------------"
@@ -70,8 +57,6 @@ Write-Field "ahead" $ahead
 Write-Field "behind" $behind
 Write-Field "working tree" $workingTree
 Write-Field "checks" $(if ([string]::IsNullOrWhiteSpace($Checks)) { "not provided" } else { $Checks })
-Write-Field "deploy SHA" $(if ([string]::IsNullOrWhiteSpace($DeploySha)) { "not provided" } else { $DeploySha })
-Write-Field "deploy status" $deployStatus
 
 if (-not [string]::IsNullOrWhiteSpace($dirty)) {
   Write-Output ""
@@ -80,23 +65,7 @@ if (-not [string]::IsNullOrWhiteSpace($dirty)) {
   Write-Output $dirty
 }
 
-$failed = $false
-
 if ($RequirePushed -and -not $headEqualsRemote) {
   Write-Error "Required pushed state failed: HEAD does not equal $remoteRef."
-  $failed = $true
-}
-
-if ($RequireDeploy) {
-  if ([string]::IsNullOrWhiteSpace($DeploySha)) {
-    Write-Error "Required deploy state failed: deploy SHA was not provided."
-    $failed = $true
-  } elseif ($DeploySha -ne $remoteSha) {
-    Write-Error "Required deploy state failed: deploy SHA does not equal $remoteRef."
-    $failed = $true
-  }
-}
-
-if ($failed) {
   exit 1
 }

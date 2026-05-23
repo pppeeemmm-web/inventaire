@@ -14,7 +14,7 @@ Use exact status wording:
 - `local draft`: files changed but not committed.
 - `committed locally`: commit exists locally but is not proven on `origin/main`.
 - `pushed to origin/main`: `HEAD == origin/main` after fetch.
-- `deployed`: production deploy SHA equals `origin/main`.
+- `deployed`: production is serving the intended release (prove outside `release-truth.ps1`).
 - `verified`: named checks ran and passed in this session.
 
 If evidence is missing or a tool is blocked, say:
@@ -29,6 +29,7 @@ Before final completion wording, include or derive from `scripts/release-truth.p
 - whether `HEAD == origin/main`
 - working tree state
 - checks run
-- deploy SHA when claiming online/deployed
+
+`deployed` / `online` is not inferred from this script — use separate production evidence if you claim it.
 
 If any required evidence is absent, report the narrower truthful status instead of completion.

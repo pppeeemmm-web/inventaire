@@ -35,12 +35,12 @@ Repo operating guide. If conflict: ask owner before edit.
 - UI/copy changes: `npm run i18n:check`, `npm run lint`; add `npm run test:e2e:field` for mobile field chrome or `/hub` entry changes when a logged-in dev session is available.
 - Type/data flow changes: `npm run typecheck`, `npm run lint`; add focused Playwright where user-facing behavior changed.
 - SQL/RLS/storage changes: apply or review migration path, audit `GRANT` + RLS, run `npm run gen:types` after SQL is live, then `npm run typecheck`.
-- Before any push/production claim: run `pwsh scripts/release-truth.ps1` with checks/deploy SHA evidence appropriate to the claim.
+- Before any push claim: run `pwsh scripts/release-truth.ps1` with `-Checks` when checks ran in-session.
 
 ## Final / Git Discipline
 - Start: `git status --short --branch`.
 - Finish: `git status --short --branch` + `git log --oneline origin/main..HEAD`.
-- Before completion wording, run or derive the same fields as `pwsh scripts/release-truth.ps1`: branch, HEAD SHA, origin/main SHA, HEAD==origin/main, working tree, checks, deploy SHA when claiming online/deployed.
+- Before completion wording, run or derive the same fields as `pwsh scripts/release-truth.ps1`: branch, HEAD SHA, origin/main SHA, HEAD==origin/main, working tree, checks. Claiming `deployed`/`online` needs separate production evidence (not from this script).
 - Push only when owner requested commit/push. If `main` is ahead but push was not requested, say `committed locally` or `local draft` as applicable. If not on `origin/main`: say local draft.
 - Status words must be exact: `local draft`, `committed locally`, `pushed to origin/main`, `deployed`, or `verified`. Do not widen the claim beyond the evidence.
 - Never destructive git (`reset --hard`, `checkout --`, force push) unless owner explicitly approves.
