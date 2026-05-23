@@ -4,6 +4,8 @@
 
 **Slice 3 status:** **Complete** (2026-05-23) — 16 tab routes · QR Physical Bridge · `BottomStack` · `@container atelier` portal chrome · `TeamPortalClient` monolith trim (segment panels + legacy-only branches).
 
+**Follow-on:** Slice 4 i18n (core + CI ratchet shipped) — see [`HANDOFF_SLICE4.md`](./HANDOFF_SLICE4.md).
+
 ---
 
 ## Boot sequence (read in order)
@@ -66,9 +68,11 @@ Served from `/atelier` only (no segment panel mount on legacy shell):
 
 **Option A — Legacy tab segments** — overview, map, journal, system, portfolio, contacts, stock (+ site/analytics)
 
-**Option B — V5 Slice 4 i18n** — `defineMessages` precedence in `lib/i18n/context.tsx`
+**Option B — Slice 4 panels** — migrate allowlisted copy in `CurationPanel`, `PortfolioConfigShell`, `ContactEditorPanel`, `WorldMapTab` ([`HANDOFF_SLICE4.md`](./HANDOFF_SLICE4.md))
 
-**Deferred (not Slice 3):** per-route bundle ≤250 kB audit · drawer sticky save bars in `BottomStack` (z-index documented; drawer footers stay local) · Slice 4 / Qdrant / SW · **atelier shell reload per segment tab** (post–V5 — [`PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md) § Post–V5 backlog)
+**Option C — Slice 5** — graph foundation (`public.nodes`, …)
+
+**Deferred (not Slice 3):** per-route bundle ≤250 kB audit · drawer sticky save bars in `BottomStack` (z-index documented; drawer footers stay local) · Qdrant / SW · **atelier shell reload per segment tab** (post–V5 — [`PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md) § Post–V5 backlog)
 
 ---
 
@@ -78,13 +82,14 @@ Served from `/atelier` only (no segment panel mount on legacy shell):
 |-------|------|
 | `npm run typecheck` | After route/tab changes |
 | `npm run lint` | Before push |
-| `npm run i18n:check` | UI/chrome changes |
+| `npm run i18n:check` | UI/chrome changes (**blocking** on hardcoded copy outside allowlist — see Slice 4 handoff) |
 | `npm run test:e2e:field` | Optional — hub / mobile bar (`ATELIER_E2E=1`) |
 
 ---
 
 ## Related docs
 
+- [`docs/HANDOFF_SLICE4.md`](./HANDOFF_SLICE4.md) — i18n precedence + CI ratchet
 - [`docs/TODO.md`](./TODO.md)
 - [`docs/CONSTELLATION.md`](./CONSTELLATION.md)
 

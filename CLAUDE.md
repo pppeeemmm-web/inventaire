@@ -25,14 +25,15 @@ Repo operating guide. If conflict: ask owner before edit.
 - Dev: `pwsh scripts/dev.ps1` from `C:\Users\pppee\Documents\Claude\Projects\Art db\app`. Prints `Phone : http://<LAN>:3000` for Wi‑Fi testing.
 - Phone/LAN dev: use `DEV_AUTO_LOGIN_*` in `.env.local` and open `/hub` on the LAN URL — do not use Google OAuth on `192.168.*` unless that URL is in Supabase Auth redirect allowlist (otherwise login returns to production). Use your **real PEM account email** in `DEV_AUTO_LOGIN_EMAIL` (with a dev password on that Supabase user) if you need the same `work_session` rows as production; a separate `dev@…` user only sees its own (often empty) drafts.
 - `work_session` journal: any `is_team()` user can **read** all team sessions; writes stay session-owner or admin. If journal looks empty for team members, run `supabase/sql/work_session_team_read.sql` on the project DB.
-- Checks: `npm run i18n:check`, `npm run typecheck`, `npm run lint`. Hooks are not a substitute for manual verification.
+- Checks: `npm run i18n:check`, `npm run typecheck`, `npm run lint`. GitHub `ci.yml` runs all three on `main`. Hooks are not a substitute for manual verification.
+- `i18n:check`: fails on missing legacy dict keys **and** hardcoded UI copy outside [`scripts/i18n-check-allowlist.json`](scripts/i18n-check-allowlist.json) (keep in sync with `.eslintrc.json` `no-hardcoded-jsx-text` overrides).
 - E2E: `npm run test:e2e`; field/mobile gated: `npm run test:e2e:field` (`ATELIER_E2E=1`, logged-in dev profile).
 - Supabase types: `npm run gen:types` after SQL applied; needs `SUPABASE_ACCESS_TOKEN` + `NEXT_PUBLIC_SUPABASE_URL` in `.env.local`.
 - Dev server: Next.js 15, port 3000. If `/_next/static/*` 404: restart dev from real root; delete `.next`; hard reload.
 
 ## Verification Tiers
 - Docs-only: review diff + `git status --short --branch`; run heavier checks only if docs drive generated code or routes.
-- UI/copy changes: `npm run i18n:check`, `npm run lint`; add `npm run test:e2e:field` for mobile field chrome or `/hub` entry changes when a logged-in dev session is available.
+- UI/copy changes: `npm run i18n:check` (must pass — 0 blocking hotspots), `npm run lint`; add `npm run test:e2e:field` for mobile field chrome or `/hub` entry changes when a logged-in dev session is available.
 - Type/data flow changes: `npm run typecheck`, `npm run lint`; add focused Playwright where user-facing behavior changed.
 - SQL/RLS/storage changes: apply or review migration path, audit `GRANT` + RLS, run `npm run gen:types` after SQL is live, then `npm run typecheck`.
 - Before any push claim: run `pwsh scripts/release-truth.ps1` with `-Checks` when checks ran in-session.
@@ -57,8 +58,10 @@ Repo operating guide. If conflict: ask owner before edit.
 
 ## UI Copy / i18n
 - All user copy: `useI18n().t(key)`. No hardcoded JSX/alert/confirm/title/placeholder copy.
-- New copy: one module in `lib/i18n/messages/*.messages.ts` via `defineMessages()` with FR+EN together.
+- New copy: one module in `lib/i18n/messages/*.messages.ts` via `defineMessages()` with FR+EN together; registered in `lib/i18n/messages/index.ts`.
+- Runtime: [`resolveMessage`](lib/i18n/resolve-message.ts) — feature messages first, legacy `fr.ts`/`en.ts` fallback; dev `console.warn` on miss.
 - Legacy dictionary under `lib/i18n/dictionary/` stays until touched. Do not add new feature copy via old pattern unless maintaining legacy surface.
+- Enforcement: ESLint `pem-i18n/no-hardcoded-jsx-text` + `npm run i18n:check` (blocking hotspots). Allowlist: `scripts/i18n-check-allowlist.json` — handoff [`docs/HANDOFF_SLICE4.md`](docs/HANDOFF_SLICE4.md).
 - Server Components: pass translated strings, use client leaf, or `dict[lang][key]`.
 - `toLocale*` / Intl locale from `lang` (`fr-FR` / `en-GB`), not hardcoded.
 

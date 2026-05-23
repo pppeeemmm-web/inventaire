@@ -5,8 +5,9 @@
 | Doc | Use when |
 |-----|----------|
 | [`HANDOFF_SLICE3.md`](./HANDOFF_SLICE3.md) | **Slice 3 complete (2026-05-23):** 16 routes + BottomStack + portal trim — boot sequence + next options |
+| [`HANDOFF_SLICE4.md`](./HANDOFF_SLICE4.md) | **Slice 4 core (2026-05-23):** `defineMessages` precedence, segment-tab copy, `i18n:check` CI ratchet + allowlist |
 | [`TODO.md`](./TODO.md) | Version-controlled checklist (ops deadlines, dev blocks, optional follow-ups) |
-| [`PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md) | Active multi-slice refactor plan (Cursor execution); Slice 3 tab migration **done** |
+| [`PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md) | Active multi-slice refactor plan (Cursor execution); Slices 3–4 core **done**, panels / Slice 5 next |
 | [`PROJECT_SYNTHESIS.md`](./PROJECT_SYNTHESIS.md) | Onboarding: stack boundaries, broadcast chain, where truth lives |
 | [`SYSTEM_LEDGER.md`](./SYSTEM_LEDGER.md) | System tab UI contract (also loaded in-app for reference MD) |
 | [`BACKUP_RECOVERY.md`](./BACKUP_RECOVERY.md) | Off-site DB backups + restore drill |

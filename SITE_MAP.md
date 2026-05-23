@@ -2,7 +2,7 @@
 
 **Audience:** engineers and studio operators. **Companion:** QA checklist PDF (Atelier → System → download). **Diagrams:** Mermaid blocks below render on GitHub and most Markdown previews.
 
-**Stack:** Next.js 15 App Router, Supabase auth, R2 (EU endpoint). **i18n:** user-facing UI is FR/EN via `lib/i18n/dictionary.ts` (modular [`lib/i18n/dictionary/`](../lib/i18n/dictionary/) + barrel [`dictionary.ts`](../lib/i18n/dictionary.ts)).
+**Stack:** Next.js 15 App Router, Supabase auth, R2 (EU endpoint). **i18n:** FR/EN via [`defineMessages`](../lib/i18n/messages/) modules + legacy [`lib/i18n/dictionary/`](../lib/i18n/dictionary/); client `t()` uses [`resolveMessage`](../lib/i18n/resolve-message.ts). CI: `npm run i18n:check` ([`HANDOFF_SLICE4.md`](docs/HANDOFF_SLICE4.md)).
 
 ---
 
@@ -282,6 +282,6 @@ When adding a **page**, **tab id**, **API route**, or **Atelier bootstrap `app/a
 
 **Recent doc sync (2026-05-13):** documented `reports` tab, `reports/actions.ts`, **Carte** `WorldMapTab` + dual `contact_addresses` load (curation vs map), contact-pin fallback rules (see [`CLAUDE.md`](../CLAUDE.md) KEY FILES); [`lib/site-map-checklist-pdf.ts`](../lib/site-map-checklist-pdf.ts) tab list includes `reports`.
 
-**Recent doc sync (2026-05-23):** Slice 3 **complete** — 16 segment routes (inventory → constellation); handoff [`docs/HANDOFF_SLICE3.md`](docs/HANDOFF_SLICE3.md). Legacy `?tab=` still serves overview, map, journal, system, portfolio, contacts, stock (+ site/analytics aliases). Migrated `?tab=` / bare `?map=` redirect via `legacyTabRedirectPath` + `app/atelier/page.tsx`.
+**Recent doc sync (2026-05-23):** Slice 3 **complete** — 16 segment routes (inventory → constellation); handoff [`docs/HANDOFF_SLICE3.md`](docs/HANDOFF_SLICE3.md). Slice 4 **core** — `defineMessages` precedence + `i18n:check` CI ratchet; [`docs/HANDOFF_SLICE4.md`](docs/HANDOFF_SLICE4.md). Legacy `?tab=` still serves overview, map, journal, system, portfolio, contacts, stock (+ site/analytics aliases). Migrated `?tab=` / bare `?map=` redirect via `legacyTabRedirectPath` + `app/atelier/page.tsx`.
 
 **Recent doc sync (2026-05-14):** §0 Supabase operator checklist; share receive/triage; PWA `share_target` in `app/manifest.ts` + static mirror; Ring C verb stubs (`FieldToolStubPage` kinds) + `/atelier/issue/new` → `studio_task`; narrow Field tab order **`map`**; hub → share triage in topology; checklist + §1 dictionary folder note; **`public/pwa-icon-180.png`** + `app/layout.tsx` apple-touch-icon; **`npm run test:e2e:field`** + [`scripts/run-atelier-e2e.mjs`](scripts/run-atelier-e2e.mjs); CLAUDE CMDS for atelier-gated Playwright.

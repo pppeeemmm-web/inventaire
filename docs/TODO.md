@@ -132,7 +132,7 @@ _Version-controlled checklist + non-binding roadmap items. Prefer this file over
 - [x] **i18n CI ratchet** — `i18n:check` fails on blocking hardcoded hotspots; allowlist synced with ESLint overrides (`scripts/i18n-check-allowlist.json`); `.github/workflows/ci.yml`.
 - [ ] **Slice 4 (panels)** — `CurationPanel`, `PortfolioConfigShell`, `ContactEditorPanel`, `WorldMapTab`; other tabs per `i18n:check`.
 
-Active plan: [`PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md) — Slice 4 finish or legacy tab cleanup.
+Active plan: [`PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md) — Slice 4 panels ([`HANDOFF_SLICE4.md`](./HANDOFF_SLICE4.md)), legacy tab segments, or Slice 5.
 
 ## Guardrails (not tasks)
 

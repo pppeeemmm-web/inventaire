@@ -81,4 +81,4 @@ Submitted rows insert into `system_log` with: `action`, `details`, `type`, `stat
 | Ledger screenshot upload | `app/atelier/system/ledger-attachment-actions.ts` |
 | Site map checklist PDF | `app/atelier/vault/actions.ts` → `exportSiteMapChecklistPdf` |
 | Studio Bible vault | `app/atelier/vault/bible-action.ts` → `vaultStudioBible` |
-| Copy (strings) | `lib/i18n/dictionary.ts` (`system_*`, `system_task_type_*`) |
+| Copy (strings) | Legacy `lib/i18n/dictionary/` (`system_*`, `system_task_type_*`); new Atelier copy → `defineMessages` per [`HANDOFF_SLICE4.md`](./HANDOFF_SLICE4.md) |
