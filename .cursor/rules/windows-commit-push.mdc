@@ -8,10 +8,27 @@ alwaysApply: true
 When committing or pushing from Windows/Cursor:
 
 - Use PowerShell-native commands. Do not use `bash -lc` for git commits or heredocs.
-- Batch read-only git checks in parallel where possible: `git status --short --branch`, relevant `git diff`, and recent `git log`.
+- **Do not chain** `git commit …; git push …` in one Shell call. Cursor blocks push when the tree is still dirty (failed commit, partial stage, or leftover files).
+- **Use** [`scripts/commit-push-main.ps1`](../scripts/commit-push-main.ps1): commit → verify clean → push → `release-truth.ps1` in one script.
+
+```powershell
+pwsh scripts/commit-push-main.ps1 -Message @'
+Commit message here.
+
+'@ -Paths @(
+  'path/to/file1.ts',
+  'path/to/file2.ts'
+)
+```
+
+- To stage yourself first: `git add …` then `pwsh scripts/commit-push-main.ps1 -Message '…'` (no `-Paths`).
+- `-StageAll` only when every local change belongs in the commit.
+- `-NoPush` for commit-only; push in a **second** command only after `git status --porcelain` is empty.
+- Batch read-only checks in parallel: `git status --short --branch`, `git diff`, `git log -5`.
 - Reuse checks already run after the final code edit; do not rerun expensive checks during commit unless files changed after those checks.
 - Stage exact intended files. Avoid repeated status loops once the commit set is clear.
-- Use a PowerShell here-string for commit messages:
+
+Manual fallback (two steps):
 
 ```powershell
 $msg = @'
@@ -19,6 +36,7 @@ Commit message
 
 '@
 git commit -m $msg
+git status --porcelain   # must print nothing
+git push origin main
+pwsh scripts/release-truth.ps1 -Checks "typecheck,lint" -RequirePushed
 ```
-
-- After commit, push with `git push origin main`, then run the repo release-truth/status command once.
