@@ -19,7 +19,7 @@ test.describe('Atelier Stock + Stock-take tabs', () => {
   })
 
   test('Stock-take tab shows table and apply entrypoint', async ({ page }) => {
-    await page.goto('/atelier?tab=stock-take', { waitUntil: 'domcontentloaded' })
+    await page.goto('/atelier/stock-take', { waitUntil: 'domcontentloaded' })
     await expect(page.getByTestId('atelier-stock-take-root')).toBeVisible({ timeout: 45_000 })
     await expect(page.getByTestId('atelier-stock-take-toolbar')).toBeVisible()
     await expect(page.getByTestId('atelier-stock-take-scroll')).toBeVisible()

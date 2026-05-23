@@ -24,7 +24,7 @@ interface Props {
   contacts: StockContactLike[]
 }
 
-export function StockTakeTab({ contacts }: Props) {
+export function StockTake({ contacts }: Props) {
   const { t, lang } = useI18n()
   const narrow = useMediaQuery('(max-width: 767px)')
   const [items, setItems] = useState<StockItemRow[]>([])

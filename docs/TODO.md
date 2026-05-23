@@ -119,7 +119,7 @@ _Version-controlled checklist + non-binding roadmap items. Prefer this file over
 
 ## V5 refactor (see plan)
 
-Active execution: [`PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md) — Slice 3 tab routes in progress (`inventory`, `sales`, `pipeline` segmented).
+Active execution: [`PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md) — Slice 3 tab routes in progress (`inventory`, `sales`, `pipeline`, `production`, `stock-take` segmented; next: `notes`).
 
 ## Guardrails (not tasks)
 

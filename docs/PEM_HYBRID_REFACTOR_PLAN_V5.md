@@ -170,7 +170,7 @@ The app is functionally complete; we are moving from a strict relational ledger 
 2. ✅ `sales` → `app/atelier/sales/page.tsx` + `_components/Sales.tsx` — **done** (2026-05-23)
 3. ✅ `pipeline` → `app/atelier/pipeline/page.tsx` + `_components/Pipeline.tsx` — **done** (2026-05-23)
 4. ✅ `production` → `app/atelier/production/page.tsx` + `_components/Production.tsx` — **done** (2026-05-23)
-5. `stock-take`
+5. ✅ `stock-take` → `app/atelier/stock-take/page.tsx` + `_components/StockTake.tsx` — **done** (2026-05-23)
 6. `notes`
 7. `reports`
 8. `exhibitions`
