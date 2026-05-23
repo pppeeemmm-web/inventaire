@@ -7,6 +7,8 @@ interface Props {
   oeuvres: Oeuvre[]
   tM: Record<number, string>
   themes: { id: number; name: string }[]
+  themeWorkCount?: Record<number, number>
+  oeuvreThemeIdsByOeuvre?: Record<number, number[]>
   groups?: { id: string; name: string }[]
   selection: Set<number>
   setSelection: (s: Set<number>) => void

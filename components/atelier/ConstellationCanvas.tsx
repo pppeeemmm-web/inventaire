@@ -386,11 +386,79 @@ function hitEdge(lx: number, ly: number, edges: Edge[], pos: NodeMap, vp: VP): E
   return null
 }
 
+type ThemeLinkRow = { oeuvre_id: number; theme_id: number }
+
+function buildThemeWorkFromRows(rows: ThemeLinkRow[]): Map<number, Set<number>> {
+  const tw = new Map<number, Set<number>>()
+  for (const row of rows) {
+    const themeId = Number(row.theme_id)
+    const oeuvreId = Number(row.oeuvre_id)
+    if (!Number.isFinite(themeId) || !Number.isFinite(oeuvreId)) continue
+    let set = tw.get(themeId)
+    if (!set) {
+      set = new Set<number>()
+      tw.set(themeId, set)
+    }
+    set.add(oeuvreId)
+  }
+  return tw
+}
+
+function buildThemeWorkFromOeuvreMap(
+  oeuvreThemeIdsByOeuvre: Record<number, number[]>,
+): Map<number, Set<number>> {
+  const tw = new Map<number, Set<number>>()
+  for (const [oeuvreKey, themeIds] of Object.entries(oeuvreThemeIdsByOeuvre)) {
+    const oeuvreId = Number(oeuvreKey)
+    if (!Number.isFinite(oeuvreId)) continue
+    for (const rawTid of themeIds) {
+      const themeId = Number(rawTid)
+      if (!Number.isFinite(themeId)) continue
+      let set = tw.get(themeId)
+      if (!set) {
+        set = new Set<number>()
+        tw.set(themeId, set)
+      }
+      set.add(oeuvreId)
+    }
+  }
+  return tw
+}
+
+function mergeThemeWorkMaps(
+  primary: Map<number, Set<number>>,
+  secondary: Map<number, Set<number>>,
+): Map<number, Set<number>> {
+  if (secondary.size === 0) return primary
+  if (primary.size === 0) return secondary
+  const merged = new Map(primary)
+  for (const [themeId, ids] of secondary) {
+    const existing = merged.get(themeId)
+    if (existing) {
+      for (const id of ids) existing.add(id)
+    } else {
+      merged.set(themeId, new Set(ids))
+    }
+  }
+  return merged
+}
+
+function themeWorkSize(
+  themeWork: Map<number, Set<number>>,
+  themeId: number,
+  fallback?: Record<number, number>,
+): number {
+  return themeWork.get(themeId)?.size ?? fallback?.[themeId] ?? 0
+}
+
 // ── Props ──────────────────────────────────────────────────────────────────
 interface Props {
   oeuvres:      Oeuvre[]
   tM:           Record<number, string>
   themes:       { id: number; name: string }[]
+  /** Hydrated junction counts — fallback when graph bundle is empty or still loading. */
+  themeWorkCount?: Record<number, number>
+  oeuvreThemeIdsByOeuvre?: Record<number, number[]>
   groups?:      { id: string; name: string }[]
   selection:    Set<number>
   setSelection: (s: Set<number>) => void
@@ -408,7 +476,7 @@ interface Props {
 
 // ── Component ──────────────────────────────────────────────────────────────
 export function ConstellationCanvas({ 
-  oeuvres, tM, themes, groups = [], selection, setSelection, onOpen, onSaveGroup,
+  oeuvres, tM, themes, themeWorkCount, oeuvreThemeIdsByOeuvre, groups = [], selection, setSelection, onOpen, onSaveGroup,
   backgroundImage, backgroundOpacity = 1, onBackgroundOpacity, onDropExternal, hideToolbar, initialPositions
 }: Props) {
   const router = useRouter()
@@ -461,6 +529,17 @@ export function ConstellationCanvas({
   const [shapes,    setShapes]    = useState<Shape[]>([])
   const [marquee,   setMarquee]   = useState<{ x: number; y: number; w: number; h: number } | null>(null)
   const [themeWork, setThemeWork] = useState<Map<number, Set<number>>>(new Map())
+  const effectiveThemeWork = useMemo(() => {
+    const fromOeuvres =
+      oeuvreThemeIdsByOeuvre && Object.keys(oeuvreThemeIdsByOeuvre).length > 0
+        ? buildThemeWorkFromOeuvreMap(oeuvreThemeIdsByOeuvre)
+        : new Map<number, Set<number>>()
+    return mergeThemeWorkMaps(themeWork, fromOeuvres)
+  }, [themeWork, oeuvreThemeIdsByOeuvre])
+  const themesInDropdown = useMemo(
+    () => themes.filter((th) => themeWorkSize(effectiveThemeWork, th.id, themeWorkCount) > 0),
+    [themes, effectiveThemeWork, themeWorkCount],
+  )
   const [panelNode, setPanelNode] = useState<Oeuvre | null>(null)
   const [groupName,  setGroupName]  = useState('')
   const [saving,     setSaving]     = useState(false)
@@ -587,8 +666,17 @@ export function ConstellationCanvas({
     if (selectedThemeId != null) return
     if (initialThemeId == null) return
     if (!themes.some((t) => t.id === initialThemeId)) return
+    if (themeWorkSize(effectiveThemeWork, initialThemeId, themeWorkCount) === 0) return
     setSelectedThemeId(initialThemeId)
-  }, [groupBy, selectedThemeId, initialThemeId, themes])
+  }, [groupBy, selectedThemeId, initialThemeId, themes, effectiveThemeWork, themeWorkCount])
+
+  // Theme mode requires a scoped pick — auto-select first theme with works when none saved.
+  useEffect(() => {
+    if (loading || groupBy !== 'theme' || selectedThemeId != null) return
+    if (initialThemeId != null && themes.some((t) => t.id === initialThemeId)) return
+    const first = themesInDropdown[0]
+    if (first) setSelectedThemeId(first.id)
+  }, [loading, groupBy, selectedThemeId, initialThemeId, themes, themesInDropdown])
   useEffect(() => {
     // Clear the old monolithic theme cache key (before filter-aware keys were introduced).
     try { localStorage.removeItem('pem_const_pos_theme') } catch {}
@@ -622,7 +710,7 @@ export function ConstellationCanvas({
   const constellationOeuvres = useMemo(() => {
     if (groupBy === 'theme') {
       if (selectedThemeId === null) return []
-      const ids = themeWork.get(selectedThemeId) ?? new Set<number>()
+      const ids = effectiveThemeWork.get(selectedThemeId) ?? new Set<number>()
       return oeuvres.filter(o => ids.has(o.OeuvreID))
     }
     if (groupBy === 'workgroup') {
@@ -631,7 +719,7 @@ export function ConstellationCanvas({
       return oeuvres.filter(o => ids.has(o.OeuvreID))
     }
     return oeuvres
-  }, [groupBy, oeuvres, themeWork, groupWork, selectedThemeId, selectedGroupId])
+  }, [groupBy, oeuvres, effectiveThemeWork, groupWork, selectedThemeId, selectedGroupId])
 
   // Works not yet in the custom canvas, matching picker search
   const filteredForPicker = useMemo(() => {
@@ -667,17 +755,14 @@ export function ConstellationCanvas({
         description: r.description,
       }))
 
-    const tw = new Map<number, Set<number>>()
-    for (const row of (ot ?? [])) {
-      if (!tw.has(row.theme_id)) tw.set(row.theme_id, new Set())
-      tw.get(row.theme_id)!.add(row.oeuvre_id)
-    }
-    setThemeWork(tw)
+    setThemeWork(buildThemeWorkFromRows((ot ?? []) as ThemeLinkRow[]))
 
     const gw = new Map<string, Set<number>>()
     for (const row of (wg ?? []) as { group_id: string; oeuvre_id: number }[]) {
+      const oeuvreId = Number(row.oeuvre_id)
+      if (!Number.isFinite(oeuvreId)) continue
       if (!gw.has(row.group_id)) gw.set(row.group_id, new Set())
-      gw.get(row.group_id)!.add(row.oeuvre_id)
+      gw.get(row.group_id)!.add(oeuvreId)
     }
     setGroupWork(gw)
 
@@ -763,7 +848,7 @@ export function ConstellationCanvas({
     if (groupBy === 'theme') {
       const savedRaw = loadPos('theme', selectedThemeId)
       const allowed =
-        selectedThemeId !== null ? (themeWork.get(selectedThemeId) ?? new Set<number>()) : null
+        selectedThemeId !== null ? (effectiveThemeWork.get(selectedThemeId) ?? new Set<number>()) : null
       const saved =
         savedRaw && selectedThemeId !== null
           ? filterSavedToMembership(savedRaw, allowed)
@@ -774,7 +859,7 @@ export function ConstellationCanvas({
         const activeThemes = selectedThemeId !== null
           ? themes.filter(t => t.id === selectedThemeId)
           : themes
-        posRef.current = layoutTheme(constellationOeuvres, themeWork, activeThemes)
+        posRef.current = layoutTheme(constellationOeuvres, effectiveThemeWork, activeThemes)
       }
     } else if (groupBy === 'workgroup') {
       const savedRaw = loadPos('workgroup', selectedGroupId)
@@ -815,7 +900,7 @@ export function ConstellationCanvas({
       }
     }
     redraw()
-  }, [groupBy, loading, constellationOeuvres, themes, groups, themeWork, groupWork, selectedThemeId, selectedGroupId, redraw, oeuvresById, oeuvres])
+  }, [groupBy, loading, constellationOeuvres, themes, groups, effectiveThemeWork, groupWork, selectedThemeId, selectedGroupId, redraw, oeuvresById, oeuvres])
 
   // ── Visible image loading (zoom-adaptive tiers) ───────────────
   const loadingSet = useRef(new Set<string>())
@@ -956,7 +1041,7 @@ export function ConstellationCanvas({
     // Map each work to its first-listed theme (for border colouring)
     const workPrimaryTheme = new Map<number, number>();
     (themes || []).forEach(th => {
-      (themeWork.get(th.id) ?? new Set()).forEach(id => {
+      (effectiveThemeWork.get(th.id) ?? new Set()).forEach(id => {
         if (!workPrimaryTheme.has(id)) workPrimaryTheme.set(id, th.id)
       })
     })
@@ -975,7 +1060,7 @@ export function ConstellationCanvas({
     if (groupBy === 'theme') {
       // Step 1: compute ideal positions and sizes for each theme label
       const maxCount = Math.max(1, ...themes.map(th =>
-        [...(themeWork.get(th.id) ?? [])].filter(id => pos.has(id)).length
+        [...(effectiveThemeWork.get(th.id) ?? [])].filter(id => pos.has(id)).length
       ))
 
       interface LBox {
@@ -991,7 +1076,7 @@ export function ConstellationCanvas({
       const labels: LBox[] = []
 
       for (const th of themes) {
-        const ids = [...(themeWork.get(th.id) ?? [])].filter(id => pos.has(id))
+        const ids = [...(effectiveThemeWork.get(th.id) ?? [])].filter(id => pos.has(id))
         if (!ids.length) continue
         const pts   = ids.map(id => pos.get(id)!)
         const cx    = pts.reduce((a, p) => a + p.x + NW / 2, 0) / pts.length
@@ -1367,7 +1452,7 @@ export function ConstellationCanvas({
     ctx.restore()
  
     loadVisible()
-  }, [tick, groupBy, linkType, oeuvres, themes, groups, themeWork, groupWork, oeuvresById, selectedThemeId, selectedGroupId, shapes, activeShape, marquee, frozenEdges])
+  }, [tick, groupBy, linkType, oeuvres, themes, groups, effectiveThemeWork, groupWork, oeuvresById, selectedThemeId, selectedGroupId, shapes, activeShape, marquee, frozenEdges])
 
   // ── Wheel (passive: false required for preventDefault) ────────
   useEffect(() => {
@@ -1908,7 +1993,7 @@ export function ConstellationCanvas({
     else if (groupBy === 'none') posRef.current = layoutGrid(oeuvres)
     else if (groupBy === 'theme') {
       const activeThemes = selectedThemeId !== null ? themes.filter(t => t.id === selectedThemeId) : themes
-      posRef.current = layoutTheme(constellationOeuvres, themeWork, activeThemes)
+      posRef.current = layoutTheme(constellationOeuvres, effectiveThemeWork, activeThemes)
     } else if (groupBy === 'workgroup') {
       const activeGroups = selectedGroupId !== null ? groups.filter(g => g.id === selectedGroupId) : groups
       posRef.current = layoutWorkGroup(constellationOeuvres, groupWork, activeGroups)
@@ -2370,10 +2455,10 @@ export function ConstellationCanvas({
             onChange={e => setSelectedThemeId(e.target.value ? Number(e.target.value) : null)}
             style={{ fontSize: 9, background: 'var(--bg0)', border: '1px solid var(--ac)', color: 'var(--tx)', padding: '2px 8px', cursor: 'pointer', maxWidth: 140 }}
           >
-            <option value="">{t('const_allThemes')} ({[...themeWork.values()].reduce((a, s) => { s.forEach(id => a.add(id)); return a }, new Set()).size})</option>
-            {themes.filter(th => (themeWork.get(th.id)?.size ?? 0) > 0).map(th => (
+            <option value="">{t('const_allThemes')} ({[...effectiveThemeWork.values()].reduce((a, s) => { s.forEach(id => a.add(id)); return a }, new Set()).size})</option>
+            {themesInDropdown.map(th => (
               <option key={th.id} value={th.id}>
-                {th.name} ({themeWork.get(th.id)?.size ?? 0})
+                {th.name} ({themeWorkSize(effectiveThemeWork, th.id, themeWorkCount)})
               </option>
             ))}
           </select>
