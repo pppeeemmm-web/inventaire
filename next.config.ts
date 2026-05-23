@@ -1,4 +1,21 @@
+import { spawnSync } from 'node:child_process'
 import type { NextConfig } from 'next'
+import withSerwistInit from '@serwist/next'
+
+const swRevision =
+  spawnSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf-8' }).stdout?.trim() ||
+  `build-${Date.now()}`
+
+const withSerwist = withSerwistInit({
+  swSrc: 'app/sw.ts',
+  swDest: 'public/sw.js',
+  disable: process.env.NODE_ENV === 'development',
+  cacheOnNavigation: true,
+  additionalPrecacheEntries: [
+    { url: '/~offline', revision: swRevision },
+    { url: '/hub', revision: swRevision },
+  ],
+})
 
 /** Set by `npm run dev` → scripts/run-dev.mjs (LAN IP for phone testing). */
 const lanDevHost = process.env.DEV_LAN_HOST?.trim()
@@ -67,4 +84,4 @@ const nextConfig: NextConfig = {
   },
 }
 
-export default nextConfig
+export default withSerwist(nextConfig)

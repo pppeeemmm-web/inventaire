@@ -19,6 +19,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1039.0",
     "@aws-sdk/s3-request-presigner": "^3.1039.0",
+    "@serwist/next": "^9.5.11",
     "@supabase/ssr": "^0.4.0",
     "@supabase/supabase-js": "^2.43.0",
     "@tanstack/react-virtual": "^3.13.24",
@@ -59,6 +60,7 @@
     "eslint-config-next": "^15.5.18",
     "eslint-plugin-pem-i18n": "file:eslint-rules",
     "postcss": "^8.4.0",
+    "serwist": "^9.5.11",
     "tailwindcss": "^3.4.0",
     "typescript": "^5.4.0"
   }

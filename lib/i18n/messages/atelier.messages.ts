@@ -549,4 +549,16 @@ export const atelierMessages = defineMessages({
     fr: 'Note enregistrée, mais le suivi n’a pas pu être créé.',
     en: 'Note saved, but the follow-up could not be created.',
   },
+  pwa_offline_title: {
+    fr: 'Hors ligne',
+    en: 'Offline',
+  },
+  pwa_offline_body: {
+    fr: 'Cette page n’est pas en cache. Reconnectez-vous pour continuer, ou ouvrez le Hub si vous l’avez déjà visité.',
+    en: 'This page is not cached. Reconnect to continue, or open the Hub if you have visited it before.',
+  },
+  pwa_offline_hub: {
+    fr: 'Retour au Hub',
+    en: 'Back to Hub',
+  },
 })

@@ -31,8 +31,7 @@ import {
   workFormDraftContentEquals,
 } from '@/lib/mobile/work-form-draft'
 import {
-  enqueueOfflineWorkSave,
-  formDataToStringRecord,
+  enqueueOfflineWorkSaveFromFormData,
   isLikelyOfflineSaveError,
 } from '@/lib/mobile/offline-work-queue'
 import type { DrawerContentProps, DrawerContactRow } from './drawer-content-props'
@@ -748,7 +747,7 @@ export function DrawerContent({
     } catch (e) {
       if (isLikelyOfflineSaveError(e)) {
         try {
-          await enqueueOfflineWorkSave(formDataToStringRecord(fd))
+          await enqueueOfflineWorkSaveFromFormData(fd)
           toast.info(t('offline_save_queued'))
         } catch {
           toast.error(t('offline_sync_failed'))

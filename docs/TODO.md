@@ -130,7 +130,8 @@ _Version-controlled checklist + non-binding roadmap items. Prefer this file over
 
 - [ ] Segment remaining legacy `?tab=` tabs: overview, map, journal, system, portfolio, contacts, stock (+ site/analytics aliases)
 - [ ] Per-route bundle size check (aspirational ≤ 250 kB)
-- [ ] **Atelier shell reload on segment tab hop** — **in progress (2026-05-23):** `(portal)/layout` persists `TeamPortalClient`; stable `atelierShellNonce`; catalogue merge + postPaint once per session. Remaining: slim/tab-specific RSC loaders to skip catalogue on Audit/Logistics.
+- [ ] **Atelier shell reload on segment tab hop** — **client fix on `main` (2026-05-23):** `(portal)/layout` persists shell. Remaining: slim RSC loaders for Audit/Logistics.
+- [ ] **Slice 1 — PWA / offline (Phase 1)** — local draft: Serwist + blob offline queue + `/~offline`. Handoff: [`HANDOFF_SLICE1.md`](./HANDOFF_SLICE1.md). Phase 2: Background Sync, R2 Cache-Control, shell revalidate tags.
 
 - [x] **Slice 4 (core)** — `resolveMessage` + `t()` precedence (2026-05-23).
 - [x] **Slice 4 (segment tabs)** — Exhibitions / Fiscal / Inventory / Sales hardcoded copy → `defineMessages`; ESLint off removed for those paths.

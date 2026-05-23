@@ -3,9 +3,11 @@
 import { useEffect, useRef } from 'react'
 import { saveWork } from '@/app/atelier/works/actions'
 import {
+  enqueueOfflineWorkSaveFromFormData,
+  isLikelyOfflineSaveError,
   listOfflineWorkSaves,
+  offlineRecordToFormData,
   removeOfflineWorkSave,
-  stringRecordToFormData,
 } from '@/lib/mobile/offline-work-queue'
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from '@/lib/ui/toast'
@@ -22,7 +24,7 @@ export function AtelierOfflineFlush() {
         const rows = await listOfflineWorkSaves()
         let flushed = 0
         for (const row of rows) {
-          const fd = stringRecordToFormData(row.fields)
+          const fd = await offlineRecordToFormData(row)
           const res = await saveWork(fd)
           if ('error' in res) {
             toast.error(`${t('error_prefix')} ${res.error}`)

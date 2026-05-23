@@ -7,6 +7,9 @@ node_modules/
 .next/
 out/
 build/
+public/sw.js
+public/sw.js.map
+public/swe-worker-*.js
 
 # env — never commit secrets
 .env.local

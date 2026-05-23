@@ -32,8 +32,7 @@ import {
   workFormDraftContentEquals,
 } from '@/lib/mobile/work-form-draft'
 import {
-  enqueueOfflineWorkSave,
-  formDataToStringRecord,
+  enqueueOfflineWorkSaveFromFormData,
   isLikelyOfflineSaveError,
 } from '@/lib/mobile/offline-work-queue'
 import {
@@ -521,7 +520,7 @@ export function WorkForm({
       } catch (e) {
         if (isLikelyOfflineSaveError(e)) {
           try {
-            await enqueueOfflineWorkSave(formDataToStringRecord(fd))
+            await enqueueOfflineWorkSaveFromFormData(fd)
             toast.info(t('offline_save_queued'))
           } catch {
             toast.error(t('offline_sync_failed'))

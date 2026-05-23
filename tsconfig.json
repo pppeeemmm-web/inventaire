@@ -3,7 +3,8 @@
     "lib": [
       "dom",
       "dom.iterable",
-      "esnext"
+      "esnext",
+      "webworker"
     ],
     "allowJs": true,
     "skipLibCheck": true,
@@ -26,6 +27,9 @@
         "./*"
       ]
     },
+    "types": [
+      "@serwist/next/typings"
+    ],
     "target": "ES2017"
   },
   "include": [
@@ -55,6 +59,7 @@
     "scripts",
     "artifacts",
     "docs",
-    "imports"
+    "imports",
+    "public/sw.js"
   ]
 }
