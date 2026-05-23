@@ -178,7 +178,7 @@ The app is functionally complete; we are moving from a strict relational ledger 
 10. ✅ `themes` → `app/atelier/themes/page.tsx` + `_components/Themes.tsx` — **done** (2026-05-23)
 11. ✅ `logistics` → `app/atelier/logistics/page.tsx` + `_components/Logistics.tsx` — **done** (2026-05-23)
 12. ✅ `vault` → `app/atelier/vault/page.tsx` + `_components/Vault.tsx` — **done** (2026-05-23)
-13. `fiscal`
+13. ✅ `fiscal` → `app/atelier/fiscal/page.tsx` + `_components/Fiscal.tsx` — **done** (2026-05-23)
 14. `broadcast`
 15. `audit`
 16. `constellation` (last; dynamic import gate; read-only list < 768 px)
@@ -204,7 +204,7 @@ The app is functionally complete; we are moving from a strict relational ledger 
 
 **Scope:**
 - Wire the 8 existing files in `lib/i18n/messages/` into the context: lookup messages first, fall back to `dict[lang][key]`, `logWarn` on both-miss.
-- Remove `off` overrides for tabs as they're migrated: ~~`ExhibitionsTab`~~ (`Exhibitions.tsx` migrated — override path updated), `FiscalTab`, ~~`InventoryTab`~~ (`Inventory.tsx` migrated — override path updated), `CurationPanel`, `PortfolioConfigShell`.
+- Remove `off` overrides for tabs as they're migrated: ~~`ExhibitionsTab`~~ (`Exhibitions.tsx` migrated — override path updated), ~~`FiscalTab`~~ (`Fiscal.tsx` migrated — override path updated), ~~`InventoryTab`~~ (`Inventory.tsx` migrated — override path updated), `CurationPanel`, `PortfolioConfigShell`.
 - Tighten `no-hardcoded-jsx-text` for FR leaks.
 - New copy added in Slices 2 / 0a / 3 must use `defineMessages` — do not extend the legacy dictionary.
 
@@ -426,6 +426,7 @@ Wrap the function return in `nullif(trim(…), '')` so all-empty inputs return `
 | Concepts tab (Slice 3) | `app/atelier/concepts/page.tsx`, `app/atelier/concepts/_components/Concepts.tsx` |
 | Themes tab (Slice 3) | `app/atelier/themes/page.tsx`, `app/atelier/themes/_components/Themes.tsx` |
 | Vault tab (Slice 3) | `app/atelier/vault/page.tsx`, `app/atelier/vault/_components/Vault.tsx` |
+| Fiscal tab (Slice 3) | `app/atelier/fiscal/page.tsx`, `app/atelier/fiscal/_components/Fiscal.tsx` |
 | Monolith to split | `components/atelier/TeamPortalClient.tsx` (2188 LOC) |
 | WorkForm | `components/atelier/WorkForm.tsx` (1243 LOC) |
 | Constellation | `components/atelier/ConstellationCanvas.tsx` (3013 LOC), `app/atelier/constellation/actions.ts` |

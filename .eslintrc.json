@@ -29,7 +29,7 @@
         "app/atelier/themes/_components/Themes.tsx",
         "app/atelier/logistics/_components/Logistics.tsx",
         "app/atelier/vault/_components/Vault.tsx",
-        "components/atelier/FiscalTab.tsx",
+        "app/atelier/fiscal/_components/Fiscal.tsx",
         "components/atelier/CurationPanel.tsx",
         "components/atelier/PortfolioTab.tsx",
         "components/atelier/ContactEditorPanel.tsx",
