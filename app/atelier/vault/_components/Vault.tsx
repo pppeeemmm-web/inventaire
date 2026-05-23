@@ -633,8 +633,8 @@ export function Vault({ oeuvres, tM }: Props) {
                       />
                     </div>
                   )
-                  : <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>Aperçu non disponible</div>
-              : <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>Chargement aperçu…</div>
+                  : <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>{t('vault_preview_unavailable')}</div>
+              : <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>{t('vault_preview_loading')}</div>
             }
           </div>
 
@@ -1026,6 +1026,7 @@ function UploadModal({
   onClose:    () => void
   onUploaded: (doc: VaultDoc) => void
 }) {
+  const { t } = useI18n()
   const [pending, startUpload] = useTransition()
   const [error,   setError]    = useState<string | null>(null)
   const [file,    setFile]     = useState<File | null>(null)
@@ -1062,7 +1063,7 @@ function UploadModal({
 
   return (
     <Overlay onClose={onClose}>
-      <div className="t-eyebrow" style={{ marginBottom: 20 }}>Importer un document</div>
+      <div className="t-eyebrow" style={{ marginBottom: 20 }}>{t('vault_import_title')}</div>
 
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {/* File picker */}
@@ -1138,7 +1139,7 @@ function UploadModal({
             )}
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {selIds.length === 0 && <span style={{ fontSize: 12, color: 'var(--tx3)' }}>Aucune sélection</span>}
+              {selIds.length === 0 && <span style={{ fontSize: 12, color: 'var(--tx3)' }}>{t('vault_no_selection')}</span>}
               {selIds.map(id => {
                 const o = oeuvres.find(x => x.OeuvreID === id)
                 return (
@@ -1189,6 +1190,7 @@ function CoaModal({
   onClose:     () => void
   onGenerated: (doc: VaultDoc) => void
 }) {
+  const { t } = useI18n()
   const [oeuvreId, setOeuvreId] = useState<number | null>(null)
   const [pending,  startGen]    = useTransition()
   const [error,    setError]    = useState<string | null>(null)
@@ -1210,7 +1212,7 @@ function CoaModal({
 
   return (
     <Overlay onClose={onClose}>
-      <div className="t-eyebrow" style={{ marginBottom: 20 }}>Générer un certificat d&apos;authenticité</div>
+      <div className="t-eyebrow" style={{ marginBottom: 20 }}>{t('vault_coa_title')}</div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div>
@@ -1234,7 +1236,7 @@ function CoaModal({
             background: 'var(--bg2)', border: '1px solid var(--bd)',
             padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13,
           }}>
-            <div className="t-label" style={{ marginBottom: 4 }}>Aperçu du certificat</div>
+            <div className="t-label" style={{ marginBottom: 4 }}>{t('vault_coa_preview_heading')}</div>
             <Row label="Titre"    value={work.Titre ?? 'Sans titre'} />
             <Row label="Année"    value={work.Année?.slice(0, 4) ?? '—'} />
             {work.Technique != null && <Row label="Technique" value={tM[work.Technique] ?? '—'} />}
@@ -1242,7 +1244,7 @@ function CoaModal({
               <Row label="Dimensions" value={`${work.Hauteur} × ${work.Largeur} cm`} />
             )}
             <div style={{ marginTop: 8, padding: '10px 12px', background: 'var(--bg0)', borderRadius: 2 }}>
-              <div className="t-label" style={{ marginBottom: 4 }}>Le certificat contiendra</div>
+              <div className="t-label" style={{ marginBottom: 4 }}>{t('vault_coa_will_contain')}</div>
               <div className="t-mono-sm" style={{ color: 'var(--tx3)', lineHeight: 2 }}>
                 Photo de l&apos;œuvre · Métadonnées · Déclaration d&apos;authenticité<br />
                 Bloc de signature · Identifiant unique · Empreinte SHA-256 · QR code

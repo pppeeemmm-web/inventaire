@@ -8,6 +8,7 @@ import { useVirtualizer } from '@tanstack/react-virtual'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
+import { interpolateMessage } from '@/lib/i18n/message-core'
 import { imageUrl, thumbUrl, yearOf, statusOf, statusColor, stageOf, type StatusKey, formatInventoryDims, isAvailabilityRefinedToProduction } from '@/lib/data'
 import { MissingThumb, WorkThumb } from '@/components/atelier/WorkThumb'
 import { WorkStateChip } from '@/components/atelier/WorkStateChip'
@@ -1394,7 +1395,7 @@ function InvList({
             </th>
             <th onClick={() => toggleSort('Custodian')} style={{ ...headerBase, width: 110, cursor: 'pointer' }}>
               <div style={sortThRow}>
-                <span style={sortThLabel}>Emplacement</span>
+                <span style={sortThLabel}>{t('inv_col_location')}</span>
                 <span style={{ flexShrink: 0 }}><SortInd k="Custodian" current={sortKey} dir={sortDir} /></span>
               </div>
             </th>
@@ -1585,7 +1586,7 @@ function InvList({
       </table>
       {rows.length > 500 && (
         <div className="t-mono-sm" style={{ padding: 16, textAlign: 'center', color: 'var(--tx3)' }}>
-          {rows.length} œuvres affichées
+          {interpolateMessage(t('inv_rows_shown_fmt'), { count: rows.length })}
         </div>
       )}
       <div ref={sentinelRef} style={{ height: 1 }} />

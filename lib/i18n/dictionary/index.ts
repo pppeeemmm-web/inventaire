@@ -1,15 +1,16 @@
 import type { MessageKey } from '../messages'
 import type { DictKey as LegacyDictKey, Lang, Dictionary as LegacyDictionary } from './types'
-import { flattenMessages } from '../message-core'
-import { featureMessages } from '../messages'
-import { fr } from './fr'
-import { en } from './en'
+import { featureMessagesByLang, legacyDict } from '../resolve-message'
 
 export type { Lang } from './types'
 export type DictKey = LegacyDictKey | MessageKey
 export type Dictionary = LegacyDictionary & Record<MessageKey, string>
 
-export const dict = {
-  fr: { ...fr, ...flattenMessages(featureMessages, 'fr') },
-  en: { ...en, ...flattenMessages(featureMessages, 'en') },
-} satisfies Record<Lang, Dictionary>
+/** Server/RSC: merged lookup (feature keys overlay legacy). Client `t()` uses `resolveMessage` for precedence + miss warnings. */
+export const dict: Record<Lang, Dictionary> = {
+  fr: { ...legacyDict.fr, ...featureMessagesByLang.fr } as Dictionary,
+  en: { ...legacyDict.en, ...featureMessagesByLang.en } as Dictionary,
+}
+
+export { legacyDict, featureMessagesByLang } from '../resolve-message'
+export { resolveMessage, warnMissingI18nKey } from '../resolve-message'

@@ -68,7 +68,7 @@ Served from `/atelier` only (no segment panel mount on legacy shell):
 
 **Option B — V5 Slice 4 i18n** — `defineMessages` precedence in `lib/i18n/context.tsx`
 
-**Deferred (not Slice 3):** per-route bundle ≤250 kB audit · drawer sticky save bars in `BottomStack` (z-index documented; drawer footers stay local) · Slice 4 / Qdrant / SW
+**Deferred (not Slice 3):** per-route bundle ≤250 kB audit · drawer sticky save bars in `BottomStack` (z-index documented; drawer footers stay local) · Slice 4 / Qdrant / SW · **atelier shell reload per segment tab** (post–V5 — [`PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md) § Post–V5 backlog)
 
 ---
 

@@ -205,10 +205,11 @@ The app is functionally complete; we are moving from a strict relational ledger 
 **Goal:** `defineMessages` modules > dictionary fallback in `lib/i18n/context.tsx`.
 
 **Scope:**
-- Wire the 8 existing files in `lib/i18n/messages/` into the context: lookup messages first, fall back to `dict[lang][key]`, `logWarn` on both-miss.
-- Remove `off` overrides for tabs as they're migrated: ~~`ExhibitionsTab`~~ (`Exhibitions.tsx` migrated — override path updated), ~~`FiscalTab`~~ (`Fiscal.tsx` migrated — override path updated), ~~`BroadcastTab`~~ (`Broadcast.tsx` migrated — override path updated), ~~`AuditTab`~~ (`Audit.tsx` migrated — override path updated), ~~`InventoryTab`~~ (`Inventory.tsx` migrated — override path updated), `CurationPanel`, `PortfolioConfigShell`.
-- Tighten `no-hardcoded-jsx-text` for FR leaks.
-- New copy added in Slices 2 / 0a / 3 must use `defineMessages` — do not extend the legacy dictionary.
+- ✅ Wire `lib/i18n/messages/` via [`resolveMessage`](../lib/i18n/resolve-message.ts): feature messages first, legacy `fr.ts`/`en.ts` fallback, `console.warn` on both-miss (dev only). [`useI18n().t()`](../lib/i18n/context.tsx) and [`routeMetadata`](../lib/i18n/route-metadata.ts) use it; server `dict` stays merged for RSC.
+- ✅ Segment tabs (Exhibitions, Fiscal, Inventory, Sales): ESLint hotspots migrated to `defineMessages` modules; overrides removed for those paths.
+- [ ] Remove **off** for `CurationPanel`, `PortfolioConfigShell`, `ContactEditorPanel`, `WorldMapTab` once copy is migrated.
+- [ ] Remaining FR in other segment tabs (Pipeline, Vault, …) — migrate incrementally as `i18n:check` reports them.
+- New copy: `defineMessages` only — do not extend legacy dictionary.
 
 **Runs parallel to:** Slice 3 (per tab).
 
@@ -458,6 +459,39 @@ Wrap the function return in `nullif(trim(…), '')` so all-empty inputs return `
 6. SW stale chunks (Slice 1) — version cache namespace by build ID.
 7. i18n precedence bugs (Slice 4).
 8. Trust boundary leak (Slice 8) — service-role + Qdrant keys must never enter the client bundle.
+
+---
+
+## Post–V5 backlog — Atelier shell reload on every segment tab
+
+**When:** After V5 slices (0a–8) and optional legacy tab segmentation are complete. Not a blocker for Slice 4 i18n.
+
+**Symptom:** Switching segmented routes (`/atelier/inventory` → `/atelier/audit`, etc.) feels like constant reload: boot splash, tab skeleton, catalogue subset reset.
+
+**Root cause (current design):**
+
+- Every segment `page.tsx` calls [`loadAtelierShellProps`](../lib/atelier/load-atelier-shell-props.ts) — always re-fetches `Oeuvres` **count** + **first keyset chunk** (50 rows) plus overview/reminders bootstrap.
+- [`atelierShellNonce: Date.now()`](../lib/atelier/load-atelier-shell-props.ts) on each navigation forces client [`fetchAtelierShellPostPaint`](../app/atelier/atelier-data-actions.ts) (contacts, techniques, themes, groups, …) even when data unchanged.
+- [`TeamPortalClient`](../components/atelier/TeamPortalClient.tsx) resets in-memory `oeuvres` from new RSC props — extra “load more” batches from Inventory are lost on tab hop.
+- Legacy `/atelier?tab=` avoided per-tab server round-trips; segment URLs trade that for full navigation.
+
+**Not necessary for every tab** (today they still pay for the shared loader):
+
+| Tab | Catalogue chunk needed on first paint? |
+|-----|----------------------------------------|
+| inventory, reports, constellation, production, sales, exhibitions, vault, pipeline, fiscal, themes, notes (partial) | Yes (or subset) |
+| logistics, concepts, stock-take, audit, broadcast | No — own fetch or contacts-only |
+
+**Direction (pick one or combine):**
+
+1. **Layout-level shell once** — load shell in `app/atelier/layout.tsx` (or shared parent); segment pages only pass `routeTab`; client context holds catalogue + references across segment navigations.
+2. **Tab-specific loaders** — slim RSC per route (e.g. Audit skips `Oeuvres`; Inventory loads catalogue).
+3. **Stable `atelierShellNonce`** — bump only on `router.refresh()` / explicit invalidation, not every segment navigation.
+4. **Client catalogue session cache** — retain keyset-merged `oeuvres` when switching segments; invalidate on work save/delete.
+
+**Touch points:** `lib/atelier/load-atelier-shell-props.ts`, `app/atelier/*/page.tsx`, `components/atelier/TeamPortalClient.tsx`, `components/atelier/AtelierTeamPortalLoader.tsx`, `SITE_MAP.md` § Atelier data spine.
+
+**Verification:** Tab-hop latency (no duplicate postPaint); Inventory “load next batch” survives hop to Sales and back; Audit/Logistics open without catalogue queries; subset banners still honest when partial.
 
 ---
 

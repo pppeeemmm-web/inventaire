@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import type { DictKey, Lang } from '@/lib/i18n/dictionary'
-import { dict } from '@/lib/i18n/dictionary'
+import { resolveMessage } from '@/lib/i18n/resolve-message'
 import { getMetadataBase } from '@/lib/seo/site-url'
 
 /** Static public routes — title/description keys live in `dict` (fr + en). */
@@ -72,9 +72,8 @@ const ROUTES: Record<RouteMetaKey, RouteSpec> = {
 /** Server Components: use this instead of hardcoded `metadata` strings. */
 export function routeMetadata(route: RouteMetaKey, lang: Lang): Metadata {
   const spec = ROUTES[route]
-  const d = dict[lang]
-  const title = d[spec.titleKey]
-  const description = spec.descKey ? d[spec.descKey] : undefined
+  const title = resolveMessage(lang, spec.titleKey)
+  const description = spec.descKey ? resolveMessage(lang, spec.descKey) : undefined
   const base = getMetadataBase()
   const ogLocale = lang === 'fr' ? 'fr_FR' : 'en_GB'
 

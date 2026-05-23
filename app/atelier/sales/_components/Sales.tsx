@@ -291,7 +291,7 @@ export function Sales({ oeuvres, statusLabelMap, contacts, groups, cM, tM }: Pro
                   <th onClick={() => toggleSort('work')} style={{ width: 220, cursor: 'pointer' }}>Œuvre <SortInd k="work" current={sortKey} dir={sortDir} /></th>
                   <th onClick={() => toggleSort('buyer')} style={{ width: 180, cursor: 'pointer' }}>Acheteur <SortInd k="buyer" current={sortKey} dir={sortDir} /></th>
                   <th onClick={() => toggleSort('date')} style={{ width: 100, cursor: 'pointer' }}>Date <SortInd k="date" current={sortKey} dir={sortDir} /></th>
-                  <th onClick={() => toggleSort('prix')} className="num" style={{ width: 120, cursor: 'pointer' }}>Prix final <SortInd k="prix" current={sortKey} dir={sortDir} /></th>
+                  <th onClick={() => toggleSort('prix')} className="num" style={{ width: 120, cursor: 'pointer' }}>{t('sales_col_final_price')} <SortInd k="prix" current={sortKey} dir={sortDir} /></th>
                   <th style={{ width: 150 }}>Règlement (Grains)</th>
                   <th onClick={() => toggleSort('statut')} style={{ width: 120, cursor: 'pointer' }}>Statut <SortInd k="statut" current={sortKey} dir={sortDir} /></th>
                   <th style={{ width: 60 }}>PDF</th>
@@ -462,7 +462,7 @@ function OrderFormModal({ oeuvres, contacts, groups, tM, onClose, onCreated }: {
     }} onClick={(e) => { if (e.target === e.currentTarget) attemptClose() }}>
       <div style={{ width: 680, maxHeight: '90vh', overflowY: 'auto', background: 'var(--bg1)', border: '1px solid var(--bd)', padding: 28 }} onClick={(e) => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-          <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--tx)' }}>Nouvelle commande</div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--tx)' }}>{t('sales_new_order_title')}</div>
           <button type="button" onClick={attemptClose} aria-label={t('close')} style={{ background: 'none', border: 'none', color: 'var(--tx3)', cursor: 'pointer', fontSize: 24, minHeight: 44, minWidth: 44 }}>×</button>
         </div>
         <form ref={formRef} onSubmit={handleSubmit} onChange={() => setDirty(true)}>
@@ -560,13 +560,13 @@ function OrderFormModal({ oeuvres, contacts, groups, tM, onClose, onCreated }: {
           <Section label="Conditions de paiement">
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
               <div>
-                <div className="t-label" style={{ marginBottom: 4 }}>Mode de paiement</div>
+                <div className="t-label" style={{ marginBottom: 4 }}>{t('sales_payment_method_label')}</div>
                 <select name="payment_method" style={inputStyle}>
                   <option value="">—</option>
-                  <option value="Virement bancaire">Virement bancaire</option>
+                  <option value="Virement bancaire">{t('sales_pay_wire')}</option>
                   <option value="Chèque">Chèque</option>
                   <option value="Espèces">Espèces</option>
-                  <option value="Carte bancaire">Carte bancaire</option>
+                  <option value="Carte bancaire">{t('sales_pay_card')}</option>
                   <option value="PayPal">PayPal</option>
                 </select>
               </div>
@@ -577,27 +577,27 @@ function OrderFormModal({ oeuvres, contacts, groups, tM, onClose, onCreated }: {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <div>
-                <div className="t-label" style={{ marginBottom: 4 }}>Acompte dû le</div>
+                <div className="t-label" style={{ marginBottom: 4 }}>{t('sales_deposit_due')}</div>
                 <input name="deposit_due" type="date" style={inputStyle} />
               </div>
               <div>
-                <div className="t-label" style={{ marginBottom: 4 }}>Solde dû le</div>
+                <div className="t-label" style={{ marginBottom: 4 }}>{t('sales_balance_due')}</div>
                 <input name="balance_due" type="date" style={inputStyle} />
               </div>
             </div>
           </Section>
           <Section label="Livraison">
             <div style={{ marginBottom: 10 }}>
-              <div className="t-label" style={{ marginBottom: 4 }}>Adresse de livraison</div>
+              <div className="t-label" style={{ marginBottom: 4 }}>{t('sales_delivery_address')}</div>
               <textarea name="delivery_address" rows={2} onBlur={e => e.target.value = e.target.value.charAt(0).toUpperCase() + e.target.value.slice(1)} style={{ ...inputStyle, resize: 'vertical' }} placeholder="Rue, code postal, ville, pays…" />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <div>
-                <div className="t-label" style={{ marginBottom: 4 }}>Mode d&apos;expédition</div>
+                <div className="t-label" style={{ marginBottom: 4 }}>{t('sales_shipping_method_label')}</div>
                 <select name="shipping_method" style={inputStyle}>
                   <option value="">—</option>
-                  <option value="Remise en main propre">Remise en main propre</option>
-                  <option value="Transporteur art">Transporteur art</option>
+                  <option value="Remise en main propre">{t('sales_ship_hand')}</option>
+                  <option value="Transporteur art">{t('sales_ship_art_carrier')}</option>
                   <option value="Colissimo">Colissimo</option>
                   <option value="DHL">DHL</option>
                   <option value="FedEx">FedEx</option>
@@ -605,7 +605,7 @@ function OrderFormModal({ oeuvres, contacts, groups, tM, onClose, onCreated }: {
                 </select>
               </div>
               <div>
-                <div className="t-label" style={{ marginBottom: 4 }}>Date de livraison estimée</div>
+                <div className="t-label" style={{ marginBottom: 4 }}>{t('sales_estimated_delivery')}</div>
                 <input name="delivery_date" type="date" style={inputStyle} />
               </div>
             </div>
@@ -741,22 +741,22 @@ function OrderDetailPanel({ order, oeuvres, cM, setInspectedOrder, onClose, onUp
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 20px', fontSize: 13, marginBottom: 24 }}>
           <span style={{ color: 'var(--tx3)' }}>Acheteur</span>       <span>{buyer}</span>
-          <span style={{ color: 'var(--tx3)' }}>Prix catalogue</span>  <span>{fmt(order.prix_catalogue)}</span>
+          <span style={{ color: 'var(--tx3)' }}>{t('sales_catalogue_price')}</span>  <span>{fmt(order.prix_catalogue)}</span>
           {order.discount_pct    ? <><span style={{ color: 'var(--tx3)' }}>Remise</span>     <span>{order.discount_pct}%</span></> : null}
-          <span style={{ color: 'var(--tx3)' }}>Prix final</span>      <span style={{ color: 'var(--ac)' }}>{fmt(order.prix_final)}</span>
+          <span style={{ color: 'var(--tx3)' }}>{t('sales_col_final_price')}</span>      <span style={{ color: 'var(--ac)' }}>{fmt(order.prix_final)}</span>
           {order.consignment_order_id && order.commission_amount ? (
             <>
-              <span style={{ color: 'var(--tx3)' }}>Commission galerie</span>
+              <span style={{ color: 'var(--tx3)' }}>{t('sales_gallery_commission')}</span>
               <span style={{ color: 'var(--rust)' }}>– {fmt(order.commission_amount)}</span>
-              <span style={{ color: 'var(--tx3)' }}>Net artiste</span>
+              <span style={{ color: 'var(--tx3)' }}>{t('sales_net_artist')}</span>
               <span style={{ color: 'var(--sage)', fontWeight: 600 }}>{fmt((order.prix_final ?? 0) - (order.commission_amount ?? 0))}</span>
             </>
           ) : null}
 
           <div style={{ gridColumn: '1 / -1', height: 1, background: 'var(--bd)', margin: '8px 0' }} />
           
-          <span style={{ color: 'var(--tx3)' }}>Total Réglé</span>    <span style={{ color: 'var(--sage)', fontWeight: 600 }}>{fmt(totalPaid)}</span>
-          <span style={{ color: 'var(--tx3)' }}>Reste à payer</span>   <span style={{ color: remaining > 0 ? 'var(--rust)' : 'var(--tx3)' }}>{fmt(remaining)}</span>
+          <span style={{ color: 'var(--tx3)' }}>{t('sales_total_paid')}</span>    <span style={{ color: 'var(--sage)', fontWeight: 600 }}>{fmt(totalPaid)}</span>
+          <span style={{ color: 'var(--tx3)' }}>{t('sales_remaining_due')}</span>   <span style={{ color: remaining > 0 ? 'var(--rust)' : 'var(--tx3)' }}>{fmt(remaining)}</span>
           
           <div style={{ gridColumn: '1 / -1', height: 1, background: 'var(--bd)', margin: '8px 0' }} />
 
@@ -765,10 +765,10 @@ function OrderDetailPanel({ order, oeuvres, cM, setInspectedOrder, onClose, onUp
 
         {/* --- Payment History (Grains) --- */}
         <div style={{ marginBottom: 24 }}>
-          <div className="t-label" style={{ marginBottom: 12, color: 'var(--tx2)' }}>Historique des règlements (Grains)</div>
+          <div className="t-label" style={{ marginBottom: 12, color: 'var(--tx2)' }}>{t('sales_payment_history')}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
-            {loading ? <div style={{ fontSize: 12, color: 'var(--tx3)' }}>Chargement...</div> :
-             payments.length === 0 ? <div style={{ fontSize: 12, color: 'var(--tx3)', fontStyle: 'italic' }}>Aucun versement enregistré.</div> :
+            {loading ? <div style={{ fontSize: 12, color: 'var(--tx3)' }}>{t('loading')}</div> :
+             payments.length === 0 ? <div style={{ fontSize: 12, color: 'var(--tx3)', fontStyle: 'italic' }}>{t('sales_no_payments')}</div> :
              payments.map(p => (
                <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg2)', padding: '6px 12px', fontSize: 12, border: '1px solid var(--bd2)' }}>
                  <div>

@@ -6,6 +6,11 @@ import { publicMessages } from './public.messages'
 import { siteBlocksMessages } from './site-blocks.messages'
 import { systemMessages } from './system.messages'
 import { workFormMessages } from './work-form.messages'
+import { exhibitionsUiMessages } from './exhibitions-ui.messages'
+import { fiscalUiMessages } from './fiscal-ui.messages'
+import { salesUiMessages } from './sales-ui.messages'
+import { inventoryUiMessages } from './inventory-ui.messages'
+import { vaultUiMessages } from './vault-ui.messages'
 
 export const featureMessages = {
   ...atelierMessages,
@@ -16,6 +21,11 @@ export const featureMessages = {
   ...siteBlocksMessages,
   ...workFormMessages,
   ...systemMessages,
+  ...exhibitionsUiMessages,
+  ...fiscalUiMessages,
+  ...salesUiMessages,
+  ...inventoryUiMessages,
+  ...vaultUiMessages,
 } as const
 
 export type MessageKey = keyof typeof featureMessages

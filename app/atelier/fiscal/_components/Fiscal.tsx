@@ -7,6 +7,7 @@
 import { useState, useEffect, useMemo, useLayoutEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useI18n } from '@/lib/i18n/context'
+import { interpolateMessage } from '@/lib/i18n/message-core'
 import { useUnsavedCloseGuard } from '@/hooks/useUnsavedCloseGuard'
 import type { Oeuvre } from '@/lib/types/database'
 import type { Agg, Dim } from '@/lib/pivot'
@@ -309,7 +310,7 @@ export function Fiscal({ oeuvres, contacts = [] }: Props) {
           <select value={regime} onChange={(e) => setRegime(e.target.value as 'micro' | 'reel')}
             style={{ ...FIS, width: 'auto', padding: '4px 8px', fontSize: 10 }}>
             <option value="micro">Micro-BNC</option>
-            <option value="reel">Déclaration contrôlée</option>
+            <option value="reel">{t('fiscal_regime_reel')}</option>
           </select>
         </div>
       </div>
@@ -429,7 +430,7 @@ export function Fiscal({ oeuvres, contacts = [] }: Props) {
             <div style={{ padding: 32 }} className="t-mono-sm">Chargement…</div>
           ) : expenses.length === 0 ? (
             <div style={{ padding: 32, color: 'var(--tx3)' }} className="t-mono-sm">
-              Aucune dépense enregistrée pour {year}. Cliquez sur « + Nouvelle dépense » pour commencer.
+              {interpolateMessage(t('fiscal_no_expenses_year'), { year })}
             </div>
           ) : (
             <div style={{ flex: 1, overflow: 'auto' }}>
@@ -712,7 +713,7 @@ function ExpenseModal({
               <select value={form.type || ''} onChange={f('type')} style={FIS}>
                 <option value="receipt">Ticket / Docket</option>
                 <option value="bill">Facture</option>
-                <option value="docket">Bon de livraison</option>
+                <option value="docket">{t('fiscal_doc_type_docket')}</option>
                 <option value="other">Autre</option>
               </select>
             </div>
@@ -731,7 +732,7 @@ function ExpenseModal({
 
           <div>
             <div className="t-label" style={{ marginBottom: 3 }}>Libellé</div>
-            <input value={form.libelle} onChange={f('libelle')} placeholder="Description de la dépense" style={FIS} />
+            <input value={form.libelle} onChange={f('libelle')} placeholder={t('fiscal_expense_desc_placeholder')} style={FIS} />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 90px 1fr', gap: 8, alignItems: 'end' }}>
@@ -775,7 +776,7 @@ function ExpenseModal({
           </div>
 
           <div>
-            <div className="t-label" style={{ marginBottom: 3 }}>Référence justificatif / numéro dossier</div>
+            <div className="t-label" style={{ marginBottom: 3 }}>{t('fiscal_receipt_ref_label')}</div>
             <input value={form.receipt_ref} onChange={f('receipt_ref')} placeholder="ex: FACT-2025-003, Ticket Leroy Merlin…" style={FIS} />
           </div>
 
@@ -794,7 +795,7 @@ function ExpenseModal({
             {!isNew && (
               confirmDel ? (
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                  <span className="t-mono-sm" style={{ color: 'var(--rust)', fontSize: 10 }}>Supprimer ?</span>
+                  <span className="t-mono-sm" style={{ color: 'var(--rust)', fontSize: 10 }}>{t('fiscal_delete_confirm')}</span>
                   <button className="btn ghost sm" style={{ color: 'var(--rust)', borderColor: 'var(--rust)' }}
                     onClick={() => void handleDelete()} disabled={busy}>Oui</button>
                   <button className="btn ghost sm" onClick={() => setConfirmDel(false)}>Non</button>

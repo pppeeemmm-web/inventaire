@@ -213,6 +213,7 @@ function FloorPlanTool({ exhibitionId, oeuvres, themes, tM }: {
   themes: { id: number; name: string }[];
   tM: Record<number, string>;
 }) {
+  const { t } = useI18n()
   const [layouts, setLayouts]   = useState<ExhibitionLayout[]>([])
   const [selected, setSelected] = useState<ExhibitionLayout | null>(null)
   const [creating, setCreating] = useState(false)
@@ -356,7 +357,7 @@ function FloorPlanTool({ exhibitionId, oeuvres, themes, tM }: {
         </div>
         <div style={{ flex: 1, overflowY: 'auto' }}>
           {layouts.length === 0 ? (
-            <div style={{ padding: '12px 10px', fontSize: 11, color: 'var(--tx3)', fontStyle: 'italic' }}>Aucune mise en espace.</div>
+            <div style={{ padding: '12px 10px', fontSize: 11, color: 'var(--tx3)', fontStyle: 'italic' }}>{t('exh_layout_none')}</div>
           ) : layouts.map((l) => (
             <button key={l.id} onClick={() => setSelected(l)} style={{
               width: '100%', textAlign: 'left', padding: '8px 10px',
@@ -380,15 +381,15 @@ function FloorPlanTool({ exhibitionId, oeuvres, themes, tM }: {
             <rect x="34" y="8" width="22" height="14" stroke="currentColor" strokeWidth="1.5" fill="none"/>
             <rect x="8" y="34" width="14" height="22" stroke="currentColor" strokeWidth="1.5" fill="none"/>
           </svg>
-          <div style={{ fontSize: 13 }}>Aucune mise en espace pour cette exposition.</div>
-          <div style={{ fontSize: 11, color: 'var(--tx3)' }}>Créez-en une dans le panneau de gauche pour commencer à placer des œuvres.</div>
+          <div style={{ fontSize: 13 }}>{t('exh_layout_none_for_exhibition')}</div>
+          <div style={{ fontSize: 11, color: 'var(--tx3)' }}>{t('exh_layout_create_hint')}</div>
         </div>
       ) : layout ? (
         <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}>
           {/* Work sidebar */}
           <div style={{ width: 160, flexShrink: 0, borderRight: '1px solid var(--bd)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <div style={{ padding: '10px 12px', fontSize: 11, letterSpacing: 1, color: 'var(--tx3)', textTransform: 'uppercase', borderBottom: '1px solid var(--bd)' }}>
-              Œuvres candidates
+              {t('exh_candidate_works')}
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: 6 }}>
               {exposable.map((o) => (
@@ -461,7 +462,7 @@ function FloorPlanTool({ exhibitionId, oeuvres, themes, tM }: {
 
                 {/* Wall strips Sidebar (Optional) */}
                 <div style={{ width: 240, flexShrink: 0, borderLeft: '1px solid var(--bd)', overflowY: 'auto', padding: 12, background: 'var(--bg1)' }}>
-                  <div style={{ fontSize: 12, color: 'var(--tx3)', marginBottom: 14, letterSpacing: 1, textTransform: 'uppercase' }}>Placements</div>
+                  <div style={{ fontSize: 12, color: 'var(--tx3)', marginBottom: 14, letterSpacing: 1, textTransform: 'uppercase' }}>{t('exh_placements_heading')}</div>
                   {layout.placements.length === 0 ? (
                     <div style={{ fontSize: 12, color: 'var(--tx3)', fontStyle: 'italic' }}>Aucune œuvre placée.</div>
                   ) : (
@@ -688,7 +689,7 @@ function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, selection
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
               <div style={{ fontSize: 18, fontWeight: 500, color: 'var(--tx)' }}>{exhibition.nom}</div>
-              <button onClick={onDelete} className="btn ghost sm" style={{ color: 'var(--rust)', fontSize: 11, borderColor: 'var(--rust)', opacity: 0.8 }}>Supprimer l&apos;exposition</button>
+              <button onClick={onDelete} className="btn ghost sm" style={{ color: 'var(--rust)', fontSize: 11, borderColor: 'var(--rust)', opacity: 0.8 }}>{t('exh_delete_exhibition')}</button>
             </div>
             <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--tx3)', flexWrap: 'wrap' }}>
               {contact && <span>📍 {contactName}</span>}
@@ -759,7 +760,7 @@ function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, selection
                 </div>
                 
                 {exhibition.steps.length === 0 ? (
-                  <div style={{ fontSize: 13, color: 'var(--tx3)', fontStyle: 'italic' }}>Aucune étape définie.</div>
+                  <div style={{ fontSize: 13, color: 'var(--tx3)', fontStyle: 'italic' }}>{t('exh_no_steps_defined')}</div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
                     {exhibition.steps.map((s) => (
@@ -873,7 +874,7 @@ function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, selection
               {exhibition.date_debut && (
                 <div style={{ position: 'relative' }}>
                   <div style={{ position: 'absolute', left: -29, top: 2, width: 9, height: 9, borderRadius: '50%', background: 'var(--ac)' }} />
-                  <div style={{ fontSize: 9, color: 'var(--tx3)', textTransform: 'uppercase', letterSpacing: 1 }}>Début de l&apos;exposition</div>
+                  <div style={{ fontSize: 9, color: 'var(--tx3)', textTransform: 'uppercase', letterSpacing: 1 }}>{t('exh_calendar_start_label')}</div>
                   <div style={{ fontSize: 13, color: 'var(--tx)', fontWeight: 500 }}>{fmtDate(exhibition.date_debut)}</div>
                 </div>
               )}
@@ -882,9 +883,9 @@ function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, selection
               {exhibition.steps.slice().sort((a,b) => (a.date_echeance ?? '').localeCompare(b.date_echeance ?? '')).map(s => (
                 <div key={s.id} style={{ position: 'relative' }}>
                   <div style={{ position: 'absolute', left: -29, top: 4, width: 9, height: 9, borderRadius: '50%', background: STEP_COLORS[s.statut] ?? 'var(--bd)', border: '2px solid var(--bg1)' }} />
-                  <div style={{ fontSize: 9, color: 'var(--tx3)', textTransform: 'uppercase', letterSpacing: 1 }}>{s.statut === 'fait' ? '✓ Terminée' : s.statut === 'en_cours' ? '→ En cours' : 'À faire'}</div>
+                  <div style={{ fontSize: 9, color: 'var(--tx3)', textTransform: 'uppercase', letterSpacing: 1 }}>{s.statut === 'fait' ? t('exh_step_status_done') : s.statut === 'en_cours' ? t('exh_step_status_in_progress') : t('exh_step_status_todo')}</div>
                   <div style={{ fontSize: 11, color: 'var(--tx)', marginBottom: 2 }}>{s.nom}</div>
-                  {s.date_echeance && <div style={{ fontSize: 10, color: 'var(--tx2)' }}>Échéance : {fmtDate(s.date_echeance)}</div>}
+                  {s.date_echeance && <div style={{ fontSize: 10, color: 'var(--tx2)' }}>{t('exh_step_deadline_label')} {fmtDate(s.date_echeance)}</div>}
                 </div>
               ))}
 
@@ -892,7 +893,7 @@ function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, selection
               {exhibition.date_fin && (
                 <div style={{ position: 'relative' }}>
                   <div style={{ position: 'absolute', left: -29, top: 2, width: 9, height: 9, borderRadius: '50%', background: 'var(--tx3)' }} />
-                  <div style={{ fontSize: 9, color: 'var(--tx3)', textTransform: 'uppercase', letterSpacing: 1 }}>Fin de l&apos;exposition</div>
+                  <div style={{ fontSize: 9, color: 'var(--tx3)', textTransform: 'uppercase', letterSpacing: 1 }}>{t('exh_calendar_end_label')}</div>
                   <div style={{ fontSize: 13, color: 'var(--tx)', fontWeight: 500 }}>{fmtDate(exhibition.date_fin)}</div>
                 </div>
               )}
@@ -1165,7 +1166,7 @@ export function Exhibitions({ oeuvres, contacts, themes, tM, selection, setSelec
         />
       ) : (
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--tx3)', fontSize: 11 }}>
-          Sélectionnez ou créez une exposition.
+          {t('exh_select_or_create')}
         </div>
       )}
     </div>

@@ -4,7 +4,8 @@ import {
   createContext, useContext, useState, useEffect, useCallback,
   type ReactNode,
 } from 'react'
-import { dict, type Lang, type DictKey } from './dictionary'
+import type { Lang, DictKey } from './dictionary'
+import { resolveMessage } from './resolve-message'
 
 interface I18nContextValue {
   lang: Lang
@@ -27,10 +28,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('pem_lang', l)
   }
 
-  const t = useCallback(
-    (key: DictKey): string => dict[lang][key] ?? dict.fr[key] ?? key,
-    [lang],
-  )
+  const t = useCallback((key: DictKey): string => resolveMessage(lang, key), [lang])
 
   return (
     <I18nContext.Provider value={{ lang, setLang, t }}>
