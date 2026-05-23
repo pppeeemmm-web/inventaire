@@ -8,10 +8,7 @@ test.describe('Themes / groups context menu', () => {
   )
 
   test('themes tab mounts catalog rows', async ({ page }) => {
-    await page.addInitScript(() => {
-      localStorage.setItem('pem_team_tab', 'themes')
-    })
-    await page.goto('/atelier')
+    await page.goto('/atelier/themes')
     await expect(
       page.getByRole('heading', { name: /^(Thèmes|Themes)$/ }),
     ).toBeVisible({ timeout: 45_000 })

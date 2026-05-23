@@ -26,6 +26,7 @@
         "app/atelier/reports/_components/Reports.tsx",
         "app/atelier/exhibitions/_components/Exhibitions.tsx",
         "app/atelier/concepts/_components/Concepts.tsx",
+        "app/atelier/themes/_components/Themes.tsx",
         "components/atelier/FiscalTab.tsx",
         "components/atelier/VaultTab.tsx",
         "components/atelier/CurationPanel.tsx",

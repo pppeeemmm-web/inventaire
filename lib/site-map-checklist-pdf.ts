@@ -54,7 +54,7 @@ export async function buildSiteMapChecklistPdf(): Promise<Buffer> {
         'pipeline + Gantt/Calendar + exhibition_process_id link',
         'fiscal',
         'concepts /atelier/concepts',
-        'themes',
+        'themes /atelier/themes',
         'stock SupplierHub',
         'stock-take',
         'system + Studio Bible + checklist download',

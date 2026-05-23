@@ -1,3 +1,5 @@
+'use client'
+
 import { useState, useMemo, type MouseEvent } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { thumbUrl } from '@/lib/data'
@@ -24,7 +26,7 @@ interface Props {
   tM:                  Record<number, string>
 }
 
-export function ThemesTab({ 
+export function Themes({ 
   initialThemes, initialGroups, themeWorkCount, groupWorkCount,
   themePrivateWorks = {}, groupPrivateWorks = {},
   themeToGroups = {}, groupToThemes = {},

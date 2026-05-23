@@ -9,6 +9,7 @@ export type SegmentedAtelierTab =
   | 'reports'
   | 'exhibitions'
   | 'concepts'
+  | 'themes'
 
 export const ATELIER_SEGMENTED_TAB_ROUTES: Record<SegmentedAtelierTab, string> = {
   inventory: '/atelier/inventory',
@@ -20,6 +21,7 @@ export const ATELIER_SEGMENTED_TAB_ROUTES: Record<SegmentedAtelierTab, string> =
   reports: '/atelier/reports',
   exhibitions: '/atelier/exhibitions',
   concepts: '/atelier/concepts',
+  themes: '/atelier/themes',
 }
 
 export function isSegmentedAtelierTab(tab: string): tab is SegmentedAtelierTab {
