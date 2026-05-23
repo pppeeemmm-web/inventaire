@@ -31,7 +31,7 @@ const FIELD_ROWS: FieldRow[] = [
   { kind: 'link', testId: 'hub-field-verb-session', emoji: '📷', labelKey: 'hub_field_session', subKey: 'hub_field_session_sub', href: '/atelier/session/new' },
   { kind: 'note', testId: 'hub-field-verb-note', emoji: '🎤', labelKey: 'hub_field_note', subKey: 'hub_field_note_sub' },
   { kind: 'link', testId: 'hub-field-verb-scan-doc', emoji: '📄', labelKey: 'hub_field_scan_doc', subKey: 'hub_field_scan_doc_sub', href: '/atelier/capture?mode=doc' },
-  { kind: 'link', testId: 'hub-field-verb-pipeline', emoji: '📅', labelKey: 'hub_field_pipeline', subKey: 'hub_field_pipeline_sub', href: '/atelier?tab=pipeline' },
+  { kind: 'link', testId: 'hub-field-verb-pipeline', emoji: '📅', labelKey: 'hub_field_pipeline', subKey: 'hub_field_pipeline_sub', href: '/atelier/pipeline' },
   { kind: 'link', testId: 'hub-field-verb-sale', emoji: '💳', labelKey: 'hub_field_sale', subKey: 'hub_field_sale_sub', href: '/atelier/sale/new' },
   { kind: 'link', testId: 'hub-field-verb-triage', emoji: '📣', labelKey: 'hub_field_triage', subKey: 'hub_field_triage_sub', href: '/atelier/triage' },
   { kind: 'link', testId: 'hub-field-verb-contact', emoji: '👤', labelKey: 'hub_field_contact', subKey: 'hub_field_contact_sub', href: '/atelier/capture?mode=card' },

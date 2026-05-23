@@ -1,5 +1,7 @@
 # Broadcast — Phase 2 Complete
 
+> **ARCHIVED — session snapshot (2026).** Durable contract: [`BROADCAST.md`](../BROADCAST.md). Make guide: [`BROADCAST_OUTSIDE_CHAIN.md`](../BROADCAST_OUTSIDE_CHAIN.md).
+
 **See also:** Production host checklist + curl patterns — keep aligned with live `app/api/inventory/broadcast/*` route handlers; historical narrative in this file. *(A separate `BROADCAST_PHASE3_OPERATIONS.md` may exist in backups/worktrees.)*
 
 Session: Sonnet 4.6 · worktree `amazing-swirles-6480c6`

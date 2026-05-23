@@ -168,7 +168,7 @@ The app is functionally complete; we are moving from a strict relational ledger 
 **Tab migration order** (one PR each):
 1. ✅ `inventory` (template) → `app/atelier/inventory/page.tsx` + `_components/Inventory.tsx` — **done** (`8590d04` + `f7b8621`, 2026-05-23)
 2. ✅ `sales` → `app/atelier/sales/page.tsx` + `_components/Sales.tsx` — **done** (2026-05-23)
-3. `pipeline`
+3. ✅ `pipeline` → `app/atelier/pipeline/page.tsx` + `_components/Pipeline.tsx` — **done** (2026-05-23)
 4. `production`
 5. `stock-take`
 6. `notes`
@@ -369,8 +369,9 @@ Wrap the function return in `nullif(trim(…), '')` so all-empty inputs return `
 - **CSV Universal Export:** `app/api/export/csv/route.ts` (new) — streams `entity` and `edge_fact` views to plain `.csv`. Auth-gated via `is_admin()`. Optional weekly GitHub Action that drops the CSV alongside the daily R2 backup.
 - **Graph-Aware PDF:** update `app/atelier/portfolio/pdf-action.ts` — `generatePortfolioPdf()` appends graph relationships (Themes, Working Groups, Concepts) from `entity` + `edge_fact` to the printable portfolio.
 - **Docs consolidation:**
-  - **Keep:** `CLAUDE.md`, `AGENTS.md`, `SITE_MAP.md`, `docs/BACKUP_RECOVERY.md`, `docs/CONSTELLATION.md`, slim `docs/PROJECT_SYNTHESIS.md`.
-  - **Add:** `docs/README.md`, `docs/STATUS.md` (merge ROADMAP / TODO / SYSTEM_LEDGER), `docs/feature-graph.md`, `docs/feature-i18n.md`, `docs/feature-embeddings.md` (Slice 8 setup + audit ritual).
+  - **Keep:** `CLAUDE.md`, `AGENTS.md`, `SITE_MAP.md`, `docs/README.md`, `docs/TODO.md`, `docs/SYSTEM_LEDGER.md`, `docs/BACKUP_RECOVERY.md`, `docs/CONSTELLATION.md`, `docs/BROADCAST.md`, `docs/BROADCAST_OUTSIDE_CHAIN.md`, slim `docs/PROJECT_SYNTHESIS.md`, `docs/PEM_HYBRID_REFACTOR_PLAN_V5.md`.
+  - **Archive:** superseded `docs/archive/*` (old hybrid plan, Phase 2 broadcast snapshot, 2026-05-15 STATUS).
+  - **Add later (optional):** `docs/feature-graph.md`, `docs/feature-i18n.md`, `docs/feature-embeddings.md` (Slice 8 setup + audit ritual).
   - **Archive:** everything else → `docs/archive/` with banner.
 - Fix `AGENTS.md` "Prisma" stale line → Supabase.
 
@@ -421,6 +422,7 @@ Wrap the function return in `nullif(trim(…), '')` so all-empty inputs return `
 | Atelier bootstrap | `app/atelier/page.tsx`, `lib/atelier/load-atelier-shell-props.ts` |
 | Inventory tab (Slice 3) | `app/atelier/inventory/page.tsx`, `app/atelier/inventory/_components/Inventory.tsx`, `lib/atelier/tab-routes.ts` |
 | Sales tab (Slice 3) | `app/atelier/sales/page.tsx`, `app/atelier/sales/_components/Sales.tsx` |
+| Pipeline tab (Slice 3) | `app/atelier/pipeline/page.tsx`, `app/atelier/pipeline/_components/Pipeline.tsx` |
 | Monolith to split | `components/atelier/TeamPortalClient.tsx` (2188 LOC) |
 | WorkForm | `components/atelier/WorkForm.tsx` (1243 LOC) |
 | Constellation | `components/atelier/ConstellationCanvas.tsx` (3013 LOC), `app/atelier/constellation/actions.ts` |

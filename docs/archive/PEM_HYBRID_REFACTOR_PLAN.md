@@ -1,5 +1,7 @@
 # Pem Hub — Hybrid Refactor Plan (Virtual Thunder)
 
+> **ARCHIVED — superseded by [`PEM_HYBRID_REFACTOR_PLAN_V5.md`](../PEM_HYBRID_REFACTOR_PLAN_V5.md).** Kept for history only.
+
 > **Repo copy (reordered 2026-05-22).** Execute in Cursor against `origin/main` of this repo. Each slice ships as one or more PRs to `main`. **Owner GO required** before implementation (see `CLAUDE.md`). Desktop mirror: `Pem Hub — Hybrid Refactor Plan 2.md` — keep in sync when this file changes.
 
 ---
@@ -75,7 +77,7 @@
 
 Stay in `app/`. New: `lib/error-reporter/`, `eslint-rules/no-silent-catch.js`, `supabase/sql/graph_foundation/`, `public/sw/`, `lib/sw-install/`, `lib/graph/node-ref.ts`, `components/shared/BottomStack.tsx`.
 
-**Slice 3 correction:** Tab routes like `app/atelier/inventory/page.tsx` are created incrementally (Slice 3). **`/atelier/inventory`** landed 2026-05-23; other tabs still use `?tab=` on `/atelier` until migrated. Verb routes (`share-triage`, `capture`, `works/new`, …) unchanged.
+**Slice 3 correction:** Tab routes like `app/atelier/inventory/page.tsx` are created incrementally (Slice 3). **`/atelier/inventory`**, **`/atelier/sales`**, **`/atelier/pipeline`** landed 2026-05-23; other tabs still use `?tab=` on `/atelier` until migrated. Verb routes (`share-triage`, `capture`, `works/new`, …) unchanged.
 
 ---
 
@@ -194,7 +196,7 @@ Stay in `app/`. New: `lib/error-reporter/`, `eslint-rules/no-silent-catch.js`, `
 **Tab migration order (one PR each):**
 1. ✅ `inventory` (template) — **done** 2026-05-23
 2. ✅ `sales` — **done** 2026-05-23
-3. `pipeline`
+3. ✅ `pipeline` — **done** 2026-05-23
 4. `production`
 5. `stock-take`
 6. `notes`
@@ -315,6 +317,7 @@ Stay in `app/`. New: `lib/error-reporter/`, `eslint-rules/no-silent-catch.js`, `
 | Atelier bootstrap | `app/atelier/page.tsx`, `lib/atelier/load-atelier-shell-props.ts` |
 | Inventory tab (Slice 3) | `app/atelier/inventory/page.tsx`, `app/atelier/inventory/_components/Inventory.tsx` |
 | Sales tab (Slice 3) | `app/atelier/sales/page.tsx`, `app/atelier/sales/_components/Sales.tsx` |
+| Pipeline tab (Slice 3) | `app/atelier/pipeline/page.tsx`, `app/atelier/pipeline/_components/Pipeline.tsx` |
 | Monolith | `components/atelier/TeamPortalClient.tsx` |
 | Constellation | `components/atelier/ConstellationCanvas.tsx`, `app/atelier/constellation/actions.ts` |
 | Work form | `components/atelier/WorkForm.tsx` |

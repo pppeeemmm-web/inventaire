@@ -41,9 +41,9 @@ Use this as the **forward queue**. Check items off when done; add dates in paren
 
 ### 1 — Operations (done 2026-09-01)
 
-- [x] **Production DB:** Confirm `supabase/sql/broadcast_phase2.sql` is applied on **production** Supabase (same checks as dev). HTTP contract + curl patterns: [BROADCAST_PHASE2_COMPLETE.md](./BROADCAST_PHASE2_COMPLETE.md) and route sources under `app/api/inventory/broadcast/`.
+- [x] **Production DB:** Confirm `supabase/sql/broadcast_phase2.sql` is applied on **production** Supabase (same checks as dev). HTTP contract: [BROADCAST.md](./BROADCAST.md) and route sources under `app/api/inventory/broadcast/`.
 - [x] **Vercel:** Set `INVENTORY_BROADCAST_SECRET` on Production (and Preview only if previews should hit the API). Same value will go into Make.
-- [x] **Make / n8n:** Implement the live scenario — `GET feed` → `POST queue` per item → your AI + Buffer → `POST confirm` → optional `POST event`. Contract: [BROADCAST_PHASE2_COMPLETE.md](./BROADCAST_PHASE2_COMPLETE.md) + [`BROADCAST_OUTSIDE_CHAIN.md`](./BROADCAST_OUTSIDE_CHAIN.md).
+- [x] **Make / n8n:** Implement the live scenario — `GET feed` → `POST queue` per item → your AI + Buffer → `POST confirm` → optional `POST event`. Contract: [BROADCAST.md](./BROADCAST.md) + [`BROADCAST_OUTSIDE_CHAIN.md`](./BROADCAST_OUTSIDE_CHAIN.md).
 - [x] **Smoke:** Exercise feed/queue/confirm/event against production host once secrets match (examples in Phase 2 doc + route handlers).
 
 ### 2 — Quality / regression (repo) (done)
@@ -58,7 +58,7 @@ Use this as the **forward queue**. Check items off when done; add dates in paren
 
 ### 4 — Explicitly *outside* this **Next.js** codebase
 
-The **full line** still includes **Make → Buffer → social → Slack** above; those integrations are built in **middleware and third-party products**, not as `app/api/*` routes here unless scope changes. Do **not** duplicate into this repo: in-app AI caption generation, comment ingestion APIs, Slack outbound implemented in Next, first-comment automation, in-app VIP detection — keep that logic in **Make/n8n** and pass outcomes back via `confirm` / `event` (see [BROADCAST_PHASE2_COMPLETE.md](./BROADCAST_PHASE2_COMPLETE.md)).
+The **full line** still includes **Make → Buffer → social → Slack** above; those integrations are built in **middleware and third-party products**, not as `app/api/*` routes here unless scope changes. Do **not** duplicate into this repo: in-app AI caption generation, comment ingestion APIs, Slack outbound implemented in Next, first-comment automation, in-app VIP detection — keep that logic in **Make/n8n** and pass outcomes back via `confirm` / `event` (see [BROADCAST.md](./BROADCAST.md)).
 
 ---
 
@@ -108,7 +108,7 @@ flowchart LR
   Make --> Slack
 ```
 
-HTTP contract (endpoints + Bearer secret): [BROADCAST_PHASE2_COMPLETE.md](./BROADCAST_PHASE2_COMPLETE.md). **Build Make → Buffer → Slack:** [BROADCAST_OUTSIDE_CHAIN.md](./BROADCAST_OUTSIDE_CHAIN.md) *(Make.com only)*.
+HTTP contract (endpoints + Bearer secret): [BROADCAST.md](./BROADCAST.md). **Build Make → Buffer → Slack:** [BROADCAST_OUTSIDE_CHAIN.md](./BROADCAST_OUTSIDE_CHAIN.md) *(Make.com only)*.
 
 ---
 
@@ -134,30 +134,15 @@ From repo root: `pwsh scripts/dev.ps1` (frees port 3000, prints LAN URL for mobi
 ## Architecture rules (short)
 
 - **Mutations:** Server Actions in `app/**/actions.ts` only — not ad-hoc API routes for app CRUD.
-- **Exception:** `app/api/inventory/broadcast/*` — Bearer-authenticated JSON for **Make/n8n** only (see [BROADCAST_PHASE2_COMPLETE.md](./BROADCAST_PHASE2_COMPLETE.md)).
+- **Exception:** `app/api/inventory/broadcast/*` — Bearer-authenticated JSON for **Make/n8n** only (see [BROADCAST.md](./BROADCAST.md)).
 - **Auth:** Middleware protects `/atelier`, `/hub`, `/galerie`. **Admin** = `is_admin()` RPC (`Contact.is_admin` + `auth_user_id`). Do not use legacy `profiles.role`.
 - **R2:** EU endpoint only — `https://<account_id>.eu.r2.cloudflarestorage.com` (see CLAUDE.md).
 
 ---
 
-## Main entrypoints
+## Routes and modules
 
-| Area | Where |
-|------|--------|
-| Atelier shell + tabs + drawer | `components/atelier/TeamPortalClient.tsx` |
-| Inventory tab (Slice 3) | `app/atelier/inventory/page.tsx`, `app/atelier/inventory/_components/Inventory.tsx` |
-| Sales tab (Slice 3) | `app/atelier/sales/page.tsx`, `app/atelier/sales/_components/Sales.tsx` |
-| Big parallel data load | `app/atelier/page.tsx`, `lib/atelier/load-atelier-shell-props.ts` |
-| Work create | `app/atelier/works/new`, `WorkForm.tsx` |
-| Work edit (canonical) | `WorkDrawer.tsx` + `?work=` deep link |
-| Work mutations + images | `app/atelier/works/actions.ts` |
-| Audit / pending / versions | `app/atelier/audit/*`, `components/atelier/AuditTab.tsx`, etc. |
-| Broadcast dashboard (admin UI) | `components/atelier/BroadcastTab.tsx`, `app/atelier/broadcast/actions.ts` |
-| Hub field launcher + voice sheet (narrow) | `components/hub/HubLauncherClient.tsx`, `components/shared/VoiceNoteSheet.tsx` |
-| Atelier mobile bottom bar (narrow) | `MobileActionBar` in `components/atelier/TeamPortalClient.tsx` |
-| Share inbox (PWA / form) | `app/atelier/share-receive/route.ts`, `app/atelier/share-triage/*`, `share_inbox` SQL |
-| Ring C field routes | `/atelier/session/new`, `/capture`, `/documents/new`, `/triage` — [`FieldToolStubPage`](../components/atelier/FieldToolStubPage.tsx) verb kinds + links; **`/atelier/issue/new`** → [`IssueNewForm`](../components/atelier/IssueNewForm.tsx) + [`app/atelier/field/actions.ts`](../app/atelier/field/actions.ts) (`studio_task`) |
-| Public site / galerie | `app/galerie/*` (and related) |
+**Canonical route / tab map:** [SITE_MAP.md](../SITE_MAP.md) (Mermaid, deep links, Slice 3 segment routes). **Pending work:** [TODO.md](./TODO.md). **Refactor plan:** [PEM_HYBRID_REFACTOR_PLAN_V5.md](./PEM_HYBRID_REFACTOR_PLAN_V5.md).
 
 ---
 
@@ -189,12 +174,15 @@ Document full list in `.env.local.example`. Critical groups:
 
 ## Doc index
 
+See [`docs/README.md`](./README.md) for the full list. High-signal:
+
 | Doc | Contents |
 |-----|----------|
-| [CLAUDE.md](../CLAUDE.md) | Full conventions, mobile contract, PDF/R2 gotchas, cemetery columns |
-| [SITE_MAP.md](../SITE_MAP.md) | Routes, tabs, Mermaid topology, operator checklist pointers |
-| [BROADCAST_PHASE2_COMPLETE.md](./BROADCAST_PHASE2_COMPLETE.md) | Broadcast feature “done” snapshot + API table |
-| [BROADCAST_OUTSIDE_CHAIN.md](./BROADCAST_OUTSIDE_CHAIN.md) | **Make.com only** — Buffer + Slack + close `confirm` loop |
+| [CLAUDE.md](../CLAUDE.md) | Full conventions, mobile contract, PDF/R2 gotchas |
+| [SITE_MAP.md](../SITE_MAP.md) | Routes, tabs, Mermaid topology |
+| [TODO.md](./TODO.md) | Checklist + roadmap items |
+| [BROADCAST.md](./BROADCAST.md) | Broadcast API + DB + UI pointers |
+| [BROADCAST_OUTSIDE_CHAIN.md](./BROADCAST_OUTSIDE_CHAIN.md) | Make.com → Buffer → Slack |
 | [BACKUP_RECOVERY.md](./BACKUP_RECOVERY.md) | Off-site DB backups + restore |
 
 ---
@@ -208,4 +196,4 @@ Document full list in `.env.local.example`. Critical groups:
 - [ ] New first-party HTTP API besides broadcast.
 - [ ] Major orchestrator change (e.g. no longer `TeamPortalClient`-centric).
 
-**Last reviewed (2026-05-14):** Mobile field-tool slice — Ring A/B chrome + hub launcher + `MobileActionBar`, PWA `share_target`, Ring C verb stubs + issue → `studio_task`, `pwa-icon-180` + `test:e2e:field`; doc links fixed to [SITE_MAP.md](../SITE_MAP.md) and [BROADCAST_PHASE2_COMPLETE.md](./BROADCAST_PHASE2_COMPLETE.md) (removed stale `BROADCAST_PHASE3_OPERATIONS.md` paths from this file).
+**Last reviewed (2026-05-23):** Docs folder cleanup — `README.md`, `BROADCAST.md`; V5 plan canonical; `ROADMAP.md` merged into `TODO.md`.

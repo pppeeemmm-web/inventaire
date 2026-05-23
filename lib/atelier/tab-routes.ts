@@ -1,9 +1,10 @@
 /** Tabs with dedicated App Router segments (Slice 3 migration). */
-export type SegmentedAtelierTab = 'inventory' | 'sales'
+export type SegmentedAtelierTab = 'inventory' | 'sales' | 'pipeline'
 
 export const ATELIER_SEGMENTED_TAB_ROUTES: Record<SegmentedAtelierTab, string> = {
   inventory: '/atelier/inventory',
   sales: '/atelier/sales',
+  pipeline: '/atelier/pipeline',
 }
 
 export function isSegmentedAtelierTab(tab: string): tab is SegmentedAtelierTab {

@@ -67,7 +67,7 @@ test.describe('Hub field launcher (Ring B.1)', () => {
     await page.goto('/hub')
     await expect(page.getByTestId('hub-field-launcher-root')).toBeVisible({ timeout: 45_000 })
     await page.getByTestId('hub-field-verb-pipeline').click()
-    await expect(page).toHaveURL(/[?&]tab=pipeline/)
+    await expect(page).toHaveURL(/\/atelier\/pipeline/)
   })
 
   test('sale row opens mobile sale flow', async ({ page }) => {

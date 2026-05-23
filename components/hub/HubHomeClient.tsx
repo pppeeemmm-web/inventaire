@@ -297,7 +297,7 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
                 dataTestId="hub-tile-pipeline"
                 title={t('pipeline')}
                 subtitle={t('hub_tile_pipeline_sub')}
-                onClick={() => router.push('/atelier?tab=pipeline')}
+                onClick={() => router.push('/atelier/pipeline')}
               />
               <MobileActionTile
                 dataTestId="hub-tile-production"
@@ -339,7 +339,7 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
               }}>
                 <MobileSwipeCard
                   kicker={`01 · ${t('pipeline')}`}
-                  onClick={() => router.push('/atelier?tab=pipeline')}
+                  onClick={() => router.push('/atelier/pipeline')}
                   items={recentProcess.slice(0, 3).map((p) => ({
                     a: p.label,
                     b: p.status,
@@ -474,7 +474,7 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
                 <div className="t-eyebrow" style={{ marginBottom: 24, opacity: 0.5 }}>01 · {t('pipeline')}</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   {recentProcess.slice(0, 12).map(p => (
-                    <div key={p.id} onClick={() => router.push('/atelier?tab=pipeline')} style={{ cursor: 'pointer', borderBottom: '1px solid var(--bd2)', paddingBottom: 12 }}>
+                    <div key={p.id} onClick={() => router.push('/atelier/pipeline')} style={{ cursor: 'pointer', borderBottom: '1px solid var(--bd2)', paddingBottom: 12 }}>
                       <div className="serif" style={{ fontSize: 16, color: 'var(--tx)', marginBottom: 4 }}>{p.label}</div>
                       <div className="row gap-sm" style={{ justifyContent: 'space-between' }}>
                         <span className="t-mono-sm" style={{ color: 'var(--ac)', letterSpacing: 1 }}>{p.status}</span>

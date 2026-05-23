@@ -29,7 +29,7 @@ test.describe('Pipeline calendar view', () => {
 
   test('narrow viewport opens pipeline as mobile pulse list', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
-    await page.goto('/atelier?tab=pipeline', { waitUntil: 'domcontentloaded' })
+    await page.goto('/atelier/pipeline', { waitUntil: 'domcontentloaded' })
     await expect(page.getByTestId('pipeline-mobile-pulse')).toBeVisible({ timeout: 45_000 })
     await expect(page.getByRole('button', { name: /Gantt|gantt/i })).toHaveCount(0)
     await expect(page.getByRole('button', { name: /Calendar|Calendrier/i })).toHaveCount(0)
@@ -38,7 +38,7 @@ test.describe('Pipeline calendar view', () => {
 
   test('narrow mobile pulse does not overflow horizontally', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 })
-    await page.goto('/atelier?tab=pipeline', { waitUntil: 'domcontentloaded' })
+    await page.goto('/atelier/pipeline', { waitUntil: 'domcontentloaded' })
     await expect(page.getByTestId('pipeline-mobile-pulse')).toBeVisible({ timeout: 45_000 })
     await expectNoHorizontalOverflow(page, {
       pulse: '[data-testid="pipeline-mobile-pulse"]',
@@ -48,13 +48,13 @@ test.describe('Pipeline calendar view', () => {
 
   test('narrow viewport hides the desktop Gantt switch', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 })
-    await page.goto('/atelier?tab=pipeline', { waitUntil: 'domcontentloaded' })
+    await page.goto('/atelier/pipeline', { waitUntil: 'domcontentloaded' })
     await expect(page.getByTestId('pipeline-mobile-pulse')).toBeVisible({ timeout: 45_000 })
     await expect(page.getByRole('button', { name: /Gantt|gantt/i })).toHaveCount(0)
   })
 
   test('Pipeline tab exposes Gantt and Calendar toggles', async ({ page }) => {
-    await page.goto('/atelier?tab=pipeline', { waitUntil: 'domcontentloaded' })
+    await page.goto('/atelier/pipeline', { waitUntil: 'domcontentloaded' })
     await expect(page.getByRole('button', { name: /Gantt|gantt/i })).toBeVisible({ timeout: 45_000 })
     await expect(page.getByRole('button', { name: /Calendar|Calendrier/i })).toBeVisible()
     await page.getByRole('button', { name: /Calendar|Calendrier/i }).click()
@@ -69,7 +69,7 @@ test.describe('Pipeline calendar view', () => {
 
   test('Month grid keeps day columns equal width (Sunday not squeezed)', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 720 })
-    await page.goto('/atelier?tab=pipeline', { waitUntil: 'domcontentloaded' })
+    await page.goto('/atelier/pipeline', { waitUntil: 'domcontentloaded' })
     await expect(page.getByRole('button', { name: /Calendar|Calendrier/i })).toBeVisible({ timeout: 45_000 })
     await page.getByRole('button', { name: /Calendar|Calendrier/i }).click()
     await page.getByRole('button', { name: /Month|Mois/i }).click()
@@ -91,7 +91,7 @@ test.describe('Pipeline calendar view', () => {
   })
 
   test('Gantt zoom buttons are visible when processes exist', async ({ page }) => {
-    await page.goto('/atelier?tab=pipeline', { waitUntil: 'domcontentloaded' })
+    await page.goto('/atelier/pipeline', { waitUntil: 'domcontentloaded' })
     await expect(page.getByRole('button', { name: /Gantt|gantt/i })).toBeVisible({ timeout: 45_000 })
     const zoomIn = page.getByRole('button', { name: /Zoom in|Zoom avant/i })
     if ((await zoomIn.count()) > 0) {
@@ -100,7 +100,7 @@ test.describe('Pipeline calendar view', () => {
   })
 
   test('Gantt view exposes step peek toggle when processes exist', async ({ page }) => {
-    await page.goto('/atelier?tab=pipeline', { waitUntil: 'domcontentloaded' })
+    await page.goto('/atelier/pipeline', { waitUntil: 'domcontentloaded' })
     await expect(page.getByRole('button', { name: /Gantt|gantt/i })).toBeVisible({ timeout: 45_000 })
     const peek = page.getByTestId('pipeline-gantt-peek')
     if ((await peek.count()) > 0) {

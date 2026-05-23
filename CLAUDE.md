@@ -53,7 +53,7 @@ Repo operating guide. If conflict: ask owner before edit.
 - Auth: Supabase SSR middleware protects `/atelier`, `/hub`, `/galerie`, `/collection`, `/maps`; document redirects only, never RSC/Flight/Server Action redirects. Admin = `is_admin()` RPC via `Contact.is_admin` + `auth_user_id`. Old `profiles.role` dead.
 - Supabase clients: `createClient()` anon/RLS; `createServiceClient()` service-role/admin bypass.
 - Atelier shell: first paint loads exact `Oeuvres` count + first keyset chunk; references hydrate post-paint via `fetchAtelierShellPostPaint`; subset UI must disclose loaded batch vs catalogue total.
-- Keep `SITE_MAP.md`, `docs/ROADMAP.md`, `docs/TODO.md`, `docs/SYSTEM_LEDGER.md` in sync when routes/features change, but do not trust them over live code when stale.
+- Keep `SITE_MAP.md`, `docs/TODO.md`, `docs/SYSTEM_LEDGER.md`, and `docs/README.md` in sync when routes/features change, but do not trust them over live code when stale.
 
 ## UI Copy / i18n
 - All user copy: `useI18n().t(key)`. No hardcoded JSX/alert/confirm/title/placeholder copy.

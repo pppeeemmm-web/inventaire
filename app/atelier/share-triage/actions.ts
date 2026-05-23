@@ -306,7 +306,7 @@ export async function attachShareInboxToProcess(
 
   const fin = await finishInbox(inboxId, { target: 'process', processId })
   if (fin) return fin
-  return { ok: true, href: `/atelier?tab=pipeline&process=${processId}` }
+  return { ok: true, href: `/atelier/pipeline?process=${processId}` }
 }
 
 export async function attachShareInboxToVault(

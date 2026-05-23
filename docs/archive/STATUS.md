@@ -1,6 +1,8 @@
 # PEM Hub — status
 
-_Generated 2026-05-14; Block A + Block C partial updated 2026-05-15. Non-binding. Source of truth for current session work._
+> **ARCHIVED — 2026-05-15.** Pending work lives in [`TODO.md`](../TODO.md).
+
+_Generated 2026-05-14; Block A + Block C partial updated 2026-05-15. Non-binding. Historical snapshot only._
 
 ---
 
@@ -123,5 +125,4 @@ Worktree commit: `4d407f3`. **Not yet committed in real app** — pending review
 - Full rationalization plan: `C:\Users\pppee\.claude\plans\rationalize-claude-md-read-roadmap-md-rippling-cook.md`
 - Architecture audit: `architecture.md`
 - Route inventory: [`SITE_MAP.md`](../../SITE_MAP.md)
-- Deferred work: [`docs/ROADMAP.md`](../ROADMAP.md)
-- Consolidated checklist (pending work): [`docs/TODO.md`](../TODO.md)
+- Pending work (current): [`docs/TODO.md`](../TODO.md)

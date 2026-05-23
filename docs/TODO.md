@@ -1,8 +1,8 @@
 # PEM Hub — TODO
 
-_Version-controlled checklist. Prefer this file over a Desktop mirror._
+_Version-controlled checklist + non-binding roadmap items. Prefer this file over a Desktop mirror._
 
-**Last refresh: 2026-05-15** — Mobile field-tool Phases 1–8 shipped in repo. Ring A.3 narrow polish done. Portfolio save uses R2 etag concurrency (A3). **`/works` gallery deferred** (do not commit `WorksClient.tsx` WIP until that track reopens).
+**Last refresh: 2026-05-23** — Docs folder trimmed (`README.md`, `BROADCAST.md`; V5 plan canonical; `ROADMAP.md` merged here). Mobile field-tool Phases 1–8 shipped. **`/works` gallery deferred** (do not commit `WorksClient.tsx` WIP until that track reopens).
 
 ---
 
@@ -54,7 +54,7 @@ _Version-controlled checklist. Prefer this file over a Desktop mirror._
 ## Block C — decomposition
 
 - [ ] **C1** `PortfolioTab.tsx` → panels + orchestrator.
-- [ ] **C2** `PipelineTab.tsx` → Gantt / deadline / reminders panels; `AbortController` on fetches.
+- [ ] **C2** `app/atelier/pipeline/_components/Pipeline.tsx` → Gantt / deadline / reminders panels; `AbortController` on fetches.
 - [ ] **C3** `ExhibitionsTab.tsx` → steps + floor-plan panels.
 - [x] **C4** `docs/CONSTELLATION.md`.
 - [x] **C-partial** `pipeline-shared.ts`, list panel extractions.
@@ -88,27 +88,38 @@ _Version-controlled checklist. Prefer this file over a Desktop mirror._
 - [x] Body ≥16px narrow; focus rings; `prefers-reduced-motion`; field `system_log`.
 - [ ] **Icon `aria-label` sweep** — *partial 2026-05-15:* WorkDrawer, Pipeline, Production, Inventory criteria, compare modal, fiscal/sales/contacts modals; Hub/landing E2E. Remaining: Vault, Exhibitions, Constellation, ExportModal, etc.
 
-## Deferred integrations (no GO)
-
-- [ ] Background jobs / queues
-- [x] Vision / OCR field capture — *partial 2026-05-15:* `/atelier/capture?mode=card` (photo + paste, optional OpenAI vision, confirm → `importGoogleContacts`). Broader field OCR still deferred.
-- [ ] Transactional email
-
 ## Roadmap (no GO without decision)
 
-- [ ] **F2**–**F10** — see [ROADMAP.md](ROADMAP.md) / archived [STATUS.md](archive/STATUS.md) (preview token, quick-add, saved searches, share kit, flags, digest, outbox, OCR, concept_themes).
+- [ ] **F2**–**F10** — preview token, quick-add, saved searches, share kit, flags, digest, outbox, OCR, `concept_themes` (detail in [archive/STATUS.md](archive/STATUS.md)).
+
+### Near-term product / data loading
+
+- [ ] Per-tab lazy Atelier reference fetch (junction + lookups still on RSC `Promise.all`).
+- [ ] Reports / analytics aligned with keyset catalogue totals (Rapports tab ships on loaded batch only).
+- [ ] Overview pipeline pulse → server + tags (remove remaining client Supabase widgets).
+- [ ] Status labels via `dictionary` vs `STATUS_LABEL_MAP` (needs thin shared layer).
+
+### Deferred integrations (explicit no-GO in CLAUDE)
+
+- [ ] Background jobs / queues (portfolio PDF at scale, bulk R2/geocode) — prefer outbox + idempotency if DB webhooks fire side effects.
+- [x] Vision / OCR field capture — *partial 2026-05-15:* `/atelier/capture?mode=card` (photo + paste, optional OpenAI vision, confirm → `importGoogleContacts`). Broader field OCR still deferred.
+- [ ] Transactional email (Resend/Postmark-class).
+
+### Suggested sequencing (opinion only)
+
+1. Per-tab / lazy Atelier reads where TTI hurts.  
+2. WorkDrawer + Supabase type cleanup in the same window.  
+3. Background job outbox when server actions time out on heavy work.  
+4. Vision/OCR after mobile capture paths are stable.
 
 ## Broadcast follow-ups (optional)
 
-- [ ] Platform filter in Broadcast tab.
+- [ ] Platform filter in Broadcast tab ([`BROADCAST.md`](./BROADCAST.md)).
 - [ ] VIP unread cursor beyond fetched window.
 
-## Architecture / scaling
+## V5 refactor (see plan)
 
-- [ ] Per-tab lazy Atelier reference fetch.
-- [ ] Reports aligned with keyset totals.
-- [ ] Overview pipeline pulse → server + tags.
-- [ ] Status labels via dictionary vs `STATUS_LABEL_MAP`.
+Active execution: [`PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md) — Slice 3 tab routes in progress (`inventory`, `sales`, `pipeline` segmented).
 
 ## Guardrails (not tasks)
 

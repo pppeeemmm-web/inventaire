@@ -22,7 +22,7 @@ test.describe('Hub mobile + atelier narrow', () => {
     await page.goto('/hub')
     await expect(page.getByTestId('hub-field-launcher-root')).toBeVisible({ timeout: 45_000 })
     await page.getByTestId('hub-field-verb-pipeline').click()
-    await expect(page).toHaveURL(/[?&]tab=pipeline/)
+    await expect(page).toHaveURL(/\/atelier\/pipeline/)
   })
 
   test('concepts tab fits viewport width without horizontal overflow', async ({ page }) => {

@@ -1,6 +1,6 @@
 /**
- * Shared pipeline process types + FR/EN type labels (used by PipelineTab and ExhibitionsListPanel).
- * Keeps `PipelineTab.tsx` thinner without changing runtime behaviour.
+ * Shared pipeline process types + FR/EN type labels (used by Pipeline and ExhibitionsListPanel).
+ * Keeps `Pipeline.tsx` thinner without changing runtime behaviour.
  */
 
 import type { Lang } from '@/lib/i18n/dictionary'
