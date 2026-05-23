@@ -72,7 +72,7 @@ const SalesTab = dynamic(() => import('@/app/atelier/sales/_components/Sales').t
 const WorldMapTab = dynamic(() => import('@/components/atelier/WorldMapTab').then((m) => ({ default: m.WorldMapTab })), { loading: () => <TabPanelFallback />, ssr: false })
 const PipelineTab = dynamic(() => import('@/app/atelier/pipeline/_components/Pipeline').then((m) => ({ default: m.Pipeline })), { loading: () => <TabPanelFallback />, ssr: false })
 const FiscalTab = dynamic(() => import('@/components/atelier/FiscalTab').then((m) => ({ default: m.FiscalTab })), { loading: () => <TabPanelFallback />, ssr: false })
-const ConceptsTab = dynamic(() => import('@/components/atelier/ConceptsTab').then((m) => ({ default: m.ConceptsTab })), { loading: () => <TabPanelFallback />, ssr: false })
+const Concepts = dynamic(() => import('@/app/atelier/concepts/_components/Concepts').then((m) => ({ default: m.Concepts })), { loading: () => <TabPanelFallback />, ssr: false })
 const Exhibitions = dynamic(() => import('@/app/atelier/exhibitions/_components/Exhibitions').then((m) => ({ default: m.Exhibitions })), { loading: () => <ExhibitionsTabSkeleton />, ssr: false })
 const ThemesTab = dynamic(() => import('@/components/atelier/ThemesTab').then((m) => ({ default: m.ThemesTab })), { loading: () => <TabPanelFallback />, ssr: false })
 const PortfolioConfigShell = dynamic(() => import('@/components/atelier/PortfolioConfigShell').then((m) => ({ default: m.PortfolioConfigShell })), { loading: () => <TabPanelFallback />, ssr: false })
@@ -1475,7 +1475,7 @@ export function TeamPortalClient({
 
         {tab === 'concepts' && (
           <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-            <ConceptsTab />
+            <Concepts />
           </div>
         )}
         {tab === 'stock' && (

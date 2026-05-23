@@ -53,7 +53,7 @@ export async function buildSiteMapChecklistPdf(): Promise<Buffer> {
         'map WorldMapTab',
         'pipeline + Gantt/Calendar + exhibition_process_id link',
         'fiscal',
-        'concepts',
+        'concepts /atelier/concepts',
         'themes',
         'stock SupplierHub',
         'stock-take',

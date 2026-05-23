@@ -42,7 +42,7 @@ _Generated 2026-05-14; Block A + Block C partial updated 2026-05-15. Non-binding
 | **`/works` SEO parity** — `metadataBase`, `openGraph`, `twitter`, `alternates` (canonical + language) | `app/works/page.tsx` |
 | **`stock` tab label → "Fournisseurs / Suppliers"** — dict only, no id/file/migration change | `lib/i18n/dictionary.ts` |
 | **Hub vs Overview decision** documented | `architecture.md` |
-| **ConceptsTab TODO** for deferred `concept_themes` junction | `components/atelier/ConceptsTab.tsx` |
+| **Concepts TODO** for deferred `concept_themes` junction | `app/atelier/concepts/_components/Concepts.tsx` |
 | **Playwright smoke** for Command Palette | `tests/command-palette.spec.ts` (new) |
 | **Block B keys** — all new i18n strings added FR + EN in one edit | `lib/i18n/dictionary.ts` |
 
@@ -81,7 +81,7 @@ Worktree commit: `4d407f3`. **Not yet committed in real app** — pending review
 - [ ] **F7** Daily admin digest email — once transactional email lands (Resend/Postmark).
 - [ ] **F8** Background job outbox — when server actions time out on PDF/geocode/broadcast at scale.
 - [ ] **F9** Vision/OCR field capture — after mobile capture paths feel stable.
-- [ ] **F10** Concept–Themes cross-link — `concept_themes` junction table + UI linking; see TODO in `ConceptsTab.tsx`.
+- [ ] **F10** Concept–Themes cross-link — `concept_themes` junction table + UI linking; see TODO in `Concepts.tsx`.
 
 ### Operations (time-sensitive)
 

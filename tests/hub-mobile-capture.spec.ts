@@ -26,7 +26,7 @@ test.describe('Hub mobile + atelier narrow', () => {
   })
 
   test('concepts tab fits viewport width without horizontal overflow', async ({ page }) => {
-    await page.goto('/atelier?tab=concepts')
+    await page.goto('/atelier/concepts')
     const root = page.getByTestId('concepts-tab-root')
     await expect(root).toBeVisible({ timeout: 45_000 })
     const { scrollWidth, clientWidth } = await root.evaluate((el) => ({

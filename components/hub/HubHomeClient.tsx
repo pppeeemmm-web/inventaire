@@ -309,7 +309,7 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
                 dataTestId="hub-tile-concepts"
                 title={t('concepts')}
                 subtitle={t('hub_tile_concepts_sub')}
-                onClick={() => router.push('/atelier?tab=concepts')}
+                onClick={() => router.push('/atelier/concepts')}
               />
               <MobileActionTile
                 dataTestId="hub-tile-contacts"
@@ -349,7 +349,7 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
                 />
                 <MobileSwipeCard
                   kicker={`02 · ${t('concepts')}`}
-                  onClick={() => router.push('/atelier?tab=concepts')}
+                  onClick={() => router.push('/atelier/concepts')}
                   items={burningIdeas.slice(0, 3).map((i) => ({
                     a: i.title,
                     b: i.medium || t('hub_concept_fallback'),
@@ -490,7 +490,7 @@ export function HubHomeClient({ stats, recentImages, recentProcess, burningIdeas
                 <div className="t-eyebrow" style={{ marginBottom: 24, opacity: 0.5 }}>02 · {t('concepts')}</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {burningIdeas.slice(0, 8).map(i => (
-                    <div key={i.id} onClick={() => router.push('/atelier?tab=concepts')} 
+                    <div key={i.id} onClick={() => router.push('/atelier/concepts')} 
                       style={{ padding: '12px 16px', background: 'var(--bg1)', border: '1px solid var(--bd2)', cursor: 'pointer', transition: 'border-color .2s' }}>
                       <div className="t-mono-sm" style={{ fontSize: 8, color: 'var(--tx3)', marginBottom: 4, textTransform: 'uppercase' }}>{i.medium || t('hub_concept_fallback')}</div>
                       <div className="serif" style={{ fontSize: 15, color: 'var(--tx)' }}>{i.title}</div>
