@@ -378,7 +378,7 @@ export function PortfolioConfigShell({
             rel="noopener noreferrer"
             className="btn ghost sm"
             style={{ fontSize: 9, letterSpacing: 2, textDecoration: 'none', minHeight: 44, display: 'inline-flex', alignItems: 'center' }}
-            title="Ouvrir la page d'accueil (site public)"
+            title={t('portfolio_open_public_site_title')}
           >
             Site
           </a>
@@ -524,13 +524,13 @@ export function PortfolioConfigShell({
             {activeTab === 'portfolio' && (
               <>
                 <p className="t-mono-xs" style={{ opacity: 0.55, marginBottom: 24, maxWidth: 720, lineHeight: 1.5 }}>
-                  Onglet <strong>Portfolio</strong> : sections enregistrées dans le JSON (R2). Elles alimentent le <strong>PDF téléchargeable</strong> (lien sur la page d&apos;accueil et bouton <code>↓ PDF</code> ci-dessus). Utiliser <code>/works</code> pour l&apos;aperçu du catalogue défilant.
+                  {t('portfolio_tab_intro')}
                 </p>
                 <PortfolioCollectionsPanel>
-                <PageSection title="Sections Portfolio" icon="◪"
-                  action={<button className="btn sm ghost" onClick={() => addItem('sections')}>+ Ajouter</button>}>
+                <PageSection title={t('portfolio_sections_title')} icon="◪"
+                  action={<button className="btn sm ghost" onClick={() => addItem('sections')}>{t('portfolio_add_section_btn')}</button>}>
                   <p className="t-mono-xs" style={{ opacity: 0.5, marginBottom: 20 }}>
-                    Données de section (titres, textes, thème, ordre des œuvres) — consommées par le PDF (titre · intro · œuvres dans l&apos;ordre choisi).
+                    {t('portfolio_sections_data_hint')}
                   </p>
                   <div className="col gap-md">
                     {config.sections.map((item, i) => (
@@ -549,7 +549,7 @@ export function PortfolioConfigShell({
                         onMakePublic={handleMakePublic} />
                     ))}
                     {config.sections.length === 0 && (
-                      <div className="t-mono-xs" style={{ opacity: 0.3, padding: '24px 0' }}>Aucune section. Cliquer &quot;+ Ajouter&quot;.</div>
+                      <div className="t-mono-xs" style={{ opacity: 0.3, padding: '24px 0' }}>{t('portfolio_sections_empty')}</div>
                     )}
                   </div>
                 </PageSection>

@@ -9,6 +9,8 @@ import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase/client'
 import type { Oeuvre } from '@/lib/types/database'
 import { LoadingShell } from '@/components/shared/LoadingShell'
+import { useI18n } from '@/lib/i18n/context'
+import { interpolateMessage } from '@/lib/i18n/message-core'
 
 interface ContactRow {
   ContactID:      number
@@ -172,6 +174,7 @@ export function WorldMapTab({
   onOpenContact,
   onOpenOeuvreById,
 }: Props) {
+  const { t } = useI18n()
   const oeuvreThemeMap = oeuvreThemeMapProp ?? EMPTY_THEME_MAP
   const [mode,      setMode]      = useState<Mode>('contacts')
   const [pins,      setPins]      = useState<Pin[]>([])
@@ -486,22 +489,26 @@ export function WorldMapTab({
         padding: '10px 28px', borderBottom: '1px solid var(--bd)',
         background: 'var(--bg1)', flexShrink: 0,
       }}>
-        <div className="t-label">Vue</div>
+        <div className="t-label">{t('map_view_label')}</div>
         {(['contacts', 'works'] as Mode[]).map(m => (
           <button key={m} className="btn ghost sm" onClick={() => setMode(m)}
             style={{ opacity: mode === m ? 1 : 0.45, fontWeight: mode === m ? 700 : 400 }}
           >
-            {m === 'contacts' ? `Contacts (${addrCount} adresses)` : `Œuvres (${worksWithLoc})`}
+            {m === 'contacts'
+              ? interpolateMessage(t('map_mode_contacts_fmt'), { count: String(addrCount) })
+              : interpolateMessage(t('map_mode_works_fmt'), { count: String(worksWithLoc) })}
           </button>
         ))}
         {mode === 'works' && (
           <span className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 9 }}>
-            Marqueur · clic dr. → fiche · Ctrl+clic dr. → 2e œuvre si plusieurs au point
+            {t('map_works_marker_hint')}
           </span>
         )}
         {loading && (
           <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>
-            Géocodage… {pins.length} point{pins.length > 1 ? 's' : ''}
+            {pins.length > 1
+              ? interpolateMessage(t('map_geocoding_plural_fmt'), { count: String(pins.length) })
+              : interpolateMessage(t('map_geocoding_fmt'), { count: String(pins.length) })}
           </div>
         )}
         {!loading && !dataReady && (
@@ -514,7 +521,7 @@ export function WorldMapTab({
             setDataReady(false)
             setTimeout(() => setDataReady(true), 10)
           }} style={{ opacity: 0.5, fontSize: 9 }}>
-            ↺ Rafraîchir
+            {t('map_refresh')}
           </button>
         )}
         {filtersActive && (
@@ -530,7 +537,7 @@ export function WorldMapTab({
               setHiddenTechniqueIds(new Set())
             }}
           >
-            ✕ Filtres
+            {t('map_clear_filters')}
           </button>
         )}
       </div>
@@ -546,14 +553,14 @@ export function WorldMapTab({
             <>
               {paysOptions.length > 0 && (
                 <>
-                  <div className="t-label">Pays</div>
+                  <div className="t-label">{t('map_country_label')}</div>
                   <select
                     className="btn ghost sm"
                     style={{ fontSize: 10, maxWidth: 200, padding: '4px 8px' }}
                     value={countryFilter}
                     onChange={(e) => setCountryFilter(e.target.value)}
                   >
-                    <option value="">Tous pays</option>
+                    <option value="">{t('map_all_countries')}</option>
                     {paysOptions.map((p) => (
                       <option key={p} value={p}>{p}</option>
                     ))}
@@ -562,7 +569,7 @@ export function WorldMapTab({
               )}
               {rolesInData.length > 0 && (
                 <>
-                  <div className="t-label">Rôles</div>
+                  <div className="t-label">{t('map_roles_label')}</div>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                     {rolesInData.map((role) => {
                       const hidden = hiddenRoles.has(role)
@@ -572,7 +579,7 @@ export function WorldMapTab({
                           key={role}
                           type="button"
                           className="btn ghost sm"
-                          title={hidden ? 'Afficher sur la carte' : 'Masquer'}
+                          title={hidden ? t('map_show_on_map') : t('map_hide_from_map')}
                           style={{
                             opacity: hidden ? 0.35 : 1,
                             fontSize: 10,
@@ -586,7 +593,7 @@ export function WorldMapTab({
                             return n
                           })}
                         >
-                          {role === SANS_ROLE ? 'Sans rôle' : role}
+                          {role === SANS_ROLE ? t('map_no_role') : role}
                         </button>
                       )
                     })}
@@ -599,7 +606,7 @@ export function WorldMapTab({
             <>
               {(statusIdsInData.length > 0 || hasWorksSansStatus) && (
               <>
-              <div className="t-label">Statut</div>
+              <div className="t-label">{t('map_status_label')}</div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                 {statusIdsInData.map((id) => (
                   <button
@@ -629,7 +636,7 @@ export function WorldMapTab({
                       return n
                     })}
                   >
-                    Sans statut
+                    {t('map_no_status')}
                   </button>
                 )}
               </div>
@@ -637,7 +644,7 @@ export function WorldMapTab({
               )}
               {oeuvreThemeMap.size > 0 && (themeIdsInData.length > 0 || hasWorksSansTheme) && (
                 <>
-                  <div className="t-label">Thème</div>
+                  <div className="t-label">{t('map_theme_label')}</div>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                     {themeIdsInData.map((id) => (
                       <button
@@ -667,7 +674,7 @@ export function WorldMapTab({
                           return n
                         })}
                       >
-                        Sans thème
+                        {t('map_no_theme')}
                       </button>
                     )}
                   </div>
@@ -675,7 +682,7 @@ export function WorldMapTab({
               )}
               {(techniqueIdsInData.length > 0 || hasWorksSansTechnique) && (
               <>
-              <div className="t-label">Technique</div>
+              <div className="t-label">{t('map_technique_label')}</div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                 {techniqueIdsInData.map((id) => (
                   <button
@@ -705,7 +712,7 @@ export function WorldMapTab({
                       return n
                     })}
                   >
-                    Sans technique
+                    {t('map_no_technique')}
                   </button>
                 )}
               </div>

@@ -1,10 +1,4 @@
 {
-  "comment": "Hardcoded-copy hotspots in these paths are reported but do not fail i18n:check. Keep in sync with .eslintrc.json pem-i18n/no-hardcoded-jsx-text overrides.",
-  "paths": [
-    "components/atelier/CurationPanel.tsx",
-    "components/atelier/PortfolioTab.tsx",
-    "components/atelier/PortfolioConfigShell.tsx",
-    "components/atelier/ContactEditorPanel.tsx",
-    "components/atelier/WorldMapTab.tsx"
-  ]
+  "comment": "Hardcoded-copy allowlist — empty when Slice 4 panels are complete. Keep in sync with .eslintrc.json pem-i18n/no-hardcoded-jsx-text overrides.",
+  "paths": []
 }

@@ -2,7 +2,7 @@
 
 **Cold-start handoff** for V5 bilingual copy: `defineMessages` precedence, segment-tab migration, and CI enforcement.
 
-**Slice 4 status (2026-05-23):** **Core shipped** — `resolveMessage` + `t()` / `routeMetadata` precedence · five segment tabs migrated (Exhibitions, Fiscal, Inventory, Sales, Vault) · **CI ratchet** (`i18n:check` fails on blocking hardcoded copy; GitHub `ci.yml`). **Remaining:** four allowlisted panels + incremental legacy surfaces.
+**Slice 4 status (2026-05-23):** **Complete** — `resolveMessage` + segment tabs + panels (`CurationPanel`, `PortfolioConfigShell`, `WorldMapTab`; `ContactEditorPanel` already on `t()`) · **allowlist empty** · **CI ratchet** on all `app/` / `components/` / `hooks/` (tests exempt). **Next V5 slice:** legacy `?tab=` segmentation (Slice 3B), then Slice 5 graph.
 
 ---
 
@@ -55,25 +55,17 @@ Registered in [`lib/i18n/messages/index.ts`](../lib/i18n/messages/index.ts) → 
 
 ---
 
-## Allowlisted debt (9 hotspots, 2026-05-23)
+## V5 execution order (locked)
 
-Migrate copy → remove path from **both** allowlist and ESLint override:
-
-| File | Notes |
-|------|--------|
-| `components/atelier/CurationPanel.tsx` | 7 strings |
-| `components/atelier/PortfolioConfigShell.tsx` | 1 string |
-| `components/atelier/WorldMapTab.tsx` | 1 string |
-
-(`PortfolioTab.tsx` and `ContactEditorPanel.tsx` are ESLint-off but had no regex hotspots at last scan.)
+1. ~~**Slice 4** — i18n (this handoff)~~ **done**
+2. **Slice 3B — legacy `?tab=` segments** — [`HANDOFF_SLICE3.md`](./HANDOFF_SLICE3.md)
+3. **Slice 5 — graph foundation** — [`PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md) § Slice 5
 
 ---
 
-## Next work (owner chooses)
+## Next work
 
-1. **Slice 4 panels** — migrate allowlisted files; drop from allowlist + ESLint overrides.
-2. **Legacy `?tab=` segments** — overview, map, journal, system, portfolio, contacts, stock ([`HANDOFF_SLICE3.md`](./HANDOFF_SLICE3.md)).
-3. **Slice 5** — graph foundation ([`PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md)).
+**Slice 3B** — segment remaining legacy tabs: `overview`, `map`, `journal`, `system`, `portfolio`, `contacts`, `stock` (+ `site` / `analytics` aliases). Same pattern as the 16 routes ( `page.tsx` + `_components/`, `routeTab`, shell loader).
 
 **Deferred:** atelier shell reload per segment tab hop (post–V5 backlog in V5 plan).
 

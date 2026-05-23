@@ -45,7 +45,7 @@ V3 was a planning doc; V5 is the executable plan after the codebase audit + the 
 | 2 | **0a** | Error reporter + `pem-i18n/no-silent-catch` + hot paths   | — |
 | 3 | **0b** | Flip `ignoreBuildErrors` / `ignoreDuringBuilds`           | — |
 | 4 | **3**  | Route segmentation (16 tabs) + QR Physical Bridge         | — |
-| 5 | **4**  | `defineMessages` precedence + CI i18n ratchet (**core shipped** 2026-05-23; panels remain) | — |
+| 5 | **4**  | `defineMessages` precedence + CI i18n ratchet — **done** (2026-05-23) | — |
 | 6 | **5**  | `public.nodes` + triggers + tblrelations FKs + `entity` view | gates 6 & 8 |
 | 7 | **8**  *(new)* | Ollama + Qdrant async desktop worker                | — |
 | 8 | **6**  | `edge_fact` view + pivot generalization + Pivot Atlas     | — |
@@ -196,7 +196,7 @@ The app is functionally complete; we are moving from a strict relational ledger 
 
 **Risk:** Highest slice — calendar driver is **PR count**, not LOC.
 
-**Post–Slice 3 / 4 core (2026-05-23):** Slice 3 **complete** (16 routes, QR, portal chrome). Slice 4 **core shipped** — `resolveMessage`, segment tabs (Exhibitions, Fiscal, Inventory, Sales, Vault), `i18n:check` + GitHub CI. Legacy `?tab=` on `/atelier`: `overview`, `map`, `journal`, `system`, `portfolio`, `contacts`, `stock` (+ `site` / `analytics`). Next: Slice 4 panels, legacy tab segments, or Slice 5 — owner chooses ([`HANDOFF_SLICE4.md`](./HANDOFF_SLICE4.md), [`HANDOFF_SLICE3.md`](./HANDOFF_SLICE3.md)).
+**Post–Slice 4 (2026-05-23):** Slices 3 + 4 **complete**. Legacy `?tab=` on `/atelier`: `overview`, `map`, `journal`, `system`, `portfolio`, `contacts`, `stock` (+ `site` / `analytics`). **Next (locked):** Slice 3B legacy tab segments → Slice 5 graph ([`HANDOFF_SLICE3.md`](./HANDOFF_SLICE3.md), [`HANDOFF_SLICE4.md`](./HANDOFF_SLICE4.md)).
 
 ---
 
@@ -207,9 +207,8 @@ The app is functionally complete; we are moving from a strict relational ledger 
 **Scope:**
 - ✅ Wire `lib/i18n/messages/` via [`resolveMessage`](../lib/i18n/resolve-message.ts): feature messages first, legacy `fr.ts`/`en.ts` fallback, `console.warn` on both-miss (dev only). [`useI18n().t()`](../lib/i18n/context.tsx) and [`routeMetadata`](../lib/i18n/route-metadata.ts) use it; server `dict` stays merged for RSC.
 - ✅ Segment tabs (Exhibitions, Fiscal, Inventory, Sales, Vault): ESLint hotspots migrated to `defineMessages` modules; overrides removed for those paths.
-- [ ] Remove **off** for `CurationPanel`, `PortfolioConfigShell`, `ContactEditorPanel`, `WorldMapTab` once copy is migrated.
-- [x] **CI ratchet** — `npm run i18n:check` exits non-zero on blocking hardcoded UI strings (allowlist = ESLint `no-hardcoded-jsx-text` overrides); GitHub `ci.yml` runs typecheck + lint + i18n:check.
-- [ ] Remaining FR in allowlisted panels and other surfaces — migrate incrementally; removing a path from `scripts/i18n-check-allowlist.json` requires zero hotspots there.
+- [x] Panels migrated; ESLint allowlist empty (tests only); `scripts/i18n-check-allowlist.json` paths `[]`.
+- [x] **CI ratchet** — `npm run i18n:check` exits non-zero on blocking hardcoded UI strings; GitHub `ci.yml` runs typecheck + lint + i18n:check.
 - New copy: `defineMessages` only — do not extend legacy dictionary.
 
 **Runs parallel to:** Slice 3 (per tab).

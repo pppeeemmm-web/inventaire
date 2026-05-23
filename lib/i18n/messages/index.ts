@@ -11,6 +11,8 @@ import { fiscalUiMessages } from './fiscal-ui.messages'
 import { salesUiMessages } from './sales-ui.messages'
 import { inventoryUiMessages } from './inventory-ui.messages'
 import { vaultUiMessages } from './vault-ui.messages'
+import { curationUiMessages } from './curation-ui.messages'
+import { worldMapUiMessages } from './world-map-ui.messages'
 
 export const featureMessages = {
   ...atelierMessages,
@@ -26,6 +28,8 @@ export const featureMessages = {
   ...salesUiMessages,
   ...inventoryUiMessages,
   ...vaultUiMessages,
+  ...curationUiMessages,
+  ...worldMapUiMessages,
 } as const
 
 export type MessageKey = keyof typeof featureMessages

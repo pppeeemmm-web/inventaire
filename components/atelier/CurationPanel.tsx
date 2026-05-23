@@ -6,6 +6,8 @@
 //          private link generation (→ Supabase) · checklist preview modal.
 
 import { useState, useMemo } from 'react'
+import { useI18n } from '@/lib/i18n/context'
+import { interpolateMessage } from '@/lib/i18n/message-core'
 import { thumbUrl, yearOf } from '@/lib/data'
 import { WorkThumb } from './WorkThumb'
 import type { Oeuvre } from '@/lib/types/database'
@@ -28,6 +30,7 @@ interface Props {
 export function CurationPanel({
   selection, setSelection, oeuvres, tM, sM, onOpen, onGroupSaved,
 }: Props) {
+  const { t } = useI18n()
   const ids   = useMemo(() => [...selection], [selection])
   const works = useMemo(
     () => ids.map((id) => oeuvres.find((o) => o.OeuvreID === id)).filter(Boolean) as Oeuvre[],
@@ -52,12 +55,12 @@ export function CurationPanel({
   if (ids.length === 0) {
     return (
       <div style={{ padding: '24px 20px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-        <div className="t-eyebrow" style={{ color: 'var(--tx3)', marginBottom: 12 }}>Groupe de travail</div>
+        <div className="t-eyebrow" style={{ color: 'var(--tx3)', marginBottom: 12 }}>{t('cur_working_group_heading')}</div>
         <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--tx3)' }}>
           <div style={{ fontSize: 48, color: 'var(--mt)', lineHeight: 1, marginBottom: 14, fontFamily: "'Instrument Serif', serif" }}>∅</div>
-          <div className="t-mono-sm">Aucune sélection</div>
+          <div className="t-mono-sm">{t('cur_no_selection')}</div>
           <div className="t-mono-sm" style={{ marginTop: 8, lineHeight: 1.6, maxWidth: 220, margin: '8px auto 0' }}>
-            Cliquez sur une œuvre pour la sélectionner
+            {t('cur_click_to_select_hint')}
           </div>
         </div>
       </div>
@@ -96,7 +99,7 @@ export function CurationPanel({
     if (!gid) {
       gid = await handleSaveGroup()
       if (!gid) {
-        setLinkError('Impossible de sauvegarder le groupe.')
+        setLinkError(t('cur_save_group_error'))
         setLinkLoading(false)
         return
       }
@@ -128,8 +131,8 @@ export function CurationPanel({
 
       {/* Header */}
       <div className="row between" style={{ marginBottom: 14 }}>
-        <div className="t-eyebrow" style={{ color: 'var(--ac)' }}>Groupe de travail</div>
-        <button className="btn ghost sm" onClick={() => setSelection(new Set())}>Effacer</button>
+        <div className="t-eyebrow" style={{ color: 'var(--ac)' }}>{t('cur_working_group_heading')}</div>
+        <button className="btn ghost sm" onClick={() => setSelection(new Set())}>{t('clear')}</button>
       </div>
 
       {/* Summary */}
@@ -140,14 +143,14 @@ export function CurationPanel({
       }}>
         <div className="stat" style={{ gap: 2, flex: 1 }}>
           <span className="v" style={{ fontSize: 28 }}>{ids.length}</span>
-          <span className="l">sélectionnée{ids.length > 1 ? 's' : ''}</span>
+          <span className="l">{ids.length > 1 ? t('cur_selected_plural') : t('cur_selected_singular')}</span>
         </div>
         {totalValue > 0 && (
           <div className="stat" style={{ gap: 2, flex: 1, textAlign: 'right', alignItems: 'flex-end' }}>
             <span className="v" style={{ fontSize: 20, color: 'var(--ac)' }}>
               €{totalValue.toLocaleString('fr-FR')}
             </span>
-            <span className="l">valeur</span>
+            <span className="l">{t('cur_value_label')}</span>
           </div>
         )}
       </div>
@@ -186,7 +189,7 @@ export function CurationPanel({
                 border: '1px solid var(--bd2)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}
-              title="Retirer"
+              title={t('cur_remove_title')}
             >×</button>
           </div>
         ))}
@@ -225,17 +228,17 @@ export function CurationPanel({
 
       {/* Save group */}
       <div style={{ marginBottom: 18 }}>
-        <div className="t-label" style={{ marginBottom: 6 }}>Enregistrer le groupe</div>
+        <div className="t-label" style={{ marginBottom: 6 }}>{t('cur_save_group_heading')}</div>
         {savedGrpNm && (
           <div className="t-mono-sm" style={{ color: 'var(--sage)', marginBottom: 6 }}>
-            ✓ Sauvegardé : {savedGrpNm}
+            {interpolateMessage(t('cur_saved_fmt'), { name: savedGrpNm })}
           </div>
         )}
         <div className="row gap-sm">
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Nom du groupe…"
+            placeholder={t('groupNamePlaceholder')}
             style={{
               flex: 1, padding: '6px 10px',
               background: 'var(--bg1)', border: '1px solid var(--bd)',
@@ -254,11 +257,11 @@ export function CurationPanel({
 
       {/* Private link */}
       <div style={{ marginBottom: 18 }}>
-        <div className="t-label" style={{ marginBottom: 8 }}>Lien privé</div>
+        <div className="t-label" style={{ marginBottom: 8 }}>{t('cur_private_link_heading')}</div>
         <input
           value={recipient}
           onChange={(e) => setRecipient(e.target.value)}
-          placeholder="Destinataire (facultatif)…"
+          placeholder={t('cur_recipient_ph')}
           style={{
             width: '100%', padding: '6px 10px',
             background: 'var(--bg1)', border: '1px solid var(--bd)',
@@ -266,16 +269,15 @@ export function CurationPanel({
           }}
         />
         <div className="row gap-sm" style={{ marginBottom: 8 }}>
-          <label className="t-mono-sm" style={{ color: 'var(--tx3)' }}>Expire dans</label>
+          <label className="t-mono-sm" style={{ color: 'var(--tx3)' }}>{t('cur_expires_in_label')}</label>
           <select
             value={expires}
             onChange={(e) => setExpires(e.target.value)}
             style={{ padding: '4px 8px', background: 'var(--bg1)', border: '1px solid var(--bd)', fontSize: 10.5, color: 'var(--tx)' }}
           >
-            <option value="7">7 jours</option>
-            <option value="14">14 jours</option>
-            <option value="30">30 jours</option>
-            <option value="90">90 jours</option>
+            {(['7', '14', '30', '90'] as const).map((d) => (
+              <option key={d} value={d}>{interpolateMessage(t('cur_expires_days_fmt'), { days: d })}</option>
+            ))}
           </select>
         </div>
         <button
@@ -283,7 +285,7 @@ export function CurationPanel({
           onClick={handleGenerateLink}
           disabled={linkLoading}
           style={{ width: '100%' }}
-        >{linkLoading ? 'Génération…' : 'Générer le lien'}</button>
+        >{linkLoading ? t('cur_generating_link') : t('cur_generate_link')}</button>
 
         {linkError && (
           <div style={{ marginTop: 8, fontSize: 10, color: 'var(--rust)' }}>{linkError}</div>
@@ -294,10 +296,10 @@ export function CurationPanel({
             <div
               style={{ fontSize: 10, color: 'var(--ac)', fontFamily: 'var(--font-ui)', wordBreak: 'break-all', cursor: 'pointer' }}
               onClick={() => navigator.clipboard?.writeText(showLink.url)}
-              title="Copier"
+              title={t('cur_copy_title')}
             >{showLink.url}</div>
             <div style={{ fontSize: 9, color: 'var(--tx3)', marginTop: 4 }}>
-              Pour {showLink.recipient} · expire dans {showLink.expires} jours · cliquez pour copier
+              {interpolateMessage(t('cur_link_meta_fmt'), { recipient: showLink.recipient, days: showLink.expires })}
             </div>
           </div>
         )}
@@ -307,14 +309,14 @@ export function CurationPanel({
 
       {/* Exports */}
       <div>
-        <div className="t-label" style={{ marginBottom: 8 }}>Export</div>
+        <div className="t-label" style={{ marginBottom: 8 }}>{t('cur_export_heading')}</div>
         <div className="col gap-sm">
           <button className="btn" style={{ justifyContent: 'space-between' }} onClick={() => setShowPdf(true)}>
-            <span>Checklist disponibilités</span>
+            <span>{t('cur_export_checklist')}</span>
             <span style={{ color: 'var(--tx3)' }}>PDF</span>
           </button>
           <button className="btn" style={{ justifyContent: 'space-between' }}>
-            <span>Dossier d&apos;exposition</span>
+            <span>{t('cur_export_exhibition_dossier')}</span>
             <span style={{ color: 'var(--tx3)' }}>PDF</span>
           </button>
         </div>
@@ -337,6 +339,10 @@ function ChecklistPreview({
   sM:      Record<number, string>
   onClose: () => void
 }) {
+  const { t, lang } = useI18n()
+  const dateStr = new Date().toLocaleDateString(lang === 'en' ? 'en-GB' : 'fr-FR', {
+    day: 'numeric', month: 'long', year: 'numeric',
+  })
   return (
     <div
       onClick={onClose}
@@ -367,17 +373,17 @@ function ChecklistPreview({
             background: 'transparent', border: '1px solid #1a1a1a',
             cursor: 'pointer',
           }}
-        >Fermer</button>
+        >{t('close')}</button>
 
         <div style={{ padding: '56px 64px 40px' }}>
           <div style={{ fontSize: 10, letterSpacing: 3, textTransform: 'uppercase', color: '#666', fontFamily: 'var(--font-ui)', marginBottom: 8 }}>
-            Checklist
+            {t('cur_checklist_label')}
           </div>
           <div style={{ fontSize: 34, lineHeight: 1.1, letterSpacing: '-0.02em', marginBottom: 24 }}>
-            Œuvres disponibles — sélection
+            {t('cur_checklist_title')}
           </div>
           <div style={{ fontSize: 11, color: '#666', marginBottom: 40, fontFamily: 'var(--font-ui)' }}>
-            {new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })} · {works.length} œuvres
+            {interpolateMessage(t('cur_checklist_date_works_fmt'), { date: dateStr, count: String(works.length) })}
           </div>
 
           <div style={{ borderTop: '1px solid #1a1a1a' }}>
@@ -410,7 +416,7 @@ function ChecklistPreview({
                         background: 'rgba(200,140,40,0.15)', border: '1px solid rgba(200,140,40,0.5)',
                         color: '#c88a20', padding: '2px 6px', borderRadius: 2,
                         fontFamily: 'var(--font-ui)', verticalAlign: 'middle',
-                      }}>⚠ Non public</span>
+                      }}>{t('cur_not_public_badge')}</span>
                     )}
                   </div>
                   <div style={{ fontSize: 11, color: '#555', fontFamily: 'var(--font-ui)' }}>
@@ -422,7 +428,7 @@ function ChecklistPreview({
                 </div>
                 {/* Price */}
                 <div style={{ textAlign: 'right', fontSize: 11, color: '#333', fontFamily: 'var(--font-ui)' }}>
-                  {o.Prix && o.Prix > 0 ? `€${o.Prix.toLocaleString('fr-FR')}` : 'sur demande'}
+                  {o.Prix && o.Prix > 0 ? `€${o.Prix.toLocaleString(lang === 'en' ? 'en-GB' : 'fr-FR')}` : t('cur_price_on_request')}
                 </div>
               </div>
             ))}
@@ -433,8 +439,8 @@ function ChecklistPreview({
             fontFamily: 'var(--font-ui)',
             display: 'flex', justifyContent: 'space-between',
           }}>
-            <span>the pem workshop</span>
-            <span>Document confidentiel — ne pas diffuser</span>
+            <span>{t('cur_brand_pem_workshop')}</span>
+            <span>{t('cur_confidential_footer')}</span>
           </div>
         </div>
       </div>

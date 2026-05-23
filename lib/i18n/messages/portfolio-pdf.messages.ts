@@ -113,4 +113,28 @@ export const portfolioPdfMessages = defineMessages({
     fr: 'Glisser pour réordonner',
     en: 'Drag to reorder',
   },
+  portfolio_open_public_site_title: {
+    fr: "Ouvrir la page d'accueil (site public)",
+    en: 'Open public home page',
+  },
+  portfolio_tab_intro: {
+    fr: "Onglet Portfolio : sections enregistrées dans le JSON (R2). Elles alimentent le PDF téléchargeable (lien sur la page d'accueil et bouton ↓ PDF ci-dessus). Utiliser /works pour l'aperçu du catalogue défilant.",
+    en: 'Portfolio tab: sections saved in JSON (R2). They feed the downloadable PDF (home page link and ↓ PDF button above). Use /works for the scrolling catalogue preview.',
+  },
+  portfolio_sections_title: {
+    fr: 'Sections Portfolio',
+    en: 'Portfolio sections',
+  },
+  portfolio_add_section_btn: {
+    fr: '+ Ajouter',
+    en: '+ Add',
+  },
+  portfolio_sections_data_hint: {
+    fr: "Données de section (titres, textes, thème, ordre des œuvres) — consommées par le PDF (titre · intro · œuvres dans l'ordre choisi).",
+    en: 'Section data (titles, copy, theme, work order) — consumed by the PDF (title · intro · works in chosen order).',
+  },
+  portfolio_sections_empty: {
+    fr: 'Aucune section. Cliquer "+ Ajouter".',
+    en: 'No sections. Click "+ Add".',
+  },
 })
