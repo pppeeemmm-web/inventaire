@@ -2,7 +2,7 @@
 
 Inventory → social middleware: Atelier UI + Bearer JSON API. Orchestration (AI, Buffer, Slack) lives in Make — see [`BROADCAST_OUTSIDE_CHAIN.md`](./BROADCAST_OUTSIDE_CHAIN.md).
 
-**Implementations:** `app/api/inventory/broadcast/*`, [`components/atelier/BroadcastTab.tsx`](../components/atelier/BroadcastTab.tsx), [`app/atelier/broadcast/actions.ts`](../app/atelier/broadcast/actions.ts).
+**Implementations:** `app/api/inventory/broadcast/*`, [`app/atelier/broadcast/_components/Broadcast.tsx`](../app/atelier/broadcast/_components/Broadcast.tsx), [`app/atelier/broadcast/actions.ts`](../app/atelier/broadcast/actions.ts).
 
 ---
 
@@ -34,7 +34,7 @@ Bearer `INVENTORY_BROADCAST_SECRET` (or `x-inventory-broadcast-secret` — see [
 
 ## Atelier UI
 
-**Tab:** `/atelier?tab=broadcast` (admin). Subtabs: Queue, Publiés, Activité.
+**Tab:** `/atelier/broadcast` (admin). Subtabs: Queue, Publiés, Activité.
 
 **Inventory:** [`app/atelier/inventory/_components/Inventory.tsx`](../app/atelier/inventory/_components/Inventory.tsx) — `◉` chip toggles `broadcast_ready`.
 

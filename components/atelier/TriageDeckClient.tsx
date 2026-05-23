@@ -142,7 +142,7 @@ export function TriageDeckClient() {
             {t('triage_deck_approve')}
           </button>
           {card.kind === 'broadcast' ? (
-            <Link href="/atelier?tab=broadcast" className="btn ghost sm" style={{ minHeight: 44, width: '100%', textAlign: 'center' }}>
+            <Link href="/atelier/broadcast" className="btn ghost sm" style={{ minHeight: 44, width: '100%', textAlign: 'center' }}>
               {t('triage_deck_edit')}
             </Link>
           ) : null}

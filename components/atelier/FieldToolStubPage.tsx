@@ -45,7 +45,7 @@ const KIND_COPY: Record<
     titleKey: 'field_verb_triage_title',
     bodyKey: 'field_verb_triage_body',
     links: [
-      { href: '/atelier?tab=broadcast', labelKey: 'field_verb_link_broadcast' },
+      { href: '/atelier/broadcast', labelKey: 'field_verb_link_broadcast' },
       { href: '/atelier/share-triage', labelKey: 'field_verb_link_share_triage' },
     ],
   },

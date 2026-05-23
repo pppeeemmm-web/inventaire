@@ -1,6 +1,6 @@
 'use client'
 
-// BroadcastTab — atelier command center for inventory broadcast (Phase 2).
+// Broadcast — atelier command center for inventory broadcast (Phase 2).
 // Three subtabs: Queue (in-flight), Posted (history), Activity (VIP/normal events).
 // Admin-only. Reads from app/atelier/broadcast/actions.ts.
 
@@ -27,7 +27,7 @@ function broadcastRelTime(date: string | null, t: (key: DictKey) => string): str
   return t('bc_rel_days_fmt').replace('{n}', String(Math.floor(diff / 86400)))
 }
 
-export function BroadcastTab() {
+export function Broadcast() {
   const { t } = useI18n()
   const [sub, setSub] = useState<SubTab>('queue')
   const [data, setData] = useState<BroadcastDashboard | null>(null)

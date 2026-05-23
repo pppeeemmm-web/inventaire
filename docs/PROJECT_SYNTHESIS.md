@@ -74,7 +74,7 @@ This is the **intended operating chain** from inventory to internal awareness. O
 
 | Stage | System | Role |
 |--------|--------|------|
-| 1 | **Atelier (Next.js)** | Operators mark works `broadcast_ready`, optional `broadcast_caption_seed`; admins monitor **Diffusion → Broadcast** (`/atelier?tab=broadcast`) — queue, posted history, activity. |
+| 1 | **Atelier (Next.js)** | Operators mark works `broadcast_ready`, optional `broadcast_caption_seed`; admins monitor **Diffusion → Broadcast** (`/atelier/broadcast`) — queue, posted history, activity. |
 | 2 | **This app’s HTTP API** | `GET …/feed` → eligible payloads + `captionSeed`; `POST …/queue` locks a row; after real publish `POST …/confirm` stores `externalUrl` + `captionFinal`; optional `POST …/event` for VIP/normal events in the Atelier activity feed. Bearer `INVENTORY_BROADCAST_SECRET`. |
 | 3 | **Make.com / n8n** | Orchestration hub: pull feed, call **AI** for caption copy from specs + seed, call **Buffer** to create/update **drafts**, call confirm/event back to this API, optionally branch on VIP vs noise. |
 | 4 | **Buffer** | Human-in-the-loop: drafts land here for a short sanity check, then publish to **Instagram / LinkedIn** (or other connected profiles). |

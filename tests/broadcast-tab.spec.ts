@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 
 /**
- * Atelier > Diffusion > Broadcast (`?tab=broadcast`).
+ * Atelier > Diffusion > Broadcast (`/atelier/broadcast`).
  * Requires `/atelier` auth — same pattern as other atelier E2E tests.
  */
 test.describe('Broadcast tab', () => {
@@ -11,7 +11,7 @@ test.describe('Broadcast tab', () => {
   )
 
   test('deep link loads panel: admin subtabs or editor admin-only gate', async ({ page }) => {
-    await page.goto('/atelier?tab=broadcast')
+    await page.goto('/atelier/broadcast')
     await expect(page.getByTestId('broadcast-tab-root')).toBeVisible({ timeout: 45_000 })
 
     const adminOnly = page.getByTestId('broadcast-tab-admin-only')

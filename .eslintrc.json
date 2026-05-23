@@ -30,6 +30,7 @@
         "app/atelier/logistics/_components/Logistics.tsx",
         "app/atelier/vault/_components/Vault.tsx",
         "app/atelier/fiscal/_components/Fiscal.tsx",
+        "app/atelier/broadcast/_components/Broadcast.tsx",
         "components/atelier/CurationPanel.tsx",
         "components/atelier/PortfolioTab.tsx",
         "components/atelier/ContactEditorPanel.tsx",
