@@ -868,6 +868,27 @@ export type Database = {
           },
         ]
       }
+      nodes: {
+        Row: {
+          created_at: string
+          node_id: string
+          node_type: string
+          source_pk: string
+        }
+        Insert: {
+          created_at?: string
+          node_id?: string
+          node_type: string
+          source_pk: string
+        }
+        Update: {
+          created_at?: string
+          node_id?: string
+          node_type?: string
+          source_pk?: string
+        }
+        Relationships: []
+      }
       oeuvre_broadcasts: {
         Row: {
           attempt_count: number
@@ -2037,8 +2058,10 @@ export type Database = {
           id: string
           relation_type: string | null
           source_id: number | null
+          source_uid: string | null
           strength: number | null
           target_id: number | null
+          target_uid: string | null
         }
         Insert: {
           created_at?: string | null
@@ -2046,8 +2069,10 @@ export type Database = {
           id?: string
           relation_type?: string | null
           source_id?: number | null
+          source_uid?: string | null
           strength?: number | null
           target_id?: number | null
+          target_uid?: string | null
         }
         Update: {
           created_at?: string | null
@@ -2055,8 +2080,10 @@ export type Database = {
           id?: string
           relation_type?: string | null
           source_id?: number | null
+          source_uid?: string | null
           strength?: number | null
           target_id?: number | null
+          target_uid?: string | null
         }
         Relationships: [
           {
@@ -2067,11 +2094,39 @@ export type Database = {
             referencedColumns: ["OeuvreID"]
           },
           {
+            foreignKeyName: "tblrelations_source_uid_fkey"
+            columns: ["source_uid"]
+            isOneToOne: false
+            referencedRelation: "entity"
+            referencedColumns: ["node_id"]
+          },
+          {
+            foreignKeyName: "tblrelations_source_uid_fkey"
+            columns: ["source_uid"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["node_id"]
+          },
+          {
             foreignKeyName: "tblrelations_target_id_fkey"
             columns: ["target_id"]
             isOneToOne: false
             referencedRelation: "Oeuvres"
             referencedColumns: ["OeuvreID"]
+          },
+          {
+            foreignKeyName: "tblrelations_target_uid_fkey"
+            columns: ["target_uid"]
+            isOneToOne: false
+            referencedRelation: "entity"
+            referencedColumns: ["node_id"]
+          },
+          {
+            foreignKeyName: "tblrelations_target_uid_fkey"
+            columns: ["target_uid"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["node_id"]
           },
         ]
       }
@@ -2399,6 +2454,20 @@ export type Database = {
       }
     }
     Views: {
+      entity: {
+        Row: {
+          created_at: string | null
+          display_label: string | null
+          is_public: boolean | null
+          legacy_int_id: number | null
+          legacy_uuid: string | null
+          node_id: string | null
+          node_type: string | null
+          source_pk: string | null
+          title: string | null
+        }
+        Relationships: []
+      }
       exhibition: {
         Row: {
           contact_id: number | null
@@ -2444,6 +2513,15 @@ export type Database = {
           deleted_pending_changes: number
           deleted_system_log: number
         }[]
+      }
+      graph_node_id: { Args: { p_pk: string; p_type: string }; Returns: string }
+      graph_register_node: {
+        Args: { p_pk: string; p_type: string }
+        Returns: string
+      }
+      graph_unregister_node: {
+        Args: { p_pk: string; p_type: string }
+        Returns: undefined
       }
       is_admin: { Args: never; Returns: boolean }
       is_team: { Args: never; Returns: boolean }

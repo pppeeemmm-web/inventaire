@@ -1,6 +1,27 @@
 -- Slice 5 — sync hard-column / junction rows into tblrelations (trigger-owned; no app dual-write).
 -- Uses pg_trigger_depth() to avoid cascade loops with tblrelations → nodes CASCADE.
 
+-- Legacy constellation allowed duplicate manual edges per (source, target, type).
+-- After 04 backfills source_uid/target_uid, dedupe before the unique index.
+DELETE FROM public.tblrelations r
+USING (
+  SELECT id
+  FROM (
+    SELECT
+      id,
+      row_number() OVER (
+        PARTITION BY source_uid, target_uid, relation_type
+        ORDER BY created_at ASC NULLS LAST, id ASC
+      ) AS rn
+    FROM public.tblrelations
+    WHERE source_uid IS NOT NULL
+      AND target_uid IS NOT NULL
+      AND relation_type IS NOT NULL
+  ) ranked
+  WHERE rn > 1
+) dup
+WHERE r.id = dup.id;
+
 CREATE UNIQUE INDEX IF NOT EXISTS tblrelations_uid_pair_type_uniq
   ON public.tblrelations (source_uid, target_uid, relation_type)
   WHERE source_uid IS NOT NULL AND target_uid IS NOT NULL AND relation_type IS NOT NULL;

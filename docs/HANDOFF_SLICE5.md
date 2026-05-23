@@ -1,6 +1,6 @@
 # Slice 5 — Graph foundation handoff
 
-**Status:** SQL + `lib/graph/node-ref.ts` **committed locally** until applied on Supabase and `npm run gen:types` is run in CI/dev.
+**Status:** SQL applied on Supabase (owner 2026-05-23). Repo helpers in `lib/graph/node-ref.ts`. Run `npm run gen:types` after apply so `supabase.generated.ts` includes `nodes`, `entity`, and `tblrelations.source_uid` / `target_uid`.
 
 **Cold-start:** [`supabase/sql/graph_foundation/README.md`](../supabase/sql/graph_foundation/README.md) → apply `01`…`06` in order after backup.
 
@@ -25,10 +25,12 @@
 ## Operator checklist
 
 1. Run GitHub **backup** workflow.
-2. Apply SQL `01` → `06` in Supabase SQL editor (or migration runner).
+2. Apply SQL in order — see README table (`01` … `06`, **`04b`** between `04` and `05`, optional `05b` last).
 3. Run `supabase/sql/grant_audit_queries.sql` queries; fix any missing grants.
 4. `npm run gen:types` (updates `lib/types/supabase.generated.ts`).
 5. Smoke: insert/delete a test `Contact` + `Oeuvre`; `select count(*) from nodes`; `select * from entity limit 5`.
+
+**If 05 fails on `tblrelations_uid_pair_type_uniq`:** legacy constellation had duplicate edges per pair+type. Run `04b_dedupe_tblrelations_uids.sql`, then re-run `05` (dedupe is also at the top of `05` in current `main`).
 6. Optional: re-run `03` is idempotent (`ON CONFLICT DO NOTHING`); run `05` backfill pass only if you add a one-shot sync script later.
 
 ---
