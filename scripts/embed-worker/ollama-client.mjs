@@ -1,9 +1,22 @@
 import { EMBEDDING_MODEL } from './config.mjs'
 
-const DEFAULT_URL = 'http://127.0.0.1:11434'
+const DEFAULT_URL = 'http://127.0.0.1:11435'
 
 export function ollamaBaseUrl() {
-  return (process.env.OLLAMA_URL ?? DEFAULT_URL).replace(/\/$/, '')
+  const raw =
+    process.env.OLLAMA_ORIGIN?.trim() ||
+    process.env.OLLAMA_URL?.trim() ||
+    process.env.OLLAMA_HOST?.trim() ||
+    DEFAULT_URL
+  let s = raw
+  if (!/^https?:\/\//i.test(s)) s = `http://${s}`
+  try {
+    const u = new URL(s)
+    if (u.hostname === '0.0.0.0') u.hostname = '127.0.0.1'
+    return u.origin
+  } catch {
+    return DEFAULT_URL
+  }
 }
 
 export async function embedText(prompt, { model = EMBEDDING_MODEL } = {}) {

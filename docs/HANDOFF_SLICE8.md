@@ -35,7 +35,8 @@ After Slice 5 `01`–`06` and Slice 6 `08`:
 ```env
 QDRANT_URL=https://….cloud.qdrant.io
 QDRANT_API_KEY=…
-OLLAMA_URL=http://127.0.0.1:11434
+OLLAMA_ORIGIN=http://127.0.0.1:11435
+# optional alias: OLLAMA_URL=http://127.0.0.1:11435
 ```
 
 Semantic search in the **deployed** app only works if the Next server can reach Ollama + Qdrant (typically **local `npm run dev`** on the studio machine). Production Vercel → set `unavailable` gracefully.

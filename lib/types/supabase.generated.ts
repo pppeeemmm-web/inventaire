@@ -868,23 +868,62 @@ export type Database = {
           },
         ]
       }
+      node_embedding_tombstone: {
+        Row: {
+          deleted_at: string
+          node_id: string
+        }
+        Insert: {
+          deleted_at?: string
+          node_id: string
+        }
+        Update: {
+          deleted_at?: string
+          node_id?: string
+        }
+        Relationships: []
+      }
       nodes: {
         Row: {
           created_at: string
+          embedded_at: string | null
+          embedding_attempts: number
+          embedding_dirty_at: string | null
+          embedding_error: string | null
+          embedding_model: string | null
+          embedding_status: string
+          embedding_text_hash: string | null
           node_id: string
           node_type: string
+          qdrant_point_id: string | null
           source_pk: string
         }
         Insert: {
           created_at?: string
+          embedded_at?: string | null
+          embedding_attempts?: number
+          embedding_dirty_at?: string | null
+          embedding_error?: string | null
+          embedding_model?: string | null
+          embedding_status?: string
+          embedding_text_hash?: string | null
           node_id?: string
           node_type: string
+          qdrant_point_id?: string | null
           source_pk: string
         }
         Update: {
           created_at?: string
+          embedded_at?: string | null
+          embedding_attempts?: number
+          embedding_dirty_at?: string | null
+          embedding_error?: string | null
+          embedding_model?: string | null
+          embedding_status?: string
+          embedding_text_hash?: string | null
           node_id?: string
           node_type?: string
+          qdrant_point_id?: string | null
           source_pk?: string
         }
         Relationships: []
@@ -1280,6 +1319,24 @@ export type Database = {
           },
         ]
       }
+      pending_query_embeddings: {
+        Row: {
+          created_at: string
+          id: string
+          query_norm: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          query_norm: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          query_norm?: string
+        }
+        Relationships: []
+      }
       private_link: {
         Row: {
           created_at: string
@@ -1351,6 +1408,27 @@ export type Database = {
           updated_at?: string | null
           username?: string | null
           website?: string | null
+        }
+        Relationships: []
+      }
+      query_embedding_cache: {
+        Row: {
+          created_at: string
+          model: string
+          query_norm: string
+          vector: Json
+        }
+        Insert: {
+          created_at?: string
+          model: string
+          query_norm: string
+          vector: Json
+        }
+        Update: {
+          created_at?: string
+          model?: string
+          query_norm?: string
+          vector?: Json
         }
         Relationships: []
       }
@@ -2581,6 +2659,10 @@ export type Database = {
           deleted_system_log: number
         }[]
       }
+      graph_mark_nodes_pending: {
+        Args: { p_pk: string; p_type: string }
+        Returns: undefined
+      }
       graph_node_id: { Args: { p_pk: string; p_type: string }; Returns: string }
       graph_register_node: {
         Args: { p_pk: string; p_type: string }
@@ -2593,6 +2675,7 @@ export type Database = {
       is_admin: { Args: never; Returns: boolean }
       is_team: { Args: never; Returns: boolean }
       my_contact_id: { Args: never; Returns: number }
+      node_search_text: { Args: { p_node_id: string }; Returns: string }
     }
     Enums: {
       [_ in never]: never

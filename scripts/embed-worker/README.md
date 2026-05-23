@@ -14,7 +14,7 @@ SUPABASE_SERVICE_ROLE_KEY=...
 QDRANT_URL=https://xxxx.cloud.qdrant.io
 QDRANT_API_KEY=...
 # optional:
-OLLAMA_URL=http://127.0.0.1:11434
+OLLAMA_ORIGIN=http://127.0.0.1:11435
 EMBEDDING_COLLECTION=pem_universe
 ```
 

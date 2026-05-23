@@ -7,6 +7,7 @@ import {
   QDRANT_COLLECTION,
   normalizeSearchQuery,
 } from '@/lib/graph/embedding-config'
+import { resolveOllamaClientUrl } from '@/lib/contact-url-enrich'
 import { dbEntityToEntityRow } from '@/lib/graph/entity-rows'
 import type { EntityRow } from '@/lib/graph/node-ref'
 
@@ -31,10 +32,6 @@ async function guardTeam() {
   return { error: null, supabase }
 }
 
-function ollamaUrl() {
-  return (process.env.OLLAMA_URL ?? 'http://127.0.0.1:11434').replace(/\/$/, '')
-}
-
 function qdrantConfig() {
   const url = process.env.QDRANT_URL?.trim()
   const key = process.env.QDRANT_API_KEY?.trim()
@@ -43,7 +40,7 @@ function qdrantConfig() {
 }
 
 async function embedQuery(text: string): Promise<number[]> {
-  const res = await fetch(`${ollamaUrl()}/api/embeddings`, {
+  const res = await fetch(`${resolveOllamaClientUrl()}/api/embeddings`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ model: EMBEDDING_MODEL, prompt: text }),
