@@ -26,6 +26,15 @@ test.describe('Reports tab', () => {
     expect(download.suggestedFilename()).toMatch(/works_report_\d{4}-\d{2}-\d{2}\.pdf/)
   })
 
+  test('opens pivot atlas from reports', async ({ page }) => {
+    await page.goto('/atelier/reports')
+    await expect(page.getByTestId('reports-root')).toBeVisible({ timeout: 45_000 })
+    await page.getByTestId('reports-open-atlas').click()
+    await expect(
+      page.getByTestId('pivot-atlas-root').or(page.getByTestId('pivot-atlas-loading')).or(page.getByTestId('pivot-atlas-error')),
+    ).toBeVisible({ timeout: 30_000 })
+  })
+
   test('shows partial-catalogue note when loaded batch is smaller than total', async ({ page }) => {
     await page.goto('/atelier/reports', { waitUntil: 'domcontentloaded' })
     await expect(page.getByTestId('reports-root')).toBeVisible({ timeout: 45_000 })

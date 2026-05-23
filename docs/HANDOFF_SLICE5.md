@@ -18,7 +18,7 @@
 | `06_entity_view.sql` | `public.entity` view |
 | `lib/graph/node-ref.ts` | `nodeRef`, `GraphNodeType`, `EntityRow`, `GraphRelationRow` |
 
-**Not in repo yet (apply on DB first):** Slice 8 `07_embeddings.sql`, pivot `08_edge_fact_view.sql`.
+**Not in repo yet (apply on DB first):** Slice 8 `07_embeddings.sql`. Slice 6: [`08_edge_fact_view.sql`](../supabase/sql/graph_foundation/08_edge_fact_view.sql) — see [`HANDOFF_SLICE6.md`](./HANDOFF_SLICE6.md).
 
 ---
 
@@ -47,5 +47,4 @@
 ## Deferred
 
 - `concept.themes[]` (text names) → `tblrelations` (needs name→`theme.id` resolution).
-- `08_edge_fact_view.sql` (Slice 6 pivot).
 - `07_embeddings.sql` + embed worker (Slice 8).

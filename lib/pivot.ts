@@ -1,6 +1,8 @@
 /**
  * Client-side pivot aggregation (pure, no React).
  * One composite row key (from 1+ row dimensions), optional column dimension, multiple value columns.
+ *
+ * Graph / edge pivots: load rows via `fetchEdgeFactRows` and use helpers in `@/lib/graph/edge-fact`.
  */
 
 export type Dim<R> = {

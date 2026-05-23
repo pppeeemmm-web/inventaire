@@ -196,7 +196,7 @@ The app is functionally complete; we are moving from a strict relational ledger 
 
 **Risk:** Highest slice — calendar driver is **PR count**, not LOC.
 
-**Post–Slice 3B (2026-05-23):** Slices 3 + 3B + 4 **complete** on `main`. Slice 5 SQL + `lib/graph/node-ref.ts` **in repo** — apply `supabase/sql/graph_foundation/01`…`06` on Supabase, then `gen:types` ([`HANDOFF_SLICE5.md`](./HANDOFF_SLICE5.md)). **Next (locked):** DB apply + Slice 8 embeddings after Slice 5 live.
+**Post–Slice 6 (2026-05-23):** Slices 3–5 **live on DB** (owner). Slice 6 **Pivot Atlas** on `main` — apply [`08_edge_fact_view.sql`](../supabase/sql/graph_foundation/08_edge_fact_view.sql) + `gen:types` ([`HANDOFF_SLICE6.md`](./HANDOFF_SLICE6.md)). **Next:** Slice 8 embeddings.
 
 ---
 

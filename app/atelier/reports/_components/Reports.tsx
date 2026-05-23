@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState, useTransition, type CSSProperties } fro
 import * as XLSX from 'xlsx'
 import { useI18n } from '@/lib/i18n/context'
 import { EmptyState } from '@/components/shared/EmptyState'
-import type { DictKey, Lang } from '@/lib/i18n/dictionary'
+import type { Lang } from '@/lib/i18n/dictionary'
 import type { Oeuvre } from '@/lib/types/database'
 import type { StatusKey } from '@/lib/data'
 import { useMediaQuery } from '@/lib/useMediaQuery'
@@ -21,6 +21,8 @@ import {
   type ReportMaps,
 } from '@/lib/reports/works-table'
 import { generateWorksTablePdf } from '@/app/atelier/reports/actions'
+import { PivotAtlasPanel } from '@/app/atelier/reports/_components/PivotAtlasPanel'
+import type { DictKey } from '@/lib/i18n/dictionary'
 
 const STATUS_FILTER_LABEL: Record<StatusKey, DictKey> = {
   en_production: 'prod_tab_stat_wip',
@@ -111,6 +113,8 @@ export function Reports({
   )
   const [filtersOpen, setFiltersOpen] = useState(!narrow)
   const [pending, startPdf] = useTransition()
+  const [reportMode, setReportMode] = useState<'table' | 'atlas'>('table')
+  const tk = (key: string) => t(key as DictKey)
 
   const fM = useMemo(
     () => Object.fromEntries(formats.map((f) => [f.FormatID, f.Format ?? ''])),
@@ -315,6 +319,39 @@ th{background:#f4f4f4}
 
   const safeBottom = 'max(12px, env(safe-area-inset-bottom))'
 
+  if (reportMode === 'atlas') {
+    return (
+      <div
+        data-testid="reports-root"
+        style={{
+          flex: 1,
+          minHeight: 0,
+          minWidth: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          paddingBottom: narrow ? 12 : 0,
+        }}
+      >
+        <div className="panel" style={{ flexShrink: 0, marginBottom: 8, ...panelPad }}>
+          <div className="row between" style={{ flexWrap: 'wrap', gap: 8 }}>
+            <div className="serif" style={{ fontSize: 20, color: 'var(--tx)', lineHeight: 1.25 }}>{t('report_title')}</div>
+            <div className="row" style={{ gap: 8 }}>
+              <button
+                type="button"
+                className="btn ghost sm"
+                style={{ minHeight: 44 }}
+                onClick={() => setReportMode('table')}
+              >
+                {tk('report_mode_table')}
+              </button>
+            </div>
+          </div>
+        </div>
+        <PivotAtlasPanel />
+      </div>
+    )
+  }
+
   return (
     <div
       data-testid="reports-root"
@@ -328,7 +365,18 @@ th{background:#f4f4f4}
       }}
     >
       <div className="panel" style={{ flexShrink: 0, marginBottom: 8, ...panelPad }}>
-        <div className="serif" style={{ fontSize: 20, color: 'var(--tx)', marginBottom: 4, lineHeight: 1.25 }}>{t('report_title')}</div>
+        <div className="row between" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 4 }}>
+          <div className="serif" style={{ fontSize: 20, color: 'var(--tx)', lineHeight: 1.25 }}>{t('report_title')}</div>
+          <button
+            type="button"
+            className="btn ghost sm"
+            style={{ minHeight: 44 }}
+            onClick={() => setReportMode('atlas')}
+            data-testid="reports-open-atlas"
+          >
+            {tk('report_mode_atlas')}
+          </button>
+        </div>
         <div style={{ fontSize: 13, color: 'var(--tx3)', maxWidth: 720, lineHeight: 1.35 }}>{t('report_subtitle')}</div>
       </div>
 
