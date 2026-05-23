@@ -6,22 +6,26 @@
 -- ── Oeuvres: admin-only hard delete ──────────────────────────────────────
 alter table "Oeuvres" enable row level security;
 
+drop policy if exists "oeuvres: team delete" on "Oeuvres";
 drop policy if exists "oeuvres_admin_delete" on "Oeuvres";
-create policy "oeuvres_admin_delete"
+drop policy if exists "oeuvres: delete" on "Oeuvres";
+create policy "oeuvres: delete"
   on "Oeuvres"
   for delete
   to authenticated
-  using (is_admin());
+  using (is_admin() or is_team());
 
 -- ── tblImage: admin-only hard delete ─────────────────────────────────────
 alter table "tblImage" enable row level security;
 
+drop policy if exists "tblImage: team all" on "tblImage";
 drop policy if exists "tblimage_admin_delete" on "tblImage";
-create policy "tblimage_admin_delete"
+drop policy if exists "tblImage: delete" on "tblImage";
+create policy "tblImage: delete"
   on "tblImage"
   for delete
-  to authenticated
-  using (is_admin());
+  to public
+  using (is_admin() or is_team());
 
 -- Note: createServiceClient() in server actions still bypasses RLS by design
 -- (purgeWorkPermanently uses it for cascade cleanup). The requireAdmin()

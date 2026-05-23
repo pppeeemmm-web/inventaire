@@ -24,6 +24,10 @@ Add an Object Lifecycle Rule on the bucket:
 
 This prunes old backups so cost stays bounded.
 
+Optional second lifecycle rule (Slice 7):
+- Prefix: `weekly/`
+- Action: Delete after **365 days** (or match your retention policy)
+
 ### 2. Create a scoped R2 API token
 R2 → **Manage R2 API Tokens** → Create:
 - Permission: **Object Read & Write**
@@ -52,6 +56,21 @@ GitHub → repo → **Settings → Secrets and variables → Actions → New rep
 ### 5. First run
 Actions tab → **Daily Supabase backup** → **Run workflow** → check it completes green.
 Open R2 → `art-db-backups/daily/` → confirm the `.sql.gz` is there and the size looks reasonable.
+
+## Graph CSV exports (Slice 7 Phase 2)
+
+**Workflow:** `.github/workflows/graph-csv-backup.yml`  
+**Script:** `scripts/backup-graph-csv.sh`  
+**Schedule:** Sundays 04:30 UTC (manual: Actions → **Weekly graph CSV backup**)
+
+Exports `public.entity` and `public.edge_fact` with the same columns as admin `GET /api/export/csv` (UTF-8 BOM, CSV header row). Uploads to:
+
+- `weekly/pem_entity_YYYY-MM-DD.csv`
+- `weekly/pem_edge_fact_YYYY-MM-DD.csv`
+
+Uses the **same** `SUPABASE_DB_URL` and `R2_BACKUP_*` secrets as the daily dump. No app deploy or admin session required.
+
+**Recovery use:** open in Excel / LibreOffice / Google Sheets for catalogue relationships when Postgres or the app is unavailable. Not a substitute for `pg_dump` — no row-level restore, no images.
 
 ## Recovery — full restore
 

@@ -13,6 +13,10 @@ create table if not exists oeuvre_versions (
 create index if not exists idx_oeuvre_versions_oeuvre_changed
   on oeuvre_versions (oeuvre_id, changed_at desc);
 
+create index if not exists idx_oeuvre_versions_changed_by
+  on oeuvre_versions (changed_by)
+  where changed_by is not null;
+
 alter table oeuvre_versions enable row level security;
 
 drop policy if exists "oeuvre_versions_admin_select" on oeuvre_versions;

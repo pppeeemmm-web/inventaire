@@ -119,19 +119,21 @@ _Version-controlled checklist + non-binding roadmap items. Prefer this file over
 
 ## V5 refactor (see plan)
 
-- [x] **Slice 3 — Atelier tab route segmentation** (2026-05-23) — 16 segment routes, QR bridge, `BottomStack`, `@container atelier` portal chrome, `TeamPortalClient` trim. Handoff: [`HANDOFF_SLICE3.md`](./HANDOFF_SLICE3.md).
-- [x] **Slice 3B — Legacy tab segments** (2026-05-23) — `overview`, `map`, `journal`, `system`, `portfolio`, `contacts`, `stock`, `site`, `analytics`; `/atelier` → overview; `OverviewTab` extract. Handoff: [`HANDOFF_SLICE3.md`](./HANDOFF_SLICE3.md).
-- [x] **Slice 5 — Graph foundation** (2026-05-23) — SQL applied; `gen:types`; constellation bundle + insert uids. Handoff: [`HANDOFF_SLICE5.md`](./HANDOFF_SLICE5.md).
-- [x] **Slice 6 — Pivot Atlas** (2026-05-23) — `08_edge_fact_view.sql`, Reports atlas. Handoff: [`HANDOFF_SLICE6.md`](./HANDOFF_SLICE6.md).
-- [x] **Slice 8 — Embeddings** (2026-05-23) — `07`+`09` SQL, embed-worker, semantic palette search verified. Handoff: [`HANDOFF_SLICE8.md`](./HANDOFF_SLICE8.md).
-- [x] **Slice 7 — Analog fallbacks** — admin CSV export (`/api/export/csv`), portfolio PDF graph appendix, `AGENTS.md` Supabase line. Handoff: [`HANDOFF_SLICE7.md`](./HANDOFF_SLICE7.md).
+- [x] **Slice 3 — Atelier tab route segmentation** (2026-05-23) — 16 segment routes, QR bridge, `BottomStack`, `@container atelier` portal chrome, `TeamPortalClient` trim. Handoff: [`archive/HANDOFF_SLICE3.md`](./archive/HANDOFF_SLICE3.md).
+- [x] **Slice 3B — Legacy tab segments** (2026-05-23) — `overview`, `map`, `journal`, `system`, `portfolio`, `contacts`, `stock`, `site`, `analytics`; `/atelier` → overview; `OverviewTab` extract. Handoff: [`archive/HANDOFF_SLICE3.md`](./archive/HANDOFF_SLICE3.md).
+- [x] **Slice 5 — Graph foundation** (2026-05-23) — SQL applied; `gen:types`; constellation bundle + insert uids. Handoff: [`archive/HANDOFF_SLICE5.md`](./archive/HANDOFF_SLICE5.md).
+- [x] **Slice 6 — Pivot Atlas** (2026-05-23) — `08_edge_fact_view.sql`, Reports atlas. Handoff: [`archive/HANDOFF_SLICE6.md`](./archive/HANDOFF_SLICE6.md).
+- [x] **Slice 8 — Embeddings** (2026-05-23) — `07`+`09` SQL, embed-worker, semantic palette search verified. Handoff: [`archive/HANDOFF_SLICE8.md`](./archive/HANDOFF_SLICE8.md).
+- [x] **Slice 7 — Analog fallbacks (Phase 1)** — admin CSV export (`/api/export/csv`), portfolio PDF graph appendix, `AGENTS.md` Supabase line. Handoff: [`archive/HANDOFF_SLICE7.md`](./archive/HANDOFF_SLICE7.md).
+- [ ] **Slice 7 — Phase 2** — weekly R2 graph CSV (`graph-csv-backup.yml`); verify one Actions run. Optional: `feature-i18n.md`, `feature-embeddings.md`.
+- [x] **Docs archive sweep** (2026-05-23) — completed slice handoffs → `docs/archive/`; slim `docs/README.md`; cross-links updated.
 
 **Optional backlog (post–Slice 3, owner chooses vs Slice 4 i18n):**
 
 - [ ] Segment remaining legacy `?tab=` tabs: overview, map, journal, system, portfolio, contacts, stock (+ site/analytics aliases)
 - [ ] Per-route bundle size check (aspirational ≤ 250 kB)
 - [ ] **Atelier shell reload on segment tab hop** — **client fix on `main` (2026-05-23):** `(portal)/layout` persists shell. Remaining: slim RSC loaders for Audit/Logistics.
-- [ ] **Slice 1 — PWA / offline (Phase 1)** — local draft: Serwist + blob offline queue + `/~offline`. Handoff: [`HANDOFF_SLICE1.md`](./HANDOFF_SLICE1.md). Phase 2: Background Sync, R2 Cache-Control, shell revalidate tags.
+- [ ] **Slice 1 — PWA / offline (Phase 1)** — local draft: Serwist + blob offline queue + `/~offline`. Handoff: [`archive/HANDOFF_SLICE1.md`](./archive/HANDOFF_SLICE1.md). Phase 2: Background Sync, R2 Cache-Control, shell revalidate tags.
 
 - [x] **Slice 4 (core)** — `resolveMessage` + `t()` precedence (2026-05-23).
 - [x] **Slice 4 (segment tabs)** — Exhibitions / Fiscal / Inventory / Sales hardcoded copy → `defineMessages`; ESLint off removed for those paths.
@@ -140,7 +142,7 @@ _Version-controlled checklist + non-binding roadmap items. Prefer this file over
 
 **V5 sequence (locked):** Slices 3–8 ✓ on `main` (Slice 8: SQL + worker + semantic search verified locally).
 
-Active plan: [`HANDOFF_SLICE8.md`](./HANDOFF_SLICE8.md).
+Active plan: [`PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md) (Slice 7 Phase 2 · Slice 1 PWA).
 
 ## Guardrails (not tasks)
 

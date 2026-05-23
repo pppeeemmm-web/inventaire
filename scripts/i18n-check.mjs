@@ -1,7 +1,7 @@
 /**
  * Bilingual copy gate: missing legacy dict keys + hardcoded UI strings.
  * Blocking hotspots = outside scripts/i18n-check-allowlist.json (sync with .eslintrc.json).
- * Handoff: docs/HANDOFF_SLICE4.md
+ * Handoff: docs/archive/HANDOFF_SLICE4.md
  */
 import { promises as fs } from 'node:fs'
 import path from 'node:path'

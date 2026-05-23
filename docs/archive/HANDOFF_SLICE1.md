@@ -1,5 +1,7 @@
 # Slice 1 — PWA / Service Worker handoff
 
+> **ARCHIVED — Slice 1 still open in [`../TODO.md`](../TODO.md).** Reference only; verify against live code before executing.
+
 **Status:** Phase 1 on `main` (local draft until commit). Serwist disabled in `development`; active after `npm run build` + `npm start` or production deploy.
 
 ---

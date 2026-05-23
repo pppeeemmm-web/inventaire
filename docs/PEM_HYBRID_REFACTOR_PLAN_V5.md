@@ -30,8 +30,8 @@ V3 was a planning doc; V5 is the executable plan after the codebase audit + the 
 **Audit deltas vs V3 assumptions:**
 - Share target + triage already exist (`app/manifest.ts`, `app/atelier/share-triage/`, `ShareTriageClient.tsx`). Slice 2 is now incremental — filename → Titre seed, hub tile, capture removal — not greenfield.
 - 7 files still use `capture="environment"` (4 unconditional, 3 narrow-only).
-- ~~8 `.messages.ts` files … no precedence wiring~~ — **Slice 4 core (2026-05-23):** 13+ `*.messages.ts` modules; [`resolveMessage`](../lib/i18n/resolve-message.ts) + `t()` precedence; `i18n:check` CI ratchet ([`HANDOFF_SLICE4.md`](./HANDOFF_SLICE4.md)).
-- ~~11 atelier route directories contain only `actions.ts`~~ — **Slice 3 complete (2026-05-23):** all 16 segmented tabs have `page.tsx` + `_components/` (see [`HANDOFF_SLICE3.md`](./HANDOFF_SLICE3.md)).
+- ~~8 `.messages.ts` files … no precedence wiring~~ — **Slice 4 core (2026-05-23):** 13+ `*.messages.ts` modules; [`resolveMessage`](../lib/i18n/resolve-message.ts) + `t()` precedence; `i18n:check` CI ratchet ([`archive/HANDOFF_SLICE4.md`](./archive/HANDOFF_SLICE4.md)).
+- ~~11 atelier route directories contain only `actions.ts`~~ — **Slice 3 complete (2026-05-23):** all 16 segmented tabs have `page.tsx` + `_components/` (see [`archive/HANDOFF_SLICE3.md`](./archive/HANDOFF_SLICE3.md)).
 - No `public.nodes`, no `tblrelations` node FKs, no `entity`/`edge_fact` views, no embedding columns anywhere.
 - `npm run typecheck` is already clean — Slice 0b fallout will be small.
 
@@ -371,11 +371,10 @@ Wrap the function return in `nullif(trim(…), '')` so all-empty inputs return `
 **Scope:**
 - **CSV Universal Export:** `app/api/export/csv/route.ts` (new) — streams `entity` and `edge_fact` views to plain `.csv`. Auth-gated via `is_admin()`. Optional weekly GitHub Action that drops the CSV alongside the daily R2 backup.
 - **Graph-Aware PDF:** update `app/atelier/portfolio/pdf-action.ts` — `generatePortfolioPdf()` appends graph relationships (Themes, Working Groups, Concepts) from `entity` + `edge_fact` to the printable portfolio.
-- **Docs consolidation:**
-  - **Keep:** `CLAUDE.md`, `AGENTS.md`, `SITE_MAP.md`, `docs/README.md`, `docs/TODO.md`, `docs/SYSTEM_LEDGER.md`, `docs/BACKUP_RECOVERY.md`, `docs/CONSTELLATION.md`, `docs/BROADCAST.md`, `docs/BROADCAST_OUTSIDE_CHAIN.md`, slim `docs/PROJECT_SYNTHESIS.md`, `docs/PEM_HYBRID_REFACTOR_PLAN_V5.md`.
-  - **Archive:** superseded `docs/archive/*` (old hybrid plan, Phase 2 broadcast snapshot, 2026-05-15 STATUS).
-  - **Add later (optional):** `docs/feature-graph.md`, `docs/feature-i18n.md`, `docs/feature-embeddings.md` (Slice 8 setup + audit ritual).
-  - **Archive:** everything else → `docs/archive/` with banner.
+- **Docs consolidation (2026-05-23):**
+  - **Keep:** `CLAUDE.md`, `AGENTS.md`, `SITE_MAP.md`, `docs/README.md`, `docs/TODO.md`, `docs/SYSTEM_LEDGER.md`, `docs/BACKUP_RECOVERY.md`, `docs/CONSTELLATION.md`, `docs/BROADCAST.md`, `docs/BROADCAST_OUTSIDE_CHAIN.md`, slim `docs/PROJECT_SYNTHESIS.md`, `docs/PEM_HYBRID_REFACTOR_PLAN_V5.md`, `docs/feature-graph.md`.
+  - **Archive:** `docs/archive/` — old hybrid plan, Phase 2 broadcast snapshot, 2026-05-15 `STATUS.md`, completed `HANDOFF_SLICE*.md` (Slices 1, 3–8).
+  - **Add later (optional):** `docs/feature-i18n.md`, `docs/feature-embeddings.md`.
 - Fix `AGENTS.md` "Prisma" stale line → Supabase.
 
 **Verification:** CSV opens cleanly in Excel + Google Sheets + LibreOffice; PDF generation includes a Themes section; `docs/archive/` is the only place stale plans live.

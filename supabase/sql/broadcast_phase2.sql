@@ -44,10 +44,12 @@ create index if not exists idx_broadcast_events_oeuvre on broadcast_events (oeuv
 alter table broadcast_events enable row level security;
 
 drop policy if exists "broadcast_events_admin_select" on broadcast_events;
-create policy "broadcast_events_admin_select"
+drop policy if exists "broadcast_events_team_select" on broadcast_events;
+drop policy if exists "broadcast_events_select" on broadcast_events;
+create policy "broadcast_events_select"
   on broadcast_events
   for select to authenticated
-  using (is_admin());
+  using (is_admin() or is_team());
 
 comment on table broadcast_events is
   'Lightweight log: queued/posted echoes, VIP-tagged comments, errors. Read in atelier Broadcast tab Activity view; written via service_role from Route Handlers.';

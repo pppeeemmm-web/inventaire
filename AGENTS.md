@@ -14,7 +14,7 @@
 - **Final git sanity:** before finishing, check `git status --short --branch` and `git log --oneline origin/main..HEAD`; if ahead, push `main` or clearly report why it is not production truth.
 - **Release evidence:** before completion wording, run or derive the fields from `pwsh scripts/release-truth.ps1`: branch, HEAD SHA, origin/main SHA, HEAD==origin/main, working tree, checks. `deployed`/`online` requires separate production evidence.
 - **New UI copy:** use `lib/i18n/messages/*.messages.ts` with `defineMessages()` for FR+EN together; wire in `lib/i18n/messages/index.ts`. Do not add new feature copy through the legacy `keys.ts` + `fr.ts` + `en.ts` triple path unless maintaining old legacy copy.
-- **i18n allowlist:** `scripts/i18n-check-allowlist.json` must match `.eslintrc.json` `no-hardcoded-jsx-text: off` paths. See `docs/HANDOFF_SLICE4.md`.
+- **i18n allowlist:** `scripts/i18n-check-allowlist.json` must match `.eslintrc.json` `no-hardcoded-jsx-text: off` paths. See `docs/archive/HANDOFF_SLICE4.md`.
 
 ## Working agreement (repo owner)
 

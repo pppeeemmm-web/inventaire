@@ -49,6 +49,10 @@ create index if not exists calendar_event_link_process_idx
   on calendar_event_link (suivi_process_id)
   where suivi_process_id is not null;
 
+create index if not exists calendar_event_link_etape_idx
+  on calendar_event_link (suivi_etape_id)
+  where suivi_etape_id is not null;
+
 comment on table calendar_account is 'OAuth refresh tokens (app-encrypted) for exhibition calendar export.';
 comment on table calendar_event_link is 'Maps suivi_process / suivi_etape rows to provider calendar event ids.';
 
@@ -58,41 +62,41 @@ alter table calendar_event_link enable row level security;
 drop policy if exists calendar_account_owner_select on calendar_account;
 create policy calendar_account_owner_select
   on calendar_account for select to authenticated
-  using (auth_user_id = auth.uid());
+  using (auth_user_id = (select auth.uid()));
 
 drop policy if exists calendar_account_owner_insert on calendar_account;
 create policy calendar_account_owner_insert
   on calendar_account for insert to authenticated
-  with check (auth_user_id = auth.uid());
+  with check (auth_user_id = (select auth.uid()));
 
 drop policy if exists calendar_account_owner_update on calendar_account;
 create policy calendar_account_owner_update
   on calendar_account for update to authenticated
-  using (auth_user_id = auth.uid())
-  with check (auth_user_id = auth.uid());
+  using (auth_user_id = (select auth.uid()))
+  with check (auth_user_id = (select auth.uid()));
 
 drop policy if exists calendar_account_owner_delete on calendar_account;
 create policy calendar_account_owner_delete
   on calendar_account for delete to authenticated
-  using (auth_user_id = auth.uid());
+  using (auth_user_id = (select auth.uid()));
 
 drop policy if exists calendar_event_link_owner_select on calendar_event_link;
 create policy calendar_event_link_owner_select
   on calendar_event_link for select to authenticated
-  using (auth_user_id = auth.uid());
+  using (auth_user_id = (select auth.uid()));
 
 drop policy if exists calendar_event_link_owner_insert on calendar_event_link;
 create policy calendar_event_link_owner_insert
   on calendar_event_link for insert to authenticated
-  with check (auth_user_id = auth.uid());
+  with check (auth_user_id = (select auth.uid()));
 
 drop policy if exists calendar_event_link_owner_update on calendar_event_link;
 create policy calendar_event_link_owner_update
   on calendar_event_link for update to authenticated
-  using (auth_user_id = auth.uid())
-  with check (auth_user_id = auth.uid());
+  using (auth_user_id = (select auth.uid()))
+  with check (auth_user_id = (select auth.uid()));
 
 drop policy if exists calendar_event_link_owner_delete on calendar_event_link;
 create policy calendar_event_link_owner_delete
   on calendar_event_link for delete to authenticated
-  using (auth_user_id = auth.uid());
+  using (auth_user_id = (select auth.uid()));

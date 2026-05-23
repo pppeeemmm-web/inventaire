@@ -1,8 +1,10 @@
 # Slice 5 — Graph foundation handoff
 
+> **ARCHIVED — slice complete (2026-05-23).** Active checklist: [`../TODO.md`](../TODO.md). Plan: [`../PEM_HYBRID_REFACTOR_PLAN_V5.md`](../PEM_HYBRID_REFACTOR_PLAN_V5.md).
+
 **Status:** SQL applied on Supabase (owner 2026-05-23). Repo helpers in `lib/graph/node-ref.ts`. Run `npm run gen:types` after apply so `supabase.generated.ts` includes `nodes`, `entity`, and `tblrelations.source_uid` / `target_uid`.
 
-**Cold-start:** [`supabase/sql/graph_foundation/README.md`](../supabase/sql/graph_foundation/README.md) → apply `01`…`06` in order after backup.
+**Cold-start:** [`supabase/sql/graph_foundation/README.md`](../../supabase/sql/graph_foundation/README.md) → apply `01`…`06` in order after backup.
 
 ---
 
@@ -18,7 +20,7 @@
 | `06_entity_view.sql` | `public.entity` view |
 | `lib/graph/node-ref.ts` | `nodeRef`, `GraphNodeType`, `EntityRow`, `GraphRelationRow` |
 
-**Not in repo yet (apply on DB first):** Slice 8 `07_embeddings.sql`. Slice 6: [`08_edge_fact_view.sql`](../supabase/sql/graph_foundation/08_edge_fact_view.sql) — see [`HANDOFF_SLICE6.md`](./HANDOFF_SLICE6.md).
+**Not in repo yet (apply on DB first):** Slice 8 `07_embeddings.sql`. Slice 6: [`08_edge_fact_view.sql`](../../supabase/sql/graph_foundation/08_edge_fact_view.sql) — see [`HANDOFF_SLICE6.md`](./HANDOFF_SLICE6.md).
 
 ---
 

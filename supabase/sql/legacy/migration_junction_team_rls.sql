@@ -7,6 +7,8 @@
 ALTER TABLE IF EXISTS public.oeuvre_theme ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.working_group_work ENABLE ROW LEVEL SECURITY;
 
+-- Legacy duplicate "oeuvreTheme: team all" may still exist on old DBs; drop via rls_merge_permissive_policies.sql
+DROP POLICY IF EXISTS "oeuvreTheme: team all" ON public.oeuvre_theme;
 DROP POLICY IF EXISTS "oeuvre_theme: team all" ON public.oeuvre_theme;
 CREATE POLICY "oeuvre_theme: team all" ON public.oeuvre_theme
   FOR ALL TO public

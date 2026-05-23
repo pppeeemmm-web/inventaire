@@ -35,28 +35,28 @@ create policy "sketchbook_team_select"
   on public.sketchbook
   for select
   to authenticated
-  using (is_team() and (user_id = auth.uid() or is_admin()));
+  using (is_team() and (user_id = (select auth.uid()) or is_admin()));
 
 drop policy if exists "sketchbook_team_insert" on public.sketchbook;
 create policy "sketchbook_team_insert"
   on public.sketchbook
   for insert
   to authenticated
-  with check (is_team() and user_id = auth.uid());
+  with check (is_team() and user_id = (select auth.uid()));
 
 drop policy if exists "sketchbook_team_update" on public.sketchbook;
 create policy "sketchbook_team_update"
   on public.sketchbook
   for update
   to authenticated
-  using (is_team() and (user_id = auth.uid() or is_admin()))
-  with check (is_team() and (user_id = auth.uid() or is_admin()));
+  using (is_team() and (user_id = (select auth.uid()) or is_admin()))
+  with check (is_team() and (user_id = (select auth.uid()) or is_admin()));
 
 drop policy if exists "sketchbook_team_delete" on public.sketchbook;
 create policy "sketchbook_team_delete"
   on public.sketchbook
   for delete
   to authenticated
-  using (is_team() and (user_id = auth.uid() or is_admin()));
+  using (is_team() and (user_id = (select auth.uid()) or is_admin()));
 
 grant select, insert, update, delete on public.sketchbook to authenticated;

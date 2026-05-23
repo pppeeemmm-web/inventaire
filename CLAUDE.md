@@ -62,7 +62,7 @@ Repo operating guide. If conflict: ask owner before edit.
 - New copy: one module in `lib/i18n/messages/*.messages.ts` via `defineMessages()` with FR+EN together; registered in `lib/i18n/messages/index.ts`.
 - Runtime: [`resolveMessage`](lib/i18n/resolve-message.ts) — feature messages first, legacy `fr.ts`/`en.ts` fallback; dev `console.warn` on miss.
 - Legacy dictionary under `lib/i18n/dictionary/` stays until touched. Do not add new feature copy via old pattern unless maintaining legacy surface.
-- Enforcement: ESLint `pem-i18n/no-hardcoded-jsx-text` + `npm run i18n:check` (blocking hotspots). Allowlist: `scripts/i18n-check-allowlist.json` — handoff [`docs/HANDOFF_SLICE4.md`](docs/HANDOFF_SLICE4.md).
+- Enforcement: ESLint `pem-i18n/no-hardcoded-jsx-text` + `npm run i18n:check` (blocking hotspots). Allowlist: `scripts/i18n-check-allowlist.json` — handoff [`docs/archive/HANDOFF_SLICE4.md`](docs/archive/HANDOFF_SLICE4.md).
 - Server Components: pass translated strings, use client leaf, or `dict[lang][key]`.
 - `toLocale*` / Intl locale from `lang` (`fr-FR` / `en-GB`), not hardcoded.
 

@@ -17,6 +17,10 @@ create table if not exists studio_task (
 create index if not exists idx_studio_task_status_created
   on studio_task (status, created_at desc);
 
+create index if not exists idx_studio_task_author_id
+  on studio_task (author_id)
+  where author_id is not null;
+
 -- One-shot backfill: manual rows in system_log (no machine event_type).
 insert into studio_task (id, created_at, action, details, type, priority, status, author_id)
 select id, created_at, action, details, type, priority, status, user_id
@@ -42,16 +46,16 @@ drop policy if exists "studio_task_admin_delete" on studio_task;
 
 create policy "studio_task_team_read"
   on studio_task for select
-  using (auth.uid() is not null);
+  using ((select auth.uid()) is not null);
 
 create policy "studio_task_team_insert"
   on studio_task for insert
-  with check (auth.uid() is not null);
+  with check ((select auth.uid()) is not null);
 
 create policy "studio_task_team_update"
   on studio_task for update
-  using (auth.uid() is not null)
-  with check (auth.uid() is not null);
+  using ((select auth.uid()) is not null)
+  with check ((select auth.uid()) is not null);
 
 create policy "studio_task_admin_delete"
   on studio_task for delete

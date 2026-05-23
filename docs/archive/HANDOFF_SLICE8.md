@@ -1,5 +1,7 @@
 # Slice 8 — Embeddings handoff
 
+> **ARCHIVED — slice complete (2026-05-23).** Active checklist: [`../TODO.md`](../TODO.md). Plan: [`../PEM_HYBRID_REFACTOR_PLAN_V5.md`](../PEM_HYBRID_REFACTOR_PLAN_V5.md).
+
 **Status:** Shipped on `main` (2026-05-23). SQL applied; semantic ⌘K search + embed worker verified on studio machine (Ollama :11435, Qdrant `pem_universe`).
 
 ---
@@ -8,10 +10,10 @@
 
 After Slice 5 `01`–`06` and Slice 6 `08`:
 
-1. [`07_embeddings.sql`](../supabase/sql/graph_foundation/07_embeddings.sql)
-2. [`09_query_embedding_cache.sql`](../supabase/sql/graph_foundation/09_query_embedding_cache.sql)
+1. [`07_embeddings.sql`](../../supabase/sql/graph_foundation/07_embeddings.sql)
+2. [`09_query_embedding_cache.sql`](../../supabase/sql/graph_foundation/09_query_embedding_cache.sql)
 3. `npm run gen:types`
-4. Local: Ollama + Qdrant env (see [`scripts/embed-worker/README.md`](../scripts/embed-worker/README.md))
+4. Local: Ollama + Qdrant env (see [`scripts/embed-worker/README.md`](../../scripts/embed-worker/README.md))
 5. `npm run embed:worker -- --once --limit=5`
 
 ---

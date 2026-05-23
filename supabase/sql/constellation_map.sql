@@ -22,20 +22,20 @@ drop policy if exists "constellation_map_delete_own" on public.constellation_map
 
 create policy "constellation_map_select_own"
   on public.constellation_map for select
-  using (auth.uid() = auth_user_id);
+  using ((select auth.uid()) = auth_user_id);
 
 create policy "constellation_map_insert_own"
   on public.constellation_map for insert
-  with check (auth.uid() = auth_user_id);
+  with check ((select auth.uid()) = auth_user_id);
 
 create policy "constellation_map_update_own"
   on public.constellation_map for update
-  using (auth.uid() = auth_user_id)
-  with check (auth.uid() = auth_user_id);
+  using ((select auth.uid()) = auth_user_id)
+  with check ((select auth.uid()) = auth_user_id);
 
 create policy "constellation_map_delete_own"
   on public.constellation_map for delete
-  using (auth.uid() = auth_user_id);
+  using ((select auth.uid()) = auth_user_id);
 
 grant select, insert, update, delete on public.constellation_map to authenticated;
 

@@ -1,0 +1,39 @@
+name: Weekly graph CSV backup
+
+# Slice 7 Phase 2 — entity + edge_fact CSV to R2 (analog fallback alongside daily pg_dump).
+# Recovery: docs/BACKUP_RECOVERY.md § Graph CSV exports.
+on:
+  schedule:
+    # Sundays 04:30 UTC (after daily pg_dump at 03:17).
+    - cron: '30 4 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  graph-csv:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Postgres client
+        run: |
+          sudo install -d /usr/share/keyrings
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+            | sudo gpg --dearmor -o /usr/share/keyrings/postgresql.gpg
+          echo "deb [signed-by=/usr/share/keyrings/postgresql.gpg] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
+
+      - name: Export graph views + upload to R2
+        env:
+          SUPABASE_DB_URL:      ${{ secrets.SUPABASE_DB_URL }}
+          R2_BACKUP_ACCOUNT_ID: ${{ secrets.R2_BACKUP_ACCOUNT_ID }}
+          R2_BACKUP_ACCESS_KEY: ${{ secrets.R2_BACKUP_ACCESS_KEY }}
+          R2_BACKUP_SECRET_KEY: ${{ secrets.R2_BACKUP_SECRET_KEY }}
+          R2_BACKUP_BUCKET:     ${{ secrets.R2_BACKUP_BUCKET }}
+        run: bash scripts/backup-graph-csv.sh

@@ -17,19 +17,19 @@ alter table public.user_record_done enable row level security;
 
 create policy "user_record_done_select_own"
   on public.user_record_done for select
-  using (auth.uid() = user_id);
+  using ((select auth.uid()) = user_id);
 
 create policy "user_record_done_insert_own"
   on public.user_record_done for insert
-  with check (auth.uid() = user_id);
+  with check ((select auth.uid()) = user_id);
 
 create policy "user_record_done_update_own"
   on public.user_record_done for update
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
 
 create policy "user_record_done_delete_own"
   on public.user_record_done for delete
-  using (auth.uid() = user_id);
+  using ((select auth.uid()) = user_id);
 
 grant select, insert, update, delete on public.user_record_done to authenticated;

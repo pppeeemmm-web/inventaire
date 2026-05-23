@@ -19,6 +19,17 @@ create table if not exists pending_changes (
 create index if not exists idx_pending_changes_status_created
   on pending_changes (status, created_at desc);
 
+create index if not exists idx_pending_changes_oeuvre_id
+  on pending_changes (oeuvre_id);
+
+create index if not exists idx_pending_changes_author_id
+  on pending_changes (author_id)
+  where author_id is not null;
+
+create index if not exists idx_pending_changes_reviewer_id
+  on pending_changes (reviewer_id)
+  where reviewer_id is not null;
+
 alter table pending_changes enable row level security;
 
 drop policy if exists "pending_changes_team_insert" on pending_changes;
@@ -31,7 +42,7 @@ drop policy if exists "pending_changes_select" on pending_changes;
 create policy "pending_changes_select"
   on pending_changes
   for select to authenticated
-  using (author_id = auth.uid() or is_admin());
+  using (author_id = (select auth.uid()) or is_admin());
 
 drop policy if exists "pending_changes_admin_update" on pending_changes;
 create policy "pending_changes_admin_update"

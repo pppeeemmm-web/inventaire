@@ -76,7 +76,7 @@ create policy "work_session_team_delete"
     is_team()
     and (
       is_admin()
-      or (user_id = auth.uid() and status in ('draft', 'abandoned', 'rejected'))
+      or (user_id = (select auth.uid()) and status in ('draft', 'abandoned', 'rejected'))
     )
   );
 

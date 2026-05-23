@@ -25,7 +25,7 @@
 ## Plan for the rest
 
 1. **Evidence pack (optional but clarifying)** — One nominal path written down: eligible work → `queue` → Buffer publish → `confirm` shows in **Publiés**; optional `event` in **Activité**. Screenshot or Make scenario export; lives in your wiki / Notion if you want, not necessarily in git.
-2. **§2 — Repo quality (done)** — `ATELIER_E2E=1` Playwright (includes `tests/broadcast-tab.spec.ts`); **`npm run test:e2e:field`** runs hub / mobile-bar / field-launcher specs with env set via [`scripts/run-atelier-e2e.mjs`](../scripts/run-atelier-e2e.mjs); `npm run lint` + `npm run i18n:check` on merges (GitHub [`ci.yml`](../.github/workflows/ci.yml)); bilingual copy handoff [`HANDOFF_SLICE4.md`](./HANDOFF_SLICE4.md).
+2. **§2 — Repo quality (done)** — `ATELIER_E2E=1` Playwright (includes `tests/broadcast-tab.spec.ts`); **`npm run test:e2e:field`** runs hub / mobile-bar / field-launcher specs with env set via [`scripts/run-atelier-e2e.mjs`](../scripts/run-atelier-e2e.mjs); `npm run lint` + `npm run i18n:check` on merges (GitHub [`ci.yml`](../.github/workflows/ci.yml)); bilingual copy handoff [`archive/HANDOFF_SLICE4.md`](./archive/HANDOFF_SLICE4.md).
 3. **Make resilience** — Error branches (API 5xx, 409 duplicate confirm), retries, alerting when feed is empty vs. misconfigured secret; document who owns the scenario.
 4. **Buffer** — Approval habit, which profiles, second network (e.g. LinkedIn) if needed; all in Buffer + Make settings.
 5. **Slack** — Which `event` types map to which channel; webhook rotation if exposed.
@@ -142,7 +142,7 @@ From repo root: `pwsh scripts/dev.ps1` (frees port 3000, prints LAN URL for mobi
 
 ## Routes and modules
 
-**Slice 3 + 3B (2026-05-23):** All 25 Atelier tabs are App Router segment routes; `/atelier` redirects to `/atelier/overview`; legacy `?tab=` redirects preserve other query params. **Handoff:** [HANDOFF_SLICE3.md](./HANDOFF_SLICE3.md).
+**Slice 3 + 3B (2026-05-23):** All 25 Atelier tabs are App Router segment routes; `/atelier` redirects to `/atelier/overview`; legacy `?tab=` redirects preserve other query params. **Handoff:** [archive/HANDOFF_SLICE3.md](./archive/HANDOFF_SLICE3.md).
 
 **Canonical route / tab map:** [SITE_MAP.md](../SITE_MAP.md) (Mermaid, deep links, segment routes). **Pending work:** [TODO.md](./TODO.md). **Refactor plan:** [PEM_HYBRID_REFACTOR_PLAN_V5.md](./PEM_HYBRID_REFACTOR_PLAN_V5.md).
 
@@ -198,4 +198,4 @@ See [`docs/README.md`](./README.md) for the full list. High-signal:
 - [ ] New first-party HTTP API besides broadcast.
 - [ ] Major orchestrator change (e.g. no longer `TeamPortalClient`-centric).
 
-**Last reviewed (2026-05-23):** Docs folder cleanup — `README.md`, `BROADCAST.md`; V5 plan canonical; `ROADMAP.md` merged into `TODO.md`.
+**Last reviewed (2026-05-23):** Docs archive sweep — slice handoffs in `docs/archive/`; slim `docs/README.md`; V5 plan + `TODO.md` canonical.

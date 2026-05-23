@@ -27,6 +27,14 @@ create index if not exists idx_voice_note_oeuvre
   on public.voice_note (oeuvre_id)
   where oeuvre_id is not null;
 
+create index if not exists idx_voice_note_process_id
+  on public.voice_note (process_id)
+  where process_id is not null;
+
+create index if not exists idx_voice_note_sketchbook_id
+  on public.voice_note (sketchbook_id)
+  where sketchbook_id is not null;
+
 comment on table public.voice_note is
   'Field voice / dictation notes: optional R2 audio + transcript; optional links to œuvre, pipeline, sketchbook.';
 
@@ -50,28 +58,28 @@ create policy "voice_note_team_select"
   on public.voice_note
   for select
   to authenticated
-  using (is_team() and (user_id = auth.uid() or is_admin()));
+  using (is_team() and (user_id = (select auth.uid()) or is_admin()));
 
 drop policy if exists "voice_note_team_insert" on public.voice_note;
 create policy "voice_note_team_insert"
   on public.voice_note
   for insert
   to authenticated
-  with check (is_team() and user_id = auth.uid());
+  with check (is_team() and user_id = (select auth.uid()));
 
 drop policy if exists "voice_note_team_update" on public.voice_note;
 create policy "voice_note_team_update"
   on public.voice_note
   for update
   to authenticated
-  using (is_team() and (user_id = auth.uid() or is_admin()))
-  with check (is_team() and (user_id = auth.uid() or is_admin()));
+  using (is_team() and (user_id = (select auth.uid()) or is_admin()))
+  with check (is_team() and (user_id = (select auth.uid()) or is_admin()));
 
 drop policy if exists "voice_note_team_delete" on public.voice_note;
 create policy "voice_note_team_delete"
   on public.voice_note
   for delete
   to authenticated
-  using (is_team() and (user_id = auth.uid() or is_admin()));
+  using (is_team() and (user_id = (select auth.uid()) or is_admin()));
 
 grant select, insert, update, delete on public.voice_note to authenticated;

@@ -21,20 +21,20 @@ CREATE POLICY "share_inbox_own_select"
   ON public.share_inbox
   FOR SELECT
   TO authenticated
-  USING (user_id = auth.uid() AND expires_at > timezone('utc', now()));
+  USING (user_id = (select auth.uid()) AND expires_at > timezone('utc', now()));
 
 DROP POLICY IF EXISTS "share_inbox_own_insert" ON public.share_inbox;
 CREATE POLICY "share_inbox_own_insert"
   ON public.share_inbox
   FOR INSERT
   TO authenticated
-  WITH CHECK (user_id = auth.uid());
+  WITH CHECK (user_id = (select auth.uid()));
 
 DROP POLICY IF EXISTS "share_inbox_own_delete" ON public.share_inbox;
 CREATE POLICY "share_inbox_own_delete"
   ON public.share_inbox
   FOR DELETE
   TO authenticated
-  USING (user_id = auth.uid());
+  USING (user_id = (select auth.uid()));
 
 GRANT SELECT, INSERT, DELETE ON public.share_inbox TO authenticated;

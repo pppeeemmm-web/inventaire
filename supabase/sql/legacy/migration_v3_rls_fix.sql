@@ -10,7 +10,7 @@ SET search_path = public
 AS $$
   SELECT EXISTS (
     SELECT 1 FROM "Contact"
-    WHERE auth_user_id = auth.uid()
+    WHERE auth_user_id = (select auth.uid())
       AND is_admin = true
   );
 $$;
