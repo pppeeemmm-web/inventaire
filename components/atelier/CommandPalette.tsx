@@ -51,6 +51,7 @@ export function CommandPalette({
   const [semanticHits, setSemanticHits] = useState<SemanticSearchHit[]>([])
   const [semanticLoading, setSemanticLoading] = useState(false)
   const [semanticUnavailable, setSemanticUnavailable] = useState(false)
+  const [semanticPending, setSemanticPending] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
 
@@ -60,6 +61,7 @@ export function CommandPalette({
       setIdx(0)
       setSemanticHits([])
       setSemanticUnavailable(false)
+      setSemanticPending(false)
       setTimeout(() => inputRef.current?.focus(), 10)
     }
   }, [open])
@@ -70,6 +72,7 @@ export function CommandPalette({
       setSemanticHits([])
       setSemanticLoading(false)
       setSemanticUnavailable(false)
+      setSemanticPending(false)
       return
     }
     setSemanticLoading(true)
@@ -78,12 +81,19 @@ export function CommandPalette({
         if ('error' in res) {
           setSemanticHits([])
           setSemanticUnavailable(false)
+          setSemanticPending(false)
         } else if (res.unavailable) {
           setSemanticHits([])
           setSemanticUnavailable(true)
+          setSemanticPending(false)
+        } else if (res.pending) {
+          setSemanticHits([])
+          setSemanticUnavailable(false)
+          setSemanticPending(true)
         } else {
           setSemanticHits(res.hits)
           setSemanticUnavailable(false)
+          setSemanticPending(false)
         }
         setSemanticLoading(false)
       })
@@ -155,6 +165,13 @@ export function CommandPalette({
         group: tk('search_semantic_group'),
         action: () => {},
       })
+    } else if (semanticPending) {
+      result.push({
+        id: 'semantic:pending',
+        label: tk('search_semantic_pending'),
+        group: tk('search_semantic_group'),
+        action: () => {},
+      })
     } else if (semanticUnavailable) {
       result.push({
         id: 'semantic:unavailable',
@@ -188,7 +205,7 @@ export function CommandPalette({
     q, tabs, oeuvres, contacts, t, tk, onGoTab, onGoWork, onClose,
     onCaptureSession, onScanQr, onFieldNote, onReminders, onNewWork, onNewSale,
     onStockTake, onPendingApprovals, onExportXlsx, onRegenBible,
-    semanticHits, semanticLoading, semanticUnavailable,
+    semanticHits, semanticLoading, semanticUnavailable, semanticPending,
   ])
 
   const clampedIdx = Math.min(idx, Math.max(0, items.length - 1))

@@ -6,8 +6,12 @@ export const searchMessages = defineMessages({
     en: 'Semantic search',
   },
   search_semantic_unavailable: {
-    fr: 'Recherche sémantique indisponible (Ollama / Qdrant)',
-    en: 'Semantic search unavailable (Ollama / Qdrant)',
+    fr: 'Recherche sémantique indisponible (Qdrant non configuré)',
+    en: 'Semantic search unavailable (Qdrant not configured)',
+  },
+  search_semantic_pending: {
+    fr: 'Indexation en cours — réessayez dans un instant',
+    en: 'Indexing in progress — try again shortly',
   },
   search_semantic_loading: {
     fr: 'Recherche…',

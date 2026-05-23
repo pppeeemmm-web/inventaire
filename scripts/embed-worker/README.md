@@ -32,6 +32,7 @@ npm run embed:worker -- --reembed-all
 ## Behaviour
 
 - Polls `embedding_status IN ('pending','error')` in batches of 32.
+- Drains `pending_query_embeddings` → `query_embedding_cache` (production semantic search).
 - Text from `node_search_text(node_id)`; empty → `skipped`.
 - Point id = `node_id` (UUID).
 - Tombstones drained before each pass; orphans removed with `--audit`.

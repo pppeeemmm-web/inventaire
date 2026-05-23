@@ -196,7 +196,7 @@ The app is functionally complete; we are moving from a strict relational ledger 
 
 **Risk:** Highest slice — calendar driver is **PR count**, not LOC.
 
-**Post–Slice 8 (2026-05-23):** Slices 3–6 on `main`. Slice 8 embeddings **on `main`** — apply [`07_embeddings.sql`](../supabase/sql/graph_foundation/07_embeddings.sql) + [`09_query_embedding_cache.sql`](../supabase/sql/graph_foundation/09_query_embedding_cache.sql), run [`embed-worker`](../scripts/embed-worker/README.md) ([`HANDOFF_SLICE8.md`](./HANDOFF_SLICE8.md)).
+**Post–V5 (2026-05-23):** Slices 3–8 **complete** on `main` (graph, pivot atlas, embeddings + semantic search verified). Ongoing: full-catalogue embed backfill via `npm run embed:worker -- --watch`; post-V5 backlog in [`TODO.md`](./TODO.md).
 
 ---
 

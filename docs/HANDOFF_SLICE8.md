@@ -1,6 +1,6 @@
 # Slice 8 — Embeddings handoff
 
-**Status:** Code on `main`; apply SQL on Supabase before worker / semantic search.
+**Status:** Shipped on `main` (2026-05-23). SQL applied; semantic ⌘K search + embed worker verified on studio machine (Ollama :11435, Qdrant `pem_universe`).
 
 ---
 
@@ -39,7 +39,7 @@ OLLAMA_ORIGIN=http://127.0.0.1:11435
 # optional alias: OLLAMA_URL=http://127.0.0.1:11435
 ```
 
-Semantic search in the **deployed** app only works if the Next server can reach Ollama + Qdrant (typically **local `npm run dev`** on the studio machine). Production Vercel → set `unavailable` gracefully.
+Semantic search on **Vercel** uses `query_embedding_cache` + Qdrant (no Ollama on the server). Set `QDRANT_URL` + `QDRANT_API_KEY` on Vercel. Run `npm run embed:worker -- --watch` on the studio PC so pending queries get embedded and cached.
 
 ---
 

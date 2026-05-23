@@ -138,10 +138,47 @@ async function drainTombstones(supabase) {
   return ids.length
 }
 
+async function drainPendingQueries(supabase) {
+  const { data, error } = await supabase
+    .from('pending_query_embeddings')
+    .select('id, query_norm')
+    .order('created_at', { ascending: true })
+    .limit(BATCH_SIZE)
+  if (error) throw new Error(error.message)
+  if (!data?.length) return 0
+
+  let ok = 0
+  for (const row of data) {
+    try {
+      const vector = await embedText(row.query_norm)
+      const { error: cacheErr } = await supabase.from('query_embedding_cache').upsert({
+        query_norm: row.query_norm,
+        vector,
+        model: EMBEDDING_MODEL,
+      })
+      if (cacheErr) throw new Error(cacheErr.message)
+      const { error: delErr } = await supabase
+        .from('pending_query_embeddings')
+        .delete()
+        .eq('id', row.id)
+      if (delErr) throw new Error(delErr.message)
+      ok += 1
+      console.log(`[embed-worker] query cached: ${row.query_norm.slice(0, 40)}`)
+    } catch (err) {
+      if (isOllamaConnectionError(err)) throw err
+      console.error(`[embed-worker] pending query ${row.query_norm}:`, err.message)
+    }
+  }
+  return ok
+}
+
 async function runPass(supabase) {
   await resetStuckEmbedding(supabase)
   const tomb = await drainTombstones(supabase)
   if (tomb) console.log(`[embed-worker] tombstones drained: ${tomb}`)
+
+  const queries = await drainPendingQueries(supabase)
+  if (queries) console.log(`[embed-worker] pending queries cached: ${queries}`)
 
   const batchSize = limit && Number.isFinite(limit) ? Math.min(limit, BATCH_SIZE) : BATCH_SIZE
   const pending = await fetchPendingBatch(supabase, batchSize)
