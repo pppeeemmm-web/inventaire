@@ -124,6 +124,7 @@ _Version-controlled checklist + non-binding roadmap items. Prefer this file over
 - [x] **Slice 5 — Graph foundation** (2026-05-23) — SQL applied; `gen:types`; constellation bundle + insert uids. Handoff: [`HANDOFF_SLICE5.md`](./HANDOFF_SLICE5.md).
 - [x] **Slice 6 — Pivot Atlas** (2026-05-23) — `08_edge_fact_view.sql`, Reports atlas. Handoff: [`HANDOFF_SLICE6.md`](./HANDOFF_SLICE6.md).
 - [x] **Slice 8 — Embeddings** (2026-05-23) — `07`+`09` SQL, embed-worker, semantic palette search verified. Handoff: [`HANDOFF_SLICE8.md`](./HANDOFF_SLICE8.md).
+- [x] **Slice 7 — Analog fallbacks** — admin CSV export (`/api/export/csv`), portfolio PDF graph appendix, `AGENTS.md` Supabase line. Handoff: [`HANDOFF_SLICE7.md`](./HANDOFF_SLICE7.md).
 
 **Optional backlog (post–Slice 3, owner chooses vs Slice 4 i18n):**
 

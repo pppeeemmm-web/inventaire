@@ -11,10 +11,15 @@ import {
   type EdgeFactRow,
 } from '@/lib/graph/edge-fact'
 import { fetchEdgeFactRows } from '@/app/atelier/reports/edge-fact-actions'
+import { GraphCsvExportButtons } from '@/components/atelier/reports/GraphCsvExportButtons'
 
 type AtlasPreset = 'graph' | 'contact_theme'
 
-export function PivotAtlasPanel() {
+type Props = {
+  isAdmin?: boolean
+}
+
+export function PivotAtlasPanel({ isAdmin = false }: Props) {
   const { t } = useI18n()
   const tk = (key: string) => t(key as DictKey)
 
@@ -96,6 +101,7 @@ export function PivotAtlasPanel() {
             <option value="contact_theme">{tk('atlas_preset_contact_theme')}</option>
             <option value="graph">{tk('atlas_preset_graph')}</option>
           </select>
+          {isAdmin ? <GraphCsvExportButtons /> : null}
         </div>
       </div>
 

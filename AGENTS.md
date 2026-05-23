@@ -1,6 +1,6 @@
 # Agent Instructions
 
-- **Frameworks:** Next.js 15, Tailwind, Prisma (where applicable).
+- **Frameworks:** Next.js 15, Tailwind, Supabase.
 - **Testing:** Write Playwright tests for new UI components. Hub / mobile bar / field launcher specs are gated on `ATELIER_E2E=1`; run **`npm run test:e2e:field`** (see `scripts/run-atelier-e2e.mjs`) with a logged-in dev session, or `npm run test:e2e` for the full suite.
 - **Style:** Functional components; avoid `any` in TypeScript.
 - **Verification:** Before finishing a task, run `npm run lint`. UI/copy changes: also `npm run i18n:check` (must pass; blocking hardcoded strings fail CI).

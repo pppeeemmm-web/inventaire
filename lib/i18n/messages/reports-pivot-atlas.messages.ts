@@ -69,4 +69,16 @@ export const reportsPivotAtlasMessages = defineMessages({
     fr: '{n} arêtes',
     en: '{n} edges',
   },
+  graph_csv_export_label: {
+    fr: 'Export CSV graphe',
+    en: 'Graph CSV export',
+  },
+  graph_csv_export_entity: {
+    fr: 'Entités',
+    en: 'Entities',
+  },
+  graph_csv_export_edges: {
+    fr: 'Arêtes',
+    en: 'Edges',
+  },
 })

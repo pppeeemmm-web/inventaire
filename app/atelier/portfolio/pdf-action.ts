@@ -22,6 +22,10 @@ import {
   type PortfolioPdfResult,
 } from '@/lib/portfolio-pdf-types'
 import type { Lang } from '@/lib/i18n/dictionary'
+import {
+  formatPortfolioGraphAppendix,
+  loadPortfolioGraphContext,
+} from '@/lib/portfolio-graph-appendix'
 
 const R2 = process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? process.env.R2_PUBLIC_URL ?? ''
 
@@ -172,7 +176,20 @@ export async function generatePortfolioPdf(
 
     // 6. Build PDF
     const cvText = opts.includeCv === false ? '' : await loadCvText(rawConfig, opts.lang)
-    const b64 = await buildPortfolioPdf(cfg, cappedSections, opts, imageMap, imageAspectMap, cvText, statementSections)
+    const graphContext = formatPortfolioGraphAppendix(
+      await loadPortfolioGraphContext(flatWorks),
+      opts.lang,
+    )
+    const b64 = await buildPortfolioPdf(
+      cfg,
+      cappedSections,
+      opts,
+      imageMap,
+      imageAspectMap,
+      cvText,
+      statementSections,
+      graphContext,
+    )
 
     const safeName = (cfg.artist_name || 'portfolio')
       .toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
@@ -579,6 +596,7 @@ async function buildPortfolioPdf(
   imageAspectMap: Map<number, number>,
   cvText:   string,
   statementSections: PdfSection[],
+  graphContext: string,
 ): Promise<string> {
   const PDFDocument = (await import('pdfkit')).default
   const fmt = FORMATS[opts.format]
@@ -648,6 +666,15 @@ async function buildPortfolioPdf(
         eyebrow: opts.lang === 'fr' ? 'PARCOURS' : 'CV',
         title:   opts.lang === 'fr' ? 'CV succinct' : 'Selected CV',
         body:    cvText,
+      })
+    }
+
+    // ── Graph context (themes, working groups, concepts) ───────────────
+    if (graphContext) {
+      drawTextPage(doc, PW, PH, {
+        eyebrow: opts.lang === 'fr' ? 'CONTEXTE' : 'CONTEXT',
+        title:   opts.lang === 'fr' ? 'Thèmes & regroupements' : 'Themes & groups',
+        body:    graphContext,
       })
     }
 

@@ -35,6 +35,24 @@ test.describe('Reports tab', () => {
     ).toBeVisible({ timeout: 30_000 })
   })
 
+  test('admin can export graph CSV from pivot atlas', async ({ page }) => {
+    await page.goto('/atelier/reports')
+    await expect(page.getByTestId('reports-root')).toBeVisible({ timeout: 45_000 })
+    await page.getByTestId('reports-open-atlas').click()
+    await expect(
+      page.getByTestId('pivot-atlas-root').or(page.getByTestId('pivot-atlas-loading')).or(page.getByTestId('pivot-atlas-error')),
+    ).toBeVisible({ timeout: 30_000 })
+
+    const entityExport = page.getByTestId('graph-csv-export-entity')
+    if (!(await entityExport.isVisible())) {
+      test.skip(true, 'Dev session is not admin — graph CSV export is admin-only.')
+    }
+    const downloadPromise = page.waitForEvent('download')
+    await entityExport.click()
+    const download = await downloadPromise
+    expect(download.suggestedFilename()).toMatch(/pem_entity_\d{4}-\d{2}-\d{2}\.csv/)
+  })
+
   test('shows partial-catalogue note when loaded batch is smaller than total', async ({ page }) => {
     await page.goto('/atelier/reports', { waitUntil: 'domcontentloaded' })
     await expect(page.getByTestId('reports-root')).toBeVisible({ timeout: 45_000 })

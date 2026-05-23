@@ -74,6 +74,7 @@ type Props = {
   selection: Set<number>
   oeuvresLoadedCount?: number
   oeuvresCatalogueTotal?: number
+  isAdmin?: boolean
 }
 
 export function Reports({
@@ -94,6 +95,7 @@ export function Reports({
   selection,
   oeuvresLoadedCount,
   oeuvresCatalogueTotal,
+  isAdmin = false,
 }: Props) {
   const { t, lang } = useI18n()
   const narrow = useMediaQuery('(max-width: 767px)')
@@ -347,7 +349,7 @@ th{background:#f4f4f4}
             </div>
           </div>
         </div>
-        <PivotAtlasPanel />
+        <PivotAtlasPanel isAdmin={isAdmin} />
       </div>
     )
   }

@@ -9,8 +9,9 @@
 | [`HANDOFF_SLICE5.md`](./HANDOFF_SLICE5.md) | **Slice 5 (graph foundation):** `public.nodes`, triggers, `entity` view — SQL apply + `gen:types` checklist |
 | [`HANDOFF_SLICE6.md`](./HANDOFF_SLICE6.md) | **Slice 6 (Pivot Atlas):** `edge_fact` view + Reports graph pivots — apply `08` |
 | [`HANDOFF_SLICE8.md`](./HANDOFF_SLICE8.md) | **Slice 8 (Embeddings):** Ollama + Qdrant worker, semantic search — apply `07`+`09` |
+| [`HANDOFF_SLICE7.md`](./HANDOFF_SLICE7.md) | **Slice 7 (Analog fallbacks):** admin CSV export (`entity` / `edge_fact`), graph-aware portfolio PDF |
 | [`TODO.md`](./TODO.md) | Version-controlled checklist (ops deadlines, dev blocks, optional follow-ups) |
-| [`PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md) | Active multi-slice refactor plan (Cursor execution); Slices 3–4 core **done**, panels / Slice 5 next |
+| [`PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md) | Active multi-slice refactor plan; Slices 3–8 **done**, Slice 7 analog fallbacks |
 | [`PROJECT_SYNTHESIS.md`](./PROJECT_SYNTHESIS.md) | Onboarding: stack boundaries, broadcast chain, where truth lives |
 | [`SYSTEM_LEDGER.md`](./SYSTEM_LEDGER.md) | System tab UI contract (also loaded in-app for reference MD) |
 | [`BACKUP_RECOVERY.md`](./BACKUP_RECOVERY.md) | Off-site DB backups + restore drill |

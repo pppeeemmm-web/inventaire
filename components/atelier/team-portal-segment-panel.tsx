@@ -263,6 +263,7 @@ export function SegmentRoutePanel({
             selection={selection}
             oeuvresLoadedCount={oeuvres.length}
             oeuvresCatalogueTotal={oeuvresPaging?.totalCount}
+            isAdmin={isAdmin}
           />
         </div>
       )
