@@ -451,6 +451,71 @@ function themeWorkSize(
   return themeWork.get(themeId)?.size ?? fallback?.[themeId] ?? 0
 }
 
+type GroupLinkRow = { oeuvre_id: number; group_id: string }
+
+function buildGroupWorkFromRows(rows: GroupLinkRow[]): Map<string, Set<number>> {
+  const gw = new Map<string, Set<number>>()
+  for (const row of rows) {
+    const groupId = String(row.group_id)
+    const oeuvreId = Number(row.oeuvre_id)
+    if (!groupId || !Number.isFinite(oeuvreId)) continue
+    let set = gw.get(groupId)
+    if (!set) {
+      set = new Set<number>()
+      gw.set(groupId, set)
+    }
+    set.add(oeuvreId)
+  }
+  return gw
+}
+
+function buildGroupWorkFromOeuvreMap(
+  oeuvreGroupIdsByOeuvre: Record<number, string[]>,
+): Map<string, Set<number>> {
+  const gw = new Map<string, Set<number>>()
+  for (const [oeuvreKey, groupIds] of Object.entries(oeuvreGroupIdsByOeuvre)) {
+    const oeuvreId = Number(oeuvreKey)
+    if (!Number.isFinite(oeuvreId)) continue
+    for (const rawGid of groupIds) {
+      const groupId = String(rawGid)
+      if (!groupId) continue
+      let set = gw.get(groupId)
+      if (!set) {
+        set = new Set<number>()
+        gw.set(groupId, set)
+      }
+      set.add(oeuvreId)
+    }
+  }
+  return gw
+}
+
+function mergeGroupWorkMaps(
+  primary: Map<string, Set<number>>,
+  secondary: Map<string, Set<number>>,
+): Map<string, Set<number>> {
+  if (secondary.size === 0) return primary
+  if (primary.size === 0) return secondary
+  const merged = new Map(primary)
+  for (const [groupId, ids] of secondary) {
+    const existing = merged.get(groupId)
+    if (existing) {
+      for (const id of ids) existing.add(id)
+    } else {
+      merged.set(groupId, new Set(ids))
+    }
+  }
+  return merged
+}
+
+function groupWorkSize(
+  groupWork: Map<string, Set<number>>,
+  groupId: string,
+  fallback?: Record<string, number>,
+): number {
+  return groupWork.get(groupId)?.size ?? fallback?.[groupId] ?? 0
+}
+
 // ── Props ──────────────────────────────────────────────────────────────────
 interface Props {
   oeuvres:      Oeuvre[]
@@ -460,6 +525,8 @@ interface Props {
   themeWorkCount?: Record<number, number>
   oeuvreThemeIdsByOeuvre?: Record<number, number[]>
   groups?:      { id: string; name: string }[]
+  groupWorkCount?: Record<string, number>
+  oeuvreGroupIdsByOeuvre?: Record<number, string[]>
   selection:    Set<number>
   setSelection: (s: Set<number>) => void
   onOpen:       (o: Oeuvre) => void
@@ -476,7 +543,9 @@ interface Props {
 
 // ── Component ──────────────────────────────────────────────────────────────
 export function ConstellationCanvas({ 
-  oeuvres, tM, themes, themeWorkCount, oeuvreThemeIdsByOeuvre, groups = [], selection, setSelection, onOpen, onSaveGroup,
+  oeuvres, tM, themes, themeWorkCount, oeuvreThemeIdsByOeuvre,
+  groups = [], groupWorkCount, oeuvreGroupIdsByOeuvre,
+  selection, setSelection, onOpen, onSaveGroup,
   backgroundImage, backgroundOpacity = 1, onBackgroundOpacity, onDropExternal, hideToolbar, initialPositions
 }: Props) {
   const router = useRouter()
@@ -568,6 +637,17 @@ export function ConstellationCanvas({
   )
   const [selectedGroupId,   setSelectedGroupId]  = useState<string | null>(null)
   const [groupWork,         setGroupWork]         = useState<Map<string, Set<number>>>(new Map())
+  const effectiveGroupWork = useMemo(() => {
+    const fromOeuvres =
+      oeuvreGroupIdsByOeuvre && Object.keys(oeuvreGroupIdsByOeuvre).length > 0
+        ? buildGroupWorkFromOeuvreMap(oeuvreGroupIdsByOeuvre)
+        : new Map<string, Set<number>>()
+    return mergeGroupWorkMaps(groupWork, fromOeuvres)
+  }, [groupWork, oeuvreGroupIdsByOeuvre])
+  const groupsInDropdown = useMemo(
+    () => groups.filter((gr) => groupWorkSize(effectiveGroupWork, gr.id, groupWorkCount) > 0),
+    [groups, effectiveGroupWork, groupWorkCount],
+  )
   const [toolShortcutsOpen, setToolShortcutsOpen] = useState(false)
   const shortcutsPanelId = useId()
   const shortcutsPanelRef = useRef<HTMLDivElement>(null)
@@ -677,6 +757,14 @@ export function ConstellationCanvas({
     const first = themesInDropdown[0]
     if (first) setSelectedThemeId(first.id)
   }, [loading, groupBy, selectedThemeId, initialThemeId, themes, themesInDropdown])
+
+  // Workgroup mode requires a scoped pick — auto-select first group with works when none saved.
+  useEffect(() => {
+    if (loading || groupBy !== 'workgroup' || selectedGroupId != null) return
+    const first = groupsInDropdown[0]
+    if (first) setSelectedGroupId(first.id)
+  }, [loading, groupBy, selectedGroupId, groupsInDropdown])
+
   useEffect(() => {
     // Clear the old monolithic theme cache key (before filter-aware keys were introduced).
     try { localStorage.removeItem('pem_const_pos_theme') } catch {}
@@ -715,11 +803,11 @@ export function ConstellationCanvas({
     }
     if (groupBy === 'workgroup') {
       if (selectedGroupId === null) return []
-      const ids = groupWork.get(selectedGroupId) ?? new Set<number>()
+      const ids = effectiveGroupWork.get(selectedGroupId) ?? new Set<number>()
       return oeuvres.filter(o => ids.has(o.OeuvreID))
     }
     return oeuvres
-  }, [groupBy, oeuvres, effectiveThemeWork, groupWork, selectedThemeId, selectedGroupId])
+  }, [groupBy, oeuvres, effectiveThemeWork, effectiveGroupWork, selectedThemeId, selectedGroupId])
 
   // Works not yet in the custom canvas, matching picker search
   const filteredForPicker = useMemo(() => {
@@ -756,15 +844,7 @@ export function ConstellationCanvas({
       }))
 
     setThemeWork(buildThemeWorkFromRows((ot ?? []) as ThemeLinkRow[]))
-
-    const gw = new Map<string, Set<number>>()
-    for (const row of (wg ?? []) as { group_id: string; oeuvre_id: number }[]) {
-      const oeuvreId = Number(row.oeuvre_id)
-      if (!Number.isFinite(oeuvreId)) continue
-      if (!gw.has(row.group_id)) gw.set(row.group_id, new Set())
-      gw.get(row.group_id)!.add(oeuvreId)
-    }
-    setGroupWork(gw)
+    setGroupWork(buildGroupWorkFromRows((wg ?? []) as GroupLinkRow[]))
 
     if (completeInitialLoad) setLoading(false)
     redraw()
@@ -864,7 +944,7 @@ export function ConstellationCanvas({
     } else if (groupBy === 'workgroup') {
       const savedRaw = loadPos('workgroup', selectedGroupId)
       const allowed =
-        selectedGroupId !== null ? (groupWork.get(selectedGroupId) ?? new Set<number>()) : null
+        selectedGroupId !== null ? (effectiveGroupWork.get(selectedGroupId) ?? new Set<number>()) : null
       const saved =
         savedRaw && selectedGroupId !== null
           ? filterSavedToMembership(savedRaw, allowed)
@@ -875,7 +955,7 @@ export function ConstellationCanvas({
         const activeGroups = selectedGroupId !== null
           ? groups.filter(g => g.id === selectedGroupId)
           : groups
-        posRef.current = layoutWorkGroup(constellationOeuvres, groupWork, activeGroups)
+        posRef.current = layoutWorkGroup(constellationOeuvres, effectiveGroupWork, activeGroups)
       }
     } else {
       const saved = loadPos(groupBy)
@@ -900,7 +980,7 @@ export function ConstellationCanvas({
       }
     }
     redraw()
-  }, [groupBy, loading, constellationOeuvres, themes, groups, effectiveThemeWork, groupWork, selectedThemeId, selectedGroupId, redraw, oeuvresById, oeuvres])
+  }, [groupBy, loading, constellationOeuvres, themes, groups, effectiveThemeWork, effectiveGroupWork, selectedThemeId, selectedGroupId, redraw, oeuvresById, oeuvres])
 
   // ── Visible image loading (zoom-adaptive tiers) ───────────────
   const loadingSet = useRef(new Set<string>())
@@ -1051,7 +1131,7 @@ export function ConstellationCanvas({
     )
     const workPrimaryGroup = new Map<number, string>()
     ;(groups || []).forEach(g => {
-      (groupWork.get(g.id) ?? new Set()).forEach(oid => {
+      (effectiveGroupWork.get(g.id) ?? new Set()).forEach(oid => {
         if (!workPrimaryGroup.has(oid)) workPrimaryGroup.set(oid, g.id)
       })
     })
@@ -1178,7 +1258,7 @@ export function ConstellationCanvas({
     // ── Working-group cluster labels (same pill UX as themes) ─────
     if (groupBy === 'workgroup') {
       const maxGW = Math.max(1, ...groups.map(gr =>
-        [...(groupWork.get(gr.id) ?? [])].filter(id => pos.has(id)).length
+        [...(effectiveGroupWork.get(gr.id) ?? [])].filter(id => pos.has(id)).length
       ))
       interface GWBox {
         gr: { id: string; name: string }
@@ -1192,7 +1272,7 @@ export function ConstellationCanvas({
       }
       const gwLabels: GWBox[] = []
       for (const gr of groups) {
-        const ids = [...(groupWork.get(gr.id) ?? [])].filter(id => pos.has(id))
+        const ids = [...(effectiveGroupWork.get(gr.id) ?? [])].filter(id => pos.has(id))
         if (!ids.length) continue
         const pts  = ids.map(id => pos.get(id)!)
         const cx   = pts.reduce((a, p) => a + p.x + NW / 2, 0) / pts.length
@@ -1452,7 +1532,7 @@ export function ConstellationCanvas({
     ctx.restore()
  
     loadVisible()
-  }, [tick, groupBy, linkType, oeuvres, themes, groups, effectiveThemeWork, groupWork, oeuvresById, selectedThemeId, selectedGroupId, shapes, activeShape, marquee, frozenEdges])
+  }, [tick, groupBy, linkType, oeuvres, themes, groups, effectiveThemeWork, effectiveGroupWork, oeuvresById, selectedThemeId, selectedGroupId, shapes, activeShape, marquee, frozenEdges])
 
   // ── Wheel (passive: false required for preventDefault) ────────
   useEffect(() => {
@@ -1996,7 +2076,7 @@ export function ConstellationCanvas({
       posRef.current = layoutTheme(constellationOeuvres, effectiveThemeWork, activeThemes)
     } else if (groupBy === 'workgroup') {
       const activeGroups = selectedGroupId !== null ? groups.filter(g => g.id === selectedGroupId) : groups
-      posRef.current = layoutWorkGroup(constellationOeuvres, groupWork, activeGroups)
+      posRef.current = layoutWorkGroup(constellationOeuvres, effectiveGroupWork, activeGroups)
     }
     savePos(
       groupBy,
@@ -2469,10 +2549,10 @@ export function ConstellationCanvas({
             onChange={e => setSelectedGroupId(e.target.value || null)}
             style={{ fontSize: 9, background: 'var(--bg0)', border: '1px solid var(--ac)', color: 'var(--tx)', padding: '2px 8px', cursor: 'pointer', maxWidth: 140 }}
           >
-            <option value="">{t('const_allGroups')} ({[...groupWork.values()].reduce((a, s) => { s.forEach(id => a.add(id)); return a }, new Set()).size})</option>
-            {groups.filter(gr => (groupWork.get(gr.id)?.size ?? 0) > 0).map(gr => (
+            <option value="">{t('const_allGroups')} ({[...effectiveGroupWork.values()].reduce((a, s) => { s.forEach(id => a.add(id)); return a }, new Set()).size})</option>
+            {groupsInDropdown.map(gr => (
               <option key={gr.id} value={gr.id}>
-                {gr.name} ({groupWork.get(gr.id)?.size ?? 0})
+                {gr.name} ({groupWorkSize(effectiveGroupWork, gr.id, groupWorkCount)})
               </option>
             ))}
           </select>

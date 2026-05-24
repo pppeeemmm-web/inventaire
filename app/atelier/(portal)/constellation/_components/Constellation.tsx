@@ -10,6 +10,8 @@ interface Props {
   themeWorkCount?: Record<number, number>
   oeuvreThemeIdsByOeuvre?: Record<number, number[]>
   groups?: { id: string; name: string }[]
+  groupWorkCount?: Record<string, number>
+  oeuvreGroupIdsByOeuvre?: Record<number, string[]>
   selection: Set<number>
   setSelection: (s: Set<number>) => void
   onOpen: (o: Oeuvre) => void

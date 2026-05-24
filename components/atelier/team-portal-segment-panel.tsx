@@ -275,6 +275,8 @@ export function SegmentRoutePanel({
           themes={sortedThemes}
           themeWorkCount={themeWorkCount}
           oeuvreThemeIdsByOeuvre={oeuvreThemeIdsByOeuvre}
+          groupWorkCount={groupWorkCount}
+          oeuvreGroupIdsByOeuvre={oeuvreGroupIdsByOeuvre}
           groups={groups}
           selection={selection}
           setSelection={setSelection}

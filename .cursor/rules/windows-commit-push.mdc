@@ -8,8 +8,13 @@ alwaysApply: true
 When committing or pushing from Windows/Cursor:
 
 - Use PowerShell-native commands. Do not use `bash -lc` for git commits or heredocs.
-- **Do not chain** `git commit …; git push …` in one Shell call. Cursor blocks push when the tree is still dirty (failed commit, partial stage, or leftover files).
-- **Use** [`scripts/commit-push-main.ps1`](../scripts/commit-push-main.ps1): commit → verify clean → push → `release-truth.ps1` in one script.
+- **Do not** run raw `git commit; git push` in one Shell call — Cursor blocks push on a dirty tree.
+- **Use** [`scripts/commit-push-main.ps1`](../scripts/commit-push-main.ps1) as the single entry point. It:
+  1. Stashes unrelated modified/untracked files (when `-Paths` is set or files are pre-staged)
+  2. Stages and commits
+  3. Verifies a clean tree
+  4. Pushes
+  5. Restores stashed WIP via `git stash pop`
 
 ```powershell
 pwsh scripts/commit-push-main.ps1 -Message @'
@@ -21,22 +26,9 @@ Commit message here.
 )
 ```
 
-- To stage yourself first: `git add …` then `pwsh scripts/commit-push-main.ps1 -Message '…'` (no `-Paths`).
-- `-StageAll` only when every local change belongs in the commit.
-- `-NoPush` for commit-only; push in a **second** command only after `git status --porcelain` is empty.
-- Batch read-only checks in parallel: `git status --short --branch`, `git diff`, `git log -5`.
+- **Always pass `-Paths`** for scoped commits — unrelated local WIP (guides, `.cursor/`, exports) is stashed automatically.
+- Pre-staged commit (no `-Paths`): run `git add …` first; the script stashes everything not in the index.
+- `-StageAll` only when every local change belongs in the commit (no auto-stash).
+- `-NoPush` for commit-only; push in a second script run after `git status --porcelain` is empty.
+- Batch read-only checks in parallel before committing: `git status --short --branch`, `git diff`, `git log -5`.
 - Reuse checks already run after the final code edit; do not rerun expensive checks during commit unless files changed after those checks.
-- Stage exact intended files. Avoid repeated status loops once the commit set is clear.
-
-Manual fallback (two steps):
-
-```powershell
-$msg = @'
-Commit message
-
-'@
-git commit -m $msg
-git status --porcelain   # must print nothing
-git push origin main
-pwsh scripts/release-truth.ps1 -Checks "typecheck,lint" -RequirePushed
-```
