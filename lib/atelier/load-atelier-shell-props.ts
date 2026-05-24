@@ -1,7 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
+import { headers } from 'next/headers'
 import { fetchAtelierOverviewBootstrap } from '@/app/atelier/atelier-data-actions'
 import { getUnreadReminderCountCached, listUnreadSuiviReminders } from '@/app/atelier/reminders-actions'
 import { emptyAtelierJunctionDerived } from '@/lib/atelier/atelier-junction-bootstrap'
+import { tabNeedsCatalogueChunkOnColdStart } from '@/lib/atelier/atelier-catalogue-tabs'
+import { routeTabFromPathname } from '@/lib/atelier/route-tab-from-pathname'
 import type { SegmentedAtelierTab } from '@/lib/atelier/tab-routes'
 import type { Oeuvre, SuiviReminderListRow } from '@/lib/types/database'
 import type { AtelierOverviewBootstrap, TeamPortalClientProps } from '@/components/atelier/team-portal-types'
@@ -48,15 +51,26 @@ export async function loadAtelierShellProps(
       : Promise.resolve([0, []] as const)
 
   const queryLabels = ['Oeuvres.count', 'Oeuvres'] as const
-  const catalogPromise = Promise.all([
-    supabase.from('Oeuvres').select('OeuvreID', { count: 'exact', head: true }).is('deleted_at', null),
-    supabase
-      .from('Oeuvres')
-      .select('OeuvreID, Titre, Technique, Support, "Année", Format, Hauteur, Largeur, Profondeur, Exposable, broadcast_ready, broadcast_caption_seed, Prix, PrixFinal, Discount, statusId, "Catalogué", txtImageNameLink, ContactID, LocalisationID, LocalisationDetail, is_public, Encadree, IsCommission, PresentationID, ReturnDate, DateLivraison, AcheteurID, NeedsPhotograph, anonymity_level, admin_override_anonymity')
-      .is('deleted_at', null)
-      .order('OeuvreID', { ascending: false })
-      .limit(ATELIER_OEUVRE_PAGE),
-  ])
+
+  const pathname = (await headers()).get('x-atelier-pathname') ?? ''
+  const coldTab = opts?.routeTab ?? routeTabFromPathname(pathname)
+  const loadCatalogueChunk =
+    coldTab == null || tabNeedsCatalogueChunkOnColdStart(coldTab)
+
+  const catalogPromise = loadCatalogueChunk
+    ? Promise.all([
+        supabase.from('Oeuvres').select('OeuvreID', { count: 'exact', head: true }).is('deleted_at', null),
+        supabase
+          .from('Oeuvres')
+          .select('OeuvreID, Titre, Technique, Support, "Année", Format, Hauteur, Largeur, Profondeur, Exposable, broadcast_ready, broadcast_caption_seed, Prix, PrixFinal, Discount, statusId, "Catalogué", txtImageNameLink, ContactID, LocalisationID, LocalisationDetail, is_public, Encadree, IsCommission, PresentationID, ReturnDate, DateLivraison, AcheteurID, NeedsPhotograph, anonymity_level, admin_override_anonymity')
+          .is('deleted_at', null)
+          .order('OeuvreID', { ascending: false })
+          .limit(ATELIER_OEUVRE_PAGE),
+      ])
+    : Promise.all([
+        supabase.from('Oeuvres').select('OeuvreID', { count: 'exact', head: true }).is('deleted_at', null),
+        Promise.resolve({ data: [] as unknown[], error: null }),
+      ])
 
   const [[initialReminderUnread, initialReminders], { data: isAdminOnLoad }, [oeCountRes, oeuvresRes]] =
     await Promise.all([reminderPromise, supabase.rpc('is_admin'), catalogPromise])
@@ -83,11 +97,14 @@ export async function loadAtelierShellProps(
     ? results[0]!.data.flatMap((row) => (typeof row === 'object' && row != null ? [row as unknown as Oeuvre] : []))
     : []
   const oeuvresPaging =
-    oeuvres.length < oeuvreTotalCount
+    oeuvreTotalCount > 0
       ? {
           totalCount: oeuvreTotalCount,
-          nextCursor: oeuvres.length > 0 ? oeuvres[oeuvres.length - 1]!.OeuvreID : null,
-          pageSize: 500,
+          nextCursor: oeuvres.length > 0 && oeuvres.length < oeuvreTotalCount
+            ? oeuvres[oeuvres.length - 1]!.OeuvreID
+            : null,
+          pageSize: loadCatalogueChunk ? ATELIER_OEUVRE_PAGE : 500,
+          catalogueDeferred: !loadCatalogueChunk,
         }
       : undefined
 

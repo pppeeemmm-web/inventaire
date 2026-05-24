@@ -16,11 +16,21 @@ function safeRelativeNext(raw: string | null): string | null {
   return trimmed
 }
 
+/** Forward pathname to RSC loaders for tab-specific Atelier shell (see loadAtelierShellProps). */
+function forwardRequest(request: NextRequest, pathname: string) {
+  const requestHeaders = new Headers(request.headers)
+  if (pathname.startsWith('/atelier')) {
+    requestHeaders.set('x-atelier-pathname', pathname)
+  }
+  return { headers: requestHeaders }
+}
+
 export async function middleware(request: NextRequest) {
   // Never touch Next internals / static assets (matcher should skip these; bail out hard if not).
   const p = request.nextUrl.pathname
+  const fwd = forwardRequest(request, p)
   if (p.startsWith('/_next/') || p === '/favicon.ico') {
-    return NextResponse.next({ request })
+    return NextResponse.next({ request: fwd })
   }
 
   // Flight / RSC / prefetch / Server Actions: Supabase cookie refresh here can break the RSC
@@ -28,16 +38,16 @@ export async function middleware(request: NextRequest) {
   // See Next.js + Supabase middleware discussions (refresh session on full navigations only).
   const h = request.headers
   if (h.has('RSC') || h.has('Next-Router-Prefetch')) {
-    return NextResponse.next({ request })
+    return NextResponse.next({ request: fwd })
   }
 
   // OAuth / magic-link return: let the route handler run exchangeCodeForSession alone.
   // Running getUser()/refresh here can race PKCE cookies and cause redirect loops to Google.
   if (p === '/auth/callback' || p.startsWith('/auth/callback/')) {
-    return NextResponse.next({ request })
+    return NextResponse.next({ request: fwd })
   }
 
-  let supabaseResponse = NextResponse.next({ request })
+  let supabaseResponse = NextResponse.next({ request: fwd })
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -49,7 +59,7 @@ export async function middleware(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }: { name: string; value: string }) =>
             request.cookies.set(name, value)
           )
-          supabaseResponse = NextResponse.next({ request })
+          supabaseResponse = NextResponse.next({ request: fwd })
           cookiesToSet.forEach(({ name, value, options }: { name: string; value: string; options: CookieOptions }) =>
             supabaseResponse.cookies.set(name, value, options)
           )

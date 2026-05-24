@@ -30,7 +30,8 @@ import { WorkDrawer, type WorkDrawerGuardHandle } from '@/components/atelier/Wor
 import { CurationDock }        from '@/components/atelier/CurationDock'
 import { fetchContactConflicts } from '@/app/atelier/(portal)/contacts/conflicts-actions'
 import { loadOeuvreLongText } from '@/app/atelier/works/actions'
-import { fetchOeuvresKeysetPage } from '@/app/atelier/works/actions'
+import { fetchOeuvresKeysetPage, fetchOeuvresInitialKeysetPage } from '@/app/atelier/works/actions'
+import { tabNeedsCatalogueChunkOnColdStart } from '@/lib/atelier/atelier-catalogue-tabs'
 import { revalidateRemindersTag } from '@/app/atelier/reminders-actions'
 import { fetchAtelierShellPostPaint, fetchAtelierJunctionHydrationForOeuvreIds } from '@/app/atelier/atelier-data-actions'
 import type { AtelierJunctionDerived } from '@/lib/atelier/atelier-junction-bootstrap'
@@ -356,6 +357,7 @@ export function TeamPortalClient({
   const [curationAddresses, setCurationAddresses] = useState<ContactAddress[]>([])
 
   const postPaintLoadedRef = useRef(false)
+  const catalogueHydratingRef = useRef(false)
 
   useEffect(() => {
     if (shellPersistsAcrossTabs && postPaintLoadedRef.current) return
@@ -439,6 +441,35 @@ export function TeamPortalClient({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- initials follow `oeuvresChunk` from RSC; avoid `{}` identity churn
   }, [oeuvresChunk, oeuvresPaging, shellPersistsAcrossTabs])
+
+  // Deferred catalogue: hydrate first chunk when user opens a tab that needs œuvres.
+  useEffect(() => {
+    if (!shellPersistsAcrossTabs) return
+    const tab = effectiveRouteTab
+    if (!tab || !tabNeedsCatalogueChunkOnColdStart(tab)) return
+    if (!oeuvresPaging?.catalogueDeferred) return
+    if (oeuvres.length > 0 || oeuvresPaging.totalCount === 0) return
+    if (catalogueHydratingRef.current) return
+
+    catalogueHydratingRef.current = true
+    let cancelled = false
+    void (async () => {
+      try {
+        const lim = oeuvresPaging.pageSize || 50
+        const { rows, nextCursor, hasMore } = await fetchOeuvresInitialKeysetPage(lim)
+        if (cancelled) return
+        setOeuvres(rows)
+        setOeuvresNextCursor(hasMore ? nextCursor : null)
+      } catch (e) {
+        console.error('[atelier catalogue hydrate]', e)
+      } finally {
+        catalogueHydratingRef.current = false
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [shellPersistsAcrossTabs, effectiveRouteTab, oeuvres.length, oeuvresPaging])
 
   useEffect(() => {
     const pending = oeuvres

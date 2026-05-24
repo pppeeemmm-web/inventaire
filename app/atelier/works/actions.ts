@@ -1397,3 +1397,8 @@ export async function fetchOeuvresKeysetPage(beforeId: number, limit: number): P
   const nextCursor = hasMore && rows.length > 0 ? rows[rows.length - 1]!.OeuvreID : null
   return { rows, nextCursor, hasMore }
 }
+
+/** First keyset page (all ids < MAX_SAFE_INTEGER). Used when shell deferred catalogue chunk. */
+export async function fetchOeuvresInitialKeysetPage(limit = 50): Promise<OeuvresKeysetPageResult> {
+  return fetchOeuvresKeysetPage(Number.MAX_SAFE_INTEGER, limit)
+}

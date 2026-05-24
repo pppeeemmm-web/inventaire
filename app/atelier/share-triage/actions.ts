@@ -49,7 +49,7 @@ async function loadInbox(
   userId: string,
   inboxId: string,
 ): Promise<{ payload: ShareInboxPayloadV1 } | ShareActionErr> {
-  const { data: row, error } = await (supabase.from('share_inbox') as any)
+  const { data: row, error } = await supabase.from('share_inbox')
     .select('payload')
     .eq('id', inboxId)
     .eq('user_id', userId)
@@ -158,7 +158,7 @@ export async function searchShareAttachTargets(
   }
 
   if (type === 'contact') {
-    const { data, error } = await (g.supabase.from('Contact') as any)
+    const { data, error } = await g.supabase.from('Contact')
       .select('ContactID, Nom')
       .ilike('Nom', pattern)
       .order('ContactID', { ascending: false })
@@ -173,7 +173,7 @@ export async function searchShareAttachTargets(
   }
 
   if (type === 'process') {
-    const { data, error } = await (g.supabase.from('suivi_process') as any)
+    const { data, error } = await g.supabase.from('suivi_process')
       .select('id, nom')
       .ilike('nom', pattern)
       .order('updated_at', { ascending: false })
@@ -225,7 +225,7 @@ export async function attachShareInboxToWork(
       } catch (e) {
         return { error: String(e) }
       }
-      const { error: docErr } = await (g.supabase.from('document') as any).insert({
+      const { error: docErr } = await g.supabase.from('document').insert({
         name: f.name || payload.title || 'Share PDF',
         kind: 'scan',
         storage_path: path,
@@ -266,13 +266,13 @@ export async function attachShareInboxToContact(
   const block = formatShareInboxText(loaded.payload)
   if (!block && loaded.payload.files.length === 0) return { error: 'empty' }
 
-  const { data: c } = await (g.supabase.from('Contact') as any)
+  const { data: c } = await g.supabase.from('Contact')
     .select('Notes')
     .eq('ContactID', contactId)
     .maybeSingle()
   if (!c) return { error: 'not_found' }
 
-  const { error: upErr } = await (g.supabase.from('Contact') as any)
+  const { error: upErr } = await g.supabase.from('Contact')
     .update({ Notes: appendBlock(c.Notes, block) })
     .eq('ContactID', contactId)
   if (upErr) return { error: upErr.message }
@@ -293,13 +293,13 @@ export async function attachShareInboxToProcess(
   if ('error' in loaded) return loaded
   const block = formatShareInboxText(loaded.payload)
 
-  const { data: p } = await (g.supabase.from('suivi_process') as any)
+  const { data: p } = await g.supabase.from('suivi_process')
     .select('notes')
     .eq('id', processId)
     .maybeSingle()
   if (!p) return { error: 'not_found' }
 
-  const { error: upErr } = await (g.supabase.from('suivi_process') as any)
+  const { error: upErr } = await g.supabase.from('suivi_process')
     .update({ notes: appendBlock(p.notes, block) })
     .eq('id', processId)
   if (upErr) return { error: upErr.message }
@@ -340,7 +340,7 @@ export async function attachShareInboxToVault(
     } catch (e) {
       return { error: String(e) }
     }
-    const { error: docErr } = await (g.supabase.from('document') as any).insert({
+    const { error: docErr } = await g.supabase.from('document').insert({
       name: f.name || label,
       kind: 'scan',
       storage_path: path,
@@ -367,7 +367,7 @@ export async function attachShareInboxToVoiceNote(inboxId: string): Promise<Shar
   if (!transcript && payload.files.length === 0) return { error: 'empty' }
 
   const id = crypto.randomUUID()
-  const { error } = await (g.supabase.from('voice_note') as any).insert({
+  const { error } = await g.supabase.from('voice_note').insert({
     id,
     user_id: g.user.id,
     kind: 'memo',

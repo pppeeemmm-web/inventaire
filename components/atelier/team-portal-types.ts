@@ -28,7 +28,13 @@ export interface TeamPortalClientProps extends Partial<AtelierJunctionDerived> {
   /** When set, this shell instance is pinned to a segmented tab route (Slice 3). */
   routeTab?: SegmentedAtelierTab
   /** When more rows exist than the initial chunk, client loads further pages. */
-  oeuvresPaging?: { totalCount: number; nextCursor: number | null; pageSize: number }
+  oeuvresPaging?: {
+    totalCount: number
+    nextCursor: number | null
+    pageSize: number
+    /** True when RSC skipped the keyset chunk (audit/logistics/etc. cold start). */
+    catalogueDeferred?: boolean
+  }
   /** Bumps on each RSC render so the client refetches deferred shell rows after `router.refresh()`. */
   atelierShellNonce?: number
   /** From `is_admin()` on the server — avoids a browser Supabase `is_admin` RPC on the shell. */

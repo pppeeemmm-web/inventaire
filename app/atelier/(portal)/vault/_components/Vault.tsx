@@ -1145,7 +1145,7 @@ function UploadModal({
                 return (
                   <span key={id} style={{ padding: '4px 8px', background: 'var(--bg2)', fontSize: 11, borderRadius: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
                     {o?.Titre ?? `#${id}`}
-                    <button type="button" onClick={() => toggleId(id)} style={{ border: 'none', background: 'none', color: 'var(--tx3)', cursor: 'pointer', fontSize: 14 }}>×</button>
+                    <button type="button" onClick={() => toggleId(id)} aria-label={t('delete')} style={{ border: 'none', background: 'none', color: 'var(--tx3)', cursor: 'pointer', fontSize: 14 }}>×</button>
                   </span>
                 )
               })}
@@ -1395,7 +1395,7 @@ function EditModal({ doc, oeuvres, onClose, onUpdated }: { doc: VaultDoc; oeuvre
                 return (
                   <span key={id} style={{ padding: '4px 8px', background: 'var(--bg2)', fontSize: 11, borderRadius: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
                     {o?.Titre ?? `#${id}`}
-                    <button type="button" onClick={() => toggleId(id)} style={{ border: 'none', background: 'none', color: 'var(--tx3)', cursor: 'pointer', fontSize: 14 }}>×</button>
+                    <button type="button" onClick={() => toggleId(id)} aria-label={t('delete')} style={{ border: 'none', background: 'none', color: 'var(--tx3)', cursor: 'pointer', fontSize: 14 }}>×</button>
                   </span>
                 )
               })}

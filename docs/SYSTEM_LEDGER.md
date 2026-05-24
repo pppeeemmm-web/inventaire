@@ -73,6 +73,18 @@ Submitted rows insert into `system_log` with: `action`, `details`, `type`, `stat
 
 ---
 
+## Operations runbooks (owner)
+
+| Task | When | Command / doc |
+|------|------|----------------|
+| **O1 GRANT audit** | Before **2026-10-30** (Supabase existing-project deadline) | `pwsh scripts/run-grant-audit.ps1` → [`supabase/sql/grant_audit_queries.sql`](../supabase/sql/grant_audit_queries.sql) |
+| **R2 lifecycle** | One-time Cloudflare console | Bucket `paintings`: prefix **`recycle/`** delete after **90d**; **`ledger/`** after **30d** (see § Attachments above) |
+| **Graph CSV backup** | Weekly (Sun 04:30 UTC) + manual | [`graph-csv-backup.yml`](../.github/workflows/graph-csv-backup.yml); verify: `pwsh scripts/verify-graph-csv-backup.ps1` |
+| **Embed backfill** | Desktop ongoing | `npm run embed:worker -- --watch` — see [`docs/GRAPHIFY_NOTES.md`](./GRAPHIFY_NOTES.md) |
+| **gen:types** | After each `public` table migration | `npm run gen:types` (requires `SUPABASE_ACCESS_TOKEN` in `.env.local`) |
+
+---
+
 ## Related code
 
 | Area | Path |

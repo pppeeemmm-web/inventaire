@@ -326,11 +326,11 @@ export function ExportModal({
 
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 80, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--bg1)', border: '1px solid var(--bd)', width: 680, maxWidth: '95vw', maxHeight: '90vh', overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--bg1)', border: '1px solid var(--bd)', width: 680, maxWidth: '95vw', maxHeight: '90vh', overflow: 'auto', display: 'flex', flexDirection: 'column' }} role="dialog" aria-modal="true" aria-labelledby="export-modal-title">
 
         {/* Header */}
         <div style={{ padding: '20px 28px 16px', borderBottom: '1px solid var(--bd)', flexShrink: 0 }}>
-          <div className="t-eyebrow" style={{ marginBottom: 4 }}>{t('exportSelection')}</div>
+          <div id="export-modal-title" className="t-eyebrow" style={{ marginBottom: 4 }}>{t('exportSelection')}</div>
           <div className="t-mono-sm" style={{ color: 'var(--tx3)', marginBottom: 24 }}>
             {ids.length} {t('works')}
           </div>

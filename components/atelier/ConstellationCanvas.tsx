@@ -2576,16 +2576,16 @@ export function ConstellationCanvas({
         )}
 
         <div className="vline" style={{ height: 16 }} />
-        <button className="btn ghost sm" onClick={handleResetLayout} title={t('const_resetLayoutTitle')} style={{ whiteSpace: 'nowrap', fontSize: 9 }}>
+        <button className="btn ghost sm" onClick={handleResetLayout} title={t('const_resetLayoutTitle')} aria-label={t('const_resetLayoutTitle')} style={{ whiteSpace: 'nowrap', fontSize: 9 }}>
           {t('const_resetLayoutBtn')}
         </button>
-        <button className="btn ghost sm" onClick={handleFitView} title={t('const_fitViewTitle')} style={{ whiteSpace: 'nowrap', fontSize: 9 }}>
+        <button className="btn ghost sm" onClick={handleFitView} title={t('const_fitViewTitle')} aria-label={t('const_fitViewTitle')} style={{ whiteSpace: 'nowrap', fontSize: 9 }}>
           {t('const_fitViewBtn')}
         </button>
-        <button className="btn ghost sm" onClick={handleExportPng} style={{ whiteSpace: 'nowrap', fontSize: 9 }}>
+        <button className="btn ghost sm" onClick={handleExportPng} aria-label={t('const_exportPng')} style={{ whiteSpace: 'nowrap', fontSize: 9 }}>
           {t('const_exportPng')}
         </button>
-        <button className="btn ghost sm" onClick={handleExportTiledA4} style={{ whiteSpace: 'nowrap', fontSize: 9 }}>
+        <button className="btn ghost sm" onClick={handleExportTiledA4} aria-label={t('const_exportA4')} style={{ whiteSpace: 'nowrap', fontSize: 9 }}>
           {t('const_exportA4')}
         </button>
 

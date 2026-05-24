@@ -46,6 +46,17 @@ import {
 } from '@/app/atelier/reminders-actions'
 import type { Oeuvre } from '@/lib/types/database'
 import { WorkThumb } from '@/components/atelier/WorkThumb'
+import { fromSuiviProcess, fromSuiviEtape } from '@/lib/pipeline/suivi-client'
+import {
+  DEFAULT_ETAPES,
+  dateLocaleTag,
+  fmtDate,
+  nextEtapeStatut,
+  processToPulseProcess,
+  SORTED_PROCESS_TYPES,
+  urgencyColor,
+  useSuiviLabels,
+} from '@/components/atelier/pipeline/pipeline-suivi-labels'
 import { useUnsavedCloseGuard } from '@/hooks/useUnsavedCloseGuard'
 
 interface Props {
@@ -62,99 +73,6 @@ const FIS: React.CSSProperties = {
   padding: '8px 12px', fontSize: 13,
   background: 'var(--bg0)', border: '1px solid var(--bd)',
   color: 'var(--tx)', outline: 'none', width: '100%',
-}
-
-function useSuiviLabels() {
-  const { t, lang } = useI18n()
-  const statutLabels = useMemo(
-    () =>
-      ({
-        en_cours: t('proc_stat_en_cours'),
-        gagne: t('proc_stat_gagne'),
-        perdu: t('proc_stat_perdu'),
-        annule: t('proc_stat_annule'),
-        termine: t('proc_stat_termine'),
-      }) as Record<ProcessStatut, string>,
-    [t],
-  )
-  const etapeLabels = useMemo(
-    () =>
-      ({
-        a_faire: t('etape_stat_a_faire'),
-        en_cours: t('etape_stat_en_cours'),
-        fait: t('etape_stat_fait'),
-        bloque: t('etape_stat_bloque'),
-      }) as Record<EtapeStatut, string>,
-    [t],
-  )
-  const typeLabel = useCallback((typ: ProcessType) => pipelineTypeLabel(typ, lang), [lang])
-  return { statutLabels, etapeLabels, typeLabel, t, lang }
-}
-
-function nextEtapeStatut(current: EtapeStatut): EtapeStatut {
-  const i = ETAPE_STATUT_ORDER.indexOf(current)
-  return ETAPE_STATUT_ORDER[(i + 1) % ETAPE_STATUT_ORDER.length]
-}
-
-const DEFAULT_ETAPES: Record<ProcessType, string[]> = {
-  collaboration:   ['Premier contact', 'Proposition', 'Accord', 'Production', 'Livraison'],
-  consignment:     ['Proposition', 'Contrat', 'Livraison', 'En vente', 'Retour / Vente'],
-  correspondance:  ['Brouillon', 'Envoyé', 'Réponse reçue'],
-  evenement:       ['Concept', 'Planning', 'Communication', 'Jour J', 'Suivi'],
-  expedition:      ['Préparation', 'Emballage', 'En transit', 'Livré', 'Confirmé'],
-  exposition:      ['Concept', 'Sélection', 'Production', 'Installation', 'Vernissage', 'Décrochage'],
-  livre:           ['Concept', 'Éditorial', 'Textes & Images', 'Mise en page', 'Impression', 'Distribution'],
-  pr:              ['Stratégie', 'Contact', 'En cours', 'Publié'],
-  prix:            ['Dossier', 'Soumission', 'Présélection', 'Résultat'],
-  residence:       ['Dossier', 'Soumission', 'Entretien', 'Résultat'],
-  salon:           ['Candidature', 'Sélection', 'Logistique', 'Installation', 'Foire', 'Retour'],
-  visite_atelier:  ['Invitation', 'Confirmation', 'Visite', 'Suivi'],
-  vente:           ['Négociation', 'Accord', 'Acompte', 'Préparation', 'Livraison', 'Solde'],
-  autre:           ['Étape 1', 'Étape 2', 'Étape 3'],
-}
-
-const SORTED_TYPES = (Object.keys(TYPE_LABELS) as ProcessType[])
-  .sort((a, b) => TYPE_LABELS[a].localeCompare(TYPE_LABELS[b], 'fr'))
-
-// ── Helpers ────────────────────────────────────────────────────────────
-
-function urgencyColor(days: number): string {
-  if (days < 0)   return '#c06060'
-  if (days <= 7)  return '#c08040'
-  if (days <= 21) return '#a0a040'
-  return 'var(--tx3)'
-}
-
-function dateLocaleTag(lang: Lang): 'fr-FR' | 'en-GB' {
-  return lang === 'en' ? 'en-GB' : 'fr-FR'
-}
-
-function fmtDate(s: string, includeTime?: string | null, locale: 'fr' | 'en' = 'fr'): string {
-  const d = new Date(s)
-  const loc = locale === 'en' ? 'en-GB' : 'fr-FR'
-  const base = d.toLocaleDateString(loc, { day: 'numeric', month: 'short', year: 'numeric' })
-  return includeTime ? `${base} · ${includeTime}` : base
-}
-
-
-// ── Main component ─────────────────────────────────────────────────────
-
-function processToPulseProcess(p: Process): PulseProcess {
-  return {
-    id: p.id,
-    nom: p.nom,
-    type: p.type,
-    statut: p.statut,
-    date_fin: p.date_fin,
-    deadline_time: p.deadline_time,
-    etapes: p.etapes.map((e) => ({
-      id: e.id,
-      nom: e.nom,
-      statut: e.statut,
-      date_echeance: e.date_echeance,
-      overdue_override: e.overdue_override,
-    })),
-  }
 }
 
 export function Pipeline({ oeuvres, contacts, groups, initialReminders, onRemindersMutated }: Props) {
@@ -183,11 +101,11 @@ export function Pipeline({ oeuvres, contacts, groups, initialReminders, onRemind
 
   const load = useCallback(async (signal?: AbortSignal) => {
     const sb = createClient()
-    const processQuery = (sb.from('suivi_process')  as any).select('*').order('date_fin', { ascending: true, nullsFirst: false })
-    const etapeQuery = (sb.from('suivi_etape')    as any).select('*').order('position')
+    let processQuery = fromSuiviProcess(sb).select('*').order('date_fin', { ascending: true, nullsFirst: false })
+    let etapeQuery = fromSuiviEtape(sb).select('*').order('position')
     if (signal) {
-      processQuery.abortSignal?.(signal)
-      etapeQuery.abortSignal?.(signal)
+      processQuery = processQuery.abortSignal(signal)
+      etapeQuery = etapeQuery.abortSignal(signal)
     }
     const [{ data: procs }, { data: etapes }, rems] = await Promise.all([
       processQuery,
@@ -196,7 +114,8 @@ export function Pipeline({ oeuvres, contacts, groups, initialReminders, onRemind
     ])
     if (signal?.aborted) return
     const etapeMap: Record<string, Etape[]> = {}
-    ;(etapes ?? []).forEach((e: Etape) => {
+    ;(etapes ?? []).forEach((row) => {
+      const e = row as Etape
       if (!etapeMap[e.process_id]) etapeMap[e.process_id] = []
       etapeMap[e.process_id].push(e)
     })
@@ -264,13 +183,13 @@ export function Pipeline({ oeuvres, contacts, groups, initialReminders, onRemind
   }, [])
 
   async function tickEtape(etapeId: string) {
-    const { error } = await (createClient().from('suivi_etape') as any).update({ statut: 'fait' }).eq('id', etapeId)
+    const { error } = await fromSuiviEtape(createClient()).update({ statut: 'fait' }).eq('id', etapeId)
     if (error) alert(`${t('error_prefix')} ${stringifyError(error)}`)
     await load()
   }
   async function cycleEtapeStatut(etapeId: string, current: EtapeStatut) {
     const next = nextEtapeStatut(current)
-    const { error } = await (createClient().from('suivi_etape') as any).update({ statut: next }).eq('id', etapeId)
+    const { error } = await fromSuiviEtape(createClient()).update({ statut: next }).eq('id', etapeId)
     if (error) {
       alert(`${t('error_prefix')} ${stringifyError(error)}`)
       return
@@ -282,7 +201,7 @@ export function Pipeline({ oeuvres, contacts, groups, initialReminders, onRemind
     })))
   }
   async function toggleOverdueOverride(etapeId: string, current: boolean) {
-    const { error } = await (createClient().from('suivi_etape') as any).update({ overdue_override: !current }).eq('id', etapeId)
+    const { error } = await fromSuiviEtape(createClient()).update({ overdue_override: !current }).eq('id', etapeId)
     if (error) {
       alert(`${t('error_prefix')} ${stringifyError(error)}`)
       return
@@ -295,7 +214,7 @@ export function Pipeline({ oeuvres, contacts, groups, initialReminders, onRemind
   async function cycleStatut(processId: string, current: ProcessStatut) {
     const order: ProcessStatut[] = ['en_cours', 'gagne', 'termine', 'perdu', 'annule']
     const next = order[(order.indexOf(current) + 1) % order.length]
-    const { error } = await (createClient().from('suivi_process') as any).update({ statut: next }).eq('id', processId)
+    const { error } = await fromSuiviProcess(createClient()).update({ statut: next }).eq('id', processId)
     if (error) alert(`${t('error_prefix')} ${stringifyError(error)}`)
     await load()
   }
@@ -435,7 +354,7 @@ export function Pipeline({ oeuvres, contacts, groups, initialReminders, onRemind
                   <button type="button" className="btn ghost sm"
                     style={{ background: typeFilter==='all' ? 'var(--ac)' : undefined, color: typeFilter==='all' ? 'var(--bg0)' : undefined }}
                     onClick={() => setTypeFilter('all')}>{t('pipeline_filter_all')}</button>
-                  {SORTED_TYPES.map((typ) => (
+                  {SORTED_PROCESS_TYPES.map((typ) => (
                     <button key={typ} type="button" className="btn ghost sm"
                       style={{
                         background: typeFilter===typ ? TYPE_COLORS[typ] : undefined,
@@ -472,7 +391,7 @@ export function Pipeline({ oeuvres, contacts, groups, initialReminders, onRemind
               <button type="button" className="btn ghost sm"
                 style={{ flexShrink: 0, background: typeFilter==='all' ? 'var(--ac)' : undefined, color: typeFilter==='all' ? 'var(--bg0)' : undefined }}
                 onClick={() => setTypeFilter('all')}>{t('pipeline_filter_all')}</button>
-              {SORTED_TYPES.map((typ) => (
+              {SORTED_PROCESS_TYPES.map((typ) => (
                 <button key={typ} type="button" className="btn ghost sm"
                   style={{
                     flexShrink: 0,
@@ -1164,7 +1083,7 @@ function GanttView({
                           ev.stopPropagation()
                           try {
                             const next = nextEtapeStatut(e.statut)
-                            await (createClient().from('suivi_etape') as any).update({statut:next}).eq('id',e.id)
+                            await fromSuiviEtape(createClient()).update({statut:next}).eq('id',e.id)
                             onRefresh()
                           } catch (err) {
                             alert(`${t('error_prefix')} ${stringifyError(err)}`)
@@ -1228,7 +1147,7 @@ function ProcessDrawer({ process, onClose, onEdit, onRefresh, onCycleEtape, onOv
   const [downloadPending, startDownload] = useTransition()
 
   const openExhibitionProject = useCallback(() => {
-    const id = (process as any).exhibition_process_id as string | null | undefined
+    const id = process.exhibition_process_id
     if (!id) return
     window.location.assign(`/atelier/exhibitions?exhibition=${encodeURIComponent(id)}`)
   }, [process])
@@ -1255,7 +1174,7 @@ function ProcessDrawer({ process, onClose, onEdit, onRefresh, onCycleEtape, onOv
           </div>
         </div>
         <div style={{ display:'flex', gap:8 }}>
-          {(process as any).exhibition_process_id && (
+          {process.exhibition_process_id && (
             <button className="btn ghost sm" onClick={openExhibitionProject}>
               {t('pipeline_open_exhibition_project')}
             </button>
@@ -1399,7 +1318,7 @@ function ProcessDrawer({ process, onClose, onEdit, onRefresh, onCycleEtape, onOv
                           }
                           toast.success(msg.trim())
                           await onRefresh()
-                        } else toast.error((res as any).error ?? t('error'))
+                        } else toast.error('error' in res ? res.error : t('error'))
                       } catch (err) {
                         toast.error(`${t('error_prefix')} ${err instanceof Error ? err.message : String(err)}`)
                       }
@@ -1577,7 +1496,7 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved, on
   useEffect(() => {
     const sb = createClient()
     const controller = new AbortController()
-    const query = (sb.from('suivi_process') as any)
+    const query = fromSuiviProcess(sb)
       .select('id, nom, localisation, contact_id, date_debut, date_fin')
       .eq('type', 'exposition')
       .order('date_fin', { ascending: false, nullsFirst: false })
@@ -1614,14 +1533,14 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved, on
         url: url || null,
         notes: notes || null,
       }
-      const { data: ex, error: exErr } = await (sb.from('suivi_process') as any).insert(payload).select('id, nom, localisation, contact_id, date_debut, date_fin').single()
+      const { data: ex, error: exErr } = await fromSuiviProcess(sb).insert(payload).select('id, nom, localisation, contact_id, date_debut, date_fin').single()
       if (exErr || !ex?.id) {
         toast.error(`${t('error_prefix')} ${exErr?.message ?? 'Insert failed'}`)
         return
       }
 
       // Link current pipeline process → exhibition project
-      const { error: linkErr } = await (sb.from('suivi_process') as any).update({ exhibition_process_id: ex.id }).eq('id', process.id)
+      const { error: linkErr } = await fromSuiviProcess(sb).update({ exhibition_process_id: ex.id }).eq('id', process.id)
       if (linkErr) {
         toast.error(`${t('error_prefix')} ${linkErr.message}`)
         return
@@ -1666,15 +1585,15 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved, on
 
       // AUTO-CREATE CONTACT IF NEW
       if (isNewContact && newContactName.trim()) {
-        const { data: nc, error: ncErr } = await (sb.from('contacts') as any).insert({
+        const { data: nc, error: ncErr } = await sb.from('Contact').insert({
           NomInstitution: newContactName,
           Email: newContactEmail || null,
           Type: newContactType,
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
         }).select('ContactID').single()
 
         if (ncErr) throw new Error(t('pm_err_contact_create_prefix') + ncErr.message)
-        effectiveContactId = (nc as any).ContactID
+        effectiveContactId = nc?.ContactID ?? null
       }
 
       if (!effectiveContactId && type !== 'autre') {
@@ -1695,9 +1614,9 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved, on
 
       let pid = process?.id
       if(isNew) {
-        const {data,error} = await(sb.from('suivi_process')as any).insert(payload).select('id').single()
+        const {data,error} = await fromSuiviProcess(sb).insert(payload as never).select('id').single()
         if(error) throw new Error(error.message)
-        pid = (data as any).id
+        pid = data?.id ?? null
 
         if (type === 'consignment' && oeuvreIds.length > 0 && effectiveContactId) {
           const fd = new FormData()
@@ -1709,7 +1628,7 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved, on
           if (commissionPct) fd.append('commission_pct', commissionPct)
           const res = await createConsignmentOrder(fd)
           if ('ok' in res && res.order.pdf_path) {
-            await (sb.from('suivi_process') as any).update({ pdf_path: res.order.pdf_path }).eq('id', pid)
+            await fromSuiviProcess(sb).update({ pdf_path: res.order.pdf_path } as { pdf_path: string }).eq('id', pid!)
           }
         }
         if (type === 'vente' && oeuvreIds.length > 0 && effectiveContactId) {
@@ -1722,17 +1641,17 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved, on
           fd.append('notes', notes)
           const res = await createSaleOrder(fd)
           if ('ok' in res && res.order.pdf_path) {
-            await (sb.from('suivi_process') as any).update({ pdf_path: res.order.pdf_path }).eq('id', pid)
+            await fromSuiviProcess(sb).update({ pdf_path: res.order.pdf_path } as { pdf_path: string }).eq('id', pid!)
           }
         }
       } else {
-        const {error} = await(sb.from('suivi_process')as any).update(payload).eq('id',pid)
+        const {error} = await fromSuiviProcess(sb).update(payload as never).eq('id',pid)
         if(error) throw new Error(error.message)
       }
 
-      await(sb.from('suivi_etape')as any).delete().eq('process_id',pid)
+      await fromSuiviEtape(sb).delete().eq('process_id',pid)
       const rows = etapes.filter(e=>e.nom.trim()).map((e,i)=>({process_id:pid,nom:e.nom,date_echeance:e.date_echeance||null,statut:e.statut,position:i}))
-      if(rows.length>0) await(sb.from('suivi_etape')as any).insert(rows)
+      if(rows.length>0) await fromSuiviEtape(sb).insert(rows)
 
       if (reminderMsg.trim() && reminderDate) {
         const ins = await insertSuiviReminder({
@@ -1827,7 +1746,7 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved, on
             <div>
               <div className="t-label" style={{marginBottom:6, opacity: 0.5}}>{t('category')}</div>
               <select value={type} onChange={e=>handleTypeChange(e.target.value as ProcessType)} style={{...FIS, fontSize: 13, height: 44, background: 'var(--bg2)'}}>
-                {SORTED_TYPES.map((typ) => <option key={typ} value={typ}>{typeLabel(typ)}</option>)}
+                {SORTED_PROCESS_TYPES.map((typ) => <option key={typ} value={typ}>{typeLabel(typ)}</option>)}
               </select>
             </div>
           </div>
@@ -2081,7 +2000,7 @@ function ProcessModal({ oeuvres, contacts, groups, process, onClose, onSaved, on
                   if (!confirm(t('pm_confirm_delete_process'))) return
                   setBusy(true)
                   const sb = createClient()
-                  const { error } = await (sb.from('suivi_process') as any).delete().eq('id', process.id)
+                  const { error } = await fromSuiviProcess(sb).delete().eq('id', process.id)
                   if (error) {
                     setErr(error.message)
                     setBusy(false)
