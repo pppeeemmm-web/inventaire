@@ -7,6 +7,7 @@
 // Vercel free function timeout 60s — sufficient for ≤16 works at full quality.
 
 import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { buildOeuvreThemeNamesMap } from '@/lib/public-oeuvre-themes'
 import { logError, logWarn } from '@/lib/error-reporter/server'
 import { loadPortfolioConfig } from './actions'
 import {
@@ -306,8 +307,8 @@ async function loadPublicWorks(): Promise<{ works: PdfWork[] } | { error: string
         .eq('is_public', true)
         .order('Année', { ascending: false }),
       sb.from('Technique').select('TechniqueID, Technique'),
-      sb.from('tblTheme').select('ThemeID, Nom'),
-      sb.from('OeuvreTheme').select('OeuvreID, ThemeID'),
+      sb.from('theme').select('id, name'),
+      sb.from('oeuvre_theme').select('oeuvre_id, theme_id'),
     ])
 
     if (eWorks) return { error: eWorks.message ?? String(eWorks) }
@@ -317,15 +318,10 @@ async function loadPublicWorks(): Promise<{ works: PdfWork[] } | { error: string
       if (t.TechniqueID != null && t.Technique) tMap[t.TechniqueID] = t.Technique
     }
 
-    const thMap: Record<number, string> = {}
-    for (const th of (themeRecords ?? []) as any[]) thMap[th.ThemeID] = th.Nom
-
-    const oeuvreThemeMap = new Map<number, string[]>()
-    for (const ot of (oeuvreThemes ?? []) as any[]) {
-      if (!oeuvreThemeMap.has(ot.OeuvreID)) oeuvreThemeMap.set(ot.OeuvreID, [])
-      const name = thMap[ot.ThemeID]
-      if (name) oeuvreThemeMap.get(ot.OeuvreID)!.push(name)
-    }
+    const oeuvreThemeMap = buildOeuvreThemeNamesMap(
+      (themeRecords ?? []) as { id: number; name: string | null }[],
+      (oeuvreThemes ?? []) as { oeuvre_id: number; theme_id: number }[],
+    )
 
     const works = ((rawWorks ?? []) as any[])
       .filter(o => Boolean(o.txtImageNameLink))
@@ -337,7 +333,7 @@ async function loadPublicWorks(): Promise<{ works: PdfWork[] } | { error: string
         Largeur:          o.Largeur as string | null,
         Profondeur:       o.Profondeur as string | null,
         txtImageNameLink: o.txtImageNameLink as string | null,
-        themes:           oeuvreThemeMap.get(o.OeuvreID) ?? [],
+        themes:           oeuvreThemeMap.get(o.OeuvreID as number) ?? [],
         techniqueName:    o.Technique != null ? (tMap[o.Technique as number] ?? null) : null,
         statutId:         o.statusId as number | null,
       }))

@@ -25,6 +25,7 @@ import { PortfolioCollectionsPanel } from '@/components/atelier/portfolio/Portfo
 import { PageSection } from '@/components/atelier/portfolio/shared/PageSection'
 import { CollectionRow } from '@/components/atelier/portfolio/shared/CollectionRow'
 import { SourceItem } from '@/components/atelier/portfolio/shared/SourceItem'
+import { openPublicPreviewTab } from '@/lib/open-public-preview-tab'
 
 // ── Component ─────────────────────────────────────────────────────────────
 
@@ -398,16 +399,15 @@ export function PortfolioConfigShell({
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: narrow ? 8 : 12, flexWrap: 'wrap', justifyContent: narrow ? 'flex-end' : 'flex-start' }}>
-          <a
-            href="/"
-            target="_blank"
-            rel="noopener noreferrer"
+          <button
+            type="button"
             className="btn ghost sm"
-            style={{ fontSize: 9, letterSpacing: 2, textDecoration: 'none', minHeight: 44, display: 'inline-flex', alignItems: 'center' }}
+            style={{ fontSize: 9, letterSpacing: 2, minHeight: 44 }}
             title={t('portfolio_open_public_site_title')}
+            onClick={() => openPublicPreviewTab('/')}
           >
             Site
-          </a>
+          </button>
           <button
             type="button"
             onClick={() => setPdfOpen(true)}
@@ -417,16 +417,15 @@ export function PortfolioConfigShell({
           >
             ↓ PDF
           </button>
-          <a
-            href="/works"
-            target="_blank"
-            rel="noopener noreferrer"
+          <button
+            type="button"
             className="btn ghost sm"
-            style={{ fontSize: 9, letterSpacing: 2, textDecoration: 'none', minHeight: 44, display: 'inline-flex', alignItems: 'center' }}
+            style={{ fontSize: 9, letterSpacing: 2, minHeight: 44 }}
             title={t('portfolio_catalog_tooltip')}
+            onClick={() => openPublicPreviewTab('/works')}
           >
             /works
-          </a>
+          </button>
           <button
             type="button"
             className="btn primary sm"

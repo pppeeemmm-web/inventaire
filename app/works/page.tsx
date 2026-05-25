@@ -1,7 +1,8 @@
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import WorksClient from '@/components/public/WorksClient'
-import { loadPortfolioSectionsCached } from '@/lib/portfolio-sections-from-r2'
+import { loadPortfolioSectionsFromR2 } from '@/lib/portfolio-sections-from-r2'
+import { fetchPublicOeuvreThemeNamesMap } from '@/lib/public-oeuvre-themes'
 import { hiddenNavRoutes, orderedNavRoutes } from '@/lib/site-block-visibility'
 import { migrate, type SiteBlock } from '@/lib/portfolio-config-types'
 import {
@@ -21,8 +22,6 @@ export function generateMetadata(): Metadata {
   }
 }
 
-type WorksThemeRow = { ThemeID: number; Nom: string | null }
-type WorksThemeLinkRow = { OeuvreID: number; ThemeID: number }
 type WorksCollection = {
   id: string
   title_fr: string
@@ -103,9 +102,9 @@ function mapCollections(raw: Array<Record<string, unknown>>): WorksCollection[] 
 export default async function WorksPage() {
   const supabase = await createClient()
 
-  // 1. Config — cached R2 JSON (`revalidateTag('portfolio')` on save in portfolio actions).
+  // 1. Config — fresh R2 read (portfolio JSON must match last save; avoid stale unstable_cache).
   let modes: WorksMode[] = []
-  const { config: cfg } = await loadPortfolioSectionsCached()
+  const { config: cfg } = await loadPortfolioSectionsFromR2()
   /** /works modes come from Diffusion (atelier); separate from card-page section blocks. */
   const rawModes = Array.isArray(cfg.works_modes) ? cfg.works_modes : []
   if (rawModes.length > 0) {
@@ -142,11 +141,7 @@ export default async function WorksPage() {
     }]
   }
 
-  // 2. Themes + OeuvreTheme junction
-  const { data: themeRecords } = await supabase.from('tblTheme').select('ThemeID, Nom')
-  const { data: oeuvreThemes } = await supabase.from('OeuvreTheme').select('OeuvreID, ThemeID')
-
-  // 3. Works — fetch ALL public works, not just those with a theme assignment
+  // 2. Works — fetch ALL public works, not just those with a theme assignment
   const { data: rawWorks } = await supabase
     .from('Oeuvres')
     .select('OeuvreID, Titre, "Année", Hauteur, Largeur, txtImageNameLink, Support')
@@ -154,18 +149,7 @@ export default async function WorksPage() {
     .eq('is_public', true)
     .order('Année', { ascending: false })
 
-  // Build OeuvreID → theme names map
-  const oeuvreThemeMap = new Map<number, string[]>()
-  if (themeRecords && oeuvreThemes) {
-    const typedThemeRecords = themeRecords as WorksThemeRow[]
-    const typedOeuvreThemes = oeuvreThemes as WorksThemeLinkRow[]
-    const idToName = Object.fromEntries(typedThemeRecords.map((r) => [r.ThemeID, r.Nom]))
-    typedOeuvreThemes.forEach((ot) => {
-      if (!oeuvreThemeMap.has(ot.OeuvreID)) oeuvreThemeMap.set(ot.OeuvreID, [])
-      const name = idToName[ot.ThemeID]
-      if (name) oeuvreThemeMap.get(ot.OeuvreID)!.push(name)
-    })
-  }
+  const oeuvreThemeMap = await fetchPublicOeuvreThemeNamesMap(supabase)
 
   const ROUND_SUPPORT_ID = 16
   const works = Array.isArray(rawWorks)

@@ -1,12 +1,38 @@
 'use client'
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { thumbUrl, imageUrl, yearOf } from '@/lib/data'
 import { worksForCollection } from './works-utils'
 import type { Work, WorksMode } from './works-utils'
 import type { PublicSiteTheme } from '@/lib/public-site-theme'
 import { publicSiteBaseCss } from '@/lib/public-site-theme'
+
+const GRID_ZOOM_RATIO = 1.5
+
+/** Size full-res lightbox image to ~1.5× grid thumb layout (real pixels, not CSS scale). */
+function lightboxDisplaySize(
+  naturalW: number,
+  naturalH: number,
+  thumbW: number,
+  thumbH: number,
+): { w: number; h: number } {
+  const targetW = thumbW * GRID_ZOOM_RATIO
+  const targetH = thumbH * GRID_ZOOM_RATIO
+  const maxW = typeof window !== 'undefined' ? window.innerWidth * 0.9 : 900
+  const maxH = typeof window !== 'undefined' ? window.innerHeight * 0.8 : 720
+  const scale = Math.min(
+    targetW / naturalW,
+    targetH / naturalH,
+    maxW / naturalW,
+    maxH / naturalH,
+    1,
+  )
+  return {
+    w: Math.max(1, Math.round(naturalW * scale)),
+    h: Math.max(1, Math.round(naturalH * scale)),
+  }
+}
 
 interface WorksGridProps {
   works: Work[]
@@ -21,6 +47,12 @@ export default function WorksGrid({
 }: WorksGridProps) {
   const { t, lang } = useI18n()
   const [lightbox, setLightbox] = useState<Work | null>(null)
+  const [thumbLayout, setThumbLayout] = useState<Record<number, { w: number; h: number }>>({})
+  const [lbDisplay, setLbDisplay] = useState<{ w: number; h: number } | null>(null)
+
+  useEffect(() => {
+    setLbDisplay(null)
+  }, [lightbox?.OeuvreID])
 
   const chapter = mode.collections[Math.min(activeChapterIdx, Math.max(0, mode.collections.length - 1))]
   const chapterWorks = useMemo(() => {
@@ -65,48 +97,56 @@ export default function WorksGrid({
 
         .wg-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-          gap: clamp(16px, 2.5vw, 28px);
+          grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+          gap: clamp(20px, 3vw, 36px);
           max-width: 1400px;
           margin: 0 auto;
+          align-items: start;
+          justify-items: center;
         }
 
         .wg-cell {
-          background: rgba(255,255,255,0.35);
-          border: 1px solid rgba(0,0,0,0.06);
-          border-radius: 4px;
-          overflow: hidden;
           cursor: pointer;
-          transition: box-shadow 0.2s, transform 0.2s;
+          background: transparent;
+          border: none;
+          padding: 0;
+          max-width: 100%;
         }
-        .wg-cell:hover {
-          box-shadow: 0 8px 24px rgba(0,0,0,0.10);
-          transform: translateY(-2px);
-        }
-
-        .wg-cell-img-wrap {
-          aspect-ratio: 4 / 3;
-          display: flex; align-items: center; justify-content: center;
-          background: rgba(237,234,228,0.6);
-          overflow: hidden;
+        .wg-figure {
+          margin: 0 auto;
+          display: table;
+          max-width: 100%;
+          border-collapse: collapse;
         }
         .wg-cell-img {
-          max-width: 100%; max-height: 100%;
-          object-fit: contain;
           display: block;
+          max-width: 100%;
+          width: auto;
+          height: auto;
+          max-height: min(52vh, 480px);
+          object-fit: contain;
+          transition: filter 0.2s ease;
+        }
+        .wg-cell:hover .wg-cell-img {
+          filter: drop-shadow(0 10px 20px rgba(0,0,0,0.14))
+                  drop-shadow(0 2px 6px rgba(0,0,0,0.08));
         }
         .wg-cell-img.round { border-radius: 50%; }
 
         .wg-cell-info {
-          padding: 12px 14px;
-          border-top: 1px solid rgba(0,0,0,0.05);
+          display: table-caption;
+          caption-side: bottom;
+          padding: 10px 0 0;
+          text-align: center;
+          width: 100%;
         }
         .wg-cell-title {
           font-family: 'Instrument Serif', serif;
           font-size: 13px; font-weight: 400;
-          color: #3a3834; line-height: 1.3;
+          color: #3a3834; line-height: 1.35;
           margin: 0 0 3px;
-          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+          word-wrap: break-word;
+          overflow-wrap: anywhere;
         }
         .wg-cell-year {
           font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase;
@@ -152,14 +192,18 @@ export default function WorksGrid({
 
         .wg-lb-content {
           position: relative;
-          max-width: min(90vw, 900px); max-height: 88vh;
           display: flex; flex-direction: column; align-items: center;
           gap: 16px;
         }
         .wg-lb-img {
-          max-width: 100%; max-height: 72vh;
-          object-fit: contain; display: block;
+          display: block;
+          width: auto;
+          height: auto;
+          max-width: 90vw;
+          max-height: 80vh;
+          object-fit: contain;
           border-radius: 2px;
+          image-rendering: auto;
         }
         .wg-lb-img.round { border-radius: 50%; }
         .wg-lb-meta { text-align: center; color: #c8c4be; }
@@ -221,19 +265,29 @@ export default function WorksGrid({
                 role="listitem"
                 onClick={() => setLightbox(w)}
               >
-                <div className="wg-cell-img-wrap">
+                <figure className="wg-figure">
                   <img
                     src={thumbUrl(w.txtImageNameLink) ?? undefined}
                     alt={w.Titre ?? ''}
                     className={`wg-cell-img${w.isRound ? ' round' : ''}`}
                     loading="lazy"
                     draggable={false}
+                    onLoad={(e) => {
+                      const el = e.currentTarget
+                      if (el.offsetWidth < 1 || el.offsetHeight < 1) return
+                      setThumbLayout((prev) => {
+                        const next = { w: el.offsetWidth, h: el.offsetHeight }
+                        const cur = prev[w.OeuvreID]
+                        if (cur?.w === next.w && cur?.h === next.h) return prev
+                        return { ...prev, [w.OeuvreID]: next }
+                      })
+                    }}
                   />
-                </div>
-                <div className="wg-cell-info">
-                  <p className="wg-cell-title">{w.Titre ?? t('pub_untitled')}</p>
-                  {yearOf(w.Annee) && <p className="wg-cell-year">{yearOf(w.Annee)}</p>}
-                </div>
+                  <figcaption className="wg-cell-info">
+                    <p className="wg-cell-title">{w.Titre ?? t('pub_untitled')}</p>
+                    {yearOf(w.Annee) && <p className="wg-cell-year">{yearOf(w.Annee)}</p>}
+                  </figcaption>
+                </figure>
               </div>
             ))}
           </div>
@@ -275,6 +329,21 @@ export default function WorksGrid({
               src={imageUrl(lightbox.txtImageNameLink) ?? undefined}
               alt={lightbox.Titre ?? ''}
               className={`wg-lb-img${lightbox.isRound ? ' round' : ''}`}
+              width={lbDisplay?.w}
+              height={lbDisplay?.h}
+              style={lbDisplay ? { width: lbDisplay.w, height: lbDisplay.h } : undefined}
+              onLoad={(e) => {
+                const el = e.currentTarget
+                if (el.naturalWidth < 1 || el.naturalHeight < 1) return
+                const thumb = thumbLayout[lightbox.OeuvreID]
+                const size = lightboxDisplaySize(
+                  el.naturalWidth,
+                  el.naturalHeight,
+                  thumb?.w ?? 280,
+                  thumb?.h ?? 210,
+                )
+                setLbDisplay(size)
+              }}
             />
             <div className="wg-lb-meta">
               <p className="wg-lb-title">{lightbox.Titre ?? t('pub_untitled')}</p>

@@ -230,6 +230,10 @@ export async function savePortfolioConfig(
 
     revalidateTag('portfolio')
     revalidatePath('/')
+    revalidatePath('/works')
+    revalidatePath('/about')
+    revalidatePath('/practice')
+    revalidatePath('/enquiry')
 
     return { ok: true, etag: newEtag }
   } catch (e: any) {
