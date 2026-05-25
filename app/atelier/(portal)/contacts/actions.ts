@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { isSupabaseMissingTableError } from '@/lib/supabase/missing-table'
 import type { ImportedContact } from '@/lib/contact-import-types'
 import {
   assertSafePublicUrl,
@@ -337,7 +338,9 @@ export async function mergeContacts(intoId: number, fromId: number): Promise<Mer
     .from('contact_conflicts')
     .delete()
     .or(`public_contact_id.eq.${fromId},private_contact_id.eq.${fromId}`)
-  if (ccErr) return { error: `contact_conflicts: ${ccErr.message}` }
+  if (ccErr && !isSupabaseMissingTableError(ccErr)) {
+    return { error: `contact_conflicts: ${ccErr.message}` }
+  }
 
   const { error: delErr } = await svc.from('Contact').delete().eq('ContactID', fromId)
   if (delErr) return { error: `Contact.delete: ${delErr.message}` }
@@ -505,10 +508,13 @@ export async function saveContactWithConflictCheck(formData: FormData): Promise<
 
   // 4. Record Conflict if detected
   if (conflictWithId && !is_private) {
-    await serviceClient.from('contact_conflicts').insert({
+    const { error: ccInsErr } = await serviceClient.from('contact_conflicts').insert({
       public_contact_id: contact.ContactID,
       private_contact_id: conflictWithId
     })
+    if (ccInsErr && !isSupabaseMissingTableError(ccInsErr)) {
+      return { error: `contact_conflicts: ${ccInsErr.message}` }
+    }
   }
 
   revalidatePath('/atelier')
