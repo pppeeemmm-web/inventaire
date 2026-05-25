@@ -31,490 +31,26 @@ import {
 import { WorkThumb } from './WorkThumb'
 import type { Oeuvre }  from '@/lib/types/database'
 
-// ── Constants ──────────────────────────────────────────────────────────────
-const NW    = 80   // node bounding box width  (logical px)
-const NH    = 60   // node bounding box height 4:3
-const NR    = 30   // circle radius (= NH/2)
-const RING  = 10   // link-drag zone outside circle border (logical px)
-const MIN_Z = 0.04
-const MAX_Z = 6
+import {
+  NW, NH, NR, RING, MIN_Z, MAX_Z,
+  cacheConstellationThumb, thumbTier,
+  type Pt, type NodeMap,
+  type GroupBy, type LinkType, type VP, type Edge, type Drag, type Shape, type Tool, type Snapshot,
+  type ThemeLinkRow, type GroupLinkRow,
+  LINK_LABEL_KEYS, LINK_VIS, LINK_DEF,
+  loadPos, savePos, filterSavedToMembership,
+  loadSnapshots, persistSnapshots, posToObj, objToPos,
+  layoutYear, layoutTheme, layoutWorkGroup, layoutGrid,
+  ptSeg, hitNode, hitEdge,
+  buildThemeWorkFromRows, buildThemeWorkFromOeuvreMap, mergeThemeWorkMaps, themeWorkSize,
+  buildGroupWorkFromRows, buildGroupWorkFromOeuvreMap, mergeGroupWorkMaps, groupWorkSize,
+  edgeSnapshotToEdges, edgesToSnapshot,
+} from './constellation/constellation-shared'
+export type { Pt, NodeMap } from './constellation/constellation-shared'
+import { ConstellationToolbar } from './constellation/ConstellationToolbar'
+import { ConstellationToolRail } from './constellation/ConstellationToolRail'
+import { ConstellationSidePanel } from './constellation/ConstellationSidePanel'
 
-/** Cap in-memory decoded thumbnails; drop stale zoom tiers per œuvre first. */
-const MAX_THUMB_CACHE = 480
-
-function cacheConstellationThumb(
-  map: Map<string, HTMLImageElement>,
-  key: string,
-  img: HTMLImageElement,
-  oeuvreId: number,
-) {
-  for (const k of [...map.keys()]) {
-    if (k.startsWith(`${oeuvreId}_`) && k !== key) map.delete(k)
-  }
-  if (map.has(key)) map.delete(key)
-  map.set(key, img)
-  while (map.size > MAX_THUMB_CACHE) {
-    const oldest = map.keys().next().value as string | undefined
-    if (!oldest) break
-    map.delete(oldest)
-  }
-}
-
-// ── Thumb tier: pick image resolution based on zoom level ─────────────────
-function thumbTier(z: number): 40 | 100 | 200 {
-  if (z < 0.3)  return 40
-  if (z < 1.5)  return 100
-  return 200
-}
-
-// ── Types ──────────────────────────────────────────────────────────────────
-export type Pt       = { x: number; y: number }
-export type NodeMap  = Map<number, Pt>
-type GroupBy  = 'year' | 'theme' | 'workgroup' | 'none' | 'custom'
-type LinkType = 'influence' | 'proximity' | 'series' | 'diptych'
-
-const LINK_LABEL_KEYS: Record<LinkType, DictKey> = {
-  influence: 'const_link_influence',
-  proximity: 'const_link_proximity',
-  series: 'const_link_series',
-  diptych: 'const_link_diptych',
-}
-
-interface VP { x: number; y: number; z: number }
-interface Edge {
-  id:            string
-  source:        number
-  target:        number
-  relation_type: string | null
-  strength:      number | null
-  description:   string | null
-}
-
-function edgeSnapshotToEdges(snap: ConstellationMapEdgeSnapshot[]): Edge[] {
-  return snap.map((e, i) => ({
-    id:            `frozen-${i}`,
-    source:        e.source_id,
-    target:        e.target_id,
-    relation_type: e.relation_type,
-    strength:      e.strength,
-    description:   e.description,
-  }))
-}
-
-function edgesToSnapshot(edges: Edge[]): ConstellationMapEdgeSnapshot[] {
-  return edges.map(e => ({
-    source_id:     e.source,
-    target_id:     e.target,
-    relation_type: e.relation_type,
-    strength:      e.strength,
-    description:   e.description,
-  }))
-}
-interface Drag {
-  mode:       'idle' | 'pan' | 'node' | 'link' | 'marquee' | 'draw' | 'line' | 'erase'
-  startX:     number
-  startY:     number
-  nodeId?:    number
-  panOrigin?: Pt
-  /** Multi-select: drag these ids together (subset of selection with positions). */
-  moveIds?:   number[]
-}
-
-// ── Link styles ────────────────────────────────────────────────────────────
-const LINK_VIS: Record<string, { color: string; dash: number[]; w: number }> = {
-  influence: { color: '#c8a86e', dash: [],      w: 2   },
-  proximity: { color: '#7ab4c8', dash: [8, 5],  w: 1.5 },
-  series:    { color: '#8cc87a', dash: [],       w: 2.5 },
-  diptych:   { color: '#c87a9e', dash: [3, 3],  w: 2   },
-}
-const LINK_DEF = { color: '#706c62', dash: [4, 6], w: 1 }
-
-// ── Position persistence (per groupBy mode + theme / working-group filter) ─
-const POS_KEY = (g: GroupBy, filter?: number | string | null) => {
-  if (g === 'theme') return `pem_const_pos_theme_${filter ?? 'all'}`
-  if (g === 'workgroup') return `pem_const_pos_wg_${filter ?? 'all'}`
-  return `pem_const_pos_${g}`
-}
-
-function loadPos(g: GroupBy, filter?: number | string | null): NodeMap | null {
-  try {
-    const raw = localStorage.getItem(POS_KEY(g, filter))
-    if (!raw) return null
-    const obj = JSON.parse(raw) as Record<string, Pt>
-    const m = new Map(Object.entries(obj).map(([k, v]) => [+k, v]))
-    return m.size > 0 ? m : null
-  } catch { return null }
-}
-function savePos(g: GroupBy, m: NodeMap, filter?: number | string | null) {
-  try {
-    const obj: Record<string, Pt> = {}
-    m.forEach((v, k) => { obj[k] = v })
-    localStorage.setItem(POS_KEY(g, filter), JSON.stringify(obj))
-  } catch {}
-}
-
-/** Drop stale nodes from persisted layouts (junction changed or row already removed in DB). */
-function filterSavedToMembership(saved: NodeMap, memberOf: Set<number> | null): NodeMap | null {
-  if (!memberOf) return saved
-  const m = new Map<number, Pt>()
-  for (const [id, pt] of saved) {
-    if (memberOf.has(id)) m.set(id, pt)
-  }
-  return m.size > 0 ? m : null
-}
-
-// ── Named snapshots ────────────────────────────────────────────────────────
-const SNAP_KEY = 'pem_const_snapshots'
-type Shape =
-  | { type: 'line'; points: Pt[]; color: string; width: number }
-  | { type: 'text'; x: number; y: number; text: string; color: string; size: number }
-
-type Tool = 'move' | 'draw' | 'line' | 'text' | 'marquee' | 'erase'
-
-interface Snapshot {
-  id: string
-  name: string
-  groupBy: GroupBy
-  positions: Record<string, Pt>
-  shapes: Shape[]
-  savedAt: string
-}
-
-function loadSnapshots(): Snapshot[] {
-  try {
-    const raw = localStorage.getItem(SNAP_KEY)
-    if (!raw) return []
-    const snaps = JSON.parse(raw) as Snapshot[]
-    // Ensure back-compat for old snapshots without shapes
-    return snaps.map(s => ({ ...s, shapes: s.shapes ?? [] }))
-  } catch { return [] }
-}
-function persistSnapshots(s: Snapshot[]) { try { localStorage.setItem(SNAP_KEY, JSON.stringify(s)) } catch {} }
-function posToObj(m: NodeMap): Record<string, Pt> { const o: Record<string, Pt> = {}; m.forEach((v, k) => { o[k] = v }); return o }
-function objToPos(o: Record<string, Pt>): NodeMap  { return new Map(Object.entries(o).map(([k, v]) => [+k, v])) }
-
-// ── Layout algorithms ──────────────────────────────────────────────────────
-function layoutYear(oeuvres: Oeuvre[]): NodeMap {
-  const by = new Map<string, Oeuvre[]>()
-  for (const o of oeuvres) {
-    const y = o.Année?.slice(0, 4) ?? '?'
-    if (!by.has(y)) by.set(y, [])
-    by.get(y)!.push(o)
-  }
-  const years = [...by.keys()].sort()
-  const m     = new Map<number, Pt>()
-  let x = 60
-  for (const yr of years) {
-    const ws   = by.get(yr)!
-    const cols = Math.max(1, Math.round(Math.sqrt(ws.length * 0.75)))
-    ws.forEach((o, i) => m.set(o.OeuvreID, {
-      x: x + (i % cols) * (NW + 14),
-      y: 80 + Math.floor(i / cols) * (NH + 14),
-    }))
-    x += Math.min(cols, ws.length) * (NW + 14) + 52
-  }
-  return m
-}
-
-// Place a cluster of works in concentric rings around (cx, cy) so nodes never overlap.
-function placeCluster(ids: number[], cx: number, cy: number, out: Map<number, Pt>) {
-  if (!ids.length) return
-  // Node circles have radius NR=30. Min center-to-center = 2*NR + 8 = 68px.
-  const SPACING  = NR * 2 + 8   // 68 — min distance between node centers
-  const RING_GAP = SPACING       // radial distance between consecutive ring radii
-  const BASE_R   = Math.max(60, SPACING / (2 * Math.PI) * 4) // ~first ring radius
-
-  let remaining = [...ids]
-  let ring = 0
-  while (remaining.length > 0) {
-    const r    = BASE_R + ring * RING_GAP
-    const cap  = Math.max(1, Math.floor(2 * Math.PI * r / SPACING))
-    const batch = remaining.splice(0, cap)
-    batch.forEach((id, i) => {
-      const a = (i / batch.length) * Math.PI * 2 - Math.PI / 2
-      out.set(id, { x: cx + Math.cos(a) * r - NW / 2, y: cy + Math.sin(a) * r - NH / 2 })
-    })
-    ring++
-  }
-}
-
-// Estimate the outer radius a cluster of n works will occupy.
-function clusterOuterR(n: number): number {
-  const SPACING = NR * 2 + 8
-  const BASE_R  = Math.max(60, SPACING / (2 * Math.PI) * 4)
-  const RING_GAP = SPACING
-  let rem = n, ring = 0
-  while (rem > 0) {
-    const r = BASE_R + ring * RING_GAP
-    rem -= Math.max(1, Math.floor(2 * Math.PI * r / SPACING))
-    ring++
-  }
-  return BASE_R + (ring - 1) * RING_GAP + NR + 8
-}
-
-function layoutTheme(
-  oeuvres:   Oeuvre[],
-  themeWork: Map<number, Set<number>>,
-  themes:    { id: number }[],
-): NodeMap {
-  // Only place works that belong to at least one of the given themes.
-  // Unthemed works are intentionally excluded — use year/libre mode for them.
-  const oeuvreSet = new Set(oeuvres.map(o => o.OeuvreID))
-  const m         = new Map<number, Pt>()
-  const placed    = new Set<number>()
-
-  // Gather per-theme work lists (skip already-placed multi-theme works after first placement)
-  const themeLists = themes.map(th => ({
-    th,
-    ids: [...(themeWork.get(th.id) ?? [])].filter(id => oeuvreSet.has(id)),
-  })).filter(x => x.ids.length > 0)
-
-  if (themeLists.length === 0) return m
-
-  if (themeLists.length === 1) {
-    // Single theme: center the cluster
-    const ids = themeLists[0].ids
-    placeCluster(ids, 700, 500, m)
-    ids.forEach(id => placed.add(id))
-  } else {
-    // Multiple themes: arrange cluster centers in a large circle so they don't overlap.
-    // Cluster center distance = sum of two neighbouring outer radii + 120px buffer.
-    const radii = themeLists.map(x => clusterOuterR(x.ids.length))
-    const maxR  = Math.max(...radii)
-    // Place cluster centers on a circle large enough so adjacent clusters don't touch.
-    // Min arc length between centres ≈ 2 * maxR + 120.
-    const N         = themeLists.length
-    const minArc    = (2 * maxR + 120)
-    const R_CLUSTER = Math.max(600, (minArc * N) / (2 * Math.PI))
-
-    themeLists.forEach(({ th: _th, ids }, ti) => {
-      // Skip works already placed (works belonging to multiple themes appear in first cluster)
-      const unplaced = ids.filter(id => !placed.has(id))
-      if (!unplaced.length) return
-      const angle = (ti / N) * Math.PI * 2 - Math.PI / 2
-      const cx    = 700 + Math.cos(angle) * R_CLUSTER
-      const cy    = 500 + Math.sin(angle) * R_CLUSTER
-      placeCluster(unplaced, cx, cy, m)
-      unplaced.forEach(id => placed.add(id))
-    })
-  }
-
-  return m
-}
-
-function layoutWorkGroup(
-  oeuvres:   Oeuvre[],
-  groupWork: Map<string, Set<number>>,
-  groups:    { id: string }[],
-): NodeMap {
-  const oeuvreSet = new Set(oeuvres.map(o => o.OeuvreID))
-  const m         = new Map<number, Pt>()
-  const placed    = new Set<number>()
-
-  const groupLists = groups.map(g => ({
-    g,
-    ids: [...(groupWork.get(g.id) ?? [])].filter(id => oeuvreSet.has(id)),
-  })).filter(x => x.ids.length > 0)
-
-  if (groupLists.length === 0) return m
-
-  if (groupLists.length === 1) {
-    const ids = groupLists[0].ids
-    placeCluster(ids, 700, 500, m)
-    ids.forEach(id => placed.add(id))
-  } else {
-    const radii = groupLists.map(x => clusterOuterR(x.ids.length))
-    const maxR  = Math.max(...radii)
-    const N         = groupLists.length
-    const minArc    = (2 * maxR + 120)
-    const R_CLUSTER = Math.max(600, (minArc * N) / (2 * Math.PI))
-
-    groupLists.forEach(({ g: _g, ids }, ti) => {
-      const unplaced = ids.filter(id => !placed.has(id))
-      if (!unplaced.length) return
-      const angle = (ti / N) * Math.PI * 2 - Math.PI / 2
-      const cx    = 700 + Math.cos(angle) * R_CLUSTER
-      const cy    = 500 + Math.sin(angle) * R_CLUSTER
-      placeCluster(unplaced, cx, cy, m)
-      unplaced.forEach(id => placed.add(id))
-    })
-  }
-
-  return m
-}
-
-function layoutGrid(oeuvres: Oeuvre[]): NodeMap {
-  const m    = new Map<number, Pt>()
-  const cols = Math.ceil(Math.sqrt(oeuvres.length * 1.4))
-  oeuvres.forEach((o, i) => m.set(o.OeuvreID, {
-    x: 60 + (i % cols) * (NW + 14),
-    y: 60 + Math.floor(i / cols) * (NH + 14),
-  }))
-  return m
-}
-
-// ── Geometry ───────────────────────────────────────────────────────────────
-function ptSeg(px: number, py: number, ax: number, ay: number, bx: number, by: number): number {
-  const dx = bx - ax, dy = by - ay
-  const l2 = dx * dx + dy * dy
-  if (l2 === 0) return Math.hypot(px - ax, py - ay)
-  const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / l2))
-  return Math.hypot(px - ax - t * dx, py - ay - t * dy)
-}
-
-function hitNode(lx: number, ly: number, pos: NodeMap, vp: VP): { id: number; zone: 'center' | 'ring' } | null {
-  const wx   = (lx - vp.x) / vp.z
-  const wy   = (ly - vp.y) / vp.z
-  for (const [id, p] of pos) {
-    const cx   = p.x + NW / 2
-    const cy   = p.y + NH / 2
-    const dist = Math.hypot(wx - cx, wy - cy)
-    if (dist <= NR)             return { id, zone: 'center' }
-    if (dist <= NR + RING)      return { id, zone: 'ring'   }
-  }
-  return null
-}
-
-function hitEdge(lx: number, ly: number, edges: Edge[], pos: NodeMap, vp: VP): Edge | null {
-  for (const e of edges) {
-    const a = pos.get(e.source), b = pos.get(e.target)
-    if (!a || !b) continue
-    const ax = (a.x + NW / 2) * vp.z + vp.x, ay = (a.y + NH / 2) * vp.z + vp.y
-    const bx = (b.x + NW / 2) * vp.z + vp.x, by = (b.y + NH / 2) * vp.z + vp.y
-    if (ptSeg(lx, ly, ax, ay, bx, by) < 8) return e
-  }
-  return null
-}
-
-type ThemeLinkRow = { oeuvre_id: number; theme_id: number }
-
-function buildThemeWorkFromRows(rows: ThemeLinkRow[]): Map<number, Set<number>> {
-  const tw = new Map<number, Set<number>>()
-  for (const row of rows) {
-    const themeId = Number(row.theme_id)
-    const oeuvreId = Number(row.oeuvre_id)
-    if (!Number.isFinite(themeId) || !Number.isFinite(oeuvreId)) continue
-    let set = tw.get(themeId)
-    if (!set) {
-      set = new Set<number>()
-      tw.set(themeId, set)
-    }
-    set.add(oeuvreId)
-  }
-  return tw
-}
-
-function buildThemeWorkFromOeuvreMap(
-  oeuvreThemeIdsByOeuvre: Record<number, number[]>,
-): Map<number, Set<number>> {
-  const tw = new Map<number, Set<number>>()
-  for (const [oeuvreKey, themeIds] of Object.entries(oeuvreThemeIdsByOeuvre)) {
-    const oeuvreId = Number(oeuvreKey)
-    if (!Number.isFinite(oeuvreId)) continue
-    for (const rawTid of themeIds) {
-      const themeId = Number(rawTid)
-      if (!Number.isFinite(themeId)) continue
-      let set = tw.get(themeId)
-      if (!set) {
-        set = new Set<number>()
-        tw.set(themeId, set)
-      }
-      set.add(oeuvreId)
-    }
-  }
-  return tw
-}
-
-function mergeThemeWorkMaps(
-  primary: Map<number, Set<number>>,
-  secondary: Map<number, Set<number>>,
-): Map<number, Set<number>> {
-  if (secondary.size === 0) return primary
-  if (primary.size === 0) return secondary
-  const merged = new Map(primary)
-  for (const [themeId, ids] of secondary) {
-    const existing = merged.get(themeId)
-    if (existing) {
-      for (const id of ids) existing.add(id)
-    } else {
-      merged.set(themeId, new Set(ids))
-    }
-  }
-  return merged
-}
-
-function themeWorkSize(
-  themeWork: Map<number, Set<number>>,
-  themeId: number,
-  fallback?: Record<number, number>,
-): number {
-  return themeWork.get(themeId)?.size ?? fallback?.[themeId] ?? 0
-}
-
-type GroupLinkRow = { oeuvre_id: number; group_id: string }
-
-function buildGroupWorkFromRows(rows: GroupLinkRow[]): Map<string, Set<number>> {
-  const gw = new Map<string, Set<number>>()
-  for (const row of rows) {
-    const groupId = String(row.group_id)
-    const oeuvreId = Number(row.oeuvre_id)
-    if (!groupId || !Number.isFinite(oeuvreId)) continue
-    let set = gw.get(groupId)
-    if (!set) {
-      set = new Set<number>()
-      gw.set(groupId, set)
-    }
-    set.add(oeuvreId)
-  }
-  return gw
-}
-
-function buildGroupWorkFromOeuvreMap(
-  oeuvreGroupIdsByOeuvre: Record<number, string[]>,
-): Map<string, Set<number>> {
-  const gw = new Map<string, Set<number>>()
-  for (const [oeuvreKey, groupIds] of Object.entries(oeuvreGroupIdsByOeuvre)) {
-    const oeuvreId = Number(oeuvreKey)
-    if (!Number.isFinite(oeuvreId)) continue
-    for (const rawGid of groupIds) {
-      const groupId = String(rawGid)
-      if (!groupId) continue
-      let set = gw.get(groupId)
-      if (!set) {
-        set = new Set<number>()
-        gw.set(groupId, set)
-      }
-      set.add(oeuvreId)
-    }
-  }
-  return gw
-}
-
-function mergeGroupWorkMaps(
-  primary: Map<string, Set<number>>,
-  secondary: Map<string, Set<number>>,
-): Map<string, Set<number>> {
-  if (secondary.size === 0) return primary
-  if (primary.size === 0) return secondary
-  const merged = new Map(primary)
-  for (const [groupId, ids] of secondary) {
-    const existing = merged.get(groupId)
-    if (existing) {
-      for (const id of ids) existing.add(id)
-    } else {
-      merged.set(groupId, new Set(ids))
-    }
-  }
-  return merged
-}
-
-function groupWorkSize(
-  groupWork: Map<string, Set<number>>,
-  groupId: string,
-  fallback?: Record<string, number>,
-): number {
-  return groupWork.get(groupId)?.size ?? fallback?.[groupId] ?? 0
-}
 
 // ── Props ──────────────────────────────────────────────────────────────────
 interface Props {
@@ -2519,302 +2055,67 @@ export function ConstellationCanvas({
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
 
       {/* Toolbar */}
-      <div style={{ flexShrink: 0, minHeight: 40, borderBottom: '1px solid var(--bd)', background: 'var(--bg1)', display: 'flex', alignItems: 'center', padding: '8px 16px', gap: 10, overflowX: 'auto', overflowY: 'hidden' }}>
-        <div className="t-label" style={{ color: 'var(--tx3)', whiteSpace: 'nowrap' }}>{t('viewMode')}</div>
-        {(['year', 'theme', 'workgroup', 'none'] as GroupBy[]).map(g => (
-          <button key={g} className="btn ghost sm"
-            aria-pressed={groupBy === g}
-            style={{ borderColor: groupBy === g ? 'var(--ac)' : undefined, color: groupBy === g ? 'var(--ac)' : undefined, whiteSpace: 'nowrap' }}
-            onClick={() => { groupByRef.current = g; setGroupBy(g) }}
-          >
-            {g === 'year' ? t('year') : g === 'theme' ? t('theme') : g === 'workgroup' ? t('const_viewGroup') : t('const_viewGlobal')}
-          </button>
-        ))}
-        {groupBy === 'theme' && (
-          <select
-            value={selectedThemeId ?? ''}
-            onChange={e => setSelectedThemeId(e.target.value ? Number(e.target.value) : null)}
-            style={{ fontSize: 9, background: 'var(--bg0)', border: '1px solid var(--ac)', color: 'var(--tx)', padding: '2px 8px', cursor: 'pointer', maxWidth: 140 }}
-          >
-            <option value="">{t('const_allThemes')} ({[...effectiveThemeWork.values()].reduce((a, s) => { s.forEach(id => a.add(id)); return a }, new Set()).size})</option>
-            {themesInDropdown.map(th => (
-              <option key={th.id} value={th.id}>
-                {th.name} ({themeWorkSize(effectiveThemeWork, th.id, themeWorkCount)})
-              </option>
-            ))}
-          </select>
-        )}
-        {groupBy === 'workgroup' && (
-          <select
-            value={selectedGroupId ?? ''}
-            onChange={e => setSelectedGroupId(e.target.value || null)}
-            style={{ fontSize: 9, background: 'var(--bg0)', border: '1px solid var(--ac)', color: 'var(--tx)', padding: '2px 8px', cursor: 'pointer', maxWidth: 140 }}
-          >
-            <option value="">{t('const_allGroups')} ({[...effectiveGroupWork.values()].reduce((a, s) => { s.forEach(id => a.add(id)); return a }, new Set()).size})</option>
-            {groupsInDropdown.map(gr => (
-              <option key={gr.id} value={gr.id}>
-                {gr.name} ({groupWorkSize(effectiveGroupWork, gr.id, groupWorkCount)})
-              </option>
-            ))}
-          </select>
-        )}
-        {/* Blank canvas mode */}
-        <button className="btn ghost sm"
-          aria-pressed={groupBy === 'custom'}
-          style={{ borderColor: groupBy === 'custom' ? 'var(--ac)' : undefined, color: groupBy === 'custom' ? 'var(--ac)' : undefined, whiteSpace: 'nowrap' }}
-          onClick={() => {
-            posRef.current = new Map()
-            setCustomIds(new Set())
-            setPickerQ('')
-            groupByRef.current = 'custom'
-            setGroupBy('custom')
-          }}
-        >
-          {t('const_blankCanvas')}
-        </button>
-
-        <div className="vline" style={{ height: 16 }} />
-
-        <div className="t-label" style={{ color: 'var(--tx3)', whiteSpace: 'nowrap' }}>{t('const_link')}</div>
-        {(Object.keys(LINK_VIS) as LinkType[]).map(lt => {
-          const vis = LINK_VIS[lt]
-          return (
-            <button key={lt} className="btn ghost sm"
-              aria-pressed={linkType === lt}
-              style={{ borderColor: linkType === lt ? vis.color : undefined, color: linkType === lt ? vis.color : undefined, whiteSpace: 'nowrap' }}
-              onClick={() => setLinkType(lt)}
-            >
-              {t(LINK_LABEL_KEYS[lt])}
-            </button>
-          )
-        })}
-
-        <div className="vline" style={{ height: 16 }} />
-
-        {/* Snapshots */}
-        <div className="t-label" style={{ color: 'var(--tx3)', whiteSpace: 'nowrap' }}>{t('const_maps')}</div>
-        {snapshots.length > 0 && (
-          <select
-            defaultValue=""
-            onChange={e => { if (e.target.value) { handleLoadSnapshot(e.target.value); e.target.value = '' } }}
-            style={{ fontSize: 9, background: 'var(--bg0)', border: '1px solid var(--bd)', color: 'var(--tx)', padding: '2px 6px', maxWidth: 110, cursor: 'pointer' }}
-          >
-            <option value="">{t('const_mapLoad')}</option>
-            {snapshots.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
-        )}
-        <input
-          value={snapName}
-          onChange={e => setSnapName(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleSaveSnapshot()}
-          placeholder={t('const_mapNamePlaceholder')}
-          style={{ width: 80, fontSize: 9, background: 'var(--bg0)', border: '1px solid var(--bd)', color: 'var(--tx)', padding: '2px 6px' }}
-        />
-        <button className="btn ghost sm" onClick={handleSaveSnapshot} style={{ whiteSpace: 'nowrap', fontSize: 9 }}>
-          {snapSaved ? t('const_savedOk') : t('const_saveShort')}
-        </button>
-
-        <div className="vline" style={{ height: 16 }} />
-        <div className="t-label" style={{ color: 'var(--tx3)', whiteSpace: 'nowrap' }}>{t('const_cloudToolbar')}</div>
-        {cloudMaps.length > 0 && (
-          <select
-            defaultValue=""
-            onChange={e => {
-              const id = e.target.value
-              if (id) {
-                void handleLoadCloudMap(id)
-                e.target.value = ''
-              }
-            }}
-            disabled={cloudBusy}
-            data-testid="constellation-cloud-load"
-            style={{ fontSize: 9, background: 'var(--bg0)', border: '1px solid var(--bd)', color: 'var(--tx)', padding: '2px 6px', maxWidth: 100, cursor: 'pointer' }}
-          >
-            <option value="">{t('const_cloudLoad')}</option>
-            {cloudMaps.map(m => (
-              <option key={m.id} value={m.id}>{m.title}</option>
-            ))}
-          </select>
-        )}
-        <button
-          type="button"
-          className="btn ghost sm"
-          disabled={cloudBusy || posRef.current.size === 0}
-          onClick={() => void handleSaveCloudMap()}
-          data-testid="constellation-cloud-save"
-          style={{ whiteSpace: 'nowrap', fontSize: 9 }}
-        >
-          {cloudBusy ? t('const_cloudSaving') : cloudSaved ? t('const_cloudSavedOk') : t('const_cloudSave')}
-        </button>
-        {frozenEdges !== null && (
-          <button
-            type="button"
-            className="btn ghost sm"
-            onClick={() => exitFrozenLiveGraph()}
-            data-testid="constellation-cloud-live-graph"
-            style={{ whiteSpace: 'nowrap', fontSize: 9, borderColor: 'var(--ac)', color: 'var(--ac)' }}
-          >
-            {t('const_cloudUseLiveDb')}
-          </button>
-        )}
-
-        <div className="vline" style={{ height: 16 }} />
-        <button className="btn ghost sm" onClick={handleResetLayout} title={t('const_resetLayoutTitle')} aria-label={t('const_resetLayoutTitle')} style={{ whiteSpace: 'nowrap', fontSize: 9 }}>
-          {t('const_resetLayoutBtn')}
-        </button>
-        <button className="btn ghost sm" onClick={handleFitView} title={t('const_fitViewTitle')} aria-label={t('const_fitViewTitle')} style={{ whiteSpace: 'nowrap', fontSize: 9 }}>
-          {t('const_fitViewBtn')}
-        </button>
-        <button className="btn ghost sm" onClick={handleExportPng} aria-label={t('const_exportPng')} style={{ whiteSpace: 'nowrap', fontSize: 9 }}>
-          {t('const_exportPng')}
-        </button>
-        <button className="btn ghost sm" onClick={handleExportTiledA4} aria-label={t('const_exportA4')} style={{ whiteSpace: 'nowrap', fontSize: 9 }}>
-          {t('const_exportA4')}
-        </button>
-
-        {backgroundImage && (
-          <>
-            <div className="vline" style={{ height: 16 }} />
-            <div className="t-label" style={{ color: 'var(--tx3)', whiteSpace: 'nowrap' }}>{t('const_floorplan')}</div>
-            <input 
-              type="range" min="0.1" max="1" step="0.05" 
-              value={backgroundOpacity} 
-              onChange={e => onBackgroundOpacity?.(Number(e.target.value))}
-              style={{ width: 60, height: 4, cursor: 'pointer', appearance: 'none', background: 'var(--bg2)', borderRadius: 2 }}
-            />
-          </>
-        )}
-
-        {loading && <div className="pulse t-mono-sm" style={{ color: 'var(--tx3)', marginLeft: 'auto', whiteSpace: 'nowrap', alignSelf: 'center' }}>{t('const_loadingEllipsis')}</div>}
-      </div>
+      <ConstellationToolbar
+        t={t}
+        groupBy={groupBy}
+        setGroupBy={setGroupBy}
+        groupByRef={groupByRef}
+        linkType={linkType}
+        setLinkType={setLinkType}
+        selectedThemeId={selectedThemeId}
+        setSelectedThemeId={setSelectedThemeId}
+        effectiveThemeWork={effectiveThemeWork}
+        themesInDropdown={themesInDropdown}
+        themeWorkCount={themeWorkCount}
+        selectedGroupId={selectedGroupId}
+        setSelectedGroupId={setSelectedGroupId}
+        effectiveGroupWork={effectiveGroupWork}
+        groupsInDropdown={groupsInDropdown}
+        groupWorkCount={groupWorkCount}
+        posRef={posRef}
+        setCustomIds={setCustomIds}
+        setPickerQ={setPickerQ}
+        snapshots={snapshots}
+        snapName={snapName}
+        setSnapName={setSnapName}
+        snapSaved={snapSaved}
+        handleSaveSnapshot={handleSaveSnapshot}
+        handleLoadSnapshot={handleLoadSnapshot}
+        cloudMaps={cloudMaps}
+        cloudBusy={cloudBusy}
+        cloudSaved={cloudSaved}
+        frozenEdges={frozenEdges}
+        handleLoadCloudMap={handleLoadCloudMap}
+        handleSaveCloudMap={handleSaveCloudMap}
+        exitFrozenLiveGraph={exitFrozenLiveGraph}
+        handleResetLayout={handleResetLayout}
+        handleFitView={handleFitView}
+        handleExportPng={handleExportPng}
+        handleExportTiledA4={handleExportTiledA4}
+        backgroundImage={backgroundImage}
+        backgroundOpacity={backgroundOpacity}
+        onBackgroundOpacity={onBackgroundOpacity}
+        loading={loading}
+      />
 
       {/* Canvas + tool rail + right panel */}
       <div style={{ flex: 1, display: 'flex', minHeight: 0, minWidth: 0, position: 'relative', overflow: 'hidden' }}>
-        <div
-          ref={toolRailRef}
-          data-testid="constellation-tool-rail"
-          style={{
-            flexShrink: 0,
-            width: 52,
-            minWidth: 52,
-            borderRight: '1px solid var(--bd)',
-            background: 'var(--bg1)',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'stretch',
-            padding: '6px 4px',
-            gap: 4,
-            overflowY: 'auto',
-            overflowX: 'hidden',
-          }}
-        >
-          <div className="t-label" style={{ textAlign: 'center', fontSize: 8, color: 'var(--tx3)', flexShrink: 0 }}>
-            {t('const_tools')}
-          </div>
-          {toolbarTools.map((row) => (
-            <button
-              key={row.id}
-              type="button"
-              className={`btn ghost sm ${tool === row.id ? 'active' : ''}`}
-              title={t(row.tipKey)}
-              aria-label={t(row.tipKey)}
-              aria-pressed={tool === row.id}
-              style={{
-                flexShrink: 0,
-                minHeight: 44,
-                minWidth: 44,
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: 0,
-                borderColor: tool === row.id ? 'var(--ac)' : undefined,
-                color: tool === row.id ? 'var(--ac)' : undefined,
-              }}
-              onClick={() => {
-                setTool(row.id)
-                setToolShortcutsOpen(false)
-              }}
-            >
-              {row.l}
-            </button>
-          ))}
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 44, flexShrink: 0 }}>
-            <input
-              type="color"
-              value={drawColor}
-              onChange={e => setDrawColor(e.target.value)}
-              aria-label={t('const_drawColorTitle')}
-              title={t('const_drawColorTitle')}
-              style={{ width: 36, height: 36, padding: 0, border: 'none', background: 'none', cursor: 'pointer' }}
-            />
-          </div>
-          <select
-            value={drawWidth}
-            onChange={e => setDrawWidth(Number(e.target.value))}
-            aria-label={t('const_strokeWidthTitle')}
-            style={{
-              fontSize: 9,
-              width: '100%',
-              minHeight: 44,
-              flexShrink: 0,
-              background: 'var(--bg0)',
-              border: '1px solid var(--bd)',
-              color: 'var(--tx)',
-              padding: '2px 4px',
-              cursor: 'pointer',
-              boxSizing: 'border-box',
-            }}
-            title={t('const_strokeWidthTitle')}
-          >
-            <option value="1">1px</option>
-            <option value="2">2px</option>
-            <option value="4">4px</option>
-            <option value="8">8px</option>
-            <option value="16">16px</option>
-          </select>
-          {shapes.length > 0 && (
-            <button
-              type="button"
-              className="btn ghost sm"
-              onClick={() => {
-                if (confirm(t('const_drawLayerClearAllConfirm'))) setShapes([])
-              }}
-              style={{
-                minHeight: 44,
-                width: '100%',
-                flexShrink: 0,
-                padding: '0 4px',
-                color: 'var(--rust)',
-                borderColor: 'var(--rust)',
-              }}
-              title={t('const_drawLayerClearAllTitle')}
-              aria-label={t('const_drawLayerClearAllTitle')}
-            >
-              {t('clearSel')}
-            </button>
-          )}
-          <div style={{ flex: 1, minHeight: 4 }} aria-hidden />
-          <button
-            type="button"
-            className="btn ghost sm"
-            aria-expanded={toolShortcutsOpen}
-            aria-controls={shortcutsPanelId}
-            aria-label={t('const_toolbarShortcutsToggle')}
-            title={t('const_toolbarShortcutsToggle')}
-            onClick={() => setToolShortcutsOpen(o => !o)}
-            style={{
-              flexShrink: 0,
-              minHeight: 44,
-              width: '100%',
-              fontSize: 15,
-              lineHeight: 1,
-              padding: 0,
-            }}
-          >
-            ⓘ
-          </button>
-        </div>
+        <ConstellationToolRail
+          t={t}
+          toolRailRef={toolRailRef}
+          toolbarTools={toolbarTools}
+          tool={tool}
+          setTool={setTool}
+          drawColor={drawColor}
+          setDrawColor={setDrawColor}
+          drawWidth={drawWidth}
+          setDrawWidth={setDrawWidth}
+          shapes={shapes}
+          setShapes={setShapes}
+          toolShortcutsOpen={toolShortcutsOpen}
+          setToolShortcutsOpen={setToolShortcutsOpen}
+          shortcutsPanelId={shortcutsPanelId}
+        />
 
         <div ref={wrapRef} style={{
           flex: 1,
@@ -2900,269 +2201,44 @@ export function ConstellationCanvas({
           )}
         </div>
 
-        {/* Right panel */}
-        <div style={{ width: 240, borderLeft: '1px solid var(--bd)', background: 'var(--bg1)', display: 'flex', flexDirection: 'column', flexShrink: 0, overflow: 'hidden' }}>
-
-          {/* Node inspector */}
-          {panelNode ? (
-            <div style={{ padding: 16, borderBottom: '1px solid var(--bd)', flexShrink: 0 }}>
-              <div className="t-eyebrow" style={{ marginBottom: 10 }}>{t('const_workEyebrow')}</div>
-              <div style={{ background: 'var(--bg0)', height: 135, marginBottom: 10, overflow: 'hidden', position: 'relative' }}>
-                {panelNode.txtImageNameLink
-                  ? <WorkThumb file={panelNode.txtImageNameLink} size={384} style={{ objectFit: 'contain' }} alt="" />
-                  : <div style={{ width: '100%', height: '100%', background: 'var(--bg2)' }} />
-                }
-              </div>
-              <div style={{ fontSize: 14, color: 'var(--tx)', fontFamily: "'Instrument Serif', serif", lineHeight: 1.2, marginBottom: 4 }}>
-                {panelNode.Titre || '—'}
-              </div>
-              <div className="t-mono-sm">{panelNode.Année?.slice(0, 4) ?? '—'} · {(panelNode.Technique != null && tM[panelNode.Technique]) || '—'}</div>
-              <button
-                className={`btn ghost sm ${selection.has(panelNode.OeuvreID) ? 'primary' : ''}`}
-                style={{ marginTop: 10, width: '100%', justifyContent: 'center', borderColor: selection.has(panelNode.OeuvreID) ? 'var(--ac)' : undefined, color: selection.has(panelNode.OeuvreID) ? 'var(--ac)' : undefined }}
-                onClick={() => {
-                  const next = new Set(selRef.current)
-                  next.has(panelNode.OeuvreID) ? next.delete(panelNode.OeuvreID) : next.add(panelNode.OeuvreID)
-                  setSelection(next)
-                }}
-              >
-                {selection.has(panelNode.OeuvreID) ? t('const_selected') : t('const_selectPlus')}
-              </button>
-
-              {groupBy === 'custom' && (
-                <button
-                  className="btn ghost sm"
-                  style={{ marginTop: 6, width: '100%', justifyContent: 'center', color: 'var(--rust)', borderColor: 'var(--rust)' }}
-                  onClick={() => removeFromCustom(panelNode.OeuvreID)}
-                >
-                  {t('const_removeFromCanvas')}
-                </button>
-              )}
-            </div>
-          ) : groupBy === 'custom' ? (
-            /* Custom mode: work picker */
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-              {/* Header */}
-              <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--bd)', flexShrink: 0 }}>
-                <div className="t-eyebrow" style={{ marginBottom: 4 }}>{t('const_emptyConstellationTitle')}</div>
-                <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>
-                  {customIds.size} {customIds.size === 1 ? t('const_work_unit') : t('const_work_unit_plural')} · {posRef.current.size} {t('const_nodes')}
-                </div>
-              </div>
-
-              {/* Picker search */}
-              <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--bd)', flexShrink: 0 }}>
-                <input
-                  value={pickerQ}
-                  onChange={e => setPickerQ(e.target.value)}
-                  placeholder={t('const_pickerPlaceholder')}
-                  style={{ width: '100%', padding: '5px 8px', fontSize: 10, background: 'var(--bg0)', border: '1px solid var(--bd)', color: 'var(--tx)' }}
-                />
-                {filteredForPicker.length > 0 && (
-                  <button
-                    className="btn ghost sm"
-                    onClick={addAllFiltered}
-                    style={{ marginTop: 6, width: '100%', justifyContent: 'center', fontSize: 9 }}
-                  >
-                    {t('const_addAll')} ({Math.min(filteredForPicker.length, 120)})
-                  </button>
-                )}
-              </div>
-
-              {/* Available works list */}
-              <div style={{ flex: 1, overflowY: 'auto', padding: '6px 0' }}>
-                {filteredForPicker.length === 0 && (
-                  <div className="t-mono-sm" style={{ padding: '10px 14px', color: 'var(--tx3)' }}>
-                    {pickerQ ? t('const_pickerNoResults') : t('const_pickerAllInConstellation')}
-                  </div>
-                )}
-                {filteredForPicker.slice(0, 200).map(o => (
-                  <div
-                    key={o.OeuvreID}
-                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 10px', cursor: 'pointer' }}
-                    onClick={() => addToCustom(o.OeuvreID)}
-                    title={t('const_addToCanvasTitle')}
-                  >
-                    {o.txtImageNameLink
-                      ? <div style={{ width: 24, height: 24, position: 'relative', flexShrink: 0, borderRadius: '50%', overflow: 'hidden' }}>
-                          <WorkThumb file={o.txtImageNameLink} size={48} alt="" />
-                        </div>
-                      : <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--bg2)', flexShrink: 0 }} />
-                    }
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 9, color: 'var(--tx)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {o.Titre || `#${o.OeuvreID}`}
-                      </div>
-                      <div style={{ fontSize: 8, color: 'var(--tx3)' }}>
-                        {o.Année?.slice(0, 4) ?? '—'} · {tM[o.Technique ?? 0] ?? '—'}
-                      </div>
-                    </div>
-                    <span style={{ fontSize: 11, color: 'var(--ac)', flexShrink: 0 }}>+</span>
-                  </div>
-                ))}
-                {filteredForPicker.length > 200 && (
-                  <div className="t-mono-sm" style={{ padding: '4px 14px', color: 'var(--tx3)' }}>
-                    +{filteredForPicker.length - 200} {t('const_refineSearch')}
-                  </div>
-                )}
-
-                {/* Works already in canvas */}
-                {customIds.size > 0 && (
-                  <>
-                    <div style={{ margin: '8px 10px 4px', borderTop: '1px solid var(--bd)', paddingTop: 8 }}>
-                      <span className="t-label" style={{ color: 'var(--tx3)', fontSize: 8 }}>{t('const_inConstellation')}</span>
-                    </div>
-                    {[...customIds].map(id => {
-                      const o = oeuvresById.get(id)
-                      if (!o) return null
-                      return (
-                        <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 10px' }}>
-                          <div style={{ flex: 1, fontSize: 9, color: 'var(--tx2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {o.Titre || `#${id}`}
-                          </div>
-                          <button
-                            onClick={() => removeFromCustom(id)}
-                            style={{ fontSize: 9, color: 'var(--tx3)', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', flexShrink: 0 }}
-                            title={t('const_removeTitle')}
-                          >✕</button>
-                        </div>
-                      )
-                    })}
-                  </>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div style={{ padding: 16, borderBottom: '1px solid var(--bd)', flexShrink: 0 }}>
-              <div className="t-eyebrow" style={{ marginBottom: 6 }}>{t('constellation')}</div>
-              <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>
-                {groupBy === 'theme'
-                  ? selectedThemeId !== null
-                    ? `${constellationOeuvres.length} ${constellationOeuvres.length === 1 ? t('const_work_unit') : t('const_work_unit_plural')} · ${themes.find(th => th.id === selectedThemeId)?.name ?? ''}`
-                    : `${constellationOeuvres.length} ${constellationOeuvres.length === 1 ? t('const_summaryThemedOne') : t('const_summaryThemedMany')}`
-                  : groupBy === 'workgroup'
-                    ? `${constellationOeuvres.length} ${constellationOeuvres.length === 1 ? t('const_work_unit') : t('const_work_unit_plural')}${selectedGroupId !== null ? ` · ${groups.find(g => g.id === selectedGroupId)?.name ?? ''}` : ''}`
-                    : `${oeuvres.length} ${t('const_work_unit_plural')}`}
-              </div>
-            </div>
-          )}
-
-          {/* Selection + save */}
-          <div style={{ flex: 1, overflow: 'auto', padding: 16 }}>
-            {selection.size > 0 ? (
-              <>
-                <div className="t-eyebrow" style={{ marginBottom: 10 }}>{t('const_selectionLabel')} · {selection.size}</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 14 }}>
-                  {[...selection].slice(0, 15).map(id => {
-                    const o = oeuvresById.get(id)
-                    return o ? (
-                      <div key={id}
-                        title={`${o.Titre ?? '—'} ${t('const_clickRemoveThumbTitle')}`}
-                        onClick={() => { const n = new Set(selRef.current); n.delete(id); setSelection(n) }}
-                        style={{ width: 44, height: 33, background: 'var(--bg0)', border: '1px solid var(--bd)', overflow: 'hidden', cursor: 'pointer', flexShrink: 0 }}
-                      >
-                        {o.txtImageNameLink && (
-                          <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-                            <WorkThumb file={o.txtImageNameLink} size={96} alt="" />
-                          </div>
-                        )}
-                      </div>
-                    ) : null
-                  })}
-                  {selection.size > 15 && <div className="t-mono-sm" style={{ color: 'var(--tx3)', alignSelf: 'center' }}>+{selection.size - 15}</div>}
-                </div>
-
-                {savedName ? (
-                  <div className="t-mono-sm" style={{ color: 'var(--sage)', marginBottom: 8 }}>✓ {savedName}</div>
-                ) : (
-                  <div className="row gap-sm" style={{ marginBottom: 8 }}>
-                    <input
-                      value={groupName}
-                      onChange={e => setGroupName(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && handleSaveGroup()}
-                      placeholder={t('const_groupNamePlaceholderEllipsis')}
-                      style={{ flex: 1, minWidth: 0, padding: '4px 8px', background: 'var(--bg0)', border: '1px solid var(--bd)', fontSize: 10, color: 'var(--tx)' }}
-                    />
-                    <button className="btn sm" onClick={handleSaveGroup} disabled={saving}>
-                      {saving ? '…' : '+'}
-                    </button>
-                  </div>
-                )}
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <button className="btn ghost sm" style={{ flex: 1 }} onClick={() => setSelection(new Set())}>{t('clearSel')}</button>
-                  {groupBy === 'custom' && posRef.current.size > 0 && (
-                    <button className="btn ghost sm" style={{ flex: 1, whiteSpace: 'nowrap' }} onClick={handleSaveAllAsGroup}>{t('const_saveAllShort')}</button>
-                  )}
-                </div>
-              </>
-            ) : (
-              <div className="t-mono-sm" style={{ color: 'var(--tx3)', lineHeight: 1.7 }}>
-                {t('const_shiftMarqueeHint')}
-              </div>
-            )}
-
-            {/* Saved constellation maps */}
-            {snapshots.length > 0 && (
-              <div style={{ marginTop: 20 }}>
-                <div className="t-eyebrow" style={{ marginBottom: 8 }}>{t('const_savedMapsTitle')}</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {snapshots.map(s => (
-                    <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <button
-                        className="btn ghost sm"
-                        onClick={() => handleLoadSnapshot(s.id)}
-                        style={{ flex: 1, justifyContent: 'flex-start', fontSize: 9, textAlign: 'left', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}
-                        title={`${s.name} · ${s.groupBy} · ${new Date(s.savedAt).toLocaleDateString(locale)}`}
-                      >
-                        {s.name}
-                      </button>
-                      <button
-                        className="btn ghost sm"
-                        onClick={() => handleDeleteSnapshot(s.id)}
-                        style={{ fontSize: 9, padding: '2px 5px', color: 'var(--tx3)', flexShrink: 0 }}
-                        title={t('const_deleteMapTitle')}
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {cloudMaps.length > 0 && (
-              <div style={{ marginTop: 20 }}>
-                <div className="t-eyebrow" style={{ marginBottom: 8 }}>{t('const_cloudMapsSidebarTitle')}</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {cloudMaps.map(m => (
-                    <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <button
-                        type="button"
-                        className="btn ghost sm"
-                        disabled={cloudBusy}
-                        onClick={() => void handleLoadCloudMap(m.id)}
-                        style={{ flex: 1, justifyContent: 'flex-start', fontSize: 9, textAlign: 'left', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}
-                        title={new Date(m.updated_at).toLocaleString(locale)}
-                      >
-                        {m.title}
-                      </button>
-                      <button
-                        type="button"
-                        className="btn ghost sm"
-                        disabled={cloudBusy}
-                        onClick={() => void handleDeleteCloudMap(m.id)}
-                        style={{ fontSize: 9, padding: '2px 5px', color: 'var(--tx3)', flexShrink: 0 }}
-                        title={t('const_deleteMapTitle')}
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+        <ConstellationSidePanel
+          t={t}
+          locale={locale}
+          panelNode={panelNode}
+          groupBy={groupBy}
+          selectedThemeId={selectedThemeId}
+          selectedGroupId={selectedGroupId}
+          selection={selection}
+          setSelection={setSelection}
+          selRef={selRef}
+          tM={tM}
+          removeFromCustom={removeFromCustom}
+          customIds={customIds}
+          posRef={posRef}
+          pickerQ={pickerQ}
+          setPickerQ={setPickerQ}
+          filteredForPicker={filteredForPicker}
+          addAllFiltered={addAllFiltered}
+          addToCustom={addToCustom}
+          constellationOeuvres={constellationOeuvres}
+          themes={themes}
+          groups={groups}
+          oeuvres={oeuvres}
+          oeuvresById={oeuvresById}
+          groupName={groupName}
+          setGroupName={setGroupName}
+          savedName={savedName}
+          saving={saving}
+          handleSaveGroup={handleSaveGroup}
+          handleSaveAllAsGroup={handleSaveAllAsGroup}
+          snapshots={snapshots}
+          handleLoadSnapshot={handleLoadSnapshot}
+          handleDeleteSnapshot={handleDeleteSnapshot}
+          cloudMaps={cloudMaps}
+          cloudBusy={cloudBusy}
+          handleLoadCloudMap={handleLoadCloudMap}
+          handleDeleteCloudMap={handleDeleteCloudMap}
+        />
         {toolShortcutsOpen && (
           <div
             ref={shortcutsPanelRef}
