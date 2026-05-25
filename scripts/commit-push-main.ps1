@@ -1,19 +1,9 @@
 <#
 .SYNOPSIS
-  Isolate unrelated WIP, stage intended paths, commit on main, push, restore WIP.
-
-  When -Paths is set (recommended), unrelated modified/untracked files are stashed
-  before commit so Cursor never blocks push with "working tree is dirty".
+  Fast scoped commit + push on main. Moves unrelated WIP aside (not stash), then restores.
 
 .EXAMPLE
-  pwsh scripts/commit-push-main.ps1 -Message "fix: constellation group dropdown" -Paths @(
-    'components/atelier/ConstellationCanvas.tsx',
-    'components/atelier/team-portal-segment-panel.tsx'
-  )
-
-.EXAMPLE
-  git add docs/HANDOFF.md
-  pwsh scripts/commit-push-main.ps1 -Message "docs: handoff"
+  & .\scripts\commit-push-main.ps1 -Message "fix: foo" -Paths @('components/Foo.tsx')
 #>
 param(
   [Parameter(Mandatory = $true)]
@@ -25,6 +15,8 @@ param(
 
   [switch]$NoPush,
 
+  [switch]$Verify,
+
   [string]$Checks = "",
 
   [string]$Remote = "origin",
@@ -32,8 +24,11 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 Set-Location $repoRoot
+
+$script:AsideRoot = $null
+$script:AsideManifest = @()
 
 function Invoke-Git {
   param([Parameter(Mandatory = $true)][string[]]$Args)
@@ -50,6 +45,13 @@ function Normalize-GitPath {
   $Path -replace '\\', '/'
 }
 
+function Get-LiteralGitPath {
+  param([string]$Path)
+  $p = Normalize-GitPath $Path
+  if ($p.StartsWith('.') -and -not $p.StartsWith('./')) { return "./$p" }
+  return $p
+}
+
 function Get-PorcelainPaths {
   $raw = Invoke-Git @("status", "--porcelain")
   if ([string]::IsNullOrWhiteSpace($raw)) { return @() }
@@ -60,15 +62,9 @@ function Get-PorcelainPaths {
     if ([string]::IsNullOrWhiteSpace($line)) { continue }
 
     $payload = $null
-    if ($line -match '^\?\? (.+)$') {
-      $payload = $Matches[1].Trim()
-    }
-    elseif ($line -match '^.. (.+)$') {
-      $payload = $Matches[1].Trim()
-    }
-    else {
-      continue
-    }
+    if ($line -match '^\?\? (.+)$') { $payload = $Matches[1].Trim() }
+    elseif ($line -match '^.. (.+)$') { $payload = $Matches[1].Trim() }
+    else { continue }
 
     if ($payload -match ' -> ') {
       foreach ($part in ($payload -split ' -> ')) {
@@ -82,77 +78,23 @@ function Get-PorcelainPaths {
   return @($paths)
 }
 
-function Write-NulPathspecFile {
-  param(
-    [Parameter(Mandatory = $true)][string]$FilePath,
-    [Parameter(Mandatory = $true)][string[]]$Paths
-  )
-
-  $stream = [System.IO.File]::Create($FilePath)
-  try {
-    foreach ($p in $Paths) {
-      $bytes = [System.Text.Encoding]::UTF8.GetBytes((Normalize-GitPath $p))
-      $stream.Write($bytes, 0, $bytes.Length)
-      $stream.WriteByte(0)
-    }
-  }
-  finally {
-    $stream.Dispose()
-  }
-}
-
-function Invoke-GitPathspecCommand {
-  param(
-    [Parameter(Mandatory = $true)][string[]]$GitArgs,
-    [Parameter(Mandatory = $true)][string[]]$Paths
-  )
-
-  if ($Paths.Count -eq 0) { return }
-
-  $temp = Join-Path ([System.IO.Path]::GetTempPath()) ("git-pathspec-{0}.nul" -f [Guid]::NewGuid().ToString('n'))
-  try {
-    Write-NulPathspecFile -FilePath $temp -Paths $Paths
-  }
-  catch {
-    Remove-Item $temp -Force -ErrorAction SilentlyContinue
-    throw
-  }
-
-  try {
-    $null = & git -c core.quotepath=false @GitArgs "--pathspec-from-file=$temp" --pathspec-file-nul 2>&1
-    if ($LASTEXITCODE -ne 0) {
-      throw ("git {0} failed (exit {1})" -f ($GitArgs -join " "), $LASTEXITCODE)
-    }
-  }
-  finally {
-    Remove-Item $temp -Force -ErrorAction SilentlyContinue
-  }
-}
-
 function Test-InCommitScope {
-  param(
-    [string]$File,
-    [string[]]$ScopeRoots
-  )
+  param([string]$File, [string[]]$ScopeRoots)
   if ($ScopeRoots.Count -eq 0) { return $false }
   $f = Normalize-GitPath $File
   foreach ($root in $ScopeRoots) {
     $r = (Normalize-GitPath $root).TrimEnd('/')
-    if ($f -eq $r) { return $true }
-    if ($f.StartsWith("$r/")) { return $true }
+    if ($f -eq $r -or $f.StartsWith("$r/")) { return $true }
   }
   return $false
 }
 
 function Get-CommitScopeRoots {
   param([string[]]$ExplicitPaths)
-
   if ($StageAll) { return @() }
-
   if ($ExplicitPaths.Count -gt 0) {
     return @($ExplicitPaths | ForEach-Object { Normalize-GitPath $_ })
   }
-
   $staged = Invoke-Git @("diff", "--cached", "--name-only")
   if ([string]::IsNullOrWhiteSpace($staged)) { return @() }
   return @($staged -split "`r?`n" | ForEach-Object { Normalize-GitPath $_.Trim() } | Where-Object { $_ })
@@ -161,71 +103,78 @@ function Get-CommitScopeRoots {
 function Invoke-AsideUnrelatedWork {
   param([string[]]$ScopeRoots)
 
-  if ($StageAll -or $ScopeRoots.Count -eq 0) {
+  if ($StageAll -or $ScopeRoots.Count -eq 0) { return $false }
+
+  $aside = @((Get-PorcelainPaths) | Where-Object { -not (Test-InCommitScope -File $_ -ScopeRoots $ScopeRoots) })
+  if ($aside.Count -eq 0) { return $false }
+
+  $script:AsideRoot = Join-Path $env:TEMP ("pem-wip-{0}" -f [Guid]::NewGuid().ToString('n'))
+  New-Item -ItemType Directory -Force -Path $script:AsideRoot | Out-Null
+
+  foreach ($rel in $aside) {
+    $src = Join-Path $repoRoot ($rel -replace '/', [IO.Path]::DirectorySeparatorChar)
+    if (-not (Test-Path -LiteralPath $src)) { continue }
+    $dest = Join-Path $script:AsideRoot ($rel -replace '/', [IO.Path]::DirectorySeparatorChar)
+    New-Item -ItemType Directory -Force -Path (Split-Path $dest -Parent) | Out-Null
+    Move-Item -LiteralPath $src -Destination $dest -Force
+    $script:AsideManifest += $rel
+  }
+
+  if ($script:AsideManifest.Count -eq 0) {
+    Remove-Item $script:AsideRoot -Recurse -Force -ErrorAction SilentlyContinue
+    $script:AsideRoot = $null
     return $false
   }
 
-  $allPaths = Get-PorcelainPaths
-  $aside = @($allPaths | Where-Object { -not (Test-InCommitScope -File $_ -ScopeRoots $ScopeRoots) })
-  if ($aside.Count -eq 0) { return $false }
-
-  Write-Host "Aside unrelated WIP ($($aside.Count) path(s)) before commit:" -ForegroundColor Yellow
-  $aside | ForEach-Object { Write-Host "  $_" }
-
-  Invoke-GitPathspecCommand -GitArgs @("stash", "push", "-u", "-m", "commit-push-main: unrelated WIP") -Paths $aside
+  Write-Host ("Aside {0} unrelated path(s)" -f $script:AsideManifest.Count) -ForegroundColor DarkYellow
   return $true
 }
 
-function Restore-AsideStash {
-  param([bool]$DidStash)
+function Restore-AsideWork {
+  if (-not $script:AsideRoot -or $script:AsideManifest.Count -eq 0) { return }
 
-  if (-not $DidStash) { return }
+  foreach ($rel in $script:AsideManifest) {
+    $src = Join-Path $script:AsideRoot ($rel -replace '/', [IO.Path]::DirectorySeparatorChar)
+    if (-not (Test-Path -LiteralPath $src)) { continue }
+    $dest = Join-Path $repoRoot ($rel -replace '/', [IO.Path]::DirectorySeparatorChar)
+    New-Item -ItemType Directory -Force -Path (Split-Path $dest -Parent) | Out-Null
+    Move-Item -LiteralPath $src -Destination $dest -Force
+  }
 
-  Write-Host "Restoring unrelated WIP (git stash pop)..." -ForegroundColor Yellow
-  Invoke-Git @("stash", "pop")
+  Remove-Item $script:AsideRoot -Recurse -Force -ErrorAction SilentlyContinue
+  $script:AsideRoot = $null
+  $script:AsideManifest = @()
 }
 
-$didStash = $false
+$didAside = $false
 try {
-  $currentBranch = Invoke-Git @("branch", "--show-current")
-  if ($currentBranch -ne $TargetBranch) {
-    throw "Refusing commit-push: on branch '$currentBranch', expected '$TargetBranch'."
+  if ((Invoke-Git @("branch", "--show-current")) -ne $TargetBranch) {
+    throw "Refusing: not on $TargetBranch."
   }
 
   $scopeRoots = Get-CommitScopeRoots -ExplicitPaths $Paths
-  $didStash = Invoke-AsideUnrelatedWork -ScopeRoots $scopeRoots
+  $didAside = Invoke-AsideUnrelatedWork -ScopeRoots $scopeRoots
 
   if ($StageAll) {
     Invoke-Git @("add", "-A")
   }
   elseif ($Paths.Count -gt 0) {
-    Invoke-GitPathspecCommand -GitArgs @("add") -Paths $Paths
+    $literal = @($Paths | ForEach-Object { Get-LiteralGitPath $_ })
+    & git add -- @literal
+    if ($LASTEXITCODE -ne 0) { throw "git add failed (exit $LASTEXITCODE)" }
   }
 
   $staged = Invoke-Git @("diff", "--cached", "--name-only")
   if ([string]::IsNullOrWhiteSpace($staged)) {
-    throw @"
-Nothing staged for commit.
-  - Pass -Paths 'rel/path' (repeatable paths in one array), or
-  - Run 'git add …' first, then run without -Paths, or
-  - Use -StageAll only when every local change belongs in the commit.
-"@
+    throw "Nothing staged. Pass -Paths or git add first."
   }
-
-  Write-Host "Staged:"
-  $staged -split "`r?`n" | ForEach-Object { Write-Host "  $_" }
 
   Invoke-Git @("commit", "-m", $Message)
   $head = Invoke-Git @("rev-parse", "--short", "HEAD")
   Write-Host "Committed $head"
 
-  $dirty = Invoke-Git @("status", "--porcelain")
-  if (-not [string]::IsNullOrWhiteSpace($dirty)) {
-    throw @"
-Working tree still dirty after commit — push skipped.
-Uncommitted paths (stage fully, widen -Paths, or stash manually):
-$dirty
-"@
+  if (-not [string]::IsNullOrWhiteSpace((Invoke-Git @("status", "--porcelain")))) {
+    throw "Working tree still dirty after commit — push skipped."
   }
 
   if (-not $NoPush) {
@@ -233,10 +182,12 @@ $dirty
     Write-Host "Pushed $head -> $Remote/$TargetBranch"
   }
 
-  $truthParams = @{ Checks = $Checks }
-  if (-not $NoPush) { $truthParams.RequirePushed = $true }
-  & (Join-Path $PSScriptRoot "release-truth.ps1") @truthParams
+  if ($Verify) {
+    $truthParams = @{ Checks = $Checks }
+    if (-not $NoPush) { $truthParams.RequirePushed = $true }
+    & (Join-Path $PSScriptRoot "release-truth.ps1") @truthParams
+  }
 }
 finally {
-  Restore-AsideStash -DidStash:([bool]$didStash)
+  if ($didAside) { Restore-AsideWork }
 }

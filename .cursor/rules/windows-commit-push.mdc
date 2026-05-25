@@ -7,28 +7,16 @@ alwaysApply: true
 
 When committing or pushing from Windows/Cursor:
 
-- Use PowerShell-native commands. Do not use `bash -lc` for git commits or heredocs.
-- **Do not** run raw `git commit; git push` in one Shell call — Cursor blocks push on a dirty tree.
-- **Use** [`scripts/commit-push-main.ps1`](../scripts/commit-push-main.ps1) as the single entry point. It:
-  1. Stashes unrelated modified/untracked files (when `-Paths` is set or files are pre-staged)
-  2. Stages and commits
-  3. Verifies a clean tree
-  4. Pushes
-  5. Restores stashed WIP via `git stash pop`
+- Use [`scripts/commit-push-main.ps1`](../scripts/commit-push-main.ps1) — **not** raw `git commit; git push`.
+- Run it **in the current shell** (do not nest `pwsh -File …` — array args break):
 
 ```powershell
-pwsh scripts/commit-push-main.ps1 -Message @'
-Commit message here.
-
-'@ -Paths @(
-  'path/to/file1.ts',
-  'path/to/file2.ts'
-)
+& .\scripts\commit-push-main.ps1 -Message 'fix: summary' -Paths @('path/to/file.ts')
 ```
 
-- **Always pass `-Paths`** for scoped commits — unrelated local WIP (guides, `.cursor/`, exports) is stashed automatically.
-- Pre-staged commit (no `-Paths`): run `git add …` first; the script stashes everything not in the index.
-- `-StageAll` only when every local change belongs in the commit (no auto-stash).
-- `-NoPush` for commit-only; push in a second script run after `git status --porcelain` is empty.
-- Batch read-only checks in parallel before committing: `git status --short --branch`, `git diff`, `git log -5`.
-- Reuse checks already run after the final code edit; do not rerun expensive checks during commit unless files changed after those checks.
+- **Always pass `-Paths`** for scoped commits. Unrelated WIP is **moved aside** (fast rename, not git stash) then restored after push.
+- `-Verify` only when you need `release-truth.ps1` (includes `git fetch` — slow). Default is commit + push only.
+- `-NoPush` for commit-only.
+- Generated guide exports and `.cursor/settings.json` are gitignored so they rarely block push.
+
+Before committing: one parallel read (`git status --short`, `git diff --stat`, `git log -3`). Do not rerun typecheck/lint unless files changed after the last check.

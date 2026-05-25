@@ -36,7 +36,7 @@ Repo operating guide. If conflict: ask owner before edit.
 - UI/copy changes: `npm run i18n:check` (must pass — 0 blocking hotspots), `npm run lint`; add `npm run test:e2e:field` for mobile field chrome or `/hub` entry changes when a logged-in dev session is available.
 - Type/data flow changes: `npm run typecheck`, `npm run lint`; add focused Playwright where user-facing behavior changed.
 - SQL/RLS/storage changes: apply or review migration path, audit `GRANT` + RLS, run `npm run gen:types` after SQL is live, then `npm run typecheck`.
-- Commit + push on Windows: `pwsh scripts/commit-push-main.ps1 -Message '…' -Paths @('…')` — the script stashes unrelated WIP, commits, verifies a clean tree, pushes, then restores WIP. Do not chain raw `git commit; git push`.
+- Commit + push: `& .\scripts\commit-push-main.ps1 -Message '…' -Paths @('…')` — moves unrelated WIP aside (fast), commits, pushes, restores. Add `-Verify` for release-truth (slow fetch). Run in current shell, not nested `pwsh -File`.
 - Before any push claim: run `pwsh scripts/release-truth.ps1` with `-Checks` when checks ran in-session.
 
 ## Final / Git Discipline
