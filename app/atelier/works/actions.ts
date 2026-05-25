@@ -13,7 +13,8 @@ import {
   normalizeImageToAvifPair,
   validateWorkImageBuffer,
 } from '@/lib/image-upload'
-import { pendingPayloadFromFormData } from '@/lib/work-pending-keys'
+import { pendingPayloadFromFormData, type PendingChangeKind } from '@/lib/work-pending-keys'
+import { provenanceTimestamp, provenanceUserId } from '@/lib/oeuvre-provenance'
 import type { WorkImage, Oeuvre } from '@/lib/types/database'
 import crypto from 'crypto'
 import { logError } from '@/lib/error-reporter/server'
@@ -123,7 +124,9 @@ async function syncPipelineWithBooleans(
 }
 
 export type SaveResult   = { error: string } | { ok: true; newId?: number; pending?: boolean }
-export type DeleteResult = { error: string } | { ok: true }
+export type DeleteResult =
+  | { error: string; deletedIds?: number[] }
+  | { ok: true; deletedIds?: number[] }
 export type ImageResult  = { error: string } | { ok: true; image: WorkImage }
 export type ImageReplaceResult = { error: string } | { ok: true; image: WorkImage; cacheKey: string }
 
@@ -191,34 +194,46 @@ export async function deleteWork(oid: number): Promise<DeleteResult> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Non authentifié' }
   const ts = new Date().toISOString()
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('Oeuvres')
     .update({ deleted_at: ts })
     .eq('OeuvreID', oid)
     .is('deleted_at', null)
+    .select('OeuvreID')
   if (error) return { error: error.message }
+  if (!data?.length) {
+    return { error: 'work_delete_no_rows' }
+  }
   revalidatePath('/atelier')
   revalidatePath('/hub')
   revalidatePath('/works')
-  return { ok: true }
+  return { ok: true, deletedIds: [oid] }
 }
 
 export async function deleteSelectedWorks(ids: number[]): Promise<DeleteResult> {
-  if (ids.length === 0) return { ok: true }
+  if (ids.length === 0) return { ok: true, deletedIds: [] }
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Non authentifié' }
   const ts = new Date().toISOString()
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('Oeuvres')
     .update({ deleted_at: ts })
     .in('OeuvreID', ids)
     .is('deleted_at', null)
+    .select('OeuvreID')
   if (error) return { error: error.message }
+  const deletedIds = (data ?? []).map((r) => r.OeuvreID as number)
+  if (deletedIds.length === 0) {
+    return { error: 'work_delete_no_rows' }
+  }
+  if (deletedIds.length < ids.length) {
+    return { error: 'work_delete_partial', deletedIds }
+  }
   revalidatePath('/atelier')
   revalidatePath('/hub')
   revalidatePath('/works')
-  return { ok: true }
+  return { ok: true, deletedIds }
 }
 
 export async function restoreSoftDeletedWorks(ids: number[]): Promise<DeleteResult> {
@@ -251,17 +266,14 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
   const isNew        = !oeuvreIdRaw
 
   // ── Editor approval gate (Phase B) ───────────────────────────────────
-  // Non-admin team edits to existing works are queued for admin review.
-  // New-work creation is allowed (low destructive risk; version trigger captures
-  // future updates). The `__skip_review` flag is set by approvePending() when
-  // the admin is replaying a previously-queued payload.
+  // Non-admin: new works + edits → pending_changes; admin applies on Audit.
+  // `__skip_review` + optional `__pending_author_id` set when admin replays a queue row.
   const skipReview = formData.get('__skip_review') === '1'
-  if (!isNew && !skipReview) {
+  const pendingAuthorId = (formData.get('__pending_author_id') as string | null)?.trim() || null
+  if (!skipReview) {
     const { data: isAdmin } = await supabase.rpc('is_admin')
     if (!isAdmin) {
-      const oid = Number(oeuvreIdRaw)
       const payload = pendingPayloadFromFormData(formData)
-      // Existing-work saves always send themes/groups from the editor; empty = clear junction.
       payload.themes = (formData.getAll('themes') as string[])
         .map((s) => s.trim())
         .filter(Boolean)
@@ -270,10 +282,26 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
         .map((s) => s.trim())
         .filter(Boolean)
         .join(',')
-      const { data: baseline } = await supabase
-        .from('Oeuvres').select('*').eq('OeuvreID', oid).maybeSingle()
+
+      const changeKind: PendingChangeKind = isNew ? 'create' : 'edit'
+      let baseline: Record<string, unknown> | null = null
+      let oeuvreIdForRow: number | null = null
+
+      if (!isNew) {
+        const oid = Number(oeuvreIdRaw)
+        if (!Number.isFinite(oid)) return { error: 'ID invalide' }
+        oeuvreIdForRow = oid
+        const { data: row } = await supabase
+          .from('Oeuvres')
+          .select('*')
+          .eq('OeuvreID', oid)
+          .maybeSingle()
+        baseline = (row as Record<string, unknown> | null) ?? null
+      }
+
       const { error: pErr } = await supabase.from('pending_changes').insert({
-        oeuvre_id: oid,
+        oeuvre_id: oeuvreIdForRow,
+        change_kind: changeKind,
         payload,
         baseline,
         author_id: user.id,
@@ -284,6 +312,9 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       return { ok: true, pending: true }
     }
   }
+
+  const actorId = provenanceUserId(user.id, pendingAuthorId)
+  const editedAt = provenanceTimestamp()
 
   const titre        = (formData.get('titre')   as string | null)?.trim() || null
   const année        = (formData.get('annee')   as string | null)?.trim() || null
@@ -429,6 +460,9 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       is_gift:           isGift,
       PresentationID:  presentationId,
       txtImageNameLink:  imageName,
+      created_by:      actorId,
+      edited_by:       actorId,
+      edited_at:       editedAt,
     })
 
     if (insertErr) return { error: insertErr.message }
@@ -551,6 +585,8 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       PresentationID:    presentationId,
       broadcast_ready:   broadcastReady,
       broadcast_caption_seed: broadcastCaptionSeed,
+      edited_by:         actorId,
+      edited_at:         editedAt,
     }
     if (formUploadedNewImage) {
       updatePayload.txtImageNameLink = imageName

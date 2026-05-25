@@ -22,6 +22,7 @@ import {
   type WorkSessionShot,
 } from '@/lib/work-session-payload'
 import type { WorkSessionRow } from '@/lib/types/database'
+import { provenanceTimestamp, provenanceUserId } from '@/lib/oeuvre-provenance'
 
 /** Until `work_session` is in generated Supabase types (run `supabase gen types` after migration). */
 function workSessionTable(supabase: Awaited<ReturnType<typeof createClient>>) {
@@ -419,6 +420,7 @@ async function selectWorkTitle(
 
 async function createWorkFromSessionFields(
   supabase: Awaited<ReturnType<typeof createClient>>,
+  actorUserId: string,
   fields: {
     title_hint: string
     notes?: string
@@ -444,6 +446,8 @@ async function createWorkFromSessionFields(
   const notesTrim = (fields.notes ?? '').trim()
   const historique = notesTrim ? `${originEntry}\n${notesTrim}` : originEntry
 
+  const actorId = provenanceUserId(actorUserId, null)
+  const editedAt = provenanceTimestamp()
   const { error: insertErr } = await supabase.from('Oeuvres').insert({
     OeuvreID: oid,
     Titre: titre,
@@ -455,6 +459,9 @@ async function createWorkFromSessionFields(
     NeedsPhotograph: true,
     Exposable: false,
     Catalogué: false,
+    created_by: actorId,
+    edited_by: actorId,
+    edited_at: editedAt,
   })
   if (insertErr) return { error: insertErr.message }
   return { ok: true, oeuvreId: oid }
@@ -1685,7 +1692,7 @@ export async function createAndLinkWorkFromSession(
   const metaRes = await updateWorkSessionMetadata(sessionId, metaPatch)
   if ('error' in metaRes) return metaRes
 
-  const created = await createWorkFromSessionFields(supabase, fields)
+  const created = await createWorkFromSessionFields(supabase, user.id, fields)
   if ('error' in created) return created
   const oid = created.oeuvreId
 
@@ -1724,7 +1731,7 @@ export async function createAndLinkWorkFromSessionItem(
   const idx = findItemIndex(payload, itemId)
   if (idx < 0) return { error: 'Entrée introuvable' }
   const item = payload.items[idx]
-  const created = await createWorkFromSessionFields(supabase, {
+  const created = await createWorkFromSessionFields(supabase, user.id, {
     title_hint: item.title_hint ?? '',
     notes: item.notes ?? payload.notes,
     width_cm: item.width_cm,
@@ -1876,7 +1883,7 @@ export async function applyWorkSessionToOeuvre(sessionId: string): Promise<Sessi
       if (!itemIsActionable(item)) continue
       let oeuvreId = item.oeuvre_id ?? null
       if (!oeuvreId && item.mode === 'new') {
-        const created = await createWorkFromSessionFields(supabase, {
+        const created = await createWorkFromSessionFields(supabase, user.id, {
           title_hint: item.title_hint ?? '',
           notes: item.notes ?? payload.notes,
           width_cm: item.width_cm,

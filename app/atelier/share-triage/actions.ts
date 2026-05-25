@@ -12,6 +12,7 @@ import { addWorkImage } from '@/app/atelier/works/actions'
 import { uploadWorkSessionItemShot } from '@/app/atelier/session/actions'
 import { logSystemEvent } from '@/lib/utils/logging'
 import { shareImageFiles, titreSeedFromSharePayload } from '@/lib/share-inbox-titre'
+import { provenanceTimestamp, provenanceUserId } from '@/lib/oeuvre-provenance'
 import { recordStorageObject } from '@/lib/storage-object-ledger'
 import {
   S3Client,
@@ -28,7 +29,7 @@ export type ShareAttachSearchHit =
   | { type: 'process'; id: string; label: string }
 
 type ShareActionErr = { error: string }
-type ShareActionOk = { ok: true; href?: string }
+type ShareActionOk = { ok: true; href?: string; pending?: true }
 
 async function guardTeam(): Promise<
   | { error: string; supabase: null; user: null }
@@ -506,9 +507,6 @@ export async function createDraftWorkFromShareInbox(
 
   const fileIndex = opts?.fileIndex ?? 0
   const titre = titreSeedFromSharePayload(payload, fileIndex) || null
-  const oidRes = await nextOeuvreId(g.supabase)
-  if (typeof oidRes !== 'number') return oidRes
-  const oid = oidRes
 
   const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '/')
   let commentaires: string | null = null
@@ -516,6 +514,40 @@ export async function createDraftWorkFromShareInbox(
     const block = formatShareInboxText(payload)
     if (block) commentaires = appendBlock(null, block)
   }
+
+  const { data: isAdmin } = await g.supabase.rpc('is_admin')
+  if (!isAdmin) {
+    const queuePayload: Record<string, string> = {
+      titre: titre ?? '',
+      status_id: '1',
+      catalogued: '0',
+      needs_photograph: '0',
+      exposable: '0',
+      __share_inbox_id: inboxId,
+      __share_file_index: String(fileIndex),
+    }
+    if (commentaires) queuePayload.commentaires = commentaires
+    const {
+      data: { user: authUser },
+    } = await g.supabase.auth.getUser()
+    const { error: pErr } = await g.supabase.from('pending_changes').insert({
+      oeuvre_id: null,
+      change_kind: 'create',
+      payload: queuePayload,
+      baseline: null,
+      author_id: g.user.id,
+      author_email: authUser?.email ?? null,
+    })
+    if (pErr) return { error: pErr.message }
+    revalidatePath('/atelier/audit')
+    return { ok: true, pending: true }
+  }
+
+  const oidRes = await nextOeuvreId(g.supabase)
+  if (typeof oidRes !== 'number') return oidRes
+  const oid = oidRes
+  const actorId = provenanceUserId(g.user.id, null)
+  const editedAt = provenanceTimestamp()
 
   const { error: insertErr } = await g.supabase.from('Oeuvres').insert({
     OeuvreID: oid,
@@ -526,6 +558,9 @@ export async function createDraftWorkFromShareInbox(
     Catalogué: false,
     NeedsPhotograph: false,
     Exposable: false,
+    created_by: actorId,
+    edited_by: actorId,
+    edited_at: editedAt,
   })
   if (insertErr) return { error: insertErr.message }
 
@@ -547,10 +582,25 @@ export async function createDraftWorkFromShareInbox(
   return { ok: true, href: `/atelier?work=${oid}` }
 }
 
+/** After admin approves a share-originated pending create, attach inbox image(s). */
+export async function attachShareInboxFilesToWork(
+  inboxId: string,
+  oeuvreId: number,
+  fileIndexes?: number[],
+): Promise<ShareActionErr | null> {
+  const g = await guardTeam()
+  if (g.error || !g.supabase || !g.user) return { error: g.error ?? 'auth' }
+
+  const loaded = await loadInbox(g.supabase, g.user.id, inboxId)
+  if ('error' in loaded) return loaded
+
+  return attachInboxImageFilesToWork(g, loaded.payload, oeuvreId, inboxId, fileIndexes)
+}
+
 /** One new œuvre per image file in the inbox. */
 export async function splitShareInboxIntoDrafts(
   inboxId: string,
-): Promise<{ ok: true; hrefs: string[] } | ShareActionErr> {
+): Promise<{ ok: true; hrefs: string[]; pending?: true } | ShareActionErr> {
   const g = await guardTeam()
   if (g.error || !g.supabase || !g.user) return { error: g.error ?? 'auth' }
 
@@ -563,6 +613,7 @@ export async function splitShareInboxIntoDrafts(
   if (imageIndexes.length === 0) return { error: 'empty' }
 
   const hrefs: string[] = []
+  let anyPending = false
   for (const idx of imageIndexes) {
     const res = await createDraftWorkFromShareInbox(inboxId, {
       fileIndex: idx,
@@ -570,7 +621,13 @@ export async function splitShareInboxIntoDrafts(
       finishInbox: false,
     })
     if ('error' in res) return res
-    if (res.href) hrefs.push(res.href)
+    if (res.pending) anyPending = true
+    else if (res.href) hrefs.push(res.href)
+  }
+
+  if (anyPending) {
+    revalidatePath('/atelier/audit')
+    return { ok: true, hrefs: [], pending: true }
   }
 
   const fin = await finishInbox(inboxId, { target: 'work', split: imageIndexes.length })

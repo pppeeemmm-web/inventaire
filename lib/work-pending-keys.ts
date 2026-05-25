@@ -49,12 +49,21 @@ export const PENDING_CHECKBOX_KEYS = [
 
 export const PENDING_MULTI_APPEND_KEYS = ['themes', 'groups'] as const
 
+/** Stored on pending create rows; handled in approvePendingChange, not replayed to saveWork. */
+export const PENDING_INTERNAL_KEYS = [
+  '__share_inbox_id',
+  '__share_file_index',
+] as const
+
 /** Union of all keys that may appear in pending_changes.payload */
 export const ALLOWED_PENDING_SAVE_KEYS = new Set<string>([
   ...PENDING_SCALAR_FORM_KEYS,
   ...PENDING_CHECKBOX_KEYS,
   ...PENDING_MULTI_APPEND_KEYS,
+  ...PENDING_INTERNAL_KEYS,
 ])
+
+export type PendingChangeKind = 'edit' | 'create'
 
 /** Build a JSON-safe payload from the editor form (no File blobs, no arbitrary keys). */
 export function pendingPayloadFromFormData(formData: FormData): Record<string, string> {
@@ -97,9 +106,10 @@ export function formDataFromPendingPayload(payload: Record<string, string>): For
   const fd = new FormData()
   const themesJoined = payload.themes
   const groupsJoined = payload.groups
+  const internal = new Set<string>(PENDING_INTERNAL_KEYS)
 
   for (const [k, v] of Object.entries(payload)) {
-    if (k === 'themes' || k === 'groups') continue
+    if (k === 'themes' || k === 'groups' || internal.has(k)) continue
     fd.append(k, v)
   }
 

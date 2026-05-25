@@ -6,11 +6,14 @@ import { saveWork } from '@/app/atelier/works/actions'
 import {
   filterPendingPayloadForReplay,
   formDataFromPendingPayload,
+  type PendingChangeKind,
 } from '@/lib/work-pending-keys'
+import { attachShareInboxFilesToWork } from '@/app/atelier/share-triage/actions'
 
 export interface PendingChange {
   id:            number
-  oeuvre_id:     number
+  oeuvre_id:     number | null
+  change_kind:   PendingChangeKind
   payload:       Record<string, string>
   baseline:      Record<string, unknown> | null
   author_id:     string | null
@@ -47,15 +50,29 @@ export async function listPendingChanges(): Promise<PendingChange[]> {
     console.error('[pending] list', error.message)
     return []
   }
-  // Optional: enrich with current title for the queue list
-  const ids = Array.from(new Set((data ?? []).map((r) => r.oeuvre_id)))
+  const ids = Array.from(
+    new Set((data ?? []).map((r) => r.oeuvre_id).filter((id): id is number => id != null)),
+  )
   let titleMap = new Map<number, string | null>()
   if (ids.length > 0) {
     const { data: titles } = await gate.supabase
       .from('Oeuvres').select('OeuvreID, Titre').in('OeuvreID', ids)
     titleMap = new Map((titles ?? []).map((t: { OeuvreID: number; Titre: string | null }) => [t.OeuvreID, t.Titre]))
   }
-  return (data ?? []).map((r) => ({ ...r, oeuvre_title: titleMap.get(r.oeuvre_id) ?? null }))
+  return (data ?? []).map((r) => {
+    const payload = r.payload as Record<string, string>
+    const kind = (r.change_kind as PendingChangeKind | null) ?? 'edit'
+    const titleFromPayload = (payload.titre ?? '').trim() || null
+    const oeuvreTitle =
+      r.oeuvre_id != null ? titleMap.get(r.oeuvre_id) ?? null : titleFromPayload
+    return {
+      ...r,
+      change_kind: kind,
+      oeuvre_id: r.oeuvre_id,
+      payload,
+      oeuvre_title: oeuvreTitle,
+    }
+  })
 }
 
 export async function approvePendingChange(id: number): Promise<PendingResult> {
@@ -69,12 +86,23 @@ export async function approvePendingChange(id: number): Promise<PendingResult> {
   if (selErr) return { error: selErr.message }
   if (!row || row.status !== 'pending') return { error: 'Proposition introuvable ou déjà traitée' }
 
-  // Replay allow-listed keys only (defense against tampered payload rows).
-  const filtered = filterPendingPayloadForReplay(row.payload as Record<string, unknown>)
+  const rawPayload = row.payload as Record<string, unknown>
+  const filtered = filterPendingPayloadForReplay(rawPayload)
+  const shareInboxId = filtered.__share_inbox_id?.trim()
+  const shareFileIndex = filtered.__share_file_index?.trim()
   const fd = formDataFromPendingPayload(filtered)
   fd.set('__skip_review', '1')
+  if (row.author_id) fd.set('__pending_author_id', row.author_id)
   const result = await saveWork(fd)
   if ('error' in result) return { error: result.error }
+
+  if (shareInboxId && typeof result.newId === 'number') {
+    const idx =
+      shareFileIndex != null && shareFileIndex !== '' ? Number(shareFileIndex) : undefined
+    const indexes = idx != null && Number.isFinite(idx) ? [idx] : undefined
+    const attach = await attachShareInboxFilesToWork(shareInboxId, result.newId, indexes)
+    if (attach) return { error: attach.error }
+  }
 
   const { error: uErr } = await supabase
     .from('pending_changes')

@@ -84,7 +84,9 @@ export function PendingQueue() {
                 >{open ? '▾' : '▸'}</button>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 12, color: 'var(--tx)' }}>
-                    #{r.oeuvre_id} · {r.oeuvre_title || '—'}
+                    {r.change_kind === 'create'
+                      ? `${t('pending_kind_create')}: ${r.oeuvre_title || '—'}`
+                      : `#${r.oeuvre_id} · ${r.oeuvre_title || '—'}`}
                   </div>
                   <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 2 }}>
                     {r.author_email || r.author_id || '—'} · {new Date(r.created_at).toLocaleString('fr-FR')}

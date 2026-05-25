@@ -1066,6 +1066,9 @@ export type Database = {
           Montee: boolean | null
           NeedsPhotograph: boolean | null
           OeuvreID: number
+          created_by: string | null
+          edited_at: string | null
+          edited_by: string | null
           PresentationID: number | null
           Prix: number | null
           PrixFinal: number | null
@@ -1109,6 +1112,9 @@ export type Database = {
           Montee?: boolean | null
           NeedsPhotograph?: boolean | null
           OeuvreID: number
+          created_by?: string | null
+          edited_at?: string | null
+          edited_by?: string | null
           PresentationID?: number | null
           Prix?: number | null
           PrixFinal?: number | null
@@ -1152,6 +1158,9 @@ export type Database = {
           Montee?: boolean | null
           NeedsPhotograph?: boolean | null
           OeuvreID?: number
+          created_by?: string | null
+          edited_at?: string | null
+          edited_by?: string | null
           PresentationID?: number | null
           Prix?: number | null
           PrixFinal?: number | null
@@ -1274,9 +1283,10 @@ export type Database = {
           author_email: string | null
           author_id: string | null
           baseline: Json | null
+          change_kind: string
           created_at: string
           id: number
-          oeuvre_id: number
+          oeuvre_id: number | null
           payload: Json
           reject_reason: string | null
           reviewed_at: string | null
@@ -1287,9 +1297,10 @@ export type Database = {
           author_email?: string | null
           author_id?: string | null
           baseline?: Json | null
+          change_kind?: string
           created_at?: string
           id?: number
-          oeuvre_id: number
+          oeuvre_id?: number | null
           payload: Json
           reject_reason?: string | null
           reviewed_at?: string | null
@@ -1300,9 +1311,10 @@ export type Database = {
           author_email?: string | null
           author_id?: string | null
           baseline?: Json | null
+          change_kind?: string
           created_at?: string
           id?: number
-          oeuvre_id?: number
+          oeuvre_id?: number | null
           payload?: Json
           reject_reason?: string | null
           reviewed_at?: string | null

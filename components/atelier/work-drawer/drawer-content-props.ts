@@ -73,4 +73,6 @@ export type DrawerContentProps = {
   onJunctionSaved?: (oeuvreId: number, themeIds: number[], groupIds: string[]) => void
   /** After a committed save — patch catalogue + drawer `o` so confidentiality survives reopen. */
   onWorkSaved?: (oeuvreId: number, patch: Partial<Oeuvre>) => void
+  /** After soft-delete succeeds — drop from client catalogue (shell cache). */
+  onOeuvreRemoved?: (oeuvreIds: number[]) => void
 }

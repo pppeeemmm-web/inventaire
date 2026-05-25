@@ -410,12 +410,27 @@ export function TeamPortalClient({
   const [oeuvres, setOeuvres] = useState<Oeuvre[]>(oeuvresChunk)
   const [oeuvresNextCursor, setOeuvresNextCursor] = useState<number | null>(oeuvresPaging?.nextCursor ?? null)
   const [oeuvresMoreLoading, setOeuvresMoreLoading] = useState(false)
+  const removedOeuvreIdsRef = useRef<Set<number>>(new Set())
+
+  const removeOeuvresFromCatalogue = useCallback((oeuvreIds: number[]) => {
+    if (oeuvreIds.length === 0) return
+    for (const id of oeuvreIds) removedOeuvreIdsRef.current.add(id)
+    setOeuvres((prev) => prev.filter((o) => !oeuvreIds.includes(o.OeuvreID)))
+    setInspected((prev) => (prev && oeuvreIds.includes(prev.OeuvreID) ? null : prev))
+    setSelection((prev) => {
+      const next = new Set(prev)
+      for (const id of oeuvreIds) next.delete(id)
+      return next
+    })
+  }, [])
 
   useEffect(() => {
     setOeuvres((prev) => {
       if (!shellPersistsAcrossTabs) return oeuvresChunk
       const byId = new Map<number, Oeuvre>()
-      for (const o of prev) byId.set(o.OeuvreID, o)
+      for (const o of prev) {
+        if (!removedOeuvreIdsRef.current.has(o.OeuvreID)) byId.set(o.OeuvreID, o)
+      }
       for (const o of oeuvresChunk) byId.set(o.OeuvreID, o)
       return [...byId.values()].sort((a, b) => b.OeuvreID - a.OeuvreID)
     })
@@ -1421,6 +1436,7 @@ export function TeamPortalClient({
             }}
             onJunctionSaved={onJunctionSaved}
             onOeuvrePatched={patchOeuvreInCatalogue}
+            onOeuvreRemoved={removeOeuvresFromCatalogue}
             inventoryDrawerGuardRef={inventoryDrawerGuardRef}
             onInventoryPanelDirtyChange={setInventoryPanelDirty}
           />
@@ -1451,6 +1467,7 @@ export function TeamPortalClient({
         presentations={presentations}
         onJunctionSaved={onJunctionSaved}
         onWorkSaved={patchOeuvreInCatalogue}
+        onOeuvreRemoved={removeOeuvresFromCatalogue}
       />
 
       {/* ── Compare Modal ────────────────────────────────────────── */}

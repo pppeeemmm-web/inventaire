@@ -60,6 +60,8 @@ interface Props {
   onJunctionSaved?: (oeuvreId: number, themeIds: number[], groupIds: string[]) => void
   /** Patch catalogue row + open work after committed save (e.g. anonymity_level). */
   onWorkSaved?: (oeuvreId: number, patch: Partial<Oeuvre>) => void
+  /** Remove soft-deleted work(s) from client catalogue immediately. */
+  onOeuvreRemoved?: (oeuvreIds: number[]) => void
 }
 
 /** Parent can call `runGuarded(() => …)` before changing the open work (e.g. list click) so unsaved edits prompt first. */
@@ -81,6 +83,7 @@ export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function Work
   isAdmin = false,
   onJunctionSaved,
   onWorkSaved,
+  onOeuvreRemoved,
 }, ref) {
   const isPanel = mode === 'panel'
   const narrow = useMediaQuery('(max-width: 767px)')
@@ -252,6 +255,7 @@ export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function Work
             isAdmin={isAdmin}
             onJunctionSaved={onJunctionSaved}
             onWorkSaved={onWorkSaved}
+            onOeuvreRemoved={onOeuvreRemoved}
           />
         </div>
       </div>
@@ -318,6 +322,7 @@ export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function Work
             isAdmin={isAdmin}
             onJunctionSaved={onJunctionSaved}
             onWorkSaved={onWorkSaved}
+            onOeuvreRemoved={onOeuvreRemoved}
           />
         </div>
       </div>

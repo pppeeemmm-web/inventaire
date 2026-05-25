@@ -469,6 +469,12 @@ export function WorkForm({
         try {
           sessionStorage.removeItem(draftKey)
         } catch { /* ignore */ }
+        if (res.pending) {
+          toast.success(t('wf_save_pending_toast'))
+          router.push('/atelier')
+          router.refresh()
+          return
+        }
         if (typeof res.newId === 'number') {
           if (shareInboxPrefill?.inboxId) {
             const attach = await attachShareInboxToWork(shareInboxPrefill.inboxId, res.newId)

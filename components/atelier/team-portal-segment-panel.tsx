@@ -98,6 +98,7 @@ export type SegmentRoutePanelProps = {
   onOpenContactFromMap: (contactId: number) => void
   onJunctionSaved?: (oeuvreId: number, themeIds: number[], groupIds: string[]) => void
   onOeuvrePatched?: (oeuvreId: number, patch: Partial<Oeuvre>) => void
+  onOeuvreRemoved?: (oeuvreIds: number[]) => void
   inventoryDrawerGuardRef?: React.RefObject<WorkDrawerGuardHandle | null>
   onInventoryPanelDirtyChange?: (dirty: boolean) => void
 }
@@ -149,6 +150,7 @@ export function SegmentRoutePanel({
   onOpenContactFromMap,
   onJunctionSaved,
   onOeuvrePatched,
+  onOeuvreRemoved,
   inventoryDrawerGuardRef,
   onInventoryPanelDirtyChange,
 }: SegmentRoutePanelProps) {
@@ -251,6 +253,7 @@ export function SegmentRoutePanel({
           isAdmin={isAdmin}
           onJunctionSaved={onJunctionSaved}
           onOeuvrePatched={onOeuvrePatched}
+          onOeuvreRemoved={onOeuvreRemoved}
           inventoryDrawerGuardRef={inventoryDrawerGuardRef}
           onInventoryPanelDirtyChange={onInventoryPanelDirtyChange}
         />

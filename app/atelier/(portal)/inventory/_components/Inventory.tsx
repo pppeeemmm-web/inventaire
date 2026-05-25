@@ -225,6 +225,7 @@ export function Inventory({
   isAdmin = false,
   onJunctionSaved,
   onOeuvrePatched,
+  onOeuvreRemoved,
   inventoryDrawerGuardRef,
   onInventoryPanelDirtyChange,
 }: SharedProps & {
@@ -246,6 +247,7 @@ export function Inventory({
   isAdmin?: boolean
   onJunctionSaved?: (oeuvreId: number, themeIds: number[], groupIds: string[]) => void
   onOeuvrePatched?: (oeuvreId: number, patch: Partial<Oeuvre>) => void
+  onOeuvreRemoved?: (oeuvreIds: number[]) => void
   inventoryDrawerGuardRef?: RefObject<WorkDrawerGuardHandle | null>
   onInventoryPanelDirtyChange?: (dirty: boolean) => void
 }) {
@@ -814,9 +816,15 @@ export function Inventory({
                 const { deleteSelectedWorks, restoreSoftDeletedWorks } = await import('@/app/atelier/works/actions')
                 const res = await deleteSelectedWorks(ids)
                 if ('error' in res) {
-                  alert(`${t('error')}: ${stringifyError(res.error)}`)
+                  const msg =
+                    res.error === 'work_delete_no_rows' || res.error === 'work_delete_partial'
+                      ? t(res.error as 'work_delete_no_rows')
+                      : `${t('error')}: ${stringifyError(res.error)}`
+                  toast.error(msg)
+                  if (res.deletedIds?.length) onOeuvreRemoved?.(res.deletedIds)
                   return
                 }
+                onOeuvreRemoved?.(res.deletedIds ?? ids)
                 setSelection(new Set())
                 router.refresh()
                 const runUndo = () => {
@@ -980,6 +988,7 @@ export function Inventory({
                 isAdmin={isAdmin}
                 onJunctionSaved={onJunctionSaved}
                 onWorkSaved={handlePanelWorkSaved}
+                onOeuvreRemoved={onOeuvreRemoved}
                 onDrawerDirtyChange={handlePanelDirtyChange}
               />
             )}

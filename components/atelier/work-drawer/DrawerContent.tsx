@@ -89,6 +89,7 @@ export function DrawerContent({
   isAdmin = false,
   onJunctionSaved,
   onWorkSaved,
+  onOeuvreRemoved,
 }: DrawerContentProps) {
   const { t, lang } = useI18n()
   const router = useRouter()
@@ -1051,7 +1052,16 @@ export function DrawerContent({
       try {
         const oid = o.OeuvreID
         const result = await deleteWork(oid)
-        if ('error' in result) { setDeleteError(result.error); return }
+        if ('error' in result) {
+          const msg =
+            result.error === 'work_delete_no_rows' || result.error === 'work_delete_partial'
+              ? t(result.error as 'work_delete_no_rows')
+              : `${t('error_prefix')} ${result.error}`
+          setDeleteError(msg)
+          toast.error(msg)
+          return
+        }
+        onOeuvreRemoved?.(result.deletedIds ?? [oid])
         onClose()
         router.refresh()
         const runUndo = () => {

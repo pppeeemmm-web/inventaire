@@ -375,6 +375,11 @@ function ParsedShareDetail(props: {
         toast.error(`${t('error_prefix')} ${res.error}`)
         return
       }
+      if (res.pending) {
+        toast.success(t('wf_save_pending_toast'))
+        onAttachDone()
+        return
+      }
       toast.success(t('share_triage_attach_ok'))
       if (res.hrefs.length === 1 && res.hrefs[0]) {
         window.location.href = res.hrefs[0]!
@@ -389,6 +394,11 @@ function ParsedShareDetail(props: {
       const res = await createDraftWorkFromShareInbox(detail.id, { fileIndex })
       if ('error' in res) {
         toast.error(`${t('error_prefix')} ${res.error}`)
+        return
+      }
+      if (res.pending) {
+        toast.success(t('wf_save_pending_toast'))
+        onAttachDone()
         return
       }
       if (res.href) window.location.href = res.href

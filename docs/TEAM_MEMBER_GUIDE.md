@@ -54,7 +54,7 @@ iOS Safari (or Chrome) → open the app on the production URL → **Share** → 
 |------------|:----:|:----:|
 | Read every tab (except 🔒) | ✓ | ✓ |
 | Open & filter Inventory, Reports, Themes, Map, Pipeline, Sales | ✓ | ✓ |
-| Create a new work (`/atelier/works/new`) — **immediate save** | ✓ | ✓ |
+| Create a new work (`/atelier/works/new`, share-triage create) — **pending queue** for admin | → queue | ✓ (immediate) |
 | Edit an existing work in the drawer — **goes to pending queue** for review | ✓ | — (saves immediately) |
 | Batch edit selection — applies **immediately** | ✓ | ✓ |
 | Theme / working-group junction edits | ✓ | ✓ |
@@ -77,7 +77,7 @@ iOS Safari (or Chrome) → open the app on the production URL → **Share** → 
 | Manual entry in `system_log` | ✓ | ✓ |
 | Delete a `studio_task` (Hub pulse) | 🔒 | ✓ |
 
-> **Why the gating exists.** `Oeuvres` rows are the canonical history of every artwork. Most existing-work edits go through **`pending_changes`** so two team members can't silently overwrite each other and so the admin sees the change before it lands. New works skip the queue because nothing is at risk yet. Batch edit also skips the queue — it's already an explicit multi-select action by the operator. The allow-list of pending-able fields lives in [`lib/work-pending-keys.ts`](../lib/work-pending-keys.ts) and is mirrored in §19 of this guide.
+> **Why the gating exists.** `Oeuvres` rows are the canonical history of every artwork. Non-admin **creates and edits** go through **`pending_changes`** (`change_kind` `create` or `edit`) so the admin approves before a row lands or changes. **`created_by` / `edited_by`** on `Oeuvres` record who proposed (on approve) or who committed (admin direct). Batch edit still applies immediately for team. Allow-list: [`lib/work-pending-keys.ts`](../lib/work-pending-keys.ts).
 
 > **What "admin-blocked" really means.** ⚠ buttons may render — you might see "Delete image" in the work drawer even though the server will reject. This is intentional defense in depth: RLS plus runtime check plus UI hint. If a click 403s, the toast tells you to ask the admin. You won't break anything by trying.
 
