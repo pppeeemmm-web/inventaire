@@ -135,83 +135,99 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
   // List of all roles from tblRole
   const [allRoles,   setAllRoles]   = useState<string[]>([])
 
-  /** Same loads as mount — must run after CSV/URL import so websites/emails/etc. state matches DB */
-  const refreshContactsClientData = useCallback(() => {
+  /** Same loads as mount — must run after merge/import so list + editor junctions match DB. */
+  const refreshContactsClientData = useCallback(async (): Promise<boolean> => {
     const sb = createClient()
-    sb.rpc('is_admin').then(({ data }: { data: boolean | null }) => {
-      setIsAdmin(!!data)
-    })
-    ;(sb.from('Contact') as any)
-      .select('ContactID, NomInstitution, Nom, Prénom, Role, Ville, Pays, is_private')
-      .order('"ContactID"')
-      .then(({ data }: { data: ContactRow[] | null }) => {
-        if (data) setContacts(data)
-      })
-    ;(sb.from('Contact') as any)
-      .select('ContactID, Email, IndicatifPays1, Téléphone1, IndicatifPays2, Téléphone2, Website, Adresse, CodePostal, Ville, Pays, Notes, Instagram, LinkedIn, Facebook, Twitter, PersonneResponsable, RoleResponsable, Actif, Genre')
-      .then(({ data }: { data: ContactRow[] | null }) => {
-        if (!data) return
-        const map: Record<number, ContactRow> = {}
-        data.forEach((r) => { map[r.ContactID] = r })
-        setExtra(map)
-      })
-    ;(sb.from('contact_addresses') as any)
-      .select('id, contact_id, label, adresse, code_postal, ville, pays, position, shipping_notes')
-      .order('position')
-      .then(({ data }: { data: ContactAddress[] | null }) => {
-        if (!data) return
-        const map: Record<number, ContactAddress[]> = {}
-        data.forEach((a) => {
-          if (!map[a.contact_id]) map[a.contact_id] = []
-          map[a.contact_id].push(a)
-        })
-        setAddresses(map)
-      })
+    try {
+      const [
+        adminRes,
+        listRes,
+        extraRes,
+        addrRes,
+        emailRes,
+        phoneRes,
+        webRes,
+        socialRes,
+        rolesRes,
+      ] = await Promise.all([
+        sb.rpc('is_admin'),
+        sb.from('Contact')
+          .select('ContactID, NomInstitution, Nom, "Prénom", Role, Ville, Pays, is_private')
+          .order('ContactID'),
+        sb.from('Contact')
+          .select('ContactID, Email, IndicatifPays1, "Téléphone1", IndicatifPays2, "Téléphone2", Website, Adresse, CodePostal, Ville, Pays, Notes, Instagram, LinkedIn, Facebook, Twitter, PersonneResponsable, RoleResponsable, Actif, Genre'),
+        sb.from('contact_addresses')
+          .select('id, contact_id, label, adresse, code_postal, ville, pays, position, shipping_notes')
+          .order('position'),
+        sb.from('contact_emails').select('*'),
+        sb.from('contact_phones').select('*'),
+        sb.from('contact_websites').select('*'),
+        sb.from('contact_socials').select('*'),
+        sb.from('tblRole').select('Nom').order('Nom'),
+      ])
 
-    ;(sb.from('contact_emails') as any).select('*').then(({ data }: any) => {
-      if (!data) return
-      const map: Record<number, ContactEmail[]> = {}
-      data.forEach((x: any) => {
-        if (!map[x.contact_id]) map[x.contact_id] = []
-        map[x.contact_id].push(x)
-      })
-      setEmails(map)
-    })
-    ;(sb.from('contact_phones') as any).select('*').then(({ data }: any) => {
-      if (!data) return
-      const map: Record<number, ContactPhone[]> = {}
-      data.forEach((x: any) => {
-        if (!map[x.contact_id]) map[x.contact_id] = []
-        map[x.contact_id].push(x)
-      })
-      setPhones(map)
-    })
-    ;(sb.from('contact_websites') as any).select('*').then(({ data }: any) => {
-      if (!data) return
-      const map: Record<number, ContactWebsite[]> = {}
-      data.forEach((x: any) => {
-        if (!map[x.contact_id]) map[x.contact_id] = []
-        map[x.contact_id].push(x)
-      })
-      setWebsites(map)
-    })
-    ;(sb.from('contact_socials') as any).select('*').then(({ data }: any) => {
-      if (!data) return
-      const map: Record<number, ContactSocial[]> = {}
-      data.forEach((x: any) => {
-        if (!map[x.contact_id]) map[x.contact_id] = []
-        map[x.contact_id].push(x)
-      })
-      setSocials(map)
-    })
+      if (adminRes.error) throw adminRes.error
+      if (listRes.error) throw listRes.error
+      if (extraRes.error) throw extraRes.error
+      if (addrRes.error) throw addrRes.error
+      if (emailRes.error) throw emailRes.error
+      if (phoneRes.error) throw phoneRes.error
+      if (webRes.error) throw webRes.error
+      if (socialRes.error) throw socialRes.error
+      if (rolesRes.error) throw rolesRes.error
 
-    ;(sb.from('tblRole') as any)
-      .select('Nom')
-      .order('Nom')
-      .then(({ data }: { data: { Nom: string }[] | null }) => {
-        if (data) setAllRoles(data.map(r => r.Nom).filter(Boolean))
-      })
-  }, [])
+      setIsAdmin(!!adminRes.data)
+      if (listRes.data) setContacts(listRes.data as ContactRow[])
+
+      const extraMap: Record<number, ContactRow> = {}
+      for (const r of (extraRes.data ?? []) as ContactRow[]) extraMap[r.ContactID] = r
+      setExtra(extraMap)
+
+      const addrMap: Record<number, ContactAddress[]> = {}
+      for (const a of (addrRes.data ?? []) as ContactAddress[]) {
+        if (!addrMap[a.contact_id]) addrMap[a.contact_id] = []
+        addrMap[a.contact_id].push(a)
+      }
+      setAddresses(addrMap)
+
+      const emailMap: Record<number, ContactEmail[]> = {}
+      for (const x of (emailRes.data ?? []) as ContactEmail[]) {
+        if (!emailMap[x.contact_id]) emailMap[x.contact_id] = []
+        emailMap[x.contact_id].push(x)
+      }
+      setEmails(emailMap)
+
+      const phoneMap: Record<number, ContactPhone[]> = {}
+      for (const x of (phoneRes.data ?? []) as ContactPhone[]) {
+        if (!phoneMap[x.contact_id]) phoneMap[x.contact_id] = []
+        phoneMap[x.contact_id].push(x)
+      }
+      setPhones(phoneMap)
+
+      const webMap: Record<number, ContactWebsite[]> = {}
+      for (const x of (webRes.data ?? []) as ContactWebsite[]) {
+        if (!webMap[x.contact_id]) webMap[x.contact_id] = []
+        webMap[x.contact_id].push(x)
+      }
+      setWebsites(webMap)
+
+      const socialMap: Record<number, ContactSocial[]> = {}
+      for (const x of (socialRes.data ?? []) as ContactSocial[]) {
+        if (!socialMap[x.contact_id]) socialMap[x.contact_id] = []
+        socialMap[x.contact_id].push(x)
+      }
+      setSocials(socialMap)
+
+      if (rolesRes.data) {
+        setAllRoles((rolesRes.data as { Nom: string }[]).map((r) => r.Nom).filter(Boolean))
+      }
+      return true
+    } catch (err) {
+      console.error('[contacts refresh]', err)
+      toast.error(`${t('error_prefix')} ${err instanceof Error ? err.message : String(err)}`)
+      return false
+    }
+  }, [t])
 
   useEffect(() => {
     refreshContactsClientData()
@@ -811,17 +827,60 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
                   if (!mergePair || mergeKeepId == null) return
                   const fromId = mergePair[0] === mergeKeepId ? mergePair[1] : mergePair[0]
                   setBusy(true)
-                  const res = await mergeContacts(mergeKeepId, fromId)
-                  setBusy(false)
-                  if ('error' in res) {
-                    alert(res.error)
-                    return
+                  try {
+                    const res = await mergeContacts(mergeKeepId, fromId)
+                    if ('error' in res) {
+                      toast.error(`${t('error_prefix')} ${res.error}`)
+                      return
+                    }
+                    setContacts((prev) => prev.filter((c) => c.ContactID !== fromId))
+                    setExtra((prev) => {
+                      const next = { ...prev }
+                      delete next[fromId]
+                      return next
+                    })
+                    setEmails((prev) => {
+                      const next = { ...prev }
+                      delete next[fromId]
+                      return next
+                    })
+                    setPhones((prev) => {
+                      const next = { ...prev }
+                      delete next[fromId]
+                      return next
+                    })
+                    setWebsites((prev) => {
+                      const next = { ...prev }
+                      delete next[fromId]
+                      return next
+                    })
+                    setSocials((prev) => {
+                      const next = { ...prev }
+                      delete next[fromId]
+                      return next
+                    })
+                    setAddresses((prev) => {
+                      const next = { ...prev }
+                      delete next[fromId]
+                      return next
+                    })
+                    const refreshed = await refreshContactsClientData()
+                    if (!refreshed) {
+                      toast.error(`${t('error_prefix')} ${t('contacts_merge_refresh_failed')}`)
+                      return
+                    }
+                    setSelected(new Set())
+                    setActiveId(res.keptId)
+                    setEditorNonce((n) => n + 1)
+                    setMergeOpen(false)
+                    setMergePair(null)
+                    toast.success(t('contacts_merge_success'))
+                  } catch (err) {
+                    console.error('[contacts merge]', err)
+                    toast.error(`${t('error_prefix')} ${err instanceof Error ? err.message : String(err)}`)
+                  } finally {
+                    setBusy(false)
                   }
-                  refreshContactsClientData()
-                  setSelected(new Set())
-                  setActiveId(res.keptId)
-                  setMergeOpen(false)
-                  setMergePair(null)
                 }}
               >
                 {busy ? t('loading') : t('contacts_merge_submit')}

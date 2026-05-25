@@ -248,21 +248,24 @@ export async function mergeContacts(intoId: number, fromId: number): Promise<Mer
   const { error: mergeErr } = await svc.from('Contact').update(mergedScalars).eq('ContactID', intoId)
   if (mergeErr) return { error: mergeErr.message }
 
+  /** Base tables only — `exhibition` is a view on `suivi_process` and must not be updated via PostgREST. */
   const fkRefs: { table: string; col: string }[] = [
     { table: 'Oeuvres', col: 'ContactID' },
     { table: 'Oeuvres', col: 'LocalisationID' },
     { table: 'Oeuvres', col: 'AcheteurID' },
-    { table: 'exhibition', col: 'contact_id' },
+    { table: 'suivi_process', col: 'contact_id' },
     { table: 'document', col: 'contact_id' },
     { table: 'sale_order', col: 'buyer_id' },
     { table: 'consignment_order', col: 'partner_id' },
-    { table: 'suivi_process', col: 'contact_id' },
     { table: 'expense', col: 'contact_id' },
     { table: 'shipment', col: 'to_contact_id' },
+    { table: 'stock_item', col: 'supplier_id' },
   ]
 
   for (const { table, col } of fkRefs) {
-    const { error } = await (svc.from(table) as any).update({ [col]: intoId }).eq(col, fromId)
+    const { error } = await (svc.from(table) as ReturnType<typeof svc.from>)
+      .update({ [col]: intoId })
+      .eq(col, fromId)
     if (error) return { error: `${table}.${col}: ${error.message}` }
   }
 
@@ -330,13 +333,17 @@ export async function mergeContacts(intoId: number, fromId: number): Promise<Mer
     }
   }
 
-  await svc.from('contact_conflicts').update({ resolved: true }).eq('public_contact_id', fromId)
-  await svc.from('contact_conflicts').update({ resolved: true }).eq('private_contact_id', fromId)
+  const { error: ccErr } = await svc
+    .from('contact_conflicts')
+    .delete()
+    .or(`public_contact_id.eq.${fromId},private_contact_id.eq.${fromId}`)
+  if (ccErr) return { error: `contact_conflicts: ${ccErr.message}` }
 
   const { error: delErr } = await svc.from('Contact').delete().eq('ContactID', fromId)
-  if (delErr) return { error: delErr.message }
+  if (delErr) return { error: `Contact.delete: ${delErr.message}` }
 
   revalidatePath('/atelier')
+  revalidatePath('/atelier/contacts')
   return { ok: true, keptId: intoId }
 }
 

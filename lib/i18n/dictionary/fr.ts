@@ -1090,6 +1090,8 @@ contacts_merge_title: 'Fusionner deux contacts',
 contacts_merge_body:
   'Conserver un contact : l’autre sera supprimé après transfert des œuvres, commandes, documents et champs vides.',
 contacts_merge_submit: 'Fusionner',
+contacts_merge_success: 'Contacts fusionnés.',
+contacts_merge_refresh_failed: 'La fusion a réussi mais le rechargement de la liste a échoué — actualisez la page.',
 contacts_batch_unit: 'contact',
 contacts_batch_unit_plural: 'contacts',
 contacts_batch_no_change: '— Ne pas modifier',

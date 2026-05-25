@@ -1087,6 +1087,8 @@ contacts_merge_title: 'Merge two contacts',
 contacts_merge_body:
   'Keep one contact: the other will be removed after works, orders, documents, and empty fields are transferred.',
 contacts_merge_submit: 'Merge',
+contacts_merge_success: 'Contacts merged.',
+contacts_merge_refresh_failed: 'Merge succeeded but reloading the list failed — refresh the page.',
 contacts_batch_unit: 'contact',
 contacts_batch_unit_plural: 'contacts',
 contacts_batch_no_change: '— Leave unchanged',
