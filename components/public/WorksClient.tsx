@@ -42,6 +42,29 @@ function cardTransform(offset: number, reducedMotion: boolean, spacing = 780): {
   return { transform, opacity, zIndex, visible: true }
 }
 
+function worksCardViewport(isMobile: boolean): { cardW: number; cardH: number } {
+  if (typeof window === 'undefined') return { cardW: 400, cardH: 460 }
+  return {
+    cardW: isMobile ? Math.min(window.innerWidth * 0.86, 520) : Math.min(window.innerWidth * 0.25, 400),
+    cardH: isMobile ? Math.min(window.innerHeight * 0.54, 540) : Math.min(window.innerHeight * 0.42, 460),
+  }
+}
+
+/** Pixel size of the artwork as object-fit: contain would lay it out in the card. */
+function fitArtDisplaySize(
+  naturalW: number,
+  naturalH: number,
+  isMobile: boolean,
+): { w: number; h: number; scale: number } {
+  const { cardW, cardH } = worksCardViewport(isMobile)
+  const scale = Math.min(cardW / naturalW, cardH / naturalH)
+  return {
+    w: Math.round(naturalW * scale),
+    h: Math.round(naturalH * scale),
+    scale,
+  }
+}
+
 // Grain SVG data URI — shared between CSS and 3D wall plane
 const GRAIN_BG = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E")`
 
@@ -80,6 +103,8 @@ export default function WorksClient({
   const MAX_Z = 2200   // perspective 2400 → apparent scale 2400/200 = 12× at max
 
   const [zoomPan, setZoomPan] = useState({ x: 0, y: 0 })
+  /** Pauses zoom micro-drift while the user pans the hi-res image. */
+  const [zoomPanning, setZoomPanning] = useState(false)
   // Track which work's full-res image has loaded (gates zoom entry)
   const [loadedWorkId, setLoadedWorkId] = useState<number | null>(null)
   // Natural dimensions of the loaded center image — used for hi-res rasterization trick
@@ -89,6 +114,8 @@ export default function WorksClient({
   const pinchRef = useRef<{ distance: number; zoomZ: number } | null>(null)
   const didDragRef = useRef(false)
   const isZoomedRef = useRef(false)
+  const centerImgLoadedRef = useRef(false)
+  const isMobileRef = useRef(false)
 
   const reducedMotion = useReducedMotion()
 
@@ -112,20 +139,27 @@ export default function WorksClient({
 
   // Oversized-image rasterization trick: lay out img at its natural pixel dimensions,
   // scale it down to fit the card via transform — browser holds the full-res GPU texture.
+  const centerArtFit = useMemo(() => {
+    if (!centerNaturalSize || typeof window === 'undefined') return null
+    return fitArtDisplaySize(centerNaturalSize.w, centerNaturalSize.h, isMobile)
+  }, [centerNaturalSize, isMobile])
+
+  const centerMountStyle = useMemo((): CSSProperties | undefined => {
+    if (!centerArtFit) return undefined
+    return { width: centerArtFit.w, height: centerArtFit.h }
+  }, [centerArtFit])
+
   const hiResImgStyle = useMemo((): CSSProperties | undefined => {
-    if (!centerNaturalSize || typeof window === 'undefined') return undefined
-    const cardW = isMobile ? Math.min(window.innerWidth * 0.86, 520) : Math.min(window.innerWidth * 0.25, 400)
-    const cardH = isMobile ? Math.min(window.innerHeight * 0.54, 540) : Math.min(window.innerHeight * 0.42, 460)
-    const scale = Math.min(cardW / centerNaturalSize.w, cardH / centerNaturalSize.h)
+    if (!centerNaturalSize || !centerArtFit) return undefined
     return {
       width: centerNaturalSize.w,
       height: centerNaturalSize.h,
       maxWidth: 'none',
       objectFit: undefined,
-      transform: `scale(${scale})`,
+      transform: `scale(${centerArtFit.scale})`,
       transformOrigin: 'center center',
     }
-  }, [centerNaturalSize, isMobile])
+  }, [centerNaturalSize, centerArtFit])
 
   /** Reset slot + zoom when chapter changes; play a brief cross-fade. */
   useEffect(() => {
@@ -137,6 +171,7 @@ export default function WorksClient({
     zoomZRef.current = 0
     setZoomZ(0)
     setZoomPan({ x: 0, y: 0 })
+    setZoomPanning(false)
     setLoadedWorkId(null)
     setCenterNaturalSize(null)
     setTrackFade(true)
@@ -195,6 +230,7 @@ export default function WorksClient({
     zoomZRef.current = 0
     setZoomZ(0)
     setZoomPan({ x: 0, y: 0 })
+    setZoomPanning(false)
   }, [])
 
   const enterZoom = useCallback(() => {
@@ -208,6 +244,14 @@ export default function WorksClient({
     setZoomZ(initialZoomZ)
   }, [centerImgLoaded, isMobile])
 
+  const enterZoomRef = useRef(enterZoom)
+  useEffect(() => { enterZoomRef.current = enterZoom }, [enterZoom])
+  useEffect(() => { centerImgLoadedRef.current = centerImgLoaded }, [centerImgLoaded])
+  useEffect(() => { isMobileRef.current = isMobile }, [isMobile])
+
+  const zoomEnterHint = t(isMobile ? 'pub_works_zoom_hint_enter_mobile' : 'pub_works_zoom_hint_enter_desktop')
+  const zoomAdjustHint = t(isMobile ? 'pub_works_zoom_hint_adjust_mobile' : 'pub_works_zoom_hint_adjust_desktop')
+
   const touchDistance = (touches: React.TouchList) => {
     const a = touches[0]
     const b = touches[1]
@@ -215,26 +259,32 @@ export default function WorksClient({
     return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY)
   }
 
-  const onZoomedTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    e.stopPropagation()
+  const onCenterTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
     if (e.touches.length >= 2) {
+      e.stopPropagation()
+      if (!isZoomedRef.current && centerImgLoadedRef.current) enterZoomRef.current()
       const distance = touchDistance(e.touches)
       if (distance > 0) {
         pinchRef.current = { distance, zoomZ: zoomZRef.current }
         dragRef.current = null
         didDragRef.current = true
+        setZoomPanning(true)
         e.preventDefault()
       }
       return
     }
-    const t = e.touches[0]
-    if (!t) return
+    if (!isZoomedRef.current) return
+    e.stopPropagation()
+    const touch = e.touches[0]
+    if (!touch) return
     pinchRef.current = null
-    dragRef.current = { mx: t.clientX, my: t.clientY, px: zoomPan.x, py: zoomPan.y }
+    dragRef.current = { mx: touch.clientX, my: touch.clientY, px: zoomPan.x, py: zoomPan.y }
     didDragRef.current = false
+    setZoomPanning(true)
   }
 
-  const onZoomedTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+  const onCenterTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!isZoomedRef.current && e.touches.length < 2) return
     e.stopPropagation()
     if (pinchRef.current && e.touches.length >= 2) {
       const distance = touchDistance(e.touches)
@@ -245,20 +295,27 @@ export default function WorksClient({
       return
     }
     if (!dragRef.current) return
-    const t = e.touches[0]
-    if (!t) return
+    const touch = e.touches[0]
+    if (!touch) return
     didDragRef.current = true
     setZoomPan({
-      x: dragRef.current.px + t.clientX - dragRef.current.mx,
-      y: dragRef.current.py + t.clientY - dragRef.current.my,
+      x: dragRef.current.px + touch.clientX - dragRef.current.mx,
+      y: dragRef.current.py + touch.clientY - dragRef.current.my,
     })
     e.preventDefault()
   }
 
-  const onZoomedTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+  const onCenterTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!isZoomedRef.current && e.touches.length === 0 && e.changedTouches.length < 2) return
     e.stopPropagation()
-    if (e.touches.length < 2) pinchRef.current = null
-    if (e.touches.length === 0) dragRef.current = null
+    if (e.touches.length < 2) {
+      pinchRef.current = null
+      if (e.touches.length === 0) setZoomPanning(false)
+    }
+    if (e.touches.length === 0) {
+      dragRef.current = null
+      setZoomPanning(false)
+    }
   }
 
   /** Keyboard nav + Esc to exit zoom. */
@@ -280,20 +337,28 @@ export default function WorksClient({
   // Keep ref in sync so the passive:false wheel handler reads current state
   useEffect(() => { isZoomedRef.current = isZoomed }, [isZoomed])
 
-  /** Wheel + trackpad: viewer approaches the wall in zoom mode, otherwise drift the carousel. */
+  /** Wheel: zoom the center work (desktop); in zoom mode adjust Z; otherwise drift carousel. */
   useEffect(() => {
     const onWheel = (e: WheelEvent) => {
+      const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY
       if (isZoomedRef.current) {
         e.preventDefault()
-        const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY
-        // Scroll UP = negative deltaY → viewer approaches → scene z increases
         const next = zoomZRef.current + (-d) * 0.4
         if (next < -40) { exitZoom(); return }
         zoomZRef.current = Math.max(0, Math.min(next, MAX_Z))
         setZoomZ(zoomZRef.current)
         return
       }
-      let raw = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY
+      if (centerImgLoadedRef.current && !isMobileRef.current) {
+        e.preventDefault()
+        if (!isZoomedRef.current) enterZoomRef.current()
+        const next = zoomZRef.current + (-d) * 0.4
+        if (next < -40) { exitZoom(); return }
+        zoomZRef.current = Math.max(0, Math.min(next, MAX_Z))
+        setZoomZ(zoomZRef.current)
+        return
+      }
+      let raw = d
       if (e.deltaMode === 1) raw *= 40
       else if (e.deltaMode === 2) raw *= 600
       const impulse = raw * 0.00025
@@ -395,6 +460,20 @@ export default function WorksClient({
           width: 100%; height: 100%;
           transform-style: preserve-3d;
         }
+        ${reducedMotion ? '' : `
+        /* Center work only — integer px drift on the art mount (not the card window) */
+        @keyframes w-focus-idle {
+          0%, 100% { transform: translate3d(0, 0, 0); }
+          33% { transform: translate3d(2px, -4px, 0); }
+          66% { transform: translate3d(-2px, -2px, 0); }
+        }
+        .w-card.center.img-ready:not(.is-zoomed) .w-art-mount {
+          animation: w-focus-idle 11s ease-in-out infinite;
+        }
+        .w-track-wrap.fading .w-card.center .w-art-mount {
+          animation-play-state: paused;
+        }
+        `}
         /* Box faces — front carries the image, side panels give the object real thickness on Z */
         .w-face {
           position: absolute;
@@ -405,6 +484,43 @@ export default function WorksClient({
           width: 100%; height: 100%;
           transform: translateZ(calc(var(--thickness) / 2));
           display: flex; align-items: center; justify-content: center;
+        }
+        /* Tight mount = bevel + shadow hug the artwork, not the card letterbox */
+        .w-art-mount {
+          position: relative;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          max-width: 100%;
+          max-height: 100%;
+          overflow: hidden;
+          line-height: 0;
+        }
+        .w-art-mount.round { border-radius: 50%; }
+        .w-card.center .w-art-mount:not(.sized) img.w-card-img {
+          width: auto;
+          height: auto;
+          max-width: 100%;
+          max-height: 100%;
+        }
+        .w-card.center .w-art-mount::after {
+          content: '';
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          z-index: 2;
+          border-radius: inherit;
+          box-shadow:
+            inset 0 0 0 1px rgba(255,252,246,0.42),
+            inset 2px 2px 5px rgba(255,252,245,0.26),
+            inset -2px -2px 5px rgba(22,20,17,0.18),
+            inset 4px 4px 10px rgba(255,250,240,0.14),
+            inset -4px -4px 10px rgba(18,16,14,0.16);
+        }
+        .w-card.center .w-art-mount {
+          filter: drop-shadow(0 15px 22px rgba(15,15,20,0.34))
+                  drop-shadow(0 4px 7px rgba(15,15,20,0.22));
         }
         .w-face.right {
           top: 0; left: calc(100% - var(--thickness));
@@ -447,25 +563,20 @@ export default function WorksClient({
           will-change: transform;
         }
         .w-card-img.round { border-radius: 50%; overflow: hidden; }
-        /* Prevent bilinear blur at high perspective magnification */
+        /* Bilinear resampling while zoomed/panning — crisp-edges + motion causes moiré */
         .w-card-img.zoomed {
-          image-rendering: -webkit-optimize-contrast;
-          image-rendering: crisp-edges;
+          image-rendering: auto;
         }
         /* Cursor states */
         .w-card.center          { cursor: default; }
-        .w-card.center.img-ready { cursor: zoom-in; }
+        .w-card.center.img-ready { cursor: default; }
         .w-card.center.is-zoomed { cursor: zoom-out; touch-action: none; }
         .w-card.center.is-zoomed:active { cursor: grabbing; }
         .w-card.side            { cursor: pointer; }
         .w-card.text            { width: min(36vw, 480px); height: auto; max-height: min(80vh, 720px); margin-left: calc(-1 * min(36vw, 480px) / 2); margin-top: 0; cursor: default; }
         .w-card.zoomed-out      { pointer-events: none; }
 
-        /* Drop-shadow rakes the silhouette so the work reads as a hung object */
-        .w-card.center .w-card-img {
-          filter: drop-shadow(0 15px 22px rgba(15,15,20,0.34))
-                  drop-shadow(0 4px 7px rgba(15,15,20,0.22));
-        }
+        /* Drop-shadow on center mount (see .w-art-mount) — side cards keep img shadow */
         .w-card.side.left .w-card-img {
           filter: drop-shadow(-10px 13px 18px rgba(0,0,0,0.30))
                   drop-shadow(0 10px 15px rgba(15,15,20,0.20));
@@ -474,7 +585,6 @@ export default function WorksClient({
           filter: drop-shadow(10px 13px 18px rgba(0,0,0,0.30))
                   drop-shadow(0 10px 15px rgba(15,15,20,0.20));
         }
-
 
         .w-caption {
           position: fixed;
@@ -631,6 +741,26 @@ export default function WorksClient({
           background: none; padding: 3px 8px; cursor: pointer; transition: all .15s; font-family: inherit;
           min-height: 32px; display: inline-flex; align-items: center;
         }
+        .w-zoom-close {
+          position: fixed;
+          z-index: 400;
+          top: max(clamp(12px, 2vw, 18px), env(safe-area-inset-top, 0px));
+          right: calc(clamp(16px, 4vw, 36px) + 4.5rem);
+          width: 48px;
+          height: 48px;
+          min-width: 44px;
+          min-height: 44px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(255,255,255,0.70);
+          border: 1px solid rgba(0,0,0,0.10);
+          border-radius: 50%;
+          font-size: 22px;
+          line-height: 1;
+          color: #1a1816;
+          cursor: pointer;
+        }
 
         .w-page-h1-sr-only {
           position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
@@ -683,9 +813,6 @@ export default function WorksClient({
           .w-cartel .w-work-details {
             align-items: center !important;
           }
-          .w-cartel .w-work-details .w-mobile-zoom-hint {
-            display: none;
-          }
           .w-bottom-stack {
             bottom: max(46px, calc(env(safe-area-inset-bottom) + 34px));
             gap: 3px;
@@ -704,10 +831,15 @@ export default function WorksClient({
           .w-nav-hint {
             display: none;
           }
+          .w-zoom-close {
+            top: calc(env(safe-area-inset-top, 0px) + clamp(12px, 2vw, 18px));
+            right: calc(clamp(16px, 4vw, 36px) + 4rem);
+          }
         }
 
         @media (prefers-reduced-motion: reduce) {
           .w-card { transition: transform 250ms ease, opacity 250ms ease; }
+          .w-card .w-art-mount { animation: none !important; }
         }
       `}</style>
 
@@ -823,7 +955,7 @@ export default function WorksClient({
                       </span>
                     )}
                     {centerImgLoaded && !isZoomed && (
-                      <span className="w-mobile-zoom-hint" style={{ marginTop: 4, color: '#9a958f' }}>{t('pub_works_zoom_hint')}</span>
+                      <span className="w-zoom-enter-hint" style={{ marginTop: 4, color: '#9a958f' }}>{zoomEnterHint}</span>
                     )}
                   </div>
                 </div>
@@ -870,6 +1002,7 @@ export default function WorksClient({
                   isCenter ? 'center' : `side ${sideClass}`,
                   isCenter && centerImgLoaded && !isZoomed ? 'img-ready' : '',
                   isCenter && isZoomed ? 'is-zoomed' : '',
+                  isCenter && isZoomed && zoomPanning ? 'w-panning' : '',
                   isSide && isZoomed ? 'zoomed-out' : '',
                 ].filter(Boolean).join(' ')
 
@@ -885,20 +1018,18 @@ export default function WorksClient({
                       if (didDragRef.current) { didDragRef.current = false; return }
                       if (isCenter && isZoomed) {
                         exitZoom()
-                      } else if (isCenter) {
-                        enterZoom()
-                      } else {
+                      } else if (!isCenter) {
                         setActiveIndex(i)
                       }
                     }}
-                    onMouseDown={isCenter && isZoomed ? (e) => { dragRef.current = { mx: e.clientX, my: e.clientY, px: zoomPan.x, py: zoomPan.y }; didDragRef.current = false; e.preventDefault() } : undefined}
+                    onMouseDown={isCenter && isZoomed ? (e) => { dragRef.current = { mx: e.clientX, my: e.clientY, px: zoomPan.x, py: zoomPan.y }; didDragRef.current = false; setZoomPanning(true); e.preventDefault() } : undefined}
                     onMouseMove={isCenter && isZoomed ? (e) => { if (!dragRef.current) return; didDragRef.current = true; setZoomPan({ x: dragRef.current.px + e.clientX - dragRef.current.mx, y: dragRef.current.py + e.clientY - dragRef.current.my }) } : undefined}
-                    onMouseUp={isCenter && isZoomed ? () => { dragRef.current = null } : undefined}
-                    onMouseLeave={isCenter && isZoomed ? () => { dragRef.current = null } : undefined}
-                    onTouchStart={isCenter && isZoomed ? onZoomedTouchStart : undefined}
-                    onTouchMove={isCenter && isZoomed ? onZoomedTouchMove : undefined}
-                    onTouchEnd={isCenter && isZoomed ? onZoomedTouchEnd : undefined}
-                    onTouchCancel={isCenter && isZoomed ? onZoomedTouchEnd : undefined}
+                    onMouseUp={isCenter && isZoomed ? () => { dragRef.current = null; setZoomPanning(false) } : undefined}
+                    onMouseLeave={isCenter && isZoomed ? () => { dragRef.current = null; setZoomPanning(false) } : undefined}
+                    onTouchStart={isCenter && centerImgLoaded ? onCenterTouchStart : undefined}
+                    onTouchMove={isCenter && centerImgLoaded ? onCenterTouchMove : undefined}
+                    onTouchEnd={isCenter && centerImgLoaded ? onCenterTouchEnd : undefined}
+                    onTouchCancel={isCenter && centerImgLoaded ? onCenterTouchEnd : undefined}
                   >
                     <div className="w-card-inner">
                       <div className="w-face left" aria-hidden />
@@ -906,15 +1037,33 @@ export default function WorksClient({
                       <div className="w-face top" aria-hidden />
                       <div className="w-face bottom" aria-hidden />
                       <div className="w-face front">
-                        <img
-                          src={src}
-                          alt={w.Titre ?? ''}
-                          className={`w-card-img${w.isRound ? ' round' : ''}${isCenter && isZoomed ? ' zoomed' : ''}`}
-                          draggable={false}
-                          style={isCenter && hiResImgStyle ? hiResImgStyle : undefined}
-                          ref={isCenter ? (el) => { if (el?.complete && el.naturalWidth > 0 && loadedWorkId !== w.OeuvreID) { setLoadedWorkId(w.OeuvreID); setCenterNaturalSize({ w: el.naturalWidth, h: el.naturalHeight }) } } : undefined}
-                          onLoad={isCenter ? (e) => { const t = e.currentTarget; setLoadedWorkId(w.OeuvreID); setCenterNaturalSize({ w: t.naturalWidth, h: t.naturalHeight }) } : undefined}
-                        />
+                        {isCenter ? (
+                          <div
+                            className={[
+                              'w-art-mount',
+                              centerMountStyle ? 'sized' : '',
+                              w.isRound ? 'round' : '',
+                            ].filter(Boolean).join(' ')}
+                            style={centerMountStyle}
+                          >
+                            <img
+                              src={src}
+                              alt={w.Titre ?? ''}
+                              className={`w-card-img${w.isRound ? ' round' : ''}${isZoomed ? ' zoomed' : ''}`}
+                              draggable={false}
+                              style={hiResImgStyle}
+                              ref={(el) => { if (el?.complete && el.naturalWidth > 0 && loadedWorkId !== w.OeuvreID) { setLoadedWorkId(w.OeuvreID); setCenterNaturalSize({ w: el.naturalWidth, h: el.naturalHeight }) } }}
+                              onLoad={(e) => { const t = e.currentTarget; setLoadedWorkId(w.OeuvreID); setCenterNaturalSize({ w: t.naturalWidth, h: t.naturalHeight }) }}
+                            />
+                          </div>
+                        ) : (
+                          <img
+                            src={src}
+                            alt={w.Titre ?? ''}
+                            className={`w-card-img${w.isRound ? ' round' : ''}`}
+                            draggable={false}
+                          />
+                        )}
                       </div>
                     </div>
                   </div>
@@ -956,27 +1105,15 @@ export default function WorksClient({
         {isZoomed && (
           <button
             type="button"
+            className="w-zoom-close"
             onClick={exitZoom}
             aria-label={t('pub_works_zoom_close_aria')}
-            style={{
-              position: 'fixed',
-              top: isMobile ? 'calc(env(safe-area-inset-top) + 92px)' : 16,
-              right: isMobile ? 18 : 16,
-              zIndex: 400,
-              width: 48, height: 48, minWidth: 44, minHeight: 44,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: 'rgba(255,255,255,0.70)',
-              border: '1px solid rgba(0,0,0,0.10)',
-              borderRadius: '50%',
-              fontSize: 22, lineHeight: 1, color: '#1a1816',
-              cursor: 'pointer',
-            }}
           >×</button>
         )}
 
         {isZoomed && (
           <div className="w-lean-hint" style={{ opacity: zoomZ <= 50 ? 1 : 0 }}>
-            {t('pub_works_zoom_hint')}
+            {zoomAdjustHint}
           </div>
         )}
 

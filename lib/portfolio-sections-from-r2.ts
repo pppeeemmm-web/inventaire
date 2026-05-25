@@ -19,6 +19,12 @@ import {
   migrateLandingGradientStops,
 } from '@/lib/landing-background'
 import {
+  LANDING_HERO_BEVEL_PROFILE_DEFAULT,
+  LANDING_HERO_BEVEL_PX_DEFAULT,
+  migrateHeroBevelProfile,
+  migrateHeroBevelPx,
+} from '@/lib/landing-hero-bevel'
+import {
   LANDING_HERO_GLOSS_BLEND_DEFAULT,
   LANDING_HERO_GLOSS_FALLOFF_DEFAULT,
   LANDING_HERO_GLOSS_POSITION_DEFAULT,
@@ -93,6 +99,8 @@ export async function loadPortfolioSectionsFromR2(): Promise<{
       hero_gloss_strength_pct: LANDING_HERO_GLOSS_STRENGTH_DEFAULT,
       hero_gloss_position_pct: LANDING_HERO_GLOSS_POSITION_DEFAULT,
       hero_gloss_falloff_pct: LANDING_HERO_GLOSS_FALLOFF_DEFAULT,
+      hero_bevel_px: LANDING_HERO_BEVEL_PX_DEFAULT,
+      hero_bevel_profile: LANDING_HERO_BEVEL_PROFILE_DEFAULT,
     },
     sections:          [],
     works_collections: [],
@@ -150,6 +158,12 @@ export async function loadPortfolioSectionsFromR2(): Promise<{
                 (landingRaw as { hero_gloss_falloff_pct?: unknown }).hero_gloss_falloff_pct,
                 LANDING_HERO_GLOSS_FALLOFF_DEFAULT,
               ),
+              hero_bevel_px: migrateHeroBevelPx(
+                (landingRaw as { hero_bevel_px?: unknown }).hero_bevel_px,
+              ),
+              hero_bevel_profile: migrateHeroBevelProfile(
+                (landingRaw as { hero_bevel_profile?: unknown }).hero_bevel_profile,
+              ),
             }
           : {
               hero_image_url: '',
@@ -166,6 +180,8 @@ export async function loadPortfolioSectionsFromR2(): Promise<{
               hero_gloss_strength_pct: LANDING_HERO_GLOSS_STRENGTH_DEFAULT,
               hero_gloss_position_pct: LANDING_HERO_GLOSS_POSITION_DEFAULT,
               hero_gloss_falloff_pct: LANDING_HERO_GLOSS_FALLOFF_DEFAULT,
+              hero_bevel_px: LANDING_HERO_BEVEL_PX_DEFAULT,
+              hero_bevel_profile: LANDING_HERO_BEVEL_PROFILE_DEFAULT,
             }
 
         const siteBlocks = migrateSiteBlocks(parsed)

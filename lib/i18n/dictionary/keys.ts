@@ -115,7 +115,7 @@ export type DictKey =
   | 'atelier_pub_hero_section_title' | 'atelier_pub_hero_url_label' | 'atelier_pub_hero_url_placeholder'
   | 'atelier_pub_hero_url_help' | 'atelier_pub_hero_preview_label' | 'atelier_pub_hero_r2_followup'
   | 'pub_works_bridge_label' | 'pub_works_preview_badge'
-  | 'pub_works_carousel_prev' | 'pub_works_carousel_next' | 'pub_works_zoom_hint' | 'pub_works_zoom_exit' | 'pub_works_nav_hint'
+  | 'pub_works_carousel_prev' | 'pub_works_carousel_next' | 'pub_works_zoom_hint' | 'pub_works_zoom_hint_enter_desktop' | 'pub_works_zoom_hint_enter_mobile' | 'pub_works_zoom_hint_adjust_desktop' | 'pub_works_zoom_hint_adjust_mobile' | 'pub_works_zoom_exit' | 'pub_works_nav_hint'
   | 'loadingAtelier'
   | 'login_restricted' | 'login_continue_google' | 'login_redirecting'
   | 'login_dev_lan_title' | 'login_dev_lan_oauth_warn' | 'login_dev_lan_auto_hint' | 'login_dev_lan_continue'

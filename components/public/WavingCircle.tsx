@@ -13,6 +13,8 @@ interface Props {
   glossEnabled?: boolean
   glossBackground?: string
   glossMixBlendMode?: CSSProperties['mixBlendMode']
+  bevelEnabled?: boolean
+  bevelBoxShadow?: string
 }
 
 export default function WavingCircle({
@@ -25,6 +27,8 @@ export default function WavingCircle({
   glossEnabled = true,
   glossBackground,
   glossMixBlendMode = 'color-dodge',
+  bevelEnabled = false,
+  bevelBoxShadow,
 }: Props) {
   return (
     <>
@@ -108,6 +112,18 @@ export default function WavingCircle({
                 />
               </div>
             </div>
+            {bevelEnabled && bevelBoxShadow ? (
+              <div
+                aria-hidden
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  borderRadius: '50%',
+                  pointerEvents: 'none',
+                  boxShadow: bevelBoxShadow,
+                }}
+              />
+            ) : null}
             {glossEnabled && glossBackground ? (
               <div
                 aria-hidden

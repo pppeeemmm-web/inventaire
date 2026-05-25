@@ -27,6 +27,11 @@ import {
   type LandingGradientStop,
 } from '@/lib/landing-background'
 import {
+  LANDING_HERO_BEVEL_PROFILE_VALUES,
+  resolveHeroBevel,
+  type LandingHeroBevelProfile,
+} from '@/lib/landing-hero-bevel'
+import {
   LANDING_HERO_GLOSS_BLEND_VALUES,
   resolveHeroGloss,
   type LandingHeroGlossBlend,
@@ -81,6 +86,11 @@ const HERO_GLOSS_BLEND_MSG: Record<LandingHeroGlossBlend, MessageKey> = {
   overlay: 'site_hero_gloss_blend_overlay',
   multiply: 'site_hero_gloss_blend_multiply',
   screen: 'site_hero_gloss_blend_screen',
+}
+
+const HERO_BEVEL_PROFILE_MSG: Record<LandingHeroBevelProfile, MessageKey> = {
+  smooth: 'site_hero_bevel_profile_smooth',
+  hard: 'site_hero_bevel_profile_hard',
 }
 
 export function SiteEditorPanel({
@@ -205,6 +215,7 @@ export function SiteEditorPanel({
 
   function renderBlockContent(kind: SiteBlockKind) {
     const heroGloss = resolveHeroGloss(config.landing)
+    const heroBevel = resolveHeroBevel(config.landing)
     switch (kind) {
       case 'hero':
         return (
@@ -250,6 +261,18 @@ export function SiteEditorPanel({
                         alt=""
                         style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                       />
+                      {heroBevel.enabled ? (
+                        <div
+                          aria-hidden
+                          style={{
+                            position: 'absolute',
+                            inset: 0,
+                            borderRadius: '50%',
+                            pointerEvents: 'none',
+                            boxShadow: heroBevel.boxShadow,
+                          }}
+                        />
+                      ) : null}
                       {heroGloss.enabled ? (
                         <div
                           aria-hidden
@@ -358,6 +381,51 @@ export function SiteEditorPanel({
                   })}
                   style={{ display: 'block', width: '100%', marginTop: 6 }}
                 />
+              </label>
+            </div>
+            <div style={{ marginTop: 24 }}>
+              <div className="t-label" style={{ marginBottom: 8, fontSize: 9 }}>{t('site_hero_bevel_label')}</div>
+              <p className="t-mono-xs" style={{ opacity: 0.55, marginBottom: 12, lineHeight: 1.5 }}>
+                {t('site_hero_bevel_help')}
+              </p>
+              <label className="t-label" style={{ display: 'block', fontSize: 9, marginBottom: 6 }}>
+                {t('site_hero_bevel_px_label')}
+                {' — '}
+                <span style={{ opacity: 0.75 }}>{config.landing.hero_bevel_px} px</span>
+                <input
+                  type="range"
+                  min={0}
+                  max={12}
+                  value={config.landing.hero_bevel_px}
+                  onChange={e => setConfig({
+                    ...config,
+                    landing: {
+                      ...config.landing,
+                      hero_bevel_px: Number(e.target.value),
+                    },
+                  })}
+                  style={{ display: 'block', width: '100%', marginTop: 6 }}
+                />
+              </label>
+              <label className="t-label" style={{ display: 'block', fontSize: 9, marginBottom: 6 }}>
+                {t('site_hero_bevel_profile_label')}
+                <select
+                  className="input full"
+                  value={config.landing.hero_bevel_profile}
+                  disabled={config.landing.hero_bevel_px <= 0}
+                  onChange={e => setConfig({
+                    ...config,
+                    landing: {
+                      ...config.landing,
+                      hero_bevel_profile: e.target.value as LandingHeroBevelProfile,
+                    },
+                  })}
+                  style={{ display: 'block', width: '100%', marginTop: 6 }}
+                >
+                  {LANDING_HERO_BEVEL_PROFILE_VALUES.map(profile => (
+                    <option key={profile} value={profile}>{t(HERO_BEVEL_PROFILE_MSG[profile])}</option>
+                  ))}
+                </select>
               </label>
             </div>
             <div style={{ marginTop: 24 }}>

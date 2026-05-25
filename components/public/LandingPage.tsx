@@ -32,6 +32,8 @@ type LandingPageProps = {
   heroGlossEnabled: boolean
   heroGlossBackground: string
   heroGlossMixBlendMode: CSSProperties['mixBlendMode']
+  heroBevelEnabled: boolean
+  heroBevelBoxShadow: string
   hiddenNavRoutes?: string[]
   navOrder?: string[]
 }
@@ -61,6 +63,8 @@ export default function LandingPage({
   heroGlossEnabled,
   heroGlossBackground,
   heroGlossMixBlendMode,
+  heroBevelEnabled,
+  heroBevelBoxShadow,
   hiddenNavRoutes = [],
   navOrder,
 }: LandingPageProps) {
@@ -72,8 +76,8 @@ export default function LandingPage({
 
   const order = navOrder ?? [...DEFAULT_NAV_ORDER]
   const inlineNavRoutes = useMemo(
-    () => landingInlineNavRoutes(order, hiddenNavRoutes, heroLinked),
-    [order, hiddenNavRoutes, heroLinked],
+    () => landingInlineNavRoutes(order, hiddenNavRoutes),
+    [order, hiddenNavRoutes],
   )
 
   const heroCaption = lang === 'en'
@@ -89,9 +93,8 @@ export default function LandingPage({
     }
     return order
       .filter(href => !hiddenSet.has(href) && labels[href])
-      .filter(href => !(heroLinked && href === '/works'))
       .map(href => [href, labels[href]] as [string, string])
-  }, [order, hiddenSet, t, heroLinked])
+  }, [order, hiddenSet, t])
 
   /** Match displayed hero (~85vmin); avoid old 520px cap that forced a small src via next/image. */
   const heroSizes = pubNarrow
@@ -112,6 +115,8 @@ export default function LandingPage({
       glossEnabled={heroGlossEnabled}
       glossBackground={heroGlossBackground}
       glossMixBlendMode={heroGlossMixBlendMode}
+      bevelEnabled={heroBevelEnabled}
+      bevelBoxShadow={heroBevelBoxShadow}
     />
   )
 
@@ -187,23 +192,6 @@ export default function LandingPage({
           outline-offset: 4px;
         }
         .hero-static { position: relative; width: 100%; height: 100%; }
-        .hero-works-overlay {
-          position: absolute; inset: 0; z-index: 2;
-          display: flex; align-items: center; justify-content: center;
-          font-size: clamp(9px, 2.8vmin, 11px); letter-spacing: clamp(2px, 0.4vmin, 4px);
-          text-transform: uppercase;           color: ${landingBodyText};
-          background: none;
-          opacity: 0; transition: opacity 0.25s;
-          pointer-events: none;
-          text-shadow: 0 0 10px rgba(255,255,255,0.55);
-        }
-        .hero-hit:hover .hero-works-overlay,
-        .hero-hit:focus-visible .hero-works-overlay { opacity: 1; }
-        @media (hover: none) {
-          .hero-works-overlay { opacity: 0; }
-          .hero-hit:active .hero-works-overlay,
-          .hero-hit:focus-visible .hero-works-overlay { opacity: 1; }
-        }
         .hero-caption {
           margin: 0;
           flex-shrink: 0;
@@ -345,9 +333,6 @@ export default function LandingPage({
                   aria-label={t('pub_landing_hero_works_link_aria')}
                 >
                   {heroImage}
-                  <span className="hero-works-overlay" aria-hidden>
-                    {t('pub_works')}
-                  </span>
                 </Link>
               ) : (
                 <div className="hero-static">{heroImage}</div>

@@ -9,6 +9,13 @@ import {
   migrateLandingGradientStops,
 } from '@/lib/landing-background'
 import type { LandingHeroGlossBlend } from '@/lib/landing-hero-gloss'
+import type { LandingHeroBevelProfile } from '@/lib/landing-hero-bevel'
+import {
+  LANDING_HERO_BEVEL_PROFILE_DEFAULT,
+  LANDING_HERO_BEVEL_PX_DEFAULT,
+  migrateHeroBevelProfile,
+  migrateHeroBevelPx,
+} from '@/lib/landing-hero-bevel'
 import {
   LANDING_HERO_GLOSS_BLEND_DEFAULT,
   LANDING_HERO_GLOSS_FALLOFF_DEFAULT,
@@ -92,6 +99,10 @@ export interface LandingConfig {
   hero_gloss_position_pct: number
   /** Gloss radius before transparent; lower preserves image shadows. */
   hero_gloss_falloff_pct: number
+  /** Inset lip on hero disc (0 = off, max 12 px). */
+  hero_bevel_px: number
+  /** Bevel shadow profile on the painted disc. */
+  hero_bevel_profile: LandingHeroBevelProfile
 }
 
 export interface PortfolioConfig {
@@ -153,6 +164,8 @@ export const DEFAULT_CONFIG: PortfolioConfig = {
     hero_gloss_strength_pct: LANDING_HERO_GLOSS_STRENGTH_DEFAULT,
     hero_gloss_position_pct: LANDING_HERO_GLOSS_POSITION_DEFAULT,
     hero_gloss_falloff_pct: LANDING_HERO_GLOSS_FALLOFF_DEFAULT,
+    hero_bevel_px: LANDING_HERO_BEVEL_PX_DEFAULT,
+    hero_bevel_profile: LANDING_HERO_BEVEL_PROFILE_DEFAULT,
   },
   sections: [],
   works_collections: [],
@@ -323,6 +336,8 @@ export function migrate(raw: any): PortfolioConfig {
         raw.landing?.hero_gloss_falloff_pct,
         LANDING_HERO_GLOSS_FALLOFF_DEFAULT,
       ),
+      hero_bevel_px: migrateHeroBevelPx(raw.landing?.hero_bevel_px),
+      hero_bevel_profile: migrateHeroBevelProfile(raw.landing?.hero_bevel_profile),
     },
     sections:          oldSections.map(migrateCollection),
     works_collections: oldWorks.map(migrateCollection),

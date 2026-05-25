@@ -175,9 +175,33 @@ export const siteBlocksMessages = defineMessages({
     fr: 'Rayon de l’éclat (plus bas = ombres de l’image préservées)',
     en: 'Gloss radius (lower = preserves image shadows)',
   },
+  site_hero_bevel_label: {
+    fr: 'Biseau du disque (image peinte)',
+    en: 'Hero disc bevel (painted image)',
+  },
+  site_hero_bevel_help: {
+    fr: 'Lèvre intérieure sur le cercle de l’image uniquement — 0 = aucun, 12 px max. Doux = ombres progressives ; Dur = arêtes plus nettes.',
+    en: 'Inset lip on the image circle only — 0 = off, 12 px max. Smooth = soft gradients; Hard = crisper edges.',
+  },
+  site_hero_bevel_px_label: {
+    fr: 'Profondeur du biseau',
+    en: 'Bevel depth',
+  },
+  site_hero_bevel_profile_label: {
+    fr: 'Profil du biseau',
+    en: 'Bevel profile',
+  },
+  site_hero_bevel_profile_smooth: {
+    fr: 'Doux',
+    en: 'Smooth',
+  },
+  site_hero_bevel_profile_hard: {
+    fr: 'Dur',
+    en: 'Hard',
+  },
   site_block_works_modes_landing_hint: {
-    fr: 'Visible : l’image d’accueil mène vers /works (survol « Œuvres »).',
-    en: 'When visible: home hero links to /works (hover shows Works).',
+    fr: 'Visible : l’image d’accueil mène vers /works ; le lien « Œuvres » reste aussi sous le disque.',
+    en: 'When visible: home hero links to /works; the Works link also stays in the row below the disc.',
   },
   site_block_page_bg_about: {
     fr: 'Fond — page À propos',
