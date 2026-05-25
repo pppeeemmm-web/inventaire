@@ -222,6 +222,7 @@ export function Inventory({
   oeuvresCatalogueTotal,
   onLoadMore,
   isAdmin = false,
+  onJunctionSaved,
 }: SharedProps & {
   techniques:     { TechniqueID: number; Technique: string | null }[]
   supports:       { SupportID:   number; Support:   string | null }[]
@@ -239,6 +240,7 @@ export function Inventory({
   onLoadMore?: () => void
   /** Admin-only controls in embedded WorkDrawer (field sessions, etc.). */
   isAdmin?: boolean
+  onJunctionSaved?: (oeuvreId: number, themeIds: number[], groupIds: string[]) => void
 }) {
   const { t } = useI18n()
   const embeddingStatusMap = useNonOkEmbeddingStatuses()
@@ -940,6 +942,7 @@ export function Inventory({
                 expanded={previewExpanded}
                 setExpanded={setPreviewExpanded}
                 isAdmin={isAdmin}
+                onJunctionSaved={onJunctionSaved}
               />
             )}
           </>

@@ -56,6 +56,8 @@ interface Props {
   onDrawerDirtyChange?: (dirty: boolean) => void
   /** Enables admin-only controls inside the editor (field sessions, etc.). */
   isAdmin?: boolean
+  /** Keep theme/group junction client maps in sync after saveWork. */
+  onJunctionSaved?: (oeuvreId: number, themeIds: number[], groupIds: string[]) => void
 }
 
 /** Parent can call `runGuarded(() => …)` before changing the open work (e.g. list click) so unsaved edits prompt first. */
@@ -75,6 +77,7 @@ export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function Work
   guardApiRef: guardApiRefProp,
   onDrawerDirtyChange,
   isAdmin = false,
+  onJunctionSaved,
 }, ref) {
   const isPanel = mode === 'panel'
   const narrow = useMediaQuery('(max-width: 767px)')
@@ -244,6 +247,7 @@ export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function Work
             guardApiRef={guardApiRef}
             onDrawerDirtyChange={onDrawerDirtyChange}
             isAdmin={isAdmin}
+            onJunctionSaved={onJunctionSaved}
           />
         </div>
       </div>
@@ -308,6 +312,7 @@ export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function Work
             guardApiRef={guardApiRef}
             onDrawerDirtyChange={onDrawerDirtyChange}
             isAdmin={isAdmin}
+            onJunctionSaved={onJunctionSaved}
           />
         </div>
       </div>

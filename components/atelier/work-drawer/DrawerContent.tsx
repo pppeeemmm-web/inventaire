@@ -42,6 +42,7 @@ import { DrawerContentFinanceSection } from './DrawerContentFinanceSection'
 import { DrawerContentNotesVersionSection } from './DrawerContentNotesVersionSection'
 import { DrawerWorkSessionsSection } from './DrawerWorkSessionsSection'
 import { DrawerContentGroupsSection } from './DrawerContentGroupsSection'
+import { emitJunctionSaved } from '@/lib/atelier/junction-refresh-bus'
 import { setsEqualNum, setsEqualStr } from './drawer-content-utils'
 import { CreatableSelect, FIS, Label, SectionTitle, Switch, WfSwitch, cap } from './drawer-widgets'
 import { WorkFormPhysicalQr } from '@/components/atelier/WorkFormPhysicalQr'
@@ -86,6 +87,7 @@ export function DrawerContent({
   guardApiRef,
   onDrawerDirtyChange,
   isAdmin = false,
+  onJunctionSaved,
 }: DrawerContentProps) {
   const { t, lang } = useI18n()
   const router = useRouter()
@@ -714,6 +716,10 @@ export function DrawerContent({
         toast.success(t('wf_save_pending_toast'))
         return true
       }
+      const savedThemes = Array.from(selThemes)
+      const savedGroups = Array.from(selGroups)
+      onJunctionSaved?.(oid, savedThemes, savedGroups)
+      emitJunctionSaved({ oeuvreId: oid, themeIds: savedThemes, groupIds: savedGroups })
       setNoteBaseline({ c: commentaires, h: historique })
       setLongTextReloadNonce((n) => n + 1)
       router.refresh()
@@ -792,6 +798,7 @@ export function DrawerContent({
     t,
     prixFinalComputed,
     router,
+    onJunctionSaved,
   ])
   /* eslint-enable react-hooks/exhaustive-deps */
 

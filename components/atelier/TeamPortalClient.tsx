@@ -35,7 +35,12 @@ import { tabNeedsCatalogueChunkOnColdStart } from '@/lib/atelier/atelier-catalog
 import { revalidateRemindersTag } from '@/app/atelier/reminders-actions'
 import { fetchAtelierShellPostPaint, fetchAtelierJunctionHydrationForOeuvreIds } from '@/app/atelier/atelier-data-actions'
 import type { AtelierJunctionDerived } from '@/lib/atelier/atelier-junction-bootstrap'
-import { mergeAtelierJunctionDerived } from '@/lib/atelier/atelier-junction-bootstrap'
+import {
+  applyOeuvreJunctionLinks,
+  mergeAtelierJunctionDerived,
+  reconcileAtelierJunctionRefresh,
+} from '@/lib/atelier/atelier-junction-bootstrap'
+import { subscribeJunctionSaved } from '@/lib/atelier/junction-refresh-bus'
 import type { ContactAddress } from '@/components/atelier/contact-editor-types'
 import { createWorkingGroupWithOeuvres } from '@/app/atelier/selection/actions'
 import { PemThemeToggle } from '@/components/PemThemeToggle'
@@ -491,6 +496,32 @@ export function TeamPortalClient({
       cancelled = true
     }
   }, [oeuvres])
+
+  const applyJunctionSaved = useCallback(
+    (oeuvreId: number, themeIds: number[], groupIds: string[]) => {
+      const isPublic = !!oeuvres.find((w) => w.OeuvreID === oeuvreId)?.is_public
+      setJunction((prev) => applyOeuvreJunctionLinks(prev, oeuvreId, themeIds, groupIds, isPublic))
+      void (async () => {
+        const res = await fetchAtelierJunctionHydrationForOeuvreIds([oeuvreId])
+        if (!res.ok) {
+          console.error('[atelier junction refresh]', res.error)
+          return
+        }
+        setJunction((prev) =>
+          reconcileAtelierJunctionRefresh(prev, res.data, [oeuvreId], { [oeuvreId]: isPublic }),
+        )
+      })()
+    },
+    [oeuvres],
+  )
+
+  useEffect(() => {
+    return subscribeJunctionSaved(({ oeuvreId, themeIds, groupIds }) => {
+      applyJunctionSaved(oeuvreId, themeIds, groupIds)
+    })
+  }, [applyJunctionSaved])
+
+  const onJunctionSaved = applyJunctionSaved
 
   const loadMoreOeuvres = useCallback(async () => {
     if (oeuvresNextCursor == null || oeuvresPaging == null) return
@@ -1353,6 +1384,7 @@ export function TeamPortalClient({
               handleSetTab('contacts')
               sessionStorage.setItem('pem_open_contact', String(id))
             }}
+            onJunctionSaved={onJunctionSaved}
           />
         ) : null}
       </div>
@@ -1379,6 +1411,7 @@ export function TeamPortalClient({
         contacts={contacts}
         groups={groups}
         presentations={presentations}
+        onJunctionSaved={onJunctionSaved}
       />
 
       {/* ── Compare Modal ────────────────────────────────────────── */}

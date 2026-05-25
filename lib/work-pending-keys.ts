@@ -103,14 +103,14 @@ export function formDataFromPendingPayload(payload: Record<string, string>): For
     fd.append(k, v)
   }
 
-  if (themesJoined) {
-    for (const t of themesJoined.split(',')) {
+  if ('themes' in payload) {
+    for (const t of (themesJoined ?? '').split(',')) {
       const s = t.trim()
       if (s) fd.append('themes', s)
     }
   }
-  if (groupsJoined) {
-    for (const g of groupsJoined.split(',')) {
+  if ('groups' in payload) {
+    for (const g of (groupsJoined ?? '').split(',')) {
       const s = g.trim()
       if (s) fd.append('groups', s)
     }

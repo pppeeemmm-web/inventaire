@@ -95,6 +95,7 @@ export type SegmentRoutePanelProps = {
   thM: Record<number, string>
   oeuvreThemeMap: Map<number, number[]>
   onOpenContactFromMap: (contactId: number) => void
+  onJunctionSaved?: (oeuvreId: number, themeIds: number[], groupIds: string[]) => void
 }
 
 export function SegmentRoutePanel({
@@ -142,6 +143,7 @@ export function SegmentRoutePanel({
   thM,
   oeuvreThemeMap,
   onOpenContactFromMap,
+  onJunctionSaved,
 }: SegmentRoutePanelProps) {
   const { t } = useI18n()
   switch (tab) {
@@ -240,6 +242,7 @@ export function SegmentRoutePanel({
           oeuvresCatalogueTotal={oeuvresPaging?.totalCount}
           onLoadMore={onLoadMore}
           isAdmin={isAdmin}
+          onJunctionSaved={onJunctionSaved}
         />
       )
     case 'reports':

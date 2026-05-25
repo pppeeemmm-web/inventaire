@@ -30,6 +30,49 @@ async function requireAdmin(supabase: SupabaseClient): Promise<string | null> {
   return isAdmin ? null : 'Action réservée à l’administrateur'
 }
 
+const GRAPH_JUNCTION_MIGRATION_HINT =
+  'Exécuter supabase/sql/graph_foundation/05c_graph_sync_safe_insert.sql dans l’éditeur SQL Supabase (ou `pwsh scripts/apply-graph-05c.ps1` avec SUPABASE_DB_URL).'
+
+function junctionRpcErrorMessage(err: { message?: string; code?: string }): string {
+  const msg = err.message ?? ''
+  if (
+    err.code === '42883' ||
+    /replace_oeuvre_(themes|work_groups)/i.test(msg) && /does not exist|Could not find/i.test(msg)
+  ) {
+    return GRAPH_JUNCTION_MIGRATION_HINT
+  }
+  if (/ON CONFLICT/i.test(msg)) {
+    return `${msg} — ${GRAPH_JUNCTION_MIGRATION_HINT}`
+  }
+  return msg
+}
+
+async function replaceOeuvreThemes(
+  svc: SupabaseClient,
+  oeuvreId: number,
+  themeIds: number[],
+): Promise<{ ok: true } | { error: string }> {
+  const { error } = await svc.rpc('replace_oeuvre_themes', {
+    p_oeuvre_id: oeuvreId,
+    p_theme_ids: themeIds,
+  })
+  if (error) return { error: junctionRpcErrorMessage(error) }
+  return { ok: true }
+}
+
+async function replaceOeuvreWorkGroups(
+  svc: SupabaseClient,
+  oeuvreId: number,
+  groupIds: string[],
+): Promise<{ ok: true } | { error: string }> {
+  const { error } = await svc.rpc('replace_oeuvre_work_groups', {
+    p_oeuvre_id: oeuvreId,
+    p_group_ids: groupIds,
+  })
+  if (error) return { error: junctionRpcErrorMessage(error) }
+  return { ok: true }
+}
+
 async function syncPipelineWithBooleans(
   supabase: SupabaseClient<Database>,
   oid: number,
@@ -215,6 +258,15 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
     if (!isAdmin) {
       const oid = Number(oeuvreIdRaw)
       const payload = pendingPayloadFromFormData(formData)
+      // Existing-work saves always send themes/groups from the editor; empty = clear junction.
+      payload.themes = (formData.getAll('themes') as string[])
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .join(',')
+      payload.groups = (formData.getAll('groups') as string[])
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .join(',')
       const { data: baseline } = await supabase
         .from('Oeuvres').select('*').eq('OeuvreID', oid).maybeSingle()
       const { error: pErr } = await supabase.from('pending_changes').insert({
@@ -389,13 +441,8 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       if (imgErr) return { error: `tblImage: ${imgErr.message}` }
     }
 
-    // Insert themes
-    if (themeIds.length > 0) {
-      const { error: themeErr } = await svc.from('oeuvre_theme').insert(
-        themeIds.map((tid) => ({ oeuvre_id: oid, theme_id: tid })),
-      )
-      if (themeErr) return { error: themeErr.message }
-    }
+    const themeRes = await replaceOeuvreThemes(svc, oid, themeIds)
+    if ('error' in themeRes) return { error: themeRes.error }
 
     // Sync pipeline actions with production booleans
     const pipeRes = await syncPipelineWithBooleans(supabase, oid, { catalogued, needsPhotograph })
@@ -587,19 +634,11 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
     const pipeRes = await syncPipelineWithBooleans(supabase, oid, { catalogued, needsPhotograph })
     if ('error' in pipeRes) return { error: pipeRes.error }
 
-    // Replace themes: delete + reinsert (triggers graph_sync_oeuvre_theme_edge)
-    const { error: delThemeErr } = await svc.from('oeuvre_theme').delete().eq('oeuvre_id', oid)
-    if (delThemeErr) return { error: delThemeErr.message }
-    if (themeIds.length > 0) {
-      const { error: insThemeErr } = await svc.from('oeuvre_theme').insert(
-        themeIds.map((tid) => ({ oeuvre_id: oid, theme_id: tid })),
-      )
-      if (insThemeErr) return { error: insThemeErr.message }
-    }
+    const themeRes = await replaceOeuvreThemes(svc, oid, themeIds)
+    if ('error' in themeRes) return { error: themeRes.error }
 
-    // Replace working groups
     const groupIds = (formData.getAll('groups') as string[]).filter(Boolean)
-    const groupRes = await saveWorkGroups(svc, oid, groupIds)
+    const groupRes = await replaceOeuvreWorkGroups(svc, oid, groupIds)
     if ('error' in groupRes) return { error: groupRes.error }
 
     revalidatePath('/atelier')
@@ -612,15 +651,7 @@ async function saveWorkGroups(
   oid: number,
   gids: string[],
 ): Promise<{ ok: true } | { error: string }> {
-  const { error: delErr } = await supabase.from('working_group_work').delete().eq('oeuvre_id', oid)
-  if (delErr) return { error: delErr.message }
-  if (gids.length > 0) {
-    const { error: insErr } = await supabase
-      .from('working_group_work')
-      .insert(gids.map((gid) => ({ oeuvre_id: oid, group_id: gid })))
-    if (insErr) return { error: insErr.message }
-  }
-  return { ok: true }
+  return replaceOeuvreWorkGroups(supabase, oid, gids)
 }
 
 /** Restore status + pipeline flags + theme/group junctions to a prior snapshot. */
@@ -650,13 +681,8 @@ export async function revertWorkSnapshot(
   })
   if ('error' in pipeRes) return { error: pipeRes.error }
 
-  await svc.from('oeuvre_theme').delete().eq('oeuvre_id', oeuvreId)
-  if (snapshot.themeIds.length > 0) {
-    const { error: insT } = await svc
-      .from('oeuvre_theme')
-      .insert(snapshot.themeIds.map((tid) => ({ oeuvre_id: oeuvreId, theme_id: tid })))
-    if (insT) return { error: insT.message }
-  }
+  const themeRes = await replaceOeuvreThemes(svc, oeuvreId, snapshot.themeIds)
+  if ('error' in themeRes) return { error: themeRes.error }
 
   const groupRes = await saveWorkGroups(svc, oeuvreId, snapshot.groupIds)
   if ('error' in groupRes) return { error: groupRes.error }

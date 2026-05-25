@@ -194,3 +194,99 @@ BEGIN
   RETURN NEW;
 END;
 $$;
+
+-- ── App RPCs: replace junctions without firing broken ON CONFLICT triggers ─────
+-- Called from saveWork via service role (auth.uid() null → allowed).
+
+CREATE OR REPLACE FUNCTION public.replace_oeuvre_themes(
+  p_oeuvre_id integer,
+  p_theme_ids integer[]
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_src uuid;
+  v_tgt uuid;
+  v_tid integer;
+BEGIN
+  IF auth.uid() IS NOT NULL AND NOT COALESCE((SELECT is_team()), false) THEN
+    RAISE EXCEPTION 'Unauthorized';
+  END IF;
+
+  v_src := public.graph_node_id('oeuvre', p_oeuvre_id::text);
+
+  ALTER TABLE public.oeuvre_theme DISABLE TRIGGER graph_sync_oeuvre_theme_edge;
+
+  DELETE FROM public.tblrelations
+  WHERE relation_type = 'theme'
+    AND source_uid IS NOT DISTINCT FROM v_src;
+
+  DELETE FROM public.oeuvre_theme WHERE oeuvre_id = p_oeuvre_id;
+
+  IF p_theme_ids IS NOT NULL THEN
+    FOREACH v_tid IN ARRAY p_theme_ids
+    LOOP
+      INSERT INTO public.oeuvre_theme (oeuvre_id, theme_id)
+      VALUES (p_oeuvre_id, v_tid);
+
+      v_tgt := public.graph_node_id('theme', v_tid::text);
+      IF v_src IS NOT NULL AND v_tgt IS NOT NULL THEN
+        PERFORM public.graph_upsert_relation_edge(v_src, v_tgt, 'theme', p_oeuvre_id);
+      END IF;
+    END LOOP;
+  END IF;
+
+  ALTER TABLE public.oeuvre_theme ENABLE TRIGGER graph_sync_oeuvre_theme_edge;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.replace_oeuvre_work_groups(
+  p_oeuvre_id integer,
+  p_group_ids text[]
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_src uuid;
+  v_tgt uuid;
+  v_gid text;
+BEGIN
+  IF auth.uid() IS NOT NULL AND NOT COALESCE((SELECT is_team()), false) THEN
+    RAISE EXCEPTION 'Unauthorized';
+  END IF;
+
+  v_src := public.graph_node_id('oeuvre', p_oeuvre_id::text);
+
+  ALTER TABLE public.working_group_work DISABLE TRIGGER graph_sync_working_group_work_edge;
+
+  DELETE FROM public.tblrelations
+  WHERE relation_type = 'workgroup'
+    AND source_uid IS NOT DISTINCT FROM v_src;
+
+  DELETE FROM public.working_group_work WHERE oeuvre_id = p_oeuvre_id;
+
+  IF p_group_ids IS NOT NULL THEN
+    FOREACH v_gid IN ARRAY p_group_ids
+    LOOP
+      INSERT INTO public.working_group_work (oeuvre_id, group_id)
+      VALUES (p_oeuvre_id, v_gid);
+
+      v_tgt := public.graph_node_id('working_group', v_gid);
+      IF v_src IS NOT NULL AND v_tgt IS NOT NULL THEN
+        PERFORM public.graph_upsert_relation_edge(v_src, v_tgt, 'workgroup', p_oeuvre_id);
+      END IF;
+    END LOOP;
+  END IF;
+
+  ALTER TABLE public.working_group_work ENABLE TRIGGER graph_sync_working_group_work_edge;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.replace_oeuvre_themes(integer, integer[]) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.replace_oeuvre_work_groups(integer, text[]) TO authenticated, service_role;

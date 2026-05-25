@@ -24,6 +24,7 @@ import {
   startEstimatedUploadProgress,
   withUploadRetry,
 } from '@/lib/mobile/image-upload-client'
+import { emitJunctionSaved } from '@/lib/atelier/junction-refresh-bus'
 import {
   draftStorageKey,
   type WorkFormDraftPayload,
@@ -513,6 +514,13 @@ export function WorkForm({
             needsPhotograph: needsPhoto,
             themeIds: Array.from(selThemes),
             groupIds: Array.from(selGroups),
+          }
+          if (oeuvre && !res.pending) {
+            emitJunctionSaved({
+              oeuvreId: oeuvre.OeuvreID,
+              themeIds: Array.from(selThemes),
+              groupIds: Array.from(selGroups),
+            })
           }
           router.push('/atelier')
           router.refresh()

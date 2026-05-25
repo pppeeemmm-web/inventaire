@@ -110,6 +110,115 @@ export function mergeAtelierJunctionDerived(a: AtelierJunctionDerived, b: Atelie
   return out
 }
 
+/** Remove one or more œuvres from junction aggregates (before replace or merge refresh). */
+export function stripOeuvresFromAtelierJunctionDerived(
+  prev: AtelierJunctionDerived,
+  oeuvreIds: number[],
+  oeuvreIsPublic: Record<number, boolean>,
+): AtelierJunctionDerived {
+  const out: AtelierJunctionDerived = {
+    themePublicStats: { ...prev.themePublicStats },
+    themePrivateWorks: { ...prev.themePrivateWorks },
+    themeWorkCount: { ...prev.themeWorkCount },
+    groupWorkCount: { ...prev.groupWorkCount },
+    groupPrivateWorks: { ...prev.groupPrivateWorks },
+    oeuvreThemeIdsByOeuvre: { ...prev.oeuvreThemeIdsByOeuvre },
+    oeuvreGroupIdsByOeuvre: { ...prev.oeuvreGroupIdsByOeuvre },
+    themeToGroups: { ...prev.themeToGroups },
+    groupToThemes: { ...prev.groupToThemes },
+  }
+
+  for (const oeuvreId of oeuvreIds) {
+    const isPub = oeuvreIsPublic[oeuvreId] ?? false
+    const oldThemes = out.oeuvreThemeIdsByOeuvre[oeuvreId] ?? []
+    const oldGroups = out.oeuvreGroupIdsByOeuvre[oeuvreId] ?? []
+
+    for (const tid of oldThemes) {
+      const n = (out.themeWorkCount[tid] ?? 0) - 1
+      if (n <= 0) delete out.themeWorkCount[tid]
+      else out.themeWorkCount[tid] = n
+
+      const priv = (out.themePrivateWorks[tid] ?? []).filter((id) => id !== oeuvreId)
+      if (priv.length) out.themePrivateWorks[tid] = priv
+      else delete out.themePrivateWorks[tid]
+
+      const stats = out.themePublicStats[tid]
+      if (stats) {
+        stats.total = Math.max(0, stats.total - 1)
+        if (isPub) stats.pub = Math.max(0, stats.pub - 1)
+        if (stats.total === 0) delete out.themePublicStats[tid]
+      }
+    }
+
+    for (const gid of oldGroups) {
+      const n = (out.groupWorkCount[gid] ?? 0) - 1
+      if (n <= 0) delete out.groupWorkCount[gid]
+      else out.groupWorkCount[gid] = n
+
+      const priv = (out.groupPrivateWorks[gid] ?? []).filter((id) => id !== oeuvreId)
+      if (priv.length) out.groupPrivateWorks[gid] = priv
+      else delete out.groupPrivateWorks[gid]
+    }
+
+    delete out.oeuvreThemeIdsByOeuvre[oeuvreId]
+    delete out.oeuvreGroupIdsByOeuvre[oeuvreId]
+  }
+
+  return rebuildThemeGroupCrossLinks(out)
+}
+
+/** Rebuild theme↔group cross-links from per-œuvre junction maps. */
+export function rebuildThemeGroupCrossLinks(state: AtelierJunctionDerived): AtelierJunctionDerived {
+  const themeToGroups: Record<number, Set<string>> = {}
+  const groupToThemes: Record<string, Set<number>> = {}
+
+  for (const [oidStr, themeIds] of Object.entries(state.oeuvreThemeIdsByOeuvre)) {
+    const groupIds = state.oeuvreGroupIdsByOeuvre[Number(oidStr)] ?? []
+    for (const tid of themeIds) {
+      for (const gid of groupIds) {
+        if (!themeToGroups[tid]) themeToGroups[tid] = new Set()
+        themeToGroups[tid].add(gid)
+        if (!groupToThemes[gid]) groupToThemes[gid] = new Set()
+        groupToThemes[gid].add(tid)
+      }
+    }
+  }
+
+  const t2g: Record<number, string[]> = {}
+  for (const [k, v] of Object.entries(themeToGroups)) t2g[Number(k)] = Array.from(v)
+  const g2t: Record<string, number[]> = {}
+  for (const [k, v] of Object.entries(groupToThemes)) g2t[k] = Array.from(v)
+
+  return { ...state, themeToGroups: t2g, groupToThemes: g2t }
+}
+
+/** Replace junction rows for œuvres (strip old links, merge fresh partial — not union on per-œuvre keys). */
+export function reconcileAtelierJunctionRefresh(
+  prev: AtelierJunctionDerived,
+  fresh: AtelierJunctionDerived,
+  oeuvreIds: number[],
+  oeuvreIsPublic: Record<number, boolean>,
+): AtelierJunctionDerived {
+  const stripped = stripOeuvresFromAtelierJunctionDerived(prev, oeuvreIds, oeuvreIsPublic)
+  return mergeAtelierJunctionDerived(stripped, fresh)
+}
+
+/** Apply saved theme/group links for one œuvre (client cache after saveWork). */
+export function applyOeuvreJunctionLinks(
+  prev: AtelierJunctionDerived,
+  oeuvreId: number,
+  themeIds: number[],
+  groupIds: string[],
+  isPublic: boolean,
+): AtelierJunctionDerived {
+  const partial = deriveAtelierJunctionState(
+    [{ OeuvreID: oeuvreId, is_public: isPublic }],
+    themeIds.map((theme_id) => ({ oeuvre_id: oeuvreId, theme_id })),
+    groupIds.map((group_id) => ({ oeuvre_id: oeuvreId, group_id })),
+  )
+  return reconcileAtelierJunctionRefresh(prev, partial, [oeuvreId], { [oeuvreId]: isPublic })
+}
+
 type OeuvreJunctionInput = { OeuvreID: number; is_public?: boolean | null }
 
 /** Build junction aggregates for a loaded œuvre batch (matches legacy TeamPortal bootstrap). */

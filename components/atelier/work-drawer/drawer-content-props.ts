@@ -70,4 +70,5 @@ export type DrawerContentProps = {
   onDrawerDirtyChange?: (dirty: boolean) => void
   /** Admin-only affordances inside the drawer (e.g. delete field sessions). */
   isAdmin?: boolean
+  onJunctionSaved?: (oeuvreId: number, themeIds: number[], groupIds: string[]) => void
 }
