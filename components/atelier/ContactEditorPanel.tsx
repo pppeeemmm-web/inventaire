@@ -14,6 +14,15 @@ import { createClient } from '@/lib/supabase/client'
 import { useI18n } from '@/lib/i18n/context'
 import { useUnsavedCloseGuard } from '@/hooks/useUnsavedCloseGuard'
 import type { Oeuvre } from '@/lib/types/database'
+import {
+  connectTeamStudioAccess,
+  getContactTeamAccessState,
+  sendAuthInviteToContact,
+  setContactTeamMember,
+  type TeamAccessState,
+} from '@/app/atelier/(portal)/contacts/team-actions'
+import { toast } from '@/lib/ui/toast'
+import { primaryContactEmail } from '@/lib/contacts/primary-contact-email'
 import type {
   ContactAddress,
   ContactEmail,
@@ -176,6 +185,8 @@ export type ContactEditorPanelProps = {
   ) => void
   onDismissEditor: () => void
   onDeleteContact?: () => void
+  /** After invite / team flag change from server actions */
+  onTeamAccessUpdated?: (patch: Pick<ContactRow, 'ContactID' | 'is_team_member' | 'auth_user_id' | 'Email'>) => void
   /** Bump after successful save (same contact) so dirty baseline resets */
   baselineEpoch: number
 }
@@ -198,6 +209,7 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
       onUpdated,
       onDismissEditor,
       onDeleteContact,
+      onTeamAccessUpdated,
       baselineEpoch,
     },
     ref,
@@ -257,9 +269,36 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
     const [socialList, setSocialList] = useState<ContactSocial[]>(initialSocials)
 
     const [busy, setBusy] = useState(false)
+    const [accessState, setAccessState] = useState<TeamAccessState | null>(null)
+    const [accessLoading, setAccessLoading] = useState(false)
+    const [connectBusy, setConnectBusy] = useState(false)
+    const [inviteBusy, setInviteBusy] = useState(false)
     const [err, setErr] = useState<string | null>(null)
+    const [teamMember, setTeamMember] = useState(Boolean(contact?.is_team_member))
+    const [authUserId, setAuthUserId] = useState<string | null>(contact?.auth_user_id ?? null)
 
     const contactKey = contact?.ContactID ?? 'new'
+
+    const refreshAccessState = useCallback(async (contactId: number) => {
+      setAccessLoading(true)
+      const res = await getContactTeamAccessState(contactId)
+      setAccessLoading(false)
+      if ('error' in res) {
+        setErr(res.error)
+        return
+      }
+      setAccessState(res)
+      setTeamMember(res.isTeamMember)
+      setAuthUserId(res.authUserId)
+    }, [])
+
+    useEffect(() => {
+      if (!isAdminUser || isNew || contact == null) {
+        setAccessState(null)
+        return
+      }
+      void refreshAccessState(contact.ContactID)
+    }, [contact?.ContactID, isAdminUser, isNew, refreshAccessState, baselineEpoch])
 
     function f(k: keyof Omit<FormState, 'Actif'>) {
       return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -318,6 +357,7 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
         const validAddrs = addrList.filter((a) => a.adresse || a.ville || a.pays || a.code_postal)
         const primaryVille = validAddrs[0]?.ville || null
         const primaryPays = validAddrs[0]?.pays || null
+        const primaryEmail = primaryContactEmail(emailList, form.Email)
 
         const payload: Record<string, unknown> = {
           NomInstitution: form.NomInstitution || null,
@@ -325,7 +365,7 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
           Prénom: form.Prénom || null,
           Genre: form.Genre || null,
           Role: form.Role || null,
-          Email: form.Email || null,
+          Email: primaryEmail,
           IndicatifPays1: form.IndicatifPays1 || null,
           Téléphone1: form.Téléphone1 || null,
           IndicatifPays2: form.IndicatifPays2 || null,
@@ -344,6 +384,9 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
           Notes: form.Notes || null,
           Actif: form.Actif,
           is_private: isAdminUser ? form.is_private : false,
+          ...(isAdminUser
+            ? { is_team_member: teamMember, IsTeamMember: teamMember }
+            : {}),
         }
 
         let contactId: number
@@ -434,7 +477,16 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
           savedSocials = data || []
         }
 
-        const savedContact = { ContactID: contactId, ...payload } as ContactRow
+        const savedContact = {
+          ContactID: contactId,
+          ...payload,
+          Email: primaryEmail,
+          is_team_member: isAdminUser ? teamMember : contact?.is_team_member,
+          auth_user_id: authUserId ?? contact?.auth_user_id ?? null,
+        } as ContactRow
+        if (primaryEmail !== form.Email) {
+          setForm((p) => ({ ...p, Email: primaryEmail ?? '' }))
+        }
         if (isNew) {
           onCreated(savedContact, savedAddrs, savedEmails, savedPhones, savedWebs, savedSocials)
         } else {
@@ -458,8 +510,85 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
       onUpdated,
       phoneList,
       socialList,
+      teamMember,
+      authUserId,
+      contact?.auth_user_id,
+      contact?.is_team_member,
       webList,
     ])
+
+    const inviteEmail = useMemo(
+      () => primaryContactEmail(emailList, form.Email) ?? '',
+      [emailList, form.Email],
+    )
+
+    async function handleTeamMemberToggle(checked: boolean) {
+      setTeamMember(checked)
+      if (isNew || contact == null) return
+      const res = await setContactTeamMember(contact.ContactID, checked)
+      if ('error' in res) {
+        setTeamMember(!checked)
+        setErr(res.error)
+        return
+      }
+      onTeamAccessUpdated?.({
+        ContactID: contact.ContactID,
+        is_team_member: checked,
+        auth_user_id: authUserId,
+      })
+    }
+
+    async function handleConnectStudio() {
+      if (isNew || contact == null) return
+      if (!inviteEmail) {
+        setErr(t('contact_team_save_email_first'))
+        return
+      }
+      setConnectBusy(true)
+      setErr(null)
+      const res = await connectTeamStudioAccess(contact.ContactID, inviteEmail)
+      setConnectBusy(false)
+      if ('error' in res) {
+        setErr(res.error)
+        return
+      }
+      setTeamMember(true)
+      setAuthUserId(res.authUserId)
+      onTeamAccessUpdated?.({
+        ContactID: contact.ContactID,
+        is_team_member: true,
+        auth_user_id: res.authUserId,
+        Email: res.email,
+      })
+      toast.success(`${t('contact_team_connect_ok')} ${res.email}`)
+      void refreshAccessState(contact.ContactID)
+    }
+
+    async function handleSendInvite() {
+      if (isNew || contact == null) return
+      if (!inviteEmail) {
+        setErr(t('contact_team_invite_no_email'))
+        return
+      }
+      if (!window.confirm(`${t('contact_team_invite_confirm')}\n\n${inviteEmail}`)) return
+      setInviteBusy(true)
+      setErr(null)
+      const res = await sendAuthInviteToContact(contact.ContactID, inviteEmail)
+      setInviteBusy(false)
+      if ('error' in res) {
+        setErr(res.error)
+        return
+      }
+      setTeamMember(true)
+      setAuthUserId(res.authUserId)
+      onTeamAccessUpdated?.({
+        ContactID: contact.ContactID,
+        is_team_member: true,
+        auth_user_id: res.authUserId,
+      })
+      toast.success(`${t('contact_team_invite_ok_invited')} ${res.email}`)
+      void refreshAccessState(contact.ContactID)
+    }
 
     const formPayload = useMemo(
       () => JSON.stringify({ form, addrList, emailList, phoneList, webList, socialList }),
@@ -631,6 +760,103 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
                   {t('contactEditorPrivateHint')}
                 </label>
               </FRow>
+            )}
+
+            {isAdminUser && (
+              <div
+                data-testid="contact-team-access"
+                style={{
+                  marginTop: 12,
+                  marginBottom: 12,
+                  padding: 12,
+                  border: '1px solid var(--bd)',
+                  background: 'var(--bg1)',
+                }}
+              >
+                <Section title={t('contact_team_section')} />
+                {!isNew && contact != null ? (
+                  <p className="t-mono-sm" style={{ color: 'var(--tx3)', margin: '0 0 10px' }}>
+                    {t('contact_team_contact_id')} #{contact.ContactID}
+                    {accessLoading ? ` · ${t('loading')}` : null}
+                  </p>
+                ) : null}
+                <label
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: 8,
+                    fontSize: 11,
+                    cursor: 'pointer',
+                    marginBottom: 10,
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={teamMember}
+                    onChange={(e) => void handleTeamMemberToggle(e.target.checked)}
+                    disabled={busy || connectBusy || inviteBusy || accessLoading}
+                    data-testid="contact-team-member"
+                  />
+                  <span>
+                    <span style={{ display: 'block', fontWeight: 600 }}>{t('contact_team_member')}</span>
+                    <span className="t-mono-sm" style={{ color: 'var(--tx3)', lineHeight: 1.4 }}>
+                      {t('contact_team_member_hint')}
+                    </span>
+                  </span>
+                </label>
+                <p className="t-mono-sm" style={{ color: 'var(--tx3)', margin: '0 0 6px', lineHeight: 1.4 }}>
+                  {accessState?.authUserId
+                    ? `${t('contact_team_linked')} · ${accessState.authUserId.slice(0, 8)}…`
+                    : t('contact_team_not_linked')}
+                </p>
+                {accessState?.linkedOtherContactId ? (
+                  <p className="t-mono-sm" style={{ color: 'var(--rust)', margin: '0 0 8px', lineHeight: 1.4 }}>
+                    {t('contact_team_linked_other').replace('{id}', String(accessState.linkedOtherContactId))}
+                  </p>
+                ) : null}
+                {!accessState?.authUserId && accessState?.authUserIdForEmail ? (
+                  <p className="t-mono-sm" style={{ color: 'var(--tx2)', margin: '0 0 8px', lineHeight: 1.4 }}>
+                    {t('contact_team_auth_exists')}
+                  </p>
+                ) : null}
+                <p className="t-mono-sm" style={{ color: 'var(--tx3)', margin: '0 0 10px', lineHeight: 1.4 }}>
+                  {inviteEmail || t('contact_team_save_email_first')}
+                </p>
+                <button
+                  type="button"
+                  className="btn sm"
+                  disabled={busy || connectBusy || inviteBusy || accessLoading || isNew || !inviteEmail || Boolean(accessState?.linkedOtherContactId)}
+                  onClick={() => void handleConnectStudio()}
+                  data-testid="contact-team-connect"
+                  style={{
+                    minHeight: 44,
+                    width: '100%',
+                    marginBottom: 8,
+                    border: '1px solid var(--ac)',
+                    background: 'var(--ac)',
+                    color: 'var(--bg0)',
+                  }}
+                >
+                  {connectBusy ? t('contact_team_connecting') : t('contact_team_connect')}
+                </button>
+                {!accessState?.authUserIdForEmail ? (
+                  <button
+                    type="button"
+                    className="btn ghost sm"
+                    disabled={busy || connectBusy || inviteBusy || accessLoading || isNew || !inviteEmail}
+                    onClick={() => void handleSendInvite()}
+                    data-testid="contact-team-invite"
+                    style={{ minHeight: 44, width: '100%' }}
+                  >
+                    {inviteBusy ? t('contact_team_invite_sending') : t('contact_team_invite_send')}
+                  </button>
+                ) : null}
+                {isNew ? (
+                  <p className="t-mono-sm" style={{ color: 'var(--tx3)', margin: '8px 0 0', lineHeight: 1.4 }}>
+                    {t('contact_team_invite_save_first')}
+                  </p>
+                ) : null}
+              </div>
             )}
 
             <Grid2 narrow={narrow}>

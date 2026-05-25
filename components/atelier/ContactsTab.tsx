@@ -155,7 +155,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
           .select('ContactID, NomInstitution, Nom, "Prénom", Role, Ville, Pays, is_private')
           .order('ContactID'),
         sb.from('Contact')
-          .select('ContactID, Email, IndicatifPays1, "Téléphone1", IndicatifPays2, "Téléphone2", Website, Adresse, CodePostal, Ville, Pays, Notes, Instagram, LinkedIn, Facebook, Twitter, PersonneResponsable, RoleResponsable, Actif, Genre'),
+          .select('ContactID, Email, IndicatifPays1, "Téléphone1", IndicatifPays2, "Téléphone2", Website, Adresse, CodePostal, Ville, Pays, Notes, Instagram, LinkedIn, Facebook, Twitter, PersonneResponsable, RoleResponsable, Actif, Genre, is_team_member, auth_user_id'),
         sb.from('contact_addresses')
           .select('id, contact_id, label, adresse, code_postal, ville, pays, position, shipping_notes')
           .order('position'),
@@ -396,6 +396,16 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
     setSocials((prev) => ({ ...prev, [c.ContactID]: s }))
     setEditorNonce((n) => n + 1)
   }, [])
+
+  const handleTeamAccessUpdated = useCallback(
+    (patch: Pick<ContactRow, 'ContactID' | 'is_team_member' | 'auth_user_id' | 'Email'>) => {
+      setExtra((prev) => ({
+        ...prev,
+        [patch.ContactID]: { ...prev[patch.ContactID], ...patch },
+      }))
+    },
+    [],
+  )
 
   const dismissEditor = useCallback(() => {
     setIsCreating(false)
@@ -1010,6 +1020,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
             onDirtyChange={setEditorDirty}
             onCreated={handleCreated}
             onUpdated={handleUpdated}
+            onTeamAccessUpdated={handleTeamAccessUpdated}
             onDismissEditor={dismissEditor}
             onDeleteContact={!isCreating && activeId != null ? requestDeleteActive : undefined}
             baselineEpoch={editorNonce}

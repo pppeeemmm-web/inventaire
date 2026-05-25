@@ -2,7 +2,7 @@
 // Cookies MUST be attached to the same NextResponse as the redirect, otherwise
 // the session never reaches the browser and protected routes loop back to /login.
 //
-// Flow: signInWithOAuth → … → /auth/callback?code=xxx&next=/hub
+// Flow: signInWithOAuth or resetPasswordForEmail → … → /auth/callback?code=xxx&next=/hub|/login/reset-password
 
 import { NextResponse, type NextRequest } from 'next/server'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'

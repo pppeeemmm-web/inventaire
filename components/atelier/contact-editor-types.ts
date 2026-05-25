@@ -27,6 +27,8 @@ export interface ContactRow {
   RoleResponsable?: string | null
   Actif?: boolean | null
   is_private?: boolean | null
+  is_team_member?: boolean | null
+  auth_user_id?: string | null
 }
 
 export interface ContactAddress {

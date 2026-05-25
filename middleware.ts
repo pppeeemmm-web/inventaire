@@ -100,8 +100,10 @@ export async function middleware(request: NextRequest) {
       Boolean(process.env.DEV_AUTO_LOGIN_EMAIL) &&
       Boolean(process.env.DEV_AUTO_LOGIN_PASSWORD)
 
+    const skipDevAutoLogin = p === '/login/reset-password'
     const tryDevLoginHere =
       devAutoLoginReady &&
+      !skipDevAutoLogin &&
       ((isProtected && !isAuthRoute) || p === '/login' || p.startsWith('/login/'))
 
     if (!user && isDocNav && tryDevLoginHere) {

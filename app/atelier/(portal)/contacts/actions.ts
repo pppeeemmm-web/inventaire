@@ -201,10 +201,17 @@ function isBlankScalar(v: unknown): boolean {
 function mergeContactScalars(keep: Record<string, unknown>, lose: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = { ...keep }
   for (const [k, v] of Object.entries(lose)) {
-    if (k === 'ContactID') continue
+    if (k === 'ContactID' || k === 'auth_user_id') continue
+    if (k === 'is_team_member' || k === 'IsTeamMember') {
+      out[k] = Boolean(out[k]) || Boolean(v)
+      continue
+    }
     if (isBlankScalar(v)) continue
     if (isBlankScalar(out[k])) out[k] = v
   }
+  const keepAuth = keep.auth_user_id as string | null | undefined
+  const loseAuth = lose.auth_user_id as string | null | undefined
+  if (!keepAuth && loseAuth) out.auth_user_id = loseAuth
   return out
 }
 
@@ -244,8 +251,28 @@ export async function mergeContacts(intoId: number, fromId: number): Promise<Mer
   const { data: loseRow, error: le } = await svc.from('Contact').select('*').eq('ContactID', fromId).maybeSingle()
   if (ke || le || !keepRow || !loseRow) return { error: 'Contact introuvable' }
 
+  const keepAuth = (keepRow as { auth_user_id?: string | null }).auth_user_id ?? null
+  const loseAuth = (loseRow as { auth_user_id?: string | null }).auth_user_id ?? null
+
+  if (keepAuth && loseAuth && keepAuth !== loseAuth) {
+    return {
+      error:
+        'Les deux fiches ont des logins atelier différents. Gardez une seule fiche liée, ou déliez un compte avant de fusionner.',
+    }
+  }
+
   const mergedScalars = mergeContactScalars(keepRow as Record<string, unknown>, loseRow as Record<string, unknown>)
   delete (mergedScalars as { ContactID?: number }).ContactID
+
+  const mergedAuth = (mergedScalars as { auth_user_id?: string | null }).auth_user_id ?? null
+  if (mergedAuth && loseAuth === mergedAuth) {
+    const { error: clearAuthErr } = await svc
+      .from('Contact')
+      .update({ auth_user_id: null })
+      .eq('ContactID', fromId)
+    if (clearAuthErr) return { error: clearAuthErr.message }
+  }
+
   const { error: mergeErr } = await svc.from('Contact').update(mergedScalars).eq('ContactID', intoId)
   if (mergeErr) return { error: mergeErr.message }
 
