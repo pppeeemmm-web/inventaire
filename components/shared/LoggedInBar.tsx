@@ -3,15 +3,19 @@
 import { useI18n } from '@/lib/i18n/context'
 
 type Props = {
+  /** Pill text (often acronym for team members). */
   displayName: string
+  /** Full name for tooltip / accessibility; defaults to displayName. */
+  fullName?: string
 }
 
 /** Fixed corner hint — no layout shift, does not capture clicks. */
-export function LoggedInBar({ displayName }: Props) {
+export function LoggedInBar({ displayName, fullName }: Props) {
   const { t } = useI18n()
   if (!displayName) return null
 
-  const fullLabel = `${t('portal_connected_as')} ${displayName}`
+  const resolvedFull = fullName?.trim() || displayName
+  const fullLabel = `${t('portal_connected_as')} ${resolvedFull}`
 
   return (
     <div
