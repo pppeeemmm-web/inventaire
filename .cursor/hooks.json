@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeShellExecution": [
+      {
+        "command": "pwsh -NoProfile -File .cursor/hooks/allow-trusted-shell.ps1",
+        "matcher": "commit-push-main\\.ps1|release-truth\\.ps1"
+      }
+    ]
+  }
+}

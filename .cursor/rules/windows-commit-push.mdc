@@ -20,3 +20,18 @@ When committing or pushing from Windows/Cursor:
 - Generated guide exports and `.cursor/settings.json` are gitignored so they rarely block push.
 
 Before committing: one parallel read (`git status --short`, `git diff --stat`, `git log -3`). Do not rerun typecheck/lint unless files changed after the last check.
+
+## Shell permissions (no double prompts)
+
+These commands are on the owner’s Cursor **command allowlist** and have a `beforeShellExecution` hook that returns `permission: allow`:
+
+- `scripts/commit-push-main.ps1`
+- `scripts/release-truth.ps1`
+
+**Agents must obey:**
+
+1. Run `commit-push-main.ps1` / `release-truth.ps1` with **no** `required_permissions` on the Shell tool (do not request `git_write`, `full_network`, or `all`).
+2. **One** Shell call only — never retry the same script in the same turn with a different permission set.
+3. If a run truly failed (non-zero exit), report the error; do not “fix” by re-running with escalated permissions unless the user explicitly asks.
+
+Requesting sandbox bypass on top of the allowlist causes **two** approval prompts; that is the failure mode to avoid.
