@@ -436,6 +436,59 @@ input, textarea, select { font: inherit; color: inherit; background: transparent
   background: var(--bg2);
 }
 
+.pem-atelier-sidebar-nav-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.pem-atelier-sidebar:not(.pem-atelier-sidebar--narrow) .pem-atelier-sidebar-nav-scroll {
+  padding-block: 12px;
+}
+
+.pem-atelier-sidebar-nav-inner {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: clamp(10px, 1.25vh, 14px);
+}
+
+.pem-atelier-sidebar-group {
+  flex-shrink: 0;
+}
+
+.pem-atelier-sidebar-eyebrow {
+  padding: 0 20px;
+  margin-bottom: 4px;
+  color: var(--tx2);
+  font-size: 9px;
+  letter-spacing: 2px;
+  font-weight: 600;
+  opacity: 0.8;
+}
+
+.pem-atelier-sidebar-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  /* Eyebrows sit at 20px; tabs inset slightly for subsection hierarchy */
+  padding-inline: 28px 14px;
+}
+
+.pem-sidebar-tab--desktop {
+  padding-block: 5px;
+  padding-inline: 0;
+  line-height: 1.25;
+}
+
+.pem-sidebar-tab--narrow {
+  padding-block: 10px;
+  padding-inline: 0;
+  min-height: 44px;
+  box-sizing: border-box;
+}
+
 /* Ring D — honour reduced motion on Atelier narrow sidebar slide */
 @media (prefers-reduced-motion: reduce) {
   .pem-atelier-sidebar {

@@ -48,6 +48,7 @@ import { Skeleton } from '@/components/ui/Skeleton'
 import { toast, dismissToast } from '@/lib/ui/toast'
 import { consumeUndo, isUndoKeyBlockedTarget, peekUndo } from '@/lib/ui/undo'
 import { VoiceNoteSheet } from '@/components/shared/VoiceNoteSheet'
+import { triggerStudioBibleDownload } from '@/lib/studio-bible-download'
 
 function TabPanelFallback() {
   const { t } = useI18n()
@@ -754,12 +755,20 @@ export function TeamPortalClient({
 
   const [showCompare, setShowCompare] = useState(false)
   const portalRootRef = useRef<HTMLDivElement>(null)
+  const sidebarNavScrollRef = useRef<HTMLDivElement>(null)
   const atelierNarrow = useAtelierNarrow(portalRootRef)
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
     if (!atelierNarrow) setSidebarOpen(false)
   }, [atelierNarrow])
+
+  useLayoutEffect(() => {
+    const root = sidebarNavScrollRef.current
+    if (!root) return
+    const active = root.querySelector<HTMLElement>('.pem-sidebar-tab--on')
+    active?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  }, [tab])
 
   const {
     themePublicStats,
@@ -1024,6 +1033,13 @@ export function TeamPortalClient({
     handleSetTab('sales')
   }
 
+  const downloadStudioBible = useCallback(() => {
+    void triggerStudioBibleDownload({
+      notFoundMessage: t('studio_bible_download_not_found'),
+      errorMessage: (detail) => t('vault_download_err_fmt').replace('{msg}', detail),
+    })
+  }, [t])
+
   return (
     <>
       {drawerLeaveDialog}
@@ -1046,7 +1062,7 @@ export function TeamPortalClient({
         onStockTake={() => handleSetTab('stock-take')}
         onPendingApprovals={isAdmin ? () => handleSetTab('audit') : undefined}
         onExportXlsx={() => { handleSetTab('reports') }}
-        onRegenBible={() => { handleSetTab('system') }}
+        onDownloadStudioBible={downloadStudioBible}
       />
     <div
       ref={portalRootRef}
@@ -1167,7 +1183,7 @@ export function TeamPortalClient({
               onPaletteOpen={() => setPaletteOpen(true)}
               onNewWork={() => void router.push('/atelier/works/new')}
               onReports={() => handleSetTab('reports')}
-              onStudioBible={() => handleSetTab('system')}
+              onStudioBible={downloadStudioBible}
             />
           )}
         </div>
@@ -1207,7 +1223,9 @@ export function TeamPortalClient({
           position: 'relative',
           zIndex: atelierNarrow ? 150 : undefined,
         }}>
-          <div className="pem-atelier-sidebar" style={{
+          <div
+            className={atelierNarrow ? 'pem-atelier-sidebar pem-atelier-sidebar--narrow' : 'pem-atelier-sidebar'}
+            style={{
             ...(atelierNarrow
               ? {
                   position: 'fixed',
@@ -1217,10 +1235,10 @@ export function TeamPortalClient({
                   width: 'min(300px, 88vw)',
                   background: 'var(--bg1)',
                   borderRight: '1px solid var(--bd)',
-                  overflow: 'auto',
+                  overflow: 'hidden',
                   display: 'flex',
                   flexDirection: 'column',
-                  padding: 'max(24px, env(safe-area-inset-top)) 0 24px',
+                  padding: 'max(24px, env(safe-area-inset-top)) 0 max(24px, env(safe-area-inset-bottom))',
                   transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
                   transition: 'transform 0.2s ease',
                   boxShadow: sidebarOpen ? '8px 0 28px rgba(0,0,0,0.35)' : undefined,
@@ -1231,11 +1249,11 @@ export function TeamPortalClient({
                   overflow: 'hidden',
                   display: 'flex',
                   flexDirection: 'column',
-                  padding: '24px 0',
+                  padding: 0,
                   background: 'var(--bg1)',
                 }),
           }}>
-            <div style={{ padding: '0 16px 12px', borderBottom: '1px solid var(--bd)', marginBottom: 8, display: atelierNarrow ? 'flex' : 'none', justifyContent: 'space-between', alignItems: 'center', gap: 10, minWidth: 0 }}>
+            <div style={{ flexShrink: 0, padding: '0 16px 12px', borderBottom: '1px solid var(--bd)', marginBottom: 8, display: atelierNarrow ? 'flex' : 'none', justifyContent: 'space-between', alignItems: 'center', gap: 10, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', minWidth: 0 }}>
                 <span className="serif" style={{ fontSize: 18, color: 'var(--tx)' }}>{t('atelier')}</span>
                 <span style={{ color: 'var(--tx3)', fontSize: 10, opacity: 0.35 }} aria-hidden>/</span>
@@ -1289,6 +1307,7 @@ export function TeamPortalClient({
             {atelierNarrow && sidebarOpen && (
               <div
                 style={{
+                  flexShrink: 0,
                   padding: '0 16px 12px',
                   borderBottom: '1px solid var(--bd)',
                   marginBottom: 8,
@@ -1307,14 +1326,14 @@ export function TeamPortalClient({
                   onPaletteOpen={() => setPaletteOpen(true)}
                   onNewWork={() => void router.push('/atelier/works/new')}
                   onReports={() => handleSetTab('reports')}
-                  onStudioBible={() => handleSetTab('system')}
+                  onStudioBible={downloadStudioBible}
                   hideNewWork
                 />
               </div>
             )}
             <div
               className="t-mono-sm"
-              style={{ display: atelierNarrow ? 'block' : 'none', padding: '0 20px 16px', fontSize: 9, opacity: 0.5 }}
+              style={{ flexShrink: 0, display: atelierNarrow ? 'block' : 'none', padding: '0 20px 16px', fontSize: 9, opacity: 0.5 }}
               title={oeuvresCataloguePartial ? t('atelier_header_works_badge_title') : undefined}
             >
               {oeuvresCataloguePartial && oeuvresPaging
@@ -1322,51 +1341,56 @@ export function TeamPortalClient({
                 : oeuvres.length}{' '}
               {t('inventoryWorksBadge')}
             </div>
-          <div data-testid="atelier-nav-groups">
-          {GROUPS.map((g) => (
-            <div key={g.label} style={{ marginBottom: 20 }}>
-              <div className="t-eyebrow" style={{ padding: '0 20px', marginBottom: 8, color: 'var(--tx2)', fontSize: 9, letterSpacing: '2px', fontWeight: 600, opacity: 0.8 }}>{g.label}</div>
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                {g.tabs.map((k) => {
-                  const item = TABS_RAW.find(x => x[0] === k)
-                  if (!item) return null
-                  const [key, label, count] = item
-                  const isActive = tab === key
-                  return (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => handleSetTab(key)}
-                      className={isActive ? 'pem-sidebar-tab pem-sidebar-tab--on' : 'pem-sidebar-tab'}
-                      style={{
-                        padding: atelierNarrow ? '10px 20px' : '6px 20px',
-                        minHeight: atelierNarrow ? 44 : undefined,
-                        fontSize: 11,
-                        textAlign: 'left',
-                        border: 'none',
-                        cursor: 'pointer',
-                        width: '100%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                      }}
-                    >
-                      <span style={{ fontWeight: isActive ? 600 : 400 }}>{label}</span>
-                      {count !== undefined && (
-                        <span style={{ 
-                          fontSize: 9, opacity: 0.7, padding: '1px 4px', 
-                          border: '1px solid currentColor', borderRadius: 1,
-                          background: isActive ? 'var(--ac)' : 'transparent',
-                          color: isActive ? 'var(--bg1)' : 'inherit'
-                        }}>{count}</span>
-                      )}
-                    </button>
-                  )
-                })}
+            <div ref={sidebarNavScrollRef} className="pem-atelier-sidebar-nav-scroll">
+              <div data-testid="atelier-nav-groups" className="pem-atelier-sidebar-nav-inner">
+                {GROUPS.map((g) => (
+                  <div key={g.label} className="pem-atelier-sidebar-group">
+                    <div className="t-eyebrow pem-atelier-sidebar-eyebrow">{g.label}</div>
+                    <div className="pem-atelier-sidebar-tabs">
+                      {g.tabs.map((k) => {
+                        const item = TABS_RAW.find(x => x[0] === k)
+                        if (!item) return null
+                        const [key, label, count] = item
+                        const isActive = tab === key
+                        const tabLayoutClass = atelierNarrow ? 'pem-sidebar-tab--narrow' : 'pem-sidebar-tab--desktop'
+                        return (
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={() => handleSetTab(key)}
+                            className={
+                              isActive
+                                ? `pem-sidebar-tab pem-sidebar-tab--on ${tabLayoutClass}`
+                                : `pem-sidebar-tab ${tabLayoutClass}`
+                            }
+                            style={{
+                              fontSize: 11,
+                              textAlign: 'left',
+                              border: 'none',
+                              cursor: 'pointer',
+                              width: '100%',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                            }}
+                          >
+                            <span style={{ fontWeight: isActive ? 600 : 400 }}>{label}</span>
+                            {count !== undefined && (
+                              <span style={{
+                                fontSize: 9, opacity: 0.7, padding: '1px 4px',
+                                border: '1px solid currentColor', borderRadius: 1,
+                                background: isActive ? 'var(--ac)' : 'transparent',
+                                color: isActive ? 'var(--bg1)' : 'inherit',
+                              }}>{count}</span>
+                            )}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-          ))}
-          </div>
           </div>
         </div>
 
