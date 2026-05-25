@@ -367,8 +367,10 @@ export function Inventory({
       setFocused(o)
       return
     }
-    panelDrawerGuardRef.current?.runGuarded(() => setFocused(o))
-  }, [showPreview, focused])
+    const guard = panelDrawerGuardRef.current
+    if (guard) guard.runGuarded(() => setFocused(o))
+    else setFocused(o)
+  }, [showPreview, focused, panelDrawerGuardRef])
 
   const allFields: FieldDef[] = useMemo(() => {
     if (oeuvres.length === 0) return []

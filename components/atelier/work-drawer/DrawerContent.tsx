@@ -43,7 +43,6 @@ import { DrawerContentNotesVersionSection } from './DrawerContentNotesVersionSec
 import { DrawerWorkSessionsSection } from './DrawerWorkSessionsSection'
 import { DrawerContentGroupsSection } from './DrawerContentGroupsSection'
 import { emitJunctionSaved } from '@/lib/atelier/junction-refresh-bus'
-import { setsEqualNum, setsEqualStr } from './drawer-content-utils'
 import { CreatableSelect, FIS, Label, SectionTitle, Switch, WfSwitch, cap } from './drawer-widgets'
 import { WorkFormPhysicalQr } from '@/components/atelier/WorkFormPhysicalQr'
 import { normalizeAnonymityLevel } from '@/lib/anonymity-level'
@@ -148,6 +147,12 @@ export function DrawerContent({
 
   const draftKey = useMemo(() => draftStorageKey(o.OeuvreID), [o.OeuvreID])
   const draftRestoreHandledKeyRef = useRef<string | null>(null)
+  /** Avoid re-applying junction map on every hydrate merge while user edits themes. */
+  const syncedOeuvreIdRef = useRef<number | null>(null)
+  /** Per-œuvre editor snapshot last queued/applied via save (incl. pending_changes). */
+  const submittedByOeuvreRef = useRef<Map<number, WorkFormDraftContent>>(new Map())
+  /** Frozen form snapshot at open or last successful save — dirty = current form ≠ this. */
+  const [editorBaseline, setEditorBaseline] = useState<WorkFormDraftContent | null>(null)
   const [longTextReady, setLongTextReady] = useState(false)
   /** Increment so long-text reload runs after discard-in-place (same OeuvreID). */
   const [longTextReloadNonce, setLongTextReloadNonce] = useState(0)
@@ -155,6 +160,7 @@ export function DrawerContent({
   const [showUnsavedModal, setShowUnsavedModal] = useState(false)
   const [savingExit, setSavingExit]             = useState(false)
   const pendingAfterGuardRef = useRef<(() => void) | null>(null)
+  const isDirtyRef = useRef(false)
 
   const panRafId = useRef<number | null>(null)
   const latestMouseRef = useRef({ x: 0, y: 0 })
@@ -335,9 +341,93 @@ export function DrawerContent({
     }
   }
 
+  const captureDrawerDraftContent = useCallback(
+    (): WorkFormDraftContent =>
+      normalizeWorkFormDraftContent({
+        titre,
+        annee,
+        techniqueId,
+        supportId,
+        formatId,
+        hauteur,
+        largeur,
+        profondeur,
+        prodStage,
+        needsPhoto,
+        ownStage,
+        contactId,
+        anonymityLevel,
+        prix,
+        tvaRate,
+        discount,
+        paymentDone,
+        exposable,
+        broadcastReady,
+        commentaires,
+        historique,
+        selThemes: Array.from(selThemes),
+        selGroups: Array.from(selGroups),
+      }),
+    [
+      titre,
+      annee,
+      techniqueId,
+      supportId,
+      formatId,
+      hauteur,
+      largeur,
+      profondeur,
+      prodStage,
+      needsPhoto,
+      ownStage,
+      contactId,
+      anonymityLevel,
+      prix,
+      tvaRate,
+      discount,
+      paymentDone,
+      exposable,
+      broadcastReady,
+      commentaires,
+      historique,
+      selThemes,
+      selGroups,
+    ],
+  )
+
+  const applyDraftContentToForm = useCallback((d: WorkFormDraftContent) => {
+    setTitre(d.titre ?? '')
+    setAnnee(d.annee ?? '')
+    setTechniqueId(d.techniqueId ?? '')
+    setSupportId(d.supportId ?? '')
+    setFormatId(d.formatId ?? '')
+    setHauteur(d.hauteur ?? '')
+    setLargeur(d.largeur ?? '')
+    setProfondeur(d.profondeur ?? '')
+    setProdStage((d.prodStage as ProdStageId) || 'atelier')
+    setNeedsPhoto(!!d.needsPhoto)
+    setOwnStage((d.ownStage as OwnStageId) || 'artist')
+    setContactId(d.contactId ?? '')
+    setAnonymityLevel(normalizeAnonymityLevel(d.anonymityLevel))
+    setPrix(d.prix ?? '0')
+    setTvaRate(d.tvaRate ?? '0')
+    setDiscount(d.discount ?? '0')
+    setPaymentDone(!!d.paymentDone)
+    setExposable(!!d.exposable)
+    setBroadcastReady(!!d.broadcastReady)
+    setCommentaires(d.commentaires ?? '')
+    setHistorique(d.historique ?? '')
+    setSelThemes(new Set(d.selThemes ?? []))
+    setSelGroups(new Set(d.selGroups ?? []))
+  }, [])
+
   // Sync on work change — layout pass resets state before effects (draft autosave) run,
   // and noteBaseline must match cleared notes or isDirty falsely trips during long-text load.
   const syncFormFieldsFromOeuvre = useCallback(() => {
+    syncedOeuvreIdRef.current = o.OeuvreID
+    const persisted = submittedByOeuvreRef.current.get(o.OeuvreID) ?? null
+    const mapThemes = oeuvreThemeMap.get(o.OeuvreID) ?? []
+    const mapGroups = oeuvreGroupMap.get(o.OeuvreID) ?? []
     setLongTextReady(false)
     setNoteBaseline({ c: '', h: '' })
     setTitre(o.Titre ?? '')
@@ -349,30 +439,87 @@ export function DrawerContent({
     setLargeur(String(o.Largeur ?? ''))
     setProfondeur(String(o.Profondeur ?? ''))
     setPresentationId(String((o as { PresentationID?: number }).PresentationID ?? ''))
-    setProdStage(prodStageFromOeuvre(o))
+    const loadedOwn = ownStageFromStatusId(o.statusId)
+    const loadedProd = prodStageFromOeuvre(o)
+    setProdStage(loadedProd)
     setNeedsPhoto(!!((o as { NeedsPhotograph?: boolean }).NeedsPhotograph ?? false))
-    setOwnStage(ownStageFromStatusId(o.statusId))
-    setContactId(String(o.LocalisationID ?? ''))
+    setOwnStage(loadedOwn)
+    const pemRow = (initialContacts as DrawerContactRow[]).find((c) =>
+      (c.NomInstitution ?? '').toLowerCase().includes('pem'),
+    )
+    let loadedContactId = String(o.LocalisationID ?? '')
+    if ((loadedOwn === 'artist' || loadedOwn === 'artist_archive') && pemRow) {
+      loadedContactId = String(pemRow.ContactID)
+    }
+    setContactId(loadedContactId)
     setExposable(o.statusId === STATUS_ID_ARCHIVE_ARTISTE ? false : !!o.Exposable)
     setBroadcastReady(!!(o as { broadcast_ready?: boolean }).broadcast_ready)
     setBroadcastCaptionSeed(String((o as { broadcast_caption_seed?: string | null }).broadcast_caption_seed ?? ''))
     setEncadree(!!o.Encadree)
-    setPrix(String(o.Prix ?? '0'))
+    const loadedPrix = loadedOwn === 'gift' ? '0' : String(o.Prix ?? '0')
+    const loadedDiscount = loadedOwn === 'gift' ? '0' : String((o as { Discount?: number | null }).Discount ?? '0')
+    setPrix(loadedPrix)
     setTvaRate(String((o as { tva_rate?: number | null }).tva_rate ?? '0'))
-    setDiscount(String((o as { Discount?: number | null }).Discount ?? '0'))
-    setPaymentDone(!!((o as { PaymentDone?: boolean; is_paid?: boolean | null }).PaymentDone ?? (o as { is_paid?: boolean | null }).is_paid ?? false))
-    setSelThemes(new Set(oeuvreThemeMap.get(o.OeuvreID) ?? []))
-    setSelGroups(new Set(oeuvreGroupMap.get(o.OeuvreID) ?? []))
+    setDiscount(loadedDiscount)
+    setPaymentDone(
+      !!((o as { PaymentDone?: boolean; is_paid?: boolean | null }).PaymentDone
+        ?? (o as { is_paid?: boolean | null }).is_paid
+        ?? false),
+    )
+    if (!persisted) {
+      setSelThemes(new Set(mapThemes))
+      setSelGroups(new Set(mapGroups))
+    }
     setAnonymityLevel(normalizeAnonymityLevel((o as { anonymity_level?: unknown }).anonymity_level))
     setLocalContacts(initialContacts)
     setCommentaires('')
     setHistorique('')
     setImageCacheKeys({})
-  }, [o, oeuvreThemeMap, oeuvreGroupMap, initialContacts])
+    if (persisted) {
+      applyDraftContentToForm(persisted)
+      setEditorBaseline(normalizeWorkFormDraftContent(persisted))
+    } else {
+      const ownershipTransferred = loadedOwn === 'sold' || loadedOwn === 'gift'
+      const normProd =
+        ownershipTransferred && loadedProd === 'atelier' ? 'available' : loadedProd
+      setEditorBaseline(
+        normalizeWorkFormDraftContent({
+          titre: o.Titre ?? '',
+          annee: o.Année ?? '',
+          techniqueId: String(o.Technique ?? ''),
+          supportId: String(o.Support ?? ''),
+          formatId: String(o.Format ?? ''),
+          hauteur: String(o.Hauteur ?? ''),
+          largeur: String(o.Largeur ?? ''),
+          profondeur: String(o.Profondeur ?? ''),
+          prodStage: normProd,
+          needsPhoto: normProd === 'catalogued',
+          ownStage: loadedOwn,
+          contactId: loadedContactId,
+          anonymityLevel: normalizeAnonymityLevel((o as { anonymity_level?: unknown }).anonymity_level),
+          prix: loadedPrix,
+          tvaRate: String((o as { tva_rate?: number | null }).tva_rate ?? '0'),
+          discount: loadedDiscount,
+          paymentDone:
+            !!((o as { PaymentDone?: boolean; is_paid?: boolean | null }).PaymentDone
+              ?? (o as { is_paid?: boolean | null }).is_paid
+              ?? false),
+          exposable: loadedOwn === 'artist_archive' ? false : !!o.Exposable,
+          broadcastReady: !!(o as { broadcast_ready?: boolean }).broadcast_ready,
+          commentaires: '',
+          historique: '',
+          selThemes: mapThemes,
+          selGroups: mapGroups,
+        }),
+      )
+    }
+  }, [o, oeuvreThemeMap, oeuvreGroupMap, initialContacts, applyDraftContentToForm])
 
   useLayoutEffect(() => {
     syncFormFieldsFromOeuvre()
-  }, [o.OeuvreID, oeuvreThemeMap, oeuvreGroupMap, syncFormFieldsFromOeuvre])
+    // Intentionally only when the open work changes — not when oeuvreThemeMap hydrates later.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [o.OeuvreID])
 
   useEffect(() => {
     let cancelled = false
@@ -386,6 +533,9 @@ export function DrawerContent({
           setCommentaires(c)
           setHistorique(h)
           setNoteBaseline({ c, h })
+          setEditorBaseline((prev) =>
+            prev ? normalizeWorkFormDraftContent({ ...prev, commentaires: c, historique: h }) : prev,
+          )
         } else {
           setNoteBaseline({ c: '', h: '' })
         }
@@ -531,100 +681,46 @@ export function DrawerContent({
     [o.OeuvreID, oeuvreGroupMap],
   )
 
-  const baselineOwn = useMemo(() => ownStageFromStatusId(o.statusId), [o.statusId])
-  const rawBaselineProd = useMemo(() => prodStageFromOeuvre(o), [o])
-  const baselineOwnershipTransferred = baselineOwn === 'sold' || baselineOwn === 'gift'
-  const baselineProd = useMemo(
-    () => (baselineOwnershipTransferred && rawBaselineProd === 'atelier' ? 'available' : rawBaselineProd),
-    [baselineOwnershipTransferred, rawBaselineProd],
-  )
-  const baselineNeeds = baselineProd === 'catalogued'
-  const baselineContactId = useMemo(() => {
-    if ((baselineOwn === 'artist' || baselineOwn === 'artist_archive') && pemContact) {
-      return String(pemContact.ContactID)
-    }
-    return String(o.LocalisationID ?? '')
-  }, [baselineOwn, o.LocalisationID, pemContact])
-  const baselineExposable = baselineOwn === 'artist_archive' ? false : !!o.Exposable
-  const baselinePrix = baselineOwn === 'gift' ? '0' : String(o.Prix ?? '0')
-  const baselineDiscount = baselineOwn === 'gift' ? '0' : String((o as { Discount?: number | null }).Discount ?? '0')
-
   const isDirty = useMemo(() => {
-    if ((o.Titre ?? '') !== titre) return true
-    if (String(o.Année ?? '') !== String(annee)) return true
-    if (String(o.Technique ?? '') !== techniqueId) return true
-    if (String(o.Support ?? '') !== supportId) return true
-    if (String(o.Format ?? '') !== formatId) return true
-    if (String(o.Hauteur ?? '') !== hauteur) return true
-    if (String(o.Largeur ?? '') !== largeur) return true
-    if (String(o.Profondeur ?? '') !== profondeur) return true
-    if (String((o as { PresentationID?: number }).PresentationID ?? '') !== presentationId) return true
-    if (ownStage !== baselineOwn) return true
-    if (prodStage !== baselineProd) return true
-    if (needsPhoto !== baselineNeeds) return true
-    if (baselineContactId !== contactId) return true
-    if (baselineExposable !== exposable) return true
-    if (!!(o as { broadcast_ready?: boolean }).broadcast_ready !== broadcastReady) return true
-    if (String((o as { broadcast_caption_seed?: string | null }).broadcast_caption_seed ?? '') !== broadcastCaptionSeed) return true
-    if (!!o.Encadree !== encadree) return true
-    if (baselinePrix !== prix) return true
-    if (baselineDiscount !== discount) return true
-    if (String((o as { tva_rate?: number | null }).tva_rate ?? '0') !== tvaRate) return true
-    const baselinePaid = !!((o as { PaymentDone?: boolean; is_paid?: boolean | null }).PaymentDone ?? (o as { is_paid?: boolean | null }).is_paid ?? false)
-    if (paymentDone !== baselinePaid) return true
-    if (normalizeAnonymityLevel((o as { anonymity_level?: unknown }).anonymity_level) !== anonymityLevel) return true
-    if (!setsEqualNum(selThemes, baselineThemes)) return true
-    if (!setsEqualStr(selGroups, baselineGroups)) return true
-    if (commentaires !== noteBaseline.c) return true
-    if (historique !== noteBaseline.h) return true
-    return false
-  }, [
-    o,
-    titre,
-    annee,
-    techniqueId,
-    supportId,
-    formatId,
-    hauteur,
-    largeur,
-    profondeur,
-    presentationId,
-    ownStage,
-    baselineOwn,
-    prodStage,
-    baselineProd,
-    needsPhoto,
-    baselineNeeds,
-    contactId,
-    baselineContactId,
-    exposable,
-    baselineExposable,
-    broadcastReady,
-    broadcastCaptionSeed,
-    encadree,
-    prix,
-    baselinePrix,
-    discount,
-    baselineDiscount,
-    tvaRate,
-    paymentDone,
-    anonymityLevel,
-    selThemes,
-    selGroups,
-    baselineThemes,
-    baselineGroups,
-    commentaires,
-    historique,
-    noteBaseline,
-  ])
+    if (!editorBaseline) return false
+    return !workFormDraftContentEquals(captureDrawerDraftContent(), editorBaseline)
+  }, [editorBaseline, captureDrawerDraftContent])
+
+  isDirtyRef.current = isDirty
+
+  // Junction map may hydrate after first paint — fill empty themes only; keep editorBaseline in sync.
+  useEffect(() => {
+    if (syncedOeuvreIdRef.current !== o.OeuvreID) return
+    const mapThemes = oeuvreThemeMap.get(o.OeuvreID) ?? []
+    const mapGroups = oeuvreGroupMap.get(o.OeuvreID) ?? []
+    if (mapThemes.length === 0 && mapGroups.length === 0) return
+    setSelThemes((prev) => {
+      if (prev.size > 0) return prev
+      if (mapThemes.length === 0) return prev
+      return new Set(mapThemes)
+    })
+    setSelGroups((prev) => {
+      if (prev.size > 0) return prev
+      if (mapGroups.length === 0) return prev
+      return new Set(mapGroups)
+    })
+    setEditorBaseline((prev) => {
+      if (!prev) return prev
+      const patch: Partial<WorkFormDraftContent> = {}
+      if ((prev.selThemes?.length ?? 0) === 0 && mapThemes.length > 0) patch.selThemes = mapThemes
+      if ((prev.selGroups?.length ?? 0) === 0 && mapGroups.length > 0) patch.selGroups = mapGroups
+      if (Object.keys(patch).length === 0) return prev
+      return normalizeWorkFormDraftContent({ ...prev, ...patch })
+    })
+  }, [o.OeuvreID, oeuvreThemeMap, oeuvreGroupMap])
 
   const runGuarded = useCallback((fn: () => void) => {
-    if (!isDirty) fn()
+    if (!isDirtyRef.current) fn()
     else {
       pendingAfterGuardRef.current = fn
       setShowUnsavedModal(true)
     }
-  }, [isDirty])
+  }, [])
 
   const attemptClose = useCallback(() => {
     runGuarded(onClose)
@@ -715,17 +811,22 @@ export function DrawerContent({
       try {
         sessionStorage.removeItem(draftKey)
       } catch { /* ignore */ }
+      const commitEditorAfterSave = () => {
+        const snap = captureDrawerDraftContent()
+        submittedByOeuvreRef.current.set(oid, snap)
+        setEditorBaseline(snap)
+        onJunctionSaved?.(oid, snap.selThemes, snap.selGroups)
+        emitJunctionSaved({ oeuvreId: oid, themeIds: snap.selThemes, groupIds: snap.selGroups })
+      }
       if (res.pending) {
+        commitEditorAfterSave()
         setNoteBaseline({ c: commentaires, h: historique })
         toast.success(t('wf_save_pending_toast'))
         return true
       }
       const savedLevel = normalizeAnonymityLevel(anonymityLevel)
       onWorkSaved?.(oid, { anonymity_level: savedLevel })
-      const savedThemes = Array.from(selThemes)
-      const savedGroups = Array.from(selGroups)
-      onJunctionSaved?.(oid, savedThemes, savedGroups)
-      emitJunctionSaved({ oeuvreId: oid, themeIds: savedThemes, groupIds: savedGroups })
+      commitEditorAfterSave()
       setNoteBaseline({ c: commentaires, h: historique })
       setLongTextReloadNonce((n) => n + 1)
       router.refresh()
@@ -806,12 +907,13 @@ export function DrawerContent({
     router,
     onJunctionSaved,
     onWorkSaved,
+    captureDrawerDraftContent,
   ])
   /* eslint-enable react-hooks/exhaustive-deps */
 
   useLayoutEffect(() => {
     if (guardApiRef) {
-      guardApiRef.current.isDirty = () => isDirty
+      guardApiRef.current.isDirty = () => isDirtyRef.current
       guardApiRef.current.performSave = performSave
     }
   }, [guardApiRef, isDirty, performSave])
@@ -929,6 +1031,8 @@ export function DrawerContent({
     try {
       sessionStorage.removeItem(draftKey)
     } catch { /* ignore */ }
+    submittedByOeuvreRef.current.delete(o.OeuvreID)
+    setEditorBaseline(null)
     syncFormFieldsFromOeuvre()
     setLongTextReloadNonce((n) => n + 1)
     setShowUnsavedModal(false)
@@ -1253,7 +1357,12 @@ export function DrawerContent({
                 const active = selThemes.has(th.id)
                 return (
                   <button key={th.id} type="button"
-                    onClick={() => setSelThemes((p: Set<number>) => { const s = new Set(p); if (s.has(th.id)) s.delete(th.id); else s.add(th.id); return s })}
+                    onClick={() => setSelThemes((p: Set<number>) => {
+                      const s = new Set(p)
+                      if (s.has(th.id)) s.delete(th.id)
+                      else s.add(th.id)
+                      return s
+                    })}
                     style={{ padding: '2px 7px', fontSize: 9, borderRadius: 2, border: '1px solid var(--bd)', background: active ? 'var(--ac)' : 'var(--bg2)', color: active ? 'var(--bg1)' : 'var(--tx3)', cursor: 'pointer' }}>
                     {th.name}
                   </button>
@@ -1450,7 +1559,7 @@ export function DrawerContent({
           style={{
             position: 'fixed',
             inset: 0,
-            zIndex: 230,
+            zIndex: 99999,
             background: 'rgba(0,0,0,0.55)',
             display: 'flex',
             alignItems: 'center',
