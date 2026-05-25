@@ -20,7 +20,9 @@ import {
   DEFAULT_HERO_CAPTION_EN,
   DEFAULT_HERO_CAPTION_FR,
 } from '@/lib/portfolio-config-types'
-import type { SiteBlock } from '@/lib/portfolio-config-types'
+import { resolveLandingBackground } from '@/lib/landing-background'
+import { resolveHeroGloss } from '@/lib/landing-hero-gloss'
+import type { LandingConfig, SiteBlock } from '@/lib/portfolio-config-types'
 
 const getPortfolioSectionsCached = cache(loadPortfolioSectionsFromR2)
 
@@ -78,14 +80,14 @@ export default async function HomePage() {
   let heroCaptionFr = DEFAULT_HERO_CAPTION_FR
   let heroCaptionEn = DEFAULT_HERO_CAPTION_EN
   let heroLinked = true
+  let landingBg = resolveLandingBackground()
+  let heroGloss = resolveHeroGloss()
   try {
     const { config } = await getPortfolioSectionsCached()
     const g = config.general as { artist_name?: string } | undefined
-    const l = config.landing as {
-      hero_image_url?: string
-      hero_caption_fr?: string
-      hero_caption_en?: string
-    } | undefined
+    const l = config.landing as Partial<LandingConfig> | undefined
+    landingBg = resolveLandingBackground(l)
+    heroGloss = resolveHeroGloss(l)
     heroImageUrl = resolveLandingHeroImageUrl(l?.hero_image_url)
     heroImageUnoptimized = isLandingHeroUnoptimized(heroImageUrl)
     artistName = resolveArtistDisplayName(g?.artist_name)
@@ -111,6 +113,17 @@ export default async function HomePage() {
       heroLinked={heroLinked}
       hiddenNavRoutes={hidden}
       navOrder={navOrder}
+      landingBackgroundCss={landingBg.backgroundCss}
+      landingBottomHex={landingBg.bottomHex}
+      landingToolbarBackground={landingBg.toolbarBackground}
+      landingChromeText={landingBg.chromeText}
+      landingChromeTextHover={landingBg.chromeTextHover}
+      landingChromeBorder={landingBg.chromeBorder}
+      landingBodyMutedText={landingBg.bodyMutedText}
+      landingBodyText={landingBg.bodyText}
+      heroGlossEnabled={heroGloss.enabled}
+      heroGlossBackground={heroGloss.background}
+      heroGlossMixBlendMode={heroGloss.mixBlendMode}
     />
   )
 }

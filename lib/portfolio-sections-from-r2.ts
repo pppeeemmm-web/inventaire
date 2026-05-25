@@ -12,10 +12,30 @@ import {
   DEFAULT_HERO_CAPTION_EN,
   DEFAULT_HERO_CAPTION_FR,
 } from '@/lib/portfolio-config-types'
+import {
+  applyLandingBlendTransition,
+  DEFAULT_LANDING_GRADIENT_STOPS,
+  LANDING_BG_BLEND_POSITION_DEFAULT,
+  LANDING_BG_BLEND_SOFTNESS_DEFAULT,
+  migrateLandingGradientStops,
+} from '@/lib/landing-background'
+import {
+  LANDING_HERO_GLOSS_BLEND_DEFAULT,
+  LANDING_HERO_GLOSS_FALLOFF_DEFAULT,
+  LANDING_HERO_GLOSS_POSITION_DEFAULT,
+  LANDING_HERO_GLOSS_STRENGTH_DEFAULT,
+  migrateHeroGlossBlend,
+} from '@/lib/landing-hero-gloss'
 import type { SiteBlock, SiteBlockKind } from '@/lib/portfolio-config-types'
 
 export const PORTFOLIO_SECTIONS_BUCKET = process.env.R2_VAULT_BUCKET ?? 'vault'
 export const PORTFOLIO_SECTIONS_R2_KEY = 'portfolio_sections.json'
+
+function parseLandingPct(v: unknown, fallback: number): number {
+  const n = typeof v === 'number' ? v : Number(v)
+  if (!Number.isFinite(n)) return fallback
+  return Math.min(100, Math.max(0, Math.round(n)))
+}
 
 export function createPortfolioConfigS3Client(): S3Client {
   const accountId = process.env.R2_ACCOUNT_ID ?? ''
@@ -63,6 +83,17 @@ export async function loadPortfolioSectionsFromR2(): Promise<{
       hero_image_url: '',
       hero_caption_fr: DEFAULT_HERO_CAPTION_FR,
       hero_caption_en: DEFAULT_HERO_CAPTION_EN,
+      bg_gradient_stops: applyLandingBlendTransition(
+        DEFAULT_LANDING_GRADIENT_STOPS,
+        LANDING_BG_BLEND_POSITION_DEFAULT,
+        LANDING_BG_BLEND_SOFTNESS_DEFAULT,
+      ),
+      bg_blend_position_pct: LANDING_BG_BLEND_POSITION_DEFAULT,
+      bg_blend_softness_pct: LANDING_BG_BLEND_SOFTNESS_DEFAULT,
+      hero_gloss_blend: LANDING_HERO_GLOSS_BLEND_DEFAULT,
+      hero_gloss_strength_pct: LANDING_HERO_GLOSS_STRENGTH_DEFAULT,
+      hero_gloss_position_pct: LANDING_HERO_GLOSS_POSITION_DEFAULT,
+      hero_gloss_falloff_pct: LANDING_HERO_GLOSS_FALLOFF_DEFAULT,
     },
     sections:          [],
     works_collections: [],
@@ -96,11 +127,46 @@ export async function loadPortfolioSectionsFromR2(): Promise<{
               hero_caption_en: String(
                 (landingRaw as { hero_caption_en?: unknown }).hero_caption_en ?? '',
               ).trim() || DEFAULT_HERO_CAPTION_EN,
+              bg_gradient_stops: migrateLandingGradientStops(landingRaw),
+              bg_blend_position_pct: parseLandingPct(
+                (landingRaw as { bg_blend_position_pct?: unknown }).bg_blend_position_pct,
+                LANDING_BG_BLEND_POSITION_DEFAULT,
+              ),
+              bg_blend_softness_pct: parseLandingPct(
+                (landingRaw as { bg_blend_softness_pct?: unknown }).bg_blend_softness_pct,
+                LANDING_BG_BLEND_SOFTNESS_DEFAULT,
+              ),
+              hero_gloss_blend: migrateHeroGlossBlend(
+                (landingRaw as { hero_gloss_blend?: unknown }).hero_gloss_blend,
+              ),
+              hero_gloss_strength_pct: parseLandingPct(
+                (landingRaw as { hero_gloss_strength_pct?: unknown }).hero_gloss_strength_pct,
+                LANDING_HERO_GLOSS_STRENGTH_DEFAULT,
+              ),
+              hero_gloss_position_pct: parseLandingPct(
+                (landingRaw as { hero_gloss_position_pct?: unknown }).hero_gloss_position_pct,
+                LANDING_HERO_GLOSS_POSITION_DEFAULT,
+              ),
+              hero_gloss_falloff_pct: parseLandingPct(
+                (landingRaw as { hero_gloss_falloff_pct?: unknown }).hero_gloss_falloff_pct,
+                LANDING_HERO_GLOSS_FALLOFF_DEFAULT,
+              ),
             }
           : {
               hero_image_url: '',
               hero_caption_fr: DEFAULT_HERO_CAPTION_FR,
               hero_caption_en: DEFAULT_HERO_CAPTION_EN,
+              bg_gradient_stops: applyLandingBlendTransition(
+                DEFAULT_LANDING_GRADIENT_STOPS,
+                LANDING_BG_BLEND_POSITION_DEFAULT,
+                LANDING_BG_BLEND_SOFTNESS_DEFAULT,
+              ),
+              bg_blend_position_pct: LANDING_BG_BLEND_POSITION_DEFAULT,
+              bg_blend_softness_pct: LANDING_BG_BLEND_SOFTNESS_DEFAULT,
+              hero_gloss_blend: LANDING_HERO_GLOSS_BLEND_DEFAULT,
+              hero_gloss_strength_pct: LANDING_HERO_GLOSS_STRENGTH_DEFAULT,
+              hero_gloss_position_pct: LANDING_HERO_GLOSS_POSITION_DEFAULT,
+              hero_gloss_falloff_pct: LANDING_HERO_GLOSS_FALLOFF_DEFAULT,
             }
 
         // Extract site_blocks with same logic as migrateSiteBlocks

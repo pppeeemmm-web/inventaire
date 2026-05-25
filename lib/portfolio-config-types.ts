@@ -1,5 +1,23 @@
 import type { Oeuvre } from '@/lib/types/database'
 import type { PdfProfileMatrix } from '@/lib/portfolio-pdf-types'
+import type { LandingGradientStop } from '@/lib/landing-background'
+import {
+  applyLandingBlendTransition,
+  DEFAULT_LANDING_GRADIENT_STOPS,
+  LANDING_BG_BLEND_POSITION_DEFAULT,
+  LANDING_BG_BLEND_SOFTNESS_DEFAULT,
+  migrateLandingGradientStops,
+} from '@/lib/landing-background'
+import type { LandingHeroGlossBlend } from '@/lib/landing-hero-gloss'
+import {
+  LANDING_HERO_GLOSS_BLEND_DEFAULT,
+  LANDING_HERO_GLOSS_FALLOFF_DEFAULT,
+  LANDING_HERO_GLOSS_POSITION_DEFAULT,
+  LANDING_HERO_GLOSS_STRENGTH_DEFAULT,
+  migrateHeroGlossBlend,
+} from '@/lib/landing-hero-gloss'
+
+export type { LandingGradientStop }
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -49,6 +67,20 @@ export interface LandingConfig {
   hero_image_url: string
   hero_caption_fr: string
   hero_caption_en: string
+  /** Page background gradient, 2–6 colour stops. */
+  bg_gradient_stops: LandingGradientStop[]
+  /** Transition centre, % from top (drives 4-stop layout). */
+  bg_blend_position_pct: number
+  /** Transition hardness: 0 = hard, 100 = soft (drives 4-stop layout). */
+  bg_blend_softness_pct: number
+  /** Gloss overlay blend mode (`off` disables). */
+  hero_gloss_blend: LandingHeroGlossBlend
+  /** Gloss intensity 0–100 (matches legacy ~100 ≈ 0.55 centre alpha). */
+  hero_gloss_strength_pct: number
+  /** White-point height on disc, % from top (lower = higher). */
+  hero_gloss_position_pct: number
+  /** Gloss radius before transparent; lower preserves image shadows. */
+  hero_gloss_falloff_pct: number
 }
 
 export interface PortfolioConfig {
@@ -99,6 +131,17 @@ export const DEFAULT_CONFIG: PortfolioConfig = {
     hero_image_url: '',
     hero_caption_fr: DEFAULT_HERO_CAPTION_FR,
     hero_caption_en: DEFAULT_HERO_CAPTION_EN,
+    bg_gradient_stops: applyLandingBlendTransition(
+      DEFAULT_LANDING_GRADIENT_STOPS,
+      LANDING_BG_BLEND_POSITION_DEFAULT,
+      LANDING_BG_BLEND_SOFTNESS_DEFAULT,
+    ),
+    bg_blend_position_pct: LANDING_BG_BLEND_POSITION_DEFAULT,
+    bg_blend_softness_pct: LANDING_BG_BLEND_SOFTNESS_DEFAULT,
+    hero_gloss_blend: LANDING_HERO_GLOSS_BLEND_DEFAULT,
+    hero_gloss_strength_pct: LANDING_HERO_GLOSS_STRENGTH_DEFAULT,
+    hero_gloss_position_pct: LANDING_HERO_GLOSS_POSITION_DEFAULT,
+    hero_gloss_falloff_pct: LANDING_HERO_GLOSS_FALLOFF_DEFAULT,
   },
   sections: [],
   works_collections: [],
@@ -184,6 +227,18 @@ function migrateModes(raw: any, fallbackCollections: CollectionItem[]): WorksMod
   }))
 }
 
+function migrateLandingHex(v: unknown, fallback: string): string {
+  const s = String(v ?? '').trim()
+  const m = s.match(/^#?([0-9a-f]{6})$/i)
+  return m ? `#${m[1].toLowerCase()}` : fallback
+}
+
+function migrateLandingPct(v: unknown, fallback: number): number {
+  const n = typeof v === 'number' ? v : Number(v)
+  if (!Number.isFinite(n)) return fallback
+  return Math.min(100, Math.max(0, Math.round(n)))
+}
+
 function migrateSiteBlocks(raw: any): SiteBlock[] {
   if (!Array.isArray(raw?.site_blocks)) return DEFAULT_SITE_BLOCKS.map(b => ({ ...b }))
   const seen = new Set<SiteBlockKind>()
@@ -229,6 +284,28 @@ export function migrate(raw: any): PortfolioConfig {
       hero_image_url: String(raw.landing?.hero_image_url ?? '').trim(),
       hero_caption_fr: String(raw.landing?.hero_caption_fr ?? '').trim() || DEFAULT_HERO_CAPTION_FR,
       hero_caption_en: String(raw.landing?.hero_caption_en ?? '').trim() || DEFAULT_HERO_CAPTION_EN,
+      bg_gradient_stops: migrateLandingGradientStops(raw.landing),
+      bg_blend_position_pct: migrateLandingPct(
+        raw.landing?.bg_blend_position_pct,
+        LANDING_BG_BLEND_POSITION_DEFAULT,
+      ),
+      bg_blend_softness_pct: migrateLandingPct(
+        raw.landing?.bg_blend_softness_pct,
+        LANDING_BG_BLEND_SOFTNESS_DEFAULT,
+      ),
+      hero_gloss_blend: migrateHeroGlossBlend(raw.landing?.hero_gloss_blend),
+      hero_gloss_strength_pct: migrateLandingPct(
+        raw.landing?.hero_gloss_strength_pct,
+        LANDING_HERO_GLOSS_STRENGTH_DEFAULT,
+      ),
+      hero_gloss_position_pct: migrateLandingPct(
+        raw.landing?.hero_gloss_position_pct,
+        LANDING_HERO_GLOSS_POSITION_DEFAULT,
+      ),
+      hero_gloss_falloff_pct: migrateLandingPct(
+        raw.landing?.hero_gloss_falloff_pct,
+        LANDING_HERO_GLOSS_FALLOFF_DEFAULT,
+      ),
     },
     sections:          oldSections.map(migrateCollection),
     works_collections: oldWorks.map(migrateCollection),

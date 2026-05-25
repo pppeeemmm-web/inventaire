@@ -13,6 +13,7 @@ import {
   assignOrbPositions,
   landingSatelliteRoutes,
 } from '@/lib/site-block-visibility'
+import type { CSSProperties } from 'react'
 
 type LandingPageProps = {
   heroImageUrl: string
@@ -21,6 +22,17 @@ type LandingPageProps = {
   heroCaptionFr: string
   heroCaptionEn: string
   heroLinked: boolean
+  landingBackgroundCss: string
+  landingBottomHex: string
+  landingToolbarBackground: string
+  landingChromeText: string
+  landingChromeTextHover: string
+  landingChromeBorder: string
+  landingBodyMutedText: string
+  landingBodyText: string
+  heroGlossEnabled: boolean
+  heroGlossBackground: string
+  heroGlossMixBlendMode: CSSProperties['mixBlendMode']
   hiddenNavRoutes?: string[]
   navOrder?: string[]
 }
@@ -39,6 +51,17 @@ export default function LandingPage({
   heroCaptionFr,
   heroCaptionEn,
   heroLinked,
+  landingBackgroundCss,
+  landingBottomHex,
+  landingToolbarBackground,
+  landingChromeText,
+  landingChromeTextHover,
+  landingChromeBorder,
+  landingBodyMutedText,
+  landingBodyText,
+  heroGlossEnabled,
+  heroGlossBackground,
+  heroGlossMixBlendMode,
   hiddenNavRoutes = [],
   navOrder,
 }: LandingPageProps) {
@@ -87,6 +110,9 @@ export default function LandingPage({
       priority
       sizes={heroSizes}
       unoptimized={heroImageUnoptimized}
+      glossEnabled={heroGlossEnabled}
+      glossBackground={heroGlossBackground}
+      glossMixBlendMode={heroGlossMixBlendMode}
     />
   )
 
@@ -95,9 +121,14 @@ export default function LandingPage({
       <style>{`
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         html, body { width: 100%; min-height: 100dvh; overflow-x: hidden; overflow-y: auto; }
-        body { background: #edeae4; font-family: var(--font-ui, 'Sofia Sans', ui-sans-serif, system-ui, sans-serif); color: #9a9690; }
+        body {
+          background: ${landingBackgroundCss};
+          font-family: var(--font-ui, 'Sofia Sans', ui-sans-serif, system-ui, sans-serif);
+          color: ${landingBodyMutedText};
+        }
         .stage {
           position: fixed; inset: 0; min-height: 100dvh;
+          background: ${landingBackgroundCss};
           padding-top: env(safe-area-inset-top, 0px);
           padding-bottom: env(safe-area-inset-bottom, 0px);
           padding-left: env(safe-area-inset-left, 0px);
@@ -118,7 +149,8 @@ export default function LandingPage({
           top: max(clamp(12px, 3vh, 28px), env(safe-area-inset-top, 0px));
           left: max(clamp(12px, 3vw, 32px), env(safe-area-inset-left, 0px));
           font-size: clamp(7px, 1.4vmin, 9px); letter-spacing: clamp(1.5px, 0.35vmin, 3px); text-transform: uppercase;
-          color: #b0aca6; text-decoration: none;
+          color: ${landingChromeText}; text-decoration: none;
+          text-shadow: 0 0 12px rgba(255,255,255,0.5), 0 1px 2px rgba(0,0,0,0.08);
           padding: 10px 8px; min-height: 44px; display: inline-flex; align-items: center;
           font-weight: 400;
         }
@@ -128,11 +160,12 @@ export default function LandingPage({
           top: max(clamp(10px, 2.8vh, 24px), env(safe-area-inset-top, 0px));
           right: max(clamp(12px, 3vw, 32px), env(safe-area-inset-right, 0px));
           font-size: clamp(7px, 1.4vmin, 9px); letter-spacing: clamp(1px, 0.3vmin, 2px); text-transform: uppercase;
-          color: #b0aca6; background: none; border: 1px solid #dedad4;
+          color: ${landingChromeText}; background: rgba(255,255,255,0.35); border: 1px solid ${landingChromeBorder};
           padding: 4px 10px; cursor: pointer; transition: all .15s; font-family: inherit;
           min-height: 44px; min-width: 44px; display: inline-flex; align-items: center; justify-content: center;
+          text-shadow: 0 0 8px rgba(255,255,255,0.4);
         }
-        .lang-toggle:hover { color: #6b6760; border-color: #b0aca6; }
+        .lang-toggle:hover { color: ${landingChromeTextHover}; border-color: ${landingChromeTextHover}; }
         .hero-orbit-wrap {
           position: relative;
           flex-shrink: 0;
@@ -159,10 +192,11 @@ export default function LandingPage({
           position: absolute; inset: 0; z-index: 2;
           display: flex; align-items: center; justify-content: center;
           font-size: clamp(9px, 2.8vmin, 11px); letter-spacing: clamp(2px, 0.4vmin, 4px);
-          text-transform: uppercase; color: #5a5650;
+          text-transform: uppercase;           color: ${landingBodyText};
           background: none;
           opacity: 0; transition: opacity 0.25s;
           pointer-events: none;
+          text-shadow: 0 0 10px rgba(255,255,255,0.55);
         }
         .hero-hit:hover .hero-works-overlay,
         .hero-hit:focus-visible .hero-works-overlay { opacity: 1; }
@@ -181,18 +215,18 @@ export default function LandingPage({
           font-size: clamp(8px, 1.5vmin, 10px);
           letter-spacing: clamp(0.5px, 0.2vmin, 1.5px);
           line-height: 1.6;
-          color: #8a8680;
+          color: ${landingBodyMutedText};
           font-style: italic;
         }
         .orb {
           position: absolute;
           font-size: clamp(8px, 2.5vmin, 10px); letter-spacing: clamp(1.5px, 0.35vmin, 3px); text-transform: uppercase;
-          color: #7a7670; text-decoration: none;
+          color: ${landingBodyText}; text-decoration: none;
           display: flex; align-items: center; justify-content: center;
           gap: clamp(4px, 1vmin, 10px); white-space: nowrap; transition: color .25s;
           min-height: 44px; min-width: 44px;
         }
-        .orb:hover { color: #3a3834; }
+        .orb:hover { color: ${landingChromeTextHover}; }
         .orb-top    { bottom: 100%; left: 50%; transform: translateX(-50%); flex-direction: column; padding: 8px 18px clamp(18px, 5vmin, 52px); }
         .orb-top::after    { content: ''; display: block; width: 1px; height: clamp(12px, 2.8vmin, 28px); background: currentColor; opacity: .4; }
         .orb-bottom { top: 100%;  left: 50%; transform: translateX(-50%); flex-direction: column-reverse; padding: clamp(18px, 5vmin, 52px) 18px 8px; }
@@ -207,34 +241,34 @@ export default function LandingPage({
           position: relative;
           z-index: 5;
           font-size: clamp(8px, 2.5vmin, 10px); letter-spacing: clamp(1.5px, 0.35vmin, 3px);
-          text-transform: uppercase; color: #7a7670; text-decoration: none;
+          text-transform: uppercase; color: ${landingBodyText}; text-decoration: none;
           display: inline-flex; align-items: center; justify-content: center;
           min-height: 44px; min-width: 44px; padding: 8px 18px;
           transition: color .25s;
         }
-        .enquiry-link:hover { color: #3a3834; }
+        .enquiry-link:hover { color: ${landingChromeTextHover}; }
         .hub-link {
           position: absolute;
           bottom: max(clamp(12px, 3vh, 32px), env(safe-area-inset-bottom, 0px));
           right: max(clamp(14px, 4vw, 40px), env(safe-area-inset-right, 0px));
           font-size: clamp(7px, 1.4vmin, 9px); letter-spacing: clamp(1px, 0.3vmin, 2px); text-transform: uppercase;
-          color: #8a8680; text-decoration: none; opacity: 0.7;
+          color: ${landingBodyMutedText}; text-decoration: none; opacity: 0.85;
           transition: all 0.3s; font-weight: 600;
           min-height: 44px; padding: 10px 8px; display: inline-flex; align-items: center;
         }
-        .hub-link:hover { opacity: 1 !important; color: #1a1a1a !important; }
+        .hub-link:hover { opacity: 1 !important; color: ${landingChromeTextHover} !important; }
         .pdf-link {
           position: absolute;
           bottom: max(clamp(12px, 3vh, 32px), env(safe-area-inset-bottom, 0px));
           left: max(clamp(14px, 4vw, 40px), env(safe-area-inset-left, 0px));
           font-size: clamp(7px, 1.4vmin, 9px); letter-spacing: clamp(1px, 0.3vmin, 2px); text-transform: uppercase;
-          color: #8a8680; background: none; border: none;
+          color: ${landingBodyMutedText}; background: none; border: none;
           padding: 10px 8px; min-height: 44px;
           opacity: 0.7; transition: all 0.3s;
           font-family: inherit; font-weight: 600; cursor: pointer;
           display: inline-flex; align-items: center;
         }
-        .pdf-link:hover { opacity: 1; color: #1a1a1a; }
+        .pdf-link:hover { opacity: 1; color: ${landingChromeTextHover}; }
         .landing-nav-btn {
           display: none;
           position: absolute;
@@ -245,16 +279,16 @@ export default function LandingPage({
           font-size: clamp(7px, 1.4vmin, 9px);
           letter-spacing: clamp(1px, 0.3vmin, 2px);
           text-transform: uppercase;
-          color: #6b6760;
-          background: #edeae4;
-          border: 1px solid #dedad4;
+          color: ${landingChromeText};
+          background: ${landingBottomHex};
+          border: 1px solid ${landingChromeBorder};
           padding: 8px 18px;
           cursor: pointer;
           font-family: inherit;
           font-weight: 600;
           min-height: 44px;
         }
-        .landing-nav-btn:hover { border-color: #b0aca6; color: #3a3834; }
+        .landing-nav-btn:hover { border-color: ${landingChromeBorder}; color: ${landingChromeTextHover}; }
         @media (max-width: 767px) {
           .orb { display: none !important; }
           .enquiry-link { display: inline-flex !important; }
@@ -262,7 +296,7 @@ export default function LandingPage({
         }
         @media (max-width: 767px) {
           html, body { overflow: hidden; height: 100dvh; }
-          .wordmark { white-space: nowrap; font-size: 9px; letter-spacing: 2px; color: #6b6760; }
+          .wordmark { white-space: nowrap; font-size: 9px; letter-spacing: 2px; }
           .landing-center {
             gap: 12px;
             max-height: calc(100dvh - 100px);
@@ -379,7 +413,7 @@ export default function LandingPage({
             paddingRight: 'max(12px, env(safe-area-inset-right, 0px))',
             paddingBottom: 'max(8px, env(safe-area-inset-bottom, 0px))',
             paddingLeft: 'max(12px, env(safe-area-inset-left, 0px))',
-            background: 'rgba(237, 234, 228, 0.96)',
+            background: landingToolbarBackground,
             borderTop: '1px solid #dedad4',
             backdropFilter: 'blur(8px)',
           }}
@@ -469,7 +503,7 @@ export default function LandingPage({
               paddingBottom: 'max(20px, env(safe-area-inset-bottom, 0px))',
               paddingLeft: 20,
               paddingRight: 'max(20px, env(safe-area-inset-right, 0px))',
-              background: '#edeae4',
+              background: landingBottomHex,
               borderLeft: '1px solid #dedad4',
               boxShadow: '-10px 0 28px rgba(0,0,0,0.12)',
               display: 'flex',

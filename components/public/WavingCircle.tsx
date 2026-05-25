@@ -1,5 +1,6 @@
 'use client'
 
+import type { CSSProperties } from 'react'
 import Image from 'next/image'
 
 interface Props {
@@ -9,9 +10,22 @@ interface Props {
   priority?: boolean
   sizes?: string
   unoptimized?: boolean
+  glossEnabled?: boolean
+  glossBackground?: string
+  glossMixBlendMode?: CSSProperties['mixBlendMode']
 }
 
-export default function WavingCircle({ src, alt, className, priority, sizes, unoptimized }: Props) {
+export default function WavingCircle({
+  src,
+  alt,
+  className,
+  priority,
+  sizes,
+  unoptimized,
+  glossEnabled = true,
+  glossBackground,
+  glossMixBlendMode = 'color-dodge',
+}: Props) {
   return (
     <>
       <style>{`
@@ -28,11 +42,11 @@ export default function WavingCircle({ src, alt, className, priority, sizes, uno
           100% { transform: rotateY(0deg)   rotateX(3deg); }
         }
         @keyframes pendulumShadow {
-          0%   { filter: drop-shadow(0px   20px 18px rgba(0,0,0,0.22)); }
-          25%  { filter: drop-shadow(20px  20px 18px rgba(0,0,0,0.26)); }
-          50%  { filter: drop-shadow(0px   20px 18px rgba(0,0,0,0.22)); }
-          75%  { filter: drop-shadow(-20px 20px 18px rgba(0,0,0,0.26)); }
-          100% { filter: drop-shadow(0px   20px 18px rgba(0,0,0,0.22)); }
+          0%   { filter: drop-shadow(0px   20px 18px rgba(0,0,0,0.24)); }
+          25%  { filter: drop-shadow(20px  20px 18px rgba(0,0,0,0.28)); }
+          50%  { filter: drop-shadow(0px   20px 18px rgba(0,0,0,0.24)); }
+          75%  { filter: drop-shadow(-20px 20px 18px rgba(0,0,0,0.28)); }
+          100% { filter: drop-shadow(0px   20px 18px rgba(0,0,0,0.24)); }
         }
         @keyframes wave {
           0%   { transform: scale(1.07) skewX(0deg)     skewY(0deg)     scaleX(1)      scaleY(1); }
@@ -52,10 +66,7 @@ export default function WavingCircle({ src, alt, className, priority, sizes, uno
         className={className}
         style={{ width: '100%', height: '100%', perspective: '900px' }}
       >
-        <div
-          className="waving-shadow"
-          style={{ width: '100%', height: '100%', animation: 'pendulumShadow 12s ease-in-out infinite' }}
-        >
+        <div className="waving-shadow" style={{ width: '100%', height: '100%' }}>
           <div
             className="waving-pendulum"
             style={{
@@ -64,6 +75,7 @@ export default function WavingCircle({ src, alt, className, priority, sizes, uno
               clipPath: 'circle(50% at 50% 50%)',
               animation: 'pendulum 12s ease-in-out infinite',
               transformOrigin: 'center center',
+              isolation: 'isolate',
             }}
           >
             <div
@@ -76,27 +88,38 @@ export default function WavingCircle({ src, alt, className, priority, sizes, uno
                 transformOrigin: 'center center',
               }}
             >
-              <Image
-                src={src}
-                alt={alt}
-                fill
-                priority={priority}
-                sizes={sizes}
-                unoptimized={unoptimized}
-                style={{ objectFit: 'cover', display: 'block' }}
-              />
+              <div
+                className="waving-drop-shadow"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  position: 'relative',
+                  animation: 'pendulumShadow 12s ease-in-out infinite',
+                }}
+              >
+                <Image
+                  src={src}
+                  alt={alt}
+                  fill
+                  priority={priority}
+                  sizes={sizes}
+                  unoptimized={unoptimized}
+                  style={{ objectFit: 'cover', display: 'block' }}
+                />
+              </div>
             </div>
-            <div
-              aria-hidden
-              style={{
-                position: 'absolute',
-                inset: 0,
-                pointerEvents: 'none',
-                background:
-                  'radial-gradient(ellipse 70% 70% at 50% 38%, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.12) 45%, transparent 70%)',
-                mixBlendMode: 'color-dodge',
-              }}
-            />
+            {glossEnabled && glossBackground ? (
+              <div
+                aria-hidden
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  pointerEvents: 'none',
+                  background: glossBackground,
+                  mixBlendMode: glossMixBlendMode,
+                }}
+              />
+            ) : null}
           </div>
         </div>
       </div>

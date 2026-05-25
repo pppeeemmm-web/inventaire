@@ -4,6 +4,22 @@ import { useState } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import type { PortfolioConfig, CollectionItem, WorksMode, ThemeWork, SiteBlockKind } from '@/lib/portfolio-config-types'
 import { isHttpsHeroUrl, reorder } from '@/lib/portfolio-config-types'
+import {
+  applyLandingBlendTransition,
+  normalizeHexColor,
+  resolveLandingBackground,
+  LANDING_BG_BOTTOM_DEFAULT,
+  LANDING_BG_TOP_DEFAULT,
+  LANDING_GRADIENT_STOP_MAX,
+  LANDING_GRADIENT_STOP_MIN,
+  type LandingGradientStop,
+} from '@/lib/landing-background'
+import {
+  LANDING_HERO_GLOSS_BLEND_VALUES,
+  resolveHeroGloss,
+  type LandingHeroGlossBlend,
+} from '@/lib/landing-hero-gloss'
+import type { MessageKey } from '@/lib/i18n/messages'
 import { SitePublicSection } from '@/components/atelier/portfolio/shared/SitePublicSection'
 import { Slot } from '@/components/atelier/portfolio/shared/Slot'
 import { DualField } from '@/components/atelier/portfolio/shared/DualField'
@@ -46,6 +62,15 @@ const BLOCK_LABEL_KEYS: Record<SiteBlockKind, string> = {
   works_modes: 'site_block_works_modes',
 }
 
+const HERO_GLOSS_BLEND_MSG: Record<LandingHeroGlossBlend, MessageKey> = {
+  off: 'site_hero_gloss_blend_off',
+  'color-dodge': 'site_hero_gloss_blend_color_dodge',
+  'soft-light': 'site_hero_gloss_blend_soft_light',
+  overlay: 'site_hero_gloss_blend_overlay',
+  multiply: 'site_hero_gloss_blend_multiply',
+  screen: 'site_hero_gloss_blend_screen',
+}
+
 export function SiteEditorPanel({
   config, setConfig,
   activeMode, setActiveMode,
@@ -58,6 +83,58 @@ export function SiteEditorPanel({
   const { t } = useI18n()
   const blocks = config.site_blocks
   const [collapsed, setCollapsed] = useState<Set<SiteBlockKind>>(new Set())
+  const [bgGradientOpen, setBgGradientOpen] = useState(false)
+
+  function setLandingGradientStops(stops: LandingGradientStop[]) {
+    setConfig({
+      ...config,
+      landing: { ...config.landing, bg_gradient_stops: stops },
+    })
+  }
+
+  function updateGradientStop(index: number, patch: Partial<LandingGradientStop>) {
+    setLandingGradientStops(
+      config.landing.bg_gradient_stops.map((s, i) => (i === index ? { ...s, ...patch } : s)),
+    )
+  }
+
+  function addGradientStop() {
+    const stops = [...config.landing.bg_gradient_stops]
+    if (stops.length >= LANDING_GRADIENT_STOP_MAX) return
+    const sorted = [...stops].sort((a, b) => a.position_pct - b.position_pct)
+    let insertAt = 50
+    let maxGap = 0
+    for (let i = 0; i < sorted.length - 1; i++) {
+      const gap = sorted[i + 1].position_pct - sorted[i].position_pct
+      if (gap > maxGap) {
+        maxGap = gap
+        insertAt = Math.round((sorted[i].position_pct + sorted[i + 1].position_pct) / 2)
+      }
+    }
+    stops.push({ color: sorted[sorted.length - 1].color, position_pct: insertAt })
+    setLandingGradientStops(stops)
+  }
+
+  function removeGradientStop(index: number) {
+    if (config.landing.bg_gradient_stops.length <= LANDING_GRADIENT_STOP_MIN) return
+    setLandingGradientStops(config.landing.bg_gradient_stops.filter((_, i) => i !== index))
+  }
+
+  function applyBlendTransition(positionPct: number, softnessPct: number) {
+    setConfig({
+      ...config,
+      landing: {
+        ...config.landing,
+        bg_blend_position_pct: positionPct,
+        bg_blend_softness_pct: softnessPct,
+        bg_gradient_stops: applyLandingBlendTransition(
+          config.landing.bg_gradient_stops,
+          positionPct,
+          softnessPct,
+        ),
+      },
+    })
+  }
 
   function moveBlock(from: number, to: number) {
     setConfig({ ...config, site_blocks: reorder(blocks, from, to) })
@@ -78,6 +155,7 @@ export function SiteEditorPanel({
   }
 
   function renderBlockContent(kind: SiteBlockKind) {
+    const heroGloss = resolveHeroGloss(config.landing)
     switch (kind) {
       case 'hero':
         return (
@@ -108,8 +186,34 @@ export function SiteEditorPanel({
                 <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ fontSize: 8, letterSpacing: 1, color: 'var(--tx3)', marginBottom: 6 }}>CERCLE</div>
-                    <img src={config.landing.hero_image_url.trim()} alt="circle crop"
-                      style={{ width: 120, height: 120, objectFit: 'cover', borderRadius: '50%', border: '1px solid var(--bd)' }} />
+                    <div
+                      style={{
+                        position: 'relative',
+                        width: 120,
+                        height: 120,
+                        borderRadius: '50%',
+                        overflow: 'hidden',
+                        border: '1px solid var(--bd)',
+                      }}
+                    >
+                      <img
+                        src={config.landing.hero_image_url.trim()}
+                        alt=""
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                      />
+                      {heroGloss.enabled ? (
+                        <div
+                          aria-hidden
+                          style={{
+                            position: 'absolute',
+                            inset: 0,
+                            pointerEvents: 'none',
+                            background: heroGloss.background,
+                            mixBlendMode: heroGloss.mixBlendMode,
+                          }}
+                        />
+                      ) : null}
+                    </div>
                   </div>
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ fontSize: 8, letterSpacing: 1, color: 'var(--tx3)', marginBottom: 6 }}>1:1</div>
@@ -129,6 +233,244 @@ export function SiteEditorPanel({
                 </div>
               </div>
             )}
+            <div style={{ marginTop: 24 }}>
+              <div className="t-label" style={{ marginBottom: 8, fontSize: 9 }}>{t('site_hero_gloss_label')}</div>
+              <p className="t-mono-xs" style={{ opacity: 0.55, marginBottom: 12, lineHeight: 1.5 }}>
+                {t('site_hero_gloss_help')}
+              </p>
+              <label className="t-label" style={{ display: 'block', fontSize: 9, marginBottom: 12 }}>
+                {t('site_hero_gloss_blend_label')}
+                <select
+                  className="input full"
+                  value={config.landing.hero_gloss_blend}
+                  onChange={e => setConfig({
+                    ...config,
+                    landing: {
+                      ...config.landing,
+                      hero_gloss_blend: e.target.value as LandingHeroGlossBlend,
+                    },
+                  })}
+                  style={{ display: 'block', width: '100%', marginTop: 6 }}
+                >
+                  {LANDING_HERO_GLOSS_BLEND_VALUES.map(mode => (
+                    <option key={mode} value={mode}>{t(HERO_GLOSS_BLEND_MSG[mode])}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="t-label" style={{ display: 'block', fontSize: 9, marginBottom: 6 }}>
+                {t('site_hero_gloss_strength_label')}
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={config.landing.hero_gloss_strength_pct}
+                  onChange={e => setConfig({
+                    ...config,
+                    landing: {
+                      ...config.landing,
+                      hero_gloss_strength_pct: Number(e.target.value),
+                    },
+                  })}
+                  style={{ display: 'block', width: '100%', marginTop: 6 }}
+                />
+              </label>
+              <label className="t-label" style={{ display: 'block', fontSize: 9, marginBottom: 6 }}>
+                {t('site_hero_gloss_position_label')}
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={config.landing.hero_gloss_position_pct}
+                  disabled={config.landing.hero_gloss_blend === 'off' || config.landing.hero_gloss_strength_pct <= 0}
+                  onChange={e => setConfig({
+                    ...config,
+                    landing: {
+                      ...config.landing,
+                      hero_gloss_position_pct: Number(e.target.value),
+                    },
+                  })}
+                  style={{ display: 'block', width: '100%', marginTop: 6 }}
+                />
+              </label>
+              <label className="t-label" style={{ display: 'block', fontSize: 9, marginBottom: 12 }}>
+                {t('site_hero_gloss_falloff_label')}
+                <input
+                  type="range"
+                  min={28}
+                  max={85}
+                  value={config.landing.hero_gloss_falloff_pct}
+                  disabled={config.landing.hero_gloss_blend === 'off' || config.landing.hero_gloss_strength_pct <= 0}
+                  onChange={e => setConfig({
+                    ...config,
+                    landing: {
+                      ...config.landing,
+                      hero_gloss_falloff_pct: Number(e.target.value),
+                    },
+                  })}
+                  style={{ display: 'block', width: '100%', marginTop: 6 }}
+                />
+              </label>
+            </div>
+            <div style={{ marginTop: 24 }}>
+              <button
+                type="button"
+                className="t-label"
+                onClick={() => setBgGradientOpen(open => !open)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  width: '100%',
+                  marginBottom: 8,
+                  fontSize: 9,
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  cursor: 'pointer',
+                  color: 'inherit',
+                  textAlign: 'left',
+                }}
+              >
+                <span>{t('site_landing_bg_label')}</span>
+                <span style={{ opacity: 0.55, fontSize: 8 }}>
+                  {bgGradientOpen ? t('site_landing_bg_toggle_hide') : t('site_landing_bg_toggle_show')}
+                </span>
+              </button>
+              <div
+                aria-hidden
+                style={{
+                  height: 12,
+                  borderRadius: 4,
+                  border: '1px solid var(--bd)',
+                  marginBottom: bgGradientOpen ? 12 : 0,
+                  background: resolveLandingBackground(config.landing).backgroundCss,
+                }}
+              />
+              {bgGradientOpen ? (
+                <>
+                  <p className="t-mono-xs" style={{ opacity: 0.5, marginBottom: 10, lineHeight: 1.5 }}>
+                    {t('site_landing_bg_blend_transition_hint')}
+                  </p>
+                  <label className="t-label" style={{ display: 'block', fontSize: 9, marginBottom: 6 }}>
+                    {t('site_landing_bg_blend_position_label')}
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      value={config.landing.bg_blend_position_pct}
+                      onChange={e => applyBlendTransition(Number(e.target.value), config.landing.bg_blend_softness_pct)}
+                      style={{ display: 'block', width: '100%', marginTop: 6 }}
+                    />
+                  </label>
+                  <label className="t-label" style={{ display: 'block', fontSize: 9, marginBottom: 12 }}>
+                    {t('site_landing_bg_blend_hardness_label')}
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      value={config.landing.bg_blend_softness_pct}
+                      onChange={e => applyBlendTransition(config.landing.bg_blend_position_pct, Number(e.target.value))}
+                      style={{ display: 'block', width: '100%', marginTop: 6 }}
+                    />
+                  </label>
+                  {config.landing.bg_gradient_stops.map((stop, index) => (
+                    <div
+                      key={`grad-stop-${index}`}
+                      style={{
+                        marginBottom: 12,
+                        padding: 10,
+                        border: '1px solid var(--bd)',
+                        borderRadius: 4,
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          marginBottom: 8,
+                        }}
+                      >
+                        <span className="t-label" style={{ fontSize: 9 }}>
+                          {t('site_landing_bg_stop_heading').replace('{n}', String(index + 1))}
+                        </span>
+                        <button
+                          type="button"
+                          className="t-mono-xs"
+                          disabled={config.landing.bg_gradient_stops.length <= LANDING_GRADIENT_STOP_MIN}
+                          onClick={() => removeGradientStop(index)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            opacity: config.landing.bg_gradient_stops.length <= LANDING_GRADIENT_STOP_MIN ? 0.35 : 0.7,
+                          }}
+                        >
+                          {t('site_landing_bg_remove_stop')}
+                        </button>
+                      </div>
+                      <label className="t-label" style={{ display: 'block', fontSize: 9, marginBottom: 8 }}>
+                        {t('site_landing_bg_stop_color_label')}
+                        <div style={{ display: 'flex', gap: 8, marginTop: 6, alignItems: 'center' }}>
+                          <input
+                            type="color"
+                            value={normalizeHexColor(stop.color) ?? LANDING_BG_TOP_DEFAULT}
+                            onChange={e => updateGradientStop(index, { color: e.target.value })}
+                            aria-label={t('site_landing_bg_stop_color_label')}
+                            style={{ width: 40, height: 32, padding: 0, border: '1px solid var(--bd)', cursor: 'pointer' }}
+                          />
+                          <input
+                            className="input full"
+                            value={stop.color}
+                            onChange={e => updateGradientStop(index, { color: e.target.value })}
+                            style={{ flex: 1, fontFamily: 'monospace', fontSize: 11 }}
+                          />
+                        </div>
+                      </label>
+                      <label className="t-label" style={{ display: 'block', fontSize: 9 }}>
+                        {t('site_landing_bg_stop_position_label')}
+                        <input
+                          type="range"
+                          min={0}
+                          max={100}
+                          value={stop.position_pct}
+                          onChange={e => updateGradientStop(index, { position_pct: Number(e.target.value) })}
+                          style={{ display: 'block', width: '100%', marginTop: 6 }}
+                        />
+                      </label>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    className="t-mono-xs"
+                    disabled={config.landing.bg_gradient_stops.length >= LANDING_GRADIENT_STOP_MAX}
+                    onClick={addGradientStop}
+                    style={{
+                      marginBottom: 12,
+                      background: 'none',
+                      border: '1px dashed var(--bd)',
+                      borderRadius: 4,
+                      padding: '8px 12px',
+                      width: '100%',
+                      cursor: 'pointer',
+                      opacity: config.landing.bg_gradient_stops.length >= LANDING_GRADIENT_STOP_MAX ? 0.4 : 1,
+                    }}
+                  >
+                    {t('site_landing_bg_add_stop')}
+                  </button>
+                  <div className="t-label" style={{ marginBottom: 6, fontSize: 9 }}>{t('site_landing_bg_preview_label')}</div>
+                  <div
+                    aria-hidden
+                    style={{
+                      height: 48,
+                      borderRadius: 4,
+                      border: '1px solid var(--bd)',
+                      background: resolveLandingBackground(config.landing).backgroundCss,
+                    }}
+                  />
+                </>
+              ) : null}
+            </div>
             <div style={{ marginTop: 24 }}>
               <DualField
                 label={t('site_hero_caption_label')}

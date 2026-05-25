@@ -22,6 +22,7 @@ npm-debug.log*
 
 # local editor / generated docs (never block push)
 .cursor/settings.json
+.cursor/debug-*.log
 docs/TEAM_MEMBER_GUIDE.html
 docs/TEAM_MEMBER_GUIDE.pdf
 docs/ADMIN_GUIDE.html
