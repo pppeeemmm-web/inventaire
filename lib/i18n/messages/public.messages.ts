@@ -9,4 +9,8 @@ export const publicMessages = defineMessages({
     fr: 'Voir les œuvres',
     en: 'View works',
   },
+  pub_landing_footer_nav_aria: {
+    fr: 'Navigation du site',
+    en: 'Site navigation',
+  },
 })

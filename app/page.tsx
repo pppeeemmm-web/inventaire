@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import { cache } from 'react'
 import LandingPage from '@/components/public/LandingPage'
 import { dict } from '@/lib/i18n/dictionary'
 import { getMetadataBase } from '@/lib/seo/site-url'
@@ -9,7 +8,7 @@ import {
   resolveArtistDisplayName,
   isLandingHeroUnoptimized,
 } from '@/lib/seo/landing-hero'
-import { loadPortfolioSectionsFromR2 } from '@/lib/portfolio-sections-from-r2'
+import { loadPortfolioSectionsCached } from '@/lib/portfolio-sections-from-r2'
 import {
   hiddenNavRoutes,
   orderedNavRoutes,
@@ -24,14 +23,12 @@ import { resolveLandingBackground } from '@/lib/landing-background'
 import { resolveHeroGloss } from '@/lib/landing-hero-gloss'
 import type { LandingConfig, SiteBlock } from '@/lib/portfolio-config-types'
 
-const getPortfolioSectionsCached = cache(loadPortfolioSectionsFromR2)
-
 export async function generateMetadata(): Promise<Metadata> {
   const base = getMetadataBase()
   let heroUrl = LANDING_HERO_IMAGE_URL
   let siteName = resolveArtistDisplayName(undefined)
   try {
-    const { config } = await getPortfolioSectionsCached()
+    const { config } = await loadPortfolioSectionsCached()
     const g = config.general as { artist_name?: string } | undefined
     const l = config.landing as { hero_image_url?: string } | undefined
     heroUrl = resolveLandingHeroImageUrl(l?.hero_image_url)
@@ -83,7 +80,7 @@ export default async function HomePage() {
   let landingBg = resolveLandingBackground()
   let heroGloss = resolveHeroGloss()
   try {
-    const { config } = await getPortfolioSectionsCached()
+    const { config } = await loadPortfolioSectionsCached()
     const g = config.general as { artist_name?: string } | undefined
     const l = config.landing as Partial<LandingConfig> | undefined
     landingBg = resolveLandingBackground(l)

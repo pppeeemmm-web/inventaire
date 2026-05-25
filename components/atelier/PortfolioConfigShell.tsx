@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   savePortfolioConfig,
   loadPortfolioConfig,
+  getPortfolioConfigEtag,
   setWorkPublic,
 } from '@/app/atelier/(portal)/portfolio/actions'
 import { PORTFOLIO_SAVE_ERR } from '@/lib/portfolio-save-errors'
@@ -50,6 +51,27 @@ export function PortfolioConfigShell({
   const [saveBusy, setSaveBusy] = useState(false)
   const [pdfOpen,  setPdfOpen]  = useState(false)
   const [portfolioEtag, setPortfolioEtag] = useState<string | null>(null)
+  const [storageStale, setStorageStale] = useState(false)
+
+  const loadData = useCallback(async () => {
+    setLoading(true)
+    const result = await loadPortfolioConfig()
+    if ('ok' in result) {
+      setConfig(migrate(result.config))
+      setPortfolioEtag(result.etag)
+      setStorageStale(false)
+    }
+    setLoading(false)
+  }, [])
+
+  const handlePortfolioEtagConflict = useCallback(async () => {
+    if (window.confirm(t('portfolio_save_etag_conflict_confirm'))) {
+      await loadData()
+      alert(t('portfolio_save_etag_reloaded'))
+    } else {
+      alert(t('portfolio_save_etag_conflict'))
+    }
+  }, [loadData, t])
 
   const savePdfProfile = useCallback(async (purpose: PdfPurpose, format: PdfFormat, settings: PdfProfileSettings) => {
     const next: PortfolioConfig = {
@@ -68,15 +90,16 @@ export function PortfolioConfigShell({
     setSaveBusy(false)
     if ('ok' in result) {
       setPortfolioEtag(result.etag)
+      setStorageStale(false)
       alert(t('portfolio_config_saved'))
     } else if (result.error === PORTFOLIO_SAVE_ERR.ETAG_MISMATCH) {
-      alert(t('portfolio_save_etag_conflict'))
+      await handlePortfolioEtagConflict()
     } else if (result.error === PORTFOLIO_SAVE_ERR.OBJECT_EXISTS) {
       alert(t('portfolio_save_object_exists'))
     } else {
       alert(`${t('error_prefix')} ${result.error}`)
     }
-  }, [config, portfolioEtag, t])
+  }, [config, portfolioEtag, t, handlePortfolioEtagConflict])
 
   const themeNames = themes.map(t => t.name).sort((a, b) => a.localeCompare(b, 'fr'))
 
@@ -197,17 +220,19 @@ export function PortfolioConfigShell({
 
   // ── Data loading ──
 
-  const loadData = useCallback(async () => {
-    setLoading(true)
-    const result = await loadPortfolioConfig()
-    if ('ok' in result) {
-      setConfig(migrate(result.config))
-      setPortfolioEtag(result.etag)
-    }
-    setLoading(false)
-  }, [])
-
   useEffect(() => { loadData() }, [loadData])
+
+  useEffect(() => {
+    const onVisible = async () => {
+      if (document.visibilityState !== 'visible' || loading) return
+      const result = await getPortfolioConfigEtag()
+      if ('ok' in result && result.etag !== portfolioEtag) {
+        setStorageStale(true)
+      }
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [loading, portfolioEtag])
 
   // ── Handlers ──
 
@@ -217,9 +242,10 @@ export function PortfolioConfigShell({
     setSaveBusy(false)
     if ('ok' in result) {
       setPortfolioEtag(result.etag)
+      setStorageStale(false)
       alert(t('portfolio_config_saved'))
     } else if (result.error === PORTFOLIO_SAVE_ERR.ETAG_MISMATCH) {
-      alert(t('portfolio_save_etag_conflict'))
+      await handlePortfolioEtagConflict()
     } else if (result.error === PORTFOLIO_SAVE_ERR.OBJECT_EXISTS) {
       alert(t('portfolio_save_object_exists'))
     } else {
@@ -412,6 +438,34 @@ export function PortfolioConfigShell({
             {saveBusy ? t('savingRecord') : t('save')}
           </button>
         </div>
+        {storageStale ? (
+          <div
+            role="status"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+              marginTop: 10,
+              padding: '8px 12px',
+              fontSize: 10,
+              lineHeight: 1.45,
+              border: '1px solid var(--bd)',
+              borderRadius: 4,
+              background: 'var(--bg2)',
+            }}
+          >
+            <span>{t('portfolio_storage_stale_banner')}</span>
+            <button
+              type="button"
+              className="btn ghost sm"
+              onClick={() => void loadData()}
+              style={{ fontSize: 9, letterSpacing: 1, flexShrink: 0, minHeight: 36 }}
+            >
+              {t('portfolio_storage_stale_reload')}
+            </button>
+          </div>
+        ) : null}
       </div>
       )}
 

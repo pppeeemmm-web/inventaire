@@ -2,7 +2,19 @@
 
 import { useState } from 'react'
 import { useI18n } from '@/lib/i18n/context'
-import type { PortfolioConfig, CollectionItem, WorksMode, ThemeWork, SiteBlockKind } from '@/lib/portfolio-config-types'
+import type {
+  PortfolioConfig,
+  CollectionItem,
+  WorksMode,
+  ThemeWork,
+  SiteBlockKind,
+  SiteBlock,
+} from '@/lib/portfolio-config-types'
+import {
+  pageBackgroundFromLanding,
+  type PageBackgroundConfig,
+} from '@/lib/page-background'
+import { PageBackgroundEditor } from '@/components/atelier/site/PageBackgroundEditor'
 import { isHttpsHeroUrl, reorder } from '@/lib/portfolio-config-types'
 import {
   applyLandingBlendTransition,
@@ -143,6 +155,43 @@ export function SiteEditorPanel({
   function toggleVisible(idx: number) {
     const next = blocks.map((b, i) => i === idx ? { ...b, visible: !b.visible } : b)
     setConfig({ ...config, site_blocks: next })
+  }
+
+  function findBlock(kind: SiteBlockKind): SiteBlock {
+    return blocks.find(b => b.kind === kind) ?? { kind, visible: true }
+  }
+
+  function blockBgFields(kind: SiteBlockKind): PageBackgroundConfig {
+    return findBlock(kind).page_bg ?? pageBackgroundFromLanding(config.landing)
+  }
+
+  function setBlockPageBg(kind: SiteBlockKind, next: PageBackgroundConfig) {
+    setConfig({
+      ...config,
+      site_blocks: blocks.map(b => (b.kind === kind ? { ...b, page_bg: next } : b)),
+    })
+  }
+
+  function clearBlockPageBg(kind: SiteBlockKind) {
+    setConfig({
+      ...config,
+      site_blocks: blocks.map(b => {
+        if (b.kind !== kind) return b
+        const { page_bg: _removed, ...rest } = b
+        return rest
+      }),
+    })
+  }
+
+  function setWorksNavTransparent(transparent: boolean) {
+    setConfig({
+      ...config,
+      site_blocks: blocks.map(b =>
+        b.kind === 'works_modes'
+          ? { ...b, nav_bar_style: transparent ? 'transparent' : 'bar' }
+          : b,
+      ),
+    })
   }
 
   function toggleCollapsed(kind: SiteBlockKind) {
@@ -522,15 +571,33 @@ export function SiteEditorPanel({
 
       case 'about':
         return (
-          <DualField label="Texte d'introduction" rich allowImport preview="prose"
-            fr={config.about.intro_fr} en={config.about.intro_en}
-            onFr={v => setConfig({ ...config, about: { ...config.about, intro_fr: v } })}
-            onEn={v => setConfig({ ...config, about: { ...config.about, intro_en: v } })} />
+          <>
+            <PageBackgroundEditor
+              labelKey="site_block_page_bg_about"
+              inheritHintKey="site_block_page_bg_inherit_hint"
+              value={blockBgFields('about')}
+              onChange={next => setBlockPageBg('about', next)}
+              showReset={Boolean(findBlock('about').page_bg)}
+              onResetToLanding={() => clearBlockPageBg('about')}
+            />
+            <DualField label="Texte d'introduction" rich allowImport preview="prose"
+              fr={config.about.intro_fr} en={config.about.intro_en}
+              onFr={v => setConfig({ ...config, about: { ...config.about, intro_fr: v } })}
+              onEn={v => setConfig({ ...config, about: { ...config.about, intro_en: v } })} />
+          </>
         )
 
       case 'practice':
         return (
           <>
+            <PageBackgroundEditor
+              labelKey="site_block_page_bg_practice"
+              inheritHintKey="site_block_page_bg_inherit_hint"
+              value={blockBgFields('practice')}
+              onChange={next => setBlockPageBg('practice', next)}
+              showReset={Boolean(findBlock('practice').page_bg)}
+              onResetToLanding={() => clearBlockPageBg('practice')}
+            />
             <DualField label="Approche / statement" rich allowImport preview="prose"
               fr={config.practice.approach_fr} en={config.practice.approach_en}
               onFr={v => setConfig({ ...config, practice: { ...config.practice, approach_fr: v } })}
@@ -566,8 +633,36 @@ export function SiteEditorPanel({
 
       case 'works_modes': {
         const mode = config.works_modes[activeMode]
+        const worksBlock = findBlock('works_modes')
+        const navTransparent = worksBlock.nav_bar_style !== 'bar'
         return (
           <>
+            <PageBackgroundEditor
+              labelKey="site_block_page_bg_works"
+              inheritHintKey="site_block_page_bg_inherit_hint"
+              value={blockBgFields('works_modes')}
+              onChange={next => setBlockPageBg('works_modes', next)}
+              showReset={Boolean(worksBlock.page_bg)}
+              onResetToLanding={() => clearBlockPageBg('works_modes')}
+            />
+            <label
+              className="t-label"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                fontSize: 9,
+                marginBottom: 20,
+                cursor: 'pointer',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={navTransparent}
+                onChange={e => setWorksNavTransparent(e.target.checked)}
+              />
+              {t('site_block_works_nav_transparent')}
+            </label>
             {config.works_modes.length <= 1 && (
               <>
                 <p className="t-mono-xs" style={{ opacity: 0.5, marginBottom: 8, maxWidth: 720, lineHeight: 1.45 }}>

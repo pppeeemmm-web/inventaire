@@ -3,7 +3,11 @@ import { createClient } from '@/lib/supabase/server'
 import WorksClient from '@/components/public/WorksClient'
 import { loadPortfolioSectionsCached } from '@/lib/portfolio-sections-from-r2'
 import { hiddenNavRoutes, orderedNavRoutes } from '@/lib/site-block-visibility'
-import type { SiteBlock } from '@/lib/portfolio-config-types'
+import { migrate, type SiteBlock } from '@/lib/portfolio-config-types'
+import {
+  resolvePublicNavBarStyle,
+  resolvePublicSiteThemeForPage,
+} from '@/lib/public-site-theme'
 import { routeMetadata } from '@/lib/i18n/route-metadata'
 
 export function generateMetadata(): Metadata {
@@ -199,6 +203,18 @@ export default async function WorksPage() {
   const blocks = cfg.site_blocks as SiteBlock[] | undefined
   const hidden = blocks ? hiddenNavRoutes(blocks) : []
   const navOrder = blocks ? orderedNavRoutes(blocks) : ['/works', '/about', '/practice', '/enquiry']
+  const migrated = migrate(cfg)
+  const siteTheme = resolvePublicSiteThemeForPage('works', migrated.landing, migrated.site_blocks)
+  const navTransparent = resolvePublicNavBarStyle('works', migrated.site_blocks) === 'transparent'
 
-  return <WorksClient works={works} modes={modes} hiddenNavRoutes={hidden} navOrder={navOrder} />
+  return (
+    <WorksClient
+      works={works}
+      modes={modes}
+      hiddenNavRoutes={hidden}
+      navOrder={navOrder}
+      siteTheme={siteTheme}
+      navTransparent={navTransparent}
+    />
+  )
 }

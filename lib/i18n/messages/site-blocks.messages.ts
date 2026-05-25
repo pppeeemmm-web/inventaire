@@ -179,4 +179,28 @@ export const siteBlocksMessages = defineMessages({
     fr: 'Visible : l’image d’accueil mène vers /works (survol « Œuvres »).',
     en: 'When visible: home hero links to /works (hover shows Works).',
   },
+  site_block_page_bg_about: {
+    fr: 'Fond — page À propos',
+    en: 'Background — About page',
+  },
+  site_block_page_bg_practice: {
+    fr: 'Fond — page Pratique',
+    en: 'Background — Practice page',
+  },
+  site_block_page_bg_works: {
+    fr: 'Fond — page /works',
+    en: 'Background — /works page',
+  },
+  site_block_page_bg_inherit_hint: {
+    fr: 'Sans réglage personnalisé, cette page reprend le dégradé de l’accueil.',
+    en: 'Unless customized, this page uses the home page gradient.',
+  },
+  site_block_page_bg_reset: {
+    fr: 'Reprendre le dégradé de l’accueil',
+    en: 'Use home page gradient',
+  },
+  site_block_works_nav_transparent: {
+    fr: 'Navigation transparente (dégradé jusqu’en haut, sans bandeau)',
+    en: 'Transparent navigation (gradient to top, no header bar)',
+  },
 })

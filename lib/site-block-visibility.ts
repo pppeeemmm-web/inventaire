@@ -44,6 +44,23 @@ export function isLandingHeroLinked(blocks: SiteBlock[]): boolean {
   return blocks.some(b => b.kind === 'works_modes' && b.visible)
 }
 
+/**
+ * Footer row on landing: block order, enquiry last.
+ * Skips /works when the hero disc already links there.
+ */
+export function landingInlineNavRoutes(
+  navOrder: string[],
+  hiddenNavRoutes: string[],
+  heroLinked: boolean,
+): string[] {
+  const hidden = new Set(hiddenNavRoutes)
+  const visible = navOrder.filter(h => !hidden.has(h))
+  const withoutWorks = heroLinked ? visible.filter(h => h !== '/works') : visible
+  const rest = withoutWorks.filter(h => h !== '/enquiry')
+  const enquiry = withoutWorks.includes('/enquiry') ? (['/enquiry'] as const) : []
+  return [...rest, ...enquiry]
+}
+
 /** About / Practice satellite orbs around the hero (not Works or Enquiry). */
 export function landingSatelliteRoutes(
   blocks: SiteBlock[],

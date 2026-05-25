@@ -765,6 +765,14 @@ portfolio_one_mode_required: 'Gardez au moins un mode d’affichage actif.',
 portfolio_confirm_delete_mode_fmt: 'Supprimer le mode « {label} » ?',
 portfolio_save_etag_conflict:
   'La configuration publique a changé ailleurs (ou sur le stockage). Rechargez l’onglet Site public puis réessayez.',
+portfolio_save_etag_conflict_confirm:
+  'Une version plus récente est sur le stockage (autre onglet ou autre session). Recharger maintenant ? Les modifications non enregistrées de cet onglet seront perdues.',
+portfolio_save_etag_reloaded:
+  'Configuration rechargée depuis le stockage. Vérifiez vos réglages puis enregistrez à nouveau.',
+portfolio_storage_stale_banner:
+  'Le stockage a été mis à jour ailleurs — rechargez avant d’enregistrer.',
+portfolio_storage_stale_reload:
+  'Recharger',
 portfolio_save_object_exists:
   'Le fichier de configuration existe déjà sur le stockage. Rechargez l’onglet Site public et fusionnez vos changements.',
 salesSoldWorksDetail: 'Œuvres marquées vendues dans le lot chargé.',

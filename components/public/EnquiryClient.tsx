@@ -9,8 +9,10 @@ import { createClient } from '@/lib/supabase/client'
 import { loadPortfolioConfig } from '@/app/atelier/(portal)/portfolio/actions'
 import { trackView } from '@/lib/track'
 import { getOrCreatePublicVisitorId } from '@/lib/public-visitor-id'
+import type { PublicSiteTheme } from '@/lib/public-site-theme'
+import { publicSiteBaseCss } from '@/lib/public-site-theme'
 
-export default function EnquiryClient() {
+export default function EnquiryClient({ siteTheme }: { siteTheme: PublicSiteTheme }) {
   const { lang, setLang, t } = useI18n()
   const searchParams = useSearchParams()
   const [sent, setSent] = useState(false)
@@ -60,7 +62,7 @@ export default function EnquiryClient() {
       <style>{`
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         html, body { width: 100%; height: 100%; overflow: hidden; }
-        body { background: #edeae4; font-family: var(--font-ui, 'Sofia Sans', ui-sans-serif, system-ui, sans-serif); color: #6b6760; }
+        ${publicSiteBaseCss(siteTheme)}
         .stage {
           position: fixed; top: 0; left: 0; right: 0; bottom: 0;
           display: flex; flex-direction: column;
@@ -85,17 +87,17 @@ export default function EnquiryClient() {
         .wordmark {
           position: absolute; top: clamp(16px, 3.5vw, 28px); left: clamp(16px, 4vw, 32px);
           font-size: clamp(8px, 1.2vw, 9px); letter-spacing: 3px; text-transform: uppercase;
-          color: #b0aca6; text-decoration: none;
+          color: ${siteTheme.chromeText}; text-decoration: none;
         }
         .lang-btn {
           position: absolute; top: clamp(14px, 3vw, 24px); right: clamp(16px, 4vw, 32px);
           font-size: clamp(8px, 1.2vw, 9px); letter-spacing: 2px; text-transform: uppercase;
-          color: #b0aca6; background: none; border: 1px solid #dedad4;
+          color: ${siteTheme.chromeText}; background: rgba(255,255,255,0.35); border: 1px solid ${siteTheme.chromeBorder};
           padding: 4px 10px; cursor: pointer; transition: all .15s;
           font-family: inherit;
           min-height: 44px; min-width: 44px; display: inline-flex; align-items: center; justify-content: center;
         }
-        .lang-btn:hover { color: #6b6760; border-color: #b0aca6; }
+        .lang-btn:hover { color: ${siteTheme.chromeTextHover}; border-color: ${siteTheme.chromeTextHover}; }
         .form-container { width: 100%; max-width: 440px; animation: fadeIn 0.8s ease-out; }
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(10px); }

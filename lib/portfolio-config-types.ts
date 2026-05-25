@@ -18,6 +18,13 @@ import {
 } from '@/lib/landing-hero-gloss'
 
 export type { LandingGradientStop }
+export type { PageBackgroundConfig, SiteBlockNavBarStyle } from '@/lib/page-background'
+import {
+  migrateNavBarStyle,
+  migratePageBackground,
+  type PageBackgroundConfig,
+  type SiteBlockNavBarStyle,
+} from '@/lib/page-background'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -26,6 +33,10 @@ export type SiteBlockKind = 'hero' | 'identity' | 'about' | 'practice' | 'works_
 export interface SiteBlock {
   kind: SiteBlockKind
   visible: boolean
+  /** Optional page gradient; omitted = inherit `landing` background. */
+  page_bg?: PageBackgroundConfig
+  /** Works page only: `transparent` = gradient to viewport top (no nav bar sleeve). */
+  nav_bar_style?: SiteBlockNavBarStyle
 }
 
 export const SITE_BLOCK_KINDS: SiteBlockKind[] = ['hero', 'identity', 'about', 'practice', 'works_modes']
@@ -239,14 +250,20 @@ function migrateLandingPct(v: unknown, fallback: number): number {
   return Math.min(100, Math.max(0, Math.round(n)))
 }
 
-function migrateSiteBlocks(raw: any): SiteBlock[] {
+export function migrateSiteBlocks(raw: any): SiteBlock[] {
   if (!Array.isArray(raw?.site_blocks)) return DEFAULT_SITE_BLOCKS.map(b => ({ ...b }))
   const seen = new Set<SiteBlockKind>()
   const result: SiteBlock[] = []
   for (const b of raw.site_blocks) {
     if (b && typeof b.kind === 'string' && SITE_BLOCK_KINDS.includes(b.kind) && !seen.has(b.kind)) {
       seen.add(b.kind)
-      result.push({ kind: b.kind, visible: b.visible !== false })
+      const kind = b.kind as SiteBlockKind
+      const pageBg = migratePageBackground(b.page_bg)
+      const navBarStyle = migrateNavBarStyle(kind, b.nav_bar_style)
+      const row: SiteBlock = { kind, visible: b.visible !== false }
+      if (pageBg) row.page_bg = pageBg
+      if (navBarStyle) row.nav_bar_style = navBarStyle
+      result.push(row)
     }
   }
   for (const k of SITE_BLOCK_KINDS) {

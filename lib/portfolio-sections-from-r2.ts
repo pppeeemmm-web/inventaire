@@ -7,10 +7,9 @@ import { unstable_cache } from 'next/cache'
 import { createServiceClient } from '@/lib/supabase/server'
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3'
 import {
-  SITE_BLOCK_KINDS,
-  DEFAULT_SITE_BLOCKS,
   DEFAULT_HERO_CAPTION_EN,
   DEFAULT_HERO_CAPTION_FR,
+  migrateSiteBlocks,
 } from '@/lib/portfolio-config-types'
 import {
   applyLandingBlendTransition,
@@ -169,24 +168,7 @@ export async function loadPortfolioSectionsFromR2(): Promise<{
               hero_gloss_falloff_pct: LANDING_HERO_GLOSS_FALLOFF_DEFAULT,
             }
 
-        // Extract site_blocks with same logic as migrateSiteBlocks
-        let siteBlocks: SiteBlock[]
-        if (Array.isArray(parsed.site_blocks)) {
-          const seen = new Set<SiteBlockKind>()
-          const result: SiteBlock[] = []
-          for (const b of parsed.site_blocks as any[]) {
-            if (b && typeof b.kind === 'string' && SITE_BLOCK_KINDS.includes(b.kind as SiteBlockKind) && !seen.has(b.kind as SiteBlockKind)) {
-              seen.add(b.kind as SiteBlockKind)
-              result.push({ kind: b.kind as SiteBlockKind, visible: b.visible !== false })
-            }
-          }
-          for (const k of SITE_BLOCK_KINDS) {
-            if (!seen.has(k)) result.push({ kind: k, visible: true })
-          }
-          siteBlocks = result
-        } else {
-          siteBlocks = DEFAULT_SITE_BLOCKS.map(b => ({ ...b }))
-        }
+        const siteBlocks = migrateSiteBlocks(parsed)
 
         config = {
           general:           parsed.general           || config.general,

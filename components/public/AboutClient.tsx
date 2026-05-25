@@ -8,6 +8,8 @@ import { hiddenNavRoutes, orderedNavRoutes } from '@/lib/site-block-visibility'
 import type { SiteBlock } from '@/lib/portfolio-config-types'
 import { trackView } from '@/lib/track'
 import { getOrCreatePublicVisitorId } from '@/lib/public-visitor-id'
+import type { PublicSiteTheme } from '@/lib/public-site-theme'
+import { publicNavBarCss, publicSiteBaseCss } from '@/lib/public-site-theme'
 
 
 function hasContent(html: string | null | undefined): boolean {
@@ -15,7 +17,7 @@ function hasContent(html: string | null | undefined): boolean {
   return html.replace(/<[^>]*>/g, '').trim().length > 0
 }
 
-export default function AboutClient() {
+export default function AboutClient({ siteTheme }: { siteTheme: PublicSiteTheme }) {
   const { t, lang } = useI18n()
   const [config, setConfig] = useState<any>(null)
 
@@ -47,41 +49,37 @@ export default function AboutClient() {
       <style>{`
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         html { height: auto; }
-        html, body { background: #edeae4; font-family: var(--font-ui, 'Sofia Sans', ui-sans-serif, system-ui, sans-serif); color: #6b6760; }
+        ${publicSiteBaseCss(siteTheme)}
         body { overflow-y: auto; min-height: 100vh; }
         .a-nav {
           position: sticky; top: 0; z-index: 10;
           display: flex; align-items: center; justify-content: space-between;
           padding: clamp(14px, 2.5vw, 20px) clamp(16px, 5vw, 40px);
-          background: rgba(237,234,228,.92); backdrop-filter: blur(8px);
-          border-bottom: 1px solid #dedad4;
         }
-        .a-logo { font-size: clamp(8px, 1.2vw, 9px); letter-spacing: 3px; text-transform: uppercase; color: #b0aca6; text-decoration: none; }
+        ${publicNavBarCss('a', siteTheme)}
         .a-navlinks { display: flex; gap: clamp(16px, 3.5vw, 32px); align-items: center; }
-        .a-navlink { font-size: clamp(8px, 1.2vw, 9px); letter-spacing: 2px; text-transform: uppercase; color: #b0aca6; text-decoration: none; transition: color .15s; }
-        .a-navlink:hover, .a-navlink.active { color: #6b6760; }
+        .a-navlink { font-size: clamp(8px, 1.2vw, 9px); letter-spacing: 2px; text-transform: uppercase; text-decoration: none; transition: color .15s; }
         .a-lang {
           font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
-          color: #b0aca6; background: none; border: 1px solid #dedad4;
+          background: none;
           padding: 3px 8px; cursor: pointer; transition: all .15s;
           font-family: inherit;
           min-height: 44px; display: inline-flex; align-items: center; justify-content: center;
         }
-        .a-lang:hover { color: #6b6760; border-color: #b0aca6; }
         .a-body { max-width: 860px; margin: 0 auto; padding: clamp(40px, 8vw, 72px) clamp(16px, 5vw, 40px) clamp(60px, 12vw, 120px); }
         .a-section { margin-bottom: 72px; }
-        .a-section-label { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: #b0aca6; margin-bottom: clamp(20px, 4vw, 32px); padding-bottom: 12px; border-bottom: 1px solid #dedad4; }
+        .a-section-label { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: ${siteTheme.bodyMutedText}; margin-bottom: clamp(20px, 4vw, 32px); padding-bottom: 12px; border-bottom: 1px solid ${siteTheme.chromeBorder}; }
         .a-name {
           font-family: 'Instrument Serif', serif;
           font-size: clamp(28px,4vw,52px); font-weight: 400;
-          color: #3a3834; line-height: 1.1; letter-spacing: -.02em; margin-bottom: 40px;
+          color: ${siteTheme.bodyText}; line-height: 1.1; letter-spacing: -.02em; margin-bottom: 40px;
           text-wrap: balance;
         }
-        .a-bio { font-size: clamp(12px, 1.6vw, 13px); line-height: 2; color: #7a7670; max-width: 64ch; }
+        .a-bio { font-size: clamp(12px, 1.6vw, 13px); line-height: 2; color: ${siteTheme.bodyMutedText}; max-width: 64ch; }
         .a-bio p + p { margin-top: 1.4em; }
-        .a-footer { text-align: center; padding: 40px; border-top: 1px solid #dedad4; font-size: 9px; color: #c8c4be; letter-spacing: 2px; text-transform: uppercase; }
+        .a-footer { text-align: center; padding: 40px; border-top: 1px solid ${siteTheme.chromeBorder}; font-size: 9px; color: ${siteTheme.bodyMutedText}; letter-spacing: 2px; text-transform: uppercase; }
         a.a-ext { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
-        a.a-ext:hover { color: #3a3834; }
+        a.a-ext:hover { color: ${siteTheme.bodyText}; }
         @media (max-width: 640px) {
           .a-navlinks { gap: clamp(10px, 2.5vw, 16px); }
           .a-navlink { letter-spacing: 1px; }

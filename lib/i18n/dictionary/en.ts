@@ -763,6 +763,14 @@ portfolio_one_mode_required: 'Keep at least one display mode enabled.',
 portfolio_confirm_delete_mode_fmt: 'Delete mode “{label}”?',
 portfolio_save_etag_conflict:
   'The public-site configuration changed elsewhere (or in storage). Reload the Public site tab and try again.',
+portfolio_save_etag_conflict_confirm:
+  'A newer version is in storage (another tab or session). Reload now? Unsaved edits in this tab will be lost.',
+portfolio_save_etag_reloaded:
+  'Configuration reloaded from storage. Review your settings, then save again.',
+portfolio_storage_stale_banner:
+  'Storage was updated elsewhere — reload before saving.',
+portfolio_storage_stale_reload:
+  'Reload',
 portfolio_save_object_exists:
   'The configuration file already exists in storage. Reload the Public site tab and merge your changes.',
 salesSoldWorksDetail: 'Works marked sold in the loaded batch.',

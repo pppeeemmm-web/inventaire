@@ -4,7 +4,7 @@
 // TipTap HTML fields are sanitized server-side before persistence (see lib/portfolio-html-sanitize.ts).
 // Uses service_role to bypass RLS on the document table.
 
-import { revalidateTag } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { logError } from '@/lib/error-reporter/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3'
@@ -66,6 +66,31 @@ export async function loadPortfolioConfig(): Promise<LoadConfigResult> {
   } catch (e: any) {
     console.error('[loadPortfolioConfig]', e)
     return { error: e.message ?? String(e) }
+  }
+}
+
+/** Lightweight etag read for tab-focus checks (no JSON download). */
+export async function getPortfolioConfigEtag(): Promise<
+  { ok: true; etag: string | null } | { error: string }
+> {
+  try {
+    const s3 = createPortfolioConfigS3Client()
+    try {
+      const head = await s3.send(
+        new HeadObjectCommand({
+          Bucket: PORTFOLIO_SECTIONS_BUCKET,
+          Key: PORTFOLIO_SECTIONS_R2_KEY,
+        }),
+      )
+      return { ok: true, etag: stripS3Etag(head.ETag) }
+    } catch (e) {
+      if (isS3NotFound(e)) return { ok: true, etag: null }
+      throw e
+    }
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e)
+    console.error('[getPortfolioConfigEtag]', e)
+    return { error: msg }
   }
 }
 
@@ -204,6 +229,7 @@ export async function savePortfolioConfig(
     }
 
     revalidateTag('portfolio')
+    revalidatePath('/')
 
     return { ok: true, etag: newEtag }
   } catch (e: any) {

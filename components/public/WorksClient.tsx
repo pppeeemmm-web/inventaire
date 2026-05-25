@@ -9,12 +9,17 @@ import { trackView } from '@/lib/track'
 import { getOrCreatePublicVisitorId } from '@/lib/public-visitor-id'
 import { worksForCollection } from './works-utils'
 import type { Work, WorksMode, Collection } from './works-utils'
+import type { PublicSiteTheme } from '@/lib/public-site-theme'
+import { publicNavBarCss, publicSiteBaseCss } from '@/lib/public-site-theme'
 
 interface Props {
   works: Work[]
   modes: WorksMode[]
   hiddenNavRoutes?: string[]
   navOrder?: string[]
+  siteTheme: PublicSiteTheme
+  /** Gradient flush to viewport top (no nav bar sleeve). */
+  navTransparent?: boolean
 }
 
 /** Per-card 3D transform. Center = face-on, neighbors rotate so inner edge faces viewer. */
@@ -40,7 +45,9 @@ function cardTransform(offset: number, reducedMotion: boolean, spacing = 780): {
 // Grain SVG data URI — shared between CSS and 3D wall plane
 const GRAIN_BG = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E")`
 
-export default function WorksClient({ works, modes, hiddenNavRoutes, navOrder }: Props) {
+export default function WorksClient({
+  works, modes, hiddenNavRoutes, navOrder, siteTheme, navTransparent = true,
+}: Props) {
   const { t, lang } = useI18n()
   const safeModes: WorksMode[] = modes.length > 0 ? modes : [{
     id: 'default', label_fr: 'Œuvres', label_en: 'Works',
@@ -340,8 +347,9 @@ export default function WorksClient({ works, modes, hiddenNavRoutes, navOrder }:
     <div className="w-page-enter">
       <style>{`
         *, *::before, *::after { box-sizing: border-box; }
+        ${publicSiteBaseCss(siteTheme)}
+        ${publicNavBarCss('w', siteTheme, { transparent: navTransparent })}
         html, body {
-          background: #fafafa; font-family: var(--font-ui); color: #2a2826;
           height: 100vh; overflow: hidden; -webkit-font-smoothing: antialiased;
         }
         @keyframes w-fadein { from { opacity: 0; } to { opacity: 1; } }
@@ -349,7 +357,7 @@ export default function WorksClient({ works, modes, hiddenNavRoutes, navOrder }:
 
         .w-stage {
           position: fixed; inset: 0;
-          background: linear-gradient(to top, #d0ccc6 0%, #dedad4 50%, #edeae4 100%);
+          background: ${siteTheme.backgroundCss};
           overflow: hidden;
           touch-action: pan-y;
         }
@@ -615,19 +623,14 @@ export default function WorksClient({ works, modes, hiddenNavRoutes, navOrder }:
           pointer-events: auto;
           transition: opacity 300ms ease;
         }
-        .w-logo { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: #8a8680; text-decoration: none; transition: color .15s; }
-        .w-logo:hover { color: #1a1816; }
+        .w-logo { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; text-decoration: none; transition: color .15s; }
         .w-navlinks { display: flex; gap: clamp(14px, 2.5vw, 28px); align-items: center; }
-        .w-navlink { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: #8a8680; text-decoration: none; transition: color .15s; }
-        .w-navlink:hover { color: #1a1816; }
-        .w-navlink.active { color: #3a3632; }
+        .w-navlink { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; text-decoration: none; transition: color .15s; }
         .w-lang {
           font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
-          color: #8a8680; background: none; border: 1px solid rgba(26,24,22,0.15);
-          padding: 3px 8px; cursor: pointer; transition: all .15s; font-family: inherit;
+          background: none; padding: 3px 8px; cursor: pointer; transition: all .15s; font-family: inherit;
           min-height: 32px; display: inline-flex; align-items: center;
         }
-        .w-lang:hover { color: #1a1816; border-color: rgba(26,24,22,0.4); }
 
         .w-page-h1-sr-only {
           position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
@@ -718,6 +721,7 @@ export default function WorksClient({ works, modes, hiddenNavRoutes, navOrder }:
           mode={mode}
           activeChapterIdx={activeChapterIdx}
           onChapterChange={setActiveChapterIdx}
+          siteTheme={siteTheme}
         />
       ) : (
       <div

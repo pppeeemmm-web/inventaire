@@ -10,8 +10,7 @@ import { getOrCreatePublicVisitorId } from '@/lib/public-visitor-id'
 import { trackView } from '@/lib/track'
 import {
   DEFAULT_NAV_ORDER,
-  assignOrbPositions,
-  landingSatelliteRoutes,
+  landingInlineNavRoutes,
 } from '@/lib/site-block-visibility'
 import type { CSSProperties } from 'react'
 
@@ -72,9 +71,9 @@ export default function LandingPage({
   const hiddenSet = useMemo(() => new Set(hiddenNavRoutes), [hiddenNavRoutes])
 
   const order = navOrder ?? [...DEFAULT_NAV_ORDER]
-  const satelliteOrbs = useMemo(
-    () => assignOrbPositions(landingSatelliteRoutes([], order)),
-    [order],
+  const inlineNavRoutes = useMemo(
+    () => landingInlineNavRoutes(order, hiddenNavRoutes, heroLinked),
+    [order, hiddenNavRoutes, heroLinked],
   )
 
   const heroCaption = lang === 'en'
@@ -218,35 +217,34 @@ export default function LandingPage({
           color: ${landingBodyMutedText};
           font-style: italic;
         }
-        .orb {
-          position: absolute;
-          font-size: clamp(8px, 2.5vmin, 10px); letter-spacing: clamp(1.5px, 0.35vmin, 3px); text-transform: uppercase;
-          color: ${landingBodyText}; text-decoration: none;
-          display: flex; align-items: center; justify-content: center;
-          gap: clamp(4px, 1vmin, 10px); white-space: nowrap; transition: color .25s;
-          min-height: 44px; min-width: 44px;
-        }
-        .orb:hover { color: ${landingChromeTextHover}; }
-        .orb-top    { bottom: 100%; left: 50%; transform: translateX(-50%); flex-direction: column; padding: 8px 18px clamp(18px, 5vmin, 52px); }
-        .orb-top::after    { content: ''; display: block; width: 1px; height: clamp(12px, 2.8vmin, 28px); background: currentColor; opacity: .4; }
-        .orb-bottom { top: 100%;  left: 50%; transform: translateX(-50%); flex-direction: column-reverse; padding: clamp(18px, 5vmin, 52px) 18px 8px; }
-        .orb-bottom::after { content: ''; display: block; width: 1px; height: clamp(12px, 2.8vmin, 28px); background: currentColor; opacity: .4; }
-        .orb-left   { right: 100%; top: 50%; transform: translateY(-50%); flex-direction: row; padding: 8px clamp(12px, 4vmin, 52px) 8px 18px; }
-        .orb-left::after   { content: ''; display: block; height: 1px; width: clamp(12px, 2.8vmin, 28px); background: currentColor; opacity: .4; }
-        .orb-right  { left: 100%;  top: 50%; transform: translateY(-50%); flex-direction: row-reverse; padding: 8px 18px 8px clamp(12px, 4vmin, 52px); }
-        .orb-right::after  { content: ''; display: block; height: 1px; width: clamp(12px, 2.8vmin, 28px); background: currentColor; opacity: .4; }
-        .enquiry-link {
+        .landing-inline-nav {
           margin: 0;
           flex-shrink: 0;
           position: relative;
           z-index: 5;
-          font-size: clamp(8px, 2.5vmin, 10px); letter-spacing: clamp(1.5px, 0.35vmin, 3px);
-          text-transform: uppercase; color: ${landingBodyText}; text-decoration: none;
-          display: inline-flex; align-items: center; justify-content: center;
-          min-height: 44px; min-width: 44px; padding: 8px 18px;
-          transition: color .25s;
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          justify-content: center;
+          gap: clamp(4px, 1.5vmin, 12px);
+          max-width: min(96vw, 640px);
         }
-        .enquiry-link:hover { color: ${landingChromeTextHover}; }
+        .landing-inline-link {
+          font-size: clamp(8px, 2.5vmin, 10px);
+          letter-spacing: clamp(1.5px, 0.35vmin, 3px);
+          text-transform: uppercase;
+          color: ${landingBodyText};
+          text-decoration: none;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 44px;
+          min-width: 44px;
+          padding: 8px clamp(10px, 2vmin, 18px);
+          transition: color .25s;
+          white-space: nowrap;
+        }
+        .landing-inline-link:hover { color: ${landingChromeTextHover}; }
         .hub-link {
           position: absolute;
           bottom: max(clamp(12px, 3vh, 32px), env(safe-area-inset-bottom, 0px));
@@ -290,8 +288,7 @@ export default function LandingPage({
         }
         .landing-nav-btn:hover { border-color: ${landingChromeBorder}; color: ${landingChromeTextHover}; }
         @media (max-width: 767px) {
-          .orb { display: none !important; }
-          .enquiry-link { display: inline-flex !important; }
+          .landing-inline-nav { display: none !important; }
           .landing-nav-btn { display: inline-flex; align-items: center; justify-content: center; }
         }
         @media (max-width: 767px) {
@@ -340,15 +337,6 @@ export default function LandingPage({
 
         <div className="landing-center">
           <div className="hero-orbit-wrap">
-            {satelliteOrbs.map(({ href, position }) => {
-              const labelKey = ROUTE_LABEL_KEYS[href]
-              if (!labelKey) return null
-              return (
-                <Link key={href} href={href} className={`orb ${position}`}>
-                  {t(labelKey)}
-                </Link>
-              )
-            })}
             <nav className="circle-wrap" aria-label={t('pub_mobile_nav_heading')}>
               {heroLinked ? (
                 <Link
@@ -371,11 +359,24 @@ export default function LandingPage({
             <p className="hero-caption">{heroCaption}</p>
           ) : null}
 
-          {!hiddenSet.has('/enquiry') && (
-            <Link href="/enquiry" className="enquiry-link" data-testid="landing-enquiry-link">
-              {t('pub_enquiry')}
-            </Link>
-          )}
+          {inlineNavRoutes.length > 0 ? (
+            <nav className="landing-inline-nav" aria-label={t('pub_landing_footer_nav_aria')}>
+              {inlineNavRoutes.map(href => {
+                const labelKey = ROUTE_LABEL_KEYS[href]
+                if (!labelKey) return null
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    className="landing-inline-link"
+                    data-testid={href === '/enquiry' ? 'landing-enquiry-link' : undefined}
+                  >
+                    {t(labelKey)}
+                  </Link>
+                )
+              })}
+            </nav>
+          ) : null}
         </div>
 
         <button

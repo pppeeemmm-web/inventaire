@@ -5,16 +5,19 @@ import { useI18n } from '@/lib/i18n/context'
 import { thumbUrl, imageUrl, yearOf } from '@/lib/data'
 import { worksForCollection } from './works-utils'
 import type { Work, WorksMode } from './works-utils'
+import type { PublicSiteTheme } from '@/lib/public-site-theme'
+import { publicSiteBaseCss } from '@/lib/public-site-theme'
 
 interface WorksGridProps {
   works: Work[]
   mode: WorksMode
   activeChapterIdx: number
   onChapterChange: (idx: number) => void
+  siteTheme: PublicSiteTheme
 }
 
 export default function WorksGrid({
-  works, mode, activeChapterIdx, onChapterChange,
+  works, mode, activeChapterIdx, onChapterChange, siteTheme,
 }: WorksGridProps) {
   const { t, lang } = useI18n()
   const [lightbox, setLightbox] = useState<Work | null>(null)
@@ -40,12 +43,13 @@ export default function WorksGrid({
   return (
     <>
       <style>{`
+        ${publicSiteBaseCss(siteTheme)}
+        html, body { overflow: auto !important; height: auto !important; }
         .wg-body {
           min-height: 100vh;
-          background: linear-gradient(to bottom, #edeae4 0%, #e4e0da 100%);
+          background: ${siteTheme.backgroundCss};
           padding: clamp(24px, 5vw, 48px) clamp(16px, 4vw, 40px) clamp(60px, 10vw, 120px);
         }
-        html, body { background: #edeae4; overflow: auto !important; height: auto !important; }
 
         .wg-header { max-width: 1400px; margin: 0 auto clamp(28px, 4vw, 48px); text-align: center; }
         .wg-title {
