@@ -8,7 +8,6 @@ import { useRef, useEffect, useState, useCallback, useMemo, useId } from 'react'
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
 import type { DictKey } from '@/lib/i18n/dictionary'
-import { imageUrl, thumbUrl } from '@/lib/data'
 import {
   removeOeuvreFromCatalogTheme,
   removeOeuvreFromWorkingGroup,
@@ -33,11 +32,10 @@ import type { Oeuvre }  from '@/lib/types/database'
 
 import {
   NW, NH, NR, RING, MIN_Z, MAX_Z,
-  cacheConstellationThumb, thumbTier,
   type Pt, type NodeMap,
   type GroupBy, type LinkType, type VP, type Edge, type Drag, type Shape, type Tool, type Snapshot,
   type ThemeLinkRow, type GroupLinkRow,
-  LINK_LABEL_KEYS, LINK_VIS, LINK_DEF,
+  LINK_LABEL_KEYS,
   loadPos, savePos, filterSavedToMembership,
   loadSnapshots, persistSnapshots, posToObj, objToPos,
   layoutYear, layoutTheme, layoutWorkGroup, layoutGrid,
@@ -50,6 +48,9 @@ export type { Pt, NodeMap } from './constellation/constellation-shared'
 import { ConstellationToolbar } from './constellation/ConstellationToolbar'
 import { ConstellationToolRail } from './constellation/ConstellationToolRail'
 import { ConstellationSidePanel } from './constellation/ConstellationSidePanel'
+import { ConstellationShortcutsPanel } from './constellation/ConstellationShortcutsPanel'
+import { useConstellationCanvasRedraw } from './constellation/useConstellationCanvasRedraw'
+import { handleExportPng, handleExportTiledA4 } from './constellation/constellation-export'
 
 
 // ── Props ──────────────────────────────────────────────────────────────────
@@ -126,7 +127,6 @@ export function ConstellationCanvas({
   const groupByRef  = useRef<GroupBy>(initialGroupBy)
   useEffect(() => { selRef.current = selection }, [selection])
   // React state
-  const [tick,      setTick]      = useState(0)
   const [groupBy,   setGroupBy]   = useState<GroupBy>(initialGroupBy)
   const [linkType,  setLinkType]  = useState<LinkType>('influence')
   const [loading,   setLoading]   = useState(true)
@@ -189,7 +189,6 @@ export function ConstellationCanvas({
   const shortcutsPanelRef = useRef<HTMLDivElement>(null)
   const toolRailRef = useRef<HTMLDivElement>(null)
 
-  const redraw = useCallback(() => setTick(t => t + 1), [])
   const toolbarTools = useMemo(
     () =>
       [
@@ -228,6 +227,36 @@ export function ConstellationCanvas({
   // Background image ref
   const bgImgRef = useRef<HTMLImageElement | null>(null)
   const [bgLoaded, setBgLoaded] = useState(false)
+
+  const redraw = useConstellationCanvasRedraw({
+    canvasRef,
+    wrapRef,
+    vpRef,
+    posRef,
+    selRef,
+    hovNodeRef,
+    hovEdgeRef,
+    draftRef,
+    edgesRef,
+    imagesRef,
+    bgImgRef,
+    bgLoaded,
+    backgroundOpacity,
+    groupBy,
+    linkType,
+    oeuvres,
+    themes,
+    groups,
+    effectiveThemeWork,
+    effectiveGroupWork,
+    oeuvresById,
+    selectedThemeId,
+    selectedGroupId,
+    shapes,
+    activeShape,
+    marquee,
+    frozenEdges,
+  })
   
   useEffect(() => {
     if (initialPositions) {
@@ -415,8 +444,8 @@ export function ConstellationCanvas({
     vpRef.current = { ...doc.viewport }
     setActiveCloudMapId(mapId)
     setGroupBy(doc.groupBy)
-    setTick(t => t + 1)
-  }, [])
+    redraw()
+  }, [redraw])
 
   const mapUrlBootstrappedRef = useRef(false)
   useEffect(() => {
@@ -517,558 +546,6 @@ export function ConstellationCanvas({
     }
     redraw()
   }, [groupBy, loading, constellationOeuvres, themes, groups, effectiveThemeWork, effectiveGroupWork, selectedThemeId, selectedGroupId, redraw, oeuvresById, oeuvres])
-
-  // ── Visible image loading (zoom-adaptive tiers) ───────────────
-  const loadingSet = useRef(new Set<string>())
-  function loadVisible() {
-    const c = canvasRef.current
-    if (!c) return
-    const vp   = vpRef.current
-    const tier = thumbTier(vp.z)
-    const m    = (NR + RING) * 2
-    const x0   = (-vp.x - m) / vp.z, x1 = (c.offsetWidth  - vp.x + m) / vp.z
-    const y0   = (-vp.y - m) / vp.z, y1 = (c.offsetHeight - vp.y + m) / vp.z
-
-    // Limit concurrent new requests to avoid browser bottleneck
-    let requestsStarted = 0
-    const MAX_BATCH = 20
-
-    for (const [id, p] of posRef.current) {
-      if (requestsStarted >= MAX_BATCH) break
-
-      const ncx = p.x + NW / 2, ncy = p.y + NH / 2
-      if (ncx + NR < x0 || ncx - NR > x1 || ncy + NR < y0 || ncy - NR > y1) continue
-      
-      const o = oeuvresById.get(id)
-      if (!o?.txtImageNameLink) continue
-
-      const key = `${id}_${tier}`
-      // If we don't have THIS specific tier and aren't already fetching it
-      if (!imagesRef.current.has(key) && !loadingSet.current.has(key)) {
-        requestsStarted++
-        loadingSet.current.add(key)
-
-        const img = new Image()
-        img.crossOrigin = 'anonymous'
-        
-        img.onload = () => {
-          loadingSet.current.delete(key)
-          cacheConstellationThumb(imagesRef.current, key, img, id)
-          redraw()
-        }
-
-        img.onerror = () => {
-          loadingSet.current.delete(key)
-          // If thumbnail fails, try to load the full image as a fallback
-          const fullUrl = imageUrl(o.txtImageNameLink!)
-          if (fullUrl && img.src !== fullUrl) {
-            // Note: we don't use loadingSet for full image fallback to keep it simple
-            const fallbackImg = new Image()
-            fallbackImg.crossOrigin = 'anonymous'
-            fallbackImg.onload = () => {
-              cacheConstellationThumb(imagesRef.current, key, fallbackImg, id)
-              redraw()
-            }
-            fallbackImg.src = fullUrl
-          }
-        }
-
-        img.src = thumbUrl(o.txtImageNameLink!, tier) ?? ''
-      }
-    }
-  }
-
-  // ── Draw helpers ──────────────────────────────────────────────
-  // Draw image cover-cropped to fill a circle of radius r centred at cx,cy
-  function drawContain(ctx: CanvasRenderingContext2D, img: HTMLImageElement, cx: number, cy: number, r: number) {
-    const iw = img.naturalWidth, ih = img.naturalHeight
-    if (!iw || !ih) return
-    const scale = Math.max((r * 2) / iw, (r * 2) / ih)
-    const dw = iw * scale, dh = ih * scale
-    ctx.drawImage(img, cx - dw / 2, cy - dh / 2, dw, dh)
-  }
-
-  // ── Draw ──────────────────────────────────────────────────────
-  useEffect(() => {
-    const canvas = canvasRef.current
-    const wrap   = wrapRef.current
-    if (!canvas || !wrap) return
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    const dpr = window.devicePixelRatio ?? 1
-    const cw  = wrap.clientWidth
-    const ch  = wrap.clientHeight
-    if (canvas.width !== Math.round(cw * dpr)) canvas.width  = Math.round(cw * dpr)
-    if (canvas.height !== Math.round(ch * dpr)) canvas.height = Math.round(ch * dpr)
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height)
-    ctx.save()
-    ctx.scale(dpr, dpr)
-
-    const vp      = vpRef.current
-    const pos     = posRef.current
-    const sel     = selRef.current
-    const hovNode = hovNodeRef.current
-    const hovEdge = hovEdgeRef.current
- 
-    ctx.save() // Viewport transform start
-    ctx.translate(vp.x, vp.y)
-    ctx.scale(vp.z, vp.z)
-
-    // ── Background Floorplan ────────────────────────────────────
-    if (bgImgRef.current && bgLoaded) {
-      ctx.save()
-      ctx.globalAlpha = backgroundOpacity
-      const img = bgImgRef.current
-      const iw = img.naturalWidth, ih = img.naturalHeight
-      // In exhibition mode, we align (0,0) with top-left of the floorplan.
-      ctx.drawImage(img, 0, 0, iw, ih)
-      ctx.restore()
-    }
-
-    // ── Year band backgrounds + labels ──────────────────────────
-    if (groupBy === 'year') {
-      const byY = new Map<string, Oeuvre[]>()
-      for (const o of oeuvres) {
-        const y = o.Année?.slice(0, 4) ?? '?'
-        if (!byY.has(y)) byY.set(y, [])
-        byY.get(y)!.push(o)
-      }
-      for (const [yr, ws] of byY) {
-        const pts = ws.map(o => pos.get(o.OeuvreID)).filter(Boolean) as Pt[]
-        if (!pts.length) continue
-        const minX = Math.min(...pts.map(p => p.x)) - 8
-        const maxX = Math.max(...pts.map(p => p.x + NW)) + 8
-        const minY = Math.min(...pts.map(p => p.y))
-        ctx.fillStyle = 'rgba(255,255,255,0.016)'
-        ctx.fillRect(minX, -20, maxX - minX, ch / vp.z + 40)
-        ctx.fillStyle = 'rgba(200,168,110,0.55)'
-        ctx.font = `${Math.max(7, 10 / vp.z)}px "Sofia Sans", sans-serif`
-        ctx.fillText(yr, minX + 4, minY - 10)
-      }
-    }
-
-    // ── Theme colors (one distinct hue per theme) ────────────────
-    // Computed inline so they stay in sync with the themes array order.
-    const themeColors = new Map<number, string>(
-      (themes || []).map((th, i) => [th.id, `hsl(${Math.round((i / Math.max(1, (themes?.length || 1))) * 300 + 20)}, 55%, 62%)`])
-    )
-    // Map each work to its first-listed theme (for border colouring)
-    const workPrimaryTheme = new Map<number, number>();
-    (themes || []).forEach(th => {
-      (effectiveThemeWork.get(th.id) ?? new Set()).forEach(id => {
-        if (!workPrimaryTheme.has(id)) workPrimaryTheme.set(id, th.id)
-      })
-    })
-
-    const groupColors = new Map<string, string>(
-      (groups || []).map((g, i) => [g.id, `hsl(${Math.round((i / Math.max(1, (groups?.length || 1))) * 280 + 40)}, 50%, 58%)`]),
-    )
-    const workPrimaryGroup = new Map<number, string>()
-    ;(groups || []).forEach(g => {
-      (effectiveGroupWork.get(g.id) ?? new Set()).forEach(oid => {
-        if (!workPrimaryGroup.has(oid)) workPrimaryGroup.set(oid, g.id)
-      })
-    })
-
-    // ── Theme cluster labels (pill badges, colour-coded, size-scaled) ─
-    if (groupBy === 'theme') {
-      // Step 1: compute ideal positions and sizes for each theme label
-      const maxCount = Math.max(1, ...themes.map(th =>
-        [...(effectiveThemeWork.get(th.id) ?? [])].filter(id => pos.has(id)).length
-      ))
-
-      interface LBox {
-        th:       { id: number; name: string }
-        ax: number; ay: number   // anchor (cluster top-centre)
-        x:  number; y:  number   // current (after collision resolution)
-        w:  number; h:  number   // pill bounding box
-        fs: number               // font size (logical px)
-        color: string
-        alpha: number
-        count: number
-      }
-      const labels: LBox[] = []
-
-      for (const th of themes) {
-        const ids = [...(effectiveThemeWork.get(th.id) ?? [])].filter(id => pos.has(id))
-        if (!ids.length) continue
-        const pts   = ids.map(id => pos.get(id)!)
-        const cx    = pts.reduce((a, p) => a + p.x + NW / 2, 0) / pts.length
-        const minY  = Math.min(...pts.map(p => p.y))
-        const count = ids.length
-
-        // Font size scales with theme size (8–14 logical px, adjusted for zoom)
-        const t   = Math.sqrt(count / maxCount)   // 0..1, sqrt for perceptual scaling
-        const fs  = (8 + 7 * t) / vp.z
-        ctx.font  = `${fs}px "Sofia Sans", sans-serif`
-        const tw  = ctx.measureText(th.name).width
-        const padH = (5 + 3 * t) / vp.z
-        const padV = (3 + 2 * t) / vp.z
-        const w   = tw + padH * 2
-        const h   = fs + padV * 2
-        const ay  = minY - NR / vp.z - h - 6 / vp.z   // just above the topmost node
-
-        labels.push({
-          th, count,
-          ax: cx, ay,
-          x: cx, y: ay,
-          w, h, fs,
-          color: themeColors.get(th.id) ?? 'rgba(166,163,151,0.8)',
-          alpha: selectedThemeId === null || selectedThemeId === th.id ? 1 : 0.22,
-        })
-      }
-
-      // Step 2: collision resolution — push overlapping pills apart (5 passes)
-      for (let pass = 0; pass < 5; pass++) {
-        for (let i = 0; i < labels.length; i++) {
-          for (let j = i + 1; j < labels.length; j++) {
-            const a = labels[i], b = labels[j]
-            const overlapX = (a.w + b.w) / 2 - Math.abs(a.x - b.x)
-            const overlapY = (a.h + b.h) / 2 + 4 / vp.z - Math.abs(a.y - b.y)
-            if (overlapX <= 0 || overlapY <= 0) continue
-            // Prefer separating on the smaller axis
-            if (overlapX < overlapY) {
-              const push = overlapX / 2 + 2 / vp.z
-              if (a.x <= b.x) { a.x -= push; b.x += push }
-              else             { a.x += push; b.x -= push }
-            } else {
-              const push = overlapY / 2 + 2 / vp.z
-              // Push smaller theme label up, larger label stays (or both separate)
-              if (a.count >= b.count) { b.y -= push } else { a.y -= push }
-            }
-          }
-        }
-      }
-
-      // Step 3: draw pills + connector lines from pill back to anchor
-      ctx.textAlign = 'center'
-      for (const lb of labels) {
-        ctx.globalAlpha = lb.alpha
-        const { x, y, w, h, fs, color } = lb
-
-        // Thin connector from pill centre to cluster anchor (if displaced)
-        const dx = x - lb.ax, dy = y - lb.ay
-        if (Math.hypot(dx, dy) > 4 / vp.z) {
-          ctx.beginPath()
-          ctx.moveTo(lb.ax, lb.ay + h / 2)
-          ctx.lineTo(x, y + h / 2)
-          ctx.strokeStyle = color
-          ctx.lineWidth   = 0.5 / vp.z
-          ctx.globalAlpha = lb.alpha * 0.4
-          ctx.setLineDash([3 / vp.z, 3 / vp.z])
-          ctx.stroke()
-          ctx.setLineDash([])
-          ctx.globalAlpha = lb.alpha
-        }
-
-        // Pill background
-        const rx = x - w / 2, ry = y, rad = 3 / vp.z
-        ctx.beginPath()
-        ctx.moveTo(rx + rad, ry)
-        ctx.lineTo(rx + w - rad, ry)
-        ctx.arcTo(rx + w, ry, rx + w, ry + rad, rad)
-        ctx.lineTo(rx + w, ry + h - rad)
-        ctx.arcTo(rx + w, ry + h, rx + w - rad, ry + h, rad)
-        ctx.lineTo(rx + rad, ry + h)
-        ctx.arcTo(rx, ry + h, rx, ry + h - rad, rad)
-        ctx.lineTo(rx, ry + rad)
-        ctx.arcTo(rx, ry, rx + rad, ry, rad)
-        ctx.closePath()
-        ctx.fillStyle = 'rgba(13,13,13,0.82)'
-        ctx.fill()
-        ctx.strokeStyle = color
-        ctx.lineWidth   = (0.8 + 0.7 * Math.sqrt(lb.count / maxCount)) / vp.z
-        ctx.stroke()
-
-        // Label text
-        ctx.font      = `${fs}px "Sofia Sans", sans-serif`
-        ctx.fillStyle = color
-        ctx.fillText(lb.th.name, x, ry + fs + (h - fs) / 2)
-        ctx.globalAlpha = 1
-      }
-      ctx.textAlign = 'left'
-    }
-
-    // ── Working-group cluster labels (same pill UX as themes) ─────
-    if (groupBy === 'workgroup') {
-      const maxGW = Math.max(1, ...groups.map(gr =>
-        [...(effectiveGroupWork.get(gr.id) ?? [])].filter(id => pos.has(id)).length
-      ))
-      interface GWBox {
-        gr: { id: string; name: string }
-        ax: number; ay: number
-        x: number; y: number
-        w: number; h: number
-        fs: number
-        color: string
-        alpha: number
-        count: number
-      }
-      const gwLabels: GWBox[] = []
-      for (const gr of groups) {
-        const ids = [...(effectiveGroupWork.get(gr.id) ?? [])].filter(id => pos.has(id))
-        if (!ids.length) continue
-        const pts  = ids.map(id => pos.get(id)!)
-        const cx   = pts.reduce((a, p) => a + p.x + NW / 2, 0) / pts.length
-        const minY = Math.min(...pts.map(p => p.y))
-        const count = ids.length
-        const t    = Math.sqrt(count / maxGW)
-        const fs   = (8 + 7 * t) / vp.z
-        ctx.font   = `${fs}px "Sofia Sans", sans-serif`
-        const tw   = ctx.measureText(gr.name).width
-        const padH = (5 + 3 * t) / vp.z
-        const padV = (3 + 2 * t) / vp.z
-        const w    = tw + padH * 2
-        const h    = fs + padV * 2
-        const ay   = minY - NR / vp.z - h - 6 / vp.z
-        gwLabels.push({
-          gr, count,
-          ax: cx, ay,
-          x: cx, y: ay,
-          w, h, fs,
-          color: groupColors.get(gr.id) ?? 'rgba(166,163,151,0.8)',
-          alpha: selectedGroupId === null || selectedGroupId === gr.id ? 1 : 0.22,
-        })
-      }
-      for (let pass = 0; pass < 5; pass++) {
-        for (let i = 0; i < gwLabels.length; i++) {
-          for (let j = i + 1; j < gwLabels.length; j++) {
-            const a = gwLabels[i], b = gwLabels[j]
-            const overlapX = (a.w + b.w) / 2 - Math.abs(a.x - b.x)
-            const overlapY = (a.h + b.h) / 2 + 4 / vp.z - Math.abs(a.y - b.y)
-            if (overlapX <= 0 || overlapY <= 0) continue
-            if (overlapX < overlapY) {
-              const push = overlapX / 2 + 2 / vp.z
-              if (a.x <= b.x) { a.x -= push; b.x += push }
-              else             { a.x += push; b.x -= push }
-            } else {
-              const push = overlapY / 2 + 2 / vp.z
-              if (a.count >= b.count) { b.y -= push } else { a.y -= push }
-            }
-          }
-        }
-      }
-      ctx.textAlign = 'center'
-      for (const lb of gwLabels) {
-        ctx.globalAlpha = lb.alpha
-        const { x, y, w, h, fs, color } = lb
-        const dx = x - lb.ax, dy = y - lb.ay
-        if (Math.hypot(dx, dy) > 4 / vp.z) {
-          ctx.beginPath()
-          ctx.moveTo(lb.ax, lb.ay + h / 2)
-          ctx.lineTo(x, y + h / 2)
-          ctx.strokeStyle = color
-          ctx.lineWidth   = 0.5 / vp.z
-          ctx.globalAlpha = lb.alpha * 0.4
-          ctx.setLineDash([3 / vp.z, 3 / vp.z])
-          ctx.stroke()
-          ctx.setLineDash([])
-          ctx.globalAlpha = lb.alpha
-        }
-        const rx = x - w / 2, ry = y, rad = 3 / vp.z
-        ctx.beginPath()
-        ctx.moveTo(rx + rad, ry)
-        ctx.lineTo(rx + w - rad, ry)
-        ctx.arcTo(rx + w, ry, rx + w, ry + rad, rad)
-        ctx.lineTo(rx + w, ry + h - rad)
-        ctx.arcTo(rx + w, ry + h, rx + w - rad, ry + h, rad)
-        ctx.lineTo(rx + rad, ry + h)
-        ctx.arcTo(rx, ry + h, rx, ry + h - rad, rad)
-        ctx.lineTo(rx, ry + rad)
-        ctx.arcTo(rx, ry, rx + rad, ry, rad)
-        ctx.closePath()
-        ctx.fillStyle = 'rgba(13,13,13,0.82)'
-        ctx.fill()
-        ctx.strokeStyle = color
-        ctx.lineWidth   = (0.8 + 0.7 * Math.sqrt(lb.count / maxGW)) / vp.z
-        ctx.stroke()
-        ctx.font      = `${fs}px "Sofia Sans", sans-serif`
-        ctx.fillStyle = color
-        ctx.fillText(lb.gr.name, x, ry + fs + (h - fs) / 2)
-        ctx.globalAlpha = 1
-      }
-      ctx.textAlign = 'left'
-    }
-
-    // ── Edges ────────────────────────────────────────────────────
-    const edgesDraw = frozenEdges ?? edgesRef.current
-    for (const e of edgesDraw) {
-      const a = pos.get(e.source), b = pos.get(e.target)
-      if (!a || !b) continue
-      const vis   = LINK_VIS[e.relation_type ?? ''] ?? LINK_DEF
-      const isHov = e === hovEdge
-      ctx.beginPath()
-      ctx.moveTo(a.x + NW / 2, a.y + NH / 2)
-      ctx.lineTo(b.x + NW / 2, b.y + NH / 2)
-      ctx.strokeStyle = vis.color
-      ctx.lineWidth   = (isHov ? vis.w * 2.5 : vis.w) / vp.z
-      ctx.setLineDash(vis.dash.map(d => d / vp.z))
-      ctx.globalAlpha = isHov ? 1 : 0.6
-      ctx.stroke()
-      ctx.setLineDash([])
-      ctx.globalAlpha = 1
-    }
-
-    // ── Draft link ───────────────────────────────────────────────
-    const draft = draftRef.current
-    if (draft) {
-      const a = pos.get(draft.from)
-      if (a) {
-        const vis = LINK_VIS[linkType] ?? LINK_DEF
-        ctx.beginPath()
-        ctx.moveTo(a.x + NW / 2, a.y + NH / 2)
-        ctx.lineTo((draft.toX - vp.x) / vp.z, (draft.toY - vp.y) / vp.z)
-        ctx.strokeStyle = vis.color
-        ctx.lineWidth   = vis.w / vp.z
-        ctx.setLineDash([4 / vp.z, 4 / vp.z])
-        ctx.globalAlpha = 0.85
-        ctx.stroke()
-        ctx.setLineDash([])
-        ctx.globalAlpha = 1
-      }
-    }
-
-    // ── Nodes (circular) ─────────────────────────────────────────
-    const tier = thumbTier(vp.z)
-    for (const [id, p] of pos) {
-      const o    = oeuvresById.get(id)
-      if (!o) continue
-      // Best available cached image: prefer current tier, fall back to others
-      const img  = imagesRef.current.get(`${id}_${tier}`)
-                ?? imagesRef.current.get(`${id}_100`)
-                ?? imagesRef.current.get(`${id}_200`)
-                ?? imagesRef.current.get(`${id}_40`)
-      const isSel = sel.has(id)
-      const isHov = id === hovNode
-      const cx    = p.x + NW / 2
-      const cy    = p.y + NH / 2
-
-      // Catalogue theme / working-group colour for this node's border
-      const primThemeId = workPrimaryTheme.get(id)
-      const primGroupId = workPrimaryGroup.get(id)
-      let themeC = '#26262a'
-      if (groupBy === 'theme' && primThemeId != null) {
-        themeC = themeColors.get(primThemeId) ?? '#26262a'
-      } else if (groupBy === 'workgroup' && primGroupId != null) {
-        themeC = groupColors.get(primGroupId) ?? '#26262a'
-      }
-
-      // No dimming in theme mode — all visible nodes are relevant
-      ctx.globalAlpha = 1
-
-      // Link-ring halo on hover (drawn below node)
-      if (isHov) {
-        const rr = NR + RING / vp.z
-        ctx.beginPath()
-        ctx.arc(cx, cy, rr, 0, Math.PI * 2)
-        ctx.strokeStyle = 'rgba(200,168,110,0.35)'
-        ctx.lineWidth   = 1 / vp.z
-        ctx.setLineDash([3 / vp.z, 3 / vp.z])
-        ctx.stroke()
-        ctx.setLineDash([])
-      }
-
-      // Circular clip for background + thumbnail
-      ctx.save()
-      ctx.beginPath()
-      ctx.arc(cx, cy, NR, 0, Math.PI * 2)
-      ctx.clip()
-
-      // Background fill
-      ctx.fillStyle = '#111112'
-      ctx.fill()
-
-      // Thumbnail (draw if loaded, else fallback to initials)
-      if (img?.complete && img.naturalWidth > 0) {
-        drawContain(ctx, img, cx, cy, NR)
-      } else {
-        ctx.fillStyle = 'rgba(255,255,255,0.03)'
-        ctx.fill()
-        ctx.fillStyle = 'var(--tx3)'
-        ctx.font      = `${Math.max(6, 12 / vp.z)}px monospace`
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'middle'
-        const label = o.Titre ? o.Titre.slice(0, 2).toUpperCase() : `#${id}`
-        ctx.fillText(label, cx, cy)
-      }
-
-      ctx.restore()
-
-      ctx.beginPath()
-      ctx.arc(cx, cy, NR - 0.5 / vp.z, 0, Math.PI * 2)
-      ctx.strokeStyle = isSel ? '#c8a86e' : isHov ? '#a8a397' : themeC
-      ctx.lineWidth   = (isSel ? 2.5 : groupBy === 'theme' || groupBy === 'workgroup' ? 1.5 : 1) / vp.z
-      ctx.stroke()
-
-      // Non-public indicator: amber dot with ! at top-right of circle
-      if ((o as any).anonymity_level === 2) {
-        ctx.save()
-        const dotR = 7 / vp.z
-        const ang  = -Math.PI / 4
-        const dotX = cx + (NR - dotR * 0.5) * Math.cos(ang)
-        const dotY = cy + (NR - dotR * 0.5) * Math.sin(ang)
-        ctx.beginPath()
-        ctx.arc(dotX, dotY, dotR, 0, Math.PI * 2)
-        ctx.fillStyle = '#c88a20'
-        ctx.fill()
-        ctx.fillStyle = '#fff'
-        ctx.font = `bold ${Math.max(5, 8 / vp.z)}px monospace`
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'middle'
-        ctx.fillText('!', dotX, dotY)
-        ctx.restore()
-      }
-
-      // Small label below node
-      if (vp.z > 0.4) {
-        ctx.fillStyle = isSel ? 'var(--ac)' : isHov ? 'var(--tx)' : 'var(--tx3)'
-        ctx.font      = `${8 / vp.z}px "Sofia Sans", sans-serif`
-        ctx.textAlign = 'center'
-        const short = o.Titre ? (o.Titre.length > 20 ? o.Titre.slice(0, 18) + '…' : o.Titre) : `#${id}`
-        ctx.fillText(short, cx, cy + NR + 10 / vp.z)
-      }
-      ctx.globalAlpha = 1
-    }
-
-    // ── Shapes & Active Shape ────────────────────────────────────
-    const allShapes = activeShape ? [...shapes, activeShape] : shapes
-    for (const s of allShapes) {
-      ctx.strokeStyle = s.color
-      ctx.fillStyle   = s.color
-      if (s.type === 'line') {
-        if (s.points.length < 2) continue
-        ctx.beginPath()
-        ctx.moveTo(s.points[0].x, s.points[0].y)
-        for (let i = 1; i < s.points.length; i++) ctx.lineTo(s.points[i].x, s.points[i].y)
-        ctx.lineWidth = s.width
-        ctx.lineCap   = 'round'
-        ctx.lineJoin  = 'round'
-        ctx.stroke()
-      } else {
-        ctx.font = `${s.size}px "Instrument Serif", serif`
-        ctx.fillText(s.text, s.x, s.y)
-      }
-    }
-
-    ctx.restore() // Viewport transform end
-
-    // ── Marquee (Screen Space - CSS Pixels with DPR) ────────────
-    if (marquee) {
-      ctx.strokeStyle = 'rgba(200,168,110,0.8)'
-      ctx.setLineDash([4, 4])
-      ctx.lineWidth   = 1
-      ctx.strokeRect(marquee.x, marquee.y, marquee.w, marquee.h)
-      ctx.fillStyle   = 'rgba(200,168,110,0.1)'
-      ctx.fillRect(marquee.x, marquee.y, marquee.w, marquee.h)
-      ctx.setLineDash([])
-    }
-
-    ctx.restore()
- 
-    loadVisible()
-  }, [tick, groupBy, linkType, oeuvres, themes, groups, effectiveThemeWork, effectiveGroupWork, oeuvresById, selectedThemeId, selectedGroupId, shapes, activeShape, marquee, frozenEdges])
 
   // ── Wheel (passive: false required for preventDefault) ────────
   useEffect(() => {
@@ -1179,7 +656,7 @@ export function ConstellationCanvas({
       dragRef.current  = { mode: 'link', startX: lx, startY: ly, nodeId: hit.id }
       draftRef.current = { from: hit.id, toX: lx, toY: ly }
       if (canvasRef.current) canvasRef.current.style.cursor = 'crosshair'
-      setTick(t => t + 1)
+      redraw()
     } else {
       const sel = selRef.current
       const moveIds =
@@ -1242,7 +719,7 @@ export function ConstellationCanvas({
 
     if (drag.mode === 'pan') {
       vpRef.current = { ...vp, x: drag.panOrigin!.x + (lx - drag.startX), y: drag.panOrigin!.y + (ly - drag.startY) }
-      setTick(t => t + 1)
+      redraw()
     } else if (drag.mode === 'node') {
       const dx = (lx - drag.startX) / vp.z
       const dy = (ly - drag.startY) / vp.z
@@ -1259,7 +736,7 @@ export function ConstellationCanvas({
       if (moved) {
         posRef.current  = next
         dragRef.current = { ...drag, startX: lx, startY: ly }
-        setTick(t => t + 1)
+        redraw()
       }
     } else if (drag.mode === 'link') {
       draftRef.current = { from: drag.nodeId!, toX: lx, toY: ly }
@@ -1269,7 +746,7 @@ export function ConstellationCanvas({
         hovNodeRef.current = newId
         setPanelNode(newId ? (oeuvresById.get(newId) ?? null) : null)
       }
-      setTick(t => t + 1)
+      redraw()
     } else {
       // Idle hover
       const hit      = hitNode(lx, ly, posRef.current, vpRef.current)
@@ -1298,7 +775,7 @@ export function ConstellationCanvas({
         else if (newHovEd)          c.style.cursor = 'pointer'
         else                        c.style.cursor = 'grab'
       }
-      if (needRedraw) setTick(t => t + 1)
+      if (needRedraw) redraw()
     }
   }, [oeuvresById, spacePressed, activeShape, groupBy, redraw, frozenEdges])
 
@@ -1345,7 +822,7 @@ export function ConstellationCanvas({
         }
       }
       setPanelNode(null)
-      setTick(t => t + 1)
+      redraw()
     } else if (drag.mode === 'node') {
       savePos(
         groupByRef.current,
@@ -1468,7 +945,7 @@ export function ConstellationCanvas({
       }
       edgesRef.current = edgesRef.current.filter(e2 => e2.id !== edge.id)
       if (hovEdgeRef.current === edge) hovEdgeRef.current = null
-      setTick(t => t + 1)
+      redraw()
     })()
   }, [removeFromCustom, tool, redraw, selectedThemeId, selectedGroupId, reloadGraphData, router, oeuvresById, onOpen, t, frozenEdges])
 
@@ -1518,7 +995,7 @@ export function ConstellationCanvas({
     hovEdgeRef.current = null
     dragRef.current    = { mode: 'idle', startX: 0, startY: 0 }
     setPanelNode(null)
-    setTick(t => t + 1)
+    redraw()
   }, [selectedThemeId, selectedGroupId])
 
   // ── Custom canvas: add / remove individual works ───────────────
@@ -1722,14 +1199,14 @@ export function ConstellationCanvas({
       await reloadGraphData(false)
     }
     await refreshCloudMaps()
-    setTick(t => t + 1)
+    redraw()
   }
 
   function exitFrozenLiveGraph() {
     setFrozenEdges(null)
     setActiveCloudMapId(null)
     void reloadGraphData(false)
-    setTick(t => t + 1)
+    redraw()
   }
 
   function handleAddText() {
@@ -1745,270 +1222,25 @@ export function ConstellationCanvas({
     setTextInput(null)
     setTextVal('')
   }
-  function waitImg(id: number, tier: number): Promise<HTMLImageElement | null> {
-    const key = `${id}_${tier}`
-    const existing = imagesRef.current.get(key)
-    if (existing?.complete && existing.naturalWidth > 0) return Promise.resolve(existing)
-    
-    const o = oeuvresById.get(id)
-    if (!o?.txtImageNameLink) return Promise.resolve(null)
-    
-    return new Promise((res) => {
-      const img = new Image()
-      img.crossOrigin = 'anonymous'
-      img.onload  = () => {
-        cacheConstellationThumb(imagesRef.current, key, img, id)
-        res(img)
-      }
-      img.onerror = () => res(null)
-      img.src     = thumbUrl(o.txtImageNameLink, tier) ?? ''
-    })
-  }
+  const exportDeps = useMemo(() => ({
+    posRef,
+    edgesRef,
+    frozenEdges,
+    shapes,
+    oeuvresById,
+    imagesRef,
+    t,
+    setSaving,
+  }), [frozenEdges, shapes, oeuvresById, t])
 
-  // ── Export full canvas as PNG ───────────────────────────────────
-  async function handleExportPng() {
-    if (posRef.current.size === 0) return
-    setSaving(true) // reuse saving state for feedback
-
-    // Ensure all visible nodes have their tier-100 images loaded
-    await Promise.all(Array.from(posRef.current.keys()).map(id => waitImg(id, 100)))
-
-    // Calculate bounds of all nodes
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
-    posRef.current.forEach(({ x, y }) => {
-      if (x         < minX) minX = x
-      if (y         < minY) minY = y
-      if (x + NW   > maxX) maxX = x + NW
-      if (y + NH   > maxY) maxY = y + NH
-    })
-    const PAD   = 60
-    const W     = Math.ceil(maxX - minX + PAD * 2)
-    const H     = Math.ceil(maxY - minY + PAD * 2)
-    const SCALE = 2  // 2× for crisp export
-    const off   = document.createElement('canvas')
-    off.width   = W * SCALE
-    off.height  = H * SCALE
-    const ctx   = off.getContext('2d')!
-    ctx.scale(SCALE, SCALE)
-    // Background
-    ctx.fillStyle = '#0d0d0d'
-    ctx.fillRect(0, 0, W, H)
-    // Draw nodes from posRef using the same style as the main canvas
-    // Draw edges first
-    ctx.save()
-    ctx.translate(PAD - minX, PAD - minY)
-    const edgesExport = frozenEdges ?? edgesRef.current
-    edgesExport.forEach(e => {
-      const a = posRef.current.get(e.source), b = posRef.current.get(e.target)
-      if (!a || !b) return
-      const vis = LINK_VIS[e.relation_type ?? ''] ?? LINK_DEF
-      ctx.beginPath()
-      ctx.moveTo(a.x + NW / 2, a.y + NH / 2)
-      ctx.lineTo(b.x + NW / 2, b.y + NH / 2)
-      ctx.strokeStyle = vis.color
-      ctx.lineWidth   = vis.w
-      ctx.setLineDash(vis.dash)
-      ctx.globalAlpha = 0.5
-      ctx.stroke()
-      ctx.setLineDash([])
-      ctx.globalAlpha = 1
-    })
-    // Draw nodes (top-left corner FIS pt.x, pt.y; center FIS pt.x+NW/2, pt.y+NH/2)
-    posRef.current.forEach((pt, id) => {
-      const o  = oeuvresById.get(id)
-      const cx = pt.x + NW / 2
-      const cy = pt.y + NH / 2
-      // Node circle background
-      ctx.beginPath()
-      ctx.arc(cx, cy, NR, 0, Math.PI * 2)
-      ctx.fillStyle   = '#1a1a1a'
-      ctx.fill()
-      // Thumbnail if cached
-      const tier = 100
-      const img  = imagesRef.current.get(`${id}_${tier}`)
-               ?? imagesRef.current.get(`${id}_200`)
-               ?? imagesRef.current.get(`${id}_40`)
-      if (img?.complete && img.naturalWidth > 0) {
-        ctx.save()
-        ctx.beginPath()
-        ctx.arc(cx, cy, NR - 1, 0, Math.PI * 2)
-        ctx.clip()
-        drawContain(ctx, img, cx, cy, NR - 1)
-        ctx.restore()
-      }
-      // Circle border
-      ctx.beginPath()
-      ctx.arc(cx, cy, NR - 0.5, 0, Math.PI * 2)
-      ctx.strokeStyle = '#3a3a3a'
-      ctx.lineWidth   = 1
-      ctx.stroke()
-      // Label
-      if (o?.Titre) {
-        ctx.fillStyle   = '#777'
-        ctx.font        = '8px monospace'
-        ctx.textAlign   = 'center'
-        const short = o.Titre.length > 18 ? o.Titre.slice(0, 16) + '…' : o.Titre
-        ctx.fillText(short, cx, cy + NR + 12)
-      }
-    })
-
-    // Draw shapes
-    for (const s of shapes) {
-      ctx.strokeStyle = s.color
-      ctx.fillStyle   = s.color
-      if (s.type === 'line') {
-        if (s.points.length < 2) continue
-        ctx.beginPath()
-        ctx.moveTo(s.points[0].x, s.points[0].y)
-        for (let i = 1; i < s.points.length; i++) ctx.lineTo(s.points[i].x, s.points[i].y)
-        ctx.lineWidth = s.width
-        ctx.lineCap   = 'round'; ctx.lineJoin = 'round'
-        ctx.stroke()
-      } else {
-        ctx.font = `${s.size}px "Instrument Serif", serif`
-        ctx.fillText(s.text, s.x, s.y)
-      }
-    }
-
-    ctx.restore()
-    // Download
-    const a = document.createElement('a')
-    a.href     = off.toDataURL('image/png')
-    a.download = `constellation-${new Date().toISOString().slice(0, 10)}.png`
-    a.click()
-    setSaving(false)
-  }
-  
-  // ── Export: tiled A4 print window ──────────────────────────────
-  async function handleExportTiledA4() {
-    if (posRef.current.size === 0) return
-    setSaving(true)
-    
-    // Ensure all visible nodes have their tier-100 images loaded
-    await Promise.all(Array.from(posRef.current.keys()).map(id => waitImg(id, 100)))
-
-    // Reuse same bounding-box + canvas creation logic as handleExportPng
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
-    posRef.current.forEach(({ x, y }) => {
-      if (x       < minX) minX = x
-      if (y       < minY) minY = y
-      if (x + NW  > maxX) maxX = x + NW
-      if (y + NH  > maxY) maxY = y + NH
-    })
-    const PAD   = 60
-    const W     = Math.ceil(maxX - minX + PAD * 2)
-    const H     = Math.ceil(maxY - minY + PAD * 2)
-    const SCALE = 2
-    const off   = document.createElement('canvas')
-    off.width   = W * SCALE
-    off.height  = H * SCALE
-    const ctx   = off.getContext('2d')!
-    ctx.scale(SCALE, SCALE)
-    ctx.fillStyle = '#0d0d0d'
-    ctx.fillRect(0, 0, W, H)
-    ctx.save()
-    ctx.translate(PAD - minX, PAD - minY)
-    // Edges
-    const edgesExportA4 = frozenEdges ?? edgesRef.current
-    edgesExportA4.forEach(e => {
-      const a = posRef.current.get(e.source), b = posRef.current.get(e.target)
-      if (!a || !b) return
-      const vis = LINK_VIS[e.relation_type ?? ''] ?? LINK_DEF
-      ctx.beginPath()
-      ctx.moveTo(a.x + NW / 2, a.y + NH / 2)
-      ctx.lineTo(b.x + NW / 2, b.y + NH / 2)
-      ctx.strokeStyle = vis.color; ctx.lineWidth = vis.w
-      ctx.setLineDash(vis.dash); ctx.globalAlpha = 0.5
-      ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1
-    })
-    // Nodes
-    posRef.current.forEach((pt, id) => {
-      const o  = oeuvresById.get(id)
-      const cx = pt.x + NW / 2, cy = pt.y + NH / 2
-      ctx.beginPath(); ctx.arc(cx, cy, NR, 0, Math.PI * 2)
-      ctx.fillStyle = '#1a1a1a'; ctx.fill()
-      const img = imagesRef.current.get(`${id}_100`)
-             ?? imagesRef.current.get(`${id}_200`)
-             ?? imagesRef.current.get(`${id}_40`)
-      if (img?.complete && img.naturalWidth > 0) {
-        ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, NR - 1, 0, Math.PI * 2); ctx.clip()
-        drawContain(ctx, img, cx, cy, NR - 1); ctx.restore()
-      }
-      ctx.beginPath(); ctx.arc(cx, cy, NR - 0.5, 0, Math.PI * 2)
-      ctx.strokeStyle = '#3a3a3a'; ctx.lineWidth = 1; ctx.stroke()
-      if (o?.Titre) {
-        ctx.fillStyle = '#777'; ctx.font = '8px monospace'; ctx.textAlign = 'center'
-        const short = o.Titre.length > 18 ? o.Titre.slice(0, 16) + '…' : o.Titre
-        ctx.fillText(short, cx, cy + NR + 12)
-      }
-    })
-
-    // Draw shapes
-    for (const s of shapes) {
-      ctx.strokeStyle = s.color
-      ctx.fillStyle   = s.color
-      if (s.type === 'line') {
-        if (s.points.length < 2) continue
-        ctx.beginPath()
-        ctx.moveTo(s.points[0].x, s.points[0].y)
-        for (let i = 1; i < s.points.length; i++) ctx.lineTo(s.points[i].x, s.points[i].y)
-        ctx.lineWidth = s.width
-        ctx.lineCap   = 'round'; ctx.lineJoin = 'round'
-        ctx.stroke()
-      } else {
-        ctx.font = `${s.size}px "Instrument Serif", serif`
-        ctx.fillText(s.text, s.x, s.y)
-      }
-    }
-
-    ctx.restore()
-
-    // A4 landscape @ 150 dpi = 1754 × 1240 physical px
-    const A4W = 1754, A4H = 1240
-    const tilesX = Math.ceil(off.width  / A4W)
-    const tilesY = Math.ceil(off.height / A4H)
-
-    // Build data-URLs for each tile
-    const dataUrls: string[] = []
-    for (let ty = 0; ty < tilesY; ty++) {
-      for (let tx = 0; tx < tilesX; tx++) {
-        const tile = document.createElement('canvas')
-        tile.width  = A4W; tile.height = A4H
-        const tc    = tile.getContext('2d')!
-        tc.fillStyle = '#0d0d0d'; tc.fillRect(0, 0, A4W, A4H)
-        tc.drawImage(off, tx * A4W, ty * A4H, A4W, A4H, 0, 0, A4W, A4H)
-        dataUrls.push(tile.toDataURL('image/png'))
-      }
-    }
-
-    // Open a print-ready window: one A4 landscape img per page
-    const win = window.open('', '_blank')
-    if (!win) { alert(t('const_popupBlockedA4')); return }
-    const date = new Date().toISOString().slice(0, 10)
-    win.document.write(`<!DOCTYPE html><html><head>
-      <meta charset="utf-8">
-      <title>${t('constellation')} ${date}</title>
-      <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #000; }
-        .page { width: 297mm; height: 210mm; overflow: hidden; page-break-after: always; position: relative; }
-        .page img { width: 100%; height: 100%; object-fit: contain; display: block; }
-        .lbl { position: absolute; bottom: 4mm; right: 6mm; color: rgba(255,255,255,0.3);
-               font: 7pt monospace; }
-        @page { size: A4 landscape; margin: 0; }
-        @media print { body { background: #000; } .page { page-break-after: always; } }
-      </style>
-    </head><body>
-      ${dataUrls.map((url, i) => `
-        <div class="page">
-          <img src="${url}" alt="${t('const_printPageAlt')} ${i + 1}">
-          <span class="lbl">${i + 1} / ${dataUrls.length} · ${date}</span>
-        </div>`).join('')}
-      <script>window.onload = () => setTimeout(() => window.print(), 400)<\/script>
-    </body></html>`)
-    win.document.close()
-    setSaving(false)
-  }
+  const onExportPng = useCallback(
+    () => handleExportPng(exportDeps),
+    [exportDeps],
+  )
+  const onExportTiledA4 = useCallback(
+    () => handleExportTiledA4(exportDeps),
+    [exportDeps],
+  )
 
   // ── Save group ─────────────────────────────────────────────────
   async function handleSaveGroup() {
@@ -2090,8 +1322,8 @@ export function ConstellationCanvas({
         exitFrozenLiveGraph={exitFrozenLiveGraph}
         handleResetLayout={handleResetLayout}
         handleFitView={handleFitView}
-        handleExportPng={handleExportPng}
-        handleExportTiledA4={handleExportTiledA4}
+        handleExportPng={onExportPng}
+        handleExportTiledA4={onExportTiledA4}
         backgroundImage={backgroundImage}
         backgroundOpacity={backgroundOpacity}
         onBackgroundOpacity={onBackgroundOpacity}
@@ -2240,29 +1472,11 @@ export function ConstellationCanvas({
           handleDeleteCloudMap={handleDeleteCloudMap}
         />
         {toolShortcutsOpen && (
-          <div
+          <ConstellationShortcutsPanel
             ref={shortcutsPanelRef}
-            id={shortcutsPanelId}
-            role="region"
-            aria-label={t('const_toolbarShortcutsPanelTitle')}
-            className="t-mono-sm"
-            style={{
-              position: 'absolute',
-              left: 56,
-              top: 8,
-              zIndex: 30,
-              maxWidth: 'min(300px, calc(100vw - 80px))',
-              padding: '10px 12px',
-              background: 'var(--bg1)',
-              border: '1px solid var(--bd)',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
-              fontSize: 10,
-              lineHeight: 1.5,
-              color: 'var(--tx2)',
-            }}
-          >
-            {t('const_toolbar_hint')}
-          </div>
+            panelId={shortcutsPanelId}
+            t={t}
+          />
         )}
       </div>
     </div>

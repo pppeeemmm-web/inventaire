@@ -587,26 +587,40 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
     const pipeRes = await syncPipelineWithBooleans(supabase, oid, { catalogued, needsPhotograph })
     if ('error' in pipeRes) return { error: pipeRes.error }
 
-    // Replace themes: delete + reinsert
-    await svc.from('oeuvre_theme').delete().eq('oeuvre_id', oid)
+    // Replace themes: delete + reinsert (triggers graph_sync_oeuvre_theme_edge)
+    const { error: delThemeErr } = await svc.from('oeuvre_theme').delete().eq('oeuvre_id', oid)
+    if (delThemeErr) return { error: delThemeErr.message }
     if (themeIds.length > 0) {
-      await svc.from('oeuvre_theme').insert(themeIds.map(tid => ({ oeuvre_id: oid, theme_id: tid })))
+      const { error: insThemeErr } = await svc.from('oeuvre_theme').insert(
+        themeIds.map((tid) => ({ oeuvre_id: oid, theme_id: tid })),
+      )
+      if (insThemeErr) return { error: insThemeErr.message }
     }
 
     // Replace working groups
     const groupIds = (formData.getAll('groups') as string[]).filter(Boolean)
-    await saveWorkGroups(svc, oid, groupIds)
+    const groupRes = await saveWorkGroups(svc, oid, groupIds)
+    if ('error' in groupRes) return { error: groupRes.error }
 
     revalidatePath('/atelier')
     return { ok: true }
   }
 }
 
-async function saveWorkGroups(supabase: SupabaseClient, oid: number, gids: string[]) {
-  await supabase.from('working_group_work').delete().eq('oeuvre_id', oid)
+async function saveWorkGroups(
+  supabase: SupabaseClient,
+  oid: number,
+  gids: string[],
+): Promise<{ ok: true } | { error: string }> {
+  const { error: delErr } = await supabase.from('working_group_work').delete().eq('oeuvre_id', oid)
+  if (delErr) return { error: delErr.message }
   if (gids.length > 0) {
-    await supabase.from('working_group_work').insert(gids.map(gid => ({ oeuvre_id: oid, group_id: gid })))
+    const { error: insErr } = await supabase
+      .from('working_group_work')
+      .insert(gids.map((gid) => ({ oeuvre_id: oid, group_id: gid })))
+    if (insErr) return { error: insErr.message }
   }
+  return { ok: true }
 }
 
 /** Restore status + pipeline flags + theme/group junctions to a prior snapshot. */
@@ -644,7 +658,8 @@ export async function revertWorkSnapshot(
     if (insT) return { error: insT.message }
   }
 
-  await saveWorkGroups(svc, oeuvreId, snapshot.groupIds)
+  const groupRes = await saveWorkGroups(svc, oeuvreId, snapshot.groupIds)
+  if ('error' in groupRes) return { error: groupRes.error }
 
   revalidatePath('/atelier')
   revalidatePath(`/atelier/works/${oeuvreId}/edit`)

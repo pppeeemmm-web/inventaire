@@ -73,7 +73,7 @@ Cloud payload schema is versioned by `CONSTELLATION_MAP_VERSION` and represented
 
 ## Module layout (2026-05-25)
 
-Public entry unchanged: `components/atelier/ConstellationCanvas.tsx` (re-exports `Pt`, `NodeMap`; hosts canvas redraw, input handlers, export helpers).
+Public entry unchanged: `components/atelier/ConstellationCanvas.tsx` (re-exports `Pt`, `NodeMap`; hosts pointer handlers, cloud/snapshot orchestration, layout state).
 
 Extracted under `components/atelier/constellation/`:
 
@@ -83,12 +83,16 @@ Extracted under `components/atelier/constellation/`:
 | `ConstellationToolbar.tsx` | View mode, link type, local/cloud maps, export, floorplan opacity |
 | `ConstellationToolRail.tsx` | Draw tools, stroke color/width, shortcuts toggle |
 | `ConstellationSidePanel.tsx` | Node inspector, custom work picker, selection + save, snapshot/cloud lists |
+| `constellation-draw-frame.ts` | `drawConstellationFrame()` — main canvas paint pass |
+| `useConstellationCanvasRedraw.ts` | Hook: tick loop, visible image loading, `redraw()` |
+| `constellation-export.ts` | PNG + tiled A4 export |
+| `ConstellationShortcutsPanel.tsx` | Floating keyboard-shortcuts overlay |
 
-Still in the canvas monolith: `redraw`, PNG/tiled export, wheel/drag handlers, shortcuts overlay.
+Still in the canvas orchestrator (~1.5k LOC): pointer/wheel/drag handlers, cloud/snapshot orchestration, layout state.
 
 ## Known Constraints
 
-- Canvas orchestrator remains large (~2.3k LOC) until redraw/export/handlers split.
+- Canvas orchestrator (~1.5k LOC) until pointer handlers and cloud/snapshot state move out.
 - Manual QA coverage is stronger than automated coverage for graph-specific interactions.
 - Performance depends on thumbnail decode/cache behavior and current node count.
 

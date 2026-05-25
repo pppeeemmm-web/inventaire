@@ -10,10 +10,9 @@ _Version-controlled checklist + non-binding roadmap items. Prefer this file over
 
 | # | Track | Item | Notes |
 |---|--------|------|--------|
-| 1 | **Dev** | Block C — **C2** Pipeline decomposition + `AbortController` | After A.3 toolbar work |
-| 2 | **Dev** | Block A — **A0** Supabase cast cleanup | ~40 files; run `gen:types` after each migration |
-| 3 | **Dev** | Constellation — canvas redraw / export / handlers split | Toolbar, rail, side panel done 2026-05-25 |
-| 4 | **Deferred** | **`/works` gallery + F1** | WIP paused; see Desktop section below |
+| 1 | **Dev** | Block A — **A0** Supabase cast cleanup | ~40 files; run `gen:types` after each migration |
+| 2 | **Dev** | Constellation — pointer / snapshot orchestrator split | Draw + export + panels done 2026-05-25 |
+| 3 | **Deferred** | **`/works` gallery + F1** | WIP paused; see Desktop section below |
 
 ---
 
@@ -52,10 +51,10 @@ _Version-controlled checklist + non-binding roadmap items. Prefer this file over
 ## Block C — decomposition
 
 - [ ] **C1** `PortfolioTab.tsx` → panels + orchestrator.
-- [ ] **C2** `app/atelier/pipeline/_components/Pipeline.tsx` → Gantt / deadline / reminders panels; `AbortController` on fetches.
+- [x] **C2** `app/atelier/pipeline/_components/Pipeline.tsx` → toolbar + `usePipelineLoad`; panels already split; `AbortController` on fetch (2026-05-25).
 - [ ] **C3** `Exhibitions.tsx` → steps + floor-plan panels.
 - [x] **C4** `docs/CONSTELLATION.md`.
-- [x] **C-partial** Constellation — `constellation-shared`, toolbar, tool rail, side panel (2026-05-25); canvas redraw/export/handlers remain.
+- [x] **C-partial** Constellation — shared, toolbar, tool rail, side panel, draw frame, export, shortcuts (2026-05-25); pointer handlers + snapshot orchestration remain in canvas.
 - [x] **C-partial** `pipeline-shared.ts`, list panel extractions.
 - [ ] WorkDrawer further decomposition (`DrawerContent`).
 

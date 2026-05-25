@@ -2,14 +2,13 @@
 
 // Pipeline — parallel process tracker: Gantt + deadline sidebar + reminder panel.
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { stringifyError } from '@/lib/error'
 import { toast } from '@/lib/ui/toast'
 import {
   ATELIER_NARROW_MQ,
   TYPE_COLORS,
-  type Etape,
   type EtapeStatut,
   type Process,
   type ProcessStatut,
@@ -27,8 +26,9 @@ import { PipelineProcessModal } from '@/components/atelier/pipeline/PipelineProc
 import { PipelineDeadlineSidebar } from '@/components/atelier/pipeline/PipelineDeadlineSidebar'
 import { PipelineMobilePulse } from '@/components/atelier/pipeline/PipelineMobilePulse'
 import { PipelineRemindersPanel } from '@/components/atelier/pipeline/PipelineRemindersPanel'
+import { PipelineToolbar } from '@/components/atelier/pipeline/PipelineToolbar'
+import { usePipelineLoad } from '@/components/atelier/pipeline/usePipelineLoad'
 import {
-  listUnreadSuiviReminders,
   markSuiviReminderRead,
 } from '@/app/atelier/reminders-actions'
 import type { Oeuvre } from '@/lib/types/database'
@@ -37,7 +37,6 @@ import {
   dateLocaleTag,
   nextEtapeStatut,
   processToPulseProcess,
-  SORTED_PROCESS_TYPES,
   urgencyColor,
   useSuiviLabels,
 } from '@/components/atelier/pipeline/pipeline-suivi-labels'
@@ -53,11 +52,10 @@ interface Props {
 }
 
 export function Pipeline({ oeuvres, contacts, groups, initialReminders, onRemindersMutated }: Props) {
-  const { statutLabels, etapeLabels, typeLabel, t, lang } = useSuiviLabels()
+  const { typeLabel, t, lang } = useSuiviLabels()
   const dateLocTag = dateLocaleTag(lang)
   const atelierNarrow = useMediaQuery(ATELIER_NARROW_MQ)
-  const [processes,   setProcesses]   = useState<Process[]>([])
-  const [reminders,   setReminders]   = useState<Reminder[]>(initialReminders)
+  const { processes, setProcesses, reminders, setReminders, loading, load } = usePipelineLoad(initialReminders)
   const [typeFilter,  setTypeFilter]  = useState<ProcessType | 'all'>('all')
   const [showDone,    setShowDone]    = useState(false)
   const [mainView,    setMainView]    = useState<'gantt' | 'calendar'>(() =>
@@ -70,51 +68,6 @@ export function Pipeline({ oeuvres, contacts, groups, initialReminders, onRemind
   })
   const [editing,     setEditing]     = useState<Process | 'new' | null>(null)
   const [inspectedId, setInspectedId] = useState<string | null>(null)
-  const [loading,     setLoading]     = useState(true)
-
-  useEffect(() => {
-    setReminders(initialReminders)
-  }, [initialReminders])
-
-  const load = useCallback(async (signal?: AbortSignal) => {
-    const sb = createClient()
-    let processQuery = fromSuiviProcess(sb).select('*').order('date_fin', { ascending: true, nullsFirst: false })
-    let etapeQuery = fromSuiviEtape(sb).select('*').order('position')
-    if (signal) {
-      processQuery = processQuery.abortSignal(signal)
-      etapeQuery = etapeQuery.abortSignal(signal)
-    }
-    const [{ data: procs }, { data: etapes }, rems] = await Promise.all([
-      processQuery,
-      etapeQuery,
-      listUnreadSuiviReminders(500),
-    ])
-    if (signal?.aborted) return
-    const etapeMap: Record<string, Etape[]> = {}
-    ;(etapes ?? []).forEach((row) => {
-      const e = row as Etape
-      if (!etapeMap[e.process_id]) etapeMap[e.process_id] = []
-      etapeMap[e.process_id].push(e)
-    })
-    setProcesses((procs ?? []).map((p: any) => ({
-      ...p,
-      responsables: p.responsables ?? [],
-      vault_tags:   p.vault_tags   ?? [],
-      vault_path:   p.vault_path   ?? null,
-      etapes:       (etapeMap[p.id] ?? []).map((e: any) => ({
-        ...e,
-        overdue_override: e.overdue_override ?? false,
-      })),
-    })))
-    setReminders(rems as Reminder[])
-    setLoading(false)
-  }, [])
-
-  useEffect(() => {
-    const controller = new AbortController()
-    void load(controller.signal)
-    return () => controller.abort()
-  }, [load])
 
   // Derive the open drawer's process from live state — always fresh after optimistic updates
   const inspected = useMemo(
@@ -196,8 +149,6 @@ export function Pipeline({ oeuvres, contacts, groups, initialReminders, onRemind
     await load()
   }
 
-  const cM = useMemo(() => Object.fromEntries(contacts.map(c => [c.ContactID, c.NomInstitution || `${c.Prénom ?? ''} ${c.Nom ?? ''}`.trim() || String(c.ContactID)])), [contacts])
-
   if (loading) return <div style={{ padding: 40 }} className="t-mono-sm">{t('pipeline_loading')}</div>
 
   return (
@@ -206,201 +157,18 @@ export function Pipeline({ oeuvres, contacts, groups, initialReminders, onRemind
       {/* ── Main ────────────────────────────────────────────────── */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0, overflow: 'hidden' }}>
 
-        {/* Toolbar — view switcher separated from type filters */}
-        <div style={{
-          display: 'flex', flexDirection: atelierNarrow ? 'column' : 'row',
-          alignItems: atelierNarrow ? 'stretch' : 'center',
-          gap: atelierNarrow ? 12 : 10,
-          rowGap: 10,
-          padding: atelierNarrow ? '10px 16px' : '10px 28px', borderBottom: '1px solid var(--bd)',
-          background: 'var(--bg1)', flexShrink: 0,
-        }}>
-          <div
-            data-testid={atelierNarrow ? 'pipeline-toolbar-compact' : undefined}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: atelierNarrow ? 8 : 14,
-              flexWrap: atelierNarrow ? 'nowrap' : 'wrap',
-              width: '100%',
-              minWidth: 0,
-            }}
-          >
-            {!atelierNarrow ? (
-              <div
-                role="group"
-                aria-label={t('pipeline_view_mode_aria')}
-                style={{
-                  display: 'flex',
-                  width: 'auto',
-                  padding: 3,
-                  gap: 0,
-                  background: 'var(--bg0)',
-                  border: '1px solid var(--bd)',
-                  borderRadius: 10,
-                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
-                  minWidth: 0,
-                  flexShrink: 0,
-                }}
-              >
-                <button
-                  type="button"
-                  aria-pressed={mainView === 'gantt'}
-                  onClick={() => setMainView('gantt')}
-                  style={{
-                    minWidth: 100,
-                    minHeight: 44,
-                    padding: '10px 14px',
-                    fontSize: 12,
-                    fontWeight: 700,
-                    letterSpacing: '0.07em',
-                    textTransform: 'uppercase',
-                    border: 'none',
-                    cursor: 'pointer',
-                    background: mainView === 'gantt' ? 'var(--ac)' : 'transparent',
-                    color: mainView === 'gantt' ? 'var(--bg0)' : 'var(--tx)',
-                    borderRadius: '7px 0 0 7px',
-                    boxShadow: mainView === 'gantt' ? '0 1px 3px rgba(0,0,0,0.2)' : undefined,
-                  }}
-                >
-                  {t('pipeline_view_gantt')}
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={mainView === 'calendar'}
-                  onClick={() => setMainView('calendar')}
-                  style={{
-                    minWidth: 100,
-                    minHeight: 44,
-                    padding: '10px 14px',
-                    fontSize: 12,
-                    fontWeight: 700,
-                    letterSpacing: '0.07em',
-                    textTransform: 'uppercase',
-                    border: 'none',
-                    cursor: 'pointer',
-                    background: mainView === 'calendar' ? 'var(--ac)' : 'transparent',
-                    color: mainView === 'calendar' ? 'var(--bg0)' : 'var(--tx)',
-                    borderRadius: '0 7px 7px 0',
-                    boxShadow: mainView === 'calendar' ? '0 1px 3px rgba(0,0,0,0.2)' : undefined,
-                  }}
-                >
-                  {t('pipeline_view_calendar')}
-                </button>
-              </div>
-            ) : null}
-            {atelierNarrow ? (
-              <button
-                type="button"
-                className="btn ghost sm"
-                aria-label={t('pipeline_new_process')}
-                onClick={() => setEditing('new')}
-                style={{ minWidth: 44, minHeight: 44, flexShrink: 0, fontSize: 18, padding: 4 }}
-              >
-                +
-              </button>
-            ) : null}
-            {!atelierNarrow && (
-              <div aria-hidden style={{ width: 1, height: 32, background: 'var(--bd)', flexShrink: 0 }} />
-            )}
-            {!atelierNarrow ? (
-              <div
-                className="t-mono-sm"
-                style={{
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  alignItems: 'center',
-                  gap: 6,
-                  flex: 1,
-                  minWidth: 0,
-                  maxWidth: '100%',
-                  color: 'var(--tx3)', fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase',
-                  marginTop: 0,
-                }}
-              >
-                <span style={{ marginRight: 6, flexShrink: 0 }}>{t('pipeline_filter_group_label')}</span>
-                <div
-                  style={{
-                    display: 'flex',
-                    flexWrap: 'nowrap',
-                    gap: 6,
-                    alignItems: 'center',
-                    flexShrink: 0,
-                  }}
-                >
-                  <button type="button" className="btn ghost sm"
-                    style={{ background: typeFilter==='all' ? 'var(--ac)' : undefined, color: typeFilter==='all' ? 'var(--bg0)' : undefined }}
-                    onClick={() => setTypeFilter('all')}>{t('pipeline_filter_all')}</button>
-                  {SORTED_PROCESS_TYPES.map((typ) => (
-                    <button key={typ} type="button" className="btn ghost sm"
-                      style={{
-                        background: typeFilter===typ ? TYPE_COLORS[typ] : undefined,
-                        color: typeFilter===typ ? '#111' : undefined,
-                        borderColor: `${TYPE_COLORS[typ]}88`,
-                        opacity: typeFilter!=='all' && typeFilter!==typ ? 0.35 : 1,
-                      }}
-                      onClick={() => setTypeFilter(typeFilter===typ ? 'all' : typ)}>
-                      {typeLabel(typ)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-          </div>
-          {atelierNarrow ? (
-            <div
-              data-testid="pipeline-toolbar-scroll"
-              className="t-mono-sm"
-              style={{
-                display: 'flex',
-                flexWrap: 'nowrap',
-                alignItems: 'center',
-                gap: 6,
-                width: '100%',
-                maxWidth: '100%',
-                minWidth: 0,
-                overflowX: 'auto',
-                WebkitOverflowScrolling: 'touch' as const,
-                paddingBottom: 2,
-                color: 'var(--tx3)', fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase',
-              }}
-            >
-              <button type="button" className="btn ghost sm"
-                style={{ flexShrink: 0, background: typeFilter==='all' ? 'var(--ac)' : undefined, color: typeFilter==='all' ? 'var(--bg0)' : undefined }}
-                onClick={() => setTypeFilter('all')}>{t('pipeline_filter_all')}</button>
-              {SORTED_PROCESS_TYPES.map((typ) => (
-                <button key={typ} type="button" className="btn ghost sm"
-                  style={{
-                    flexShrink: 0,
-                    background: typeFilter===typ ? TYPE_COLORS[typ] : undefined,
-                    color: typeFilter===typ ? '#111' : undefined,
-                    borderColor: `${TYPE_COLORS[typ]}88`,
-                    opacity: typeFilter!=='all' && typeFilter!==typ ? 0.35 : 1,
-                  }}
-                  onClick={() => setTypeFilter(typeFilter===typ ? 'all' : typ)}>
-                  {typeLabel(typ)}
-                </button>
-              ))}
-            </div>
-          ) : null}
-          {!atelierNarrow ? (
-            <div style={{
-              marginLeft: 'auto',
-              display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap',
-            }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--tx3)', cursor: 'pointer' }}>
-                <input type="checkbox" checked={showDone} onChange={(e) => setShowDone(e.target.checked)} />
-                {t('pipeline_show_completed')}
-              </label>
-              <button type="button" className="btn ghost sm" onClick={() => setEditing('new')}>{t('pipeline_new_process')}</button>
-            </div>
-          ) : (
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--tx3)', cursor: 'pointer', alignSelf: 'flex-start' }}>
-              <input type="checkbox" checked={showDone} onChange={(e) => setShowDone(e.target.checked)} />
-              {t('pipeline_show_completed')}
-            </label>
-          )}
-        </div>
+        <PipelineToolbar
+          atelierNarrow={atelierNarrow}
+          mainView={mainView}
+          setMainView={setMainView}
+          typeFilter={typeFilter}
+          setTypeFilter={setTypeFilter}
+          showDone={showDone}
+          setShowDone={setShowDone}
+          setEditing={setEditing}
+          t={t as (key: string) => string}
+          typeLabel={typeLabel}
+        />
 
         {/* ── Content ────────────────────────────────────────────── */}
         <div style={{ flex: 1, overflow: 'auto', minHeight: 0, minWidth: 0, display: 'flex', flexDirection: 'column' }}>

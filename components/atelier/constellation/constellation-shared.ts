@@ -101,6 +101,21 @@ export const LINK_VIS: Record<string, { color: string; dash: number[]; w: number
 }
 export const LINK_DEF = { color: '#706c62', dash: [4, 6], w: 1 }
 
+/** Draw image cover-cropped to fill a circle of radius r centred at cx,cy */
+export function drawContain(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  cx: number,
+  cy: number,
+  r: number,
+) {
+  const iw = img.naturalWidth, ih = img.naturalHeight
+  if (!iw || !ih) return
+  const scale = Math.max((r * 2) / iw, (r * 2) / ih)
+  const dw = iw * scale, dh = ih * scale
+  ctx.drawImage(img, cx - dw / 2, cy - dh / 2, dw, dh)
+}
+
 // ── Position persistence (per groupBy mode + theme / working-group filter) ─
 export const POS_KEY = (g: GroupBy, filter?: number | string | null) => {
   if (g === 'theme') return `pem_const_pos_theme_${filter ?? 'all'}`
