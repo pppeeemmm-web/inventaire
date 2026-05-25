@@ -14,7 +14,7 @@ When committing or pushing from Windows/Cursor:
 & .\scripts\commit-push-main.ps1 -Message 'fix: summary' -Paths @('path/to/file.ts')
 ```
 
-- **Always pass `-Paths`** for scoped commits. Unrelated WIP is **moved aside** (fast rename, not git stash) then restored after push.
+- **Always pass `-Paths`** for scoped commits. Unrelated WIP is moved aside / stashed; if any out-of-scope dirt remains after commit, the script **stashes again and still pushes** (only in-scope dirt blocks push).
 - `-Verify` only when you need `release-truth.ps1` (includes `git fetch` — slow). Default is commit + push only.
 - `-NoPush` for commit-only.
 - Generated guide exports and `.cursor/settings.json` are gitignored so they rarely block push.

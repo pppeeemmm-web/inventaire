@@ -27,6 +27,7 @@ Set-Location $repoRoot
 $script:AsideRoot = $null
 $script:AsideManifest = @()
 $script:DidStashTracked = $false
+$script:DidStashForPush = $false
 
 function Invoke-Git {
   param([Parameter(Mandatory = $true)][string[]]$Args)
@@ -102,6 +103,27 @@ function Get-CommitScopeRoots {
   return @($staged -split "`r?`n" | ForEach-Object { Normalize-GitPath $_.Trim() } | Where-Object { $_ })
 }
 
+function Invoke-StashGitPaths {
+  param(
+    [Parameter(Mandatory = $true)][string]$Message,
+    [Parameter(Mandatory = $true)][string[]]$RelPaths
+  )
+  if ($RelPaths.Count -eq 0) { return }
+
+  $pathFile = Join-Path $env:TEMP ("pem-stash-paths-{0}.txt" -f [Guid]::NewGuid().ToString('n'))
+  try {
+    [System.IO.File]::WriteAllLines(
+      $pathFile,
+      [string[]]($RelPaths | ForEach-Object { Get-LiteralGitPath $_ })
+    )
+    & git stash push -m $Message --pathspec-from-file=$pathFile
+    if ($LASTEXITCODE -ne 0) { throw "git stash push failed (exit $LASTEXITCODE)" }
+  }
+  finally {
+    Remove-Item -LiteralPath $pathFile -Force -ErrorAction SilentlyContinue
+  }
+}
+
 function Move-AsideUntracked {
   param([string[]]$Paths)
 
@@ -134,9 +156,7 @@ function Invoke-AsideUnrelatedWork {
   if ($untracked.Count -gt 0) { Move-AsideUntracked -Paths $untracked }
 
   if ($tracked.Count -gt 0) {
-    $literal = @($tracked | ForEach-Object { Get-LiteralGitPath $_ })
-    & git stash push -m "commit-push-main: tracked WIP" -- @literal
-    if ($LASTEXITCODE -ne 0) { throw "git stash push failed (exit $LASTEXITCODE)" }
+    Invoke-StashGitPaths -Message 'commit-push-main: tracked WIP' -RelPaths $tracked
     $script:DidStashTracked = $true
   }
 
@@ -155,6 +175,11 @@ function Restore-AsideWork {
       Move-Item -LiteralPath $src -Destination $dest -Force
     }
     Remove-Item $script:AsideRoot -Recurse -Force -ErrorAction SilentlyContinue
+  }
+
+  if ($script:DidStashForPush) {
+    Invoke-Git @("stash", "pop")
+    $script:DidStashForPush = $false
   }
 
   if ($script:DidStashTracked) {
@@ -193,8 +218,17 @@ try {
   $head = Invoke-Git @("rev-parse", "--short", "HEAD")
   Write-Host "Committed $head"
 
-  if (-not [string]::IsNullOrWhiteSpace((Invoke-Git @("status", "--porcelain")))) {
-    throw "Working tree still dirty after commit — push skipped."
+  $dirty = Get-PorcelainPaths
+  $inScopeDirty = @($dirty | Where-Object { Test-InCommitScope -File $_ -ScopeRoots $scopeRoots })
+  if ($inScopeDirty.Count -gt 0) {
+    throw ("Commit scope still dirty after commit ({0}). Stage those files or widen -Paths." -f ($inScopeDirty -join ', '))
+  }
+
+  $outScopeDirty = @($dirty | Where-Object { -not (Test-InCommitScope -File $_ -ScopeRoots $scopeRoots) })
+  if ($outScopeDirty.Count -gt 0) {
+    Write-Host ("Stash {0} out-of-scope path(s) for push." -f $outScopeDirty.Count) -ForegroundColor DarkYellow
+    Invoke-StashGitPaths -Message 'commit-push-main: push gate' -RelPaths $outScopeDirty
+    $script:DidStashForPush = $true
   }
 
   if (-not $NoPush) {
