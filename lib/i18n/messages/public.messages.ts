@@ -29,4 +29,8 @@ export const publicMessages = defineMessages({
     fr: 'Navigation du site',
     en: 'Site navigation',
   },
+  enquiry_category_portfolio_pdf: {
+    fr: 'Portfolio PDF',
+    en: 'Portfolio PDF',
+  },
 })

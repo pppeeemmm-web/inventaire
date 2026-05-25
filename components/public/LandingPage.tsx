@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import WavingCircle from '@/components/public/WavingCircle'
-import LandingPdfPopup from '@/components/portfolio/LandingPdfPopup'
 import { useI18n } from '@/lib/i18n/context'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { getOrCreatePublicVisitorId } from '@/lib/public-visitor-id'
@@ -12,7 +11,13 @@ import {
   DEFAULT_NAV_ORDER,
   landingInlineNavRoutes,
 } from '@/lib/site-block-visibility'
+import {
+  landingChromeTextShadowNow,
+  type LandingChromeTextShadow,
+  type LandingShadowTuning,
+} from '@/lib/landing-text-shadow'
 import type { CSSProperties } from 'react'
+
 
 type LandingPageProps = {
   heroImageUrl: string
@@ -32,8 +37,8 @@ type LandingPageProps = {
   heroGlossEnabled: boolean
   heroGlossBackground: string
   heroGlossMixBlendMode: CSSProperties['mixBlendMode']
-  heroBevelEnabled: boolean
-  heroBevelBoxShadow: string
+  heroWhiteKey: boolean
+  shadowTuning: LandingShadowTuning
   hiddenNavRoutes?: string[]
   navOrder?: string[]
 }
@@ -63,15 +68,18 @@ export default function LandingPage({
   heroGlossEnabled,
   heroGlossBackground,
   heroGlossMixBlendMode,
-  heroBevelEnabled,
-  heroBevelBoxShadow,
+  heroWhiteKey,
+  shadowTuning,
   hiddenNavRoutes = [],
   navOrder,
 }: LandingPageProps) {
   const { lang, setLang, t } = useI18n()
-  const [pdfOpen, setPdfOpen] = useState(false)
   const [navOpen, setNavOpen] = useState(false)
+  const [chromeShadow, setChromeShadow] = useState<LandingChromeTextShadow>(() =>
+    landingChromeTextShadowNow(new Date(), { tuning: shadowTuning }),
+  )
   const pubNarrow = useMediaQuery('(max-width: 767px)')
+  const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const hiddenSet = useMemo(() => new Set(hiddenNavRoutes), [hiddenNavRoutes])
 
   const order = navOrder ?? [...DEFAULT_NAV_ORDER]
@@ -105,6 +113,32 @@ export default function LandingPage({
     void trackView('/', document.referrer || null, null, getOrCreatePublicVisitorId())
   }, [])
 
+  useEffect(() => {
+    const apply = () => {
+      setChromeShadow(
+        landingChromeTextShadowNow(new Date(), {
+          compact: window.matchMedia('(max-width: 767px)').matches,
+          reducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+          tuning: shadowTuning,
+        }),
+      )
+    }
+    apply()
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') apply()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    const mqNarrow = window.matchMedia('(max-width: 767px)')
+    const mqMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
+    mqNarrow.addEventListener('change', apply)
+    mqMotion.addEventListener('change', apply)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      mqNarrow.removeEventListener('change', apply)
+      mqMotion.removeEventListener('change', apply)
+    }
+  }, [shadowTuning.topTintHex, shadowTuning.bottomTintHex, shadowTuning.heroBevelPx])
+
   const heroImage = (
     <WavingCircle
       src={heroImageUrl}
@@ -115,8 +149,9 @@ export default function LandingPage({
       glossEnabled={heroGlossEnabled}
       glossBackground={heroGlossBackground}
       glossMixBlendMode={heroGlossMixBlendMode}
-      bevelEnabled={heroBevelEnabled}
-      bevelBoxShadow={heroBevelBoxShadow}
+      heroDiscCastFilter={chromeShadow.heroDiscCastFilter}
+      heroWhiteKey={heroWhiteKey}
+      heroBackdropCss={landingBackgroundCss}
     />
   )
 
@@ -138,15 +173,24 @@ export default function LandingPage({
           padding-left: env(safe-area-inset-left, 0px);
           padding-right: env(safe-area-inset-right, 0px);
           display: flex; align-items: center; justify-content: center;
-          overflow-x: hidden;
+          overflow-x: visible;
           overflow-y: auto;
+          isolation: isolate;
         }
         .landing-center {
           display: flex; flex-direction: column; align-items: center;
           max-width: 100%; padding: 0 12px;
-          gap: clamp(14px, 2.5vh, 22px);
+          gap: clamp(22px, 4vh, 36px);
           position: relative;
           z-index: 1;
+          pointer-events: none;
+        }
+        .landing-center a, .landing-center button { pointer-events: auto; }
+        .landing-chrome-shadow {
+          text-shadow: var(--landing-chrome-text-shadow);
+        }
+        .landing-body-shadow {
+          text-shadow: var(--landing-chrome-text-shadow-soft);
         }
         .wordmark {
           position: absolute;
@@ -154,9 +198,12 @@ export default function LandingPage({
           left: max(clamp(12px, 3vw, 32px), env(safe-area-inset-left, 0px));
           font-size: clamp(7px, 1.4vmin, 9px); letter-spacing: clamp(1.5px, 0.35vmin, 3px); text-transform: uppercase;
           color: ${landingChromeText}; text-decoration: none;
-          text-shadow: 0 0 12px rgba(255,255,255,0.5), 0 1px 2px rgba(0,0,0,0.08);
-          padding: 10px 8px; min-height: 44px; display: inline-flex; align-items: center;
+          padding: 10px 8px;
+          padding-inline-start: calc(8px + var(--landing-shadow-pad-inline-start, 0px));
+          min-height: 44px; display: inline-flex; align-items: center;
           font-weight: 400;
+          overflow: visible;
+          z-index: 30;
         }
         .wordmark a { color: inherit; text-decoration: none; }
         .lang-toggle {
@@ -165,21 +212,31 @@ export default function LandingPage({
           right: max(clamp(12px, 3vw, 32px), env(safe-area-inset-right, 0px));
           font-size: clamp(7px, 1.4vmin, 9px); letter-spacing: clamp(1px, 0.3vmin, 2px); text-transform: uppercase;
           color: ${landingChromeText}; background: rgba(255,255,255,0.35); border: 1px solid ${landingChromeBorder};
-          padding: 4px 10px; cursor: pointer; transition: all .15s; font-family: inherit;
+          padding: 4px 10px;
+          padding-inline-end: calc(10px + var(--landing-shadow-pad-inline-end, 0px));
+          cursor: pointer; transition: all .15s; font-family: inherit;
           min-height: 44px; min-width: 44px; display: inline-flex; align-items: center; justify-content: center;
-          text-shadow: 0 0 8px rgba(255,255,255,0.4);
+          overflow: visible;
+          z-index: 30;
         }
         .lang-toggle:hover { color: ${landingChromeTextHover}; border-color: ${landingChromeTextHover}; }
         .hero-orbit-wrap {
           position: relative;
           flex-shrink: 0;
+          z-index: 0;
           overflow: visible;
-          --hero-base: max(80dvh, 80vw);
-          --hero-cap-v: calc(100dvh - 220px);
-          --hero-cap-h: calc(100vw - 48px);
-          --hero-size: min(var(--hero-base), var(--hero-cap-h), var(--hero-cap-v), 900px);
+          pointer-events: auto;
+          /* Pendulum Y-rotate + skew + long drop-shadow paint outside the box — reserve space for caption. */
+          --hero-cast-reserve: clamp(48px, 9vmin, 88px);
+          padding-bottom: var(--hero-cast-reserve);
+          margin-bottom: clamp(4px, 1vh, 12px);
+          --hero-base: min(68dvh, 68vw);
+          --hero-cap-v: calc(100dvh - 360px);
+          --hero-cap-h: calc(100vw - 96px);
+          --hero-size: min(var(--hero-base), var(--hero-cap-h), var(--hero-cap-v), 780px);
           width: var(--hero-size);
           height: var(--hero-size);
+          box-sizing: content-box;
         }
         .circle-wrap {
           position: relative;
@@ -194,11 +251,14 @@ export default function LandingPage({
         .hero-static { position: relative; width: 100%; height: 100%; }
         .hero-caption {
           margin: 0;
+          margin-top: clamp(4px, 1vh, 12px);
           flex-shrink: 0;
           position: relative;
-          z-index: 5;
+          z-index: 12;
+          pointer-events: auto;
           max-width: min(520px, 90vw);
           text-align: center;
+          isolation: isolate;
           font-size: clamp(8px, 1.5vmin, 10px);
           letter-spacing: clamp(0.5px, 0.2vmin, 1.5px);
           line-height: 1.6;
@@ -209,7 +269,8 @@ export default function LandingPage({
           margin: 0;
           flex-shrink: 0;
           position: relative;
-          z-index: 5;
+          z-index: 10;
+          pointer-events: auto;
           display: flex;
           flex-wrap: wrap;
           align-items: center;
@@ -237,24 +298,13 @@ export default function LandingPage({
           position: absolute;
           bottom: max(clamp(12px, 3vh, 32px), env(safe-area-inset-bottom, 0px));
           right: max(clamp(14px, 4vw, 40px), env(safe-area-inset-right, 0px));
+          z-index: 30;
           font-size: clamp(7px, 1.4vmin, 9px); letter-spacing: clamp(1px, 0.3vmin, 2px); text-transform: uppercase;
           color: ${landingBodyMutedText}; text-decoration: none; opacity: 0.85;
           transition: all 0.3s; font-weight: 600;
           min-height: 44px; padding: 10px 8px; display: inline-flex; align-items: center;
         }
         .hub-link:hover { opacity: 1 !important; color: ${landingChromeTextHover} !important; }
-        .pdf-link {
-          position: absolute;
-          bottom: max(clamp(12px, 3vh, 32px), env(safe-area-inset-bottom, 0px));
-          left: max(clamp(14px, 4vw, 40px), env(safe-area-inset-left, 0px));
-          font-size: clamp(7px, 1.4vmin, 9px); letter-spacing: clamp(1px, 0.3vmin, 2px); text-transform: uppercase;
-          color: ${landingBodyMutedText}; background: none; border: none;
-          padding: 10px 8px; min-height: 44px;
-          opacity: 0.7; transition: all 0.3s;
-          font-family: inherit; font-weight: 600; cursor: pointer;
-          display: inline-flex; align-items: center;
-        }
-        .pdf-link:hover { opacity: 1; color: ${landingChromeTextHover}; }
         .landing-nav-btn {
           display: none;
           position: absolute;
@@ -275,6 +325,27 @@ export default function LandingPage({
           min-height: 44px;
         }
         .landing-nav-btn:hover { border-color: ${landingChromeBorder}; color: ${landingChromeTextHover}; }
+        .landing-drawer-link {
+          font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+          color: #5a5650; text-decoration: none; padding: 14px 8px;
+          border-bottom: 1px solid #e8e4de;
+        }
+        .landing-drawer-heading {
+          font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: #b0aca6;
+        }
+        .landing-drawer-close {
+          font-size: 10px; letter-spacing: 1px; text-transform: uppercase;
+          color: #7a7670; background: none; border: 1px solid #dedad4;
+          padding: 8px 14px; cursor: pointer; font-family: inherit;
+        }
+        .landing-drawer-hub {
+          margin-top: 8px; font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+          color: #8a8680; text-decoration: none; padding: 14px 8px;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .landing-chrome-shadow, .landing-body-shadow { transition: color 0.15s, border-color 0.15s, opacity 0.3s !important; }
+          .wordmark, .lang-toggle, .landing-nav-btn { transition: color 0.15s, border-color 0.15s, opacity 0.3s !important; }
+        }
         @media (max-width: 767px) {
           .landing-inline-nav { display: none !important; }
           .landing-nav-btn { display: inline-flex; align-items: center; justify-content: center; }
@@ -283,27 +354,34 @@ export default function LandingPage({
           html, body { overflow: hidden; height: 100dvh; }
           .wordmark { white-space: nowrap; font-size: 9px; letter-spacing: 2px; }
           .landing-center {
-            gap: 12px;
+            gap: clamp(18px, 3.5vh, 28px);
             max-height: calc(100dvh - 100px);
           }
           .hero-orbit-wrap {
-            --hero-base: min(78vw, calc(100dvh - 280px));
-            --hero-cap-v: calc(100dvh - 280px);
-            --hero-cap-h: calc(100vw - 32px);
+            --hero-cast-reserve: clamp(40px, 10vw, 64px);
+            --hero-base: min(64vw, calc(100dvh - 380px));
+            --hero-cap-v: calc(100dvh - 380px);
+            --hero-cap-h: calc(100vw - 48px);
           }
         }
       `}</style>
 
       <main
         className="stage pem-fadeIn pem-grain"
-        style={pubNarrow ? { paddingBottom: 'calc(56px + env(safe-area-inset-bottom, 0px))' } : undefined}
+        style={{
+          '--landing-chrome-text-shadow': chromeShadow.chrome,
+          '--landing-chrome-text-shadow-soft': chromeShadow.chromeSoft,
+          '--landing-shadow-pad-inline-start': `${chromeShadow.padInlineStart}px`,
+          '--landing-shadow-pad-inline-end': `${chromeShadow.padInlineEnd}px`,
+          ...(pubNarrow ? { paddingBottom: 'calc(56px + env(safe-area-inset-bottom, 0px))' } : {}),
+        } as CSSProperties}
       >
-        <h1 className="wordmark">
+        <h1 className="wordmark landing-chrome-shadow">
           <Link href="/">{artistName}</Link>
         </h1>
         <button
           type="button"
-          className="lang-toggle"
+          className="lang-toggle landing-body-shadow"
           style={{ display: pubNarrow ? 'none' : undefined }}
           onClick={() => setLang(lang === 'fr' ? 'en' : 'fr')}
           aria-label={t('pub_aria_switch_language')}
@@ -313,7 +391,7 @@ export default function LandingPage({
 
         <button
           type="button"
-          className="landing-nav-btn"
+          className="landing-nav-btn landing-body-shadow"
           style={{ display: pubNarrow ? 'none' : undefined }}
           onClick={() => setNavOpen(true)}
           aria-expanded={navOpen}
@@ -341,7 +419,7 @@ export default function LandingPage({
           </div>
 
           {heroCaption.trim() ? (
-            <p className="hero-caption">{heroCaption}</p>
+            <p className="hero-caption landing-body-shadow">{heroCaption}</p>
           ) : null}
 
           {inlineNavRoutes.length > 0 ? (
@@ -353,7 +431,7 @@ export default function LandingPage({
                   <Link
                     key={href}
                     href={href}
-                    className="landing-inline-link"
+                    className="landing-inline-link landing-body-shadow"
                     data-testid={href === '/enquiry' ? 'landing-enquiry-link' : undefined}
                   >
                     {t(labelKey)}
@@ -364,17 +442,7 @@ export default function LandingPage({
           ) : null}
         </div>
 
-        <button
-          type="button"
-          className="pdf-link"
-          style={{ display: pubNarrow ? 'none' : undefined }}
-          onClick={() => setPdfOpen(true)}
-          aria-label={t('pub_aria_download_portfolio_pdf')}
-        >
-          [ {t('pub_portfolio_pdf_strip')} ]
-        </button>
-
-        <Link href="/hub" className="hub-link" style={{ display: pubNarrow ? 'none' : undefined }}>
+        <Link href="/hub" className="hub-link landing-body-shadow" style={{ display: pubNarrow ? 'none' : undefined }}>
           {t('pub_hub_link_strip')}
         </Link>
       </main>
@@ -410,6 +478,7 @@ export default function LandingPage({
             aria-expanded={navOpen}
             aria-controls="landing-site-nav"
             aria-label={t('pub_aria_open_site_menu')}
+            className="landing-body-shadow"
             style={{
               fontSize: 11, letterSpacing: 2, textTransform: 'uppercase',
               color: '#3a3834', background: 'none', border: 'none',
@@ -420,20 +489,9 @@ export default function LandingPage({
           </button>
           <button
             type="button"
-            onClick={() => setPdfOpen(true)}
-            aria-label={t('pub_aria_download_portfolio_pdf')}
-            style={{
-              fontSize: 11, letterSpacing: 2, textTransform: 'uppercase',
-              color: '#3a3834', background: 'none', border: 'none',
-              padding: '10px 12px', minHeight: 44, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600,
-            }}
-          >
-            {t('pub_portfolio_pdf_strip')}
-          </button>
-          <button
-            type="button"
             onClick={() => setLang(lang === 'fr' ? 'en' : 'fr')}
             aria-label={t('pub_aria_switch_language')}
+            className="landing-body-shadow"
             style={{
               fontSize: 11, letterSpacing: 2, textTransform: 'uppercase',
               color: '#3a3834', background: 'none', border: 'none',
@@ -445,6 +503,7 @@ export default function LandingPage({
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, padding: '4px 0' }}>
             <Link
               href="/hub"
+              className="landing-body-shadow"
               style={{
                 fontSize: 8, letterSpacing: 1, textTransform: 'uppercase',
                 color: '#b0aca6', textDecoration: 'none',
@@ -454,7 +513,10 @@ export default function LandingPage({
             >
               [ {t('pub_hub_short')} ]
             </Link>
-            <span style={{ fontSize: 7, letterSpacing: 0.5, color: '#c0bdb7', whiteSpace: 'nowrap' }}>
+            <span
+              className="landing-body-shadow"
+              style={{ fontSize: 7, letterSpacing: 0.5, color: '#c0bdb7', whiteSpace: 'nowrap' }}
+            >
               © {new Date().getFullYear()} the pem workshop
             </span>
           </div>
@@ -498,23 +560,13 @@ export default function LandingPage({
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <span style={{ fontSize: 9, letterSpacing: 3, textTransform: 'uppercase', color: '#b0aca6' }}>
+              <span className="landing-drawer-heading landing-body-shadow">
                 {t('pub_mobile_nav_heading')}
               </span>
               <button
                 type="button"
+                className="landing-drawer-close landing-body-shadow"
                 onClick={() => setNavOpen(false)}
-                style={{
-                  fontSize: 10,
-                  letterSpacing: 1,
-                  textTransform: 'uppercase',
-                  color: '#7a7670',
-                  background: 'none',
-                  border: '1px solid #dedad4',
-                  padding: '8px 14px',
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                }}
               >
                 {t('close')}
               </button>
@@ -524,61 +576,21 @@ export default function LandingPage({
                 key={href}
                 href={href}
                 onClick={() => setNavOpen(false)}
-                style={{
-                  fontSize: 10,
-                  letterSpacing: 2,
-                  textTransform: 'uppercase',
-                  color: '#5a5650',
-                  textDecoration: 'none',
-                  padding: '14px 8px',
-                  borderBottom: '1px solid #e8e4de',
-                }}
+                className="landing-drawer-link landing-body-shadow"
               >
                 {label}
               </Link>
             ))}
-            <button
-              type="button"
-              onClick={() => {
-                setNavOpen(false)
-                setPdfOpen(true)
-              }}
-              style={{
-                marginTop: 12,
-                fontSize: 10,
-                letterSpacing: 1,
-                textTransform: 'uppercase',
-                color: '#6b6760',
-                background: 'none',
-                border: '1px solid #dedad4',
-                padding: '12px 14px',
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-                textAlign: 'left',
-              }}
-            >
-              {t('pub_portfolio_pdf_strip')}
-            </button>
             <Link
               href="/hub"
               onClick={() => setNavOpen(false)}
-              style={{
-                marginTop: 8,
-                fontSize: 10,
-                letterSpacing: 2,
-                textTransform: 'uppercase',
-                color: '#8a8680',
-                textDecoration: 'none',
-                padding: '14px 8px',
-              }}
+              className="landing-drawer-hub landing-body-shadow"
             >
               {t('pub_hub_short')}
             </Link>
           </nav>
         </>
       )}
-
-      <LandingPdfPopup open={pdfOpen} onClose={() => setPdfOpen(false)} />
     </>
   )
 }

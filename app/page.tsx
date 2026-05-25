@@ -18,10 +18,11 @@ import {
 import {
   DEFAULT_HERO_CAPTION_EN,
   DEFAULT_HERO_CAPTION_FR,
+  migrateHeroWhiteKey,
 } from '@/lib/portfolio-config-types'
 import { resolveLandingBackground } from '@/lib/landing-background'
-import { resolveHeroBevel } from '@/lib/landing-hero-bevel'
 import { resolveHeroGloss } from '@/lib/landing-hero-gloss'
+import { landingShadowTuningFromLanding } from '@/lib/landing-text-shadow'
 import type { LandingConfig, SiteBlock } from '@/lib/portfolio-config-types'
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -80,14 +81,16 @@ export default async function HomePage() {
   let heroLinked = true
   let landingBg = resolveLandingBackground()
   let heroGloss = resolveHeroGloss()
-  let heroBevel = resolveHeroBevel()
+  let landingPartial: Partial<LandingConfig> | undefined
+  let heroWhiteKey = false
   try {
     const { config } = await loadPortfolioSectionsCached()
     const g = config.general as { artist_name?: string } | undefined
     const l = config.landing as Partial<LandingConfig> | undefined
+    landingPartial = l
     landingBg = resolveLandingBackground(l)
     heroGloss = resolveHeroGloss(l)
-    heroBevel = resolveHeroBevel(l)
+    heroWhiteKey = migrateHeroWhiteKey(l?.hero_white_key)
     heroImageUrl = resolveLandingHeroImageUrl(l?.hero_image_url)
     heroImageUnoptimized = isLandingHeroUnoptimized(heroImageUrl)
     artistName = resolveArtistDisplayName(g?.artist_name)
@@ -124,8 +127,8 @@ export default async function HomePage() {
       heroGlossEnabled={heroGloss.enabled}
       heroGlossBackground={heroGloss.background}
       heroGlossMixBlendMode={heroGloss.mixBlendMode}
-      heroBevelEnabled={heroBevel.enabled}
-      heroBevelBoxShadow={heroBevel.boxShadow}
+      heroWhiteKey={heroWhiteKey}
+      shadowTuning={landingShadowTuningFromLanding(landingPartial, landingBg.bottomHex, landingBg.topHex)}
     />
   )
 }

@@ -103,6 +103,23 @@ export interface LandingConfig {
   hero_bevel_px: number
   /** Bevel shadow profile on the painted disc. */
   hero_bevel_profile: LandingHeroBevelProfile
+  /** Portfolio PDF download on /enquiry (not on landing). */
+  enquiry_portfolio_pdf: boolean
+  /**
+   * Landing only: treat #FFFFFF in this hero as transparent over the page gradient.
+   * One-off per config — not applied to work uploads or other images.
+   */
+  hero_white_key: boolean
+}
+
+export const LANDING_ENQUIRY_PORTFOLIO_PDF_DEFAULT = true
+
+export function migrateEnquiryPortfolioPdf(v: unknown): boolean {
+  return v !== false
+}
+
+export function migrateHeroWhiteKey(v: unknown): boolean {
+  return v === true
 }
 
 export interface PortfolioConfig {
@@ -166,6 +183,8 @@ export const DEFAULT_CONFIG: PortfolioConfig = {
     hero_gloss_falloff_pct: LANDING_HERO_GLOSS_FALLOFF_DEFAULT,
     hero_bevel_px: LANDING_HERO_BEVEL_PX_DEFAULT,
     hero_bevel_profile: LANDING_HERO_BEVEL_PROFILE_DEFAULT,
+    enquiry_portfolio_pdf: LANDING_ENQUIRY_PORTFOLIO_PDF_DEFAULT,
+    hero_white_key: false,
   },
   sections: [],
   works_collections: [],
@@ -338,6 +357,8 @@ export function migrate(raw: any): PortfolioConfig {
       ),
       hero_bevel_px: migrateHeroBevelPx(raw.landing?.hero_bevel_px),
       hero_bevel_profile: migrateHeroBevelProfile(raw.landing?.hero_bevel_profile),
+      enquiry_portfolio_pdf: migrateEnquiryPortfolioPdf(raw.landing?.enquiry_portfolio_pdf),
+      hero_white_key: migrateHeroWhiteKey(raw.landing?.hero_white_key),
     },
     sections:          oldSections.map(migrateCollection),
     works_collections: oldWorks.map(migrateCollection),

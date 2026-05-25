@@ -27,11 +27,6 @@ import {
   type LandingGradientStop,
 } from '@/lib/landing-background'
 import {
-  LANDING_HERO_BEVEL_PROFILE_VALUES,
-  resolveHeroBevel,
-  type LandingHeroBevelProfile,
-} from '@/lib/landing-hero-bevel'
-import {
   LANDING_HERO_GLOSS_BLEND_VALUES,
   resolveHeroGloss,
   type LandingHeroGlossBlend,
@@ -86,11 +81,6 @@ const HERO_GLOSS_BLEND_MSG: Record<LandingHeroGlossBlend, MessageKey> = {
   overlay: 'site_hero_gloss_blend_overlay',
   multiply: 'site_hero_gloss_blend_multiply',
   screen: 'site_hero_gloss_blend_screen',
-}
-
-const HERO_BEVEL_PROFILE_MSG: Record<LandingHeroBevelProfile, MessageKey> = {
-  smooth: 'site_hero_bevel_profile_smooth',
-  hard: 'site_hero_bevel_profile_hard',
 }
 
 export function SiteEditorPanel({
@@ -215,12 +205,26 @@ export function SiteEditorPanel({
 
   function renderBlockContent(kind: SiteBlockKind) {
     const heroGloss = resolveHeroGloss(config.landing)
-    const heroBevel = resolveHeroBevel(config.landing)
     switch (kind) {
       case 'hero':
         return (
           <>
             <p className="t-mono-xs" style={{ opacity: 0.55, marginBottom: 12, lineHeight: 1.5 }}>{t('atelier_pub_landing_behavior_help')}</p>
+            <label className="t-label" style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 16, fontSize: 9, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={config.landing.enquiry_portfolio_pdf}
+                onChange={e => setConfig({
+                  ...config,
+                  landing: { ...config.landing, enquiry_portfolio_pdf: e.target.checked },
+                })}
+                style={{ marginTop: 2 }}
+              />
+              <span>
+                <span style={{ display: 'block', marginBottom: 4 }}>{t('site_enquiry_portfolio_pdf_label')}</span>
+                <span className="t-mono-xs" style={{ opacity: 0.55, lineHeight: 1.5 }}>{t('site_enquiry_portfolio_pdf_help')}</span>
+              </span>
+            </label>
             <p className="t-mono-xs" style={{ opacity: 0.55, marginBottom: 12, lineHeight: 1.5 }}>{t('atelier_pub_hero_url_help')}</p>
             <p className="t-mono-xs" style={{ opacity: 0.4, marginBottom: 8, fontSize: 9 }}>{t('atelier_pub_hero_r2_followup')}</p>
             <p className="t-mono-xs" style={{ opacity: 0.45, marginBottom: 16, fontSize: 9 }}>{t('atelier_pub_hero_url_full_res_hint')}</p>
@@ -237,6 +241,28 @@ export function SiteEditorPanel({
                 landing: { ...config.landing, hero_image_url: e.target.value },
               })}
             />
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 10,
+                marginTop: 16,
+                cursor: 'pointer',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={config.landing.hero_white_key}
+                onChange={e => setConfig({
+                  ...config,
+                  landing: { ...config.landing, hero_white_key: e.target.checked },
+                })}
+              />
+              <span>
+                <span style={{ display: 'block', marginBottom: 4 }}>{t('site_hero_white_key_label')}</span>
+                <span className="t-mono-xs" style={{ opacity: 0.55, lineHeight: 1.5 }}>{t('site_hero_white_key_help')}</span>
+              </span>
+            </label>
             {isHttpsHeroUrl(config.landing.hero_image_url) && (
               <div style={{ marginTop: 16 }}>
                 <div className="t-label" style={{ marginBottom: 4, fontSize: 9 }}>{t('atelier_pub_hero_preview_label')}</div>
@@ -256,23 +282,31 @@ export function SiteEditorPanel({
                         border: '1px solid var(--bd)',
                       }}
                     >
-                      <img
-                        src={config.landing.hero_image_url.trim()}
-                        alt=""
-                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                      />
-                      {heroBevel.enabled ? (
+                      {config.landing.hero_white_key ? (
                         <div
                           aria-hidden
                           style={{
                             position: 'absolute',
                             inset: 0,
-                            borderRadius: '50%',
-                            pointerEvents: 'none',
-                            boxShadow: heroBevel.boxShadow,
+                            background: resolveLandingBackground(config.landing).backgroundCss,
                           }}
                         />
                       ) : null}
+                      <img
+                        src={config.landing.hero_image_url.trim()}
+                        alt=""
+                        style={{
+                          position: 'relative',
+                          zIndex: 1,
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                          display: 'block',
+                          ...(config.landing.hero_white_key
+                            ? { mixBlendMode: 'darken' as const }
+                            : {}),
+                        }}
+                      />
                       {heroGloss.enabled ? (
                         <div
                           aria-hidden
@@ -381,51 +415,6 @@ export function SiteEditorPanel({
                   })}
                   style={{ display: 'block', width: '100%', marginTop: 6 }}
                 />
-              </label>
-            </div>
-            <div style={{ marginTop: 24 }}>
-              <div className="t-label" style={{ marginBottom: 8, fontSize: 9 }}>{t('site_hero_bevel_label')}</div>
-              <p className="t-mono-xs" style={{ opacity: 0.55, marginBottom: 12, lineHeight: 1.5 }}>
-                {t('site_hero_bevel_help')}
-              </p>
-              <label className="t-label" style={{ display: 'block', fontSize: 9, marginBottom: 6 }}>
-                {t('site_hero_bevel_px_label')}
-                {' — '}
-                <span style={{ opacity: 0.75 }}>{config.landing.hero_bevel_px} px</span>
-                <input
-                  type="range"
-                  min={0}
-                  max={12}
-                  value={config.landing.hero_bevel_px}
-                  onChange={e => setConfig({
-                    ...config,
-                    landing: {
-                      ...config.landing,
-                      hero_bevel_px: Number(e.target.value),
-                    },
-                  })}
-                  style={{ display: 'block', width: '100%', marginTop: 6 }}
-                />
-              </label>
-              <label className="t-label" style={{ display: 'block', fontSize: 9, marginBottom: 6 }}>
-                {t('site_hero_bevel_profile_label')}
-                <select
-                  className="input full"
-                  value={config.landing.hero_bevel_profile}
-                  disabled={config.landing.hero_bevel_px <= 0}
-                  onChange={e => setConfig({
-                    ...config,
-                    landing: {
-                      ...config.landing,
-                      hero_bevel_profile: e.target.value as LandingHeroBevelProfile,
-                    },
-                  })}
-                  style={{ display: 'block', width: '100%', marginTop: 6 }}
-                >
-                  {LANDING_HERO_BEVEL_PROFILE_VALUES.map(profile => (
-                    <option key={profile} value={profile}>{t(HERO_BEVEL_PROFILE_MSG[profile])}</option>
-                  ))}
-                </select>
               </label>
             </div>
             <div style={{ marginTop: 24 }}>

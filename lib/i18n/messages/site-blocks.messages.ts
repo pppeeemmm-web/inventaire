@@ -59,9 +59,25 @@ export const siteBlocksMessages = defineMessages({
   },
   atelier_pub_landing_behavior_help: {
     fr:
-      'Accueil public : l’image héros remplit l’écran (clic → /works si la page /works est visible). Légende sous l’image. Les blocs À propos et Pratique ajoutent des liens autour du cercle. Contact reste sous la légende. Masquer un bloc ◻ retire son lien sans modifier le code.',
+      'Accueil public : l’image héros remplit l’écran (clic → /works si la page /works est visible). Légende sous l’image. Les blocs À propos et Pratique ajoutent des liens autour du cercle. Contact reste sous la légende. Ombre longue du texte et du disque selon l’heure locale (ouest = gauche le matin). Masquer un bloc ◻ retire son lien sans modifier le code.',
     en:
-      'Public home: hero fills the viewport (click → /works when /works block is visible). Caption under the image. About and Practice blocks add links around the circle. Enquiry stays below the caption. Hiding a block ◻ removes its link without code changes.',
+      'Public home: hero fills the viewport (click → /works when /works block is visible). Caption under the image. About and Practice blocks add links around the circle. Enquiry stays below the caption. Text and disc long shadows follow local time (west = left in the morning). Hiding a block ◻ removes its link without code changes.',
+  },
+  site_enquiry_portfolio_pdf_label: {
+    fr: 'Portfolio PDF sur la page Contact',
+    en: 'Portfolio PDF on Enquiry page',
+  },
+  site_enquiry_portfolio_pdf_help: {
+    fr: 'Retiré de l’accueil. Quand activé, « Portfolio PDF » apparaît dans le menu Motif sur /enquiry.',
+    en: 'Removed from the home page. When on, “Portfolio PDF” appears in the Topic dropdown on /enquiry.',
+  },
+  site_hero_white_key_label: {
+    fr: 'Blanc pur → transparent (cette image d’accueil seulement)',
+    en: 'Pure white → transparent (this home hero only)',
+  },
+  site_hero_white_key_help: {
+    fr: 'Landing uniquement, fichier sans transparence AVIF. Désactiver si l’AVIF a déjà un canal alpha (sinon franges et cadre).',
+    en: 'Landing only, for AVIF without an alpha channel. Turn off if the AVIF is already transparent (avoids fringes and a visible box).',
   },
   atelier_pub_hero_url_full_res_hint: {
     fr: 'Utilisez l’URL AVIF pleine résolution (racine R2), pas /thumbs/ (400 px, flou en grand).',

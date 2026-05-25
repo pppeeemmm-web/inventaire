@@ -5,14 +5,31 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
 import { createClient } from '@/lib/supabase/client'
-
+import LandingPdfPopup from '@/components/portfolio/LandingPdfPopup'
 import { loadPortfolioConfig } from '@/app/atelier/(portal)/portfolio/actions'
 import { trackView } from '@/lib/track'
 import { getOrCreatePublicVisitorId } from '@/lib/public-visitor-id'
 import type { PublicSiteTheme } from '@/lib/public-site-theme'
 import { publicSiteBaseCss } from '@/lib/public-site-theme'
+import { useMediaQuery } from '@/lib/useMediaQuery'
+import {
+  landingChromeTextShadowNow,
+  type LandingChromeTextShadow,
+  type LandingShadowTuning,
+} from '@/lib/landing-text-shadow'
+import type { CSSProperties } from 'react'
 
-export default function EnquiryClient({ siteTheme }: { siteTheme: PublicSiteTheme }) {
+type EnquiryClientProps = {
+  siteTheme: PublicSiteTheme
+  showPortfolioPdf: boolean
+  shadowTuning: LandingShadowTuning
+}
+
+export default function EnquiryClient({
+  siteTheme,
+  showPortfolioPdf,
+  shadowTuning,
+}: EnquiryClientProps) {
   const { lang, setLang, t } = useI18n()
   const searchParams = useSearchParams()
   const [sent, setSent] = useState(false)
@@ -20,6 +37,11 @@ export default function EnquiryClient({ siteTheme }: { siteTheme: PublicSiteThem
   const [form, setForm] = useState({ name: '', email: '', message: '' })
   const [category, setCategory] = useState('general')
   const [config, setConfig] = useState<any>(null)
+  const [pdfOpen, setPdfOpen] = useState(false)
+  const [chromeShadow, setChromeShadow] = useState<LandingChromeTextShadow>(() =>
+    landingChromeTextShadowNow(new Date(), { tuning: shadowTuning }),
+  )
+  const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const sb = createClient()
 
   useEffect(() => {
@@ -31,15 +53,50 @@ export default function EnquiryClient({ siteTheme }: { siteTheme: PublicSiteThem
     fetchData()
   }, [])
 
+  useEffect(() => {
+    const apply = () => {
+      setChromeShadow(
+        landingChromeTextShadowNow(new Date(), {
+          compact: window.matchMedia('(max-width: 767px)').matches,
+          reducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+          tuning: shadowTuning,
+        }),
+      )
+    }
+    apply()
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') apply()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    const mqNarrow = window.matchMedia('(max-width: 767px)')
+    const mqMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
+    mqNarrow.addEventListener('change', apply)
+    mqMotion.addEventListener('change', apply)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      mqNarrow.removeEventListener('change', apply)
+      mqMotion.removeEventListener('change', apply)
+    }
+  }, [shadowTuning.topTintHex, shadowTuning.bottomTintHex, shadowTuning.heroBevelPx])
+
   const contactEmail = config?.general?.contact_email
   const contactPhone = config?.general?.phone
 
   const oeuvreParam = searchParams.get('oeuvre_id')
   const orderParam = searchParams.get('sale_order_id')
 
+  function handleCategoryChange(next: string) {
+    if (next === 'portfolio_pdf') {
+      setPdfOpen(true)
+      setCategory('general')
+      return
+    }
+    setCategory(next)
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!form.name || !form.email || !form.message) return
+    if (category === 'portfolio_pdf' || !form.name || !form.email || !form.message) return
     setLoading(true)
     const oeuvreId = oeuvreParam && /^\d+$/.test(oeuvreParam) ? Number(oeuvreParam) : null
     const saleOrderId = orderParam && orderParam.length > 10 ? orderParam : null
@@ -84,10 +141,17 @@ export default function EnquiryClient({ siteTheme }: { siteTheme: PublicSiteThem
           justify-content: flex-start;
           padding: clamp(72px, 14vw, 104px) clamp(16px, 5vw, 40px) clamp(32px, 8vh, 64px);
         }
+        .enquiry-chrome-shadow {
+          text-shadow: var(--landing-chrome-text-shadow);
+        }
+        .enquiry-body-shadow {
+          text-shadow: var(--landing-chrome-text-shadow-soft);
+        }
         .wordmark {
           position: absolute; top: clamp(16px, 3.5vw, 28px); left: clamp(16px, 4vw, 32px);
           font-size: clamp(8px, 1.2vw, 9px); letter-spacing: 3px; text-transform: uppercase;
           color: ${siteTheme.chromeText}; text-decoration: none;
+          padding-inline-start: var(--landing-shadow-pad-inline-start, 0px);
         }
         .lang-btn {
           position: absolute; top: clamp(14px, 3vw, 24px); right: clamp(16px, 4vw, 32px);
@@ -96,9 +160,21 @@ export default function EnquiryClient({ siteTheme }: { siteTheme: PublicSiteThem
           padding: 4px 10px; cursor: pointer; transition: all .15s;
           font-family: inherit;
           min-height: 44px; min-width: 44px; display: inline-flex; align-items: center; justify-content: center;
+          padding-inline-end: var(--landing-shadow-pad-inline-end, 0px);
         }
         .lang-btn:hover { color: ${siteTheme.chromeTextHover}; border-color: ${siteTheme.chromeTextHover}; }
         .form-container { width: 100%; max-width: 440px; animation: fadeIn 0.8s ease-out; }
+        .enquiry-category-select {
+          width: 100%;
+          background: none;
+          border: 1px solid #dedad4;
+          padding: 12px 8px;
+          font-family: inherit;
+          font-size: 13px;
+          color: #6b6760;
+          border-radius: 4px;
+          min-height: 44px;
+        }
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(10px); }
           to   { opacity: 1; transform: translateY(0); }
@@ -137,10 +213,18 @@ export default function EnquiryClient({ siteTheme }: { siteTheme: PublicSiteThem
         .back-link:hover { color: #6b6760; }
       `}</style>
 
-      <div className="stage">
-        <Link href="/" className="wordmark">the pem workshop</Link>
+      <div
+        className="stage"
+        style={{
+          '--landing-chrome-text-shadow': chromeShadow.chrome,
+          '--landing-chrome-text-shadow-soft': chromeShadow.chromeSoft,
+          '--landing-shadow-pad-inline-start': `${chromeShadow.padInlineStart}px`,
+          '--landing-shadow-pad-inline-end': `${chromeShadow.padInlineEnd}px`,
+        } as CSSProperties}
+      >
+        <Link href="/" className="wordmark enquiry-chrome-shadow">the pem workshop</Link>
         <button
-          className="lang-btn"
+          className="lang-btn enquiry-body-shadow"
           onClick={() => setLang(lang === 'fr' ? 'en' : 'fr')}
           aria-label={t('pub_aria_switch_language')}
         >
@@ -149,10 +233,10 @@ export default function EnquiryClient({ siteTheme }: { siteTheme: PublicSiteThem
 
         <div className="stage-scroll pem-grain" data-testid="enquiry-scroll">
           <div className="form-container">
-            <span className="label">{t('pub_enquiry')}</span>
+            <span className="label enquiry-chrome-shadow">{t('pub_enquiry')}</span>
 
             {(contactEmail || contactPhone) && (
-              <div className="contact-info">
+              <div className="contact-info enquiry-body-shadow">
                 {contactEmail && (
                   <div>
                     {t('enquiry_kicker_email')} &nbsp; <a href={`mailto:${contactEmail}`}>{contactEmail}</a>
@@ -167,7 +251,7 @@ export default function EnquiryClient({ siteTheme }: { siteTheme: PublicSiteThem
             )}
 
             {(oeuvreParam || orderParam) && (
-              <div className="contact-info" style={{ marginBottom: 16 }}>
+              <div className="contact-info enquiry-body-shadow" style={{ marginBottom: 16 }}>
                 {t('enquiry_optional_ids_hint')}
                 {oeuvreParam && <div>{t('enquiry_ref_work_fmt').replace('{n}', oeuvreParam)}</div>}
                 {orderParam && (
@@ -179,31 +263,25 @@ export default function EnquiryClient({ siteTheme }: { siteTheme: PublicSiteThem
             )}
 
             {sent ? (
-              <div className="success-msg">{t('pub_thank_you')}</div>
+              <div className="success-msg enquiry-body-shadow">{t('pub_thank_you')}</div>
             ) : (
               <form onSubmit={handleSubmit}>
                 <div style={{ marginBottom: 20 }}>
-                  <label className="label" style={{ display: 'block', marginBottom: 8 }}>{t('enquiry_category_label')}</label>
+                  <label className="label enquiry-body-shadow" style={{ display: 'block', marginBottom: 8 }}>{t('enquiry_category_label')}</label>
                   <select
+                    className="enquiry-category-select enquiry-body-shadow"
+                    data-testid="enquiry-category-select"
                     value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    style={{
-                      width: '100%',
-                      background: 'none',
-                      border: '1px solid #dedad4',
-                      padding: '12px 8px',
-                      fontFamily: 'inherit',
-                      fontSize: 13,
-                      color: '#6b6760',
-                      borderRadius: 4,
-                      minHeight: 44,
-                    }}
+                    onChange={(e) => handleCategoryChange(e.target.value)}
                   >
                     <option value="general">{t('enquiry_category_general')}</option>
                     <option value="question">{t('enquiry_category_question')}</option>
                     <option value="complaint">{t('enquiry_category_complaint')}</option>
                     <option value="shipping">{t('enquiry_category_shipping')}</option>
                     <option value="other">{t('enquiry_category_other')}</option>
+                    {showPortfolioPdf ? (
+                      <option value="portfolio_pdf">{t('enquiry_category_portfolio_pdf')}</option>
+                    ) : null}
                   </select>
                 </div>
                 <input
@@ -228,9 +306,13 @@ export default function EnquiryClient({ siteTheme }: { siteTheme: PublicSiteThem
             )}
           </div>
 
-          <Link href="/" className="back-link">{t('pub_back')}</Link>
+          <Link href="/" className="back-link enquiry-body-shadow">{t('pub_back')}</Link>
         </div>
       </div>
+
+      {showPortfolioPdf ? (
+        <LandingPdfPopup open={pdfOpen} onClose={() => setPdfOpen(false)} />
+      ) : null}
     </>
   )
 }

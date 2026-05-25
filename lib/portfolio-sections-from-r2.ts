@@ -9,6 +9,9 @@ import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3'
 import {
   DEFAULT_HERO_CAPTION_EN,
   DEFAULT_HERO_CAPTION_FR,
+  LANDING_ENQUIRY_PORTFOLIO_PDF_DEFAULT,
+  migrateEnquiryPortfolioPdf,
+  migrateHeroWhiteKey,
   migrateSiteBlocks,
 } from '@/lib/portfolio-config-types'
 import {
@@ -101,6 +104,8 @@ export async function loadPortfolioSectionsFromR2(): Promise<{
       hero_gloss_falloff_pct: LANDING_HERO_GLOSS_FALLOFF_DEFAULT,
       hero_bevel_px: LANDING_HERO_BEVEL_PX_DEFAULT,
       hero_bevel_profile: LANDING_HERO_BEVEL_PROFILE_DEFAULT,
+      enquiry_portfolio_pdf: LANDING_ENQUIRY_PORTFOLIO_PDF_DEFAULT,
+      hero_white_key: false,
     },
     sections:          [],
     works_collections: [],
@@ -164,6 +169,12 @@ export async function loadPortfolioSectionsFromR2(): Promise<{
               hero_bevel_profile: migrateHeroBevelProfile(
                 (landingRaw as { hero_bevel_profile?: unknown }).hero_bevel_profile,
               ),
+              enquiry_portfolio_pdf: migrateEnquiryPortfolioPdf(
+                (landingRaw as { enquiry_portfolio_pdf?: unknown }).enquiry_portfolio_pdf,
+              ),
+              hero_white_key: migrateHeroWhiteKey(
+                (landingRaw as { hero_white_key?: unknown }).hero_white_key,
+              ),
             }
           : {
               hero_image_url: '',
@@ -182,6 +193,8 @@ export async function loadPortfolioSectionsFromR2(): Promise<{
               hero_gloss_falloff_pct: LANDING_HERO_GLOSS_FALLOFF_DEFAULT,
               hero_bevel_px: LANDING_HERO_BEVEL_PX_DEFAULT,
               hero_bevel_profile: LANDING_HERO_BEVEL_PROFILE_DEFAULT,
+              enquiry_portfolio_pdf: LANDING_ENQUIRY_PORTFOLIO_PDF_DEFAULT,
+              hero_white_key: false,
             }
 
         const siteBlocks = migrateSiteBlocks(parsed)
