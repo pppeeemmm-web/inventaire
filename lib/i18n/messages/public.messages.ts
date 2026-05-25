@@ -5,4 +5,8 @@ export const publicMessages = defineMessages({
     fr: 'Fermer le zoom',
     en: 'Close zoom',
   },
+  pub_landing_hero_works_link_aria: {
+    fr: 'Voir les œuvres',
+    en: 'View works',
+  },
 })

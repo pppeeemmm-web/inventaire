@@ -42,8 +42,13 @@ export interface WorksMode {
   outro_en:     string
 }
 
+export const DEFAULT_HERO_CAPTION_EN = "'Matsukaze' — Meaning 'Wind through the Pines'"
+export const DEFAULT_HERO_CAPTION_FR = '« Matsukaze » — signifiant « Le vent dans les pins »'
+
 export interface LandingConfig {
   hero_image_url: string
+  hero_caption_fr: string
+  hero_caption_en: string
 }
 
 export interface PortfolioConfig {
@@ -90,7 +95,11 @@ export const DEFAULT_CONFIG: PortfolioConfig = {
   general: { artist_name: '', contact_email: '', instagram: '', phone: '', media_tagline_fr: '', media_tagline_en: '' },
   about:   { intro_fr: '', intro_en: '' },
   practice:{ approach_fr: '', approach_en: '', themes: [], materials_fr: '', materials_en: '' },
-  landing: { hero_image_url: '' },
+  landing: {
+    hero_image_url: '',
+    hero_caption_fr: DEFAULT_HERO_CAPTION_FR,
+    hero_caption_en: DEFAULT_HERO_CAPTION_EN,
+  },
   sections: [],
   works_collections: [],
   pdf_profiles: {},
@@ -218,6 +227,8 @@ export function migrate(raw: any): PortfolioConfig {
     },
     landing: {
       hero_image_url: String(raw.landing?.hero_image_url ?? '').trim(),
+      hero_caption_fr: String(raw.landing?.hero_caption_fr ?? '').trim() || DEFAULT_HERO_CAPTION_FR,
+      hero_caption_en: String(raw.landing?.hero_caption_en ?? '').trim() || DEFAULT_HERO_CAPTION_EN,
     },
     sections:          oldSections.map(migrateCollection),
     works_collections: oldWorks.map(migrateCollection),

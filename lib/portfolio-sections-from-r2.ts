@@ -6,7 +6,12 @@
 import { unstable_cache } from 'next/cache'
 import { createServiceClient } from '@/lib/supabase/server'
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3'
-import { SITE_BLOCK_KINDS, DEFAULT_SITE_BLOCKS } from '@/lib/portfolio-config-types'
+import {
+  SITE_BLOCK_KINDS,
+  DEFAULT_SITE_BLOCKS,
+  DEFAULT_HERO_CAPTION_EN,
+  DEFAULT_HERO_CAPTION_FR,
+} from '@/lib/portfolio-config-types'
 import type { SiteBlock, SiteBlockKind } from '@/lib/portfolio-config-types'
 
 export const PORTFOLIO_SECTIONS_BUCKET = process.env.R2_VAULT_BUCKET ?? 'vault'
@@ -54,7 +59,11 @@ export async function loadPortfolioSectionsFromR2(): Promise<{
       contact_email: '',
       instagram: '',
     },
-    landing: { hero_image_url: '' },
+    landing: {
+      hero_image_url: '',
+      hero_caption_fr: DEFAULT_HERO_CAPTION_FR,
+      hero_caption_en: DEFAULT_HERO_CAPTION_EN,
+    },
     sections:          [],
     works_collections: [],
     works_modes:       [],
@@ -81,8 +90,18 @@ export async function loadPortfolioSectionsFromR2(): Promise<{
               hero_image_url: String(
                 (landingRaw as { hero_image_url?: unknown }).hero_image_url ?? '',
               ).trim(),
+              hero_caption_fr: String(
+                (landingRaw as { hero_caption_fr?: unknown }).hero_caption_fr ?? '',
+              ).trim() || DEFAULT_HERO_CAPTION_FR,
+              hero_caption_en: String(
+                (landingRaw as { hero_caption_en?: unknown }).hero_caption_en ?? '',
+              ).trim() || DEFAULT_HERO_CAPTION_EN,
             }
-          : { hero_image_url: '' }
+          : {
+              hero_image_url: '',
+              hero_caption_fr: DEFAULT_HERO_CAPTION_FR,
+              hero_caption_en: DEFAULT_HERO_CAPTION_EN,
+            }
 
         // Extract site_blocks with same logic as migrateSiteBlocks
         let siteBlocks: SiteBlock[]

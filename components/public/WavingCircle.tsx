@@ -20,7 +20,6 @@ export default function WavingCircle({ src, alt, className, priority, sizes, uno
           .waving-pendulum { animation-duration: 12s !important; animation-iteration-count: infinite !important; }
           .waving-wave     { animation-duration: 15s !important; animation-iteration-count: infinite !important; }
         }
-        /* True pendulum: 0 → right → 0 → left → 0, seamless loop */
         @keyframes pendulum {
           0%   { transform: rotateY(0deg)   rotateX(3deg); }
           25%  { transform: rotateY(15deg)  rotateX(0deg); }
@@ -28,7 +27,6 @@ export default function WavingCircle({ src, alt, className, priority, sizes, uno
           75%  { transform: rotateY(-15deg) rotateX(0deg); }
           100% { transform: rotateY(0deg)   rotateX(3deg); }
         }
-        /* Shadow mirrors pendulum x shift */
         @keyframes pendulumShadow {
           0%   { filter: drop-shadow(0px   20px 18px rgba(0,0,0,0.22)); }
           25%  { filter: drop-shadow(20px  20px 18px rgba(0,0,0,0.26)); }
@@ -36,7 +34,6 @@ export default function WavingCircle({ src, alt, className, priority, sizes, uno
           75%  { filter: drop-shadow(-20px 20px 18px rgba(0,0,0,0.26)); }
           100% { filter: drop-shadow(0px   20px 18px rgba(0,0,0,0.22)); }
         }
-        /* Wave distortion: spike + sharp decay, rests at neutral — plucked string */
         @keyframes wave {
           0%   { transform: scale(1.07) skewX(0deg)     skewY(0deg)     scaleX(1)      scaleY(1); }
           5%   { transform: scale(1.07) skewX(0.69deg)  skewY(0.18deg)  scaleX(1.009)  scaleY(0.990); }
@@ -51,28 +48,56 @@ export default function WavingCircle({ src, alt, className, priority, sizes, uno
         }
       `}</style>
 
-      {/* drop-shadow synced with pendulum */}
-      <div className="waving-shadow" style={{ width: '100%', height: '100%', animation: 'pendulumShadow 12s ease-in-out infinite', perspective: '900px' }}>
-        {/* circle clip + rotateY on same element: clip stays round in screen space, 3D tilt applies underneath */}
-        <div className="waving-pendulum" style={{ width: '100%', height: '100%', clipPath: 'circle(50% at 50% 50%)', animation: 'pendulum 12s ease-in-out infinite', transformOrigin: 'center center' }}>
-          {/* wave distortion — on container, image is static */}
-          <div className="waving-wave" style={{ width: '100%', height: '100%', position: 'relative', animation: 'wave 15s linear infinite', transformOrigin: 'center center' }}>
-            <Image
-              src={src}
-              alt={alt}
-              fill
-              priority={priority}
-              sizes={sizes}
-              unoptimized={unoptimized}
-              style={{ objectFit: 'cover', display: 'block' }}
+      <div
+        className={className}
+        style={{ width: '100%', height: '100%', perspective: '900px' }}
+      >
+        <div
+          className="waving-shadow"
+          style={{ width: '100%', height: '100%', animation: 'pendulumShadow 12s ease-in-out infinite' }}
+        >
+          <div
+            className="waving-pendulum"
+            style={{
+              width: '100%',
+              height: '100%',
+              clipPath: 'circle(50% at 50% 50%)',
+              animation: 'pendulum 12s ease-in-out infinite',
+              transformOrigin: 'center center',
+            }}
+          >
+            <div
+              className="waving-wave"
+              style={{
+                width: '100%',
+                height: '100%',
+                position: 'relative',
+                animation: 'wave 15s linear infinite',
+                transformOrigin: 'center center',
+              }}
+            >
+              <Image
+                src={src}
+                alt={alt}
+                fill
+                priority={priority}
+                sizes={sizes}
+                unoptimized={unoptimized}
+                style={{ objectFit: 'cover', display: 'block' }}
+              />
+            </div>
+            <div
+              aria-hidden
+              style={{
+                position: 'absolute',
+                inset: 0,
+                pointerEvents: 'none',
+                background:
+                  'radial-gradient(ellipse 70% 70% at 50% 38%, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.12) 45%, transparent 70%)',
+                mixBlendMode: 'color-dodge',
+              }}
             />
           </div>
-          {/* radial light — clipped to circle, not distorted by wave */}
-          <div aria-hidden style={{
-            position: 'absolute', inset: 0, pointerEvents: 'none',
-            background: 'radial-gradient(ellipse 70% 70% at 50% 38%, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.12) 45%, transparent 70%)',
-            mixBlendMode: 'color-dodge',
-          }} />
         </div>
       </div>
     </>

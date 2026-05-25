@@ -33,3 +33,35 @@ export function orderedNavRoutes(blocks: SiteBlock[]): string[] {
   if (!routes.includes('/enquiry')) routes.push('/enquiry')
   return routes
 }
+
+const LANDING_SATELLITE_ROUTES = ['/about', '/practice'] as const
+export type LandingOrbPosition = 'orb-top' | 'orb-left' | 'orb-right'
+
+const ORB_POSITIONS: LandingOrbPosition[] = ['orb-top', 'orb-left', 'orb-right']
+
+/** Hero circle links to /works when the works_modes block is visible. */
+export function isLandingHeroLinked(blocks: SiteBlock[]): boolean {
+  return blocks.some(b => b.kind === 'works_modes' && b.visible)
+}
+
+/** About / Practice satellite orbs around the hero (not Works or Enquiry). */
+export function landingSatelliteRoutes(
+  blocks: SiteBlock[],
+  navOrder?: string[],
+): string[] {
+  const order = navOrder ?? orderedNavRoutes(blocks)
+  return order.filter(
+    (r): r is (typeof LANDING_SATELLITE_ROUTES)[number] =>
+      (LANDING_SATELLITE_ROUTES as readonly string[]).includes(r),
+  )
+}
+
+/** Map satellite routes to orb CSS classes (order follows pub-tab block order). */
+export function assignOrbPositions(
+  routes: string[],
+): { href: string; position: LandingOrbPosition }[] {
+  return routes.slice(0, ORB_POSITIONS.length).map((href, i) => ({
+    href,
+    position: ORB_POSITIONS[i],
+  }))
+}

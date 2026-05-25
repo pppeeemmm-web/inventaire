@@ -82,8 +82,10 @@ export function SiteEditorPanel({
       case 'hero':
         return (
           <>
+            <p className="t-mono-xs" style={{ opacity: 0.55, marginBottom: 12, lineHeight: 1.5 }}>{t('atelier_pub_landing_behavior_help')}</p>
             <p className="t-mono-xs" style={{ opacity: 0.55, marginBottom: 12, lineHeight: 1.5 }}>{t('atelier_pub_hero_url_help')}</p>
-            <p className="t-mono-xs" style={{ opacity: 0.4, marginBottom: 16, fontSize: 9 }}>{t('atelier_pub_hero_r2_followup')}</p>
+            <p className="t-mono-xs" style={{ opacity: 0.4, marginBottom: 8, fontSize: 9 }}>{t('atelier_pub_hero_r2_followup')}</p>
+            <p className="t-mono-xs" style={{ opacity: 0.45, marginBottom: 16, fontSize: 9 }}>{t('atelier_pub_hero_url_full_res_hint')}</p>
             <label className="t-label" style={{ display: 'block', marginBottom: 6, fontSize: 9 }}>{t('atelier_pub_hero_url_label')}</label>
             <input
               type="url"
@@ -127,6 +129,21 @@ export function SiteEditorPanel({
                 </div>
               </div>
             )}
+            <div style={{ marginTop: 24 }}>
+              <DualField
+                label={t('site_hero_caption_label')}
+                fr={config.landing.hero_caption_fr}
+                en={config.landing.hero_caption_en}
+                onFr={v => setConfig({
+                  ...config,
+                  landing: { ...config.landing, hero_caption_fr: v },
+                })}
+                onEn={v => setConfig({
+                  ...config,
+                  landing: { ...config.landing, hero_caption_en: v },
+                })}
+              />
+            </div>
           </>
         )
 
@@ -210,9 +227,14 @@ export function SiteEditorPanel({
         return (
           <>
             {config.works_modes.length <= 1 && (
-              <p className="t-mono-xs" style={{ opacity: 0.5, marginBottom: 16, maxWidth: 720, lineHeight: 1.45 }}>
-                {`Séquences de la page `}<code style={{ opacity: 0.85 }}>/works</code>{` et carte de clôture.`}
-              </p>
+              <>
+                <p className="t-mono-xs" style={{ opacity: 0.5, marginBottom: 8, maxWidth: 720, lineHeight: 1.45 }}>
+                  {t('site_block_works_modes_landing_hint')}
+                </p>
+                <p className="t-mono-xs" style={{ opacity: 0.5, marginBottom: 16, maxWidth: 720, lineHeight: 1.45 }}>
+                  {`Séquences de la page `}<code style={{ opacity: 0.85 }}>/works</code>{` et carte de clôture.`}
+                </p>
+              </>
             )}
 
             {/* Layout selector — always visible */}

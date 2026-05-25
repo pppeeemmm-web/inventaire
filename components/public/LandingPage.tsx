@@ -8,20 +8,37 @@ import { useI18n } from '@/lib/i18n/context'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { getOrCreatePublicVisitorId } from '@/lib/public-visitor-id'
 import { trackView } from '@/lib/track'
-import { DEFAULT_NAV_ORDER } from '@/lib/site-block-visibility'
+import {
+  DEFAULT_NAV_ORDER,
+  assignOrbPositions,
+  landingSatelliteRoutes,
+} from '@/lib/site-block-visibility'
 
 type LandingPageProps = {
   heroImageUrl: string
   artistName: string
   heroImageUnoptimized: boolean
+  heroCaptionFr: string
+  heroCaptionEn: string
+  heroLinked: boolean
   hiddenNavRoutes?: string[]
   navOrder?: string[]
+}
+
+const ROUTE_LABEL_KEYS: Record<string, 'pub_works' | 'pub_about' | 'pub_practice' | 'pub_enquiry'> = {
+  '/works': 'pub_works',
+  '/about': 'pub_about',
+  '/practice': 'pub_practice',
+  '/enquiry': 'pub_enquiry',
 }
 
 export default function LandingPage({
   heroImageUrl,
   artistName,
   heroImageUnoptimized,
+  heroCaptionFr,
+  heroCaptionEn,
+  heroLinked,
   hiddenNavRoutes = [],
   navOrder,
 }: LandingPageProps) {
@@ -31,6 +48,16 @@ export default function LandingPage({
   const pubNarrow = useMediaQuery('(max-width: 767px)')
   const hiddenSet = useMemo(() => new Set(hiddenNavRoutes), [hiddenNavRoutes])
 
+  const order = navOrder ?? [...DEFAULT_NAV_ORDER]
+  const satelliteOrbs = useMemo(
+    () => assignOrbPositions(landingSatelliteRoutes([], order)),
+    [order],
+  )
+
+  const heroCaption = lang === 'en'
+    ? (heroCaptionEn || heroCaptionFr)
+    : (heroCaptionFr || heroCaptionEn)
+
   const drawerLinks = useMemo(() => {
     const labels: Record<string, string> = {
       '/works': t('pub_works'),
@@ -38,14 +65,30 @@ export default function LandingPage({
       '/practice': t('pub_practice'),
       '/enquiry': t('pub_enquiry'),
     }
-    return (navOrder ?? DEFAULT_NAV_ORDER)
+    return order
       .filter(href => !hiddenSet.has(href) && labels[href])
+      .filter(href => !(heroLinked && href === '/works'))
       .map(href => [href, labels[href]] as [string, string])
-  }, [navOrder, hiddenSet, t])
+  }, [order, hiddenSet, t, heroLinked])
+
+  /** Match displayed hero (~85vmin); avoid old 520px cap that forced a small src via next/image. */
+  const heroSizes = pubNarrow
+    ? '(max-width: 767px) min(80vw, 100vw)'
+    : 'min(80vw, 80vh, 1200px)'
 
   useEffect(() => {
     void trackView('/', document.referrer || null, null, getOrCreatePublicVisitorId())
   }, [])
+
+  const heroImage = (
+    <WavingCircle
+      src={heroImageUrl}
+      alt={artistName}
+      priority
+      sizes={heroSizes}
+      unoptimized={heroImageUnoptimized}
+    />
+  )
 
   return (
     <>
@@ -59,7 +102,16 @@ export default function LandingPage({
           padding-bottom: env(safe-area-inset-bottom, 0px);
           padding-left: env(safe-area-inset-left, 0px);
           padding-right: env(safe-area-inset-right, 0px);
-          display: grid; place-items: center;
+          display: flex; align-items: center; justify-content: center;
+          overflow-x: hidden;
+          overflow-y: auto;
+        }
+        .landing-center {
+          display: flex; flex-direction: column; align-items: center;
+          max-width: 100%; padding: 0 12px;
+          gap: clamp(14px, 2.5vh, 22px);
+          position: relative;
+          z-index: 1;
         }
         .wordmark {
           position: absolute;
@@ -81,13 +133,56 @@ export default function LandingPage({
           min-height: 44px; min-width: 44px; display: inline-flex; align-items: center; justify-content: center;
         }
         .lang-toggle:hover { color: #6b6760; border-color: #b0aca6; }
+        .hero-orbit-wrap {
+          position: relative;
+          flex-shrink: 0;
+          overflow: visible;
+          --hero-base: max(80dvh, 80vw);
+          --hero-cap-v: calc(100dvh - 220px);
+          --hero-cap-h: calc(100vw - 48px);
+          --hero-size: min(var(--hero-base), var(--hero-cap-h), var(--hero-cap-v), 900px);
+          width: var(--hero-size);
+          height: var(--hero-size);
+        }
         .circle-wrap {
           position: relative;
-          --orbit: min(38vmin, calc(100vw - 108px), calc(100dvh - 180px), 520px);
-          width: max(140px, min(var(--orbit), 520px));
-          height: max(140px, min(var(--orbit), 520px));
+          width: 100%;
+          height: 100%;
+        }
+        .hero-hit {
+          display: block; position: relative; width: 100%; height: 100%;
+          text-decoration: none; color: inherit;
+          outline-offset: 4px;
+        }
+        .hero-static { position: relative; width: 100%; height: 100%; }
+        .hero-works-overlay {
+          position: absolute; inset: 0; z-index: 2;
+          display: flex; align-items: center; justify-content: center;
+          font-size: clamp(9px, 2.8vmin, 11px); letter-spacing: clamp(2px, 0.4vmin, 4px);
+          text-transform: uppercase; color: #5a5650;
+          background: none;
+          opacity: 0; transition: opacity 0.25s;
+          pointer-events: none;
+        }
+        .hero-hit:hover .hero-works-overlay,
+        .hero-hit:focus-visible .hero-works-overlay { opacity: 1; }
+        @media (hover: none) {
+          .hero-works-overlay { opacity: 0; }
+          .hero-hit:active .hero-works-overlay,
+          .hero-hit:focus-visible .hero-works-overlay { opacity: 1; }
+        }
+        .hero-caption {
+          margin: 0;
           flex-shrink: 0;
-          max-width: min(520px, calc(100vw - 24px));
+          position: relative;
+          z-index: 5;
+          max-width: min(520px, 90vw);
+          text-align: center;
+          font-size: clamp(8px, 1.5vmin, 10px);
+          letter-spacing: clamp(0.5px, 0.2vmin, 1.5px);
+          line-height: 1.6;
+          color: #8a8680;
+          font-style: italic;
         }
         .orb {
           position: absolute;
@@ -106,6 +201,18 @@ export default function LandingPage({
         .orb-left::after   { content: ''; display: block; height: 1px; width: clamp(12px, 2.8vmin, 28px); background: currentColor; opacity: .4; }
         .orb-right  { left: 100%;  top: 50%; transform: translateY(-50%); flex-direction: row-reverse; padding: 8px 18px 8px clamp(12px, 4vmin, 52px); }
         .orb-right::after  { content: ''; display: block; height: 1px; width: clamp(12px, 2.8vmin, 28px); background: currentColor; opacity: .4; }
+        .enquiry-link {
+          margin: 0;
+          flex-shrink: 0;
+          position: relative;
+          z-index: 5;
+          font-size: clamp(8px, 2.5vmin, 10px); letter-spacing: clamp(1.5px, 0.35vmin, 3px);
+          text-transform: uppercase; color: #7a7670; text-decoration: none;
+          display: inline-flex; align-items: center; justify-content: center;
+          min-height: 44px; min-width: 44px; padding: 8px 18px;
+          transition: color .25s;
+        }
+        .enquiry-link:hover { color: #3a3834; }
         .hub-link {
           position: absolute;
           bottom: max(clamp(12px, 3vh, 32px), env(safe-area-inset-bottom, 0px));
@@ -150,12 +257,21 @@ export default function LandingPage({
         .landing-nav-btn:hover { border-color: #b0aca6; color: #3a3834; }
         @media (max-width: 767px) {
           .orb { display: none !important; }
+          .enquiry-link { display: inline-flex !important; }
           .landing-nav-btn { display: inline-flex; align-items: center; justify-content: center; }
         }
         @media (max-width: 767px) {
           html, body { overflow: hidden; height: 100dvh; }
           .wordmark { white-space: nowrap; font-size: 9px; letter-spacing: 2px; color: #6b6760; }
-          .circle-wrap { --orbit: min(76vw, calc(100dvh - 110px), 520px); }
+          .landing-center {
+            gap: 12px;
+            max-height: calc(100dvh - 100px);
+          }
+          .hero-orbit-wrap {
+            --hero-base: min(78vw, calc(100dvh - 280px));
+            --hero-cap-v: calc(100dvh - 280px);
+            --hero-cap-h: calc(100vw - 32px);
+          }
         }
       `}</style>
 
@@ -188,35 +304,45 @@ export default function LandingPage({
           {t('pub_menu_button')}
         </button>
 
-        <nav className="circle-wrap" aria-label={t('pub_mobile_nav_heading')}>
-          <WavingCircle
-            src={heroImageUrl}
-            alt={artistName}
-            priority
-            sizes="(max-width: 480px) min(42vmin, calc(100vw - 48px)), min(38vmin, 520px)"
-            unoptimized={heroImageUnoptimized}
-          />
-          {!hiddenSet.has('/works') && (
-            <Link href="/works" className="orb orb-top">
-              {t('pub_works')}
-            </Link>
-          )}
-          {!hiddenSet.has('/about') && (
-            <Link href="/about" className="orb orb-left">
-              {t('pub_about')}
-            </Link>
-          )}
-          {!hiddenSet.has('/practice') && (
-            <Link href="/practice" className="orb orb-right">
-              {t('pub_practice')}
-            </Link>
-          )}
+        <div className="landing-center">
+          <div className="hero-orbit-wrap">
+            {satelliteOrbs.map(({ href, position }) => {
+              const labelKey = ROUTE_LABEL_KEYS[href]
+              if (!labelKey) return null
+              return (
+                <Link key={href} href={href} className={`orb ${position}`}>
+                  {t(labelKey)}
+                </Link>
+              )
+            })}
+            <nav className="circle-wrap" aria-label={t('pub_mobile_nav_heading')}>
+              {heroLinked ? (
+                <Link
+                  href="/works"
+                  className="hero-hit"
+                  aria-label={t('pub_landing_hero_works_link_aria')}
+                >
+                  {heroImage}
+                  <span className="hero-works-overlay" aria-hidden>
+                    {t('pub_works')}
+                  </span>
+                </Link>
+              ) : (
+                <div className="hero-static">{heroImage}</div>
+              )}
+            </nav>
+          </div>
+
+          {heroCaption.trim() ? (
+            <p className="hero-caption">{heroCaption}</p>
+          ) : null}
+
           {!hiddenSet.has('/enquiry') && (
-            <Link href="/enquiry" className="orb orb-bottom">
+            <Link href="/enquiry" className="enquiry-link" data-testid="landing-enquiry-link">
               {t('pub_enquiry')}
             </Link>
           )}
-        </nav>
+        </div>
 
         <button
           type="button"
