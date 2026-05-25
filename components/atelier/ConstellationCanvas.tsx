@@ -2523,6 +2523,7 @@ export function ConstellationCanvas({
         <div className="t-label" style={{ color: 'var(--tx3)', whiteSpace: 'nowrap' }}>{t('viewMode')}</div>
         {(['year', 'theme', 'workgroup', 'none'] as GroupBy[]).map(g => (
           <button key={g} className="btn ghost sm"
+            aria-pressed={groupBy === g}
             style={{ borderColor: groupBy === g ? 'var(--ac)' : undefined, color: groupBy === g ? 'var(--ac)' : undefined, whiteSpace: 'nowrap' }}
             onClick={() => { groupByRef.current = g; setGroupBy(g) }}
           >
@@ -2559,6 +2560,7 @@ export function ConstellationCanvas({
         )}
         {/* Blank canvas mode */}
         <button className="btn ghost sm"
+          aria-pressed={groupBy === 'custom'}
           style={{ borderColor: groupBy === 'custom' ? 'var(--ac)' : undefined, color: groupBy === 'custom' ? 'var(--ac)' : undefined, whiteSpace: 'nowrap' }}
           onClick={() => {
             posRef.current = new Map()
@@ -2578,6 +2580,7 @@ export function ConstellationCanvas({
           const vis = LINK_VIS[lt]
           return (
             <button key={lt} className="btn ghost sm"
+              aria-pressed={linkType === lt}
               style={{ borderColor: linkType === lt ? vis.color : undefined, color: linkType === lt ? vis.color : undefined, whiteSpace: 'nowrap' }}
               onClick={() => setLinkType(lt)}
             >
@@ -2714,6 +2717,8 @@ export function ConstellationCanvas({
               type="button"
               className={`btn ghost sm ${tool === row.id ? 'active' : ''}`}
               title={t(row.tipKey)}
+              aria-label={t(row.tipKey)}
+              aria-pressed={tool === row.id}
               style={{
                 flexShrink: 0,
                 minHeight: 44,
@@ -2739,13 +2744,15 @@ export function ConstellationCanvas({
               type="color"
               value={drawColor}
               onChange={e => setDrawColor(e.target.value)}
-              title={t('const_tool_draw')}
+              aria-label={t('const_drawColorTitle')}
+              title={t('const_drawColorTitle')}
               style={{ width: 36, height: 36, padding: 0, border: 'none', background: 'none', cursor: 'pointer' }}
             />
           </div>
           <select
             value={drawWidth}
             onChange={e => setDrawWidth(Number(e.target.value))}
+            aria-label={t('const_strokeWidthTitle')}
             style={{
               fontSize: 9,
               width: '100%',
@@ -2782,6 +2789,7 @@ export function ConstellationCanvas({
                 borderColor: 'var(--rust)',
               }}
               title={t('const_drawLayerClearAllTitle')}
+              aria-label={t('const_drawLayerClearAllTitle')}
             >
               {t('clearSel')}
             </button>

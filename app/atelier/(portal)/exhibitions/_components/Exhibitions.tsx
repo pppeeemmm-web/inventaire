@@ -352,7 +352,7 @@ function FloorPlanTool({ exhibitionId, oeuvres, themes, tM }: {
         <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--bd)' }}>
           <form onSubmit={handleCreate} style={{ display: 'flex', gap: 6 }}>
             <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Nouvelle mise…" style={{ ...inputSt, flex: 1, fontSize: 11 }} />
-            <button type="submit" className="btn sm" disabled={creating || !newName.trim()}>+</button>
+            <button type="submit" className="btn sm" disabled={creating || !newName.trim()} aria-label={t('exh_create_layout_aria')}>+</button>
           </form>
         </div>
         <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -405,7 +405,7 @@ function FloorPlanTool({ exhibitionId, oeuvres, themes, tM }: {
             {/* Sub-tabs */}
             <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--bd)', flexShrink: 0 }}>
               {(['murs', 'parametres'] as const).map((t) => (
-                <button key={t} onClick={() => setSubTab(t)} style={{
+                <button key={t} onClick={() => setSubTab(t)} aria-pressed={subTab === t} style={{
                   padding: '8px 16px', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase',
                   background: subTab === t ? 'var(--bg2)' : 'transparent',
                   border: 'none', borderBottom: subTab === t ? '2px solid var(--ac)' : '2px solid transparent',
@@ -472,7 +472,7 @@ function FloorPlanTool({ exhibitionId, oeuvres, themes, tM }: {
                         return (
                           <div key={p.oeuvre_id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 8px', background: 'var(--bg0)', border: '1px solid var(--bd)', borderRadius: 4 }}>
                             <div style={{ flex: 1, fontSize: 10, color: 'var(--tx)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{o?.Titre || `#${p.oeuvre_id}`}</div>
-                            <button onClick={() => patchLocal({ placements: layout.placements.filter(px => px.oeuvre_id !== p.oeuvre_id) })} style={{ border: 'none', background: 'transparent', color: 'var(--tx3)', cursor: 'pointer', fontSize: 12 }}>×</button>
+                            <button onClick={() => patchLocal({ placements: layout.placements.filter(px => px.oeuvre_id !== p.oeuvre_id) })} aria-label={t('exh_remove_placement_aria')} style={{ border: 'none', background: 'transparent', color: 'var(--tx3)', cursor: 'pointer', fontSize: 12 }}>×</button>
                           </div>
                         )
                       })}
@@ -494,7 +494,7 @@ function FloorPlanTool({ exhibitionId, oeuvres, themes, tM }: {
                         style={{ width: 32, height: 32, padding: 0, border: 'none', cursor: 'pointer', background: 'none' }} />
                       <input value={w.nom} onChange={(e) => updateWall(w.id, 'nom', e.target.value)}
                         style={{ ...inputSt, flex: 1 }} />
-                      <button onClick={() => removeWall(w.id)} className="btn sm" style={{ color: '#c06060', flexShrink: 0, fontSize: 14 }}>×</button>
+                      <button onClick={() => removeWall(w.id)} className="btn sm" aria-label={t('exh_remove_wall_aria')} style={{ color: '#c06060', flexShrink: 0, fontSize: 14 }}>×</button>
                     </div>
                   ))}
                   <button onClick={addWall} className="btn sm">+ Mur</button>

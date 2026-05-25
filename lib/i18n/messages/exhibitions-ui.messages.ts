@@ -61,4 +61,16 @@ export const exhibitionsUiMessages = defineMessages({
     fr: 'Échéance :',
     en: 'Due:',
   },
+  exh_create_layout_aria: {
+    fr: 'Créer une mise en espace',
+    en: 'Create floor plan layout',
+  },
+  exh_remove_placement_aria: {
+    fr: 'Retirer le placement',
+    en: 'Remove placement',
+  },
+  exh_remove_wall_aria: {
+    fr: 'Supprimer le mur',
+    en: 'Remove wall',
+  },
 })

@@ -15,6 +15,19 @@ import {
 import { getSignedUrl as awsGetSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { GetObjectCommand } from '@aws-sdk/client-s3'
 import { markStorageObject, recordStorageObject } from '@/lib/storage-object-ledger'
+import {
+  fromDocument,
+  fromOeuvres,
+  fromProfiles,
+  fromSupport,
+  fromTechnique,
+  documentId,
+  type DocumentRow,
+} from '@/lib/vault/vault-client'
+
+function asVaultDoc(row: DocumentRow): VaultDoc {
+  return row as unknown as VaultDoc
+}
 
 const BUCKET = process.env.R2_VAULT_BUCKET ?? 'vault'
 
@@ -150,11 +163,11 @@ export async function uploadDocument(formData: FormData): Promise<UploadResult> 
   if (!file || file.size === 0) return { error: 'Aucun fichier sélectionné' }
 
   // 1. Get Uploader Name
-  const { data: profile } = await (supabase.from('profiles') as any).select('full_name').eq('id', user?.id ?? '').single()
+  const { data: profile } = await fromProfiles(supabase).select('full_name').eq('id', user?.id ?? '').single()
   const uploader = (profile?.full_name || user?.email?.split('@')[0] || 'User').replace(/\s+/g, '_')
 
   // 2. Get Next Serial Number
-  const { count } = await (supabase.from('document') as any).select('*', { count: 'exact', head: true })
+  const { count } = await fromDocument(supabase).select('*', { count: 'exact', head: true })
   const serial = (count ?? 0) + 1
 
   // 3. Construct Smart Filename
@@ -183,8 +196,7 @@ export async function uploadDocument(formData: FormData): Promise<UploadResult> 
   const ids = oeuvre_ids_str.split(',').filter(Boolean).map(Number)
   const primaryOeuvreId = ids.length > 0 ? ids[0] : null
 
-  const { data: doc, error: dbErr } = await (supabase
-    .from('document') as any)
+  const { data: doc, error: dbErr } = await fromDocument(supabase)
     .insert({
       name:         docName,
       kind:         typeStr,
@@ -205,7 +217,7 @@ export async function uploadDocument(formData: FormData): Promise<UploadResult> 
     return { error: dbErr.message }
   }
 
-  return { ok: true, doc: doc as VaultDoc }
+  return { ok: true, doc: asVaultDoc(doc) }
 }
 
 export async function updateDocument(id: number, formData: FormData): Promise<UploadResult> {
@@ -224,23 +236,22 @@ export async function updateDocument(id: number, formData: FormData): Promise<Up
   const ids     = oeuvre_ids_str.split(',').filter(Boolean).map(Number)
   const primary = ids.length > 0 ? ids[0] : null
 
-  const { data: doc, error: dbErr } = await (supabase
-    .from('document') as any)
+  const { data: doc, error: dbErr } = await fromDocument(supabase)
     .update({
-      name,
+      ...(name != null ? { name } : {}),
       kind:      typeStr,
       notes,
       doc_date:  doc_date || null,
       oeuvre_id: primary,
       oeuvre_ids: ids,
-      folder,
+      ...(folder != null ? { folder } : {}),
     })
-    .eq('id', id)
+    .eq('id', documentId(id))
     .select()
     .single()
 
   if (dbErr) return { error: dbErr.message }
-  return { ok: true, doc: doc as VaultDoc }
+  return { ok: true, doc: asVaultDoc(doc) }
 }
 
 // ── Delete document ───────────────────────────────────────────────────────
@@ -253,7 +264,7 @@ export async function deleteDocument(id: number, storagePath: string | null): Pr
     await r2Delete(storagePath).catch(() => {})
   }
 
-  const { error } = await (supabase.from('document') as any).delete().eq('id', id)
+  const { error } = await fromDocument(supabase).delete().eq('id', documentId(id))
   if (error) return { error: error.message }
   return { ok: true }
 }
@@ -269,7 +280,7 @@ export async function renameFolder(oldPath: string, newPath: string): Promise<Va
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
 
   // 1. Fetch all docs in the old path (and its subfolders)
-  const { data: docs, error: fetchErr } = await (supabase.from('document') as any)
+  const { data: docs, error: fetchErr } = await fromDocument(supabase)
     .select('id, folder')
     .or(`folder.eq.${oldPath},folder.ilike.${oldPath}/%`)
 
@@ -277,20 +288,20 @@ export async function renameFolder(oldPath: string, newPath: string): Promise<Va
   if (!docs || docs.length === 0) return { ok: true }
 
   // 2. Prepare updates
-  const updates = docs.map((d: any) => {
+  const updates = (docs ?? []).map((d) => {
+    const folder = d.folder ?? ''
     let updatedFolder = newPath
-    if (d.folder.startsWith(oldPath + '/')) {
-      updatedFolder = newPath + d.folder.slice(oldPath.length)
+    if (folder.startsWith(oldPath + '/')) {
+      updatedFolder = newPath + folder.slice(oldPath.length)
     }
     return { id: d.id, folder: updatedFolder }
   })
 
-  // 3. Batch update (Supabase handles this if we pass an array with IDs)
-  // Note: Standard Supabase .upsert or multiple .update calls. 
-  // For simplicity and safety, we'll do them in a single rpc if available, 
-  // or a loop if the count is small. 
-  // Optimal: .upsert(updates) where updates include the primary key 'id'.
-  const { error: upErr } = await (supabase.from('document') as any).upsert(updates)
+  // 3. Batch update
+  const results = await Promise.all(
+    updates.map((u) => fromDocument(supabase).update({ folder: u.folder }).eq('id', u.id)),
+  )
+  const upErr = results.find((r) => r.error)?.error
   
   if (upErr) return { error: upErr.message }
   return { ok: true }
@@ -305,7 +316,7 @@ export async function createFolder(path: string): Promise<VaultResult> {
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
 
   // Check if it already exists (virtually)
-  const { data: existing } = await (supabase.from('document') as any)
+  const { data: existing } = await fromDocument(supabase)
     .select('id')
     .eq('folder', path)
     .eq('name', '.keep')
@@ -313,7 +324,7 @@ export async function createFolder(path: string): Promise<VaultResult> {
 
   if (existing) return { ok: true }
 
-  const { error } = await (supabase.from('document') as any)
+  const { error } = await fromDocument(supabase)
     .insert({
       name: '.keep',
       kind: 'system',
@@ -335,9 +346,9 @@ export async function moveDocuments(docIds: number[], targetFolder: string | nul
 
   if (!docIds.length) return { ok: true }
 
-  const { error } = await (supabase.from('document') as any)
+  const { error } = await fromDocument(supabase)
     .update({ folder: targetFolder })
-    .in('id', docIds)
+    .in('id', docIds.map(documentId))
 
   if (error) return { error: error.message }
   return { ok: true }
@@ -347,9 +358,9 @@ export async function renameDocument(id: number, newName: string): Promise<Vault
   const { error: authErr, supabase } = await guardTeam()
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
 
-  const { error } = await (supabase.from('document') as any)
+  const { error } = await fromDocument(supabase)
     .update({ name: newName })
-    .eq('id', id)
+    .eq('id', documentId(id))
 
   if (error) return { error: error.message }
   return { ok: true }
@@ -377,8 +388,7 @@ export async function generateCOA(oeuvreId: number): Promise<CoaResult> {
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
 
   // Fetch work data
-  const { data: o, error: fetchErr } = await (supabase
-    .from('Oeuvres') as any)
+  const { data: o, error: fetchErr } = await fromOeuvres(supabase)
     .select('OeuvreID, Titre, "Année", Technique, Support, Hauteur, Largeur, Profondeur, txtImageNameLink')
     .eq('OeuvreID', oeuvreId)
     .single()
@@ -387,8 +397,8 @@ export async function generateCOA(oeuvreId: number): Promise<CoaResult> {
 
   // Fetch technique / support labels
   const [{ data: techRow }, { data: suppRow }] = await Promise.all([
-    o.Technique ? (supabase.from('Technique') as any).select('Technique').eq('TechniqueID', o.Technique).single() : Promise.resolve({ data: null }),
-    o.Support   ? (supabase.from('Support') as any).select('Support').eq('SupportID', o.Support).single()         : Promise.resolve({ data: null }),
+    o.Technique ? fromTechnique(supabase).select('Technique').eq('TechniqueID', o.Technique).single() : Promise.resolve({ data: null }),
+    o.Support   ? fromSupport(supabase).select('Support').eq('SupportID', o.Support).single()         : Promise.resolve({ data: null }),
   ])
 
   const techLabel = (techRow as { Technique: string } | null)?.Technique ?? ''
@@ -458,8 +468,7 @@ export async function generateCOA(oeuvreId: number): Promise<CoaResult> {
   }
 
   // Insert document record
-  const { data: doc, error: dbErr } = await (supabase
-    .from('document') as any)
+  const { data: doc, error: dbErr } = await fromDocument(supabase)
     .insert({
       name:         filename,
       kind:         'coa',
@@ -475,7 +484,7 @@ export async function generateCOA(oeuvreId: number): Promise<CoaResult> {
     .single()
 
   if (dbErr) return { error: dbErr.message }
-  return { ok: true, doc: doc as VaultDoc }
+  return { ok: true, doc: asVaultDoc(doc) }
 }
 
 // ── PDF builder (pdfkit) ──────────────────────────────────────────────────

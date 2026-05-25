@@ -344,6 +344,7 @@ export function ExportModal({
             {/* Format */}
             <Section label="FORMAT">
               <ToggleRow
+                groupLabel="FORMAT"
                 options={[{ v: 'html', l: 'HTML' }, { v: 'pdf', l: 'PDF' }]}
                 value={cfg.format} onChange={(v) => {
                   set('format', v as 'html' | 'pdf')
@@ -367,6 +368,7 @@ export function ExportModal({
             {/* Layout */}
             <Section label={t('layout')}>
               <ToggleRow
+                groupLabel={t('layout')}
                 options={[
                   { v: 'cards', l: t('fiches') },
                   { v: 'grid',  l: t('grille') },
@@ -380,6 +382,8 @@ export function ExportModal({
                     <span className="t-label">{t('export_rows_per_page_label')}</span>
                     {([2, 3, 4, 5, 6, 8, 10] as const).map((n) => (
                       <button key={n} className={`btn sm ${cfg.rowsPerPage === n ? 'primary' : 'ghost'}`}
+                        aria-label={`${t('export_rows_per_page_label')} ${n}`}
+                        aria-pressed={cfg.rowsPerPage === n}
                         onClick={() => set('rowsPerPage', n)}>{n}</button>
                     ))}
                   </div>
@@ -390,6 +394,8 @@ export function ExportModal({
                   <span className="t-label">{t('cardsPerPage')} :</span>
                   {([1, 2, 3, 4, 5, 6] as const).map((n) => (
                     <button key={n} className={`btn sm ${cfg.cardsPerPage === n ? 'primary' : 'ghost'}`}
+                      aria-label={`${t('cardsPerPage')} ${n}`}
+                      aria-pressed={cfg.cardsPerPage === n}
                       onClick={() => set('cardsPerPage', n as ExportConfig['cardsPerPage'])}>{n}</button>
                   ))}
                 </div>
@@ -424,12 +430,14 @@ export function ExportModal({
               <>
                 <Section label={t('imageSize')}>
                   <ToggleRow
+                    groupLabel={t('imageSize')}
                     options={[{ v: 'large', l: t('large') }, { v: 'small', l: t('small') }, { v: 'none', l: t('none') }]}
                     value={cfg.imageSize} onChange={(v) => set('imageSize', v as ExportConfig['imageSize'])}
                   />
                 </Section>
                 <Section label={t('imageFormat')}>
                   <ToggleRow
+                    groupLabel={t('imageFormat')}
                     options={[{ v: 'square', l: t('square') }, { v: 'native', l: t('original') }]}
                     value={cfg.imageCrop} onChange={(v) => set('imageCrop', v as 'square' | 'native')}
                   />
@@ -437,6 +445,7 @@ export function ExportModal({
                 {cfg.format === 'html' && cfg.imageSize !== 'none' && (
                   <Section label={t('images')}>
                     <ToggleRow
+                      groupLabel={t('images')}
                       options={[{ v: 'linked', l: t('highRes') }, { v: 'embedded', l: t('lowRes') }]}
                       value={cfg.imageEmbed} onChange={(v) => set('imageEmbed', v as 'linked' | 'embedded')}
                     />
@@ -455,12 +464,14 @@ export function ExportModal({
               <>
                 <Section label={t('paperFormat')}>
                   <ToggleRow
+                    groupLabel={t('paperFormat')}
                     options={[{ v: 'a4', l: 'A4' }, { v: 'a3', l: 'A3' }]}
                     value={cfg.paper} onChange={(v) => set('paper', v as ExportConfig['paper'])}
                   />
                 </Section>
                 <Section label="ORIENTATION">
                   <ToggleRow
+                    groupLabel="ORIENTATION"
                     options={[{ v: 'portrait', l: 'Portrait' }, { v: 'landscape', l: 'Paysage' }]}
                     value={cfg.orientation} onChange={(v) => set('orientation', v as ExportConfig['orientation'])}
                   />
@@ -487,6 +498,7 @@ export function ExportModal({
                 <div key={preset.name} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <button
                     type="button"
+                    aria-pressed={isActive}
                     style={{
                       flex: 1, textAlign: 'left', padding: '5px 8px',
                       background: isActive ? 'var(--bg2)' : 'transparent',
@@ -500,6 +512,7 @@ export function ExportModal({
                   </button>
                   <button
                     type="button"
+                    aria-label={`${t('delete')} ${preset.name}`}
                     style={{
                       padding: '4px 7px', background: 'transparent',
                       border: '1px solid var(--bd)', color: 'var(--tx3)',
@@ -757,15 +770,17 @@ function Section({ label, children }: { label: string; children: React.ReactNode
   )
 }
 
-function ToggleRow({ options, value, onChange }: {
+function ToggleRow({ options, value, onChange, groupLabel }: {
   options: { v: string; l: string }[]
   value:   string
   onChange: (v: string) => void
+  groupLabel?: string
 }) {
   return (
-    <div className="row gap-sm">
+    <div role="group" aria-label={groupLabel} className="row gap-sm">
       {options.map(({ v, l }) => (
         <button key={v} className={`btn sm ${value === v ? 'primary' : 'ghost'}`}
+          aria-pressed={value === v}
           onClick={() => onChange(v)}>{l}</button>
       ))}
     </div>
