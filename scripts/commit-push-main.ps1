@@ -1,9 +1,6 @@
 <#
 .SYNOPSIS
-  Fast scoped commit + push on main. Moves unrelated WIP aside (not stash), then restores.
-
-.EXAMPLE
-  & .\scripts\commit-push-main.ps1 -Message "fix: foo" -Paths @('components/Foo.tsx')
+  Fast scoped commit + push on main. Untracked WIP moved aside; tracked WIP stashed (paths only).
 #>
 param(
   [Parameter(Mandatory = $true)]
@@ -29,6 +26,7 @@ Set-Location $repoRoot
 
 $script:AsideRoot = $null
 $script:AsideManifest = @()
+$script:DidStashTracked = $false
 
 function Invoke-Git {
   param([Parameter(Mandatory = $true)][string[]]$Args)
@@ -40,10 +38,7 @@ function Invoke-Git {
   return ""
 }
 
-function Normalize-GitPath {
-  param([string]$Path)
-  $Path -replace '\\', '/'
-}
+function Normalize-GitPath { param([string]$Path) $Path -replace '\\', '/' }
 
 function Get-LiteralGitPath {
   param([string]$Path)
@@ -78,6 +73,13 @@ function Get-PorcelainPaths {
   return @($paths)
 }
 
+function Test-TrackedPath {
+  param([string]$RelPath)
+  $literal = Get-LiteralGitPath $RelPath
+  & git ls-files --error-unmatch -- $literal 2>$null | Out-Null
+  return $LASTEXITCODE -eq 0
+}
+
 function Test-InCommitScope {
   param([string]$File, [string[]]$ScopeRoots)
   if ($ScopeRoots.Count -eq 0) { return $false }
@@ -100,6 +102,24 @@ function Get-CommitScopeRoots {
   return @($staged -split "`r?`n" | ForEach-Object { Normalize-GitPath $_.Trim() } | Where-Object { $_ })
 }
 
+function Move-AsideUntracked {
+  param([string[]]$Paths)
+
+  if ($Paths.Count -eq 0) { return }
+
+  $script:AsideRoot = Join-Path $env:TEMP ("pem-wip-{0}" -f [Guid]::NewGuid().ToString('n'))
+  New-Item -ItemType Directory -Force -Path $script:AsideRoot | Out-Null
+
+  foreach ($rel in $Paths) {
+    $src = Join-Path $repoRoot ($rel -replace '/', [IO.Path]::DirectorySeparatorChar)
+    if (-not (Test-Path -LiteralPath $src)) { continue }
+    $dest = Join-Path $script:AsideRoot ($rel -replace '/', [IO.Path]::DirectorySeparatorChar)
+    New-Item -ItemType Directory -Force -Path (Split-Path $dest -Parent) | Out-Null
+    Move-Item -LiteralPath $src -Destination $dest -Force
+    $script:AsideManifest += $rel
+  }
+}
+
 function Invoke-AsideUnrelatedWork {
   param([string[]]$ScopeRoots)
 
@@ -108,40 +128,40 @@ function Invoke-AsideUnrelatedWork {
   $aside = @((Get-PorcelainPaths) | Where-Object { -not (Test-InCommitScope -File $_ -ScopeRoots $ScopeRoots) })
   if ($aside.Count -eq 0) { return $false }
 
-  $script:AsideRoot = Join-Path $env:TEMP ("pem-wip-{0}" -f [Guid]::NewGuid().ToString('n'))
-  New-Item -ItemType Directory -Force -Path $script:AsideRoot | Out-Null
+  $tracked = @($aside | Where-Object { Test-TrackedPath $_ })
+  $untracked = @($aside | Where-Object { -not (Test-TrackedPath $_) })
 
-  foreach ($rel in $aside) {
-    $src = Join-Path $repoRoot ($rel -replace '/', [IO.Path]::DirectorySeparatorChar)
-    if (-not (Test-Path -LiteralPath $src)) { continue }
-    $dest = Join-Path $script:AsideRoot ($rel -replace '/', [IO.Path]::DirectorySeparatorChar)
-    New-Item -ItemType Directory -Force -Path (Split-Path $dest -Parent) | Out-Null
-    Move-Item -LiteralPath $src -Destination $dest -Force
-    $script:AsideManifest += $rel
+  if ($untracked.Count -gt 0) { Move-AsideUntracked -Paths $untracked }
+
+  if ($tracked.Count -gt 0) {
+    $literal = @($tracked | ForEach-Object { Get-LiteralGitPath $_ })
+    & git stash push -m "commit-push-main: tracked WIP" -- @literal
+    if ($LASTEXITCODE -ne 0) { throw "git stash push failed (exit $LASTEXITCODE)" }
+    $script:DidStashTracked = $true
   }
 
-  if ($script:AsideManifest.Count -eq 0) {
-    Remove-Item $script:AsideRoot -Recurse -Force -ErrorAction SilentlyContinue
-    $script:AsideRoot = $null
-    return $false
-  }
-
-  Write-Host ("Aside {0} unrelated path(s)" -f $script:AsideManifest.Count) -ForegroundColor DarkYellow
-  return $true
+  $n = $untracked.Count + $tracked.Count
+  if ($n -gt 0) { Write-Host ("Aside $n unrelated path(s)" -f $n) -ForegroundColor DarkYellow }
+  return ($n -gt 0)
 }
 
 function Restore-AsideWork {
-  if (-not $script:AsideRoot -or $script:AsideManifest.Count -eq 0) { return }
-
-  foreach ($rel in $script:AsideManifest) {
-    $src = Join-Path $script:AsideRoot ($rel -replace '/', [IO.Path]::DirectorySeparatorChar)
-    if (-not (Test-Path -LiteralPath $src)) { continue }
-    $dest = Join-Path $repoRoot ($rel -replace '/', [IO.Path]::DirectorySeparatorChar)
-    New-Item -ItemType Directory -Force -Path (Split-Path $dest -Parent) | Out-Null
-    Move-Item -LiteralPath $src -Destination $dest -Force
+  if ($script:AsideManifest.Count -gt 0 -and $script:AsideRoot) {
+    foreach ($rel in $script:AsideManifest) {
+      $src = Join-Path $script:AsideRoot ($rel -replace '/', [IO.Path]::DirectorySeparatorChar)
+      if (-not (Test-Path -LiteralPath $src)) { continue }
+      $dest = Join-Path $repoRoot ($rel -replace '/', [IO.Path]::DirectorySeparatorChar)
+      New-Item -ItemType Directory -Force -Path (Split-Path $dest -Parent) | Out-Null
+      Move-Item -LiteralPath $src -Destination $dest -Force
+    }
+    Remove-Item $script:AsideRoot -Recurse -Force -ErrorAction SilentlyContinue
   }
 
-  Remove-Item $script:AsideRoot -Recurse -Force -ErrorAction SilentlyContinue
+  if ($script:DidStashTracked) {
+    Invoke-Git @("stash", "pop")
+    $script:DidStashTracked = $false
+  }
+
   $script:AsideRoot = $null
   $script:AsideManifest = @()
 }

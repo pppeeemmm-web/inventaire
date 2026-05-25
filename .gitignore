@@ -26,6 +26,8 @@ docs/TEAM_MEMBER_GUIDE.html
 docs/TEAM_MEMBER_GUIDE.pdf
 docs/ADMIN_GUIDE.html
 docs/ADMIN_GUIDE.pdf
+scripts/build-guide-html.mjs
+scripts/build-guide-pdf.mjs
 
 # TypeScript / local tooling
 tsconfig.tsbuildinfo
