@@ -12,6 +12,23 @@ import {
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3'
 import { addCalendarDaysIso, parseSaleOrderBatchIds } from '@/lib/sale-return-window'
 import { recordStorageObject } from '@/lib/storage-object-ledger'
+import {
+  contactDisplayName,
+  contactLocation,
+  fromConsignmentOrder,
+  fromContact,
+  fromDocument,
+  fromOeuvres,
+  fromPayments,
+  fromSaleOrder,
+  fromSupport,
+  fromTechnique,
+  type ConsignmentBriefRow,
+  type ContactBriefRow,
+  type ReturnWindowOrderRow,
+  type SaleOrderDbRow,
+  type SaleOrderDbUpdate,
+} from '@/lib/sales/sales-client'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -76,21 +93,18 @@ async function guardTeam() {
 
 // Find the active consignment_order that best matches the works being sold.
 // Returns the order id with the largest overlap, or null if none found.
-async function detectActiveConsignment(supabase: any, oeuvre_ids: number[]): Promise<string | null> {
-  if (oeuvre_ids.length === 0) return null
+async function detectActiveConsignment(supabase: Awaited<ReturnType<typeof guardTeam>>['supabase'], oeuvre_ids: number[]): Promise<string | null> {
+  if (!supabase || oeuvre_ids.length === 0) return null
 
-  // Restrict to works currently flagged Consigné (statusId=7). Loans (8) don't earn commission.
-  const { data: consignedWorks } = await supabase
-    .from('Oeuvres')
+  const { data: consignedWorks } = await fromOeuvres(supabase)
     .select('OeuvreID')
     .in('OeuvreID', oeuvre_ids)
     .eq('statusId', 7)
 
-  const candidateIds = (consignedWorks ?? []).map((w: any) => w.OeuvreID)
+  const candidateIds = (consignedWorks ?? []).map((w) => w.OeuvreID)
   if (candidateIds.length === 0) return null
 
-  const { data: orders } = await supabase
-    .from('consignment_order')
+  const { data: orders } = await fromConsignmentOrder(supabase)
     .select('id, notes, kind, status')
     .eq('status', 'active')
     .eq('kind', 'consignment')
@@ -226,8 +240,7 @@ export async function createSaleOrder(formData: FormData): Promise<OrderResult> 
   // outside any consignment are ignored.
   const consignment_order_id = await detectActiveConsignment(supabase, oeuvre_ids)
 
-  const { data: order, error: dbErr } = await supabase
-    .from('sale_order')
+  const { data: order, error: dbErr } = await fromSaleOrder(supabase)
     .insert({
       oeuvre_id: oeuvre_ids[0], 
       buyer_id,
@@ -254,8 +267,7 @@ export async function createSaleOrder(formData: FormData): Promise<OrderResult> 
   const orderWithIds = { ...order, oeuvre_ids } as SaleOrderRow
 
   // Update works: mark as Reserved (pending payment). Ownership transfers only on completion.
-  await supabase
-    .from('Oeuvres')
+  await fromOeuvres(supabase)
     .update({
       statusId:      4,   // Réservé — payment not yet cleared
       AcheteurID:    buyer_id,
@@ -270,11 +282,11 @@ export async function createSaleOrder(formData: FormData): Promise<OrderResult> 
     await r2UploadPdf(key, pdf, order.id)
     
     // Update order record
-    await supabase.from('sale_order').update({ pdf_path: key }).eq('id', order.id)
+    await fromSaleOrder(supabase).update({ pdf_path: key }).eq('id', order.id)
     ;(order as SaleOrderRow).pdf_path = key
 
     // ALSO register in the central 'document' table so it appears in the Vault Tab
-    await supabase.from('document').insert({
+    await fromDocument(supabase).insert({
       name:         `Commercial Bond ${order.order_ref}`,
       kind:         'facture',
       notes:        `Generated for order ${order.order_ref}`,
@@ -301,11 +313,11 @@ export async function addPayment(order_id: string, amount: number, method: strin
   const { error: authErr, supabase } = await guardTeam()
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
 
-  const { error } = await supabase.from('payments').insert({
+  const { error } = await fromPayments(supabase).insert({
     order_id,
     amount,
     method,
-    notes
+    notes: notes ?? null,
   })
 
   if (error) return { error: error.message }
@@ -325,13 +337,13 @@ export async function updateOrderStatut(id: string, statut: string, toggleField?
   const { error: authErr, supabase } = await guardTeam()
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
 
-  const { data: before, error: bfErr } = await supabase.from('sale_order').select('*').eq('id', id).single()
+  const { data: before, error: bfErr } = await fromSaleOrder(supabase).select('*').eq('id', id).single()
   if (bfErr || !before) return { error: bfErr?.message ?? 'Order not found' }
 
-  const payload: Record<string, unknown> = { statut }
+  const payload: SaleOrderDbUpdate = { statut }
   if (toggleField) payload[toggleField] = true
 
-  const b = before as Record<string, unknown>
+  const b = before as SaleOrderDbRow
   if (b.statut !== 'completed' && statut === 'completed') {
     payload.completed_at = new Date().toISOString()
   }
@@ -339,20 +351,19 @@ export async function updateOrderStatut(id: string, statut: string, toggleField?
   if (toggleField === 'delivered') {
     payload.delivered = true
     if (!b.return_window_starts_at) {
-      const deliv = b.delivery_date as string | null | undefined
+      const deliv = b.delivery_date
       const ymd =
         deliv && String(deliv).length >= 10 ? String(deliv).slice(0, 10) : new Date().toISOString().slice(0, 10)
       payload.return_window_starts_at = ymd
     }
   }
 
-  const { error } = await supabase.from('sale_order').update(payload as any).eq('id', id)
+  const { error } = await fromSaleOrder(supabase).update(payload).eq('id', id)
   if (error) return { error: error.message }
 
   // On completion: transfer ownership — statusId 6 (Vendu) or 11 (Gift) per work
   if (statut === 'completed') {
-    const { data: order } = await supabase
-      .from('sale_order')
+    const { data: order } = await fromSaleOrder(supabase)
       .select('oeuvre_id, notes, buyer_id, prix_final, consignment_order_id')
       .eq('id', id)
       .single()
@@ -367,8 +378,7 @@ export async function updateOrderStatut(id: string, statut: string, toggleField?
       }
       if (ids.length === 0) ids = [order.oeuvre_id]
 
-      const { data: works } = await supabase
-        .from('Oeuvres')
+      const { data: works } = await fromOeuvres(supabase)
         .select('OeuvreID, is_gift, statusId, ContactID, LocalisationID')
         .in('OeuvreID', ids)
 
@@ -376,14 +386,14 @@ export async function updateOrderStatut(id: string, statut: string, toggleField?
       const saleIds = (works ?? []).filter(w => !w.is_gift).map(w => w.OeuvreID)
 
       if (saleIds.length > 0) {
-        await supabase.from('Oeuvres').update({
+        await fromOeuvres(supabase).update({
           statusId:      6,   // Vendu
           ContactID:     order.buyer_id,
           LocalisationID: order.buyer_id,
         }).in('OeuvreID', saleIds)
       }
       if (giftIds.length > 0) {
-        await supabase.from('Oeuvres').update({
+        await fromOeuvres(supabase).update({
           statusId:      11,  // Gift
           ContactID:     order.buyer_id,
           LocalisationID: order.buyer_id,
@@ -414,8 +424,7 @@ export async function updateOrderStatut(id: string, statut: string, toggleField?
 
       // Compute & stamp gallery commission when sale was routed through a consignment.
       if (order.consignment_order_id) {
-        const { data: consignment } = await supabase
-          .from('consignment_order')
+        const { data: consignment } = await fromConsignmentOrder(supabase)
           .select('commission_pct, order_ref')
           .eq('id', order.consignment_order_id)
           .single()
@@ -423,7 +432,7 @@ export async function updateOrderStatut(id: string, statut: string, toggleField?
         const pct = Number(consignment?.commission_pct ?? 0)
         if (pct > 0 && order.prix_final) {
           const commission_amount = Math.round(order.prix_final * pct) / 100
-          await supabase.from('sale_order').update({ commission_amount }).eq('id', id)
+          await fromSaleOrder(supabase).update({ commission_amount }).eq('id', id)
 
           await logSystemEvent({
             eventType: 'PAYMENT_GRAIN',
@@ -456,9 +465,8 @@ export async function skipSaleReturnWindow(orderId: string): Promise<SimpleResul
   const { error: authErr, supabase } = await guardTeam()
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
 
-  const { error } = await supabase
-    .from('sale_order')
-    .update({ return_window_skipped: true } as any)
+  const { error } = await fromSaleOrder(supabase)
+    .update({ return_window_skipped: true })
     .eq('id', orderId)
 
   if (error) return { error: error.message }
@@ -480,13 +488,13 @@ export async function updateSaleReturnFields(
   const { error: authErr, supabase } = await guardTeam()
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
 
-  const patch: Record<string, unknown> = {}
+  const patch: SaleOrderDbUpdate = {}
   if (fields.return_window_days !== undefined) patch.return_window_days = fields.return_window_days
   if (fields.return_window_starts_at !== undefined) patch.return_window_starts_at = fields.return_window_starts_at
 
   if (Object.keys(patch).length === 0) return { ok: true }
 
-  const { error } = await supabase.from('sale_order').update(patch as any).eq('id', orderId)
+  const { error } = await fromSaleOrder(supabase).update(patch).eq('id', orderId)
   if (error) return { error: error.message }
 
   await logSystemEvent({
@@ -513,8 +521,7 @@ export async function getReturnWindowHintForOeuvre(oeuvreId: number): Promise<Sa
   const { error: authErr, supabase } = await guardTeam()
   if (authErr || !supabase) return null
 
-  const { data: orders } = await supabase
-    .from('sale_order')
+  const { data: orders } = await fromSaleOrder(supabase)
     .select('id, statut, notes, oeuvre_id, delivered, return_window_days, return_window_starts_at, return_window_skipped')
     .eq('statut', 'completed')
     .order('created_at', { ascending: false })
@@ -522,7 +529,7 @@ export async function getReturnWindowHintForOeuvre(oeuvreId: number): Promise<Sa
 
   const today = new Date().toISOString().slice(0, 10)
 
-  for (const row of (orders ?? []) as any[]) {
+  for (const row of (orders ?? []) as ReturnWindowOrderRow[]) {
     const ids = parseSaleOrderBatchIds(row.notes, row.oeuvre_id)
     if (!ids.includes(oeuvreId)) continue
 
@@ -580,8 +587,7 @@ export async function fetchPayments(order_id: string): Promise<PaymentRow[]> {
   const { error: authErr, supabase } = await guardTeam()
   if (authErr || !supabase) return []
 
-  const { data } = await supabase
-    .from('payments')
+  const { data } = await fromPayments(supabase)
     .select('*')
     .eq('order_id', order_id)
     .order('payment_date', { ascending: true })
@@ -594,8 +600,7 @@ export async function deleteSaleOrder(id: string): Promise<SimpleResult> {
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
 
   // 1. Get the order to find the works and pdf path
-  const { data: order, error: fetchErr } = await supabase
-    .from('sale_order')
+  const { data: order, error: fetchErr } = await fromSaleOrder(supabase)
     .select('*')
     .eq('id', id)
     .single()
@@ -613,12 +618,11 @@ export async function deleteSaleOrder(id: string): Promise<SimpleResult> {
   if (ids.length === 0) ids = [order.oeuvre_id]
 
   // 2. Delete the order record
-  const { error: delErr } = await supabase.from('sale_order').delete().eq('id', id)
+  const { error: delErr } = await fromSaleOrder(supabase).delete().eq('id', id)
   if (delErr) return { error: delErr.message }
 
   // 3. Revert works status
-  await supabase
-    .from('Oeuvres')
+  await fromOeuvres(supabase)
     .update({
       statusId:      1,    // Atelier
       AcheteurID:    null,
@@ -629,7 +633,9 @@ export async function deleteSaleOrder(id: string): Promise<SimpleResult> {
     .in('OeuvreID', ids)
 
   // 4. Cleanup document record
-  await supabase.from('document').delete().eq('storage_path', order.pdf_path)
+  if (order.pdf_path) {
+    await fromDocument(supabase).delete().eq('storage_path', order.pdf_path)
+  }
 
   return { ok: true }
 }
@@ -638,14 +644,14 @@ export async function regenerateOrderPdf(id: string): Promise<SimpleResult> {
   const { error: authErr, supabase } = await guardTeam()
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
 
-  const { data: order, error: fetchErr } = await supabase.from('sale_order').select('*').eq('id', id).single()
+  const { data: order, error: fetchErr } = await fromSaleOrder(supabase).select('*').eq('id', id).single()
   if (fetchErr || !order) return { error: 'Order not found' }
 
   try {
     const pdf = await buildOrderPdf(order as SaleOrderRow, supabase)
     const key = `orders/ORDER_${order.order_ref}.pdf`
     await r2UploadPdf(key, pdf, id)
-    await supabase.from('sale_order').update({ pdf_path: key }).eq('id', id)
+    await fromSaleOrder(supabase).update({ pdf_path: key }).eq('id', id)
     return { ok: true }
   } catch (err) {
     return { error: String(err) }
@@ -658,8 +664,7 @@ export async function fetchOrders(): Promise<SaleOrderRow[]> {
   const { error: authErr, supabase } = await guardTeam()
   if (authErr || !supabase) return []
 
-  const { data } = await supabase
-    .from('sale_order')
+  const { data } = await fromSaleOrder(supabase)
     .select('*')
     .order('created_at', { ascending: false })
 
@@ -668,7 +673,7 @@ export async function fetchOrders(): Promise<SaleOrderRow[]> {
 
 // ── PDF builder ───────────────────────────────────────────────────────────────
 
-export async function buildOrderPdf(order: SaleOrderRow, supabase: any): Promise<Buffer> {
+export async function buildOrderPdf(order: SaleOrderRow, supabase: NonNullable<Awaited<ReturnType<typeof guardTeam>>['supabase']>): Promise<Buffer> {
   // Extract IDs from notes if not provided in order.oeuvre_ids
   let ids = order.oeuvre_ids || []
   if (ids.length === 0 && order.notes?.includes('BATCH_IDS:')) {
@@ -680,20 +685,18 @@ export async function buildOrderPdf(order: SaleOrderRow, supabase: any): Promise
   if (ids.length === 0) ids = [order.oeuvre_id]
 
   // Fetch all works
-  const { data: works } = await supabase
-    .from('Oeuvres')
+  const { data: works } = await fromOeuvres(supabase)
     .select('OeuvreID, Titre, "Année", Technique, Support, Hauteur, Largeur, Profondeur, txtImageNameLink, Prix')
     .in('OeuvreID', ids)
 
   const { data: buyer } = order.buyer_id
-    ? await supabase.from('Contact').select('Nom, "Prénom", NomInstitution, Ville, Pays').eq('ContactID', order.buyer_id).single()
+    ? await fromContact(supabase).select('Nom, "Prénom", NomInstitution, Ville, Pays').eq('ContactID', order.buyer_id).single()
     : { data: null }
 
-  // If routed through a consignment, fetch its commission rate to render on the bond.
   const { data: consignment } = order.consignment_order_id
-    ? await supabase.from('consignment_order').select('commission_pct, order_ref, partner_id').eq('id', order.consignment_order_id).single()
+    ? await fromConsignmentOrder(supabase).select('commission_pct, order_ref, partner_id').eq('id', order.consignment_order_id).single()
     : { data: null }
-  const commissionPct = Number((consignment as any)?.commission_pct ?? 0)
+  const commissionPct = Number((consignment as ConsignmentBriefRow | null)?.commission_pct ?? 0)
   const commissionAmount = (commissionPct > 0 && order.prix_final)
     ? Math.round(order.prix_final * commissionPct) / 100
     : 0
@@ -712,17 +715,15 @@ export async function buildOrderPdf(order: SaleOrderRow, supabase: any): Promise
   const suppIds = [...new Set(workList.map((w) => w.Support).filter((x): x is number => x != null))]
   
   const [{ data: techs }, { data: supps }] = await Promise.all([
-    techIds.length > 0 ? supabase.from('Technique').select('TechniqueID, Technique').in('TechniqueID', techIds) : Promise.resolve({ data: [] as { TechniqueID: number; Technique: string }[] }),
-    suppIds.length > 0 ? supabase.from('Support').select('SupportID, Support').in('SupportID', suppIds) : Promise.resolve({ data: [] as { SupportID: number; Support: string }[] }),
+    techIds.length > 0 ? fromTechnique(supabase).select('TechniqueID, Technique').in('TechniqueID', techIds) : Promise.resolve({ data: [] as { TechniqueID: number; Technique: string }[] }),
+    suppIds.length > 0 ? fromSupport(supabase).select('SupportID, Support').in('SupportID', suppIds) : Promise.resolve({ data: [] as { SupportID: number; Support: string }[] }),
   ])
 
-  const tM = Object.fromEntries((techs ?? []).map((t: { TechniqueID: number; Technique: string }) => [t.TechniqueID, t.Technique]))
-  const sM = Object.fromEntries((supps ?? []).map((s: { SupportID: number; Support: string }) => [s.SupportID, s.Support]))
+  const tM = Object.fromEntries((techs ?? []).map((t) => [t.TechniqueID, t.Technique]))
+  const sM = Object.fromEntries((supps ?? []).map((s) => [s.SupportID, s.Support]))
 
-  const buyerName = (buyer as any)?.NomInstitution
-    || `${(buyer as any)?.Prénom ?? ''} ${(buyer as any)?.Nom ?? ''}`.trim()
-    || 'N/A'
-  const buyerLocation = [(buyer as any)?.Ville, (buyer as any)?.Pays].filter(Boolean).join(', ')
+  const buyerName = contactDisplayName(buyer as ContactBriefRow | null)
+  const buyerLocation = contactLocation(buyer as ContactBriefRow | null)
 
   const PDFDocument = (await import('pdfkit')).default
   const chunks: Buffer[] = []
@@ -797,7 +798,10 @@ export async function buildOrderPdf(order: SaleOrderRow, supabase: any): Promise
 
       const textX = 85
       doc.fontSize(9).fillColor('#000').text(`${w.Titre || 'Sans titre'} (${String(w.Année || '').slice(0,4)})`, textX, rowY)
-      const desc = [tM[w.Technique] || '', sM[w.Support] || ''].filter(Boolean).join(' sur ')
+      const desc = [
+        w.Technique != null ? tM[w.Technique] ?? '' : '',
+        w.Support != null ? sM[w.Support] ?? '' : '',
+      ].filter(Boolean).join(' sur ')
       const dims = w.Hauteur && w.Largeur ? `${w.Hauteur} × ${w.Largeur}${w.Profondeur ? ` × ${w.Profondeur}` : ''} cm` : ''
       doc.fontSize(7).fillColor(tx2).text(`${desc}${desc && dims ? '  ·  ' : ''}${dims}`, textX, rowY + 12)
       doc.fontSize(9).fillColor('#000').text(`€ ${formatPrice(w.Prix)}`, 40 + W - 100, rowY, { width: 100, align: 'right' })

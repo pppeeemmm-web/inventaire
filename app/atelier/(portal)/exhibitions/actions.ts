@@ -4,6 +4,18 @@ import { createClient } from '@/lib/supabase/server'
 import { r2S3Hostname } from '@/lib/r2-s3-host'
 import { markStorageObject, recordStorageObject } from '@/lib/storage-object-ledger'
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
+import {
+  asExhibitionLayout,
+  fromExhibitionLayout,
+  fromOeuvres,
+  fromSuiviEtape,
+  fromSuiviProcess,
+  toLayoutJson,
+  toLayoutUpdate,
+  toSuiviEtapeInsert,
+  toSuiviEtapeUpdate,
+  toSuiviProcessUpdate,
+} from '@/lib/exhibitions/exhibition-client'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -127,11 +139,10 @@ async function r2Delete(key: string) {
 export async function fetchLayouts(): Promise<ExhibitionLayout[]> {
   const { error: authErr, supabase } = await guardTeam()
   if (authErr || !supabase) return []
-  const { data } = await (supabase
-    .from('exhibition_layout') as any)
+  const { data } = await fromExhibitionLayout(supabase)
     .select('*')
     .order('updated_at', { ascending: false })
-  return (data ?? []) as ExhibitionLayout[]
+  return (data ?? []).map(asExhibitionLayout)
 }
 
 // ── Create layout ─────────────────────────────────────────────────────────────
@@ -147,18 +158,18 @@ export async function createLayout(nom: string, processId?: string): Promise<Lay
     { id: 'w4', nom: 'Mur D', color: '#a0a060' },
   ]
 
-  const { data, error } = await (supabase.from('exhibition_layout') as any)
+  const { data, error } = await fromExhibitionLayout(supabase)
     .insert({
       nom,
       process_id: processId ?? null,
-      walls: defaultWalls as any,
-      placements: [] as any
+      walls: toLayoutJson(defaultWalls),
+      placements: toLayoutJson([]),
     })
     .select()
     .single()
 
   if (error || !data) return { error: error?.message ?? 'Insert failed' }
-  return { ok: true, layout: data as ExhibitionLayout }
+  return { ok: true, layout: asExhibitionLayout(data) }
 }
 
 // ── Upload floor plan image ───────────────────────────────────────────────────
@@ -182,9 +193,8 @@ export async function uploadFloorplan(layoutId: string, formData: FormData): Pro
     return { error: `Upload R2 (bucket="${bucketName}"): ${String(e)}` }
   }
 
-  const { error } = await (supabase
-    .from('exhibition_layout') as any)
-    .update({ floorplan_path: key } as any)
+  const { error } = await fromExhibitionLayout(supabase)
+    .update({ floorplan_path: key })
     .eq('id', layoutId)
 
   if (error) return { error: error.message }
@@ -200,7 +210,9 @@ export async function saveLayout(
   const { error: authErr, supabase } = await guardTeam()
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
 
-  const { error } = await (supabase.from('exhibition_layout') as any).update(patch as any).eq('id', layoutId)
+  const { error } = await fromExhibitionLayout(supabase)
+    .update(toLayoutUpdate(patch))
+    .eq('id', layoutId)
   if (error) return { error: error.message }
   return { ok: true }
 }
@@ -212,7 +224,7 @@ export async function deleteLayout(layoutId: string, floorplanPath: string | nul
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
 
   if (floorplanPath) await r2Delete(floorplanPath).catch(() => {})
-  const { error } = await supabase.from('exhibition_layout').delete().eq('id', layoutId)
+  const { error } = await fromExhibitionLayout(supabase).delete().eq('id', layoutId)
   if (error) return { error: error.message }
   return { ok: true }
 }
@@ -232,8 +244,7 @@ export async function getFloorplanSignedUrl(key: string): Promise<{ url: string 
 export async function fetchExhibitionProcesses(): Promise<{ id: string; nom: string }[]> {
   const { error: authErr, supabase } = await guardTeam()
   if (authErr || !supabase) return []
-  const { data } = await supabase
-    .from('suivi_process' as any)
+  const { data } = await fromSuiviProcess(supabase)
     .select('id, nom')
     .eq('type', 'exposition')
     .order('date_fin', { ascending: false })
@@ -246,8 +257,7 @@ export async function listExhibitionsWithSteps(): Promise<
   const { error: authErr, supabase } = await guardTeam()
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
 
-  const { data: processes, error: pErr } = await supabase
-    .from('suivi_process')
+  const { data: processes, error: pErr } = await fromSuiviProcess(supabase)
     .select('id, nom, type, statut, date_debut, date_fin, contact_id, localisation, url, notes, created_at')
     .eq('type', 'exposition')
     .or('date_debut.not.is.null,date_fin.not.is.null')
@@ -257,8 +267,7 @@ export async function listExhibitionsWithSteps(): Promise<
   const typedProcesses = (processes ?? []) as ExhibitionProcessRow[]
   if (typedProcesses.length === 0) return { ok: true, exhibitions: [] }
 
-  const { data: steps, error: sErr } = await supabase
-    .from('suivi_etape')
+  const { data: steps, error: sErr } = await fromSuiviEtape(supabase)
     .select('id, process_id, nom, statut, date_echeance, position, notes, overdue_override')
     .in('process_id', typedProcesses.map((p) => p.id))
     .order('position')
@@ -279,8 +288,7 @@ export async function createExhibitionProcess(payload: {
   const { error: authErr, supabase } = await guardTeam()
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
 
-  const { data, error } = await supabase
-    .from('suivi_process')
+  const { data, error } = await fromSuiviProcess(supabase)
     .insert({ nom: payload.nom, type: payload.type ?? 'exposition', statut: 'prevue' })
     .select('id, nom, type, statut, date_debut, date_fin, contact_id, localisation, url, notes, created_at')
     .single()
@@ -292,11 +300,10 @@ export async function deleteExhibitionProcess(exhibitionId: string): Promise<Sim
   const { error: authErr, supabase } = await guardTeam()
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
 
-  await supabase
-    .from('suivi_process')
+  await fromSuiviProcess(supabase)
     .update({ exhibition_process_id: null })
     .eq('exhibition_process_id', exhibitionId)
-  const { error } = await supabase.from('suivi_process').delete().eq('id', exhibitionId)
+  const { error } = await fromSuiviProcess(supabase).delete().eq('id', exhibitionId)
   if (error) return { error: error.message }
   return { ok: true }
 }
@@ -311,7 +318,7 @@ export async function updateExhibitionProcess(payload: {
 
   const { steps, _isEditing: _ignored, ...processPatch } = payload.patch
   if (Object.keys(processPatch).length > 0) {
-    const { error } = await supabase.from('suivi_process').update(processPatch).eq('id', payload.exhibitionId)
+    const { error } = await fromSuiviProcess(supabase).update(toSuiviProcessUpdate(processPatch as unknown as Record<string, unknown>)).eq('id', payload.exhibitionId)
     if (error) return { error: error.message }
   }
 
@@ -320,7 +327,7 @@ export async function updateExhibitionProcess(payload: {
     .filter((current) => !steps.find((s) => s.id === current.id))
     .map((s) => s.id)
   if (deletedIds.length > 0) {
-    const { error } = await supabase.from('suivi_etape').delete().in('id', deletedIds)
+    const { error } = await fromSuiviEtape(supabase).delete().in('id', deletedIds)
     if (error) return { error: error.message }
   }
 
@@ -329,11 +336,11 @@ export async function updateExhibitionProcess(payload: {
     const isNew = String(step.id).startsWith('s')
     if (isNew) {
       const { id: _temp, ...insertStep } = step
-      const { data, error } = await supabase.from('suivi_etape').insert(insertStep).select().single()
+      const { data, error } = await fromSuiviEtape(supabase).insert(toSuiviEtapeInsert(insertStep as unknown as Record<string, unknown>)).select().single()
       if (error || !data) return { error: error?.message ?? 'Insert step failed' }
       finalSteps.push(data as ExhibitionStepRow)
     } else {
-      const { error } = await supabase.from('suivi_etape').update(step).eq('id', step.id)
+      const { error } = await fromSuiviEtape(supabase).update(toSuiviEtapeUpdate(step as unknown as Record<string, unknown>)).eq('id', step.id)
       if (error) return { error: error.message }
       finalSteps.push(step)
     }
@@ -348,8 +355,7 @@ export async function assignWorksToExhibitionContact(payload: {
 }): Promise<SimpleResult> {
   const { error: authErr, supabase } = await guardTeam()
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
-  const { error } = await supabase
-    .from('Oeuvres')
+  const { error } = await fromOeuvres(supabase)
     .update({ ContactID: payload.contactId })
     .in('OeuvreID', payload.oeuvreIds)
   if (error) return { error: error.message }
