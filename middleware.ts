@@ -41,7 +41,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next({ request: fwd })
   }
 
-  // OAuth / magic-link return: let the route handler run exchangeCodeForSession alone.
+  // OAuth return: let the route handler run exchangeCodeForSession alone.
   // Running getUser()/refresh here can race PKCE cookies and cause redirect loops to Google.
   if (p === '/auth/callback' || p.startsWith('/auth/callback/')) {
     return NextResponse.next({ request: fwd })

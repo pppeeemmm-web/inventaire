@@ -1,8 +1,8 @@
-// Auth callback — exchanges the PKCE code (OAuth + magic link) for a session.
+// Auth callback — exchanges the PKCE code (Google OAuth) for a session.
 // Cookies MUST be attached to the same NextResponse as the redirect, otherwise
 // the session never reaches the browser and protected routes loop back to /login.
 //
-// Flow: signInWithOAuth / signInWithOtp → … → /auth/callback?code=xxx&next=/hub
+// Flow: signInWithOAuth → … → /auth/callback?code=xxx&next=/hub
 
 import { NextResponse, type NextRequest } from 'next/server'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'

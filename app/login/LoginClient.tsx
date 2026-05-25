@@ -14,16 +14,13 @@ function isLanDevHostname(hostname: string): boolean {
   return false
 }
 
-// Login page — Google OAuth (primary) + magic link fallback.
+// Login page — Google OAuth only.
 // Only team members can access /atelier. No public sign-up.
 export function LoginClient() {
   const { t, lang, setLang } = useI18n()
   const searchParams = useSearchParams()
   const nextPath = searchParams.get('next') || '/hub'
   const [lanDev, setLanDev] = useState(false)
-  const [showMagic, setShowMagic] = useState(false)
-  const [email, setEmail]         = useState('')
-  const [sent, setSent]           = useState(false)
   const [loading, setLoading]     = useState(false)
   const [error, setError]         = useState<string | null>(null)
 
@@ -73,21 +70,6 @@ export function LoginClient() {
     })
     if (err) { setError(err.message); setLoading(false) }
     // on success browser redirects — no further action needed
-  }
-
-  async function handleMagicLink(e: React.FormEvent) {
-    e.preventDefault()
-    setLoading(true)
-    setError(null)
-    const supabase = createClient()
-    const next = searchParams.get('next') || '/hub'
-    const { error: err } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: authCallbackUrl(next) },
-    })
-    if (err) setError(err.message)
-    else setSent(true)
-    setLoading(false)
   }
 
   return (
@@ -185,43 +167,6 @@ export function LoginClient() {
           {loading ? t('login_redirecting') : t('login_continue_google')}
         </button>
 
-        {/* Magic link fallback */}
-        {!showMagic && !sent && (
-          <div style={{ textAlign: 'center' }}>
-            <button
-              type="button"
-              onClick={() => setShowMagic(true)}
-              style={{ background: 'none', border: 'none', color: 'var(--tx3)', fontSize: 10, cursor: 'pointer', textDecoration: 'underline' }}
-            >
-              {t('login_magic_link')}
-            </button>
-          </div>
-        )}
-
-        {showMagic && !sent && (
-          <form onSubmit={handleMagicLink}>
-            <div style={{ marginBottom: 10 }}>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder={t('login_email_placeholder')}
-                required
-                style={{ width: '100%', padding: '10px 12px', border: '1px solid var(--bd2)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 12 }}
-              />
-            </div>
-            <button type="submit" className="btn primary" style={{ width: '100%', justifyContent: 'center' }} disabled={loading}>
-              {loading ? t('login_sending') : t('login_send_link')}
-            </button>
-          </form>
-        )}
-
-        {sent && (
-          <div style={{ border: '1px solid var(--bd)', padding: '16px 20px' }}>
-            <div className="t-mono-sm" style={{ color: 'var(--sage)' }}>{t('login_link_sent')}</div>
-            <div className="t-mono-sm" style={{ marginTop: 6 }}>{t('login_check_inbox')}</div>
-          </div>
-        )}
 
       </div>
     </div>
