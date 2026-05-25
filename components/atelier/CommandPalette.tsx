@@ -29,7 +29,7 @@ interface Props {
   onStockTake: () => void
   onPendingApprovals?: () => void
   onExportXlsx: () => void
-  onRegenBible: () => void
+  onDownloadStudioBible: () => void
 }
 
 interface Item {
@@ -42,7 +42,7 @@ interface Item {
 export function CommandPalette({
   open, onClose, tabs, oeuvres, contacts,
   onGoTab, onGoWork, onCaptureSession, onScanQr, onFieldNote, onReminders,
-  onNewWork, onNewSale, onStockTake, onPendingApprovals, onExportXlsx, onRegenBible,
+  onNewWork, onNewSale, onStockTake, onPendingApprovals, onExportXlsx, onDownloadStudioBible,
 }: Props) {
   const { t } = useI18n()
   const tk = (key: string) => t(key as DictKey)
@@ -120,7 +120,7 @@ export function CommandPalette({
         ? [{ id: 'act:pending-approvals', label: t('cmd_palette_action_pending_approvals'), action: () => { onPendingApprovals(); onClose() } }]
         : []),
       { id: 'act:export-xlsx', label: t('cmd_palette_action_export_xlsx'), action: () => { onExportXlsx(); onClose() } },
-      { id: 'act:regen-bible', label: t('cmd_palette_action_regen_bible'), action: () => { onRegenBible(); onClose() } },
+      { id: 'act:download-bible', label: t('cmd_palette_action_download_studio_bible'), action: () => { onDownloadStudioBible(); onClose() } },
     ]
     for (const a of actionDefs) {
       if (!q || a.label.toLowerCase().includes(qLow)) {
@@ -204,7 +204,7 @@ export function CommandPalette({
   }, [
     q, tabs, oeuvres, contacts, t, tk, onGoTab, onGoWork, onClose,
     onCaptureSession, onScanQr, onFieldNote, onReminders, onNewWork, onNewSale,
-    onStockTake, onPendingApprovals, onExportXlsx, onRegenBible,
+    onStockTake, onPendingApprovals, onExportXlsx, onDownloadStudioBible,
     semanticHits, semanticLoading, semanticUnavailable, semanticPending,
   ])
 

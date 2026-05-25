@@ -381,6 +381,32 @@ export async function getSignedUrl(storagePath: string): Promise<{ url: string }
   }
 }
 
+/** Latest `document.kind = 'bible'` (Studio Bible) — signed URL for browser download. */
+export async function downloadLatestStudioBible(): Promise<
+  { url: string; filename: string } | { error: string }
+> {
+  const { error: authErr, supabase } = await guardTeam()
+  if (authErr || !supabase) return { error: authErr ?? 'Auth' }
+
+  const { data: doc, error } = await fromDocument(supabase)
+    .select('name, storage_path')
+    .eq('kind', 'bible')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error) return { error: error.message }
+  if (!doc?.storage_path) return { error: 'NOT_FOUND' }
+
+  try {
+    const url = await r2SignedUrl(doc.storage_path, 3600)
+    const filename = (doc.name?.trim() || 'Studio_Bible').replace(/[^\w.\- ()[\]]+/g, '_')
+    return { url, filename }
+  } catch (e) {
+    return { error: `Signed URL failed: ${String(e)}` }
+  }
+}
+
 // ── Generate Certificate of Authenticity ─────────────────────────────────
 
 export async function generateCOA(oeuvreId: number): Promise<CoaResult> {

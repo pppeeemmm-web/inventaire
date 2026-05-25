@@ -42,8 +42,16 @@ export const atelierMessages = defineMessages({
     en: 'Search (Ctrl+K)',
   },
   atelier_quick_studio_bible: {
-    fr: 'Bible Atelier',
-    en: 'Studio Bible',
+    fr: 'Télécharger la Bible Atelier',
+    en: 'Download Studio Bible',
+  },
+  studio_bible_download_not_found: {
+    fr: 'Aucun document Bible Atelier (type bible) dans le coffre.',
+    en: 'No Studio Bible document (kind bible) in the vault.',
+  },
+  cmd_palette_action_download_studio_bible: {
+    fr: 'Télécharger la Bible Atelier',
+    en: 'Download Studio Bible',
   },
   cmd_palette_action_capture_session: {
     fr: 'Capturer une session',
