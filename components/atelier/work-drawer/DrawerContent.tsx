@@ -816,7 +816,7 @@ export function DrawerContent({
     }
   }, [guardApiRef, isDirty, performSave])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     onDrawerDirtyChange?.(isDirty)
   }, [isDirty, onDrawerDirtyChange])
 

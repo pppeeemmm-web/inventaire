@@ -5,6 +5,7 @@ import { Skeleton } from '@/components/ui/Skeleton'
 import { ExhibitionsTabSkeleton } from '@/components/atelier/ExhibitionsTabSkeleton'
 import { useI18n } from '@/lib/i18n/context'
 import type { Oeuvre } from '@/lib/types/database'
+import type { WorkDrawerGuardHandle } from '@/components/atelier/WorkDrawer'
 import type { SegmentedAtelierTab } from '@/lib/atelier/tab-routes'
 import type { TeamPortalClientProps, AtelierOverviewBootstrap } from '@/components/atelier/team-portal-types'
 import type { Lang } from '@/lib/i18n/dictionary'
@@ -97,6 +98,8 @@ export type SegmentRoutePanelProps = {
   onOpenContactFromMap: (contactId: number) => void
   onJunctionSaved?: (oeuvreId: number, themeIds: number[], groupIds: string[]) => void
   onOeuvrePatched?: (oeuvreId: number, patch: Partial<Oeuvre>) => void
+  inventoryDrawerGuardRef?: React.RefObject<WorkDrawerGuardHandle | null>
+  onInventoryPanelDirtyChange?: (dirty: boolean) => void
 }
 
 export function SegmentRoutePanel({
@@ -146,6 +149,8 @@ export function SegmentRoutePanel({
   onOpenContactFromMap,
   onJunctionSaved,
   onOeuvrePatched,
+  inventoryDrawerGuardRef,
+  onInventoryPanelDirtyChange,
 }: SegmentRoutePanelProps) {
   const { t } = useI18n()
   switch (tab) {
@@ -246,6 +251,8 @@ export function SegmentRoutePanel({
           isAdmin={isAdmin}
           onJunctionSaved={onJunctionSaved}
           onOeuvrePatched={onOeuvrePatched}
+          inventoryDrawerGuardRef={inventoryDrawerGuardRef}
+          onInventoryPanelDirtyChange={onInventoryPanelDirtyChange}
         />
       )
     case 'reports':

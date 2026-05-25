@@ -9,10 +9,14 @@ import { useI18n } from '@/lib/i18n/context'
  */
 export function useUnsavedActionGuard({
   isDirty,
+  getIsDirty,
   onProceed,
   performSave,
 }: {
+  /** Fallback when `getIsDirty` is omitted (e.g. beforeunload subscription). */
   isDirty: boolean
+  /** Live dirty read — avoids one-frame lag from child `setState` after edits. */
+  getIsDirty?: () => boolean
   onProceed: () => void
   performSave: () => Promise<boolean>
 }) {
@@ -21,14 +25,16 @@ export function useUnsavedActionGuard({
   const [saving, setSaving] = useState(false)
   const pendingRef = useRef<(() => void) | null>(null)
 
+  const readDirty = useCallback(() => getIsDirty?.() ?? isDirty, [getIsDirty, isDirty])
+
   const attemptAction = useCallback(() => {
-    if (!isDirty) {
+    if (!readDirty()) {
       onProceed()
       return
     }
     pendingRef.current = onProceed
     setShow(true)
-  }, [isDirty, onProceed])
+  }, [readDirty, onProceed])
 
   const discard = useCallback(() => {
     setShow(false)

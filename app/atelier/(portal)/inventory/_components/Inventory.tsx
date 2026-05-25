@@ -21,6 +21,7 @@ import { toast } from '@/lib/ui/toast'
 import { registerUndo, consumeUndo } from '@/lib/ui/undo'
 import type { Oeuvre } from '@/lib/types/database'
 import { WorkDrawer, type WorkDrawerGuardHandle } from '@/components/atelier/WorkDrawer'
+import type { RefObject } from 'react'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { batchEdit } from '@/app/atelier/selection/actions'
 import type { Agg, Dim } from '@/lib/pivot'
@@ -224,6 +225,8 @@ export function Inventory({
   isAdmin = false,
   onJunctionSaved,
   onOeuvrePatched,
+  inventoryDrawerGuardRef,
+  onInventoryPanelDirtyChange,
 }: SharedProps & {
   techniques:     { TechniqueID: number; Technique: string | null }[]
   supports:       { SupportID:   number; Support:   string | null }[]
@@ -243,12 +246,22 @@ export function Inventory({
   isAdmin?: boolean
   onJunctionSaved?: (oeuvreId: number, themeIds: number[], groupIds: string[]) => void
   onOeuvrePatched?: (oeuvreId: number, patch: Partial<Oeuvre>) => void
+  inventoryDrawerGuardRef?: RefObject<WorkDrawerGuardHandle | null>
+  onInventoryPanelDirtyChange?: (dirty: boolean) => void
 }) {
   const { t } = useI18n()
   const embeddingStatusMap = useNonOkEmbeddingStatuses()
 
   const router = useRouter()
-  const [panelDrawerDirty, setPanelDrawerDirty] = useState(false)
+  const localPanelGuardRef = useRef<WorkDrawerGuardHandle>(null)
+  const panelDrawerGuardRef = inventoryDrawerGuardRef ?? localPanelGuardRef
+
+  const handlePanelDirtyChange = useCallback(
+    (dirty: boolean) => {
+      onInventoryPanelDirtyChange?.(dirty)
+    },
+    [onInventoryPanelDirtyChange],
+  )
 
   const offerSelectionUndo = useCallback(
     (prev: Set<number>) => {
@@ -326,7 +339,6 @@ export function Inventory({
   const [filterTheme, setFilterTheme] = useState('all')
   const [filterGroup, setFilterGroup] = useState('all')
   const nextCritId = useRef(0)
-  const panelDrawerGuardRef = useRef<WorkDrawerGuardHandle>(null)
 
   const handlePanelWorkSaved = useCallback(
     (oeuvreId: number, patch: Partial<Oeuvre>) => {
@@ -337,10 +349,10 @@ export function Inventory({
   )
 
   useEffect(() => {
-    if (!focused || panelDrawerDirty) return
+    if (!focused || panelDrawerGuardRef.current?.isDirty()) return
     const fresh = oeuvres.find((x) => x.OeuvreID === focused.OeuvreID)
     if (fresh && fresh !== focused) setFocused(fresh)
-  }, [oeuvres, focused, panelDrawerDirty])
+  }, [oeuvres, focused, panelDrawerGuardRef])
 
   const focusRowGuarded = useCallback((o: Oeuvre) => {
     if (!showPreview) {
@@ -952,7 +964,9 @@ export function Inventory({
                 tM={tM} sM={sM} cM={cM} pM={pM} fM={fM} locMap={locMap}
                 statusLabelMap={statusLabelMap}
                 selection={selection} toggleInSel={toggleInSel}
-                onClose={() => setShowPreview(false)}
+                onClose={() => {
+                  panelDrawerGuardRef.current?.runGuarded(() => setShowPreview(false))
+                }}
                 onEdit={onOpen}
                 thM={thM} oeuvreThemeMap={oeuvreThemeMap} oeuvreGroupMap={oeuvreGroupMap}
                 groupNameMap={groupNameMap}
@@ -964,7 +978,7 @@ export function Inventory({
                 isAdmin={isAdmin}
                 onJunctionSaved={onJunctionSaved}
                 onWorkSaved={handlePanelWorkSaved}
-                onDrawerDirtyChange={setPanelDrawerDirty}
+                onDrawerDirtyChange={handlePanelDirtyChange}
               />
             )}
           </>

@@ -588,7 +588,9 @@ export function TeamPortalClient({
 
   const [inspected,  setInspected]  = useState<Oeuvre | null>(null)
   const workDrawerGuardRef = useRef<WorkDrawerGuardHandle>(null)
+  const inventoryDrawerGuardRef = useRef<WorkDrawerGuardHandle>(null)
   const [drawerDirty, setDrawerDirty] = useState(false)
+  const [inventoryPanelDirty, setInventoryPanelDirty] = useState(false)
   const pendingNavRef = useRef<(() => void) | null>(null)
 
   const patchOeuvreInCatalogue = useCallback((oeuvreId: number, patch: Partial<Oeuvre>) => {
@@ -597,10 +599,10 @@ export function TeamPortalClient({
   }, [])
 
   useEffect(() => {
-    if (!inspected || drawerDirty) return
+    if (!inspected || drawerDirty || inventoryPanelDirty) return
     const fresh = oeuvres.find((x) => x.OeuvreID === inspected.OeuvreID)
     if (fresh && fresh !== inspected) setInspected(fresh)
-  }, [oeuvres, inspected, drawerDirty])
+  }, [oeuvres, inspected, drawerDirty, inventoryPanelDirty])
 
   const runPendingNav = useCallback(() => {
     const fn = pendingNavRef.current
@@ -608,12 +610,28 @@ export function TeamPortalClient({
     fn?.()
   }, [])
 
+  const getAnyDrawerDirty = useCallback(() => {
+    return !!(
+      workDrawerGuardRef.current?.isDirty() ||
+      inventoryDrawerGuardRef.current?.isDirty()
+    )
+  }, [])
+
   const performDrawerSave = useCallback(async () => {
-    return (await workDrawerGuardRef.current?.performSave()) ?? false
+    if (workDrawerGuardRef.current?.isDirty()) {
+      const ok = await workDrawerGuardRef.current.performSave()
+      if (!ok) return false
+    }
+    if (inventoryDrawerGuardRef.current?.isDirty()) {
+      const ok = await inventoryDrawerGuardRef.current.performSave()
+      if (!ok) return false
+    }
+    return true
   }, [])
 
   const { attemptAction: attemptNavigateWithDrawerGuard, unsavedDialog: drawerLeaveDialog } = useUnsavedActionGuard({
-    isDirty: drawerDirty,
+    isDirty: drawerDirty || inventoryPanelDirty,
+    getIsDirty: getAnyDrawerDirty,
     onProceed: runPendingNav,
     performSave: performDrawerSave,
   })
@@ -624,14 +642,14 @@ export function TeamPortalClient({
   }, [inspected])
 
   useEffect(() => {
-    if (!drawerDirty) return
+    if (!drawerDirty && !inventoryPanelDirty) return
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault()
       e.returnValue = ''
     }
     window.addEventListener('beforeunload', onBeforeUnload)
     return () => window.removeEventListener('beforeunload', onBeforeUnload)
-  }, [drawerDirty])
+  }, [drawerDirty, inventoryPanelDirty])
 
   useLayoutEffect(() => {
     if (typeof window === 'undefined') return
@@ -808,21 +826,24 @@ export function TeamPortalClient({
   }, [t])
 
   function handleSetTab(next: Tab) {
-    const href = atelierTabHref(next)
-    const currentPath = window.location.pathname
-    const currentSearch = window.location.search
-    const targetPath = href.split('?')[0]
-    const needsNavigation =
-      targetPath !== currentPath ||
-      (href.includes('?') && href !== `${currentPath}${currentSearch}`)
+    pendingNavRef.current = () => {
+      const href = atelierTabHref(next)
+      const currentPath = window.location.pathname
+      const currentSearch = window.location.search
+      const targetPath = href.split('?')[0]
+      const needsNavigation =
+        targetPath !== currentPath ||
+        (href.includes('?') && href !== `${currentPath}${currentSearch}`)
 
-    if (needsNavigation) {
-      router.push(href)
-      return
+      if (needsNavigation) {
+        router.push(href)
+        return
+      }
+      setTab(next)
+      localStorage.setItem('pem_team_tab', next)
+      setSidebarOpen(false)
     }
-    setTab(next)
-    localStorage.setItem('pem_team_tab', next)
-    setSidebarOpen(false)
+    attemptNavigateWithDrawerGuard()
   }
 
   const [subsetChipExpanded, setSubsetChipExpanded] = useState(false)
@@ -1400,6 +1421,8 @@ export function TeamPortalClient({
             }}
             onJunctionSaved={onJunctionSaved}
             onOeuvrePatched={patchOeuvreInCatalogue}
+            inventoryDrawerGuardRef={inventoryDrawerGuardRef}
+            onInventoryPanelDirtyChange={setInventoryPanelDirty}
           />
         ) : null}
       </div>
