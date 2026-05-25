@@ -13,7 +13,7 @@ To prevent context-loss and hallucinated code, Cursor must follow this exact loo
 3. **Verify:** Run `npm run lint`, `npm run typecheck`, `npm run i18n:check`, and `npm run test:e2e:field` for mobile/UI work.
 4. **Commit:** Ensure `pwsh scripts/release-truth.ps1` is clean before finalizing the PR.
 
-Pin **only that slice's section** + listed file anchors. Do not load `TeamPortalClient.tsx` (2188 LOC) or `ConstellationCanvas.tsx` (3013 LOC) unless that slice is active.
+Pin **only that slice's section** + listed file anchors. Do not load `TeamPortalClient.tsx` (2188 LOC) or the full `ConstellationCanvas.tsx` orchestrator (~2270 LOC; UI slices live under `components/atelier/constellation/`) unless that slice is active.
 
 ---
 
@@ -433,7 +433,7 @@ Wrap the function return in `nullif(trim(…), '')` so all-empty inputs return `
 | Audit tab (Slice 3) | `app/atelier/audit/page.tsx`, `app/atelier/audit/_components/Audit.tsx` |
 | Monolith to split | `components/atelier/TeamPortalClient.tsx` (2188 LOC) |
 | WorkForm | `components/atelier/WorkForm.tsx` (1243 LOC) |
-| Constellation | `components/atelier/ConstellationCanvas.tsx` (3013 LOC), `app/atelier/constellation/actions.ts` |
+| Constellation | `components/atelier/ConstellationCanvas.tsx` (~2270 LOC orchestrator), `components/atelier/constellation/*` (toolbar, tool rail, side panel, shared), `app/atelier/constellation/actions.ts` |
 | Share target | `app/atelier/share-receive/route.ts`, `app/atelier/share-triage/`, `components/atelier/ShareTriageClient.tsx` |
 | Offline queue | `lib/mobile/offline-work-queue.ts`, `components/mobile/AtelierOfflineFlush.tsx` |
 | R2 | `lib/r2-s3-object.ts`, `lib/r2-s3-object-get.ts` |

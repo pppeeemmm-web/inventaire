@@ -2,7 +2,7 @@
 
 _Version-controlled checklist + non-binding roadmap items. Prefer this file over a Desktop mirror._
 
-**Last refresh: 2026-05-23** — Docs folder trimmed (`README.md`, `BROADCAST.md`; V5 plan canonical; `ROADMAP.md` merged here). Mobile field-tool Phases 1–8 shipped. **`/works` gallery deferred** (do not commit `WorksClient.tsx` WIP until that track reopens).
+**Last refresh: 2026-05-25** — Constellation UI split (shared + toolbar + tool rail + side panel). Ops: O1 GRANT audit + R2 lifecycle on `paintings` verified by owner. **`/works` gallery deferred** (do not commit `WorksClient.tsx` WIP until that track reopens).
 
 ---
 
@@ -10,18 +10,16 @@ _Version-controlled checklist + non-binding roadmap items. Prefer this file over
 
 | # | Track | Item | Notes |
 |---|--------|------|--------|
-| 1 | **Ops** | O1 + grant audit queries | Deadline 2026-10-30 (existing projects) |
-| 2 | **Ops** | Cloudflare lifecycle `recycle/` 90d, `ledger/` 30d | Console, one-time |
-| 3 | **Dev** | Phase 8 — remaining `aria-label` on icon buttons | Partial 2026-05-15: drawer, pipeline, production, inventory filters, hub/landing tests |
-| 4 | **Dev** | Block A — **A0** Supabase cast cleanup | ~40 files; run `gen:types` after each migration |
-| 5 | **Dev** | Block C — **C2** Pipeline decomposition + `AbortController` | After A.3 toolbar work |
-| 6 | **Deferred** | **`/works` gallery + F1** | WIP paused; see Desktop section below |
+| 1 | **Dev** | Block C — **C2** Pipeline decomposition + `AbortController` | After A.3 toolbar work |
+| 2 | **Dev** | Block A — **A0** Supabase cast cleanup | ~40 files; run `gen:types` after each migration |
+| 3 | **Dev** | Constellation — canvas redraw / export / handlers split | Toolbar, rail, side panel done 2026-05-25 |
+| 4 | **Deferred** | **`/works` gallery + F1** | WIP paused; see Desktop section below |
 
 ---
 
 ## Operations — time-sensitive
 
-- [ ] **O1** Pre-Oct-30 2026 Supabase GRANT audit. Run [`supabase/sql/grant_audit_queries.sql`](../supabase/sql/grant_audit_queries.sql), write remediation migrations.
+- [x] **O1** Pre-Oct-30 2026 Supabase GRANT audit — run 2026-05-25 (`run-grant-audit.ps1` / `grant_audit_queries.sql`).
 - [ ] **O2** R2 access key rotation; document rotation date in `CLAUDE.md` Phase D.
 - [ ] **O3** Broadcast Bearer token rotation runbook → `SYSTEM_LEDGER.md`.
 - [ ] **O4** Quarterly DB backup recovery drill (per `BACKUP_RECOVERY.md`).
@@ -35,7 +33,7 @@ _Version-controlled checklist + non-binding roadmap items. Prefer this file over
 - [ ] Re-run **`npm run gen:types`** after each new `public` table migration.
 - [ ] GH secret `SUPABASE_DB_URL` for `audit-prune.yml`; sanity-check `audit_log_prune()` before enabling workflow.
 - [ ] Staging AVIF upload smoke (R2 objects + thumbs).
-- [ ] Cloudflare lifecycle: `recycle/` 90d, `ledger/` 30d on `paintings` (and `vault` if used).
+- [x] Cloudflare lifecycle: `recycle/` 90d, `ledger/` 30d on `paintings` — configured 2026-05-25 (and `vault` if used).
 
 ## Phase 0 remainders
 
@@ -57,6 +55,7 @@ _Version-controlled checklist + non-binding roadmap items. Prefer this file over
 - [ ] **C2** `app/atelier/pipeline/_components/Pipeline.tsx` → Gantt / deadline / reminders panels; `AbortController` on fetches.
 - [ ] **C3** `Exhibitions.tsx` → steps + floor-plan panels.
 - [x] **C4** `docs/CONSTELLATION.md`.
+- [x] **C-partial** Constellation — `constellation-shared`, toolbar, tool rail, side panel (2026-05-25); canvas redraw/export/handlers remain.
 - [x] **C-partial** `pipeline-shared.ts`, list panel extractions.
 - [ ] WorkDrawer further decomposition (`DrawerContent`).
 
@@ -86,7 +85,7 @@ _Version-controlled checklist + non-binding roadmap items. Prefer this file over
 ### Phase 8 — a11y + observability
 
 - [x] Body ≥16px narrow; focus rings; `prefers-reduced-motion`; field `system_log`.
-- [ ] **Icon `aria-label` sweep** — *partial 2026-05-15:* WorkDrawer, Pipeline, Production, Inventory criteria, compare modal, fiscal/sales/contacts modals; Hub/landing E2E. Remaining: Vault, Exhibitions, Constellation, ExportModal, etc.
+- [x] **Icon `aria-label` sweep** — Vault, Exhibitions, Constellation, ExportModal + earlier tabs (2026-05; see `ea76b4f`). Re-open only when new icon-only controls ship without labels.
 
 ## Roadmap (no GO without decision)
 

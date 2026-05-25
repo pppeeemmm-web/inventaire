@@ -71,18 +71,33 @@ Cloud payload schema is versioned by `CONSTELLATION_MAP_VERSION` and represented
 - Not a source of truth for artwork metadata (title, price, ownership, etc.).
 - Not a version-control system for arbitrary binary assets.
 
+## Module layout (2026-05-25)
+
+Public entry unchanged: `components/atelier/ConstellationCanvas.tsx` (re-exports `Pt`, `NodeMap`; hosts canvas redraw, input handlers, export helpers).
+
+Extracted under `components/atelier/constellation/`:
+
+| Module | Responsibility |
+|--------|----------------|
+| `constellation-shared.ts` | Types, layout constants, geometry, theme/group helpers, snapshot keys |
+| `ConstellationToolbar.tsx` | View mode, link type, local/cloud maps, export, floorplan opacity |
+| `ConstellationToolRail.tsx` | Draw tools, stroke color/width, shortcuts toggle |
+| `ConstellationSidePanel.tsx` | Node inspector, custom work picker, selection + save, snapshot/cloud lists |
+
+Still in the canvas monolith: `redraw`, PNG/tiled export, wheel/drag handlers, shortcuts overlay.
+
 ## Known Constraints
 
-- Large file (`components/atelier/ConstellationCanvas.tsx`) concentrates rendering, tools, and persistence logic in one module.
+- Canvas orchestrator remains large (~2.3k LOC) until redraw/export/handlers split.
 - Manual QA coverage is stronger than automated coverage for graph-specific interactions.
 - Performance depends on thumbnail decode/cache behavior and current node count.
 
 ## Refactor Direction Guardrails
 
-- Keep behavior parity while splitting modules (render, tools, persistence, serializers).
+- Keep behavior parity while splitting remaining canvas modules (render loop, export, input).
 - Preserve persisted key compatibility or include deterministic migration.
 - Isolate server mutations in `app/**/actions.ts` (no new client-side domain writes).
-- Add focused tests for save/load/frozen-mode and edge edit flows when decomposition starts.
+- Add focused tests for save/load/frozen-mode and edge edit flows as slices land.
 
 ## Repository copy
 
