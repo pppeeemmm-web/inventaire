@@ -1,6 +1,6 @@
 import { defaultCache } from '@serwist/next/worker'
 import type { PrecacheEntry, SerwistGlobalConfig } from 'serwist'
-import { CacheFirst, ExpirationPlugin, Serwist, StaleWhileRevalidate } from 'serwist'
+import { CacheFirst, ExpirationPlugin, NetworkFirst, Serwist } from 'serwist'
 
 declare global {
   interface WorkerGlobalScope extends SerwistGlobalConfig {
@@ -30,8 +30,10 @@ const pemRuntimeCache = [
   {
     matcher: ({ request, sameOrigin }: { request: Request; sameOrigin: boolean }) =>
       sameOrigin && request.destination === 'document' && /^\/(hub|atelier)(\/|$)/.test(new URL(request.url).pathname),
-    handler: new StaleWhileRevalidate({
+    // Network-first: stale HTML after deploy references deleted /_next/static/chunks/* hashes.
+    handler: new NetworkFirst({
       cacheName: 'pem-shell-pages',
+      networkTimeoutSeconds: 8,
       plugins: [
         new ExpirationPlugin({
           maxEntries: 32,

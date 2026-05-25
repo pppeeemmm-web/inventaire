@@ -561,4 +561,24 @@ export const atelierMessages = defineMessages({
     fr: 'Retour au Hub',
     en: 'Back to Hub',
   },
+  atelier_error_title: {
+    fr: 'Erreur Atelier',
+    en: 'Atelier error',
+  },
+  atelier_error_chunk_body: {
+    fr: 'Une mise à jour de l’application est disponible. La page va se recharger pour récupérer les nouveaux fichiers.',
+    en: 'The app was updated. This page will reload to fetch the latest files.',
+  },
+  atelier_error_generic_body: {
+    fr: 'La page n’a pas pu être générée. Vérifiez la console du serveur (terminal Next) pour le détail.',
+    en: 'This page could not be rendered. Check the server console (Next terminal) for details.',
+  },
+  atelier_error_retry: {
+    fr: 'Réessayer',
+    en: 'Retry',
+  },
+  atelier_error_reload: {
+    fr: 'Recharger la page',
+    en: 'Reload page',
+  },
 })
