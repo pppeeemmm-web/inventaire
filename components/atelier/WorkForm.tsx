@@ -47,6 +47,7 @@ import type { ContactAddress } from '@/components/atelier/contact-editor-types'
 import type { ShareInboxWorkPrefill } from '@/app/atelier/share-triage/actions'
 import { attachShareInboxToWork } from '@/app/atelier/share-triage/actions'
 import { WorkFormPhysicalQr } from '@/components/atelier/WorkFormPhysicalQr'
+import { normalizeAnonymityLevel } from '@/lib/anonymity-level'
 
 // ── Props ─────────────────────────────────────────────────────────────────
 
@@ -147,7 +148,9 @@ export function WorkForm({
   // ── Ownership / flow state ────────────────────────────────────────
   const [ownStage,      setOwnStage]      = useState<OwnStageId>(() => ownStageFromStatusId(oeuvre?.statusId))
   const [contactId,     setContactId]     = useState(String(oeuvre?.LocalisationID ?? ''))
-  const [anonymityLevel, setAnonymityLevel] = useState<number>((oeuvre as any)?.anonymity_level ?? 0)
+  const [anonymityLevel, setAnonymityLevel] = useState<number>(() =>
+    normalizeAnonymityLevel((oeuvre as { anonymity_level?: unknown })?.anonymity_level),
+  )
   const [showContactModal, setShowContactModal] = useState(false)
 
   // ── Financials ────────────────────────────────────────────────────
@@ -227,7 +230,7 @@ export function WorkForm({
       needsPhoto: !!((oeuvre as { NeedsPhotograph?: boolean }).NeedsPhotograph ?? false),
       ownStage: ownStageFromStatusId(oeuvre.statusId),
       contactId: String(oeuvre.LocalisationID ?? ''),
-      anonymityLevel: (oeuvre as { anonymity_level?: number }).anonymity_level ?? 0,
+      anonymityLevel: normalizeAnonymityLevel((oeuvre as { anonymity_level?: unknown })?.anonymity_level),
       prix: String(oeuvre.Prix ?? '0'),
       tvaRate: String((oeuvre as { tva_rate?: number | null }).tva_rate ?? '0'),
       discount: String((oeuvre as { Discount?: number | null }).Discount ?? '0'),
@@ -298,7 +301,7 @@ export function WorkForm({
     setNeedsPhoto(!!d.needsPhoto)
     setOwnStage((d.ownStage as OwnStageId) || 'artist')
     setContactId(d.contactId ?? '')
-    setAnonymityLevel(typeof d.anonymityLevel === 'number' ? d.anonymityLevel : 0)
+    setAnonymityLevel(normalizeAnonymityLevel(d.anonymityLevel))
     setPrix(d.prix ?? '0')
     setTvaRate(d.tvaRate ?? '0')
     setDiscount(d.discount ?? '0')

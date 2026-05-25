@@ -223,6 +223,7 @@ export function Inventory({
   onLoadMore,
   isAdmin = false,
   onJunctionSaved,
+  onOeuvrePatched,
 }: SharedProps & {
   techniques:     { TechniqueID: number; Technique: string | null }[]
   supports:       { SupportID:   number; Support:   string | null }[]
@@ -241,11 +242,13 @@ export function Inventory({
   /** Admin-only controls in embedded WorkDrawer (field sessions, etc.). */
   isAdmin?: boolean
   onJunctionSaved?: (oeuvreId: number, themeIds: number[], groupIds: string[]) => void
+  onOeuvrePatched?: (oeuvreId: number, patch: Partial<Oeuvre>) => void
 }) {
   const { t } = useI18n()
   const embeddingStatusMap = useNonOkEmbeddingStatuses()
 
   const router = useRouter()
+  const [panelDrawerDirty, setPanelDrawerDirty] = useState(false)
 
   const offerSelectionUndo = useCallback(
     (prev: Set<number>) => {
@@ -325,12 +328,29 @@ export function Inventory({
   const nextCritId = useRef(0)
   const panelDrawerGuardRef = useRef<WorkDrawerGuardHandle>(null)
 
+  const handlePanelWorkSaved = useCallback(
+    (oeuvreId: number, patch: Partial<Oeuvre>) => {
+      onOeuvrePatched?.(oeuvreId, patch)
+      setFocused((prev) => (prev?.OeuvreID === oeuvreId ? { ...prev, ...patch } : prev))
+    },
+    [onOeuvrePatched],
+  )
+
+  useEffect(() => {
+    if (!focused || panelDrawerDirty) return
+    const fresh = oeuvres.find((x) => x.OeuvreID === focused.OeuvreID)
+    if (fresh && fresh !== focused) setFocused(fresh)
+  }, [oeuvres, focused, panelDrawerDirty])
+
   const focusRowGuarded = useCallback((o: Oeuvre) => {
     if (!showPreview) {
       setFocused(o)
       return
     }
-    if (focused?.OeuvreID === o.OeuvreID) return
+    if (focused?.OeuvreID === o.OeuvreID) {
+      if (focused !== o) setFocused(o)
+      return
+    }
     if (!focused) {
       setFocused(o)
       return
@@ -943,6 +963,8 @@ export function Inventory({
                 setExpanded={setPreviewExpanded}
                 isAdmin={isAdmin}
                 onJunctionSaved={onJunctionSaved}
+                onWorkSaved={handlePanelWorkSaved}
+                onDrawerDirtyChange={setPanelDrawerDirty}
               />
             )}
           </>

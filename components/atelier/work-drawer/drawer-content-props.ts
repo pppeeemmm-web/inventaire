@@ -71,4 +71,6 @@ export type DrawerContentProps = {
   /** Admin-only affordances inside the drawer (e.g. delete field sessions). */
   isAdmin?: boolean
   onJunctionSaved?: (oeuvreId: number, themeIds: number[], groupIds: string[]) => void
+  /** After a committed save — patch catalogue + drawer `o` so confidentiality survives reopen. */
+  onWorkSaved?: (oeuvreId: number, patch: Partial<Oeuvre>) => void
 }

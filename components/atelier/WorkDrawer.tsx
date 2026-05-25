@@ -58,6 +58,8 @@ interface Props {
   isAdmin?: boolean
   /** Keep theme/group junction client maps in sync after saveWork. */
   onJunctionSaved?: (oeuvreId: number, themeIds: number[], groupIds: string[]) => void
+  /** Patch catalogue row + open work after committed save (e.g. anonymity_level). */
+  onWorkSaved?: (oeuvreId: number, patch: Partial<Oeuvre>) => void
 }
 
 /** Parent can call `runGuarded(() => …)` before changing the open work (e.g. list click) so unsaved edits prompt first. */
@@ -78,6 +80,7 @@ export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function Work
   onDrawerDirtyChange,
   isAdmin = false,
   onJunctionSaved,
+  onWorkSaved,
 }, ref) {
   const isPanel = mode === 'panel'
   const narrow = useMediaQuery('(max-width: 767px)')
@@ -248,6 +251,7 @@ export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function Work
             onDrawerDirtyChange={onDrawerDirtyChange}
             isAdmin={isAdmin}
             onJunctionSaved={onJunctionSaved}
+            onWorkSaved={onWorkSaved}
           />
         </div>
       </div>
@@ -313,6 +317,7 @@ export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function Work
             onDrawerDirtyChange={onDrawerDirtyChange}
             isAdmin={isAdmin}
             onJunctionSaved={onJunctionSaved}
+            onWorkSaved={onWorkSaved}
           />
         </div>
       </div>

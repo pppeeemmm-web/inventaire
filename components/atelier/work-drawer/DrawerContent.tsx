@@ -46,6 +46,7 @@ import { emitJunctionSaved } from '@/lib/atelier/junction-refresh-bus'
 import { setsEqualNum, setsEqualStr } from './drawer-content-utils'
 import { CreatableSelect, FIS, Label, SectionTitle, Switch, WfSwitch, cap } from './drawer-widgets'
 import { WorkFormPhysicalQr } from '@/components/atelier/WorkFormPhysicalQr'
+import { normalizeAnonymityLevel } from '@/lib/anonymity-level'
 
 function withCacheKey(src: string, cacheKey?: string): string {
   if (!src || !cacheKey) return src
@@ -88,6 +89,7 @@ export function DrawerContent({
   onDrawerDirtyChange,
   isAdmin = false,
   onJunctionSaved,
+  onWorkSaved,
 }: DrawerContentProps) {
   const { t, lang } = useI18n()
   const router = useRouter()
@@ -131,7 +133,9 @@ export function DrawerContent({
   const [showNewContact, setShowNewContact] = useState(false)
   const [newC, setNewC] = useState({ inst: '', prenom: '', nom: '', role: '', email: '', phone: '', ville: '', pays: '', notes: '' })
   const [creatingContact, setCreatingContact] = useState(false)
-  const [anonymityLevel, setAnonymityLevel] = useState<number>((o as { anonymity_level?: number }).anonymity_level ?? 0)
+  const [anonymityLevel, setAnonymityLevel] = useState<number>(() =>
+    normalizeAnonymityLevel((o as { anonymity_level?: unknown }).anonymity_level),
+  )
 
   // ── Gift modal state ───────────────────────────────────
   const [showGiftModal, setShowGiftModal]       = useState(false)
@@ -359,7 +363,7 @@ export function DrawerContent({
     setPaymentDone(!!((o as { PaymentDone?: boolean; is_paid?: boolean | null }).PaymentDone ?? (o as { is_paid?: boolean | null }).is_paid ?? false))
     setSelThemes(new Set(oeuvreThemeMap.get(o.OeuvreID) ?? []))
     setSelGroups(new Set(oeuvreGroupMap.get(o.OeuvreID) ?? []))
-    setAnonymityLevel((o as { anonymity_level?: number }).anonymity_level ?? 0)
+    setAnonymityLevel(normalizeAnonymityLevel((o as { anonymity_level?: unknown }).anonymity_level))
     setLocalContacts(initialContacts)
     setCommentaires('')
     setHistorique('')
@@ -568,7 +572,7 @@ export function DrawerContent({
     if (String((o as { tva_rate?: number | null }).tva_rate ?? '0') !== tvaRate) return true
     const baselinePaid = !!((o as { PaymentDone?: boolean; is_paid?: boolean | null }).PaymentDone ?? (o as { is_paid?: boolean | null }).is_paid ?? false)
     if (paymentDone !== baselinePaid) return true
-    if (((o as { anonymity_level?: number }).anonymity_level ?? 0) !== anonymityLevel) return true
+    if (normalizeAnonymityLevel((o as { anonymity_level?: unknown }).anonymity_level) !== anonymityLevel) return true
     if (!setsEqualNum(selThemes, baselineThemes)) return true
     if (!setsEqualStr(selGroups, baselineGroups)) return true
     if (commentaires !== noteBaseline.c) return true
@@ -716,6 +720,8 @@ export function DrawerContent({
         toast.success(t('wf_save_pending_toast'))
         return true
       }
+      const savedLevel = normalizeAnonymityLevel(anonymityLevel)
+      onWorkSaved?.(oid, { anonymity_level: savedLevel })
       const savedThemes = Array.from(selThemes)
       const savedGroups = Array.from(selGroups)
       onJunctionSaved?.(oid, savedThemes, savedGroups)
@@ -799,6 +805,7 @@ export function DrawerContent({
     prixFinalComputed,
     router,
     onJunctionSaved,
+    onWorkSaved,
   ])
   /* eslint-enable react-hooks/exhaustive-deps */
 
@@ -869,7 +876,7 @@ export function DrawerContent({
     setNeedsPhoto(!!d.needsPhoto)
     setOwnStage((d.ownStage as OwnStageId) || 'artist')
     setContactId(d.contactId ?? '')
-    setAnonymityLevel(typeof d.anonymityLevel === 'number' ? d.anonymityLevel : 0)
+    setAnonymityLevel(normalizeAnonymityLevel(d.anonymityLevel))
     setPrix(d.prix ?? '0')
     setTvaRate(d.tvaRate ?? '0')
     setDiscount(d.discount ?? '0')

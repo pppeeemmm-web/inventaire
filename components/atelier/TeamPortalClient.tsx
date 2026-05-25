@@ -591,6 +591,17 @@ export function TeamPortalClient({
   const [drawerDirty, setDrawerDirty] = useState(false)
   const pendingNavRef = useRef<(() => void) | null>(null)
 
+  const patchOeuvreInCatalogue = useCallback((oeuvreId: number, patch: Partial<Oeuvre>) => {
+    setOeuvres((prev) => prev.map((row) => (row.OeuvreID === oeuvreId ? { ...row, ...patch } : row)))
+    setInspected((prev) => (prev?.OeuvreID === oeuvreId ? { ...prev, ...patch } : prev))
+  }, [])
+
+  useEffect(() => {
+    if (!inspected || drawerDirty) return
+    const fresh = oeuvres.find((x) => x.OeuvreID === inspected.OeuvreID)
+    if (fresh && fresh !== inspected) setInspected(fresh)
+  }, [oeuvres, inspected, drawerDirty])
+
   const runPendingNav = useCallback(() => {
     const fn = pendingNavRef.current
     pendingNavRef.current = null
@@ -650,7 +661,10 @@ export function TeamPortalClient({
   }, [oeuvres])
 
   const openInspected = useCallback((next: Oeuvre | null) => {
-    if (next && inspected && next.OeuvreID === inspected.OeuvreID) return
+    if (next && inspected && next.OeuvreID === inspected.OeuvreID) {
+      if (next !== inspected) setInspected(next)
+      return
+    }
     if (!inspected) {
       setInspected(next)
       return
@@ -1385,6 +1399,7 @@ export function TeamPortalClient({
               sessionStorage.setItem('pem_open_contact', String(id))
             }}
             onJunctionSaved={onJunctionSaved}
+            onOeuvrePatched={patchOeuvreInCatalogue}
           />
         ) : null}
       </div>
@@ -1412,6 +1427,7 @@ export function TeamPortalClient({
         groups={groups}
         presentations={presentations}
         onJunctionSaved={onJunctionSaved}
+        onWorkSaved={patchOeuvreInCatalogue}
       />
 
       {/* ── Compare Modal ────────────────────────────────────────── */}
