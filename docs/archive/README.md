@@ -1,16 +1,19 @@
 # Archive
 
-Superseded or session-specific docs. **Do not execute plans from here** — use [`../PEM_HYBRID_REFACTOR_PLAN_V5.md`](../PEM_HYBRID_REFACTOR_PLAN_V5.md) and [`../TODO.md`](../TODO.md).
+Completed programmes, superseded plans, and slice handoffs. **Do not execute from here.**
 
-| File | Superseded by / note |
-|------|----------------------|
-| `PEM_HYBRID_REFACTOR_PLAN.md` | `PEM_HYBRID_REFACTOR_PLAN_V5.md` |
+**Live work:** [`../TODO.md`](../TODO.md) · truth order in [`../README.md`](../README.md).
+
+| File | Note |
+|------|------|
+| [`PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md) | V5 programme — **complete** (2026-05-25; Slices 1–8 on `main`) |
+| `PEM_HYBRID_REFACTOR_PLAN.md` | Superseded by V5 |
 | `BROADCAST_PHASE2_COMPLETE.md` | `BROADCAST.md` + `BROADCAST_OUTSIDE_CHAIN.md` |
 | `STATUS.md` | `TODO.md` (2026-05-15 snapshot) |
-| `HANDOFF_SLICE1.md` | Slice 1 PWA — open in `TODO.md`; handoff reference only |
-| `HANDOFF_SLICE3.md` | Slice 3 + 3B route segmentation (complete 2026-05-23) |
-| `HANDOFF_SLICE4.md` | Slice 4 i18n / `defineMessages` / `i18n:check` (complete 2026-05-23) |
-| `HANDOFF_SLICE5.md` | Slice 5 graph foundation SQL (complete 2026-05-23) |
-| `HANDOFF_SLICE6.md` | Slice 6 Pivot Atlas / `edge_fact` (complete 2026-05-23) |
-| `HANDOFF_SLICE7.md` | Slice 7 analog fallbacks Phase 1 (complete 2026-05-23) |
-| `HANDOFF_SLICE8.md` | Slice 8 embeddings (complete 2026-05-23) |
+| `HANDOFF_SLICE1.md` | Slice 1 PWA / offline |
+| `HANDOFF_SLICE3.md` | Slice 3 + 3B route segmentation |
+| `HANDOFF_SLICE4.md` | Slice 4 i18n / `defineMessages` / `i18n:check` |
+| `HANDOFF_SLICE5.md` | Slice 5 graph foundation SQL |
+| `HANDOFF_SLICE6.md` | Slice 6 Pivot Atlas / `edge_fact` |
+| `HANDOFF_SLICE7.md` | Slice 7 analog fallbacks + graph CSV backup |
+| `HANDOFF_SLICE8.md` | Slice 8 embeddings |

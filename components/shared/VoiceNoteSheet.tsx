@@ -395,6 +395,7 @@ export function VoiceNoteSheet({
         display: 'flex',
         alignItems: 'flex-end',
         justifyContent: 'center',
+        pointerEvents: 'auto',
       }}
       onClick={onClose}
     >

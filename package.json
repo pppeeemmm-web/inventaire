@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "i18n:check": "node scripts/i18n-check.mjs",
+    "atelier:chrome:check": "node scripts/atelier-chrome-check.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "gen:types": "node scripts/gen-supabase-types.mjs",
     "regen:work-thumbs": "node scripts/regen-work-thumbs.mjs",

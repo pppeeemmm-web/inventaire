@@ -16,6 +16,7 @@ function AtelierBootSplash() {
   const label = dict[lang].loadingAtelier
   return (
     <div
+      data-testid="atelier-boot-splash"
       style={{
         position: 'fixed',
         inset: 0,

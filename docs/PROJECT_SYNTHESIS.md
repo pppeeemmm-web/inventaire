@@ -144,7 +144,7 @@ From repo root: `pwsh scripts/dev.ps1` (frees port 3000, prints LAN URL for mobi
 
 **Slice 3 + 3B (2026-05-23):** All 25 Atelier tabs are App Router segment routes; `/atelier` redirects to `/atelier/overview`; legacy `?tab=` redirects preserve other query params. **Handoff:** [archive/HANDOFF_SLICE3.md](./archive/HANDOFF_SLICE3.md).
 
-**Canonical route / tab map:** [SITE_MAP.md](../SITE_MAP.md) (Mermaid, deep links, segment routes). **Pending work:** [TODO.md](./TODO.md). **Refactor plan:** [PEM_HYBRID_REFACTOR_PLAN_V5.md](./PEM_HYBRID_REFACTOR_PLAN_V5.md).
+**Canonical route / tab map:** [SITE_MAP.md](../SITE_MAP.md) (Mermaid, deep links, segment routes). **Pending work:** [TODO.md](./TODO.md). **V5 refactor:** complete on `main` — plan archived at [archive/PEM_HYBRID_REFACTOR_PLAN_V5.md](./archive/PEM_HYBRID_REFACTOR_PLAN_V5.md).
 
 ---
 
@@ -198,4 +198,4 @@ See [`docs/README.md`](./README.md) for the full list. High-signal:
 - [ ] New first-party HTTP API besides broadcast.
 - [ ] Major orchestrator change (e.g. no longer `TeamPortalClient`-centric).
 
-**Last reviewed (2026-05-23):** Docs archive sweep — slice handoffs in `docs/archive/`; slim `docs/README.md`; V5 plan + `TODO.md` canonical.
+**Last reviewed (2026-05-25):** V5 programme marked complete in `TODO.md` / plan status banner; `TODO.md` is the live checklist.

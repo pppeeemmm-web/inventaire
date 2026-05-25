@@ -5,6 +5,7 @@
 
 import { useState, useTransition } from 'react'
 import { useI18n } from '@/lib/i18n/context'
+import { PemModalOverlay } from '@/components/shared/PemModalOverlay'
 import { batchEdit, createTheme, type BatchChanges } from '@/app/atelier/selection/actions'
 
 type ContactAddress = { id?: number; contact_id: number; label: string; adresse: string | null; ville: string | null; pays: string | null }
@@ -208,7 +209,10 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, a
     .sort((a, b) => a.name.localeCompare(b.name))
 
   return (
-    <Overlay onClose={onClose}>
+    <PemModalOverlay
+      onClose={onClose}
+      panelStyle={{ padding: 32, width: 620, maxWidth: '95vw', maxHeight: '90vh', overflow: 'auto' }}
+    >
       <div className="t-eyebrow" style={{ marginBottom: 6 }}>{t('batchEdit')}</div>
       <div className="t-mono-sm" style={{ color: 'var(--tx3)', marginBottom: 24 }}>
         {ids.length} {t('works')}
@@ -504,7 +508,7 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, a
           {pending ? `${t('modifying')}…` : `${t('applyTo')} ${ids.length} ${t('works')}`}
         </button>
       </div>
-    </Overlay>
+    </PemModalOverlay>
   )
 }
 
@@ -551,12 +555,3 @@ function TriField({ label, value, onChange, t, testId }: { label: string; value:
   )
 }
 
-function Overlay({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
-  return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 80, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--bg1)', border: '1px solid var(--bd)', padding: 32, width: 620, maxWidth: '95vw', maxHeight: '90vh', overflow: 'auto' }}>
-        {children}
-      </div>
-    </div>
-  )
-}

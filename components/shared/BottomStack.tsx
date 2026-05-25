@@ -4,14 +4,15 @@ import type { CSSProperties, ReactNode } from 'react'
 
 /**
  * Atelier fixed bottom / overlay z-index ladder.
- * WorkDrawer overlay: 60 · BatchEdit/Export modals: 80 · VoiceNoteSheet: 155.
+ * WorkDrawer overlay: 60 · BatchEdit/Export modals (portaled): 152 · VoiceNoteSheet: 155.
  */
 export const PEM_Z_INDEX = {
   bottomStackRoot: 40,
   mobileActionBar: 50,
   workDrawer: 60,
   curationDock: 75,
-  modal: 80,
+  /** Portaled to document.body — above narrow sidebar (150), below voice sheet (155). */
+  modal: 152,
   voiceNoteSheet: 155,
 } as const
 
@@ -23,7 +24,10 @@ const LAYER_Z: Record<BottomStackLayerId, number> = {
   voiceNote: PEM_Z_INDEX.voiceNoteSheet,
 }
 
-/** Non-interactive root for portal bottom chrome; children opt in with `BottomStackLayer`. */
+/**
+ * Non-interactive root for portal bottom chrome; children opt in with `BottomStackLayer`.
+ * Modals: `PemModalOverlay` only — enforced by `npm run atelier:chrome:check`.
+ */
 export function BottomStack({ children }: { children: ReactNode }) {
   return (
     <div

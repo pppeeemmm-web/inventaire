@@ -6,6 +6,8 @@
 
 import { useState, useTransition, useEffect, useCallback } from 'react'
 import { useI18n } from '@/lib/i18n/context'
+import { PemModalOverlay } from '@/components/shared/PemModalOverlay'
+import { PEM_Z_INDEX } from '@/components/shared/BottomStack'
 import {
   generateExport,
   batchEdit,
@@ -325,8 +327,19 @@ export function ExportModal({
   const isEmbedHeavy = cfg.format === 'html' && cfg.imageEmbed === 'embedded' && cfg.fields.image && ids.length > 20
 
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 80, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--bg1)', border: '1px solid var(--bd)', width: 680, maxWidth: '95vw', maxHeight: '90vh', overflow: 'auto', display: 'flex', flexDirection: 'column' }} role="dialog" aria-modal="true" aria-labelledby="export-modal-title">
+    <PemModalOverlay
+      onClose={onClose}
+      panelStyle={{
+        width: 680,
+        maxWidth: '95vw',
+        maxHeight: '90vh',
+        overflow: 'auto',
+        display: 'flex',
+        flexDirection: 'column',
+        padding: 0,
+      }}
+    >
+      <div role="dialog" aria-modal="true" aria-labelledby="export-modal-title" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
 
         {/* Header */}
         <div style={{ padding: '20px 28px 16px', borderBottom: '1px solid var(--bd)', flexShrink: 0 }}>
@@ -582,8 +595,9 @@ export function ExportModal({
           style={{
             position: 'fixed',
             inset: 0,
-            zIndex: 90,
+            zIndex: PEM_Z_INDEX.modal + 1,
             background: 'rgba(0,0,0,0.55)',
+            pointerEvents: 'auto',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -755,7 +769,7 @@ export function ExportModal({
           </div>
         </div>
       )}
-    </div>
+    </PemModalOverlay>
   )
 }
 

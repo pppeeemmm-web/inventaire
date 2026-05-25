@@ -22,7 +22,7 @@ import { routeTabFromPathname } from '@/lib/atelier/route-tab-from-pathname'
 import type { Lang } from '@/lib/i18n/dictionary'
 import { useAtelierNarrow } from '@/lib/atelier/use-atelier-narrow'
 import { useMediaQuery } from '@/lib/useMediaQuery'
-import { BottomStack, PEM_Z_INDEX } from '@/components/shared/BottomStack'
+import { BottomStack, BottomStackLayer, PEM_Z_INDEX } from '@/components/shared/BottomStack'
 import { SegmentRoutePanel } from '@/components/atelier/team-portal-segment-panel'
 import { OeuvresSubsetBanner } from '@/components/atelier/OeuvresSubsetBanner'
 import { AtelierCatalogueTotalBadge } from '@/components/atelier/AtelierCatalogueTotalBadge'
@@ -1467,7 +1467,7 @@ export function TeamPortalClient({
       )}
 
       <BottomStack>
-        {showDock && (
+        <BottomStackLayer layer="curationDock" visible={showDock}>
           <CurationDock
             selection={selection}
             setSelection={setSelection}
@@ -1489,16 +1489,18 @@ export function TeamPortalClient({
             onSaveGroup={handleSaveGroup}
             onCompare={() => setShowCompare(true)}
           />
-        )}
+        </BottomStackLayer>
 
+        <BottomStackLayer layer="voiceNote" visible={voiceNoteSheetOpen}>
         <VoiceNoteSheet
           open={voiceNoteSheetOpen}
           onClose={() => setVoiceNoteSheetOpen(false)}
           oeuvreOptions={oeuvres.map((o) => ({ OeuvreID: o.OeuvreID, Titre: o.Titre }))}
           onSaved={() => setVoiceNotesTick((n) => n + 1)}
         />
+        </BottomStackLayer>
 
-        {showMobileActionBar && (
+        <BottomStackLayer layer="mobileActionBar" visible={showMobileActionBar}>
           <MobileActionBar
             t={t as (k: string) => string}
             onCapture={() => void router.push(isAdmin ? '/atelier/session/new' : atelierTabHref('journal'))}
@@ -1507,7 +1509,7 @@ export function TeamPortalClient({
             onReminders={openFieldReminders}
             onNewWork={() => void router.push('/atelier/works/new')}
           />
-        )}
+        </BottomStackLayer>
       </BottomStack>
 
     </div>

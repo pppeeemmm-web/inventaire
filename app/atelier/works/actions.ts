@@ -8,11 +8,14 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/types/supabase.generated'
 import { seqFromFilename, STATUS_ID_ARCHIVE_ARTISTE, STATUS_IDS_PUBLIC } from '@/lib/data'
-import { makeImageStorageFilename, validateWorkImageBuffer } from '@/lib/image-upload'
+import {
+  makeImageStorageFilename,
+  normalizeImageToAvifPair,
+  validateWorkImageBuffer,
+} from '@/lib/image-upload'
 import { pendingPayloadFromFormData } from '@/lib/work-pending-keys'
 import type { WorkImage, Oeuvre } from '@/lib/types/database'
 import crypto from 'crypto'
-import sharp from 'sharp'
 import { logError } from '@/lib/error-reporter/server'
 import { logSystemEvent } from '@/lib/utils/logging'
 import {
@@ -950,41 +953,9 @@ async function prepareWorkImageUpload(file: File): Promise<PreparedWorkImageUplo
     const check = await validateWorkImageBuffer(buf)
     if ('error' in check) return { error: check.error }
 
-    const artist =
-      process.env.IMAGE_EXIF_ARTIST?.trim() || 'PierreEmmanuelMoulin'
-    const copyright =
-      process.env.IMAGE_EXIF_COPYRIGHT?.trim() ||
-      '© PierreEmmanuelMoulin · pppeeemmm@gmail.com'
-
-    const avifBuf = await sharp(buf)
-      .rotate()
-      .resize({
-        width: 4000,
-        height: 4000,
-        fit: 'inside',
-        withoutEnlargement: true,
-      })
-      .keepIccProfile()
-      .withExif({
-        IFD0: {
-          Artist: artist,
-          Copyright: copyright,
-        },
-      })
-      .avif({ quality: 50, effort: 4, chromaSubsampling: '4:4:4' })
-      .toBuffer()
-
-    const thumbBuf = await sharp(avifBuf)
-      .ensureAlpha()
-      .resize({
-        width: 400,
-        height: 400,
-        fit: 'inside',
-        withoutEnlargement: true,
-        background: { r: 0, g: 0, b: 0, alpha: 0 },
-      })
-      .avif({ quality: 70, effort: 3, chromaSubsampling: '4:4:4' })
-      .toBuffer()
+    const { mainBuf: avifBuf, thumbBuf } = await normalizeImageToAvifPair(buf, {
+      maxEdge: 4000,
+    })
 
     return {
       sourceBuf: buf,

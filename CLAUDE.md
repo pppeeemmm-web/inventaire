@@ -25,7 +25,7 @@ Repo operating guide. If conflict: ask owner before edit.
 - Dev: `pwsh scripts/dev.ps1` from `C:\Users\pppee\Documents\Claude\Projects\Art db\app`. Prints `Phone : http://<LAN>:3000` for Wi‑Fi testing.
 - Phone/LAN dev: use `DEV_AUTO_LOGIN_*` in `.env.local` and open `/hub` on the LAN URL — do not use Google OAuth on `192.168.*` unless that URL is in Supabase Auth redirect allowlist (otherwise login returns to production). Use your **real PEM account email** in `DEV_AUTO_LOGIN_EMAIL` (with a dev password on that Supabase user) if you need the same `work_session` rows as production; a separate `dev@…` user only sees its own (often empty) drafts.
 - `work_session` journal: any `is_team()` user can **read** all team sessions; writes stay session-owner or admin. If journal looks empty for team members, run `supabase/sql/work_session_team_read.sql` on the project DB.
-- Checks: `npm run i18n:check`, `npm run typecheck`, `npm run lint`. GitHub `ci.yml` runs all three on `main`. Hooks are not a substitute for manual verification.
+- Checks: `npm run i18n:check`, `npm run atelier:chrome:check`, `npm run typecheck`, `npm run lint`. GitHub `ci.yml` runs all four on `main`. Hooks are not a substitute for manual verification.
 - `i18n:check`: fails on missing legacy dict keys **and** hardcoded UI copy outside [`scripts/i18n-check-allowlist.json`](scripts/i18n-check-allowlist.json) (keep in sync with `.eslintrc.json` `no-hardcoded-jsx-text` overrides).
 - E2E: `npm run test:e2e`; field/mobile gated: `npm run test:e2e:field` (`ATELIER_E2E=1`, logged-in dev profile).
 - Supabase types: `npm run gen:types` after SQL applied; needs `SUPABASE_ACCESS_TOKEN` + `NEXT_PUBLIC_SUPABASE_URL` in `.env.local`.

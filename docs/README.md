@@ -14,8 +14,6 @@
 
 | [`TODO.md`](./TODO.md) | Version-controlled checklist (ops deadlines, dev blocks, optional follow-ups) |
 
-| [`PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md) | Active multi-slice refactor plan; Slices 3–8 **done**, Slice 7 Phase 2 + Slice 1 PWA open |
-
 | [`feature-graph.md`](./feature-graph.md) | Graph layer index (Slices 5–8 + export/backup pointers) |
 
 | [`PROJECT_SYNTHESIS.md`](./PROJECT_SYNTHESIS.md) | Onboarding: stack boundaries, broadcast chain, where truth lives |
@@ -32,7 +30,7 @@
 
 
 
-**Archive:** [`archive/`](./archive/) — completed slice handoffs, superseded plans, and session snapshots (do not execute from there).
+**Archive:** [`archive/`](./archive/) — **V5 programme plan**, slice handoffs, superseded plans (do not execute from there). Live checklist = [`TODO.md`](./TODO.md).
 
 
 

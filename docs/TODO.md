@@ -2,7 +2,7 @@
 
 _Version-controlled checklist + non-binding roadmap items. Prefer this file over a Desktop mirror._
 
-**Last refresh: 2026-05-25** — Constellation UI split (shared + toolbar + tool rail + side panel). Ops: O1 GRANT audit + R2 lifecycle on `paintings` verified by owner. **`/works` gallery deferred** (do not commit `WorksClient.tsx` WIP until that track reopens).
+**Last refresh: 2026-05-25** — **V5 programme closed** (owner sign-off; slices 1–8 on `main`). Constellation UI split. Ops: O1 GRANT audit + R2 lifecycle on `paintings` verified. **`/works` gallery deferred** (do not commit `WorksClient.tsx` WIP until that track reopens).
 
 ---
 
@@ -115,32 +115,28 @@ _Version-controlled checklist + non-binding roadmap items. Prefer this file over
 - [ ] Platform filter in Broadcast tab ([`BROADCAST.md`](./BROADCAST.md)).
 - [ ] VIP unread cursor beyond fetched window.
 
-## V5 refactor (see plan)
+## V5 refactor — **complete** (owner sign-off 2026-05-25; on `main`)
 
-- [x] **Slice 3 — Atelier tab route segmentation** (2026-05-23) — 16 segment routes, QR bridge, `BottomStack`, `@container atelier` portal chrome, `TeamPortalClient` trim. Handoff: [`archive/HANDOFF_SLICE3.md`](./archive/HANDOFF_SLICE3.md).
-- [x] **Slice 3B — Legacy tab segments** (2026-05-23) — `overview`, `map`, `journal`, `system`, `portfolio`, `contacts`, `stock`, `site`, `analytics`; `/atelier` → overview; `OverviewTab` extract. Handoff: [`archive/HANDOFF_SLICE3.md`](./archive/HANDOFF_SLICE3.md).
-- [x] **Slice 5 — Graph foundation** (2026-05-23) — SQL applied; `gen:types`; constellation bundle + insert uids. Handoff: [`archive/HANDOFF_SLICE5.md`](./archive/HANDOFF_SLICE5.md).
-- [x] **Slice 6 — Pivot Atlas** (2026-05-23) — `08_edge_fact_view.sql`, Reports atlas. Handoff: [`archive/HANDOFF_SLICE6.md`](./archive/HANDOFF_SLICE6.md).
-- [x] **Slice 8 — Embeddings** (2026-05-23) — `07`+`09` SQL, embed-worker, semantic palette search verified. Handoff: [`archive/HANDOFF_SLICE8.md`](./archive/HANDOFF_SLICE8.md).
-- [x] **Slice 7 — Analog fallbacks (Phase 1)** — admin CSV export (`/api/export/csv`), portfolio PDF graph appendix, `AGENTS.md` Supabase line. Handoff: [`archive/HANDOFF_SLICE7.md`](./archive/HANDOFF_SLICE7.md).
-- [ ] **Slice 7 — Phase 2** — weekly R2 graph CSV (`graph-csv-backup.yml`); verify one Actions run. Optional: `feature-i18n.md`, `feature-embeddings.md`.
-- [x] **Docs archive sweep** (2026-05-23) — completed slice handoffs → `docs/archive/`; slim `docs/README.md`; cross-links updated.
+Programme plan + slice handoffs: [`archive/PEM_HYBRID_REFACTOR_PLAN_V5.md`](./archive/PEM_HYBRID_REFACTOR_PLAN_V5.md) and [`archive/`](./archive/) (historical only).
 
-**Optional backlog (post–Slice 3, owner chooses vs Slice 4 i18n):**
-
-- [ ] Segment remaining legacy `?tab=` tabs: overview, map, journal, system, portfolio, contacts, stock (+ site/analytics aliases)
-- [ ] Per-route bundle size check (aspirational ≤ 250 kB)
-- [ ] **Atelier shell reload on segment tab hop** — **client fix on `main` (2026-05-23):** `(portal)/layout` persists shell. Remaining: slim RSC loaders for Audit/Logistics.
-- [ ] **Slice 1 — PWA / offline (Phase 1)** — local draft: Serwist + blob offline queue + `/~offline`. Handoff: [`archive/HANDOFF_SLICE1.md`](./archive/HANDOFF_SLICE1.md). Phase 2: Background Sync, R2 Cache-Control, shell revalidate tags.
-
+- [x] **Slice 1 — PWA / offline** — Serwist (`app/sw.ts`), `/~offline`, offline work queue + flush, `AtelierSWRegistrar` on hub/atelier layouts.
+- [x] **Slice 3 — Atelier tab route segmentation** (2026-05-23) — 16 segment routes, QR bridge, `BottomStack`, `@container atelier` portal chrome, `TeamPortalClient` trim.
+- [x] **Slice 3B — Legacy tab segments** (2026-05-23) — `overview`, `map`, `journal`, `system`, `portfolio`, `contacts`, `stock`, `site`, `analytics`; `/atelier` → overview; `OverviewTab` extract.
 - [x] **Slice 4 (core)** — `resolveMessage` + `t()` precedence (2026-05-23).
-- [x] **Slice 4 (segment tabs)** — Exhibitions / Fiscal / Inventory / Sales hardcoded copy → `defineMessages`; ESLint off removed for those paths.
-- [x] **i18n CI ratchet** — `i18n:check` fails on blocking hardcoded hotspots; allowlist synced with ESLint overrides (`scripts/i18n-check-allowlist.json`); `.github/workflows/ci.yml`.
+- [x] **Slice 4 (segment tabs)** — Exhibitions / Fiscal / Inventory / Sales → `defineMessages`; ESLint off removed for those paths.
 - [x] **Slice 4 (panels)** — allowlist empty; `CurationPanel`, `PortfolioConfigShell`, `WorldMapTab` migrated (2026-05-23).
+- [x] **i18n CI ratchet** — `i18n:check` + allowlist synced with ESLint; `.github/workflows/ci.yml`.
+- [x] **Slice 5 — Graph foundation** (2026-05-23) — SQL applied; `gen:types`; constellation bundle + insert uids.
+- [x] **Slice 6 — Pivot Atlas** (2026-05-23) — `08_edge_fact_view.sql`, Reports atlas.
+- [x] **Slice 7 — Analog fallbacks** — Phase 1: `/api/export/csv`, portfolio PDF graph appendix; Phase 2: `graph-csv-backup.yml` + `scripts/backup-graph-csv.sh`.
+- [x] **Slice 8 — Embeddings** (2026-05-23) — `07`+`09` SQL, embed-worker, semantic palette search verified locally.
+- [x] **Atelier shell across segment tabs** — `(portal)/layout.tsx` + `shellPersistsAcrossTabs`; segment routes do not reload full shell.
+- [x] **Docs archive sweep** (2026-05-23) — completed slice handoffs → `docs/archive/`; slim `docs/README.md`.
 
-**V5 sequence (locked):** Slices 3–8 ✓ on `main` (Slice 8: SQL + worker + semantic search verified locally).
+**Post-V5 optional (not V5 programme):**
 
-Active plan: [`PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md) (Slice 7 Phase 2 · Slice 1 PWA).
+- [ ] Per-route bundle size check (aspirational ≤ 250 kB).
+- [ ] Slim RSC cold-start for Audit/Logistics only (shell already persists; catalogue deferred per tab).
 
 ## Guardrails (not tasks)
 

@@ -1,11 +1,10 @@
 'use server'
 
 import crypto from 'crypto'
-import sharp from 'sharp'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { logError, logWarn } from '@/lib/error-reporter/server'
-import { validateWorkImageBuffer } from '@/lib/image-upload'
+import { normalizeImageToAvifPair, validateWorkImageBuffer } from '@/lib/image-upload'
 import { r2PutObject, r2DeleteObject, r2GetObjectBuffer } from '@/lib/r2-s3-object'
 import { addWorkImage } from '@/app/atelier/works/actions'
 import {
@@ -1440,29 +1439,10 @@ async function putAvifPair(
   uploadedBy: string,
   itemId?: string,
 ): Promise<{ error: string } | { ok: true }> {
-  const artist =
-    process.env.IMAGE_EXIF_ARTIST?.trim() || 'PierreEmmanuelMoulin'
-  const copyright =
-    process.env.IMAGE_EXIF_COPYRIGHT?.trim() ||
-    '© PierreEmmanuelMoulin · pppeeemmm@gmail.com'
   try {
-    const avifBuf = await sharp(rawBuf)
-      .rotate()
-      .resize({
-        width: 2100,
-        height: 2100,
-        fit: 'inside',
-        withoutEnlargement: true,
-      })
-      .keepIccProfile()
-      .withExif({
-        IFD0: {
-          Artist: artist,
-          Copyright: copyright,
-        },
-      })
-      .avif({ quality: 50, effort: 4, chromaSubsampling: '4:4:4' })
-      .toBuffer()
+    const { mainBuf: avifBuf, thumbBuf } = await normalizeImageToAvifPair(rawBuf, {
+      maxEdge: 2100,
+    })
 
     await r2PutObject(avifBuf, mainKey, 'image/avif', {
       source: 'work_session',
@@ -1476,17 +1456,6 @@ async function putAvifPair(
       metadata: { role: 'main', ...(itemId ? { item_id: itemId } : {}) },
     })
 
-    const thumbBuf = await sharp(avifBuf)
-      .ensureAlpha()
-      .resize({
-        width: 400,
-        height: 400,
-        fit: 'inside',
-        withoutEnlargement: true,
-        background: { r: 0, g: 0, b: 0, alpha: 0 },
-      })
-      .avif({ quality: 70, effort: 3, chromaSubsampling: '4:4:4' })
-      .toBuffer()
     await r2PutObject(thumbBuf, thumbKey, 'image/avif', {
       source: 'work_session_thumb',
       classification: 'transient',

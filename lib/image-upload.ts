@@ -16,13 +16,79 @@ const ALLOWED_FORMATS = new Map<
 
 export type ValidatedWorkImage = { ext: string; mime: string }
 
+export type NormalizedAvifPair = { mainBuf: Buffer; thumbBuf: Buffer }
+
+const AVIF_MAIN_OPTS = {
+  quality: 50,
+  effort: 4,
+  chromaSubsampling: '4:4:4' as const,
+}
+const AVIF_THUMB_OPTS = {
+  quality: 70,
+  effort: 3,
+  chromaSubsampling: '4:4:4' as const,
+}
+
+const TRANSPARENT_BG = { r: 0, g: 0, b: 0, alpha: 0 } as const
+
+function imageExifTags(): { Artist: string; Copyright: string } {
+  return {
+    Artist: process.env.IMAGE_EXIF_ARTIST?.trim() || 'PierreEmmanuelMoulin',
+    Copyright:
+      process.env.IMAGE_EXIF_COPYRIGHT?.trim() ||
+      '© PierreEmmanuelMoulin · pppeeemmm@gmail.com',
+  }
+}
+
+/**
+ * Resize + encode to AVIF (main + 400px thumb). Preserves alpha on PNG/WebP/GIF/AVIF inputs
+ * via ensureAlpha and transparent resize background; opaque JPEG/HEIC get a fully-opaque alpha plane.
+ */
+export async function normalizeImageToAvifPair(
+  buf: Buffer,
+  opts: { maxEdge: number },
+): Promise<NormalizedAvifPair> {
+  const exif = imageExifTags()
+  const mainBuf = await sharp(buf)
+    .rotate()
+    .ensureAlpha()
+    .resize({
+      width: opts.maxEdge,
+      height: opts.maxEdge,
+      fit: 'inside',
+      withoutEnlargement: true,
+      background: TRANSPARENT_BG,
+    })
+    .keepIccProfile()
+    .withExif({ IFD0: exif })
+    .avif(AVIF_MAIN_OPTS)
+    .toBuffer()
+
+  const thumbBuf = await makeAvifThumbFromMain(mainBuf)
+  return { mainBuf, thumbBuf }
+}
+
+/** 400px long-edge AVIF thumb from an already-normalized main AVIF buffer. */
+export async function makeAvifThumbFromMain(mainBuf: Buffer): Promise<Buffer> {
+  return sharp(mainBuf)
+    .ensureAlpha()
+    .resize({
+      width: 400,
+      height: 400,
+      fit: 'inside',
+      withoutEnlargement: true,
+      background: TRANSPARENT_BG,
+    })
+    .avif(AVIF_THUMB_OPTS)
+    .toBuffer()
+}
+
 /**
  * Decode bytes as an image and ensure format is allow-listed (magic bytes via Sharp).
  * Rejects SVG and other formats even if the client sends a permissive Content-Type.
  *
- * AVIF input is supported (Sharp/libheif). After upload, `app/atelier/works/actions.ts`
- * normalizes work images to long-edge AVIF and stamps Artist/Copyright EXIF before strip.
- * Transparent or round artworks may need desktop upload if mobile share rejects the file.
+ * AVIF input is supported (Sharp/libheif). Upload paths use `normalizeImageToAvifPair` so
+ * transparency survives main + thumb encoding. Mobile share may still reject some transparent files.
  */
 export async function validateWorkImageBuffer(
   buf: Buffer,

@@ -1,6 +1,6 @@
 # Pem Hub — Hybrid Refactor Plan (Virtual Thunder)
 
-> **ARCHIVED — superseded by [`PEM_HYBRID_REFACTOR_PLAN_V5.md`](../PEM_HYBRID_REFACTOR_PLAN_V5.md).** Kept for history only.
+> **ARCHIVED — superseded by [`PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md).** Kept for history only.
 
 > **Repo copy (reordered 2026-05-22).** Execute in Cursor against `origin/main` of this repo. Each slice ships as one or more PRs to `main`. **Owner GO required** before implementation (see `CLAUDE.md`). Desktop mirror: `Pem Hub — Hybrid Refactor Plan 2.md` — keep in sync when this file changes.
 
@@ -77,7 +77,7 @@
 
 Stay in `app/`. New: `lib/error-reporter/`, `eslint-rules/no-silent-catch.js`, `supabase/sql/graph_foundation/`, `public/sw/`, `lib/sw-install/`, `lib/graph/node-ref.ts`, `components/shared/BottomStack.tsx`.
 
-**Slice 3 correction (archived):** All **16** segmented Atelier tabs landed 2026-05-23 on `main` (see live [`PEM_HYBRID_REFACTOR_PLAN_V5.md`](../PEM_HYBRID_REFACTOR_PLAN_V5.md) + [`HANDOFF_SLICE3.md`](../HANDOFF_SLICE3.md)). Legacy `?tab=` remains for overview, map, journal, system, portfolio, contacts, stock. Verb routes unchanged.
+**Slice 3 correction (archived):** All **16** segmented Atelier tabs landed 2026-05-23 on `main` (see [`PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md) + [`HANDOFF_SLICE3.md`](./HANDOFF_SLICE3.md)). Legacy `?tab=` remains for overview, map, journal, system, portfolio, contacts, stock. Verb routes unchanged.
 
 ---
 

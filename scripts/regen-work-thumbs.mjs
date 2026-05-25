@@ -1,6 +1,6 @@
 /**
  * Regenerate R2 thumbnails for work image keys (main object → thumbs/<same-base>.avif).
- * Matches Sharp settings in app/atelier/works/actions.ts uploadImage().
+ * Matches thumb pipeline in lib/image-upload.ts (`makeAvifThumbFromMain`).
  *
  * Prerequisites: .env.local with R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY,
  * optional R2_BUCKET (default paintings), R2_S3_API_URL / R2_S3_HOST / R2_JURISDICTION (see lib/r2-s3-host.ts).

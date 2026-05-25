@@ -15,6 +15,8 @@ const defaultSpecs = [
   'tests/atelier-mobile-action-bar.spec.ts',
   'tests/session-new.spec.ts',
   'tests/session-journal.spec.ts',
+  'tests/batch-edit-broadcast-ready.spec.ts',
+  'tests/atelier-shell-tab-hop.spec.ts',
 ]
 const pwArgs = userArgs.length > 0 ? userArgs : defaultSpecs
 const r = spawnSync('npx', ['playwright', 'test', ...pwArgs], {

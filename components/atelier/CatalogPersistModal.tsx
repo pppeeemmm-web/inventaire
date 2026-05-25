@@ -5,6 +5,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
+import { PemModalOverlay } from '@/components/shared/PemModalOverlay'
 import {
   batchEdit,
   createTheme,
@@ -135,33 +136,18 @@ export function CatalogPersistModal({
   }
 
   return (
-    <div
-      data-testid="catalog-persist-dialog"
-      onClick={onClose}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 90,
-        background: 'rgba(0,0,0,0.55)',
+    <PemModalOverlay
+      onClose={onClose}
+      panelStyle={{
+        maxWidth: 420,
+        width: '100%',
+        padding: '20px 22px',
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 16,
+        flexDirection: 'column',
+        gap: 14,
       }}
     >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          background: 'var(--bg1)',
-          border: '1px solid var(--bd)',
-          maxWidth: 420,
-          width: '100%',
-          padding: '20px 22px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 14,
-        }}
-      >
+      <div data-testid="catalog-persist-dialog">
         <div className="t-label">{t('exportSaveSelectionTitle')}</div>
         <div className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 10, lineHeight: 1.45 }}>
           {t('catalogAttachBlurb')}
@@ -290,6 +276,6 @@ export function CatalogPersistModal({
           </button>
         </div>
       </div>
-    </div>
+    </PemModalOverlay>
   )
 }

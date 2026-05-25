@@ -62,10 +62,11 @@ export function CurationDock({
     <>
       <div style={{
         position: 'fixed', bottom: 20, left: '50%', transform: 'translateX(-50%)',
-        /* Above WorkDrawer (PEM_Z_INDEX.workDrawer); below modals (PEM_Z_INDEX.modal) */
+        /* Above WorkDrawer (PEM_Z_INDEX.workDrawer); below portaled modals (PEM_Z_INDEX.modal) */
         zIndex: PEM_Z_INDEX.curationDock, background: 'var(--bg2)', border: '1px solid var(--bd2)',
         padding: '10px 14px', display: 'flex', gap: 10, alignItems: 'center',
         boxShadow: '0 8px 40px rgba(0,0,0,0.5)',
+        pointerEvents: 'auto',
       }}>
 
         {/* Count */}

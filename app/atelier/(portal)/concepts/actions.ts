@@ -131,6 +131,7 @@ export async function uploadConceptSketch(
     const filename = `concepts/C_${id}.avif`
     const avif = await sharp(buf)
       .rotate()
+      .ensureAlpha()
       .avif({ quality: 70, effort: 3, chromaSubsampling: '4:4:4' })
       .toBuffer()
     await r2PutObject(avif, filename, 'image/avif', {
