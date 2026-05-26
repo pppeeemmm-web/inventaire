@@ -319,4 +319,36 @@ export const siteBlocksMessages = defineMessages({
     fr: 'Navigation transparente (dégradé jusqu’en haut, sans bandeau)',
     en: 'Transparent navigation (gradient to top, no header bar)',
   },
+  site_works_mode_bevel_label: {
+    fr: 'Biseau du cadre',
+    en: 'Mount bevel',
+  },
+  site_works_mode_bevel_help: {
+    fr: 'Lèvre intérieure sur le bord de l’œuvre — 0 = aucun, 12 px max. Doux = ombres progressives ; Dur = arêtes plus nettes.',
+    en: 'Inset lip on the edge of the artwork — 0 = off, 12 px max. Smooth = soft gradients; Hard = crisper edges.',
+  },
+  site_works_mode_bevel_px_label: {
+    fr: 'Profondeur du biseau',
+    en: 'Bevel depth',
+  },
+  site_works_mode_bevel_profile_label: {
+    fr: 'Profil du biseau',
+    en: 'Bevel profile',
+  },
+  site_works_mode_bevel_profile_smooth: {
+    fr: 'Doux',
+    en: 'Smooth',
+  },
+  site_works_mode_bevel_profile_hard: {
+    fr: 'Dur',
+    en: 'Hard',
+  },
+  site_works_mode_light_label: {
+    fr: 'Température de lumière',
+    en: 'Light temperature',
+  },
+  site_works_mode_light_help: {
+    fr: '2700 K = lumière chaude d’intérieur, 4500 K = neutre, 6500 K = lumière du jour.',
+    en: '2700 K = warm indoor light, 4500 K = neutral, 6500 K = daylight.',
+  },
 })

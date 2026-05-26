@@ -17,6 +17,10 @@ import {
   migrateHeroBevelPx,
 } from '@/lib/landing-hero-bevel'
 import {
+  WORKS_LIGHT_TEMP_DEFAULT,
+  migrateWorksLightTempK,
+} from '@/lib/works-mode-light'
+import {
   LANDING_HERO_GLOSS_BLEND_DEFAULT,
   LANDING_HERO_GLOSS_FALLOFF_DEFAULT,
   LANDING_HERO_GLOSS_POSITION_DEFAULT,
@@ -76,6 +80,11 @@ export interface WorksMode {
   collections:  CollectionItem[]
   outro_fr:     string
   outro_en:     string
+  /** Inset bevel depth on the work mount (0 disables). Default {@link LANDING_HERO_BEVEL_PX_DEFAULT}. */
+  bevel_px:     number
+  bevel_profile: LandingHeroBevelProfile
+  /** Wall light color temperature in kelvin; default {@link WORKS_LIGHT_TEMP_DEFAULT}. */
+  light_temp_k: number
 }
 
 export const DEFAULT_HERO_CAPTION_EN = "'Matsukaze' — Meaning 'Wind through the Pines'"
@@ -206,6 +215,9 @@ export const DEFAULT_CONFIG: PortfolioConfig = {
     id: 'default', label_fr: 'Œuvres', label_en: 'Works',
     is_active: true, sort_order: 0, layout: 'carousel',
     collections: [], outro_fr: '', outro_en: '',
+    bevel_px: LANDING_HERO_BEVEL_PX_DEFAULT,
+    bevel_profile: LANDING_HERO_BEVEL_PROFILE_DEFAULT,
+    light_temp_k: WORKS_LIGHT_TEMP_DEFAULT,
   }],
 }
 
@@ -253,6 +265,9 @@ function migrateModes(raw: any, fallbackCollections: CollectionItem[]): WorksMod
       collections: fallbackCollections,
       outro_fr: raw.works_outro_fr ?? '',
       outro_en: raw.works_outro_en ?? '',
+      bevel_px: LANDING_HERO_BEVEL_PX_DEFAULT,
+      bevel_profile: LANDING_HERO_BEVEL_PROFILE_DEFAULT,
+      light_temp_k: WORKS_LIGHT_TEMP_DEFAULT,
     }]
   }
   return list.map((m: any, i: number): WorksMode => ({
@@ -279,6 +294,9 @@ function migrateModes(raw: any, fallbackCollections: CollectionItem[]): WorksMod
     })) : [],
     outro_fr:    m.outro_fr || '',
     outro_en:    m.outro_en || '',
+    bevel_px:    migrateHeroBevelPx(m.bevel_px),
+    bevel_profile: migrateHeroBevelProfile(m.bevel_profile),
+    light_temp_k: migrateWorksLightTempK(m.light_temp_k),
   }))
 }
 

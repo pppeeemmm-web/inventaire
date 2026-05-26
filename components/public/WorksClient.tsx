@@ -13,6 +13,12 @@ import { richTextToPlain, worksForCollection } from './works-utils'
 import type { Work, WorksMode, Collection } from './works-utils'
 import type { PublicSiteTheme } from '@/lib/public-site-theme'
 import { publicNavBarCss, publicSiteBaseCss } from '@/lib/public-site-theme'
+import {
+  LANDING_HERO_BEVEL_PROFILE_DEFAULT,
+  LANDING_HERO_BEVEL_PX_DEFAULT,
+  buildHeroBevelBoxShadow,
+} from '@/lib/landing-hero-bevel'
+import { WORKS_LIGHT_TEMP_DEFAULT, resolveWorksLight } from '@/lib/works-mode-light'
 
 interface Props {
   works: Work[]
@@ -72,11 +78,22 @@ function physicalArtDisplaySize(
   hauteurCm: number,
   largeurCm: number,
   isMobile: boolean,
+  naturalW?: number,
+  naturalH?: number,
 ): { w: number; h: number } {
   const { cardW, cardH } = worksCardViewport(isMobile)
   const pxPerCm = cardH / (isMobile ? CANVAS_REF_CM_MOBILE : CANVAS_REF_CM_DESKTOP)
-  const w = largeurCm * pxPerCm
-  const h = hauteurCm * pxPerCm
+  let w = largeurCm * pxPerCm
+  let h = hauteurCm * pxPerCm
+  // If image aspect differs from recorded cm aspect, keep the physical AREA
+  // (so relative size between works survives) but reshape to the image's
+  // aspect ratio so the bevel/shadow hug the artwork instead of leaving gaps.
+  if (naturalW && naturalH && naturalW > 0 && naturalH > 0) {
+    const area = w * h
+    const aspect = naturalW / naturalH
+    h = Math.sqrt(area / aspect)
+    w = h * aspect
+  }
   const capScale = Math.min(1, cardW / w, cardH / h)
   return { w: Math.round(w * capScale), h: Math.round(h * capScale) }
 }
@@ -94,6 +111,13 @@ export default function WorksClient({
   }]
   const mode = safeModes[0]
   const layout = mode.layout ?? 'carousel'
+
+  // Per-mode bevel + light — fall back to defaults so older configs still render.
+  const bevelPx = mode.bevel_px ?? LANDING_HERO_BEVEL_PX_DEFAULT
+  const bevelProfile = mode.bevel_profile ?? LANDING_HERO_BEVEL_PROFILE_DEFAULT
+  const bevelShadow = useMemo(() => buildHeroBevelBoxShadow(bevelPx, bevelProfile), [bevelPx, bevelProfile])
+  const lightTempK = mode.light_temp_k ?? WORKS_LIGHT_TEMP_DEFAULT
+  const light = useMemo(() => resolveWorksLight(lightTempK), [lightTempK])
 
   const [activeChapterIdx, setActiveChapterIdx] = useState(0)
   const [activeIndex, setActiveIndex] = useState(0)
@@ -128,6 +152,18 @@ export default function WorksClient({
   const [loadedWorkId, setLoadedWorkId] = useState<number | null>(null)
   // Natural dimensions of the loaded center image — used for hi-res rasterization trick
   const [centerNaturalSize, setCenterNaturalSize] = useState<{ w: number; h: number } | null>(null)
+  // Natural sizes per work id — side cards use this to reshape the physical mount
+  // to the image aspect so bevel/shadow hug the artwork (relative area preserved).
+  const [naturalSizes, setNaturalSizes] = useState<Map<number, { w: number; h: number }>>(new Map())
+  const recordNaturalSize = useCallback((oeuvreId: number, w: number, h: number) => {
+    setNaturalSizes((prev) => {
+      const existing = prev.get(oeuvreId)
+      if (existing && existing.w === w && existing.h === h) return prev
+      const next = new Map(prev)
+      next.set(oeuvreId, { w, h })
+      return next
+    })
+  }, [])
 
   const dragRef = useRef<{ mx: number; my: number; px: number; py: number } | null>(null)
   const pinchRef = useRef<{ distance: number; zoomZ: number } | null>(null)
@@ -164,9 +200,14 @@ export default function WorksClient({
     if (!mounted) return null
     const hauteur = activeWork?.Hauteur ? Number(activeWork.Hauteur) : null
     const largeur = activeWork?.Largeur ? Number(activeWork.Largeur) : null
-    if (hauteur && largeur) return physicalArtDisplaySize(hauteur, largeur, isMobile)
+    if (hauteur && largeur) {
+      return physicalArtDisplaySize(
+        hauteur, largeur, isMobile,
+        centerNaturalSize?.w, centerNaturalSize?.h,
+      )
+    }
     return null
-  }, [mounted, activeWork?.Hauteur, activeWork?.Largeur, isMobile])
+  }, [mounted, activeWork?.Hauteur, activeWork?.Largeur, isMobile, centerNaturalSize])
 
   // Oversized-image rasterization trick: lay out img at its natural pixel dimensions,
   // scale it down to the physical (or card-fit) mount size via transform.
@@ -472,6 +513,17 @@ export default function WorksClient({
           overflow: hidden;
           touch-action: pan-y;
         }
+        ${lightTempK !== WORKS_LIGHT_TEMP_DEFAULT ? `
+        /* Wall tint — kelvin-driven overlay sits below the carousel cards (z 0). */
+        .w-stage::after {
+          content: '';
+          position: absolute;
+          inset: 0;
+          z-index: 0;
+          background: ${light.tintRgba};
+          pointer-events: none;
+        }
+        ` : ''}
         .w-track-wrap {
           position: absolute; inset: 0; z-index: 3;
           display: flex; align-items: center; justify-content: center;
@@ -554,6 +606,7 @@ export default function WorksClient({
           max-width: 100%;
           max-height: 100%;
         }
+        ${bevelShadow ? `
         .w-card.center .w-art-mount::after {
           content: '';
           position: absolute;
@@ -561,13 +614,9 @@ export default function WorksClient({
           pointer-events: none;
           z-index: 2;
           border-radius: inherit;
-          box-shadow:
-            inset 0 0 0 1px rgba(255,252,246,0.42),
-            inset 2px 2px 5px rgba(255,252,245,0.26),
-            inset -2px -2px 5px rgba(22,20,17,0.18),
-            inset 4px 4px 10px rgba(255,250,240,0.14),
-            inset -4px -4px 10px rgba(18,16,14,0.16);
+          box-shadow: ${bevelShadow};
         }
+        ` : ''}
         .w-card.center .w-art-mount {
           filter: drop-shadow(0 15px 22px rgba(15,15,20,0.34))
                   drop-shadow(0 4px 7px rgba(15,15,20,0.22));
@@ -1136,15 +1185,16 @@ export default function WorksClient({
                               className={`w-card-img${w.isRound ? ' round' : ''}${isZoomed ? ' zoomed' : ''}`}
                               draggable={false}
                               style={hiResImgStyle}
-                              ref={(el) => { if (el?.complete && el.naturalWidth > 0 && loadedWorkId !== w.OeuvreID) { setLoadedWorkId(w.OeuvreID); setCenterNaturalSize({ w: el.naturalWidth, h: el.naturalHeight }) } }}
-                              onLoad={(e) => { const t = e.currentTarget; setLoadedWorkId(w.OeuvreID); setCenterNaturalSize({ w: t.naturalWidth, h: t.naturalHeight }) }}
+                              ref={(el) => { if (el?.complete && el.naturalWidth > 0 && loadedWorkId !== w.OeuvreID) { setLoadedWorkId(w.OeuvreID); setCenterNaturalSize({ w: el.naturalWidth, h: el.naturalHeight }); recordNaturalSize(w.OeuvreID, el.naturalWidth, el.naturalHeight) } }}
+                              onLoad={(e) => { const t = e.currentTarget; setLoadedWorkId(w.OeuvreID); setCenterNaturalSize({ w: t.naturalWidth, h: t.naturalHeight }); recordNaturalSize(w.OeuvreID, t.naturalWidth, t.naturalHeight) }}
                             />
                           </div>
                         ) : (() => {
                           const hauteur = mounted && w.Hauteur ? Number(w.Hauteur) : null
                           const largeur = mounted && w.Largeur ? Number(w.Largeur) : null
+                          const nat = naturalSizes.get(w.OeuvreID)
                           if (hauteur && largeur) {
-                            const phys = physicalArtDisplaySize(hauteur, largeur, isMobile)
+                            const phys = physicalArtDisplaySize(hauteur, largeur, isMobile, nat?.w, nat?.h)
                             return (
                               <div
                                 key="side-mount"
@@ -1157,6 +1207,7 @@ export default function WorksClient({
                                   className={`w-card-img${w.isRound ? ' round' : ''}`}
                                   draggable={false}
                                   style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                                  onLoad={(e) => { const t = e.currentTarget; if (t.naturalWidth > 0) recordNaturalSize(w.OeuvreID, t.naturalWidth, t.naturalHeight) }}
                                 />
                               </div>
                             )
@@ -1168,6 +1219,7 @@ export default function WorksClient({
                               alt={w.Titre ?? ''}
                               className={`w-card-img${w.isRound ? ' round' : ''}`}
                               draggable={false}
+                              onLoad={(e) => { const t = e.currentTarget; if (t.naturalWidth > 0) recordNaturalSize(w.OeuvreID, t.naturalWidth, t.naturalHeight) }}
                             />
                           )
                         })()}

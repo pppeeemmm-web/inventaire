@@ -6,6 +6,13 @@ import { fetchPublicOeuvreThemeNamesMap } from '@/lib/public-oeuvre-themes'
 import { hiddenNavRoutes, orderedNavRoutes } from '@/lib/site-block-visibility'
 import { migrate, type SiteBlock } from '@/lib/portfolio-config-types'
 import {
+  LANDING_HERO_BEVEL_PX_DEFAULT,
+  LANDING_HERO_BEVEL_PROFILE_DEFAULT,
+  migrateHeroBevelPx,
+  migrateHeroBevelProfile,
+} from '@/lib/landing-hero-bevel'
+import { WORKS_LIGHT_TEMP_DEFAULT, migrateWorksLightTempK } from '@/lib/works-mode-light'
+import {
   resolvePublicNavBarStyle,
   resolvePublicSiteThemeForPage,
 } from '@/lib/public-site-theme'
@@ -42,6 +49,9 @@ type WorksMode = {
   collections: WorksCollection[]
   outro_fr: string
   outro_en: string
+  bevel_px: number
+  bevel_profile: 'smooth' | 'hard'
+  light_temp_k: number
 }
 type WorksPublicRow = {
   OeuvreID: number
@@ -127,6 +137,9 @@ export default async function WorksPage() {
         collections: mapCollections(asCollectionRecords(m.collections)),
         outro_fr: strOrEmpty(m.outro_fr),
         outro_en: strOrEmpty(m.outro_en),
+        bevel_px: migrateHeroBevelPx(m.bevel_px),
+        bevel_profile: migrateHeroBevelProfile(m.bevel_profile),
+        light_temp_k: migrateWorksLightTempK(m.light_temp_k),
       }))
   }
   if (modes.length === 0) {
@@ -138,6 +151,9 @@ export default async function WorksPage() {
       layout: 'carousel' as const,
       collections: cols,
       outro_fr: '', outro_en: '',
+      bevel_px: LANDING_HERO_BEVEL_PX_DEFAULT,
+      bevel_profile: LANDING_HERO_BEVEL_PROFILE_DEFAULT,
+      light_temp_k: WORKS_LIGHT_TEMP_DEFAULT,
     }]
   }
 
@@ -181,6 +197,9 @@ export default async function WorksPage() {
         intro_fr: '', intro_en: '',
       }],
       outro_fr: '', outro_en: '',
+      bevel_px: LANDING_HERO_BEVEL_PX_DEFAULT,
+      bevel_profile: LANDING_HERO_BEVEL_PROFILE_DEFAULT,
+      light_temp_k: WORKS_LIGHT_TEMP_DEFAULT,
     }]
   }
 

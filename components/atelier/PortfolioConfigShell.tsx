@@ -8,6 +8,11 @@ import {
   setWorkPublic,
 } from '@/app/atelier/(portal)/portfolio/actions'
 import { PORTFOLIO_SAVE_ERR } from '@/lib/portfolio-save-errors'
+import {
+  LANDING_HERO_BEVEL_PROFILE_DEFAULT,
+  LANDING_HERO_BEVEL_PX_DEFAULT,
+} from '@/lib/landing-hero-bevel'
+import { WORKS_LIGHT_TEMP_DEFAULT } from '@/lib/works-mode-light'
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
 import { useMediaQuery } from '@/lib/useMediaQuery'
@@ -309,6 +314,9 @@ export function PortfolioConfigShell({
       layout: 'carousel',
       collections: [],
       outro_fr: '', outro_en: '',
+      bevel_px: LANDING_HERO_BEVEL_PX_DEFAULT,
+      bevel_profile: LANDING_HERO_BEVEL_PROFILE_DEFAULT,
+      light_temp_k: WORKS_LIGHT_TEMP_DEFAULT,
     }
     setConfig({ ...config, works_modes: [...config.works_modes, newMode] })
     setActiveMode(config.works_modes.length)

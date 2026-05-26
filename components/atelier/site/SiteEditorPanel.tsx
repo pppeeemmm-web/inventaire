@@ -27,6 +27,15 @@ import {
   type LandingGradientStop,
 } from '@/lib/landing-background'
 import { resolveHeroGloss } from '@/lib/landing-hero-gloss'
+import {
+  LANDING_HERO_BEVEL_PROFILE_VALUES,
+  LANDING_HERO_BEVEL_PX_MAX,
+} from '@/lib/landing-hero-bevel'
+import {
+  WORKS_LIGHT_TEMP_DEFAULT,
+  WORKS_LIGHT_TEMP_MAX,
+  WORKS_LIGHT_TEMP_MIN,
+} from '@/lib/works-mode-light'
 import { SitePublicSection } from '@/components/atelier/portfolio/shared/SitePublicSection'
 import { Slot } from '@/components/atelier/portfolio/shared/Slot'
 import { DualField } from '@/components/atelier/portfolio/shared/DualField'
@@ -621,6 +630,65 @@ export function SiteEditorPanel({
                     )
                   })}
                 </div>
+              </div>
+            )}
+            {/* Bevel + light controls — per mode */}
+            {mode && (
+              <div style={{ marginBottom: 24, paddingBottom: 16, borderBottom: '1px solid var(--bd)' }}>
+                <div className="t-label" style={{ marginBottom: 8, fontSize: 9 }}>
+                  {t('site_works_mode_bevel_label').toUpperCase()}
+                </div>
+                <p className="t-mono-xs" style={{ opacity: 0.5, marginBottom: 12, maxWidth: 720, lineHeight: 1.45 }}>
+                  {t('site_works_mode_bevel_help')}
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+                  <label className="col" style={{ gap: 4 }}>
+                    <span className="t-label" style={{ fontSize: 9 }}>{t('site_works_mode_bevel_px_label')} ({mode.bevel_px} px)</span>
+                    <input type="range" min={0} max={LANDING_HERO_BEVEL_PX_MAX} step={1}
+                      value={mode.bevel_px}
+                      onChange={e => updateMode(activeMode, { bevel_px: Number(e.target.value) })} />
+                  </label>
+                  <label className="col" style={{ gap: 4 }}>
+                    <span className="t-label" style={{ fontSize: 9 }}>{t('site_works_mode_bevel_profile_label')}</span>
+                    <div style={{ display: 'inline-flex', border: '1px solid var(--bd)', borderRadius: 4, overflow: 'hidden', alignSelf: 'flex-start' }}>
+                      {LANDING_HERO_BEVEL_PROFILE_VALUES.map(p => {
+                        const active = mode.bevel_profile === p
+                        return (
+                          <button key={p} type="button" className="t-mono-xs"
+                            onClick={() => updateMode(activeMode, { bevel_profile: p })}
+                            style={{
+                              padding: '6px 12px', minHeight: 32,
+                              fontSize: 9, letterSpacing: 1, fontFamily: 'inherit', textTransform: 'uppercase',
+                              border: 'none', cursor: 'pointer',
+                              background: active ? 'var(--ac)' : 'var(--bg1)',
+                              color: active ? '#fff' : 'var(--tx2)',
+                            }}>
+                            {t(p === 'smooth' ? 'site_works_mode_bevel_profile_smooth' : 'site_works_mode_bevel_profile_hard')}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </label>
+                </div>
+                <div className="t-label" style={{ marginBottom: 8, fontSize: 9 }}>
+                  {t('site_works_mode_light_label').toUpperCase()} ({mode.light_temp_k} K)
+                </div>
+                <p className="t-mono-xs" style={{ opacity: 0.5, marginBottom: 8, maxWidth: 720, lineHeight: 1.45 }}>
+                  {t('site_works_mode_light_help')}
+                </p>
+                <input type="range"
+                  min={WORKS_LIGHT_TEMP_MIN} max={WORKS_LIGHT_TEMP_MAX} step={100}
+                  value={mode.light_temp_k}
+                  onChange={e => updateMode(activeMode, { light_temp_k: Number(e.target.value) })}
+                  style={{ width: '100%', maxWidth: 480 }} />
+                {mode.light_temp_k !== WORKS_LIGHT_TEMP_DEFAULT && (
+                  <button type="button" className="t-mono-xs"
+                    onClick={() => updateMode(activeMode, { light_temp_k: WORKS_LIGHT_TEMP_DEFAULT })}
+                    style={{ marginTop: 4, background: 'none', border: 'none', color: 'var(--tx3)', cursor: 'pointer', fontSize: 9, letterSpacing: 1, opacity: 0.7 }}>
+                    {/* eslint-disable-next-line pem-i18n/no-hardcoded-jsx-text */}
+                    ↺ {WORKS_LIGHT_TEMP_DEFAULT} K
+                  </button>
+                )}
               </div>
             )}
             {/* eslint-disable pem-i18n/no-hardcoded-jsx-text */}

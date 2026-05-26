@@ -34,6 +34,9 @@ export interface WorksMode {
   collections: Collection[]
   outro_fr: string
   outro_en: string
+  bevel_px?: number
+  bevel_profile?: 'smooth' | 'hard'
+  light_temp_k?: number
 }
 
 /** Strip RichEditor HTML for plain-text labels (grid intro, carousel chapter line). */
