@@ -37,6 +37,42 @@ export const siteBlocksMessages = defineMessages({
     fr: 'Déplacer vers le bas',
     en: 'Move down',
   },
+  site_dualfield_preview_show: {
+    fr: 'Aperçu FR/EN',
+    en: 'FR/EN preview',
+  },
+  site_dualfield_preview_hide: {
+    fr: 'Masquer aperçu FR/EN',
+    en: 'Hide FR/EN preview',
+  },
+  editor_fade_expand: {
+    fr: 'Éditer le texte',
+    en: 'Edit text',
+  },
+  editor_fade_collapse: {
+    fr: 'Réduire le texte',
+    en: 'Collapse text',
+  },
+  site_practice_core_themes_label: {
+    fr: 'Thèmes centraux (un par ligne)',
+    en: 'Central themes (one per line)',
+  },
+  site_practice_core_themes_placeholder: {
+    fr: 'La physiologie de la perception…',
+    en: 'The physiology of perception…',
+  },
+  site_practice_materials_label: {
+    fr: 'Médiums & matériaux',
+    en: 'Media & materials',
+  },
+  site_practice_extras_expand: {
+    fr: 'Thèmes & matériaux',
+    en: 'Themes & materials',
+  },
+  site_practice_extras_collapse: {
+    fr: 'Réduire thèmes & matériaux',
+    en: 'Collapse themes & materials',
+  },
   site_mode_move_left: {
     fr: 'Déplacer à gauche',
     en: 'Move left',
@@ -63,25 +99,53 @@ export const siteBlocksMessages = defineMessages({
     en:
       'Public home: hero fills the viewport (click → /works when /works block is visible). Caption under the image. About and Practice blocks add links around the circle. Enquiry stays below the caption. Text and disc long shadows follow local time (west = left in the morning). Hiding a block ◻ removes its link without code changes.',
   },
-  site_enquiry_portfolio_pdf_label: {
-    fr: 'Portfolio PDF sur la page Contact',
-    en: 'Portfolio PDF on Enquiry page',
-  },
-  site_enquiry_portfolio_pdf_help: {
-    fr: 'Retiré de l’accueil. Quand activé, « Portfolio PDF » apparaît dans le menu Motif sur /enquiry.',
-    en: 'Removed from the home page. When on, “Portfolio PDF” appears in the Topic dropdown on /enquiry.',
-  },
-  site_hero_white_key_label: {
-    fr: 'Blanc pur → transparent (cette image d’accueil seulement)',
-    en: 'Pure white → transparent (this home hero only)',
-  },
-  site_hero_white_key_help: {
-    fr: 'Landing uniquement, fichier sans transparence AVIF. Désactiver si l’AVIF a déjà un canal alpha (sinon franges et cadre).',
-    en: 'Landing only, for AVIF without an alpha channel. Turn off if the AVIF is already transparent (avoids fringes and a visible box).',
-  },
   atelier_pub_hero_url_full_res_hint: {
     fr: 'Utilisez l’URL AVIF pleine résolution (racine R2), pas /thumbs/ (400 px, flou en grand).',
     en: 'Use the full-size AVIF URL (R2 root), not /thumbs/ (400px — soft when enlarged).',
+  },
+  site_hero_link_work_btn: {
+    fr: 'Lier à une œuvre…',
+    en: 'Link to a work…',
+  },
+  site_hero_link_work_title: {
+    fr: 'Choisir une œuvre',
+    en: 'Choose a work',
+  },
+  site_hero_pick_work_search_placeholder: {
+    fr: 'Rechercher par titre (2 caractères min.)',
+    en: 'Search by title (min. 2 characters)',
+  },
+  site_hero_pick_work_empty: {
+    fr: 'Aucune œuvre trouvée.',
+    en: 'No works found.',
+  },
+  site_hero_pick_image_title: {
+    fr: 'Choisir une image',
+    en: 'Choose an image',
+  },
+  site_hero_pick_image_empty: {
+    fr: 'Cette œuvre n’a pas d’image.',
+    en: 'This work has no images.',
+  },
+  site_hero_pick_image_loading: {
+    fr: 'Chargement des images…',
+    en: 'Loading images…',
+  },
+  site_hero_linked_prefix: {
+    fr: 'Lié à l’œuvre',
+    en: 'Linked to work',
+  },
+  site_hero_change_link_btn: {
+    fr: 'Changer',
+    en: 'Change',
+  },
+  site_hero_clear_link_btn: {
+    fr: 'Retirer le lien',
+    en: 'Remove link',
+  },
+  site_hero_back_to_works_btn: {
+    fr: 'Œuvres',
+    en: 'Works',
   },
   site_hero_caption_label: {
     fr: 'Légende sous l’image',
@@ -190,6 +254,18 @@ export const siteBlocksMessages = defineMessages({
   site_hero_gloss_falloff_label: {
     fr: 'Rayon de l’éclat (plus bas = ombres de l’image préservées)',
     en: 'Gloss radius (lower = preserves image shadows)',
+  },
+  site_hero_gloss_expand: {
+    fr: 'Éclat de l’image (fusion)',
+    en: 'Hero image gloss (blend)',
+  },
+  site_hero_gloss_collapse: {
+    fr: 'Réduire éclat & fusion',
+    en: 'Collapse gloss & blend',
+  },
+  site_hero_gloss_summary: {
+    fr: '{blend} · {strength} %',
+    en: '{blend} · {strength}%',
   },
   site_hero_bevel_label: {
     fr: 'Biseau du disque (image peinte)',

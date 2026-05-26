@@ -67,6 +67,38 @@ export type HeroGlossResolved = {
   background: string
 }
 
+export function isHeroGlossAtDefaults(landing?: Partial<LandingHeroGlossFields> | null): boolean {
+  const blend = migrateHeroGlossBlend(landing?.hero_gloss_blend)
+  const strength = migrateHeroGlossPct(
+    landing?.hero_gloss_strength_pct,
+    LANDING_HERO_GLOSS_STRENGTH_DEFAULT,
+  )
+  const position = migrateHeroGlossPct(
+    landing?.hero_gloss_position_pct,
+    LANDING_HERO_GLOSS_POSITION_DEFAULT,
+  )
+  const falloff = migrateHeroGlossPct(
+    landing?.hero_gloss_falloff_pct,
+    LANDING_HERO_GLOSS_FALLOFF_DEFAULT,
+  )
+  return (
+    blend === LANDING_HERO_GLOSS_BLEND_DEFAULT
+    && strength === LANDING_HERO_GLOSS_STRENGTH_DEFAULT
+    && position === LANDING_HERO_GLOSS_POSITION_DEFAULT
+    && falloff === LANDING_HERO_GLOSS_FALLOFF_DEFAULT
+  )
+}
+
+/** Collapsed by default when strength is 0 or all gloss fields match factory defaults. */
+export function heroGlossEditorStartsExpanded(landing?: Partial<LandingHeroGlossFields> | null): boolean {
+  const strength = migrateHeroGlossPct(
+    landing?.hero_gloss_strength_pct,
+    LANDING_HERO_GLOSS_STRENGTH_DEFAULT,
+  )
+  if (strength <= 0) return false
+  return !isHeroGlossAtDefaults(landing)
+}
+
 export function resolveHeroGloss(landing?: Partial<LandingHeroGlossFields> | null): HeroGlossResolved {
   const blend = migrateHeroGlossBlend(landing?.hero_gloss_blend)
   const strength = migrateHeroGlossPct(

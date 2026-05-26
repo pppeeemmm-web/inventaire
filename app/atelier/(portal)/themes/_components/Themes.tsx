@@ -45,6 +45,10 @@ export function Themes({
   const [editVal,    setEditVal]    = useState('')
   const [busy,       setBusy]       = useState(false)
   const [msg,        setMsg]        = useState<string | null>(null)
+  const [localThemePrivateWorks, setLocalThemePrivateWorks] = useState(themePrivateWorks)
+  const [localThemeWorkCount, setLocalThemeWorkCount] = useState(themeWorkCount)
+  const [localGroupPrivateWorks, setLocalGroupPrivateWorks] = useState(groupPrivateWorks)
+  const [localGroupWorkCount, setLocalGroupWorkCount] = useState(groupWorkCount)
 
   // Interaction State
   const [hoverTheme, setHoverTheme] = useState<number | null>(null)
@@ -69,7 +73,87 @@ export function Themes({
     setGroups((prev) => mergeGroupLists(prev, initialGroups))
   }, [initialGroupsSig, initialGroups])
 
+  useEffect(() => {
+    setLocalThemePrivateWorks(themePrivateWorks)
+  }, [themePrivateWorks])
+
+  useEffect(() => {
+    setLocalThemeWorkCount(themeWorkCount)
+  }, [themeWorkCount])
+
+  useEffect(() => {
+    setLocalGroupPrivateWorks(groupPrivateWorks)
+  }, [groupPrivateWorks])
+
+  useEffect(() => {
+    setLocalGroupWorkCount(groupWorkCount)
+  }, [groupWorkCount])
+
   function flash(m: string) { setMsg(m); setTimeout(() => setMsg(null), 2500) }
+
+  async function unlinkWorkFromTheme(oeuvreId: number, themeId: number) {
+    const themeName = themes.find((x) => x.id === themeId)?.name ?? ''
+    const msg = t('themes_unlink_work_confirm_fmt').replace('{theme}', themeName)
+    if (!confirm(msg)) return
+    setBusy(true)
+    const { error } = await sb
+      .from('oeuvre_theme')
+      .delete()
+      .eq('oeuvre_id', oeuvreId)
+      .eq('theme_id', themeId)
+    if (!error) {
+      setLocalThemePrivateWorks((prev) => {
+        const next = { ...prev }
+        const arr = (next[themeId] ?? []).filter((id) => id !== oeuvreId)
+        if (arr.length) next[themeId] = arr
+        else delete next[themeId]
+        return next
+      })
+      setLocalThemeWorkCount((prev) => {
+        const next = { ...prev }
+        const n = (next[themeId] ?? 0) - 1
+        if (n <= 0) delete next[themeId]
+        else next[themeId] = n
+        return next
+      })
+      flash(t('batchSuccess'))
+    } else {
+      flash(t('error') + ': ' + (error?.message ?? ''))
+    }
+    setBusy(false)
+  }
+
+  async function unlinkWorkFromGroup(oeuvreId: number, groupId: string) {
+    const groupName = groups.find((x) => x.id === groupId)?.name ?? ''
+    const msg = t('themes_unlink_work_from_group_confirm_fmt').replace('{group}', groupName)
+    if (!confirm(msg)) return
+    setBusy(true)
+    const { error } = await sb
+      .from('working_group_work')
+      .delete()
+      .eq('oeuvre_id', oeuvreId)
+      .eq('group_id', groupId)
+    if (!error) {
+      setLocalGroupPrivateWorks((prev) => {
+        const next = { ...prev }
+        const arr = (next[groupId] ?? []).filter((id) => id !== oeuvreId)
+        if (arr.length) next[groupId] = arr
+        else delete next[groupId]
+        return next
+      })
+      setLocalGroupWorkCount((prev) => {
+        const next = { ...prev }
+        const n = (next[groupId] ?? 0) - 1
+        if (n <= 0) delete next[groupId]
+        else next[groupId] = n
+        return next
+      })
+      flash(t('batchSuccess'))
+    } else {
+      flash(t('error') + ': ' + (error?.message ?? ''))
+    }
+    setBusy(false)
+  }
 
   // ── THEMES ──
   async function addTheme() {
@@ -152,7 +236,7 @@ export function Themes({
     e.preventDefault()
     if (editTheme === t_.id) return
     if (e.ctrlKey || e.metaKey) {
-      void confirmDeleteTheme(t_.id, t_.name, themeWorkCount[t_.id] ?? 0)
+      void confirmDeleteTheme(t_.id, t_.name, localThemeWorkCount[t_.id] ?? 0)
     } else {
       void promptRenameTheme(t_.id, t_.name)
     }
@@ -239,7 +323,7 @@ export function Themes({
     e.preventDefault()
     if (editGroup === g_.id) return
     if (e.ctrlKey || e.metaKey) {
-      void confirmDeleteGroup(g_.id, g_.name, groupWorkCount[g_.id] ?? 0)
+      void confirmDeleteGroup(g_.id, g_.name, localGroupWorkCount[g_.id] ?? 0)
     } else {
       void promptRenameGroup(g_.id, g_.name)
     }
@@ -251,9 +335,9 @@ export function Themes({
 
   const allWorksInCategory = useMemo(() => {
     const ids = hoverTheme
-      ? (themePrivateWorks[hoverTheme] ?? [])
+      ? (localThemePrivateWorks[hoverTheme] ?? [])
       : hoverGroup
-        ? (groupPrivateWorks[hoverGroup!] ?? [])
+        ? (localGroupPrivateWorks[hoverGroup!] ?? [])
         : []
     return ids
       .map((id) => {
@@ -266,7 +350,7 @@ export function Themes({
         }
       })
       .filter(Boolean) as { OeuvreID: number; txtImageNameLink: string | null; isPublic: boolean }[]
-  }, [hoverTheme, hoverGroup, themePrivateWorks, groupPrivateWorks, oeuvreById])
+  }, [hoverTheme, hoverGroup, localThemePrivateWorks, localGroupPrivateWorks, oeuvreById])
 
   const previewWorks = allWorksInCategory
 
@@ -372,7 +456,7 @@ export function Themes({
                     <>
                       <span style={{ fontSize: 14, fontWeight: isHov ? 600 : 400, color: isHov ? 'var(--tx)' : 'var(--tx2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, paddingRight: 8 }}>{t_.name}</span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-                        <span className="t-mono-sm" style={{ fontSize: 11, opacity: 0.4 }}>{themeWorkCount[t_.id] ?? 0}</span>
+                        <span className="t-mono-sm" style={{ fontSize: 11, opacity: 0.4 }}>{localThemeWorkCount[t_.id] ?? 0}</span>
                         <div className="item-actions" style={{ display: 'flex', gap: 4, opacity: narrow || isHov ? 1 : 0 }}>
                           <button type="button" aria-label={t('edit')} onClick={(e) => { e.stopPropagation(); setEditTheme(t_.id); setEditVal(t_.name) }} style={{ minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', color: 'var(--tx3)', cursor: 'pointer', padding: 0 }}>✎</button>
                           <button type="button" aria-label={t('delete')} onClick={(e) => { e.stopPropagation(); deleteTheme(t_.id) }} style={{ minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', color: 'var(--rust)', cursor: 'pointer', padding: 0 }}>✕</button>
@@ -446,13 +530,42 @@ export function Themes({
                       }}
                     >
                       <img src={thumbUrl(w.txtImageNameLink) ?? ''} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      <div style={{ 
-                        position: 'absolute', top: 8, right: 8, 
-                        width: 8, height: 8, borderRadius: '50%',
-                        background: w.isPublic ? 'var(--green)' : 'var(--rust)',
-                        boxShadow: '0 0 10px rgba(0,0,0,0.5)',
-                        border: '1px solid rgba(255,255,255,0.2)'
-                      }} />
+                      {(hoverTheme != null || hoverGroup != null) && (() => {
+                        const unlinkAria =
+                          hoverTheme != null
+                            ? t('themes_unlink_work_aria')
+                            : t('themes_unlink_work_from_group_aria')
+                        return (
+                          <>
+                            <button
+                              type="button"
+                              className="mosaic-unlink-btn"
+                              title={unlinkAria}
+                              aria-label={unlinkAria}
+                              disabled={busy}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                if (hoverTheme != null) {
+                                  void unlinkWorkFromTheme(w.OeuvreID, hoverTheme)
+                                } else if (hoverGroup != null) {
+                                  void unlinkWorkFromGroup(w.OeuvreID, hoverGroup)
+                                }
+                              }}
+                            >
+                              <span className="mosaic-unlink-icon" aria-hidden>
+                                ✕
+                              </span>
+                            </button>
+                            <span className="mosaic-unlink-hint t-mono-sm">{unlinkAria}</span>
+                          </>
+                        )
+                      })()}
+                      <div
+                        className="mosaic-pub-dot"
+                        style={{
+                          background: w.isPublic ? 'var(--green)' : 'var(--rust)',
+                        }}
+                      />
                     </div>
                   ))}
                 </div>
@@ -543,7 +656,7 @@ export function Themes({
                       <>
                         <span style={{ fontSize: 13, fontWeight: isHov ? 600 : 400, color: isHov ? 'var(--tx)' : 'var(--tx2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, paddingRight: 8 }}>{g_.name}</span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-                          <span className="t-mono-sm" style={{ fontSize: 10, opacity: 0.4 }}>{groupWorkCount[g_.id] ?? 0}</span>
+                          <span className="t-mono-sm" style={{ fontSize: 10, opacity: 0.4 }}>{localGroupWorkCount[g_.id] ?? 0}</span>
                           <div className="item-actions" style={{ display: 'flex', gap: 4, opacity: narrow || isHov ? 1 : 0 }}>
                             <button type="button" aria-label={t('edit')} onClick={(e) => { e.stopPropagation(); setEditGroup(g_.id); setEditVal(g_.name) }} style={{ minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', color: 'var(--tx3)', cursor: 'pointer', padding: 0 }}>✎</button>
                             <button type="button" aria-label={t('delete')} onClick={(e) => { e.stopPropagation(); deleteGroup(g_.id) }} style={{ minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', color: 'var(--rust)', cursor: 'pointer', padding: 0 }}>✕</button>
@@ -624,9 +737,74 @@ export function Themes({
       <style jsx>{`
         .flash-msg { position: fixed; bottom: max(32px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); max-width: calc(100vw - 24px); box-sizing: border-box; background: var(--ac); color: #000; padding: 12px 20px; font-size: 11px; z-index: 999; font-weight: 700; letter-spacing: 2px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); border-radius: 4px; text-align: center; }
         .row-item:hover .item-actions { opacity: 1 !important; }
+        .mosaic-unlink-btn {
+          position: absolute;
+          top: 4px;
+          right: 4px;
+          min-width: 44px;
+          min-height: 44px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0;
+          border: 2px solid rgba(255, 255, 255, 0.9);
+          border-radius: 6px;
+          background: var(--rust);
+          color: #fff;
+          cursor: pointer;
+          z-index: 3;
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
+        }
+        .mosaic-unlink-btn:disabled { cursor: wait; opacity: 0.7; }
+        .mosaic-unlink-btn:focus-visible {
+          outline: 2px solid #fff;
+          outline-offset: 2px;
+        }
+        .mosaic-unlink-icon {
+          font-size: 22px;
+          font-weight: 700;
+          line-height: 1;
+        }
+        .mosaic-unlink-hint {
+          position: absolute;
+          top: 50px;
+          right: 4px;
+          max-width: calc(100% - 8px);
+          padding: 5px 8px;
+          border-radius: 4px;
+          background: rgba(0, 0, 0, 0.88);
+          color: #fff;
+          font-size: 9px;
+          letter-spacing: 0.6px;
+          text-transform: uppercase;
+          text-align: right;
+          opacity: 0;
+          pointer-events: none;
+          z-index: 3;
+          transition: opacity 0.15s ease;
+        }
+        .mosaic-card:hover .mosaic-unlink-hint,
+        .mosaic-unlink-btn:focus-visible + .mosaic-unlink-hint {
+          opacity: 1;
+        }
+        .mosaic-pub-dot {
+          position: absolute;
+          bottom: 8px;
+          right: 8px;
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          z-index: 1;
+          pointer-events: none;
+        }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         section::-webkit-scrollbar, aside::-webkit-scrollbar, .mosaic-scroll::-webkit-scrollbar { width: 4px; }
         section::-webkit-scrollbar-thumb, aside::-webkit-scrollbar-thumb, .mosaic-scroll::-webkit-scrollbar-thumb { background: var(--bd); border-radius: 10px; }
+        @media (max-width: 767px) {
+          .mosaic-unlink-hint { opacity: 1; }
+        }
       `}</style>
     </div>
   )

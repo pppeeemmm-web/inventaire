@@ -4,6 +4,13 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { isPublicSiteTrackedPath, normalizeTrackedPath } from '@/lib/public-site-paths'
 import { dict, type Lang } from '@/lib/i18n/dictionary'
 import { missingPageViewVisitorColumns } from '@/lib/page-view-schema'
+import {
+  isDevAnalyticsHost,
+  isDevAnalyticsPageView,
+  isNetPageView,
+  parseExcludedVisitorIds,
+  type PageViewRow,
+} from '@/lib/analytics-net'
 
 /** Internal bucket keys (not hostnames) — mapped to UI copy via `dict[lang]`. */
 const REF_BUCKET_DIRECT = '__pem_analytics_direct__'
@@ -20,14 +27,7 @@ function getPageViewServiceClient(): SupabaseClient | null {
 /** PostgREST default max rows — must paginate for correct totals / breakdowns */
 const PAGE_SIZE = 1000
 
-type PageViewRow = {
-  path: string
-  referrer: string | null
-  country: string | null
-  created_at: string
-  visitor_id: string | null
-  is_team_session: boolean | null
-}
+export type { PageViewRow } from '@/lib/analytics-net'
 
 export type DayCount = { date: string; views: number }
 
@@ -35,31 +35,16 @@ export type AnalyticsResult =
   | { error: string }
   | {
       ok: true
-      /** Views counted toward aggregates (see scope) */
+      /** Net page views in scope (excl. team sessions + ANALYTICS_EXCLUDE_VISITOR_IDS). */
       pageviews: number
-      /** Distinct non-null visitor_id in scope (browser localStorage id). */
+      /** Distinct net visitor_id in scope. */
       uniqueVisitors: number
-      /** Distinct visitor_id excluding team Atelier sessions and ANALYTICS_EXCLUDE_VISITOR_IDS. */
-      netUniqueVisitors: number
-      /** Rows whose path is not a known public route — only when scope is public_site */
-      offSitePageviews?: number
       scope: 'public_site' | 'all'
       topPages: { path: string; views: number }[]
       topCountries: { country: string; views: number }[]
       topReferrers: { referrer: string; views: number }[]
       trend: DayCount[]
     }
-
-function parseExcludedVisitorIds(): Set<string> {
-  const raw = process.env.ANALYTICS_EXCLUDE_VISITOR_IDS?.trim()
-  if (!raw) return new Set()
-  return new Set(
-    raw
-      .split(/[\s,;]+/)
-      .map((s) => s.trim().toLowerCase())
-      .filter(Boolean)
-  )
-}
 
 function countryLabel(code: string, lang: Lang): string {
   const d = dict[lang]
@@ -155,31 +140,26 @@ export async function getAnalyticsStats(
   const allRows = rows ?? []
   const scopedRows =
     scope === 'public_site' ? allRows.filter((r) => isPublicSiteTrackedPath(r.path)) : allRows
-  const offSitePageviews =
-    scope === 'public_site' ? allRows.length - scopedRows.length : undefined
-
-  const pageviews = scopedRows.length
 
   const excludedIds = parseExcludedVisitorIds()
-  const uniqueSet = new Set<string>()
-  const netSet = new Set<string>()
-  for (const row of scopedRows) {
+  const netRows = scopedRows
+    .filter((r) => isNetPageView(r, excludedIds))
+    .filter((r) => !isDevAnalyticsPageView(r))
+  const pageviews = netRows.length
+
+  const netVisitorSet = new Set<string>()
+  for (const row of netRows) {
     const vid = row.visitor_id?.trim()
-    if (!vid) continue
-    uniqueSet.add(vid)
-    if (row.is_team_session === true) continue
-    if (excludedIds.has(vid.toLowerCase())) continue
-    netSet.add(vid)
+    if (vid) netVisitorSet.add(vid)
   }
-  const uniqueVisitors = uniqueSet.size
-  const netUniqueVisitors = netSet.size
+  const uniqueVisitors = netVisitorSet.size
 
   const pageCounts: Record<string, number> = {}
   const countryByCode: Record<string, number> = {}
   const referrerCounts: Record<string, number> = {}
   const dayCounts: Record<string, number> = {}
 
-  for (const row of scopedRows) {
+  for (const row of netRows) {
     const path = normalizeTrackedPath(row.path)
     pageCounts[path] = (pageCounts[path] ?? 0) + 1
 
@@ -190,8 +170,10 @@ export async function getAnalyticsStats(
     if (refRaw) {
       try {
         const host = new URL(refRaw).hostname.replace(/^www\./, '')
+        if (isDevAnalyticsHost(host)) continue
         referrerCounts[host] = (referrerCounts[host] ?? 0) + 1
       } catch {
+        if (isDevAnalyticsHost(refRaw)) continue
         referrerCounts[REF_BUCKET_INVALID] = (referrerCounts[REF_BUCKET_INVALID] ?? 0) + 1
       }
     } else {
@@ -224,8 +206,6 @@ export async function getAnalyticsStats(
     ok: true,
     pageviews,
     uniqueVisitors,
-    netUniqueVisitors,
-    ...(offSitePageviews !== undefined && offSitePageviews > 0 ? { offSitePageviews } : {}),
     scope,
     topPages: top(pageCounts, 10).map(([path, views]) => ({ path, views: views as number })),
     topCountries: Object.entries(countryByLabel)

@@ -59,6 +59,7 @@ export default function WavingCircle({
     <>
       <style>{`
         @media (prefers-reduced-motion: reduce) {
+          .waving-wave { transition: filter 0.2s ease !important; }
           .waving-pendulum {
             animation-name: pendulum-y !important;
             animation-duration: 16s !important;
@@ -114,6 +115,7 @@ export default function WavingCircle({
           animation: wave 21s ease-in-out infinite;
           transform-origin: center center;
           will-change: transform, filter;
+          transition: filter 1.4s ease;
         }
         .waving-backdrop {
           position: absolute;

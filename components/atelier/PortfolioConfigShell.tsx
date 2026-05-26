@@ -25,7 +25,8 @@ import { PortfolioCollectionsPanel } from '@/components/atelier/portfolio/Portfo
 import { PageSection } from '@/components/atelier/portfolio/shared/PageSection'
 import { CollectionRow } from '@/components/atelier/portfolio/shared/CollectionRow'
 import { SourceItem } from '@/components/atelier/portfolio/shared/SourceItem'
-import { openPublicPreviewTab } from '@/lib/open-public-preview-tab'
+import { buildPublicPreviewUrl } from '@/lib/open-public-preview-tab'
+import { normalizeTheme, resolveThemeByName, themeWorksForCollectionLabel } from '@/components/public/works-utils'
 
 // ── Component ─────────────────────────────────────────────────────────────
 
@@ -125,20 +126,13 @@ export function PortfolioConfigShell({
     return m
   }, [oeuvres])
 
-  const themeNamePrivateWorksMap = useMemo(() => {
-    const map: Record<string, ThemeWork[]> = {}
-    for (const t of themes) {
-      const ids = themePrivateWorks[t.id]
-      if (!ids?.length) continue
-      const ws: ThemeWork[] = []
-      for (const id of ids) {
-        const w = oeuvreThemeLite.get(id)
-        if (w) ws.push(w)
-      }
-      if (ws.length) map[t.name] = ws
-    }
-    return map
-  }, [themes, themePrivateWorks, oeuvreThemeLite])
+  const privateWorksForThemeLabel = useCallback(
+    (label: string | null | undefined): ThemeWork[] | undefined => {
+      const ws = themeWorksForCollectionLabel(label, themes, themePrivateWorks, oeuvreThemeLite)
+      return ws.length > 0 ? ws : undefined
+    },
+    [themes, themePrivateWorks, oeuvreThemeLite],
+  )
 
   const workById = useMemo(() => new Map(oeuvres.map(o => [o.OeuvreID, o])), [oeuvres])
 
@@ -147,11 +141,13 @@ export function PortfolioConfigShell({
       ? item.manual_work_order.map(Number).filter(Number.isFinite)
       : []
     const visible = item.theme
-      ? (themeNamePrivateWorksMap[item.theme] ?? []).filter(w => w.isPublic)
+      ? themeWorksForCollectionLabel(item.theme, themes, themePrivateWorks, oeuvreThemeLite).filter(w => w.isPublic)
       : []
     const seen = new Set<number>()
     const orderedIds: number[] = []
+    const themeWorkIds = new Set(visible.map(w => w.OeuvreID))
     for (const id of manualIds) {
+      if (!themeWorkIds.has(id)) continue
       const work = workById.get(id)
       const isPublic = !!(work as { is_public?: boolean } | undefined)?.is_public
       if (work?.txtImageNameLink && isPublic && !seen.has(id)) {
@@ -177,7 +173,7 @@ export function PortfolioConfigShell({
         txtImageNameLink: work.txtImageNameLink,
       }]
     })
-  }, [themeNamePrivateWorksMap, workById])
+  }, [themes, themePrivateWorks, oeuvreThemeLite, workById])
 
   const pdfCollectionItems = activeTab === 'portfolio'
     ? config.sections
@@ -256,15 +252,30 @@ export function PortfolioConfigShell({
 
   const handleTransfer = (value: string) => {
     if (!activeSlot) return
+    const canonical = resolveThemeByName(themes, value)?.name ?? value
     const { page, index, modeIdx } = activeSlot
     const next = { ...config }
     if (page === 'sections') {
-      next.sections[index] = { ...next.sections[index], theme: value }
+      const prev = next.sections[index]
+      next.sections[index] = {
+        ...prev,
+        theme: canonical,
+        ...(normalizeTheme(prev.theme) !== normalizeTheme(canonical)
+          ? { manual_work_order: [] }
+          : {}),
+      }
     } else {
       const m = modeIdx ?? activeMode
       const modes = next.works_modes.slice()
       const cols = modes[m].collections.slice()
-      cols[index] = { ...cols[index], theme: value }
+      const prev = cols[index]
+      cols[index] = {
+        ...prev,
+        theme: canonical,
+        ...(normalizeTheme(prev.theme) !== normalizeTheme(canonical)
+          ? { manual_work_order: [] }
+          : {}),
+      }
       modes[m] = { ...modes[m], collections: cols }
       next.works_modes = modes
     }
@@ -399,15 +410,18 @@ export function PortfolioConfigShell({
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: narrow ? 8 : 12, flexWrap: 'wrap', justifyContent: narrow ? 'flex-end' : 'flex-start' }}>
-          <button
-            type="button"
+          <a
+            href="/"
+            target="_blank"
+            rel="noopener noreferrer"
+            referrerPolicy="no-referrer"
             className="btn ghost sm"
-            style={{ fontSize: 9, letterSpacing: 2, minHeight: 44 }}
+            style={{ fontSize: 9, letterSpacing: 2, textDecoration: 'none', minHeight: 44, display: 'inline-flex', alignItems: 'center' }}
             title={t('portfolio_open_public_site_title')}
-            onClick={() => openPublicPreviewTab('/')}
+            onClick={(e) => { e.currentTarget.href = buildPublicPreviewUrl('/') }}
           >
             Site
-          </button>
+          </a>
           <button
             type="button"
             onClick={() => setPdfOpen(true)}
@@ -417,15 +431,18 @@ export function PortfolioConfigShell({
           >
             ↓ PDF
           </button>
-          <button
-            type="button"
+          <a
+            href="/works"
+            target="_blank"
+            rel="noopener noreferrer"
+            referrerPolicy="no-referrer"
             className="btn ghost sm"
-            style={{ fontSize: 9, letterSpacing: 2, minHeight: 44 }}
+            style={{ fontSize: 9, letterSpacing: 2, textDecoration: 'none', minHeight: 44, display: 'inline-flex', alignItems: 'center' }}
             title={t('portfolio_catalog_tooltip')}
-            onClick={() => openPublicPreviewTab('/works')}
+            onClick={(e) => { e.currentTarget.href = buildPublicPreviewUrl('/works') }}
           >
             /works
-          </button>
+          </a>
           <button
             type="button"
             className="btn primary sm"
@@ -480,26 +497,27 @@ export function PortfolioConfigShell({
         }}
       >
 
-        {/* Left sidebar — sources */}
+        {/* Theme picker — only while assigning a collection slot */}
+        {activeSlot && activeTab !== 'analytics' ? (
         <div
           style={{
-            width: activeTab === 'analytics' ? 0 : narrow ? '100%' : 280,
-            maxHeight: activeTab === 'analytics' ? 0 : narrow ? 'min(38vh, 260px)' : undefined,
-            borderRight: activeTab === 'analytics' || narrow ? 'none' : '1px solid var(--bd)',
-            borderBottom: activeTab === 'analytics' || !narrow ? 'none' : '1px solid var(--bd)',
+            width: narrow ? '100%' : 280,
+            maxHeight: narrow ? 'min(44vh, 320px)' : undefined,
+            borderRight: narrow ? 'none' : '1px solid var(--bd)',
+            borderBottom: narrow ? '1px solid var(--bd)' : 'none',
             background: 'var(--bg1)',
-            display: activeTab === 'analytics' ? 'none' : 'flex',
+            display: 'flex',
             flexDirection: 'column',
             flexShrink: 0,
             minHeight: 0,
-            order: narrow ? 2 : 0,
+            order: narrow ? 0 : 0,
             overflow: 'hidden',
           }}
         >
           <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--bd)' }}>
             <div className="t-eyebrow" style={{ marginBottom: 4 }}>{t('portfolio_panel_sources')}</div>
             <p className="t-mono-xs" style={{ opacity: 0.4 }}>
-              {activeSlot ? t('portfolio_sources_hint_pick') : t('portfolio_sources_hint_click')}
+              {t('portfolio_sources_hint_pick')}
             </p>
           </div>
           <div style={{ flex: 1, overflowY: 'auto', padding: narrow ? '12px 14px' : 16 }} className="col gap-lg">
@@ -511,8 +529,8 @@ export function PortfolioConfigShell({
                   const hasPrivate = s ? s.pub < s.total : false
                   return (
                     <SourceItem key={name} label={name}
-                      active={!!activeSlot}
-                      onClick={() => activeSlot && handleTransfer(name)}
+                      active
+                      onClick={() => handleTransfer(name)}
                       badge={s ? `${s.pub}/${s.total}` : undefined}
                       badgeWarn={hasPrivate} />
                   )
@@ -520,13 +538,12 @@ export function PortfolioConfigShell({
               </div>
             </div>
           </div>
-          {activeSlot && (
-            <div style={{ padding: 16, paddingBottom: 'max(16px, env(safe-area-inset-bottom))', background: 'var(--ac)', color: 'white', textAlign: 'center' }}>
-              <p className="t-mono-sm" style={{ fontWeight: 600, marginBottom: 8 }}>{t('portfolio_slot_click_target')}</p>
-              <button type="button" className="btn sm ghost" style={{ color: 'white', borderColor: 'white', minHeight: 44 }} onClick={() => setActiveSlot(null)}>{t('cancel')}</button>
-            </div>
-          )}
+          <div style={{ padding: 16, paddingBottom: 'max(16px, env(safe-area-inset-bottom))', background: 'var(--ac)', color: 'white', textAlign: 'center' }}>
+            <p className="t-mono-sm" style={{ fontWeight: 600, marginBottom: 8 }}>{t('portfolio_slot_click_target')}</p>
+            <button type="button" className="btn sm ghost" style={{ color: 'white', borderColor: 'white', minHeight: 44 }} onClick={() => setActiveSlot(null)}>{t('cancel')}</button>
+          </div>
         </div>
+        ) : null}
 
         {/* Main content */}
         <div
@@ -562,11 +579,12 @@ export function PortfolioConfigShell({
 
             {activeTab === 'site' && (
               <SiteEditorPanel
+                oeuvres={oeuvres}
                 config={config} setConfig={setConfig}
                 activeMode={activeMode} setActiveMode={setActiveMode}
                 activeSlot={activeSlot} setActiveSlot={setActiveSlot}
                 themeNameStats={themeNameStats}
-                themeNamePrivateWorks={themeNamePrivateWorksMap}
+                privateWorksForThemeLabel={privateWorksForThemeLabel}
                 onMakePublic={handleMakePublic}
                 addMode={addMode} deleteMode={deleteMode} moveMode={moveMode} updateMode={updateMode}
                 addModeCollection={addModeCollection} moveModeCollection={moveModeCollection}
@@ -598,7 +616,7 @@ export function PortfolioConfigShell({
                         }}
                         onDelete={() => setConfig({ ...config, sections: config.sections.filter(x => x.id !== item.id) })}
                         themeStats={themeNameStats}
-                        privateWorks={item.theme ? themeNamePrivateWorksMap[item.theme] : undefined}
+                        privateWorks={item.theme ? privateWorksForThemeLabel(item.theme) : undefined}
                         onMakePublic={handleMakePublic} />
                     ))}
                     {config.sections.length === 0 && (

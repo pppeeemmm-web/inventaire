@@ -81,8 +81,18 @@ export interface WorksMode {
 export const DEFAULT_HERO_CAPTION_EN = "'Matsukaze' — Meaning 'Wind through the Pines'"
 export const DEFAULT_HERO_CAPTION_FR = '« Matsukaze » — signifiant « Le vent dans les pins »'
 
+function migrateLandingHeroId(v: unknown): number | null {
+  const n = Number(v)
+  return Number.isFinite(n) && n > 0 ? Math.trunc(n) : null
+}
+
 export interface LandingConfig {
   hero_image_url: string
+  /** R2 storage key (`tblImage.txtImageNameLink`) — resolved on the public site via `imageUrl()`. */
+  hero_image_key: string
+  /** Catalogue link for editor re-open; optional when URL is pasted manually. */
+  hero_oeuvre_id: number | null
+  hero_image_id: number | null
   hero_caption_fr: string
   hero_caption_en: string
   /** Page background gradient, 2–6 colour stops. */
@@ -103,23 +113,22 @@ export interface LandingConfig {
   hero_bevel_px: number
   /** Bevel shadow profile on the painted disc. */
   hero_bevel_profile: LandingHeroBevelProfile
-  /** Portfolio PDF download on /enquiry (not on landing). */
+  /** @deprecated Ignored — Portfolio PDF topic removed from /enquiry; always false after parse. */
   enquiry_portfolio_pdf: boolean
-  /**
-   * Landing only: treat #FFFFFF in this hero as transparent over the page gradient.
-   * One-off per config — not applied to work uploads or other images.
-   */
+  /** @deprecated Ignored — landing heroes use AVIF alpha; always false after parse. */
   hero_white_key: boolean
 }
 
-export const LANDING_ENQUIRY_PORTFOLIO_PDF_DEFAULT = true
+export const LANDING_ENQUIRY_PORTFOLIO_PDF_DEFAULT = false
 
-export function migrateEnquiryPortfolioPdf(v: unknown): boolean {
-  return v !== false
+/** Legacy JSON field; enquiry Portfolio PDF UI removed — always false after parse. */
+export function migrateEnquiryPortfolioPdf(_v: unknown): boolean {
+  return false
 }
 
-export function migrateHeroWhiteKey(v: unknown): boolean {
-  return v === true
+/** Legacy JSON field; white-key UI removed — landing always renders without multiply/backdrop. */
+export function migrateHeroWhiteKey(_v: unknown): boolean {
+  return false
 }
 
 export interface PortfolioConfig {
@@ -168,6 +177,9 @@ export const DEFAULT_CONFIG: PortfolioConfig = {
   practice:{ approach_fr: '', approach_en: '', themes: [], materials_fr: '', materials_en: '' },
   landing: {
     hero_image_url: '',
+    hero_image_key: '',
+    hero_oeuvre_id: null,
+    hero_image_id: null,
     hero_caption_fr: DEFAULT_HERO_CAPTION_FR,
     hero_caption_en: DEFAULT_HERO_CAPTION_EN,
     bg_gradient_stops: applyLandingBlendTransition(
@@ -331,6 +343,9 @@ export function migrate(raw: any): PortfolioConfig {
     },
     landing: {
       hero_image_url: String(raw.landing?.hero_image_url ?? '').trim(),
+      hero_image_key: String(raw.landing?.hero_image_key ?? '').trim(),
+      hero_oeuvre_id: migrateLandingHeroId(raw.landing?.hero_oeuvre_id),
+      hero_image_id: migrateLandingHeroId(raw.landing?.hero_image_id),
       hero_caption_fr: String(raw.landing?.hero_caption_fr ?? '').trim() || DEFAULT_HERO_CAPTION_FR,
       hero_caption_en: String(raw.landing?.hero_caption_en ?? '').trim() || DEFAULT_HERO_CAPTION_EN,
       bg_gradient_stops: migrateLandingGradientStops(raw.landing),

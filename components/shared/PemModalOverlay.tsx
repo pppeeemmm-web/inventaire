@@ -3,6 +3,7 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { PEM_Z_INDEX } from '@/components/shared/BottomStack'
+import { useEscapeClose } from '@/hooks/useEscapeClose'
 
 type Props = {
   children: ReactNode
@@ -14,6 +15,7 @@ type Props = {
 export function PemModalOverlay({ children, onClose, panelStyle }: Props) {
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
+  useEscapeClose(mounted, onClose)
   if (!mounted) return null
 
   return createPortal(

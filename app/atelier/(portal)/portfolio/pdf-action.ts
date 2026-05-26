@@ -8,6 +8,7 @@
 
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { buildOeuvreThemeNamesMap } from '@/lib/public-oeuvre-themes'
+import { workMatchesCollectionTheme } from '@/components/public/works-utils'
 import { logError, logWarn } from '@/lib/error-reporter/server'
 import { loadPortfolioConfig } from './actions'
 import {
@@ -90,20 +91,6 @@ function translateTechnique(name: string | null | undefined, lang: Lang): string
     'technique mixte': 'Mixed media',
   }
   return exact[normalized] ?? name
-}
-
-function normalizeTheme(s: string | null | undefined): string {
-  if (!s) return ''
-  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
-}
-
-function workMatchesTheme(themes: string[], target: string | null | undefined): boolean {
-  if (!target?.trim()) return true
-  const tn = normalizeTheme(target)
-  return themes.some(th => {
-    const wn = normalizeTheme(th)
-    return wn.includes(tn) || tn.includes(wn)
-  })
 }
 
 // ── Public action ──────────────────────────────────────────────────────────
@@ -431,6 +418,7 @@ function buildSectionsFrom(
     for (const id of orderIds) {
       const w = byId.get(id)
       if (!w) continue
+      if (!workMatchesCollectionTheme(w.themes, c.theme)) continue
       if (seen.has(w.OeuvreID)) continue
       seen.add(w.OeuvreID)
       works.push(w)
@@ -438,7 +426,7 @@ function buildSectionsFrom(
 
     for (const w of allWorks) {
       if (seen.has(w.OeuvreID)) continue
-      if (!workMatchesTheme(w.themes, c.theme)) continue
+      if (!workMatchesCollectionTheme(w.themes, c.theme)) continue
       seen.add(w.OeuvreID)
       works.push(w)
     }

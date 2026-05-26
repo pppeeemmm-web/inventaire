@@ -147,7 +147,7 @@ export function AnalyticsPanel({
           <div style={{
             display: narrow ? 'flex' : 'grid',
             flexDirection: narrow ? 'column' : undefined,
-            gridTemplateColumns: narrow ? undefined : 'minmax(104px, 1fr) minmax(104px, 1fr) minmax(104px, 1fr) minmax(160px, 2fr)',
+            gridTemplateColumns: narrow ? undefined : 'minmax(120px, 1fr) minmax(120px, 1fr) minmax(180px, 2fr)',
             gap: 8,
             flexShrink: 0,
             minHeight: narrow ? undefined : 132,
@@ -162,7 +162,7 @@ export function AnalyticsPanel({
               minHeight: 0,
             }}>
               <div className="t-label" style={{ marginBottom: 6, fontSize: 10 }}>
-                {result.scope === 'public_site' ? t('analytics_page_views_site') : t('analytics_page_views_raw')}
+                {t('analytics_net_page_views')}
               </div>
               <div style={{
                 fontSize: 22,
@@ -174,35 +174,6 @@ export function AnalyticsPanel({
                 fontVariantNumeric: 'tabular-nums',
               }}>
                 {result.pageviews.toLocaleString(numLocale)}
-              </div>
-              {result.scope === 'public_site' && result.offSitePageviews != null && result.offSitePageviews > 0 && (
-                <div className="t-mono-xs" style={{ color: 'var(--tx3)', marginTop: 6, lineHeight: 1.35 }}>
-                  {t('analytics_off_routes_plus_fmt').replace('{count}', result.offSitePageviews.toLocaleString(numLocale))}
-                </div>
-              )}
-            </div>
-            <div style={{
-              padding: '10px 12px',
-              background: 'var(--bg0)',
-              border: '1px solid var(--bd)',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center',
-              minHeight: 0,
-            }}>
-              <div className="t-label" style={{ marginBottom: 6, fontSize: 10 }}>
-                {t('analytics_unique_visitors')}
-              </div>
-              <div style={{
-                fontSize: 22,
-                fontWeight: 300,
-                lineHeight: 1,
-                color: 'var(--tx)',
-                fontFamily: 'var(--font-serif, serif)',
-                letterSpacing: -0.5,
-                fontVariantNumeric: 'tabular-nums',
-              }}>
-                {result.uniqueVisitors.toLocaleString(numLocale)}
               </div>
             </div>
             <div style={{
@@ -226,7 +197,7 @@ export function AnalyticsPanel({
                 letterSpacing: -0.5,
                 fontVariantNumeric: 'tabular-nums',
               }}>
-                {result.netUniqueVisitors.toLocaleString(numLocale)}
+                {result.uniqueVisitors.toLocaleString(numLocale)}
               </div>
               <div className="t-mono-xs" style={{ color: 'var(--tx3)', marginTop: 6, lineHeight: 1.3, fontSize: 9 }}>
                 {t('analytics_net_visitors_hint')}
@@ -247,11 +218,6 @@ export function AnalyticsPanel({
               </div>
             </div>
           </div>
-          {result.pageviews > 0 && result.uniqueVisitors === 0 && (
-            <div className="t-mono-xs" style={{ color: 'var(--tx3)', padding: '0 2px', lineHeight: 1.35 }}>
-              {t('analytics_visitor_coverage_note')}
-            </div>
-          )}
 
           <div style={{
             flex: '1 1 0',

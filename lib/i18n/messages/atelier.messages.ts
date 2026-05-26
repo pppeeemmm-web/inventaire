@@ -133,6 +133,22 @@ export const atelierMessages = defineMessages({
     fr: 'Clic droit : renommer · Ctrl+clic droit : supprimer',
     en: 'Right-click: rename · Ctrl+right-click: delete',
   },
+  themes_unlink_work_confirm_fmt: {
+    fr: 'Retirer cette œuvre du thème « {theme} » ?',
+    en: 'Remove this work from theme “{theme}”?',
+  },
+  themes_unlink_work_aria: {
+    fr: 'Retirer du thème',
+    en: 'Remove from theme',
+  },
+  themes_unlink_work_from_group_confirm_fmt: {
+    fr: 'Retirer cette œuvre du groupe « {group} » ?',
+    en: 'Remove this work from group “{group}”?',
+  },
+  themes_unlink_work_from_group_aria: {
+    fr: 'Retirer du groupe',
+    en: 'Remove from group',
+  },
   work_thumb_add_image: {
     fr: 'Ajouter une image',
     en: 'Add image',

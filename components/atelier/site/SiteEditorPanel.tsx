@@ -15,7 +15,7 @@ import {
   type PageBackgroundConfig,
 } from '@/lib/page-background'
 import { PageBackgroundEditor } from '@/components/atelier/site/PageBackgroundEditor'
-import { isHttpsHeroUrl, reorder } from '@/lib/portfolio-config-types'
+import { reorder } from '@/lib/portfolio-config-types'
 import {
   applyLandingBlendTransition,
   normalizeHexColor,
@@ -26,19 +26,27 @@ import {
   LANDING_GRADIENT_STOP_MIN,
   type LandingGradientStop,
 } from '@/lib/landing-background'
-import {
-  LANDING_HERO_GLOSS_BLEND_VALUES,
-  resolveHeroGloss,
-  type LandingHeroGlossBlend,
-} from '@/lib/landing-hero-gloss'
-import type { MessageKey } from '@/lib/i18n/messages'
+import { resolveHeroGloss } from '@/lib/landing-hero-gloss'
 import { SitePublicSection } from '@/components/atelier/portfolio/shared/SitePublicSection'
 import { Slot } from '@/components/atelier/portfolio/shared/Slot'
 import { DualField } from '@/components/atelier/portfolio/shared/DualField'
 import { CollectionRow } from '@/components/atelier/portfolio/shared/CollectionRow'
 import { moveBtnStyle } from '@/components/atelier/portfolio/shared/moveBtnStyle'
+import { PracticeBlockExtras } from '@/components/atelier/site/PracticeBlockExtras'
+import { HeroGlossEditor } from '@/components/atelier/site/HeroGlossEditor'
+import {
+  LandingHeroWorkPicker,
+  landingHeroPreviewSrc,
+  type LandingHeroWorkLite,
+} from '@/components/atelier/site/LandingHeroWorkPicker'
+
+function hasHeroPreviewUrl(src: string): boolean {
+  const u = src.trim()
+  return /^https:\/\//i.test(u) || u.startsWith('/r2-proxy/')
+}
 
 interface SiteEditorProps {
+  oeuvres: LandingHeroWorkLite[]
   config: PortfolioConfig
   setConfig: (c: PortfolioConfig) => void
   activeMode: number
@@ -46,7 +54,7 @@ interface SiteEditorProps {
   activeSlot: { type: 'theme'; page: 'works' | 'sections'; index: number; modeIdx?: number } | null
   setActiveSlot: (s: SiteEditorProps['activeSlot']) => void
   themeNameStats: Record<string, { total: number; pub: number }>
-  themeNamePrivateWorks: Record<string, ThemeWork[]>
+  privateWorksForThemeLabel: (label: string) => ThemeWork[] | undefined
   onMakePublic: (id: number) => void
   addMode: () => void
   deleteMode: (i: number) => void
@@ -74,20 +82,12 @@ const BLOCK_LABEL_KEYS: Record<SiteBlockKind, string> = {
   works_modes: 'site_block_works_modes',
 }
 
-const HERO_GLOSS_BLEND_MSG: Record<LandingHeroGlossBlend, MessageKey> = {
-  off: 'site_hero_gloss_blend_off',
-  'color-dodge': 'site_hero_gloss_blend_color_dodge',
-  'soft-light': 'site_hero_gloss_blend_soft_light',
-  overlay: 'site_hero_gloss_blend_overlay',
-  multiply: 'site_hero_gloss_blend_multiply',
-  screen: 'site_hero_gloss_blend_screen',
-}
-
 export function SiteEditorPanel({
+  oeuvres,
   config, setConfig,
   activeMode, setActiveMode,
   activeSlot, setActiveSlot,
-  themeNameStats, themeNamePrivateWorks,
+  themeNameStats, privateWorksForThemeLabel,
   onMakePublic,
   addMode, deleteMode, moveMode, updateMode,
   addModeCollection, moveModeCollection, updateModeCollection, deleteModeCollection,
@@ -206,28 +206,22 @@ export function SiteEditorPanel({
   function renderBlockContent(kind: SiteBlockKind) {
     const heroGloss = resolveHeroGloss(config.landing)
     switch (kind) {
-      case 'hero':
+      case 'hero': {
+        const heroPreviewSrc = landingHeroPreviewSrc(config.landing)
         return (
           <>
             <p className="t-mono-xs" style={{ opacity: 0.55, marginBottom: 12, lineHeight: 1.5 }}>{t('atelier_pub_landing_behavior_help')}</p>
-            <label className="t-label" style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 16, fontSize: 9, cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={config.landing.enquiry_portfolio_pdf}
-                onChange={e => setConfig({
-                  ...config,
-                  landing: { ...config.landing, enquiry_portfolio_pdf: e.target.checked },
-                })}
-                style={{ marginTop: 2 }}
-              />
-              <span>
-                <span style={{ display: 'block', marginBottom: 4 }}>{t('site_enquiry_portfolio_pdf_label')}</span>
-                <span className="t-mono-xs" style={{ opacity: 0.55, lineHeight: 1.5 }}>{t('site_enquiry_portfolio_pdf_help')}</span>
-              </span>
-            </label>
             <p className="t-mono-xs" style={{ opacity: 0.55, marginBottom: 12, lineHeight: 1.5 }}>{t('atelier_pub_hero_url_help')}</p>
             <p className="t-mono-xs" style={{ opacity: 0.4, marginBottom: 8, fontSize: 9 }}>{t('atelier_pub_hero_r2_followup')}</p>
             <p className="t-mono-xs" style={{ opacity: 0.45, marginBottom: 16, fontSize: 9 }}>{t('atelier_pub_hero_url_full_res_hint')}</p>
+            <LandingHeroWorkPicker
+              oeuvres={oeuvres}
+              landing={config.landing}
+              onApply={patch => setConfig({
+                ...config,
+                landing: { ...config.landing, ...patch },
+              })}
+            />
             <label className="t-label" style={{ display: 'block', marginBottom: 6, fontSize: 9 }}>{t('atelier_pub_hero_url_label')}</label>
             <input
               type="url"
@@ -238,36 +232,20 @@ export function SiteEditorPanel({
               value={config.landing.hero_image_url}
               onChange={e => setConfig({
                 ...config,
-                landing: { ...config.landing, hero_image_url: e.target.value },
+                landing: {
+                  ...config.landing,
+                  hero_image_url: e.target.value,
+                  hero_image_key: '',
+                  hero_oeuvre_id: null,
+                  hero_image_id: null,
+                },
               })}
             />
-            <label
-              style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: 10,
-                marginTop: 16,
-                cursor: 'pointer',
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={config.landing.hero_white_key}
-                onChange={e => setConfig({
-                  ...config,
-                  landing: { ...config.landing, hero_white_key: e.target.checked },
-                })}
-              />
-              <span>
-                <span style={{ display: 'block', marginBottom: 4 }}>{t('site_hero_white_key_label')}</span>
-                <span className="t-mono-xs" style={{ opacity: 0.55, lineHeight: 1.5 }}>{t('site_hero_white_key_help')}</span>
-              </span>
-            </label>
-            {isHttpsHeroUrl(config.landing.hero_image_url) && (
+            {hasHeroPreviewUrl(heroPreviewSrc) && (
               <div style={{ marginTop: 16 }}>
                 <div className="t-label" style={{ marginBottom: 4, fontSize: 9 }}>{t('atelier_pub_hero_preview_label')}</div>
                 <p className="t-mono-xs" style={{ opacity: 0.45, marginBottom: 12, fontSize: 9, wordBreak: 'break-all' }}>
-                  {config.landing.hero_image_url.trim().replace(/^https?:\/\/[^/]+/, '')}
+                  {(config.landing.hero_image_key || heroPreviewSrc).trim().replace(/^https?:\/\/[^/]+/, '').replace(/^\/r2-proxy\//, '')}
                 </p>
                 <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
                   <div style={{ textAlign: 'center' }}>
@@ -282,29 +260,17 @@ export function SiteEditorPanel({
                         border: '1px solid var(--bd)',
                       }}
                     >
-                      {config.landing.hero_white_key ? (
-                        <div
-                          aria-hidden
-                          style={{
-                            position: 'absolute',
-                            inset: 0,
-                            background: resolveLandingBackground(config.landing).backgroundCss,
-                          }}
-                        />
-                      ) : null}
                       <img
-                        src={config.landing.hero_image_url.trim()}
+                        src={heroPreviewSrc}
                         alt=""
                         style={{
                           position: 'relative',
                           zIndex: 1,
                           width: '100%',
                           height: '100%',
-                          objectFit: 'cover',
+                          objectFit: 'contain',
+                          objectPosition: 'center',
                           display: 'block',
-                          ...(config.landing.hero_white_key
-                            ? { mixBlendMode: 'darken' as const }
-                            : {}),
                         }}
                       />
                       {heroGloss.enabled ? (
@@ -323,100 +289,19 @@ export function SiteEditorPanel({
                   </div>
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ fontSize: 8, letterSpacing: 1, color: 'var(--tx3)', marginBottom: 6 }}>1:1</div>
-                    <img src={config.landing.hero_image_url.trim()} alt="1:1 crop"
+                    <img src={heroPreviewSrc} alt="1:1 crop"
                       style={{ width: 120, height: 120, objectFit: 'cover', borderRadius: 4, border: '1px solid var(--bd)' }} />
-                  </div>
-                  <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: 8, letterSpacing: 1, color: 'var(--tx3)', marginBottom: 6 }}>4:3</div>
-                    <img src={config.landing.hero_image_url.trim()} alt="4:3 crop"
-                      style={{ width: 160, height: 120, objectFit: 'cover', borderRadius: 4, border: '1px solid var(--bd)' }} />
-                  </div>
-                  <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: 8, letterSpacing: 1, color: 'var(--tx3)', marginBottom: 6 }}>3:4</div>
-                    <img src={config.landing.hero_image_url.trim()} alt="3:4 crop"
-                      style={{ width: 90, height: 120, objectFit: 'cover', borderRadius: 4, border: '1px solid var(--bd)' }} />
                   </div>
                 </div>
               </div>
             )}
-            <div style={{ marginTop: 24 }}>
-              <div className="t-label" style={{ marginBottom: 8, fontSize: 9 }}>{t('site_hero_gloss_label')}</div>
-              <p className="t-mono-xs" style={{ opacity: 0.55, marginBottom: 12, lineHeight: 1.5 }}>
-                {t('site_hero_gloss_help')}
-              </p>
-              <label className="t-label" style={{ display: 'block', fontSize: 9, marginBottom: 12 }}>
-                {t('site_hero_gloss_blend_label')}
-                <select
-                  className="input full"
-                  value={config.landing.hero_gloss_blend}
-                  onChange={e => setConfig({
-                    ...config,
-                    landing: {
-                      ...config.landing,
-                      hero_gloss_blend: e.target.value as LandingHeroGlossBlend,
-                    },
-                  })}
-                  style={{ display: 'block', width: '100%', marginTop: 6 }}
-                >
-                  {LANDING_HERO_GLOSS_BLEND_VALUES.map(mode => (
-                    <option key={mode} value={mode}>{t(HERO_GLOSS_BLEND_MSG[mode])}</option>
-                  ))}
-                </select>
-              </label>
-              <label className="t-label" style={{ display: 'block', fontSize: 9, marginBottom: 6 }}>
-                {t('site_hero_gloss_strength_label')}
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  value={config.landing.hero_gloss_strength_pct}
-                  onChange={e => setConfig({
-                    ...config,
-                    landing: {
-                      ...config.landing,
-                      hero_gloss_strength_pct: Number(e.target.value),
-                    },
-                  })}
-                  style={{ display: 'block', width: '100%', marginTop: 6 }}
-                />
-              </label>
-              <label className="t-label" style={{ display: 'block', fontSize: 9, marginBottom: 6 }}>
-                {t('site_hero_gloss_position_label')}
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  value={config.landing.hero_gloss_position_pct}
-                  disabled={config.landing.hero_gloss_blend === 'off' || config.landing.hero_gloss_strength_pct <= 0}
-                  onChange={e => setConfig({
-                    ...config,
-                    landing: {
-                      ...config.landing,
-                      hero_gloss_position_pct: Number(e.target.value),
-                    },
-                  })}
-                  style={{ display: 'block', width: '100%', marginTop: 6 }}
-                />
-              </label>
-              <label className="t-label" style={{ display: 'block', fontSize: 9, marginBottom: 12 }}>
-                {t('site_hero_gloss_falloff_label')}
-                <input
-                  type="range"
-                  min={28}
-                  max={85}
-                  value={config.landing.hero_gloss_falloff_pct}
-                  disabled={config.landing.hero_gloss_blend === 'off' || config.landing.hero_gloss_strength_pct <= 0}
-                  onChange={e => setConfig({
-                    ...config,
-                    landing: {
-                      ...config.landing,
-                      hero_gloss_falloff_pct: Number(e.target.value),
-                    },
-                  })}
-                  style={{ display: 'block', width: '100%', marginTop: 6 }}
-                />
-              </label>
-            </div>
+            <HeroGlossEditor
+              landing={config.landing}
+              onLandingPatch={patch => setConfig({
+                ...config,
+                landing: { ...config.landing, ...patch },
+              })}
+            />
             <div style={{ marginTop: 24 }}>
               <button
                 type="button"
@@ -568,7 +453,7 @@ export function SiteEditorPanel({
                   <div
                     aria-hidden
                     style={{
-                      height: 48,
+                      height: 'clamp(72px, 12vh, 120px)',
                       borderRadius: 4,
                       border: '1px solid var(--bd)',
                       background: resolveLandingBackground(config.landing).backgroundCss,
@@ -594,6 +479,7 @@ export function SiteEditorPanel({
             </div>
           </>
         )
+      }
 
       case 'identity':
         return (
@@ -659,32 +545,12 @@ export function SiteEditorPanel({
               fr={config.practice.approach_fr} en={config.practice.approach_en}
               onFr={v => setConfig({ ...config, practice: { ...config.practice, approach_fr: v } })}
               onEn={v => setConfig({ ...config, practice: { ...config.practice, approach_en: v } })} />
-            <div style={{ marginTop: 20 }}>
-              <label className="t-label" style={{ display: 'block', marginBottom: 6, fontSize: 9 }}>
-                {/* eslint-disable-next-line pem-i18n/no-hardcoded-jsx-text */}
-                THÈMES CENTRAUX (un par ligne)
-              </label>
-              <textarea
-                className="input full"
-                rows={5}
-                value={(config.practice.themes ?? []).join('\n')}
-                onChange={e => setConfig({
-                  ...config,
-                  practice: {
-                    ...config.practice,
-                    themes: e.target.value.split('\n').map((s: string) => s.trim()).filter(Boolean)
-                  }
-                })}
-                placeholder="La physiologie de la perception…"
-                style={{ width: '100%', resize: 'vertical', fontFamily: 'inherit' }}
-              />
-            </div>
-            <div style={{ marginTop: 20 }}>
-              <DualField label="Médiums & matériaux"
-                fr={config.practice.materials_fr} en={config.practice.materials_en}
-                onFr={v => setConfig({ ...config, practice: { ...config.practice, materials_fr: v } })}
-                onEn={v => setConfig({ ...config, practice: { ...config.practice, materials_en: v } })} />
-            </div>
+            <PracticeBlockExtras
+              practice={config.practice}
+              onThemes={themes => setConfig({ ...config, practice: { ...config.practice, themes } })}
+              onMaterialsFr={v => setConfig({ ...config, practice: { ...config.practice, materials_fr: v } })}
+              onMaterialsEn={v => setConfig({ ...config, practice: { ...config.practice, materials_en: v } })}
+            />
           </>
         )
 
@@ -838,7 +704,7 @@ export function SiteEditorPanel({
                         onUpdate={p => updateModeCollection(activeMode, i, p)}
                         onDelete={() => deleteModeCollection(activeMode, item.id)}
                         themeStats={themeNameStats}
-                        privateWorks={item.theme ? themeNamePrivateWorks[item.theme] : undefined}
+                        privateWorks={item.theme ? privateWorksForThemeLabel(item.theme) : undefined}
                         onMakePublic={onMakePublic} />
                     ))}
                     <button className="btn sm ghost" onClick={() => addModeCollection(activeMode)} style={{ alignSelf: 'flex-start' }}>

@@ -1,6 +1,6 @@
 # Slice 5 — Graph foundation handoff
 
-> **ARCHIVED — slice complete (2026-05-23).** Active checklist: [`../TODO.md`](../TODO.md). Plan: [`../PEM_HYBRID_REFACTOR_PLAN_V5.md`](../PEM_HYBRID_REFACTOR_PLAN_V5.md).
+> **ARCHIVED — slice complete (2026-05-23).** Active checklist: [`../TODO.md`](../TODO.md). Plan: [`./PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md).
 
 **Status:** SQL applied on Supabase (owner 2026-05-23). Repo helpers in `lib/graph/node-ref.ts`. Run `npm run gen:types` after apply so `supabase.generated.ts` includes `nodes`, `entity`, and `tblrelations.source_uid` / `target_uid`.
 

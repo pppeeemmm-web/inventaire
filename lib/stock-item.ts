@@ -20,6 +20,42 @@ export interface StockContactLike {
   Nom: string | null
   Prénom: string | null
   Role: string | null
+  Email?: string | null
+  IndicatifPays1?: string | null
+  Téléphone1?: string | null
+  Ville?: string | null
+  Pays?: string | null
+}
+
+/** Optional location / email / phone for supplier list export. */
+export function supplierContactSummary(c: StockContactLike): string | null {
+  const parts: string[] = []
+  const loc = [c.Ville?.trim(), c.Pays?.trim()].filter(Boolean).join(', ')
+  if (loc) parts.push(loc)
+  const email = c.Email?.trim()
+  if (email) parts.push(email)
+  const phoneRaw = c.Téléphone1?.trim()
+  if (phoneRaw) {
+    const ind = c.IndicatifPays1?.trim()
+    parts.push(ind ? `${ind} ${phoneRaw}` : phoneRaw)
+  }
+  return parts.length > 0 ? parts.join(' — ') : null
+}
+
+/** Numbered lines for reorder lists (one supplier per line). */
+export function buildSupplierOrderedListLines(
+  contacts: StockContactLike[],
+  orderedIds: number[],
+): string[] {
+  const byId = new Map(contacts.map((c) => [c.ContactID, c]))
+  return orderedIds.map((id, index) => {
+    const c = byId.get(id)
+    const n = index + 1
+    if (!c) return `${n}. #${id}`
+    const name = supplierDisplayName(c)
+    const extra = supplierContactSummary(c)
+    return extra ? `${n}. ${name} — ${extra}` : `${n}. ${name}`
+  })
 }
 
 /** Primary display name for a contact (supplier row). */

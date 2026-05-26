@@ -255,7 +255,7 @@ export function PageBackgroundEditor({
           <div
             aria-hidden
             style={{
-              height: 48,
+              height: 'clamp(72px, 12vh, 120px)',
               borderRadius: 4,
               border: '1px solid var(--bd)',
               background: preview,

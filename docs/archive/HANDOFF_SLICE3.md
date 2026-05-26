@@ -1,6 +1,6 @@
 # Slice 3 completion handoff
 
-> **ARCHIVED — slice complete (2026-05-23).** Active checklist: [`../TODO.md`](../TODO.md). Plan: [`../PEM_HYBRID_REFACTOR_PLAN_V5.md`](../PEM_HYBRID_REFACTOR_PLAN_V5.md).
+> **ARCHIVED — slice complete (2026-05-23).** Active checklist: [`../TODO.md`](../TODO.md). Plan: [`./PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md).
 
 **Cold-start handoff** for the V5 Atelier tab route segmentation slice.
 
@@ -8,14 +8,14 @@
 
 **Slice 3B status:** **Complete** (2026-05-23) — legacy tabs segmented: `overview`, `map`, `journal`, `system`, `portfolio`, `contacts`, `stock`, `site`, `analytics`. Bare `/atelier` → `/atelier/overview`. `OverviewTab` extracted to `components/atelier/overview/`. Hub + capture links use segment paths.
 
-**Follow-on:** Slice 5 graph foundation — see [`PEM_HYBRID_REFACTOR_PLAN_V5.md`](../PEM_HYBRID_REFACTOR_PLAN_V5.md). Slice 4 i18n — [`HANDOFF_SLICE4.md`](./HANDOFF_SLICE4.md).
+**Follow-on:** Slice 5 graph foundation — see [`PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md). Slice 4 i18n — [`HANDOFF_SLICE4.md`](./HANDOFF_SLICE4.md).
 
 ---
 
 ## Boot sequence (read in order)
 
 1. [`docs/README.md`](../README.md) — doc index and truth order
-2. [`docs/PEM_HYBRID_REFACTOR_PLAN_V5.md`](../PEM_HYBRID_REFACTOR_PLAN_V5.md) — **Slice 3** section
+2. [`PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md) — **Slice 3** section
 3. [`lib/atelier/tab-routes.ts`](../../lib/atelier/tab-routes.ts) — `SegmentedAtelierTab`, `ATELIER_SEGMENTED_TAB_ROUTES`, `atelierTabHref`, `legacyTabRedirectPath`
 4. [`SITE_MAP.md`](../../SITE_MAP.md) — § Atelier routes
 
@@ -81,9 +81,9 @@ Legacy `?tab=<id>` on `/atelier` redirects via [`legacyTabRedirectPath`](../../l
 
 **Slice 5** — graph foundation (`public.nodes`, …)
 
-**Post–V5** — atelier shell reload per segment tab hop ([`PEM_HYBRID_REFACTOR_PLAN_V5.md`](../PEM_HYBRID_REFACTOR_PLAN_V5.md) § Post–V5 backlog)
+**Post–V5** — atelier shell reload per segment tab hop ([`PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md) § Post–V5 backlog)
 
-**Deferred (not Slice 3):** per-route bundle ≤250 kB audit · drawer sticky save bars in `BottomStack` (z-index documented; drawer footers stay local) · Qdrant / SW · **atelier shell reload per segment tab** (post–V5 — [`PEM_HYBRID_REFACTOR_PLAN_V5.md`](../PEM_HYBRID_REFACTOR_PLAN_V5.md) § Post–V5 backlog)
+**Deferred (not Slice 3):** per-route bundle ≤250 kB audit · drawer sticky save bars in `BottomStack` (z-index documented; drawer footers stay local) · Qdrant / SW · **atelier shell reload per segment tab** (post–V5 — [`PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md) § Post–V5 backlog)
 
 ---
 

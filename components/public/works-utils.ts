@@ -1,6 +1,6 @@
 // Shared types and pure helpers for /works views (carousel + grid).
 
-import type { WorksLayout } from '@/lib/portfolio-config-types'
+import type { ThemeWork, WorksLayout } from '@/lib/portfolio-config-types'
 
 export interface Work {
   OeuvreID: number
@@ -36,6 +36,12 @@ export interface WorksMode {
   outro_en: string
 }
 
+/** Strip RichEditor HTML for plain-text labels (grid intro, carousel chapter line). */
+export function richTextToPlain(html: string): string {
+  if (!html) return ''
+  return html.replace(/<[^>]*>/gi, ' ').replace(/\s+/g, ' ').trim()
+}
+
 // ── Theme matching ───────────────────────────────────────────────────────
 
 export function normalizeTheme(s: string | null | undefined): string {
@@ -43,16 +49,54 @@ export function normalizeTheme(s: string | null | undefined): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
 }
 
+/** Case- and accent-insensitive exact theme name match (atelier stores catalogue theme names). */
 export function workMatchesCollectionTheme(
   workThemes: string[],
   collectionTheme: string | null | undefined,
 ): boolean {
   if (!collectionTheme?.trim()) return true
   const sMatch = normalizeTheme(collectionTheme)
-  return workThemes.some((th) => {
-    const wMatch = normalizeTheme(th)
-    return wMatch.includes(sMatch) || sMatch.includes(wMatch)
-  })
+  return workThemes.some((th) => normalizeTheme(th) === sMatch)
+}
+
+export type ThemeNameRecord = { id: number; name: string }
+
+/**
+ * Resolve a portfolio collection's theme label to one catalogue theme row.
+ * Uses the same normalization as public /works matching; prefers an exact name match when ambiguous.
+ */
+export function resolveThemeByName(
+  themes: ReadonlyArray<ThemeNameRecord>,
+  label: string | null | undefined,
+): ThemeNameRecord | null {
+  if (!label?.trim()) return null
+  const want = normalizeTheme(label)
+  const matches = themes.filter((t) => normalizeTheme(t.name) === want)
+  if (matches.length === 0) return null
+  const exact = matches.find((t) => t.name === label)
+  if (exact) return exact
+  return matches.slice().sort((a, b) => a.id - b.id)[0]!
+}
+
+/**
+ * Œuvres linked in oeuvre_theme for the resolved theme id (atelier Site / Portfolio editors).
+ * Does not use fuzzy multi-theme matching — only junction membership for that theme id.
+ */
+export function themeWorksForCollectionLabel(
+  label: string | null | undefined,
+  themes: ReadonlyArray<ThemeNameRecord>,
+  themePrivateWorks: Readonly<Record<number, number[]>>,
+  oeuvreById: ReadonlyMap<number, ThemeWork>,
+): ThemeWork[] {
+  const theme = resolveThemeByName(themes, label)
+  if (!theme) return []
+  const ids = themePrivateWorks[theme.id] ?? []
+  const out: ThemeWork[] = []
+  for (const id of ids) {
+    const w = oeuvreById.get(id)
+    if (w) out.push(w)
+  }
+  return out
 }
 
 // ── Work ordering ────────────────────────────────────────────────────────
@@ -68,6 +112,7 @@ export function worksForCollection(col: Collection, works: Work[]): Work[] {
     for (const id of orderIds) {
       const w = byId.get(id)
       if (!w?.txtImageNameLink) continue
+      if (!workMatchesCollectionTheme(w.themes, col.theme)) continue
       if (seenHere.has(w.OeuvreID)) continue
       seenHere.add(w.OeuvreID)
       out.push(w)

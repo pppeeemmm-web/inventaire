@@ -1,6 +1,6 @@
 # Slice 7 — Analog fallbacks handoff
 
-> **ARCHIVED — Phase 1 complete; Phase 2 in [`../TODO.md`](../TODO.md).** Plan: [`../PEM_HYBRID_REFACTOR_PLAN_V5.md`](../PEM_HYBRID_REFACTOR_PLAN_V5.md).
+> **ARCHIVED — slice complete (2026-05-25).** Active checklist: [`../TODO.md`](../TODO.md). Plan: [`PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md).
 
 **Status:** Phase 1 on `main`. Phase 2 (weekly R2 CSV) — code in repo; run workflow once to verify.
 

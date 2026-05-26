@@ -1,6 +1,6 @@
 # Slice 8 — Embeddings handoff
 
-> **ARCHIVED — slice complete (2026-05-23).** Active checklist: [`../TODO.md`](../TODO.md). Plan: [`../PEM_HYBRID_REFACTOR_PLAN_V5.md`](../PEM_HYBRID_REFACTOR_PLAN_V5.md).
+> **ARCHIVED — slice complete (2026-05-23).** Active checklist: [`../TODO.md`](../TODO.md). Plan: [`./PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md).
 
 **Status:** Shipped on `main` (2026-05-23). SQL applied; semantic ⌘K search + embed worker verified on studio machine (Ollama :11435, Qdrant `pem_universe`).
 

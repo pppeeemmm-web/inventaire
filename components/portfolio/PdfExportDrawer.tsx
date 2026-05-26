@@ -4,6 +4,7 @@
 // config + works internally — this component just collects user options.
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
+import { useEscapeClose } from '@/hooks/useEscapeClose'
 import { useI18n } from '@/lib/i18n/context'
 import { generatePortfolioPdf, getPortfolioPdfWorkCandidates } from '@/app/atelier/(portal)/portfolio/pdf-action'
 import { WorkThumb } from '@/components/atelier/WorkThumb'
@@ -320,9 +321,10 @@ export default function PdfExportDrawer({
     }
   }
 
-  if (!open) return null
-
   const busy = phase === 'building'
+  useEscapeClose(open && !busy, onClose)
+
+  if (!open) return null
 
   return (
     <>

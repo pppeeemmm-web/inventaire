@@ -53,6 +53,8 @@ export const PENDING_MULTI_APPEND_KEYS = ['themes', 'groups'] as const
 export const PENDING_INTERNAL_KEYS = [
   '__share_inbox_id',
   '__share_file_index',
+  /** Set on insert when DB has no change_kind column yet (pre-migration). */
+  '__pending_change_kind',
 ] as const
 
 /** Union of all keys that may appear in pending_changes.payload */
@@ -64,6 +66,19 @@ export const ALLOWED_PENDING_SAVE_KEYS = new Set<string>([
 ])
 
 export type PendingChangeKind = 'edit' | 'create'
+
+/** Resolve queue row kind (column or legacy payload fallback). */
+export function resolvePendingChangeKind(row: {
+  change_kind?: string | null
+  oeuvre_id?: number | null
+  payload: Record<string, string>
+}): PendingChangeKind {
+  if (row.change_kind === 'create' || row.change_kind === 'edit') return row.change_kind
+  const fromPayload = row.payload.__pending_change_kind
+  if (fromPayload === 'create' || fromPayload === 'edit') return fromPayload
+  if (row.oeuvre_id == null && !(row.payload.oeuvre_id ?? '').trim()) return 'create'
+  return 'edit'
+}
 
 /** Build a JSON-safe payload from the editor form (no File blobs, no arbitrary keys). */
 export function pendingPayloadFromFormData(formData: FormData): Record<string, string> {

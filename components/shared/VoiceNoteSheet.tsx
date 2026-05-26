@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEscapeClose } from '@/hooks/useEscapeClose'
 import { useI18n } from '@/lib/i18n/context'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import { createVoiceNote } from '@/app/atelier/(portal)/notes/actions'
@@ -123,26 +124,23 @@ export function VoiceNoteSheet({
     recordStartedAt.current = null
   }, [])
 
+  useEscapeClose(open, onClose)
+
   useEffect(() => {
     if (!open) return
     setDictationAvailability(getLiveDictationAvailability())
     setOnline(typeof navigator === 'undefined' ? true : navigator.onLine)
     const id = window.setTimeout(() => closeRef.current?.focus(), 0)
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
     const onOnline = () => setOnline(true)
     const onOffline = () => setOnline(false)
-    window.addEventListener('keydown', onKey)
     window.addEventListener('online', onOnline)
     window.addEventListener('offline', onOffline)
     return () => {
       window.clearTimeout(id)
-      window.removeEventListener('keydown', onKey)
       window.removeEventListener('online', onOnline)
       window.removeEventListener('offline', onOffline)
     }
-  }, [open, onClose])
+  }, [open])
 
   useEffect(() => {
     if (!open) return

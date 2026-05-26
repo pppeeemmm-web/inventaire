@@ -8,6 +8,7 @@
 import { useState, useMemo, useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import { CommandPalette } from './CommandPalette'
 import { useUnsavedActionGuard } from '@/hooks/useUnsavedActionGuard'
+import { useEscapeClose } from '@/hooks/useEscapeClose'
 import dynamic from 'next/dynamic'
 import { useRouter, usePathname } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
@@ -979,6 +980,13 @@ export function TeamPortalClient({
     return res.groupId
   }, [router])
 
+  const downloadStudioBible = useCallback(() => {
+    void triggerStudioBibleDownload({
+      notFoundMessage: t('studio_bible_download_not_found'),
+      errorMessage: (detail) => t('vault_download_err_fmt').replace('{msg}', detail),
+    })
+  }, [t])
+
   // ── Environment Check ──────────────────────────────────────────
   const isConfigured = !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
   
@@ -1032,13 +1040,6 @@ export function TeamPortalClient({
     }
     handleSetTab('sales')
   }
-
-  const downloadStudioBible = useCallback(() => {
-    void triggerStudioBibleDownload({
-      notFoundMessage: t('studio_bible_download_not_found'),
-      errorMessage: (detail) => t('vault_download_err_fmt').replace('{msg}', detail),
-    })
-  }, [t])
 
   return (
     <>
@@ -1572,6 +1573,7 @@ function CompareModal({ ids, oeuvres, tM, sM, contacts, addresses, statusLabelMa
   onClose:         () => void
 }) {
   const { t } = useI18n()
+  useEscapeClose(true, onClose)
   const works = oeuvres.filter(o => ids.includes(o.OeuvreID))
 
   const [longById, setLongById] = useState<

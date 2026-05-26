@@ -13,11 +13,15 @@ import {
 } from '@/lib/site-block-visibility'
 import {
   landingChromeTextShadowNow,
+  LANDING_SHADOW_TICK_MS,
   type LandingChromeTextShadow,
   type LandingShadowTuning,
 } from '@/lib/landing-text-shadow'
 import type { CSSProperties } from 'react'
 
+/** Hub entry dot on public landing — visual only; name from i18n aria-label. */
+const LANDING_HUB_DOT_PX = 7
+const LANDING_HUB_TAP_MIN_PX = 44
 
 type LandingPageProps = {
   heroImageUrl: string
@@ -124,6 +128,7 @@ export default function LandingPage({
       )
     }
     apply()
+    const tick = window.setInterval(apply, LANDING_SHADOW_TICK_MS)
     const onVisible = () => {
       if (document.visibilityState === 'visible') apply()
     }
@@ -133,6 +138,7 @@ export default function LandingPage({
     mqNarrow.addEventListener('change', apply)
     mqMotion.addEventListener('change', apply)
     return () => {
+      window.clearInterval(tick)
       document.removeEventListener('visibilitychange', onVisible)
       mqNarrow.removeEventListener('change', apply)
       mqMotion.removeEventListener('change', apply)
@@ -188,9 +194,11 @@ export default function LandingPage({
         .landing-center a, .landing-center button { pointer-events: auto; }
         .landing-chrome-shadow {
           text-shadow: var(--landing-chrome-text-shadow);
+          transition: text-shadow 1.4s ease;
         }
         .landing-body-shadow {
           text-shadow: var(--landing-chrome-text-shadow-soft);
+          transition: text-shadow 1.4s ease;
         }
         .wordmark {
           position: absolute;
@@ -295,16 +303,35 @@ export default function LandingPage({
         }
         .landing-inline-link:hover { color: ${landingChromeTextHover}; }
         .hub-link {
+          color: ${landingBodyMutedText};
+          text-decoration: none;
+          opacity: 0.52;
+          transition: color 0.2s, opacity 0.2s;
+          min-height: ${LANDING_HUB_TAP_MIN_PX}px;
+          min-width: ${LANDING_HUB_TAP_MIN_PX}px;
+          padding: 0;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          box-sizing: border-box;
+        }
+        .hub-link--corner {
           position: absolute;
           bottom: max(clamp(12px, 3vh, 32px), env(safe-area-inset-bottom, 0px));
           right: max(clamp(14px, 4vw, 40px), env(safe-area-inset-right, 0px));
           z-index: 30;
-          font-size: clamp(7px, 1.4vmin, 9px); letter-spacing: clamp(1px, 0.3vmin, 2px); text-transform: uppercase;
-          color: ${landingBodyMutedText}; text-decoration: none; opacity: 0.85;
-          transition: all 0.3s; font-weight: 600;
-          min-height: 44px; padding: 10px 8px; display: inline-flex; align-items: center;
         }
-        .hub-link:hover { opacity: 1 !important; color: ${landingChromeTextHover} !important; }
+        .hub-dot {
+          width: ${LANDING_HUB_DOT_PX}px;
+          height: ${LANDING_HUB_DOT_PX}px;
+          border-radius: 50%;
+          background: currentColor;
+          flex-shrink: 0;
+        }
+        .hub-link:hover {
+          opacity: 0.72 !important;
+          color: ${landingBodyText} !important;
+        }
         .landing-nav-btn {
           display: none;
           position: absolute;
@@ -442,8 +469,14 @@ export default function LandingPage({
           ) : null}
         </div>
 
-        <Link href="/hub" className="hub-link landing-body-shadow" style={{ display: pubNarrow ? 'none' : undefined }}>
-          {t('pub_hub_link_strip')}
+        <Link
+          href="/hub"
+          className="hub-link hub-link--corner landing-body-shadow"
+          style={{ display: pubNarrow ? 'none' : undefined }}
+          aria-label={t('pub_hub_short')}
+          title={t('pub_hub_short')}
+        >
+          <span className="hub-dot" aria-hidden="true" />
         </Link>
       </main>
 
@@ -503,15 +536,11 @@ export default function LandingPage({
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, padding: '4px 0' }}>
             <Link
               href="/hub"
-              className="landing-body-shadow"
-              style={{
-                fontSize: 8, letterSpacing: 1, textTransform: 'uppercase',
-                color: '#b0aca6', textDecoration: 'none',
-                padding: '4px 4px', display: 'inline-flex', alignItems: 'center',
-                opacity: 0.55,
-              }}
+              className="hub-link landing-body-shadow"
+              aria-label={t('pub_hub_short')}
+              title={t('pub_hub_short')}
             >
-              [ {t('pub_hub_short')} ]
+              <span className="hub-dot" aria-hidden="true" />
             </Link>
             <span
               className="landing-body-shadow"

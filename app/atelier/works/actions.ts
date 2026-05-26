@@ -13,6 +13,8 @@ import {
   normalizeImageToAvifPair,
   validateWorkImageBuffer,
 } from '@/lib/image-upload'
+import { insertPendingChange } from '@/lib/pending-changes-insert'
+import { pendingInsertToSaveError } from '@/lib/work-save-error'
 import { pendingPayloadFromFormData, type PendingChangeKind } from '@/lib/work-pending-keys'
 import { provenanceTimestamp, provenanceUserId } from '@/lib/oeuvre-provenance'
 import type { WorkImage, Oeuvre } from '@/lib/types/database'
@@ -299,7 +301,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
         baseline = (row as Record<string, unknown> | null) ?? null
       }
 
-      const { error: pErr } = await supabase.from('pending_changes').insert({
+      const { error: pErr } = await insertPendingChange(supabase, {
         oeuvre_id: oeuvreIdForRow,
         change_kind: changeKind,
         payload,
@@ -307,7 +309,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
         author_id: user.id,
         author_email: user.email ?? null,
       })
-      if (pErr) return { error: pErr.message }
+      if (pErr) return { error: pendingInsertToSaveError(pErr) }
       revalidatePath('/atelier/audit')
       return { ok: true, pending: true }
     }

@@ -5,6 +5,7 @@ import { headers } from 'next/headers'
 import { createClient as createServerSupabase } from '@/lib/supabase/server'
 import { isLikelyVisitorUuid } from '@/lib/public-visitor-id'
 import { missingPageViewVisitorColumns } from '@/lib/page-view-schema'
+import { isDevAnalyticsHost } from '@/lib/analytics-net'
 
 export async function trackView(
   path: string,
@@ -22,6 +23,8 @@ export async function trackView(
     // When called from a server component, read headers automatically
     if (referrer === null && country === null) {
       const h = await headers()
+      const host = h.get('x-forwarded-host') ?? h.get('host')
+      if (isDevAnalyticsHost(host)) return
       referrer = h.get('referer')
       country  = h.get('x-vercel-ip-country')
     }

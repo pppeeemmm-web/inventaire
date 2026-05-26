@@ -17,6 +17,7 @@ import { WorkThumb } from './WorkThumb'
 import { createClient } from '@/lib/supabase/client'
 import { useUnsavedCloseGuard } from '@/hooks/useUnsavedCloseGuard'
 import { toast } from '@/lib/ui/toast'
+import { workSaveErrorToastMessage } from '@/lib/work-save-error'
 import { registerUndo, consumeUndo } from '@/lib/ui/undo'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import {
@@ -463,7 +464,7 @@ export function WorkForm({
       try {
         const res = await action(fd)
         if ('error' in res) {
-          alert(`${t('error_prefix')} ${res.error}`)
+          alert(workSaveErrorToastMessage(res.error, t))
           return
         }
         try {

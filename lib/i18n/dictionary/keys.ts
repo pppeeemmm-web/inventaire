@@ -209,6 +209,7 @@ export type DictKey =
   | 'pending_sessions_shots' | 'pending_sessions_apply_confirm'
   | 'session_photos_staged_hint' | 'session_photos_staged_hint_admin' | 'session_submit_sent_audit' | 'session_apply_photos_hint'
   | 'wf_save_pending_toast'
+  | 'wf_save_pending_schema_error'
   | 'history_section_title' | 'history_loading' | 'history_empty'
   | 'history_changes_count' | 'history_restore' | 'history_confirm_restore'
   | 'history_field' | 'history_before' | 'history_after' | 'history_no_changes'

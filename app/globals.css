@@ -142,6 +142,15 @@ input, textarea, select { font: inherit; color: inherit; background: transparent
 ::-webkit-scrollbar-thumb:hover { background: var(--bd3); }
 ::-webkit-scrollbar-track { background: transparent; }
 
+/* Contacts CRM: list scroll without a thumb on the editor seam */
+.contacts-list-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.contacts-list-scroll::-webkit-scrollbar {
+  display: none;
+}
+
 /* ── Type scale ───────────────────────────────────────────── */
 .t-eyebrow { font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: var(--tx3); font-weight: 600; }
 .t-label   { font-size: 13px; letter-spacing: 0.5px; text-transform: uppercase; color: var(--tx3); font-weight: 600; }

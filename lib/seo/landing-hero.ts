@@ -1,3 +1,5 @@
+import { imageUrl } from '@/lib/data'
+
 /** Landing circle hero — shared by `LandingPage` and home `metadata.openGraph.images`. */
 /** Full-size AVIF on R2 (not /thumbs/ — those are 400px and look soft when the hero fills the viewport). */
 export const LANDING_HERO_IMAGE_URL =
@@ -5,9 +7,24 @@ export const LANDING_HERO_IMAGE_URL =
 
 const FALLBACK_ARTIST = 'the pem workshop'
 
-/** Prefer `https://…` from portfolio config; otherwise default hero asset. */
-export function resolveLandingHeroImageUrl(heroUrl: string | null | undefined): string {
-  const u = (heroUrl ?? '').trim()
+export type LandingHeroSource = {
+  hero_image_url?: string | null
+  hero_image_key?: string | null
+}
+
+/** Prefer linked R2 key (`imageUrl`), then HTTPS URL from config; otherwise default hero asset. */
+export function resolveLandingHeroImageUrl(
+  heroUrlOrLanding?: string | LandingHeroSource | null,
+): string {
+  if (heroUrlOrLanding != null && typeof heroUrlOrLanding === 'object') {
+    const key = (heroUrlOrLanding.hero_image_key ?? '').trim()
+    if (key) {
+      const fromKey = imageUrl(key)
+      if (fromKey && /^https:\/\//i.test(fromKey)) return fromKey
+    }
+    return resolveLandingHeroImageUrl(heroUrlOrLanding.hero_image_url)
+  }
+  const u = (heroUrlOrLanding ?? '').trim()
   if (u && /^https:\/\//i.test(u)) return u
   return LANDING_HERO_IMAGE_URL
 }

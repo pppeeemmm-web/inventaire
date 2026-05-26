@@ -8,6 +8,7 @@ import { useEffect, useLayoutEffect, useState, useTransition, useCallback, useRe
 import { useI18n } from '@/lib/i18n/context'
 import { saveWork, createLookup, addWorkImage, reorderWorkImages, deleteWorkImage, replaceWorkImage } from '@/app/atelier/works/actions'
 import { toast } from '@/lib/ui/toast'
+import { workSaveErrorToastMessage } from '@/lib/work-save-error'
 import { registerUndo, consumeUndo } from '@/lib/ui/undo'
 import { markAsGift } from '@/app/atelier/works/gift-actions'
 import { useMediaQuery } from '@/lib/useMediaQuery'
@@ -806,7 +807,7 @@ export function DrawerContent({
     try {
       const res = await saveWork(fd)
       if ('error' in res) {
-        toast.error(`${t('error_prefix')} ${res.error}`)
+        toast.error(workSaveErrorToastMessage(res.error, t))
         return false
       }
       try {

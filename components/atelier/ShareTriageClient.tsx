@@ -7,6 +7,7 @@ import type { DictKey } from '@/lib/i18n/dictionary'
 import { useI18n } from '@/lib/i18n/context'
 import { imageUrl } from '@/lib/data'
 import { toast } from '@/lib/ui/toast'
+import { workSaveErrorToastMessage } from '@/lib/work-save-error'
 import { deleteShareInboxEntry, type ShareInboxListRow } from '@/app/atelier/share-inbox-actions'
 import {
   attachShareInboxToWork,
@@ -77,7 +78,7 @@ export function ShareTriageClient(props: {
       const res = await deleteShareInboxEntry(id)
       setBusyId(null)
       if ('error' in res) {
-        toast.error(`${t('error_prefix')} ${res.error}`)
+        toast.error(workSaveErrorToastMessage(res.error, t))
         return
       }
       startTransition(() => {
@@ -115,7 +116,7 @@ export function ShareTriageClient(props: {
         returnSession.date,
       )
       if ('error' in res) {
-        toast.error(`${t('error_prefix')} ${res.error}`)
+        toast.error(workSaveErrorToastMessage(res.error, t))
         return
       }
       clearLightroomReturn()
@@ -372,7 +373,7 @@ function ParsedShareDetail(props: {
     startTransition(async () => {
       const res = await splitShareInboxIntoDrafts(detail.id)
       if ('error' in res) {
-        toast.error(`${t('error_prefix')} ${res.error}`)
+        toast.error(workSaveErrorToastMessage(res.error, t))
         return
       }
       if (res.pending) {
@@ -393,7 +394,7 @@ function ParsedShareDetail(props: {
     startTransition(async () => {
       const res = await createDraftWorkFromShareInbox(detail.id, { fileIndex })
       if ('error' in res) {
-        toast.error(`${t('error_prefix')} ${res.error}`)
+        toast.error(workSaveErrorToastMessage(res.error, t))
         return
       }
       if (res.pending) {
@@ -409,7 +410,7 @@ function ParsedShareDetail(props: {
     startTransition(async () => {
       const res = await attachShareInboxToWork(detail.id, workId)
       if ('error' in res) {
-        toast.error(`${t('error_prefix')} ${res.error}`)
+        toast.error(workSaveErrorToastMessage(res.error, t))
         return
       }
       toast.success(t('share_triage_attach_ok'))

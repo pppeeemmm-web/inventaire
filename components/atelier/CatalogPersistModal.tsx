@@ -52,17 +52,6 @@ export function CatalogPersistModal({
     setLocalCatalogGroups(initialCatalogGroups)
   }, [initialCatalogGroups])
 
-  useEffect(() => {
-    const onKey = (ev: KeyboardEvent) => {
-      if (ev.key === 'Escape') {
-        ev.preventDefault()
-        onClose()
-      }
-    }
-    window.addEventListener('keydown', onKey, true)
-    return () => window.removeEventListener('keydown', onKey, true)
-  }, [onClose])
-
   async function handleCreateCatalogTheme() {
     const name = newCatalogThemeName.trim()
     if (!name) return

@@ -1,6 +1,6 @@
 # Slice 4 — i18n handoff
 
-> **ARCHIVED — slice complete (2026-05-23).** Active checklist: [`../TODO.md`](../TODO.md). Plan: [`../PEM_HYBRID_REFACTOR_PLAN_V5.md`](../PEM_HYBRID_REFACTOR_PLAN_V5.md).
+> **ARCHIVED — slice complete (2026-05-23).** Active checklist: [`../TODO.md`](../TODO.md). Plan: [`./PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md).
 
 **Cold-start handoff** for V5 bilingual copy: `defineMessages` precedence, segment-tab migration, and CI enforcement.
 
@@ -11,7 +11,7 @@
 ## Boot sequence (read in order)
 
 1. [`docs/README.md`](../README.md) — doc index
-2. [`docs/PEM_HYBRID_REFACTOR_PLAN_V5.md`](../PEM_HYBRID_REFACTOR_PLAN_V5.md) — § Slice 4
+2. [`PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md) — § Slice 4
 3. [`lib/i18n/resolve-message.ts`](../../lib/i18n/resolve-message.ts) — feature messages → legacy dict → dev warn
 4. [`lib/i18n/context.tsx`](../../lib/i18n/context.tsx) — client `t()`
 5. [`scripts/i18n-check.mjs`](../../scripts/i18n-check.mjs) + [`scripts/i18n-check-allowlist.json`](../../scripts/i18n-check-allowlist.json)
@@ -61,7 +61,7 @@ Registered in [`lib/i18n/messages/index.ts`](../../lib/i18n/messages/index.ts) �
 
 1. ~~**Slice 4** — i18n (this handoff)~~ **done**
 2. **Slice 3B — legacy `?tab=` segments** — [`HANDOFF_SLICE3.md`](./HANDOFF_SLICE3.md)
-3. **Slice 5 — graph foundation** — [`PEM_HYBRID_REFACTOR_PLAN_V5.md`](../PEM_HYBRID_REFACTOR_PLAN_V5.md) § Slice 5
+3. **Slice 5 — graph foundation** — [`PEM_HYBRID_REFACTOR_PLAN_V5.md`](./PEM_HYBRID_REFACTOR_PLAN_V5.md) § Slice 5
 
 ---
 

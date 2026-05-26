@@ -14,10 +14,12 @@ export function WorksReorder({ privateWorks, orderIds, onReorder, onMakePublic }
   const visible = privateWorks.filter(w => w.isPublic)
   const hidden  = privateWorks.filter(w => !w.isPublic)
 
+  const themeWorkIds = new Set(privateWorks.map(w => w.OeuvreID))
   const visibleMap = new Map(visible.map(w => [w.OeuvreID, w]))
   const seen = new Set<number>()
   const ordered: ThemeWork[] = []
   for (const id of orderIds) {
+    if (!themeWorkIds.has(id)) continue
     const w = visibleMap.get(id)
     if (w && !seen.has(id)) { ordered.push(w); seen.add(id) }
   }

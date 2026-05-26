@@ -12,6 +12,8 @@ import { addWorkImage } from '@/app/atelier/works/actions'
 import { uploadWorkSessionItemShot } from '@/app/atelier/session/actions'
 import { logSystemEvent } from '@/lib/utils/logging'
 import { shareImageFiles, titreSeedFromSharePayload } from '@/lib/share-inbox-titre'
+import { insertPendingChange } from '@/lib/pending-changes-insert'
+import { pendingInsertToSaveError } from '@/lib/work-save-error'
 import { provenanceTimestamp, provenanceUserId } from '@/lib/oeuvre-provenance'
 import { recordStorageObject } from '@/lib/storage-object-ledger'
 import {
@@ -530,7 +532,7 @@ export async function createDraftWorkFromShareInbox(
     const {
       data: { user: authUser },
     } = await g.supabase.auth.getUser()
-    const { error: pErr } = await g.supabase.from('pending_changes').insert({
+    const { error: pErr } = await insertPendingChange(g.supabase, {
       oeuvre_id: null,
       change_kind: 'create',
       payload: queuePayload,
@@ -538,7 +540,7 @@ export async function createDraftWorkFromShareInbox(
       author_id: g.user.id,
       author_email: authUser?.email ?? null,
     })
-    if (pErr) return { error: pErr.message }
+    if (pErr) return { error: pendingInsertToSaveError(pErr) }
     revalidatePath('/atelier/audit')
     return { ok: true, pending: true }
   }

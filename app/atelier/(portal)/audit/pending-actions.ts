@@ -6,6 +6,7 @@ import { saveWork } from '@/app/atelier/works/actions'
 import {
   filterPendingPayloadForReplay,
   formDataFromPendingPayload,
+  resolvePendingChangeKind,
   type PendingChangeKind,
 } from '@/lib/work-pending-keys'
 import { attachShareInboxFilesToWork } from '@/app/atelier/share-triage/actions'
@@ -61,7 +62,11 @@ export async function listPendingChanges(): Promise<PendingChange[]> {
   }
   return (data ?? []).map((r) => {
     const payload = r.payload as Record<string, string>
-    const kind = (r.change_kind as PendingChangeKind | null) ?? 'edit'
+    const kind = resolvePendingChangeKind({
+      change_kind: r.change_kind as string | null,
+      oeuvre_id: r.oeuvre_id,
+      payload,
+    })
     const titleFromPayload = (payload.titre ?? '').trim() || null
     const oeuvreTitle =
       r.oeuvre_id != null ? titleMap.get(r.oeuvre_id) ?? null : titleFromPayload

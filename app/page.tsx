@@ -18,7 +18,6 @@ import {
 import {
   DEFAULT_HERO_CAPTION_EN,
   DEFAULT_HERO_CAPTION_FR,
-  migrateHeroWhiteKey,
 } from '@/lib/portfolio-config-types'
 import { resolveLandingBackground } from '@/lib/landing-background'
 import { resolveHeroGloss } from '@/lib/landing-hero-gloss'
@@ -32,8 +31,8 @@ export async function generateMetadata(): Promise<Metadata> {
   try {
     const { config } = await loadPortfolioSectionsCached()
     const g = config.general as { artist_name?: string } | undefined
-    const l = config.landing as { hero_image_url?: string } | undefined
-    heroUrl = resolveLandingHeroImageUrl(l?.hero_image_url)
+    const l = config.landing as { hero_image_url?: string; hero_image_key?: string } | undefined
+    heroUrl = resolveLandingHeroImageUrl(l ?? undefined)
     siteName = resolveArtistDisplayName(g?.artist_name)
   } catch (e) {
     console.error('[HomePage] generateMetadata: portfolio sections load failed', e)
@@ -82,7 +81,6 @@ export default async function HomePage() {
   let landingBg = resolveLandingBackground()
   let heroGloss = resolveHeroGloss()
   let landingPartial: Partial<LandingConfig> | undefined
-  let heroWhiteKey = false
   try {
     const { config } = await loadPortfolioSectionsCached()
     const g = config.general as { artist_name?: string } | undefined
@@ -90,8 +88,7 @@ export default async function HomePage() {
     landingPartial = l
     landingBg = resolveLandingBackground(l)
     heroGloss = resolveHeroGloss(l)
-    heroWhiteKey = migrateHeroWhiteKey(l?.hero_white_key)
-    heroImageUrl = resolveLandingHeroImageUrl(l?.hero_image_url)
+    heroImageUrl = resolveLandingHeroImageUrl(l ?? undefined)
     heroImageUnoptimized = isLandingHeroUnoptimized(heroImageUrl)
     artistName = resolveArtistDisplayName(g?.artist_name)
     heroCaptionFr = (l?.hero_caption_fr ?? '').trim() || DEFAULT_HERO_CAPTION_FR
@@ -127,7 +124,7 @@ export default async function HomePage() {
       heroGlossEnabled={heroGloss.enabled}
       heroGlossBackground={heroGloss.background}
       heroGlossMixBlendMode={heroGloss.mixBlendMode}
-      heroWhiteKey={heroWhiteKey}
+      heroWhiteKey={false}
       shadowTuning={landingShadowTuningFromLanding(landingPartial, landingBg.bottomHex, landingBg.topHex)}
     />
   )

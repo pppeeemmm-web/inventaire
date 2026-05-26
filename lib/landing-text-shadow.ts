@@ -1,3 +1,15 @@
+/**
+ * Landing circadian shadows (chrome text + hero disc drop-shadow).
+ *
+ * **Clock:** browser `Date` in the visitor's local timezone (`getHours` / `getMinutes`).
+ * Not server time, not a site-config TZ, not geolocation.
+ *
+ * **Tuning:** `LandingShadowTuning` from site landing gradient stops + `hero_bevel_px`
+ * (length scale only; direction/length curve is time-driven).
+ *
+ * **Geometry:** synthetic sun arc 06:00–21:00 — morning/evening = long cast toward screen-west
+ * (negative X), midday = short nearly vertical, night = shorter cooler cast.
+ */
 import {
   LANDING_HERO_BEVEL_PX_MAX,
   migrateHeroBevelPx,
@@ -47,9 +59,16 @@ const SHADOW_SOFT_LENGTH_RATIO = 0.78
 const SHADOW_SOFT_LAYER_RATIO = 0.85
 /** Stacked layers on chrome nodes — keep ≤7 for compositing. */
 const TEXT_FADE_LAYERS = 7
-const HERO_CAST_LAYERS = 5
-const HERO_LENGTH_RATIO = 0.95
+const HERO_CAST_LAYERS = 6
+const HERO_LENGTH_RATIO = 1.12
+/** Extra horizontal emphasis on the warped disc (alpha silhouette). */
+const HERO_DIR_X_BOOST = 1.28
+const SHADOW_LENGTH_DAY_MAX = 78
+const SHADOW_LENGTH_DAY_MIN = 14
+const SHADOW_LENGTH_NIGHT = 34
 const SHADOW_ON_LIGHT_SKY = '#2c2a28'
+/** Re-apply client shadows when the local clock crosses a minute (public landing). */
+export const LANDING_SHADOW_TICK_MS = 60_000
 
 function hourPeriod(hour: number): HourPeriod {
   const h = ((hour % 24) + 24) % 24
@@ -100,50 +119,83 @@ function shadowLengthScale(tuning?: LandingShadowTuning): number {
   return 0.88 + (bevel / LANDING_HERO_BEVEL_PX_MAX) * 0.28
 }
 
-function baseSpecsForPeriod(
-  period: HourPeriod,
-  bottomTintHex: string,
-  topTintHex: string,
-): { chrome: ContinuousShadowSpec; soft: ContinuousShadowSpec } {
-  switch (period) {
-    case 'night':
-      return {
-        chrome: { lengthPx: 40, dirX: -1, dirY: 1.2, rgba: shadowRgba(period, bottomTintHex, topTintHex, 0.32) },
-        soft: { lengthPx: 30, dirX: -1, dirY: 1.2, rgba: shadowRgba(period, bottomTintHex, topTintHex, 0.26) },
-      }
-    case 'morning':
-      return {
-        chrome: { lengthPx: 58, dirX: -1, dirY: 1.45, rgba: shadowRgba(period, bottomTintHex, topTintHex, 0.42) },
-        soft: { lengthPx: 44, dirX: -1, dirY: 1.45, rgba: shadowRgba(period, bottomTintHex, topTintHex, 0.34) },
-      }
-    case 'midday':
-      return {
-        chrome: { lengthPx: 26, dirX: 0, dirY: 1.2, rgba: shadowRgba(period, bottomTintHex, topTintHex, 0.34) },
-        soft: { lengthPx: 20, dirX: 0, dirY: 1.2, rgba: shadowRgba(period, bottomTintHex, topTintHex, 0.28) },
-      }
-    case 'afternoon':
-      return {
-        chrome: { lengthPx: 48, dirX: 1, dirY: 1.35, rgba: shadowRgba(period, bottomTintHex, topTintHex, 0.4) },
-        soft: { lengthPx: 36, dirX: 1, dirY: 1.35, rgba: shadowRgba(period, bottomTintHex, topTintHex, 0.32) },
-      }
-    case 'evening':
-      return {
-        chrome: { lengthPx: 56, dirX: 1, dirY: 1.45, rgba: shadowRgba(period, bottomTintHex, topTintHex, 0.44) },
-        soft: { lengthPx: 42, dirX: 1, dirY: 1.45, rgba: shadowRgba(period, bottomTintHex, topTintHex, 0.34) },
-      }
+/** Minutes since local midnight [0, 1440). */
+function minutesOfDay(date: Date): number {
+  return date.getHours() * 60 + date.getMinutes()
+}
+
+/**
+ * Synthetic sun arc (06:00–21:00 local). Returns shadow direction + length factor [0, 1]
+ * (1 = longest/low sun, 0 = shortest/high sun).
+ */
+function circadianShadowGeometry(minutes: number): {
+  dirX: number
+  dirY: number
+  lengthFactor: number
+  period: HourPeriod
+} {
+  const hour = Math.floor(minutes / 60)
+  const period = hourPeriod(hour)
+  if (period === 'night') {
+    const nightT = minutes < 6 * 60 ? (minutes + 3 * 60) / (6 * 60) : (minutes - 21 * 60) / (3 * 60)
+    const leanWest = 0.35 + 0.25 * Math.max(0, Math.min(1, nightT))
+    return {
+      dirX: -leanWest,
+      dirY: 1.05,
+      lengthFactor: 0.48,
+      period,
+    }
+  }
+
+  const t = (minutes - 6 * 60) / (15 * 60)
+  const clamped = Math.max(0, Math.min(1, t))
+  const azimuth = -Math.cos(clamped * Math.PI)
+  const elevation = Math.sin(clamped * Math.PI)
+  const lengthFactor = 0.12 + (1 - elevation) * 0.88
+
+  return {
+    dirX: azimuth * 2.65,
+    dirY: 1.02 + (1 - elevation) * 0.62,
+    lengthFactor,
+    period,
   }
 }
 
-function specForHour(hour: number, tuning?: LandingShadowTuning): { chrome: ContinuousShadowSpec; soft: ContinuousShadowSpec } {
-  const period = hourPeriod(hour)
+function specForDate(
+  date: Date,
+  tuning?: LandingShadowTuning,
+): { chrome: ContinuousShadowSpec; soft: ContinuousShadowSpec } {
   const bottomTintHex = tuning?.bottomTintHex ?? '#3a3834'
   const topTintHex = tuning?.topTintHex ?? '#77b5fe'
   const scale = shadowLengthScale(tuning)
-  const { chrome, soft } = baseSpecsForPeriod(period, bottomTintHex, topTintHex)
-  return {
-    chrome: { ...chrome, lengthPx: Math.round(chrome.lengthPx * scale) },
-    soft: { ...soft, lengthPx: Math.round(soft.lengthPx * scale) },
+  const { dirX, dirY, lengthFactor, period } = circadianShadowGeometry(minutesOfDay(date))
+
+  const isNight = period === 'night'
+  const chromeLength = Math.round(
+    (isNight ? SHADOW_LENGTH_NIGHT : SHADOW_LENGTH_DAY_MIN + lengthFactor * (SHADOW_LENGTH_DAY_MAX - SHADOW_LENGTH_DAY_MIN)) *
+      scale,
+  )
+  const softLength = Math.max(10, Math.round(chromeLength * 0.76))
+  const chromeAlpha = isNight ? 0.3 : 0.34 + lengthFactor * 0.14
+  const softAlpha = isNight ? 0.24 : 0.28 + lengthFactor * 0.1
+
+  const chrome: ContinuousShadowSpec = {
+    lengthPx: chromeLength,
+    dirX,
+    dirY,
+    rgba: shadowRgba(period, bottomTintHex, topTintHex, chromeAlpha),
   }
+  const soft: ContinuousShadowSpec = {
+    lengthPx: softLength,
+    dirX,
+    dirY,
+    rgba: shadowRgba(period, bottomTintHex, topTintHex, softAlpha),
+  }
+  return { chrome, soft }
+}
+
+function specForHour(hour: number, tuning?: LandingShadowTuning): { chrome: ContinuousShadowSpec; soft: ContinuousShadowSpec } {
+  return specForDate(new Date(2000, 0, 1, hour, 30), tuning)
 }
 
 function parseRgba(base: string): { r: number; g: number; b: number; a: number } | null {
@@ -213,10 +265,11 @@ function heroSpecFromChrome(chrome: ContinuousShadowSpec): ContinuousShadowSpec 
   const c = parseRgba(chrome.rgba)
   return {
     ...chrome,
-    lengthPx: Math.max(14, Math.round(chrome.lengthPx * HERO_LENGTH_RATIO)),
+    dirX: chrome.dirX * HERO_DIR_X_BOOST,
+    lengthPx: Math.max(18, Math.round(chrome.lengthPx * HERO_LENGTH_RATIO)),
     layers: HERO_CAST_LAYERS,
     rgba: c
-      ? `rgba(${c.r}, ${c.g}, ${c.b}, ${Math.min(0.48, c.a * 1.25)})`
+      ? `rgba(${c.r}, ${c.g}, ${c.b}, ${Math.min(0.55, c.a * 1.35)})`
       : chrome.rgba,
   }
 }
@@ -305,11 +358,19 @@ export function landingChromeTextShadowForHour(
   return buildPair(chrome, soft, options)
 }
 
+export function landingChromeTextShadowForDate(
+  date: Date,
+  options?: LandingChromeTextShadowOptions,
+): LandingChromeTextShadow {
+  const { chrome, soft } = specForDate(date, options?.tuning)
+  return buildPair(chrome, soft, options)
+}
+
 export function landingChromeTextShadowNow(
   date = new Date(),
   options?: LandingChromeTextShadowOptions,
 ): LandingChromeTextShadow {
-  return landingChromeTextShadowForHour(date.getHours(), options)
+  return landingChromeTextShadowForDate(date, options)
 }
 
 export function landingShadowTuningFromLanding(

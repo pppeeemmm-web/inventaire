@@ -10,6 +10,7 @@ import { trackView } from '@/lib/track'
 import { getOrCreatePublicVisitorId } from '@/lib/public-visitor-id'
 import type { PublicSiteTheme } from '@/lib/public-site-theme'
 import { publicNavBarCss, publicSiteBaseCss } from '@/lib/public-site-theme'
+import { WorksSectionTextCard } from './WorksSectionTextCard'
 
 function hasContent(html: string | null | undefined): boolean {
   if (!html) return false
@@ -108,9 +109,11 @@ export default function PracticeClient({ siteTheme }: { siteTheme: PublicSiteThe
           </h1>
 
           {hasContent(approach) && (
-            <div className="p-text">
-              <div dangerouslySetInnerHTML={{ __html: approach! }} />
-            </div>
+            <WorksSectionTextCard
+              html={approach!}
+              variant="prose"
+              siteTheme={siteTheme}
+            />
           )}
         </section>
 

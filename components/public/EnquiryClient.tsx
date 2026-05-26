@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
 import { createClient } from '@/lib/supabase/client'
-import LandingPdfPopup from '@/components/portfolio/LandingPdfPopup'
 import { loadPortfolioConfig } from '@/app/atelier/(portal)/portfolio/actions'
 import { trackView } from '@/lib/track'
 import { getOrCreatePublicVisitorId } from '@/lib/public-visitor-id'
@@ -21,13 +20,11 @@ import type { CSSProperties } from 'react'
 
 type EnquiryClientProps = {
   siteTheme: PublicSiteTheme
-  showPortfolioPdf: boolean
   shadowTuning: LandingShadowTuning
 }
 
 export default function EnquiryClient({
   siteTheme,
-  showPortfolioPdf,
   shadowTuning,
 }: EnquiryClientProps) {
   const { lang, setLang, t } = useI18n()
@@ -37,7 +34,6 @@ export default function EnquiryClient({
   const [form, setForm] = useState({ name: '', email: '', message: '' })
   const [category, setCategory] = useState('general')
   const [config, setConfig] = useState<any>(null)
-  const [pdfOpen, setPdfOpen] = useState(false)
   const [chromeShadow, setChromeShadow] = useState<LandingChromeTextShadow>(() =>
     landingChromeTextShadowNow(new Date(), { tuning: shadowTuning }),
   )
@@ -85,18 +81,9 @@ export default function EnquiryClient({
   const oeuvreParam = searchParams.get('oeuvre_id')
   const orderParam = searchParams.get('sale_order_id')
 
-  function handleCategoryChange(next: string) {
-    if (next === 'portfolio_pdf') {
-      setPdfOpen(true)
-      setCategory('general')
-      return
-    }
-    setCategory(next)
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (category === 'portfolio_pdf' || !form.name || !form.email || !form.message) return
+    if (!form.name || !form.email || !form.message) return
     setLoading(true)
     const oeuvreId = oeuvreParam && /^\d+$/.test(oeuvreParam) ? Number(oeuvreParam) : null
     const saleOrderId = orderParam && orderParam.length > 10 ? orderParam : null
@@ -272,16 +259,13 @@ export default function EnquiryClient({
                     className="enquiry-category-select enquiry-body-shadow"
                     data-testid="enquiry-category-select"
                     value={category}
-                    onChange={(e) => handleCategoryChange(e.target.value)}
+                    onChange={(e) => setCategory(e.target.value)}
                   >
                     <option value="general">{t('enquiry_category_general')}</option>
                     <option value="question">{t('enquiry_category_question')}</option>
                     <option value="complaint">{t('enquiry_category_complaint')}</option>
                     <option value="shipping">{t('enquiry_category_shipping')}</option>
                     <option value="other">{t('enquiry_category_other')}</option>
-                    {showPortfolioPdf ? (
-                      <option value="portfolio_pdf">{t('enquiry_category_portfolio_pdf')}</option>
-                    ) : null}
                   </select>
                 </div>
                 <input
@@ -309,10 +293,6 @@ export default function EnquiryClient({
           <Link href="/" className="back-link enquiry-body-shadow">{t('pub_back')}</Link>
         </div>
       </div>
-
-      {showPortfolioPdf ? (
-        <LandingPdfPopup open={pdfOpen} onClose={() => setPdfOpen(false)} />
-      ) : null}
     </>
   )
 }

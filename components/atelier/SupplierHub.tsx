@@ -18,9 +18,24 @@ import {
   type StockItemRow,
   type StockContactLike,
   supplierDisplayName,
+  supplierContactSummary,
   formatStockCurrency,
   pricedInventoryValueEur,
 } from '@/lib/stock-item'
+import {
+  buildSupplierExportDetails,
+  buildSuppliersPlainText,
+  buildSuppliersPrintHtml,
+  downloadSuppliersTxt,
+  openSuppliersPrintWindow,
+} from '@/lib/supplier-list-export'
+import {
+  buildStockMaterialExportRows,
+  buildStockMaterialsPlainText,
+  buildStockMaterialsPrintHtml,
+  downloadStockMaterialsTxt,
+  openStockMaterialsPrintWindow,
+} from '@/lib/stock-material-list-export'
 
 const UNCATEGORIZED = '__stock_uc__'
 
@@ -29,8 +44,13 @@ type StockEdit = Partial<StockItemRow> & {
   draftNotes?: string
 }
 
+type SupplierContactRow = StockContactLike & {
+  Ville?: string | null
+  Pays?: string | null
+}
+
 interface Props {
-  contacts: StockContactLike[]
+  contacts: SupplierContactRow[]
 }
 
 function matchesSearch(it: StockItemRow, q: string): boolean {
@@ -42,14 +62,34 @@ function matchesSearch(it: StockItemRow, q: string): boolean {
   )
 }
 
-function downloadCsv(filename: string, lines: string[]) {
-  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' })
+function downloadBlob(filename: string, body: string, mime: string) {
+  const blob = new Blob([body], { type: mime })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
   a.download = filename
   a.click()
   URL.revokeObjectURL(url)
+}
+
+function downloadCsv(filename: string, lines: string[]) {
+  downloadBlob(filename, lines.join('\n'), 'text/csv;charset=utf-8')
+}
+
+function matchesSupplierSearch(c: StockContactLike, q: string): boolean {
+  if (!q.trim()) return true
+  const s = q.trim().toLowerCase()
+  const name = supplierDisplayName(c).toLowerCase()
+  const bits = [
+    name,
+    c.Ville ?? '',
+    c.Pays ?? '',
+    c.Email ?? '',
+    c.Téléphone1 ?? '',
+  ]
+    .join(' ')
+    .toLowerCase()
+  return bits.includes(s)
 }
 
 export function SupplierHub({ contacts }: Props) {
@@ -64,6 +104,12 @@ export function SupplierHub({ contacts }: Props) {
   const [lowOnly, setLowOnly] = useState(false)
   const [sortKey, setSortKey] = useState<'name' | 'qty' | 'updated'>('name')
   const [deleteStep2, setDeleteStep2] = useState(false)
+  const [supplierSearch, setSupplierSearch] = useState('')
+  const [supplierSelected, setSupplierSelected] = useState<Set<number>>(new Set())
+  const [supplierExportBusy, setSupplierExportBusy] = useState(false)
+  const [supplierDetails, setSupplierDetails] = useState<Record<number, StockContactLike>>({})
+  const [itemSelected, setItemSelected] = useState<Set<number>>(new Set())
+  const [itemExportBusy, setItemExportBusy] = useState(false)
 
   const suppliers = useMemo(
     () =>
@@ -74,6 +120,51 @@ export function SupplierHub({ contacts }: Props) {
       ),
     [contacts],
   )
+
+  const suppliersEnriched = useMemo(
+    () =>
+      suppliers.map((s) => ({
+        ...s,
+        ...(supplierDetails[s.ContactID] ?? {}),
+      })),
+    [suppliers, supplierDetails],
+  )
+
+  const filteredSuppliers = useMemo(() => {
+    const loc = lang === 'fr' ? 'fr-FR' : 'en-GB'
+    return [...suppliersEnriched]
+      .filter((s) => matchesSupplierSearch(s, supplierSearch))
+      .sort((a, b) =>
+        supplierDisplayName(a).localeCompare(supplierDisplayName(b), loc),
+      )
+  }, [suppliersEnriched, supplierSearch, lang])
+
+  useEffect(() => {
+    if (suppliers.length === 0) {
+      setSupplierDetails({})
+      return
+    }
+    const ids = suppliers.map((s) => s.ContactID)
+    let cancelled = false
+    const sb = createClient()
+    void (async () => {
+      const { data, error } = await sb
+        .from('Contact')
+        .select(
+          'ContactID, Email, IndicatifPays1, "Téléphone1", Ville, Pays',
+        )
+        .in('ContactID', ids)
+      if (cancelled || error) return
+      const map: Record<number, StockContactLike> = {}
+      for (const row of (data ?? []) as StockContactLike[]) {
+        map[row.ContactID] = row
+      }
+      setSupplierDetails(map)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [suppliers])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -226,6 +317,84 @@ export function SupplierHub({ contacts }: Props) {
     )
   }
 
+  const scrollToSuppliers = () => {
+    document
+      .getElementById('atelier-stock-suppliers-anchor')
+      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  const toggleItemOne = (id: number) => {
+    setItemSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleAllItems = () => {
+    if (
+      itemSelected.size > 0 &&
+      itemSelected.size === filteredSorted.length
+    ) {
+      setItemSelected(new Set())
+      return
+    }
+    setItemSelected(new Set(filteredSorted.map((it) => it.id)))
+  }
+
+  const exportMaterialList = async () => {
+    const orderedIds = filteredSorted
+      .map((it) => it.id)
+      .filter((id) => itemSelected.has(id))
+    if (orderedIds.length === 0 || itemExportBusy) return
+    setItemExportBusy(true)
+    const date = new Date().toISOString().slice(0, 10)
+    const title = t('stock_materials_section')
+    const categoryLabel = (raw: string | null) =>
+      raw?.trim() ? labelStockCategory(raw, t) : '—'
+    const labels = {
+      generated: t('stock_supplier_export_generated'),
+      name: t('stock_th_name'),
+      category: t('category'),
+      qty: t('stock_th_qty'),
+      unit: t('stock_th_unit'),
+      supplier: t('stock_th_supplier'),
+      unitCost: t('stock_th_unit_price'),
+      lineValue: t('stock_material_export_line_value'),
+      minStock: t('stock_field_min_stock'),
+      notes: t('stock_field_notes'),
+      low: t('stock_badge_low'),
+    }
+    try {
+      const rows = buildStockMaterialExportRows(
+        items,
+        orderedIds,
+        contacts,
+        categoryLabel,
+        lang,
+      )
+      const plain = buildStockMaterialsPlainText(rows, title, date, labels)
+      const html = buildStockMaterialsPrintHtml(rows, title, date, lang, labels)
+      let copied = false
+      try {
+        await navigator.clipboard.writeText(plain)
+        copied = true
+        toast.success(t('stock_material_export_copied'))
+      } catch {
+        downloadStockMaterialsTxt(`stock-materials-${date}.txt`, plain)
+        toast.info(t('stock_material_export_clipboard_failed'))
+      }
+      if (!openStockMaterialsPrintWindow(html)) {
+        toast.error(t('stock_material_print_blocked'))
+      } else if (!copied) {
+        downloadStockMaterialsTxt(`stock-materials-${date}.txt`, plain)
+      }
+    } finally {
+      setItemExportBusy(false)
+    }
+  }
+
   const exportCsv = () => {
     const esc = (v: string) => `"${v.replace(/"/g, '""')}"`
     const header = [
@@ -256,6 +425,96 @@ export function SupplierHub({ contacts }: Props) {
       )
     }
     downloadCsv(`stock-export-${new Date().toISOString().slice(0, 10)}.csv`, lines)
+  }
+
+  const toggleSupplierOne = (id: number) => {
+    setSupplierSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleAllSuppliers = () => {
+    if (
+      supplierSelected.size > 0 &&
+      supplierSelected.size === filteredSuppliers.length
+    ) {
+      setSupplierSelected(new Set())
+      return
+    }
+    setSupplierSelected(
+      new Set(filteredSuppliers.map((s) => s.ContactID)),
+    )
+  }
+
+  const exportSupplierList = async () => {
+    const orderedIds = filteredSuppliers
+      .map((s) => s.ContactID)
+      .filter((id) => supplierSelected.has(id))
+    if (orderedIds.length === 0 || supplierExportBusy) return
+    setSupplierExportBusy(true)
+    const date = new Date().toISOString().slice(0, 10)
+    const title = t('stock_suppliers_section')
+    const labels = {
+      contact: t('stock_supplier_export_label_contact'),
+      address: t('stock_supplier_export_label_address'),
+      notes: t('stock_supplier_export_label_notes'),
+      generated: t('stock_supplier_export_generated'),
+    }
+    try {
+      const sb = createClient()
+      const [contactRes, addrRes, emailRes, phoneRes] = await Promise.all([
+        sb
+          .from('Contact')
+          .select(
+            'ContactID, NomInstitution, Nom, "Prénom", Role, Email, IndicatifPays1, "Téléphone1", Website, Adresse, CodePostal, Ville, Pays, Notes',
+          )
+          .in('ContactID', orderedIds),
+        sb
+          .from('contact_addresses')
+          .select('contact_id, adresse, code_postal, ville, pays, position')
+          .in('contact_id', orderedIds)
+          .order('position'),
+        sb
+          .from('contact_emails')
+          .select('contact_id, email, is_primary')
+          .in('contact_id', orderedIds),
+        sb
+          .from('contact_phones')
+          .select('contact_id, country_code, phone, is_primary')
+          .in('contact_id', orderedIds),
+      ])
+      if (contactRes.error) throw contactRes.error
+      const blocks = buildSupplierExportDetails(
+        (contactRes.data ?? []) as Parameters<typeof buildSupplierExportDetails>[0],
+        (addrRes.data ?? []) as Parameters<typeof buildSupplierExportDetails>[1],
+        (emailRes.data ?? []) as Parameters<typeof buildSupplierExportDetails>[2],
+        (phoneRes.data ?? []) as Parameters<typeof buildSupplierExportDetails>[3],
+        orderedIds,
+      )
+      const plain = buildSuppliersPlainText(blocks, title, date, labels)
+      const html = buildSuppliersPrintHtml(blocks, title, date, lang, labels)
+      let copied = false
+      try {
+        await navigator.clipboard.writeText(plain)
+        copied = true
+        toast.success(t('stock_supplier_export_copied'))
+      } catch {
+        downloadSuppliersTxt(`suppliers-list-${date}.txt`, plain)
+        toast.info(t('stock_supplier_export_clipboard_failed'))
+      }
+      if (!openSuppliersPrintWindow(html)) {
+        toast.error(t('stock_supplier_print_blocked'))
+      } else if (!copied) {
+        downloadSuppliersTxt(`suppliers-list-${date}.txt`, plain)
+      }
+    } catch (e) {
+      toast.error(`${t('error_prefix')} ${stringifyError(e)}`)
+    } finally {
+      setSupplierExportBusy(false)
+    }
   }
 
   const editKey = editing ? String(editing.id ?? 'new') : ''
@@ -330,6 +589,182 @@ export function SupplierHub({ contacts }: Props) {
         </button>
       </div>
 
+      <section
+        id="atelier-stock-suppliers-anchor"
+        data-testid="atelier-stock-suppliers"
+        style={{
+          marginBottom: 20,
+          border: '1px solid var(--bd)',
+          borderRadius: 4,
+          background: 'var(--bg1)',
+          overflow: 'hidden',
+        }}
+      >
+        <div
+          style={{
+            position: 'sticky',
+            top: 0,
+            zIndex: 2,
+            background: 'var(--bg1)',
+            borderBottom: '1px solid var(--bd)',
+          }}
+        >
+          <div
+            style={{
+              padding: '12px 16px',
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 10,
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <div className="t-eyebrow" style={{ color: 'var(--ac)' }}>
+              {t('stock_suppliers_section')}
+            </div>
+            <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>
+              {filteredSuppliers.length}
+              <span style={{ opacity: 0.5 }}>/{suppliers.length}</span>
+            </div>
+          </div>
+          <div
+            style={{
+              padding: '10px 16px',
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 10,
+              alignItems: 'center',
+              borderTop: '1px solid var(--bd)',
+            }}
+          >
+          <input
+            type="search"
+            className="t-mono-sm"
+            placeholder={t('stock_supplier_search_ph')}
+            value={supplierSearch}
+            onChange={(e) => setSupplierSearch(e.target.value)}
+            style={{
+              flex: '1 1 200px',
+              minWidth: 120,
+              maxWidth: 360,
+              padding: '10px 12px',
+              background: 'var(--bg0)',
+              border: '1px solid var(--bd)',
+              color: 'var(--tx)',
+              borderRadius: 4,
+            }}
+          />
+          <button
+            type="button"
+            className="btn ghost sm"
+            style={{ minHeight: 44 }}
+            onClick={toggleAllSuppliers}
+            disabled={filteredSuppliers.length === 0}
+          >
+            {t('selectAll')} ({filteredSuppliers.length})
+          </button>
+          {supplierSelected.size > 0 && (
+            <>
+              <span className="t-mono-sm" style={{ color: 'var(--tx2)' }}>
+                {t('stock_supplier_selection_fmt').replace(
+                  /\{n\}/g,
+                  String(supplierSelected.size),
+                )}
+              </span>
+              <button
+                type="button"
+                className="btn ghost sm"
+                style={{ minHeight: 44 }}
+                onClick={() => setSupplierSelected(new Set())}
+              >
+                {t('stock_supplier_clear')}
+              </button>
+              <button
+                type="button"
+                className="btn sm"
+                style={{ minHeight: 44, background: 'var(--ac)', borderColor: 'var(--ac)' }}
+                data-testid="atelier-stock-supplier-export-list"
+                disabled={supplierExportBusy}
+                onClick={() => void exportSupplierList()}
+              >
+                {supplierExportBusy ? '…' : t('stock_supplier_export_list')}
+              </button>
+            </>
+          )}
+          </div>
+        </div>
+        <div style={{ maxHeight: narrow ? 240 : 280, overflow: 'auto' }}>
+          <table className="tbl" data-testid="atelier-stock-suppliers-table">
+            <thead>
+              <tr>
+                <th style={{ width: 40 }}>
+                  <input
+                    type="checkbox"
+                    aria-label={t('stock_supplier_select_all_aria')}
+                    checked={
+                      filteredSuppliers.length > 0 &&
+                      filteredSuppliers.every((s) =>
+                        supplierSelected.has(s.ContactID),
+                      )
+                    }
+                    onChange={toggleAllSuppliers}
+                  />
+                </th>
+                <th>{t('stock_th_supplier')}</th>
+                <th>{t('stock_supplier_col_contact')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {suppliers.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={3}
+                    style={{ textAlign: 'center', padding: 24, color: 'var(--tx3)' }}
+                  >
+                    {t('stock_supplier_empty')}
+                  </td>
+                </tr>
+              ) : filteredSuppliers.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={3}
+                    style={{ textAlign: 'center', padding: 24, color: 'var(--tx3)' }}
+                  >
+                    {t('stock_supplier_no_filtered')}
+                  </td>
+                </tr>
+              ) : (
+                filteredSuppliers.map((s) => {
+                  const summary = supplierContactSummary(s)
+                  return (
+                    <tr
+                      key={s.ContactID}
+                      data-testid={`atelier-stock-supplier-row-${s.ContactID}`}
+                    >
+                      <td>
+                        <input
+                          type="checkbox"
+                          checked={supplierSelected.has(s.ContactID)}
+                          onChange={() => toggleSupplierOne(s.ContactID)}
+                          aria-label={supplierDisplayName(s)}
+                        />
+                      </td>
+                      <td style={{ fontWeight: 500 }}>{supplierDisplayName(s)}</td>
+                      <td
+                        className="t-mono-sm"
+                        style={{ color: 'var(--tx3)', fontSize: 11 }}
+                      >
+                        {summary ?? '\u2014'}
+                      </td>
+                    </tr>
+                  )
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       <div
         data-testid="atelier-stock-kpis"
         style={{
@@ -376,6 +811,10 @@ export function SupplierHub({ contacts }: Props) {
             ? formatStockCurrency(lang, kpiValue)
             : '\u2014'}
         </div>
+      </div>
+
+      <div className="t-eyebrow" style={{ color: 'var(--ac)', marginBottom: 12 }}>
+        {t('stock_materials_section')}
       </div>
 
       <div
@@ -465,9 +904,51 @@ export function SupplierHub({ contacts }: Props) {
           type="button"
           className="btn ghost sm"
           style={{ minHeight: 44 }}
-          onClick={() => exportCsv()}
+          onClick={scrollToSuppliers}
+          data-testid="atelier-stock-jump-suppliers"
         >
-          {t('stock_export_csv')}
+          {t('stock_jump_suppliers')}
+        </button>
+        {itemSelected.size > 0 && (
+          <>
+            <span className="t-mono-sm" style={{ color: 'var(--tx2)' }}>
+              {t('stock_material_selection_fmt').replace(
+                /\{n\}/g,
+                String(itemSelected.size),
+              )}
+            </span>
+            <button
+              type="button"
+              className="btn ghost sm"
+              style={{ minHeight: 44 }}
+              onClick={() => setItemSelected(new Set())}
+            >
+              {t('stock_material_clear')}
+            </button>
+            <button
+              type="button"
+              className="btn sm"
+              style={{
+                minHeight: 44,
+                background: 'var(--ac)',
+                borderColor: 'var(--ac)',
+              }}
+              data-testid="atelier-stock-material-export-list"
+              disabled={itemExportBusy}
+              onClick={() => void exportMaterialList()}
+            >
+              {itemExportBusy ? '…' : t('stock_material_export_list')}
+            </button>
+          </>
+        )}
+        <button
+          type="button"
+          className="btn ghost sm"
+          style={{ minHeight: 44 }}
+          onClick={() => exportCsv()}
+          data-testid="atelier-stock-export-all-csv"
+        >
+          {t('stock_export_all_csv')}
         </button>
       </div>
 
@@ -475,6 +956,18 @@ export function SupplierHub({ contacts }: Props) {
         <table className="tbl" data-testid="atelier-stock-table">
           <thead>
             <tr>
+              <th style={{ width: 40 }}>
+                <input
+                  type="checkbox"
+                  aria-label={t('stock_material_select_all_aria')}
+                  checked={
+                    filteredSorted.length > 0 &&
+                    filteredSorted.every((it) => itemSelected.has(it.id))
+                  }
+                  onChange={toggleAllItems}
+                  disabled={loading || filteredSorted.length === 0}
+                />
+              </th>
               <th>{t('stock_th_name')}</th>
               <th>{t('category')}</th>
               <th className="num">{t('stock_th_qty')}</th>
@@ -491,7 +984,7 @@ export function SupplierHub({ contacts }: Props) {
             {loading ? (
               <tr>
                 <td
-                  colSpan={8}
+                  colSpan={9}
                   style={{ textAlign: 'center', padding: 40, color: 'var(--tx3)' }}
                 >
                   {t('loading')}
@@ -500,7 +993,7 @@ export function SupplierHub({ contacts }: Props) {
             ) : filteredSorted.length === 0 ? (
               <tr>
                 <td
-                  colSpan={8}
+                  colSpan={9}
                   style={{ textAlign: 'center', padding: 40, color: 'var(--tx3)' }}
                 >
                   {items.length === 0 ? t('stock_empty') : t('stock_no_filtered_results')}
@@ -520,6 +1013,14 @@ export function SupplierHub({ contacts }: Props) {
                     style={{ opacity: low ? 1 : 0.92 }}
                     data-testid={`atelier-stock-row-${it.id}`}
                   >
+                    <td>
+                      <input
+                        type="checkbox"
+                        checked={itemSelected.has(it.id)}
+                        onChange={() => toggleItemOne(it.id)}
+                        aria-label={it.name}
+                      />
+                    </td>
                     <td
                       style={{
                         fontWeight: 500,

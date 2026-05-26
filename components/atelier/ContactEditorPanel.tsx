@@ -656,6 +656,7 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
             flex: narrow ? 'none' : '0 0 min(420px, 42vw)',
             width: narrow ? '100%' : undefined,
             maxWidth: narrow ? '100%' : undefined,
+            background: 'var(--bg1)',
           }}
         >
           <div

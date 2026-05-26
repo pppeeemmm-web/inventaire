@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useRef, useState } from 'react'
+import { useEscapeClose } from '@/hooks/useEscapeClose'
 import { useI18n } from '@/lib/i18n/context'
 
 /**
@@ -47,6 +48,8 @@ export function useUnsavedActionGuard({
     setShow(false)
     pendingRef.current = null
   }, [])
+
+  useEscapeClose(show, cancelDialog)
 
   const saveAndProceed = useCallback(async () => {
     setSaving(true)

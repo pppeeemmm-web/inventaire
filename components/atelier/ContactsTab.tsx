@@ -911,11 +911,11 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
         }}
       >
         <div
+          className={narrow ? undefined : 'contacts-list-scroll'}
           style={{
             flex: 1,
             minWidth: 0,
-            overflow: narrow ? 'auto' : 'auto',
-            overflowX: narrow ? 'auto' : undefined,
+            overflow: 'auto',
             borderRight: narrow ? 'none' : '1px solid var(--bd)',
             borderBottom: narrow && showEditor ? '1px solid var(--bd)' : undefined,
             maxHeight: narrow && showEditor ? 'min(42vh, 360px)' : undefined,

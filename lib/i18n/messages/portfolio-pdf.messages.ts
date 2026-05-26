@@ -113,9 +113,25 @@ export const portfolioPdfMessages = defineMessages({
     fr: 'Glisser pour réordonner',
     en: 'Drag to reorder',
   },
+  portfolio_collection_expand: {
+    fr: 'Éditer la séquence',
+    en: 'Edit sequence',
+  },
+  portfolio_collection_collapse: {
+    fr: 'Réduire la séquence',
+    en: 'Collapse sequence',
+  },
+  portfolio_collection_n_public: {
+    fr: 'publiques',
+    en: 'public',
+  },
+  portfolio_collection_n_private: {
+    fr: 'non publiques',
+    en: 'not public',
+  },
   portfolio_open_public_site_title: {
-    fr: "Ouvrir la page d'accueil (site public)",
-    en: 'Open public home page',
+    fr: "Ouvrir le site public dans un nouvel onglet du navigateur",
+    en: 'Open public site in a new browser tab',
   },
   portfolio_tab_intro: {
     fr: "Onglet Portfolio : sections enregistrées dans le JSON (R2). Elles alimentent le PDF téléchargeable (lien sur la page d'accueil et bouton ↓ PDF ci-dessus). Utiliser /works pour l'aperçu du catalogue défilant.",

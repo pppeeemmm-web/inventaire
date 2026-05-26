@@ -7,6 +7,7 @@
 import { useState, useTransition, useEffect, useCallback } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { PemModalOverlay } from '@/components/shared/PemModalOverlay'
+import { useEscapeClose } from '@/hooks/useEscapeClose'
 import { PEM_Z_INDEX } from '@/components/shared/BottomStack'
 import {
   generateExport,
@@ -311,18 +312,7 @@ export function ExportModal({
     })
   }
 
-  useEffect(() => {
-    if (!showSaveSelection) return
-    const onKey = (ev: KeyboardEvent) => {
-      if (ev.key === 'Escape') {
-        ev.preventDefault()
-        ev.stopPropagation()
-        setShowSaveSelection(false)
-      }
-    }
-    window.addEventListener('keydown', onKey, true)
-    return () => window.removeEventListener('keydown', onKey, true)
-  }, [showSaveSelection])
+  useEscapeClose(showSaveSelection, () => setShowSaveSelection(false))
 
   const isEmbedHeavy = cfg.format === 'html' && cfg.imageEmbed === 'embedded' && cfg.fields.image && ids.length > 20
 

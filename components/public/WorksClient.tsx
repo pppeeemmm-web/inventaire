@@ -1,13 +1,15 @@
 'use client'
 
 import { useI18n } from '@/lib/i18n/context'
-import { imageUrl, thumbUrl, yearOf } from '@/lib/data'
+import { imageUrl, yearOf } from '@/lib/data'
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useEscapeClose } from '@/hooks/useEscapeClose'
 import PublicNav from './PublicNav'
 import WorksGrid from './WorksGrid'
 import { trackView } from '@/lib/track'
 import { getOrCreatePublicVisitorId } from '@/lib/public-visitor-id'
-import { worksForCollection } from './works-utils'
+import { WorksSectionTextCard } from './WorksSectionTextCard'
+import { richTextToPlain, worksForCollection } from './works-utils'
 import type { Work, WorksMode, Collection } from './works-utils'
 import type { PublicSiteTheme } from '@/lib/public-site-theme'
 import { publicNavBarCss, publicSiteBaseCss } from '@/lib/public-site-theme'
@@ -113,6 +115,8 @@ export default function WorksClient({
   const dragRef = useRef<{ mx: number; my: number; px: number; py: number } | null>(null)
   const pinchRef = useRef<{ distance: number; zoomZ: number } | null>(null)
   const didDragRef = useRef(false)
+  const carouselMouseXRef = useRef<number | null>(null)
+  const carouselDragDidRef = useRef(false)
   const isZoomedRef = useRef(false)
   const centerImgLoadedRef = useRef(false)
   const isMobileRef = useRef(false)
@@ -239,7 +243,7 @@ export default function WorksClient({
     if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = undefined }
     setIsZoomed(true)
     isZoomedRef.current = true
-    const initialZoomZ = isMobile ? 1650 : 0
+    const initialZoomZ = isMobile ? 1650 : 1100
     zoomZRef.current = initialZoomZ
     setZoomZ(initialZoomZ)
   }, [centerImgLoaded, isMobile])
@@ -318,40 +322,28 @@ export default function WorksClient({
     }
   }
 
-  /** Keyboard nav + Esc to exit zoom. */
+  useEscapeClose(isZoomed, exitZoom)
+
+  /** Arrow keys when carousel is not zoomed. */
   useEffect(() => {
+    if (isZoomed) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isZoomed) {
-        exitZoom()
-        e.preventDefault()
-        return
-      }
-      if (isZoomed) return
       if (e.key === 'ArrowRight') { jumpBy(1); e.preventDefault() }
       else if (e.key === 'ArrowLeft') { jumpBy(-1); e.preventDefault() }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [isZoomed, stepBy, jumpBy, exitZoom])
+  }, [isZoomed, jumpBy])
 
   // Keep ref in sync so the passive:false wheel handler reads current state
   useEffect(() => { isZoomedRef.current = isZoomed }, [isZoomed])
 
-  /** Wheel: zoom the center work (desktop); in zoom mode adjust Z; otherwise drift carousel. */
+  /** Wheel: in zoom mode adjust Z (scroll back exits); otherwise drift carousel. */
   useEffect(() => {
     const onWheel = (e: WheelEvent) => {
       const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY
       if (isZoomedRef.current) {
         e.preventDefault()
-        const next = zoomZRef.current + (-d) * 0.4
-        if (next < -40) { exitZoom(); return }
-        zoomZRef.current = Math.max(0, Math.min(next, MAX_Z))
-        setZoomZ(zoomZRef.current)
-        return
-      }
-      if (centerImgLoadedRef.current && !isMobileRef.current) {
-        e.preventDefault()
-        if (!isZoomedRef.current) enterZoomRef.current()
         const next = zoomZRef.current + (-d) * 0.4
         if (next < -40) { exitZoom(); return }
         zoomZRef.current = Math.max(0, Math.min(next, MAX_Z))
@@ -368,6 +360,26 @@ export default function WorksClient({
     window.addEventListener('wheel', onWheel, { passive: false })
     return () => window.removeEventListener('wheel', onWheel)
   }, [kickRaf, exitZoom])
+
+  const onStageMouseDown = (e: React.MouseEvent) => {
+    if (isZoomedRef.current || e.button !== 0) return
+    carouselMouseXRef.current = e.clientX
+    carouselDragDidRef.current = false
+  }
+  const onStageMouseMove = (e: React.MouseEvent) => {
+    if (carouselMouseXRef.current == null || isZoomedRef.current) return
+    if (Math.abs(e.clientX - carouselMouseXRef.current) >= 8) carouselDragDidRef.current = true
+  }
+  const onStageMouseUp = (e: React.MouseEvent) => {
+    const x0 = carouselMouseXRef.current
+    carouselMouseXRef.current = null
+    if (x0 == null || isZoomedRef.current) return
+    const dx = e.clientX - x0
+    if (Math.abs(dx) >= 60) {
+      carouselDragDidRef.current = true
+      jumpBy(dx < 0 ? 1 : -1)
+    }
+  }
 
   /** Touch swipe: 60px threshold = ±1 step; tap (short + still) = zoom center card. */
   const touchStartXRef = useRef<number | null>(null)
@@ -400,7 +412,7 @@ export default function WorksClient({
   const chapterIntro = chapter
     ? (lang === 'en' ? (chapter.intro_en || chapter.intro_fr || '') : (chapter.intro_fr || chapter.intro_en || ''))
     : ''
-  const chapterIntroText = chapterIntro.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+  const chapterIntroText = richTextToPlain(chapterIntro)
   const chapterDesc = chapter
     ? (lang === 'en' ? (chapter.description_en || chapter.description_fr || '') : (chapter.description_fr || chapter.description_en || ''))
     : ''
@@ -569,7 +581,7 @@ export default function WorksClient({
         }
         /* Cursor states */
         .w-card.center          { cursor: default; }
-        .w-card.center.img-ready { cursor: default; }
+        .w-card.center.img-ready:not(.is-zoomed) { cursor: zoom-in; }
         .w-card.center.is-zoomed { cursor: zoom-out; touch-action: none; }
         .w-card.center.is-zoomed:active { cursor: grabbing; }
         .w-card.side            { cursor: pointer; }
@@ -741,6 +753,12 @@ export default function WorksClient({
           background: none; padding: 3px 8px; cursor: pointer; transition: all .15s; font-family: inherit;
           min-height: 32px; display: inline-flex; align-items: center;
         }
+        .w-zoom-backdrop {
+          position: absolute;
+          inset: 0;
+          z-index: 200;
+          cursor: zoom-out;
+        }
         .w-zoom-close {
           position: fixed;
           z-index: 400;
@@ -858,6 +876,10 @@ export default function WorksClient({
       ) : (
       <div
         className="w-stage pem-grain"
+        onMouseDown={onStageMouseDown}
+        onMouseMove={onStageMouseMove}
+        onMouseUp={onStageMouseUp}
+        onMouseLeave={onStageMouseUp}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >
@@ -924,6 +946,14 @@ export default function WorksClient({
                   pointerEvents: 'none',
                 }}
               />
+
+              {isZoomed && (
+                <div
+                  className="w-zoom-backdrop"
+                  aria-hidden
+                  onClick={exitZoom}
+                />
+              )}
 
               {/* Wall-mounted cartel — lives in 3D scene, left of center card, zooms with the wall */}
               {activeWork && !(isMobile && isZoomed) && (
@@ -1016,9 +1046,12 @@ export default function WorksClient({
                     style={{ transform: finalTransform, opacity, zIndex: finalZ }}
                     onClick={() => {
                       if (didDragRef.current) { didDragRef.current = false; return }
+                      if (carouselDragDidRef.current) { carouselDragDidRef.current = false; return }
                       if (isCenter && isZoomed) {
                         exitZoom()
-                      } else if (!isCenter) {
+                      } else if (isCenter) {
+                        enterZoom()
+                      } else {
                         setActiveIndex(i)
                       }
                     }}
@@ -1086,10 +1119,10 @@ export default function WorksClient({
                       <div className="w-face top" aria-hidden />
                       <div className="w-face bottom" aria-hidden />
                       <div className="w-text-card-front">
-                        {chapterTitle && <p className="w-text-card-title">{chapterTitle}</p>}
-                        <div
-                          className="w-text-card-body"
-                          dangerouslySetInnerHTML={{ __html: chapterDesc.replace(/\n/g, '<br>') }}
+                        <WorksSectionTextCard
+                          html={chapterDesc}
+                          title={chapterTitle || undefined}
+                          variant="carousel"
                         />
                       </div>
                     </div>

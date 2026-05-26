@@ -17,6 +17,9 @@ import { reportsPivotAtlasMessages } from './reports-pivot-atlas.messages'
 import { searchMessages } from './search.messages'
 import { loginMessages } from './login.messages'
 import { contactsUiMessages } from './contacts-ui.messages'
+import { analyticsUiMessages } from './analytics-ui.messages'
+import { auditMessages } from './audit.messages'
+import { stockUiMessages } from './stock-ui.messages'
 
 export const featureMessages = {
   ...atelierMessages,
@@ -38,6 +41,9 @@ export const featureMessages = {
   ...searchMessages,
   ...loginMessages,
   ...contactsUiMessages,
+  ...analyticsUiMessages,
+  ...auditMessages,
+  ...stockUiMessages,
 } as const
 
 export type MessageKey = keyof typeof featureMessages

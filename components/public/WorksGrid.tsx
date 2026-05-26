@@ -1,37 +1,21 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { useEscapeClose, shouldIgnoreEscapeTarget } from '@/hooks/useEscapeClose'
 import { useI18n } from '@/lib/i18n/context'
 import { thumbUrl, imageUrl, yearOf } from '@/lib/data'
-import { worksForCollection } from './works-utils'
+import { WorksSectionTextCard } from './WorksSectionTextCard'
+import { richTextToPlain, worksForCollection } from './works-utils'
 import type { Work, WorksMode } from './works-utils'
 import type { PublicSiteTheme } from '@/lib/public-site-theme'
 import { publicSiteBaseCss } from '@/lib/public-site-theme'
 
-const GRID_ZOOM_RATIO = 1.5
-
-/** Size full-res lightbox image to ~1.5× grid thumb layout (real pixels, not CSS scale). */
-function lightboxDisplaySize(
-  naturalW: number,
-  naturalH: number,
-  thumbW: number,
-  thumbH: number,
-): { w: number; h: number } {
-  const targetW = thumbW * GRID_ZOOM_RATIO
-  const targetH = thumbH * GRID_ZOOM_RATIO
-  const maxW = typeof window !== 'undefined' ? window.innerWidth * 0.9 : 900
-  const maxH = typeof window !== 'undefined' ? window.innerHeight * 0.8 : 720
-  const scale = Math.min(
-    targetW / naturalW,
-    targetH / naturalH,
-    maxW / naturalW,
-    maxH / naturalH,
-    1,
-  )
-  return {
-    w: Math.max(1, Math.round(naturalW * scale)),
-    h: Math.max(1, Math.round(naturalH * scale)),
-  }
+function preloadFullResImage(txtImageNameLink: string | null | undefined) {
+  const src = imageUrl(txtImageNameLink)
+  if (!src) return
+  const img = new Image()
+  img.src = src
 }
 
 interface WorksGridProps {
@@ -47,12 +31,11 @@ export default function WorksGrid({
 }: WorksGridProps) {
   const { t, lang } = useI18n()
   const [lightbox, setLightbox] = useState<Work | null>(null)
-  const [thumbLayout, setThumbLayout] = useState<Record<number, { w: number; h: number }>>({})
-  const [lbDisplay, setLbDisplay] = useState<{ w: number; h: number } | null>(null)
+  const [lbPortalReady, setLbPortalReady] = useState(false)
 
   useEffect(() => {
-    setLbDisplay(null)
-  }, [lightbox?.OeuvreID])
+    setLbPortalReady(true)
+  }, [])
 
   const chapter = mode.collections[Math.min(activeChapterIdx, Math.max(0, mode.collections.length - 1))]
   const chapterWorks = useMemo(() => {
@@ -64,13 +47,44 @@ export default function WorksGrid({
     ? (lang === 'en' ? (chapter.title_en || chapter.title_fr) : (chapter.title_fr || chapter.title_en))
     : ''
   const chapterIntro = chapter
-    ? (lang === 'en' ? (chapter.intro_en || chapter.intro_fr || '') : (chapter.intro_fr || chapter.intro_en || ''))
+    ? richTextToPlain(
+        lang === 'en' ? (chapter.intro_en || chapter.intro_fr || '') : (chapter.intro_fr || chapter.intro_en || ''),
+      )
     : ''
   const chapterDesc = chapter
     ? (lang === 'en' ? (chapter.description_en || chapter.description_fr || '') : (chapter.description_fr || chapter.description_en || ''))
     : ''
+  const hasSectionText = Boolean(chapterDesc && richTextToPlain(chapterDesc))
 
   const closeLightbox = useCallback(() => setLightbox(null), [])
+  useEscapeClose(lightbox != null, closeLightbox)
+
+  const navigateLightbox = useCallback((delta: number) => {
+    if (!lightbox || chapterWorks.length === 0) return
+    const idx = chapterWorks.findIndex((w) => w.OeuvreID === lightbox.OeuvreID)
+    if (idx < 0) return
+    const next = Math.max(0, Math.min(idx + delta, chapterWorks.length - 1))
+    if (next === idx) return
+    const w = chapterWorks[next]
+    preloadFullResImage(w.txtImageNameLink)
+    setLightbox(w)
+  }, [lightbox, chapterWorks])
+
+  useEffect(() => {
+    if (!lightbox) return
+    const onKey = (e: KeyboardEvent) => {
+      if (shouldIgnoreEscapeTarget(e.target)) return
+      if (e.key === 'ArrowRight') {
+        navigateLightbox(1)
+        e.preventDefault()
+      } else if (e.key === 'ArrowLeft') {
+        navigateLightbox(-1)
+        e.preventDefault()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [lightbox, navigateLightbox])
 
   return (
     <>
@@ -153,10 +167,11 @@ export default function WorksGrid({
           color: #9a9690; margin: 0;
         }
 
-        .wg-outro {
-          max-width: 720px; margin: clamp(40px, 6vw, 72px) auto 0;
-          font-size: clamp(11px, 1.4vw, 13px); line-height: 1.8; color: #7a7670;
-          text-align: center;
+        .wg-text-card-span {
+          grid-column: 1 / -1;
+          width: 100%;
+          max-width: min(720px, 100%);
+          margin: clamp(8px, 2vw, 16px) auto 0;
         }
 
         .wg-pills {
@@ -180,52 +195,52 @@ export default function WorksGrid({
         .wg-pill:hover { color: #1a1816; }
         .wg-pill.active { color: #1a1816; border-bottom-color: rgba(26,24,22,0.5); }
 
-        /* Lightbox */
+        /* Lightbox — portaled to body; page theme background */
         .wg-lb-overlay {
-          position: fixed; inset: 0; z-index: 500;
-          background: rgba(20,18,16,0.85);
+          position: fixed; inset: 0; z-index: 600;
+          background: ${siteTheme.backgroundCss};
           display: flex; align-items: center; justify-content: center;
           padding: clamp(16px, 4vw, 40px);
           animation: wgFadeIn 0.25s ease;
+          pointer-events: auto;
         }
         @keyframes wgFadeIn { from { opacity: 0; } to { opacity: 1; } }
 
         .wg-lb-content {
-          position: relative;
+          position: relative; z-index: 1;
           display: flex; flex-direction: column; align-items: center;
+          justify-content: center;
           gap: 16px;
+          min-height: 60vh;
+          max-width: 92vw;
+          pointer-events: auto;
         }
         .wg-lb-img {
           display: block;
           width: auto;
           height: auto;
-          max-width: 90vw;
-          max-height: 80vh;
+          max-width: 92vw;
+          max-height: 85vh;
           object-fit: contain;
           border-radius: 2px;
           image-rendering: auto;
+          pointer-events: auto;
         }
         .wg-lb-img.round { border-radius: 50%; }
-        .wg-lb-meta { text-align: center; color: #c8c4be; }
+        .wg-lb-meta { text-align: center; color: ${siteTheme.bodyMutedText}; }
         .wg-lb-title {
           font-family: 'Instrument Serif', serif;
           font-size: clamp(14px, 2vw, 20px); font-weight: 400;
-          color: #edeae4; margin: 0 0 4px;
+          color: ${siteTheme.bodyText}; margin: 0 0 4px;
         }
         .wg-lb-details {
           font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
-          color: #9a9690; display: flex; gap: 12px; justify-content: center;
+          color: ${siteTheme.bodyMutedText}; display: flex; gap: 12px; justify-content: center;
         }
-
-        .wg-lb-close {
-          position: fixed; top: 16px; right: 16px; z-index: 510;
-          width: 48px; height: 48px; min-width: 44px; min-height: 44px;
-          display: flex; align-items: center; justify-content: center;
-          background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2);
-          border-radius: 50%; font-size: 22px; color: #edeae4;
-          cursor: pointer; transition: background 0.15s;
+        .wg-lb-hint {
+          font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase;
+          color: ${siteTheme.bodyMutedText}; margin: 8px 0 0; opacity: 0.85;
         }
-        .wg-lb-close:hover { background: rgba(255,255,255,0.3); }
 
         .wg-empty {
           text-align: center; padding: 80px 20px;
@@ -263,7 +278,10 @@ export default function WorksGrid({
                 key={w.OeuvreID}
                 className="wg-cell"
                 role="listitem"
-                onClick={() => setLightbox(w)}
+                onClick={() => {
+                  preloadFullResImage(w.txtImageNameLink)
+                  setLightbox(w)
+                }}
               >
                 <figure className="wg-figure">
                   <img
@@ -272,16 +290,6 @@ export default function WorksGrid({
                     className={`wg-cell-img${w.isRound ? ' round' : ''}`}
                     loading="lazy"
                     draggable={false}
-                    onLoad={(e) => {
-                      const el = e.currentTarget
-                      if (el.offsetWidth < 1 || el.offsetHeight < 1) return
-                      setThumbLayout((prev) => {
-                        const next = { w: el.offsetWidth, h: el.offsetHeight }
-                        const cur = prev[w.OeuvreID]
-                        if (cur?.w === next.w && cur?.h === next.h) return prev
-                        return { ...prev, [w.OeuvreID]: next }
-                      })
-                    }}
                   />
                   <figcaption className="wg-cell-info">
                     <p className="wg-cell-title">{w.Titre ?? t('pub_untitled')}</p>
@@ -290,11 +298,12 @@ export default function WorksGrid({
                 </figure>
               </div>
             ))}
+            {hasSectionText && (
+              <div className="wg-text-card-span" role="listitem">
+                <WorksSectionTextCard html={chapterDesc} variant="grid" />
+              </div>
+            )}
           </div>
-        )}
-
-        {chapterDesc && (
-          <div className="wg-outro" dangerouslySetInnerHTML={{ __html: chapterDesc.replace(/\n/g, '<br>') }} />
         )}
       </div>
 
@@ -316,34 +325,14 @@ export default function WorksGrid({
         </div>
       )}
 
-      {lightbox && (
-        <div className="wg-lb-overlay" onClick={closeLightbox}>
-          <button
-            type="button"
-            className="wg-lb-close"
-            aria-label={t('pub_works_zoom_close_aria')}
-            onClick={closeLightbox}
-          >×</button>
+      {lbPortalReady && lightbox && createPortal(
+        <div className="wg-lb-overlay" onClick={closeLightbox} role="dialog" aria-modal="true">
           <div className="wg-lb-content" onClick={e => e.stopPropagation()}>
             <img
+              key={lightbox.OeuvreID}
               src={imageUrl(lightbox.txtImageNameLink) ?? undefined}
               alt={lightbox.Titre ?? ''}
               className={`wg-lb-img${lightbox.isRound ? ' round' : ''}`}
-              width={lbDisplay?.w}
-              height={lbDisplay?.h}
-              style={lbDisplay ? { width: lbDisplay.w, height: lbDisplay.h } : undefined}
-              onLoad={(e) => {
-                const el = e.currentTarget
-                if (el.naturalWidth < 1 || el.naturalHeight < 1) return
-                const thumb = thumbLayout[lightbox.OeuvreID]
-                const size = lightboxDisplaySize(
-                  el.naturalWidth,
-                  el.naturalHeight,
-                  thumb?.w ?? 280,
-                  thumb?.h ?? 210,
-                )
-                setLbDisplay(size)
-              }}
             />
             <div className="wg-lb-meta">
               <p className="wg-lb-title">{lightbox.Titre ?? t('pub_untitled')}</p>
@@ -358,9 +347,11 @@ export default function WorksGrid({
                   </span>
                 )}
               </div>
+              <p className="wg-lb-hint">{t('pub_works_grid_lightbox_hint')}</p>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   )
