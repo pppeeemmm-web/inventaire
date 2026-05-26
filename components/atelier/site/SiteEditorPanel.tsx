@@ -36,9 +36,12 @@ import {
   WORKS_LIGHT_INTENSITY_DEFAULT,
   WORKS_LIGHT_INTENSITY_MAX,
   WORKS_LIGHT_INTENSITY_MIN,
+  WORKS_LIGHT_PRESETS,
+  WORKS_LIGHT_PRESET_KEYS,
   WORKS_LIGHT_TEMP_DEFAULT,
   WORKS_LIGHT_TEMP_MAX,
   WORKS_LIGHT_TEMP_MIN,
+  matchWorksLightPreset,
 } from '@/lib/works-mode-light'
 import { SitePublicSection } from '@/components/atelier/portfolio/shared/SitePublicSection'
 import { Slot } from '@/components/atelier/portfolio/shared/Slot'
@@ -674,6 +677,46 @@ export function SiteEditorPanel({
                     </div>
                   </label>
                 </div>
+                {(() => {
+                  const activePreset = matchWorksLightPreset({
+                    light_temp_k: mode.light_temp_k,
+                    light_direction_deg: mode.light_direction_deg,
+                    light_intensity_pct: mode.light_intensity_pct,
+                    light_circadian: mode.light_circadian,
+                  })
+                  return (
+                    <div style={{ marginBottom: 16 }}>
+                      <div className="t-label" style={{ marginBottom: 6, fontSize: 9 }}>
+                        {t('site_works_mode_light_preset_label').toUpperCase()}
+                        {activePreset === null && (
+                          <span style={{ opacity: 0.5, marginLeft: 6 }}>
+                            {/* eslint-disable-next-line pem-i18n/no-hardcoded-jsx-text */}
+                            · {t('site_works_mode_light_preset_custom')}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                        {WORKS_LIGHT_PRESET_KEYS.map(k => {
+                          const active = activePreset === k
+                          return (
+                            <button key={k} type="button" className="t-mono-xs"
+                              onClick={() => updateMode(activeMode, WORKS_LIGHT_PRESETS[k])}
+                              style={{
+                                padding: '6px 10px', minHeight: 28,
+                                fontSize: 9, letterSpacing: 1, fontFamily: 'inherit', textTransform: 'uppercase',
+                                border: '1px solid ' + (active ? 'var(--ac)' : 'var(--bd)'),
+                                borderRadius: 4, cursor: 'pointer',
+                                background: active ? 'var(--ac)' : 'var(--bg1)',
+                                color: active ? '#fff' : 'var(--tx2)',
+                              }}>
+                              {t(`site_works_mode_light_preset_${k}` as any)}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })()}
                 <label
                   className="t-label"
                   style={{

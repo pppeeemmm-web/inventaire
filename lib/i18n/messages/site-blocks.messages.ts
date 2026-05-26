@@ -375,4 +375,36 @@ export const siteBlocksMessages = defineMessages({
     fr: 'La température, la direction et l’intensité suivent l’arc solaire. Les curseurs manuels sont ignorés.',
     en: 'Temperature, direction and intensity follow the sun arc. Manual sliders are ignored.',
   },
+  site_works_mode_light_preset_label: {
+    fr: 'Ambiance',
+    en: 'Preset',
+  },
+  site_works_mode_light_preset_custom: {
+    fr: 'Personnalisée',
+    en: 'Custom',
+  },
+  site_works_mode_light_preset_warm_indoor: {
+    fr: 'Intérieur chaud',
+    en: 'Warm indoor',
+  },
+  site_works_mode_light_preset_cool_indoor: {
+    fr: 'Intérieur froid',
+    en: 'Cool indoor',
+  },
+  site_works_mode_light_preset_gallery: {
+    fr: 'Galerie',
+    en: 'Gallery',
+  },
+  site_works_mode_light_preset_daylight: {
+    fr: 'Lumière du jour',
+    en: 'Daylight',
+  },
+  site_works_mode_light_preset_golden_hour: {
+    fr: 'Heure dorée',
+    en: 'Golden hour',
+  },
+  site_works_mode_light_preset_circadian: {
+    fr: 'Circadienne',
+    en: 'Circadian',
+  },
 })

@@ -198,3 +198,57 @@ export function buildWorksBevelBoxShadow(
     `inset ${sx(px)}px ${sy(px)}px ${px * 2.5}px rgba(18,16,14,${(0.16 * i).toFixed(3)})`,
   ].join(', ')
 }
+
+/**
+ * Named light presets — purely a UI affordance, not persisted. Selecting a
+ * preset fills the temp / direction / intensity / circadian fields with the
+ * preset's values; the editor recognises a preset only when all four fields
+ * match exactly.
+ */
+export type WorksLightPresetKey =
+  | 'warm_indoor'
+  | 'cool_indoor'
+  | 'gallery'
+  | 'daylight'
+  | 'golden_hour'
+  | 'circadian'
+
+export type WorksLightPresetValues = {
+  light_temp_k: number
+  light_direction_deg: number
+  light_intensity_pct: number
+  light_circadian: boolean
+}
+
+export const WORKS_LIGHT_PRESETS: Record<WorksLightPresetKey, WorksLightPresetValues> = {
+  warm_indoor: { light_temp_k: 2900, light_direction_deg: 315, light_intensity_pct: 90,  light_circadian: false },
+  cool_indoor: { light_temp_k: 4200, light_direction_deg: 0,   light_intensity_pct: 100, light_circadian: false },
+  gallery:     { light_temp_k: 4000, light_direction_deg: 315, light_intensity_pct: 120, light_circadian: false },
+  daylight:    { light_temp_k: 5500, light_direction_deg: 0,   light_intensity_pct: 110, light_circadian: false },
+  golden_hour: { light_temp_k: 3000, light_direction_deg: 270, light_intensity_pct: 80,  light_circadian: false },
+  circadian:   {
+    light_temp_k: WORKS_LIGHT_TEMP_DEFAULT,
+    light_direction_deg: WORKS_LIGHT_DIRECTION_DEFAULT,
+    light_intensity_pct: WORKS_LIGHT_INTENSITY_DEFAULT,
+    light_circadian: true,
+  },
+}
+
+export const WORKS_LIGHT_PRESET_KEYS: WorksLightPresetKey[] = [
+  'warm_indoor', 'cool_indoor', 'gallery', 'daylight', 'golden_hour', 'circadian',
+]
+
+/** Returns the matching preset key if all four fields equal one of the presets, else null. */
+export function matchWorksLightPreset(values: WorksLightPresetValues): WorksLightPresetKey | null {
+  if (values.light_circadian) return 'circadian'
+  for (const k of WORKS_LIGHT_PRESET_KEYS) {
+    const p = WORKS_LIGHT_PRESETS[k]
+    if (p.light_circadian) continue
+    if (
+      p.light_temp_k === values.light_temp_k &&
+      p.light_direction_deg === values.light_direction_deg &&
+      p.light_intensity_pct === values.light_intensity_pct
+    ) return k
+  }
+  return null
+}
