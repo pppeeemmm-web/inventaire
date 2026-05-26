@@ -117,6 +117,8 @@ export async function approvePendingChange(id: number): Promise<PendingResult> {
 
   revalidatePath('/atelier/audit')
   revalidatePath('/atelier')
+  revalidatePath('/hub')
+  revalidatePath('/works')
   return { ok: true }
 }
 

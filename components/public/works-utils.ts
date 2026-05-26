@@ -1,6 +1,15 @@
 // Shared types and pure helpers for /works views (carousel + grid).
 
 import type { ThemeWork, WorksLayout } from '@/lib/portfolio-config-types'
+import type { CollectionHeadingSource } from '@/lib/collection-display'
+export {
+  collectionDisplayHeading,
+  collectionHasVisibleText,
+  collectionIntroPlain,
+  collectionTextEnabled,
+  collectionDescriptionHtml,
+  type CollectionHeadingSource,
+} from '@/lib/collection-display'
 
 export interface Work {
   OeuvreID: number
@@ -23,6 +32,8 @@ export interface Collection {
   description_en: string
   theme?: string | null
   is_active: boolean
+  heading_source?: CollectionHeadingSource
+  show_text?: boolean
   manual_work_order?: number[]
 }
 
@@ -82,6 +93,29 @@ export function resolveThemeByName(
   const exact = matches.find((t) => t.name === label)
   if (exact) return exact
   return matches.slice().sort((a, b) => a.id - b.id)[0]!
+}
+
+export type CollectionThemeSource = {
+  theme?: string | null
+  title_fr?: string | null
+  title_en?: string | null
+}
+
+/**
+ * Map portfolio collection theme label → catalogue `theme.name`.
+ * Falls back to collection title when JSON still has a stale selection label.
+ */
+export function canonicalCollectionTheme(
+  col: CollectionThemeSource,
+  catalogueThemes: ReadonlyArray<ThemeNameRecord>,
+): string | null {
+  const fromAssigned = col.theme?.trim() || null
+  const resolvedAssigned = resolveThemeByName(catalogueThemes, fromAssigned)
+  if (resolvedAssigned) return resolvedAssigned.name
+  const fromTitle = col.title_fr?.trim() || col.title_en?.trim() || null
+  const resolvedTitle = resolveThemeByName(catalogueThemes, fromTitle)
+  if (resolvedTitle) return resolvedTitle.name
+  return fromAssigned
 }
 
 /**

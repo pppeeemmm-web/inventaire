@@ -298,7 +298,16 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
           .select('*')
           .eq('OeuvreID', oid)
           .maybeSingle()
-        baseline = (row as Record<string, unknown> | null) ?? null
+        const base = (row as Record<string, unknown> | null) ?? {}
+        const [{ data: themeLinks }, { data: groupLinks }] = await Promise.all([
+          supabase.from('oeuvre_theme').select('theme_id').eq('oeuvre_id', oid),
+          supabase.from('working_group_work').select('group_id').eq('oeuvre_id', oid),
+        ])
+        baseline = {
+          ...base,
+          themes: (themeLinks ?? []).map((r) => String(r.theme_id)).join(','),
+          groups: (groupLinks ?? []).map((r) => r.group_id).join(','),
+        }
       }
 
       const { error: pErr } = await insertPendingChange(supabase, {
@@ -683,6 +692,8 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
     if ('error' in groupRes) return { error: groupRes.error }
 
     revalidatePath('/atelier')
+    revalidatePath('/hub')
+    revalidatePath('/works')
     return { ok: true }
   }
 }
@@ -729,6 +740,8 @@ export async function revertWorkSnapshot(
   if ('error' in groupRes) return { error: groupRes.error }
 
   revalidatePath('/atelier')
+  revalidatePath('/hub')
+  revalidatePath('/works')
   revalidatePath(`/atelier/works/${oeuvreId}/edit`)
   return { ok: true }
 }

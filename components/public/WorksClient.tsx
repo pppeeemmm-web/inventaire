@@ -9,7 +9,13 @@ import WorksGrid from './WorksGrid'
 import { trackView } from '@/lib/track'
 import { getOrCreatePublicVisitorId } from '@/lib/public-visitor-id'
 import { WorksSectionTextCard } from './WorksSectionTextCard'
-import { richTextToPlain, worksForCollection } from './works-utils'
+import {
+  collectionDisplayHeading,
+  collectionDescriptionHtml,
+  collectionHasVisibleText,
+  collectionIntroPlain,
+  worksForCollection,
+} from './works-utils'
 import type { Work, WorksMode, Collection } from './works-utils'
 import type { PublicSiteTheme } from '@/lib/public-site-theme'
 import { publicNavBarCss, publicSiteBaseCss } from '@/lib/public-site-theme'
@@ -534,17 +540,11 @@ export default function WorksClient({
     jumpBy(dx < 0 ? 1 : -1)
   }
 
-  const chapterTitle = chapter
-    ? (lang === 'en' ? (chapter.title_en || chapter.title_fr) : (chapter.title_fr || chapter.title_en))
-    : ''
-  const chapterIntro = chapter
-    ? (lang === 'en' ? (chapter.intro_en || chapter.intro_fr || '') : (chapter.intro_fr || chapter.intro_en || ''))
-    : ''
-  const chapterIntroText = richTextToPlain(chapterIntro)
-  const chapterDesc = chapter
-    ? (lang === 'en' ? (chapter.description_en || chapter.description_fr || '') : (chapter.description_fr || chapter.description_en || ''))
-    : ''
-  const totalSlots = chapterWorks.length + (chapterDesc ? 1 : 0)
+  const chapterTitle = chapter ? collectionDisplayHeading(chapter, lang) : ''
+  const chapterIntroText = chapter ? collectionIntroPlain(chapter, lang) : ''
+  const chapterDesc = chapter ? collectionDescriptionHtml(chapter, lang) : ''
+  const showChapterText = chapter ? collectionHasVisibleText(chapter, lang) : false
+  const totalSlots = chapterWorks.length
   totalSlotsRef.current = totalSlots
   const mobileZoomScale = 1 + (zoomZ / MAX_Z) * 5
 
@@ -795,6 +795,21 @@ export default function WorksClient({
           font-size: 7px; letter-spacing: 2px; text-transform: uppercase;
           color: #7a7570; margin: 0;
         }
+        .w-collection-text-panel {
+          position: fixed;
+          left: clamp(20px, 3.5vw, 48px);
+          bottom: clamp(72px, 12vh, 120px);
+          z-index: 180;
+          max-width: min(280px, 28vw);
+          max-height: min(36vh, 320px);
+          overflow-y: auto;
+          pointer-events: auto;
+          scrollbar-width: none;
+          opacity: 1;
+          transition: opacity 300ms ease;
+        }
+        .w-collection-text-panel::-webkit-scrollbar { display: none; }
+        .w-collection-text-panel.is-hidden { opacity: 0; pointer-events: none; }
         .w-text-card-front {
           width: 100%; height: 100%;
           display: flex; flex-direction: column;
@@ -902,8 +917,11 @@ export default function WorksClient({
         .w-zoom-close {
           position: fixed;
           z-index: 400;
-          top: max(clamp(12px, 2vw, 18px), env(safe-area-inset-top, 0px));
-          right: calc(clamp(16px, 4vw, 36px) + 4.5rem);
+          /* Bottom corner — never overlaps fixed top nav (WORKS / ENQUIRY / FR). */
+          top: auto;
+          left: auto;
+          bottom: max(20px, calc(env(safe-area-inset-bottom, 0px) + 16px));
+          right: clamp(16px, 4vw, 36px);
           width: 48px;
           height: 48px;
           min-width: 44px;
@@ -911,13 +929,14 @@ export default function WorksClient({
           display: flex;
           align-items: center;
           justify-content: center;
-          background: rgba(255,255,255,0.70);
-          border: 1px solid rgba(0,0,0,0.10);
+          background: rgba(255,255,255,0.88);
+          border: 1px solid rgba(0,0,0,0.12);
           border-radius: 50%;
           font-size: 22px;
           line-height: 1;
           color: #1a1816;
           cursor: pointer;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.12);
         }
 
         .w-page-h1-sr-only {
@@ -990,8 +1009,8 @@ export default function WorksClient({
             display: none;
           }
           .w-zoom-close {
-            top: calc(env(safe-area-inset-top, 0px) + clamp(12px, 2vw, 18px));
-            right: calc(clamp(16px, 4vw, 36px) + 4rem);
+            bottom: max(16px, calc(env(safe-area-inset-bottom, 0px) + 12px));
+            right: 12px;
           }
         }
 
@@ -1146,7 +1165,9 @@ export default function WorksClient({
                   <p style={{ fontFamily: "'Instrument Serif', serif", fontSize: 'clamp(13px,1.4vw,20px)', fontWeight: 400, color: '#1a1816', letterSpacing: '-0.01em', lineHeight: 1.2, margin: 0 }}>
                     {chapterTitle}
                   </p>
-                  {chapterIntroText && <p style={{ fontSize: 7, letterSpacing: '2px', textTransform: 'uppercase', color: '#7a7570', margin: '5px 0 0' }}>{chapterIntroText}</p>}
+                  {showChapterText && chapterIntroText && (
+                    <p style={{ fontSize: 7, letterSpacing: '2px', textTransform: 'uppercase', color: '#7a7570', margin: '5px 0 0' }}>{chapterIntroText}</p>
+                  )}
                 </div>
               )}
 
@@ -1281,34 +1302,20 @@ export default function WorksClient({
                   </div>
                 )
               })}
-              {chapterDesc && (() => {
-                const i = chapterWorks.length
-                const offset = i - activeIndex
-                const { transform, opacity, zIndex, visible } = cardTransform(offset, reducedMotion, isMobile ? 1100 : 780)
-                if (!visible) return null
-                return (
-                  <div
-                    key="text-card"
-                    className="w-card side text"
-                    style={{ transform: `translateY(-50%) ${isZoomed ? `translateZ(-${zoomZ}px) ${transform}` : transform}`, opacity, zIndex }}
-                  >
-                    <div className="w-card-inner">
-                      <div className="w-face left" aria-hidden />
-                      <div className="w-face right" aria-hidden />
-                      <div className="w-face top" aria-hidden />
-                      <div className="w-face bottom" aria-hidden />
-                      <div className="w-text-card-front">
-                        <WorksSectionTextCard
-                          html={chapterDesc}
-                          title={chapterTitle || undefined}
-                          variant="carousel"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )
-              })()}
             </div>
+          </div>
+        )}
+
+        {showChapterText && chapterDesc && (
+          <div
+            className={`w-collection-text-panel${isZoomed ? ' is-hidden' : ''}`}
+            aria-label={chapterTitle || t('pub_works')}
+          >
+            <WorksSectionTextCard
+              html={chapterDesc}
+              title={chapterTitle || undefined}
+              variant="carousel"
+            />
           </div>
         )}
 
@@ -1356,7 +1363,7 @@ export default function WorksClient({
               aria-label={t('pub_works_aria_switch_chapter')}
             >
               {mode.collections.map((c, idx) => {
-                const label = lang === 'en' ? (c.title_en || c.title_fr) : (c.title_fr || c.title_en)
+                const label = collectionDisplayHeading(c, lang)
                 return (
                   <button
                     key={`pill-${c.id || idx}`}

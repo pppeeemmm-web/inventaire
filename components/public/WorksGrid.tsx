@@ -6,7 +6,13 @@ import { useEscapeClose, shouldIgnoreEscapeTarget } from '@/hooks/useEscapeClose
 import { useI18n } from '@/lib/i18n/context'
 import { thumbUrl, imageUrl, yearOf } from '@/lib/data'
 import { WorksSectionTextCard } from './WorksSectionTextCard'
-import { richTextToPlain, worksForCollection } from './works-utils'
+import {
+  collectionDisplayHeading,
+  collectionDescriptionHtml,
+  collectionHasVisibleText,
+  collectionIntroPlain,
+  worksForCollection,
+} from './works-utils'
 import type { Work, WorksMode } from './works-utils'
 import type { PublicSiteTheme } from '@/lib/public-site-theme'
 import { publicSiteBaseCss } from '@/lib/public-site-theme'
@@ -43,18 +49,10 @@ export default function WorksGrid({
     return worksForCollection(chapter, works)
   }, [chapter, works])
 
-  const chapterTitle = chapter
-    ? (lang === 'en' ? (chapter.title_en || chapter.title_fr) : (chapter.title_fr || chapter.title_en))
-    : ''
-  const chapterIntro = chapter
-    ? richTextToPlain(
-        lang === 'en' ? (chapter.intro_en || chapter.intro_fr || '') : (chapter.intro_fr || chapter.intro_en || ''),
-      )
-    : ''
-  const chapterDesc = chapter
-    ? (lang === 'en' ? (chapter.description_en || chapter.description_fr || '') : (chapter.description_fr || chapter.description_en || ''))
-    : ''
-  const hasSectionText = Boolean(chapterDesc && richTextToPlain(chapterDesc))
+  const chapterTitle = chapter ? collectionDisplayHeading(chapter, lang) : ''
+  const chapterIntro = chapter ? collectionIntroPlain(chapter, lang) : ''
+  const chapterDesc = chapter ? collectionDescriptionHtml(chapter, lang) : ''
+  const hasSectionText = chapter ? collectionHasVisibleText(chapter, lang) : false
 
   const closeLightbox = useCallback(() => setLightbox(null), [])
   useEscapeClose(lightbox != null, closeLightbox)
@@ -167,11 +165,13 @@ export default function WorksGrid({
           color: #9a9690; margin: 0;
         }
 
-        .wg-text-card-span {
-          grid-column: 1 / -1;
-          width: 100%;
+        .wg-text-section {
           max-width: min(720px, 100%);
-          margin: clamp(8px, 2vw, 16px) auto 0;
+          margin: 0 auto clamp(28px, 4vw, 40px);
+          padding: clamp(16px, 3vw, 24px);
+          border: 1px solid #dedad4;
+          border-radius: 8px;
+          background: rgba(255, 255, 255, 0.35);
         }
 
         .wg-pills {
@@ -269,6 +269,12 @@ export default function WorksGrid({
           </div>
         )}
 
+        {hasSectionText && (
+          <div className="wg-text-section">
+            <WorksSectionTextCard html={chapterDesc} variant="grid" />
+          </div>
+        )}
+
         {chapterWorks.length === 0 ? (
           <div className="wg-empty" role="status">{t('pub_works_groups_nomatch')}</div>
         ) : (
@@ -298,11 +304,6 @@ export default function WorksGrid({
                 </figure>
               </div>
             ))}
-            {hasSectionText && (
-              <div className="wg-text-card-span" role="listitem">
-                <WorksSectionTextCard html={chapterDesc} variant="grid" />
-              </div>
-            )}
           </div>
         )}
       </div>
@@ -310,7 +311,7 @@ export default function WorksGrid({
       {mode.collections.length > 1 && (
         <div className="wg-pills">
           {mode.collections.map((c, idx) => {
-            const label = lang === 'en' ? (c.title_en || c.title_fr) : (c.title_fr || c.title_en)
+            const label = collectionDisplayHeading(c, lang)
             return (
               <button
                 key={`pill-${c.id || idx}`}

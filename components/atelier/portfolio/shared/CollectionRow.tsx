@@ -1,8 +1,13 @@
 'use client'
 
+import type { CSSProperties } from 'react'
 import { useMemo, useState } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import type { CollectionItem, ThemeWork } from '@/lib/portfolio-config-types'
+import {
+  collectionDisplayHeading,
+  collectionTextEnabled,
+} from '@/lib/collection-display'
 import { RichEditor, htmlToPlain } from '@/components/atelier/RichEditor'
 import { FileImportButton } from './FileImportButton'
 import { FlamePreview } from './FlamePreview'
@@ -10,8 +15,12 @@ import { WorksReorder } from './WorksReorder'
 import { moveBtnStyle } from './moveBtnStyle'
 import { EditorFadeShell } from './EditorFadeShell'
 
-const FADE_MASK =
-  'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 45%, rgba(0,0,0,0) 100%)'
+const SECTION_PANEL: CSSProperties = {
+  border: '1px solid var(--bd)',
+  borderRadius: 6,
+  padding: '12px 14px',
+  background: 'var(--bg0)',
+}
 
 function collectionPlainText(item: CollectionItem, lang: 'fr' | 'en'): string {
   const intro = lang === 'fr' ? item.intro_fr : item.intro_en
@@ -33,19 +42,22 @@ export function CollectionRow({ item, index, total, sequenceLabel, onMove, isTar
   privateWorks?: ThemeWork[]
   onMakePublic?: (id: number) => void
 }) {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const [dragging, setDragging] = useState(false)
-  const [rowExpanded, setRowExpanded] = useState(false)
+  const [headingExpanded, setHeadingExpanded] = useState(false)
+  const [textExpanded, setTextExpanded] = useState(false)
+
   const hasTextContent = !!(
     htmlToPlain(item.intro_fr) || htmlToPlain(item.intro_en)
     || htmlToPlain(item.description_fr) || htmlToPlain(item.description_en)
   )
-  const [textExpanded, setTextExpanded] = useState(false)
+  const showTextOnSite = collectionTextEnabled(item)
+  const headingSource = item.heading_source ?? 'title'
 
-  const titleLine = useMemo(() => {
-    const parts = [item.title_fr?.trim(), item.title_en?.trim()].filter(Boolean)
-    return parts.length > 0 ? parts.join(' · ') : '—'
-  }, [item.title_fr, item.title_en])
+  const headingPreview = useMemo(
+    () => collectionDisplayHeading(item, lang) || '—',
+    [item, lang],
+  )
 
   const plainFr = useMemo(() => collectionPlainText(item, 'fr'), [item])
   const plainEn = useMemo(() => collectionPlainText(item, 'en'), [item])
@@ -54,35 +66,19 @@ export function CollectionRow({ item, index, total, sequenceLabel, onMove, isTar
   const privCount = privateWorks?.filter(w => !w.isPublic).length ?? 0
   const hasWorks = (privateWorks?.length ?? 0) > 0
 
-  const textFadePreview = hasTextContent ? (
+  const headingHeaderNote = t('portfolio_collection_heading_preview').replace(
+    '{label}',
+    headingPreview,
+  )
+
+  const textPreview = hasTextContent ? (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, padding: '8px 10px', fontSize: 10, lineHeight: 1.55, color: 'var(--tx2)' }}>
       <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{plainFr || '—'}</p>
       <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{plainEn || '—'}</p>
     </div>
-  ) : null
+  ) : undefined
 
-  const themeRow = (
-    <div className="row gap-md" style={{ alignItems: 'flex-end' }}>
-      <div style={{ flex: 1 }}>
-        <label className="t-label" style={{ display: 'block', marginBottom: 4, fontSize: 9 }}>{'THÈME / GROUPE ASSIGNÉ'}</label>
-        <div onClick={onAssign} style={{
-          height: 36, border: `1px ${item.theme ? 'solid' : 'dashed'} ${isTarget ? 'var(--ac)' : 'var(--bd)'}`,
-          borderRadius: 4, padding: '0 12px', display: 'flex', alignItems: 'center', cursor: 'pointer',
-          background: item.theme ? 'var(--bg0)' : undefined,
-        }}>
-          <span className="t-mono-sm" style={{ fontSize: 11, color: item.theme ? 'var(--ac)' : 'var(--tx3)' }}>
-            {item.theme || (isTarget ? 'PRÊT POUR THÈME' : 'CLIQUER POUR CHOISIR')}
-          </span>
-        </div>
-      </div>
-      <label className="row gap-xs pointer center" style={{ paddingBottom: 6 }}>
-        <input type="checkbox" checked={item.is_active} onChange={e => onUpdate({ is_active: e.target.checked })} />
-        <span className="t-mono-xs" style={{ fontSize: 9 }}>ACTIF</span>
-      </label>
-    </div>
-  )
-
-  const expandedBody = (
+  const headingBody = (
     <div className="col gap-md">
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <div>
@@ -94,55 +90,80 @@ export function CollectionRow({ item, index, total, sequenceLabel, onMove, isTar
           <input className="input full" value={item.title_en} onChange={e => onUpdate({ title_en: e.target.value })} />
         </div>
       </div>
-
-      {themeRow}
-
-      <button
-        type="button"
-        onClick={() => setTextExpanded(!textExpanded)}
-        style={{
-          background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0',
-          display: 'flex', alignItems: 'center', gap: 6, color: 'var(--tx3)', fontSize: 9, letterSpacing: 1,
-          fontFamily: 'inherit', minHeight: 44,
-        }}
+      <fieldset
+        className="col gap-xs"
+        style={{ border: '1px solid var(--bd)', borderRadius: 4, margin: 0, padding: '10px 12px' }}
       >
-        <span style={{ fontSize: 10, transition: 'transform .15s', transform: textExpanded ? 'rotate(90deg)' : 'none', display: 'inline-block' }}>{'▸'}</span>
-        {textExpanded ? 'MASQUER TEXTES' : hasTextContent ? 'TEXTES (remplis)' : 'AJOUTER INTRO / TEXTE'}
-      </button>
+        <legend className="t-label" style={{ fontSize: 9, padding: '0 4px' }}>{t('portfolio_collection_heading_source_label')}</legend>
+        <label className="row gap-xs pointer" style={{ minHeight: 44, alignItems: 'center' }}>
+          <input
+            type="radio"
+            name={`heading-source-${item.id}`}
+            checked={headingSource === 'title'}
+            onChange={() => onUpdate({ heading_source: 'title' })}
+          />
+          <span className="t-mono-sm" style={{ fontSize: 10 }}>{t('portfolio_collection_heading_source_title')}</span>
+        </label>
+        <label className="row gap-xs pointer" style={{ minHeight: 44, alignItems: 'center' }}>
+          <input
+            type="radio"
+            name={`heading-source-${item.id}`}
+            checked={headingSource === 'theme'}
+            onChange={() => onUpdate({ heading_source: 'theme' })}
+            disabled={!item.theme?.trim()}
+          />
+          <span className="t-mono-sm" style={{ fontSize: 10, opacity: item.theme?.trim() ? 1 : 0.45 }}>
+            {t('portfolio_collection_heading_source_theme')}
+            {item.theme?.trim() ? ` (${item.theme.trim()})` : ''}
+          </span>
+        </label>
+      </fieldset>
+    </div>
+  )
 
-      {textExpanded && (
+  const textBody = (
+    <div className="col gap-md">
+      <label
+        className="row gap-xs pointer center"
+        style={{ minHeight: 44, border: '1px solid var(--bd)', borderRadius: 4, padding: '8px 12px' }}
+      >
+        <input
+          type="checkbox"
+          checked={showTextOnSite}
+          onChange={e => onUpdate({ show_text: e.target.checked ? true : false })}
+        />
+        <span className="t-mono-sm" style={{ fontSize: 10 }}>{t('portfolio_collection_show_text')}</span>
+      </label>
+
+      {showTextOnSite && (
         <>
-          {sequenceLabel && (
-            <>
-              <div className="t-label" style={{ fontSize: 9, opacity: 0.75 }}>{'INTRO (optionnel)'}</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                    <span className="t-label" style={{ fontSize: 9 }}>INTRO FR</span>
-                    <FileImportButton onText={v => onUpdate({ intro_fr: v })} lang="fr" />
-                  </div>
-                  <RichEditor value={item.intro_fr} onChange={v => onUpdate({ intro_fr: v })} minHeight={100} />
-                </div>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                    <span className="t-label" style={{ fontSize: 9 }}>INTRO EN</span>
-                    <FileImportButton onText={v => onUpdate({ intro_en: v })} lang="en" />
-                  </div>
-                  <RichEditor value={item.intro_en} onChange={v => onUpdate({ intro_en: v })} minHeight={100} />
-                </div>
+          <div className="t-label" style={{ fontSize: 9, opacity: 0.75 }}>{'INTRO (optionnel)'}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div style={{ border: '1px solid var(--bd)', borderRadius: 4, padding: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <span className="t-label" style={{ fontSize: 9 }}>INTRO FR</span>
+                <FileImportButton onText={v => onUpdate({ intro_fr: v })} lang="fr" />
               </div>
-            </>
-          )}
+              <RichEditor value={item.intro_fr} onChange={v => onUpdate({ intro_fr: v })} minHeight={100} />
+            </div>
+            <div style={{ border: '1px solid var(--bd)', borderRadius: 4, padding: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <span className="t-label" style={{ fontSize: 9 }}>INTRO EN</span>
+                <FileImportButton onText={v => onUpdate({ intro_en: v })} lang="en" />
+              </div>
+              <RichEditor value={item.intro_en} onChange={v => onUpdate({ intro_en: v })} minHeight={100} />
+            </div>
+          </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div>
+            <div style={{ border: '1px solid var(--bd)', borderRadius: 4, padding: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                 <span className="t-label" style={{ fontSize: 9 }}>TEXTE FR</span>
                 <FileImportButton onText={v => onUpdate({ description_fr: v })} lang="fr" />
               </div>
               <RichEditor value={item.description_fr} onChange={v => onUpdate({ description_fr: v })} minHeight={120} />
             </div>
-            <div>
+            <div style={{ border: '1px solid var(--bd)', borderRadius: 4, padding: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                 <span className="t-label" style={{ fontSize: 9 }}>TEXTE EN</span>
                 <FileImportButton onText={v => onUpdate({ description_en: v })} lang="en" />
@@ -153,11 +174,11 @@ export function CollectionRow({ item, index, total, sequenceLabel, onMove, isTar
 
           {(htmlToPlain(item.description_fr) || htmlToPlain(item.description_en)) && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <div>
+              <div style={{ border: '1px solid var(--bd)', borderRadius: 4, padding: 10 }}>
                 <div style={{ fontSize: 8, letterSpacing: 2, color: 'var(--tx3)', marginBottom: 4 }}>{'APERÇU FR'}</div>
                 <FlamePreview html={item.description_fr} />
               </div>
-              <div>
+              <div style={{ border: '1px solid var(--bd)', borderRadius: 4, padding: 10 }}>
                 <div style={{ fontSize: 8, letterSpacing: 2, color: 'var(--tx3)', marginBottom: 4 }}>{'APERÇU EN'}</div>
                 <FlamePreview html={item.description_en} />
               </div>
@@ -167,6 +188,8 @@ export function CollectionRow({ item, index, total, sequenceLabel, onMove, isTar
       )}
     </div>
   )
+
+  const shellsCollapsed = !headingExpanded && !textExpanded
 
   return (
     <div
@@ -187,7 +210,7 @@ export function CollectionRow({ item, index, total, sequenceLabel, onMove, isTar
         setDragging(false)
       }}
       style={{
-        border: isTarget ? '1px solid var(--ac)' : undefined,
+        border: isTarget ? '1px solid var(--ac)' : '1px solid var(--bd)',
         background: isTarget ? 'rgba(200,168,110,0.03)' : undefined,
         opacity: dragging ? 0.5 : 1,
       }}
@@ -219,25 +242,23 @@ export function CollectionRow({ item, index, total, sequenceLabel, onMove, isTar
         </button>
       </div>
 
-      {!rowExpanded && (
-        <div className="col gap-sm">
+      {shellsCollapsed && (
+        <div
+          className="col gap-sm"
+          style={{ ...SECTION_PANEL, borderStyle: 'dashed' }}
+        >
           <p className="t-mono-sm" style={{
             margin: 0, fontSize: 11, color: 'var(--tx2)',
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           }}>
-            {titleLine}
+            {headingPreview}
           </p>
-          {themeRow}
-          {hasTextContent && textFadePreview ? (
-            <div style={{
-              position: 'relative', maxHeight: 72, overflow: 'hidden',
-              borderRadius: 4, border: '1px solid var(--bd)', background: 'var(--bg0)',
-            }}>
-              <div style={{ maskImage: FADE_MASK, WebkitMaskImage: FADE_MASK }}>
-                {textFadePreview}
-              </div>
-            </div>
-          ) : null}
+          <p className="t-mono-xs" style={{ margin: 0, fontSize: 9, color: 'var(--tx3)', letterSpacing: 1 }}>
+            {headingSource === 'theme'
+              ? t('portfolio_collection_heading_source_theme')
+              : t('portfolio_collection_heading_source_title')}
+            {!showTextOnSite && hasTextContent ? ` · ${t('portfolio_collection_text_hidden')}` : ''}
+          </p>
           {hasWorks && (
             <p className="t-mono-xs" style={{ margin: 0, fontSize: 9, color: 'var(--tx3)', letterSpacing: 1 }}>
               {pubCount} {t('portfolio_collection_n_public')}
@@ -247,23 +268,56 @@ export function CollectionRow({ item, index, total, sequenceLabel, onMove, isTar
         </div>
       )}
 
-      {hasWorks && (
-        <WorksReorder
-          privateWorks={privateWorks!}
-          orderIds={item.manual_work_order ?? []}
-          onReorder={ids => onUpdate({ manual_work_order: ids })}
-          onMakePublic={onMakePublic}
-        />
-      )}
+      <div style={SECTION_PANEL}>
+        <div className="t-label" style={{ fontSize: 9, letterSpacing: 1, marginBottom: 8 }}>
+          {t('portfolio_collection_section_theme')}
+        </div>
+        <label className="t-label" style={{ display: 'block', marginBottom: 4, fontSize: 9 }}>{'THÈME / GROUPE ASSIGNÉ'}</label>
+        <div onClick={onAssign} style={{
+          height: 36, border: `1px ${item.theme ? 'solid' : 'dashed'} ${isTarget ? 'var(--ac)' : 'var(--bd)'}`,
+          borderRadius: 4, padding: '0 12px', display: 'flex', alignItems: 'center', cursor: 'pointer',
+          background: item.theme ? 'var(--bg1)' : undefined,
+        }}>
+          <span className="t-mono-sm" style={{ fontSize: 11, color: item.theme ? 'var(--ac)' : 'var(--tx3)' }}>
+            {item.theme || (isTarget ? 'PRÊT POUR THÈME' : 'CLIQUER POUR CHOISIR')}
+          </span>
+        </div>
+      </div>
 
       <EditorFadeShell
-        expanded={rowExpanded}
-        onToggle={() => setRowExpanded(v => !v)}
-        expandLabelKey="portfolio_collection_expand"
-        collapseLabelKey="portfolio_collection_collapse"
+        expanded={headingExpanded}
+        onToggle={() => setHeadingExpanded(v => !v)}
+        expandLabelKey="portfolio_collection_edit_heading"
+        collapseLabelKey="portfolio_collection_collapse_heading"
+        headerNote={headingHeaderNote}
       >
-        {expandedBody}
+        {headingBody}
       </EditorFadeShell>
+
+      <EditorFadeShell
+        expanded={textExpanded}
+        onToggle={() => setTextExpanded(v => !v)}
+        expandLabelKey="portfolio_collection_edit_text"
+        collapseLabelKey="portfolio_collection_collapse_text"
+        preview={!textExpanded && showTextOnSite ? textPreview : undefined}
+        headerNote={!showTextOnSite && hasTextContent ? t('portfolio_collection_text_hidden') : undefined}
+      >
+        {textBody}
+      </EditorFadeShell>
+
+      {hasWorks && (
+        <div style={SECTION_PANEL}>
+          <div className="t-label" style={{ fontSize: 9, letterSpacing: 1, marginBottom: 8 }}>
+            {t('portfolio_collection_work_sequence')}
+          </div>
+          <WorksReorder
+            privateWorks={privateWorks!}
+            orderIds={item.manual_work_order ?? []}
+            onReorder={ids => onUpdate({ manual_work_order: ids })}
+            onMakePublic={onMakePublic}
+          />
+        </div>
+      )}
     </div>
   )
 }

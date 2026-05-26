@@ -8,7 +8,11 @@
 
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { buildOeuvreThemeNamesMap } from '@/lib/public-oeuvre-themes'
-import { workMatchesCollectionTheme } from '@/components/public/works-utils'
+import {
+  canonicalCollectionTheme,
+  workMatchesCollectionTheme,
+  type ThemeNameRecord,
+} from '@/components/public/works-utils'
 import { logError, logWarn } from '@/lib/error-reporter/server'
 import { loadPortfolioConfig } from './actions'
 import {
@@ -120,7 +124,7 @@ export async function generatePortfolioPdf(
     opts = applySavedPdfProfile(rawConfig, opts)
 
     // 3. Resolve sections (atelier-driven structure)
-    let sections = resolveSections(rawConfig, allWorks, opts)
+    let sections = resolveSections(rawConfig, allWorks, opts, worksResult.catalogueThemes)
 
     console.log('[portfolio-pdf] final sections:',
       sections.map(s => ({ id: s.id, title: s.title || '(none)', works: s.works.length })))
@@ -239,7 +243,12 @@ export async function getPortfolioPdfWorkCandidates(
       maxWorks: null,
       collectionFilter: null,
     }
-    const allSections = resolveSections(cfgResult.config, worksResult.works, baseOpts)
+    const allSections = resolveSections(
+      cfgResult.config,
+      worksResult.works,
+      baseOpts,
+      worksResult.catalogueThemes,
+    )
     const collections = allSections.flatMap((section): PdfCollectionCandidate[] => {
       if (!section.id || section.works.length === 0) return []
       return [{
@@ -250,7 +259,10 @@ export async function getPortfolioPdfWorkCandidates(
     })
 
     const sections = opts.collectionFilter
-      ? resolveSections(cfgResult.config, worksResult.works, { ...baseOpts, collectionFilter: opts.collectionFilter })
+      ? resolveSections(cfgResult.config, worksResult.works, {
+          ...baseOpts,
+          collectionFilter: opts.collectionFilter,
+        }, worksResult.catalogueThemes)
       : allSections
 
     const ordered = sections.length > 0
@@ -279,7 +291,9 @@ export async function getPortfolioPdfWorkCandidates(
 
 // ── Data loading ───────────────────────────────────────────────────────────
 
-async function loadPublicWorks(): Promise<{ works: PdfWork[] } | { error: string }> {
+async function loadPublicWorks(): Promise<
+  { works: PdfWork[]; catalogueThemes: ThemeNameRecord[] } | { error: string }
+> {
   try {
     const sb = await createClient() as any
     const [
@@ -325,7 +339,14 @@ async function loadPublicWorks(): Promise<{ works: PdfWork[] } | { error: string
         statutId:         o.statusId as number | null,
       }))
 
-    return { works }
+    const catalogueThemes: ThemeNameRecord[] = (themeRecords ?? []).flatMap(
+      (row: { id: number; name: string | null }) => {
+        if (typeof row.id !== 'number' || !row.name) return []
+        return [{ id: row.id, name: row.name }]
+      },
+    )
+
+    return { works, catalogueThemes }
   } catch (e: any) {
     console.error('[loadPublicWorks]', e)
     return { error: e?.message ?? String(e) }
@@ -360,7 +381,12 @@ function resolveConfig(raw: any, lang: Lang): PdfPortfolioConfig {
  *   1. manual_work_order[]  (atelier drag order)
  *   2. theme match (residual)
  */
-function resolveSections(raw: any, allWorks: PdfWork[], opts: PdfRequestOptions): PdfSection[] {
+function resolveSections(
+  raw: any,
+  allWorks: PdfWork[],
+  opts: PdfRequestOptions,
+  catalogueThemes: ReadonlyArray<ThemeNameRecord> = [],
+): PdfSection[] {
   const lang = opts.lang
 
   // Build candidate source lists with their origin label
@@ -375,7 +401,7 @@ function resolveSections(raw: any, allWorks: PdfWork[], opts: PdfRequestOptions)
 
   for (const cand of candidates) {
     if (cand.list.length === 0) continue
-    const resolved = buildSectionsFrom(cand.list, allWorks, opts, lang)
+    const resolved = buildSectionsFrom(cand.list, allWorks, opts, lang, catalogueThemes)
     const claimed  = resolved.reduce((acc, s) => acc + s.works.length, 0)
     console.log(`[portfolio-pdf] source "${cand.label}": ${cand.list.length} collections → ${claimed} works claimed`)
     if (claimed > 0) {
@@ -393,9 +419,9 @@ function buildSectionsFrom(
   allWorks:   PdfWork[],
   opts:       PdfRequestOptions,
   lang:       Lang,
+  catalogueThemes: ReadonlyArray<ThemeNameRecord> = [],
 ): PdfSection[] {
   const active = sourceList
-    .filter((c: any) => c.is_active !== false)
     .slice()
     .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
 
@@ -409,6 +435,14 @@ function buildSectionsFrom(
   const byId = new Map(allWorks.map(w => [w.OeuvreID, w]))
 
   return filtered.map((c: any): PdfSection => {
+    const themeFilter = canonicalCollectionTheme(
+      {
+        theme: typeof c.theme === 'string' ? c.theme : null,
+        title_fr: typeof c.title_fr === 'string' ? c.title_fr : null,
+        title_en: typeof c.title_en === 'string' ? c.title_en : null,
+      },
+      catalogueThemes,
+    )
     const orderIds: number[] = Array.isArray(c.manual_work_order)
       ? c.manual_work_order.map((n: any) => Number(n)).filter((n: number) => Number.isFinite(n))
       : []
@@ -418,7 +452,7 @@ function buildSectionsFrom(
     for (const id of orderIds) {
       const w = byId.get(id)
       if (!w) continue
-      if (!workMatchesCollectionTheme(w.themes, c.theme)) continue
+      if (!workMatchesCollectionTheme(w.themes, themeFilter)) continue
       if (seen.has(w.OeuvreID)) continue
       seen.add(w.OeuvreID)
       works.push(w)
@@ -426,7 +460,7 @@ function buildSectionsFrom(
 
     for (const w of allWorks) {
       if (seen.has(w.OeuvreID)) continue
-      if (!workMatchesCollectionTheme(w.themes, c.theme)) continue
+      if (!workMatchesCollectionTheme(w.themes, themeFilter)) continue
       seen.add(w.OeuvreID)
       works.push(w)
     }

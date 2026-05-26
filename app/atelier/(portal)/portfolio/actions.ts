@@ -15,6 +15,8 @@ import {
   PORTFOLIO_SECTIONS_R2_KEY,
 } from '@/lib/portfolio-sections-from-r2'
 import { sanitizePortfolioConfigForPersist } from '@/lib/portfolio-html-sanitize'
+import { canonicalizePortfolioConfigThemes } from '@/lib/portfolio-collection-theme'
+import type { ThemeNameRecord } from '@/components/public/works-utils'
 import { PORTFOLIO_SAVE_ERR } from '@/lib/portfolio-save-errors'
 import { recordStorageObject } from '@/lib/storage-object-ledger'
 
@@ -151,7 +153,19 @@ export async function savePortfolioConfig(
         ? { ...c, works_collections: JSON.parse(JSON.stringify(m0.collections)) as unknown }
         : { ...c }
 
-    const sanitized = sanitizePortfolioConfigForPersist(normalized as Record<string, unknown>)
+    const sbThemes = createServiceClient()
+    const { data: themeRows } = await sbThemes.from('theme').select('id, name')
+    const catalogueThemes: ThemeNameRecord[] = (themeRows ?? []).flatMap(
+      (row: { id: number; name: string | null }) => {
+        if (typeof row.id !== 'number' || !row.name) return []
+        return [{ id: row.id, name: row.name }]
+      },
+    )
+    const themeCanonical = canonicalizePortfolioConfigThemes(
+      normalized as Record<string, unknown>,
+      catalogueThemes,
+    )
+    const sanitized = sanitizePortfolioConfigForPersist(themeCanonical)
     const json = JSON.stringify(sanitized, null, 2)
     const buf  = Buffer.from(json, 'utf-8')
 

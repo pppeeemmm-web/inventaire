@@ -35,7 +35,11 @@ import { PageSection } from '@/components/atelier/portfolio/shared/PageSection'
 import { CollectionRow } from '@/components/atelier/portfolio/shared/CollectionRow'
 import { SourceItem } from '@/components/atelier/portfolio/shared/SourceItem'
 import { buildPublicPreviewUrl } from '@/lib/open-public-preview-tab'
-import { normalizeTheme, resolveThemeByName, themeWorksForCollectionLabel } from '@/components/public/works-utils'
+import {
+  canonicalCollectionTheme,
+  normalizeTheme,
+  themeWorksForCollectionLabel,
+} from '@/components/public/works-utils'
 
 // ── Component ─────────────────────────────────────────────────────────────
 
@@ -189,7 +193,6 @@ export function PortfolioConfigShell({
     : (config.works_modes[activeMode]?.collections ?? [])
   const initialPdfCollectionId = pdfCollectionItems[0]?.id ?? null
   const initialPdfCollections: PdfCollectionCandidate[] = pdfCollectionItems
-    .filter(collection => collection.is_active !== false)
     .map(collection => ({
       id: collection.id,
       title: lang === 'en'
@@ -199,12 +202,10 @@ export function PortfolioConfigShell({
     }))
   const initialPdfWorksByCollection = Object.fromEntries(
     pdfCollectionItems
-      .filter(collection => collection.is_active !== false)
       .map(collection => [collection.id, worksForCollectionItem(collection)])
   )
   const initialPdfStatementsByCollection: Record<string, Record<'fr' | 'en', PdfCollectionStatement>> = Object.fromEntries(
     pdfCollectionItems
-      .filter(collection => collection.is_active !== false)
       .map(collection => [
         collection.id,
         {
@@ -261,11 +262,15 @@ export function PortfolioConfigShell({
 
   const handleTransfer = (value: string) => {
     if (!activeSlot) return
-    const canonical = resolveThemeByName(themes, value)?.name ?? value
     const { page, index, modeIdx } = activeSlot
     const next = { ...config }
     if (page === 'sections') {
       const prev = next.sections[index]
+      const canonical =
+        canonicalCollectionTheme(
+          { theme: value, title_fr: prev.title_fr, title_en: prev.title_en },
+          themes,
+        ) ?? value
       next.sections[index] = {
         ...prev,
         theme: canonical,
@@ -278,6 +283,11 @@ export function PortfolioConfigShell({
       const modes = next.works_modes.slice()
       const cols = modes[m].collections.slice()
       const prev = cols[index]
+      const canonical =
+        canonicalCollectionTheme(
+          { theme: value, title_fr: prev.title_fr, title_en: prev.title_en },
+          themes,
+        ) ?? value
       cols[index] = {
         ...prev,
         theme: canonical,

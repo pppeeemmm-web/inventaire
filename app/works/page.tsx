@@ -3,6 +3,14 @@ import { createClient } from '@/lib/supabase/server'
 import WorksClient from '@/components/public/WorksClient'
 import { loadPortfolioSectionsFromR2 } from '@/lib/portfolio-sections-from-r2'
 import { fetchPublicOeuvreThemeNamesMap } from '@/lib/public-oeuvre-themes'
+import {
+  canonicalCollectionTheme,
+  type ThemeNameRecord,
+} from '@/components/public/works-utils'
+import {
+  migrateCollectionHeadingSource,
+  migrateCollectionShowText,
+} from '@/lib/collection-display'
 import { hiddenNavRoutes, orderedNavRoutes } from '@/lib/site-block-visibility'
 import { migrate, type SiteBlock } from '@/lib/portfolio-config-types'
 import {
@@ -47,6 +55,8 @@ type WorksCollection = {
   manual_work_order: number[]
   intro_fr: string
   intro_en: string
+  heading_source: 'title' | 'theme'
+  show_text: boolean
 }
 type WorksMode = {
   id: string
@@ -96,7 +106,10 @@ function worksModeId(m: Record<string, unknown>, index: number): string {
   return `mode-${index}`
 }
 
-function mapCollections(raw: Array<Record<string, unknown>>): WorksCollection[] {
+function mapCollections(
+  raw: Array<Record<string, unknown>>,
+  catalogueThemes: ReadonlyArray<ThemeNameRecord>,
+): WorksCollection[] {
   const asStr = (v: unknown) => (typeof v === 'string' ? v : String(v ?? ''))
   return raw
     /** Match atelier migrate: missing flag means active (raw JSON often omits it). */
@@ -109,18 +122,33 @@ function mapCollections(raw: Array<Record<string, unknown>>): WorksCollection[] 
       title_en:       asStr(c.title_en ?? c.title),
       description_fr: asStr(c.description_fr ?? c.description),
       description_en: asStr(c.description_en ?? c.description),
-      theme:          typeof c.theme === 'string' ? c.theme : null,
+      theme:          canonicalCollectionTheme(
+        {
+          theme: typeof c.theme === 'string' ? c.theme : null,
+          title_fr: asStr(c.title_fr ?? c.title),
+          title_en: asStr(c.title_en ?? c.title),
+        },
+        catalogueThemes,
+      ),
       is_active:      true,
       manual_work_order: Array.isArray(c.manual_work_order)
         ? c.manual_work_order.map((n) => Number(n)).filter((n) => Number.isFinite(n))
         : [],
       intro_fr: asStr(c.intro_fr),
       intro_en: asStr(c.intro_en),
+      heading_source: migrateCollectionHeadingSource(c.heading_source),
+      show_text: migrateCollectionShowText(c.show_text),
     }))
 }
 
 export default async function WorksPage() {
   const supabase = await createClient()
+
+  const { data: themeRecords } = await supabase.from('theme').select('id, name')
+  const catalogueThemes: ThemeNameRecord[] = (themeRecords ?? []).flatMap((row) => {
+    if (typeof row.id !== 'number' || !row.name) return []
+    return [{ id: row.id, name: row.name }]
+  })
 
   // 1. Config — fresh R2 read (portfolio JSON must match last save; avoid stale unstable_cache).
   let modes: WorksMode[] = []
@@ -144,7 +172,7 @@ export default async function WorksPage() {
           strOrEmpty(m.label) ||
           (i === 0 ? 'Works' : `Mode ${i + 1}`),
         layout: m.layout === 'grid' ? 'grid' as const : 'carousel' as const,
-        collections: mapCollections(asCollectionRecords(m.collections)),
+        collections: mapCollections(asCollectionRecords(m.collections), catalogueThemes),
         outro_fr: strOrEmpty(m.outro_fr),
         outro_en: strOrEmpty(m.outro_en),
         bevel_px: migrateHeroBevelPx(m.bevel_px),
@@ -156,8 +184,8 @@ export default async function WorksPage() {
       }))
   }
   if (modes.length === 0) {
-    const fromLegacy = mapCollections(asCollectionRecords(cfg.works_collections))
-    const fromSections = mapCollections(asCollectionRecords(cfg.sections))
+    const fromLegacy = mapCollections(asCollectionRecords(cfg.works_collections), catalogueThemes)
+    const fromSections = mapCollections(asCollectionRecords(cfg.sections), catalogueThemes)
     const cols = fromLegacy.length > 0 ? fromLegacy : fromSections
     modes = [{
       id: 'default', label_fr: 'Œuvres', label_en: 'Works',
@@ -211,6 +239,8 @@ export default async function WorksPage() {
         id: 'default', title_fr: 'Œuvres', title_en: 'Works',
         description_fr: '', description_en: '', theme: null, is_active: true, manual_work_order: [],
         intro_fr: '', intro_en: '',
+        heading_source: 'title' as const,
+        show_text: true,
       }],
       outro_fr: '', outro_en: '',
       bevel_px: LANDING_HERO_BEVEL_PX_DEFAULT,

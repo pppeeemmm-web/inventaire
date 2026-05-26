@@ -45,6 +45,54 @@ export const siteBlocksMessages = defineMessages({
     fr: 'Masquer aperçu FR/EN',
     en: 'Hide FR/EN preview',
   },
+  portfolio_collection_edit_heading: {
+    fr: 'Titre affiché',
+    en: 'Display heading',
+  },
+  portfolio_collection_collapse_heading: {
+    fr: 'Réduire le titre',
+    en: 'Collapse heading',
+  },
+  portfolio_collection_edit_text: {
+    fr: 'Bloc texte',
+    en: 'Text block',
+  },
+  portfolio_collection_collapse_text: {
+    fr: 'Réduire le texte',
+    en: 'Collapse text',
+  },
+  portfolio_collection_work_sequence: {
+    fr: 'Séquence des œuvres',
+    en: 'Work sequence',
+  },
+  portfolio_collection_heading_source_label: {
+    fr: 'Titre public',
+    en: 'Public heading',
+  },
+  portfolio_collection_heading_source_title: {
+    fr: 'Champs titre (FR / EN)',
+    en: 'Title fields (FR / EN)',
+  },
+  portfolio_collection_heading_source_theme: {
+    fr: 'Nom du thème assigné',
+    en: 'Assigned theme name',
+  },
+  portfolio_collection_show_text: {
+    fr: 'Afficher le texte sur le site',
+    en: 'Show text on site',
+  },
+  portfolio_collection_text_hidden: {
+    fr: 'Texte masqué sur le site',
+    en: 'Text hidden on site',
+  },
+  portfolio_collection_heading_preview: {
+    fr: 'Aperçu : {label}',
+    en: 'Preview: {label}',
+  },
+  portfolio_collection_section_theme: {
+    fr: 'Thème assigné',
+    en: 'Assigned theme',
+  },
   editor_fade_expand: {
     fr: 'Éditer le texte',
     en: 'Edit text',

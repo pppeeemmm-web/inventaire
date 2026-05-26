@@ -25,6 +25,11 @@ import {
   migrateWorksLightTempK,
 } from '@/lib/works-mode-light'
 import {
+  migrateCollectionHeadingSource,
+  migrateCollectionShowText,
+  type CollectionHeadingSource,
+} from '@/lib/collection-display'
+import {
   LANDING_HERO_GLOSS_BLEND_DEFAULT,
   LANDING_HERO_GLOSS_FALLOFF_DEFAULT,
   LANDING_HERO_GLOSS_POSITION_DEFAULT,
@@ -69,6 +74,10 @@ export interface CollectionItem {
   theme:           string | null
   sort_order:      number
   is_active:       boolean
+  /** Public /works heading: title fields vs assigned theme name. */
+  heading_source?: CollectionHeadingSource
+  /** When false, intro + description are hidden on /works (heading still shows). */
+  show_text?: boolean
   manual_work_order?: number[]
 }
 
@@ -266,6 +275,8 @@ function migrateCollection(c: any): CollectionItem {
     manual_work_order: Array.isArray(c.manual_work_order)
       ? c.manual_work_order.map((n: any) => Number(n)).filter((n: number) => Number.isFinite(n))
       : undefined,
+    heading_source: migrateCollectionHeadingSource(c.heading_source),
+    show_text:        migrateCollectionShowText(c.show_text),
   }
 }
 
