@@ -323,6 +323,7 @@ export function PortfolioConfigShell({
       light_temp_k: WORKS_LIGHT_TEMP_DEFAULT,
       light_direction_deg: WORKS_LIGHT_DIRECTION_DEFAULT,
       light_intensity_pct: WORKS_LIGHT_INTENSITY_DEFAULT,
+      light_circadian: false,
     }
     setConfig({ ...config, works_modes: [...config.works_modes, newMode] })
     setActiveMode(config.works_modes.length)

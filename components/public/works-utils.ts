@@ -39,6 +39,7 @@ export interface WorksMode {
   light_temp_k?: number
   light_direction_deg?: number
   light_intensity_pct?: number
+  light_circadian?: boolean
 }
 
 /** Strip RichEditor HTML for plain-text labels (grid intro, carousel chapter line). */

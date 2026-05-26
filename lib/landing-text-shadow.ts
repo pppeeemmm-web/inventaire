@@ -52,7 +52,7 @@ type ContinuousShadowSpec = {
   layers?: number
 }
 
-type HourPeriod = 'night' | 'morning' | 'midday' | 'afternoon' | 'evening'
+export type HourPeriod = 'night' | 'morning' | 'midday' | 'afternoon' | 'evening'
 
 const SHADOW_COMPACT_SCALE = 0.58
 const SHADOW_SOFT_LENGTH_RATIO = 0.78
@@ -128,7 +128,7 @@ function minutesOfDay(date: Date): number {
  * Synthetic sun arc (06:00–21:00 local). Returns shadow direction + length factor [0, 1]
  * (1 = longest/low sun, 0 = shortest/high sun).
  */
-function circadianShadowGeometry(minutes: number): {
+export function circadianShadowGeometry(minutes: number): {
   dirX: number
   dirY: number
   lengthFactor: number

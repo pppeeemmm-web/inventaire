@@ -674,6 +674,30 @@ export function SiteEditorPanel({
                     </div>
                   </label>
                 </div>
+                <label
+                  className="t-label"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    fontSize: 9,
+                    marginBottom: 12,
+                    cursor: 'pointer',
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={mode.light_circadian}
+                    onChange={e => updateMode(activeMode, { light_circadian: e.target.checked })}
+                  />
+                  {t('site_works_mode_light_circadian_label')}
+                </label>
+                {mode.light_circadian && (
+                  <p className="t-mono-xs" style={{ opacity: 0.5, marginBottom: 12, maxWidth: 720, lineHeight: 1.45 }}>
+                    {t('site_works_mode_light_circadian_help')}
+                  </p>
+                )}
+                <div style={{ opacity: mode.light_circadian ? 0.4 : 1, pointerEvents: mode.light_circadian ? 'none' : 'auto' }}>
                 <div className="t-label" style={{ marginBottom: 8, fontSize: 9 }}>
                   {t('site_works_mode_light_label').toUpperCase()} ({mode.light_temp_k} K)
                 </div>
@@ -730,6 +754,7 @@ export function SiteEditorPanel({
                 <p className="t-mono-xs" style={{ opacity: 0.5, marginTop: 8, maxWidth: 720, lineHeight: 1.45 }}>
                   {t('site_works_mode_light_direction_help')}
                 </p>
+                </div>
               </div>
             )}
             {/* eslint-disable pem-i18n/no-hardcoded-jsx-text */}

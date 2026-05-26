@@ -93,6 +93,8 @@ export interface WorksMode {
   light_direction_deg: number
   /** Brightness multiplier in 50–150 %; default {@link WORKS_LIGHT_INTENSITY_DEFAULT}. */
   light_intensity_pct: number
+  /** When true, kelvin / direction / intensity are driven by the visitor's local clock. */
+  light_circadian: boolean
 }
 
 export const DEFAULT_HERO_CAPTION_EN = "'Matsukaze' — Meaning 'Wind through the Pines'"
@@ -228,6 +230,7 @@ export const DEFAULT_CONFIG: PortfolioConfig = {
     light_temp_k: WORKS_LIGHT_TEMP_DEFAULT,
     light_direction_deg: WORKS_LIGHT_DIRECTION_DEFAULT,
     light_intensity_pct: WORKS_LIGHT_INTENSITY_DEFAULT,
+    light_circadian: false,
   }],
 }
 
@@ -280,6 +283,7 @@ function migrateModes(raw: any, fallbackCollections: CollectionItem[]): WorksMod
       light_temp_k: WORKS_LIGHT_TEMP_DEFAULT,
       light_direction_deg: WORKS_LIGHT_DIRECTION_DEFAULT,
       light_intensity_pct: WORKS_LIGHT_INTENSITY_DEFAULT,
+      light_circadian: false,
     }]
   }
   return list.map((m: any, i: number): WorksMode => ({
@@ -311,6 +315,7 @@ function migrateModes(raw: any, fallbackCollections: CollectionItem[]): WorksMod
     light_temp_k: migrateWorksLightTempK(m.light_temp_k),
     light_direction_deg: migrateWorksLightDirectionDeg(m.light_direction_deg),
     light_intensity_pct: migrateWorksLightIntensityPct(m.light_intensity_pct),
+    light_circadian: m.light_circadian === true,
   }))
 }
 

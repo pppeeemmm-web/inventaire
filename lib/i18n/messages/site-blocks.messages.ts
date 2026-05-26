@@ -367,4 +367,12 @@ export const siteBlocksMessages = defineMessages({
     fr: '50 % = lumière feutrée, 100 % = neutre, 150 % = projecteur. Affecte le biseau et l’ombre portée.',
     en: '50 % = subdued, 100 % = neutral, 150 % = spotlit. Affects bevel and drop-shadow strength.',
   },
+  site_works_mode_light_circadian_label: {
+    fr: 'Lumière circadienne (heure locale du visiteur)',
+    en: 'Circadian light (visitor’s local time)',
+  },
+  site_works_mode_light_circadian_help: {
+    fr: 'La température, la direction et l’intensité suivent l’arc solaire. Les curseurs manuels sont ignorés.',
+    en: 'Temperature, direction and intensity follow the sun arc. Manual sliders are ignored.',
+  },
 })

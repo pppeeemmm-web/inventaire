@@ -61,6 +61,7 @@ type WorksMode = {
   light_temp_k: number
   light_direction_deg: number
   light_intensity_pct: number
+  light_circadian: boolean
 }
 type WorksPublicRow = {
   OeuvreID: number
@@ -151,6 +152,7 @@ export default async function WorksPage() {
         light_temp_k: migrateWorksLightTempK(m.light_temp_k),
         light_direction_deg: migrateWorksLightDirectionDeg(m.light_direction_deg),
         light_intensity_pct: migrateWorksLightIntensityPct(m.light_intensity_pct),
+        light_circadian: m.light_circadian === true,
       }))
   }
   if (modes.length === 0) {
@@ -167,6 +169,7 @@ export default async function WorksPage() {
       light_temp_k: WORKS_LIGHT_TEMP_DEFAULT,
       light_direction_deg: WORKS_LIGHT_DIRECTION_DEFAULT,
       light_intensity_pct: WORKS_LIGHT_INTENSITY_DEFAULT,
+      light_circadian: false,
     }]
   }
 
@@ -215,6 +218,7 @@ export default async function WorksPage() {
       light_temp_k: WORKS_LIGHT_TEMP_DEFAULT,
       light_direction_deg: WORKS_LIGHT_DIRECTION_DEFAULT,
       light_intensity_pct: WORKS_LIGHT_INTENSITY_DEFAULT,
+      light_circadian: false,
     }]
   }
 

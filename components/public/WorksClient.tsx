@@ -18,10 +18,12 @@ import {
   LANDING_HERO_BEVEL_PX_DEFAULT,
 } from '@/lib/landing-hero-bevel'
 import {
+  WORKS_CIRCADIAN_TICK_MS,
   WORKS_LIGHT_DIRECTION_DEFAULT,
   WORKS_LIGHT_INTENSITY_DEFAULT,
   WORKS_LIGHT_TEMP_DEFAULT,
   buildWorksBevelBoxShadow,
+  resolveCircadianValues,
   resolveWorksLight,
 } from '@/lib/works-mode-light'
 
@@ -120,9 +122,27 @@ export default function WorksClient({
   // Per-mode bevel + light — fall back to defaults so older configs still render.
   const bevelPx = mode.bevel_px ?? LANDING_HERO_BEVEL_PX_DEFAULT
   const bevelProfile = mode.bevel_profile ?? LANDING_HERO_BEVEL_PROFILE_DEFAULT
-  const lightTempK = mode.light_temp_k ?? WORKS_LIGHT_TEMP_DEFAULT
-  const lightDirDeg = mode.light_direction_deg ?? WORKS_LIGHT_DIRECTION_DEFAULT
-  const lightIntensityPct = mode.light_intensity_pct ?? WORKS_LIGHT_INTENSITY_DEFAULT
+  const manualTempK = mode.light_temp_k ?? WORKS_LIGHT_TEMP_DEFAULT
+  const manualDirDeg = mode.light_direction_deg ?? WORKS_LIGHT_DIRECTION_DEFAULT
+  const manualIntensityPct = mode.light_intensity_pct ?? WORKS_LIGHT_INTENSITY_DEFAULT
+  const circadianEnabled = mode.light_circadian === true
+  // Circadian tick — re-evaluate each minute when enabled. Stays at zero so
+  // the manual path skips work entirely.
+  const [circadianTick, setCircadianTick] = useState(0)
+  useEffect(() => {
+    if (!circadianEnabled) return
+    const id = window.setInterval(() => setCircadianTick(n => n + 1), WORKS_CIRCADIAN_TICK_MS)
+    return () => window.clearInterval(id)
+  }, [circadianEnabled])
+  const circadianValues = useMemo(
+    () => (circadianEnabled ? resolveCircadianValues() : null),
+    // circadianTick deliberately a dependency to refresh values on every interval tick.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [circadianEnabled, circadianTick],
+  )
+  const lightTempK = circadianValues?.kelvin ?? manualTempK
+  const lightDirDeg = circadianValues?.directionDeg ?? manualDirDeg
+  const lightIntensityPct = circadianValues?.intensityPct ?? manualIntensityPct
   const light = useMemo(
     () => resolveWorksLight(lightTempK, lightDirDeg, lightIntensityPct),
     [lightTempK, lightDirDeg, lightIntensityPct],

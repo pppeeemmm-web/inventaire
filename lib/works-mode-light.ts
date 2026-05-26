@@ -8,6 +8,13 @@
  * and scaled bevel alpha / drop-shadow opacity (intensity).
  */
 import type { LandingHeroBevelProfile } from '@/lib/landing-hero-bevel'
+import {
+  circadianShadowGeometry,
+  type HourPeriod,
+} from '@/lib/landing-text-shadow'
+
+/** Re-evaluate circadian light when the local clock crosses a minute. */
+export const WORKS_CIRCADIAN_TICK_MS = 60_000
 
 export const WORKS_LIGHT_TEMP_MIN = 2700
 export const WORKS_LIGHT_TEMP_MAX = 6500
@@ -106,6 +113,50 @@ export function resolveWorksLight(
     bevelHighlightRgba: `rgba(${highlight[0]}, ${highlight[1]}, ${highlight[2]}, ${(0.42 * intensity).toFixed(3)})`,
     bevelShadowRgba: `rgba(${shadowBase[0]}, ${shadowBase[1]}, ${shadowBase[2]}, ${(0.18 * intensity).toFixed(3)})`,
     highlightOffset: { x: +ux.toFixed(4), y: +uy.toFixed(4) },
+  }
+}
+
+/**
+ * Resolve kelvin / direction / intensity from the visitor's local clock —
+ * reuses {@link circadianShadowGeometry} from the landing-page system so the
+ * sun arc is consistent across surfaces.
+ *
+ * Returns plain numbers so callers can either drive the light directly or
+ * compare against manual settings before overriding them.
+ */
+export type WorksCircadianValues = {
+  kelvin: number
+  directionDeg: number
+  intensityPct: number
+  period: HourPeriod
+}
+
+const PERIOD_KELVIN: Record<HourPeriod, number> = {
+  morning:   3200,
+  midday:    5500,
+  afternoon: 5000,
+  evening:   2900,
+  night:     4200,
+}
+
+export function resolveCircadianValues(date: Date = new Date()): WorksCircadianValues {
+  const minutes = date.getHours() * 60 + date.getMinutes()
+  const { dirX, dirY, lengthFactor, period } = circadianShadowGeometry(minutes)
+  // Landing shadow direction is where the shadow falls; light source is opposite.
+  // CSS-angle convention: 0° = light from top, increasing clockwise.
+  const lightX = -dirX
+  const lightY = -dirY
+  // atan2(x, -y) places top at 0 and rotates CW with increasing x.
+  const rawDeg = (Math.atan2(lightX, -lightY) * 180) / Math.PI
+  const directionDeg = ((rawDeg % 360) + 360) % 360
+  // High sun (low lengthFactor) is brighter; long shadows (high lengthFactor) dim down.
+  const dayIntensity = 150 - lengthFactor * 70
+  const intensityPct = period === 'night' ? 55 : Math.round(dayIntensity)
+  return {
+    kelvin: PERIOD_KELVIN[period],
+    directionDeg: Math.round(directionDeg),
+    intensityPct,
+    period,
   }
 }
 
