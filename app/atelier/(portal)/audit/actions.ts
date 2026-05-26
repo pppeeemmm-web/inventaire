@@ -104,7 +104,10 @@ export async function deleteAuditLogEntries(ids: number[]): Promise<AuditActionR
     .select('id')
 
   if (error) {
-    await logError('Audit bulk delete failed', error, { source: 'deleteAuditLogEntries', ids: uniqueIds })
+    await logError('Audit bulk delete failed', error, {
+      source: 'deleteAuditLogEntries',
+      metadata: { ids: uniqueIds },
+    })
     return { error: error.message }
   }
 
