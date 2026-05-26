@@ -77,10 +77,21 @@ function fitArtDisplaySize(
   return { w: Math.round(naturalW * scale), h: Math.round(naturalH * scale), scale }
 }
 
-/** Physical cm → pixel size using a fixed reference scale (cardH = CANVAS_REF_CM).
- *  Caps to the card viewport so oversized works don't overflow. */
-const CANVAS_REF_CM_DESKTOP = 83
-const CANVAS_REF_CM_MOBILE = 140
+/** Physical cm → pixel size.
+ *
+ *  Linear cm→px gives small works a tiny rendered footprint — barely viewable
+ *  on mobile. To keep relative ordering ("this work is bigger than that one")
+ *  while making small works enjoyable, we use **power-law area compression**:
+ *  AREA scales as (cm_area / ref_area)^EXP, with EXP < 1 squeezing the dynamic
+ *  range. A minimum-area floor on mobile guarantees small works stay legible.
+ */
+const CANVAS_REF_CM_DESKTOP = 70           // bumped up so everything gets bigger
+const CANVAS_REF_CM_MOBILE = 110
+const SIZE_COMPRESSION_DESKTOP = 0.70      // 1.0 = linear (original); <1 compresses
+const SIZE_COMPRESSION_MOBILE = 0.55       // stronger compression on phone
+const MIN_AREA_FRACTION_MOBILE = 0.22      // smallest work ≥ 22% of card area on mobile
+const MIN_AREA_FRACTION_DESKTOP = 0.08     // smallest work ≥ 8% of card area on desktop
+
 function physicalArtDisplaySize(
   hauteurCm: number,
   largeurCm: number,
@@ -89,18 +100,27 @@ function physicalArtDisplaySize(
   naturalH?: number,
 ): { w: number; h: number } {
   const { cardW, cardH } = worksCardViewport(isMobile)
-  const pxPerCm = cardH / (isMobile ? CANVAS_REF_CM_MOBILE : CANVAS_REF_CM_DESKTOP)
-  let w = largeurCm * pxPerCm
-  let h = hauteurCm * pxPerCm
-  // If image aspect differs from recorded cm aspect, keep the physical AREA
-  // (so relative size between works survives) but reshape to the image's
-  // aspect ratio so the bevel/shadow hug the artwork instead of leaving gaps.
-  if (naturalW && naturalH && naturalW > 0 && naturalH > 0) {
-    const area = w * h
-    const aspect = naturalW / naturalH
-    h = Math.sqrt(area / aspect)
-    w = h * aspect
-  }
+  const refCm = isMobile ? CANVAS_REF_CM_MOBILE : CANVAS_REF_CM_DESKTOP
+  const compressionExp = isMobile ? SIZE_COMPRESSION_MOBILE : SIZE_COMPRESSION_DESKTOP
+  const minFraction = isMobile ? MIN_AREA_FRACTION_MOBILE : MIN_AREA_FRACTION_DESKTOP
+
+  const pxPerCm = cardH / refCm
+  const linearW = largeurCm * pxPerCm
+  const linearH = hauteurCm * pxPerCm
+  const linearArea = linearW * linearH
+  const refAreaPx = (refCm * pxPerCm) * (refCm * pxPerCm)
+  // Compressed target area — preserves ordering but flattens the range.
+  const unit = linearArea / refAreaPx
+  let targetArea = refAreaPx * Math.pow(Math.max(unit, 1e-6), compressionExp)
+  const minArea = cardW * cardH * minFraction
+  if (targetArea < minArea) targetArea = minArea
+
+  const aspect = naturalW && naturalH && naturalW > 0 && naturalH > 0
+    ? naturalW / naturalH
+    : largeurCm / hauteurCm
+
+  let h = Math.sqrt(targetArea / aspect)
+  let w = h * aspect
   const capScale = Math.min(1, cardW / w, cardH / h)
   return { w: Math.round(w * capScale), h: Math.round(h * capScale) }
 }
