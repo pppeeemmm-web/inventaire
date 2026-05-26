@@ -1065,6 +1065,17 @@ export default function WorksClient({
                   : transform
                 const finalZ = isCenter && isZoomed ? 300 : zIndex
 
+                // In zoom mode shrink the card to exactly the mount size so the
+                // wall background doesn't show through the transparent front-face gaps.
+                const zoomCardStyle: CSSProperties = isCenter && isZoomed && centerMountStyle
+                  ? {
+                      width: centerMountStyle.width as number,
+                      height: centerMountStyle.height as number,
+                      marginLeft: -(centerMountStyle.width as number) / 2,
+                      marginTop: -(centerMountStyle.height as number) / 2,
+                    }
+                  : {}
+
                 const classes = [
                   'w-card',
                   isCenter ? 'center' : `side ${sideClass}`,
@@ -1081,7 +1092,7 @@ export default function WorksClient({
                     role="group"
                     aria-roledescription="slide"
                     aria-label={w.Titre ?? t('pub_untitled')}
-                    style={{ transform: finalTransform, opacity, zIndex: finalZ }}
+                    style={{ transform: finalTransform, opacity, zIndex: finalZ, ...zoomCardStyle }}
                     onClick={() => {
                       if (didDragRef.current) { didDragRef.current = false; return }
                       if (carouselDragDidRef.current) { carouselDragDidRef.current = false; return }
