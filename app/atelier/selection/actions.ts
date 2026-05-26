@@ -362,11 +362,13 @@ export async function createWorkingGroupWithOeuvres(
 }
 
 export async function createTheme(name: string): Promise<{ error?: string, theme?: { id: number, name: string } }> {
-  const { error: authErr, supabase } = await guardTeam()
-  if (authErr || !supabase) return { error: authErr ?? 'Auth' }
+  const { error: authErr } = await guardTeam()
+  if (authErr) return { error: authErr ?? 'Auth' }
+
+  const svc = createServiceClient()
 
   // 1. Try to insert
-  const { data, error } = await supabase
+  const { data, error } = await svc
     .from('theme')
     .insert({ name: name })
     .select('id, name')
@@ -374,7 +376,7 @@ export async function createTheme(name: string): Promise<{ error?: string, theme
 
   // 2. If it exists already (23505), just fetch it
   if (error?.code === '23505') {
-    const { data: existing } = await supabase
+    const { data: existing } = await svc
       .from('theme')
       .select('id, name')
       .eq('name', name)
@@ -390,20 +392,22 @@ export async function createTheme(name: string): Promise<{ error?: string, theme
 export async function createWorkingGroup(
   name: string,
 ): Promise<{ error?: string; group?: { id: string; name: string } }> {
-  const { error: authErr, supabase } = await guardTeam()
-  if (authErr || !supabase) return { error: authErr ?? 'Auth' }
+  const { error: authErr } = await guardTeam()
+  if (authErr) return { error: authErr ?? 'Auth' }
 
   const trimmed = name.trim()
   if (!trimmed) return { error: 'Nom requis' }
 
-  const { data, error } = await supabase
+  const svc = createServiceClient()
+
+  const { data, error } = await svc
     .from('working_group')
     .insert({ name: trimmed })
     .select('id, name')
     .single()
 
   if (error?.code === '23505') {
-    const { data: existing } = await supabase
+    const { data: existing } = await svc
       .from('working_group')
       .select('id, name')
       .eq('name', trimmed)
