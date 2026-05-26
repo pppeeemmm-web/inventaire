@@ -52,6 +52,7 @@ function worksCardViewport(isMobile: boolean): { cardW: number; cardH: number } 
   }
 }
 
+
 /** Pixel size of the artwork as object-fit: contain would lay it out in the card. */
 function fitArtDisplaySize(
   naturalW: number,
@@ -60,11 +61,24 @@ function fitArtDisplaySize(
 ): { w: number; h: number; scale: number } {
   const { cardW, cardH } = worksCardViewport(isMobile)
   const scale = Math.min(cardW / naturalW, cardH / naturalH)
-  return {
-    w: Math.round(naturalW * scale),
-    h: Math.round(naturalH * scale),
-    scale,
-  }
+  return { w: Math.round(naturalW * scale), h: Math.round(naturalH * scale), scale }
+}
+
+/** Physical cm → pixel size using a fixed reference scale (cardH = CANVAS_REF_CM).
+ *  Caps to the card viewport so oversized works don't overflow. */
+const CANVAS_REF_CM_DESKTOP = 83
+const CANVAS_REF_CM_MOBILE = 140
+function physicalArtDisplaySize(
+  hauteurCm: number,
+  largeurCm: number,
+  isMobile: boolean,
+): { w: number; h: number } {
+  const { cardW, cardH } = worksCardViewport(isMobile)
+  const pxPerCm = cardH / (isMobile ? CANVAS_REF_CM_MOBILE : CANVAS_REF_CM_DESKTOP)
+  const w = largeurCm * pxPerCm
+  const h = hauteurCm * pxPerCm
+  const capScale = Math.min(1, cardW / w, cardH / h)
+  return { w: Math.round(w * capScale), h: Math.round(h * capScale) }
 }
 
 // Grain SVG data URI — shared between CSS and 3D wall plane
@@ -86,6 +100,7 @@ export default function WorksClient({
   const [isZoomed, setIsZoomed] = useState(false)
   const [trackFade, setTrackFade] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768)
@@ -93,6 +108,8 @@ export default function WorksClient({
     window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)
   }, [])
+
+  useEffect(() => { setMounted(true) }, [])
 
   const posRef = useRef(0)
   const velRef = useRef(0)
@@ -141,17 +158,34 @@ export default function WorksClient({
   // Derived: center card's full-res image is ready
   const centerImgLoaded = activeWork?.OeuvreID === loadedWorkId
 
+  // Physical mount size from recorded cm dimensions — gated on mounted so SSR and first
+  // client render both produce null (avoids hydration mismatch from window dimensions).
+  const centerPhysMount = useMemo(() => {
+    if (!mounted) return null
+    const hauteur = activeWork?.Hauteur ? Number(activeWork.Hauteur) : null
+    const largeur = activeWork?.Largeur ? Number(activeWork.Largeur) : null
+    if (hauteur && largeur) return physicalArtDisplaySize(hauteur, largeur, isMobile)
+    return null
+  }, [mounted, activeWork?.Hauteur, activeWork?.Largeur, isMobile])
+
   // Oversized-image rasterization trick: lay out img at its natural pixel dimensions,
-  // scale it down to fit the card via transform — browser holds the full-res GPU texture.
+  // scale it down to the physical (or card-fit) mount size via transform.
   const centerArtFit = useMemo(() => {
     if (!centerNaturalSize || typeof window === 'undefined') return null
+    if (centerPhysMount) {
+      const scale = Math.min(centerPhysMount.w / centerNaturalSize.w, centerPhysMount.h / centerNaturalSize.h)
+      return { w: centerPhysMount.w, h: centerPhysMount.h, scale }
+    }
     return fitArtDisplaySize(centerNaturalSize.w, centerNaturalSize.h, isMobile)
-  }, [centerNaturalSize, isMobile])
+  }, [centerNaturalSize, centerPhysMount, isMobile])
 
+  // Mount style: physical dimensions take precedence (no image-load dependency);
+  // fall back to card-fit once the image has loaded for works without recorded dimensions.
   const centerMountStyle = useMemo((): CSSProperties | undefined => {
+    if (centerPhysMount) return { width: centerPhysMount.w, height: centerPhysMount.h }
     if (!centerArtFit) return undefined
     return { width: centerArtFit.w, height: centerArtFit.h }
-  }, [centerArtFit])
+  }, [centerPhysMount, centerArtFit])
 
   const hiResImgStyle = useMemo((): CSSProperties | undefined => {
     if (!centerNaturalSize || !centerArtFit) return undefined
@@ -467,6 +501,10 @@ export default function WorksClient({
           will-change: transform, opacity;
         }
         .w-card.is-zoomed { transition: none; }
+        .w-card.is-zoomed .w-face.left,
+        .w-card.is-zoomed .w-face.right,
+        .w-card.is-zoomed .w-face.top,
+        .w-card.is-zoomed .w-face.bottom { display: none; }
         .w-card-inner {
           position: relative;
           width: 100%; height: 100%;
@@ -1065,13 +1103,15 @@ export default function WorksClient({
                     onTouchCancel={isCenter && centerImgLoaded ? onCenterTouchEnd : undefined}
                   >
                     <div className="w-card-inner">
-                      <div className="w-face left" aria-hidden />
-                      <div className="w-face right" aria-hidden />
-                      <div className="w-face top" aria-hidden />
-                      <div className="w-face bottom" aria-hidden />
+                      {!(isCenter && isZoomed) && <div className="w-face left" aria-hidden />}
+                      {!(isCenter && isZoomed) && <div className="w-face right" aria-hidden />}
+                      {!(isCenter && isZoomed) && <div className="w-face top" aria-hidden />}
+                      {!(isCenter && isZoomed) && <div className="w-face bottom" aria-hidden />}
                       <div className="w-face front">
                         {isCenter ? (
                           <div
+                            key="center-mount"
+                            suppressHydrationWarning
                             className={[
                               'w-art-mount',
                               centerMountStyle ? 'sized' : '',
@@ -1089,14 +1129,37 @@ export default function WorksClient({
                               onLoad={(e) => { const t = e.currentTarget; setLoadedWorkId(w.OeuvreID); setCenterNaturalSize({ w: t.naturalWidth, h: t.naturalHeight }) }}
                             />
                           </div>
-                        ) : (
-                          <img
-                            src={src}
-                            alt={w.Titre ?? ''}
-                            className={`w-card-img${w.isRound ? ' round' : ''}`}
-                            draggable={false}
-                          />
-                        )}
+                        ) : (() => {
+                          const hauteur = mounted && w.Hauteur ? Number(w.Hauteur) : null
+                          const largeur = mounted && w.Largeur ? Number(w.Largeur) : null
+                          if (hauteur && largeur) {
+                            const phys = physicalArtDisplaySize(hauteur, largeur, isMobile)
+                            return (
+                              <div
+                                key="side-mount"
+                                className={['w-art-mount', 'sized', 'side-phys', w.isRound ? 'round' : ''].filter(Boolean).join(' ')}
+                                style={{ width: phys.w, height: phys.h, overflow: w.isRound ? 'hidden' : 'visible' }}
+                              >
+                                <img
+                                  src={src}
+                                  alt={w.Titre ?? ''}
+                                  className={`w-card-img${w.isRound ? ' round' : ''}`}
+                                  draggable={false}
+                                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                                />
+                              </div>
+                            )
+                          }
+                          return (
+                            <img
+                              key="side-img"
+                              src={src}
+                              alt={w.Titre ?? ''}
+                              className={`w-card-img${w.isRound ? ' round' : ''}`}
+                              draggable={false}
+                            />
+                          )
+                        })()}
                       </div>
                     </div>
                   </div>
