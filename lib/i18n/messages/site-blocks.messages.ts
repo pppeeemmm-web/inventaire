@@ -351,4 +351,20 @@ export const siteBlocksMessages = defineMessages({
     fr: '2700 K = lumière chaude d’intérieur, 4500 K = neutre, 6500 K = lumière du jour.',
     en: '2700 K = warm indoor light, 4500 K = neutral, 6500 K = daylight.',
   },
+  site_works_mode_light_direction_label: {
+    fr: 'Direction de la lumière',
+    en: 'Light direction',
+  },
+  site_works_mode_light_direction_help: {
+    fr: '0° = lumière venant du haut, 90° = droite, 180° = bas, 270° = gauche. 315° (haut-gauche) est le réglage classique d’atelier.',
+    en: '0° = light from the top, 90° = right, 180° = bottom, 270° = left. 315° (top-left) is the classic studio setup.',
+  },
+  site_works_mode_light_intensity_label: {
+    fr: 'Intensité de la lumière',
+    en: 'Light intensity',
+  },
+  site_works_mode_light_intensity_help: {
+    fr: '50 % = lumière feutrée, 100 % = neutre, 150 % = projecteur. Affecte le biseau et l’ombre portée.',
+    en: '50 % = subdued, 100 % = neutral, 150 % = spotlit. Affects bevel and drop-shadow strength.',
+  },
 })

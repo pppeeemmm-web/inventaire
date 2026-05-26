@@ -17,7 +17,11 @@ import {
   migrateHeroBevelPx,
 } from '@/lib/landing-hero-bevel'
 import {
+  WORKS_LIGHT_DIRECTION_DEFAULT,
+  WORKS_LIGHT_INTENSITY_DEFAULT,
   WORKS_LIGHT_TEMP_DEFAULT,
+  migrateWorksLightDirectionDeg,
+  migrateWorksLightIntensityPct,
   migrateWorksLightTempK,
 } from '@/lib/works-mode-light'
 import {
@@ -85,6 +89,10 @@ export interface WorksMode {
   bevel_profile: LandingHeroBevelProfile
   /** Wall light color temperature in kelvin; default {@link WORKS_LIGHT_TEMP_DEFAULT}. */
   light_temp_k: number
+  /** Direction the light comes from, 0–360°; default {@link WORKS_LIGHT_DIRECTION_DEFAULT} (top-left). */
+  light_direction_deg: number
+  /** Brightness multiplier in 50–150 %; default {@link WORKS_LIGHT_INTENSITY_DEFAULT}. */
+  light_intensity_pct: number
 }
 
 export const DEFAULT_HERO_CAPTION_EN = "'Matsukaze' — Meaning 'Wind through the Pines'"
@@ -218,6 +226,8 @@ export const DEFAULT_CONFIG: PortfolioConfig = {
     bevel_px: LANDING_HERO_BEVEL_PX_DEFAULT,
     bevel_profile: LANDING_HERO_BEVEL_PROFILE_DEFAULT,
     light_temp_k: WORKS_LIGHT_TEMP_DEFAULT,
+    light_direction_deg: WORKS_LIGHT_DIRECTION_DEFAULT,
+    light_intensity_pct: WORKS_LIGHT_INTENSITY_DEFAULT,
   }],
 }
 
@@ -268,6 +278,8 @@ function migrateModes(raw: any, fallbackCollections: CollectionItem[]): WorksMod
       bevel_px: LANDING_HERO_BEVEL_PX_DEFAULT,
       bevel_profile: LANDING_HERO_BEVEL_PROFILE_DEFAULT,
       light_temp_k: WORKS_LIGHT_TEMP_DEFAULT,
+      light_direction_deg: WORKS_LIGHT_DIRECTION_DEFAULT,
+      light_intensity_pct: WORKS_LIGHT_INTENSITY_DEFAULT,
     }]
   }
   return list.map((m: any, i: number): WorksMode => ({
@@ -297,6 +309,8 @@ function migrateModes(raw: any, fallbackCollections: CollectionItem[]): WorksMod
     bevel_px:    migrateHeroBevelPx(m.bevel_px),
     bevel_profile: migrateHeroBevelProfile(m.bevel_profile),
     light_temp_k: migrateWorksLightTempK(m.light_temp_k),
+    light_direction_deg: migrateWorksLightDirectionDeg(m.light_direction_deg),
+    light_intensity_pct: migrateWorksLightIntensityPct(m.light_intensity_pct),
   }))
 }
 

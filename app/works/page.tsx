@@ -11,7 +11,14 @@ import {
   migrateHeroBevelPx,
   migrateHeroBevelProfile,
 } from '@/lib/landing-hero-bevel'
-import { WORKS_LIGHT_TEMP_DEFAULT, migrateWorksLightTempK } from '@/lib/works-mode-light'
+import {
+  WORKS_LIGHT_DIRECTION_DEFAULT,
+  WORKS_LIGHT_INTENSITY_DEFAULT,
+  WORKS_LIGHT_TEMP_DEFAULT,
+  migrateWorksLightDirectionDeg,
+  migrateWorksLightIntensityPct,
+  migrateWorksLightTempK,
+} from '@/lib/works-mode-light'
 import {
   resolvePublicNavBarStyle,
   resolvePublicSiteThemeForPage,
@@ -52,6 +59,8 @@ type WorksMode = {
   bevel_px: number
   bevel_profile: 'smooth' | 'hard'
   light_temp_k: number
+  light_direction_deg: number
+  light_intensity_pct: number
 }
 type WorksPublicRow = {
   OeuvreID: number
@@ -140,6 +149,8 @@ export default async function WorksPage() {
         bevel_px: migrateHeroBevelPx(m.bevel_px),
         bevel_profile: migrateHeroBevelProfile(m.bevel_profile),
         light_temp_k: migrateWorksLightTempK(m.light_temp_k),
+        light_direction_deg: migrateWorksLightDirectionDeg(m.light_direction_deg),
+        light_intensity_pct: migrateWorksLightIntensityPct(m.light_intensity_pct),
       }))
   }
   if (modes.length === 0) {
@@ -154,6 +165,8 @@ export default async function WorksPage() {
       bevel_px: LANDING_HERO_BEVEL_PX_DEFAULT,
       bevel_profile: LANDING_HERO_BEVEL_PROFILE_DEFAULT,
       light_temp_k: WORKS_LIGHT_TEMP_DEFAULT,
+      light_direction_deg: WORKS_LIGHT_DIRECTION_DEFAULT,
+      light_intensity_pct: WORKS_LIGHT_INTENSITY_DEFAULT,
     }]
   }
 
@@ -200,6 +213,8 @@ export default async function WorksPage() {
       bevel_px: LANDING_HERO_BEVEL_PX_DEFAULT,
       bevel_profile: LANDING_HERO_BEVEL_PROFILE_DEFAULT,
       light_temp_k: WORKS_LIGHT_TEMP_DEFAULT,
+      light_direction_deg: WORKS_LIGHT_DIRECTION_DEFAULT,
+      light_intensity_pct: WORKS_LIGHT_INTENSITY_DEFAULT,
     }]
   }
 

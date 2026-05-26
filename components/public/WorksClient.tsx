@@ -16,9 +16,14 @@ import { publicNavBarCss, publicSiteBaseCss } from '@/lib/public-site-theme'
 import {
   LANDING_HERO_BEVEL_PROFILE_DEFAULT,
   LANDING_HERO_BEVEL_PX_DEFAULT,
-  buildHeroBevelBoxShadow,
 } from '@/lib/landing-hero-bevel'
-import { WORKS_LIGHT_TEMP_DEFAULT, resolveWorksLight } from '@/lib/works-mode-light'
+import {
+  WORKS_LIGHT_DIRECTION_DEFAULT,
+  WORKS_LIGHT_INTENSITY_DEFAULT,
+  WORKS_LIGHT_TEMP_DEFAULT,
+  buildWorksBevelBoxShadow,
+  resolveWorksLight,
+} from '@/lib/works-mode-light'
 
 interface Props {
   works: Work[]
@@ -115,9 +120,17 @@ export default function WorksClient({
   // Per-mode bevel + light — fall back to defaults so older configs still render.
   const bevelPx = mode.bevel_px ?? LANDING_HERO_BEVEL_PX_DEFAULT
   const bevelProfile = mode.bevel_profile ?? LANDING_HERO_BEVEL_PROFILE_DEFAULT
-  const bevelShadow = useMemo(() => buildHeroBevelBoxShadow(bevelPx, bevelProfile), [bevelPx, bevelProfile])
   const lightTempK = mode.light_temp_k ?? WORKS_LIGHT_TEMP_DEFAULT
-  const light = useMemo(() => resolveWorksLight(lightTempK), [lightTempK])
+  const lightDirDeg = mode.light_direction_deg ?? WORKS_LIGHT_DIRECTION_DEFAULT
+  const lightIntensityPct = mode.light_intensity_pct ?? WORKS_LIGHT_INTENSITY_DEFAULT
+  const light = useMemo(
+    () => resolveWorksLight(lightTempK, lightDirDeg, lightIntensityPct),
+    [lightTempK, lightDirDeg, lightIntensityPct],
+  )
+  const bevelShadow = useMemo(
+    () => buildWorksBevelBoxShadow(bevelPx, bevelProfile, light),
+    [bevelPx, bevelProfile, light],
+  )
 
   const [activeChapterIdx, setActiveChapterIdx] = useState(0)
   const [activeIndex, setActiveIndex] = useState(0)
@@ -618,8 +631,8 @@ export default function WorksClient({
         }
         ` : ''}
         .w-card.center .w-art-mount {
-          filter: drop-shadow(0 15px 22px rgba(15,15,20,0.34))
-                  drop-shadow(0 4px 7px rgba(15,15,20,0.22));
+          filter: drop-shadow(0 15px 22px rgba(15,15,20,${(0.34 * light.intensity).toFixed(3)}))
+                  drop-shadow(0 4px 7px rgba(15,15,20,${(0.22 * light.intensity).toFixed(3)}));
         }
         .w-face.right {
           top: 0; left: calc(100% - var(--thickness));
@@ -677,12 +690,12 @@ export default function WorksClient({
 
         /* Drop-shadow on center mount (see .w-art-mount) — side cards keep img shadow */
         .w-card.side.left .w-card-img {
-          filter: drop-shadow(-10px 13px 18px rgba(0,0,0,0.30))
-                  drop-shadow(0 10px 15px rgba(15,15,20,0.20));
+          filter: drop-shadow(-10px 13px 18px rgba(0,0,0,${(0.30 * light.intensity).toFixed(3)}))
+                  drop-shadow(0 10px 15px rgba(15,15,20,${(0.20 * light.intensity).toFixed(3)}));
         }
         .w-card.side.right .w-card-img {
-          filter: drop-shadow(10px 13px 18px rgba(0,0,0,0.30))
-                  drop-shadow(0 10px 15px rgba(15,15,20,0.20));
+          filter: drop-shadow(10px 13px 18px rgba(0,0,0,${(0.30 * light.intensity).toFixed(3)}))
+                  drop-shadow(0 10px 15px rgba(15,15,20,${(0.20 * light.intensity).toFixed(3)}));
         }
 
         .w-caption {

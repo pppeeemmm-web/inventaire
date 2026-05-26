@@ -32,6 +32,10 @@ import {
   LANDING_HERO_BEVEL_PX_MAX,
 } from '@/lib/landing-hero-bevel'
 import {
+  WORKS_LIGHT_DIRECTION_DEFAULT,
+  WORKS_LIGHT_INTENSITY_DEFAULT,
+  WORKS_LIGHT_INTENSITY_MAX,
+  WORKS_LIGHT_INTENSITY_MIN,
   WORKS_LIGHT_TEMP_DEFAULT,
   WORKS_LIGHT_TEMP_MAX,
   WORKS_LIGHT_TEMP_MIN,
@@ -689,6 +693,43 @@ export function SiteEditorPanel({
                     ↺ {WORKS_LIGHT_TEMP_DEFAULT} K
                   </button>
                 )}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 16 }}>
+                  <label className="col" style={{ gap: 4 }}>
+                    <span className="t-label" style={{ fontSize: 9 }}>
+                      {t('site_works_mode_light_direction_label')} ({mode.light_direction_deg}°)
+                    </span>
+                    <input type="range" min={0} max={360} step={5}
+                      value={mode.light_direction_deg}
+                      onChange={e => updateMode(activeMode, { light_direction_deg: Number(e.target.value) })} />
+                    {mode.light_direction_deg !== WORKS_LIGHT_DIRECTION_DEFAULT && (
+                      <button type="button" className="t-mono-xs"
+                        onClick={() => updateMode(activeMode, { light_direction_deg: WORKS_LIGHT_DIRECTION_DEFAULT })}
+                        style={{ alignSelf: 'flex-start', background: 'none', border: 'none', color: 'var(--tx3)', cursor: 'pointer', fontSize: 9, letterSpacing: 1, opacity: 0.7 }}>
+                        {/* eslint-disable-next-line pem-i18n/no-hardcoded-jsx-text */}
+                        ↺ {WORKS_LIGHT_DIRECTION_DEFAULT}°
+                      </button>
+                    )}
+                  </label>
+                  <label className="col" style={{ gap: 4 }}>
+                    <span className="t-label" style={{ fontSize: 9 }}>
+                      {t('site_works_mode_light_intensity_label')} ({mode.light_intensity_pct} %)
+                    </span>
+                    <input type="range" min={WORKS_LIGHT_INTENSITY_MIN} max={WORKS_LIGHT_INTENSITY_MAX} step={5}
+                      value={mode.light_intensity_pct}
+                      onChange={e => updateMode(activeMode, { light_intensity_pct: Number(e.target.value) })} />
+                    {mode.light_intensity_pct !== WORKS_LIGHT_INTENSITY_DEFAULT && (
+                      <button type="button" className="t-mono-xs"
+                        onClick={() => updateMode(activeMode, { light_intensity_pct: WORKS_LIGHT_INTENSITY_DEFAULT })}
+                        style={{ alignSelf: 'flex-start', background: 'none', border: 'none', color: 'var(--tx3)', cursor: 'pointer', fontSize: 9, letterSpacing: 1, opacity: 0.7 }}>
+                        {/* eslint-disable-next-line pem-i18n/no-hardcoded-jsx-text */}
+                        ↺ {WORKS_LIGHT_INTENSITY_DEFAULT} %
+                      </button>
+                    )}
+                  </label>
+                </div>
+                <p className="t-mono-xs" style={{ opacity: 0.5, marginTop: 8, maxWidth: 720, lineHeight: 1.45 }}>
+                  {t('site_works_mode_light_direction_help')}
+                </p>
               </div>
             )}
             {/* eslint-disable pem-i18n/no-hardcoded-jsx-text */}

@@ -37,6 +37,8 @@ export interface WorksMode {
   bevel_px?: number
   bevel_profile?: 'smooth' | 'hard'
   light_temp_k?: number
+  light_direction_deg?: number
+  light_intensity_pct?: number
 }
 
 /** Strip RichEditor HTML for plain-text labels (grid intro, carousel chapter line). */

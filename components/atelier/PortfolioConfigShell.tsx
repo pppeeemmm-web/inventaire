@@ -12,7 +12,11 @@ import {
   LANDING_HERO_BEVEL_PROFILE_DEFAULT,
   LANDING_HERO_BEVEL_PX_DEFAULT,
 } from '@/lib/landing-hero-bevel'
-import { WORKS_LIGHT_TEMP_DEFAULT } from '@/lib/works-mode-light'
+import {
+  WORKS_LIGHT_DIRECTION_DEFAULT,
+  WORKS_LIGHT_INTENSITY_DEFAULT,
+  WORKS_LIGHT_TEMP_DEFAULT,
+} from '@/lib/works-mode-light'
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
 import { useMediaQuery } from '@/lib/useMediaQuery'
@@ -317,6 +321,8 @@ export function PortfolioConfigShell({
       bevel_px: LANDING_HERO_BEVEL_PX_DEFAULT,
       bevel_profile: LANDING_HERO_BEVEL_PROFILE_DEFAULT,
       light_temp_k: WORKS_LIGHT_TEMP_DEFAULT,
+      light_direction_deg: WORKS_LIGHT_DIRECTION_DEFAULT,
+      light_intensity_pct: WORKS_LIGHT_INTENSITY_DEFAULT,
     }
     setConfig({ ...config, works_modes: [...config.works_modes, newMode] })
     setActiveMode(config.works_modes.length)
