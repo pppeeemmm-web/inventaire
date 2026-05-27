@@ -519,4 +519,9 @@ export const siteBlocksMessages = defineMessages({
     fr: 'Flou',
     en: 'Blur',
   },
+  // ── Phase 1 — block registry editor labels ──────────────────────────────
+  site_text_title_fr: { fr: 'Titre FR', en: 'Title FR' },
+  site_text_title_en: { fr: 'Titre EN', en: 'Title EN' },
+  site_text_body_fr: { fr: 'Corps FR', en: 'Body FR' },
+  site_text_body_en: { fr: 'Corps EN', en: 'Body EN' },
 })

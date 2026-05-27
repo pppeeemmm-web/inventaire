@@ -5,11 +5,15 @@ import { useI18n } from '@/lib/i18n/context'
 import PublicNav from './PublicNav'
 import { loadPortfolioConfig } from '@/app/atelier/(portal)/portfolio/actions'
 import { hiddenNavRoutes, orderedNavRoutes } from '@/lib/site-block-visibility'
-import type { SiteBlock } from '@/lib/portfolio-config-types'
+import { migrate, type SiteBlock, type Block } from '@/lib/portfolio-config-types'
 import { trackView } from '@/lib/track'
 import { getOrCreatePublicVisitorId } from '@/lib/public-visitor-id'
 import type { PublicSiteTheme } from '@/lib/public-site-theme'
 import { publicNavBarCss, publicSiteBaseCss } from '@/lib/public-site-theme'
+// Block registry: imports `lib/site-blocks/index` (the barrel) so all
+// descriptors register before lookup. Today only `text` is shipped; future
+// kinds layer in by adding descriptors in that folder.
+import { getDescriptor } from '@/lib/site-blocks'
 
 
 function hasContent(html: string | null | undefined): boolean {
@@ -26,7 +30,8 @@ export default function AboutClient({ siteTheme }: { siteTheme: PublicSiteTheme 
     async function fetchData() {
       const result = await loadPortfolioConfig()
       if (!('ok' in result)) return
-      setConfig(result.config)
+      // Migrate so `pages` is populated for the registry-iteration pass below.
+      setConfig(migrate(result.config))
     }
     fetchData()
   }, [])
@@ -43,6 +48,20 @@ export default function AboutClient({ siteTheme }: { siteTheme: PublicSiteTheme 
   const bioIntro = lang === 'en'
     ? (config?.about?.intro_en || config?.about?.intro_fr)
     : (config?.about?.intro_fr || config?.about?.intro_en)
+
+  // Registry-driven blocks on /about. Renders only blocks whose `kind` has
+  // a registered descriptor; today that's just `text`. Auto-generated
+  // biographie/approach/themes/materials blocks (uids starting with `auto_`)
+  // have no descriptor yet → skipped, so today's biography section above is
+  // still the only thing the user sees until they add a text block via the
+  // editor.
+  const registryBlocks = useMemo<Block[]>(() => {
+    const list: Block[] = config?.pages?.about ?? []
+    return list
+      .filter(b => b.visible !== false)
+      .filter(b => !!getDescriptor(b.kind))
+      .sort((a, b) => a.sort_order - b.sort_order)
+  }, [config])
 
   return (
     <>
@@ -127,6 +146,26 @@ export default function AboutClient({ siteTheme }: { siteTheme: PublicSiteTheme 
           </div>
         </section>
 
+        {registryBlocks.length > 0 && (
+          <section className="a-section" aria-label="content blocks">
+            {registryBlocks.map(block => {
+              const desc = getDescriptor(block.kind)
+              if (!desc) return null
+              const Renderer = desc.renderer
+              const fields = desc.migrateFields
+                ? desc.migrateFields(block.fields)
+                : block.fields
+              return (
+                <Renderer
+                  key={block.uid}
+                  block={block}
+                  fields={fields}
+                  ctx={{ page: 'about', lang }}
+                />
+              )
+            })}
+          </section>
+        )}
 
       </div>
 

@@ -219,7 +219,69 @@ export interface PortfolioConfig {
   works_modes:       WorksMode[]
   site_blocks:       SiteBlock[]
   pdf_profiles:      PdfProfileMatrix
+  /**
+   * Phase 1 — per-page block composition. Optional for backward compat with
+   * configs persisted before this field existed; populated by migration from
+   * the existing monolithic fields (landing.hero_*, about.intro_*, etc.) so
+   * public pages can iterate a block list via the registry in
+   * `lib/site-blocks/registry.ts`.
+   */
+  pages?: PageBlocks
 }
+
+// ── Per-page content blocks (Phase 1) ─────────────────────────────────────
+
+/** The three composable pages. /practice is folded into /about. */
+export type Page = 'landing' | 'works' | 'about'
+
+export const PAGES: readonly Page[] = ['landing', 'works', 'about'] as const
+
+/**
+ * Block kinds form an open registry — see `lib/site-blocks/registry.ts` for
+ * the descriptor per kind (editor + renderer + allowedPages + knobFamilies).
+ * Adding a new kind = one folder under `lib/site-blocks/<kind>/` + one
+ * registration line.
+ *
+ * This union is the SHIPPED set; unknown kinds in persisted data are
+ * dropped during migration.
+ */
+export type BlockKind =
+  // landing-only
+  | 'hero' | 'identity'
+  // works-only
+  | 'works_modes' | 'map' | 'motion_interior'
+  // about-only (incl. ex-practice fields folded in)
+  | 'biographie' | 'expositions' | 'presse' | 'contact' | 'cv'
+  | 'approach' | 'themes' | 'materials'
+  // universal (any page)
+  | 'text' | 'image' | 'statement' | 'quote' | 'gallery_strip' | 'divider'
+
+export const ALL_BLOCK_KINDS: readonly BlockKind[] = [
+  'hero', 'identity',
+  'works_modes', 'map', 'motion_interior',
+  'biographie', 'expositions', 'presse', 'contact', 'cv',
+  'approach', 'themes', 'materials',
+  'text', 'image', 'statement', 'quote', 'gallery_strip', 'divider',
+] as const
+
+export type BlockLayoutWidth = 'full' | 'half' | 'third'
+
+export interface Block {
+  /** Stable id — survives reordering and content edits. */
+  uid: string
+  kind: BlockKind
+  /** Schema-enforced via registry `allowedPages` — see migration. */
+  page: Page
+  visible: boolean
+  layout_width: BlockLayoutWidth
+  /** Block-kind-specific data; shape defined by the descriptor in registry. */
+  fields: Record<string, unknown>
+  /** Phase 2 — per-block knob overrides on top of site/page cascade. */
+  knob_override?: Record<string, unknown>
+  sort_order: number
+}
+
+export type PageBlocks = Partial<Record<Page, Block[]>>
 
 export type ThemeWork = { OeuvreID: number; txtImageNameLink: string | null; isPublic: boolean }
 
@@ -407,12 +469,125 @@ export function migrateSiteBlocks(raw: any): SiteBlock[] {
   return result
 }
 
+/**
+ * Generate a stable, ordered uid for a block. Prefer crypto.randomUUID when
+ * available (Node 20+, modern browsers); fall back to a Math.random-based id
+ * so SSR builds without crypto.randomUUID don't fail.
+ */
+function makeBlockUid(): string {
+  if (typeof globalThis !== 'undefined' && globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function') {
+    return globalThis.crypto.randomUUID()
+  }
+  return `b_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`
+}
+
+function migrateBlockField(b: any): Block | null {
+  if (!b || typeof b !== 'object') return null
+  if (typeof b.kind !== 'string') return null
+  if (!(ALL_BLOCK_KINDS as readonly string[]).includes(b.kind)) return null
+  const page: Page = (PAGES as readonly string[]).includes(b.page) ? b.page : 'landing'
+  const layout_width: BlockLayoutWidth =
+    b.layout_width === 'half' ? 'half'
+    : b.layout_width === 'third' ? 'third'
+    : 'full'
+  return {
+    uid: typeof b.uid === 'string' && b.uid.length > 0 ? b.uid : makeBlockUid(),
+    kind: b.kind as BlockKind,
+    page,
+    visible: b.visible !== false,
+    layout_width,
+    fields: (b.fields && typeof b.fields === 'object') ? b.fields : {},
+    knob_override: (b.knob_override && typeof b.knob_override === 'object') ? b.knob_override : undefined,
+    sort_order: Number.isFinite(b.sort_order) ? Number(b.sort_order) : 0,
+  }
+}
+
+/**
+ * Default per-page block lists derived from existing monolithic fields.
+ * Used when `raw.pages` is absent (older configs) so pre-Phase-1 data still
+ * renders via the registry path.
+ *
+ * Idempotent: a config that already has `pages` is round-trippable; we only
+ * fill in any missing pages.
+ */
+export function deriveDefaultPages(cfg: Pick<PortfolioConfig, 'general' | 'about' | 'practice' | 'works_modes'>): Record<Page, Block[]> {
+  const stable = (kind: BlockKind, page: Page, fields: Record<string, unknown>, sort_order = 0): Block => ({
+    uid: `auto_${kind}_${page}`,
+    kind,
+    page,
+    visible: true,
+    layout_width: 'full',
+    fields,
+    sort_order,
+  })
+  return {
+    landing: [
+      stable('hero', 'landing', {}, 0),
+      stable('identity', 'landing', {}, 10),
+    ],
+    works: [
+      // One auto-generated works_modes block per active mode. The block
+      // references the WorksMode by id via fields.mode_id.
+      ...cfg.works_modes
+        .filter(m => m.is_active !== false)
+        .map((m, i): Block => ({
+          uid: `auto_works_modes_${m.id}`,
+          kind: 'works_modes',
+          page: 'works',
+          visible: true,
+          layout_width: 'full',
+          fields: { mode_id: m.id },
+          sort_order: i * 10,
+        })),
+    ],
+    about: [
+      stable('biographie', 'about',
+        { intro_fr: cfg.about?.intro_fr ?? '', intro_en: cfg.about?.intro_en ?? '' }, 0),
+      stable('approach', 'about',
+        { approach_fr: cfg.practice?.approach_fr ?? '', approach_en: cfg.practice?.approach_en ?? '' }, 10),
+      stable('themes', 'about',
+        { themes: cfg.practice?.themes ?? [] }, 20),
+      stable('materials', 'about',
+        { materials_fr: cfg.practice?.materials_fr ?? '', materials_en: cfg.practice?.materials_en ?? '' }, 30),
+    ],
+  }
+}
+
+/**
+ * Migrate `raw.pages` from persisted JSON into a typed PageBlocks. Preserves
+ * any existing blocks; auto-fills missing pages from `derivedDefaults` so the
+ * public site always has SOMETHING to render per page even after a partial
+ * editor save. Unknown block kinds in persisted data are dropped (warn).
+ */
+export function migratePages(
+  raw: any,
+  derivedDefaults: Record<Page, Block[]>,
+): PageBlocks {
+  const out: PageBlocks = {}
+  const rawPages = (raw && typeof raw === 'object' && raw.pages && typeof raw.pages === 'object') ? raw.pages : null
+  for (const page of PAGES) {
+    const persisted = rawPages?.[page]
+    if (Array.isArray(persisted) && persisted.length > 0) {
+      const blocks = persisted
+        .map(migrateBlockField)
+        .filter((b): b is Block => b !== null)
+        // Force `page` to match the bucket key (defense against corrupted data).
+        .map(b => ({ ...b, page }))
+        .sort((a, b) => a.sort_order - b.sort_order)
+      out[page] = blocks.length > 0 ? blocks : derivedDefaults[page]
+    } else {
+      out[page] = derivedDefaults[page]
+    }
+  }
+  return out
+}
+
 export function migrate(raw: any): PortfolioConfig {
   const isOldArray = Array.isArray(raw)
   const oldSections = isOldArray ? raw : (raw.sections || [])
   const oldWorks    = isOldArray ? raw : (raw.works_collections || [])
 
-  return {
+  const base = {
     general: {
       artist_name:      raw.general?.artist_name      || '',
       contact_email:    raw.general?.contact_email    || '',
@@ -472,4 +647,8 @@ export function migrate(raw: any): PortfolioConfig {
     site_blocks:       migrateSiteBlocks(raw),
     pdf_profiles:      raw.pdf_profiles && typeof raw.pdf_profiles === 'object' ? raw.pdf_profiles : {},
   }
+  // Derive `pages` from the now-migrated base fields; use persisted pages if
+  // present, else fall back to defaults synthesized from base.
+  const defaults = deriveDefaultPages(base)
+  return { ...base, pages: migratePages(raw, defaults) }
 }
