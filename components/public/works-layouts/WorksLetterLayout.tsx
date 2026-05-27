@@ -3,9 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { imageUrl, thumbUrl, yearOf } from '@/lib/data'
-import PublicNav from '@/components/public/PublicNav'
 import type { PublicSiteTheme } from '@/lib/public-site-theme'
-import { publicSiteBaseCss } from '@/lib/public-site-theme'
 import type { Work, WorksMode } from '@/components/public/works-utils'
 import { richTextToPlain } from '@/components/public/works-utils'
 
@@ -47,7 +45,6 @@ export default function WorksLetterLayout({ works, mode, siteTheme, hiddenNavRou
 
   return (
     <>
-      <style>{publicSiteBaseCss(siteTheme)}</style>
       <style>{`
         .w-letter-wrap {
           min-height: 100vh;
@@ -95,7 +92,6 @@ export default function WorksLetterLayout({ works, mode, siteTheme, hiddenNavRou
         }
         .w-letter-arrow[disabled] { opacity: 0.3; cursor: default; }
       `}</style>
-      <PublicNav active="works" prefix="w" hiddenNavRoutes={hiddenNavRoutes} navOrder={navOrder} />
       <main className="w-letter-wrap" aria-label={t('pub_works')}>
         {current && (
           <article className="w-letter-page" key={current.OeuvreID}>

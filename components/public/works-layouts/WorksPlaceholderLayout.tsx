@@ -1,9 +1,7 @@
 'use client'
 
 import { useI18n } from '@/lib/i18n/context'
-import PublicNav from '@/components/public/PublicNav'
 import type { PublicSiteTheme } from '@/lib/public-site-theme'
-import { publicSiteBaseCss } from '@/lib/public-site-theme'
 import type { WorksLayout } from '@/lib/portfolio-config-types'
 
 interface Props {
@@ -26,10 +24,7 @@ export default function WorksPlaceholderLayout({ layout, siteTheme, hiddenNavRou
   const titleKey = `site_works_layout_${layout}`
   const messageKey = PLACEHOLDER_MESSAGE_KEY[layout] ?? 'pub_works_placeholder_generic'
   return (
-    <>
-      <style>{publicSiteBaseCss(siteTheme)}</style>
-      <PublicNav active="works" prefix="w" hiddenNavRoutes={hiddenNavRoutes} navOrder={navOrder} />
-      <main
+    <main
         className="col center"
         style={{
           minHeight: '70vh',
@@ -49,6 +44,5 @@ export default function WorksPlaceholderLayout({ layout, siteTheme, hiddenNavRou
           {t('site_works_layout_placeholder_badge')}
         </p>
       </main>
-    </>
   )
 }

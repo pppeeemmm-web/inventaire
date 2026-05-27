@@ -1,11 +1,9 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { imageUrl, thumbUrl, yearOf } from '@/lib/data'
-import PublicNav from '@/components/public/PublicNav'
 import type { PublicSiteTheme } from '@/lib/public-site-theme'
-import { publicSiteBaseCss } from '@/lib/public-site-theme'
 import type { Work } from '@/components/public/works-utils'
 
 interface Props {
@@ -25,27 +23,30 @@ type Tile = {
 
 /** Greedy bin-pack: lay tiles in rows, each row centered on a shared eyeline.
  *  Works are sized from recorded cm dimensions with the same compressed-area
- *  scaling used by the carousel; missing dimensions fall back to a default. */
-function packSalon(works: Work[], wallWidth: number): Tile[] {
-  const ROW_GAP = 28
-  const TILE_GAP = 18
-  const ROW_HEIGHT_MIN = 110
-  const ROW_HEIGHT_MAX = 280
+ *  scaling used by the carousel; missing dimensions fall back to a default.
+ *  Sizing references are scaled down on mobile so tiles fit the narrower wall. */
+function packSalon(works: Work[], wallWidth: number, isMobile: boolean): Tile[] {
+  const ROW_GAP = isMobile ? 18 : 28
+  const TILE_GAP = isMobile ? 10 : 18
+  const ROW_HEIGHT_MIN = isMobile ? 80 : 110
+  const ROW_HEIGHT_MAX = isMobile ? 200 : 280
+  const REF_CM = isMobile ? 50 : 70
+  const REF_PX = isMobile ? 160 : 260
 
-  // Convert each work into a (w,h) tile in px. Reference: 70 cm = 260 px height.
-  const pxPerCm = 260 / 70
+  // Convert each work into a (w,h) tile in px. Reference: REF_CM cm = REF_PX px height.
+  const pxPerCm = REF_PX / REF_CM
   const tiles: Array<{ work: Work; w: number; h: number }> = works
     .filter(w => w.txtImageNameLink)
     .map(w => {
       const cmH = Number(w.Hauteur) || 0
       const cmW = Number(w.Largeur) || 0
-      const linearH = cmH > 0 ? cmH * pxPerCm : 200
-      const linearW = cmW > 0 ? cmW * pxPerCm : 200
+      const linearH = cmH > 0 ? cmH * pxPerCm : REF_PX * 0.7
+      const linearW = cmW > 0 ? cmW * pxPerCm : REF_PX * 0.7
       // Compress area like the carousel does so small works stay visible.
       const linearArea = linearH * linearW
-      const refArea = 260 * 260
+      const refArea = REF_PX * REF_PX
       const unit = linearArea / refArea
-      const compressed = Math.pow(Math.max(unit, 1e-6), 0.62)
+      const compressed = Math.pow(Math.max(unit, 1e-6), isMobile ? 0.55 : 0.62)
       const targetArea = refArea * compressed
       const aspect = linearW / linearH
       const h = Math.max(ROW_HEIGHT_MIN, Math.min(ROW_HEIGHT_MAX, Math.sqrt(targetArea / aspect)))
@@ -99,25 +100,38 @@ function packSalon(works: Work[], wallWidth: number): Tile[] {
 export default function WorksSalonLayout({ works, siteTheme, hiddenNavRoutes, navOrder }: Props) {
   const { t } = useI18n()
   const [lightbox, setLightbox] = useState<Work | null>(null)
-  // Wall width — chosen to keep tile px sizes sensible across viewports.
-  const WALL_W = 1200
-  const tiles = useMemo(() => packSalon(works, WALL_W), [works])
+  // Wall width tracks the viewport so tiles never overflow horizontally.
+  // Defaults to 1200 for SSR; once mounted we use min(viewport - sidePad, 1200).
+  const [wallW, setWallW] = useState(1200)
+  const [isMobile, setIsMobile] = useState(false)
+  useEffect(() => {
+    const compute = () => {
+      const vw = window.innerWidth
+      const mobile = vw < 768
+      const sidePad = mobile ? 32 : 96
+      setWallW(Math.max(280, Math.min(1200, vw - sidePad)))
+      setIsMobile(mobile)
+    }
+    compute()
+    window.addEventListener('resize', compute)
+    return () => window.removeEventListener('resize', compute)
+  }, [])
+  const tiles = useMemo(() => packSalon(works, wallW, isMobile), [works, wallW, isMobile])
   const wallHeight = useMemo(() => Math.max(...tiles.map(t => t.y + t.h), 600) + 60, [tiles])
 
   return (
     <>
-      <style>{publicSiteBaseCss(siteTheme)}</style>
       <style>{`
         .w-salon-wrap {
           min-height: 100vh;
           background: ${siteTheme.backgroundCss};
           padding: clamp(80px, 10vh, 120px) clamp(16px, 4vw, 48px) 80px;
-          overflow-x: auto;
         }
         .w-salon-wall {
           position: relative;
           margin: 0 auto;
-          width: ${WALL_W}px;
+          width: ${wallW}px;
+          max-width: 100%;
         }
         .w-salon-tile {
           position: absolute;
@@ -138,7 +152,6 @@ export default function WorksSalonLayout({ works, siteTheme, hiddenNavRoutes, na
         }
         .w-salon-lb img { max-width: 96vw; max-height: 92vh; object-fit: contain; display: block; }
       `}</style>
-      <PublicNav active="works" prefix="w" hiddenNavRoutes={hiddenNavRoutes} navOrder={navOrder} />
       <main className="w-salon-wrap" aria-label={t('pub_works')}>
         <div className="w-salon-wall" style={{ height: wallHeight }}>
           {tiles.map(({ work, w, h, x, y }) => (

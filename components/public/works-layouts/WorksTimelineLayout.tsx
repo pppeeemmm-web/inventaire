@@ -3,9 +3,7 @@
 import { useMemo, useState } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { imageUrl, thumbUrl, yearOf } from '@/lib/data'
-import PublicNav from '@/components/public/PublicNav'
 import type { PublicSiteTheme } from '@/lib/public-site-theme'
-import { publicSiteBaseCss } from '@/lib/public-site-theme'
 import type { Work } from '@/components/public/works-utils'
 
 interface Props {
@@ -37,7 +35,6 @@ export default function WorksTimelineLayout({ works, siteTheme, hiddenNavRoutes,
 
   return (
     <>
-      <style>{publicSiteBaseCss(siteTheme)}</style>
       <style>{`
         .w-tl-wrap {
           position: fixed; inset: 0;
@@ -99,7 +96,6 @@ export default function WorksTimelineLayout({ works, siteTheme, hiddenNavRoutes,
           .w-tl-tile img { height: 22vh; }
         }
       `}</style>
-      <PublicNav active="works" prefix="w" hiddenNavRoutes={hiddenNavRoutes} navOrder={navOrder} />
       <div className="w-tl-wrap" aria-label={t('pub_works')}>
         <div className="w-tl-track">
           <div className="w-tl-axis" />

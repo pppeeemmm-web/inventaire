@@ -105,7 +105,16 @@ export default function WorksClient({
     layout: 'carousel', collections: [], outro_fr: '', outro_en: '',
   }]
   const mode = safeModes[0]
-  const layout = mode.layout ?? 'carousel'
+  // Dev/preview helper: `?_layout=salon` etc. lets you preview a layout without
+  // saving it into the portfolio config. Falls back to the mode's persisted layout.
+  const [layoutOverride, setLayoutOverride] = useState<string | null>(null)
+  useEffect(() => {
+    try {
+      const v = new URLSearchParams(window.location.search).get('_layout')
+      if (v) setLayoutOverride(v)
+    } catch { /* SSR: noop */ }
+  }, [])
+  const layout = (layoutOverride ?? mode.layout ?? 'carousel') as WorksLayout
 
   // Per-mode bevel + light — fall back to defaults so older configs still render.
   const bevelPx = mode.bevel_px ?? LANDING_HERO_BEVEL_PX_DEFAULT

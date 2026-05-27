@@ -3,9 +3,7 @@
 import { useState } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { imageUrl, thumbUrl, yearOf } from '@/lib/data'
-import PublicNav from '@/components/public/PublicNav'
 import type { PublicSiteTheme } from '@/lib/public-site-theme'
-import { publicSiteBaseCss } from '@/lib/public-site-theme'
 import type { Work } from '@/components/public/works-utils'
 
 interface Props {
@@ -26,7 +24,6 @@ export default function WorksProcessionLayout({ works, siteTheme, hiddenNavRoute
   const visible = works.filter(w => w.txtImageNameLink)
   return (
     <>
-      <style>{publicSiteBaseCss(siteTheme)}</style>
       <style>{`
         .w-proc {
           position: fixed; inset: 0;
@@ -82,7 +79,6 @@ export default function WorksProcessionLayout({ works, siteTheme, hiddenNavRoute
           object-fit: contain; display: block;
         }
       `}</style>
-      <PublicNav active="works" prefix="w" hiddenNavRoutes={hiddenNavRoutes} navOrder={navOrder} />
       <div className="w-proc" aria-label={t('pub_works')}>
         <div className="w-proc-track">
           {visible.map(w => (
