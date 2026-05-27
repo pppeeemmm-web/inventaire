@@ -1011,15 +1011,15 @@ export default function WorksClient({
           siteTheme={siteTheme}
         />
       ) : layout === 'procession' ? (
-        <WorksProcessionLayout works={chapterWorks} siteTheme={siteTheme} hiddenNavRoutes={hiddenNavRoutes} navOrder={navOrder} />
+        <WorksProcessionLayout works={chapterWorks} mode={mode} bevelShadow={bevelShadow} light={light} siteTheme={siteTheme} />
       ) : layout === 'salon' ? (
-        <WorksSalonLayout works={chapterWorks} siteTheme={siteTheme} hiddenNavRoutes={hiddenNavRoutes} navOrder={navOrder} />
+        <WorksSalonLayout works={chapterWorks} mode={mode} bevelShadow={bevelShadow} light={light} siteTheme={siteTheme} />
       ) : layout === 'timeline' ? (
-        <WorksTimelineLayout works={chapterWorks} siteTheme={siteTheme} hiddenNavRoutes={hiddenNavRoutes} navOrder={navOrder} />
+        <WorksTimelineLayout works={chapterWorks} mode={mode} bevelShadow={bevelShadow} light={light} siteTheme={siteTheme} />
       ) : layout === 'letter' ? (
-        <WorksLetterLayout works={chapterWorks} mode={mode} siteTheme={siteTheme} hiddenNavRoutes={hiddenNavRoutes} navOrder={navOrder} />
+        <WorksLetterLayout works={chapterWorks} mode={mode} bevelShadow={bevelShadow} light={light} siteTheme={siteTheme} />
       ) : WORKS_LAYOUT_PLACEHOLDERS.has(layout as WorksLayout) ? (
-        <WorksPlaceholderLayout layout={layout as WorksLayout} siteTheme={siteTheme} hiddenNavRoutes={hiddenNavRoutes} navOrder={navOrder} />
+        <WorksPlaceholderLayout layout={layout as WorksLayout} siteTheme={siteTheme} />
       ) : (
       <div
         className={`w-stage pem-grain${layout === 'vitrine' ? ' w-vitrine' : ''}`}

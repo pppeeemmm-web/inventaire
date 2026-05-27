@@ -4,13 +4,16 @@ import { useEffect, useMemo, useState } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { imageUrl, thumbUrl, yearOf } from '@/lib/data'
 import type { PublicSiteTheme } from '@/lib/public-site-theme'
-import type { Work } from '@/components/public/works-utils'
+import type { Work, WorksMode } from '@/components/public/works-utils'
+import type { WorksLightResolved } from '@/lib/works-mode-light'
+import OutroCard from './OutroCard'
 
 interface Props {
   works: Work[]
+  mode: WorksMode
+  bevelShadow: string | null
+  light: WorksLightResolved
   siteTheme: PublicSiteTheme
-  hiddenNavRoutes?: string[]
-  navOrder?: string[]
 }
 
 type Tile = {
@@ -97,7 +100,7 @@ function packSalon(works: Work[], wallWidth: number, isMobile: boolean): Tile[] 
   return out
 }
 
-export default function WorksSalonLayout({ works, siteTheme, hiddenNavRoutes, navOrder }: Props) {
+export default function WorksSalonLayout({ works, mode, bevelShadow, light, siteTheme }: Props) {
   const { t } = useI18n()
   const [lightbox, setLightbox] = useState<Work | null>(null)
   // Wall width tracks the viewport so tiles never overflow horizontally.
@@ -123,12 +126,17 @@ export default function WorksSalonLayout({ works, siteTheme, hiddenNavRoutes, na
     <>
       <style>{`
         .w-salon-wrap {
+          position: relative;
           min-height: 100vh;
           background: ${siteTheme.backgroundCss};
           padding: clamp(80px, 10vh, 120px) clamp(16px, 4vw, 48px) 80px;
         }
+        .w-salon-wrap::after {
+          content: ''; position: absolute; inset: 0; z-index: 0;
+          background: ${light.tintRgba}; pointer-events: none;
+        }
         .w-salon-wall {
-          position: relative;
+          position: relative; z-index: 1;
           margin: 0 auto;
           width: ${wallW}px;
           max-width: 100%;
@@ -137,12 +145,18 @@ export default function WorksSalonLayout({ works, siteTheme, hiddenNavRoutes, na
           position: absolute;
           cursor: zoom-in;
           background: transparent; border: none; padding: 0;
+          overflow: hidden;
+          filter: drop-shadow(-6px 12px 18px rgba(0,0,0,${(0.28 * light.intensity).toFixed(3)}))
+                  drop-shadow(0 4px 8px rgba(15,15,20,${(0.18 * light.intensity).toFixed(3)}));
+        }
+        .w-salon-tile::after {
+          content: ''; position: absolute; inset: 0;
+          pointer-events: none; z-index: 2;
+          ${bevelShadow ? `box-shadow: ${bevelShadow};` : ''}
         }
         .w-salon-tile img {
           width: 100%; height: 100%;
           object-fit: contain; display: block;
-          filter: drop-shadow(-6px 12px 18px rgba(0,0,0,0.28))
-                  drop-shadow(0 4px 8px rgba(15,15,20,0.18));
         }
         .w-salon-lb {
           position: fixed; inset: 0; z-index: 400;
@@ -172,6 +186,9 @@ export default function WorksSalonLayout({ works, siteTheme, hiddenNavRoutes, na
           ))}
         </div>
       </main>
+      <div style={{ position: 'relative', zIndex: 1 }}>
+        <OutroCard mode={mode} />
+      </div>
       {lightbox && (
         <div className="w-salon-lb" role="dialog" aria-label={lightbox.Titre ?? ''} onClick={() => setLightbox(null)}>
           <img src={imageUrl(lightbox.txtImageNameLink) ?? ''} alt={lightbox.Titre ?? ''} />
