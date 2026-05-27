@@ -605,4 +605,40 @@ export const atelierMessages = defineMessages({
     fr: 'Recharger la page',
     en: 'Reload page',
   },
+  selection_images_download_title: {
+    fr: 'Images pleine taille (ZIP)',
+    en: 'Full-size images (ZIP)',
+  },
+  selection_images_download_blurb: {
+    fr: '{count} œuvre(s) sélectionnée(s). Les fichiers R2 originaux (AVIF) sont regroupés dans une archive.',
+    en: '{count} selected work(s). Original R2 files (AVIF) are packed into one archive.',
+  },
+  selection_images_mode_label: {
+    fr: 'Contenu',
+    en: 'Contents',
+  },
+  selection_images_cover_only: {
+    fr: 'Photo de couverture uniquement (une par œuvre)',
+    en: 'Cover image only (one per work)',
+  },
+  selection_images_all_slots: {
+    fr: 'Toutes les photos tblImage (plusieurs par œuvre)',
+    en: 'All tblImage slots (multiple per work)',
+  },
+  selection_images_download_confirm: {
+    fr: 'Télécharger le ZIP',
+    en: 'Download ZIP',
+  },
+  selection_images_downloading: {
+    fr: 'Préparation…',
+    en: 'Preparing…',
+  },
+  selection_images_max_fmt: {
+    fr: 'Maximum {max} œuvres par archive. Réduisez la sélection.',
+    en: 'Maximum {max} works per archive. Reduce the selection.',
+  },
+  curation_dock_download_images: {
+    fr: 'Images ZIP',
+    en: 'Images ZIP',
+  },
 })

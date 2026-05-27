@@ -8,6 +8,7 @@ import { useI18n } from '@/lib/i18n/context'
 import { BatchEditModal } from '@/components/atelier/BatchEditModal'
 import { CatalogPersistModal } from '@/components/atelier/CatalogPersistModal'
 import { ExportModal }    from '@/components/atelier/ExportModal'
+import { SelectionImagesDownloadModal } from '@/components/atelier/SelectionImagesDownloadModal'
 import type { Oeuvre }    from '@/lib/types/database'
 import { PEM_Z_INDEX } from '@/components/shared/BottomStack'
 
@@ -42,6 +43,7 @@ export function CurationDock({
   const [savedName, setSavedName] = useState<string | null>(null)
   const [showBatch, setShowBatch] = useState(false)
   const [showExport,setShowExport]= useState(false)
+  const [showImagesZip, setShowImagesZip] = useState(false)
   const [showCatalogPersist, setShowCatalogPersist] = useState(false)
 
   const ids = [...selection]
@@ -87,6 +89,16 @@ export function CurationDock({
         {/* Export */}
         <button type="button" className="btn sm ghost" data-testid="curation-open-export" onClick={() => setShowExport(true)}>
           {t('export')}
+        </button>
+
+        <button
+          type="button"
+          className="btn sm ghost"
+          data-testid="curation-open-images-zip"
+          onClick={() => setShowImagesZip(true)}
+          title={t('selection_images_download_title')}
+        >
+          {t('curation_dock_download_images')}
         </button>
 
         <button
@@ -167,6 +179,13 @@ export function CurationDock({
           catalogThemes={themes}
           catalogGroups={groups}
           onClose={() => setShowExport(false)}
+        />
+      )}
+
+      {showImagesZip && (
+        <SelectionImagesDownloadModal
+          ids={ids}
+          onClose={() => setShowImagesZip(false)}
         />
       )}
 

@@ -33,6 +33,7 @@
     "@tiptap/react": "^3.22.5",
     "@tiptap/starter-kit": "^3.22.5",
     "@vercel/analytics": "^2.0.1",
+    "archiver": "^7.0.1",
     "dotenv": "^17.4.2",
     "leaflet": "^1.9.4",
     "mammoth": "^1.12.0",
@@ -49,6 +50,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1",
+    "@types/archiver": "^7.0.0",
     "@types/leaflet": "^1.9.14",
     "@types/node": "^20.0.0",
     "@types/pdfkit": "^0.13.9",
