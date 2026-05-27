@@ -77,4 +77,12 @@ export const publicMessages = defineMessages({
     fr: 'Déclaration — aperçu',
     en: 'Statement — preview',
   },
+  pub_salon_count_works: {
+    fr: 'œuvres',
+    en: 'works',
+  },
+  pub_salon_hang_label: {
+    fr: 'accrochage salon',
+    en: 'salon hang',
+  },
 })

@@ -25,6 +25,13 @@ export default function WorksTimelineLayout({ works, mode, bevelShadow, light, s
   const trackRef = useRef<HTMLDivElement>(null)
   const wallRef = useRef<HTMLDivElement>(null)
   const intensity = light.intensity
+  const castShadowOn = mode.cast_shadow_enabled !== false
+  const castDistance = mode.cast_shadow_distance_px ?? 15
+  const castBlur = mode.cast_shadow_blur_px ?? 22
+  const castShadowCss = castShadowOn
+    ? `drop-shadow(0 ${castDistance}px ${castBlur}px rgba(15,15,20,${(0.34 * intensity).toFixed(3)})) `
+      + `drop-shadow(0 ${Math.round(castDistance / 3.75)}px ${Math.round(castBlur / 3.14)}px rgba(15,15,20,${(0.22 * intensity).toFixed(3)}))`
+    : 'none'
 
   const buckets = useMemo(() => {
     const map = new Map<number, Work[]>()
@@ -45,14 +52,29 @@ export default function WorksTimelineLayout({ works, mode, bevelShadow, light, s
     el.scrollBy({ left: dir * el.clientWidth * 0.72, behavior: 'smooth' })
   }, [])
 
-  // Vertical wheel → horizontal scroll.
+  // Vertical wheel → horizontal scroll. Strict deadzone matches procession:
+  // hijack only on clear vertical-only intent. See WorksProcessionLayout for rationale.
   useEffect(() => {
     const el = trackRef.current
     if (!el) return
+    const diag = typeof window !== 'undefined'
+      && new URLSearchParams(window.location.search).get('_diag') === '1'
     const onWheel = (e: WheelEvent) => {
       if (lightbox) return
-      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-        el.scrollLeft += e.deltaY
+      const { deltaX: dx, deltaY: dy } = e
+      if (diag) {
+        // eslint-disable-next-line no-console
+        console.log('[timeline.wheel]', {
+          dx, dy,
+          scrollLeft: el.scrollLeft,
+          scrollWidth: el.scrollWidth,
+          clientWidth: el.clientWidth,
+        })
+      }
+      if (Math.abs(dy) > 30 && Math.abs(dx) < 5) {
+        // scrollBy goes through the browser's scroll pipeline so any
+        // future snap behavior respects the position. See procession.
+        el.scrollBy({ left: dy, behavior: 'auto' })
         e.preventDefault()
       }
     }
@@ -116,10 +138,18 @@ export default function WorksTimelineLayout({ works, mode, bevelShadow, light, s
         }
         .w-tl-wrap {
           position: absolute; inset: 0; z-index: 1;
-          overflow-x: auto; overflow-y: hidden;
+          overflow-x: scroll; overflow-y: hidden;
           -webkit-overflow-scrolling: touch;
           padding-top: clamp(70px, 9vh, 100px);
         }
+        .w-tl-wrap::-webkit-scrollbar { height: 8px; }
+        .w-tl-wrap::-webkit-scrollbar-track { background: transparent; }
+        .w-tl-wrap::-webkit-scrollbar-thumb {
+          background: ${siteTheme.chromeBorder};
+          border-radius: 4px;
+        }
+        .w-tl-wrap::-webkit-scrollbar-thumb:hover { background: ${siteTheme.bodyMutedText}; }
+        .w-tl-wrap { scrollbar-color: ${siteTheme.chromeBorder} transparent; scrollbar-width: thin; }
         .w-tl-track {
           display: flex; align-items: flex-end;
           height: calc(100% - 80px);
@@ -148,7 +178,17 @@ export default function WorksTimelineLayout({ works, mode, bevelShadow, light, s
         }
         .w-tl-mount {
           display: inline-block; line-height: 0;
+          position: relative;
+          filter: ${castShadowCss};
         }
+        ${bevelShadow ? `
+        .w-tl-mount::after {
+          content: '';
+          position: absolute; inset: 0;
+          pointer-events: none;
+          box-shadow: ${bevelShadow};
+        }
+        ` : ''}
         .w-tl-mount img {
           /* All works share the same image height so tops + bottoms align. */
           height: 28vh; max-height: 320px; min-height: 140px;
@@ -169,15 +209,17 @@ export default function WorksTimelineLayout({ works, mode, bevelShadow, light, s
         }
         .w-tl-nav {
           position: fixed; top: 50%; transform: translateY(-50%);
-          width: 44px; height: 44px; border-radius: 50%;
-          background: transparent;
-          border: 1px solid ${siteTheme.chromeBorder};
+          width: 48px; height: 48px; border-radius: 50%;
+          background: ${siteTheme.backgroundCss};
+          border: 1.5px solid ${siteTheme.bodyMutedText};
           color: ${siteTheme.bodyText};
-          font-size: 18px; cursor: pointer; z-index: 250;
+          font-size: 20px; cursor: pointer; z-index: 250;
           display: flex; align-items: center; justify-content: center;
-          transition: background 0.15s, border-color 0.15s;
+          box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+          transition: background 0.15s, border-color 0.15s, transform 0.15s;
         }
-        .w-tl-nav:hover { background: rgba(0,0,0,0.04); border-color: ${siteTheme.bodyText}; }
+        .w-tl-nav:hover { border-color: ${siteTheme.bodyText}; transform: translateY(-50%) scale(1.06); }
+        .w-tl-nav:focus-visible { outline: 2px solid ${siteTheme.bodyText}; outline-offset: 3px; }
         .w-tl-nav.left { left: clamp(12px, 2vw, 24px); }
         .w-tl-nav.right { right: clamp(12px, 2vw, 24px); }
         .w-tl-lb {

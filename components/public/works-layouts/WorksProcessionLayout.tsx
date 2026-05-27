@@ -33,6 +33,13 @@ export default function WorksProcessionLayout({ works, mode, bevelShadow, light,
   const wallRef = useRef<HTMLDivElement>(null)
   const visible = works.filter(w => w.txtImageNameLink)
   const intensity = light.intensity
+  const castShadowOn = mode.cast_shadow_enabled !== false
+  const castDistance = mode.cast_shadow_distance_px ?? 15
+  const castBlur = mode.cast_shadow_blur_px ?? 22
+  const castShadowCss = castShadowOn
+    ? `drop-shadow(0 ${castDistance}px ${castBlur}px rgba(15,15,20,${(0.34 * intensity).toFixed(3)})) `
+      + `drop-shadow(0 ${Math.round(castDistance / 3.75)}px ${Math.round(castBlur / 3.14)}px rgba(15,15,20,${(0.22 * intensity).toFixed(3)}))`
+    : 'none'
 
   const scrollBy = useCallback((dir: -1 | 1) => {
     const el = trackRef.current
@@ -40,15 +47,33 @@ export default function WorksProcessionLayout({ works, mode, bevelShadow, light,
     el.scrollBy({ left: dir * el.clientWidth * 0.72, behavior: 'smooth' })
   }, [])
 
-  // Vertical wheel → horizontal scroll. Keep native horizontal wheel as-is.
+  // Vertical wheel → horizontal scroll. Strict deadzone: only hijack when there's
+  // clear vertical-only intent (|dy| > 30 && |dx| < 5). Anything else — pure
+  // horizontal wheel, diagonal trackpad swipes, gentle vertical wobble — passes
+  // through so the browser's native horizontal scroll handles it. `?_diag=1`
+  // logs wheel + scroll state for debugging on environments where this fails.
   useEffect(() => {
     const el = trackRef.current
     if (!el) return
+    const diag = typeof window !== 'undefined'
+      && new URLSearchParams(window.location.search).get('_diag') === '1'
     const onWheel = (e: WheelEvent) => {
       if (lightbox) return
-      // If mostly vertical, redirect to horizontal.
-      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-        el.scrollLeft += e.deltaY
+      const { deltaX: dx, deltaY: dy } = e
+      if (diag) {
+        // eslint-disable-next-line no-console
+        console.log('[procession.wheel]', {
+          dx, dy,
+          scrollLeft: el.scrollLeft,
+          scrollWidth: el.scrollWidth,
+          clientWidth: el.clientWidth,
+        })
+      }
+      if (Math.abs(dy) > 30 && Math.abs(dx) < 5) {
+        // scrollBy goes through the browser's scroll pipeline so
+        // scroll-snap respects the new position; direct scrollLeft += dy
+        // was getting snapped back to the original tile center.
+        el.scrollBy({ left: dy, behavior: 'auto' })
         e.preventDefault()
       }
     }
@@ -113,7 +138,7 @@ export default function WorksProcessionLayout({ works, mode, bevelShadow, light,
         }
         .w-proc {
           position: absolute; inset: 0; z-index: 1;
-          overflow-x: auto; overflow-y: hidden;
+          overflow-x: scroll; overflow-y: hidden;
           /* proximity (not mandatory) lets wheel scroll freely; the browser
            * still snaps when you let go near a tile center. mandatory was
            * eating partial wheel deltas, leaving the track stuck. */
@@ -121,6 +146,16 @@ export default function WorksProcessionLayout({ works, mode, bevelShadow, light,
           -webkit-overflow-scrolling: touch;
           overscroll-behavior-x: contain;
         }
+        /* Force a visible, themed scrollbar — auto-hiding scrollbars on
+         * Windows + Mac were hiding the scroll affordance entirely. */
+        .w-proc::-webkit-scrollbar { height: 8px; }
+        .w-proc::-webkit-scrollbar-track { background: transparent; }
+        .w-proc::-webkit-scrollbar-thumb {
+          background: ${siteTheme.chromeBorder};
+          border-radius: 4px;
+        }
+        .w-proc::-webkit-scrollbar-thumb:hover { background: ${siteTheme.bodyMutedText}; }
+        .w-proc { scrollbar-color: ${siteTheme.chromeBorder} transparent; scrollbar-width: thin; }
         .w-proc-track {
           display: flex; align-items: center;
           height: 100%;
@@ -132,12 +167,33 @@ export default function WorksProcessionLayout({ works, mode, bevelShadow, light,
           background: transparent; border: none; padding: 0; cursor: zoom-in;
           display: flex; flex-direction: column; align-items: center; gap: 10px;
         }
-        /* Raw image rendering — no introduced bevel or drop-shadow. The mount
-         * is just a hugging wrapper so the bounding-box matches the image pixel
-         * rect exactly, no letterbox. */
+        /* Reserve a constant-height caption block under every image so tiles
+         * without a year (or untitled) keep the same total height as tiles
+         * that have both. Otherwise align-items: center on the track shifts
+         * the image vertical position based on caption count. */
+        .w-proc-caps {
+          display: flex; flex-direction: column; align-items: center;
+          gap: 4px;
+          height: 36px;
+        }
+        /* Mount hugs the image pixel rect exactly (no letterbox). Cast
+         * shadow goes on the mount as a filter (follows the rendered img
+         * silhouette). Bevel is an inset box-shadow drawn ON TOP of the
+         * image via a ::after pseudo — inset shadows on a span containing
+         * <img> would hide behind the bitmap. */
         .w-proc-mount {
           display: inline-block; line-height: 0;
+          position: relative;
+          filter: ${castShadowCss};
         }
+        ${bevelShadow ? `
+        .w-proc-mount::after {
+          content: '';
+          position: absolute; inset: 0;
+          pointer-events: none;
+          box-shadow: ${bevelShadow};
+        }
+        ` : ''}
         .w-proc-img {
           height: 62vh; max-height: 720px;
           width: auto; display: block; object-fit: contain;
@@ -163,15 +219,17 @@ export default function WorksProcessionLayout({ works, mode, bevelShadow, light,
         }
         .w-proc-nav {
           position: fixed; top: 50%; transform: translateY(-50%);
-          width: 44px; height: 44px; border-radius: 50%;
-          background: transparent;
-          border: 1px solid ${siteTheme.chromeBorder};
+          width: 48px; height: 48px; border-radius: 50%;
+          background: ${siteTheme.backgroundCss};
+          border: 1.5px solid ${siteTheme.bodyMutedText};
           color: ${siteTheme.bodyText};
-          font-size: 18px; cursor: pointer; z-index: 250;
+          font-size: 20px; cursor: pointer; z-index: 250;
           display: flex; align-items: center; justify-content: center;
+          box-shadow: 0 2px 12px rgba(0,0,0,0.15);
           transition: background 0.15s, border-color 0.15s, transform 0.15s;
         }
-        .w-proc-nav:hover { background: rgba(0,0,0,0.04); border-color: ${siteTheme.bodyText}; transform: translateY(-50%) scale(1.04); }
+        .w-proc-nav:hover { border-color: ${siteTheme.bodyText}; transform: translateY(-50%) scale(1.06); }
+        .w-proc-nav:focus-visible { outline: 2px solid ${siteTheme.bodyText}; outline-offset: 3px; }
         .w-proc-nav.left  { left: clamp(12px, 2vw, 24px); }
         .w-proc-nav.right { right: clamp(12px, 2vw, 24px); }
         .w-proc-lb {
@@ -204,8 +262,12 @@ export default function WorksProcessionLayout({ works, mode, bevelShadow, light,
                     decoding="async"
                   />
                 </span>
-                <div className="w-proc-cap">{w.Titre ?? t('pub_untitled')}</div>
-                {w.Annee && <div className="w-proc-cap-sub">{yearOf(w.Annee)}</div>}
+                <div className="w-proc-caps">
+                  <div className="w-proc-cap">{w.Titre ?? t('pub_untitled')}</div>
+                  <div className="w-proc-cap-sub" aria-hidden={!w.Annee}>
+                    {w.Annee ? yearOf(w.Annee) : ' '}
+                  </div>
+                </div>
               </button>
             ))}
             {(mode.outro_fr || mode.outro_en) && (

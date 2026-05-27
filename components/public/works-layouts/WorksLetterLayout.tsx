@@ -27,6 +27,13 @@ export default function WorksLetterLayout({ works, mode, bevelShadow, light, sit
   const [page, setPage] = useState(0)
   const max = Math.max(0, visible.length - 1)
   const intensity = light.intensity
+  const castShadowOn = mode.cast_shadow_enabled !== false
+  const castDistance = mode.cast_shadow_distance_px ?? 15
+  const castBlur = mode.cast_shadow_blur_px ?? 22
+  const castShadowCss = castShadowOn
+    ? `drop-shadow(0 ${castDistance}px ${castBlur}px rgba(15,15,20,${(0.34 * intensity).toFixed(3)})) `
+      + `drop-shadow(0 ${Math.round(castDistance / 3.75)}px ${Math.round(castBlur / 3.14)}px rgba(15,15,20,${(0.22 * intensity).toFixed(3)}))`
+    : 'none'
 
   const go = useCallback((delta: number) => {
     setPage(p => Math.max(0, Math.min(p + delta, max)))
@@ -74,7 +81,17 @@ export default function WorksLetterLayout({ works, mode, bevelShadow, light, sit
         .w-letter-mount {
           display: inline-block; line-height: 0;
           max-width: 100%; max-height: 64vh;
+          position: relative;
+          filter: ${castShadowCss};
         }
+        ${bevelShadow ? `
+        .w-letter-mount::after {
+          content: '';
+          position: absolute; inset: 0;
+          pointer-events: none;
+          box-shadow: ${bevelShadow};
+        }
+        ` : ''}
         .w-letter-img {
           max-width: 100%; max-height: 64vh;
           display: block; object-fit: contain;
