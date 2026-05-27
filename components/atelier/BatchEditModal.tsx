@@ -7,6 +7,7 @@ import { useState, useTransition } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { PemModalOverlay } from '@/components/shared/PemModalOverlay'
 import { batchEdit, createTheme, type BatchChanges } from '@/app/atelier/selection/actions'
+import { reloadAtelierAfterBatchSuccess } from '@/lib/atelier/reload-after-batch'
 
 type ContactAddress = { id?: number; contact_id: number; label: string; adresse: string | null; ville: string | null; pays: string | null }
 
@@ -182,7 +183,7 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, a
         const r = await batchEdit(ids, changes)
         if ('error' in r) { setError(r.error); return }
         onDone(r.updated)
-        window.location.href = window.location.pathname + '?batch=success'
+        reloadAtelierAfterBatchSuccess()
       } catch (e) {
         setError(String(e))
       }

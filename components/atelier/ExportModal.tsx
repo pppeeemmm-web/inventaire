@@ -18,6 +18,7 @@ import {
   type ExportFields,
 } from '@/app/atelier/selection/actions'
 import { stringifyError } from '@/lib/error'
+import { reloadAtelierAfterBatchSuccess } from '@/lib/atelier/reload-after-batch'
 import type { Oeuvre } from '@/lib/types/database'
 
 // ── Theme persistence ─────────────────────────────────────────────────────
@@ -289,21 +290,30 @@ export function ExportModal({
         runDownload(r)
 
         let persistOk = true
+        let junctionPersisted = false
         if (persistMode === 'theme' && selectedCatalogThemeId !== '') {
           const br = await batchEdit(ids, { addThemeIds: [selectedCatalogThemeId as number] })
           if ('error' in br) {
             setPersistError(`${t('exportPersistError')} ${br.error}`)
             persistOk = false
+          } else {
+            junctionPersisted = true
           }
         } else if (persistMode === 'group' && selectedGroupId) {
           const br = await batchEdit(ids, { addGroupIds: [selectedGroupId] })
           if ('error' in br) {
             setPersistError(`${t('exportPersistError')} ${br.error}`)
             persistOk = false
+          } else {
+            junctionPersisted = true
           }
         }
 
         setShowSaveSelection(false)
+        if (junctionPersisted) {
+          reloadAtelierAfterBatchSuccess()
+          return
+        }
         if (persistOk) onClose()
       } catch (e) {
         setProgress('')

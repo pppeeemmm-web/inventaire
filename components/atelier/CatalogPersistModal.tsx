@@ -3,8 +3,8 @@
 // Attach selection to catalog theme or working group (no export file — dock “Theme · group”).
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
+import { reloadAtelierAfterBatchSuccess } from '@/lib/atelier/reload-after-batch'
 import { PemModalOverlay } from '@/components/shared/PemModalOverlay'
 import {
   batchEdit,
@@ -28,7 +28,6 @@ export function CatalogPersistModal({
   catalogGroups: initialCatalogGroups,
   onClose,
 }: Props) {
-  const router = useRouter()
   const { t } = useI18n()
   const [persistMode, setPersistMode] = useState<PersistMode>('theme')
   const [localCatalogThemes, setLocalCatalogThemes] = useState(initialCatalogThemes)
@@ -103,19 +102,13 @@ export function CatalogPersistModal({
       if (persistMode === 'theme' && selectedCatalogThemeId !== '') {
         const br = await batchEdit(ids, { addThemeIds: [selectedCatalogThemeId as number] })
         if ('error' in br) setError(br.error)
-        else {
-          router.refresh()
-          onClose()
-        }
+        else reloadAtelierAfterBatchSuccess()
         return
       }
       if (persistMode === 'group' && selectedGroupId) {
         const br = await batchEdit(ids, { addGroupIds: [selectedGroupId] })
         if ('error' in br) setError(br.error)
-        else {
-          router.refresh()
-          onClose()
-        }
+        else reloadAtelierAfterBatchSuccess()
       }
     } catch (e) {
       setError(stringifyError(e))
