@@ -129,6 +129,10 @@ export const atelierMessages = defineMessages({
     fr: 'Survoler un thème ou un groupe pour prévisualiser',
     en: 'Hover a theme or group to preview',
   },
+  themes_mosaic_work_context_hint: {
+    fr: 'Clic droit : retirer cette œuvre du thème ou du groupe survolé',
+    en: 'Right-click: remove this work from the hovered theme or group',
+  },
   themes_row_context_menu_title: {
     fr: 'Clic droit : renommer · Ctrl+clic droit : supprimer',
     en: 'Right-click: rename · Ctrl+right-click: delete',
