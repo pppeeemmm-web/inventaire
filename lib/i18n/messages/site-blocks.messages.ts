@@ -443,6 +443,10 @@ export const siteBlocksMessages = defineMessages({
     fr: '0° = lumière venant du haut, 90° = droite, 180° = bas, 270° = gauche. 315° (haut-gauche) est le réglage classique d’atelier.',
     en: '0° = light from the top, 90° = right, 180° = bottom, 270° = left. 315° (top-left) is the classic studio setup.',
   },
+  site_works_mode_light_temp_label: {
+    fr: 'Température',
+    en: 'Temperature',
+  },
   site_works_mode_light_intensity_label: {
     fr: 'Intensité de la lumière',
     en: 'Light intensity',

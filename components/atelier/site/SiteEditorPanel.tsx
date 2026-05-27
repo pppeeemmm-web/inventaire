@@ -752,7 +752,7 @@ export function SiteEditorPanel({
                   </div>
                   <div style={{ opacity: mode.light_circadian ? 0.4 : 1, pointerEvents: mode.light_circadian ? 'none' : 'auto' }}>
                     <div style={sliderRow}>
-                      <span style={sliderLabel}>Température</span>
+                      <span style={sliderLabel}>{t('site_works_mode_light_temp_label')}</span>
                       <input type="range" min={WORKS_LIGHT_TEMP_MIN} max={WORKS_LIGHT_TEMP_MAX} step={100}
                         value={mode.light_temp_k}
                         onChange={e => updateMode(activeMode, { light_temp_k: Number(e.target.value) })} />
