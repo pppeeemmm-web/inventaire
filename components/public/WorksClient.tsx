@@ -32,6 +32,10 @@ import {
   resolveCircadianValues,
   resolveWorksLight,
 } from '@/lib/works-mode-light'
+import {
+  parseDimensionCm,
+  physicalArtDisplaySize,
+} from '@/lib/physical-art-display-size'
 
 interface Props {
   works: Work[]
@@ -81,54 +85,6 @@ function fitArtDisplaySize(
   const { cardW, cardH } = worksCardViewport(isMobile)
   const scale = Math.min(cardW / naturalW, cardH / naturalH)
   return { w: Math.round(naturalW * scale), h: Math.round(naturalH * scale), scale }
-}
-
-/** Physical cm → pixel size.
- *
- *  Linear cm→px gives small works a tiny rendered footprint — barely viewable
- *  on mobile. To keep relative ordering ("this work is bigger than that one")
- *  while making small works enjoyable, we use **power-law area compression**:
- *  AREA scales as (cm_area / ref_area)^EXP, with EXP < 1 squeezing the dynamic
- *  range. A minimum-area floor on mobile guarantees small works stay legible.
- */
-const CANVAS_REF_CM_DESKTOP = 70           // bumped up so everything gets bigger
-const CANVAS_REF_CM_MOBILE = 110
-const SIZE_COMPRESSION_DESKTOP = 0.70      // 1.0 = linear (original); <1 compresses
-const SIZE_COMPRESSION_MOBILE = 0.55       // stronger compression on phone
-const MIN_AREA_FRACTION_MOBILE = 0.22      // smallest work ≥ 22% of card area on mobile
-const MIN_AREA_FRACTION_DESKTOP = 0.08     // smallest work ≥ 8% of card area on desktop
-
-function physicalArtDisplaySize(
-  hauteurCm: number,
-  largeurCm: number,
-  isMobile: boolean,
-  naturalW?: number,
-  naturalH?: number,
-): { w: number; h: number } {
-  const { cardW, cardH } = worksCardViewport(isMobile)
-  const refCm = isMobile ? CANVAS_REF_CM_MOBILE : CANVAS_REF_CM_DESKTOP
-  const compressionExp = isMobile ? SIZE_COMPRESSION_MOBILE : SIZE_COMPRESSION_DESKTOP
-  const minFraction = isMobile ? MIN_AREA_FRACTION_MOBILE : MIN_AREA_FRACTION_DESKTOP
-
-  const pxPerCm = cardH / refCm
-  const linearW = largeurCm * pxPerCm
-  const linearH = hauteurCm * pxPerCm
-  const linearArea = linearW * linearH
-  const refAreaPx = (refCm * pxPerCm) * (refCm * pxPerCm)
-  // Compressed target area — preserves ordering but flattens the range.
-  const unit = linearArea / refAreaPx
-  let targetArea = refAreaPx * Math.pow(Math.max(unit, 1e-6), compressionExp)
-  const minArea = cardW * cardH * minFraction
-  if (targetArea < minArea) targetArea = minArea
-
-  const aspect = naturalW && naturalH && naturalW > 0 && naturalH > 0
-    ? naturalW / naturalH
-    : largeurCm / hauteurCm
-
-  let h = Math.sqrt(targetArea / aspect)
-  let w = h * aspect
-  const capScale = Math.min(1, cardW / w, cardH / h)
-  return { w: Math.round(w * capScale), h: Math.round(h * capScale) }
 }
 
 // Grain SVG data URI — shared between CSS and 3D wall plane
@@ -257,8 +213,8 @@ export default function WorksClient({
   // client render both produce null (avoids hydration mismatch from window dimensions).
   const centerPhysMount = useMemo(() => {
     if (!mounted) return null
-    const hauteur = activeWork?.Hauteur ? Number(activeWork.Hauteur) : null
-    const largeur = activeWork?.Largeur ? Number(activeWork.Largeur) : null
+    const hauteur = parseDimensionCm(activeWork?.Hauteur)
+    const largeur = parseDimensionCm(activeWork?.Largeur)
     if (hauteur && largeur) {
       return physicalArtDisplaySize(
         hauteur, largeur, isMobile,
@@ -1264,8 +1220,8 @@ export default function WorksClient({
                             />
                           </div>
                         ) : (() => {
-                          const hauteur = mounted && w.Hauteur ? Number(w.Hauteur) : null
-                          const largeur = mounted && w.Largeur ? Number(w.Largeur) : null
+                          const hauteur = mounted ? parseDimensionCm(w.Hauteur) : null
+                          const largeur = mounted ? parseDimensionCm(w.Largeur) : null
                           const nat = naturalSizes.get(w.OeuvreID)
                           if (hauteur && largeur) {
                             const phys = physicalArtDisplaySize(hauteur, largeur, isMobile, nat?.w, nat?.h)

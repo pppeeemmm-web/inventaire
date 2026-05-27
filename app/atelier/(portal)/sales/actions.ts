@@ -289,6 +289,7 @@ export async function createSaleOrder(formData: FormData): Promise<OrderResult> 
     await fromDocument(supabase).insert({
       name:         `Commercial Bond ${order.order_ref}`,
       kind:         'facture',
+      folder:       'Invoices',
       notes:        `Generated for order ${order.order_ref}`,
       doc_date:     new Date().toISOString().slice(0, 10),
       oeuvre_id:    oeuvre_ids[0],
@@ -329,7 +330,18 @@ export async function addPayment(order_id: string, amount: number, method: strin
     newValue: amount,
     metadata: { method, notes }
   })
-  
+
+  const { data: order } = await fromSaleOrder(supabase).select('pdf_path').eq('id', order_id).single()
+  if (order?.pdf_path) {
+    const regen = await regenerateOrderPdf(order_id)
+    if ('error' in regen) {
+      await logError('Sale order PDF regeneration failed after payment', regen.error, {
+        source: 'sales.addPayment',
+        metadata: { orderId: order_id },
+      })
+    }
+  }
+
   return { ok: true }
 }
 
@@ -457,6 +469,21 @@ export async function updateOrderStatut(id: string, statut: string, toggleField?
     newValue: statut,
     metadata: { toggleField }
   })
+
+  const paymentDocChanged =
+    Boolean(b.pdf_path) &&
+    (statut !== b.statut ||
+      toggleField === 'deposit_paid' ||
+      toggleField === 'balance_paid')
+  if (paymentDocChanged) {
+    const regen = await regenerateOrderPdf(id)
+    if ('error' in regen) {
+      await logError('Sale order PDF regeneration failed after status change', regen.error, {
+        source: 'sales.updateOrderStatut',
+        metadata: { orderId: id, statut, toggleField },
+      })
+    }
+  }
 
   return { ok: true }
 }
@@ -725,10 +752,42 @@ export async function buildOrderPdf(order: SaleOrderRow, supabase: NonNullable<A
   const buyerName = contactDisplayName(buyer as ContactBriefRow | null)
   const buyerLocation = contactLocation(buyer as ContactBriefRow | null)
 
-  const PDFDocument = (await import('pdfkit')).default
+  const { data: paymentRows } = await fromPayments(supabase)
+    .select('amount, payment_date, method')
+    .eq('order_id', order.id)
+    .order('payment_date', { ascending: true })
+
+  const totalPaidFromGrains = (paymentRows ?? []).reduce((sum, p) => sum + Number(p.amount), 0)
+  const prixFinal = order.prix_final ?? 0
+  const plannedDeposit = order.deposit_pct
+    ? Math.round(prixFinal * (order.deposit_pct / 100))
+    : 0
+  const isFullyPaid =
+    order.statut === 'completed' ||
+    order.balance_paid ||
+    (prixFinal > 0 && totalPaidFromGrains >= prixFinal)
+  const depositReceived =
+    order.deposit_paid ||
+    order.statut === 'deposit_paid' ||
+    totalPaidFromGrains > 0
+  const receivedAmount =
+    totalPaidFromGrains > 0
+      ? totalPaidFromGrains
+      : depositReceived && plannedDeposit > 0
+        ? plannedDeposit
+        : 0
+  const balanceRemaining = isFullyPaid ? 0 : Math.max(0, prixFinal - receivedAmount)
+  const isDepositOnly = depositReceived && !isFullyPaid && balanceRemaining > 0
+  const lastPaymentDate = paymentRows?.length
+    ? paymentRows[paymentRows.length - 1]?.payment_date
+    : null
+
+  const pdfkitMod = await import('pdfkit')
+  const PDFDocument = pdfkitMod.default ?? pdfkitMod
   const chunks: Buffer[] = []
   const workImages: Record<number, Buffer> = {}
-  const sharp = (await import('sharp')).default
+  const sharpMod = await import('sharp')
+  const sharp = sharpMod.default ?? sharpMod
   
   await Promise.all(workList.map(async (w) => {
     if (w.txtImageNameLink) {
@@ -760,7 +819,6 @@ export async function buildOrderPdf(order: SaleOrderRow, supabase: NonNullable<A
     const W = 595 - 80 
     const ac = '#c8a86e'
     const tx2 = '#888'
-    const isPaid = order.statut === 'completed' || order.balance_paid
     const footerY = 800
 
     // --- Content Generation ---
@@ -853,21 +911,52 @@ export async function buildOrderPdf(order: SaleOrderRow, supabase: NonNullable<A
     }
 
     doc.y = startSummaryY
-    if (!isPaid && (order.payment_method || order.deposit_due || order.balance_due)) {
-      doc.fontSize(8).fillColor(tx2).text('RÈGLEMENT', 40, doc.y)
-      doc.moveDown(0.5)
-      if (order.payment_method) doc.fontSize(9).fillColor('#000').text(`Mode : ${order.payment_method}`, 40)
-      if (order.deposit_pct) {
-        const depAmt = Math.round((order.prix_final || 0) * (order.deposit_pct / 100))
-        doc.fontSize(9).fillColor('#000').text(`Acompte (${order.deposit_pct}%) : € ${formatPrice(depAmt)}`)
-      }
-      if (order.deposit_due) doc.fontSize(8).fillColor(tx2).text(`Échéance acompte : ${new Date(order.deposit_due).toLocaleDateString('fr-FR')}`)
-      if (order.balance_due) doc.fontSize(8).fillColor(tx2).text(`Échéance solde : ${new Date(order.balance_due).toLocaleDateString('fr-FR')}`)
-    } else if (isPaid && order.payment_method) {
+    if (isFullyPaid && order.payment_method) {
       doc.fontSize(8).fillColor(tx2).text('RÈGLEMENT', 40, doc.y)
       doc.moveDown(0.5)
       doc.fontSize(9).fillColor('#000').text(`Réglé par : ${order.payment_method}`, 40)
-      doc.fontSize(8).fillColor(tx2).text(`Le : ${new Date(order.updated_at || order.created_at || '').toLocaleDateString('fr-FR')}`)
+      const paidOn = lastPaymentDate ?? order.updated_at ?? order.created_at
+      if (paidOn) {
+        doc.fontSize(8).fillColor(tx2).text(`Le : ${new Date(paidOn).toLocaleDateString('fr-FR')}`, 40)
+      }
+      if (totalPaidFromGrains > 0) {
+        doc.fontSize(9).fillColor('#000').text(`Montant réglé : € ${formatPrice(totalPaidFromGrains)}`, 40)
+      }
+    } else if (
+      order.payment_method ||
+      order.deposit_due ||
+      order.balance_due ||
+      order.deposit_pct ||
+      depositReceived
+    ) {
+      doc.fontSize(8).fillColor(tx2).text('RÈGLEMENT', 40, doc.y)
+      doc.moveDown(0.5)
+      if (order.payment_method) doc.fontSize(9).fillColor('#000').text(`Mode : ${order.payment_method}`, 40)
+
+      if (isDepositOnly || (depositReceived && receivedAmount > 0)) {
+        const depLabel = order.deposit_pct
+          ? `Acompte reçu (${order.deposit_pct}%) : € ${formatPrice(receivedAmount)}`
+          : `Acompte reçu : € ${formatPrice(receivedAmount)}`
+        doc.fontSize(9).fillColor('#000').text(depLabel, 40)
+        const receivedOn = lastPaymentDate ?? (order.deposit_paid ? order.updated_at : null)
+        if (receivedOn) {
+          doc.fontSize(8).fillColor(tx2).text(`Reçu le : ${new Date(receivedOn).toLocaleDateString('fr-FR')}`, 40)
+        }
+        doc.fontSize(9).fillColor(ac).text(`Solde restant : € ${formatPrice(balanceRemaining)}`, 40)
+        if (order.balance_due) {
+          doc.fontSize(8).fillColor(tx2).text(`Échéance solde : ${new Date(order.balance_due).toLocaleDateString('fr-FR')}`, 40)
+        }
+      } else if (order.deposit_pct && plannedDeposit > 0) {
+        doc.fontSize(9).fillColor('#000').text(`Acompte (${order.deposit_pct}%) : € ${formatPrice(plannedDeposit)}`, 40)
+        if (order.deposit_due) {
+          doc.fontSize(8).fillColor(tx2).text(`Échéance acompte : ${new Date(order.deposit_due).toLocaleDateString('fr-FR')}`, 40)
+        }
+        if (order.balance_due) {
+          doc.fontSize(8).fillColor(tx2).text(`Échéance solde : ${new Date(order.balance_due).toLocaleDateString('fr-FR')}`, 40)
+        }
+      } else if (order.balance_due) {
+        doc.fontSize(8).fillColor(tx2).text(`Échéance solde : ${new Date(order.balance_due).toLocaleDateString('fr-FR')}`, 40)
+      }
     }
 
     const sigY = footerY - 80
@@ -881,11 +970,16 @@ export async function buildOrderPdf(order: SaleOrderRow, supabase: NonNullable<A
     for (let i = 0; i < pages.count; i++) {
       doc.switchToPage(i)
 
-      // PAYÉ / PAID watermark on every page
-      if (isPaid) {
+      // Payment status watermark on every page
+      if (isFullyPaid) {
         doc.save()
         doc.fontSize(80).fillColor('#72b872', 0.12).rotate(-30, { origin: [300, 450] })
         doc.text('PAYÉ / PAID', 150, 400, { characterSpacing: 5 })
+        doc.restore()
+      } else if (isDepositOnly) {
+        doc.save()
+        doc.fontSize(56).fillColor(ac, 0.14).rotate(-30, { origin: [300, 450] })
+        doc.text('ACOMPTE REÇU', 120, 410, { characterSpacing: 4 })
         doc.restore()
       }
 

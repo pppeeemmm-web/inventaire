@@ -41,4 +41,28 @@ export const vaultUiMessages = defineMessages({
     fr: 'Saisir le type...',
     en: 'Enter type...',
   },
+  vault_new_folder_placeholder: {
+    fr: 'Nom du dossier',
+    en: 'Folder name',
+  },
+  vault_new_folder_empty: {
+    fr: 'Indiquez un nom de dossier.',
+    en: 'Enter a folder name.',
+  },
+  vault_delete_folder_title: {
+    fr: 'Supprimer le dossier',
+    en: 'Delete folder',
+  },
+  vault_delete_folder_confirm: {
+    fr: 'Supprimer le dossier « {name} » et tout son contenu ({n} élément(s)) ? Cette action est irréversible.',
+    en: 'Delete folder “{name}” and all its contents ({n} item(s))? This cannot be undone.',
+  },
+  vault_folder_move_self: {
+    fr: 'Impossible de déplacer un dossier dans lui-même.',
+    en: 'Cannot move a folder into itself.',
+  },
+  vault_folder_drag_hint: {
+    fr: 'Glisser pour déplacer',
+    en: 'Drag to move',
+  },
 })

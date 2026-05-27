@@ -24,6 +24,10 @@ import {
   documentId,
   type DocumentRow,
 } from '@/lib/vault/vault-client'
+import {
+  resolveVaultFolder,
+  VAULT_ROUTED_FOLDERS,
+} from '@/lib/vault/folder-routing'
 
 function asVaultDoc(row: DocumentRow): VaultDoc {
   return row as unknown as VaultDoc
@@ -196,6 +200,9 @@ export async function uploadDocument(formData: FormData): Promise<UploadResult> 
   const ids = oeuvre_ids_str.split(',').filter(Boolean).map(Number)
   const primaryOeuvreId = ids.length > 0 ? ids[0] : null
 
+  const routedFolder = folder
+    || resolveVaultFolder({ kind: typeStr, notes, storage_path: finalPath, name: docName })
+
   const { data: doc, error: dbErr } = await fromDocument(supabase)
     .insert({
       name:         docName,
@@ -207,7 +214,7 @@ export async function uploadDocument(formData: FormData): Promise<UploadResult> 
       storage_path: finalPath,
       file_size:    file.size,
       mime_type:    file.type,
-      folder:       folder,
+      folder:       routedFolder,
     })
     .select()
     .single()
@@ -236,6 +243,21 @@ export async function updateDocument(id: number, formData: FormData): Promise<Up
   const ids     = oeuvre_ids_str.split(',').filter(Boolean).map(Number)
   const primary = ids.length > 0 ? ids[0] : null
 
+  const { data: existing } = await fromDocument(supabase)
+    .select('storage_path, notes, name')
+    .eq('id', documentId(id))
+    .single()
+
+  const folderField = formData.get('folder')
+  const explicitFolder = folderField !== null ? (String(folderField).trim() || null) : undefined
+  const autoFolder = resolveVaultFolder({
+    kind: typeStr,
+    notes,
+    storage_path: existing?.storage_path ?? null,
+    name: name ?? existing?.name ?? null,
+  })
+  const folderToSave = explicitFolder !== undefined ? explicitFolder : autoFolder
+
   const { data: doc, error: dbErr } = await fromDocument(supabase)
     .update({
       ...(name != null ? { name } : {}),
@@ -244,7 +266,7 @@ export async function updateDocument(id: number, formData: FormData): Promise<Up
       doc_date:  doc_date || null,
       oeuvre_id: primary,
       oeuvre_ids: ids,
-      ...(folder != null ? { folder } : {}),
+      ...(folderToSave !== undefined ? { folder: folderToSave } : {}),
     })
     .eq('id', documentId(id))
     .select()
@@ -352,6 +374,84 @@ export async function moveDocuments(docIds: number[], targetFolder: string | nul
 
   if (error) return { error: error.message }
   return { ok: true }
+}
+
+/**
+ * Moves a folder (and all nested paths) under a new parent.
+ * targetParentPath null = vault root.
+ */
+export async function moveFolder(sourcePath: string, targetParentPath: string | null): Promise<VaultResult> {
+  const trimmed = sourcePath.trim()
+  if (!trimmed) return { error: 'Chemin invalide' }
+
+  const name = trimmed.split('/').pop()
+  if (!name) return { error: 'Chemin invalide' }
+
+  const parent = targetParentPath?.trim() || null
+  if (parent && (parent === trimmed || parent.startsWith(`${trimmed}/`))) {
+    return { error: 'Impossible de déplacer un dossier dans lui-même' }
+  }
+
+  const newPath = parent ? `${parent}/${name}` : name
+  if (newPath === trimmed) return { ok: true }
+
+  return renameFolder(trimmed, newPath)
+}
+
+/**
+ * Deletes a folder subtree: all documents (and .keep markers) under the path.
+ */
+export async function deleteFolder(folderPath: string): Promise<VaultResult & { deleted?: number }> {
+  const { error: authErr, supabase } = await guardTeam()
+  if (authErr || !supabase) return { error: authErr ?? 'Auth' }
+
+  const trimmed = folderPath.trim()
+  if (!trimmed) return { error: 'Chemin invalide' }
+
+  const { data: docs, error: fetchErr } = await fromDocument(supabase)
+    .select('id, storage_path, name')
+    .or(`folder.eq.${trimmed},folder.ilike.${trimmed}/%`)
+
+  if (fetchErr) return { error: fetchErr.message }
+  if (!docs?.length) return { ok: true, deleted: 0 }
+
+  let deleted = 0
+  for (const d of docs) {
+    const res = await deleteDocument(Number(d.id), d.storage_path)
+    if ('error' in res) return { error: res.error }
+    deleted++
+  }
+  return { ok: true, deleted }
+}
+
+/** Moves routed kinds into COA / Invoices / Consignment and ensures those folders exist. */
+export async function reconcileVaultFolders(): Promise<VaultResult & { updated?: number }> {
+  const { error: authErr, supabase } = await guardTeam()
+  if (authErr || !supabase) return { error: authErr ?? 'Auth' }
+
+  for (const f of VAULT_ROUTED_FOLDERS) {
+    const ensured = await createFolder(f)
+    if ('error' in ensured) return ensured
+  }
+
+  const { data: docs, error: fetchErr } = await fromDocument(supabase)
+    .select('id, kind, folder, notes, storage_path, name')
+
+  if (fetchErr) return { error: fetchErr.message }
+  if (!docs?.length) return { ok: true, updated: 0 }
+
+  let updated = 0
+  for (const d of docs) {
+    const target = resolveVaultFolder(d)
+    if (!target || d.folder === target) continue
+    const { error } = await fromDocument(supabase)
+      .update({ folder: target })
+      .eq('id', d.id)
+    if (error) return { error: error.message }
+    updated++
+  }
+
+  return { ok: true, updated }
 }
 
 export async function renameDocument(id: number, newName: string): Promise<VaultResult> {
@@ -498,6 +598,7 @@ export async function generateCOA(oeuvreId: number): Promise<CoaResult> {
     .insert({
       name:         filename,
       kind:         'coa',
+      folder:       resolveVaultFolder({ kind: 'coa', storage_path: filename, name: filename }),
       oeuvre_id:    oeuvreId,
       storage_path: filename,
       file_size:    pdfBuffer.length,

@@ -65,6 +65,38 @@ export function supplierDisplayName(c: StockContactLike): string {
   return `${c.Prénom ?? ''} ${c.Nom ?? ''}`.trim()
 }
 
+const STOCK_SUPPLIER_ROLES = new Set([
+  'supplier',
+  'fournisseur',
+  'magasin',
+  'fabricant',
+])
+
+/** Contact roles treated as material suppliers in stock UI. */
+export function isStockSupplierRole(role: string | null | undefined): boolean {
+  if (!role?.trim()) return false
+  return STOCK_SUPPLIER_ROLES.has(role.trim().toLowerCase())
+}
+
+/** Suppliers for stock UI: supplier-like roles plus contacts linked on stock items. */
+export function resolveStockSupplierContacts<T extends StockContactLike>(
+  contacts: T[],
+  items: Pick<StockItemRow, 'supplier_id'>[] = [],
+): T[] {
+  const linkedIds = new Set(
+    items.map((it) => it.supplier_id).filter((id): id is number => id != null),
+  )
+  const seen = new Set<number>()
+  const out: T[] = []
+  for (const c of contacts) {
+    if (!isStockSupplierRole(c.Role) && !linkedIds.has(c.ContactID)) continue
+    if (seen.has(c.ContactID)) continue
+    seen.add(c.ContactID)
+    out.push(c)
+  }
+  return out
+}
+
 /** EUR formatting from viewer language (UI copy policy). */
 export function formatStockCurrency(lang: Lang, value: number | null | undefined): string {
   if (value == null || Number.isNaN(Number(value))) return '\u2014'

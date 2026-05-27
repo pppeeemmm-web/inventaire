@@ -9,7 +9,8 @@ import { useI18n } from '@/lib/i18n/context'
 import { createClient } from '@/lib/supabase/client'
 import {
   uploadDocument, updateDocument, deleteDocument, getSignedUrl, generateCOA,
-  renameFolder, moveDocuments, createFolder, renameDocument,
+  renameFolder, moveDocuments, moveFolder, deleteFolder, createFolder, renameDocument,
+  reconcileVaultFolders,
   type VaultDoc,
 } from '@/app/atelier/(portal)/vault/actions'
 import { stringifyError } from '@/lib/error'
@@ -56,9 +57,14 @@ export function Vault({ oeuvres, tM }: Props) {
   const [view,        setView]        = useState<'list' | 'grid'>('list')
   const [currentPath, setCurrentPath] = useState<string[]>([]) // Navigation path: ['Parent', 'Child']
   const [draggedDoc,  setDraggedDoc]  = useState<VaultDoc | null>(null)
+  const [draggedFolderPath, setDraggedFolderPath] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<number[]>([]) // Bulk selection
-  const [renamingFolder, setRenamingFolder] = useState<string | null>(null)
-  const [newFolderName, setNewFolderName] = useState<string | null>(null)
+  const [showNewFolder, setShowNewFolder] = useState(false)
+  const [deleteFolderTarget, setDeleteFolderTarget] = useState<{
+    path: string
+    label: string
+    count: number
+  } | null>(null)
 
   const kindColor = (k: string) => {
     switch (k) {
@@ -81,7 +87,64 @@ export function Vault({ oeuvres, tM }: Props) {
     setLoading(false)
   }, [])
 
-  useEffect(() => { fetchDocs() }, [fetchDocs])
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const res = await reconcileVaultFolders()
+      if ('error' in res && !cancelled) {
+        console.warn('[vault] reconcile folders:', res.error)
+      }
+      if (!cancelled) await fetchDocs()
+    })()
+    return () => { cancelled = true }
+  }, [fetchDocs])
+
+  const handleMoveFolder = useCallback((sourcePath: string, targetParentPath: string | null) => {
+    startDel(async () => {
+      const res = await moveFolder(sourcePath, targetParentPath)
+      if ('ok' in res) {
+        await fetchDocs()
+        const name = sourcePath.split('/').pop()!
+        const newPath = targetParentPath ? `${targetParentPath}/${name}` : name
+        if (currentPath.join('/').startsWith(sourcePath)) {
+          setCurrentPath(newPath.split('/'))
+        }
+      } else {
+        alert(`${t('error_prefix')} ${stringifyError(res.error)}`)
+      }
+    })
+  }, [currentPath, fetchDocs, t])
+
+  const countFolderSubtree = useCallback((folderPath: string) => {
+    return docs.filter(d => {
+      const f = d.folder ?? ''
+      return f === folderPath || f.startsWith(`${folderPath}/`)
+    }).length
+  }, [docs])
+
+  const requestDeleteFolder = useCallback((folderPath: string) => {
+    const label = folderPath.split('/').pop() ?? folderPath
+    setDeleteFolderTarget({
+      path: folderPath,
+      label,
+      count: countFolderSubtree(folderPath),
+    })
+  }, [countFolderSubtree])
+
+  const confirmDeleteFolder = useCallback(() => {
+    if (!deleteFolderTarget) return
+    const folderPath = deleteFolderTarget.path
+    startDel(async () => {
+      const res = await deleteFolder(folderPath)
+      if ('ok' in res) {
+        if (currentPath.join('/').startsWith(folderPath)) setCurrentPath([])
+        setDeleteFolderTarget(null)
+        await fetchDocs()
+      } else {
+        alert(`${t('error_prefix')} ${stringifyError(res.error)}`)
+      }
+    })
+  }, [currentPath, deleteFolderTarget, fetchDocs, t])
 
   const currentFolderStr = currentPath.length > 0 ? currentPath.join('/') : null
 
@@ -266,12 +329,18 @@ export function Vault({ oeuvres, tM }: Props) {
           <button
             className={`vault-kind ${currentPath.length === 0 && !kindFilter ? 'active' : ''}`}
             onClick={() => { setCurrentPath([]); setKindFilter(null) }}
-            onDragOver={e => e.preventDefault()}
+            onDragOver={e => { e.preventDefault() }}
             onDrop={async (e) => {
               e.preventDefault()
+              if (draggedFolderPath) {
+                handleMoveFolder(draggedFolderPath, null)
+                setDraggedFolderPath(null)
+                return
+              }
               if (!draggedDoc) return
               const res = await moveDocuments([draggedDoc.id], null)
               if ('ok' in res) setDocs(prev => prev.map(d => d.id === draggedDoc.id ? { ...d, folder: null } : d))
+              setDraggedDoc(null)
             }}
             style={{ 
               width: '100%', 
@@ -292,11 +361,19 @@ export function Vault({ oeuvres, tM }: Props) {
           <FolderTree 
             tree={folderTree} 
             level={1}
-            currentPath={currentPath} 
-            onSelect={(path) => { setCurrentPath(path); setKindFilter(null) }} 
-            onDrop={async (doc, target) => {
+            currentPath={currentPath}
+            draggedDoc={draggedDoc}
+            draggedFolderPath={draggedFolderPath}
+            onSelect={(path) => { setCurrentPath(path); setKindFilter(null) }}
+            onDragFolder={setDraggedFolderPath}
+            onDropDoc={async (doc, target) => {
               const res = await moveDocuments([doc.id], target)
               if ('ok' in res) setDocs(prev => prev.map(d => d.id === doc.id ? { ...d, folder: target } : d))
+              setDraggedDoc(null)
+            }}
+            onDropFolder={(sourcePath, targetParentPath) => {
+              handleMoveFolder(sourcePath, targetParentPath)
+              setDraggedFolderPath(null)
             }}
             onRename={(oldPath, newPath) => {
               startDel(async () => {
@@ -305,6 +382,7 @@ export function Vault({ oeuvres, tM }: Props) {
                 else alert(`${t('error_prefix')} ${stringifyError(res.error)}`)
               })
             }}
+            onDeleteFolder={requestDeleteFolder}
           />
         </div>
 
@@ -333,19 +411,12 @@ export function Vault({ oeuvres, tM }: Props) {
           <button className="btn primary sm" style={{ width: '100%', justifyContent: 'flex-start' }} onClick={() => setShowUpload(true)}>
             + {t('import')}
           </button>
-          <button className="btn ghost sm" style={{ width: '100%', justifyContent: 'flex-start' }} onClick={() => {
-            const name = prompt(t('newFolder') + ' :')
-            if (name) {
-              const fullPath = currentFolderStr ? `${currentFolderStr}/${name}` : name
-              startDel(async () => {
-                const res = await createFolder(fullPath)
-                if ('ok' in res) fetchDocs()
-                else alert(`${t('error_prefix')} ${stringifyError(res.error)}`)
-              })
-              setCurrentPath([...currentPath, name])
-            }
-          }}>
-            📁 Nouveau dossier
+          <button
+            className="btn ghost sm"
+            style={{ width: '100%', justifyContent: 'flex-start' }}
+            onClick={() => setShowNewFolder(true)}
+          >
+            📁 {t('newFolder')}
           </button>
           <button className="btn ghost sm" style={{ width: '100%' }} onClick={() => setShowCoa(true)}>
             ✦ Générer COA
@@ -464,29 +535,54 @@ export function Vault({ oeuvres, tM }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {visibleFolders.map(f => (
+                {visibleFolders.map(f => {
+                  const folderFullPath = currentFolderStr ? `${currentFolderStr}/${f}` : f
+                  return (
                   <tr 
-                    key={`folder-${f}`} 
+                    key={`folder-${f}`}
+                    draggable
+                    onDragStart={() => {
+                      setDraggedFolderPath(folderFullPath)
+                      setDraggedDoc(null)
+                    }}
+                    onDragEnd={() => setDraggedFolderPath(null)}
                     onClick={() => setCurrentPath([...currentPath, f])}
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={async (e) => {
                       e.preventDefault()
+                      if (draggedFolderPath) {
+                        if (draggedFolderPath !== folderFullPath && !folderFullPath.startsWith(`${draggedFolderPath}/`)) {
+                          handleMoveFolder(draggedFolderPath, folderFullPath)
+                        }
+                        setDraggedFolderPath(null)
+                        return
+                      }
                       if (!draggedDoc) return
-                      const target = currentFolderStr ? `${currentFolderStr}/${f}` : f
+                      const target = folderFullPath
                       const res = await moveDocuments([draggedDoc.id], target)
                       if ('ok' in res) {
                         setDocs(prev => prev.map(d => d.id === draggedDoc.id ? { ...d, folder: target } : d))
                       }
                       setDraggedDoc(null)
                     }}
-                    style={{ borderBottom: '1px solid var(--bd)', cursor: 'pointer' }}
+                    style={{
+                      borderBottom: '1px solid var(--bd)',
+                      cursor: 'pointer',
+                      opacity: draggedFolderPath === folderFullPath ? 0.45 : 1,
+                    }}
                   >
                     <td style={{ padding: '10px 16px', color: 'var(--ac)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                         <div>
                           <span style={{ marginRight: 8 }}>📁</span>
                           {f}
                         </div>
+                        <div style={{ display: 'flex', gap: 4 }} onClick={e => e.stopPropagation()}>
+                        <button 
+                          className="btn ghost sm" 
+                          title={t('vault_folder_drag_hint')}
+                          onMouseDown={e => e.stopPropagation()}
+                        >⠿</button>
                         <button 
                           className="btn ghost sm" 
                           onClick={(e) => {
@@ -494,21 +590,31 @@ export function Vault({ oeuvres, tM }: Props) {
                             const newName = prompt('Nouveau nom du dossier :', f)
                             if (newName && newName !== f) {
                               startDel(async () => {
-                                const oldPath = currentFolderStr ? `${currentFolderStr}/${f}` : f
-                                const newPath = currentFolderStr ? `${currentFolderStr}/${newName}` : newName
-                                const res = await renameFolder(oldPath, newPath)
+                                const res = await renameFolder(folderFullPath, currentFolderStr ? `${currentFolderStr}/${newName}` : newName)
                                 if ('ok' in res) fetchDocs()
                                 else alert(`${t('error_prefix')} ${stringifyError(res.error)}`)
                               })
                             }
                           }}
                         >✎</button>
+                        <button
+                          type="button"
+                          className="btn ghost sm"
+                          style={{ color: '#c86464' }}
+                          onMouseDown={e => { e.preventDefault(); e.stopPropagation() }}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            requestDeleteFolder(folderFullPath)
+                          }}
+                        >✕</button>
+                        </div>
                       </div>
                     </td>
                     <td style={{ padding: '10px 16px', color: 'var(--tx3)', fontSize: 12 }}>Dossier</td>
                     <td></td>
                   </tr>
-                ))}
+                  )
+                })}
                 {filtered.map((doc) => {
                   const work = doc.oeuvre_id ? oeuvres.find((o) => o.OeuvreID === doc.oeuvre_id) : null
                   const isActive = selected?.id === doc.id
@@ -517,7 +623,7 @@ export function Vault({ oeuvres, tM }: Props) {
                     <tr
                       key={doc.id}
                       draggable
-                      onDragStart={() => setDraggedDoc(doc)}
+                      onDragStart={() => { setDraggedDoc(doc); setDraggedFolderPath(null) }}
                       onDragEnd={() => setDraggedDoc(null)}
                       onClick={(e) => {
                         if (e.shiftKey) {
@@ -577,20 +683,27 @@ export function Vault({ oeuvres, tM }: Props) {
             <VaultGrid 
               folders={visibleFolders}
               docs={filtered} 
+              currentFolderStr={currentFolderStr}
               selectedId={selected?.id} 
               selectedIds={selectedIds}
+              draggedDoc={draggedDoc}
+              draggedFolderPath={draggedFolderPath}
               onSelect={setSelected} 
               onToggleSelect={(id) => setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
               onEnterFolder={(f) => setCurrentPath([...currentPath, f])}
               onDownload={handleDownload}
               onRename={handleRenameFile}
-              onDrop={(doc, folder) => {
+              onDragFolder={setDraggedFolderPath}
+              onDragDoc={setDraggedDoc}
+              onDropDoc={(doc, folder) => {
                 const target = currentFolderStr ? `${currentFolderStr}/${folder}` : folder
                 startDel(async () => {
                   const res = await moveDocuments([doc.id], target)
                   if ('ok' in res) setDocs(prev => prev.map(d => d.id === doc.id ? { ...d, folder: target } : d))
+                  setDraggedDoc(null)
                 })
               }}
+              onDropFolder={handleMoveFolder}
               onRenameFolder={(oldName, newName) => {
                 startDel(async () => {
                   const oldPath = currentFolderStr ? `${currentFolderStr}/${oldName}` : oldName
@@ -599,6 +712,7 @@ export function Vault({ oeuvres, tM }: Props) {
                   if ('ok' in res) fetchDocs()
                 })
               }}
+              onDeleteFolder={requestDeleteFolder}
             />
           )}
         </div>
@@ -738,6 +852,39 @@ export function Vault({ oeuvres, tM }: Props) {
           onGenerated={(doc) => { setDocs((prev) => [doc, ...prev]); setShowCoa(false); setSelected(doc) }}
         />
       )}
+
+      {deleteFolderTarget && (
+        <DeleteFolderModal
+          label={deleteFolderTarget.label}
+          count={deleteFolderTarget.count}
+          pending={delPending}
+          onClose={() => setDeleteFolderTarget(null)}
+          onConfirm={confirmDeleteFolder}
+        />
+      )}
+
+      {showNewFolder && (
+        <NewFolderModal
+          parentPath={currentFolderStr}
+          pending={delPending}
+          onClose={() => setShowNewFolder(false)}
+          onCreate={(name) => {
+            const trimmed = name.trim()
+            if (!trimmed) return
+            const fullPath = currentFolderStr ? `${currentFolderStr}/${trimmed}` : trimmed
+            startDel(async () => {
+              const res = await createFolder(fullPath)
+              if ('ok' in res) {
+                await fetchDocs()
+                setCurrentPath([...currentPath, trimmed])
+                setShowNewFolder(false)
+              } else {
+                alert(`${t('error_prefix')} ${stringifyError(res.error)}`)
+              }
+            })
+          }}
+        />
+      )}
     </div>
   )
 }
@@ -780,91 +927,149 @@ function DocActions({ doc, onDownload, onRename, onDeleted }: { doc: VaultDoc; o
   )
 }
 
-function FolderTree({ 
-  tree, level, currentPath, onSelect, onDrop, onRename, parentPath = [] 
-}: { 
-  tree: any; level: number; currentPath: string[]; onSelect: (path: string[]) => void; onDrop: (d: VaultDoc, target: string) => void; onRename: (old: string, newP: string) => void; parentPath?: string[] 
+function FolderTree({
+  tree,
+  level,
+  currentPath,
+  draggedDoc,
+  draggedFolderPath,
+  onSelect,
+  onDragFolder,
+  onDropDoc,
+  onDropFolder,
+  onRename,
+  onDeleteFolder,
+  parentPath = [],
+}: {
+  tree: { children: Record<string, { name: string; children: Record<string, unknown> }> }
+  level: number
+  currentPath: string[]
+  draggedDoc: VaultDoc | null
+  draggedFolderPath: string | null
+  onSelect: (path: string[]) => void
+  onDragFolder: (path: string | null) => void
+  onDropDoc: (d: VaultDoc, target: string) => void
+  onDropFolder: (sourcePath: string, targetParentPath: string) => void
+  onRename: (old: string, newP: string) => void
+  onDeleteFolder: (path: string) => void
+  parentPath?: string[]
 }) {
-  const children = Object.values(tree.children).sort((a: any, b: any) => a.name.localeCompare(b.name))
+  const { t } = useI18n()
+  const children = Object.values(tree.children).sort((a, b) => a.name.localeCompare(b.name))
   const [isOver, setIsOver] = useState<string | null>(null)
 
   return (
     <>
-      {children.map((child: any) => {
+      {children.map((child) => {
         const fullPath = [...parentPath, child.name]
         const fullPathStr = fullPath.join('/')
         const isActive = currentPath.join('/') === fullPathStr
         const isExpanded = currentPath.join('/').startsWith(fullPathStr)
+        const isDragging = draggedFolderPath === fullPathStr
 
         return (
-          <div key={child.name}>
+          <div key={child.name} style={{ display: 'flex', alignItems: 'center', gap: 2, marginBottom: 1 }}>
             <button
+              type="button"
+              draggable
               className={`vault-kind ${isActive ? 'active' : ''}`}
               onClick={() => onSelect(fullPath)}
+              onDragStart={(e) => {
+                e.stopPropagation()
+                onDragFolder(fullPathStr)
+              }}
+              onDragEnd={() => onDragFolder(null)}
               onDragOver={e => { e.preventDefault(); setIsOver(fullPathStr) }}
               onDragLeave={() => setIsOver(null)}
               onDrop={(e) => {
                 e.preventDefault()
                 setIsOver(null)
-                // We'll need access to draggedDoc here, or use a window/context global
-                // For simplicity, we assume Vault provides the onDrop handler
-                // and we'll trigger it with the global 'draggedDoc' which we can move to a higher state or context
+                if (draggedFolderPath) {
+                  if (
+                    draggedFolderPath !== fullPathStr
+                    && !fullPathStr.startsWith(`${draggedFolderPath}/`)
+                  ) {
+                    onDropFolder(draggedFolderPath, fullPathStr)
+                  }
+                  onDragFolder(null)
+                  return
+                }
+                if (draggedDoc) {
+                  onDropDoc(draggedDoc, fullPathStr)
+                }
               }}
-              style={{ 
+              style={{
                 paddingLeft: 12 + level * 16,
                 fontSize: 12,
-                opacity: isActive ? 1 : 0.8,
-                width: '100%',
+                opacity: isDragging ? 0.45 : isActive ? 1 : 0.8,
+                flex: 1,
+                minWidth: 0,
                 textAlign: 'left',
                 borderRadius: 4,
-                marginBottom: 1,
                 display: 'flex',
                 alignItems: 'center',
                 gap: 6,
-                background: isOver === fullPathStr ? 'rgba(200, 168, 110, 0.1)' : undefined
+                background: isOver === fullPathStr ? 'rgba(200, 168, 110, 0.1)' : undefined,
+                cursor: 'grab',
               }}
             >
               <span style={{ fontSize: 9, opacity: 0.3, width: 10, textAlign: 'center' }}>
                 {Object.keys(child.children).length > 0 ? (isExpanded ? '▼' : '▶') : '•'}
               </span>
               <span style={{ fontSize: 14 }}>{isExpanded ? '📂' : '📁'}</span>
-              <span style={{ 
-                overflow: 'hidden', 
-                textOverflow: 'ellipsis', 
+              <span style={{
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
-                fontWeight: isActive ? 600 : 400
+                fontWeight: isActive ? 600 : 400,
+                flex: 1,
               }}>{child.name}</span>
-              <span
-                role="button"
-                tabIndex={0}
-                className="btn ghost sm"
-                style={{ marginLeft: 'auto', padding: '0 4px', fontSize: 10, opacity: 0.5, cursor: 'pointer' }}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  const n = prompt('Renommer le dossier :', child.name)
-                  if (n && n !== child.name) {
-                    const oldPath = fullPathStr
-                    const newPath = [...parentPath, n].join('/')
-                    onRename(oldPath, newPath)
-                  }
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.stopPropagation()
-                    const n = prompt('Renommer le dossier :', child.name)
-                    if (n && n !== child.name) onRename(fullPathStr, [...parentPath, n].join('/'))
-                  }
-                }}
-              >✎</span>
             </button>
+            <button
+              type="button"
+              className="btn ghost sm"
+              style={{ padding: '0 4px', fontSize: 10, opacity: 0.5, flexShrink: 0 }}
+              title={t('vault_folder_drag_hint')}
+              draggable
+              onDragStart={(e) => {
+                e.stopPropagation()
+                onDragFolder(fullPathStr)
+              }}
+              onDragEnd={() => onDragFolder(null)}
+            >⠿</button>
+            <button
+              type="button"
+              className="btn ghost sm"
+              style={{ padding: '0 4px', fontSize: 10, opacity: 0.5, flexShrink: 0 }}
+              onClick={(e) => {
+                e.stopPropagation()
+                const n = prompt('Renommer le dossier :', child.name)
+                if (n && n !== child.name) onRename(fullPathStr, [...parentPath, n].join('/'))
+              }}
+            >✎</button>
+            <button
+              type="button"
+              className="btn ghost sm"
+              style={{ padding: '0 4px', fontSize: 10, opacity: 0.5, flexShrink: 0, color: '#c86464' }}
+              onMouseDown={e => { e.preventDefault(); e.stopPropagation() }}
+              onClick={(e) => {
+                e.stopPropagation()
+                onDeleteFolder(fullPathStr)
+              }}
+            >✕</button>
             {isExpanded && Object.keys(child.children).length > 0 && (
-              <FolderTree 
-                tree={child} 
-                level={level + 1} 
-                currentPath={currentPath} 
-                onSelect={onSelect} 
-                onDrop={onDrop}
+              <FolderTree
+                tree={child as { name: string; children: Record<string, { name: string; children: Record<string, unknown> }> } }
+                level={level + 1}
+                currentPath={currentPath}
+                draggedDoc={draggedDoc}
+                draggedFolderPath={draggedFolderPath}
+                onSelect={onSelect}
+                onDragFolder={onDragFolder}
+                onDropDoc={onDropDoc}
+                onDropFolder={onDropFolder}
                 onRename={onRename}
+                onDeleteFolder={onDeleteFolder}
                 parentPath={fullPath}
               />
             )}
@@ -875,13 +1080,45 @@ function FolderTree({
   )
 }
 
-function VaultGrid({ 
-  folders, docs, selectedId, selectedIds, onSelect, onToggleSelect, onEnterFolder, onDownload, onRename, onDrop, onRenameFolder
-}: { 
-  folders: string[]; docs: VaultDoc[]; selectedId?: number; selectedIds: number[]; onSelect: (d: VaultDoc) => void; onToggleSelect: (id: number) => void; onEnterFolder: (f: string) => void; onDownload: (d: VaultDoc) => void; onRename: (d: VaultDoc) => void; onDrop: (d: VaultDoc, f: string) => void; onRenameFolder: (o: string, n: string) => void
+function VaultGrid({
+  folders,
+  docs,
+  currentFolderStr,
+  selectedId,
+  selectedIds,
+  draggedDoc,
+  draggedFolderPath,
+  onSelect,
+  onToggleSelect,
+  onEnterFolder,
+  onDownload,
+  onRename,
+  onDragFolder,
+  onDragDoc,
+  onDropDoc,
+  onDropFolder,
+  onRenameFolder,
+  onDeleteFolder,
+}: {
+  folders: string[]
+  docs: VaultDoc[]
+  currentFolderStr: string | null
+  selectedId?: number
+  selectedIds: number[]
+  draggedDoc: VaultDoc | null
+  draggedFolderPath: string | null
+  onSelect: (d: VaultDoc) => void
+  onToggleSelect: (id: number) => void
+  onEnterFolder: (f: string) => void
+  onDownload: (d: VaultDoc) => void
+  onRename: (d: VaultDoc) => void
+  onDragFolder: (path: string | null) => void
+  onDragDoc: (d: VaultDoc | null) => void
+  onDropDoc: (d: VaultDoc, f: string) => void
+  onDropFolder: (sourcePath: string, targetParentPath: string) => void
+  onRenameFolder: (o: string, n: string) => void
+  onDeleteFolder: (path: string) => void
 }) {
-  const [dragged, setDragged] = useState<VaultDoc | null>(null)
-
   return (
     <div style={{
       display: 'grid',
@@ -889,21 +1126,40 @@ function VaultGrid({
       gap: 20,
       padding: 24,
     }}>
-      {folders.map(f => (
+      {folders.map(f => {
+        const folderFullPath = currentFolderStr ? `${currentFolderStr}/${f}` : f
+        return (
         <div
           key={`folder-${f}`}
+          draggable
+          onDragStart={() => onDragFolder(folderFullPath)}
+          onDragEnd={() => onDragFolder(null)}
           onClick={() => onEnterFolder(f)}
           onDragOver={e => e.preventDefault()}
-          onDrop={() => dragged && onDrop(dragged, f)}
+          onDrop={(e) => {
+            e.preventDefault()
+            if (draggedFolderPath) {
+              if (
+                draggedFolderPath !== folderFullPath
+                && !folderFullPath.startsWith(`${draggedFolderPath}/`)
+              ) {
+                onDropFolder(draggedFolderPath, folderFullPath)
+              }
+              onDragFolder(null)
+              return
+            }
+            if (draggedDoc) onDropDoc(draggedDoc, f)
+          }}
           style={{
             background: 'var(--bg1)',
             border: '1px solid var(--bd)',
             borderRadius: 4,
             overflow: 'hidden',
-            cursor: 'pointer',
+            cursor: 'grab',
             display: 'flex',
             flexDirection: 'column',
             position: 'relative',
+            opacity: draggedFolderPath === folderFullPath ? 0.45 : 1,
           }}
           onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
           onMouseLeave={e => e.currentTarget.style.transform = 'none'}
@@ -924,9 +1180,20 @@ function VaultGrid({
                 if (n && n !== f) onRenameFolder(f, n)
               }}
             >✎</button>
+            <button
+              type="button"
+              className="btn ghost sm"
+              style={{ padding: '2px 4px', fontSize: 10, color: '#c86464' }}
+              onMouseDown={e => { e.preventDefault(); e.stopPropagation() }}
+              onClick={(e) => {
+                e.stopPropagation()
+                onDeleteFolder(folderFullPath)
+              }}
+            >✕</button>
           </div>
         </div>
-      ))}
+        )
+      })}
       {docs.map(doc => {
         const active = selectedId === doc.id
         const checked = selectedIds.includes(doc.id)
@@ -934,8 +1201,8 @@ function VaultGrid({
           <div
             key={doc.id}
             draggable
-            onDragStart={() => setDragged(doc)}
-            onDragEnd={() => setDragged(null)}
+            onDragStart={() => { onDragFolder(null); onDragDoc(doc) }}
+            onDragEnd={() => onDragDoc(null)}
             onClick={(e) => {
               if (e.shiftKey) onToggleSelect(doc.id)
               else onSelect(doc)
@@ -949,7 +1216,7 @@ function VaultGrid({
               display: 'flex',
               flexDirection: 'column',
               transition: 'transform 0.1s',
-              opacity: dragged?.id === doc.id ? 0.4 : 1,
+              opacity: draggedDoc?.id === doc.id ? 0.4 : 1,
               position: 'relative'
             }}
             onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
@@ -1014,6 +1281,121 @@ function VaultGrid({
         )
       })}
     </div>
+  )
+}
+
+// ── Delete folder modal ───────────────────────────────────────────────────
+
+function DeleteFolderModal({
+  label,
+  count,
+  pending,
+  onClose,
+  onConfirm,
+}: {
+  label: string
+  count: number
+  pending: boolean
+  onClose: () => void
+  onConfirm: () => void
+}) {
+  const { t } = useI18n()
+  const body = t('vault_delete_folder_confirm')
+    .replace('{name}', label)
+    .replace('{n}', String(count))
+
+  return (
+    <Overlay onClose={onClose}>
+      <div className="t-eyebrow" style={{ marginBottom: 12 }}>{t('vault_delete_folder_title')}</div>
+      <p className="t-mono-sm" style={{ color: 'var(--tx2)', marginBottom: 24, lineHeight: 1.5 }}>
+        {body}
+      </p>
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+        <button type="button" className="btn ghost sm" onClick={onClose} disabled={pending}>
+          {t('cancel')}
+        </button>
+        <button
+          type="button"
+          className="btn sm"
+          style={{ background: '#442222', color: '#ff8888' }}
+          onClick={onConfirm}
+          disabled={pending}
+        >
+          {pending ? '…' : t('delete')}
+        </button>
+      </div>
+    </Overlay>
+  )
+}
+
+// ── New folder modal ─────────────────────────────────────────────────────
+
+function NewFolderModal({
+  parentPath,
+  pending,
+  onClose,
+  onCreate,
+}: {
+  parentPath: string | null
+  pending: boolean
+  onClose: () => void
+  onCreate: (name: string) => void
+}) {
+  const { t } = useI18n()
+  const [name, setName] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    inputRef.current?.focus()
+  }, [])
+
+  function submit() {
+    const trimmed = name.trim()
+    if (!trimmed) {
+      setError(t('vault_new_folder_empty'))
+      return
+    }
+    setError(null)
+    onCreate(trimmed)
+  }
+
+  return (
+    <Overlay onClose={onClose}>
+      <div className="t-eyebrow" style={{ marginBottom: 12 }}>{t('newFolder')}</div>
+      {parentPath && (
+        <div className="t-mono-sm" style={{ color: 'var(--tx3)', marginBottom: 16 }}>
+          {parentPath}/
+        </div>
+      )}
+      <label className="t-label" htmlFor="vault-new-folder-name" style={{ display: 'block', marginBottom: 6 }}>
+        {t('vault_new_folder_placeholder')}
+      </label>
+      <input
+        id="vault-new-folder-name"
+        ref={inputRef}
+        className="input"
+        value={name}
+        onChange={(e) => { setName(e.target.value); setError(null) }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') { e.preventDefault(); submit() }
+        }}
+        placeholder={t('vault_new_folder_placeholder')}
+        style={{ width: '100%', marginBottom: error ? 8 : 20 }}
+        disabled={pending}
+      />
+      {error && (
+        <div className="t-mono-sm" style={{ color: '#c86464', marginBottom: 16 }}>{error}</div>
+      )}
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+        <button type="button" className="btn ghost sm" onClick={onClose} disabled={pending}>
+          {t('cancel')}
+        </button>
+        <button type="button" className="btn primary sm" onClick={submit} disabled={pending}>
+          {pending ? '…' : t('create')}
+        </button>
+      </div>
+    </Overlay>
   )
 }
 

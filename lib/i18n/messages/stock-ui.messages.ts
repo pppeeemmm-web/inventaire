@@ -10,8 +10,8 @@ export const stockUiMessages = defineMessages({
     en: 'Search suppliers…',
   },
   stock_supplier_empty: {
-    fr: 'Aucun contact avec le rôle fournisseur.',
-    en: 'No contacts with the supplier role.',
+    fr: 'Aucun fournisseur — rôle Fournisseur, Magasin ou Fabricant, ou lien sur un article de stock.',
+    en: 'No suppliers yet — use role Supplier, Magasin, or Fabricant, or link one on a stock item.',
   },
   stock_supplier_no_filtered: {
     fr: 'Aucun fournisseur ne correspond à la recherche.',
@@ -108,5 +108,41 @@ export const stockUiMessages = defineMessages({
   stock_export_all_csv: {
     fr: 'Exporter tout (CSV)',
     en: 'Export all (CSV)',
+  },
+  stock_suppliers_expand: {
+    fr: 'Afficher la section fournisseurs',
+    en: 'Show suppliers section',
+  },
+  stock_suppliers_collapse: {
+    fr: 'Masquer la section fournisseurs',
+    en: 'Hide suppliers section',
+  },
+  stock_filtered_count_fmt: {
+    fr: '{shown} / {total} article(s)',
+    en: '{shown} / {total} item(s)',
+  },
+  stock_filter_supplier_all: {
+    fr: 'Tous les fournisseurs',
+    en: 'All suppliers',
+  },
+  stock_filters_clear: {
+    fr: 'Effacer les filtres',
+    en: 'Clear filters',
+  },
+  stock_supplier_export_downloaded: {
+    fr: 'Liste fournisseurs téléchargée.',
+    en: 'Supplier list downloaded.',
+  },
+  stock_material_export_downloaded: {
+    fr: 'Liste matériaux téléchargée.',
+    en: 'Materials list downloaded.',
+  },
+  stock_supplier_filter_by: {
+    fr: 'Filtrer les matériaux par ce fournisseur',
+    en: 'Filter materials by this supplier',
+  },
+  stock_supplier_filter_chip_fmt: {
+    fr: 'Fournisseur : {name}',
+    en: 'Supplier: {name}',
   },
 })

@@ -731,7 +731,15 @@ function OrderDetailPanel({ order, oeuvres, cM, setInspectedOrder, onClose, onUp
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
       display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200,
     }} onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
-      <div style={{ width: 540, background: 'var(--bg1)', border: '1px solid var(--bd)', padding: 32 }}>
+      <div style={{
+        width: 'min(540px, calc(100vw - 32px))',
+        maxHeight: 'min(90dvh, 100%)',
+        overflowY: 'auto',
+        boxSizing: 'border-box',
+        background: 'var(--bg1)',
+        border: '1px solid var(--bd)',
+        padding: '24px 24px max(24px, env(safe-area-inset-bottom))',
+      }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
           <div>
             <div style={{ fontFamily: 'var(--font-mono)', color: 'var(--ac)', fontSize: 13 }}>{order.order_ref}</div>
@@ -760,7 +768,7 @@ function OrderDetailPanel({ order, oeuvres, cM, setInspectedOrder, onClose, onUp
           
           <div style={{ gridColumn: '1 / -1', height: 1, background: 'var(--bd)', margin: '8px 0' }} />
 
-          {order.notes           ? <><span style={{ color: 'var(--tx3)' }}>Notes</span>      <span style={{ opacity: 0.8 }}>{order.notes}</span></> : null}
+          {order.notes           ? <><span style={{ color: 'var(--tx3)' }}>Notes</span>      <span style={{ opacity: 0.8, wordBreak: 'break-word' }}>{order.notes}</span></> : null}
         </div>
 
         {/* --- Payment History (Grains) --- */}
@@ -781,21 +789,21 @@ function OrderDetailPanel({ order, oeuvres, cM, setInspectedOrder, onClose, onUp
             }
           </div>
 
-          <form onSubmit={handleAddPayment} style={{ display: 'flex', gap: 8, background: 'var(--bg0)', padding: 12, border: '1px dashed var(--bd)' }}>
+          <form onSubmit={handleAddPayment} style={{ display: 'flex', flexWrap: 'wrap', gap: 8, background: 'var(--bg0)', padding: 12, border: '1px dashed var(--bd)' }}>
             <input 
               type="number" 
               placeholder="Montant (€)" 
               value={amt} 
               onChange={e => setAmt(e.target.value)}
-              style={{ ...inputStyle, width: 100 }}
+              style={{ ...inputStyle, flex: '1 1 120px', minWidth: 0 }}
             />
-            <select value={meth} onChange={e => setMeth(e.target.value)} style={{ ...inputStyle, flex: 1 }}>
+            <select value={meth} onChange={e => setMeth(e.target.value)} style={{ ...inputStyle, flex: '1 1 140px', minWidth: 0 }}>
               <option value="Virement">Virement</option>
               <option value="Chèque">Chèque</option>
               <option value="Espèces">Espèces</option>
               <option value="Family">Family / Geste</option>
             </select>
-            <button type="submit" disabled={adding} className="btn primary sm" style={{ padding: '6px 12px' }}>
+            <button type="submit" disabled={adding} className="btn primary sm" style={{ flex: '0 0 auto', minHeight: 44, padding: '6px 12px' }}>
               + Ajouter
             </button>
           </form>
@@ -874,21 +882,31 @@ function OrderDetailPanel({ order, oeuvres, cM, setInspectedOrder, onClose, onUp
           </div>
         )}
 
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <span style={{
-            fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase',
-            color: STATUT_COLORS[order.statut] ?? 'var(--tx3)',
-            border: `1px solid ${STATUT_COLORS[order.statut] ?? 'var(--bd)'}`,
-            padding: '3px 10px',
-          }}>
-            {STATUT_LABELS[order.statut] ?? order.statut}
-          </span>
-          {order.statut !== 'completed' && order.statut !== 'cancelled' && (
-            <button className="btn ghost sm" onClick={advance} style={{ fontSize: 12 }}>Avancer →</button>
-          )}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 12,
+          paddingTop: 12,
+          marginTop: 4,
+          borderTop: '1px solid var(--bd)',
+        }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+            <span style={{
+              fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase',
+              color: STATUT_COLORS[order.statut] ?? 'var(--tx3)',
+              border: `1px solid ${STATUT_COLORS[order.statut] ?? 'var(--bd)'}`,
+              padding: '3px 10px',
+            }}>
+              {STATUT_LABELS[order.statut] ?? order.statut}
+            </span>
+            {order.statut !== 'completed' && order.statut !== 'cancelled' && (
+              <button type="button" className="btn ghost sm" onClick={advance} style={{ fontSize: 12, minHeight: 44 }}>Avancer →</button>
+            )}
+          </div>
           {order.pdf_path && (
-            <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
-              <button 
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
+              <button
+                type="button"
                 onClick={async () => {
                   if (!confirm(t('sales_confirm_delete_order'))) return
                   const res = await deleteSaleOrder(order.id)
@@ -900,11 +918,12 @@ function OrderDetailPanel({ order, oeuvres, cM, setInspectedOrder, onClose, onUp
                   }
                 }}
                 className="btn ghost sm"
-                style={{ fontSize: 11, color: 'var(--rust)', marginRight: 10 }}
+                style={{ fontSize: 11, color: 'var(--rust)', minHeight: 44 }}
               >
                 Supprimer
               </button>
-              <button 
+              <button
+                type="button"
                 onClick={async (e) => {
                   if (!confirm(t('sales_confirm_regenerate_pdf'))) return
                   const btn = (e.currentTarget as HTMLButtonElement)
@@ -915,7 +934,7 @@ function OrderDetailPanel({ order, oeuvres, cM, setInspectedOrder, onClose, onUp
                     const res = await regenerateOrderPdf(order.id)
                     if ('ok' in res && res.ok) {
                       alert(t('sales_pdf_regenerated_hint'))
-                      onUpdated() // refresh list
+                      onUpdated()
                     } else alert(`${t('error_prefix')} ${stringifyError('error' in res ? res.error : res)}`)
                   } catch (err) {
                     alert(`${t('error_prefix')} ${stringifyError(err)}`)
@@ -925,11 +944,12 @@ function OrderDetailPanel({ order, oeuvres, cM, setInspectedOrder, onClose, onUp
                   }
                 }}
                 className="btn ghost sm"
-                style={{ fontSize: 11, color: 'var(--tx3)' }}
+                style={{ fontSize: 11, color: 'var(--tx3)', minHeight: 44 }}
               >
                 ↻ Re-générer
               </button>
-              <button 
+              <button
+                type="button"
                 onClick={async () => {
                   try {
                     const res = await getSignedUrl(order.pdf_path!)
@@ -939,8 +959,8 @@ function OrderDetailPanel({ order, oeuvres, cM, setInspectedOrder, onClose, onUp
                     alert(`${t('error_prefix')} ${stringifyError(err)}`)
                   }
                 }}
-                className="btn ghost sm" 
-                style={{ fontSize: 11, color: 'var(--cyan)' }}
+                className="btn ghost sm"
+                style={{ fontSize: 11, color: 'var(--cyan)', minHeight: 44 }}
               >
                 ↓ Télécharger PDF
               </button>

@@ -170,6 +170,7 @@ export async function createConsignmentOrder(formData: FormData): Promise<Consig
                       ? `Bordereau de Prêt ${order.order_ref}`
                       : `Bordereau de Dépôt ${order.order_ref}`,
       kind:         'contrat',
+      folder:       'Consignment', // vault routed folder (lib/vault/folder-routing.ts)
       notes:        `Generated for ${kind} ${order.order_ref}`,
       doc_date:     new Date().toISOString().slice(0, 10),
       oeuvre_id:    oeuvre_ids[0],

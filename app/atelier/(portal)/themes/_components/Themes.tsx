@@ -3,6 +3,11 @@
 import { useState, useMemo, useEffect, type MouseEvent } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { thumbUrl } from '@/lib/data'
+import {
+  collectionRefCm,
+  mosaicArtScaleFactor,
+  parseDimensionCm,
+} from '@/lib/physical-art-display-size'
 import { useI18n } from '@/lib/i18n/context'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import type { Oeuvre } from '@/lib/types/database'
@@ -329,6 +334,16 @@ export function Themes({
     }
   }
 
+  function onMosaicWorkContextMenu(oeuvreId: number, e: MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (hoverTheme != null) {
+      void unlinkWorkFromTheme(oeuvreId, hoverTheme)
+    } else if (hoverGroup != null) {
+      void unlinkWorkFromGroup(oeuvreId, hoverGroup)
+    }
+  }
+
   // Related IDs for highlighting
   const relatedGroups = hoverTheme ? (themeToGroups[hoverTheme] || []) : []
   const relatedThemes = hoverGroup ? (groupToThemes[hoverGroup] || []) : []
@@ -347,12 +362,27 @@ export function Themes({
           OeuvreID: o.OeuvreID,
           txtImageNameLink: o.txtImageNameLink ?? null,
           isPublic: !!(o as { is_public?: boolean }).is_public,
+          hauteurCm: parseDimensionCm(o.Hauteur),
+          largeurCm: parseDimensionCm(o.Largeur),
         }
       })
-      .filter(Boolean) as { OeuvreID: number; txtImageNameLink: string | null; isPublic: boolean }[]
+      .filter(Boolean) as {
+        OeuvreID: number
+        txtImageNameLink: string | null
+        isPublic: boolean
+        hauteurCm: number | null
+        largeurCm: number | null
+      }[]
   }, [hoverTheme, hoverGroup, localThemePrivateWorks, localGroupPrivateWorks, oeuvreById])
 
   const previewWorks = allWorksInCategory
+
+  const mosaicRefCm = useMemo(
+    () => collectionRefCm(previewWorks),
+    [previewWorks],
+  )
+
+  const mosaicDense = previewWorks.length > 16
 
   const mosaicColCount = useMemo(() => {
     const n = previewWorks.length
@@ -457,9 +487,9 @@ export function Themes({
                       <span style={{ fontSize: 14, fontWeight: isHov ? 600 : 400, color: isHov ? 'var(--tx)' : 'var(--tx2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, paddingRight: 8 }}>{t_.name}</span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
                         <span className="t-mono-sm" style={{ fontSize: 11, opacity: 0.4 }}>{localThemeWorkCount[t_.id] ?? 0}</span>
-                        <div className="item-actions" style={{ display: 'flex', gap: 4, opacity: narrow || isHov ? 1 : 0 }}>
-                          <button type="button" aria-label={t('edit')} onClick={(e) => { e.stopPropagation(); setEditTheme(t_.id); setEditVal(t_.name) }} style={{ minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', color: 'var(--tx3)', cursor: 'pointer', padding: 0 }}>✎</button>
-                          <button type="button" aria-label={t('delete')} onClick={(e) => { e.stopPropagation(); deleteTheme(t_.id) }} style={{ minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', color: 'var(--rust)', cursor: 'pointer', padding: 0 }}>✕</button>
+                        <div className="item-actions" style={{ display: 'flex', gap: 2, opacity: 0 }}>
+                          <button type="button" aria-label={t('edit')} onClick={(e) => { e.stopPropagation(); setEditTheme(t_.id); setEditVal(t_.name) }} className="themes-row-action-btn">✎</button>
+                          <button type="button" aria-label={t('delete')} onClick={(e) => { e.stopPropagation(); deleteTheme(t_.id) }} className="themes-row-action-btn themes-row-action-btn--danger">✕</button>
                         </div>
                       </div>
                     </>
@@ -507,14 +537,22 @@ export function Themes({
           }}>
             {previewWorks.length > 0 ? (
               <div className="mosaic-scroll" style={{ flex: 1, overflowY: 'auto', padding: narrow ? 12 : 24 }}>
-                <div style={{
+                <div
+                  className={mosaicDense ? 'mosaic-grid mosaic-grid--dense' : 'mosaic-grid'}
+                  style={{
                   display: 'grid',
                   gridTemplateColumns: `repeat(${mosaicColCount}, minmax(0, 1fr))`,
                   gap: previewWorks.length <= 4 ? (narrow ? 10 : 20) : previewWorks.length <= 16 ? 12 : 6,
                   width: '100%',
                   alignContent: 'start'
                 }}>
-                  {previewWorks.map((w, idx) => (
+                  {previewWorks.map((w, idx) => {
+                    const artScale = mosaicArtScaleFactor(w.hauteurCm, w.largeurCm, mosaicRefCm)
+                    const artAspect =
+                      w.hauteurCm && w.largeurCm && w.hauteurCm > 0
+                        ? w.largeurCm / w.hauteurCm
+                        : 1
+                    return (
                     <div key={w.OeuvreID} className="mosaic-card" 
                       style={{ 
                         aspectRatio: '1', position: 'relative', cursor: 'pointer',
@@ -524,12 +562,28 @@ export function Themes({
                         borderRadius: 4,
                         overflow: 'hidden'
                       }} 
+                      title={
+                        hoverTheme != null || hoverGroup != null
+                          ? t('themes_mosaic_work_context_hint')
+                          : undefined
+                      }
+                      onContextMenu={(e) => onMosaicWorkContextMenu(w.OeuvreID, e)}
                       onClick={() => {
                         const fullWork = oeuvreById.get(w.OeuvreID)
                         if (fullWork) onOpen(fullWork)
                       }}
                     >
-                      <img src={thumbUrl(w.txtImageNameLink) ?? ''} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <div className="mosaic-art-mount" aria-hidden>
+                        <img
+                          src={thumbUrl(w.txtImageNameLink) ?? ''}
+                          alt=""
+                          className="mosaic-art-img"
+                          style={{
+                            width: `${Math.round(artScale * 100)}%`,
+                            aspectRatio: String(artAspect),
+                          }}
+                        />
+                      </div>
                       {(hoverTheme != null || hoverGroup != null) && (() => {
                         const unlinkAria =
                           hoverTheme != null
@@ -567,7 +621,7 @@ export function Themes({
                         }}
                       />
                     </div>
-                  ))}
+                  )})}
                 </div>
               </div>
             ) : (
@@ -657,9 +711,9 @@ export function Themes({
                         <span style={{ fontSize: 13, fontWeight: isHov ? 600 : 400, color: isHov ? 'var(--tx)' : 'var(--tx2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, paddingRight: 8 }}>{g_.name}</span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
                           <span className="t-mono-sm" style={{ fontSize: 10, opacity: 0.4 }}>{localGroupWorkCount[g_.id] ?? 0}</span>
-                          <div className="item-actions" style={{ display: 'flex', gap: 4, opacity: narrow || isHov ? 1 : 0 }}>
-                            <button type="button" aria-label={t('edit')} onClick={(e) => { e.stopPropagation(); setEditGroup(g_.id); setEditVal(g_.name) }} style={{ minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', color: 'var(--tx3)', cursor: 'pointer', padding: 0 }}>✎</button>
-                            <button type="button" aria-label={t('delete')} onClick={(e) => { e.stopPropagation(); deleteGroup(g_.id) }} style={{ minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', color: 'var(--rust)', cursor: 'pointer', padding: 0 }}>✕</button>
+                          <div className="item-actions" style={{ display: 'flex', gap: 2, opacity: 0 }}>
+                            <button type="button" aria-label={t('edit')} onClick={(e) => { e.stopPropagation(); setEditGroup(g_.id); setEditVal(g_.name) }} className="themes-row-action-btn">✎</button>
+                            <button type="button" aria-label={t('delete')} onClick={(e) => { e.stopPropagation(); deleteGroup(g_.id) }} className="themes-row-action-btn themes-row-action-btn--danger">✕</button>
                           </div>
                         </div>
                       </>
@@ -736,7 +790,43 @@ export function Themes({
 
       <style jsx>{`
         .flash-msg { position: fixed; bottom: max(32px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); max-width: calc(100vw - 24px); box-sizing: border-box; background: var(--ac); color: #000; padding: 12px 20px; font-size: 11px; z-index: 999; font-weight: 700; letter-spacing: 2px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); border-radius: 4px; text-align: center; }
-        .row-item:hover .item-actions { opacity: 1 !important; }
+        .mosaic-art-mount {
+          position: absolute;
+          inset: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          pointer-events: none;
+        }
+        .mosaic-art-img {
+          max-width: 100%;
+          max-height: 100%;
+          height: auto;
+          object-fit: contain;
+          box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
+          pointer-events: none;
+        }
+        .row-item:hover .item-actions,
+        .row-item:focus-within .item-actions { opacity: 1 !important; }
+        .themes-row-action-btn {
+          min-width: 32px;
+          min-height: 32px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: none;
+          border: none;
+          color: var(--tx3);
+          cursor: pointer;
+          padding: 0;
+          font-size: 13px;
+          border-radius: 4px;
+        }
+        .themes-row-action-btn--danger { color: var(--rust); }
+        .themes-row-action-btn:hover { background: var(--bg2); }
+        @media (max-width: 767px) {
+          .themes-row-action-btn { min-width: 44px; min-height: 44px; }
+        }
         .mosaic-unlink-btn {
           position: absolute;
           top: 4px;
@@ -754,6 +844,24 @@ export function Themes({
           cursor: pointer;
           z-index: 3;
           box-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 0.15s ease;
+        }
+        .mosaic-grid--dense .mosaic-unlink-btn {
+          min-width: 28px;
+          min-height: 28px;
+          top: 2px;
+          right: 2px;
+          border-width: 1px;
+          border-radius: 4px;
+        }
+        .mosaic-grid--dense .mosaic-unlink-icon { font-size: 16px; }
+        .mosaic-card:hover .mosaic-unlink-btn,
+        .mosaic-card:focus-within .mosaic-unlink-btn,
+        .mosaic-unlink-btn:focus-visible {
+          opacity: 1;
+          pointer-events: auto;
         }
         .mosaic-unlink-btn:disabled { cursor: wait; opacity: 0.7; }
         .mosaic-unlink-btn:focus-visible {
@@ -803,7 +911,7 @@ export function Themes({
         section::-webkit-scrollbar, aside::-webkit-scrollbar, .mosaic-scroll::-webkit-scrollbar { width: 4px; }
         section::-webkit-scrollbar-thumb, aside::-webkit-scrollbar-thumb, .mosaic-scroll::-webkit-scrollbar-thumb { background: var(--bd); border-radius: 10px; }
         @media (max-width: 767px) {
-          .mosaic-unlink-hint { opacity: 1; }
+          .row-item:focus-within .item-actions { opacity: 1 !important; }
         }
       `}</style>
     </div>

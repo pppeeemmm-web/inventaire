@@ -190,10 +190,14 @@ ${trs}
 }
 
 export function openStockMaterialsPrintWindow(html: string): boolean {
-  const win = window.open('', '_blank')
-  if (!win) return false
-  win.document.write(html)
-  win.document.close()
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const win = window.open(url, '_blank', 'noopener,noreferrer')
+  if (!win) {
+    URL.revokeObjectURL(url)
+    return false
+  }
+  win.addEventListener('load', () => URL.revokeObjectURL(url), { once: true })
   return true
 }
 
