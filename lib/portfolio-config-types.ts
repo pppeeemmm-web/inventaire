@@ -81,7 +81,33 @@ export interface CollectionItem {
   manual_work_order?: number[]
 }
 
-export type WorksLayout = 'carousel' | 'grid'
+/**
+ * /works presentation presets. Carousel & grid are the original two; the rest
+ * are alternative wall/page metaphors. Map / constellation / diptych currently
+ * render an honest "coming soon" placeholder — they need data (geo coords,
+ * theme weights, pair relations) that doesn't exist yet.
+ */
+export type WorksLayout =
+  | 'carousel'
+  | 'grid'
+  | 'procession'
+  | 'salon'
+  | 'vitrine'
+  | 'timeline'
+  | 'letter'
+  | 'map'
+  | 'constellation'
+  | 'diptych'
+
+export const WORKS_LAYOUT_VALUES: WorksLayout[] = [
+  'carousel', 'grid', 'procession', 'salon', 'vitrine', 'timeline', 'letter',
+  'map', 'constellation', 'diptych',
+]
+
+/** Layouts that render a placeholder (data not available yet). */
+export const WORKS_LAYOUT_PLACEHOLDERS: ReadonlySet<WorksLayout> = new Set<WorksLayout>([
+  'map', 'constellation', 'diptych',
+])
 
 export interface WorksMode {
   id:           string
@@ -303,7 +329,7 @@ function migrateModes(raw: any, fallbackCollections: CollectionItem[]): WorksMod
     label_en:    m.label_en || m.label || (i === 0 ? 'Works'  : `Mode ${i + 1}`),
     is_active:   m.is_active ?? true,
     sort_order:  m.sort_order ?? i,
-    layout:      m.layout === 'grid' ? 'grid' : 'carousel',
+    layout:      (WORKS_LAYOUT_VALUES as readonly string[]).includes(m.layout) ? m.layout : 'carousel',
     collections: Array.isArray(m.collections) ? m.collections.map((c: any) => ({
       id:             c.id || Math.random().toString(36).slice(2),
       title_fr:       c.title_fr || c.title || '',

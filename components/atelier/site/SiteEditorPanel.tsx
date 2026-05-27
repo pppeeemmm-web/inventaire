@@ -9,7 +9,9 @@ import type {
   ThemeWork,
   SiteBlockKind,
   SiteBlock,
+  WorksLayout,
 } from '@/lib/portfolio-config-types'
+import { WORKS_LAYOUT_VALUES, WORKS_LAYOUT_PLACEHOLDERS } from '@/lib/portfolio-config-types'
 import {
   pageBackgroundFromLanding,
   type PageBackgroundConfig,
@@ -617,22 +619,32 @@ export function SiteEditorPanel({
             {mode && (
               <div style={{ marginBottom: 20 }}>
                 <div className="t-label" style={{ marginBottom: 8, fontSize: 9 }}>{t('site_works_layout_label').toUpperCase()}</div>
-                <div style={{ display: 'inline-flex', border: '1px solid var(--bd)', borderRadius: 4, overflow: 'hidden' }}>
-                  {(['carousel', 'grid'] as const).map(v => {
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                  {WORKS_LAYOUT_VALUES.map(v => {
                     const active = (mode.layout || 'carousel') === v
+                    const placeholder = WORKS_LAYOUT_PLACEHOLDERS.has(v)
                     return (
                       <button key={v} type="button"
                         className="t-mono-xs"
-                        onClick={() => updateMode(activeMode, { layout: v })}
+                        onClick={() => updateMode(activeMode, { layout: v as WorksLayout })}
+                        title={placeholder ? t('site_works_layout_placeholder_badge') : undefined}
                         style={{
-                          padding: '6px 14px', minHeight: 36,
+                          padding: '6px 12px', minHeight: 32,
                           fontSize: 9, letterSpacing: 1, fontFamily: 'inherit', textTransform: 'uppercase',
-                          border: 'none', cursor: 'pointer',
+                          border: '1px solid ' + (active ? 'var(--ac)' : 'var(--bd)'),
+                          borderRadius: 4, cursor: 'pointer',
                           background: active ? 'var(--ac)' : 'var(--bg1)',
                           color: active ? '#fff' : 'var(--tx2)',
+                          opacity: placeholder ? 0.75 : 1,
                           transition: 'background 0.15s, color 0.15s',
                         }}>
-                        {t(v === 'carousel' ? 'site_works_layout_carousel' : 'site_works_layout_grid')}
+                        {t(`site_works_layout_${v}` as any)}
+                        {placeholder && (
+                          <span style={{ marginLeft: 6, fontSize: 7, opacity: 0.7 }}>
+                            {/* eslint-disable-next-line pem-i18n/no-hardcoded-jsx-text */}
+                            ◌
+                          </span>
+                        )}
                       </button>
                     )
                   })}

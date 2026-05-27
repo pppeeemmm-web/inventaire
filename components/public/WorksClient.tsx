@@ -6,6 +6,12 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { useEscapeClose } from '@/hooks/useEscapeClose'
 import PublicNav from './PublicNav'
 import WorksGrid from './WorksGrid'
+import WorksPlaceholderLayout from './works-layouts/WorksPlaceholderLayout'
+import WorksProcessionLayout from './works-layouts/WorksProcessionLayout'
+import WorksSalonLayout from './works-layouts/WorksSalonLayout'
+import WorksTimelineLayout from './works-layouts/WorksTimelineLayout'
+import WorksLetterLayout from './works-layouts/WorksLetterLayout'
+import { WORKS_LAYOUT_PLACEHOLDERS, type WorksLayout } from '@/lib/portfolio-config-types'
 import { trackView } from '@/lib/track'
 import { getOrCreatePublicVisitorId } from '@/lib/public-visitor-id'
 import { WorksSectionTextCard } from './WorksSectionTextCard'
@@ -630,6 +636,13 @@ export default function WorksClient({
           filter: drop-shadow(0 15px 22px rgba(15,15,20,${(0.34 * light.intensity).toFixed(3)}))
                   drop-shadow(0 4px 7px rgba(15,15,20,${(0.22 * light.intensity).toFixed(3)}));
         }
+        /* Vitrine — thicker frame + heavier plinth cast shadow for a museum-object feel. */
+        .w-vitrine .w-card { --thickness: 80px; }
+        .w-vitrine .w-card.center .w-art-mount {
+          filter: drop-shadow(0 28px 38px rgba(15,15,20,${(0.42 * light.intensity).toFixed(3)}))
+                  drop-shadow(0 8px 12px rgba(15,15,20,${(0.26 * light.intensity).toFixed(3)}));
+        }
+        .w-vitrine .w-track-wrap { perspective: 1800px; perspective-origin: 50% 60%; }
         .w-face.right {
           top: 0; left: calc(100% - var(--thickness));
           width: var(--thickness); height: 100%;
@@ -988,9 +1001,19 @@ export default function WorksClient({
           onChapterChange={setActiveChapterIdx}
           siteTheme={siteTheme}
         />
+      ) : layout === 'procession' ? (
+        <WorksProcessionLayout works={chapterWorks} siteTheme={siteTheme} hiddenNavRoutes={hiddenNavRoutes} navOrder={navOrder} />
+      ) : layout === 'salon' ? (
+        <WorksSalonLayout works={chapterWorks} siteTheme={siteTheme} hiddenNavRoutes={hiddenNavRoutes} navOrder={navOrder} />
+      ) : layout === 'timeline' ? (
+        <WorksTimelineLayout works={chapterWorks} siteTheme={siteTheme} hiddenNavRoutes={hiddenNavRoutes} navOrder={navOrder} />
+      ) : layout === 'letter' ? (
+        <WorksLetterLayout works={chapterWorks} mode={mode} siteTheme={siteTheme} hiddenNavRoutes={hiddenNavRoutes} navOrder={navOrder} />
+      ) : WORKS_LAYOUT_PLACEHOLDERS.has(layout as WorksLayout) ? (
+        <WorksPlaceholderLayout layout={layout as WorksLayout} siteTheme={siteTheme} hiddenNavRoutes={hiddenNavRoutes} navOrder={navOrder} />
       ) : (
       <div
-        className="w-stage pem-grain"
+        className={`w-stage pem-grain${layout === 'vitrine' ? ' w-vitrine' : ''}`}
         onMouseDown={onStageMouseDown}
         onMouseMove={onStageMouseMove}
         onMouseUp={onStageMouseUp}

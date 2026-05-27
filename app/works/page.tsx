@@ -12,7 +12,7 @@ import {
   migrateCollectionShowText,
 } from '@/lib/collection-display'
 import { hiddenNavRoutes, orderedNavRoutes } from '@/lib/site-block-visibility'
-import { migrate, type SiteBlock } from '@/lib/portfolio-config-types'
+import { migrate, WORKS_LAYOUT_VALUES, type SiteBlock, type WorksLayout } from '@/lib/portfolio-config-types'
 import {
   LANDING_HERO_BEVEL_PX_DEFAULT,
   LANDING_HERO_BEVEL_PROFILE_DEFAULT,
@@ -62,7 +62,7 @@ type WorksMode = {
   id: string
   label_fr: string
   label_en: string
-  layout: 'carousel' | 'grid'
+  layout: WorksLayout
   collections: WorksCollection[]
   outro_fr: string
   outro_en: string
@@ -171,7 +171,9 @@ export default async function WorksPage() {
           strOrEmpty(m.label_en) ||
           strOrEmpty(m.label) ||
           (i === 0 ? 'Works' : `Mode ${i + 1}`),
-        layout: m.layout === 'grid' ? 'grid' as const : 'carousel' as const,
+        layout: (WORKS_LAYOUT_VALUES as readonly string[]).includes(strOrEmpty(m.layout))
+          ? (m.layout as WorksLayout)
+          : ('carousel' as const),
         collections: mapCollections(asCollectionRecords(m.collections), catalogueThemes),
         outro_fr: strOrEmpty(m.outro_fr),
         outro_en: strOrEmpty(m.outro_en),

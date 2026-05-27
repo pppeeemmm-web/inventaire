@@ -141,6 +141,42 @@ export const siteBlocksMessages = defineMessages({
     fr: 'Grille',
     en: 'Grid',
   },
+  site_works_layout_procession: {
+    fr: 'Procession',
+    en: 'Procession',
+  },
+  site_works_layout_salon: {
+    fr: 'Accrochage salon',
+    en: 'Salon hang',
+  },
+  site_works_layout_vitrine: {
+    fr: 'Vitrine',
+    en: 'Vitrine',
+  },
+  site_works_layout_timeline: {
+    fr: 'Chronologie',
+    en: 'Timeline',
+  },
+  site_works_layout_letter: {
+    fr: 'Lettre / fanzine',
+    en: 'Letter / zine',
+  },
+  site_works_layout_map: {
+    fr: 'Carte',
+    en: 'Map',
+  },
+  site_works_layout_constellation: {
+    fr: 'Constellation',
+    en: 'Constellation',
+  },
+  site_works_layout_diptych: {
+    fr: 'Diptyque',
+    en: 'Diptych',
+  },
+  site_works_layout_placeholder_badge: {
+    fr: 'Bientôt disponible — données manquantes',
+    en: 'Coming soon — missing data',
+  },
   atelier_pub_landing_behavior_help: {
     fr:
       'Accueil public : l’image héros remplit l’écran (clic → /works si la page /works est visible). Légende sous l’image. Les blocs À propos et Pratique ajoutent des liens autour du cercle. Contact reste sous la légende. Ombre longue du texte et du disque selon l’heure locale (ouest = gauche le matin). Masquer un bloc ◻ retire son lien sans modifier le code.',

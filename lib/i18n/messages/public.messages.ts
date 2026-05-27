@@ -5,6 +5,22 @@ export const publicMessages = defineMessages({
     fr: 'Fermer le zoom',
     en: 'Close zoom',
   },
+  pub_works_placeholder_generic: {
+    fr: 'Cette présentation n’est pas encore disponible.',
+    en: 'This presentation is not available yet.',
+  },
+  pub_works_placeholder_map: {
+    fr: 'La présentation cartographique nécessite des coordonnées géographiques pour chaque œuvre (lieu d’atelier ou d’exposition). Ces données ne sont pas encore renseignées.',
+    en: 'The map presentation needs geographic coordinates for each work (studio or exhibition location). That data is not yet recorded.',
+  },
+  pub_works_placeholder_constellation: {
+    fr: 'La constellation thématique nécessite des poids de thèmes et une logique de curation à mettre en place.',
+    en: 'The thematic constellation needs theme weights and curation logic to be built.',
+  },
+  pub_works_placeholder_diptych: {
+    fr: 'Le diptyque nécessite une relation d’appariement entre œuvres (table dédiée à créer).',
+    en: 'The diptych needs a pairing relation between works (a dedicated table to be created).',
+  },
   pub_works_zoom_hint_enter_desktop: {
     fr: 'Cliquer pour zoomer',
     en: 'Click to zoom',
