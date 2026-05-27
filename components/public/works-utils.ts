@@ -51,6 +51,9 @@ export interface WorksMode {
   light_direction_deg?: number
   light_intensity_pct?: number
   light_circadian?: boolean
+  cast_shadow_enabled?: boolean
+  cast_shadow_distance_px?: number
+  cast_shadow_blur_px?: number
 }
 
 /** Strip RichEditor HTML for plain-text labels (grid intro, carousel chapter line). */

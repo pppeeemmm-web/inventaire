@@ -13,6 +13,8 @@ import {
   LANDING_HERO_BEVEL_PX_DEFAULT,
 } from '@/lib/landing-hero-bevel'
 import {
+  WORKS_CAST_SHADOW_BLUR_DEFAULT,
+  WORKS_CAST_SHADOW_DISTANCE_DEFAULT,
   WORKS_LIGHT_DIRECTION_DEFAULT,
   WORKS_LIGHT_INTENSITY_DEFAULT,
   WORKS_LIGHT_TEMP_DEFAULT,
@@ -334,6 +336,9 @@ export function PortfolioConfigShell({
       light_direction_deg: WORKS_LIGHT_DIRECTION_DEFAULT,
       light_intensity_pct: WORKS_LIGHT_INTENSITY_DEFAULT,
       light_circadian: false,
+      cast_shadow_enabled: true,
+      cast_shadow_distance_px: WORKS_CAST_SHADOW_DISTANCE_DEFAULT,
+      cast_shadow_blur_px: WORKS_CAST_SHADOW_BLUR_DEFAULT,
     }
     setConfig({ ...config, works_modes: [...config.works_modes, newMode] })
     setActiveMode(config.works_modes.length)

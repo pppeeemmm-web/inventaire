@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useI18n } from '@/lib/i18n/context'
-import { imageUrl, thumbUrl, yearOf } from '@/lib/data'
+import { imageUrl, yearOf } from '@/lib/data'
 import type { PublicSiteTheme } from '@/lib/public-site-theme'
 import type { Work, WorksMode } from '@/components/public/works-utils'
 import type { WorksLightResolved } from '@/lib/works-mode-light'
@@ -23,6 +23,7 @@ export default function WorksTimelineLayout({ works, mode, bevelShadow, light, s
   const { t } = useI18n()
   const [lightbox, setLightbox] = useState<Work | null>(null)
   const trackRef = useRef<HTMLDivElement>(null)
+  const wallRef = useRef<HTMLDivElement>(null)
   const intensity = light.intensity
 
   const buckets = useMemo(() => {
@@ -44,6 +45,49 @@ export default function WorksTimelineLayout({ works, mode, bevelShadow, light, s
     el.scrollBy({ left: dir * el.clientWidth * 0.72, behavior: 'smooth' })
   }, [])
 
+  // Vertical wheel → horizontal scroll.
+  useEffect(() => {
+    const el = trackRef.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => {
+      if (lightbox) return
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+        el.scrollLeft += e.deltaY
+        e.preventDefault()
+      }
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [lightbox])
+
+  // Parallax: background wall translates slower than foreground, depth scales
+  // with track length so long timelines feel proportionally deeper.
+  useEffect(() => {
+    const el = trackRef.current
+    const wall = wallRef.current
+    if (!el || !wall) return
+    let raf = 0
+    const computeDepth = () => {
+      const ratio = el.scrollWidth / Math.max(1, el.clientWidth)
+      return Math.max(0.25, Math.min(0.55, 0.15 + 0.05 * ratio))
+    }
+    let depth = computeDepth()
+    const update = () => {
+      wall.style.transform = `translate3d(${-el.scrollLeft * depth}px, 0, 0)`
+      raf = 0
+    }
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(update) }
+    const onResize = () => { depth = computeDepth(); update() }
+    el.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onResize)
+    update()
+    return () => {
+      el.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onResize)
+      if (raf) cancelAnimationFrame(raf)
+    }
+  }, [buckets.length])
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (lightbox) return
@@ -57,16 +101,24 @@ export default function WorksTimelineLayout({ works, mode, bevelShadow, light, s
   return (
     <>
       <style>{`
+        .w-tl-shell { position: fixed; inset: 0; overflow: hidden; background: ${siteTheme.backgroundCss}; }
+        .w-tl-bgwall {
+          position: absolute; inset: 0; z-index: 0;
+          background:
+            radial-gradient(ellipse at 30% 40%, rgba(255,255,255,0.05), transparent 60%),
+            ${siteTheme.backgroundCss};
+          will-change: transform;
+          pointer-events: none;
+        }
+        .w-tl-bgwall::after {
+          content: ''; position: absolute; inset: 0;
+          background: ${light.tintRgba}; pointer-events: none;
+        }
         .w-tl-wrap {
-          position: fixed; inset: 0;
-          background: ${siteTheme.backgroundCss};
+          position: absolute; inset: 0; z-index: 1;
           overflow-x: auto; overflow-y: hidden;
           -webkit-overflow-scrolling: touch;
           padding-top: clamp(70px, 9vh, 100px);
-        }
-        .w-tl-wrap::after {
-          content: ''; position: absolute; inset: 0; z-index: 0;
-          background: ${light.tintRgba}; pointer-events: none;
         }
         .w-tl-track {
           display: flex; align-items: flex-end;
@@ -95,22 +147,20 @@ export default function WorksTimelineLayout({ works, mode, bevelShadow, light, s
           display: flex; flex-direction: column; align-items: center; gap: 6px;
         }
         .w-tl-mount {
-          position: relative; overflow: hidden; line-height: 0;
-          filter: drop-shadow(0 8px 14px rgba(15,15,20,${(0.25 * intensity).toFixed(3)}));
-        }
-        .w-tl-mount::after {
-          content: ''; position: absolute; inset: 0;
-          pointer-events: none; z-index: 2;
-          ${bevelShadow ? `box-shadow: ${bevelShadow};` : ''}
+          display: inline-block; line-height: 0;
         }
         .w-tl-mount img {
-          height: 28vh; max-height: 320px; min-height: 90px;
-          width: auto; display: block; object-fit: contain;
+          /* All works share the same image height so tops + bottoms align. */
+          height: 28vh; max-height: 320px; min-height: 140px;
+          width: auto; display: block;
         }
         .w-tl-tile-cap {
           font-size: 8px; letter-spacing: 1.5px; text-transform: uppercase;
           color: ${siteTheme.bodyMutedText}; opacity: 0.75;
           max-width: 140px; text-align: center;
+          /* Single-line truncate — keeps every tile the same total height so
+           * all works share the same baseline (no caption-wrap shifts). */
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         .w-tl-outro {
           flex: 0 0 min(560px, 80vw);
@@ -120,12 +170,14 @@ export default function WorksTimelineLayout({ works, mode, bevelShadow, light, s
         .w-tl-nav {
           position: fixed; top: 50%; transform: translateY(-50%);
           width: 44px; height: 44px; border-radius: 50%;
-          background: rgba(255,255,255,0.85); backdrop-filter: blur(6px);
+          background: transparent;
           border: 1px solid ${siteTheme.chromeBorder};
           color: ${siteTheme.bodyText};
           font-size: 18px; cursor: pointer; z-index: 250;
           display: flex; align-items: center; justify-content: center;
+          transition: background 0.15s, border-color 0.15s;
         }
+        .w-tl-nav:hover { background: rgba(0,0,0,0.04); border-color: ${siteTheme.bodyText}; }
         .w-tl-nav.left { left: clamp(12px, 2vw, 24px); }
         .w-tl-nav.right { right: clamp(12px, 2vw, 24px); }
         .w-tl-lb {
@@ -139,7 +191,9 @@ export default function WorksTimelineLayout({ works, mode, bevelShadow, light, s
           .w-tl-mount img { height: 22vh; }
         }
       `}</style>
-      <div className="w-tl-wrap" aria-label={t('pub_works')} ref={trackRef}>
+      <div className="w-tl-shell" aria-label={t('pub_works')}>
+      <div className="w-tl-bgwall" ref={wallRef} />
+      <div className="w-tl-wrap" ref={trackRef}>
         <div className="w-tl-track">
           <div className="w-tl-axis" />
           {buckets.map(([year, ws]) => (
@@ -153,14 +207,16 @@ export default function WorksTimelineLayout({ works, mode, bevelShadow, light, s
                     onClick={() => setLightbox(w)}
                     aria-label={w.Titre ?? t('pub_untitled')}
                   >
-                    <div className="w-tl-mount">
+                    <span className="w-tl-mount">
                       <img
-                        src={thumbUrl(w.txtImageNameLink) ?? imageUrl(w.txtImageNameLink) ?? ''}
+                        src={imageUrl(w.txtImageNameLink) ?? ''}
                         alt={w.Titre ?? ''}
                         draggable={false}
+                        loading="lazy"
+                        decoding="async"
                       />
-                    </div>
-                    {w.Titre && <div className="w-tl-tile-cap">{w.Titre}</div>}
+                    </span>
+                    <div className="w-tl-tile-cap">{w.Titre || ' '}</div>
                   </button>
                 ))}
               </div>
@@ -182,6 +238,7 @@ export default function WorksTimelineLayout({ works, mode, bevelShadow, light, s
           <img src={imageUrl(lightbox.txtImageNameLink) ?? ''} alt={lightbox.Titre ?? ''} />
         </div>
       )}
+      </div>
     </>
   )
 }

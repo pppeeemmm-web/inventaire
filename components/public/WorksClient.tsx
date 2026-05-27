@@ -123,6 +123,9 @@ export default function WorksClient({
   const manualDirDeg = mode.light_direction_deg ?? WORKS_LIGHT_DIRECTION_DEFAULT
   const manualIntensityPct = mode.light_intensity_pct ?? WORKS_LIGHT_INTENSITY_DEFAULT
   const circadianEnabled = mode.light_circadian === true
+  const castShadowOn = mode.cast_shadow_enabled !== false
+  const castDistance = mode.cast_shadow_distance_px ?? 15
+  const castBlur = mode.cast_shadow_blur_px ?? 22
   // Circadian tick — re-evaluate each minute when enabled. Stays at zero so
   // the manual path skips work entirely.
   const [circadianTick, setCircadianTick] = useState(0)
@@ -642,16 +645,41 @@ export default function WorksClient({
         }
         ` : ''}
         .w-card.center .w-art-mount {
-          filter: drop-shadow(0 15px 22px rgba(15,15,20,${(0.34 * light.intensity).toFixed(3)}))
-                  drop-shadow(0 4px 7px rgba(15,15,20,${(0.22 * light.intensity).toFixed(3)}));
+          filter: ${castShadowOn ? `drop-shadow(0 ${castDistance}px ${castBlur}px rgba(15,15,20,${(0.34 * light.intensity).toFixed(3)}))
+                  drop-shadow(0 ${Math.round(castDistance / 3.75)}px ${Math.round(castBlur / 3.14)}px rgba(15,15,20,${(0.22 * light.intensity).toFixed(3)}))` : 'none'};
         }
-        /* Vitrine — thicker frame + heavier plinth cast shadow for a museum-object feel. */
-        .w-vitrine .w-card { --thickness: 80px; }
+        /* Vitrine — museum-display object. Thick frame, looked-down perspective so
+         * the top + side faces read clearly, brighter top face (overhead light),
+         * single plinth cast shadow (no double-shadow), slight tilt forward.
+         * Drop-shadow filter on .w-art-mount is suppressed — the ::before
+         * plinth IS the cast shadow. */
+        .w-vitrine .w-card { --thickness: 130px; transform-origin: 50% 60%; }
         .w-vitrine .w-card.center .w-art-mount {
-          filter: drop-shadow(0 28px 38px rgba(15,15,20,${(0.42 * light.intensity).toFixed(3)}))
-                  drop-shadow(0 8px 12px rgba(15,15,20,${(0.26 * light.intensity).toFixed(3)}));
+          filter: none;
         }
-        .w-vitrine .w-track-wrap { perspective: 1800px; perspective-origin: 50% 60%; }
+        .w-vitrine .w-track-wrap { perspective: 1400px; perspective-origin: 50% 80%; }
+        /* Brighten the top face — overhead vitrine spotlight hits this surface most. */
+        .w-vitrine .w-face.top {
+          background: linear-gradient(to right, #d4cbb6 0%, #e8dec6 50%, #d4cbb6 100%) !important;
+          box-shadow: inset 0 0 0 1px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.55) !important;
+        }
+        .w-vitrine .w-face.bottom {
+          background: linear-gradient(to right, #5d564a 0%, #6e6655 50%, #5d564a 100%) !important;
+        }
+        /* Plinth — soft ground shadow under the entire card. */
+        .w-vitrine .w-card.center::before {
+          content: '';
+          position: absolute;
+          left: -10%; right: -10%;
+          bottom: -38px;
+          height: 70px;
+          background: radial-gradient(ellipse at center,
+            rgba(8,8,12,${(0.40 * light.intensity).toFixed(3)}) 0%,
+            rgba(8,8,12,0) 70%);
+          filter: blur(8px);
+          pointer-events: none;
+          z-index: -1;
+        }
         .w-face.right {
           top: 0; left: calc(100% - var(--thickness));
           width: var(--thickness); height: 100%;

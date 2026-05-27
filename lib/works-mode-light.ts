@@ -25,6 +25,25 @@ export const WORKS_LIGHT_INTENSITY_MIN = 50
 export const WORKS_LIGHT_INTENSITY_MAX = 150
 export const WORKS_LIGHT_INTENSITY_DEFAULT = 100
 
+/** Cast shadow on works (carousel + vitrine). 0–40 px distance, 0–60 px blur. */
+export const WORKS_CAST_SHADOW_DISTANCE_MIN = 0
+export const WORKS_CAST_SHADOW_DISTANCE_MAX = 40
+export const WORKS_CAST_SHADOW_DISTANCE_DEFAULT = 15
+export const WORKS_CAST_SHADOW_BLUR_MIN = 0
+export const WORKS_CAST_SHADOW_BLUR_MAX = 60
+export const WORKS_CAST_SHADOW_BLUR_DEFAULT = 22
+
+export function migrateWorksCastShadowDistancePx(v: unknown): number {
+  const n = typeof v === 'number' ? v : Number(v)
+  if (!Number.isFinite(n)) return WORKS_CAST_SHADOW_DISTANCE_DEFAULT
+  return Math.min(WORKS_CAST_SHADOW_DISTANCE_MAX, Math.max(WORKS_CAST_SHADOW_DISTANCE_MIN, Math.round(n)))
+}
+export function migrateWorksCastShadowBlurPx(v: unknown): number {
+  const n = typeof v === 'number' ? v : Number(v)
+  if (!Number.isFinite(n)) return WORKS_CAST_SHADOW_BLUR_DEFAULT
+  return Math.min(WORKS_CAST_SHADOW_BLUR_MAX, Math.max(WORKS_CAST_SHADOW_BLUR_MIN, Math.round(n)))
+}
+
 export function migrateWorksLightTempK(v: unknown): number {
   const n = typeof v === 'number' ? v : Number(v)
   if (!Number.isFinite(n)) return WORKS_LIGHT_TEMP_DEFAULT

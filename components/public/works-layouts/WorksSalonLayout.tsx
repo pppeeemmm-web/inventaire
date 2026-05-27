@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { imageUrl, thumbUrl, yearOf } from '@/lib/data'
 import type { PublicSiteTheme } from '@/lib/public-site-theme'
@@ -24,11 +24,21 @@ type Tile = {
   y: number
 }
 
+type NaturalSize = { w: number; h: number }
+
 /** Greedy bin-pack: lay tiles in rows, each row centered on a shared eyeline.
- *  Works are sized from recorded cm dimensions with the same compressed-area
- *  scaling used by the carousel; missing dimensions fall back to a default.
- *  Sizing references are scaled down on mobile so tiles fit the narrower wall. */
-function packSalon(works: Work[], wallWidth: number, isMobile: boolean): Tile[] {
+ *
+ *  Tile area is derived from recorded cm dimensions (compressed area, same as
+ *  the carousel). The tile's ASPECT is taken from the image's natural pixel
+ *  size when known so the bevel hugs the artwork — otherwise it falls back to
+ *  the cm aspect. Same fix as the carousel ate after the user spotted the
+ *  bevel artifact in v1. */
+function packSalon(
+  works: Work[],
+  wallWidth: number,
+  isMobile: boolean,
+  natural: Map<number, NaturalSize>,
+): Tile[] {
   const ROW_GAP = isMobile ? 18 : 28
   const TILE_GAP = isMobile ? 10 : 18
   const ROW_HEIGHT_MIN = isMobile ? 80 : 110
@@ -51,7 +61,10 @@ function packSalon(works: Work[], wallWidth: number, isMobile: boolean): Tile[] 
       const unit = linearArea / refArea
       const compressed = Math.pow(Math.max(unit, 1e-6), isMobile ? 0.55 : 0.62)
       const targetArea = refArea * compressed
-      const aspect = linearW / linearH
+      // Prefer image-natural aspect (so bevel hugs the painting) — fall back
+      // to cm aspect if the image hasn't loaded its natural size yet.
+      const nat = natural.get(w.OeuvreID)
+      const aspect = nat && nat.w > 0 && nat.h > 0 ? nat.w / nat.h : linearW / linearH
       const h = Math.max(ROW_HEIGHT_MIN, Math.min(ROW_HEIGHT_MAX, Math.sqrt(targetArea / aspect)))
       const wPx = h * aspect
       return { work: w, w: wPx, h }
@@ -107,6 +120,16 @@ export default function WorksSalonLayout({ works, mode, bevelShadow, light, site
   // Defaults to 1200 for SSR; once mounted we use min(viewport - sidePad, 1200).
   const [wallW, setWallW] = useState(1200)
   const [isMobile, setIsMobile] = useState(false)
+  const [natural, setNatural] = useState<Map<number, NaturalSize>>(new Map())
+  const recordNatural = useCallback((id: number, w: number, h: number) => {
+    setNatural(prev => {
+      const cur = prev.get(id)
+      if (cur && cur.w === w && cur.h === h) return prev
+      const next = new Map(prev)
+      next.set(id, { w, h })
+      return next
+    })
+  }, [])
   useEffect(() => {
     const compute = () => {
       const vw = window.innerWidth
@@ -119,7 +142,7 @@ export default function WorksSalonLayout({ works, mode, bevelShadow, light, site
     window.addEventListener('resize', compute)
     return () => window.removeEventListener('resize', compute)
   }, [])
-  const tiles = useMemo(() => packSalon(works, wallW, isMobile), [works, wallW, isMobile])
+  const tiles = useMemo(() => packSalon(works, wallW, isMobile, natural), [works, wallW, isMobile, natural])
   const wallHeight = useMemo(() => Math.max(...tiles.map(t => t.y + t.h), 600) + 60, [tiles])
 
   return (
@@ -145,14 +168,7 @@ export default function WorksSalonLayout({ works, mode, bevelShadow, light, site
           position: absolute;
           cursor: zoom-in;
           background: transparent; border: none; padding: 0;
-          overflow: hidden;
-          filter: drop-shadow(-6px 12px 18px rgba(0,0,0,${(0.28 * light.intensity).toFixed(3)}))
-                  drop-shadow(0 4px 8px rgba(15,15,20,${(0.18 * light.intensity).toFixed(3)}));
-        }
-        .w-salon-tile::after {
-          content: ''; position: absolute; inset: 0;
-          pointer-events: none; z-index: 2;
-          ${bevelShadow ? `box-shadow: ${bevelShadow};` : ''}
+          line-height: 0;
         }
         .w-salon-tile img {
           width: 100%; height: 100%;
@@ -181,6 +197,11 @@ export default function WorksSalonLayout({ works, mode, bevelShadow, light, site
                 src={thumbUrl(work.txtImageNameLink) ?? imageUrl(work.txtImageNameLink) ?? ''}
                 alt={work.Titre ?? ''}
                 draggable={false}
+                loading="lazy"
+                onLoad={(e) => {
+                  const t = e.currentTarget
+                  if (t.naturalWidth > 0) recordNatural(work.OeuvreID, t.naturalWidth, t.naturalHeight)
+                }}
               />
             </button>
           ))}

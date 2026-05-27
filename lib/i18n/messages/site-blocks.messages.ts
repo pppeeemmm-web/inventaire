@@ -491,4 +491,28 @@ export const siteBlocksMessages = defineMessages({
     fr: 'Circadienne',
     en: 'Circadian',
   },
+  site_works_mode_cast_shadow_label: {
+    fr: 'Ombre portée',
+    en: 'Cast shadow',
+  },
+  site_works_mode_cast_shadow_enable: {
+    fr: 'Activer l’ombre portée',
+    en: 'Enable cast shadow',
+  },
+  site_works_mode_cast_shadow_on: {
+    fr: 'Activée',
+    en: 'On',
+  },
+  site_works_mode_cast_shadow_off: {
+    fr: 'Désactivée',
+    en: 'Off',
+  },
+  site_works_mode_cast_shadow_distance: {
+    fr: 'Distance',
+    en: 'Distance',
+  },
+  site_works_mode_cast_shadow_blur: {
+    fr: 'Flou',
+    en: 'Blur',
+  },
 })

@@ -62,17 +62,18 @@ export default function WorksLetterLayout({ works, mode, bevelShadow, light, sit
           max-width: 760px; margin: 0 auto;
           display: flex; flex-direction: column; align-items: center;
           gap: 24px;
+          padding-bottom: 120px; /* reserve space for fixed nav */
+        }
+        /* Image slot has a stable minimum so the page chrome (title, dims, outro)
+         * never jumps vertically when paging between landscape and portrait works. */
+        .w-letter-slot {
+          width: 100%;
+          min-height: 64vh;
+          display: flex; align-items: center; justify-content: center;
         }
         .w-letter-mount {
-          position: relative; overflow: hidden; line-height: 0;
+          display: inline-block; line-height: 0;
           max-width: 100%; max-height: 64vh;
-          filter: drop-shadow(0 18px 28px rgba(15,15,20,${(0.32 * intensity).toFixed(3)}))
-                  drop-shadow(0 6px 10px rgba(15,15,20,${(0.20 * intensity).toFixed(3)}));
-        }
-        .w-letter-mount::after {
-          content: ''; position: absolute; inset: 0;
-          pointer-events: none; z-index: 2;
-          ${bevelShadow ? `box-shadow: ${bevelShadow};` : ''}
         }
         .w-letter-img {
           max-width: 100%; max-height: 64vh;
@@ -95,29 +96,41 @@ export default function WorksLetterLayout({ works, mode, bevelShadow, light, sit
           line-height: 1.7; text-align: center;
         }
         .w-letter-nav {
-          margin-top: 40px;
+          position: fixed;
+          bottom: max(24px, env(safe-area-inset-bottom, 0px));
+          left: 50%; transform: translateX(-50%);
+          z-index: 250;
           display: flex; align-items: center; gap: 24px;
+          padding: 6px 10px;
+          background: transparent;
           font-size: 10px; letter-spacing: 2.5px; text-transform: uppercase;
           color: ${siteTheme.bodyMutedText};
         }
         .w-letter-arrow {
-          background: none; border: 1px solid ${siteTheme.bodyMutedText};
+          background: transparent;
+          border: 1px solid ${siteTheme.chromeBorder};
           color: ${siteTheme.bodyText};
           width: 44px; height: 44px; border-radius: 50%;
-          font-size: 16px; cursor: pointer; transition: opacity 0.15s;
+          font-size: 16px; cursor: pointer; transition: background 0.15s, border-color 0.15s;
+        }
+        .w-letter-arrow:hover:not([disabled]) {
+          background: rgba(0,0,0,0.04);
+          border-color: ${siteTheme.bodyText};
         }
         .w-letter-arrow[disabled] { opacity: 0.3; cursor: default; }
       `}</style>
       <main className="w-letter-wrap" aria-label={t('pub_works')}>
         {current && (
           <article className="w-letter-page" key={current.OeuvreID}>
-            <div className="w-letter-mount">
-              <img
-                src={imageUrl(current.txtImageNameLink) ?? ''}
-                alt={current.Titre ?? ''}
-                className="w-letter-img"
-                draggable={false}
-              />
+            <div className="w-letter-slot">
+              <span className="w-letter-mount">
+                <img
+                  src={imageUrl(current.txtImageNameLink) ?? ''}
+                  alt={current.Titre ?? ''}
+                  className="w-letter-img"
+                  draggable={false}
+                />
+              </span>
             </div>
             <h2 className="w-letter-title">{current.Titre ?? t('pub_untitled')}</h2>
             <div className="w-letter-meta">

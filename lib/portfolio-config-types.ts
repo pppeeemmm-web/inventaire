@@ -17,9 +17,13 @@ import {
   migrateHeroBevelPx,
 } from '@/lib/landing-hero-bevel'
 import {
+  WORKS_CAST_SHADOW_BLUR_DEFAULT,
+  WORKS_CAST_SHADOW_DISTANCE_DEFAULT,
   WORKS_LIGHT_DIRECTION_DEFAULT,
   WORKS_LIGHT_INTENSITY_DEFAULT,
   WORKS_LIGHT_TEMP_DEFAULT,
+  migrateWorksCastShadowBlurPx,
+  migrateWorksCastShadowDistancePx,
   migrateWorksLightDirectionDeg,
   migrateWorksLightIntensityPct,
   migrateWorksLightTempK,
@@ -130,6 +134,10 @@ export interface WorksMode {
   light_intensity_pct: number
   /** When true, kelvin / direction / intensity are driven by the visitor's local clock. */
   light_circadian: boolean
+  /** Cast shadow (carousel + vitrine only): on/off + distance + blur. */
+  cast_shadow_enabled: boolean
+  cast_shadow_distance_px: number
+  cast_shadow_blur_px: number
 }
 
 export const DEFAULT_HERO_CAPTION_EN = "'Matsukaze' — Meaning 'Wind through the Pines'"
@@ -266,6 +274,9 @@ export const DEFAULT_CONFIG: PortfolioConfig = {
     light_direction_deg: WORKS_LIGHT_DIRECTION_DEFAULT,
     light_intensity_pct: WORKS_LIGHT_INTENSITY_DEFAULT,
     light_circadian: false,
+    cast_shadow_enabled: true,
+    cast_shadow_distance_px: WORKS_CAST_SHADOW_DISTANCE_DEFAULT,
+    cast_shadow_blur_px: WORKS_CAST_SHADOW_BLUR_DEFAULT,
   }],
 }
 
@@ -321,6 +332,9 @@ function migrateModes(raw: any, fallbackCollections: CollectionItem[]): WorksMod
       light_direction_deg: WORKS_LIGHT_DIRECTION_DEFAULT,
       light_intensity_pct: WORKS_LIGHT_INTENSITY_DEFAULT,
       light_circadian: false,
+      cast_shadow_enabled: true,
+      cast_shadow_distance_px: WORKS_CAST_SHADOW_DISTANCE_DEFAULT,
+      cast_shadow_blur_px: WORKS_CAST_SHADOW_BLUR_DEFAULT,
     }]
   }
   return list.map((m: any, i: number): WorksMode => ({
@@ -353,6 +367,9 @@ function migrateModes(raw: any, fallbackCollections: CollectionItem[]): WorksMod
     light_direction_deg: migrateWorksLightDirectionDeg(m.light_direction_deg),
     light_intensity_pct: migrateWorksLightIntensityPct(m.light_intensity_pct),
     light_circadian: m.light_circadian === true,
+    cast_shadow_enabled: m.cast_shadow_enabled !== false,
+    cast_shadow_distance_px: migrateWorksCastShadowDistancePx(m.cast_shadow_distance_px),
+    cast_shadow_blur_px: migrateWorksCastShadowBlurPx(m.cast_shadow_blur_px),
   }))
 }
 
