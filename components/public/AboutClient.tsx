@@ -49,12 +49,9 @@ export default function AboutClient({ siteTheme }: { siteTheme: PublicSiteTheme 
     ? (config?.about?.intro_en || config?.about?.intro_fr)
     : (config?.about?.intro_fr || config?.about?.intro_en)
 
-  // Registry-driven blocks on /about. Renders only blocks whose `kind` has
-  // a registered descriptor; today that's just `text`. Auto-generated
-  // biographie/approach/themes/materials blocks (uids starting with `auto_`)
-  // have no descriptor yet → skipped, so today's biography section above is
-  // still the only thing the user sees until they add a text block via the
-  // editor.
+  // Registry-driven blocks on /about — filter to blocks whose `kind` has a
+  // registered descriptor. Auto-generated blocks (uid starts with `auto_`)
+  // use migrated data from existing config fields.
   const registryBlocks = useMemo<Block[]>(() => {
     const list: Block[] = config?.pages?.about ?? []
     return list
@@ -62,6 +59,13 @@ export default function AboutClient({ siteTheme }: { siteTheme: PublicSiteTheme 
       .filter(b => !!getDescriptor(b.kind))
       .sort((a, b) => a.sort_order - b.sort_order)
   }, [config])
+
+  // When biographie descriptor is registered, the registry renders the bio
+  // paragraphs and the inline section below skips them to avoid double
+  // rendering. The artist name h1 always stays in AboutClient (it's the
+  // page's structural heading, not block content).
+  const biographieHandledByRegistry = !!getDescriptor('biographie')
+    && registryBlocks.some(b => b.kind === 'biographie')
 
   return (
     <>
@@ -96,6 +100,10 @@ export default function AboutClient({ siteTheme }: { siteTheme: PublicSiteTheme 
         }
         .a-bio { font-size: clamp(12px, 1.6vw, 13px); line-height: 2; color: ${siteTheme.bodyMutedText}; max-width: 64ch; }
         .a-bio p + p { margin-top: 1.4em; }
+        /* Registry-rendered blocks under the name heading. Inherit muted
+         * body text colour; each block renderer brings its own type rules. */
+        .a-blocks { color: ${siteTheme.bodyMutedText}; }
+        .a-block + .a-block { margin-top: 48px; }
         .a-footer { text-align: center; padding: 40px; border-top: 1px solid ${siteTheme.chromeBorder}; font-size: 9px; color: ${siteTheme.bodyMutedText}; letter-spacing: 2px; text-transform: uppercase; }
         a.a-ext { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
         a.a-ext:hover { color: ${siteTheme.bodyText}; }
@@ -114,58 +122,59 @@ export default function AboutClient({ siteTheme }: { siteTheme: PublicSiteTheme 
           <h1 className="a-name">
             {artistName.split(' ').map((part: string, i: number) => <span key={i}>{part}<br /></span>)}
           </h1>
-          <div className="a-bio">
-            {hasContent(bioIntro) ? (
-              <div dangerouslySetInnerHTML={{ __html: bioIntro! }} />
-            ) : (
-              <>
-                <p>
-                  Né en 1979 à Marseille. Études à Sciences Po Aix-en-Provence, parallèlement
-                  à une pratique picturale indépendante à l&apos;acrylique.
-                  Candidature à l&apos;École des Beaux-Arts de Paris en 2000.
-                </p>
-                <p>
-                  Expérience professionnelle à Paris au coeur du marché de l&apos;art ancien et
-                  moderne — Galerie Bailly (quai Voltaire), Galerie de Bayser et Cabinet Éric Turquin
-                  (rue Sainte-Anne). Cette période a permis d&apos;acquérir une connaissance rigoureuse
-                  de l&apos;histoire de l&apos;art, du connoisseurship et de la culture matérielle de la peinture.
-                </p>
-                <p>
-                  Expatriation en Irlande en 2011. Retour à la pratique plastique fin 2019 —
-                  apprentissage de l&apos;huile. Formation en design graphique et motion design en 2022.
-                  Sélectionné deux fois au Waterford International Film Festival (photographie).
-                  Exposition collective à Ennistymon, Irlande, été 2023.
-                </p>
-                <p>
-                  Retour à Marseille en juin 2024. Corpus actif de plus de mille oeuvres depuis 2019 —
-                  peintures à l&apos;huile, pastel, encre, bâton d&apos;huile, crayons.
-                </p>
-              </>
-            )}
-
-          </div>
+          {!biographieHandledByRegistry && (
+            <div className="a-bio">
+              {hasContent(bioIntro) ? (
+                <div dangerouslySetInnerHTML={{ __html: bioIntro! }} />
+              ) : (
+                <>
+                  <p>
+                    Né en 1979 à Marseille. Études à Sciences Po Aix-en-Provence, parallèlement
+                    à une pratique picturale indépendante à l&apos;acrylique.
+                    Candidature à l&apos;École des Beaux-Arts de Paris en 2000.
+                  </p>
+                  <p>
+                    Expérience professionnelle à Paris au coeur du marché de l&apos;art ancien et
+                    moderne — Galerie Bailly (quai Voltaire), Galerie de Bayser et Cabinet Éric Turquin
+                    (rue Sainte-Anne). Cette période a permis d&apos;acquérir une connaissance rigoureuse
+                    de l&apos;histoire de l&apos;art, du connoisseurship et de la culture matérielle de la peinture.
+                  </p>
+                  <p>
+                    Expatriation en Irlande en 2011. Retour à la pratique plastique fin 2019 —
+                    apprentissage de l&apos;huile. Formation en design graphique et motion design en 2022.
+                    Sélectionné deux fois au Waterford International Film Festival (photographie).
+                    Exposition collective à Ennistymon, Irlande, été 2023.
+                  </p>
+                  <p>
+                    Retour à Marseille en juin 2024. Corpus actif de plus de mille oeuvres depuis 2019 —
+                    peintures à l&apos;huile, pastel, encre, bâton d&apos;huile, crayons.
+                  </p>
+                </>
+              )}
+            </div>
+          )}
+          {registryBlocks.length > 0 && (
+            <div className="a-blocks">
+              {registryBlocks.map(block => {
+                const desc = getDescriptor(block.kind)
+                if (!desc) return null
+                const Renderer = desc.renderer
+                const fields = desc.migrateFields
+                  ? desc.migrateFields(block.fields)
+                  : block.fields
+                return (
+                  <div key={block.uid} className="a-block">
+                    <Renderer
+                      block={block}
+                      fields={fields}
+                      ctx={{ page: 'about', lang }}
+                    />
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </section>
-
-        {registryBlocks.length > 0 && (
-          <section className="a-section" aria-label="content blocks">
-            {registryBlocks.map(block => {
-              const desc = getDescriptor(block.kind)
-              if (!desc) return null
-              const Renderer = desc.renderer
-              const fields = desc.migrateFields
-                ? desc.migrateFields(block.fields)
-                : block.fields
-              return (
-                <Renderer
-                  key={block.uid}
-                  block={block}
-                  fields={fields}
-                  ctx={{ page: 'about', lang }}
-                />
-              )
-            })}
-          </section>
-        )}
 
       </div>
 
