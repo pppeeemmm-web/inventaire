@@ -37,6 +37,8 @@ const KIND_LABEL_KEY: Partial<Record<BlockKind,
   | 'site_block_kind_presse'
   | 'site_block_kind_hero'
   | 'site_block_kind_identity'
+  | 'site_block_kind_image'
+  | 'site_block_kind_quote'
   | 'site_block_kind_works_modes'
 >> = {
   text: 'site_block_kind_text',
@@ -52,6 +54,8 @@ const KIND_LABEL_KEY: Partial<Record<BlockKind,
   presse: 'site_block_kind_presse',
   hero: 'site_block_kind_hero',
   identity: 'site_block_kind_identity',
+  image: 'site_block_kind_image',
+  quote: 'site_block_kind_quote',
   works_modes: 'site_block_kind_works_modes',
 }
 

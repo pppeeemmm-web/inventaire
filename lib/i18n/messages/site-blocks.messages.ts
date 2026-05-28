@@ -587,6 +587,16 @@ export const siteBlocksMessages = defineMessages({
   site_expositions_add: { fr: '+ Ajouter une exposition', en: '+ Add exhibition' },
   // ── Presse ────────────────────────────────────────────────────────────────
   site_block_kind_presse: { fr: 'Presse', en: 'Press' },
+  // ── Image ─────────────────────────────────────────────────────────────────
+  site_block_kind_image: { fr: 'Image', en: 'Image' },
+  site_image_url_label: { fr: 'URL', en: 'URL' },
+  site_image_alt_fr: { fr: 'Alt FR', en: 'Alt FR' },
+  site_image_alt_en: { fr: 'Alt EN', en: 'Alt EN' },
+  site_image_caption_fr: { fr: 'Légende FR', en: 'Caption FR' },
+  site_image_caption_en: { fr: 'Légende EN', en: 'Caption EN' },
+  // ── Quote ─────────────────────────────────────────────────────────────────
+  site_block_kind_quote: { fr: 'Citation liée', en: 'Linked quote' },
+  site_quote_source_url: { fr: 'Source', en: 'Source' },
   // ── Hero ──────────────────────────────────────────────────────────────────
   site_block_kind_hero: { fr: 'Œuvre vedette', en: 'Hero artwork' },
   site_hero_no_image: { fr: 'Aucune image sélectionnée.', en: 'No image selected.' },

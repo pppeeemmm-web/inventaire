@@ -21,6 +21,8 @@ import { expositionsDescriptor } from './expositions'
 import { presseDescriptor } from './presse'
 import { heroDescriptor } from './hero'
 import { identityDescriptor } from './identity'
+import { imageDescriptor } from './image'
+import { quoteDescriptor } from './quote'
 import { worksModesDescriptor } from './works_modes'
 
 // Register in alphabetical-by-kind order so the editor's "Add block" menu
@@ -33,8 +35,10 @@ registerBlock(dividerDescriptor)
 registerBlock(expositionsDescriptor)
 registerBlock(heroDescriptor)
 registerBlock(identityDescriptor)
+registerBlock(imageDescriptor)
 registerBlock(materialsDescriptor)
 registerBlock(presseDescriptor)
+registerBlock(quoteDescriptor)
 registerBlock(statementDescriptor)
 registerBlock(textDescriptor)
 registerBlock(themesDescriptor)
