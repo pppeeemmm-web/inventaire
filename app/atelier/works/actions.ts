@@ -752,11 +752,11 @@ export async function createLookup(table: string, name: string): Promise<{ id: n
   const nameField = table === 'Technique' ? 'Technique' : (table === 'Support' ? 'Support' : 'Format')
 
   const { data: maxRow } = await supabase.from(table).select(idField).order(idField, { ascending: false }).limit(1).single()
-  const nextId = (((maxRow as any)?.[idField] ?? 0) as number) + 1
+  const nextId = (((maxRow as Record<string, unknown>)?.[idField] as number | null) ?? 0) + 1
 
   const { data, error } = await supabase.from(table).insert({ [idField]: nextId, [nameField]: name }).select().single()
   if (error) return { error: error.message }
-  return { id: (data as any)[idField] }
+  return { id: (data as Record<string, number>)[idField] }
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────

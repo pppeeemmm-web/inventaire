@@ -28,7 +28,7 @@ export default async function CollectionPage({
     .select('OeuvreID, Titre, "Année", Hauteur, Largeur, Profondeur, txtImageNameLink')
     .is('deleted_at', null)
     .eq('AcheteurID', parseInt(collector_id))
-    .order('Année', { ascending: false }) as any
+    .order('Année', { ascending: false })
 
   return (
     <PortalLayout 

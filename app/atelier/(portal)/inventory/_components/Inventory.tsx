@@ -113,7 +113,7 @@ function matchesCriterion(o: Oeuvre, c: Criterion, allFields: FieldDef[]): boole
   
   // Special handling for photography flags (legacy mapping)
   if (c.field === 'photograph' || c.field === 'NeedsPhotograph' || c.field === 'needsphotograph') {
-    const val = !!((o as any).NeedsPhotograph || (o as any).needsphotograph)
+    const val = !!(o.NeedsPhotograph)
     return c.op === '= vrai' ? val : !val
   }
 
@@ -399,7 +399,7 @@ export function Inventory({
       .map(k => ({
         k,
         l: k === 'anonymity_level' ? t('confidentiality') : (FIELD_LABELS[k] || k),
-        t: getFieldType(k, (sample as any)[k])
+        t: getFieldType(k, (sample as unknown as Record<string, unknown>)[k])
       }))
 
     // Add virtual curation fields for advanced filter
@@ -412,7 +412,7 @@ export function Inventory({
   const handleLoadGroup = useCallback(async (id: string, mode: 'select' | 'filter' = 'select') => {
     setLoadingGrp(id)
     const sb = createClient()
-    const { data } = await (sb.from('working_group_work') as any)
+    const { data } = await sb.from('working_group_work')
       .select('oeuvre_id')
       .eq('group_id', id)
     
@@ -556,8 +556,8 @@ export function Inventory({
         return ca.localeCompare(cb) * dir
       }
       if (sortKey === 'Custodian') {
-        const la = (a as any).LocalisationID != null ? (locMap[(a as any).LocalisationID] || '') : 'Pem'
-        const lb = (b as any).LocalisationID != null ? (locMap[(b as any).LocalisationID] || '') : 'Pem'
+        const la = a.LocalisationID != null ? (locMap[a.LocalisationID] || '') : 'Pem'
+        const lb = b.LocalisationID != null ? (locMap[b.LocalisationID] || '') : 'Pem'
         return la.localeCompare(lb) * dir
       }
       if (sortKey === 'Comm') {
@@ -1530,7 +1530,7 @@ function InvList({
                   <td style={{ color: 'var(--tx3)', fontSize: 11, padding: '0 2px', whiteSpace: 'nowrap', ...cellDivider, verticalAlign: 'middle' }}>
                     {o.OeuvreID}
                     {(() => {
-                      if (!(o as any).is_public) {
+                      if (!o.is_public) {
                         return <span title="Œuvre privée (Non publique)" style={{ marginLeft: 4, opacity: 0.6 }}>🔒</span>
                       }
                       if (isAvailabilityRefinedToProduction(o, statusLabelMap)) {
@@ -1572,7 +1572,7 @@ function InvList({
                   <td style={{ padding: '0 4px', whiteSpace: 'nowrap', opacity: 0.8, ...cellDivider, verticalAlign: 'middle' }}>{o.Prix ? `€ ${Number(o.Prix).toLocaleString('fr-FR')}` : '—'}</td>
                   <td style={{ padding: '0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: 0.8, ...cellDivider, verticalAlign: 'middle' }}>
                     {(() => {
-                      const level = (o as any).anonymity_level ?? 0
+                      const level = o.anonymity_level ?? 0
                       const contactName = o.ContactID != null ? (cM[o.ContactID] ?? '—') : 'Pem'
                       
                       if (publicMode && level >= 1) return <span style={{ opacity: 0.3 }}>[Masqué]</span>
@@ -1592,7 +1592,7 @@ function InvList({
                       // we MUST show the actual location. Otherwise, it is at the Atelier.
                       const isExternal = ['consigned', 'loan', 'sold', 'gift'].includes(st)
                       if (!isExternal) return 'Pem - Atelier'
-                      return ((o as any).LocalisationID != null ? locMap[(o as any).LocalisationID] : 'Pem - Atelier') || '—'
+                      return (o.LocalisationID != null ? locMap[o.LocalisationID] : 'Pem - Atelier') || '—'
                     })()}
                   </td>
                   <td style={{ padding: '0 4px', whiteSpace: 'nowrap', verticalAlign: 'middle', ...cellDivider }} colSpan={2}>

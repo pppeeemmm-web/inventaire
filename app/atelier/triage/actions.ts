@@ -73,7 +73,7 @@ export async function listTriageDeck(): Promise<{ cards: TriageDeckCard[] } | { 
     }
   }
 
-  const { data: enquiries } = await (g.supabase.from('inquiry') as any)
+  const { data: enquiries } = await g.supabase.from('inquiry')
     .select('id, name, email, message, category, created_at, status')
     .eq('status', 'open')
     .order('created_at', { ascending: false })
@@ -140,7 +140,7 @@ export async function approveEnquiry(inquiryId: string): Promise<{ ok: true } | 
   const g = await guardTeam()
   if (g.error || !g.supabase) return { error: g.error ?? 'auth' }
 
-  const { error } = await (g.supabase.from('inquiry') as any)
+  const { error } = await g.supabase.from('inquiry')
     .update({ status: 'in_progress' })
     .eq('id', inquiryId)
     .eq('status', 'open')
@@ -160,7 +160,7 @@ export async function archiveEnquiry(inquiryId: string): Promise<{ ok: true } | 
   const g = await guardTeam()
   if (g.error || !g.supabase) return { error: g.error ?? 'auth' }
 
-  const { error } = await (g.supabase.from('inquiry') as any)
+  const { error } = await g.supabase.from('inquiry')
     .update({ status: 'closed' })
     .eq('id', inquiryId)
   if (error) return { error: error.message }

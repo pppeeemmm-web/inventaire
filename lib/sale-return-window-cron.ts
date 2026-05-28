@@ -16,7 +16,7 @@ export async function applyExpiredSaleReturnWindows(): Promise<{ processed: numb
   const supabase = createServiceClient()
   const today = new Date().toISOString().slice(0, 10)
 
-  const { data: orders, error } = await (supabase.from('sale_order') as any)
+  const { data: orders, error } = await supabase.from('sale_order')
     .select('id, oeuvre_id, notes, return_window_days, return_window_starts_at, return_window_skipped')
     .eq('statut', 'completed')
     .eq('return_window_skipped', false)
@@ -28,7 +28,7 @@ export async function applyExpiredSaleReturnWindows(): Promise<{ processed: numb
   let processed = 0
   let worksMoved = 0
 
-  for (const row of orders as any[]) {
+  for (const row of (orders ?? [])) {
     const days = Number(row.return_window_days ?? 14)
     const start: string | null = row.return_window_starts_at ?? null
     if (!start || days <= 0 || row.return_window_skipped) continue

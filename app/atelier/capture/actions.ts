@@ -106,7 +106,7 @@ export async function submitDocScanCapture(formData: FormData): Promise<{ ok: tr
     return { error: String(e) }
   }
 
-  const { error: docErr } = await (g.supabase.from('document') as any).insert({
+  const { error: docErr } = await g.supabase.from('document').insert({
     name: title,
     kind: 'scan',
     storage_path: path,

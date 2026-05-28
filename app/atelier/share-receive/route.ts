@@ -176,7 +176,7 @@ export async function POST(request: NextRequest) {
 
   const insertRes = NextResponse.redirect(triage('?err=save'), 303)
   const sbIns = supabaseForRedirect(request, insertRes)
-  const { data: inserted, error: insErr } = await (sbIns.from('share_inbox') as any)
+  const { data: inserted, error: insErr } = await sbIns.from('share_inbox')
     .insert({
       id: inboxId,
       user_id: user.id,

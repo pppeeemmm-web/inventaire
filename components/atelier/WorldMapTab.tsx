@@ -285,14 +285,16 @@ export function WorldMapTab({
   // Only fetch contact_addresses (not loaded server-side).
   useEffect(() => {
     const sb = createClient()
-    ;(sb.from('contact_addresses') as any)
+    void (sb.from('contact_addresses')
       .select('id, contact_id, label, ville, pays')
       .order('position')
-      .then(({ data }: { data: ContactAddress[] | null }) => {
-        if (data) setAddresses(data)
-        setDataReady(true)
-      })
-      .catch(() => setDataReady(true))
+      .then(
+        ({ data }: { data: ContactAddress[] | null }) => {
+          if (data) setAddresses(data)
+          setDataReady(true)
+        },
+        () => setDataReady(true),
+      ))
   }, [])
 
   // Build pins once data FIS ready, or when mode / filters change
@@ -392,7 +394,7 @@ export function WorldMapTab({
       const ids      = new Set(unique.map(c => c.ContactID))
       const assoc    = oeuvresFiltered.filter(o =>
         (o.ContactID != null && ids.has(o.ContactID)) ||
-        ((o as any).AcheteurID != null && ids.has((o as any).AcheteurID))
+        (o.AcheteurID != null && ids.has(o.AcheteurID))
       )
       const workTitles  = assoc.map(o => o.Titre ?? `#${o.OeuvreID}`).filter(Boolean).slice(0, 12) as string[]
       const workThumbs  = assoc.map(o => o.txtImageNameLink ?? '').filter(Boolean).slice(0, 6) as string[]
@@ -439,7 +441,7 @@ export function WorldMapTab({
     const keyMeta = new Map<string, WorkLocMeta>()
 
     oeuvresFiltered.forEach(o => {
-      const locId = (o as any).LocalisationID as number | null
+      const locId = o.LocalisationID
       const cid   = locId ?? o.ContactID ?? 13
       const addr  = contactLocMap.get(cid) ?? contactLocMap.get(13)
       if (!addr) return

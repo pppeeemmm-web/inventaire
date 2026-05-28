@@ -126,7 +126,7 @@ export function Production({ oeuvres, tM, statusLabelMap, onOpen, oeuvresPaging 
 
     return localOeuvres.filter((o) => {
       // Show if not catalogued OR if it specifically needs a photograph OR if it has a pending action
-      const needsPhoto = (o as any).NeedsPhotograph || (o as any).needsphotograph
+      const needsPhoto = o.NeedsPhotograph
       const hasAction = worksWithActions.has(o.OeuvreID)
       if (o.Catalogué && !needsPhoto && !hasAction) return false
       
@@ -438,7 +438,7 @@ export function Production({ oeuvres, tM, statusLabelMap, onOpen, oeuvresPaging 
             const ids   = actionMap.get(at.id) ?? new Set<number>()
             const isPhotoColumn = at.id === 6 // 'Photographier'
             const works = active.filter((o) => {
-              const needsPhoto = (o as any).NeedsPhotograph || (o as any).needsphotograph
+              const needsPhoto = o.NeedsPhotograph
               return ids.has(o.OeuvreID) || (isPhotoColumn && needsPhoto)
             })
             return (
@@ -494,10 +494,10 @@ function ActionColumn({
 
   const sortedWorks = useMemo(() => {
     return [...works].sort((a, b) => {
-      const aDl = (a as any).DateLivraison
-      const bDl = (b as any).DateLivraison
-      const aCom = (a as any).IsCommission
-      const bCom = (b as any).IsCommission
+      const aDl = a.DateLivraison
+      const bDl = b.DateLivraison
+      const aCom = a.IsCommission
+      const bCom = b.IsCommission
 
       // 1. Commissions with imminent deadlines first
       if (aCom && bCom) {
@@ -624,9 +624,9 @@ function WorkCard({ o, tM, onMarkDone, onOpen }: {
   const router     = useRouter()
   const techLabel  = o.Technique != null ? tM[o.Technique] : null
   const year       = yearOf(o.Année)
-  const isCommission = (o as any).IsCommission
+  const isCommission = o.IsCommission
   const isFramed     = o.Encadree
-  const deadline     = (o as any).DateLivraison ? String((o as any).DateLivraison).slice(0, 10) : null
+  const deadline     = o.DateLivraison ? o.DateLivraison.slice(0, 10) : null
   const deadlinePast = deadline ? new Date(deadline) < new Date() : false
 
   return (

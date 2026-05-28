@@ -96,7 +96,7 @@ export default function EnquiryClient({
     }
     if (oeuvreId != null) row.oeuvre_id = oeuvreId
     if (saleOrderId) row.sale_order_id = saleOrderId
-    const { error } = await sb.from('inquiry').insert([row as any])
+    const { error } = await sb.from('inquiry').insert([row])
     setLoading(false)
     if (!error) setSent(true)
   }

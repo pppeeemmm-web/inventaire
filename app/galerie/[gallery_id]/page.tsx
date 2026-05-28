@@ -29,7 +29,7 @@ export default async function GaleriePage({
     .select('*, Oeuvres(OeuvreID, Titre, "Année", Hauteur, Largeur, Profondeur, txtImageNameLink)')
     .eq('gallery_contact_id', parseInt(gallery_id))
     .is('ended_at', null)
-    .order('since', { ascending: false }) as any
+    .order('since', { ascending: false })
 
   const works = (consignments || []).map((c: any) => c.Oeuvres).filter(Boolean)
 

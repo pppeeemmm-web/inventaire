@@ -353,7 +353,7 @@ export async function createWorkingGroupWithOeuvres(
       oeuvre_id,
       position: i,
     }))
-    const { error: wErr } = await svc.from('working_group_work').insert(rows as any)
+    const { error: wErr } = await svc.from('working_group_work').insert(rows)
     if (wErr) return { error: wErr.message }
   }
 
@@ -523,6 +523,7 @@ type Oeuvre = {
   Prix?: number | null; PrixFinal?: number | null; Discount?: number | null
   statusId?: number | null; Exposable?: boolean | null; ['Catalogué']?: boolean | null
   txtImageNameLink?: string | null; Commentaires?: string | null; is_public?: boolean | null
+  anonymity_level?: number | null
 }
 
 function buildHtml(
@@ -545,7 +546,7 @@ function buildHtml(
     const supp    = o.Support   != null ? sM[o.Support]   ?? '' : ''
     const status  = o.statusId  != null ? statusLabelMap[o.statusId] ?? '' : ''
     const price   = o.PrixFinal ?? o.Prix
-    const npBadge = (o as any).anonymity_level === 2 ? '<span class="np-badge">⚠ NON PUBLIC</span>' : ''
+    const npBadge = o.anonymity_level === 2 ? '<span class="np-badge">⚠ NON PUBLIC</span>' : ''
 
     if (cfg.layout === 'list') {
       return `<tr>
@@ -860,7 +861,7 @@ async function buildPdf(
         const price  = o.PrixFinal ?? o.Prix
         const vals: string[] = [
           f.id        ? String(o.OeuvreID)    : '',
-          f.title     ? `${o.Titre ?? '—'}${((o as any).anonymity_level === 2) ? ' ⚠' : ''}` : '',
+          f.title     ? `${o.Titre ?? '—'}${(o.anonymity_level === 2) ? ' ⚠' : ''}` : '',
           f.year      ? (o.Année?.slice(0,4) ?? '—') : '',
           f.technique ? tech                  : '',
           f.dims      ? dims                  : '',
@@ -940,7 +941,7 @@ async function buildPdf(
           doc.font('Helvetica')
           ty += fTitle + 2
         }
-        if ((o as any).anonymity_level === 2) {
+        if (o.anonymity_level === 2) {
           doc.fontSize(fSmall).fillColor('#c88a20').text('⚠ NON PUBLIC', cx, ty, { width: cellW, align: 'left', lineBreak: false })
           ty += fSmall + 2
         }
@@ -1010,7 +1011,7 @@ async function buildPdf(
         let   ty = y
 
         if (f.title) { doc.fontSize(14).fillColor('#1a1a1a').text(o.Titre ?? 'Sans titre', tx, ty, { width: tw }); ty += 20 }
-        if ((o as any).anonymity_level === 2) { doc.fontSize(7).fillColor('#c88a20').text('⚠ NON PUBLIC', tx, ty, { width: tw }); ty += 11 }
+        if (o.anonymity_level === 2) { doc.fontSize(7).fillColor('#c88a20').text('⚠ NON PUBLIC', tx, ty, { width: tw }); ty += 11 }
         if (f.year && o.Année) { doc.fontSize(9).fillColor('#666666').text(o.Année.slice(0, 4), tx, ty, { width: tw }); ty += 13 }
         if (f.technique && tech) { doc.fontSize(8).fillColor('#888888').text(tech + (supp ? `, ${supp}` : ''), tx, ty, { width: tw }); ty += 12 }
         if (f.dims && dims) { doc.fontSize(8).fillColor('#888888').text(dims, tx, ty, { width: tw }); ty += 12 }

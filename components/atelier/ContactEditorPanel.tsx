@@ -394,27 +394,27 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
         payload.Role = normalizedRole
 
         if (isNew) {
-          const { data: maxRow } = await (sb.from('Contact') as any)
+          const { data: maxRow } = await sb.from('Contact')
             .select('ContactID')
             .order('ContactID', { ascending: false })
             .limit(1)
             .single()
           contactId = ((maxRow as { ContactID?: number })?.ContactID ?? 0) + 1
           payload.ContactID = contactId
-          const { error } = await (sb.from('Contact') as any).insert(payload)
+          const { error } = await sb.from('Contact').insert(payload)
           if (error) throw new Error((error as { message?: string }).message)
         } else {
           contactId = contact!.ContactID
-          const { error } = await (sb.from('Contact') as any).update(payload).eq('ContactID', contactId)
+          const { error } = await sb.from('Contact').update(payload).eq('ContactID', contactId)
           if (error) throw new Error((error as { message?: string }).message)
         }
 
         await Promise.all([
-          (sb.from('contact_addresses') as any).delete().eq('contact_id', contactId),
-          (sb.from('contact_emails') as any).delete().eq('contact_id', contactId),
-          (sb.from('contact_phones') as any).delete().eq('contact_id', contactId),
-          (sb.from('contact_websites') as any).delete().eq('contact_id', contactId),
-          (sb.from('contact_socials') as any).delete().eq('contact_id', contactId),
+          sb.from('contact_addresses').delete().eq('contact_id', contactId),
+          sb.from('contact_emails').delete().eq('contact_id', contactId),
+          sb.from('contact_phones').delete().eq('contact_id', contactId),
+          sb.from('contact_websites').delete().eq('contact_id', contactId),
+          sb.from('contact_socials').delete().eq('contact_id', contactId),
         ])
 
         let savedAddrs: ContactAddress[] = []
@@ -429,7 +429,7 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
             position: i,
             shipping_notes: a.shipping_notes || null,
           }))
-          const { data, error } = await (sb.from('contact_addresses') as any).insert(insertRows).select()
+          const { data, error } = await sb.from('contact_addresses').insert(insertRows).select()
           if (error) throw error
           savedAddrs = data || []
         }
@@ -442,7 +442,7 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
             label: e.label,
             is_primary: e.is_primary,
           }))
-          const { data, error } = await (sb.from('contact_emails') as any).insert(rows).select()
+          const { data, error } = await sb.from('contact_emails').insert(rows).select()
           if (error) throw error
           savedEmails = data || []
         }
@@ -456,7 +456,7 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
             label: p.label,
             is_primary: p.is_primary,
           }))
-          const { data, error } = await (sb.from('contact_phones') as any).insert(rows).select()
+          const { data, error } = await sb.from('contact_phones').insert(rows).select()
           if (error) throw error
           savedPhones = data || []
         }
@@ -464,7 +464,7 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
         let savedWebs: ContactWebsite[] = []
         if (webList.length > 0) {
           const rows = webList.map((w) => ({ contact_id: contactId, url: w.url, label: w.label }))
-          const { data, error } = await (sb.from('contact_websites') as any).insert(rows).select()
+          const { data, error } = await sb.from('contact_websites').insert(rows).select()
           if (error) throw error
           savedWebs = data || []
         }
@@ -472,7 +472,7 @@ export const ContactEditorPanel = forwardRef<ContactEditorPanelHandle, ContactEd
         let savedSocials: ContactSocial[] = []
         if (socialList.length > 0) {
           const rows = socialList.map((s) => ({ contact_id: contactId, platform: s.platform, handle: s.handle }))
-          const { data, error } = await (sb.from('contact_socials') as any).insert(rows).select()
+          const { data, error } = await sb.from('contact_socials').insert(rows).select()
           if (error) throw error
           savedSocials = data || []
         }

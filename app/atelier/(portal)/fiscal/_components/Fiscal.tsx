@@ -122,7 +122,7 @@ export function Fiscal({ oeuvres, contacts = [] }: Props) {
   useEffect(() => {
     setLoading(true)
     const sb = createClient()
-    ;(sb.from('expense') as any)
+    ;sb.from('expense')
       .select('*')
       .eq('fiscal_year', year)
       .order('date', { ascending: false })
@@ -149,7 +149,7 @@ export function Fiscal({ oeuvres, contacts = [] }: Props) {
           : o.Année ? parseInt(String(o.Année)) : null
         return y === year
       })
-      .reduce((sum, o) => sum + (Number((o as any).PrixFinal ?? (o as any).Prix ?? 0)), 0),
+      .reduce((sum, o) => sum + (Number(o.PrixFinal ?? o.Prix ?? 0)), 0),
     [oeuvres, year],
   )
 
@@ -617,13 +617,13 @@ function ExpenseModal({
       if (isNaN(payload.montant_ttc)) throw new Error('Montant TTC invalide')
 
       if (isNew) {
-        const { data, error } = await (sb.from('expense') as any)
+        const { data, error } = await sb.from('expense')
           .insert(payload).select().single()
         if (error) throw new Error(error.message)
         if (!data) throw new Error('Aucune donnée retournée par la base')
         onSaved(data as Expense)
       } else {
-        const { data, error } = await (sb.from('expense') as any)
+        const { data, error } = await sb.from('expense')
           .update(payload).eq('id', expense!.id).select().single()
         if (error) throw new Error(error.message)
         if (!data) throw new Error('Aucune donnée retournée par la base')
@@ -638,7 +638,7 @@ function ExpenseModal({
     setBusy(true); setErr(null)
     try {
       const sb = createClient()
-      const { error } = await (sb.from('expense') as any).delete().eq('id', expense!.id)
+      const { error } = await sb.from('expense').delete().eq('id', expense!.id)
       if (error) throw new Error(error.message)
       onDeleted(expense!.id)
     } catch (e) { setErr(String(e)); setBusy(false) }

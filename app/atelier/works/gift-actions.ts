@@ -192,8 +192,8 @@ async function buildGiftPdf(args: BuildGiftPdfArgs): Promise<Buffer> {
     work.Technique ? supabase.from('Technique').select('Technique').eq('TechniqueID', work.Technique).maybeSingle() : Promise.resolve({ data: null }),
     work.Support   ? supabase.from('Support').select('Support').eq('SupportID', work.Support).maybeSingle()      : Promise.resolve({ data: null }),
   ])
-  const techLabel = (tech as any)?.Technique || ''
-  const suppLabel = (supp as any)?.Support || ''
+  const techLabel = tech?.Technique || ''
+  const suppLabel = supp?.Support || ''
 
   let imageBuf: Buffer | null = null
   if (work.txtImageNameLink) {
@@ -221,7 +221,7 @@ async function buildGiftPdf(args: BuildGiftPdfArgs): Promise<Buffer> {
     doc.fontSize(9).fillColor(tx2).text('BÉNÉFICIAIRE / RECIPIENT', 56, y)
     doc.moveDown(0.4)
     doc.fontSize(11).fillColor('#000').text(recipientName)
-    const loc = [(recipient as any).Ville, (recipient as any).Pays].filter(Boolean).join(', ')
+    const loc = [recipient.Ville, recipient.Pays].filter(Boolean).join(', ')
     if (loc) doc.fontSize(9).fillColor(tx2).text(loc)
 
     doc.fontSize(9).fillColor(tx2).text('ŒUVRE OFFERTE', 56, 200)

@@ -71,7 +71,7 @@ export async function loadPortfolioSectionsFromR2(): Promise<{
 
   const [docsResult, r2Result] = await Promise.allSettled([
     sb
-      ? (sb.from('document') as any).select('id, name').order('name')
+      ? sb.from('document').select('id, name').order('name')
       : Promise.resolve({ data: [] as { id: string; name: string }[], error: null }),
     s3.send(new GetObjectCommand({ Bucket: PORTFOLIO_SECTIONS_BUCKET, Key: PORTFOLIO_SECTIONS_R2_KEY })),
   ])

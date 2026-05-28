@@ -563,7 +563,7 @@ export function ExportModal({
           {error    && <div className="t-mono-sm" style={{ color: '#c0392b', marginBottom: 8 }}>{error}</div>}
           {persistError && <div className="t-mono-sm" style={{ color: '#c88a20', marginBottom: 8 }}>{persistError}</div>}
           {(() => {
-            const nonPublicCount = oeuvres.filter(o => ids.includes(o.OeuvreID) && (o as any).anonymity_level === 2).length
+            const nonPublicCount = oeuvres.filter(o => ids.includes(o.OeuvreID) && o.anonymity_level === 2).length
             return nonPublicCount > 0 ? (
               <div className="t-mono-sm" style={{
                 color: '#c88a20', marginBottom: 8,

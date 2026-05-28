@@ -515,7 +515,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
           }
         }
 
-        const { error } = await (sb.from('Contact') as any).update(update).eq('ContactID', id)
+        const { error } = await sb.from('Contact').update(update).eq('ContactID', id)
         if (error) throw error
         updates[id] = update
       }
@@ -1113,7 +1113,7 @@ function BatchEditModal({
           </FRow>
 
           <FRow label={t('contactEditorActive')}>
-            <select value={actif} onChange={e => setActif(e.target.value as any)} style={FIS}>
+            <select value={actif} onChange={e => setActif(e.target.value as 'unchanged' | 'true' | 'false')} style={FIS}>
               <option value="unchanged">{t('contacts_batch_no_change')}</option>
               <option value="true">{t('contactEditorActiveLabel')}</option>
               <option value="false">{t('contacts_batch_inactive')}</option>

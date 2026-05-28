@@ -37,7 +37,7 @@ export default async function ShareTriagePage({
   let detail: ShareTriageDetailRow | null = null
 
   if (inboxQ) {
-    const { data } = await (sb.from('share_inbox') as any)
+    const { data } = await sb.from('share_inbox')
       .select('id, created_at, expires_at, payload')
       .eq('id', inboxQ)
       .eq('user_id', user.id)

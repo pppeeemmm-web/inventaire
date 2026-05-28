@@ -73,7 +73,7 @@ export async function logSystemCronEvent(entry: LogEntry) {
       old_value: entry.oldValue,
       new_value: entry.newValue,
       metadata: { ...entry.metadata, source: 'cron' },
-    } as any)
+    })
     if (error) console.error('[cron-log]', error.message)
   } catch (e) {
     console.error('[cron-log]', e)

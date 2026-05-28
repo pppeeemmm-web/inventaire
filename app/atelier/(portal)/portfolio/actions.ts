@@ -36,7 +36,7 @@ export async function getDocSignedUrls(
 
   try {
     const sb = createServiceClient()
-    const { data: docs } = await (sb.from('document') as any)
+    const { data: docs } = await sb.from('document')
       .select('id, storage_path')
       .in('id', ids)
 
@@ -218,7 +218,7 @@ export async function savePortfolioConfig(
     })
 
     const sb = createServiceClient()
-    const { data: existing } = await (sb.from('document') as any)
+    const { data: existing } = await sb.from('document')
       .select('id')
       .eq('name', PORTFOLIO_SECTIONS_R2_KEY)
       .maybeSingle()
@@ -232,12 +232,12 @@ export async function savePortfolioConfig(
     }
 
     if (existing) {
-      const { error } = await (sb.from('document') as any)
+      const { error } = await sb.from('document')
         .update(payload)
         .eq('id', existing.id)
       if (error) throw error
     } else {
-      const { error } = await (sb.from('document') as any)
+      const { error } = await sb.from('document')
         .insert(payload)
       if (error) throw error
     }
@@ -268,7 +268,7 @@ export async function setWorkPublic(oeuvreId: number): Promise<{ ok: true } | { 
     if (!isAdmin) return { error: 'Accès refusé' }
 
     const sb = createServiceClient()
-    const { error } = await (sb.from('Oeuvres') as any)
+    const { error } = await sb.from('Oeuvres')
       .update({ statusId: 2 })
       .eq('OeuvreID', oeuvreId)
       .is('deleted_at', null)

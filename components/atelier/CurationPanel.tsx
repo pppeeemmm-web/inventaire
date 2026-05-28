@@ -410,7 +410,7 @@ function ChecklistPreview({
                 <div>
                   <div style={{ fontSize: 18, lineHeight: 1.2, marginBottom: 4 }}>
                     {o.Titre || '—'}
-                    {(o as any).anonymity_level === 2 && (
+                    {o.anonymity_level === 2 && (
                       <span style={{
                         marginLeft: 10, fontSize: 9,
                         background: 'rgba(200,140,40,0.15)', border: '1px solid rgba(200,140,40,0.5)',

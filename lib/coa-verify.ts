@@ -36,7 +36,7 @@ export async function verifyCoaByCertId(rawCertId: string): Promise<CoaVerifyOut
 
   const supabase = createServiceClient()
 
-  const { data: doc, error: docErr } = await (supabase.from('document') as any)
+  const { data: doc, error: docErr } = await supabase.from('document')
     .select('id, cert_id, cert_hash, oeuvre_id, created_at')
     .eq('kind', 'coa')
     .eq('cert_id', certId)
@@ -46,7 +46,7 @@ export async function verifyCoaByCertId(rawCertId: string): Promise<CoaVerifyOut
     return { ok: false, reason: 'not_found' }
   }
 
-  const { data: o, error: oErr } = await (supabase.from('Oeuvres') as any)
+  const { data: o, error: oErr } = await supabase.from('Oeuvres')
     .select('OeuvreID, Titre, "Année", Technique, Support, Hauteur, Largeur, Profondeur')
     .eq('OeuvreID', doc.oeuvre_id)
     .single()
@@ -57,10 +57,10 @@ export async function verifyCoaByCertId(rawCertId: string): Promise<CoaVerifyOut
 
   const [{ data: techRow }, { data: suppRow }] = await Promise.all([
     o.Technique
-      ? (supabase.from('Technique') as any).select('Technique').eq('TechniqueID', o.Technique).single()
+      ? supabase.from('Technique').select('Technique').eq('TechniqueID', o.Technique).single()
       : Promise.resolve({ data: null }),
     o.Support
-      ? (supabase.from('Support') as any).select('Support').eq('SupportID', o.Support).single()
+      ? supabase.from('Support').select('Support').eq('SupportID', o.Support).single()
       : Promise.resolve({ data: null }),
   ])
 

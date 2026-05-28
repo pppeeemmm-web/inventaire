@@ -33,7 +33,7 @@ export async function saveContactSignature(
     return { error: 'r2_failed' }
   }
 
-  const { error } = await (supabase.from('Contact') as any)
+  const { error } = await supabase.from('Contact')
     .update({ signature_r2_key: key })
     .eq('ContactID', contactId)
 

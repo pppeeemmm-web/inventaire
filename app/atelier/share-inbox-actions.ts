@@ -12,7 +12,7 @@ export async function deleteShareInboxEntry(id: string): Promise<{ ok: true } | 
     const { data: { user } } = await sb.auth.getUser()
     if (!user) return { error: 'auth' }
 
-    const { data: row, error: selErr } = await (sb.from('share_inbox') as any)
+    const { data: row, error: selErr } = await sb.from('share_inbox')
       .select('payload')
       .eq('id', id)
       .eq('user_id', user.id)
@@ -31,7 +31,7 @@ export async function deleteShareInboxEntry(id: string): Promise<{ ok: true } | 
       }
     }
 
-    const { error: delErr } = await (sb.from('share_inbox') as any).delete().eq('id', id).eq('user_id', user.id)
+    const { error: delErr } = await sb.from('share_inbox').delete().eq('id', id).eq('user_id', user.id)
     if (delErr) throw delErr
     revalidatePath('/atelier/share-triage')
     return { ok: true }
@@ -53,7 +53,7 @@ export async function listShareInboxForUser(): Promise<ShareInboxListRow[]> {
   const { data: { user } } = await sb.auth.getUser()
   if (!user) return []
 
-  const { data, error } = await (sb.from('share_inbox') as any)
+  const { data, error } = await sb.from('share_inbox')
     .select('id, created_at, payload')
     .eq('user_id', user.id)
     .gt('expires_at', new Date().toISOString())

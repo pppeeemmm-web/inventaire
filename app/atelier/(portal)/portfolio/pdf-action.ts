@@ -295,7 +295,7 @@ async function loadPublicWorks(): Promise<
   { works: PdfWork[]; catalogueThemes: ThemeNameRecord[] } | { error: string }
 > {
   try {
-    const sb = await createClient() as any
+    const sb = await createClient()
     const [
       { data: rawWorks, error: eWorks },
       { data: rawTech },
@@ -315,7 +315,7 @@ async function loadPublicWorks(): Promise<
     if (eWorks) return { error: eWorks.message ?? String(eWorks) }
 
     const tMap: Record<number, string> = {}
-    for (const t of (rawTech ?? []) as any[]) {
+    for (const t of (rawTech ?? [])) {
       if (t.TechniqueID != null && t.Technique) tMap[t.TechniqueID] = t.Technique
     }
 
@@ -324,7 +324,7 @@ async function loadPublicWorks(): Promise<
       (oeuvreThemes ?? []) as { oeuvre_id: number; theme_id: number }[],
     )
 
-    const works = ((rawWorks ?? []) as any[])
+    const works = (rawWorks ?? [])
       .filter(o => Boolean(o.txtImageNameLink))
       .map(o => ({
         OeuvreID:         o.OeuvreID as number,
@@ -506,7 +506,7 @@ async function loadCvText(rawConfig: any, lang: Lang): Promise<string> {
   if (!docId) return ''
   try {
     const sb = createServiceClient()
-    const { data: doc, error } = await (sb.from('document') as any)
+    const { data: doc, error } = await sb.from('document')
       .select('name, storage_path, mime_type')
       .eq('id', docId)
       .maybeSingle()

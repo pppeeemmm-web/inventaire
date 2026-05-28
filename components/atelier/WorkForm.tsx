@@ -138,13 +138,13 @@ export function WorkForm({
   const [techniqueId, setTechniqueId] = useState(String(oeuvre?.Technique ?? ''))
   const [supportId,   setSupportId]   = useState(String(oeuvre?.Support ?? ''))
   const [formatId,    setFormatId]    = useState(String(oeuvre?.Format ?? ''))
-  const [hauteur,     setHauteur]     = useState(String((oeuvre as any)?.Hauteur ?? ''))
-  const [largeur,     setLargeur]     = useState(String((oeuvre as any)?.Largeur ?? ''))
-  const [profondeur,  setProfondeur]  = useState(String((oeuvre as any)?.Profondeur ?? ''))
+  const [hauteur,     setHauteur]     = useState(String(oeuvre?.Hauteur ?? ''))
+  const [largeur,     setLargeur]     = useState(String(oeuvre?.Largeur ?? ''))
+  const [profondeur,  setProfondeur]  = useState(String(oeuvre?.Profondeur ?? ''))
 
   // ── Production state (derived from booleans) ──────────────────────
   const [prodStage,  setProdStage]  = useState<ProdStageId>(() => prodStageFromOeuvre(oeuvre))
-  const [needsPhoto, setNeedsPhoto] = useState(!!((oeuvre as any)?.NeedsPhotograph ?? false))
+  const [needsPhoto, setNeedsPhoto] = useState(!!(oeuvre?.NeedsPhotograph ?? false))
 
   // ── Ownership / flow state ────────────────────────────────────────
   const [ownStage,      setOwnStage]      = useState<OwnStageId>(() => ownStageFromStatusId(oeuvre?.statusId))
@@ -156,10 +156,10 @@ export function WorkForm({
 
   // ── Financials ────────────────────────────────────────────────────
   const [prix,        setPrix]        = useState(String(oeuvre?.Prix ?? '0'))
-  const [tvaRate,     setTvaRate]     = useState(String((oeuvre as any)?.tva_rate ?? '0'))
-  const [discount,    setDiscount]    = useState(String((oeuvre as any)?.Discount ?? '0'))
-  const [paymentDone, setPaymentDone] = useState((oeuvre as any)?.PaymentDone ?? false)
-  const [exposable,   setExposable]   = useState((oeuvre as any)?.Exposable ?? false)
+  const [tvaRate,     setTvaRate]     = useState(String(oeuvre?.tva_rate ?? '0'))
+  const [discount,    setDiscount]    = useState(String(oeuvre?.Discount ?? '0'))
+  const [paymentDone, setPaymentDone] = useState(!!(oeuvre?.is_paid ?? false))
+  const [exposable,   setExposable]   = useState(!!(oeuvre?.Exposable ?? false))
   const [broadcastReady, setBroadcastReady] = useState(
     !!(oeuvre as { broadcast_ready?: boolean } | null)?.broadcast_ready,
   )
@@ -174,8 +174,8 @@ export function WorkForm({
   const [selGroups,       setSelGroups]       = useState<Set<string>>(new Set(currentGroupIds))
   const [allThemes, setAllThemes] = useState(initialThemes)
   const [selThemes, setSelThemes] = useState<Set<number>>(new Set(currentThemeIds))
-  const [commentaires, setCommentaires] = useState((oeuvre as any)?.Commentaires ?? '')
-  const [historique,   setHistorique]   = useState((oeuvre as any)?.Historique ?? '')
+  const [commentaires, setCommentaires] = useState(oeuvre?.Commentaires ?? '')
+  const [historique,   setHistorique]   = useState(oeuvre?.Historique ?? '')
 
   const draftSnapshot = useMemo((): WorkFormDraftContent => ({
     titre, annee, techniqueId, supportId, formatId, hauteur, largeur, profondeur,
@@ -235,7 +235,7 @@ export function WorkForm({
       prix: String(oeuvre.Prix ?? '0'),
       tvaRate: String((oeuvre as { tva_rate?: number | null }).tva_rate ?? '0'),
       discount: String((oeuvre as { Discount?: number | null }).Discount ?? '0'),
-      paymentDone: !!((oeuvre as { PaymentDone?: boolean }).PaymentDone ?? false),
+      paymentDone: !!(oeuvre.is_paid ?? false),
       exposable: !!((oeuvre as { Exposable?: boolean }).Exposable ?? false),
       broadcastReady: !!((oeuvre as { broadcast_ready?: boolean }).broadcast_ready ?? false),
       commentaires: String((oeuvre as { Commentaires?: string | null }).Commentaires ?? ''),

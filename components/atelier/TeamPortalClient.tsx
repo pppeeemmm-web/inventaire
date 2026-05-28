@@ -1649,7 +1649,7 @@ function CompareModal({ ids, oeuvres, tM, sM, contacts, addresses, statusLabelMa
     { l: 'Montée',         k: (o: any) => o.Montee ? '✓' : '—' },
     { l: t('catalogued'),  k: (o: any) => o.Catalogué ? '✓' : '—' },
     { l: t('confidentiality'), k: (o: any) => {
-        const level = (o as any).anonymity_level ?? 0
+        const level = o.anonymity_level ?? 0
         return level === 0 ? t('anon_lvl_0') : level === 1 ? t('anon_lvl_1') : t('anon_lvl_2')
       }},
     { l: 'Commission',     k: (o: any) => o.IsCommission ? '✓' : '—' },
