@@ -21,6 +21,7 @@ import { analyticsUiMessages } from './analytics-ui.messages'
 import { auditMessages } from './audit.messages'
 import { stockUiMessages } from './stock-ui.messages'
 import { portfolioConfigMessages } from './portfolio-config.messages'
+import { knobsPanelMessages } from './knobs-panel.messages'
 
 export const featureMessages = {
   ...atelierMessages,
@@ -46,6 +47,7 @@ export const featureMessages = {
   ...auditMessages,
   ...stockUiMessages,
   ...portfolioConfigMessages,
+  ...knobsPanelMessages,
 } as const
 
 export type MessageKey = keyof typeof featureMessages

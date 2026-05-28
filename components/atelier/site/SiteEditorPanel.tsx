@@ -61,6 +61,8 @@ import { CollectionRow } from '@/components/atelier/portfolio/shared/CollectionR
 import { moveBtnStyle } from '@/components/atelier/portfolio/shared/moveBtnStyle'
 import { PracticeBlockExtras } from '@/components/atelier/site/PracticeBlockExtras'
 import { HeroGlossEditor } from '@/components/atelier/site/HeroGlossEditor'
+import { KnobsPanel } from '@/components/atelier/site/KnobsPanel'
+import { DEFAULT_KNOBS_CONFIG } from '@/lib/site-blocks'
 import {
   LandingHeroWorkPicker,
   landingHeroPreviewSrc,
@@ -984,6 +986,16 @@ export function SiteEditorPanel({
         testId="atelier-pub-block-composition"
       >
         <PagesEditor config={config} setConfig={setConfig} />
+      </SitePublicSection>
+      <SitePublicSection
+        title={t('site_knobs_panel_title')}
+        icon="◑"
+        testId="atelier-pub-knobs"
+      >
+        <KnobsPanel
+          knobs={config.knobs ?? DEFAULT_KNOBS_CONFIG}
+          onChange={next => setConfig({ ...config, knobs: next })}
+        />
       </SitePublicSection>
       {blocks.map((block, idx) => {
         const isHidden = !block.visible
