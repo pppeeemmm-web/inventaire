@@ -33,6 +33,8 @@ const KIND_LABEL_KEY: Partial<Record<BlockKind,
   | 'site_block_kind_divider'
   | 'site_block_kind_contact'
   | 'site_block_kind_cv'
+  | 'site_block_kind_expositions'
+  | 'site_block_kind_presse'
 >> = {
   text: 'site_block_kind_text',
   biographie: 'site_block_kind_biographie',
@@ -43,6 +45,8 @@ const KIND_LABEL_KEY: Partial<Record<BlockKind,
   divider: 'site_block_kind_divider',
   contact: 'site_block_kind_contact',
   cv: 'site_block_kind_cv',
+  expositions: 'site_block_kind_expositions',
+  presse: 'site_block_kind_presse',
 }
 
 function makeUid(): string {

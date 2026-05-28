@@ -579,4 +579,18 @@ export const siteBlocksMessages = defineMessages({
   site_cv_label_fr: { fr: 'Libellé FR', en: 'Label FR' },
   site_cv_label_en: { fr: 'Libellé EN', en: 'Label EN' },
   site_cv_default_label: { fr: 'Télécharger le CV', en: 'Download CV' },
+  // ── Expositions ───────────────────────────────────────────────────────────
+  site_block_kind_expositions: { fr: 'Expositions', en: 'Exhibitions' },
+  site_expositions_year: { fr: 'Année', en: 'Year' },
+  site_expositions_title: { fr: 'Titre', en: 'Title' },
+  site_expositions_venue: { fr: 'Lieu', en: 'Venue' },
+  site_expositions_add: { fr: '+ Ajouter une exposition', en: '+ Add exhibition' },
+  // ── Presse ────────────────────────────────────────────────────────────────
+  site_block_kind_presse: { fr: 'Presse', en: 'Press' },
+  site_presse_source: { fr: 'Source', en: 'Source' },
+  site_presse_date: { fr: 'Date', en: 'Date' },
+  site_presse_excerpt_fr: { fr: 'Extrait FR', en: 'Excerpt FR' },
+  site_presse_excerpt_en: { fr: 'Extrait EN', en: 'Excerpt EN' },
+  site_presse_url: { fr: 'Lien', en: 'Link' },
+  site_presse_add: { fr: '+ Ajouter une mention', en: '+ Add mention' },
 })

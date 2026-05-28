@@ -17,6 +17,8 @@ import { statementDescriptor } from './statement'
 import { dividerDescriptor } from './divider'
 import { contactDescriptor } from './contact'
 import { cvDescriptor } from './cv'
+import { expositionsDescriptor } from './expositions'
+import { presseDescriptor } from './presse'
 
 // Register in alphabetical-by-kind order so the editor's "Add block" menu
 // renders deterministically across page reloads.
@@ -25,7 +27,9 @@ registerBlock(biographieDescriptor)
 registerBlock(contactDescriptor)
 registerBlock(cvDescriptor)
 registerBlock(dividerDescriptor)
+registerBlock(expositionsDescriptor)
 registerBlock(materialsDescriptor)
+registerBlock(presseDescriptor)
 registerBlock(statementDescriptor)
 registerBlock(textDescriptor)
 registerBlock(themesDescriptor)
