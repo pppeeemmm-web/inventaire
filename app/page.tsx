@@ -18,6 +18,7 @@ import {
 import {
   DEFAULT_HERO_CAPTION_EN,
   DEFAULT_HERO_CAPTION_FR,
+  migrate,
 } from '@/lib/portfolio-config-types'
 import { resolveLandingBackground } from '@/lib/landing-background'
 import { resolveHeroGloss } from '@/lib/landing-hero-gloss'
@@ -98,6 +99,44 @@ export default async function HomePage() {
       hidden = hiddenNavRoutes(blocks)
       navOrder = orderedNavRoutes(blocks)
       heroLinked = isLandingHeroLinked(blocks)
+    }
+
+    // ── Registry-driven overlay from pages.landing blocks ────────────────
+    // PagesEditor block visibility + field edits take effect here once the
+    // artist saves via Publier. Hero renderer is still null (LandingPage handles
+    // its own rendering), but block metadata drives caption and identity.
+    const migrated = migrate(config)
+    const landingBlocks = migrated.pages?.landing ?? []
+
+    const heroBlock = landingBlocks.find(b => b.kind === 'hero')
+    const identityBlock = landingBlocks.find(b => b.kind === 'identity')
+
+    // If the identity block is hidden, suppress the artist name ring.
+    if (identityBlock && !identityBlock.visible) {
+      artistName = ''
+    } else if (identityBlock?.fields) {
+      // Prefer block field if it was explicitly set via PagesEditor and differs.
+      const blockName = typeof identityBlock.fields.artist_name === 'string'
+        ? identityBlock.fields.artist_name.trim()
+        : ''
+      if (blockName) artistName = resolveArtistDisplayName(blockName)
+    }
+
+    // If the hero block is hidden, suppress caption and hero link.
+    if (heroBlock && !heroBlock.visible) {
+      heroCaptionFr = ''
+      heroCaptionEn = ''
+      heroLinked = false
+    } else if (heroBlock?.fields) {
+      // Prefer block caption fields if they were explicitly set via PagesEditor.
+      const blockCapFr = typeof heroBlock.fields.hero_caption_fr === 'string'
+        ? heroBlock.fields.hero_caption_fr.trim()
+        : ''
+      const blockCapEn = typeof heroBlock.fields.hero_caption_en === 'string'
+        ? heroBlock.fields.hero_caption_en.trim()
+        : ''
+      if (blockCapFr) heroCaptionFr = blockCapFr
+      if (blockCapEn) heroCaptionEn = blockCapEn
     }
   } catch (e) {
     console.error('[HomePage] portfolio sections load failed', e)
