@@ -20,10 +20,11 @@ import type {
   BlockKind,
   Page,
 } from '@/lib/portfolio-config-types'
+import type { KnobValues } from './knob-types'
 
-/** Knob families declared in the controller (Phase 2 — see plan §Phase 2). */
-export type KnobFamily =
-  | 'light' | 'shadow' | 'frame' | 'bg' | 'mat' | 'type' | 'atm' | 'motion'
+// Re-exported from knob-types so existing imports from registry stay stable.
+export type { KnobFamily } from './knob-types'
+import type { KnobFamily } from './knob-types'
 
 /** Generic shape — descriptor authors narrow Fields via type parameter. */
 export interface BlockDescriptor<Fields extends Record<string, unknown> = Record<string, unknown>> {
@@ -67,8 +68,8 @@ export interface BlockEditorCtx {
 export interface BlockRendererProps<Fields extends Record<string, unknown>> {
   block: Block
   fields: Fields
-  /** Site/page/block-cascaded knobs (Phase 2). Today renderers ignore this. */
-  knobs?: unknown
+  /** Site/page/block-cascaded knobs resolved by resolveKnobs() (Phase 2). */
+  knobs?: KnobValues
   /** Runtime context for the renderer (e.g. site theme, locale). */
   ctx: BlockRendererCtx
 }

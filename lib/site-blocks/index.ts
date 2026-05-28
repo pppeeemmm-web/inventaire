@@ -48,3 +48,7 @@ registerBlock(worksModesDescriptor)
 
 export { registerBlock, getDescriptor, kindsAllowedOnPage, isKindAllowedOnPage, BLOCKS }
 export type { BlockDescriptor, BlockEditorProps, BlockRendererProps, BlockEditorCtx, BlockRendererCtx, KnobFamily } from './registry'
+// Phase 2 — knob cascade
+export type { KnobValues, KnobFamilyOverrides, KnobsConfig } from './knob-types'
+export { DEFAULT_KNOB_VALUES, DEFAULT_KNOBS_CONFIG, migrateKnobValues, migrateKnobFamilyOverrides, migrateKnobsConfig } from './knob-types'
+export { resolveKnobs, mergeKnobFamilies } from './resolve-knobs'

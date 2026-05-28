@@ -34,6 +34,14 @@ import {
   type CollectionHeadingSource,
 } from '@/lib/collection-display'
 import {
+  type KnobsConfig,
+  type KnobFamilyOverrides,
+  DEFAULT_KNOBS_CONFIG,
+  migrateKnobsConfig,
+  migrateKnobFamilyOverrides,
+} from '@/lib/site-blocks/knob-types'
+export type { KnobsConfig, KnobFamilyOverrides }
+import {
   LANDING_HERO_GLOSS_BLEND_DEFAULT,
   LANDING_HERO_GLOSS_FALLOFF_DEFAULT,
   LANDING_HERO_GLOSS_POSITION_DEFAULT,
@@ -234,6 +242,11 @@ export interface PortfolioConfig {
    * `lib/site-blocks/registry.ts`.
    */
   pages?: PageBlocks
+  /**
+   * Phase 2 — site/page knob cascade config. Optional for backward compat;
+   * populated by migrate() with DEFAULT_KNOBS_CONFIG when absent from JSON.
+   */
+  knobs?: KnobsConfig
 }
 
 // ── Per-page content blocks (Phase 1) ─────────────────────────────────────
@@ -284,7 +297,7 @@ export interface Block {
   /** Block-kind-specific data; shape defined by the descriptor in registry. */
   fields: Record<string, unknown>
   /** Phase 2 — per-block knob overrides on top of site/page cascade. */
-  knob_override?: Record<string, unknown>
+  knob_override?: KnobFamilyOverrides
   sort_order: number
 }
 
@@ -509,7 +522,7 @@ function migrateBlockField(b: any): Block | null {
     visible: b.visible !== false,
     layout_width,
     fields: (b.fields && typeof b.fields === 'object') ? b.fields : {},
-    knob_override: (b.knob_override && typeof b.knob_override === 'object') ? b.knob_override : undefined,
+    knob_override: b.knob_override ? migrateKnobFamilyOverrides(b.knob_override) : undefined,
     sort_order: Number.isFinite(b.sort_order) ? Number(b.sort_order) : 0,
   }
 }
@@ -677,5 +690,6 @@ export function migrate(raw: any): PortfolioConfig {
   // Derive `pages` from the now-migrated base fields; use persisted pages if
   // present, else fall back to defaults synthesized from base.
   const defaults = deriveDefaultPages(base)
-  return { ...base, pages: migratePages(raw, defaults) }
+  const knobs = migrateKnobsConfig(raw.knobs ?? null)
+  return { ...base, pages: migratePages(raw, defaults), knobs }
 }
