@@ -1,6 +1,6 @@
 'use client'
 
-import { imageUrl, thumbUrl, DIAMETER_SIGN, isCircularSupport, STATUS_ID_ARCHIVE_ARTISTE } from '@/lib/data'
+import { imageUrl, thumbUrl, STATUS_ID_ARCHIVE_ARTISTE } from '@/lib/data'
 import { deleteWork, restoreSoftDeletedWorks, revertWorkSnapshot, loadOeuvreLongText, type WorkRevertSnapshot } from '@/app/atelier/works/actions'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -10,7 +10,6 @@ import { saveWork, createLookup, addWorkImage, reorderWorkImages, deleteWorkImag
 import { toast } from '@/lib/ui/toast'
 import { workSaveErrorToastMessage } from '@/lib/work-save-error'
 import { registerUndo, consumeUndo } from '@/lib/ui/undo'
-import { markAsGift } from '@/app/atelier/works/gift-actions'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import {
   downscaleImageFileForMobileIfNeeded,
@@ -40,11 +39,15 @@ import { WorkDrawerImageArea } from './WorkDrawerImageArea'
 import { WorkDrawerPipelineSection } from './WorkDrawerPipelineSection'
 import { SaleReturnWindowBanner } from './SaleReturnWindowBanner'
 import { DrawerContentFinanceSection } from './DrawerContentFinanceSection'
+import { DrawerContentIdentitySection } from './DrawerContentIdentitySection'
 import { DrawerContentNotesVersionSection } from './DrawerContentNotesVersionSection'
 import { DrawerWorkSessionsSection } from './DrawerWorkSessionsSection'
 import { DrawerContentGroupsSection } from './DrawerContentGroupsSection'
 import { emitJunctionSaved } from '@/lib/atelier/junction-refresh-bus'
-import { CreatableSelect, FIS, Label, SectionTitle, Switch, WfSwitch, cap } from './drawer-widgets'
+import { NewContactModal, EMPTY_CONTACT_DRAFT } from './NewContactModal'
+import { UnsavedChangesModal } from './UnsavedChangesModal'
+import { GiftTransferModal } from './GiftTransferModal'
+import { FIS, cap } from './drawer-widgets'
 import { WorkFormPhysicalQr } from '@/components/atelier/WorkFormPhysicalQr'
 import { normalizeAnonymityLevel } from '@/lib/anonymity-level'
 
@@ -132,19 +135,14 @@ export function DrawerContent({
   const [selGroups, setSelGroups] = useState<Set<string>>(new Set())
   const [localContacts, setLocalContacts] = useState<DrawerContactRow[]>(initialContacts as DrawerContactRow[])
   const [showNewContact, setShowNewContact] = useState(false)
-  const [newC, setNewC] = useState({ inst: '', prenom: '', nom: '', role: '', email: '', phone: '', ville: '', pays: '', notes: '' })
+  const [newC, setNewC] = useState(EMPTY_CONTACT_DRAFT)
   const [creatingContact, setCreatingContact] = useState(false)
   const [anonymityLevel, setAnonymityLevel] = useState<number>(() =>
     normalizeAnonymityLevel((o as { anonymity_level?: unknown }).anonymity_level),
   )
 
   // ── Gift modal state ───────────────────────────────────
-  const [showGiftModal, setShowGiftModal]       = useState(false)
-  const [giftRecipientId, setGiftRecipientId]   = useState('')
-  const [giftDeliveryDate, setGiftDeliveryDate] = useState('')
-  const [giftNotes, setGiftNotes]               = useState('')
-  const [giftBusy, setGiftBusy]                 = useState(false)
-  const [giftError, setGiftError]               = useState<string | null>(null)
+  const [showGiftModal, setShowGiftModal] = useState(false)
   const [noteBaseline, setNoteBaseline] = useState({ c: '', h: '' })
 
   const draftKey = useMemo(() => draftStorageKey(o.OeuvreID), [o.OeuvreID])
@@ -578,22 +576,6 @@ export function DrawerContent({
   const [localTechniques, setLocalTechniques] = useState(initialTechniques)
   const [localSupports,   setLocalSupports]   = useState(initialSupports)
   const [localFormats,    setLocalFormats]    = useState(initialFormats)
-
-  const supportLabel = useMemo(
-    () => localSupports.find((s: { SupportID: number; Support: string | null }) => String(s.SupportID) === supportId)?.Support ?? '',
-    [localSupports, supportId],
-  )
-  const circularPlanar = isCircularSupport(supportLabel)
-  const diameterFieldValue = useMemo(() => {
-    if (!circularPlanar) return hauteur
-    const a = hauteur.trim()
-    const b = largeur.trim()
-    if (a === b) return hauteur
-    return hauteur || largeur
-  }, [circularPlanar, hauteur, largeur])
-
-  const isDigital = techniqueId === '19'
-  const pxToCm = (px: string) => (px ? (parseFloat(px) / (300 / 2.54)).toFixed(1) : '')
 
   const pemContact = useMemo(
     () => localContacts.find((c: DrawerContactRow) => (c.NomInstitution ?? '').toLowerCase().includes('pem')),
@@ -1156,7 +1138,7 @@ export function DrawerContent({
     setLocalContacts((prev) => [...prev, newEntry])
     setContactId(String(newId))
     setShowNewContact(false)
-    setNewC({ inst: '', prenom: '', nom: '', role: '', email: '', phone: '', ville: '', pays: '', notes: '' })
+    setNewC(EMPTY_CONTACT_DRAFT)
   }
 
   return (
@@ -1273,116 +1255,36 @@ export function DrawerContent({
 
       {/* ═══ EDITABLE FIELDS ═══ */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-        <section>
-          <SectionTitle title={t('wf_section_identity')} />
-          <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: '6px 12px', fontSize: 12 }}>
-            <Label>{t('year')}</Label>
-            <input className="input" value={annee} onChange={e => setAnnee(e.target.value)} style={FIS} placeholder="YYYY-MM-DD" />
-
-            <Label>{t('technique')}</Label>
-            <CreatableSelect value={techniqueId} options={localTechniques.map((t) => ({ id: String(t.TechniqueID), label: t.Technique ?? '' }))} onChange={setTechniqueId} onAdd={(name: string) => saveLookup('Technique', name)} />
-
-            <Label>{t('support')}</Label>
-            <CreatableSelect value={supportId} options={localSupports.map((s) => ({ id: String(s.SupportID), label: s.Support ?? '' }))} onChange={setSupportId} onAdd={(name: string) => saveLookup('Support', name)} />
-
-            <Label>Dim.</Label>
-            <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
-              {circularPlanar ? (
-                <>
-                  <span style={{ color: 'var(--tx3)', fontSize: 12, lineHeight: 1 }} title={t('wf_diameter_tt')}>{DIAMETER_SIGN}</span>
-                  <input
-                    className="input"
-                    value={diameterFieldValue}
-                    onChange={(e) => {
-                      const v = e.target.value
-                      setHauteur(v)
-                      setLargeur(v)
-                    }}
-                    style={{ ...FIS, width: '34%', minWidth: 52 }}
-                    placeholder="cm"
-                  />
-                  <span style={{ color: 'var(--tx3)', fontSize: 10 }}>×</span>
-                  <input className="input" value={profondeur} onChange={e => setProfondeur(e.target.value)} style={{ ...FIS, width: '30%' }} placeholder="D" />
-                </>
-              ) : (
-                <>
-                  <input className="input" value={hauteur} onChange={e => setHauteur(e.target.value)} style={{ ...FIS, width: '30%' }} placeholder={isDigital ? 'H (px)' : 'H'} />
-                  <span style={{ color: 'var(--tx3)', fontSize: 10 }}>×</span>
-                  <input className="input" value={largeur} onChange={e => setLargeur(e.target.value)} style={{ ...FIS, width: '30%' }} placeholder={isDigital ? 'W (px)' : 'W'} />
-                  <span style={{ color: 'var(--tx3)', fontSize: 10 }}>×</span>
-                  <input className="input" value={profondeur} onChange={e => setProfondeur(e.target.value)} style={{ ...FIS, width: '30%' }} placeholder="D" />
-                </>
-              )}
-            </div>
-            {isDigital && (
-              <div style={{ gridColumn: '1 / -1', marginTop: 4, padding: 10, border: '1px solid var(--bd)', background: 'var(--bg2)', fontSize: 11 }}>
-                <div className="t-eyebrow" style={{ marginBottom: 6 }}>{t('wf_fmt_digital')}</div>
-                <div className="t-mono-xs" style={{ color: 'var(--ac)' }}>≈ {pxToCm(hauteur)} × {pxToCm(largeur)} cm (@300dpi)</div>
-              </div>
-            )}
-
-            <Label>{t('framed')}</Label>
-            <div style={{ paddingTop: 2 }}>
-              <Switch checked={encadree} onChange={setEncadree} />
-            </div>
-
-            <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <WfSwitch
-                testId="wf-broadcast-ready-switch"
-                label={t('wf_broadcast_ready')}
-                checked={broadcastReady}
-                onChange={setBroadcastReady}
-              />
-              <div style={{ fontSize: 10, color: 'var(--tx3)', lineHeight: 1.4 }}>
-                {t('wf_broadcast_ready_hint')}
-              </div>
-              {broadcastReady && (
-                <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <label style={{ fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', color: 'var(--tx3)' }}>
-                    {t('bc_caption_seed')}
-                  </label>
-                  <textarea
-                    data-testid="wf-broadcast-caption-seed"
-                    value={broadcastCaptionSeed}
-                    onChange={(e) => setBroadcastCaptionSeed(e.target.value.slice(0, 2000))}
-                    rows={3}
-                    className="input"
-                    style={{ ...FIS, height: 'auto', resize: 'vertical', minHeight: 64, padding: 8, fontSize: 12, lineHeight: 1.4 }}
-                  />
-                  <div style={{ fontSize: 10, color: 'var(--tx3)', lineHeight: 1.4 }}>
-                    {t('bc_caption_seed_hint')}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <Label>{t('presentation')}</Label>
-            <select className="input" value={presentationId} onChange={e => setPresentationId(e.target.value)} style={FIS}>
-              <option value="">—</option>
-              {initialPresentations.map((p) => <option key={p.PresentationID} value={p.PresentationID}>{p.Nom}</option>)}
-            </select>
-
-            <Label>{t('concept_view_themes')}</Label>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-              {initialThemes.map((th) => {
-                const active = selThemes.has(th.id)
-                return (
-                  <button key={th.id} type="button"
-                    onClick={() => setSelThemes((p: Set<number>) => {
-                      const s = new Set(p)
-                      if (s.has(th.id)) s.delete(th.id)
-                      else s.add(th.id)
-                      return s
-                    })}
-                    style={{ padding: '2px 7px', fontSize: 9, borderRadius: 2, border: '1px solid var(--bd)', background: active ? 'var(--ac)' : 'var(--bg2)', color: active ? 'var(--bg1)' : 'var(--tx3)', cursor: 'pointer' }}>
-                    {th.name}
-                  </button>
-                )
-              })}
-            </div>
-
-          </div>
-        </section>
+        <DrawerContentIdentitySection
+          t={t}
+          annee={annee}
+          setAnnee={setAnnee}
+          techniqueId={techniqueId}
+          setTechniqueId={setTechniqueId}
+          supportId={supportId}
+          setSupportId={setSupportId}
+          hauteur={hauteur}
+          setHauteur={setHauteur}
+          largeur={largeur}
+          setLargeur={setLargeur}
+          profondeur={profondeur}
+          setProfondeur={setProfondeur}
+          localTechniques={localTechniques}
+          localSupports={localSupports}
+          saveLookup={saveLookup}
+          encadree={encadree}
+          setEncadree={setEncadree}
+          broadcastReady={broadcastReady}
+          setBroadcastReady={setBroadcastReady}
+          broadcastCaptionSeed={broadcastCaptionSeed}
+          setBroadcastCaptionSeed={setBroadcastCaptionSeed}
+          presentationId={presentationId}
+          setPresentationId={setPresentationId}
+          initialPresentations={initialPresentations}
+          initialThemes={initialThemes}
+          selThemes={selThemes}
+          setSelThemes={setSelThemes}
+        />
 
         <DrawerContentFinanceSection
           narrow={narrow}
@@ -1468,13 +1370,7 @@ export function DrawerContent({
               className="btn ghost sm"
               style={{ fontSize: 11, color: 'var(--ac)', borderColor: 'rgba(200,168,110,0.4)', minHeight: 44 }}
               type="button"
-              onClick={() => {
-                setGiftRecipientId('')
-                setGiftDeliveryDate(new Date().toISOString().slice(0, 10))
-                setGiftNotes('')
-                setGiftError(null)
-                setShowGiftModal(true)
-              }}
+              onClick={() => setShowGiftModal(true)}
               title={t('workDrawer_gift_body')}
             >
               ⊕ {t('workDrawer_gift_cta')}
@@ -1496,210 +1392,36 @@ export function DrawerContent({
         {deleteError && <div style={{ color: '#c0392b', fontSize: 10, marginTop: 6 }}>{deleteError}</div>}
       </div>
 
-      {/* New contact full form modal */}
       {showNewContact && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
-          onClick={() => setShowNewContact(false)}>
-          <div onClick={e => e.stopPropagation()}
-            style={{ background: 'var(--bg1)', border: '1px solid var(--bd)', borderRadius: 8, padding: 24, width: '100%', maxWidth: 520, maxHeight: '85vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <div style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--tx3)' }}>{t('wf_new_contact')}</div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ fontSize: 10, color: 'var(--tx3)' }}>{t('contactEditorInstitution')}</label>
-              <input className="input" value={newC.inst} onChange={e => setNewC(p => ({ ...p, inst: e.target.value }))} style={FIS} placeholder={t('contacts_quick_inst')} autoFocus />
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label style={{ fontSize: 10, color: 'var(--tx3)' }}>{t('contactEditorFirstName')}</label>
-                <input className="input" value={newC.prenom} onChange={e => setNewC(p => ({ ...p, prenom: e.target.value }))} style={FIS} />
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label style={{ fontSize: 10, color: 'var(--tx3)' }}>{t('contactEditorLastName')}</label>
-                <input className="input" value={newC.nom} onChange={e => setNewC(p => ({ ...p, nom: e.target.value }))} style={FIS} />
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ fontSize: 10, color: 'var(--tx3)' }}>{t('contactEditorRole')}</label>
-              <input className="input" value={newC.role} onChange={e => setNewC(p => ({ ...p, role: e.target.value }))} style={FIS} placeholder={t('contactEditorRolePick')} />
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label style={{ fontSize: 10, color: 'var(--tx3)' }}>{t('contactEditorEmailPh')}</label>
-                <input className="input" type="email" value={newC.email} onChange={e => setNewC(p => ({ ...p, email: e.target.value }))} style={FIS} />
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label style={{ fontSize: 10, color: 'var(--tx3)' }}>{t('contactEditorPhonePh')}</label>
-                <input className="input" type="tel" value={newC.phone} onChange={e => setNewC(p => ({ ...p, phone: e.target.value }))} style={FIS} />
-              </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label style={{ fontSize: 10, color: 'var(--tx3)' }}>{t('contactEditorCity')}</label>
-                <input className="input" value={newC.ville} onChange={e => setNewC(p => ({ ...p, ville: e.target.value }))} style={FIS} />
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label style={{ fontSize: 10, color: 'var(--tx3)' }}>{t('contactEditorCountry')}</label>
-                <input className="input" value={newC.pays} onChange={e => setNewC(p => ({ ...p, pays: e.target.value }))} style={FIS} />
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ fontSize: 10, color: 'var(--tx3)' }}>{t('notes')}</label>
-              <textarea className="input" value={newC.notes} onChange={e => setNewC(p => ({ ...p, notes: e.target.value }))} style={{ ...FIS, height: 72, resize: 'vertical' }} />
-            </div>
-
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button className="btn ghost sm" onClick={() => { setShowNewContact(false); setNewC({ inst: '', prenom: '', nom: '', role: '', email: '', phone: '', ville: '', pays: '', notes: '' }) }} style={{ fontSize: 11 }}>{t('cancel')}</button>
-              <button className="btn primary sm" onClick={handleCreateContact} disabled={creatingContact || (!newC.inst && !newC.prenom && !newC.nom)} style={{ fontSize: 11 }}>
-                {creatingContact ? '…' : t('contactEditorCreate')}
-              </button>
-            </div>
-          </div>
-        </div>
+        <NewContactModal
+          newC={newC}
+          setNewC={setNewC}
+          creating={creatingContact}
+          t={t}
+          onCreate={handleCreateContact}
+          onClose={() => { setShowNewContact(false); setNewC(EMPTY_CONTACT_DRAFT) }}
+        />
       )}
 
       {showUnsavedModal && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="work-drawer-unsaved-title"
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 99999,
-            background: 'rgba(0,0,0,0.55)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: 16,
-          }}
-          onClick={() => {
-            if (savingExit) return
-            setShowUnsavedModal(false)
-            pendingAfterGuardRef.current = null
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: 'var(--bg1)',
-              border: '1px solid var(--bd)',
-              borderRadius: 10,
-              padding: 24,
-              width: '100%',
-              maxWidth: 400,
-              boxShadow: '0 20px 60px rgba(0,0,0,0.45)',
-            }}
-          >
-            <div id="work-drawer-unsaved-title" style={{ fontSize: 16, fontFamily: "'Instrument Serif', serif", marginBottom: 8, color: 'var(--tx)' }}>
-              {t('workDrawerUnsavedTitle')}
-            </div>
-            <div className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx3)', marginBottom: 20, lineHeight: 1.45 }}>
-              {t('workDrawerUnsavedBody')}
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                className="btn ghost sm"
-                disabled={savingExit}
-                onClick={discardUnsavedClose}
-                style={{ color: 'var(--rust)', borderColor: 'rgba(192,57,43,0.35)' }}
-              >
-                {t('workDrawerDiscard')}
-              </button>
-              <button
-                type="button"
-                className="btn ghost sm"
-                disabled={savingExit}
-                onClick={() => {
-                  setShowUnsavedModal(false)
-                  pendingAfterGuardRef.current = null
-                }}
-              >
-                {t('cancel')}
-              </button>
-              <button type="button" className="btn primary sm" disabled={savingExit} onClick={() => void handleSaveAndClose()}>
-                {savingExit ? '…' : t('save')}
-              </button>
-            </div>
-          </div>
-        </div>
+        <UnsavedChangesModal
+          saving={savingExit}
+          t={t}
+          onDiscard={discardUnsavedClose}
+          onCancel={() => { setShowUnsavedModal(false); pendingAfterGuardRef.current = null }}
+          onSaveAndClose={() => void handleSaveAndClose()}
+        />
       )}
 
-      {/* Gift transfer modal */}
       {showGiftModal && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 220, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
-          onClick={() => !giftBusy && setShowGiftModal(false)}>
-          <div onClick={e => e.stopPropagation()}
-            style={{ background: 'var(--bg1)', border: '1px solid var(--ac)', borderRadius: 8, padding: 24, width: '100%', maxWidth: 480, display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <div>
-              <div style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ac)' }}>{t('workDrawer_gift_title')}</div>
-              <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 4 }}>
-                {t('workDrawer_gift_body')}
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ fontSize: 10, color: 'var(--tx3)' }}>{t('workDrawer_gift_recipient')} *</label>
-              <select className="input" value={giftRecipientId} onChange={e => setGiftRecipientId(e.target.value)} style={FIS} autoFocus>
-                <option value="">{t('workDrawer_gift_recipient_ph')}</option>
-                {sortedContacts.map((c) => (
-                  <option key={c.ContactID} value={c.ContactID}>{cName(c)}</option>
-                ))}
-              </select>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ fontSize: 10, color: 'var(--tx3)' }}>{t('workDrawer_gift_delivery')}</label>
-              <input type="date" className="input" value={giftDeliveryDate} onChange={e => setGiftDeliveryDate(e.target.value)} style={FIS} />
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ fontSize: 10, color: 'var(--tx3)' }}>{t('wf_comments')}</label>
-              <textarea className="input" value={giftNotes} onChange={e => setGiftNotes(e.target.value)} style={{ ...FIS, height: 72, resize: 'vertical' }} placeholder={t('workDrawer_gift_notes_ph')} />
-            </div>
-
-            {giftError && <div style={{ color: '#c0392b', fontSize: 10 }}>{giftError}</div>}
-
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button type="button" className="btn ghost sm" disabled={giftBusy} onClick={() => setShowGiftModal(false)} style={{ fontSize: 11 }}>{t('workDrawer_gift_cancel')}</button>
-              <button
-                type="button"
-                className="btn primary sm"
-                disabled={giftBusy || !giftRecipientId}
-                onClick={async () => {
-                  setGiftBusy(true); setGiftError(null)
-                  try {
-                    const fd = new FormData()
-                    fd.append('oeuvre_id', String(o.OeuvreID))
-                    fd.append('recipient_id', giftRecipientId)
-                    if (giftDeliveryDate) fd.append('delivery_date', giftDeliveryDate)
-                    if (giftNotes.trim())  fd.append('notes', giftNotes.trim())
-                    const res = await markAsGift(fd)
-                    if ('error' in res) {
-                      setGiftError(res.error)
-                    } else {
-                      setShowGiftModal(false)
-                      setLongTextReloadNonce((n) => n + 1)
-                      router.refresh()
-                    }
-                  } catch (err) {
-                    setGiftError(err instanceof Error ? err.message : String(err))
-                  } finally {
-                    setGiftBusy(false)
-                  }
-                }}
-                style={{ fontSize: 11 }}
-              >
-                {giftBusy ? '…' : t('workDrawer_gift_confirm')}
-              </button>
-            </div>
-          </div>
-        </div>
+        <GiftTransferModal
+          oeuvreId={o.OeuvreID}
+          recipients={sortedContacts}
+          cName={cName}
+          t={t}
+          onClose={() => setShowGiftModal(false)}
+          onGifted={() => { setShowGiftModal(false); setLongTextReloadNonce((n) => n + 1); router.refresh() }}
+        />
       )}
     </>
   )

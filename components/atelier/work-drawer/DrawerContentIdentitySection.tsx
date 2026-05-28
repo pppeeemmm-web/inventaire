@@ -39,7 +39,7 @@ export function DrawerContentIdentitySection({
   selThemes,
   setSelThemes,
 }: {
-  t: (k: string) => string
+  t: (k: import('@/lib/i18n/dictionary').DictKey) => string
   annee: string
   setAnnee: (v: string) => void
   techniqueId: string
