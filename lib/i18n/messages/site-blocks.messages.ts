@@ -555,4 +555,28 @@ export const siteBlocksMessages = defineMessages({
   site_block_action_move_down: { fr: 'Descendre', en: 'Move down' },
   site_block_action_visible: { fr: 'Visible', en: 'Visible' },
   site_block_action_hidden: { fr: 'Caché', en: 'Hidden' },
+  // ── Statement ─────────────────────────────────────────────────────────────
+  site_block_kind_statement: { fr: 'Citation', en: 'Statement' },
+  site_statement_attribution_fr: { fr: 'Attribution FR', en: 'Attribution FR' },
+  site_statement_attribution_en: { fr: 'Attribution EN', en: 'Attribution EN' },
+  // ── Divider ───────────────────────────────────────────────────────────────
+  site_block_kind_divider: { fr: 'Séparateur', en: 'Divider' },
+  site_divider_style_label: { fr: 'Style', en: 'Style' },
+  site_divider_style_rule: { fr: 'Trait', en: 'Rule' },
+  site_divider_style_spacer: { fr: 'Espace', en: 'Spacer' },
+  site_divider_style_ornament: { fr: 'Ornement', en: 'Ornament' },
+  // ── Contact ───────────────────────────────────────────────────────────────
+  site_block_kind_contact: { fr: 'Contact', en: 'Contact' },
+  site_contact_email_label: { fr: 'Courriel', en: 'Email' },
+  site_contact_gallery_label: { fr: 'Galerie', en: 'Gallery' },
+  site_contact_gallery_name_label: { fr: 'Galerie (nom)', en: 'Gallery (name)' },
+  site_contact_gallery_address_label: { fr: 'Galerie (adresse)', en: 'Gallery (address)' },
+  site_contact_note_fr: { fr: 'Note FR', en: 'Note FR' },
+  site_contact_note_en: { fr: 'Note EN', en: 'Note EN' },
+  // ── CV ────────────────────────────────────────────────────────────────────
+  site_block_kind_cv: { fr: 'CV', en: 'CV' },
+  site_cv_url_label: { fr: 'Lien', en: 'Link' },
+  site_cv_label_fr: { fr: 'Libellé FR', en: 'Label FR' },
+  site_cv_label_en: { fr: 'Libellé EN', en: 'Label EN' },
+  site_cv_default_label: { fr: 'Télécharger le CV', en: 'Download CV' },
 })

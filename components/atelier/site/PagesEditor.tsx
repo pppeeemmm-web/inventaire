@@ -29,12 +29,20 @@ const KIND_LABEL_KEY: Partial<Record<BlockKind,
   | 'site_block_kind_approach'
   | 'site_block_kind_themes'
   | 'site_block_kind_materials'
+  | 'site_block_kind_statement'
+  | 'site_block_kind_divider'
+  | 'site_block_kind_contact'
+  | 'site_block_kind_cv'
 >> = {
   text: 'site_block_kind_text',
   biographie: 'site_block_kind_biographie',
   approach: 'site_block_kind_approach',
   themes: 'site_block_kind_themes',
   materials: 'site_block_kind_materials',
+  statement: 'site_block_kind_statement',
+  divider: 'site_block_kind_divider',
+  contact: 'site_block_kind_contact',
+  cv: 'site_block_kind_cv',
 }
 
 function makeUid(): string {

@@ -13,12 +13,20 @@ import { biographieDescriptor } from './biographie'
 import { approachDescriptor } from './approach'
 import { themesDescriptor } from './themes'
 import { materialsDescriptor } from './materials'
+import { statementDescriptor } from './statement'
+import { dividerDescriptor } from './divider'
+import { contactDescriptor } from './contact'
+import { cvDescriptor } from './cv'
 
 // Register in alphabetical-by-kind order so the editor's "Add block" menu
 // renders deterministically across page reloads.
 registerBlock(approachDescriptor)
 registerBlock(biographieDescriptor)
+registerBlock(contactDescriptor)
+registerBlock(cvDescriptor)
+registerBlock(dividerDescriptor)
 registerBlock(materialsDescriptor)
+registerBlock(statementDescriptor)
 registerBlock(textDescriptor)
 registerBlock(themesDescriptor)
 
