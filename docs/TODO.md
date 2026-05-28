@@ -50,9 +50,9 @@ _Version-controlled checklist + non-binding roadmap items. Prefer this file over
 
 ## Block C — decomposition
 
-- [ ] **C1** `PortfolioTab.tsx` → panels + orchestrator.
+- [x] **C1** `PortfolioTab.tsx` → panels + orchestrator (2026-05-28).
 - [x] **C2** `app/atelier/pipeline/_components/Pipeline.tsx` → toolbar + `usePipelineLoad`; panels already split; `AbortController` on fetch (2026-05-25).
-- [ ] **C3** `Exhibitions.tsx` → steps + floor-plan panels.
+- [x] **C3** `Exhibitions.tsx` → steps + floor-plan panels (2026-05-28).
 - [x] **C4** `docs/CONSTELLATION.md`.
 - [x] **C-partial** Constellation — shared, toolbar, tool rail, side panel, draw frame, export, shortcuts (2026-05-25); pointer handlers + snapshot orchestration remain in canvas.
 - [x] **C-partial** `pipeline-shared.ts`, list panel extractions.
