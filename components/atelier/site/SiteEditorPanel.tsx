@@ -54,6 +54,7 @@ import {
 } from '@/lib/works-mode-light'
 import { SitePublicSection } from '@/components/atelier/portfolio/shared/SitePublicSection'
 import PagesEditor from '@/components/atelier/site/PagesEditor'
+import { Slider } from '@/components/atelier/portfolio/shared/Slider'
 import { Slot } from '@/components/atelier/portfolio/shared/Slot'
 import { DualField } from '@/components/atelier/portfolio/shared/DualField'
 import { CollectionRow } from '@/components/atelier/portfolio/shared/CollectionRow'
@@ -368,28 +369,24 @@ export function SiteEditorPanel({
                   <p className="t-mono-xs" style={{ opacity: 0.5, marginBottom: 10, lineHeight: 1.5 }}>
                     {t('site_landing_bg_blend_transition_hint')}
                   </p>
-                  <label className="t-label" style={{ display: 'block', fontSize: 9, marginBottom: 6 }}>
-                    {t('site_landing_bg_blend_position_label')}
-                    <input
-                      type="range"
-                      min={0}
-                      max={100}
-                      value={config.landing.bg_blend_position_pct}
-                      onChange={e => applyBlendTransition(Number(e.target.value), config.landing.bg_blend_softness_pct)}
-                      style={{ display: 'block', width: '100%', marginTop: 6 }}
-                    />
-                  </label>
-                  <label className="t-label" style={{ display: 'block', fontSize: 9, marginBottom: 12 }}>
-                    {t('site_landing_bg_blend_hardness_label')}
-                    <input
-                      type="range"
-                      min={0}
-                      max={100}
-                      value={config.landing.bg_blend_softness_pct}
-                      onChange={e => applyBlendTransition(config.landing.bg_blend_position_pct, Number(e.target.value))}
-                      style={{ display: 'block', width: '100%', marginTop: 6 }}
-                    />
-                  </label>
+                  <Slider
+                    layout="stack"
+                    label={t('site_landing_bg_blend_position_label')}
+                    min={0}
+                    max={100}
+                    value={config.landing.bg_blend_position_pct}
+                    onChange={v => applyBlendTransition(v, config.landing.bg_blend_softness_pct)}
+                    mb={6}
+                  />
+                  <Slider
+                    layout="stack"
+                    label={t('site_landing_bg_blend_hardness_label')}
+                    min={0}
+                    max={100}
+                    value={config.landing.bg_blend_softness_pct}
+                    onChange={v => applyBlendTransition(config.landing.bg_blend_position_pct, v)}
+                    mb={12}
+                  />
                   {config.landing.bg_gradient_stops.map((stop, index) => (
                     <div
                       key={`grad-stop-${index}`}
@@ -444,17 +441,15 @@ export function SiteEditorPanel({
                           />
                         </div>
                       </label>
-                      <label className="t-label" style={{ display: 'block', fontSize: 9 }}>
-                        {t('site_landing_bg_stop_position_label')}
-                        <input
-                          type="range"
-                          min={0}
-                          max={100}
-                          value={stop.position_pct}
-                          onChange={e => updateGradientStop(index, { position_pct: Number(e.target.value) })}
-                          style={{ display: 'block', width: '100%', marginTop: 6 }}
-                        />
-                      </label>
+                      <Slider
+                        layout="stack"
+                        label={t('site_landing_bg_stop_position_label')}
+                        min={0}
+                        max={100}
+                        value={stop.position_pct}
+                        onChange={v => updateGradientStop(index, { position_pct: v })}
+                        mb={0}
+                      />
                     </div>
                   ))}
                   <button
@@ -702,34 +697,24 @@ export function SiteEditorPanel({
               const sectionBadge: React.CSSProperties = {
                 fontSize: 8, letterSpacing: 1.5, opacity: 0.55, fontWeight: 400,
               }
-              const sliderRow: React.CSSProperties = {
-                display: 'grid', gridTemplateColumns: '120px 1fr 56px', alignItems: 'center', gap: 10,
-                fontSize: 9, marginBottom: 6,
-              }
-              const sliderLabel: React.CSSProperties = { color: 'var(--tx2)', fontSize: 9 }
-              const sliderValue: React.CSSProperties = { color: 'var(--tx3)', fontSize: 9, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }
-              const resetChip = (onClick: () => void) => (
-                <button type="button" className="t-mono-xs" onClick={onClick}
-                  style={{ background: 'none', border: 'none', color: 'var(--tx3)', cursor: 'pointer', fontSize: 9, opacity: 0.55, padding: 0 }}>
-                  {/* eslint-disable-next-line pem-i18n/no-hardcoded-jsx-text */}
-                  ↺
-                </button>
-              )
               return (
                 <div style={{ marginBottom: 24, paddingBottom: 18, borderBottom: '1px solid var(--bd)' }}>
                   {/* FRAME — bevel */}
                   <div style={sectionLabel}>
                     <span>{t('site_works_mode_bevel_label')}</span>
                   </div>
-                  <div style={sliderRow}>
-                    <span style={sliderLabel}>{t('site_works_mode_bevel_px_label')}</span>
-                    <input type="range" min={0} max={LANDING_HERO_BEVEL_PX_MAX} step={1}
-                      value={mode.bevel_px}
-                      onChange={e => updateMode(activeMode, { bevel_px: Number(e.target.value) })} />
-                    <span style={sliderValue}>{mode.bevel_px} px</span>
-                  </div>
+                  <Slider
+                    label={t('site_works_mode_bevel_px_label')}
+                    min={0}
+                    max={LANDING_HERO_BEVEL_PX_MAX}
+                    step={1}
+                    value={mode.bevel_px}
+                    onChange={v => updateMode(activeMode, { bevel_px: v })}
+                    unit="px"
+                    mb={8}
+                  />
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-                    <span style={{ ...sliderLabel, minWidth: 120 }}>{t('site_works_mode_bevel_profile_label')}</span>
+                    <span style={{ color: 'var(--tx2)', fontSize: 9, minWidth: 120 }}>{t('site_works_mode_bevel_profile_label')}</span>
                     <div style={{ display: 'inline-flex', border: '1px solid var(--bd)', borderRadius: 4, overflow: 'hidden' }}>
                       {LANDING_HERO_BEVEL_PROFILE_VALUES.map(p => {
                         const active = mode.bevel_profile === p
@@ -779,36 +764,39 @@ export function SiteEditorPanel({
                     })}
                   </div>
                   <div style={{ opacity: mode.light_circadian ? 0.4 : 1, pointerEvents: mode.light_circadian ? 'none' : 'auto' }}>
-                    <div style={sliderRow}>
-                      <span style={sliderLabel}>{t('site_works_mode_light_temp_label')}</span>
-                      <input type="range" min={WORKS_LIGHT_TEMP_MIN} max={WORKS_LIGHT_TEMP_MAX} step={100}
-                        value={mode.light_temp_k}
-                        onChange={e => updateMode(activeMode, { light_temp_k: Number(e.target.value) })} />
-                      <span style={sliderValue}>
-                        {mode.light_temp_k} K
-                        {mode.light_temp_k !== WORKS_LIGHT_TEMP_DEFAULT && <> {resetChip(() => updateMode(activeMode, { light_temp_k: WORKS_LIGHT_TEMP_DEFAULT }))}</>}
-                      </span>
-                    </div>
-                    <div style={sliderRow}>
-                      <span style={sliderLabel}>{t('site_works_mode_light_direction_label')}</span>
-                      <input type="range" min={0} max={360} step={5}
-                        value={mode.light_direction_deg}
-                        onChange={e => updateMode(activeMode, { light_direction_deg: Number(e.target.value) })} />
-                      <span style={sliderValue}>
-                        {mode.light_direction_deg}°
-                        {mode.light_direction_deg !== WORKS_LIGHT_DIRECTION_DEFAULT && <> {resetChip(() => updateMode(activeMode, { light_direction_deg: WORKS_LIGHT_DIRECTION_DEFAULT }))}</>}
-                      </span>
-                    </div>
-                    <div style={sliderRow}>
-                      <span style={sliderLabel}>{t('site_works_mode_light_intensity_label')}</span>
-                      <input type="range" min={WORKS_LIGHT_INTENSITY_MIN} max={WORKS_LIGHT_INTENSITY_MAX} step={5}
-                        value={mode.light_intensity_pct}
-                        onChange={e => updateMode(activeMode, { light_intensity_pct: Number(e.target.value) })} />
-                      <span style={sliderValue}>
-                        {mode.light_intensity_pct} %
-                        {mode.light_intensity_pct !== WORKS_LIGHT_INTENSITY_DEFAULT && <> {resetChip(() => updateMode(activeMode, { light_intensity_pct: WORKS_LIGHT_INTENSITY_DEFAULT }))}</>}
-                      </span>
-                    </div>
+                    <Slider
+                      label={t('site_works_mode_light_temp_label')}
+                      min={WORKS_LIGHT_TEMP_MIN}
+                      max={WORKS_LIGHT_TEMP_MAX}
+                      step={100}
+                      value={mode.light_temp_k}
+                      onChange={v => updateMode(activeMode, { light_temp_k: v })}
+                      unit="K"
+                      defaultValue={WORKS_LIGHT_TEMP_DEFAULT}
+                      onReset={() => updateMode(activeMode, { light_temp_k: WORKS_LIGHT_TEMP_DEFAULT })}
+                    />
+                    <Slider
+                      label={t('site_works_mode_light_direction_label')}
+                      min={0}
+                      max={360}
+                      step={5}
+                      value={mode.light_direction_deg}
+                      onChange={v => updateMode(activeMode, { light_direction_deg: v })}
+                      unit="°"
+                      defaultValue={WORKS_LIGHT_DIRECTION_DEFAULT}
+                      onReset={() => updateMode(activeMode, { light_direction_deg: WORKS_LIGHT_DIRECTION_DEFAULT })}
+                    />
+                    <Slider
+                      label={t('site_works_mode_light_intensity_label')}
+                      min={WORKS_LIGHT_INTENSITY_MIN}
+                      max={WORKS_LIGHT_INTENSITY_MAX}
+                      step={5}
+                      value={mode.light_intensity_pct}
+                      onChange={v => updateMode(activeMode, { light_intensity_pct: v })}
+                      unit="%"
+                      defaultValue={WORKS_LIGHT_INTENSITY_DEFAULT}
+                      onReset={() => updateMode(activeMode, { light_intensity_pct: WORKS_LIGHT_INTENSITY_DEFAULT })}
+                    />
                   </div>
                   <label
                     style={{
@@ -847,26 +835,28 @@ export function SiteEditorPanel({
                     {t('site_works_mode_cast_shadow_enable')}
                   </label>
                   <div style={{ opacity: mode.cast_shadow_enabled ? 1 : 0.4, pointerEvents: mode.cast_shadow_enabled ? 'auto' : 'none' }}>
-                    <div style={sliderRow}>
-                      <span style={sliderLabel}>{t('site_works_mode_cast_shadow_distance')}</span>
-                      <input type="range" min={WORKS_CAST_SHADOW_DISTANCE_MIN} max={WORKS_CAST_SHADOW_DISTANCE_MAX} step={1}
-                        value={mode.cast_shadow_distance_px}
-                        onChange={e => updateMode(activeMode, { cast_shadow_distance_px: Number(e.target.value) })} />
-                      <span style={sliderValue}>
-                        {mode.cast_shadow_distance_px} px
-                        {mode.cast_shadow_distance_px !== WORKS_CAST_SHADOW_DISTANCE_DEFAULT && <> {resetChip(() => updateMode(activeMode, { cast_shadow_distance_px: WORKS_CAST_SHADOW_DISTANCE_DEFAULT }))}</>}
-                      </span>
-                    </div>
-                    <div style={sliderRow}>
-                      <span style={sliderLabel}>{t('site_works_mode_cast_shadow_blur')}</span>
-                      <input type="range" min={WORKS_CAST_SHADOW_BLUR_MIN} max={WORKS_CAST_SHADOW_BLUR_MAX} step={1}
-                        value={mode.cast_shadow_blur_px}
-                        onChange={e => updateMode(activeMode, { cast_shadow_blur_px: Number(e.target.value) })} />
-                      <span style={sliderValue}>
-                        {mode.cast_shadow_blur_px} px
-                        {mode.cast_shadow_blur_px !== WORKS_CAST_SHADOW_BLUR_DEFAULT && <> {resetChip(() => updateMode(activeMode, { cast_shadow_blur_px: WORKS_CAST_SHADOW_BLUR_DEFAULT }))}</>}
-                      </span>
-                    </div>
+                    <Slider
+                      label={t('site_works_mode_cast_shadow_distance')}
+                      min={WORKS_CAST_SHADOW_DISTANCE_MIN}
+                      max={WORKS_CAST_SHADOW_DISTANCE_MAX}
+                      step={1}
+                      value={mode.cast_shadow_distance_px}
+                      onChange={v => updateMode(activeMode, { cast_shadow_distance_px: v })}
+                      unit="px"
+                      defaultValue={WORKS_CAST_SHADOW_DISTANCE_DEFAULT}
+                      onReset={() => updateMode(activeMode, { cast_shadow_distance_px: WORKS_CAST_SHADOW_DISTANCE_DEFAULT })}
+                    />
+                    <Slider
+                      label={t('site_works_mode_cast_shadow_blur')}
+                      min={WORKS_CAST_SHADOW_BLUR_MIN}
+                      max={WORKS_CAST_SHADOW_BLUR_MAX}
+                      step={1}
+                      value={mode.cast_shadow_blur_px}
+                      onChange={v => updateMode(activeMode, { cast_shadow_blur_px: v })}
+                      unit="px"
+                      defaultValue={WORKS_CAST_SHADOW_BLUR_DEFAULT}
+                      onReset={() => updateMode(activeMode, { cast_shadow_blur_px: WORKS_CAST_SHADOW_BLUR_DEFAULT })}
+                    />
                   </div>
                 </div>
               )

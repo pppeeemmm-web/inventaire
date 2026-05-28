@@ -5,6 +5,7 @@ import { useI18n } from '@/lib/i18n/context'
 import type { MessageKey } from '@/lib/i18n/messages'
 import type { PortfolioConfig } from '@/lib/portfolio-config-types'
 import { EditorFadeShell } from '@/components/atelier/portfolio/shared/EditorFadeShell'
+import { Slider } from '@/components/atelier/portfolio/shared/Slider'
 import {
   heroGlossEditorStartsExpanded,
   LANDING_HERO_GLOSS_BLEND_VALUES,
@@ -63,47 +64,35 @@ export function HeroGlossEditor({ landing, onLandingPatch }: HeroGlossEditorProp
           ))}
         </select>
       </label>
-      <label className="t-label" style={{ display: 'block', fontSize: 9, marginBottom: 6 }}>
-        {t('site_hero_gloss_strength_label')}
-        <input
-          type="range"
-          min={0}
-          max={100}
-          value={landing.hero_gloss_strength_pct}
-          onChange={e => onLandingPatch({
-            hero_gloss_strength_pct: Number(e.target.value),
-          })}
-          style={{ display: 'block', width: '100%', marginTop: 6 }}
-        />
-      </label>
-      <label className="t-label" style={{ display: 'block', fontSize: 9, marginBottom: 6 }}>
-        {t('site_hero_gloss_position_label')}
-        <input
-          type="range"
-          min={0}
-          max={100}
-          value={landing.hero_gloss_position_pct}
-          disabled={glossDisabled}
-          onChange={e => onLandingPatch({
-            hero_gloss_position_pct: Number(e.target.value),
-          })}
-          style={{ display: 'block', width: '100%', marginTop: 6 }}
-        />
-      </label>
-      <label className="t-label" style={{ display: 'block', fontSize: 9, marginBottom: 12 }}>
-        {t('site_hero_gloss_falloff_label')}
-        <input
-          type="range"
-          min={28}
-          max={85}
-          value={landing.hero_gloss_falloff_pct}
-          disabled={glossDisabled}
-          onChange={e => onLandingPatch({
-            hero_gloss_falloff_pct: Number(e.target.value),
-          })}
-          style={{ display: 'block', width: '100%', marginTop: 6 }}
-        />
-      </label>
+      <Slider
+        layout="stack"
+        label={t('site_hero_gloss_strength_label')}
+        min={0}
+        max={100}
+        value={landing.hero_gloss_strength_pct}
+        onChange={v => onLandingPatch({ hero_gloss_strength_pct: v })}
+        mb={6}
+      />
+      <Slider
+        layout="stack"
+        label={t('site_hero_gloss_position_label')}
+        min={0}
+        max={100}
+        value={landing.hero_gloss_position_pct}
+        disabled={glossDisabled}
+        onChange={v => onLandingPatch({ hero_gloss_position_pct: v })}
+        mb={6}
+      />
+      <Slider
+        layout="stack"
+        label={t('site_hero_gloss_falloff_label')}
+        min={28}
+        max={85}
+        value={landing.hero_gloss_falloff_pct}
+        disabled={glossDisabled}
+        onChange={v => onLandingPatch({ hero_gloss_falloff_pct: v })}
+        mb={12}
+      />
     </>
   )
 

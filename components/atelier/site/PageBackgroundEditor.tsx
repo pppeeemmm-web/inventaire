@@ -14,6 +14,7 @@ import {
 } from '@/lib/landing-background'
 import type { PageBackgroundConfig } from '@/lib/page-background'
 import type { MessageKey } from '@/lib/i18n/messages'
+import { Slider } from '@/components/atelier/portfolio/shared/Slider'
 
 type Props = {
   labelKey: MessageKey
@@ -144,28 +145,24 @@ export function PageBackgroundEditor({
           <p className="t-mono-xs" style={{ opacity: 0.5, marginBottom: 10, lineHeight: 1.5 }}>
             {t('site_landing_bg_blend_transition_hint')}
           </p>
-          <label className="t-label" style={{ display: 'block', fontSize: 9, marginBottom: 6 }}>
-            {t('site_landing_bg_blend_position_label')}
-            <input
-              type="range"
-              min={0}
-              max={100}
-              value={value.bg_blend_position_pct}
-              onChange={e => applyBlendTransition(Number(e.target.value), value.bg_blend_softness_pct)}
-              style={{ display: 'block', width: '100%', marginTop: 6 }}
-            />
-          </label>
-          <label className="t-label" style={{ display: 'block', fontSize: 9, marginBottom: 12 }}>
-            {t('site_landing_bg_blend_hardness_label')}
-            <input
-              type="range"
-              min={0}
-              max={100}
-              value={value.bg_blend_softness_pct}
-              onChange={e => applyBlendTransition(value.bg_blend_position_pct, Number(e.target.value))}
-              style={{ display: 'block', width: '100%', marginTop: 6 }}
-            />
-          </label>
+          <Slider
+            layout="stack"
+            label={t('site_landing_bg_blend_position_label')}
+            min={0}
+            max={100}
+            value={value.bg_blend_position_pct}
+            onChange={v => applyBlendTransition(v, value.bg_blend_softness_pct)}
+            mb={6}
+          />
+          <Slider
+            layout="stack"
+            label={t('site_landing_bg_blend_hardness_label')}
+            min={0}
+            max={100}
+            value={value.bg_blend_softness_pct}
+            onChange={v => applyBlendTransition(value.bg_blend_position_pct, v)}
+            mb={12}
+          />
           {value.bg_gradient_stops.map((stop, index) => (
             <div
               key={`block-grad-${index}`}
@@ -220,17 +217,15 @@ export function PageBackgroundEditor({
                   />
                 </div>
               </label>
-              <label className="t-label" style={{ display: 'block', fontSize: 9 }}>
-                {t('site_landing_bg_stop_position_label')}
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  value={stop.position_pct}
-                  onChange={e => updateStop(index, { position_pct: Number(e.target.value) })}
-                  style={{ display: 'block', width: '100%', marginTop: 6 }}
-                />
-              </label>
+              <Slider
+                layout="stack"
+                label={t('site_landing_bg_stop_position_label')}
+                min={0}
+                max={100}
+                value={stop.position_pct}
+                onChange={v => updateStop(index, { position_pct: v })}
+                mb={0}
+              />
             </div>
           ))}
           <button
