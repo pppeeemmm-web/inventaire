@@ -1180,7 +1180,7 @@ export async function addWorkImage(formData: FormData): Promise<ImageResult> {
 
   const { data: inserted, error: insertErr } = await supabase
     .from('tblImage')
-    .insert(insertRow as never)
+    .insert(insertRow)
     .select()
     .single()
 
@@ -1275,7 +1275,7 @@ export async function replaceWorkImage(formData: FormData): Promise<ImageReplace
 
   const { data: updated, error: updateErr } = await supabase
     .from('tblImage')
-    .update(updateRow as never)
+    .update(updateRow)
     .eq('ImageID', imageId)
     .eq('OeuvreID', oeuvreId)
     .select('ImageID, OeuvreID, txtImageNameLink, SeqNo, DateAdded')

@@ -1047,10 +1047,13 @@ export type Database = {
           Commentaires: string | null
           commercial_status: string | null
           ContactID: number | null
+          created_by: string | null
           DateLivraison: string | null
           DateStatut: string | null
           deleted_at: string | null
           Discount: number | null
+          edited_at: string | null
+          edited_by: string | null
           Encadree: boolean | null
           Exposable: boolean | null
           Format: number | null
@@ -1066,9 +1069,6 @@ export type Database = {
           Montee: boolean | null
           NeedsPhotograph: boolean | null
           OeuvreID: number
-          created_by: string | null
-          edited_at: string | null
-          edited_by: string | null
           PresentationID: number | null
           Prix: number | null
           PrixFinal: number | null
@@ -1093,10 +1093,13 @@ export type Database = {
           Commentaires?: string | null
           commercial_status?: string | null
           ContactID?: number | null
+          created_by?: string | null
           DateLivraison?: string | null
           DateStatut?: string | null
           deleted_at?: string | null
           Discount?: number | null
+          edited_at?: string | null
+          edited_by?: string | null
           Encadree?: boolean | null
           Exposable?: boolean | null
           Format?: number | null
@@ -1112,9 +1115,6 @@ export type Database = {
           Montee?: boolean | null
           NeedsPhotograph?: boolean | null
           OeuvreID: number
-          created_by?: string | null
-          edited_at?: string | null
-          edited_by?: string | null
           PresentationID?: number | null
           Prix?: number | null
           PrixFinal?: number | null
@@ -1139,10 +1139,13 @@ export type Database = {
           Commentaires?: string | null
           commercial_status?: string | null
           ContactID?: number | null
+          created_by?: string | null
           DateLivraison?: string | null
           DateStatut?: string | null
           deleted_at?: string | null
           Discount?: number | null
+          edited_at?: string | null
+          edited_by?: string | null
           Encadree?: boolean | null
           Exposable?: boolean | null
           Format?: number | null
@@ -1158,9 +1161,6 @@ export type Database = {
           Montee?: boolean | null
           NeedsPhotograph?: boolean | null
           OeuvreID?: number
-          created_by?: string | null
-          edited_at?: string | null
-          edited_by?: string | null
           PresentationID?: number | null
           Prix?: number | null
           PrixFinal?: number | null
@@ -2684,10 +2684,27 @@ export type Database = {
         Args: { p_pk: string; p_type: string }
         Returns: undefined
       }
+      graph_upsert_relation_edge: {
+        Args: {
+          p_relation_type: string
+          p_source_id?: number
+          p_source_uid: string
+          p_target_uid: string
+        }
+        Returns: undefined
+      }
       is_admin: { Args: never; Returns: boolean }
       is_team: { Args: never; Returns: boolean }
       my_contact_id: { Args: never; Returns: number }
       node_search_text: { Args: { p_node_id: string }; Returns: string }
+      replace_oeuvre_themes: {
+        Args: { p_oeuvre_id: number; p_theme_ids: number[] }
+        Returns: undefined
+      }
+      replace_oeuvre_work_groups: {
+        Args: { p_group_ids: string[]; p_oeuvre_id: number }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

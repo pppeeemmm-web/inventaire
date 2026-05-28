@@ -26,7 +26,7 @@ async function insertRuntimeLog(
       author_id: user?.id ?? null,
     }
 
-    const { error } = await supabase.from('system_log').insert(row as never)
+    const { error } = await supabase.from('system_log').insert(row)
     if (error) console.error('[error-reporter] system_log insert failed:', error.message)
   } catch (e) {
     console.error('[error-reporter] insert failed:', e)
