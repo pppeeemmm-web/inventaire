@@ -36,7 +36,8 @@ _Version-controlled checklist + non-binding roadmap items. Prefer this file over
 ## Phase 0 remainders
 
 - [x] **0.4** Dictionary modularization (`lib/i18n/dictionary/`).
-- [ ] ESLint allow-list ratchet — legacy Atelier tabs; remove overrides as cleaned.
+- [x] ESLint allow-list ratchet — `no-hardcoded-jsx-text` is `error` for all app/components/hooks (tests excepted); i18n allowlist empty (2026-05-28).
+- [ ] (optional) Ratchet `no-silent-catch` `warn`→`error` — ~258 sites repo-wide; large triage, not bounded.
 
 ## Block A — agility
 
