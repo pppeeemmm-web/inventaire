@@ -57,21 +57,21 @@ export function asExhibitionLayout(row: ExhibitionLayoutRow): ExhibitionLayoutVi
   }
 }
 
-function nullsToUndefined(obj: Record<string, unknown>): Record<string, unknown> {
+function nullsToUndefined(obj: object): Record<string, unknown> {
   return Object.fromEntries(
     Object.entries(obj).map(([k, v]) => [k, v === null ? undefined : v]),
   )
 }
 
-export function toSuiviProcessUpdate(patch: Record<string, unknown>): SuiviProcessUpdate {
+export function toSuiviProcessUpdate(patch: object): SuiviProcessUpdate {
   return nullsToUndefined(patch) as SuiviProcessUpdate
 }
 
-export function toSuiviEtapeInsert(step: Record<string, unknown>): SuiviEtapeInsert {
+export function toSuiviEtapeInsert(step: object): SuiviEtapeInsert {
   return nullsToUndefined(step) as SuiviEtapeInsert
 }
 
-export function toSuiviEtapeUpdate(step: Record<string, unknown>): SuiviEtapeUpdate {
+export function toSuiviEtapeUpdate(step: object): SuiviEtapeUpdate {
   return nullsToUndefined(step) as SuiviEtapeUpdate
 }
 

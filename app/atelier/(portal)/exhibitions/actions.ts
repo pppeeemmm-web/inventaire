@@ -318,7 +318,7 @@ export async function updateExhibitionProcess(payload: {
 
   const { steps, _isEditing: _ignored, ...processPatch } = payload.patch
   if (Object.keys(processPatch).length > 0) {
-    const { error } = await fromSuiviProcess(supabase).update(toSuiviProcessUpdate(processPatch as unknown as Record<string, unknown>)).eq('id', payload.exhibitionId)
+    const { error } = await fromSuiviProcess(supabase).update(toSuiviProcessUpdate(processPatch)).eq('id', payload.exhibitionId)
     if (error) return { error: error.message }
   }
 
@@ -336,11 +336,11 @@ export async function updateExhibitionProcess(payload: {
     const isNew = String(step.id).startsWith('s')
     if (isNew) {
       const { id: _temp, ...insertStep } = step
-      const { data, error } = await fromSuiviEtape(supabase).insert(toSuiviEtapeInsert(insertStep as unknown as Record<string, unknown>)).select().single()
+      const { data, error } = await fromSuiviEtape(supabase).insert(toSuiviEtapeInsert(insertStep)).select().single()
       if (error || !data) return { error: error?.message ?? 'Insert step failed' }
       finalSteps.push(data as ExhibitionStepRow)
     } else {
-      const { error } = await fromSuiviEtape(supabase).update(toSuiviEtapeUpdate(step as unknown as Record<string, unknown>)).eq('id', step.id)
+      const { error } = await fromSuiviEtape(supabase).update(toSuiviEtapeUpdate(step)).eq('id', step.id)
       if (error) return { error: error.message }
       finalSteps.push(step)
     }

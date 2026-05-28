@@ -1528,7 +1528,7 @@ export async function uploadWorkSessionShot(
   payload.shots = [...payload.shots, shot]
 
   const { error: upErr } = await workSessionTable(supabase)
-    .update({ payload: payload as unknown as Record<string, unknown> })
+    .update({ payload: asPayloadRecord(payload) })
     .eq('id', sessionId)
     .eq('status', 'draft')
   if (upErr) return { error: upErr.message }
@@ -2042,7 +2042,7 @@ export async function rejectWorkSession(sessionId: string, reason: string): Prom
   const { error } = await workSessionTable(supabase)
     .update({
       status: 'rejected',
-      payload: payload as unknown as Record<string, unknown>,
+      payload: asPayloadRecord(payload),
     })
     .eq('id', sessionId)
     .eq('status', 'pending_review')

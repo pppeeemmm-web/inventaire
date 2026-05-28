@@ -9,6 +9,7 @@ import { insertSuiviReminder } from '@/app/atelier/reminders-actions'
 import type { Oeuvre } from '@/lib/types/database'
 import { WorkThumb } from '@/components/atelier/WorkThumb'
 import { fromSuiviProcess, fromSuiviEtape } from '@/lib/pipeline/suivi-client'
+import { toLayoutJson } from '@/lib/exhibitions/exhibition-client'
 import {
   DEFAULT_ETAPES,
   SORTED_PROCESS_TYPES,
@@ -238,7 +239,7 @@ export function PipelineProcessModal({ oeuvres, contacts, groups, process, onClo
       const payload = {
         nom, type, date_debut:debut||null, date_fin:fin||null, deadline_time:deadlineTime||null,
         statut, localisation:localisation||null, url:url||null, scope:scope||null,
-        stakeholders:stakeholders||null, responsables, vault_tags:tags,
+        stakeholders:stakeholders||null, responsables: toLayoutJson(responsables), vault_tags:tags,
         vault_path:vaultPath||null,
         asset_notes:assetNotes||null, notes:notes||null, updated_at:new Date().toISOString(),
         oeuvre_id: oeuvreIds[0] || null,
@@ -248,7 +249,7 @@ export function PipelineProcessModal({ oeuvres, contacts, groups, process, onClo
 
       let pid = process?.id
       if(isNew) {
-        const {data,error} = await fromSuiviProcess(sb).insert(payload as never).select('id').single()
+        const {data,error} = await fromSuiviProcess(sb).insert(payload).select('id').single()
         if(error) throw new Error(error.message)
         pid = data?.id ?? null
 
@@ -279,7 +280,7 @@ export function PipelineProcessModal({ oeuvres, contacts, groups, process, onClo
           }
         }
       } else {
-        const {error} = await fromSuiviProcess(sb).update(payload as never).eq('id',pid)
+        const {error} = await fromSuiviProcess(sb).update(payload).eq('id',pid)
         if(error) throw new Error(error.message)
       }
 
