@@ -138,6 +138,13 @@ export interface WorksMode {
   cast_shadow_enabled: boolean
   cast_shadow_distance_px: number
   cast_shadow_blur_px: number
+  /**
+   * Layout override for mobile viewports (< 768 px).
+   * `'auto'` resolves via {@link resolveWorksMobileLayout} — complex 3D/gallery
+   * modes fall back to `grid`; simpler modes keep their desktop layout.
+   * Explicitly choosing a layout pins it regardless of the desktop value.
+   */
+  mobile_fallback: WorksLayout | 'auto'
 }
 
 export const DEFAULT_HERO_CAPTION_EN = "'Matsukaze' — Meaning 'Wind through the Pines'"
@@ -339,6 +346,7 @@ export const DEFAULT_CONFIG: PortfolioConfig = {
     cast_shadow_enabled: true,
     cast_shadow_distance_px: WORKS_CAST_SHADOW_DISTANCE_DEFAULT,
     cast_shadow_blur_px: WORKS_CAST_SHADOW_BLUR_DEFAULT,
+    mobile_fallback: 'auto',
   }],
 }
 
@@ -397,6 +405,7 @@ function migrateModes(raw: any, fallbackCollections: CollectionItem[]): WorksMod
       cast_shadow_enabled: true,
       cast_shadow_distance_px: WORKS_CAST_SHADOW_DISTANCE_DEFAULT,
       cast_shadow_blur_px: WORKS_CAST_SHADOW_BLUR_DEFAULT,
+      mobile_fallback: 'auto',
     }]
   }
   return list.map((m: any, i: number): WorksMode => ({
@@ -432,6 +441,9 @@ function migrateModes(raw: any, fallbackCollections: CollectionItem[]): WorksMod
     cast_shadow_enabled: m.cast_shadow_enabled !== false,
     cast_shadow_distance_px: migrateWorksCastShadowDistancePx(m.cast_shadow_distance_px),
     cast_shadow_blur_px: migrateWorksCastShadowBlurPx(m.cast_shadow_blur_px),
+    mobile_fallback: (m.mobile_fallback === 'auto' || (WORKS_LAYOUT_VALUES as readonly string[]).includes(m.mobile_fallback))
+      ? m.mobile_fallback as WorksLayout | 'auto'
+      : 'auto',
   }))
 }
 

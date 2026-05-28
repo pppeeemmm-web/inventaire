@@ -519,6 +519,15 @@ export const siteBlocksMessages = defineMessages({
     fr: 'Flou',
     en: 'Blur',
   },
+  // Mobile fallback (Phase 4)
+  site_works_mode_mobile_fallback_label: {
+    fr: '📱 Affichage mobile',
+    en: '📱 Mobile display',
+  },
+  site_works_mode_mobile_fallback_auto: {
+    fr: 'Automatique',
+    en: 'Auto',
+  },
   // ── Phase 1 — block registry editor labels ──────────────────────────────
   site_text_title_fr: { fr: 'Titre FR', en: 'Title FR' },
   site_text_title_en: { fr: 'Titre EN', en: 'Title EN' },

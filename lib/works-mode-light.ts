@@ -271,3 +271,52 @@ export function matchWorksLightPreset(values: WorksLightPresetValues): WorksLigh
   }
   return null
 }
+
+// ── Mobile fallback resolution ─────────────────────────────────────────────
+
+import type { WorksLayout } from '@/lib/portfolio-config-types'
+
+/**
+ * Layouts that are too complex / 3D / unimplemented for a narrow mobile
+ * viewport — automatically fall back to `grid` when `mobile_fallback = 'auto'`.
+ * Simpler layouts (carousel, grid, procession, timeline, letter) keep their
+ * desktop layout on mobile.
+ */
+const AUTO_MOBILE_FALLBACK: Partial<Record<WorksLayout, WorksLayout>> = {
+  salon:         'grid',
+  vitrine:       'grid',
+  map:           'grid',
+  constellation: 'grid',
+  diptych:       'grid',
+}
+
+/** Layout values mirrored here to avoid a circular import with portfolio-config-types. */
+const MOBILE_FALLBACK_LAYOUTS = new Set([
+  'carousel', 'grid', 'procession', 'salon', 'vitrine', 'timeline', 'letter',
+  'map', 'constellation', 'diptych',
+])
+
+/**
+ * Coerce a raw config value to `WorksLayout | 'auto'`.
+ * Unknown / missing values default to `'auto'`.
+ */
+export function migrateWorksMobileFallback(v: unknown): WorksLayout | 'auto' {
+  if (v === 'auto') return 'auto'
+  if (typeof v === 'string' && MOBILE_FALLBACK_LAYOUTS.has(v)) return v as WorksLayout
+  return 'auto'
+}
+
+/**
+ * Resolve the effective layout for a mobile visitor.
+ *
+ * @param desktopLayout - The mode's configured desktop layout.
+ * @param mobileFallback - `'auto'` (table-driven) or an explicit override.
+ * @returns The layout to use at < 768 px.
+ */
+export function resolveWorksMobileLayout(
+  desktopLayout: WorksLayout,
+  mobileFallback: WorksLayout | 'auto' = 'auto',
+): WorksLayout {
+  if (mobileFallback !== 'auto') return mobileFallback
+  return AUTO_MOBILE_FALLBACK[desktopLayout] ?? desktopLayout
+}

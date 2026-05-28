@@ -352,6 +352,7 @@ export function PortfolioConfigShell({
       cast_shadow_enabled: true,
       cast_shadow_distance_px: WORKS_CAST_SHADOW_DISTANCE_DEFAULT,
       cast_shadow_blur_px: WORKS_CAST_SHADOW_BLUR_DEFAULT,
+      mobile_fallback: 'auto' as const,
     }
     setConfig({ ...config, works_modes: [...config.works_modes, newMode] })
     setActiveMode(config.works_modes.length)

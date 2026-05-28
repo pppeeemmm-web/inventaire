@@ -30,6 +30,7 @@ import {
   migrateWorksLightDirectionDeg,
   migrateWorksLightIntensityPct,
   migrateWorksLightTempK,
+  migrateWorksMobileFallback,
 } from '@/lib/works-mode-light'
 import {
   resolvePublicNavBarStyle,
@@ -79,7 +80,9 @@ type WorksMode = {
   cast_shadow_enabled: boolean
   cast_shadow_distance_px: number
   cast_shadow_blur_px: number
+  mobile_fallback: WorksLayout | 'auto'
 }
+
 type WorksPublicRow = {
   OeuvreID: number
   Titre: string | null
@@ -193,6 +196,7 @@ export default async function WorksPage() {
         cast_shadow_enabled: m.cast_shadow_enabled !== false,
         cast_shadow_distance_px: migrateWorksCastShadowDistancePx(m.cast_shadow_distance_px),
         cast_shadow_blur_px: migrateWorksCastShadowBlurPx(m.cast_shadow_blur_px),
+        mobile_fallback: migrateWorksMobileFallback(m.mobile_fallback),
       }))
   }
   if (modes.length === 0) {
@@ -213,6 +217,7 @@ export default async function WorksPage() {
       cast_shadow_enabled: true,
       cast_shadow_distance_px: WORKS_CAST_SHADOW_DISTANCE_DEFAULT,
       cast_shadow_blur_px: WORKS_CAST_SHADOW_BLUR_DEFAULT,
+      mobile_fallback: 'auto' as const,
     }]
   }
 
@@ -267,6 +272,7 @@ export default async function WorksPage() {
       cast_shadow_enabled: true,
       cast_shadow_distance_px: WORKS_CAST_SHADOW_DISTANCE_DEFAULT,
       cast_shadow_blur_px: WORKS_CAST_SHADOW_BLUR_DEFAULT,
+      mobile_fallback: 'auto' as const,
     }]
   }
 

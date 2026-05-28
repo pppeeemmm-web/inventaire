@@ -37,6 +37,7 @@ import {
   buildWorksBevelBoxShadow,
   resolveCircadianValues,
   resolveWorksLight,
+  resolveWorksMobileLayout,
 } from '@/lib/works-mode-light'
 import {
   parseDimensionCm,
@@ -114,8 +115,6 @@ export default function WorksClient({
       if (v) setLayoutOverride(v)
     } catch { /* SSR: noop */ }
   }, [])
-  const layout = (layoutOverride ?? mode.layout ?? 'carousel') as WorksLayout
-
   // Per-mode bevel + light — fall back to defaults so older configs still render.
   const bevelPx = mode.bevel_px ?? LANDING_HERO_BEVEL_PX_DEFAULT
   const bevelProfile = mode.bevel_profile ?? LANDING_HERO_BEVEL_PROFILE_DEFAULT
@@ -158,6 +157,14 @@ export default function WorksClient({
   const [trackFade, setTrackFade] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [mounted, setMounted] = useState(false)
+
+  // On mobile, apply the mode's mobile_fallback. isMobile starts false (SSR);
+  // the effect sets it after mount, so mobile visitors see one render at the
+  // desktop layout then switch — same behavior as the _layout override.
+  const effectiveLayout = isMobile
+    ? resolveWorksMobileLayout(mode.layout ?? 'carousel', mode.mobile_fallback ?? 'auto')
+    : (mode.layout ?? 'carousel')
+  const layout = (layoutOverride ?? effectiveLayout) as WorksLayout
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768)

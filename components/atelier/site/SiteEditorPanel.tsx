@@ -50,6 +50,7 @@ import {
   WORKS_LIGHT_TEMP_MAX,
   WORKS_LIGHT_TEMP_MIN,
   matchWorksLightPreset,
+  resolveWorksMobileLayout,
 } from '@/lib/works-mode-light'
 import { SitePublicSection } from '@/components/atelier/portfolio/shared/SitePublicSection'
 import PagesEditor from '@/components/atelier/site/PagesEditor'
@@ -656,6 +657,32 @@ export function SiteEditorPanel({
                     )
                   })}
                 </div>
+              </div>
+            )}
+            {/* Mobile fallback row — compact select below layout buttons */}
+            {mode && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+                <span className="t-label" style={{ fontSize: 9, whiteSpace: 'nowrap' }}>
+                  {t('site_works_mode_mobile_fallback_label')}
+                </span>
+                <select
+                  value={mode.mobile_fallback ?? 'auto'}
+                  onChange={e => updateMode(activeMode, { mobile_fallback: e.target.value as WorksLayout | 'auto' })}
+                  style={{
+                    flex: 1,
+                    fontFamily: 'inherit', fontSize: 9, padding: '5px 8px',
+                    background: 'var(--bg2)', color: 'var(--tx)',
+                    border: '1px solid var(--bd2)', borderRadius: 0,
+                  }}
+                >
+                  <option value="auto">
+                    {t('site_works_mode_mobile_fallback_auto')}
+                    {' '}({t(`site_works_layout_${resolveWorksMobileLayout(mode.layout ?? 'carousel', 'auto')}` as any)})
+                  </option>
+                  {WORKS_LAYOUT_VALUES.map(v => (
+                    <option key={v} value={v}>{t(`site_works_layout_${v}` as any)}</option>
+                  ))}
+                </select>
               </div>
             )}
             {/* Presentation block — bevel, light, cast shadow per mode.

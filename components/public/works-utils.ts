@@ -54,6 +54,8 @@ export interface WorksMode {
   cast_shadow_enabled?: boolean
   cast_shadow_distance_px?: number
   cast_shadow_blur_px?: number
+  /** Mobile layout override. `'auto'` = table-driven; explicit value pins. Default `'auto'`. */
+  mobile_fallback?: WorksLayout | 'auto'
 }
 
 /** Strip RichEditor HTML for plain-text labels (grid intro, carousel chapter line). */
