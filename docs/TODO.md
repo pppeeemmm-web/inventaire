@@ -11,8 +11,7 @@ _Version-controlled checklist + non-binding roadmap items. Prefer this file over
 | # | Track | Item | Notes |
 |---|--------|------|--------|
 | 1 | **Dev** | Block A — **A0** Supabase cast cleanup | ~40 files; run `gen:types` after each migration |
-| 2 | **Dev** | Constellation — pointer / snapshot orchestrator split | Draw + export + panels done 2026-05-25 |
-| 3 | **Deferred** | **`/works` gallery + F1** | WIP paused; see Desktop section below |
+| 2 | **Deferred** | **`/works` gallery + F1** | WIP paused; see Desktop section below |
 
 ---
 
@@ -54,9 +53,9 @@ _Version-controlled checklist + non-binding roadmap items. Prefer this file over
 - [x] **C2** `app/atelier/pipeline/_components/Pipeline.tsx` → toolbar + `usePipelineLoad`; panels already split; `AbortController` on fetch (2026-05-25).
 - [x] **C3** `Exhibitions.tsx` → steps + floor-plan panels (2026-05-28).
 - [x] **C4** `docs/CONSTELLATION.md`.
-- [x] **C-partial** Constellation — shared, toolbar, tool rail, side panel, draw frame, export, shortcuts (2026-05-25); pointer handlers + snapshot orchestration remain in canvas.
+- [x] **C-partial** Constellation — shared, toolbar, tool rail, side panel, draw frame, export, shortcuts (2026-05-25); pointer handlers (`useConstellationPointer`) + snapshot orchestration (`useConstellationSnapshot`) extracted + wired in `ConstellationCanvas.tsx` (2026-05-28).
 - [x] **C-partial** `pipeline-shared.ts`, list panel extractions.
-- [ ] WorkDrawer further decomposition (`DrawerContent`).
+- [x] WorkDrawer further decomposition (`DrawerContent`) — IdentitySection wired; NewContact/Unsaved/Gift modals extracted (2026-05-28).
 
 ## Desktop — public site (`/works` deferred)
 
