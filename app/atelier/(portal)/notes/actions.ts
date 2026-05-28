@@ -51,7 +51,7 @@ export async function listVoiceNotes(limit = 200): Promise<{ rows: VoiceNoteRow[
     .limit(lim)
 
   if (error) return { error: error.message }
-  const rows = (data ?? []) as unknown as VoiceNoteRow[]
+  const rows: VoiceNoteRow[] = data ?? []
   return { rows }
 }
 
