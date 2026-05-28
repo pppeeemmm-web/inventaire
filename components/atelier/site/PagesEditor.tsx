@@ -35,6 +35,7 @@ const KIND_LABEL_KEY: Partial<Record<BlockKind,
   | 'site_block_kind_cv'
   | 'site_block_kind_expositions'
   | 'site_block_kind_presse'
+  | 'site_block_kind_works_modes'
 >> = {
   text: 'site_block_kind_text',
   biographie: 'site_block_kind_biographie',
@@ -47,6 +48,7 @@ const KIND_LABEL_KEY: Partial<Record<BlockKind,
   cv: 'site_block_kind_cv',
   expositions: 'site_block_kind_expositions',
   presse: 'site_block_kind_presse',
+  works_modes: 'site_block_kind_works_modes',
 }
 
 function makeUid(): string {
@@ -137,7 +139,7 @@ export default function PagesEditor({ config, setConfig }: Props) {
   }
 
   const addableKinds = useMemo(
-    () => kindsAllowedOnPage(activePage),
+    () => kindsAllowedOnPage(activePage).filter(k => !getDescriptor(k)?.systemManaged),
     [activePage],
   )
 

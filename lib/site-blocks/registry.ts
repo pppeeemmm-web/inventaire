@@ -42,6 +42,13 @@ export interface BlockDescriptor<Fields extends Record<string, unknown> = Record
   migrateFields?: (raw: unknown) => Fields
   /** Optional: pre-publish validation, returns error keys for the editor. */
   validate?: (fields: Fields) => string[] | null
+  /**
+   * When true, blocks of this kind are auto-generated from other config
+   * sources (e.g. works_modes from config.works_modes, hero/identity from
+   * landing config) and should NOT appear in the PagesEditor "Add block"
+   * dropdown. Blocks can still be reordered/toggled if they already exist.
+   */
+  systemManaged?: boolean
 }
 
 export interface BlockEditorProps<Fields extends Record<string, unknown>> {

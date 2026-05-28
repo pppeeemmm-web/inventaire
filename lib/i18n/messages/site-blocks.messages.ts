@@ -587,6 +587,14 @@ export const siteBlocksMessages = defineMessages({
   site_expositions_add: { fr: '+ Ajouter une exposition', en: '+ Add exhibition' },
   // ── Presse ────────────────────────────────────────────────────────────────
   site_block_kind_presse: { fr: 'Presse', en: 'Press' },
+  // ── Works modes ───────────────────────────────────────────────────────────
+  site_block_kind_works_modes: { fr: 'Mode d\'exposition', en: 'Exhibition mode' },
+  site_works_modes_mode_label: { fr: 'Mode', en: 'Mode' },
+  site_works_modes_layout_label: { fr: 'Disposition', en: 'Layout' },
+  site_works_modes_managed_hint: {
+    fr: 'Ce mode est configuré dans la section Diffusion ci-dessous (disposition, éclairage, collections).',
+    en: 'This mode is configured in the Diffusion section below (layout, lighting, collections).',
+  },
   site_presse_source: { fr: 'Source', en: 'Source' },
   site_presse_date: { fr: 'Date', en: 'Date' },
   site_presse_excerpt_fr: { fr: 'Extrait FR', en: 'Excerpt FR' },

@@ -527,7 +527,11 @@ export function deriveDefaultPages(cfg: Pick<PortfolioConfig, 'general' | 'about
     ],
     works: [
       // One auto-generated works_modes block per active mode. The block
-      // references the WorksMode by id via fields.mode_id.
+      // references the WorksMode by id via fields.mode_id. label_fr/label_en
+      // and layout are included as display hints for the PagesEditor; they
+      // may become stale if the mode is renamed via the legacy Diffusion
+      // section (the persisted block is not retroactively updated), but they
+      // are display-only and never used for public rendering.
       ...cfg.works_modes
         .filter(m => m.is_active !== false)
         .map((m, i): Block => ({
@@ -536,7 +540,12 @@ export function deriveDefaultPages(cfg: Pick<PortfolioConfig, 'general' | 'about
           page: 'works',
           visible: true,
           layout_width: 'full',
-          fields: { mode_id: m.id },
+          fields: {
+            mode_id: m.id,
+            label_fr: m.label_fr,
+            label_en: m.label_en,
+            layout: m.layout,
+          },
           sort_order: i * 10,
         })),
     ],

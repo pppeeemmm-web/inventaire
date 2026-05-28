@@ -19,6 +19,7 @@ import { contactDescriptor } from './contact'
 import { cvDescriptor } from './cv'
 import { expositionsDescriptor } from './expositions'
 import { presseDescriptor } from './presse'
+import { worksModesDescriptor } from './works_modes'
 
 // Register in alphabetical-by-kind order so the editor's "Add block" menu
 // renders deterministically across page reloads.
@@ -33,6 +34,7 @@ registerBlock(presseDescriptor)
 registerBlock(statementDescriptor)
 registerBlock(textDescriptor)
 registerBlock(themesDescriptor)
+registerBlock(worksModesDescriptor)
 
 export { registerBlock, getDescriptor, kindsAllowedOnPage, isKindAllowedOnPage, BLOCKS }
 export type { BlockDescriptor, BlockEditorProps, BlockRendererProps, BlockEditorCtx, BlockRendererCtx, KnobFamily } from './registry'
