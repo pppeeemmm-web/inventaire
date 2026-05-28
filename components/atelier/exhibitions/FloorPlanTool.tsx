@@ -207,7 +207,6 @@ export function FloorPlanTool({ exhibitionId, oeuvres, themes, tM }: {
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
             {/* Sub-tabs */}
             <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--bd)', flexShrink: 0 }}>
-              {/* eslint-disable-next-line @typescript-eslint/no-shadow */}
               {(['murs', 'parametres'] as const).map((tab) => (
                 <button key={tab} onClick={() => setSubTab(tab)} aria-pressed={subTab === tab} style={{
                   padding: '8px 16px', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase',
