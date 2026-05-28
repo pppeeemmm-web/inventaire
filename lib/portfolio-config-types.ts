@@ -510,7 +510,7 @@ function migrateBlockField(b: any): Block | null {
  * Idempotent: a config that already has `pages` is round-trippable; we only
  * fill in any missing pages.
  */
-export function deriveDefaultPages(cfg: Pick<PortfolioConfig, 'general' | 'about' | 'practice' | 'works_modes'>): Record<Page, Block[]> {
+export function deriveDefaultPages(cfg: Pick<PortfolioConfig, 'general' | 'about' | 'practice' | 'works_modes' | 'landing'>): Record<Page, Block[]> {
   const stable = (kind: BlockKind, page: Page, fields: Record<string, unknown>, sort_order = 0): Block => ({
     uid: `auto_${kind}_${page}`,
     kind,
@@ -522,8 +522,14 @@ export function deriveDefaultPages(cfg: Pick<PortfolioConfig, 'general' | 'about
   })
   return {
     landing: [
-      stable('hero', 'landing', {}, 0),
-      stable('identity', 'landing', {}, 10),
+      stable('hero', 'landing', {
+        hero_image_key: cfg.landing?.hero_image_key ?? '',
+        hero_caption_fr: cfg.landing?.hero_caption_fr ?? '',
+        hero_caption_en: cfg.landing?.hero_caption_en ?? '',
+      }, 0),
+      stable('identity', 'landing', {
+        artist_name: cfg.general?.artist_name ?? '',
+      }, 10),
     ],
     works: [
       // One auto-generated works_modes block per active mode. The block

@@ -587,6 +587,20 @@ export const siteBlocksMessages = defineMessages({
   site_expositions_add: { fr: '+ Ajouter une exposition', en: '+ Add exhibition' },
   // ── Presse ────────────────────────────────────────────────────────────────
   site_block_kind_presse: { fr: 'Presse', en: 'Press' },
+  // ── Hero ──────────────────────────────────────────────────────────────────
+  site_block_kind_hero: { fr: 'Œuvre vedette', en: 'Hero artwork' },
+  site_hero_no_image: { fr: 'Aucune image sélectionnée.', en: 'No image selected.' },
+  site_hero_managed_hint: {
+    fr: 'L\'image, le fond et les effets optiques sont configurés dans la section Accueil ci-dessous.',
+    en: 'The image, background and optical effects are configured in the Accueil section below.',
+  },
+  // ── Identity ──────────────────────────────────────────────────────────────
+  site_block_kind_identity: { fr: 'Identité', en: 'Identity' },
+  site_identity_artist_label: { fr: 'Artiste', en: 'Artist' },
+  site_identity_managed_hint: {
+    fr: 'Le nom, les coordonnées et le slogan sont configurés dans les sections Général et Accueil ci-dessous.',
+    en: 'The name, contact details and tagline are configured in the General and Accueil sections below.',
+  },
   // ── Works modes ───────────────────────────────────────────────────────────
   site_block_kind_works_modes: { fr: 'Mode d\'exposition', en: 'Exhibition mode' },
   site_works_modes_mode_label: { fr: 'Mode', en: 'Mode' },
