@@ -625,4 +625,13 @@ export const siteBlocksMessages = defineMessages({
   site_presse_excerpt_en: { fr: 'Extrait EN', en: 'Excerpt EN' },
   site_presse_url: { fr: 'Lien', en: 'Link' },
   site_presse_add: { fr: '+ Ajouter une mention', en: '+ Add mention' },
+
+  // gallery_strip
+  site_block_kind_gallery_strip: { fr: 'Galerie horizontale', en: 'Gallery strip' },
+  site_gallery_strip_url_label: { fr: 'URL image', en: 'Image URL' },
+  site_gallery_strip_empty: {
+    fr: 'Aucune image — cliquer « + Ajouter » pour commencer.',
+    en: 'No images — click « + Add » to start.',
+  },
+  site_gallery_strip_add: { fr: '+ Ajouter une image', en: '+ Add image' },
 })

@@ -19,6 +19,7 @@ import { contactDescriptor } from './contact'
 import { cvDescriptor } from './cv'
 import { expositionsDescriptor } from './expositions'
 import { presseDescriptor } from './presse'
+import { galleryStripDescriptor } from './gallery_strip'
 import { heroDescriptor } from './hero'
 import { identityDescriptor } from './identity'
 import { imageDescriptor } from './image'
@@ -33,6 +34,7 @@ registerBlock(contactDescriptor)
 registerBlock(cvDescriptor)
 registerBlock(dividerDescriptor)
 registerBlock(expositionsDescriptor)
+registerBlock(galleryStripDescriptor)
 registerBlock(heroDescriptor)
 registerBlock(identityDescriptor)
 registerBlock(imageDescriptor)
