@@ -7,42 +7,27 @@
 import { useRef, useEffect, useState, useCallback, useMemo, useId } from 'react'
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
-import type { DictKey } from '@/lib/i18n/dictionary'
-import {
-  removeOeuvreFromCatalogTheme,
-  removeOeuvreFromWorkingGroup,
-} from '@/app/atelier/selection/actions'
 import {
   fetchConstellationGraphBundle,
-  insertConstellationRelation,
-  deleteConstellationRelation,
-  listConstellationMaps,
-  saveConstellationMap,
-  loadConstellationMap,
-  deleteConstellationMap,
   type ConstellationMapRow,
 } from '@/app/atelier/(portal)/constellation/actions'
 import {
-  CONSTELLATION_MAP_VERSION,
   type ConstellationMapDocument,
-  type ConstellationMapEdgeSnapshot,
 } from '@/lib/constellation-map-document'
 import { WorkThumb } from './WorkThumb'
 import type { Oeuvre }  from '@/lib/types/database'
 
 import {
-  NW, NH, NR, RING, MIN_Z, MAX_Z,
+  NW, NH,
   type Pt, type NodeMap,
   type GroupBy, type LinkType, type VP, type Edge, type Drag, type Shape, type Tool, type Snapshot,
   type ThemeLinkRow, type GroupLinkRow,
   LINK_LABEL_KEYS,
   loadPos, savePos, filterSavedToMembership,
-  loadSnapshots, persistSnapshots, posToObj, objToPos,
+  objToPos,
   layoutYear, layoutTheme, layoutWorkGroup, layoutGrid,
-  ptSeg, hitNode, hitEdge,
   buildThemeWorkFromRows, buildThemeWorkFromOeuvreMap, mergeThemeWorkMaps, themeWorkSize,
   buildGroupWorkFromRows, buildGroupWorkFromOeuvreMap, mergeGroupWorkMaps, groupWorkSize,
-  edgeSnapshotToEdges, edgesToSnapshot,
 } from './constellation/constellation-shared'
 export type { Pt, NodeMap } from './constellation/constellation-shared'
 import { ConstellationToolbar } from './constellation/ConstellationToolbar'
@@ -50,6 +35,8 @@ import { ConstellationToolRail } from './constellation/ConstellationToolRail'
 import { ConstellationSidePanel } from './constellation/ConstellationSidePanel'
 import { ConstellationShortcutsPanel } from './constellation/ConstellationShortcutsPanel'
 import { useConstellationCanvasRedraw } from './constellation/useConstellationCanvasRedraw'
+import { useConstellationPointer } from './constellation/useConstellationPointer'
+import { useConstellationSnapshot } from './constellation/useConstellationSnapshot'
 import { handleExportPng, handleExportTiledA4 } from './constellation/constellation-export'
 
 
@@ -154,14 +141,8 @@ export function ConstellationCanvas({
   const [textInput,   setTextInput]   = useState<{ x: number, y: number } | null>(null)
   const [textVal,     setTextVal]     = useState('')
   const [savedName,  setSavedName]  = useState<string | null>(null)
-  const [snapshots,  setSnapshots]  = useState<Snapshot[]>(loadSnapshots)
-  const [snapName,   setSnapName]   = useState('')
-  const [snapSaved,  setSnapSaved]  = useState(false)
-  const [cloudMaps,  setCloudMaps]  = useState<ConstellationMapRow[]>([])
-  const [cloudSaved, setCloudSaved] = useState(false)
-  const [cloudBusy,  setCloudBusy]  = useState(false)
-  /** Frozen edge layer from a loaded cloud map (not DB); null = use live tblrelations. */
-  const [frozenEdges, setFrozenEdges] = useState<Edge[] | null>(null)
+  /** Frozen edge layer from a loaded cloud map; null = use live tblrelations. */
+  const [frozenEdges,      setFrozenEdges]      = useState<Edge[] | null>(null)
   const [activeCloudMapId, setActiveCloudMapId] = useState<string | null>(null)
   // Custom (blank canvas) mode
   const [customIds,        setCustomIds]        = useState<Set<number>>(new Set())
@@ -424,52 +405,22 @@ export function ConstellationCanvas({
     return () => { cancelled = true }
   }, [reloadGraphData])
 
-  const refreshCloudMaps = useCallback(async () => {
-    const r = await listConstellationMaps()
-    if ('ok' in r) setCloudMaps(r.maps)
-    else setCloudMaps([])
-  }, [])
-
-  useEffect(() => {
-    void refreshCloudMaps()
-  }, [refreshCloudMaps])
-
-  const applyConstellationCloudDoc = useCallback((doc: ConstellationMapDocument, mapId: string | null) => {
-    constellationImportPendingRef.current = doc
-    setFrozenEdges(edgeSnapshotToEdges(doc.edgesSnapshot))
-    setShapes(doc.shapes)
-    setSelectedThemeId(doc.selectedThemeId)
-    setSelectedGroupId(doc.selectedGroupId)
-    setCustomIds(new Set(doc.customWorkIds))
-    vpRef.current = { ...doc.viewport }
-    setActiveCloudMapId(mapId)
-    setGroupBy(doc.groupBy)
-    redraw()
-  }, [redraw])
-
-  const mapUrlBootstrappedRef = useRef(false)
-  useEffect(() => {
-    if (loading || mapUrlBootstrappedRef.current) return
-    if (typeof window === 'undefined') return
-    const id = new URLSearchParams(window.location.search).get('map')
-    if (!id) return
-    mapUrlBootstrappedRef.current = true
-    void (async () => {
-      setCloudBusy(true)
-      const r = await loadConstellationMap(id)
-      setCloudBusy(false)
-      if ('error' in r) {
-        mapUrlBootstrappedRef.current = false
-        alert(r.error)
-        return
-      }
-      applyConstellationCloudDoc(r.document, id)
-      const p = new URLSearchParams(window.location.search)
-      p.delete('map')
-      const qs = p.toString()
-      window.history.replaceState({}, '', qs ? `${window.location.pathname}?${qs}` : window.location.pathname)
-    })()
-  }, [loading, applyConstellationCloudDoc])
+  // ── Snapshot + cloud map hook ─────────────────────────────────
+  const {
+    cloudMaps, cloudBusy, cloudSaved,
+    snapshots, snapName, setSnapName, snapSaved,
+    applyConstellationCloudDoc,
+    handleSaveSnapshot, handleLoadSnapshot, handleDeleteSnapshot,
+    handleSaveCloudMap, handleLoadCloudMap, handleDeleteCloudMap,
+    exitFrozenLiveGraph,
+  } = useConstellationSnapshot({
+    constellationImportPendingRef, vpRef, posRef, edgesRef, groupByRef,
+    loading, frozenEdges, activeCloudMapId,
+    shapes, customIds, groupBy, selectedThemeId, selectedGroupId,
+    setFrozenEdges, setActiveCloudMapId,
+    setShapes, setGroupBy, setCustomIds, setSelectedThemeId, setSelectedGroupId,
+    reloadGraphData, redraw,
+  })
 
   // ── Layout ────────────────────────────────────────────────────
   useEffect(() => {
@@ -547,26 +498,32 @@ export function ConstellationCanvas({
     redraw()
   }, [groupBy, loading, constellationOeuvres, themes, groups, effectiveThemeWork, effectiveGroupWork, selectedThemeId, selectedGroupId, redraw, oeuvresById, oeuvres])
 
-  // ── Wheel (passive: false required for preventDefault) ────────
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault()
-      const vp     = vpRef.current
-      const factor = e.deltaY < 0 ? 1.12 : 0.9
-      const newZ   = Math.max(MIN_Z, Math.min(MAX_Z, vp.z * factor))
-      const rect   = canvas.getBoundingClientRect()
-      const lx     = e.clientX - rect.left
-      const ly     = e.clientY - rect.top
-      vpRef.current = { z: newZ, x: lx - (lx - vp.x) * (newZ / vp.z), y: ly - (ly - vp.y) * (newZ / vp.z) }
-      redraw()
+  // ── removeFromCustom (defined here so pointer hook can reference it) ────
+  function removeFromCustom(id: number) {
+    const next = new Map(posRef.current)
+    next.delete(id)
+    posRef.current = next
+    setCustomIds(prev => { const n = new Set(prev); n.delete(id); return n })
+    if (selRef.current.has(id)) {
+      const sel = new Set(selRef.current); sel.delete(id); setSelection(sel)
     }
-    canvas.addEventListener('wheel', onWheel, { passive: false })
-    return () => canvas.removeEventListener('wheel', onWheel)
-  }, [redraw])
+    redraw()
+  }
 
-  // ── Resize ────────────────────────────────────────────────────
+  // ── Pointer hook ───────────────────────────────────────────────
+  const {
+    onMouseDown, onMouseMove, onMouseUp, onMouseLeave, onContextMenu,
+    handleDoubleClick, handleDrop, handleDragOver,
+  } = useConstellationPointer({
+    canvasRef, vpRef, posRef, edgesRef, dragRef, draftRef, hovNodeRef, hovEdgeRef, selRef, groupByRef,
+    tool, drawColor, drawWidth, spacePressed, linkType, groupBy,
+    selectedThemeId, selectedGroupId, frozenEdges, activeShape, marquee, customIds, oeuvresById,
+    setActiveShape, setShapes, setMarquee, setCustomIds, setPanelNode, setSelection, setTextInput,
+    onOpen, removeFromCustom, reloadGraphData, onDropExternal,
+    redraw, router, t,
+  })
+
+  // ── Resize + space key ────────────────────────────────────────
   useEffect(() => {
     const obs = new ResizeObserver(() => redraw())
     if (wrapRef.current) obs.observe(wrapRef.current)
@@ -583,421 +540,6 @@ export function ConstellationCanvas({
     }
   }, [redraw])
 
-  // ── Helpers ───────────────────────────────────────────────────
-  function local(e: React.MouseEvent) {
-    const rect = canvasRef.current!.getBoundingClientRect()
-    return { lx: e.clientX - rect.left, ly: e.clientY - rect.top }
-  }
-
-  // ── Mouse handlers ─────────────────────────────────────────────
-  const onMouseDown = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-    const rect = canvasRef.current!.getBoundingClientRect()
-    const lx = e.clientX - rect.left, ly = e.clientY - rect.top
-    const wx = (lx - vpRef.current.x) / vpRef.current.z
-    const wy = (ly - vpRef.current.y) / vpRef.current.z
-    const hit = hitNode(lx, ly, posRef.current, vpRef.current)
-
-    if (spacePressed) {
-      dragRef.current = { mode: 'pan', startX: lx, startY: ly, panOrigin: { x: vpRef.current.x, y: vpRef.current.y } }
-      if (canvasRef.current) canvasRef.current.style.cursor = 'grabbing'
-      return
-    }
-
-    if (tool === 'draw') {
-      dragRef.current = { mode: 'draw', startX: lx, startY: ly }
-      setActiveShape({ type: 'line', points: [{ x: wx, y: wy }], color: drawColor, width: drawWidth / vpRef.current.z })
-      return
-    }
-
-    if (tool === 'line') {
-      dragRef.current = { mode: 'line', startX: lx, startY: ly }
-      setActiveShape({ type: 'line', points: [{ x: wx, y: wy }, { x: wx, y: wy }], color: drawColor, width: drawWidth / vpRef.current.z })
-      return
-    }
-
-    if (tool === 'text') {
-      setTextInput({ x: wx, y: wy })
-      return
-    }
-
-    if (tool === 'marquee') {
-      dragRef.current = { mode: 'marquee', startX: lx, startY: ly }
-      setMarquee({ x: lx, y: ly, w: 0, h: 0 })
-      return
-    }
- 
-    if (tool === 'erase') {
-      dragRef.current = { mode: 'erase', startX: lx, startY: ly }
-      // Immediate erase on click
-      const wx = (lx - vpRef.current.x) / vpRef.current.z
-      const wy = (ly - vpRef.current.y) / vpRef.current.z
-      setShapes(prev => prev.filter(s => {
-        if (s.type === 'line') {
-          for (let i = 0; i < s.points.length - 1; i++) {
-            if (ptSeg(wx, wy, s.points[i].x, s.points[i].y, s.points[i+1].x, s.points[i+1].y) < 12 / vpRef.current.z) return false
-          }
-          return true
-        } else {
-          // Better text hit detection: assume 12px width per char approx, check box
-          const charW = (s.size * 0.6)
-          const tw = s.text.length * charW
-          const th = s.size
-          return !(wx >= s.x - 10 && wx <= s.x + tw + 10 && wy >= s.y - th && wy <= s.y + 10)
-        }
-      }))
-      redraw()
-      return
-    }
-
-    if (!hit) {
-      dragRef.current = { mode: 'pan', startX: lx, startY: ly, panOrigin: { x: vpRef.current.x, y: vpRef.current.y } }
-      if (canvasRef.current) canvasRef.current.style.cursor = 'grabbing'
-    } else if (hit.zone === 'ring' && frozenEdges === null) {
-      dragRef.current  = { mode: 'link', startX: lx, startY: ly, nodeId: hit.id }
-      draftRef.current = { from: hit.id, toX: lx, toY: ly }
-      if (canvasRef.current) canvasRef.current.style.cursor = 'crosshair'
-      redraw()
-    } else {
-      const sel = selRef.current
-      const moveIds =
-        sel.size > 1 && sel.has(hit.id)
-          ? [...sel].filter(id => posRef.current.has(id))
-          : undefined
-      dragRef.current = { mode: 'node', startX: lx, startY: ly, nodeId: hit.id, moveIds }
-      if (canvasRef.current) canvasRef.current.style.cursor = 'grabbing'
-    }
-  }, [tool, drawColor, drawWidth, spacePressed, frozenEdges])
-
-  const onMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-    const rect = canvasRef.current!.getBoundingClientRect()
-    const lx = e.clientX - rect.left, ly = e.clientY - rect.top
-    const drag = dragRef.current
-    const vp   = vpRef.current
-
-    if (drag.mode === 'draw' && activeShape?.type === 'line') {
-      const wx = (lx - vp.x) / vp.z
-      const wy = (ly - vp.y) / vp.z
-      setActiveShape({ ...activeShape, points: [...activeShape.points, { x: wx, y: wy }] })
-      redraw()
-      return
-    }
-
-    if (drag.mode === 'line' && activeShape?.type === 'line') {
-      const wx = (lx - vp.x) / vp.z
-      const wy = (ly - vp.y) / vp.z
-      const pts = [activeShape.points[0], { x: wx, y: wy }]
-      setActiveShape({ ...activeShape, points: pts })
-      redraw()
-      return
-    }
-
-    if (drag.mode === 'marquee') {
-      setMarquee({ x: drag.startX, y: drag.startY, w: lx - drag.startX, h: ly - drag.startY })
-      redraw()
-      return
-    }
- 
-    if (drag.mode === 'erase') {
-      const wx = (lx - vp.x) / vp.z
-      const wy = (ly - vp.y) / vp.z
-      setShapes(prev => prev.filter(s => {
-        if (s.type === 'line') {
-          for (let i = 0; i < s.points.length - 1; i++) {
-            if (ptSeg(wx, wy, s.points[i].x, s.points[i].y, s.points[i+1].x, s.points[i+1].y) < 12 / vp.z) return false
-          }
-          return true
-        } else {
-          const charW = (s.size * 0.6)
-          const tw = s.text.length * charW
-          const th = s.size
-          return !(wx >= s.x - 10 && wx <= s.x + tw + 10 && wy >= s.y - th && wy <= s.y + 10)
-        }
-      }))
-      redraw()
-      return
-    }
-
-    if (drag.mode === 'pan') {
-      vpRef.current = { ...vp, x: drag.panOrigin!.x + (lx - drag.startX), y: drag.panOrigin!.y + (ly - drag.startY) }
-      redraw()
-    } else if (drag.mode === 'node') {
-      const dx = (lx - drag.startX) / vp.z
-      const dy = (ly - drag.startY) / vp.z
-      const ids = drag.moveIds?.length ? drag.moveIds : [drag.nodeId!]
-      const next = new Map(posRef.current)
-      let moved = false
-      for (const id of ids) {
-        const cur = next.get(id)
-        if (cur) {
-          next.set(id, { x: cur.x + dx, y: cur.y + dy })
-          moved = true
-        }
-      }
-      if (moved) {
-        posRef.current  = next
-        dragRef.current = { ...drag, startX: lx, startY: ly }
-        redraw()
-      }
-    } else if (drag.mode === 'link') {
-      draftRef.current = { from: drag.nodeId!, toX: lx, toY: ly }
-      const hit   = hitNode(lx, ly, posRef.current, vpRef.current)
-      const newId = hit && hit.id !== drag.nodeId ? hit.id : null
-      if (newId !== hovNodeRef.current) {
-        hovNodeRef.current = newId
-        setPanelNode(newId ? (oeuvresById.get(newId) ?? null) : null)
-      }
-      redraw()
-    } else {
-      // Idle hover
-      const hit      = hitNode(lx, ly, posRef.current, vpRef.current)
-      const newHovId = hit?.id ?? null
-      const newHovEd = hit ? null : hitEdge(lx, ly, frozenEdges ?? edgesRef.current, posRef.current, vpRef.current)
-      let needRedraw = false
-
-      if (newHovId !== hovNodeRef.current) {
-        hovNodeRef.current = newHovId
-        // In theme mode, suppress the preview panel — user just wants to rearrange
-        if (groupBy !== 'theme' && groupBy !== 'workgroup') {
-          setPanelNode(newHovId ? (oeuvresById.get(newHovId) ?? null) : null)
-        }
-        needRedraw = true
-      }
-      if (newHovEd !== hovEdgeRef.current) {
-        hovEdgeRef.current = newHovEd
-        needRedraw = true
-      }
-
-      const c = canvasRef.current
-      if (c) {
-        if (spacePressed)            c.style.cursor = 'grab'
-        else if (hit?.zone === 'ring' && frozenEdges === null) c.style.cursor = 'crosshair'
-        else if (hit?.zone === 'center') c.style.cursor = 'pointer'
-        else if (newHovEd)          c.style.cursor = 'pointer'
-        else                        c.style.cursor = 'grab'
-      }
-      if (needRedraw) redraw()
-    }
-  }, [oeuvresById, spacePressed, activeShape, groupBy, redraw, frozenEdges])
-
-  const onMouseUp = useCallback(async (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const rect = canvasRef.current!.getBoundingClientRect()
-    const lx = e.clientX - rect.left, ly = e.clientY - rect.top
-    const drag = dragRef.current
-
-    if ((drag.mode === 'draw' || drag.mode === 'line') && activeShape) {
-      setShapes(prev => [...prev, activeShape])
-      setActiveShape(null)
-    } else if (drag.mode === 'marquee' && marquee) {
-      // Logic for selecting nodes in rect
-      const x0 = (Math.min(marquee.x, marquee.x + marquee.w) - vpRef.current.x) / vpRef.current.z
-      const x1 = (Math.max(marquee.x, marquee.x + marquee.w) - vpRef.current.x) / vpRef.current.z
-      const y0 = (Math.min(marquee.y, marquee.y + marquee.h) - vpRef.current.y) / vpRef.current.z
-      const y1 = (Math.max(marquee.y, marquee.y + marquee.h) - vpRef.current.y) / vpRef.current.z
-      
-      const next = e.shiftKey ? new Set(selRef.current) : new Set<number>()
-      posRef.current.forEach((p, id) => {
-        const cx = p.x + NW / 2, cy = p.y + NH / 2
-        if (cx >= x0 && cx <= x1 && cy >= y0 && cy <= y1) next.add(id)
-      })
-      setSelection(next)
-      setMarquee(null)
-    } else if (drag.mode === 'link') {
-      draftRef.current   = null
-      hovNodeRef.current = null
-      const hit = hitNode(lx, ly, posRef.current, vpRef.current)
-      if (hit && hit.id !== drag.nodeId) {
-        const ins = await insertConstellationRelation({
-          source_id: drag.nodeId!,
-          target_id: hit.id,
-          relation_type: linkType,
-        })
-        if ('error' in ins) {
-          console.warn('[constellation] insert relation', ins.error)
-        } else {
-          const data = ins.row
-          edgesRef.current = [...edgesRef.current, {
-            id: data.id, source: data.source_id!, target: data.target_id!,
-            relation_type: data.relation_type, strength: data.strength, description: data.description,
-          }]
-        }
-      }
-      setPanelNode(null)
-      redraw()
-    } else if (drag.mode === 'node') {
-      savePos(
-        groupByRef.current,
-        posRef.current,
-        groupByRef.current === 'theme'
-          ? selectedThemeId
-          : groupByRef.current === 'workgroup'
-            ? selectedGroupId
-            : undefined,
-      )
-      // Click detection (no movement → open or toggle selection)
-      if (Math.abs(lx - drag.startX) < 4 && Math.abs(ly - drag.startY) < 4) {
-        const hit = hitNode(lx, ly, posRef.current, vpRef.current)
-        if (hit) {
-          if (e.shiftKey) {
-            const next = new Set(selRef.current)
-            next.has(hit.id) ? next.delete(hit.id) : next.add(hit.id)
-            setSelection(next)
-          } else {
-            const o = oeuvresById.get(hit.id)
-            setPanelNode(o || null)
-          }
-        } else {
-          setPanelNode(null)
-        }
-      }
-    }
-
-    dragRef.current = { mode: 'idle', startX: 0, startY: 0 }
-    if (canvasRef.current) canvasRef.current.style.cursor = 'grab'
-  }, [linkType, oeuvresById, onOpen, setSelection, groupBy, selectedThemeId, selectedGroupId, activeShape, marquee])
-
-  const onContextMenu = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-    e.preventDefault()
-    const rect = canvasRef.current!.getBoundingClientRect()
-    const lx = e.clientX - rect.left, ly = e.clientY - rect.top
-
-    // Check if we hit a node first — right-click / Ctrl+right-click target works only (not toolbar).
-    const nodeHit = hitNode(lx, ly, posRef.current, vpRef.current)
-    if (nodeHit) {
-      const oeuvre = oeuvresById.get(nodeHit.id)
-      const ctrl = e.ctrlKey || e.metaKey
-      const gb = groupByRef.current
-
-      if (ctrl && oeuvre) {
-        onOpen(oeuvre)
-        return
-      }
-
-      if (gb === 'custom') {
-        removeFromCustom(nodeHit.id)
-      } else if (gb === 'theme' && selectedThemeId) {
-        if (confirm(t('const_confirmRemoveTheme'))) {
-          void (async () => {
-            const res = await removeOeuvreFromCatalogTheme(nodeHit.id, selectedThemeId)
-            if ('error' in res) {
-              alert(res.error)
-              return
-            }
-            await reloadGraphData(false)
-            router.refresh()
-            const next = new Map(posRef.current)
-            next.delete(nodeHit.id)
-            posRef.current = next
-            redraw()
-          })()
-        }
-      } else if (gb === 'workgroup' && selectedGroupId) {
-        if (confirm(t('const_confirmRemoveWorkgroup'))) {
-          void (async () => {
-            const res = await removeOeuvreFromWorkingGroup(nodeHit.id, selectedGroupId)
-            if ('error' in res) {
-              alert(res.error)
-              return
-            }
-            await reloadGraphData(false)
-            router.refresh()
-            const next = new Map(posRef.current)
-            next.delete(nodeHit.id)
-            posRef.current = next
-            redraw()
-          })()
-        }
-      } else if (oeuvre) {
-        onOpen(oeuvre)
-      }
-      return
-    }
-
-    // Check if hit a shape
-    if (tool === 'erase') {
-      const wx = (lx - vpRef.current.x) / vpRef.current.z
-      const wy = (ly - vpRef.current.y) / vpRef.current.z
-      setShapes(prev => prev.filter(s => {
-        if (s.type === 'line') {
-          for (let i = 0; i < s.points.length - 1; i++) {
-            if (ptSeg(wx, wy, s.points[i].x, s.points[i].y, s.points[i+1].x, s.points[i+1].y) < 12 / vpRef.current.z) return false
-          }
-          return true
-        } else {
-          const charW = (s.size * 0.6)
-          const tw = s.text.length * charW
-          const th = s.size
-          return !(wx >= s.x - 10 && wx <= s.x + tw + 10 && wy >= s.y - th && wy <= s.y + 10)
-        }
-      }))
-      redraw()
-      return
-    }
-
-    const edge = frozenEdges === null
-      ? hitEdge(lx, ly, edgesRef.current, posRef.current, vpRef.current)
-      : null
-    if (!edge) return
-    void (async () => {
-      const res = await deleteConstellationRelation(edge.id)
-      if ('error' in res) {
-        console.warn('[constellation] delete edge', res.error)
-        return
-      }
-      edgesRef.current = edgesRef.current.filter(e2 => e2.id !== edge.id)
-      if (hovEdgeRef.current === edge) hovEdgeRef.current = null
-      redraw()
-    })()
-  }, [removeFromCustom, tool, redraw, selectedThemeId, selectedGroupId, reloadGraphData, router, oeuvresById, onOpen, t, frozenEdges])
-
-  // ── Drag and Drop (Exhibition Floorplan integration) ──────────
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    const id = Number(e.dataTransfer.getData('oeuvre_id'))
-    if (!id) return
-
-    const rect = canvasRef.current!.getBoundingClientRect()
-    const lx = e.clientX - rect.left, ly = e.clientY - rect.top
-    const wx = (lx - vpRef.current.x) / vpRef.current.z
-    const wy = (ly - vpRef.current.y) / vpRef.current.z
-
-    if (onDropExternal) {
-      // Pass coordinates that center the node on the drop point
-      onDropExternal(id, wx - NW / 2, wy - NH / 2)
-    } else if (groupBy === 'custom') {
-      if (!posRef.current.has(id)) {
-        const next = new Map(posRef.current)
-        next.set(id, { x: wx - NW / 2, y: wy - NH / 2 })
-        posRef.current = next
-        setCustomIds(prev => new Set([...prev, id]))
-        redraw()
-      }
-    }
-  }, [onDropExternal, groupBy, redraw])
-
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-  }, [])
-
-  const onMouseLeave = useCallback(() => {
-    if (dragRef.current.mode === 'node') {
-      savePos(
-        groupByRef.current,
-        posRef.current,
-        groupByRef.current === 'theme'
-          ? selectedThemeId
-          : groupByRef.current === 'workgroup'
-            ? selectedGroupId
-            : undefined,
-      )
-    }
-    draftRef.current   = null
-    hovNodeRef.current = null
-    hovEdgeRef.current = null
-    dragRef.current    = { mode: 'idle', startX: 0, startY: 0 }
-    setPanelNode(null)
-    redraw()
-  }, [selectedThemeId, selectedGroupId])
-
   // ── Custom canvas: add / remove individual works ───────────────
   function addToCustom(id: number) {
     if (posRef.current.has(id)) return
@@ -1012,18 +554,6 @@ export function ConstellationCanvas({
     })
     posRef.current = next
     setCustomIds(prev => new Set([...prev, id]))
-    redraw()
-  }
-
-  function removeFromCustom(id: number) {
-    const next = new Map(posRef.current)
-    next.delete(id)
-    posRef.current = next
-    setCustomIds(prev => { const n = new Set(prev); n.delete(id); return n })
-    // Also deselect if selected
-    if (selRef.current.has(id)) {
-      const sel = new Set(selRef.current); sel.delete(id); setSelection(sel)
-    }
     redraw()
   }
 
@@ -1051,35 +581,7 @@ export function ConstellationCanvas({
     redraw()
   }
 
-  const handleDoubleClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-    const rect = canvasRef.current!.getBoundingClientRect()
-    const lx = e.clientX - rect.left, ly = e.clientY - rect.top
-    const hit = hitNode(lx, ly, posRef.current, vpRef.current)
-    if (hit) {
-      const o = oeuvresById.get(hit.id)
-      if (o) onOpen(o)
-    }
-  }, [oeuvresById, onOpen])
-
   // ── Snapshot: save current layout ──────────────────────────────
-  function handleSaveSnapshot() {
-    const name = snapName.trim() || `${t('const_defaultSnapshotPrefix')} ${new Date().toLocaleDateString(locale)}`
-    const snap: Snapshot = {
-      id:        Date.now().toString(),
-      name,
-      groupBy:   groupByRef.current,
-      positions: posToObj(posRef.current),
-      shapes:    shapes,
-      savedAt:   new Date().toISOString(),
-    }
-    const updated = [snap, ...snapshots.filter(s => s.name !== name)].slice(0, 20)
-    persistSnapshots(updated)
-    setSnapshots(updated)
-    setSnapName('')
-    setSnapSaved(true)
-    setTimeout(() => setSnapSaved(false), 2500)
-  }
-
   function handleResetLayout() {
     if (!confirm(t('const_resetLayoutConfirm'))) return
     if (groupBy === 'year')  posRef.current = layoutYear(oeuvres)
@@ -1121,91 +623,6 @@ export function ConstellationCanvas({
       y: (h / 2) - (minY + bh / 2) * scale,
       z: scale
     }
-    redraw()
-  }
-
-  // ── Snapshot: load ──────────────────────────────────────────────
-  function handleLoadSnapshot(id: string) {
-    const snap = snapshots.find(s => s.id === id)
-    if (!snap) return
-    setFrozenEdges(null)
-    setActiveCloudMapId(null)
-    groupByRef.current = snap.groupBy
-    posRef.current = objToPos(snap.positions)
-    setShapes(snap.shapes || [])
-    if (snap.groupBy === 'custom') {
-      setCustomIds(new Set(Object.keys(snap.positions).map(Number)))
-    }
-    setGroupBy(snap.groupBy)
-    redraw()
-  }
-
-  // ── Snapshot: delete ────────────────────────────────────────────
-  function handleDeleteSnapshot(id: string) {
-    const updated = snapshots.filter(s => s.id !== id)
-    persistSnapshots(updated)
-    setSnapshots(updated)
-  }
-
-  async function handleSaveCloudMap() {
-    const title = snapName.trim() || `${t('const_defaultSnapshotPrefix')} ${new Date().toLocaleDateString(locale)}`
-    setCloudBusy(true)
-    const doc: ConstellationMapDocument = {
-      version: CONSTELLATION_MAP_VERSION,
-      groupBy,
-      selectedThemeId,
-      selectedGroupId,
-      customWorkIds: [...customIds],
-      positions: posToObj(posRef.current),
-      shapes,
-      edgesSnapshot: edgesToSnapshot(frozenEdges ?? edgesRef.current),
-      viewport: { ...vpRef.current },
-    }
-    const r = await saveConstellationMap(title, doc)
-    setCloudBusy(false)
-    if ('error' in r) {
-      alert(r.error)
-      return
-    }
-    await refreshCloudMaps()
-    setSnapName('')
-    setCloudSaved(true)
-    setTimeout(() => setCloudSaved(false), 2500)
-  }
-
-  async function handleLoadCloudMap(mapId: string) {
-    setCloudBusy(true)
-    const r = await loadConstellationMap(mapId)
-    setCloudBusy(false)
-    if ('error' in r) {
-      alert(r.error)
-      return
-    }
-    applyConstellationCloudDoc(r.document, mapId)
-  }
-
-  async function handleDeleteCloudMap(mapId: string) {
-    if (!confirm(t('const_cloudDeleteConfirm'))) return
-    setCloudBusy(true)
-    const res = await deleteConstellationMap(mapId)
-    setCloudBusy(false)
-    if ('error' in res) {
-      alert(t('const_cloudErrGeneric'))
-      return
-    }
-    if (activeCloudMapId === mapId) {
-      setFrozenEdges(null)
-      setActiveCloudMapId(null)
-      await reloadGraphData(false)
-    }
-    await refreshCloudMaps()
-    redraw()
-  }
-
-  function exitFrozenLiveGraph() {
-    setFrozenEdges(null)
-    setActiveCloudMapId(null)
-    void reloadGraphData(false)
     redraw()
   }
 
