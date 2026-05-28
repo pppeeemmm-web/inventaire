@@ -9,9 +9,8 @@ export function asTypedSupabase(sb: unknown): TypedSupabase {
   return sb as TypedSupabase
 }
 
-/** App VaultDoc still uses numeric ids in places; DB column is string. */
-export function documentId(id: number | string): string {
-  return String(id)
+export function documentId(id: string): string {
+  return id
 }
 
 export function fromDocument(sb: unknown) {

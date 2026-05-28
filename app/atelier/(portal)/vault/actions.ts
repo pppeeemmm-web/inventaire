@@ -30,7 +30,7 @@ import {
 } from '@/lib/vault/folder-routing'
 
 function asVaultDoc(row: DocumentRow): VaultDoc {
-  return row as unknown as VaultDoc
+  return row
 }
 
 const BUCKET = process.env.R2_VAULT_BUCKET ?? 'vault'
@@ -102,7 +102,7 @@ export type UploadResult = { error: string } | { ok: true; doc: VaultDoc }
 export type CoaResult    = { error: string } | { ok: true; doc: VaultDoc }
 
 export interface VaultDoc {
-  id:           number
+  id:           string
   kind:         string | null
   name:         string
   storage_path: string | null
@@ -116,7 +116,7 @@ export interface VaultDoc {
   doc_date:     string | null
   cert_id:      string | null
   cert_hash:    string | null
-  process_id:   number | null
+  process_id:   string | null
   folder:       string | null
 }
 
@@ -227,7 +227,7 @@ export async function uploadDocument(formData: FormData): Promise<UploadResult> 
   return { ok: true, doc: asVaultDoc(doc) }
 }
 
-export async function updateDocument(id: number, formData: FormData): Promise<UploadResult> {
+export async function updateDocument(id: string, formData: FormData): Promise<UploadResult> {
   const { error: authErr, supabase, user } = await guardTeam()
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
 
@@ -278,7 +278,7 @@ export async function updateDocument(id: number, formData: FormData): Promise<Up
 
 // ── Delete document ───────────────────────────────────────────────────────
 
-export async function deleteDocument(id: number, storagePath: string | null): Promise<VaultResult> {
+export async function deleteDocument(id: string, storagePath: string | null): Promise<VaultResult> {
   const { error: authErr, supabase } = await guardTeam()
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
 
@@ -362,7 +362,7 @@ export async function createFolder(path: string): Promise<VaultResult> {
 /**
  * Moves one or more documents to a new folder.
  */
-export async function moveDocuments(docIds: number[], targetFolder: string | null): Promise<VaultResult> {
+export async function moveDocuments(docIds: string[], targetFolder: string | null): Promise<VaultResult> {
   const { error: authErr, supabase } = await guardTeam()
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
 
@@ -417,7 +417,7 @@ export async function deleteFolder(folderPath: string): Promise<VaultResult & { 
 
   let deleted = 0
   for (const d of docs) {
-    const res = await deleteDocument(Number(d.id), d.storage_path)
+    const res = await deleteDocument(d.id, d.storage_path)
     if ('error' in res) return { error: res.error }
     deleted++
   }
@@ -454,7 +454,7 @@ export async function reconcileVaultFolders(): Promise<VaultResult & { updated?:
   return { ok: true, updated }
 }
 
-export async function renameDocument(id: number, newName: string): Promise<VaultResult> {
+export async function renameDocument(id: string, newName: string): Promise<VaultResult> {
   const { error: authErr, supabase } = await guardTeam()
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
 

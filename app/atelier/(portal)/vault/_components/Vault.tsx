@@ -58,7 +58,7 @@ export function Vault({ oeuvres, tM }: Props) {
   const [currentPath, setCurrentPath] = useState<string[]>([]) // Navigation path: ['Parent', 'Child']
   const [draggedDoc,  setDraggedDoc]  = useState<VaultDoc | null>(null)
   const [draggedFolderPath, setDraggedFolderPath] = useState<string | null>(null)
-  const [selectedIds, setSelectedIds] = useState<number[]>([]) // Bulk selection
+  const [selectedIds, setSelectedIds] = useState<string[]>([]) // Bulk selection
   const [showNewFolder, setShowNewFolder] = useState(false)
   const [deleteFolderTarget, setDeleteFolderTarget] = useState<{
     path: string
@@ -1103,12 +1103,12 @@ function VaultGrid({
   folders: string[]
   docs: VaultDoc[]
   currentFolderStr: string | null
-  selectedId?: number
-  selectedIds: number[]
+  selectedId?: string
+  selectedIds: string[]
   draggedDoc: VaultDoc | null
   draggedFolderPath: string | null
   onSelect: (d: VaultDoc) => void
-  onToggleSelect: (id: number) => void
+  onToggleSelect: (id: string) => void
   onEnterFolder: (f: string) => void
   onDownload: (d: VaultDoc) => void
   onRename: (d: VaultDoc) => void
