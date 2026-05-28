@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   savePortfolioConfig,
   loadPortfolioConfig,
@@ -69,14 +69,26 @@ export function PortfolioConfigShell({
   const [pdfOpen,  setPdfOpen]  = useState(false)
   const [portfolioEtag, setPortfolioEtag] = useState<string | null>(null)
   const [storageStale, setStorageStale] = useState(false)
+  /** JSON snapshot of the config at the last successful load or save. */
+  const savedConfigRef = useRef<string>('')
+  /** When the config was last published to R2. */
+  const [savedAt, setSavedAt] = useState<Date | null>(null)
+  /** True when config has been edited since the last load/save. */
+  const isDirty = useMemo(
+    () => savedConfigRef.current !== '' && JSON.stringify(config) !== savedConfigRef.current,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [config],
+  )
 
   const loadData = useCallback(async () => {
     setLoading(true)
     const result = await loadPortfolioConfig()
     if ('ok' in result) {
-      setConfig(migrate(result.config))
+      const migrated = migrate(result.config)
+      setConfig(migrated)
       setPortfolioEtag(result.etag)
       setStorageStale(false)
+      savedConfigRef.current = JSON.stringify(migrated)
     }
     setLoading(false)
   }, [])
@@ -252,7 +264,8 @@ export function PortfolioConfigShell({
     if ('ok' in result) {
       setPortfolioEtag(result.etag)
       setStorageStale(false)
-      alert(t('portfolio_config_saved'))
+      savedConfigRef.current = JSON.stringify(config)
+      setSavedAt(new Date())
     } else if (result.error === PORTFOLIO_SAVE_ERR.ETAG_MISMATCH) {
       await handlePortfolioEtagConflict()
     } else if (result.error === PORTFOLIO_SAVE_ERR.OBJECT_EXISTS) {
@@ -473,16 +486,48 @@ export function PortfolioConfigShell({
           >
             /works
           </a>
-          <button
-            type="button"
-            className="btn primary sm"
-            title={t('portfolio_save_config_tooltip')}
-            onClick={handleSave}
-            disabled={saveBusy}
-            style={{ fontSize: 9, letterSpacing: 1.5, minHeight: 44 }}
-          >
-            {saveBusy ? t('savingRecord') : t('save')}
-          </button>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
+            <button
+              type="button"
+              className="btn primary sm"
+              title={t('portfolio_save_config_tooltip')}
+              onClick={handleSave}
+              disabled={saveBusy}
+              style={{ fontSize: 9, letterSpacing: 1.5, minHeight: 44, display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              {isDirty && !saveBusy && (
+                <span
+                  aria-label={t('portfolio_unsaved_indicator')}
+                  style={{
+                    display: 'inline-block',
+                    width: 6,
+                    height: 6,
+                    borderRadius: '50%',
+                    background: 'currentColor',
+                    opacity: 0.9,
+                    animation: 'publier-dot-blink 1.2s ease-in-out infinite',
+                    flexShrink: 0,
+                  }}
+                />
+              )}
+              <span>
+                {saveBusy
+                  ? t('portfolio_publishing_label')
+                  : `${t('portfolio_publier_label')} →`}
+              </span>
+            </button>
+            <style>{`
+              @keyframes publier-dot-blink {
+                0%, 100% { opacity: 0.9; }
+                50%       { opacity: 0.25; }
+              }
+            `}</style>
+            <div style={{ fontSize: 8, letterSpacing: 0.5, opacity: 0.45, whiteSpace: 'nowrap' }}>
+              {savedAt
+                ? `${t('portfolio_last_published')} ${savedAt.toLocaleTimeString(lang === 'en' ? 'en-GB' : 'fr-FR', { hour: '2-digit', minute: '2-digit' })}`
+                : t('portfolio_never_published')}
+            </div>
+          </div>
         </div>
         {storageStale ? (
           <div

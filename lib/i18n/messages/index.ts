@@ -20,6 +20,7 @@ import { contactsUiMessages } from './contacts-ui.messages'
 import { analyticsUiMessages } from './analytics-ui.messages'
 import { auditMessages } from './audit.messages'
 import { stockUiMessages } from './stock-ui.messages'
+import { portfolioConfigMessages } from './portfolio-config.messages'
 
 export const featureMessages = {
   ...atelierMessages,
@@ -44,6 +45,7 @@ export const featureMessages = {
   ...analyticsUiMessages,
   ...auditMessages,
   ...stockUiMessages,
+  ...portfolioConfigMessages,
 } as const
 
 export type MessageKey = keyof typeof featureMessages
