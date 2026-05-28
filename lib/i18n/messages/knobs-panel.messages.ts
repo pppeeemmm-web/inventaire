@@ -176,4 +176,76 @@ export const knobsPanelMessages = defineMessages({
     fr: 'Réduire les animations',
     en: 'Reduce motion',
   },
+
+  // ── Scope tabs ────────────────────────────────────────────────────────────
+  site_knobs_scope_landing: {
+    fr: 'Accueil',
+    en: 'Landing',
+  },
+  site_knobs_scope_works: {
+    fr: 'Œuvres',
+    en: 'Works',
+  },
+  site_knobs_scope_about: {
+    fr: 'À propos',
+    en: 'About',
+  },
+  site_knobs_override_on: {
+    fr: 'Personnaliser',
+    en: 'Customize',
+  },
+  site_knobs_override_inherited: {
+    fr: 'Hérité du site',
+    en: 'Inherited from site',
+  },
+
+  // ── Circadian ─────────────────────────────────────────────────────────────
+  site_knobs_circ_section: {
+    fr: 'Circadien',
+    en: 'Circadian',
+  },
+  site_knobs_circ_auto: {
+    fr: 'Automatique (horloge du visiteur)',
+    en: 'Automatic (visitor clock)',
+  },
+  site_knobs_circ_manual: {
+    fr: 'Heure manuelle',
+    en: 'Manual time',
+  },
+  site_knobs_circ_drives: {
+    fr: 'Pilote',
+    en: 'Drives',
+  },
+  site_knobs_circ_drive_light: {
+    fr: 'Lumière',
+    en: 'Light',
+  },
+  site_knobs_circ_drive_shadow: {
+    fr: 'Ombres',
+    en: 'Shadows',
+  },
+  site_knobs_circ_drive_bg: {
+    fr: 'Fond',
+    en: 'Background',
+  },
+  site_knobs_circ_drive_atm: {
+    fr: 'Atmosphère',
+    en: 'Atmosphere',
+  },
+  site_knobs_circ_preset_sun: {
+    fr: 'Solaire',
+    en: 'Sun-tracking',
+  },
+  site_knobs_circ_preset_gallery: {
+    fr: 'Galerie',
+    en: 'Gallery',
+  },
+  site_knobs_circ_preset_theatre: {
+    fr: 'Théâtral',
+    en: 'Theatrical',
+  },
+  site_knobs_circ_preset_custom: {
+    fr: 'Personnalisé',
+    en: 'Custom',
+  },
 })
