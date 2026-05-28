@@ -52,6 +52,7 @@ import {
   matchWorksLightPreset,
 } from '@/lib/works-mode-light'
 import { SitePublicSection } from '@/components/atelier/portfolio/shared/SitePublicSection'
+import PagesEditor from '@/components/atelier/site/PagesEditor'
 import { Slot } from '@/components/atelier/portfolio/shared/Slot'
 import { DualField } from '@/components/atelier/portfolio/shared/DualField'
 import { CollectionRow } from '@/components/atelier/portfolio/shared/CollectionRow'
@@ -957,6 +958,16 @@ export function SiteEditorPanel({
 
   return (
     <div className="col gap-lg" style={{ gap: 24 }}>
+      {/* Phase 1 — block-composition editor. Sits above the legacy
+       * kind-by-kind sections so authors can add/reorder text + future
+       * universal blocks per page without leaving this panel. */}
+      <SitePublicSection
+        title={t('site_composition_title')}
+        icon="◳"
+        testId="atelier-pub-block-composition"
+      >
+        <PagesEditor config={config} setConfig={setConfig} />
+      </SitePublicSection>
       {blocks.map((block, idx) => {
         const isHidden = !block.visible
         const isCollapsed = isHidden && collapsed.has(block.kind)
