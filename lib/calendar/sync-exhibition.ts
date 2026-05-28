@@ -120,7 +120,7 @@ export async function syncExhibitionProcess(
   labels: SyncLabels,
 ): Promise<{ ok: true; pushed: number } | { ok: false; message: string }> {
   const { data: accounts, error: accErr } = await supabase
-    .from('calendar_account' as never)
+    .from('calendar_account')
     .select('id, provider, refresh_token_encrypted, tenant_id, token_salt')
     .eq('auth_user_id', userId)
 
@@ -197,7 +197,7 @@ export async function syncExhibitionProcess(
     }
 
     const { data: linkRows } = await supabase
-      .from('calendar_event_link' as never)
+      .from('calendar_event_link')
       .select('id, suivi_process_id, suivi_etape_id, external_event_id, sync_etag')
       .eq('calendar_account_id', acc.id)
       .eq('auth_user_id', userId)
@@ -218,12 +218,12 @@ export async function syncExhibitionProcess(
         } catch {
           /* ignore delete errors */
         }
-        await supabase.from('calendar_event_link' as never).delete().eq('id', row.id)
+        await supabase.from('calendar_event_link').delete().eq('id', row.id)
       }
     }
 
     const { data: linkRowsAfter } = await supabase
-      .from('calendar_event_link' as never)
+      .from('calendar_event_link')
       .select('id, suivi_process_id, suivi_etape_id, external_event_id, sync_etag')
       .eq('calendar_account_id', acc.id)
       .eq('auth_user_id', userId)
@@ -254,9 +254,9 @@ export async function syncExhibitionProcess(
           updated_at: new Date().toISOString(),
         }
         if (row) {
-          await supabase.from('calendar_event_link' as never).update(payload as never).eq('id', row.id)
+          await supabase.from('calendar_event_link').update(payload).eq('id', row.id)
         } else {
-          await supabase.from('calendar_event_link' as never).insert(payload as never)
+          await supabase.from('calendar_event_link').insert(payload)
         }
       } catch (e) {
         return { ok: false, message: e instanceof Error ? e.message : 'calendar_err_sync' }
@@ -269,12 +269,12 @@ export async function syncExhibitionProcess(
         } catch {
           /* */
         }
-        await supabase.from('calendar_event_link' as never).delete().eq('id', row.id)
+        await supabase.from('calendar_event_link').delete().eq('id', row.id)
       }
     }
 
     const { data: linkRowsForSteps } = await supabase
-      .from('calendar_event_link' as never)
+      .from('calendar_event_link')
       .select('id, suivi_process_id, suivi_etape_id, external_event_id, sync_etag')
       .eq('calendar_account_id', acc.id)
       .eq('auth_user_id', userId)
@@ -304,9 +304,9 @@ export async function syncExhibitionProcess(
           updated_at: new Date().toISOString(),
         }
         if (row) {
-          await supabase.from('calendar_event_link' as never).update(payload as never).eq('id', row.id)
+          await supabase.from('calendar_event_link').update(payload).eq('id', row.id)
         } else {
-          await supabase.from('calendar_event_link' as never).insert(payload as never)
+          await supabase.from('calendar_event_link').insert(payload)
         }
       } catch (e) {
         return { ok: false, message: e instanceof Error ? e.message : 'calendar_err_sync' }

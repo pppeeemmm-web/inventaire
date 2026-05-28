@@ -29,7 +29,7 @@ export async function getCalendarConnectStatus(): Promise<
   if (g.error === 'auth') return { ok: false, errKey: 'calendar_err_auth' }
   if (g.error === 'team') return { ok: false, errKey: 'calendar_err_team' }
   const { data, error } = await g.supabase
-    .from('calendar_account' as never)
+    .from('calendar_account')
     .select('provider')
     .eq('auth_user_id', g.user.id)
   if (error) return { ok: false, errKey: 'calendar_err_team' }
@@ -65,7 +65,7 @@ export async function disconnectCalendar(provider: CalendarProvider): Promise<
   if (g.error === 'auth') return { ok: false, errKey: 'calendar_err_auth' }
   if (g.error === 'team') return { ok: false, errKey: 'calendar_err_team' }
   const { error } = await g.supabase
-    .from('calendar_account' as never)
+    .from('calendar_account')
     .delete()
     .eq('auth_user_id', g.user.id)
     .eq('provider', provider)

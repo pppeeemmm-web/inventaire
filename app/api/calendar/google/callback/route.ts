@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
     refreshPlain = tokens.refresh_token ?? ''
     if (!refreshPlain) {
       const { data: ex } = await supabase
-        .from('calendar_account' as never)
+        .from('calendar_account')
         .select('refresh_token_encrypted, token_salt')
         .eq('auth_user_id', user.id)
         .eq('provider', 'google')
@@ -119,7 +119,7 @@ export async function GET(request: NextRequest) {
     updated_at: new Date().toISOString(),
   }
 
-  const { error } = await supabase.from('calendar_account' as never).upsert(row as never, {
+  const { error } = await supabase.from('calendar_account').upsert(row, {
     onConflict: 'auth_user_id,provider',
   })
   if (error) {
