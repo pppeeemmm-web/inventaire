@@ -20,7 +20,7 @@ const PLACEHOLDER_MESSAGE_KEY: Partial<Record<WorksLayout, string>> = {
 /** Selectable layouts that don't have a real implementation yet — render an
  *  honest explanation rather than silently falling back to the carousel. */
 export default function WorksPlaceholderLayout({ layout, siteTheme, hiddenNavRoutes, navOrder }: Props) {
-  const { t } = useI18n()
+  const { t, tDynamic } = useI18n()
   const titleKey = `site_works_layout_${layout}`
   const messageKey = PLACEHOLDER_MESSAGE_KEY[layout] ?? 'pub_works_placeholder_generic'
   return (
@@ -35,10 +35,10 @@ export default function WorksPlaceholderLayout({ layout, siteTheme, hiddenNavRou
         }}
       >
         <h1 className="t-serif" style={{ fontSize: 'clamp(20px, 3vw, 32px)', margin: 0 }}>
-          {t(titleKey as any)}
+          {tDynamic(titleKey)}
         </h1>
         <p className="t-mono-sm" style={{ maxWidth: 520, opacity: 0.75, lineHeight: 1.55 }}>
-          {t(messageKey as any)}
+          {tDynamic(messageKey)}
         </p>
         <p className="t-mono-xs" style={{ opacity: 0.5, letterSpacing: 2, textTransform: 'uppercase' }}>
           {t('site_works_layout_placeholder_badge')}

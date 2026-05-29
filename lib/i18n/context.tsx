@@ -11,6 +11,8 @@ interface I18nContextValue {
   lang: Lang
   setLang: (l: Lang) => void
   t: (key: DictKey) => string
+  /** Like `t` but accepts any string key — use for runtime-dynamic keys (template literals, record lookups). */
+  tDynamic: (key: string) => string
 }
 
 const I18nContext = createContext<I18nContextValue | null>(null)
@@ -29,9 +31,10 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   }
 
   const t = useCallback((key: DictKey): string => resolveMessage(lang, key), [lang])
+  const tDynamic = useCallback((key: string): string => resolveMessage(lang, key as DictKey), [lang])
 
   return (
-    <I18nContext.Provider value={{ lang, setLang, t }}>
+    <I18nContext.Provider value={{ lang, setLang, t, tDynamic }}>
       {children}
     </I18nContext.Provider>
   )

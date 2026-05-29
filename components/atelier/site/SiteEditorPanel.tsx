@@ -121,7 +121,7 @@ export function SiteEditorPanel({
   addMode, deleteMode, moveMode, updateMode,
   addModeCollection, moveModeCollection, updateModeCollection, deleteModeCollection,
 }: SiteEditorProps) {
-  const { t } = useI18n()
+  const { t, tDynamic } = useI18n()
   const blocks = config.site_blocks
   const [collapsed, setCollapsed] = useState<Set<SiteBlockKind>>(new Set())
   const [bgGradientOpen, setBgGradientOpen] = useState(false)
@@ -643,7 +643,7 @@ export function SiteEditorPanel({
                           opacity: placeholder ? 0.75 : 1,
                           transition: 'background 0.15s, color 0.15s',
                         }}>
-                        {t(`site_works_layout_${v}` as any)}
+                        {tDynamic(`site_works_layout_${v}`)}
                         {placeholder && (
                           <span style={{ marginLeft: 6, fontSize: 7, opacity: 0.7 }}>
                             {/* eslint-disable-next-line pem-i18n/no-hardcoded-jsx-text */}
@@ -674,10 +674,10 @@ export function SiteEditorPanel({
                 >
                   <option value="auto">
                     {t('site_works_mode_mobile_fallback_auto')}
-                    {' '}({t(`site_works_layout_${resolveWorksMobileLayout(mode.layout ?? 'carousel', 'auto')}` as any)})
+                    {' '}({tDynamic(`site_works_layout_${resolveWorksMobileLayout(mode.layout ?? 'carousel', 'auto')}`)})
                   </option>
                   {WORKS_LAYOUT_VALUES.map(v => (
-                    <option key={v} value={v}>{t(`site_works_layout_${v}` as any)}</option>
+                    <option key={v} value={v}>{tDynamic(`site_works_layout_${v}`)}</option>
                   ))}
                 </select>
               </div>
@@ -742,7 +742,7 @@ export function SiteEditorPanel({
                     <span>{t('site_works_mode_light_label')}</span>
                     <span style={sectionBadge}>
                       {activePreset
-                        ? `· ${t(`site_works_mode_light_preset_${activePreset}` as any)}`
+                        ? `· ${tDynamic(`site_works_mode_light_preset_${activePreset}`)}`
                         : `· ${t('site_works_mode_light_preset_custom')}`}
                     </span>
                   </div>
@@ -760,7 +760,7 @@ export function SiteEditorPanel({
                             background: active ? 'var(--ac)' : 'transparent',
                             color: active ? '#fff' : 'var(--tx2)',
                           }}>
-                          {t(`site_works_mode_light_preset_${k}` as any)}
+                          {tDynamic(`site_works_mode_light_preset_${k}`)}
                         </button>
                       )
                     })}
@@ -1000,7 +1000,7 @@ export function SiteEditorPanel({
       {blocks.map((block, idx) => {
         const isHidden = !block.visible
         const isCollapsed = isHidden && collapsed.has(block.kind)
-        const title = t(BLOCK_LABEL_KEYS[block.kind] as any)
+        const title = tDynamic(BLOCK_LABEL_KEYS[block.kind])
         const icon = BLOCK_ICONS[block.kind]
 
         const actionBar = (

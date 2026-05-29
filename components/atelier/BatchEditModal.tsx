@@ -5,6 +5,7 @@
 
 import { useState, useTransition } from 'react'
 import { useI18n } from '@/lib/i18n/context'
+import type { DictKey } from '@/lib/i18n/dictionary'
 import { PemModalOverlay } from '@/components/shared/PemModalOverlay'
 import { batchEdit, createTheme, type BatchChanges } from '@/app/atelier/selection/actions'
 import { reloadAtelierAfterBatchSuccess } from '@/lib/atelier/reload-after-batch'
@@ -478,19 +479,19 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, a
       {/* ── Section: Attributs ───────────────────────────────────── */}
       <SectionLabel>{t('attributes')}</SectionLabel>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 20 }}>
-        <TriField label={t('needsPhoto')}  value={needsPhoto}   onChange={setNeedsPhoto}   t={t as any} />
-        <TriField label={t('catalogued')}  value={catalogued}   onChange={setCatalogued}   t={t as any} />
-        <TriField label={t('exposable')}   value={exposable}    onChange={setExposable}    t={t as any} />
-        <TriField label={t('montee')}      value={montee}       onChange={setMontee}       t={t as any} />
-        <TriField label={t('framed')}      value={encadree}     onChange={setEncadree}     t={t as any} />
-        <TriField label={t('commission')}  value={isCommission} onChange={setIsCommission} t={t as any} />
-        <TriField label={t('gift')}        value={isGift}       onChange={setIsGift}       t={t as any} />
-        <TriField label={t('paid')}        value={isPaid}       onChange={setIsPaid}       t={t as any} />
+        <TriField label={t('needsPhoto')}  value={needsPhoto}   onChange={setNeedsPhoto}   t={t} />
+        <TriField label={t('catalogued')}  value={catalogued}   onChange={setCatalogued}   t={t} />
+        <TriField label={t('exposable')}   value={exposable}    onChange={setExposable}    t={t} />
+        <TriField label={t('montee')}      value={montee}       onChange={setMontee}       t={t} />
+        <TriField label={t('framed')}      value={encadree}     onChange={setEncadree}     t={t} />
+        <TriField label={t('commission')}  value={isCommission} onChange={setIsCommission} t={t} />
+        <TriField label={t('gift')}        value={isGift}       onChange={setIsGift}       t={t} />
+        <TriField label={t('paid')}        value={isPaid}       onChange={setIsPaid}       t={t} />
         <TriField
           label={t('wf_broadcast_ready')}
           value={broadcastReady}
           onChange={setBroadcastReady}
-          t={t as any}
+          t={t}
           testId="batch-broadcast-ready-tri"
         />
       </div>
@@ -537,7 +538,7 @@ function FieldWrap({ label, active, children, style }: { label: string; active: 
   )
 }
 
-function TriField({ label, value, onChange, t, testId }: { label: string; value: Tri; onChange: (v: Tri) => void; t: (k: string) => string; testId?: string }) {
+function TriField({ label, value, onChange, t, testId }: { label: string; value: Tri; onChange: (v: Tri) => void; t: (k: DictKey) => string; testId?: string }) {
   return (
     <div
       data-testid={testId}
