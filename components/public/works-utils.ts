@@ -56,6 +56,18 @@ export interface WorksMode {
   cast_shadow_blur_px?: number
   /** Mobile layout override. `'auto'` = table-driven; explicit value pins. Default `'auto'`. */
   mobile_fallback?: WorksLayout | 'auto'
+  /** R2 key for the forest panorama background (map layout). */
+  forest_panorama_r2_key?: string
+  /** R2 key for the looping interior video (motion_interior layout). */
+  motion_interior_r2_key?: string
+}
+
+/** Pin position for a work on the forest panorama. x/y are percentages (0–100) from top-left. */
+export type ForestPin = {
+  work_id: number
+  x: number   // lng stored in forest_pins
+  y: number   // lat stored in forest_pins
+  label: string | null
 }
 
 /** Strip RichEditor HTML for plain-text labels (grid intro, carousel chapter line). */

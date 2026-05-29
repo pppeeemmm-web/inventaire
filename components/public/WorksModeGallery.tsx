@@ -6,6 +6,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { useEscapeClose } from '@/hooks/useEscapeClose'
 import WorksGrid from './WorksGrid'
 import WorksPlaceholderLayout from './works-layouts/WorksPlaceholderLayout'
+import WorksMapLayout from './works-layouts/WorksMapLayout'
+import WorksMotionInteriorLayout from './works-layouts/WorksMotionInteriorLayout'
 import WorksProcessionLayout from './works-layouts/WorksProcessionLayout'
 import WorksSalonLayout from './works-layouts/WorksSalonLayout'
 import WorksTimelineLayout from './works-layouts/WorksTimelineLayout'
@@ -22,6 +24,7 @@ import {
 import type { Work, WorksMode } from './works-utils'
 import type { PublicSiteTheme } from '@/lib/public-site-theme'
 import { DEFAULT_KNOB_VALUES, type KnobValues } from '@/lib/site-blocks'
+import type { ForestPin } from './works-utils'
 import {
   LANDING_HERO_BEVEL_PROFILE_DEFAULT,
   LANDING_HERO_BEVEL_PX_DEFAULT,
@@ -46,6 +49,7 @@ interface Props {
   mode: WorksMode
   siteTheme: PublicSiteTheme
   a11y?: KnobValues['a11y']
+  forestPins?: ForestPin[]
 }
 
 /** Per-card 3D transform. Center = face-on, neighbors rotate so inner edge faces viewer. */
@@ -90,7 +94,7 @@ function fitArtDisplaySize(
 // Grain SVG data URI — shared between CSS and 3D wall plane
 const GRAIN_BG = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E")`
 
-export default function WorksModeGallery({ works, mode, siteTheme, a11y }: Props) {
+export default function WorksModeGallery({ works, mode, siteTheme, a11y, forestPins }: Props) {
   const { t, lang } = useI18n()
 
   // §4.5 — a11y knobs: sync type zoom + high contrast to html root
@@ -991,6 +995,10 @@ export default function WorksModeGallery({ works, mode, siteTheme, a11y }: Props
         <WorksTimelineLayout works={chapterWorks} mode={mode} bevelShadow={bevelShadow} light={light} siteTheme={siteTheme} />
       ) : layout === 'letter' ? (
         <WorksLetterLayout works={chapterWorks} mode={mode} bevelShadow={bevelShadow} light={light} siteTheme={siteTheme} />
+      ) : layout === 'map' ? (
+        <WorksMapLayout works={chapterWorks} mode={mode} forestPins={forestPins ?? []} siteTheme={siteTheme} />
+      ) : layout === 'motion_interior' ? (
+        <WorksMotionInteriorLayout works={chapterWorks} mode={mode} siteTheme={siteTheme} />
       ) : WORKS_LAYOUT_PLACEHOLDERS.has(layout as WorksLayout) ? (
         <WorksPlaceholderLayout layout={layout as WorksLayout} siteTheme={siteTheme} />
       ) : (

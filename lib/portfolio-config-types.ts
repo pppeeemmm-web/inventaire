@@ -108,17 +108,18 @@ export type WorksLayout =
   | 'timeline'
   | 'letter'
   | 'map'
+  | 'motion_interior'
   | 'constellation'
   | 'diptych'
 
 export const WORKS_LAYOUT_VALUES: WorksLayout[] = [
   'carousel', 'grid', 'procession', 'salon', 'vitrine', 'timeline', 'letter',
-  'map', 'constellation', 'diptych',
+  'map', 'motion_interior', 'constellation', 'diptych',
 ]
 
 /** Layouts that render a placeholder (data not available yet). */
 export const WORKS_LAYOUT_PLACEHOLDERS: ReadonlySet<WorksLayout> = new Set<WorksLayout>([
-  'map', 'constellation', 'diptych',
+  'constellation', 'diptych',
 ])
 
 export interface WorksMode {
@@ -153,6 +154,10 @@ export interface WorksMode {
    * Explicitly choosing a layout pins it regardless of the desktop value.
    */
   mobile_fallback: WorksLayout | 'auto'
+  /** R2 key for the forest panorama background image (map layout only). */
+  forest_panorama_r2_key?: string
+  /** R2 key for the looping interior video (motion_interior layout only). */
+  motion_interior_r2_key?: string
 }
 
 export const DEFAULT_HERO_CAPTION_EN = "'Matsukaze' — Meaning 'Wind through the Pines'"
@@ -457,6 +462,10 @@ function migrateModes(raw: any, fallbackCollections: CollectionItem[]): WorksMod
     mobile_fallback: (m.mobile_fallback === 'auto' || (WORKS_LAYOUT_VALUES as readonly string[]).includes(m.mobile_fallback))
       ? m.mobile_fallback as WorksLayout | 'auto'
       : 'auto',
+    forest_panorama_r2_key: typeof m.forest_panorama_r2_key === 'string' && m.forest_panorama_r2_key
+      ? m.forest_panorama_r2_key : undefined,
+    motion_interior_r2_key: typeof m.motion_interior_r2_key === 'string' && m.motion_interior_r2_key
+      ? m.motion_interior_r2_key : undefined,
   }))
 }
 

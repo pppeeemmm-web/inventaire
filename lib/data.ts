@@ -10,7 +10,7 @@ function r2DevProxyEnabled(): boolean {
   return process.env.NODE_ENV === 'development' && Boolean(R2)
 }
 
-function r2PublicPath(pathWithinBucket: string): string {
+export function r2PublicPath(pathWithinBucket: string): string {
   const enc = pathWithinBucket.split('/').map((s) => encodeURIComponent(s)).join('/')
   if (r2DevProxyEnabled()) return `/r2-proxy/${enc}`
   return `${R2}/${enc}`

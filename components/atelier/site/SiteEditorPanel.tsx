@@ -64,6 +64,7 @@ import { moveBtnStyle } from '@/components/atelier/portfolio/shared/moveBtnStyle
 import { PracticeBlockExtras } from '@/components/atelier/site/PracticeBlockExtras'
 import { HeroGlossEditor } from '@/components/atelier/site/HeroGlossEditor'
 import { KnobsPanel } from '@/components/atelier/site/KnobsPanel'
+import { MapPinEditor } from '@/components/atelier/site/MapPinEditor'
 import { DEFAULT_KNOBS_CONFIG } from '@/lib/site-blocks'
 import {
   LandingHeroWorkPicker,
@@ -867,6 +868,50 @@ export function SiteEditorPanel({
                 </div>
               )
             })()}
+            {/* ── Map layout — R2 key + pin editor ── */}
+            {mode?.layout === 'map' && (
+              <div style={{ marginBottom: 24, paddingBottom: 18, borderBottom: '1px solid var(--bd)' }}>
+                <div style={{ fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--tx2)', marginBottom: 8 }}>
+                  {t('site_works_map_r2_key_label')}
+                </div>
+                <input
+                  type="text"
+                  value={mode.forest_panorama_r2_key ?? ''}
+                  onChange={e => updateMode(activeMode, { forest_panorama_r2_key: e.target.value || undefined })}
+                  placeholder={t('site_works_map_r2_key_hint')}
+                  style={{
+                    width: '100%', fontFamily: 'inherit', fontSize: 9,
+                    padding: '5px 8px', background: 'var(--bg2)', color: 'var(--tx)',
+                    border: '1px solid var(--bd2)', borderRadius: 0, marginBottom: 2,
+                  }}
+                />
+                <MapPinEditor
+                  works={oeuvres}
+                  panoramaKey={mode.forest_panorama_r2_key}
+                />
+              </div>
+            )}
+
+            {/* ── Motion interior layout — R2 key ── */}
+            {mode?.layout === 'motion_interior' && (
+              <div style={{ marginBottom: 24, paddingBottom: 18, borderBottom: '1px solid var(--bd)' }}>
+                <div style={{ fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--tx2)', marginBottom: 8 }}>
+                  {t('site_works_motion_r2_key_label')}
+                </div>
+                <input
+                  type="text"
+                  value={mode.motion_interior_r2_key ?? ''}
+                  onChange={e => updateMode(activeMode, { motion_interior_r2_key: e.target.value || undefined })}
+                  placeholder={t('site_works_motion_r2_key_hint')}
+                  style={{
+                    width: '100%', fontFamily: 'inherit', fontSize: 9,
+                    padding: '5px 8px', background: 'var(--bg2)', color: 'var(--tx)',
+                    border: '1px solid var(--bd2)', borderRadius: 0, marginBottom: 2,
+                  }}
+                />
+              </div>
+            )}
+
             {/* eslint-disable pem-i18n/no-hardcoded-jsx-text */}
             {config.works_modes.length > 1 && (
               <p className="t-mono-xs" style={{ opacity: 0.5, marginBottom: 16 }}>

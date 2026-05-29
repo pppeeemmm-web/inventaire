@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import WorksClient from '@/components/public/WorksClient'
 import { loadPortfolioSectionsFromR2 } from '@/lib/portfolio-sections-from-r2'
 import { fetchPublicOeuvreThemeNamesMap } from '@/lib/public-oeuvre-themes'
@@ -14,6 +14,7 @@ import {
 import { hiddenNavRoutes, orderedNavRoutes } from '@/lib/site-block-visibility'
 import { migrate, WORKS_LAYOUT_VALUES, type Block, type SiteBlock, type WorksLayout } from '@/lib/portfolio-config-types'
 import { resolveKnobs, DEFAULT_KNOB_VALUES, type KnobValues } from '@/lib/site-blocks'
+import type { ForestPin } from '@/components/public/works-utils'
 import {
   LANDING_HERO_BEVEL_PX_DEFAULT,
   LANDING_HERO_BEVEL_PROFILE_DEFAULT,
@@ -278,6 +279,19 @@ export default async function WorksPage() {
   }
 
   const migrated = migrate(cfg)
+
+  // Forest pins — service role (team-only RLS on forest_pins; public page needs bypass)
+  const serviceSb = await createServiceClient()
+  const { data: rawPins } = await serviceSb
+    .from('forest_pins')
+    .select('work_id, lat, lng, label')
+  const forestPins: ForestPin[] = (rawPins ?? []).map((r: Record<string, unknown>) => ({
+    work_id: r.work_id as number,
+    x: typeof r.lng === 'number' ? r.lng : 0,
+    y: typeof r.lat === 'number' ? r.lat : 0,
+    label: typeof r.label === 'string' ? r.label : null,
+  }))
+
   const worksA11y: KnobValues['a11y'] = migrated.knobs
     ? resolveKnobs(migrated.knobs, 'works').a11y
     : DEFAULT_KNOB_VALUES.a11y
@@ -318,6 +332,7 @@ export default async function WorksPage() {
       siteTheme={siteTheme}
       navTransparent={navTransparent}
       a11y={worksA11y}
+      forestPins={forestPins}
     />
   )
 }

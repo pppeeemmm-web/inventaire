@@ -10,6 +10,7 @@ import { WorksRenderCtx } from '@/lib/site-blocks/works_modes/WorksRenderCtx'
 import type { Work, WorksMode } from './works-utils'
 import type { PublicSiteTheme } from '@/lib/public-site-theme'
 import type { KnobValues } from '@/lib/site-blocks'
+import type { ForestPin } from './works-utils'
 import { publicNavBarCss, publicSiteBaseCss } from '@/lib/public-site-theme'
 
 interface Props {
@@ -21,10 +22,11 @@ interface Props {
   /** Gradient flush to viewport top (no nav bar sleeve). */
   navTransparent?: boolean
   a11y?: KnobValues['a11y']
+  forestPins?: ForestPin[]
 }
 
 export default function WorksClient({
-  works, modes, hiddenNavRoutes, navOrder, siteTheme, navTransparent = true, a11y,
+  works, modes, hiddenNavRoutes, navOrder, siteTheme, navTransparent = true, a11y, forestPins,
 }: Props) {
   const { t } = useI18n()
 
@@ -60,7 +62,7 @@ export default function WorksClient({
         <PublicNav active="works" prefix="w" hiddenNavRoutes={hiddenNavRoutes} navOrder={navOrder} />
         <h1 className="w-page-h1-sr-only">{t('pub_works')}</h1>
         {activeMode && (
-          <WorksModeGallery works={works} mode={activeMode} siteTheme={siteTheme} a11y={a11y} />
+          <WorksModeGallery works={works} mode={activeMode} siteTheme={siteTheme} a11y={a11y} forestPins={forestPins} />
         )}
       </div>
     </WorksRenderCtx.Provider>

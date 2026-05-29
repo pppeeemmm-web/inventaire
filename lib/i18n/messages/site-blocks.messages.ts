@@ -165,6 +165,10 @@ export const siteBlocksMessages = defineMessages({
     fr: 'Carte',
     en: 'Map',
   },
+  site_works_layout_motion_interior: {
+    fr: 'Intérieur animé',
+    en: 'Motion interior',
+  },
   site_works_layout_constellation: {
     fr: 'Constellation',
     en: 'Constellation',
@@ -176,6 +180,36 @@ export const siteBlocksMessages = defineMessages({
   site_works_layout_placeholder_badge: {
     fr: 'Bientôt disponible — données manquantes',
     en: 'Coming soon — missing data',
+  },
+
+  // ── Map / motion_interior editor keys ────────────────────────────────────
+  site_works_map_r2_key_label: {
+    fr: 'Clé R2 de la panoramique',
+    en: 'Panorama R2 key',
+  },
+  site_works_map_r2_key_hint: {
+    fr: 'Ex : site/forest-panorama.avif — uploadé via coffre ou R2',
+    en: 'e.g. site/forest-panorama.avif — upload via vault or R2',
+  },
+  site_works_map_pin_section: {
+    fr: 'Placement des repères',
+    en: 'Pin placement',
+  },
+  site_works_map_pin_arm_hint: {
+    fr: 'Sélectionnez une œuvre ci-dessous, puis cliquez sur la panoramique pour la placer.',
+    en: 'Select a work below, then click the panorama to place it.',
+  },
+  site_works_map_pin_delete: {
+    fr: 'Supprimer ce repère',
+    en: 'Remove pin',
+  },
+  site_works_motion_r2_key_label: {
+    fr: 'Clé R2 de la vidéo',
+    en: 'Video R2 key',
+  },
+  site_works_motion_r2_key_hint: {
+    fr: 'Ex : site/interior-loop.webm — uploadé via coffre ou R2',
+    en: 'e.g. site/interior-loop.webm — upload via vault or R2',
   },
   atelier_pub_landing_behavior_help: {
     fr:
