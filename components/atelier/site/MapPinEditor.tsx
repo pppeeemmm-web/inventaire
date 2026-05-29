@@ -140,11 +140,11 @@ export function MapPinEditor({ works, panoramaKey, pinSize = 48, collections = [
               style={{
                 position: 'absolute', left: `${pin.x}%`, top: `${pin.y}%`,
                 transform: `translate(-50%, -50%) scale(${isArmed ? 1.3 : 1})`,
-                width: sz, height: sz, borderRadius: '50%',
+                width: sz, height: sz, borderRadius: 2,
                 backgroundImage: thumb ? `url(${thumb})` : 'none',
                 backgroundSize: 'cover',
                 backgroundColor: thumb ? 'transparent' : (isArmed ? 'var(--ac)' : 'rgba(255,180,40,0.9)'),
-                border: `${Math.max(1, Math.round(depthScale * 2))}px solid rgba(255,255,255,0.85)`,
+                border: `${Math.max(1, Math.round(depthScale * 2))}px solid rgba(255,255,255,0.6)`,
                 boxShadow: `0 ${Math.round(depthScale * 3)}px ${Math.round(depthScale * 8)}px rgba(0,0,0,0.55)`,
                 zIndex: Math.round(100 - pin.z), pointerEvents: 'none',
                 transition: 'transform .15s',
