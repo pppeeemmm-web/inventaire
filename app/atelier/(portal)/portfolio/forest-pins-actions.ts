@@ -8,7 +8,8 @@ import { createServiceClient } from '@/lib/supabase/server'
 import type { ForestPin } from '@/components/public/works-utils'
 
 async function assertAdmin(): Promise<void> {
-  const sb = await createServiceClient()
+  const { createClient } = await import('@/lib/supabase/server')
+  const sb = await createClient()
   const { data, error } = await sb.rpc('is_admin')
   if (error || !data) throw new Error('Forbidden: admin only')
 }
