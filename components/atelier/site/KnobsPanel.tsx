@@ -169,6 +169,7 @@ export function KnobsPanel({
     () => new Set<KnobFamily>([...SCHEMA_RESERVED, 'atm']),
   )
   const [circCollapsed, setCircCollapsed] = useState(true)
+  const [a11yCollapsed, setA11yCollapsed] = useState(true)
 
   // ── Patch helpers ─────────────────────────────────────────────────────
 
@@ -187,6 +188,10 @@ export function KnobsPanel({
 
   function patchCirc(update: Partial<KnobValues['circ']>) {
     onChange({ ...knobs, site: { ...knobs.site, circ: { ...knobs.site.circ, ...update } } })
+  }
+
+  function patchA11y(update: Partial<KnobValues['a11y']>) {
+    onChange({ ...knobs, site: { ...knobs.site, a11y: { ...knobs.site.a11y, ...update } } })
   }
 
   function isOverrideEnabled(family: KnobFamily): boolean {
@@ -690,6 +695,69 @@ export function KnobsPanel({
     )
   }
 
+  // ── A11Y section ──────────────────────────────────────────────────────
+
+  function A11ySection() {
+    const a = knobs.site.a11y
+    const isDirty = a.type_size_step !== DEFAULT_KNOB_VALUES.a11y.type_size_step ||
+                    a.high_contrast !== DEFAULT_KNOB_VALUES.a11y.high_contrast
+    const STEPS: { value: number; label: string }[] = [
+      { value: 1,    label: t('site_knobs_a11y_step_1') },
+      { value: 1.25, label: t('site_knobs_a11y_step_125') },
+      { value: 1.5,  label: t('site_knobs_a11y_step_150') },
+      { value: 2,    label: t('site_knobs_a11y_step_200') },
+    ]
+    return (
+      <div style={{ borderTop: '1px solid var(--bd)', paddingTop: 6, paddingBottom: a11yCollapsed ? 0 : 12 }}>
+        <button
+          type="button"
+          style={{ ...familyHeaderBtn, marginBottom: a11yCollapsed ? 0 : 8 }}
+          onClick={() => setA11yCollapsed(v => !v)}
+        >
+          <span style={{ fontSize: 8, color: 'var(--tx3)' }}>{a11yCollapsed ? '▸' : '▾'}</span>
+          <span style={{ fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--tx2)' }}>
+            {t('site_knobs_a11y_section')}
+          </span>
+          {isDirty && (
+            <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--ac)', display: 'inline-block', flexShrink: 0 }} />
+          )}
+        </button>
+        {!a11yCollapsed && (
+          <>
+            {/* type_size_step — segmented */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <span style={{ color: 'var(--tx2)', fontSize: 9, minWidth: 120 }}>
+                {t('site_knobs_a11y_type_size')}
+              </span>
+              <div style={segmentedGroup}>
+                {STEPS.map(({ value, label }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    className="t-mono-xs"
+                    onClick={() => patchA11y({ type_size_step: value })}
+                    style={segBtn(a.type_size_step === value)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {/* high_contrast — checkbox */}
+            <label style={checkRowStyle}>
+              <input
+                type="checkbox"
+                checked={a.high_contrast}
+                onChange={e => patchA11y({ high_contrast: e.target.checked })}
+              />
+              {t('site_knobs_a11y_high_contrast')}
+            </label>
+          </>
+        )}
+      </div>
+    )
+  }
+
   // ── Family → renderer map ─────────────────────────────────────────────
 
   const FAMILY_LABEL: Record<KnobFamily, string> = {
@@ -789,6 +857,9 @@ export function KnobsPanel({
 
       {/* Circadian controller — site scope only */}
       {isSiteScope && <CircadianSection />}
+
+      {/* Accessibility — site scope only */}
+      {isSiteScope && <A11ySection />}
     </div>
   )
 }

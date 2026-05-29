@@ -252,4 +252,34 @@ export const knobsPanelMessages = defineMessages({
     fr: 'Personnalisé',
     en: 'Custom',
   },
+
+  // ── Accessibility (a11y) ──────────────────────────────────────────────────
+  site_knobs_a11y_section: {
+    fr: 'Accessibilité',
+    en: 'Accessibility',
+  },
+  site_knobs_a11y_type_size: {
+    fr: 'Taille du texte',
+    en: 'Text size',
+  },
+  site_knobs_a11y_step_1: {
+    fr: 'Normal',
+    en: 'Normal',
+  },
+  site_knobs_a11y_step_125: {
+    fr: 'Grand',
+    en: 'Large',
+  },
+  site_knobs_a11y_step_150: {
+    fr: 'Très grand',
+    en: 'Larger',
+  },
+  site_knobs_a11y_step_200: {
+    fr: 'Maximum',
+    en: 'Maximum',
+  },
+  site_knobs_a11y_high_contrast: {
+    fr: 'Contraste élevé',
+    en: 'High contrast',
+  },
 })

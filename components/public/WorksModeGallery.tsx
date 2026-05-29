@@ -21,6 +21,7 @@ import {
 } from './works-utils'
 import type { Work, WorksMode } from './works-utils'
 import type { PublicSiteTheme } from '@/lib/public-site-theme'
+import { DEFAULT_KNOB_VALUES, type KnobValues } from '@/lib/site-blocks'
 import {
   LANDING_HERO_BEVEL_PROFILE_DEFAULT,
   LANDING_HERO_BEVEL_PX_DEFAULT,
@@ -44,6 +45,7 @@ interface Props {
   works: Work[]
   mode: WorksMode
   siteTheme: PublicSiteTheme
+  a11y?: KnobValues['a11y']
 }
 
 /** Per-card 3D transform. Center = face-on, neighbors rotate so inner edge faces viewer. */
@@ -88,8 +90,28 @@ function fitArtDisplaySize(
 // Grain SVG data URI — shared between CSS and 3D wall plane
 const GRAIN_BG = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E")`
 
-export default function WorksModeGallery({ works, mode, siteTheme }: Props) {
+export default function WorksModeGallery({ works, mode, siteTheme, a11y }: Props) {
   const { t, lang } = useI18n()
+
+  // §4.5 — a11y knobs: sync type zoom + high contrast to html root
+  const { type_size_step, high_contrast } = a11y ?? DEFAULT_KNOB_VALUES.a11y
+  useEffect(() => {
+    const root = document.documentElement
+    if (type_size_step !== 1) {
+      root.style.setProperty('--pem-root-zoom', String(type_size_step))
+    } else {
+      root.style.removeProperty('--pem-root-zoom')
+    }
+    if (high_contrast) {
+      root.dataset.highContrast = 'true'
+    } else {
+      delete root.dataset.highContrast
+    }
+    return () => {
+      root.style.removeProperty('--pem-root-zoom')
+      delete root.dataset.highContrast
+    }
+  }, [type_size_step, high_contrast])
 
   // Dev/preview helper: `?_layout=salon` etc. lets you preview a layout without
   // saving it into the portfolio config. Falls back to the mode's persisted layout.

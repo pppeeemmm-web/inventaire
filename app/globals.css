@@ -525,3 +525,9 @@ input, textarea, select { font: inherit; color: inherit; background: transparent
     font-size: max(16px, 1rem);
   }
 }
+
+/* ── A11y knobs ──────────────────────────────────────────────────────────── */
+/* type_size_step: --pem-root-zoom set from client when step !== 1; zoom scales all px/rem/em */
+html { zoom: var(--pem-root-zoom, 1); }
+/* high_contrast: filter applied to html root when data-high-contrast is present */
+html[data-high-contrast] { filter: contrast(1.35); }

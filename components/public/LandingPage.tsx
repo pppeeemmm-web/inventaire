@@ -144,6 +144,26 @@ export default function LandingPage({
     void trackView('/', document.referrer || null, null, getOrCreatePublicVisitorId())
   }, [])
 
+  // §4.5 — a11y knobs: sync type zoom + high contrast to html root
+  useEffect(() => {
+    const root = document.documentElement
+    const { type_size_step, high_contrast } = effectiveKnobs.a11y
+    if (type_size_step !== 1) {
+      root.style.setProperty('--pem-root-zoom', String(type_size_step))
+    } else {
+      root.style.removeProperty('--pem-root-zoom')
+    }
+    if (high_contrast) {
+      root.dataset.highContrast = 'true'
+    } else {
+      delete root.dataset.highContrast
+    }
+    return () => {
+      root.style.removeProperty('--pem-root-zoom')
+      delete root.dataset.highContrast
+    }
+  }, [effectiveKnobs.a11y])
+
   useEffect(() => {
     const apply = () => {
       const now = new Date()

@@ -9,6 +9,7 @@ import WorksModeGallery from './WorksModeGallery'
 import { WorksRenderCtx } from '@/lib/site-blocks/works_modes/WorksRenderCtx'
 import type { Work, WorksMode } from './works-utils'
 import type { PublicSiteTheme } from '@/lib/public-site-theme'
+import type { KnobValues } from '@/lib/site-blocks'
 import { publicNavBarCss, publicSiteBaseCss } from '@/lib/public-site-theme'
 
 interface Props {
@@ -19,10 +20,11 @@ interface Props {
   siteTheme: PublicSiteTheme
   /** Gradient flush to viewport top (no nav bar sleeve). */
   navTransparent?: boolean
+  a11y?: KnobValues['a11y']
 }
 
 export default function WorksClient({
-  works, modes, hiddenNavRoutes, navOrder, siteTheme, navTransparent = true,
+  works, modes, hiddenNavRoutes, navOrder, siteTheme, navTransparent = true, a11y,
 }: Props) {
   const { t } = useI18n()
 
@@ -58,7 +60,7 @@ export default function WorksClient({
         <PublicNav active="works" prefix="w" hiddenNavRoutes={hiddenNavRoutes} navOrder={navOrder} />
         <h1 className="w-page-h1-sr-only">{t('pub_works')}</h1>
         {activeMode && (
-          <WorksModeGallery works={works} mode={activeMode} siteTheme={siteTheme} />
+          <WorksModeGallery works={works} mode={activeMode} siteTheme={siteTheme} a11y={a11y} />
         )}
       </div>
     </WorksRenderCtx.Provider>

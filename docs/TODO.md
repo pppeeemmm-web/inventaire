@@ -2,7 +2,7 @@
 
 _Version-controlled checklist + non-binding roadmap items. Prefer this file over a Desktop mirror._
 
-**Last refresh: 2026-05-29** — **V5 programme closed** (owner sign-off; slices 1–8 on `main`). Constellation UI split. Ops: O1 GRANT audit + R2 lifecycle on `paintings` verified. **A0 Supabase cast cleanup closed 2026-05-29** (`8819120`; Buckets C/B/A/D done, E/F left intentionally). **Block registry keystone closed 2026-05-29** (§4.1 landing + works, §4.2 circadian ATM tint, §4.3 KnobsPanel block scope — all shipped; see [`HANDOFF_SITE_BLOCKS_3.md`](./HANDOFF_SITE_BLOCKS_3.md)).
+**Last refresh: 2026-05-29** — **V5 programme closed** (owner sign-off; slices 1–8 on `main`). Constellation UI split. Ops: O1 GRANT audit + R2 lifecycle on `paintings` verified. **A0 Supabase cast cleanup closed 2026-05-29** (`8819120`; Buckets C/B/A/D done, E/F left intentionally). **Block registry keystone + a11y closed 2026-05-29** (§4.1 landing + works, §4.2 circadian ATM tint, §4.3 KnobsPanel block scope, §4.5 a11y knobs — all shipped; §4.4 map/motion_interior blocked on assets; handoff archived [`docs/archive/HANDOFF_SITE_BLOCKS_3.md`](./archive/HANDOFF_SITE_BLOCKS_3.md)).
 
 ---
 
@@ -10,9 +10,8 @@ _Version-controlled checklist + non-binding roadmap items. Prefer this file over
 
 | # | Track | Item | Notes |
 |---|--------|------|--------|
-| 1 | **Site editor** | `map`/`motion_interior` layouts | Both are placeholder layouts pending R2 assets + DB table (`forest_pins` for map; `interior-loop.webm` for motion_interior). See HANDOFF §4.4 |
-| 2 | **Site editor** | a11y knobs (Phase 5) | `KnobValues.a11y` schema slots exist; no UI yet. See HANDOFF §4.5 |
-| 3 | **Deferred** | `/works` gallery (cm-scaled wall scroll) | WIP on hold; see Desktop section below |
+| 1 | **Site editor** | `map`/`motion_interior` layouts | Blocked on R2 assets + DB. `forest_pins` migration ready (`supabase/sql/forest_pins.sql`); `interior-loop.webm` still needed from artist. See [`archive/HANDOFF_SITE_BLOCKS_3.md`](archive/HANDOFF_SITE_BLOCKS_3.md) §4.4 |
+| 2 | **Deferred** | `/works` gallery (cm-scaled wall scroll) | WIP on hold; see Desktop section below |
 
 ---
 
