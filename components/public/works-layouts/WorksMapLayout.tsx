@@ -109,6 +109,8 @@ export default function WorksMapLayout({ works, mode, forestPins, siteTheme }: P
             width: '100%', height: '100%',
             objectFit: 'cover', objectPosition: 'center',
             userSelect: 'none',
+            transform: `perspective(800px) rotateX(${mode.forest_panorama_perspective_deg ?? 0}deg) scale(${mode.forest_panorama_scale ?? 1})`,
+            transformOrigin: 'center center',
           }}
         />
       ) : (

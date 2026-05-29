@@ -20,10 +20,12 @@ interface PinWork {
 interface Props {
   works: PinWork[]
   panoramaKey: string | undefined
+  panoramaScale?: number
+  panoramaPerspectiveDeg?: number
   collections?: CollectionItem[]
 }
 
-export function MapPinEditor({ works, panoramaKey, collections = [] }: Props) {
+export function MapPinEditor({ works, panoramaKey, panoramaScale = 1, panoramaPerspectiveDeg = 0, collections = [] }: Props) {
   const { t, lang } = useI18n()
   const [pins, setPins] = useState<ForestPin[]>([])
   const [armedId, setArmedId] = useState<number | null>(null)
@@ -122,6 +124,8 @@ export function MapPinEditor({ works, panoramaKey, collections = [] }: Props) {
               position: 'absolute', inset: 0,
               width: '100%', height: '100%',
               objectFit: 'cover', pointerEvents: 'none',
+              transform: `perspective(800px) rotateX(${panoramaPerspectiveDeg}deg) scale(${panoramaScale})`,
+              transformOrigin: 'center center',
             }}
           />
         )}

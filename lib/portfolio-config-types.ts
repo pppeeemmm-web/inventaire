@@ -156,6 +156,10 @@ export interface WorksMode {
   mobile_fallback: WorksLayout | 'auto'
   /** R2 key for the forest panorama background image (map layout only). */
   forest_panorama_r2_key?: string
+  /** Zoom/scale of the panorama (0.5–3). Default 1. */
+  forest_panorama_scale?: number
+  /** Y-axis perspective tilt in degrees — positive = top recedes. Default 0. */
+  forest_panorama_perspective_deg?: number
   /** R2 key for the looping interior video (motion_interior layout only). */
   motion_interior_r2_key?: string
 }
@@ -464,6 +468,10 @@ function migrateModes(raw: any, fallbackCollections: CollectionItem[]): WorksMod
       : 'auto',
     forest_panorama_r2_key: typeof m.forest_panorama_r2_key === 'string' && m.forest_panorama_r2_key
       ? m.forest_panorama_r2_key : undefined,
+    forest_panorama_scale: typeof m.forest_panorama_scale === 'number' && m.forest_panorama_scale > 0
+      ? Math.min(3, Math.max(0.5, m.forest_panorama_scale)) : undefined,
+    forest_panorama_perspective_deg: typeof m.forest_panorama_perspective_deg === 'number'
+      ? Math.min(60, Math.max(-60, m.forest_panorama_perspective_deg)) : undefined,
     motion_interior_r2_key: typeof m.motion_interior_r2_key === 'string' && m.motion_interior_r2_key
       ? m.motion_interior_r2_key : undefined,
   }))

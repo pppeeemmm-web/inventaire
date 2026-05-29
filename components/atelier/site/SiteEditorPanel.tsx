@@ -181,9 +181,35 @@ function MapLayoutSection({
         <div style={{ fontSize: 8, color: '#f88', marginBottom: 6 }}>{uploadErr}</div>
       )}
 
+      {/* Scale + perspective sliders (only when panorama is set) */}
+      {mode.forest_panorama_r2_key && (
+        <div style={{ marginBottom: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <Slider
+            label={lang === 'fr' ? 'Zoom' : 'Scale'}
+            min={0.5} max={3} step={0.05}
+            value={mode.forest_panorama_scale ?? 1}
+            onChange={v => updateMode(activeMode, { forest_panorama_scale: v })}
+            defaultValue={1}
+            onReset={() => updateMode(activeMode, { forest_panorama_scale: undefined })}
+            unit="×"
+          />
+          <Slider
+            label={lang === 'fr' ? 'Perspective Y' : 'Perspective Y'}
+            min={-60} max={60} step={1}
+            value={mode.forest_panorama_perspective_deg ?? 0}
+            onChange={v => updateMode(activeMode, { forest_panorama_perspective_deg: v })}
+            defaultValue={0}
+            onReset={() => updateMode(activeMode, { forest_panorama_perspective_deg: undefined })}
+            unit="°"
+          />
+        </div>
+      )}
+
       <MapPinEditor
         works={oeuvres}
         panoramaKey={mode.forest_panorama_r2_key}
+        panoramaScale={mode.forest_panorama_scale}
+        panoramaPerspectiveDeg={mode.forest_panorama_perspective_deg}
         collections={mode.collections}
       />
     </div>

@@ -58,6 +58,10 @@ export interface WorksMode {
   mobile_fallback?: WorksLayout | 'auto'
   /** R2 key for the forest panorama background (map layout). */
   forest_panorama_r2_key?: string
+  /** Zoom/scale of the panorama (0.5–3). Default 1. */
+  forest_panorama_scale?: number
+  /** Y-axis perspective tilt in degrees. Default 0. */
+  forest_panorama_perspective_deg?: number
   /** R2 key for the looping interior video (motion_interior layout). */
   motion_interior_r2_key?: string
 }
