@@ -94,7 +94,7 @@ export async function loadAtelierShellProps(
   })
 
   const oeuvres: Oeuvre[] = Array.isArray(results[0]?.data)
-    ? results[0]!.data.flatMap((row) => (typeof row === 'object' && row != null ? [row as unknown as Oeuvre] : []))
+    ? results[0]!.data.flatMap((row) => (typeof row === 'object' && row != null ? [row as Oeuvre] : []))
     : []
   const oeuvresPaging =
     oeuvreTotalCount > 0

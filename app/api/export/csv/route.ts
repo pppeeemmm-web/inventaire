@@ -20,6 +20,15 @@ async function requireAdminExport() {
   return { ok: true as const, status: 200, supabase }
 }
 
+/**
+ * `config.table as 'entity'` triggers PostgREST column-type inference; the select
+ * string uses dynamic columns so the inferred type is GenericStringError[] which
+ * doesn't overlap Record<string,unknown>[]. Cast through unknown is intentional.
+ */
+function asCsvRows(data: unknown): Record<string, unknown>[] {
+  return data as unknown as Record<string, unknown>[]
+}
+
 async function fetchCsvPage(
   supabase: Awaited<ReturnType<typeof createClient>>,
   config: AnyGraphCsvConfig,
@@ -33,7 +42,7 @@ async function fetchCsvPage(
     .range(from, to)
 
   if (error) throw new Error(error.message)
-  return (data ?? []) as unknown as Record<string, unknown>[]
+  return asCsvRows(data ?? [])
 }
 
 export async function GET(req: NextRequest) {

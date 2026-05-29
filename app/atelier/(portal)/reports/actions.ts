@@ -78,7 +78,7 @@ export async function generateWorksTablePdf(
 
     if (oeuvresRes.error) return { error: oeuvresRes.error.message }
 
-    const fetched = (oeuvresRes.data ?? []) as unknown as Oeuvre[]
+    const fetched = (oeuvresRes.data ?? []) as Oeuvre[]
     const orderIndex = new Map<number, number>(uniq.map((id, i) => [id, i]))
     fetched.sort((a, b) => (orderIndex.get(a.OeuvreID) ?? 0) - (orderIndex.get(b.OeuvreID) ?? 0))
 

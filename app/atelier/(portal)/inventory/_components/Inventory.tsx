@@ -107,6 +107,11 @@ function extractYear(s: unknown): number {
   return m ? parseInt(m[1]) : NaN
 }
 
+/** Read a runtime-dynamic key from an Oeuvre (no index signature on the interface). */
+function oeuvreField(o: Oeuvre, key: string): unknown {
+  return (o as unknown as Record<string, unknown>)[key]
+}
+
 function matchesCriterion(o: Oeuvre, c: Criterion, allFields: FieldDef[]): boolean {
   const fld = allFields.find((f) => f.k === c.field)
   if (!fld) return true
@@ -117,7 +122,7 @@ function matchesCriterion(o: Oeuvre, c: Criterion, allFields: FieldDef[]): boole
     return c.op === '= vrai' ? val : !val
   }
 
-  const raw = (o as unknown as Record<string, unknown>)[c.field]
+  const raw = oeuvreField(o, c.field)
   const val = raw != null ? String(raw) : ''
   const cv  = c.value ?? ''
 
@@ -399,7 +404,7 @@ export function Inventory({
       .map(k => ({
         k,
         l: k === 'anonymity_level' ? t('confidentiality') : (FIELD_LABELS[k] || k),
-        t: getFieldType(k, (sample as unknown as Record<string, unknown>)[k])
+        t: getFieldType(k, oeuvreField(sample, k))
       }))
 
     // Add virtual curation fields for advanced filter
