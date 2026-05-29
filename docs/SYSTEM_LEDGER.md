@@ -78,10 +78,45 @@ Submitted rows insert into `system_log` with: `action`, `details`, `type`, `stat
 | Task | When | Command / doc |
 |------|------|----------------|
 | **O1 GRANT audit** | Before **2026-10-30** (Supabase existing-project deadline) | `pwsh scripts/run-grant-audit.ps1` → [`supabase/sql/grant_audit_queries.sql`](../supabase/sql/grant_audit_queries.sql) |
+| **O2 R2 key rotation** | When rotating Cloudflare R2 access key | See runbook below |
+| **O3 Broadcast secret rotation** | When rotating `INVENTORY_BROADCAST_SECRET` | See runbook below |
 | **R2 lifecycle** | One-time Cloudflare console | Bucket `paintings`: prefix **`recycle/`** delete after **90d**; **`ledger/`** after **30d** (see § Attachments above) |
 | **Graph CSV backup** | Weekly (Sun 04:30 UTC) + manual | [`graph-csv-backup.yml`](../.github/workflows/graph-csv-backup.yml); verify: `pwsh scripts/verify-graph-csv-backup.ps1` |
 | **Embed backfill** | Desktop ongoing | `npm run embed:worker -- --watch` — see [`docs/GRAPHIFY_NOTES.md`](./GRAPHIFY_NOTES.md) |
 | **gen:types** | After each `public` table migration | `npm run gen:types` (requires `SUPABASE_ACCESS_TOKEN` in `.env.local`) |
+
+---
+
+### O2 — R2 access key rotation runbook
+
+R2 credentials are in `.env.local` (`R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`) and mirrored to Vercel as encrypted env vars. The same key pair is used by the GitHub Actions backup workflow (GH secret `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY`).
+
+**Steps:**
+1. Cloudflare dashboard → R2 → Manage R2 API Tokens → create a new token with Object Read & Write on bucket `paintings`.
+2. Note the new `Access Key ID` and `Secret Access Key` (only shown once).
+3. Update Vercel: Settings → Environment Variables → replace `R2_ACCESS_KEY_ID` and `R2_SECRET_ACCESS_KEY` for Production + Preview.
+4. Update GitHub: repo Settings → Secrets → replace `R2_ACCESS_KEY_ID` and `R2_SECRET_ACCESS_KEY`.
+5. Update `.env.local` on dev machine.
+6. Delete the old Cloudflare token.
+7. Log rotation date in this ledger (`maintenance` entry) and in `CLAUDE.md` near the R2 section.
+
+**Last rotated:** _not yet documented — fill in when first rotation is done._
+
+---
+
+### O3 — Broadcast Bearer token rotation runbook
+
+`INVENTORY_BROADCAST_SECRET` is the shared secret that authenticates the inventory broadcast HTTP chain (`/api/inventory/broadcast/*`). It is accepted as `Authorization: Bearer <secret>` or `x-inventory-broadcast-secret: <secret>` header (see [`lib/inventory-broadcast-secret.ts`](../lib/inventory-broadcast-secret.ts)).
+
+**Steps:**
+1. Generate a new secret: `openssl rand -base64 40` (or any cryptographically random 32+ byte string).
+2. Update Vercel: Settings → Environment Variables → replace `INVENTORY_BROADCAST_SECRET` for Production + Preview.
+3. Update the secret in whatever external system calls the broadcast endpoints (n8n, Make, or custom automation).
+4. Deploy Vercel (the new env var takes effect on next deployment).
+5. Smoke test: POST to `/api/inventory/broadcast/event` with the new secret; expect 200.
+6. Log rotation date in this ledger (`maintenance` entry).
+
+**Last rotated:** _not yet documented — fill in when first rotation is done._
 
 ---
 

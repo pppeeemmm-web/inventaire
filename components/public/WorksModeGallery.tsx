@@ -290,15 +290,6 @@ export default function WorksModeGallery({ works, mode, siteTheme }: Props) {
     rafRef.current = requestAnimationFrame(tick)
   }, [])
 
-  const stepBy = useCallback((delta: number) => {
-    if (totalSlotsRef.current === 0) return
-    posRef.current = Math.max(0, Math.min(Math.round(posRef.current), totalSlotsRef.current - 1))
-    velRef.current = delta * 0.25
-    kickRaf()
-  }, [kickRaf])
-  // stepBy is defined for future use (e.g. scroll drift) — suppress unused warning
-  void stepBy
-
   const jumpBy = useCallback((delta: number) => {
     if (totalSlotsRef.current === 0) return
     const next = Math.max(0, Math.min(Math.round(posRef.current) + delta, totalSlotsRef.current - 1))

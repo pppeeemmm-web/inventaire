@@ -20,7 +20,7 @@ _Version-controlled checklist + non-binding roadmap items. Prefer this file over
 
 - [x] **O1** Pre-Oct-30 2026 Supabase GRANT audit — run 2026-05-25 (`run-grant-audit.ps1` / `grant_audit_queries.sql`).
 - [ ] **O2** R2 access key rotation; document rotation date in `CLAUDE.md` Phase D.
-- [ ] **O3** Broadcast Bearer token rotation runbook → `SYSTEM_LEDGER.md`.
+- [x] **O3** Broadcast Bearer token rotation runbook → `SYSTEM_LEDGER.md` — 2026-05-29.
 - [ ] **O4** Quarterly DB backup recovery drill (per `BACKUP_RECOVERY.md`).
 - [ ] **Vercel** `NEXT_PUBLIC_SITE_URL` / `NEXT_PUBLIC_APP_URL` on production (metadataBase / OG / sitemap).
 
