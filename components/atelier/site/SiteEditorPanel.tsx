@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState, useTransition, type ChangeEvent } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import type {
   Block,
@@ -65,12 +65,130 @@ import { PracticeBlockExtras } from '@/components/atelier/site/PracticeBlockExtr
 import { HeroGlossEditor } from '@/components/atelier/site/HeroGlossEditor'
 import { KnobsPanel } from '@/components/atelier/site/KnobsPanel'
 import { MapPinEditor } from '@/components/atelier/site/MapPinEditor'
+import { uploadPanoramaImage } from '@/app/atelier/(portal)/portfolio/actions'
+import { imageUrl } from '@/lib/data'
 import { DEFAULT_KNOBS_CONFIG } from '@/lib/site-blocks'
 import {
   LandingHeroWorkPicker,
   landingHeroPreviewSrc,
   type LandingHeroWorkLite,
 } from '@/components/atelier/site/LandingHeroWorkPicker'
+
+// ── MapLayoutSection — panorama upload widget ─────────────────────────────────
+function MapLayoutSection({
+  mode, activeMode, updateMode, oeuvres,
+}: {
+  mode: WorksMode
+  activeMode: number
+  updateMode: (i: number, patch: Partial<WorksMode>) => void
+  oeuvres: LandingHeroWorkLite[]
+}) {
+  const { t, lang } = useI18n()
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [uploadErr, setUploadErr] = useState<string | null>(null)
+  const [isUploading, startUpload] = useTransition()
+  const panoramaUrl = imageUrl(mode.forest_panorama_r2_key)
+
+  function handleFile(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadErr(null)
+    const fd = new FormData()
+    fd.append('file', file)
+    startUpload(async () => {
+      const res = await uploadPanoramaImage(fd)
+      if ('error' in res) { setUploadErr(res.error); return }
+      updateMode(activeMode, { forest_panorama_r2_key: res.key })
+    })
+    e.target.value = ''
+  }
+
+  return (
+    <div style={{ marginBottom: 24, paddingBottom: 18, borderBottom: '1px solid var(--bd)' }}>
+      <div style={{ fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--tx2)', marginBottom: 8 }}>
+        {t('site_works_map_r2_key_label')}
+      </div>
+
+      {/* Panorama preview + upload row */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+        {/* Thumbnail */}
+        <div style={{
+          width: 80, height: 45, flexShrink: 0, borderRadius: 2,
+          border: '1px solid var(--bd)',
+          background: panoramaUrl
+            ? undefined
+            : 'repeating-linear-gradient(45deg, var(--bg1) 0, var(--bg1) 6px, var(--bg2) 6px, var(--bg2) 12px)',
+          overflow: 'hidden',
+        }}>
+          {panoramaUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={panoramaUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          )}
+        </div>
+
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {mode.forest_panorama_r2_key && (
+            <div style={{
+              fontSize: 7, color: 'var(--tx2)', fontFamily: 'monospace',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              marginBottom: 4,
+            }}>
+              {mode.forest_panorama_r2_key}
+            </div>
+          )}
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/avif,image/heic"
+            style={{ display: 'none' }}
+            onChange={handleFile}
+          />
+          <button
+            type="button"
+            disabled={isUploading}
+            onClick={() => fileRef.current?.click()}
+            style={{
+              fontSize: 8, letterSpacing: 1, textTransform: 'uppercase',
+              padding: '4px 10px', border: '1px solid var(--bd)', borderRadius: 2,
+              background: 'var(--bg2)', color: 'var(--tx)', cursor: 'pointer',
+              fontFamily: 'inherit', opacity: isUploading ? 0.6 : 1,
+            }}
+          >
+            {isUploading
+              ? (lang === 'fr' ? 'Envoi…' : 'Uploading…')
+              : mode.forest_panorama_r2_key
+                ? (lang === 'fr' ? 'Changer' : 'Change')
+                : (lang === 'fr' ? 'Choisir une image' : 'Choose image')}
+          </button>
+          {mode.forest_panorama_r2_key && (
+            <button
+              type="button"
+              onClick={() => updateMode(activeMode, { forest_panorama_r2_key: undefined })}
+              style={{
+                fontSize: 8, marginLeft: 4, padding: '4px 8px',
+                border: '1px solid var(--bd)', borderRadius: 2,
+                background: 'none', color: 'var(--tx2)', cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
+              ×
+            </button>
+          )}
+        </div>
+      </div>
+
+      {uploadErr && (
+        <div style={{ fontSize: 8, color: '#f88', marginBottom: 6 }}>{uploadErr}</div>
+      )}
+
+      <MapPinEditor
+        works={oeuvres}
+        panoramaKey={mode.forest_panorama_r2_key}
+        collections={mode.collections}
+      />
+    </div>
+  )
+}
 
 function hasHeroPreviewUrl(src: string): boolean {
   const u = src.trim()
@@ -124,7 +242,7 @@ export function SiteEditorPanel({
   addMode, deleteMode, moveMode, updateMode,
   addModeCollection, moveModeCollection, updateModeCollection, deleteModeCollection,
 }: SiteEditorProps) {
-  const { t, tDynamic } = useI18n()
+  const { t, tDynamic, lang } = useI18n()
   const blocks = config.site_blocks
   const [collapsed, setCollapsed] = useState<Set<SiteBlockKind>>(new Set())
   const [bgGradientOpen, setBgGradientOpen] = useState(false)
@@ -868,28 +986,14 @@ export function SiteEditorPanel({
                 </div>
               )
             })()}
-            {/* ── Map layout — R2 key + pin editor ── */}
+            {/* ── Map layout — panorama upload + pin editor ── */}
             {mode?.layout === 'map' && (
-              <div style={{ marginBottom: 24, paddingBottom: 18, borderBottom: '1px solid var(--bd)' }}>
-                <div style={{ fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--tx2)', marginBottom: 8 }}>
-                  {t('site_works_map_r2_key_label')}
-                </div>
-                <input
-                  type="text"
-                  value={mode.forest_panorama_r2_key ?? ''}
-                  onChange={e => updateMode(activeMode, { forest_panorama_r2_key: e.target.value || undefined })}
-                  placeholder={t('site_works_map_r2_key_hint')}
-                  style={{
-                    width: '100%', fontFamily: 'inherit', fontSize: 9,
-                    padding: '5px 8px', background: 'var(--bg2)', color: 'var(--tx)',
-                    border: '1px solid var(--bd2)', borderRadius: 0, marginBottom: 2,
-                  }}
-                />
-                <MapPinEditor
-                  works={oeuvres}
-                  panoramaKey={mode.forest_panorama_r2_key}
-                />
-              </div>
+              <MapLayoutSection
+                mode={mode}
+                activeMode={activeMode}
+                updateMode={updateMode}
+                oeuvres={oeuvres}
+              />
             )}
 
             {/* ── Motion interior layout — R2 key ── */}

@@ -4,6 +4,8 @@
 // TipTap HTML fields are sanitized server-side before persistence (see lib/portfolio-html-sanitize.ts).
 // Uses service_role to bypass RLS on the document table.
 
+import crypto from 'crypto'
+import sharp from 'sharp'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { logError } from '@/lib/error-reporter/server'
 import { createServiceClient } from '@/lib/supabase/server'
@@ -19,6 +21,8 @@ import { canonicalizePortfolioConfigThemes } from '@/lib/portfolio-collection-th
 import type { ThemeNameRecord } from '@/components/public/works-utils'
 import { PORTFOLIO_SAVE_ERR } from '@/lib/portfolio-save-errors'
 import { recordStorageObject } from '@/lib/storage-object-ledger'
+import { validateWorkImageBuffer } from '@/lib/image-upload'
+import { r2PutObject } from '@/lib/r2-s3-object'
 
 export type SaveConfigResult =
   | { error: string }
@@ -276,6 +280,53 @@ export async function setWorkPublic(oeuvreId: number): Promise<{ ok: true } | { 
     return { ok: true }
   } catch (e: any) {
     console.error('[setWorkPublic]', e)
+    return { error: e.message ?? String(e) }
+  }
+}
+
+// ── Panorama upload ───────────────────────────────────────────────────────────
+
+export type UploadPanoramaResult = { ok: true; key: string } | { error: string }
+
+/**
+ * Upload a panorama image to the paintings bucket at `panoramas/{hash8}.avif`.
+ * Normalises to AVIF (max 3840px wide, opaque, q=60). Admin-only.
+ */
+export async function uploadPanoramaImage(formData: FormData): Promise<UploadPanoramaResult> {
+  try {
+    const { createClient: createUserClient } = await import('@/lib/supabase/server')
+    const userSb = await createUserClient()
+    const { data: { user } } = await userSb.auth.getUser()
+    if (!user) return { error: 'Non authentifié' }
+    const { data: isAdmin } = await userSb.rpc('is_admin')
+    if (!isAdmin) return { error: 'Accès refusé' }
+
+    const file = formData.get('file')
+    if (!(file instanceof File) || !file.size) return { error: 'Aucun fichier.' }
+
+    const raw = Buffer.from(await file.arrayBuffer())
+    const validated = await validateWorkImageBuffer(raw)
+    if ('error' in validated) return { error: validated.error }
+
+    const normalised = await sharp(raw)
+      .rotate()
+      .flatten({ background: { r: 0, g: 0, b: 0 } })
+      .resize({ width: 3840, height: 3840, fit: 'inside', withoutEnlargement: true })
+      .avif({ quality: 60, effort: 4, chromaSubsampling: '4:4:4' })
+      .toBuffer()
+
+    const hash = crypto.createHash('sha256').update(raw).digest('hex').slice(0, 8)
+    const key = `panoramas/${hash}.avif`
+
+    await r2PutObject(normalised, key, 'image/avif', {
+      source: 'panorama_upload',
+      classification: 'unidentified',
+      uploadedBy: user.id,
+    })
+
+    return { ok: true, key }
+  } catch (e: any) {
+    await logError('uploadPanoramaImage failed', e, { source: 'uploadPanoramaImage' })
     return { error: e.message ?? String(e) }
   }
 }

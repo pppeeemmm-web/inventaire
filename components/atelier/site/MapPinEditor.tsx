@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useTransition, type MouseEvent } from 'react'
+import { useEffect, useMemo, useState, useTransition, type MouseEvent } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { imageUrl, thumbUrl } from '@/lib/data'
 import {
@@ -9,6 +9,7 @@ import {
   deleteForestPin,
 } from '@/app/atelier/(portal)/portfolio/forest-pins-actions'
 import type { ForestPin } from '@/components/public/works-utils'
+import type { CollectionItem } from '@/lib/portfolio-config-types'
 
 interface PinWork {
   OeuvreID: number
@@ -19,13 +20,21 @@ interface PinWork {
 interface Props {
   works: PinWork[]
   panoramaKey: string | undefined
+  collections?: CollectionItem[]
 }
 
-export function MapPinEditor({ works, panoramaKey }: Props) {
-  const { t } = useI18n()
+export function MapPinEditor({ works, panoramaKey, collections = [] }: Props) {
+  const { t, lang } = useI18n()
   const [pins, setPins] = useState<ForestPin[]>([])
   const [armedId, setArmedId] = useState<number | null>(null)
   const [isPending, startTransition] = useTransition()
+
+  // Works source filter
+  const hasCollections = collections.length > 0
+  const [worksSource, setWorksSource] = useState<'collection' | 'all'>(
+    hasCollections ? 'collection' : 'all',
+  )
+  const [collectionId, setCollectionId] = useState<string>(collections[0]?.id ?? '')
 
   // Load pins on mount
   useEffect(() => {
@@ -34,6 +43,20 @@ export function MapPinEditor({ works, panoramaKey }: Props) {
       setPins(loaded)
     })
   }, [])
+
+  // Compute displayed works based on filter
+  const displayedWorks = useMemo<PinWork[]>(() => {
+    if (worksSource === 'all' || !hasCollections) return works
+    const col = collections.find(c => c.id === collectionId)
+    if (!col) return works
+    const order = col.manual_work_order
+    if (!order?.length) return works
+    const byId = new Map(works.map(w => [w.OeuvreID, w]))
+    return order.flatMap(id => {
+      const w = byId.get(id)
+      return w ? [w] : []
+    })
+  }, [works, worksSource, collectionId, collections, hasCollections])
 
   function handlePanoramaClick(e: MouseEvent<HTMLDivElement>) {
     if (armedId === null) return
@@ -60,10 +83,13 @@ export function MapPinEditor({ works, panoramaKey }: Props) {
   const panoramaUrl = imageUrl(panoramaKey)
   const pinMap = new Map(pins.map(p => [p.work_id, p]))
 
-  const inputStyle: React.CSSProperties = {
-    width: '100%', fontFamily: 'inherit', fontSize: 9,
-    padding: '5px 8px', background: 'var(--bg2)', color: 'var(--tx)',
-    border: '1px solid var(--bd2)', borderRadius: 0, marginBottom: 2,
+  const pillBase: React.CSSProperties = {
+    fontSize: 8, letterSpacing: 1, textTransform: 'uppercase',
+    padding: '3px 8px', border: '1px solid var(--bd)', borderRadius: 2,
+    cursor: 'pointer', background: 'none', color: 'var(--tx2)', fontFamily: 'inherit',
+  }
+  const pillActive: React.CSSProperties = {
+    ...pillBase, background: 'var(--ac)', color: '#fff', borderColor: 'var(--ac)',
   }
 
   return (
@@ -137,9 +163,46 @@ export function MapPinEditor({ works, panoramaKey }: Props) {
         )}
       </div>
 
+      {/* Works source filter */}
+      {hasCollections && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 6 }}>
+          <button
+            type="button"
+            style={worksSource === 'collection' ? pillActive : pillBase}
+            onClick={() => setWorksSource('collection')}
+          >
+            {lang === 'fr' ? 'Collections' : 'Collections'}
+          </button>
+          <button
+            type="button"
+            style={worksSource === 'all' ? pillActive : pillBase}
+            onClick={() => setWorksSource('all')}
+          >
+            {lang === 'fr' ? 'Toutes' : 'All'}
+          </button>
+          {worksSource === 'collection' && (
+            <select
+              value={collectionId}
+              onChange={e => setCollectionId(e.target.value)}
+              style={{
+                flex: 1, fontFamily: 'inherit', fontSize: 8,
+                padding: '3px 6px', background: 'var(--bg2)', color: 'var(--tx)',
+                border: '1px solid var(--bd2)', borderRadius: 2,
+              }}
+            >
+              {collections.map(c => (
+                <option key={c.id} value={c.id}>
+                  {lang === 'fr' ? c.title_fr : c.title_en}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+      )}
+
       {/* Works list — arm one to place pin */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 3, maxHeight: 220, overflowY: 'auto' }}>
-        {works.map(work => {
+        {displayedWorks.map(work => {
           const existing = pinMap.get(work.OeuvreID)
           const isArmed = armedId === work.OeuvreID
           return (
@@ -203,13 +266,12 @@ export function MapPinEditor({ works, panoramaKey }: Props) {
             </div>
           )
         })}
-        {works.length === 0 && (
+        {displayedWorks.length === 0 && (
           <p style={{ fontSize: 8, opacity: 0.5, letterSpacing: 1, textTransform: 'uppercase' }}>
             {t('map_pin_no_works')}
           </p>
         )}
       </div>
-      <input type="text" readOnly style={{ ...inputStyle, display: 'none' }} />
     </div>
   )
 }
