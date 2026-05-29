@@ -35,6 +35,7 @@ export function Broadcast() {
   const [busy, setBusy] = useState(true)
   const [pending, startTransition] = useTransition()
   const [vipOnly, setVipOnly] = useState(true)
+  const [platformFilter, setPlatformFilter] = useState<string | null>(null)
 
   function reload() {
     setBusy(true)
@@ -52,10 +53,31 @@ export function Broadcast() {
 
   useEffect(() => { reload() }, [])
 
+  /** Sorted unique platforms across queue + posted + events. */
+  const allPlatforms = useMemo(() => {
+    if (!data) return []
+    const seen = new Set<string>()
+    for (const r of data.queue)   seen.add(r.platform)
+    for (const r of data.posted)  seen.add(r.platform)
+    for (const r of data.events)  seen.add(r.platform)
+    return [...seen].sort()
+  }, [data])
+
+  const filteredQueue = useMemo(() => {
+    if (!data) return []
+    return platformFilter ? data.queue.filter(r => r.platform === platformFilter) : data.queue
+  }, [data, platformFilter])
+
+  const filteredPosted = useMemo(() => {
+    if (!data) return []
+    return platformFilter ? data.posted.filter(r => r.platform === platformFilter) : data.posted
+  }, [data, platformFilter])
+
   const filteredEvents = useMemo(() => {
     if (!data) return []
-    return vipOnly ? data.events.filter((e) => e.priority === 'vip') : data.events
-  }, [data, vipOnly])
+    const byVip = vipOnly ? data.events.filter((e) => e.priority === 'vip') : data.events
+    return platformFilter ? byVip.filter(e => e.platform === platformFilter) : byVip
+  }, [data, vipOnly, platformFilter])
 
   function handleClearStuck(oeuvreId: number, platform: string) {
     if (!confirm(t('bc_clear_stuck_confirm'))) return
@@ -127,14 +149,51 @@ export function Broadcast() {
         </button>
       </div>
 
+      {/* Platform filter — shown when 2+ distinct platforms exist */}
+      {allPlatforms.length > 1 && (
+        <div className="row gap-sm" style={{ flexWrap: 'wrap', alignItems: 'center', gap: 4 }}>
+          <button
+            type="button"
+            data-testid="broadcast-platform-all"
+            onClick={() => setPlatformFilter(null)}
+            style={{
+              padding: '4px 10px', fontSize: 9, minHeight: 36,
+              border: '1px solid var(--bd)', letterSpacing: 1, textTransform: 'uppercase',
+              background: !platformFilter ? 'var(--ac)' : 'var(--bg1)',
+              color: !platformFilter ? 'var(--bg1)' : 'var(--tx2)',
+              cursor: 'pointer',
+            }}
+          >
+            {t('bc_filter_all')}
+          </button>
+          {allPlatforms.map(p => (
+            <button
+              key={p}
+              type="button"
+              data-testid={`broadcast-platform-${p}`}
+              onClick={() => setPlatformFilter(platformFilter === p ? null : p)}
+              style={{
+                padding: '4px 10px', fontSize: 9, minHeight: 36,
+                border: '1px solid var(--bd)', letterSpacing: 1, textTransform: 'uppercase',
+                background: platformFilter === p ? 'var(--ac)' : 'var(--bg1)',
+                color: platformFilter === p ? 'var(--bg1)' : 'var(--tx2)',
+                cursor: 'pointer',
+              }}
+            >
+              {p}
+            </button>
+          ))}
+        </div>
+      )}
+
       {busy && !data && <div style={{ opacity: 0.6 }}>{t('loading')}</div>}
 
       {sub === 'queue' && data && (
-        <QueueView rows={data.queue} onClear={handleClearStuck} pending={pending} t={t} />
+        <QueueView rows={filteredQueue} onClear={handleClearStuck} pending={pending} t={t} />
       )}
 
       {sub === 'posted' && data && (
-        <PostedView rows={data.posted} t={t} />
+        <PostedView rows={filteredPosted} t={t} />
       )}
 
       {sub === 'activity' && data && (

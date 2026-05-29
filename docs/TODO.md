@@ -113,7 +113,7 @@ _Version-controlled checklist + non-binding roadmap items. Prefer this file over
 
 ## Broadcast follow-ups (optional)
 
-- [ ] Platform filter in Broadcast tab ([`BROADCAST.md`](./BROADCAST.md)).
+- [x] Platform filter in Broadcast tab — 2026-05-29. ([`BROADCAST.md`](./BROADCAST.md))
 - [ ] VIP unread cursor beyond fetched window.
 
 ## V5 refactor — **complete** (owner sign-off 2026-05-25; on `main`)
