@@ -205,7 +205,7 @@ export function MapPinEditor({ works, panoramaKey }: Props) {
         })}
         {works.length === 0 && (
           <p style={{ fontSize: 8, opacity: 0.5, letterSpacing: 1, textTransform: 'uppercase' }}>
-            No works in collection
+            {t('map_pin_no_works')}
           </p>
         )}
       </div>

@@ -21,4 +21,8 @@ export const portfolioConfigMessages = defineMessages({
     fr: 'Jamais publié',
     en: 'Never published',
   },
+  map_pin_no_works: {
+    fr: 'Aucune œuvre dans la collection',
+    en: 'No works in collection',
+  },
 })

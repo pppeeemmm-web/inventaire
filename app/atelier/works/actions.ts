@@ -1439,8 +1439,8 @@ export type OeuvresKeysetPageResult = {
   hasMore: boolean
 }
 
-/** Keyset page: `OeuvreID` descending; `beforeId` = smallest id already loaded. */
-export async function fetchOeuvresKeysetPage(beforeId: number, limit: number): Promise<OeuvresKeysetPageResult> {
+/** Keyset page: `OeuvreID` descending; `beforeId` = smallest id already loaded (null = first page). */
+export async function fetchOeuvresKeysetPage(beforeId: number | null, limit: number): Promise<OeuvresKeysetPageResult> {
   const supabase = await createClient()
   const {
     data: { user },
@@ -1448,13 +1448,13 @@ export async function fetchOeuvresKeysetPage(beforeId: number, limit: number): P
   if (!user) return { rows: [], nextCursor: null, hasMore: false }
 
   const lim = Math.min(Math.max(1, limit), 2000)
-  const { data, error } = await supabase
+  let q = supabase
     .from('Oeuvres')
     .select(OEUVRES_KEYSET_SELECT)
     .is('deleted_at', null)
     .order('OeuvreID', { ascending: false })
-    .lt('OeuvreID', beforeId)
-    .limit(lim + 1)
+  if (beforeId !== null) q = q.lt('OeuvreID', beforeId)
+  const { data, error } = await q.limit(lim + 1)
 
   if (error) {
     await logError('fetchOeuvresKeysetPage failed', error, {
@@ -1470,7 +1470,7 @@ export async function fetchOeuvresKeysetPage(beforeId: number, limit: number): P
   return { rows, nextCursor, hasMore }
 }
 
-/** First keyset page (all ids < MAX_SAFE_INTEGER). Used when shell deferred catalogue chunk. */
+/** First keyset page. Used for shell deferred catalogue chunk. */
 export async function fetchOeuvresInitialKeysetPage(limit = 50): Promise<OeuvresKeysetPageResult> {
-  return fetchOeuvresKeysetPage(Number.MAX_SAFE_INTEGER, limit)
+  return fetchOeuvresKeysetPage(null, limit)
 }
