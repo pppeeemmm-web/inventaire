@@ -1,10 +1,9 @@
 'use client'
 
-import { useState } from 'react'
-import { useI18n } from '@/lib/i18n/context'
+import { useState, useRef } from 'react'
 import { imageUrl, thumbUrl } from '@/lib/data'
-import type { PublicSiteTheme } from '@/lib/public-site-theme'
 import type { Work, WorksMode, ForestPin } from '../works-utils'
+import type { PublicSiteTheme } from '@/lib/public-site-theme'
 
 interface Props {
   works: Work[]
@@ -13,20 +12,22 @@ interface Props {
   siteTheme: PublicSiteTheme
 }
 
-interface ZoomedWork {
-  work: Work
-  src: string
-}
+interface ZoomedWork { work: Work; src: string }
 
-export default function WorksMapLayout({ works, mode, forestPins, siteTheme }: Props) {
-  const { t } = useI18n()
-  const panoramaUrl = imageUrl(mode.forest_panorama_r2_key)
-  const worksById = new Map(works.map(w => [w.OeuvreID, w]))
+const RADIUS = 560
+
+export default function WorksMapLayout({ works, mode, forestPins }: Props) {
+  const [rotation, setRotation] = useState(0)
+  const [isDragging, setIsDragging] = useState(false)
   const [zoomed, setZoomed] = useState<ZoomedWork | null>(null)
+  const drag = useRef({ startX: 0, startRot: 0, moved: false })
 
+  const worksById = new Map(works.map(w => [w.OeuvreID, w]))
   const pinsWithWorks = forestPins
     .map(pin => ({ pin, work: worksById.get(pin.work_id) }))
     .filter((p): p is { pin: ForestPin; work: Work } => Boolean(p.work?.txtImageNameLink))
+
+  const baseSize = mode.forest_panorama_pin_size ?? 80
 
   function openZoom(work: Work) {
     const src = imageUrl(work.txtImageNameLink)
@@ -34,125 +35,86 @@ export default function WorksMapLayout({ works, mode, forestPins, siteTheme }: P
   }
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, overflow: 'hidden',
-      background: '#0a0c0f',
-    }}>
-      <style>{`
-        .wmap-pin {
-          position: absolute;
-          transform: translate(-50%, -50%);
-          cursor: pointer;
-          transition: transform .2s ease;
-          border: none;
-          background: none;
-          padding: 0;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 4px;
-        }
-        .wmap-pin:hover { transform: translate(-50%, -50%) scale(1.15); z-index: 10; }
-        .wmap-pin:focus-visible { outline: 2px solid #fff; outline-offset: 2px; border-radius: 50%; }
-        .wmap-thumb {
-          width: 48px; height: 48px;
-          border-radius: 50%;
-          object-fit: cover;
-          border: 2px solid rgba(255,255,255,0.5);
-          box-shadow: 0 2px 8px rgba(0,0,0,0.5);
-          display: block;
-        }
-        .wmap-pin-label {
-          font-size: 7px; letter-spacing: 1.5px; text-transform: uppercase;
-          color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,0.8);
-          white-space: nowrap; max-width: 100px; overflow: hidden; text-overflow: ellipsis;
-          opacity: 0; transition: opacity .15s;
-          pointer-events: none;
-        }
-        .wmap-pin:hover .wmap-pin-label { opacity: 1; }
-        .wmap-zoom-backdrop {
-          position: fixed; inset: 0; z-index: 200;
-          background: rgba(0,0,0,0.85); cursor: zoom-out;
-          display: flex; align-items: center; justify-content: center;
-        }
-        .wmap-zoom-img {
-          max-width: min(90vw, 90vh);
-          max-height: min(90vw, 90vh);
-          object-fit: contain;
-          border-radius: 2px;
-          box-shadow: 0 8px 40px rgba(0,0,0,0.7);
-        }
-        .wmap-zoom-caption {
-          position: fixed; bottom: max(24px, env(safe-area-inset-bottom, 0px));
-          left: 50%; transform: translateX(-50%);
-          font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
-          color: rgba(255,255,255,0.7); text-align: center; pointer-events: none;
-        }
-        .wmap-no-panorama {
-          position: absolute; inset: 0;
-          display: flex; align-items: center; justify-content: center;
-          flex-direction: column; gap: 10px;
-          color: rgba(255,255,255,0.35);
-          font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
-          text-align: center;
-        }
-      `}</style>
-
-      {/* Panorama background */}
-      {panoramaUrl ? (
-        <img
-          src={panoramaUrl}
-          alt=""
-          aria-hidden
-          style={{
-            position: 'absolute', inset: 0,
-            width: '100%', height: '100%',
-            objectFit: 'cover', objectPosition: 'center',
-            userSelect: 'none',
-          }}
-        />
-      ) : (
-        <div className="wmap-no-panorama">
-          <span>{t('site_works_map_r2_key_hint')}</span>
-        </div>
-      )}
-
-      {/* Dim overlay for readability */}
+    <div
+      style={{
+        position: 'fixed', inset: 0, overflow: 'hidden',
+        background: '#0a0c0f',
+        perspective: '900px',
+        perspectiveOrigin: '50% 50%',
+        cursor: isDragging ? 'grabbing' : 'grab',
+        userSelect: 'none',
+      }}
+      onPointerDown={e => {
+        drag.current = { startX: e.clientX, startRot: rotation, moved: false }
+        setIsDragging(true);
+        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+      }}
+      onPointerMove={e => {
+        if (!isDragging) return
+        const dx = e.clientX - drag.current.startX
+        if (Math.abs(dx) > 4) drag.current.moved = true
+        setRotation(drag.current.startRot - dx * 0.25)
+      }}
+      onPointerUp={() => setIsDragging(false)}
+      onPointerCancel={() => setIsDragging(false)}
+    >
+      {/* 3D cylinder stage */}
       <div style={{
-        position: 'absolute', inset: 0,
-        background: 'rgba(0,0,0,0.2)', pointerEvents: 'none',
-      }} />
+        position: 'absolute',
+        left: '50%', top: '50%',
+        width: 0, height: 0,
+        transformStyle: 'preserve-3d',
+        transform: `rotateY(${rotation}deg)`,
+        transition: isDragging ? 'none' : 'transform 0.55s cubic-bezier(0.25,0.46,0.45,0.94)',
+      }}>
+        {pinsWithWorks.map(({ pin, work }) => {
+          const thumb = thumbUrl(work.txtImageNameLink)
+          const angle = (pin.x / 100) * 360
+          const sz = pin.size ?? baseSize
+          const radius = RADIUS - (pin.z / 100) * (RADIUS * 0.45)
+          const vOffset = (pin.y - 50) * 5
 
-      {/* Work pins — per-pin z controls size: z=0 close/big, z=100 far/small */}
-      {pinsWithWorks.map(({ pin, work }) => {
-        const thumb = thumbUrl(work.txtImageNameLink)
-        const title = work.Titre ?? ''
-        const baseSize = pin.size ?? mode.forest_panorama_pin_size ?? 48
-        const depthScale = 1 - (pin.z / 100) * 0.75
-        const sz = Math.round(baseSize * depthScale)
-        return (
-          <button
-            key={pin.work_id}
-            type="button"
-            className="wmap-pin"
-            style={{ left: `${pin.x}%`, top: `${pin.y}%`, zIndex: Math.round(100 - pin.z) }}
-            onClick={() => openZoom(work)}
-            aria-label={title}
-          >
-            {thumb && (
-              <img src={thumb} alt={title} className="wmap-thumb" style={{ width: sz, height: sz }} />
-            )}
-            <span className="wmap-pin-label" style={{ fontSize: Math.max(6, Math.round(7 * depthScale)) }}>
-              {title}
-            </span>
-          </button>
-        )
-      })}
+          return (
+            <button
+              key={pin.work_id}
+              type="button"
+              aria-label={work.Titre ?? ''}
+              style={{
+                position: 'absolute',
+                width: sz, height: sz,
+                marginLeft: -sz / 2, marginTop: -sz / 2,
+                border: 'none', padding: 0,
+                cursor: drag.current.moved ? 'grabbing' : 'pointer',
+                transform: `rotateY(${angle}deg) translateZ(${radius}px) translateY(${vOffset}px)`,
+                borderRadius: '50%',
+                overflow: 'hidden',
+                boxShadow: '0 2px 20px rgba(0,0,0,0.6)',
+              }}
+              onClick={() => {
+                if (!drag.current.moved) openZoom(work)
+              }}
+            >
+              {thumb && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={thumb}
+                  alt={work.Titre ?? ''}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', pointerEvents: 'none' }}
+                />
+              )}
+            </button>
+          )
+        })}
+      </div>
 
       {/* Lightbox */}
       {zoomed && (
         <div
-          className="wmap-zoom-backdrop"
+          style={{
+            position: 'fixed', inset: 0, zIndex: 200,
+            background: 'rgba(0,0,0,0.88)', cursor: 'zoom-out',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
           onClick={() => setZoomed(null)}
           role="dialog"
           aria-modal
@@ -162,12 +124,24 @@ export default function WorksMapLayout({ works, mode, forestPins, siteTheme }: P
           <img
             src={zoomed.src}
             alt={zoomed.work.Titre ?? ''}
-            className="wmap-zoom-img"
+            style={{
+              maxWidth: 'min(90vw, 90vh)', maxHeight: 'min(90vw, 90vh)',
+              objectFit: 'contain', borderRadius: 2,
+              boxShadow: '0 8px 40px rgba(0,0,0,0.7)',
+            }}
             onClick={e => e.stopPropagation()}
           />
-          <div className="wmap-zoom-caption">
+          <div style={{
+            position: 'fixed',
+            bottom: 'max(24px, env(safe-area-inset-bottom, 0px))',
+            left: '50%', transform: 'translateX(-50%)',
+            fontSize: 9, letterSpacing: 2, textTransform: 'uppercase',
+            color: 'rgba(255,255,255,0.7)', textAlign: 'center', pointerEvents: 'none',
+          }}>
             {zoomed.work.Titre && <span>{zoomed.work.Titre}</span>}
-            {zoomed.work.Annee && <span style={{ marginLeft: 12, opacity: 0.6 }}>{zoomed.work.Annee.slice(0, 4)}</span>}
+            {zoomed.work.Annee && (
+              <span style={{ marginLeft: 12, opacity: 0.6 }}>{zoomed.work.Annee.slice(0, 4)}</span>
+            )}
           </div>
         </div>
       )}
