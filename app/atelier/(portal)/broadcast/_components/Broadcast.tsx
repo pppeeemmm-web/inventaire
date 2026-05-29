@@ -104,7 +104,8 @@ export function Broadcast() {
   const SUBTABS: Array<[SubTab, string, number]> = [
     ['queue', t('bc_subtab_queue'), data?.counts.queued ?? 0],
     ['posted', t('bc_subtab_posted'), data?.counts.posted ?? 0],
-    ['activity', t('bc_subtab_activity'), data?.counts.vipUnseen ?? 0],
+    // vipTotal = true DB count (not limited to fetched window)
+    ['activity', t('bc_subtab_activity'), data?.counts.vipTotal ?? 0],
   ]
 
   return (

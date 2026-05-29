@@ -114,7 +114,7 @@ _Version-controlled checklist + non-binding roadmap items. Prefer this file over
 ## Broadcast follow-ups (optional)
 
 - [x] Platform filter in Broadcast tab — 2026-05-29. ([`BROADCAST.md`](./BROADCAST.md))
-- [ ] VIP unread cursor beyond fetched window.
+- [x] VIP unread cursor beyond fetched window — 2026-05-29. (vipTotal from DB count, not limited to fetch window)
 
 ## V5 refactor — **complete** (owner sign-off 2026-05-25; on `main`)
 

@@ -56,7 +56,11 @@ export type BroadcastDashboard = {
   queue: BroadcastQueueRow[]
   posted: BroadcastPostedRow[]
   events: BroadcastEventRow[]
-  counts: { queued: number; posted: number; vipUnseen: number }
+  /**
+   * `vipUnseen` = count within the fetched events window (legacy, kept for compat).
+   * `vipTotal`  = true DB count of all VIP events (use for the badge).
+   */
+  counts: { queued: number; posted: number; vipUnseen: number; vipTotal: number }
 }
 
 export type BroadcastDashboardResult =
@@ -75,7 +79,12 @@ export async function listBroadcastDashboard(): Promise<BroadcastDashboardResult
 
   const sb = createServiceClient()
 
-  const [{ data: queueRows, error: qErr }, { data: postedRows, error: pErr }, { data: eventRows, error: eErr }] =
+  const [
+    { data: queueRows, error: qErr },
+    { data: postedRows, error: pErr },
+    { data: eventRows, error: eErr },
+    { count: vipCountRaw, error: vipCountErr },
+  ] =
     await Promise.all([
       sb
         .from('oeuvre_broadcasts')
@@ -94,11 +103,17 @@ export async function listBroadcastDashboard(): Promise<BroadcastDashboardResult
         .select('id, oeuvre_id, platform, event_type, priority, summary, external_url, created_at')
         .order('created_at', { ascending: false })
         .limit(50),
+      // True VIP count — not limited by the events window fetch above.
+      sb
+        .from('broadcast_events')
+        .select('id', { count: 'exact', head: true })
+        .eq('priority', 'vip'),
     ])
 
   if (qErr) return { error: qErr.message }
   if (pErr) return { error: pErr.message }
   if (eErr) return { error: eErr.message }
+  if (vipCountErr) return { error: vipCountErr.message }
 
   const oeuvreIds = new Set<number>()
   for (const r of queueRows ?? []) oeuvreIds.add((r as { oeuvre_id: number }).oeuvre_id)
@@ -182,10 +197,12 @@ export async function listBroadcastDashboard(): Promise<BroadcastDashboardResult
     }
   })
 
+  const vipInWindow = events.filter((e) => e.priority === 'vip').length
   const counts = {
     queued: queue.length,
     posted: posted.length,
-    vipUnseen: events.filter((e) => e.priority === 'vip').length,
+    vipUnseen: vipInWindow,
+    vipTotal: vipCountRaw ?? vipInWindow,
   }
 
   return { ok: true, data: { queue, posted, events, counts } }
