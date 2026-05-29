@@ -189,7 +189,7 @@ export function MapPinEditor({ works, panoramaKey, pinSize = 48, collections = [
       )}
 
       {/* Works list */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, maxHeight: 280, overflowY: 'auto' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, maxHeight: 420, overflowY: 'auto' }}>
         {displayedWorks.map(work => {
           const existing = pinMap.get(work.OeuvreID)
           const isArmed = armedId === work.OeuvreID
@@ -230,48 +230,34 @@ export function MapPinEditor({ works, panoramaKey, pinSize = 48, collections = [
                 )}
               </div>
 
-              {/* Z depth + size sliders — only when pin is placed */}
+              {/* Z + size — single compact row when placed */}
               {existing && (
-                <>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 6px 0 34px', maxWidth: 320 }}>
-                    <span style={{ fontSize: 7, color: 'var(--tx2)', letterSpacing: 0.5, flexShrink: 0, width: 36 }}>
-                      {lang === 'fr' ? 'Prof. Z' : 'Z depth'}
-                    </span>
-                    <input
-                      type="range"
-                      min={0} max={100} step={1}
-                      value={existing.z}
-                      onChange={e => handleSetZ(work.OeuvreID, Number(e.target.value))}
-                      style={{ flex: 1, minWidth: 0, accentColor: 'var(--ac)', cursor: 'pointer' }}
-                    />
-                    <span style={{ fontSize: 7, color: 'var(--tx2)', width: 22, textAlign: 'right', flexShrink: 0 }}>
-                      {existing.z}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 6px 5px 34px', maxWidth: 320 }}>
-                    <span style={{ fontSize: 7, color: 'var(--tx2)', letterSpacing: 0.5, flexShrink: 0, width: 36 }}>
-                      {lang === 'fr' ? 'Taille' : 'Size'}
-                    </span>
-                    <input
-                      type="range"
-                      min={8} max={200} step={4}
-                      value={existing.size ?? pinSize}
-                      onChange={e => handleSetSize(work.OeuvreID, Number(e.target.value))}
-                      style={{ flex: 1, minWidth: 0, accentColor: 'var(--ac)', cursor: 'pointer' }}
-                    />
-                    <span style={{ fontSize: 7, color: 'var(--tx2)', width: 22, textAlign: 'right', flexShrink: 0 }}>
-                      {existing.size ?? pinSize}
-                    </span>
-                    {existing.size !== null && (
-                      <button
-                        type="button"
-                        onClick={() => handleSetSize(work.OeuvreID, null)}
-                        title={lang === 'fr' ? 'Réinitialiser' : 'Reset'}
-                        style={{ width: 14, height: 14, border: 'none', background: 'none', color: 'var(--tx2)', cursor: 'pointer', fontSize: 9, flexShrink: 0, padding: 0, lineHeight: 1 }}
-                      >↺</button>
-                    )}
-                  </div>
-                </>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '2px 6px 5px 34px' }}>
+                  <span style={{ fontSize: 7, color: 'var(--tx2)', flexShrink: 0 }}>Z</span>
+                  <input
+                    type="range" min={0} max={100} step={1}
+                    value={existing.z}
+                    onChange={e => handleSetZ(work.OeuvreID, Number(e.target.value))}
+                    style={{ width: 80, flexShrink: 0, accentColor: 'var(--ac)', cursor: 'pointer' }}
+                  />
+                  <span style={{ fontSize: 7, color: 'var(--tx2)', width: 16, flexShrink: 0 }}>{existing.z}</span>
+                  <span style={{ fontSize: 7, color: 'var(--tx2)', flexShrink: 0, marginLeft: 4 }}>{lang === 'fr' ? 'T' : 'S'}</span>
+                  <input
+                    type="range" min={8} max={200} step={4}
+                    value={existing.size ?? pinSize}
+                    onChange={e => handleSetSize(work.OeuvreID, Number(e.target.value))}
+                    style={{ width: 80, flexShrink: 0, accentColor: 'var(--ac)', cursor: 'pointer' }}
+                  />
+                  <span style={{ fontSize: 7, color: 'var(--tx2)', width: 24, flexShrink: 0 }}>{existing.size ?? pinSize}</span>
+                  {existing.size !== null && (
+                    <button
+                      type="button"
+                      onClick={() => handleSetSize(work.OeuvreID, null)}
+                      title={lang === 'fr' ? 'Réinitialiser taille' : 'Reset size'}
+                      style={{ border: 'none', background: 'none', color: 'var(--tx2)', cursor: 'pointer', fontSize: 9, padding: 0, lineHeight: 1, flexShrink: 0 }}
+                    >↺</button>
+                  )}
+                </div>
               )}
             </div>
           )
