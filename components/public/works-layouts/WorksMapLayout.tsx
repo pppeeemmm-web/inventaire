@@ -14,21 +14,20 @@ interface Props {
 
 interface ZoomedWork { work: Work; src: string }
 
-const RADIUS = 560
+const IMG_W = 120
+const IMG_H = 160
+const RADIUS = 640
 
-export default function WorksMapLayout({ works, mode, forestPins }: Props) {
+export default function WorksMapLayout({ works, mode }: Props) {
   const [rotation, setRotation] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
   const [zoomed, setZoomed] = useState<ZoomedWork | null>(null)
   const drag = useRef({ startX: 0, startRot: 0, moved: false })
 
   const panoramaUrl = imageUrl(mode.forest_panorama_r2_key)
-  const worksById = new Map(works.map(w => [w.OeuvreID, w]))
-  const pinsWithWorks = forestPins
-    .map(pin => ({ pin, work: worksById.get(pin.work_id) }))
-    .filter((p): p is { pin: ForestPin; work: Work } => Boolean(p.work?.txtImageNameLink))
-
-  const baseSize = mode.forest_panorama_pin_size ?? 80
+  const worksWithImages = works.filter(w => w.txtImageNameLink)
+  const N = worksWithImages.length
+  const angleStep = N > 0 ? 360 / N : 0
 
   function openZoom(work: Work) {
     const src = imageUrl(work.txtImageNameLink)
@@ -36,10 +35,8 @@ export default function WorksMapLayout({ works, mode, forestPins }: Props) {
   }
 
   return (
-    // overflow:hidden lives here — NOT on the perspective container (overflow:hidden kills preserve-3d)
     <div style={{ position: 'fixed', inset: 0, overflow: 'hidden', background: '#0a0c0f' }}>
 
-      {/* Panorama background */}
       {panoramaUrl && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -55,10 +52,9 @@ export default function WorksMapLayout({ works, mode, forestPins }: Props) {
         />
       )}
 
-      {/* Dim overlay */}
-      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.25)', pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', pointerEvents: 'none' }} />
 
-      {/* Perspective layer — no overflow:hidden here */}
+      {/* Perspective — no overflow:hidden here (kills preserve-3d) */}
       <div
         style={{
           position: 'absolute', inset: 0,
@@ -81,7 +77,7 @@ export default function WorksMapLayout({ works, mode, forestPins }: Props) {
         onPointerUp={() => setIsDragging(false)}
         onPointerCancel={() => setIsDragging(false)}
       >
-        {/* 3D rotating cylinder */}
+        {/* 3D cylinder stage */}
         <div style={{
           position: 'absolute',
           left: '50%', top: '50%',
@@ -90,27 +86,23 @@ export default function WorksMapLayout({ works, mode, forestPins }: Props) {
           transform: `rotateY(${rotation}deg)`,
           transition: isDragging ? 'none' : 'transform 0.55s cubic-bezier(0.25,0.46,0.45,0.94)',
         }}>
-          {pinsWithWorks.map(({ pin, work }) => {
+          {worksWithImages.map((work, i) => {
             const thumb = thumbUrl(work.txtImageNameLink)
-            const angle = (pin.x / 100) * 360
-            const sz = pin.size ?? baseSize
-            const radius = RADIUS - (pin.z / 100) * (RADIUS * 0.45)
-            const vOffset = (pin.y - 50) * 5
+            const angle = i * angleStep
 
             return (
               <button
-                key={pin.work_id}
+                key={work.OeuvreID}
                 type="button"
                 aria-label={work.Titre ?? ''}
                 style={{
                   position: 'absolute',
-                  width: sz, height: sz,
-                  marginLeft: -sz / 2, marginTop: -sz / 2,
+                  width: IMG_W, height: IMG_H,
+                  marginLeft: -IMG_W / 2, marginTop: -IMG_H / 2,
                   border: 'none', padding: 0, cursor: 'pointer',
-                  transform: `rotateY(${angle}deg) translateZ(${radius}px) translateY(${vOffset}px)`,
-                  borderRadius: '50%',
+                  transform: `rotateY(${angle}deg) translateZ(${RADIUS}px)`,
                   overflow: 'hidden',
-                  boxShadow: '0 2px 20px rgba(0,0,0,0.6)',
+                  boxShadow: '0 4px 24px rgba(0,0,0,0.7)',
                 }}
                 onClick={() => { if (!drag.current.moved) openZoom(work) }}
               >
@@ -128,7 +120,6 @@ export default function WorksMapLayout({ works, mode, forestPins }: Props) {
         </div>
       </div>
 
-      {/* Lightbox */}
       {zoomed && (
         <div
           style={{
