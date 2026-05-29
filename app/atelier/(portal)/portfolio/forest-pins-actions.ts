@@ -4,11 +4,10 @@
 // x = lng, y = lat (stored as float8; values 0–100 represent % position on the panorama).
 
 import { logError } from '@/lib/error-reporter/server'
-import { createServiceClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { ForestPin } from '@/components/public/works-utils'
 
 async function assertAdmin(): Promise<void> {
-  const { createClient } = await import('@/lib/supabase/server')
   const sb = await createClient()
   const { data, error } = await sb.rpc('is_admin')
   if (error || !data) throw new Error('Forbidden: admin only')
