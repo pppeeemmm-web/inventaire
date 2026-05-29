@@ -12,9 +12,13 @@
 
 | [`TEAM_MEMBER_GUIDE.md`](./TEAM_MEMBER_GUIDE.md) | **Onboarding:** every Atelier tab + recent features for **non-admin** team members |
 
+| [`ADMIN_GUIDE.md`](./ADMIN_GUIDE.md) | **Onboarding (admin):** standalone encyclopedia — every team feature + admin-only chapters (delete, versions, field routes) |
+
 | [`TODO.md`](./TODO.md) | Version-controlled checklist (ops deadlines, dev blocks, optional follow-ups) |
 
 | [`feature-graph.md`](./feature-graph.md) | Graph layer index (Slices 5–8 + export/backup pointers) |
+
+| [`GRAPHIFY_NOTES.md`](./GRAPHIFY_NOTES.md) | Graphify audit notes — resolved ambiguous edges, god nodes, ops follow-ups from the 2026-05-24 run |
 
 | [`PROJECT_SYNTHESIS.md`](./PROJECT_SYNTHESIS.md) | Onboarding: stack boundaries, broadcast chain, where truth lives |
 

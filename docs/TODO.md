@@ -2,7 +2,7 @@
 
 _Version-controlled checklist + non-binding roadmap items. Prefer this file over a Desktop mirror._
 
-**Last refresh: 2026-05-25** — **V5 programme closed** (owner sign-off; slices 1–8 on `main`). Constellation UI split. Ops: O1 GRANT audit + R2 lifecycle on `paintings` verified. **`/works` gallery deferred** (do not commit `WorksClient.tsx` WIP until that track reopens).
+**Last refresh: 2026-05-29** — **V5 programme closed** (owner sign-off; slices 1–8 on `main`). Constellation UI split. Ops: O1 GRANT audit + R2 lifecycle on `paintings` verified. **A0 Supabase cast cleanup closed 2026-05-29** (`8819120`; Buckets C/B/A/D done, E/F left intentionally). **`/works` gallery deferred** (do not commit `WorksClient.tsx` WIP until that track reopens).
 
 ---
 
@@ -10,7 +10,7 @@ _Version-controlled checklist + non-binding roadmap items. Prefer this file over
 
 | # | Track | Item | Notes |
 |---|--------|------|--------|
-| 1 | **Dev** | Block A — **A0** Supabase cast cleanup | ~40 files; run `gen:types` after each migration |
+| 1 | **Site editor** | Block-registry open work | `/` + `/works` still legacy-path; KnobsPanel page/block scopes + circadian pending — see [`HANDOFF_SITE_BLOCKS_3.md`](./HANDOFF_SITE_BLOCKS_3.md) §4 |
 | 2 | **Deferred** | **`/works` gallery + F1** | WIP paused; see Desktop section below |
 
 ---
