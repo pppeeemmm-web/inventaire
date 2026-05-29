@@ -98,6 +98,7 @@ export default function WorksModeGallery({ works, mode, siteTheme }: Props) {
     try {
       const v = new URLSearchParams(window.location.search).get('_layout')
       if (v) setLayoutOverride(v)
+    // eslint-disable-next-line pem-i18n/no-silent-catch
     } catch { /* SSR: noop */ }
   }, [])
 
@@ -1183,6 +1184,7 @@ export default function WorksModeGallery({ works, mode, siteTheme }: Props) {
                             ].filter(Boolean).join(' ')}
                             style={centerMountStyle}
                           >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                               src={src}
                               alt={w.Titre ?? ''}
@@ -1205,6 +1207,7 @@ export default function WorksModeGallery({ works, mode, siteTheme }: Props) {
                                 className={['w-art-mount', 'sized', 'side-phys', w.isRound ? 'round' : ''].filter(Boolean).join(' ')}
                                 style={{ width: phys.w, height: phys.h, overflow: w.isRound ? 'hidden' : 'visible' }}
                               >
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
                                   src={src}
                                   alt={w.Titre ?? ''}
@@ -1217,6 +1220,7 @@ export default function WorksModeGallery({ works, mode, siteTheme }: Props) {
                             )
                           }
                           return (
+                            // eslint-disable-next-line @next/next/no-img-element
                             <img
                               key="side-img"
                               src={src}
@@ -1308,7 +1312,8 @@ export default function WorksModeGallery({ works, mode, siteTheme }: Props) {
           </div>
         )}
 
-        {/* Life-size visitor silhouette */}
+        {/* Life-size visitor silhouette — static public asset, no next/image optimisation needed */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           aria-hidden
           src="/silhouette.avif"

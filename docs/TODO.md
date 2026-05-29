@@ -12,7 +12,7 @@ _Version-controlled checklist + non-binding roadmap items. Prefer this file over
 |---|--------|------|--------|
 | 1 | **Site editor** | `map`/`motion_interior` layouts | Both are placeholder layouts pending R2 assets + DB table (`forest_pins` for map; `interior-loop.webm` for motion_interior). See HANDOFF §4.4 |
 | 2 | **Site editor** | a11y knobs (Phase 5) | `KnobValues.a11y` schema slots exist; no UI yet. See HANDOFF §4.5 |
-| 3 | **Deferred** | **`/works` gallery + F1** | F1: sunset `works_collections` / `sections` fallback; `works_modes` only |
+| 3 | **Deferred** | `/works` gallery (cm-scaled wall scroll) | WIP on hold; see Desktop section below |
 
 ---
 

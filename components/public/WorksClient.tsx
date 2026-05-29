@@ -26,10 +26,13 @@ export default function WorksClient({
 }: Props) {
   const { t } = useI18n()
 
-  const safeModes: WorksMode[] = modes.length > 0 ? modes : [{
-    id: 'default', label_fr: 'Œuvres', label_en: 'Works',
-    layout: 'carousel', collections: [], outro_fr: '', outro_en: '',
-  } as WorksMode]
+  const safeModes = useMemo<WorksMode[]>(
+    () => modes.length > 0 ? modes : [{
+      id: 'default', label_fr: 'Œuvres', label_en: 'Works',
+      layout: 'carousel', collections: [], outro_fr: '', outro_en: '',
+    } as WorksMode],
+    [modes],
+  )
 
   const modeMap = useMemo(() => new Map(safeModes.map(m => [m.id, m])), [safeModes])
 
