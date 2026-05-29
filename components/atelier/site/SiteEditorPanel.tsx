@@ -181,26 +181,39 @@ function MapLayoutSection({
         <div style={{ fontSize: 8, color: '#f88', marginBottom: 6 }}>{uploadErr}</div>
       )}
 
-      {/* Scale + perspective sliders (only when panorama is set) */}
+      {/* Existing key — editable so they can paste an R2 key without re-uploading */}
+      <input
+        type="text"
+        value={mode.forest_panorama_r2_key ?? ''}
+        onChange={e => updateMode(activeMode, { forest_panorama_r2_key: e.target.value || undefined })}
+        placeholder={lang === 'fr' ? 'Clé R2 existante (ex: panoramas/abc.avif)' : 'Existing R2 key (e.g. panoramas/abc.avif)'}
+        style={{
+          width: '100%', boxSizing: 'border-box',
+          fontFamily: 'monospace', fontSize: 7,
+          padding: '4px 8px', background: 'var(--bg2)', color: 'var(--tx2)',
+          border: '1px solid var(--bd2)', borderRadius: 2, marginBottom: 10,
+        }}
+      />
+
+      {/* Pin size + depth sliders */}
       {mode.forest_panorama_r2_key && (
         <div style={{ marginBottom: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
           <Slider
-            label={lang === 'fr' ? 'Zoom' : 'Scale'}
-            min={0.5} max={3} step={0.05}
-            value={mode.forest_panorama_scale ?? 1}
-            onChange={v => updateMode(activeMode, { forest_panorama_scale: v })}
-            defaultValue={1}
-            onReset={() => updateMode(activeMode, { forest_panorama_scale: undefined })}
-            unit="×"
+            label={lang === 'fr' ? 'Taille pins' : 'Pin size'}
+            min={24} max={96} step={2}
+            value={mode.forest_panorama_pin_size ?? 48}
+            onChange={v => updateMode(activeMode, { forest_panorama_pin_size: v })}
+            defaultValue={48}
+            onReset={() => updateMode(activeMode, { forest_panorama_pin_size: undefined })}
+            unit="px"
           />
           <Slider
-            label={lang === 'fr' ? 'Perspective Y' : 'Perspective Y'}
-            min={-60} max={60} step={1}
-            value={mode.forest_panorama_perspective_deg ?? 0}
-            onChange={v => updateMode(activeMode, { forest_panorama_perspective_deg: v })}
-            defaultValue={0}
-            onReset={() => updateMode(activeMode, { forest_panorama_perspective_deg: undefined })}
-            unit="°"
+            label={lang === 'fr' ? 'Profondeur Z' : 'Z depth'}
+            min={0} max={1} step={0.05}
+            value={mode.forest_panorama_depth ?? 0.5}
+            onChange={v => updateMode(activeMode, { forest_panorama_depth: v })}
+            defaultValue={0.5}
+            onReset={() => updateMode(activeMode, { forest_panorama_depth: undefined })}
           />
         </div>
       )}
@@ -208,8 +221,8 @@ function MapLayoutSection({
       <MapPinEditor
         works={oeuvres}
         panoramaKey={mode.forest_panorama_r2_key}
-        panoramaScale={mode.forest_panorama_scale}
-        panoramaPerspectiveDeg={mode.forest_panorama_perspective_deg}
+        pinSize={mode.forest_panorama_pin_size}
+        depthFalloff={mode.forest_panorama_depth}
         collections={mode.collections}
       />
     </div>

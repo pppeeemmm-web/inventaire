@@ -109,8 +109,6 @@ export default function WorksMapLayout({ works, mode, forestPins, siteTheme }: P
             width: '100%', height: '100%',
             objectFit: 'cover', objectPosition: 'center',
             userSelect: 'none',
-            transform: `perspective(800px) rotateX(${mode.forest_panorama_perspective_deg ?? 0}deg) scale(${mode.forest_panorama_scale ?? 1})`,
-            transformOrigin: 'center center',
           }}
         />
       ) : (
@@ -125,16 +123,20 @@ export default function WorksMapLayout({ works, mode, forestPins, siteTheme }: P
         background: 'rgba(0,0,0,0.2)', pointerEvents: 'none',
       }} />
 
-      {/* Work pins */}
+      {/* Work pins — Z depth: pins near top (y≈0) shrink to look far away */}
       {pinsWithWorks.map(({ pin, work }) => {
         const thumb = thumbUrl(work.txtImageNameLink)
         const title = work.Titre ?? ''
+        const baseSize = mode.forest_panorama_pin_size ?? 48
+        const depth = mode.forest_panorama_depth ?? 0.5
+        const depthScale = 1 - depth * (1 - pin.y / 100) * 0.7
+        const sz = Math.round(baseSize * depthScale)
         return (
           <button
             key={pin.work_id}
             type="button"
             className="wmap-pin"
-            style={{ left: `${pin.x}%`, top: `${pin.y}%` }}
+            style={{ left: `${pin.x}%`, top: `${pin.y}%`, zIndex: Math.round(pin.y) }}
             onClick={() => openZoom(work)}
             aria-label={title}
           >
@@ -143,9 +145,12 @@ export default function WorksMapLayout({ works, mode, forestPins, siteTheme }: P
                 src={thumb}
                 alt={title}
                 className="wmap-thumb"
+                style={{ width: sz, height: sz }}
               />
             )}
-            <span className="wmap-pin-label">{title}</span>
+            <span className="wmap-pin-label" style={{ fontSize: Math.max(6, Math.round(7 * depthScale)) }}>
+              {title}
+            </span>
           </button>
         )
       })}

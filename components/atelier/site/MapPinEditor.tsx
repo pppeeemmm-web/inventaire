@@ -20,12 +20,12 @@ interface PinWork {
 interface Props {
   works: PinWork[]
   panoramaKey: string | undefined
-  panoramaScale?: number
-  panoramaPerspectiveDeg?: number
+  pinSize?: number
+  depthFalloff?: number
   collections?: CollectionItem[]
 }
 
-export function MapPinEditor({ works, panoramaKey, panoramaScale = 1, panoramaPerspectiveDeg = 0, collections = [] }: Props) {
+export function MapPinEditor({ works, panoramaKey, pinSize = 48, depthFalloff = 0.5, collections = [] }: Props) {
   const { t, lang } = useI18n()
   const [pins, setPins] = useState<ForestPin[]>([])
   const [armedId, setArmedId] = useState<number | null>(null)
@@ -124,16 +124,17 @@ export function MapPinEditor({ works, panoramaKey, panoramaScale = 1, panoramaPe
               position: 'absolute', inset: 0,
               width: '100%', height: '100%',
               objectFit: 'cover', pointerEvents: 'none',
-              transform: `perspective(800px) rotateX(${panoramaPerspectiveDeg}deg) scale(${panoramaScale})`,
-              transformOrigin: 'center center',
             }}
           />
         )}
-        {/* Render existing pins as dots */}
+        {/* Render existing pins — size scales with Y position for depth illusion */}
         {pins.map(pin => {
           const work = works.find(w => w.OeuvreID === pin.work_id)
           const thumb = thumbUrl(work?.txtImageNameLink)
           const isArmed = armedId === pin.work_id
+          // Depth: pins near top (y≈0) are smaller; near bottom (y≈100) are full size
+          const depthScale = 1 - depthFalloff * (1 - pin.y / 100) * 0.7
+          const sz = Math.round(pinSize * depthScale)
           return (
             <div
               key={pin.work_id}
@@ -141,15 +142,16 @@ export function MapPinEditor({ works, panoramaKey, panoramaScale = 1, panoramaPe
               style={{
                 position: 'absolute',
                 left: `${pin.x}%`, top: `${pin.y}%`,
-                transform: 'translate(-50%, -50%)',
-                width: isArmed ? 20 : 14, height: isArmed ? 20 : 14,
+                transform: `translate(-50%, -50%) scale(${isArmed ? 1.3 : 1})`,
+                width: sz, height: sz,
                 borderRadius: '50%',
                 background: isArmed ? 'var(--ac)' : 'rgba(255,180,40,0.9)',
-                border: '2px solid #fff',
-                boxShadow: '0 1px 4px rgba(0,0,0,0.5)',
-                zIndex: 5, pointerEvents: 'none',
+                border: '2px solid rgba(255,255,255,0.85)',
+                boxShadow: `0 ${Math.round(depthScale * 3)}px ${Math.round(depthScale * 8)}px rgba(0,0,0,0.5)`,
+                zIndex: Math.round(pin.y), pointerEvents: 'none',
                 backgroundImage: thumb ? `url(${thumb})` : undefined,
                 backgroundSize: 'cover',
+                transition: 'transform .15s',
               }}
             />
           )
