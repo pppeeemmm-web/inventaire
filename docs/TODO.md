@@ -41,7 +41,7 @@ _Version-controlled checklist + non-binding roadmap items. Prefer this file over
 
 ## Block A — agility
 
-- [ ] **A0** Remove remaining `as any` Supabase casts (partial 2026-05-15).
+- [x] **A0** Remove remaining `as any` Supabase casts — Buckets C/B/A/D done 2026-05-29 (`7a010df`); E/F left intentionally.
 - [x] **A1** Exhibitions + curation + constellation server actions.
 - [x] **A2** `/works` RSC + `revalidateTag('portfolio')` (config path; gallery UX separate).
 - [x] **A3** R2 etag optimistic concurrency on `savePortfolioConfig` (`ifMatch` + `PORTFOLIO_SAVE_ERR` in PortfolioTab).
