@@ -8,6 +8,7 @@ import {
   upsertForestPin,
   deleteForestPin,
   updateForestPinZ,
+  updateForestPinSize,
 } from '@/app/atelier/(portal)/portfolio/forest-pins-actions'
 import type { ForestPin } from '@/components/public/works-utils'
 import type { CollectionItem } from '@/lib/portfolio-config-types'
@@ -75,10 +76,16 @@ export function MapPinEditor({ works, panoramaKey, pinSize = 48, collections = [
   }
 
   function handleSetZ(workId: number, z: number) {
-    // Optimistic update
     setPins(prev => prev.map(p => p.work_id === workId ? { ...p, z } : p))
     startTransition(async () => {
       await updateForestPinZ(workId, z)
+    })
+  }
+
+  function handleSetSize(workId: number, size: number | null) {
+    setPins(prev => prev.map(p => p.work_id === workId ? { ...p, size } : p))
+    startTransition(async () => {
+      await updateForestPinSize(workId, size)
     })
   }
 
@@ -125,7 +132,7 @@ export function MapPinEditor({ works, panoramaKey, pinSize = 48, collections = [
           const thumb = thumbUrl(work?.txtImageNameLink)
           const isArmed = armedId === pin.work_id
           const depthScale = 1 - (pin.z / 100) * 0.75
-          const sz = Math.round(pinSize * depthScale)
+          const sz = Math.round((pin.size ?? pinSize) * depthScale)
           return (
             <div
               key={pin.work_id}
@@ -223,23 +230,48 @@ export function MapPinEditor({ works, panoramaKey, pinSize = 48, collections = [
                 )}
               </div>
 
-              {/* Z depth slider — only when pin is placed */}
+              {/* Z depth + size sliders — only when pin is placed */}
               {existing && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 6px 5px 34px' }}>
-                  <span style={{ fontSize: 7, color: 'var(--tx2)', letterSpacing: 0.5, flexShrink: 0 }}>
-                    {lang === 'fr' ? 'Prof. Z' : 'Z depth'}
-                  </span>
-                  <input
-                    type="range"
-                    min={0} max={100} step={1}
-                    value={existing.z}
-                    onChange={e => handleSetZ(work.OeuvreID, Number(e.target.value))}
-                    style={{ flex: 1, accentColor: 'var(--ac)', cursor: 'pointer' }}
-                  />
-                  <span style={{ fontSize: 7, color: 'var(--tx2)', width: 22, textAlign: 'right', flexShrink: 0 }}>
-                    {existing.z}
-                  </span>
-                </div>
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 6px 0 34px' }}>
+                    <span style={{ fontSize: 7, color: 'var(--tx2)', letterSpacing: 0.5, flexShrink: 0 }}>
+                      {lang === 'fr' ? 'Prof. Z' : 'Z depth'}
+                    </span>
+                    <input
+                      type="range"
+                      min={0} max={100} step={1}
+                      value={existing.z}
+                      onChange={e => handleSetZ(work.OeuvreID, Number(e.target.value))}
+                      style={{ flex: 1, accentColor: 'var(--ac)', cursor: 'pointer' }}
+                    />
+                    <span style={{ fontSize: 7, color: 'var(--tx2)', width: 22, textAlign: 'right', flexShrink: 0 }}>
+                      {existing.z}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 6px 5px 34px' }}>
+                    <span style={{ fontSize: 7, color: 'var(--tx2)', letterSpacing: 0.5, flexShrink: 0 }}>
+                      {lang === 'fr' ? 'Taille' : 'Size'}
+                    </span>
+                    <input
+                      type="range"
+                      min={8} max={200} step={4}
+                      value={existing.size ?? pinSize}
+                      onChange={e => handleSetSize(work.OeuvreID, Number(e.target.value))}
+                      style={{ flex: 1, accentColor: 'var(--ac)', cursor: 'pointer' }}
+                    />
+                    <span style={{ fontSize: 7, color: 'var(--tx2)', width: 22, textAlign: 'right', flexShrink: 0 }}>
+                      {existing.size ?? pinSize}
+                    </span>
+                    {existing.size !== null && (
+                      <button
+                        type="button"
+                        onClick={() => handleSetSize(work.OeuvreID, null)}
+                        title={lang === 'fr' ? 'Réinitialiser' : 'Reset'}
+                        style={{ width: 14, height: 14, border: 'none', background: 'none', color: 'var(--tx2)', cursor: 'pointer', fontSize: 9, flexShrink: 0, padding: 0, lineHeight: 1 }}
+                      >↺</button>
+                    )}
+                  </div>
+                </>
               )}
             </div>
           )

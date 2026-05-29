@@ -127,7 +127,7 @@ export default function WorksMapLayout({ works, mode, forestPins, siteTheme }: P
       {pinsWithWorks.map(({ pin, work }) => {
         const thumb = thumbUrl(work.txtImageNameLink)
         const title = work.Titre ?? ''
-        const baseSize = mode.forest_panorama_pin_size ?? 48
+        const baseSize = pin.size ?? mode.forest_panorama_pin_size ?? 48
         const depthScale = 1 - (pin.z / 100) * 0.75
         const sz = Math.round(baseSize * depthScale)
         return (

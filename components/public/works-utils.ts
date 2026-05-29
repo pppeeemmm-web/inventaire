@@ -70,6 +70,7 @@ export type ForestPin = {
   x: number   // lng stored in forest_pins
   y: number   // lat stored in forest_pins
   z: number   // depth 0 (close/big) → 100 (far/small)
+  size: number | null  // override diameter in px (8–200); null = use global base
   label: string | null
 }
 

@@ -17,7 +17,7 @@ export async function listForestPins(): Promise<ForestPin[]> {
   const sb = await createServiceClient()
   const { data, error } = await sb
     .from('forest_pins')
-    .select('work_id, lat, lng, z, label')
+    .select('work_id, lat, lng, z, size, label')
     .order('work_id')
   if (error) {
     logError('listForestPins', error)
@@ -28,6 +28,7 @@ export async function listForestPins(): Promise<ForestPin[]> {
     x: typeof r.lng === 'number' ? r.lng : 0,
     y: typeof r.lat === 'number' ? r.lat : 0,
     z: typeof r.z === 'number' ? r.z : 0,
+    size: typeof r.size === 'number' ? r.size : null,
     label: typeof r.label === 'string' ? r.label : null,
   }))
 }
@@ -58,6 +59,17 @@ export async function updateForestPinZ(workId: number, z: number): Promise<void>
     .update({ z: Math.min(100, Math.max(0, z)) })
     .eq('work_id', workId)
   if (error) logError('updateForestPinZ', error)
+}
+
+export async function updateForestPinSize(workId: number, size: number | null): Promise<void> {
+  await assertAdmin()
+  const sb = await createServiceClient()
+  const clamped = size === null ? null : Math.min(200, Math.max(8, size))
+  const { error } = await sb
+    .from('forest_pins')
+    .update({ size: clamped })
+    .eq('work_id', workId)
+  if (error) logError('updateForestPinSize', error)
 }
 
 export async function deleteForestPin(workId: number): Promise<void> {
