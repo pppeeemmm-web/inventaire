@@ -18,6 +18,13 @@ import {
   type LandingShadowTuning,
 } from '@/lib/landing-text-shadow'
 import type { CSSProperties } from 'react'
+import HeroRenderer, { type HeroFields } from '@/lib/site-blocks/hero/HeroRenderer'
+import IdentityRenderer, { type IdentityFields } from '@/lib/site-blocks/identity/IdentityRenderer'
+import { LandingHeroCtx, type LandingHeroCtxValue } from '@/lib/site-blocks/hero/LandingHeroCtx'
+import { resolveKnobs, DEFAULT_KNOBS_CONFIG } from '@/lib/site-blocks'
+import { applyCircadianToKnobs } from '@/lib/circadian-knobs'
+import type { Block, KnobsConfig } from '@/lib/portfolio-config-types'
+import type { KnobValues } from '@/lib/site-blocks/knob-types'
 
 /** Hub entry dot on public landing — visual only; name from i18n aria-label. */
 const LANDING_HUB_DOT_PX = 7
@@ -45,6 +52,10 @@ type LandingPageProps = {
   shadowTuning: LandingShadowTuning
   hiddenNavRoutes?: string[]
   navOrder?: string[]
+  /** Registry blocks for the landing page — drives HeroRenderer + IdentityRenderer. */
+  landingBlocks?: Block[]
+  /** Site knobs config — resolved for 'landing' page and circadian-applied each tick. */
+  knobs?: KnobsConfig
 }
 
 const ROUTE_LABEL_KEYS: Record<string, 'pub_works' | 'pub_about' | 'pub_practice' | 'pub_enquiry'> = {
@@ -76,6 +87,8 @@ export default function LandingPage({
   shadowTuning,
   hiddenNavRoutes = [],
   navOrder,
+  landingBlocks,
+  knobs,
 }: LandingPageProps) {
   const { lang, setLang, t } = useI18n()
   const [navOpen, setNavOpen] = useState(false)
@@ -91,6 +104,20 @@ export default function LandingPage({
     () => landingInlineNavRoutes(order, hiddenNavRoutes),
     [order, hiddenNavRoutes],
   )
+
+  // ── §4.1 Block registry ────────────────────────────────────────────────────
+  const heroBlock = useMemo(() => landingBlocks?.find(b => b.kind === 'hero'), [landingBlocks])
+  const identityBlock = useMemo(() => landingBlocks?.find(b => b.kind === 'identity'), [landingBlocks])
+
+  // ── §4.2 Circadian knobs ───────────────────────────────────────────────────
+  const resolvedBase = useMemo(
+    () => resolveKnobs(knobs ?? DEFAULT_KNOBS_CONFIG, 'landing'),
+    [knobs],
+  )
+  const [effectiveKnobs, setEffectiveKnobs] = useState<KnobValues>(() => {
+    const now = new Date()
+    return applyCircadianToKnobs(resolvedBase, now.getHours() * 60 + now.getMinutes())
+  })
 
   const heroCaption = lang === 'en'
     ? (heroCaptionEn || heroCaptionFr)
@@ -119,12 +146,17 @@ export default function LandingPage({
 
   useEffect(() => {
     const apply = () => {
+      const now = new Date()
       setChromeShadow(
-        landingChromeTextShadowNow(new Date(), {
+        landingChromeTextShadowNow(now, {
           compact: window.matchMedia('(max-width: 767px)').matches,
           reducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
           tuning: shadowTuning,
         }),
+      )
+      // §4.2 — circadian knobs: update effective knobs on each shadow tick
+      setEffectiveKnobs(
+        applyCircadianToKnobs(resolvedBase, now.getHours() * 60 + now.getMinutes()),
       )
     }
     apply()
@@ -143,7 +175,8 @@ export default function LandingPage({
       mqNarrow.removeEventListener('change', apply)
       mqMotion.removeEventListener('change', apply)
     }
-  }, [shadowTuning.topTintHex, shadowTuning.bottomTintHex, shadowTuning.heroBevelPx])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shadowTuning.topTintHex, shadowTuning.bottomTintHex, shadowTuning.heroBevelPx, resolvedBase])
 
   const heroImage = (
     <WavingCircle
@@ -161,7 +194,29 @@ export default function LandingPage({
     />
   )
 
+  // ── §4.1 / §4.2 Context value ──────────────────────────────────────────────
+  const ctxValue: LandingHeroCtxValue = {
+    heroImageUrl,
+    heroImageUnoptimized,
+    heroGlossEnabled,
+    heroGlossBackground,
+    heroGlossMixBlendMode,
+    heroWhiteKey,
+    heroBackdropCss: landingBackgroundCss,
+    heroDiscCastFilter: chromeShadow.heroDiscCastFilter,
+    heroLinked,
+    artistName,
+    heroCaptionFr,
+    heroCaptionEn,
+    landingChromeText,
+    landingBodyMutedText,
+    landingBodyText,
+    pubNarrow,
+    effectiveKnobs,
+  }
+
   return (
+    <LandingHeroCtx.Provider value={ctxValue}>
     <>
       <style>{`
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -403,8 +458,31 @@ export default function LandingPage({
           ...(pubNarrow ? { paddingBottom: 'calc(56px + env(safe-area-inset-bottom, 0px))' } : {}),
         } as CSSProperties}
       >
+        {/* §4.2 — circadian atmosphere tint overlay (renders only when tint_opacity > 0) */}
+        {effectiveKnobs.atm.tint_opacity > 0 ? (
+          <div
+            aria-hidden
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: `linear-gradient(180deg, ${effectiveKnobs.atm.sky_top}, ${effectiveKnobs.atm.sky_bottom})`,
+              opacity: effectiveKnobs.atm.tint_opacity,
+              pointerEvents: 'none',
+              zIndex: 0,
+            }}
+          />
+        ) : null}
+
         <h1 className="wordmark landing-chrome-shadow">
-          <Link href="/">{artistName}</Link>
+          {identityBlock && identityBlock.visible !== false ? (
+            <IdentityRenderer
+              block={identityBlock}
+              fields={identityBlock.fields as IdentityFields}
+              ctx={{ page: 'landing', lang }}
+            />
+          ) : (
+            <Link href="/">{artistName}</Link>
+          )}
         </h1>
         <button
           type="button"
@@ -429,25 +507,36 @@ export default function LandingPage({
         </button>
 
         <div className="landing-center">
-          <div className="hero-orbit-wrap">
-            <nav className="circle-wrap" aria-label={t('pub_mobile_nav_heading')}>
-              {heroLinked ? (
-                <Link
-                  href="/works"
-                  className="hero-hit"
-                  aria-label={t('pub_landing_hero_works_link_aria')}
-                >
-                  {heroImage}
-                </Link>
-              ) : (
-                <div className="hero-static">{heroImage}</div>
-              )}
-            </nav>
-          </div>
-
-          {heroCaption.trim() ? (
-            <p className="hero-caption landing-body-shadow">{heroCaption}</p>
-          ) : null}
+          {/* §4.1 — registry-driven hero (HeroRenderer reads LandingHeroCtx) */}
+          {heroBlock && heroBlock.visible !== false ? (
+            <HeroRenderer
+              block={heroBlock}
+              fields={heroBlock.fields as HeroFields}
+              ctx={{ page: 'landing', lang }}
+            />
+          ) : (
+            /* Legacy fallback — used when no hero block is present */
+            <>
+              <div className="hero-orbit-wrap">
+                <nav className="circle-wrap" aria-label={t('pub_mobile_nav_heading')}>
+                  {heroLinked ? (
+                    <Link
+                      href="/works"
+                      className="hero-hit"
+                      aria-label={t('pub_landing_hero_works_link_aria')}
+                    >
+                      {heroImage}
+                    </Link>
+                  ) : (
+                    <div className="hero-static">{heroImage}</div>
+                  )}
+                </nav>
+              </div>
+              {heroCaption.trim() ? (
+                <p className="hero-caption landing-body-shadow">{heroCaption}</p>
+              ) : null}
+            </>
+          )}
 
           {inlineNavRoutes.length > 0 ? (
             <nav className="landing-inline-nav" aria-label={t('pub_landing_footer_nav_aria')}>
@@ -621,5 +710,6 @@ export default function LandingPage({
         </>
       )}
     </>
+    </LandingHeroCtx.Provider>
   )
 }

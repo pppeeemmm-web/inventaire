@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import type {
+  Block,
   PortfolioConfig,
   CollectionItem,
   WorksMode,
@@ -11,6 +12,7 @@ import type {
   SiteBlock,
   WorksLayout,
 } from '@/lib/portfolio-config-types'
+import type { KnobFamilyOverrides } from '@/lib/site-blocks'
 import { WORKS_LAYOUT_VALUES, WORKS_LAYOUT_PLACEHOLDERS } from '@/lib/portfolio-config-types'
 import {
   pageBackgroundFromLanding,
@@ -125,6 +127,8 @@ export function SiteEditorPanel({
   const blocks = config.site_blocks
   const [collapsed, setCollapsed] = useState<Set<SiteBlockKind>>(new Set())
   const [bgGradientOpen, setBgGradientOpen] = useState(false)
+  // §4.3 — block scope for KnobsPanel: tracks which PagesEditor block is selected
+  const [selectedBlockUid, setSelectedBlockUid] = useState<string | null>(null)
 
   function setLandingGradientStops(stops: LandingGradientStop[]) {
     setConfig({
@@ -985,7 +989,11 @@ export function SiteEditorPanel({
         icon="◳"
         testId="atelier-pub-block-composition"
       >
-        <PagesEditor config={config} setConfig={setConfig} />
+        <PagesEditor
+          config={config}
+          setConfig={setConfig}
+          onBlockSelect={uid => setSelectedBlockUid(uid)}
+        />
       </SitePublicSection>
       <SitePublicSection
         title={t('site_knobs_panel_title')}
@@ -995,6 +1003,25 @@ export function SiteEditorPanel({
         <KnobsPanel
           knobs={config.knobs ?? DEFAULT_KNOBS_CONFIG}
           onChange={next => setConfig({ ...config, knobs: next })}
+          selectedBlockUid={selectedBlockUid ?? undefined}
+          selectedBlockOverride={(() => {
+            if (!selectedBlockUid) return undefined
+            const allBlocks = Object.values(config.pages ?? {}).flat() as Block[]
+            return allBlocks.find(b => b.uid === selectedBlockUid)?.knob_override
+          })()}
+          onBlockOverrideChange={override => {
+            if (!selectedBlockUid) return
+            const pages = config.pages ?? {}
+            const updatedPages = Object.fromEntries(
+              Object.entries(pages).map(([page, blocks]) => [
+                page,
+                (blocks as Block[]).map(b =>
+                  b.uid === selectedBlockUid ? { ...b, knob_override: override } : b,
+                ),
+              ]),
+            )
+            setConfig({ ...config, pages: updatedPages })
+          }}
         />
       </SitePublicSection>
       {blocks.map((block, idx) => {

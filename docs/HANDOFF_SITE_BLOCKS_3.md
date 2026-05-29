@@ -119,25 +119,20 @@ resolveKnobs(cfg, page, blockOverride?) → KnobValues
 
 ## 4. Open work
 
-> **Re-verified against live code 2026-05-29**, file-by-file. Two items previously listed here as open are in fact shipped — see "Shipped since this handoff" below. The remaining open items are ordered by what unblocks what.
+> **Re-verified against live code 2026-05-29** (session 3) and **session 4 completions**. Items §4.1–§4.3 are shipped; remaining open items below.
 
-### Shipped since this handoff (corrects earlier stale claims)
+### Shipped — session 3 (stale claim corrections)
 
-- **KnobsPanel page scope** — live. `KnobsPanel.tsx`: `Scope = 'site' | 'landing' | 'works' | 'about'`, scope bar (`SCOPE_TABS`), per-page `KnobFamilyOverrides`, per-family override toggle, per-page orange dot.
-- **Circadian controller (data + UI)** — live. `lib/circadian-knobs.ts` holds the 9-period keyframe table, `interpolateCircadianSnapshot`, `applyCircadianToKnobs` (patches only the families in `circ.drives`), and `CIRCADIAN_PRESETS` (sun / gallery / theatre / custom). `KnobsPanel.CircadianSection` renders preset chips + auto toggle + manual-minute scrubber + 4 drive toggles (site scope only).
-- **`gallery_strip` renderer** — real renderer (returns null only when empty), not a stub.
+- **KnobsPanel page scope** — live. `KnobsPanel.tsx`: `Scope = 'site' | 'landing' | 'works' | 'about'`, per-page `KnobFamilyOverrides`, per-family override toggle, per-page orange dot.
+- **Circadian controller (data + UI)** — live. `lib/circadian-knobs.ts`: 9-period keyframe table, `interpolateCircadianSnapshot`, `applyCircadianToKnobs`, `CIRCADIAN_PRESETS`. `KnobsPanel.CircadianSection` renders preset chips + auto toggle + manual-minute scrubber (site scope only).
+- **`gallery_strip` renderer** — real renderer, not a stub.
 
-### 4.1 `/` + `/works` still on the legacy render path  ← keystone
+### Shipped — session 4 (2026-05-29) ← all keystone items closed
 
-`HeroRenderer`, `IdentityRenderer`, `WorksModesRenderer` are unconditional `(): null { return null }` stubs (verified 2026-05-29). Only `/about` is registry-driven. `/` renders via the legacy `LandingPage`; `/works` via the legacy `WorksClient` (reads `config.works_modes` directly). Refactoring `LandingPage` + `WorksClient` to iterate `pages.landing` / `pages.works` through the block registry is the big structural item — most of the rest either folds into it (4.2) or is independent.
-
-### 4.2 Circadian — public wiring (last mile, gated on 4.1)
-
-Controller + panel are done (see above). What remains: call `applyCircadianToKnobs(resolvedKnobs, minuteOfDay)` in the public landing client — `new Date().getHours() * 60 + getMinutes()` when `circ.auto`, else `circ.manual_minute` for preview. Cannot land until `/` iterates the registry (4.1): there is no public block render to apply the knobs to yet.
-
-### 4.3 KnobsPanel — block scope (deferred)
-
-Site + page scopes are live; block scope is not. Needs `selectedBlockUid` + `onBlockOverrideChange` plumbed from PagesEditor into KnobsPanel, editing `selectedBlock.knob_override: KnobFamilyOverrides`, surfaced as a 5th scope entry enabled only when a block is selected.
+- **§4.1 landing** — `HeroRenderer` + `IdentityRenderer` are now real components using `LandingHeroCtx`. `LandingPage` wraps with `LandingHeroCtx.Provider`, renders renderers when blocks present, legacy fallback otherwise. `app/page.tsx` passes `landingBlocks` + `knobs`.
+- **§4.1 works** — `WorksClient` is now a thin shell (context + nav + base CSS). All gallery logic extracted to `components/public/WorksModeGallery.tsx`. `WorksRenderCtx` (`lib/site-blocks/works_modes/WorksRenderCtx.ts`) provides works data. `WorksModesRenderer` is real — reads context, renders `WorksModeGallery`.
+- **§4.2 Circadian public wiring** — `LandingPage` resolves `effectiveKnobs` via `resolveKnobs(knobs, 'landing')` + `applyCircadianToKnobs` on each shadow tick. ATM tint overlay renders inside `.stage` when `tint_opacity > 0`.
+- **§4.3 KnobsPanel block scope** — 5th scope tab "Block" (disabled when no block selected). `PagesEditor` fires `onBlockSelect(uid)` on expand. `SiteEditorPanel` lifts `selectedBlockUid` state, wires `selectedBlockOverride` + `onBlockOverrideChange` to KnobsPanel.
 
 ### 4.4 Phase 3 — `map` + `motion_interior` layouts (blocked on assets)
 
@@ -160,7 +155,10 @@ Site + page scopes are live; block scope is not. Needs `selectedBlockUid` + `onB
 | `lib/circadian-knobs.ts` | 9-period keyframe table, applyCircadianToKnobs, CIRCADIAN_PRESETS |
 | `lib/site-blocks/index.ts` | barrel — imports + re-exports everything |
 | `components/atelier/portfolio/shared/Slider.tsx` | shared row/stack slider |
-| `components/atelier/site/KnobsPanel.tsx` | knob panel — site + page scopes + CircadianSection (block scope pending) |
+| `components/atelier/site/KnobsPanel.tsx` | knob panel — site + page + block scopes + CircadianSection |
+| `lib/site-blocks/hero/LandingHeroCtx.ts` | React context for LandingPage → HeroRenderer/IdentityRenderer |
+| `components/public/WorksModeGallery.tsx` | Extracted gallery (carousel + all layouts) — moved from WorksClient |
+| `lib/site-blocks/works_modes/WorksRenderCtx.ts` | React context for WorksClient → WorksModesRenderer |
 | `components/atelier/site/SiteEditorPanel.tsx` | top-level editor shell |
 | `lib/i18n/messages/knobs-panel.messages.ts` | 38 keys for KnobsPanel |
 | `lib/works-mode-light.ts` | light presets, migrateWorksMobileFallback, resolveWorksMobileLayout |
@@ -186,4 +184,4 @@ pwsh -Command "& ./scripts/release-truth.ps1 -Checks 'typecheck,i18n'"
 
 ---
 
-End of handoff. Status (2026-05-29): Phase 2 data layer + UI complete — site **and** page scopes live, circadian controller (data + panel) live. Open: `/` + `/works` legacy render path (keystone), circadian public wiring (gated on it), KnobsPanel block scope, `map`/`motion_interior` assets, a11y. See §4.
+End of handoff. Status (2026-05-29, session 4): All §4.1–§4.3 items shipped. Open: `map`/`motion_interior` assets (§4.4), a11y knobs (§4.5). See §4.

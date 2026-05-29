@@ -23,7 +23,8 @@ import {
 import { resolveLandingBackground } from '@/lib/landing-background'
 import { resolveHeroGloss } from '@/lib/landing-hero-gloss'
 import { landingShadowTuningFromLanding } from '@/lib/landing-text-shadow'
-import type { LandingConfig, SiteBlock } from '@/lib/portfolio-config-types'
+import type { Block, LandingConfig, SiteBlock } from '@/lib/portfolio-config-types'
+import type { KnobsConfig } from '@/lib/portfolio-config-types'
 
 export async function generateMetadata(): Promise<Metadata> {
   const base = getMetadataBase()
@@ -82,6 +83,8 @@ export default async function HomePage() {
   let landingBg = resolveLandingBackground()
   let heroGloss = resolveHeroGloss()
   let landingPartial: Partial<LandingConfig> | undefined
+  let landingBlocks: Block[] = []
+  let siteKnobs: KnobsConfig | undefined
   try {
     const { config } = await loadPortfolioSectionsCached()
     const g = config.general as { artist_name?: string } | undefined
@@ -102,11 +105,9 @@ export default async function HomePage() {
     }
 
     // ── Registry-driven overlay from pages.landing blocks ────────────────
-    // PagesEditor block visibility + field edits take effect here once the
-    // artist saves via Publier. Hero renderer is still null (LandingPage handles
-    // its own rendering), but block metadata drives caption and identity.
     const migrated = migrate(config)
-    const landingBlocks = migrated.pages?.landing ?? []
+    landingBlocks = migrated.pages?.landing ?? []
+    siteKnobs = migrated.knobs
 
     const heroBlock = landingBlocks.find(b => b.kind === 'hero')
     const identityBlock = landingBlocks.find(b => b.kind === 'identity')
@@ -165,6 +166,8 @@ export default async function HomePage() {
       heroGlossMixBlendMode={heroGloss.mixBlendMode}
       heroWhiteKey={false}
       shadowTuning={landingShadowTuningFromLanding(landingPartial, landingBg.bottomHex, landingBg.topHex)}
+      landingBlocks={landingBlocks}
+      knobs={siteKnobs}
     />
   )
 }

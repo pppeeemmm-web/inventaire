@@ -190,6 +190,10 @@ export const knobsPanelMessages = defineMessages({
     fr: 'À propos',
     en: 'About',
   },
+  site_knobs_scope_block: {
+    fr: 'Bloc',
+    en: 'Block',
+  },
   site_knobs_override_on: {
     fr: 'Personnaliser',
     en: 'Customize',

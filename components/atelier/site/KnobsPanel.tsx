@@ -29,7 +29,7 @@ import {
 // ── Types ──────────────────────────────────────────────────────────────────
 
 type PageScope = 'landing' | 'works' | 'about'
-type Scope = 'site' | PageScope
+type Scope = 'site' | PageScope | 'block'
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -124,27 +124,44 @@ const checkRowStyle: React.CSSProperties = {
 interface KnobsPanelProps {
   knobs: KnobsConfig
   onChange: (next: KnobsConfig) => void
+  /** UID of the currently selected block — enables the block scope tab. */
+  selectedBlockUid?: string
+  /** Current knob_override for the selected block (read from Block.knob_override). */
+  selectedBlockOverride?: KnobFamilyOverrides
+  /** Called when the block's knob_override should change (block scope edits). */
+  onBlockOverrideChange?: (override: KnobFamilyOverrides) => void
 }
 
-export function KnobsPanel({ knobs, onChange }: KnobsPanelProps) {
+export function KnobsPanel({
+  knobs,
+  onChange,
+  selectedBlockUid,
+  selectedBlockOverride,
+  onBlockOverrideChange,
+}: KnobsPanelProps) {
   const { t } = useI18n()
 
   // ── Scope state ────────────────────────────────────────────────────────
 
   const [scope, setScope] = useState<Scope>('site')
   const isSiteScope = scope === 'site'
+  const isBlockScope = scope === 'block'
   const pageKey = scope as PageScope
 
-  const pageOverrides: KnobFamilyOverrides = isSiteScope ? {} : (knobs.pages[pageKey] ?? {})
+  const pageOverrides: KnobFamilyOverrides =
+    isSiteScope || isBlockScope ? {} : (knobs.pages[pageKey] ?? {})
+  const blockOverride: KnobFamilyOverrides = selectedBlockOverride ?? {}
 
-  /** Values displayed by family controls — merged site + page overrides. */
-  const displayValues: KnobValues = isSiteScope
-    ? knobs.site
-    : mergeKnobFamilies(knobs.site, pageOverrides)
+  /** Values displayed by family controls — merged site + page + block overrides. */
+  const displayValues: KnobValues = isBlockScope
+    ? mergeKnobFamilies(knobs.site, blockOverride)
+    : isSiteScope
+      ? knobs.site
+      : mergeKnobFamilies(knobs.site, pageOverrides)
 
   /**
-   * Reset anchor: in site scope = absolute defaults; in page scope = site
-   * values (so the ↺ chip appears when page override differs from site).
+   * Reset anchor: site = absolute defaults; page = site values; block = site values.
+   * (↺ chip appears when value differs from reset anchor.)
    */
   const resetValues = isSiteScope ? DEFAULT_KNOB_VALUES : knobs.site
 
@@ -158,6 +175,8 @@ export function KnobsPanel({ knobs, onChange }: KnobsPanelProps) {
   function patch(update: Partial<KnobValues>) {
     if (isSiteScope) {
       onChange({ ...knobs, site: { ...knobs.site, ...update } })
+    } else if (isBlockScope) {
+      onBlockOverrideChange?.({ ...blockOverride, ...update })
     } else {
       onChange({
         ...knobs,
@@ -171,11 +190,24 @@ export function KnobsPanel({ knobs, onChange }: KnobsPanelProps) {
   }
 
   function isOverrideEnabled(family: KnobFamily): boolean {
-    return isSiteScope || family in pageOverrides
+    if (isSiteScope) return true
+    if (isBlockScope) return family in blockOverride
+    return family in pageOverrides
   }
 
   function toggleOverride(family: KnobFamily) {
     if (isSiteScope) return
+    if (isBlockScope) {
+      if (family in blockOverride) {
+        const next = Object.fromEntries(
+          Object.entries(blockOverride).filter(([k]) => k !== family),
+        ) as KnobFamilyOverrides
+        onBlockOverrideChange?.(next)
+      } else {
+        onBlockOverrideChange?.({ ...blockOverride, [family]: { ...knobs.site[family] } })
+      }
+      return
+    }
     if (family in pageOverrides) {
       const next = Object.fromEntries(
         Object.entries(pageOverrides).filter(([k]) => k !== family),
@@ -206,7 +238,9 @@ export function KnobsPanel({ knobs, onChange }: KnobsPanelProps) {
   function FamilyHead({ family, label }: { family: KnobFamily; label: string }) {
     const edited = isSiteScope
       ? isSiteFamilyEdited(knobs.site, family)
-      : family in pageOverrides
+      : isBlockScope
+        ? family in blockOverride
+        : family in pageOverrides
     const open = !collapsed.has(family)
     const overrideOn = isOverrideEnabled(family)
 
@@ -682,11 +716,12 @@ export function KnobsPanel({ knobs, onChange }: KnobsPanelProps) {
     }
   }
 
-  const SCOPE_TABS: { key: Scope; label: string }[] = [
+  const SCOPE_TABS: { key: Scope; label: string; disabled?: boolean }[] = [
     { key: 'site',    label: t('site_knobs_scope_site') },
     { key: 'landing', label: t('site_knobs_scope_landing') },
     { key: 'works',   label: t('site_knobs_scope_works') },
     { key: 'about',   label: t('site_knobs_scope_about') },
+    { key: 'block',   label: t('site_knobs_scope_block'), disabled: !selectedBlockUid },
   ]
 
   // ── Render ────────────────────────────────────────────────────────────
@@ -695,21 +730,31 @@ export function KnobsPanel({ knobs, onChange }: KnobsPanelProps) {
     <div>
       {/* Scope bar */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 16, flexWrap: 'wrap' }}>
-        {SCOPE_TABS.map(({ key, label }) => (
+        {SCOPE_TABS.map(({ key, label, disabled }) => (
           <button
             key={key}
             type="button"
-            onClick={() => setScope(key)}
+            disabled={disabled}
+            onClick={() => { if (!disabled) setScope(key) }}
             style={{
               padding: '4px 10px', fontSize: 9, letterSpacing: 1,
               textTransform: 'uppercase', borderRadius: 4, border: 'none',
-              cursor: 'pointer', fontFamily: 'inherit',
+              cursor: disabled ? 'not-allowed' : 'pointer',
+              fontFamily: 'inherit',
+              opacity: disabled ? 0.38 : 1,
               background: scope === key ? 'var(--ac)' : 'var(--bg1)',
               color: scope === key ? '#fff' : 'var(--tx2)',
             }}
           >
             {label}
-            {key !== 'site' && Object.keys(knobs.pages[key as PageScope] ?? {}).length > 0 && (
+            {key === 'block' && selectedBlockUid && Object.keys(blockOverride).length > 0 && (
+              <span style={{
+                width: 4, height: 4, borderRadius: '50%',
+                background: scope === key ? 'rgba(255,255,255,0.7)' : 'var(--ac)',
+                display: 'inline-block', marginLeft: 5, verticalAlign: 'middle',
+              }} />
+            )}
+            {key !== 'site' && key !== 'block' && Object.keys(knobs.pages[key as PageScope] ?? {}).length > 0 && (
               <span style={{
                 width: 4, height: 4, borderRadius: '50%',
                 background: scope === key ? 'rgba(255,255,255,0.7)' : 'var(--ac)',

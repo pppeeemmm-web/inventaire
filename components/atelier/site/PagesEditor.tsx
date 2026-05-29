@@ -15,6 +15,8 @@ import { getDescriptor, kindsAllowedOnPage } from '@/lib/site-blocks'
 interface Props {
   config: PortfolioConfig
   setConfig: (next: PortfolioConfig) => void
+  /** Called when a block is expanded (uid) or collapsed (null) — drives KnobsPanel block scope. */
+  onBlockSelect?: (uid: string | null) => void
 }
 
 const PAGE_LABEL_KEY: Record<Page, 'site_page_landing' | 'site_page_works' | 'site_page_about'> = {
@@ -79,7 +81,7 @@ function makeUid(): string {
  * and the new composition blocks here. Once every kind has a descriptor +
  * editor, the legacy surface can be retired.
  */
-export default function PagesEditor({ config, setConfig }: Props) {
+export default function PagesEditor({ config, setConfig, onBlockSelect }: Props) {
   const { t, lang } = useI18n()
   const [activePage, setActivePage] = useState<Page>('about')
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
@@ -142,8 +144,13 @@ export default function PagesEditor({ config, setConfig }: Props) {
   function toggleExpanded(uid: string) {
     setExpanded(prev => {
       const n = new Set(prev)
-      if (n.has(uid)) n.delete(uid)
-      else n.add(uid)
+      if (n.has(uid)) {
+        n.delete(uid)
+        onBlockSelect?.(null)
+      } else {
+        n.add(uid)
+        onBlockSelect?.(uid)
+      }
       return n
     })
   }

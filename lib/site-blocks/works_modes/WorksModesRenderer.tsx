@@ -1,20 +1,13 @@
-/**
- * works_modes public renderer.
- *
- * The /works page still renders via the legacy WorksClient path (which reads
- * config.works_modes directly). This renderer returns null so the registry
- * iteration on /works produces no output — the page shell handles the actual
- * layout dispatch outside the block iteration loop.
- *
- * Phase 2+ will wire the actual layout here once WorksPageClient is refactored
- * to pass works[] + modeMap through the block rendering context.
- */
+'use client'
+
+import { useWorksRenderCtx } from './WorksRenderCtx'
+import WorksModeGallery from '@/components/public/WorksModeGallery'
+import type { BlockRendererProps } from '@/lib/site-blocks/registry'
 
 export type WorksModesFields = {
   /** References config.works_modes[].id */
   mode_id: string
-  /** Display hints — populated by deriveDefaultPages; may be stale if the
-   *  mode is later renamed via the legacy editor. */
+  /** Display hints — may be stale if the mode is later renamed via the legacy editor. */
   label_fr?: string
   label_en?: string
   layout?: string
@@ -27,6 +20,17 @@ export const WORKS_MODES_DEFAULTS: WorksModesFields = {
   layout: 'carousel',
 }
 
-export default function WorksModesRenderer(): null {
-  return null
+/**
+ * Public works_modes renderer.
+ *
+ * Reads works + modeMap + siteTheme from WorksRenderCtx (provided by
+ * WorksClient). Looks up the mode by fields.mode_id and delegates to
+ * WorksModeGallery which contains the full carousel/layout rendering.
+ */
+export default function WorksModesRenderer({ fields }: BlockRendererProps<WorksModesFields>) {
+  const { works, modeMap, siteTheme } = useWorksRenderCtx()
+  const mode_id = (fields.mode_id as string | undefined) ?? ''
+  const mode = (mode_id ? modeMap.get(mode_id) : undefined) ?? [...modeMap.values()][0]
+  if (!mode) return null
+  return <WorksModeGallery works={works} mode={mode} siteTheme={siteTheme} />
 }
