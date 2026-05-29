@@ -83,6 +83,8 @@ type WorksMode = {
   cast_shadow_distance_px: number
   cast_shadow_blur_px: number
   mobile_fallback: WorksLayout | 'auto'
+  forest_panorama_r2_key: string | undefined
+  forest_panorama_pin_size: number | undefined
 }
 
 type WorksPublicRow = {
@@ -199,6 +201,8 @@ export default async function WorksPage() {
         cast_shadow_distance_px: migrateWorksCastShadowDistancePx(m.cast_shadow_distance_px),
         cast_shadow_blur_px: migrateWorksCastShadowBlurPx(m.cast_shadow_blur_px),
         mobile_fallback: migrateWorksMobileFallback(m.mobile_fallback),
+        forest_panorama_r2_key: typeof m.forest_panorama_r2_key === 'string' ? m.forest_panorama_r2_key : undefined,
+        forest_panorama_pin_size: typeof m.forest_panorama_pin_size === 'number' && m.forest_panorama_pin_size > 0 ? m.forest_panorama_pin_size : undefined,
       }))
   }
   // F1: works_collections / sections fallback removed — works_modes only.
@@ -220,6 +224,8 @@ export default async function WorksPage() {
       cast_shadow_distance_px: WORKS_CAST_SHADOW_DISTANCE_DEFAULT,
       cast_shadow_blur_px: WORKS_CAST_SHADOW_BLUR_DEFAULT,
       mobile_fallback: 'auto' as const,
+      forest_panorama_r2_key: undefined,
+      forest_panorama_pin_size: undefined,
     }]
   }
 
@@ -275,6 +281,8 @@ export default async function WorksPage() {
       cast_shadow_distance_px: WORKS_CAST_SHADOW_DISTANCE_DEFAULT,
       cast_shadow_blur_px: WORKS_CAST_SHADOW_BLUR_DEFAULT,
       mobile_fallback: 'auto' as const,
+      forest_panorama_r2_key: undefined,
+      forest_panorama_pin_size: undefined,
     }]
   }
 
