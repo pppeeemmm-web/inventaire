@@ -156,10 +156,8 @@ export interface WorksMode {
   mobile_fallback: WorksLayout | 'auto'
   /** R2 key for the forest panorama background image (map layout only). */
   forest_panorama_r2_key?: string
-  /** Base diameter of pinned work thumbnails in px (24–96). Default 48. */
+  /** Base diameter of pinned work images in px (24–96). Default 48. */
   forest_panorama_pin_size?: number
-  /** Depth falloff 0–1: pins higher on panorama (y≈0) scale down. 0 = flat. Default 0.5. */
-  forest_panorama_depth?: number
   /** R2 key for the looping interior video (motion_interior layout only). */
   motion_interior_r2_key?: string
 }
@@ -470,8 +468,6 @@ function migrateModes(raw: any, fallbackCollections: CollectionItem[]): WorksMod
       ? m.forest_panorama_r2_key : undefined,
     forest_panorama_pin_size: typeof m.forest_panorama_pin_size === 'number' && m.forest_panorama_pin_size > 0
       ? Math.min(96, Math.max(24, m.forest_panorama_pin_size)) : undefined,
-    forest_panorama_depth: typeof m.forest_panorama_depth === 'number'
-      ? Math.min(1, Math.max(0, m.forest_panorama_depth)) : undefined,
     motion_interior_r2_key: typeof m.motion_interior_r2_key === 'string' && m.motion_interior_r2_key
       ? m.motion_interior_r2_key : undefined,
   }))

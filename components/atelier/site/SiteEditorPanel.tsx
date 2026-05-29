@@ -195,25 +195,17 @@ function MapLayoutSection({
         }}
       />
 
-      {/* Pin size + depth sliders */}
+      {/* Base size slider — max size at z=0 */}
       {mode.forest_panorama_r2_key && (
-        <div style={{ marginBottom: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div style={{ marginBottom: 10 }}>
           <Slider
-            label={lang === 'fr' ? 'Taille pins' : 'Pin size'}
+            label={lang === 'fr' ? 'Taille œuvres' : 'Work size'}
             min={24} max={96} step={2}
             value={mode.forest_panorama_pin_size ?? 48}
             onChange={v => updateMode(activeMode, { forest_panorama_pin_size: v })}
             defaultValue={48}
             onReset={() => updateMode(activeMode, { forest_panorama_pin_size: undefined })}
             unit="px"
-          />
-          <Slider
-            label={lang === 'fr' ? 'Profondeur Z' : 'Z depth'}
-            min={0} max={1} step={0.05}
-            value={mode.forest_panorama_depth ?? 0.5}
-            onChange={v => updateMode(activeMode, { forest_panorama_depth: v })}
-            defaultValue={0.5}
-            onReset={() => updateMode(activeMode, { forest_panorama_depth: undefined })}
           />
         </div>
       )}
@@ -222,7 +214,6 @@ function MapLayoutSection({
         works={oeuvres}
         panoramaKey={mode.forest_panorama_r2_key}
         pinSize={mode.forest_panorama_pin_size}
-        depthFalloff={mode.forest_panorama_depth}
         collections={mode.collections}
       />
     </div>

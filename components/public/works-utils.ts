@@ -58,10 +58,8 @@ export interface WorksMode {
   mobile_fallback?: WorksLayout | 'auto'
   /** R2 key for the forest panorama background (map layout). */
   forest_panorama_r2_key?: string
-  /** Base diameter of pinned work thumbnails in px. Default 48. */
+  /** Base diameter of pinned work images in px. Default 48. */
   forest_panorama_pin_size?: number
-  /** Depth falloff 0–1: pins higher on panorama scale down. Default 0.5. */
-  forest_panorama_depth?: number
   /** R2 key for the looping interior video (motion_interior layout). */
   motion_interior_r2_key?: string
 }
@@ -71,6 +69,7 @@ export type ForestPin = {
   work_id: number
   x: number   // lng stored in forest_pins
   y: number   // lat stored in forest_pins
+  z: number   // depth 0 (close/big) → 100 (far/small)
   label: string | null
 }
 

@@ -123,30 +123,24 @@ export default function WorksMapLayout({ works, mode, forestPins, siteTheme }: P
         background: 'rgba(0,0,0,0.2)', pointerEvents: 'none',
       }} />
 
-      {/* Work pins — Z depth: pins near top (y≈0) shrink to look far away */}
+      {/* Work pins — per-pin z controls size: z=0 close/big, z=100 far/small */}
       {pinsWithWorks.map(({ pin, work }) => {
         const thumb = thumbUrl(work.txtImageNameLink)
         const title = work.Titre ?? ''
         const baseSize = mode.forest_panorama_pin_size ?? 48
-        const depth = mode.forest_panorama_depth ?? 0.5
-        const depthScale = 1 - depth * (1 - pin.y / 100) * 0.7
+        const depthScale = 1 - (pin.z / 100) * 0.75
         const sz = Math.round(baseSize * depthScale)
         return (
           <button
             key={pin.work_id}
             type="button"
             className="wmap-pin"
-            style={{ left: `${pin.x}%`, top: `${pin.y}%`, zIndex: Math.round(pin.y) }}
+            style={{ left: `${pin.x}%`, top: `${pin.y}%`, zIndex: Math.round(100 - pin.z) }}
             onClick={() => openZoom(work)}
             aria-label={title}
           >
             {thumb && (
-              <img
-                src={thumb}
-                alt={title}
-                className="wmap-thumb"
-                style={{ width: sz, height: sz }}
-              />
+              <img src={thumb} alt={title} className="wmap-thumb" style={{ width: sz, height: sz }} />
             )}
             <span className="wmap-pin-label" style={{ fontSize: Math.max(6, Math.round(7 * depthScale)) }}>
               {title}
