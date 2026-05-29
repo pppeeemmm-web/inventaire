@@ -17,3 +17,6 @@ Completed programmes, superseded plans, and slice handoffs. **Do not execute fro
 | `HANDOFF_SLICE6.md` | Slice 6 Pivot Atlas / `edge_fact` |
 | `HANDOFF_SLICE7.md` | Slice 7 analog fallbacks + graph CSV backup |
 | `HANDOFF_SLICE8.md` | Slice 8 embeddings |
+| `HANDOFF_A0_CASTS.md` | A0 Supabase `as any` cast cleanup — complete (2026-05-29) |
+| `HANDOFF_SITE_BLOCKS.md` | Site block registry — session 1 (superseded by live [`../HANDOFF_SITE_BLOCKS_3.md`](../HANDOFF_SITE_BLOCKS_3.md)) |
+| `HANDOFF_SITE_BLOCKS_2.md` | Site block registry — session 2 (superseded by live [`../HANDOFF_SITE_BLOCKS_3.md`](../HANDOFF_SITE_BLOCKS_3.md)) |

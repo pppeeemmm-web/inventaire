@@ -10,7 +10,7 @@ _Version-controlled checklist + non-binding roadmap items. Prefer this file over
 
 | # | Track | Item | Notes |
 |---|--------|------|--------|
-| 1 | **Site editor** | Block-registry open work | `/` + `/works` still legacy-path; KnobsPanel page/block scopes + circadian pending — see [`HANDOFF_SITE_BLOCKS_3.md`](./HANDOFF_SITE_BLOCKS_3.md) §4 |
+| 1 | **Site editor** | Block-registry open work | Keystone: `/` + `/works` still legacy render path (Hero/Identity/WorksModes renderers are null stubs). Then circadian public wiring (gated on keystone), KnobsPanel block scope, `map`/`motion_interior` assets, a11y. Page scope + circadian controller already shipped — see [`HANDOFF_SITE_BLOCKS_3.md`](./HANDOFF_SITE_BLOCKS_3.md) §4 |
 | 2 | **Deferred** | **`/works` gallery + F1** | WIP paused; see Desktop section below |
 
 ---

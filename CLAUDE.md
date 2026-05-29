@@ -57,7 +57,11 @@ Repo guide. Conflict → ask owner before edit.
 - Atelier shell: first paint loads exact `Oeuvres` count + first keyset chunk; references hydrate post-paint via `fetchAtelierShellPostPaint`; subset UI must disclose loaded batch vs catalogue total.
 - Keep `SITE_MAP.md`, `docs/TODO.md`, `docs/SYSTEM_LEDGER.md`, `docs/README.md` in sync when routes/features change; don't trust over live code when stale.
 
-## UI Copy / i18n
+## Docs ↔ Code Currency
+- Refactor/feature landing → update affected docs IN THE SAME change (handoff "Open work", `docs/TODO.md`, `SITE_MAP.md`, `docs/SYSTEM_LEDGER.md` as relevant). A change with stale docs is not done.
+- Before marking any item done/shipped/complete in a handoff or TODO, VERIFY against live code (read the file / grep the symbol) — never from memory or prior handoff prose. Same evidence bar as the git status words.
+- Handoff "Open work" sections carry a `Verified against live code <YYYY-MM-DD>` stamp. Touch the feature → re-verify + re-stamp. Unstamped, or stamp older than the code it describes → treat as suspect; re-check before acting or quoting "done".
+- Completed handoffs move to `docs/archive/` (historical; never execute from there). Live checklist = `docs/TODO.md`.
 - All user copy: `useI18n().t(key)`. No hardcoded JSX/alert/confirm/title/placeholder copy.
 - New copy: one module in `lib/i18n/messages/*.messages.ts` via `defineMessages()` with FR+EN together; register in `lib/i18n/messages/index.ts`.
 - Runtime: [`resolveMessage`](lib/i18n/resolve-message.ts) — feature messages first, legacy `fr.ts`/`en.ts` fallback; dev `console.warn` on miss.

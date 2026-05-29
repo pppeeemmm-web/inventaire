@@ -2,7 +2,9 @@
 
 Session: 2026-05-28. Scope: completing Phase 2 knob controller. Owner: read §4 Open work before adding features.
 
-Companion to HANDOFF_SITE_BLOCKS_2.md (prior session). Read both if cold.
+**Corrected 2026-05-29** — §4 re-verified file-by-file against live code. Page scope and the circadian controller were marked "open" but are in fact shipped; §4 now reflects what is actually unbuilt.
+
+Prior sessions: HANDOFF_SITE_BLOCKS.md + HANDOFF_SITE_BLOCKS_2.md (both archived under `docs/archive/`). Read if cold.
 
 ---
 
@@ -111,81 +113,41 @@ resolveKnobs(cfg, page, blockOverride?) → KnobValues
   cascade: cfg.site → cfg.pages[page] → blockOverride
 ```
 
-`KnobValues.circ` and `KnobValues.a11y` exist in the type but are NOT in `KnobFamily` and not surfaced in the KnobsPanel families. They are schema slots for Phase 5.
+`KnobValues.circ` and `KnobValues.a11y` exist in the type but are NOT in `KnobFamily` and not part of the 8 family accordions. `circ` is now driven by `lib/circadian-knobs.ts` and edited via the dedicated `CircadianSection` (site scope). `a11y` remains an unbuilt schema slot for Phase 5.
 
 ---
 
 ## 4. Open work
 
-### 4.1 KnobsPanel — page & block scope tabs (deferred from Phase 2 UI)
+> **Re-verified against live code 2026-05-29**, file-by-file. Two items previously listed here as open are in fact shipped — see "Shipped since this handoff" below. The remaining open items are ordered by what unblocks what.
 
-Currently only the "Site" tab is implemented. The full spec calls for:
+### Shipped since this handoff (corrects earlier stale claims)
 
-**Page scope (`Landing | Works | About` tabs):**
-- Each shows `config.knobs.pages[page]` as sparse `KnobFamilyOverrides`
-- Each family has an "Override" toggle. Off = grayed sliders showing inherited site value; On = saves to `pages[page].family`
-- Orange dot when a page has any override for that family
+- **KnobsPanel page scope** — live. `KnobsPanel.tsx`: `Scope = 'site' | 'landing' | 'works' | 'about'`, scope bar (`SCOPE_TABS`), per-page `KnobFamilyOverrides`, per-family override toggle, per-page orange dot.
+- **Circadian controller (data + UI)** — live. `lib/circadian-knobs.ts` holds the 9-period keyframe table, `interpolateCircadianSnapshot`, `applyCircadianToKnobs` (patches only the families in `circ.drives`), and `CIRCADIAN_PRESETS` (sun / gallery / theatre / custom). `KnobsPanel.CircadianSection` renders preset chips + auto toggle + manual-minute scrubber + 4 drive toggles (site scope only).
+- **`gallery_strip` renderer** — real renderer (returns null only when empty), not a stub.
 
-**Block scope:**
-- Only available when a block is selected in PagesEditor
-- Edits `selectedBlock.knob_override: KnobFamilyOverrides`
-- Requires passing `selectedBlockUid` + `onBlockOverrideChange` into KnobsPanel or SiteEditorPanel
+### 4.1 `/` + `/works` still on the legacy render path  ← keystone
 
-Implementation approach:
-1. Extend `KnobsPanel` props with `activePage: 'landing' | 'works' | 'about'` (set by SiteEditorPanel based on scroll/selection)
-2. Add scope tabs to the bar: `[Site] [Accueil] [Œuvres] [À propos]`
-3. Site scope: unchanged
-4. Page scope: render each family with `overrideEnabled` flag; toggle adds/removes the family entry from `pages[scope]`
-5. Block scope: deferred further — needs editor context plumbing
+`HeroRenderer`, `IdentityRenderer`, `WorksModesRenderer` are unconditional `(): null { return null }` stubs (verified 2026-05-29). Only `/about` is registry-driven. `/` renders via the legacy `LandingPage`; `/works` via the legacy `WorksClient` (reads `config.works_modes` directly). Refactoring `LandingPage` + `WorksClient` to iterate `pages.landing` / `pages.works` through the block registry is the big structural item — most of the rest either folds into it (4.2) or is independent.
 
-### 4.2 Circadian controller (deferred from Phase 2)
+### 4.2 Circadian — public wiring (last mile, gated on 4.1)
 
-The `KnobValues.circ` family (not in `KnobFamily`, not in the current panel) drives time-based variation:
+Controller + panel are done (see above). What remains: call `applyCircadianToKnobs(resolvedKnobs, minuteOfDay)` in the public landing client — `new Date().getHours() * 60 + getMinutes()` when `circ.auto`, else `circ.manual_minute` for preview. Cannot land until `/` iterates the registry (4.1): there is no public block render to apply the knobs to yet.
 
-```ts
-circ: {
-  auto: boolean          // when true, use visitor's clock
-  manual_minute: number  // 0–1439 for scrubber preview
-  drives: {
-    light: boolean
-    shadow: boolean
-    bg: boolean
-    atm: boolean
-  }
-}
-```
+### 4.3 KnobsPanel — block scope (deferred)
 
-**What needs building:**
+Site + page scopes are live; block scope is not. Needs `selectedBlockUid` + `onBlockOverrideChange` plumbed from PagesEditor into KnobsPanel, editing `selectedBlock.knob_override: KnobFamilyOverrides`, surfaced as a 5th scope entry enabled only when a block is selected.
 
-1. **`lib/landing-text-shadow.ts`** — replace the 5-period keyframe table with a 9-period one covering the full diurnal cycle (pre-dawn, dawn, morning, midday, afternoon, golden-hour, dusk, evening, night). The existing `CircadianSnapshot` type only covers text-shadow. Extend or replace with a full type:
-   ```ts
-   export type CircadianSnapshot = {
-     light: Partial<KnobValues['light']>
-     shadow: Partial<KnobValues['shadow']>
-     bg: Partial<KnobValues['bg']>
-     atm: Partial<KnobValues['atm']>
-   }
-   ```
-
-2. **`applyCircadianToKnobs(knobs: KnobValues, minuteOfDay: number): KnobValues`** — reads `knobs.circ.drives`, interpolates the 9-period table, patches only the driven families. Lives in `lib/landing-text-shadow.ts` or a new `lib/circadian-knobs.ts`.
-
-3. **Circadian section in `KnobsPanel`** — below the 8 families, a collapsible "CIRCADIEN" section:
-   - `[checkbox] Automatique (horloge du visiteur)`
-   - Scrubber: 0–1439 manual_minute slider
-   - Drive toggles: `[x] Lumière  [x] Ombres  [x] Fond  [x] Atmosphère`
-   - 4 philosophy presets: Sun-tracking / Gallery / Theatrical / Custom (chips like light presets)
-
-4. **`applyCircadianToKnobs` wired into the public page client**: when `circ.auto = true`, call with `new Date().getHours() * 60 + new Date().getMinutes()`.
-
-### 4.3 Phase 3 — `map` + `motion_interior` layouts (blocked on assets)
+### 4.4 Phase 3 — `map` + `motion_interior` layouts (blocked on assets)
 
 - `map` needs: forest panorama bg R2 asset + `forest_pins` Supabase table
 - `motion_interior` needs: `interior-loop.webm` from artist
-- Both are placeholder layouts (`WORKS_LAYOUT_PLACEHOLDERS` set) and show ◌ badge in the editor
+- Both are placeholder layouts (`WORKS_LAYOUT_PLACEHOLDERS`) showing ◌ in the editor. No `lib/site-blocks/map` or `/motion_interior` dir yet.
 
-### 4.4 Phase 5 — a11y (deferred)
+### 4.5 Phase 5 — a11y (deferred)
 
-`KnobValues.a11y` schema slots exist: `{ type_size_step: number, high_contrast: boolean }`. No UI yet.
+`KnobValues.a11y` schema slots exist: `{ type_size_step, high_contrast }`. No UI yet.
 
 ---
 
@@ -194,10 +156,11 @@ circ: {
 | File | Purpose |
 |---|---|
 | `lib/site-blocks/knob-types.ts` | KnobValues, KnobFamilyOverrides, KnobsConfig, defaults, migration |
-| `lib/site-blocks/resolve-knobs.ts` | resolveKnobs(), mergeKnobFamilies() |
+| `lib/site-blocks/resolve-knobs.ts` | resolveKnobs(), mergeKnobFamilies() (pure; no circadian) |
+| `lib/circadian-knobs.ts` | 9-period keyframe table, applyCircadianToKnobs, CIRCADIAN_PRESETS |
 | `lib/site-blocks/index.ts` | barrel — imports + re-exports everything |
 | `components/atelier/portfolio/shared/Slider.tsx` | shared row/stack slider |
-| `components/atelier/site/KnobsPanel.tsx` | Phase 2 panel (site scope only) |
+| `components/atelier/site/KnobsPanel.tsx` | knob panel — site + page scopes + CircadianSection (block scope pending) |
 | `components/atelier/site/SiteEditorPanel.tsx` | top-level editor shell |
 | `lib/i18n/messages/knobs-panel.messages.ts` | 38 keys for KnobsPanel |
 | `lib/works-mode-light.ts` | light presets, migrateWorksMobileFallback, resolveWorksMobileLayout |
@@ -223,5 +186,4 @@ pwsh -Command "& ./scripts/release-truth.ps1 -Checks 'typecheck,i18n'"
 
 ---
 
-End of handoff. Status: pushed to `origin/main` through `8662a60`. Working tree clean.
-Phase 2 data layer complete. Phase 2 UI: site-scope KnobsPanel live. Page/block scopes + circadian controller remain.
+End of handoff. Status (2026-05-29): Phase 2 data layer + UI complete — site **and** page scopes live, circadian controller (data + panel) live. Open: `/` + `/works` legacy render path (keystone), circadian public wiring (gated on it), KnobsPanel block scope, `map`/`motion_interior` assets, a11y. See §4.
