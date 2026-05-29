@@ -15,6 +15,7 @@ interface Props {
 interface ZoomedWork { work: Work; src: string }
 
 const BASE_RADIUS = 600
+const PERSPECTIVE = 500  // tight perspective = strong near/far size difference
 
 export default function WorksMapLayout({ works, mode, forestPins }: Props) {
   const [rotation, setRotation] = useState(0)
@@ -53,7 +54,7 @@ export default function WorksMapLayout({ works, mode, forestPins }: Props) {
       <div
         style={{
           position: 'absolute', inset: 0,
-          perspective: '1000px',
+          perspective: `${PERSPECTIVE}px`,
           perspectiveOrigin: '50% 50%',
           cursor: isDragging ? 'grabbing' : 'grab',
           userSelect: 'none',
@@ -84,9 +85,7 @@ export default function WorksMapLayout({ works, mode, forestPins }: Props) {
             const thumb = thumbUrl(work.txtImageNameLink)
             // pin.x 0-100 → angle 0-360° around Y axis
             const angle = (pin.x / 100) * 360
-            // pin.z 0-100 → radius: z=0 at full radius (near), z=100 at 40% radius (far)
-            const radius = BASE_RADIUS * (1 - (pin.z / 100) * 0.6)
-            // pin.y 0-100 → vertical: 50 = center, 0 = top, 100 = bottom
+            const radius = BASE_RADIUS
             const vy = (pin.y - 50) * 6
             const sz = pin.size ?? baseSize
 

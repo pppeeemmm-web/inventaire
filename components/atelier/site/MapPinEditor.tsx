@@ -7,7 +7,6 @@ import {
   listForestPins,
   upsertForestPin,
   deleteForestPin,
-  updateForestPinZ,
   updateForestPinSize,
 } from '@/app/atelier/(portal)/portfolio/forest-pins-actions'
 import type { ForestPin } from '@/components/public/works-utils'
@@ -75,13 +74,6 @@ export function MapPinEditor({ works, panoramaKey, pinSize = 48, collections = [
     })
   }
 
-  function handleSetZ(workId: number, z: number) {
-    setPins(prev => prev.map(p => p.work_id === workId ? { ...p, z } : p))
-    startTransition(async () => {
-      await updateForestPinZ(workId, z)
-    })
-  }
-
   function handleSetSize(workId: number, size: number | null) {
     setPins(prev => prev.map(p => p.work_id === workId ? { ...p, size } : p))
     startTransition(async () => {
@@ -131,8 +123,7 @@ export function MapPinEditor({ works, panoramaKey, pinSize = 48, collections = [
           const work = works.find(w => w.OeuvreID === pin.work_id)
           const thumb = thumbUrl(work?.txtImageNameLink)
           const isArmed = armedId === pin.work_id
-          const depthScale = 1 - (pin.z / 100) * 0.75
-          const sz = Math.round((pin.size ?? pinSize) * depthScale)
+          const sz = pin.size ?? pinSize
           return (
             <div
               key={pin.work_id}
@@ -144,9 +135,9 @@ export function MapPinEditor({ works, panoramaKey, pinSize = 48, collections = [
                 backgroundImage: thumb ? `url(${thumb})` : 'none',
                 backgroundSize: 'cover',
                 backgroundColor: thumb ? 'transparent' : (isArmed ? 'var(--ac)' : 'rgba(255,180,40,0.9)'),
-                border: `${Math.max(1, Math.round(depthScale * 2))}px solid rgba(255,255,255,0.6)`,
-                boxShadow: `0 ${Math.round(depthScale * 3)}px ${Math.round(depthScale * 8)}px rgba(0,0,0,0.55)`,
-                zIndex: Math.round(100 - pin.z), pointerEvents: 'none',
+                border: '1px solid rgba(255,255,255,0.6)',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.55)',
+                pointerEvents: 'none',
                 transition: 'transform .15s',
               }}
             />
@@ -230,30 +221,22 @@ export function MapPinEditor({ works, panoramaKey, pinSize = 48, collections = [
                 )}
               </div>
 
-              {/* Z + size — single compact row when placed */}
+              {/* Size slider — only when placed */}
               {existing && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '2px 6px 5px 34px' }}>
-                  <span style={{ fontSize: 7, color: 'var(--tx2)', flexShrink: 0 }}>Z</span>
-                  <input
-                    type="range" min={0} max={100} step={1}
-                    value={existing.z}
-                    onChange={e => handleSetZ(work.OeuvreID, Number(e.target.value))}
-                    style={{ width: 80, flexShrink: 0, accentColor: 'var(--ac)', cursor: 'pointer' }}
-                  />
-                  <span style={{ fontSize: 7, color: 'var(--tx2)', width: 16, flexShrink: 0 }}>{existing.z}</span>
-                  <span style={{ fontSize: 7, color: 'var(--tx2)', flexShrink: 0, marginLeft: 4 }}>{lang === 'fr' ? 'T' : 'S'}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '2px 6px 5px 34px' }}>
+                  <span style={{ fontSize: 7, color: 'var(--tx2)', flexShrink: 0 }}>{lang === 'fr' ? 'Taille' : 'Size'}</span>
                   <input
                     type="range" min={8} max={200} step={4}
                     value={existing.size ?? pinSize}
                     onChange={e => handleSetSize(work.OeuvreID, Number(e.target.value))}
-                    style={{ width: 80, flexShrink: 0, accentColor: 'var(--ac)', cursor: 'pointer' }}
+                    style={{ width: 100, flexShrink: 0, accentColor: 'var(--ac)', cursor: 'pointer' }}
                   />
                   <span style={{ fontSize: 7, color: 'var(--tx2)', width: 24, flexShrink: 0 }}>{existing.size ?? pinSize}</span>
                   {existing.size !== null && (
                     <button
                       type="button"
                       onClick={() => handleSetSize(work.OeuvreID, null)}
-                      title={lang === 'fr' ? 'Réinitialiser taille' : 'Reset size'}
+                      title={lang === 'fr' ? 'Réinitialiser' : 'Reset'}
                       style={{ border: 'none', background: 'none', color: 'var(--tx2)', cursor: 'pointer', fontSize: 9, padding: 0, lineHeight: 1, flexShrink: 0 }}
                     >↺</button>
                   )}
