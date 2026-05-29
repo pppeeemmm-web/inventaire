@@ -15,7 +15,7 @@ interface Props {
 interface ZoomedWork { work: Work; src: string }
 
 const BASE_RADIUS = 600
-const PERSPECTIVE = 500  // tight perspective = strong near/far size difference
+const PERSPECTIVE = 1400  // must be >> radius; near/far ratio = 1400/800 vs 1400/2000 ≈ 2.5×
 
 export default function WorksMapLayout({ works, mode, forestPins }: Props) {
   const [rotation, setRotation] = useState(0)
