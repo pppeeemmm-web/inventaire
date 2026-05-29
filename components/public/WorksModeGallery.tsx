@@ -996,7 +996,7 @@ export default function WorksModeGallery({ works, mode, siteTheme, a11y, forestP
       ) : layout === 'letter' ? (
         <WorksLetterLayout works={chapterWorks} mode={mode} bevelShadow={bevelShadow} light={light} siteTheme={siteTheme} />
       ) : layout === 'map' ? (
-        <WorksMapLayout works={chapterWorks} mode={mode} forestPins={forestPins ?? []} siteTheme={siteTheme} />
+        <WorksMapLayout works={works} mode={mode} forestPins={forestPins ?? []} siteTheme={siteTheme} />
       ) : layout === 'motion_interior' ? (
         <WorksMotionInteriorLayout works={chapterWorks} mode={mode} siteTheme={siteTheme} />
       ) : WORKS_LAYOUT_PLACEHOLDERS.has(layout as WorksLayout) ? (
