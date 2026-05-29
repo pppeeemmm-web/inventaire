@@ -59,10 +59,10 @@ _Version-controlled checklist + non-binding roadmap items. Prefer this file over
 - [x] **C-partial** `pipeline-shared.ts`, list panel extractions.
 - [x] WorkDrawer further decomposition (`DrawerContent`) — IdentitySection wired; NewContact/Unsaved/Gift modals extracted (2026-05-28).
 
-## Desktop — public site (`/works` deferred)
+## Desktop — public site
 
 - [ ] **`/works` gallery** — cm-scaled wall scroll in `WorksClient.tsx` *(WIP on hold; not in push set)*.
-- [ ] **F1** Sunset `works_collections` / `sections` fallback; `works_modes` only; drop PDF diagnostic log.
+- [x] **F1** Sunset `works_collections` / `sections` fallback; `works_modes` only; drop PDF diagnostic log — 2026-05-29.
 
 ## Mobile field-tool — Phases 1–8
 

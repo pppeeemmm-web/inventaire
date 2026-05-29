@@ -126,9 +126,6 @@ export async function generatePortfolioPdf(
     // 3. Resolve sections (atelier-driven structure)
     let sections = resolveSections(rawConfig, allWorks, opts, worksResult.catalogueThemes)
 
-    console.log('[portfolio-pdf] final sections:',
-      sections.map(s => ({ id: s.id, title: s.title || '(none)', works: s.works.length })))
-
     // Fallback: no atelier source produced works → emit all public works in DB order
     if (sections.length === 0) {
       console.warn('[portfolio-pdf] ⚠ no atelier source produced works — falling back to all public works in DB order')
@@ -370,12 +367,8 @@ function resolveConfig(raw: any, lang: Lang): PdfPortfolioConfig {
 }
 
 /**
- * Build sections in the order configured by the atelier.
- *
- * Multiple atelier tabs can hold collections (sections / works_modes / works_collections).
- * We try each source in priority order and KEEP THE FIRST ONE THAT ACTUALLY CLAIMS WORKS.
- * This handles the common case where the user configures works in one tab but another tab
- * holds stale/empty entries.
+ * Build sections from works_modes[0].collections.
+ * F1: works_collections / sections legacy paths removed — works_modes only.
  *
  * Within each section, works are ordered by:
  *   1. manual_work_order[]  (atelier drag order)
@@ -389,28 +382,17 @@ function resolveSections(
 ): PdfSection[] {
   const lang = opts.lang
 
-  // Build candidate source lists with their origin label
-  const candidates: { label: string; list: any[] }[] = [
-    { label: 'sections',                list: Array.isArray(raw?.sections)          ? raw.sections          : [] },
-    { label: 'works_modes[0].collections',
-      list: Array.isArray(raw?.works_modes) && raw.works_modes[0] && Array.isArray(raw.works_modes[0].collections)
-        ? raw.works_modes[0].collections
-        : [] },
-    { label: 'works_collections',       list: Array.isArray(raw?.works_collections) ? raw.works_collections : [] },
-  ]
+  const sourceList =
+    Array.isArray(raw?.works_modes) && raw.works_modes[0] && Array.isArray(raw.works_modes[0].collections)
+      ? raw.works_modes[0].collections as any[]
+      : []
 
-  for (const cand of candidates) {
-    if (cand.list.length === 0) continue
-    const resolved = buildSectionsFrom(cand.list, allWorks, opts, lang, catalogueThemes)
-    const claimed  = resolved.reduce((acc, s) => acc + s.works.length, 0)
-    console.log(`[portfolio-pdf] source "${cand.label}": ${cand.list.length} collections → ${claimed} works claimed`)
-    if (claimed > 0) {
-      console.log(`[portfolio-pdf] using source: ${cand.label}`)
-      return resolved
-    }
-  }
+  if (sourceList.length === 0) return []
 
-  // No source produced any works
+  const resolved = buildSectionsFrom(sourceList, allWorks, opts, lang, catalogueThemes)
+  const claimed  = resolved.reduce((acc, s) => acc + s.works.length, 0)
+  if (claimed > 0) return resolved
+
   return []
 }
 

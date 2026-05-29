@@ -199,14 +199,14 @@ export default async function WorksPage() {
         mobile_fallback: migrateWorksMobileFallback(m.mobile_fallback),
       }))
   }
+  // F1: works_collections / sections fallback removed — works_modes only.
+  // If rawModes is empty, use a default carousel mode with no collections (anyCol
+  // fallback below will open-bucket it when there are public works to display).
   if (modes.length === 0) {
-    const fromLegacy = mapCollections(asCollectionRecords(cfg.works_collections), catalogueThemes)
-    const fromSections = mapCollections(asCollectionRecords(cfg.sections), catalogueThemes)
-    const cols = fromLegacy.length > 0 ? fromLegacy : fromSections
     modes = [{
       id: 'default', label_fr: 'Œuvres', label_en: 'Works',
       layout: 'carousel' as const,
-      collections: cols,
+      collections: [],
       outro_fr: '', outro_en: '',
       bevel_px: LANDING_HERO_BEVEL_PX_DEFAULT,
       bevel_profile: LANDING_HERO_BEVEL_PROFILE_DEFAULT,
