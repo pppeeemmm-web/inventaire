@@ -233,8 +233,8 @@ export function MapPinEditor({ works, panoramaKey, pinSize = 48, collections = [
               {/* Z depth + size sliders — only when pin is placed */}
               {existing && (
                 <>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 6px 0 34px' }}>
-                    <span style={{ fontSize: 7, color: 'var(--tx2)', letterSpacing: 0.5, flexShrink: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 6px 0 34px', maxWidth: 320 }}>
+                    <span style={{ fontSize: 7, color: 'var(--tx2)', letterSpacing: 0.5, flexShrink: 0, width: 36 }}>
                       {lang === 'fr' ? 'Prof. Z' : 'Z depth'}
                     </span>
                     <input
@@ -242,14 +242,14 @@ export function MapPinEditor({ works, panoramaKey, pinSize = 48, collections = [
                       min={0} max={100} step={1}
                       value={existing.z}
                       onChange={e => handleSetZ(work.OeuvreID, Number(e.target.value))}
-                      style={{ flex: 1, accentColor: 'var(--ac)', cursor: 'pointer' }}
+                      style={{ flex: 1, minWidth: 0, accentColor: 'var(--ac)', cursor: 'pointer' }}
                     />
                     <span style={{ fontSize: 7, color: 'var(--tx2)', width: 22, textAlign: 'right', flexShrink: 0 }}>
                       {existing.z}
                     </span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 6px 5px 34px' }}>
-                    <span style={{ fontSize: 7, color: 'var(--tx2)', letterSpacing: 0.5, flexShrink: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 6px 5px 34px', maxWidth: 320 }}>
+                    <span style={{ fontSize: 7, color: 'var(--tx2)', letterSpacing: 0.5, flexShrink: 0, width: 36 }}>
                       {lang === 'fr' ? 'Taille' : 'Size'}
                     </span>
                     <input
@@ -257,7 +257,7 @@ export function MapPinEditor({ works, panoramaKey, pinSize = 48, collections = [
                       min={8} max={200} step={4}
                       value={existing.size ?? pinSize}
                       onChange={e => handleSetSize(work.OeuvreID, Number(e.target.value))}
-                      style={{ flex: 1, accentColor: 'var(--ac)', cursor: 'pointer' }}
+                      style={{ flex: 1, minWidth: 0, accentColor: 'var(--ac)', cursor: 'pointer' }}
                     />
                     <span style={{ fontSize: 7, color: 'var(--tx2)', width: 22, textAlign: 'right', flexShrink: 0 }}>
                       {existing.size ?? pinSize}
