@@ -64,6 +64,12 @@ _Version-controlled checklist + non-binding roadmap items. Prefer this file over
 - [ ] **`/works` gallery** — cm-scaled wall scroll in `WorksClient.tsx` *(WIP on hold; not in push set)*.
 - [x] **F1** Sunset `works_collections` / `sections` fallback; `works_modes` only; drop PDF diagnostic log — 2026-05-29.
 
+### /works open follow-ups (from [`archive/HANDOFF_WORKS_LAYOUTS.md`](archive/HANDOFF_WORKS_LAYOUTS.md))
+
+- [ ] **Procession layout** — user reported "not working" but couldn't reproduce in preview. Needs: browser + OS + input device + scenario. Reopen only when repro steps provided.
+- [ ] **Bg gradient "barely visible"** — user flagged low contrast on `/works` stop sequence. Two paths: (a) configurable contrast / boost factor or (b) edit default gradient stops higher. Needs owner direction before code change.
+- [ ] **Carousel outro card** — `mode.outro_fr/en` not rendered; all other layouts use `OutroCard`. Wire or document intentional divergence.
+
 ## Mobile field-tool — Phases 1–8
 
 ### Phase 1 — Ring A
