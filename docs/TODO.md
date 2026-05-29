@@ -2,7 +2,7 @@
 
 _Version-controlled checklist + non-binding roadmap items. Prefer this file over a Desktop mirror._
 
-**Last refresh: 2026-05-29** — **V5 programme closed** (owner sign-off; slices 1–8 on `main`). Constellation UI split. Ops: O1 GRANT audit + R2 lifecycle on `paintings` verified. **A0 Supabase cast cleanup closed 2026-05-29** (`8819120`; Buckets C/B/A/D done, E/F left intentionally). **Block registry keystone + a11y closed 2026-05-29** (§4.1 landing + works, §4.2 circadian ATM tint, §4.3 KnobsPanel block scope, §4.5 a11y knobs — all shipped; §4.4 map/motion_interior blocked on assets; handoff archived [`docs/archive/HANDOFF_SITE_BLOCKS_3.md`](./archive/HANDOFF_SITE_BLOCKS_3.md)).
+**Last refresh: 2026-05-29** — **V5 programme closed** (owner sign-off; slices 1–8 on `main`). Constellation UI split. Ops: O1 GRANT audit + R2 lifecycle on `paintings` verified. **A0 Supabase cast cleanup closed 2026-05-29** (`8819120`; Buckets C/B/A/D done, E/F left intentionally). **Block registry keystone + a11y + §4.4 closed 2026-05-29** (§4.1–§4.3 + §4.5 a11y + §4.4 map/motion_interior layouts — all shipped; `forest_pins` live on DB; pending: R2 panorama + video assets; handoff archived [`docs/archive/HANDOFF_SITE_BLOCKS_3.md`](./archive/HANDOFF_SITE_BLOCKS_3.md)).
 
 ---
 
@@ -10,7 +10,7 @@ _Version-controlled checklist + non-binding roadmap items. Prefer this file over
 
 | # | Track | Item | Notes |
 |---|--------|------|--------|
-| 1 | **Site editor** | `map`/`motion_interior` layouts | Blocked on R2 assets + DB. `forest_pins` migration ready (`supabase/sql/forest_pins.sql`); `interior-loop.webm` still needed from artist. See [`archive/HANDOFF_SITE_BLOCKS_3.md`](archive/HANDOFF_SITE_BLOCKS_3.md) §4.4 |
+| 1 | **R2 assets** | Upload panorama + video for map/motion_interior | Layouts fully built. Drop `site/forest-panorama.avif` + `site/interior-loop.webm` in R2, paste keys in site editor → works immediately. Video tracking (AE keyframes) deferred. |
 | 2 | **Deferred** | `/works` gallery (cm-scaled wall scroll) | WIP on hold; see Desktop section below |
 
 ---
