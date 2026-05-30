@@ -73,7 +73,7 @@ export type ForestPin = {
   x: number        // lng — horizontal % (0–100)
   y: number        // lat — vertical % (0–100)
   z: number        // stacking order (higher paints in front)
-  size: number     // work width as % of scene width (vw); height follows natural aspect ratio
+  size: number     // work width as % of the 16:9 stage width; height follows natural aspect ratio
   rotation: number // Y-axis rotation in degrees (−180…180)
   label: string | null
 }

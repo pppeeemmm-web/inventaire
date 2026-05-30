@@ -2,7 +2,7 @@
 
 // Admin-only CRUD for forest_pins — the manual map layout placement editor.
 // x = lng, y = lat (float8; 0–100 = % position in the flat scene box).
-// z = stacking order, size = work width as % of scene width (vw), rotation = Y-axis degrees.
+// z = stacking order, size = work width as % of the 16:9 stage width, rotation = Y-axis degrees.
 
 import { logError } from '@/lib/error-reporter/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
