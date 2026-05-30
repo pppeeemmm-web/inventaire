@@ -49,6 +49,8 @@ interface Props {
   mode: WorksMode
   siteTheme: PublicSiteTheme
   a11y?: KnobValues['a11y']
+  /** Resolved knobs (site → works) — source of truth for light/shadow/frame. */
+  knobs?: KnobValues
   forestPins?: ForestPin[]
 }
 
@@ -94,7 +96,7 @@ function fitArtDisplaySize(
 // Grain SVG data URI — shared between CSS and 3D wall plane
 const GRAIN_BG = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E")`
 
-export default function WorksModeGallery({ works, mode, siteTheme, a11y, forestPins }: Props) {
+export default function WorksModeGallery({ works, mode, siteTheme, a11y, knobs = DEFAULT_KNOB_VALUES, forestPins }: Props) {
   const { t, lang } = useI18n()
 
   // §4.5 — a11y knobs: sync type zoom + high contrast to html root
@@ -128,16 +130,26 @@ export default function WorksModeGallery({ works, mode, siteTheme, a11y, forestP
     } catch { /* SSR: noop */ }
   }, [])
 
-  // Per-mode bevel + light — fall back to defaults so older configs still render.
-  const bevelPx = mode.bevel_px ?? LANDING_HERO_BEVEL_PX_DEFAULT
-  const bevelProfile = mode.bevel_profile ?? LANDING_HERO_BEVEL_PROFILE_DEFAULT
-  const manualTempK = mode.light_temp_k ?? WORKS_LIGHT_TEMP_DEFAULT
-  const manualDirDeg = mode.light_direction_deg ?? WORKS_LIGHT_DIRECTION_DEFAULT
-  const manualIntensityPct = mode.light_intensity_pct ?? WORKS_LIGHT_INTENSITY_DEFAULT
-  const circadianEnabled = mode.light_circadian === true
-  const castShadowOn = mode.cast_shadow_enabled !== false
-  const castDistance = mode.cast_shadow_distance_px ?? 15
-  const castBlur = mode.cast_shadow_blur_px ?? 22
+  // Bevel + light + shadow now come from the knobs cascade (site → works),
+  // not the legacy per-mode fields. Circadian is reintroduced via knobs.circ
+  // in a follow-up; static knob values drive the render here.
+  const bevelPx = knobs.frame.bevel_px
+  const bevelProfile = knobs.frame.bevel_profile
+  const manualTempK = knobs.light.temp_k
+  const manualDirDeg = knobs.light.direction_deg
+  const manualIntensityPct = knobs.light.intensity_pct
+  const circadianEnabled = false
+  const castShadowOn = knobs.shadow.enabled
+  const castDistance = knobs.shadow.distance_px
+  const castBlur = knobs.shadow.blur_px
+  const shadowOpacity = (knobs.shadow.opacity_pct ?? 100) / 100
+  // Light "exposure" knobs → a scene-level filter on the stage (works are its children).
+  const expoMul = (knobs.light.exposition_pct ?? 100) / 100
+  const contrastMul = (knobs.light.contrast_pct ?? 100) / 100
+  const warmthAmt = (knobs.light.warmth_pct ?? 0) / 100
+  const stageFilter = (expoMul === 1 && contrastMul === 1 && warmthAmt === 0)
+    ? 'none'
+    : `brightness(${expoMul.toFixed(3)}) contrast(${contrastMul.toFixed(3)}) sepia(${(warmthAmt * 0.4).toFixed(3)}) saturate(${(1 + warmthAmt * 0.5).toFixed(3)})`
 
   // Circadian tick — re-evaluate each minute when enabled.
   const [circadianTick, setCircadianTick] = useState(0)
@@ -515,6 +527,7 @@ export default function WorksModeGallery({ works, mode, siteTheme, a11y, forestP
           background: ${siteTheme.backgroundCss};
           overflow: hidden;
           touch-action: pan-y;
+          filter: ${stageFilter};
         }
         ${lightTempK !== WORKS_LIGHT_TEMP_DEFAULT ? `
         /* Wall tint — kelvin-driven overlay sits below the carousel cards (z 0). */
@@ -618,8 +631,8 @@ export default function WorksModeGallery({ works, mode, siteTheme, a11y, forestP
         }
         ` : ''}
         .w-card.center .w-art-mount {
-          filter: ${castShadowOn ? `drop-shadow(0 ${castDistance}px ${castBlur}px rgba(15,15,20,${(0.34 * light.intensity).toFixed(3)}))
-                  drop-shadow(0 ${Math.round(castDistance / 3.75)}px ${Math.round(castBlur / 3.14)}px rgba(15,15,20,${(0.22 * light.intensity).toFixed(3)}))` : 'none'};
+          filter: ${castShadowOn ? `drop-shadow(0 ${castDistance}px ${castBlur}px rgba(15,15,20,${(0.34 * light.intensity * shadowOpacity).toFixed(3)}))
+                  drop-shadow(0 ${Math.round(castDistance / 3.75)}px ${Math.round(castBlur / 3.14)}px rgba(15,15,20,${(0.22 * light.intensity * shadowOpacity).toFixed(3)}))` : 'none'};
         }
         .w-vitrine .w-card { --thickness: 130px; transform-origin: 50% 60%; }
         .w-vitrine .w-card.center .w-art-mount {

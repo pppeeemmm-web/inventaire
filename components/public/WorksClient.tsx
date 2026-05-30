@@ -22,11 +22,13 @@ interface Props {
   /** Gradient flush to viewport top (no nav bar sleeve). */
   navTransparent?: boolean
   a11y?: KnobValues['a11y']
+  /** Resolved knobs (site → works) — source of truth for light/shadow/frame/etc. */
+  knobs?: KnobValues
   forestPins?: ForestPin[]
 }
 
 export default function WorksClient({
-  works, modes, hiddenNavRoutes, navOrder, siteTheme, navTransparent = true, a11y, forestPins,
+  works, modes, hiddenNavRoutes, navOrder, siteTheme, navTransparent = true, a11y, knobs, forestPins,
 }: Props) {
   const { t } = useI18n()
 
@@ -62,7 +64,7 @@ export default function WorksClient({
         <PublicNav active="works" prefix="w" hiddenNavRoutes={hiddenNavRoutes} navOrder={navOrder} />
         <h1 className="w-page-h1-sr-only">{t('pub_works')}</h1>
         {activeMode && (
-          <WorksModeGallery works={works} mode={activeMode} siteTheme={siteTheme} a11y={a11y} forestPins={forestPins} />
+          <WorksModeGallery works={works} mode={activeMode} siteTheme={siteTheme} a11y={a11y} knobs={knobs} forestPins={forestPins} />
         )}
       </div>
     </WorksRenderCtx.Provider>
