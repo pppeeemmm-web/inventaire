@@ -39,15 +39,15 @@ export async function upsertForestPin(
   y: number,
   z = 0,
   label?: string,
+  size?: number | null,
 ): Promise<void> {
   await assertAdmin()
   const sb = await createServiceClient()
+  const payload: Record<string, unknown> = { work_id: workId, lng: x, lat: y, z, label: label ?? null }
+  if (size !== undefined) payload.size = size
   const { error } = await sb
     .from('forest_pins')
-    .upsert(
-      { work_id: workId, lng: x, lat: y, z, label: label ?? null },
-      { onConflict: 'work_id' },
-    )
+    .upsert(payload, { onConflict: 'work_id' })
   if (error) logError('upsertForestPin', error)
 }
 

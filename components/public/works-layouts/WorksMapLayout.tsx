@@ -71,12 +71,12 @@ export default function WorksMapLayout({ works, mode, forestPins }: Props) {
     >
       {panoramaUrl && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={panoramaUrl} alt="" aria-hidden style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none', userSelect: 'none' }} />
+        <img src={panoramaUrl} alt="" aria-hidden style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none', userSelect: 'none', zIndex: 0 }} />
       )}
 
-      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.25)', pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.25)', pointerEvents: 'none', zIndex: 1 }} />
 
-      {/* Works — 2D projected from cylinder math */}
+      {/* Works — 2D projected from cylinder math, always above panorama */}
       {items.map(({ pin, work, sz, screenX, screenY, zIndex }) => {
         const thumb = thumbUrl(work.txtImageNameLink)
         return (
@@ -91,7 +91,7 @@ export default function WorksMapLayout({ works, mode, forestPins }: Props) {
               marginLeft: -sz / 2, marginTop: -sz / 2,
               transform: `translate(${screenX}px, ${screenY}px)`,
               border: 'none', padding: 0, cursor: 'pointer',
-              zIndex,
+              zIndex: zIndex + 10,
               overflow: 'hidden',
               boxShadow: '0 4px 24px rgba(0,0,0,0.6)',
             }}

@@ -61,7 +61,7 @@ export function MapPinEditor({ works, panoramaKey, pinSize = 48, collections = [
     const y = Math.round(((e.clientY - rect.top) / rect.height) * 100 * 10) / 10
     const existing = pins.find(p => p.work_id === armedId)
     startTransition(async () => {
-      await upsertForestPin(armedId, Math.max(0, Math.min(100, x)), Math.max(0, Math.min(100, y)), existing?.z ?? 0)
+      await upsertForestPin(armedId, Math.max(0, Math.min(100, x)), Math.max(0, Math.min(100, y)), existing?.z ?? 0, undefined, existing?.size ?? undefined)
       setPins(await listForestPins())
       setArmedId(null)
     })
