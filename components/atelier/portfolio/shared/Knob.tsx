@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, type CSSProperties, type KeyboardEvent, type PointerEvent } from 'react'
+import { type CSSProperties, type KeyboardEvent, type PointerEvent } from 'react'
 
 /**
  * Compact rotary knob — a dense alternative to the full-width Slider for
@@ -41,7 +41,6 @@ export function Knob({
   label, min, max, step = 1, value, onChange,
   unit, disabled, defaultValue, onReset, size = 42, showLabel = true,
 }: KnobProps) {
-  const drag = useRef<{ startY: number; startVal: number } | null>(null)
   const range = max - min || 1
   const frac = clamp((value - min) / range, 0, 1)
   const angle = START_ANGLE + frac * SWEEP
@@ -52,18 +51,26 @@ export function Knob({
     return clamp(Number(snapped.toFixed(6)), min, max)
   }
 
+  // Drag with window-level listeners — reliable across pointer capture / text
+  // selection quirks. startY/startVal captured at press; value is absolute.
   function onPointerDown(e: PointerEvent<HTMLDivElement>) {
     if (disabled) return
-    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
-    drag.current = { startY: e.clientY, startVal: value }
+    e.preventDefault() // stop the drag from starting a text selection
+    e.currentTarget.focus()
+    const startY = e.clientY
+    const startVal = value
+    const onMove = (ev: globalThis.PointerEvent) => {
+      const dy = startY - ev.clientY // up = positive
+      const sensitivity = (ev.shiftKey ? 0.25 : 1) * range / FULL_TRAVEL_PX
+      onChange(quantize(startVal + dy * sensitivity))
+    }
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
   }
-  function onPointerMove(e: PointerEvent<HTMLDivElement>) {
-    if (!drag.current) return
-    const dy = drag.current.startY - e.clientY // up = positive
-    const sensitivity = (e.shiftKey ? 0.25 : 1) * range / FULL_TRAVEL_PX
-    onChange(quantize(drag.current.startVal + dy * sensitivity))
-  }
-  function onPointerUp() { drag.current = null }
 
   function onKey(e: KeyboardEvent<HTMLDivElement>) {
     if (disabled) return
@@ -103,11 +110,13 @@ export function Knob({
     cursor: disabled ? 'not-allowed' : 'ns-resize',
     opacity: disabled ? 0.4 : 1,
     touchAction: 'none',
+    userSelect: 'none',
+    WebkitUserSelect: 'none',
     flexShrink: 0,
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, width: size + 14 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, width: size + 14, userSelect: 'none', WebkitUserSelect: 'none' }}>
       <div
         role="slider"
         tabIndex={disabled ? -1 : 0}
@@ -118,9 +127,6 @@ export function Knob({
         aria-valuetext={formatValue()}
         aria-disabled={disabled || undefined}
         onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerUp}
         onKeyDown={onKey}
         onDoubleClick={reset}
         title={edited ? `${formatValue()} — double-click to reset` : formatValue()}
