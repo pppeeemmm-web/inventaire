@@ -21,7 +21,12 @@ import {
   WORKS_CAST_SHADOW_BLUR_MIN,
   WORKS_CAST_SHADOW_BLUR_MAX,
 } from '@/lib/works-mode-light'
-import { normalizeHexColor } from '@/lib/landing-background'
+import {
+  normalizeHexColor,
+  LANDING_GRADIENT_STOP_MAX,
+  LANDING_GRADIENT_STOP_MIN,
+  type LandingGradientStop,
+} from '@/lib/landing-background'
 import {
   CIRCADIAN_PRESETS,
   type CircadianPreset,
@@ -94,6 +99,9 @@ interface KnobsPanelProps {
   selectedBlockUid?: string
   selectedBlockOverride?: KnobFamilyOverrides
   onBlockOverrideChange?: (override: KnobFamilyOverrides) => void
+  /** Landing background gradient stops — edited here so the bg family is self-contained. */
+  gradientStops?: LandingGradientStop[]
+  onGradientStopsChange?: (stops: LandingGradientStop[]) => void
 }
 
 export function KnobsPanel({
@@ -102,8 +110,10 @@ export function KnobsPanel({
   selectedBlockUid,
   selectedBlockOverride,
   onBlockOverrideChange,
+  gradientStops,
+  onGradientStopsChange,
 }: KnobsPanelProps) {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
 
   const blockOverride: KnobFamilyOverrides = selectedBlockOverride ?? {}
 
@@ -170,6 +180,21 @@ export function KnobsPanel({
     if (scope === 'block') { onBlockOverrideChange?.({}); return }
     if (scope === 'site') return
     onChange({ ...knobs, pages: { ...knobs.pages, [scope as PageScope]: {} } })
+  }
+
+  // ── Background gradient stops (config.landing.bg_gradient_stops) ─────────
+  function updateStop(i: number, patch: Partial<LandingGradientStop>) {
+    if (!gradientStops) return
+    onGradientStopsChange?.(gradientStops.map((s, k) => (k === i ? { ...s, ...patch } : s)))
+  }
+  function addStop() {
+    if (!gradientStops || gradientStops.length >= LANDING_GRADIENT_STOP_MAX) return
+    const last = gradientStops[gradientStops.length - 1]
+    onGradientStopsChange?.([...gradientStops, { color: last?.color ?? '#888888', position_pct: 50 }])
+  }
+  function removeStop(i: number) {
+    if (!gradientStops || gradientStops.length <= LANDING_GRADIENT_STOP_MIN) return
+    onGradientStopsChange?.(gradientStops.filter((_, k) => k !== i))
   }
 
   // ── Row definitions (one row per setting, grouped by family) ────────────
@@ -442,6 +467,49 @@ export function KnobsPanel({
           </div>
         ))}
       </div>
+
+      {/* Background gradient stops (landing) — lives with the bg family */}
+      {gradientStops && onGradientStopsChange && (
+        <div style={{ borderTop: '1px solid var(--bd)', paddingTop: 8, marginTop: 8 }}>
+          <div style={{ fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--tx2)', marginBottom: 8 }}>
+            {t('site_knobs_family_bg')} · {lang === 'fr' ? 'Dégradé' : 'Gradient'}
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-start' }}>
+            {gradientStops.map((stop, i) => (
+              <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, border: '1px solid var(--bd)', borderRadius: 4, padding: '6px 6px 4px', position: 'relative' }}>
+                <input
+                  type="color"
+                  value={normalizeHexColor(stop.color) ?? '#888888'}
+                  onChange={e => updateStop(i, { color: e.target.value })}
+                  aria-label={t('site_landing_bg_stop_color_label')}
+                  style={{ width: 30, height: 26, padding: 0, border: '1px solid var(--bd)', borderRadius: 2, cursor: 'pointer', background: 'none' }}
+                />
+                <Knob
+                  showLabel={false} size={34}
+                  label={t('site_landing_bg_stop_position_label')}
+                  min={0} max={100} step={1} unit="%"
+                  value={Math.round(stop.position_pct)}
+                  onChange={v => updateStop(i, { position_pct: v })}
+                />
+                {gradientStops.length > LANDING_GRADIENT_STOP_MIN && (
+                  <button
+                    type="button" onClick={() => removeStop(i)}
+                    aria-label={t('site_landing_bg_remove_stop')}
+                    style={{ position: 'absolute', top: -6, right: -6, width: 14, height: 14, borderRadius: '50%', border: 'none', background: 'rgba(255,80,80,0.18)', color: '#f88', cursor: 'pointer', fontSize: 9, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  >×</button>
+                )}
+              </div>
+            ))}
+            {gradientStops.length < LANDING_GRADIENT_STOP_MAX && (
+              <button
+                type="button" onClick={addStop}
+                aria-label={t('site_landing_bg_add_stop')}
+                style={{ width: 44, minHeight: 70, border: '1px dashed var(--bd)', borderRadius: 4, background: 'none', color: 'var(--tx2)', cursor: 'pointer', fontSize: 16 }}
+              >+</button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Circadian + accessibility (site-wide) */}
       <div style={{ marginTop: 14 }}>

@@ -1004,6 +1004,8 @@ export function SiteEditorPanel({
             )
             setConfig({ ...config, pages: updatedPages })
           }}
+          gradientStops={config.landing.bg_gradient_stops}
+          onGradientStopsChange={setLandingGradientStops}
         />
       </SitePublicSection>
       {blocks.map((block, idx) => {
