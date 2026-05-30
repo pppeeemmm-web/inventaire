@@ -180,34 +180,35 @@ export function MapPinEditor({ works, panoramaKey, pinSize = 48, collections = [
       )}
 
       {/* Works list */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, maxHeight: 420, overflowY: 'auto' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 420, overflowY: 'auto' }}>
         {displayedWorks.map(work => {
           const existing = pinMap.get(work.OeuvreID)
           const isArmed = armedId === work.OeuvreID
+          const sizeValue = existing?.size ?? pinSize
           return (
-            <div key={work.OeuvreID} style={{ borderRadius: 2, border: '1px solid ' + (isArmed ? 'var(--ac)' : 'var(--bd)'), background: isArmed ? 'var(--ac)' : 'var(--bg1)', overflow: 'hidden' }}>
+            <div key={work.OeuvreID} style={{ borderRadius: 2, border: '1px solid ' + (isArmed ? 'var(--ac)' : existing ? 'var(--bd2)' : 'var(--bd)'), background: isArmed ? 'var(--ac)' : 'var(--bg1)', overflow: 'hidden' }}>
 
               {/* Top row: arm + thumb + title + coords + delete */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 6px', cursor: 'pointer' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '3px 5px', cursor: 'pointer' }}>
                 <button
                   type="button"
                   onClick={e => { e.stopPropagation(); setArmedId(isArmed ? null : work.OeuvreID) }}
                   style={{
-                    width: 20, height: 20, borderRadius: '50%', flexShrink: 0, cursor: 'pointer',
-                    background: isArmed ? '#fff' : (existing ? 'rgba(255,180,40,0.8)' : 'var(--bg2)'),
+                    width: 16, height: 16, borderRadius: '50%', flexShrink: 0, cursor: 'pointer',
+                    background: isArmed ? '#fff' : (existing ? 'rgba(255,180,40,0.85)' : 'var(--bg2)'),
                     border: '1px solid ' + (isArmed ? '#fff' : 'var(--bd)'),
                   }}
                   title={isArmed ? 'Cancel' : (existing ? `${existing.x.toFixed(0)},${existing.y.toFixed(0)}` : 'Place pin')}
                 />
                 {work.txtImageNameLink && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={thumbUrl(work.txtImageNameLink) ?? ''} alt="" style={{ width: 24, height: 24, objectFit: 'cover', borderRadius: 1, flexShrink: 0 }} />
+                  <img src={thumbUrl(work.txtImageNameLink) ?? ''} alt="" style={{ width: 20, height: 20, objectFit: 'cover', borderRadius: 1, flexShrink: 0 }} />
                 )}
                 <span style={{ flex: 1, fontSize: 9, color: isArmed ? '#fff' : 'var(--tx)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {work.Titre ?? `#${work.OeuvreID}`}
                 </span>
                 {existing && (
-                  <span style={{ fontSize: 7, opacity: 0.5, flexShrink: 0 }}>
+                  <span style={{ fontSize: 7, opacity: 0.45, flexShrink: 0, color: isArmed ? '#fff' : 'var(--tx2)' }}>
                     {existing.x.toFixed(0)},{existing.y.toFixed(0)}
                   </span>
                 )}
@@ -216,22 +217,22 @@ export function MapPinEditor({ works, panoramaKey, pinSize = 48, collections = [
                     type="button"
                     onClick={e => { e.stopPropagation(); handleDeletePin(work.OeuvreID) }}
                     aria-label={t('site_works_map_pin_delete')}
-                    style={{ width: 18, height: 18, borderRadius: 2, border: 'none', background: 'rgba(255,80,80,0.15)', color: '#f88', cursor: 'pointer', fontSize: 9, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    style={{ width: 16, height: 16, borderRadius: 2, border: 'none', background: 'rgba(255,80,80,0.15)', color: '#f88', cursor: 'pointer', fontSize: 9, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                   >×</button>
                 )}
               </div>
 
               {/* Size slider — only when placed */}
               {existing && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '2px 6px 5px 34px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '0 6px 4px 30px' }}>
                   <span style={{ fontSize: 7, color: 'var(--tx2)', flexShrink: 0 }}>{lang === 'fr' ? 'Taille' : 'Size'}</span>
                   <input
                     type="range" min={8} max={200} step={4}
-                    value={existing.size ?? pinSize}
+                    value={sizeValue}
                     onChange={e => handleSetSize(work.OeuvreID, Number(e.target.value))}
-                    style={{ width: 100, flexShrink: 0, accentColor: 'var(--ac)', cursor: 'pointer' }}
+                    style={{ flex: 1, minWidth: 60, accentColor: 'var(--ac)', cursor: 'pointer' }}
                   />
-                  <span style={{ fontSize: 7, color: 'var(--tx2)', width: 24, flexShrink: 0 }}>{existing.size ?? pinSize}</span>
+                  <span style={{ fontSize: 7, color: 'var(--tx2)', width: 22, textAlign: 'right', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>{sizeValue}</span>
                   {existing.size !== null && (
                     <button
                       type="button"

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { imageUrl, thumbUrl } from '@/lib/data'
 import type { Work, WorksMode, ForestPin } from '../works-utils'
 import type { PublicSiteTheme } from '@/lib/public-site-theme'
@@ -21,7 +21,32 @@ export default function WorksMapLayout({ works, mode, forestPins }: Props) {
   const [rotation, setRotation] = useState(0) // degrees
   const [isDragging, setIsDragging] = useState(false)
   const [zoomed, setZoomed] = useState<ZoomedWork | null>(null)
-  const drag = useRef({ startX: 0, startRot: 0, moved: false })
+  const drag = useRef({ startX: 0, startRot: 0, moved: false, lastX: 0, lastT: 0, vel: 0 })
+  const inertia = useRef<number | null>(null)
+
+  // Cancel any coasting animation on unmount.
+  useEffect(() => () => { if (inertia.current !== null) cancelAnimationFrame(inertia.current) }, [])
+
+  // Drag sensitivity: screen px → degrees of cylinder rotation.
+  const DRAG_SENSITIVITY = 0.3
+  // Per-frame velocity retention (0–1). Higher = longer coast.
+  const FRICTION = 0.94
+
+  function stopInertia() {
+    if (inertia.current !== null) { cancelAnimationFrame(inertia.current); inertia.current = null }
+  }
+
+  function startInertia(initialVel: number) {
+    stopInertia()
+    let vel = initialVel // deg per frame
+    const step = () => {
+      vel *= FRICTION
+      if (Math.abs(vel) < 0.02) { inertia.current = null; return }
+      setRotation(r => r + vel)
+      inertia.current = requestAnimationFrame(step)
+    }
+    inertia.current = requestAnimationFrame(step)
+  }
 
   const panoramaUrl = imageUrl(mode.forest_panorama_r2_key)
   const baseSize = mode.forest_panorama_pin_size ?? 120
@@ -49,14 +74,16 @@ export default function WorksMapLayout({ works, mode, forestPins }: Props) {
 
   function openZoom(work: Work) {
     const src = imageUrl(work.txtImageNameLink)
-    if (src) setZoomed({ work, src })
+    if (src) { stopInertia(); setZoomed({ work, src }) }
   }
 
   return (
     <div
       style={{ position: 'fixed', inset: 0, overflow: 'hidden', background: '#0a0c0f', cursor: isDragging ? 'grabbing' : 'grab', userSelect: 'none' }}
       onPointerDown={e => {
-        drag.current = { startX: e.clientX, startRot: rotation, moved: false }
+        stopInertia()
+        const now = performance.now()
+        drag.current = { startX: e.clientX, startRot: rotation, moved: false, lastX: e.clientX, lastT: now, vel: 0 }
         setIsDragging(true);
         (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
       }}
@@ -64,9 +91,23 @@ export default function WorksMapLayout({ works, mode, forestPins }: Props) {
         if (!isDragging) return
         const dx = e.clientX - drag.current.startX
         if (Math.abs(dx) > 4) drag.current.moved = true
-        setRotation(drag.current.startRot - dx * 0.3)
+        // Instantaneous velocity (deg/ms) from the last move, for release inertia.
+        const now = performance.now()
+        const dt = now - drag.current.lastT
+        if (dt > 0) {
+          const moveDeg = -(e.clientX - drag.current.lastX) * DRAG_SENSITIVITY
+          drag.current.vel = moveDeg / dt
+        }
+        drag.current.lastX = e.clientX
+        drag.current.lastT = now
+        setRotation(drag.current.startRot - dx * DRAG_SENSITIVITY)
       }}
-      onPointerUp={() => setIsDragging(false)}
+      onPointerUp={() => {
+        setIsDragging(false)
+        // Convert deg/ms → deg/frame (~16.7ms) and coast if flung fast enough.
+        const velPerFrame = drag.current.vel * 16.7
+        if (Math.abs(velPerFrame) > 0.1) startInertia(velPerFrame)
+      }}
       onPointerCancel={() => setIsDragging(false)}
     >
       {panoramaUrl && (
