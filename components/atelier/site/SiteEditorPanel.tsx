@@ -256,6 +256,7 @@ export function SiteEditorPanel({
   const blocks = config.site_blocks
   const [collapsed, setCollapsed] = useState<Set<SiteBlockKind>>(new Set())
   const [bgGradientOpen, setBgGradientOpen] = useState(false)
+  const [heroHelpOpen, setHeroHelpOpen] = useState(false)
   // §4.3 — block scope for KnobsPanel: tracks which PagesEditor block is selected
   const [selectedBlockUid, setSelectedBlockUid] = useState<string | null>(null)
 
@@ -372,10 +373,27 @@ export function SiteEditorPanel({
         const heroPreviewSrc = landingHeroPreviewSrc(config.landing)
         return (
           <>
-            <p className="t-mono-xs" style={{ opacity: 0.55, marginBottom: 12, lineHeight: 1.5 }}>{t('atelier_pub_landing_behavior_help')}</p>
-            <p className="t-mono-xs" style={{ opacity: 0.55, marginBottom: 12, lineHeight: 1.5 }}>{t('atelier_pub_hero_url_help')}</p>
-            <p className="t-mono-xs" style={{ opacity: 0.4, marginBottom: 8, fontSize: 9 }}>{t('atelier_pub_hero_r2_followup')}</p>
-            <p className="t-mono-xs" style={{ opacity: 0.45, marginBottom: 16, fontSize: 9 }}>{t('atelier_pub_hero_url_full_res_hint')}</p>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: heroHelpOpen ? 8 : 16 }}>
+              <p className="t-mono-xs" style={{ opacity: 0.55, lineHeight: 1.5, flex: 1, margin: 0 }}>{t('atelier_pub_landing_behavior_help')}</p>
+              <button
+                type="button"
+                onClick={() => setHeroHelpOpen(o => !o)}
+                aria-expanded={heroHelpOpen}
+                title={t('atelier_pub_hero_url_help')}
+                style={{
+                  flexShrink: 0, background: 'none', border: '1px solid var(--bd)', borderRadius: '50%',
+                  width: 18, height: 18, lineHeight: 1, cursor: 'pointer',
+                  color: heroHelpOpen ? 'var(--ac)' : 'var(--tx3)', fontSize: 10, fontFamily: 'inherit',
+                }}
+              >{'ⓘ'}</button>
+            </div>
+            {heroHelpOpen && (
+              <>
+                <p className="t-mono-xs" style={{ opacity: 0.55, marginBottom: 8, lineHeight: 1.5 }}>{t('atelier_pub_hero_url_help')}</p>
+                <p className="t-mono-xs" style={{ opacity: 0.4, marginBottom: 8, fontSize: 9 }}>{t('atelier_pub_hero_r2_followup')}</p>
+                <p className="t-mono-xs" style={{ opacity: 0.45, marginBottom: 16, fontSize: 9 }}>{t('atelier_pub_hero_url_full_res_hint')}</p>
+              </>
+            )}
             <LandingHeroWorkPicker
               oeuvres={oeuvres}
               landing={config.landing}
@@ -465,40 +483,49 @@ export function SiteEditorPanel({
               })}
             />
             <div style={{ marginTop: 24 }}>
+              <div className="t-label" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 6, fontSize: 9 }}>
+                <span>{t('site_landing_bg_label')}</span>
+                <span style={{ opacity: 0.55, fontSize: 8, letterSpacing: 1 }}>
+                  {config.landing.bg_gradient_stops.length}&times;
+                </span>
+              </div>
               <button
                 type="button"
-                className="t-label"
                 onClick={() => setBgGradientOpen(open => !open)}
+                aria-expanded={bgGradientOpen}
+                title={bgGradientOpen ? t('site_landing_bg_toggle_hide') : t('site_landing_bg_toggle_show')}
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
+                  display: 'block',
                   width: '100%',
-                  marginBottom: 8,
-                  fontSize: 9,
-                  background: 'none',
-                  border: 'none',
+                  height: 34,
                   padding: 0,
-                  cursor: 'pointer',
-                  color: 'inherit',
-                  textAlign: 'left',
-                }}
-              >
-                <span>{t('site_landing_bg_label')}</span>
-                <span style={{ opacity: 0.55, fontSize: 8 }}>
-                  {bgGradientOpen ? t('site_landing_bg_toggle_hide') : t('site_landing_bg_toggle_show')}
-                </span>
-              </button>
-              <div
-                aria-hidden
-                style={{
-                  height: 12,
-                  borderRadius: 4,
+                  borderRadius: 6,
                   border: '1px solid var(--bd)',
+                  cursor: 'pointer',
+                  position: 'relative',
                   marginBottom: bgGradientOpen ? 12 : 0,
                   background: resolveLandingBackground(config.landing).backgroundCss,
                 }}
-              />
+              >
+                <span
+                  aria-hidden
+                  style={{
+                    position: 'absolute',
+                    right: 6,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    width: 20,
+                    height: 20,
+                    borderRadius: 4,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'rgba(0,0,0,0.28)',
+                    color: '#fff',
+                    fontSize: 10,
+                  }}
+                >{bgGradientOpen ? '▾' : '▸'}</span>
+              </button>
               {bgGradientOpen ? (
                 <>
                   <p className="t-mono-xs" style={{ opacity: 0.5, marginBottom: 10, lineHeight: 1.5 }}>
