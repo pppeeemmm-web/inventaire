@@ -34,9 +34,9 @@ export interface SliderProps {
   onReset?: () => void
   /** Layout variant. Default 'row'. */
   layout?: SliderLayout
-  /** Label column width in px — row layout only. Default 120. */
+  /** Label column width in px — row layout only. Default 96. */
   labelWidth?: number
-  /** Bottom margin in px. Default 6. */
+  /** Bottom margin in px. Default 4. */
   mb?: number
 }
 
@@ -68,8 +68,8 @@ export function Slider({
   defaultValue,
   onReset,
   layout = 'row',
-  labelWidth = 120,
-  mb = 6,
+  labelWidth = 96,
+  mb = 4,
 }: SliderProps) {
   const showReset = defaultValue !== undefined && value !== defaultValue
 
@@ -98,13 +98,14 @@ export function Slider({
         {label}
         <input
           type="range"
+          className="t-slider"
           min={min}
           max={max}
           step={step}
           value={value}
           disabled={disabled}
           onChange={e => onChange(Number(e.target.value))}
-          style={{ display: 'block', width: '100%', marginTop: 6 }}
+          style={{ display: 'block', width: '100%', marginTop: 4 }}
         />
       </label>
     )
@@ -114,9 +115,9 @@ export function Slider({
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: `${labelWidth}px 1fr 56px`,
+        gridTemplateColumns: `${labelWidth}px 1fr 46px`,
         alignItems: 'center',
-        gap: 10,
+        gap: 8,
         fontSize: 9,
         marginBottom: mb,
       }}
@@ -124,6 +125,7 @@ export function Slider({
       <span style={rowLabelStyle}>{label}</span>
       <input
         type="range"
+        className="t-slider"
         min={min}
         max={max}
         step={step}

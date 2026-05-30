@@ -56,21 +56,25 @@ export interface WorksMode {
   cast_shadow_blur_px?: number
   /** Mobile layout override. `'auto'` = table-driven; explicit value pins. Default `'auto'`. */
   mobile_fallback?: WorksLayout | 'auto'
-  /** R2 key for the forest panorama background (map layout). */
+  /** R2 key for the map background image (flat backdrop behind placed works). */
   forest_panorama_r2_key?: string
-  /** Base diameter of pinned work images in px. Default 48. */
+  /** Default width for newly placed works, as % of scene width. Default 16. */
   forest_panorama_pin_size?: number
   /** R2 key for the looping interior video (motion_interior layout). */
   motion_interior_r2_key?: string
 }
 
-/** Pin position for a work on the forest panorama. x/y are percentages (0–100) from top-left. */
+/**
+ * Manual placement of a work on the map layout. x/y are percentages (0–100)
+ * of the scene box from top-left. Flat composition — no cylinder projection.
+ */
 export type ForestPin = {
   work_id: number
-  x: number   // lng stored in forest_pins
-  y: number   // lat stored in forest_pins
-  z: number   // depth 0 (close/big) → 100 (far/small)
-  size: number | null  // override diameter in px (8–200); null = use global base
+  x: number        // lng — horizontal % (0–100)
+  y: number        // lat — vertical % (0–100)
+  z: number        // stacking order (higher paints in front)
+  size: number     // work width as % of scene width (vw); height follows natural aspect ratio
+  rotation: number // Y-axis rotation in degrees (−180…180)
   label: string | null
 }
 

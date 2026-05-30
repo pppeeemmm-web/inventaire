@@ -526,6 +526,51 @@ input, textarea, select { font: inherit; color: inherit; background: transparent
   }
 }
 
+/* ── Compact slider track (shared Slider.tsx + map editor) ─────────────────── */
+.t-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 14px;            /* small hit-box, slim visual */
+  margin: 0;
+  background: transparent;
+  accent-color: var(--ac);
+  cursor: pointer;
+}
+.t-slider::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--bd2);
+}
+.t-slider::-moz-range-track {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--bd2);
+}
+.t-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 11px;
+  height: 11px;
+  margin-top: -4px;        /* centre the 11px thumb on the 3px track */
+  border-radius: 50%;
+  background: var(--ac);
+  border: none;
+}
+.t-slider::-moz-range-thumb {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--ac);
+  border: none;
+}
+/* Narrow field surfaces: keep the thumb a ≥44px-friendly target without fattening the track */
+@media (max-width: 767px) {
+  .t-slider { height: 28px; }
+  .t-slider::-webkit-slider-thumb { width: 16px; height: 16px; margin-top: -6px; }
+  .t-slider::-moz-range-thumb { width: 16px; height: 16px; }
+}
+
 /* ── A11y knobs ──────────────────────────────────────────────────────────── */
 /* type_size_step: --pem-root-zoom set from client when step !== 1; zoom scales all px/rem/em */
 html { zoom: var(--pem-root-zoom, 1); }

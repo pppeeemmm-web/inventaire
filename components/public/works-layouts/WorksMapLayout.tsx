@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
 import { imageUrl, thumbUrl } from '@/lib/data'
 import type { Work, WorksMode, ForestPin } from '../works-utils'
 import type { PublicSiteTheme } from '@/lib/public-site-theme'
@@ -14,133 +14,79 @@ interface Props {
 
 interface ZoomedWork { work: Work; src: string }
 
-const RADIUS = 600
-const PERSPECTIVE = 1400
+/** Container depth for the per-work Y-axis rotation. */
+const SCENE_PERSPECTIVE = 1400
 
+/**
+ * Flat manual map. Each placed work sits where the editor put it (x/y % of the
+ * scene), at its natural aspect ratio, sized in px, with one Y-axis rotation.
+ * Static — click a work to open the zoom overlay. No cylinder / drag / inertia.
+ */
 export default function WorksMapLayout({ works, mode, forestPins }: Props) {
-  const [rotation, setRotation] = useState(0) // degrees
-  const [isDragging, setIsDragging] = useState(false)
   const [zoomed, setZoomed] = useState<ZoomedWork | null>(null)
-  const drag = useRef({ startX: 0, startRot: 0, moved: false, lastX: 0, lastT: 0, vel: 0 })
-  const inertia = useRef<number | null>(null)
-
-  // Cancel any coasting animation on unmount.
-  useEffect(() => () => { if (inertia.current !== null) cancelAnimationFrame(inertia.current) }, [])
-
-  // Drag sensitivity: screen px → degrees of cylinder rotation.
-  const DRAG_SENSITIVITY = 0.3
-  // Per-frame velocity retention (0–1). Higher = longer coast.
-  const FRICTION = 0.94
-
-  function stopInertia() {
-    if (inertia.current !== null) { cancelAnimationFrame(inertia.current); inertia.current = null }
-  }
-
-  function startInertia(initialVel: number) {
-    stopInertia()
-    let vel = initialVel // deg per frame
-    const step = () => {
-      vel *= FRICTION
-      if (Math.abs(vel) < 0.02) { inertia.current = null; return }
-      setRotation(r => r + vel)
-      inertia.current = requestAnimationFrame(step)
-    }
-    inertia.current = requestAnimationFrame(step)
-  }
 
   const panoramaUrl = imageUrl(mode.forest_panorama_r2_key)
-  const baseSize = mode.forest_panorama_pin_size ?? 120
   const worksById = new Map(works.map(w => [w.OeuvreID, w]))
 
   const placed = forestPins
     .map(pin => ({ pin, work: worksById.get(pin.work_id) }))
     .filter((p): p is { pin: ForestPin; work: Work } => Boolean(p.work?.txtImageNameLink))
-
-  // Manual projection — no CSS preserve-3d (browser quirks)
-  // pin.x 0-100 → angle 0-360° around Y axis
-  // Perspective scale = P / (P - zWorld) where zWorld = cos(angle) * RADIUS
-  const rotRad = (rotation * Math.PI) / 180
-  const items = placed.map(({ pin, work }) => {
-    const angle = (pin.x / 100) * 2 * Math.PI + rotRad
-    const zWorld = Math.cos(angle) * RADIUS   // +RADIUS = near, -RADIUS = far
-    const xWorld = Math.sin(angle) * RADIUS   // horizontal offset
-    const scale = PERSPECTIVE / (PERSPECTIVE - zWorld)
-    const sz = (pin.size ?? baseSize) * scale
-    const screenX = xWorld * scale
-    const screenY = (pin.y - 50) * 6         // vertical spread
-    const zIndex = Math.round(zWorld + RADIUS + 1)
-    return { pin, work, sz, screenX, screenY, zIndex, scale }
-  }).sort((a, b) => a.zIndex - b.zIndex)     // paint back-to-front
+    .sort((a, b) => a.pin.z - b.pin.z) // paint low z first (behind)
 
   function openZoom(work: Work) {
     const src = imageUrl(work.txtImageNameLink)
-    if (src) { stopInertia(); setZoomed({ work, src }) }
+    if (src) setZoomed({ work, src })
   }
 
   return (
     <div
-      style={{ position: 'fixed', inset: 0, overflow: 'hidden', background: '#0a0c0f', cursor: isDragging ? 'grabbing' : 'grab', userSelect: 'none' }}
-      onPointerDown={e => {
-        stopInertia()
-        const now = performance.now()
-        drag.current = { startX: e.clientX, startRot: rotation, moved: false, lastX: e.clientX, lastT: now, vel: 0 }
-        setIsDragging(true);
-        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+      style={{
+        position: 'fixed', inset: 0, overflow: 'hidden',
+        background: '#0a0c0f',
+        perspective: `${SCENE_PERSPECTIVE}px`,
+        userSelect: 'none',
       }}
-      onPointerMove={e => {
-        if (!isDragging) return
-        const dx = e.clientX - drag.current.startX
-        if (Math.abs(dx) > 4) drag.current.moved = true
-        // Instantaneous velocity (deg/ms) from the last move, for release inertia.
-        const now = performance.now()
-        const dt = now - drag.current.lastT
-        if (dt > 0) {
-          const moveDeg = -(e.clientX - drag.current.lastX) * DRAG_SENSITIVITY
-          drag.current.vel = moveDeg / dt
-        }
-        drag.current.lastX = e.clientX
-        drag.current.lastT = now
-        setRotation(drag.current.startRot - dx * DRAG_SENSITIVITY)
-      }}
-      onPointerUp={() => {
-        setIsDragging(false)
-        // Convert deg/ms → deg/frame (~16.7ms) and coast if flung fast enough.
-        const velPerFrame = drag.current.vel * 16.7
-        if (Math.abs(velPerFrame) > 0.1) startInertia(velPerFrame)
-      }}
-      onPointerCancel={() => setIsDragging(false)}
     >
       {panoramaUrl && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={panoramaUrl} alt="" aria-hidden style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none', userSelect: 'none', zIndex: 0 }} />
+        <img
+          src={panoramaUrl}
+          alt=""
+          aria-hidden
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none', userSelect: 'none', zIndex: 0 }}
+        />
       )}
 
       <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.25)', pointerEvents: 'none', zIndex: 1 }} />
 
-      {/* Works — 2D projected from cylinder math, always above panorama */}
-      {items.map(({ pin, work, sz, screenX, screenY, zIndex }) => {
+      {/* Works — flat, natural aspect ratio, one Y-axis rotation each */}
+      {placed.map(({ pin, work }) => {
         const thumb = thumbUrl(work.txtImageNameLink)
         return (
           <button
             key={pin.work_id}
             type="button"
             aria-label={work.Titre ?? ''}
+            onClick={() => openZoom(work)}
             style={{
               position: 'absolute',
-              left: '50%', top: '50%',
-              width: sz, height: sz,
-              marginLeft: -sz / 2, marginTop: -sz / 2,
-              transform: `translate(${screenX}px, ${screenY}px)`,
-              border: 'none', padding: 0, cursor: 'pointer',
-              zIndex: zIndex + 10,
-              overflow: 'hidden',
-              boxShadow: '0 4px 24px rgba(0,0,0,0.6)',
+              left: `${pin.x}%`, top: `${pin.y}%`,
+              width: `${pin.size}vw`, height: 'auto',
+              transform: `translate(-50%, -50%) rotateY(${pin.rotation}deg)`,
+              transformStyle: 'preserve-3d',
+              border: 'none', padding: 0, background: 'none', cursor: 'pointer',
+              zIndex: Math.round(pin.z) + 10,
+              lineHeight: 0,
+              boxShadow: '0 8px 32px rgba(0,0,0,0.55)',
             }}
-            onClick={() => { if (!drag.current.moved) openZoom(work) }}
           >
             {thumb && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={thumb} alt={work.Titre ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', pointerEvents: 'none' }} />
+              <img
+                src={thumb}
+                alt={work.Titre ?? ''}
+                style={{ display: 'block', width: '100%', height: 'auto', pointerEvents: 'none' }}
+              />
             )}
           </button>
         )

@@ -802,6 +802,50 @@ export type Database = {
           },
         ]
       }
+      forest_pins: {
+        Row: {
+          created_at: string
+          id: string
+          label: string | null
+          lat: number
+          lng: number
+          rotation: number
+          size: number
+          work_id: number
+          z: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label?: string | null
+          lat: number
+          lng: number
+          rotation?: number
+          size?: number
+          work_id: number
+          z?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string | null
+          lat?: number
+          lng?: number
+          rotation?: number
+          size?: number
+          work_id?: number
+          z?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "forest_pins_work_id_fkey"
+            columns: ["work_id"]
+            isOneToOne: true
+            referencedRelation: "Oeuvres"
+            referencedColumns: ["OeuvreID"]
+          },
+        ]
+      }
       Format: {
         Row: {
           Format: string | null

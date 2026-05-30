@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { Slider } from '@/components/atelier/portfolio/shared/Slider'
+import { Knob } from '@/components/atelier/portfolio/shared/Knob'
 import type { KnobsConfig, KnobValues, KnobFamily } from '@/lib/site-blocks'
 import { DEFAULT_KNOB_VALUES, mergeKnobFamilies } from '@/lib/site-blocks'
 import type { KnobFamilyOverrides } from '@/lib/site-blocks'
@@ -31,13 +32,21 @@ import {
 type PageScope = 'landing' | 'works' | 'about'
 type Scope = 'site' | PageScope | 'block'
 
+/** Loose view of one knob family for generic field get/set. */
+type AnyFam = Record<string, unknown>
+
+type KnobRow = { k: 'knob'; family: KnobFamily; field: string; label: string; min: number; max: number; step?: number; unit?: string; mul?: number }
+type BoolRow = { k: 'bool'; family: KnobFamily; field: string; label: string }
+type EnumRow = { k: 'enum'; family: KnobFamily; field: string; label: string; options: { value: string; label: string }[] }
+type ColorRow = { k: 'color'; family: KnobFamily; field: string; label: string; fallback: string }
+type Row = KnobRow | BoolRow | EnumRow | ColorRow
+
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-const ALL_FAMILIES: KnobFamily[] = [
-  'light', 'shadow', 'frame', 'bg', 'atm', 'mat', 'type', 'motion',
-]
+const SCHEMA_RESERVED = new Set<KnobFamily>(['mat', 'type', 'motion'])
 
-const SCHEMA_RESERVED: Set<KnobFamily> = new Set<KnobFamily>(['mat', 'type', 'motion'])
+const famOf = (vals: KnobValues, f: KnobFamily): AnyFam =>
+  (vals as unknown as Record<KnobFamily, AnyFam>)[f]
 
 function isSiteFamilyEdited(site: KnobValues, family: KnobFamily): boolean {
   return JSON.stringify(site[family]) !== JSON.stringify(DEFAULT_KNOB_VALUES[family])
@@ -65,70 +74,25 @@ function minutesToTimeStr(min: number): string {
 
 // ── Shared style tokens ────────────────────────────────────────────────────
 
-const familyHeaderBtn: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8,
-  width: '100%',
-  background: 'none',
-  border: 'none',
-  cursor: 'pointer',
-  color: 'inherit',
-  padding: '6px 0',
-  textAlign: 'left',
+const familyHeaderBtn: CSSProperties = {
+  display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+  background: 'none', border: 'none', cursor: 'pointer', color: 'inherit',
+  padding: '6px 0', textAlign: 'left',
 }
-
-const segmentedGroup: React.CSSProperties = {
-  display: 'inline-flex',
-  border: '1px solid var(--bd)',
-  borderRadius: 4,
-  overflow: 'hidden',
+const segmentedGroup: CSSProperties = { display: 'inline-flex', border: '1px solid var(--bd)', borderRadius: 4, overflow: 'hidden' }
+function segBtn(active: boolean): CSSProperties {
+  return { padding: '3px 7px', minHeight: 22, fontSize: 8, letterSpacing: 1, fontFamily: 'inherit', textTransform: 'uppercase', border: 'none', cursor: 'pointer', background: active ? 'var(--ac)' : 'var(--bg1)', color: active ? '#fff' : 'var(--tx2)' }
 }
-
-function segBtn(active: boolean): React.CSSProperties {
-  return {
-    padding: '4px 10px',
-    minHeight: 26,
-    fontSize: 9,
-    letterSpacing: 1,
-    fontFamily: 'inherit',
-    textTransform: 'uppercase',
-    border: 'none',
-    cursor: 'pointer',
-    background: active ? 'var(--ac)' : 'var(--bg1)',
-    color: active ? '#fff' : 'var(--tx2)',
-  }
-}
-
-const colorInputStyle: React.CSSProperties = {
-  width: 40,
-  height: 26,
-  padding: 0,
-  border: '1px solid var(--bd)',
-  cursor: 'pointer',
-  borderRadius: 2,
-}
-
-const checkRowStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 10,
-  fontSize: 9,
-  marginBottom: 10,
-  cursor: 'pointer',
-  color: 'var(--tx2)',
-}
+const checkRowStyle: CSSProperties = { display: 'flex', alignItems: 'center', gap: 10, fontSize: 9, marginBottom: 10, cursor: 'pointer', color: 'var(--tx2)' }
+const cellCenter: CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '3px 0' }
 
 // ── Main component ─────────────────────────────────────────────────────────
 
 interface KnobsPanelProps {
   knobs: KnobsConfig
   onChange: (next: KnobsConfig) => void
-  /** UID of the currently selected block — enables the block scope tab. */
   selectedBlockUid?: string
-  /** Current knob_override for the selected block (read from Block.knob_override). */
   selectedBlockOverride?: KnobFamilyOverrides
-  /** Called when the block's knob_override should change (block scope edits). */
   onBlockOverrideChange?: (override: KnobFamilyOverrides) => void
 }
 
@@ -141,554 +105,248 @@ export function KnobsPanel({
 }: KnobsPanelProps) {
   const { t } = useI18n()
 
-  // ── Scope state ────────────────────────────────────────────────────────
-
-  const [scope, setScope] = useState<Scope>('site')
-  const isSiteScope = scope === 'site'
-  const isBlockScope = scope === 'block'
-  const pageKey = scope as PageScope
-
-  const pageOverrides: KnobFamilyOverrides =
-    isSiteScope || isBlockScope ? {} : (knobs.pages[pageKey] ?? {})
   const blockOverride: KnobFamilyOverrides = selectedBlockOverride ?? {}
 
-  /** Values displayed by family controls — merged site + page + block overrides. */
-  const displayValues: KnobValues = isBlockScope
-    ? mergeKnobFamilies(knobs.site, blockOverride)
-    : isSiteScope
-      ? knobs.site
-      : mergeKnobFamilies(knobs.site, pageOverrides)
-
-  /**
-   * Reset anchor: site = absolute defaults; page = site values; block = site values.
-   * (↺ chip appears when value differs from reset anchor.)
-   */
-  const resetValues = isSiteScope ? DEFAULT_KNOB_VALUES : knobs.site
-
-  const [collapsed, setCollapsed] = useState<Set<KnobFamily>>(
-    () => new Set<KnobFamily>([...SCHEMA_RESERVED, 'atm']),
-  )
   const [circCollapsed, setCircCollapsed] = useState(true)
   const [a11yCollapsed, setA11yCollapsed] = useState(true)
 
-  // ── Patch helpers ─────────────────────────────────────────────────────
-
-  function patch(update: Partial<KnobValues>) {
-    if (isSiteScope) {
-      onChange({ ...knobs, site: { ...knobs.site, ...update } })
-    } else if (isBlockScope) {
-      onBlockOverrideChange?.({ ...blockOverride, ...update })
-    } else {
-      onChange({
-        ...knobs,
-        pages: { ...knobs.pages, [pageKey]: { ...pageOverrides, ...update } },
-      })
-    }
+  // ── Effective values per column scope (site is the base) ───────────────
+  const scopeVals: Record<Scope, KnobValues> = {
+    site:    knobs.site,
+    landing: mergeKnobFamilies(knobs.site, knobs.pages.landing ?? {}),
+    works:   mergeKnobFamilies(knobs.site, knobs.pages.works ?? {}),
+    about:   mergeKnobFamilies(knobs.site, knobs.pages.about ?? {}),
+    block:   mergeKnobFamilies(knobs.site, blockOverride),
   }
 
-  function patchCirc(update: Partial<KnobValues['circ']>) {
-    onChange({ ...knobs, site: { ...knobs.site, circ: { ...knobs.site.circ, ...update } } })
-  }
+  const COLS: { scope: Scope; label: string }[] = [
+    { scope: 'site',    label: t('site_knobs_scope_site') },
+    { scope: 'landing', label: t('site_knobs_scope_landing') },
+    { scope: 'works',   label: t('site_knobs_scope_works') },
+    { scope: 'about',   label: t('site_knobs_scope_about') },
+    ...(selectedBlockUid ? [{ scope: 'block' as Scope, label: t('site_knobs_scope_block') }] : []),
+  ]
 
-  function patchA11y(update: Partial<KnobValues['a11y']>) {
-    onChange({ ...knobs, site: { ...knobs.site, a11y: { ...knobs.site.a11y, ...update } } })
-  }
-
-  function isOverrideEnabled(family: KnobFamily): boolean {
-    if (isSiteScope) return true
-    if (isBlockScope) return family in blockOverride
-    return family in pageOverrides
-  }
-
-  function toggleOverride(family: KnobFamily) {
-    if (isSiteScope) return
-    if (isBlockScope) {
-      if (family in blockOverride) {
-        const next = Object.fromEntries(
-          Object.entries(blockOverride).filter(([k]) => k !== family),
-        ) as KnobFamilyOverrides
-        onBlockOverrideChange?.(next)
-      } else {
-        onBlockOverrideChange?.({ ...blockOverride, [family]: { ...knobs.site[family] } })
-      }
+  // ── Generic field write (site = base; page/block = override, auto-clear) ─
+  function setField(scope: Scope, family: KnobFamily, patch: AnyFam) {
+    const baseFam = famOf(knobs.site, family)
+    if (scope === 'site') {
+      const nextFam = { ...baseFam, ...patch }
+      onChange({ ...knobs, site: { ...knobs.site, [family]: nextFam } as unknown as KnobValues })
       return
     }
-    if (family in pageOverrides) {
-      const next = Object.fromEntries(
-        Object.entries(pageOverrides).filter(([k]) => k !== family),
-      ) as KnobFamilyOverrides
-      onChange({ ...knobs, pages: { ...knobs.pages, [pageKey]: next } })
-    } else {
-      onChange({
-        ...knobs,
-        pages: {
-          ...knobs.pages,
-          [pageKey]: { ...pageOverrides, [family]: { ...knobs.site[family] } },
-        },
-      })
+    if (scope === 'block') {
+      const cur = (blockOverride as unknown as Record<KnobFamily, AnyFam | undefined>)[family] ?? baseFam
+      const fam = { ...cur, ...patch }
+      const next: KnobFamilyOverrides = { ...blockOverride }
+      if (JSON.stringify(fam) === JSON.stringify(baseFam)) delete (next as Record<string, unknown>)[family]
+      else (next as unknown as Record<KnobFamily, AnyFam>)[family] = fam
+      onBlockOverrideChange?.(next)
+      return
     }
+    const page = scope as PageScope
+    const ov = knobs.pages[page] ?? {}
+    const cur = (ov as unknown as Record<KnobFamily, AnyFam | undefined>)[family] ?? baseFam
+    const fam = { ...cur, ...patch }
+    const nextOv: KnobFamilyOverrides = { ...ov }
+    if (JSON.stringify(fam) === JSON.stringify(baseFam)) delete (nextOv as Record<string, unknown>)[family]
+    else (nextOv as unknown as Record<KnobFamily, AnyFam>)[family] = fam
+    onChange({ ...knobs, pages: { ...knobs.pages, [page]: nextOv } })
   }
 
-  function toggleFamily(f: KnobFamily) {
-    setCollapsed(prev => {
-      const next = new Set(prev)
-      if (next.has(f)) next.delete(f)
-      else next.add(f)
-      return next
-    })
+  function isOverridden(scope: Scope, family: KnobFamily): boolean {
+    if (scope === 'site') return isSiteFamilyEdited(knobs.site, family)
+    if (scope === 'block') return family in blockOverride
+    return family in (knobs.pages[scope as PageScope] ?? {})
   }
 
-  // ── Family section header ────────────────────────────────────────────
+  function overrideCount(scope: Scope): number {
+    if (scope === 'block') return Object.keys(blockOverride).length
+    if (scope === 'site') return 0
+    return Object.keys(knobs.pages[scope as PageScope] ?? {}).length
+  }
 
-  function FamilyHead({ family, label }: { family: KnobFamily; label: string }) {
-    const edited = isSiteScope
-      ? isSiteFamilyEdited(knobs.site, family)
-      : isBlockScope
-        ? family in blockOverride
-        : family in pageOverrides
-    const open = !collapsed.has(family)
-    const overrideOn = isOverrideEnabled(family)
+  function revertScope(scope: Scope) {
+    if (scope === 'block') { onBlockOverrideChange?.({}); return }
+    if (scope === 'site') return
+    onChange({ ...knobs, pages: { ...knobs.pages, [scope as PageScope]: {} } })
+  }
 
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <button
-          type="button"
-          style={{ ...familyHeaderBtn, flex: 1, marginBottom: open ? 8 : 0 }}
-          onClick={() => toggleFamily(family)}
-        >
-          <span style={{ fontSize: 8, color: 'var(--tx3)' }}>{open ? '▾' : '▸'}</span>
-          <span style={{ fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--tx2)' }}>
-            {label}
-          </span>
-          {edited && (
-            <span
-              style={{
-                width: 5, height: 5, borderRadius: '50%',
-                background: 'var(--ac)', display: 'inline-block', flexShrink: 0,
-              }}
-              title={t('site_knobs_reset_family')}
-            />
-          )}
-          {SCHEMA_RESERVED.has(family) && (
-            <span style={{ fontSize: 8, opacity: 0.45, marginLeft: 'auto' }}>
-              {t('site_knobs_not_rendered_note')}
-            </span>
-          )}
-        </button>
-        {!isSiteScope && (
-          <label
-            style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', flexShrink: 0 }}
-            title={overrideOn ? t('site_knobs_override_on') : t('site_knobs_override_inherited')}
+  // ── Row definitions (one row per setting, grouped by family) ────────────
+
+  const GROUPS: { family: KnobFamily; label: string; rows: Row[] }[] = [
+    { family: 'light', label: t('site_knobs_family_light'), rows: [
+      { k: 'knob', family: 'light', field: 'temp_k', label: t('site_knobs_light_temp'), min: WORKS_LIGHT_TEMP_MIN, max: WORKS_LIGHT_TEMP_MAX, step: 100, unit: 'K' },
+      { k: 'knob', family: 'light', field: 'direction_deg', label: t('site_knobs_light_dir'), min: 0, max: 360, step: 5, unit: '°' },
+      { k: 'knob', family: 'light', field: 'intensity_pct', label: t('site_knobs_light_intensity'), min: WORKS_LIGHT_INTENSITY_MIN, max: WORKS_LIGHT_INTENSITY_MAX, step: 5, unit: '%' },
+    ] },
+    { family: 'shadow', label: t('site_knobs_family_shadow'), rows: [
+      { k: 'bool', family: 'shadow', field: 'enabled', label: t('site_knobs_shadow_enabled') },
+      { k: 'knob', family: 'shadow', field: 'distance_px', label: t('site_knobs_shadow_distance'), min: WORKS_CAST_SHADOW_DISTANCE_MIN, max: WORKS_CAST_SHADOW_DISTANCE_MAX, step: 1, unit: 'px' },
+      { k: 'knob', family: 'shadow', field: 'blur_px', label: t('site_knobs_shadow_blur'), min: WORKS_CAST_SHADOW_BLUR_MIN, max: WORKS_CAST_SHADOW_BLUR_MAX, step: 1, unit: 'px' },
+      { k: 'knob', family: 'shadow', field: 'opacity_pct', label: t('site_knobs_shadow_opacity'), min: 0, max: 100, step: 1, unit: '%' },
+    ] },
+    { family: 'frame', label: t('site_knobs_family_frame'), rows: [
+      { k: 'knob', family: 'frame', field: 'bevel_px', label: t('site_knobs_frame_bevel'), min: 0, max: LANDING_HERO_BEVEL_PX_MAX, step: 1, unit: 'px' },
+      { k: 'enum', family: 'frame', field: 'bevel_profile', label: t('site_knobs_family_frame'), options: LANDING_HERO_BEVEL_PROFILE_VALUES.map(p => ({ value: p, label: p === 'smooth' ? t('site_knobs_frame_smooth') : t('site_knobs_frame_hard') })) },
+    ] },
+    { family: 'bg', label: t('site_knobs_family_bg'), rows: [
+      { k: 'knob', family: 'bg', field: 'blend_position', label: t('site_knobs_bg_blend_pos'), min: 0, max: 100, step: 1, unit: '%' },
+      { k: 'knob', family: 'bg', field: 'blend_softness', label: t('site_knobs_bg_blend_soft'), min: 0, max: 100, step: 1, unit: '%' },
+      { k: 'knob', family: 'bg', field: 'opacity', label: t('site_knobs_bg_opacity'), min: 0, max: 100, step: 1, unit: '%', mul: 100 },
+    ] },
+    { family: 'atm', label: t('site_knobs_family_atm'), rows: [
+      { k: 'color', family: 'atm', field: 'sky_top', label: t('site_knobs_atm_sky_top'), fallback: '#0a0c12' },
+      { k: 'color', family: 'atm', field: 'sky_bottom', label: t('site_knobs_atm_sky_bottom'), fallback: '#1a1c24' },
+      { k: 'knob', family: 'atm', field: 'tint_opacity', label: t('site_knobs_atm_tint_opacity'), min: 0, max: 100, step: 1, unit: '%', mul: 100 },
+      { k: 'knob', family: 'atm', field: 'work_glow_pct', label: t('site_knobs_atm_work_glow'), min: 0, max: 100, step: 1, unit: '%' },
+    ] },
+    { family: 'mat', label: t('site_knobs_family_mat'), rows: [
+      { k: 'knob', family: 'mat', field: 'grain_pct', label: t('site_knobs_mat_grain'), min: 0, max: 100, step: 1, unit: '%' },
+      { k: 'knob', family: 'mat', field: 'voile_pct', label: t('site_knobs_mat_voile'), min: 0, max: 100, step: 1, unit: '%' },
+      { k: 'knob', family: 'mat', field: 'vignette_pct', label: t('site_knobs_mat_vignette'), min: 0, max: 100, step: 1, unit: '%' },
+    ] },
+    { family: 'type', label: t('site_knobs_family_type'), rows: [
+      { k: 'knob', family: 'type', field: 'scale_pct', label: t('site_knobs_type_scale'), min: 75, max: 200, step: 25, unit: '%' },
+      { k: 'enum', family: 'type', field: 'weight', label: t('site_knobs_family_type'), options: [
+        { value: 'light', label: t('site_knobs_type_light') },
+        { value: 'regular', label: t('site_knobs_type_regular') },
+        { value: 'bold', label: t('site_knobs_type_bold') },
+      ] },
+    ] },
+    { family: 'motion', label: t('site_knobs_family_motion'), rows: [
+      { k: 'knob', family: 'motion', field: 'parallax_mult', label: t('site_knobs_motion_parallax'), min: 0, max: 3, step: 0.25 },
+      { k: 'knob', family: 'motion', field: 'sway_speed_mult', label: t('site_knobs_motion_sway'), min: 0, max: 3, step: 0.25 },
+      { k: 'bool', family: 'motion', field: 'reduce_motion', label: t('site_knobs_motion_reduce') },
+    ] },
+  ]
+
+  // ── One control cell ───────────────────────────────────────────────────
+
+  function ControlCell({ row, scope }: { row: Row; scope: Scope }) {
+    const fam = famOf(scopeVals[scope], row.family)
+    const anchorFam = famOf(scope === 'site' ? DEFAULT_KNOB_VALUES : knobs.site, row.family)
+    // Shadow distance/blur/opacity follow the per-scope enabled flag.
+    const shadowOff = row.family === 'shadow' && row.field !== 'enabled' && fam.enabled === false
+
+    if (row.k === 'knob') {
+      const mul = row.mul ?? 1
+      const value = Math.round(Number(fam[row.field] ?? 0) * mul)
+      const anchor = Math.round(Number(anchorFam[row.field] ?? 0) * mul)
+      return (
+        <div style={cellCenter}>
+          <Knob
+            showLabel={false}
+            size={36}
+            label={`${row.label} · ${scope}`}
+            min={row.min} max={row.max} step={row.step ?? 1} unit={row.unit}
+            value={value}
+            disabled={shadowOff}
+            defaultValue={anchor}
+            onChange={d => setField(scope, row.family, { [row.field]: mul === 1 ? d : d / mul })}
+          />
+        </div>
+      )
+    }
+    if (row.k === 'bool') {
+      return (
+        <div style={cellCenter}>
+          <input
+            type="checkbox"
+            checked={Boolean(fam[row.field])}
+            aria-label={`${row.label} · ${scope}`}
+            onChange={e => setField(scope, row.family, { [row.field]: e.target.checked })}
+            style={{ margin: 0, width: 16, height: 16 }}
+          />
+        </div>
+      )
+    }
+    if (row.k === 'enum') {
+      return (
+        <div style={cellCenter}>
+          <select
+            value={String(fam[row.field])}
+            aria-label={`${row.label} · ${scope}`}
+            disabled={shadowOff}
+            onChange={e => setField(scope, row.family, { [row.field]: e.target.value })}
+            style={{ fontFamily: 'inherit', fontSize: 8, padding: '2px 4px', background: 'var(--bg2)', color: 'var(--tx)', border: '1px solid var(--bd2)', borderRadius: 2, maxWidth: '100%' }}
           >
-            <input
-              type="checkbox"
-              checked={overrideOn}
-              onChange={() => toggleOverride(family)}
-              style={{ margin: 0 }}
-            />
-            <span style={{ fontSize: 8, color: overrideOn ? 'var(--ac)' : 'var(--tx3)', letterSpacing: 0.5 }}>
-              {overrideOn ? t('site_knobs_override_on') : t('site_knobs_override_inherited')}
-            </span>
-          </label>
-        )}
+            {row.options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        </div>
+      )
+    }
+    // color
+    return (
+      <div style={cellCenter}>
+        <input
+          type="color"
+          value={normalizeHexColor(String(fam[row.field])) ?? row.fallback}
+          aria-label={`${row.label} · ${scope}`}
+          onChange={e => setField(scope, row.family, { [row.field]: e.target.value })}
+          style={{ width: 28, height: 24, padding: 0, border: '1px solid var(--bd)', borderRadius: 2, cursor: 'pointer', background: 'none' }}
+        />
       </div>
     )
   }
 
-  // ── LIGHT ────────────────────────────────────────────────────────────
-
-  function LightFamily() {
-    const l = displayValues.light
-    const rl = resetValues.light
-    return (
-      <>
-        <Slider
-          label={t('site_knobs_light_temp')}
-          min={WORKS_LIGHT_TEMP_MIN} max={WORKS_LIGHT_TEMP_MAX} step={100}
-          value={l.temp_k}
-          onChange={v => patch({ light: { ...l, temp_k: v } })}
-          unit="K"
-          defaultValue={rl.temp_k}
-          onReset={() => patch({ light: { ...l, temp_k: rl.temp_k } })}
-        />
-        <Slider
-          label={t('site_knobs_light_dir')}
-          min={0} max={360} step={5}
-          value={l.direction_deg}
-          onChange={v => patch({ light: { ...l, direction_deg: v } })}
-          unit="°"
-          defaultValue={rl.direction_deg}
-          onReset={() => patch({ light: { ...l, direction_deg: rl.direction_deg } })}
-        />
-        <Slider
-          label={t('site_knobs_light_intensity')}
-          min={WORKS_LIGHT_INTENSITY_MIN} max={WORKS_LIGHT_INTENSITY_MAX} step={5}
-          value={l.intensity_pct}
-          onChange={v => patch({ light: { ...l, intensity_pct: v } })}
-          unit="%"
-          defaultValue={rl.intensity_pct}
-          onReset={() => patch({ light: { ...l, intensity_pct: rl.intensity_pct } })}
-        />
-      </>
-    )
-  }
-
-  // ── SHADOW ───────────────────────────────────────────────────────────
-
-  function ShadowFamily() {
-    const s = displayValues.shadow
-    const rs = resetValues.shadow
-    return (
-      <>
-        <label style={checkRowStyle}>
-          <input
-            type="checkbox"
-            checked={s.enabled}
-            onChange={e => patch({ shadow: { ...s, enabled: e.target.checked } })}
-          />
-          {t('site_knobs_shadow_enabled')}
-        </label>
-        <div style={{ opacity: s.enabled ? 1 : 0.4, pointerEvents: s.enabled ? 'auto' : 'none' }}>
-          <Slider
-            label={t('site_knobs_shadow_distance')}
-            min={WORKS_CAST_SHADOW_DISTANCE_MIN} max={WORKS_CAST_SHADOW_DISTANCE_MAX} step={1}
-            value={s.distance_px}
-            onChange={v => patch({ shadow: { ...s, distance_px: v } })}
-            unit="px"
-            defaultValue={rs.distance_px}
-            onReset={() => patch({ shadow: { ...s, distance_px: rs.distance_px } })}
-          />
-          <Slider
-            label={t('site_knobs_shadow_blur')}
-            min={WORKS_CAST_SHADOW_BLUR_MIN} max={WORKS_CAST_SHADOW_BLUR_MAX} step={1}
-            value={s.blur_px}
-            onChange={v => patch({ shadow: { ...s, blur_px: v } })}
-            unit="px"
-            defaultValue={rs.blur_px}
-            onReset={() => patch({ shadow: { ...s, blur_px: rs.blur_px } })}
-          />
-          <Slider
-            label={t('site_knobs_shadow_opacity')}
-            min={0} max={100} step={1}
-            value={s.opacity_pct}
-            onChange={v => patch({ shadow: { ...s, opacity_pct: v } })}
-            unit="%"
-            defaultValue={rs.opacity_pct}
-            onReset={() => patch({ shadow: { ...s, opacity_pct: rs.opacity_pct } })}
-          />
-        </div>
-      </>
-    )
-  }
-
-  // ── FRAME ────────────────────────────────────────────────────────────
-
-  function FrameFamily() {
-    const f = displayValues.frame
-    const rf = resetValues.frame
-    return (
-      <>
-        <Slider
-          label={t('site_knobs_frame_bevel')}
-          min={0} max={LANDING_HERO_BEVEL_PX_MAX} step={1}
-          value={f.bevel_px}
-          onChange={v => patch({ frame: { ...f, bevel_px: v } })}
-          unit="px"
-          defaultValue={rf.bevel_px}
-          onReset={() => patch({ frame: { ...f, bevel_px: rf.bevel_px } })}
-          mb={10}
-        />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-          <span style={{ color: 'var(--tx2)', fontSize: 9, minWidth: 120 }} />
-          <div style={segmentedGroup}>
-            {LANDING_HERO_BEVEL_PROFILE_VALUES.map(p => (
-              <button
-                key={p}
-                type="button"
-                className="t-mono-xs"
-                onClick={() => patch({ frame: { ...f, bevel_profile: p } })}
-                style={segBtn(f.bevel_profile === p)}
-              >
-                {p === 'smooth' ? t('site_knobs_frame_smooth') : t('site_knobs_frame_hard')}
-              </button>
-            ))}
-          </div>
-        </div>
-      </>
-    )
-  }
-
-  // ── BACKGROUND ───────────────────────────────────────────────────────
-
-  function BgFamily() {
-    const bg = displayValues.bg
-    const rbg = resetValues.bg
-    return (
-      <>
-        <Slider
-          label={t('site_knobs_bg_blend_pos')}
-          min={0} max={100} step={1}
-          value={bg.blend_position}
-          onChange={v => patch({ bg: { ...bg, blend_position: v } })}
-          unit="%"
-          defaultValue={rbg.blend_position}
-          onReset={() => patch({ bg: { ...bg, blend_position: rbg.blend_position } })}
-        />
-        <Slider
-          label={t('site_knobs_bg_blend_soft')}
-          min={0} max={100} step={1}
-          value={bg.blend_softness}
-          onChange={v => patch({ bg: { ...bg, blend_softness: v } })}
-          unit="%"
-          defaultValue={rbg.blend_softness}
-          onReset={() => patch({ bg: { ...bg, blend_softness: rbg.blend_softness } })}
-        />
-        <Slider
-          label={t('site_knobs_bg_opacity')}
-          min={0} max={100} step={1}
-          value={Math.round(bg.opacity * 100)}
-          onChange={v => patch({ bg: { ...bg, opacity: v / 100 } })}
-          unit="%"
-          defaultValue={Math.round(rbg.opacity * 100)}
-          onReset={() => patch({ bg: { ...bg, opacity: rbg.opacity } })}
-        />
-      </>
-    )
-  }
-
-  // ── ATMOSPHERE ────────────────────────────────────────────────────────
-
-  function AtmFamily() {
-    const a = displayValues.atm
-    const ra = resetValues.atm
-    return (
-      <>
-        <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 10, fontSize: 9, marginBottom: 6, alignItems: 'center' }}>
-          <span style={{ color: 'var(--tx2)' }}>{t('site_knobs_atm_sky_top')}</span>
-          <input
-            type="color"
-            value={normalizeHexColor(a.sky_top) ?? '#0a0c12'}
-            onChange={e => patch({ atm: { ...a, sky_top: e.target.value } })}
-            aria-label={t('site_knobs_atm_sky_top')}
-            style={colorInputStyle}
-          />
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 10, fontSize: 9, marginBottom: 10, alignItems: 'center' }}>
-          <span style={{ color: 'var(--tx2)' }}>{t('site_knobs_atm_sky_bottom')}</span>
-          <input
-            type="color"
-            value={normalizeHexColor(a.sky_bottom) ?? '#1a1c24'}
-            onChange={e => patch({ atm: { ...a, sky_bottom: e.target.value } })}
-            aria-label={t('site_knobs_atm_sky_bottom')}
-            style={colorInputStyle}
-          />
-        </div>
-        <Slider
-          label={t('site_knobs_atm_tint_opacity')}
-          min={0} max={100} step={1}
-          value={Math.round(a.tint_opacity * 100)}
-          onChange={v => patch({ atm: { ...a, tint_opacity: v / 100 } })}
-          unit="%"
-          defaultValue={Math.round(ra.tint_opacity * 100)}
-          onReset={() => patch({ atm: { ...a, tint_opacity: ra.tint_opacity } })}
-        />
-        <Slider
-          label={t('site_knobs_atm_work_glow')}
-          min={0} max={100} step={1}
-          value={a.work_glow_pct}
-          onChange={v => patch({ atm: { ...a, work_glow_pct: v } })}
-          unit="%"
-          defaultValue={ra.work_glow_pct}
-          onReset={() => patch({ atm: { ...a, work_glow_pct: ra.work_glow_pct } })}
-        />
-      </>
-    )
-  }
-
-  // ── SURFACE TEXTURE ───────────────────────────────────────────────────
-
-  function MatFamily() {
-    const m = displayValues.mat
-    const rm = resetValues.mat
-    return (
-      <>
-        <Slider label={t('site_knobs_mat_grain')} min={0} max={100} value={m.grain_pct}
-          onChange={v => patch({ mat: { ...m, grain_pct: v } })}
-          unit="%" defaultValue={rm.grain_pct}
-          onReset={() => patch({ mat: { ...m, grain_pct: rm.grain_pct } })} />
-        <Slider label={t('site_knobs_mat_voile')} min={0} max={100} value={m.voile_pct}
-          onChange={v => patch({ mat: { ...m, voile_pct: v } })}
-          unit="%" defaultValue={rm.voile_pct}
-          onReset={() => patch({ mat: { ...m, voile_pct: rm.voile_pct } })} />
-        <Slider label={t('site_knobs_mat_vignette')} min={0} max={100} value={m.vignette_pct}
-          onChange={v => patch({ mat: { ...m, vignette_pct: v } })}
-          unit="%" defaultValue={rm.vignette_pct}
-          onReset={() => patch({ mat: { ...m, vignette_pct: rm.vignette_pct } })} />
-      </>
-    )
-  }
-
-  // ── TYPOGRAPHY ────────────────────────────────────────────────────────
-
-  function TypeFamily() {
-    const ty = displayValues.type
-    const rty = resetValues.type
-    return (
-      <>
-        <Slider label={t('site_knobs_type_scale')} min={75} max={200} step={25} value={ty.scale_pct}
-          onChange={v => patch({ type: { ...ty, scale_pct: v } })}
-          unit="%" defaultValue={rty.scale_pct}
-          onReset={() => patch({ type: { ...ty, scale_pct: rty.scale_pct } })}
-          mb={10} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-          <div style={segmentedGroup}>
-            {(['light', 'regular', 'bold'] as const).map(w => (
-              <button key={w} type="button" className="t-mono-xs"
-                onClick={() => patch({ type: { ...ty, weight: w } })}
-                style={segBtn(ty.weight === w)}>
-                {w === 'light' ? t('site_knobs_type_light')
-                  : w === 'bold' ? t('site_knobs_type_bold')
-                  : t('site_knobs_type_regular')}
-              </button>
-            ))}
-          </div>
-        </div>
-      </>
-    )
-  }
-
-  // ── MOTION ────────────────────────────────────────────────────────────
-
-  function MotionFamily() {
-    const mo = displayValues.motion
-    const rmo = resetValues.motion
-    return (
-      <>
-        <Slider label={t('site_knobs_motion_parallax')} min={0} max={3} step={0.25}
-          value={mo.parallax_mult}
-          onChange={v => patch({ motion: { ...mo, parallax_mult: v } })}
-          defaultValue={rmo.parallax_mult}
-          onReset={() => patch({ motion: { ...mo, parallax_mult: rmo.parallax_mult } })}
-          mb={6} />
-        <Slider label={t('site_knobs_motion_sway')} min={0} max={3} step={0.25}
-          value={mo.sway_speed_mult}
-          onChange={v => patch({ motion: { ...mo, sway_speed_mult: v } })}
-          defaultValue={rmo.sway_speed_mult}
-          onReset={() => patch({ motion: { ...mo, sway_speed_mult: rmo.sway_speed_mult } })}
-          mb={10} />
-        <label style={checkRowStyle}>
-          <input type="checkbox"
-            checked={mo.reduce_motion}
-            onChange={e => patch({ motion: { ...mo, reduce_motion: e.target.checked } })} />
-          {t('site_knobs_motion_reduce')}
-        </label>
-      </>
-    )
-  }
+  const gridCols = `minmax(108px, 1.4fr) repeat(${COLS.length}, minmax(56px, 1fr))`
 
   // ── CIRCADIAN section ─────────────────────────────────────────────────
 
   function CircadianSection() {
     const circ = knobs.site.circ
     const activePreset = detectCircPreset(circ)
-
     function applyPreset(name: CircadianPreset) {
       const p = CIRCADIAN_PRESETS[name]
-      patchCirc({ auto: p.auto, drives: { ...p.drives } })
+      onChange({ ...knobs, site: { ...knobs.site, circ: { ...circ, auto: p.auto, drives: { ...p.drives } } } })
     }
-
+    function patchCirc(update: Partial<KnobValues['circ']>) {
+      onChange({ ...knobs, site: { ...knobs.site, circ: { ...circ, ...update } } })
+    }
     return (
       <div style={{ borderTop: '1px solid var(--bd)', paddingTop: 6, paddingBottom: circCollapsed ? 0 : 12 }}>
-        <button
-          type="button"
-          style={{ ...familyHeaderBtn, marginBottom: circCollapsed ? 0 : 8 }}
-          onClick={() => setCircCollapsed(v => !v)}
-        >
+        <button type="button" style={{ ...familyHeaderBtn, marginBottom: circCollapsed ? 0 : 8 }} onClick={() => setCircCollapsed(v => !v)}>
           <span style={{ fontSize: 8, color: 'var(--tx3)' }}>{circCollapsed ? '▸' : '▾'}</span>
-          <span style={{ fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--tx2)' }}>
-            {t('site_knobs_circ_section')}
-          </span>
+          <span style={{ fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--tx2)' }}>{t('site_knobs_circ_section')}</span>
           {(circ.auto || circ.drives.light || circ.drives.shadow || circ.drives.bg || circ.drives.atm) && (
             <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--ac)', display: 'inline-block', flexShrink: 0 }} />
           )}
         </button>
         {!circCollapsed && (
           <>
-            {/* Philosophy presets */}
             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 12 }}>
               {(['sun', 'gallery', 'theatre', 'custom'] as CircadianPreset[]).map(name => (
-                <button
-                  key={name}
-                  type="button"
-                  className="t-mono-xs"
-                  onClick={() => applyPreset(name)}
-                  style={{
-                    padding: '4px 9px', fontSize: 8, letterSpacing: 1,
-                    textTransform: 'uppercase', border: '1px solid var(--bd)',
-                    borderRadius: 4, cursor: 'pointer',
-                    background: activePreset === name ? 'var(--ac)' : 'var(--bg1)',
-                    color: activePreset === name ? '#fff' : 'var(--tx2)',
-                    fontFamily: 'inherit',
-                  }}
-                >
-                  {name === 'sun'     ? t('site_knobs_circ_preset_sun')
-                    : name === 'gallery'  ? t('site_knobs_circ_preset_gallery')
-                    : name === 'theatre'  ? t('site_knobs_circ_preset_theatre')
-                    : t('site_knobs_circ_preset_custom')}
+                <button key={name} type="button" className="t-mono-xs" onClick={() => applyPreset(name)}
+                  style={{ padding: '4px 9px', fontSize: 8, letterSpacing: 1, textTransform: 'uppercase', border: '1px solid var(--bd)', borderRadius: 4, cursor: 'pointer', background: activePreset === name ? 'var(--ac)' : 'var(--bg1)', color: activePreset === name ? '#fff' : 'var(--tx2)', fontFamily: 'inherit' }}>
+                  {name === 'sun' ? t('site_knobs_circ_preset_sun') : name === 'gallery' ? t('site_knobs_circ_preset_gallery') : name === 'theatre' ? t('site_knobs_circ_preset_theatre') : t('site_knobs_circ_preset_custom')}
                 </button>
               ))}
             </div>
-
-            {/* Auto toggle */}
             <label style={checkRowStyle}>
-              <input
-                type="checkbox"
-                checked={circ.auto}
-                onChange={e => patchCirc({ auto: e.target.checked })}
-              />
+              <input type="checkbox" checked={circ.auto} onChange={e => patchCirc({ auto: e.target.checked })} />
               {t('site_knobs_circ_auto')}
             </label>
-
-            {/* Manual scrubber — shown when auto is off */}
             {!circ.auto && (
               <div style={{ marginBottom: 10 }}>
-                <Slider
-                  label={t('site_knobs_circ_manual')}
-                  min={0} max={1439} step={1}
-                  value={circ.manual_minute}
-                  onChange={v => patchCirc({ manual_minute: v })}
-                  unit={` (${minutesToTimeStr(circ.manual_minute)})`}
-                  defaultValue={720}
-                  onReset={() => patchCirc({ manual_minute: 720 })}
-                />
+                <Slider label={t('site_knobs_circ_manual')} min={0} max={1439} step={1} value={circ.manual_minute}
+                  onChange={v => patchCirc({ manual_minute: v })} unit={` (${minutesToTimeStr(circ.manual_minute)})`}
+                  defaultValue={720} onReset={() => patchCirc({ manual_minute: 720 })} />
               </div>
             )}
-
-            {/* Drive toggles */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px', marginBottom: 6 }}>
               {([
-                ['light',  t('site_knobs_circ_drive_light')],
+                ['light', t('site_knobs_circ_drive_light')],
                 ['shadow', t('site_knobs_circ_drive_shadow')],
-                ['bg',     t('site_knobs_circ_drive_bg')],
-                ['atm',    t('site_knobs_circ_drive_atm')],
+                ['bg', t('site_knobs_circ_drive_bg')],
+                ['atm', t('site_knobs_circ_drive_atm')],
               ] as const).map(([key, label]) => (
                 <label key={key} style={{ ...checkRowStyle, marginBottom: 4 }}>
-                  <input
-                    type="checkbox"
-                    checked={circ.drives[key]}
-                    onChange={e => patchCirc({ drives: { ...circ.drives, [key]: e.target.checked } })}
-                  />
+                  <input type="checkbox" checked={circ.drives[key]} onChange={e => patchCirc({ drives: { ...circ.drives, [key]: e.target.checked } })} />
                   {label}
                 </label>
               ))}
             </div>
-
-            {/* Live preview note when auto is off */}
-            {!circ.auto && (circ.drives.light || circ.drives.shadow || circ.drives.bg || circ.drives.atm) && (
-              <div style={{ fontSize: 8, color: 'var(--tx3)', marginTop: 4, opacity: 0.7 }}>
-                {minutesToTimeStr(circ.manual_minute)}
-              </div>
-            )}
           </>
         )}
       </div>
@@ -699,57 +357,35 @@ export function KnobsPanel({
 
   function A11ySection() {
     const a = knobs.site.a11y
-    const isDirty = a.type_size_step !== DEFAULT_KNOB_VALUES.a11y.type_size_step ||
-                    a.high_contrast !== DEFAULT_KNOB_VALUES.a11y.high_contrast
-    const STEPS: { value: number; label: string }[] = [
-      { value: 1,    label: t('site_knobs_a11y_step_1') },
+    const isDirty = a.type_size_step !== DEFAULT_KNOB_VALUES.a11y.type_size_step || a.high_contrast !== DEFAULT_KNOB_VALUES.a11y.high_contrast
+    function patchA11y(update: Partial<KnobValues['a11y']>) {
+      onChange({ ...knobs, site: { ...knobs.site, a11y: { ...a, ...update } } })
+    }
+    const STEPS = [
+      { value: 1, label: t('site_knobs_a11y_step_1') },
       { value: 1.25, label: t('site_knobs_a11y_step_125') },
-      { value: 1.5,  label: t('site_knobs_a11y_step_150') },
-      { value: 2,    label: t('site_knobs_a11y_step_200') },
+      { value: 1.5, label: t('site_knobs_a11y_step_150') },
+      { value: 2, label: t('site_knobs_a11y_step_200') },
     ]
     return (
       <div style={{ borderTop: '1px solid var(--bd)', paddingTop: 6, paddingBottom: a11yCollapsed ? 0 : 12 }}>
-        <button
-          type="button"
-          style={{ ...familyHeaderBtn, marginBottom: a11yCollapsed ? 0 : 8 }}
-          onClick={() => setA11yCollapsed(v => !v)}
-        >
+        <button type="button" style={{ ...familyHeaderBtn, marginBottom: a11yCollapsed ? 0 : 8 }} onClick={() => setA11yCollapsed(v => !v)}>
           <span style={{ fontSize: 8, color: 'var(--tx3)' }}>{a11yCollapsed ? '▸' : '▾'}</span>
-          <span style={{ fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--tx2)' }}>
-            {t('site_knobs_a11y_section')}
-          </span>
-          {isDirty && (
-            <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--ac)', display: 'inline-block', flexShrink: 0 }} />
-          )}
+          <span style={{ fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--tx2)' }}>{t('site_knobs_a11y_section')}</span>
+          {isDirty && <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--ac)', display: 'inline-block', flexShrink: 0 }} />}
         </button>
         {!a11yCollapsed && (
           <>
-            {/* type_size_step — segmented */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-              <span style={{ color: 'var(--tx2)', fontSize: 9, minWidth: 120 }}>
-                {t('site_knobs_a11y_type_size')}
-              </span>
+              <span style={{ color: 'var(--tx2)', fontSize: 9, minWidth: 120 }}>{t('site_knobs_a11y_type_size')}</span>
               <div style={segmentedGroup}>
                 {STEPS.map(({ value, label }) => (
-                  <button
-                    key={value}
-                    type="button"
-                    className="t-mono-xs"
-                    onClick={() => patchA11y({ type_size_step: value })}
-                    style={segBtn(a.type_size_step === value)}
-                  >
-                    {label}
-                  </button>
+                  <button key={value} type="button" className="t-mono-xs" onClick={() => patchA11y({ type_size_step: value })} style={segBtn(a.type_size_step === value)}>{label}</button>
                 ))}
               </div>
             </div>
-            {/* high_contrast — checkbox */}
             <label style={checkRowStyle}>
-              <input
-                type="checkbox"
-                checked={a.high_contrast}
-                onChange={e => patchA11y({ high_contrast: e.target.checked })}
-              />
+              <input type="checkbox" checked={a.high_contrast} onChange={e => patchA11y({ high_contrast: e.target.checked })} />
               {t('site_knobs_a11y_high_contrast')}
             </label>
           </>
@@ -758,108 +394,60 @@ export function KnobsPanel({
     )
   }
 
-  // ── Family → renderer map ─────────────────────────────────────────────
-
-  const FAMILY_LABEL: Record<KnobFamily, string> = {
-    light:  t('site_knobs_family_light'),
-    shadow: t('site_knobs_family_shadow'),
-    frame:  t('site_knobs_family_frame'),
-    bg:     t('site_knobs_family_bg'),
-    atm:    t('site_knobs_family_atm'),
-    mat:    t('site_knobs_family_mat'),
-    type:   t('site_knobs_family_type'),
-    motion: t('site_knobs_family_motion'),
-  }
-
-  function renderFamily(f: KnobFamily) {
-    switch (f) {
-      case 'light':  return <LightFamily />
-      case 'shadow': return <ShadowFamily />
-      case 'frame':  return <FrameFamily />
-      case 'bg':     return <BgFamily />
-      case 'atm':    return <AtmFamily />
-      case 'mat':    return <MatFamily />
-      case 'type':   return <TypeFamily />
-      case 'motion': return <MotionFamily />
-    }
-  }
-
-  const SCOPE_TABS: { key: Scope; label: string; disabled?: boolean }[] = [
-    { key: 'site',    label: t('site_knobs_scope_site') },
-    { key: 'landing', label: t('site_knobs_scope_landing') },
-    { key: 'works',   label: t('site_knobs_scope_works') },
-    { key: 'about',   label: t('site_knobs_scope_about') },
-    { key: 'block',   label: t('site_knobs_scope_block'), disabled: !selectedBlockUid },
-  ]
-
-  // ── Render ────────────────────────────────────────────────────────────
+  // ── Render — mixing desk ───────────────────────────────────────────────
 
   return (
     <div>
-      {/* Scope bar */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 16, flexWrap: 'wrap' }}>
-        {SCOPE_TABS.map(({ key, label, disabled }) => (
-          <button
-            key={key}
-            type="button"
-            disabled={disabled}
-            onClick={() => { if (!disabled) setScope(key) }}
-            style={{
-              padding: '4px 10px', fontSize: 9, letterSpacing: 1,
-              textTransform: 'uppercase', borderRadius: 4, border: 'none',
-              cursor: disabled ? 'not-allowed' : 'pointer',
-              fontFamily: 'inherit',
-              opacity: disabled ? 0.38 : 1,
-              background: scope === key ? 'var(--ac)' : 'var(--bg1)',
-              color: scope === key ? '#fff' : 'var(--tx2)',
-            }}
-          >
-            {label}
-            {key === 'block' && selectedBlockUid && Object.keys(blockOverride).length > 0 && (
-              <span style={{
-                width: 4, height: 4, borderRadius: '50%',
-                background: scope === key ? 'rgba(255,255,255,0.7)' : 'var(--ac)',
-                display: 'inline-block', marginLeft: 5, verticalAlign: 'middle',
-              }} />
-            )}
-            {key !== 'site' && key !== 'block' && Object.keys(knobs.pages[key as PageScope] ?? {}).length > 0 && (
-              <span style={{
-                width: 4, height: 4, borderRadius: '50%',
-                background: scope === key ? 'rgba(255,255,255,0.7)' : 'var(--ac)',
-                display: 'inline-block', marginLeft: 5, verticalAlign: 'middle',
-              }} />
-            )}
-          </button>
+      <div style={{ display: 'grid', gridTemplateColumns: gridCols, alignItems: 'center', columnGap: 6 }}>
+        {/* Header row: page columns */}
+        <div />
+        {COLS.map(({ scope, label }) => {
+          const n = overrideCount(scope)
+          return (
+            <div key={scope} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, padding: '0 0 6px' }}>
+              <span style={{ fontSize: 9, letterSpacing: 1, textTransform: 'uppercase', color: scope === 'site' ? 'var(--tx)' : 'var(--tx2)', fontWeight: scope === 'site' ? 600 : 400 }}>{label}</span>
+              {scope !== 'site' && (
+                n > 0 ? (
+                  <button type="button" onClick={() => revertScope(scope)} title={t('site_knobs_override_on')}
+                    style={{ fontSize: 7, letterSpacing: 0.5, textTransform: 'uppercase', border: 'none', background: 'none', color: 'var(--ac)', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 3 }}>
+                    <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--ac)' }} />↺ {n}
+                  </button>
+                ) : (
+                  <span style={{ fontSize: 7, letterSpacing: 0.5, textTransform: 'uppercase', color: 'var(--tx3)', opacity: 0.6 }}>{t('site_knobs_override_inherited')}</span>
+                )
+              )}
+            </div>
+          )
+        })}
+
+        {/* Family groups: header spanning all columns, then one row per setting */}
+        {GROUPS.map(group => (
+          <div key={group.family} style={{ display: 'contents' }}>
+            <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 8, borderTop: '1px solid var(--bd)', padding: '7px 0 3px' }}>
+              <span style={{ fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--tx2)' }}>{group.label}</span>
+              {SCHEMA_RESERVED.has(group.family) && (
+                <span style={{ fontSize: 8, opacity: 0.45 }}>{t('site_knobs_not_rendered_note')}</span>
+              )}
+            </div>
+            {group.rows.map(row => (
+              <div key={row.field} style={{ display: 'contents' }}>
+                <div style={{ fontSize: 9, color: 'var(--tx2)', paddingLeft: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.label}>
+                  {row.label}
+                </div>
+                {COLS.map(({ scope }) => (
+                  <ControlCell key={scope} row={row} scope={scope} />
+                ))}
+              </div>
+            ))}
+          </div>
         ))}
       </div>
 
-      {/* Family accordion */}
-      {ALL_FAMILIES.map(f => {
-        const overrideOn = isOverrideEnabled(f)
-        return (
-          <div
-            key={f}
-            style={{
-              borderTop: '1px solid var(--bd)',
-              paddingTop: 6,
-              paddingBottom: collapsed.has(f) ? 0 : 12,
-            }}
-          >
-            <FamilyHead family={f} label={FAMILY_LABEL[f]} />
-            {!collapsed.has(f) && (
-              <div style={{ opacity: overrideOn ? 1 : 0.38, pointerEvents: overrideOn ? 'auto' : 'none' }}>
-                {renderFamily(f)}
-              </div>
-            )}
-          </div>
-        )
-      })}
-
-      {/* Circadian controller — site scope only */}
-      {isSiteScope && <CircadianSection />}
-
-      {/* Accessibility — site scope only */}
-      {isSiteScope && <A11ySection />}
+      {/* Circadian + accessibility (site-wide) */}
+      <div style={{ marginTop: 14 }}>
+        <CircadianSection />
+        <A11ySection />
+      </div>
     </div>
   )
 }

@@ -199,13 +199,13 @@ function MapLayoutSection({
       {mode.forest_panorama_r2_key && (
         <div style={{ marginBottom: 10 }}>
           <Slider
-            label={lang === 'fr' ? 'Taille œuvres' : 'Work size'}
-            min={24} max={96} step={2}
-            value={mode.forest_panorama_pin_size ?? 48}
+            label={lang === 'fr' ? 'Taille par défaut' : 'Default size'}
+            min={2} max={40} step={1}
+            value={mode.forest_panorama_pin_size ?? 16}
             onChange={v => updateMode(activeMode, { forest_panorama_pin_size: v })}
-            defaultValue={48}
+            defaultValue={16}
             onReset={() => updateMode(activeMode, { forest_panorama_pin_size: undefined })}
-            unit="px"
+            unit="%"
           />
         </div>
       )}

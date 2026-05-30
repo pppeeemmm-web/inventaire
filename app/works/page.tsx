@@ -292,13 +292,14 @@ export default async function WorksPage() {
   const serviceSb = await createServiceClient()
   const { data: rawPins } = await serviceSb
     .from('forest_pins')
-    .select('work_id, lat, lng, z, size, label')
+    .select('work_id, lat, lng, z, size, rotation, label')
   const forestPins: ForestPin[] = (rawPins ?? []).map((r: Record<string, unknown>) => ({
     work_id: r.work_id as number,
     x: typeof r.lng === 'number' ? r.lng : 0,
     y: typeof r.lat === 'number' ? r.lat : 0,
     z: typeof r.z === 'number' ? r.z : 0,
-    size: typeof r.size === 'number' ? r.size : null,
+    size: typeof r.size === 'number' && r.size >= 2 ? r.size : 16,
+    rotation: typeof r.rotation === 'number' ? r.rotation : 0,
     label: typeof r.label === 'string' ? r.label : null,
   }))
 
