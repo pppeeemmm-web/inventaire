@@ -151,6 +151,14 @@ export default function WorksModeGallery({ works, mode, siteTheme, a11y, knobs =
     ? 'none'
     : `brightness(${expoMul.toFixed(3)}) contrast(${contrastMul.toFixed(3)}) sepia(${(warmthAmt * 0.4).toFixed(3)}) saturate(${(1 + warmthAmt * 0.5).toFixed(3)})`
 
+  // Surface texture (mat) + ambient work glow — composited as one layout-agnostic
+  // post-process overlay over the whole works view.
+  const matGrain = (knobs.mat.grain_pct ?? 0) / 100
+  const matVoile = (knobs.mat.voile_pct ?? 0) / 100
+  const matVignette = (knobs.mat.vignette_pct ?? 0) / 100
+  const workGlow = (knobs.atm.work_glow_pct ?? 0) / 100
+  const hasOverlayFx = matGrain > 0 || matVoile > 0 || matVignette > 0 || workGlow > 0
+
   // Circadian tick — re-evaluate each minute when enabled.
   const [circadianTick, setCircadianTick] = useState(0)
   useEffect(() => {
@@ -231,7 +239,10 @@ export default function WorksModeGallery({ works, mode, siteTheme, a11y, knobs =
   const centerImgLoadedRef = useRef(false)
   const isMobileRef = useRef(false)
 
-  const reducedMotion = useReducedMotion()
+  const reducedMotion = useReducedMotion() || knobs.motion.reduce_motion
+  // Sway speed knob scales the idle animation (higher = faster; 0 = still).
+  const swayMult = knobs.motion.sway_speed_mult ?? 1
+  const swayDurS = swayMult > 0 ? +(11 / swayMult).toFixed(2) : 0
 
   const chapter = mode.collections[Math.min(activeChapterIdx, Math.max(0, mode.collections.length - 1))]
   const chapterWorks = useMemo(() => {
@@ -585,7 +596,7 @@ export default function WorksModeGallery({ works, mode, siteTheme, a11y, knobs =
           66% { transform: translate3d(-2px, -2px, 0); }
         }
         .w-card.center.img-ready:not(.is-zoomed) .w-art-mount {
-          animation: w-focus-idle 11s ease-in-out infinite;
+          animation: ${swayDurS > 0 ? `w-focus-idle ${swayDurS}s ease-in-out infinite` : 'none'};
         }
         .w-track-wrap.fading .w-card.center .w-art-mount {
           animation-play-state: paused;
@@ -1389,6 +1400,24 @@ export default function WorksModeGallery({ works, mode, siteTheme, a11y, knobs =
         )}
 
       </div>
+      )}
+
+      {/* Surface texture + ambient glow — post-process layer over every layout */}
+      {hasOverlayFx && (
+        <div aria-hidden style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 300 }}>
+          {workGlow > 0 && (
+            <div style={{ position: 'absolute', inset: 0, mixBlendMode: 'screen', background: `radial-gradient(ellipse 50% 55% at 50% 46%, rgba(255,240,210,${(workGlow * 0.5).toFixed(3)}) 0%, transparent 70%)` }} />
+          )}
+          {matVignette > 0 && (
+            <div style={{ position: 'absolute', inset: 0, boxShadow: `inset 0 0 ${Math.round(120 + matVignette * 260)}px ${Math.round(40 + matVignette * 160)}px rgba(0,0,0,${(0.15 + matVignette * 0.6).toFixed(3)})` }} />
+          )}
+          {matVoile > 0 && (
+            <div style={{ position: 'absolute', inset: 0, background: '#fff', opacity: +(matVoile * 0.35).toFixed(3) }} />
+          )}
+          {matGrain > 0 && (
+            <div style={{ position: 'absolute', inset: 0, mixBlendMode: 'overlay', backgroundImage: GRAIN_BG, opacity: +(matGrain * 0.55).toFixed(3) }} />
+          )}
+        </div>
       )}
     </>
   )
