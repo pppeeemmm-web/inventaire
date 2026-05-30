@@ -590,16 +590,18 @@ export default function LandingPage({
         </Link>
       </main>
 
-      {/* Visitor's local time — flowing milliseconds, top-right chrome */}
+      {/* Visitor's local time as units of vibration — bottom-left chrome,
+          desktop only (mobile toolbar owns the bottom edge on narrow). */}
       <div
         className="landing-chrome-shadow"
         style={{
           position: 'fixed',
-          top: 'max(14px, env(safe-area-inset-top, 0px))',
-          right: 'max(16px, env(safe-area-inset-right, 0px))',
+          bottom: 'max(14px, env(safe-area-inset-bottom, 0px))',
+          left: 'max(16px, env(safe-area-inset-left, 0px))',
           zIndex: 150,
           color: '#3a3834',
           pointerEvents: 'none',
+          display: pubNarrow ? 'none' : undefined,
         }}
       >
         <LandingAtomicClock />
