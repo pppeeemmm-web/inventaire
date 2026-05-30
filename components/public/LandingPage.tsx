@@ -23,6 +23,7 @@ import IdentityRenderer, { type IdentityFields } from '@/lib/site-blocks/identit
 import { LandingHeroCtx, type LandingHeroCtxValue } from '@/lib/site-blocks/hero/LandingHeroCtx'
 import { resolveKnobs, DEFAULT_KNOBS_CONFIG } from '@/lib/site-blocks'
 import { applyCircadianToKnobs } from '@/lib/circadian-knobs'
+import { LandingAtomicClock } from './LandingAtomicClock'
 import type { Block, KnobsConfig } from '@/lib/portfolio-config-types'
 import type { KnobValues } from '@/lib/site-blocks/knob-types'
 
@@ -114,10 +115,10 @@ export default function LandingPage({
     () => resolveKnobs(knobs ?? DEFAULT_KNOBS_CONFIG, 'landing'),
     [knobs],
   )
-  const [effectiveKnobs, setEffectiveKnobs] = useState<KnobValues>(() => {
-    const now = new Date()
-    return applyCircadianToKnobs(resolvedBase, now.getHours() * 60 + now.getMinutes())
-  })
+  // Start from the static base so SSR and the first client render match — applying
+  // circadian here (new Date()) caused a hydration mismatch that made the page
+  // flash/reset. Circadian is applied post-mount by the tick effect below.
+  const [effectiveKnobs, setEffectiveKnobs] = useState<KnobValues>(resolvedBase)
 
   const heroCaption = lang === 'en'
     ? (heroCaptionEn || heroCaptionFr)
@@ -588,6 +589,21 @@ export default function LandingPage({
           <span className="hub-dot" aria-hidden="true" />
         </Link>
       </main>
+
+      {/* Visitor's local time — flowing milliseconds, top-right chrome */}
+      <div
+        className="landing-chrome-shadow"
+        style={{
+          position: 'fixed',
+          top: 'max(14px, env(safe-area-inset-top, 0px))',
+          right: 'max(16px, env(safe-area-inset-right, 0px))',
+          zIndex: 150,
+          color: '#3a3834',
+          pointerEvents: 'none',
+        }}
+      >
+        <LandingAtomicClock />
+      </div>
 
       {pubNarrow && (
         <div
