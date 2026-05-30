@@ -31,14 +31,12 @@ import {
 } from '@/lib/landing-hero-bevel'
 import {
   WORKS_CIRCADIAN_TICK_MS,
-  WORKS_LIGHT_DIRECTION_DEFAULT,
-  WORKS_LIGHT_INTENSITY_DEFAULT,
   WORKS_LIGHT_TEMP_DEFAULT,
   buildWorksBevelBoxShadow,
-  resolveCircadianValues,
   resolveWorksLight,
   resolveWorksMobileLayout,
 } from '@/lib/works-mode-light'
+import { applyCircadianToKnobs } from '@/lib/circadian-knobs'
 import {
   parseDimensionCm,
   physicalArtDisplaySize,
@@ -130,53 +128,54 @@ export default function WorksModeGallery({ works, mode, siteTheme, a11y, knobs =
     } catch { /* SSR: noop */ }
   }, [])
 
-  // Bevel + light + shadow now come from the knobs cascade (site → works),
-  // not the legacy per-mode fields. Circadian is reintroduced via knobs.circ
-  // in a follow-up; static knob values drive the render here.
+  // Bevel is static (frame knob). Light / shadow / atmosphere come from the
+  // knobs cascade, with circadian variation applied at runtime when knobs.circ
+  // drives a family. Gated post-mount so SSR renders the static base (no
+  // hydration mismatch from new Date()).
   const bevelPx = knobs.frame.bevel_px
   const bevelProfile = knobs.frame.bevel_profile
-  const manualTempK = knobs.light.temp_k
-  const manualDirDeg = knobs.light.direction_deg
-  const manualIntensityPct = knobs.light.intensity_pct
-  const circadianEnabled = false
-  const castShadowOn = knobs.shadow.enabled
-  const castDistance = knobs.shadow.distance_px
-  const castBlur = knobs.shadow.blur_px
-  const shadowOpacity = (knobs.shadow.opacity_pct ?? 100) / 100
+
+  const circOn = knobs.circ.drives.light || knobs.circ.drives.shadow || knobs.circ.drives.bg || knobs.circ.drives.atm
+  const [circReady, setCircReady] = useState(false)
+  const [circTick, setCircTick] = useState(0)
+  useEffect(() => { setCircReady(true) }, [])
+  useEffect(() => {
+    if (!circOn) return
+    const id = window.setInterval(() => setCircTick(n => n + 1), WORKS_CIRCADIAN_TICK_MS)
+    return () => window.clearInterval(id)
+  }, [circOn])
+  const ek = useMemo(() => {
+    if (!circOn || !circReady) return knobs
+    const now = new Date()
+    return applyCircadianToKnobs(knobs, now.getHours() * 60 + now.getMinutes())
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [knobs, circOn, circReady, circTick])
+
+  const castShadowOn = ek.shadow.enabled
+  const castDistance = ek.shadow.distance_px
+  const castBlur = ek.shadow.blur_px
+  const shadowOpacity = (ek.shadow.opacity_pct ?? 100) / 100
   // Light "exposure" knobs → a scene-level filter on the stage (works are its children).
-  const expoMul = (knobs.light.exposition_pct ?? 100) / 100
-  const contrastMul = (knobs.light.contrast_pct ?? 100) / 100
-  const warmthAmt = (knobs.light.warmth_pct ?? 0) / 100
+  const expoMul = (ek.light.exposition_pct ?? 100) / 100
+  const contrastMul = (ek.light.contrast_pct ?? 100) / 100
+  const warmthAmt = (ek.light.warmth_pct ?? 0) / 100
   const stageFilter = (expoMul === 1 && contrastMul === 1 && warmthAmt === 0)
     ? 'none'
     : `brightness(${expoMul.toFixed(3)}) contrast(${contrastMul.toFixed(3)}) sepia(${(warmthAmt * 0.4).toFixed(3)}) saturate(${(1 + warmthAmt * 0.5).toFixed(3)})`
 
-  // Surface texture (mat) + ambient work glow — composited as one layout-agnostic
-  // post-process overlay over the whole works view.
+  // Surface texture (mat, static) + ambient work glow + atmosphere tint (circadian).
   const matGrain = (knobs.mat.grain_pct ?? 0) / 100
   const matVoile = (knobs.mat.voile_pct ?? 0) / 100
   const matVignette = (knobs.mat.vignette_pct ?? 0) / 100
-  const workGlow = (knobs.atm.work_glow_pct ?? 0) / 100
-  const hasOverlayFx = matGrain > 0 || matVoile > 0 || matVignette > 0 || workGlow > 0
+  const workGlow = (ek.atm.work_glow_pct ?? 0) / 100
+  const atmTint = ek.atm.tint_opacity ?? 0
+  const atmTop = ek.atm.sky_top
+  const atmBottom = ek.atm.sky_bottom
+  const hasOverlayFx = matGrain > 0 || matVoile > 0 || matVignette > 0 || workGlow > 0 || atmTint > 0
 
-  // Circadian tick — re-evaluate each minute when enabled.
-  const [circadianTick, setCircadianTick] = useState(0)
-  useEffect(() => {
-    if (!circadianEnabled) return
-    const id = window.setInterval(() => setCircadianTick(n => n + 1), WORKS_CIRCADIAN_TICK_MS)
-    return () => window.clearInterval(id)
-  }, [circadianEnabled])
-  const circadianValues = useMemo(
-    () => (circadianEnabled ? resolveCircadianValues() : null),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [circadianEnabled, circadianTick],
-  )
-  const lightTempK = circadianValues?.kelvin ?? manualTempK
-  const lightDirDeg = circadianValues?.directionDeg ?? manualDirDeg
-  const lightIntensityPct = circadianValues?.intensityPct ?? manualIntensityPct
   const light = useMemo(
-    () => resolveWorksLight(lightTempK, lightDirDeg, lightIntensityPct),
-    [lightTempK, lightDirDeg, lightIntensityPct],
+    () => resolveWorksLight(ek.light.temp_k, ek.light.direction_deg, ek.light.intensity_pct),
+    [ek.light.temp_k, ek.light.direction_deg, ek.light.intensity_pct],
   )
   const bevelShadow = useMemo(
     () => buildWorksBevelBoxShadow(bevelPx, bevelProfile, light),
@@ -540,7 +539,7 @@ export default function WorksModeGallery({ works, mode, siteTheme, a11y, knobs =
           touch-action: pan-y;
           filter: ${stageFilter};
         }
-        ${lightTempK !== WORKS_LIGHT_TEMP_DEFAULT ? `
+        ${ek.light.temp_k !== WORKS_LIGHT_TEMP_DEFAULT ? `
         /* Wall tint — kelvin-driven overlay sits below the carousel cards (z 0). */
         .w-stage::after {
           content: '';
@@ -1405,6 +1404,9 @@ export default function WorksModeGallery({ works, mode, siteTheme, a11y, knobs =
       {/* Surface texture + ambient glow — post-process layer over every layout */}
       {hasOverlayFx && (
         <div aria-hidden style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 300 }}>
+          {atmTint > 0 && (
+            <div style={{ position: 'absolute', inset: 0, mixBlendMode: 'multiply', background: `linear-gradient(180deg, ${atmTop}, ${atmBottom})`, opacity: +atmTint.toFixed(3) }} />
+          )}
           {workGlow > 0 && (
             <div style={{ position: 'absolute', inset: 0, mixBlendMode: 'screen', background: `radial-gradient(ellipse 50% 55% at 50% 46%, rgba(255,240,210,${(workGlow * 0.5).toFixed(3)}) 0%, transparent 70%)` }} />
           )}
