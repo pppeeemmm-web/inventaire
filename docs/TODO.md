@@ -66,8 +66,8 @@ _Version-controlled checklist + non-binding roadmap items. Prefer this file over
 ### /works open follow-ups (from [`archive/HANDOFF_WORKS_LAYOUTS.md`](archive/HANDOFF_WORKS_LAYOUTS.md))
 
 - [ ] **Procession layout** — user reported "not working" but couldn't reproduce in preview. Needs: browser + OS + input device + scenario. Reopen only when repro steps provided.
-- [ ] **Bg gradient "barely visible"** — user flagged low contrast on `/works` stop sequence. Two paths: (a) configurable contrast / boost factor or (b) edit default gradient stops higher. Needs owner direction before code change.
-- [ ] **Carousel outro card** — `mode.outro_fr/en` not rendered; all other layouts use `OutroCard`. Wire or document intentional divergence.
+- [x] **Bg gradient "barely visible"** — resolved as no-code (2026-06-01). Browser diag: the live site's saved `landing.bg_gradient_stops` are near-white (`#edeae4 / #fefbf6 / #f2fafd`), so the gradient is inherently flat — not a bug, and not the defaults. A `.w-stage` CSS filter is a dead end (can't add contrast to near-white; cascades onto the artwork). The `GradientStopsRow` editor already controls stop colours — fix = pick deeper stops there. Owner chose to leave code as-is.
+- [x] **Carousel outro card** — desktop done (2026-06-01). `OutroCard` now wired into the carousel branch in `WorksModeGallery.tsx`: shows in the empty right half of the wall on the last slide (`hasOutro && !isZoomed && !isMobile && activeIndex >= totalSlots - 1`). Verified in-browser (desktop) via mock outro. **Open follow-up:** mobile carousel — gated off because the mobile card fills the wall leaving no room to float beside the art; needs a design decision (own slide? collapse below?).
 
 ## Mobile field-tool — Phases 1–8
 

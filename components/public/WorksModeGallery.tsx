@@ -12,6 +12,7 @@ import WorksProcessionLayout from './works-layouts/WorksProcessionLayout'
 import WorksSalonLayout from './works-layouts/WorksSalonLayout'
 import WorksTimelineLayout from './works-layouts/WorksTimelineLayout'
 import WorksLetterLayout from './works-layouts/WorksLetterLayout'
+import OutroCard from './works-layouts/OutroCard'
 import { WORKS_LAYOUT_PLACEHOLDERS, type WorksLayout } from '@/lib/portfolio-config-types'
 import { WorksSectionTextCard } from './WorksSectionTextCard'
 import {
@@ -525,6 +526,7 @@ export default function WorksModeGallery({ works, mode, siteTheme, a11y, knobs =
   const chapterIntroText = chapter ? collectionIntroPlain(chapter, lang) : ''
   const chapterDesc = chapter ? collectionDescriptionHtml(chapter, lang) : ''
   const showChapterText = chapter ? collectionHasVisibleText(chapter, lang) : false
+  const hasOutro = Boolean((mode.outro_fr || mode.outro_en || '').trim())
   const totalSlots = chapterWorks.length
   totalSlotsRef.current = totalSlots
   const mobileZoomScale = 1 + (zoomZ / MAX_Z) * 5
@@ -550,6 +552,8 @@ export default function WorksModeGallery({ works, mode, siteTheme, a11y, knobs =
           pointer-events: none;
         }
         ` : ''}
+        .w-carousel-outro { animation: wCarouselOutroIn 500ms ease both; }
+        @keyframes wCarouselOutroIn { from { opacity: 0; } to { opacity: 1; } }
         .w-track-wrap {
           position: absolute; inset: 0; z-index: 3;
           display: flex; align-items: center; justify-content: center;
@@ -1303,6 +1307,32 @@ export default function WorksModeGallery({ works, mode, siteTheme, a11y, knobs =
               title={chapterTitle || undefined}
               variant="carousel"
             />
+          </div>
+        )}
+
+        {/* Closing card — carousel has no vertical end, so on desktop it surfaces
+            in the empty right half of the wall once the visitor reaches the last
+            slide. Gated to desktop: the mobile card fills the wall, leaving no room
+            to float without overlapping the art (mobile outro = open follow-up). */}
+        {hasOutro && !isZoomed && !isMobile && activeIndex >= totalSlots - 1 && (
+          <div
+            className="w-carousel-outro"
+            style={{
+              position: 'absolute',
+              left: 'calc(50% + min(12.5vw, 200px) + 32px)',
+              right: 'clamp(24px, 4vw, 64px)',
+              top: 0,
+              bottom: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 220,
+              pointerEvents: 'none',
+            }}
+          >
+            <div style={{ pointerEvents: 'auto' }}>
+              <OutroCard mode={mode} variant="inline" />
+            </div>
           </div>
         )}
 
