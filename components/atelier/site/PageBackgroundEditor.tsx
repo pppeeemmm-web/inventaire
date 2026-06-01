@@ -4,17 +4,13 @@ import { useState } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import {
   applyLandingBlendTransition,
-  normalizeHexColor,
   resolveLandingBackground,
-  LANDING_BG_BOTTOM_DEFAULT,
-  LANDING_BG_TOP_DEFAULT,
-  LANDING_GRADIENT_STOP_MAX,
-  LANDING_GRADIENT_STOP_MIN,
   type LandingGradientStop,
 } from '@/lib/landing-background'
 import type { PageBackgroundConfig } from '@/lib/page-background'
 import type { MessageKey } from '@/lib/i18n/messages'
 import { Slider } from '@/components/atelier/portfolio/shared/Slider'
+import { GradientStopsRow } from '@/components/atelier/portfolio/shared/GradientStopsRow'
 
 type Props = {
   labelKey: MessageKey
@@ -38,32 +34,6 @@ export function PageBackgroundEditor({
 
   function setStops(stops: LandingGradientStop[]) {
     onChange({ ...value, bg_gradient_stops: stops })
-  }
-
-  function updateStop(index: number, patch: Partial<LandingGradientStop>) {
-    setStops(value.bg_gradient_stops.map((s, i) => (i === index ? { ...s, ...patch } : s)))
-  }
-
-  function addStop() {
-    const stops = [...value.bg_gradient_stops]
-    if (stops.length >= LANDING_GRADIENT_STOP_MAX) return
-    const sorted = [...stops].sort((a, b) => a.position_pct - b.position_pct)
-    let insertAt = 50
-    let maxGap = 0
-    for (let i = 0; i < sorted.length - 1; i++) {
-      const gap = sorted[i + 1].position_pct - sorted[i].position_pct
-      if (gap > maxGap) {
-        maxGap = gap
-        insertAt = Math.round((sorted[i].position_pct + sorted[i + 1].position_pct) / 2)
-      }
-    }
-    stops.push({ color: sorted[sorted.length - 1].color, position_pct: insertAt })
-    setStops(stops)
-  }
-
-  function removeStop(index: number) {
-    if (value.bg_gradient_stops.length <= LANDING_GRADIENT_STOP_MIN) return
-    setStops(value.bg_gradient_stops.filter((_, i) => i !== index))
   }
 
   function applyBlendTransition(positionPct: number, softnessPct: number) {
@@ -115,8 +85,8 @@ export function PageBackgroundEditor({
       <div
         aria-hidden
         style={{
-          height: 12,
-          borderRadius: 4,
+          height: 30,
+          borderRadius: 6,
           border: '1px solid var(--bd)',
           marginBottom: open ? 12 : 0,
           background: preview,
@@ -163,89 +133,10 @@ export function PageBackgroundEditor({
             onChange={v => applyBlendTransition(value.bg_blend_position_pct, v)}
             mb={12}
           />
-          {value.bg_gradient_stops.map((stop, index) => (
-            <div
-              key={`block-grad-${index}`}
-              style={{
-                marginBottom: 12,
-                padding: 10,
-                border: '1px solid var(--bd)',
-                borderRadius: 4,
-              }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginBottom: 8,
-                }}
-              >
-                <span className="t-label" style={{ fontSize: 9 }}>
-                  {t('site_landing_bg_stop_heading').replace('{n}', String(index + 1))}
-                </span>
-                <button
-                  type="button"
-                  className="t-mono-xs"
-                  disabled={value.bg_gradient_stops.length <= LANDING_GRADIENT_STOP_MIN}
-                  onClick={() => removeStop(index)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    opacity: value.bg_gradient_stops.length <= LANDING_GRADIENT_STOP_MIN ? 0.35 : 0.7,
-                  }}
-                >
-                  {t('site_landing_bg_remove_stop')}
-                </button>
-              </div>
-              <label className="t-label" style={{ display: 'block', fontSize: 9, marginBottom: 8 }}>
-                {t('site_landing_bg_stop_color_label')}
-                <div style={{ display: 'flex', gap: 8, marginTop: 6, alignItems: 'center' }}>
-                  <input
-                    type="color"
-                    value={normalizeHexColor(stop.color) ?? LANDING_BG_TOP_DEFAULT}
-                    onChange={e => updateStop(index, { color: e.target.value })}
-                    aria-label={t('site_landing_bg_stop_color_label')}
-                    style={{ width: 40, height: 32, padding: 0, border: '1px solid var(--bd)', cursor: 'pointer' }}
-                  />
-                  <input
-                    className="input full"
-                    value={stop.color}
-                    onChange={e => updateStop(index, { color: e.target.value })}
-                    style={{ flex: 1, fontFamily: 'monospace', fontSize: 11 }}
-                  />
-                </div>
-              </label>
-              <Slider
-                layout="stack"
-                label={t('site_landing_bg_stop_position_label')}
-                min={0}
-                max={100}
-                value={stop.position_pct}
-                onChange={v => updateStop(index, { position_pct: v })}
-                mb={0}
-              />
-            </div>
-          ))}
-          <button
-            type="button"
-            className="t-mono-xs"
-            disabled={value.bg_gradient_stops.length >= LANDING_GRADIENT_STOP_MAX}
-            onClick={addStop}
-            style={{
-              marginBottom: 12,
-              background: 'none',
-              border: '1px dashed var(--bd)',
-              borderRadius: 4,
-              padding: '8px 12px',
-              width: '100%',
-              cursor: 'pointer',
-              opacity: value.bg_gradient_stops.length >= LANDING_GRADIENT_STOP_MAX ? 0.4 : 1,
-            }}
-          >
-            {t('site_landing_bg_add_stop')}
-          </button>
+          {/* Compact horizontal stop chips — shared with hero + Ambiance matrix */}
+          <div style={{ marginBottom: 12 }}>
+            <GradientStopsRow stops={value.bg_gradient_stops} onChange={setStops} />
+          </div>
           <div className="t-label" style={{ marginBottom: 6, fontSize: 9 }}>{t('site_landing_bg_preview_label')}</div>
           <div
             aria-hidden
