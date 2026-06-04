@@ -129,6 +129,7 @@ system_ledger_upload_invalid_format: 'Format non pris en charge (JPEG, PNG, WebP
 system_ledger_upload_r2_failed: 'Échec du stockage. Réessayez.',
 system_ledger_attach_max: 'Maximum 8 captures par entrée.',
 system_ledger_delete_confirm: 'Supprimer cette entrée du journal ?',
+system_ledger_admin_only: 'Réservé aux admins — la modification, le changement de statut et la suppression des entrées du journal sont restreints aux admins. Vous pouvez toujours ajouter de nouvelles entrées.',
 system_ledger_bible_confirm: 'Régénérer la Studio Bible (PDF) et l’archiver au coffre ?',
 system_ledger_bible_err_prefix: 'Studio Bible :',
 system_ledger_bible_success: 'Studio Bible enregistrée :',

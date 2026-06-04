@@ -45,7 +45,7 @@ export type DictKey =
   | 'system_ledger_status_active' | 'system_ledger_status_requested' | 'system_ledger_status_in_progress' | 'system_ledger_status_completed' | 'system_ledger_status_dismissed'
   | 'system_ledger_priority_p1' | 'system_ledger_priority_p2' | 'system_ledger_priority_p3' | 'system_ledger_priority_p4'
   | 'system_ledger_upload_not_authenticated' | 'system_ledger_upload_not_team' | 'system_ledger_upload_no_file' | 'system_ledger_upload_too_large' | 'system_ledger_upload_invalid_format' | 'system_ledger_upload_r2_failed'
-  | 'system_ledger_attach_max' | 'system_ledger_delete_confirm' | 'system_ledger_bible_confirm' | 'system_ledger_bible_err_prefix' | 'system_ledger_bible_success'
+  | 'system_ledger_attach_max' | 'system_ledger_delete_confirm' | 'system_ledger_admin_only' | 'system_ledger_bible_confirm' | 'system_ledger_bible_err_prefix' | 'system_ledger_bible_success'
   | 'system_ledger_attach_busy' | 'system_ledger_attach_add' | 'system_ledger_attach_remove_aria'
   | 'system_ledger_title' | 'system_ledger_subtitle' | 'system_ledger_bible_regenerating' | 'system_ledger_bible_cta'
   | 'system_ledger_summary_ph' | 'system_ledger_details_ph' | 'system_ledger_logging' | 'system_ledger_add_entry'

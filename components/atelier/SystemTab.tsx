@@ -136,6 +136,7 @@ export function SystemTab() {
   const narrow = useMediaQuery('(max-width: 767px)')
   const [logs, setLogs] = useState<LogEntry[]>([])
   const [loading, setLoading] = useState(true)
+  const [isAdmin, setIsAdmin] = useState(false)
   const [busy, setBusy] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [checklistPending, startChecklist] = useTransition()
@@ -160,7 +161,20 @@ export function SystemTab() {
 
   useEffect(() => {
     void fetchLogs()
+    void (async () => {
+      const sb = createClient()
+      const { data } = await sb.rpc('is_admin')
+      setIsAdmin(data === true)
+    })()
   }, [])
+
+  /** Edit / status / delete on existing rows are admin-only (RLS is_admin()).
+   *  Surface a clear message instead of letting the write fail silently. */
+  function requireAdmin(): boolean {
+    if (isAdmin) return true
+    alert(t('system_ledger_admin_only'))
+    return false
+  }
 
   async function fetchLogs() {
     const sb = createClient()
@@ -261,6 +275,7 @@ export function SystemTab() {
   }
 
   function startEdit(log: LogEntry) {
+    if (!requireAdmin()) return
     setEditingId(log.id)
     setDraft({
       action: log.action,
@@ -296,6 +311,7 @@ export function SystemTab() {
   }
 
   async function cycleStatus(log: LogEntry) {
+    if (!requireAdmin()) return
     const next = nextStatus(log.status)
     const sb = createClient()
     const { data } = await sb.from('system_log').update({ status: next }).eq('id', log.id).select().single()
@@ -303,6 +319,7 @@ export function SystemTab() {
   }
 
   async function deleteLog(id: number) {
+    if (!requireAdmin()) return
     if (!confirm(t('system_ledger_delete_confirm'))) return
     const sb = createClient()
     const { error } = await sb.from('system_log').delete().eq('id', id)

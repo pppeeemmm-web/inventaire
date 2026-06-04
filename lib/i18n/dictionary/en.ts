@@ -128,6 +128,7 @@ system_ledger_upload_invalid_format: 'Unsupported format (JPEG, PNG, WebP, GIF).
 system_ledger_upload_r2_failed: 'Storage failed. Try again.',
 system_ledger_attach_max: 'Maximum 8 screenshots per entry.',
 system_ledger_delete_confirm: 'Delete this ledger entry?',
+system_ledger_admin_only: 'Admin only — editing, status changes, and deletion of ledger entries are restricted to admins. You can still add new entries.',
 system_ledger_bible_confirm: 'Regenerate the Studio Bible (PDF) and vault it?',
 system_ledger_bible_err_prefix: 'Studio Bible:',
 system_ledger_bible_success: 'Studio Bible saved:',
