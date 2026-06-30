@@ -587,7 +587,7 @@ wf_drawer_expand: 'Expand panel',
 wf_drawer_collapse: 'Collapse panel',
 wf_images_heading: 'Images',
 wf_images_save_first_hint:
-  'Save the record to get a work ID, then you can add photos here.',
+  'Add photos now — they attach automatically when you save the record.',
 wf_images_add_aria: 'Add image',
 wf_images_reorder_hint:
   'The last image in the grid is the cover. ← → reorder; ★ moves to cover (end).',

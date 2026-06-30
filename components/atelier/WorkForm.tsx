@@ -117,6 +117,9 @@ export function WorkForm({
   const undoBaselineRef = useRef<WorkRevertSnapshot | null>(null)
   const draftKey = useMemo(() => draftStorageKey(oeuvre?.OeuvreID ?? null), [oeuvre?.OeuvreID])
   const draftPromptedForKey = useRef<string | null>(null)
+  // New (unsaved) works have no OeuvreID yet, so images can't be uploaded directly.
+  // Stage picked files here and attach them once the work is created (see handleSubmit).
+  const [newImageFiles, setNewImageFiles] = useState<File[]>([])
 
   useLayoutEffect(() => {
     if (!oeuvre) {
@@ -486,6 +489,22 @@ export function WorkForm({
               return
             }
           }
+          for (const file of newImageFiles) {
+            try {
+              const prepared = await downscaleImageFileForMobileIfNeeded(file, narrow)
+              const imgFd = new FormData()
+              imgFd.append('image', prepared)
+              imgFd.append('oeuvre_id', String(res.newId))
+              const up = await addWorkImage(imgFd)
+              if ('error' in up) {
+                toast.error(`${t('error_prefix')} ${up.error}`)
+                break
+              }
+            } catch (err) {
+              toast.error(`${t('error_prefix')} ${String(err)}`)
+              break
+            }
+          }
           router.push(`/atelier?work=${res.newId}`)
           router.refresh()
         } else {
@@ -598,6 +617,8 @@ export function WorkForm({
             initialImages={initialImages}
             narrow={narrow}
             sharePendingFiles={shareInboxPrefill?.imageFiles}
+            newImageFiles={newImageFiles}
+            onStageNewImages={setNewImageFiles}
           />
 
           {oeuvre?.OeuvreID ? (
@@ -1010,11 +1031,16 @@ function ImageManager({
   initialImages,
   narrow,
   sharePendingFiles,
+  newImageFiles = [],
+  onStageNewImages,
 }: {
   oeuvreId: number
   initialImages: WorkImage[]
   narrow: boolean
   sharePendingFiles?: Array<{ r2_key: string; name: string; mime: string }>
+  /** Files staged on a new (unsaved) work; attached by the parent after save. */
+  newImageFiles?: File[]
+  onStageNewImages?: (updater: (prev: File[]) => File[]) => void
 }) {
   const { t } = useI18n()
   const [imgs, setImgs] = useState(initialImages)
@@ -1025,6 +1051,22 @@ function ImageManager({
   const [uploadTotal, setUploadTotal] = useState(0)
   const cancelQueueRef = useRef(false)
   const fileRef = useRef<HTMLInputElement>(null)
+  const stageFileRef = useRef<HTMLInputElement>(null)
+
+  const isNewWork = oeuvreId <= 0
+  const canStageNew = isNewWork && !!onStageNewImages && (!sharePendingFiles || sharePendingFiles.length === 0)
+  const stagedUrls = useMemo(() => newImageFiles.map((f) => URL.createObjectURL(f)), [newImageFiles])
+  useEffect(() => () => stagedUrls.forEach((u) => URL.revokeObjectURL(u)), [stagedUrls])
+
+  function onStage(e: React.ChangeEvent<HTMLInputElement>) {
+    const list = Array.from(e.target.files ?? [])
+    e.target.value = ''
+    if (list.length === 0 || !onStageNewImages) return
+    onStageNewImages((prev) => [...prev, ...list])
+  }
+  function removeStaged(idx: number) {
+    onStageNewImages?.((prev) => prev.filter((_, i) => i !== idx))
+  }
 
   const sorted = useMemo(() => [...imgs].sort((a, b) => (a.SeqNo ?? 0) - (b.SeqNo ?? 0)), [imgs])
   const initialSnap = useMemo(
@@ -1147,9 +1189,44 @@ function ImageManager({
           </p>
         </div>
       ) : null}
-      {oeuvreId <= 0 && (!sharePendingFiles || sharePendingFiles.length === 0) ? (
-        <div style={{ fontSize: 11, color: 'var(--tx3)', lineHeight: 1.45 }}>
-          {t('wf_images_save_first_hint')}
+      {canStageNew ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ fontSize: 11, color: 'var(--tx3)', lineHeight: 1.45 }}>
+            {t('wf_images_save_first_hint')}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+            {newImageFiles.map((file, i) => (
+              <div key={`${file.name}-${i}`} style={{ position: 'relative', aspectRatio: '1', background: 'var(--bg2)', border: '1px solid var(--bd)' }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={stagedUrls[i]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <button
+                  type="button"
+                  onClick={() => removeStaged(i)}
+                  aria-label={t('wf_images_add_aria')}
+                  style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(0,0,0,0.5)', color: '#fff', border: 'none', borderRadius: '50%', width: 18, height: 18, fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+            <input
+              ref={stageFileRef}
+              type="file"
+              accept="image/*"
+              multiple
+              style={{ display: 'none' }}
+              onChange={onStage}
+              tabIndex={-1}
+            />
+            <button
+              type="button"
+              onClick={() => stageFileRef.current?.click()}
+              aria-label={t('wf_images_add_aria')}
+              style={{ aspectRatio: '1', border: '1px dashed var(--bd)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, color: 'var(--tx3)', cursor: 'pointer', background: 'transparent', padding: 0 }}
+            >
+              +
+            </button>
+          </div>
         </div>
       ) : null}
       {busy && (uploadPct > 0 || uploadName) && (

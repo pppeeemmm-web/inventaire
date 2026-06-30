@@ -589,7 +589,7 @@ wf_drawer_expand: 'Agrandir le panneau',
 wf_drawer_collapse: 'Réduire le panneau',
 wf_images_heading: 'Images',
 wf_images_save_first_hint:
-  'Enregistrez la fiche pour obtenir un numéro d’œuvre, puis vous pourrez ajouter des photos ici.',
+  'Ajoutez des photos maintenant — elles seront attachées automatiquement à l’enregistrement de la fiche.',
 wf_images_add_aria: 'Ajouter une image',
 wf_images_reorder_hint:
   'La dernière image en grille est la couverture. ← → réordonnent, ★ envoie en couverture.',

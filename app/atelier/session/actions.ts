@@ -785,13 +785,56 @@ export async function openWorkSessionForDay(
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Non authentifié' }
 
-  const teamWide = await teamWideSessionListing(supabase)
   const canCapture = await canCaptureWorkSession(supabase)
+
   if (canCapture) {
+    // Capture path: consolidate merges the day into one keeper row (donors deleted)
+    // and returns its id, so we reopen that row directly instead of re-scanning the
+    // whole day a second time. preferredSessionId is moot here — any preferred donor
+    // has been merged into the keeper, which already holds its content.
     const merged = await consolidateSessionsForCalendarDay(supabase, calendarDay, user.id)
     if ('error' in merged) return { error: merged.error }
+    if (merged.keeperId) {
+      const { data: keeperRow, error: keeperErr } = await workSessionTable(supabase)
+        .select('id,status,payload,oeuvre_id,created_at,updated_at,user_id')
+        .eq('id', merged.keeperId)
+        .maybeSingle()
+      if (keeperErr) return { error: keeperErr.message }
+      if (keeperRow) {
+        return reopenWorkSessionRow(supabase, keeperRow as WorkSessionDayRow, calendarDay, oeuvreId, {
+          readOnly: false,
+        })
+      }
+    }
+
+    // No session yet for this calendar day — create one.
+    const payload = emptyWorkSessionPayload()
+    payload.session_day = calendarDay
+    payload.session_at = sessionAtForCalendarDay(calendarDay)
+    if (oeuvreId && oeuvreId > 0) {
+      const firstItem = createWorkSessionItem('existing')
+      firstItem.oeuvre_id = oeuvreId
+      payload.items = [firstItem]
+    }
+
+    const { data, error } = await workSessionTable(supabase)
+      .insert({
+        user_id: user.id,
+        oeuvre_id: oeuvreId && oeuvreId > 0 ? oeuvreId : null,
+        expires_at: expiresAtIso(),
+        status: 'draft',
+        payload: asPayloadRecord(payload),
+      })
+      .select('id')
+      .single()
+
+    if (error || !data) return { error: error?.message ?? 'work_session insert failed' }
+    revalidatePath('/atelier/session/new')
+    return { ok: true, id: data.id as string, reopened: false, readOnly: false }
   }
 
+  // Read-only path (team member, no capture rights): list the day and reopen read-only.
+  const teamWide = await teamWideSessionListing(supabase)
   const listed = await listWorkSessionsForCalendarDay(supabase, calendarDay, {
     userId: user.id,
     teamWide,
@@ -806,34 +849,10 @@ export async function openWorkSessionForDay(
   }
 
   if (existing) {
-    return reopenWorkSessionRow(supabase, existing, calendarDay, oeuvreId, { readOnly: !canCapture })
+    return reopenWorkSessionRow(supabase, existing, calendarDay, oeuvreId, { readOnly: true })
   }
 
-  if (!canCapture) return { error: CAPTURE_ADMIN_ONLY }
-
-  const payload = emptyWorkSessionPayload()
-  payload.session_day = calendarDay
-  payload.session_at = sessionAtForCalendarDay(calendarDay)
-  if (oeuvreId && oeuvreId > 0) {
-    const firstItem = createWorkSessionItem('existing')
-    firstItem.oeuvre_id = oeuvreId
-    payload.items = [firstItem]
-  }
-
-  const { data, error } = await workSessionTable(supabase)
-    .insert({
-      user_id: user.id,
-      oeuvre_id: oeuvreId && oeuvreId > 0 ? oeuvreId : null,
-      expires_at: expiresAtIso(),
-      status: 'draft',
-      payload: asPayloadRecord(payload),
-    })
-    .select('id')
-    .single()
-
-  if (error || !data) return { error: error?.message ?? 'work_session insert failed' }
-  revalidatePath('/atelier/session/new')
-  return { ok: true, id: data.id as string, reopened: false, readOnly: false }
+  return { error: CAPTURE_ADMIN_ONLY }
 }
 
 /** @deprecated Prefer openWorkSessionForDay with an explicit YYYY-MM-DD calendar day. */

@@ -955,20 +955,24 @@ export function SessionNewClient() {
                   </button>
                 ))}
               </div>
-              <label className="t-mono-sm" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <span>{t(oeuvreLabelKey)}</span>
-                <input
-                  className="input"
-                  inputMode="numeric"
-                  value={workIdFallback}
-                  onChange={(e) => setWorkIdFallback(e.target.value)}
-                  placeholder={t('session_oeuvre_id_placeholder')}
-                  style={{ minHeight: 44 }}
-                />
-              </label>
-              <button type="button" className="btn ghost" disabled={busy} onClick={() => linkOeuvre(activeItem, workIdFallback)} style={{ minHeight: 44 }}>
-                {t('session_oeuvre_link')}
-              </button>
+              {!narrow ? (
+                <>
+                  <label className="t-mono-sm" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <span>{t(oeuvreLabelKey)}</span>
+                    <input
+                      className="input"
+                      inputMode="numeric"
+                      value={workIdFallback}
+                      onChange={(e) => setWorkIdFallback(e.target.value)}
+                      placeholder={t('session_oeuvre_id_placeholder')}
+                      style={{ minHeight: 44 }}
+                    />
+                  </label>
+                  <button type="button" className="btn ghost" disabled={busy} onClick={() => linkOeuvre(activeItem, workIdFallback)} style={{ minHeight: 44 }}>
+                    {t('session_oeuvre_link')}
+                  </button>
+                </>
+              ) : null}
             </>
           ) : (
             <>
@@ -1078,17 +1082,17 @@ export function SessionNewClient() {
         ) : null}
       </div>
 
-      {activeItem ? (
+      {activeItem || (canCaptureSessions && !sessionReadOnly) ? (
         <SessionPhotoCapture
-          disabled={sessionReadOnly || activeItem.status === 'applied'}
+          disabled={sessionReadOnly || activeItem?.status === 'applied'}
           busy={busy}
           instantUpload={narrow}
           lightroomReturn={
-            sessionId && activeItem.id && /^\d{4}-\d{2}-\d{2}$/.test(sessionDate)
+            sessionId && activeItem?.id && /^\d{4}-\d{2}-\d{2}$/.test(sessionDate)
               ? { kind: 'session', sessionId, itemId: activeItem.id, date: sessionDate }
               : null
           }
-          stagedShots={activeItem.shots}
+          stagedShots={activeItem?.shots ?? []}
           onUpload={onUploadFiles}
           onRemoveStaged={onRemoveStagedShot}
         />
@@ -1139,9 +1143,11 @@ export function SessionNewClient() {
         </section>
       ) : null}
 
-      <Link href="/atelier" className="btn ghost" style={{ minHeight: 44, marginTop: 8 }}>
-        {t('session_new_back_atelier')}
-      </Link>
+      {!narrow ? (
+        <Link href="/atelier" className="btn ghost" style={{ minHeight: 44, marginTop: 8 }}>
+          {t('session_new_back_atelier')}
+        </Link>
+      ) : null}
       <FieldHubBackLink style={{ marginTop: 8 }} />
     </main>
   )
