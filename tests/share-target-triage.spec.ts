@@ -23,9 +23,4 @@ test.describe('Share target → new work (Slice 2)', () => {
     await expect(page.getByTestId('share-triage-new-work')).toBeVisible({ timeout: 20_000 })
   })
 
-  test('hub field launcher includes From Lightroom row', async ({ page }) => {
-    await page.setViewportSize({ width: 390, height: 844 })
-    await page.goto('/hub')
-    await expect(page.getByTestId('hub-field-verb-lightroom')).toBeVisible({ timeout: 45_000 })
-  })
 })

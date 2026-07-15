@@ -26,7 +26,7 @@ const VAULT_BUCKET = process.env.R2_VAULT_BUCKET ?? 'vault'
 export type ShareAttachTargetType = 'work' | 'contact' | 'process' | 'vault' | 'note'
 
 export type ShareAttachSearchHit =
-  | { type: 'work'; id: number; label: string }
+  | { type: 'work'; id: number; label: string; thumb?: string | null }
   | { type: 'contact'; id: number; label: string }
   | { type: 'process'; id: string; label: string }
 
@@ -146,7 +146,7 @@ export async function searchShareAttachTargets(
   if (type === 'work') {
     const { data, error } = await g.supabase
       .from('Oeuvres')
-      .select('OeuvreID, Titre')
+      .select('OeuvreID, Titre, txtImageNameLink')
       .is('deleted_at', null)
       .ilike('Titre', pattern)
       .order('OeuvreID', { ascending: false })
@@ -156,6 +156,7 @@ export async function searchShareAttachTargets(
       type: 'work',
       id: r.OeuvreID as number,
       label: (r.Titre as string | null) || `#${r.OeuvreID}`,
+      thumb: (r.txtImageNameLink as string | null) ?? null,
     }))
     return { hits }
   }

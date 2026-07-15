@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, useTransition, type CSSProperties } f
 import type { DictKey } from '@/lib/i18n/dictionary'
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from '@/lib/ui/toast'
+import { thumbUrl } from '@/lib/data'
 import {
   attachShareInboxToContact,
   attachShareInboxToProcess,
@@ -152,14 +153,63 @@ export function ShareAttachPanel(props: {
             <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
               {hits.map((h) => (
                 <li key={`${h.type}-${h.id}`}>
-                  <button
-                    type="button"
-                    className={`btn ghost sm${selected === h ? ' primary' : ''}`}
-                    style={{ minHeight: 44, width: '100%', textAlign: 'left' }}
-                    onClick={() => setSelected(h)}
-                  >
-                    {h.label}
-                  </button>
+                  {h.type === 'work' ? (
+                    <button
+                      type="button"
+                      className={`btn ghost sm${selected === h ? ' primary' : ''}`}
+                      style={{
+                        minHeight: 84,
+                        width: '100%',
+                        textAlign: 'left',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                      }}
+                      onClick={() => setSelected(h)}
+                    >
+                      {h.thumb ? (
+                        <img
+                          src={thumbUrl(h.thumb, 144) ?? ''}
+                          alt=""
+                          width={72}
+                          height={72}
+                          style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 4, border: '1px solid var(--bd)', flexShrink: 0 }}
+                        />
+                      ) : (
+                        <span
+                          aria-hidden="true"
+                          style={{
+                            width: 72,
+                            height: 72,
+                            flexShrink: 0,
+                            borderRadius: 4,
+                            border: '1px solid var(--bd)',
+                            background: 'var(--bg0)',
+                          }}
+                        />
+                      )}
+                      <span
+                        style={{
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                          minWidth: 0,
+                        }}
+                      >
+                        <strong>#{h.id}</strong> {h.label}
+                      </span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className={`btn ghost sm${selected === h ? ' primary' : ''}`}
+                      style={{ minHeight: 44, width: '100%', textAlign: 'left' }}
+                      onClick={() => setSelected(h)}
+                    >
+                      {h.label}
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>

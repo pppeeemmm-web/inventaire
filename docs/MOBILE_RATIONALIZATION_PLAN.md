@@ -24,6 +24,11 @@ Status: 1–3 done, verified against live code 2026-07-15. 4 investigated only, 
 3. Hub "session" tile: admins→capture, team→journal, identical look. Split into role-correct label/icon before tap.
 4. Hub "More" legacy tiles push into desktop tab routes — drop or route to mobile-branched views. **Investigation finding:** all 4 (`inventory`/`overview`/`pipeline`/`contacts`) route through the shared `TeamPortalClient` shell (`(portal)/layout.tsx` → `AtelierTeamPortalLoader`), which already has narrow handling (`useAtelierNarrow`, mobile bottom action bar). Each tab's own content component also has a real `useMediaQuery('(max-width: 767px)')` branch (`Inventory.tsx`, `OverviewTab.tsx`, `Pipeline.tsx` via `ATELIER_NARROW_MQ`, `ContactsTab.tsx`). No drop/reroute needed — premise was stale.
 
+## Pre-Phase 2 — Owner UX pass (2026-07-15)
+- Owner on iPhone SE: Lightroom in-app open unusable. Real flow = capture inside Lightroom → export to camera roll → add via library picker on new/existing item. Removed Lightroom UI: session capture guide (`LightroomCaptureGuide` deleted), hub 🎨 tile + first-visit intro modal, share-triage hint. Kept: `lib/mobile/lightroom-return.ts` + triage return-session banner (reader intact, writer gone — re-add a writer if a future device restores the flow).
+- Existing-work pickers made visual: session search results + share-attach work hits get 72px thumbnails + bold `#ID` + 2-line titles.
+- **Mobile chrome rule (applies to every screen touched in Phase 2/3):** compact headers/menus; no stacked accordions or unfolding blocks eating the viewport; primary content visible on first screen at 375px; minimum chrome, maximum content.
+
 ## Phase 2 — Collapse duplicate processes
 1. Work creation 3 paths → 1 engine: unify `saveWork` vs `createWorkFromSessionFields` (two payload shapes, two validation sets, two gating models for the same insert) into one shared server-side create path; session + share-triage + direct form all call it.
 2. Photo ingest: share-triage becomes canonical funnel. Keep single-image auto-redirect; merge "attach to existing" / "split to drafts" / "new work" into one triage panel with a work-picker.

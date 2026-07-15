@@ -499,9 +499,6 @@ function ParsedShareDetail(props: {
           style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
         >
           <div className="t-eyebrow">{t('share_triage_new_work')}</div>
-          <p className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx3)', margin: 0, lineHeight: 1.45 }}>
-            {t('share_triage_lightroom_hint')}
-          </p>
           <button
             type="button"
             className="btn primary"

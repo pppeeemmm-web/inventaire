@@ -904,24 +904,24 @@ export function SessionNewClient() {
                     disabled={busy}
                     onClick={() => linkOeuvre(activeItem, String(work.OeuvreID))}
                     data-testid="session-work-search-result"
-                    style={{ minHeight: 56, textAlign: 'left', justifyContent: 'flex-start', display: 'flex', alignItems: 'center', gap: 10 }}
+                    style={{ minHeight: 84, textAlign: 'left', justifyContent: 'flex-start', display: 'flex', alignItems: 'center', gap: 10 }}
                   >
                     {work.txtImageNameLink ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
-                        src={thumbUrl(work.txtImageNameLink, 96) ?? ''}
+                        src={thumbUrl(work.txtImageNameLink, 144) ?? ''}
                         alt=""
-                        style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 4, border: '1px solid var(--bd)', flexShrink: 0 }}
+                        style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 4, border: '1px solid var(--bd)', flexShrink: 0 }}
                       />
                     ) : (
                       <span
                         aria-hidden
-                        style={{ width: 44, height: 44, borderRadius: 4, border: '1px solid var(--bd)', background: 'var(--bg2)', flexShrink: 0 }}
+                        style={{ width: 72, height: 72, borderRadius: 4, border: '1px solid var(--bd)', background: 'var(--bg2)', flexShrink: 0 }}
                       />
                     )}
                     <span style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        #{work.OeuvreID} · {work.Titre || t('untitled')}
+                      <span style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                        <span style={{ fontWeight: 700 }}>#{work.OeuvreID}</span> · {work.Titre || t('untitled')}
                       </span>
                       <span style={{ color: 'var(--tx3)', fontSize: 10 }}>
                         {work.Largeur || work.Hauteur ? `${work.Largeur ?? '?'} × ${work.Hauteur ?? '?'} cm` : work.Année?.slice(0, 4) ?? '—'}
@@ -1063,11 +1063,6 @@ export function SessionNewClient() {
           disabled={sessionReadOnly || activeItem?.status === 'applied'}
           busy={busy}
           instantUpload={narrow}
-          lightroomReturn={
-            sessionId && activeItem?.id && /^\d{4}-\d{2}-\d{2}$/.test(sessionDate)
-              ? { kind: 'session', sessionId, itemId: activeItem.id, date: sessionDate }
-              : null
-          }
           stagedShots={activeItem?.shots ?? []}
           onUpload={onUploadFiles}
           onRemoveStaged={onRemoveStagedShot}
