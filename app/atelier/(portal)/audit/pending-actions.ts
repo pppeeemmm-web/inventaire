@@ -2,14 +2,26 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { saveWork } from '@/app/atelier/works/actions'
+import { saveWork, commitWorkImage, discardPendingWorkImage } from '@/app/atelier/works/actions'
 import {
   filterPendingPayloadForReplay,
+  filterPendingImageAddPayload,
   formDataFromPendingPayload,
   resolvePendingChangeKind,
   type PendingChangeKind,
 } from '@/lib/work-pending-keys'
 import { attachShareInboxFilesToWork } from '@/app/atelier/share-triage/actions'
+
+function parseCaptureMeta(raw: string | undefined): Record<string, unknown> | null {
+  if (!raw) return null
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed as Record<string, unknown>
+  } catch {
+    /* ignore invalid JSON */
+  }
+  return null
+}
 
 export interface PendingChange {
   id:            number
@@ -92,6 +104,35 @@ export async function approvePendingChange(id: number): Promise<PendingResult> {
   if (!row || row.status !== 'pending') return { error: 'Proposition introuvable ou déjà traitée' }
 
   const rawPayload = row.payload as Record<string, unknown>
+  const kind = resolvePendingChangeKind({
+    change_kind: row.change_kind as string | null,
+    oeuvre_id: row.oeuvre_id,
+    payload: rawPayload as Record<string, string>,
+  })
+
+  if (kind === 'image_add') {
+    if (row.oeuvre_id == null) return { error: 'Œuvre introuvable pour cette image' }
+    const img = filterPendingImageAddPayload(rawPayload)
+    if (!img.filename) return { error: 'Fichier image introuvable' }
+    const commitRes = await commitWorkImage(supabase, row.oeuvre_id, img.filename, {
+      captureMeta: parseCaptureMeta(img.capture_meta),
+      sha256: img.sha256 || null,
+    })
+    if ('error' in commitRes) return { error: commitRes.error }
+
+    const { error: uErr } = await supabase
+      .from('pending_changes')
+      .update({ status: 'approved', reviewed_at: new Date().toISOString(), reviewer_id: user.id })
+      .eq('id', id)
+    if (uErr) return { error: uErr.message }
+
+    revalidatePath('/atelier/audit')
+    revalidatePath('/atelier')
+    revalidatePath('/hub')
+    revalidatePath('/works')
+    return { ok: true }
+  }
+
   const filtered = filterPendingPayloadForReplay(rawPayload)
   const shareInboxId = filtered.__share_inbox_id?.trim()
   const shareFileIndex = filtered.__share_file_index?.trim()
@@ -127,6 +168,22 @@ export async function rejectPendingChange(id: number, reason: string): Promise<P
   if (gate.error) return { error: gate.error }
   const supabase = gate.supabase!
   const user = gate.user!
+
+  const { data: row, error: selErr } = await supabase
+    .from('pending_changes').select('*').eq('id', id).eq('status', 'pending').maybeSingle()
+  if (selErr) return { error: selErr.message }
+
+  if (row) {
+    const kind = resolvePendingChangeKind({
+      change_kind: row.change_kind as string | null,
+      oeuvre_id: row.oeuvre_id,
+      payload: row.payload as Record<string, string>,
+    })
+    if (kind === 'image_add') {
+      const img = filterPendingImageAddPayload(row.payload as Record<string, unknown>)
+      if (img.filename) await discardPendingWorkImage(img.filename)
+    }
+  }
 
   const { error } = await supabase
     .from('pending_changes')

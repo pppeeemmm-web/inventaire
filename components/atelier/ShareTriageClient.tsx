@@ -329,9 +329,6 @@ export function ShareTriageClient(props: {
         )}
       </div>
 
-      <Link href="/atelier" className="btn ghost" style={{ minHeight: 44, textAlign: 'center' }}>
-        {t('field_stub_cta_atelier')}
-      </Link>
       <FieldHubBackLink style={{ marginTop: 8 }} />
     </div>
   )

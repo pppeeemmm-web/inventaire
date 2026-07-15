@@ -129,7 +129,7 @@ export type SaveResult   = { error: string } | { ok: true; newId?: number; pendi
 export type DeleteResult =
   | { error: string; deletedIds?: number[] }
   | { ok: true; deletedIds?: number[] }
-export type ImageResult  = { error: string } | { ok: true; image: WorkImage }
+export type ImageResult  = { error: string } | { ok: true; image: WorkImage } | { ok: true; pending: true }
 export type ImageReplaceResult = { error: string } | { ok: true; image: WorkImage; cacheKey: string }
 
 /** Minimal snapshot for undo after save (status + pipeline booleans + junctions). */
@@ -1116,17 +1116,21 @@ async function syncCover(supabase: SupabaseClient, oeuvreId: number): Promise<{ 
   return { ok: true }
 }
 
-// Add a new image to a work. FormData: { oeuvre_id, image (File) }
-export async function addWorkImage(formData: FormData): Promise<ImageResult> {
-  const supabase  = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Non authentifié' }
+/**
+ * Insert the tblImage row for an already-uploaded R2 image + cover/pipeline side effects.
+ * SeqNo and ImageID are recomputed here (fresh at commit time) so a pending row sitting in
+ * the queue can't collide with images that landed on the work in the meantime. The R2
+ * filename keeps whatever seq it was uploaded with even if the final SeqNo differs (cosmetic).
+ */
+export async function commitWorkImage(
+  supabase: SupabaseClient,
+  oeuvreId: number,
+  filename: string,
+  opts?: { captureMeta?: Record<string, unknown> | null; sha256?: string | null },
+): Promise<ImageResult> {
+  const adminErr = await requireAdmin(await createClient())
+  if (adminErr) return { error: adminErr }
 
-  const oeuvreId = parseInt(formData.get('oeuvre_id') as string, 10)
-  const file     = formData.get('image') as File | null
-  if (isNaN(oeuvreId) || !file || file.size === 0) return { error: 'Paramètres invalides' }
-
-  // Next SeqNo (per-work) + ImageID (global) in parallel — neither table has a sequence.
   const [seqRes, idRes] = await Promise.all([
     supabase
       .from('tblImage')
@@ -1147,27 +1151,6 @@ export async function addWorkImage(formData: FormData): Promise<ImageResult> {
   const seqNo   = ((seqRes.data?.SeqNo ?? 0) as number) + 1
   const imageId = ((idRes.data?.ImageID ?? 200) as number) + 1
 
-  const uploadResult = await uploadImage(supabase, file, oeuvreId, seqNo, user.id)
-  if ('error' in uploadResult) return { error: uploadResult.error }
-  const filename = uploadResult.filename
-
-  let captureMeta: Record<string, unknown> | null = null
-  const captureMetaRaw = formData.get('image_capture_meta')
-  if (typeof captureMetaRaw === 'string' && captureMetaRaw.trim()) {
-    try {
-      const parsed: unknown = JSON.parse(captureMetaRaw)
-      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-        captureMeta = parsed as Record<string, unknown>
-      }
-    } catch {
-      /* ignore invalid JSON */
-    }
-  }
-  const imageSha256 =
-    typeof formData.get('image_sha256') === 'string'
-      ? (formData.get('image_sha256') as string).trim().slice(0, 64) || null
-      : null
-
   const insertRow: Record<string, unknown> = {
     ImageID: imageId,
     OeuvreID: oeuvreId,
@@ -1175,8 +1158,8 @@ export async function addWorkImage(formData: FormData): Promise<ImageResult> {
     SeqNo: seqNo,
     DateAdded: new Date().toISOString(),
   }
-  if (captureMeta) insertRow.capture_meta = captureMeta
-  if (imageSha256) insertRow.sha256 = imageSha256
+  if (opts?.captureMeta) insertRow.capture_meta = opts.captureMeta
+  if (opts?.sha256) insertRow.sha256 = opts.sha256
 
   const { data: inserted, error: insertErr } = await supabase
     .from('tblImage')
@@ -1227,6 +1210,103 @@ export async function addWorkImage(formData: FormData): Promise<ImageResult> {
 
   revalidatePath('/atelier')
   return { ok: true, image: inserted as WorkImage }
+}
+
+/** Soft-delete an image_add row's already-uploaded R2 objects (original + thumb) on rejection. Admin only. */
+export async function discardPendingWorkImage(filename: string): Promise<void> {
+  const adminErr = await requireAdmin(await createClient())
+  if (adminErr) {
+    console.warn('[works/actions] discardPendingWorkImage refused (non-admin)', filename)
+    return
+  }
+  const thumbName = thumbNameFor(filename)
+  try {
+    await r2SoftDelete(filename)
+  } catch (e) {
+    console.warn('[works/actions] discardPendingWorkImage r2SoftDelete original', filename, e)
+  }
+  try {
+    await r2SoftDelete(thumbName)
+  } catch (e) {
+    console.warn('[works/actions] discardPendingWorkImage r2SoftDelete thumb', thumbName, e)
+  }
+}
+
+// Add a new image to a work. FormData: { oeuvre_id, image (File) }
+// Admin: commits immediately. Non-admin: uploads to R2, then queues an `image_add` pending row.
+export async function addWorkImage(formData: FormData): Promise<ImageResult> {
+  const supabase  = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié' }
+
+  const oeuvreId = parseInt(formData.get('oeuvre_id') as string, 10)
+  const file     = formData.get('image') as File | null
+  if (isNaN(oeuvreId) || !file || file.size === 0) return { error: 'Paramètres invalides' }
+
+  // Seq only decides the R2 filename here; commitWorkImage recomputes SeqNo/ImageID at commit time.
+  const { data: seqRow, error: seqErr } = await supabase
+    .from('tblImage')
+    .select('SeqNo')
+    .eq('OeuvreID', oeuvreId)
+    .order('SeqNo', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (seqErr) return { error: `tblImage seq: ${seqErr.message}` }
+  const seqNo = ((seqRow?.SeqNo ?? 0) as number) + 1
+
+  const uploadResult = await uploadImage(supabase, file, oeuvreId, seqNo, user.id)
+  if ('error' in uploadResult) return { error: uploadResult.error }
+  const filename = uploadResult.filename
+
+  let captureMeta: Record<string, unknown> | null = null
+  const captureMetaRaw = formData.get('image_capture_meta')
+  if (typeof captureMetaRaw === 'string' && captureMetaRaw.trim()) {
+    try {
+      const parsed: unknown = JSON.parse(captureMetaRaw)
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        captureMeta = parsed as Record<string, unknown>
+      }
+    } catch {
+      /* ignore invalid JSON */
+    }
+  }
+  const imageSha256 =
+    typeof formData.get('image_sha256') === 'string'
+      ? (formData.get('image_sha256') as string).trim().slice(0, 64) || null
+      : null
+
+  const { data: isAdmin } = await supabase.rpc('is_admin')
+  if (!isAdmin) {
+    const payload: Record<string, string> = { filename, source: 'image_manager' }
+    if (captureMeta) payload.capture_meta = JSON.stringify(captureMeta)
+    if (imageSha256) payload.sha256 = imageSha256
+    const { error: pErr } = await insertPendingChange(supabase, {
+      oeuvre_id: oeuvreId,
+      change_kind: 'image_add',
+      payload,
+      baseline: null,
+      author_id: user.id,
+      author_email: user.email ?? null,
+    })
+    if (pErr) {
+      // Uploader cleaning up their own just-uploaded objects — no admin gate needed.
+      try {
+        await r2SoftDelete(filename)
+      } catch (e) {
+        console.warn('[works/actions] addWorkImage pending cleanup original', filename, e)
+      }
+      try {
+        await r2SoftDelete(thumbNameFor(filename))
+      } catch (e) {
+        console.warn('[works/actions] addWorkImage pending cleanup thumb', filename, e)
+      }
+      return { error: pendingInsertToSaveError(pErr) }
+    }
+    revalidatePath('/atelier/audit')
+    return { ok: true, pending: true }
+  }
+
+  return commitWorkImage(supabase, oeuvreId, filename, { captureMeta, sha256: imageSha256 })
 }
 
 // Replace an existing image slot after external retouching.

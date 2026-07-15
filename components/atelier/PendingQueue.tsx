@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useTransition } from 'react'
 import { useI18n } from '@/lib/i18n/context'
+import { thumbUrl, imageUrl } from '@/lib/data'
 import {
   listPendingChanges,
   approvePendingChange,
@@ -86,7 +87,9 @@ export function PendingQueue() {
                   <div style={{ fontSize: 12, color: 'var(--tx)' }}>
                     {r.change_kind === 'create'
                       ? `${t('pending_kind_create')}: ${r.oeuvre_title || '—'}`
-                      : `#${r.oeuvre_id} · ${r.oeuvre_title || '—'}`}
+                      : r.change_kind === 'image_add'
+                        ? `${t('pending_kind_image_add')}: #${r.oeuvre_id} · ${r.oeuvre_title || '—'}`
+                        : `#${r.oeuvre_id} · ${r.oeuvre_title || '—'}`}
                   </div>
                   <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 2 }}>
                     {r.author_email || r.author_id || '—'} · {new Date(r.created_at).toLocaleString('fr-FR')}
@@ -122,7 +125,23 @@ export function PendingQueue() {
                 </div>
               )}
 
-              {open && (
+              {open && r.change_kind === 'image_add' ? (
+                <div style={{ marginTop: 10 }}>
+                  {(() => {
+                    const href = thumbUrl(r.payload.filename) ?? imageUrl(r.payload.filename)
+                    return href ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={href}
+                        alt=""
+                        style={{ maxWidth: 220, maxHeight: 220, objectFit: 'cover', border: '1px solid var(--bd)' }}
+                      />
+                    ) : (
+                      <div style={{ fontSize: 11, opacity: 0.5 }}>{t('pending_no_changes')}</div>
+                    )
+                  })()}
+                </div>
+              ) : open ? (
                 <table className="tbl" style={{ width: '100%', marginTop: 10, fontSize: 11 }}>
                   <thead>
                     <tr>
@@ -144,7 +163,7 @@ export function PendingQueue() {
                     )}
                   </tbody>
                 </table>
-              )}
+              ) : null}
             </div>
           )
         })}

@@ -52,6 +52,16 @@ function fieldRowSubKey(row: FieldRow, isAdmin: boolean): DictKey {
   return row.subKey
 }
 
+function fieldRowLabelKey(row: FieldRow, isAdmin: boolean): DictKey {
+  if (!isAdmin && row.testId === 'hub-field-verb-session') return 'hub_field_session_title_team'
+  return row.labelKey
+}
+
+function fieldRowEmoji(row: FieldRow, isAdmin: boolean): string {
+  if (!isAdmin && row.testId === 'hub-field-verb-session') return '📓'
+  return row.emoji
+}
+
 function fieldRowHref(row: FieldRow, isAdmin: boolean): string {
   if (row.kind === 'link' && row.testId === 'hub-field-verb-session') {
     if (!isAdmin) return atelierTabHref('journal')
@@ -348,12 +358,14 @@ export function HubLauncherClient({ fieldPulse }: { fieldPulse: FieldPulseData }
 
           {FIELD_ROWS.map((row) => {
             const subKey = fieldRowSubKey(row, isAdmin)
+            const labelKey = fieldRowLabelKey(row, isAdmin)
+            const emoji = fieldRowEmoji(row, isAdmin)
             const content = (
               <>
                 <span style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 12, minWidth: 0, flex: 1 }}>
-                  <span style={{ fontSize: 20, flexShrink: 0, lineHeight: 1 }} aria-hidden>{row.emoji}</span>
+                  <span style={{ fontSize: 20, flexShrink: 0, lineHeight: 1 }} aria-hidden>{emoji}</span>
                   <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4, minWidth: 0 }}>
-                    <span style={{ fontSize: 14, fontWeight: 600 }}>{t(row.labelKey)}</span>
+                    <span style={{ fontSize: 14, fontWeight: 600 }}>{t(labelKey)}</span>
                     <span style={{ fontSize: 10, opacity: 0.55, letterSpacing: 0.4 }}>{t(subKey)}</span>
                   </span>
                 </span>
@@ -382,7 +394,7 @@ export function HubLauncherClient({ fieldPulse }: { fieldPulse: FieldPulseData }
                   href={fieldRowHref(row, isAdmin)}
                   className="btn ghost"
                   data-testid={row.testId}
-                  aria-label={`${t(row.labelKey)}. ${t(subKey)}`}
+                  aria-label={`${t(labelKey)}. ${t(subKey)}`}
                   style={rowStyle}
                 >
                   {content}
@@ -396,7 +408,7 @@ export function HubLauncherClient({ fieldPulse }: { fieldPulse: FieldPulseData }
                 type="button"
                 className="btn ghost"
                 data-testid={row.testId}
-                aria-label={`${t(row.labelKey)}. ${t(subKey)}`}
+                aria-label={`${t(labelKey)}. ${t(subKey)}`}
                 onClick={() => setVoiceOpen(true)}
                 style={rowStyle}
               >

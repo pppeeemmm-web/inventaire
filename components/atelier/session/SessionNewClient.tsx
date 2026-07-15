@@ -19,7 +19,6 @@ import {
   listWorkSessionsForAdminReview,
   rejectWorkSession,
   searchWorksForSession,
-  submitWorkSessionForReview,
   updateWorkSessionMetadata,
   updateWorkSessionItemMetadata,
   uploadWorkSessionItemShot,
@@ -409,19 +408,6 @@ export function SessionNewClient() {
     })
   }
 
-  const submitReview = () => {
-    if (!sessionId) return
-    startBusy(() => {
-      void submitWorkSessionForReview(sessionId).then((r) => {
-        if ('error' in r) toast.error(r.error)
-        else {
-          toast.success(t('session_submit_sent_audit'))
-          refreshPending()
-        }
-      })
-    })
-  }
-
   const applyNow = () => {
     if (!sessionId) return
     startBusy(() => {
@@ -551,17 +537,7 @@ export function SessionNewClient() {
           {t(stagedHintKey)}
         </p>
       ) : null}
-      {!isAdmin && !sessionReadOnly ? (
-        <button
-          type="button"
-          className="btn primary"
-          disabled={busy || actionableCount === 0}
-          onClick={submitReview}
-          style={{ minHeight: 48 }}
-        >
-          {t('session_submit_review')}
-        </button>
-      ) : isAdmin ? (
+      {isAdmin ? (
         <>
           <button
             type="button"

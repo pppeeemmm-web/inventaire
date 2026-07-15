@@ -49,6 +49,14 @@ export const PENDING_CHECKBOX_KEYS = [
 
 export const PENDING_MULTI_APPEND_KEYS = ['themes', 'groups'] as const
 
+/** Payload keys for `image_add` rows — a queued addWorkImage() upload, not a scalar-field edit. */
+export const PENDING_IMAGE_ADD_KEYS = [
+  'filename',
+  'capture_meta',
+  'sha256',
+  'source',
+] as const
+
 /** Stored on pending create rows; handled in approvePendingChange, not replayed to saveWork. */
 export const PENDING_INTERNAL_KEYS = [
   '__share_inbox_id',
@@ -65,7 +73,13 @@ export const ALLOWED_PENDING_SAVE_KEYS = new Set<string>([
   ...PENDING_INTERNAL_KEYS,
 ])
 
-export type PendingChangeKind = 'edit' | 'create'
+/** Union of keys allowed in an `image_add` row's payload. Kept separate from ALLOWED_PENDING_SAVE_KEYS. */
+export const ALLOWED_PENDING_IMAGE_ADD_KEYS = new Set<string>([
+  ...PENDING_IMAGE_ADD_KEYS,
+  ...PENDING_INTERNAL_KEYS,
+])
+
+export type PendingChangeKind = 'edit' | 'create' | 'image_add'
 
 /** Resolve queue row kind (column or legacy payload fallback). */
 export function resolvePendingChangeKind(row: {
@@ -73,9 +87,11 @@ export function resolvePendingChangeKind(row: {
   oeuvre_id?: number | null
   payload: Record<string, string>
 }): PendingChangeKind {
-  if (row.change_kind === 'create' || row.change_kind === 'edit') return row.change_kind
+  if (row.change_kind === 'create' || row.change_kind === 'edit' || row.change_kind === 'image_add') {
+    return row.change_kind
+  }
   const fromPayload = row.payload.__pending_change_kind
-  if (fromPayload === 'create' || fromPayload === 'edit') return fromPayload
+  if (fromPayload === 'create' || fromPayload === 'edit' || fromPayload === 'image_add') return fromPayload
   if (row.oeuvre_id == null && !(row.payload.oeuvre_id ?? '').trim()) return 'create'
   return 'edit'
 }
@@ -104,13 +120,25 @@ export function pendingPayloadFromFormData(formData: FormData): Record<string, s
   return out
 }
 
-/** Strip unknown keys before replay (tampered queue rows). */
+/** Strip unknown keys before replay (tampered queue rows). Not for `image_add` rows. */
 export function filterPendingPayloadForReplay(
   payload: Record<string, unknown>,
 ): Record<string, string> {
   const out: Record<string, string> = {}
   for (const [k, v] of Object.entries(payload)) {
     if (!ALLOWED_PENDING_SAVE_KEYS.has(k)) continue
+    if (typeof v === 'string') out[k] = v
+  }
+  return out
+}
+
+/** Strip unknown keys from an `image_add` row's payload before commitWorkImage(). */
+export function filterPendingImageAddPayload(
+  payload: Record<string, unknown>,
+): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const [k, v] of Object.entries(payload)) {
+    if (!ALLOWED_PENDING_IMAGE_ADD_KEYS.has(k)) continue
     if (typeof v === 'string') out[k] = v
   }
   return out

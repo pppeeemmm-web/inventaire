@@ -269,6 +269,10 @@ export function DrawerContent({
             toast.error(`${t('error_prefix')} ${res.error}`)
             break
           }
+          if ('pending' in res) {
+            toast.success(t('wf_image_pending_toast'))
+            continue
+          }
           setWorkImages((prev: { ImageID: number; txtImageNameLink: string | null; SeqNo: number | null }[]) => {
             const next = [...prev, res.image].sort((a, b) => (a.SeqNo ?? 0) - (b.SeqNo ?? 0))
             const ai = next.findIndex((x) => x.ImageID === res.image.ImageID)

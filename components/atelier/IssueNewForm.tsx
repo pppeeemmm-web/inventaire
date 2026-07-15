@@ -1,6 +1,5 @@
 'use client'
 
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback, useState } from 'react'
 
@@ -8,6 +7,7 @@ import { createFieldIssueReport } from '@/app/atelier/field/actions'
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from '@/lib/ui/toast'
 import { workActionTypeDisplayLabel } from '@/lib/work-action-type-label'
+import { FieldHubBackLink } from '@/components/shared/FieldHubBackLink'
 
 export type IssueWorkOption = {
   id: number
@@ -172,14 +172,7 @@ export function IssueNewForm({ workOptions, actionTypeOptions }: IssueNewFormPro
         </button>
       </form>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 8 }}>
-        <Link href="/atelier" className="btn ghost" style={{ minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {t('field_stub_cta_atelier')}
-        </Link>
-        <Link href="/hub" className="btn ghost" style={{ minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {t('field_stub_cta_hub')}
-        </Link>
-      </div>
+      <FieldHubBackLink style={{ marginTop: 8 }} />
     </main>
   )
 }

@@ -474,8 +474,12 @@ export function WorkForm({
           sessionStorage.removeItem(draftKey)
         } catch { /* ignore */ }
         if (res.pending) {
-          toast.success(t('wf_save_pending_toast'))
-          router.push('/atelier')
+          if (newImageFiles.length > 0) {
+            toast.success(t('wf_save_pending_images_skipped_toast'))
+          } else {
+            toast.success(t('wf_save_pending_toast'))
+          }
+          router.push(narrow ? '/hub' : '/atelier')
           router.refresh()
           return
         }
@@ -505,7 +509,7 @@ export function WorkForm({
               break
             }
           }
-          router.push(`/atelier?work=${res.newId}`)
+          router.push(narrow ? '/hub' : `/atelier?work=${res.newId}`)
           router.refresh()
         } else {
           if (oeuvre && prevSnap) {
@@ -551,7 +555,7 @@ export function WorkForm({
               groupIds: Array.from(selGroups),
             })
           }
-          router.push('/atelier')
+          router.push(narrow ? '/hub' : '/atelier')
           router.refresh()
         }
       } catch (e) {
@@ -1136,6 +1140,10 @@ function ImageManager({
           if ('error' in res) {
             toast.error(`${t('error_prefix')} ${res.error}`)
             break
+          }
+          if ('pending' in res) {
+            toast.success(t('wf_image_pending_toast'))
+            continue
           }
           setImgs((p) => [...p, res.image].sort((a, b) => (a.SeqNo ?? 0) - (b.SeqNo ?? 0)))
         } catch (err) {

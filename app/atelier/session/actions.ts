@@ -396,11 +396,6 @@ function isSessionWorkInProgress(work: Pick<WorkSessionWorkOption, 'statusId' | 
   return isSessionWorkCandidate(work) && (work.statusId === 1 || work.statusId == null || !work.Catalogué || !!work.NeedsPhotograph)
 }
 
-function actionableItemCount(payload: WorkSessionPayload): number {
-  if (payload.items.length > 0) return payload.items.filter(itemIsActionable).length
-  return payload.shots.length > 0 ? 1 : 0
-}
-
 function findItemIndex(payload: WorkSessionPayload, itemId: string): number {
   return payload.items.findIndex((item) => item.id === itemId)
 }
@@ -1814,27 +1809,6 @@ export async function linkWorkSessionToOeuvre(
     .eq('status', 'draft')
   if (error) return { error: error.message }
   return { ok: true }
-}
-
-export async function submitWorkSessionForReview(sessionId: string): Promise<SessionActionResult> {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return { error: 'Non authentifié' }
-  const denied = await assertCaptureAdmin(supabase)
-  if (denied) return denied
-
-  const { data: row, error: selErr } = await workSessionTable(supabase)
-    .select('id,user_id,status,payload,oeuvre_id')
-    .eq('id', sessionId)
-    .maybeSingle()
-  if (selErr || !row) return { error: selErr?.message ?? 'Session introuvable' }
-  if (row.status !== 'draft') return { error: 'Session déjà envoyée' }
-  const payload = parseWorkSessionPayload(row.payload)
-  if (actionableItemCount(payload) === 0) return { error: 'Ajoutez au moins une photo et une œuvre à appliquer' }
-
-  return { error: 'Les administrateurs appliquent directement ou abandonnent le brouillon' }
 }
 
 export async function applyWorkSessionToOeuvre(sessionId: string): Promise<SessionActionResult> {

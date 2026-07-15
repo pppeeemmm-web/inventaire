@@ -1,6 +1,7 @@
 // /atelier/works/new — create a new work
 import { createClient } from '@/lib/supabase/server'
 import { WorkForm } from '@/components/atelier/WorkForm'
+import { NewWorkPageShell } from '@/components/atelier/NewWorkPageShell'
 import { saveWork } from '@/app/atelier/works/actions'
 import { getShareInboxWorkPrefill } from '@/app/atelier/share-triage/actions'
 import type { ShareInboxWorkPrefill } from '@/app/atelier/share-triage/actions'
@@ -45,20 +46,22 @@ export default async function NewWorkPage({
   }
 
   return (
-    <WorkForm
-      oeuvre={null}
-      currentThemeIds={[]}
-      techniques={techniques ?? []}
-      supports={supports ?? []}
-      formats={formats ?? []}
-      themes={catalogThemes}
-      contacts={contacts ?? []}
-      addresses={(addresses ?? []) as import('@/components/atelier/contact-editor-types').ContactAddress[]}
-      groups={groups ?? []}
-      currentGroupIds={[]}
-      activeConsignment={null}
-      action={saveWork}
-      shareInboxPrefill={shareInboxPrefill}
-    />
+    <NewWorkPageShell>
+      <WorkForm
+        oeuvre={null}
+        currentThemeIds={[]}
+        techniques={techniques ?? []}
+        supports={supports ?? []}
+        formats={formats ?? []}
+        themes={catalogThemes}
+        contacts={contacts ?? []}
+        addresses={(addresses ?? []) as import('@/components/atelier/contact-editor-types').ContactAddress[]}
+        groups={groups ?? []}
+        currentGroupIds={[]}
+        activeConsignment={null}
+        action={saveWork}
+        shareInboxPrefill={shareInboxPrefill}
+      />
+    </NewWorkPageShell>
   )
 }
