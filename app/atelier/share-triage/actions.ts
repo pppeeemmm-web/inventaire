@@ -15,6 +15,7 @@ import { shareImageFiles, titreSeedFromSharePayload } from '@/lib/share-inbox-ti
 import { insertPendingChange } from '@/lib/pending-changes-insert'
 import { pendingInsertToSaveError } from '@/lib/work-save-error'
 import { provenanceTimestamp, provenanceUserId } from '@/lib/oeuvre-provenance'
+import { allocateOeuvreId, insertOeuvreRow } from '@/lib/work-create-core'
 import { recordStorageObject } from '@/lib/storage-object-ledger'
 import {
   S3Client,
@@ -441,17 +442,6 @@ export async function listRecentWorksForShareAttach(
   return { works }
 }
 
-async function nextOeuvreId(supabase: Awaited<ReturnType<typeof createClient>>): Promise<number | ShareActionErr> {
-  const { data: maxRow, error } = await supabase
-    .from('Oeuvres')
-    .select('OeuvreID')
-    .order('OeuvreID', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-  if (error) return { error: error.message }
-  return (maxRow?.OeuvreID ?? 2337) + 1
-}
-
 async function attachInboxImageFilesToWork(
   g: { supabase: Awaited<ReturnType<typeof createClient>>; user: { id: string } },
   payload: ShareInboxPayloadV1,
@@ -546,26 +536,27 @@ export async function createDraftWorkFromShareInbox(
     return { ok: true, pending: true }
   }
 
-  const oidRes = await nextOeuvreId(g.supabase)
+  const oidRes = await allocateOeuvreId(g.supabase)
   if (typeof oidRes !== 'number') return oidRes
   const oid = oidRes
   const actorId = provenanceUserId(g.user.id, null)
   const editedAt = provenanceTimestamp()
 
-  const { error: insertErr } = await g.supabase.from('Oeuvres').insert({
-    OeuvreID: oid,
-    Titre: titre,
-    Commentaires: commentaires,
-    Historique: `[${dateStr}] Atelier (share)`,
-    statusId: 1,
-    Catalogué: false,
-    NeedsPhotograph: false,
-    Exposable: false,
-    created_by: actorId,
-    edited_by: actorId,
-    edited_at: editedAt,
-  })
-  if (insertErr) return { error: insertErr.message }
+  const insertRes = await insertOeuvreRow(
+    g.supabase,
+    oid,
+    {
+      Titre: titre,
+      Commentaires: commentaires,
+      Historique: `[${dateStr}] Atelier (share)`,
+      statusId: 1,
+      Catalogué: false,
+      NeedsPhotograph: false,
+      Exposable: false,
+    },
+    { actorId, editedAt },
+  )
+  if ('error' in insertRes) return { error: insertRes.error }
 
   const attachErr = await attachInboxImageFilesToWork(
     g,

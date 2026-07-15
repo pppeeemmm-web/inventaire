@@ -23,6 +23,7 @@ import {
 } from '@/lib/work-session-payload'
 import type { WorkSessionRow } from '@/lib/types/database'
 import { provenanceTimestamp, provenanceUserId } from '@/lib/oeuvre-provenance'
+import { allocateOeuvreId, insertOeuvreRow } from '@/lib/work-create-core'
 
 /** Until `work_session` is in generated Supabase types (run `supabase gen types` after migration). */
 function workSessionTable(supabase: Awaited<ReturnType<typeof createClient>>) {
@@ -427,13 +428,9 @@ async function createWorkFromSessionFields(
   const titre = fields.title_hint.trim()
   if (!titre) return { error: 'Titre requis pour créer une œuvre' }
 
-  const { data: maxRow } = await supabase
-    .from('Oeuvres')
-    .select('OeuvreID')
-    .order('OeuvreID', { ascending: false })
-    .limit(1)
-    .single()
-  const oid = (maxRow?.OeuvreID ?? 2337) + 1
+  const oidRes = await allocateOeuvreId(supabase)
+  if (typeof oidRes !== 'number') return oidRes
+  const oid = oidRes
 
   const sessionAt = normalizeSessionAt(fields.session_at) ?? new Date().toISOString()
   const dateStr = formatSessionHistoryDate(sessionAt)
@@ -443,22 +440,23 @@ async function createWorkFromSessionFields(
 
   const actorId = provenanceUserId(actorUserId, null)
   const editedAt = provenanceTimestamp()
-  const { error: insertErr } = await supabase.from('Oeuvres').insert({
-    OeuvreID: oid,
-    Titre: titre,
-    Largeur: (fields.width_cm ?? '').trim() || null,
-    Hauteur: (fields.height_cm ?? '').trim() || null,
-    Commentaires: notesTrim || null,
-    Historique: historique,
-    statusId: 1,
-    NeedsPhotograph: true,
-    Exposable: false,
-    Catalogué: false,
-    created_by: actorId,
-    edited_by: actorId,
-    edited_at: editedAt,
-  })
-  if (insertErr) return { error: insertErr.message }
+  const inserted = await insertOeuvreRow(
+    supabase,
+    oid,
+    {
+      Titre: titre,
+      Largeur: (fields.width_cm ?? '').trim() || null,
+      Hauteur: (fields.height_cm ?? '').trim() || null,
+      Commentaires: notesTrim || null,
+      Historique: historique,
+      statusId: 1,
+      NeedsPhotograph: true,
+      Exposable: false,
+      Catalogué: false,
+    },
+    { actorId, editedAt },
+  )
+  if ('error' in inserted) return { error: inserted.error }
   return { ok: true, oeuvreId: oid }
 }
 
@@ -1663,62 +1661,6 @@ export async function removeWorkSessionItemShot(
 
   revalidatePath('/atelier/session/new')
   return { ok: true }
-}
-
-export async function createAndLinkWorkFromSession(
-  sessionId: string,
-  fields: {
-    title_hint: string
-    notes?: string
-    width_cm?: string
-    height_cm?: string
-    session_at?: string
-    field_context?: WorkSessionFieldContext | null
-  },
-): Promise<{ ok: true; oeuvreId: number } | { error: string }> {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return { error: 'Non authentifié' }
-  const denied = await assertCaptureAdmin(supabase)
-  if (denied) return denied
-
-  const titre = fields.title_hint.trim()
-  if (!titre) return { error: 'Titre requis pour créer une œuvre' }
-
-  const { data: row, error: selErr } = await workSessionTable(supabase)
-    .select('id,user_id,status,payload,oeuvre_id')
-    .eq('id', sessionId)
-    .maybeSingle()
-  if (selErr || !row) return { error: selErr?.message ?? 'Session introuvable' }
-  if (row.status !== 'draft') return { error: 'Session non modifiable' }
-  if (row.oeuvre_id) return { error: 'Œuvre déjà associée' }
-
-  const metaPatch = {
-    notes: fields.notes ?? '',
-    ...(fields.session_at ? { session_at: fields.session_at } : {}),
-    title_hint: titre,
-    width_cm: fields.width_cm ?? '',
-    height_cm: fields.height_cm ?? '',
-    ...(fields.field_context != null ? { field_context: fields.field_context } : {}),
-  }
-  const metaRes = await updateWorkSessionMetadata(sessionId, metaPatch)
-  if ('error' in metaRes) return metaRes
-
-  const created = await createWorkFromSessionFields(supabase, user.id, fields)
-  if ('error' in created) return created
-  const oid = created.oeuvreId
-
-  const { error: linkErr } = await workSessionTable(supabase)
-    .update({ oeuvre_id: oid })
-    .eq('id', sessionId)
-    .eq('status', 'draft')
-  if (linkErr) return { error: linkErr.message }
-
-  revalidatePath('/atelier')
-  revalidatePath('/atelier/session/new')
-  return { ok: true, oeuvreId: oid }
 }
 
 export async function createAndLinkWorkFromSessionItem(

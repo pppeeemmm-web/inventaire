@@ -17,6 +17,7 @@ import { insertPendingChange } from '@/lib/pending-changes-insert'
 import { pendingInsertToSaveError } from '@/lib/work-save-error'
 import { pendingPayloadFromFormData, type PendingChangeKind } from '@/lib/work-pending-keys'
 import { provenanceTimestamp, provenanceUserId } from '@/lib/oeuvre-provenance'
+import { allocateOeuvreId, insertOeuvreRow } from '@/lib/work-create-core'
 import type { WorkImage, Oeuvre } from '@/lib/types/database'
 import crypto from 'crypto'
 import { logError } from '@/lib/error-reporter/server'
@@ -408,23 +409,24 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
 
   if (isNew) {
     // Compute next OeuvreID (no sequence in DB)
-    const { data: maxRow } = await supabase
-      .from('Oeuvres')
-      .select('OeuvreID')
-      .order('OeuvreID', { ascending: false })
-      .limit(1)
-      .single()
+    const oidRes = await allocateOeuvreId(supabase)
+    if (typeof oidRes !== 'number') return oidRes
+    const oid = oidRes
 
-    // Note: no DB sequence — race condition possible if two inserts run simultaneously.
-    // Acceptable for single-artist studio usage. Mitigation: unique constraint on OeuvreID
-    // will return a Postgres error which surfaces as insertErr below.
-    const oid = (maxRow?.OeuvreID ?? 2337) + 1
-
-    // Upload image if provided
+    // Upload image if provided. Uses prepare/put directly (not the uploadImage wrapper) so the
+    // raw-bytes sha256 is available for commitWorkImage below.
+    let imageSha256: string | null = null
     if (imageFile && imageFile.size > 0) {
-      const uploadResult = await uploadImage(supabase, imageFile, oid, 1, user.id)
-      if ('error' in uploadResult) return { error: uploadResult.error }
-      imageName = uploadResult.filename
+      const prepared = await prepareWorkImageUpload(imageFile)
+      if ('error' in prepared) return { error: prepared.error }
+      const filename = makeImageStorageFilename(oid, 1, prepared.sourceBuf, 'avif')
+      try {
+        await putPreparedWorkImage(prepared, filename, oid, 1, user.id)
+      } catch (e) {
+        return { error: String(e) }
+      }
+      imageName = filename
+      imageSha256 = prepared.sourceSha256
     }
 
     // Provenance seeding
@@ -436,8 +438,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       : originEntry
 
     // INSERT
-    const { error: insertErr } = await supabase.from('Oeuvres').insert({
-      OeuvreID:     oid,
+    const insertRes = await insertOeuvreRow(supabase, oid, {
       Titre:        titre,
       Année:        annéeFinal,
       Technique:    techniqueId,
@@ -471,22 +472,18 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       is_gift:           isGift,
       PresentationID:  presentationId,
       txtImageNameLink:  imageName,
-      created_by:      actorId,
-      edited_by:       actorId,
-      edited_at:       editedAt,
-    })
+    }, { actorId, editedAt })
 
-    if (insertErr) return { error: insertErr.message }
+    if ('error' in insertRes) return { error: insertRes.error }
 
-    // Insert image into tblImage (canonical store) — ImageID omitted so the DB sequence handles it
+    // Commit the cover image through the shared image-commit pipeline (tblImage insert +
+    // cover/pipeline side effects + capture_meta/sha256 + logging — parity with addWorkImage).
     if (imageName) {
-      const { error: imgErr } = await supabase.from('tblImage').insert({
-        OeuvreID:         oid,
-        txtImageNameLink: imageName,
-        SeqNo:            1,
-        DateAdded:        new Date().toISOString(),
+      const commitRes = await commitWorkImage(supabase, oid, imageName, {
+        captureMeta: { source: 'work_form' },
+        sha256: imageSha256,
       })
-      if (imgErr) return { error: `tblImage: ${imgErr.message}` }
+      if ('error' in commitRes) return { error: commitRes.error }
     }
 
     const themeRes = await replaceOeuvreThemes(svc, oid, themeIds)
@@ -1170,26 +1167,17 @@ export async function commitWorkImage(
   if (insertErr || !inserted) return { error: insertErr?.message ?? 'Erreur insertion' }
 
   // New image is last → it becomes the cover.
-  // If the work was in the photo gate (NeedsPhotograph=true + Catalogué=true),
-  // uploading a photo clears the gate and moves it to statusId=2 (Disponible).
+  // NeedsPhotograph is a manual quality gate (diffusion-grade photo validated by
+  // the artist only): adding an image NEVER clears it or promotes the status.
   const { data: workState } = await supabase
     .from('Oeuvres')
     .select('"Catalogué", "NeedsPhotograph"')
     .eq('OeuvreID', oeuvreId)
     .single()
 
-  const wasInPhotoGate = workState?.NeedsPhotograph === true && workState?.['Catalogué'] === true
-  const coverUpdate: Record<string, unknown> = {
-    txtImageNameLink: inserted.txtImageNameLink,
-    NeedsPhotograph: false,
-  }
-  if (wasInPhotoGate) {
-    coverUpdate.statusId = 2  // Disponible
-  }
-
   await supabase
     .from('Oeuvres')
-    .update(coverUpdate)
+    .update({ txtImageNameLink: inserted.txtImageNameLink })
     .eq('OeuvreID', oeuvreId)
 
   await logSystemEvent({
@@ -1197,13 +1185,13 @@ export async function commitWorkImage(
     tableName: 'Oeuvres',
     rowId: oeuvreId,
     newValue: inserted.txtImageNameLink,
-    metadata: { source: 'image_manager', wasInPhotoGate },
+    metadata: { source: 'image_manager' },
   })
 
   if (workState) {
     const pipeRes = await syncPipelineWithBooleans(supabase, oeuvreId, {
       catalogued: !!workState['Catalogué'],
-      needsPhotograph: false,
+      needsPhotograph: workState.NeedsPhotograph === true,
     })
     if ('error' in pipeRes) return { error: pipeRes.error }
   }
