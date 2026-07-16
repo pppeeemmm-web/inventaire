@@ -94,6 +94,7 @@ export function SessionNewClient() {
   const [workSearch, setWorkSearch] = useState('')
   const [workResults, setWorkResults] = useState<WorkSessionWorkOption[]>([])
   const [workIdFallback, setWorkIdFallback] = useState('')
+  const [queuedLink, setQueuedLink] = useState<{ itemId: string; oid: string } | null>(null)
   const [pending, setPending] = useState<WorkSessionQueueRow[]>([])
   const [hydrated, setHydrated] = useState(false)
   const [fieldContext, setFieldContext] = useState<WorkSessionFieldContext | null>(null)
@@ -122,6 +123,14 @@ export function SessionNewClient() {
     if (!activeItemId || visibleItems.some((item) => item.id === activeItemId)) return
     setActiveItemId(visibleItems[0]?.id ?? null)
   }, [activeItemId, visibleItems])
+
+  useEffect(() => {
+    if (busy || !queuedLink) return
+    const item = items.find((i) => i.id === queuedLink.itemId)
+    setQueuedLink(null)
+    if (item && !item.oeuvre_id) linkOeuvre(item, queuedLink.oid)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busy, queuedLink, items])
 
   const refreshPending = useCallback(() => {
     if (!isAdmin || narrow) return
@@ -338,6 +347,17 @@ export function SessionNewClient() {
     })
   }
 
+  // A result tap during an upload used to hit a disabled button and vanish
+  // silently (photo left orphaned). Queue it and run when the transition ends.
+  const requestLink = (item: WorkSessionItem, rawId: string) => {
+    if (busy) {
+      setQueuedLink({ itemId: item.id, oid: rawId })
+      toast.success(t('session_link_queued'))
+      return
+    }
+    linkOeuvre(item, rawId)
+  }
+
   const linkOeuvre = (item: WorkSessionItem, rawId: string) => {
     if (!sessionId) return
     const oid = Number.parseInt(rawId.trim(), 10)
@@ -410,6 +430,13 @@ export function SessionNewClient() {
 
   const applyNow = () => {
     if (!sessionId) return
+    const unlinked = visibleItems.some(
+      (i) => i.mode === 'existing' && !i.oeuvre_id && i.shots.length > 0,
+    )
+    if (unlinked) {
+      toast.error(t('session_apply_blocked_unlinked'))
+      return
+    }
     startBusy(() => {
       void applyWorkSessionToOeuvre(sessionId).then(async (r) => {
         if ('error' in r) toast.error(r.error)
@@ -755,6 +782,9 @@ export function SessionNewClient() {
                     minHeight: 30,
                   }}
                 >
+                  {item.mode === 'existing' && !item.oeuvre_id && item.shots.length > 0 ? (
+                    <span aria-label={t('session_item_unlinked_warn')} style={{ color: 'var(--rust)' }}>⚠ </span>
+                  ) : null}
                   {title}
                 </span>
                 {thumbSrc ? (
@@ -873,6 +903,24 @@ export function SessionNewClient() {
             </p>
           ) : activeItem.mode === 'existing' ? (
             <>
+              {activeItem.shots.length > 0 ? (
+                <p
+                  className="t-mono-sm"
+                  data-testid="session-item-unlinked-warn"
+                  role="alert"
+                  style={{
+                    margin: 0,
+                    padding: '8px 10px',
+                    borderRadius: 8,
+                    border: '1px solid var(--rust)',
+                    color: 'var(--tx)',
+                    fontSize: 11,
+                    lineHeight: 1.4,
+                  }}
+                >
+                  ⚠ {t('session_item_unlinked_warn')}
+                </p>
+              ) : null}
               <label className="t-mono-sm" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <span>{t('session_work_search_label')}</span>
                 <input
@@ -901,8 +949,7 @@ export function SessionNewClient() {
                     key={work.OeuvreID}
                     type="button"
                     className="btn ghost"
-                    disabled={busy}
-                    onClick={() => linkOeuvre(activeItem, String(work.OeuvreID))}
+                    onClick={() => requestLink(activeItem, String(work.OeuvreID))}
                     data-testid="session-work-search-result"
                     style={{ minHeight: 84, textAlign: 'left', justifyContent: 'flex-start', display: 'flex', alignItems: 'center', gap: 10 }}
                   >

@@ -640,6 +640,9 @@ session_submit_sent_audit: 'Sent for review — an admin can apply photos under 
 session_apply_photos_hint:
   'Attaches uploaded photos to the linked work. The session stays open — use “Add painting” for another work.',
 session_toast_photos_applied: 'Photos applied to the work. You can add another painting to this session.',
+session_link_queued: 'Selection noted — the work will be linked once the current upload finishes.',
+session_item_unlinked_warn: 'Photos without a linked work — pick the work below.',
+session_apply_blocked_unlinked: 'Cannot apply: some photos have no linked work.',
 session_toast_new_draft_after_closed: 'That session was finished — a new draft was opened.',
 session_apply_busy: 'Applying…',
 wf_save_pending_toast: 'Submitted for admin review',

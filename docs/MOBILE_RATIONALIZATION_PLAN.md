@@ -27,6 +27,7 @@ Status: 1–3 done, verified against live code 2026-07-15. 4 investigated only, 
 ## Pre-Phase 2 — Owner UX pass (2026-07-15)
 - Owner on iPhone SE: Lightroom in-app open unusable. Real flow = capture inside Lightroom → export to camera roll → add via library picker on new/existing item. Removed Lightroom UI: session capture guide (`LightroomCaptureGuide` deleted), hub 🎨 tile + first-visit intro modal, share-triage hint. Kept: `lib/mobile/lightroom-return.ts` + triage return-session banner (reader intact, writer gone — re-add a writer if a future device restores the flow).
 - Existing-work pickers made visual: session search results + share-attach work hits get 72px thumbnails + bold `#ID` + 2-line titles.
+- **Field measurements (owner, 2026-07-16, iPhone SE):** session shot upload ≈4 MB AVIF; attach/apply spinner felt ≈1 full minute; taps during the busy transition were silently swallowed (disabled buttons, no feedback) → photo left orphaned on the session item. Fix shipped: queued link + unlinked-item warning + apply guard. Perf work still pending measurement of upload vs server-convert split before optimizing.
 - **Mobile chrome rule (applies to every screen touched in Phase 2/3):** compact headers/menus; no stacked accordions or unfolding blocks eating the viewport; primary content visible on first screen at 375px; minimum chrome, maximum content.
 
 ## Phase 2 — Collapse duplicate processes
