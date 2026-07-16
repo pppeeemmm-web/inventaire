@@ -1,100 +1,41 @@
 # PEM Hub — TODO
 
-_Version-controlled checklist + non-binding roadmap items. Prefer this file over a Desktop mirror._
+_Live checklist. History → [`archive/`](./archive/). Current workstream → [`MOBILE_RATIONALIZATION_PLAN.md`](./MOBILE_RATIONALIZATION_PLAN.md)._
 
-**Last refresh: 2026-05-29** — **V5 programme closed** (owner sign-off; slices 1–8 on `main`). Constellation UI split. Ops: O1 GRANT audit + R2 lifecycle on `paintings` verified. **A0 Supabase cast cleanup closed 2026-05-29** (`8819120`; Buckets C/B/A/D done, E/F left intentionally). **Block registry keystone + a11y + §4.4 closed 2026-05-29** (§4.1–§4.3 + §4.5 a11y + §4.4 map/motion_interior layouts — all shipped; `forest_pins` live on DB; pending: R2 panorama + video assets; handoff archived [`docs/archive/HANDOFF_SITE_BLOCKS_3.md`](./archive/HANDOFF_SITE_BLOCKS_3.md)).
+**Last refresh: 2026-07-16** — V5 programme closed 2026-05-29 (slices 1–8, details in archive). Mobile rationalization: Phases 0–2.1 done, next 2.2 (gated on owner field notes).
 
----
+## Live workstream
 
-## Next up (recommended order)
-
-| # | Track | Item | Notes |
-|---|--------|------|--------|
-| 1 | **R2 assets** | Upload panorama + video for map/motion_interior | Layouts fully built. Drop `site/forest-panorama.avif` + `site/interior-loop.webm` in R2, paste keys in site editor → works immediately. Video tracking (AE keyframes) deferred. |
-| 2 | **Deferred** | `/works` gallery (cm-scaled wall scroll) | WIP on hold; see Desktop section below |
-
----
+- [ ] **Mobile rationalization 2.2** — share-triage as canonical photo funnel. Blocked on: 2–3 owner painting sessions with friction notes.
+- [ ] **Phase 3 decision (owner)** — regroup hub tiles by verb, or keep 10-tile layout?
+- [ ] Follow-ups from 2.x (Commentaires ungated, reorder/replace image gating, `attachShareInboxFilesToWork` audit) — tracked in the plan doc.
+- [ ] **STRATEGY.md** — fill with owner (dedicated exchange planned; skeleton in place).
 
 ## Operations — time-sensitive
 
-- [x] **O1** Pre-Oct-30 2026 Supabase GRANT audit — run 2026-05-25 (`run-grant-audit.ps1` / `grant_audit_queries.sql`).
 - [ ] **O2** R2 access key rotation; document rotation date in `CLAUDE.md` Phase D.
-- [x] **O3** Broadcast Bearer token rotation runbook → `SYSTEM_LEDGER.md` — 2026-05-29.
-- [ ] **O4** Quarterly DB backup recovery drill (per `BACKUP_RECOVERY.md`).
+- [ ] **O4** Quarterly DB backup recovery drill (per [`BACKUP_RECOVERY.md`](./BACKUP_RECOVERY.md)).
 - [ ] **Vercel** `NEXT_PUBLIC_SITE_URL` / `NEXT_PUBLIC_APP_URL` on production (metadataBase / OG / sitemap).
 
 ## Manual Supabase / Cloudflare
 
-- [ ] Verify views such as `OeuvresComplete` after `dead_columns_drop.sql`.
-- [ ] Run `grant_audit_queries.sql` after schema changes.
-- [x] `studio_task.sql` + `contact_signature_r2_key.sql` applied; `npm run gen:types` — 2026-05-15.
 - [ ] Re-run **`npm run gen:types`** after each new `public` table migration.
 - [ ] GH secret `SUPABASE_DB_URL` for `audit-prune.yml`; sanity-check `audit_log_prune()` before enabling workflow.
 - [ ] Staging AVIF upload smoke (R2 objects + thumbs).
-- [x] Cloudflare lifecycle: `recycle/` 90d, `ledger/` 30d on `paintings` — configured 2026-05-25 (and `vault` if used).
+- [ ] Verify views such as `OeuvresComplete` after `dead_columns_drop.sql`.
+- [ ] Run `grant_audit_queries.sql` after schema changes.
 
-## Phase 0 remainders
+## Product — open
 
-- [x] **0.4** Dictionary modularization (`lib/i18n/dictionary/`).
-- [x] ESLint allow-list ratchet — `no-hardcoded-jsx-text` is `error` for all app/components/hooks (tests excepted); i18n allowlist empty (2026-05-28).
-- [ ] (optional) Ratchet `no-silent-catch` `warn`→`error` — ~258 sites repo-wide; large triage, not bounded.
-
-## Block A — agility
-
-- [x] **A0** Remove remaining `as any` Supabase casts — Buckets C/B/A/D done 2026-05-29 (`7a010df`); E/F left intentionally.
-- [x] **A1** Exhibitions + curation + constellation server actions.
-- [x] **A2** `/works` RSC + `revalidateTag('portfolio')` (config path; gallery UX separate).
-- [x] **A3** R2 etag optimistic concurrency on `savePortfolioConfig` (`ifMatch` + `PORTFOLIO_SAVE_ERR` in PortfolioTab).
-- [x] **A4** Sanitize portfolio HTML server-side.
-- [x] **A5** Logged errors (home, calendar, selection PDF, `r2SoftDelete`).
-
-## Block C — decomposition
-
-- [x] **C1** `PortfolioTab.tsx` → panels + orchestrator (2026-05-28).
-- [x] **C2** `app/atelier/pipeline/_components/Pipeline.tsx` → toolbar + `usePipelineLoad`; panels already split; `AbortController` on fetch (2026-05-25).
-- [x] **C3** `Exhibitions.tsx` → steps + floor-plan panels (2026-05-28).
-- [x] **C4** `docs/CONSTELLATION.md`.
-- [x] **C-partial** Constellation — shared, toolbar, tool rail, side panel, draw frame, export, shortcuts (2026-05-25); pointer handlers (`useConstellationPointer`) + snapshot orchestration (`useConstellationSnapshot`) extracted + wired in `ConstellationCanvas.tsx` (2026-05-28).
-- [x] **C-partial** `pipeline-shared.ts`, list panel extractions.
-- [x] WorkDrawer further decomposition (`DrawerContent`) — IdentitySection wired; NewContact/Unsaved/Gift modals extracted (2026-05-28).
-
-## Desktop — public site
-
-- [ ] **`/works` gallery** — cm-scaled wall scroll in `WorksClient.tsx` *(WIP on hold; not in push set)*.
-- [x] **F1** Sunset `works_collections` / `sections` fallback; `works_modes` only; drop PDF diagnostic log — 2026-05-29.
-
-### /works open follow-ups (from [`archive/HANDOFF_WORKS_LAYOUTS.md`](archive/HANDOFF_WORKS_LAYOUTS.md))
-
-- [ ] **Procession layout** — user reported "not working" but couldn't reproduce in preview. Needs: browser + OS + input device + scenario. Reopen only when repro steps provided.
-- [x] **Bg gradient "barely visible"** — resolved as no-code (2026-06-01). Browser diag: the live site's saved `landing.bg_gradient_stops` are near-white (`#edeae4 / #fefbf6 / #f2fafd`), so the gradient is inherently flat — not a bug, and not the defaults. A `.w-stage` CSS filter is a dead end (can't add contrast to near-white; cascades onto the artwork). The `GradientStopsRow` editor already controls stop colours — fix = pick deeper stops there. Owner chose to leave code as-is.
-- [x] **Carousel outro card** — desktop done (2026-06-01). `OutroCard` now wired into the carousel branch in `WorksModeGallery.tsx`: shows in the empty right half of the wall on the last slide (`hasOutro && !isZoomed && !isMobile && activeIndex >= totalSlots - 1`). Verified in-browser (desktop) via mock outro. **Open follow-up:** mobile carousel — gated off because the mobile card fills the wall leaving no room to float beside the art; needs a design decision (own slide? collapse below?).
-
-## Mobile field-tool — Phases 1–8
-
-### Phase 1 — Ring A
-
-- [x] A.1 slim top bar / drawer chrome.
-- [x] A.2 subset chip.
-- [x] A.3 per-tab narrow polish (Production, Pipeline, Hub, landing) — 2026-05-15.
-
-### Phase 2 — Ring B
-
-- [x] B.1 field launcher `FIELD_ROWS`.
-- [x] B.2 `MobileActionBar` + hide when drawer open.
-- [x] B.4 PWA manifest + share target.
-
-### Phases 3–7 — Verbs 1–8
-
-- [x] Shipped in repo (session, voice, capture, triage, pipeline swipe, card, documents, sign, issue). Operator: ensure SQL live in Supabase + `gen:types` when migrations change.
-
-### Phase 8 — a11y + observability
-
-- [x] Body ≥16px narrow; focus rings; `prefers-reduced-motion`; field `system_log`.
-- [x] **Icon `aria-label` sweep** — Vault, Exhibitions, Constellation, ExportModal + earlier tabs (2026-05; see `ea76b4f`). Re-open only when new icon-only controls ship without labels.
+- [ ] **R2 assets** — upload panorama + video for map/motion_interior layouts (`site/forest-panorama.avif`, `site/interior-loop.webm`), paste keys in site editor.
+- [ ] **`/works` gallery** — cm-scaled wall scroll (WIP on hold).
+- [ ] Procession layout "not working" — reopen only with repro steps (browser + OS + input + scenario).
+- [ ] Carousel outro card on mobile — needs a design decision (own slide? collapse below?). Desktop done 2026-06-01.
+- [ ] (optional) Ratchet `no-silent-catch` `warn`→`error` — ~258 sites, large triage.
 
 ## Roadmap (no GO without decision)
 
-- [ ] **F2**–**F10** — preview token, quick-add, saved searches, share kit, flags, digest, outbox, OCR, `concept_themes` (detail in [archive/STATUS.md](archive/STATUS.md)).
+- [ ] **F2–F10** — preview token, quick-add, saved searches, share kit, flags, digest, outbox, OCR, `concept_themes` (detail in [archive/STATUS.md](./archive/STATUS.md)).
 
 ### Near-term product / data loading
 
@@ -103,48 +44,24 @@ _Version-controlled checklist + non-binding roadmap items. Prefer this file over
 - [ ] Overview pipeline pulse → server + tags (remove remaining client Supabase widgets).
 - [ ] Status labels via `dictionary` vs `STATUS_LABEL_MAP` (needs thin shared layer).
 
-### Deferred integrations (explicit no-GO in CLAUDE)
+### Deferred integrations (explicit no-GO in CLAUDE.md)
 
-- [ ] Background jobs / queues (portfolio PDF at scale, bulk R2/geocode) — prefer outbox + idempotency if DB webhooks fire side effects.
-- [x] Vision / OCR field capture — *partial 2026-05-15:* `/atelier/capture?mode=card` (photo + paste, optional OpenAI vision, confirm → `importGoogleContacts`). Broader field OCR still deferred.
+- [ ] Background jobs / queues — prefer outbox + idempotency if DB webhooks fire side effects.
+- [ ] Broader field OCR (business-card capture shipped 2026-05-15; no silent expansion).
 - [ ] Transactional email (Resend/Postmark-class).
 
-### Suggested sequencing (opinion only)
-
-1. Per-tab / lazy Atelier reads where TTI hurts.  
-2. WorkDrawer + Supabase type cleanup in the same window.  
-3. Background job outbox when server actions time out on heavy work.  
-4. Vision/OCR after mobile capture paths are stable.
-
-## Broadcast follow-ups (optional)
-
-- [x] Platform filter in Broadcast tab — 2026-05-29. ([`BROADCAST.md`](./BROADCAST.md))
-- [x] VIP unread cursor beyond fetched window — 2026-05-29. (vipTotal from DB count, not limited to fetch window)
-
-## V5 refactor — **complete** (owner sign-off 2026-05-25; on `main`)
-
-Programme plan + slice handoffs: [`archive/PEM_HYBRID_REFACTOR_PLAN_V5.md`](./archive/PEM_HYBRID_REFACTOR_PLAN_V5.md) and [`archive/`](./archive/) (historical only).
-
-- [x] **Slice 1 — PWA / offline** — Serwist (`app/sw.ts`), `/~offline`, offline work queue + flush, `AtelierSWRegistrar` on hub/atelier layouts.
-- [x] **Slice 3 — Atelier tab route segmentation** (2026-05-23) — 16 segment routes, QR bridge, `BottomStack`, `@container atelier` portal chrome, `TeamPortalClient` trim.
-- [x] **Slice 3B — Legacy tab segments** (2026-05-23) — `overview`, `map`, `journal`, `system`, `portfolio`, `contacts`, `stock`, `site`, `analytics`; `/atelier` → overview; `OverviewTab` extract.
-- [x] **Slice 4 (core)** — `resolveMessage` + `t()` precedence (2026-05-23).
-- [x] **Slice 4 (segment tabs)** — Exhibitions / Fiscal / Inventory / Sales → `defineMessages`; ESLint off removed for those paths.
-- [x] **Slice 4 (panels)** — allowlist empty; `CurationPanel`, `PortfolioConfigShell`, `WorldMapTab` migrated (2026-05-23).
-- [x] **i18n CI ratchet** — `i18n:check` + allowlist synced with ESLint; `.github/workflows/ci.yml`.
-- [x] **Slice 5 — Graph foundation** (2026-05-23) — SQL applied; `gen:types`; constellation bundle + insert uids.
-- [x] **Slice 6 — Pivot Atlas** (2026-05-23) — `08_edge_fact_view.sql`, Reports atlas.
-- [x] **Slice 7 — Analog fallbacks** — Phase 1: `/api/export/csv`, portfolio PDF graph appendix; Phase 2: `graph-csv-backup.yml` + `scripts/backup-graph-csv.sh`.
-- [x] **Slice 8 — Embeddings** (2026-05-23) — `07`+`09` SQL, embed-worker, semantic palette search verified locally.
-- [x] **Atelier shell across segment tabs** — `(portal)/layout.tsx` + `shellPersistsAcrossTabs`; segment routes do not reload full shell.
-- [x] **Docs archive sweep** (2026-05-23) — completed slice handoffs → `docs/archive/`; slim `docs/README.md`.
-
-**Post-V5 optional (not V5 programme):**
+### Post-V5 optional
 
 - [ ] Per-route bundle size check (aspirational ≤ 250 kB).
-- [ ] Slim RSC cold-start for Audit/Logistics only (shell already persists; catalogue deferred per tab).
+- [ ] Slim RSC cold-start for Audit/Logistics only.
+
+## Done (compressed — evidence in archive/ + git)
+
+- **V5 refactor** (slices 1–8, PWA/offline, tab segmentation, i18n `resolveMessage`, graph + atlas + embeddings) — closed 2026-05-25/29.
+- **Blocks A/C** (agility + decomposition), **O1** GRANT audit, **O3** token rotation runbook, lifecycle rules, dictionary modularization, a11y sweeps — 2026-05.
+- **Mobile field-tool Phases 1–8** (rings A/B, verbs 1–8, share target, a11y) — 2026-05.
+- **Mobile rationalization Phases 0–2.1** + owner UX pass + field-session fixes (silent taps, AVIF passthrough, journal deep link) — 2026-07, see plan doc.
 
 ## Guardrails (not tasks)
 
 RLS + `GRANT` on new tables · EU R2 endpoint · bilingual `dict` · 375px / 44px mobile contract · extend `audit_log_prune()` for new audit tables.
-

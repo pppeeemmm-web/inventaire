@@ -58,6 +58,9 @@ Repo guide. Conflict → ask owner before edit.
 - Keep `SITE_MAP.md`, `docs/TODO.md`, `docs/SYSTEM_LEDGER.md`, `docs/README.md` in sync when routes/features change; don't trust over live code when stale.
 
 ## Docs ↔ Code Currency
+- Session bootstrap: `docs/README.md` = orientation table with freshness stamps; current workstream = `docs/MOBILE_RATIONALIZATION_PLAN.md`; owner strategy/non-goals = `docs/STRATEGY.md`.
+- DB schema: read live (Supabase MCP or `lib/types/supabase.generated.ts`), never from guides.
+- Owner requests triage: bug (fix now) / lived friction ≥2× (batch) / idea (park in TODO). Problem statements over prescribed solutions.
 - Refactor/feature landing → update affected docs IN THE SAME change (handoff "Open work", `docs/TODO.md`, `SITE_MAP.md`, `docs/SYSTEM_LEDGER.md` as relevant). A change with stale docs is not done.
 - Before marking any item done/shipped/complete in a handoff or TODO, VERIFY against live code (read the file / grep the symbol) — never from memory or prior handoff prose. Same evidence bar as the git status words.
 - Handoff "Open work" sections carry a `Verified against live code <YYYY-MM-DD>` stamp. Touch the feature → re-verify + re-stamp. Unstamped, or stamp older than the code it describes → treat as suspect; re-check before acting or quoting "done".

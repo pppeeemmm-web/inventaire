@@ -1,5 +1,7 @@
 # PEM Studio — Team Member Guide (Encyclopedia)
 
+> **⚠ Freshness (2026-07-16):** photo/session/hub sections predate the 2026-07 mobile rationalization pass (Lightroom UI removed, image adds queue for approval, manual `NeedsPhotograph` gate). Where this guide and [`MOBILE_RATIONALIZATION_PLAN.md`](./MOBILE_RATIONALIZATION_PLAN.md) disagree, the plan + live code win. Full guide update owed with Phase 5.
+
 **Audience.** You are a **team member** (signed in, `is_team()` returns `true`) — not an admin. This guide covers **every** team-accessible function in Hub and Atelier as of the 2025–2026 release: every field, every button, every query parameter, every keyboard shortcut, every saved state, every pitfall.
 
 **Companion guide.** [`ADMIN_GUIDE.md`](./ADMIN_GUIDE.md) covers admin-only chapters (Audit, Broadcast, version restore, hard purge, conflict queue, field session capture). Read that one if you have admin rights.
