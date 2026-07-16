@@ -1542,3 +1542,25 @@ export async function fetchOeuvresKeysetPage(beforeId: number | null, limit: num
 export async function fetchOeuvresInitialKeysetPage(limit = 50): Promise<OeuvresKeysetPageResult> {
   return fetchOeuvresKeysetPage(null, limit)
 }
+
+/** Single work by id — deep links (?work=ID) whose target is outside the loaded keyset subset. */
+export async function fetchOeuvreById(oeuvreId: number): Promise<Oeuvre | null> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user || !Number.isFinite(oeuvreId) || oeuvreId <= 0) return null
+
+  const { data, error } = await supabase
+    .from('Oeuvres')
+    .select(OEUVRES_KEYSET_SELECT)
+    .eq('OeuvreID', oeuvreId)
+    .is('deleted_at', null)
+    .maybeSingle()
+
+  if (error) {
+    await logError('fetchOeuvreById failed', error, { source: 'fetchOeuvreById', metadata: { oeuvreId } })
+    return null
+  }
+  return data ? asOeuvreRows([data])[0]! : null
+}

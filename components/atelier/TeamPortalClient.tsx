@@ -31,7 +31,7 @@ import { WorkDrawer, type WorkDrawerGuardHandle } from '@/components/atelier/Wor
 import { CurationDock }        from '@/components/atelier/CurationDock'
 import { fetchContactConflicts } from '@/app/atelier/(portal)/contacts/conflicts-actions'
 import { loadOeuvreLongText } from '@/app/atelier/works/actions'
-import { fetchOeuvresKeysetPage, fetchOeuvresInitialKeysetPage } from '@/app/atelier/works/actions'
+import { fetchOeuvresKeysetPage, fetchOeuvresInitialKeysetPage, fetchOeuvreById } from '@/app/atelier/works/actions'
 import { tabNeedsCatalogueChunkOnColdStart } from '@/lib/atelier/atelier-catalogue-tabs'
 import { revalidateRemindersTag } from '@/app/atelier/reminders-actions'
 import { fetchAtelierShellPostPaint, fetchAtelierJunctionHydrationForOeuvreIds } from '@/app/atelier/atelier-data-actions'
@@ -605,6 +605,7 @@ export function TeamPortalClient({
 
   const [inspected,  setInspected]  = useState<Oeuvre | null>(null)
   const workDrawerGuardRef = useRef<WorkDrawerGuardHandle>(null)
+  const deepLinkFetchRef = useRef<number | null>(null)
   const inventoryDrawerGuardRef = useRef<WorkDrawerGuardHandle>(null)
   const [drawerDirty, setDrawerDirty] = useState(false)
   const [inventoryPanelDirty, setInventoryPanelDirty] = useState(false)
@@ -675,9 +676,6 @@ export function TeamPortalClient({
     if (!wid) return
     const oid = parseInt(wid, 10)
     if (Number.isNaN(oid)) return
-    const found = oeuvres.find((x) => x.OeuvreID === oid)
-    if (!found) return
-
     const stripWorkFromUrl = () => {
       const p = new URLSearchParams(window.location.search)
       p.delete('work')
@@ -685,14 +683,32 @@ export function TeamPortalClient({
       window.history.replaceState({}, '', qs ? `${window.location.pathname}?${qs}` : window.location.pathname)
     }
 
-    const open = () => {
-      setInspected(found)
-      stripWorkFromUrl()
+    const openRow = (row: Oeuvre) => {
+      const open = () => {
+        setInspected(row)
+        stripWorkFromUrl()
+      }
+      const g = workDrawerGuardRef.current
+      if (g) g.runGuarded(open)
+      else open()
     }
 
-    const g = workDrawerGuardRef.current
-    if (g) g.runGuarded(open)
-    else open()
+    const found = oeuvres.find((x) => x.OeuvreID === oid)
+    if (found) {
+      openRow(found)
+      return
+    }
+    // Deep-link target outside the loaded keyset subset: fetch it directly
+    // instead of silently dropping the link (journal → work links).
+    if (deepLinkFetchRef.current === oid) return
+    deepLinkFetchRef.current = oid
+    void fetchOeuvreById(oid).then((row) => {
+      if (row) openRow(row)
+      else {
+        stripWorkFromUrl()
+        toast.error(t('work_link_not_found'))
+      }
+    })
   }, [oeuvres])
 
   const openInspected = useCallback((next: Oeuvre | null) => {

@@ -49,9 +49,12 @@ export async function normalizeImageToAvifPair(
   opts: { maxEdge: number },
 ): Promise<NormalizedAvifPair> {
   const exif = imageExifTags()
-  const mainBuf = await sharp(buf)
-    .rotate()
-    .ensureAlpha()
+  // Alpha plane only when the source actually has one: transparent PNG/WebP/AVIF
+  // keep their transparency; opaque JPEG/HEIC/AVIF skip the (costly, inflating) plane.
+  const { hasAlpha } = await sharp(buf).metadata()
+  let pipeline = sharp(buf).rotate()
+  if (hasAlpha) pipeline = pipeline.ensureAlpha()
+  const mainBuf = await pipeline
     .resize({
       width: opts.maxEdge,
       height: opts.maxEdge,
@@ -70,8 +73,10 @@ export async function normalizeImageToAvifPair(
 
 /** 400px long-edge AVIF thumb from an already-normalized main AVIF buffer. */
 export async function makeAvifThumbFromMain(mainBuf: Buffer): Promise<Buffer> {
-  return sharp(mainBuf)
-    .ensureAlpha()
+  const { hasAlpha } = await sharp(mainBuf).metadata()
+  let pipeline = sharp(mainBuf)
+  if (hasAlpha) pipeline = pipeline.ensureAlpha()
+  return pipeline
     .resize({
       width: 400,
       height: 400,

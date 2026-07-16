@@ -645,6 +645,7 @@ session_toast_photos_applied: 'Photos appliquées sur l’œuvre. Vous pouvez aj
 session_link_queued: 'Sélection notée — l’œuvre sera liée dès la fin de l’envoi en cours.',
 session_item_unlinked_warn: 'Photos sans œuvre liée — choisissez l’œuvre ci-dessous.',
 session_apply_blocked_unlinked: 'Impossible d’appliquer : des photos n’ont pas d’œuvre liée.',
+work_link_not_found: 'Œuvre introuvable (supprimée ou lien invalide).',
 session_toast_new_draft_after_closed: 'Cette session était terminée — un nouveau brouillon a été ouvert.',
 session_apply_busy: 'Application…',
 wf_save_pending_toast: 'Envoyé pour validation par l’administrateur',

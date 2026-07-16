@@ -456,6 +456,7 @@ export type DictKey =
   | 'session_submit_review' | 'session_apply_now' | 'session_apply_busy' | 'session_toast_saved' | 'session_toast_error'
   | 'session_toast_photos_applied' | 'session_toast_new_draft_after_closed' | 'session_toast_reopened_same_day'
   | 'session_link_queued' | 'session_item_unlinked_warn' | 'session_apply_blocked_unlinked'
+  | 'work_link_not_found'
   | 'session_admin_pending_heading' | 'session_admin_apply' | 'session_admin_reject' | 'session_reject_prompt'
   | 'session_status_draft' | 'session_status_pending_review' | 'session_status_applied' | 'session_status_rejected'
   | 'session_status_abandoned'

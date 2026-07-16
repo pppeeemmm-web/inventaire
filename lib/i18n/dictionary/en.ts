@@ -643,6 +643,7 @@ session_toast_photos_applied: 'Photos applied to the work. You can add another p
 session_link_queued: 'Selection noted — the work will be linked once the current upload finishes.',
 session_item_unlinked_warn: 'Photos without a linked work — pick the work below.',
 session_apply_blocked_unlinked: 'Cannot apply: some photos have no linked work.',
+work_link_not_found: 'Work not found (deleted or invalid link).',
 session_toast_new_draft_after_closed: 'That session was finished — a new draft was opened.',
 session_apply_busy: 'Applying…',
 wf_save_pending_toast: 'Submitted for admin review',
