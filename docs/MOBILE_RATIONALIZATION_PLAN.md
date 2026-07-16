@@ -1,6 +1,6 @@
 # Mobile Rationalization — Master Plan
 
-Status: Phase 0 in progress. Verified against live code 2026-07-15.
+Status: Phases 0-1 done · Pre-Phase 2 UX pass done · Phase 2.1 done · next = 2.2 (photo ingest funnel, informed by field notes). Verified against live code + prod DB 2026-07-16.
 Source analysis: ADMIN_GUIDE.md + TEAM_MEMBER_GUIDE.md (15 mobile workflows) + live code map.
 
 ## Findings TL;DR
@@ -13,7 +13,7 @@ Source analysis: ADMIN_GUIDE.md + TEAM_MEMBER_GUIDE.md (15 mobile workflows) + l
 | # | Item | Where | Status |
 |---|------|-------|--------|
 | 0.1 | Bug: non-admin new-work images silently discarded. `res.pending` branch returns before staged `newImageFiles` upload; pending payload carries no files. Fix: explicit warning toast when pending save drops staged images. | `components/atelier/WorkForm.tsx:476-507` | done |
-| 0.2 | Approval bypass: `addWorkImage` had no `is_admin` / pending gate. **Decision: Option A** — non-admins upload to R2 then queue an `image_add` pending_changes row (payload: filename + capture_meta + sha256); admin approve calls `commitWorkImage` (tblImage insert + cover/pipeline), reject soft-deletes the R2 objects. Migration `supabase/sql/pending_changes_image_add_kind.sql` adds `image_add` to the `change_kind` CHECK — **file only, not yet applied**. | `app/atelier/works/actions.ts` (`addWorkImage`, `commitWorkImage`), `app/atelier/(portal)/audit/pending-actions.ts` | done |
+| 0.2 | Approval bypass: `addWorkImage` had no `is_admin` / pending gate. **Decision: Option A** — non-admins upload to R2 then queue an `image_add` pending_changes row (payload: filename + capture_meta + sha256); admin approve calls `commitWorkImage` (tblImage insert + cover/pipeline), reject soft-deletes the R2 objects. Migration `supabase/sql/pending_changes_image_add_kind.sql` adds `image_add` to the `change_kind` CHECK — applied in prod (verified via pg_constraint 2026-07-16). | `app/atelier/works/actions.ts` (`addWorkImage`, `commitWorkImage`), `app/atelier/(portal)/audit/pending-actions.ts` | done |
 | 0.3 | Dead review path: `submitWorkSessionForReview` is a hardcoded-error stub still wired to a UI button. Remove both. | `app/atelier/session/actions.ts:1819`, `components/atelier/session/SessionNewClient.tsx:554` | done |
 | 0.4 | Delete 3 unused `FieldToolStubPage` kinds (`session`/`documents`/`triage`); no-mode `/atelier/capture` redirects to `/hub`. | `components/atelier/FieldToolStubPage.tsx` (deleted), `app/atelier/capture/page.tsx` | done |
 
