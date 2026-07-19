@@ -10,7 +10,7 @@ import { CommandPalette } from './CommandPalette'
 import { useUnsavedActionGuard } from '@/hooks/useUnsavedActionGuard'
 import { useEscapeClose } from '@/hooks/useEscapeClose'
 import dynamic from 'next/dynamic'
-import { useRouter, usePathname } from 'next/navigation'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
 import { WorkThumb } from './WorkThumb'
 import type { Oeuvre, SuiviReminderListRow } from '@/lib/types/database'
@@ -336,6 +336,7 @@ export function TeamPortalClient({
   shellPersistsAcrossTabs = false,
 }: TeamPortalClientProps) {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const routeTabFromUrl = routeTabFromPathname(pathname)
   const effectiveRouteTab = shellPersistsAcrossTabs
     ? (routeTabFromUrl ?? routeTab)
@@ -675,6 +676,11 @@ export function TeamPortalClient({
 
   useLayoutEffect(() => {
     if (typeof window === 'undefined') return
+    // The portal lives in the (portal) layout, so an in-portal navigation (e.g.
+    // journal → /atelier?work=N) does NOT remount it — `searchParams` is in the
+    // deps solely to re-run this effect then. The real URL stays the source of
+    // truth: strip uses history.replaceState, which searchParams never sees.
+    void searchParams
     const params = new URLSearchParams(window.location.search)
     const wid = params.get('work')
     if (!wid) return
@@ -685,6 +691,7 @@ export function TeamPortalClient({
       p.delete('work')
       const qs = p.toString()
       window.history.replaceState({}, '', qs ? `${window.location.pathname}?${qs}` : window.location.pathname)
+      deepLinkFetchRef.current = null
     }
 
     const openRow = (row: Oeuvre) => {
@@ -713,7 +720,8 @@ export function TeamPortalClient({
         toast.error(t('work_link_not_found'))
       }
     })
-  }, [oeuvres])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [oeuvres, searchParams])
 
   const openInspected = useCallback((next: Oeuvre | null) => {
     if (next && inspected && next.OeuvreID === inspected.OeuvreID) {
