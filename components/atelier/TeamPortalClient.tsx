@@ -53,6 +53,7 @@ import { VoiceNoteSheet } from '@/components/shared/VoiceNoteSheet'
 import { triggerStudioBibleDownload } from '@/lib/studio-bible-download'
 
 const TEAM_ACTIVITY_SEEN_KEY = 'pem_team_activity_seen_at'
+const LEDGER_SEEN_KEY = 'pem_ledger_seen_at'
 
 function TabPanelFallback() {
   const { t } = useI18n()
@@ -735,26 +736,37 @@ export function TeamPortalClient({
   const [tab,            setTab]          = useState<Tab>('overview')
   const [reminderCount,  setReminderCount] = useState(initialReminderUnread)
   const [teamActivityCount, setTeamActivityCount] = useState(0)
+  const [ledgerActivityCount, setLedgerActivityCount] = useState(0)
 
   // Journal badge: team activity by OTHER users since this device's last Journal
-  // visit. Last-seen cursor is per-device (localStorage) — no schema change.
+  // visit. System badge: new manual ledger entries since last System visit.
+  // Last-seen cursors are per-device (localStorage) — no schema change.
   useEffect(() => {
     let cancelled = false
-    let since = localStorage.getItem(TEAM_ACTIVITY_SEEN_KEY)
-    if (!since) {
-      since = new Date().toISOString()
-      localStorage.setItem(TEAM_ACTIVITY_SEEN_KEY, since)
+    const readSince = (key: string) => {
+      let v = localStorage.getItem(key)
+      if (!v) {
+        v = new Date().toISOString()
+        localStorage.setItem(key, v)
+      }
+      return v
     }
-    void countTeamActivitySince(since).then((r) => {
-      if (!cancelled && 'count' in r) setTeamActivityCount(r.count)
-    }).catch(() => { /* badge stays 0 */ })
+    void countTeamActivitySince(readSince(TEAM_ACTIVITY_SEEN_KEY), readSince(LEDGER_SEEN_KEY)).then((r) => {
+      if (cancelled || 'error' in r) return
+      setTeamActivityCount(r.journal)
+      setLedgerActivityCount(r.ledger)
+    }).catch(() => { /* badges stay 0 */ })
     return () => { cancelled = true }
   }, [])
 
   useEffect(() => {
-    if (tab !== 'journal') return
-    localStorage.setItem(TEAM_ACTIVITY_SEEN_KEY, new Date().toISOString())
-    setTeamActivityCount(0)
+    if (tab === 'journal') {
+      localStorage.setItem(TEAM_ACTIVITY_SEEN_KEY, new Date().toISOString())
+      setTeamActivityCount(0)
+    } else if (tab === 'system') {
+      localStorage.setItem(LEDGER_SEEN_KEY, new Date().toISOString())
+      setLedgerActivityCount(0)
+    }
   }, [tab])
 
   useLayoutEffect(() => {
@@ -999,14 +1011,14 @@ export function TeamPortalClient({
       ['stock-take',    t('tab_stock_take')],
       ['notes',         t('tab_notes')],
       ['journal',       t('tab_journal'), teamActivityCount > 0 ? teamActivityCount : undefined],
-      ['system',        t('tab_system')],
+      ['system',        t('tab_system'), ledgerActivityCount > 0 ? ledgerActivityCount : undefined],
       [
         'audit',
         t('tab_audit'),
         isAdmin && pendingReviewCount > 0 ? pendingReviewCount : undefined,
       ],
     ],
-    [t, oeuvresCatalogueCount, contacts.length, isAdmin, pendingReviewCount, teamActivityCount],
+    [t, oeuvresCatalogueCount, contacts.length, isAdmin, pendingReviewCount, teamActivityCount, ledgerActivityCount],
   )
 
   const activeTabLabel = TABS_RAW.find((x) => x[0] === tab)?.[1] ?? ''
