@@ -34,6 +34,7 @@ import { loadOeuvreLongText } from '@/app/atelier/works/actions'
 import { fetchOeuvresKeysetPage, fetchOeuvresInitialKeysetPage, fetchOeuvreById } from '@/app/atelier/works/actions'
 import { tabNeedsCatalogueChunkOnColdStart } from '@/lib/atelier/atelier-catalogue-tabs'
 import { revalidateRemindersTag } from '@/app/atelier/reminders-actions'
+import { countTeamActivitySince } from '@/app/atelier/team-activity-actions'
 import { fetchAtelierShellPostPaint, fetchAtelierJunctionHydrationForOeuvreIds } from '@/app/atelier/atelier-data-actions'
 import type { AtelierJunctionDerived } from '@/lib/atelier/atelier-junction-bootstrap'
 import {
@@ -50,6 +51,8 @@ import { toast, dismissToast } from '@/lib/ui/toast'
 import { consumeUndo, isUndoKeyBlockedTarget, peekUndo } from '@/lib/ui/undo'
 import { VoiceNoteSheet } from '@/components/shared/VoiceNoteSheet'
 import { triggerStudioBibleDownload } from '@/lib/studio-bible-download'
+
+const TEAM_ACTIVITY_SEEN_KEY = 'pem_team_activity_seen_at'
 
 function TabPanelFallback() {
   const { t } = useI18n()
@@ -731,6 +734,28 @@ export function TeamPortalClient({
   // Restore last tab from localStorage after first paint.
   const [tab,            setTab]          = useState<Tab>('overview')
   const [reminderCount,  setReminderCount] = useState(initialReminderUnread)
+  const [teamActivityCount, setTeamActivityCount] = useState(0)
+
+  // Journal badge: team activity by OTHER users since this device's last Journal
+  // visit. Last-seen cursor is per-device (localStorage) — no schema change.
+  useEffect(() => {
+    let cancelled = false
+    let since = localStorage.getItem(TEAM_ACTIVITY_SEEN_KEY)
+    if (!since) {
+      since = new Date().toISOString()
+      localStorage.setItem(TEAM_ACTIVITY_SEEN_KEY, since)
+    }
+    void countTeamActivitySince(since).then((r) => {
+      if (!cancelled && 'count' in r) setTeamActivityCount(r.count)
+    }).catch(() => { /* badge stays 0 */ })
+    return () => { cancelled = true }
+  }, [])
+
+  useEffect(() => {
+    if (tab !== 'journal') return
+    localStorage.setItem(TEAM_ACTIVITY_SEEN_KEY, new Date().toISOString())
+    setTeamActivityCount(0)
+  }, [tab])
 
   useLayoutEffect(() => {
     if (effectiveRouteTab) {
@@ -973,7 +998,7 @@ export function TeamPortalClient({
       ['stock',         t('tab_stock')],
       ['stock-take',    t('tab_stock_take')],
       ['notes',         t('tab_notes')],
-      ['journal',       t('tab_journal')],
+      ['journal',       t('tab_journal'), teamActivityCount > 0 ? teamActivityCount : undefined],
       ['system',        t('tab_system')],
       [
         'audit',
@@ -981,7 +1006,7 @@ export function TeamPortalClient({
         isAdmin && pendingReviewCount > 0 ? pendingReviewCount : undefined,
       ],
     ],
-    [t, oeuvresCatalogueCount, contacts.length, isAdmin, pendingReviewCount],
+    [t, oeuvresCatalogueCount, contacts.length, isAdmin, pendingReviewCount, teamActivityCount],
   )
 
   const activeTabLabel = TABS_RAW.find((x) => x[0] === tab)?.[1] ?? ''

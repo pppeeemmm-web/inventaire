@@ -646,6 +646,7 @@ session_apply_blocked_unlinked: 'Cannot apply: some photos have no linked work.'
 work_link_not_found: 'Work not found (deleted or invalid link).',
 session_toast_new_draft_after_closed: 'That session was finished — a new draft was opened.',
 session_apply_busy: 'Applying…',
+session_apply_busy_count_fmt: 'Applying {count} photo(s)…',
 wf_save_pending_toast: 'Submitted for admin review',
 wf_save_pending_images_skipped_toast:
   'Submitted for admin review. The images you picked were not uploaded — add them once the change is approved.',

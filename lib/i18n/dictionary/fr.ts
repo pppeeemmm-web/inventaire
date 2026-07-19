@@ -648,6 +648,7 @@ session_apply_blocked_unlinked: 'Impossible d’appliquer : des photos n’ont p
 work_link_not_found: 'Œuvre introuvable (supprimée ou lien invalide).',
 session_toast_new_draft_after_closed: 'Cette session était terminée — un nouveau brouillon a été ouvert.',
 session_apply_busy: 'Application…',
+session_apply_busy_count_fmt: 'Application de {count} photo(s)…',
 wf_save_pending_toast: 'Envoyé pour validation par l’administrateur',
 wf_save_pending_images_skipped_toast:
   'Envoyé pour validation par l’administrateur. Les images sélectionnées n’ont pas été envoyées — ajoutez-les une fois la modification approuvée.',

@@ -1,6 +1,6 @@
 'use client'
 
-import { imageUrl, thumbUrl, STATUS_ID_ARCHIVE_ARTISTE } from '@/lib/data'
+import { imageUrl, thumbUrl } from '@/lib/data'
 import { deleteWork, restoreSoftDeletedWorks, revertWorkSnapshot, loadOeuvreLongText, type WorkRevertSnapshot } from '@/app/atelier/works/actions'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -115,6 +115,9 @@ export function DrawerContent({
   const [presentationId, setPresentationId] = useState(String((o as { PresentationID?: number }).PresentationID ?? ''))
   const [prodStage, setProdStage] = useState<ProdStageId>(() => prodStageFromOeuvre(o))
   const [needsPhoto, setNeedsPhoto] = useState(!!((o as { NeedsPhotograph?: boolean }).NeedsPhotograph ?? false))
+  // Guards the "uncheck needs-photo → advance to available" effect: must be reset on every
+  // programmatic needsPhoto write, or a row switch replays a stale true→false transition.
+  const prevNeedsPhoto = useRef(needsPhoto)
   const [ownStage, setOwnStage] = useState<OwnStageId>(() => ownStageFromStatusId(o.statusId))
   const [contactId, setContactId] = useState(String(o.LocalisationID ?? ''))
   const [exposable,   setExposable]   = useState(!!o.Exposable)
@@ -410,6 +413,7 @@ export function DrawerContent({
     setProfondeur(d.profondeur ?? '')
     setProdStage((d.prodStage as ProdStageId) || 'atelier')
     setNeedsPhoto(!!d.needsPhoto)
+    prevNeedsPhoto.current = !!d.needsPhoto
     setOwnStage((d.ownStage as OwnStageId) || 'artist')
     setContactId(d.contactId ?? '')
     setAnonymityLevel(normalizeAnonymityLevel(d.anonymityLevel))
@@ -446,7 +450,10 @@ export function DrawerContent({
     const loadedOwn = ownStageFromStatusId(o.statusId)
     const loadedProd = prodStageFromOeuvre(o)
     setProdStage(loadedProd)
-    setNeedsPhoto(!!((o as { NeedsPhotograph?: boolean }).NeedsPhotograph ?? false))
+    // Seed from the derived stage (what editorBaseline stores), not raw NeedsPhotograph —
+    // and reset the transition ref so the auto-advance effect stays quiet on row switch.
+    setNeedsPhoto(loadedProd === 'catalogued')
+    prevNeedsPhoto.current = loadedProd === 'catalogued'
     setOwnStage(loadedOwn)
     const pemRow = (initialContacts as DrawerContactRow[]).find((c) =>
       (c.NomInstitution ?? '').toLowerCase().includes('pem'),
@@ -456,7 +463,7 @@ export function DrawerContent({
       loadedContactId = String(pemRow.ContactID)
     }
     setContactId(loadedContactId)
-    setExposable(o.statusId === STATUS_ID_ARCHIVE_ARTISTE ? false : !!o.Exposable)
+    setExposable(loadedOwn === 'artist_archive' ? false : !!o.Exposable)
     setBroadcastReady(!!(o as { broadcast_ready?: boolean }).broadcast_ready)
     setBroadcastCaptionSeed(String((o as { broadcast_caption_seed?: string | null }).broadcast_caption_seed ?? ''))
     setEncadree(!!o.Encadree)
@@ -633,7 +640,6 @@ export function DrawerContent({
     else setNeedsPhoto(false)
   }, [prodStage])
 
-  const prevNeedsPhoto = useRef(needsPhoto)
   useEffect(() => {
     if (!needsPhoto && prevNeedsPhoto.current === true) setProdStage('available')
     prevNeedsPhoto.current = needsPhoto
@@ -949,35 +955,19 @@ export function DrawerContent({
       sessionStorage.removeItem(draftKey)
       return
     }
+    // A draft equal to the committed baseline holds no user input (e.g. leftovers from a
+    // pre-fix false-dirty autosave) — drop it silently instead of prompting.
+    if (editorBaseline && workFormDraftContentEquals(normalizeWorkFormDraftContent(d), editorBaseline)) {
+      sessionStorage.removeItem(draftKey)
+      return
+    }
     const msg = `${t('wf_draft_restore_title')}\n\n${t('wf_draft_restore_body')}`
     if (!window.confirm(msg)) {
       sessionStorage.removeItem(draftKey)
       return
     }
-    setTitre(d.titre ?? '')
-    setAnnee(d.annee ?? '')
-    setTechniqueId(d.techniqueId ?? '')
-    setSupportId(d.supportId ?? '')
-    setFormatId(d.formatId ?? '')
-    setHauteur(d.hauteur ?? '')
-    setLargeur(d.largeur ?? '')
-    setProfondeur(d.profondeur ?? '')
-    setProdStage((d.prodStage as ProdStageId) || 'atelier')
-    setNeedsPhoto(!!d.needsPhoto)
-    setOwnStage((d.ownStage as OwnStageId) || 'artist')
-    setContactId(d.contactId ?? '')
-    setAnonymityLevel(normalizeAnonymityLevel(d.anonymityLevel))
-    setPrix(d.prix ?? '0')
-    setTvaRate(d.tvaRate ?? '0')
-    setDiscount(d.discount ?? '0')
-    setPaymentDone(!!d.paymentDone)
-    setExposable(!!d.exposable)
-    setBroadcastReady(!!d.broadcastReady)
-    setCommentaires(d.commentaires ?? '')
-    setHistorique(d.historique ?? '')
-    setSelThemes(new Set(d.selThemes ?? []))
-    setSelGroups(new Set(d.selGroups ?? []))
-  }, [longTextReady, draftKey, draftSnapshot, t])
+    applyDraftContentToForm(d)
+  }, [longTextReady, draftKey, draftSnapshot, editorBaseline, applyDraftContentToForm, t])
 
   useEffect(() => {
     const id = window.setTimeout(() => {

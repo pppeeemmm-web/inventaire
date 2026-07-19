@@ -328,8 +328,10 @@ export function SessionNewClient() {
             return
           }
         }
+        const applied = isAdmin && !!activeItem?.oeuvre_id
+        if (applied) await autoApply(sessionId)
         await refreshDraft(sessionId)
-        toast.success(t('session_toast_saved'))
+        if (!applied) toast.success(t('session_toast_saved'))
       })()
     })
   }
@@ -345,6 +347,18 @@ export function SessionNewClient() {
         }
       })
     })
+  }
+
+  // Owner feedback: the manual "Apply" tap was a needless extra step — once an
+  // item is linked and has photos, apply immediately (admin only; the server
+  // applies only actionable items, so unlinked items simply stay staged).
+  const autoApply = async (sid: string) => {
+    const r = await applyWorkSessionToOeuvre(sid)
+    if ('error' in r) toast.error(r.error)
+    else {
+      toast.success(t('session_toast_photos_applied'))
+      refreshPending()
+    }
   }
 
   // A result tap during an upload used to hit a disabled button and vanish
@@ -370,8 +384,10 @@ export function SessionNewClient() {
       void action.then(async (r) => {
         if ('error' in r) toast.error(r.error)
         else {
+          const applied = isAdmin && item.shots.length > 0
+          if (applied) await autoApply(sessionId)
           await refreshDraft(sessionId)
-          toast.success(t('session_toast_saved'))
+          if (!applied) toast.success(t('session_toast_saved'))
         }
       })
     })
@@ -399,8 +415,10 @@ export function SessionNewClient() {
       void createAndLinkWorkFromSessionItem(sessionId, item.id).then(async (r) => {
         if ('error' in r) toast.error(r.error)
         else {
+          const applied = isAdmin && item.shots.length > 0
+          if (applied) await autoApply(sessionId)
           await refreshDraft(sessionId)
-          toast.success(t('session_toast_saved'))
+          if (!applied) toast.success(t('session_toast_saved'))
         }
       })
     })
@@ -508,7 +526,9 @@ export function SessionNewClient() {
   }
 
   const locale = lang === 'fr' ? 'fr-FR' : 'en-GB'
-  const actionableCount = items.filter((item) => item.shots.length > 0 && (item.oeuvre_id || (item.mode === 'new' && item.title_hint?.trim()))).length
+  const actionableItems = items.filter((item) => item.shots.length > 0 && (item.oeuvre_id || (item.mode === 'new' && item.title_hint?.trim())))
+  const actionableCount = actionableItems.length
+  const pendingApplyShots = actionableItems.reduce((n, item) => n + item.shots.length, 0)
   const stagedHintKey = isAdmin ? 'session_photos_staged_hint_admin' : 'session_photos_staged_hint'
   const oeuvreLabelKey = isAdmin ? 'session_oeuvre_id_label_admin' : 'session_oeuvre_id_label'
 
@@ -575,7 +595,11 @@ export function SessionNewClient() {
             style={{ minHeight: 48 }}
             aria-busy={busy}
           >
-            {busy ? t('session_apply_busy') : t('session_apply_now')}
+            {busy
+              ? (pendingApplyShots > 0
+                  ? t('session_apply_busy_count_fmt').replace('{count}', String(pendingApplyShots))
+                  : t('session_apply_busy'))
+              : t('session_apply_now')}
           </button>
           <p className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx2)', lineHeight: 1.4, margin: 0 }}>
             {t('session_apply_photos_hint')}

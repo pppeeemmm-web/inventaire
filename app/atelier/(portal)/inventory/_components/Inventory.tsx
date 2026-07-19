@@ -8,6 +8,7 @@ import { useVirtualizer } from '@tanstack/react-virtual'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
+import type { DictKey } from '@/lib/i18n/dictionary'
 import { interpolateMessage } from '@/lib/i18n/message-core'
 import { imageUrl, thumbUrl, yearOf, statusOf, statusColor, stageOf, type StatusKey, formatInventoryDims, isAvailabilityRefinedToProduction } from '@/lib/data'
 import { MissingThumb, WorkThumb } from '@/components/atelier/WorkThumb'
@@ -47,35 +48,35 @@ function SortInd({ k, current, dir }: { k: string; current: string; dir: 'asc' |
 interface Criterion { id: number; field: string; op: string; value: string; value2?: string }
 
 // ── Field Labels Mapping ──
-const FIELD_LABELS: Record<string, string> = {
+const buildFieldLabels = (t: (k: DictKey) => string): Record<string, string> => ({
   OeuvreID:        'ID',
-  Titre:           'Titre',
-  Technique:       'Technique',
-  Support:         'Support',
-  _theme:          'Thème',
-  _group:          'Groupe',
-  Année:           'Année',
-  DateCreation:    'Date création',
-  Prix:            'Prix',
-  PrixFinal:       'Prix final',
-  Discount:        'Remise (%)',
-  Exposable:       'Exposable',
-  Catalogué:       'Cataloguée',
-  Encadree:        'Encadrée',
-  Hauteur:         'Hauteur (cm)',
-  Largeur:         'Largeur (cm)',
-  Profondeur:      'Profondeur (cm)',
-  PresentationID:  'Présentation',
-  NeedsPhotograph: 'À photographier',
-  statusId:        'État',
-  ContactID:       'Contact',
-  LocalisationID:  'Localisation',
-  AcheteurID:      'Acheteur',
-  ReturnDate:      'Date retour',
+  Titre:           t('title'),
+  Technique:       t('technique'),
+  Support:         t('support'),
+  _theme:          t('theme'),
+  _group:          t('const_viewGroup'),
+  Année:           t('year'),
+  DateCreation:    t('inv_field_date_creation'),
+  Prix:            t('price'),
+  PrixFinal:       t('inv_field_prix_final'),
+  Discount:        `${t('discount')} (%)`,
+  Exposable:       t('inv_field_exposable'),
+  Catalogué:       t('inv_field_catalogued'),
+  Encadree:        t('framed'),
+  Hauteur:         t('inv_field_height'),
+  Largeur:         t('inv_field_width'),
+  Profondeur:      t('inv_field_depth'),
+  PresentationID:  t('presentation'),
+  NeedsPhotograph: t('inv_field_needs_photo'),
+  statusId:        t('inv_col_status'),
+  ContactID:       t('contact'),
+  LocalisationID:  t('inv_col_location'),
+  AcheteurID:      t('buyer'),
+  ReturnDate:      t('inv_field_return_date'),
   txtImageNameLink: 'Image',
-  IsCommission:    'Commission',
-  DateLivraison:   'Deadline',
-}
+  IsCommission:    t('commission'),
+  DateLivraison:   t('deliveryDate'),
+})
 
 interface FieldDef { k: string; l: string; t: 'num' | 'text' | 'bool' | 'lookup' | 'year' }
 
@@ -385,6 +386,7 @@ export function Inventory({
     const keys = Object.keys(sample)
     
     // Curated order for known fields
+    const FIELD_LABELS = buildFieldLabels(t)
     const labelKeys = Object.keys(FIELD_LABELS)
     const sorted = keys.sort((a, b) => {
       const ia = labelKeys.indexOf(a)
@@ -408,8 +410,8 @@ export function Inventory({
       }))
 
     // Add virtual curation fields for advanced filter
-    fields.push({ k: '_theme', l: 'Thème',  t: 'lookup' })
-    fields.push({ k: '_group', l: 'Groupe', t: 'lookup' })
+    fields.push({ k: '_theme', l: t('theme'), t: 'lookup' })
+    fields.push({ k: '_group', l: t('const_viewGroup'), t: 'lookup' })
 
     return fields
   }, [oeuvres, t])
@@ -650,17 +652,17 @@ export function Inventory({
   const activeStages = useMemo(() => {
     const present = new Set(oeuvres.map(o => statusOf(o, statusLabelMap)))
     return [
-      { k: 'en_production',   l: 'En production', c: 'var(--rust)' },
-      { k: 'available',       l: 'Disponible',    c: 'var(--sage)' },
-      { k: 'reserved',        l: 'Réservé',       c: 'var(--dust)' },
-      { k: 'consigned',       l: 'Consigné',      c: 'var(--dust)' },
-      { k: 'loan',            l: 'Prêt',          c: 'var(--cyan)' },
-      { k: 'sold',            l: 'Vendu',         c: 'var(--mt)'   },
-      { k: 'gift',            l: 'Don',           c: 'var(--mt)'   },
-      { k: 'artist_archive',  l: 'Archive (Pem)', c: 'var(--mt)'   },
-      { k: 'private_archive', l: 'Archive privée',c: 'var(--mt)'   },
+      { k: 'en_production',   l: t('wf_prod_atelier_l'),              c: 'var(--rust)' },
+      { k: 'available',       l: t('wf_prod_avail_l'),                c: 'var(--sage)' },
+      { k: 'reserved',        l: t('wf_own_reserved_l'),              c: 'var(--dust)' },
+      { k: 'consigned',       l: t('wf_own_consigned_l'),             c: 'var(--dust)' },
+      { k: 'loan',            l: t('wf_own_loan_l'),                  c: 'var(--cyan)' },
+      { k: 'sold',            l: t('wf_own_sold_l'),                  c: 'var(--mt)'   },
+      { k: 'gift',            l: t('wf_own_gift_l'),                  c: 'var(--mt)'   },
+      { k: 'artist_archive',  l: t('wf_own_archive_l'),               c: 'var(--mt)'   },
+      { k: 'private_archive', l: t('report_status_private_archive'),  c: 'var(--mt)'   },
     ].filter(s => present.has(s.k as StatusKey))
-  }, [oeuvres, statusLabelMap])
+  }, [oeuvres, statusLabelMap, t])
 
   // Keep focused in sync with filtered results
   useEffect(() => {
@@ -677,19 +679,6 @@ export function Inventory({
   }
 
   // passed to InvList for range selection
-
-  const statusOptions: [string, string][] = [
-    ['all',             'Tous'],
-    ['en_production',   'En production'],
-    ['available',       'Disponible'],
-    ['reserved',        'Réservé'],
-    ['consigned',       'Consigné'],
-    ['loan',            'Prêt'],
-    ['sold',            'Vendu'],
-    ['gift',            'Don'],
-    ['artist_archive',  'Archive (Pem)'],
-    ['private_archive', 'Archive privée'],
-  ]
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
@@ -738,14 +727,14 @@ export function Inventory({
         <InvSelect
           value={filterTheme} onChange={setFilterTheme}
           label={t('theme')}
-          options={[['all', 'Tous les thèmes'], ...sortedThemes.map((x) => [String(x.id), x.name] as [string, string])]}
+          options={[['all', t('const_allThemes')], ...sortedThemes.map((x) => [String(x.id), x.name] as [string, string])]}
         />
 
         {/* Group */}
         <InvSelect
           value={filterGroup} onChange={setFilterGroup}
-          label="Groupe"
-          options={[['all', 'Tous les groupes'], ...groups.map((x) => [x.id, x.name] as [string, string])]}
+          label={t('const_viewGroup')}
+          options={[['all', t('const_allGroups')], ...groups.map((x) => [x.id, x.name] as [string, string])]}
         />
 
         {/* View toggle */}
@@ -862,7 +851,7 @@ export function Inventory({
               className="btn sm"
               style={{ fontSize: 12, padding: '8px 16px', background: 'var(--rust)22', color: 'var(--rust)', border: '1px solid var(--rust)44' }}
             >
-              Supprimer ({selection.size})
+              {t('delete')} ({selection.size})
             </button>
           </div>
         )}
@@ -909,7 +898,7 @@ export function Inventory({
               boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
             }}>
               <div className="t-eyebrow" style={{ marginBottom: 12, fontSize: 11 }}>{t('legend')}</div>
-              {activeStages.length === 0 && <div style={{ fontSize: 12, opacity: 0.5 }}>Aucune œuvre en production</div>}
+              {activeStages.length === 0 && <div style={{ fontSize: 12, opacity: 0.5 }}>{t('inv_legend_empty')}</div>}
               {activeStages.map((it, i) => (
                 <div key={i} className="row gap-sm" style={{ marginBottom: 6 }}>
                   <div style={{ width: 10, height: 10, borderRadius: '50%', background: it.c }} />
@@ -934,7 +923,7 @@ export function Inventory({
           }}
           title={t('inv_title_toggle_side_preview')}
         >
-          {showPreview ? 'Aperçu ◀' : 'Aperçu ▶'}
+          {showPreview ? `${t('inv_preview')} ◀` : `${t('inv_preview')} ▶`}
         </button>
 
 
@@ -1130,7 +1119,7 @@ function CriteriaPanel({
               style={{ ...FIS, maxWidth: 130 }}
             >
               {allFields.map((f) => (
-                <option key={f.k} value={f.k}>{FIELD_LABELS[f.k] || f.l}</option>
+                <option key={f.k} value={f.k}>{f.l}</option>
               ))}
             </select>
 
@@ -1439,13 +1428,13 @@ function InvList({
             <th style={{ ...headerBase, width: 70 }} title={t('dimensions')}>{t('dimensions')}</th>
             <th onClick={() => toggleSort('Année')} style={{ ...headerBase, width: 48, cursor: 'pointer' }}>
               <div style={sortThRow}>
-                <span style={sortThLabel}>Année</span>
+                <span style={sortThLabel}>{t('year')}</span>
                 <span style={{ flexShrink: 0 }}><SortInd k="Année" current={sortKey} dir={sortDir} /></span>
               </div>
             </th>
             <th onClick={() => toggleSort('Prix')} style={{ ...headerBase, width: 80, cursor: 'pointer' }}>
               <div style={sortThRow}>
-                <span style={sortThLabel}>Prix</span>
+                <span style={sortThLabel}>{t('price')}</span>
                 <span style={{ flexShrink: 0 }}><SortInd k="Prix" current={sortKey} dir={sortDir} /></span>
               </div>
             </th>
@@ -1465,20 +1454,20 @@ function InvList({
               colSpan={2}
               onClick={() => toggleSort('Status')}
               style={{ ...headerBase, width: 160, cursor: 'pointer' }}
-              title="État commercial (disponible, production, réservé, vendu…)"
+              title={t('inv_title_status_col')}
             >
               <div style={sortThRow}>
-                <span style={sortThLabel}>État</span>
+                <span style={sortThLabel}>{t('inv_col_status')}</span>
                 <span style={{ flexShrink: 0 }}><SortInd k="Status" current={sortKey === 'Stage' ? 'Status' : sortKey} dir={sortDir} /></span>
               </div>
             </th>
             <th
               onClick={() => toggleSort('Comm')}
               style={{ ...headerBase, width: 80, cursor: 'pointer', borderRight: 'none' }}
-              title="Rappel si réservé (l’état détaillé est dans la colonne État)"
+              title={t('inv_title_reserve_col')}
             >
               <div style={sortThRow}>
-                <span style={sortThLabel}>Réserve</span>
+                <span style={sortThLabel}>{t('inv_col_reserve')}</span>
                 <span style={{ flexShrink: 0 }}><SortInd k="Comm" current={sortKey} dir={sortDir} /></span>
               </div>
             </th>
@@ -1580,13 +1569,13 @@ function InvList({
                       const level = o.anonymity_level ?? 0
                       const contactName = o.ContactID != null ? (cM[o.ContactID] ?? '—') : 'Pem'
                       
-                      if (publicMode && level >= 1) return <span style={{ opacity: 0.3 }}>[Masqué]</span>
+                      if (publicMode && level >= 1) return <span style={{ opacity: 0.3 }}>{t('inv_masked')}</span>
                       
                       return (
                         <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{contactName}</span>
                           {level === 1 && <span title={t('inv_title_contact_hidden')} style={{ color: 'var(--ac)' }}>👤</span>}
-                          {level === 2 && <span title="Privé (Confidentiel)" style={{ opacity: 0.6 }}>🔒</span>}
+                          {level === 2 && <span title={t('inv_title_private')} style={{ opacity: 0.6 }}>🔒</span>}
                         </span>
                       )
                     })()}
@@ -1609,7 +1598,7 @@ function InvList({
                         oeuvreId={o.OeuvreID}
                         status={embeddingStatusMap[o.OeuvreID]}
                       />
-                      {st === 'reserved' && <span className="chip dust" style={{ fontSize: 10 }}>RÉSERVÉ</span>}
+                      {st === 'reserved' && <span className="chip dust" style={{ fontSize: 10 }}>{t('wf_own_reserved_l').toUpperCase()}</span>}
                       {!isNarrow && (() => {
                         const live = bcOverride[o.OeuvreID] ?? !!(o as { broadcast_ready?: boolean }).broadcast_ready
                         const busy = bcBusy === o.OeuvreID
