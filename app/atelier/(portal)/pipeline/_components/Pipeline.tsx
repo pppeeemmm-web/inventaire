@@ -6,6 +6,7 @@ import { useState, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { stringifyError } from '@/lib/error'
 import { toast } from '@/lib/ui/toast'
+import { registerUndo } from '@/lib/ui/undo'
 import {
   ATELIER_NARROW_MQ,
   TYPE_COLORS,
@@ -147,6 +148,25 @@ export function Pipeline({ oeuvres, contacts, groups, initialReminders, onRemind
     const { error } = await fromSuiviProcess(createClient()).update({ statut: next }).eq('id', processId)
     if (error) alert(`${t('error_prefix')} ${stringifyError(error)}`)
     await load()
+    // termine/perdu/annule drops the row from the chart while "show completed"
+    // is off — the status pill vanishes with it, so a mis-tap was unrecoverable.
+    // Offer an undo that restores the previous status.
+    if (!error && !showDone && ['termine', 'perdu', 'annule'].includes(next)) {
+      const undoStatus = async () => {
+        const { error: undoErr } = await fromSuiviProcess(createClient()).update({ statut: current }).eq('id', processId)
+        if (undoErr) toast.error(`${t('error_prefix')} ${stringifyError(undoErr)}`)
+        else await load()
+      }
+      const tid = toast.success(t('pipeline_hidden_done_undo'), {
+        ttlMs: 8000,
+        action: { label: t('undo'), onClick: () => { void undoStatus() } },
+      })
+      registerUndo({
+        ttlMs: 8000,
+        linkedToastId: tid,
+        undo: () => { void undoStatus() },
+      })
+    }
   }
 
   if (loading) return <div style={{ padding: 40 }} className="t-mono-sm">{t('pipeline_loading')}</div>

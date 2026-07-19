@@ -225,7 +225,7 @@ export type DictKey =
   | 'ov_studio_health' | 'ov_health_missing_dims' | 'ov_health_missing_photos' | 'ov_health_missing_loc'
   | 'ov_integrity_title' | 'ov_integrity_collision' | 'ov_integrity_match_line' | 'ov_integrity_resolve'
   | 'ov_energy_1' | 'ov_energy_2' | 'ov_energy_3' | 'ov_energy_4' | 'ov_energy_5'
-  | 'pipeline_loading' | 'pipeline_filter_all' | 'pipeline_show_completed' | 'pipeline_new_process'
+  | 'pipeline_loading' | 'pipeline_filter_all' | 'pipeline_show_completed' | 'pipeline_hidden_done_undo' | 'pipeline_new_process'
   | 'pipeline_no_processes' | 'pipeline_upcoming_deadlines' | 'pipeline_no_upcoming_60' | 'pipeline_reminders_header'
   | 'pipeline_sidebar_overdue_fmt' | 'pipeline_sidebar_today' | 'pipeline_sidebar_in_days_fmt'
   | 'pipeline_etape_tick_title' | 'pipeline_gantt_overdue_suffix'
