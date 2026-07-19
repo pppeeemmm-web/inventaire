@@ -10,9 +10,9 @@ import { SectionTitle, WfPipeProgress, WfSwitch, FIS } from './drawer-widgets'
 export type WorkDrawerPipelineSectionProps = {
   narrow: boolean
   prodStage: ProdStageId
-  setProdStage: Dispatch<SetStateAction<ProdStageId>>
+  setProdStage: (next: ProdStageId) => void
   needsPhoto: boolean
-  setNeedsPhoto: Dispatch<SetStateAction<boolean>>
+  setNeedsPhoto: (v: boolean) => void
   ownStage: OwnStageId
   setOwnStage: Dispatch<SetStateAction<OwnStageId>>
   isOwnershipTransferred: boolean

@@ -115,9 +115,6 @@ export function DrawerContent({
   const [presentationId, setPresentationId] = useState(String((o as { PresentationID?: number }).PresentationID ?? ''))
   const [prodStage, setProdStage] = useState<ProdStageId>(() => prodStageFromOeuvre(o))
   const [needsPhoto, setNeedsPhoto] = useState(!!((o as { NeedsPhotograph?: boolean }).NeedsPhotograph ?? false))
-  // Guards the "uncheck needs-photo → advance to available" effect: must be reset on every
-  // programmatic needsPhoto write, or a row switch replays a stale true→false transition.
-  const prevNeedsPhoto = useRef(needsPhoto)
   const [ownStage, setOwnStage] = useState<OwnStageId>(() => ownStageFromStatusId(o.statusId))
   const [contactId, setContactId] = useState(String(o.LocalisationID ?? ''))
   const [exposable,   setExposable]   = useState(!!o.Exposable)
@@ -413,7 +410,6 @@ export function DrawerContent({
     setProfondeur(d.profondeur ?? '')
     setProdStage((d.prodStage as ProdStageId) || 'atelier')
     setNeedsPhoto(!!d.needsPhoto)
-    prevNeedsPhoto.current = !!d.needsPhoto
     setOwnStage((d.ownStage as OwnStageId) || 'artist')
     setContactId(d.contactId ?? '')
     setAnonymityLevel(normalizeAnonymityLevel(d.anonymityLevel))
@@ -450,10 +446,8 @@ export function DrawerContent({
     const loadedOwn = ownStageFromStatusId(o.statusId)
     const loadedProd = prodStageFromOeuvre(o)
     setProdStage(loadedProd)
-    // Seed from the derived stage (what editorBaseline stores), not raw NeedsPhotograph —
-    // and reset the transition ref so the auto-advance effect stays quiet on row switch.
+    // Seed from the derived stage (what editorBaseline stores), not raw NeedsPhotograph.
     setNeedsPhoto(loadedProd === 'catalogued')
-    prevNeedsPhoto.current = loadedProd === 'catalogued'
     setOwnStage(loadedOwn)
     const pemRow = (initialContacts as DrawerContactRow[]).find((c) =>
       (c.NomInstitution ?? '').toLowerCase().includes('pem'),
@@ -635,15 +629,19 @@ export function DrawerContent({
     return '—'
   }, [ownStage, currentOwner, pemContact, activeConsignment, isOwnershipTransferred, t])
 
-  useEffect(() => {
-    if (prodStage === 'catalogued') setNeedsPhoto(true)
-    else setNeedsPhoto(false)
-  }, [prodStage])
+  // Stage/photo auto-advance lives in USER-action handlers, not effects: the
+  // effect versions replayed programmatic writes (row sync, restores, other
+  // effects) as if the user had clicked, mutating prodStage with zero input —
+  // the source of the recurring false "Unsaved changes" dialog.
+  const handleProdStageChange = useCallback((next: ProdStageId) => {
+    setProdStage(next)
+    setNeedsPhoto(next === 'catalogued')
+  }, [])
 
-  useEffect(() => {
-    if (!needsPhoto && prevNeedsPhoto.current === true) setProdStage('available')
-    prevNeedsPhoto.current = needsPhoto
-  }, [needsPhoto])
+  const handleNeedsPhotoChange = useCallback((v: boolean) => {
+    setNeedsPhoto(v)
+    if (!v) setProdStage('available')
+  }, [])
 
   useEffect(() => {
     if (ownStage === 'gift') {
@@ -1248,9 +1246,9 @@ export function DrawerContent({
       <WorkDrawerPipelineSection
         narrow={narrow}
         prodStage={prodStage}
-        setProdStage={setProdStage}
+        setProdStage={handleProdStageChange}
         needsPhoto={needsPhoto}
-        setNeedsPhoto={setNeedsPhoto}
+        setNeedsPhoto={handleNeedsPhotoChange}
         ownStage={ownStage}
         setOwnStage={setOwnStage}
         isOwnershipTransferred={isOwnershipTransferred}
