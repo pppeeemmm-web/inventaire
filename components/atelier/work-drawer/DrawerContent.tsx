@@ -682,6 +682,12 @@ export function DrawerContent({
 
   isDirtyRef.current = isDirty
 
+  const guardDiagRef = useRef<{ cap: () => WorkFormDraftContent; base: WorkFormDraftContent | null }>({
+    cap: captureDrawerDraftContent,
+    base: editorBaseline,
+  })
+  guardDiagRef.current = { cap: captureDrawerDraftContent, base: editorBaseline }
+
   // Junction map may hydrate after first paint — fill empty themes only; keep editorBaseline in sync.
   useEffect(() => {
     if (syncedOeuvreIdRef.current !== o.OeuvreID) return
@@ -711,6 +717,21 @@ export function DrawerContent({
   const runGuarded = useCallback((fn: () => void) => {
     if (!isDirtyRef.current) fn()
     else {
+      // Diagnostic: name the fields that made the form dirty, so a false
+      // "Unsaved changes" report can be pinned to a field instead of guessed.
+      try {
+        const { cap, base } = guardDiagRef.current
+        if (base) {
+          const cur = cap()
+          const keys = (Object.keys(base) as (keyof WorkFormDraftContent)[])
+            .filter((k) => JSON.stringify(cur[k]) !== JSON.stringify(base[k]))
+          console.warn(
+            '[unsaved-guard] dirty:',
+            keys.map((k) => `${k}: ${JSON.stringify(base[k])} -> ${JSON.stringify(cur[k])}`).join(' | '),
+          )
+        }
+      // eslint-disable-next-line pem-i18n/no-silent-catch
+      } catch { /* diagnostic only */ }
       pendingAfterGuardRef.current = fn
       setShowUnsavedModal(true)
     }

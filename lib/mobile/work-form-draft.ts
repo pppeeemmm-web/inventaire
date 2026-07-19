@@ -1,6 +1,8 @@
 /** Session draft for WorkForm crash recovery (narrow / all viewports). */
 
-export const WORK_FORM_DRAFT_PREFIX = 'pem-workform-draft-v1:'
+// v2: v1 drafts written by the pre-fix false-dirty autosave carry a phantom
+// prodStage mutation — bumping the prefix orphans them all at once.
+export const WORK_FORM_DRAFT_PREFIX = 'pem-workform-draft-v2:'
 
 export type WorkFormDraftPayload = {
   titre: string
