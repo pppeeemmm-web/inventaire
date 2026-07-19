@@ -55,7 +55,10 @@ function itemTitle(item: WorkSessionJournalItem, fallback: string): string {
 }
 
 function atelierInventoryWorkHref(oeuvreId: number): string {
-  return `/atelier?work=${oeuvreId}`
+  // /atelier is the Overview route — deep links must target the Inventory route
+  // so the user lands in the catalogue with the work drawer open (?work= is
+  // handled globally in TeamPortalClient).
+  return `/atelier/inventory?work=${oeuvreId}`
 }
 
 function JournalInventoryIdLink({
