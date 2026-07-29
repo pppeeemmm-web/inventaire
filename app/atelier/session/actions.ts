@@ -7,7 +7,7 @@ import { logError, logWarn } from '@/lib/error-reporter/server'
 import sharp from 'sharp'
 import { makeAvifThumbFromMain, normalizeImageToAvifPair, validateWorkImageBuffer } from '@/lib/image-upload'
 import { r2PutObject, r2DeleteObject, r2GetObjectBuffer, isR2ObjectNotFound } from '@/lib/r2-s3-object'
-import { addWorkImage } from '@/app/atelier/works/actions'
+import { addWorkImage, deleteWorkImage } from '@/app/atelier/works/actions'
 import {
   countWorkSessionItems,
   sessionItemHasContent,
@@ -16,6 +16,7 @@ import {
   emptyWorkSessionPayload,
   listWorkSessionLinkedOeuvreIds,
   parseWorkSessionPayload,
+  type WorkSessionAppliedShot,
   type WorkSessionFieldContext,
   type WorkSessionItem,
   type WorkSessionItemMode,
@@ -386,8 +387,11 @@ function itemHasApplyTarget(item: WorkSessionItem): boolean {
   )
 }
 
+// Gated on staged shots, not on status: an already-applied painting the owner comes
+// back to and adds a replacement photo for must be committable too. Applying consumes
+// the staged shots, so a settled item has none left and is skipped anyway.
 function itemIsActionable(item: WorkSessionItem): boolean {
-  return item.status !== 'applied' && item.shots.length > 0 && itemHasApplyTarget(item)
+  return item.shots.length > 0 && itemHasApplyTarget(item)
 }
 
 function isSessionWorkCandidate(work: Pick<WorkSessionWorkOption, 'statusId'>): boolean {
@@ -423,11 +427,20 @@ async function createWorkFromSessionFields(
     notes?: string
     width_cm?: string
     height_cm?: string
+    technique_id?: string
+    support_id?: string
     session_at?: string
   },
 ): Promise<{ ok: true; oeuvreId: number } | { error: string }> {
   const titre = fields.title_hint.trim()
   if (!titre) return { error: 'Titre requis pour créer une œuvre' }
+
+  // Captured in the field so the owner does not have to reopen the work in the
+  // catalogue afterwards just to set them. Blank / non-numeric stays null.
+  const fkOrNull = (raw: string | undefined): number | null => {
+    const n = Number.parseInt((raw ?? '').trim(), 10)
+    return Number.isFinite(n) && n > 0 ? n : null
+  }
 
   const oidRes = await allocateOeuvreId(supabase)
   if (typeof oidRes !== 'number') return oidRes
@@ -448,6 +461,8 @@ async function createWorkFromSessionFields(
       Titre: titre,
       Largeur: (fields.width_cm ?? '').trim() || null,
       Hauteur: (fields.height_cm ?? '').trim() || null,
+      Technique: fkOrNull(fields.technique_id),
+      Support: fkOrNull(fields.support_id),
       Commentaires: notesTrim || null,
       Historique: historique,
       statusId: 1,
@@ -471,6 +486,9 @@ export async function getSessionNewPageContext(): Promise<{
   journalTeamReadAccess: boolean
   /** True when user may run field capture (admin only). */
   canCaptureSessions: boolean
+  /** Technique / Support pickers for new works created in the field. */
+  techniques: SessionLookupOption[]
+  supports: SessionLookupOption[]
 }> {
   const supabase = await createClient()
   const {
@@ -484,11 +502,17 @@ export async function getSessionNewPageContext(): Promise<{
       isDevAutoProfile: false,
       journalTeamReadAccess: false,
       canCaptureSessions: false,
+      techniques: [],
+      supports: [],
     }
   }
   const userEmail = user.email ?? null
   const isDevAutoProfile = isDevAutoProfileEmail(userEmail)
   const isAdmin = await rpcIsAdmin(supabase)
+  const [techniques, supports] = await Promise.all([
+    listSessionTechniques(supabase),
+    listSessionSupports(supabase),
+  ])
   return {
     authed: true,
     isAdmin,
@@ -496,7 +520,38 @@ export async function getSessionNewPageContext(): Promise<{
     isDevAutoProfile,
     journalTeamReadAccess: await canReadTeamWorkSessions(supabase),
     canCaptureSessions: isAdmin,
+    techniques,
+    supports,
   }
+}
+
+/** Option for the Technique / Support selects — `id` is the FK as a string so the
+ *  raw <select> value round-trips through the session payload unchanged. */
+export type SessionLookupOption = { id: string; label: string }
+
+function sortedLookupOptions(
+  rows: { id: number | null; label: string | null }[],
+): SessionLookupOption[] {
+  return rows
+    .filter((row) => row.id != null && (row.label ?? '').trim() !== '')
+    .map((row) => ({ id: String(row.id), label: (row.label ?? '').trim() }))
+    .sort((a, b) => a.label.localeCompare(b.label, 'fr'))
+}
+
+async function listSessionTechniques(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+): Promise<SessionLookupOption[]> {
+  const { data } = await supabase.from('Technique').select('TechniqueID, Technique')
+  return sortedLookupOptions(
+    (data ?? []).map((row) => ({ id: row.TechniqueID, label: row.Technique })),
+  )
+}
+
+async function listSessionSupports(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+): Promise<SessionLookupOption[]> {
+  const { data } = await supabase.from('Support').select('SupportID, Support')
+  return sortedLookupOptions((data ?? []).map((row) => ({ id: row.SupportID, label: row.Support })))
 }
 
 export async function getWorkSessionShotCount(sessionId: string): Promise<number> {
@@ -567,6 +622,7 @@ function enrichDraftItems(
   payload: WorkSessionPayload,
   titleMap: Map<number, string | null>,
   thumbMap: Map<number, string | null>,
+  appliedMap?: Map<number, WorkSessionAppliedShot[]>,
 ): WorkSessionItem[] {
   return payload.items.map((item) => {
     const oid = item.oeuvre_id ?? null
@@ -574,6 +630,7 @@ function enrichDraftItems(
       ...item,
       oeuvre_title: oid ? titleMap.get(oid) ?? item.oeuvre_title ?? null : item.oeuvre_title ?? null,
       work_thumb: oid ? thumbMap.get(oid) ?? null : null,
+      applied_shots: oid ? appliedMap?.get(oid) ?? [] : [],
     }
   })
 }
@@ -614,8 +671,8 @@ export async function getWorkSessionDraftFields(sessionId: string): Promise<
     ...listWorkSessionLinkedOeuvreIds(p),
     ...(topOid ? [topOid] : []),
   ]
-  const { titleMap, thumbMap } = await workMapsForIds(supabase, linkedIds)
-  const items = enrichDraftItems(p, titleMap, thumbMap)
+  const { titleMap, thumbMap, appliedMap } = await workMapsForIds(supabase, linkedIds)
+  const items = enrichDraftItems(p, titleMap, thumbMap, appliedMap)
   const sessionAt = sessionAtForPayload(p, data.created_at as string | null)
   const calendarDay =
     p.session_day && /^\d{4}-\d{2}-\d{2}$/.test(p.session_day)
@@ -958,6 +1015,80 @@ export async function updateWorkSessionJournalMetadata(
   return { ok: true }
 }
 
+/**
+ * Remove a photo that is already committed to the work, from inside the session.
+ *
+ * This is NOT a session-local undo: once applied there is no session copy left, so
+ * this deletes the `tblImage` row and soft-deletes the R2 objects to `recycle/<date>/`
+ * (90-day window) exactly as the catalogue image manager does. Admin only, via
+ * deleteWorkImage. The item's applied_shot_count is decremented so the session's
+ * photo tally does not drift from the work's real image count.
+ */
+export async function removeAppliedSessionImage(
+  sessionId: string,
+  itemId: string,
+  imageId: number,
+): Promise<SessionActionResult> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié' }
+  if (!(await rpcIsAdmin(supabase))) return { error: 'Action réservée à l’administrateur' }
+
+  const { data: row, error: selErr } = await workSessionTable(supabase)
+    .select('id,user_id,status,payload')
+    .eq('id', sessionId)
+    .maybeSingle()
+  if (selErr || !row) return { error: selErr?.message ?? 'Session introuvable' }
+
+  const payload = parseWorkSessionPayload((row as SessionMutableRow).payload)
+  const idx = findItemIndex(payload, itemId)
+  if (idx < 0) return { error: 'Entrée introuvable' }
+  const item = payload.items[idx]
+  const oeuvreId = item.oeuvre_id
+  if (!oeuvreId || oeuvreId <= 0) return { error: 'Œuvre invalide' }
+
+  const deleted = await deleteWorkImage(imageId, oeuvreId)
+  if ('error' in deleted) return { error: deleted.error }
+
+  payload.items[idx] = touchItem({
+    ...item,
+    applied_shot_count: Math.max(0, (item.applied_shot_count ?? 0) - 1),
+  })
+  const { error: upErr } = await workSessionTable(supabase)
+    .update({ payload: asPayloadRecord(payload) })
+    .eq('id', sessionId)
+  if (upErr) return { error: upErr.message }
+
+  revalidatePath('/atelier')
+  revalidatePath('/atelier/session/new')
+  return { ok: true }
+}
+
+/**
+ * Existing works whose title matches, so the field UI can warn before a second copy of
+ * the same painting is created. Advisory only — never blocks; same title is legitimate
+ * for a series.
+ */
+export async function findWorksByTitleForSession(
+  title: string,
+): Promise<{ OeuvreID: number; Titre: string | null }[]> {
+  const trimmed = title.trim()
+  if (trimmed.length < 2) return []
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return []
+  const { data } = await supabase
+    .from('Oeuvres')
+    .select('OeuvreID,Titre')
+    .ilike('Titre', trimmed)
+    .limit(5)
+  return (data ?? []) as { OeuvreID: number; Titre: string | null }[]
+}
+
 export async function createWorkSessionItemAction(
   sessionId: string,
   mode: WorkSessionItemMode = 'existing',
@@ -997,6 +1128,8 @@ export async function updateWorkSessionItemMetadata(
     title_hint?: string
     width_cm?: string
     height_cm?: string
+    technique_id?: string
+    support_id?: string
   },
 ): Promise<SessionActionResult> {
   const supabase = await createClient()
@@ -1025,6 +1158,8 @@ export async function updateWorkSessionItemMetadata(
     ...(typeof patch.title_hint === 'string' ? { title_hint: patch.title_hint } : {}),
     ...(typeof patch.width_cm === 'string' ? { width_cm: patch.width_cm } : {}),
     ...(typeof patch.height_cm === 'string' ? { height_cm: patch.height_cm } : {}),
+    ...(typeof patch.technique_id === 'string' ? { technique_id: patch.technique_id } : {}),
+    ...(typeof patch.support_id === 'string' ? { support_id: patch.support_id } : {}),
   })
 
   const { error: upErr } = await workSessionTable(supabase)
@@ -1178,10 +1313,12 @@ async function workMapsForIds(
 ): Promise<{
   titleMap: Map<number, string | null>
   thumbMap: Map<number, string | null>
+  appliedMap: Map<number, WorkSessionAppliedShot[]>
 }> {
   const titleMap = new Map<number, string | null>()
   const thumbMap = new Map<number, string | null>()
-  if (oeuvreIds.length === 0) return { titleMap, thumbMap }
+  const appliedMap = await appliedShotsForIds(supabase, oeuvreIds)
+  if (oeuvreIds.length === 0) return { titleMap, thumbMap, appliedMap }
   const { data, error } = await supabase
     .from('Oeuvres')
     .select('OeuvreID,Titre,txtImageNameLink')
@@ -1191,13 +1328,50 @@ async function workMapsForIds(
       source: 'work_session.workMapsForIds',
       metadata: { count: oeuvreIds.length },
     })
-    return { titleMap, thumbMap }
+    return { titleMap, thumbMap, appliedMap }
   }
   for (const row of (data ?? []) as Array<{ OeuvreID: number; Titre: string | null; txtImageNameLink: string | null }>) {
     titleMap.set(row.OeuvreID, row.Titre)
     thumbMap.set(row.OeuvreID, row.txtImageNameLink)
   }
-  return { titleMap, thumbMap }
+  return { titleMap, thumbMap, appliedMap }
+}
+
+/** Photos already committed to these works, so the session can show and correct them. */
+async function appliedShotsForIds(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  oeuvreIds: number[],
+): Promise<Map<number, WorkSessionAppliedShot[]>> {
+  const map = new Map<number, WorkSessionAppliedShot[]>()
+  if (oeuvreIds.length === 0) return map
+  const { data, error } = await supabase
+    .from('tblImage')
+    .select('ImageID,OeuvreID,txtImageNameLink,is_cover,SeqNo')
+    .in('OeuvreID', oeuvreIds)
+    .order('SeqNo', { ascending: true })
+  if (error) {
+    await logError('appliedShotsForIds failed', error, {
+      source: 'work_session.appliedShotsForIds',
+      metadata: { count: oeuvreIds.length },
+    })
+    return map
+  }
+  for (const row of (data ?? []) as Array<{
+    ImageID: number
+    OeuvreID: number | null
+    txtImageNameLink: string | null
+    is_cover: boolean | null
+  }>) {
+    if (row.OeuvreID == null || !row.txtImageNameLink) continue
+    const list = map.get(row.OeuvreID) ?? []
+    list.push({
+      image_id: row.ImageID,
+      r2_key: row.txtImageNameLink,
+      is_cover: row.is_cover === true,
+    })
+    map.set(row.OeuvreID, list)
+  }
+  return map
 }
 
 export async function listWorkSessionJournal(
@@ -1699,6 +1873,8 @@ export async function createAndLinkWorkFromSessionItem(
     notes: item.notes ?? payload.notes,
     width_cm: item.width_cm,
     height_cm: item.height_cm,
+    technique_id: item.technique_id,
+    support_id: item.support_id,
     session_at: sessionAt,
   })
   if ('error' in created) return created
@@ -1809,7 +1985,39 @@ export async function applyWorkSessionToOeuvre(sessionId: string): Promise<Sessi
     consumeShot: (shot: WorkSessionShot) => Promise<string | null>,
   ): Promise<{ ok: true; applied: number } | { error: string }> => {
     let applied = 0
+    // tblImage.sha256 was already recorded on every apply but never compared, so the
+    // same picture could land on a work twice (different SeqNo, identical bytes).
+    // Check once per work and drop the staged duplicate instead of doubling it up.
+    const existingSha = new Set<string>()
+    const { data: priorImages } = await supabase
+      .from('tblImage')
+      .select('sha256')
+      .eq('OeuvreID', oeuvreId)
+      .not('sha256', 'is', null)
+    for (const row of (priorImages ?? []) as Array<{ sha256: string | null }>) {
+      if (row.sha256) existingSha.add(row.sha256)
+    }
+
     for (const shot of uniqueShots(shots)) {
+      if (shot.sha256 && existingSha.has(shot.sha256)) {
+        await logWarn('Session apply: duplicate photo skipped', null, {
+          source: 'work_session.applyShotsToWork',
+          metadata: { sessionId, oeuvreId, sha256: shot.sha256 },
+        })
+        const skipErr = await consumeShot(shot)
+        if (skipErr) return { error: skipErr }
+        try {
+          await r2DeleteObject(shot.r2_key)
+          if (shot.thumb_r2_key) await r2DeleteObject(shot.thumb_r2_key)
+        } catch (err) {
+          await logWarn('Session duplicate shot R2 cleanup failed (best-effort)', err, {
+            source: 'work_session.r2Cleanup',
+            metadata: { r2_key: shot.r2_key },
+          })
+        }
+        continue
+      }
+      if (shot.sha256) existingSha.add(shot.sha256)
       let buf: Buffer
       try {
         buf = await r2GetObjectBuffer(shot.r2_key)
@@ -1867,6 +2075,8 @@ export async function applyWorkSessionToOeuvre(sessionId: string): Promise<Sessi
           notes: item.notes ?? payload.notes,
           width_cm: item.width_cm,
           height_cm: item.height_cm,
+          technique_id: item.technique_id,
+          support_id: item.support_id,
           session_at: sessionAt,
         })
         if ('error' in created) return created

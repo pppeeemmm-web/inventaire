@@ -9,20 +9,22 @@ import { useMediaQuery } from '@/lib/useMediaQuery'
 import { toast } from '@/lib/ui/toast'
 import {
   applyWorkSessionToOeuvre,
-  createAndLinkWorkFromSessionItem,
   openWorkSessionForDay,
   createWorkSessionItemAction,
+  findWorksByTitleForSession,
   getSessionNewPageContext,
   getWorkSessionDraftFields,
   linkWorkSessionItemToOeuvre,
   linkWorkSessionToOeuvre,
   listWorkSessionsForAdminReview,
   rejectWorkSession,
+  removeAppliedSessionImage,
   searchWorksForSession,
   updateWorkSessionMetadata,
   updateWorkSessionItemMetadata,
   uploadWorkSessionItemShot,
   removeWorkSessionItemShot,
+  type SessionLookupOption,
   type WorkSessionWorkOption,
 } from '@/app/atelier/session/actions'
 import type { WorkSessionQueueRow } from '@/app/atelier/session/actions'
@@ -102,6 +104,12 @@ export function SessionNewClient() {
   const [devProfileEmail, setDevProfileEmail] = useState<string | null>(null)
   const [sessionReadOnly, setSessionReadOnly] = useState(false)
   const [canCaptureSessions, setCanCaptureSessions] = useState(false)
+  const [titleMatches, setTitleMatches] = useState<{ OeuvreID: number; Titre: string | null }[]>([])
+  const [techniques, setTechniques] = useState<SessionLookupOption[]>([])
+  const [supports, setSupports] = useState<SessionLookupOption[]>([])
+  // `busy` is one shared useTransition flag, so it goes true for *any* action —
+  // switching work mode used to make the commit button claim it was applying.
+  const [applying, setApplying] = useState(false)
   const daySwitchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const workQ = sp.get('work')?.trim()
@@ -116,6 +124,9 @@ export function SessionNewClient() {
     (activeItemId ? visibleItems.find((item) => item.id === activeItemId) : null)
     ?? visibleItems[0]
     ?? null
+  // Once committed the catalogue owns the work's fields — the session becomes a place
+  // to check the day and correct a photo, not a second work form. Photos stay editable.
+  const itemLocked = activeItem?.status === 'applied'
   const shotCount = visibleItems.reduce((sum, item) => sum + item.shots.length + (item.applied_shot_count ?? 0), 0)
   const stagedShotCount = visibleItems.reduce((sum, item) => sum + item.shots.length, 0)
 
@@ -155,8 +166,16 @@ export function SessionNewClient() {
     [initialOk, initialOeuvre, t],
   )
 
+  // Overlapping refreshes (date debounce + saveItem/pushMeta/upload all fire their
+  // own) used to resolve last-write-wins, so a slow read for the day you just left
+  // could repaint its items over the day you switched to. Only the newest read wins.
+  const draftSeq = useRef(0)
+
   const refreshDraft = useCallback(async (id: string) => {
+    const seq = draftSeq.current + 1
+    draftSeq.current = seq
     const df = await getWorkSessionDraftFields(id)
+    if (seq !== draftSeq.current) return
     if ('error' in df) {
       toast.error(df.error)
       return
@@ -182,6 +201,8 @@ export function SessionNewClient() {
         setIsDevAutoProfile(ctx.isDevAutoProfile)
         setDevProfileEmail(ctx.userEmail)
         setCanCaptureSessions(ctx.canCaptureSessions)
+        setTechniques(ctx.techniques)
+        setSupports(ctx.supports)
         if (!ctx.authed) {
           setSessionId(null)
           return
@@ -226,6 +247,20 @@ export function SessionNewClient() {
     }, 180)
     return () => window.clearTimeout(timer)
   }, [activeItem, workSearch])
+
+  // Debounced so it does not fire per keystroke; only for a new work, since an existing
+  // one is already the record it would be duplicating.
+  useEffect(() => {
+    const title = activeItem?.mode === 'new' && !activeItem.oeuvre_id ? activeItem.title_hint?.trim() ?? '' : ''
+    if (title.length < 2) {
+      setTitleMatches([])
+      return
+    }
+    const timer = window.setTimeout(() => {
+      void findWorksByTitleForSession(title).then(setTitleMatches)
+    }, 400)
+    return () => window.clearTimeout(timer)
+  }, [activeItem?.mode, activeItem?.oeuvre_id, activeItem?.title_hint])
 
   const fieldContextErrorToast = useCallback(
     (code: CaptureFieldContextErrorCode) => {
@@ -272,6 +307,8 @@ export function SessionNewClient() {
         title_hint: item.title_hint ?? '',
         width_cm: item.width_cm ?? '',
         height_cm: item.height_cm ?? '',
+        technique_id: item.technique_id ?? '',
+        support_id: item.support_id ?? '',
       })
       if ('error' in r) toast.error(r.error)
     },
@@ -336,6 +373,24 @@ export function SessionNewClient() {
     })
   }
 
+  // Not a session-local undo: the photo belongs to the work once applied, so this is a
+  // catalogue delete (R2 soft-deleted to recycle/ for 90 days). Name the work in the
+  // confirm so it can never be mistaken for dropping a staged shot.
+  const onRemoveAppliedShot = (imageId: number) => {
+    if (!sessionId || !activeItem?.oeuvre_id) return
+    const label = activeItem.oeuvre_title?.trim() || `#${activeItem.oeuvre_id}`
+    if (!window.confirm(t('session_photo_remove_applied_confirm').replace('{work}', label))) return
+    startBusy(() => {
+      void removeAppliedSessionImage(sessionId, activeItem.id, imageId).then(async (r) => {
+        if ('error' in r) toast.error(r.error)
+        else {
+          await refreshDraft(sessionId)
+          toast.success(t('session_toast_saved'))
+        }
+      })
+    })
+  }
+
   const onRemoveStagedShot = (sha256: string) => {
     if (!sessionId || !activeItem) return
     startBusy(() => {
@@ -356,10 +411,12 @@ export function SessionNewClient() {
   const runApply = async (sid: string): Promise<{ ok: true } | { error: string } | null> => {
     if (applyInFlight.current) return null
     applyInFlight.current = true
+    setApplying(true)
     try {
       return await applyWorkSessionToOeuvre(sid)
     } finally {
       applyInFlight.current = false
+      setApplying(false)
     }
   }
 
@@ -419,28 +476,18 @@ export function SessionNewClient() {
     })
   }
 
-  const createAndLink = (item: WorkSessionItem) => {
+  const addItem =(mode: WorkSessionItemMode = 'existing') => {
     if (!sessionId) return
-    const titre = item.title_hint?.trim()
-    if (!titre) {
-      toast.error(t('session_err_title_required'))
+    // Every tap used to POST a brand-new empty item, but sessionItemIsShown hides a
+    // content-less slot the moment it stops being the active tab — so the slot
+    // disappeared, the tap read as a no-op, and the payload silently accumulated
+    // orphans (four days in production carry them). Reuse the empty slot instead.
+    const spare = items.find((item) => !sessionItemHasContent(item))
+    if (spare) {
+      setActiveItemId(spare.id)
+      if (spare.mode !== mode) changeItemMode(spare, mode)
       return
     }
-    startBusy(() => {
-      void createAndLinkWorkFromSessionItem(sessionId, item.id).then(async (r) => {
-        if ('error' in r) toast.error(r.error)
-        else {
-          const applied = isAdmin && item.shots.length > 0
-          if (applied) await autoApply(sessionId)
-          await refreshDraft(sessionId)
-          if (!applied) toast.success(t('session_toast_saved'))
-        }
-      })
-    })
-  }
-
-  const addItem = (mode: WorkSessionItemMode = 'existing') => {
-    if (!sessionId) return
     startBusy(() => {
       void (async () => {
         let targetId = sessionId
@@ -452,11 +499,19 @@ export function SessionNewClient() {
           targetId = nextId
           r = await createWorkSessionItemAction(targetId, mode)
         }
-        if ('error' in r) toast.error(r.error)
-        else {
-          setItems((prev) => [...prev, r.item])
-          setActiveItemId(r.item.id)
+        if ('error' in r) {
+          toast.error(r.error)
+          return
         }
+        // A reopen can hand back a different row than the one on screen; re-read it
+        // rather than splicing the new item into the previous session's list.
+        if (targetId !== sessionId) {
+          await refreshDraft(targetId)
+          setActiveItemId(r.item.id)
+          return
+        }
+        setItems((prev) => [...prev, r.item])
+        setActiveItemId(r.item.id)
       })()
     })
   }
@@ -468,6 +523,16 @@ export function SessionNewClient() {
     )
     if (unlinked) {
       toast.error(t('session_apply_blocked_unlinked'))
+      return
+    }
+    // The per-item "create work & link" button is gone, so this single button is the
+    // only path that turns a new-work slot into a catalogue entry — and the server
+    // needs a title to do it. Refuse loudly rather than skipping the item silently.
+    const untitled = visibleItems.some(
+      (i) => i.mode === 'new' && !i.oeuvre_id && i.shots.length > 0 && !i.title_hint?.trim(),
+    )
+    if (untitled) {
+      toast.error(t('session_err_title_required'))
       return
     }
     startBusy(() => {
@@ -527,6 +592,38 @@ export function SessionNewClient() {
           {t('session_new_sign_in')}
         </Link>
         <FieldHubBackLink style={{ marginTop: 0 }} />
+      </main>
+    )
+  }
+
+  // Must precede the !sessionId return below: a user without capture rights never
+  // gets a session opened, so the bare "back" screen used to swallow this gate and
+  // leave them at a dead end with no explanation.
+  if (!canCaptureSessions && !initialSessionId) {
+    return (
+      <main
+        data-testid="session-capture-admin-gate"
+        style={{
+          minHeight: '100dvh',
+          padding:
+            'max(20px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left))',
+          maxWidth: 440,
+          margin: '0 auto',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 16,
+          justifyContent: 'center',
+        }}
+      >
+        <h1 className="serif" style={{ fontSize: 22, margin: 0 }}>
+          {t('session_new_title')}
+        </h1>
+        <p className="t-mono-sm" style={{ margin: 0, color: 'var(--tx2)', lineHeight: 1.5, fontSize: 13 }}>
+          {t('session_capture_admin_only')}
+        </p>
+        <Link href="/atelier/journal" className="btn primary" style={{ minHeight: 48, textAlign: 'center' }}>
+          {t('tab_journal')}
+        </Link>
       </main>
     )
   }
@@ -610,9 +707,9 @@ export function SessionNewClient() {
             disabled={busy || actionableCount === 0}
             onClick={applyNow}
             style={{ minHeight: 48 }}
-            aria-busy={busy}
+            aria-busy={applying}
           >
-            {busy
+            {applying
               ? (pendingApplyShots > 0
                   ? t('session_apply_busy_count_fmt').replace('{count}', String(pendingApplyShots))
                   : t('session_apply_busy'))
@@ -625,35 +722,6 @@ export function SessionNewClient() {
       ) : null}
     </div>
   )
-
-  if (hydrated && authed && !canCaptureSessions && !initialSessionId) {
-    return (
-      <main
-        data-testid="session-capture-admin-gate"
-        style={{
-          minHeight: '100dvh',
-          padding:
-            'max(20px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left))',
-          maxWidth: 440,
-          margin: '0 auto',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 16,
-          justifyContent: 'center',
-        }}
-      >
-        <h1 className="serif" style={{ fontSize: 22, margin: 0 }}>
-          {t('session_new_title')}
-        </h1>
-        <p className="t-mono-sm" style={{ margin: 0, color: 'var(--tx2)', lineHeight: 1.5, fontSize: 13 }}>
-          {t('session_capture_admin_only')}
-        </p>
-        <Link href="/atelier/journal" className="btn primary" style={{ minHeight: 48, textAlign: 'center' }}>
-          {t('tab_journal')}
-        </Link>
-      </main>
-    )
-  }
 
   return (
     <main
@@ -906,9 +974,18 @@ export function SessionNewClient() {
                   <h2 className="serif" style={{ fontSize: 20, margin: 0, lineHeight: 1.2, fontWeight: 500 }}>
                     {activeTitle}
                   </h2>
+                  {/* Committed work: the catalogue owns these fields now, so link out to
+                      the work form rather than pretending the session can edit them. */}
                   {activeItem.oeuvre_id ? (
                     <p className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx3)', margin: '6px 0 0' }}>
-                      #{activeItem.oeuvre_id}
+                      <Link
+                        href={`/atelier/inventory?work=${activeItem.oeuvre_id}`}
+                        data-testid="session-item-work-link"
+                        style={{ color: 'var(--ac)', textDecoration: 'underline', textUnderlineOffset: 2 }}
+                      >
+                        #{activeItem.oeuvre_id}
+                      </Link>
+                      {itemLocked ? ` · ${t('session_status_applied')}` : ''}
                     </p>
                   ) : null}
                 </div>
@@ -937,6 +1014,23 @@ export function SessionNewClient() {
               {t('session_work_mode_new')}
             </button>
           </div>
+
+          {/* Photos come first: the owner names a work from looking at its picture,
+              so the picker sits directly under the mode toggle rather than at the
+              bottom of the scroll. Uploads always go to this painting. */}
+          {/* Applied items stay open: coming back to a past day to swap a wrong photo
+              is the whole point of reviewing it. itemIsActionable no longer gates on
+              status, so a replacement staged here can still be committed. */}
+          <SessionPhotoCapture
+            disabled={sessionReadOnly}
+            busy={busy}
+            instantUpload
+            stagedShots={activeItem.shots}
+            appliedShots={activeItem.applied_shots ?? []}
+            onUpload={onUploadFiles}
+            onRemoveStaged={onRemoveStagedShot}
+            onRemoveApplied={isAdmin && !sessionReadOnly ? onRemoveAppliedShot : undefined}
+          />
 
           {activeItem.oeuvre_id ? (
             <p className="t-mono-sm" data-testid="session-linked-work" style={{ fontSize: 12, color: 'var(--tx2)', margin: 0 }}>
@@ -1050,29 +1144,41 @@ export function SessionNewClient() {
                   style={{ minHeight: 44 }}
                 />
               </label>
-              <button
-                type="button"
-                className="btn ghost"
-                data-testid="session-create-work-link"
-                disabled={busy}
-                onClick={() => createAndLink(activeItem)}
-                style={{ minHeight: 44 }}
-              >
-                {t('session_create_work_link')}
-              </button>
+              {/* Advisory only — a series legitimately repeats a title. */}
+              {titleMatches.length > 0 ? (
+                <p
+                  className="t-mono-sm"
+                  data-testid="session-duplicate-title-warn"
+                  style={{
+                    margin: 0,
+                    padding: '8px 10px',
+                    borderRadius: 8,
+                    border: '1px solid var(--bd)',
+                    background: 'var(--bg1)',
+                    color: 'var(--tx2)',
+                    fontSize: 11,
+                    lineHeight: 1.45,
+                  }}
+                >
+                  {t('session_duplicate_title_warn')}{' '}
+                  {titleMatches.map((m, idx) => (
+                    <span key={m.OeuvreID}>
+                      {idx > 0 ? ', ' : ''}
+                      <Link
+                        href={`/atelier/inventory?work=${m.OeuvreID}`}
+                        style={{ color: 'var(--ac)', textDecoration: 'underline', textUnderlineOffset: 2 }}
+                      >
+                        #{m.OeuvreID}
+                      </Link>
+                    </span>
+                  ))}
+                </p>
+              ) : null}
             </>
           )}
 
-          <label className="t-mono-sm" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <span>{t('session_item_notes_label')}</span>
-            <textarea
-              className="input"
-              rows={3}
-              value={activeItem.notes ?? ''}
-              onChange={(e) => updateLocalItem(activeItem.id, { notes: e.target.value })}
-              onBlur={(e) => void saveItem({ ...activeItem, notes: e.currentTarget.value })}
-            />
-          </label>
+          {/* Owner's stated order: picture, title, dimensions, support, technique,
+              then notes. Dimensions therefore precede the notes box. */}
           <div className="t-mono-sm" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <span>{t('session_dims_label')}</span>
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 10 }}>
@@ -1082,6 +1188,7 @@ export function SessionNewClient() {
                 value={activeItem.width_cm ?? ''}
                 onChange={(e) => updateLocalItem(activeItem.id, { width_cm: e.target.value })}
                 onBlur={(e) => void saveItem({ ...activeItem, width_cm: e.currentTarget.value })}
+                readOnly={itemLocked}
                 placeholder="W"
                 style={{ height: 44, width: '100%', boxSizing: 'border-box' }}
               />
@@ -1091,11 +1198,73 @@ export function SessionNewClient() {
                 value={activeItem.height_cm ?? ''}
                 onChange={(e) => updateLocalItem(activeItem.id, { height_cm: e.target.value })}
                 onBlur={(e) => void saveItem({ ...activeItem, height_cm: e.currentTarget.value })}
+                readOnly={itemLocked}
                 placeholder="H"
                 style={{ height: 44, width: '100%', boxSizing: 'border-box' }}
               />
             </div>
           </div>
+
+          {/* New works only: for an existing work these already live on the record, and
+              the session is not the place to re-edit the catalogue. */}
+          {activeItem.mode === 'new' && !activeItem.oeuvre_id ? (
+            <>
+              <label className="t-mono-sm" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <span>{t('support')}</span>
+                <select
+                  className="input"
+                  data-testid="session-support-select"
+                  value={activeItem.support_id ?? ''}
+                  onChange={(e) => {
+                    const support_id = e.target.value
+                    updateLocalItem(activeItem.id, { support_id })
+                    void saveItem({ ...activeItem, support_id })
+                  }}
+                  style={{ minHeight: 44 }}
+                >
+                  <option value="">—</option>
+                  {supports.map((opt) => (
+                    <option key={opt.id} value={opt.id}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="t-mono-sm" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <span>{t('technique')}</span>
+                <select
+                  className="input"
+                  data-testid="session-technique-select"
+                  value={activeItem.technique_id ?? ''}
+                  onChange={(e) => {
+                    const technique_id = e.target.value
+                    updateLocalItem(activeItem.id, { technique_id })
+                    void saveItem({ ...activeItem, technique_id })
+                  }}
+                  style={{ minHeight: 44 }}
+                >
+                  <option value="">—</option>
+                  {techniques.map((opt) => (
+                    <option key={opt.id} value={opt.id}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </>
+          ) : null}
+
+          <label className="t-mono-sm" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <span>{t('session_item_notes_label')}</span>
+            <textarea
+              className="input"
+              rows={3}
+              value={activeItem.notes ?? ''}
+              onChange={(e) => updateLocalItem(activeItem.id, { notes: e.target.value })}
+              onBlur={(e) => void saveItem({ ...activeItem, notes: e.currentTarget.value })}
+              readOnly={itemLocked}
+            />
+          </label>
         </section>
       ) : null}
 
@@ -1146,12 +1315,15 @@ export function SessionNewClient() {
         ) : null}
       </div>
 
-      {activeItem || (canCaptureSessions && !sessionReadOnly) ? (
+      {/* Fallback only: with no painting yet there is nothing to attach to, and
+          onUploadFiles creates the first slot itself. The per-painting picker
+          above handles every other case. */}
+      {!activeItem && canCaptureSessions && !sessionReadOnly ? (
         <SessionPhotoCapture
-          disabled={sessionReadOnly || activeItem?.status === 'applied'}
+          disabled={sessionReadOnly}
           busy={busy}
-          instantUpload={narrow}
-          stagedShots={activeItem?.shots ?? []}
+          instantUpload
+          stagedShots={[]}
           onUpload={onUploadFiles}
           onRemoveStaged={onRemoveStagedShot}
         />

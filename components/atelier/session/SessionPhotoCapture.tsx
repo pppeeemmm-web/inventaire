@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { useI18n } from '@/lib/i18n/context'
-import { imageUrl } from '@/lib/data'
+import { imageUrl, thumbUrl } from '@/lib/data'
 import {
   fileListToPending,
   removePendingById,
@@ -10,7 +10,7 @@ import {
   SESSION_PHOTO_PENDING_MAX,
   type SessionPhotoPending,
 } from '@/lib/mobile/session-photo-pending'
-import type { WorkSessionShot } from '@/lib/work-session-payload'
+import type { WorkSessionAppliedShot, WorkSessionShot } from '@/lib/work-session-payload'
 
 export type SessionPhotoCaptureProps = {
   disabled?: boolean
@@ -18,8 +18,12 @@ export type SessionPhotoCaptureProps = {
   /** When true, photos upload immediately after pick (no extra confirm step). */
   instantUpload?: boolean
   stagedShots: WorkSessionShot[]
+  /** Photos already committed to the work. Shown so a past day can be checked, and
+   *  a wrong picture corrected — removing one deletes it from the catalogue. */
+  appliedShots?: WorkSessionAppliedShot[]
   onUpload: (files: File[]) => void | Promise<void>
   onRemoveStaged: (sha256: string) => void | Promise<void>
+  onRemoveApplied?: (imageId: number) => void | Promise<void>
 }
 
 export function SessionPhotoCapture({
@@ -27,8 +31,10 @@ export function SessionPhotoCapture({
   busy = false,
   instantUpload = false,
   stagedShots,
+  appliedShots = [],
   onUpload,
   onRemoveStaged,
+  onRemoveApplied,
 }: SessionPhotoCaptureProps) {
   const { t } = useI18n()
   const cameraInputRef = useRef<HTMLInputElement>(null)
@@ -237,6 +243,59 @@ export function SessionPhotoCapture({
               </div>
             ))}
           </div>
+        </div>
+      ) : null}
+
+      {appliedShots.length > 0 ? (
+        <div data-testid="session-photo-applied">
+          <div className="t-eyebrow" style={{ marginBottom: 6, fontSize: 10 }}>
+            {t('session_photo_applied_heading')}
+          </div>
+          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 2, overscrollBehavior: 'contain' }}>
+            {appliedShots.map((shot) => (
+              <div key={shot.image_id} style={{ position: 'relative', width: 72, height: 72, flex: '0 0 auto' }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={thumbUrl(shot.r2_key, 144) ?? ''}
+                  alt=""
+                  style={{
+                    width: 72,
+                    height: 72,
+                    objectFit: 'cover',
+                    borderRadius: 4,
+                    border: shot.is_cover ? '2px solid var(--ac)' : '1px solid var(--bd)',
+                  }}
+                />
+                {onRemoveApplied ? (
+                  <button
+                    type="button"
+                    data-testid="session-photo-remove-applied"
+                    aria-label={t('session_photo_remove_applied_aria')}
+                    disabled={busy}
+                    onClick={() => void onRemoveApplied(shot.image_id)}
+                    style={{
+                      position: 'absolute',
+                      top: 2,
+                      right: 2,
+                      width: 28,
+                      height: 28,
+                      minHeight: 28,
+                      borderRadius: 999,
+                      border: 'none',
+                      background: 'rgba(0,0,0,0.55)',
+                      color: '#fff',
+                      fontSize: 14,
+                    }}
+                  >
+                    ×
+                  </button>
+                ) : null}
+              </div>
+            ))}
+          </div>
+          <p className="t-mono-sm" style={{ fontSize: 10, color: 'var(--tx3)', margin: '6px 0 0', lineHeight: 1.4 }}>
+            {t('session_photo_applied_hint')}
+          </p>
         </div>
       ) : null}
     </div>

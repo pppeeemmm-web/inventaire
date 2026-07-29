@@ -26,6 +26,14 @@ export interface WorkSessionShot {
 export type WorkSessionItemMode = 'existing' | 'new'
 export type WorkSessionItemStatus = 'draft' | 'applied' | 'rejected'
 
+/** A photo already committed to the work. Enriched at read time from `tblImage` —
+ *  never stored in payload JSON, because the work record owns it once applied. */
+export interface WorkSessionAppliedShot {
+  image_id: number
+  r2_key: string
+  is_cover: boolean
+}
+
 export interface WorkSessionItem {
   id: string
   mode: WorkSessionItemMode
@@ -33,10 +41,16 @@ export interface WorkSessionItem {
   oeuvre_title?: string | null
   /** Enriched at read time from `Oeuvres.txtImageNameLink` — not stored in payload JSON. */
   work_thumb?: string | null
+  /** Enriched at read time from `tblImage` — not stored in payload JSON. */
+  applied_shots?: WorkSessionAppliedShot[]
   notes?: string
   title_hint?: string
   width_cm?: string
   height_cm?: string
+  /** Oeuvres.Technique / Oeuvres.Support FK, kept as string like the cm fields so the
+   *  form round-trips a raw <select> value. Empty string means "not set". */
+  technique_id?: string
+  support_id?: string
   shots: WorkSessionShot[]
   status: WorkSessionItemStatus
   created_at?: string
@@ -147,6 +161,8 @@ function parseWorkSessionItem(raw: unknown): WorkSessionItem | null {
   if (typeof o.title_hint === 'string') out.title_hint = o.title_hint
   if (typeof o.width_cm === 'string') out.width_cm = o.width_cm
   if (typeof o.height_cm === 'string') out.height_cm = o.height_cm
+  if (typeof o.technique_id === 'string') out.technique_id = o.technique_id
+  if (typeof o.support_id === 'string') out.support_id = o.support_id
   if (typeof o.created_at === 'string') out.created_at = o.created_at
   if (typeof o.updated_at === 'string') out.updated_at = o.updated_at
   if (typeof o.applied_at === 'string') out.applied_at = o.applied_at
