@@ -349,11 +349,26 @@ export function SessionNewClient() {
     })
   }
 
+  // Apply fires from upload, link, create-and-link and the manual button. Two overlapping
+  // runs used to race on the same staged photos: the loser read a shot the winner had
+  // already consumed and deleted from R2, then aborted the whole session. One at a time.
+  const applyInFlight = useRef(false)
+  const runApply = async (sid: string): Promise<{ ok: true } | { error: string } | null> => {
+    if (applyInFlight.current) return null
+    applyInFlight.current = true
+    try {
+      return await applyWorkSessionToOeuvre(sid)
+    } finally {
+      applyInFlight.current = false
+    }
+  }
+
   // Owner feedback: the manual "Apply" tap was a needless extra step — once an
   // item is linked and has photos, apply immediately (admin only; the server
   // applies only actionable items, so unlinked items simply stay staged).
   const autoApply = async (sid: string) => {
-    const r = await applyWorkSessionToOeuvre(sid)
+    const r = await runApply(sid)
+    if (!r) return
     if ('error' in r) toast.error(r.error)
     else {
       toast.success(t('session_toast_photos_applied'))
@@ -456,7 +471,8 @@ export function SessionNewClient() {
       return
     }
     startBusy(() => {
-      void applyWorkSessionToOeuvre(sessionId).then(async (r) => {
+      void runApply(sessionId).then(async (r) => {
+        if (!r) return
         if ('error' in r) toast.error(r.error)
         else {
           toast.success(t('session_toast_photos_applied'))
@@ -469,7 +485,8 @@ export function SessionNewClient() {
 
   const approveOther = (id: string) => {
     startBusy(() => {
-      void applyWorkSessionToOeuvre(id).then((r) => {
+      void runApply(id).then((r) => {
+        if (!r) return
         if ('error' in r) toast.error(r.error)
         else {
           toast.success(t('session_toast_saved'))

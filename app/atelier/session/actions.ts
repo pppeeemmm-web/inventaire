@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 import { logError, logWarn } from '@/lib/error-reporter/server'
 import sharp from 'sharp'
 import { makeAvifThumbFromMain, normalizeImageToAvifPair, validateWorkImageBuffer } from '@/lib/image-upload'
-import { r2PutObject, r2DeleteObject, r2GetObjectBuffer } from '@/lib/r2-s3-object'
+import { r2PutObject, r2DeleteObject, r2GetObjectBuffer, isR2ObjectNotFound } from '@/lib/r2-s3-object'
 import { addWorkImage } from '@/app/atelier/works/actions'
 import {
   countWorkSessionItems,
@@ -1781,16 +1781,50 @@ export async function applyWorkSessionToOeuvre(sessionId: string): Promise<Sessi
   if (countWorkSessionShots(payload) === 0) return { error: 'Aucune photo à appliquer' }
 
   let appliedCount = 0
+
+  const persistPayload = async (): Promise<string | null> => {
+    const topLevelOeuvreId = listWorkSessionLinkedOeuvreIds(payload)[0] ?? row.oeuvre_id ?? null
+    const { error } = await workSessionTable(supabase)
+      .update({ oeuvre_id: topLevelOeuvreId, payload: asPayloadRecord(payload) })
+      .eq('id', sessionId)
+    return error?.message ?? null
+  }
+
+  /** Identical bytes staged twice share one key — applying it twice would 404 on the second pass. */
+  const uniqueShots = (shots: WorkSessionShot[]): WorkSessionShot[] => {
+    const seen = new Set<string>()
+    return shots.filter((shot) => {
+      if (seen.has(shot.r2_key)) return false
+      seen.add(shot.r2_key)
+      return true
+    })
+  }
+
   const applyShotsToWork = async (
     oeuvreId: number,
     shots: WorkSessionShot[],
     captureMeta: Record<string, unknown>,
-  ): Promise<SessionActionResult> => {
-    for (const shot of shots) {
+    // Drops the shot from `payload` and persists it, so a retry or a concurrent run never
+    // re-reads a staged key we are about to delete. Always runs before the R2 delete.
+    consumeShot: (shot: WorkSessionShot) => Promise<string | null>,
+  ): Promise<{ ok: true; applied: number } | { error: string }> => {
+    let applied = 0
+    for (const shot of uniqueShots(shots)) {
       let buf: Buffer
       try {
         buf = await r2GetObjectBuffer(shot.r2_key)
       } catch (e) {
+        if (isR2ObjectNotFound(e)) {
+          // Consumed by an earlier or concurrent apply: forget the shot instead of
+          // dead-locking every later item in the session behind a phantom key.
+          await logWarn('Session apply: staged shot missing, skipped', e, {
+            source: 'work_session.applyShotsToWork',
+            metadata: { sessionId, r2_key: shot.r2_key, oeuvreId },
+          })
+          const skipErr = await consumeShot(shot)
+          if (skipErr) return { error: skipErr }
+          continue
+        }
         await logError('Session apply: R2 read failed', e, {
           source: 'work_session.applyShotsToWork',
           metadata: { sessionId, r2_key: shot.r2_key, oeuvreId },
@@ -1805,6 +1839,9 @@ export async function applyWorkSessionToOeuvre(sessionId: string): Promise<Sessi
       fd.set('image_capture_meta', JSON.stringify({ ...captureMeta, shot_sha256: shot.sha256 }))
       const res = await addWorkImage(fd)
       if ('error' in res) return { error: res.error }
+      applied += 1
+      const persistErr = await consumeShot(shot)
+      if (persistErr) return { error: persistErr }
       try {
         await r2DeleteObject(shot.r2_key)
         if (shot.thumb_r2_key) await r2DeleteObject(shot.thumb_r2_key)
@@ -1815,7 +1852,7 @@ export async function applyWorkSessionToOeuvre(sessionId: string): Promise<Sessi
         })
       }
     }
-    return { ok: true }
+    return { ok: true, applied }
   }
 
   if (payload.items.length > 0) {
@@ -1858,9 +1895,20 @@ export async function applyWorkSessionToOeuvre(sessionId: string): Promise<Sessi
         width_cm: item.width_cm ?? null,
         height_cm: item.height_cm ?? null,
       }
-      const applied = await applyShotsToWork(oeuvreId, item.shots, captureMeta)
+      const consumeItemShot = async (shot: WorkSessionShot): Promise<string | null> => {
+        const current = payload.items[idx]
+        payload.items[idx] = touchItem({
+          ...current,
+          shots: current.shots.filter((s) => s.r2_key !== shot.r2_key),
+        })
+        return persistPayload()
+      }
+      const applied = await applyShotsToWork(oeuvreId, item.shots, captureMeta, consumeItemShot)
       if ('error' in applied) return applied
-      appliedCount += item.shots.length
+      // Nothing landed (every staged key was a phantom): leave the item unapplied rather
+      // than claiming photos it never received. Its shots are already cleared + persisted.
+      if (applied.applied === 0) continue
+      appliedCount += applied.applied
       payload.items[idx] = touchItem({
         ...item,
         mode: 'existing',
@@ -1870,13 +1918,10 @@ export async function applyWorkSessionToOeuvre(sessionId: string): Promise<Sessi
         shots: [],
         applied_at: appliedAt,
         applied_by: user.id,
-        applied_shot_count: (item.applied_shot_count ?? 0) + item.shots.length,
+        applied_shot_count: (item.applied_shot_count ?? 0) + applied.applied,
       })
-      const topLevelOeuvreId = listWorkSessionLinkedOeuvreIds(payload)[0] ?? row.oeuvre_id ?? null
-      const { error: itemPersistErr } = await workSessionTable(supabase)
-        .update({ oeuvre_id: topLevelOeuvreId, payload: asPayloadRecord(payload) })
-        .eq('id', sessionId)
-      if (itemPersistErr) return { error: itemPersistErr.message }
+      const itemPersistErr = await persistPayload()
+      if (itemPersistErr) return { error: itemPersistErr }
     }
 
     if (appliedCount === 0) return { error: 'Aucune entrée complète à appliquer' }
@@ -1912,35 +1957,13 @@ export async function applyWorkSessionToOeuvre(sessionId: string): Promise<Sessi
     height_cm: payload.height_cm ?? null,
   }
 
-  for (const shot of payload.shots) {
-    let buf: Buffer
-    try {
-      buf = await r2GetObjectBuffer(shot.r2_key)
-    } catch (e) {
-      await logError('Session legacy apply: R2 read failed', e, {
-        source: 'work_session.applyLegacySessionShots',
-        metadata: { sessionId, r2_key: shot.r2_key, oeuvreId },
-      })
-      return { error: `Lecture R2: ${String(e)}` }
-    }
-    const file = new File([new Uint8Array(buf)], 'session.avif', { type: 'image/avif' })
-    const fd = new FormData()
-    fd.set('oeuvre_id', String(oeuvreId))
-    fd.set('image', file)
-    fd.set('image_sha256', shot.sha256)
-    fd.set('image_capture_meta', JSON.stringify({ ...captureMeta, shot_sha256: shot.sha256 }))
-    const res = await addWorkImage(fd)
-    if ('error' in res) return { error: res.error }
-    try {
-      await r2DeleteObject(shot.r2_key)
-      if (shot.thumb_r2_key) await r2DeleteObject(shot.thumb_r2_key)
-    } catch (err) {
-      await logWarn('Session shot R2 cleanup failed (best-effort)', err, {
-        source: 'work_session.r2Cleanup',
-        metadata: { r2_key: shot.r2_key },
-      })
-    }
+  const consumeLegacyShot = async (shot: WorkSessionShot): Promise<string | null> => {
+    payload.shots = payload.shots.filter((s) => s.r2_key !== shot.r2_key)
+    return persistPayload()
   }
+  const legacyApplied = await applyShotsToWork(oeuvreId, payload.shots, captureMeta, consumeLegacyShot)
+  if ('error' in legacyApplied) return legacyApplied
+  if (legacyApplied.applied === 0) return { error: 'Aucune photo à appliquer' }
 
   const donePayload: Record<string, unknown> = {
     notes: payload.notes ?? null,

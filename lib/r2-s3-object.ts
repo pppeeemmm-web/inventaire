@@ -140,6 +140,28 @@ export async function r2DeleteObject(filename: string): Promise<void> {
   })
 }
 
+/**
+ * Thrown when a GET target is absent. Callers finalizing staged keys need to tell
+ * "object already consumed" apart from a real R2 failure — a missing staged shot is
+ * recoverable (skip it), a 500 is not.
+ */
+export class R2ObjectNotFound extends Error {
+  readonly status = 404
+  constructor(readonly objectKey: string) {
+    super(`R2 GET 404: ${objectKey}`)
+    this.name = 'R2ObjectNotFound'
+  }
+}
+
+export function isR2ObjectNotFound(e: unknown): boolean {
+  if (e instanceof R2ObjectNotFound) return true
+  return (
+    typeof e === 'object'
+    && e !== null
+    && (e as { status?: unknown }).status === 404
+  )
+}
+
 /** SigV4 GET — returns object bytes (used to finalize staged `work-session/*` keys). */
 export async function r2GetObjectBuffer(filename: string): Promise<Buffer> {
   const account = process.env.R2_ACCOUNT_ID ?? ''
@@ -180,6 +202,7 @@ export async function r2GetObjectBuffer(filename: string): Promise<Buffer> {
 
   const url = `https://${host}${encodedPath}`
   const res = await fetch(url, { method: 'GET', headers })
+  if (res.status === 404) throw new R2ObjectNotFound(filename)
   if (!res.ok) throw new Error(`R2 GET ${res.status}: ${await res.text()}`)
   return Buffer.from(await res.arrayBuffer())
 }
