@@ -1104,19 +1104,24 @@ async function uploadImage(
 
 // ── Image management (tblImage) ───────────────────────────────────────────
 
-// Helper: sync Oeuvres.txtImageNameLink to the last image (highest SeqNo = cover)
+// Helper: elect the last image (highest SeqNo) as cover after a delete or reorder.
+// Only tblImage.is_cover is written — the tblimage_cover_sync trigger mirrors it onto
+// Oeuvres.txtImageNameLink, which is never written directly.
 async function syncCover(supabase: SupabaseClient, oeuvreId: number): Promise<{ error: string } | { ok: true }> {
   const { data, error: selErr } = await supabase
     .from('tblImage')
-    .select('txtImageNameLink')
+    .select('ImageID, is_cover')
     .eq('OeuvreID', oeuvreId)
     .order('SeqNo', { ascending: false })
     .limit(1)
     .maybeSingle()
   if (selErr) return { error: `syncCover read: ${selErr.message}` }
+  // No images left, or the last one already holds the flag — the trigger has done the rest.
+  if (!data || data.is_cover) return { ok: true }
   const { error: updErr } = await supabase
-    .from('Oeuvres')
-    .update({ txtImageNameLink: data?.txtImageNameLink ?? null })
+    .from('tblImage')
+    .update({ is_cover: true })
+    .eq('ImageID', data.ImageID)
     .eq('OeuvreID', oeuvreId)
   if (updErr) return { error: `syncCover write: ${updErr.message}` }
   return { ok: true }
@@ -1163,6 +1168,9 @@ export async function commitWorkImage(
     txtImageNameLink: filename,
     SeqNo: seqNo,
     DateAdded: new Date().toISOString(),
+    // Newest image wins the cover. The tblimage_cover_sync trigger clears the previous
+    // cover flag and writes Oeuvres.txtImageNameLink itself — never set that column here.
+    is_cover: true,
   }
   if (opts?.captureMeta) insertRow.capture_meta = opts.captureMeta
   if (opts?.sha256) insertRow.sha256 = opts.sha256
@@ -1175,7 +1183,7 @@ export async function commitWorkImage(
 
   if (insertErr || !inserted) return { error: insertErr?.message ?? 'Erreur insertion' }
 
-  // New image is last → it becomes the cover.
+  // Cover already moved to this image via is_cover + the trigger — nothing to write on Oeuvres.
   // NeedsPhotograph is a manual quality gate (diffusion-grade photo validated by
   // the artist only): adding an image NEVER clears it or promotes the status.
   const { data: workState } = await supabase
@@ -1183,11 +1191,6 @@ export async function commitWorkImage(
     .select('"Catalogué", "NeedsPhotograph"')
     .eq('OeuvreID', oeuvreId)
     .single()
-
-  await supabase
-    .from('Oeuvres')
-    .update({ txtImageNameLink: inserted.txtImageNameLink })
-    .eq('OeuvreID', oeuvreId)
 
   await logSystemEvent({
     eventType: 'VAULT_UPLOAD',

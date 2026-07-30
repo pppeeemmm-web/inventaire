@@ -24,6 +24,11 @@ select (select count(*) from public."Support" where "Support" = 'Carton') as car
        (select count(*) from public."Oeuvres" where "Support" = 8) as still_on_8;
 
 -- ---------------------------------------------------------------------------
+-- SUPERSEDED 2026-07-30 — DO NOT RE-RUN the block below. It elects the LOWEST SeqNo,
+-- which sent several covers back to the first photo of the work (#2357 lost its 07-18
+-- shot in the inventory list). Use cover_follows_newest_image.sql instead; the app now
+-- sets is_cover on insert, so the gap this filled can no longer open.
+--
 -- Reference: the cover backfill that already ran, kept so it can be re-run if the
 -- gap reappears. sync_cover_image_to_oeuvres() only fires when is_cover is set to
 -- true — it never elects a cover on plain INSERT, which is how 24 works ended up

@@ -2070,22 +2070,39 @@ export async function applyWorkSessionToOeuvre(sessionId: string): Promise<Sessi
       if (!itemIsActionable(item)) continue
       let oeuvreId = item.oeuvre_id ?? null
       if (!oeuvreId && item.mode === 'new') {
-        const created = await createWorkFromSessionFields(supabase, user.id, {
-          title_hint: item.title_hint ?? '',
-          notes: item.notes ?? payload.notes,
-          width_cm: item.width_cm,
-          height_cm: item.height_cm,
-          technique_id: item.technique_id,
-          support_id: item.support_id,
-          session_at: sessionAt,
-        })
-        if ('error' in created) return created
-        oeuvreId = created.oeuvreId
+        // A concurrent apply may have created and linked this work between our snapshot and
+        // now. Re-read the slot before minting one: without this both runs insert an Oeuvre
+        // and the loser's payload write repoints the slot at its own orphan duplicate —
+        // that is how #2371 came to shadow the photographed #2362 on 2026-07-29.
+        const { data: fresh, error: freshErr } = await workSessionTable(supabase)
+          .select('payload')
+          .eq('id', sessionId)
+          .maybeSingle()
+        if (freshErr) return { error: freshErr.message }
+        const freshItem = fresh
+          ? parseWorkSessionPayload(fresh.payload).items.find((candidate) => candidate.id === item.id)
+          : undefined
+
+        if (freshItem?.oeuvre_id) {
+          oeuvreId = freshItem.oeuvre_id
+        } else {
+          const created = await createWorkFromSessionFields(supabase, user.id, {
+            title_hint: item.title_hint ?? '',
+            notes: item.notes ?? payload.notes,
+            width_cm: item.width_cm,
+            height_cm: item.height_cm,
+            technique_id: item.technique_id,
+            support_id: item.support_id,
+            session_at: sessionAt,
+          })
+          if ('error' in created) return created
+          oeuvreId = created.oeuvreId
+        }
         item = touchItem({
           ...item,
           mode: 'existing',
           oeuvre_id: oeuvreId,
-          oeuvre_title: item.title_hint ?? null,
+          oeuvre_title: freshItem?.oeuvre_title ?? item.title_hint ?? null,
         })
         payload.items[idx] = item
         const topLevelOeuvreId = listWorkSessionLinkedOeuvreIds(payload)[0] ?? row.oeuvre_id ?? null
