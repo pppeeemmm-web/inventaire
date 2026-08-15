@@ -13,7 +13,9 @@ export function fileListToPending(
   existingCount: number,
 ): SessionPhotoPending[] {
   if (!files) return []
-  const list = Array.from(files).filter((f) => f.type.startsWith('image/'))
+  // iOS hands back an empty `type` for some library/Files picks (AVIF in particular).
+  // Dropping those silently lost the photo; the server validates by magic bytes anyway.
+  const list = Array.from(files).filter((f) => !f.type || f.type.startsWith('image/'))
   const room = Math.max(0, SESSION_PHOTO_PENDING_MAX - existingCount)
   const slice = list.slice(0, room)
   return slice.map((file) => ({

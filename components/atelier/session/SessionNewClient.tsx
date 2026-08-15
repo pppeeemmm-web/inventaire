@@ -31,6 +31,7 @@ import type { WorkSessionQueueRow } from '@/app/atelier/session/actions'
 import { SessionPhotoCapture } from '@/components/atelier/session/SessionPhotoCapture'
 import { FieldHubBackLink } from '@/components/shared/FieldHubBackLink'
 import { downscaleImageFileForMobileIfNeeded } from '@/lib/mobile/image-upload-client'
+import { surfaceError } from '@/lib/error-reporter/client'
 import { captureFieldContext, type CaptureFieldContextErrorCode } from '@/lib/field-context'
 import { imageUrl, thumbUrl } from '@/lib/data'
 import type { WorkSessionFieldContext, WorkSessionItem, WorkSessionItemMode } from '@/lib/work-session-payload'
@@ -110,6 +111,8 @@ export function SessionNewClient() {
   // `busy` is one shared useTransition flag, so it goes true for *any* action —
   // switching work mode used to make the commit button claim it was applying.
   const [applying, setApplying] = useState(false)
+  // Tracks the real lifetime of a photo upload (see onUploadFiles).
+  const [uploading, setUploading] = useState(false)
   const daySwitchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const workQ = sp.get('work')?.trim()
@@ -340,37 +343,48 @@ export function SessionNewClient() {
     })
   }
 
-  const onUploadFiles = (files: File[]) => {
+  // Awaited by the capture panel, which keeps the picked photos on screen until this
+  // settles. `useTransition` cannot do that job: startBusy() ends the moment its
+  // synchronous callback returns, so `busy` was false for the whole upload and the
+  // screen showed nothing at all. A rejection here (aborted request, network drop)
+  // used to vanish into an unhandled promise — now it toasts and is logged.
+  const onUploadFiles = async (files: File[]) => {
     if (!sessionId || files.length === 0) return
-    startBusy(() => {
-      void (async () => {
-        let targetItemId = activeItem?.id ?? null
-        if (!targetItemId) {
-          const created = await createWorkSessionItemAction(sessionId, 'existing')
-          if ('error' in created) {
-            toast.error(created.error)
-            return
-          }
-          targetItemId = created.item.id
-          setItems((prev) => [...prev, created.item])
-          setActiveItemId(created.item.id)
+    setUploading(true)
+    try {
+      let targetItemId = activeItem?.id ?? null
+      if (!targetItemId) {
+        const created = await createWorkSessionItemAction(sessionId, 'existing')
+        if ('error' in created) {
+          toast.error(created.error)
+          return
         }
-        for (const file of files) {
-          const prepared = await downscaleImageFileForMobileIfNeeded(file, narrow)
-          const fd = new FormData()
-          fd.set('image', prepared)
-          const r = await uploadWorkSessionItemShot(sessionId, targetItemId!, fd)
-          if ('error' in r) {
-            toast.error(r.error)
-            return
-          }
+        targetItemId = created.item.id
+        setItems((prev) => [...prev, created.item])
+        setActiveItemId(created.item.id)
+      }
+      for (const file of files) {
+        const prepared = await downscaleImageFileForMobileIfNeeded(file, narrow)
+        const fd = new FormData()
+        fd.set('image', prepared)
+        const r = await uploadWorkSessionItemShot(sessionId, targetItemId!, fd)
+        if ('error' in r) {
+          toast.error(r.error)
+          return
         }
-        const applied = isAdmin && !!activeItem?.oeuvre_id
-        if (applied) await autoApply(sessionId)
-        await refreshDraft(sessionId)
-        if (!applied) toast.success(t('session_toast_saved'))
-      })()
-    })
+      }
+      const applied = isAdmin && !!activeItem?.oeuvre_id
+      if (applied) await autoApply(sessionId)
+      await refreshDraft(sessionId)
+      if (!applied) toast.success(t('session_toast_saved'))
+    } catch (err) {
+      surfaceError(t('session_toast_error'), err, {
+        source: 'SessionNewClient.onUploadFiles',
+        metadata: { sessionId, itemId: activeItem?.id ?? null, count: files.length },
+      })
+    } finally {
+      setUploading(false)
+    }
   }
 
   // Not a session-local undo: the photo belongs to the work once applied, so this is a
@@ -704,7 +718,7 @@ export function SessionNewClient() {
             type="button"
             className="btn primary"
             data-testid="session-apply-now"
-            disabled={busy || actionableCount === 0}
+            disabled={busy || uploading || actionableCount === 0}
             onClick={applyNow}
             style={{ minHeight: 48 }}
             aria-busy={applying}
@@ -1023,7 +1037,7 @@ export function SessionNewClient() {
               status, so a replacement staged here can still be committed. */}
           <SessionPhotoCapture
             disabled={sessionReadOnly}
-            busy={busy}
+            busy={busy || uploading}
             instantUpload
             stagedShots={activeItem.shots}
             appliedShots={activeItem.applied_shots ?? []}
@@ -1321,7 +1335,7 @@ export function SessionNewClient() {
       {!activeItem && canCaptureSessions && !sessionReadOnly ? (
         <SessionPhotoCapture
           disabled={sessionReadOnly}
-          busy={busy}
+          busy={busy || uploading}
           instantUpload
           stagedShots={[]}
           onUpload={onUploadFiles}

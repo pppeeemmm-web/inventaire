@@ -1760,7 +1760,22 @@ export async function uploadWorkSessionItemShot(
   const rawBuf = Buffer.from(await file.arrayBuffer())
   const sha256 = crypto.createHash('sha256').update(rawBuf).digest('hex')
   const validated = await validateWorkImageBuffer(rawBuf)
-  if ('error' in validated) return { error: validated.error }
+  if ('error' in validated) {
+    // A rejected format only toasted, leaving no trace at all — the one upload
+    // failure mode invisible to both the owner and the log. Record what arrived.
+    await logWarn('Session shot rejected by image validation', undefined, {
+      source: 'work_session.uploadWorkSessionItemShot',
+      metadata: {
+        sessionId,
+        itemId,
+        reason: validated.error,
+        clientType: file.type || null,
+        clientName: file.name || null,
+        bytes: rawBuf.length,
+      },
+    })
+    return { error: validated.error }
+  }
 
   const hash8 = sha256.slice(0, 8)
   const mainKey = `work-session/${sessionId}/${itemId}/${hash8}_main.avif`

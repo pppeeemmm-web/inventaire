@@ -21,6 +21,18 @@ export const sessionFieldMessages = defineMessages({
     en: 'Delete this photo from {work}? It leaves the catalogue, not just this session. Recoverable for 90 days.',
   },
 
+  // ── Photo pick failures ────────────────────────────────────────────────────
+  // Both cases previously returned silently, which on a phone is indistinguishable
+  // from a dead button — the photo was lost with nothing on screen.
+  session_photo_read_failed: {
+    fr: 'Photo illisible depuis la galerie. Réessayez, ou exportez-la à nouveau.',
+    en: 'Could not read that photo from the gallery. Try again, or re-export it.',
+  },
+  session_photo_none_picked: {
+    fr: 'Aucune photo reçue de la galerie. Réessayez.',
+    en: 'The gallery returned no photo. Try again.',
+  },
+
   // ── Duplicate guard ────────────────────────────────────────────────────────
   // Advisory: a series legitimately reuses a title, so this never blocks the commit.
   session_duplicate_title_warn: {

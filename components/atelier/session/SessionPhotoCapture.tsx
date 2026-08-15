@@ -10,6 +10,7 @@ import {
   SESSION_PHOTO_PENDING_MAX,
   type SessionPhotoPending,
 } from '@/lib/mobile/session-photo-pending'
+import { surfaceError, surfaceWarn } from '@/lib/error-reporter/client'
 import type { WorkSessionAppliedShot, WorkSessionShot } from '@/lib/work-session-payload'
 
 export type SessionPhotoCaptureProps = {
@@ -40,13 +41,25 @@ export function SessionPhotoCapture({
   const cameraInputRef = useRef<HTMLInputElement>(null)
   const libraryInputRef = useRef<HTMLInputElement>(null)
   const [pending, setPending] = useState<SessionPhotoPending[]>([])
+  // Photos handed to onUpload and not yet acknowledged by the server. In instant mode
+  // nothing was rendered between the pick and the round-trip, so a slow phone upload
+  // looked like a dead button — this is the missing feedback.
+  const [inFlight, setInFlight] = useState<SessionPhotoPending[]>([])
   const pendingRef = useRef(pending)
   pendingRef.current = pending
+  const inFlightRef = useRef(inFlight)
+  inFlightRef.current = inFlight
 
-  useEffect(() => () => revokePending(pendingRef.current), [])
+  useEffect(
+    () => () => {
+      revokePending(pendingRef.current)
+      revokePending(inFlightRef.current)
+    },
+    [],
+  )
 
-  const addFiles = useCallback((files: FileList | null) => {
-    if (!files?.length) return
+  const addFiles = useCallback((files: File[]) => {
+    if (!files.length) return
     setPending((prev) => {
       const added = fileListToPending(files, prev.length + stagedShots.length)
       if (added.length === 0) return prev
@@ -60,23 +73,67 @@ export function SessionPhotoCapture({
     })
   }, [stagedShots.length])
 
-  const flushFiles = (files: FileList | null) => {
-    if (!files?.length) return
-    if (instantUpload) {
-      void onUpload(Array.from(files))
+  const flushFiles = async (files: File[]) => {
+    if (files.length === 0) return
+    if (!instantUpload) {
+      addFiles(files)
       return
     }
-    addFiles(files)
+    const previews = fileListToPending(files, stagedShots.length)
+    setInFlight((prev) => [...prev, ...previews])
+    try {
+      await onUpload(files)
+    } finally {
+      revokePending(previews)
+      setInFlight((prev) => prev.filter((p) => !previews.some((q) => q.id === p.id)))
+    }
   }
 
-  const onCameraChange = (e: ChangeEvent<HTMLInputElement>) => {
-    flushFiles(e.target.files)
-    e.target.value = ''
+  /**
+   * Copy the picked bytes into memory before anything else touches the input.
+   *
+   * A File from the picker is a handle onto a file the browser owns, not the bytes.
+   * The upload path reads it twice, seconds apart (`createImageBitmap`, then the
+   * FormData send), and iOS can revoke that handle in between — input reset, tab
+   * backgrounded, picker temp file reclaimed. The read then fails after the fact,
+   * which is how a photo disappeared with no request and no error. Snapshotting
+   * here removes the whole class of failure: everything downstream works on bytes
+   * we own.
+   */
+  const snapshotPicked = async (list: FileList | null): Promise<File[]> => {
+    const picked = list ? Array.from(list) : []
+    const out: File[] = []
+    for (const f of picked) {
+      const buf = await f.arrayBuffer()
+      out.push(new File([buf], f.name || 'photo', { type: f.type || 'image/jpeg' }))
+    }
+    return out
   }
 
-  const onLibraryChange = (e: ChangeEvent<HTMLInputElement>) => {
-    flushFiles(e.target.files)
-    e.target.value = ''
+  const onPicked = async (e: ChangeEvent<HTMLInputElement>) => {
+    const input = e.target
+    let snapshot: File[] = []
+    try {
+      snapshot = await snapshotPicked(input.files)
+    } catch (err) {
+      surfaceError(t('session_photo_read_failed'), err, {
+        source: 'SessionPhotoCapture.snapshotPicked',
+      })
+      input.value = ''
+      return
+    }
+    // The picker handing back nothing is a real failure mode (iOS does it for formats
+    // it will not map). It used to return silently, which reads as a dead button.
+    if (snapshot.length === 0) {
+      surfaceWarn(t('session_photo_none_picked'), undefined, {
+        source: 'SessionPhotoCapture.onPicked',
+      })
+      input.value = ''
+      return
+    }
+    // Safe to reset now: we no longer depend on the input holding the files.
+    input.value = ''
+    await flushFiles(snapshot)
   }
 
   const removePending = (id: string) => {
@@ -92,7 +149,10 @@ export function SessionPhotoCapture({
   }
 
   const blocked = disabled || busy
-  const accept = 'image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,.heic'
+  // Broad on purpose: a narrow MIME allow-list makes the iOS picker hand back an
+  // empty selection for formats it does not map (AVIF), which reads as "nothing
+  // happened". The server still validates by magic bytes and rejects the rest.
+  const accept = 'image/*,.heic,.heif,.avif'
 
   return (
     <div
@@ -109,7 +169,7 @@ export function SessionPhotoCapture({
         capture="environment"
         multiple
         style={{ display: 'none' }}
-        onChange={onCameraChange}
+        onChange={onPicked}
         tabIndex={-1}
         aria-hidden
       />
@@ -119,7 +179,7 @@ export function SessionPhotoCapture({
         accept={accept}
         multiple
         style={{ display: 'none' }}
-        onChange={onLibraryChange}
+        onChange={onPicked}
         tabIndex={-1}
         aria-hidden
       />
@@ -147,7 +207,32 @@ export function SessionPhotoCapture({
         </button>
       </div>
 
-      {busy && instantUpload ? (
+      {inFlight.length > 0 ? (
+        <div data-testid="session-photo-inflight">
+          <div className="t-eyebrow" style={{ marginBottom: 6, fontSize: 10 }}>
+            {t('session_photo_uploading')}
+          </div>
+          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 2, overscrollBehavior: 'contain' }}>
+            {inFlight.map((p) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={p.id}
+                src={p.preview}
+                alt=""
+                style={{
+                  width: 72,
+                  height: 72,
+                  flex: '0 0 auto',
+                  objectFit: 'cover',
+                  borderRadius: 4,
+                  border: '1px dashed var(--ac)',
+                  opacity: 0.55,
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      ) : busy && instantUpload ? (
         <p className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx2)', margin: 0 }}>
           {t('session_photo_uploading')}
         </p>
