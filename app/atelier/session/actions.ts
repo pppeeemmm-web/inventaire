@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { logError, logWarn } from '@/lib/error-reporter/server'
 import sharp from 'sharp'
-import { makeAvifThumbFromMain, normalizeImageToAvifPair, validateWorkImageBuffer } from '@/lib/image-upload'
+import { isAvifBuffer, makeAvifThumbFromMain, normalizeImageToAvifPair, validateWorkImageBuffer } from '@/lib/image-upload'
 import { r2PutObject, r2DeleteObject, r2GetObjectBuffer, isR2ObjectNotFound } from '@/lib/r2-s3-object'
 import { addWorkImage, deleteWorkImage } from '@/app/atelier/works/actions'
 import {
@@ -1636,9 +1636,11 @@ async function putAvifPair(
   try {
     // Pass-through: an already-AVIF input within bounds (e.g. Lightroom AVIF export)
     // is stored as-is — re-encoding was ~10x slower and inflated 400 KB into ~4 MB.
+    // Phone shots are activity tracking, not archival, so skipping the EXIF stamp
+    // on this branch is the intended trade (owner call).
     const meta = await sharp(rawBuf).metadata()
     const passthrough =
-      meta.format === 'avif' &&
+      isAvifBuffer(meta) &&
       Math.max(meta.width ?? Infinity, meta.height ?? Infinity) <= 2100
     const { mainBuf: avifBuf, thumbBuf } = passthrough
       ? { mainBuf: rawBuf, thumbBuf: await makeAvifThumbFromMain(rawBuf) }

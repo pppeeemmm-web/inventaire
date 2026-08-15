@@ -1,5 +1,5 @@
 import crypto from 'crypto'
-import sharp from 'sharp'
+import sharp, { type Metadata } from 'sharp'
 
 /** Sharp-reported format → safe storage extension + Content-Type for R2. */
 const ALLOWED_FORMATS = new Map<
@@ -15,6 +15,18 @@ const ALLOWED_FORMATS = new Map<
 ])
 
 export type ValidatedWorkImage = { ext: string; mime: string }
+
+/**
+ * True when the bytes are already AVIF.
+ *
+ * libvips reports AVIF as HEIF carrying av1 compression, never as `'avif'`, so the
+ * upload pass-throughs that tested `format === 'avif'` alone could not fire once:
+ * every AVIF was re-encoded despite the optimisation being in place. Both upload
+ * paths (session shot, work image) go through here so they cannot drift apart.
+ */
+export function isAvifBuffer(meta: Metadata): boolean {
+  return meta.format === 'avif' || (meta.format === 'heif' && meta.compression === 'av1')
+}
 
 export type NormalizedAvifPair = { mainBuf: Buffer; thumbBuf: Buffer }
 

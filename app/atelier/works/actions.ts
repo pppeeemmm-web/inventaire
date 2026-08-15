@@ -9,6 +9,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/types/supabase.generated'
 import { seqFromFilename, STATUS_ID_ARCHIVE_ARTISTE, STATUS_IDS_PUBLIC } from '@/lib/data'
 import {
+  isAvifBuffer,
   makeAvifThumbFromMain,
   makeImageStorageFilename,
   normalizeImageToAvifPair,
@@ -1008,7 +1009,7 @@ async function prepareWorkImageUpload(file: File): Promise<PreparedWorkImageUplo
     // could inflate the file. Mirrors putAvifPair in session/actions.ts.
     const meta = await sharp(buf).metadata()
     const passthrough =
-      meta.format === 'avif' &&
+      isAvifBuffer(meta) &&
       Math.max(meta.width ?? Infinity, meta.height ?? Infinity) <= 4000
     const { mainBuf: avifBuf, thumbBuf } = passthrough
       ? { mainBuf: buf, thumbBuf: await makeAvifThumbFromMain(buf) }
