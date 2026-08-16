@@ -96,9 +96,9 @@ Repo guide. Conflict → ask owner before edit.
 - Audit grants after schema changes: `supabase/sql/grant_audit_queries.sql`.
 - Service-role-only tables: document in migration comment; don't widen grant.
 - R2 endpoint: EU only: `https://<account_id>.eu.r2.cloudflarestorage.com`. No global endpoint.
-- Image upload: validate JPEG/PNG/WebP/GIF/AVIF/HEIC via Sharp. Non-AVIF input normalizes to AVIF q=50 + Artist/Copyright EXIF, long side 2100 (session shot) / 4000 (work image).
-- AVIF input within that long side passes through byte-for-byte: no re-encode, **no EXIF stamp**. Deliberate — phone shots track activity, not archival. Only the 400px thumb is encoded.
-- Detect AVIF with `isAvifBuffer()` (`lib/image-upload.ts`), never `meta.format === 'avif'`: libvips reports AVIF as `heif` + `compression: 'av1'`, so the bare test never matches.
+- Image upload: validate JPEG/PNG/WebP/GIF/AVIF/HEIC via Sharp; normalize **every** input (AVIF included) to AVIF q=50 + Artist/Copyright EXIF, long side 2100 (session shot) / 4000 (work image). One re-encode at upload, never on read.
+- No AVIF pass-through. Tried and removed: a phone export at q80 is ~5.8x the stored size for ~230ms saved. Storage wins across the archive. If revisited: libvips reports AVIF as `heif` + `compression: 'av1'`, so `meta.format === 'avif'` never matches.
+- Mobile client shrinks before upload (`downscaleImageFileForMobileIfNeeded`): re-encode when long side > maxEdge **or** bytes > `MOBILE_MAX_UPLOAD_BYTES`. Vercel caps a Server Action body at 4.5MB — above it the platform returns HTML 413 and Next reports "An unexpected response was received from the server" before any app code runs.
 - Storage keys: `W_{oid}_{seq}_{hash8}.avif`, hash from raw input bytes (`lib/image-upload.ts`).
 - Image URLs only via `imageUrl()` / `thumbUrl()` from `lib/data.ts`. Never hand-build R2 URLs.
 

@@ -9,13 +9,10 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/types/supabase.generated'
 import { seqFromFilename, STATUS_ID_ARCHIVE_ARTISTE, STATUS_IDS_PUBLIC } from '@/lib/data'
 import {
-  isAvifBuffer,
-  makeAvifThumbFromMain,
   makeImageStorageFilename,
   normalizeImageToAvifPair,
   validateWorkImageBuffer,
 } from '@/lib/image-upload'
-import sharp from 'sharp'
 import { insertPendingChange } from '@/lib/pending-changes-insert'
 import { pendingInsertToSaveError } from '@/lib/work-save-error'
 import { pendingPayloadFromFormData, type PendingChangeKind } from '@/lib/work-pending-keys'
@@ -1004,16 +1001,8 @@ async function prepareWorkImageUpload(file: File): Promise<PreparedWorkImageUplo
     const check = await validateWorkImageBuffer(buf)
     if ('error' in check) return { error: check.error }
 
-    // Pass-through: an already-AVIF input within bounds (staged session shots,
-    // Lightroom AVIF exports) is stored as-is — the re-encode was ~10x slower and
-    // could inflate the file. Mirrors putAvifPair in session/actions.ts.
-    const meta = await sharp(buf).metadata()
-    const passthrough =
-      isAvifBuffer(meta) &&
-      Math.max(meta.width ?? Infinity, meta.height ?? Infinity) <= 4000
-    const { mainBuf: avifBuf, thumbBuf } = passthrough
-      ? { mainBuf: buf, thumbBuf: await makeAvifThumbFromMain(buf) }
-      : await normalizeImageToAvifPair(buf, { maxEdge: 4000 })
+    // Always normalise, same reasoning as putAvifPair in session/actions.ts.
+    const { mainBuf: avifBuf, thumbBuf } = await normalizeImageToAvifPair(buf, { maxEdge: 4000 })
 
     return {
       sourceBuf: buf,

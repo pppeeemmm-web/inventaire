@@ -1,5 +1,5 @@
 import crypto from 'crypto'
-import sharp, { type Metadata } from 'sharp'
+import sharp from 'sharp'
 
 /** Sharp-reported format → safe storage extension + Content-Type for R2. */
 const ALLOWED_FORMATS = new Map<
@@ -15,18 +15,6 @@ const ALLOWED_FORMATS = new Map<
 ])
 
 export type ValidatedWorkImage = { ext: string; mime: string }
-
-/**
- * True when the bytes are already AVIF.
- *
- * libvips reports AVIF as HEIF carrying av1 compression, never as `'avif'`, so the
- * upload pass-throughs that tested `format === 'avif'` alone could not fire once:
- * every AVIF was re-encoded despite the optimisation being in place. Both upload
- * paths (session shot, work image) go through here so they cannot drift apart.
- */
-export function isAvifBuffer(meta: Metadata): boolean {
-  return meta.format === 'avif' || (meta.format === 'heif' && meta.compression === 'av1')
-}
 
 export type NormalizedAvifPair = { mainBuf: Buffer; thumbBuf: Buffer }
 
@@ -55,6 +43,15 @@ function imageExifTags(): { Artist: string; Copyright: string } {
 /**
  * Resize + encode to AVIF (main + 400px thumb). Preserves alpha on PNG/WebP/GIF/AVIF inputs
  * via ensureAlpha and transparent resize background; opaque JPEG/HEIC get a fully-opaque alpha plane.
+ *
+ * Every upload comes through here, including one that is already AVIF. A pass-through
+ * was tried and removed: measured on a canvas-like 2100px image, a phone export at
+ * quality 80 is 530 KB where this pipeline produces 91 KB, so keeping originals costs
+ * ~5.8x the storage across an archive of thousands of images — to save ~230 ms of
+ * encode paid once per photo and never again on read. Storage wins.
+ *
+ * (Trap if a pass-through is ever revisited: libvips reports AVIF as HEIF carrying
+ * av1 compression, never as `'avif'`, so a `format === 'avif'` test never matches.)
  */
 export async function normalizeImageToAvifPair(
   buf: Buffer,

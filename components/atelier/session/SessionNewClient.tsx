@@ -364,7 +364,9 @@ export function SessionNewClient() {
         setActiveItemId(created.item.id)
       }
       for (const file of files) {
-        const prepared = await downscaleImageFileForMobileIfNeeded(file, narrow)
+        // 2100 to match what the server stores: sending more pixels than
+        // normalizeImageToAvifPair keeps is upload time paid for nothing.
+        const prepared = await downscaleImageFileForMobileIfNeeded(file, narrow, 2100)
         const fd = new FormData()
         fd.set('image', prepared)
         const r = await uploadWorkSessionItemShot(sessionId, targetItemId!, fd)
