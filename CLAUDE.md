@@ -96,7 +96,9 @@ Repo guide. Conflict → ask owner before edit.
 - Audit grants after schema changes: `supabase/sql/grant_audit_queries.sql`.
 - Service-role-only tables: document in migration comment; don't widen grant.
 - R2 endpoint: EU only: `https://<account_id>.eu.r2.cloudflarestorage.com`. No global endpoint.
-- Image upload: validate JPEG/PNG/WebP/GIF/AVIF/HEIC via Sharp; normalize originals to 2100px long-side AVIF q=50 + Artist/Copyright EXIF.
+- Image upload: validate JPEG/PNG/WebP/GIF/AVIF/HEIC via Sharp. Non-AVIF input normalizes to AVIF q=50 + Artist/Copyright EXIF, long side 2100 (session shot) / 4000 (work image).
+- AVIF input within that long side passes through byte-for-byte: no re-encode, **no EXIF stamp**. Deliberate — phone shots track activity, not archival. Only the 400px thumb is encoded.
+- Detect AVIF with `isAvifBuffer()` (`lib/image-upload.ts`), never `meta.format === 'avif'`: libvips reports AVIF as `heif` + `compression: 'av1'`, so the bare test never matches.
 - Storage keys: `W_{oid}_{seq}_{hash8}.avif`, hash from raw input bytes (`lib/image-upload.ts`).
 - Image URLs only via `imageUrl()` / `thumbUrl()` from `lib/data.ts`. Never hand-build R2 URLs.
 
