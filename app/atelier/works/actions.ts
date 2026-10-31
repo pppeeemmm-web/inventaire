@@ -596,6 +596,25 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       edited_by:         actorId,
       edited_at:         editedAt,
     }
+
+    // A FormData key the caller never sent means "not edited here", not "clear it".
+    // Without this, every WorkForm save wiped the columns that form has no input for
+    // (checkboxes read as false when absent, text/number keys as null).
+    // Keep in sync with the form fields in WorkForm.tsx / work-drawer/DrawerContent.tsx.
+    const OPTIONAL_UPDATE_COLUMNS: Record<string, string> = {
+      LocalisationDetail:       'localisation_detail', // sent by neither form
+      DateLivraison:            'date_livraison',      // sent by neither form
+      Montee:                   'montee',              // drawer only
+      Encadree:                 'encadree',            // drawer only
+      IsCommission:             'is_commission',       // drawer only
+      is_gift:                  'is_gift',             // drawer only
+      admin_override_anonymity: 'admin_override_anonymity', // drawer only
+      PresentationID:           'presentation_id',     // drawer only
+    }
+    for (const [column, formKey] of Object.entries(OPTIONAL_UPDATE_COLUMNS)) {
+      if (!formData.has(formKey)) delete updatePayload[column]
+    }
+
     if (formUploadedNewImage) {
       updatePayload.txtImageNameLink = imageName
     }
