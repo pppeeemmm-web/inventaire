@@ -148,7 +148,7 @@ export function buildLandingGradientCss(stops: LandingGradientStop[]): string {
   return `linear-gradient(to bottom, ${parts})`
 }
 
-function relativeLuminance(hex: string): number {
+export function relativeLuminance(hex: string): number {
   const m = hex.match(HEX_RE)
   if (!m) return 0.5
   const n = parseInt(m[1], 16)

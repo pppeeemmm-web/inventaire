@@ -20,6 +20,12 @@ interface Props {
   glossMixBlendMode?: CSSProperties['mixBlendMode']
   /** Stacked drop-shadows; applied on `.waving-wave` (moves with warp). */
   heroDiscCastFilter?: string
+  /**
+   * Colour-only light for the hour (`brightness`/`saturate`/warmth), from
+   * `renderSky`. Composed *before* the cast shadows so it lights the paint
+   * without recolouring the shadows, which carry their own rgba.
+   */
+  heroDiscLightFilter?: string
   heroWhiteKey?: boolean
   heroBackdropCss?: string
 }
@@ -35,6 +41,7 @@ export default function WavingCircle({
   glossBackground,
   glossMixBlendMode = 'color-dodge',
   heroDiscCastFilter,
+  heroDiscLightFilter,
   heroWhiteKey = false,
   heroBackdropCss,
 }: Props) {
@@ -42,6 +49,9 @@ export default function WavingCircle({
   const castFilter =
     heroDiscCastFilter?.trim() ||
     'drop-shadow(0 16px 24px rgba(44, 42, 40, 0.28)) drop-shadow(0 40px 48px rgba(44, 42, 40, 0.12))'
+  // Light first, shadows second. `renderSky` floors the brightness, so this can
+  // never render the work unlit — at night it reads as moonlight, not darkness.
+  const discFilter = [heroDiscLightFilter?.trim(), castFilter].filter(Boolean).join(' ')
 
   const paintStyle: CSSProperties = {
     position: 'relative',
@@ -138,7 +148,7 @@ export default function WavingCircle({
             <div className="waving-tilt-x">
             <div
               className="waving-wave"
-              style={{ filter: castFilter }}
+              style={{ filter: discFilter }}
             >
               {whiteKey ? (
                 <div

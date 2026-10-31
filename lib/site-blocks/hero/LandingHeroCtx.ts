@@ -25,6 +25,8 @@ export interface LandingHeroCtxValue {
   heroBackdropCss: string
   /** Time-varying stacked drop-shadow filter (from chromeShadow tick). */
   heroDiscCastFilter: string
+  /** Colour-only hour light for the disc (see `renderSky`); undefined until the first client tick. */
+  heroDiscLightFilter?: string
   heroLinked: boolean
   // ── Fallback text values (used when block fields are empty) ───────
   artistName: string

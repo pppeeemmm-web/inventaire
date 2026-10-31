@@ -154,6 +154,7 @@ export default async function HomePage() {
       hiddenNavRoutes={hidden}
       navOrder={navOrder}
       landingBackgroundCss={landingBg.backgroundCss}
+      landingGradientStops={landingBg.gradientStops}
       landingBottomHex={landingBg.bottomHex}
       landingToolbarBackground={landingBg.toolbarBackground}
       landingChromeText={landingBg.chromeText}

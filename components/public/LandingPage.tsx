@@ -23,6 +23,9 @@ import IdentityRenderer, { type IdentityFields } from '@/lib/site-blocks/identit
 import { LandingHeroCtx, type LandingHeroCtxValue } from '@/lib/site-blocks/hero/LandingHeroCtx'
 import { resolveKnobs, DEFAULT_KNOBS_CONFIG } from '@/lib/site-blocks'
 import { applyCircadianToKnobs } from '@/lib/circadian-knobs'
+import { renderSky, type SkyRender } from '@/lib/circadian-sky'
+import { resolveViewerGeo, sunPosition, moonState } from '@/lib/solar-position'
+import type { LandingGradientStop } from '@/lib/landing-background'
 import { LandingAtomicClock } from './LandingAtomicClock'
 import type { Block, KnobsConfig } from '@/lib/portfolio-config-types'
 import type { KnobValues } from '@/lib/site-blocks/knob-types'
@@ -39,6 +42,8 @@ type LandingPageProps = {
   heroCaptionEn: string
   heroLinked: boolean
   landingBackgroundCss: string
+  /** Owner's configured stops — tinted toward the viewer's sky each tick. */
+  landingGradientStops: LandingGradientStop[]
   landingBottomHex: string
   landingToolbarBackground: string
   landingChromeText: string
@@ -74,6 +79,7 @@ export default function LandingPage({
   heroCaptionEn,
   heroLinked,
   landingBackgroundCss,
+  landingGradientStops,
   landingBottomHex,
   landingToolbarBackground,
   landingChromeText,
@@ -119,6 +125,12 @@ export default function LandingPage({
   // circadian here (new Date()) caused a hydration mismatch that made the page
   // flash/reset. Circadian is applied post-mount by the tick effect below.
   const [effectiveKnobs, setEffectiveKnobs] = useState<KnobValues>(resolvedBase)
+
+  // ── Circadian sky ──────────────────────────────────────────────────────────
+  // Null until the tick runs post-mount, so SSR and first client render both
+  // use the owner's static palette and the CSS-var fallbacks below. Same reason
+  // as effectiveKnobs above: a `new Date()` during render desyncs hydration.
+  const [sky, setSky] = useState<SkyRender | null>(null)
 
   const heroCaption = lang === 'en'
     ? (heroCaptionEn || heroCaptionFr)
@@ -179,6 +191,13 @@ export default function LandingPage({
       setEffectiveKnobs(
         applyCircadianToKnobs(resolvedBase, now.getHours() * 60 + now.getMinutes()),
       )
+      // §4.2b — circadian sky: the viewer's real sun/moon, from their timezone.
+      const geo = resolveViewerGeo(now)
+      setSky(renderSky({
+        stops: landingGradientStops,
+        sunElevationDeg: sunPosition(now, geo.latitude, geo.longitude).elevationDeg,
+        moon: moonState(now, geo.latitude, geo.longitude),
+      }))
     }
     apply()
     const tick = window.setInterval(apply, LANDING_SHADOW_TICK_MS)
@@ -197,7 +216,30 @@ export default function LandingPage({
       mqMotion.removeEventListener('change', apply)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shadowTuning.topTintHex, shadowTuning.bottomTintHex, shadowTuning.heroBevelPx, resolvedBase])
+  }, [shadowTuning.topTintHex, shadowTuning.bottomTintHex, shadowTuning.heroBevelPx, resolvedBase, landingGradientStops])
+
+  // Publish the sky as custom properties on <html>: `body` and `.stage` are
+  // both styled from the <style> block below and need the same live values.
+  useEffect(() => {
+    const root = document.documentElement
+    const vars: Record<string, string | null> = {
+      '--pem-sky-bg': sky?.gradientCss ?? null,
+      '--pem-sky-bottom': sky?.bottomHex ?? null,
+      '--pem-sky-toolbar': sky?.toolbarBackground ?? null,
+      '--pem-sky-chrome': sky?.chromeText ?? null,
+      '--pem-sky-chrome-hover': sky?.chromeTextHover ?? null,
+      '--pem-sky-chrome-border': sky?.chromeBorder ?? null,
+      '--pem-sky-body': sky?.bodyText ?? null,
+      '--pem-sky-body-muted': sky?.bodyMutedText ?? null,
+    }
+    for (const [name, value] of Object.entries(vars)) {
+      if (value) root.style.setProperty(name, value)
+      else root.style.removeProperty(name)
+    }
+    return () => {
+      for (const name of Object.keys(vars)) root.style.removeProperty(name)
+    }
+  }, [sky])
 
   const heroImage = (
     <WavingCircle
@@ -210,8 +252,9 @@ export default function LandingPage({
       glossBackground={heroGlossBackground}
       glossMixBlendMode={heroGlossMixBlendMode}
       heroDiscCastFilter={chromeShadow.heroDiscCastFilter}
+      heroDiscLightFilter={sky?.discFilter}
       heroWhiteKey={heroWhiteKey}
-      heroBackdropCss={landingBackgroundCss}
+      heroBackdropCss={sky?.gradientCss ?? landingBackgroundCss}
     />
   )
 
@@ -223,8 +266,9 @@ export default function LandingPage({
     heroGlossBackground,
     heroGlossMixBlendMode,
     heroWhiteKey,
-    heroBackdropCss: landingBackgroundCss,
+    heroBackdropCss: sky?.gradientCss ?? landingBackgroundCss,
     heroDiscCastFilter: chromeShadow.heroDiscCastFilter,
+    heroDiscLightFilter: sky?.discFilter,
     heroLinked,
     artistName,
     heroCaptionFr,
@@ -243,13 +287,13 @@ export default function LandingPage({
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         html, body { width: 100%; min-height: 100dvh; overflow-x: hidden; overflow-y: auto; }
         body {
-          background: ${landingBackgroundCss};
+          background: var(--pem-sky-bg, ${landingBackgroundCss});
           font-family: var(--font-ui, 'Sofia Sans', ui-sans-serif, system-ui, sans-serif);
-          color: ${landingBodyMutedText};
+          color: var(--pem-sky-body-muted, ${landingBodyMutedText});
         }
         .stage {
           position: fixed; inset: 0; min-height: 100dvh;
-          background: ${landingBackgroundCss};
+          background: var(--pem-sky-bg, ${landingBackgroundCss});
           padding-top: env(safe-area-inset-top, 0px);
           padding-bottom: env(safe-area-inset-bottom, 0px);
           padding-left: env(safe-area-inset-left, 0px);
@@ -281,7 +325,7 @@ export default function LandingPage({
           top: max(clamp(12px, 3vh, 28px), env(safe-area-inset-top, 0px));
           left: max(clamp(12px, 3vw, 32px), env(safe-area-inset-left, 0px));
           font-size: clamp(7px, 1.4vmin, 9px); letter-spacing: clamp(1.5px, 0.35vmin, 3px); text-transform: uppercase;
-          color: ${landingChromeText}; text-decoration: none;
+          color: var(--pem-sky-chrome, ${landingChromeText}); text-decoration: none;
           padding: 10px 8px;
           padding-inline-start: calc(8px + var(--landing-shadow-pad-inline-start, 0px));
           min-height: 44px; display: inline-flex; align-items: center;
@@ -295,7 +339,7 @@ export default function LandingPage({
           top: max(clamp(10px, 2.8vh, 24px), env(safe-area-inset-top, 0px));
           right: max(clamp(12px, 3vw, 32px), env(safe-area-inset-right, 0px));
           font-size: clamp(7px, 1.4vmin, 9px); letter-spacing: clamp(1px, 0.3vmin, 2px); text-transform: uppercase;
-          color: ${landingChromeText}; background: rgba(255,255,255,0.35); border: 1px solid ${landingChromeBorder};
+          color: var(--pem-sky-chrome, ${landingChromeText}); background: rgba(255,255,255,0.35); border: 1px solid var(--pem-sky-chrome-border, ${landingChromeBorder});
           padding: 4px 10px;
           padding-inline-end: calc(10px + var(--landing-shadow-pad-inline-end, 0px));
           cursor: pointer; transition: all .15s; font-family: inherit;
@@ -303,7 +347,7 @@ export default function LandingPage({
           overflow: visible;
           z-index: 30;
         }
-        .lang-toggle:hover { color: ${landingChromeTextHover}; border-color: ${landingChromeTextHover}; }
+        .lang-toggle:hover { color: var(--pem-sky-chrome-hover, ${landingChromeTextHover}); border-color: var(--pem-sky-chrome-hover, ${landingChromeTextHover}); }
         .hero-orbit-wrap {
           position: relative;
           flex-shrink: 0;
@@ -346,7 +390,7 @@ export default function LandingPage({
           font-size: clamp(8px, 1.5vmin, 10px);
           letter-spacing: clamp(0.5px, 0.2vmin, 1.5px);
           line-height: 1.6;
-          color: ${landingBodyMutedText};
+          color: var(--pem-sky-body-muted, ${landingBodyMutedText});
           font-style: italic;
         }
         .landing-inline-nav {
@@ -366,7 +410,7 @@ export default function LandingPage({
           font-size: clamp(8px, 2.5vmin, 10px);
           letter-spacing: clamp(1.5px, 0.35vmin, 3px);
           text-transform: uppercase;
-          color: ${landingBodyText};
+          color: var(--pem-sky-body, ${landingBodyText});
           text-decoration: none;
           display: inline-flex;
           align-items: center;
@@ -377,9 +421,9 @@ export default function LandingPage({
           transition: color .25s;
           white-space: nowrap;
         }
-        .landing-inline-link:hover { color: ${landingChromeTextHover}; }
+        .landing-inline-link:hover { color: var(--pem-sky-chrome-hover, ${landingChromeTextHover}); }
         .hub-link {
-          color: ${landingBodyMutedText};
+          color: var(--pem-sky-body-muted, ${landingBodyMutedText});
           text-decoration: none;
           opacity: 0.52;
           transition: color 0.2s, opacity 0.2s;
@@ -406,7 +450,7 @@ export default function LandingPage({
         }
         .hub-link:hover {
           opacity: 0.72 !important;
-          color: ${landingBodyText} !important;
+          color: var(--pem-sky-body, ${landingBodyText}) !important;
         }
         .landing-nav-btn {
           display: none;
@@ -418,16 +462,16 @@ export default function LandingPage({
           font-size: clamp(7px, 1.4vmin, 9px);
           letter-spacing: clamp(1px, 0.3vmin, 2px);
           text-transform: uppercase;
-          color: ${landingChromeText};
-          background: ${landingBottomHex};
-          border: 1px solid ${landingChromeBorder};
+          color: var(--pem-sky-chrome, ${landingChromeText});
+          background: var(--pem-sky-bottom, ${landingBottomHex});
+          border: 1px solid var(--pem-sky-chrome-border, ${landingChromeBorder});
           padding: 8px 18px;
           cursor: pointer;
           font-family: inherit;
           font-weight: 600;
           min-height: 44px;
         }
-        .landing-nav-btn:hover { border-color: ${landingChromeBorder}; color: ${landingChromeTextHover}; }
+        .landing-nav-btn:hover { border-color: var(--pem-sky-chrome-border, ${landingChromeBorder}); color: var(--pem-sky-chrome-hover, ${landingChromeTextHover}); }
         .landing-drawer-link {
           font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
           color: #5a5650; text-decoration: none; padding: 14px 8px;
@@ -479,20 +523,11 @@ export default function LandingPage({
           ...(pubNarrow ? { paddingBottom: 'calc(56px + env(safe-area-inset-bottom, 0px))' } : {}),
         } as CSSProperties}
       >
-        {/* §4.2 — circadian atmosphere tint overlay (renders only when tint_opacity > 0) */}
-        {effectiveKnobs.atm.tint_opacity > 0 ? (
-          <div
-            aria-hidden
-            style={{
-              position: 'absolute',
-              inset: 0,
-              background: `linear-gradient(180deg, ${effectiveKnobs.atm.sky_top}, ${effectiveKnobs.atm.sky_bottom})`,
-              opacity: effectiveKnobs.atm.tint_opacity,
-              pointerEvents: 'none',
-              zIndex: 0,
-            }}
-          />
-        ) : null}
+        {/* §4.2b — the atmosphere veil that used to live here is gone. It could
+            only darken the page (every keyframe was near-black), it stacked on
+            top of the circadian sky, and because it sat *behind* the text it
+            silently undercut the contrast guarantee in `renderSky`. The sky
+            itself now carries the hour. */}
 
         <h1 className="wordmark landing-chrome-shadow">
           {identityBlock && identityBlock.visible !== false ? (
@@ -627,7 +662,7 @@ export default function LandingPage({
             paddingRight: 'max(12px, env(safe-area-inset-right, 0px))',
             paddingBottom: 'max(8px, env(safe-area-inset-bottom, 0px))',
             paddingLeft: 'max(12px, env(safe-area-inset-left, 0px))',
-            background: landingToolbarBackground,
+            background: sky?.toolbarBackground ?? landingToolbarBackground,
             borderTop: '1px solid #dedad4',
             backdropFilter: 'blur(8px)',
           }}
@@ -707,7 +742,7 @@ export default function LandingPage({
               paddingBottom: 'max(20px, env(safe-area-inset-bottom, 0px))',
               paddingLeft: 20,
               paddingRight: 'max(20px, env(safe-area-inset-right, 0px))',
-              background: landingBottomHex,
+              background: sky?.bottomHex ?? landingBottomHex,
               borderLeft: '1px solid #dedad4',
               boxShadow: '-10px 0 28px rgba(0,0,0,0.12)',
               display: 'flex',

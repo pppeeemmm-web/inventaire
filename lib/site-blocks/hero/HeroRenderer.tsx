@@ -55,6 +55,7 @@ export default function HeroRenderer({ fields }: BlockRendererProps<HeroFields>)
       glossBackground={ctx.heroGlossBackground}
       glossMixBlendMode={ctx.heroGlossMixBlendMode}
       heroDiscCastFilter={ctx.heroDiscCastFilter}
+      heroDiscLightFilter={ctx.heroDiscLightFilter}
       heroWhiteKey={ctx.heroWhiteKey}
       heroBackdropCss={ctx.heroBackdropCss}
     />

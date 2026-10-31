@@ -2,7 +2,7 @@
 
 _Live checklist. History → [`archive/`](./archive/). Current workstream → [`MOBILE_RATIONALIZATION_PLAN.md`](./MOBILE_RATIONALIZATION_PLAN.md)._
 
-**Last refresh: 2026-07-16** — V5 programme closed 2026-05-29 (slices 1–8, details in archive). Mobile rationalization: Phases 0–2.1 done, next 2.2 (gated on owner field notes).
+**Last refresh: 2026-10-31** — V5 programme closed 2026-05-29 (slices 1–8, details in archive). Mobile rationalization: Phases 0–2.1 done, next 2.2 (gated on owner field notes).
 
 ## Live workstream
 
@@ -35,6 +35,8 @@ _Live checklist. History → [`archive/`](./archive/). Current workstream → [`
 - [ ] **Session flow follow-ups** (2026-07-19, after apply-passthrough + auto-apply + busy-count shipped): wire or delete the dead Lightroom-return loop (`lib/mobile/lightroom-return.ts` never called → triage "Add to work session" unreachable; CLAUDE.md documents it as canonical); parallelize/paginate `applyWorkSessionToOeuvre` for true per-shot progress; defer `consolidateSessionsForCalendarDay` off the session-open critical path; index-backed `searchWorksForSession` (full-table scan per keystroke).
 - [ ] **Photothèque ~4000 photos** — parked ("on verra plus tard"). Recommendation on file: parallel table reusing R2/AVIF pipeline, optional link to Oeuvres; blocked on owner clarifying documentation-vs-library nature.
 - [ ] **Statuts FR en mode EN** — chips "DISPONIBLE / EN PRODUCTION" come from `OeuvreStatus` DB labels, not UI copy; decide data-side translation.
+
+- [ ] **Circadian sky leftovers** (2026-10-31, after the landing sky shipped). Three known gaps, none blocking: (a) `applyCircadianToKnobs` still ignores `circ.auto` and `circ.manual_minute`, so the KnobsPanel Auto toggle and manual-time slider do nothing — there is no in-app way to preview another hour; (b) `circadianShadowGeometry` ([`lib/landing-text-shadow.ts`](../lib/landing-text-shadow.ts)) still uses the synthetic 06:00-21:00 arc for shadow *direction* while colour and light now come from real solar elevation — the real azimuth is already computed in [`lib/solar-position.ts`](../lib/solar-position.ts) and just needs wiring; (c) the `atm` knob family (`sky_top` / `sky_bottom` / `tint_opacity`) is inert on landing now that the veil is gone — either repoint it at the sky keyframes or drop it from `KnobsPanel` for the landing scope.
 
 - [ ] **R2 assets** — upload panorama + video for map/motion_interior layouts (`site/forest-panorama.avif`, `site/interior-loop.webm`), paste keys in site editor.
 - [ ] **`/works` gallery** — cm-scaled wall scroll (WIP on hold).
