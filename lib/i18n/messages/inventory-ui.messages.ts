@@ -93,4 +93,8 @@ export const inventoryUiMessages = defineMessages({
     fr: 'Date retour',
     en: 'Return date',
   },
+  inv_field_has_image: {
+    fr: 'Photo (couverture)',
+    en: 'Photo (cover)',
+  },
 })

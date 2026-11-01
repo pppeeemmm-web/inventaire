@@ -1111,6 +1111,7 @@ export type Database = {
           is_public: boolean
           IsCommission: boolean | null
           Largeur: string | null
+          localisation_address_id: number | null
           LocalisationDetail: string | null
           LocalisationID: number | null
           Montee: boolean | null
@@ -1157,6 +1158,7 @@ export type Database = {
           is_public?: boolean
           IsCommission?: boolean | null
           Largeur?: string | null
+          localisation_address_id?: number | null
           LocalisationDetail?: string | null
           LocalisationID?: number | null
           Montee?: boolean | null
@@ -1203,6 +1205,7 @@ export type Database = {
           is_public?: boolean
           IsCommission?: boolean | null
           Largeur?: string | null
+          localisation_address_id?: number | null
           LocalisationDetail?: string | null
           LocalisationID?: number | null
           Montee?: boolean | null

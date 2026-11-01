@@ -5,6 +5,8 @@ import { useMemo } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import type { OwnStageId, ProdStageId } from '@/lib/work-editor-model'
 import type { DrawerContactRow } from './drawer-content-props'
+import type { ContactAddress } from '@/components/atelier/contact-editor-types'
+import { LocationAddressPicker } from '@/components/atelier/LocationAddressPicker'
 import { SectionTitle, WfPipeProgress, WfSwitch, FIS } from './drawer-widgets'
 
 export type WorkDrawerPipelineSectionProps = {
@@ -20,6 +22,9 @@ export type WorkDrawerPipelineSectionProps = {
   pemContact: DrawerContactRow | undefined
   contactId: string
   setContactId: Dispatch<SetStateAction<string>>
+  locationAddresses: ContactAddress[]
+  localisationAddressId: string
+  setLocalisationAddressId: Dispatch<SetStateAction<string>>
   sortedContacts: DrawerContactRow[]
   cName: (c: DrawerContactRow) => string
   currentLoc: string
@@ -41,6 +46,9 @@ export function WorkDrawerPipelineSection({
   pemContact,
   contactId,
   setContactId,
+  locationAddresses,
+  localisationAddressId,
+  setLocalisationAddressId,
   sortedContacts,
   cName,
   currentLoc,
@@ -195,6 +203,11 @@ export function WorkDrawerPipelineSection({
               }}
             >
               <div className="t-mono-sm" style={{ fontSize: 11, color: 'var(--ac)' }}>{currentLoc}</div>
+              <LocationAddressPicker
+                addresses={locationAddresses}
+                value={localisationAddressId}
+                onChange={setLocalisationAddressId}
+              />
             </div>
           </div>
         ) : (
@@ -281,6 +294,11 @@ export function WorkDrawerPipelineSection({
               }}
             >
               <div className="t-mono-sm" style={{ fontSize: 11, color: 'var(--ac)' }}>{currentLoc}</div>
+              <LocationAddressPicker
+                addresses={locationAddresses}
+                value={localisationAddressId}
+                onChange={setLocalisationAddressId}
+              />
             </div>
           </div>
         )}

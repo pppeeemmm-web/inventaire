@@ -22,6 +22,7 @@ export const PENDING_SCALAR_FORM_KEYS = [
   'historique',
   'localisation_id',
   'localisation_detail',
+  'localisation_address_id',
   'tva_rate',
   'broadcast_caption_seed',
   'date_livraison',

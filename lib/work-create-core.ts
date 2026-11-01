@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/types/supabase.generated'
+import { PEM_CONTACT_ID } from '@/lib/data'
 
 // Single source for Oeuvres creation (new-work insert path).
 // Callers: saveWork (app/atelier/works/actions.ts), session workflow, share-triage.
@@ -43,9 +44,21 @@ export async function insertOeuvreRow(
   columns: OeuvreCreateColumns,
   provenance: { actorId: string | null; editedAt: string },
 ): Promise<{ error: string } | { ok: true }> {
+  // Studio rule: the artist is the producer, so a new work is owned by the artist
+  // unless the caller names another holder — ownership moves only by explicit transfer.
+  // A work then lives wherever its owner is, so location follows ownership; an explicit
+  // location still wins, for the case where a holder stores a work somewhere else.
+  // Session and share-triage supply neither, so their works land with the artist.
+  // This mirrors WorkForm, which already submits contact_id and localisation_id as the
+  // same contact. Which of that contact's addresses is `localisation_address_id`.
+  const contactId = columns.ContactID ?? PEM_CONTACT_ID
+  const localisationId = columns.LocalisationID ?? contactId
+
   const { error: insertErr } = await svc.from('Oeuvres').insert({
     OeuvreID: oid,
     ...columns,
+    ContactID: contactId,
+    LocalisationID: localisationId,
     created_by: provenance.actorId,
     edited_by:  provenance.actorId,
     edited_at:  provenance.editedAt,

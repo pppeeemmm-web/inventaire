@@ -23,6 +23,7 @@ import { stockUiMessages } from './stock-ui.messages'
 import { portfolioConfigMessages } from './portfolio-config.messages'
 import { knobsPanelMessages } from './knobs-panel.messages'
 import { sessionFieldMessages } from './session-field.messages'
+import { overviewConsoleMessages } from './overview-console.messages'
 
 export const featureMessages = {
   ...atelierMessages,
@@ -50,6 +51,7 @@ export const featureMessages = {
   ...portfolioConfigMessages,
   ...knobsPanelMessages,
   ...sessionFieldMessages,
+  ...overviewConsoleMessages,
 } as const
 
 export type MessageKey = keyof typeof featureMessages

@@ -21,10 +21,12 @@ import { stringifyError } from '@/lib/error'
 import { toast } from '@/lib/ui/toast'
 import { registerUndo, consumeUndo } from '@/lib/ui/undo'
 import type { Oeuvre } from '@/lib/types/database'
+import type { ContactAddress } from '@/components/atelier/contact-editor-types'
 import { WorkDrawer, type WorkDrawerGuardHandle } from '@/components/atelier/WorkDrawer'
 import type { RefObject } from 'react'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { batchEdit } from '@/app/atelier/selection/actions'
+import { consumeInventoryFilter } from '@/lib/atelier/inventory-filter-handoff'
 import type { Agg, Dim } from '@/lib/pivot'
 import { PivotPanel } from '@/components/atelier/PivotPanel'
 
@@ -222,7 +224,7 @@ const INV_GRID_ROW_H = 228
 export function Inventory({
   oeuvres, tM, sM, cM, pM, locMap, statusLabelMap,
   techniques, supports, formats = [], themes = [], groups = [],
-  contacts = [], presentations = [],
+  contacts = [], addresses = [], presentations = [],
   selection, setSelection, onOpen,
   oeuvreThemeIdsByOeuvre = {},
   oeuvreGroupIdsByOeuvre = {},
@@ -241,6 +243,7 @@ export function Inventory({
   themes?:        { id: number; name: string }[]
   groups?:        { id: string; name: string }[]
   contacts?:      { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null; Role: string | null; Ville?: string | null; Pays?: string | null }[]
+  addresses?:     ContactAddress[]
   presentations?: { PresentationID: number; Nom: string | null }[]
   /** From RSC (oeuvre_theme / working_group_work); avoids duplicate client fetch */
   oeuvreThemeIdsByOeuvre?: Record<number, number[]>
@@ -348,6 +351,22 @@ export function Inventory({
   const [filterGroup, setFilterGroup] = useState('all')
   const nextCritId = useRef(0)
 
+  // Apply a filter handed off from another tab (e.g. an Overview console row).
+  // One-shot: `consumeInventoryFilter` clears it, so it never re-applies on re-mount.
+  useEffect(() => {
+    const handoff = consumeInventoryFilter()
+    if (!handoff) return
+    setCriteria(
+      handoff.criteria.map((c) => ({
+        id: nextCritId.current++,
+        field: c.field,
+        op: c.op,
+        value: c.value ?? '',
+      })),
+    )
+    setShowAdv(true)
+  }, [])
+
   const handlePanelWorkSaved = useCallback(
     (oeuvreId: number, patch: Partial<Oeuvre>) => {
       onOeuvrePatched?.(oeuvreId, patch)
@@ -412,6 +431,7 @@ export function Inventory({
     // Add virtual curation fields for advanced filter
     fields.push({ k: '_theme', l: t('theme'), t: 'lookup' })
     fields.push({ k: '_group', l: t('const_viewGroup'), t: 'lookup' })
+    fields.push({ k: '_hasImage', l: t('inv_field_has_image'), t: 'lookup' })
 
     return fields
   }, [oeuvres, t])
@@ -534,6 +554,14 @@ export function Inventory({
           if (!gid) return true
           if (c.op === '=') return groupIds.includes(gid)
           if (c.op === '≠') return !groupIds.includes(gid)
+          return true
+        }
+        // Cover image: `txtImageNameLink` is excluded from allFields (trigger-managed),
+        // so it needs a virtual field to be filterable at all.
+        if (c.field === '_hasImage') {
+          const has = typeof o.txtImageNameLink === 'string' && o.txtImageNameLink.trim() !== ''
+          if (c.op === "n'est pas vide") return has
+          if (c.op === 'est vide')       return !has
           return true
         }
         return matchesCriterion(o, c, allFields)
@@ -975,7 +1003,7 @@ export function Inventory({
                 thM={thM} oeuvreThemeMap={oeuvreThemeMap} oeuvreGroupMap={oeuvreGroupMap}
                 groupNameMap={groupNameMap}
                 techniques={techniques} supports={supports} formats={formats}
-                themes={themes} contacts={contacts} groups={groups}
+                themes={themes} contacts={contacts} addresses={addresses} groups={groups}
                 presentations={presentations}
                 expanded={previewExpanded}
                 setExpanded={setPreviewExpanded}

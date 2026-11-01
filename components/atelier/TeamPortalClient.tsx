@@ -196,6 +196,7 @@ const DEFAULT_OVERVIEW_BOOTSTRAP: AtelierOverviewBootstrap = {
   upcomingPulse: [],
   overviewCalendarEvents: [],
   burningConcepts: [],
+  backlog: { pendingApprovals: 0, openFieldTasks: 0, openLedger: 0, sessionsToApply: 0 },
 }
 
 function junctionFromServerInitial(init: Partial<AtelierJunctionDerived>): AtelierJunctionDerived {
@@ -1481,6 +1482,7 @@ export function TeamPortalClient({
             sortedThemes={sortedThemes}
             groups={groups}
             contacts={contacts}
+            addresses={curationAddresses}
             presentations={presentations}
             tM={tM}
             sM={sM}
@@ -1532,6 +1534,7 @@ export function TeamPortalClient({
       {/* ── Work Drawer (always mounted so ref/guards work for ?work= deep links) ── */}
       <WorkDrawer
         ref={workDrawerGuardRef}
+        addresses={curationAddresses}
         o={inspected}
         tM={tM} sM={sM} cM={cM} pM={pM}
         statusLabelMap={statusLabelMap}

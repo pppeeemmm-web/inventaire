@@ -13,6 +13,7 @@ import {
 import type { MutableRefObject } from 'react'
 import type { Oeuvre } from '@/lib/types/database'
 import { useMediaQuery } from '@/lib/useMediaQuery'
+import type { ContactAddress } from '@/components/atelier/contact-editor-types'
 import { DrawerContent } from './work-drawer/DrawerContent'
 
 /* ──────────────────────────────────────────────────────────────────
@@ -44,6 +45,7 @@ interface Props {
   formats:        { FormatID:    number; Format:    string | null }[]
   themes:         { id:          number; name:      string }[]
   contacts:       { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null; Role: string | null; Ville?: string | null; Pays?: string | null }[]
+  addresses?:     ContactAddress[]
   groups:         { id: string; name: string }[]
   presentations:  { PresentationID: number; Nom: string | null }[]
   mode?:          'panel' | 'overlay'
@@ -75,7 +77,7 @@ export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function Work
   o, tM, sM, cM, pM, fM, locMap, statusLabelMap, selection, setSelection, toggleInSel, onClose, onEdit,
   thM, oeuvreThemeMap, oeuvreGroupMap, groupNameMap,
   techniques: initialTechniques, supports: initialSupports, formats: initialFormats,
-  themes: initialThemes, contacts: initialContacts, groups: initialGroups,
+  themes: initialThemes, contacts: initialContacts, addresses: initialAddresses = [], groups: initialGroups,
   presentations: initialPresentations,
   mode = 'overlay', expanded: expandedProp = false, setExpanded: setExpandedProp,
   guardApiRef: guardApiRefProp,
@@ -238,7 +240,7 @@ export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function Work
             groupNameMap={groupNameMap}
             initialTechniques={initialTechniques} initialSupports={initialSupports}
             initialFormats={initialFormats} initialThemes={initialThemes}
-            initialContacts={initialContacts} initialGroups={initialGroups}
+            initialContacts={initialContacts} initialAddresses={initialAddresses} initialGroups={initialGroups}
             initialPresentations={initialPresentations}
             mode="panel" isExpanded={isExpanded} setExpanded={setExpandedProp}
             imgZoom={imgZoom} setImgZoom={setImgZoom}
@@ -305,7 +307,7 @@ export const WorkDrawer = forwardRef<WorkDrawerGuardHandle, Props>(function Work
             groupNameMap={groupNameMap}
             initialTechniques={initialTechniques} initialSupports={initialSupports}
             initialFormats={initialFormats} initialThemes={initialThemes}
-            initialContacts={initialContacts} initialGroups={initialGroups}
+            initialContacts={initialContacts} initialAddresses={initialAddresses} initialGroups={initialGroups}
             initialPresentations={initialPresentations}
             mode="overlay" isExpanded={false}
             imgZoom={imgZoom} setImgZoom={setImgZoom}

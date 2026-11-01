@@ -26,6 +26,7 @@ const overviewDefault: AtelierOverviewBootstrap = {
   upcomingPulse: [],
   overviewCalendarEvents: [],
   burningConcepts: [],
+  backlog: { pendingApprovals: 0, openFieldTasks: 0, openLedger: 0, sessionsToApply: 0 },
 }
 
 export type AtelierShellLoaderProps = TeamPortalClientProps & {
@@ -62,7 +63,7 @@ export async function loadAtelierShellProps(
         supabase.from('Oeuvres').select('OeuvreID', { count: 'exact', head: true }).is('deleted_at', null),
         supabase
           .from('Oeuvres')
-          .select('OeuvreID, Titre, Technique, Support, "Année", Format, Hauteur, Largeur, Profondeur, Exposable, broadcast_ready, broadcast_caption_seed, Prix, PrixFinal, Discount, statusId, "Catalogué", txtImageNameLink, ContactID, LocalisationID, LocalisationDetail, is_public, Encadree, IsCommission, PresentationID, ReturnDate, DateLivraison, AcheteurID, NeedsPhotograph, anonymity_level, admin_override_anonymity')
+          .select('OeuvreID, Titre, Technique, Support, "Année", Format, Hauteur, Largeur, Profondeur, Exposable, broadcast_ready, broadcast_caption_seed, Prix, PrixFinal, Discount, statusId, "Catalogué", txtImageNameLink, ContactID, LocalisationID, LocalisationDetail, localisation_address_id, is_public, Encadree, IsCommission, PresentationID, ReturnDate, DateLivraison, AcheteurID, NeedsPhotograph, anonymity_level, admin_override_anonymity')
           .is('deleted_at', null)
           .order('OeuvreID', { ascending: false })
           .limit(ATELIER_OEUVRE_PAGE),

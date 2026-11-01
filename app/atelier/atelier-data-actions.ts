@@ -60,7 +60,7 @@ export async function fetchAtelierOverviewBootstrap(
 ): Promise<AtelierOverviewBootstrap> {
   const supabase = client ?? (await createClient())
 
-  const [expRes, proRes, etRes, conceptRes] = await Promise.all([
+  const [expRes, proRes, etRes, conceptRes, approvalsRes, fieldTasksRes, ledgerRes, sessionsRes] = await Promise.all([
     supabase.from('expense').select('montant_ttc').eq('fiscal_year', fiscalYear),
     supabase
       .from('suivi_process')
@@ -78,12 +78,34 @@ export async function fetchAtelierOverviewBootstrap(
       .not('statut', 'eq', 'devenu_oeuvre')
       .order('energie', { ascending: false })
       .limit(5),
+    // ── "Needs you" open-item counts (head-only: no rows transferred) ──
+    supabase
+      .from('pending_changes')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'pending'),
+    supabase
+      .from('studio_task')
+      .select('id', { count: 'exact', head: true })
+      .in('status', ['active', 'requested', 'in-progress']),
+    supabase
+      .from('system_log')
+      .select('id', { count: 'exact', head: true })
+      .is('event_type', null)
+      .in('status', ['active', 'requested']),
+    supabase
+      .from('work_session')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'pending_review'),
   ])
 
   if (expRes.error) console.error('[atelier overview] expense:', expRes.error.message)
   if (proRes.error) console.error('[atelier overview] suivi_process:', proRes.error.message)
   if (etRes.error) console.error('[atelier overview] suivi_etape:', etRes.error.message)
   if (conceptRes.error) console.error('[atelier overview] concept:', conceptRes.error.message)
+  if (approvalsRes.error) console.error('[atelier overview] pending_changes:', approvalsRes.error.message)
+  if (fieldTasksRes.error) console.error('[atelier overview] studio_task:', fieldTasksRes.error.message)
+  if (ledgerRes.error) console.error('[atelier overview] system_log:', ledgerRes.error.message)
+  if (sessionsRes.error) console.error('[atelier overview] work_session:', sessionsRes.error.message)
 
   const expenseRows = (expRes.data ?? []) as { montant_ttc: number | null }[]
   const expenseTotalTtc = expenseRows.reduce((s, e) => s + (e.montant_ttc ?? 0), 0)
@@ -105,6 +127,13 @@ export async function fetchAtelierOverviewBootstrap(
     upcomingPulse: computePipelinePulseItems(processes).slice(0, 8),
     overviewCalendarEvents: buildPipelineCalendarEvents(processes, reminderInputs),
     burningConcepts: (conceptRes.data ?? []) as ConceptBurningRow[],
+    // A failed count must not blank the console — fall back to 0 and log.
+    backlog: {
+      pendingApprovals: approvalsRes.count ?? 0,
+      openFieldTasks: fieldTasksRes.count ?? 0,
+      openLedger: ledgerRes.count ?? 0,
+      sessionsToApply: sessionsRes.count ?? 0,
+    },
   }
 }
 

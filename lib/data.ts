@@ -3,6 +3,15 @@
 // Do not import `lib/i18n/dictionary` here — this module loads in many client chunks;
 // pulling the full dict graph caused webpack runtime failures (undefined `.call`).
 
+/**
+ * The artist's own `Contact` row — the studio itself.
+ *
+ * `Oeuvres.LocalisationID` is an FK to `Contact`, and a work with no stated location
+ * is in the studio. Treat this as the default location, not as "unknown": new works
+ * get it at insert (`lib/work-create-core.ts`), and a returning consignment resets to it.
+ */
+export const PEM_CONTACT_ID = 13
+
 const R2 = (process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? '').replace(/\/$/, '')
 
 /** In development, use Next rewrite (/r2-proxy → R2) so canvas + crossOrigin sees same-origin */

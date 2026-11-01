@@ -17,6 +17,8 @@ export type WorkFormDraftPayload = {
   needsPhoto: boolean
   ownStage: string
   contactId: string
+  /** Which of the contact's addresses holds the work ('' = unspecified). */
+  localisationAddressId: string
   anonymityLevel: number
   prix: string
   tvaRate: string
@@ -59,6 +61,7 @@ export function normalizeWorkFormDraftContent(
     needsPhoto: !!p.needsPhoto,
     ownStage: String(p.ownStage ?? ''),
     contactId: String(p.contactId ?? ''),
+    localisationAddressId: String(p.localisationAddressId ?? ''),
     anonymityLevel: typeof p.anonymityLevel === 'number' ? p.anonymityLevel : 0,
     prix: String(p.prix ?? '0'),
     tvaRate: String(p.tvaRate ?? '0'),

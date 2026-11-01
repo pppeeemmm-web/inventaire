@@ -25,4 +25,12 @@ export const workFormMessages = defineMessages({
     fr: 'QR indisponible',
     en: 'QR unavailable',
   },
+  wf_location_address_label: {
+    fr: 'Adresse du détenteur',
+    en: 'Holder address',
+  },
+  wf_location_address_any: {
+    fr: 'Adresse non précisée',
+    en: 'Address not specified',
+  },
 })

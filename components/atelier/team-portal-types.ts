@@ -9,11 +9,28 @@ import type { PipelineCalendarEvent } from '@/lib/pipeline-calendar'
 import type { AtelierJunctionDerived } from '@/lib/atelier/atelier-junction-bootstrap'
 import type { SegmentedAtelierTab } from '@/lib/atelier/tab-routes'
 
+/**
+ * Open-item counts for the Overview "Needs you" console. These are *open* counts
+ * (not since-last-seen deltas like `countTeamActivitySince`), so each row can link
+ * to the tab that actions it.
+ */
+export interface AtelierBacklogCounts {
+  /** `pending_changes` awaiting approval (admin-actionable; RLS yields 0 otherwise). */
+  pendingApprovals: number
+  /** `studio_task` still open — field issues + voice-note follow-ups. */
+  openFieldTasks: number
+  /** Manual `system_log` entries (team suggestions / ledger) still open. */
+  openLedger: number
+  /** `work_session` rows awaiting apply. */
+  sessionsToApply: number
+}
+
 export interface AtelierOverviewBootstrap {
   expenseTotalTtc: number
   upcomingPulse: PipelinePulseItem[]
   overviewCalendarEvents: PipelineCalendarEvent[]
   burningConcepts: ConceptBurningRow[]
+  backlog: AtelierBacklogCounts
 }
 
 export interface TeamPortalClientProps extends Partial<AtelierJunctionDerived> {

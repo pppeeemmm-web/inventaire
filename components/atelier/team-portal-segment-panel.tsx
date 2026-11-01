@@ -9,6 +9,7 @@ import type { WorkDrawerGuardHandle } from '@/components/atelier/WorkDrawer'
 import type { SegmentedAtelierTab } from '@/lib/atelier/tab-routes'
 import type { TeamPortalClientProps, AtelierOverviewBootstrap } from '@/components/atelier/team-portal-types'
 import type { Lang } from '@/lib/i18n/dictionary'
+import type { ContactAddress } from '@/components/atelier/contact-editor-types'
 
 function TabPanelFallback() {
   const { t } = useI18n()
@@ -60,6 +61,7 @@ export type SegmentRoutePanelProps = {
   sortedThemes: { id: number; name: string }[]
   groups: { id: string; name: string }[]
   contacts: TeamPortalClientProps['contacts']
+  addresses?: ContactAddress[]
   presentations: { PresentationID: number; Nom: string | null }[]
   tM: Record<number, string>
   sM: Record<number, string>
@@ -112,6 +114,7 @@ export function SegmentRoutePanel({
   sortedThemes,
   groups,
   contacts,
+  addresses,
   presentations,
   tM,
   sM,
@@ -236,6 +239,7 @@ export function SegmentRoutePanel({
           themes={sortedThemes}
           groups={groups}
           contacts={contacts}
+          addresses={addresses}
           presentations={presentations}
           tM={tM}
           sM={sM}

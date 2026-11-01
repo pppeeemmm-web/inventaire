@@ -17,6 +17,8 @@ export interface Oeuvre {
   ContactID?: number | null;
   LocalisationID?: number | null;
   LocalisationDetail?: string | null;
+  /** Which of the LocalisationID contact's addresses holds the work (null = unspecified). */
+  localisation_address_id?: number | null;
   AcheteurID?: number | null;
   Prix: number | null;
   Discount?: number | null;

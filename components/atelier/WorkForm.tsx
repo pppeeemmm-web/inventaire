@@ -48,6 +48,7 @@ import type { ContactAddress } from '@/components/atelier/contact-editor-types'
 import type { ShareInboxWorkPrefill } from '@/app/atelier/share-triage/actions'
 import { attachShareInboxToWork } from '@/app/atelier/share-triage/actions'
 import { WorkFormPhysicalQr } from '@/components/atelier/WorkFormPhysicalQr'
+import { LocationAddressPicker } from '@/components/atelier/LocationAddressPicker'
 import { normalizeAnonymityLevel } from '@/lib/anonymity-level'
 
 // ── Props ─────────────────────────────────────────────────────────────────
@@ -74,6 +75,7 @@ export function WorkForm({
   techniques: initialTechniques, supports: initialSupports, formats: initialFormats,
   themes: initialThemes,
   contacts,
+  addresses,
   initialImages = [],
   groups: initialGroups,
   currentGroupIds,
@@ -152,6 +154,13 @@ export function WorkForm({
   // ── Ownership / flow state ────────────────────────────────────────
   const [ownStage,      setOwnStage]      = useState<OwnStageId>(() => ownStageFromStatusId(oeuvre?.statusId))
   const [contactId,     setContactId]     = useState(String(oeuvre?.LocalisationID ?? ''))
+  const locationAddresses = useMemo(
+    () => (addresses ?? []).filter((a) => String(a.contact_id) === contactId),
+    [addresses, contactId],
+  )
+  const [localisationAddressId, setLocalisationAddressId] = useState(
+    String((oeuvre as { localisation_address_id?: number | null } | undefined)?.localisation_address_id ?? ''),
+  )
   const [anonymityLevel, setAnonymityLevel] = useState<number>(() =>
     normalizeAnonymityLevel((oeuvre as { anonymity_level?: unknown })?.anonymity_level),
   )
@@ -182,13 +191,13 @@ export function WorkForm({
 
   const draftSnapshot = useMemo((): WorkFormDraftContent => ({
     titre, annee, techniqueId, supportId, formatId, hauteur, largeur, profondeur,
-    prodStage, needsPhoto, ownStage, contactId, anonymityLevel,
+    prodStage, needsPhoto, ownStage, contactId, localisationAddressId, anonymityLevel,
     prix, tvaRate, discount, paymentDone, exposable, broadcastReady,
     commentaires, historique,
     selThemes: Array.from(selThemes), selGroups: Array.from(selGroups),
   }), [
     titre, annee, techniqueId, supportId, formatId, hauteur, largeur, profondeur,
-    prodStage, needsPhoto, ownStage, contactId, anonymityLevel,
+    prodStage, needsPhoto, ownStage, contactId, localisationAddressId, anonymityLevel,
     prix, tvaRate, discount, paymentDone, exposable, broadcastReady,
     commentaires, historique, selThemes, selGroups,
   ])
@@ -208,6 +217,7 @@ export function WorkForm({
         needsPhoto: false,
         ownStage: 'artist',
         contactId: '',
+        localisationAddressId: '',
         anonymityLevel: 0,
         prix: '0',
         tvaRate: '0',
@@ -234,6 +244,7 @@ export function WorkForm({
       needsPhoto: !!((oeuvre as { NeedsPhotograph?: boolean }).NeedsPhotograph ?? false),
       ownStage: ownStageFromStatusId(oeuvre.statusId),
       contactId: String(oeuvre.LocalisationID ?? ''),
+      localisationAddressId: String((oeuvre as { localisation_address_id?: number | null }).localisation_address_id ?? ''),
       anonymityLevel: normalizeAnonymityLevel((oeuvre as { anonymity_level?: unknown })?.anonymity_level),
       prix: String(oeuvre.Prix ?? '0'),
       tvaRate: String((oeuvre as { tva_rate?: number | null }).tva_rate ?? '0'),
@@ -452,6 +463,7 @@ export function WorkForm({
     fd.set('historique', historique)
     fd.set('contact_id', contactId)
     fd.set('localisation_id', contactId)
+    fd.set('localisation_address_id', localisationAddressId)
     fd.set('status_id', String(computeWorkStatusId(ownStage, prodStage)))
     fd.set('tva_rate', tvaRate)
     fd.set('broadcast_ready', broadcastReady ? '1' : '0')
@@ -805,6 +817,11 @@ export function WorkForm({
                 <div style={{ background: 'var(--bg1)', padding: 20, border: '1px solid var(--bd)', alignSelf: 'flex-end' }}>
                   <div className="t-label" style={{ fontSize: 10, marginBottom: 6 }}>{t('wf_localisation_now')}</div>
                   <div className="t-mono-sm" style={{ color: 'var(--ac)', fontSize: 12 }}>{currentLoc}</div>
+                  <LocationAddressPicker
+                    addresses={locationAddresses}
+                    value={localisationAddressId}
+                    onChange={setLocalisationAddressId}
+                  />
                 </div>
               </div>
 

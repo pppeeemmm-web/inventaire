@@ -75,7 +75,7 @@ export function DrawerContent({
   fM: _fM,
   locMap: _locMap,
   initialTechniques, initialSupports, initialFormats, initialThemes,
-  initialContacts, initialGroups, initialPresentations,
+  initialContacts, initialAddresses = [], initialGroups, initialPresentations,
   mode, isExpanded, setExpanded,
   imgZoom,
   setImgZoom,
@@ -117,6 +117,9 @@ export function DrawerContent({
   const [needsPhoto, setNeedsPhoto] = useState(!!((o as { NeedsPhotograph?: boolean }).NeedsPhotograph ?? false))
   const [ownStage, setOwnStage] = useState<OwnStageId>(() => ownStageFromStatusId(o.statusId))
   const [contactId, setContactId] = useState(String(o.LocalisationID ?? ''))
+  const [localisationAddressId, setLocalisationAddressId] = useState(
+    String((o as { localisation_address_id?: number | null }).localisation_address_id ?? ''),
+  )
   const [exposable,   setExposable]   = useState(!!o.Exposable)
   const [broadcastReady, setBroadcastReady] = useState(!!(o as { broadcast_ready?: boolean }).broadcast_ready)
   const [broadcastCaptionSeed, setBroadcastCaptionSeed] = useState(String((o as { broadcast_caption_seed?: string | null }).broadcast_caption_seed ?? ''))
@@ -360,6 +363,7 @@ export function DrawerContent({
         needsPhoto,
         ownStage,
         contactId,
+        localisationAddressId,
         anonymityLevel,
         prix,
         tvaRate,
@@ -412,6 +416,7 @@ export function DrawerContent({
     setNeedsPhoto(!!d.needsPhoto)
     setOwnStage((d.ownStage as OwnStageId) || 'artist')
     setContactId(d.contactId ?? '')
+    setLocalisationAddressId(d.localisationAddressId ?? '')
     setAnonymityLevel(normalizeAnonymityLevel(d.anonymityLevel))
     setPrix(d.prix ?? '0')
     setTvaRate(d.tvaRate ?? '0')
@@ -456,7 +461,11 @@ export function DrawerContent({
     if ((loadedOwn === 'artist' || loadedOwn === 'artist_archive') && pemRow) {
       loadedContactId = String(pemRow.ContactID)
     }
+    const loadedAddressId = String(
+      (o as { localisation_address_id?: number | null }).localisation_address_id ?? '',
+    )
     setContactId(loadedContactId)
+    setLocalisationAddressId(loadedAddressId)
     setExposable(loadedOwn === 'artist_archive' ? false : !!o.Exposable)
     setBroadcastReady(!!(o as { broadcast_ready?: boolean }).broadcast_ready)
     setBroadcastCaptionSeed(String((o as { broadcast_caption_seed?: string | null }).broadcast_caption_seed ?? ''))
@@ -501,6 +510,7 @@ export function DrawerContent({
           needsPhoto: normProd === 'catalogued',
           ownStage: loadedOwn,
           contactId: loadedContactId,
+          localisationAddressId: loadedAddressId,
           anonymityLevel: normalizeAnonymityLevel((o as { anonymity_level?: unknown }).anonymity_level),
           prix: loadedPrix,
           tvaRate: String((o as { tva_rate?: number | null }).tva_rate ?? '0'),
@@ -581,6 +591,35 @@ export function DrawerContent({
   const [localTechniques, setLocalTechniques] = useState(initialTechniques)
   const [localSupports,   setLocalSupports]   = useState(initialSupports)
   const [localFormats,    setLocalFormats]    = useState(initialFormats)
+
+  /** Addresses belonging to the contact that currently holds the work. */
+  const locationAddresses = useMemo(
+    () => initialAddresses.filter((a) => String(a.contact_id) === contactId),
+    [initialAddresses, contactId],
+  )
+
+  // A pinned address must belong to the holding contact: clear it when ownership moves,
+  // otherwise a transferred work would keep pointing at its previous owner's address.
+  useEffect(() => {
+    if (!localisationAddressId) return
+    if (!locationAddresses.some((a) => String(a.id) === localisationAddressId)) {
+      setLocalisationAddressId('')
+    }
+  }, [locationAddresses, localisationAddressId])
+
+  // A work still in production is being made, so it is in the studio's Atelier — default
+  // to that rather than leaving it unspecified. Addresses arrive post-paint, so this runs
+  // when they land, not inside the per-work reset. The ref makes it once-per-work: picking
+  // "unspecified" deliberately must not snap back.
+  const addressDefaultedForRef = useRef<number | null>(null)
+  useEffect(() => {
+    if (addressDefaultedForRef.current === o.OeuvreID) return
+    if (localisationAddressId || prodStage !== 'atelier' || locationAddresses.length === 0) return
+    const atelier = locationAddresses.find((a) => /atelier/i.test(a.label ?? ''))
+    if (atelier?.id == null) return
+    addressDefaultedForRef.current = o.OeuvreID
+    setLocalisationAddressId(String(atelier.id))
+  }, [locationAddresses, prodStage, localisationAddressId, o.OeuvreID])
 
   const pemContact = useMemo(
     () => localContacts.find((c: DrawerContactRow) => (c.NomInstitution ?? '').toLowerCase().includes('pem')),
@@ -781,6 +820,7 @@ export function DrawerContent({
     fd.append('status_id', String(sid))
     fd.append('contact_id', contactId)
     fd.append('localisation_id', contactId)
+    fd.append('localisation_address_id', localisationAddressId)
     fd.append('exposable', exposable ? '1' : '0')
     fd.append('broadcast_ready', broadcastReady ? '1' : '0')
     fd.append('broadcast_caption_seed', broadcastCaptionSeed ?? '')
@@ -937,13 +977,13 @@ export function DrawerContent({
 
   const draftSnapshot = useMemo((): WorkFormDraftContent => ({
     titre, annee, techniqueId, supportId, formatId, hauteur, largeur, profondeur,
-    prodStage, needsPhoto, ownStage, contactId, anonymityLevel,
+    prodStage, needsPhoto, ownStage, contactId, localisationAddressId, anonymityLevel,
     prix, tvaRate, discount, paymentDone, exposable, broadcastReady,
     commentaires, historique,
     selThemes: Array.from(selThemes), selGroups: Array.from(selGroups),
   }), [
     titre, annee, techniqueId, supportId, formatId, hauteur, largeur, profondeur,
-    prodStage, needsPhoto, ownStage, contactId, anonymityLevel,
+    prodStage, needsPhoto, ownStage, contactId, localisationAddressId, anonymityLevel,
     prix, tvaRate, discount, paymentDone, exposable, broadcastReady,
     commentaires, historique, selThemes, selGroups,
   ])
@@ -1256,6 +1296,9 @@ export function DrawerContent({
         pemContact={pemContact}
         contactId={contactId}
         setContactId={setContactId}
+        locationAddresses={locationAddresses}
+        localisationAddressId={localisationAddressId}
+        setLocalisationAddressId={setLocalisationAddressId}
         sortedContacts={sortedContacts}
         cName={cName}
         currentLoc={currentLoc}

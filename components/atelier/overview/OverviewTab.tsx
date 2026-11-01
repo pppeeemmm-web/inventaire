@@ -11,6 +11,10 @@ import { filterEventsInDateKeyRange } from '@/lib/pipeline-calendar'
 import type { SegmentedAtelierTab } from '@/lib/atelier/tab-routes'
 import type { Lang } from '@/lib/i18n/dictionary'
 import { useMediaQuery } from '@/lib/useMediaQuery'
+import {
+  queueInventoryFilter,
+  type InventoryHandoffCriterion,
+} from '@/lib/atelier/inventory-filter-handoff'
 
 // ── Overview tab ─────────────────────────────────────────────────────
 
@@ -57,6 +61,10 @@ export function OverviewTab({
   let missingDims = 0
   let missingImages = 0
   let missingLoc = 0
+  /** Photo shot but not yet validated — `addWorkImage` never clears NeedsPhotograph,
+   *  so a work falls back here after a session until the artist validates it. */
+  let needsPhotoValidation = 0
+  let notCatalogued = 0
   /** Sold works (status 4) with revenue attributed to this calendar year — used in Financial Pulse */
   let soldIncomeThisYear = 0
   for (const o of oeuvres) {
@@ -69,9 +77,26 @@ export function OverviewTab({
     if (!o.Hauteur || !o.Largeur) missingDims++
     if (!o.txtImageNameLink) missingImages++
     if (!o.LocalisationID) missingLoc++
+    if (o.NeedsPhotograph) needsPhotoValidation++
+    if (!o.Catalogué) notCatalogued++
     if (o.statusId === 4 && o.Année?.startsWith(yearPrefix)) {
       soldIncomeThisYear += Number(o.PrixFinal ?? o.Prix ?? 0)
     }
+  }
+
+  const backlog = initialOverviewBootstrap.backlog
+  const needsYouTotal =
+    needsPhotoValidation +
+    notCatalogued +
+    (isAdmin ? backlog.pendingApprovals : 0) +
+    backlog.openFieldTasks +
+    backlog.openLedger +
+    backlog.sessionsToApply
+
+  /** Hand a filter to the Inventory tab, then switch to it. */
+  const goInventory = (label: string, criteria: InventoryHandoffCriterion[]) => {
+    queueInventoryFilter({ label, criteria })
+    onGoTab('inventory')
   }
 
   const recentWorks = [...oeuvres].sort((a, b) => b.OeuvreID - a.OeuvreID).slice(0, 6)
@@ -253,14 +278,69 @@ export function OverviewTab({
             </div>
           </div>
 
-          {/* Production & Health Summary */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 20 }}>
+          {/* Needs you + Studio health — every row targets the items behind it */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 20, alignContent: 'start' }}>
              <div style={{ padding: '16px', background: 'var(--bg1)', border: '1px solid var(--bd)' }}>
-                <div className="t-eyebrow" style={{ fontSize: 8, marginBottom: 12, color: 'var(--tx3)' }}>{t('ov_studio_health')}</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <HealthRow label={t('ov_health_missing_dims')} count={missingDims} color={missingDims > 0 ? 'var(--rust)' : 'var(--tx3)'} />
-                  <HealthRow label={t('ov_health_missing_photos')} count={missingImages} color={missingImages > 0 ? 'var(--rust)' : 'var(--tx3)'} />
-                  <HealthRow label={t('ov_health_missing_loc')} count={missingLoc} color={missingLoc > 0 ? 'var(--rust)' : 'var(--tx3)'} />
+                <div className="t-eyebrow" style={{ fontSize: 8, marginBottom: 4, color: 'var(--tx3)' }}>{t('ov_needs_you')}</div>
+                <div className="t-mono-sm" style={{ fontSize: 8, color: 'var(--tx3)', marginBottom: 12 }}>{t('ov_needs_you_hint')}</div>
+                {needsYouTotal === 0 ? (
+                  <div className="t-mono-sm" style={{ fontSize: 9, color: 'var(--tx3)' }}>{t('ov_needs_all_clear')}</div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <ConsoleRow
+                      label={t('ov_needs_photo_validation')}
+                      count={needsPhotoValidation}
+                      onGo={() => goInventory(t('ov_needs_photo_validation'), [{ field: 'NeedsPhotograph', op: '= vrai' }])}
+                    />
+                    <ConsoleRow
+                      label={t('ov_needs_not_catalogued')}
+                      count={notCatalogued}
+                      onGo={() => goInventory(t('ov_needs_not_catalogued'), [{ field: 'Catalogué', op: '= faux' }])}
+                    />
+                    {isAdmin && (
+                      <ConsoleRow
+                        label={t('ov_needs_approvals')}
+                        count={backlog.pendingApprovals}
+                        onGo={() => onGoTab('audit')}
+                      />
+                    )}
+                    <ConsoleRow
+                      label={t('ov_needs_field_tasks')}
+                      count={backlog.openFieldTasks}
+                      onGo={() => onGoTab('production')}
+                    />
+                    <ConsoleRow
+                      label={t('ov_needs_ledger')}
+                      count={backlog.openLedger}
+                      onGo={() => onGoTab('system')}
+                    />
+                    <ConsoleRow
+                      label={t('ov_needs_sessions')}
+                      count={backlog.sessionsToApply}
+                      onGo={() => onGoTab('journal')}
+                    />
+                  </div>
+                )}
+             </div>
+             <div style={{ padding: '16px', background: 'var(--bg1)', border: '1px solid var(--bd)' }}>
+                <div className="t-eyebrow" style={{ fontSize: 8, marginBottom: 4, color: 'var(--tx3)' }}>{t('ov_studio_health')}</div>
+                <div className="t-mono-sm" style={{ fontSize: 8, color: 'var(--tx3)', marginBottom: 12 }}>{t('ov_health_hint')}</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <ConsoleRow
+                    label={t('ov_health_missing_dims')}
+                    count={missingDims}
+                    onGo={() => goInventory(t('ov_health_missing_dims'), [{ field: 'Hauteur', op: 'est vide' }])}
+                  />
+                  <ConsoleRow
+                    label={t('ov_health_missing_photos')}
+                    count={missingImages}
+                    onGo={() => goInventory(t('ov_health_missing_photos'), [{ field: '_hasImage', op: 'est vide' }])}
+                  />
+                  <ConsoleRow
+                    label={t('ov_health_missing_loc')}
+                    count={missingLoc}
+                    onGo={() => goInventory(t('ov_health_missing_loc'), [{ field: 'LocalisationID', op: 'est vide' }])}
+                  />
                 </div>
              </div>
           </div>
@@ -433,12 +513,47 @@ export function OverviewTab({
   )
 }
 
-function HealthRow({ label, count, color }: { label: string; count: number; color: string }) {
+/**
+ * A console row: label + count, clickable through to the items behind it.
+ * A zero count stays visible but is not actionable — the absence is the signal.
+ */
+function ConsoleRow({ label, count, onGo }: { label: string; count: number; onGo: () => void }) {
+  const active = count > 0
+  const color = active ? 'var(--rust)' : 'var(--tx3)'
+  if (!active) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0' }}>
+        <span className="t-mono-sm" style={{ fontSize: 9, color: 'var(--tx3)' }}>{label}</span>
+        <span className="t-mono-sm" style={{ fontSize: 10, color }}>{count}</span>
+      </div>
+    )
+  }
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <button
+      type="button"
+      onClick={onGo}
+      className="ov-console-row"
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: 8,
+        width: '100%',
+        padding: '4px 6px',
+        margin: '0 -6px',
+        border: 'none',
+        borderRadius: 2,
+        background: 'transparent',
+        cursor: 'pointer',
+        textAlign: 'left',
+        minHeight: 28,
+      }}
+    >
       <span className="t-mono-sm" style={{ fontSize: 9, color: 'var(--tx2)' }}>{label}</span>
-      <span className="t-mono-sm" style={{ fontSize: 10, color, fontWeight: count > 0 ? 700 : 400 }}>{count}</span>
-    </div>
+      <span className="t-mono-sm" style={{ fontSize: 10, color, fontWeight: 700, whiteSpace: 'nowrap' }}>
+        {count} <span aria-hidden="true" style={{ opacity: 0.5 }}>›</span>
+      </span>
+    </button>
   )
 }
 

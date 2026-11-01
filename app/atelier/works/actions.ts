@@ -345,6 +345,8 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
   const historique        = (formData.get('historique')         as string | null)?.trim() || null
   const localisationId    = numOrNull(formData.get('localisation_id'))
   const localisationDetail = (formData.get('localisation_detail') as string | null)?.trim() || null
+  /** Which of the location contact's addresses holds the work (null = unspecified). */
+  const localisationAddressId = numOrNull(formData.get('localisation_address_id'))
   const tvaRate      = numOrNull(formData.get('tva_rate'))
 
   let exposable      = formData.get('exposable')     === '1'
@@ -456,6 +458,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       Historique:        initialHistorique,
       LocalisationID:    localisationId,
       LocalisationDetail: localisationDetail,
+      localisation_address_id: localisationAddressId,
       Exposable:         exposable,
       Montee:            montee,
       Encadree:          encadree,
@@ -578,6 +581,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       Historique:        finalHistorique,
       LocalisationID:    localisationId,
       LocalisationDetail: localisationDetail,
+      localisation_address_id: localisationAddressId,
       Exposable:         exposable,
       Montee:            montee,
       Encadree:          encadree,
@@ -610,6 +614,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       is_gift:                  'is_gift',             // drawer only
       admin_override_anonymity: 'admin_override_anonymity', // drawer only
       PresentationID:           'presentation_id',     // drawer only
+      localisation_address_id:  'localisation_address_id',
     }
     for (const [column, formKey] of Object.entries(OPTIONAL_UPDATE_COLUMNS)) {
       if (!formData.has(formKey)) delete updatePayload[column]
@@ -1511,7 +1516,7 @@ export async function loadOeuvreLongText(
 }
 
 const OEUVRES_KEYSET_SELECT =
-  'OeuvreID, Titre, Technique, Support, "Année", Format, Hauteur, Largeur, Profondeur, Exposable, broadcast_ready, broadcast_caption_seed, Prix, PrixFinal, Discount, statusId, "Catalogué", txtImageNameLink, ContactID, LocalisationID, LocalisationDetail, is_public, Encadree, IsCommission, PresentationID, ReturnDate, DateLivraison, AcheteurID, NeedsPhotograph, anonymity_level, admin_override_anonymity'
+  'OeuvreID, Titre, Technique, Support, "Année", Format, Hauteur, Largeur, Profondeur, Exposable, broadcast_ready, broadcast_caption_seed, Prix, PrixFinal, Discount, statusId, "Catalogué", txtImageNameLink, ContactID, LocalisationID, LocalisationDetail, localisation_address_id, is_public, Encadree, IsCommission, PresentationID, ReturnDate, DateLivraison, AcheteurID, NeedsPhotograph, anonymity_level, admin_override_anonymity'
 
 /**
  * PostgREST infers a partial-row shape from OEUVRES_KEYSET_SELECT that is missing

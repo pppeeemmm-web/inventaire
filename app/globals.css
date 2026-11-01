@@ -576,3 +576,13 @@ input, textarea, select { font: inherit; color: inherit; background: transparent
 html { zoom: var(--pem-root-zoom, 1); }
 /* high_contrast: filter applied to html root when data-high-contrast is present */
 html[data-high-contrast] { filter: contrast(1.35); }
+
+/* Overview console rows (Needs you / Studio health) — clickable counts */
+.ov-console-row:hover,
+.ov-console-row:focus-visible {
+  background: var(--bg2);
+}
+.ov-console-row:focus-visible {
+  outline: 1px solid var(--ac);
+  outline-offset: -1px;
+}

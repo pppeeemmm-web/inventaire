@@ -1,5 +1,6 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import type { Oeuvre } from '@/lib/types/database'
+import type { ContactAddress } from '@/components/atelier/contact-editor-types'
 
 export type DrawerContactRow = {
   ContactID: number
@@ -41,6 +42,8 @@ export type DrawerContentProps = {
   initialFormats: { FormatID: number; Format: string | null }[]
   initialThemes: { id: number; name: string }[]
   initialContacts: DrawerContactRow[]
+  /** Every contact_addresses row (shell post-paint) — used to pin WHICH address holds the work. */
+  initialAddresses?: ContactAddress[]
   initialGroups: { id: string; name: string }[]
   initialPresentations: { PresentationID: number; Nom: string | null }[]
   mode: 'panel' | 'overlay'
