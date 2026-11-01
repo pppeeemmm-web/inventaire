@@ -24,7 +24,7 @@ _Live checklist. History → [`archive/`](./archive/). Current workstream → [`
 - [ ] Staging AVIF upload smoke (R2 objects + thumbs).
 - [ ] Verify views such as `OeuvresComplete` after `dead_columns_drop.sql`.
 - [ ] Run `grant_audit_queries.sql` after schema changes.
-- [ ] **CORS on the R2 `vault` bucket** (owner OK needed, 2026-11-01): allow `PUT` with `Content-Type` from the production origin + `http://localhost:3000`. Without it, concept/vault files over 4 MB fail ("Envoi direct impossible") — the browser-to-R2 path in `createVaultUploadUrl` depends on it. Files ≤ 4 MB, links and local mentions work regardless.
+- [x] **CORS on the R2 `vault` bucket** — set 2026-11-01 with owner OK: `PUT` + `content-type` only, origins `https://www.thepemworkshop.com`, `https://thepemworkshop.com`, `http://localhost:3000`. Verified by preflight (allowed origins 204, other origin 403). Needed by the browser-to-R2 path in `createVaultUploadUrl` (files > 4 MB). A new app origin (preview domain, LAN dev URL) must be added there too.
 
 ## Product — open
 

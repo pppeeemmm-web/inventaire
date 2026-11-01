@@ -99,7 +99,7 @@ export const conceptDocsMessages = defineMessages({
     en: 'Local',
   },
   vault_doc_concept: {
-    fr: 'Concept',
-    en: 'Concept',
+    fr: 'Recherche',
+    en: 'Research',
   },
 })
