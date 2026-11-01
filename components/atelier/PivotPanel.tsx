@@ -157,12 +157,28 @@ export function PivotPanel<R>({
       .join(' · ')
   }, [pivot, vals, fmt])
 
+  /** Numbers size to their content (never clipped); the scroll wrapper handles overflow. */
   const numCell: CSSProperties = {
-    width: '4.25rem',
-    maxWidth: '6rem',
+    minWidth: '4.25rem',
     textAlign: 'right',
     whiteSpace: 'nowrap',
   }
+  /** Measure sub-headers may wrap ("Somme (Prix)") instead of being cut. */
+  const subHead: CSSProperties = { whiteSpace: 'normal', lineHeight: 1.2, verticalAlign: 'bottom' }
+  /** Division (between column groups / before Total) vs sub-division (between measures). */
+  const DIV = '2px solid var(--bd2)'
+  const SUB = '1px solid var(--bd)'
+  const HEAD_ROW_PX = 34
+  /** Header cells stay pinned while the pivot scrolls (both axes — see the scroll wrapper). */
+  const headCell: CSSProperties = { position: 'sticky', top: 0, zIndex: 2, padding: '8px 10px', background: 'var(--bg1)' }
+  const labelCell: CSSProperties = { position: 'sticky', left: 0, zIndex: 1, background: 'var(--bg1)', borderRight: DIV }
+  const cornerCell: CSSProperties = { left: 0, zIndex: 3, borderRight: DIV }
+  /** Opaque: pinned cells must hide the rows scrolling under them. */
+  const totalCell: CSSProperties = { background: 'var(--bg2)' }
+  /** Grand total stays pinned at the bottom, like the header at the top. */
+  const grandCell: CSSProperties = { position: 'sticky', bottom: 0, zIndex: 1, background: 'var(--bg2)', borderTop: DIV }
+  /** One-line group headers, so row 2 (pinned at HEAD_ROW_PX) never overlaps row 1. */
+  const groupHead: CSSProperties = { height: HEAD_ROW_PX, boxSizing: 'border-box', padding: '6px 10px', lineHeight: '20px', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }
 
   const bodyOpen = !bodyCollapsed
 
@@ -349,54 +365,60 @@ export function PivotPanel<R>({
       {bodyOpen && (!pivot || pivot.rows.length === 0 ? (
         <div className="t-mono-sm" style={{ color: 'var(--tx3)', paddingBottom: 2 }}>{t('pivotEmpty')}</div>
       ) : (
-        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        <div
+          data-testid="pivot-scroll"
+          style={{ overflow: 'auto', maxHeight: 'min(70vh, 640px)', WebkitOverflowScrolling: 'touch', border: '1px solid var(--bd)' }}
+        >
           <table
             className="tbl"
             style={{
               width: '100%',
               minWidth: narrow ? 260 : 320,
-              tableLayout: 'fixed',
+              tableLayout: 'auto',
               fontSize: 12,
+              // separate (not collapse) so borders stay drawn on sticky header / label cells
+              borderCollapse: 'separate',
+              borderSpacing: 0,
             }}
           >
             <thead>
               {!singleColMode && vals.length === 1 ? (
                 <tr>
-                  <th style={{ position: 'sticky', left: 0, background: 'var(--bg1)', zIndex: 1, width: '38%', maxWidth: 220 }}>{t('pivotGroupBy')}</th>
+                  <th style={{ ...headCell, ...cornerCell, width: '38%', maxWidth: 220 }}>{t('pivotGroupBy')}</th>
                   {pivot.cols.map((colKey) => (
-                    <th key={colKey} className="num" style={numCell}>{colKey}</th>
+                    <th key={colKey} className="num" style={{ ...headCell, ...numCell, borderLeft: SUB }}>{colKey}</th>
                   ))}
-                  <th className="num" style={numCell}>{t('pivotTotal')}</th>
+                  <th className="num" style={{ ...headCell, ...numCell, ...totalCell, borderLeft: DIV }}>{t('pivotTotal')}</th>
                 </tr>
               ) : !singleColMode ? (
                 <>
                   <tr>
-                    <th rowSpan={2} style={{ position: 'sticky', left: 0, background: 'var(--bg1)', zIndex: 1, verticalAlign: 'bottom', width: '34%', maxWidth: 200 }}>
+                    <th rowSpan={2} style={{ ...headCell, ...cornerCell, verticalAlign: 'bottom', width: '34%', maxWidth: 200 }}>
                       {t('pivotGroupBy')}
                     </th>
                     {pivot.cols.map((colKey) => (
-                      <th key={colKey} colSpan={vals.length} className="num" style={{ borderBottom: '1px solid var(--bd)' }}>
+                      <th key={colKey} colSpan={vals.length} className="num" style={{ ...headCell, ...groupHead, borderLeft: DIV }} title={colKey}>
                         {colKey}
                       </th>
                     ))}
-                    <th colSpan={vals.length} className="num" style={{ borderBottom: '1px solid var(--bd)' }}>{t('pivotTotal')}</th>
+                    <th colSpan={vals.length} className="num" style={{ ...headCell, ...totalCell, ...groupHead, borderLeft: DIV }}>{t('pivotTotal')}</th>
                   </tr>
                   <tr>
                     {pivot.cols.flatMap((ck) =>
-                      vals.map((v) => (
-                        <th key={`${ck}-${v.id}`} className="num" style={{ ...numCell, fontSize: 10, color: 'var(--tx3)' }}>{v.label}</th>
+                      vals.map((v, vi) => (
+                        <th key={`${ck}-${v.id}`} className="num" style={{ ...headCell, ...numCell, ...subHead, top: HEAD_ROW_PX, fontSize: 10, color: 'var(--tx3)', borderLeft: vi === 0 ? DIV : SUB }}>{v.label}</th>
                       )),
                     )}
-                    {vals.map((v) => (
-                      <th key={`tot-${v.id}`} className="num" style={{ ...numCell, fontSize: 10, color: 'var(--tx3)' }}>{v.label}</th>
+                    {vals.map((v, vi) => (
+                      <th key={`tot-${v.id}`} className="num" style={{ ...headCell, ...numCell, ...totalCell, ...subHead, top: HEAD_ROW_PX, fontSize: 10, color: 'var(--tx3)', borderLeft: vi === 0 ? DIV : SUB }}>{v.label}</th>
                     ))}
                   </tr>
                 </>
               ) : (
                 <tr>
-                  <th style={{ position: 'sticky', left: 0, background: 'var(--bg1)', zIndex: 1, width: '42%', maxWidth: 240 }}>{t('pivotGroupBy')}</th>
+                  <th style={{ ...headCell, ...cornerCell, width: '42%', maxWidth: 240 }}>{t('pivotGroupBy')}</th>
                   {vals.map((v) => (
-                    <th key={v.id} className="num" style={numCell}>{v.label}</th>
+                    <th key={v.id} className="num" style={{ ...headCell, ...numCell, borderLeft: SUB }}>{v.label}</th>
                   ))}
                 </tr>
               )}
@@ -404,42 +426,42 @@ export function PivotPanel<R>({
             <tbody>
               {pivot.rows.map((rk, ri) => (
                 <tr key={rk}>
-                  <td style={{ position: 'sticky', left: 0, background: 'var(--bg1)', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={rk}>
+                  <td style={{ ...labelCell, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={rk}>
                     {rk}
                   </td>
                   {singleColMode ? (
                     vals.map((v, vi) => (
-                      <td key={v.id} className="num" style={numCell}>{fmt(pivot.cells[ri][0][vi], v.kind)}</td>
+                      <td key={v.id} className="num" style={{ ...numCell, borderLeft: SUB }}>{fmt(pivot.cells[ri][0][vi], v.kind)}</td>
                     ))
                   ) : (
                     <>
                       {pivot.cols.flatMap((_, ci) =>
                         vals.map((v, vi) => (
-                          <td key={`${ci}-${v.id}`} className="num" style={numCell}>{fmt(pivot.cells[ri][ci][vi], v.kind)}</td>
+                          <td key={`${ci}-${v.id}`} className="num" style={{ ...numCell, borderLeft: vi === 0 && vals.length > 1 ? DIV : SUB }}>{fmt(pivot.cells[ri][ci][vi], v.kind)}</td>
                         )),
                       )}
                       {vals.map((v, vi) => (
-                        <td key={`rt-${v.id}`} className="num" style={{ ...numCell, fontWeight: 600 }}>{fmt(pivot.rowTotals[ri][vi], v.kind)}</td>
+                        <td key={`rt-${v.id}`} className="num" style={{ ...numCell, ...totalCell, fontWeight: 600, borderLeft: vi === 0 ? DIV : SUB }}>{fmt(pivot.rowTotals[ri][vi], v.kind)}</td>
                       ))}
                     </>
                   )}
                 </tr>
               ))}
-              <tr style={{ borderTop: '2px solid var(--bd)' }}>
-                <td style={{ position: 'sticky', left: 0, background: 'var(--bg2)', fontWeight: 700 }}>{t('pivotGrandTotal')}</td>
+              <tr>
+                <td style={{ ...labelCell, ...grandCell, zIndex: 2, fontWeight: 700 }}>{t('pivotGrandTotal')}</td>
                 {singleColMode ? (
                   vals.map((v, vi) => (
-                    <td key={v.id} className="num" style={{ ...numCell, fontWeight: 700 }}>{fmt(pivot.grand[vi], v.kind)}</td>
+                    <td key={v.id} className="num" style={{ ...numCell, ...grandCell, fontWeight: 700, borderLeft: SUB }}>{fmt(pivot.grand[vi], v.kind)}</td>
                   ))
                 ) : (
                   <>
                     {pivot.cols.flatMap((_, ci) =>
                       vals.map((v, vi) => (
-                        <td key={`${ci}-${v.id}`} className="num" style={{ ...numCell, fontWeight: 700 }}>{fmt(pivot.colTotals[ci][vi], v.kind)}</td>
+                        <td key={`${ci}-${v.id}`} className="num" style={{ ...numCell, ...grandCell, fontWeight: 700, borderLeft: vi === 0 && vals.length > 1 ? DIV : SUB }}>{fmt(pivot.colTotals[ci][vi], v.kind)}</td>
                       )),
                     )}
                     {vals.map((v, vi) => (
-                      <td key={`g-${v.id}`} className="num" style={{ ...numCell, fontWeight: 700 }}>{fmt(pivot.grand[vi], v.kind)}</td>
+                      <td key={`g-${v.id}`} className="num" style={{ ...numCell, ...grandCell, ...totalCell, fontWeight: 700, borderLeft: vi === 0 ? DIV : SUB }}>{fmt(pivot.grand[vi], v.kind)}</td>
                     ))}
                   </>
                 )}
