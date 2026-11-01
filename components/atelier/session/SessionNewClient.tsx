@@ -130,6 +130,8 @@ export function SessionNewClient() {
   // Once committed the catalogue owns the work's fields — the session becomes a place
   // to check the day and correct a photo, not a second work form. Photos stay editable.
   const itemLocked = activeItem?.status === 'applied'
+  /** Size / support / technique are editable for a new work only; a linked work shows its record's values. */
+  const catalogueFieldsLocked = itemLocked || !(activeItem?.mode === 'new' && !activeItem?.oeuvre_id)
   const shotCount = visibleItems.reduce((sum, item) => sum + item.shots.length + (item.applied_shot_count ?? 0), 0)
   const stagedShotCount = visibleItems.reduce((sum, item) => sum + item.shots.length, 0)
 
@@ -1204,7 +1206,7 @@ export function SessionNewClient() {
                 value={activeItem.width_cm ?? ''}
                 onChange={(e) => updateLocalItem(activeItem.id, { width_cm: e.target.value })}
                 onBlur={(e) => void saveItem({ ...activeItem, width_cm: e.currentTarget.value })}
-                readOnly={itemLocked}
+                readOnly={catalogueFieldsLocked}
                 placeholder="W"
                 style={{ height: 44, width: '100%', boxSizing: 'border-box' }}
               />
@@ -1214,22 +1216,23 @@ export function SessionNewClient() {
                 value={activeItem.height_cm ?? ''}
                 onChange={(e) => updateLocalItem(activeItem.id, { height_cm: e.target.value })}
                 onBlur={(e) => void saveItem({ ...activeItem, height_cm: e.currentTarget.value })}
-                readOnly={itemLocked}
+                readOnly={catalogueFieldsLocked}
                 placeholder="H"
                 style={{ height: 44, width: '100%', boxSizing: 'border-box' }}
               />
             </div>
           </div>
 
-          {/* New works only: for an existing work these already live on the record, and
+          {/* Editable for a new work only: a linked work shows its record's values read-only —
               the session is not the place to re-edit the catalogue. */}
-          {activeItem.mode === 'new' && !activeItem.oeuvre_id ? (
+          {(activeItem.mode === 'new' || activeItem.oeuvre_id) ? (
             <>
               <label className="t-mono-sm" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <span>{t('support')}</span>
                 <select
                   className="input"
                   data-testid="session-support-select"
+                  disabled={catalogueFieldsLocked}
                   value={activeItem.support_id ?? ''}
                   onChange={(e) => {
                     const support_id = e.target.value
@@ -1251,6 +1254,7 @@ export function SessionNewClient() {
                 <select
                   className="input"
                   data-testid="session-technique-select"
+                  disabled={catalogueFieldsLocked}
                   value={activeItem.technique_id ?? ''}
                   onChange={(e) => {
                     const technique_id = e.target.value

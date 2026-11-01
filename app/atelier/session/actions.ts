@@ -405,17 +405,48 @@ function findItemIndex(payload: WorkSessionPayload, itemId: string): number {
   return payload.items.findIndex((item) => item.id === itemId)
 }
 
+type LinkedWorkFields = {
+  ok: true
+  title: string | null
+  width_cm: string
+  height_cm: string
+  technique_id: string
+  support_id: string
+}
+
+/** Title plus the fields a session item shows, so a linked item recalls the work's values. */
 async function selectWorkTitle(
   supabase: Awaited<ReturnType<typeof createClient>>,
   oeuvreId: number,
-): Promise<{ ok: true; title: string | null } | { error: string }> {
+): Promise<LinkedWorkFields | { error: string }> {
   const { data, error } = await supabase
     .from('Oeuvres')
-    .select('OeuvreID,Titre')
+    .select('OeuvreID,Titre,Largeur,Hauteur,Technique,Support')
     .eq('OeuvreID', oeuvreId)
     .maybeSingle()
   if (error || !data) return { error: error?.message ?? 'Œuvre introuvable' }
-  return { ok: true, title: data.Titre as string | null }
+  return {
+    ok: true,
+    title: data.Titre as string | null,
+    width_cm: (data.Largeur as string | null) ?? '',
+    height_cm: (data.Hauteur as string | null) ?? '',
+    technique_id: data.Technique != null ? String(data.Technique) : '',
+    support_id: data.Support != null ? String(data.Support) : '',
+  }
+}
+
+/**
+ * Show the linked work's size / technique / support on the item. For an existing work these
+ * fields are display-only (apply never writes them back), so the work's values replace any typed.
+ */
+function withLinkedWorkFields(item: WorkSessionItem, work: LinkedWorkFields): WorkSessionItem {
+  return {
+    ...item,
+    width_cm: work.width_cm,
+    height_cm: work.height_cm,
+    technique_id: work.technique_id,
+    support_id: work.support_id,
+  }
 }
 
 async function createWorkFromSessionFields(
@@ -1246,7 +1277,7 @@ export async function linkWorkSessionItemToOeuvre(
   const idx = findItemIndex(payload, itemId)
   if (idx < 0) return { error: 'Entrée introuvable' }
   payload.items[idx] = touchItem({
-    ...payload.items[idx],
+    ...withLinkedWorkFields(payload.items[idx], work),
     mode: 'existing',
     oeuvre_id: oeuvreId,
     oeuvre_title: work.title,
@@ -1929,7 +1960,7 @@ export async function linkWorkSessionToOeuvre(
   const payload = parseWorkSessionPayload((row as SessionMutableRow).payload)
   if (payload.items.length > 0) {
     payload.items[0] = touchItem({
-      ...payload.items[0],
+      ...withLinkedWorkFields(payload.items[0], work),
       mode: 'existing',
       oeuvre_id: oeuvreId,
       oeuvre_title: work.title,
