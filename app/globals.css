@@ -142,13 +142,21 @@ input, textarea, select { font: inherit; color: inherit; background: transparent
 ::-webkit-scrollbar-thumb:hover { background: var(--bd3); }
 ::-webkit-scrollbar-track { background: transparent; }
 
-/* Contacts CRM: list scroll without a thumb on the editor seam */
+/* Contacts CRM: thin scrollbar — the table is wider than the pane when the editor is open,
+   so a hidden bar made the right-hand columns unreachable. */
 .contacts-list-scroll {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--bd) transparent;
 }
 .contacts-list-scroll::-webkit-scrollbar {
-  display: none;
+  width: 6px;
+  height: 6px;
+}
+.contacts-list-scroll::-webkit-scrollbar-thumb {
+  background: var(--bd);
+}
+.contacts-list-scroll::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 /* ── Type scale ───────────────────────────────────────────── */
