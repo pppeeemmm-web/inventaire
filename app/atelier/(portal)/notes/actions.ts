@@ -1,7 +1,7 @@
 'use server'
 
 import crypto from 'crypto'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { r2PutObject } from '@/lib/r2-s3-object'
 import type { VoiceNoteRow } from '@/lib/types/database'
@@ -92,12 +92,17 @@ export async function createVoiceNote(formData: FormData): Promise<CreateVoiceNo
     if (Number.isFinite(d) && d >= 0 && d < 24 * 60 * 60 * 1000) duration_ms = d
   }
 
+  // `suivi_reminder.remind_at` is a DATE: prefer the client's local calendar day
+  // (`follow_up_date`), since slicing the UTC instant can land on the wrong day near midnight.
   const followUpDueRaw = (formData.get('follow_up_due') as string | null)?.trim() || null
+  const followUpDateRaw = (formData.get('follow_up_date') as string | null)?.trim() || null
   const followUpLabelRaw = (formData.get('follow_up_label') as string | null)?.trim() || null
-  let followUpDue: string | null = null
-  if (followUpDueRaw) {
+  let followUpDate: string | null = null
+  if (followUpDateRaw && /^\d{4}-\d{2}-\d{2}$/.test(followUpDateRaw)) {
+    followUpDate = followUpDateRaw
+  } else if (followUpDueRaw) {
     const d = new Date(followUpDueRaw)
-    if (Number.isFinite(d.getTime())) followUpDue = d.toISOString()
+    if (Number.isFinite(d.getTime())) followUpDate = d.toISOString().slice(0, 10)
   }
 
   const id = crypto.randomUUID()
@@ -144,24 +149,20 @@ export async function createVoiceNote(formData: FormData): Promise<CreateVoiceNo
     return { error: error.message }
   }
 
+  // A follow-up is a reminder, not a studio-floor issue: it goes to `suivi_reminder`
+  // (no pipeline process), which the Hub inbox and Pipeline's reminders panel list and dismiss.
+  // `studio_task kind='field'` is for material issue reports and feeds Production's triage panel.
   let followUpOk: boolean | undefined
-  if (followUpDue) {
-    const action = (followUpLabelRaw || subjectRaw || 'Voice note follow-up').slice(0, MAX_FOLLOW_UP_LABEL)
-    const details = [`Voice note: ${id}`, transcript ? transcript.slice(0, 600) : null]
-      .filter(Boolean)
-      .join('\n\n')
-    const { error: followUpError } = await supabase.from('studio_task').insert({
-      action,
-      details: details || null,
-      due_at: followUpDue,
-      type: 'backlog',
-      priority: 'P3',
-      status: 'requested',
-      kind: 'field',
-      severity: 'low',
+  if (followUpDate) {
+    const message = (followUpLabelRaw || subjectRaw || 'Voice note follow-up').slice(0, MAX_FOLLOW_UP_LABEL)
+    const { error: followUpError } = await supabase.from('suivi_reminder').insert({
+      process_id: null,
+      message,
+      remind_at: followUpDate,
     })
     followUpOk = !followUpError
     if (followUpError) console.error('[createVoiceNote follow-up]', followUpError.message)
+    else revalidateTag('reminders')
   }
 
   revalidatePath('/atelier')

@@ -45,6 +45,12 @@ function dueForNextAction(k: NextActionKey): string | null {
   return d.toISOString()
 }
 
+/** Local calendar day `YYYY-MM-DD` (reminders are stored as a DATE, not an instant). */
+function localDateKey(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+}
+
 function kindKey(k: VoiceNoteKind): DictKey {
   switch (k) {
     case 'memo':
@@ -347,6 +353,7 @@ export function VoiceNoteSheet({
       const followUpDue = dueForNextAction(nextAction)
       if (followUpDue) {
         fd.append('follow_up_due', followUpDue)
+        fd.append('follow_up_date', localDateKey(new Date(followUpDue)))
         fd.append('follow_up_label', subject.trim() || t(nextActionLabelKey(nextAction)))
       }
       if (oeuvreId.trim()) fd.append('oeuvre_id', oeuvreId.trim())
