@@ -181,7 +181,7 @@ export function drawConstellationFrame(
       })
     }
 
-    for (let pass = 0; pass < 5; pass++) {
+    for (let pass = 0; pass < 12; pass++) {
       for (let i = 0; i < labels.length; i++) {
         for (let j = i + 1; j < labels.length; j++) {
           const a = labels[i], b = labels[j]
@@ -231,13 +231,18 @@ export function drawConstellationFrame(
       ctx.lineTo(rx, ry + rad)
       ctx.arcTo(rx, ry, rx + rad, ry, rad)
       ctx.closePath()
+      // Pill stays solid even when dimmed — a translucent pill on the light theme left pale text
+      // on pale grey. Dimming lives in the stroke and text only.
+      ctx.globalAlpha = 1
       ctx.fillStyle = 'rgba(13,13,13,0.82)'
       ctx.fill()
+      ctx.globalAlpha = lb.alpha < 1 ? 0.45 : 1
       ctx.strokeStyle = color
       ctx.lineWidth   = (0.8 + 0.7 * Math.sqrt(lb.count / maxCount)) / vp.z
       ctx.stroke()
 
       ctx.font      = `${fs}px "Sofia Sans", sans-serif`
+      ctx.globalAlpha = lb.alpha < 1 ? 0.7 : 1
       ctx.fillStyle = color
       ctx.fillText(lb.th.name, x, ry + fs + (h - fs) / 2)
       ctx.globalAlpha = 1
@@ -286,7 +291,7 @@ export function drawConstellationFrame(
         alpha: selectedGroupId === null || selectedGroupId === gr.id ? 1 : 0.22,
       })
     }
-    for (let pass = 0; pass < 5; pass++) {
+    for (let pass = 0; pass < 12; pass++) {
       for (let i = 0; i < gwLabels.length; i++) {
         for (let j = i + 1; j < gwLabels.length; j++) {
           const a = gwLabels[i], b = gwLabels[j]
@@ -333,12 +338,17 @@ export function drawConstellationFrame(
       ctx.lineTo(rx, ry + rad)
       ctx.arcTo(rx, ry, rx + rad, ry, rad)
       ctx.closePath()
+      // Pill stays solid even when dimmed — a translucent pill on the light theme left pale text
+      // on pale grey. Dimming lives in the stroke and text only.
+      ctx.globalAlpha = 1
       ctx.fillStyle = 'rgba(13,13,13,0.82)'
       ctx.fill()
+      ctx.globalAlpha = lb.alpha < 1 ? 0.45 : 1
       ctx.strokeStyle = color
       ctx.lineWidth   = (0.8 + 0.7 * Math.sqrt(lb.count / maxGW)) / vp.z
       ctx.stroke()
       ctx.font      = `${fs}px "Sofia Sans", sans-serif`
+      ctx.globalAlpha = lb.alpha < 1 ? 0.7 : 1
       ctx.fillStyle = color
       ctx.fillText(lb.gr.name, x, ry + fs + (h - fs) / 2)
       ctx.globalAlpha = 1
