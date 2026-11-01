@@ -312,7 +312,7 @@ export function Production({ oeuvres, tM, statusLabelMap, onOpen, oeuvresPaging 
       : undefined
 
   return (
-    <div style={{ padding: narrow ? '12px 16px 0' : '16px 28px 0', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%', flex: 1 }}>
+    <div style={{ padding: narrow ? '12px 16px 0' : '16px 28px 0', height: '100%', display: 'flex', flexDirection: 'column', overflowX: 'hidden', overflowY: 'auto', width: '100%', flex: 1 }}>
 
       {/* Header — Ring A.3: stack on narrow (field terminal) */}
       <div
@@ -416,12 +416,13 @@ export function Production({ oeuvres, tM, statusLabelMap, onOpen, oeuvresPaging 
         />
       )}
 
-      {/* Kanban — Truly fluid and scrollable */}
-      <div style={{ 
-        flex: 1, 
-        overflowX: 'auto', 
-        overflowY: 'hidden', 
-        minHeight: 0,
+      {/* Kanban — fills the remaining height, but never collapses: on a short viewport the
+          page scrolls instead (the header, overview and pivot above take their height first). */}
+      <div style={{
+        flex: 1,
+        overflowX: 'auto',
+        overflowY: 'hidden',
+        minHeight: 'min(520px, 70vh)',
         background: 'var(--bd)', // Grid lines
         display: 'flex',
       }}>
