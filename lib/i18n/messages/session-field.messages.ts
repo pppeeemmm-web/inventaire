@@ -39,4 +39,20 @@ export const sessionFieldMessages = defineMessages({
     fr: 'Ce titre existe déjà :',
     en: 'This title already exists:',
   },
+  session_origin_label: {
+    fr: 'Cette œuvre est…',
+    en: 'This work is…',
+  },
+  session_origin_new: {
+    fr: 'Nouvelle — commencée maintenant',
+    en: 'New — started now',
+  },
+  session_origin_found: {
+    fr: 'Ancienne — retrouvée',
+    en: 'Older — found',
+  },
+  session_origin_hint: {
+    fr: 'Nouvelle : la production démarre à la date de la session. Ancienne : début inconnu.',
+    en: 'New: production starts on the session date. Older: start unknown.',
+  },
 })

@@ -314,6 +314,7 @@ export function SessionNewClient() {
         height_cm: item.height_cm ?? '',
         technique_id: item.technique_id ?? '',
         support_id: item.support_id ?? '',
+        production_origin: item.production_origin ?? '',
       })
       if ('error' in r) toast.error(r.error)
     },
@@ -1225,6 +1226,37 @@ export function SessionNewClient() {
 
           {/* Editable for a new work only: a linked work shows its record's values read-only —
               the session is not the place to re-edit the catalogue. */}
+          {activeItem.mode === 'new' && !activeItem.oeuvre_id ? (
+            <div role="group" aria-label={t('session_origin_label')} className="t-mono-sm" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <span>{t('session_origin_label')}</span>
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 8 }}>
+                {(['new', 'found'] as const).map((origin) => (
+                  <button
+                    key={origin}
+                    type="button"
+                    className="btn ghost sm"
+                    data-testid={`session-origin-${origin}`}
+                    aria-pressed={activeItem.production_origin === origin}
+                    disabled={itemLocked}
+                    onClick={() => {
+                      updateLocalItem(activeItem.id, { production_origin: origin })
+                      void saveItem({ ...activeItem, production_origin: origin })
+                    }}
+                    style={{
+                      minHeight: 44,
+                      whiteSpace: 'normal',
+                      background: activeItem.production_origin === origin ? 'var(--ac)' : undefined,
+                      color: activeItem.production_origin === origin ? 'var(--bg0)' : undefined,
+                    }}
+                  >
+                    {t(origin === 'new' ? 'session_origin_new' : 'session_origin_found')}
+                  </button>
+                ))}
+              </div>
+              <span style={{ fontSize: 11, color: 'var(--tx3)' }}>{t('session_origin_hint')}</span>
+            </div>
+          ) : null}
+
           {(activeItem.mode === 'new' || activeItem.oeuvre_id) ? (
             <>
               <label className="t-mono-sm" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>

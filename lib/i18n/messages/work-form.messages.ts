@@ -33,4 +33,28 @@ export const workFormMessages = defineMessages({
     fr: 'Adresse non précisée',
     en: 'Address not specified',
   },
+  wf_production_label: {
+    fr: 'Production',
+    en: 'Production',
+  },
+  wf_production_span_fmt: {
+    fr: '{start} → {end} · {days} j',
+    en: '{start} → {end} · {days} d',
+  },
+  wf_production_open_fmt: {
+    fr: 'En cours depuis le {start} · {days} j',
+    en: 'In progress since {start} · {days} d',
+  },
+  wf_production_end_only_fmt: {
+    fr: 'Début inconnu → {end}',
+    en: 'Start unknown → {end}',
+  },
+  wf_production_unknown_open: {
+    fr: 'En cours · début inconnu',
+    en: 'In progress · start unknown',
+  },
+  wf_production_origin_found: {
+    fr: 'œuvre retrouvée',
+    en: 'found work',
+  },
 })

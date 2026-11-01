@@ -25,6 +25,8 @@ export interface WorkSessionShot {
 
 export type WorkSessionItemMode = 'existing' | 'new'
 export type WorkSessionItemStatus = 'draft' | 'applied' | 'rejected'
+/** Mirrors `Oeuvres.production_origin`. */
+export type WorkProductionOrigin = 'new' | 'found'
 
 /** A photo already committed to the work. Enriched at read time from `tblImage` —
  *  never stored in payload JSON, because the work record owns it once applied. */
@@ -51,6 +53,9 @@ export interface WorkSessionItem {
    *  form round-trips a raw <select> value. Empty string means "not set". */
   technique_id?: string
   support_id?: string
+  /** New-work items: 'new' = a work started now (production starts on the session day);
+   *  'found' = an existing work being recorded (start unknown). Unset = not stated. */
+  production_origin?: WorkProductionOrigin
   shots: WorkSessionShot[]
   status: WorkSessionItemStatus
   created_at?: string
@@ -163,6 +168,7 @@ function parseWorkSessionItem(raw: unknown): WorkSessionItem | null {
   if (typeof o.height_cm === 'string') out.height_cm = o.height_cm
   if (typeof o.technique_id === 'string') out.technique_id = o.technique_id
   if (typeof o.support_id === 'string') out.support_id = o.support_id
+  if (o.production_origin === 'new' || o.production_origin === 'found') out.production_origin = o.production_origin
   if (typeof o.created_at === 'string') out.created_at = o.created_at
   if (typeof o.updated_at === 'string') out.updated_at = o.updated_at
   if (typeof o.applied_at === 'string') out.applied_at = o.applied_at

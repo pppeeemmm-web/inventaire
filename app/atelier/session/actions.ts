@@ -18,6 +18,7 @@ import {
   type WorkSessionAppliedShot,
   type WorkSessionFieldContext,
   type WorkSessionItem,
+  type WorkProductionOrigin,
   type WorkSessionItemMode,
   type WorkSessionPayload,
   type WorkSessionShot,
@@ -460,6 +461,7 @@ async function createWorkFromSessionFields(
     technique_id?: string
     support_id?: string
     session_at?: string
+    production_origin?: WorkProductionOrigin
   },
 ): Promise<{ ok: true; oeuvreId: number } | { error: string }> {
   const titre = fields.title_hint.trim()
@@ -499,6 +501,9 @@ async function createWorkFromSessionFields(
       NeedsPhotograph: true,
       Exposable: false,
       Catalogué: false,
+      // A real new work starts production on the session day; a found one has no known start.
+      production_origin: fields.production_origin ?? null,
+      production_started_on: fields.production_origin === 'new' ? dateStr.replace(/\//g, '-') : null,
     },
     { actorId, editedAt },
   )
@@ -1160,6 +1165,7 @@ export async function updateWorkSessionItemMetadata(
     height_cm?: string
     technique_id?: string
     support_id?: string
+    production_origin?: WorkProductionOrigin | ''
   },
 ): Promise<SessionActionResult> {
   const supabase = await createClient()
@@ -1190,6 +1196,9 @@ export async function updateWorkSessionItemMetadata(
     ...(typeof patch.height_cm === 'string' ? { height_cm: patch.height_cm } : {}),
     ...(typeof patch.technique_id === 'string' ? { technique_id: patch.technique_id } : {}),
     ...(typeof patch.support_id === 'string' ? { support_id: patch.support_id } : {}),
+    ...(patch.production_origin === 'new' || patch.production_origin === 'found'
+      ? { production_origin: patch.production_origin }
+      : patch.production_origin === '' ? { production_origin: undefined } : {}),
   })
 
   const { error: upErr } = await workSessionTable(supabase)
@@ -1915,6 +1924,7 @@ export async function createAndLinkWorkFromSessionItem(
     technique_id: item.technique_id,
     support_id: item.support_id,
     session_at: sessionAt,
+    production_origin: item.production_origin,
   })
   if ('error' in created) return created
 
@@ -2133,6 +2143,7 @@ export async function applyWorkSessionToOeuvre(sessionId: string): Promise<Sessi
             technique_id: item.technique_id,
             support_id: item.support_id,
             session_at: sessionAt,
+            production_origin: item.production_origin,
           })
           if ('error' in created) return created
           oeuvreId = created.oeuvreId

@@ -19,6 +19,10 @@ export interface Oeuvre {
   LocalisationDetail?: string | null;
   /** Which of the LocalisationID contact's addresses holds the work (null = unspecified). */
   localisation_address_id?: number | null;
+  /** Production span — see supabase/sql/oeuvres_production_span.sql. */
+  production_started_on?: string | null;
+  production_completed_on?: string | null;
+  production_origin?: 'new' | 'found' | null;
   AcheteurID?: number | null;
   Prix: number | null;
   Discount?: number | null;

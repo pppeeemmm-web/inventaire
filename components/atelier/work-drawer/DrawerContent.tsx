@@ -49,6 +49,7 @@ import { UnsavedChangesModal } from './UnsavedChangesModal'
 import { GiftTransferModal } from './GiftTransferModal'
 import { FIS, cap } from './drawer-widgets'
 import { WorkFormPhysicalQr } from '@/components/atelier/WorkFormPhysicalQr'
+import { WorkProductionSpan } from './WorkProductionSpan'
 import { normalizeAnonymityLevel } from '@/lib/anonymity-level'
 
 function withCacheKey(src: string, cacheKey?: string): string {
@@ -1279,6 +1280,12 @@ export function DrawerContent({
         <div className="t-mono-sm" style={{ fontSize: 10, color: 'var(--tx3)' }}>
           {statusLabelMap[computeWorkStatusId(ownStage, prodStage)] ?? `ID ${computeWorkStatusId(ownStage, prodStage)}`}
         </div>
+        <WorkProductionSpan
+          startedOn={o.production_started_on}
+          completedOn={o.production_completed_on}
+          origin={o.production_origin}
+          inProduction={!o.Catalogué}
+        />
       </section>
 
       <WorkDrawerPipelineSection
