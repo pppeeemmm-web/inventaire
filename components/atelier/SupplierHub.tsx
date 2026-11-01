@@ -7,7 +7,9 @@ import {
   useMemo,
   useLayoutEffect,
 } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { atelierTabHref } from '@/lib/atelier/tab-routes'
 import { useI18n } from '@/lib/i18n/context'
 import { STOCK_CATEGORY_VALUES, labelStockCategory } from '@/lib/i18n/stockCategories'
 import { useUnsavedCloseGuard } from '@/hooks/useUnsavedCloseGuard'
@@ -886,7 +888,19 @@ export function SupplierHub({ contacts }: Props) {
                         className="t-mono-sm"
                         style={{ color: 'var(--tx3)', fontSize: 11 }}
                       >
-                        {summary ?? '\u2014'}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                          <span style={{ minWidth: 0 }}>{summary ?? '\u2014'}</span>
+                          <Link
+                            href={`${atelierTabHref('contacts')}?contact=${s.ContactID}`}
+                            className="btn ghost sm"
+                            data-testid={`atelier-stock-supplier-open-${s.ContactID}`}
+                            aria-label={t('stock_supplier_open_contact')}
+                            title={t('stock_supplier_open_contact')}
+                            style={{ flexShrink: 0, minWidth: 44, minHeight: 36, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                          >
+                            ↗
+                          </Link>
+                        </div>
                       </td>
                     </tr>
                   )

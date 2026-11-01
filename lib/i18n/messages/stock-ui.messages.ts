@@ -141,6 +141,10 @@ export const stockUiMessages = defineMessages({
     fr: 'Filtrer les matériaux par ce fournisseur',
     en: 'Filter materials by this supplier',
   },
+  stock_supplier_open_contact: {
+    fr: 'Ouvrir la fiche contact',
+    en: 'Open contact card',
+  },
   stock_supplier_filter_chip_fmt: {
     fr: 'Fournisseur : {name}',
     en: 'Supplier: {name}',
