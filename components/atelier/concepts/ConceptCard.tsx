@@ -10,10 +10,13 @@ import { imageUrl } from '@/lib/data'
 import { toast } from '@/lib/ui/toast'
 import { CATEGORY_IDS, CATEGORY_KEYS, MEDIUM_IDS, MEDIUM_KEY, STATUT_COLORS, STATUT_KEYS } from './concept-constants'
 import { ConceptEnergieDot } from './ConceptEnergieDot'
+import { ConceptDocuments } from './ConceptDocuments'
 import { inputSt, labelSt } from './concept-form-styles'
+import type { ConceptDocument } from '@/app/atelier/(portal)/concepts/document-actions'
 
-export function ConceptCard({ concept, onUpdated, onDeleted, narrow }: {
+export function ConceptCard({ concept, documents, onUpdated, onDeleted, narrow }: {
   concept:   ConceptRow
+  documents: ConceptDocument[]
   onUpdated: (c: ConceptRow) => void
   onDeleted: (id: string) => void
   narrow: boolean
@@ -290,6 +293,8 @@ export function ConceptCard({ concept, onUpdated, onDeleted, narrow }: {
                   </div>
                 </div>
               )}
+
+              <ConceptDocuments conceptId={concept.id} initialDocs={documents} />
 
               {isBecameWork && concept.oeuvre_id && (
                 <div style={{ marginBottom: 12, fontSize: 10, color: 'var(--sage)' }}>

@@ -10,7 +10,7 @@ import { buildSiteMapChecklistPdf } from '@/lib/site-map-checklist-pdf'
 import { nanoid }       from 'nanoid'
 import { createHash }   from 'crypto'
 import {
-  S3Client, PutObjectCommand, DeleteObjectCommand,
+  S3Client, PutObjectCommand, DeleteObjectCommand, HeadObjectCommand,
 } from '@aws-sdk/client-s3'
 import { getSignedUrl as awsGetSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { GetObjectCommand } from '@aws-sdk/client-s3'
@@ -118,7 +118,15 @@ export interface VaultDoc {
   cert_hash:    string | null
   process_id:   string | null
   folder:       string | null
+  concept_id?:     string | null
+  /** 'file' (R2) | 'link' (external_url) | 'local' (local_location, plain text). */
+  source?:         string
+  external_url?:   string | null
+  local_location?: string | null
 }
+
+/** Direct browser → R2 uploads (files too large for a Server Action body). */
+const MAX_VAULT_UPLOAD_BYTES = 50 * 1024 * 1024
 
 // ── Auth guard helper ─────────────────────────────────────────────────────
 
@@ -129,6 +137,25 @@ async function guardTeam() {
   const { data: isTeam } = await supabase.rpc('is_team')
   if (!isTeam) return { error: 'Accès refusé' as const, supabase: null, user: null }
   return { error: null, supabase, user }
+}
+
+/**
+ * R2 key for a vault file: `{date}_{type}_{desc}_{uploader}_{serial}_{original}` — one scheme
+ * for the Server Action upload and the direct upload, so the Vault reads them the same way.
+ */
+async function buildVaultObjectKey(
+  supabase: NonNullable<Awaited<ReturnType<typeof guardTeam>>['supabase']>,
+  user: Awaited<ReturnType<typeof guardTeam>>['user'],
+  input: { name: string | null; typeStr: string; docDate: string | null; fileName: string },
+): Promise<string> {
+  const { data: profile } = await fromProfiles(supabase).select('full_name').eq('id', user?.id ?? '').single()
+  const uploader = (profile?.full_name || user?.email?.split('@')[0] || 'User').replace(/\s+/g, '_')
+  const { count } = await fromDocument(supabase).select('*', { count: 'exact', head: true })
+  const serial = (count ?? 0) + 1
+  const dateStr   = input.docDate || new Date().toISOString().slice(0, 10)
+  const cleanDesc = (input.name || '').replace(/[^a-zA-Z0-9]/g, '_').slice(0, 30)
+  const cleanOrig = input.fileName.replace(/[^a-zA-Z0-9.-]/g, '_')
+  return `${dateStr}_${input.typeStr}_${cleanDesc}_${uploader}_${serial}_${cleanOrig}`
 }
 
 /** Browser downloads PDF via base64 → Blob (no vault upload). */
@@ -164,23 +191,12 @@ export async function uploadDocument(formData: FormData): Promise<UploadResult> 
   const folder      = (formData.get('folder') as string | null)?.trim()    || null
   const oeuvre_ids_str = (formData.get('oeuvre_ids') as string | null)    || ''
   
+  const concept_id  = (formData.get('concept_id') as string | null)?.trim() || null
+
   if (!file || file.size === 0) return { error: 'Aucun fichier sélectionné' }
 
-  // 1. Get Uploader Name
-  const { data: profile } = await fromProfiles(supabase).select('full_name').eq('id', user?.id ?? '').single()
-  const uploader = (profile?.full_name || user?.email?.split('@')[0] || 'User').replace(/\s+/g, '_')
-
-  // 2. Get Next Serial Number
-  const { count } = await fromDocument(supabase).select('*', { count: 'exact', head: true })
-  const serial = (count ?? 0) + 1
-
-  // 3. Construct Smart Filename
-  const dateStr   = doc_date || new Date().toISOString().slice(0, 10)
   const typeStr   = (kind === 'custom' ? customKind : kind) || 'autre'
-  const cleanDesc = (name || '').replace(/[^a-zA-Z0-9]/g, '_').slice(0, 30)
-  const cleanOrig = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
-  
-  const finalPath = `${dateStr}_${typeStr}_${cleanDesc}_${uploader}_${serial}_${cleanOrig}`
+  const finalPath = await buildVaultObjectKey(supabase, user, { name, typeStr, docDate: doc_date, fileName: file.name })
   const docName   = name || file.name
 
   const buf = Buffer.from(await file.arrayBuffer())
@@ -215,6 +231,7 @@ export async function uploadDocument(formData: FormData): Promise<UploadResult> 
       file_size:    file.size,
       mime_type:    file.type,
       folder:       routedFolder,
+      concept_id,
     })
     .select()
     .single()
@@ -468,6 +485,101 @@ export async function renameDocument(id: string, newName: string): Promise<Vault
 
 
 // ── Generate signed download URL ──────────────────────────────────────────
+
+// ── Direct upload (browser → R2) for files over the Server Action body limit ─
+
+/**
+ * Step 1: presigned PUT for one vault file. The browser uploads the bytes straight to R2, so
+ * the file never passes through a Vercel function (4.5 MB body cap). Needs a CORS rule on the
+ * vault bucket allowing PUT from the app origin.
+ */
+export async function createVaultUploadUrl(input: {
+  fileName: string
+  contentType: string
+  size: number
+  name?: string | null
+  kind?: string | null
+  docDate?: string | null
+}): Promise<{ error: string } | { ok: true; key: string; url: string }> {
+  const { error: authErr, supabase, user } = await guardTeam()
+  if (authErr || !supabase) return { error: authErr ?? 'Auth' }
+  if (!input.fileName || !(input.size > 0)) return { error: 'Aucun fichier sélectionné' }
+  if (input.size > MAX_VAULT_UPLOAD_BYTES) {
+    return { error: `Fichier trop lourd (max ${MAX_VAULT_UPLOAD_BYTES / 1024 / 1024} Mo) — ajoutez plutôt un lien.` }
+  }
+  const typeStr = input.kind?.trim() || 'autre'
+  const key = await buildVaultObjectKey(supabase, user, {
+    name: input.name?.trim() || null, typeStr, docDate: input.docDate?.trim() || null, fileName: input.fileName,
+  })
+  const url = await awsGetSignedUrl(
+    r2Client(),
+    new PutObjectCommand({ Bucket: BUCKET, Key: key, ContentType: input.contentType || 'application/octet-stream' }),
+    { expiresIn: 900 },
+  )
+  return { ok: true, key, url }
+}
+
+/** Step 2: after the browser PUT succeeds, check the object really landed and record it. */
+export async function finalizeVaultUpload(input: {
+  key: string
+  name: string
+  kind?: string | null
+  notes?: string | null
+  docDate?: string | null
+  conceptId?: string | null
+}): Promise<UploadResult> {
+  const { error: authErr, supabase, user } = await guardTeam()
+  if (authErr || !supabase) return { error: authErr ?? 'Auth' }
+
+  let size: number
+  let contentType: string
+  try {
+    const head = await r2Client().send(new HeadObjectCommand({ Bucket: BUCKET, Key: input.key }))
+    size = head.ContentLength ?? 0
+    contentType = head.ContentType ?? 'application/octet-stream'
+  } catch {
+    return { error: 'Fichier introuvable dans le stockage — envoi interrompu ?' }
+  }
+  if (size > MAX_VAULT_UPLOAD_BYTES) {
+    await r2Delete(input.key).catch(() => {})
+    return { error: 'Fichier trop lourd' }
+  }
+
+  const typeStr = input.kind?.trim() || 'autre'
+  const docName = input.name.trim() || input.key
+  const notes = input.notes?.trim() || null
+  await recordStorageObject({
+    bucket: BUCKET,
+    objectKey: input.key,
+    sizeBytes: size,
+    contentType,
+    source: 'vault_upload_direct',
+    classification: 'linked',
+    linkedRefs: [{ table: 'document', column: 'storage_path' }],
+    uploadedBy: user?.id ?? null,
+    metadata: { document_name: docName, kind: typeStr },
+  })
+
+  const { data: doc, error: dbErr } = await fromDocument(supabase)
+    .insert({
+      name:         docName,
+      kind:         typeStr,
+      notes,
+      doc_date:     input.docDate?.trim() || null,
+      storage_path: input.key,
+      file_size:    size,
+      mime_type:    contentType,
+      folder:       resolveVaultFolder({ kind: typeStr, notes, storage_path: input.key, name: docName }),
+      concept_id:   input.conceptId || null,
+    })
+    .select()
+    .single()
+  if (dbErr) {
+    await r2Delete(input.key).catch(() => {})
+    return { error: dbErr.message }
+  }
+  return { ok: true, doc: asVaultDoc(doc) }
+}
 
 export async function getSignedUrl(storagePath: string): Promise<{ url: string } | { error: string }> {
   const { error: authErr } = await guardTeam()

@@ -59,6 +59,8 @@ export function Vault({ oeuvres, tM }: Props) {
   const [draggedDoc,  setDraggedDoc]  = useState<VaultDoc | null>(null)
   const [draggedFolderPath, setDraggedFolderPath] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<string[]>([]) // Bulk selection
+  /** concept.id → titre, for documents attached to a concept. */
+  const [conceptTitles, setConceptTitles] = useState<Map<string, string>>(() => new Map())
   const [showNewFolder, setShowNewFolder] = useState(false)
   const [deleteFolderTarget, setDeleteFolderTarget] = useState<{
     path: string
@@ -82,8 +84,12 @@ export function Vault({ oeuvres, tM }: Props) {
   const fetchDocs = useCallback(async () => {
     setLoading(true)
     const sb = createClient()
-    const { data } = await sb.from('document').select('*').order('created_at', { ascending: false })
+    const [{ data }, { data: concepts }] = await Promise.all([
+      sb.from('document').select('*').order('created_at', { ascending: false }),
+      sb.from('concept').select('id, titre'),
+    ])
     setDocs((data as VaultDoc[]) ?? [])
+    setConceptTitles(new Map((concepts ?? []).map((c: { id: string; titre: string }) => [c.id, c.titre])))
     setLoading(false)
   }, [])
 
@@ -771,6 +777,27 @@ export function Vault({ oeuvres, tM }: Props) {
             {selected.file_size && (
               <Row label="Taille" value={formatSize(selected.file_size)} />
             )}
+            {selected.concept_id && (
+              <Row label={t('vault_doc_concept')} value={conceptTitles.get(selected.concept_id) ?? '—'} />
+            )}
+            {selected.source === 'link' && selected.external_url && (
+              <Row label={t('concept_docs_kind_link')} value={
+                <a href={selected.external_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--ac)', overflowWrap: 'anywhere' }}>
+                  {selected.external_url}
+                </a>
+              } />
+            )}
+            {selected.source === 'local' && selected.local_location && (
+              <Row label={t('concept_docs_kind_local')} value={
+                <span style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span style={{ fontFamily: 'var(--mono)', overflowWrap: 'anywhere' }}>{selected.local_location}</span>
+                  <button type="button" className="btn ghost sm" style={{ minHeight: 36 }}
+                    onClick={() => { void navigator.clipboard.writeText(selected.local_location ?? '') }}>
+                    {t('concept_docs_copy')}
+                  </button>
+                </span>
+              } />
+            )}
             <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
               {previewUrl && (
                 <button
@@ -782,13 +809,15 @@ export function Vault({ oeuvres, tM }: Props) {
                   ↗ Voir
                 </button>
               )}
-              <button
-                className="btn sm"
-                style={{ flex: 1, background: 'var(--ac)33', color: 'var(--ac)' }}
-                onClick={() => handleDownload(selected)}
-              >
-                ↓ Télécharger
-              </button>
+              {selected.storage_path ? (
+                <button
+                  className="btn sm"
+                  style={{ flex: 1, background: 'var(--ac)33', color: 'var(--ac)' }}
+                  onClick={() => handleDownload(selected)}
+                >
+                  ↓ Télécharger
+                </button>
+              ) : null}
               <button
                 className="btn sm"
                 style={{ flex: 1, background: 'var(--bg2)', color: 'var(--tx1)' }}

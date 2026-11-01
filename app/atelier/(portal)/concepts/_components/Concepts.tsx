@@ -11,6 +11,9 @@ import { CATEGORY_IDS, CATEGORY_KEYS, STATUT_KEYS } from '@/components/atelier/c
 import { inputSt } from '@/components/atelier/concepts/concept-form-styles'
 import { NewConceptForm } from '@/components/atelier/concepts/NewConceptForm'
 import { ConceptCard } from '@/components/atelier/concepts/ConceptCard'
+import { fetchConceptDocuments, type ConceptDocument } from '@/app/atelier/(portal)/concepts/document-actions'
+
+const EMPTY_DOCS: ConceptDocument[] = []
 
 export function Concepts() {
   const { t } = useI18n()
@@ -20,11 +23,18 @@ export function Concepts() {
   const [showForm,  setShowForm]  = useState(false)
   const [filter,    setFilter]    = useState<string>('all')
   const [search,    setSearch]    = useState('')
+  const [docsByConcept, setDocsByConcept] = useState<Map<string, ConceptDocument[]>>(() => new Map())
 
   const load = useCallback(async () => {
     setLoading(true)
-    const rows = await fetchConcepts()
+    const [rows, docs] = await Promise.all([fetchConcepts(), fetchConceptDocuments()])
     setConcepts(rows)
+    const byConcept = new Map<string, ConceptDocument[]>()
+    for (const d of docs) {
+      if (!d.concept_id) continue
+      byConcept.set(d.concept_id, [...(byConcept.get(d.concept_id) ?? []), d])
+    }
+    setDocsByConcept(byConcept)
     setLoading(false)
   }, [])
 
@@ -207,6 +217,7 @@ export function Concepts() {
               <ConceptCard
                 key={c.id}
                 concept={c}
+                documents={docsByConcept.get(c.id) ?? EMPTY_DOCS}
                 narrow={narrow}
                 onUpdated={handleUpdated}
                 onDeleted={handleDeleted}
