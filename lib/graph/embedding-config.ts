@@ -1,10 +1,9 @@
 import { createHash } from 'node:crypto'
 
-/** Slice 8 — shared embedding / Qdrant constants (safe for server + docs). */
+/** Slice 8 — shared embedding constants (safe for server + docs). Vectors: `nodes.embedding` (pgvector). */
 
 export const EMBEDDING_MODEL = 'nomic-embed-text'
 export const EMBEDDING_VECTOR_SIZE = 768
-export const QDRANT_COLLECTION = 'pem_universe'
 
 export function normalizeSearchQuery(raw: string): string {
   return raw.trim().toLowerCase().replace(/\s+/g, ' ')

@@ -21,7 +21,7 @@ export async function getCachedQueryVector(
   return parseVector(data.vector)
 }
 
-/** Persist an embedded query so Vercel can search Qdrant without Ollama. */
+/** Persist an embedded query so Vercel can search without Ollama. */
 export async function cacheQueryVector(
   svc: SupabaseClient,
   query: string,

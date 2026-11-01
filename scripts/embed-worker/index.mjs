@@ -4,7 +4,6 @@ import { createHash } from 'node:crypto'
 import { supabaseAdmin } from './supabase-admin.mjs'
 import { embedText, isOllamaConnectionError } from './ollama-client.mjs'
 import { ensureOllamaRunning } from './ensure-ollama.mjs'
-import { ensureCollection, upsertPoints, deletePoints, scrollAllPointIds } from './qdrant-client.mjs'
 import {
   BATCH_SIZE,
   EMBEDDING_MODEL,
@@ -41,7 +40,7 @@ async function resetStuckEmbedding(supabase) {
 async function fetchPendingBatch(supabase, n) {
   const { data, error } = await supabase
     .from('nodes')
-    .select('node_id, node_type, source_pk, embedding_status, embedding_text_hash, embedding_attempts, qdrant_point_id')
+    .select('node_id, node_type, source_pk, embedding_status, embedding_text_hash, embedding_attempts')
     .in('embedding_status', ['pending', 'error'])
     .order('created_at', { ascending: true })
     .limit(n)
@@ -78,30 +77,16 @@ async function processNode(supabase, row) {
   if (lockErr) throw new Error(lockErr.message)
 
   const vector = await embedText(String(text))
-  const pointId = row.qdrant_point_id ?? nodeId
-  const now = Math.floor(Date.now() / 1000)
 
-  await upsertPoints([
-    {
-      id: pointId,
-      vector,
-      payload: {
-        node_id: nodeId,
-        node_type: row.node_type,
-        model: EMBEDDING_MODEL,
-        embedded_at: now,
-      },
-    },
-  ])
-
+  // The vector lives on the node row (pgvector, supabase/sql/semantic_search_pgvector.sql).
   const { error: okErr } = await supabase
     .from('nodes')
     .update({
+      embedding: `[${vector.join(',')}]`,
       embedding_status: 'ok',
       embedding_text_hash: hash,
       embedding_model: EMBEDDING_MODEL,
       embedded_at: new Date().toISOString(),
-      qdrant_point_id: pointId,
       embedding_error: null,
     })
     .eq('node_id', nodeId)
@@ -121,22 +106,6 @@ async function failNode(supabase, row, err, { ollamaDown = false } = {}) {
       embedding_error: truncateErr(err?.message ?? err),
     })
     .eq('node_id', row.node_id)
-}
-
-async function drainTombstones(supabase) {
-  const { data, error } = await supabase
-    .from('node_embedding_tombstone')
-    .select('node_id')
-    .order('deleted_at', { ascending: true })
-    .limit(BATCH_SIZE)
-  if (error) throw new Error(error.message)
-  if (!data?.length) return 0
-
-  await deletePoints(data.map((r) => r.node_id))
-  const ids = data.map((r) => r.node_id)
-  const { error: delErr } = await supabase.from('node_embedding_tombstone').delete().in('node_id', ids)
-  if (delErr) throw new Error(delErr.message)
-  return ids.length
 }
 
 async function drainPendingQueries(supabase) {
@@ -175,8 +144,6 @@ async function drainPendingQueries(supabase) {
 
 async function runPass(supabase) {
   await resetStuckEmbedding(supabase)
-  const tomb = await drainTombstones(supabase)
-  if (tomb) console.log(`[embed-worker] tombstones drained: ${tomb}`)
 
   const queries = await drainPendingQueries(supabase)
   if (queries) console.log(`[embed-worker] pending queries cached: ${queries}`)
@@ -203,20 +170,16 @@ async function runPass(supabase) {
   return ok
 }
 
+/** Vectors live on their node rows, so orphans cannot exist; report what is still unsearchable. */
 async function runAudit(supabase) {
-  const qdrantIds = new Set(await scrollAllPointIds())
-  const { data, error } = await supabase.from('nodes').select('node_id')
+  const { data, error } = await supabase
+    .from('nodes')
+    .select('embedding_status')
+    .or('embedding.is.null,embedding_status.neq.ok')
   if (error) throw new Error(error.message)
-  const live = new Set((data ?? []).map((r) => r.node_id))
-  const orphans = [...qdrantIds].filter((id) => !live.has(id))
-  if (!orphans.length) {
-    console.log('[embed-worker] audit: no orphans')
-    return
-  }
-  console.log(`[embed-worker] audit: deleting ${orphans.length} orphan points`)
-  for (let i = 0; i < orphans.length; i += BATCH_SIZE) {
-    await deletePoints(orphans.slice(i, i + BATCH_SIZE))
-  }
+  const counts = {}
+  for (const r of data ?? []) counts[r.embedding_status] = (counts[r.embedding_status] ?? 0) + 1
+  console.log('[embed-worker] audit: nodes without a usable vector', counts)
 }
 
 async function runReembedAll(supabase) {
@@ -231,7 +194,6 @@ async function runReembedAll(supabase) {
 async function main() {
   await ensureOllamaRunning()
   const supabase = supabaseAdmin()
-  await ensureCollection()
 
   if (reembedAll) {
     await runReembedAll(supabase)

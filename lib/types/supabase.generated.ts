@@ -956,6 +956,7 @@ export type Database = {
         Row: {
           created_at: string
           embedded_at: string | null
+          embedding: string | null
           embedding_attempts: number
           embedding_dirty_at: string | null
           embedding_error: string | null
@@ -970,6 +971,7 @@ export type Database = {
         Insert: {
           created_at?: string
           embedded_at?: string | null
+          embedding?: string | null
           embedding_attempts?: number
           embedding_dirty_at?: string | null
           embedding_error?: string | null
@@ -984,6 +986,7 @@ export type Database = {
         Update: {
           created_at?: string
           embedded_at?: string | null
+          embedding?: string | null
           embedding_attempts?: number
           embedding_dirty_at?: string | null
           embedding_error?: string | null
@@ -2834,6 +2837,14 @@ export type Database = {
       }
       is_admin: { Args: never; Returns: boolean }
       is_team: { Args: never; Returns: boolean }
+      match_nodes: {
+        Args: { match_count?: number; query_embedding: string }
+        Returns: {
+          node_id: string
+          node_type: string
+          score: number
+        }[]
+      }
       my_contact_id: { Args: never; Returns: number }
       node_search_text: { Args: { p_node_id: string }; Returns: string }
       replace_oeuvre_themes: {

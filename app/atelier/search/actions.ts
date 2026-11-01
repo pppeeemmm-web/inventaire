@@ -4,7 +4,6 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import {
   EMBEDDING_MODEL,
-  QDRANT_COLLECTION,
   normalizeSearchQuery,
 } from '@/lib/graph/embedding-config'
 import {
@@ -13,6 +12,7 @@ import {
   getCachedQueryVector,
 } from '@/lib/graph/query-embedding-cache'
 import { resolveOllamaClientUrl } from '@/lib/contact-url-enrich'
+import { logError } from '@/lib/error-reporter/server'
 import { dbEntityToEntityRow } from '@/lib/graph/entity-rows'
 import type { EntityRow } from '@/lib/graph/node-ref'
 
@@ -35,13 +35,6 @@ async function guardTeam() {
   const { data: isTeam } = await supabase.rpc('is_team')
   if (!isTeam) return { error: 'Accès refusé' as const, supabase: null }
   return { error: null, supabase }
-}
-
-function qdrantConfig() {
-  const url = process.env.QDRANT_URL?.trim()
-  const key = process.env.QDRANT_API_KEY?.trim()
-  if (!url || !key) return null
-  return { url: url.replace(/\/$/, ''), key }
 }
 
 function isLocalOllamaReachable(): boolean {
@@ -95,37 +88,28 @@ async function resolveQueryVector(
   }
 }
 
-async function qdrantSearch(vector: number[], limit: number) {
-  const cfg = qdrantConfig()
-  if (!cfg) return null
-  const res = await fetch(`${cfg.url}/collections/${QDRANT_COLLECTION}/points/search`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'api-key': cfg.key,
-    },
-    body: JSON.stringify({ vector, limit, with_payload: true }),
-    signal: AbortSignal.timeout(10_000),
+type VectorMatch = { node_id: string; node_type: string; score: number }
+
+/** Nearest nodes by cosine similarity — pgvector `match_nodes` (supabase/sql/semantic_search_pgvector.sql). */
+async function vectorSearch(
+  svc: ReturnType<typeof createServiceClient>,
+  vector: number[],
+  limit: number,
+): Promise<VectorMatch[]> {
+  const { data, error } = await svc.rpc('match_nodes', {
+    query_embedding: `[${vector.join(',')}]`,
+    match_count: limit,
   })
-  if (!res.ok) {
-    throw new Error(`Qdrant ${res.status}`)
-  }
-  const json = (await res.json()) as { result?: { id: string | number; score: number; payload?: Record<string, unknown> }[] }
-  return json.result ?? []
+  if (error) throw new Error(error.message)
+  return (data ?? []) as VectorMatch[]
 }
 
 async function hydrateSemanticHits(
-  results: NonNullable<Awaited<ReturnType<typeof qdrantSearch>>>,
+  svc: ReturnType<typeof createServiceClient>,
+  results: VectorMatch[],
 ): Promise<SemanticSearchHit[]> {
-  const nodeIds = results
-    .map((r) => {
-      const p = r.payload
-      if (p && typeof p.node_id === 'string') return p.node_id
-      return String(r.id)
-    })
-    .filter(Boolean)
+  const nodeIds = results.map((r) => r.node_id).filter(Boolean)
 
-  const svc = createServiceClient()
   const { data: entities, error: entErr } = await svc
     .from('entity')
     .select('node_id, node_type, source_pk, created_at, display_label, title, is_public, legacy_int_id, legacy_uuid')
@@ -140,13 +124,13 @@ async function hydrateSemanticHits(
 
   return results
     .map((r) => {
-      const nodeId =
-        (typeof r.payload?.node_id === 'string' ? r.payload.node_id : String(r.id))
+      const nodeId = r.node_id
       const ent = byId.get(nodeId)
       return {
         nodeId,
-        nodeType: ent?.node_type ?? String(r.payload?.node_type ?? ''),
-        label: ent?.display_label ?? ent?.title ?? nodeId,
+        nodeType: ent?.node_type ?? r.node_type,
+        // Most works are untitled — show their number rather than the node uuid.
+        label: ent?.display_label ?? ent?.title ?? (ent?.legacy_int_id != null ? `#${ent.legacy_int_id}` : nodeId),
         score: r.score,
         legacyIntId: ent?.legacy_int_id ?? null,
       }
@@ -161,21 +145,19 @@ export async function searchSemanticAtelier(query: string): Promise<SemanticSear
   const q = normalizeSearchQuery(query)
   if (q.length < 2) return { ok: true, hits: [] }
 
-  const cfg = qdrantConfig()
-  if (!cfg) return { ok: true, hits: [], unavailable: true }
-
   try {
     const svc = createServiceClient()
     const resolved = await resolveQueryVector(svc, q)
     if ('pending' in resolved) return { ok: true, hits: [], pending: true }
     if ('unavailable' in resolved) return { ok: true, hits: [], unavailable: true }
 
-    const results = await qdrantSearch(resolved.vector, 12)
-    if (!results?.length) return { ok: true, hits: [] }
+    const results = await vectorSearch(svc, resolved.vector, 12)
+    if (!results.length) return { ok: true, hits: [] }
 
-    const hits = await hydrateSemanticHits(results)
+    const hits = await hydrateSemanticHits(svc, results)
     return { ok: true, hits }
-  } catch {
+  } catch (err) {
+    await logError('Semantic search failed', err, { source: 'search.searchSemanticAtelier' })
     return { ok: true, hits: [], unavailable: true }
   }
 }

@@ -11,7 +11,7 @@ Companion to [`graphify-out/GRAPH_REPORT.md`](../graphify-out/GRAPH_REPORT.md). 
 
 ## Ops
 
-- **Embed backfill:** `npm run embed:worker -- --watch` (desktop; Ollama + Qdrant). See [`archive/HANDOFF_SLICE8.md`](./archive/HANDOFF_SLICE8.md).
+- **Embed backfill:** `npm run embed:worker -- --watch` (desktop; Ollama → `nodes.embedding` pgvector). See [`archive/HANDOFF_SLICE8.md`](./archive/HANDOFF_SLICE8.md).
 - **Graph CSV backup (Slice 7 Phase 2):** [`.github/workflows/graph-csv-backup.yml`](../.github/workflows/graph-csv-backup.yml) + [`scripts/backup-graph-csv.sh`](../scripts/backup-graph-csv.sh). Verify locally: `pwsh scripts/verify-graph-csv-backup.ps1`.
 - **GRANT audit (O1, deadline 2026-10-30):** `pwsh scripts/run-grant-audit.ps1` (requires `SUPABASE_DB_URL`).
 
