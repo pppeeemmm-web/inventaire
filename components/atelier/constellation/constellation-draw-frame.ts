@@ -54,6 +54,13 @@ export function drawConstellationFrame(
     selectedThemeId, selectedGroupId, shapes, activeShape, marquee, frozenEdges,
   } = params
 
+  // Canvas 2D cannot resolve `var(--…)` — an invalid fillStyle is silently ignored.
+  // Read the theme tokens once per frame so labels follow the active theme.
+  const css   = getComputedStyle(wrap)
+  const colTx  = css.getPropertyValue('--tx').trim()  || '#f8f7f3'
+  const colTx3 = css.getPropertyValue('--tx3').trim() || '#807c72'
+  const colAc  = css.getPropertyValue('--ac').trim()  || '#d4b886'
+
   const dpr = window.devicePixelRatio ?? 1
   const cw  = wrap.clientWidth
   const ch  = wrap.clientHeight
@@ -426,7 +433,7 @@ export function drawConstellationFrame(
     } else {
       ctx.fillStyle = 'rgba(255,255,255,0.03)'
       ctx.fill()
-      ctx.fillStyle = 'var(--tx3)'
+      ctx.fillStyle = colTx3
       ctx.font      = `${Math.max(6, 12 / vp.z)}px monospace`
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
@@ -461,7 +468,7 @@ export function drawConstellationFrame(
     }
 
     if (vp.z > 0.4) {
-      ctx.fillStyle = isSel ? 'var(--ac)' : isHov ? 'var(--tx)' : 'var(--tx3)'
+      ctx.fillStyle = isSel ? colAc : isHov ? colTx : colTx3
       ctx.font      = `${8 / vp.z}px "Sofia Sans", sans-serif`
       ctx.textAlign = 'center'
       const short = o.Titre ? (o.Titre.length > 20 ? o.Titre.slice(0, 18) + '…' : o.Titre) : `#${id}`
