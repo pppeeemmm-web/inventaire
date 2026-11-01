@@ -145,10 +145,10 @@ export function OverviewTab({
   return (
     <div
       style={{
-        padding: ovNarrow ? '20px 16px' : '32px 40px',
+        padding: ovNarrow ? '20px 16px' : '14px 24px',
         display: 'grid',
         gridTemplateColumns: ovNarrow ? '1fr' : '1fr 300px',
-        gap: ovNarrow ? 28 : 60,
+        gap: ovNarrow ? 28 : 28,
         alignItems: 'start',
         maxWidth: '100%',
         boxSizing: 'border-box',
@@ -156,11 +156,11 @@ export function OverviewTab({
     >
 
       {/* Left Column: Dashboard Pulse */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 48 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: ovNarrow ? 28 : 16 }}>
         
         {/* Row 1: Executive Stats */}
         <div>
-          <div className="t-eyebrow" style={{ marginBottom: 24, opacity: 0.6 }} data-testid="atelier-overview-executive">{t('ov_executive_summary')}</div>
+          <div className="t-eyebrow" style={{ marginBottom: 12, opacity: 0.6 }} data-testid="atelier-overview-executive">{t('ov_executive_summary')}</div>
           <div style={{ display: 'grid', gridTemplateColumns: ovNarrow ? 'repeat(2, minmax(0, 1fr))' : 'repeat(6, 1fr)', gap: 1, border: '1px solid var(--bd)', background: 'var(--bd)' }}>
             {[
               {
@@ -177,10 +177,10 @@ export function OverviewTab({
               { l: t('priced'),                       v: withPrice },
               { l: t('ov_stat_total_value'),           v: `€ ${Math.round(oeuvres.reduce((s,o) => s+(o.Prix||0), 0)/1000)}k` },
             ].map(({ l, v, hint }) => (
-              <div key={l} style={{ padding: '20px 24px', background: 'var(--bg1)' }}>
+              <div key={l} style={{ padding: ovNarrow ? '20px 24px' : '14px 18px', background: 'var(--bg1)' }}>
                 <div className="stat">
                   <span className="l" style={{ fontSize: 9, letterSpacing: 1.5 }}>{l}</span>
-                  <span className="v" style={{ fontSize: 24 }}>{v}</span>
+                  <span className="v" style={{ fontSize: ovNarrow ? 24 : 20, whiteSpace: 'nowrap' }}>{v}</span>
                   {hint ? (
                     <span className="t-mono-sm" style={{ fontSize: 9, color: 'var(--tx3)', marginTop: 4, display: 'block' }}>
                       {hint}
@@ -194,11 +194,11 @@ export function OverviewTab({
 
         {/* Row 1.5: Financial Pulse */}
         <div>
-          <div className="row gap-sm" style={{ justifyContent: 'space-between', marginBottom: 20 }}>
+          <div className="row gap-sm" style={{ justifyContent: 'space-between', marginBottom: 10 }}>
             <div className="t-eyebrow" style={{ opacity: 0.6 }}>{t('ov_financial_pulse_fmt').replace(/\{year\}/g, String(thisYear))}</div>
             <button className="t-mono-sm" onClick={() => onGoTab('fiscal')} style={{ background: 'none', border: 'none', color: 'var(--ac)', cursor: 'pointer', fontSize: 9, letterSpacing: 1 }}>{t('ov_manage_revenues')}</button>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: ovNarrow ? '1fr' : '1fr 1fr', gap: ovNarrow ? 20 : 40, padding: 24, background: 'var(--bg1)', border: '1px solid var(--bd)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: ovNarrow ? '1fr' : '1fr 1fr', gap: ovNarrow ? 20 : 28, padding: ovNarrow ? 20 : 16, background: 'var(--bg1)', border: '1px solid var(--bd)' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div className="t-label" style={{ fontSize: 10, color: 'var(--tx3)' }}>{t('ov_income_vs_expenses')}</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -237,11 +237,11 @@ export function OverviewTab({
 
         {/* Row 2: Visual Grid (Recent Documentation) */}
         <div>
-          <div className="row gap-sm" style={{ justifyContent: 'space-between', marginBottom: 20 }}>
+          <div className="row gap-sm" style={{ justifyContent: 'space-between', marginBottom: 10 }}>
             <div className="t-eyebrow" style={{ opacity: 0.6 }}>{t('ov_recent_docs')}</div>
             <button className="t-mono-sm" onClick={() => onGoTab('inventory')} style={{ background: 'none', border: 'none', color: 'var(--ac)', cursor: 'pointer', fontSize: 9, letterSpacing: 1 }}>{t('ov_view_all')}</button>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: ovNarrow ? 'repeat(3, minmax(0, 1fr))' : 'repeat(6, 1fr)', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: ovNarrow ? 'repeat(3, minmax(0, 1fr))' : 'repeat(6, minmax(0, 96px))', gap: ovNarrow ? 12 : 10 }}>
             {recentWorks.map((o) => (
               <div key={o.OeuvreID} style={{ aspectRatio: '1', background: 'var(--bg1)', border: '1px solid var(--bd2)', position: 'relative', overflow: 'hidden', cursor: 'pointer' }}>
                 {o.txtImageNameLink ? (
@@ -258,7 +258,7 @@ export function OverviewTab({
         </div>
 
         {/* Row 3: Technique & Distribution */}
-        <div style={{ display: 'grid', gridTemplateColumns: ovNarrow ? '1fr' : '1fr 1fr', gap: 40 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: ovNarrow ? '1fr' : '1.15fr 1fr 1fr', gap: ovNarrow ? 28 : 20, alignItems: 'start' }}>
           {/* Technique breakdown */}
           <div>
             <div className="t-label" style={{ marginBottom: 16, opacity: 0.8 }}>{t('byTechnique')}</div>
@@ -279,7 +279,7 @@ export function OverviewTab({
           </div>
 
           {/* Needs you + Studio health — every row targets the items behind it */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 20, alignContent: 'start' }}>
+          <div style={{ display: ovNarrow ? 'grid' : 'contents', gridTemplateColumns: '1fr', gap: 20, alignContent: 'start' }}>
              <div style={{ padding: '16px', background: 'var(--bg1)', border: '1px solid var(--bd)' }}>
                 <div className="t-eyebrow" style={{ fontSize: 8, marginBottom: 4, color: 'var(--tx3)' }}>{t('ov_needs_you')}</div>
                 <div className="t-mono-sm" style={{ fontSize: 8, color: 'var(--tx3)', marginBottom: 12 }}>{t('ov_needs_you_hint')}</div>
@@ -348,7 +348,7 @@ export function OverviewTab({
       </div>
 
       {/* Right Column: Deadlines & Concepts */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 32, minWidth: 0 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: ovNarrow ? 28 : 20, minWidth: 0 }}>
         <div>
           <button
             type="button"
