@@ -23,6 +23,7 @@ const ATELIER_OEUVRE_PAGE = 50
 
 const overviewDefault: AtelierOverviewBootstrap = {
   expenseTotalTtc: 0,
+  salesIncomeTtc: 0,
   upcomingPulse: [],
   overviewCalendarEvents: [],
   burningConcepts: [],

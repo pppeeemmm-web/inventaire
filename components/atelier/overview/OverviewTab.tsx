@@ -65,8 +65,6 @@ export function OverviewTab({
    *  so a work falls back here after a session until the artist validates it. */
   let needsPhotoValidation = 0
   let notCatalogued = 0
-  /** Sold works (status 4) with revenue attributed to this calendar year — used in Financial Pulse */
-  let soldIncomeThisYear = 0
   for (const o of oeuvres) {
     if (o.Année?.startsWith(yearPrefix)) byYear++
     if (o.Prix && o.Prix > 0) withPrice++
@@ -79,9 +77,6 @@ export function OverviewTab({
     if (!o.LocalisationID) missingLoc++
     if (o.NeedsPhotograph) needsPhotoValidation++
     if (!o.Catalogué) notCatalogued++
-    if (o.statusId === 4 && o.Année?.startsWith(yearPrefix)) {
-      soldIncomeThisYear += Number(o.PrixFinal ?? o.Prix ?? 0)
-    }
   }
 
   const backlog = initialOverviewBootstrap.backlog
@@ -112,9 +107,11 @@ export function OverviewTab({
     [initialReminders],
   )
 
-  const { expenseTotalTtc, upcomingPulse: upcoming, overviewCalendarEvents, burningConcepts } =
+  const { expenseTotalTtc, salesIncomeTtc, upcomingPulse: upcoming, overviewCalendarEvents, burningConcepts } =
     initialOverviewBootstrap
   const expenseTotal = expenseTotalTtc
+  /** Financial Pulse income: sale orders + payments this year (`fetchSalesIncome`), not `Oeuvres` status. */
+  const soldIncomeThisYear = salesIncomeTtc ?? 0
 
   const ovNarrow = useMediaQuery('(max-width: 767px)')
   const localeTagOv = lang === 'en' ? 'en-GB' : 'fr-FR'

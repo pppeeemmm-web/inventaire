@@ -11,6 +11,7 @@ import {
   type PulseProcess,
 } from '@/lib/pipeline-deadlines'
 import { buildPipelineCalendarEvents } from '@/lib/pipeline-calendar'
+import { fetchSalesIncome } from '@/lib/sales/income'
 import type {
   ConceptBurningRow,
   SuiviEtapePulseRow,
@@ -60,8 +61,9 @@ export async function fetchAtelierOverviewBootstrap(
 ): Promise<AtelierOverviewBootstrap> {
   const supabase = client ?? (await createClient())
 
-  const [expRes, proRes, etRes, conceptRes, approvalsRes, fieldTasksRes, ledgerRes, sessionsRes] = await Promise.all([
+  const [expRes, salesIncome, proRes, etRes, conceptRes, approvalsRes, fieldTasksRes, ledgerRes, sessionsRes] = await Promise.all([
     supabase.from('expense').select('montant_ttc').eq('fiscal_year', fiscalYear),
+    fetchSalesIncome(supabase, fiscalYear),
     supabase
       .from('suivi_process')
       .select('id, nom, type, date_fin, deadline_time, statut')
@@ -99,6 +101,7 @@ export async function fetchAtelierOverviewBootstrap(
   ])
 
   if (expRes.error) console.error('[atelier overview] expense:', expRes.error.message)
+  if (salesIncome.error) console.error('[atelier overview] sales income:', salesIncome.error)
   if (proRes.error) console.error('[atelier overview] suivi_process:', proRes.error.message)
   if (etRes.error) console.error('[atelier overview] suivi_etape:', etRes.error.message)
   if (conceptRes.error) console.error('[atelier overview] concept:', conceptRes.error.message)
@@ -124,6 +127,7 @@ export async function fetchAtelierOverviewBootstrap(
 
   return {
     expenseTotalTtc,
+    salesIncomeTtc: salesIncome.total,
     upcomingPulse: computePipelinePulseItems(processes).slice(0, 8),
     overviewCalendarEvents: buildPipelineCalendarEvents(processes, reminderInputs),
     burningConcepts: (conceptRes.data ?? []) as ConceptBurningRow[],

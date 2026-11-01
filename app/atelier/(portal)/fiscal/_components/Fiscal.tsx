@@ -13,6 +13,7 @@ import type { Oeuvre } from '@/lib/types/database'
 import type { Agg, Dim } from '@/lib/pivot'
 import { buildPivot } from '@/lib/pivot'
 import { PivotPanel } from '@/components/atelier/PivotPanel'
+import { fetchSalesIncome } from '@/lib/sales/income'
 
 // ── Constants ──────────────────────────────────────────────────────────
 
@@ -100,7 +101,7 @@ function StatCard({ label, value, sub, warn }: { label: string; value: string; s
 
 // ── Main component ─────────────────────────────────────────────────────
 
-export function Fiscal({ oeuvres, contacts = [] }: Props) {
+export function Fiscal({ contacts = [] }: Props) {
   const { t } = useI18n()
   const [year,     setYear]     = useState(YEAR_NOW)
   const [regime,   setRegime]   = useState<'micro' | 'reel'>('micro')
@@ -139,19 +140,17 @@ export function Fiscal({ oeuvres, contacts = [] }: Props) {
       })
   }, [year])
 
-  // Recettes: sold works this year (statusId 4 = Sold)
-  const recettes = useMemo(() =>
-    oeuvres
-      .filter((o) => {
-        if (o.statusId !== 4) return false
-        const y = o.DateLivraison
-          ? new Date(o.DateLivraison).getFullYear()
-          : o.Année ? parseInt(String(o.Année)) : null
-        return y === year
-      })
-      .reduce((sum, o) => sum + (Number(o.PrixFinal ?? o.Prix ?? 0)), 0),
-    [oeuvres, year],
-  )
+  // Recettes: money received this year — sale orders + payments are the truth, not Oeuvres status.
+  const [recettes, setRecettes] = useState(0)
+  useEffect(() => {
+    let cancelled = false
+    void fetchSalesIncome(createClient(), year).then((income) => {
+      if (cancelled) return
+      if (income.error) console.error('[Fiscal] sales income error:', income.error)
+      setRecettes(income.total)
+    })
+    return () => { cancelled = true }
+  }, [year])
 
   const totalDepenses = useMemo(() =>
     expenses.reduce((s, e) => s + Number(e.montant_ttc), 0),

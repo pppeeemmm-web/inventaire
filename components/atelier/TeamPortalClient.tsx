@@ -193,6 +193,7 @@ export type { TeamPortalClientProps }
 
 const DEFAULT_OVERVIEW_BOOTSTRAP: AtelierOverviewBootstrap = {
   expenseTotalTtc: 0,
+  salesIncomeTtc: 0,
   upcomingPulse: [],
   overviewCalendarEvents: [],
   burningConcepts: [],

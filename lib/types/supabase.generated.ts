@@ -221,6 +221,7 @@ export type Database = {
       consignment_order: {
         Row: {
           catalog_price: number | null
+          commission_pct: number | null
           created_at: string | null
           end_date: string | null
           id: string
@@ -236,6 +237,7 @@ export type Database = {
         }
         Insert: {
           catalog_price?: number | null
+          commission_pct?: number | null
           created_at?: string | null
           end_date?: string | null
           id?: string
@@ -251,6 +253,7 @@ export type Database = {
         }
         Update: {
           catalog_price?: number | null
+          commission_pct?: number | null
           created_at?: string | null
           end_date?: string | null
           id?: string
@@ -610,58 +613,77 @@ export type Database = {
         Row: {
           cert_hash: string | null
           cert_id: string | null
+          concept_id: string | null
           contact_id: number | null
           created_at: string
           doc_date: string | null
+          external_url: string | null
           file_size: number | null
           folder: string | null
           id: string
           kind: string | null
+          local_location: string | null
           mime_type: string | null
           name: string
           notes: string | null
           oeuvre_id: number | null
           oeuvre_ids: number[] | null
           process_id: string | null
+          source: string
           storage_path: string | null
         }
         Insert: {
           cert_hash?: string | null
           cert_id?: string | null
+          concept_id?: string | null
           contact_id?: number | null
           created_at?: string
           doc_date?: string | null
+          external_url?: string | null
           file_size?: number | null
           folder?: string | null
           id?: string
           kind?: string | null
+          local_location?: string | null
           mime_type?: string | null
           name: string
           notes?: string | null
           oeuvre_id?: number | null
           oeuvre_ids?: number[] | null
           process_id?: string | null
+          source?: string
           storage_path?: string | null
         }
         Update: {
           cert_hash?: string | null
           cert_id?: string | null
+          concept_id?: string | null
           contact_id?: number | null
           created_at?: string
           doc_date?: string | null
+          external_url?: string | null
           file_size?: number | null
           folder?: string | null
           id?: string
           kind?: string | null
+          local_location?: string | null
           mime_type?: string | null
           name?: string
           notes?: string | null
           oeuvre_id?: number | null
           oeuvre_ids?: number[] | null
           process_id?: string | null
+          source?: string
           storage_path?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "document_concept_id_fkey"
+            columns: ["concept_id"]
+            isOneToOne: false
+            referencedRelation: "concept"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "document_contact_id_fkey"
             columns: ["contact_id"]
@@ -1344,6 +1366,44 @@ export type Database = {
         }
         Relationships: []
       }
+      payments: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          method: string | null
+          notes: string | null
+          order_id: string
+          payment_date: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          method?: string | null
+          notes?: string | null
+          order_id: string
+          payment_date?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          method?: string | null
+          notes?: string | null
+          order_id?: string
+          payment_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "sale_order"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pending_changes: {
         Row: {
           author_email: string | null
@@ -1515,7 +1575,9 @@ export type Database = {
           balance_due: string | null
           balance_paid: boolean
           buyer_id: number | null
+          commission_amount: number | null
           completed_at: string | null
+          consignment_order_id: string | null
           created_at: string
           currency: string
           delivered: boolean
@@ -1543,7 +1605,9 @@ export type Database = {
           balance_due?: string | null
           balance_paid?: boolean
           buyer_id?: number | null
+          commission_amount?: number | null
           completed_at?: string | null
+          consignment_order_id?: string | null
           created_at?: string
           currency?: string
           delivered?: boolean
@@ -1571,7 +1635,9 @@ export type Database = {
           balance_due?: string | null
           balance_paid?: boolean
           buyer_id?: number | null
+          commission_amount?: number | null
           completed_at?: string | null
+          consignment_order_id?: string | null
           created_at?: string
           currency?: string
           delivered?: boolean
@@ -1602,6 +1668,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "Contact"
             referencedColumns: ["ContactID"]
+          },
+          {
+            foreignKeyName: "sale_order_consignment_order_id_fkey"
+            columns: ["consignment_order_id"]
+            isOneToOne: false
+            referencedRelation: "consignment_order"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "sale_order_oeuvre_id_fkey"
