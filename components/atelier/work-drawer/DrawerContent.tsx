@@ -1267,8 +1267,6 @@ export function DrawerContent({
         drawerStartRetouch={drawerStartRetouch}
       />
 
-      <WorkFormPhysicalQr oeuvreId={o.OeuvreID} titre={titre || o.Titre} />
-
       {/* Title (inline edit) */}
       <input
         value={titre}
@@ -1341,6 +1339,8 @@ export function DrawerContent({
           selThemes={selThemes}
           setSelThemes={setSelThemes}
         />
+
+        <WorkFormPhysicalQr oeuvreId={o.OeuvreID} titre={titre || o.Titre} />
 
         <DrawerContentFinanceSection
           narrow={narrow}
