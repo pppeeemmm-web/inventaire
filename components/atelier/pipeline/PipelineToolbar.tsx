@@ -36,8 +36,8 @@ export function PipelineToolbar({
     <div style={{
       display: 'flex', flexDirection: atelierNarrow ? 'column' : 'row',
       alignItems: atelierNarrow ? 'stretch' : 'center',
-      gap: atelierNarrow ? 12 : 10,
-      rowGap: 10,
+      columnGap: atelierNarrow ? 12 : 10,
+      rowGap: atelierNarrow ? 12 : 10,
       padding: atelierNarrow ? '10px 16px' : '10px 28px', borderBottom: '1px solid var(--bd)',
       background: 'var(--bg1)', flexShrink: 0,
     }}>
@@ -137,7 +137,8 @@ export function PipelineToolbar({
               flexWrap: 'wrap',
               alignItems: 'center',
               gap: 6,
-              flex: 1,
+              // Wraps onto its own line rather than squeezing the chips into a column.
+              flex: '1 1 420px',
               minWidth: 0,
               maxWidth: '100%',
               color: 'var(--tx3)', fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase',
@@ -148,10 +149,11 @@ export function PipelineToolbar({
             <div
               style={{
                 display: 'flex',
-                flexWrap: 'nowrap',
+                flexWrap: 'wrap',
                 gap: 6,
                 alignItems: 'center',
-                flexShrink: 0,
+                flex: '1 1 auto',
+                minWidth: 0,
               }}
             >
               <button type="button" className="btn ghost sm"

@@ -120,15 +120,31 @@ function GanttHoverPopover({
   )
 }
 
-const GANTT_ZOOM_PADS = [
-  { preM: 14, postM: 20 },
-  { preM: 8, postM: 12 },
-  { preM: 5, postM: 8 },
-  { preM: 2, postM: 3 },
-  { preM: 1, postM: 2 },
+const DAY_MS = 86400000
+/** Visible window width per zoom step — zoom scales time, pan moves the window. */
+const GANTT_SPANS = [
+  { days: 1095, labelKey: 'pipeline_gantt_span_3y' },
+  { days: 365, labelKey: 'pipeline_gantt_span_1y' },
+  { days: 182, labelKey: 'pipeline_gantt_span_6m' },
+  { days: 91, labelKey: 'pipeline_gantt_span_3m' },
+  { days: 42, labelKey: 'pipeline_gantt_span_6w' },
 ] as const
-const GANTT_ZOOM_MAX = GANTT_ZOOM_PADS.length - 1
-const GANTT_MIN_RANGE_MS = 18 * 86400000
+const GANTT_ZOOM_MAX = GANTT_SPANS.length - 1
+const GANTT_DEFAULT_ZOOM = 1
+/** Where "today" sits in the window on open / Today: a third in, so recent past stays visible. */
+const GANTT_TODAY_AT = 0.3
+/** Minimum px between month labels before they are thinned. */
+const GANTT_MONTH_LABEL_PX = 56
+
+function startOfToday(): number {
+  const d = new Date()
+  d.setHours(0, 0, 0, 0)
+  return d.getTime()
+}
+
+function windowStartForToday(zoom: number): number {
+  return startOfToday() - GANTT_SPANS[zoom].days * DAY_MS * GANTT_TODAY_AT
+}
 
 function GanttView({
   processes,
@@ -152,8 +168,51 @@ function GanttView({
   const showHoverPopover = finePointerHover && !narrow
   const [expandedPeekId, setExpandedPeekId] = useState<string | null>(null)
   const [hoverPop, setHoverPop] = useState<{ process: Process; x: number; y: number } | null>(null)
-  const [zoomIdx, setZoomIdx] = useState(2)
+  const [zoomIdx, setZoomIdx] = useState(GANTT_DEFAULT_ZOOM)
+  const [viewStart, setViewStart] = useState(() => windowStartForToday(GANTT_DEFAULT_ZOOM))
+  const spanMs = GANTT_SPANS[zoomIdx].days * DAY_MS
+  const headerRef = useRef<HTMLDivElement | null>(null)
+  const chartRef = useRef<HTMLDivElement | null>(null)
+  const [trackPx, setTrackPx] = useState(800)
+  const dragRef = useRef<{ x: number; start: number } | null>(null)
   const hidePopTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const setZoom = useCallback((next: number) => {
+    const z = Math.min(GANTT_ZOOM_MAX, Math.max(0, next))
+    if (z === zoomIdx) return
+    // Keep the window centred while zooming.
+    const nextSpan = GANTT_SPANS[z].days * DAY_MS
+    setViewStart((s) => s + spanMs / 2 - nextSpan / 2)
+    setZoomIdx(z)
+  }, [zoomIdx, spanMs])
+
+  const panBy = useCallback((fraction: number) => {
+    setViewStart((s) => s + fraction * spanMs)
+  }, [spanMs])
+
+  useEffect(() => {
+    const el = headerRef.current
+    if (!el) return
+    const ro = new ResizeObserver(() => setTrackPx(Math.max(1, el.clientWidth)))
+    ro.observe(el)
+    setTrackPx(Math.max(1, el.clientWidth))
+    return () => ro.disconnect()
+  }, [])
+
+  // Horizontal wheel / trackpad swipe / Shift+wheel pans. Native listener: React's onWheel is passive.
+  useEffect(() => {
+    const el = chartRef.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => {
+      const horizontal = Math.abs(e.deltaX) > Math.abs(e.deltaY)
+      if (!horizontal && !e.shiftKey) return
+      e.preventDefault()
+      const d = horizontal ? e.deltaX : e.deltaY
+      setViewStart((s) => s + (d / trackPx) * spanMs)
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [trackPx, spanMs])
 
   const clearHideTimer = useCallback(() => {
     if (hidePopTimer.current) {
@@ -179,51 +238,40 @@ function GanttView({
     setHoverPop((h) => (h && processes.some((q) => q.id === h.process.id) ? h : null))
   }, [processes])
 
-  const allProcessTimes = useMemo(() => {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const tMs = today.getTime()
-    const xs: number[] = [tMs]
-    for (const p of processes) {
-      if (p.date_debut) xs.push(new Date(p.date_debut).getTime())
-      if (p.date_fin) xs.push(new Date(p.date_fin).getTime())
-      for (const e of p.etapes) {
-        if (e.date_echeance) xs.push(new Date(e.date_echeance).getTime())
-      }
-    }
-    return xs
-  }, [processes])
-
   const timeline = useMemo(() => {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const pad = GANTT_ZOOM_PADS[Math.min(Math.max(zoomIdx, 0), GANTT_ZOOM_MAX)]
-    let mn = new Date(Math.min(...allProcessTimes))
-    let mx = new Date(Math.max(...allProcessTimes))
-    mn = new Date(mn.getFullYear(), mn.getMonth() - pad.preM, mn.getDate())
-    mx = new Date(mx.getFullYear(), mx.getMonth() + pad.postM, mx.getDate())
-    let span = mx.getTime() - mn.getTime()
-    if (span < GANTT_MIN_RANGE_MS) {
-      const mid = (mn.getTime() + mx.getTime()) / 2
-      mn = new Date(mid - GANTT_MIN_RANGE_MS / 2)
-      mx = new Date(mid + GANTT_MIN_RANGE_MS / 2)
-      span = mx.getTime() - mn.getTime()
-    }
-    const total = mx.getTime() - mn.getTime()
-    const pctFn = (d: Date | string) =>
-      Math.max(0, Math.min(100, (new Date(d).getTime() - mn.getTime()) / total * 100))
-    const months: { label: string; left: number; k: string }[] = []
-    let cur = new Date(mn.getFullYear(), mn.getMonth(), 1)
-    const endMonth = new Date(mx.getFullYear(), mx.getMonth() + 1, 1)
-    while (cur < endMonth) {
-      const k = `${cur.getFullYear()}-${cur.getMonth()}`
-      months.push({
-        k,
-        label: cur.toLocaleDateString(ganttDateLoc, { month: 'short', year: '2-digit' }),
-        left: pctFn(cur),
-      })
+    const mn = new Date(viewStart)
+    const mx = new Date(viewStart + spanMs)
+    const total = spanMs
+    /** Window position in %, NOT clamped — callers decide what is off-window. */
+    const pctFn = (d: Date | string) => (new Date(d).getTime() - mn.getTime()) / total * 100
+    const fmtMonth = (d: Date) => d.toLocaleDateString(ganttDateLoc, { month: 'short', year: '2-digit' })
+
+    // Grid lines: every month start inside the window.
+    const months: { left: number; k: string }[] = []
+    const cur = new Date(mn.getFullYear(), mn.getMonth(), 1)
+    while (cur.getTime() <= mx.getTime()) {
+      const left = pctFn(cur)
+      if (left >= 0 && left < 100) months.push({ k: `${cur.getFullYear()}-${cur.getMonth()}`, left })
       cur.setMonth(cur.getMonth() + 1)
     }
+
+    // Labels: left-aligned on the month line (never centred across the edge), thinned to fit,
+    // dropped when they would run past the right edge.
+    const pxPerMonth = trackPx * (30.44 * DAY_MS) / total
+    const step = Math.max(1, Math.ceil(GANTT_MONTH_LABEL_PX / pxPerMonth))
+    const labelMaxLeft = 100 - (GANTT_MONTH_LABEL_PX * 0.8 / trackPx) * 100
+    const monthLabels: { label: string; left: number; k: string }[] = []
+    for (const m of months) {
+      const [y, mo] = m.k.split('-').map(Number)
+      if ((y * 12 + mo) % step !== 0 || m.left > labelMaxLeft) continue
+      monthLabels.push({ k: m.k, left: m.left, label: fmtMonth(new Date(y, mo, 1)) })
+    }
+    // Name the partial month at the left edge when the first label is far enough in.
+    const firstLeftPx = monthLabels.length ? (monthLabels[0].left / 100) * trackPx : trackPx
+    if (step === 1 && firstLeftPx >= GANTT_MONTH_LABEL_PX) {
+      monthLabels.unshift({ k: 'edge', left: 0, label: fmtMonth(mn) })
+    }
+
     const showWeekTicks = total <= 62 * 86400000
     const mondayTicks: { left: number; k: string }[] = []
     if (showWeekTicks) {
@@ -233,23 +281,23 @@ function GanttView({
       w.setDate(w.getDate() - off)
       let guard = 0
       while (w.getTime() <= mx.getTime() && guard++ < 240) {
-        mondayTicks.push({ left: pctFn(w), k: `w-${w.getFullYear()}-${w.getMonth()}-${w.getDate()}` })
+        const left = pctFn(w)
+        if (left >= 0) mondayTicks.push({ left, k: `w-${w.getFullYear()}-${w.getMonth()}-${w.getDate()}` })
         w.setDate(w.getDate() + 7)
       }
     }
     return {
-      minDate: mn,
-      maxDate: mx,
-      totalMs: total,
       pct: pctFn,
       months,
-      todayPct: pctFn(today),
+      monthLabels,
+      todayPct: pctFn(new Date(startOfToday())),
       mondayTicks,
       showWeekTicks,
     }
-  }, [allProcessTimes, zoomIdx, ganttDateLoc])
+  }, [viewStart, spanMs, trackPx, ganttDateLoc])
 
-  const { pct, months, todayPct, mondayTicks, showWeekTicks } = timeline
+  const { pct, months, monthLabels, todayPct, mondayTicks, showWeekTicks } = timeline
+  const todayInView = todayPct >= 0 && todayPct <= 100
   const labelColWidth = narrow ? '100%' : 240
   const rowGap = narrow ? 8 : 0
 
@@ -266,6 +314,16 @@ function GanttView({
           flexWrap: 'wrap',
         }}
       >
+        <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+          <button type="button" className="btn ghost sm" style={{ minHeight: 44, minWidth: 44 }}
+            aria-label={t('pipeline_gantt_pan_earlier')} title={t('pipeline_gantt_pan_earlier')}
+            onClick={() => panBy(-0.5)}>‹</button>
+          <button type="button" className="btn ghost sm" style={{ minHeight: 44 }}
+            onClick={() => setViewStart(windowStartForToday(zoomIdx))}>{t('pipeline_gantt_today')}</button>
+          <button type="button" className="btn ghost sm" style={{ minHeight: 44, minWidth: 44 }}
+            aria-label={t('pipeline_gantt_pan_later')} title={t('pipeline_gantt_pan_later')}
+            onClick={() => panBy(0.5)}>›</button>
+        </div>
         <span className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx3)', flexShrink: 0 }}>
           {t('pipeline_gantt_zoom_label')
             .replace(/\{n\}/g, String(zoomIdx + 1))
@@ -283,12 +341,10 @@ function GanttView({
           aria-valuemin={0}
           aria-valuemax={GANTT_ZOOM_MAX}
           aria-valuenow={zoomIdx}
-          aria-valuetext={t('pipeline_gantt_zoom_label')
-            .replace(/\{n\}/g, String(zoomIdx + 1))
-            .replace(/\{max\}/g, String(GANTT_ZOOM_MAX + 1))}
+          aria-valuetext={t(GANTT_SPANS[zoomIdx].labelKey)}
           onChange={(e) => {
             const v = Number(e.target.value)
-            if (Number.isFinite(v)) setZoomIdx(Math.min(GANTT_ZOOM_MAX, Math.max(0, v)))
+            if (Number.isFinite(v)) setZoom(v)
           }}
           style={{
             width: narrow ? '100%' : 160,
@@ -300,8 +356,24 @@ function GanttView({
             cursor: 'pointer',
           }}
         />
+        <span className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx2)', flexShrink: 0 }}>
+          {t(GANTT_SPANS[zoomIdx].labelKey)}
+        </span>
       </div>
       <div
+        ref={headerRef}
+        title={t('pipeline_gantt_header_drag_hint')}
+        onPointerDown={(e) => {
+          dragRef.current = { x: e.clientX, start: viewStart }
+          e.currentTarget.setPointerCapture(e.pointerId)
+        }}
+        onPointerMove={(e) => {
+          const d = dragRef.current
+          if (!d) return
+          setViewStart(d.start - ((e.clientX - d.x) / trackPx) * spanMs)
+        }}
+        onPointerUp={() => { dragRef.current = null }}
+        onPointerCancel={() => { dragRef.current = null }}
         style={{
           position:'relative',
           height:24,
@@ -310,21 +382,32 @@ function GanttView({
           minWidth: 0,
           maxWidth: '100%',
           overflow: 'hidden',
+          cursor: 'grab',
+          touchAction: 'pan-y',
+          userSelect: 'none',
+          borderBottom: '1px solid var(--bd)',
         }}
       >
-        {months.map(m=>(
-          <div key={m.k} style={{ position:'absolute', left:`${m.left}%`, fontSize:11, color:'var(--tx3)', letterSpacing:'0.05em', transform:'translateX(-50%)' }}>{m.label}</div>
+        {monthLabels.map(m=>(
+          <div key={m.k} style={{ position:'absolute', left:`${m.left}%`, paddingLeft:4, fontSize:11, color:'var(--tx3)', letterSpacing:'0.05em', whiteSpace:'nowrap', borderLeft: m.k === 'edge' ? undefined : '1px solid var(--bd)' }}>{m.label}</div>
         ))}
       </div>
-      <div style={{ display:'flex', flexDirection:'column', gap: narrow ? 10 : 5, minWidth: 0, width: '100%' }}>
+      <div ref={chartRef} style={{ display:'flex', flexDirection:'column', gap: narrow ? 10 : 5, minWidth: 0, width: '100%' }}>
         {processes.map(p=>{
           const color   = TYPE_COLORS[p.type as ProcessType]??'#888'
           const isDone  = ['perdu','annule','termine'].includes(p.statut)
-          const barL    = p.date_debut ? pct(p.date_debut) : todayPct-0.5
-          const barR    = p.date_fin   ? pct(p.date_fin)   : todayPct+0.5
+          // Raw (unclamped) bar ends; the drawn bar is the part inside the window.
+          const rawL    = p.date_debut ? pct(p.date_debut) : todayPct-0.5
+          const rawR    = p.date_fin   ? pct(p.date_fin)   : todayPct+0.5
+          const offLeft = rawR < 0
+          const offRight= rawL > 100
+          const barL    = Math.max(0, rawL)
+          const barR    = Math.min(100, rawR)
           const barW    = Math.max(0.5, barR-barL)
           const done    = p.etapes.filter(e=>e.statut==='fait').length
           const progress= p.etapes.length>0 ? done/p.etapes.length : 0
+          const fillR   = rawL + progress * (rawR - rawL)
+          const fillPct = Math.max(0, Math.min(100, (Math.min(fillR, barR) - barL) / barW * 100))
           const peekSteps = expandedPeekId === p.id ? upcomingEtapesForPeek(p, 4) : []
           return (
             <PipelineProcessSwipe key={p.id} processId={p.id} enabled={narrow} onRefresh={onRefresh} t={t}>
@@ -462,12 +545,25 @@ function GanttView({
                       }}
                     />
                   ))}
-                <div style={{ position:'absolute', left:`${todayPct}%`, top:0, bottom:0, width:1, background:'var(--ac)', opacity:0.6 }} />
-                <div style={{ position:'absolute', left:`${barL}%`, width:`${barW}%`, top:'50%', transform:'translateY(-50%)', height:16, background:isDone?'#222':`${color}22`, border:`1px solid ${isDone?'#444':color}`, cursor:'pointer', overflow:'hidden' }}
-                  onClick={()=>onSelect(p)}>
-                  <div style={{ position:'absolute', left:0, top:0, bottom:0, width:`${progress*100}%`, background:`${color}55` }} />
-                  {p.etapes.filter(e=>e.date_echeance).map(e=>{
-                    const leftPct    = Math.max(0,Math.min(100,((pct(e.date_echeance!)-barL)/barW)*100))
+                {todayInView && (
+                  <div style={{ position:'absolute', left:`${todayPct}%`, top:0, bottom:0, width:1, background:'var(--ac)', opacity:0.6 }} />
+                )}
+                {(offLeft || offRight) ? (
+                  <button type="button" onClick={()=>onSelect(p)}
+                    style={{ position:'absolute', [offLeft ? 'left' : 'right']:0, top:'50%', transform:'translateY(-50%)', fontSize:14, lineHeight:1, padding:'0 6px', color, background:'none', border:'none', cursor:'pointer' }}>
+                    {offLeft ? '‹' : '›'}
+                  </button>
+                ) : (
+                  <div style={{ position:'absolute', left:`${barL}%`, width:`${barW}%`, top:'50%', transform:'translateY(-50%)', height:16, background:isDone?'#222':`${color}22`, border:`1px solid ${isDone?'#444':color}`, borderLeftStyle: rawL < 0 ? 'dashed' : 'solid', borderRightStyle: rawR > 100 ? 'dashed' : 'solid', cursor:'pointer', overflow:'hidden' }}
+                    onClick={()=>onSelect(p)}>
+                    <div style={{ position:'absolute', left:0, top:0, bottom:0, width:`${fillPct}%`, background:`${color}55` }} />
+                  </div>
+                )}
+                {/* Step markers sit at their own dates on the row, so dated steps of an undated
+                    process stay visible as you pan through the past. */}
+                {p.etapes.filter(e=>e.date_echeance).map(e=>{
+                    const leftPct    = pct(e.date_echeance!)
+                    if (leftPct < 0 || leftPct > 100) return null
                     const isFait     = e.statut === 'fait'
                     const isBloque   = e.statut === 'bloque'
                     const isEnCours  = e.statut === 'en_cours'
@@ -490,7 +586,7 @@ function GanttView({
                             alert(`${t('error_prefix')} ${stringifyError(err)}`)
                           }
                         }}
-                        style={{ position:'absolute', left:`${leftPct}%`, top:0, bottom:0, width:12, transform:'translateX(-50%)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1 }}
+                        style={{ position:'absolute', left:`${leftPct}%`, top:6, bottom:6, width:12, transform:'translateX(-50%)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1 }}
                       >
                         <div style={{ width: isFait?4:3, height:'100%', background: markerColor, boxShadow: isOverdue?'0 0 6px #c06060':undefined }} />
                         {(isFait || isBloque || isEnCours) && (
@@ -501,8 +597,7 @@ function GanttView({
                       </div>
                     )
                   })}
-                </div>
-                {!narrow && p.statut!=='en_cours' && (
+                {!narrow && p.statut!=='en_cours' && !offLeft && rawR <= 100 && (
                   <div style={{ position:'absolute', left:`${barR+0.5}%`, top:'50%', transform:'translateY(-50%)', fontSize:10, color, fontWeight:700, letterSpacing:'0.05em', textTransform:'uppercase', whiteSpace:'nowrap', paddingLeft:8 }}>
                     {statutLabels[p.statut]}
                   </div>
