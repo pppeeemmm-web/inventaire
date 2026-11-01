@@ -614,8 +614,8 @@ export const atelierMessages = defineMessages({
     en: 'Full-size images (ZIP)',
   },
   selection_images_download_blurb: {
-    fr: '{count} œuvre(s) sélectionnée(s). Les fichiers R2 originaux (AVIF) sont regroupés dans une archive.',
-    en: '{count} selected work(s). Original R2 files (AVIF) are packed into one archive.',
+    fr: '{count} œuvre(s). Les fichiers originaux (AVIF) sont regroupés en archive ZIP, avec un manifeste (n°, titre, fichier).',
+    en: '{count} work(s). Original files (AVIF) are packed into a ZIP, with a manifest (no., title, file).',
   },
   selection_images_mode_label: {
     fr: 'Contenu',
@@ -640,6 +640,30 @@ export const atelierMessages = defineMessages({
   selection_images_max_fmt: {
     fr: 'Maximum {max} œuvres par archive. Réduisez la sélection.',
     en: 'Maximum {max} works per archive. Reduce the selection.',
+  },
+  selection_images_batches_fmt: {
+    fr: 'Téléchargé en {batches} archives de {max} œuvres maximum, l’une après l’autre. Le navigateur peut demander d’autoriser plusieurs téléchargements.',
+    en: 'Downloaded as {batches} archives of up to {max} works, one after another. The browser may ask to allow multiple downloads.',
+  },
+  selection_images_partial_fmt: {
+    fr: 'Seules {loaded} œuvres sur {total} sont chargées : le téléchargement ne couvre que celles-ci. Attendez la fin du chargement du catalogue pour tout prendre.',
+    en: 'Only {loaded} of {total} works are loaded: the download covers those. Wait for the catalogue to finish loading to get everything.',
+  },
+  selection_images_progress_fmt: {
+    fr: 'Archive {n} / {total}…',
+    en: 'Archive {n} / {total}…',
+  },
+  selection_images_done_fmt: {
+    fr: '{saved} archive(s) enregistrée(s) sur {total} ({empty} sans image).',
+    en: '{saved} of {total} archive(s) saved ({empty} without images).',
+  },
+  selection_images_stop: {
+    fr: 'Arrêter',
+    en: 'Stop',
+  },
+  inv_images_zip_title: {
+    fr: 'Télécharger les images des œuvres affichées (filtre actuel)',
+    en: 'Download images of the works shown (current filter)',
   },
   curation_dock_download_images: {
     fr: 'Images ZIP',

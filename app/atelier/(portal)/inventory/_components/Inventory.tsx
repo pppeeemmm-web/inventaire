@@ -23,6 +23,7 @@ import { registerUndo, consumeUndo } from '@/lib/ui/undo'
 import type { Oeuvre } from '@/lib/types/database'
 import type { ContactAddress } from '@/components/atelier/contact-editor-types'
 import { WorkDrawer, type WorkDrawerGuardHandle } from '@/components/atelier/WorkDrawer'
+import { SelectionImagesDownloadModal } from '@/components/atelier/SelectionImagesDownloadModal'
 import type { RefObject } from 'react'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { batchEdit } from '@/app/atelier/selection/actions'
@@ -344,6 +345,7 @@ export function Inventory({
   const [criteria,    setCriteria]    = useState<Criterion[]>([])
   const [showAdv,     setShowAdv]     = useState(false)
   const [showLegend,  setShowLegend]  = useState(false)
+  const [showImagesZip, setShowImagesZip] = useState(false)
   const [showPreview, setShowPreview] = useState(true)
   const [previewExpanded, setPreviewExpanded] = useState(false)
   const [loadingGrp,  setLoadingGrp]  = useState<string | null>(null)
@@ -901,6 +903,28 @@ export function Inventory({
           >
             {t('clear')}
           </button>
+        )}
+
+        {/* Bulk image download — whatever the current filter shows (desktop only) */}
+        {!narrow && (
+          <button
+            type="button"
+            data-testid="inventory-images-zip"
+            onClick={() => setShowImagesZip(true)}
+            disabled={filtered.length === 0}
+            title={t('inv_images_zip_title')}
+            className="btn ghost sm"
+            style={{ fontSize: 12, padding: '8px 12px' }}
+          >
+            {t('curation_dock_download_images')} ({filtered.length})
+          </button>
+        )}
+        {showImagesZip && (
+          <SelectionImagesDownloadModal
+            ids={filtered.map((o) => o.OeuvreID)}
+            loadedOfTotal={oeuvresCatalogueTotal != null ? { loaded: oeuvres.length, total: oeuvresCatalogueTotal } : undefined}
+            onClose={() => setShowImagesZip(false)}
+          />
         )}
 
         {/* Legend toggle */}
