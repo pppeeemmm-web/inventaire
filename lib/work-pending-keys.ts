@@ -172,3 +172,118 @@ export function formDataFromPendingPayload(payload: Record<string, string>): For
 
   return fd
 }
+
+/**
+ * Form key → `Oeuvres` column written by saveWork(). Edit rows store `baseline` as the raw
+ * DB row (plus `themes`/`groups`), while `payload` holds form keys — diff through this map.
+ * Keep in sync with saveWork()'s update payload in app/atelier/works/actions.ts.
+ */
+export const PENDING_FORM_KEY_TO_COLUMN: Record<string, string> = {
+  titre: 'Titre',
+  annee: 'Année',
+  technique: 'Technique',
+  support: 'Support',
+  format: 'Format',
+  hauteur: 'Hauteur',
+  largeur: 'Largeur',
+  profondeur: 'Profondeur',
+  prix: 'Prix',
+  discount: 'Discount',
+  prix_final: 'PrixFinal',
+  status_id: 'statusId',
+  contact_id: 'ContactID',
+  commentaires: 'Commentaires',
+  historique: 'Historique',
+  localisation_id: 'LocalisationID',
+  localisation_detail: 'LocalisationDetail',
+  localisation_address_id: 'localisation_address_id',
+  tva_rate: 'tva_rate',
+  broadcast_caption_seed: 'broadcast_caption_seed',
+  date_livraison: 'DateLivraison',
+  anonymity_level: 'anonymity_level',
+  presentation_id: 'PresentationID',
+  exposable: 'Exposable',
+  broadcast_ready: 'broadcast_ready',
+  montee: 'Montee',
+  encadree: 'Encadree',
+  catalogued: 'Catalogué',
+  is_commission: 'IsCommission',
+  needs_photograph: 'NeedsPhotograph',
+  admin_override_anonymity: 'admin_override_anonymity',
+  is_paid: 'is_paid',
+  is_gift: 'is_gift',
+  themes: 'themes',
+  groups: 'groups',
+}
+
+/** Form keys holding a numeric value or id (saveWork parses them with numOrNull). */
+export const PENDING_NUMERIC_KEYS = new Set<string>([
+  'technique', 'support', 'format', 'prix', 'discount', 'prix_final', 'status_id', 'contact_id',
+  'localisation_id', 'localisation_address_id', 'tva_rate', 'anonymity_level', 'presentation_id',
+])
+
+/** Form keys that are references, resolved to labels for review. */
+export const PENDING_REF_KEYS = [
+  'status_id', 'technique', 'support', 'format', 'contact_id', 'localisation_id',
+  'localisation_address_id', 'presentation_id',
+] as const
+
+/** Never shown in the review diff: routing, image bookkeeping, internal flags. */
+const PENDING_DIFF_SKIP_KEYS = new Set<string>(['oeuvre_id', 'image_existing', ...PENDING_INTERNAL_KEYS])
+
+const CHECKBOX_KEY_SET = new Set<string>(PENDING_CHECKBOX_KEYS)
+
+export type PendingDiffEntry = { key: string; before: string | null; after: string | null }
+
+/** Normalise a form value the way saveWork() would store it; `null` = empty. */
+function normalisePendingFormValue(key: string, raw: string | undefined): string | null {
+  if (CHECKBOX_KEY_SET.has(key)) return raw === '1' ? '1' : '0'
+  const v = (raw ?? '').trim()
+  if (key === 'anonymity_level') return String(v === '' || !Number.isFinite(Number(v)) ? 0 : Number(v))
+  if (!v) return null
+  if (PENDING_NUMERIC_KEYS.has(key)) return Number.isFinite(Number(v)) ? String(Number(v)) : null
+  if (key === 'annee') {
+    if (/^\d{4}$/.test(v)) return `${v}-01-01`
+    if (/^\d{4}-\d{2}$/.test(v)) return `${v}-01`
+  }
+  if (key === 'themes' || key === 'groups') {
+    const parts = v.split(',').map((s) => s.trim()).filter(Boolean).sort()
+    return parts.length ? parts.join(',') : null
+  }
+  return v
+}
+
+/** Normalise a baseline DB value into the same space as normalisePendingFormValue(). */
+function normalisePendingBaselineValue(key: string, raw: unknown): string | null {
+  if (CHECKBOX_KEY_SET.has(key)) return raw === true ? '1' : '0'
+  if (raw == null) return key === 'anonymity_level' ? '0' : null
+  return normalisePendingFormValue(key, String(raw))
+}
+
+/**
+ * Review diff for a queued work change: only fields whose stored value would change.
+ * `baseline` null (create) → every non-empty field, with `before` null.
+ */
+export function diffPendingPayload(
+  baseline: Record<string, unknown> | null,
+  payload: Record<string, string>,
+): PendingDiffEntry[] {
+  const out: PendingDiffEntry[] = []
+  for (const [key, raw] of Object.entries(payload)) {
+    if (key.startsWith('__') || PENDING_DIFF_SKIP_KEYS.has(key)) continue
+    const after = normalisePendingFormValue(key, raw)
+    if (!baseline) {
+      if (after != null && !(CHECKBOX_KEY_SET.has(key) && after === '0')) out.push({ key, before: null, after })
+      continue
+    }
+    const column = PENDING_FORM_KEY_TO_COLUMN[key]
+    // No column (e.g. historique_append, create-only flags): show only when it carries a value.
+    if (!column) {
+      if (after != null && after !== '0') out.push({ key, before: null, after })
+      continue
+    }
+    const before = normalisePendingBaselineValue(key, baseline[column])
+    if (before !== after) out.push({ key, before, after })
+  }
+  return out
+}

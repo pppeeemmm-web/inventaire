@@ -8,8 +8,11 @@ import {
   filterPendingImageAddPayload,
   formDataFromPendingPayload,
   resolvePendingChangeKind,
+  PENDING_FORM_KEY_TO_COLUMN,
+  PENDING_REF_KEYS,
   type PendingChangeKind,
 } from '@/lib/work-pending-keys'
+import { contactDisplayName } from '@/lib/oeuvre-historique'
 import { attachShareInboxFilesToWork } from '@/app/atelier/share-triage/actions'
 
 function parseCaptureMeta(raw: string | undefined): Record<string, unknown> | null {
@@ -37,6 +40,79 @@ export interface PendingChange {
   reviewer_id:   string | null
   reject_reason: string | null
   oeuvre_title?: string | null
+  /** Display labels for reference fields, keyed `${formKey}:${id}` (e.g. `status_id:2`). */
+  ref_labels?:   Record<string, string>
+}
+
+/** `${formKey}:${id}` for every reference value in a row's payload and baseline. */
+function pendingRefIds(payload: Record<string, string>, baseline: Record<string, unknown> | null): Set<string> {
+  const out = new Set<string>()
+  for (const key of PENDING_REF_KEYS) {
+    const vals = [payload[key], baseline?.[PENDING_FORM_KEY_TO_COLUMN[key]]]
+    for (const v of vals) {
+      const n = Number(v)
+      if (v != null && v !== '' && Number.isInteger(n) && n > 0) out.add(`${key}:${n}`)
+    }
+  }
+  return out
+}
+
+/** Resolve reference ids to labels so the review diff reads "Disponible", not `2`. */
+async function loadPendingRefLabels(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  rowRefs: Set<string>[],
+): Promise<Map<string, string>> {
+  const idsByKey = new Map<string, number[]>()
+  for (const refs of rowRefs) {
+    for (const ref of refs) {
+      const [key, id] = ref.split(':')
+      const list = idsByKey.get(key) ?? []
+      list.push(Number(id))
+      idsByKey.set(key, list)
+    }
+  }
+  const ids = (...keys: string[]) => Array.from(new Set(keys.flatMap((k) => idsByKey.get(k) ?? [])))
+  const out = new Map<string, string>()
+  const put = (keys: string[], id: number, label: string | null | undefined) => {
+    const s = (label ?? '').trim()
+    if (s) for (const k of keys) out.set(`${k}:${id}`, s)
+  }
+
+  const statusIds = ids('status_id')
+  const techniqueIds = ids('technique')
+  const supportIds = ids('support')
+  const formatIds = ids('format')
+  const contactIds = ids('contact_id', 'localisation_id')
+  const addressIds = ids('localisation_address_id')
+  const presentationIds = ids('presentation_id')
+
+  const [status, technique, support, format, contact, address, presentation] = await Promise.all([
+    statusIds.length ? supabase.from('OeuvreStatus').select('id, label').in('id', statusIds) : null,
+    techniqueIds.length ? supabase.from('Technique').select('TechniqueID, Technique').in('TechniqueID', techniqueIds) : null,
+    supportIds.length ? supabase.from('Support').select('SupportID, Support').in('SupportID', supportIds) : null,
+    formatIds.length ? supabase.from('Format').select('FormatID, Format').in('FormatID', formatIds) : null,
+    contactIds.length
+      ? supabase.from('Contact').select('ContactID, NomInstitution, Nom, "Prénom"').in('ContactID', contactIds)
+      : null,
+    addressIds.length ? supabase.from('contact_addresses').select('id, label, ville').in('id', addressIds) : null,
+    presentationIds.length
+      ? supabase.from('tblPresentation').select('PresentationID, Nom').in('PresentationID', presentationIds)
+      : null,
+  ])
+
+  for (const r of status?.data ?? []) put(['status_id'], r.id, r.label)
+  for (const r of technique?.data ?? []) put(['technique'], r.TechniqueID, r.Technique)
+  for (const r of support?.data ?? []) put(['support'], r.SupportID, r.Support)
+  for (const r of format?.data ?? []) put(['format'], r.FormatID, r.Format)
+  for (const r of contact?.data ?? []) {
+    const name = contactDisplayName(r)
+    put(['contact_id', 'localisation_id'], r.ContactID, name === '—' ? null : name)
+  }
+  for (const r of address?.data ?? []) {
+    put(['localisation_address_id'], r.id, [r.label, r.ville].filter(Boolean).join(' · '))
+  }
+  for (const r of presentation?.data ?? []) put(['presentation_id'], r.PresentationID, r.Nom)
+  return out
 }
 
 export type PendingResult = { ok: true } | { error: string }
@@ -72,7 +148,11 @@ export async function listPendingChanges(): Promise<PendingChange[]> {
       .from('Oeuvres').select('OeuvreID, Titre').in('OeuvreID', ids)
     titleMap = new Map((titles ?? []).map((t: { OeuvreID: number; Titre: string | null }) => [t.OeuvreID, t.Titre]))
   }
-  return (data ?? []).map((r) => {
+  const rowRefs = (data ?? []).map((r) =>
+    pendingRefIds(r.payload as Record<string, string>, r.baseline as Record<string, unknown> | null),
+  )
+  const refLabels = await loadPendingRefLabels(gate.supabase, rowRefs)
+  return (data ?? []).map((r, i) => {
     const payload = r.payload as Record<string, string>
     const kind = resolvePendingChangeKind({
       change_kind: r.change_kind as string | null,
@@ -82,12 +162,18 @@ export async function listPendingChanges(): Promise<PendingChange[]> {
     const titleFromPayload = (payload.titre ?? '').trim() || null
     const oeuvreTitle =
       r.oeuvre_id != null ? titleMap.get(r.oeuvre_id) ?? null : titleFromPayload
+    const ref_labels: Record<string, string> = {}
+    for (const ref of rowRefs[i]) {
+      const label = refLabels.get(ref)
+      if (label) ref_labels[ref] = label
+    }
     return {
       ...r,
       change_kind: kind,
       oeuvre_id: r.oeuvre_id,
       payload,
       oeuvre_title: oeuvreTitle,
+      ref_labels,
     }
   })
 }

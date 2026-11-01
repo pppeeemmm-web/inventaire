@@ -9,21 +9,19 @@ import {
   rejectPendingChange,
   type PendingChange,
 } from '@/app/atelier/(portal)/audit/pending-actions'
+import { diffPendingPayload, PENDING_CHECKBOX_KEYS } from '@/lib/work-pending-keys'
 
-function diffEntries(baseline: Record<string, unknown> | null, payload: Record<string, string>) {
-  if (!baseline) return Object.entries(payload).filter(([k]) => !k.startsWith('__'))
-  const out: Array<[string, unknown, string]> = []
-  for (const [k, v] of Object.entries(payload)) {
-    if (k.startsWith('__') || k === 'oeuvre_id') continue
-    const oldRaw = (baseline as Record<string, unknown>)[k]
-    const oldStr = oldRaw == null ? '' : String(oldRaw)
-    if (oldStr !== v) out.push([k, oldRaw, v])
-  }
-  return out
+const CHECKBOX_KEYS = new Set<string>(PENDING_CHECKBOX_KEYS)
+
+/** Diff value for display: checkboxes as ✓/✗, reference ids as their label. */
+function displayValue(key: string, value: string | null, labels: Record<string, string> | undefined): string {
+  if (value == null) return '—'
+  if (CHECKBOX_KEYS.has(key)) return value === '1' ? '✓' : '✗'
+  return labels?.[`${key}:${value}`] ?? value
 }
 
 export function PendingQueue() {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const [rows, setRows] = useState<PendingChange[]>([])
   const [busy, setBusy] = useState(true)
   const [pending, startTransition] = useTransition()
@@ -74,7 +72,7 @@ export function PendingQueue() {
       <div style={{ flex: 1, overflow: 'auto' }}>
         {rows.map((r) => {
           const open = openId === r.id
-          const changes = diffEntries(r.baseline, r.payload)
+          const changes = diffPendingPayload(r.baseline, r.payload)
           return (
             <div key={r.id} style={{ borderBottom: '1px solid var(--bd)', padding: '12px 28px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -92,7 +90,7 @@ export function PendingQueue() {
                         : `#${r.oeuvre_id} · ${r.oeuvre_title || '—'}`}
                   </div>
                   <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 2 }}>
-                    {r.author_email || r.author_id || '—'} · {new Date(r.created_at).toLocaleString('fr-FR')}
+                    {r.author_email || r.author_id || '—'} · {new Date(r.created_at).toLocaleString(lang === 'en' ? 'en-GB' : 'fr-FR')}
                     {' · '}{changes.length} {t('pending_changes_count')}
                   </div>
                 </div>
@@ -151,11 +149,11 @@ export function PendingQueue() {
                     </tr>
                   </thead>
                   <tbody>
-                    {changes.map(([k, before, after]) => (
-                      <tr key={k}>
-                        <td style={{ fontFamily: 'var(--mono)', color: 'var(--tx2)' }}>{k}</td>
-                        <td style={{ color: 'var(--tx3)' }}>{before == null ? '—' : String(before)}</td>
-                        <td style={{ color: 'var(--ac)' }}>{after}</td>
+                    {changes.map(({ key, before, after }) => (
+                      <tr key={key}>
+                        <td style={{ fontFamily: 'var(--mono)', color: 'var(--tx2)' }}>{key}</td>
+                        <td style={{ color: 'var(--tx3)', whiteSpace: 'pre-wrap' }}>{displayValue(key, before, r.ref_labels)}</td>
+                        <td style={{ color: 'var(--ac)', whiteSpace: 'pre-wrap' }}>{displayValue(key, after, r.ref_labels)}</td>
                       </tr>
                     ))}
                     {changes.length === 0 && (
