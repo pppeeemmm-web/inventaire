@@ -81,4 +81,16 @@ export const worldMapUiMessages = defineMessages({
     fr: 'Sans technique',
     en: 'No technique',
   },
+  map_chips_all: {
+    fr: 'Tous',
+    en: 'All',
+  },
+  map_chips_none: {
+    fr: 'Aucun',
+    en: 'None',
+  },
+  map_chip_hint: {
+    fr: 'Clic : masquer / afficher · Alt-clic ou appui long : seulement celui-ci',
+    en: 'Click: hide / show · Alt-click or long-press: only this one',
+  },
 })

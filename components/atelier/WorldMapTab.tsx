@@ -4,7 +4,7 @@
 // Fetches contact_addresses (multiple per contact) and Contact.Ville/Pays as fallback.
 // Both fetches run in parallel; pin building only starts when BOTH complete.
 
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, type Dispatch, type MouseEvent, type SetStateAction } from 'react'
 import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase/client'
 import type { Oeuvre } from '@/lib/types/database'
@@ -164,6 +164,21 @@ type Mode = 'contacts' | 'works'
 const SANS_ROLE = '(Sans rôle)'
 const EMPTY_THEME_MAP = new Map<number, number[]>()
 
+/**
+ * Chip filter update. Plain click toggles one chip; `solo` shows only that chip,
+ * and soloing the chip that is already alone shows everything again.
+ */
+function chipFilterUpdate<T>(prev: Set<T>, key: T, all: T[], solo: boolean): Set<T> {
+  if (!solo) {
+    const n = new Set(prev)
+    if (n.has(key)) n.delete(key)
+    else n.add(key)
+    return n
+  }
+  const alreadyAlone = !prev.has(key) && all.every((k) => k === key || prev.has(k))
+  return alreadyAlone ? new Set<T>() : new Set(all.filter((k) => k !== key))
+}
+
 export function WorldMapTab({
   contacts,
   oeuvres,
@@ -272,6 +287,39 @@ export function WorldMapTab({
   const hasWorksSansTheme = useMemo(
     () => oeuvreThemeMap.size > 0 && oeuvres.some((o) => !oeuvreThemeMap.get(o.OeuvreID)?.length),
     [oeuvres, oeuvreThemeMap],
+  )
+  /** Every chip key per group (-1 = "no status/theme/technique"), for solo and None. */
+  const allStatusKeys = useMemo(
+    () => (hasWorksSansStatus ? [...statusIdsInData, -1] : statusIdsInData),
+    [statusIdsInData, hasWorksSansStatus],
+  )
+  const allThemeKeys = useMemo(
+    () => (hasWorksSansTheme ? [...themeIdsInData, -1] : themeIdsInData),
+    [themeIdsInData, hasWorksSansTheme],
+  )
+  const allTechniqueKeys = useMemo(
+    () => (hasWorksSansTechnique ? [...techniqueIdsInData, -1] : techniqueIdsInData),
+    [techniqueIdsInData, hasWorksSansTechnique],
+  )
+
+  /** Click toggles; Alt-click, right-click or long-press (contextmenu) shows only this chip. */
+  const chipHandlers = <T,>(setHidden: Dispatch<SetStateAction<Set<T>>>, all: T[], key: T) => ({
+    title: t('map_chip_hint'),
+    onClick: (e: MouseEvent) => setHidden((prev) => chipFilterUpdate(prev, key, all, e.altKey)),
+    onContextMenu: (e: MouseEvent) => {
+      e.preventDefault()
+      setHidden((prev) => chipFilterUpdate(prev, key, all, true))
+    },
+  })
+
+  const chipGroupLabel = <T,>(label: string, setHidden: Dispatch<SetStateAction<Set<T>>>, all: T[]) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+      <div className="t-label">{label}</div>
+      <button type="button" className="btn ghost sm" style={{ fontSize: 9, padding: '2px 6px' }}
+        onClick={() => setHidden(new Set<T>())}>{t('map_chips_all')}</button>
+      <button type="button" className="btn ghost sm" style={{ fontSize: 9, padding: '2px 6px' }}
+        onClick={() => setHidden(new Set(all))}>{t('map_chips_none')}</button>
+    </div>
   )
 
   const filtersActive =
@@ -571,7 +619,7 @@ export function WorldMapTab({
               )}
               {rolesInData.length > 0 && (
                 <>
-                  <div className="t-label">{t('map_roles_label')}</div>
+                  {chipGroupLabel(t('map_roles_label'), setHiddenRoles, rolesInData)}
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                     {rolesInData.map((role) => {
                       const hidden = hiddenRoles.has(role)
@@ -581,19 +629,13 @@ export function WorldMapTab({
                           key={role}
                           type="button"
                           className="btn ghost sm"
-                          title={hidden ? t('map_show_on_map') : t('map_hide_from_map')}
                           style={{
                             opacity: hidden ? 0.35 : 1,
                             fontSize: 10,
                             borderLeft: `3px solid ${dot}`,
                             paddingLeft: 8,
                           }}
-                          onClick={() => setHiddenRoles((prev) => {
-                            const n = new Set(prev)
-                            if (n.has(role)) n.delete(role)
-                            else n.add(role)
-                            return n
-                          })}
+                          {...chipHandlers(setHiddenRoles, rolesInData, role)}
                         >
                           {role === SANS_ROLE ? t('map_no_role') : role}
                         </button>
@@ -608,7 +650,7 @@ export function WorldMapTab({
             <>
               {(statusIdsInData.length > 0 || hasWorksSansStatus) && (
               <>
-              <div className="t-label">{t('map_status_label')}</div>
+              {chipGroupLabel(t('map_status_label'), setHiddenStatusIds, allStatusKeys)}
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                 {statusIdsInData.map((id) => (
                   <button
@@ -616,12 +658,7 @@ export function WorldMapTab({
                     type="button"
                     className="btn ghost sm"
                     style={{ fontSize: 10, opacity: hiddenStatusIds.has(id) ? 0.35 : 1 }}
-                    onClick={() => setHiddenStatusIds((prev) => {
-                      const n = new Set(prev)
-                      if (n.has(id)) n.delete(id)
-                      else n.add(id)
-                      return n
-                    })}
+                    {...chipHandlers(setHiddenStatusIds, allStatusKeys, id)}
                   >
                     {statusLabelMap[id] ?? `#${id}`}
                   </button>
@@ -631,12 +668,7 @@ export function WorldMapTab({
                     type="button"
                     className="btn ghost sm"
                     style={{ fontSize: 10, opacity: hiddenStatusIds.has(-1) ? 0.35 : 1 }}
-                    onClick={() => setHiddenStatusIds((prev) => {
-                      const n = new Set(prev)
-                      if (n.has(-1)) n.delete(-1)
-                      else n.add(-1)
-                      return n
-                    })}
+                    {...chipHandlers(setHiddenStatusIds, allStatusKeys, -1)}
                   >
                     {t('map_no_status')}
                   </button>
@@ -646,7 +678,7 @@ export function WorldMapTab({
               )}
               {oeuvreThemeMap.size > 0 && (themeIdsInData.length > 0 || hasWorksSansTheme) && (
                 <>
-                  <div className="t-label">{t('map_theme_label')}</div>
+                  {chipGroupLabel(t('map_theme_label'), setHiddenThemeIds, allThemeKeys)}
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                     {themeIdsInData.map((id) => (
                       <button
@@ -654,12 +686,7 @@ export function WorldMapTab({
                         type="button"
                         className="btn ghost sm"
                         style={{ fontSize: 10, opacity: hiddenThemeIds.has(id) ? 0.35 : 1 }}
-                        onClick={() => setHiddenThemeIds((prev) => {
-                          const n = new Set(prev)
-                          if (n.has(id)) n.delete(id)
-                          else n.add(id)
-                          return n
-                        })}
+                        {...chipHandlers(setHiddenThemeIds, allThemeKeys, id)}
                       >
                         {thM[id] ?? `#${id}`}
                       </button>
@@ -669,12 +696,7 @@ export function WorldMapTab({
                         type="button"
                         className="btn ghost sm"
                         style={{ fontSize: 10, opacity: hiddenThemeIds.has(-1) ? 0.35 : 1 }}
-                        onClick={() => setHiddenThemeIds((prev) => {
-                          const n = new Set(prev)
-                          if (n.has(-1)) n.delete(-1)
-                          else n.add(-1)
-                          return n
-                        })}
+                        {...chipHandlers(setHiddenThemeIds, allThemeKeys, -1)}
                       >
                         {t('map_no_theme')}
                       </button>
@@ -684,7 +706,7 @@ export function WorldMapTab({
               )}
               {(techniqueIdsInData.length > 0 || hasWorksSansTechnique) && (
               <>
-              <div className="t-label">{t('map_technique_label')}</div>
+              {chipGroupLabel(t('map_technique_label'), setHiddenTechniqueIds, allTechniqueKeys)}
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                 {techniqueIdsInData.map((id) => (
                   <button
@@ -692,12 +714,7 @@ export function WorldMapTab({
                     type="button"
                     className="btn ghost sm"
                     style={{ fontSize: 10, opacity: hiddenTechniqueIds.has(id) ? 0.35 : 1 }}
-                    onClick={() => setHiddenTechniqueIds((prev) => {
-                      const n = new Set(prev)
-                      if (n.has(id)) n.delete(id)
-                      else n.add(id)
-                      return n
-                    })}
+                    {...chipHandlers(setHiddenTechniqueIds, allTechniqueKeys, id)}
                   >
                     {tM[id] ?? `#${id}`}
                   </button>
@@ -707,12 +724,7 @@ export function WorldMapTab({
                     type="button"
                     className="btn ghost sm"
                     style={{ fontSize: 10, opacity: hiddenTechniqueIds.has(-1) ? 0.35 : 1 }}
-                    onClick={() => setHiddenTechniqueIds((prev) => {
-                      const n = new Set(prev)
-                      if (n.has(-1)) n.delete(-1)
-                      else n.add(-1)
-                      return n
-                    })}
+                    {...chipHandlers(setHiddenTechniqueIds, allTechniqueKeys, -1)}
                   >
                     {t('map_no_technique')}
                   </button>
