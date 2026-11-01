@@ -1,6 +1,7 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { listUnreadSuiviReminders, markSuiviReminderRead } from '@/app/atelier/reminders-actions'
 import { useI18n } from '@/lib/i18n/context'
 import { WorkThumb } from '@/components/atelier/WorkThumb'
 import type { Oeuvre, SuiviReminderListRow } from '@/lib/types/database'
@@ -35,7 +36,7 @@ function mondayStartOfWeek(d: Date) {
 }
 
 export function OverviewTab({
-  oeuvres, tM, t, lang, onGoTab, reminderCount, initialReminders, initialOverviewBootstrap, isAdmin, conflicts,
+  oeuvres, tM, t, lang, onGoTab, initialReminders, initialOverviewBootstrap, isAdmin, conflicts,
   oeuvresCataloguePartial,
   oeuvresCatalogueTotal,
 }: {
@@ -96,16 +97,22 @@ export function OverviewTab({
 
   const recentWorks = [...oeuvres].sort((a, b) => b.OeuvreID - a.OeuvreID).slice(0, 6)
 
-  const reminders = useMemo(
-    () =>
-      initialReminders.slice(0, 6).map((r) => ({
-        id: r.id,
-        message: r.message,
-        remind_at: r.remind_at,
-        process_id: r.process_id,
-      })),
-    [initialReminders],
-  )
+  // Whole unread list (scrolls), refetched on every visit: the shell snapshot goes stale
+  // when notes add reminders after the Atelier was opened.
+  const [reminderRows, setReminderRows] = useState<SuiviReminderListRow[]>(initialReminders)
+  useEffect(() => {
+    let cancelled = false
+    void listUnreadSuiviReminders(200).then((rows) => {
+      if (!cancelled) setReminderRows(rows)
+    })
+    return () => { cancelled = true }
+  }, [])
+  const reminders = reminderRows
+  const markReminderDone = async (id: string) => {
+    setReminderRows((rows) => rows.filter((r) => r.id !== id))
+    const res = await markSuiviReminderRead(id)
+    if (!res.ok) setReminderRows(await listUnreadSuiviReminders(200))
+  }
 
   const { expenseTotalTtc, salesIncomeTtc, upcomingPulse: upcoming, overviewCalendarEvents, burningConcepts } =
     initialOverviewBootstrap
@@ -421,23 +428,41 @@ export function OverviewTab({
           <div>
             <div className="t-eyebrow" style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
               {t('ov_reminders_title')}
-              {reminderCount > 0 && <span style={{ background: 'var(--ac)', color: 'var(--bg0)', padding: '1px 6px', borderRadius: 10, fontSize: 8 }}>{reminderCount}</span>}
+              {reminders.length > 0 && <span style={{ background: 'var(--ac)', color: 'var(--bg0)', padding: '1px 6px', borderRadius: 10, fontSize: 8 }}>{reminders.length}</span>}
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div data-testid="overview-reminders" style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 420, overflowY: 'auto', paddingRight: 2 }}>
               {reminders.map((r) => {
                 const days = daysUntil(r.remind_at)
+                const openTitle = r.process_id ? t('ov_reminder_open_project') : t('ov_reminder_open_notes')
                 return (
-                  <div key={r.id} style={{ padding: '10px 12px', background: 'var(--bg1)', border: '1px solid var(--bd2)', borderLeft: `2px solid var(--ac)` }}>
-                    <div style={{ fontSize: 10, color: 'var(--tx)', lineHeight: 1.4 }}>{r.message}</div>
-                    <div style={{ fontSize: 8, color: urgencyColor(days), marginTop: 4, letterSpacing: 0.5, textTransform: 'uppercase' }}>
-                      {days === 0
-                        ? t('ov_reminder_today')
-                        : days === 1
-                          ? t('ov_reminder_tomorrow')
-                          : days < 0
-                            ? t('ov_reminder_days_ago_fmt').replace(/\{days\}/g, String(Math.abs(days)))
-                            : t('ov_reminder_in_days_fmt').replace(/\{days\}/g, String(days))}
-                    </div>
+                  <div key={r.id} style={{ display: 'flex', alignItems: 'stretch', background: 'var(--bg1)', border: '1px solid var(--bd2)', borderLeft: `2px solid var(--ac)` }}>
+                    <button
+                      type="button"
+                      onClick={() => onGoTab(r.process_id ? 'pipeline' : 'notes')}
+                      title={openTitle}
+                      style={{ flex: 1, minWidth: 0, textAlign: 'left', padding: '10px 12px', background: 'none', border: 'none', cursor: 'pointer', color: 'inherit' }}
+                    >
+                      <div style={{ fontSize: 10, color: 'var(--tx)', lineHeight: 1.4 }}>{r.message}</div>
+                      <div style={{ fontSize: 8, color: urgencyColor(days), marginTop: 4, letterSpacing: 0.5, textTransform: 'uppercase' }}>
+                        {days === 0
+                          ? t('ov_reminder_today')
+                          : days === 1
+                            ? t('ov_reminder_tomorrow')
+                            : days < 0
+                              ? t('ov_reminder_days_ago_fmt').replace(/\{days\}/g, String(Math.abs(days)))
+                              : t('ov_reminder_in_days_fmt').replace(/\{days\}/g, String(days))}
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      data-testid="overview-reminder-done"
+                      onClick={() => void markReminderDone(r.id)}
+                      title={t('ov_reminder_done')}
+                      aria-label={t('ov_reminder_done')}
+                      style={{ minWidth: 44, background: 'none', border: 'none', borderLeft: '1px solid var(--bd)', cursor: 'pointer', color: 'var(--tx3)', fontSize: 14 }}
+                    >
+                      ✓
+                    </button>
                   </div>
                 )
               })}

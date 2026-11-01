@@ -5,6 +5,8 @@ export type PageViewRow = {
   created_at: string
   visitor_id: string | null
   is_team_session: boolean | null
+  /** Signed-in team member (Contact id); admin-only breakdown. */
+  team_contact_id?: number | null
 }
 
 export function parseExcludedVisitorIds(): Set<string> {

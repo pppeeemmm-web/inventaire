@@ -661,6 +661,10 @@ export const atelierMessages = defineMessages({
     fr: 'Arrêter',
     en: 'Stop',
   },
+  selection_clear_title: {
+    fr: 'Désélectionner toutes les œuvres',
+    en: 'Deselect all works',
+  },
   inv_images_zip_title: {
     fr: 'Télécharger les images des œuvres affichées (filtre actuel)',
     en: 'Download images of the works shown (current filter)',

@@ -1347,6 +1347,7 @@ export type Database = {
           is_team_session: boolean
           path: string
           referrer: string | null
+          team_contact_id: number | null
           visitor_id: string | null
         }
         Insert: {
@@ -1356,6 +1357,7 @@ export type Database = {
           is_team_session?: boolean
           path: string
           referrer?: string | null
+          team_contact_id?: number | null
           visitor_id?: string | null
         }
         Update: {
@@ -1365,9 +1367,18 @@ export type Database = {
           is_team_session?: boolean
           path?: string
           referrer?: string | null
+          team_contact_id?: number | null
           visitor_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "page_view_team_contact_id_fkey"
+            columns: ["team_contact_id"]
+            isOneToOne: false
+            referencedRelation: "Contact"
+            referencedColumns: ["ContactID"]
+          },
+        ]
       }
       payments: {
         Row: {

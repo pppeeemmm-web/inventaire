@@ -41,4 +41,16 @@ export const overviewConsoleMessages = defineMessages({
     fr: "Cliquez un compteur pour filtrer l'inventaire.",
     en: 'Click a count to filter the inventory.',
   },
+  ov_reminder_done: {
+    fr: 'Fait — retirer des rappels',
+    en: 'Done — remove from reminders',
+  },
+  ov_reminder_open_project: {
+    fr: 'Ouvrir le projet dans le Suivi',
+    en: 'Open the project in Pipeline',
+  },
+  ov_reminder_open_notes: {
+    fr: 'Ouvrir les notes',
+    en: 'Open notes',
+  },
 })

@@ -4,6 +4,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { isPublicSiteTrackedPath, normalizeTrackedPath } from '@/lib/public-site-paths'
 import { dict, type Lang } from '@/lib/i18n/dictionary'
 import { missingPageViewVisitorColumns } from '@/lib/page-view-schema'
+import { createClient as createServerSupabase } from '@/lib/supabase/server'
 import {
   isDevAnalyticsHost,
   isDevAnalyticsPageView,
@@ -44,6 +45,8 @@ export type AnalyticsResult =
       topCountries: { country: string; views: number }[]
       topReferrers: { referrer: string; views: number }[]
       trend: DayCount[]
+      /** Admin only: site views by signed-in team member (`page_view.team_contact_id`). */
+      byTeamMember?: { member: string; views: number }[]
     }
 
 function countryLabel(code: string, lang: Lang): string {
@@ -87,7 +90,7 @@ async function fetchAllPageViews(
           .range(from, from + PAGE_SIZE - 1)
       : await sb
           .from('page_view')
-          .select('path, referrer, country, created_at, visitor_id, is_team_session')
+          .select('path, referrer, country, created_at, visitor_id, is_team_session, team_contact_id')
           .gte('created_at', since)
           .order('created_at', { ascending: true })
           .range(from, from + PAGE_SIZE - 1)
@@ -95,7 +98,7 @@ async function fetchAllPageViews(
     const { data, error } = res
 
     if (error) {
-      if (from === 0 && !useLegacy && missingPageViewVisitorColumns(error.message)) {
+      if (from === 0 && !useLegacy && (missingPageViewVisitorColumns(error.message) || error.message.includes('team_contact_id'))) {
         useLegacy = true
         continue
       }
@@ -121,6 +124,35 @@ async function fetchAllPageViews(
     from += PAGE_SIZE
   }
   return { rows, error: null }
+}
+
+/** Views per team member, or null when the caller is not admin (owner: "only for me"). */
+async function teamMemberBreakdown(
+  sb: SupabaseClient,
+  rows: PageViewRow[],
+): Promise<{ member: string; views: number }[] | null> {
+  const userSb = await createServerSupabase()
+  const { data: isAdmin } = await userSb.rpc('is_admin')
+  if (!isAdmin) return null
+
+  const counts = new Map<number, number>()
+  for (const r of rows) {
+    if (r.team_contact_id == null || isDevAnalyticsPageView(r)) continue
+    counts.set(r.team_contact_id, (counts.get(r.team_contact_id) ?? 0) + 1)
+  }
+  if (counts.size === 0) return []
+
+  const { data: contacts } = await sb
+    .from('Contact')
+    .select('ContactID, Nom, "Prénom", NomInstitution')
+    .in('ContactID', [...counts.keys()])
+  const nameById = new Map<number, string>()
+  for (const c of (contacts ?? []) as { ContactID: number; Nom: string | null; Prénom: string | null; NomInstitution: string | null }[]) {
+    nameById.set(c.ContactID, `${c.Prénom ?? ''} ${c.Nom ?? ''}`.trim() || c.NomInstitution || `#${c.ContactID}`)
+  }
+  return [...counts.entries()]
+    .sort(([, a], [, b]) => b - a)
+    .map(([id, views]) => ({ member: nameById.get(id) ?? `#${id}`, views }))
 }
 
 export async function getAnalyticsStats(
@@ -202,11 +234,14 @@ export async function getAnalyticsStats(
     trend.push({ date: key, views: dayCounts[key] ?? 0 })
   }
 
+  const byTeamMember = await teamMemberBreakdown(sb, scopedRows)
+
   return {
     ok: true,
     pageviews,
     uniqueVisitors,
     scope,
+    ...(byTeamMember ? { byTeamMember } : {}),
     topPages: top(pageCounts, 10).map(([path, views]) => ({ path, views: views as number })),
     topCountries: Object.entries(countryByLabel)
       .sort(([, a], [, b]) => b - a)

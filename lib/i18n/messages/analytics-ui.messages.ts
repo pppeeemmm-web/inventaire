@@ -37,4 +37,12 @@ export const analyticsUiMessages = defineMessages({
     fr: '{date} · {views} vues net',
     en: '{date} · {views} net views',
   },
+  analytics_by_team_member: {
+    fr: 'Vues par membre de l’équipe (admin)',
+    en: 'Views by team member (admin)',
+  },
+  analytics_by_team_member_empty: {
+    fr: 'Aucune vue attribuée sur la période — l’attribution commence le 1er novembre 2026.',
+    en: 'No attributed views in this period — attribution starts 1 November 2026.',
+  },
 })

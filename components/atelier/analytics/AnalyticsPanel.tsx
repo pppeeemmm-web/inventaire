@@ -272,6 +272,25 @@ export function AnalyticsPanel({
             </div>
           </div>
 
+          {result.byTeamMember ? (
+            <div
+              data-testid="analytics-by-team-member"
+              style={{
+                padding: '8px 10px',
+                background: 'var(--bg0)',
+                border: '1px solid var(--bd)',
+                flexShrink: 0,
+              }}
+            >
+              <div className="t-label" style={{ marginBottom: 8, fontSize: 10 }}>{t('analytics_by_team_member')}</div>
+              {result.byTeamMember.length > 0 ? (
+                <BarList items={result.byTeamMember} labelKey="member" valueKey="views" maxRows={12} />
+              ) : (
+                <div style={{ fontSize: 11, color: 'var(--tx3)' }}>{t('analytics_by_team_member_empty')}</div>
+              )}
+            </div>
+          ) : null}
+
           <div
             className="t-mono-xs"
             style={{

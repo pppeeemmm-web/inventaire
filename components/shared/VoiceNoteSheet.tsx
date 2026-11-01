@@ -109,7 +109,7 @@ export function VoiceNoteSheet({
   const [oeuvreId, setOeuvreId] = useState('')
   const [recording, setRecording] = useState(false)
   const [dictating, setDictating] = useState(false)
-  const [nextAction, setNextAction] = useState<NextActionKey>('tomorrow')
+  const [nextAction, setNextAction] = useState<NextActionKey>('none')
   const [online, setOnline] = useState(true)
   const [dictationAvailability, setDictationAvailability] =
     useState<ReturnType<typeof getLiveDictationAvailability>>('unsupported')
@@ -125,7 +125,7 @@ export function VoiceNoteSheet({
     setTranscript('')
     setInterim('')
     setOeuvreId('')
-    setNextAction('tomorrow')
+    setNextAction('none')
     setAudioBlob(null)
     recordStartedAt.current = null
   }, [])

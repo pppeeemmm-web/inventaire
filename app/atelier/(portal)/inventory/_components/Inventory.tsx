@@ -834,6 +834,20 @@ export function Inventory({
         {selection.size > 0 && (
           <div className="row gap-sm" style={{ borderLeft: '1px solid var(--bd)', paddingLeft: 12, marginLeft: 4 }}>
             <button
+              type="button"
+              data-testid="inventory-clear-selection"
+              onClick={() => {
+                const prev = new Set(selection)
+                setSelection(new Set())
+                offerSelectionUndo(prev)
+              }}
+              className="btn ghost sm"
+              style={{ fontSize: 12, padding: '8px 12px' }}
+              title={t('selection_clear_title')}
+            >
+              ✕ {t('clear')} ({selection.size})
+            </button>
+            <button
               onClick={async () => {
                 if (!confirm(t('confirmMoveWorksToTrash'))) return
                 const ids = Array.from(selection)

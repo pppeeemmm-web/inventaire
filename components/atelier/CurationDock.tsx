@@ -67,16 +67,27 @@ export function CurationDock({
         /* Above WorkDrawer (PEM_Z_INDEX.workDrawer); below portaled modals (PEM_Z_INDEX.modal) */
         zIndex: PEM_Z_INDEX.curationDock, background: 'var(--bg2)', border: '1px solid var(--bd2)',
         padding: '10px 14px', display: 'flex', gap: 10, alignItems: 'center',
+        // Wraps instead of running off-screen on narrower windows.
+        flexWrap: 'wrap', justifyContent: 'center', maxWidth: 'calc(100vw - 32px)', boxSizing: 'border-box',
         boxShadow: '0 8px 40px rgba(0,0,0,0.5)',
         pointerEvents: 'auto',
       }}>
 
-        {/* Count */}
+        {/* Count + Clear — kept together at the start so clearing is always reachable */}
         <div className="row gap-sm">
           <div className="t-eyebrow" style={{ color: 'var(--ac)' }}>{t('selection')}</div>
           <div style={{ fontSize: 20, color: 'var(--tx)', fontFamily: "'Instrument Serif', serif", lineHeight: 1 }}>
             {ids.length}
           </div>
+          <button
+            type="button"
+            className="btn ghost sm"
+            data-testid="curation-clear-selection"
+            onClick={() => setSelection(new Set())}
+            title={t('selection_clear_title')}
+          >
+            ✕ {t('clear')}
+          </button>
         </div>
 
         <div className="vline" style={{ height: 20 }} />
@@ -142,11 +153,6 @@ export function CurationDock({
         {/* Constellation */}
         <button className="btn sm primary" onClick={onGoConstellation}>
           {t('curate')} →
-        </button>
-
-        {/* Clear */}
-        <button className="btn ghost sm" onClick={() => setSelection(new Set())}>
-          {t('clear')}
         </button>
       </div>
 

@@ -30,10 +30,23 @@ export async function trackView(
     }
 
     let isTeamSession = false
+    /** Which team member (Contact) — admin-only in Analytics (supabase/sql/page_view_team_member.sql). */
+    let teamContactId: number | null = null
     try {
       const userSb = await createServerSupabase()
       const { data: team } = await userSb.rpc('is_team')
       isTeamSession = Boolean(team)
+      if (isTeamSession) {
+        const { data: { user } } = await userSb.auth.getUser()
+        if (user) {
+          const { data: contact } = await sb
+            .from('Contact')
+            .select('ContactID')
+            .eq('auth_user_id', user.id)
+            .maybeSingle()
+          teamContactId = (contact?.ContactID as number | undefined) ?? null
+        }
+      }
     } catch (e) {
       console.warn('[trackView] is_team rpc failed', e)
       isTeamSession = false
@@ -48,8 +61,15 @@ export async function trackView(
       country,
       visitor_id,
       is_team_session: isTeamSession,
+      team_contact_id: teamContactId,
     }
-    const { error: insErr } = await sb.from('page_view').insert(fullRow)
+    let { error: insErr } = await sb.from('page_view').insert(fullRow)
+    // Column added by page_view_team_member.sql — keep counting views if it is not there yet.
+    if (insErr?.message.toLowerCase().includes('team_contact_id')) {
+      const { team_contact_id: _omit, ...withoutMember } = fullRow
+      void _omit
+      ;({ error: insErr } = await sb.from('page_view').insert(withoutMember))
+    }
     if (insErr) {
       if (missingPageViewVisitorColumns(insErr.message)) {
         const { error: legErr } = await sb.from('page_view').insert({ path, referrer, country })
