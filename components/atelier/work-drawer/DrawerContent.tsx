@@ -1,6 +1,6 @@
 'use client'
 
-import { imageUrl, thumbUrl } from '@/lib/data'
+import { imageUrl, thumbUrl, yearOf } from '@/lib/data'
 import { deleteWork, restoreSoftDeletedWorks, revertWorkSnapshot, loadOeuvreLongText, type WorkRevertSnapshot } from '@/app/atelier/works/actions'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -53,6 +53,7 @@ import { WorkProductionSpan } from './WorkProductionSpan'
 import { WorkCostBlock } from './WorkCostBlock'
 import { LinkedVoiceNotes } from '@/components/atelier/LinkedVoiceNotes'
 import { ConditionReportsSection } from './ConditionReportsSection'
+import { WorkPeriodSourceSection } from './WorkPeriodSourceSection'
 import { normalizeAnonymityLevel } from '@/lib/anonymity-level'
 
 function withCacheKey(src: string, cacheKey?: string): string {
@@ -1349,6 +1350,8 @@ export function DrawerContent({
           selThemes={selThemes}
           setSelThemes={setSelThemes}
         />
+
+        <WorkPeriodSourceSection oeuvreId={o.OeuvreID} year={yearOf(annee)} />
 
         <WorkFormPhysicalQr oeuvreId={o.OeuvreID} titre={titre || o.Titre} />
 

@@ -11,6 +11,7 @@ import { yearOf } from '@/lib/data'
 import type { ReportConfig, ReportField } from '@/lib/reports/engine'
 import { REPORT_COLUMN_HEADER_KEY, formatReportCell, type ReportMaps } from '@/lib/reports/works-table'
 import type { ReportSource } from '@/lib/reports/saved-report'
+import { effectivePeriod, type PeriodSourceData } from '@/lib/work-periods'
 
 export type SaleRow = { o: Oeuvre; order: SaleOrderRow | null }
 
@@ -24,6 +25,7 @@ export type SourceCtx = {
   worksById: Map<number, Oeuvre>
   worksByBuyer: Map<number, number>
   worksAtLocation: Map<number, number>
+  periodSource: PeriodSourceData
 }
 
 export type SourceDef<R> = {
@@ -110,6 +112,21 @@ function workFields(c: SourceCtx): ReportField<Oeuvre>[] {
       label: h('groups'),
       kind: 'multi',
       value: (o) => (maps.oeuvreGroupMap.get(o.OeuvreID) ?? []).map((id) => maps.groupNameMap[id]).filter(Boolean),
+    },
+    {
+      id: 'period',
+      label: t('ps_period'),
+      kind: 'enum',
+      value: (o) => effectivePeriod(o.OeuvreID, yearOf(o.Année), c.periodSource).period?.name ?? null,
+    },
+    {
+      id: 'sources',
+      label: t('ps_source'),
+      kind: 'multi',
+      value: (o) =>
+        (c.periodSource.sourcesByWork[o.OeuvreID] ?? [])
+          .map((id) => c.periodSource.sources.find((s) => s.id === id)?.name)
+          .filter((x): x is string => !!x),
     },
     { id: 'catalogued', label: h('catalogued'), kind: 'bool', value: (o) => !!o.Catalogué },
     { id: 'needs_photo', label: t('report_f_needs_photo'), kind: 'bool', value: (o) => !!o.NeedsPhotograph },

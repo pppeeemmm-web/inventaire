@@ -2819,6 +2819,66 @@ export type Database = {
         }
         Relationships: []
       }
+      work_period: {
+        Row: {
+          created_at: string
+          end_year: number | null
+          id: number
+          name: string
+          start_year: number
+        }
+        Insert: {
+          created_at?: string
+          end_year?: number | null
+          id?: never
+          name: string
+          start_year: number
+        }
+        Update: {
+          created_at?: string
+          end_year?: number | null
+          id?: never
+          name?: string
+          start_year?: number
+        }
+        Relationships: []
+      }
+      work_period_override: {
+        Row: {
+          oeuvre_id: number
+          period_id: number | null
+          set_at: string
+          set_by: string | null
+        }
+        Insert: {
+          oeuvre_id: number
+          period_id?: number | null
+          set_at?: string
+          set_by?: string | null
+        }
+        Update: {
+          oeuvre_id?: number
+          period_id?: number | null
+          set_at?: string
+          set_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_period_override_oeuvre_id_fkey"
+            columns: ["oeuvre_id"]
+            isOneToOne: true
+            referencedRelation: "Oeuvres"
+            referencedColumns: ["OeuvreID"]
+          },
+          {
+            foreignKeyName: "work_period_override_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "work_period"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       work_session: {
         Row: {
           created_at: string
@@ -2857,6 +2917,54 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "Oeuvres"
             referencedColumns: ["OeuvreID"]
+          },
+        ]
+      }
+      work_source: {
+        Row: {
+          created_at: string
+          id: number
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: never
+          name?: string
+        }
+        Relationships: []
+      }
+      work_source_link: {
+        Row: {
+          oeuvre_id: number
+          source_id: number
+        }
+        Insert: {
+          oeuvre_id: number
+          source_id: number
+        }
+        Update: {
+          oeuvre_id?: number
+          source_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_source_link_oeuvre_id_fkey"
+            columns: ["oeuvre_id"]
+            isOneToOne: false
+            referencedRelation: "Oeuvres"
+            referencedColumns: ["OeuvreID"]
+          },
+          {
+            foreignKeyName: "work_source_link_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "work_source"
+            referencedColumns: ["id"]
           },
         ]
       }

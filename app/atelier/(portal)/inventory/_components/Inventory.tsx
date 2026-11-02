@@ -41,6 +41,9 @@ import {
 import type { ColourFamily } from '@/lib/colour-families'
 import type { Agg, Dim } from '@/lib/pivot'
 import { PivotPanel } from '@/components/atelier/PivotPanel'
+import { PeriodSourceManager } from '@/components/atelier/PeriodSourceManager'
+import { usePeriodSource } from '@/lib/atelier/use-period-source'
+import { effectivePeriod, type WorkPeriod } from '@/lib/work-periods'
 
 // ── Types ───────────────────────────────────────────────────────────
 
@@ -225,7 +228,7 @@ interface SharedProps {
 type View = 'list' | 'grid' | 'graph' | 'pivot'
 
 const INV_LIST_ROW_H = 44
-const INV_TABLE_COLS = 14
+const INV_TABLE_COLS = 15
 const INV_GRID_GAP = 12
 const INV_GRID_PAD = 16
 const INV_GRID_MIN_CELL = 140
@@ -364,6 +367,27 @@ export function Inventory({
   const [loadingGrp,  setLoadingGrp]  = useState<string | null>(null)
   const [filterTheme, setFilterTheme] = useState('all')
   const [filterGroup, setFilterGroup] = useState('all')
+  /** 'all' | 'none' | period id; same for sources. */
+  const [filterPeriod, setFilterPeriod] = useState('all')
+  const [filterSource, setFilterSource] = useState('all')
+  const [showPeriods, setShowPeriods] = useState(false)
+  const periodSource = usePeriodSource()
+  const periodOf = useCallback(
+    (o: Oeuvre): WorkPeriod | null => effectivePeriod(o.OeuvreID, yearOf(o.Année), periodSource).period,
+    [periodSource],
+  )
+  const sourceNameMap = useMemo(
+    () => Object.fromEntries(periodSource.sources.map((x) => [x.id, x.name])) as Record<number, string>,
+    [periodSource.sources],
+  )
+  const sortedPeriods = useMemo(
+    () => [...periodSource.periods].sort((a, b) => a.start_year - b.start_year || a.id - b.id),
+    [periodSource.periods],
+  )
+  const sortedSources = useMemo(
+    () => [...periodSource.sources].sort((a, b) => a.name.localeCompare(b.name)),
+    [periodSource.sources],
+  )
   const [showColour, setShowColour] = useState(false)
   const [colourQ, setColourQ] = useState<ColourQuery>({ include: [], exclude: [], nearby: false })
   const [colourRank, setColourRank] = useState<ColourRank>('match')
@@ -579,7 +603,9 @@ export function Inventory({
       } else if (sq) {
         const themeNames = (oeuvreThemeMap.get(o.OeuvreID) ?? []).map(tid => thM[tid] ?? '').join(' ')
         const groupNames = (oeuvreGroupMap.get(o.OeuvreID) ?? []).map(gid => groupNameMap[gid] ?? '').join(' ')
-        const bag = `${o.Titre ?? ''} #${o.OeuvreID} ${o.Technique != null ? (tM[o.Technique] ?? '') : ''} ${o.Support != null ? (sM[o.Support] ?? '') : ''} ${themeNames} ${groupNames}`.toLowerCase()
+        const periodName = periodOf(o)?.name ?? ''
+        const sourceNames = (periodSource.sourcesByWork[o.OeuvreID] ?? []).map((id) => sourceNameMap[id] ?? '').join(' ')
+        const bag = `${o.Titre ?? ''} #${o.OeuvreID} ${o.Technique != null ? (tM[o.Technique] ?? '') : ''} ${o.Support != null ? (sM[o.Support] ?? '') : ''} ${themeNames} ${groupNames} ${periodName} ${sourceNames}`.toLowerCase()
         if (!bag.includes(sq)) return false
       }
       if (tech !== 'all' && String(o.Technique ?? '') !== tech) return false
@@ -596,6 +622,18 @@ export function Inventory({
       if (filterGroup !== 'all') {
         const gids = oeuvreGroupMap.get(o.OeuvreID) ?? []
         if (!gids.includes(filterGroup)) return false
+      }
+
+      // Period filter (automatic from the year, unless set by hand)
+      if (filterPeriod !== 'all') {
+        const pid = periodOf(o)?.id ?? null
+        if (filterPeriod === 'none' ? pid != null : pid !== Number(filterPeriod)) return false
+      }
+
+      // Source filter
+      if (filterSource !== 'all') {
+        const sids = periodSource.sourcesByWork[o.OeuvreID] ?? []
+        if (filterSource === 'none' ? sids.length > 0 : !sids.includes(Number(filterSource))) return false
       }
 
       if (!criteria.every((c) => {
@@ -650,6 +688,11 @@ export function Inventory({
       if (sortKey === 'Titre') return (a.Titre || '').localeCompare(b.Titre || '') * dir
       if (sortKey === 'Année') return ((extractYear(a.Année) || 0) - (extractYear(b.Année) || 0)) * dir
       if (sortKey === 'Prix') return ((a.Prix || 0) - (b.Prix || 0)) * dir
+      if (sortKey === 'Period') {
+        const pa = periodOf(a)
+        const pb = periodOf(b)
+        return ((pa?.start_year ?? 99999) - (pb?.start_year ?? 99999) || (pa?.name ?? '').localeCompare(pb?.name ?? '')) * dir
+      }
       if (sortKey === 'Status') {
         const sa = statusOf(a, statusLabelMap)
         const sb = statusOf(b, statusLabelMap)
@@ -680,7 +723,7 @@ export function Inventory({
       return 0
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [oeuvres, q, tech, support, status, filterTheme, filterGroup, criteria, oeuvreThemeMap, oeuvreGroupMap, thM, groupNameMap, tM, sM, statusLabelMap, allFields, sortKey, sortDir, cM, locMap, colourScores, colourRank])
+  }, [oeuvres, q, tech, support, status, filterTheme, filterGroup, filterPeriod, filterSource, periodOf, periodSource, sourceNameMap, criteria, oeuvreThemeMap, oeuvreGroupMap, thM, groupNameMap, tM, sM, statusLabelMap, allFields, sortKey, sortDir, cM, locMap, colourScores, colourRank])
 
   const invPivotDims: Dim<Oeuvre>[] = useMemo(
     () => [
@@ -730,8 +773,23 @@ export function Inventory({
         label: t('confidentiality'),
         get: (o) => (o.anonymity_level != null ? String(o.anonymity_level) : '—'),
       },
+      {
+        id: 'period',
+        label: t('ps_period'),
+        get: (o) => periodOf(o)?.name ?? '—',
+      },
+      {
+        id: 'source',
+        label: t('ps_source'),
+        get: (o) =>
+          (periodSource.sourcesByWork[o.OeuvreID] ?? [])
+            .map((id) => sourceNameMap[id] ?? '')
+            .filter(Boolean)
+            .sort()
+            .join(', ') || '—',
+      },
     ],
-    [t, tM, thM, groupNameMap, oeuvreThemeMap, oeuvreGroupMap, locMap, statusLabelMap],
+    [t, tM, thM, groupNameMap, oeuvreThemeMap, oeuvreGroupMap, locMap, statusLabelMap, periodOf, periodSource, sourceNameMap],
   )
 
   const invPivotValues: Agg<Oeuvre>[] = useMemo(
@@ -841,6 +899,28 @@ export function Inventory({
           options={[['all', t('const_allGroups')], ...groups.map((x) => [x.id, x.name] as [string, string])]}
         />
 
+        {/* Period */}
+        <InvSelect
+          value={filterPeriod} onChange={setFilterPeriod}
+          label={t('ps_period')}
+          options={[
+            ['all', t('ps_filter_all_periods')],
+            ['none', t('ps_filter_no_period')],
+            ...sortedPeriods.map((x) => [String(x.id), x.name] as [string, string]),
+          ]}
+        />
+
+        {/* Source */}
+        <InvSelect
+          value={filterSource} onChange={setFilterSource}
+          label={t('ps_source')}
+          options={[
+            ['all', t('ps_filter_all_sources')],
+            ['none', t('ps_filter_no_source')],
+            ...sortedSources.map((x) => [String(x.id), x.name] as [string, string]),
+          ]}
+        />
+
         {/* View toggle */}
         <div style={{ display: 'flex', border: '1px solid var(--bd)', flexWrap: 'wrap' }}>
           {(
@@ -898,6 +978,23 @@ export function Inventory({
           {isColourQueryActive(colourQ)
             ? t('inv_colour_btn_active_fmt').replace('{n}', String(colourQ.include.length + colourQ.exclude.length))
             : t('inv_colour_btn')}
+        </button>
+
+        {/* Periods + sources manager */}
+        <button
+          type="button"
+          data-testid="inv-periods-toggle"
+          aria-expanded={showPeriods}
+          onClick={() => setShowPeriods((v) => !v)}
+          style={{
+            padding: '8px 12px', fontSize: 13,
+            color: showPeriods ? 'var(--bg0)' : 'var(--tx3)',
+            background: showPeriods ? 'var(--ac)' : 'transparent',
+            border: '1px solid var(--bd)',
+            cursor: 'pointer',
+          }}
+        >
+          {t('ps_manage_short')}
         </button>
 
         {/* Select all filtered */}
@@ -994,7 +1091,7 @@ export function Inventory({
         )}
 
         {/* Clear filters */}
-        {(q || tech !== 'all' || support !== 'all' || status !== 'all' || filterTheme !== 'all' || filterGroup !== 'all' || criteria.length > 0) && (
+        {(q || tech !== 'all' || support !== 'all' || status !== 'all' || filterTheme !== 'all' || filterGroup !== 'all' || filterPeriod !== 'all' || filterSource !== 'all' || criteria.length > 0) && (
           <button
             onClick={() => {
               setQ('')
@@ -1003,6 +1100,8 @@ export function Inventory({
               setStatus('all')
               setFilterTheme('all')
               setFilterGroup('all')
+              setFilterPeriod('all')
+              setFilterSource('all')
               setCriteria([])
             }}
             className="btn ghost sm"
@@ -1108,6 +1207,12 @@ export function Inventory({
         />
       )}
 
+      {showPeriods && (
+        <div style={{ padding: narrow ? '8px 12px' : '8px 28px' }}>
+          <PeriodSourceManager works={oeuvres} onClose={() => setShowPeriods(false)} />
+        </div>
+      )}
+
       {/* Advanced filter panel */}
       {showAdv && (
         <CriteriaPanel
@@ -1134,6 +1239,7 @@ export function Inventory({
               onImageDoubleClick={() => { setShowPreview(true); setPreviewExpanded(true) }}
               onOpen={onOpen}
               onLoadMore={onLoadMore}
+              periodName={(o) => periodOf(o)?.name ?? ''}
             />
             {showPreview && !narrow && (
               <WorkDrawer
@@ -1403,7 +1509,7 @@ function InvSelect({
 function InvList({
   rows, tM, sM, cM, locMap, statusLabelMap, embeddingStatusMap, focused, setFocused, selection, setSelection,
   sortKey, sortDir, toggleSort,
-  onImageDoubleClick, onOpen, publicMode, onLoadMore,
+  onImageDoubleClick, onOpen, publicMode, onLoadMore, periodName,
 }: {
   rows:           Oeuvre[]
   tM:             Record<number, string>
@@ -1423,6 +1529,7 @@ function InvList({
   onOpen:         (o: Oeuvre) => void
   publicMode?:    boolean
   onLoadMore?:    () => void
+  periodName?:    (o: Oeuvre) => string
 }) {
   const { t } = useI18n()
   const lastSelIdxRef = useRef<number | null>(null)
@@ -1559,7 +1666,7 @@ function InvList({
     >
       <table style={{ 
         width: '100%',
-        minWidth: 900,
+        minWidth: 980,
         tableLayout: 'fixed', 
         borderCollapse: 'collapse', 
         borderSpacing: 0,
@@ -1605,6 +1712,12 @@ function InvList({
               <div style={sortThRow}>
                 <span style={sortThLabel}>{t('year')}</span>
                 <span style={{ flexShrink: 0 }}><SortInd k="Année" current={sortKey} dir={sortDir} /></span>
+              </div>
+            </th>
+            <th onClick={() => toggleSort('Period')} style={{ ...headerBase, width: 90, cursor: 'pointer' }} title={t('ps_col_period')}>
+              <div style={sortThRow}>
+                <span style={sortThLabel}>{t('ps_col_period')}</span>
+                <span style={{ flexShrink: 0 }}><SortInd k="Period" current={sortKey} dir={sortDir} /></span>
               </div>
             </th>
             <th onClick={() => toggleSort('Prix')} style={{ ...headerBase, width: 80, cursor: 'pointer' }}>
@@ -1738,6 +1851,7 @@ function InvList({
                   </td>
                   <td style={{ padding: '0 4px', whiteSpace: 'nowrap', opacity: 0.8, ...cellDivider, verticalAlign: 'middle' }}>{dims}</td>
                   <td style={{ padding: '0 4px', opacity: 0.8, ...cellDivider, verticalAlign: 'middle' }}>{yearOf(o.Année) ?? '—'}</td>
+                  <td style={{ padding: '0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: 0.8, fontSize: 12, ...cellDivider, verticalAlign: 'middle' }}>{periodName?.(o) || '—'}</td>
                   <td style={{ padding: '0 4px', whiteSpace: 'nowrap', opacity: 0.8, ...cellDivider, verticalAlign: 'middle' }}>{o.Prix ? `€ ${Number(o.Prix).toLocaleString('fr-FR')}` : '—'}</td>
                   <td style={{ padding: '0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: 0.8, ...cellDivider, verticalAlign: 'middle' }}>
                     {(() => {

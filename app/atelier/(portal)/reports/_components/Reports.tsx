@@ -33,6 +33,7 @@ import { fetchOrders, type SaleOrderRow } from '@/app/atelier/(portal)/sales/act
 import { PivotAtlasPanel } from '@/app/atelier/(portal)/reports/_components/PivotAtlasPanel'
 import { ReportFieldsPanel } from '@/app/atelier/(portal)/reports/_components/ReportFieldsPanel'
 import { SOURCE_HINT, SOURCE_LABEL, buildSource, type SaleRow, type SourceCtx } from '@/app/atelier/(portal)/reports/_components/report-sources'
+import { usePeriodSource } from '@/lib/atelier/use-period-source'
 
 const PREVIEW_CAP = 300
 const SALE_STATUSES = new Set(['sold', 'reserved', 'consigned', 'gift'])
@@ -144,6 +145,7 @@ export function Reports({
   }, [oeuvres])
 
   const worksById = useMemo(() => new Map(oeuvres.map((o) => [o.OeuvreID, o])), [oeuvres])
+  const periodSource = usePeriodSource()
   const ctx: SourceCtx = useMemo(
     () => ({
       t,
@@ -153,10 +155,11 @@ export function Reports({
       kaizenNames: loaded.kaizen?.names ?? {},
       conditionNames: loaded.constats?.names ?? {},
       worksById,
+      periodSource,
       worksByBuyer,
       worksAtLocation,
     }),
-    [t, locale, maps, loaded.pendingActions, loaded.kaizen, loaded.constats, worksById, worksByBuyer, worksAtLocation],
+    [t, locale, maps, loaded.pendingActions, loaded.kaizen, loaded.constats, worksById, worksByBuyer, worksAtLocation, periodSource],
   )
   const def = useMemo(() => buildSource(source, ctx), [source, ctx])
   const config = cfg ?? def.defaults
