@@ -132,7 +132,7 @@ function LedgerThumb({
   )
 }
 
-/** `embedded`: shown inside Kaizen → Système (no own title; Kaizen supplies the frame and padding). */
+/** `embedded`: inside Kaizen → Système, only the site tools (checklist PDF, Studio Bible, reference). */
 export function SystemTab({ embedded = false }: { embedded?: boolean } = {}) {
   const { t, lang } = useI18n()
   const narrow = useMediaQuery('(max-width: 767px)')
@@ -487,10 +487,62 @@ export function SystemTab({ embedded = false }: { embedded?: boolean } = {}) {
     )
   }
 
-  const headerPad = embedded ? 0 : narrow ? '16px 16px' : '32px 40px'
+  const tools = (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: narrow || embedded ? 'stretch' : 'flex-end', gap: 8 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: narrow || embedded ? 'flex-start' : 'flex-end' }}>
+        <button
+          type="button"
+          className="btn ghost sm"
+          onClick={handleDownloadChecklist}
+          disabled={checklistPending}
+          style={{ borderColor: 'var(--bd)', color: 'var(--tx2)' }}
+        >
+          {checklistPending ? t('system_checklist_building') : t('system_download_site_checklist')}
+        </button>
+        <button
+          className="btn ghost sm"
+          onClick={handleRegenerateBible}
+          disabled={isPending}
+          style={{ borderColor: 'var(--ac)', color: 'var(--ac)' }}
+        >
+          {isPending ? t('system_ledger_bible_regenerating') : t('system_ledger_bible_cta')}
+        </button>
+        <button
+          type="button"
+          data-testid="system-ledger-ref-copy"
+          className="btn ghost sm"
+          onClick={() => void handleCopyLedgerReference()}
+          disabled={refMdBusy}
+          style={{ borderColor: 'var(--bd)', color: 'var(--tx2)' }}
+        >
+          {refMdBusy ? t('system_ledger_ref_loading') : t('system_ledger_ref_copy')}
+        </button>
+        <button
+          type="button"
+          data-testid="system-ledger-ref-download"
+          className="btn ghost sm"
+          onClick={() => void handleDownloadLedgerReference()}
+          disabled={refMdBusy}
+          style={{ borderColor: 'var(--bd)', color: 'var(--tx2)' }}
+        >
+          {refMdBusy ? t('system_ledger_ref_loading') : t('system_ledger_ref_download')}
+        </button>
+      </div>
+      {refCopiedFlash && (
+        <span className="t-mono-sm" style={{ color: 'var(--green)' }} role="status">
+          {t('system_ledger_ref_clipboard_ok')}
+        </span>
+      )}
+    </div>
+  )
+
+  // Inside Kaizen → Système only the site tools show; entries are Kaizen entries there.
+  if (embedded) return <div data-testid="system-tools">{tools}</div>
+
+  const headerPad = narrow ? '16px 16px' : '32px 40px'
 
   return (
-    <div style={{ flex: 1, padding: headerPad, overflow: embedded ? undefined : 'auto', background: embedded ? undefined : 'var(--bg0)' }}>
+    <div style={{ flex: 1, padding: headerPad, overflow: 'auto', background: 'var(--bg0)' }}>
       <input
         ref={attachFileRef}
         type="file"
@@ -516,67 +568,18 @@ export function SystemTab({ embedded = false }: { embedded?: boolean } = {}) {
           }}
         >
           <div>
-            {embedded ? null : (
-              <h2 data-testid="system-ledger-heading" className="serif" style={{ fontSize: narrow ? 26 : 32, marginBottom: 8 }}>
-                {t('system_ledger_title')}
-              </h2>
-            )}
+            <h2 data-testid="system-ledger-heading" className="serif" style={{ fontSize: narrow ? 26 : 32, marginBottom: 8 }}>
+              {t('system_ledger_title')}
+            </h2>
             <p className="t-mono-sm" style={{ color: 'var(--tx3)' }}>
               {t('system_ledger_subtitle')}
             </p>
-            {embedded ? null : (
-              <p data-testid="system-ledger-kaizen-note" style={{ fontSize: 12, color: 'var(--tx2)', marginTop: 8 }}>
-                {t('system_ledger_moved_to_kaizen')}{' '}
-                <Link href="/atelier/kaizen" style={{ color: 'var(--ac)' }}>{t('system_ledger_open_kaizen')}</Link>
-              </p>
-            )}
+            <p data-testid="system-ledger-kaizen-note" style={{ fontSize: 12, color: 'var(--tx2)', marginTop: 8 }}>
+              {t('system_ledger_moved_to_kaizen')}{' '}
+              <Link href="/atelier/kaizen" style={{ color: 'var(--ac)' }}>{t('system_ledger_open_kaizen')}</Link>
+            </p>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: narrow ? 'stretch' : 'flex-end', gap: 8 }}>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: narrow ? 'flex-start' : 'flex-end' }}>
-              <button
-                type="button"
-                className="btn ghost sm"
-                onClick={handleDownloadChecklist}
-                disabled={checklistPending}
-                style={{ borderColor: 'var(--bd)', color: 'var(--tx2)' }}
-              >
-                {checklistPending ? t('system_checklist_building') : t('system_download_site_checklist')}
-              </button>
-              <button
-                className="btn ghost sm"
-                onClick={handleRegenerateBible}
-                disabled={isPending}
-                style={{ borderColor: 'var(--ac)', color: 'var(--ac)' }}
-              >
-                {isPending ? t('system_ledger_bible_regenerating') : t('system_ledger_bible_cta')}
-              </button>
-              <button
-                type="button"
-                data-testid="system-ledger-ref-copy"
-                className="btn ghost sm"
-                onClick={() => void handleCopyLedgerReference()}
-                disabled={refMdBusy}
-                style={{ borderColor: 'var(--bd)', color: 'var(--tx2)' }}
-              >
-                {refMdBusy ? t('system_ledger_ref_loading') : t('system_ledger_ref_copy')}
-              </button>
-              <button
-                type="button"
-                data-testid="system-ledger-ref-download"
-                className="btn ghost sm"
-                onClick={() => void handleDownloadLedgerReference()}
-                disabled={refMdBusy}
-                style={{ borderColor: 'var(--bd)', color: 'var(--tx2)' }}
-              >
-                {refMdBusy ? t('system_ledger_ref_loading') : t('system_ledger_ref_download')}
-              </button>
-            </div>
-            {refCopiedFlash && (
-              <span className="t-mono-sm" style={{ color: 'var(--green)' }} role="status">
-                {t('system_ledger_ref_clipboard_ok')}
-              </span>
-            )}
-          </div>
+          {tools}
         </div>
 
         <form

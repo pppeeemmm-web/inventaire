@@ -13,7 +13,11 @@ export const kaizenMessages = defineMessages({
     en: 'Ideas for works, trends, trains of thought, concepts.',
   },
   kaizen_group_ops: { fr: 'Opérations & Stratégie', en: 'Operations & Strategy' },
-  kaizen_section_website: { fr: 'Site web', en: 'Website' },
+  kaizen_section_website: { fr: 'Système', en: 'System' },
+  kaizen_section_system_hint: {
+    fr: 'Le site et l’application : bugs, maintenance, améliorations. Outils du site ci-dessous.',
+    en: 'The website and the app: bugs, maintenance, improvements. Site tools below.',
+  },
   kaizen_section_business: { fr: 'Business', en: 'Business' },
   kaizen_review_fmt: { fr: 'À valider ({n})', en: 'To confirm ({n})' },
   kaizen_review_intro: {

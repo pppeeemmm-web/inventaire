@@ -48,7 +48,7 @@
 | `/atelier/overview` | **Slice 3B — Vue d’ensemble** (`routeTab=overview`); panel [`OverviewTab.tsx`](../components/atelier/overview/OverviewTab.tsx) |
 | `/atelier/map` | **Slice 3B — Carte** (`routeTab=map`; sidebar Commercial since 2026-11-02); [`WorldMapTab.tsx`](../components/atelier/WorldMapTab.tsx) |
 | `/atelier/journal` | **Slice 3B — Journal sessions** (`routeTab=journal`); [`SessionJournalTab.tsx`](../components/atelier/SessionJournalTab.tsx) |
-| `/atelier/system` | Redirects to `/atelier/kaizen?view=system` (2026-11-02): System ledger + site tools render inside Kaizen → Opérations & Stratégie → **Système** ([`SystemTab.tsx`](../components/atelier/SystemTab.tsx) `embedded`) |
+| `/atelier/system` | Redirects to `/atelier/kaizen?view=website` (2026-11-02): Kaizen → Opérations & Stratégie → **Système** (section `website`, renamed) = app/site entries + the site tools ([`SystemTab.tsx`](../components/atelier/SystemTab.tsx) `embedded` renders the tools only) |
 | `/atelier/portfolio` | **Slice 3B — Portfolio config** (`routeTab=portfolio`); [`PortfolioConfigShell.tsx`](../components/atelier/PortfolioConfigShell.tsx) |
 | `/atelier/site` | **Slice 3B — Site public** (`routeTab=site`); same shell as portfolio |
 | `/atelier/analytics` | **Slice 3B — Analytics** (`routeTab=analytics`); same shell as portfolio |

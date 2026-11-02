@@ -16,7 +16,6 @@ test.describe('System tab — ledger reference MD', () => {
     await expect(page.getByTestId('kaizen-system')).toBeVisible({ timeout: 45_000 })
     await expect(page.getByTestId('system-ledger-ref-copy')).toBeVisible()
     await expect(page.getByTestId('system-ledger-ref-download')).toBeVisible()
-    await expect(page.getByTestId('system-ledger-attach-trigger')).toBeVisible()
   })
 
   test('copy places markdown in clipboard', async ({ page, context }) => {

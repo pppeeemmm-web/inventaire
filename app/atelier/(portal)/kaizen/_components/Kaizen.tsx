@@ -20,8 +20,9 @@ import {
   updateKaizen,
 } from '@/app/atelier/(portal)/kaizen/actions'
 
-// 'system' = the former System tab (bugs / maintenance log + site tools), folded in 2026-11-02.
-type View = KaizenSection | 'review' | 'system'
+// The 'website' section is shown as "Système" (owner 2026-11-02): app/site improvements + the former
+// System tab's tools. `?view=system` (old links) opens it.
+type View = KaizenSection | 'review'
 
 const SystemTab = dynamic(() => import('@/components/atelier/SystemTab').then((m) => ({ default: m.SystemTab })), { ssr: false })
 
@@ -32,7 +33,8 @@ const SECTION_KEY = {
 } as const
 
 function parseView(raw: string | null): View | null {
-  return raw === 'review' || raw === 'system' || (KAIZEN_SECTIONS as readonly string[]).includes(raw ?? '') ? (raw as View) : null
+  if (raw === 'system') return 'website'
+  return raw === 'review' || (KAIZEN_SECTIONS as readonly string[]).includes(raw ?? '') ? (raw as View) : null
 }
 
 export function Kaizen() {
@@ -100,10 +102,10 @@ export function Kaizen() {
   }, [items, pending, view, stack, q])
   const stackCount = (done: boolean) => items.filter((i) => i.section === view && !!i.done_at === done).length
   const countOf = (s: KaizenSection) => items.filter((i) => i.section === s && !i.done_at).length
-  const opsView = view === 'website' || view === 'business' || view === 'system'
+  const opsView = view === 'website' || view === 'business'
 
   async function add() {
-    if (!newTitle.trim() || view === 'review' || view === 'system') return
+    if (!newTitle.trim() || view === 'review') return
     setBusy(true)
     const res = await createKaizen({ title: newTitle, body: newBody, section: view })
     setBusy(false)
@@ -176,7 +178,7 @@ export function Kaizen() {
       {count > 0 ? <span className="t-mono-sm" style={{ fontSize: 11, marginLeft: 6, color: 'var(--tx3)' }}>{count}</span> : null}
     </button>
   )
-  const subTab = (v: KaizenSection | 'system', label: string, count = 0) => (
+  const subTab = (v: KaizenSection, label: string, count = 0) => (
     <button
       key={v}
       type="button"
@@ -250,18 +252,18 @@ export function Kaizen() {
         <div role="tablist" style={{ display: 'flex', gap: 8, padding: narrow ? '10px 12px 0' : '12px 28px 0', overflowX: 'auto' }}>
           {subTab('website', t('kaizen_section_website'), countOf('website'))}
           {subTab('business', t('kaizen_section_business'), countOf('business'))}
-          {subTab('system', t('tab_system'))}
         </div>
       ) : null}
 
-      {view === 'system' ? (
-        <div data-testid="kaizen-system" style={{ flex: 1, overflow: 'auto', padding: narrow ? '12px' : '16px 28px', display: 'flex', flexDirection: 'column' }}>
-          <SystemTab embedded />
-        </div>
-      ) : (
       <div style={{ flex: 1, overflow: 'auto', padding: narrow ? '12px' : '16px 28px' }}>
         {view === 'creation' ? (
           <p style={{ fontSize: 12, color: 'var(--tx3)', margin: '0 0 12px' }}>{t('kaizen_section_creation_hint')}</p>
+        ) : null}
+        {view === 'website' ? (
+          <div data-testid="kaizen-system" style={{ marginBottom: 16, paddingBottom: 14, borderBottom: '1px solid var(--bd)' }}>
+            <p style={{ fontSize: 12, color: 'var(--tx3)', margin: '0 0 10px' }}>{t('kaizen_section_system_hint')}</p>
+            <SystemTab embedded />
+          </div>
         ) : null}
 
         {view === 'review' ? (
@@ -382,7 +384,6 @@ export function Kaizen() {
           })
         )}
       </div>
-      )}
     </div>
   )
 }
