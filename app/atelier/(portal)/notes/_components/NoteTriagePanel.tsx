@@ -200,7 +200,7 @@ export function NoteTriagePanel({
         {note.process_id ? (
           <div style={linkedBox}>
             <span>{linkedProcess?.nom ?? note.process_id.slice(0, 8)}</span>
-            <Link href="/atelier/pipeline" className="btn ghost sm">{t('notes_triage_open')}</Link>
+            <Link href={`/atelier/pipeline?process=${note.process_id}`} className="btn ghost sm">{t('notes_triage_open')}</Link>
             <button type="button" className="btn ghost sm" disabled={busy} onClick={() => void run({ process_id: null })}>
               {t('notes_triage_unlink')}
             </button>

@@ -973,21 +973,6 @@ export type Database = {
           },
         ]
       }
-      node_embedding_tombstone: {
-        Row: {
-          deleted_at: string
-          node_id: string
-        }
-        Insert: {
-          deleted_at?: string
-          node_id: string
-        }
-        Update: {
-          deleted_at?: string
-          node_id?: string
-        }
-        Relationships: []
-      }
       nodes: {
         Row: {
           created_at: string
@@ -1001,7 +986,6 @@ export type Database = {
           embedding_text_hash: string | null
           node_id: string
           node_type: string
-          qdrant_point_id: string | null
           source_pk: string
         }
         Insert: {
@@ -1016,7 +1000,6 @@ export type Database = {
           embedding_text_hash?: string | null
           node_id?: string
           node_type: string
-          qdrant_point_id?: string | null
           source_pk: string
         }
         Update: {
@@ -1031,7 +1014,6 @@ export type Database = {
           embedding_text_hash?: string | null
           node_id?: string
           node_type?: string
-          qdrant_point_id?: string | null
           source_pk?: string
         }
         Relationships: []

@@ -2,7 +2,8 @@
 
 // Pipeline — parallel process tracker: Gantt + deadline sidebar + reminder panel.
 
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { stringifyError } from '@/lib/error'
 import { toast } from '@/lib/ui/toast'
@@ -75,6 +76,19 @@ export function Pipeline({ oeuvres, contacts, groups, initialReminders, onRemind
     () => inspectedId ? (processes.find(p => p.id === inspectedId) ?? null) : null,
     [inspectedId, processes]
   )
+
+  // `/atelier/pipeline?process=<id>` (share triage, note links) opens that project's drawer once
+  // it is loaded, then drops the param so closing the drawer does not reopen it.
+  const searchParams = useSearchParams()
+  const deepProcessId = searchParams.get('process')
+  useEffect(() => {
+    if (!deepProcessId || !processes.some((p) => p.id === deepProcessId)) return
+    setInspectedId(deepProcessId)
+    const q = new URLSearchParams(window.location.search)
+    q.delete('process')
+    const qs = q.toString()
+    window.history.replaceState({}, '', qs ? `${window.location.pathname}?${qs}` : window.location.pathname)
+  }, [deepProcessId, processes])
 
   const filtered = useMemo(() => processes.filter((p) => {
     if (!showDone && ['perdu','annule','termine'].includes(p.statut)) return false

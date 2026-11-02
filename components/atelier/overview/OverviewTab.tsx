@@ -129,6 +129,8 @@ export function OverviewTab({
   const soldIncomeThisYear = salesIncomeTtc ?? 0
 
   const ovNarrow = useMediaQuery('(max-width: 767px)')
+  /** ~768–1199px: the 300px right column leaves the main column too narrow for 6 tiles / 3 panels. */
+  const ovMid = useMediaQuery('(max-width: 1199px)')
   const localeTagOv = lang === 'en' ? 'en-GB' : 'fr-FR'
 
   const weekEvents = useMemo(() => {
@@ -159,7 +161,7 @@ export function OverviewTab({
       style={{
         padding: ovNarrow ? '20px 16px' : '14px 24px',
         display: 'grid',
-        gridTemplateColumns: ovNarrow ? '1fr' : '1fr 300px',
+        gridTemplateColumns: ovNarrow ? '1fr' : 'minmax(0, 1fr) 300px',
         gap: ovNarrow ? 28 : 28,
         alignItems: 'start',
         maxWidth: '100%',
@@ -173,7 +175,7 @@ export function OverviewTab({
         {/* Row 1: Executive Stats */}
         <div>
           <div className="t-eyebrow" style={{ marginBottom: 12, opacity: 0.6 }} data-testid="atelier-overview-executive">{t('ov_executive_summary')}</div>
-          <div style={{ display: 'grid', gridTemplateColumns: ovNarrow ? 'repeat(2, minmax(0, 1fr))' : 'repeat(6, 1fr)', gap: 1, border: '1px solid var(--bd)', background: 'var(--bd)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: ovNarrow ? 'repeat(2, minmax(0, 1fr))' : ovMid ? 'repeat(3, minmax(0, 1fr))' : 'repeat(6, minmax(0, 1fr))', gap: 1, border: '1px solid var(--bd)', background: 'var(--bd)' }}>
             {[
               {
                 l: t('works_cap'),
@@ -210,7 +212,7 @@ export function OverviewTab({
             <div className="t-eyebrow" style={{ opacity: 0.6 }}>{t('ov_financial_pulse_fmt').replace(/\{year\}/g, String(thisYear))}</div>
             <button className="t-mono-sm" onClick={() => onGoTab('fiscal')} style={{ background: 'none', border: 'none', color: 'var(--ac)', cursor: 'pointer', fontSize: 9, letterSpacing: 1 }}>{t('ov_manage_revenues')}</button>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: ovNarrow ? '1fr' : '1fr 1fr', gap: ovNarrow ? 20 : 28, padding: ovNarrow ? 20 : 16, background: 'var(--bg1)', border: '1px solid var(--bd)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: ovNarrow ? '1fr' : 'minmax(0, 1fr) minmax(0, 1fr)', gap: ovNarrow ? 20 : 28, padding: ovNarrow ? 20 : 16, background: 'var(--bg1)', border: '1px solid var(--bd)' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div className="t-label" style={{ fontSize: 10, color: 'var(--tx3)' }}>{t('ov_income_vs_expenses')}</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -270,7 +272,7 @@ export function OverviewTab({
         </div>
 
         {/* Row 3: Technique & Distribution */}
-        <div style={{ display: 'grid', gridTemplateColumns: ovNarrow ? '1fr' : '1.15fr 1fr 1fr', gap: ovNarrow ? 28 : 20, alignItems: 'start' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: ovNarrow ? '1fr' : ovMid ? 'minmax(0, 1fr) minmax(0, 1fr)' : 'minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 1fr)', gap: ovNarrow ? 28 : 20, alignItems: 'start' }}>
           {/* Technique breakdown */}
           <div>
             <div className="t-label" style={{ marginBottom: 16, opacity: 0.8 }}>{t('byTechnique')}</div>
