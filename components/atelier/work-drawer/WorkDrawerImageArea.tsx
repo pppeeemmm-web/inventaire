@@ -92,10 +92,11 @@ export function WorkDrawerImageArea(p: WorkDrawerImageAreaProps) {
   } = p
   const activeImage = activeImgIdx >= 0 ? drawerSorted[activeImgIdx] : null
   const activePalette = Array.isArray(activeImage?.palette)
-    ? (activeImage.palette as { hex?: unknown; share?: unknown }[]).filter(
-        (s): s is { hex: string; share: number } => typeof s.hex === 'string' && typeof s.share === 'number',
+    ? (activeImage.palette as { hex?: unknown; share?: unknown; family?: unknown }[]).filter(
+        (s): s is { hex: string; share: number; family?: string } => typeof s.hex === 'string' && typeof s.share === 'number',
       )
     : []
+  const paletteTotal = activePalette.reduce((sum, s) => sum + s.share, 0) || 1
   const activeDownloadUrl = activeImgPath ? imageUrl(activeImgPath) : null
 
   return (
@@ -280,18 +281,26 @@ export function WorkDrawerImageArea(p: WorkDrawerImageAreaProps) {
       </div>
 
       {activePalette.length > 0 && (
-        <div
-          data-testid="work-drawer-palette"
-          title={t('wf_palette_title')}
-          style={{ display: 'flex', height: 14, marginBottom: 10, border: '1px solid var(--bd)', overflow: 'hidden' }}
-        >
-          {activePalette.map((s) => (
-            <div
-              key={s.hex}
-              title={`${s.hex.toUpperCase()} · ${Math.round(s.share * 100)} %`}
-              style={{ flex: `${s.share} 0 0`, minWidth: 6, background: s.hex }}
-            />
-          ))}
+        <div data-testid="work-drawer-palette" title={t('wf_palette_title')} style={{ marginBottom: 10 }}>
+          <div className="t-label" style={{ fontSize: 10, marginBottom: 4 }}>{t('wf_palette_label')}</div>
+          {/* Widths normalised so the bar is always full; the legend gives the real share of the image. */}
+          <div style={{ display: 'flex', height: 14, border: '1px solid var(--bd)', overflow: 'hidden' }}>
+            {activePalette.map((s) => (
+              <div
+                key={`${s.family ?? ''}${s.hex}`}
+                title={s.hex.toUpperCase()}
+                style={{ width: `${(s.share / paletteTotal) * 100}%`, minWidth: 6, background: s.hex }}
+              />
+            ))}
+          </div>
+          <div className="t-mono-sm" style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 10px', marginTop: 4, fontSize: 10, color: 'var(--tx2)' }}>
+            {activePalette.map((s) => (
+              <span key={`${s.family ?? ''}${s.hex}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
+                <span aria-hidden="true" style={{ width: 8, height: 8, background: s.hex, border: '1px solid var(--bd)' }} />
+                {s.family ? t(`colour_family_${s.family}` as Parameters<typeof t>[0]) : s.hex.toUpperCase()} {Math.round(s.share * 100)}%
+              </span>
+            ))}
+          </div>
         </div>
       )}
 

@@ -74,8 +74,8 @@ export const atelierMessages = defineMessages({
     en: 'New sale / order',
   },
   cmd_palette_action_stock_take: {
-    fr: 'Inventaire terrain',
-    en: 'Start stock take',
+    fr: 'Fournitures — comptage',
+    en: 'Supplies — count',
   },
   cmd_palette_action_pending_approvals: {
     fr: 'Validations en attente',

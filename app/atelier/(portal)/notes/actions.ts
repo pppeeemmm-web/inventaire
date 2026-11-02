@@ -45,7 +45,7 @@ export async function listVoiceNotes(limit = 200): Promise<{ rows: VoiceNoteRow[
   const lim = Math.min(Math.max(limit, 1), 500)
   const { data, error } = await voiceNoteTable(supabase)
     .select(
-      'id, created_at, updated_at, user_id, kind, bucket, subject, transcript, audio_r2_key, audio_mime, duration_ms, oeuvre_id, process_id, sketchbook_id',
+      'id, created_at, updated_at, user_id, kind, bucket, subject, transcript, audio_r2_key, audio_mime, duration_ms, oeuvre_id, process_id, sketchbook_id, concept_id, routed_at',
     )
     .order('created_at', { ascending: false })
     .limit(lim)
@@ -230,4 +230,142 @@ export async function deleteVoiceNote(id: string): Promise<{ ok: true } | NotesA
 
   revalidatePath('/atelier')
   return { ok: true }
+}
+
+// ── Triage: route a note to a concept / work / pipeline project, or a dated reminder ──
+// Link, never copy: the note stays in Notes; `routed_at` takes it out of "à trier".
+
+export type NoteRouteTargets = {
+  concepts: { id: string; titre: string; statut: string }[]
+  processes: { id: string; nom: string; type: string | null; statut: string | null }[]
+}
+
+export async function listNoteRouteTargets(): Promise<NoteRouteTargets | NotesActionErr> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'auth' }
+
+  const [c, p] = await Promise.all([
+    supabase.from('concept').select('id, titre, statut').order('updated_at', { ascending: false }).limit(500),
+    supabase
+      .from('suivi_process')
+      .select('id, nom, type, statut')
+      .order('updated_at', { ascending: false })
+      .limit(500),
+  ])
+  if (c.error) return { error: c.error.message }
+  if (p.error) return { error: p.error.message }
+  return {
+    concepts: (c.data ?? []) as NoteRouteTargets['concepts'],
+    processes: (p.data ?? []) as NoteRouteTargets['processes'],
+  }
+}
+
+export type VoiceNoteRoutePatch = {
+  concept_id?: string | null
+  /** Creates a concept with this title and links the note to it. */
+  new_concept_title?: string
+  oeuvre_id?: number | null
+  process_id?: string | null
+  /** Opt-in dated reminder (`suivi_reminder`), never set by default. */
+  reminder?: { date: string; label: string }
+  /** true = mark sorted, false = put back in "à trier". Any link also marks it sorted. */
+  routed?: boolean
+}
+
+export type RouteVoiceNoteResult = {
+  ok: true
+  row: Pick<VoiceNoteRow, 'id' | 'concept_id' | 'oeuvre_id' | 'process_id' | 'routed_at'>
+  createdConcept?: { id: string; titre: string; statut: string }
+}
+
+export async function routeVoiceNote(
+  id: string,
+  patch: VoiceNoteRoutePatch,
+): Promise<RouteVoiceNoteResult | NotesActionErr> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'auth' }
+
+  const { data: row, error: selErr } = await voiceNoteTable(supabase)
+    .select('id, user_id, subject')
+    .eq('id', id)
+    .maybeSingle()
+  if (selErr || !row) return { error: 'not_found' }
+  const r = row as { id: string; user_id: string; subject: string | null }
+  const admin = await rpcIsAdmin(supabase)
+  if (r.user_id !== user.id && !admin) return { error: 'forbidden' }
+
+  const update: Record<string, unknown> = {}
+  let createdConcept: RouteVoiceNoteResult['createdConcept']
+
+  const newTitle = patch.new_concept_title?.trim()
+  if (newTitle) {
+    const { data: c, error: cErr } = await supabase
+      .from('concept')
+      .insert({ titre: newTitle.slice(0, 200), statut: 'idee', category: 'artistic' })
+      .select('id, titre, statut')
+      .single()
+    if (cErr || !c) return { error: cErr?.message ?? 'concept_insert' }
+    createdConcept = c as { id: string; titre: string; statut: string }
+    update.concept_id = createdConcept.id
+  } else if (patch.concept_id !== undefined) {
+    update.concept_id = patch.concept_id
+  }
+  if (patch.oeuvre_id !== undefined) update.oeuvre_id = patch.oeuvre_id
+  if (patch.process_id !== undefined) update.process_id = patch.process_id
+
+  if (patch.reminder) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(patch.reminder.date)) return { error: 'bad_date' }
+    const message = (patch.reminder.label.trim() || r.subject?.trim() || 'Note').slice(0, MAX_FOLLOW_UP_LABEL)
+    const { error: remErr } = await supabase.from('suivi_reminder').insert({
+      process_id: (update.process_id as string | null | undefined) ?? null,
+      message,
+      remind_at: patch.reminder.date,
+    })
+    if (remErr) return { error: remErr.message }
+    revalidateTag('reminders')
+  }
+
+  const linked = Object.values(update).some((v) => v != null) || !!patch.reminder
+  if (patch.routed === false) update.routed_at = null
+  else if (patch.routed === true || linked) update.routed_at = new Date().toISOString()
+
+  const { data: saved, error: upErr } = await voiceNoteTable(supabase)
+    .update(update)
+    .eq('id', id)
+    .select('id, concept_id, oeuvre_id, process_id, routed_at')
+    .single()
+  if (upErr || !saved) return { error: upErr?.message ?? 'update' }
+
+  revalidatePath('/atelier')
+  return { ok: true, row: saved as RouteVoiceNoteResult['row'], createdConcept }
+}
+
+export type LinkedVoiceNote = Pick<VoiceNoteRow, 'id' | 'created_at' | 'subject' | 'transcript' | 'duration_ms'>
+
+/** Notes routed to a concept, a work or a pipeline project (RLS: own notes, or all for admin). */
+export async function listLinkedVoiceNotes(
+  field: 'concept_id' | 'oeuvre_id' | 'process_id',
+  value: string | number,
+): Promise<LinkedVoiceNote[]> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return []
+  const { data, error } = await voiceNoteTable(supabase)
+    .select('id, created_at, subject, transcript, duration_ms')
+    .eq(field, value)
+    .order('created_at', { ascending: false })
+    .limit(50)
+  if (error) {
+    console.error('[listLinkedVoiceNotes]', error.message)
+    return []
+  }
+  return (data ?? []) as LinkedVoiceNote[]
 }

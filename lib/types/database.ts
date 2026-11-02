@@ -167,4 +167,6 @@ export interface VoiceNoteRow {
   oeuvre_id: number | null
   process_id: string | null
   sketchbook_id: string | null
+  concept_id: string | null
+  routed_at: string | null
 }

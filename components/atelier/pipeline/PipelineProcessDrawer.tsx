@@ -13,6 +13,7 @@ import {
   type ProcessType,
 } from '@/components/atelier/pipeline/pipeline-shared'
 import { daysUntil } from '@/lib/pipeline-deadlines'
+import { LinkedVoiceNotes } from '@/components/atelier/LinkedVoiceNotes'
 import {
   fmtDate,
   urgencyColor,
@@ -294,6 +295,8 @@ export function PipelineProcessDrawer({ process, onClose, onEdit, onRefresh, onC
           <div style={{ fontSize:14, color:'var(--tx2)', lineHeight:1.6, whiteSpace:'pre-wrap' }}>{process.notes}</div>
         </div>
       )}
+
+      <LinkedVoiceNotes field="process_id" value={process.id} />
     </div>
   )
 }

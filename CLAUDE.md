@@ -82,7 +82,7 @@ Repo guide. Conflict → ask owner before edit.
 - **Phone work images:** canonical path is Lightroom Mobile → Export (JPEG) → iOS Share Sheet → PWA `share_target` → `/atelier/share-receive` → `WorkForm` or **work session** (`/atelier/session/new` → Lightroom workflow steps → Share back → triage **Add to work session**). No `lightroom-cc://` from PWA (iOS often refuses). No native `capture="environment"` on work paths (`WorkForm`, `WorkDrawerImageArea`).
 - **Exceptions:** business-card capture at `/atelier/capture?mode=card` (`CaptureCardClient`) and session/concept native capture may still use `capture="environment"`.
 - `/hub` mobile entry changes → smoke WorkForm, WorkDrawer, Inventory small viewport.
-- Narrow Atelier sidebar first group Field: `inventory` → `production` → `stock-take` → `notes` → `map`.
+- Narrow Atelier sidebar first group Field: `inventory` → `production` → `journal` → `notes` → `map`. Supplies counting lives in Studio → Fournitures (`/atelier/stock?view=count`; `/atelier/stock-take` redirects there, owner 2026-11-02).
 - Rings: A Atelier narrow chrome; B Hub field launcher + mobile bar + `VoiceNoteSheet`; B.3 PWA share target; C field verb routes/stubs + business-card capture at `/atelier/capture?mode=card`.
 
 ## Drawer / Panel Guard

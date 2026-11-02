@@ -50,6 +50,8 @@ import { GiftTransferModal } from './GiftTransferModal'
 import { FIS, cap } from './drawer-widgets'
 import { WorkFormPhysicalQr } from '@/components/atelier/WorkFormPhysicalQr'
 import { WorkProductionSpan } from './WorkProductionSpan'
+import { WorkCostBlock } from './WorkCostBlock'
+import { LinkedVoiceNotes } from '@/components/atelier/LinkedVoiceNotes'
 import { normalizeAnonymityLevel } from '@/lib/anonymity-level'
 
 function withCacheKey(src: string, cacheKey?: string): string {
@@ -1364,6 +1366,10 @@ export function DrawerContent({
           setPaymentDone={setPaymentDone}
           ownStage={ownStage}
         />
+
+        <WorkCostBlock oeuvreId={o.OeuvreID} isAdmin={isAdmin} catalogPrice={o.Prix ?? null} />
+
+        <LinkedVoiceNotes field="oeuvre_id" value={o.OeuvreID} />
 
         <DrawerContentGroupsSection t={t} initialGroups={initialGroups} selGroups={selGroups} setSelGroups={setSelGroups} />
 

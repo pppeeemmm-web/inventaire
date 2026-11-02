@@ -15,6 +15,9 @@ import { EmptyState } from '@/components/shared/EmptyState'
 import { toast } from '@/lib/ui/toast'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import { useMediaQuery } from '@/lib/useMediaQuery'
+import { useSearchParams } from 'next/navigation'
+import { NoteTriagePanel } from './NoteTriagePanel'
+import { listNoteRouteTargets, type NoteRouteTargets } from '@/app/atelier/(portal)/notes/actions'
 
 function voiceKindKey(k: VoiceNoteKind): DictKey {
   switch (k) {
@@ -64,6 +67,10 @@ export function Notes({ refreshTick, oeuvres }: { refreshTick: number; oeuvres: 
   const [draftTranscript, setDraftTranscript] = useState('')
   const [savingTx, setSavingTx] = useState(false)
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
+  const [toSortOnly, setToSortOnly] = useState(false)
+  const [targets, setTargets] = useState<NoteRouteTargets | null>(null)
+  const searchParams = useSearchParams()
+  const deepNoteId = searchParams.get('note')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -82,6 +89,17 @@ export function Notes({ refreshTick, oeuvres }: { refreshTick: number; oeuvres: 
     void load()
   }, [load, refreshTick])
 
+  useEffect(() => {
+    void listNoteRouteTargets().then((r) => {
+      if (!('error' in r)) setTargets(r)
+    })
+  }, [refreshTick])
+
+  // `/atelier/notes?note=<id>` (linked-notes blocks on concepts, works, projects) opens that note.
+  useEffect(() => {
+    if (deepNoteId) setSelectedId(deepNoteId)
+  }, [deepNoteId])
+
   const selected = useMemo(() => rows.find((r) => r.id === selectedId) ?? null, [rows, selectedId])
 
   useEffect(() => {
@@ -91,6 +109,7 @@ export function Notes({ refreshTick, oeuvres }: { refreshTick: number; oeuvres: 
   const filtered = useMemo(() => {
     const qq = q.trim().toLowerCase()
     return rows.filter((r) => {
+      if (toSortOnly && r.routed_at) return false
       if (kindFilter && r.kind !== kindFilter) return false
       if (bucketFilter && r.bucket !== bucketFilter) return false
       if (!qq) return true
@@ -98,7 +117,9 @@ export function Notes({ refreshTick, oeuvres }: { refreshTick: number; oeuvres: 
       const tx = (r.transcript ?? '').toLowerCase()
       return sub.includes(qq) || tx.includes(qq)
     })
-  }, [rows, kindFilter, bucketFilter, q])
+  }, [rows, kindFilter, bucketFilter, q, toSortOnly])
+
+  const toSortCount = useMemo(() => rows.filter((r) => !r.routed_at).length, [rows])
 
   const preview = (r: VoiceNoteRow) => {
     const tx = (r.transcript ?? '').replace(/\s+/g, ' ').trim()
@@ -200,6 +221,19 @@ export function Notes({ refreshTick, oeuvres }: { refreshTick: number; oeuvres: 
                 <option key={b} value={b}>{t(voiceBucketKey(b))}</option>
               ))}
             </select>
+            <button
+              type="button"
+              className="btn ghost sm"
+              aria-pressed={toSortOnly}
+              data-testid="notes-to-sort-toggle"
+              onClick={() => setToSortOnly((v) => !v)}
+              style={{
+                borderColor: toSortOnly ? 'var(--rust)' : undefined,
+                color: toSortCount > 0 ? 'var(--rust)' : undefined,
+              }}
+            >
+              {toSortOnly ? t('notes_triage_all') : t('notes_triage_to_sort_fmt').replace('{n}', String(toSortCount))}
+            </button>
           </div>
         </div>
         <div style={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
@@ -242,6 +276,9 @@ export function Notes({ refreshTick, oeuvres }: { refreshTick: number; oeuvres: 
                   </div>
                   <div className="t-mono-sm" style={{ fontSize: 10, opacity: 0.65, marginBottom: 4 }}>
                     {t(voiceKindKey(r.kind))} · {t(voiceBucketKey(r.bucket))}
+                    {!r.routed_at ? (
+                      <span style={{ color: 'var(--rust)' }}> · {t('notes_triage_unsorted_badge')}</span>
+                    ) : null}
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--tx2)', lineHeight: 1.45 }}>{preview(r)}</div>
                 </button>
@@ -294,6 +331,18 @@ export function Notes({ refreshTick, oeuvres }: { refreshTick: number; oeuvres: 
                 </button>
               )}
             </div>
+            <NoteTriagePanel
+              key={selected.id}
+              note={selected}
+              oeuvres={oeuvres}
+              targets={targets}
+              onRouted={(row, createdConcept) => {
+                setRows((prev) => prev.map((x) => (x.id === row.id ? { ...x, ...row } : x)))
+                if (createdConcept) {
+                  setTargets((prev) => (prev ? { ...prev, concepts: [createdConcept, ...prev.concepts] } : prev))
+                }
+              }}
+            />
           </div>
         )}
       </div>

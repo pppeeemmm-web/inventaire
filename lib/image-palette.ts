@@ -1,24 +1,35 @@
 import sharp from 'sharp'
 
 /**
- * Main colours of a work photo (S6 / pic 9 "colour dropper").
+ * Main colours of a work photo, by colour-wheel family (S6 / pic 9 "colour dropper").
  *
- * k-means in CIELAB (perceptual distance) on a 64px copy of the image. Deterministic:
- * the seeds are picked farthest-first from the most common colour, so the same file
- * always gives the same palette. Accuracy = the photo's own colours (white balance and
- * exposure from Lightroom); any wall / margin / frame in the shot counts too.
+ * Owner's approach (2026-11-02): start from the painter's wheel — primary, secondary and
+ * tertiary hues — then refine, rather than averaging clusters (averages missed a rust band,
+ * and the greens and reds of #2366 altogether).
+ *
+ *  1. Every pixel goes into one family: the 12 hues of the red-yellow-blue wheel, or a neutral
+ *     (black / grey / white) when it has little colour, or brown (a dark red-orange-yellow).
+ *  2. A family's share = its fraction of the image, so a small but present colour still counts.
+ *  3. Its swatch = the mean of its more saturated half (the colour you see, not a mud average).
+ *
+ * Accuracy = the photo's own colours (Lightroom white balance / exposure); background, margin
+ * or frame in the shot count too.
  */
-export type PaletteSwatch = { hex: string; share: number }
+export const COLOUR_FAMILIES = [
+  'red', 'red_orange', 'orange', 'yellow_orange', 'yellow', 'yellow_green',
+  'green', 'blue_green', 'blue', 'blue_violet', 'violet', 'red_violet',
+  'brown', 'black', 'grey', 'white',
+] as const
+export type ColourFamily = (typeof COLOUR_FAMILIES)[number]
 
-const SAMPLE_EDGE = 64
-const DEFAULT_K = 12
-/** Swatches kept after merging, largest first. */
-const MAX_SWATCHES = 6
-const ITERATIONS = 12
-/** Clusters below this share of the image are dropped (noise, specks). */
-const MIN_SHARE = 0.02
-/** CIELAB ΔE below which two clusters are shades of one colour family and get merged. */
-const SAME_FAMILY_DE = 14
+export type PaletteSwatch = { hex: string; share: number; family: ColourFamily }
+
+const SAMPLE_EDGE = 96
+/** Families below this share of the image are left out. */
+const MIN_SHARE = 0.015
+const MAX_SWATCHES = 8
+/** Lab chroma under which a pixel reads as neutral (black / grey / white). */
+const NEUTRAL_CHROMA = 10
 
 type Lab = [number, number, number]
 
@@ -56,13 +67,38 @@ function labToHex([L, a, b]: Lab): string {
   return '#' + [R, G, B].map((v) => linearToSrgb(v).toString(16).padStart(2, '0')).join('')
 }
 
-function dist2(p: Lab, q: Lab): number {
-  const d0 = p[0] - q[0], d1 = p[1] - q[1], d2 = p[2] - q[2]
-  return d0 * d0 + d1 * d1 + d2 * d2
+/** HSV hue in degrees (0–360). */
+function hueOf(r: number, g: number, b: number): number {
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min
+  if (d === 0) return 0
+  let h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4
+  h *= 60
+  return h < 0 ? h + 360 : h
+}
+
+/**
+ * HSV hue → painter's (red-yellow-blue) wheel. On the RGB wheel yellow sits at 60° and green
+ * spans a wide arc; these bounds give each RYB family its usual look.
+ */
+const HUE_FAMILIES: [number, ColourFamily][] = [
+  [8, 'red'], [20, 'red_orange'], [35, 'orange'], [48, 'yellow_orange'], [65, 'yellow'],
+  [95, 'yellow_green'], [150, 'green'], [190, 'blue_green'], [235, 'blue'],
+  [260, 'blue_violet'], [290, 'violet'], [345, 'red_violet'], [360, 'red'],
+]
+
+function familyOf(r: number, g: number, b: number, lab: Lab): ColourFamily {
+  const [L, a, bb] = lab
+  const chroma = Math.hypot(a, bb)
+  if (chroma < NEUTRAL_CHROMA) return L < 22 ? 'black' : L > 82 ? 'white' : 'grey'
+  const h = hueOf(r, g, b)
+  const fam = HUE_FAMILIES.find(([max]) => h < max)?.[1] ?? 'red'
+  // Earth tones: a dark red-orange → yellow-orange reads as brown.
+  if ((fam === 'red_orange' || fam === 'orange' || fam === 'yellow_orange') && L < 45) return 'brown'
+  return fam
 }
 
 /** Palette from raw image bytes (any format Sharp reads, AVIF included). */
-export async function extractPalette(buf: Buffer, k = DEFAULT_K): Promise<PaletteSwatch[]> {
+export async function extractPalette(buf: Buffer): Promise<PaletteSwatch[]> {
   const { data, info } = await sharp(buf)
     .rotate()
     .resize(SAMPLE_EDGE, SAMPLE_EDGE, { fit: 'inside' })
@@ -71,70 +107,35 @@ export async function extractPalette(buf: Buffer, k = DEFAULT_K): Promise<Palett
     .raw()
     .toBuffer({ resolveWithObject: true })
 
-  const pts: Lab[] = []
-  for (let i = 0; i + 2 < data.length; i += info.channels) pts.push(rgbToLab(data[i], data[i + 1], data[i + 2]))
-  if (pts.length === 0) return []
-
-  // Seeds: the point nearest the mean, then farthest-first (deterministic k-means++ variant).
-  const mean: Lab = [0, 0, 0]
-  for (const p of pts) { mean[0] += p[0]; mean[1] += p[1]; mean[2] += p[2] }
-  mean[0] /= pts.length; mean[1] /= pts.length; mean[2] /= pts.length
-  let first = 0
-  for (let i = 1; i < pts.length; i++) if (dist2(pts[i], mean) < dist2(pts[first], mean)) first = i
-  const centers: Lab[] = [[...pts[first]] as Lab]
-  const nearest = pts.map((p) => dist2(p, centers[0]))
-  while (centers.length < Math.min(k, pts.length)) {
-    let far = 0
-    for (let i = 1; i < pts.length; i++) if (nearest[i] > nearest[far]) far = i
-    if (nearest[far] === 0) break
-    centers.push([...pts[far]] as Lab)
-    for (let i = 0; i < pts.length; i++) nearest[i] = Math.min(nearest[i], dist2(pts[i], centers[centers.length - 1]))
+  const groups = new Map<ColourFamily, { lab: Lab; chroma: number }[]>()
+  let total = 0
+  for (let i = 0; i + 2 < data.length; i += info.channels) {
+    const r = data[i], g = data[i + 1], b = data[i + 2]
+    const lab = rgbToLab(r, g, b)
+    const fam = familyOf(r, g, b, lab)
+    let list = groups.get(fam)
+    if (!list) { list = []; groups.set(fam, list) }
+    list.push({ lab, chroma: Math.hypot(lab[1], lab[2]) })
+    total++
   }
+  if (total === 0) return []
 
-  const assign = new Int32Array(pts.length)
-  for (let it = 0; it < ITERATIONS; it++) {
-    for (let i = 0; i < pts.length; i++) {
-      let best = 0
-      for (let c = 1; c < centers.length; c++) if (dist2(pts[i], centers[c]) < dist2(pts[i], centers[best])) best = c
-      assign[i] = best
-    }
-    const sums = centers.map(() => [0, 0, 0, 0])
-    for (let i = 0; i < pts.length; i++) {
-      const s = sums[assign[i]]
-      s[0] += pts[i][0]; s[1] += pts[i][1]; s[2] += pts[i][2]; s[3] += 1
-    }
-    for (let c = 0; c < centers.length; c++) {
-      if (sums[c][3] > 0) centers[c] = [sums[c][0] / sums[c][3], sums[c][1] / sums[c][3], sums[c][2] / sums[c][3]]
-    }
+  const swatches: PaletteSwatch[] = []
+  for (const [family, px] of groups) {
+    const share = px.length / total
+    if (share < MIN_SHARE) continue
+    // Representative shade: the more saturated half of the family (neutrals: all of it).
+    const sorted = [...px].sort((p, q) => q.chroma - p.chroma)
+    const pick = family === 'black' || family === 'grey' || family === 'white'
+      ? sorted
+      : sorted.slice(0, Math.max(1, Math.ceil(sorted.length / 2)))
+    const mean: Lab = [0, 0, 0]
+    for (const p of pick) { mean[0] += p.lab[0]; mean[1] += p.lab[1]; mean[2] += p.lab[2] }
+    swatches.push({
+      family,
+      hex: labToHex([mean[0] / pick.length, mean[1] / pick.length, mean[2] / pick.length]),
+      share: Math.round(share * 1000) / 1000,
+    })
   }
-
-  const counts: number[] = new Array(centers.length).fill(0)
-  for (let i = 0; i < pts.length; i++) counts[assign[i]]++
-
-  // k-means splits one painted area into several shades (a rust band came out as four ~3 %
-  // oranges and fell below the cut while five blues took every slot). Merge the closest pair
-  // of clusters, repeatedly, while they are still the same colour family — so each family is
-  // ranked by its whole area.
-  const merged = centers
-    .map((c, i) => ({ c, n: counts[i] }))
-    .filter((m) => m.n > 0)
-  for (;;) {
-    let bi = -1, bj = -1, best = SAME_FAMILY_DE * SAME_FAMILY_DE
-    for (let i = 0; i < merged.length; i++) {
-      for (let j = i + 1; j < merged.length; j++) {
-        const d = dist2(merged[i].c, merged[j].c)
-        if (d < best) { best = d; bi = i; bj = j }
-      }
-    }
-    if (bi < 0) break
-    const a = merged[bi], b = merged[bj], n = a.n + b.n
-    a.c = [0, 1, 2].map((d) => (a.c[d] * a.n + b.c[d] * b.n) / n) as Lab
-    a.n = n
-    merged.splice(bj, 1)
-  }
-  return merged
-    .map(({ c, n }) => ({ hex: labToHex(c), share: Math.round((n / pts.length) * 1000) / 1000 }))
-    .filter((s) => s.share >= MIN_SHARE)
-    .sort((a, b) => b.share - a.share)
-    .slice(0, MAX_SWATCHES)
+  return swatches.sort((a, b) => b.share - a.share).slice(0, MAX_SWATCHES)
 }

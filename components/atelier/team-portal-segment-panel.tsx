@@ -39,7 +39,6 @@ const Fiscal = dynamic(() => import('@/app/atelier/(portal)/fiscal/_components/F
 const Concepts = dynamic(() => import('@/app/atelier/(portal)/concepts/_components/Concepts').then((m) => ({ default: m.Concepts })), { loading: () => <TabPanelFallback />, ssr: false })
 const Exhibitions = dynamic(() => import('@/app/atelier/(portal)/exhibitions/_components/Exhibitions').then((m) => ({ default: m.Exhibitions })), { loading: () => <ExhibitionsTabSkeleton />, ssr: false })
 const Themes = dynamic(() => import('@/app/atelier/(portal)/themes/_components/Themes').then((m) => ({ default: m.Themes })), { loading: () => <TabPanelFallback />, ssr: false })
-const StockTakeTab = dynamic(() => import('@/app/atelier/(portal)/stock-take/_components/StockTake').then((m) => ({ default: m.StockTake })), { loading: () => <TabPanelFallback />, ssr: false })
 const Reports = dynamic(() => import('@/app/atelier/(portal)/reports/_components/Reports').then((m) => ({ default: m.Reports })), { loading: () => <TabPanelFallback />, ssr: false })
 const Audit = dynamic(() => import('@/app/atelier/(portal)/audit/_components/Audit').then((m) => ({ default: m.Audit })), { loading: () => <TabPanelFallback />, ssr: false })
 const Broadcast = dynamic(() => import('@/app/atelier/(portal)/broadcast/_components/Broadcast').then((m) => ({ default: m.Broadcast })), { loading: () => <TabPanelFallback />, ssr: false })
@@ -47,7 +46,7 @@ const NotesTab = dynamic(() => import('@/app/atelier/(portal)/notes/_components/
 const OverviewTab = dynamic(() => import('@/components/atelier/overview/OverviewTab').then((m) => ({ default: m.OverviewTab })), { loading: () => <TabPanelFallback />, ssr: false })
 const WorldMapTab = dynamic(() => import('@/components/atelier/WorldMapTab').then((m) => ({ default: m.WorldMapTab })), { loading: () => <TabPanelFallback />, ssr: false })
 const PortfolioConfigShell = dynamic(() => import('@/components/atelier/PortfolioConfigShell').then((m) => ({ default: m.PortfolioConfigShell })), { loading: () => <TabPanelFallback />, ssr: false })
-const SupplierHub = dynamic(() => import('@/components/atelier/SupplierHub').then((m) => ({ default: m.SupplierHub })), { loading: () => <TabPanelFallback />, ssr: false })
+const SuppliesTab = dynamic(() => import('@/components/atelier/supplies/SuppliesTab').then((m) => ({ default: m.SuppliesTab })), { loading: () => <TabPanelFallback />, ssr: false })
 const SessionJournalTab = dynamic(() => import('@/components/atelier/SessionJournalTab').then((m) => ({ default: m.SessionJournalTab })), { loading: () => <TabPanelFallback />, ssr: false })
 const SystemTab = dynamic(() => import('@/components/atelier/SystemTab').then((m) => ({ default: m.SystemTab })), { loading: () => <TabPanelFallback />, ssr: false })
 const ContactsTab = dynamic(() => import('@/components/atelier/ContactsTab').then((m) => ({ default: m.ContactsTab })), { loading: () => <TabPanelFallback />, ssr: false })
@@ -212,9 +211,11 @@ export function SegmentRoutePanel({
         </div>
       )
     case 'stock':
+    // Old Stock-take route: /atelier/stock-take redirects to ?view=count; this is the fallback.
+    case 'stock-take':
       return (
         <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-          <SupplierHub contacts={contacts} />
+          <SuppliesTab contacts={contacts} />
         </div>
       )
     case 'journal':
@@ -387,12 +388,6 @@ export function SegmentRoutePanel({
       return (
         <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
           <Concepts />
-        </div>
-      )
-    case 'stock-take':
-      return (
-        <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-          <StockTakeTab contacts={contacts} />
         </div>
       )
     case 'notes':

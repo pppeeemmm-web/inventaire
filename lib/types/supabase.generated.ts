@@ -827,6 +827,42 @@ export type Database = {
           },
         ]
       }
+      expense_oeuvre: {
+        Row: {
+          amount: number | null
+          created_at: string
+          expense_id: number
+          oeuvre_id: number
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string
+          expense_id: number
+          oeuvre_id: number
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string
+          expense_id?: number
+          oeuvre_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expense_oeuvre_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "expense"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expense_oeuvre_oeuvre_id_fkey"
+            columns: ["oeuvre_id"]
+            isOneToOne: false
+            referencedRelation: "Oeuvres"
+            referencedColumns: ["OeuvreID"]
+          },
+        ]
+      }
       forest_pins: {
         Row: {
           created_at: string
@@ -2450,12 +2486,14 @@ export type Database = {
           audio_mime: string | null
           audio_r2_key: string | null
           bucket: string
+          concept_id: string | null
           created_at: string
           duration_ms: number | null
           id: string
           kind: string
           oeuvre_id: number | null
           process_id: string | null
+          routed_at: string | null
           sketchbook_id: string | null
           subject: string | null
           transcript: string
@@ -2466,12 +2504,14 @@ export type Database = {
           audio_mime?: string | null
           audio_r2_key?: string | null
           bucket?: string
+          concept_id?: string | null
           created_at?: string
           duration_ms?: number | null
           id?: string
           kind?: string
           oeuvre_id?: number | null
           process_id?: string | null
+          routed_at?: string | null
           sketchbook_id?: string | null
           subject?: string | null
           transcript?: string
@@ -2482,12 +2522,14 @@ export type Database = {
           audio_mime?: string | null
           audio_r2_key?: string | null
           bucket?: string
+          concept_id?: string | null
           created_at?: string
           duration_ms?: number | null
           id?: string
           kind?: string
           oeuvre_id?: number | null
           process_id?: string | null
+          routed_at?: string | null
           sketchbook_id?: string | null
           subject?: string | null
           transcript?: string
@@ -2495,6 +2537,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "voice_note_concept_id_fkey"
+            columns: ["concept_id"]
+            isOneToOne: false
+            referencedRelation: "concept"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "voice_note_oeuvre_id_fkey"
             columns: ["oeuvre_id"]

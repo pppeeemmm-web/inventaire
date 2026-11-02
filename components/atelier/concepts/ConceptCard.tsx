@@ -11,6 +11,7 @@ import { toast } from '@/lib/ui/toast'
 import { CATEGORY_IDS, CATEGORY_KEYS, MEDIUM_IDS, MEDIUM_KEY, STATUT_COLORS, STATUT_KEYS } from './concept-constants'
 import { ConceptEnergieDot } from './ConceptEnergieDot'
 import { ConceptDocuments } from './ConceptDocuments'
+import { LinkedVoiceNotes } from '@/components/atelier/LinkedVoiceNotes'
 import { inputSt, labelSt } from './concept-form-styles'
 import type { ConceptDocument } from '@/app/atelier/(portal)/concepts/document-actions'
 
@@ -295,6 +296,7 @@ export function ConceptCard({ concept, documents, onUpdated, onDeleted, narrow }
               )}
 
               <ConceptDocuments conceptId={concept.id} initialDocs={documents} />
+              <LinkedVoiceNotes field="concept_id" value={concept.id} />
 
               {isBecameWork && concept.oeuvre_id && (
                 <div style={{ marginBottom: 12, fontSize: 10, color: 'var(--sage)' }}>

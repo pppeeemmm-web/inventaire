@@ -1018,7 +1018,6 @@ export function TeamPortalClient({
       ['analytics',     t('portfolio_subtab_analytics')],
       ['broadcast',     t('tab_broadcast')],
       ['stock',         t('tab_stock')],
-      ['stock-take',    t('tab_stock_take')],
       ['notes',         t('tab_notes')],
       ['journal',       t('tab_journal'), teamActivityCount > 0 ? teamActivityCount : undefined],
       ['system',        t('tab_system'), ledgerActivityCount > 0 ? ledgerActivityCount : undefined],
@@ -1071,9 +1070,9 @@ export function TeamPortalClient({
   /** 6 rooms — same structure on narrow and wide; narrow puts Field first. */
   const adminTabs: Tab[] = isAdmin ? ['system', 'audit', 'broadcast'] : ['system']
   const GROUPS: { label: string; tabs: Tab[] }[] = [
-    { label: t('nav_group_field'),        tabs: ['inventory', 'production', 'stock-take', 'journal', 'notes', 'map'] },
-    { label: t('nav_group_studio'),       tabs: ['overview', 'pipeline', 'exhibitions', 'concepts'] },
-    { label: t('nav_group_catalogue'),    tabs: ['reports', 'themes', 'stock', 'constellation'] },
+    { label: t('nav_group_field'),        tabs: ['inventory', 'production', 'journal', 'notes', 'map'] },
+    { label: t('nav_group_studio'),       tabs: ['overview', 'pipeline', 'exhibitions', 'concepts', 'stock'] },
+    { label: t('nav_group_catalogue'),    tabs: ['reports', 'themes', 'constellation'] },
     { label: t('nav_group_commercial'),   tabs: ['sales', 'logistics', 'fiscal', 'vault'] },
     { label: t('nav_group_public_tab'),   tabs: ['site', 'portfolio', 'analytics'] },
     { label: t('nav_group_admin'),        tabs: ['contacts', ...adminTabs] },
@@ -1123,7 +1122,7 @@ export function TeamPortalClient({
         onReminders={openFieldReminders}
         onNewWork={() => router.push('/atelier/works/new')}
         onNewSale={openNewSaleOrder}
-        onStockTake={() => handleSetTab('stock-take')}
+        onStockTake={() => router.push('/atelier/stock?view=count')}
         onPendingApprovals={isAdmin ? () => handleSetTab('audit') : undefined}
         onExportXlsx={() => { handleSetTab('reports') }}
         onDownloadStudioBible={downloadStudioBible}

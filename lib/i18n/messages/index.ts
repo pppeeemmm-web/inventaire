@@ -26,6 +26,7 @@ import { sessionFieldMessages } from './session-field.messages'
 import { overviewConsoleMessages } from './overview-console.messages'
 import { pipelineUiMessages } from './pipeline-ui.messages'
 import { conceptDocsMessages } from './concept-docs.messages'
+import { notesTriageMessages } from './notes-triage.messages'
 
 export const featureMessages = {
   ...atelierMessages,
@@ -56,6 +57,7 @@ export const featureMessages = {
   ...overviewConsoleMessages,
   ...pipelineUiMessages,
   ...conceptDocsMessages,
+  ...notesTriageMessages,
 } as const
 
 export type MessageKey = keyof typeof featureMessages

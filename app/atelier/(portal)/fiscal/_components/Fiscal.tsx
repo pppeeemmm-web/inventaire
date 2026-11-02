@@ -14,6 +14,7 @@ import type { Agg, Dim } from '@/lib/pivot'
 import { buildPivot } from '@/lib/pivot'
 import { PivotPanel } from '@/components/atelier/PivotPanel'
 import { fetchSalesIncome } from '@/lib/sales/income'
+import { fetchExpenseWorkLinks, setExpenseWorkLinks, type ExpenseWorkLink } from '@/app/atelier/(portal)/fiscal/cost-actions'
 
 // ── Constants ──────────────────────────────────────────────────────────
 
@@ -101,8 +102,15 @@ function StatCard({ label, value, sub, warn }: { label: string; value: string; s
 
 // ── Main component ─────────────────────────────────────────────────────
 
-export function Fiscal({ contacts = [] }: Props) {
+export function Fiscal({ oeuvres, contacts = [] }: Props) {
   const { t } = useI18n()
+  // Cost per work is admin-only (owner enters costs alone for now).
+  const [isAdmin, setIsAdmin] = useState(false)
+  useEffect(() => {
+    let cancelled = false
+    void createClient().rpc('is_admin').then(({ data }: { data: unknown }) => { if (!cancelled) setIsAdmin(Boolean(data)) })
+    return () => { cancelled = true }
+  }, [])
   const [year,     setYear]     = useState(YEAR_NOW)
   const [regime,   setRegime]   = useState<'micro' | 'reel'>('micro')
   const [expenses, setExpenses] = useState<Expense[]>([])
@@ -272,6 +280,7 @@ export function Fiscal({ contacts = [] }: Props) {
           expense={editing === 'new' ? null : editing}
           year={year}
           contacts={contacts}
+          works={isAdmin ? oeuvres : null}
           onClose={() => setEditing(null)}
           onSaved={(e) => {
             setExpenses((prev) =>
@@ -557,11 +566,13 @@ function FRow2({ label, value }: { label: string; value: string }) {
 // ── Expense modal ──────────────────────────────────────────────────────
 
 function ExpenseModal({
-  expense, year, contacts, onClose, onSaved, onDeleted,
+  expense, year, contacts, works, onClose, onSaved, onDeleted,
 }: {
   expense:   Expense | null
   year:      number
   contacts:  { ContactID: number; NomInstitution: string | null; Nom: string | null; Prénom: string | null }[]
+  /** Admin only: catalogue for "cost per work" links; null hides the section. */
+  works:     Oeuvre[] | null
   onClose:   () => void
   onSaved:   (e: Expense) => void
   onDeleted: (id: number) => void
@@ -585,6 +596,34 @@ function ExpenseModal({
   const [busy, setBusy] = useState(false)
   const [err,  setErr]  = useState<string | null>(null)
   const [confirmDel, setConfirmDel] = useState(false)
+
+  // Cost per work (expense_oeuvre) — loaded for an existing expense, saved after the expense.
+  const [links, setLinks] = useState<ExpenseWorkLink[]>([])
+  const [linksBaseline, setLinksBaseline] = useState('[]')
+  const [workQuery, setWorkQuery] = useState('')
+  useEffect(() => {
+    if (!works || !expense) return
+    let cancelled = false
+    void fetchExpenseWorkLinks(expense.id).then((rows) => {
+      if (cancelled) return
+      setLinks(rows)
+      setLinksBaseline(JSON.stringify(rows))
+    })
+    return () => { cancelled = true }
+  }, [works, expense])
+  const workTitle = useMemo(() => {
+    const m = new Map<number, string>()
+    for (const w of works ?? []) m.set(w.OeuvreID, w.Titre || '')
+    return m
+  }, [works])
+  const workHits = useMemo(() => {
+    const q = workQuery.trim().toLowerCase()
+    if (!works || !q) return []
+    const linked = new Set(links.map((l) => l.oeuvre_id))
+    return works
+      .filter((w) => !linked.has(w.OeuvreID) && (String(w.OeuvreID).startsWith(q) || (w.Titre ?? '').toLowerCase().includes(q)))
+      .slice(0, 8)
+  }, [works, workQuery, links])
 
   // Auto-compute TTC from HT + TVA rate
   function handleHtOrTva(field: 'montant_ht' | 'tva_rate', val: string) {
@@ -620,17 +659,28 @@ function ExpenseModal({
           .insert(payload).select().single()
         if (error) throw new Error(error.message)
         if (!data) throw new Error('Aucune donnée retournée par la base')
+        if (!(await saveLinks((data as Expense).id))) return false
         onSaved(data as Expense)
       } else {
         const { data, error } = await sb.from('expense')
           .update(payload).eq('id', expense!.id).select().single()
         if (error) throw new Error(error.message)
         if (!data) throw new Error('Aucune donnée retournée par la base')
+        if (!(await saveLinks(expense!.id))) return false
         onSaved(data as Expense)
       }
       return true
     } catch (e) { setErr(String(e)); return false }
     finally { setBusy(false) }
+  }
+
+  /** Write the work links only when they changed (admin). */
+  async function saveLinks(expenseId: number): Promise<boolean> {
+    if (!works || JSON.stringify(links) === linksBaseline) return true
+    const res = await setExpenseWorkLinks(expenseId, links)
+    if ('error' in res) { setErr(res.error); return false }
+    setLinksBaseline(JSON.stringify(links))
+    return true
   }
 
   async function handleDelete() {
@@ -655,7 +705,7 @@ function ExpenseModal({
     setBaselinePayload(formPayload)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expenseKey])
-  const isDirty = baselinePayload != null && formPayload !== baselinePayload
+  const isDirty = (baselinePayload != null && formPayload !== baselinePayload) || JSON.stringify(links) !== linksBaseline
 
   const performSave = async () => handleSave()
 
@@ -785,6 +835,46 @@ function ExpenseModal({
               style={{ ...FIS, resize: 'vertical', lineHeight: 1.5 }}
               placeholder="Notes libres…" />
           </div>
+
+          {works ? (
+            <div data-testid="expense-work-links" style={{ borderTop: '1px solid var(--bd)', paddingTop: 10 }}>
+              <div className="t-label" style={{ marginBottom: 3 }}>{t('fiscal_cost_works_label')}</div>
+              <div style={{ fontSize: 10, color: 'var(--tx3)', marginBottom: 6 }}>{t('fiscal_cost_works_hint')}</div>
+              {links.map((l) => (
+                <div key={l.oeuvre_id} style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 4 }}>
+                  <span style={{ flex: 1, minWidth: 0, fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    #{l.oeuvre_id} {workTitle.get(l.oeuvre_id) ?? ''}
+                  </span>
+                  <input
+                    type="number" step="0.01" min={0}
+                    value={l.amount ?? ''}
+                    onChange={(e) => {
+                      const v = e.target.value === '' ? null : parseFloat(e.target.value)
+                      setLinks((p) => p.map((x) => x.oeuvre_id === l.oeuvre_id ? { ...x, amount: v != null && !isNaN(v) ? v : null } : x))
+                    }}
+                    placeholder={t('fiscal_cost_amount_ph')}
+                    aria-label={t('fiscal_cost_amount_ph')}
+                    style={{ ...FIS, width: 90 }}
+                  />
+                  <button type="button" className="btn ghost sm" title={t('fiscal_cost_remove')} aria-label={t('fiscal_cost_remove')}
+                    onClick={() => setLinks((p) => p.filter((x) => x.oeuvre_id !== l.oeuvre_id))}>✕</button>
+                </div>
+              ))}
+              <input value={workQuery} onChange={(e) => setWorkQuery(e.target.value)}
+                placeholder={t('fiscal_cost_works_search_ph')} aria-label={t('fiscal_cost_works_search_ph')} style={FIS} />
+              {workHits.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', border: '1px solid var(--bd)', borderTop: 'none' }}>
+                  {workHits.map((w) => (
+                    <button key={w.OeuvreID} type="button" className="btn ghost sm"
+                      style={{ justifyContent: 'flex-start', textAlign: 'left', border: 'none', borderRadius: 0 }}
+                      onClick={() => { setLinks((p) => [...p, { oeuvre_id: w.OeuvreID, amount: null }]); setWorkQuery('') }}>
+                      #{w.OeuvreID} {w.Titre ?? ''}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : null}
         </div>
 
         {err && <div style={{ fontSize: 11, color: 'var(--rust)', marginTop: 10 }}>{err}</div>}
