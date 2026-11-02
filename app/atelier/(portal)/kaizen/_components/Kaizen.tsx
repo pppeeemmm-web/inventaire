@@ -9,6 +9,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { toast } from '@/lib/ui/toast'
+import { ReportLinkButton } from '@/components/atelier/ReportLinkButton'
 import { KAIZEN_SECTIONS, type KaizenItem, type KaizenSection } from '@/lib/kaizen'
 import {
   confirmKaizenSections,
@@ -44,7 +45,7 @@ export function Kaizen() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState(false)
-  const [showDone, setShowDone] = useState(false)
+  const [stack, setStack] = useState<'live' | 'done'>('live')
   const [q, setQ] = useState('')
   const [showNew, setShowNew] = useState(false)
   const [newTitle, setNewTitle] = useState('')
@@ -84,18 +85,18 @@ export function Kaizen() {
   const visible = useMemo(() => {
     if (view === 'review') return pending
     const qq = q.trim().toLowerCase()
-    return items.filter((i) => {
+    const rows = items.filter((i) => {
       if (i.section !== view) return false
-      if (!showDone && i.done_at) return false
+      if ((stack === 'done') !== !!i.done_at) return false
       if (!qq) return true
       return `${i.title} ${i.body ?? ''}`.toLowerCase().includes(qq)
     })
-  }, [items, pending, view, showDone, q])
-  const doneCount = useMemo(
-    () => (view === 'review' ? 0 : items.filter((i) => i.section === view && i.done_at).length),
-    [items, view],
-  )
+    // Live: newest idea first. Done: most recently ticked first.
+    return stack === 'done' ? [...rows].sort((a, b) => (b.done_at ?? '').localeCompare(a.done_at ?? '')) : rows
+  }, [items, pending, view, stack, q])
+  const stackCount = (done: boolean) => items.filter((i) => i.section === view && !!i.done_at === done).length
   const countOf = (s: KaizenSection) => items.filter((i) => i.section === s && !i.done_at).length
+  const opsView = view === 'website' || view === 'business'
 
   async function add() {
     if (!newTitle.trim() || view === 'review') return
@@ -143,7 +144,35 @@ export function Kaizen() {
   const who = (id: string | null) => (id ? names[id] ?? t('kaizen_unknown_author') : t('kaizen_unknown_author'))
   const fmtDate = (iso: string) => new Date(iso).toLocaleDateString(loc)
 
-  const tabBtn = (v: View, label: string, count?: number) => (
+  // Level 1: the two sections (serif, underlined). Level 2: Site web / Business inside
+  // Opérations & Stratégie (small pills, only shown under it).
+  const sectionTab = (id: string, active: boolean, label: string, count: number, onClick: () => void, rust = false) => (
+    <button
+      key={id}
+      type="button"
+      role="tab"
+      aria-selected={active}
+      data-testid={`kaizen-view-${id}`}
+      onClick={onClick}
+      className={rust ? undefined : 'serif'}
+      style={{
+        padding: '8px 4px 10px',
+        marginRight: 20,
+        minHeight: 44,
+        fontSize: rust ? 12 : 17,
+        border: 'none',
+        cursor: 'pointer',
+        whiteSpace: 'nowrap',
+        background: 'transparent',
+        color: rust ? 'var(--rust)' : active ? 'var(--tx)' : 'var(--tx3)',
+        borderBottom: active ? '2px solid var(--ac)' : '2px solid transparent',
+      }}
+    >
+      {label}
+      {count > 0 ? <span className="t-mono-sm" style={{ fontSize: 11, marginLeft: 6, color: 'var(--tx3)' }}>{count}</span> : null}
+    </button>
+  )
+  const subTab = (v: KaizenSection, label: string) => (
     <button
       key={v}
       type="button"
@@ -152,18 +181,39 @@ export function Kaizen() {
       data-testid={`kaizen-view-${v}`}
       onClick={() => setView(v)}
       style={{
-        padding: '8px 12px',
+        padding: '6px 14px',
+        minHeight: 36,
+        fontSize: 12,
+        cursor: 'pointer',
+        whiteSpace: 'nowrap',
+        border: '1px solid var(--bd)',
+        borderRadius: 18,
+        background: view === v ? 'var(--tx)' : 'transparent',
+        color: view === v ? 'var(--bg1)' : 'var(--tx2)',
+      }}
+    >
+      {label}{countOf(v) > 0 ? ` · ${countOf(v)}` : ''}
+    </button>
+  )
+  const stackBtn = (s: 'live' | 'done', label: string) => (
+    <button
+      key={s}
+      type="button"
+      aria-pressed={stack === s}
+      data-testid={`kaizen-stack-${s}`}
+      onClick={() => setStack(s)}
+      style={{
+        padding: '6px 12px',
         minHeight: 44,
         fontSize: 12,
         border: 'none',
         cursor: 'pointer',
         whiteSpace: 'nowrap',
-        background: view === v ? 'var(--bg2)' : 'transparent',
-        color: v === 'review' ? 'var(--rust)' : view === v ? 'var(--tx)' : 'var(--tx3)',
-        borderBottom: view === v ? '2px solid var(--ac)' : '2px solid transparent',
+        background: stack === s ? 'var(--bg2)' : 'transparent',
+        color: stack === s ? 'var(--tx)' : 'var(--tx3)',
       }}
     >
-      {label}{count != null && count > 0 ? ` · ${count}` : ''}
+      {label}
     </button>
   )
 
@@ -178,18 +228,26 @@ export function Kaizen() {
   return (
     <div data-testid="kaizen-tab-root" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0 }}>
       <div style={{ padding: narrow ? '12px' : '16px 28px 0', borderBottom: '1px solid var(--bd)' }}>
-        <div className="serif" style={{ fontSize: 22 }}>{t('tab_kaizen')}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div className="serif" style={{ fontSize: 22, flex: 1 }}>{t('tab_kaizen')}</div>
+          <ReportLinkButton source="kaizen" />
+        </div>
         <p style={{ fontSize: 12, color: 'var(--tx2)', margin: '4px 0 10px', maxWidth: 760 }}>{t('kaizen_intro')}</p>
-        <div role="tablist" style={{ display: 'flex', alignItems: 'flex-end', gap: 4, overflowX: 'auto' }}>
-          {tabBtn('creation', t('kaizen_section_creation'), countOf('creation'))}
-          <span className="t-mono-sm" style={{ fontSize: 9, color: 'var(--tx3)', padding: '0 4px 14px 12px', whiteSpace: 'nowrap', textTransform: 'uppercase' }}>
-            {t('kaizen_group_ops')}
-          </span>
-          {tabBtn('website', t('kaizen_section_website'), countOf('website'))}
-          {tabBtn('business', t('kaizen_section_business'), countOf('business'))}
-          {pending.length > 0 ? tabBtn('review', t('kaizen_review_fmt').replace('{n}', String(pending.length))) : null}
+        <div role="tablist" style={{ display: 'flex', alignItems: 'flex-end', overflowX: 'auto' }}>
+          {sectionTab('creation', view === 'creation', t('kaizen_section_creation'), countOf('creation'), () => setView('creation'))}
+          {sectionTab('ops', opsView, t('kaizen_group_ops'), countOf('website') + countOf('business'), () => { if (!opsView) setView('website') })}
+          <span style={{ flex: 1 }} />
+          {pending.length > 0
+            ? sectionTab('review', view === 'review', t('kaizen_review_fmt').replace('{n}', String(pending.length)), 0, () => setView('review'), true)
+            : null}
         </div>
       </div>
+      {opsView ? (
+        <div role="tablist" style={{ display: 'flex', gap: 8, padding: narrow ? '10px 12px 0' : '12px 28px 0', overflowX: 'auto' }}>
+          {subTab('website', t('kaizen_section_website'))}
+          {subTab('business', t('kaizen_section_business'))}
+        </div>
+      ) : null}
 
       <div style={{ flex: 1, overflow: 'auto', padding: narrow ? '12px' : '16px 28px' }}>
         {view === 'creation' ? (
@@ -220,10 +278,10 @@ export function Kaizen() {
               placeholder={t('kaizen_search_ph')}
               aria-label={t('kaizen_search_ph')}
             />
-            <label style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: 12, color: 'var(--tx2)', cursor: 'pointer' }}>
-              <input type="checkbox" checked={showDone} onChange={(e) => setShowDone(e.target.checked)} />
-              {t('kaizen_show_done_fmt').replace('{n}', String(doneCount))}
-            </label>
+            <div role="group" style={{ display: 'inline-flex', border: '1px solid var(--bd)' }}>
+              {stackBtn('live', t('kaizen_stack_live_fmt').replace('{n}', String(stackCount(false))))}
+              {stackBtn('done', t('kaizen_stack_done_fmt').replace('{n}', String(stackCount(true))))}
+            </div>
           </div>
         )}
 

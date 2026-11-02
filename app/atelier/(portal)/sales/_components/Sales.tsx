@@ -14,6 +14,7 @@ import { stringifyError } from '@/lib/error'
 import { WorkThumb } from '@/components/atelier/WorkThumb'
 import { useUnsavedCloseGuard } from '@/hooks/useUnsavedCloseGuard'
 import { PivotPanel } from '@/components/atelier/PivotPanel'
+import { ReportLinkButton } from '@/components/atelier/ReportLinkButton'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 
 // ── Types ────────────────────────────────────────────────────
@@ -206,9 +207,12 @@ export function Sales({ oeuvres, statusLabelMap, contacts, groups, cM, tM }: Pro
         <div style={{ fontSize: 13, color: 'var(--tx2)' }}>
           {orders.length} commande{orders.length !== 1 ? 's' : ''}
         </div>
-        <button className="btn primary sm" onClick={() => setShowForm(true)}>
-          + Nouvelle commande
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <ReportLinkButton source="sales" />
+          <button className="btn primary sm" onClick={() => setShowForm(true)}>
+            + Nouvelle commande
+          </button>
+        </div>
       </div>
 
       <div style={{

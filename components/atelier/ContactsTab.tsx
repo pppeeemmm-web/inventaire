@@ -22,6 +22,7 @@ import { OLLAMA_SCRIPT_INSTRUCTIONS } from '@/lib/ollama-script'
 import { useI18n } from '@/lib/i18n/context'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { toast } from '@/lib/ui/toast'
+import { ReportLinkButton } from '@/components/atelier/ReportLinkButton'
 import { useUnsavedActionGuard } from '@/hooks/useUnsavedActionGuard'
 import { useUnsavedCloseGuard } from '@/hooks/useUnsavedCloseGuard'
 import type { Oeuvre } from '@/lib/types/database'
@@ -738,6 +739,7 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
         >
           {t('contacts_new_btn')}
         </button>
+        <ReportLinkButton source="contacts" style={{ minHeight: undefined }} />
         <button
           className="btn ghost sm"
           onClick={() => setImporting(true)}

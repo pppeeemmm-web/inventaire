@@ -1762,6 +1762,36 @@ export type Database = {
           },
         ]
       }
+      saved_report: {
+        Row: {
+          config: Json
+          created_at: string
+          id: number
+          name: string
+          owner_id: string | null
+          source: string
+          updated_at: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          id?: never
+          name: string
+          owner_id?: string | null
+          source?: string
+          updated_at?: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          id?: never
+          name?: string
+          owner_id?: string | null
+          source?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       share_inbox: {
         Row: {
           created_at: string

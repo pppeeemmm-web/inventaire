@@ -14,11 +14,11 @@ import type { DictKey } from '@/lib/i18n/dictionary'
 import { createClient } from '@/lib/supabase/client'
 import { getWorkActionTypes, invalidateWorkActionTypesCache } from '@/lib/work-action-type-cache'
 import { workActionTypeDisplayLabel } from '@/lib/work-action-type-label'
-import { imageUrl, thumbUrl, yearOf, statusOf, type StatusKey } from '@/lib/data'
+import { imageUrl, thumbUrl, yearOf, statusOf } from '@/lib/data'
+import { isInProduction } from '@/lib/production-scope'
+import { ReportLinkButton } from '@/components/atelier/ReportLinkButton'
 import { MissingThumb, WorkThumb, SuggestionThumb } from '@/components/atelier/WorkThumb'
 import type { Oeuvre } from '@/lib/types/database'
-import type { Agg, Dim } from '@/lib/pivot'
-import { PivotPanel } from '@/components/atelier/PivotPanel'
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -52,7 +52,6 @@ interface FieldIssue {
   photo_r2_key:        string | null
 }
 
-const EXCLUDED_STATUSES: StatusKey[] = ['sold', 'gift', 'artist_archive', 'private_archive']
 
 
 
@@ -67,7 +66,7 @@ interface Props {
   oeuvresPaging?: { totalCount: number; nextCursor: number | null; pageSize: number }
 }
 
-export function Production({ oeuvres, tM, statusLabelMap, onOpen, oeuvresPaging }: Props) {
+export function Production({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
   const { t } = useI18n()
   const router = useRouter()
   const [search,      setSearch]      = useState('')
@@ -125,14 +124,7 @@ export function Production({ oeuvres, tM, statusLabelMap, onOpen, oeuvresPaging 
     for (const a of actions) worksWithActions.add(a.oeuvre_id)
 
     return localOeuvres.filter((o) => {
-      // Show if not catalogued OR if it specifically needs a photograph OR if it has a pending action
-      const needsPhoto = o.NeedsPhotograph
-      const hasAction = worksWithActions.has(o.OeuvreID)
-      if (o.Catalogué && !needsPhoto && !hasAction) return false
-      
-      const st = statusOf(o, statusLabelMap)
-      if (EXCLUDED_STATUSES.includes(st)) return false
-      
+      if (!isInProduction(o, statusLabelMap, worksWithActions)) return false
       if (sq) {
         const bag = `${o.Titre ?? ''} #${o.OeuvreID} ${o.Technique != null ? (tM[o.Technique] ?? '') : ''}`.toLowerCase()
         if (!bag.includes(sq)) return false
@@ -244,43 +236,6 @@ export function Production({ oeuvres, tM, statusLabelMap, onOpen, oeuvresPaging 
   const soldCount       = localOeuvres.filter(o => statusOf(o, statusLabelMap) === 'sold').length
   const othersCount     = localOeuvres.length - (productionCount + availableCount + archivePemCount + soldCount)
 
-  const productionPivotRows = useMemo(
-    () =>
-      localOeuvres.filter(
-        (o) => !EXCLUDED_STATUSES.includes(statusOf(o, statusLabelMap)),
-      ),
-    [localOeuvres, statusLabelMap],
-  )
-
-  const prodPivotDims: Dim<Oeuvre>[] = useMemo(
-    () => [
-      {
-        id: 'status',
-        label: t('status'),
-        get: (o) => statusLabelMap[o.statusId ?? 0] ?? String(statusOf(o, statusLabelMap)),
-      },
-      {
-        id: 'month',
-        label: t('pivotDimMonth'),
-        get: (o) => {
-          const d = (o as { DateLivraison?: string | null }).DateLivraison
-          return d && d.length >= 7 ? d.slice(0, 7) : '—'
-        },
-      },
-      {
-        id: 'technique',
-        label: t('technique'),
-        get: (o) => (o.Technique != null ? (tM[o.Technique] ?? String(o.Technique)) : '—'),
-      },
-    ],
-    [t, tM, statusLabelMap],
-  )
-
-  const prodPivotValues: Agg<Oeuvre>[] = useMemo(
-    () => [{ id: 'count', label: t('pivotCount'), kind: 'count' }],
-    [t],
-  )
-
   const narrow = useMediaQuery('(max-width: 767px)')
 
   if (loading) {
@@ -301,15 +256,6 @@ export function Production({ oeuvres, tM, statusLabelMap, onOpen, oeuvresPaging 
     )
   }
   const statLine = statParts.join(' · ')
-
-  const cataloguePartial =
-    oeuvresPaging != null && oeuvres.length < oeuvresPaging.totalCount
-  const pivotFootnote =
-    cataloguePartial && oeuvresPaging
-      ? t('prod_tab_pivot_footnote_loaded_subset')
-          .replace('{loaded}', String(oeuvres.length))
-          .replace('{total}', String(oeuvresPaging.totalCount))
-      : undefined
 
   return (
     <div style={{ padding: narrow ? '12px 16px 0' : '16px 28px 0', height: '100%', display: 'flex', flexDirection: 'column', overflowX: 'hidden', overflowY: 'auto', width: '100%', flex: 1 }}>
@@ -385,6 +331,8 @@ export function Production({ oeuvres, tM, statusLabelMap, onOpen, oeuvresPaging 
         >
           ⚙ {t('prod_tab_columns_btn')}
         </button>
+        {/* Access-style: the report lives in Studio → Rapports, seeded with this board's works. */}
+        <ReportLinkButton source="production" style={{ alignSelf: narrow ? 'stretch' : undefined }} />
       </div>
 
       <MaterialOverview
@@ -394,18 +342,6 @@ export function Production({ oeuvres, tM, statusLabelMap, onOpen, oeuvresPaging 
         onOpen={onOpen}
       />
 
-      <PivotPanel<Oeuvre>
-        rows={productionPivotRows}
-        availableDims={prodPivotDims}
-        availableValues={prodPivotValues}
-        defaultRowDimId="status"
-        defaultColDimId="month"
-        footnote={pivotFootnote}
-        defaultValueIds={['count']}
-        title={t('pivot')}
-        exportFileName="production-throughput"
-        initialToolbarCollapsed
-      />
 
       {/* Action type manager */}
       {editingTypes && (
