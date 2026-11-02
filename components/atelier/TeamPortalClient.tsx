@@ -1020,6 +1020,7 @@ export function TeamPortalClient({
       ['stock',         t('tab_stock')],
       ['notes',         t('tab_notes')],
       ['journal',       t('tab_journal'), teamActivityCount > 0 ? teamActivityCount : undefined],
+      ['kaizen',        t('tab_kaizen')],
       ['system',        t('tab_system'), ledgerActivityCount > 0 ? ledgerActivityCount : undefined],
       [
         'audit',
@@ -1071,8 +1072,11 @@ export function TeamPortalClient({
   const adminTabs: Tab[] = isAdmin ? ['system', 'audit'] : ['system']
   // Diffusion (broadcast) is about what goes public — Public room, still admin-only.
   const publicTabs: Tab[] = isAdmin ? ['site', 'portfolio', 'analytics', 'broadcast'] : ['site', 'portfolio', 'analytics']
+  // Kaizen stands alone (no group label): top of the sidebar on desktop, right after Terrain on phone.
+  const kaizenGroup = { label: '', tabs: ['kaizen'] as Tab[] }
+  const fieldGroup = { label: t('nav_group_field'), tabs: ['inventory', 'production', 'journal', 'notes', 'map'] as Tab[] }
   const GROUPS: { label: string; tabs: Tab[] }[] = [
-    { label: t('nav_group_field'),        tabs: ['inventory', 'production', 'journal', 'notes', 'map'] },
+    ...(atelierNarrow ? [fieldGroup, kaizenGroup] : [kaizenGroup, fieldGroup]),
     { label: t('nav_group_studio'),       tabs: ['overview', 'pipeline', 'exhibitions', 'concepts', 'stock'] },
     { label: t('nav_group_catalogue'),    tabs: ['reports', 'themes', 'constellation'] },
     { label: t('nav_group_commercial'),   tabs: ['sales', 'logistics', 'fiscal', 'vault'] },
@@ -1409,8 +1413,8 @@ export function TeamPortalClient({
             <div ref={sidebarNavScrollRef} className="pem-atelier-sidebar-nav-scroll">
               <div data-testid="atelier-nav-groups" className="pem-atelier-sidebar-nav-inner">
                 {GROUPS.map((g) => (
-                  <div key={g.label} className="pem-atelier-sidebar-group">
-                    <div className="t-eyebrow pem-atelier-sidebar-eyebrow">{g.label}</div>
+                  <div key={g.label || g.tabs.join('-')} className="pem-atelier-sidebar-group">
+                    {g.label ? <div className="t-eyebrow pem-atelier-sidebar-eyebrow">{g.label}</div> : null}
                     <div className="pem-atelier-sidebar-tabs">
                       {g.tabs.map((k) => {
                         const item = TABS_RAW.find(x => x[0] === k)

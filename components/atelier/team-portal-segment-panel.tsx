@@ -36,6 +36,7 @@ const Logistics = dynamic(() => import('@/app/atelier/(portal)/logistics/_compon
 const SalesTab = dynamic(() => import('@/app/atelier/(portal)/sales/_components/Sales').then((m) => ({ default: m.Sales })), { loading: () => <TabPanelFallback />, ssr: false })
 const PipelineTab = dynamic(() => import('@/app/atelier/(portal)/pipeline/_components/Pipeline').then((m) => ({ default: m.Pipeline })), { loading: () => <TabPanelFallback />, ssr: false })
 const Fiscal = dynamic(() => import('@/app/atelier/(portal)/fiscal/_components/Fiscal').then((m) => ({ default: m.Fiscal })), { loading: () => <TabPanelFallback />, ssr: false })
+const Kaizen = dynamic(() => import('@/app/atelier/(portal)/kaizen/_components/Kaizen').then((m) => ({ default: m.Kaizen })), { loading: () => <TabPanelFallback />, ssr: false })
 const Concepts = dynamic(() => import('@/app/atelier/(portal)/concepts/_components/Concepts').then((m) => ({ default: m.Concepts })), { loading: () => <TabPanelFallback />, ssr: false })
 const Exhibitions = dynamic(() => import('@/app/atelier/(portal)/exhibitions/_components/Exhibitions').then((m) => ({ default: m.Exhibitions })), { loading: () => <ExhibitionsTabSkeleton />, ssr: false })
 const Themes = dynamic(() => import('@/app/atelier/(portal)/themes/_components/Themes').then((m) => ({ default: m.Themes })), { loading: () => <TabPanelFallback />, ssr: false })
@@ -216,6 +217,12 @@ export function SegmentRoutePanel({
       return (
         <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
           <SuppliesTab contacts={contacts} />
+        </div>
+      )
+    case 'kaizen':
+      return (
+        <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+          <Kaizen />
         </div>
       )
     case 'journal':

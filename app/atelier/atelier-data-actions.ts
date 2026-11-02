@@ -89,11 +89,13 @@ export async function fetchAtelierOverviewBootstrap(
       .from('studio_task')
       .select('id', { count: 'exact', head: true })
       .in('status', ['active', 'requested', 'in-progress']),
+    // Kaizen: entries waiting for the owner's sorting + open Opérations & Stratégie items
+    // (Création ideas are not tasks, so they never count here).
     supabase
-      .from('system_log')
+      .from('kaizen_item')
       .select('id', { count: 'exact', head: true })
-      .is('event_type', null)
-      .in('status', ['active', 'requested']),
+      .is('done_at', null)
+      .or('section.is.null,section.in.(website,business)'),
     supabase
       .from('work_session')
       .select('id', { count: 'exact', head: true })
@@ -107,7 +109,7 @@ export async function fetchAtelierOverviewBootstrap(
   if (conceptRes.error) console.error('[atelier overview] concept:', conceptRes.error.message)
   if (approvalsRes.error) console.error('[atelier overview] pending_changes:', approvalsRes.error.message)
   if (fieldTasksRes.error) console.error('[atelier overview] studio_task:', fieldTasksRes.error.message)
-  if (ledgerRes.error) console.error('[atelier overview] system_log:', ledgerRes.error.message)
+  if (ledgerRes.error) console.error('[atelier overview] kaizen_item:', ledgerRes.error.message)
   if (sessionsRes.error) console.error('[atelier overview] work_session:', sessionsRes.error.message)
 
   const expenseRows = (expRes.data ?? []) as { montant_ttc: number | null }[]

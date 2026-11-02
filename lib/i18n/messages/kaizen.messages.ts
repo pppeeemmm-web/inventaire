@@ -1,0 +1,60 @@
+import { defineMessages } from '../message-core'
+
+/** Kaizen tab — ideas and improvements (Création / Opérations & Stratégie). */
+export const kaizenMessages = defineMessages({
+  tab_kaizen: { fr: 'Kaizen', en: 'Kaizen' },
+  kaizen_intro: {
+    fr: 'Idées et améliorations. Une entrée peut être cochée comme faite, jamais effacée : l’historique reste.',
+    en: 'Ideas and improvements. An entry can be ticked done, never erased: the history stays.',
+  },
+  kaizen_section_creation: { fr: 'Création', en: 'Creation' },
+  kaizen_section_creation_hint: {
+    fr: 'Idées pour les œuvres, tendances, fils de pensée, concepts.',
+    en: 'Ideas for works, trends, trains of thought, concepts.',
+  },
+  kaizen_group_ops: { fr: 'Opérations & Stratégie', en: 'Operations & Strategy' },
+  kaizen_section_website: { fr: 'Site web', en: 'Website' },
+  kaizen_section_business: { fr: 'Business', en: 'Business' },
+  kaizen_review_fmt: { fr: 'À valider ({n})', en: 'To confirm ({n})' },
+  kaizen_review_intro: {
+    fr: 'Entrées reprises du Journal Système, avec une rubrique proposée. Rien ne bouge avant votre validation.',
+    en: 'Entries moved from the System ledger, with a proposed section. Nothing moves until you confirm.',
+  },
+  kaizen_review_admin_only: {
+    fr: 'L’administrateur valide les rubriques proposées.',
+    en: 'The admin confirms the proposed sections.',
+  },
+  kaizen_review_confirm: { fr: 'Valider', en: 'Confirm' },
+  kaizen_review_confirm_all_fmt: { fr: 'Tout valider ({n})', en: 'Confirm all ({n})' },
+  kaizen_review_done: { fr: 'Rubriques validées', en: 'Sections confirmed' },
+  kaizen_new: { fr: '+ Nouvelle entrée', en: '+ New entry' },
+  kaizen_new_close: { fr: 'Fermer', en: 'Close' },
+  kaizen_title_ph: { fr: 'Titre (#1234 relie une œuvre)', en: 'Title (#1234 links a work)' },
+  kaizen_body_ph: { fr: 'Détails', en: 'Details' },
+  kaizen_section_label: { fr: 'Rubrique', en: 'Section' },
+  kaizen_add: { fr: 'Ajouter', en: 'Add' },
+  kaizen_added: { fr: 'Entrée ajoutée', en: 'Entry added' },
+  kaizen_saved: { fr: 'Enregistré', en: 'Saved' },
+  kaizen_mark_done: { fr: 'Marquer fait', en: 'Mark done' },
+  kaizen_reopen: { fr: 'Rouvrir', en: 'Reopen' },
+  kaizen_done_fmt: { fr: 'Fait le {date} · {who}', en: 'Done {date} · {who}' },
+  kaizen_show_done_fmt: { fr: 'Afficher les faites ({n})', en: 'Show done ({n})' },
+  kaizen_edit: { fr: 'Modifier', en: 'Edit' },
+  kaizen_save: { fr: 'Enregistrer', en: 'Save' },
+  kaizen_cancel: { fr: 'Annuler', en: 'Cancel' },
+  kaizen_move_aria: { fr: 'Déplacer vers une rubrique', en: 'Move to a section' },
+  kaizen_empty: { fr: 'Rien ici pour l’instant.', en: 'Nothing here yet.' },
+  kaizen_loading: { fr: 'Chargement…', en: 'Loading…' },
+  kaizen_load_error: { fr: 'Impossible de charger Kaizen.', en: 'Could not load Kaizen.' },
+  kaizen_forbidden: {
+    fr: 'Seul l’auteur ou l’administrateur peut modifier cette entrée.',
+    en: 'Only the author or the admin can change this entry.',
+  },
+  kaizen_unknown_author: { fr: 'Inconnu', en: 'Unknown' },
+  kaizen_search_ph: { fr: 'Rechercher…', en: 'Search…' },
+  system_ledger_moved_to_kaizen: {
+    fr: 'Idées et suggestions vivent maintenant dans Kaizen (les 32 entrées y ont été reprises).',
+    en: 'Ideas and suggestions now live in Kaizen (the 32 entries were moved there).',
+  },
+  system_ledger_open_kaizen: { fr: 'Ouvrir Kaizen →', en: 'Open Kaizen →' },
+})

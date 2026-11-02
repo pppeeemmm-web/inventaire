@@ -11,6 +11,7 @@ import { useI18n } from '@/lib/i18n/context'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import { imageUrl } from '@/lib/data'
 import { useMediaQuery } from '@/lib/useMediaQuery'
+import Link from 'next/link'
 
 const TYPES = ['suggestion', 'improvement', 'maintenance', 'backlog', 'bug'] as const
 const STATUSES = ['active', 'requested', 'in-progress', 'completed', 'dismissed'] as const
@@ -178,7 +179,13 @@ export function SystemTab() {
 
   async function fetchLogs() {
     const sb = createClient()
-    const { data } = await sb.from('system_log').select('*').is('event_type', null).order('id', { ascending: false })
+    // Rows moved to Kaizen (`metadata.kaizen_id`) stay in the table but leave the ledger.
+    const { data } = await sb
+      .from('system_log')
+      .select('*')
+      .is('event_type', null)
+      .is('metadata->>kaizen_id', null)
+      .order('id', { ascending: false })
     setLogs(data ?? [])
     setLoading(false)
   }
@@ -513,6 +520,10 @@ export function SystemTab() {
             </h2>
             <p className="t-mono-sm" style={{ color: 'var(--tx3)' }}>
               {t('system_ledger_subtitle')}
+            </p>
+            <p data-testid="system-ledger-kaizen-note" style={{ fontSize: 12, color: 'var(--tx2)', marginTop: 8 }}>
+              {t('system_ledger_moved_to_kaizen')}{' '}
+              <Link href="/atelier/kaizen" style={{ color: 'var(--ac)' }}>{t('system_ledger_open_kaizen')}</Link>
             </p>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: narrow ? 'stretch' : 'flex-end', gap: 8 }}>

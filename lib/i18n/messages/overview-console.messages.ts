@@ -30,8 +30,8 @@ export const overviewConsoleMessages = defineMessages({
     en: 'Open field tasks',
   },
   ov_needs_ledger: {
-    fr: 'Journal / suggestions',
-    en: 'Ledger / suggestions',
+    fr: 'Kaizen à trier / ouvert',
+    en: 'Kaizen to sort / open',
   },
   ov_needs_sessions: {
     fr: 'Sessions à appliquer',

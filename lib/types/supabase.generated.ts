@@ -973,6 +973,51 @@ export type Database = {
           },
         ]
       }
+      kaizen_item: {
+        Row: {
+          author_id: string | null
+          body: string | null
+          created_at: string
+          done_at: string | null
+          done_by: string | null
+          id: number
+          legacy_system_log_id: number | null
+          section: string | null
+          suggested_section: string | null
+          title: string
+          updated_at: string
+          work_ids: number[]
+        }
+        Insert: {
+          author_id?: string | null
+          body?: string | null
+          created_at?: string
+          done_at?: string | null
+          done_by?: string | null
+          id?: never
+          legacy_system_log_id?: number | null
+          section?: string | null
+          suggested_section?: string | null
+          title: string
+          updated_at?: string
+          work_ids?: number[]
+        }
+        Update: {
+          author_id?: string | null
+          body?: string | null
+          created_at?: string
+          done_at?: string | null
+          done_by?: string | null
+          id?: never
+          legacy_system_log_id?: number | null
+          section?: string | null
+          suggested_section?: string | null
+          title?: string
+          updated_at?: string
+          work_ids?: number[]
+        }
+        Relationships: []
+      }
       nodes: {
         Row: {
           created_at: string

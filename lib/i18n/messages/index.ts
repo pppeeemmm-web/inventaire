@@ -27,6 +27,7 @@ import { overviewConsoleMessages } from './overview-console.messages'
 import { pipelineUiMessages } from './pipeline-ui.messages'
 import { conceptDocsMessages } from './concept-docs.messages'
 import { notesTriageMessages } from './notes-triage.messages'
+import { kaizenMessages } from './kaizen.messages'
 
 export const featureMessages = {
   ...atelierMessages,
@@ -58,6 +59,7 @@ export const featureMessages = {
   ...pipelineUiMessages,
   ...conceptDocsMessages,
   ...notesTriageMessages,
+  ...kaizenMessages,
 } as const
 
 export type MessageKey = keyof typeof featureMessages
