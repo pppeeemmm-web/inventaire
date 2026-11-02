@@ -38,9 +38,10 @@ export const workFormMessages = defineMessages({
     en: 'Production',
   },
   wf_palette_title: {
-    fr: 'Couleurs de cette photo par famille du cercle chromatique, proportionnelles à leur surface (survol : code couleur)',
-    en: 'Colours of this photo by colour-wheel family, sized by how much of it they cover (hover: colour code)',
+    fr: 'Couleurs de cette photo par famille du cercle chromatique, proportionnelles à leur surface ; « accent » = petite touche vive (survol : code couleur)',
+    en: 'Colours of this photo by colour-wheel family, sized by how much of it they cover; "accent" = a small vivid touch (hover: colour code)',
   },
+  wf_palette_accent: { fr: '· accent', en: '· accent' },
   wf_palette_label: {
     fr: 'Palette',
     en: 'Palette',

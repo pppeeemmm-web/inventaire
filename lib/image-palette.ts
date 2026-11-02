@@ -12,22 +12,28 @@ import sharp from 'sharp'
  *  2. A family's share = its fraction of the image, so a small but present colour still counts.
  *  3. Its swatch = the mean of its more saturated half (the colour you see, not a mud average).
  *
+ *  4. Accents: a small vivid hue (under MIN_SHARE) is kept and flagged `accent`.
+ *
  * Accuracy = the photo's own colours (Lightroom white balance / exposure); background, margin
  * or frame in the shot count too.
  */
-export const COLOUR_FAMILIES = [
-  'red', 'red_orange', 'orange', 'yellow_orange', 'yellow', 'yellow_green',
-  'green', 'blue_green', 'blue', 'blue_violet', 'violet', 'red_violet',
-  'brown', 'black', 'grey', 'white',
-] as const
-export type ColourFamily = (typeof COLOUR_FAMILIES)[number]
+// Type-only (erased at runtime), so `scripts/backfill-image-palette.mjs` can run this file in Node.
+import type { ColourFamily, PaletteSwatch } from './colour-families'
 
-export type PaletteSwatch = { hex: string; share: number; family: ColourFamily }
+export type { ColourFamily, PaletteSwatch }
 
-const SAMPLE_EDGE = 96
-/** Families below this share of the image are left out. */
+const SAMPLE_EDGE = 160
+/** Families below this share of the image are left out — unless they qualify as an accent. */
 const MIN_SHARE = 0.015
 const MAX_SWATCHES = 8
+/**
+ * Accent: a small but vivid colour (a blue eye on a brown ground). A hue family under
+ * MIN_SHARE is still kept when at least ACCENT_MIN_SHARE of the picture is that hue at
+ * Lab chroma ≥ ACCENT_CHROMA. Existence of the colour matters more than its area.
+ */
+const ACCENT_MIN_SHARE = 0.0015
+const ACCENT_CHROMA = 35
+const MAX_ACCENTS = 3
 /** Lab chroma under which a pixel reads as neutral (black / grey / white). */
 const NEUTRAL_CHROMA = 10
 
@@ -121,21 +127,38 @@ export async function extractPalette(buf: Buffer): Promise<PaletteSwatch[]> {
   if (total === 0) return []
 
   const swatches: PaletteSwatch[] = []
+  const accents: (PaletteSwatch & { vivid: number })[] = []
+  const meanHex = (pick: { lab: Lab }[]) => {
+    const mean: Lab = [0, 0, 0]
+    for (const p of pick) { mean[0] += p.lab[0]; mean[1] += p.lab[1]; mean[2] += p.lab[2] }
+    return labToHex([mean[0] / pick.length, mean[1] / pick.length, mean[2] / pick.length])
+  }
   for (const [family, px] of groups) {
     const share = px.length / total
-    if (share < MIN_SHARE) continue
+    if (share < MIN_SHARE) {
+      if (family === 'black' || family === 'grey' || family === 'white') continue
+      const vivid = px.filter((p) => p.chroma >= ACCENT_CHROMA)
+      if (vivid.length / total < ACCENT_MIN_SHARE) continue
+      accents.push({
+        family,
+        hex: meanHex(vivid),
+        share: Math.round(share * 1000) / 1000,
+        accent: true,
+        vivid: vivid.length,
+      })
+      continue
+    }
     // Representative shade: the more saturated half of the family (neutrals: all of it).
     const sorted = [...px].sort((p, q) => q.chroma - p.chroma)
     const pick = family === 'black' || family === 'grey' || family === 'white'
       ? sorted
       : sorted.slice(0, Math.max(1, Math.ceil(sorted.length / 2)))
-    const mean: Lab = [0, 0, 0]
-    for (const p of pick) { mean[0] += p.lab[0]; mean[1] += p.lab[1]; mean[2] += p.lab[2] }
-    swatches.push({
-      family,
-      hex: labToHex([mean[0] / pick.length, mean[1] / pick.length, mean[2] / pick.length]),
-      share: Math.round(share * 1000) / 1000,
-    })
+    swatches.push({ family, hex: meanHex(pick), share: Math.round(share * 1000) / 1000 })
   }
-  return swatches.sort((a, b) => b.share - a.share).slice(0, MAX_SWATCHES)
+  const main = swatches.sort((a, b) => b.share - a.share).slice(0, MAX_SWATCHES)
+  const extra = accents
+    .sort((a, b) => b.vivid - a.vivid)
+    .slice(0, MAX_ACCENTS)
+    .map(({ vivid: _vivid, ...s }) => s)
+  return [...main, ...extra]
 }

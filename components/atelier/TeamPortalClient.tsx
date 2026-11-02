@@ -1068,13 +1068,15 @@ export function TeamPortalClient({
   // ── Tab definitions (GROUPS) ───────────────────────────────────
 
   /** 6 rooms — same structure on narrow and wide; narrow puts Field first. */
-  const adminTabs: Tab[] = isAdmin ? ['system', 'audit', 'broadcast'] : ['system']
+  const adminTabs: Tab[] = isAdmin ? ['system', 'audit'] : ['system']
+  // Diffusion (broadcast) is about what goes public — Public room, still admin-only.
+  const publicTabs: Tab[] = isAdmin ? ['site', 'portfolio', 'analytics', 'broadcast'] : ['site', 'portfolio', 'analytics']
   const GROUPS: { label: string; tabs: Tab[] }[] = [
     { label: t('nav_group_field'),        tabs: ['inventory', 'production', 'journal', 'notes', 'map'] },
     { label: t('nav_group_studio'),       tabs: ['overview', 'pipeline', 'exhibitions', 'concepts', 'stock'] },
     { label: t('nav_group_catalogue'),    tabs: ['reports', 'themes', 'constellation'] },
     { label: t('nav_group_commercial'),   tabs: ['sales', 'logistics', 'fiscal', 'vault'] },
-    { label: t('nav_group_public_tab'),   tabs: ['site', 'portfolio', 'analytics'] },
+    { label: t('nav_group_public_tab'),   tabs: publicTabs },
     { label: t('nav_group_admin'),        tabs: ['contacts', ...adminTabs] },
   ]
 

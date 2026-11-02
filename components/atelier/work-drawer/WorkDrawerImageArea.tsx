@@ -2,6 +2,9 @@
 
 import type { ChangeEvent, Dispatch, MutableRefObject, SetStateAction } from 'react'
 import { useI18n } from '@/lib/i18n/context'
+import { usePathname, useRouter } from 'next/navigation'
+import { requestColourFilter } from '@/lib/atelier/colour-filter-handoff'
+import { COLOUR_FAMILIES, type ColourFamily } from '@/lib/colour-families'
 import { imageUrl } from '@/lib/data'
 import type { Oeuvre } from '@/lib/types/database'
 import { WorkThumb } from '../WorkThumb'
@@ -50,6 +53,8 @@ export type WorkDrawerImageAreaProps = {
 
 export function WorkDrawerImageArea(p: WorkDrawerImageAreaProps) {
   const { t } = useI18n()
+  const router = useRouter()
+  const pathname = usePathname()
   const {
     o,
     narrow,
@@ -92,8 +97,9 @@ export function WorkDrawerImageArea(p: WorkDrawerImageAreaProps) {
   } = p
   const activeImage = activeImgIdx >= 0 ? drawerSorted[activeImgIdx] : null
   const activePalette = Array.isArray(activeImage?.palette)
-    ? (activeImage.palette as { hex?: unknown; share?: unknown; family?: unknown }[]).filter(
-        (s): s is { hex: string; share: number; family?: string } => typeof s.hex === 'string' && typeof s.share === 'number',
+    ? (activeImage.palette as { hex?: unknown; share?: unknown; family?: unknown; accent?: unknown }[]).filter(
+        (s): s is { hex: string; share: number; family?: string; accent?: boolean } =>
+          typeof s.hex === 'string' && typeof s.share === 'number',
       )
     : []
   const paletteTotal = activePalette.reduce((sum, s) => sum + s.share, 0) || 1
@@ -294,12 +300,36 @@ export function WorkDrawerImageArea(p: WorkDrawerImageAreaProps) {
             ))}
           </div>
           <div className="t-mono-sm" style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 10px', marginTop: 4, fontSize: 10, color: 'var(--tx2)' }}>
-            {activePalette.map((s) => (
-              <span key={`${s.family ?? ''}${s.hex}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
-                <span aria-hidden="true" style={{ width: 8, height: 8, background: s.hex, border: '1px solid var(--bd)' }} />
-                {s.family ? t(`colour_family_${s.family}` as Parameters<typeof t>[0]) : s.hex.toUpperCase()} {Math.round(s.share * 100)}%
-              </span>
-            ))}
+            {activePalette.map((s) => {
+              const fam = typeof s.family === 'string' && (COLOUR_FAMILIES as readonly string[]).includes(s.family)
+                ? (s.family as ColourFamily)
+                : null
+              const name = fam ? t(`colour_family_${fam}` as Parameters<typeof t>[0]) : s.hex.toUpperCase()
+              const inner = (
+                <>
+                  <span aria-hidden="true" style={{ width: 8, height: 8, background: s.hex, border: '1px solid var(--bd)' }} />
+                  {name} {s.accent ? t('wf_palette_accent') : `${Math.round(s.share * 100)}%`}
+                </>
+              )
+              const itemSt = { display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' } as const
+              return fam ? (
+                <button
+                  key={`${s.family ?? ''}${s.hex}`}
+                  type="button"
+                  data-testid={`work-drawer-palette-filter-${fam}`}
+                  title={t('wf_palette_swatch_filter_fmt').replace('{c}', name)}
+                  onClick={() => {
+                    requestColourFilter(fam)
+                    if (pathname !== '/atelier/inventory') router.push('/atelier/inventory')
+                  }}
+                  style={{ ...itemSt, font: 'inherit', color: 'inherit', background: 'none', border: 'none', padding: '2px 0', cursor: 'pointer', textDecoration: 'underline dotted' }}
+                >
+                  {inner}
+                </button>
+              ) : (
+                <span key={`${s.family ?? ''}${s.hex}`} style={itemSt}>{inner}</span>
+              )
+            })}
           </div>
         </div>
       )}

@@ -62,6 +62,10 @@ export function OverviewTab({
   let missingDims = 0
   let missingImages = 0
   let missingLoc = 0
+  let missingTech = 0
+  let missingSupport = 0
+  let missingYear = 0
+  let missingTitle = 0
   /** Photo shot but not yet validated — `addWorkImage` never clears NeedsPhotograph,
    *  so a work falls back here after a session until the artist validates it. */
   let needsPhotoValidation = 0
@@ -76,6 +80,10 @@ export function OverviewTab({
     if (!o.Hauteur || !o.Largeur) missingDims++
     if (!o.txtImageNameLink) missingImages++
     if (!o.LocalisationID) missingLoc++
+    if (o.Technique == null) missingTech++
+    if (o.Support == null) missingSupport++
+    if (!o.Année) missingYear++
+    if (!o.Titre?.trim()) missingTitle++
     if (o.NeedsPhotograph) needsPhotoValidation++
     if (!o.Catalogué) notCatalogued++
   }
@@ -344,6 +352,26 @@ export function OverviewTab({
                     label={t('ov_health_missing_loc')}
                     count={missingLoc}
                     onGo={() => goInventory(t('ov_health_missing_loc'), [{ field: 'LocalisationID', op: 'est vide' }])}
+                  />
+                  <ConsoleRow
+                    label={t('ov_health_missing_tech')}
+                    count={missingTech}
+                    onGo={() => goInventory(t('ov_health_missing_tech'), [{ field: 'Technique', op: 'est vide' }])}
+                  />
+                  <ConsoleRow
+                    label={t('ov_health_missing_support')}
+                    count={missingSupport}
+                    onGo={() => goInventory(t('ov_health_missing_support'), [{ field: 'Support', op: 'est vide' }])}
+                  />
+                  <ConsoleRow
+                    label={t('ov_health_missing_year')}
+                    count={missingYear}
+                    onGo={() => goInventory(t('ov_health_missing_year'), [{ field: 'Année', op: 'est vide' }])}
+                  />
+                  <ConsoleRow
+                    label={t('ov_health_missing_title')}
+                    count={missingTitle}
+                    onGo={() => goInventory(t('ov_health_missing_title'), [{ field: 'Titre', op: 'est vide' }])}
                   />
                 </div>
              </div>

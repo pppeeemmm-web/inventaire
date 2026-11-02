@@ -53,4 +53,8 @@ export const overviewConsoleMessages = defineMessages({
     fr: 'Ouvrir les notes',
     en: 'Open notes',
   },
+  ov_health_missing_tech: { fr: 'Technique manquante', en: 'Missing technique' },
+  ov_health_missing_support: { fr: 'Support manquant', en: 'Missing support' },
+  ov_health_missing_year: { fr: 'Année manquante', en: 'Missing year' },
+  ov_health_missing_title: { fr: 'Sans titre', en: 'Untitled' },
 })

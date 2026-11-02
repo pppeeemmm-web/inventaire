@@ -28,6 +28,17 @@ import type { RefObject } from 'react'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { batchEdit } from '@/app/atelier/selection/actions'
 import { consumeInventoryFilter } from '@/lib/atelier/inventory-filter-handoff'
+import { consumeColourFilter, COLOUR_FILTER_EVENT } from '@/lib/atelier/colour-filter-handoff'
+import { ColourFilterPanel, type ColourRank } from './ColourFilterPanel'
+import { fetchCoverColourProfiles } from '@/app/atelier/(portal)/inventory/colour-actions'
+import {
+  isColourQueryActive,
+  matchScore,
+  monochromeScore,
+  type ColourQuery,
+  type ColourProfile,
+} from '@/lib/colour-filter'
+import type { ColourFamily } from '@/lib/colour-families'
 import type { Agg, Dim } from '@/lib/pivot'
 import { PivotPanel } from '@/components/atelier/PivotPanel'
 
@@ -334,6 +345,8 @@ export function Inventory({
   const [sortKey,     setSortKey]     = useState<string>('OeuvreID')
   const [sortDir,     setSortDir]     = useState<'asc' | 'desc'>('desc')
   const toggleSort = (k: string) => {
+    // A column click takes over from the colour ranking (the colour filter itself stays).
+    setColourRank('off')
     if (sortKey === k) {
       setSortDir(sortDir === 'asc' ? 'desc' : 'asc')
     } else {
@@ -351,6 +364,11 @@ export function Inventory({
   const [loadingGrp,  setLoadingGrp]  = useState<string | null>(null)
   const [filterTheme, setFilterTheme] = useState('all')
   const [filterGroup, setFilterGroup] = useState('all')
+  const [showColour, setShowColour] = useState(false)
+  const [colourQ, setColourQ] = useState<ColourQuery>({ include: [], exclude: [], nearby: false })
+  const [colourRank, setColourRank] = useState<ColourRank>('match')
+  const [coverShares, setCoverShares] = useState<Record<number, ColourProfile> | null>(null)
+  const [coverSharesLoading, setCoverSharesLoading] = useState(false)
   const nextCritId = useRef(0)
 
   // Apply a filter handed off from another tab (e.g. an Overview console row).
@@ -368,6 +386,49 @@ export function Inventory({
     )
     setShowAdv(true)
   }, [])
+
+  // Colour filter: palettes for the whole catalogue, fetched once when first needed.
+  const colourInUse = showColour || isColourQueryActive(colourQ) || colourRank === 'mono'
+  useEffect(() => {
+    if (!colourInUse || coverShares || coverSharesLoading) return
+    setCoverSharesLoading(true)
+    void fetchCoverColourProfiles()
+      .then((r) => {
+        if ('error' in r) toast.error(t('error'))
+        else setCoverShares(r)
+      })
+      .finally(() => setCoverSharesLoading(false))
+  }, [colourInUse, coverShares, coverSharesLoading, t])
+
+  // Drawer palette swatch → "works with this colour" (queued on navigation, or live event).
+  useEffect(() => {
+    const apply = (f: ColourFamily) => {
+      setColourQ((prev) => ({ ...prev, include: [f], exclude: prev.exclude.filter((x) => x !== f) }))
+      setColourRank('match')
+      setShowColour(true)
+    }
+    const queued = consumeColourFilter()
+    if (queued) apply(queued)
+    const onEvt = (e: Event) => {
+      consumeColourFilter()
+      apply((e as CustomEvent<ColourFamily>).detail)
+    }
+    window.addEventListener(COLOUR_FILTER_EVENT, onEvt)
+    return () => window.removeEventListener(COLOUR_FILTER_EVENT, onEvt)
+  }, [])
+
+  const colourScores = useMemo(() => {
+    const filterOn = isColourQueryActive(colourQ)
+    if (!coverShares || (!filterOn && colourRank !== 'mono')) return null
+    const out = new Map<number, { match: number; mono: number; monoStrength: number }>()
+    for (const [id, profile] of Object.entries(coverShares)) {
+      const m = matchScore(profile, colourQ)
+      if (m == null) continue
+      const mono = colourRank === 'mono' ? monochromeScore(profile.s, colourQ.nearby) : { purity: 0, strength: 0 }
+      out.set(Number(id), { match: m, mono: mono.purity, monoStrength: mono.strength })
+    }
+    return { filterOn, scores: out }
+  }, [coverShares, colourQ, colourRank])
 
   const handlePanelWorkSaved = useCallback(
     (oeuvreId: number, patch: Partial<Oeuvre>) => {
@@ -511,6 +572,8 @@ export function Inventory({
     }
 
     return oeuvres.filter((o) => {
+      // Colour filter: works without a cover palette drop out while it is active.
+      if (colourScores?.filterOn && !colourScores.scores.has(o.OeuvreID)) return false
       if (idSet) {
         if (!idSet.has(o.OeuvreID)) return false
       } else if (sq) {
@@ -570,6 +633,16 @@ export function Inventory({
       })) return false
       return true
     }).sort((a, b) => {
+      // ── Colour ranking (Couleurs panel) ──
+      if (colourScores && colourRank !== 'off') {
+        const sa = colourScores.scores.get(a.OeuvreID)
+        const sb = colourScores.scores.get(b.OeuvreID)
+        const va = sa ? (colourRank === 'mono' ? sa.mono : sa.match) : -1
+        const vb = sb ? (colourRank === 'mono' ? sb.mono : sb.match) : -1
+        if (va !== vb) return vb - va
+        if (colourRank === 'mono' && sa && sb && sa.monoStrength !== sb.monoStrength) return sb.monoStrength - sa.monoStrength
+      }
+
       // ── Sorting Logic ──
       const dir = sortDir === 'asc' ? 1 : -1
       
@@ -607,7 +680,7 @@ export function Inventory({
       return 0
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [oeuvres, q, tech, support, status, filterTheme, filterGroup, criteria, oeuvreThemeMap, oeuvreGroupMap, thM, groupNameMap, tM, sM, statusLabelMap, allFields, sortKey, sortDir, cM, locMap])
+  }, [oeuvres, q, tech, support, status, filterTheme, filterGroup, criteria, oeuvreThemeMap, oeuvreGroupMap, thM, groupNameMap, tM, sM, statusLabelMap, allFields, sortKey, sortDir, cM, locMap, colourScores, colourRank])
 
   const invPivotDims: Dim<Oeuvre>[] = useMemo(
     () => [
@@ -808,6 +881,25 @@ export function Inventory({
           {criteria.length > 0 ? `✓ ${t('filters')} (${criteria.length})` : `${t('filters')} +`}
         </button>
 
+        {/* Colour filter toggle */}
+        <button
+          type="button"
+          data-testid="inv-colour-toggle"
+          aria-expanded={showColour}
+          onClick={() => setShowColour((v) => !v)}
+          style={{
+            padding: '8px 12px', fontSize: 13,
+            color: (showColour || isColourQueryActive(colourQ) || colourRank === 'mono') ? 'var(--bg0)' : 'var(--tx3)',
+            background: (showColour || isColourQueryActive(colourQ) || colourRank === 'mono') ? 'var(--ac)' : 'transparent',
+            border: '1px solid var(--bd)',
+            cursor: 'pointer',
+          }}
+        >
+          {isColourQueryActive(colourQ)
+            ? t('inv_colour_btn_active_fmt').replace('{n}', String(colourQ.include.length + colourQ.exclude.length))
+            : t('inv_colour_btn')}
+        </button>
+
         {/* Select all filtered */}
         <button
           onClick={() => {
@@ -1003,6 +1095,18 @@ export function Inventory({
           {selection.size > 0 ? `${selection.size} ${t('selected')}` : ''}
         </div>
       </div>
+
+      {showColour && (
+        <ColourFilterPanel
+          query={colourQ}
+          setQuery={setColourQ}
+          rank={colourRank}
+          setRank={setColourRank}
+          catalogueMatches={colourScores?.filterOn ? colourScores.scores.size : null}
+          loading={coverSharesLoading}
+          narrow={narrow}
+        />
+      )}
 
       {/* Advanced filter panel */}
       {showAdv && (
