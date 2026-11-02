@@ -8,8 +8,10 @@ import sharp from 'sharp'
  * and the greens and reds of #2366 altogether).
  *
  *  1. Every pixel goes into one family: the 12 hues of the red-yellow-blue wheel, or a neutral
- *     (black / grey / white) when it has little colour, or brown (a dark red-orange-yellow).
- *  2. A family's share = its fraction of the image, so a small but present colour still counts.
+ *     (black / grey / white) when it has little colour (Lab chroma < 10), or brown (a dark,
+ *     less red warm tone — dark rust / brick / burnt sienna stays red-orange). Saturation is
+ *     judged in CIE Lab (chroma), not RGB; only the hue angle comes from RGB.
+ *  2. A family's share = its fraction of the image; every family ≥ MIN_SHARE is listed (no cap).
  *  3. Its swatch = the mean of its more saturated half (the colour you see, not a mud average).
  *
  *  4. Accents: a small vivid hue (under MIN_SHARE) is kept and flagged `accent`.
@@ -25,7 +27,6 @@ export type { ColourFamily, PaletteSwatch }
 const SAMPLE_EDGE = 160
 /** Families below this share of the image are left out — unless they qualify as an accent. */
 const MIN_SHARE = 0.015
-const MAX_SWATCHES = 8
 /**
  * Accent: a small but vivid colour (a blue eye on a brown ground). A hue family under
  * MIN_SHARE is still kept when at least ACCENT_MIN_SHARE of the picture is that hue at
@@ -34,6 +35,9 @@ const MAX_SWATCHES = 8
 const ACCENT_MIN_SHARE = 0.0015
 const ACCENT_CHROMA = 35
 const MAX_ACCENTS = 3
+/** Dark warm pixel stays red-orange (rust) below this Lab hue angle and above this chroma. */
+const RUST_HUE_MAX = 60
+const RUST_CHROMA_MIN = 30
 /** Lab chroma under which a pixel reads as neutral (black / grey / white). */
 const NEUTRAL_CHROMA = 10
 
@@ -98,8 +102,13 @@ function familyOf(r: number, g: number, b: number, lab: Lab): ColourFamily {
   if (chroma < NEUTRAL_CHROMA) return L < 22 ? 'black' : L > 82 ? 'white' : 'grey'
   const h = hueOf(r, g, b)
   const fam = HUE_FAMILIES.find(([max]) => h < max)?.[1] ?? 'red'
-  // Earth tones: a dark red-orange → yellow-orange reads as brown.
-  if ((fam === 'red_orange' || fam === 'orange' || fam === 'yellow_orange') && L < 45) return 'brown'
+  // Dark warm tones: rust / brick / burnt sienna (reddish and saturated in Lab) stay red-orange;
+  // the rest (sepia, umber, chocolate, dark wood) reads as brown. RGB hue alone put rust (~23°)
+  // in orange → brown, so the red cloth of #2357 showed as brown.
+  if ((fam === 'red_orange' || fam === 'orange' || fam === 'yellow_orange') && L < 45) {
+    const hueAb = (Math.atan2(bb, a) * 180) / Math.PI
+    return hueAb < RUST_HUE_MAX && chroma >= RUST_CHROMA_MIN ? 'red_orange' : 'brown'
+  }
   return fam
 }
 
@@ -155,7 +164,8 @@ export async function extractPalette(buf: Buffer): Promise<PaletteSwatch[]> {
       : sorted.slice(0, Math.max(1, Math.ceil(sorted.length / 2)))
     swatches.push({ family, hex: meanHex(pick), share: Math.round(share * 1000) / 1000 })
   }
-  const main = swatches.sort((a, b) => b.share - a.share).slice(0, MAX_SWATCHES)
+  // No cap on main families: a family at ≥ MIN_SHARE is a real colour of the picture.
+  const main = swatches.sort((a, b) => b.share - a.share)
   const extra = accents
     .sort((a, b) => b.vivid - a.vivid)
     .slice(0, MAX_ACCENTS)
