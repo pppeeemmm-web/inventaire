@@ -45,7 +45,7 @@ export async function listVoiceNotes(limit = 200): Promise<{ rows: VoiceNoteRow[
   const lim = Math.min(Math.max(limit, 1), 500)
   const { data, error } = await voiceNoteTable(supabase)
     .select(
-      'id, created_at, updated_at, user_id, kind, bucket, subject, transcript, audio_r2_key, audio_mime, duration_ms, oeuvre_id, process_id, sketchbook_id, concept_id, routed_at',
+      'id, created_at, updated_at, user_id, kind, bucket, subject, transcript, audio_r2_key, audio_mime, duration_ms, oeuvre_id, process_id, sketchbook_id, concept_id, condition_report_id, routed_at',
     )
     .order('created_at', { ascending: false })
     .limit(lim)
@@ -271,13 +271,17 @@ export type VoiceNoteRoutePatch = {
   process_id?: string | null
   /** Opt-in dated reminder (`suivi_reminder`), never set by default. */
   reminder?: { date: string; label: string }
+  /** Creates a constat on the note's work (transcript as its notes) and links the note to it. */
+  new_condition_report?: boolean
+  /** null = unlink the constat (the constat itself stays). */
+  condition_report_id?: null
   /** true = mark sorted, false = put back in "à trier". Any link also marks it sorted. */
   routed?: boolean
 }
 
 export type RouteVoiceNoteResult = {
   ok: true
-  row: Pick<VoiceNoteRow, 'id' | 'concept_id' | 'oeuvre_id' | 'process_id' | 'routed_at'>
+  row: Pick<VoiceNoteRow, 'id' | 'concept_id' | 'oeuvre_id' | 'process_id' | 'condition_report_id' | 'routed_at'>
   createdConcept?: { id: string; titre: string; statut: string }
 }
 
@@ -292,11 +296,11 @@ export async function routeVoiceNote(
   if (!user) return { error: 'auth' }
 
   const { data: row, error: selErr } = await voiceNoteTable(supabase)
-    .select('id, user_id, subject')
+    .select('id, user_id, subject, transcript, oeuvre_id')
     .eq('id', id)
     .maybeSingle()
   if (selErr || !row) return { error: 'not_found' }
-  const r = row as { id: string; user_id: string; subject: string | null }
+  const r = row as { id: string; user_id: string; subject: string | null; transcript: string | null; oeuvre_id: number | null }
   const admin = await rpcIsAdmin(supabase)
   if (r.user_id !== user.id && !admin) return { error: 'forbidden' }
 
@@ -318,6 +322,20 @@ export async function routeVoiceNote(
   }
   if (patch.oeuvre_id !== undefined) update.oeuvre_id = patch.oeuvre_id
   if (patch.process_id !== undefined) update.process_id = patch.process_id
+  if (patch.condition_report_id === null) update.condition_report_id = null
+
+  if (patch.new_condition_report) {
+    const workId = (update.oeuvre_id as number | null | undefined) ?? r.oeuvre_id
+    if (workId == null) return { error: 'no_work' }
+    const notes = [r.subject?.trim(), r.transcript?.trim()].filter(Boolean).join('\n\n').slice(0, 20_000) || null
+    const { data: rep, error: repErr } = await supabase
+      .from('condition_report')
+      .insert({ oeuvre_id: workId, author_id: user.id, notes })
+      .select('id')
+      .single()
+    if (repErr || !rep) return { error: repErr?.message ?? 'constat_insert' }
+    update.condition_report_id = rep.id
+  }
 
   if (patch.reminder) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(patch.reminder.date)) return { error: 'bad_date' }
@@ -338,7 +356,7 @@ export async function routeVoiceNote(
   const { data: saved, error: upErr } = await voiceNoteTable(supabase)
     .update(update)
     .eq('id', id)
-    .select('id, concept_id, oeuvre_id, process_id, routed_at')
+    .select('id, concept_id, oeuvre_id, process_id, condition_report_id, routed_at')
     .single()
   if (upErr || !saved) return { error: upErr?.message ?? 'update' }
 

@@ -1,8 +1,8 @@
 import type { FieldFilter, ReportConfig, ValuesMode } from '@/lib/reports/engine'
 
 /** Which section a report reads from (Access-style "Rapport" button on that section). */
-export type ReportSource = 'works' | 'production' | 'kaizen' | 'sales' | 'contacts'
-export const REPORT_SOURCES: readonly ReportSource[] = ['works', 'production', 'kaizen', 'sales', 'contacts'] as const
+export type ReportSource = 'works' | 'production' | 'constats' | 'kaizen' | 'sales' | 'contacts'
+export const REPORT_SOURCES: readonly ReportSource[] = ['works', 'production', 'constats', 'kaizen', 'sales', 'contacts'] as const
 
 export type SavedReport = {
   id: number

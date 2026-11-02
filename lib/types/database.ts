@@ -168,5 +168,7 @@ export interface VoiceNoteRow {
   process_id: string | null
   sketchbook_id: string | null
   concept_id: string | null
+  /** Constat this note was turned into (Notes → Trier). */
+  condition_report_id: number | null
   routed_at: string | null
 }

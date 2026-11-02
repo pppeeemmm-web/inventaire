@@ -1,6 +1,6 @@
 -- Saved reports (owner 2026-11-02): Access-style named reports in Studio → Rapports.
---   source: which section the report reads ('works' = whole catalogue, 'production', 'kaizen',
---           'sales', 'contacts').
+--   source: which section the report reads ('works' = whole catalogue, 'production', 'constats',
+--           'kaizen', 'sales', 'contacts').
 --   config: shown fields (ordered), per-field filters, sort, free search, pivot (lib/reports/engine.ts).
 -- Team reads all saved reports; the author (or admin) renames, updates or deletes.
 
@@ -10,7 +10,7 @@ create table if not exists public.saved_report (
   updated_at timestamptz not null default now(),
   owner_id uuid references auth.users(id) on delete set null default auth.uid(),
   name text not null check (length(trim(name)) > 0 and length(name) <= 120),
-  source text not null default 'works' check (source in ('works', 'production', 'kaizen', 'sales', 'contacts')),
+  source text not null default 'works' check (source in ('works', 'production', 'constats', 'kaizen', 'sales', 'contacts')),
   config jsonb not null default '{}'::jsonb
 );
 
@@ -56,4 +56,4 @@ grant select, insert, update, delete on public.saved_report to authenticated;
 -- Sources widened after the first pilot (works, production) — idempotent for databases created before.
 alter table public.saved_report drop constraint if exists saved_report_source_check;
 alter table public.saved_report add constraint saved_report_source_check
-  check (source in ('works', 'production', 'kaizen', 'sales', 'contacts'));
+  check (source in ('works', 'production', 'constats', 'kaizen', 'sales', 'contacts'));

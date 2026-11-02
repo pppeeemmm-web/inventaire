@@ -4,6 +4,7 @@
 import type { DictKey } from '@/lib/i18n/dictionary'
 import type { Oeuvre } from '@/lib/types/database'
 import type { KaizenItem } from '@/lib/kaizen'
+import { ACTION_STATUS_KEY, GRADE_KEY, type ConditionReport } from '@/lib/condition'
 import type { SaleOrderRow } from '@/app/atelier/(portal)/sales/actions'
 import type { ReportContactRow } from '@/app/atelier/(portal)/reports/source-actions'
 import { yearOf } from '@/lib/data'
@@ -19,6 +20,8 @@ export type SourceCtx = {
   maps: ReportMaps
   pendingActions: Map<number, string[]>
   kaizenNames: Record<string, string>
+  conditionNames: Record<string, string>
+  worksById: Map<number, Oeuvre>
   worksByBuyer: Map<number, number>
   worksAtLocation: Map<number, number>
 }
@@ -33,6 +36,7 @@ export type SourceDef<R> = {
 export const SOURCE_LABEL: Record<ReportSource, DictKey> = {
   works: 'report_source_works',
   production: 'report_source_production',
+  constats: 'report_source_constats',
   kaizen: 'report_source_kaizen',
   sales: 'report_source_sales',
   contacts: 'report_source_contacts',
@@ -41,6 +45,7 @@ export const SOURCE_LABEL: Record<ReportSource, DictKey> = {
 export const SOURCE_HINT: Record<ReportSource, DictKey> = {
   works: 'report_source_works_hint',
   production: 'report_source_production_hint',
+  constats: 'report_source_constats_hint',
   kaizen: 'report_source_kaizen_hint',
   sales: 'report_source_sales_hint',
   contacts: 'report_source_contacts_hint',
@@ -137,6 +142,62 @@ function productionSource(c: SourceCtx): SourceDef<Oeuvre> {
     fields,
     defaults: config(['id', 'title', 'year', 'technique', 'support', 'dimensions', 'status', 'steps'], 'id'),
     rowKey: (o) => o.OeuvreID,
+  }
+}
+
+function constatsSource(c: SourceCtx): SourceDef<ConditionReport> {
+  const { t, locale, maps } = c
+  const work = (r: ConditionReport) => c.worksById.get(r.oeuvre_id)
+  const who = (r: ConditionReport) => orNull(r.examiner) ?? (r.author_id ? c.conditionNames[r.author_id] ?? null : null)
+  return {
+    id: 'constats',
+    fields: [
+      { id: 'examined_on', label: t('report_f_examined_on'), kind: 'date', value: (r) => r.examined_on, display: (r) => day(r.examined_on, locale) },
+      { id: 'work_id', label: t('report_col_id'), kind: 'number', value: (r) => r.oeuvre_id },
+      { id: 'work_title', label: t('report_col_title'), kind: 'text', value: (r) => orNull(work(r)?.Titre) },
+      {
+        id: 'technique',
+        label: t('report_col_technique'),
+        kind: 'enum',
+        value: (r) => {
+          const tech = work(r)?.Technique
+          return tech != null ? orNull(maps.tM[tech]) : null
+        },
+      },
+      { id: 'examiner', label: t('report_f_examiner'), kind: 'enum', value: who },
+      { id: 'grade', label: t('report_f_grade'), kind: 'enum', value: (r) => (r.grade ? t(GRADE_KEY[r.grade]) : null) },
+      { id: 'notes', label: t('report_col_notes'), kind: 'text', value: (r) => orNull(r.notes) },
+      { id: 'action', label: t('report_f_action'), kind: 'text', value: (r) => orNull(r.action) },
+      { id: 'action_status', label: t('report_f_action_status'), kind: 'enum', value: (r) => t(ACTION_STATUS_KEY[r.action_status]) },
+      { id: 'issues_count', label: t('report_f_issues_count'), kind: 'number', sum: true, value: (r) => r.issues.length },
+      {
+        id: 'issues',
+        label: t('report_f_issues'),
+        kind: 'text',
+        value: (r) => orNull(r.issues.map((i) => (i.location ? `${i.description} (${i.location})` : i.description)).join(' · ')),
+      },
+      { id: 'photos', label: t('report_f_photos'), kind: 'number', sum: true, value: (r) => r.issues.filter((i) => i.photo_key).length },
+      {
+        id: 'status',
+        label: t('report_col_status'),
+        kind: 'enum',
+        value: (r) => {
+          const sid = work(r)?.statusId
+          return sid != null ? orNull(maps.statusLabelMap[sid]) : null
+        },
+      },
+      {
+        id: 'location',
+        label: t('report_col_location'),
+        kind: 'text',
+        value: (r) => {
+          const o = work(r)
+          return o ? formatReportCell(o, 'location', maps, locale) : null
+        },
+      },
+    ],
+    defaults: config(['examined_on', 'work_id', 'work_title', 'grade', 'action_status', 'action', 'issues_count'], 'examined_on'),
+    rowKey: (r) => r.id,
   }
 }
 
@@ -266,7 +327,9 @@ export function buildSource(id: ReportSource, c: SourceCtx): SourceDef<unknown> 
       ? worksSource(c)
       : id === 'production'
         ? productionSource(c)
-        : id === 'kaizen'
+        : id === 'constats'
+          ? constatsSource(c)
+          : id === 'kaizen'
           ? kaizenSource(c)
           : id === 'sales'
             ? salesSource(c)

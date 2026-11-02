@@ -21,6 +21,8 @@ import { REPORT_PDF_MAX_ROWS, type ReportMaps } from '@/lib/reports/works-table'
 import { cellText, cleanConfig, isActiveFilter, runReport, type ReportConfig } from '@/lib/reports/engine'
 import { REPORT_SOURCES, parseReportSource, type ReportSource, type SavedReport } from '@/lib/reports/saved-report'
 import type { KaizenItem } from '@/lib/kaizen'
+import type { ConditionReport } from '@/lib/condition'
+import { listConditionReports } from '@/app/atelier/works/condition-actions'
 import type { Agg, Dim } from '@/lib/pivot'
 import { PivotPanel } from '@/components/atelier/PivotPanel'
 import { generateTablePdf } from '@/app/atelier/(portal)/reports/actions'
@@ -67,6 +69,7 @@ type Props = {
 type Loaded = {
   pendingActions?: Map<number, string[]>
   kaizen?: { items: KaizenItem[]; names: Record<string, string> }
+  constats?: { reports: ConditionReport[]; names: Record<string, string> }
   orders?: SaleOrderRow[]
   contacts?: ReportContactRow[]
 }
@@ -140,6 +143,7 @@ export function Reports({
     return m
   }, [oeuvres])
 
+  const worksById = useMemo(() => new Map(oeuvres.map((o) => [o.OeuvreID, o])), [oeuvres])
   const ctx: SourceCtx = useMemo(
     () => ({
       t,
@@ -147,10 +151,12 @@ export function Reports({
       maps,
       pendingActions: loaded.pendingActions ?? new Map(),
       kaizenNames: loaded.kaizen?.names ?? {},
+      conditionNames: loaded.constats?.names ?? {},
+      worksById,
       worksByBuyer,
       worksAtLocation,
     }),
-    [t, locale, maps, loaded.pendingActions, loaded.kaizen, worksByBuyer, worksAtLocation],
+    [t, locale, maps, loaded.pendingActions, loaded.kaizen, loaded.constats, worksById, worksByBuyer, worksAtLocation],
   )
   const def = useMemo(() => buildSource(source, ctx), [source, ctx])
   const config = cfg ?? def.defaults
@@ -161,6 +167,7 @@ export function Reports({
     return {
       pendingActions: showsSteps,
       kaizen: source === 'kaizen',
+      constats: source === 'constats',
       orders: source === 'sales',
       contacts: source === 'contacts',
     }
@@ -180,6 +187,15 @@ export function Reports({
           if (!live) return
           if ('error' in r) fail()
           else setLoaded((p) => ({ ...p, kaizen: { items: r.items, names: r.names } }))
+        })
+        .catch(fail)
+    }
+    if (needs.constats && !loaded.constats) {
+      listConditionReports()
+        .then((r) => {
+          if (!live) return
+          if ('error' in r) fail()
+          else setLoaded((p) => ({ ...p, constats: { reports: r.reports, names: r.names } }))
         })
         .catch(fail)
     }
@@ -211,6 +227,8 @@ export function Reports({
       }
       case 'kaizen':
         return loaded.kaizen?.items ?? null
+      case 'constats':
+        return loaded.constats?.reports ?? null
       case 'contacts':
         return loaded.contacts ?? null
       case 'sales': {

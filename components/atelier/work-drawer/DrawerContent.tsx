@@ -52,6 +52,7 @@ import { WorkFormPhysicalQr } from '@/components/atelier/WorkFormPhysicalQr'
 import { WorkProductionSpan } from './WorkProductionSpan'
 import { WorkCostBlock } from './WorkCostBlock'
 import { LinkedVoiceNotes } from '@/components/atelier/LinkedVoiceNotes'
+import { ConditionReportsSection } from './ConditionReportsSection'
 import { normalizeAnonymityLevel } from '@/lib/anonymity-level'
 
 function withCacheKey(src: string, cacheKey?: string): string {
@@ -1370,6 +1371,8 @@ export function DrawerContent({
         <WorkCostBlock oeuvreId={o.OeuvreID} isAdmin={isAdmin} catalogPrice={o.Prix ?? null} />
 
         <LinkedVoiceNotes field="oeuvre_id" value={o.OeuvreID} />
+
+        <ConditionReportsSection oeuvreId={o.OeuvreID} />
 
         <DrawerContentGroupsSection t={t} initialGroups={initialGroups} selGroups={selGroups} setSelGroups={setSelGroups} />
 

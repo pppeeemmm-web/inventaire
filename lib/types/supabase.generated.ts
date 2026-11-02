@@ -218,6 +218,94 @@ export type Database = {
           },
         ]
       }
+      condition_issue: {
+        Row: {
+          author_id: string | null
+          created_at: string
+          description: string
+          id: number
+          location: string | null
+          photo_key: string | null
+          report_id: number
+        }
+        Insert: {
+          author_id?: string | null
+          created_at?: string
+          description: string
+          id?: never
+          location?: string | null
+          photo_key?: string | null
+          report_id: number
+        }
+        Update: {
+          author_id?: string | null
+          created_at?: string
+          description?: string
+          id?: never
+          location?: string | null
+          photo_key?: string | null
+          report_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "condition_issue_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "condition_report"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      condition_report: {
+        Row: {
+          action: string | null
+          action_status: string
+          author_id: string | null
+          created_at: string
+          examined_on: string
+          examiner: string | null
+          grade: string | null
+          id: number
+          notes: string | null
+          oeuvre_id: number
+          updated_at: string
+        }
+        Insert: {
+          action?: string | null
+          action_status?: string
+          author_id?: string | null
+          created_at?: string
+          examined_on?: string
+          examiner?: string | null
+          grade?: string | null
+          id?: never
+          notes?: string | null
+          oeuvre_id: number
+          updated_at?: string
+        }
+        Update: {
+          action?: string | null
+          action_status?: string
+          author_id?: string | null
+          created_at?: string
+          examined_on?: string
+          examiner?: string | null
+          grade?: string | null
+          id?: never
+          notes?: string | null
+          oeuvre_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "condition_report_oeuvre_id_fkey"
+            columns: ["oeuvre_id"]
+            isOneToOne: false
+            referencedRelation: "Oeuvres"
+            referencedColumns: ["OeuvreID"]
+          },
+        ]
+      }
       consignment_order: {
         Row: {
           catalog_price: number | null
@@ -2562,6 +2650,7 @@ export type Database = {
           audio_r2_key: string | null
           bucket: string
           concept_id: string | null
+          condition_report_id: number | null
           created_at: string
           duration_ms: number | null
           id: string
@@ -2580,6 +2669,7 @@ export type Database = {
           audio_r2_key?: string | null
           bucket?: string
           concept_id?: string | null
+          condition_report_id?: number | null
           created_at?: string
           duration_ms?: number | null
           id?: string
@@ -2598,6 +2688,7 @@ export type Database = {
           audio_r2_key?: string | null
           bucket?: string
           concept_id?: string | null
+          condition_report_id?: number | null
           created_at?: string
           duration_ms?: number | null
           id?: string
@@ -2617,6 +2708,13 @@ export type Database = {
             columns: ["concept_id"]
             isOneToOne: false
             referencedRelation: "concept"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voice_note_condition_report_id_fkey"
+            columns: ["condition_report_id"]
+            isOneToOne: false
+            referencedRelation: "condition_report"
             referencedColumns: ["id"]
           },
           {

@@ -194,6 +194,38 @@ export function NoteTriagePanel({
         )}
       </div>
 
+      {/* Constat — created on the linked work, transcript as its notes */}
+      <div data-testid="notes-triage-constat">
+        <div className="t-label" style={{ marginBottom: 6 }}>{t('notes_triage_constat')}</div>
+        {note.condition_report_id != null ? (
+          <div style={linkedBox}>
+            <span>
+              {t('notes_triage_constat_linked_fmt')
+                .replace('{id}', String(note.condition_report_id))
+                .replace('{work}', String(note.oeuvre_id ?? '—'))}
+            </span>
+            {note.oeuvre_id != null ? (
+              <Link href={`/atelier/inventory?work=${note.oeuvre_id}`} className="btn ghost sm">{t('notes_triage_open')}</Link>
+            ) : null}
+            <button type="button" className="btn ghost sm" disabled={busy} onClick={() => void run({ condition_report_id: null })}>
+              {t('notes_triage_unlink')}
+            </button>
+          </div>
+        ) : note.oeuvre_id != null ? (
+          <button
+            type="button"
+            className="btn sm"
+            disabled={busy}
+            data-testid="notes-triage-constat-create"
+            onClick={() => void run({ new_condition_report: true }, t('notes_triage_constat_created'))}
+          >
+            {t('notes_triage_constat_create_fmt').replace('{id}', String(note.oeuvre_id))}
+          </button>
+        ) : (
+          <p style={{ fontSize: 12, color: 'var(--tx3)', margin: 0 }}>{t('notes_triage_constat_needs_work')}</p>
+        )}
+      </div>
+
       {/* Projet */}
       <div>
         <div className="t-label" style={{ marginBottom: 6 }}>{t('notes_triage_process')}</div>
