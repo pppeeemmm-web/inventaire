@@ -45,3 +45,20 @@ export async function fetchNonOkOeuvreEmbeddingStatuses(): Promise<OeuvreEmbeddi
   }
   return out
 }
+
+/** Nodes of every type still waiting for the embed worker (Overview indexing card). */
+export async function countEmbeddingBacklog(): Promise<number | null> {
+  const { error: authErr, supabase } = await guardTeam()
+  if (authErr || !supabase) return null
+
+  const { count, error } = await supabase
+    .from('nodes')
+    .select('node_id', { count: 'exact', head: true })
+    .in('embedding_status', [...BADGE_EMBEDDING_STATUSES])
+
+  if (error) {
+    console.error('[embedding-status]', error.message)
+    return null
+  }
+  return count ?? 0
+}

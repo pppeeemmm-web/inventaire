@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { listUnreadSuiviReminders, markSuiviReminderRead } from '@/app/atelier/reminders-actions'
 import { useI18n } from '@/lib/i18n/context'
 import { WorkThumb } from '@/components/atelier/WorkThumb'
+import { EmbeddingIndexCard } from '@/components/atelier/overview/EmbeddingIndexCard'
 import type { Oeuvre, SuiviReminderListRow } from '@/lib/types/database'
 import type { AtelierOverviewBootstrap } from '@/components/atelier/team-portal-types'
 import { yearOf } from '@/lib/data'
@@ -425,6 +426,8 @@ export function OverviewTab({
             </div>
           )}
         </div>
+
+        {isAdmin && <EmbeddingIndexCard t={t} />}
 
         {/* Integrity Sentry (Admin Only) */}
         {isAdmin && conflicts.length > 0 && (

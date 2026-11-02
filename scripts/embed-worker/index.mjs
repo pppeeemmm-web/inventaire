@@ -14,6 +14,8 @@ import {
 const args = process.argv.slice(2)
 const once = args.includes('--once')
 const watch = args.includes('--watch')
+/** Run passes until a pass embeds nothing, then exit (Overview "Run indexing" button). */
+const drain = args.includes('--drain')
 const audit = args.includes('--audit')
 const reembedAll = args.includes('--reembed-all')
 const limitArg = args.find((a) => a.startsWith('--limit='))
@@ -231,6 +233,17 @@ async function main() {
         throw err
       }
     }
+  }
+
+  if (drain) {
+    let total = 0
+    for (;;) {
+      const n = await runPass(supabase)
+      total += n
+      if (n === 0) break
+    }
+    console.log(`[embed-worker] drained: ${total} embedded`)
+    return
   }
 
   const n = await runPass(supabase)

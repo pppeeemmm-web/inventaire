@@ -23,10 +23,25 @@ From repo root:
 
 ```bash
 npm run embed:worker -- --once --limit=5
+npm run embed:worker -- --drain
 npm run embed:worker -- --watch
 npm run embed:worker -- --audit
 npm run embed:worker -- --reembed-all
 ```
+
+`--once` = one batch (32). `--drain` = batches until one embeds nothing, then exit.
+
+## Overview button
+
+Atelier Overview (admin) has a **Search indexing** card: backlog count + **Run indexing**,
+a `pem-embed:run` link. It works only on a PC where the protocol is registered (once, per user, HKCU):
+
+```powershell
+pwsh scripts/register-embed-protocol.ps1          # -Unregister to remove
+```
+
+The protocol opens `scripts/embed-run.ps1` (`--drain`, window closes 10s after success).
+The URL is not passed to the script. The card re-polls the count every 5s for up to 5 min.
 
 ## Behaviour
 

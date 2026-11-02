@@ -57,4 +57,15 @@ export const overviewConsoleMessages = defineMessages({
   ov_health_missing_support: { fr: 'Support manquant', en: 'Missing support' },
   ov_health_missing_year: { fr: 'Année manquante', en: 'Missing year' },
   ov_health_missing_title: { fr: 'Sans titre', en: 'Untitled' },
+  ov_index_title: { fr: 'Indexation recherche', en: 'Search indexing' },
+  ov_index_pending: { fr: '{n} en attente', en: '{n} waiting' },
+  ov_index_clear: { fr: 'Tout est indexé.', en: 'Everything is indexed.' },
+  ov_index_run: { fr: "Lancer l'indexation", en: 'Run indexing' },
+  ov_index_running: { fr: 'Indexation en cours…', en: 'Indexing…' },
+  ov_index_copy: { fr: 'Copier la commande', en: 'Copy command' },
+  ov_index_copied: { fr: 'Copié', en: 'Copied' },
+  ov_index_hint: {
+    fr: 'Lance le worker sur ce PC (Ollama). Installation unique : scripts/register-embed-protocol.ps1.',
+    en: 'Runs the worker on this PC (Ollama). One-time setup: scripts/register-embed-protocol.ps1.',
+  },
 })
