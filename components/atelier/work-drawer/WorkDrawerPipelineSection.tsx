@@ -3,7 +3,7 @@
 import type { Dispatch, SetStateAction } from 'react'
 import { useMemo } from 'react'
 import { useI18n } from '@/lib/i18n/context'
-import type { OwnStageId, ProdStageId } from '@/lib/work-editor-model'
+import { PROD_STAGE_COLOR, type OwnStageId, type ProdStageId } from '@/lib/work-editor-model'
 import type { DrawerContactRow } from './drawer-content-props'
 import type { ContactAddress } from '@/components/atelier/contact-editor-types'
 import { LocationAddressPicker } from '@/components/atelier/LocationAddressPicker'
@@ -99,7 +99,7 @@ export function WorkDrawerPipelineSection({
             if (isOwnershipTransferred || isArchived) return
             setProdStage(id as ProdStageId)
           }}
-          color="var(--sage)"
+          color={PROD_STAGE_COLOR[prodStage]}
         />
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 12 }}>
           <WfSwitch

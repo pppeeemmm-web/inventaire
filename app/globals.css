@@ -31,6 +31,7 @@
   --rust: oklch(0.72 0.16 35);
   --sage: oklch(0.78 0.1 140);
   --dust: oklch(0.76 0.06 60);
+  --yellow: oklch(0.86 0.15 95);
   --green: #80a060;
 }
 
@@ -52,6 +53,7 @@
   --rust: oklch(0.6 0.16 35);
   --sage: oklch(0.65 0.1 140);
   --dust: oklch(0.65 0.06 60);
+  --yellow: oklch(0.68 0.15 90);
   color-scheme: light;
 }
 
@@ -74,6 +76,7 @@
   --rust: oklch(0.5 0.14 35);
   --sage: oklch(0.52 0.08 140);
   --dust: oklch(0.52 0.05 60);
+  --yellow: oklch(0.55 0.13 90);
   --green: #5a7038;
   color-scheme: light;
 }
@@ -191,6 +194,7 @@ input, textarea, select { font: inherit; color: inherit; background: transparent
 .chip.rust   { border-color: var(--rust); color: var(--rust); background: color-mix(in srgb, var(--rust) 12%, transparent); }
 .chip.sage   { border-color: var(--sage); color: var(--sage); background: color-mix(in srgb, var(--sage) 12%, transparent); }
 .chip.dust   { border-color: var(--dust); color: var(--dust); background: color-mix(in srgb, var(--dust) 12%, transparent); }
+.chip.yellow { border-color: var(--yellow); color: var(--yellow); background: color-mix(in srgb, var(--yellow) 12%, transparent); }
 .chip.mt     { border-color: var(--mt);   color: var(--tx3);  background: color-mix(in srgb, var(--mt) 12%, transparent); }
 
 /* ── Input / Select ──────────────────────────────────────── */

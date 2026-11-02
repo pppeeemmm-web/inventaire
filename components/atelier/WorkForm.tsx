@@ -41,6 +41,7 @@ import {
   computeStatusId as computeWorkStatusId,
   ownStageFromStatusId,
   prodStageFromOeuvre,
+  PROD_STAGE_COLOR,
   type OwnStageId,
   type ProdStageId,
 } from '@/lib/work-editor-model'
@@ -738,7 +739,7 @@ export function WorkForm({
               <PipeProgress stages={PRODUCTION_STAGES} current={prodStage} onSelect={(id) => {
                 if (isOwnershipTransferred || isArchived) return
                 setProdStage(id as ProdStageId)
-              }} color="var(--sage)" />
+              }} color={PROD_STAGE_COLOR[prodStage]} />
               <div style={{ display: 'flex', gap: 32, marginTop: 20 }}>
                 <Switch label={t('wf_photo_required')} checked={needsPhoto} onChange={v => {
                   if (isOwnershipTransferred || isArchived) return

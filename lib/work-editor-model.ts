@@ -6,6 +6,13 @@
 import type { Oeuvre } from '@/lib/types/database'
 
 export type ProdStageId = 'atelier' | 'catalogued' | 'available'
+
+/** Stepper colour per production stage — matches the Inventory state pill (rust / yellow / sage). */
+export const PROD_STAGE_COLOR: Record<ProdStageId, string> = {
+  atelier: 'var(--rust)',
+  catalogued: 'var(--yellow)',
+  available: 'var(--sage)',
+}
 export type OwnStageId =
   | 'artist'
   | 'reserved'

@@ -14,5 +14,7 @@ interface Props {
 
 export function WorkStateChip({ o, statusLabelMap }: Props) {
   const st = statusOf(o, statusLabelMap)
-  return <StatusChip s={st} />
+  // Catalogued but still in production (explicit status or photo pending) → yellow, not rust.
+  const cls = st === 'en_production' && o.Catalogué ? 'yellow' : undefined
+  return <StatusChip s={st} cls={cls} />
 }

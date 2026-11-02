@@ -15,7 +15,7 @@ const MAP: Record<StatusKey, { cls: string; lbl: string }> = {
   private_archive: { cls: 'mt',   lbl: 'Archive privée'},
 }
 
-export function StatusChip({ s }: { s: StatusKey }) {
+export function StatusChip({ s, cls }: { s: StatusKey; cls?: string }) {
   const m = MAP[s] ?? MAP.en_production
-  return <span className={`chip ${m.cls}`}>{m.lbl}</span>
+  return <span className={`chip ${cls ?? m.cls}`}>{m.lbl}</span>
 }
