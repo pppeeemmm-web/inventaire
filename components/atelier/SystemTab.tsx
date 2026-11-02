@@ -132,7 +132,8 @@ function LedgerThumb({
   )
 }
 
-export function SystemTab() {
+/** `embedded`: shown inside Kaizen → Système (no own title; Kaizen supplies the frame and padding). */
+export function SystemTab({ embedded = false }: { embedded?: boolean } = {}) {
   const { t, lang } = useI18n()
   const narrow = useMediaQuery('(max-width: 767px)')
   const [logs, setLogs] = useState<LogEntry[]>([])
@@ -486,10 +487,10 @@ export function SystemTab() {
     )
   }
 
-  const headerPad = narrow ? '16px 16px' : '32px 40px'
+  const headerPad = embedded ? 0 : narrow ? '16px 16px' : '32px 40px'
 
   return (
-    <div style={{ flex: 1, padding: headerPad, overflow: 'auto', background: 'var(--bg0)' }}>
+    <div style={{ flex: 1, padding: headerPad, overflow: embedded ? undefined : 'auto', background: embedded ? undefined : 'var(--bg0)' }}>
       <input
         ref={attachFileRef}
         type="file"
@@ -515,16 +516,20 @@ export function SystemTab() {
           }}
         >
           <div>
-            <h2 data-testid="system-ledger-heading" className="serif" style={{ fontSize: narrow ? 26 : 32, marginBottom: 8 }}>
-              {t('system_ledger_title')}
-            </h2>
+            {embedded ? null : (
+              <h2 data-testid="system-ledger-heading" className="serif" style={{ fontSize: narrow ? 26 : 32, marginBottom: 8 }}>
+                {t('system_ledger_title')}
+              </h2>
+            )}
             <p className="t-mono-sm" style={{ color: 'var(--tx3)' }}>
               {t('system_ledger_subtitle')}
             </p>
-            <p data-testid="system-ledger-kaizen-note" style={{ fontSize: 12, color: 'var(--tx2)', marginTop: 8 }}>
-              {t('system_ledger_moved_to_kaizen')}{' '}
-              <Link href="/atelier/kaizen" style={{ color: 'var(--ac)' }}>{t('system_ledger_open_kaizen')}</Link>
-            </p>
+            {embedded ? null : (
+              <p data-testid="system-ledger-kaizen-note" style={{ fontSize: 12, color: 'var(--tx2)', marginTop: 8 }}>
+                {t('system_ledger_moved_to_kaizen')}{' '}
+                <Link href="/atelier/kaizen" style={{ color: 'var(--ac)' }}>{t('system_ledger_open_kaizen')}</Link>
+              </p>
+            )}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: narrow ? 'stretch' : 'flex-end', gap: 8 }}>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: narrow ? 'flex-start' : 'flex-end' }}>

@@ -12,7 +12,8 @@ test.describe('System tab — ledger reference MD', () => {
 
   test('copy and download controls are visible on System tab', async ({ page }) => {
     await page.goto('/atelier/system', { waitUntil: 'domcontentloaded' })
-    await expect(page.getByTestId('system-ledger-heading')).toBeVisible({ timeout: 45_000 })
+    // /atelier/system redirects to Kaizen → Système (2026-11-02); the embedded ledger has no own heading.
+    await expect(page.getByTestId('kaizen-system')).toBeVisible({ timeout: 45_000 })
     await expect(page.getByTestId('system-ledger-ref-copy')).toBeVisible()
     await expect(page.getByTestId('system-ledger-ref-download')).toBeVisible()
     await expect(page.getByTestId('system-ledger-attach-trigger')).toBeVisible()
@@ -21,7 +22,8 @@ test.describe('System tab — ledger reference MD', () => {
   test('copy places markdown in clipboard', async ({ page, context }) => {
     await context.grantPermissions(['clipboard-read', 'clipboard-write'])
     await page.goto('/atelier/system', { waitUntil: 'domcontentloaded' })
-    await expect(page.getByTestId('system-ledger-heading')).toBeVisible({ timeout: 45_000 })
+    // /atelier/system redirects to Kaizen → Système (2026-11-02); the embedded ledger has no own heading.
+    await expect(page.getByTestId('kaizen-system')).toBeVisible({ timeout: 45_000 })
     await page.getByTestId('system-ledger-ref-copy').click()
     await expect(page.getByRole('status')).toContainText(/clipboard|presse-papiers/i, { timeout: 15_000 })
     const clip = await page.evaluate(() => navigator.clipboard.readText())

@@ -749,7 +749,7 @@ export function TeamPortalClient({
   const [ledgerActivityCount, setLedgerActivityCount] = useState(0)
 
   // Journal badge: team activity by OTHER users since this device's last Journal
-  // visit. System badge: new manual ledger entries since last System visit.
+  // visit. Kaizen badge: new System ledger + Kaizen entries since last Kaizen visit.
   // Last-seen cursors are per-device (localStorage) — no schema change.
   useEffect(() => {
     let cancelled = false
@@ -773,7 +773,7 @@ export function TeamPortalClient({
     if (tab === 'journal') {
       localStorage.setItem(TEAM_ACTIVITY_SEEN_KEY, new Date().toISOString())
       setTeamActivityCount(0)
-    } else if (tab === 'system') {
+    } else if (tab === 'kaizen') {
       localStorage.setItem(LEDGER_SEEN_KEY, new Date().toISOString())
       setLedgerActivityCount(0)
     }
@@ -1020,8 +1020,8 @@ export function TeamPortalClient({
       ['stock',         t('tab_stock')],
       ['notes',         t('tab_notes')],
       ['journal',       t('tab_journal'), teamActivityCount > 0 ? teamActivityCount : undefined],
-      ['kaizen',        t('tab_kaizen')],
-      ['system',        t('tab_system'), ledgerActivityCount > 0 ? ledgerActivityCount : undefined],
+      ['kaizen',        t('tab_kaizen'), ledgerActivityCount > 0 ? ledgerActivityCount : undefined],
+      ['system',        t('tab_system')],
       [
         'audit',
         t('tab_audit'),
@@ -1069,19 +1069,20 @@ export function TeamPortalClient({
   // ── Tab definitions (GROUPS) ───────────────────────────────────
 
   /** 6 rooms — same structure on narrow and wide; narrow puts Field first. */
-  const adminTabs: Tab[] = isAdmin ? ['system', 'audit'] : ['system']
+  // System lives inside Kaizen (Opérations & Stratégie → Système) since 2026-11-02.
+  const adminTabs: Tab[] = isAdmin ? ['audit'] : []
   // Diffusion (broadcast) is about what goes public — Public room, still admin-only.
   const publicTabs: Tab[] = isAdmin ? ['site', 'portfolio', 'analytics', 'broadcast'] : ['site', 'portfolio', 'analytics']
   // Kaizen stands alone (no group label): top of the sidebar on desktop, right after Terrain on phone.
   const kaizenGroup = { label: '', tabs: ['kaizen'] as Tab[] }
-  const fieldGroup = { label: t('nav_group_field'), tabs: ['inventory', 'production', 'journal', 'notes', 'map'] as Tab[] }
+  const fieldGroup = { label: t('nav_group_field'), tabs: ['inventory', 'production', 'journal', 'notes'] as Tab[] }
   const GROUPS: { label: string; tabs: Tab[] }[] = [
     ...(atelierNarrow ? [fieldGroup, kaizenGroup] : [kaizenGroup, fieldGroup]),
     { label: t('nav_group_studio'),       tabs: ['overview', 'pipeline', 'exhibitions', 'concepts', 'stock'] },
     { label: t('nav_group_catalogue'),    tabs: ['reports', 'themes', 'constellation'] },
-    { label: t('nav_group_commercial'),   tabs: ['sales', 'logistics', 'fiscal', 'vault'] },
+    { label: t('nav_group_commercial'),   tabs: ['sales', 'contacts', 'map', 'logistics', 'fiscal', 'vault'] },
     { label: t('nav_group_public_tab'),   tabs: publicTabs },
-    { label: t('nav_group_admin'),        tabs: ['contacts', ...adminTabs] },
+    { label: t('nav_group_admin'),        tabs: adminTabs },
   ]
 
   const activeTab = effectiveRouteTab ?? tab
@@ -1412,7 +1413,7 @@ export function TeamPortalClient({
             </div>
             <div ref={sidebarNavScrollRef} className="pem-atelier-sidebar-nav-scroll">
               <div data-testid="atelier-nav-groups" className="pem-atelier-sidebar-nav-inner">
-                {GROUPS.map((g) => (
+                {GROUPS.filter((g) => g.tabs.length > 0).map((g) => (
                   <div key={g.label || g.tabs.join('-')} className="pem-atelier-sidebar-group">
                     {g.label ? <div className="t-eyebrow pem-atelier-sidebar-eyebrow">{g.label}</div> : null}
                     <div className="pem-atelier-sidebar-tabs">

@@ -5,6 +5,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
 import { useMediaQuery } from '@/lib/useMediaQuery'
@@ -19,7 +20,10 @@ import {
   updateKaizen,
 } from '@/app/atelier/(portal)/kaizen/actions'
 
-type View = KaizenSection | 'review'
+// 'system' = the former System tab (bugs / maintenance log + site tools), folded in 2026-11-02.
+type View = KaizenSection | 'review' | 'system'
+
+const SystemTab = dynamic(() => import('@/components/atelier/SystemTab').then((m) => ({ default: m.SystemTab })), { ssr: false })
 
 const SECTION_KEY = {
   creation: 'kaizen_section_creation',
@@ -28,7 +32,7 @@ const SECTION_KEY = {
 } as const
 
 function parseView(raw: string | null): View | null {
-  return raw === 'review' || (KAIZEN_SECTIONS as readonly string[]).includes(raw ?? '') ? (raw as View) : null
+  return raw === 'review' || raw === 'system' || (KAIZEN_SECTIONS as readonly string[]).includes(raw ?? '') ? (raw as View) : null
 }
 
 export function Kaizen() {
@@ -96,10 +100,10 @@ export function Kaizen() {
   }, [items, pending, view, stack, q])
   const stackCount = (done: boolean) => items.filter((i) => i.section === view && !!i.done_at === done).length
   const countOf = (s: KaizenSection) => items.filter((i) => i.section === s && !i.done_at).length
-  const opsView = view === 'website' || view === 'business'
+  const opsView = view === 'website' || view === 'business' || view === 'system'
 
   async function add() {
-    if (!newTitle.trim() || view === 'review') return
+    if (!newTitle.trim() || view === 'review' || view === 'system') return
     setBusy(true)
     const res = await createKaizen({ title: newTitle, body: newBody, section: view })
     setBusy(false)
@@ -172,7 +176,7 @@ export function Kaizen() {
       {count > 0 ? <span className="t-mono-sm" style={{ fontSize: 11, marginLeft: 6, color: 'var(--tx3)' }}>{count}</span> : null}
     </button>
   )
-  const subTab = (v: KaizenSection, label: string) => (
+  const subTab = (v: KaizenSection | 'system', label: string, count = 0) => (
     <button
       key={v}
       type="button"
@@ -192,7 +196,7 @@ export function Kaizen() {
         color: view === v ? 'var(--bg1)' : 'var(--tx2)',
       }}
     >
-      {label}{countOf(v) > 0 ? ` · ${countOf(v)}` : ''}
+      {label}{count > 0 ? ` · ${count}` : ''}
     </button>
   )
   const stackBtn = (s: 'live' | 'done', label: string) => (
@@ -244,11 +248,17 @@ export function Kaizen() {
       </div>
       {opsView ? (
         <div role="tablist" style={{ display: 'flex', gap: 8, padding: narrow ? '10px 12px 0' : '12px 28px 0', overflowX: 'auto' }}>
-          {subTab('website', t('kaizen_section_website'))}
-          {subTab('business', t('kaizen_section_business'))}
+          {subTab('website', t('kaizen_section_website'), countOf('website'))}
+          {subTab('business', t('kaizen_section_business'), countOf('business'))}
+          {subTab('system', t('tab_system'))}
         </div>
       ) : null}
 
+      {view === 'system' ? (
+        <div data-testid="kaizen-system" style={{ flex: 1, overflow: 'auto', padding: narrow ? '12px' : '16px 28px', display: 'flex', flexDirection: 'column' }}>
+          <SystemTab embedded />
+        </div>
+      ) : (
       <div style={{ flex: 1, overflow: 'auto', padding: narrow ? '12px' : '16px 28px' }}>
         {view === 'creation' ? (
           <p style={{ fontSize: 12, color: 'var(--tx3)', margin: '0 0 12px' }}>{t('kaizen_section_creation_hint')}</p>
@@ -372,6 +382,7 @@ export function Kaizen() {
           })
         )}
       </div>
+      )}
     </div>
   )
 }

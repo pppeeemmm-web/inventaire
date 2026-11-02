@@ -20,7 +20,8 @@ export async function countTeamActivitySince(
   const iso = since.toISOString()
   const ledgerSince = new Date(ledgerSinceIso ?? sinceIso)
   const ledgerIso = Number.isNaN(ledgerSince.getTime()) ? iso : ledgerSince.toISOString()
-  const [works, sessions, ledger] = await Promise.all([
+  // `ledger` = Kaizen badge: new System ledger entries + Kaizen entries by others (System lives in Kaizen).
+  const [works, sessions, ledger, kaizen] = await Promise.all([
     sb
       .from('Oeuvres')
       .select('OeuvreID', { count: 'exact', head: true })
@@ -36,10 +37,15 @@ export async function countTeamActivitySince(
       .select('id', { count: 'exact', head: true })
       .is('event_type', null)
       .gt('created_at', ledgerIso),
+    sb
+      .from('kaizen_item')
+      .select('id', { count: 'exact', head: true })
+      .gt('created_at', ledgerIso)
+      .neq('author_id', user.id),
   ])
   if (works.error && sessions.error && ledger.error) return { error: works.error.message }
   return {
     journal: (works.count ?? 0) + (sessions.count ?? 0),
-    ledger: ledger.count ?? 0,
+    ledger: (ledger.count ?? 0) + (kaizen.count ?? 0),
   }
 }
