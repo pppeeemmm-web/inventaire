@@ -35,6 +35,7 @@ import { fetchOeuvresKeysetPage, fetchOeuvresInitialKeysetPage, fetchOeuvreById 
 import { tabNeedsCatalogueChunkOnColdStart } from '@/lib/atelier/atelier-catalogue-tabs'
 import { revalidateRemindersTag } from '@/app/atelier/reminders-actions'
 import { countTeamActivitySince } from '@/app/atelier/team-activity-actions'
+import { kaizenUnseenCounts } from '@/app/atelier/(portal)/kaizen/actions'
 import { fetchAtelierShellPostPaint, fetchAtelierJunctionHydrationForOeuvreIds } from '@/app/atelier/atelier-data-actions'
 import type { AtelierJunctionDerived } from '@/lib/atelier/atelier-junction-bootstrap'
 import {
@@ -53,7 +54,6 @@ import { VoiceNoteSheet } from '@/components/shared/VoiceNoteSheet'
 import { triggerStudioBibleDownload } from '@/lib/studio-bible-download'
 
 const TEAM_ACTIVITY_SEEN_KEY = 'pem_team_activity_seen_at'
-const LEDGER_SEEN_KEY = 'pem_ledger_seen_at'
 
 function TabPanelFallback() {
   const { t } = useI18n()
@@ -746,11 +746,11 @@ export function TeamPortalClient({
   const [tab,            setTab]          = useState<Tab>('overview')
   const [reminderCount,  setReminderCount] = useState(initialReminderUnread)
   const [teamActivityCount, setTeamActivityCount] = useState(0)
-  const [ledgerActivityCount, setLedgerActivityCount] = useState(0)
+  const [kaizenUnseen, setKaizenUnseen] = useState({ creation: 0, ops: 0 })
 
   // Journal badge: team activity by OTHER users since this device's last Journal
-  // visit. Kaizen badge: new System ledger + Kaizen entries since last Kaizen visit.
-  // Last-seen cursors are per-device (localStorage) — no schema change.
+  // visit (per-device cursor in localStorage). Kaizen badges: entries others added
+  // since I last opened each Kaizen entry (per user, `kaizen_seen`), refreshed on tab change.
   useEffect(() => {
     let cancelled = false
     const readSince = (key: string) => {
@@ -761,10 +761,9 @@ export function TeamPortalClient({
       }
       return v
     }
-    void countTeamActivitySince(readSince(TEAM_ACTIVITY_SEEN_KEY), readSince(LEDGER_SEEN_KEY)).then((r) => {
+    void countTeamActivitySince(readSince(TEAM_ACTIVITY_SEEN_KEY)).then((r) => {
       if (cancelled || 'error' in r) return
       setTeamActivityCount(r.journal)
-      setLedgerActivityCount(r.ledger)
     }).catch(() => { /* badges stay 0 */ })
     return () => { cancelled = true }
   }, [])
@@ -773,10 +772,17 @@ export function TeamPortalClient({
     if (tab === 'journal') {
       localStorage.setItem(TEAM_ACTIVITY_SEEN_KEY, new Date().toISOString())
       setTeamActivityCount(0)
-    } else if (tab === 'kaizen') {
-      localStorage.setItem(LEDGER_SEEN_KEY, new Date().toISOString())
-      setLedgerActivityCount(0)
     }
+    // Opening a Kaizen entry marks it seen (Kaizen.tsx calls markKaizenSeen); the other one refreshes.
+    let cancelled = false
+    void kaizenUnseenCounts().then((r) => {
+      if (cancelled || 'error' in r) return
+      setKaizenUnseen({
+        creation: tab === 'kaizen' ? 0 : r.creation,
+        ops: tab === 'kaizen-ops' ? 0 : r.ops,
+      })
+    }).catch(() => { /* badges stay as they were */ })
+    return () => { cancelled = true }
   }, [tab])
 
   useLayoutEffect(() => {
@@ -1020,7 +1026,8 @@ export function TeamPortalClient({
       ['stock',         t('tab_stock')],
       ['notes',         t('tab_notes')],
       ['journal',       t('tab_journal'), teamActivityCount > 0 ? teamActivityCount : undefined],
-      ['kaizen',        t('tab_kaizen'), ledgerActivityCount > 0 ? ledgerActivityCount : undefined],
+      ['kaizen',        t('kaizen_section_creation'), kaizenUnseen.creation > 0 ? kaizenUnseen.creation : undefined],
+      ['kaizen-ops',    t('kaizen_group_ops'), kaizenUnseen.ops > 0 ? kaizenUnseen.ops : undefined],
       ['system',        t('tab_system')],
       [
         'audit',
@@ -1028,7 +1035,7 @@ export function TeamPortalClient({
         isAdmin && pendingReviewCount > 0 ? pendingReviewCount : undefined,
       ],
     ],
-    [t, oeuvresCatalogueCount, contacts.length, isAdmin, pendingReviewCount, teamActivityCount, ledgerActivityCount],
+    [t, oeuvresCatalogueCount, contacts.length, isAdmin, pendingReviewCount, teamActivityCount, kaizenUnseen],
   )
 
   const activeTabLabel = TABS_RAW.find((x) => x[0] === tab)?.[1] ?? ''
@@ -1074,7 +1081,7 @@ export function TeamPortalClient({
   // Diffusion (broadcast) is about what goes public — Public room, still admin-only.
   const publicTabs: Tab[] = isAdmin ? ['site', 'portfolio', 'analytics', 'broadcast'] : ['site', 'portfolio', 'analytics']
   // Kaizen stands alone (no group label): top of the sidebar on desktop, right after Terrain on phone.
-  const kaizenGroup = { label: '', tabs: ['kaizen'] as Tab[] }
+  const kaizenGroup = { label: t('tab_kaizen'), tabs: ['kaizen', 'kaizen-ops'] as Tab[] }
   const fieldGroup = { label: t('nav_group_field'), tabs: ['inventory', 'production', 'journal', 'notes'] as Tab[] }
   const GROUPS: { label: string; tabs: Tab[] }[] = [
     ...(atelierNarrow ? [fieldGroup, kaizenGroup] : [kaizenGroup, fieldGroup]),

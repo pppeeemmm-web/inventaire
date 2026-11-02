@@ -14,6 +14,7 @@ export const ATELIER_TABS_WITHOUT_CATALOGUE_CHUNK: ReadonlySet<SegmentedAtelierT
   'journal',
   'analytics',
   'kaizen',
+  'kaizen-ops',
 ])
 
 /** True when first paint should include the œuvres keyset chunk (or client hydrate). */

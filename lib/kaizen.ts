@@ -20,3 +20,11 @@ export type KaizenItem = {
 export function parseKaizenSection(raw: unknown): KaizenSection | null {
   return typeof raw === 'string' && (KAIZEN_SECTIONS as readonly string[]).includes(raw) ? (raw as KaizenSection) : null
 }
+
+/** Sidebar entries under the Kaizen group: Création, and Opérations & Stratégie (Système + Business). */
+export type KaizenScope = 'creation' | 'ops'
+
+/** Entries waiting for review (section null) count under Opérations & Stratégie. */
+export function kaizenScopeOf(section: KaizenSection | null): KaizenScope {
+  return section === 'creation' ? 'creation' : 'ops'
+}

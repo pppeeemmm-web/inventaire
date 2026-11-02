@@ -1018,6 +1018,24 @@ export type Database = {
         }
         Relationships: []
       }
+      kaizen_seen: {
+        Row: {
+          scope: string
+          seen_at: string
+          user_id: string
+        }
+        Insert: {
+          scope: string
+          seen_at?: string
+          user_id?: string
+        }
+        Update: {
+          scope?: string
+          seen_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       nodes: {
         Row: {
           created_at: string

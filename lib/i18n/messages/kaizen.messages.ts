@@ -32,6 +32,7 @@ export const kaizenMessages = defineMessages({
   kaizen_review_confirm_all_fmt: { fr: 'Tout valider ({n})', en: 'Confirm all ({n})' },
   kaizen_review_done: { fr: 'Rubriques validées', en: 'Sections confirmed' },
   kaizen_new: { fr: '+ Nouvelle entrée', en: '+ New entry' },
+  kaizen_new_badge: { fr: 'Nouveau', en: 'New' },
   kaizen_new_close: { fr: 'Fermer', en: 'Close' },
   kaizen_title_ph: { fr: 'Titre (#1234 relie une œuvre)', en: 'Title (#1234 links a work)' },
   kaizen_body_ph: { fr: 'Détails', en: 'Details' },

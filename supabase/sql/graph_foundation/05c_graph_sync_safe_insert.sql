@@ -275,7 +275,8 @@ BEGIN
     FOREACH v_gid IN ARRAY p_group_ids
     LOOP
       INSERT INTO public.working_group_work (oeuvre_id, group_id)
-      VALUES (p_oeuvre_id, v_gid);
+      -- group_id is uuid; a text variable has no assignment cast to uuid (42804).
+      VALUES (p_oeuvre_id, v_gid::uuid);
 
       v_tgt := public.graph_node_id('working_group', v_gid);
       IF v_src IS NOT NULL AND v_tgt IS NOT NULL THEN

@@ -326,7 +326,7 @@ export function OverviewTab({
                     <ConsoleRow
                       label={t('ov_needs_ledger')}
                       count={backlog.openLedger}
-                      onGo={() => onGoTab('kaizen')}
+                      onGo={() => onGoTab('kaizen-ops')}
                     />
                     <ConsoleRow
                       label={t('ov_needs_sessions')}

@@ -220,9 +220,10 @@ export function SegmentRoutePanel({
         </div>
       )
     case 'kaizen':
+    case 'kaizen-ops':
       return (
         <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-          <Kaizen />
+          <Kaizen key={tab} scope={tab === 'kaizen' ? 'creation' : 'ops'} />
         </div>
       )
     case 'journal':

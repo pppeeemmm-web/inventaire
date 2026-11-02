@@ -147,7 +147,8 @@ export function WorkDrawerImageArea(p: WorkDrawerImageAreaProps) {
         <div className="row" style={{ gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
           <a
             href={activeDownloadUrl}
-            download={activeImgPath ?? undefined}
+            target="_blank"
+            rel="noopener noreferrer"
             className="btn ghost sm"
             data-testid="work-drawer-download-image"
           >

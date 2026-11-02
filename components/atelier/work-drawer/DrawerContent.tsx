@@ -1392,15 +1392,12 @@ export function DrawerContent({
           marginTop: 20,
           paddingTop: 14,
           borderTop: '1px solid var(--bd)',
-          ...(narrow
-            ? {
-                position: 'sticky',
-                bottom: 0,
-                zIndex: 4,
-                background: 'var(--bg1)',
-                paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
-              }
-            : {}),
+          // Sticky on every width so Save stays reachable without scrolling the whole drawer.
+          position: 'sticky',
+          bottom: 0,
+          zIndex: 4,
+          background: 'var(--bg1)',
+          paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
         }}
       >
         <div className="row gap-sm" style={{ flexWrap: 'wrap' }}>

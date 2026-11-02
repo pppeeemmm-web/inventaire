@@ -6,7 +6,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { parseKaizenSection as parseSection, type KaizenItem } from '@/lib/kaizen'
+import { parseKaizenSection as parseSection, type KaizenItem, type KaizenScope } from '@/lib/kaizen'
 
 export type KaizenErr = { error: string }
 
@@ -160,4 +160,60 @@ export async function confirmKaizenSections(
   }
   revalidatePath('/atelier')
   return { ok: true, items }
+}
+
+// ── Badges (like the Audit count): entries others added since I last opened each scope ──
+
+/** Per scope: count of entries by others newer than my `kaizen_seen`. No row yet = start now (no flood). */
+export async function kaizenUnseenCounts(): Promise<Record<KaizenScope, number> | KaizenErr> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'auth' }
+  const { data: seen } = await supabase.from('kaizen_seen').select('scope, seen_at').eq('user_id', user.id)
+  const since: Partial<Record<KaizenScope, string>> = {}
+  for (const r of seen ?? []) since[r.scope as KaizenScope] = r.seen_at
+  const now = new Date().toISOString()
+  const missing = (['creation', 'ops'] as const).filter((s) => !since[s])
+  if (missing.length) {
+    await supabase.from('kaizen_seen').upsert(missing.map((scope) => ({ user_id: user.id, scope, seen_at: now })))
+    for (const s of missing) since[s] = now
+  }
+  const [c, o] = await Promise.all([
+    supabase
+      .from('kaizen_item')
+      .select('id', { count: 'exact', head: true })
+      .eq('section', 'creation')
+      .neq('author_id', user.id)
+      .gt('created_at', since.creation!),
+    supabase
+      .from('kaizen_item')
+      .select('id', { count: 'exact', head: true })
+      .or('section.is.null,section.neq.creation')
+      .neq('author_id', user.id)
+      .gt('created_at', since.ops!),
+  ])
+  return { creation: c.count ?? 0, ops: o.count ?? 0 }
+}
+
+/** Opening a scope marks it seen; returns the previous time so the list can flag what is new. */
+export async function markKaizenSeen(scope: KaizenScope): Promise<{ previous: string | null } | KaizenErr> {
+  if (scope !== 'creation' && scope !== 'ops') return { error: 'scope' }
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'auth' }
+  const { data: prev } = await supabase
+    .from('kaizen_seen')
+    .select('seen_at')
+    .eq('user_id', user.id)
+    .eq('scope', scope)
+    .maybeSingle()
+  const { error } = await supabase
+    .from('kaizen_seen')
+    .upsert({ user_id: user.id, scope, seen_at: new Date().toISOString() })
+  if (error) return { error: error.message }
+  return { previous: prev?.seen_at ?? null }
 }

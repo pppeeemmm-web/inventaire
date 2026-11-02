@@ -65,7 +65,10 @@ async function replaceOeuvreThemes(
     p_oeuvre_id: oeuvreId,
     p_theme_ids: themeIds,
   })
-  if (error) return { error: junctionRpcErrorMessage(error) }
+  if (error) {
+    await logError('replace_oeuvre_themes failed', error, { source: 'works.replaceOeuvreThemes', metadata: { oeuvreId } })
+    return { error: junctionRpcErrorMessage(error) }
+  }
   return { ok: true }
 }
 
@@ -78,7 +81,10 @@ async function replaceOeuvreWorkGroups(
     p_oeuvre_id: oeuvreId,
     p_group_ids: groupIds,
   })
-  if (error) return { error: junctionRpcErrorMessage(error) }
+  if (error) {
+    await logError('replace_oeuvre_work_groups failed', error, { source: 'works.replaceOeuvreWorkGroups', metadata: { oeuvreId } })
+    return { error: junctionRpcErrorMessage(error) }
+  }
   return { ok: true }
 }
 

@@ -1,7 +1,9 @@
 'use client'
 
-// Kaizen — Création / Opérations & Stratégie (Site web, Business), plus "À valider" for
-// entries moved from the System ledger. Ticked done or reopened, never deleted.
+// Kaizen — a sidebar group (owner 2026-11-02) with two entries: Création (`/atelier/kaizen`) and
+// Opérations & Stratégie (`/atelier/kaizen-ops`: Système + Business, plus "À valider" for entries
+// moved from the System ledger). Ticked done or reopened, never deleted. Opening an entry marks it
+// seen (sidebar badge) and flags what others added since the last visit.
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
@@ -11,11 +13,12 @@ import { useI18n } from '@/lib/i18n/context'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { toast } from '@/lib/ui/toast'
 import { ReportLinkButton } from '@/components/atelier/ReportLinkButton'
-import { KAIZEN_SECTIONS, type KaizenItem, type KaizenSection } from '@/lib/kaizen'
+import { KAIZEN_SECTIONS, type KaizenItem, type KaizenScope, type KaizenSection } from '@/lib/kaizen'
 import {
   confirmKaizenSections,
   createKaizen,
   listKaizen,
+  markKaizenSeen,
   setKaizenDone,
   updateKaizen,
 } from '@/app/atelier/(portal)/kaizen/actions'
@@ -37,7 +40,7 @@ function parseView(raw: string | null): View | null {
   return raw === 'review' || (KAIZEN_SECTIONS as readonly string[]).includes(raw ?? '') ? (raw as View) : null
 }
 
-export function Kaizen() {
+export function Kaizen({ scope = 'creation' }: { scope?: KaizenScope }) {
   const { t, lang } = useI18n()
   const narrow = useMediaQuery('(max-width: 767px)')
   const router = useRouter()
@@ -60,6 +63,12 @@ export function Kaizen() {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [draft, setDraft] = useState({ title: '', body: '' })
   const [reviewPick, setReviewPick] = useState<Record<number, KaizenSection>>({})
+  /** Last visit before this one: entries by others created after it are flagged "Nouveau". */
+  const [seenBefore, setSeenBefore] = useState<string | null>(null)
+
+  useEffect(() => {
+    void markKaizenSeen(scope).then((r) => { if (!('error' in r)) setSeenBefore(r.previous) })
+  }, [scope])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -78,7 +87,19 @@ export function Kaizen() {
   useEffect(() => { void load() }, [load])
 
   const pending = useMemo(() => items.filter((i) => i.section == null), [items])
-  const view: View = parseView(searchParams.get('view')) ?? (pending.length > 0 && isAdmin ? 'review' : 'creation')
+  const raw = parseView(searchParams.get('view'))
+  const opsDefault: View = pending.length > 0 && isAdmin ? 'review' : 'website'
+  const view: View =
+    scope === 'creation'
+      ? 'creation'
+      : raw === 'website' || raw === 'business' || raw === 'review'
+        ? raw
+        : opsDefault
+  // Old links (`/atelier/kaizen?view=website|business|system|review`) → the Opérations & Stratégie entry.
+  useEffect(() => {
+    if (scope === 'creation' && raw && raw !== 'creation') router.replace(`/atelier/kaizen-ops?view=${raw}`)
+    if (scope === 'ops' && raw === 'creation') router.replace('/atelier/kaizen')
+  }, [scope, raw, router])
   const setView = (v: View) => {
     const p = new URLSearchParams(searchParams.toString())
     p.set('view', v)
@@ -102,7 +123,6 @@ export function Kaizen() {
   }, [items, pending, view, stack, q])
   const stackCount = (done: boolean) => items.filter((i) => i.section === view && !!i.done_at === done).length
   const countOf = (s: KaizenSection) => items.filter((i) => i.section === s && !i.done_at).length
-  const opsView = view === 'website' || view === 'business'
 
   async function add() {
     if (!newTitle.trim() || view === 'review') return
@@ -150,35 +170,8 @@ export function Kaizen() {
   const who = (id: string | null) => (id ? names[id] ?? t('kaizen_unknown_author') : t('kaizen_unknown_author'))
   const fmtDate = (iso: string) => new Date(iso).toLocaleDateString(loc)
 
-  // Level 1: the two sections (serif, underlined). Level 2: Site web / Business inside
-  // Opérations & Stratégie (small pills, only shown under it).
-  const sectionTab = (id: string, active: boolean, label: string, count: number, onClick: () => void, rust = false) => (
-    <button
-      key={id}
-      type="button"
-      role="tab"
-      aria-selected={active}
-      data-testid={`kaizen-view-${id}`}
-      onClick={onClick}
-      className={rust ? undefined : 'serif'}
-      style={{
-        padding: '8px 4px 10px',
-        marginRight: 20,
-        minHeight: 44,
-        fontSize: rust ? 12 : 17,
-        border: 'none',
-        cursor: 'pointer',
-        whiteSpace: 'nowrap',
-        background: 'transparent',
-        color: rust ? 'var(--rust)' : active ? 'var(--tx)' : 'var(--tx3)',
-        borderBottom: active ? '2px solid var(--ac)' : '2px solid transparent',
-      }}
-    >
-      {label}
-      {count > 0 ? <span className="t-mono-sm" style={{ fontSize: 11, marginLeft: 6, color: 'var(--tx3)' }}>{count}</span> : null}
-    </button>
-  )
-  const subTab = (v: KaizenSection, label: string, count = 0) => (
+  // Opérations & Stratégie: Système / Business pills (+ À valider when entries wait for review).
+  const subTab = (v: View, label: string, count = 0) => (
     <button
       key={v}
       type="button"
@@ -192,10 +185,10 @@ export function Kaizen() {
         fontSize: 12,
         cursor: 'pointer',
         whiteSpace: 'nowrap',
-        border: '1px solid var(--bd)',
+        border: `1px solid ${v === 'review' ? 'var(--rust)' : 'var(--bd)'}`,
         borderRadius: 18,
-        background: view === v ? 'var(--tx)' : 'transparent',
-        color: view === v ? 'var(--bg1)' : 'var(--tx2)',
+        background: view === v ? (v === 'review' ? 'var(--rust)' : 'var(--tx)') : 'transparent',
+        color: view === v ? 'var(--bg1)' : v === 'review' ? 'var(--rust)' : 'var(--tx2)',
       }}
     >
       {label}{count > 0 ? ` · ${count}` : ''}
@@ -234,24 +227,20 @@ export function Kaizen() {
   return (
     <div data-testid="kaizen-tab-root" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0 }}>
       <div style={{ padding: narrow ? '12px' : '16px 28px 0', borderBottom: '1px solid var(--bd)' }}>
+        <div className="t-eyebrow" style={{ color: 'var(--tx3)' }}>{t('tab_kaizen')}</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div className="serif" style={{ fontSize: 22, flex: 1 }}>{t('tab_kaizen')}</div>
+          <div className="serif" style={{ fontSize: 22, flex: 1 }}>
+            {scope === 'creation' ? t('kaizen_section_creation') : t('kaizen_group_ops')}
+          </div>
           <ReportLinkButton source="kaizen" />
         </div>
-        <p style={{ fontSize: 12, color: 'var(--tx2)', margin: '4px 0 10px', maxWidth: 760 }}>{t('kaizen_intro')}</p>
-        <div role="tablist" style={{ display: 'flex', alignItems: 'flex-end', overflowX: 'auto' }}>
-          {sectionTab('creation', view === 'creation', t('kaizen_section_creation'), countOf('creation'), () => setView('creation'))}
-          {sectionTab('ops', opsView, t('kaizen_group_ops'), countOf('website') + countOf('business'), () => { if (!opsView) setView('website') })}
-          <span style={{ flex: 1 }} />
-          {pending.length > 0
-            ? sectionTab('review', view === 'review', t('kaizen_review_fmt').replace('{n}', String(pending.length)), 0, () => setView('review'), true)
-            : null}
-        </div>
+        <p style={{ fontSize: 12, color: 'var(--tx2)', margin: '4px 0 12px', maxWidth: 760 }}>{t('kaizen_intro')}</p>
       </div>
-      {opsView ? (
+      {scope === 'ops' ? (
         <div role="tablist" style={{ display: 'flex', gap: 8, padding: narrow ? '10px 12px 0' : '12px 28px 0', overflowX: 'auto' }}>
           {subTab('website', t('kaizen_section_website'), countOf('website'))}
           {subTab('business', t('kaizen_section_business'), countOf('business'))}
+          {pending.length > 0 ? subTab('review', t('kaizen_review_fmt').replace('{n}', String(pending.length))) : null}
         </div>
       ) : null}
 
@@ -344,6 +333,11 @@ export function Kaizen() {
                   </>
                 )}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginTop: 8 }}>
+                  {seenBefore && it.created_at > seenBefore && it.author_id !== me ? (
+                    <span className="t-mono-sm" data-testid={`kaizen-new-${it.id}`} style={{ fontSize: 10, color: 'var(--bg1)', background: 'var(--ac)', padding: '1px 6px' }}>
+                      {t('kaizen_new_badge')}
+                    </span>
+                  ) : null}
                   <span className="t-mono-sm" style={{ fontSize: 10, color: 'var(--tx3)' }}>
                     {fmtDate(it.created_at)} · {who(it.author_id)}
                   </span>
