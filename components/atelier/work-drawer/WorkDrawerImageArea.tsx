@@ -91,6 +91,11 @@ export function WorkDrawerImageArea(p: WorkDrawerImageAreaProps) {
     drawerStartRetouch,
   } = p
   const activeImage = activeImgIdx >= 0 ? drawerSorted[activeImgIdx] : null
+  const activePalette = Array.isArray(activeImage?.palette)
+    ? (activeImage.palette as { hex?: unknown; share?: unknown }[]).filter(
+        (s): s is { hex: string; share: number } => typeof s.hex === 'string' && typeof s.share === 'number',
+      )
+    : []
   const activeDownloadUrl = activeImgPath ? imageUrl(activeImgPath) : null
 
   return (
@@ -273,6 +278,22 @@ export function WorkDrawerImageArea(p: WorkDrawerImageAreaProps) {
               </div>
             )}
       </div>
+
+      {activePalette.length > 0 && (
+        <div
+          data-testid="work-drawer-palette"
+          title={t('wf_palette_title')}
+          style={{ display: 'flex', height: 14, marginBottom: 10, border: '1px solid var(--bd)', overflow: 'hidden' }}
+        >
+          {activePalette.map((s) => (
+            <div
+              key={s.hex}
+              title={`${s.hex.toUpperCase()} · ${Math.round(s.share * 100)} %`}
+              style={{ flex: `${s.share} 0 0`, minWidth: 6, background: s.hex }}
+            />
+          ))}
+        </div>
+      )}
 
       {workImages.length >= 1 && (
         <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap', alignItems: 'flex-start' }}>

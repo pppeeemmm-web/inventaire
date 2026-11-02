@@ -598,9 +598,10 @@ export function Inventory({
         return la.localeCompare(lb) * dir
       }
       if (sortKey === 'Comm') {
-        const ca = statusOf(a, statusLabelMap)
-        const cb = statusOf(b, statusLabelMap)
-        return ca.localeCompare(cb) * dir
+        // Broadcast column: ready-to-broadcast works first (status has its own column/sort).
+        const ba = (a as { broadcast_ready?: boolean }).broadcast_ready ? 1 : 0
+        const bb = (b as { broadcast_ready?: boolean }).broadcast_ready ? 1 : 0
+        return (bb - ba) * dir
       }
 
       return 0
@@ -925,18 +926,22 @@ export function Inventory({
             type="button"
             data-testid="inventory-images-zip"
             onClick={() => setShowImagesZip(true)}
-            disabled={filtered.length === 0}
-            title={t('inv_images_zip_title')}
+            disabled={selection.size === 0 && filtered.length === 0}
+            title={selection.size > 0 ? t('inv_images_zip_title_selection') : t('inv_images_zip_title')}
             className="btn ghost sm"
             style={{ fontSize: 12, padding: '8px 12px' }}
           >
-            {t('curation_dock_download_images')} ({filtered.length})
+            {/* Selection wins when there is one; otherwise whatever the filter shows. */}
+            {t('curation_dock_download_images')}{' '}
+            {interpolateMessage(t(selection.size > 0 ? 'inv_images_zip_selected_fmt' : 'inv_images_zip_shown_fmt'), {
+              count: selection.size > 0 ? selection.size : filtered.length,
+            })}
           </button>
         )}
         {showImagesZip && (
           <SelectionImagesDownloadModal
-            ids={filtered.map((o) => o.OeuvreID)}
-            loadedOfTotal={oeuvresCatalogueTotal != null ? { loaded: oeuvres.length, total: oeuvresCatalogueTotal } : undefined}
+            ids={selection.size > 0 ? Array.from(selection) : filtered.map((o) => o.OeuvreID)}
+            loadedOfTotal={selection.size === 0 && oeuvresCatalogueTotal != null ? { loaded: oeuvres.length, total: oeuvresCatalogueTotal } : undefined}
             onClose={() => setShowImagesZip(false)}
           />
         )}
@@ -1530,10 +1535,10 @@ function InvList({
             <th
               onClick={() => toggleSort('Comm')}
               style={{ ...headerBase, width: 80, cursor: 'pointer', borderRight: 'none' }}
-              title={t('inv_title_reserve_col')}
+              title={t('inv_title_broadcast_col')}
             >
               <div style={sortThRow}>
-                <span style={sortThLabel}>{t('inv_col_reserve')}</span>
+                <span style={sortThLabel}>{t('inv_col_broadcast')}</span>
                 <span style={{ flexShrink: 0 }}><SortInd k="Comm" current={sortKey} dir={sortDir} /></span>
               </div>
             </th>
@@ -1664,33 +1669,21 @@ function InvList({
                         oeuvreId={o.OeuvreID}
                         status={embeddingStatusMap[o.OeuvreID]}
                       />
-                      {st === 'reserved' && <span className="chip dust" style={{ fontSize: 10 }}>{t('wf_own_reserved_l').toUpperCase()}</span>}
                       {!isNarrow && (() => {
                         const live = bcOverride[o.OeuvreID] ?? !!(o as { broadcast_ready?: boolean }).broadcast_ready
                         const busy = bcBusy === o.OeuvreID
                         return (
-                          <button
-                            type="button"
+                          <input
+                            type="checkbox"
                             data-testid={`inv-broadcast-toggle-${o.OeuvreID}`}
-                            onClick={(e) => { e.stopPropagation(); if (!busy) toggleBroadcast(o.OeuvreID, !live) }}
+                            checked={live}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={() => { if (!busy) toggleBroadcast(o.OeuvreID, !live) }}
                             disabled={busy}
                             aria-label={t('bc_quick_toggle_aria')}
-                            aria-pressed={live}
-                            title={t('bc_quick_toggle')}
-                            style={{
-                              padding: '4px 6px',
-                              fontSize: 9,
-                              letterSpacing: 0.5,
-                              border: '1px solid var(--bd)',
-                              background: live ? 'var(--ac)' : 'var(--bg2)',
-                              color: live ? 'var(--bg1)' : 'var(--tx3)',
-                              cursor: busy ? 'wait' : 'pointer',
-                              opacity: busy ? 0.5 : 1,
-                              lineHeight: 1,
-                            }}
-                          >
-                            ◉
-                          </button>
+                            title={t('bc_quick_toggle_aria')}
+                            style={{ width: 16, height: 16, accentColor: 'var(--ac)', cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.5 : 1 }}
+                          />
                         )
                       })()}
                     </div>

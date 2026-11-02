@@ -29,17 +29,17 @@ export const inventoryUiMessages = defineMessages({
     fr: 'État',
     en: 'Status',
   },
-  inv_col_reserve: {
-    fr: 'Réserve',
-    en: 'Reserve',
+  inv_col_broadcast: {
+    fr: 'Diffusion',
+    en: 'Broadcast',
   },
   inv_title_status_col: {
     fr: 'État commercial (disponible, production, réservé, vendu…)',
     en: 'Commercial status (available, production, reserved, sold…)',
   },
-  inv_title_reserve_col: {
-    fr: "Rappel si réservé (l'état détaillé est dans la colonne État)",
-    en: 'Reserved flag (the detailed state is in the Status column)',
+  inv_title_broadcast_col: {
+    fr: 'Cochée = œuvre prête à diffuser (réseaux, newsletter — onglet Diffusion). Cliquez pour trier.',
+    en: 'Ticked = work ready to broadcast (social, newsletter — Broadcast tab). Click to sort.',
   },
   inv_preview: {
     fr: 'Aperçu',

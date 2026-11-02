@@ -102,4 +102,12 @@ export const conceptDocsMessages = defineMessages({
     fr: 'Recherche',
     en: 'Research',
   },
+  share_triage_attach_concept: {
+    fr: 'Inspiration → Recherche (concept)',
+    en: 'Inspiration → Research (concept)',
+  },
+  share_triage_search_ph_concept: {
+    fr: 'Chercher un concept…',
+    en: 'Find a concept…',
+  },
 })

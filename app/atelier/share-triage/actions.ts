@@ -17,6 +17,7 @@ import { pendingInsertToSaveError } from '@/lib/work-save-error'
 import { provenanceTimestamp, provenanceUserId } from '@/lib/oeuvre-provenance'
 import { allocateOeuvreId, insertOeuvreRow } from '@/lib/work-create-core'
 import { recordStorageObject } from '@/lib/storage-object-ledger'
+import { resolveVaultFolder } from '@/lib/vault/folder-routing'
 import {
   S3Client,
   PutObjectCommand,
@@ -24,12 +25,13 @@ import {
 
 const VAULT_BUCKET = process.env.R2_VAULT_BUCKET ?? 'vault'
 
-export type ShareAttachTargetType = 'work' | 'contact' | 'process' | 'vault' | 'note'
+export type ShareAttachTargetType = 'work' | 'concept' | 'contact' | 'process' | 'vault' | 'note'
 
 export type ShareAttachSearchHit =
   | { type: 'work'; id: number; label: string; thumb?: string | null }
   | { type: 'contact'; id: number; label: string }
   | { type: 'process'; id: string; label: string }
+  | { type: 'concept'; id: string; label: string }
 
 type ShareActionErr = { error: string }
 type ShareActionOk = { ok: true; href?: string; pending?: true }
@@ -173,6 +175,21 @@ export async function searchShareAttachTargets(
       type: 'contact',
       id: r.ContactID,
       label: r.Nom || `#${r.ContactID}`,
+    }))
+    return { hits }
+  }
+
+  if (type === 'concept') {
+    const { data, error } = await g.supabase.from('concept')
+      .select('id, titre')
+      .ilike('titre', pattern)
+      .order('updated_at', { ascending: false })
+      .limit(20)
+    if (error) return { error: error.message }
+    const hits: ShareAttachSearchHit[] = (data ?? []).map((r: { id: string; titre: string | null }) => ({
+      type: 'concept',
+      id: r.id,
+      label: r.titre || r.id.slice(0, 8),
     }))
     return { hits }
   }
@@ -359,6 +376,89 @@ export async function attachShareInboxToVault(
   const fin = await finishInbox(inboxId, { target: 'vault' })
   if (fin) return fin
   return { ok: true, href: '/atelier/vault' }
+}
+
+/**
+ * Inspiration → concept: shared files become concept documents (copied into the Vault bucket,
+ * `document.concept_id` set), shared links become link documents, and text with neither is
+ * appended to the concept's notes. Same storage as Concepts' own documents
+ * (supabase/sql/document_concept_links.sql).
+ */
+export async function attachShareInboxToConcept(
+  inboxId: string,
+  conceptId: string,
+): Promise<ShareActionOk | ShareActionErr> {
+  const g = await guardTeam()
+  if (g.error || !g.supabase || !g.user) return { error: g.error ?? 'auth' }
+
+  const loaded = await loadInbox(g.supabase, g.user.id, inboxId)
+  if ('error' in loaded) return loaded
+  const { payload } = loaded
+  const block = formatShareInboxText(payload)
+
+  const { data: concept } = await g.supabase.from('concept').select('id, notes').eq('id', conceptId).maybeSingle()
+  if (!concept) return { error: 'not_found' }
+
+  for (const f of payload.files) {
+    let buf: Buffer
+    try {
+      buf = await r2GetObjectBuffer(f.r2_key)
+    // eslint-disable-next-line pem-i18n/no-silent-catch -- returned to the triage screen as the error
+    } catch (e) {
+      return { error: String(e) }
+    }
+    const dateStr = new Date().toISOString().slice(0, 10)
+    const safe = f.name.replace(/[^a-zA-Z0-9.-]/g, '_').slice(0, 60)
+    const path = `${dateStr}_inspiration_${crypto.randomBytes(3).toString('hex')}_${safe}`
+    const mime = f.mime || (isPdfBuffer(buf) ? 'application/pdf' : 'application/octet-stream')
+    try {
+      await vaultR2Upload(path, buf, mime, g.user.id, 'share_inbox_concept')
+    // eslint-disable-next-line pem-i18n/no-silent-catch -- returned to the triage screen as the error
+    } catch (e) {
+      return { error: String(e) }
+    }
+    const name = f.name || payload.title?.trim() || 'Inspiration'
+    const { error: docErr } = await g.supabase.from('document').insert({
+      name,
+      kind: 'inspiration',
+      source: 'file',
+      storage_path: path,
+      file_size: buf.length,
+      mime_type: mime,
+      notes: block || null,
+      concept_id: conceptId,
+      folder: resolveVaultFolder({ kind: 'inspiration', notes: block || null, storage_path: path, name }),
+    })
+    if (docErr) return { error: docErr.message }
+  }
+
+  for (const url of payload.urls) {
+    if (!/^https?:\/\//i.test(url)) continue
+    const name = (payload.files.length === 0 && payload.title?.trim()) || url
+    const { error: docErr } = await g.supabase.from('document').insert({
+      name: name.slice(0, 200),
+      kind: 'lien',
+      source: 'link',
+      external_url: url,
+      notes: block || null,
+      concept_id: conceptId,
+      folder: resolveVaultFolder({ kind: 'lien', notes: block || null, storage_path: null, name }),
+    })
+    if (docErr) return { error: docErr.message }
+  }
+
+  if (payload.files.length === 0 && payload.urls.length === 0) {
+    if (!block) return { error: 'no_files' }
+    const { error: upErr } = await g.supabase.from('concept')
+      .update({ notes: appendBlock(concept.notes as string | null, block) })
+      .eq('id', conceptId)
+    if (upErr) return { error: upErr.message }
+  }
+
+  revalidatePath('/atelier/concepts')
+  const fin = await finishInbox(inboxId, { target: 'concept', conceptId })
+  if (fin) return fin
+  return { ok: true, href: '/atelier/concepts' }
 }
 
 export async function attachShareInboxToVoiceNote(inboxId: string): Promise<ShareActionOk | ShareActionErr> {

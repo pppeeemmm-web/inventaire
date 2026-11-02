@@ -665,6 +665,18 @@ export const atelierMessages = defineMessages({
     fr: 'Désélectionner toutes les œuvres',
     en: 'Deselect all works',
   },
+  inv_images_zip_selected_fmt: {
+    fr: '({count} sélectionnée(s))',
+    en: '({count} selected)',
+  },
+  inv_images_zip_shown_fmt: {
+    fr: '({count} affichée(s))',
+    en: '({count} shown)',
+  },
+  inv_images_zip_title_selection: {
+    fr: 'Télécharger les images des œuvres sélectionnées. Effacez la sélection pour prendre toutes les œuvres affichées.',
+    en: 'Download images of the selected works. Clear the selection to take every work shown.',
+  },
   inv_images_zip_title: {
     fr: 'Télécharger les images des œuvres affichées (filtre actuel)',
     en: 'Download images of the works shown (current filter)',

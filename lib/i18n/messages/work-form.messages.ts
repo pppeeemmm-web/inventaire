@@ -37,6 +37,10 @@ export const workFormMessages = defineMessages({
     fr: 'Production',
     en: 'Production',
   },
+  wf_palette_title: {
+    fr: 'Couleurs principales de cette photo, proportionnelles à leur surface (survol : code couleur et %)',
+    en: 'Main colours of this photo, sized by how much of it they cover (hover: colour code and %)',
+  },
   wf_production_span_fmt: {
     fr: '{start} → {end} · {days} j',
     en: '{start} → {end} · {days} d',

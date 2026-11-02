@@ -6,6 +6,7 @@ import { useI18n } from '@/lib/i18n/context'
 import { toast } from '@/lib/ui/toast'
 import { thumbUrl } from '@/lib/data'
 import {
+  attachShareInboxToConcept,
   attachShareInboxToContact,
   attachShareInboxToProcess,
   attachShareInboxToVault,
@@ -16,16 +17,18 @@ import {
   type ShareAttachTargetType,
 } from '@/app/atelier/share-triage/actions'
 
-const TARGET_KEYS: Record<ShareAttachTargetType, DictKey> = {
+const TARGET_KEYS: Record<ShareAttachTargetType, DictKey | 'share_triage_attach_concept'> = {
   work: 'share_triage_attach_work',
+  concept: 'share_triage_attach_concept',
   contact: 'share_triage_attach_contact',
   process: 'share_triage_attach_process',
   vault: 'share_triage_attach_vault',
   note: 'share_triage_attach_note',
 }
 
-const SEARCH_PH: Record<'work' | 'contact' | 'process', DictKey> = {
+const SEARCH_PH: Record<'work' | 'concept' | 'contact' | 'process', DictKey | 'share_triage_search_ph_concept'> = {
   work: 'share_triage_search_ph_work',
+  concept: 'share_triage_search_ph_concept',
   contact: 'share_triage_search_ph_contact',
   process: 'share_triage_search_ph_process',
 }
@@ -42,7 +45,7 @@ export function ShareAttachPanel(props: {
   const [selected, setSelected] = useState<ShareAttachSearchHit | null>(null)
   const [vaultName, setVaultName] = useState('')
 
-  const needsSearch = mode === 'work' || mode === 'contact' || mode === 'process'
+  const needsSearch = mode === 'work' || mode === 'concept' || mode === 'contact' || mode === 'process'
 
   useEffect(() => {
     if (!needsSearch || query.trim().length < 1) {
@@ -64,6 +67,8 @@ export function ShareAttachPanel(props: {
         let res: { ok: true; href?: string } | { error: string }
         if (target === 'work' && hit?.type === 'work') {
           res = await attachShareInboxToWork(props.inboxId, hit.id)
+        } else if (target === 'concept' && hit?.type === 'concept') {
+          res = await attachShareInboxToConcept(props.inboxId, hit.id)
         } else if (target === 'contact' && hit?.type === 'contact') {
           res = await attachShareInboxToContact(props.inboxId, hit.id)
         } else if (target === 'process' && hit?.type === 'process') {
@@ -107,7 +112,7 @@ export function ShareAttachPanel(props: {
         style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
       >
         <div className="t-eyebrow">{t('share_triage_attach_heading')}</div>
-        {(['work', 'contact', 'process', 'vault', 'note'] as ShareAttachTargetType[]).map((target) => (
+        {(['work', 'concept', 'contact', 'process', 'vault', 'note'] as ShareAttachTargetType[]).map((target) => (
           <button
             key={target}
             type="button"

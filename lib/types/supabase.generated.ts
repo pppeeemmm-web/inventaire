@@ -2240,6 +2240,7 @@ export type Database = {
           ImageNote: string | null
           is_cover: boolean
           OeuvreID: number | null
+          palette: Json | null
           SeqNo: number | null
           sha256: string | null
           txtImageName: string | null
@@ -2252,6 +2253,7 @@ export type Database = {
           ImageNote?: string | null
           is_cover?: boolean
           OeuvreID?: number | null
+          palette?: Json | null
           SeqNo?: number | null
           sha256?: string | null
           txtImageName?: string | null
@@ -2264,6 +2266,7 @@ export type Database = {
           ImageNote?: string | null
           is_cover?: boolean
           OeuvreID?: number | null
+          palette?: Json | null
           SeqNo?: number | null
           sha256?: string | null
           txtImageName?: string | null

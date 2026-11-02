@@ -21,6 +21,8 @@ import { allocateOeuvreId, insertOeuvreRow } from '@/lib/work-create-core'
 import type { WorkImage, Oeuvre } from '@/lib/types/database'
 import crypto from 'crypto'
 import { logError } from '@/lib/error-reporter/server'
+import { extractPalette } from '@/lib/image-palette'
+import { r2GetObjectBuffer } from '@/lib/r2-s3-object-get'
 import { logSystemEvent } from '@/lib/utils/logging'
 import {
   historiqueLinesForOeuvreUpdate,
@@ -1197,6 +1199,19 @@ export async function commitWorkImage(
 
   if (insertErr || !inserted) return { error: insertErr?.message ?? 'Erreur insertion' }
 
+  // Colour palette from the 400px thumb (already in R2). Never blocks the image itself.
+  try {
+    const thumb = await r2GetObjectBuffer(thumbNameFor(filename))
+    if (thumb?.length) {
+      const palette = await extractPalette(thumb)
+      if (palette.length) {
+        await supabase.from('tblImage').update({ palette }).eq('ImageID', imageId)
+      }
+    }
+  } catch (e) {
+    await logError('Image palette failed', e, { source: 'works.commitWorkImage', metadata: { oeuvreId, filename } })
+  }
+
   // Cover already moved to this image via is_cover + the trigger — nothing to write on Oeuvres.
   // NeedsPhotograph is a manual quality gate (diffusion-grade photo validated by
   // the artist only): adding an image NEVER clears it or promotes the status.
@@ -1469,7 +1484,7 @@ export async function reorderWorkImages(
 
 export type WorkDrawerImageRow = Pick<
   Database['public']['Tables']['tblImage']['Row'],
-  'ImageID' | 'txtImageNameLink' | 'SeqNo'
+  'ImageID' | 'txtImageNameLink' | 'SeqNo' | 'palette'
 >
 
 /** Drawer image rail — RLS `tblImage` read (same fields as legacy client fetch). */
@@ -1482,7 +1497,7 @@ export async function listWorkDrawerImages(oeuvreId: number): Promise<WorkDrawer
 
   const { data, error } = await supabase
     .from('tblImage')
-    .select('ImageID, txtImageNameLink, SeqNo')
+    .select('ImageID, txtImageNameLink, SeqNo, palette')
     .eq('OeuvreID', oeuvreId)
     .order('SeqNo', { ascending: true })
 

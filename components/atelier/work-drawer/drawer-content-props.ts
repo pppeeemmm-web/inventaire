@@ -16,6 +16,8 @@ export type WorkImageRow = {
   ImageID: number
   txtImageNameLink: string | null
   SeqNo: number | null
+  /** Main colours, largest first (`tblImage.palette`, lib/image-palette.ts). */
+  palette?: unknown
 }
 
 export type DrawerContentProps = {
