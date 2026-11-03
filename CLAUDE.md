@@ -13,9 +13,10 @@ Repo guide. Conflict → ask owner before edit.
 - No deferred features (background queues, broad field OCR, transactional email) without owner GO. Business-card OCR may be maintained, not expanded silently.
 
 ## Parallel Sessions and Tool Isolation
-- One IDE per checkout, ever. No Cursor + Claude (or Antigravity + Claude) in same dir.
-- Parallel work → worktree: `git worktree add ../app-wt-<name> -b wt-<name> origin/main`. One tool inside.
-- Worktree branches stay local. `origin/main` only push target. Pre-push hook should refuse non-main; verify manually.
+- One writing session per checkout. One session at a time → main checkout is fine. Read-only sessions may share.
+- Second code-writing session while another runs → worktree: `git worktree add ../app-wt-<name> -b wt-<name> origin/main`. One session inside.
+- Worktree branches stay local. `origin/main` only push target.
+- No git pre-push hook installed. Claude Code PreToolUse hooks (`.claude/settings.json` → `.claude/hooks/commit-guard.ps1`, `pre-push-checks.ps1`) deny: commit with unstaged source, push off `main`, push with dirty tree, force push. They fire on `git commit` / `git push` in Bash or PowerShell tool commands (block = exit 2; tested 2026-11-03). `.claude/` is gitignored; these three files are force-tracked (`git add -f`) so worktrees get them — `settings.local.json` stays local. Git run inside scripts (incl. `commit-push-main.ps1`) bypasses them. Verify manually.
 - Reconcile from main checkout: `git merge --ff-only wt-<name>`, then push. Rebase onto main first if FF impossible.
 - Remove worktree only after committing or stashing: `git worktree remove ../app-wt-<name>`. Never `--force` with uncommitted changes.
 - State unclear? `git worktree list` and `pwsh scripts/release-truth.ps1` from inside worktree.
@@ -36,21 +37,23 @@ Repo guide. Conflict → ask owner before edit.
 - UI/copy: `npm run i18n:check` (must pass — 0 blocking hotspots), `npm run lint`; add `npm run test:e2e:field` for mobile field chrome or `/hub` entry changes when logged-in dev session available.
 - Type/data flow: `npm run typecheck`, `npm run lint`; add focused Playwright where user-facing behavior changed.
 - SQL/RLS/storage: apply or review migration path, audit `GRANT` + RLS, run `npm run gen:types` after SQL live, then `npm run typecheck`.
-- Commit + push: `& .\scripts\commit-push-main.ps1 -Message '…' -Paths @('…')` — moves unrelated WIP aside (fast), commits, pushes, restores. Add `-Verify` for release-truth (slow fetch). Run in current shell, not nested `pwsh -File`.
+- Commit + push: `& .\scripts\commit-push-main.ps1 -Message '…' -Paths @('…')` — moves unrelated WIP aside (fast), commits, pushes, restores. Add `-NoPush` for commit-only, `-Verify` for release-truth (slow fetch). Moves WIP aside → never run while another session is editing this checkout. Run in current shell, not nested `pwsh -File`.
 - Before any push claim: run `pwsh scripts/release-truth.ps1` with `-Checks` when checks ran in-session.
 
 ## Final / Git Discipline
 - Start: `git status --short --branch`.
 - Finish: `git status --short --branch` + `git log --oneline origin/main..HEAD`.
 - Before completion wording, run or derive same fields as `pwsh scripts/release-truth.ps1`: branch, HEAD SHA, origin/main SHA, HEAD==origin/main, working tree, checks. `deployed`/`online` needs separate production evidence.
+- Push to `origin/main` = production release: auto-deploys https://www.thepemworkshop.com in ~70s. `deployed` only after polling live URL for a marker only the new build emits (budget ~2 min).
 - Push only when owner requested commit/push. `main` ahead but no push request → say `committed locally` or `local draft`. Not on `origin/main` → say local draft.
 - Status words exact: `local draft`, `committed locally`, `pushed to origin/main`, `deployed`, `verified`. No widening beyond evidence.
 - Never destructive git (`reset --hard`, `checkout --`, force push) unless owner explicitly approves.
 
 ## Architecture
-- Next.js 15 App Router + Supabase + Cloudflare R2.
+- Next.js 15 App Router + React 19 + Supabase + Cloudflare R2.
 - Server Components fetch, pass to Client Components.
-- Mutations: Server Actions in `app/**/actions.ts`. Exceptions: OAuth callbacks, read-only/external `app/api/*` routes (geocode, inventory broadcast).
+- Mutations: Server Actions in `app/**/actions.ts`. Existing `app/api/*` exceptions: calendar OAuth callbacks, geocode, field-weather, export (CSV, work images), inventory broadcast, cron `return-window`, `system/log-error`. New API route needs a stated reason.
+- Atelier tabs live under route group `app/atelier/(portal)/`.
 - Bootstrap reads may live in `'use server'` modules under `app/atelier/`. Domain writes still actions.
 - Auth: Supabase SSR middleware protects `/atelier`, `/hub`, `/galerie`, `/collection`, `/maps`; document redirects only, never RSC/Flight/Server Action redirects. Admin = `is_admin()` RPC via `Contact.is_admin` + `auth_user_id`. Old `profiles.role` dead.
 - Supabase clients: `createClient()` anon/RLS; `createServiceClient()` service-role/admin bypass.
@@ -96,7 +99,7 @@ Repo guide. Conflict → ask owner before edit.
 - Audit grants after schema changes: `supabase/sql/grant_audit_queries.sql`.
 - Service-role-only tables: document in migration comment; don't widen grant.
 - R2 endpoint: EU only: `https://<account_id>.eu.r2.cloudflarestorage.com`. No global endpoint.
-- Image upload: validate JPEG/PNG/WebP/GIF/AVIF/HEIC via Sharp; normalize **every** input (AVIF included) to AVIF q=50 + Artist/Copyright EXIF, long side 2100 (session shot) / 4000 (work image). One re-encode at upload, never on read.
+- Image upload: validate JPEG/PNG/WebP/GIF/AVIF/HEIC via Sharp; normalize **every** input (AVIF included) to AVIF q=50 (thumb q=70) + Artist/Copyright EXIF, long side 2100 (session shot) / 4000 (work image). One re-encode at upload, never on read.
 - No AVIF pass-through. Tried and removed: a phone export at q80 is ~5.8x the stored size for ~230ms saved. Storage wins across the archive. If revisited: libvips reports AVIF as `heif` + `compression: 'av1'`, so `meta.format === 'avif'` never matches.
 - Mobile client shrinks before upload (`downscaleImageFileForMobileIfNeeded`): re-encode when long side > maxEdge **or** bytes > `MOBILE_MAX_UPLOAD_BYTES`. Vercel caps a Server Action body at 4.5MB — above it the platform returns HTML 413 and Next reports "An unexpected response was received from the server" before any app code runs.
 - Storage keys: `W_{oid}_{seq}_{hash8}.avif`, hash from raw input bytes (`lib/image-upload.ts`). Constat issue photos: `constat/C_{oid}_{report}_{rand8}_{hash8}.avif` + `thumbs/constat/…` (2100 px, like session shots).
@@ -126,7 +129,7 @@ Repo guide. Conflict → ask owner before edit.
 - Origin env: `NEXT_PUBLIC_SITE_URL` or `NEXT_PUBLIC_APP_URL`, no trailing slash. Required for OAuth, metadata, sitemap.
 
 ## Portfolio PDF
-- Engine: `app/atelier/portfolio/pdf-action.ts` → `generatePortfolioPdf(opts)`.
+- Engine: `app/atelier/(portal)/portfolio/pdf-action.ts` → `generatePortfolioPdf(opts)`.
 - Server action loads R2 config + public works. No client data prep.
 - Section source priority: `raw.sections`, then `raw.works_modes[0].collections`, then `raw.works_collections`, else `__all__`.
 - Work order: `manual_work_order[]` first, then theme residual.

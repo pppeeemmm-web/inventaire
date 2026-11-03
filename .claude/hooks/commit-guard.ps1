@@ -9,19 +9,12 @@ function Write-HookJson {
     [string]$AgentMessage = ""
   )
 
-  $payload = [ordered]@{
-    permission = $Permission
+  # Claude Code PreToolUse: exit 2 blocks the call and shows stderr; exit 0 with no output allows.
+  # (The old {"permission":"deny"} JSON was Cursor's format; Claude Code ignored it.)
+  if ($Permission -eq "deny") {
+    [Console]::Error.WriteLine("$UserMessage $AgentMessage".Trim())
+    exit 2
   }
-
-  if (-not [string]::IsNullOrWhiteSpace($UserMessage)) {
-    $payload.user_message = $UserMessage
-  }
-
-  if (-not [string]::IsNullOrWhiteSpace($AgentMessage)) {
-    $payload.agent_message = $AgentMessage
-  }
-
-  $payload | ConvertTo-Json -Compress
 }
 
 function Get-HookInput {
