@@ -71,7 +71,15 @@ function primaryListEmail(
 ): string {
   const list = byContact[id] ?? []
   const prim = list.find((e) => e.is_primary)
-  return prim?.email ?? list[0]?.email ?? extra[id]?.Email ?? ''
+  return plainEmail(prim?.email ?? list[0]?.email ?? extra[id]?.Email ?? '')
+}
+
+/** Imported rows sometimes hold pasted HTML (`<a href=…>`): show the text, never the markup. */
+function plainEmail(raw: string): string {
+  if (!raw.includes('<')) return raw
+  const mailto = /mailto:([^"'>\s]+)/i.exec(raw)
+  if (mailto) return mailto[1]
+  return raw.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim()
 }
 
 /** First primary or first phone row, else legacy Téléphone1 */
@@ -928,11 +936,11 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
             style={{
               width: '100%',
               tableLayout: 'fixed',
-              /* Fixed sibling cols sum ~886px; without a floor the lone `auto` name col collapses + clips on mid-width panes */
-              minWidth: narrow ? Math.max(720, 886 + 168) : 886 + 168,
+              /* Fixed sibling cols sum ~982px; without a floor the lone `auto` name col collapses + clips on mid-width panes */
+              minWidth: narrow ? Math.max(720, 982 + 180) : 982 + 180,
             }}
           >
-            <thead>
+            <thead style={{ whiteSpace: 'nowrap' }}>
               <tr>
                 <th style={{ width: 40 }}>
                   <input type="checkbox" checked={selected.size > 0 && selected.size === filtered.length} onChange={toggleAll} />
@@ -948,9 +956,9 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
                 <th onClick={() => toggleSort('ville')} style={{ width: 180, cursor: 'pointer' }}>{t('contacts_col_cities')} <SortInd k="ville" current={sortKey} dir={sortDir} /></th>
                 <th onClick={() => toggleSort('email')} style={{ width: 220, cursor: 'pointer' }}>{t('contacts_col_email')} <SortInd k="email" current={sortKey} dir={sortDir} /></th>
                 <th onClick={() => toggleSort('phone')} style={{ width: 160, cursor: 'pointer' }}>{t('contacts_col_phone_abbr')} <SortInd k="phone" current={sortKey} dir={sortDir} /></th>
-                <th onClick={() => toggleSort('works')} style={{ width: 40, cursor: 'pointer' }} className="num" title={t('contactEditorWorksLinked')}>{t('contacts_col_works_abbr')} <SortInd k="works" current={sortKey} dir={sortDir} /></th>
-                <th onClick={() => toggleSort('loc')} style={{ width: 40, cursor: 'pointer' }} className="num" title={t('contactEditorWorksLoc')}>{t('contacts_col_loc_abbr')} <SortInd k="loc" current={sortKey} dir={sortDir} /></th>
-                <th onClick={() => toggleSort('buyer')} style={{ width: 40, cursor: 'pointer' }} className="num" title={t('contactEditorWorksBuyer')}>{t('contacts_col_buyer_abbr')} <SortInd k="buyer" current={sortKey} dir={sortDir} /></th>
+                <th onClick={() => toggleSort('works')} style={{ width: 72, cursor: 'pointer' }} className="num" title={t('contactEditorWorksLinked')}>{t('contacts_col_works_abbr')} <SortInd k="works" current={sortKey} dir={sortDir} /></th>
+                <th onClick={() => toggleSort('loc')} style={{ width: 72, cursor: 'pointer' }} className="num" title={t('contactEditorWorksLoc')}>{t('contacts_col_loc_abbr')} <SortInd k="loc" current={sortKey} dir={sortDir} /></th>
+                <th onClick={() => toggleSort('buyer')} style={{ width: 72, cursor: 'pointer' }} className="num" title={t('contactEditorWorksBuyer')}>{t('contacts_col_buyer_abbr')} <SortInd k="buyer" current={sortKey} dir={sortDir} /></th>
               </tr>
             </thead>
             <tbody>

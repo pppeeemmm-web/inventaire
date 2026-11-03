@@ -45,8 +45,11 @@ export type AnalyticsResult =
       topCountries: { country: string; views: number }[]
       topReferrers: { referrer: string; views: number }[]
       trend: DayCount[]
-      /** Admin only: site views by signed-in team member (`page_view.team_contact_id`). */
-      byTeamMember?: { member: string; views: number }[]
+      /** Distinct net visitors per day (`views` holds the visitor count, same shape as `trend`). */
+      visitorTrend: DayCount[]
+      /** Admin only: site views by signed-in team member (`page_view.team_contact_id`).
+       *  `unattributed` = team views recorded before per-member tagging (2 Nov 2026), no name known. */
+      byTeamMember?: { member: string; views: number; unattributed?: boolean }[]
     }
 
 function countryLabel(code: string, lang: Lang): string {
@@ -130,17 +133,23 @@ async function fetchAllPageViews(
 async function teamMemberBreakdown(
   sb: SupabaseClient,
   rows: PageViewRow[],
-): Promise<{ member: string; views: number }[] | null> {
+): Promise<{ member: string; views: number; unattributed?: boolean }[] | null> {
   const userSb = await createServerSupabase()
   const { data: isAdmin } = await userSb.rpc('is_admin')
   if (!isAdmin) return null
 
   const counts = new Map<number, number>()
+  let unattributed = 0
   for (const r of rows) {
-    if (r.team_contact_id == null || isDevAnalyticsPageView(r)) continue
+    if (isDevAnalyticsPageView(r)) continue
+    if (r.team_contact_id == null) {
+      if (r.is_team_session === true) unattributed += 1
+      continue
+    }
     counts.set(r.team_contact_id, (counts.get(r.team_contact_id) ?? 0) + 1)
   }
-  if (counts.size === 0) return []
+  const unattributedRow = unattributed > 0 ? [{ member: '', views: unattributed, unattributed: true }] : []
+  if (counts.size === 0) return unattributedRow
 
   const { data: contacts } = await sb
     .from('Contact')
@@ -150,9 +159,12 @@ async function teamMemberBreakdown(
   for (const c of (contacts ?? []) as { ContactID: number; Nom: string | null; Prénom: string | null; NomInstitution: string | null }[]) {
     nameById.set(c.ContactID, `${c.Prénom ?? ''} ${c.Nom ?? ''}`.trim() || c.NomInstitution || `#${c.ContactID}`)
   }
-  return [...counts.entries()]
-    .sort(([, a], [, b]) => b - a)
-    .map(([id, views]) => ({ member: nameById.get(id) ?? `#${id}`, views }))
+  return [
+    ...[...counts.entries()]
+      .sort(([, a], [, b]) => b - a)
+      .map(([id, views]) => ({ member: nameById.get(id) ?? `#${id}`, views })),
+    ...unattributedRow,
+  ]
 }
 
 export async function getAnalyticsStats(
@@ -190,8 +202,14 @@ export async function getAnalyticsStats(
   const countryByCode: Record<string, number> = {}
   const referrerCounts: Record<string, number> = {}
   const dayCounts: Record<string, number> = {}
+  const dayVisitors: Record<string, Set<string>> = {}
 
   for (const row of netRows) {
+    const day = row.created_at.slice(0, 10)
+    dayCounts[day] = (dayCounts[day] ?? 0) + 1
+    const vid = row.visitor_id?.trim()
+    if (vid) (dayVisitors[day] ??= new Set()).add(vid)
+
     const path = normalizeTrackedPath(row.path)
     pageCounts[path] = (pageCounts[path] ?? 0) + 1
 
@@ -211,9 +229,6 @@ export async function getAnalyticsStats(
     } else {
       referrerCounts[REF_BUCKET_DIRECT] = (referrerCounts[REF_BUCKET_DIRECT] ?? 0) + 1
     }
-
-    const day = row.created_at.slice(0, 10)
-    dayCounts[day] = (dayCounts[day] ?? 0) + 1
   }
 
   const top = <T extends string>(counts: Record<T, number>, n: number) =>
@@ -228,10 +243,12 @@ export async function getAnalyticsStats(
   }
 
   const trend: DayCount[] = []
+  const visitorTrend: DayCount[] = []
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(Date.now() - i * 86400 * 1000)
     const key = d.toISOString().slice(0, 10)
     trend.push({ date: key, views: dayCounts[key] ?? 0 })
+    visitorTrend.push({ date: key, views: dayVisitors[key]?.size ?? 0 })
   }
 
   const byTeamMember = await teamMemberBreakdown(sb, scopedRows)
@@ -252,5 +269,6 @@ export async function getAnalyticsStats(
       views: views as number,
     })),
     trend,
+    visitorTrend,
   }
 }

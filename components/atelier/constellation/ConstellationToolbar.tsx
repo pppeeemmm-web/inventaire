@@ -71,7 +71,7 @@ export function ConstellationToolbar(props: ConstellationToolbarProps) {
   } = props
 
   return (
-          <div style={{ flexShrink: 0, minHeight: 40, borderBottom: '1px solid var(--bd)', background: 'var(--bg1)', display: 'flex', alignItems: 'center', padding: '8px 16px', gap: 10, overflowX: 'auto', overflowY: 'hidden' }}>
+          <div style={{ flexShrink: 0, minHeight: 40, borderBottom: '1px solid var(--bd)', background: 'var(--bg1)', display: 'flex', alignItems: 'center', padding: '8px 16px', gap: 10, flexWrap: 'wrap', rowGap: 8 }}>
             <div className="t-label" style={{ color: 'var(--tx3)', whiteSpace: 'nowrap' }}>{t('viewMode')}</div>
             {(['year', 'theme', 'workgroup', 'none'] as GroupBy[]).map(g => (
               <button key={g} className="btn ghost sm"

@@ -9,7 +9,14 @@ function trendDayMonth(iso: string) {
   return `${d}/${m}`
 }
 
-export function Sparkline({ trend }: { trend: { date: string; views: number }[] }) {
+export function Sparkline({
+  trend,
+  pointTitleKey = 'analytics_sparkline_point_title_fmt',
+}: {
+  trend: { date: string; views: number }[]
+  /** Point tooltip format ({date}, {views}); the visitors chart passes its own. */
+  pointTitleKey?: 'analytics_sparkline_point_title_fmt' | 'analytics_sparkline_visitors_title_fmt'
+}) {
   const { t, lang } = useI18n()
   const numLocale = lang === 'en' ? 'en-GB' : 'fr-FR'
   if (trend.length === 0) return null
@@ -63,7 +70,7 @@ export function Sparkline({ trend }: { trend: { date: string; views: number }[] 
         const y = yAt(d.views)
         return (
           <g key={d.date + i}>
-            <title>{t('analytics_sparkline_point_title_fmt')
+            <title>{t(pointTitleKey)
               .replace('{date}', d.date)
               .replace('{views}', d.views.toLocaleString(numLocale))}</title>
             <circle

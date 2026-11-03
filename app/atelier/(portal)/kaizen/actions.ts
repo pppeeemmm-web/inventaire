@@ -4,8 +4,12 @@
 // NULL section = migrated entry waiting for the owner to confirm its suggested section.
 // Entries are ticked done / reopened, never deleted (no DELETE grant or policy).
 
+import crypto, { randomUUID } from 'crypto'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { logError } from '@/lib/error-reporter/server'
+import { normalizeImageToAvifPair, validateWorkImageBuffer } from '@/lib/image-upload'
+import { r2PutObject, r2SoftDeleteObject } from '@/lib/r2-s3-object'
 import { parseKaizenSection as parseSection, type KaizenItem, type KaizenScope } from '@/lib/kaizen'
 
 export type KaizenErr = { error: string }
@@ -160,6 +164,105 @@ export async function confirmKaizenSections(
   }
   revalidatePath('/atelier')
   return { ok: true, items }
+}
+
+// ── Screenshots (owner 2026-11-03) ──────────────────────────────────────────────────────────
+
+const MAX_SHOTS = 6
+const MAX_SHOT_BYTES = 12 * 1024 * 1024
+
+/**
+ * Adds one screenshot to an entry: normalised to AVIF (2100 px + 400 px thumb) like constat
+ * photos, under `kaizen/K_{id}_{rand8}_{hash8}.avif`. Who may add = who may edit (RLS update).
+ */
+export async function addKaizenScreenshot(id: number, formData: FormData): Promise<{ ok: true; item: KaizenItem } | KaizenErr> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'auth' }
+  const file = formData.get('file')
+  if (!(file instanceof File) || file.size === 0) return { error: 'empty' }
+  if (file.size > MAX_SHOT_BYTES) return { error: 'too_large' }
+
+  const { data: cur } = await supabase.from('kaizen_item').select('screenshots').eq('id', id).maybeSingle()
+  if (!cur) return { error: 'not_found' }
+  const shots = (cur.screenshots ?? []) as string[]
+  if (shots.length >= MAX_SHOTS) return { error: 'too_many' }
+
+  const raw = Buffer.from(await file.arrayBuffer())
+  const valid = await validateWorkImageBuffer(raw)
+  if ('error' in valid) return { error: 'invalid_format' }
+  const hash8 = crypto.createHash('sha256').update(raw).digest('hex').slice(0, 8)
+  const base = `K_${id}_${randomUUID().slice(0, 8)}_${hash8}`
+  const key = `kaizen/${base}.avif`
+  try {
+    const { mainBuf, thumbBuf } = await normalizeImageToAvifPair(raw, { maxEdge: 2100 })
+    await r2PutObject(mainBuf, key, 'image/avif', {
+      source: 'kaizen_screenshot',
+      classification: 'linked',
+      linkedRefs: [{ table: 'kaizen_item', column: 'screenshots', row_id: String(id) }],
+      uploadedBy: user.id,
+      metadata: { role: 'main', kaizen_id: id },
+    })
+    await r2PutObject(thumbBuf, `thumbs/kaizen/${base}.avif`, 'image/avif', {
+      source: 'kaizen_screenshot_thumb',
+      classification: 'linked',
+      linkedRefs: [{ table: 'kaizen_item', column: 'screenshots', row_id: String(id) }],
+      uploadedBy: user.id,
+      metadata: { role: 'thumb', original_key: key },
+    })
+  } catch (e) {
+    await logError('Kaizen screenshot upload failed', e, { source: 'kaizen.addKaizenScreenshot', metadata: { id } })
+    return { error: 'upload' }
+  }
+
+  const { data, error } = await supabase
+    .from('kaizen_item')
+    .update({ screenshots: [...shots, key] })
+    .eq('id', id)
+    .select('*')
+    .maybeSingle()
+  if (error || !data) {
+    // Not allowed to edit this entry (or it failed): don't leave the upload behind.
+    await r2SoftDeleteObject(key).catch(() => {})
+    await r2SoftDeleteObject(`thumbs/kaizen/${base}.avif`).catch(() => {})
+    return { error: error?.message ?? 'forbidden' }
+  }
+  revalidatePath('/atelier')
+  return { ok: true, item: data as KaizenItem }
+}
+
+/** Removes one screenshot; the files go to R2 `recycle/` (90 days), never a hard delete. */
+export async function removeKaizenScreenshot(id: number, key: string): Promise<{ ok: true; item: KaizenItem } | KaizenErr> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'auth' }
+  const { data: cur } = await supabase.from('kaizen_item').select('screenshots').eq('id', id).maybeSingle()
+  if (!cur) return { error: 'not_found' }
+  const shots = (cur.screenshots ?? []) as string[]
+  if (!shots.includes(key)) return { error: 'not_found' }
+  const { data, error } = await supabase
+    .from('kaizen_item')
+    .update({ screenshots: shots.filter((k) => k !== key) })
+    .eq('id', id)
+    .select('*')
+    .maybeSingle()
+  if (error) return { error: error.message }
+  if (!data) return { error: 'forbidden' }
+  if (key.startsWith('kaizen/')) {
+    for (const k of [key, `thumbs/${key}`]) {
+      try {
+        await r2SoftDeleteObject(k)
+      } catch (e) {
+        await logError('Kaizen screenshot recycle failed', e, { source: 'kaizen.removeKaizenScreenshot', metadata: { key: k } })
+      }
+    }
+  }
+  revalidatePath('/atelier')
+  return { ok: true, item: data as KaizenItem }
 }
 
 // ── Badges (like the Audit count): entries others added since I last opened each scope ──

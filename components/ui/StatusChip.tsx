@@ -6,11 +6,11 @@ import type { StatusKey } from '@/lib/data'
 const MAP: Record<StatusKey, { cls: string; lbl: string }> = {
   en_production:   { cls: 'rust', lbl: 'En production' },
   available:       { cls: 'sage', lbl: 'Disponible'    },
-  reserved:        { cls: 'dust', lbl: 'Réservé'       },
-  consigned:       { cls: 'dust', lbl: 'Consigné'      },
-  loan:            { cls: 'cyan', lbl: 'Prêt'          },
-  sold:            { cls: 'mt',   lbl: 'Vendu'         },
-  gift:            { cls: 'mt',   lbl: 'Don'           },
+  reserved:        { cls: 'magenta', lbl: 'Réservé'  },
+  consigned:       { cls: 'magenta', lbl: 'Consigné' },
+  loan:            { cls: 'magenta', lbl: 'Prêt'     },
+  sold:            { cls: 'teal', lbl: 'Vendu'         },
+  gift:            { cls: 'mono', lbl: 'Don'           },
   artist_archive:  { cls: 'mt',   lbl: 'Archive (Pem)' },
   private_archive: { cls: 'mt',   lbl: 'Archive privée'},
 }

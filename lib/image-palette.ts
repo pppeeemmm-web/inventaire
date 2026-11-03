@@ -15,6 +15,9 @@ import sharp from 'sharp'
  *  3. Its swatch = the mean of its more saturated half (the colour you see, not a mud average).
  *
  *  4. Accents: a small vivid hue (under MIN_SHARE) is kept and flagged `accent`.
+ *  5. Refine (2026-11-03): each main family records how much of it is a light shade
+ *     (Lab L ≥ 65) and a dark one (L < 40) — `tones: [light, dark]` — so the filter can tell
+ *     light blue from navy inside "blue".
  *
  * Accuracy = the photo's own colours (Lightroom white balance / exposure); background, margin
  * or frame in the shot count too.
@@ -23,6 +26,11 @@ import sharp from 'sharp'
 import type { ColourFamily, PaletteSwatch } from './colour-families'
 
 export type { ColourFamily, PaletteSwatch }
+
+// Same values as TONE_LIGHT_MIN / TONE_DARK_MAX in ./colour-families (value imports would break the
+// Node backfill script, which can only take types from there).
+const TONE_LIGHT_MIN = 65
+const TONE_DARK_MAX = 40
 
 const SAMPLE_EDGE = 160
 /** Families below this share of the image are left out — unless they qualify as an accent. */
@@ -142,6 +150,16 @@ export async function extractPalette(buf: Buffer): Promise<PaletteSwatch[]> {
     for (const p of pick) { mean[0] += p.lab[0]; mean[1] += p.lab[1]; mean[2] += p.lab[2] }
     return labToHex([mean[0] / pick.length, mean[1] / pick.length, mean[2] / pick.length])
   }
+  // Refine step: how much of the family is a light or a dark shade (light blue vs navy).
+  const tonesOf = (px: { lab: Lab }[]): [number, number] => {
+    let light = 0
+    let dark = 0
+    for (const p of px) {
+      if (p.lab[0] >= TONE_LIGHT_MIN) light++
+      else if (p.lab[0] < TONE_DARK_MAX) dark++
+    }
+    return [Math.round((light / px.length) * 100) / 100, Math.round((dark / px.length) * 100) / 100]
+  }
   for (const [family, px] of groups) {
     const share = px.length / total
     if (share < MIN_SHARE) {
@@ -162,7 +180,7 @@ export async function extractPalette(buf: Buffer): Promise<PaletteSwatch[]> {
     const pick = family === 'black' || family === 'grey' || family === 'white'
       ? sorted
       : sorted.slice(0, Math.max(1, Math.ceil(sorted.length / 2)))
-    swatches.push({ family, hex: meanHex(pick), share: Math.round(share * 1000) / 1000 })
+    swatches.push({ family, hex: meanHex(pick), share: Math.round(share * 1000) / 1000, tones: tonesOf(px) })
   }
   // No cap on main families: a family at ≥ MIN_SHARE is a real colour of the picture.
   const main = swatches.sort((a, b) => b.share - a.share)

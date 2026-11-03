@@ -31,6 +31,7 @@ import { kaizenMessages } from './kaizen.messages'
 import { reportsUiMessages } from './reports-ui.messages'
 import { conditionMessages } from './condition.messages'
 import { workPeriodsMessages } from './work-periods.messages'
+import { whatsNewMessages } from './whats-new.messages'
 
 export const featureMessages = {
   ...atelierMessages,
@@ -66,6 +67,7 @@ export const featureMessages = {
   ...reportsUiMessages,
   ...conditionMessages,
   ...workPeriodsMessages,
+  ...whatsNewMessages,
 } as const
 
 export type MessageKey = keyof typeof featureMessages

@@ -41,6 +41,14 @@ export const atelierMessages = defineMessages({
     fr: 'Recherche (Ctrl+K)',
     en: 'Search (Ctrl+K)',
   },
+  atelier_pending_review_fmt: {
+    fr: 'À valider · {n}',
+    en: 'To review · {n}',
+  },
+  atelier_pending_review_title: {
+    fr: 'Modifications proposées en attente de validation (Audit)',
+    en: 'Proposed changes waiting for approval (Audit)',
+  },
   atelier_quick_studio_bible: {
     fr: 'Télécharger la Bible Atelier',
     en: 'Download Studio Bible',

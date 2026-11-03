@@ -427,8 +427,6 @@ export function OverviewTab({
           )}
         </div>
 
-        {isAdmin && <EmbeddingIndexCard t={t} />}
-
         {/* Integrity Sentry (Admin Only) */}
         {isAdmin && conflicts.length > 0 && (
           <div style={{ padding: 16, background: 'var(--rust)11', border: '1px solid var(--rust)44' }}>
@@ -561,6 +559,13 @@ export function OverviewTab({
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Search indexing — admin maintenance, kept below the day-to-day items (owner 2026-11-03) */}
+        {isAdmin && (
+          <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: '1px solid var(--bd)' }}>
+            <EmbeddingIndexCard t={t} />
           </div>
         )}
       </div>

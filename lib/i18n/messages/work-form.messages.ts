@@ -78,6 +78,21 @@ export const workFormMessages = defineMessages({
     fr: 'En cours · début inconnu',
     en: 'In progress · start unknown',
   },
+  wf_production_start_label: {
+    fr: 'Début de production',
+    en: 'Production started',
+  },
+  wf_production_start_hint: {
+    fr: 'La fin se remplit seule : cataloguée ou mise en archive.',
+    en: 'The end fills itself in: catalogued or archived.',
+  },
+  wf_production_start_save: { fr: 'Enregistrer', en: 'Save' },
+  wf_production_start_saved: { fr: 'Date de début enregistrée', en: 'Start date saved' },
+  wf_production_start_after_end: {
+    fr: 'Le début ne peut pas être après la fin de production.',
+    en: 'The start cannot be after the end of production.',
+  },
+  wf_production_start_invalid: { fr: 'Date invalide.', en: 'Invalid date.' },
   wf_production_origin_found: {
     fr: 'œuvre retrouvée',
     en: 'found work',

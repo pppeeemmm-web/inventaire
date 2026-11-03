@@ -1070,6 +1070,7 @@ export type Database = {
           done_by: string | null
           id: number
           legacy_system_log_id: number | null
+          screenshots: string[]
           section: string | null
           suggested_section: string | null
           title: string
@@ -1084,6 +1085,7 @@ export type Database = {
           done_by?: string | null
           id?: never
           legacy_system_log_id?: number | null
+          screenshots?: string[]
           section?: string | null
           suggested_section?: string | null
           title: string
@@ -1098,6 +1100,7 @@ export type Database = {
           done_by?: string | null
           id?: never
           legacy_system_log_id?: number | null
+          screenshots?: string[]
           section?: string | null
           suggested_section?: string | null
           title?: string
@@ -2940,14 +2943,17 @@ export type Database = {
       }
       work_source_link: {
         Row: {
+          note: string | null
           oeuvre_id: number
           source_id: number
         }
         Insert: {
+          note?: string | null
           oeuvre_id: number
           source_id: number
         }
         Update: {
+          note?: string | null
           oeuvre_id?: number
           source_id?: number
         }

@@ -49,9 +49,14 @@ export function WorkFormPhysicalQr({ oeuvreId, titre }: Props) {
   }, [t, url])
 
   const onPrint = useCallback(() => {
-    const w = window.open('', '_blank', 'noopener,noreferrer')
-    if (!w) return
-    const label = titre?.trim() || `#${oeuvreId}`
+    // No 'noopener': with it window.open returns null, so the label was never written (blank tab).
+    const w = window.open('', '_blank')
+    if (!w) {
+      toast.error(t('wf_qr_load_failed'))
+      return
+    }
+    const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+    const label = esc(titre?.trim() || `#${oeuvreId}`)
     const img = dataUrl
       ? `<img src="${dataUrl}" alt="QR" width="200" height="200" style="display:block;margin:0 auto 12px" />`
       : `<p style="font:14px monospace">${url}</p>`
@@ -62,8 +67,11 @@ p.url{font:11px monospace;word-break:break-all;color:#444;margin-top:8px}</style
 <p class="url">${url}</p></body></html>`)
     w.document.close()
     w.focus()
-    w.print()
-  }, [dataUrl, oeuvreId, titre, url])
+    // Print once the QR image has decoded, otherwise the label can print without it.
+    const qrImg = w.document.querySelector('img')
+    if (qrImg && !qrImg.complete) qrImg.addEventListener('load', () => w.print(), { once: true })
+    else w.print()
+  }, [dataUrl, oeuvreId, t, titre, url])
 
   return (
     <div

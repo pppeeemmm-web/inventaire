@@ -118,6 +118,14 @@ export const inventoryUiMessages = defineMessages({
   },
   inv_colour_count_fmt: { fr: '{n} œuvres dans le catalogue', en: '{n} works in the catalogue' },
   inv_colour_clear: { fr: 'Effacer les couleurs', en: 'Clear colours' },
+  inv_colour_refine: { fr: 'Affiner', en: 'Refine' },
+  inv_colour_refine_title: {
+    fr: 'Garder seulement les nuances claires ou foncées d’une couleur choisie (ex. bleu clair / bleu marine)',
+    en: 'Keep only the light or dark shades of a chosen colour (e.g. light blue / navy)',
+  },
+  inv_colour_tone_any: { fr: 'Toutes', en: 'Any' },
+  inv_colour_tone_light: { fr: 'Claires', en: 'Light' },
+  inv_colour_tone_dark: { fr: 'Foncées', en: 'Dark' },
   inv_colour_chip_without_fmt: { fr: 'Sans {c}', en: 'Without {c}' },
   wf_palette_swatch_filter_fmt: {
     fr: '{c} — voir les œuvres de cette couleur',

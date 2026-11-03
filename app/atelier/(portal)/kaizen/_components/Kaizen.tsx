@@ -13,6 +13,8 @@ import { useI18n } from '@/lib/i18n/context'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { toast } from '@/lib/ui/toast'
 import { ReportLinkButton } from '@/components/atelier/ReportLinkButton'
+import { KaizenScreenshots } from './KaizenScreenshots'
+import { WhatsNewList } from '@/components/atelier/WhatsNew'
 import { KAIZEN_SECTIONS, type KaizenItem, type KaizenScope, type KaizenSection } from '@/lib/kaizen'
 import {
   confirmKaizenSections,
@@ -65,6 +67,8 @@ export function Kaizen({ scope = 'creation' }: { scope?: KaizenScope }) {
   const [reviewPick, setReviewPick] = useState<Record<number, KaizenSection>>({})
   /** Last visit before this one: entries by others created after it are flagged "Nouveau". */
   const [seenBefore, setSeenBefore] = useState<string | null>(null)
+  /** Kaizen → What's new (3.0 list); `?whatsnew=1` opens it (link from the popup). */
+  const [showWhatsNew, setShowWhatsNew] = useState(() => searchParams.get('whatsnew') === '1')
 
   useEffect(() => {
     void markKaizenSeen(scope).then((r) => { if (!('error' in r)) setSeenBefore(r.previous) })
@@ -232,9 +236,25 @@ export function Kaizen({ scope = 'creation' }: { scope?: KaizenScope }) {
           <div className="serif" style={{ fontSize: 22, flex: 1 }}>
             {scope === 'creation' ? t('kaizen_section_creation') : t('kaizen_group_ops')}
           </div>
+          <button
+            type="button"
+            className="btn sm"
+            aria-expanded={showWhatsNew}
+            data-testid="kaizen-whats-new-toggle"
+            onClick={() => setShowWhatsNew((v) => !v)}
+            style={{ minHeight: 44, whiteSpace: 'nowrap', borderColor: 'var(--ac)', color: showWhatsNew ? 'var(--bg0)' : 'var(--ac)', background: showWhatsNew ? 'var(--ac)' : undefined }}
+          >
+            {showWhatsNew ? t('wn_kaizen_hide') : t('wn_kaizen_btn')}
+          </button>
           <ReportLinkButton source="kaizen" />
         </div>
         <p style={{ fontSize: 12, color: 'var(--tx2)', margin: '4px 0 12px', maxWidth: 760 }}>{t('kaizen_intro')}</p>
+        {showWhatsNew ? (
+          <div data-testid="kaizen-whats-new" style={{ maxWidth: 760, margin: '0 0 16px', padding: '14px 16px', border: '1px solid var(--ac)', background: 'var(--bg1)' }}>
+            <div className="serif" style={{ fontSize: 18, color: 'var(--ac)', marginBottom: 10 }}>{t('wn_title')}</div>
+            <WhatsNewList />
+          </div>
+        ) : null}
       </div>
       {scope === 'ops' ? (
         <div role="tablist" style={{ display: 'flex', gap: 8, padding: narrow ? '10px 12px 0' : '12px 28px 0', overflowX: 'auto' }}>
@@ -332,6 +352,7 @@ export function Kaizen({ scope = 'creation' }: { scope?: KaizenScope }) {
                     ) : null}
                   </>
                 )}
+                <KaizenScreenshots item={it} canEdit={canEdit(it) && view !== 'review'} onItem={replace} />
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginTop: 8 }}>
                   {seenBefore && it.created_at > seenBefore && it.author_id !== me ? (
                     <span className="t-mono-sm" data-testid={`kaizen-new-${it.id}`} style={{ fontSize: 10, color: 'var(--bg1)', background: 'var(--ac)', padding: '1px 6px' }}>

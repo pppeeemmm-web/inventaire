@@ -147,7 +147,7 @@ export function AnalyticsPanel({
           <div style={{
             display: narrow ? 'flex' : 'grid',
             flexDirection: narrow ? 'column' : undefined,
-            gridTemplateColumns: narrow ? undefined : 'minmax(120px, 1fr) minmax(120px, 1fr) minmax(180px, 2fr)',
+            gridTemplateColumns: narrow ? undefined : 'minmax(120px, 1fr) minmax(120px, 1fr) minmax(180px, 2fr) minmax(180px, 2fr)',
             gap: 8,
             flexShrink: 0,
             minHeight: narrow ? undefined : 132,
@@ -158,7 +158,7 @@ export function AnalyticsPanel({
               border: '1px solid var(--bd)',
               display: 'flex',
               flexDirection: 'column',
-              justifyContent: 'center',
+              justifyContent: 'flex-start',
               minHeight: 0,
             }}>
               <div className="t-label" style={{ marginBottom: 6, fontSize: 10 }}>
@@ -174,6 +174,12 @@ export function AnalyticsPanel({
                 fontVariantNumeric: 'tabular-nums',
               }}>
                 {result.pageviews.toLocaleString(numLocale)}
+              </div>
+              <div className="t-mono-xs" style={{ color: 'var(--tx3)', marginTop: 6, lineHeight: 1.3, fontSize: 9 }}>
+                {t('analytics_views_avg_fmt').replace(
+                  '{n}',
+                  (result.pageviews / Math.max(result.trend.length, 1)).toLocaleString(numLocale, { maximumFractionDigits: 1 }),
+                )}
               </div>
             </div>
             <div style={{
@@ -215,6 +221,23 @@ export function AnalyticsPanel({
               <div className="t-label" style={{ marginBottom: 6, fontSize: 10, flexShrink: 0 }}>{t('analytics_trend_views_per_day')}</div>
               <div style={{ flex: 1, minHeight: 112, overflow: 'visible', padding: '2px 4px 0' }}>
                 <Sparkline trend={result.trend} />
+              </div>
+            </div>
+            <div
+              data-testid="analytics-visitors-per-day"
+              style={{
+                padding: '8px 12px',
+                background: 'var(--bg0)',
+                border: '1px solid var(--bd)',
+                minHeight: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'visible',
+              }}
+            >
+              <div className="t-label" style={{ marginBottom: 6, fontSize: 10, flexShrink: 0 }}>{t('analytics_trend_visitors_per_day')}</div>
+              <div style={{ flex: 1, minHeight: 112, overflow: 'visible', padding: '2px 4px 0' }}>
+                <Sparkline trend={result.visitorTrend} pointTitleKey="analytics_sparkline_visitors_title_fmt" />
               </div>
             </div>
           </div>
@@ -284,7 +307,12 @@ export function AnalyticsPanel({
             >
               <div className="t-label" style={{ marginBottom: 8, fontSize: 10 }}>{t('analytics_by_team_member')}</div>
               {result.byTeamMember.length > 0 ? (
-                <BarList items={result.byTeamMember} labelKey="member" valueKey="views" maxRows={12} />
+                <BarList
+                  items={result.byTeamMember.map((m) => (m.unattributed ? { ...m, member: t('analytics_team_unattributed') } : m))}
+                  labelKey="member"
+                  valueKey="views"
+                  maxRows={12}
+                />
               ) : (
                 <div style={{ fontSize: 11, color: 'var(--tx3)' }}>{t('analytics_by_team_member_empty')}</div>
               )}

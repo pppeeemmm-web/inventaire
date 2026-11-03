@@ -6,7 +6,7 @@
 
 import { useState } from 'react'
 import { useI18n } from '@/lib/i18n/context'
-import type { ColourFamily } from '@/lib/colour-families'
+import type { ColourFamily, ColourTone } from '@/lib/colour-families'
 import {
   FAMILY_SWATCH,
   FILTER_FAMILIES,
@@ -42,7 +42,9 @@ export function ColourFilterPanel({
     const exc = query.exclude.includes(f)
     if (mode === 'include') {
       if (inc) {
-        setQuery({ ...query, include: query.include.filter((x) => x !== f) })
+        const tones = { ...(query.tones ?? {}) }
+        delete tones[f]
+        setQuery({ ...query, include: query.include.filter((x) => x !== f), tones })
       } else if (query.include.length < MAX_INCLUDED) {
         setQuery({ ...query, include: [...query.include, f], exclude: query.exclude.filter((x) => x !== f) })
         if (rank === 'off') setRank('match')
@@ -112,7 +114,7 @@ export function ColourFilterPanel({
               : t('inv_colour_hint')}
         </span>
         {query.include.length + query.exclude.length > 0 ? (
-          <button type="button" className="btn ghost sm" onClick={() => setQuery({ ...query, include: [], exclude: [] })}>
+          <button type="button" className="btn ghost sm" onClick={() => setQuery({ ...query, include: [], exclude: [], tones: {} })}>
             {t('inv_colour_clear')}
           </button>
         ) : null}
@@ -156,6 +158,45 @@ export function ColourFilterPanel({
           )
         })}
       </div>
+
+      {/* Refine: light or dark shades of an included colour (neutrals are already a lightness). */}
+      {query.include.some((f) => !NEUTRALS.has(f)) ? (
+        <div data-testid="inv-colour-refine" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
+          <span className="t-label" title={t('inv_colour_refine_title')}>{t('inv_colour_refine')}</span>
+          {query.include.filter((f) => !NEUTRALS.has(f)).map((f) => {
+            const cur = query.tones?.[f] ?? 'any'
+            const label = t(`colour_family_${f}` as Parameters<typeof t>[0])
+            const pick = (v: 'any' | ColourTone) => {
+              const tones = { ...(query.tones ?? {}) }
+              if (v === 'any') delete tones[f]
+              else tones[f] = v
+              setQuery({ ...query, tones })
+            }
+            return (
+              <div key={f} role="group" aria-label={label} style={{ display: 'inline-flex', alignItems: 'center', border: '1px solid var(--bd)' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0 8px', fontSize: 12 }}>
+                  <span aria-hidden style={{ width: 10, height: 10, borderRadius: '50%', background: FAMILY_SWATCH[f] }} />
+                  {label}
+                </span>
+                {(['any', 'light', 'dark'] as const).map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    aria-pressed={cur === v}
+                    data-testid={`inv-colour-tone-${f}-${v}`}
+                    onClick={() => pick(v)}
+                    style={{ ...segBtn(cur === v), borderLeft: '1px solid var(--bd)' }}
+                  >
+                    {v === 'any' ? t('inv_colour_tone_any') : v === 'light' ? t('inv_colour_tone_light') : t('inv_colour_tone_dark')}
+                  </button>
+                ))}
+              </div>
+            )
+          })}
+        </div>
+      ) : null}
     </div>
   )
 }
+
+const NEUTRALS = new Set<ColourFamily>(['black', 'grey', 'white'])

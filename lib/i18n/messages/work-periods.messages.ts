@@ -11,7 +11,7 @@ export const workPeriodsMessages = defineMessages({
   ps_period_by_hand: { fr: 'choisie à la main', en: 'set by hand' },
   ps_period_from_year: { fr: "d'après l'année", en: 'from the year' },
   ps_manage: { fr: 'Gérer périodes et sources', en: 'Manage periods and sources' },
-  ps_manage_short: { fr: 'Périodes', en: 'Periods' },
+  ps_manage_short: { fr: 'Périodes & sources', en: 'Periods & sources' },
   ps_close: { fr: 'Fermer', en: 'Close' },
   ps_loading: { fr: 'Chargement…', en: 'Loading…' },
   ps_periods_empty: { fr: 'Aucune période pour l’instant.', en: 'No periods yet.' },
@@ -48,4 +48,13 @@ export const workPeriodsMessages = defineMessages({
   ps_filter_all_sources: { fr: 'Toutes sources', en: 'All sources' },
   ps_filter_no_source: { fr: 'Sans source', en: 'No source' },
   ps_col_period: { fr: 'Période', en: 'Period' },
+  ps_source_note_placeholder: {
+    fr: 'Une ligne : quel lieu, quelle photo, quel souvenir…',
+    en: 'One line: which place, which photo, which memory…',
+  },
+  ps_source_note_aria_fmt: { fr: 'Précision pour {name}', en: 'Detail for {name}' },
+  ps_report_source_notes: { fr: 'Précisions de source', en: 'Source details' },
+  ps_bulk_source_label: { fr: 'Ajouter une source à la sélection', en: 'Add a source to the selection' },
+  ps_bulk_source_pick: { fr: 'Source…', en: 'Source…' },
+  ps_bulk_source_done_fmt: { fr: 'Source « {name} » ajoutée à {n} œuvre(s)', en: 'Source "{name}" added to {n} work(s)' },
 })

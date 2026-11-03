@@ -63,4 +63,14 @@ export const kaizenMessages = defineMessages({
     en: 'Ideas and suggestions now live in Kaizen (the 32 entries were moved there).',
   },
   system_ledger_open_kaizen: { fr: 'Ouvrir Kaizen →', en: 'Open Kaizen →' },
+  kaizen_shot_add: { fr: '+ Capture', en: '+ Screenshot' },
+  kaizen_shot_add_title: {
+    fr: 'Ajouter une ou plusieurs captures (ou les déposer ici) — 6 au plus',
+    en: 'Add one or more screenshots (or drop them here) — 6 at most',
+  },
+  kaizen_shot_uploading: { fr: 'Envoi…', en: 'Uploading…' },
+  kaizen_shot_open: { fr: 'Ouvrir la capture', en: 'Open screenshot' },
+  kaizen_shot_remove: { fr: 'Retirer la capture', en: 'Remove screenshot' },
+  kaizen_shot_remove_confirm: { fr: 'Retirer cette capture ?', en: 'Remove this screenshot?' },
+  kaizen_shots_too_many: { fr: '6 captures au plus par entrée.', en: '6 screenshots at most per entry.' },
 })

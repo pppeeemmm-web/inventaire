@@ -1,0 +1,32 @@
+/**
+ * "www.thepemworkshop.com 3.0" — what's new for the team (owner 2026-11-03). Shown once as a popup
+ * in the Atelier (until "Don't show again") and listed in Kaizen → What's new. Copy:
+ * `lib/i18n/messages/whats-new.messages.ts` (`wn_<id>_t` / `wn_<id>_d`). Browser-safe.
+ *
+ * A new release = a new `WHATS_NEW_RELEASE` (people who dismissed the old one see it again) + items.
+ */
+
+export const WHATS_NEW_RELEASE = '3.0'
+
+/** localStorage: release the viewer chose not to see again. sessionStorage: already shown this visit. */
+export const WHATS_NEW_DISMISSED_KEY = 'pem_whats_new_dismissed'
+export const WHATS_NEW_SEEN_SESSION_KEY = 'pem_whats_new_seen_session'
+
+export type WhatsNewItem = { id: string; day: string }
+
+/** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
+export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'status_colours', day: '2026-11-03' },
+  { id: 'rules', day: '2026-11-03' },
+  { id: 'period_source', day: '2026-11-03' },
+  { id: 'bulk_source', day: '2026-11-03' },
+  { id: 'fiscal', day: '2026-11-03' },
+  { id: 'qr', day: '2026-11-03' },
+  { id: 'kaizen', day: '2026-11-02' },
+  { id: 'constats', day: '2026-11-02' },
+  { id: 'reports', day: '2026-11-02' },
+  { id: 'colours', day: '2026-11-02' },
+  { id: 'notes', day: '2026-11-02' },
+  { id: 'sidebar', day: '2026-11-02' },
+  { id: 'production_dates', day: '2026-11-01' },
+]

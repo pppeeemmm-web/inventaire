@@ -14,6 +14,7 @@ import {
   type VaultDoc,
 } from '@/app/atelier/(portal)/vault/actions'
 import { stringifyError } from '@/lib/error'
+import { triggerStudioBibleDownload } from '@/lib/studio-bible-download'
 import type { Oeuvre } from '@/lib/types/database'
 
 // ── Constants ─────────────────────────────────────────────────────────────
@@ -426,6 +427,20 @@ export function Vault({ oeuvres, tM }: Props) {
           </button>
           <button className="btn ghost sm" style={{ width: '100%' }} onClick={() => setShowCoa(true)}>
             ✦ Générer COA
+          </button>
+          {/* Moved here from the Atelier header (owner 2026-11-03): a handover document, not a daily action. */}
+          <button
+            className="btn ghost sm"
+            style={{ width: '100%', justifyContent: 'flex-start' }}
+            data-testid="vault-studio-bible"
+            onClick={() =>
+              void triggerStudioBibleDownload({
+                notFoundMessage: t('studio_bible_download_not_found'),
+                errorMessage: (detail) => t('vault_download_err_fmt').replace('{msg}', detail),
+              })
+            }
+          >
+            {t('atelier_quick_studio_bible')}
           </button>
         </div>
       </div>

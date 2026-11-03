@@ -16,7 +16,7 @@ import {
   sortPeriods,
   type PeriodChoice,
 } from '@/lib/work-periods'
-import { setWorkPeriod, setWorkSources } from '@/app/atelier/works/period-source-actions'
+import { setWorkPeriod, setWorkSourceNote, setWorkSources } from '@/app/atelier/works/period-source-actions'
 import { PeriodSourceManager } from '@/components/atelier/PeriodSourceManager'
 
 export function WorkPeriodSourceSection({ oeuvreId, year }: { oeuvreId: number; year: number | null }) {
@@ -59,10 +59,34 @@ export function WorkPeriodSourceSection({ oeuvreId, year }: { oeuvreId: number; 
         toast.error(`${t('error_prefix')} ${res.error}`)
         return
       }
-      patchPeriodSource((d) => ({ ...d, sourcesByWork: { ...d.sourcesByWork, [oeuvreId]: next } }))
+      patchPeriodSource((d) => {
+        // An unticked source loses its link row, and its note with it.
+        const notes = { ...(d.sourceNotes[oeuvreId] ?? {}) }
+        for (const k of Object.keys(notes)) if (!next.includes(Number(k))) delete notes[Number(k)]
+        return {
+          ...d,
+          sourcesByWork: { ...d.sourcesByWork, [oeuvreId]: next },
+          sourceNotes: { ...d.sourceNotes, [oeuvreId]: notes },
+        }
+      })
     } finally {
       setBusy(false)
     }
+  }
+
+  async function saveNote(sourceId: number, text: string) {
+    if ((data.sourceNotes[oeuvreId]?.[sourceId] ?? '') === text.trim()) return
+    const res = await setWorkSourceNote(oeuvreId, sourceId, text)
+    if ('error' in res) {
+      toast.error(`${t('error_prefix')} ${res.error}`)
+      return
+    }
+    patchPeriodSource((d) => {
+      const notes = { ...(d.sourceNotes[oeuvreId] ?? {}) }
+      if (res.note) notes[sourceId] = res.note
+      else delete notes[sourceId]
+      return { ...d, sourceNotes: { ...d.sourceNotes, [oeuvreId]: notes } }
+    })
   }
 
   return (
@@ -153,6 +177,26 @@ export function WorkPeriodSourceSection({ oeuvreId, year }: { oeuvreId: number; 
             })}
           </div>
         )}
+        {/* One short line per ticked source: which place, which photo, whose memory. Saved on leaving the field. */}
+        {sources.filter((s) => mine.includes(s.id)).map((s) => (
+          <label key={`note-${s.id}`} style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+            <span className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx3)', minWidth: 90, flexShrink: 0 }}>{s.name}</span>
+            <input
+              key={`${oeuvreId}-${s.id}-${data.sourceNotes[oeuvreId]?.[s.id] ?? ''}`}
+              className="input"
+              defaultValue={data.sourceNotes[oeuvreId]?.[s.id] ?? ''}
+              maxLength={300}
+              placeholder={t('ps_source_note_placeholder')}
+              aria-label={t('ps_source_note_aria_fmt').replace('{name}', s.name)}
+              data-testid="work-source-note"
+              onBlur={(e) => void saveNote(s.id, e.currentTarget.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') e.currentTarget.blur()
+              }}
+              style={{ flex: 1, minWidth: 0, fontSize: 13, minHeight: 44 }}
+            />
+          </label>
+        ))}
       </div>
       </>
       )}

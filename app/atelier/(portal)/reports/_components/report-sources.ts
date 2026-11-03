@@ -128,6 +128,18 @@ function workFields(c: SourceCtx): ReportField<Oeuvre>[] {
           .map((id) => c.periodSource.sources.find((s) => s.id === id)?.name)
           .filter((x): x is string => !!x),
     },
+    {
+      id: 'source_notes',
+      label: t('ps_report_source_notes'),
+      kind: 'text',
+      value: (o) => {
+        const notes = c.periodSource.sourceNotes[o.OeuvreID] ?? {}
+        const parts = Object.entries(notes).map(
+          ([sid, note]) => `${c.periodSource.sources.find((s) => s.id === Number(sid))?.name ?? '?'} : ${note}`,
+        )
+        return parts.length ? parts.join(' · ') : null
+      },
+    },
     { id: 'catalogued', label: h('catalogued'), kind: 'bool', value: (o) => !!o.Catalogué },
     { id: 'needs_photo', label: t('report_f_needs_photo'), kind: 'bool', value: (o) => !!o.NeedsPhotograph },
     { id: 'exposable', label: h('exposable'), kind: 'bool', value: (o) => !!o.Exposable },

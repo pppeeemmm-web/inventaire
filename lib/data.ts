@@ -245,11 +245,12 @@ export function statusColor(key: StatusKey): string {
   switch (key) {
     case 'en_production':   return 'var(--rust)'
     case 'available':       return 'var(--sage)'
-    case 'reserved':        return 'var(--dust)'
-    case 'consigned':       return 'var(--dust)'
-    case 'loan':            return 'var(--cyan)'
-    case 'sold':            return 'transparent'
-    case 'gift':            return 'transparent'
+    // Owner 2026-11-03: gift black & white, sold turquoise, consigned / loan / reserved magenta.
+    case 'reserved':        return 'var(--magenta)'
+    case 'consigned':       return 'var(--magenta)'
+    case 'loan':            return 'var(--magenta)'
+    case 'sold':            return 'var(--teal)'
+    case 'gift':            return 'var(--tx)'
     case 'artist_archive':  return 'var(--mt)'
     case 'private_archive': return 'var(--mt)'
     default:                return 'var(--tx3)'

@@ -36,16 +36,20 @@ export async function loadPeriodSourceData(): Promise<PeriodSourceData | Err> {
   const overrides: Record<number, number | null> = {}
   for (const r of oRes.data ?? []) overrides[r.oeuvre_id] = r.period_id
   const sourcesByWork: Record<number, number[]> = {}
+  const sourceNotes: Record<number, Record<number, string>> = {}
   // Links can pass PostgREST's 1000-row page: read them page by page.
   for (let from = 0; ; from += PAGE) {
     const { data, error } = await supabase
       .from('work_source_link')
-      .select('oeuvre_id, source_id')
+      .select('oeuvre_id, source_id, note')
       .order('oeuvre_id')
       .order('source_id')
       .range(from, from + PAGE - 1)
     if (error) return { error: error.message }
-    for (const r of data ?? []) (sourcesByWork[r.oeuvre_id] ??= []).push(r.source_id)
+    for (const r of data ?? []) {
+      ;(sourcesByWork[r.oeuvre_id] ??= []).push(r.source_id)
+      if (r.note?.trim()) (sourceNotes[r.oeuvre_id] ??= {})[r.source_id] = r.note
+    }
     if (!data || data.length < PAGE) break
   }
   return {
@@ -53,6 +57,7 @@ export async function loadPeriodSourceData(): Promise<PeriodSourceData | Err> {
     sources: (sRes.data ?? []) as WorkSource[],
     overrides,
     sourcesByWork,
+    sourceNotes,
   }
 }
 
@@ -155,4 +160,50 @@ export async function setWorkSources(oeuvreId: number, sourceIds: number[]): Pro
     }
   }
   return { ok: true }
+}
+
+const MAX_NOTE = 300
+
+/** The short line for one source on one work (the link must exist: the source is ticked). */
+export async function setWorkSourceNote(
+  oeuvreId: number,
+  sourceId: number,
+  note: string,
+): Promise<{ ok: true; note: string | null } | Err> {
+  const supabase = await createClient()
+  if (!(await signedIn(supabase))) return { error: 'auth' }
+  if (!Number.isInteger(oeuvreId) || oeuvreId <= 0 || !Number.isInteger(sourceId) || sourceId <= 0) return { error: 'bad_work' }
+  const value = (note ?? '').replace(/\s+/g, ' ').trim().slice(0, MAX_NOTE) || null
+  const { data, error } = await supabase
+    .from('work_source_link')
+    .update({ note: value })
+    .eq('oeuvre_id', oeuvreId)
+    .eq('source_id', sourceId)
+    .select('oeuvre_id')
+  if (error) {
+    await logError('setWorkSourceNote failed', error, { source: 'periods.setWorkSourceNote', metadata: { oeuvreId, sourceId } })
+    return { error: error.message }
+  }
+  if (!data?.length) return { error: 'not_linked' }
+  return { ok: true, note: value }
+}
+
+/** Inventory bulk action: give one source to every selected work (existing links and notes kept). */
+export async function addSourceToWorks(sourceId: number, oeuvreIds: number[]): Promise<{ ok: true; added: number[] } | Err> {
+  const supabase = await createClient()
+  if (!(await signedIn(supabase))) return { error: 'auth' }
+  if (!Number.isInteger(sourceId) || sourceId <= 0) return { error: 'bad_source' }
+  const ids = [...new Set(oeuvreIds.filter((x) => Number.isInteger(x) && x > 0))]
+  if (!ids.length) return { ok: true, added: [] }
+  for (let i = 0; i < ids.length; i += PAGE) {
+    const chunk = ids.slice(i, i + PAGE)
+    const { error } = await supabase
+      .from('work_source_link')
+      .upsert(chunk.map((oeuvre_id) => ({ oeuvre_id, source_id: sourceId })), { onConflict: 'oeuvre_id,source_id', ignoreDuplicates: true })
+    if (error) {
+      await logError('addSourceToWorks failed', error, { source: 'periods.addSourceToWorks', metadata: { sourceId, n: ids.length } })
+      return { error: error.message }
+    }
+  }
+  return { ok: true, added: ids }
 }

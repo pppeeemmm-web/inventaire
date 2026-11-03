@@ -6,6 +6,8 @@
 // Heavy tab panels load on demand (next/dynamic). SystemTab + ContactsTab eager-loaded to avoid dev ChunkLoadError on those chunks.
 
 import { useState, useMemo, useCallback, useEffect, useLayoutEffect, useRef } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import { WhatsNewDialog } from '@/components/atelier/WhatsNew'
 import { CommandPalette } from './CommandPalette'
 import { useUnsavedActionGuard } from '@/hooks/useUnsavedActionGuard'
 import { useEscapeClose } from '@/hooks/useEscapeClose'
@@ -84,7 +86,8 @@ function AtelierHeaderChrome({
   onPaletteOpen,
   onNewWork,
   onReports,
-  onStudioBible,
+  pendingReviewCount = 0,
+  onPendingReview,
   hideNewWork,
 }: {
   variant: 'desktop' | 'drawer'
@@ -93,7 +96,9 @@ function AtelierHeaderChrome({
   onPaletteOpen: () => void
   onNewWork: () => void
   onReports: () => void
-  onStudioBible: () => void
+  /** Admin: changes waiting in Audit. The header shows a "To review" button while > 0. */
+  pendingReviewCount?: number
+  onPendingReview?: () => void
   /** Narrow: + New work is on the bottom field bar, not in the drawer chrome. */
   hideNewWork?: boolean
 }) {
@@ -143,16 +148,20 @@ function AtelierHeaderChrome({
         >
           {t('tab_reports')}
         </button>
-        <button
-          type="button"
-          className="btn ghost sm"
-          onClick={onStudioBible}
-          title={t('atelier_quick_studio_bible')}
-          aria-label={t('atelier_quick_studio_bible')}
-          style={actionStyle}
-        >
-          {t('atelier_quick_studio_bible')}
-        </button>
+        {/* Audit items waiting (owner 2026-11-03: "be better informed on the desktop").
+            The Studio Bible button moved to the Vault page (still in the command palette). */}
+        {onPendingReview && pendingReviewCount > 0 ? (
+          <button
+            type="button"
+            className="btn sm"
+            onClick={onPendingReview}
+            data-testid="atelier-header-pending-review"
+            title={t('atelier_pending_review_title')}
+            style={{ ...actionStyle, borderColor: 'var(--rust)', color: 'var(--rust)' }}
+          >
+            {t('atelier_pending_review_fmt').replace('{n}', String(pendingReviewCount))}
+          </button>
+        ) : null}
       </div>
       <div style={{ display: 'flex', border: '1px solid var(--bd)', fontSize: 10, letterSpacing: 1, alignItems: 'stretch' }}>
         {compact ? (
@@ -866,6 +875,29 @@ export function TeamPortalClient({
 
   const [conflicts,      setConflicts]      = useState<any[]>([])
   const [isAdmin,        setIsAdmin]        = useState(initialIsAdmin)
+
+  // Keep the "To review" count fresh while the Atelier stays open on a desktop: on focus and
+  // every 5 min (admin only; the count is computed once at load otherwise).
+  useEffect(() => {
+    if (!isAdmin) return
+    let cancelled = false
+    const refresh = () => {
+      void createClient()
+        .from('pending_changes')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'pending')
+        .then(({ count, error }: { count: number | null; error: { message: string } | null }) => {
+          if (!cancelled && !error && count != null) setPendingReviewCount(count)
+        })
+    }
+    const timer = window.setInterval(refresh, 5 * 60_000)
+    window.addEventListener('focus', refresh)
+    return () => {
+      cancelled = true
+      window.clearInterval(timer)
+      window.removeEventListener('focus', refresh)
+    }
+  }, [isAdmin])
   const [paletteOpen,    setPaletteOpen]    = useState(false)
 
   useEffect(() => {
@@ -1120,6 +1152,8 @@ export function TeamPortalClient({
   return (
     <>
       {drawerLeaveDialog}
+      {/* "www.thepemworkshop.com 3.0" (owner 2026-11-03); Kaizen shows the same list in place. */}
+      <WhatsNewDialog suppressed={activeTab === 'kaizen' || activeTab === 'kaizen-ops'} />
       <CommandPalette
         open={paletteOpen}
         onClose={() => setPaletteOpen(false)}
@@ -1260,7 +1294,8 @@ export function TeamPortalClient({
               onPaletteOpen={() => setPaletteOpen(true)}
               onNewWork={() => void router.push('/atelier/works/new')}
               onReports={() => handleSetTab('reports')}
-              onStudioBible={downloadStudioBible}
+              pendingReviewCount={isAdmin ? pendingReviewCount : 0}
+              onPendingReview={isAdmin ? () => handleSetTab('audit') : undefined}
             />
           )}
         </div>
@@ -1403,7 +1438,8 @@ export function TeamPortalClient({
                   onPaletteOpen={() => setPaletteOpen(true)}
                   onNewWork={() => void router.push('/atelier/works/new')}
                   onReports={() => handleSetTab('reports')}
-                  onStudioBible={downloadStudioBible}
+                  pendingReviewCount={isAdmin ? pendingReviewCount : 0}
+                  onPendingReview={isAdmin ? () => handleSetTab('audit') : undefined}
                   hideNewWork
                 />
               </div>

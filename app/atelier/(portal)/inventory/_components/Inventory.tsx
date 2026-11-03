@@ -42,7 +42,9 @@ import type { ColourFamily } from '@/lib/colour-families'
 import type { Agg, Dim } from '@/lib/pivot'
 import { PivotPanel } from '@/components/atelier/PivotPanel'
 import { PeriodSourceManager } from '@/components/atelier/PeriodSourceManager'
-import { usePeriodSource } from '@/lib/atelier/use-period-source'
+import { patchPeriodSource, usePeriodSource } from '@/lib/atelier/use-period-source'
+import { addSourceToWorks } from '@/app/atelier/works/period-source-actions'
+import { ReportLinkButton } from '@/components/atelier/ReportLinkButton'
 import { effectivePeriod, type WorkPeriod } from '@/lib/work-periods'
 
 // ── Types ───────────────────────────────────────────────────────────
@@ -228,7 +230,7 @@ interface SharedProps {
 type View = 'list' | 'grid' | 'graph' | 'pivot'
 
 const INV_LIST_ROW_H = 44
-const INV_TABLE_COLS = 15
+const INV_TABLE_COLS = 14
 const INV_GRID_GAP = 12
 const INV_GRID_PAD = 16
 const INV_GRID_MIN_CELL = 140
@@ -387,6 +389,36 @@ export function Inventory({
   const sortedSources = useMemo(
     () => [...periodSource.sources].sort((a, b) => a.name.localeCompare(b.name)),
     [periodSource.sources],
+  )
+  const [bulkSourceBusy, setBulkSourceBusy] = useState(false)
+  const addSourceToSelection = useCallback(
+    async (sourceId: number) => {
+      if (!sourceId || selection.size === 0) return
+      setBulkSourceBusy(true)
+      try {
+        const res = await addSourceToWorks(sourceId, Array.from(selection))
+        if ('error' in res) {
+          toast.error(`${t('error_prefix')} ${res.error}`)
+          return
+        }
+        patchPeriodSource((d) => {
+          const sourcesByWork = { ...d.sourcesByWork }
+          for (const oid of res.added) {
+            const cur = sourcesByWork[oid] ?? []
+            if (!cur.includes(sourceId)) sourcesByWork[oid] = [...cur, sourceId]
+          }
+          return { ...d, sourcesByWork }
+        })
+        toast.success(
+          t('ps_bulk_source_done_fmt')
+            .replace('{name}', sourceNameMap[sourceId] ?? '')
+            .replace('{n}', String(res.added.length)),
+        )
+      } finally {
+        setBulkSourceBusy(false)
+      }
+    },
+    [selection, sourceNameMap, t],
   )
   const [showColour, setShowColour] = useState(false)
   const [colourQ, setColourQ] = useState<ColourQuery>({ include: [], exclude: [], nearby: false })
@@ -605,7 +637,8 @@ export function Inventory({
         const groupNames = (oeuvreGroupMap.get(o.OeuvreID) ?? []).map(gid => groupNameMap[gid] ?? '').join(' ')
         const periodName = periodOf(o)?.name ?? ''
         const sourceNames = (periodSource.sourcesByWork[o.OeuvreID] ?? []).map((id) => sourceNameMap[id] ?? '').join(' ')
-        const bag = `${o.Titre ?? ''} #${o.OeuvreID} ${o.Technique != null ? (tM[o.Technique] ?? '') : ''} ${o.Support != null ? (sM[o.Support] ?? '') : ''} ${themeNames} ${groupNames} ${periodName} ${sourceNames}`.toLowerCase()
+        const sourceNotes = Object.values(periodSource.sourceNotes[o.OeuvreID] ?? {}).join(' ')
+        const bag = `${o.Titre ?? ''} #${o.OeuvreID} ${o.Technique != null ? (tM[o.Technique] ?? '') : ''} ${o.Support != null ? (sM[o.Support] ?? '') : ''} ${themeNames} ${groupNames} ${periodName} ${sourceNames} ${sourceNotes}`.toLowerCase()
         if (!bag.includes(sq)) return false
       }
       if (tech !== 'all' && String(o.Technique ?? '') !== tech) return false
@@ -816,11 +849,11 @@ export function Inventory({
     return [
       { k: 'en_production',   l: t('wf_prod_atelier_l'),              c: 'var(--rust)' },
       { k: 'available',       l: t('wf_prod_avail_l'),                c: 'var(--sage)' },
-      { k: 'reserved',        l: t('wf_own_reserved_l'),              c: 'var(--dust)' },
-      { k: 'consigned',       l: t('wf_own_consigned_l'),             c: 'var(--dust)' },
-      { k: 'loan',            l: t('wf_own_loan_l'),                  c: 'var(--cyan)' },
-      { k: 'sold',            l: t('wf_own_sold_l'),                  c: 'var(--mt)'   },
-      { k: 'gift',            l: t('wf_own_gift_l'),                  c: 'var(--mt)'   },
+      { k: 'reserved',        l: t('wf_own_reserved_l'),              c: 'var(--magenta)' },
+      { k: 'consigned',       l: t('wf_own_consigned_l'),             c: 'var(--magenta)' },
+      { k: 'loan',            l: t('wf_own_loan_l'),                  c: 'var(--magenta)' },
+      { k: 'sold',            l: t('wf_own_sold_l'),                  c: 'var(--teal)' },
+      { k: 'gift',            l: t('wf_own_gift_l'),                  c: 'var(--tx)'   },
       { k: 'artist_archive',  l: t('wf_own_archive_l'),               c: 'var(--mt)'   },
       { k: 'private_archive', l: t('report_status_private_archive'),  c: 'var(--mt)'   },
     ].filter(s => present.has(s.k as StatusKey))
@@ -1037,6 +1070,24 @@ export function Inventory({
             >
               ✕ {t('clear')} ({selection.size})
             </button>
+            {/* Give one source to every selected work */}
+            {sortedSources.length > 0 && (
+              <select
+                value=""
+                disabled={bulkSourceBusy}
+                aria-label={t('ps_bulk_source_label')}
+                title={t('ps_bulk_source_label')}
+                data-testid="inv-bulk-source"
+                onChange={(e) => void addSourceToSelection(Number(e.target.value))}
+                className="input"
+                style={{ width: 'auto', fontSize: 12, padding: '6px 8px', minHeight: 36 }}
+              >
+                <option value="">{t('ps_bulk_source_pick')}</option>
+                {sortedSources.map((s) => (
+                  <option key={s.id} value={String(s.id)}>{s.name}</option>
+                ))}
+              </select>
+            )}
             <button
               onClick={async () => {
                 if (!confirm(t('confirmMoveWorksToTrash'))) return
@@ -1111,6 +1162,9 @@ export function Inventory({
           </button>
         )}
 
+        {/* Rapport: Studio → Rapports on the Œuvres source, like Production / Kaizen / Ventes / Contacts */}
+        <ReportLinkButton source="works" style={{ minHeight: 36, fontSize: 12 }} />
+
         {/* Bulk image download — whatever the current filter shows (desktop only) */}
         {!narrow && (
           <button
@@ -1154,9 +1208,9 @@ export function Inventory({
           </button>
           {showLegend && (
             <div style={{
-              position: 'absolute', top: '100%', right: 0, zIndex: 60,
+              position: 'absolute', top: '100%', left: 0, zIndex: 60,
               background: 'var(--bg2)', border: '1px solid var(--bd2)',
-              padding: '12px 16px', minWidth: 160, marginTop: 4,
+              padding: '12px 16px', minWidth: 160, marginTop: 4, whiteSpace: 'nowrap',
               boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
             }}>
               <div className="t-eyebrow" style={{ marginBottom: 12, fontSize: 11 }}>{t('legend')}</div>
@@ -1692,7 +1746,6 @@ function InvList({
                 {visible.length > 0 && visible.every(o => selection.has(o.OeuvreID)) ? '✓' : ''}
               </div>
             </th>
-            <th style={{ width: 22, padding: '8px 2px', ...cellDivider, background: 'var(--bg1)' }} />
             <th onClick={() => toggleSort('OeuvreID')} style={{ ...headerBase, width: 44, color: 'var(--tx3)', cursor: 'pointer' }}>
               <div style={sortThRow}>
                 <span style={sortThLabel}>ID</span>
@@ -1805,9 +1858,6 @@ function InvList({
                     }} onClick={(e) => handleCheck(e, o.OeuvreID, idx)}>
                       {isSel ? '✓' : ''}
                     </div>
-                  </td>
-                  <td style={{ padding: '0 2px', ...cellDivider, verticalAlign: 'middle' }}>
-                    <button onClick={(e) => { e.stopPropagation(); routerInv.push(`/atelier?work=${o.OeuvreID}`) }} style={{ color: 'var(--tx3)', fontSize: 12 }}>✎</button>
                   </td>
                   <td style={{ color: 'var(--tx3)', fontSize: 11, padding: '0 2px', whiteSpace: 'nowrap', ...cellDivider, verticalAlign: 'middle' }}>
                     {o.OeuvreID}

@@ -12,13 +12,15 @@ export type PeriodSourceData = {
   /** Per-work exception: a period id, or null = "no period". Missing key = automatic. */
   overrides: Record<number, number | null>
   sourcesByWork: Record<number, number[]>
+  /** Short line per work + source (`work_source_link.note`): work id → source id → text. */
+  sourceNotes: Record<number, Record<number, string>>
 }
 
 /** Override choice in the drawer: automatic, explicitly none, or a period id. */
 export type PeriodChoice = 'auto' | 'none' | number
 
 export function emptyPeriodSourceData(): PeriodSourceData {
-  return { periods: [], sources: [], overrides: {}, sourcesByWork: {} }
+  return { periods: [], sources: [], overrides: {}, sourcesByWork: {}, sourceNotes: {} }
 }
 
 export function periodContains(p: WorkPeriod, year: number): boolean {

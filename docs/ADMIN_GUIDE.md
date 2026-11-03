@@ -1,11 +1,47 @@
 # PEM Studio — Admin Guide (Encyclopedia, Standalone)
 
-> **⚠ Freshness (2026-07-16):** photo/session/hub/approval sections predate the 2026-07 mobile rationalization pass (Lightroom UI removed, `image_add` pending gate, manual `NeedsPhotograph` gate, session apply guards). Where this guide and [`MOBILE_RATIONALIZATION_PLAN.md`](./MOBILE_RATIONALIZATION_PLAN.md) disagree, the plan + live code win. Full guide update owed with Phase 5.
+> **Freshness (2026-11-03):** the November 2026 changes are summarised just below; the chapters after it were written in July 2026.
+>
+> **⚠ Older note (2026-07-16):** photo/session/hub/approval sections predate the 2026-07 mobile rationalization pass (Lightroom UI removed, `image_add` pending gate, manual `NeedsPhotograph` gate, session apply guards). Where this guide and [`MOBILE_RATIONALIZATION_PLAN.md`](./MOBILE_RATIONALIZATION_PLAN.md) disagree, the plan + live code win. Full guide update owed with Phase 5.
 
 **Audience.** You are an **admin** (`is_admin()` returns `true`, your `Contact.is_admin = true` linked to `auth.uid()`). This document is **self-contained**: it covers every team-accessible feature **and** every admin-only chapter. You do not need to read [`TEAM_MEMBER_GUIDE.md`](./TEAM_MEMBER_GUIDE.md) alongside it — but team members read that one.
 
 **Companion docs.**
 [`SITE_MAP.md`](../SITE_MAP.md) (engineer reference) • [`CONSTELLATION.md`](./CONSTELLATION.md) (canvas contract) • [`BROADCAST.md`](./BROADCAST.md) + [`BROADCAST_OUTSIDE_CHAIN.md`](./BROADCAST_OUTSIDE_CHAIN.md) (broadcast pipeline) • [`BACKUP_RECOVERY.md`](./BACKUP_RECOVERY.md) (backups) • [`PROJECT_SYNTHESIS.md`](./PROJECT_SYNTHESIS.md) (stack).
+
+---
+
+## What changed in November 2026 (read this first)
+
+*Verified against live code 2026-11-03. Sections further down that disagree are older; this list wins.*
+
+- **Work drawer**
+  - **Production span**: start → end with the number of days. The end fills itself in when the work is catalogued or moved to *Archive artiste*. You (admin) can set the **start date** by hand.
+  - **Période & source**: the period follows the year automatically (or pick one by hand). Sources (Mémoire, Sur le motif, Photo, Lieu, Invention… the list is open) are toggles; each ticked source has **one short line** (which place, which photo, whose memory). That line is searchable in Inventory and is a field in Rapports.
+  - **Constats** (condition reports) with issues and photos. Removing an issue or a constat moves its photo to the 90-day recycle area of storage.
+  - **QR label**: the link and the printed label open the work (`/atelier/works/<id>` → the drawer). *Print* opens the label and the print dialog.
+- **Automatic rules on works** (in the database, so every screen follows them):
+  - *Archive artiste* ⇒ catalogued.
+  - A work with no location is at its holder's — the atelier (Pem) when no one else holds it — until a transfer.
+  - Depth is **0.1 cm** for flat works; framed, mounted works and sculptures keep the depth typed by hand.
+- **Status colours**: in production rust (catalogued but not photographed: yellow), available sage, reserved / consigned / loan **magenta**, sold **turquoise**, gift **black & white**, archives grey.
+- **Inventaire**
+  - No pencil column: click a row to open the work.
+  - **Périodes & sources** panel; Période and Source filters; Période column.
+  - With works selected: **Source…** gives one source to all of them.
+  - **Rapport** button opens Rapports on the Œuvres source.
+  - **Couleurs** → after choosing a colour, **Affiner** keeps only its light or dark shades (light blue vs navy).
+- **Rapports**: one engine for Œuvres, Production, Constats, Kaizen, Ventes, Contacts; save reports by name; print / XLSX / CSV / PDF.
+- **Kaizen**: entries can carry up to 6 **screenshots** (*+ Capture*, or drop files on the entry).
+- **Revenus & Dépenses → Par année**: income, expenses and net for every year, this year to date against the same dates last year, and a pivot over both.
+- **Contacts**: clearer count columns (*Œuvres / Détient / Achats*).
+- **Analytics**: visitors per day next to views per day; average views per day.
+- **"www.thepemworkshop.com 3.0"**: a popup lists these changes when the Atelier opens; tick *Ne plus afficher* to stop it. The same list stays in **Kaizen → Nouveautés 3.0**.
+- **Studio Bible**: download it from **Coffre** (Vault) or the command palette; it is no longer in the header.
+- **Admin only**
+  - Header **À valider · N** when changes wait in Audit (refreshed on focus and every 5 min).
+  - Analytics *views by team member*; views before 2 Nov 2026 show as *Unattributed*.
+  - Overview: the search-indexing card sits at the bottom of the right column.
 
 ---
 
@@ -173,14 +209,15 @@ Header → user menu → **Sign out**. Clears Supabase cookies.
 | `/atelier/<tab>` | 25 segment routes. See [`lib/atelier/tab-routes.ts`](../lib/atelier/tab-routes.ts). |
 | `/atelier?tab=<id>` | Legacy 308 redirect. |
 
-### 4.2 Sidebar — 6 groups
+### 4.2 Sidebar — 7 groups
 
-1. **Terrain / Field** — `inventory` → `production` → `stock-take` → `notes` → `map`
-2. **Studio** — `overview`, `pipeline`, `exhibitions`, `concepts`
-3. **Catalogue** — `reports`, `themes`, `stock`, `constellation`
-4. **Commercial** — `sales`, `logistics`, `fiscal`, `vault`
-5. **Public** — `site`, `portfolio`, `analytics`
-6. **Admin** — `contacts`, `system`, **`audit`**, **`broadcast`** *(last two yours only)*
+1. **Kaizen** — `kaizen` (Création) → `kaizen-ops` (Opérations & Stratégie: Système / Business). Top of the sidebar on desktop, right after Terrain on phone. Badge = entries others added since you last opened it.
+2. **Terrain / Field** — `inventory` → `production` → `journal` → `notes`
+3. **Studio** — `overview`, `pipeline`, `exhibitions`, `concepts`, `stock` (supplies; counting = Fournitures → Comptage)
+4. **Catalogue** — `reports` (Rapports), `themes`, `constellation`
+5. **Commercial** — `sales`, `contacts`, `map`, `logistics`, `fiscal` (Revenus & Dépenses), `vault`
+6. **Public** — `site`, `portfolio`, `analytics`, `broadcast` (yours)
+7. **Admin** — `audit` only (admins); hidden for everyone else. `/atelier/system` now opens Kaizen → Opérations & Stratégie → Système.
 
 Narrow: tap **☰**. Header shows active tab.
 
@@ -192,7 +229,8 @@ Narrow: tap **☰**. Header shows active tab.
 | Catalogue badge | Loaded vs total. Tap to load. |
 | ⌘K / Ctrl+K | Command palette. Yours adds Capture session + Pending approvals. |
 | New work (desktop) | `/atelier/works/new`. |
-| Reports / System shortcuts | Tab jumps. |
+| Reports | Opens Rapports. |
+| **À valider · N** | Shown while changes wait in Audit; opens Audit. |
 | FR / EN | Language toggle. |
 | Subset banner (Inventory) | "Showing X of Y" + Load next batch. |
 

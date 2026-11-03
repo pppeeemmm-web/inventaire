@@ -37,6 +37,22 @@ export const analyticsUiMessages = defineMessages({
     fr: '{date} · {views} vues net',
     en: '{date} · {views} net views',
   },
+  analytics_sparkline_visitors_title_fmt: {
+    fr: '{date} · {views} visiteurs',
+    en: '{date} · {views} visitors',
+  },
+  analytics_trend_visitors_per_day: {
+    fr: 'Visiteurs / jour (net)',
+    en: 'Visitors / day (net)',
+  },
+  analytics_views_avg_fmt: {
+    fr: '≈ {n} par jour en moyenne',
+    en: '≈ {n} a day on average',
+  },
+  analytics_team_unattributed: {
+    fr: 'Non attribuées (avant le 2 nov. 2026)',
+    en: 'Unattributed (before 2 Nov 2026)',
+  },
   analytics_by_team_member: {
     fr: 'Vues par membre de l’équipe (admin)',
     en: 'Views by team member (admin)',

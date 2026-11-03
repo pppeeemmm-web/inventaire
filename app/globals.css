@@ -32,6 +32,8 @@
   --sage: oklch(0.78 0.1 140);
   --dust: oklch(0.76 0.06 60);
   --yellow: oklch(0.86 0.15 95);
+  --teal: oklch(0.8 0.12 185);
+  --magenta: oklch(0.72 0.2 340);
   --green: #80a060;
 }
 
@@ -54,6 +56,8 @@
   --sage: oklch(0.65 0.1 140);
   --dust: oklch(0.65 0.06 60);
   --yellow: oklch(0.68 0.15 90);
+  --teal: oklch(0.6 0.11 185);
+  --magenta: oklch(0.58 0.2 340);
   color-scheme: light;
 }
 
@@ -77,6 +81,8 @@
   --sage: oklch(0.52 0.08 140);
   --dust: oklch(0.52 0.05 60);
   --yellow: oklch(0.55 0.13 90);
+  --teal: oklch(0.5 0.1 185);
+  --magenta: oklch(0.5 0.18 340);
   --green: #5a7038;
   color-scheme: light;
 }
@@ -196,6 +202,10 @@ input, textarea, select { font: inherit; color: inherit; background: transparent
 .chip.dust   { border-color: var(--dust); color: var(--dust); background: color-mix(in srgb, var(--dust) 12%, transparent); }
 .chip.yellow { border-color: var(--yellow); color: var(--yellow); background: color-mix(in srgb, var(--yellow) 12%, transparent); }
 .chip.mt     { border-color: var(--mt);   color: var(--tx3);  background: color-mix(in srgb, var(--mt) 12%, transparent); }
+.chip.teal   { border-color: var(--teal); color: var(--teal); background: color-mix(in srgb, var(--teal) 12%, transparent); }
+.chip.magenta { border-color: var(--magenta); color: var(--magenta); background: color-mix(in srgb, var(--magenta) 12%, transparent); }
+/* Black & white (gift) — follows the theme's own text/background, so it stays b&w in every theme. */
+.chip.mono   { border-color: var(--tx); color: var(--tx); background: var(--bg0); }
 
 /* ── Input / Select ──────────────────────────────────────── */
 .input {

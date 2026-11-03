@@ -2,15 +2,15 @@
 
 // Constats (condition reports, owner 2026-11-02): one examination of a work — date, who, grade,
 // notes, action / treatment — with issues and photos. Team adds; author or admin edits; deleting
-// a whole constat is admin only (RLS). Removing an issue leaves its photo in R2 (no soft-delete
-// helper here); the storage ledger can find it later.
+// a whole constat is admin only (RLS). Removing an issue (or a constat) moves its photo + thumb
+// to R2 `recycle/` via `r2SoftDeleteObject` (2026-11-03).
 
 import crypto, { randomUUID } from 'crypto'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { logError } from '@/lib/error-reporter/server'
 import { normalizeImageToAvifPair, validateWorkImageBuffer } from '@/lib/image-upload'
-import { r2PutObject } from '@/lib/r2-s3-object'
+import { r2PutObject, r2SoftDeleteObject } from '@/lib/r2-s3-object'
 import {
   parseActionStatus,
   parseGrade,
@@ -159,9 +159,12 @@ export async function deleteConditionReport(id: number): Promise<{ ok: true } | 
   const supabase = await createClient()
   const user = await teamUser(supabase)
   if (!user) return { error: 'auth' }
+  // Issues go with the constat (FK cascade): read their photos first so they can be recycled.
+  const { data: issues } = await supabase.from('condition_issue').select('photo_key').eq('report_id', id)
   const { data, error } = await supabase.from('condition_report').delete().eq('id', id).select('id')
   if (error) return { error: error.message }
   if (!data?.length) return { error: 'forbidden' }
+  await recyclePhotos((issues ?? []).map((r) => r.photo_key))
   revalidatePath('/atelier')
   return { ok: true }
 }
@@ -231,9 +234,28 @@ export async function removeConditionIssue(id: number): Promise<{ ok: true } | E
   const supabase = await createClient()
   const user = await teamUser(supabase)
   if (!user) return { error: 'auth' }
-  const { data, error } = await supabase.from('condition_issue').delete().eq('id', id).select('id')
+  const { data, error } = await supabase.from('condition_issue').delete().eq('id', id).select('id, photo_key')
   if (error) return { error: error.message }
   if (!data?.length) return { error: 'forbidden' }
+  await recyclePhotos(data.map((r) => r.photo_key))
   revalidatePath('/atelier')
   return { ok: true }
+}
+
+/**
+ * A removed issue's photo + thumb go to R2 `recycle/` (90-day lifecycle), never a hard delete.
+ * Runs after the row is gone (RLS decided who may remove it); a storage failure is logged, not
+ * returned — the issue is already removed.
+ */
+async function recyclePhotos(keys: (string | null | undefined)[]): Promise<void> {
+  for (const key of keys) {
+    if (!key || !key.startsWith('constat/')) continue
+    for (const k of [key, `thumbs/${key}`]) {
+      try {
+        await r2SoftDeleteObject(k)
+      } catch (e) {
+        await logError('Constat photo recycle failed', e, { source: 'condition.recyclePhotos', metadata: { key: k } })
+      }
+    }
+  }
 }

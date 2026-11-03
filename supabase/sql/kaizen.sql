@@ -93,3 +93,7 @@ set metadata = coalesce(l.metadata, '{}'::jsonb) || jsonb_build_object('kaizen_i
 from public.kaizen_item k
 where k.legacy_system_log_id = l.id
   and coalesce(l.metadata->>'kaizen_id', '') = '';
+
+-- 2026-11-03: screenshots on entries (R2 keys kaizen/K_{id}_{rand8}_{hash8}.avif + thumbs/kaizen/).
+alter table public.kaizen_item
+  add column if not exists screenshots text[] not null default '{}';

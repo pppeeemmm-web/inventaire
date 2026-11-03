@@ -15,6 +15,8 @@ export type KaizenItem = {
   work_ids: number[]
   done_at: string | null
   done_by: string | null
+  /** R2 keys (`kaizen/…avif`); thumbs via `thumbUrl`. */
+  screenshots: string[]
 }
 
 export function parseKaizenSection(raw: unknown): KaizenSection | null {

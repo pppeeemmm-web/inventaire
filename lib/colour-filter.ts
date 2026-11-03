@@ -8,10 +8,12 @@
  * - "Nearby shades" widens each colour to its wheel neighbours (orange → red-orange, yellow-orange,
  *   brown), catching boundary colours such as rust.
  * - Match score = how much of the picture the chosen colours cover.
+ * - Refine (2026-11-03): an included colour can be narrowed to its light or dark shades
+ *   (`tones` on each palette swatch); the colour then counts only for that part of it.
  * - Monochrome = share of the dominant hue among all hues (with its neighbours when "nearby
  *   shades" is on); a picture with almost no hue (greys, black, white) counts as monochrome.
  */
-import { COLOUR_FAMILIES, type ColourFamily } from '@/lib/colour-families'
+import { COLOUR_FAMILIES, type ColourFamily, type ColourTone } from '@/lib/colour-families'
 
 export const PRESENT_MIN = 0.03
 export const MAX_INCLUDED = 5
@@ -53,21 +55,41 @@ export function familyGroup(f: ColourFamily, nearby: boolean): ColourFamily[] {
 
 /** Family → share of the picture, from a palette row (unknown families ignored). */
 export type FamilyShares = Partial<Record<ColourFamily, number>>
-/** `s`: shares; `a`: accent families (small but vivid). Compact: sent for the whole catalogue. */
-export type ColourProfile = { s: FamilyShares; a?: ColourFamily[] }
+/** `s`: shares; `a`: accent families (small but vivid); `t`: [light, dark] fractions per family.
+ *  Compact: sent for the whole catalogue. */
+export type ColourProfile = { s: FamilyShares; a?: ColourFamily[]; t?: Partial<Record<ColourFamily, [number, number]>> }
 
 export function toColourProfile(palette: unknown): ColourProfile | null {
   if (!Array.isArray(palette)) return null
   const s: FamilyShares = {}
   const a: ColourFamily[] = []
-  for (const sw of palette as { family?: unknown; share?: unknown; accent?: unknown }[]) {
+  const t: Partial<Record<ColourFamily, [number, number]>> = {}
+  for (const sw of palette as { family?: unknown; share?: unknown; accent?: unknown; tones?: unknown }[]) {
     if (typeof sw?.family !== 'string' || typeof sw.share !== 'number') continue
     if (!(COLOUR_FAMILIES as readonly string[]).includes(sw.family)) continue
     const f = sw.family as ColourFamily
     s[f] = (s[f] ?? 0) + sw.share
     if (sw.accent === true) a.push(f)
+    if (Array.isArray(sw.tones) && typeof sw.tones[0] === 'number' && typeof sw.tones[1] === 'number') {
+      t[f] = [sw.tones[0], sw.tones[1]]
+    }
   }
-  return a.length ? { s, a } : { s }
+  const out: ColourProfile = { s }
+  if (a.length) out.a = a
+  if (Object.keys(t).length) out.t = t
+  return out
+}
+
+/** Share of the picture covered by the light (or dark) shades of these families. Families
+ *  without tone data (palette computed before the refine step) count for nothing. */
+function toneCoverage(p: ColourProfile, fams: Iterable<ColourFamily>, tone: ColourTone): number {
+  let sum = 0
+  for (const f of new Set(fams)) {
+    const tt = p.t?.[f]
+    if (!tt) continue
+    sum += (p.s[f] ?? 0) * (tone === 'light' ? tt[0] : tt[1])
+  }
+  return sum
 }
 
 function coverage(shares: FamilyShares, fams: Iterable<ColourFamily>): number {
@@ -80,6 +102,8 @@ export type ColourQuery = {
   include: ColourFamily[]
   exclude: ColourFamily[]
   nearby: boolean
+  /** Refine: an included family narrowed to its light or dark shades. Missing = any shade. */
+  tones?: Partial<Record<ColourFamily, ColourTone>>
 }
 
 function present(p: ColourProfile, group: ColourFamily[]): boolean {
@@ -92,12 +116,20 @@ export function matchScore(p: ColourProfile, q: ColourQuery): number | null {
     if (present(p, familyGroup(f, q.nearby))) return null
   }
   const union: ColourFamily[] = []
+  let toned = 0
   for (const f of q.include) {
     const g = familyGroup(f, q.nearby)
+    const tone = q.tones?.[f]
+    if (tone) {
+      const c = toneCoverage(p, g, tone)
+      if (c < PRESENT_MIN) return null
+      toned += c
+      continue
+    }
     if (!present(p, g)) return null
     union.push(...g)
   }
-  return coverage(p.s, union)
+  return coverage(p.s, union) + toned
 }
 
 /**

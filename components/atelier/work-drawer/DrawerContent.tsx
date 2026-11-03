@@ -702,6 +702,11 @@ export function DrawerContent({
     if (isOwnershipTransferred && prodStage === 'atelier') setProdStage('available')
   }, [isOwnershipTransferred, prodStage])
 
+  // Archive artiste is catalogued (DB rule, oeuvres_status_location_depth_rules.sql) — show it here too.
+  useEffect(() => {
+    if (isArchived && prodStage === 'atelier') setProdStage('catalogued')
+  }, [isArchived, prodStage])
+
   useEffect(() => {
     if ((ownStage === 'artist' || ownStage === 'artist_archive') && pemContact) {
       setContactId(String(pemContact.ContactID))
@@ -1285,6 +1290,8 @@ export function DrawerContent({
           {statusLabelMap[computeWorkStatusId(ownStage, prodStage)] ?? `ID ${computeWorkStatusId(ownStage, prodStage)}`}
         </div>
         <WorkProductionSpan
+          oeuvreId={o.OeuvreID}
+          editable={isAdmin}
           startedOn={o.production_started_on}
           completedOn={o.production_completed_on}
           origin={o.production_origin}

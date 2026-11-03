@@ -140,6 +140,81 @@ export async function r2DeleteObject(filename: string): Promise<void> {
   })
 }
 
+/** Server-side COPY inside the bucket (same signing as the works actions' r2Copy). */
+async function r2CopyObject(srcKey: string, dstKey: string): Promise<void> {
+  const account = process.env.R2_ACCOUNT_ID ?? ''
+  const accessKey = process.env.R2_ACCESS_KEY_ID!
+  const secretKey = process.env.R2_SECRET_ACCESS_KEY!
+  const bucket = (process.env.R2_BUCKET ?? 'paintings').trim()
+  const host = r2S3Hostname(account)
+  const encodedPath = `/${bucket}/${dstKey.split('/').map(encodeURIComponent).join('/')}`
+  const copySource = `/${bucket}/${srcKey.split('/').map(encodeURIComponent).join('/')}`
+
+  const now = new Date()
+  const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, '').slice(0, 15) + 'Z'
+  const dateStamp = amzDate.slice(0, 8)
+  const bodyHash = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
+
+  const headers: Record<string, string> = {
+    host,
+    'x-amz-copy-source': copySource,
+    'x-amz-date': amzDate,
+    'x-amz-content-sha256': bodyHash,
+  }
+  const sortedKeys = Object.keys(headers).sort()
+  const canonicalHeaders = sortedKeys.map((k) => `${k}:${headers[k]}\n`).join('')
+  const signedHeaderStr = sortedKeys.join(';')
+  const canonicalRequest = ['PUT', encodedPath, '', canonicalHeaders, signedHeaderStr, bodyHash].join('\n')
+
+  const region = 'auto'
+  const service = 's3'
+  const credScope = `${dateStamp}/${region}/${service}/aws4_request`
+  const strToSign = ['AWS4-HMAC-SHA256', amzDate, credScope,
+    crypto.createHash('sha256').update(canonicalRequest).digest('hex')].join('\n')
+
+  const hmac = (key: Buffer | string, data: string) =>
+    crypto.createHmac('sha256', key).update(data).digest()
+  const sigKey = hmac(hmac(hmac(hmac('AWS4' + secretKey, dateStamp), region), service), 'aws4_request')
+  const sig = crypto.createHmac('sha256', sigKey).update(strToSign).digest('hex')
+
+  headers.Authorization =
+    `AWS4-HMAC-SHA256 Credential=${accessKey}/${credScope}, SignedHeaders=${signedHeaderStr}, Signature=${sig}`
+
+  const res = await fetch(`https://${host}${encodedPath}`, { method: 'PUT', headers })
+  if (!res.ok) throw new Error(`R2 COPY ${res.status}: ${await res.text()}`)
+}
+
+/**
+ * Soft delete for non-work objects (CLAUDE.md "R2 delete"): copy to `recycle/<YYYY-MM-DD>/<key>`
+ * (purged after 90 days by the bucket lifecycle), then delete. If the copy fails (object already
+ * gone) the delete still runs, like the works actions' r2SoftDelete.
+ */
+export async function r2SoftDeleteObject(filename: string): Promise<void> {
+  const day = new Date().toISOString().slice(0, 10)
+  const dst = `recycle/${day}/${filename}`
+  const bucket = (process.env.R2_BUCKET ?? 'paintings').trim()
+  let copied = false
+  try {
+    await r2CopyObject(filename, dst)
+    copied = true
+    await recordStorageObject({
+      bucket,
+      objectKey: dst,
+      source: 'r2_soft_delete',
+      classification: 'recycle',
+      status: 'present',
+      linkedRefs: [{ table: 'storage_object_ledger', column: 'object_key', row_id: filename, label: 'source' }],
+      metadata: { original_key: filename },
+    })
+  } catch (e) {
+    console.warn('[r2SoftDeleteObject] copy failed, deleting anyway:', (e as Error).message)
+  }
+  await r2DeleteObject(filename)
+  if (copied) {
+    await markStorageObject({ bucket, objectKey: filename, status: 'recycled', metadata: { recycle_key: dst } })
+  }
+}
+
 /**
  * Thrown when a GET target is absent. Callers finalizing staged keys need to tell
  * "object already consumed" apart from a real R2 failure — a missing staged shot is

@@ -68,3 +68,9 @@ grant select, insert, update, delete on public.work_period to authenticated;
 grant select, insert, update, delete on public.work_period_override to authenticated;
 grant select, insert, update, delete on public.work_source to authenticated;
 grant select, insert, update, delete on public.work_source_link to authenticated;
+
+-- 2026-11-03: one short line per work + source (which photo, which place, whose memory).
+alter table public.work_source_link
+  add column if not exists note text check (note is null or char_length(note) <= 300);
+comment on column public.work_source_link.note is
+  'Short detail for this source on this work (e.g. the place, the photo, the memory). Null = none.';

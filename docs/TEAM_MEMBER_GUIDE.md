@@ -1,12 +1,44 @@
 # PEM Studio — Team Member Guide (Encyclopedia)
 
-> **⚠ Freshness (2026-07-16):** photo/session/hub sections predate the 2026-07 mobile rationalization pass (Lightroom UI removed, image adds queue for approval, manual `NeedsPhotograph` gate). Where this guide and [`MOBILE_RATIONALIZATION_PLAN.md`](./MOBILE_RATIONALIZATION_PLAN.md) disagree, the plan + live code win. Full guide update owed with Phase 5.
+> **Freshness (2026-11-03):** the November 2026 changes are summarised just below; the chapters after it were written in July 2026.
+>
+> **⚠ Older note (2026-07-16):** photo/session/hub sections predate the 2026-07 mobile rationalization pass (Lightroom UI removed, image adds queue for approval, manual `NeedsPhotograph` gate). Where this guide and [`MOBILE_RATIONALIZATION_PLAN.md`](./MOBILE_RATIONALIZATION_PLAN.md) disagree, the plan + live code win. Full guide update owed with Phase 5.
 
 **Audience.** You are a **team member** (signed in, `is_team()` returns `true`) — not an admin. This guide covers **every** team-accessible function in Hub and Atelier as of the 2025–2026 release: every field, every button, every query parameter, every keyboard shortcut, every saved state, every pitfall.
 
 **Companion guide.** [`ADMIN_GUIDE.md`](./ADMIN_GUIDE.md) covers admin-only chapters (Audit, Broadcast, version restore, hard purge, conflict queue, field session capture). Read that one if you have admin rights.
 
 **Engineer references.** Routes, RSC loaders, hooks: [`SITE_MAP.md`](../SITE_MAP.md). Project synthesis: [`PROJECT_SYNTHESIS.md`](./PROJECT_SYNTHESIS.md).
+
+---
+
+## What changed in November 2026 (read this first)
+
+*Verified against live code 2026-11-03. Sections further down that disagree are older; this list wins.*
+
+- **Work drawer**
+  - **Production span**: start → end with the number of days. The end fills itself in when the work is catalogued or moved to *Archive artiste*. An admin can set the start date.
+  - **Période & source**: the period follows the year automatically (or pick one by hand). Sources (Mémoire, Sur le motif, Photo, Lieu, Invention… the list is open) are toggles; each ticked source has **one short line** (which place, which photo, whose memory). That line is searchable in Inventory and is a field in Rapports.
+  - **Constats** (condition reports) with issues and photos. Removing an issue or a constat moves its photo to the 90-day recycle area of storage.
+  - **QR label**: the link and the printed label open the work (`/atelier/works/<id>` → the drawer). *Print* opens the label and the print dialog.
+- **Automatic rules on works** (in the database, so every screen follows them):
+  - *Archive artiste* ⇒ catalogued.
+  - A work with no location is at its holder's — the atelier (Pem) when no one else holds it — until a transfer.
+  - Depth is **0.1 cm** for flat works; framed, mounted works and sculptures keep the depth typed by hand.
+- **Status colours**: in production rust (catalogued but not photographed: yellow), available sage, reserved / consigned / loan **magenta**, sold **turquoise**, gift **black & white**, archives grey.
+- **Inventaire**
+  - No pencil column: click a row to open the work.
+  - **Périodes & sources** panel; Période and Source filters; Période column.
+  - With works selected: **Source…** gives one source to all of them.
+  - **Rapport** button opens Rapports on the Œuvres source.
+  - **Couleurs** → after choosing a colour, **Affiner** keeps only its light or dark shades (light blue vs navy).
+- **Rapports**: one engine for Œuvres, Production, Constats, Kaizen, Ventes, Contacts; save reports by name; print / XLSX / CSV / PDF.
+- **Kaizen**: entries can carry up to 6 **screenshots** (*+ Capture*, or drop files on the entry).
+- **Revenus & Dépenses → Par année**: income, expenses and net for every year, this year to date against the same dates last year, and a pivot over both.
+- **Contacts**: clearer count columns (*Œuvres / Détient / Achats*).
+- **Analytics**: visitors per day next to views per day; average views per day.
+- **"www.thepemworkshop.com 3.0"**: a popup lists these changes when the Atelier opens; tick *Ne plus afficher* to stop it. The same list stays in **Kaizen → Nouveautés 3.0**.
+- **Studio Bible**: download it from **Coffre** (Vault) or the command palette; it is no longer in the header.
 
 ---
 
@@ -139,14 +171,15 @@ Header → user menu → **Sign out**. Clears Supabase session cookies and the p
 
 The full segment-route table is in §10–§15. The 25 tabs live under `/atelier/<tab>` segments.
 
-### 4.2 Sidebar — 6 groups, same order on phone and desktop
+### 4.2 Sidebar — 7 groups (Kaizen first on desktop, after Terrain on phone)
 
-1. **Terrain / Field** — `inventory` → `production` → `stock-take` → `notes` → `map` *(narrow ordering specifically optimised for phone)*
-2. **Studio** — `overview`, `pipeline`, `exhibitions`, `concepts`
-3. **Catalogue** — `reports`, `themes`, `stock` (suppliers), `constellation`
-4. **Commercial** — `sales`, `logistics`, `fiscal`, `vault`
-5. **Public** — `site`, `portfolio`, `analytics`
-6. **Admin** — `contacts`, `system` *(plus `audit` and `broadcast` 🔒 for admins)*
+1. **Kaizen** — `kaizen` (Création) → `kaizen-ops` (Opérations & Stratégie: Système / Business). Top of the sidebar on desktop, right after Terrain on phone. Badge = entries others added since you last opened it.
+2. **Terrain / Field** — `inventory` → `production` → `journal` → `notes`
+3. **Studio** — `overview`, `pipeline`, `exhibitions`, `concepts`, `stock` (supplies; counting = Fournitures → Comptage)
+4. **Catalogue** — `reports` (Rapports), `themes`, `constellation`
+5. **Commercial** — `sales`, `contacts`, `map`, `logistics`, `fiscal` (Revenus & Dépenses), `vault`
+6. **Public** — `site`, `portfolio`, `analytics`
+7. **Admin** — `audit` only (admins); hidden for everyone else. `/atelier/system` now opens Kaizen → Opérations & Stratégie → Système.
 
 On phone, tap **☰** to open the sidebar. The header always shows the active tab title.
 
@@ -158,7 +191,7 @@ On phone, tap **☰** to open the sidebar. The header always shows the active ta
 | **Catalogue badge** | Shows **loaded** count vs **total** in DB when the catalogue is paged. Tap to load more. |
 | **⌘K / Ctrl+K** | Opens the **Command palette** (see §5). |
 | **New work** (desktop only) | Jumps to `/atelier/works/new`. |
-| **Reports / System** shortcuts (desktop) | Tab jumps. |
+| **Reports** (desktop) | Opens Rapports. |
 | **FR / EN** | Language toggle. Persists in session. |
 | **Subset banner** (Inventory) | "Showing X of Y" + **Load next batch**. |
 
