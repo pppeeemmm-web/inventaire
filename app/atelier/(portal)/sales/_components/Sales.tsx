@@ -11,6 +11,7 @@ import type { Agg, Dim } from '@/lib/pivot'
 import { createSaleOrder, updateOrderStatut, deleteSaleOrder, fetchOrders, regenerateOrderPdf, type SaleOrderRow, type PaymentRow, skipSaleReturnWindow, updateSaleReturnFields } from '@/app/atelier/(portal)/sales/actions'
 import { getSignedUrl } from '@/app/atelier/(portal)/vault/actions'
 import { stringifyError } from '@/lib/error'
+import { gateErrorKey } from '@/lib/work-save-error'
 import { WorkThumb } from '@/components/atelier/WorkThumb'
 import { useUnsavedCloseGuard } from '@/hooks/useUnsavedCloseGuard'
 import { PivotPanel } from '@/components/atelier/PivotPanel'
@@ -439,7 +440,11 @@ function OrderFormModal({ oeuvres, contacts, groups, tM, onClose, onCreated }: {
     oeuvreIds.forEach(id => fd.append('oeuvre_ids', String(id)))
     const res = await createSaleOrder(fd)
     setSaving(false)
-    if ('error' in res) { setError(stringifyError(res.error)); return false }
+    if ('error' in res) {
+      const gate = gateErrorKey(stringifyError(res.error))
+      setError(gate ? t(gate) : stringifyError(res.error))
+      return false
+    }
     onCreated()
     return true
   }
@@ -725,7 +730,13 @@ function OrderDetailPanel({ order, oeuvres, cM, setInspectedOrder, onClose, onUp
       completed:    ['completed'],
     }
     const [statut, field] = next[order.statut] ?? ['completed']
-    await updateOrderStatut(order.id, statut, field)
+    const res = await updateOrderStatut(order.id, statut, field)
+    if ('error' in res) {
+      // Completion is refused for a work out of circulation or a buyer = Pem (owner 2026-11-03).
+      const gate = gateErrorKey(stringifyError(res.error))
+      alert(gate ? t(gate) : `${t('error_prefix')} ${stringifyError(res.error)}`)
+      return
+    }
     await syncInspectedFromServer()
     onClose()
   }
@@ -828,7 +839,10 @@ function OrderDetailPanel({ order, oeuvres, cM, setInspectedOrder, onClose, onUp
                   if (!confirm(t('sales_mark_delivered_confirm'))) return
                   const res = await updateOrderStatut(order.id, order.statut, 'delivered')
                   if ('ok' in res) await syncInspectedFromServer()
-                  else alert(`${t('error_prefix')} ${stringifyError(res.error)}`)
+                  else {
+                    const gate = gateErrorKey(stringifyError(res.error))
+                    alert(gate ? t(gate) : `${t('error_prefix')} ${stringifyError(res.error)}`)
+                  }
                 }}
               >
                 {t('sales_mark_delivered_btn')}

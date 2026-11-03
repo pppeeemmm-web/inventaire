@@ -102,6 +102,27 @@ export const conditionMessages = defineMessages({
     fr: 'Étapes verrouillées : clore ou supprimer le constat de perte / destruction pour les modifier.',
     en: 'Stages locked: close or delete the loss / destruction report to change them.',
   },
+  history_restore_fate_open: {
+    fr: 'Cette œuvre a un constat de destruction / perte ouvert : clore ou supprimer le constat avant de restaurer une version.',
+    en: 'This work has an open destruction / loss report: close or delete it before restoring a version.',
+  },
+  // Work lifetime gates (supabase/sql/work_lifetime_gates.sql)
+  err_holder_required: {
+    fr: 'Vendu / don : choisir l’acquéreur (pas Pem). Consigné / prêt : choisir le dépositaire (pas Pem).',
+    en: 'Sold / gift: pick the acquirer (not Pem). Consigned / loan: pick the custodian (not Pem).',
+  },
+  err_sold_delete_admin_only: {
+    fr: 'Seul un admin peut mettre à la corbeille une œuvre vendue ou donnée.',
+    en: 'Only an admin can move a sold or given work to the bin.',
+  },
+  err_bulk_admin_only: {
+    fr: 'Modifier statut, contact, prix… sur plusieurs œuvres est réservé aux admins. Les thèmes et groupes restent modifiables ; pour le reste, passez par la fiche (validation).',
+    en: 'Changing status, contact, price… on several works is admin only. Themes and groups stay editable; for the rest, use the work drawer (approval).',
+  },
+  err_work_out_of_circulation: {
+    fr: 'Œuvre hors circulation (vendue, donnée, archivée, détruite, perdue ou déjà en dépôt) : impossible de la réserver, vendre ou déposer.',
+    en: 'Work out of circulation (sold, given, archived, destroyed, lost or already consigned): it cannot be reserved, sold or consigned.',
+  },
   status_destroyed: { fr: 'Détruite', en: 'Destroyed' },
   status_lost: { fr: 'Perdue', en: 'Lost' },
 })

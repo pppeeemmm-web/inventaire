@@ -829,7 +829,10 @@ export function DrawerContent({
     fd.append('profondeur', profondeur)
     fd.append('presentation_id', presentationId)
     fd.append('status_id', String(sid))
-    fd.append('contact_id', contactId)
+    // Consigned / on loan: Pem stays the owner, the picked contact is the custodian = location
+    // (owner 2026-11-03; DB trigger oeuvre_holder_check enforces it too).
+    const custody = ownStage === 'consigned' || ownStage === 'loan'
+    fd.append('contact_id', custody && pemContact ? String(pemContact.ContactID) : contactId)
     fd.append('localisation_id', contactId)
     fd.append('localisation_address_id', localisationAddressId)
     fd.append('exposable', exposable ? '1' : '0')
@@ -1104,7 +1107,7 @@ export function DrawerContent({
           const msg =
             result.error === 'work_delete_no_rows' || result.error === 'work_delete_partial'
               ? t(result.error as 'work_delete_no_rows')
-              : `${t('error_prefix')} ${result.error}`
+              : workSaveErrorToastMessage(result.error, t)
           setDeleteError(msg)
           toast.error(msg)
           return

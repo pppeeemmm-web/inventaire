@@ -84,12 +84,11 @@ export interface ExportFields {
 
 async function guardTeam() {
   const supabase = await createClient()
-  /*
+  // Was commented out (audit 2026-11-03): team members only.
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Non authentifié' as const, supabase: null }
   const { data: isTeam } = await supabase.rpc('is_team')
   if (!isTeam) return { error: 'Accès refusé' as const, supabase: null }
-  */
   return { error: null, supabase }
 }
 
@@ -144,6 +143,15 @@ export async function batchEdit(ids: number[], changes: BatchChanges): Promise<B
   const hasThemeChanges   = (changes.addThemeIds?.length ?? 0) > 0 || (changes.removeThemeIds?.length ?? 0) > 0
   const hasGroupChanges   = (changes.addGroupIds?.length ?? 0) > 0 || (changes.removeGroupIds?.length ?? 0) > 0
   if (!hasScalarChanges && !hasThemeChanges && !hasGroupChanges) return { error: 'Aucun champ modifié' }
+
+  // Owner 2026-11-03: a team member's edits to existing works go through review (saveWork →
+  // pending_changes); a bulk edit of status / contact / price / … would skip it, so it is admin
+  // only. Themes, groups and the Inventory broadcast toggle stay open to the team.
+  const reviewedKeys = Object.keys(update).filter((k) => k !== 'broadcast_ready')
+  if (reviewedKeys.length > 0) {
+    const { data: isAdmin } = await supabase.rpc('is_admin')
+    if (isAdmin !== true) return { error: 'bulk_admin_only' }
+  }
 
   let count = ids.length
 

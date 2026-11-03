@@ -18,6 +18,7 @@ export type WhatsNewItem = { id: string; day: string }
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
   { id: 'safety', day: '2026-11-03' },
+  { id: 'lifetime_rules', day: '2026-11-03' },
   { id: 'destroyed_lost', day: '2026-11-03' },
   { id: 'live_list', day: '2026-11-03' },
   { id: 'private_archive_gone', day: '2026-11-03' },

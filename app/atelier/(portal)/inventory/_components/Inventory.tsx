@@ -18,6 +18,7 @@ import { useNonOkEmbeddingStatuses } from '@/hooks/useNonOkEmbeddingStatuses'
 import type { OeuvreEmbeddingStatusMap } from '@/app/atelier/embedding-status-actions'
 import Image from 'next/image'
 import { stringifyError } from '@/lib/error'
+import { gateErrorKey } from '@/lib/work-save-error'
 import { toast } from '@/lib/ui/toast'
 import { registerUndo, consumeUndo } from '@/lib/ui/undo'
 import type { Oeuvre } from '@/lib/types/database'
@@ -1096,10 +1097,11 @@ export function Inventory({
                 const { deleteSelectedWorks, restoreSoftDeletedWorks } = await import('@/app/atelier/works/actions')
                 const res = await deleteSelectedWorks(ids)
                 if ('error' in res) {
+                  const gate = gateErrorKey(stringifyError(res.error))
                   const msg =
                     res.error === 'work_delete_no_rows' || res.error === 'work_delete_partial'
                       ? t(res.error as 'work_delete_no_rows')
-                      : `${t('error')}: ${stringifyError(res.error)}`
+                      : gate ? t(gate) : `${t('error')}: ${stringifyError(res.error)}`
                   toast.error(msg)
                   if (res.deletedIds?.length) onOeuvreRemoved?.(res.deletedIds)
                   return

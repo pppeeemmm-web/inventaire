@@ -462,7 +462,9 @@ export function WorkForm({
     fd.set('is_paid', paymentDone ? '1' : '0')
     fd.set('commentaires', commentaires)
     fd.set('historique', historique)
-    fd.set('contact_id', contactId)
+    // Consigned / on loan: Pem stays the owner, the picked contact is the custodian (owner 2026-11-03).
+    const custody = ownStage === 'consigned' || ownStage === 'loan'
+    fd.set('contact_id', custody && pemContact ? String(pemContact.ContactID) : contactId)
     fd.set('localisation_id', contactId)
     fd.set('localisation_address_id', localisationAddressId)
     fd.set('status_id', String(computeWorkStatusId(ownStage, prodStage)))

@@ -272,11 +272,17 @@ export async function setWorkPublic(oeuvreId: number): Promise<{ ok: true } | { 
     if (!isAdmin) return { error: 'Accès refusé' }
 
     const sb = createServiceClient()
-    const { error } = await sb.from('Oeuvres')
+    // Only a work still in the studio can become "Disponible" (owner 2026-11-03): a sold, given,
+    // consigned, archived, destroyed or lost work keeps its status.
+    const { data: updated, error } = await sb.from('Oeuvres')
       .update({ statusId: 2 })
       .eq('OeuvreID', oeuvreId)
       .is('deleted_at', null)
+      .is('fate', null)
+      .in('statusId', [1, 2])
+      .select('OeuvreID')
     if (error) throw error
+    if (!updated?.length) return { error: 'Statut incompatible : seule une œuvre en production ou disponible peut être rendue publique ici.' }
     return { ok: true }
   } catch (e: any) {
     console.error('[setWorkPublic]', e)

@@ -9,6 +9,7 @@ import type { DictKey } from '@/lib/i18n/dictionary'
 import { PemModalOverlay } from '@/components/shared/PemModalOverlay'
 import { batchEdit, createTheme, type BatchChanges } from '@/app/atelier/selection/actions'
 import { reloadAtelierAfterBatchSuccess } from '@/lib/atelier/reload-after-batch'
+import { gateErrorKey } from '@/lib/work-save-error'
 
 type ContactAddress = { id?: number; contact_id: number; label: string; adresse: string | null; ville: string | null; pays: string | null }
 
@@ -182,7 +183,7 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, a
     startEdit(async () => {
       try {
         const r = await batchEdit(ids, changes)
-        if ('error' in r) { setError(r.error); return }
+        if ('error' in r) { const gate = gateErrorKey(r.error); setError(gate ? t(gate) : r.error); return }
         onDone(r.updated)
         reloadAtelierAfterBatchSuccess()
       } catch (e) {

@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { toast } from '@/lib/ui/toast'
 import { createConsignmentOrder } from '@/app/atelier/consignments/actions'
 import { createSaleOrder } from '@/app/atelier/(portal)/sales/actions'
+import { gateErrorKey } from '@/lib/work-save-error'
 import { insertSuiviReminder } from '@/app/atelier/reminders-actions'
 import type { Oeuvre } from '@/lib/types/database'
 import { WorkThumb } from '@/components/atelier/WorkThumb'
@@ -262,6 +263,7 @@ export function PipelineProcessModal({ oeuvres, contacts, groups, process, onClo
           fd.append('notes', notes)
           if (commissionPct) fd.append('commission_pct', commissionPct)
           const res = await createConsignmentOrder(fd)
+          if ('error' in res) { const gate = gateErrorKey(res.error); throw new Error(gate ? t(gate) : res.error) }
           if ('ok' in res && res.order.pdf_path) {
             await fromSuiviProcess(sb).update({ pdf_path: res.order.pdf_path } as { pdf_path: string }).eq('id', pid!)
           }
@@ -275,6 +277,7 @@ export function PipelineProcessModal({ oeuvres, contacts, groups, process, onClo
           fd.append('prix_final', prixFinal)
           fd.append('notes', notes)
           const res = await createSaleOrder(fd)
+          if ('error' in res) { const gate = gateErrorKey(res.error); throw new Error(gate ? t(gate) : res.error) }
           if ('ok' in res && res.order.pdf_path) {
             await fromSuiviProcess(sb).update({ pdf_path: res.order.pdf_path } as { pdf_path: string }).eq('id', pid!)
           }

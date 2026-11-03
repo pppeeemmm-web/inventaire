@@ -59,12 +59,28 @@ export async function restoreOeuvreVersion(versionId: number): Promise<VersionRe
   const snap = row.snapshot as Record<string, unknown>
   const oeuvreId = row.oeuvre_id
 
+  // Destroyed / lost (owner 2026-11-03): close the constat first — a restore would otherwise put
+  // back an "available" work while its destruction / loss report is still open.
+  const { count: openFate, error: fateErr } = await supabase
+    .from('condition_report')
+    .select('id', { count: 'exact', head: true })
+    .eq('oeuvre_id', oeuvreId)
+    .in('kind', ['destroyed', 'lost'])
+    .is('resolved_on', null)
+  if (fateErr) return { error: fateErr.message }
+  if ((openFate ?? 0) > 0) return { error: 'fate_open' }
+
   // Strip columns that should never be restored: trigger-owned, primary key, mutable timestamps.
   const skip = new Set([
     'OeuvreID',          // PK
     'is_public',         // trigger-owned (CLAUDE.md cemetery)
     'txtImageNameLink',  // trigger tblimage_cover_sync
     'created_at',        // immutable
+    // Kept by the constat triggers (supabase/sql/condition_report_fate.sql).
+    'fate',
+    'fate_on',
+    'fate_precision',
+    'status_before_fate',
   ])
   const payload: Record<string, unknown> = {}
   for (const [k, v] of Object.entries(snap)) {

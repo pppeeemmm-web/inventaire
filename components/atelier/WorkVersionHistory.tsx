@@ -62,7 +62,7 @@ export function WorkVersionHistory({ oeuvreId, onRestored }: { oeuvreId: number;
     startTransition(async () => {
       const r = await restoreOeuvreVersion(v.id)
       if ('error' in r) {
-        alert(r.error)
+        alert(r.error === 'fate_open' ? t('history_restore_fate_open') : r.error)
         return
       }
       onRestored?.()

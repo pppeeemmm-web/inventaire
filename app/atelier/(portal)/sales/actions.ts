@@ -12,6 +12,7 @@ import {
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3'
 import { addCalendarDaysIso, parseSaleOrderBatchIds } from '@/lib/sale-return-window'
 import { recordStorageObject } from '@/lib/storage-object-ledger'
+import { circulationError, SALE_COMPLETE_FROM, SALE_ORDER_FROM } from '@/lib/work-circulation'
 import {
   contactDisplayName,
   contactLocation,
@@ -233,6 +234,10 @@ export async function createSaleOrder(formData: FormData): Promise<OrderResult> 
   const notes            = (formData.get('notes')            as string | null) || null
 
   if (oeuvre_ids.length === 0) return { error: 'Œuvre(s) requise(s)' }
+  // Owner 2026-11-03: a sale needs a buyer other than Pem, and only works in circulation.
+  if (!buyer_id || buyer_id === 13) return { error: 'holder_required' }
+  const circ = await circulationError(supabase, oeuvre_ids, SALE_ORDER_FROM)
+  if (circ) return { error: circ }
 
   // Auto-detect a parent consignment_order so we can compute the gallery commission
   // at completion. We pick the active consignment (kind='consignment') that covers
@@ -358,6 +363,11 @@ export async function updateOrderStatut(id: string, statut: string, toggleField?
   const b = before as SaleOrderDbRow
   if (b.statut !== 'completed' && statut === 'completed') {
     payload.completed_at = new Date().toISOString()
+    // Completion transfers ownership: buyer ≠ Pem, works still in circulation (checked before
+    // the order is stamped, so a refused completion leaves nothing half done).
+    if (!b.buyer_id || b.buyer_id === 13) return { error: 'holder_required' }
+    const circ = await circulationError(supabase, parseSaleOrderBatchIds(b.notes, b.oeuvre_id), SALE_COMPLETE_FROM)
+    if (circ) return { error: circ }
   }
 
   if (toggleField === 'delivered') {
@@ -398,18 +408,20 @@ export async function updateOrderStatut(id: string, statut: string, toggleField?
       const saleIds = (works ?? []).filter(w => !w.is_gift).map(w => w.OeuvreID)
 
       if (saleIds.length > 0) {
-        await fromOeuvres(supabase).update({
+        const { error: soldErr } = await fromOeuvres(supabase).update({
           statusId:      6,   // Vendu
           ContactID:     order.buyer_id,
           LocalisationID: order.buyer_id,
         }).in('OeuvreID', saleIds)
+        if (soldErr) return { error: soldErr.message }
       }
       if (giftIds.length > 0) {
-        await fromOeuvres(supabase).update({
+        const { error: giftErr } = await fromOeuvres(supabase).update({
           statusId:      11,  // Gift
           ContactID:     order.buyer_id,
           LocalisationID: order.buyer_id,
         }).in('OeuvreID', giftIds)
+        if (giftErr) return { error: giftErr.message }
       }
 
       if (order.buyer_id && (works ?? []).length > 0) {
@@ -648,16 +660,26 @@ export async function deleteSaleOrder(id: string): Promise<SimpleResult> {
   const { error: delErr } = await fromSaleOrder(supabase).delete().eq('id', id)
   if (delErr) return { error: delErr.message }
 
-  // 3. Revert works status
-  await fromOeuvres(supabase)
-    .update({
-      statusId:      1,    // Atelier
-      AcheteurID:    null,
-      DateLivraison: null,
-      ContactID:     13,   // Pem Atelier
-      LocalisationID: 13,
-    })
+  // 3. Revert works status: back where the production stage puts them (owner 2026-11-03) —
+  // catalogued + photographed → Disponible, otherwise En production. Was always 1.
+  const { data: revertRows } = await fromOeuvres(supabase)
+    .select('OeuvreID, "Catalogué", NeedsPhotograph')
     .in('OeuvreID', ids)
+  const readyIds = (revertRows ?? []).filter((w) => w.Catalogué && !w.NeedsPhotograph).map((w) => w.OeuvreID)
+  const prodIds = ids.filter((oid) => !readyIds.includes(oid))
+  for (const [statusId, group] of [[2, readyIds], [1, prodIds]] as const) {
+    if (group.length === 0) continue
+    const { error: revErr } = await fromOeuvres(supabase)
+      .update({
+        statusId,
+        AcheteurID:    null,
+        DateLivraison: null,
+        ContactID:     13,   // Pem
+        LocalisationID: 13,
+      })
+      .in('OeuvreID', group)
+    if (revErr) return { error: revErr.message }
+  }
 
   // 4. Cleanup document record
   if (order.pdf_path) {

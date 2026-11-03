@@ -10,6 +10,7 @@ import {
   historiqueLinesForOeuvreUpdate,
 } from '@/lib/oeuvre-historique'
 import { recordStorageObject } from '@/lib/storage-object-ledger'
+import { circulationError, CONSIGN_FROM } from '@/lib/work-circulation'
 
 export interface ConsignmentOrderRow {
   id:               string
@@ -96,6 +97,11 @@ export async function createConsignmentOrder(formData: FormData): Promise<Consig
   const commission_pct = commissionRaw != null && commissionRaw !== '' ? Number(commissionRaw) : 0
 
   if (oeuvre_ids.length === 0) return { error: 'Au moins une œuvre est requise' }
+  // Owner 2026-11-03: the custodian (gallery / institution) is required and is not Pem; only
+  // works still in the studio can go out.
+  if (!partner_id || partner_id === PEM_CONTACT_ID) return { error: 'holder_required' }
+  const circ = await circulationError(supabase, oeuvre_ids, CONSIGN_FROM)
+  if (circ) return { error: circ }
 
   const refPrefix  = kind === 'loan' ? 'LOAN' : 'CNSG'
   const statusId   = kind === 'loan' ? 8 : 7   // Prêt vs Consigné
@@ -123,15 +129,17 @@ export async function createConsignmentOrder(formData: FormData): Promise<Consig
     .select('OeuvreID, statusId, ContactID, LocalisationID')
     .in('OeuvreID', oeuvre_ids)
 
-  await supabase
+  // Pem keeps ownership; the custodian is the location (DB trigger oeuvre_holder_check too).
+  const { error: moveErr } = await supabase
     .from('Oeuvres')
     .update({
       statusId,
-      ContactID:      partner_id,
+      ContactID:      PEM_CONTACT_ID,
       LocalisationID: partner_id,
       ReturnDate:     end_date,
     })
     .in('OeuvreID', oeuvre_ids)
+  if (moveErr) return { error: moveErr.message }
 
   if (partner_id && (worksBefore ?? []).length > 0) {
     const histItems: { oeuvreId: number; lines: string[] }[] = []
@@ -145,7 +153,7 @@ export async function createConsignmentOrder(formData: FormData): Promise<Consig
         },
         {
           statusId,
-          contactId: partner_id,
+          contactId: PEM_CONTACT_ID,
           localisationId: partner_id,
         },
       )
