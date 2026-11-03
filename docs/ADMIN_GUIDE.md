@@ -353,7 +353,7 @@ Computed from production (`Catalogué` + `NeedsPhotograph`) and ownership (`stat
 | Catalogued | `Catalogué = true` + `NeedsPhotograph = true` |
 | Available | `Catalogué = true` + `NeedsPhotograph = false` |
 
-Ownership stages: Artist · Reserved · Consigned · Loan · Sold · Gift · Artist archive · Private archive.
+Ownership stages: Artist · Reserved · Consigned · Loan · Sold · Gift · Artist archive.
 
 Contact label rotation: Pem (artist/archive), Buyer intent (reserved), Custodian (consigned/loan), Acquirer (sold/gift).
 

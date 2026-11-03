@@ -55,6 +55,7 @@ import { LinkedVoiceNotes } from '@/components/atelier/LinkedVoiceNotes'
 import { ConditionReportsSection } from './ConditionReportsSection'
 import { WorkPeriodSourceSection } from './WorkPeriodSourceSection'
 import { normalizeAnonymityLevel } from '@/lib/anonymity-level'
+import { formatPartialDate } from '@/lib/partial-date'
 
 function withCacheKey(src: string, cacheKey?: string): string {
   if (!src || !cacheKey) return src
@@ -888,7 +889,8 @@ export function DrawerContent({
         return true
       }
       const savedLevel = normalizeAnonymityLevel(anonymityLevel)
-      onWorkSaved?.(oid, { anonymity_level: savedLevel })
+      // Patch the list row with what the DB stored (triggers included) — pill/location update, no reload.
+      onWorkSaved?.(oid, { anonymity_level: savedLevel, ...res.saved })
       commitEditorAfterSave()
       setNoteBaseline({ c: commentaires, h: historique })
       setLongTextReloadNonce((n) => n + 1)
@@ -1150,6 +1152,11 @@ export function DrawerContent({
   }
 
   const cName = (c: DrawerContactRow) => c.NomInstitution || `${c.Prénom ?? ''} ${c.Nom ?? ''}`.trim() || `#${c.ContactID}`
+  const fateLastLocation = (() => {
+    if (!o.fate || o.LocalisationID == null) return ''
+    const c = localContacts.find((x) => x.ContactID === o.LocalisationID)
+    return c ? cName(c) : ''
+  })()
   const sortedContacts = [...localContacts].sort((a, b) => cName(a).localeCompare(cName(b), 'fr'))
 
   const activeImage = activeImgIdx >= 0 ? drawerSorted[activeImgIdx] : null
@@ -1289,6 +1296,17 @@ export function DrawerContent({
         <div className="t-mono-sm" style={{ fontSize: 10, color: 'var(--tx3)' }}>
           {statusLabelMap[computeWorkStatusId(ownStage, prodStage)] ?? `ID ${computeWorkStatusId(ownStage, prodStage)}`}
         </div>
+        {o.fate ? (
+          // Destroyed / lost (condition report, supabase/sql/condition_report_fate.sql): kept by trigger.
+          <div data-testid="work-drawer-fate" style={{ fontSize: 13, color: 'var(--tx)', marginTop: 4 }}>
+            {[
+              (ownStage === 'sold' || ownStage === 'gift' ? `${statusLabelMap[o.statusId ?? 0] ?? ''} · ` : '')
+                + t(o.fate === 'destroyed' ? 'fate_destroyed_fmt' : 'fate_lost_fmt')
+                  .replace('{date}', formatPartialDate(o.fate_on, o.fate_precision, lang === 'en' ? 'en-GB' : 'fr-FR')),
+              fateLastLocation ? t('fate_last_location_fmt').replace('{loc}', fateLastLocation) : '',
+            ].filter(Boolean).join(' — ')}
+          </div>
+        ) : null}
         <WorkProductionSpan
           oeuvreId={o.OeuvreID}
           editable={isAdmin}
@@ -1299,6 +1317,12 @@ export function DrawerContent({
         />
       </section>
 
+      {/* Destroyed / lost: stages locked until the constat is closed or removed (DB guard too). */}
+      {o.fate ? <div style={{ fontSize: 11, color: 'var(--tx3)', marginBottom: 6 }}>{t('fate_locked')}</div> : null}
+      <fieldset
+        disabled={!!o.fate}
+        style={{ border: 0, padding: 0, margin: 0, minWidth: 0, ...(o.fate ? { opacity: 0.55, pointerEvents: 'none' } : null) }}
+      >
       <WorkDrawerPipelineSection
         narrow={narrow}
         prodStage={prodStage}
@@ -1322,6 +1346,7 @@ export function DrawerContent({
         setAnonymityLevel={setAnonymityLevel}
         setShowNewContact={setShowNewContact}
       />
+      </fieldset>
 
       {ownStage === 'sold' ? <SaleReturnWindowBanner oeuvreId={o.OeuvreID} /> : null}
 
@@ -1382,7 +1407,7 @@ export function DrawerContent({
 
         <LinkedVoiceNotes field="oeuvre_id" value={o.OeuvreID} />
 
-        <ConditionReportsSection oeuvreId={o.OeuvreID} />
+        <ConditionReportsSection oeuvreId={o.OeuvreID} onWorkPatched={(patch) => onWorkSaved?.(o.OeuvreID, patch)} />
 
         <DrawerContentGroupsSection t={t} initialGroups={initialGroups} selGroups={selGroups} setSelGroups={setSelGroups} />
 

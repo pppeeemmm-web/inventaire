@@ -48,8 +48,6 @@ export function ownStageFromStatusId(statusId: number | null | undefined): OwnSt
       return 'gift'
     case 3:
       return 'artist_archive'
-    case 5:
-      return 'artist_archive'
     default:
       return 'artist'
   }

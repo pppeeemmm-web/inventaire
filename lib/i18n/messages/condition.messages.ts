@@ -76,4 +76,32 @@ export const conditionMessages = defineMessages({
   report_f_issues_count: { fr: 'Problèmes', en: 'Issues' },
   report_f_issues: { fr: 'Détail des problèmes', en: 'Issue details' },
   report_f_photos: { fr: 'Photos', en: 'Photos' },
+
+  // Destroyed / lost (owner 2026-11-03) — supabase/sql/condition_report_fate.sql
+  cond_kind: { fr: 'Type', en: 'Kind' },
+  cond_kind_examination: { fr: 'Examen', en: 'Examination' },
+  cond_kind_destroyed: { fr: 'Destruction', en: 'Destruction' },
+  cond_kind_lost: { fr: 'Perte', en: 'Loss' },
+  cond_event_date: { fr: 'Date de l’événement', en: 'Date of the event' },
+  cond_event_date_ph: { fr: '2019 · 03/2019 · 12/03/2019 — vide = date du constat', en: '2019 · 03/2019 · 12/03/2019 — empty = report date' },
+  cond_event_date_invalid: { fr: 'Date de l’événement invalide : 2019, 03/2019 ou 12/03/2019.', en: 'Invalid event date: 2019, 03/2019 or 12/03/2019.' },
+  cond_fate_note: {
+    fr: 'Ce constat retire l’œuvre de la circulation : statut Détruite / Perdue, hors site public, ventes et production. Une œuvre vendue ou donnée garde son statut.',
+    en: 'This report takes the work out of circulation: status Destroyed / Lost, off the public site, sales and production. A sold or given work keeps its status.',
+  },
+  cond_found_btn: { fr: 'Retrouvée', en: 'Found' },
+  cond_found_confirm: { fr: 'Marquer l’œuvre comme retrouvée ? Elle reprend son statut précédent.', en: 'Mark the work as found? It goes back to its previous status.' },
+  cond_found_fmt: { fr: 'Retrouvée le {date}', en: 'Found on {date}' },
+  cond_err_fate_admin: { fr: 'Seul un admin peut enregistrer une destruction ou une perte.', en: 'Only an admin can record a destruction or a loss.' },
+  fate_destroyed_fmt: { fr: 'Détruite · {date}', en: 'Destroyed · {date}' },
+  fate_lost_fmt: { fr: 'Perdue · {date}', en: 'Lost · {date}' },
+  fate_destroyed_suffix: { fr: 'détruite', en: 'destroyed' },
+  fate_lost_suffix: { fr: 'perdue', en: 'lost' },
+  fate_last_location_fmt: { fr: 'Dernière localisation connue : {loc}', en: 'Last known location: {loc}' },
+  fate_locked: {
+    fr: 'Étapes verrouillées : clore ou supprimer le constat de perte / destruction pour les modifier.',
+    en: 'Stages locked: close or delete the loss / destruction report to change them.',
+  },
+  status_destroyed: { fr: 'Détruite', en: 'Destroyed' },
+  status_lost: { fr: 'Perdue', en: 'Lost' },
 })

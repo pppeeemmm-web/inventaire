@@ -12,7 +12,8 @@ const MAP: Record<StatusKey, { cls: string; lbl: string }> = {
   sold:            { cls: 'teal', lbl: 'Vendu'         },
   gift:            { cls: 'mono', lbl: 'Don'           },
   artist_archive:  { cls: 'mt',   lbl: 'Archive (Pem)' },
-  private_archive: { cls: 'mt',   lbl: 'Archive privée'},
+  destroyed:       { cls: 'mt',   lbl: 'Détruite'      },
+  lost:            { cls: 'mt',   lbl: 'Perdue'        },
 }
 
 export function StatusChip({ s, cls }: { s: StatusKey; cls?: string }) {

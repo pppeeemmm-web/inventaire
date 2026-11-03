@@ -110,7 +110,7 @@ export function SaleNewClient({ works, contacts, groups, groupLinks, statuses, t
     () =>
       works.filter((work) => {
         const key = statusOf(work, statusLabelMap)
-        return key !== 'sold' && key !== 'gift' && key !== 'artist_archive' && key !== 'private_archive'
+        return key !== 'sold' && key !== 'gift' && key !== 'artist_archive' && key !== 'destroyed' && key !== 'lost'
       }),
     [works, statusLabelMap],
   )

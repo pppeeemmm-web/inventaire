@@ -2,7 +2,7 @@ import { statusOf, type StatusKey } from '@/lib/data'
 import type { Oeuvre } from '@/lib/types/database'
 
 /** Statuses that never show on the Production board (nor in its report). */
-export const PRODUCTION_EXCLUDED_STATUSES: StatusKey[] = ['sold', 'gift', 'artist_archive', 'private_archive']
+export const PRODUCTION_EXCLUDED_STATUSES: StatusKey[] = ['sold', 'gift', 'artist_archive', 'destroyed', 'lost']
 
 /**
  * A work is "in production" when it is not sold/given/archived and is either not catalogued yet,

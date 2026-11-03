@@ -23,6 +23,10 @@ export interface Oeuvre {
   production_started_on?: string | null;
   production_completed_on?: string | null;
   production_origin?: 'new' | 'found' | null;
+  /** End of life, kept by trigger from destroyed / lost constats (supabase/sql/condition_report_fate.sql). Never write. */
+  fate?: 'destroyed' | 'lost' | null;
+  fate_on?: string | null;
+  fate_precision?: 'year' | 'month' | 'day' | null;
   AcheteurID?: number | null;
   Prix: number | null;
   Discount?: number | null;

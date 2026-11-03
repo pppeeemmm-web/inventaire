@@ -87,7 +87,8 @@ export const STATUS_IDS_PUBLIC: readonly number[] = [2, 4, 6, 7, 8, 11]
  *   sold            — ownership transferred
  *   gift            — ownership transferred, no payment
  *   artist_archive  — withdrawn from circulation (Pem retains)
- *   private_archive — withdrawn, private collection
+ *   destroyed / lost — end of life (condition report, supabase/sql/condition_report_fate.sql);
+ *                    sold / gift works keep their status and carry Oeuvres.fate instead
  */
 export type StatusKey =
   | 'en_production'
@@ -98,7 +99,8 @@ export type StatusKey =
   | 'sold'
   | 'gift'
   | 'artist_archive'
-  | 'private_archive'
+  | 'destroyed'
+  | 'lost'
 
 /** OeuvreStatus.label → StatusKey (FR + EN DB spellings; keep in sync with `OeuvreStatus`). */
 const STATUS_LABEL_MAP: Record<string, StatusKey> = {
@@ -110,8 +112,6 @@ const STATUS_LABEL_MAP: Record<string, StatusKey> = {
   'Reserved':        'reserved',
   'Archive artiste': 'artist_archive',
   'Artist archive':  'artist_archive',
-  'Archive privée':  'private_archive',
-  'Private archive': 'private_archive',
   'Vendu':           'sold',
   'Sold':            'sold',
   'Consigné':        'consigned',
@@ -121,6 +121,10 @@ const STATUS_LABEL_MAP: Record<string, StatusKey> = {
   'Borrowed':        'loan',
   'Gift':            'gift',
   'Don':             'gift',
+  'Destroyed':       'destroyed',
+  'Détruite':        'destroyed',
+  'Lost':            'lost',
+  'Perdue':          'lost',
 }
 
 export function statusKeyFromLabel(label: string | null | undefined): StatusKey {
@@ -179,7 +183,8 @@ export function statusKeyToOeuvreStatusId(key: StatusKey): number {
     case 'sold': return 6
     case 'gift': return 11
     case 'artist_archive': return STATUS_ID_ARCHIVE_ARTISTE
-    case 'private_archive': return 5
+    case 'destroyed': return 9
+    case 'lost': return 10
     default: return 1
   }
 }
@@ -252,7 +257,8 @@ export function statusColor(key: StatusKey): string {
     case 'sold':            return 'var(--teal)'
     case 'gift':            return 'var(--tx)'
     case 'artist_archive':  return 'var(--mt)'
-    case 'private_archive': return 'var(--mt)'
+    case 'destroyed':       return 'var(--tx3)'
+    case 'lost':            return 'var(--tx3)'
     default:                return 'var(--tx3)'
   }
 }

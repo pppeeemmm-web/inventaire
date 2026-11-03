@@ -262,12 +262,16 @@ export type Database = {
           action_status: string
           author_id: string | null
           created_at: string
+          event_on: string | null
+          event_precision: string | null
           examined_on: string
           examiner: string | null
           grade: string | null
           id: number
+          kind: string
           notes: string | null
           oeuvre_id: number
+          resolved_on: string | null
           updated_at: string
         }
         Insert: {
@@ -275,12 +279,16 @@ export type Database = {
           action_status?: string
           author_id?: string | null
           created_at?: string
+          event_on?: string | null
+          event_precision?: string | null
           examined_on?: string
           examiner?: string | null
           grade?: string | null
           id?: never
+          kind?: string
           notes?: string | null
           oeuvre_id: number
+          resolved_on?: string | null
           updated_at?: string
         }
         Update: {
@@ -288,12 +296,16 @@ export type Database = {
           action_status?: string
           author_id?: string | null
           created_at?: string
+          event_on?: string | null
+          event_precision?: string | null
           examined_on?: string
           examiner?: string | null
           grade?: string | null
           id?: never
+          kind?: string
           notes?: string | null
           oeuvre_id?: number
+          resolved_on?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1300,6 +1312,9 @@ export type Database = {
           edited_by: string | null
           Encadree: boolean | null
           Exposable: boolean | null
+          fate: string | null
+          fate_on: string | null
+          fate_precision: string | null
           Format: number | null
           Hauteur: string | null
           Historique: string | null
@@ -1323,6 +1338,7 @@ export type Database = {
           Profondeur: string | null
           ReturnDate: string | null
           StageProduction: string | null
+          status_before_fate: number | null
           statusId: number | null
           Support: number | null
           Technique: number | null
@@ -1350,6 +1366,9 @@ export type Database = {
           edited_by?: string | null
           Encadree?: boolean | null
           Exposable?: boolean | null
+          fate?: string | null
+          fate_on?: string | null
+          fate_precision?: string | null
           Format?: number | null
           Hauteur?: string | null
           Historique?: string | null
@@ -1373,6 +1392,7 @@ export type Database = {
           Profondeur?: string | null
           ReturnDate?: string | null
           StageProduction?: string | null
+          status_before_fate?: number | null
           statusId?: number | null
           Support?: number | null
           Technique?: number | null
@@ -1400,6 +1420,9 @@ export type Database = {
           edited_by?: string | null
           Encadree?: boolean | null
           Exposable?: boolean | null
+          fate?: string | null
+          fate_on?: string | null
+          fate_precision?: string | null
           Format?: number | null
           Hauteur?: string | null
           Historique?: string | null
@@ -1423,6 +1446,7 @@ export type Database = {
           Profondeur?: string | null
           ReturnDate?: string | null
           StageProduction?: string | null
+          status_before_fate?: number | null
           statusId?: number | null
           Support?: number | null
           Technique?: number | null
@@ -1486,6 +1510,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "tblPresentation"
             referencedColumns: ["PresentationID"]
+          },
+          {
+            foreignKeyName: "Oeuvres_status_before_fate_fkey"
+            columns: ["status_before_fate"]
+            isOneToOne: false
+            referencedRelation: "OeuvreStatus"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "Oeuvres_statusId_fkey"

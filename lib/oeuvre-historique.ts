@@ -17,7 +17,6 @@ const STATUS_FR: Record<number, string> = {
   1: 'En production',
   2: 'Disponible',
   4: 'Réservé',
-  5: 'Archive privée',
   6: 'Vendu',
   7: 'Consigné',
   8: 'Prêt',

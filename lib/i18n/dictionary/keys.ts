@@ -364,7 +364,6 @@ export type DictKey =
   | 'report_sort_label' | 'report_sort_id' | 'report_sort_title' | 'report_sort_year' | 'report_sort_price'
   | 'report_export_xlsx' | 'report_export_html' | 'report_export_pdf'
   | 'report_pdf_no_columns' | 'report_pdf_empty' | 'report_pdf_too_many' | 'report_pdf_auth' | 'report_pdf_fail'
-  | 'report_status_private_archive'
   | 'report_col_id' | 'report_col_title' | 'report_col_year' | 'report_col_technique' | 'report_col_support'
   | 'report_col_format' | 'report_col_dimensions' | 'report_col_price' | 'report_col_status'
   | 'report_col_contact' | 'report_col_buyer' | 'report_col_location'

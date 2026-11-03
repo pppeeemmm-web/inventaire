@@ -14,9 +14,12 @@ import { r2PutObject, r2SoftDeleteObject } from '@/lib/r2-s3-object'
 import {
   parseActionStatus,
   parseGrade,
+  parseReportKind,
   type ConditionIssue,
   type ConditionReport,
+  type ConditionWorkPatch,
 } from '@/lib/condition'
+import { DATE_PRECISIONS, type DatePrecision } from '@/lib/partial-date'
 
 type Err = { error: string }
 type Supa = Awaited<ReturnType<typeof createClient>>
@@ -25,7 +28,8 @@ const MAX_TEXT = 20_000
 const MAX_SHORT = 300
 const MAX_PHOTO_BYTES = 12 * 1024 * 1024
 
-const REPORT_COLS = 'id, oeuvre_id, created_at, updated_at, author_id, examined_on, examiner, grade, notes, action, action_status'
+const REPORT_COLS =
+  'id, oeuvre_id, created_at, updated_at, author_id, examined_on, examiner, grade, notes, action, action_status, kind, event_on, event_precision, resolved_on'
 const ISSUE_COLS = 'id, report_id, created_at, author_id, description, location, photo_key'
 
 async function teamUser(supabase: Supa): Promise<{ id: string } | null> {
@@ -90,7 +94,15 @@ export type ConditionReportInput = {
   notes?: string
   action?: string
   action_status?: string
+  kind?: string
+  /** Destroyed / lost: event date as first day of the period + precision; null = report date. */
+  event_on?: string | null
+  event_precision?: string | null
+  /** Lost work found again (YYYY-MM-DD), null = still lost. */
+  resolved_on?: string | null
 }
+
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/
 
 function cleanInput(input: ConditionReportInput): { values: Record<string, unknown> } | Err {
   const out: Record<string, unknown> = {}
@@ -114,13 +126,54 @@ function cleanInput(input: ConditionReportInput): { values: Record<string, unkno
     if (!s) return { error: 'bad_status' }
     out.action_status = s
   }
+  if (input.kind !== undefined) {
+    const k = parseReportKind(input.kind)
+    if (!k) return { error: 'bad_kind' }
+    out.kind = k
+  }
+  if (input.event_on !== undefined) {
+    if (input.event_on === null || input.event_on === '') {
+      out.event_on = null
+      out.event_precision = null
+    } else {
+      const prec = input.event_precision as DatePrecision
+      if (!ISO_DAY.test(input.event_on) || !(DATE_PRECISIONS as readonly string[]).includes(prec)) return { error: 'bad_event_date' }
+      out.event_on = input.event_on
+      out.event_precision = prec
+    }
+  }
+  if (input.resolved_on !== undefined) {
+    if (input.resolved_on !== null && !ISO_DAY.test(input.resolved_on)) return { error: 'bad_date' }
+    out.resolved_on = input.resolved_on
+  }
+  // An examination carries no event / found date (DB check condition_report_event_ck).
+  if (out.kind === 'examination') {
+    out.event_on = null
+    out.event_precision = null
+    out.resolved_on = null
+  }
   return { values: out }
+}
+
+/** The work as the constat triggers left it — status, fate, public flag. */
+async function workPatch(supabase: Supa, oeuvreId: number): Promise<ConditionWorkPatch | undefined> {
+  const { data } = await supabase
+    .from('Oeuvres')
+    .select('statusId, fate, fate_on, fate_precision, is_public')
+    .eq('OeuvreID', oeuvreId)
+    .maybeSingle()
+  return (data ?? undefined) as ConditionWorkPatch | undefined
+}
+
+/** DB gate `fate_admin_only` (condition_report_fate_check) → stable code for the UI. */
+function writeError(message: string): Err {
+  return { error: message.includes('fate_admin_only') ? 'fate_admin_only' : message }
 }
 
 export async function createConditionReport(
   oeuvreId: number,
   input: ConditionReportInput,
-): Promise<{ ok: true; report: ConditionReport } | Err> {
+): Promise<{ ok: true; report: ConditionReport; work?: ConditionWorkPatch } | Err> {
   const supabase = await createClient()
   const user = await teamUser(supabase)
   if (!user) return { error: 'auth' }
@@ -132,41 +185,42 @@ export async function createConditionReport(
     .insert({ ...clean.values, oeuvre_id: oeuvreId, author_id: user.id })
     .select(REPORT_COLS)
     .single()
-  if (error || !data) return { error: error?.message ?? 'insert' }
+  if (error || !data) return writeError(error?.message ?? 'insert')
   revalidatePath('/atelier')
-  return { ok: true, report: { ...(data as Omit<ConditionReport, 'issues'>), issues: [] } }
+  return { ok: true, report: { ...(data as Omit<ConditionReport, 'issues'>), issues: [] }, work: await workPatch(supabase, oeuvreId) }
 }
 
 export async function updateConditionReport(
   id: number,
   input: ConditionReportInput,
-): Promise<{ ok: true; report: Omit<ConditionReport, 'issues'> } | Err> {
+): Promise<{ ok: true; report: Omit<ConditionReport, 'issues'>; work?: ConditionWorkPatch } | Err> {
   const supabase = await createClient()
   const user = await teamUser(supabase)
   if (!user) return { error: 'auth' }
   const clean = cleanInput(input)
   if ('error' in clean) return clean
   const { data, error } = await supabase.from('condition_report').update(clean.values).eq('id', id).select(REPORT_COLS).maybeSingle()
-  if (error) return { error: error.message }
+  if (error) return writeError(error.message)
   // RLS hides the row from the update when the user is neither its author nor admin.
   if (!data) return { error: 'forbidden' }
   revalidatePath('/atelier')
-  return { ok: true, report: data as Omit<ConditionReport, 'issues'> }
+  const report = data as Omit<ConditionReport, 'issues'>
+  return { ok: true, report, work: await workPatch(supabase, report.oeuvre_id) }
 }
 
 /** Admin only (RLS). Issues go with it (cascade); their photos stay in R2. */
-export async function deleteConditionReport(id: number): Promise<{ ok: true } | Err> {
+export async function deleteConditionReport(id: number): Promise<{ ok: true; work?: ConditionWorkPatch } | Err> {
   const supabase = await createClient()
   const user = await teamUser(supabase)
   if (!user) return { error: 'auth' }
   // Issues go with the constat (FK cascade): read their photos first so they can be recycled.
   const { data: issues } = await supabase.from('condition_issue').select('photo_key').eq('report_id', id)
-  const { data, error } = await supabase.from('condition_report').delete().eq('id', id).select('id')
-  if (error) return { error: error.message }
+  const { data, error } = await supabase.from('condition_report').delete().eq('id', id).select('id, oeuvre_id')
+  if (error) return writeError(error.message)
   if (!data?.length) return { error: 'forbidden' }
   await recyclePhotos((issues ?? []).map((r) => r.photo_key))
   revalidatePath('/atelier')
-  return { ok: true }
+  return { ok: true, work: await workPatch(supabase, data[0].oeuvre_id) }
 }
 
 /**

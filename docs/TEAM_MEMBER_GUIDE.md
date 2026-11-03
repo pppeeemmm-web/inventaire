@@ -363,7 +363,7 @@ Reads from two axes:
 1. **Production** — `Catalogué` boolean + `NeedsPhotograph` flag.
 2. **Ownership** — `statusId` FK → `OeuvreStatus.label`.
 
-The bar collapses both into a human label: `Atelier` → `Catalogued` → `Available`, plus ownership state (Artist, Reserved, Consigned, Loan, Sold, Gift, Artist archive, Private archive).
+The bar collapses both into a human label: `Atelier` → `Catalogued` → `Available`, plus ownership state (Artist, Reserved, Consigned, Loan, Sold, Gift, Artist archive).
 
 > **Important — status IDs that flip `is_public`:** `2, 4, 6, 7, 8, 11` — these are the ownership stages that the trigger `sync_is_public_from_status()` treats as publicly visible. See `lib/data.ts`'s `STATUS_IDS_PUBLIC`. You **never** write `Oeuvres.is_public` directly — the trigger owns it.
 
@@ -390,7 +390,7 @@ The "Needs photograph" toggle sits inside the section. The label is informationa
 | Sold | Ownership transferred + payment expected. | "Acquirer" |
 | Gift | No payment; recipient is owner. | "Acquirer" |
 | Artist archive | Withdrawn; Pem retains. | "Pem" (read-only) |
-| Private archive | Confidential hold; not public. | "Pem" |
+| Destroyed / Lost | Set by a Destruction / Perte condition report (admin): leaves the public site, sales and production; stages locked; "Retrouvée" restores a lost work. Sold / gift works keep their status and show "· détruite / · perdue". | Last known location |
 
 > **Locking rules — important.** When the ownership is `Sold` / `Gift` / `Artist archive`, the **production section greys out (opacity ~0.55)** and production toggles disable. Why: once a work has shipped or been gifted, you shouldn't be re-marking it "needs photograph". To re-photograph a sold work, reset ownership first (admin path) or take the photo into a fresh session that does not edit pipeline.
 

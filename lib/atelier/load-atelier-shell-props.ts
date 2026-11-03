@@ -64,7 +64,7 @@ export async function loadAtelierShellProps(
         supabase.from('Oeuvres').select('OeuvreID', { count: 'exact', head: true }).is('deleted_at', null),
         supabase
           .from('Oeuvres')
-          .select('OeuvreID, Titre, Technique, Support, "Année", Format, Hauteur, Largeur, Profondeur, Exposable, broadcast_ready, broadcast_caption_seed, Prix, PrixFinal, Discount, statusId, "Catalogué", txtImageNameLink, ContactID, LocalisationID, LocalisationDetail, localisation_address_id, is_public, Encadree, IsCommission, PresentationID, ReturnDate, DateLivraison, AcheteurID, NeedsPhotograph, anonymity_level, admin_override_anonymity, production_started_on, production_completed_on, production_origin')
+          .select('OeuvreID, Titre, Technique, Support, "Année", Format, Hauteur, Largeur, Profondeur, Exposable, broadcast_ready, broadcast_caption_seed, Prix, PrixFinal, Discount, statusId, "Catalogué", txtImageNameLink, ContactID, LocalisationID, LocalisationDetail, localisation_address_id, is_public, Encadree, IsCommission, PresentationID, ReturnDate, DateLivraison, AcheteurID, NeedsPhotograph, anonymity_level, admin_override_anonymity, production_started_on, production_completed_on, production_origin, fate, fate_on, fate_precision')
           .is('deleted_at', null)
           .order('OeuvreID', { ascending: false })
           .limit(ATELIER_OEUVRE_PAGE),

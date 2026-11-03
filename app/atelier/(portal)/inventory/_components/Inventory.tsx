@@ -855,7 +855,8 @@ export function Inventory({
       { k: 'sold',            l: t('wf_own_sold_l'),                  c: 'var(--teal)' },
       { k: 'gift',            l: t('wf_own_gift_l'),                  c: 'var(--tx)'   },
       { k: 'artist_archive',  l: t('wf_own_archive_l'),               c: 'var(--mt)'   },
-      { k: 'private_archive', l: t('report_status_private_archive'),  c: 'var(--mt)'   },
+      { k: 'destroyed',       l: t('status_destroyed'),               c: 'var(--tx3)'  },
+      { k: 'lost',            l: t('status_lost'),                    c: 'var(--tx3)'  },
     ].filter(s => present.has(s.k as StatusKey))
   }, [oeuvres, statusLabelMap, t])
 
@@ -1923,7 +1924,7 @@ function InvList({
                     {(() => {
                       // TRUTH ENFORCEMENT: If the status implies it's gone (Consigned, Loaned, Sold, Gifted), 
                       // we MUST show the actual location. Otherwise, it is at the Atelier.
-                      const isExternal = ['consigned', 'loan', 'sold', 'gift'].includes(st)
+                      const isExternal = ['consigned', 'loan', 'sold', 'gift', 'destroyed', 'lost'].includes(st) || !!o.fate
                       if (!isExternal) return 'Pem - Atelier'
                       return (o.LocalisationID != null ? locMap[o.LocalisationID] : 'Pem - Atelier') || '—'
                     })()}

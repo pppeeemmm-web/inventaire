@@ -134,7 +134,8 @@ async function syncPipelineWithBooleans(
   return { ok: true }
 }
 
-export type SaveResult   = { error: string } | { ok: true; newId?: number; pending?: boolean }
+/** `saved`: the row as stored after the DB triggers ran — lets the list patch one row, no reload. */
+export type SaveResult   = { error: string } | { ok: true; newId?: number; pending?: boolean; saved?: Partial<Oeuvre> }
 export type DeleteResult =
   | { error: string; deletedIds?: number[] }
   | { ok: true; deletedIds?: number[] }
@@ -632,11 +633,13 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       updatePayload.txtImageNameLink = imageName
     }
 
-    const { error: updateErr } = await supabase
+    const { data: savedRow, error: updateErr } = await supabase
       .from('Oeuvres')
       .update(updatePayload)
       .eq('OeuvreID', oid)
       .is('deleted_at', null)
+      .select(OEUVRES_KEYSET_SELECT)
+      .maybeSingle()
 
     if (updateErr) return { error: updateErr.message }
 
@@ -723,7 +726,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
     revalidatePath('/atelier')
     revalidatePath('/hub')
     revalidatePath('/works')
-    return { ok: true }
+    return { ok: true, saved: (savedRow ?? undefined) as Partial<Oeuvre> | undefined }
   }
 }
 
@@ -1537,7 +1540,7 @@ export async function loadOeuvreLongText(
 }
 
 const OEUVRES_KEYSET_SELECT =
-  'OeuvreID, Titre, Technique, Support, "Année", Format, Hauteur, Largeur, Profondeur, Exposable, broadcast_ready, broadcast_caption_seed, Prix, PrixFinal, Discount, statusId, "Catalogué", txtImageNameLink, ContactID, LocalisationID, LocalisationDetail, localisation_address_id, is_public, Encadree, IsCommission, PresentationID, ReturnDate, DateLivraison, AcheteurID, NeedsPhotograph, anonymity_level, admin_override_anonymity, production_started_on, production_completed_on, production_origin'
+  'OeuvreID, Titre, Technique, Support, "Année", Format, Hauteur, Largeur, Profondeur, Exposable, broadcast_ready, broadcast_caption_seed, Prix, PrixFinal, Discount, statusId, "Catalogué", txtImageNameLink, ContactID, LocalisationID, LocalisationDetail, localisation_address_id, is_public, Encadree, IsCommission, PresentationID, ReturnDate, DateLivraison, AcheteurID, NeedsPhotograph, anonymity_level, admin_override_anonymity, production_started_on, production_completed_on, production_origin, fate, fate_on, fate_precision'
 
 /**
  * PostgREST infers a partial-row shape from OEUVRES_KEYSET_SELECT that is missing
