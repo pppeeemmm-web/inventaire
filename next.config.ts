@@ -31,6 +31,12 @@ const nextConfig: NextConfig = {
     return config
   },
 
+  /** Deploy check: `curl -sI <url>` shows which commit is live (Vercel sets VERCEL_GIT_COMMIT_SHA). */
+  async headers() {
+    const sha = process.env.VERCEL_GIT_COMMIT_SHA || swRevision
+    return [{ source: '/:path*', headers: [{ key: 'x-build-sha', value: sha }] }]
+  },
+
   /** Browsers still request /favicon.ico by default */
   async redirects() {
     return [{ source: '/favicon.ico', destination: '/favicon.svg', permanent: false }]

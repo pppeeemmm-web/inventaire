@@ -23,6 +23,7 @@ Repo guide. Conflict → ask owner before edit.
 - CLAUDE.md = source of truth. Hook/rule conflict → this section wins.
 
 ## Commands
+- `npm run dev` / `scripts/run-dev.mjs` force-kills whatever listens on :3000 (any session's server). Check first; reuse a running server instead of starting another.
 - Dev: `pwsh scripts/dev.ps1` from `C:\Users\pppee\Documents\Claude\Projects\Art db\app`. Prints `Phone : http://<LAN>:3000` for Wi‑Fi testing.
 - Phone/LAN dev: use `DEV_AUTO_LOGIN_*` in `.env.local`, open `/hub` on LAN URL. No Google OAuth on `192.168.*` unless in Supabase Auth redirect allowlist. Use real PEM account email in `DEV_AUTO_LOGIN_EMAIL` (dev password on that Supabase user) for same `work_session` rows as prod; separate `dev@…` user sees own (often empty) drafts.
 - `work_session` journal: any `is_team()` user can read all team sessions; writes = session-owner or admin. Journal empty for team members → run `supabase/sql/work_session_team_read.sql` on project DB.
@@ -44,7 +45,7 @@ Repo guide. Conflict → ask owner before edit.
 - Start: `git status --short --branch`.
 - Finish: `git status --short --branch` + `git log --oneline origin/main..HEAD`.
 - Before completion wording, run or derive same fields as `pwsh scripts/release-truth.ps1`: branch, HEAD SHA, origin/main SHA, HEAD==origin/main, working tree, checks. `deployed`/`online` needs separate production evidence.
-- Push to `origin/main` = production release: auto-deploys https://www.thepemworkshop.com in ~70s. `deployed` only after polling live URL for a marker only the new build emits (budget ~2 min).
+- Push to `origin/main` = production release: auto-deploys https://www.thepemworkshop.com in ~70s. `deployed` only after `curl -sI https://www.thepemworkshop.com` shows `x-build-sha` = pushed HEAD (header set in `next.config.ts`; poll, budget ~2 min).
 - Push only when owner requested commit/push. `main` ahead but no push request → say `committed locally` or `local draft`. Not on `origin/main` → say local draft.
 - Status words exact: `local draft`, `committed locally`, `pushed to origin/main`, `deployed`, `verified`. No widening beyond evidence.
 - Never destructive git (`reset --hard`, `checkout --`, force push) unless owner explicitly approves.
