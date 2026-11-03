@@ -127,7 +127,7 @@ HTTP contract (endpoints + Bearer secret): [BROADCAST.md](./BROADCAST.md). **Bui
 
 ## Run dev
 
-From repo root: `pwsh scripts/dev.ps1` (frees port 3000, prints LAN URL for mobile). Or `npm run dev` on `0.0.0.0:3000`.
+From repo root: `pwsh scripts/dev.ps1` (refuses if port 3000 is taken — `npm run dev -- --force` stops a stale server; prints LAN URL for mobile). Or `npm run dev` on `0.0.0.0:3000`.
 
 ---
 

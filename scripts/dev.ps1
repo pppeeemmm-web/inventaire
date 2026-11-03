@@ -1,5 +1,6 @@
 # dev.ps1 — start the PEM Hub dev server from the real app directory.
-# Ensures .env.local exists; npm run dev frees port 3000 and prints LAN URL (see scripts/run-dev.mjs).
+# Ensures .env.local exists; npm run dev refuses if port 3000 is taken and prints LAN URL (see scripts/run-dev.mjs).
+# Stale server of yours on 3000: `npm run dev -- --force`.
 
 $appRoot = Split-Path $PSScriptRoot -Parent
 Set-Location $appRoot

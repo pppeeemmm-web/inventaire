@@ -23,7 +23,7 @@ Repo guide. Conflict → ask owner before edit.
 - CLAUDE.md = source of truth. Hook/rule conflict → this section wins.
 
 ## Commands
-- `npm run dev` / `scripts/run-dev.mjs` force-kills whatever listens on :3000 (any session's server). Check first; reuse a running server instead of starting another.
+- `npm run dev` (`scripts/run-dev.mjs`) refuses if its port is taken (maybe another session's server) — reuse that server. `-- --force` stops the listener; only for your own stale server. Honors `PORT` (preview tool's second server lands on 3001).
 - Dev: `pwsh scripts/dev.ps1` from `C:\Users\pppee\Documents\Claude\Projects\Art db\app`. Prints `Phone : http://<LAN>:3000` for Wi‑Fi testing.
 - Phone/LAN dev: use `DEV_AUTO_LOGIN_*` in `.env.local`, open `/hub` on LAN URL. No Google OAuth on `192.168.*` unless in Supabase Auth redirect allowlist. Use real PEM account email in `DEV_AUTO_LOGIN_EMAIL` (dev password on that Supabase user) for same `work_session` rows as prod; separate `dev@…` user sees own (often empty) drafts.
 - `work_session` journal: any `is_team()` user can read all team sessions; writes = session-owner or admin. Journal empty for team members → run `supabase/sql/work_session_team_read.sql` on project DB.
