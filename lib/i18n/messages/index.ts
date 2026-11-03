@@ -30,6 +30,7 @@ import { notesTriageMessages } from './notes-triage.messages'
 import { kaizenMessages } from './kaizen.messages'
 import { reportsUiMessages } from './reports-ui.messages'
 import { conditionMessages } from './condition.messages'
+import { custodyMessages } from './custody.messages'
 import { workPeriodsMessages } from './work-periods.messages'
 import { whatsNewMessages } from './whats-new.messages'
 
@@ -66,6 +67,7 @@ export const featureMessages = {
   ...kaizenMessages,
   ...reportsUiMessages,
   ...conditionMessages,
+  ...custodyMessages,
   ...workPeriodsMessages,
   ...whatsNewMessages,
 } as const

@@ -7,7 +7,6 @@ import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client
 import {
   asExhibitionLayout,
   fromExhibitionLayout,
-  fromOeuvres,
   fromSuiviEtape,
   fromSuiviProcess,
   toLayoutJson,
@@ -16,6 +15,7 @@ import {
   toSuiviEtapeUpdate,
   toSuiviProcessUpdate,
 } from '@/lib/exhibitions/exhibition-client'
+import { createConsignmentOrder } from '@/app/atelier/consignments/actions'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -349,15 +349,34 @@ export async function updateExhibitionProcess(payload: {
   return { ok: true, steps: finalSteps }
 }
 
-export async function assignWorksToExhibitionContact(payload: {
+/**
+ * Send works to the exhibition venue. Owner 2026-11-03: a work leaves Pem only through an order,
+ * and a venue is a custodian, never the owner — this opens a loan (or consignment) order to the
+ * venue for the exhibition dates (docs/WORK_CUSTODY_MODEL.md). Was: venue written as owner.
+ */
+export async function sendWorksToExhibition(payload: {
   oeuvreIds: number[]
-  contactId: number
+  exhibitionId: string
+  kind: 'loan' | 'consignment'
 }): Promise<SimpleResult> {
   const { error: authErr, supabase } = await guardTeam()
   if (authErr || !supabase) return { error: authErr ?? 'Auth' }
-  const { error } = await fromOeuvres(supabase)
-    .update({ ContactID: payload.contactId })
-    .in('OeuvreID', payload.oeuvreIds)
-  if (error) return { error: error.message }
+  const { data: exh, error: exhErr } = await fromSuiviProcess(supabase)
+    .select('id, nom, contact_id, date_debut, date_fin')
+    .eq('id', payload.exhibitionId)
+    .single()
+  if (exhErr || !exh) return { error: exhErr?.message ?? 'Exhibition not found' }
+  const row = exh as { nom: string | null; contact_id: number | null; date_debut: string | null; date_fin: string | null }
+  if (!row.contact_id) return { error: 'holder_required' }
+
+  const fd = new FormData()
+  payload.oeuvreIds.forEach((id) => fd.append('oeuvre_ids', String(id)))
+  fd.append('partner_id', String(row.contact_id))
+  fd.append('kind', payload.kind)
+  if (row.date_debut) fd.append('start_date', row.date_debut)
+  if (row.date_fin) fd.append('end_date', row.date_fin)
+  if (row.nom) fd.append('notes', row.nom)
+  const res = await createConsignmentOrder(fd)
+  if ('error' in res) return { error: res.error }
   return { ok: true }
 }

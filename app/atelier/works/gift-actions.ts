@@ -67,13 +67,15 @@ export async function markAsGift(formData: FormData): Promise<GiftResult> {
   const recipient_id = Number(formData.get('recipient_id'))
   const delivery_date = (formData.get('delivery_date') as string | null) || null
   const notes        = (formData.get('notes') as string | null) || null
+  // Owner 2026-11-03: the deed moves ownership; custody moves only when the work is handed over.
+  const handedOver   = formData.get('handed_over') === '1'
 
   if (!oeuvre_id) return { error: 'Œuvre requise' }
   if (!recipient_id) return { error: 'Bénéficiaire requis' }
 
   const { data: work, error: workErr } = await supabase
     .from('Oeuvres')
-    .select('OeuvreID, Titre, "Année", Technique, Support, Hauteur, Largeur, Profondeur, txtImageNameLink, statusId, Historique')
+    .select('OeuvreID, Titre, "Année", Technique, Support, Hauteur, Largeur, Profondeur, txtImageNameLink, statusId, Historique, LocalisationID')
     .eq('OeuvreID', oeuvre_id)
     .is('deleted_at', null)
     .single()
@@ -95,7 +97,7 @@ export async function markAsGift(formData: FormData): Promise<GiftResult> {
 
   const newHistorique = mergeHistoriqueLines(work.Historique, [
     formatGiftHistoriqueLine(recipientName),
-    formatLocationHistoriqueLine(recipient as HistoriqueContact),
+    ...(handedOver ? [formatLocationHistoriqueLine(recipient as HistoriqueContact)] : []),
   ])
 
   const { error: updateErr } = await supabase
@@ -103,7 +105,8 @@ export async function markAsGift(formData: FormData): Promise<GiftResult> {
     .update({
       statusId:       11,
       ContactID:      recipient_id,
-      LocalisationID: recipient_id,
+      // Not handed over yet: whoever holds it keeps it (Pem, or the gallery for a consigned work).
+      ...(handedOver ? { LocalisationID: recipient_id, localisation_address_id: null } : {}),
       AcheteurID:     recipient_id,
       is_gift:        true,
       Prix:           0,

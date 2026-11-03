@@ -7,6 +7,7 @@ import { PROD_STAGE_COLOR, type OwnStageId, type ProdStageId } from '@/lib/work-
 import type { DrawerContactRow } from './drawer-content-props'
 import type { ContactAddress } from '@/components/atelier/contact-editor-types'
 import { LocationAddressPicker } from '@/components/atelier/LocationAddressPicker'
+import { PEM_CONTACT_ID } from '@/lib/data'
 import { SectionTitle, WfPipeProgress, WfSwitch, FIS } from './drawer-widgets'
 
 export type WorkDrawerPipelineSectionProps = {
@@ -20,8 +21,15 @@ export type WorkDrawerPipelineSectionProps = {
   isOwnershipTransferred: boolean
   isArchived: boolean
   pemContact: DrawerContactRow | undefined
+  /** Custodian (LocalisationID). */
   contactId: string
   setContactId: Dispatch<SetStateAction<string>>
+  ownerId: string
+  setOwnerId: Dispatch<SetStateAction<string>>
+  buyerId: string
+  setBuyerId: Dispatch<SetStateAction<string>>
+  /** Stage as saved — consignment / loan / sale stages move only through their order. */
+  loadedOwnStage: OwnStageId
   locationAddresses: ContactAddress[]
   localisationAddressId: string
   setLocalisationAddressId: Dispatch<SetStateAction<string>>
@@ -46,6 +54,11 @@ export function WorkDrawerPipelineSection({
   pemContact,
   contactId,
   setContactId,
+  ownerId,
+  setOwnerId,
+  buyerId,
+  setBuyerId,
+  loadedOwnStage,
   locationAddresses,
   localisationAddressId,
   setLocalisationAddressId,
@@ -79,14 +92,60 @@ export function WorkDrawerPipelineSection({
     [t],
   )
 
-  const contactFieldLabel =
-    ownStage === 'consigned' || ownStage === 'loan'
-      ? t('wf_contact_custodian')
-      : ownStage === 'reserved'
-        ? t('wf_contact_buyer_intent')
-        : t('wf_contact_acquire')
+  // docs/WORK_CUSTODY_MODEL.md: a work leaves Pem only through an order (consignment, loan,
+  // sale), so those stages are never picked here; a gift is the owner's call (Gift dialog), and
+  // once given the recipient and the custodian stay editable.
+  const BY_ORDER: OwnStageId[] = ['consigned', 'loan', 'sold']
+  const lockedByOrder = BY_ORDER.includes(loadedOwnStage)
+  const stageDisabled = (id: OwnStageId) => {
+    if (id === loadedOwnStage) return false
+    if (lockedByOrder) return true
+    return BY_ORDER.includes(id) || id === 'gift'
+  }
+  const isGift = ownStage === 'gift'
+  const nameOf = (id: string) => {
+    const c = sortedContacts.find((x) => String(x.ContactID) === id)
+    return c ? cName(c) : '—'
+  }
 
   const OWN_ROW2_MIN = 52
+
+  const contactSelect = (value: string, onChange: (v: string) => void, label: string) => (
+    <div style={{ display: 'flex', gap: 6, alignItems: 'stretch', minHeight: OWN_ROW2_MIN }}>
+      <select
+        className="input"
+        aria-label={label}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        style={{ ...FIS, flex: 1, minWidth: 0, minHeight: OWN_ROW2_MIN, boxSizing: 'border-box' }}
+      >
+        <option value="">{t('select_option_placeholder')}</option>
+        {!sortedContacts.some((c) => isPem(String(c.ContactID))) && (
+          <option value={String(PEM_CONTACT_ID)}>{pemName}</option>
+        )}
+        {sortedContacts.map((c) => (
+          <option key={c.ContactID} value={c.ContactID}>{cName(c)}</option>
+        ))}
+      </select>
+      <button
+        type="button"
+        className="btn ghost sm"
+        aria-label={t('wf_new_contact')}
+        style={{ flexShrink: 0, width: OWN_ROW2_MIN, minWidth: OWN_ROW2_MIN, padding: 0, alignSelf: 'stretch' }}
+        onClick={() => setShowNewContact(true)}
+      >
+        +
+      </button>
+    </div>
+  )
+  const readOnlyBox = (text: string) => (
+    <div style={{ ...FIS, display: 'flex', alignItems: 'center', background: 'var(--bg2)44', opacity: 0.85, minHeight: OWN_ROW2_MIN, boxSizing: 'border-box' }}>
+      {text}
+    </div>
+  )
+  const pemName = pemContact?.NomInstitution ?? 'Pem'
+  /** Pem is not always in the drawer's contact list; name it from the id. */
+  const isPem = (id: string) => id === String(PEM_CONTACT_ID) || (!!pemContact && id === String(pemContact.ContactID))
 
   return (
     <>
@@ -122,186 +181,66 @@ export function WorkDrawerPipelineSection({
       <section style={{ marginBottom: 16 }}>
         <SectionTitle title={t('wf_section_ownership')} />
         <WfPipeProgress
-          stages={OWNERSHIP_STAGES.map((s) => ({
-            ...s,
-            disabled: isOwnershipTransferred && s.id !== 'sold' && s.id !== 'gift',
-          }))}
+          stages={OWNERSHIP_STAGES.map((s) => ({ ...s, disabled: stageDisabled(s.id) }))}
           current={ownStage}
-          onSelect={(id) => setOwnStage(id as OwnStageId)}
+          onSelect={(id) => { if (!stageDisabled(id as OwnStageId)) setOwnStage(id as OwnStageId) }}
           color="var(--cyan)"
         />
-        {narrow ? (
-          <div style={{ marginTop: 12 }}>
-            <div className="t-label" style={{ fontSize: 10, marginBottom: 4 }}>{contactFieldLabel}</div>
-            {ownStage === 'artist' || ownStage === 'artist_archive' ? (
-              <div
-                style={{
-                  ...FIS,
-                  display: 'flex',
-                  alignItems: 'center',
-                  background: 'var(--bg2)44',
-                  opacity: 0.85,
-                  minHeight: OWN_ROW2_MIN,
-                  boxSizing: 'border-box',
-                }}
-              >
-                {pemContact?.NomInstitution ?? 'Pem'}
-              </div>
-            ) : (
-              <div
-                style={{
-                  display: 'flex',
-                  gap: 6,
-                  alignItems: 'stretch',
-                  minHeight: OWN_ROW2_MIN,
-                  boxSizing: 'border-box',
-                }}
-              >
-                <select
-                  className="input"
-                  value={contactId}
-                  onChange={(e) => setContactId(e.target.value)}
-                  style={{ ...FIS, flex: 1, minHeight: OWN_ROW2_MIN, height: '100%', boxSizing: 'border-box' }}
-                >
-                  <option value="">{t('select_option_placeholder')}</option>
-                  {sortedContacts.map((c) => (
-                    <option key={c.ContactID} value={c.ContactID}>{cName(c)}</option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  className="btn ghost sm"
-                  style={{
-                    flexShrink: 0,
-                    width: OWN_ROW2_MIN,
-                    minWidth: OWN_ROW2_MIN,
-                    minHeight: OWN_ROW2_MIN,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    alignSelf: 'stretch',
-                    padding: 0,
-                    boxSizing: 'border-box',
-                  }}
-                  onClick={() => setShowNewContact(true)}
-                >
-                  +
-                </button>
-              </div>
-            )}
-            <div className="t-label" style={{ fontSize: 9, marginBottom: 4, marginTop: 12 }}>{t('wf_localisation_now')}</div>
-            <div
-              style={{
-                background: 'var(--bg2)',
-                padding: '0 12px',
-                border: '1px solid var(--bd)',
-                borderRadius: 4,
-                minHeight: OWN_ROW2_MIN,
-                display: 'flex',
-                alignItems: 'center',
-                boxSizing: 'border-box',
-              }}
-            >
-              <div className="t-mono-sm" style={{ fontSize: 11, color: 'var(--ac)' }}>{currentLoc}</div>
-              <LocationAddressPicker
-                addresses={locationAddresses}
-                value={localisationAddressId}
-                onChange={setLocalisationAddressId}
-              />
-            </div>
-          </div>
-        ) : (
-          <div
-            style={{
-              display: 'grid',
-              marginTop: 12,
-              gridTemplateColumns: '1fr 1fr',
-              columnGap: 12,
-              rowGap: 4,
-              gridTemplateRows: `auto minmax(${OWN_ROW2_MIN}px, auto)`,
-            }}
-          >
-            <div className="t-label" style={{ fontSize: 10, marginBottom: 0 }}>{contactFieldLabel}</div>
-            <div className="t-label" style={{ fontSize: 9, marginBottom: 0 }}>{t('wf_localisation_now')}</div>
-            {ownStage === 'artist' || ownStage === 'artist_archive' ? (
-              <div
-                style={{
-                  ...FIS,
-                  display: 'flex',
-                  alignItems: 'center',
-                  background: 'var(--bg2)44',
-                  opacity: 0.85,
-                  minHeight: OWN_ROW2_MIN,
-                  height: '100%',
-                  boxSizing: 'border-box',
-                }}
-              >
-                {pemContact?.NomInstitution ?? 'Pem'}
-              </div>
-            ) : (
-              <div
-                style={{
-                  display: 'flex',
-                  gap: 6,
-                  alignItems: 'stretch',
-                  minHeight: OWN_ROW2_MIN,
-                  height: '100%',
-                  boxSizing: 'border-box',
-                }}
-              >
-                <select
-                  className="input"
-                  value={contactId}
-                  onChange={(e) => setContactId(e.target.value)}
-                  style={{ ...FIS, flex: 1, minHeight: 0, height: '100%', boxSizing: 'border-box' }}
-                >
-                  <option value="">{t('select_option_placeholder')}</option>
-                  {sortedContacts.map((c) => (
-                    <option key={c.ContactID} value={c.ContactID}>{cName(c)}</option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  className="btn ghost sm"
-                  style={{
-                    flexShrink: 0,
-                    width: OWN_ROW2_MIN,
-                    minWidth: OWN_ROW2_MIN,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    alignSelf: 'stretch',
-                    padding: 0,
-                    boxSizing: 'border-box',
-                  }}
-                  onClick={() => setShowNewContact(true)}
-                >
-                  +
-                </button>
-              </div>
-            )}
-            <div
-              style={{
-                background: 'var(--bg2)',
-                padding: '0 12px',
-                border: '1px solid var(--bd)',
-                borderRadius: 4,
-                height: '100%',
-                minHeight: OWN_ROW2_MIN,
-                display: 'flex',
-                alignItems: 'center',
-                boxSizing: 'border-box',
-              }}
-            >
-              <div className="t-mono-sm" style={{ fontSize: 11, color: 'var(--ac)' }}>{currentLoc}</div>
-              <LocationAddressPicker
-                addresses={locationAddresses}
-                value={localisationAddressId}
-                onChange={setLocalisationAddressId}
-              />
-            </div>
+        {(lockedByOrder || isGift) && (
+          <div style={{ marginTop: 8, fontSize: 10, color: 'var(--tx3)', lineHeight: 1.45 }}>
+            {lockedByOrder ? t('custody_by_order_hint') : t('custody_gift_override_hint')}
           </div>
         )}
+        <div
+          style={{
+            display: 'grid',
+            marginTop: 12,
+            gridTemplateColumns: narrow ? '1fr' : '1fr 1fr',
+            gap: narrow ? 12 : '4px 12px',
+            alignItems: 'start',
+          }}
+        >
+          <div>
+            <div className="t-label" style={{ fontSize: 10, marginBottom: 4 }}>
+              {ownStage === 'reserved' ? t('custody_buyer') : t('custody_owner')}
+            </div>
+            {ownStage === 'reserved'
+              ? contactSelect(buyerId, setBuyerId, t('custody_buyer'))
+              : isGift
+                ? contactSelect(ownerId, setOwnerId, t('custody_owner'))
+                : readOnlyBox(ownStage === 'artist' || ownStage === 'artist_archive' || isPem(ownerId) ? pemName : nameOf(ownerId))}
+            {ownStage === 'reserved' && (
+              <div style={{ marginTop: 4, fontSize: 10, color: 'var(--tx3)' }}>
+                {t('custody_owner')} : {pemName}
+              </div>
+            )}
+          </div>
+          <div>
+            <div className="t-label" style={{ fontSize: 10, marginBottom: 4 }}>{t('custody_custodian')}</div>
+            {isGift ? contactSelect(contactId, setContactId, t('custody_custodian')) : readOnlyBox(isPem(contactId) ? pemName : currentLoc)}
+            <div
+              style={{
+                marginTop: 6,
+                background: 'var(--bg2)',
+                padding: '0 12px',
+                border: '1px solid var(--bd)',
+                borderRadius: 4,
+                minHeight: 44,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                boxSizing: 'border-box',
+              }}
+            >
+              <div className="t-label" style={{ fontSize: 9, flexShrink: 0 }}>{t('custody_address')}</div>
+              <LocationAddressPicker
+                addresses={locationAddresses}
+                value={localisationAddressId}
+                onChange={setLocalisationAddressId}
+              />
+            </div>
+          </div>
+        </div>
         <div style={{ marginTop: 14, borderTop: '1px solid var(--bd)', paddingTop: 12 }}>
           <div className="t-label" style={{ fontSize: 10, marginBottom: 6 }}>{t('wf_visibility_hdr')}</div>
           <div style={{ fontSize: 10, color: 'var(--tx3)', marginBottom: 8, lineHeight: 1.45 }}>{t('wf_visibility_blurb')}</div>

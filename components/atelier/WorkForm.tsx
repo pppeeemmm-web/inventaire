@@ -8,7 +8,7 @@
 
 import { useState, useEffect, useTransition, useRef, useMemo, useLayoutEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { thumbUrl, imageUrl, isCircularSupport, DIAMETER_SIGN } from '@/lib/data'
+import { thumbUrl, imageUrl, isCircularSupport, DIAMETER_SIGN, PEM_CONTACT_ID } from '@/lib/data'
 import { useI18n } from '@/lib/i18n/context'
 import type { Oeuvre, WorkImage } from '@/lib/types/database'
 import type { SaveResult, WorkRevertSnapshot } from '@/app/atelier/works/actions'
@@ -462,10 +462,12 @@ export function WorkForm({
     fd.set('is_paid', paymentDone ? '1' : '0')
     fd.set('commentaires', commentaires)
     fd.set('historique', historique)
-    // Consigned / on loan: Pem stays the owner, the picked contact is the custodian (owner 2026-11-03).
-    const custody = ownStage === 'consigned' || ownStage === 'loan'
-    fd.set('contact_id', custody && pemContact ? String(pemContact.ContactID) : contactId)
-    fd.set('localisation_id', contactId)
+    // A new work starts at Pem: Pem owns and holds it; for Reserved the picked contact is the
+    // buyer (docs/WORK_CUSTODY_MODEL.md). Consignment / loan / sale / gift come later, by order.
+    const pemId = pemContact ? String(pemContact.ContactID) : String(PEM_CONTACT_ID)
+    fd.set('contact_id', pemId)
+    fd.set('localisation_id', pemId)
+    fd.set('acheteur_id', ownStage === 'reserved' ? contactId : '')
     fd.set('localisation_address_id', localisationAddressId)
     fd.set('status_id', String(computeWorkStatusId(ownStage, prodStage)))
     fd.set('tva_rate', tvaRate)
@@ -791,7 +793,7 @@ export function WorkForm({
               <PipeProgress
                 stages={OWNERSHIP_STAGES.map(s => ({
                   ...s,
-                  disabled: isOwnershipTransferred && s.id !== 'sold' && s.id !== 'gift',
+                  disabled: !['artist', 'reserved', 'artist_archive'].includes(s.id),
                 }))}
                 current={ownStage}
                 onSelect={(id) => setOwnStage(id as OwnStageId)}

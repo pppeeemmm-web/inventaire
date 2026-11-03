@@ -356,6 +356,8 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
   const localisationDetail = (formData.get('localisation_detail') as string | null)?.trim() || null
   /** Which of the location contact's addresses holds the work (null = unspecified). */
   const localisationAddressId = numOrNull(formData.get('localisation_address_id'))
+  /** Buyer (reserved / sold / gift); owner and custodian are contact_id / localisation_id. */
+  const acheteurId = numOrNull(formData.get('acheteur_id'))
   const tvaRate      = numOrNull(formData.get('tva_rate'))
 
   let exposable      = formData.get('exposable')     === '1'
@@ -468,6 +470,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       LocalisationID:    localisationId,
       LocalisationDetail: localisationDetail,
       localisation_address_id: localisationAddressId,
+      AcheteurID:        acheteurId,
       Exposable:         exposable,
       Montee:            montee,
       Encadree:          encadree,
@@ -591,6 +594,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       LocalisationID:    localisationId,
       LocalisationDetail: localisationDetail,
       localisation_address_id: localisationAddressId,
+      AcheteurID:        acheteurId,
       Exposable:         exposable,
       Montee:            montee,
       Encadree:          encadree,
@@ -624,6 +628,7 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       admin_override_anonymity: 'admin_override_anonymity', // drawer only
       PresentationID:           'presentation_id',     // drawer only
       localisation_address_id:  'localisation_address_id',
+      AcheteurID:               'acheteur_id',         // drawer only
     }
     for (const [column, formKey] of Object.entries(OPTIONAL_UPDATE_COLUMNS)) {
       if (!formData.has(formKey)) delete updatePayload[column]

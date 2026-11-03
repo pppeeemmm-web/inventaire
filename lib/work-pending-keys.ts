@@ -23,6 +23,7 @@ export const PENDING_SCALAR_FORM_KEYS = [
   'localisation_id',
   'localisation_detail',
   'localisation_address_id',
+  'acheteur_id',
   'tva_rate',
   'broadcast_caption_seed',
   'date_livraison',
@@ -197,6 +198,7 @@ export const PENDING_FORM_KEY_TO_COLUMN: Record<string, string> = {
   localisation_id: 'LocalisationID',
   localisation_detail: 'LocalisationDetail',
   localisation_address_id: 'localisation_address_id',
+  acheteur_id: 'AcheteurID',
   tva_rate: 'tva_rate',
   broadcast_caption_seed: 'broadcast_caption_seed',
   date_livraison: 'DateLivraison',
@@ -219,13 +221,13 @@ export const PENDING_FORM_KEY_TO_COLUMN: Record<string, string> = {
 /** Form keys holding a numeric value or id (saveWork parses them with numOrNull). */
 export const PENDING_NUMERIC_KEYS = new Set<string>([
   'technique', 'support', 'format', 'prix', 'discount', 'prix_final', 'status_id', 'contact_id',
-  'localisation_id', 'localisation_address_id', 'tva_rate', 'anonymity_level', 'presentation_id',
+  'localisation_id', 'localisation_address_id', 'acheteur_id', 'tva_rate', 'anonymity_level', 'presentation_id',
 ])
 
 /** Form keys that are references, resolved to labels for review. */
 export const PENDING_REF_KEYS = [
   'status_id', 'technique', 'support', 'format', 'contact_id', 'localisation_id',
-  'localisation_address_id', 'presentation_id',
+  'localisation_address_id', 'acheteur_id', 'presentation_id',
 ] as const
 
 /** Never shown in the review diff: routing, image bookkeeping, internal flags. */

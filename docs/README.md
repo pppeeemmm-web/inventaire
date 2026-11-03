@@ -8,6 +8,7 @@
 | Doc | Use when | Verified |
 |-----|----------|----------|
 | [`MOBILE_RATIONALIZATION_PLAN.md`](./MOBILE_RATIONALIZATION_PLAN.md) | **Current workstream** — phases, owner decisions, field measurements | 2026-07-16 |
+| [`WORK_CUSTODY_MODEL.md`](./WORK_CUSTODY_MODEL.md) | Owner / custodian / address per work stage — the rule every order, screen and trigger follows | 2026-11-03 |
 | [`STRATEGY.md`](./STRATEGY.md) | Owner long-term strategy, potentials, non-goals — the filter for new work | skeleton 2026-07-16, content pending owner exchange |
 | [`TODO.md`](./TODO.md) | Live checklist (ops deadlines, open product items, roadmap) | 2026-07-16 |
 | [`PROJECT_SYNTHESIS.md`](./PROJECT_SYNTHESIS.md) | Onboarding: stack boundaries, broadcast chain, where truth lives | 2026-05-25 — accurate on stack; silent on mobile field-tool era |

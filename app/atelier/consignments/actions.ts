@@ -136,10 +136,15 @@ export async function createConsignmentOrder(formData: FormData): Promise<Consig
       statusId,
       ContactID:      PEM_CONTACT_ID,
       LocalisationID: partner_id,
+      localisation_address_id: null, // trigger: the custodian's address when it has a single one
       ReturnDate:     end_date,
     })
     .in('OeuvreID', oeuvre_ids)
-  if (moveErr) return { error: moveErr.message }
+  if (moveErr) {
+    // The works did not move: do not leave an active order behind them.
+    await supabase.from('consignment_order').update({ status: 'cancelled' }).eq('id', order.id)
+    return { error: moveErr.message }
+  }
 
   if (partner_id && (worksBefore ?? []).length > 0) {
     const histItems: { oeuvreId: number; lines: string[] }[] = []
@@ -264,7 +269,7 @@ export async function closeConsignmentOrder(id: string): Promise<CloseResult> {
     skipped  = (works ?? []).filter(w => w.statusId !== 7 && w.statusId !== 8).map(w => w.OeuvreID)
 
     if (reverted.length > 0) {
-      await supabase
+      const { error: backErr } = await supabase
         .from('Oeuvres')
         .update({
           statusId:       2,
@@ -273,6 +278,7 @@ export async function closeConsignmentOrder(id: string): Promise<CloseResult> {
           ReturnDate:     null,
         })
         .in('OeuvreID', reverted)
+      if (backErr) return { error: backErr.message }
 
       const histItems: { oeuvreId: number; lines: string[] }[] = []
       for (const w of revertRows) {

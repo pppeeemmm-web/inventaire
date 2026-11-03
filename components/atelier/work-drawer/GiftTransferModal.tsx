@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import { markAsGift } from '@/app/atelier/works/gift-actions'
+import { PEM_CONTACT_ID } from '@/lib/data'
+import { gateErrorKey } from '@/lib/work-save-error'
 import { FIS } from './drawer-widgets'
 import type { DrawerContactRow } from './drawer-content-props'
 
@@ -23,6 +25,7 @@ export function GiftTransferModal({
   const [recipientId, setRecipientId] = useState('')
   const [deliveryDate, setDeliveryDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [notes, setNotes] = useState('')
+  const [handedOver, setHandedOver] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -42,7 +45,7 @@ export function GiftTransferModal({
           <label style={{ fontSize: 10, color: 'var(--tx3)' }}>{t('workDrawer_gift_recipient')} *</label>
           <select className="input" value={recipientId} onChange={e => setRecipientId(e.target.value)} style={FIS} autoFocus>
             <option value="">{t('workDrawer_gift_recipient_ph')}</option>
-            {recipients.map((c) => (
+            {recipients.filter((c) => c.ContactID !== PEM_CONTACT_ID).map((c) => (
               <option key={c.ContactID} value={c.ContactID}>{cName(c)}</option>
             ))}
           </select>
@@ -52,6 +55,14 @@ export function GiftTransferModal({
           <label style={{ fontSize: 10, color: 'var(--tx3)' }}>{t('workDrawer_gift_delivery')}</label>
           <input type="date" className="input" value={deliveryDate} onChange={e => setDeliveryDate(e.target.value)} style={FIS} />
         </div>
+
+        <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 11, color: 'var(--tx2)', cursor: 'pointer', minHeight: 44 }}>
+          <input type="checkbox" checked={handedOver} onChange={(e) => setHandedOver(e.target.checked)} style={{ marginTop: 2 }} />
+          <span>
+            {t('gift_handed_over')}
+            <span style={{ display: 'block', fontSize: 10, color: 'var(--tx3)', marginTop: 2 }}>{t('gift_handed_over_help')}</span>
+          </span>
+        </label>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <label style={{ fontSize: 10, color: 'var(--tx3)' }}>{t('wf_comments')}</label>
@@ -74,9 +85,11 @@ export function GiftTransferModal({
                 fd.append('recipient_id', recipientId)
                 if (deliveryDate) fd.append('delivery_date', deliveryDate)
                 if (notes.trim())  fd.append('notes', notes.trim())
+                fd.append('handed_over', handedOver ? '1' : '0')
                 const res = await markAsGift(fd)
                 if ('error' in res) {
-                  setError(res.error)
+                  const gate = gateErrorKey(res.error)
+                  setError(gate ? t(gate) : res.error)
                 } else {
                   onGifted()
                 }

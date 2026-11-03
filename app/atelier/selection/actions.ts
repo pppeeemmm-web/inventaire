@@ -25,7 +25,6 @@ export interface BatchChanges {
   Technique?:         number | null
   Support?:           number | null
   Format?:            number | null
-  ContactID?:         number | null
   Exposable?:         boolean
   Montee?:            boolean
   Encadree?:          boolean
@@ -36,7 +35,8 @@ export interface BatchChanges {
   PrixFinal?:         number | null
   Année?:             string | null
   LocalisationDetail?: string | null
-  LocalisationID?:  number | null
+  /** One of Pem's addresses — applies to the works Pem holds (DB trigger clears it elsewhere). */
+  localisation_address_id?: number | null
   Commentaires?:      string | null
   // Theme junction — add and/or remove theme IDs across OeuvreTheme
   addThemeIds?:       number[]
@@ -114,7 +114,6 @@ export async function batchEdit(ids: number[], changes: BatchChanges): Promise<B
   if (changes.Technique         !== undefined) update.Technique         = changes.Technique
   if (changes.Support           !== undefined) update.Support           = changes.Support
   if (changes.Format            !== undefined) update.Format            = changes.Format
-  if (changes.ContactID         !== undefined) update.ContactID         = changes.ContactID
   if (changes.Exposable         !== undefined) update.Exposable         = changes.Exposable
   if (changes.Montee            !== undefined) update.Montee            = changes.Montee
   if (changes.Encadree          !== undefined) update.Encadree          = changes.Encadree
@@ -130,13 +129,18 @@ export async function batchEdit(ids: number[], changes: BatchChanges): Promise<B
     update['Année'] = a
   }
   if (changes.LocalisationDetail !== undefined) update.LocalisationDetail = changes.LocalisationDetail
-  if (changes.LocalisationID     !== undefined) update.LocalisationID     = changes.LocalisationID
+  if (changes.localisation_address_id !== undefined) update.localisation_address_id = changes.localisation_address_id
   if (changes.Commentaires      !== undefined) update.Commentaires      = changes.Commentaires
   if (changes.is_gift           !== undefined) update.is_gift           = changes.is_gift
   if (changes.is_paid           !== undefined) update.is_paid           = changes.is_paid
   if (changes.NeedsPhotograph   !== undefined) update.NeedsPhotograph   = changes.NeedsPhotograph
   if (changes.broadcast_ready   !== undefined) update.broadcast_ready   = changes.broadcast_ready
 
+  // Owner 2026-11-03 (docs/WORK_CUSTODY_MODEL.md): in bulk only the studio stages; sales,
+  // consignments, loans and gifts move a work through their order / dialog.
+  if (changes.statusId !== undefined && ![1, 2, 3].includes(changes.statusId ?? -1)) {
+    return { error: 'custody_order_required' }
+  }
   if (update.statusId === STATUS_ID_ARCHIVE_ARTISTE) update.Exposable = false
 
   const hasScalarChanges  = Object.keys(update).length > 0
@@ -155,10 +159,7 @@ export async function batchEdit(ids: number[], changes: BatchChanges): Promise<B
 
   let count = ids.length
 
-  const historiqueRelevant =
-    changes.statusId !== undefined ||
-    changes.ContactID !== undefined ||
-    changes.LocalisationID !== undefined
+  const historiqueRelevant = changes.statusId !== undefined
 
   let worksBefore: Array<{
     OeuvreID: number
@@ -199,12 +200,8 @@ export async function batchEdit(ids: number[], changes: BatchChanges): Promise<B
           {
             statusId:
               changes.statusId !== undefined ? changes.statusId : w.statusId,
-            contactId:
-              changes.ContactID !== undefined ? changes.ContactID : w.ContactID,
-            localisationId:
-              changes.LocalisationID !== undefined
-                ? changes.LocalisationID
-                : w.LocalisationID,
+            contactId: w.ContactID,
+            localisationId: w.LocalisationID,
           },
         )
         if (lines.length) histItems.push({ oeuvreId: w.OeuvreID, lines })

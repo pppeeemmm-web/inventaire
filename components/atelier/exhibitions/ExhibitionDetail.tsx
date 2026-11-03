@@ -4,7 +4,8 @@ import { useState, useMemo } from 'react'
 import Image from 'next/image'
 import type { Oeuvre } from '@/lib/types/database'
 import { thumbUrl } from '@/lib/data'
-import { assignWorksToExhibitionContact } from '@/app/atelier/(portal)/exhibitions/actions'
+import { sendWorksToExhibition } from '@/app/atelier/(portal)/exhibitions/actions'
+import { gateErrorKey } from '@/lib/work-save-error'
 import { useI18n } from '@/lib/i18n/context'
 import { ExhibitionStepsPanel } from './ExhibitionStepsPanel'
 import { ExhibitionFloorPlanEditor } from './ExhibitionFloorPlanEditor'
@@ -31,6 +32,8 @@ export function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, se
 }) {
   const { t } = useI18n()
   const [activeTab, setActiveTab] = useState<'overview' | 'works' | 'floorplan' | 'calendar'>('overview')
+  const [sendKind, setSendKind] = useState<'loan' | 'consignment'>('loan')
+  const [sending, setSending] = useState(false)
 
   const contact     = contacts.find((c) => c.ContactID === exhibition.contact_id)
   const contactName = contact
@@ -41,9 +44,10 @@ export function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, se
   const stepsDone  = exhibition.steps.filter((s) => s.statut === 'fait').length
   const pct        = stepsTotal > 0 ? Math.round((stepsDone / stepsTotal) * 100) : 0
 
+  // Works held by the venue (custodian), not owned by it — docs/WORK_CUSTODY_MODEL.md.
   const linkedWorks = useMemo(() => {
     if (!exhibition.contact_id) return []
-    return oeuvres.filter((o) => o.ContactID === exhibition.contact_id)
+    return oeuvres.filter((o) => o.LocalisationID === exhibition.contact_id)
   }, [oeuvres, exhibition.contact_id])
 
   const TABS = [
@@ -272,28 +276,46 @@ export function ExhibitionDetail({ exhibition, oeuvres, contacts, themes, tM, se
           <div style={{ padding: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <div style={{ fontSize: 11, color: 'var(--tx2)' }}>
-                {linkedWorks.length} œuvre{linkedWorks.length !== 1 ? 's' : ''} liée{linkedWorks.length !== 1 ? 's' : ''}
+                {t('exh_works_count_fmt').replace('{n}', String(linkedWorks.length))}
               </div>
               {selection.size > 0 && (
-                <button
-                  className="btn primary sm"
-                  onClick={async () => {
-                    if (!exhibition.contact_id) { alert(t('exhib_link_contact_first')); return }
-                    const ids = Array.from(selection)
-                    const result = await assignWorksToExhibitionContact({ oeuvreIds: ids, contactId: exhibition.contact_id })
-                    if ('ok' in result) {
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <select
+                    className="input"
+                    aria-label={t('exh_send_kind')}
+                    value={sendKind}
+                    onChange={(e) => setSendKind(e.target.value === 'consignment' ? 'consignment' : 'loan')}
+                    style={{ fontSize: 11, minHeight: 32 }}
+                  >
+                    <option value="loan">{t('exh_send_loan')}</option>
+                    <option value="consignment">{t('exh_send_consignment')}</option>
+                  </select>
+                  <button
+                    className="btn primary sm"
+                    disabled={sending}
+                    onClick={async () => {
+                      if (!exhibition.contact_id) { alert(t('exhib_link_contact_first')); return }
+                      const ids = Array.from(selection)
+                      setSending(true)
+                      const result = await sendWorksToExhibition({ oeuvreIds: ids, exhibitionId: exhibition.id, kind: sendKind })
+                      setSending(false)
+                      if ('error' in result) {
+                        const gate = gateErrorKey(result.error)
+                        alert(gate ? t(gate) : result.error)
+                        return
+                      }
                       alert(t('exhib_works_linked_count_fmt').replace('{n}', String(ids.length)))
                       window.location.reload()
-                    }
-                  }}
-                >
-                  Ajouter la sélection ({selection.size})
-                </button>
+                    }}
+                  >
+                    {sending ? '…' : t('exh_send_selection_fmt').replace('{n}', String(selection.size))}
+                  </button>
+                </div>
               )}
             </div>
             {linkedWorks.length === 0 ? (
               <div style={{ fontSize: 11, color: 'var(--tx3)', fontStyle: 'italic' }}>
-                Aucune œuvre liée à ce contact pour le moment.
+                {t('exh_works_none')}
               </div>
             ) : (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>

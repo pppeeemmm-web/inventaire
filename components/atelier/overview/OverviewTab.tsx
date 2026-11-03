@@ -63,6 +63,8 @@ export function OverviewTab({
   let missingDims = 0
   let missingImages = 0
   let missingLoc = 0
+  /** Custodian known but no address (docs/WORK_CUSTODY_MODEL.md). */
+  let missingAddress = 0
   let missingTech = 0
   let missingSupport = 0
   let missingYear = 0
@@ -81,6 +83,7 @@ export function OverviewTab({
     if (!o.Hauteur || !o.Largeur) missingDims++
     if (!o.txtImageNameLink) missingImages++
     if (!o.LocalisationID) missingLoc++
+    else if ((o as { localisation_address_id?: number | null }).localisation_address_id == null) missingAddress++
     if (o.Technique == null) missingTech++
     if (o.Support == null) missingSupport++
     if (!o.Année) missingYear++
@@ -355,6 +358,11 @@ export function OverviewTab({
                     label={t('ov_health_missing_loc')}
                     count={missingLoc}
                     onGo={() => goInventory(t('ov_health_missing_loc'), [{ field: 'LocalisationID', op: 'est vide' }])}
+                  />
+                  <ConsoleRow
+                    label={t('ov_health_missing_address')}
+                    count={missingAddress}
+                    onGo={() => goInventory(t('ov_health_missing_address'), [{ field: 'localisation_address_id', op: 'est vide' }])}
                   />
                   <ConsoleRow
                     label={t('ov_health_missing_tech')}

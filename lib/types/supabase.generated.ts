@@ -3228,6 +3228,22 @@ export type Database = {
       }
       my_contact_id: { Args: never; Returns: number }
       node_search_text: { Args: { p_node_id: string }; Returns: string }
+      oeuvre_batch_ids: {
+        Args: { p_notes: string; p_oeuvre: number }
+        Returns: Json
+      }
+      oeuvre_fate_close_orders: {
+        Args: { p_kind: string; p_oeuvre: number; p_on: string }
+        Returns: undefined
+      }
+      oeuvre_order_exists: {
+        Args: { p_contact: number; p_kind: string; p_oeuvre: number }
+        Returns: boolean
+      }
+      oeuvre_stage_key: {
+        Args: { catalogued: boolean; needs_photo: boolean; status: number }
+        Returns: string
+      }
       replace_oeuvre_themes: {
         Args: { p_oeuvre_id: number; p_theme_ids: number[] }
         Returns: undefined

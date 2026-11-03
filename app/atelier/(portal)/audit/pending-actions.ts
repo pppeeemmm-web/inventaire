@@ -82,7 +82,7 @@ async function loadPendingRefLabels(
   const techniqueIds = ids('technique')
   const supportIds = ids('support')
   const formatIds = ids('format')
-  const contactIds = ids('contact_id', 'localisation_id')
+  const contactIds = ids('contact_id', 'localisation_id', 'acheteur_id')
   const addressIds = ids('localisation_address_id')
   const presentationIds = ids('presentation_id')
 
@@ -106,7 +106,7 @@ async function loadPendingRefLabels(
   for (const r of format?.data ?? []) put(['format'], r.FormatID, r.Format)
   for (const r of contact?.data ?? []) {
     const name = contactDisplayName(r)
-    put(['contact_id', 'localisation_id'], r.ContactID, name === '—' ? null : name)
+    put(['contact_id', 'localisation_id', 'acheteur_id'], r.ContactID, name === '—' ? null : name)
   }
   for (const r of address?.data ?? []) {
     put(['localisation_address_id'], r.id, [r.label, r.ville].filter(Boolean).join(' · '))

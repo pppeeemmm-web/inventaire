@@ -10,6 +10,7 @@ import { PemModalOverlay } from '@/components/shared/PemModalOverlay'
 import { batchEdit, createTheme, type BatchChanges } from '@/app/atelier/selection/actions'
 import { reloadAtelierAfterBatchSuccess } from '@/lib/atelier/reload-after-batch'
 import { gateErrorKey } from '@/lib/work-save-error'
+import { PEM_CONTACT_ID } from '@/lib/data'
 
 type ContactAddress = { id?: number; contact_id: number; label: string; adresse: string | null; ville: string | null; pays: string | null }
 
@@ -61,11 +62,9 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, a
   const [technique,        setTechnique]       = useState('')
   const [support,          setSupport]         = useState('')
   const [format,           setFormat]          = useState('')
-  const [contactId,        setContactId]       = useState('')
   const [prix,             setPrix]            = useState('')
   const [discount,         setDiscount]        = useState('')
   const [annee,            setAnnee]           = useState('')
-  const [localisationId,   setLocalisationId]  = useState('')
   const [addressId,        setAddressId]       = useState('')
   const [locDetail,        setLocDetail]       = useState('')
   const [commentaires,     setCommentaires]    = useState('')
@@ -115,25 +114,12 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, a
     }
   }
 
-  const contactAddresses = (localisationId !== '' && localisationId !== 'null')
-    ? addresses.filter(a => a.contact_id === Number(localisationId))
-    : []
-
-  function handleLocalisationChange(id: string) {
-    setLocalisationId(id)
-    setAddressId('')
-    if (id !== '' && id !== 'null') {
-      const addrs = addresses.filter(a => a.contact_id === Number(id))
-      if (addrs.length === 1) setLocDetail(`${addrs[0].label}${addrs[0].ville ? ` — ${addrs[0].ville}` : ''}`)
-      else setLocDetail('')
-    } else {
-      setLocDetail('')
-    }
-  }
+  /** Pem's own addresses (Atelier, Principal, …) — the only bulk address choice. */
+  const pemAddresses = addresses.filter(a => a.contact_id === PEM_CONTACT_ID)
 
   const changed = (
     titre !== '' || statusId !== '' || technique !== '' || support !== '' || format !== '' ||
-    contactId !== '' || localisationId !== '' || prix !== '' || discount !== '' ||
+    addressId !== '' || prix !== '' || discount !== '' ||
     annee !== '' || locDetail !== '' || commentaires !== '' ||
     exposable !== null || montee !== null || encadree !== null || catalogued !== null ||
     isCommission !== null || isGift !== null || isPaid !== null || needsPhoto !== null ||
@@ -150,8 +136,7 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, a
     if (technique  !== '')  changes.Technique  = technique  === 'null' ? null : Number(technique)
     if (support    !== '')  changes.Support    = support    === 'null' ? null : Number(support)
     if (format     !== '')  changes.Format     = format     === 'null' ? null : Number(format)
-    if (contactId      !== '')  changes.ContactID      = contactId      === 'null' ? null : Number(contactId)
-    if (localisationId !== '')  changes.LocalisationID = localisationId === 'null' ? null : Number(localisationId)
+    if (addressId  !== '')  changes.localisation_address_id = Number(addressId)
     if (prix       !== '')  changes.Prix       = prix       === ''     ? null : parseFloat(prix)
     if (discount   !== '')  changes.Discount   = discount   === ''     ? null : parseFloat(discount)
     if (annee      !== '')  changes.Année      = annee.trim() || null
@@ -196,8 +181,10 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, a
     c.NomInstitution || `${c.Prénom ?? ''} ${c.Nom ?? ''}`.trim() || `#${c.ContactID}`
 
   // All dropdowns sorted alphabetically
+  // Studio stages only (owner 2026-11-03): orders move works out of Pem's place.
   const sortedStatuses   = Object.entries(statusLabelMap)
     .map(([id, label]) => ({ id: Number(id), label }))
+    .filter(({ id }) => id === 1 || id === 2 || id === 3)
     .sort((a, b) => a.label.localeCompare(b.label))
   const sortedTechniques = [...techniques].sort((a, b) => (a.Technique ?? '').localeCompare(b.Technique ?? ''))
   const sortedSupports   = [...supports].sort((a, b) => (a.Support ?? '').localeCompare(b.Support ?? ''))
@@ -236,11 +223,11 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, a
           <select className="input" style={{ width: '100%' }} value={statusId}
             onChange={(e) => setStatusId(e.target.value)}>
             <option value="">— {t('unchanged')} —</option>
-            <option value="null">{t('removeStatus')}</option>
             {sortedStatuses.map(({ id, label }) => (
               <option key={id} value={id}>{label}</option>
             ))}
           </select>
+          <div className="t-mono-sm" style={{ color: 'var(--tx3)', marginTop: 4 }}>{t('batch_status_studio_help')}</div>
         </FieldWrap>
 
         <FieldWrap label={t('year')} active={annee !== ''}>
@@ -282,16 +269,6 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, a
           </select>
         </FieldWrap>
 
-        <FieldWrap label={t('contact')} active={contactId !== ''} style={{ gridColumn: 'span 2' }}>
-          <select className="input" style={{ width: '100%' }} value={contactId}
-            onChange={(e) => setContactId(e.target.value)}>
-            <option value="">— {t('unchanged')} —</option>
-            <option value="null">{t('remove')}</option>
-            {sortedContacts.map((c) => (
-              <option key={c.ContactID} value={c.ContactID}>{contactLabel(c)}</option>
-            ))}
-          </select>
-        </FieldWrap>
 
       </div>
 
@@ -317,37 +294,19 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, a
       <SectionLabel>{t('locationNotes')}</SectionLabel>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '10px', marginBottom: 20 }}>
 
-        <FieldWrap label={t('location')} active={localisationId !== ''}>
-          <select className="input" style={{ width: '100%' }} value={localisationId}
-            onChange={(e) => handleLocalisationChange(e.target.value)}>
+        <FieldWrap label={t('batch_pem_address')} active={addressId !== ''}>
+          <select className="input" style={{ width: '100%' }} value={addressId}
+            onChange={(e) => setAddressId(e.target.value)}>
             <option value="">— {t('unchanged')} —</option>
-            <option value="null">{t('remove')} (Pem — Atelier)</option>
-            {sortedContacts.map((c) => (
-              <option key={c.ContactID} value={c.ContactID}>{contactLabel(c)}</option>
+            {pemAddresses.map(a => (
+              <option key={a.id} value={a.id}>
+                {a.label}{a.ville ? ` — ${a.ville}` : ''}
+              </option>
             ))}
           </select>
+          <div className="t-mono-sm" style={{ color: 'var(--tx3)', marginTop: 4 }}>{t('batch_pem_address_help')}</div>
         </FieldWrap>
 
-        {contactAddresses.length >= 2 && (
-          <FieldWrap label="Adresse" active={addressId !== ''}>
-            <select className="input" style={{ width: '100%' }} value={addressId}
-              onChange={(e) => {
-                const id = e.target.value
-                setAddressId(id)
-                if (id !== '') {
-                  const a = contactAddresses.find(a => String(a.id) === id)
-                  if (a) setLocDetail(`${a.label}${a.ville ? ` — ${a.ville}` : ''}`)
-                }
-              }}>
-              <option value="">— {t('unchanged')} —</option>
-              {contactAddresses.map(a => (
-                <option key={a.id} value={a.id}>
-                  {a.label}{a.ville ? ` — ${a.ville}` : ''}
-                </option>
-              ))}
-            </select>
-          </FieldWrap>
-        )}
 
         <FieldWrap label={t('localisationDetail')} active={locDetail !== ''}>
           <input className="input" type="text" style={{ width: '100%' }}

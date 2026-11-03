@@ -122,7 +122,11 @@ export function DrawerContent({
   const [prodStage, setProdStage] = useState<ProdStageId>(() => prodStageFromOeuvre(o))
   const [needsPhoto, setNeedsPhoto] = useState(!!((o as { NeedsPhotograph?: boolean }).NeedsPhotograph ?? false))
   const [ownStage, setOwnStage] = useState<OwnStageId>(() => ownStageFromStatusId(o.statusId))
+  // Custody model (docs/WORK_CUSTODY_MODEL.md): contactId = custodian (LocalisationID),
+  // ownerId = owner (ContactID), buyerId = buyer (AcheteurID).
   const [contactId, setContactId] = useState(String(o.LocalisationID ?? ''))
+  const [ownerId, setOwnerId] = useState(String(o.ContactID ?? ''))
+  const [buyerId, setBuyerId] = useState(String((o as { AcheteurID?: number | null }).AcheteurID ?? ''))
   const [localisationAddressId, setLocalisationAddressId] = useState(
     String((o as { localisation_address_id?: number | null }).localisation_address_id ?? ''),
   )
@@ -136,10 +140,6 @@ export function DrawerContent({
   const [paymentDone, setPaymentDone] = useState(!!((o as { PaymentDone?: boolean; is_paid?: boolean | null }).PaymentDone ?? (o as { is_paid?: boolean | null }).is_paid ?? false))
   const [commentaires, setCommentaires] = useState('')
   const [historique, setHistorique] = useState('')
-  const [activeConsignment, setActiveConsignment] = useState<{
-    label?: string | null
-    Contact?: { NomInstitution?: string | null; Nom?: string | null; Prénom?: string | null; Ville?: string | null; Pays?: string | null }
-  } | null>(null)
   const [selThemes, setSelThemes] = useState<Set<number>>(new Set())
   const [selGroups, setSelGroups] = useState<Set<string>>(new Set())
   const [localContacts, setLocalContacts] = useState<DrawerContactRow[]>(initialContacts as DrawerContactRow[])
@@ -370,6 +370,8 @@ export function DrawerContent({
         ownStage,
         contactId,
         localisationAddressId,
+        ownerId,
+        buyerId,
         anonymityLevel,
         prix,
         tvaRate,
@@ -395,6 +397,9 @@ export function DrawerContent({
       needsPhoto,
       ownStage,
       contactId,
+      localisationAddressId,
+      ownerId,
+      buyerId,
       anonymityLevel,
       prix,
       tvaRate,
@@ -423,6 +428,8 @@ export function DrawerContent({
     setOwnStage((d.ownStage as OwnStageId) || 'artist')
     setContactId(d.contactId ?? '')
     setLocalisationAddressId(d.localisationAddressId ?? '')
+    setOwnerId(d.ownerId ?? '')
+    setBuyerId(d.buyerId ?? '')
     setAnonymityLevel(normalizeAnonymityLevel(d.anonymityLevel))
     setPrix(d.prix ?? '0')
     setTvaRate(d.tvaRate ?? '0')
@@ -464,13 +471,18 @@ export function DrawerContent({
       (c.NomInstitution ?? '').toLowerCase().includes('pem'),
     )
     let loadedContactId = String(o.LocalisationID ?? '')
+    let loadedOwnerId = String(o.ContactID ?? '')
     if ((loadedOwn === 'artist' || loadedOwn === 'artist_archive') && pemRow) {
       loadedContactId = String(pemRow.ContactID)
+      loadedOwnerId = String(pemRow.ContactID)
     }
+    const loadedBuyerId = String((o as { AcheteurID?: number | null }).AcheteurID ?? '')
     const loadedAddressId = String(
       (o as { localisation_address_id?: number | null }).localisation_address_id ?? '',
     )
     setContactId(loadedContactId)
+    setOwnerId(loadedOwnerId)
+    setBuyerId(loadedBuyerId)
     setLocalisationAddressId(loadedAddressId)
     setExposable(loadedOwn === 'artist_archive' ? false : !!o.Exposable)
     setBroadcastReady(!!(o as { broadcast_ready?: boolean }).broadcast_ready)
@@ -517,6 +529,8 @@ export function DrawerContent({
           ownStage: loadedOwn,
           contactId: loadedContactId,
           localisationAddressId: loadedAddressId,
+          ownerId: loadedOwnerId,
+          buyerId: loadedBuyerId,
           anonymityLevel: normalizeAnonymityLevel((o as { anonymity_level?: unknown }).anonymity_level),
           prix: loadedPrix,
           tvaRate: String((o as { tva_rate?: number | null }).tva_rate ?? '0'),
@@ -569,24 +583,6 @@ export function DrawerContent({
     }
   }, [o.OeuvreID, longTextReloadNonce])
 
-  useEffect(() => {
-    if (ownStage !== 'loan' && ownStage !== 'consigned') {
-      setActiveConsignment(null)
-      return
-    }
-    const sb = createClient()
-    void sb
-      .from('consignment')
-      .select('*, Contact(NomInstitution, Nom, "Prénom", Ville, Pays)')
-      .eq('oeuvre_id', o.OeuvreID)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-      .then(({ data, error }) => {
-        if (!error && data) setActiveConsignment(data as { label?: string | null; Contact?: { NomInstitution?: string | null; Nom?: string | null; Prénom?: string | null; Ville?: string | null; Pays?: string | null } })
-        else setActiveConsignment(null)
-      })
-  }, [ownStage, o.OeuvreID])
 
   useEffect(() => {
     pendingAfterGuardRef.current = null
@@ -606,32 +602,26 @@ export function DrawerContent({
 
   // A pinned address must belong to the holding contact: clear it when ownership moves,
   // otherwise a transferred work would keep pointing at its previous owner's address.
+  // Addresses hydrate after first paint: an empty list means "not loaded yet", not "moved".
   useEffect(() => {
-    if (!localisationAddressId) return
+    if (!localisationAddressId || locationAddresses.length === 0) return
     if (!locationAddresses.some((a) => String(a.id) === localisationAddressId)) {
       setLocalisationAddressId('')
     }
   }, [locationAddresses, localisationAddressId])
 
-  // A work still in production is being made, so it is in the studio's Atelier — default
-  // to that rather than leaving it unspecified. Addresses arrive post-paint, so this runs
-  // when they land, not inside the per-work reset. The ref makes it once-per-work: picking
-  // "unspecified" deliberately must not snap back.
-  const addressDefaultedForRef = useRef<number | null>(null)
-  useEffect(() => {
-    if (addressDefaultedForRef.current === o.OeuvreID) return
-    if (localisationAddressId || prodStage !== 'atelier' || locationAddresses.length === 0) return
-    const atelier = locationAddresses.find((a) => /atelier/i.test(a.label ?? ''))
-    if (atelier?.id == null) return
-    addressDefaultedForRef.current = o.OeuvreID
-    setLocalisationAddressId(String(atelier.id))
-  }, [locationAddresses, prodStage, localisationAddressId, o.OeuvreID])
+  // Pem's address by stage (Atelier / Principal) is set by DB trigger oeuvre_location_by_stage on
+  // save; the drawer shows it and lets you pick (docs/WORK_CUSTODY_MODEL.md).
 
   const pemContact = useMemo(
     () => localContacts.find((c: DrawerContactRow) => (c.NomInstitution ?? '').toLowerCase().includes('pem')),
     [localContacts],
   )
   const currentOwner = useMemo(
+    () => localContacts.find((c: DrawerContactRow) => String(c.ContactID) === ownerId),
+    [localContacts, ownerId],
+  )
+  const currentCustodian = useMemo(
     () => localContacts.find((c: DrawerContactRow) => String(c.ContactID) === contactId),
     [localContacts, contactId],
   )
@@ -643,36 +633,10 @@ export function DrawerContent({
   const isOwnershipTransferred = ownStage === 'sold' || ownStage === 'gift'
   const isArchived = ownStage === 'artist_archive'
 
-  const currentLoc = useMemo(() => {
-    if (ownStage === 'artist' || ownStage === 'artist_archive') {
-      return pemContact?.Ville ? `${pemContact.Ville}, ${pemContact.Pays ?? ''}` : t('atelier')
-    }
-    if (ownStage === 'reserved') {
-      if (currentOwner) {
-        const loc = [currentOwner.Ville, currentOwner.Pays].filter(Boolean).join(', ')
-        return `${t('wf_own_reserved_l')} — ${currentOwner.NomInstitution ?? currentOwner.Nom ?? '?'} (${loc || '?'})`
-      }
-      return `${t('wf_own_reserved_l')} — ${t('buyer')} (?)`
-    }
-    if (ownStage === 'consigned' || ownStage === 'loan') {
-      if (activeConsignment) {
-        const c = activeConsignment.Contact
-        const loc = [c?.Ville, c?.Pays].filter(Boolean).join(', ')
-        return `${activeConsignment.label ?? t('wf_own_consigned_l')} · ${c?.NomInstitution ?? c?.Nom ?? '—'} (${loc || '?'})`
-      }
-      if (currentOwner) {
-        const loc = [currentOwner.Ville, currentOwner.Pays].filter(Boolean).join(', ')
-        return `${currentOwner.NomInstitution ?? currentOwner.Nom ?? '?'} (${loc || '?'})`
-      }
-      return `${t('wf_own_consigned_l')} / ${t('wf_own_loan_l')}`
-    }
-    if (isOwnershipTransferred) {
-      if (!currentOwner) return `${t('buyer')} (?)`
-      const loc = [currentOwner.Ville, currentOwner.Pays].filter(Boolean).join(', ')
-      return loc || `${currentOwner.NomInstitution ?? currentOwner.Nom ?? t('buyer')}`
-    }
-    return '—'
-  }, [ownStage, currentOwner, pemContact, activeConsignment, isOwnershipTransferred, t])
+  /** Custodian shown next to the address picker. */
+  const currentLoc = currentCustodian
+    ? (currentCustodian.NomInstitution || [currentCustodian.Prénom, currentCustodian.Nom].filter(Boolean).join(' ') || `#${currentCustodian.ContactID}`)
+    : '—'
 
   // Stage/photo auto-advance lives in USER-action handlers, not effects: the
   // effect versions replayed programmatic writes (row sync, restores, other
@@ -699,6 +663,11 @@ export function DrawerContent({
     if (isArchived && pemContact) setContactId(String(pemContact.ContactID))
   }, [isArchived, pemContact])
 
+  // Reserved: payment not cleared, Pem still owns it (the picked contact is the buyer).
+  useEffect(() => {
+    if (ownStage === 'reserved' && pemContact) setOwnerId(String(pemContact.ContactID))
+  }, [ownStage, pemContact])
+
   useEffect(() => {
     if (isOwnershipTransferred && prodStage === 'atelier') setProdStage('available')
   }, [isOwnershipTransferred, prodStage])
@@ -711,6 +680,7 @@ export function DrawerContent({
   useEffect(() => {
     if ((ownStage === 'artist' || ownStage === 'artist_archive') && pemContact) {
       setContactId(String(pemContact.ContactID))
+      setOwnerId(String(pemContact.ContactID))
     }
   }, [ownStage, pemContact])
 
@@ -829,12 +799,12 @@ export function DrawerContent({
     fd.append('profondeur', profondeur)
     fd.append('presentation_id', presentationId)
     fd.append('status_id', String(sid))
-    // Consigned / on loan: Pem stays the owner, the picked contact is the custodian = location
-    // (owner 2026-11-03; DB trigger oeuvre_holder_check enforces it too).
-    const custody = ownStage === 'consigned' || ownStage === 'loan'
-    fd.append('contact_id', custody && pemContact ? String(pemContact.ContactID) : contactId)
+    // Owner / custodian / buyer kept apart (docs/WORK_CUSTODY_MODEL.md; DB trigger
+    // oeuvre_holder_check enforces the table).
+    fd.append('contact_id', ownerId)
     fd.append('localisation_id', contactId)
     fd.append('localisation_address_id', localisationAddressId)
+    fd.append('acheteur_id', buyerId)
     fd.append('exposable', exposable ? '1' : '0')
     fd.append('broadcast_ready', broadcastReady ? '1' : '0')
     fd.append('broadcast_caption_seed', broadcastCaptionSeed ?? '')
@@ -953,6 +923,9 @@ export function DrawerContent({
     prodStage,
     needsPhoto,
     contactId,
+    localisationAddressId,
+    ownerId,
+    buyerId,
     exposable,
     broadcastReady,
     broadcastCaptionSeed,
@@ -992,13 +965,13 @@ export function DrawerContent({
 
   const draftSnapshot = useMemo((): WorkFormDraftContent => ({
     titre, annee, techniqueId, supportId, formatId, hauteur, largeur, profondeur,
-    prodStage, needsPhoto, ownStage, contactId, localisationAddressId, anonymityLevel,
+    prodStage, needsPhoto, ownStage, contactId, localisationAddressId, ownerId, buyerId, anonymityLevel,
     prix, tvaRate, discount, paymentDone, exposable, broadcastReady,
     commentaires, historique,
     selThemes: Array.from(selThemes), selGroups: Array.from(selGroups),
   }), [
     titre, annee, techniqueId, supportId, formatId, hauteur, largeur, profondeur,
-    prodStage, needsPhoto, ownStage, contactId, localisationAddressId, anonymityLevel,
+    prodStage, needsPhoto, ownStage, contactId, localisationAddressId, ownerId, buyerId, anonymityLevel,
     prix, tvaRate, discount, paymentDone, exposable, broadcastReady,
     commentaires, historique, selThemes, selGroups,
   ])
@@ -1339,6 +1312,11 @@ export function DrawerContent({
         pemContact={pemContact}
         contactId={contactId}
         setContactId={setContactId}
+        ownerId={ownerId}
+        setOwnerId={setOwnerId}
+        buyerId={buyerId}
+        setBuyerId={setBuyerId}
+        loadedOwnStage={ownStageFromStatusId(o.statusId)}
         locationAddresses={locationAddresses}
         localisationAddressId={localisationAddressId}
         setLocalisationAddressId={setLocalisationAddressId}

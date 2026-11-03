@@ -190,6 +190,24 @@ function matchesCriterion(o: Oeuvre, c: Criterion, allFields: FieldDef[]): boole
   }
 }
 
+/**
+ * "Custodian · address" — who holds the work and where (docs/WORK_CUSTODY_MODEL.md), e.g.
+ * "Pem · Atelier", "Galerie X · Paris". No address → the custodian's city.
+ */
+function custodyLabel(
+  o: Oeuvre,
+  cM: Record<number, string>,
+  locMap: Record<number, string>,
+  addrMap: Record<number, string>,
+): string {
+  const holder = o.LocalisationID
+  if (holder == null) return '—'
+  const name = cM[holder] || '—'
+  const addrId = (o as { localisation_address_id?: number | null }).localisation_address_id
+  const where = addrId != null ? addrMap[addrId] : locMap[holder]
+  return where ? `${name} · ${where}` : name
+}
+
 function parseIdRanges(input: string): Set<number> {
   const ids = new Set<number>()
   // Split by comma, space, or newline
@@ -278,6 +296,12 @@ export function Inventory({
   inventoryDrawerGuardRef?: RefObject<WorkDrawerGuardHandle | null>
   onInventoryPanelDirtyChange?: (dirty: boolean) => void
 }) {
+  /** contact_addresses.id → label, for the custodian · address column. */
+  const addrMap = useMemo(() => {
+    const m: Record<number, string> = {}
+    for (const a of addresses) if (a.id != null) m[a.id] = a.label || a.ville || ''
+    return m
+  }, [addresses])
   const { t } = useI18n()
   const embeddingStatusMap = useNonOkEmbeddingStatuses()
 
@@ -743,9 +767,7 @@ export function Inventory({
         return ca.localeCompare(cb) * dir
       }
       if (sortKey === 'Custodian') {
-        const la = a.LocalisationID != null ? (locMap[a.LocalisationID] || '') : 'Pem'
-        const lb = b.LocalisationID != null ? (locMap[b.LocalisationID] || '') : 'Pem'
-        return la.localeCompare(lb) * dir
+        return custodyLabel(a, cM, locMap, addrMap).localeCompare(custodyLabel(b, cM, locMap, addrMap)) * dir
       }
       if (sortKey === 'Comm') {
         // Broadcast column: ready-to-broadcast works first (status has its own column/sort).
@@ -757,7 +779,7 @@ export function Inventory({
       return 0
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [oeuvres, q, tech, support, status, filterTheme, filterGroup, filterPeriod, filterSource, periodOf, periodSource, sourceNameMap, criteria, oeuvreThemeMap, oeuvreGroupMap, thM, groupNameMap, tM, sM, statusLabelMap, allFields, sortKey, sortDir, cM, locMap, colourScores, colourRank])
+  }, [oeuvres, q, tech, support, status, filterTheme, filterGroup, filterPeriod, filterSource, periodOf, periodSource, sourceNameMap, criteria, oeuvreThemeMap, oeuvreGroupMap, thM, groupNameMap, tM, sM, statusLabelMap, allFields, sortKey, sortDir, cM, locMap, addrMap, colourScores, colourRank])
 
   const invPivotDims: Dim<Oeuvre>[] = useMemo(
     () => [
@@ -797,10 +819,7 @@ export function Inventory({
       {
         id: 'location',
         label: t('localisation'),
-        get: (o) =>
-          (o as { LocalisationID?: number | null }).LocalisationID != null
-            ? (locMap[(o as { LocalisationID?: number | null }).LocalisationID!] ?? '—')
-            : '—',
+        get: (o) => custodyLabel(o, cM, locMap, addrMap),
       },
       {
         id: 'anonymity',
@@ -823,7 +842,7 @@ export function Inventory({
             .join(', ') || '—',
       },
     ],
-    [t, tM, thM, groupNameMap, oeuvreThemeMap, oeuvreGroupMap, locMap, statusLabelMap, periodOf, periodSource, sourceNameMap],
+    [t, tM, thM, groupNameMap, oeuvreThemeMap, oeuvreGroupMap, cM, locMap, addrMap, statusLabelMap, periodOf, periodSource, sourceNameMap],
   )
 
   const invPivotValues: Agg<Oeuvre>[] = useMemo(
@@ -1288,7 +1307,7 @@ export function Inventory({
         {view === 'list' && (
           <>
             <InvList
-              rows={filtered} tM={tM} sM={sM} cM={cM} locMap={locMap} statusLabelMap={statusLabelMap}
+              rows={filtered} tM={tM} sM={sM} cM={cM} locMap={locMap} addrMap={addrMap} statusLabelMap={statusLabelMap}
               embeddingStatusMap={embeddingStatusMap}
               focused={focused} setFocused={focusRowGuarded}
               selection={selection} setSelection={setSelection}
@@ -1564,7 +1583,7 @@ function InvSelect({
 // ── InvList ─────────────────────────────────────────────────────────
 
 function InvList({
-  rows, tM, sM, cM, locMap, statusLabelMap, embeddingStatusMap, focused, setFocused, selection, setSelection,
+  rows, tM, sM, cM, locMap, addrMap, statusLabelMap, embeddingStatusMap, focused, setFocused, selection, setSelection,
   sortKey, sortDir, toggleSort,
   onImageDoubleClick, onOpen, publicMode, onLoadMore, periodName,
 }: {
@@ -1573,6 +1592,7 @@ function InvList({
   sM:             Record<number, string>
   cM:             Record<number, string>
   locMap:         Record<number, string>
+  addrMap:        Record<number, string>
   statusLabelMap: Record<number, string>
   embeddingStatusMap: OeuvreEmbeddingStatusMap
   focused:        Oeuvre | null
@@ -1923,13 +1943,7 @@ function InvList({
                     })()}
                   </td>
                   <td style={{ padding: '0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: 0.8, ...cellDivider, verticalAlign: 'middle' }}>
-                    {(() => {
-                      // TRUTH ENFORCEMENT: If the status implies it's gone (Consigned, Loaned, Sold, Gifted), 
-                      // we MUST show the actual location. Otherwise, it is at the Atelier.
-                      const isExternal = ['consigned', 'loan', 'sold', 'gift', 'destroyed', 'lost'].includes(st) || !!o.fate
-                      if (!isExternal) return 'Pem - Atelier'
-                      return (o.LocalisationID != null ? locMap[o.LocalisationID] : 'Pem - Atelier') || '—'
-                    })()}
+                    {custodyLabel(o, cM, locMap, addrMap)}
                   </td>
                   <td style={{ padding: '0 4px', whiteSpace: 'nowrap', verticalAlign: 'middle', ...cellDivider }} colSpan={2}>
                     <WorkStateChip o={o} statusLabelMap={statusLabelMap} />

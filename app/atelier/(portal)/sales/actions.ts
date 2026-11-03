@@ -383,7 +383,37 @@ export async function updateOrderStatut(id: string, statut: string, toggleField?
   const { error } = await fromSaleOrder(supabase).update(payload).eq('id', id)
   if (error) return { error: error.message }
 
-  // On completion: transfer ownership — statusId 6 (Vendu) or 11 (Gift) per work
+  // Delivery: the buyer now holds the work (custodian). The address trigger fills the buyer's
+  // address when there is a single one; with several, it is picked in the work drawer.
+  if (toggleField === 'delivered' && !b.delivered && b.buyer_id && b.buyer_id !== 13) {
+    const ids = parseSaleOrderBatchIds(b.notes, b.oeuvre_id)
+    const { data: held } = await fromOeuvres(supabase)
+      .select('OeuvreID, statusId, ContactID, LocalisationID')
+      .in('OeuvreID', ids)
+      .eq('ContactID', b.buyer_id)
+      .is('deleted_at', null)
+    const moving = (held ?? []).filter((w) => w.LocalisationID !== b.buyer_id)
+    if (moving.length > 0) {
+      const { error: delivErr } = await fromOeuvres(supabase)
+        .update({ LocalisationID: b.buyer_id, localisation_address_id: null })
+        .in('OeuvreID', moving.map((w) => w.OeuvreID))
+      if (delivErr) return { error: delivErr.message }
+      const histItems: { oeuvreId: number; lines: string[] }[] = []
+      for (const w of moving) {
+        const lines = await historiqueLinesForOeuvreUpdate(
+          supabase,
+          { statusId: w.statusId, ContactID: w.ContactID, LocalisationID: w.LocalisationID },
+          { statusId: w.statusId, contactId: w.ContactID, localisationId: b.buyer_id },
+        )
+        if (lines.length) histItems.push({ oeuvreId: w.OeuvreID, lines })
+      }
+      await appendHistoriqueForOeuvres(supabase, histItems)
+    }
+  }
+
+  // On completion (payment cleared): ownership moves — statusId 6 (Vendu) or 11 (Gift) per work.
+  // Custody does not: the work stays with its custodian (Pem or the gallery) until delivery
+  // (docs/WORK_CUSTODY_MODEL.md).
   if (statut === 'completed') {
     const { data: order } = await fromSaleOrder(supabase)
       .select('oeuvre_id, notes, buyer_id, prix_final, consignment_order_id')
@@ -411,7 +441,7 @@ export async function updateOrderStatut(id: string, statut: string, toggleField?
         const { error: soldErr } = await fromOeuvres(supabase).update({
           statusId:      6,   // Vendu
           ContactID:     order.buyer_id,
-          LocalisationID: order.buyer_id,
+          AcheteurID:    order.buyer_id,
         }).in('OeuvreID', saleIds)
         if (soldErr) return { error: soldErr.message }
       }
@@ -419,7 +449,7 @@ export async function updateOrderStatut(id: string, statut: string, toggleField?
         const { error: giftErr } = await fromOeuvres(supabase).update({
           statusId:      11,  // Gift
           ContactID:     order.buyer_id,
-          LocalisationID: order.buyer_id,
+          AcheteurID:    order.buyer_id,
         }).in('OeuvreID', giftIds)
         if (giftErr) return { error: giftErr.message }
       }
@@ -438,7 +468,7 @@ export async function updateOrderStatut(id: string, statut: string, toggleField?
             {
               statusId: toStatus,
               contactId: order.buyer_id,
-              localisationId: order.buyer_id,
+              localisationId: w.LocalisationID,
             },
           )
           if (lines.length) histItems.push({ oeuvreId: w.OeuvreID, lines })

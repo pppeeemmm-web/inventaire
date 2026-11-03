@@ -16,9 +16,13 @@ export type WorkFormDraftPayload = {
   prodStage: string
   needsPhoto: boolean
   ownStage: string
+  /** Custodian — who holds the work (`LocalisationID`). */
   contactId: string
-  /** Which of the contact's addresses holds the work ('' = unspecified). */
+  /** Which of the custodian's addresses holds the work ('' = unspecified). */
   localisationAddressId: string
+  /** Owner (`ContactID`) and buyer (`AcheteurID`) — docs/WORK_CUSTODY_MODEL.md. Optional in old drafts. */
+  ownerId?: string
+  buyerId?: string
   anonymityLevel: number
   prix: string
   tvaRate: string
@@ -62,6 +66,8 @@ export function normalizeWorkFormDraftContent(
     ownStage: String(p.ownStage ?? ''),
     contactId: String(p.contactId ?? ''),
     localisationAddressId: String(p.localisationAddressId ?? ''),
+    ownerId: String(p.ownerId ?? ''),
+    buyerId: String(p.buyerId ?? ''),
     anonymityLevel: typeof p.anonymityLevel === 'number' ? p.anonymityLevel : 0,
     prix: String(p.prix ?? '0'),
     tvaRate: String(p.tvaRate ?? '0'),
@@ -91,6 +97,9 @@ export function workFormDraftContentEquals(a: WorkFormDraftContent, b: WorkFormD
   if (na.needsPhoto !== nb.needsPhoto) return false
   if (na.ownStage !== nb.ownStage) return false
   if (na.contactId !== nb.contactId) return false
+  if (na.localisationAddressId !== nb.localisationAddressId) return false
+  if (na.ownerId !== nb.ownerId) return false
+  if (na.buyerId !== nb.buyerId) return false
   if (na.anonymityLevel !== nb.anonymityLevel) return false
   if (na.prix !== nb.prix) return false
   if (na.tvaRate !== nb.tvaRate) return false
