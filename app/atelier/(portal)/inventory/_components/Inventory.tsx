@@ -631,8 +631,10 @@ export function Inventory({
   )
 
   useEffect(() => {
+    // Pivot is a one-off analysis view: reopening the Inventory always shows the works
+    // (owner 2026-11-03 landed on an empty-looking pivot and lost the list).
     const saved = localStorage.getItem('pem_inv_view') as View | null
-    if (saved) setView(saved)
+    if (saved && saved !== 'pivot') setView(saved)
   }, [])
 
   useEffect(() => {
