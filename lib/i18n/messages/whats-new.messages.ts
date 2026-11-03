@@ -4,8 +4,65 @@ import { defineMessages } from '../message-core'
 export const whatsNewMessages = defineMessages({
   wn_title: { fr: 'www.thepemworkshop.com 3.0', en: 'www.thepemworkshop.com 3.0' },
   wn_intro: {
-    fr: 'Ce qui a changé ces trois derniers jours dans l’Atelier.',
-    en: 'What changed in the Atelier over the last three days.',
+    fr: 'Ce qui a changé ces derniers jours dans l’Atelier.',
+    en: 'What changed in the Atelier over the last few days.',
+  },
+
+  // 3.0.1 (2026-11-03 pm) — plain language for the whole team.
+  wn_safety_t: { fr: 'Vos données sont protégées', en: 'Your data is protected' },
+  wn_safety_d: {
+    fr: 'Chaque modification d’une œuvre garde l’ancienne version : un admin peut revenir en arrière. Les photos et fichiers supprimés restent 90 jours dans une corbeille avant de disparaître. Une copie complète de la base est faite chaque nuit. Les changements qu’un membre de l’équipe fait dans la fiche d’une œuvre existante attendent la validation d’un admin.',
+    en: 'Every change to a work keeps the previous version: an admin can go back. Deleted photos and files stay 90 days in a bin before they disappear. A full copy of the database is made every night. Changes a team member makes in an existing work’s drawer wait for an admin to approve them.',
+  },
+  wn_destroyed_lost_t: { fr: 'Œuvre détruite ou perdue', en: 'Destroyed or lost work' },
+  wn_destroyed_lost_d: {
+    fr: 'Dans la fiche, un constat peut maintenant être une « Destruction » ou une « Perte », avec la date où c’est arrivé — même approximative : juste l’année, ou le mois. L’œuvre quitte alors le site public, les ventes et la production, et ses étapes sont verrouillées. Une œuvre perdue puis retrouvée reprend son statut d’avant avec « Retrouvée ». Une œuvre vendue ou donnée reste « Vendu » / « Don », avec la mention « détruite » ou « perdue ». Réservé aux admins.',
+    en: 'In the work drawer, a condition report can now be a "Destruction" or a "Loss", with the date it happened — even roughly: just the year, or the month. The work then leaves the public site, sales and production, and its stages are locked. A lost work that turns up again gets its previous status back with "Found". A sold or given work stays "Sold" / "Gift", marked "destroyed" or "lost". Admins only.',
+  },
+  wn_live_list_t: { fr: 'La liste suit vos modifications', en: 'The list follows your changes' },
+  wn_live_list_d: {
+    fr: 'Après « Enregistrer » dans la fiche, la ligne de l’Inventaire se met à jour tout de suite — couleur du statut, lieu — sans recharger la page.',
+    en: 'After "Save" in the work drawer, the Inventory row updates straight away — status colour, location — without reloading the page.',
+  },
+  wn_private_archive_gone_t: { fr: 'Statut « Archive privée » retiré', en: '"Private archive" status removed' },
+  wn_private_archive_gone_d: {
+    fr: 'Aucune œuvre ne l’utilisait : une œuvre chez un particulier est vendue ou donnée, et l’archive de Pem reste « Archive artiste ».',
+    en: 'No work used it: a work held by a private person is sold or given, and Pem’s own archive stays "Artist archive".',
+  },
+  wn_drawer_clearer_t: { fr: 'Fiche plus lisible', en: 'Clearer work drawer' },
+  wn_drawer_clearer_d: {
+    fr: 'Une œuvre cataloguée mais pas encore prête (photo à faire) s’affiche en jaune. Le bouton « Enregistrer » reste visible quand on fait défiler, et l’image s’ouvre en grand dans un nouvel onglet.',
+    en: 'A work that is catalogued but not ready yet (photo to take) shows in yellow. The "Save" button stays visible while you scroll, and the image opens full size in a new tab.',
+  },
+  wn_holder_address_t: { fr: 'L’adresse exacte du lieu', en: 'The exact address of the location' },
+  wn_holder_address_d: {
+    fr: 'Quand un contact a plusieurs adresses (par exemple Pem : Principal, Atelier, Rutali), la fiche dit à laquelle se trouve l’œuvre.',
+    en: 'When a contact has several addresses (Pem, for example: Principal, Atelier, Rutali), the drawer says which one holds the work.',
+  },
+  wn_image_download_t: { fr: 'Télécharger les images', en: 'Download the images' },
+  wn_image_download_d: {
+    fr: 'Inventaire : un bouton télécharge en ZIP les images des œuvres affichées (ou sélectionnées), par lots de 100.',
+    en: 'Inventory: one button downloads the images of the works shown (or selected) as a ZIP, 100 at a time.',
+  },
+  wn_overview_t: { fr: 'Vue d’ensemble sur un écran', en: 'Overview on one screen' },
+  wn_overview_d: {
+    fr: 'L’accueil de l’Atelier tient sur un écran d’ordinateur, avec les rappels à traiter et ce qui demande une action.',
+    en: 'The Atelier home fits on one computer screen, with the reminders to deal with and what needs action.',
+  },
+  wn_planning_zoom_t: { fr: 'Suivi : se déplacer dans le temps', en: 'Pipeline: move through time' },
+  wn_planning_zoom_d: {
+    fr: 'Dans le planning du Suivi, on fait glisser et on zoome pour voir d’autres semaines ou mois ; aucun nom n’est coupé.',
+    en: 'In the Pipeline timeline, drag and zoom to see other weeks or months; no name is cut off.',
+  },
+  wn_map_filters_t: { fr: 'Carte : filtres plus rapides', en: 'Map: quicker filters' },
+  wn_map_filters_d: {
+    fr: 'Boutons « Tous » et « Aucun » ; Alt-clic (ou appui long sur téléphone) sur un filtre pour ne garder que lui.',
+    en: '"All" and "None" buttons; Alt-click (or long-press on a phone) a filter to keep only that one.',
+  },
+  wn_no_field_wipe_t: { fr: 'Enregistrer n’efface plus rien', en: 'Saving no longer erases anything' },
+  wn_no_field_wipe_d: {
+    fr: 'Avant, enregistrer une œuvre depuis certains formulaires pouvait vider des informations que ce formulaire n’affichait pas. C’est corrigé.',
+    en: 'Before, saving a work from some forms could empty information that form did not show. That is fixed.',
   },
   wn_dont_show: { fr: 'Ne plus afficher', en: 'Don’t show again' },
   wn_close: { fr: 'Fermer', en: 'Close' },
