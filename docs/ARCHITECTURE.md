@@ -93,6 +93,8 @@ Every `public` function is reachable through PostgREST `/rest/v1/rpc/…` by any
 
 Source: [`security_definer_revoke_anon.sql`](../supabase/sql/security_definer_revoke_anon.sql) (2026-11-12). Trigger functions are not callable through the API.
 
+Every function sets `search_path` (`set search_path to 'public'`) — new ones too ([`function_search_path_fix.sql`](../supabase/sql/function_search_path_fix.sql) fixed the last six, 2026-11-12).
+
 ## 8. Indexing
 
 - `nodes` = one row per work, contact, theme, concept, working group, exhibition; text from `node_search_text`. Work text = `Titre` + `Commentaires` + Technique label. Empty text → `skipped`.
