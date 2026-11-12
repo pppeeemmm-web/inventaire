@@ -97,4 +97,13 @@ export const workFormMessages = defineMessages({
     fr: 'œuvre retrouvée',
     en: 'found work',
   },
+  wf_field_all_fields: {
+    fr: 'Tous les champs ▾',
+    en: 'All fields ▾',
+  },
+  wf_field_capture_only: { fr: 'Terrain seulement ▴', en: 'Field fields only ▴' },
+  wf_field_all_fields_hint: {
+    fr: 'Statut, propriété, prix, constats, groupes, séances…',
+    en: 'Status, ownership, price, condition, groups, sessions…',
+  },
 })

@@ -6,7 +6,8 @@
 // (supabase/sql/journal_entry.sql): append only, never deleted, hide = admin.
 
 import Link from 'next/link'
-import { useCallback, useEffect, useState, useTransition } from 'react'
+import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
+import { getLiveDictationAvailability, startLiveDictation, type LiveDictationSession } from '@/lib/voice/web-speech'
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from '@/lib/ui/toast'
 import {
@@ -35,7 +36,12 @@ function workHref(id: number): string {
 }
 
 export function JournalDayExtras({ day, locale }: { day: string; locale: string }) {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
+  // Dictation (browser speech → text in the box). The entry is then saved as provenance voice, unverified.
+  const [dictated, setDictated] = useState(false)
+  const [listening, setListening] = useState(false)
+  const [interim, setInterim] = useState('')
+  const dictation = useRef<LiveDictationSession | null>(null)
   const [data, setData] = useState<Extras | null>(null)
   const [kind, setKind] = useState<Kind>('spark')
   const [body, setBody] = useState('')
@@ -62,16 +68,54 @@ export function JournalDayExtras({ day, locale }: { day: string; locale: string 
       return
     }
     startTransition(async () => {
-      const res = await createJournalEntry({ day, kind, body, precision })
+      stopDictation()
+      const res = await createJournalEntry({ day, kind, body, precision, dictated })
       if ('error' in res) {
         toast.error(t('je_err_fmt').replace('{msg}', res.error))
         return
       }
       setBody('')
       setPrecision('day')
+      setDictated(false)
       await load()
     })
   }
+
+  function stopDictation() {
+    dictation.current?.stop()
+    dictation.current = null
+    setListening(false)
+    setInterim('')
+  }
+
+  async function toggleDictation() {
+    if (listening) {
+      stopDictation()
+      return
+    }
+    if (getLiveDictationAvailability() !== 'ready') {
+      toast.error(t('je_dictate_unavailable'))
+      return
+    }
+    const session = await startLiveDictation(lang === 'fr' ? 'fr-FR' : 'en-GB', {
+      onInterim: (text) => setInterim(text),
+      onFinal: (text) => {
+        setInterim('')
+        setDictated(true)
+        setBody((prev) => (prev && !/\s$/.test(prev) ? `${prev} ${text.trim()}` : `${prev}${text.trim()}`))
+      },
+      onError: (code) => {
+        stopDictation()
+        toast.error(t('je_err_fmt').replace('{msg}', code))
+      },
+    })
+    if (session.ok) {
+      dictation.current = session
+      setListening(true)
+    }
+  }
+
+  useEffect(() => () => dictation.current?.stop(), [])
 
   function toggleHidden(id: number, hidden: boolean) {
     startTransition(async () => {
@@ -118,6 +162,7 @@ export function JournalDayExtras({ day, locale }: { day: string; locale: string 
                 {e.event_precision === 'month' ? <span>{t('je_roughly_month')}</span> : null}
                 {e.event_precision === 'year' ? <span>{t('je_roughly_year')}</span> : null}
                 {e.visibility === 'private' ? <span>{t('je_private_label')}</span> : null}
+                {e.provenance === 'voice' ? <span>{t('je_dictated_label')}</span> : null}
                 {e.verification === 'unverified' ? <span>{t('je_unverified_label')}</span> : null}
                 {e.hidden ? <span>{t('je_hidden_label')}</span> : null}
               </div>
@@ -192,19 +237,42 @@ export function JournalDayExtras({ day, locale }: { day: string; locale: string 
               style={{ fontSize: 16, width: '100%', boxSizing: 'border-box' }}
             />
           </label>
+          {listening ? (
+            <p className="t-mono-sm" data-testid="journal-dictation-live" style={{ margin: 0, fontSize: 12, color: 'var(--ac)', overflowWrap: 'anywhere' }}>
+              {interim || t('je_dictate_listening')}
+            </p>
+          ) : null}
+          {dictated ? (
+            <p className="t-mono-sm" style={{ margin: 0, fontSize: 11, color: 'var(--tx3)' }}>
+              {t('je_dictated_hint')}
+            </p>
+          ) : null}
           <p className="t-mono-sm" style={{ margin: 0, fontSize: 11, color: 'var(--tx3)' }}>
             {t('je_append_only_hint')}
           </p>
-          <button
-            type="button"
-            className="btn primary"
-            data-testid="journal-entry-add"
-            disabled={pending || !body.trim()}
-            onClick={add}
-            style={{ minHeight: 44, alignSelf: 'flex-start' }}
-          >
-            {t(pending ? 'je_saving' : 'je_save')}
-          </button>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="btn primary"
+              data-testid="journal-entry-add"
+              disabled={pending || !body.trim()}
+              onClick={add}
+              style={{ minHeight: 44, flex: '1 1 120px' }}
+            >
+              {t(pending ? 'je_saving' : 'je_save')}
+            </button>
+            <button
+              type="button"
+              className={listening ? 'btn sm' : 'btn ghost sm'}
+              data-testid="journal-entry-dictate"
+              aria-pressed={listening}
+              disabled={pending}
+              onClick={() => void toggleDictation()}
+              style={{ minHeight: 44, flex: '1 1 120px', ...(listening ? { background: 'var(--rust)22', color: 'var(--rust)', border: '1px solid var(--rust)44' } : {}) }}
+            >
+              {t(listening ? 'je_dictate_stop' : 'je_dictate')}
+            </button>
+          </div>
         </div>
       </section>
 

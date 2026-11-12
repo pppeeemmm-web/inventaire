@@ -249,6 +249,8 @@ export async function createJournalEntry(input: {
   kind: string
   body: string
   precision?: string
+  /** Dictated in the browser (Web Speech): provenance voice, unverified until checked. */
+  dictated?: boolean
 }): Promise<{ ok: true; id: number } | Err> {
   const supabase = await createClient()
   const {
@@ -268,7 +270,15 @@ export async function createJournalEntry(input: {
 
   const { data, error } = await supabase
     .from('journal_entry')
-    .insert({ kind, body, event_on: eventOn, event_precision: precision, author_id: user.id, provenance: 'typed', verification: 'verified' })
+    .insert({
+      kind,
+      body,
+      event_on: eventOn,
+      event_precision: precision,
+      author_id: user.id,
+      provenance: input.dictated ? 'voice' : 'typed',
+      verification: input.dictated ? 'unverified' : 'verified',
+    })
     .select('id')
     .single()
   if (error || !data) return { error: error?.message ?? 'insert' }

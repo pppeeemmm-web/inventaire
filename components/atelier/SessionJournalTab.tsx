@@ -618,6 +618,8 @@ export function SessionJournalTab() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [journalTeamReadAccess, setJournalTeamReadAccess] = useState(false)
   const [showManage, setShowManage] = useState(false)
+  // Phone: the list of days OR one day, full screen (owner 2026-11-12: iPhone SE had ~270 px for the day).
+  const [phoneView, setPhoneView] = useState<'list' | 'day'>('list')
   const [loading, setLoading] = useState(true)
   const [editingSession, setEditingSession] = useState(false)
   const [sessionDateInput, setSessionDateInput] = useState('')
@@ -695,6 +697,7 @@ export function SessionJournalTab() {
   const writeToday = () => {
     const row = rows.find((r) => rowDay(r) === todayDay)
     if (row) setSelectedId(row.id)
+    setPhoneView('day')
     // Let the day page mount, then bring the text box into view and focus it (phone: opens the keyboard).
     window.setTimeout(() => {
       const box = document.getElementById('journal-entry-body') as HTMLTextAreaElement | null
@@ -716,8 +719,9 @@ export function SessionJournalTab() {
     }
     setSelectedId(row.id)
     if (narrow) {
+      setPhoneView('day')
       requestAnimationFrame(() => {
-        document.getElementById('journal-day-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        document.getElementById('journal-day-panel')?.scrollTo({ top: 0 })
       })
     }
   }
@@ -790,7 +794,8 @@ export function SessionJournalTab() {
     })
   }
 
-  const showPage = Boolean(selected)
+  const showPage = Boolean(selected) && (!narrow || phoneView === 'day')
+  const showIndex = !narrow || phoneView === 'list'
 
   return (
     <div
@@ -800,11 +805,12 @@ export function SessionJournalTab() {
         minHeight: 0,
         display: 'grid',
         gridTemplateColumns: narrow ? '1fr' : 'minmax(240px, 300px) minmax(0, 1fr)',
-        gridTemplateRows: narrow && showPage ? 'auto auto' : undefined,
+        gridTemplateRows: narrow ? 'minmax(0, 1fr)' : undefined,
         gap: 0,
         background: 'var(--bg0)',
       }}
     >
+      {showIndex ? (
       <aside
           data-testid="journal-index"
           style={{
@@ -1027,6 +1033,7 @@ export function SessionJournalTab() {
             </div>
           ) : null}
         </aside>
+      ) : null}
 
       {showPage ? (
         <main
@@ -1039,7 +1046,18 @@ export function SessionJournalTab() {
             borderTop: narrow ? '1px solid var(--bd)' : undefined,
           }}
         >
-          <div style={{ padding: narrow ? '20px 16px 32px' : '32px 40px 48px' }}>
+          <div style={{ padding: narrow ? '12px 16px 32px' : '32px 40px 48px' }}>
+            {narrow ? (
+              <button
+                type="button"
+                className="btn ghost sm"
+                data-testid="journal-back-to-days"
+                onClick={() => setPhoneView('list')}
+                style={{ minHeight: 44, marginBottom: 12 }}
+              >
+                {t('je_back_days')}
+              </button>
+            ) : null}
             {selected ? (
               <JournalDayPage
                 row={selected}

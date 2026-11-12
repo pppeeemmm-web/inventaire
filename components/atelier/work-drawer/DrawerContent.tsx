@@ -106,6 +106,10 @@ export function DrawerContent({
   const router = useRouter()
   const isPanel = mode === 'panel'
   const narrow = useMediaQuery('(max-width: 767px)')
+  // Phone field mode (journal step 2, owner 2026-11-12): capture fields first (photo, title,
+  // technique, support, size, notes); status, ownership, price and the rest folded below.
+  const [allFields, setAllFields] = useState(false)
+  const fieldMode = narrow && !allFields
   /** Full-res overlay fades in after decode (thumb stays underneath — no hard swap). */
   const [fullPreviewReady, setFullPreviewReady] = useState(false)
 
@@ -1282,6 +1286,8 @@ export function DrawerContent({
         placeholder={t('untitled')}
       />
 
+      {!fieldMode ? (
+      <>
       <section style={{ marginBottom: 12 }} data-testid="work-drawer-status-bar">
         <div className="t-mono-sm" style={{ fontSize: 10, color: 'var(--tx3)' }}>
           {statusLabelMap[computeWorkStatusId(ownStage, prodStage)] ?? `ID ${computeWorkStatusId(ownStage, prodStage)}`}
@@ -1344,6 +1350,8 @@ export function DrawerContent({
       </fieldset>
 
       {ownStage === 'sold' ? <SaleReturnWindowBanner oeuvreId={o.OeuvreID} /> : null}
+      </>
+      ) : null}
 
       {/* ═══ EDITABLE FIELDS ═══ */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -1377,6 +1385,42 @@ export function DrawerContent({
           selThemes={selThemes}
           setSelThemes={setSelThemes}
         />
+
+        {fieldMode ? (
+          <>
+            <DrawerContentNotesVersionSection
+              oeuvreId={o.OeuvreID}
+              t={t}
+              commentaires={commentaires}
+              setCommentaires={setCommentaires}
+              historique={historique}
+              setHistorique={setHistorique}
+              onVersionRestored={() => router.refresh()}
+            />
+            <button
+              type="button"
+              className="btn ghost"
+              data-testid="work-drawer-all-fields"
+              onClick={() => setAllFields(true)}
+              style={{ minHeight: 44, width: '100%', whiteSpace: 'normal' }}
+            >
+              {t('wf_field_all_fields')}
+            </button>
+            <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: -10, textAlign: 'center' }}>{t('wf_field_all_fields_hint')}</div>
+          </>
+        ) : (
+        <>
+        {narrow ? (
+          <button
+            type="button"
+            className="btn ghost sm"
+            data-testid="work-drawer-field-mode"
+            onClick={() => setAllFields(false)}
+            style={{ minHeight: 44, width: '100%', whiteSpace: 'normal' }}
+          >
+            {t('wf_field_capture_only')}
+          </button>
+        ) : null}
 
         <WorkPeriodSourceSection oeuvreId={o.OeuvreID} year={periodYearOf({ Année: annee, production_started_on: o.production_started_on })} />
 
@@ -1417,6 +1461,8 @@ export function DrawerContent({
           setHistorique={setHistorique}
           onVersionRestored={() => router.refresh()}
         />
+        </>
+        )}
       </div>
 
       {/* ═══ ACTIONS ═══ */}

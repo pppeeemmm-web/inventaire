@@ -9,6 +9,16 @@ export const whatsNewMessages = defineMessages({
   },
 
   // 3.0.3 (2026-11-12) — owner bug review + journal entries.
+  wn_drawer_field_mode_t: { fr: 'Fiche sur le téléphone : le terrain d’abord', en: 'Work drawer on the phone: field first' },
+  wn_drawer_field_mode_d: {
+    fr: 'Sur le téléphone, une fiche s’ouvre sur l’essentiel du terrain : photo, titre, technique, support, dimensions et commentaires, avec Enregistrer et 📷 en bas. Statut, propriété, prix, constats, groupes et séances sont repliés sous « Tous les champs » ; « Terrain seulement » les replie à nouveau. Rien ne change sur ordinateur, ni dans ce qui est enregistré.',
+    en: 'On the phone, a work drawer opens on the field essentials: photo, title, technique, support, size and comments, with Save and 📷 at the bottom. Status, ownership, price, condition, groups and sessions are folded under "All fields"; "Field fields only" folds them again. Nothing changes on a computer, nor in what is saved.',
+  },
+  wn_journal_phone_t: { fr: 'Journal sur le téléphone, et dictée', en: 'Journal on the phone, and dictation' },
+  wn_journal_phone_d: {
+    fr: 'Sur le téléphone, le Journal montre soit la liste des jours, soit une journée en plein écran (« ← Jours » pour revenir). Dans « Nouvelle entrée », 🎙 Dicter écrit ce que vous dites dans le texte ; relisez avant d’ajouter. Une entrée dictée est marquée « Dictée · Non vérifiée ».',
+    en: 'On the phone, the Journal shows either the list of days or one day full screen ("← Days" to go back). In "New entry", 🎙 Dictate writes what you say into the text; read it before adding. A dictated entry is marked "Dictated · Unverified".',
+  },
   wn_journal_entries_t: { fr: 'Journal : toute la journée sur une page', en: 'Journal: the whole day on one page' },
   wn_journal_entries_d: {
     fr: 'Chaque journée du Journal rassemble tout ce qui a été noté ce jour-là : les « Entrées du jour » (étincelle, déclencheur, réflexion ou note, tapée telle quelle ; « #2399 » relie l’œuvre), ce qui a été ajouté dans Kaizen → Création, les notes vocales, la séance photo et les fiches modifiées (admins). Création reste à sa place dans Kaizen : la journée la lit, rien n’est copié. Une journée apparaît dès que quelque chose y est noté. « Écrire aujourd’hui » ouvre la page du jour, curseur dans le texte. Une entrée ne se modifie ni ne s’efface : pour corriger, on en ajoute une nouvelle.',
