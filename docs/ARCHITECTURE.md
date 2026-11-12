@@ -80,7 +80,20 @@ Column-specific triggers (`UPDATE OF …`) fire on the columns **in the UPDATE s
 - **Vault types**: counts and type lists ignore `.keep` folder markers; custom types get their own row.
 - **Session journal compare / drawer version history**: diff of `oeuvre_versions` snapshots on real column names.
 
-## 7. Indexing
+## 7. Callable database functions (API exposure)
+
+Every `public` function is reachable through PostgREST `/rest/v1/rpc/…` by any role holding EXECUTE; new functions get EXECUTE for PUBLIC by default — **revoke it in the same SQL file** unless signed-out visitors need it.
+
+| Function | anon | authenticated | service_role | Why |
+|---|---|---|---|---|
+| `is_admin()`, `is_team()` | yes | yes | yes | Called inside RLS policies for every role; return the caller's own role only |
+| `replace_oeuvre_themes`, `replace_oeuvre_work_groups` | no | yes (team checked inside) | yes | Work save |
+| `graph_node_id`, `oeuvre_order_exists` | no | yes | yes | Constellation; holder-check trigger |
+| `graph_upsert_relation_edge`, `node_search_text` | no | no | yes | Graph triggers (definer); embed worker |
+
+Source: [`security_definer_revoke_anon.sql`](../supabase/sql/security_definer_revoke_anon.sql) (2026-11-12). Trigger functions are not callable through the API.
+
+## 8. Indexing
 
 - `nodes` = one row per work, contact, theme, concept, working group, exhibition; text from `node_search_text`. Work text = `Titre` + `Commentaires` + Technique label. Empty text → `skipped`.
 - Not indexed: kaizen, voice notes, documents, suivi, work_action notes, image notes, condition reports, stock.
@@ -89,3 +102,4 @@ Column-specific triggers (`UPDATE OF …`) fire on the columns **in the UPDATE s
 
 - 2026-11-12 — the stage/address trigger only ran on work saves; address-side trigger added (§4).
 - 2026-11-12 — status 9/10 could be written without a fate; guard added (§1).
+- 2026-11-12 — 4 security-definer functions were callable signed-out (theme/group rewrite, graph insert, private text read); revoked (§7).
