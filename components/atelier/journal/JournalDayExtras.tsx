@@ -7,11 +7,13 @@
 
 import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
+import { EntryText } from '@/components/atelier/journal/EntryText'
 import { getLiveDictationAvailability, startLiveDictation, type LiveDictationSession } from '@/lib/voice/web-speech'
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from '@/lib/ui/toast'
 import {
   createJournalEntry,
+  decideJournalLink,
   getJournalDayExtras,
   setJournalEntryHidden,
   type JournalDayExtras as Extras,
@@ -27,8 +29,13 @@ const KIND_KEY = {
   note: 'je_kind_note',
 } as const
 
-function kindLabel(kind: string, t: (k: (typeof KIND_KEY)[Kind]) => string): string {
-  return (KINDS as readonly string[]).includes(kind) ? t(KIND_KEY[kind as Kind]) : kind
+// Kinds written by imports / transcription (not offered in the form).
+const OTHER_KIND_KEY = { atlas: 'je_kind_atlas', voice: 'je_kind_voice', handwriting: 'je_kind_handwriting' } as const
+
+function kindLabel(kind: string, t: (k: (typeof KIND_KEY)[Kind] | (typeof OTHER_KIND_KEY)[keyof typeof OTHER_KIND_KEY]) => string): string {
+  if ((KINDS as readonly string[]).includes(kind)) return t(KIND_KEY[kind as Kind])
+  if (kind in OTHER_KIND_KEY) return t(OTHER_KIND_KEY[kind as keyof typeof OTHER_KIND_KEY])
+  return kind
 }
 
 function workHref(id: number): string {
@@ -46,6 +53,7 @@ export function JournalDayExtras({ day, locale }: { day: string; locale: string 
   const [kind, setKind] = useState<Kind>('spark')
   const [body, setBody] = useState('')
   const [precision, setPrecision] = useState<'day' | 'month' | 'year'>('day')
+  const [conceptId, setConceptId] = useState('')
   const [pending, startTransition] = useTransition()
 
   const load = useCallback(async () => {
@@ -69,7 +77,7 @@ export function JournalDayExtras({ day, locale }: { day: string; locale: string 
     }
     startTransition(async () => {
       stopDictation()
-      const res = await createJournalEntry({ day, kind, body, precision, dictated })
+      const res = await createJournalEntry({ day, kind, body, precision, dictated, conceptIds: conceptId ? [conceptId] : [] })
       if ('error' in res) {
         toast.error(t('je_err_fmt').replace('{msg}', res.error))
         return
@@ -77,6 +85,7 @@ export function JournalDayExtras({ day, locale }: { day: string; locale: string 
       setBody('')
       setPrecision('day')
       setDictated(false)
+      setConceptId('')
       await load()
     })
   }
@@ -116,6 +125,17 @@ export function JournalDayExtras({ day, locale }: { day: string; locale: string 
   }
 
   useEffect(() => () => dictation.current?.stop(), [])
+
+  function decide(linkId: number, accept: boolean) {
+    startTransition(async () => {
+      const res = await decideJournalLink(linkId, accept)
+      if ('error' in res) {
+        toast.error(t('je_err_fmt').replace('{msg}', res.error))
+        return
+      }
+      await load()
+    })
+  }
 
   function toggleHidden(id: number, hidden: boolean) {
     startTransition(async () => {
@@ -166,7 +186,16 @@ export function JournalDayExtras({ day, locale }: { day: string; locale: string 
                 {e.verification === 'unverified' ? <span>{t('je_unverified_label')}</span> : null}
                 {e.hidden ? <span>{t('je_hidden_label')}</span> : null}
               </div>
-              <p style={{ margin: 0, fontSize: 15, lineHeight: 1.6, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{e.body}</p>
+              <EntryText text={e.body} />
+              {e.concepts.length > 0 ? (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 8 }}>
+                  {e.concepts.map((c) => (
+                    <Link key={c.id} href="/atelier/concepts" className="t-mono-sm" style={{ color: 'var(--ac)', textDecoration: 'underline', textUnderlineOffset: 2 }}>
+                      {t('je_concept_prefix')} {c.title ?? '—'}
+                    </Link>
+                  ))}
+                </div>
+              ) : null}
               {e.works.length > 0 ? (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 8 }}>
                   {e.works.map((w) => (
@@ -175,6 +204,36 @@ export function JournalDayExtras({ day, locale }: { day: string; locale: string 
                       {w.title ? ` ${w.title}` : ''}
                     </Link>
                   ))}
+                </div>
+              ) : null}
+              {e.proposals.length > 0 ? (
+                <div data-testid={`journal-entry-proposals-${e.id}`} style={{ marginTop: 10, paddingTop: 8, borderTop: '1px dashed var(--bd)' }}>
+                  <div className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx3)', marginBottom: 6 }}>
+                    {t('je_ai_proposals')}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {e.proposals.map((p) => (
+                      <div key={p.linkId} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
+                        <Link
+                          href={p.workId != null ? workHref(p.workId) : '/atelier/concepts'}
+                          className="t-mono-sm"
+                          style={{ color: 'var(--tx2)', textDecoration: 'underline', textUnderlineOffset: 2, flex: '1 1 160px', overflowWrap: 'anywhere' }}
+                        >
+                          ✦ {p.workId != null ? `#${p.workId}` : t('je_concept_prefix')} {p.title ?? ''}
+                        </Link>
+                        {data?.isAdmin ? (
+                          <span style={{ display: 'flex', gap: 6 }}>
+                            <button type="button" className="btn ghost sm" disabled={pending} onClick={() => decide(p.linkId, true)} style={{ minHeight: 44 }}>
+                              {t('je_ai_accept')}
+                            </button>
+                            <button type="button" className="btn ghost sm" disabled={pending} onClick={() => decide(p.linkId, false)} style={{ minHeight: 44 }}>
+                              {t('je_ai_reject')}
+                            </button>
+                          </span>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ) : null}
               {data?.isAdmin ? (
@@ -224,6 +283,25 @@ export function JournalDayExtras({ day, locale }: { day: string; locale: string 
               </select>
             </label>
           </div>
+          {data && data.conceptOptions.length > 0 ? (
+            <label className="t-mono-sm" style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11 }}>
+              {t('je_concept_label')}
+              <select
+                className="input"
+                data-testid="journal-entry-concept"
+                value={conceptId}
+                onChange={(ev) => setConceptId(ev.target.value)}
+                style={{ minHeight: 44 }}
+              >
+                <option value="">{t('je_concept_none')}</option>
+                {data.conceptOptions.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
           <label className="t-mono-sm" style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11 }}>
             {t('je_body_label')}
             <textarea

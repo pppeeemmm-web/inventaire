@@ -9,6 +9,16 @@ export const whatsNewMessages = defineMessages({
   },
 
   // 3.0.3 (2026-11-12) — owner bug review + journal entries.
+  wn_journal_links_t: { fr: 'Journal : entrées lisibles, concepts, suggestions IA', en: 'Journal: readable entries, concepts, AI suggestions' },
+  wn_journal_links_d: {
+    fr: 'Les entrées s’affichent avec titres, gras, listes et tableaux (le texte enregistré ne change pas) — dont l’Atlas, importé au 10 juin 2026. « Nouvelle entrée » peut relier un concept de Recherche. L’index relit les entrées et propose des œuvres ou concepts proches, marqués ✦ : seul un admin les valide ou les rejette ; rien n’est relié sans validation.',
+    en: 'Entries display with headings, bold, lists and tables (the saved text does not change) — including the Atlas, imported on 10 June 2026. "New entry" can link a Research concept. The index reads entries and suggests nearby works or concepts, marked ✦: only an admin confirms or rejects them; nothing is linked without confirmation.',
+  },
+  wn_new_work_field_mode_t: { fr: 'Nouvelle œuvre sur le téléphone : le terrain d’abord', en: 'New work on the phone: field first' },
+  wn_new_work_field_mode_d: {
+    fr: 'Comme la fiche, le formulaire « Nouvelle œuvre » sur téléphone montre d’abord photo, commentaires, titre, technique, support et dimensions. Thèmes, historique, production, propriété et prix sont sous « Tous les champs » ; ils restent enregistrés comme avant.',
+    en: 'Like the work drawer, the "New work" form on the phone shows photo, comments, title, technique, support and size first. Themes, history, production, ownership and price are under "All fields"; they still save as before.',
+  },
   wn_drawer_field_mode_t: { fr: 'Fiche sur le téléphone : le terrain d’abord', en: 'Work drawer on the phone: field first' },
   wn_drawer_field_mode_d: {
     fr: 'Sur le téléphone, une fiche s’ouvre sur l’essentiel du terrain : photo, titre, technique, support, dimensions et commentaires, avec Enregistrer et 📷 en bas. Statut, propriété, prix, constats, groupes et séances sont repliés sous « Tous les champs » ; « Terrain seulement » les replie à nouveau. Rien ne change sur ordinateur, ni dans ce qui est enregistré.',

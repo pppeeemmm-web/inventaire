@@ -29,6 +29,9 @@ export type JournalDayEntry = {
   mine: boolean
   hidden: boolean
   works: Array<{ id: number; title: string | null }>
+  concepts: Array<{ id: string; title: string | null }>
+  /** AI link proposals (✦), not yet validated or rejected (supabase/sql/journal_entry_nodes.sql). */
+  proposals: Array<{ linkId: number; workId: number | null; conceptId: string | null; title: string | null }>
 }
 
 export type JournalDayChange = { oeuvre_id: number; title: string | null; fields: string[] }
@@ -50,6 +53,8 @@ export type JournalDayExtras = {
   changes: JournalDayChange[]
   voices: JournalDayVoice[]
   creation: JournalDayCreation[]
+  /** Concepts (Recherche) the entry form can link to. */
+  conceptOptions: Array<{ id: string; title: string }>
 }
 
 /** One row per Paris day that has an entry, a Création item or a voice note (index of the journal). */
@@ -87,7 +92,7 @@ export async function getJournalDayExtras(day: string): Promise<JournalDayExtras
   const isAdmin = adminFlag === true
   const win = utcWindow(day)
 
-  const [entriesRes, voicesRes, versionsRes, creationRes] = await Promise.all([
+  const [entriesRes, voicesRes, versionsRes, creationRes, conceptsRes] = await Promise.all([
     supabase.from('journal_entry').select('*').eq('event_on', day).order('created_at', { ascending: true }).limit(500),
     supabase
       .from('voice_note')
@@ -114,6 +119,7 @@ export async function getJournalDayExtras(day: string): Promise<JournalDayExtras
       .lt('created_at', win.to)
       .order('created_at', { ascending: true })
       .limit(200),
+    supabase.from('concept').select('id, titre').order('titre', { ascending: true }).limit(500),
   ])
   if (entriesRes.error) {
     await logError('journal day entries failed', entriesRes.error, { source: 'journal.getJournalDayExtras' })
@@ -123,15 +129,26 @@ export async function getJournalDayExtras(day: string): Promise<JournalDayExtras
   const rows = entriesRes.data ?? []
   const entryIds = rows.map((r) => r.id)
   const { data: links } = entryIds.length
-    ? await supabase.from('journal_entry_link').select('entry_id, oeuvre_id').in('entry_id', entryIds).not('oeuvre_id', 'is', null)
-    : { data: [] as Array<{ entry_id: number; oeuvre_id: number | null }> }
+    ? await supabase.from('journal_entry_link').select('*').in('entry_id', entryIds)
+    : { data: [] }
+  type LinkRow = {
+    id: number
+    entry_id: number
+    oeuvre_id: number | null
+    concept_id: string | null
+    validated_at: string | null
+    proposed_by: string
+    rejected_at?: string | null
+  }
+  const linkRows = (links ?? []) as LinkRow[]
+  const conceptTitles = new Map((conceptsRes.data ?? []).map((c) => [c.id, c.titre as string | null]))
 
   // Field changes: each version row is the work BEFORE a save; the state after is the next
   // version row of that work, or the current row.
   const versions = (versionsRes.data ?? []).filter((v) => calendarDayInParisFromIso(v.changed_at) === day)
   const changedIds = [...new Set(versions.map((v) => v.oeuvre_id))].slice(0, 100)
 
-  const workIds = [...new Set([...(links ?? []).map((l) => l.oeuvre_id as number), ...changedIds])]
+  const workIds = [...new Set([...linkRows.filter((l) => l.oeuvre_id != null).map((l) => l.oeuvre_id as number), ...changedIds])]
   const titles = new Map<number, string | null>()
   const current = new Map<number, Record<string, unknown>>()
   if (workIds.length) {
@@ -197,9 +214,20 @@ export async function getJournalDayExtras(day: string): Promise<JournalDayExtras
       author: (r.author_id && names[r.author_id]) || '—',
       mine: r.author_id === user.id,
       hidden: !!r.hidden_at,
-      works: (links ?? [])
-        .filter((l) => l.entry_id === r.id && l.oeuvre_id != null)
+      works: linkRows
+        .filter((l) => l.entry_id === r.id && l.oeuvre_id != null && l.validated_at)
         .map((l) => ({ id: l.oeuvre_id as number, title: titles.get(l.oeuvre_id as number) ?? null })),
+      concepts: linkRows
+        .filter((l) => l.entry_id === r.id && l.concept_id != null && l.validated_at)
+        .map((l) => ({ id: l.concept_id as string, title: conceptTitles.get(l.concept_id as string) ?? null })),
+      proposals: linkRows
+        .filter((l) => l.entry_id === r.id && l.proposed_by === 'ai' && !l.validated_at && !l.rejected_at)
+        .map((l) => ({
+          linkId: l.id,
+          workId: l.oeuvre_id,
+          conceptId: l.concept_id,
+          title: l.oeuvre_id != null ? titles.get(l.oeuvre_id) ?? null : conceptTitles.get(l.concept_id as string) ?? null,
+        })),
     }))
 
   const voices: JournalDayVoice[] = ((voicesRes.data ?? []) as JournalDayVoice[]).filter(
@@ -216,7 +244,11 @@ export async function getJournalDayExtras(day: string): Promise<JournalDayExtras
     works: (k.work_ids ?? []) as number[],
   }))
 
-  return { isAdmin, entries, changes, voices, creation }
+  const conceptOptions = (conceptsRes.data ?? [])
+    .filter((c) => (c.titre ?? '').trim())
+    .map((c) => ({ id: c.id, title: (c.titre as string).trim() }))
+
+  return { isAdmin, entries, changes, voices, creation, conceptOptions }
 }
 
 /** Days that have journal entries, Création items or voice notes (Paris day), newest first. */
@@ -251,6 +283,8 @@ export async function createJournalEntry(input: {
   precision?: string
   /** Dictated in the browser (Web Speech): provenance voice, unverified until checked. */
   dictated?: boolean
+  /** Concepts (Recherche) picked in the form. */
+  conceptIds?: string[]
 }): Promise<{ ok: true; id: number } | Err> {
   const supabase = await createClient()
   const {
@@ -284,14 +318,41 @@ export async function createJournalEntry(input: {
   if (error || !data) return { error: error?.message ?? 'insert' }
 
   const works = await worksMentioned(supabase, body)
-  if (works.length) {
-    const { error: linkErr } = await supabase
-      .from('journal_entry_link')
-      .insert(works.map((oeuvre_id) => ({ entry_id: data.id, oeuvre_id, created_by: user.id, proposed_by: 'pem', validated_at: new Date().toISOString() })))
+  const conceptIds = [...new Set((input.conceptIds ?? []).filter((x) => /^[0-9a-f-]{36}$/i.test(x)))].slice(0, 20)
+  const now = new Date().toISOString()
+  const linkRows = [
+    ...works.map((oeuvre_id) => ({ entry_id: data.id, oeuvre_id, created_by: user.id, proposed_by: 'pem', validated_at: now })),
+    ...conceptIds.map((concept_id) => ({ entry_id: data.id, concept_id, created_by: user.id, proposed_by: 'pem', validated_at: now })),
+  ]
+  if (linkRows.length) {
+    const { error: linkErr } = await supabase.from('journal_entry_link').insert(linkRows)
     if (linkErr) await logError('journal entry links failed', linkErr, { source: 'journal.createJournalEntry', metadata: { id: data.id } })
   }
   revalidatePath('/atelier/journal')
   return { ok: true, id: data.id }
+}
+
+/** Admin only (RLS: link update = admin). Validate = the proposal becomes a link; reject = kept, marked rejected. */
+export async function decideJournalLink(linkId: number, accept: boolean): Promise<{ ok: true } | Err> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'auth' }
+  const now = new Date().toISOString()
+  // `rejected_at` / `rejected_by` come from journal_entry_nodes.sql (cast: generated types may predate it).
+  const patch = (accept ? { validated_at: now } : { rejected_at: now, rejected_by: user.id }) as { validated_at?: string }
+  const { data, error } = await supabase
+    .from('journal_entry_link')
+    .update(patch)
+    .eq('id', linkId)
+    .eq('proposed_by', 'ai')
+    .is('validated_at', null)
+    .select('id')
+  if (error) return { error: error.message }
+  if (!data?.length) return { error: 'admin_only' }
+  revalidatePath('/atelier/journal')
+  return { ok: true }
 }
 
 /** Admin only (DB guard `journal_admin_only`). Never deletes: the entry is hidden from the team. */

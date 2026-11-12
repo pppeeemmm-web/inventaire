@@ -144,11 +144,23 @@ async function drainPendingQueries(supabase) {
   return ok
 }
 
+/** Journal entries embedded since the last pass → AI link proposals (supabase/sql/journal_entry_nodes.sql). */
+async function proposeJournalLinks(supabase) {
+  const { data, error } = await supabase.rpc('journal_propose_links')
+  if (error) {
+    // Function absent before the migration: say so once per pass, never fail the worker.
+    console.error('[embed-worker] journal link proposals:', error.message)
+    return
+  }
+  if (data) console.log(`[embed-worker] journal link proposals: ${data} entries looked at`)
+}
+
 async function runPass(supabase) {
   await resetStuckEmbedding(supabase)
 
   const queries = await drainPendingQueries(supabase)
   if (queries) console.log(`[embed-worker] pending queries cached: ${queries}`)
+  await proposeJournalLinks(supabase)
 
   const batchSize = limit && Number.isFinite(limit) ? Math.min(limit, BATCH_SIZE) : BATCH_SIZE
   const pending = await fetchPendingBatch(supabase, batchSize)

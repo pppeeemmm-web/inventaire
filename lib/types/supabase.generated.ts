@@ -1075,6 +1075,7 @@ export type Database = {
       }
       journal_entry: {
         Row: {
+          ai_links_at: string | null
           author_id: string | null
           body: string
           corrects_id: number | null
@@ -1090,6 +1091,7 @@ export type Database = {
           visibility: string
         }
         Insert: {
+          ai_links_at?: string | null
           author_id?: string | null
           body: string
           corrects_id?: number | null
@@ -1105,6 +1107,7 @@ export type Database = {
           visibility?: string
         }
         Update: {
+          ai_links_at?: string | null
           author_id?: string | null
           body?: string
           corrects_id?: number | null
@@ -1138,6 +1141,8 @@ export type Database = {
           id: number
           oeuvre_id: number | null
           proposed_by: string
+          rejected_at: string | null
+          rejected_by: string | null
           relation: string
           validated_at: string | null
         }
@@ -1149,6 +1154,8 @@ export type Database = {
           id?: never
           oeuvre_id?: number | null
           proposed_by?: string
+          rejected_at?: string | null
+          rejected_by?: string | null
           relation?: string
           validated_at?: string | null
         }
@@ -1160,6 +1167,8 @@ export type Database = {
           id?: never
           oeuvre_id?: number | null
           proposed_by?: string
+          rejected_at?: string | null
+          rejected_by?: string | null
           relation?: string
           validated_at?: string | null
         }
@@ -3332,6 +3341,10 @@ export type Database = {
       }
       is_admin: { Args: never; Returns: boolean }
       is_team: { Args: never; Returns: boolean }
+      journal_propose_links: {
+        Args: { p_k?: number; p_limit?: number; p_min?: number }
+        Returns: number
+      }
       match_nodes: {
         Args: { match_count?: number; query_embedding: string }
         Returns: {

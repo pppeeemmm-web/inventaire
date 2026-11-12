@@ -86,6 +86,11 @@ export function WorkForm({
 }: Props) {
   const { t } = useI18n()
   const narrow = useMediaQuery('(max-width: 767px)')
+  // Phone field mode (owner 2026-11-12): photo, comments, title, technique, support, size first;
+  // themes, history, production, ownership and finance hidden (still mounted: their inputs stay
+  // in the form and save as before) until "Tous les champs".
+  const [allFields, setAllFields] = useState(false)
+  const fieldMode = narrow && !allFields
   const PRODUCTION_STAGES = useMemo(
     () => [
       { id: 'atelier' as const, label: t('wf_prod_atelier_l'), desc: t('wf_prod_atelier_d') },
@@ -646,7 +651,7 @@ export function WorkForm({
             <WorkFormPhysicalQr oeuvreId={oeuvre.OeuvreID} titre={oeuvre.Titre} />
           ) : null}
 
-          <div style={{ marginTop: 32 }}>
+          <div style={{ marginTop: 32, display: fieldMode ? 'none' : undefined }}>
             <div className="t-eyebrow" style={{ marginBottom: 12, fontSize: 11 }}>{t('wf_themes_series')}</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {allThemes.map(th => (
@@ -665,7 +670,7 @@ export function WorkForm({
               style={{ ...FIS, height: 120, resize: 'vertical', fontSize: 13 }} placeholder={t('wf_comments_placeholder')} />
           </div>
 
-          <div style={{ marginTop: 32, borderTop: '1px solid var(--bd)', paddingTop: 24 }}>
+          <div style={{ marginTop: 32, borderTop: '1px solid var(--bd)', paddingTop: 24, display: fieldMode ? 'none' : undefined }}>
             <div className="t-eyebrow" style={{ marginBottom: 12, fontSize: 11 }}>{t('wf_history_title')}</div>
             <textarea value={historique} onChange={e => setHistorique(e.target.value)}
               style={{ ...FIS, height: 140, resize: 'vertical', fontSize: 12, fontFamily: 'var(--font-mono)' }} placeholder={t('wf_history_placeholder')} />
@@ -737,6 +742,19 @@ export function WorkForm({
               )}
             </section>
 
+            {narrow ? (
+              <button
+                type="button"
+                className="btn ghost"
+                data-testid="work-form-all-fields"
+                onClick={() => setAllFields((v) => !v)}
+                style={{ minHeight: 44, width: '100%', whiteSpace: 'normal' }}
+              >
+                {t(allFields ? 'wf_field_capture_only' : 'wf_field_all_fields')}
+              </button>
+            ) : null}
+
+            <div style={{ display: fieldMode ? 'none' : 'contents' }}>
             {/* 2. Production State */}
             <section style={{ opacity: (isOwnershipTransferred || isArchived) ? 0.5 : 1 }}>
               <SectionHeader title={t('wf_section_production')} />
@@ -926,6 +944,7 @@ export function WorkForm({
                 </Field>
               </div>
             </section>
+            </div>
 
           </div>
         </div>

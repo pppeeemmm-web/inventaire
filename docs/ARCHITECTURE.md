@@ -110,6 +110,7 @@ Every function sets `search_path` (`set search_path to 'public'`) — new ones t
 ## 8. Indexing
 
 - `nodes` = one row per work, contact, theme, concept, working group, exhibition; text from `node_search_text`. Work text = `Titre` + `Commentaires` + Technique label. Empty text → `skipped`.
+- **Journal entries** (`node_type 'journal_entry'`, [`journal_entry_nodes.sql`](../supabase/sql/journal_entry_nodes.sql)): registered on insert; text = `body`, none when hidden or private (→ `skipped`, vector dropped). After each embed-worker pass, `journal_propose_links()` (service role) proposes ≤3 works + ≤3 concepts per entry (cosine ≥ 0.55) as `journal_entry_link` rows `proposed_by 'ai'`; an admin validates (`validated_at`) or rejects (`rejected_at`); nothing deleted. Not yet in search hydration (`entity`) nor drawn in Constellation.
 - Not indexed: kaizen, voice notes, documents, suivi, work_action notes, image notes, condition reports, stock.
 
 ## Found later
