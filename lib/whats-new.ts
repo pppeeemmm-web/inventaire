@@ -9,7 +9,8 @@
 // '3.0.1' (2026-11-03 pm): safety, destroyed / lost, live list rows, earlier items not yet listed.
 // '3.0.2' (2026-11-03 eve): owner / custodian / address (docs/WORK_CUSTODY_MODEL.md).
 // '3.0.3' (2026-11-12): owner bug review fixes (docs/AUDIT_2026-11.md).
-export const WHATS_NEW_RELEASE = '3.0.3'
+// '3.0.4' (2026-11-12): journal entries (docs/JOURNAL_PROPOSAL.md step 1).
+export const WHATS_NEW_RELEASE = '3.0.4'
 
 /** localStorage: release the viewer chose not to see again. sessionStorage: already shown this visit. */
 export const WHATS_NEW_DISMISSED_KEY = 'pem_whats_new_dismissed'
@@ -19,6 +20,7 @@ export type WhatsNewItem = { id: string; day: string }
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'journal_entries', day: '2026-11-12' },
   { id: 'drawer_lists', day: '2026-11-12' },
   { id: 'history_fields', day: '2026-11-12' },
   { id: 'production_cascade', day: '2026-11-12' },

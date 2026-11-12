@@ -8,16 +8,7 @@ import {
   restoreOeuvreVersion,
   type OeuvreVersion,
 } from '@/app/atelier/(portal)/audit/version-actions'
-
-const SHOW_FIELDS = [
-  // Real `Oeuvres` column names — the keys of `oeuvre_versions.snapshot`.
-  'Titre', 'Année', 'Technique', 'Support', 'Format',
-  'Hauteur', 'Largeur', 'Profondeur', 'Prix', 'PrixFinal',
-  'statusId', 'ContactID', 'Commentaires', 'Historique',
-  'LocalisationID', 'LocalisationDetail', 'tva_rate',
-  'Catalogué', 'NeedsPhotograph', 'IsCommission', 'is_paid', 'is_gift',
-  'anonymity_level',
-]
+import { OEUVRE_VERSION_FIELDS as SHOW_FIELDS } from '@/lib/oeuvre-version-fields'
 
 function diffSnapshots(prev: Record<string, unknown> | null, cur: Record<string, unknown>) {
   if (!prev) return SHOW_FIELDS.filter((k) => cur[k] != null).map((k) => [k, null, cur[k]] as const)

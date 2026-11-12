@@ -26,6 +26,7 @@ import {
 import type { WorkSessionRow } from '@/lib/types/database'
 import { provenanceTimestamp, provenanceUserId } from '@/lib/oeuvre-provenance'
 import { allocateOeuvreId, insertOeuvreRow } from '@/lib/work-create-core'
+import { changedVersionFields } from '@/lib/oeuvre-version-fields'
 
 /** Until `work_session` is in generated Supabase types (run `supabase gen types` after migration). */
 function workSessionTable(supabase: Awaited<ReturnType<typeof createClient>>) {
@@ -346,31 +347,6 @@ export type WorkSessionVersionCompare = {
   changes: Array<{ field: string; before: unknown; after: unknown }>
 }
 
-const VERSION_COMPARE_FIELDS = [
-  'Titre',
-  'Année',
-  'Technique',
-  'Support',
-  'Format',
-  'Hauteur',
-  'Largeur',
-  'Profondeur',
-  'Prix',
-  'PrixFinal',
-  'statusId',
-  'ContactID',
-  'Commentaires',
-  'Historique',
-  'LocalisationID',
-  'LocalisationDetail',
-  'tva_rate',
-  'Catalogué',
-  'NeedsPhotograph',
-  'IsCommission',
-  'is_paid',
-  'is_gift',
-  'anonymity_level',
-]
 
 function asPayloadRecord(payload: WorkSessionPayload): Record<string, unknown> {
   return payload as unknown as Record<string, unknown>
@@ -1590,17 +1566,7 @@ function journalItemsFromPayload(
   ]
 }
 
-function diffVersionSnapshots(
-  before: Record<string, unknown> | null,
-  after: Record<string, unknown> | null,
-): Array<{ field: string; before: unknown; after: unknown }> {
-  if (!before && !after) return []
-  return VERSION_COMPARE_FIELDS.flatMap((field) => {
-    const a = before?.[field] ?? null
-    const b = after?.[field] ?? null
-    return String(a ?? '') === String(b ?? '') ? [] : [{ field, before: a, after: b }]
-  })
-}
+const diffVersionSnapshots = changedVersionFields
 
 export async function fetchSessionItemVersionCompare(
   oeuvreId: number,

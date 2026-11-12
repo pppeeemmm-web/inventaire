@@ -1073,6 +1073,120 @@ export type Database = {
           },
         ]
       }
+      journal_entry: {
+        Row: {
+          author_id: string | null
+          body: string
+          corrects_id: number | null
+          created_at: string
+          event_on: string
+          event_precision: string
+          hidden_at: string | null
+          hidden_by: string | null
+          id: number
+          kind: string
+          provenance: string
+          verification: string
+          visibility: string
+        }
+        Insert: {
+          author_id?: string | null
+          body: string
+          corrects_id?: number | null
+          created_at?: string
+          event_on?: string
+          event_precision?: string
+          hidden_at?: string | null
+          hidden_by?: string | null
+          id?: never
+          kind: string
+          provenance?: string
+          verification?: string
+          visibility?: string
+        }
+        Update: {
+          author_id?: string | null
+          body?: string
+          corrects_id?: number | null
+          created_at?: string
+          event_on?: string
+          event_precision?: string
+          hidden_at?: string | null
+          hidden_by?: string | null
+          id?: never
+          kind?: string
+          provenance?: string
+          verification?: string
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "journal_entry_corrects_id_fkey"
+            columns: ["corrects_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entry"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      journal_entry_link: {
+        Row: {
+          concept_id: string | null
+          created_at: string
+          created_by: string | null
+          entry_id: number
+          id: number
+          oeuvre_id: number | null
+          proposed_by: string
+          relation: string
+          validated_at: string | null
+        }
+        Insert: {
+          concept_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          entry_id: number
+          id?: never
+          oeuvre_id?: number | null
+          proposed_by?: string
+          relation?: string
+          validated_at?: string | null
+        }
+        Update: {
+          concept_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          entry_id?: number
+          id?: never
+          oeuvre_id?: number | null
+          proposed_by?: string
+          relation?: string
+          validated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "journal_entry_link_concept_id_fkey"
+            columns: ["concept_id"]
+            isOneToOne: false
+            referencedRelation: "concept"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journal_entry_link_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entry"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journal_entry_link_oeuvre_id_fkey"
+            columns: ["oeuvre_id"]
+            isOneToOne: false
+            referencedRelation: "Oeuvres"
+            referencedColumns: ["OeuvreID"]
+          },
+        ]
+      }
       kaizen_item: {
         Row: {
           author_id: string | null

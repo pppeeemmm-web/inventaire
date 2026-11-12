@@ -8,7 +8,12 @@ export const whatsNewMessages = defineMessages({
     en: 'What changed in the Atelier over the last few days.',
   },
 
-  // 3.0.3 (2026-11-12) — owner bug review.
+  // 3.0.3 (2026-11-12) — owner bug review + journal entries.
+  wn_journal_entries_t: { fr: 'Journal : toute la journée sur une page', en: 'Journal: the whole day on one page' },
+  wn_journal_entries_d: {
+    fr: 'Chaque journée du Journal rassemble tout ce qui a été noté ce jour-là : les « Entrées du jour » (étincelle, déclencheur, réflexion ou note, tapée telle quelle ; « #2399 » relie l’œuvre), ce qui a été ajouté dans Kaizen → Création, les notes vocales, la séance photo et les fiches modifiées (admins). Création reste à sa place dans Kaizen : la journée la lit, rien n’est copié. Une journée apparaît dès que quelque chose y est noté. « Écrire aujourd’hui » ouvre la page du jour, curseur dans le texte. Une entrée ne se modifie ni ne s’efface : pour corriger, on en ajoute une nouvelle.',
+    en: 'Each Journal day gathers everything logged that day: the "Entries of the day" (a spark, a trigger, a reflection or a note, typed as is; "#2399" links the work), what was added in Kaizen → Création, voice notes, the photo session and works changed (admins). Création stays in Kaizen: the day reads it, nothing is copied. A day appears as soon as anything is logged on it. "Write today" opens today’s page with the cursor in the text box. An entry is never edited or erased: to correct it, add a new one.',
+  },
   wn_drawer_lists_t: { fr: 'Technique, support et format toujours remplis', en: 'Technique, support and format always filled' },
   wn_drawer_lists_d: {
     fr: 'Une fiche ouverte juste après l’arrivée dans l’Atelier (ou depuis un lien) pouvait montrer des listes Technique / Support / Format vides, avec seulement « — ». Les listes se remplissent maintenant dès qu’elles sont chargées. Aucune donnée n’avait été perdue.',

@@ -35,7 +35,7 @@ _Brief `BRIEF_CLAUDE_CODE_audit_journal.md`, phase 2. Read from live data and co
 | **Spark** | Entry of kind spark — dated, append-only, linked to a work, a concept, or nothing. |
 | **Sketchbook** | Kept as its own source (photos or app drawings), shown in the day; its pages can be linked from entries. |
 | **Manifold Atlas** | Option B: each section → an `atlas` entry imported verbatim (provenance import); ideas bank → sparks; appendices A/B verbatim. |
-| **Kaizen / concepts** | Kaizen keeps improvement entries (app, business, system; Audit at the top). The 22 Création entries and 8 voice ideas move to the journal keeping author and date. A concept = durable node promoted from recurring entries. |
+| **Kaizen / concepts** | Kaizen keeps improvement entries (app, business, system; Audit at the top). **Création stays in Kaizen** (owner 2026-11-12): the team keeps adding there; the journal day shows each item on its date, read in place, not copied. A concept = durable node promoted from recurring entries. |
 | **Constellation** | Each entry → a node (same embedding model). AI-suggested links stored as proposals, marked AI; only Pem's validation writes `tblrelations`. |
 | **Voice** | Audio = reference. Transcripts stored as added versions (engine, date, unverified), never overwriting. Batch run triggered by Pem: faster-whisper on the RTX 4070. |
 | **Handwriting** | Photo = reference. Batch transcription with `qwen2.5vl:7b` through Ollama, added as unverified text. Test ~10 pages first (reminder 2026-11-13). |
@@ -51,8 +51,8 @@ Add only (no overwrite) · no physical deletion · two dates (entered / event) �
 
 ## Build order (each step needs a GO)
 
-1. `journal_entry` table + append-only triggers + day page reading existing sources.
+1. ~~`journal_entry` table + append-only triggers + day page reading existing sources.~~ **Built 2026-11-12** (owner GO): `journal_entry.sql` applied + tested (rolled back), day page block `JournalDayExtras` checked at 375 × 667. Same day: the day page also reads Kaizen Création items created that day (owner: Création stays in Kaizen for the team, the journal shows it — nothing copied), voice notes and works changed; a day exists as soon as anything is logged on it, and **Écrire aujourd'hui** opens today. Limits: concept links exist in the table but have no picker yet; no voice recording from the entry form yet; no entry was created in production during the test.
 2. Phone field mode of the work drawer (iPhone SE check, timed against today's form).
-3. Atlas import (option B) and Kaizen Création / voice ideas migration.
+3. Atlas import (option B). (Kaizen Création is no longer migrated: shown in the day, owner 2026-11-12.)
 4. Transcription batches (voice, handwriting) with added versions + AI marks.
 5. Entry nodes + AI link proposals in Constellation.

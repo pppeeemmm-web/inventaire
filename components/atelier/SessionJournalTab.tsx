@@ -22,11 +22,38 @@ import {
   type WorkSessionVersionCompare,
 } from '@/app/atelier/session/actions'
 import type { WorkSessionFieldContext } from '@/lib/work-session-payload'
+import { JournalDayExtras } from '@/components/atelier/journal/JournalDayExtras'
+import { listJournalSourceDays, type JournalSourceDay } from '@/app/atelier/(portal)/journal/entry-actions'
 import {
   calendarDayInParisFromIso,
   sessionAtIsoForCalendarDay,
   todayCalendarDayInParis,
 } from '@/lib/session-calendar-day'
+
+/** A day with no field session (only entries, Création items, voice notes — or today). Not a DB row. */
+const DAY_ONLY_PREFIX = 'day:'
+
+function isSessionRow(row: WorkSessionJournalRow): boolean {
+  return !row.id.startsWith(DAY_ONLY_PREFIX)
+}
+
+function dayOnlyRow(day: string): WorkSessionJournalRow {
+  return {
+    id: `${DAY_ONLY_PREFIX}${day}`,
+    session_at: sessionAtIsoForCalendarDay(day) ?? `${day}T12:00:00.000Z`,
+    calendar_day: day,
+    journal_notes: null,
+    field_context: null,
+    item_count: 0,
+    staged_shot_count: 0,
+    applied_shot_count: 0,
+    items: [],
+  } as unknown as WorkSessionJournalRow
+}
+
+function rowDay(row: WorkSessionJournalRow): string {
+  return row.calendar_day || calendarDayInParisFromIso(row.session_at)
+}
 
 function formatDayLong(value: string, locale: string): string {
   return new Date(value).toLocaleDateString(locale, {
@@ -88,13 +115,15 @@ function JournalInventoryIdLink({
   )
 }
 
-function daySummaryLine(
-  row: WorkSessionJournalRow,
-  t: (key: DictKey) => string,
-): string {
+type SummaryT = ReturnType<typeof useI18n>['t']
+
+function daySummaryLine(row: WorkSessionJournalRow, t: SummaryT, src?: JournalSourceDay): string {
   const works = row.item_count
   const photos = row.staged_shot_count + row.applied_shot_count
   const parts: string[] = []
+  if (src?.entries) parts.push(src.entries === 1 ? t('je_sum_entry_one') : t('je_sum_entries').replace('{n}', String(src.entries)))
+  if (src?.creation) parts.push(t('je_sum_creation').replace('{n}', String(src.creation)))
+  if (src?.voices) parts.push(src.voices === 1 ? t('je_sum_voice_one') : t('je_sum_voices').replace('{n}', String(src.voices)))
   if (works > 0) {
     parts.push(
       works === 1
@@ -408,6 +437,7 @@ function JournalPaintingEntry({
 
 function JournalDayPage({
   row,
+  source,
   locale,
   isAdmin,
   sessionPending,
@@ -423,6 +453,7 @@ function JournalDayPage({
   onChanged,
 }: {
   row: WorkSessionJournalRow
+  source?: JournalSourceDay
   locale: string
   isAdmin: boolean
   sessionPending: boolean
@@ -438,6 +469,9 @@ function JournalDayPage({
   onChanged: () => void
 }) {
   const { t } = useI18n()
+  const hasSession = isSessionRow(row)
+  const day = rowDay(row)
+  const captureHref = hasSession ? `/atelier/session/new?session=${row.id}&date=${day}` : `/atelier/session/new?date=${day}`
 
   return (
     <article data-testid="journal-day-page" style={{ maxWidth: 720 }}>
@@ -449,18 +483,20 @@ function JournalDayPage({
           {formatDayLong(row.session_at, locale)}
         </h1>
         <p className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 11, marginTop: 10 }}>
-          {daySummaryLine(row, t)}
+          {daySummaryLine(row, t, source)}
         </p>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 16 }}>
-          <Link
-            href={`/atelier/session/new?session=${row.id}&date=${row.calendar_day || calendarDayInParisFromIso(row.session_at)}`}
-            className="btn primary"
-            data-testid={isAdmin ? 'journal-continue-capture' : 'journal-view-session-day'}
-            style={{ minHeight: 44, display: 'inline-flex', alignItems: 'center' }}
-          >
-            {t(isAdmin ? 'journal_continue_capture' : 'journal_view_session_day')}
-          </Link>
-          {isAdmin && !editingSession ? (
+          {hasSession || isAdmin ? (
+            <Link
+              href={captureHref}
+              className="btn primary"
+              data-testid={isAdmin ? 'journal-continue-capture' : 'journal-view-session-day'}
+              style={{ minHeight: 44, display: 'inline-flex', alignItems: 'center' }}
+            >
+              {t(isAdmin ? 'journal_continue_capture' : 'journal_view_session_day')}
+            </Link>
+          ) : null}
+          {isAdmin && hasSession && !editingSession ? (
             <button type="button" className="btn ghost sm" disabled={sessionPending} onClick={onEditStart} style={{ minHeight: 44 }}>
               {t('journal_session_edit')}
             </button>
@@ -533,6 +569,10 @@ function JournalDayPage({
       )}
 
       {!editingSession ? (
+        <JournalDayExtras day={day} locale={locale} />
+      ) : null}
+
+      {!editingSession ? (
         <section>
           <h2 className="t-eyebrow" style={{ marginBottom: 16, color: 'var(--tx3)' }}>
             {t('journal_paintings_heading')}
@@ -553,9 +593,11 @@ function JournalDayPage({
           ) : (
             <p className="t-mono-sm" style={{ color: 'var(--tx3)', lineHeight: 1.5 }}>
               {t('journal_no_items')}{' '}
-              <Link href={`/atelier/session/new?session=${row.id}&date=${row.calendar_day || calendarDayInParisFromIso(row.session_at)}`} style={{ color: 'var(--ac)' }}>
-                {t(isAdmin ? 'journal_continue_capture' : 'journal_view_session_day')}
-              </Link>
+              {hasSession || isAdmin ? (
+                <Link href={captureHref} style={{ color: 'var(--ac)' }}>
+                  {t(isAdmin ? 'journal_continue_capture' : 'journal_view_session_day')}
+                </Link>
+              ) : null}
             </p>
           )}
         </section>
@@ -569,7 +611,8 @@ export function SessionJournalTab() {
   const router = useRouter()
   const narrow = useMediaQuery('(max-width: 767px)')
   const todayDay = todayCalendarDayInParis()
-  const [rows, setRows] = useState<WorkSessionJournalRow[]>([])
+  const [sessionRows, setSessionRows] = useState<WorkSessionJournalRow[]>([])
+  const [sourceDays, setSourceDays] = useState<JournalSourceDay[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [checkedIds, setCheckedIds] = useState<Set<string>>(() => new Set())
   const [isAdmin, setIsAdmin] = useState(false)
@@ -584,12 +627,28 @@ export function SessionJournalTab() {
 
   const reload = useCallback(() => {
     setLoading(true)
-    void listWorkSessionJournal().then((data) => {
-      setRows(data)
-      setSelectedId((current) => (data.some((row) => row.id === current) ? current : data[0]?.id ?? null))
+    void Promise.all([listWorkSessionJournal(), listJournalSourceDays()]).then(([data, days]) => {
+      setSessionRows(data)
+      setSourceDays(days)
       setLoading(false)
     })
   }, [])
+
+  // One row per day: field-session days, plus days with only entries / Création items / voice notes,
+  // plus today (so anyone can write today). Newest first.
+  const rows = useMemo(() => {
+    const byDay = new Map<string, WorkSessionJournalRow>()
+    for (const row of sessionRows) byDay.set(rowDay(row), row)
+    for (const d of [todayDay, ...sourceDays.map((x) => x.day)]) {
+      if (!byDay.has(d)) byDay.set(d, dayOnlyRow(d))
+    }
+    return [...byDay.values()].sort((a, b) => rowDay(b).localeCompare(rowDay(a)))
+  }, [sessionRows, sourceDays, todayDay])
+  const sourceByDay = useMemo(() => new Map(sourceDays.map((d) => [d.day, d])), [sourceDays])
+
+  useEffect(() => {
+    setSelectedId((current) => (current && rows.some((row) => row.id === current) ? current : rows[0]?.id ?? null))
+  }, [rows])
 
   useEffect(() => {
     reload()
@@ -604,7 +663,7 @@ export function SessionJournalTab() {
 
   useEffect(() => {
     setCheckedIds((prev) => {
-      const valid = new Set(rows.map((row) => row.id))
+      const valid = new Set(rows.filter(isSessionRow).map((row) => row.id))
       const next = new Set([...prev].filter((id) => valid.has(id)))
       return next.size === prev.size ? prev : next
     })
@@ -633,8 +692,20 @@ export function SessionJournalTab() {
     setSessionNotesInput(selected.journal_notes ?? '')
   }, [selected])
 
+  const writeToday = () => {
+    const row = rows.find((r) => rowDay(r) === todayDay)
+    if (row) setSelectedId(row.id)
+    // Let the day page mount, then bring the text box into view and focus it (phone: opens the keyboard).
+    window.setTimeout(() => {
+      const box = document.getElementById('journal-entry-body') as HTMLTextAreaElement | null
+      box?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      box?.focus({ preventScroll: true })
+    }, 150)
+  }
+
   const selectDay = (row: WorkSessionJournalRow) => {
     if (narrow && showManage) {
+      if (!isSessionRow(row)) return
       setCheckedIds((prev) => {
         const next = new Set(prev)
         if (next.has(row.id)) next.delete(row.id)
@@ -770,6 +841,15 @@ export function SessionJournalTab() {
                 {t('journal_team_readonly_intro')}
               </p>
             ) : null}
+            <button
+              type="button"
+              className={isAdmin ? 'btn ghost sm' : 'btn primary sm'}
+              data-testid="journal-write-today"
+              onClick={writeToday}
+              style={{ minHeight: 44, width: '100%', marginBottom: isAdmin ? 8 : 0 }}
+            >
+              {t('je_write_today')}
+            </button>
             {isAdmin ? (
               <Link
                 href={`/atelier/session/new?date=${todayDay}`}
@@ -843,7 +923,7 @@ export function SessionJournalTab() {
                           {formatDayShort(row.session_at, locale)}
                         </div>
                         <div className="t-mono-sm" style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 5, lineHeight: 1.4 }}>
-                          {daySummaryLine(row, t)}
+                          {daySummaryLine(row, t, sourceByDay.get(rowDay(row)))}
                         </div>
                         {row.items.length > 0 ? (
                           <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -893,7 +973,7 @@ export function SessionJournalTab() {
             </div>
           )}
 
-          {isAdmin && rows.length > 0 ? (
+          {isAdmin && sessionRows.length > 0 ? (
             <div style={{ borderTop: '1px solid var(--bd)', padding: 12, marginTop: 'auto' }}>
               <button
                 type="button"
@@ -905,7 +985,7 @@ export function SessionJournalTab() {
               </button>
               {showManage ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
-                  <button type="button" className="btn ghost sm" disabled={sessionPending} onClick={() => setCheckedIds(new Set(rows.map((r) => r.id)))}>
+                  <button type="button" className="btn ghost sm" disabled={sessionPending} onClick={() => setCheckedIds(new Set(sessionRows.map((r) => r.id)))}>
                     {t('journal_select_all')}
                   </button>
                   {checkedIds.size > 0 ? (
@@ -923,7 +1003,7 @@ export function SessionJournalTab() {
                       >
                         {t('journal_delete_selected').replace('{n}', String(checkedIds.size))}
                       </button>
-                      {rows.map((row) => (
+                      {sessionRows.map((row) => (
                         <label key={row.id} className="t-mono-sm" style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 10 }}>
                           <input
                             type="checkbox"
@@ -963,6 +1043,7 @@ export function SessionJournalTab() {
             {selected ? (
               <JournalDayPage
                 row={selected}
+                source={sourceByDay.get(rowDay(selected))}
                 locale={locale}
                 isAdmin={isAdmin}
                 sessionPending={sessionPending}

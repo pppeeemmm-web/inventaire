@@ -80,6 +80,18 @@ Column-specific triggers (`UPDATE OF …`) fire on the columns **in the UPDATE s
 - **Vault types**: counts and type lists ignore `.keep` folder markers; custom types get their own row.
 - **Session journal compare / drawer version history**: diff of `oeuvre_versions` snapshots on real column names.
 
+## 6b. Journal entries (2026-11-12, [`journal_entry.sql`](../supabase/sql/journal_entry.sql))
+
+| Rule | Where |
+|---|---|
+| Team only; default visibility `team`; `private` = author + admins; nothing for anon | RLS on `journal_entry`, `journal_entry_link`; grants select/insert/update to `authenticated` only |
+| Append only: `body`, `kind`, `event_on`, `event_precision`, `created_at`, `author_id`, `provenance`, `corrects_id` never change | `trg_journal_entry_guard` → `journal_append_only` |
+| Never deleted | no DELETE grant + guard → `journal_no_delete` |
+| Hide / visibility change: admin only | guard → `journal_admin_only` |
+| Links entry → work or concept; immutable target; AI proposals later (`proposed_by 'ai'`, `validated_at` null) | `journal_entry_link`, `trg_journal_entry_link_guard` |
+
+Writer: `app/atelier/(portal)/journal/entry-actions.ts` (`createJournalEntry` links works from `#1234` in the text; `setJournalEntryHidden`). Reader: `getJournalDayExtras(day)` = entries + Kaizen Création items created that day (`kaizen_item` section `creation`, read in place — Création stays in Kaizen, owner 2026-11-12) + voice notes + works changed (from `oeuvre_versions`, admin only by RLS). `listJournalSourceDays()` = days that have entries / Création items / voice notes; the journal index merges them with field-session days and today (a day with no session is not a DB row). UI: `components/atelier/journal/JournalDayExtras.tsx` in the journal day page. Compared fields: one list, [`lib/oeuvre-version-fields.ts`](../lib/oeuvre-version-fields.ts) (journal compare, drawer history, day changes).
+
 ## 7. Callable database functions (API exposure)
 
 Every `public` function is reachable through PostgREST `/rest/v1/rpc/…` by any role holding EXECUTE; new functions get EXECUTE for PUBLIC by default — **revoke it in the same SQL file** unless signed-out visitors need it.
