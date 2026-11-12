@@ -388,6 +388,8 @@ export function Inventory({
   const [criteria,    setCriteria]    = useState<Criterion[]>([])
   const [showAdv,     setShowAdv]     = useState(false)
   const [showLegend,  setShowLegend]  = useState(false)
+  // Phone: the ~11 controls above the list sit behind one "Filtres" button (owner review 2026-11-12).
+  const [phoneTools,  setPhoneTools]  = useState(false)
   const [showImagesZip, setShowImagesZip] = useState(false)
   const [showPreview, setShowPreview] = useState(true)
   const [previewExpanded, setPreviewExpanded] = useState(false)
@@ -630,16 +632,30 @@ export function Inventory({
     [groups],
   )
 
+  // Phone keeps its own view (default grid: the wide table scrolls sideways); desktop keeps its own.
+  // Saved only when the user picks a view (an effect used to write the initial value first).
+  const viewKey = narrow ? 'pem_inv_view_phone' : 'pem_inv_view'
   useEffect(() => {
     // Pivot is a one-off analysis view: reopening the Inventory always shows the works
     // (owner 2026-11-03 landed on an empty-looking pivot and lost the list).
-    const saved = localStorage.getItem('pem_inv_view') as View | null
-    if (saved && saved !== 'pivot') setView(saved)
-  }, [])
-
-  useEffect(() => {
-    localStorage.setItem('pem_inv_view', view)
-  }, [view])
+    let saved: View | null = null
+    try {
+      saved = localStorage.getItem(viewKey) as View | null
+    // eslint-disable-next-line pem-i18n/no-silent-catch -- storage blocked is not an error
+    } catch {
+      // storage blocked: fall back to the default view
+    }
+    setView(saved && saved !== 'pivot' ? saved : narrow ? 'grid' : 'list')
+  }, [viewKey, narrow])
+  const chooseView = (next: View) => {
+    setView(next)
+    try {
+      localStorage.setItem(viewKey, next)
+    // eslint-disable-next-line pem-i18n/no-silent-catch -- storage blocked is not an error
+    } catch {
+      // storage blocked: the choice still applies for this visit
+    }
+  }
 
   const filtered = useMemo(() => {
     const trimmedQ = q.trim()
@@ -898,6 +914,11 @@ export function Inventory({
 
   // passed to InvList for range selection
 
+  const activeFilterCount =
+    [filterTheme, filterGroup, filterPeriod, filterSource].filter((v) => v !== 'all').length +
+    criteria.length +
+    (isColourQueryActive(colourQ) ? 1 : 0)
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
 
@@ -941,6 +962,22 @@ export function Inventory({
           }}
         />
 
+        {narrow ? (
+          <button
+            type="button"
+            data-testid="inv-phone-tools"
+            aria-expanded={phoneTools}
+            onClick={() => setPhoneTools((v) => !v)}
+            className={`btn ${phoneTools ? 'primary' : 'ghost'} sm`}
+            style={{ minHeight: 44, fontSize: 12 }}
+          >
+            {t('inv_phone_tools')}
+            {activeFilterCount > 0 ? ` (${activeFilterCount})` : ''} {phoneTools ? '▴' : '▾'}
+          </button>
+        ) : null}
+
+        {!narrow || phoneTools ? (
+        <>
         {/* Theme */}
         <InvSelect
           value={filterTheme} onChange={setFilterTheme}
@@ -989,7 +1026,7 @@ export function Inventory({
             <button
               key={k}
               type="button"
-              onClick={() => setView(k)}
+              onClick={() => chooseView(k)}
               title={title}
               style={{
                 padding: '8px 14px', fontSize: 14,
@@ -1075,6 +1112,8 @@ export function Inventory({
         >
           {t('selectAll')} ({filtered.length})
         </button>
+        </>
+        ) : null}
 
         {/* Selection count & Delete */}
         {selection.size > 0 && (
@@ -1187,7 +1226,7 @@ export function Inventory({
         )}
 
         {/* Rapport: Studio → Rapports on the Œuvres source, like Production / Kaizen / Ventes / Contacts */}
-        <ReportLinkButton source="works" style={{ minHeight: 36, fontSize: 12 }} />
+        {!narrow || phoneTools ? <ReportLinkButton source="works" style={{ minHeight: 36, fontSize: 12 }} /> : null}
 
         {/* Bulk image download — whatever the current filter shows (desktop only) */}
         {!narrow && (
@@ -1216,6 +1255,7 @@ export function Inventory({
         )}
 
         {/* Legend toggle */}
+        {!narrow || phoneTools ? (
         <div style={{ position: 'relative' }}>
           <button
             onClick={() => setShowLegend((v) => !v)}
@@ -1248,9 +1288,11 @@ export function Inventory({
             </div>
           )}
         </div>
+        ) : null}
 
 
-        {/* Preview toggle */}
+        {/* Preview toggle (desktop only: the side preview never shows on a phone) */}
+        {!narrow ? (
         <button
           onClick={() => setShowPreview((v) => !v)}
           style={{
@@ -1265,10 +1307,11 @@ export function Inventory({
         >
           {showPreview ? `${t('inv_preview')} ◀` : `${t('inv_preview')} ▶`}
         </button>
+        ) : null}
 
 
         {/* Selection count */}
-        <div className="t-mono-sm" style={{ color: selection.size > 0 ? 'var(--ac)' : 'var(--tx3)', minWidth: 60, textAlign: 'right' }}>
+        <div className="t-mono-sm" style={{ color: selection.size > 0 ? 'var(--ac)' : 'var(--tx3)', minWidth: narrow ? 0 : 60, textAlign: 'right' }}>
           {selection.size > 0 ? `${selection.size} ${t('selected')}` : ''}
         </div>
       </div>

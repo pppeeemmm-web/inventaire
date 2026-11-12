@@ -11,6 +11,7 @@ import {
   applyWorkSessionToOeuvre,
   openWorkSessionForDay,
   createWorkSessionItemAction,
+  discardEmptyWorkSession,
   findWorksByTitleForSession,
   getSessionNewPageContext,
   getWorkSessionDraftFields,
@@ -173,11 +174,24 @@ export function SessionNewClient({ embed }: { embed?: SessionEmbed } = {}) {
       }
       setSessionId(r.id)
       setSessionReadOnly(r.readOnly)
+      // A row created just now (not reopened, not someone's earlier session).
+      if (embedded && !r.readOnly && !r.reopened && !opts?.preferredSessionId) createdHere.current = r.id
       if (!opts?.quiet && r.reopened) toast.info(t('session_toast_reopened_same_day'))
       if (!opts?.quiet && r.readOnly) toast.info(t('session_readonly_notice'))
       return r.id
     },
-    [initialOk, initialOeuvre, t],
+    [embedded, initialOk, initialOeuvre, t],
+  )
+
+  // Journal-day capture: if this embed created the day's session and it closes with
+  // nothing added, discard it (server re-checks it is empty) — no blank "Day opened" days.
+  const createdHere = useRef<string | null>(null)
+  useEffect(
+    () => () => {
+      const id = createdHere.current
+      if (id) void discardEmptyWorkSession(id).catch(() => undefined)
+    },
+    [],
   )
 
   // Overlapping refreshes (date debounce + saveItem/pushMeta/upload all fire their

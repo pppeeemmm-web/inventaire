@@ -102,6 +102,9 @@ export const workFormMessages = defineMessages({
     en: 'All fields ▾',
   },
   wf_field_capture_only: { fr: 'Terrain seulement ▴', en: 'Field fields only ▴' },
+  wf_themes_edit: { fr: 'Modifier les thèmes', en: 'Edit themes' },
+  wf_themes_done: { fr: 'OK', en: 'Done' },
+  wf_more_actions: { fr: 'Autres actions', en: 'More actions' },
   wf_field_all_fields_hint: {
     fr: 'Statut, propriété, prix, constats, groupes, séances…',
     en: 'Status, ownership, price, condition, groups, sessions…',

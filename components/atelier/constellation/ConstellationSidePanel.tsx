@@ -5,6 +5,7 @@ import type { ConstellationMapRow } from '@/app/atelier/(portal)/constellation/a
 import type { DictKey } from '@/lib/i18n/dictionary'
 import type { Oeuvre } from '@/lib/types/database'
 import { WorkThumb } from '../WorkThumb'
+import { ConstellationJournalEntries } from './ConstellationJournalEntries'
 import { type GroupBy, type NodeMap, type Snapshot } from './constellation-shared'
 
 export type ConstellationSidePanelProps = {
@@ -74,6 +75,7 @@ export function ConstellationSidePanel(props: ConstellationSidePanelProps) {
                     {panelNode.Titre || '—'}
                   </div>
                   <div className="t-mono-sm">{panelNode.Année?.slice(0, 4) ?? '—'} · {(panelNode.Technique != null && tM[panelNode.Technique]) || '—'}</div>
+                  <ConstellationJournalEntries oeuvreId={panelNode.OeuvreID} />
                   <button
                     className={`btn ghost sm ${selection.has(panelNode.OeuvreID) ? 'primary' : ''}`}
                     style={{ marginTop: 10, width: '100%', justifyContent: 'center', borderColor: selection.has(panelNode.OeuvreID) ? 'var(--ac)' : undefined, color: selection.has(panelNode.OeuvreID) ? 'var(--ac)' : undefined }}

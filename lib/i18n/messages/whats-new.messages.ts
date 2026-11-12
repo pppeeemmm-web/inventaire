@@ -9,10 +9,20 @@ export const whatsNewMessages = defineMessages({
   },
 
   // 3.0.3 (2026-11-12) — owner bug review + journal entries.
+  wn_journal_search_t: { fr: 'Le Journal dans la recherche et la Constellation', en: 'The Journal in search and Constellation' },
+  wn_journal_search_d: {
+    fr: 'La recherche (⌘K) trouve aussi les entrées du journal : un clic ouvre le jour. Dans la Constellation, le panneau d’une œuvre liste ses entrées validées. Les suggestions ✦ sont plus strictes : 29 gardées sur 75, les autres retirées (rien n’est effacé). Ouvrir la capture d’un jour sans rien ajouter ne laisse plus de jour « ouvert » vide.',
+    en: 'Search (⌘K) also finds journal entries: a click opens the day. In Constellation, a work’s panel lists its validated entries. ✦ suggestions are stricter: 29 of 75 kept, the rest retired (nothing deleted). Opening capture on a day and adding nothing no longer leaves an empty "opened" day.',
+  },
+  wn_phone_drawer_inventory_t: { fr: 'Fiche et inventaire plus légers sur téléphone', en: 'Lighter work drawer and inventory on the phone' },
+  wn_phone_drawer_inventory_d: {
+    fr: 'Fiche d’œuvre : seuls les thèmes choisis s’affichent (« Modifier les thèmes » ouvre la liste) et la barre du bas garde Enregistrer et 📷 — le reste, dont Supprimer, est sous « ⋯ ». Inventaire : un seul bouton « Filtres & vues » au-dessus de la liste, et la grille par défaut au lieu du tableau large.',
+    en: 'Work drawer: only the chosen themes show ("Edit themes" opens the list) and the bottom bar keeps Save and 📷 — the rest, Delete included, is under "⋯". Inventory: one "Filters & views" button above the list, and the grid by default instead of the wide table.',
+  },
   wn_capture_tidy_t: { fr: 'Capture photo plus nette', en: 'Tidier photo capture' },
   wn_capture_tidy_d: {
-    fr: 'Dans la capture, « Appliquer sur l’œuvre » n’apparaît que s’il y a quelque chose à appliquer (il recouvrait le texte). Prendre une photo / Bibliothèque passent avant « Lieu & météo », désormais replié (✓ une fois relevé).',
-    en: 'In capture, "Apply to work" only shows when there is something to apply (it covered the text). Take photo / Library come before "Location & weather", now folded (✓ once captured).',
+    fr: 'Dans la capture, « Appliquer sur l’œuvre » n’apparaît que s’il y a quelque chose à appliquer (il recouvrait le texte). Prendre une photo / Bibliothèque passent avant « Lieu & météo », désormais replié (▸, ✓ une fois relevé).',
+    en: 'In capture, "Apply to work" only shows when there is something to apply (it covered the text). Take photo / Library come before "Location & weather", now folded (▸, ✓ once captured).',
   },
   wn_journal_main_tab_t: { fr: 'Le Journal devient l’entrée du terrain', en: 'The Journal becomes the field entry point' },
   wn_journal_main_tab_d: {

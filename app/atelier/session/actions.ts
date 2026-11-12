@@ -2356,6 +2356,41 @@ export async function deleteWorkSessionAdmin(sessionId: string): Promise<Session
   return deleteWorkSessionRows(supabase, [sessionId])
 }
 
+/**
+ * Journal-day capture opens (creates) the day's session on mount. When it closes with
+ * nothing added, drop that blank draft so the journal does not gain an empty "Day opened"
+ * row (owner 2026-11-12). Own draft only; anything with content is kept.
+ */
+export async function discardEmptyWorkSession(
+  sessionId: string,
+): Promise<SessionActionResult & { discarded?: boolean }> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié' }
+  const { data: row, error } = await workSessionTable(supabase)
+    .select('id,user_id,status,payload,oeuvre_id')
+    .eq('id', sessionId)
+    .maybeSingle()
+  if (error || !row) return { error: error?.message ?? 'Session introuvable' }
+  const r = row as SessionMutableRow
+  const payload = parseWorkSessionPayload(r.payload)
+  const empty =
+    r.user_id === user.id &&
+    r.status === 'draft' &&
+    !r.oeuvre_id &&
+    payload.shots.length === 0 &&
+    !payload.notes?.trim() &&
+    !payload.field_context &&
+    !payload.items.some(sessionItemHasContent)
+  if (!empty) return { ok: true, discarded: false }
+  const { error: delErr } = await workSessionTable(supabase).delete().eq('id', sessionId)
+  if (delErr) return { error: delErr.message }
+  revalidatePath('/atelier/session/new')
+  return { ok: true, discarded: true }
+}
+
 export async function deleteWorkSessionsAdmin(sessionIds: string[]): Promise<SessionActionResult & { deletedCount?: number }> {
   const supabase = await createClient()
   if (!(await rpcIsAdmin(supabase))) return { error: 'Action réservée à l’administrateur' }

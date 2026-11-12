@@ -10,6 +10,7 @@ export const GRAPH_NODE_TYPES = [
   'concept',
   'working_group',
   'exhibition',
+  'journal_entry',
 ] as const
 
 export type GraphNodeType = (typeof GRAPH_NODE_TYPES)[number]

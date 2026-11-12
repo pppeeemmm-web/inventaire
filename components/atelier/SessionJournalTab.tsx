@@ -664,10 +664,14 @@ export function SessionJournalTab() {
   const [phoneView, setPhoneView] = useState<'list' | 'day'>('list')
   const [composeSignal, setComposeSignal] = useState(0)
   const [captureSignal, setCaptureSignal] = useState(0)
-  // `/atelier/journal?today=1` (Hub → Journal): open today's page straight away.
-  const [openToday, setOpenToday] = useState(false)
+  // `/atelier/journal?today=1` (Hub → Journal) opens today's page; `?day=YYYY-MM-DD`
+  // (search hit, Constellation panel) opens that day.
+  const [openDay, setOpenDay] = useState<string | null>(null)
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get('today') === '1') setOpenToday(true)
+    const params = new URLSearchParams(window.location.search)
+    const day = params.get('day')
+    if (day && /^\d{4}-\d{2}-\d{2}$/.test(day)) setOpenDay(day)
+    else if (params.get('today') === '1') setOpenDay(todayCalendarDayInParis())
   }, [])
   const [loading, setLoading] = useState(true)
   const [editingSession, setEditingSession] = useState(false)
@@ -702,12 +706,14 @@ export function SessionJournalTab() {
   }, [rows])
 
   useEffect(() => {
-    if (!openToday || loading) return
-    const row = rows.find((r) => rowDay(r) === todayDay)
-    if (row) setSelectedId(row.id)
-    setPhoneView('day')
-    setOpenToday(false)
-  }, [openToday, loading, rows, todayDay])
+    if (!openDay || loading) return
+    const row = rows.find((r) => rowDay(r) === openDay)
+    if (row) {
+      setSelectedId(row.id)
+      setPhoneView('day')
+    }
+    setOpenDay(null)
+  }, [openDay, loading, rows])
 
   useEffect(() => {
     reload()

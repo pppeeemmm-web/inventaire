@@ -22,6 +22,8 @@ export type SemanticSearchHit = {
   label: string
   score: number
   legacyIntId: number | null
+  /** journal_entry hits: the entry's day (YYYY-MM-DD), to open it in the Journal. */
+  day?: string | null
 }
 
 export type SemanticSearchResult =
@@ -122,6 +124,16 @@ async function hydrateSemanticHits(
     if (parsed) byId.set(parsed.node_id, parsed)
   }
 
+  // Journal entries open on their day: read event_on for those hits.
+  const journalIds = [...byId.values()]
+    .filter((e) => e.node_type === 'journal_entry' && e.legacy_int_id != null)
+    .map((e) => e.legacy_int_id as number)
+  const dayByEntry = new Map<number, string>()
+  if (journalIds.length > 0) {
+    const { data: rows } = await svc.from('journal_entry').select('id, event_on').in('id', journalIds)
+    for (const row of rows ?? []) dayByEntry.set(Number(row.id), String(row.event_on))
+  }
+
   return results
     .map((r) => {
       const nodeId = r.node_id
@@ -133,6 +145,7 @@ async function hydrateSemanticHits(
         label: ent?.display_label ?? ent?.title ?? (ent?.legacy_int_id != null ? `#${ent.legacy_int_id}` : nodeId),
         score: r.score,
         legacyIntId: ent?.legacy_int_id ?? null,
+        day: ent?.legacy_int_id != null ? dayByEntry.get(ent.legacy_int_id) ?? null : null,
       }
     })
     .filter((h) => h.nodeId)

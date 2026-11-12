@@ -110,6 +110,7 @@ export function DrawerContent({
   // technique, support, size, notes); status, ownership, price and the rest folded below.
   const [allFields, setAllFields] = useState(false)
   const fieldMode = narrow && !allFields
+  const [moreActions, setMoreActions] = useState(false)
   /** Full-res overlay fades in after decode (thumb stays underneath — no hard swap). */
   const [fullPreviewReady, setFullPreviewReady] = useState(false)
 
@@ -1384,6 +1385,7 @@ export function DrawerContent({
           initialThemes={initialThemes}
           selThemes={selThemes}
           setSelThemes={setSelThemes}
+          compactThemes={narrow}
         />
 
         {fieldMode ? (
@@ -1494,6 +1496,24 @@ export function DrawerContent({
               >
                 {t('wf_mobile_add_photo')}
               </button>
+              {/* Phone: Save + 📷 stay; the rest (incl. Delete) sits behind ⋯ (owner review 2026-11-12). */}
+              <button
+                type="button"
+                className={`btn ${moreActions ? 'primary' : 'ghost'} sm`}
+                data-testid="work-drawer-more-actions"
+                aria-expanded={moreActions}
+                aria-label={t('wf_more_actions')}
+                title={t('wf_more_actions')}
+                onClick={() => setMoreActions((v) => !v)}
+                style={{ minHeight: 44, minWidth: 44, fontSize: 18 }}
+              >
+                ⋯
+              </button>
+            </>
+          )}
+          {!narrow || moreActions ? (
+          <>
+          {narrow && (
               <button
                 type="button"
                 className="btn ghost sm"
@@ -1504,7 +1524,6 @@ export function DrawerContent({
               >
                 {t('wf_mobile_pipeline_bump')}
               </button>
-            </>
           )}
           <button className={`btn ${isSel ? 'primary' : 'ghost'}`} onClick={handleToggleSel} style={{ fontSize: 11, minHeight: 44 }}>
             {isSel ? t('wf_in_selection_short') : t('wf_add_selection_short')}
@@ -1533,6 +1552,8 @@ export function DrawerContent({
               <button type="button" className="btn ghost sm" aria-label={t('cancel')} onClick={() => { setConfirmDelete(false); setDeleteError(null) }}>×</button>
             </div>
           )}
+          </>
+          ) : null}
         </div>
         {deleteError && <div style={{ color: '#c0392b', fontSize: 10, marginTop: 6 }}>{deleteError}</div>}
       </div>

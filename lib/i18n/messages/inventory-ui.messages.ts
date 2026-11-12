@@ -1,6 +1,7 @@
 import { defineMessages } from '../message-core'
 
 export const inventoryUiMessages = defineMessages({
+  inv_phone_tools: { fr: 'Filtres & vues', en: 'Filters & views' },
   inv_col_location: {
     fr: 'Emplacement',
     en: 'Location',

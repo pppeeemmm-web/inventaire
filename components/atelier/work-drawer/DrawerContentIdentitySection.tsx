@@ -1,6 +1,6 @@
 'use client'
 
-import type { Dispatch, SetStateAction } from 'react'
+import { useState, type Dispatch, type SetStateAction } from 'react'
 import { DIAMETER_SIGN, isCircularSupport } from '@/lib/data'
 import { CreatableSelect, FIS, Label, SectionTitle, Switch, WfSwitch } from './drawer-widgets'
 
@@ -38,6 +38,7 @@ export function DrawerContentIdentitySection({
   initialThemes,
   selThemes,
   setSelThemes,
+  compactThemes = false,
 }: {
   t: (k: import('@/lib/i18n/dictionary').DictKey) => string
   annee: string
@@ -67,7 +68,12 @@ export function DrawerContentIdentitySection({
   initialThemes: ThemeRow[]
   selThemes: Set<number>
   setSelThemes: Dispatch<SetStateAction<Set<number>>>
+  /** Phone: show only the chosen themes until "Edit themes" (the full list was ~400 px). */
+  compactThemes?: boolean
 }) {
+  const [themesOpen, setThemesOpen] = useState(false)
+  const showAllThemes = !compactThemes || themesOpen
+  const shownThemes = showAllThemes ? initialThemes : initialThemes.filter((th) => selThemes.has(th.id))
   const supportLabel =
     localSupports.find((s) => String(s.SupportID) === supportId)?.Support ?? ''
   const circularPlanar = isCircularSupport(supportLabel)
@@ -181,8 +187,11 @@ export function DrawerContentIdentitySection({
         </select>
 
         <Label>{t('concept_view_themes')}</Label>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-          {initialThemes.map((th) => {
+        <div data-testid="work-drawer-themes" style={{ display: 'flex', flexWrap: 'wrap', gap: compactThemes ? 6 : 3, alignItems: 'center' }}>
+          {!showAllThemes && shownThemes.length === 0 ? (
+            <span style={{ fontSize: 11, color: 'var(--tx3)' }}>—</span>
+          ) : null}
+          {shownThemes.map((th) => {
             const active = selThemes.has(th.id)
             return (
               <button
@@ -197,8 +206,9 @@ export function DrawerContentIdentitySection({
                   })
                 }
                 style={{
-                  padding: '2px 7px',
-                  fontSize: 9,
+                  padding: compactThemes ? '4px 10px' : '2px 7px',
+                  minHeight: compactThemes ? 32 : undefined,
+                  fontSize: compactThemes ? 11 : 9,
                   borderRadius: 2,
                   border: '1px solid var(--bd)',
                   background: active ? 'var(--ac)' : 'var(--bg2)',
@@ -210,6 +220,17 @@ export function DrawerContentIdentitySection({
               </button>
             )
           })}
+          {compactThemes ? (
+            <button
+              type="button"
+              className="btn ghost sm"
+              data-testid="work-drawer-themes-toggle"
+              onClick={() => setThemesOpen((v) => !v)}
+              style={{ minHeight: 32 }}
+            >
+              {t(themesOpen ? 'wf_themes_done' : 'wf_themes_edit')}
+            </button>
+          ) : null}
         </div>
       </div>
     </section>

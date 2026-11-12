@@ -183,10 +183,15 @@ export function CommandPalette({
       for (const hit of semanticHits.slice(0, 8)) {
         result.push({
           id: `semantic:${hit.nodeId}`,
-          label: `${hit.label} (${hit.nodeType})`,
+          label:
+            hit.nodeType === 'journal_entry'
+              ? `📓 ${hit.day ?? ''} · ${hit.label.replace(/[#*`|_>]+/g, ' ').replace(/\s+/g, ' ').trim()}`
+              : `${hit.label} (${hit.nodeType})`,
           group: tk('search_semantic_group'),
           action: () => {
-            if (hit.nodeType === 'oeuvre' && hit.legacyIntId != null) {
+            if (hit.nodeType === 'journal_entry') {
+              window.location.href = hit.day ? `/atelier/journal?day=${hit.day}` : '/atelier/journal'
+            } else if (hit.nodeType === 'oeuvre' && hit.legacyIntId != null) {
               onGoWork(hit.legacyIntId)
             } else if (hit.nodeType === 'contact' && hit.legacyIntId != null) {
               sessionStorage.setItem('pem_open_contact', String(hit.legacyIntId))

@@ -3342,7 +3342,12 @@ export type Database = {
       is_admin: { Args: never; Returns: boolean }
       is_team: { Args: never; Returns: boolean }
       journal_propose_links: {
-        Args: { p_k?: number; p_limit?: number; p_min?: number }
+        Args: {
+          p_k?: number
+          p_limit?: number
+          p_margin?: number
+          p_min?: number
+        }
         Returns: number
       }
       match_nodes: {

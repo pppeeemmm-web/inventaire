@@ -370,3 +370,34 @@ export async function setJournalEntryHidden(id: number, hidden: boolean): Promis
   revalidatePath('/atelier/journal')
   return { ok: true }
 }
+
+export type WorkJournalEntry = { id: number; day: string; kind: string; snippet: string }
+
+/** Constellation side panel: the journal entries linked to a work (validated links only). */
+export async function listJournalEntriesForWork(oeuvreId: number): Promise<WorkJournalEntry[]> {
+  if (!Number.isInteger(oeuvreId) || oeuvreId <= 0) return []
+  const supabase = await createClient()
+  const { data: links, error } = await supabase
+    .from('journal_entry_link')
+    .select('entry_id')
+    .eq('oeuvre_id', oeuvreId)
+    .not('validated_at', 'is', null)
+  if (error || !links?.length) return []
+  const ids = [...new Set(links.map((l) => Number(l.entry_id)))]
+  const { data: rows } = await supabase
+    .from('journal_entry')
+    .select('id, event_on, kind, body, hidden_at')
+    .in('id', ids)
+    .is('hidden_at', null)
+    .order('event_on', { ascending: false })
+  return (rows ?? []).map((r) => ({
+    id: Number(r.id),
+    day: String(r.event_on),
+    kind: String(r.kind),
+    snippet: String(r.body ?? '')
+      .replace(/[#*`|_>]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 120),
+  }))
+}
