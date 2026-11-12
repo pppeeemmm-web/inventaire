@@ -8,7 +8,8 @@
 
 // '3.0.1' (2026-11-03 pm): safety, destroyed / lost, live list rows, earlier items not yet listed.
 // '3.0.2' (2026-11-03 eve): owner / custodian / address (docs/WORK_CUSTODY_MODEL.md).
-export const WHATS_NEW_RELEASE = '3.0.2'
+// '3.0.3' (2026-11-12): owner bug review fixes (docs/AUDIT_2026-11.md).
+export const WHATS_NEW_RELEASE = '3.0.3'
 
 /** localStorage: release the viewer chose not to see again. sessionStorage: already shown this visit. */
 export const WHATS_NEW_DISMISSED_KEY = 'pem_whats_new_dismissed'
@@ -18,6 +19,13 @@ export type WhatsNewItem = { id: string; day: string }
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'drawer_lists', day: '2026-11-12' },
+  { id: 'history_fields', day: '2026-11-12' },
+  { id: 'production_cascade', day: '2026-11-12' },
+  { id: 'vault_types', day: '2026-11-12' },
+  { id: 'period_start', day: '2026-11-12' },
+  { id: 'single_address', day: '2026-11-12' },
+  { id: 'fate_report_only', day: '2026-11-12' },
   { id: 'custody', day: '2026-11-03' },
   { id: 'safety', day: '2026-11-03' },
   { id: 'lifetime_rules', day: '2026-11-03' },

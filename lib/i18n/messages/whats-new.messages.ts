@@ -8,6 +8,43 @@ export const whatsNewMessages = defineMessages({
     en: 'What changed in the Atelier over the last few days.',
   },
 
+  // 3.0.3 (2026-11-12) — owner bug review.
+  wn_drawer_lists_t: { fr: 'Technique, support et format toujours remplis', en: 'Technique, support and format always filled' },
+  wn_drawer_lists_d: {
+    fr: 'Une fiche ouverte juste après l’arrivée dans l’Atelier (ou depuis un lien) pouvait montrer des listes Technique / Support / Format vides, avec seulement « — ». Les listes se remplissent maintenant dès qu’elles sont chargées. Aucune donnée n’avait été perdue.',
+    en: 'A work drawer opened right after reaching the Atelier (or from a link) could show empty Technique / Support / Format lists, with only "—". The lists now fill as soon as they are loaded. No data had been lost.',
+  },
+  wn_history_fields_t: { fr: 'Le journal et l’historique montrent tous les changements', en: 'Journal and history show every change' },
+  wn_history_fields_d: {
+    fr: 'La comparaison avant / après du journal de terrain et l’historique des versions d’une œuvre montrent maintenant aussi la technique, le support, le format, la TVA, la commission et l’anonymat — ils étaient oubliés.',
+    en: 'The before / after view in the field journal and a work’s version history now also show technique, support, format, VAT, commission and anonymity — they were left out.',
+  },
+  wn_production_cascade_t: { fr: 'Production : une étape à la fois', en: 'Production: one stage at a time' },
+  wn_production_cascade_d: {
+    fr: 'Une œuvre suit Cataloguer → Photographier → Disponible. Tant qu’elle n’est pas cataloguée, elle reste dans la colonne Catalogue seulement, même si « à photographier » est coché ; elle ne peut plus apparaître dans deux colonnes de production. Encadrer, monter, expédier… peuvent toujours se cumuler.',
+    en: 'A work goes Catalogue → Photograph → Available. Until it is catalogued it stays in the Catalogue column only, even with "needs photo" ticked; it can no longer show in two production columns. Framing, mounting, shipping… can still stack.',
+  },
+  wn_vault_types_t: { fr: 'Coffre : les types montrent tous leurs fichiers', en: 'Vault: types show all their files' },
+  wn_vault_types_d: {
+    fr: 'Cliquer un type (Factures, Contrats…) liste ses fichiers de tous les dossiers, avec le dossier de chacun. Les compteurs ne comptent que les vrais fichiers, et les types personnalisés (CV, scan…) ont leur ligne.',
+    en: 'Clicking a type (Invoices, Contracts…) lists its files from every folder, with each file’s folder. Counters count real files only, and custom types (CV, scan…) have their own row.',
+  },
+  wn_period_start_t: { fr: 'Période trouvée depuis le début de production', en: 'Period found from the production start' },
+  wn_period_start_d: {
+    fr: 'Une œuvre sans année prend sa période depuis sa date de début de production (par exemple une œuvre commencée en session terrain le 9 novembre 2026 → Marseille).',
+    en: 'A work without a year takes its period from its production start date (for example a work started in a field session on 9 November 2026 → Marseille).',
+  },
+  wn_single_address_t: { fr: 'Adresse du dépositaire reliée toute seule', en: 'Custodian’s address linked automatically' },
+  wn_single_address_d: {
+    fr: 'Quand un dépositaire n’a qu’une adresse, ses œuvres la prennent automatiquement — aussi quand l’adresse est ajoutée après coup. « Adresse absente » dans la Vue d’ensemble ne compte plus ces œuvres à tort.',
+    en: 'When a custodian has a single address, their works take it automatically — also when the address is added later. "No address set" in Overview no longer counts these works by mistake.',
+  },
+  wn_fate_report_only_t: { fr: 'Détruite / perdue : seulement par un constat', en: 'Destroyed / lost: only through a condition report' },
+  wn_fate_report_only_d: {
+    fr: 'Le statut Détruite ou Perdue ne peut venir que d’un constat Destruction ou Perte — jamais d’une modification directe. Une seule façon de marquer le destin d’une œuvre.',
+    en: 'The Destroyed or Lost status can only come from a Destruction or Loss condition report — never from a direct edit. One single way to record a work’s fate.',
+  },
+
   // 3.0.1 (2026-11-03 pm) — plain language for the whole team.
   wn_custody_t: { fr: 'Propriétaire, dépositaire et adresse : chacun à sa place', en: 'Owner, custodian and address: each in its place' },
   wn_custody_d: {

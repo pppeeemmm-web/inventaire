@@ -151,7 +151,7 @@ These are **`'use server'`** modules (callable from Server Components and from t
 
 ### Tab list (desktop group order)
 
-**Terrain / Field (narrow sidebar first):** `inventory`, `production`, `journal`, `notes`, `map` (supplies count → Studio · Fournitures) — then Studio, Catalogue, Commercial, Public, Admin groups (`TeamPortalClient` `GROUPS`).
+**Terrain / Field (narrow sidebar first):** `inventory`, `production`, `journal`, `notes`, `map` (supplies count → Studio · Fournitures) — then Kaizen (Audit for admins first, Création, Opérations & Stratégie), Studio, Catalogue, Commercial, Public groups (`TeamPortalClient` `GROUPS`); no Admin group since 2026-11-12.
 
 **Full tab ids:** `overview`, `inventory`, `reports`, `constellation`, `production`, `logistics`, `sales`, `exhibitions`, `vault`, `contacts`, `map`, `pipeline`, `fiscal`, `concepts`, `themes`, `stock`, `stock-take`, `notes`, `system`, `portfolio`, `audit` (admin), `broadcast` (admin).
 

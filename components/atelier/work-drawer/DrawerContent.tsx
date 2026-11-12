@@ -595,6 +595,19 @@ export function DrawerContent({
   const [localSupports,   setLocalSupports]   = useState(initialSupports)
   const [localFormats,    setLocalFormats]    = useState(initialFormats)
 
+  // The Atelier paints with empty lookups and fills them post-paint; a drawer opened before that
+  // kept empty pickers ("—" only) — bug 1, owner 2026-11-12. Refill from the props when they
+  // arrive, keeping entries created here with "+" that the props don't have yet.
+  useEffect(() => {
+    setLocalTechniques((prev) => [...initialTechniques, ...prev.filter((p) => !initialTechniques.some((i) => i.TechniqueID === p.TechniqueID))])
+  }, [initialTechniques])
+  useEffect(() => {
+    setLocalSupports((prev) => [...initialSupports, ...prev.filter((p) => !initialSupports.some((i) => i.SupportID === p.SupportID))])
+  }, [initialSupports])
+  useEffect(() => {
+    setLocalFormats((prev) => [...initialFormats, ...prev.filter((p) => !initialFormats.some((i) => i.FormatID === p.FormatID))])
+  }, [initialFormats])
+
   /** Addresses belonging to the contact that currently holds the work. */
   const locationAddresses = useMemo(
     () => initialAddresses.filter((a) => String(a.contact_id) === contactId),

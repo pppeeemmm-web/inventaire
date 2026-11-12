@@ -1109,11 +1109,11 @@ export function TeamPortalClient({
 
   /** 6 rooms — same structure on narrow and wide; narrow puts Field first. */
   // System lives inside Kaizen (Opérations & Stratégie → Système) since 2026-11-02.
-  const adminTabs: Tab[] = isAdmin ? ['audit'] : []
   // Diffusion (broadcast) is about what goes public — Public room, still admin-only.
   const publicTabs: Tab[] = isAdmin ? ['site', 'portfolio', 'analytics', 'broadcast'] : ['site', 'portfolio', 'analytics']
-  // Kaizen stands alone (no group label): top of the sidebar on desktop, right after Terrain on phone.
-  const kaizenGroup = { label: t('tab_kaizen'), tabs: ['kaizen', 'kaizen-ops'] as Tab[] }
+  // Kaizen: top of the sidebar on desktop, right after Terrain on phone. Audit (admin only) heads
+  // it — reviews are improvement work too (owner 2026-11-12); the Admin group is gone.
+  const kaizenGroup = { label: t('tab_kaizen'), tabs: (isAdmin ? ['audit', 'kaizen', 'kaizen-ops'] : ['kaizen', 'kaizen-ops']) as Tab[] }
   const fieldGroup = { label: t('nav_group_field'), tabs: ['inventory', 'production', 'journal', 'notes'] as Tab[] }
   const GROUPS: { label: string; tabs: Tab[] }[] = [
     ...(atelierNarrow ? [fieldGroup, kaizenGroup] : [kaizenGroup, fieldGroup]),
@@ -1121,7 +1121,6 @@ export function TeamPortalClient({
     { label: t('nav_group_catalogue'),    tabs: ['reports', 'themes', 'constellation'] },
     { label: t('nav_group_commercial'),   tabs: ['sales', 'contacts', 'map', 'logistics', 'fiscal', 'vault'] },
     { label: t('nav_group_public_tab'),   tabs: publicTabs },
-    { label: t('nav_group_admin'),        tabs: adminTabs },
   ]
 
   const activeTab = effectiveRouteTab ?? tab
