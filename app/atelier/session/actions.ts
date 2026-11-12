@@ -349,9 +349,9 @@ export type WorkSessionVersionCompare = {
 const VERSION_COMPARE_FIELDS = [
   'Titre',
   'Année',
-  'TechniqueID',
-  'SupportID',
-  'FormatID',
+  'Technique',
+  'Support',
+  'Format',
   'Hauteur',
   'Largeur',
   'Profondeur',
@@ -363,13 +363,13 @@ const VERSION_COMPARE_FIELDS = [
   'Historique',
   'LocalisationID',
   'LocalisationDetail',
-  'TVARate',
+  'tva_rate',
   'Catalogué',
   'NeedsPhotograph',
-  'is_commission',
+  'IsCommission',
   'is_paid',
   'is_gift',
-  'AnonymityLevel',
+  'anonymity_level',
 ]
 
 function asPayloadRecord(payload: WorkSessionPayload): Record<string, unknown> {
