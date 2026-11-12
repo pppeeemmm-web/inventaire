@@ -278,8 +278,8 @@ export const atelierMessages = defineMessages({
     en: 'Field journal',
   },
   journal_tab_intro: {
-    fr: 'Chronique de vos journées sur le terrain — une session par date ; les doublons du même jour sont fusionnés automatiquement.',
-    en: 'A chronicle of your field days — one session per date; duplicate rows for the same day are merged automatically.',
+    fr: 'Une page par jour : entrées, notes vocales, photos et œuvres, Création. « Écrire aujourd’hui » ouvre la page du jour.',
+    en: 'One page per day: entries, voice notes, photos and works, Création. "Write today" opens today’s page.',
   },
   journal_new_day: {
     fr: 'Ouvrir la journée',

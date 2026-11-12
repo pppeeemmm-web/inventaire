@@ -27,8 +27,7 @@ test.describe('Hub field launcher (Ring B.1)', () => {
     await page.goto('/hub')
     await expect(page.getByTestId('hub-field-launcher-root')).toBeVisible({ timeout: 45_000 })
     await expect(page.getByTestId('hub-field-pulse')).toBeVisible()
-    await expect(page.getByTestId('hub-field-verb-session')).toBeVisible()
-    await expect(page.getByTestId('hub-field-verb-note')).toBeVisible()
+    await expect(page.getByTestId('hub-field-verb-journal')).toBeVisible()
     await expect(page.getByTestId('hub-field-verb-scan-doc')).toBeVisible()
     await expect(page.getByTestId('hub-field-verb-pipeline')).toBeVisible()
     await expect(page.getByTestId('hub-field-verb-sale')).toBeVisible()
@@ -38,19 +37,18 @@ test.describe('Hub field launcher (Ring B.1)', () => {
     await expect(page.getByTestId('hub-field-verb-issue')).toBeVisible()
   })
 
-  test('session row navigates to field session flow', async ({ page }) => {
+  test('journal row opens today in the journal', async ({ page }) => {
     await page.goto('/hub')
     await expect(page.getByTestId('hub-field-launcher-root')).toBeVisible({ timeout: 45_000 })
-    const sessionRow = page.getByTestId('hub-field-verb-session')
-    await sessionRow.scrollIntoViewIfNeeded()
-    await sessionRow.click({ force: true })
-    await expect(page).toHaveURL(/\/atelier\/session\/new/)
+    const journalRow = page.getByTestId('hub-field-verb-journal')
+    await journalRow.scrollIntoViewIfNeeded()
+    await journalRow.click({ force: true })
+    await expect(page).toHaveURL(/\/atelier\/journal/)
   })
 
-  test('note row opens voice note sheet', async ({ page }) => {
-    await page.goto('/hub')
-    await expect(page.getByTestId('hub-field-launcher-root')).toBeVisible({ timeout: 45_000 })
-    await page.getByTestId('hub-field-verb-note').click()
+  test('journal day opens the voice note sheet', async ({ page }) => {
+    await page.goto('/atelier/journal?today=1')
+    await page.getByTestId('journal-quick-voice').click({ timeout: 45_000 })
     await expect(page.getByTestId('ring-b-voice-sheet')).toBeVisible()
     await page.getByTestId('ring-b-voice-sheet-close').click()
     await expect(page.getByTestId('ring-b-voice-sheet')).not.toBeVisible()

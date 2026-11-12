@@ -6,8 +6,9 @@
 // (supabase/sql/journal_entry.sql): append only, never deleted, hide = admin.
 
 import Link from 'next/link'
-import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
+import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from 'react'
 import { EntryText } from '@/components/atelier/journal/EntryText'
+import { VoiceNoteSheet } from '@/components/shared/VoiceNoteSheet'
 import { getLiveDictationAvailability, startLiveDictation, type LiveDictationSession } from '@/lib/voice/web-speech'
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from '@/lib/ui/toast'
@@ -42,8 +43,33 @@ function workHref(id: number): string {
   return `/atelier/inventory?work=${id}`
 }
 
-export function JournalDayExtras({ day, locale }: { day: string; locale: string }) {
+const DETAILS_SUMMARY = {
+  minHeight: 44,
+  display: 'flex',
+  alignItems: 'center',
+  cursor: 'pointer',
+  color: 'var(--tx3)',
+} as const
+
+export function JournalDayExtras({
+  day,
+  locale,
+  onCapture,
+  captureSlot,
+  composeSignal = 0,
+}: {
+  day: string
+  locale: string
+  /** Admin capture: opens the day's capture section (journal = main tab, owner 2026-11-12). */
+  onCapture?: () => void
+  /** Rendered right after the entries: the day's works and photo capture. */
+  captureSlot?: ReactNode
+  /** Bumped by "Écrire aujourd'hui": opens the form with the cursor in the text. */
+  composeSignal?: number
+}) {
   const { t, lang } = useI18n()
+  const [composing, setComposing] = useState(false)
+  const [voiceOpen, setVoiceOpen] = useState(false)
   // Dictation (browser speech → text in the box). The entry is then saved as provenance voice, unverified.
   const [dictated, setDictated] = useState(false)
   const [listening, setListening] = useState(false)
@@ -126,6 +152,19 @@ export function JournalDayExtras({ day, locale }: { day: string; locale: string 
 
   useEffect(() => () => dictation.current?.stop(), [])
 
+  function openComposer() {
+    setComposing(true)
+    window.setTimeout(() => {
+      const box = document.getElementById('journal-entry-body') as HTMLTextAreaElement | null
+      box?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      box?.focus({ preventScroll: true })
+    }, 60)
+  }
+
+  useEffect(() => {
+    if (composeSignal > 0) openComposer()
+  }, [composeSignal])
+
   function decide(linkId: number, accept: boolean) {
     startTransition(async () => {
       const res = await decideJournalLink(linkId, accept)
@@ -151,7 +190,61 @@ export function JournalDayExtras({ day, locale }: { day: string; locale: string 
   const time = (iso: string) => new Date(iso).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
 
   return (
-    <div data-testid="journal-day-extras" style={{ display: 'flex', flexDirection: 'column', gap: 28, marginBottom: 32 }}>
+    <div data-testid="journal-day-extras" style={{ display: 'flex', flexDirection: 'column', gap: 24, marginBottom: 32 }}>
+      <VoiceNoteSheet
+        open={voiceOpen}
+        onClose={() => {
+          setVoiceOpen(false)
+          void load()
+        }}
+        onSaved={() => void load()}
+      />
+      <div
+        data-testid="journal-quick-row"
+        style={{ display: 'grid', gridTemplateColumns: `repeat(${onCapture ? 4 : 3}, minmax(0, 1fr))`, gap: 8 }}
+      >
+        {(
+          [
+            { id: 'write', emoji: '✍️', label: t('je_quick_write'), on: openComposer },
+            {
+              id: 'dictate',
+              emoji: '🎙',
+              label: t(listening ? 'je_dictate_stop' : 'je_quick_dictate'),
+              on: () => {
+                setComposing(true)
+                void toggleDictation()
+              },
+            },
+            { id: 'voice', emoji: '🎤', label: t('je_quick_voice'), on: () => setVoiceOpen(true) },
+            ...(onCapture ? [{ id: 'capture', emoji: '📷', label: t('je_quick_capture'), on: onCapture }] : []),
+          ] as Array<{ id: string; emoji: string; label: string; on: () => void }>
+        ).map((b) => (
+          <button
+            key={b.id}
+            type="button"
+            className="btn ghost"
+            data-testid={`journal-quick-${b.id}`}
+            onClick={b.on}
+            style={{
+              minHeight: 64,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 4,
+              padding: '8px 4px',
+              whiteSpace: 'normal',
+              ...(b.id === 'dictate' && listening ? { color: 'var(--rust)', borderColor: 'var(--rust)' } : {}),
+            }}
+          >
+            <span aria-hidden style={{ fontSize: 20, lineHeight: 1 }}>
+              {b.emoji}
+            </span>
+            <span style={{ fontSize: 10, lineHeight: 1.15, textAlign: 'center' }}>{b.label}</span>
+          </button>
+        ))}
+      </div>
+
       <section>
         <h2 className="t-eyebrow" style={{ marginBottom: 12, color: 'var(--tx3)' }}>
           {t('je_heading')}
@@ -251,6 +344,7 @@ export function JournalDayExtras({ day, locale }: { day: string; locale: string 
           ))}
         </div>
 
+        {composing || body ? (
         <div
           data-testid="journal-entry-form"
           style={{ border: '1px solid var(--bd)', borderRadius: 10, padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}
@@ -352,12 +446,15 @@ export function JournalDayExtras({ day, locale }: { day: string; locale: string 
             </button>
           </div>
         </div>
+        ) : null}
       </section>
 
-      <section data-testid="journal-day-creation">
-        <h2 className="t-eyebrow" style={{ marginBottom: 12, color: 'var(--tx3)' }}>
-          {t('je_creation_heading')}
-        </h2>
+      {captureSlot}
+
+      <details data-testid="journal-day-creation">
+        <summary className="t-eyebrow" style={DETAILS_SUMMARY}>
+          {t('je_creation_heading')} ({data?.creation.length ?? 0})
+        </summary>
         {data && data.creation.length === 0 ? (
           <p className="t-mono-sm" style={{ color: 'var(--tx3)', margin: 0 }}>
             {t('je_creation_empty')}
@@ -413,12 +510,12 @@ export function JournalDayExtras({ day, locale }: { day: string; locale: string 
             </article>
           ))}
         </div>
-      </section>
+      </details>
 
-      <section data-testid="journal-day-voices">
-        <h2 className="t-eyebrow" style={{ marginBottom: 12, color: 'var(--tx3)' }}>
-          {t('je_voices_heading')}
-        </h2>
+      <details data-testid="journal-day-voices">
+        <summary className="t-eyebrow" style={DETAILS_SUMMARY}>
+          {t('je_voices_heading')} ({data?.voices.length ?? 0})
+        </summary>
         {data && data.voices.length === 0 ? (
           <p className="t-mono-sm" style={{ color: 'var(--tx3)', margin: 0 }}>
             {t('je_voices_empty')}
@@ -434,13 +531,13 @@ export function JournalDayExtras({ day, locale }: { day: string; locale: string 
             </li>
           ))}
         </ul>
-      </section>
+      </details>
 
       {data?.isAdmin ? (
-        <section data-testid="journal-day-changes">
-          <h2 className="t-eyebrow" style={{ marginBottom: 12, color: 'var(--tx3)' }}>
-            {t('je_changes_heading')}
-          </h2>
+        <details data-testid="journal-day-changes">
+          <summary className="t-eyebrow" style={DETAILS_SUMMARY}>
+            {t('je_changes_heading')} ({data.changes.length})
+          </summary>
           {data.changes.length === 0 ? (
             <p className="t-mono-sm" style={{ color: 'var(--tx3)', margin: 0 }}>
               {t('je_changes_empty')}
@@ -457,7 +554,7 @@ export function JournalDayExtras({ day, locale }: { day: string; locale: string 
               </li>
             ))}
           </ul>
-        </section>
+        </details>
       ) : null}
     </div>
   )

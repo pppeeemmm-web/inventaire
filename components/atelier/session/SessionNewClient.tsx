@@ -81,9 +81,17 @@ function sessionItemIsShown(item: WorkSessionItem, activeItemId: string | null):
   return Boolean(activeItemId && item.id === activeItemId)
 }
 
-export function SessionNewClient() {
+/**
+ * `embed`: rendered inside the journal day page (owner 2026-11-12 — the journal is the main tab,
+ * capture is one section of the day). The day / session come from props, not the URL, and the
+ * page chrome (back link, title, date, field notes, admin review list, hub link) is left out.
+ */
+export type SessionEmbed = { day: string; sessionId: string | null }
+
+export function SessionNewClient({ embed }: { embed?: SessionEmbed } = {}) {
   const { t, lang } = useI18n()
   const sp = useSearchParams()
+  const embedded = !!embed
   const narrow = useMediaQuery('(max-width: 767px)')
   const [, startBoot] = useTransition()
   const [busy, startBusy] = useTransition()
@@ -115,9 +123,9 @@ export function SessionNewClient() {
   const [uploading, setUploading] = useState(false)
   const daySwitchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const workQ = sp.get('work')?.trim()
-  const dateQ = sp.get('date')?.trim() ?? ''
-  const sessionQ = sp.get('session')?.trim() ?? ''
+  const workQ = embed ? undefined : sp.get('work')?.trim()
+  const dateQ = embed ? embed.day : (sp.get('date')?.trim() ?? '')
+  const sessionQ = embed ? (embed.sessionId ?? '') : (sp.get('session')?.trim() ?? '')
   const initialSessionId = SESSION_ID_RE.test(sessionQ) ? sessionQ : null
   const initialOeuvre = workQ ? Number.parseInt(workQ, 10) : NaN
   const initialOk = Number.isFinite(initialOeuvre) && initialOeuvre > 0
@@ -149,9 +157,9 @@ export function SessionNewClient() {
   }, [busy, queuedLink, items])
 
   const refreshPending = useCallback(() => {
-    if (!isAdmin || narrow) return
+    if (!isAdmin || narrow || embedded) return
     void listWorkSessionsForAdminReview().then(setPending)
-  }, [isAdmin, narrow])
+  }, [isAdmin, narrow, embedded])
 
   const openDaySession = useCallback(
     async (calendarDay: string, opts?: { quiet?: boolean; preferredSessionId?: string | null }) => {
@@ -225,13 +233,13 @@ export function SessionNewClient() {
           if (!openedId) return
           await refreshDraft(openedId)
         }
-        if (ctx.isAdmin && !narrow) {
+        if (ctx.isAdmin && !narrow && !embedded) {
           const rows = await listWorkSessionsForAdminReview()
           setPending(rows)
         }
       })().finally(() => setHydrated(true))
     })
-  }, [initialCalendarDay, initialOk, initialSessionId, narrow, openDaySession, refreshDraft])
+  }, [embedded, initialCalendarDay, initialOk, initialSessionId, narrow, openDaySession, refreshDraft])
 
   useEffect(() => {
     refreshPending()
@@ -745,17 +753,23 @@ export function SessionNewClient() {
   return (
     <main
       data-testid="session-new-root"
-      style={{
-        minHeight: '100dvh',
-        padding:
-          'max(20px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left))',
-        maxWidth: 440,
-        margin: '0 auto',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 14,
-      }}
+      style={
+        embed
+          ? { display: 'flex', flexDirection: 'column', gap: 14 }
+          : {
+              minHeight: '100dvh',
+              padding:
+                'max(20px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left))',
+              maxWidth: 440,
+              margin: '0 auto',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 14,
+            }
+      }
     >
+      {!embed ? (
+      <>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         <Link
           href="/atelier/journal"
@@ -840,6 +854,8 @@ export function SessionNewClient() {
           disabled={sessionReadOnly}
         />
       </label>
+      </>
+      ) : null}
 
       <section style={{ border: '1px solid var(--bd)', borderRadius: 10, padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div className="row gap-sm" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1386,7 +1402,7 @@ export function SessionNewClient() {
 
       {!sessionReadOnly ? applyBar : null}
 
-      {isAdmin && !narrow && pending.filter((row) => row.id !== sessionId).length > 0 ? (
+      {isAdmin && !narrow && !embed && pending.filter((row) => row.id !== sessionId).length > 0 ? (
         <section style={{ borderTop: '1px solid var(--bd)', paddingTop: 16 }}>
           <h2 className="serif" style={{ fontSize: 16 }}>
             {t('session_admin_pending_heading')}
@@ -1426,12 +1442,12 @@ export function SessionNewClient() {
         </section>
       ) : null}
 
-      {!narrow ? (
+      {!narrow && !embed ? (
         <Link href="/atelier" className="btn ghost" style={{ minHeight: 44, marginTop: 8 }}>
           {t('session_new_back_atelier')}
         </Link>
       ) : null}
-      <FieldHubBackLink style={{ marginTop: 8 }} />
+      {!embed ? <FieldHubBackLink style={{ marginTop: 8 }} /> : null}
     </main>
   )
 }

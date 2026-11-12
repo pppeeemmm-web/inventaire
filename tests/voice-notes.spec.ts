@@ -11,9 +11,9 @@ test.describe('Voice notes (Verb 2)', () => {
 
   test.use({ viewport: { width: 375, height: 812 } })
 
-  test('hub field launcher opens voice sheet', async ({ page }) => {
-    await page.goto('/hub')
-    await page.getByTestId('hub-field-verb-note').click({ timeout: 45_000 })
+  test('journal day opens voice sheet', async ({ page }) => {
+    await page.goto('/atelier/journal?today=1')
+    await page.getByTestId('journal-quick-voice').click({ timeout: 45_000 })
     await expect(page.getByTestId('ring-b-voice-sheet')).toBeVisible()
     await expect(page.getByTestId('ring-b-voice-record-toggle')).toBeVisible()
     await expect(page.getByText(/Demain|Tomorrow/)).toBeVisible()

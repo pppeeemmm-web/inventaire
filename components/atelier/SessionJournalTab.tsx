@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useState, useTransition } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import { useMediaQuery } from '@/lib/useMediaQuery'
@@ -23,6 +23,7 @@ import {
 } from '@/app/atelier/session/actions'
 import type { WorkSessionFieldContext } from '@/lib/work-session-payload'
 import { JournalDayExtras } from '@/components/atelier/journal/JournalDayExtras'
+import { SessionNewClient } from '@/components/atelier/session/SessionNewClient'
 import { listJournalSourceDays, type JournalSourceDay } from '@/app/atelier/(portal)/journal/entry-actions'
 import {
   calendarDayInParisFromIso,
@@ -451,6 +452,8 @@ function JournalDayPage({
   onSave,
   onDelete,
   onChanged,
+  composeSignal,
+  captureSignal,
 }: {
   row: WorkSessionJournalRow
   source?: JournalSourceDay
@@ -467,11 +470,85 @@ function JournalDayPage({
   onSave: () => void
   onDelete: () => void
   onChanged: () => void
+  composeSignal: number
+  captureSignal: number
 }) {
   const { t } = useI18n()
   const hasSession = isSessionRow(row)
   const day = rowDay(row)
-  const captureHref = hasSession ? `/atelier/session/new?session=${row.id}&date=${day}` : `/atelier/session/new?date=${day}`
+  // Capture is a folded section of the day (owner 2026-11-12): the session form loads only
+  // when opened, so a day without painting never waits for it or opens an empty session.
+  const [captureOpen, setCaptureOpen] = useState(false)
+  useEffect(() => setCaptureOpen(false), [day])
+
+  const openCapture = () => {
+    setCaptureOpen(true)
+    window.setTimeout(() => {
+      document.getElementById('journal-day-capture')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 60)
+  }
+
+  useEffect(() => {
+    if (captureSignal > 0 && isAdmin) openCapture()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [captureSignal])
+
+  const captureSlot = (
+    <section id="journal-day-capture" data-testid="journal-day-works">
+      <h2 className="t-eyebrow" style={{ marginBottom: 12, color: 'var(--tx3)' }}>
+        {t('je_works_heading')} ({row.items.length})
+      </h2>
+      {isAdmin ? (
+        captureOpen ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
+            <button
+              type="button"
+              className="btn ghost sm"
+              data-testid="journal-capture-close"
+              onClick={() => {
+                setCaptureOpen(false)
+                onChanged()
+              }}
+              style={{ minHeight: 44, alignSelf: 'flex-start' }}
+            >
+              {t('je_capture_close')}
+            </button>
+            <Suspense fallback={<p className="t-mono-sm">{t('je_capture_loading')}</p>}>
+              <SessionNewClient embed={{ day, sessionId: hasSession ? row.id : null }} />
+            </Suspense>
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="btn ghost"
+            data-testid="journal-capture-open"
+            onClick={openCapture}
+            style={{ minHeight: 44, width: '100%', marginBottom: 16 }}
+          >
+            {t('je_capture_open')}
+          </button>
+        )
+      ) : null}
+      {row.items.length > 0 ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+          {row.items.map((item) => (
+            <JournalPaintingEntry
+              key={item.id}
+              item={item}
+              sessionId={row.id}
+              sessionDate={row.session_at}
+              isAdmin={isAdmin}
+              onChanged={onChanged}
+            />
+          ))}
+        </div>
+      ) : !captureOpen ? (
+        <p className="t-mono-sm" style={{ color: 'var(--tx3)', lineHeight: 1.5, margin: 0 }}>
+          {t('journal_no_items')}
+        </p>
+      ) : null}
+    </section>
+  )
 
   return (
     <article data-testid="journal-day-page" style={{ maxWidth: 720 }}>
@@ -485,23 +562,13 @@ function JournalDayPage({
         <p className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 11, marginTop: 10 }}>
           {daySummaryLine(row, t, source)}
         </p>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 16 }}>
-          {hasSession || isAdmin ? (
-            <Link
-              href={captureHref}
-              className="btn primary"
-              data-testid={isAdmin ? 'journal-continue-capture' : 'journal-view-session-day'}
-              style={{ minHeight: 44, display: 'inline-flex', alignItems: 'center' }}
-            >
-              {t(isAdmin ? 'journal_continue_capture' : 'journal_view_session_day')}
-            </Link>
-          ) : null}
-          {isAdmin && hasSession && !editingSession ? (
+        {isAdmin && hasSession && !editingSession ? (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
             <button type="button" className="btn ghost sm" disabled={sessionPending} onClick={onEditStart} style={{ minHeight: 44 }}>
               {t('journal_session_edit')}
             </button>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
       </header>
 
       {editingSession ? (
@@ -569,38 +636,13 @@ function JournalDayPage({
       )}
 
       {!editingSession ? (
-        <JournalDayExtras day={day} locale={locale} />
-      ) : null}
-
-      {!editingSession ? (
-        <section>
-          <h2 className="t-eyebrow" style={{ marginBottom: 16, color: 'var(--tx3)' }}>
-            {t('journal_paintings_heading')}
-          </h2>
-          {row.items.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
-              {row.items.map((item) => (
-                <JournalPaintingEntry
-                  key={item.id}
-                  item={item}
-                  sessionId={row.id}
-                  sessionDate={row.session_at}
-                  isAdmin={isAdmin}
-                  onChanged={onChanged}
-                />
-              ))}
-            </div>
-          ) : (
-            <p className="t-mono-sm" style={{ color: 'var(--tx3)', lineHeight: 1.5 }}>
-              {t('journal_no_items')}{' '}
-              {hasSession || isAdmin ? (
-                <Link href={captureHref} style={{ color: 'var(--ac)' }}>
-                  {t(isAdmin ? 'journal_continue_capture' : 'journal_view_session_day')}
-                </Link>
-              ) : null}
-            </p>
-          )}
-        </section>
+        <JournalDayExtras
+          day={day}
+          locale={locale}
+          onCapture={isAdmin ? openCapture : undefined}
+          captureSlot={captureSlot}
+          composeSignal={composeSignal}
+        />
       ) : null}
     </article>
   )
@@ -620,6 +662,13 @@ export function SessionJournalTab() {
   const [showManage, setShowManage] = useState(false)
   // Phone: the list of days OR one day, full screen (owner 2026-11-12: iPhone SE had ~270 px for the day).
   const [phoneView, setPhoneView] = useState<'list' | 'day'>('list')
+  const [composeSignal, setComposeSignal] = useState(0)
+  const [captureSignal, setCaptureSignal] = useState(0)
+  // `/atelier/journal?today=1` (Hub → Journal): open today's page straight away.
+  const [openToday, setOpenToday] = useState(false)
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('today') === '1') setOpenToday(true)
+  }, [])
   const [loading, setLoading] = useState(true)
   const [editingSession, setEditingSession] = useState(false)
   const [sessionDateInput, setSessionDateInput] = useState('')
@@ -651,6 +700,14 @@ export function SessionJournalTab() {
   useEffect(() => {
     setSelectedId((current) => (current && rows.some((row) => row.id === current) ? current : rows[0]?.id ?? null))
   }, [rows])
+
+  useEffect(() => {
+    if (!openToday || loading) return
+    const row = rows.find((r) => rowDay(r) === todayDay)
+    if (row) setSelectedId(row.id)
+    setPhoneView('day')
+    setOpenToday(false)
+  }, [openToday, loading, rows, todayDay])
 
   useEffect(() => {
     reload()
@@ -698,12 +755,15 @@ export function SessionJournalTab() {
     const row = rows.find((r) => rowDay(r) === todayDay)
     if (row) setSelectedId(row.id)
     setPhoneView('day')
-    // Let the day page mount, then bring the text box into view and focus it (phone: opens the keyboard).
-    window.setTimeout(() => {
-      const box = document.getElementById('journal-entry-body') as HTMLTextAreaElement | null
-      box?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      box?.focus({ preventScroll: true })
-    }, 150)
+    // The day page opens its form and focuses the text (phone: opens the keyboard).
+    setComposeSignal((n) => n + 1)
+  }
+
+  const captureToday = () => {
+    const row = rows.find((r) => rowDay(r) === todayDay)
+    if (row) setSelectedId(row.id)
+    setPhoneView('day')
+    setCaptureSignal((n) => n + 1)
   }
 
   const selectDay = (row: WorkSessionJournalRow) => {
@@ -857,19 +917,15 @@ export function SessionJournalTab() {
               {t('je_write_today')}
             </button>
             {isAdmin ? (
-              <Link
-                href={`/atelier/session/new?date=${todayDay}`}
+              <button
+                type="button"
                 className="btn primary sm"
                 data-testid="journal-capture-today"
+                onClick={captureToday}
                 style={{ minHeight: 44, width: '100%' }}
               >
                 {t('journal_capture_today')}
-              </Link>
-            ) : null}
-            {narrow && isAdmin ? (
-              <p className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 10, margin: '8px 0 0', lineHeight: 1.4 }}>
-                {t('journal_open_day_capture')}
-              </p>
+              </button>
             ) : null}
           </div>
 
@@ -1075,6 +1131,8 @@ export function SessionJournalTab() {
                 onSave={saveSessionEdit}
                 onDelete={deleteSession}
                 onChanged={reload}
+                composeSignal={composeSignal}
+                captureSignal={captureSignal}
               />
             ) : (
               <div className="t-mono-sm" style={{ color: 'var(--tx3)' }}>

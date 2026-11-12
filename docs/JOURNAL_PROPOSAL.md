@@ -49,6 +49,10 @@ _Brief `BRIEF_CLAUDE_CODE_audit_journal.md`, phase 2. Read from live data and co
 
 Add only (no overwrite) · no physical deletion · two dates (entered / event) · provenance + verification on every entry · Pem's text kept as written · one datum in one place · journal changes to a work go through `saveWork` and the rules in `ARCHITECTURE.md` (no second notion of fate).
 
+## Journal = main field tab (owner GO 2026-11-12)
+
+Hub's first row is **Journal** → `/atelier/journal?today=1` (today's page). The Hub "Session" and "Note" rows are gone. Day page, top to bottom: quick row (✍️ Écrire · 🎙 Dicter · 🎤 Note vocale · 📷 Capture for admins) → entries (form opens on Écrire / Dicter) → **Œuvres du jour**: the day's works + the field-session form embedded (`SessionNewClient` `embed` prop; loads only when opened, so a day without painting does not open a session) → folded Création, voice notes, works changed. `/atelier/session/new` still exists (share target, direct links). Load before the change, live site cold: capture screen ~7.8 s, journal ~7.5 s — mostly the shared Atelier shell, not the session itself.
+
 ## Build order (each step needs a GO)
 
 1. ~~`journal_entry` table + append-only triggers + day page reading existing sources.~~ **Built 2026-11-12** (owner GO): `journal_entry.sql` applied + tested (rolled back), day page block `JournalDayExtras` checked at 375 × 667. Same day: the day page also reads Kaizen Création items created that day (owner: Création stays in Kaizen for the team, the journal shows it — nothing copied), voice notes and works changed; a day exists as soon as anything is logged on it, and **Écrire aujourd'hui** opens today. Phone (2026-11-12): the journal shows the list **or** one day full screen; the entry form has 🎙 dictation (browser speech → text, saved as provenance voice, unverified — no audio kept). Limits: concept links exist in the table but have no picker yet; no entry was created in production during the test.

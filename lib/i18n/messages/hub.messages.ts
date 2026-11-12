@@ -1,6 +1,12 @@
 import { defineMessages } from '../message-core'
 
 export const hubMessages = defineMessages({
+  // Journal heads the field rows (owner 2026-11-12): today's page = write, dictate, voice, capture.
+  hub_field_journal: { fr: 'Journal', en: 'Journal' },
+  hub_field_journal_sub: { fr: 'Aujourd’hui : écrire, dicter, note vocale, photos', en: 'Today: write, dictate, voice note, photos' },
+  hub_launcher_kaizen: { fr: 'Kaizen', en: 'Kaizen' },
+  hub_launcher_kaizen_sub: { fr: 'Audit · Création · Opérations & Stratégie', en: 'Audit · Creation · Operations & Strategy' },
+  hub_field_more_sub: { fr: 'Groupes Terrain · Studio · Commercial · Kaizen', en: 'Field · Studio · Commercial · Kaizen groups' },
   hub_desktop_redirecting: {
     fr: "Ouverture de l'atelier…",
     en: 'Opening studio…',

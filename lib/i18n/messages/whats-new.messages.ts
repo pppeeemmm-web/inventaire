@@ -9,6 +9,11 @@ export const whatsNewMessages = defineMessages({
   },
 
   // 3.0.3 (2026-11-12) — owner bug review + journal entries.
+  wn_journal_main_tab_t: { fr: 'Le Journal devient l’entrée du terrain', en: 'The Journal becomes the field entry point' },
+  wn_journal_main_tab_d: {
+    fr: 'Sur le téléphone, le Hub commence par « Journal » : il ouvre la page d’aujourd’hui. En haut, quatre boutons : Écrire, Dicter, Note vocale et (admins) Capture. Les photos d’œuvres se prennent dans la section « Œuvres du jour », repliée tant qu’on ne l’ouvre pas — la journée ne charge plus la capture pour rien. Création, notes vocales et fiches modifiées sont repliées en bas. Les lignes « Session » et « Note » du Hub disparaissent.',
+    en: 'On the phone, the Hub starts with "Journal": it opens today’s page. At the top, four buttons: Write, Dictate, Voice note and (admins) Capture. Work photos are taken in the "Works of the day" section, folded until opened — the day no longer loads capture for nothing. Création, voice notes and works changed are folded at the bottom. The Hub "Session" and "Note" rows are gone.',
+  },
   wn_journal_links_t: { fr: 'Journal : entrées lisibles, concepts, suggestions IA', en: 'Journal: readable entries, concepts, AI suggestions' },
   wn_journal_links_d: {
     fr: 'Les entrées s’affichent avec titres, gras, listes et tableaux (le texte enregistré ne change pas) — dont l’Atlas, importé au 10 juin 2026. « Nouvelle entrée » peut relier un concept de Recherche. L’index relit les entrées et propose des œuvres ou concepts proches, marqués ✦ : seul un admin les valide ou les rejette ; rien n’est relié sans validation.',

@@ -6,34 +6,31 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import type { DictKey } from '@/lib/i18n/dictionary'
-import { VoiceNoteSheet } from '@/components/shared/VoiceNoteSheet'
 import type { FieldPulseCard, FieldPulseData, FieldPulseMetricKey } from '@/app/atelier/field-inbox/data'
-import { getSessionNewPageContext } from '@/app/atelier/session/actions'
-import { todayCalendarDayInParis } from '@/lib/session-calendar-day'
 import { atelierTabHref } from '@/lib/atelier/tab-routes'
 
 const LEGACY_TILES = [
   { key: 'hub_launcher_field' as const, subKey: 'hub_launcher_field_sub' as const, tab: 'inventory' },
   { key: 'hub_launcher_studio' as const, subKey: 'hub_launcher_studio_sub' as const, tab: 'overview' },
   { key: 'hub_launcher_commercial' as const, subKey: 'hub_launcher_commercial_sub' as const, tab: 'pipeline' },
-  { key: 'hub_launcher_admin' as const, subKey: 'hub_launcher_admin_sub' as const, tab: 'contacts' },
+  { key: 'hub_launcher_kaizen' as const, subKey: 'hub_launcher_kaizen_sub' as const, tab: 'kaizen' },
 ]
 
-type FieldRow =
-  | { kind: 'link'; testId: string; emoji: string; labelKey: DictKey; subKey: DictKey; href: string }
-  | { kind: 'note'; testId: string; emoji: string; labelKey: DictKey; subKey: DictKey }
+type FieldRow = { testId: string; emoji: string; labelKey: DictKey; subKey: DictKey; href: string }
 
-/** Ring B.1 — field verbs first; order matches iPhone SE plan. */
+/**
+ * Field verbs first. Journal heads the list (owner 2026-11-12): today's page holds writing,
+ * dictation, voice notes and photo capture — so no separate Session or Note rows.
+ */
 const FIELD_ROWS: FieldRow[] = [
-  { kind: 'link', testId: 'hub-field-verb-session', emoji: '📷', labelKey: 'hub_field_session', subKey: 'hub_field_session_sub', href: '/atelier/session/new' },
-  { kind: 'note', testId: 'hub-field-verb-note', emoji: '🎤', labelKey: 'hub_field_note', subKey: 'hub_field_note_sub' },
-  { kind: 'link', testId: 'hub-field-verb-scan-doc', emoji: '📄', labelKey: 'hub_field_scan_doc', subKey: 'hub_field_scan_doc_sub', href: '/atelier/capture?mode=doc' },
-  { kind: 'link', testId: 'hub-field-verb-pipeline', emoji: '📅', labelKey: 'hub_field_pipeline', subKey: 'hub_field_pipeline_sub', href: '/atelier/pipeline' },
-  { kind: 'link', testId: 'hub-field-verb-sale', emoji: '💳', labelKey: 'hub_field_sale', subKey: 'hub_field_sale_sub', href: '/atelier/sale/new' },
-  { kind: 'link', testId: 'hub-field-verb-triage', emoji: '📣', labelKey: 'hub_field_triage', subKey: 'hub_field_triage_sub', href: '/atelier/triage' },
-  { kind: 'link', testId: 'hub-field-verb-contact', emoji: '👤', labelKey: 'hub_field_contact', subKey: 'hub_field_contact_sub', href: '/atelier/capture?mode=card' },
-  { kind: 'link', testId: 'hub-field-verb-document', emoji: '✍️', labelKey: 'hub_field_document', subKey: 'hub_field_document_sub', href: '/atelier/documents/new' },
-  { kind: 'link', testId: 'hub-field-verb-issue', emoji: '⚠️', labelKey: 'hub_field_issue', subKey: 'hub_field_issue_sub', href: '/atelier/issue/new' },
+  { testId: 'hub-field-verb-journal', emoji: '📓', labelKey: 'hub_field_journal', subKey: 'hub_field_journal_sub', href: '/atelier/journal?today=1' },
+  { testId: 'hub-field-verb-scan-doc', emoji: '📄', labelKey: 'hub_field_scan_doc', subKey: 'hub_field_scan_doc_sub', href: '/atelier/capture?mode=doc' },
+  { testId: 'hub-field-verb-pipeline', emoji: '📅', labelKey: 'hub_field_pipeline', subKey: 'hub_field_pipeline_sub', href: '/atelier/pipeline' },
+  { testId: 'hub-field-verb-sale', emoji: '💳', labelKey: 'hub_field_sale', subKey: 'hub_field_sale_sub', href: '/atelier/sale/new' },
+  { testId: 'hub-field-verb-triage', emoji: '📣', labelKey: 'hub_field_triage', subKey: 'hub_field_triage_sub', href: '/atelier/triage' },
+  { testId: 'hub-field-verb-contact', emoji: '👤', labelKey: 'hub_field_contact', subKey: 'hub_field_contact_sub', href: '/atelier/capture?mode=card' },
+  { testId: 'hub-field-verb-document', emoji: '✍️', labelKey: 'hub_field_document', subKey: 'hub_field_document_sub', href: '/atelier/documents/new' },
+  { testId: 'hub-field-verb-issue', emoji: '⚠️', labelKey: 'hub_field_issue', subKey: 'hub_field_issue_sub', href: '/atelier/issue/new' },
 ]
 
 const METRIC_LABELS: Record<FieldPulseMetricKey, DictKey> = {
@@ -41,29 +38,6 @@ const METRIC_LABELS: Record<FieldPulseMetricKey, DictKey> = {
   today: 'field_pulse_metric_today',
   pending_review: 'field_pulse_metric_pending_review',
   inbox: 'field_pulse_metric_inbox',
-}
-
-function fieldRowSubKey(row: FieldRow, isAdmin: boolean): DictKey {
-  if (isAdmin && row.testId === 'hub-field-verb-session') return 'hub_field_session_sub_admin'
-  return row.subKey
-}
-
-function fieldRowLabelKey(row: FieldRow, isAdmin: boolean): DictKey {
-  if (!isAdmin && row.testId === 'hub-field-verb-session') return 'hub_field_session_title_team'
-  return row.labelKey
-}
-
-function fieldRowEmoji(row: FieldRow, isAdmin: boolean): string {
-  if (!isAdmin && row.testId === 'hub-field-verb-session') return '📓'
-  return row.emoji
-}
-
-function fieldRowHref(row: FieldRow, isAdmin: boolean): string {
-  if (row.kind === 'link' && row.testId === 'hub-field-verb-session') {
-    if (!isAdmin) return atelierTabHref('journal')
-    return `/atelier/session/new?date=${todayCalendarDayInParis()}`
-  }
-  return row.kind === 'link' ? row.href : ''
 }
 
 function renderCardText(card: FieldPulseCard, field: 'title' | 'detail', t: (key: DictKey) => string): string {
@@ -172,15 +146,9 @@ export function HubLauncherClient({ fieldPulse }: { fieldPulse: FieldPulseData }
   const narrow = useMediaQuery('(max-width: 767px)')
   const [viewportReady, setViewportReady] = useState(false)
   const [legacyOpen, setLegacyOpen] = useState(false)
-  const [voiceOpen, setVoiceOpen] = useState(false)
-  const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
     setViewportReady(true)
-  }, [])
-
-  useEffect(() => {
-    void getSessionNewPageContext().then((ctx) => setIsAdmin(ctx.isAdmin))
   }, [])
 
   useEffect(() => {
@@ -245,16 +213,12 @@ export function HubLauncherClient({ fieldPulse }: { fieldPulse: FieldPulseData }
         <div className="serif s-lg" style={{ marginTop: 8 }}>{t('hub_launcher_title')}</div>
       </div>
 
-      <VoiceNoteSheet open={voiceOpen} onClose={() => setVoiceOpen(false)} oeuvreOptions={[]} />
-
       {narrow ? (
         <div data-testid="hub-field-launcher-root" data-hub-copy-rev="2026-05-15" style={{ width: '100%', maxWidth: 420, display: 'flex', flexDirection: 'column', gap: 10 }}>
           <FieldPulsePanel fieldPulse={fieldPulse} />
 
           {FIELD_ROWS.map((row) => {
-            const subKey = fieldRowSubKey(row, isAdmin)
-            const labelKey = fieldRowLabelKey(row, isAdmin)
-            const emoji = fieldRowEmoji(row, isAdmin)
+            const { subKey, labelKey, emoji } = row
             const content = (
               <>
                 <span style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 12, minWidth: 0, flex: 1 }}>
@@ -282,33 +246,17 @@ export function HubLauncherClient({ fieldPulse }: { fieldPulse: FieldPulseData }
               boxSizing: 'border-box' as const,
             }
 
-            if (row.kind === 'link') {
-              return (
-                <Link
-                  key={row.labelKey}
-                  href={fieldRowHref(row, isAdmin)}
-                  className="btn ghost"
-                  data-testid={row.testId}
-                  aria-label={`${t(labelKey)}. ${t(subKey)}`}
-                  style={rowStyle}
-                >
-                  {content}
-                </Link>
-              )
-            }
-
             return (
-              <button
+              <Link
                 key={row.labelKey}
-                type="button"
+                href={row.href}
                 className="btn ghost"
                 data-testid={row.testId}
                 aria-label={`${t(labelKey)}. ${t(subKey)}`}
-                onClick={() => setVoiceOpen(true)}
                 style={rowStyle}
               >
                 {content}
-              </button>
+              </Link>
             )
           })}
 
