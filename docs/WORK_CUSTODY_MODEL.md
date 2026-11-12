@@ -37,7 +37,8 @@ Pem = Contact 13. Pem's addresses: **Atelier** and **Principal** (same street, 6
 ## Where it is enforced
 
 - DB trigger `oeuvre_holder_check` ([`work_custody_model.sql`](../supabase/sql/work_custody_model.sql)): the table above, per status.
-- DB trigger `oeuvre_location_by_stage` (same file): the address rules.
+- DB trigger `oeuvre_location_by_stage` (same file): the address rules. Runs only when the work row is saved.
+- DB trigger `trg_contact_address_link_single` on `contact_addresses` ([`contact_address_single_link.sql`](../supabase/sql/contact_address_single_link.sql), applied 2026-11-12): same single-address rule from the address side — when a contact is left with one address, its works without an address get it (Pem excluded). Backfill linked #302, #2124, #2162, #2339, #2341 (Kaizen "linkage broken").
 - Orders: [`sales/actions.ts`](../app/atelier/(portal)/sales/actions.ts), [`consignments/actions.ts`](../app/atelier/consignments/actions.ts); gifts: [`gift-actions.ts`](../app/atelier/works/gift-actions.ts); exhibitions: [`exhibitions/actions.ts`](../app/atelier/(portal)/exhibitions/actions.ts).
 
 ## Mismatches found 2026-11-03 (live code + DB) and their fix
