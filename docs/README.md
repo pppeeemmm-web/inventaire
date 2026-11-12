@@ -8,9 +8,11 @@
 | Doc | Use when | Verified |
 |-----|----------|----------|
 | [`MOBILE_RATIONALIZATION_PLAN.md`](./MOBILE_RATIONALIZATION_PLAN.md) | **Current workstream** — phases, owner decisions, field measurements | 2026-07-16 |
-| [`WORK_CUSTODY_MODEL.md`](./WORK_CUSTODY_MODEL.md) | Owner / custodian / address per work stage — the rule every order, screen and trigger follows | 2026-11-03 |
+| [`ARCHITECTURE.md`](./ARCHITECTURE.md) | **Rules map** — fate rule, statuses, every `Oeuvres` trigger in run order, who writes what, derived values, indexing. Update in the same commit as any rule/trigger/writer change | 2026-11-12 |
+| [`AUDIT_2026-11.md`](./AUDIT_2026-11.md) | Phase 1 audit (brief): reported bugs, Kaizen vs code, found issues, what is not verified | 2026-11-12 |
+| [`WORK_CUSTODY_MODEL.md`](./WORK_CUSTODY_MODEL.md) | Owner / custodian / address per work stage — the rule every order, screen and trigger follows | 2026-11-12 |
 | [`STRATEGY.md`](./STRATEGY.md) | Owner long-term strategy, potentials, non-goals — the filter for new work | skeleton 2026-07-16, content pending owner exchange |
-| [`TODO.md`](./TODO.md) | Live checklist (ops deadlines, open product items, roadmap) | 2026-07-16 |
+| [`TODO.md`](./TODO.md) | Live checklist (ops deadlines, open product items, roadmap) | 2026-11-12 |
 | [`PROJECT_SYNTHESIS.md`](./PROJECT_SYNTHESIS.md) | Onboarding: stack boundaries, broadcast chain, where truth lives | 2026-05-25 — accurate on stack; silent on mobile field-tool era |
 | [`ADMIN_GUIDE.md`](./ADMIN_GUIDE.md) | Onboarding (admin): encyclopedia, every feature | 2026-05-25 — **photo/session/hub sections predate the 2026-07 mobile pass** (banner inside) |
 | [`TEAM_MEMBER_GUIDE.md`](./TEAM_MEMBER_GUIDE.md) | Onboarding (non-admin team) | 2026-05-26 — same caveat as admin guide |
