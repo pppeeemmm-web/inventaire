@@ -15,6 +15,8 @@ test.describe('Work session (Verb 1)', () => {
     await page.goto('/atelier/session/new')
     await expect(page.getByTestId('session-new-root')).toBeVisible({ timeout: 45_000 })
     await expect(page.getByTestId('session-date-input')).toBeVisible()
+    // Location & weather is folded (owner 2026-11-12): open it, then the button shows.
+    await page.getByTestId('session-field-context').locator('summary').click()
     await expect(page.getByTestId('session-field-context-capture')).toBeVisible()
     await page.getByTestId('session-add-painting').click()
     await expect(page.getByTestId('session-active-item')).toBeVisible({ timeout: 20_000 })

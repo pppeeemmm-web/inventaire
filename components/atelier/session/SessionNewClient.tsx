@@ -1336,7 +1336,30 @@ export function SessionNewClient({ embed }: { embed?: SessionEmbed } = {}) {
         </section>
       ) : null}
 
-      <div className="t-mono-sm" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {/* Fallback only: with no painting yet there is nothing to attach to, and
+          onUploadFiles creates the first slot itself. The per-painting picker
+          above handles every other case. */}
+      {!activeItem && canCaptureSessions && !sessionReadOnly ? (
+        <SessionPhotoCapture
+          disabled={sessionReadOnly}
+          busy={busy || uploading}
+          instantUpload
+          stagedShots={[]}
+          onUpload={onUploadFiles}
+          onRemoveStaged={onRemoveStagedShot}
+        />
+      ) : null}
+      {shotCount > 0 ? (
+        <div className="t-mono-sm" style={{ opacity: 0.75 }}>
+          {t('session_shots_label')}: {shotCount}
+        </div>
+      ) : null}
+
+      <details className="t-mono-sm" data-testid="session-field-context" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <summary style={{ minHeight: 44, display: 'flex', alignItems: 'center', cursor: 'pointer', color: 'var(--tx2)', fontSize: 12 }}>
+          {t('session_field_context_cta')}{fieldContext ? ' ✓' : ''}
+        </summary>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <p style={{ color: 'var(--tx2)', fontSize: 11, lineHeight: 1.4, margin: 0 }}>{t('session_field_context_hint')}</p>
         <button
           type="button"
@@ -1381,26 +1404,10 @@ export function SessionNewClient({ embed }: { embed?: SessionEmbed } = {}) {
             ) : null}
           </div>
         ) : null}
-      </div>
+        </div>
+      </details>
 
-      {/* Fallback only: with no painting yet there is nothing to attach to, and
-          onUploadFiles creates the first slot itself. The per-painting picker
-          above handles every other case. */}
-      {!activeItem && canCaptureSessions && !sessionReadOnly ? (
-        <SessionPhotoCapture
-          disabled={sessionReadOnly}
-          busy={busy || uploading}
-          instantUpload
-          stagedShots={[]}
-          onUpload={onUploadFiles}
-          onRemoveStaged={onRemoveStagedShot}
-        />
-      ) : null}
-      <div className="t-mono-sm" style={{ opacity: 0.75 }}>
-        {t('session_shots_label')}: {shotCount}
-      </div>
-
-      {!sessionReadOnly ? applyBar : null}
+      {!sessionReadOnly && (actionableCount > 0 || stagedShotCount > 0 || applying) ? applyBar : null}
 
       {isAdmin && !narrow && !embed && pending.filter((row) => row.id !== sessionId).length > 0 ? (
         <section style={{ borderTop: '1px solid var(--bd)', paddingTop: 16 }}>

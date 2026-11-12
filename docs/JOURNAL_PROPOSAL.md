@@ -51,7 +51,7 @@ Add only (no overwrite) · no physical deletion · two dates (entered / event) �
 
 ## Journal = main field tab (owner GO 2026-11-12)
 
-Hub's first row is **Journal** → `/atelier/journal?today=1` (today's page). The Hub "Session" and "Note" rows are gone. Day page, top to bottom: quick row (✍️ Écrire · 🎙 Dicter · 🎤 Note vocale · 📷 Capture for admins) → entries (form opens on Écrire / Dicter) → **Œuvres du jour**: the day's works + the field-session form embedded (`SessionNewClient` `embed` prop; loads only when opened, so a day without painting does not open a session) → folded Création, voice notes, works changed. `/atelier/session/new` still exists (share target, direct links). Load before the change, live site cold: capture screen ~7.8 s, journal ~7.5 s — mostly the shared Atelier shell, not the session itself.
+Hub's first row is **Journal** → `/atelier/journal?today=1` (today's page). The Hub "Session" and "Note" rows are gone. Day page, top to bottom: quick row (✍️ Écrire · 🎙 Dicter · 🎤 Note vocale · 📷 Capture for admins) → entries (form opens on Écrire / Dicter) → **Œuvres du jour**: the day's works + the field-session form embedded (`SessionNewClient` `embed` prop; loads only when opened, so a day without painting does not open a session) → folded Création, voice notes, works changed. `/atelier/session/new` still exists (share target, direct links). Capture tidy (2026-11-12): Apply bar only when there is something to apply; photo picker before Location & weather, which is folded. Load before the change, live site cold: capture screen ~7.8 s, journal ~7.5 s — mostly the shared Atelier shell, not the session itself.
 
 ## Build order (each step needs a GO)
 

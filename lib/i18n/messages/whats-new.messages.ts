@@ -9,6 +9,11 @@ export const whatsNewMessages = defineMessages({
   },
 
   // 3.0.3 (2026-11-12) — owner bug review + journal entries.
+  wn_capture_tidy_t: { fr: 'Capture photo plus nette', en: 'Tidier photo capture' },
+  wn_capture_tidy_d: {
+    fr: 'Dans la capture, « Appliquer sur l’œuvre » n’apparaît que s’il y a quelque chose à appliquer (il recouvrait le texte). Prendre une photo / Bibliothèque passent avant « Lieu & météo », désormais replié (✓ une fois relevé).',
+    en: 'In capture, "Apply to work" only shows when there is something to apply (it covered the text). Take photo / Library come before "Location & weather", now folded (✓ once captured).',
+  },
   wn_journal_main_tab_t: { fr: 'Le Journal devient l’entrée du terrain', en: 'The Journal becomes the field entry point' },
   wn_journal_main_tab_d: {
     fr: 'Sur le téléphone, le Hub commence par « Journal » : il ouvre la page d’aujourd’hui. En haut, quatre boutons : Écrire, Dicter, Note vocale et (admins) Capture. Les photos d’œuvres se prennent dans la section « Œuvres du jour », repliée tant qu’on ne l’ouvre pas — la journée ne charge plus la capture pour rien. Création, notes vocales et fiches modifiées sont repliées en bas. Les lignes « Session » et « Note » du Hub disparaissent.',

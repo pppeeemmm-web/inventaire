@@ -13,7 +13,8 @@
 // '3.0.5' (2026-11-12): journal on the phone + dictation; drawer field mode (step 2).
 // '3.0.6' (2026-11-12): readable entries, concept link, new-work field mode, AI link suggestions (step 5).
 // '3.0.7' (2026-11-12): the Journal is the main field tab (Hub → today; capture inside the day).
-export const WHATS_NEW_RELEASE = '3.0.7'
+// '3.0.8' (2026-11-12): capture tidy (apply bar, photo first, location folded).
+export const WHATS_NEW_RELEASE = '3.0.8'
 
 /** localStorage: release the viewer chose not to see again. sessionStorage: already shown this visit. */
 export const WHATS_NEW_DISMISSED_KEY = 'pem_whats_new_dismissed'
@@ -23,6 +24,7 @@ export type WhatsNewItem = { id: string; day: string }
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'capture_tidy', day: '2026-11-12' },
   { id: 'journal_main_tab', day: '2026-11-12' },
   { id: 'journal_links', day: '2026-11-12' },
   { id: 'new_work_field_mode', day: '2026-11-12' },
