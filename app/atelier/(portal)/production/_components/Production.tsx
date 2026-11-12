@@ -373,10 +373,16 @@ export function Production({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
         }}>
           {actionTypes.map((at) => {
             const ids   = actionMap.get(at.id) ?? new Set<number>()
+            // Cascade (owner 2026-11-12): Cataloguer → Photographier → Disponible. A work sits in
+            // ONE of these two stages: not catalogued = Catalogue only, whatever its photo flag
+            // or task; Photography once catalogued. Handling columns (frame, mount, ship…) can
+            // stack — that work is past production stages.
             const isPhotoColumn = at.id === 6 // 'Photographier'
+            const isCatalogueColumn = at.id === 9 // 'Cataloguer'
             const works = active.filter((o) => {
-              const needsPhoto = o.NeedsPhotograph
-              return ids.has(o.OeuvreID) || (isPhotoColumn && needsPhoto)
+              if (isCatalogueColumn) return ids.has(o.OeuvreID) || !o.Catalogué
+              if (isPhotoColumn) return !!o.Catalogué && (ids.has(o.OeuvreID) || !!o.NeedsPhotograph)
+              return ids.has(o.OeuvreID)
             })
             return (
               <div

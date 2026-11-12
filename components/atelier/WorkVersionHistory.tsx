@@ -10,12 +10,13 @@ import {
 } from '@/app/atelier/(portal)/audit/version-actions'
 
 const SHOW_FIELDS = [
-  'Titre', 'Année', 'TechniqueID', 'SupportID', 'FormatID',
+  // Real `Oeuvres` column names — the keys of `oeuvre_versions.snapshot`.
+  'Titre', 'Année', 'Technique', 'Support', 'Format',
   'Hauteur', 'Largeur', 'Profondeur', 'Prix', 'PrixFinal',
   'statusId', 'ContactID', 'Commentaires', 'Historique',
-  'LocalisationID', 'LocalisationDetail', 'TVARate',
-  'Catalogué', 'NeedsPhotograph', 'is_commission', 'is_paid', 'is_gift',
-  'AnonymityLevel',
+  'LocalisationID', 'LocalisationDetail', 'tva_rate',
+  'Catalogué', 'NeedsPhotograph', 'IsCommission', 'is_paid', 'is_gift',
+  'anonymity_level',
 ]
 
 function diffSnapshots(prev: Record<string, unknown> | null, cur: Record<string, unknown>) {

@@ -2,7 +2,7 @@
 
 _Live checklist. History → [`archive/`](./archive/). Current workstream → [`MOBILE_RATIONALIZATION_PLAN.md`](./MOBILE_RATIONALIZATION_PLAN.md)._
 
-**Last refresh: 2026-11-03** — V5 programme closed 2026-05-29 (slices 1–8, details in archive). Mobile rationalization: Phases 0–2.1 done, next 2.2 (gated on owner field notes).
+**Last refresh: 2026-11-12** — V5 programme closed 2026-05-29 (slices 1–8, details in archive). Mobile rationalization: Phases 0–2.1 done, next 2.2 (gated on owner field notes).
 
 ## Live workstream
 
@@ -27,6 +27,14 @@ _Live checklist. History → [`archive/`](./archive/). Current workstream → [`
 - [x] **CORS on the R2 `vault` bucket** — set 2026-11-01 with owner OK: `PUT` + `content-type` only, origins `https://www.thepemworkshop.com`, `https://thepemworkshop.com`, `http://localhost:3000`. Verified by preflight (allowed origins 204, other origin 403). Needed by the browser-to-R2 path in `createVaultUploadUrl` (files > 4 MB). A new app origin (preview domain, LAN dev URL) must be added there too.
 
 ## Product — open
+
+- [ ] **Owner bug review, 2026-11-12** (brief `BRIEF_CLAUDE_CODE_audit_journal.md`, phase 1 A; verified against live code 2026-11-12).
+  - [x] Session journal before/after compare read 6 field names absent from `oeuvre_versions.snapshot` (`TechniqueID`, `SupportID`, `FormatID`, `TVARate`, `is_commission`, `AnonymityLevel`) — fixed `6b87b6d`, deployed. Same list fixed in the drawer version history (`WorkVersionHistory.tsx`).
+  - [x] Coffre: a type showed a count (all folders) but listed only top-level files (Factures 1 / 0 shown); Overview counted 32 `.keep` markers (49 vs 17 files); custom types `CV`, `scan` had no row. Fixed in `Vault.tsx`. Open: 28 `.keep` rows in `COA` — not deleted (needs owner OK).
+  - [x] Period: automatic period read only `Année`; field-session works have a production start date and no year (#2403–#2407 showed none). Now `periodYearOf()` in `lib/work-periods.ts`: year, else production start year. Display only, nothing written.
+  - [x] Production board: a work could sit in Catalogue and Photography at once (8 works: #2384, #2386, #2387, #2394–#2396, #2398, #2405). Verified on dev 2026-11-12: Photography 63 = DB count of catalogued works awaiting photo. Cascade rule in `Production.tsx` (see ADMIN_GUIDE 6.6).
+  - [ ] Bug 1 of the list ("déjà indiqué mais semble avoir disparu"): read as phone support/technique — write path consistent in data (40 field works checked); confirm with owner which screen.
+- [ ] **Idea (owner 2026-11-12, no GO): VAT per sale** — today `Oeuvres.tva_rate` is typed by hand. Wanted: rate resolved from the transaction itself (date, buyer country, buyer VAT number, artist-author 5.5 %, EU B2C distance-sale threshold €10k → OSS, intra-EU B2B reverse charge, export exempt), with a running total against the thresholds. Rules to confirm with the accountant before any build.
 
 - [x] **Owner live-site review, 2026-11-03** (verified against live code 2026-11-03; dev-server checks listed below, not checked on production).
   - Inventaire: pencil column removed (row click opens the work); "Périodes & sources" button; legend popup opens rightward (was cut by the sidebar); **Rapport** button (→ Rapports, Œuvres); with a selection, **Source…** gives one source to every selected work (`addSourceToWorks`).

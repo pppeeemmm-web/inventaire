@@ -6,9 +6,8 @@
 import { useMemo, useState, type CSSProperties } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from '@/lib/ui/toast'
-import { yearOf } from '@/lib/data'
 import { isPeriodSourceLoaded, patchPeriodSource, usePeriodSource } from '@/lib/atelier/use-period-source'
-import { effectivePeriod, periodRange, sortPeriods, type WorkPeriod } from '@/lib/work-periods'
+import { effectivePeriod, periodRange, periodYearOf, sortPeriods, type WorkPeriod } from '@/lib/work-periods'
 import { deletePeriod, deleteSource, savePeriod, saveSource } from '@/app/atelier/works/period-source-actions'
 
 type Draft = { name: string; start: string; end: string }
@@ -23,7 +22,7 @@ export function PeriodSourceManager({
   onClose,
 }: {
   /** Loaded works, for the per-period / per-source counts. */
-  works?: { OeuvreID: number; Année: string | null }[]
+  works?: { OeuvreID: number; Année: string | null; production_started_on?: string | null }[]
   onClose?: () => void
 }) {
   const { t } = useI18n()
@@ -40,7 +39,7 @@ export function PeriodSourceManager({
   const periodCounts = useMemo(() => {
     const c = new Map<number, number>()
     for (const w of works ?? []) {
-      const p = effectivePeriod(w.OeuvreID, yearOf(w.Année), data).period
+      const p = effectivePeriod(w.OeuvreID, periodYearOf(w), data).period
       if (p) c.set(p.id, (c.get(p.id) ?? 0) + 1)
     }
     return c

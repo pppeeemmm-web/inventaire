@@ -170,8 +170,29 @@ export function Vault({ oeuvres, tM }: Props) {
     return tree
   }, [docs])
 
+  // `.keep` rows only mark empty folders: never counted as files.
+  const realDocs = useMemo(() => docs.filter((d) => d.name !== '.keep'), [docs])
+
+  // Built-in types first, then custom types typed on import/edit (e.g. "CV"), so every file
+  // has a type row. `system` is the folder-marker kind.
+  const kindRows = useMemo(() => {
+    const builtIn = new Set(DOC_KINDS.map((k) => k.value))
+    const custom = Array.from(new Set(realDocs.map((d) => d.kind).filter((k): k is string => !!k && !builtIn.has(k) && k !== 'system')))
+      .sort((a, b) => a.localeCompare(b, 'fr'))
+      .map((k) => ({ value: k, label: k }))
+    return [...DOC_KINDS, ...custom]
+  }, [realDocs])
+
   // Derived folders and documents for the current view
   const { visibleFolders, visibleDocs } = useMemo(() => {
+    // A type is a filter across the whole vault: its count and its list cover every folder.
+    if (kindFilter) {
+      const q = search.toLowerCase()
+      return {
+        visibleFolders: [] as string[],
+        visibleDocs: realDocs.filter((d) => d.kind === kindFilter && (!search || d.name.toLowerCase().includes(q))),
+      }
+    }
     const folderSet = new Set<string>()
     const docsInDir: VaultDoc[] = []
 
@@ -217,7 +238,7 @@ export function Vault({ oeuvres, tM }: Props) {
       visibleFolders: Array.from(folderSet).sort(), 
       visibleDocs: docsInDir 
     }
-  }, [docs, currentFolderStr, search, kindFilter])
+  }, [docs, realDocs, currentFolderStr, search, kindFilter])
 
   const handleDownload = async (doc: VaultDoc) => {
     if (!doc.storage_path) return
@@ -326,7 +347,7 @@ export function Vault({ oeuvres, tM }: Props) {
           onClick={() => { setKindFilter(null); setCurrentPath([]) }}
           style={{ paddingLeft: 20, textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10 }}
         >
-          <span>📂</span> {t('overview')} ({docs.length})
+          <span>📂</span> {t('overview')} ({realDocs.length})
         </button>
 
         <div className="t-eyebrow" style={{ padding: '24px 20px 8px', fontSize: 10, opacity: 0.5, letterSpacing: 1.5 }}>
@@ -397,8 +418,8 @@ export function Vault({ oeuvres, tM }: Props) {
           TYPES
         </div>
         <div style={{ paddingBottom: 20 }}>
-          {DOC_KINDS.map(({ value, label }) => {
-            const count = docs.filter((d) => d.kind === value).length
+          {kindRows.map(({ value, label }) => {
+            const count = realDocs.filter((d) => d.kind === value).length
             return (
               <button
                 key={value}
@@ -670,6 +691,9 @@ export function Vault({ oeuvres, tM }: Props) {
                           />
                           <span>{mimeIcon(doc.mime_type)}</span>
                           {doc.name}
+                          {kindFilter && doc.folder ? (
+                            <span style={{ fontSize: 11, color: 'var(--tx3)' }}>📁 {doc.folder}</span>
+                          ) : null}
                         </div>
                       </td>
                       <td style={{ padding: '10px 16px' }}>

@@ -54,6 +54,7 @@ import { WorkCostBlock } from './WorkCostBlock'
 import { LinkedVoiceNotes } from '@/components/atelier/LinkedVoiceNotes'
 import { ConditionReportsSection } from './ConditionReportsSection'
 import { WorkPeriodSourceSection } from './WorkPeriodSourceSection'
+import { periodYearOf } from '@/lib/work-periods'
 import { normalizeAnonymityLevel } from '@/lib/anonymity-level'
 import { formatPartialDate } from '@/lib/partial-date'
 
@@ -1364,7 +1365,7 @@ export function DrawerContent({
           setSelThemes={setSelThemes}
         />
 
-        <WorkPeriodSourceSection oeuvreId={o.OeuvreID} year={yearOf(annee)} />
+        <WorkPeriodSourceSection oeuvreId={o.OeuvreID} year={periodYearOf({ Année: annee, production_started_on: o.production_started_on })} />
 
         <WorkFormPhysicalQr oeuvreId={o.OeuvreID} titre={titre || o.Titre} />
 

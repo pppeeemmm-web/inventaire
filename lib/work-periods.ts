@@ -3,6 +3,8 @@
  * `app/atelier/works/period-source-actions.ts`, tables in `supabase/sql/work_periods_sources.sql`.
  */
 
+import { yearOf } from '@/lib/data'
+
 export type WorkPeriod = { id: number; name: string; start_year: number; end_year: number | null }
 export type WorkSource = { id: number; name: string }
 
@@ -42,6 +44,14 @@ export function autoPeriodFor(year: number | null, periods: WorkPeriod[]): WorkP
     }
   }
   return best
+}
+
+/**
+ * Year the automatic period reads: `Année`, else the production start date (a field-session
+ * work has a start day before anyone sets its year — #2407, owner 2026-11-12). Display only.
+ */
+export function periodYearOf(w: { Année?: string | null; production_started_on?: string | null }): number | null {
+  return yearOf(w.Année) ?? yearOf(w.production_started_on)
 }
 
 export type EffectivePeriod = { period: WorkPeriod | null; overridden: boolean }

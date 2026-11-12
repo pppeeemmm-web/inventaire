@@ -359,6 +359,8 @@ Contact label rotation: Pem (artist/archive), Buyer intent (reserved), Custodian
 
 `work_action` syncing: server action `syncPipelineWithBooleans()` keeps `work_action` rows in sync with the booleans on save (action IDs: 6 = Photographier, 9 = Cataloguer).
 
+**Production board columns (cascade, owner 2026-11-12):** Cataloguer → Photographier → Disponible. A work is in **one** of these two stages: not catalogued → Catalogue column only (whatever its photo flag or task); catalogued + photo flag or photo task → Photography column. Handling columns (Retoucher, À monter, Encadrer, Exposer, À expédier) can stack — that work is past production. Code: `Production.tsx` column filter.
+
 > **Do:** as admin, you can update production toggles on sold works in the rare reset case — the section greys but the underlying field still mutates. Only do this if you really need to.
 
 > **Pitfall:** `anonymity_level` + `admin_override_anonymity` — set the override when you want to publish a work that would normally be redacted.

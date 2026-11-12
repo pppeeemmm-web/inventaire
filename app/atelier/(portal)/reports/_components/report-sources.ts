@@ -11,7 +11,7 @@ import { yearOf } from '@/lib/data'
 import type { ReportConfig, ReportField } from '@/lib/reports/engine'
 import { REPORT_COLUMN_HEADER_KEY, formatReportCell, type ReportMaps } from '@/lib/reports/works-table'
 import type { ReportSource } from '@/lib/reports/saved-report'
-import { effectivePeriod, type PeriodSourceData } from '@/lib/work-periods'
+import { effectivePeriod, periodYearOf, type PeriodSourceData } from '@/lib/work-periods'
 
 export type SaleRow = { o: Oeuvre; order: SaleOrderRow | null }
 
@@ -117,7 +117,7 @@ function workFields(c: SourceCtx): ReportField<Oeuvre>[] {
       id: 'period',
       label: t('ps_period'),
       kind: 'enum',
-      value: (o) => effectivePeriod(o.OeuvreID, yearOf(o.Année), c.periodSource).period?.name ?? null,
+      value: (o) => effectivePeriod(o.OeuvreID, periodYearOf(o), c.periodSource).period?.name ?? null,
     },
     {
       id: 'sources',
