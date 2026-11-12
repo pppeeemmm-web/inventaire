@@ -564,7 +564,6 @@ function WorkCard({ o, tM, onMarkDone, onOpen }: {
   onOpen:     (o: Oeuvre) => void
 }) {
   const { t, lang } = useI18n()
-  const router     = useRouter()
   const techLabel  = o.Technique != null ? tM[o.Technique] : null
   const year       = yearOf(o.Année)
   const isCommission = o.IsCommission
@@ -625,7 +624,8 @@ function WorkCard({ o, tM, onMarkDone, onOpen }: {
           >✓</button>
           {/* Edit */}
           <button
-            onClick={(e) => { e.stopPropagation(); router.push(`/atelier?work=${o.OeuvreID}`) }}
+            // Opens the drawer here (it used to go to /atelier, i.e. Overview — owner 2026-11-12).
+            onClick={(e) => { e.stopPropagation(); onOpen(o) }}
             title={t('edit')}
             style={{
               fontSize: 12, padding: '2px 6px', color: 'var(--tx3)',

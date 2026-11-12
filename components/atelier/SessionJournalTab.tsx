@@ -118,13 +118,14 @@ function JournalInventoryIdLink({
 
 type SummaryT = ReturnType<typeof useI18n>['t']
 
-function daySummaryLine(row: WorkSessionJournalRow, t: SummaryT, src?: JournalSourceDay): string {
+function daySummaryLine(row: WorkSessionJournalRow, t: SummaryT, src?: JournalSourceDay, isAdmin = false): string {
   const works = row.item_count
   const photos = row.staged_shot_count + row.applied_shot_count
   const parts: string[] = []
   if (src?.entries) parts.push(src.entries === 1 ? t('je_sum_entry_one') : t('je_sum_entries').replace('{n}', String(src.entries)))
   if (src?.creation) parts.push(t('je_sum_creation').replace('{n}', String(src.creation)))
   if (src?.voices) parts.push(src.voices === 1 ? t('je_sum_voice_one') : t('je_sum_voices').replace('{n}', String(src.voices)))
+  if (isAdmin && src?.proposals) parts.push(t('je_sum_proposals').replace('{n}', String(src.proposals)))
   if (works > 0) {
     parts.push(
       works === 1
@@ -542,7 +543,8 @@ function JournalDayPage({
             />
           ))}
         </div>
-      ) : !captureOpen ? (
+      ) : !isAdmin ? (
+        // Admins see the capture button instead; the empty line only repeated it.
         <p className="t-mono-sm" style={{ color: 'var(--tx3)', lineHeight: 1.5, margin: 0 }}>
           {t('journal_no_items')}
         </p>
@@ -560,7 +562,7 @@ function JournalDayPage({
           {formatDayLong(row.session_at, locale)}
         </h1>
         <p className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 11, marginTop: 10 }}>
-          {daySummaryLine(row, t, source)}
+          {daySummaryLine(row, t, source, isAdmin)}
         </p>
         {isAdmin && hasSession && !editingSession ? (
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
@@ -991,7 +993,7 @@ export function SessionJournalTab() {
                           {formatDayShort(row.session_at, locale)}
                         </div>
                         <div className="t-mono-sm" style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 5, lineHeight: 1.4 }}>
-                          {daySummaryLine(row, t, sourceByDay.get(rowDay(row)))}
+                          {daySummaryLine(row, t, sourceByDay.get(rowDay(row)), isAdmin)}
                         </div>
                         {row.items.length > 0 ? (
                           <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>

@@ -9,5 +9,5 @@ export default async function EditWorkPage({ params }: Props) {
   const { id } = await params
   const oid = parseInt(id, 10)
   if (Number.isNaN(oid)) notFound()
-  redirect(`/atelier?work=${oid}`)
+  redirect(`/atelier/inventory?work=${oid}`)
 }

@@ -1321,6 +1321,14 @@ export function DrawerContent({
         style={{ border: 0, padding: 0, margin: 0, minWidth: 0, ...(o.fate ? { opacity: 0.55, pointerEvents: 'none' } : null) }}
       >
       <WorkDrawerPipelineSection
+        onOpenContact={(cid) =>
+          // Unsaved-changes guard first; then close the drawer and open the contact card, which
+          // offers "← back to work" (Kaizen #34).
+          runGuarded(() => {
+            onClose()
+            router.push(`/atelier/contacts?contact=${cid}&from_work=${o.OeuvreID}`)
+          })
+        }
         narrow={narrow}
         prodStage={prodStage}
         setProdStage={handleProdStageChange}

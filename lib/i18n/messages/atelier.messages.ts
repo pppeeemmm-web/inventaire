@@ -330,8 +330,8 @@ export const atelierMessages = defineMessages({
     en: '{n} photos',
   },
   journal_day_empty_summary: {
-    fr: 'Journée ouverte',
-    en: 'Day opened',
+    fr: 'Rien encore',
+    en: 'Nothing yet',
   },
   journal_show_details: {
     fr: 'Détails',
@@ -390,8 +390,8 @@ export const atelierMessages = defineMessages({
     en: '{n} session(s) deleted.',
   },
   journal_no_items: {
-    fr: 'Aucune peinture détaillée dans cette session.',
-    en: 'No detailed painting entries in this session.',
+    fr: 'Aucune œuvre capturée ce jour.',
+    en: 'No works captured this day.',
   },
   journal_compare_cta: {
     fr: 'Comparer avant / après',

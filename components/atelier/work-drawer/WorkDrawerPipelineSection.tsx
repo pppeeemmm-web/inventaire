@@ -11,6 +11,8 @@ import { PEM_CONTACT_ID } from '@/lib/data'
 import { SectionTitle, WfPipeProgress, WfSwitch, FIS } from './drawer-widgets'
 
 export type WorkDrawerPipelineSectionProps = {
+  /** Open a contact's card from the drawer (Kaizen #34: bounce work → contact → work). */
+  onOpenContact?: (contactId: number) => void
   narrow: boolean
   prodStage: ProdStageId
   setProdStage: (next: ProdStageId) => void
@@ -68,8 +70,26 @@ export function WorkDrawerPipelineSection({
   anonymityLevel,
   setAnonymityLevel,
   setShowNewContact,
+  onOpenContact,
 }: WorkDrawerPipelineSectionProps) {
   const { t } = useI18n()
+  const openContactButton = (id: string) => {
+    const n = Number.parseInt(id, 10)
+    if (!onOpenContact || !Number.isFinite(n) || n <= 0) return null
+    return (
+      <button
+        type="button"
+        className="btn ghost sm"
+        data-testid="work-drawer-open-contact"
+        aria-label={t('wf_open_contact')}
+        title={t('wf_open_contact')}
+        style={{ flexShrink: 0, width: 44, minWidth: 44, padding: 0, alignSelf: 'stretch' }}
+        onClick={() => onOpenContact(n)}
+      >
+        ↗
+      </button>
+    )
+  }
 
   const PRODUCTION_STAGES = useMemo(
     () => [
@@ -127,6 +147,7 @@ export function WorkDrawerPipelineSection({
           <option key={c.ContactID} value={c.ContactID}>{cName(c)}</option>
         ))}
       </select>
+      {openContactButton(value)}
       <button
         type="button"
         className="btn ghost sm"
@@ -138,9 +159,12 @@ export function WorkDrawerPipelineSection({
       </button>
     </div>
   )
-  const readOnlyBox = (text: string) => (
-    <div style={{ ...FIS, display: 'flex', alignItems: 'center', background: 'var(--bg2)44', opacity: 0.85, minHeight: OWN_ROW2_MIN, boxSizing: 'border-box' }}>
-      {text}
+  const readOnlyBox = (text: string, contactId?: string) => (
+    <div style={{ display: 'flex', gap: 6, alignItems: 'stretch', minHeight: OWN_ROW2_MIN }}>
+      <div style={{ ...FIS, flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', background: 'var(--bg2)44', opacity: 0.85, minHeight: OWN_ROW2_MIN, boxSizing: 'border-box' }}>
+        {text}
+      </div>
+      {contactId ? openContactButton(contactId) : null}
     </div>
   )
   const pemName = pemContact?.NomInstitution ?? 'Pem'
@@ -208,7 +232,7 @@ export function WorkDrawerPipelineSection({
               ? contactSelect(buyerId, setBuyerId, t('custody_buyer'))
               : isGift
                 ? contactSelect(ownerId, setOwnerId, t('custody_owner'))
-                : readOnlyBox(ownStage === 'artist' || ownStage === 'artist_archive' || isPem(ownerId) ? pemName : nameOf(ownerId))}
+                : readOnlyBox(ownStage === 'artist' || ownStage === 'artist_archive' || isPem(ownerId) ? pemName : nameOf(ownerId), ownerId)}
             {ownStage === 'reserved' && (
               <div style={{ marginTop: 4, fontSize: 10, color: 'var(--tx3)' }}>
                 {t('custody_owner')} : {pemName}
@@ -217,7 +241,7 @@ export function WorkDrawerPipelineSection({
           </div>
           <div>
             <div className="t-label" style={{ fontSize: 10, marginBottom: 4 }}>{t('custody_custodian')}</div>
-            {isGift ? contactSelect(contactId, setContactId, t('custody_custodian')) : readOnlyBox(isPem(contactId) ? pemName : currentLoc)}
+            {isGift ? contactSelect(contactId, setContactId, t('custody_custodian')) : readOnlyBox(isPem(contactId) ? pemName : currentLoc, contactId)}
             <div
               style={{
                 marginTop: 6,

@@ -58,7 +58,14 @@ export type JournalDayExtras = {
 }
 
 /** One row per Paris day that has an entry, a Création item or a voice note (index of the journal). */
-export type JournalSourceDay = { day: string; entries: number; creation: number; voices: number }
+export type JournalSourceDay = {
+  day: string
+  entries: number
+  creation: number
+  voices: number
+  /** Open ✦ AI link suggestions on that day's entries (shown to admins, who decide them). */
+  proposals: number
+}
 
 type Err = { error: string }
 
@@ -258,19 +265,35 @@ export async function listJournalSourceDays(): Promise<JournalSourceDay[]> {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return []
-  const [entriesRes, creationRes, voicesRes] = await Promise.all([
-    supabase.from('journal_entry').select('event_on, hidden_at').limit(5000),
+  const [entriesRes, creationRes, voicesRes, proposalsRes] = await Promise.all([
+    supabase.from('journal_entry').select('id, event_on, hidden_at').limit(5000),
     supabase.from('kaizen_item').select('created_at').eq('section', 'creation').limit(5000),
     supabase.from('voice_note').select('created_at').limit(5000),
+    supabase
+      .from('journal_entry_link')
+      .select('entry_id')
+      .eq('proposed_by', 'ai')
+      .is('validated_at', null)
+      .is('rejected_at', null)
+      .limit(5000),
   ])
   const byDay = new Map<string, JournalSourceDay>()
-  const bump = (day: string, key: 'entries' | 'creation' | 'voices') => {
+  const bump = (day: string, key: 'entries' | 'creation' | 'voices' | 'proposals') => {
     if (!DAY_RE.test(day)) return
-    const row = byDay.get(day) ?? { day, entries: 0, creation: 0, voices: 0 }
+    const row = byDay.get(day) ?? { day, entries: 0, creation: 0, voices: 0, proposals: 0 }
     row[key] += 1
     byDay.set(day, row)
   }
-  for (const e of entriesRes.data ?? []) if (!e.hidden_at) bump(e.event_on, 'entries')
+  const dayByEntry = new Map<number, string>()
+  for (const e of entriesRes.data ?? []) {
+    if (e.hidden_at) continue
+    dayByEntry.set(Number(e.id), e.event_on)
+    bump(e.event_on, 'entries')
+  }
+  for (const l of proposalsRes.data ?? []) {
+    const day = dayByEntry.get(Number(l.entry_id))
+    if (day) bump(day, 'proposals')
+  }
   for (const k of creationRes.data ?? []) bump(calendarDayInParisFromIso(k.created_at), 'creation')
   for (const v of voicesRes.data ?? []) bump(calendarDayInParisFromIso(v.created_at), 'voices')
   return [...byDay.values()].sort((a, b) => b.day.localeCompare(a.day))

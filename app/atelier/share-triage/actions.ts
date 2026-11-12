@@ -273,7 +273,7 @@ export async function attachShareInboxToWork(
 
   const fin = await finishInbox(inboxId, { target: 'work', oeuvreId })
   if (fin) return fin
-  return { ok: true, href: `/atelier?work=${oeuvreId}` }
+  return { ok: true, href: `/atelier/inventory?work=${oeuvreId}` }
 }
 
 export async function attachShareInboxToContact(
@@ -673,7 +673,7 @@ export async function createDraftWorkFromShareInbox(
   }
 
   revalidatePath('/atelier')
-  return { ok: true, href: `/atelier?work=${oid}` }
+  return { ok: true, href: `/atelier/inventory?work=${oid}` }
 }
 
 /** After admin approves a share-originated pending create, attach inbox image(s). */

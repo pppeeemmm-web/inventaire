@@ -104,6 +104,7 @@ export const workFormMessages = defineMessages({
   wf_field_capture_only: { fr: 'Terrain seulement ▴', en: 'Field fields only ▴' },
   wf_themes_edit: { fr: 'Modifier les thèmes', en: 'Edit themes' },
   wf_themes_done: { fr: 'OK', en: 'Done' },
+  wf_open_contact: { fr: 'Ouvrir la fiche contact', en: 'Open contact card' },
   wf_more_actions: { fr: 'Autres actions', en: 'More actions' },
   wf_field_all_fields_hint: {
     fr: 'Statut, propriété, prix, constats, groupes, séances…',

@@ -118,6 +118,8 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
     }
   }
   const [activeId,   setActiveId]   = useState<number | null>(null)
+  // Opened from a work drawer (`?from_work=N`, Kaizen #34): offer the way back to that work.
+  const [backToWork, setBackToWork] = useState<number | null>(null)
   const [isCreating, setIsCreating] = useState(false)
   const [editorNonce, setEditorNonce] = useState(0)
   const [editorDirty, setEditorDirty] = useState(false)
@@ -252,8 +254,11 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
     if (fromQuery) {
       const id = parseInt(fromQuery, 10)
       if (!isNaN(id)) setActiveId(id)
+      const fromWork = parseInt(searchParams.get('from_work') ?? '', 10)
+      setBackToWork(Number.isFinite(fromWork) && fromWork > 0 ? fromWork : null)
       const next = new URLSearchParams(searchParams.toString())
       next.delete('contact')
+      next.delete('from_work')
       const q = next.toString()
       router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false })
       return
@@ -617,6 +622,32 @@ export function ContactsTab({ contacts: initialContacts, oeuvres, conflicts = []
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
 
       {navUnsavedDialog}
+
+      {backToWork != null ? (
+        <div style={{ flexShrink: 0, padding: narrow ? '8px 12px' : '8px 28px', borderBottom: '1px solid var(--bd)', background: 'var(--bg1)' }}>
+          <button
+            type="button"
+            className="btn ghost sm"
+            data-testid="contacts-back-to-work"
+            style={{ minHeight: 44 }}
+            onClick={() => {
+              const id = backToWork
+              const go = () => {
+                setBackToWork(null)
+                router.push(`/atelier/inventory?work=${id}`)
+              }
+              if (!editorDirty) {
+                go()
+                return
+              }
+              pendingProceedRef.current = go
+              attemptUnsavedProceed()
+            }}
+          >
+            {t('contacts_back_to_work').replace('{n}', String(backToWork))}
+          </button>
+        </div>
+      ) : null}
 
       {narrow && !showEditor && (
         <div

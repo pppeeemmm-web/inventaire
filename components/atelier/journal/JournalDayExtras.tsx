@@ -451,7 +451,7 @@ export function JournalDayExtras({
 
       {captureSlot}
 
-      <details data-testid="journal-day-creation">
+      <details className="pem-fold" data-testid="journal-day-creation">
         <summary className="t-eyebrow" style={DETAILS_SUMMARY}>
           {t('je_creation_heading')} ({data?.creation.length ?? 0})
         </summary>
@@ -512,7 +512,7 @@ export function JournalDayExtras({
         </div>
       </details>
 
-      <details data-testid="journal-day-voices">
+      <details className="pem-fold" data-testid="journal-day-voices">
         <summary className="t-eyebrow" style={DETAILS_SUMMARY}>
           {t('je_voices_heading')} ({data?.voices.length ?? 0})
         </summary>
@@ -534,7 +534,7 @@ export function JournalDayExtras({
       </details>
 
       {data?.isAdmin ? (
-        <details data-testid="journal-day-changes">
+        <details className="pem-fold" data-testid="journal-day-changes">
           <summary className="t-eyebrow" style={DETAILS_SUMMARY}>
             {t('je_changes_heading')} ({data.changes.length})
           </summary>

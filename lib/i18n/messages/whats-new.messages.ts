@@ -9,6 +9,16 @@ export const whatsNewMessages = defineMessages({
   },
 
   // 3.0.3 (2026-11-12) — owner bug review + journal entries.
+  wn_contact_bounce_t: { fr: 'De l’œuvre au contact, et retour', en: 'From work to contact and back' },
+  wn_contact_bounce_d: {
+    fr: 'Dans la fiche d’une œuvre (Propriété), le bouton ↗ à côté du propriétaire, du lieu ou de l’acheteur ouvre la fiche du contact ; en haut, « ← Retour à l’œuvre #… » rouvre l’œuvre. Production : le crayon ✎ d’une carte ouvre maintenant l’œuvre sur place (il ouvrait la Vue d’ensemble).',
+    en: 'In a work’s drawer (Ownership), the ↗ next to the owner, location or buyer opens the contact card; at the top, "← Back to work #…" reopens the work. Production: a card’s ✎ pencil now opens the work in place (it opened Overview).',
+  },
+  wn_journal_day_tidy_t: { fr: 'Page du jour plus claire', en: 'Clearer day page' },
+  wn_journal_day_tidy_d: {
+    fr: 'Les sections repliées (Création, notes vocales, œuvres modifiées) ont une flèche ▸. Un jour vide affiche « Rien encore ». Dans la liste des jours, les admins voient « ✦ n à valider » : les suggestions des entrées Atlas sont sur le mercredi 10 juin 2026.',
+    en: 'Folded sections (Création, voice notes, works changed) have a ▸ arrow. An empty day reads "Nothing yet". In the day list, admins see "✦ n to review": the Atlas entry suggestions are on Wednesday 10 June 2026.',
+  },
   wn_journal_search_t: { fr: 'Le Journal dans la recherche et la Constellation', en: 'The Journal in search and Constellation' },
   wn_journal_search_d: {
     fr: 'La recherche (⌘K) trouve aussi les entrées du journal : un clic ouvre le jour. Dans la Constellation, le panneau d’une œuvre liste ses entrées validées. Les suggestions ✦ sont plus strictes : 29 gardées sur 75, les autres retirées (rien n’est effacé). Ouvrir la capture d’un jour sans rien ajouter ne laisse plus de jour « ouvert » vide.',

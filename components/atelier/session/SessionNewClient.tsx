@@ -110,7 +110,6 @@ export function SessionNewClient({ embed }: { embed?: SessionEmbed } = {}) {
   const [pending, setPending] = useState<WorkSessionQueueRow[]>([])
   const [hydrated, setHydrated] = useState(false)
   const [fieldContext, setFieldContext] = useState<WorkSessionFieldContext | null>(null)
-  const [fieldContextOpen, setFieldContextOpen] = useState(false)
   const [isDevAutoProfile, setIsDevAutoProfile] = useState(false)
   const [devProfileEmail, setDevProfileEmail] = useState<string | null>(null)
   const [sessionReadOnly, setSessionReadOnly] = useState(false)
@@ -1370,17 +1369,9 @@ export function SessionNewClient({ embed }: { embed?: SessionEmbed } = {}) {
         </div>
       ) : null}
 
-      <details
-        className="t-mono-sm"
-        data-testid="session-field-context"
-        onToggle={(e) => setFieldContextOpen(e.currentTarget.open)}
-        style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
-      >
-        <summary style={{ minHeight: 44, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', color: 'var(--tx2)', fontSize: 12 }}>
-          {/* display:flex hides the native marker; show our own so the row reads as tappable. */}
-          <span aria-hidden style={{ display: 'inline-block', width: 12, transform: fieldContextOpen ? 'rotate(90deg)' : 'none', transition: 'transform 120ms' }}>
-            ▸
-          </span>
+      <details className="t-mono-sm pem-fold" data-testid="session-field-context" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {/* pem-fold (globals.css) draws the ▸ that display:flex hides. */}
+        <summary style={{ minHeight: 44, display: 'flex', alignItems: 'center', cursor: 'pointer', color: 'var(--tx2)', fontSize: 12 }}>
           {t('session_field_context_cta')}{fieldContext ? ' ✓' : ''}
         </summary>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

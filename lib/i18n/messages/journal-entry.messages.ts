@@ -71,6 +71,7 @@ export const journalEntryMessages = defineMessages({
   je_capture_close: { fr: 'Fermer la capture', en: 'Close capture' },
   je_capture_loading: { fr: 'Ouverture de la capture…', en: 'Opening capture…' },
   je_back_days: { fr: '← Jours', en: '← Days' },
+  je_sum_proposals: { fr: '✦ {n} à valider', en: '✦ {n} to review' },
   je_const_heading: { fr: 'Journal', en: 'Journal' },
   je_write_today: { fr: 'Écrire aujourd’hui', en: 'Write today' },
   je_sum_entry_one: { fr: '1 entrée', en: '1 entry' },

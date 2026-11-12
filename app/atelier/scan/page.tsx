@@ -32,7 +32,7 @@ export default function AtelierScanPage() {
   const goToWork = useCallback(
     (id: number) => {
       stopCamera()
-      router.push(`/atelier?work=${id}`)
+      router.push(`/atelier/inventory?work=${id}`)
     },
     [router, stopCamera],
   )

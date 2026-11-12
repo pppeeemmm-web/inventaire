@@ -608,3 +608,21 @@ html[data-high-contrast] { filter: contrast(1.35); }
   outline: 1px solid var(--ac);
   outline-offset: -1px;
 }
+
+/* Folded sections (<details class="pem-fold">): our own ▸ that turns when open, since
+   display:flex summaries hide the native marker; focus ring only for keyboard. */
+.pem-fold > summary { list-style: none; }
+.pem-fold > summary::-webkit-details-marker { display: none; }
+.pem-fold > summary::before {
+  content: '▸';
+  display: inline-block;
+  width: 14px;
+  margin-right: 6px;
+  transition: transform 120ms;
+}
+.pem-fold[open] > summary::before { transform: rotate(90deg); }
+.pem-fold > summary:focus { outline: none; }
+.pem-fold > summary:focus-visible {
+  outline: 1px solid var(--ac);
+  outline-offset: 2px;
+}
