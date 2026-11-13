@@ -9,6 +9,11 @@ export const whatsNewMessages = defineMessages({
   },
 
   // 3.0.3 (2026-11-12) — owner bug review + journal entries.
+  wn_batch_modify_t: { fr: 'Modification en lot : notes ajoutées, période, plus compact', en: 'Batch modify: notes added, period, more compact' },
+  wn_batch_modify_d: {
+    fr: 'Une note écrite en lot s’ajoute sous les commentaires de chaque œuvre, sur une nouvelle ligne datée — plus rien n’est écrasé. Nouveau champ Période (automatique, aucune, ou une période) pour toutes les œuvres choisies. Le panneau tient sur trois colonnes.',
+    en: 'A note written in batch is added under each work’s comments, on a new dated line — nothing is overwritten any more. New Period field (automatic, none, or a period) for all selected works. The panel uses three columns.',
+  },
   wn_inventory_loupe_t: { fr: 'Inventaire : loupe sur les vignettes', en: 'Inventory: loupe on thumbnails' },
   wn_inventory_loupe_d: {
     fr: 'Sur ordinateur, laissez la souris sur une vignette : l’image s’affiche en grand, entière, sur le côté libre de l’écran. Sur téléphone, appui long sur une vignette : l’image en plein écran ; touchez pour fermer. Le double-clic qui élargissait le panneau est retiré.',

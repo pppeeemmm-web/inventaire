@@ -3,7 +3,7 @@
 // BatchEditModal — edit multiple fields across a work selection at once.
 // Only fields explicitly set by the user are updated; others are untouched.
 
-import { useState, useTransition } from 'react'
+import { useMemo, useState, useTransition } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import { PemModalOverlay } from '@/components/shared/PemModalOverlay'
@@ -11,6 +11,9 @@ import { batchEdit, createTheme, type BatchChanges } from '@/app/atelier/selecti
 import { reloadAtelierAfterBatchSuccess } from '@/lib/atelier/reload-after-batch'
 import { gateErrorKey } from '@/lib/work-save-error'
 import { PEM_CONTACT_ID } from '@/lib/data'
+import { usePeriodSource } from '@/lib/atelier/use-period-source'
+import { sortPeriods } from '@/lib/work-periods'
+import { useMediaQuery } from '@/lib/useMediaQuery'
 
 type ContactAddress = { id?: number; contact_id: number; label: string; adresse: string | null; ville: string | null; pays: string | null }
 
@@ -69,6 +72,13 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, a
   const [locDetail,        setLocDetail]       = useState('')
   const [commentaires,     setCommentaires]    = useState('')
   const [historiqueAppend, setHistoriqueAppend] = useState('')
+  /** '' unchanged · 'auto' · 'none' · period id */
+  const [period,           setPeriod]          = useState('')
+  const periodData = usePeriodSource()
+  const periods = useMemo(() => sortPeriods(periodData.periods), [periodData.periods])
+  const narrow = useMediaQuery('(max-width: 767px)')
+  const cols = narrow ? '1fr' : 'repeat(3, minmax(0, 1fr))'
+  const span = (n: number) => (narrow ? undefined : { gridColumn: `span ${n}` })
 
   // Boolean fields — null = unchanged
   const [exposable,    setExposable]    = useState<Tri>(null)
@@ -120,7 +130,7 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, a
   const changed = (
     titre !== '' || statusId !== '' || technique !== '' || support !== '' || format !== '' ||
     addressId !== '' || prix !== '' || discount !== '' ||
-    annee !== '' || locDetail !== '' || commentaires !== '' ||
+    annee !== '' || locDetail !== '' || commentaires.trim() !== '' || period !== '' ||
     exposable !== null || montee !== null || encadree !== null || catalogued !== null ||
     isCommission !== null || isGift !== null || isPaid !== null || needsPhoto !== null ||
     broadcastReady !== null ||
@@ -141,7 +151,8 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, a
     if (discount   !== '')  changes.Discount   = discount   === ''     ? null : parseFloat(discount)
     if (annee      !== '')  changes.Année      = annee.trim() || null
     if (locDetail  !== '')  changes.LocalisationDetail = locDetail.trim() || null
-    if (commentaires !== '') changes.Commentaires = commentaires.trim() || null
+    if (commentaires.trim() !== '') changes.Commentaires = commentaires.trim()
+    if (period !== '') changes.periodChoice = period === 'auto' || period === 'none' ? period : Number(period)
 
     if (exposable    !== null) changes.Exposable      = exposable
     if (montee       !== null) changes.Montee         = montee
@@ -201,19 +212,19 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, a
   return (
     <PemModalOverlay
       onClose={onClose}
-      panelStyle={{ padding: 32, width: 620, maxWidth: '95vw', maxHeight: '90vh', overflow: 'auto' }}
+      panelStyle={{ padding: narrow ? 16 : 20, width: 960, maxWidth: '96vw', maxHeight: '92vh', overflow: 'auto' }}
     >
       <div className="t-eyebrow" style={{ marginBottom: 6 }}>{t('batchEdit')}</div>
-      <div className="t-mono-sm" style={{ color: 'var(--tx3)', marginBottom: 24 }}>
+      <div className="t-mono-sm" style={{ color: 'var(--tx3)', marginBottom: 12 }}>
         {ids.length} {t('works')}
         {' · '}{t('onlyChangedUpdated')}
       </div>
 
       {/* ── Section: Classification ─────────────────────────────── */}
       <SectionLabel>{t('batch_edit_section_classification')}</SectionLabel>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 20px', marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: cols, gap: '8px 14px', marginBottom: 12 }}>
 
-        <FieldWrap label={t('title')} active={titre !== ''} style={{ gridColumn: 'span 2' }}>
+        <FieldWrap label={t('title')} active={titre !== ''} style={span(2)}>
           <input className="input" type="text" style={{ width: '100%' }}
             placeholder={`${t('unchanged')} (ex. Sans titre)`} value={titre}
             onChange={(e) => setTitre(e.target.value)} />
@@ -269,13 +280,6 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, a
           </select>
         </FieldWrap>
 
-
-      </div>
-
-      {/* ── Section: Prix ────────────────────────────────────────── */}
-      <SectionLabel>{t('price')}</SectionLabel>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 20px', marginBottom: 20 }}>
-
         <FieldWrap label={`${t('price')} (€)`} active={prix !== ''}>
           <input className="input" type="number" style={{ width: '100%' }}
             placeholder={t('unchanged')} value={prix}
@@ -288,11 +292,12 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, a
             onChange={(e) => setDiscount(e.target.value)} />
         </FieldWrap>
 
+
       </div>
 
       {/* ── Section: Localisation & Notes ────────────────────────── */}
       <SectionLabel>{t('locationNotes')}</SectionLabel>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '10px', marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: cols, gap: '8px 14px', marginBottom: 12 }}>
 
         <FieldWrap label={t('batch_pem_address')} active={addressId !== ''}>
           <select className="input" style={{ width: '100%' }} value={addressId}
@@ -314,18 +319,31 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, a
             onChange={(e) => setLocDetail(e.target.value)} />
         </FieldWrap>
 
-        <FieldWrap label={t('notes')} active={commentaires !== ''}>
-          <textarea className="input" style={{ width: '100%', minHeight: 60, resize: 'vertical', fontFamily: 'inherit' }}
-            placeholder={t('notesBatchPlaceholder')}
+        <FieldWrap label={t('ps_period')} active={period !== ''}>
+          <select className="input" style={{ width: '100%' }} value={period} onChange={(e) => setPeriod(e.target.value)} data-testid="batch-period">
+            <option value="">— {t('unchanged')} —</option>
+            <option value="auto">{t('batch_period_auto')}</option>
+            <option value="none">{t('ps_period_none')}</option>
+            {periods.map((p) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+        </FieldWrap>
+
+        <FieldWrap label={t('batch_note_add')} active={commentaires.trim() !== ''} style={span(3)}>
+          <textarea className="input" style={{ width: '100%', minHeight: 44, resize: 'vertical', fontFamily: 'inherit' }}
+            placeholder={t('batch_note_add_ph')}
             value={commentaires}
+            data-testid="batch-note-add"
             onChange={(e) => setCommentaires(e.target.value)} />
         </FieldWrap>
 
       </div>
 
+      <div style={{ display: 'grid', gridTemplateColumns: narrow || groups.length === 0 ? '1fr' : 'minmax(0, 3fr) minmax(0, 2fr)', gap: '0 14px' }}>
       {/* ── Section: Thèmes ──────────────────────────────────────── */}
       {localThemes.length > 0 && (
-        <div style={{ marginBottom: 32 }}>
+        <div style={{ marginBottom: 12, minWidth: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 12, gap: 12 }}>
             <SectionLabel style={{ marginBottom: 0 }}>{t('themesSection')}</SectionLabel>
 
@@ -358,12 +376,12 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, a
               />
             </div>
           </div>
-          <div className="t-mono-sm" style={{ color: 'var(--tx3)', marginBottom: 12 }}>
+          <div className="t-mono-sm" style={{ color: 'var(--tx3)', marginBottom: 6 }}>
             {t('themesBatchHelp')}
           </div>
           <div style={{
             display: 'flex', flexWrap: 'wrap', gap: 6,
-            maxHeight: 180, overflowY: 'auto', padding: '12px',
+            maxHeight: 140, overflowY: 'auto', padding: '8px',
             background: 'var(--bg2)', border: '1px solid var(--bd)'
           }}>
             {filteredThemes.map(th => {
@@ -395,7 +413,7 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, a
 
       {/* ── Section: Groupes de travail ───────────────────────────── */}
       {groups.length > 0 && (
-        <div style={{ marginBottom: 32 }}>
+        <div style={{ marginBottom: 12, minWidth: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 12 }}>
             <SectionLabel style={{ marginBottom: 0 }}>{t('workingGroups')}</SectionLabel>
             <input
@@ -406,12 +424,12 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, a
               style={{ width: 140, fontSize: 10, padding: '3px 8px' }}
             />
           </div>
-          <div className="t-mono-sm" style={{ color: 'var(--tx3)', marginBottom: 12 }}>
+          <div className="t-mono-sm" style={{ color: 'var(--tx3)', marginBottom: 6 }}>
             {t('themesBatchHelp')}
           </div>
           <div style={{
             display: 'flex', flexWrap: 'wrap', gap: 6,
-            maxHeight: 120, overflowY: 'auto', padding: '12px',
+            maxHeight: 140, overflowY: 'auto', padding: '8px',
             background: 'var(--bg2)', border: '1px solid var(--bd)'
           }}>
             {filteredGroups.map(g => {
@@ -435,10 +453,11 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, a
           </div>
         </div>
       )}
+      </div>
 
       {/* ── Section: Attributs ───────────────────────────────────── */}
       <SectionLabel>{t('attributes')}</SectionLabel>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: narrow ? 'repeat(2, minmax(0, 1fr))' : 'repeat(5, minmax(0, 1fr))', gap: 8, marginBottom: 12 }}>
         <TriField label={t('needsPhoto')}  value={needsPhoto}   onChange={setNeedsPhoto}   t={t} />
         <TriField label={t('catalogued')}  value={catalogued}   onChange={setCatalogued}   t={t} />
         <TriField label={t('exposable')}   value={exposable}    onChange={setExposable}    t={t} />
@@ -464,7 +483,10 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, a
 
       {error && <div className="t-mono-sm" style={{ color: '#c0392b', marginTop: 12 }}>{error}</div>}
 
-      <div className="row gap-sm" style={{ justifyContent: 'flex-end', marginTop: 20 }}>
+      <div
+        className="row gap-sm"
+        style={{ justifyContent: 'flex-end', marginTop: 12, position: 'sticky', bottom: narrow ? -16 : -20, background: 'var(--bg1)', padding: '10px 0 max(4px, env(safe-area-inset-bottom, 0px))', borderTop: '1px solid var(--bd)' }}
+      >
         <button className="btn ghost" onClick={onClose}>{t('cancel')}</button>
         <button className="btn primary" disabled={!changed || pending} onClick={handleSubmit}>
           {pending ? `${t('modifying')}…` : `${t('applyTo')} ${ids.length} ${t('works')}`}
@@ -478,7 +500,7 @@ export function BatchEditModal({ ids, techniques, supports, formats, contacts, a
 
 function SectionLabel({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
-    <div className="t-label" style={{ marginBottom: 10, paddingBottom: 4, borderBottom: '1px solid var(--bd)', color: 'var(--tx3)', ...style }}>
+    <div className="t-label" style={{ marginBottom: 6, paddingBottom: 3, borderBottom: '1px solid var(--bd)', color: 'var(--tx3)', ...style }}>
       {children}
     </div>
   )
@@ -488,7 +510,7 @@ function FieldWrap({ label, active, children, style }: { label: string; active: 
   return (
     <div style={style}>
       <label className="t-label" style={{
-        display: 'block', marginBottom: 6,
+        display: 'block', marginBottom: 3,
         color: active ? 'var(--ac)' : undefined,
       }}>
         {label}{active ? ' ·' : ''}

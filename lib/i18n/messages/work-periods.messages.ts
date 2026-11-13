@@ -4,6 +4,12 @@ import { defineMessages } from '../message-core'
 export const workPeriodsMessages = defineMessages({
   ps_heading: { fr: 'Période & source', en: 'Period & source' },
   ps_period: { fr: 'Période', en: 'Period' },
+  batch_period_auto: { fr: 'Automatique (d’après la date)', en: 'Automatic (from the date)' },
+  batch_note_add: { fr: 'Ajouter une note (datée, sous les commentaires)', en: 'Add a note (dated, under the comments)' },
+  batch_note_add_ph: {
+    fr: 'Ajoutée à chaque œuvre sur une nouvelle ligne, avec la date — rien n’est effacé',
+    en: 'Added to each work on a new line, with the date — nothing is erased',
+  },
   ps_source: { fr: 'Source', en: 'Source' },
   ps_period_auto_fmt: { fr: 'Automatique : {name}', en: 'Automatic: {name}' },
   ps_period_auto_empty: { fr: 'Automatique : aucune pour cette année', en: 'Automatic: none for this year' },

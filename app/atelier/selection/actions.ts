@@ -3,6 +3,7 @@
 // Selection actions — batch edit and export (HTML / PDF).
 // Called from BatchEditModal and ExportModal via useTransition.
 
+import { calendarDayInParisFromIso } from '@/lib/session-calendar-day'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { STATUS_ID_ARCHIVE_ARTISTE } from '@/lib/data'
 import {
@@ -37,7 +38,10 @@ export interface BatchChanges {
   LocalisationDetail?: string | null
   /** One of Pem's addresses — applies to the works Pem holds (DB trigger clears it elsewhere). */
   localisation_address_id?: number | null
+  /** Added to each work's comments on a new line with the date — never replaces them (owner 2026-11-13). */
   Commentaires?:      string | null
+  /** Period for every selected work: 'auto' (from its date), 'none', or a period id (`work_period_override`). */
+  periodChoice?:      'auto' | 'none' | number
   // Theme junction — add and/or remove theme IDs across OeuvreTheme
   addThemeIds?:       number[]
   removeThemeIds?:    number[]
@@ -130,7 +134,6 @@ export async function batchEdit(ids: number[], changes: BatchChanges): Promise<B
   }
   if (changes.LocalisationDetail !== undefined) update.LocalisationDetail = changes.LocalisationDetail
   if (changes.localisation_address_id !== undefined) update.localisation_address_id = changes.localisation_address_id
-  if (changes.Commentaires      !== undefined) update.Commentaires      = changes.Commentaires
   if (changes.is_gift           !== undefined) update.is_gift           = changes.is_gift
   if (changes.is_paid           !== undefined) update.is_paid           = changes.is_paid
   if (changes.NeedsPhotograph   !== undefined) update.NeedsPhotograph   = changes.NeedsPhotograph
@@ -143,16 +146,19 @@ export async function batchEdit(ids: number[], changes: BatchChanges): Promise<B
   }
   if (update.statusId === STATUS_ID_ARCHIVE_ARTISTE) update.Exposable = false
 
+  const commentToAdd      = changes.Commentaires?.trim() || ''
   const hasScalarChanges  = Object.keys(update).length > 0
+  const hasComment        = commentToAdd.length > 0
+  const hasPeriodChange   = changes.periodChoice !== undefined
   const hasThemeChanges   = (changes.addThemeIds?.length ?? 0) > 0 || (changes.removeThemeIds?.length ?? 0) > 0
   const hasGroupChanges   = (changes.addGroupIds?.length ?? 0) > 0 || (changes.removeGroupIds?.length ?? 0) > 0
-  if (!hasScalarChanges && !hasThemeChanges && !hasGroupChanges) return { error: 'Aucun champ modifié' }
+  if (!hasScalarChanges && !hasThemeChanges && !hasGroupChanges && !hasComment && !hasPeriodChange) return { error: 'Aucun champ modifié' }
 
   // Owner 2026-11-03: a team member's edits to existing works go through review (saveWork →
   // pending_changes); a bulk edit of status / contact / price / … would skip it, so it is admin
   // only. Themes, groups and the Inventory broadcast toggle stay open to the team.
   const reviewedKeys = Object.keys(update).filter((k) => k !== 'broadcast_ready')
-  if (reviewedKeys.length > 0) {
+  if (reviewedKeys.length > 0 || hasComment) {
     const { data: isAdmin } = await supabase.rpc('is_admin')
     if (isAdmin !== true) return { error: 'bulk_admin_only' }
   }
@@ -207,6 +213,42 @@ export async function batchEdit(ids: number[], changes: BatchChanges): Promise<B
         if (lines.length) histItems.push({ oeuvreId: w.OeuvreID, lines })
       }
       await appendHistoriqueForOeuvres(supabase, histItems)
+    }
+  }
+
+  // Comments: appended per work, "YYYY-MM-DD — text" on a new line (owner 2026-11-13: never overwrite).
+  if (hasComment) {
+    const { data: rows, error: cErr } = await supabase
+      .from('Oeuvres')
+      .select('OeuvreID, Commentaires')
+      .in('OeuvreID', ids)
+      .is('deleted_at', null)
+    if (cErr) return { error: cErr.message }
+    const line = `${calendarDayInParisFromIso(new Date().toISOString())} — ${commentToAdd}`
+    for (const r of rows ?? []) {
+      const before = (r.Commentaires ?? '').replace(/\s+$/, '')
+      const { error: upErr } = await supabase
+        .from('Oeuvres')
+        .update({ Commentaires: before ? `${before}\n${line}` : line })
+        .eq('OeuvreID', r.OeuvreID)
+      if (upErr) return { error: upErr.message }
+    }
+    if (!hasScalarChanges) count = rows?.length ?? ids.length
+  }
+
+  // Period for every selected work (same rule as the drawer's Période select).
+  if (hasPeriodChange) {
+    const choice = changes.periodChoice!
+    if (choice === 'auto') {
+      const { error: pErr } = await supabase.from('work_period_override').delete().in('oeuvre_id', ids)
+      if (pErr) return { error: pErr.message }
+    } else {
+      if (choice !== 'none' && !Number.isInteger(choice)) return { error: 'bad_period' }
+      const set_at = new Date().toISOString()
+      const { error: pErr } = await supabase
+        .from('work_period_override')
+        .upsert(ids.map((oeuvre_id) => ({ oeuvre_id, period_id: choice === 'none' ? null : choice, set_at })), { onConflict: 'oeuvre_id' })
+      if (pErr) return { error: pErr.message }
     }
   }
 
