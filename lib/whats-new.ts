@@ -18,7 +18,7 @@
 // '3.1.0' (2026-11-12): work → contact bounce, Production ✎ fix, journal day tidy + ✦ day counts.
 // '3.1.1' (2026-11-13): wider search text for works (supabase/sql/oeuvre_search_text_wider.sql).
 // '3.1.2' (2026-11-13): sign out + password, see again, contact pop-up, #1234 preview, work links, Production drag-back, voice transcripts.
-// '3.1.3' (2026-11-13): Journal date jump; See again link type + direction.
+// '3.1.3' (2026-11-13): Journal date jump; See again link type + direction; Inventory loupe.
 export const WHATS_NEW_RELEASE = '3.1.3'
 
 /** localStorage: release the viewer chose not to see again. sessionStorage: already shown this visit. */
@@ -29,6 +29,7 @@ export type WhatsNewItem = { id: string; day: string }
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'inventory_loupe', day: '2026-11-13' },
   { id: 'see_again_link_type', day: '2026-11-13' },
   { id: 'journal_jump', day: '2026-11-13' },
   { id: 'sign_out', day: '2026-11-13' },

@@ -9,6 +9,11 @@ export const whatsNewMessages = defineMessages({
   },
 
   // 3.0.3 (2026-11-12) — owner bug review + journal entries.
+  wn_inventory_loupe_t: { fr: 'Inventaire : loupe sur les vignettes', en: 'Inventory: loupe on thumbnails' },
+  wn_inventory_loupe_d: {
+    fr: 'Sur ordinateur, laissez la souris sur une vignette : l’image s’affiche en grand, entière, sur le côté libre de l’écran. Sur téléphone, appui long sur une vignette : l’image en plein écran ; touchez pour fermer. Le double-clic qui élargissait le panneau est retiré.',
+    en: 'On a computer, rest the mouse on a thumbnail: the picture shows large and whole on the free side of the screen. On a phone, long-press a thumbnail: the picture full screen; tap to close. The double-click that widened the panel is gone.',
+  },
   wn_see_again_link_type_t: { fr: '« Lier » : choisir le type et le sens', en: '"Link": choose the type and direction' },
   wn_see_again_link_type_d: {
     fr: 'Dans « À revoir aujourd’hui », « Lier » ouvre un choix : peinte sur, dérivée de, répond à, même série, diptyque, influence, proche de — et ⇄ pour inverser le sens (#A → #B). Les mêmes liens que la fiche de l’œuvre et la Constellation.',

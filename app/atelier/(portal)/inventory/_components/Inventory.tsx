@@ -3,6 +3,7 @@
 // Inventory — filter bar + three views: list (table+preview), grid, graph placeholder.
 // Mirrors source/team/inventory.jsx.
 
+import { ImageLoupe } from '@/components/atelier/ImageLoupe'
 import { useState, useMemo, useEffect, useLayoutEffect, useRef, useCallback } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { createClient } from '@/lib/supabase/client'
@@ -1944,21 +1945,21 @@ function InvList({
                     })()}
                   </td>
                   <td style={{ padding: '2px', ...cellDivider, verticalAlign: 'middle' }}>
+                    {/* Loupe (owner 2026-11-13): hover on a computer, long press on a phone — replaces the double-click that widened the panel. */}
                     <div 
                       className="thumb" 
                       style={{ 
-                        width: 40, height: 40, cursor: 'zoom-in', 
+                        width: 40, height: 40, cursor: o.txtImageNameLink ? 'zoom-in' : undefined, 
                         border: '1px solid var(--bd)', borderRadius: 2, overflow: 'hidden',
                         position: 'relative'
                       }}
-                      onDoubleClick={(e) => { 
-                        e.stopPropagation(); 
-                        onImageDoubleClick(); 
-                      }}
-                      title="DOUBLE-CLICK pour agrandir l'aperçu"
                     >
                       {o.txtImageNameLink 
-                        ? <WorkThumb file={o.txtImageNameLink} alt={o.Titre ?? ''} size={96} displaySize="40px" /> 
+                        ? (
+                          <ImageLoupe file={o.txtImageNameLink} alt={o.Titre ?? ''} style={{ width: '100%', height: '100%' }}>
+                            <WorkThumb file={o.txtImageNameLink} alt={o.Titre ?? ''} size={96} displaySize="40px" />
+                          </ImageLoupe>
+                        )
                         : <MissingThumb id={o.OeuvreID} onOpen={() => onOpen(o)} />}
                     </div>
                   </td>
@@ -2146,7 +2147,9 @@ function InvGrid({
           }}
         >
           {o.txtImageNameLink ? (
-            <WorkThumb file={o.txtImageNameLink} alt={o.Titre ?? ''} size={160} displaySize="100%" />
+            <ImageLoupe file={o.txtImageNameLink} alt={o.Titre ?? ''} style={{ width: '100%', height: '100%' }}>
+              <WorkThumb file={o.txtImageNameLink} alt={o.Titre ?? ''} size={160} displaySize="100%" />
+            </ImageLoupe>
           ) : (
             <MissingThumb id={o.OeuvreID} onOpen={() => onOpen(o)} />
           )}
