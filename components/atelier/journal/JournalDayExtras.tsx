@@ -8,6 +8,7 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from 'react'
 import { EntryText } from '@/components/atelier/journal/EntryText'
+import { imageUrl } from '@/lib/data'
 import { VoiceNoteSheet } from '@/components/shared/VoiceNoteSheet'
 import { getLiveDictationAvailability, startLiveDictation, type LiveDictationSession } from '@/lib/voice/web-speech'
 import { useI18n } from '@/lib/i18n/context'
@@ -17,6 +18,7 @@ import {
   decideJournalLink,
   getJournalDayExtras,
   setJournalEntryHidden,
+  setJournalEntryVerified,
   type JournalDayExtras as Extras,
 } from '@/app/atelier/(portal)/journal/entry-actions'
 
@@ -187,6 +189,17 @@ export function JournalDayExtras({
     })
   }
 
+  function toggleVerified(id: number, verified: boolean) {
+    startTransition(async () => {
+      const res = await setJournalEntryVerified(id, verified)
+      if ('error' in res) {
+        toast.error(t('je_err_fmt').replace('{msg}', res.error))
+        return
+      }
+      await load()
+    })
+  }
+
   const time = (iso: string) => new Date(iso).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
 
   return (
@@ -275,10 +288,21 @@ export function JournalDayExtras({
                 {e.event_precision === 'month' ? <span>{t('je_roughly_month')}</span> : null}
                 {e.event_precision === 'year' ? <span>{t('je_roughly_year')}</span> : null}
                 {e.visibility === 'private' ? <span>{t('je_private_label')}</span> : null}
-                {e.provenance === 'voice' ? <span>{t('je_dictated_label')}</span> : null}
-                {e.verification === 'unverified' ? <span>{t('je_unverified_label')}</span> : null}
+                {e.engine ? (
+                  <span data-testid={`journal-entry-transcript-${e.id}`}>
+                    ✦ {t('je_transcript_label')} · {e.engine} · {t(e.verification === 'unverified' ? 'je_unverified_label' : 'je_verified_label')}
+                  </span>
+                ) : (
+                  <>
+                    {e.provenance === 'voice' ? <span>{t('je_dictated_label')}</span> : null}
+                    {e.verification === 'unverified' ? <span>{t('je_unverified_label')}</span> : null}
+                  </>
+                )}
                 {e.hidden ? <span>{t('je_hidden_label')}</span> : null}
               </div>
+              {e.audioKey ? (
+                <audio controls preload="none" src={imageUrl(e.audioKey) ?? undefined} style={{ width: '100%', maxWidth: 480, margin: '2px 0 8px' }} data-testid={`journal-entry-audio-${e.id}`} />
+              ) : null}
               <EntryText text={e.body} />
               {e.concepts.length > 0 ? (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 8 }}>
@@ -330,15 +354,29 @@ export function JournalDayExtras({
                 </div>
               ) : null}
               {data?.isAdmin ? (
-                <button
-                  type="button"
-                  className="btn ghost sm"
-                  disabled={pending}
-                  onClick={() => toggleHidden(e.id, !e.hidden)}
-                  style={{ marginTop: 8, minHeight: 36 }}
-                >
-                  {t(e.hidden ? 'je_unhide' : 'je_hide')}
-                </button>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+                  {e.engine ? (
+                    <button
+                      type="button"
+                      className="btn ghost sm"
+                      disabled={pending}
+                      onClick={() => toggleVerified(e.id, e.verification === 'unverified')}
+                      style={{ minHeight: 44 }}
+                      data-testid={`journal-entry-verify-${e.id}`}
+                    >
+                      {t(e.verification === 'unverified' ? 'je_mark_verified' : 'je_mark_unverified')}
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="btn ghost sm"
+                    disabled={pending}
+                    onClick={() => toggleHidden(e.id, !e.hidden)}
+                    style={{ minHeight: e.engine ? 44 : 36 }}
+                  >
+                    {t(e.hidden ? 'je_unhide' : 'je_hide')}
+                  </button>
+                </div>
               ) : null}
             </article>
           ))}

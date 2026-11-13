@@ -28,6 +28,10 @@ export type JournalDayEntry = {
   author: string
   mine: boolean
   hidden: boolean
+  /** Transcript of a voice note (scripts/transcribe/voice_batch.py): its audio + the engine that wrote it. */
+  voiceNoteId: string | null
+  audioKey: string | null
+  engine: string | null
   works: Array<{ id: number; title: string | null }>
   concepts: Array<{ id: string; title: string | null }>
   /** AI link proposals (✦), not yet validated or rejected (supabase/sql/journal_entry_nodes.sql). */
@@ -206,6 +210,13 @@ export async function getJournalDayExtras(day: string): Promise<JournalDayExtras
     }
   }
 
+  const voiceIds = [...new Set(rows.map((r) => r.voice_note_id).filter((v): v is string => !!v))]
+  const audioKeys = new Map<string, string | null>()
+  if (voiceIds.length) {
+    const { data } = await supabase.from('voice_note').select('id, audio_r2_key').in('id', voiceIds)
+    for (const v of data ?? []) audioKeys.set(v.id, v.audio_r2_key)
+  }
+
   const entries: JournalDayEntry[] = rows
     .filter((r) => !r.hidden_at || isAdmin)
     .map((r) => ({
@@ -221,6 +232,9 @@ export async function getJournalDayExtras(day: string): Promise<JournalDayExtras
       author: (r.author_id && names[r.author_id]) || '—',
       mine: r.author_id === user.id,
       hidden: !!r.hidden_at,
+      voiceNoteId: r.voice_note_id ?? null,
+      audioKey: r.voice_note_id ? audioKeys.get(r.voice_note_id) ?? null : null,
+      engine: r.engine ?? null,
       works: linkRows
         .filter((l) => l.entry_id === r.id && l.oeuvre_id != null && l.validated_at)
         .map((l) => ({ id: l.oeuvre_id as number, title: titles.get(l.oeuvre_id as number) ?? null })),
@@ -390,6 +404,24 @@ export async function setJournalEntryHidden(id: number, hidden: boolean): Promis
     .update(hidden ? { hidden_at: new Date().toISOString(), hidden_by: user.id } : { hidden_at: null, hidden_by: null })
     .eq('id', id)
   if (error) return { error: error.message.includes('journal_admin_only') ? 'admin_only' : error.message }
+  revalidatePath('/atelier/journal')
+  return { ok: true }
+}
+
+/** Admin marks a machine transcript as checked (or back to unchecked). `verification` is outside the append-only guard. */
+export async function setJournalEntryVerified(id: number, verified: boolean): Promise<{ ok: true } | Err> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'auth' }
+  const { data: isAdmin } = await supabase.rpc('is_admin')
+  if (isAdmin !== true) return { error: 'admin_only' }
+  const { error } = await supabase
+    .from('journal_entry')
+    .update({ verification: verified ? 'verified' : 'unverified' })
+    .eq('id', id)
+  if (error) return { error: error.message }
   revalidatePath('/atelier/journal')
   return { ok: true }
 }

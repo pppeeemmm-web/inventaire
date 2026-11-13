@@ -62,3 +62,20 @@ export async function countEmbeddingBacklog(): Promise<number | null> {
   }
   return count ?? 0
 }
+
+/** Voice notes with audio and no transcript entry yet (Overview "Local jobs" card). */
+export async function countVoiceTranscriptBacklog(): Promise<number | null> {
+  const { error: authErr, supabase } = await guardTeam()
+  if (authErr || !supabase) return null
+
+  const [notes, done] = await Promise.all([
+    supabase.from('voice_note').select('id').not('audio_r2_key', 'is', null),
+    supabase.from('journal_entry').select('voice_note_id').not('voice_note_id', 'is', null),
+  ])
+  if (notes.error || done.error) {
+    console.error('[voice-backlog]', notes.error?.message ?? done.error?.message)
+    return null
+  }
+  const transcribed = new Set((done.data ?? []).map(r => r.voice_note_id))
+  return (notes.data ?? []).filter(n => !transcribed.has(n.id)).length
+}

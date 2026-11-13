@@ -1080,6 +1080,7 @@ export type Database = {
           body: string
           corrects_id: number | null
           created_at: string
+          engine: string | null
           event_on: string
           event_precision: string
           hidden_at: string | null
@@ -1087,8 +1088,10 @@ export type Database = {
           id: number
           kind: string
           provenance: string
+          source_key: string | null
           verification: string
           visibility: string
+          voice_note_id: string | null
         }
         Insert: {
           ai_links_at?: string | null
@@ -1096,6 +1099,7 @@ export type Database = {
           body: string
           corrects_id?: number | null
           created_at?: string
+          engine?: string | null
           event_on?: string
           event_precision?: string
           hidden_at?: string | null
@@ -1103,8 +1107,10 @@ export type Database = {
           id?: never
           kind: string
           provenance?: string
+          source_key?: string | null
           verification?: string
           visibility?: string
+          voice_note_id?: string | null
         }
         Update: {
           ai_links_at?: string | null
@@ -1112,6 +1118,7 @@ export type Database = {
           body?: string
           corrects_id?: number | null
           created_at?: string
+          engine?: string | null
           event_on?: string
           event_precision?: string
           hidden_at?: string | null
@@ -1119,8 +1126,10 @@ export type Database = {
           id?: never
           kind?: string
           provenance?: string
+          source_key?: string | null
           verification?: string
           visibility?: string
+          voice_note_id?: string | null
         }
         Relationships: [
           {
@@ -1128,6 +1137,13 @@ export type Database = {
             columns: ["corrects_id"]
             isOneToOne: false
             referencedRelation: "journal_entry"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journal_entry_voice_note_id_fkey"
+            columns: ["voice_note_id"]
+            isOneToOne: false
+            referencedRelation: "voice_note"
             referencedColumns: ["id"]
           },
         ]
@@ -3372,6 +3388,7 @@ export type Database = {
         Args: { p_contact: number; p_kind: string; p_oeuvre: number }
         Returns: boolean
       }
+      oeuvre_search_text: { Args: { p_oid: number }; Returns: string }
       oeuvre_stage_key: {
         Args: { catalogued: boolean; needs_photo: boolean; status: number }
         Returns: string

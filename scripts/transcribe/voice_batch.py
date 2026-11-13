@@ -16,12 +16,19 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import time
 
 from common import MODELS_DIR, OUT_ROOT, Supabase, add_cuda_dll_dirs, download, load_env, paris_date, quote_key
 
 SOURCE_COLUMNS = ["voice_note_id", "engine"]
+# Replacement character + C0 controls except newline (owner 2026-11-13: "a few unusable characters").
+_BAD_CHARS = re.compile("[�\x00-\x09\x0b-\x1f\x7f]")
+
+
+def clean_text(text: str) -> str:
+    return re.sub(r"[ ]{2,}", " ", _BAD_CHARS.sub(" ", text)).strip()
 
 
 def main() -> None:
@@ -106,7 +113,7 @@ def main() -> None:
             segments, info = model.transcribe(
                 str(audio), language=args.language, vad_filter=True, beam_size=5, initial_prompt=prompt
             )
-            text = "\n".join(s.text.strip() for s in segments if s.text.strip())
+            text = clean_text("\n".join(s.text.strip() for s in segments if s.text.strip()))
         except Exception as err:  # noqa: BLE001 — one bad file must not stop the rest
             print(f"  FAILED {n['id']}: {err}")
             continue

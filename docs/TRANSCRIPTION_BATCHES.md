@@ -14,7 +14,11 @@ Run from the repo folder with the venv's Python: `C:\Users\pppee\.venvs\transcri
 
 Test-run 2026-11-13: list mode (1 of 9 voice notes has audio, 184 s — the other 8 are dictation text only); `--run --model tiny` (160 s of audio in 4 s, French detected, local file); handwriting pipeline on a generated page (11 of 11 words, 39 s including model load). Not run: large-v3 (model not downloaded), `--write`, real handwriting.
 
-Not built: the journal day page does not yet show the audio player or the engine mark next to a transcript; the handwriting full batch (C) is not written — it depends on the test result.
+**From the app (2026-11-13):** Overview (admin) → **Local jobs** card → "Run on this PC" opens `pem-embed:run` → `scripts/embed-run.ps1`: `voice_batch.py --run --write` (notes already done by the same engine are skipped), then `npm run embed:worker -- --drain` — one after the other, never in parallel (8 GB GPU). The card counts voice notes with audio and no transcript, and nodes waiting for indexing; on a phone it only shows the counts. Transcript text is cleaned of the replacement character and control characters (newline kept) before insert. Journal day page: a transcript entry shows its audio player and "✦ transcript · engine · unverified"; an admin can mark it verified (or back).
+
+Timing, GPU otherwise idle (2026-11-13): large-v3, 160 s of French audio in 36 s, model load 4 s (about 4.4× real time). Under contention with the vision model it took 416 s — run jobs one at a time.
+
+Not built: the handwriting full batch (C) is not written — it depends on the test result.
 
 ## What is already in place
 

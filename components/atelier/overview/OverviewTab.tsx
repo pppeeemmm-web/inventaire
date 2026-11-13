@@ -570,10 +570,10 @@ export function OverviewTab({
           </div>
         )}
 
-        {/* Search indexing — admin maintenance, kept below the day-to-day items (owner 2026-11-03) */}
+        {/* Local jobs (transcription + search indexing) — admin maintenance, kept below the day-to-day items (owner 2026-11-03) */}
         {isAdmin && (
           <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: '1px solid var(--bd)' }}>
-            <EmbeddingIndexCard t={t} />
+            <EmbeddingIndexCard t={t} narrow={ovNarrow} />
           </div>
         )}
       </div>
