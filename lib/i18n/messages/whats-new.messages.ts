@@ -8,6 +8,13 @@ export const whatsNewMessages = defineMessages({
     en: 'What changed in the Atelier over the last few days.',
   },
 
+  // 3.1.4 (2026-11-13) — inventory table tidy + overview thumbnails.
+  wn_inventory_table_tidy_t: { fr: 'Inventaire : un tableau qui tient', en: 'Inventory: a table that fits' },
+  wn_inventory_table_tidy_d: {
+    fr: 'Plus rien ne déborde ni ne se chevauche. Les gros prix s’écrivent en court (180 M €), le montant exact au survol. Titre et médium sur deux lignes, le texte entier au survol. L’état devient une pastille de couleur. Quand la liste est étroite (fiche ouverte), dimensions + année et contact + emplacement partagent une colonne, et le tableau ne part plus à droite. Vue d’ensemble : les vignettes « Documentation récente » ouvrent l’œuvre et montrent la loupe.',
+    en: 'Nothing overflows or overlaps any more. Big prices are written short (€180m), the exact amount on hover. Title and medium on two lines, the full text on hover. Status becomes a colour dot. When the list is narrow (card open), dimensions + year and contact + location share a column, and the table no longer runs off the right. Overview: the “Recent documentation” thumbnails open the work and show the loupe.',
+  },
+
   // 3.0.3 (2026-11-12) — owner bug review + journal entries.
   wn_batch_modify_t: { fr: 'Modification en lot : notes ajoutées, période, plus compact', en: 'Batch modify: notes added, period, more compact' },
   wn_batch_modify_d: {

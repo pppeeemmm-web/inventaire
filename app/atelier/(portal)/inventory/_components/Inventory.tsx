@@ -14,6 +14,7 @@ import { interpolateMessage } from '@/lib/i18n/message-core'
 import { imageUrl, thumbUrl, yearOf, statusOf, statusColor, stageOf, type StatusKey, formatInventoryDims, isAvailabilityRefinedToProduction } from '@/lib/data'
 import { MissingThumb, WorkThumb } from '@/components/atelier/WorkThumb'
 import { WorkStateChip } from '@/components/atelier/WorkStateChip'
+import { formatPriceCompact, formatPriceFull } from '@/lib/format-price'
 import { EmbeddingStatusBadge } from '@/components/atelier/EmbeddingStatusBadge'
 import { useNonOkEmbeddingStatuses } from '@/hooks/useNonOkEmbeddingStatuses'
 import type { OeuvreEmbeddingStatusMap } from '@/app/atelier/embedding-status-actions'
@@ -251,6 +252,8 @@ type View = 'list' | 'grid' | 'graph' | 'pivot'
 
 const INV_LIST_ROW_H = 44
 const INV_TABLE_COLS = 14
+/** Table cell text: two lines, then cut (full text in the cell's hover title). */
+const INV_CLAMP2: React.CSSProperties = { display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', whiteSpace: 'normal', lineHeight: 1.2, overflowWrap: 'break-word' }
 const INV_GRID_GAP = 12
 const INV_GRID_PAD = 16
 const INV_GRID_MIN_CELL = 140
@@ -1654,12 +1657,25 @@ function InvList({
   onLoadMore?:    () => void
   periodName?:    (o: Oeuvre) => string
 }) {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const lastSelIdxRef = useRef<number | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
   const visible = rows
   const isNarrow = useMediaQuery('(max-width: 359px)')
+  // Owner 2026-11-13: the table fits its pane. When the list is narrow (drawer open, small screen),
+  // dimensions + year and contact + location share a two-line column instead of running off the right.
+  const [tableW, setTableW] = useState(0)
+  useLayoutEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const measure = () => setTableW(el.clientWidth)
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+  const tight = tableW > 0 && tableW < 1100
 
   useEffect(() => {
     const el = sentinelRef.current
@@ -1789,7 +1805,7 @@ function InvList({
     >
       <table style={{ 
         width: '100%',
-        minWidth: 980,
+        minWidth: tight ? 720 : 980,
         tableLayout: 'fixed', 
         borderCollapse: 'collapse', 
         borderSpacing: 0,
@@ -1822,48 +1838,75 @@ function InvList({
               </div>
             </th>
             <th style={{ width: 44, padding: '8px 2px', ...cellDivider, background: 'var(--bg1)' }} />
-            <th onClick={() => toggleSort('Titre')} style={{ ...headerBase, width: '18%', cursor: 'pointer' }}>
+            <th onClick={() => toggleSort('Titre')} style={{ ...headerBase, width: tight ? undefined : '18%', cursor: 'pointer' }}>
               <div style={sortThRow}>
                 <span style={sortThLabel}>{t('title')}</span>
                 <span style={{ flexShrink: 0 }}><SortInd k="Titre" current={sortKey} dir={sortDir} /></span>
               </div>
             </th>
-            <th style={{ ...headerBase, width: '22%' }} title={t('concept_field_medium')}>{t('concept_field_medium')}</th>
-            <th style={{ ...headerBase, width: 70 }} title={t('dimensions')}>{t('dimensions')}</th>
-            <th onClick={() => toggleSort('Année')} style={{ ...headerBase, width: 48, cursor: 'pointer' }}>
-              <div style={sortThRow}>
-                <span style={sortThLabel}>{t('year')}</span>
-                <span style={{ flexShrink: 0 }}><SortInd k="Année" current={sortKey} dir={sortDir} /></span>
-              </div>
-            </th>
-            <th onClick={() => toggleSort('Period')} style={{ ...headerBase, width: 90, cursor: 'pointer' }} title={t('ps_col_period')}>
+            <th style={{ ...headerBase, width: tight ? undefined : '22%' }} title={t('concept_field_medium')}>{t('concept_field_medium')}</th>
+            {tight ? (
+              <th style={{ ...headerBase, width: 70 }} title={`${t('dimensions')} / ${t('year')}`}>
+                <div style={sortThLabel}>{t('dimensions')}</div>
+                <div onClick={() => toggleSort('Année')} style={{ ...sortThRow, cursor: 'pointer', color: 'var(--tx3)' }}>
+                  <span style={sortThLabel}>{t('year')}</span>
+                  <span style={{ flexShrink: 0 }}><SortInd k="Année" current={sortKey} dir={sortDir} /></span>
+                </div>
+              </th>
+            ) : (
+              <>
+                <th style={{ ...headerBase, width: 70 }} title={t('dimensions')}>{t('dimensions')}</th>
+                <th onClick={() => toggleSort('Année')} style={{ ...headerBase, width: 48, cursor: 'pointer' }}>
+                  <div style={sortThRow}>
+                    <span style={sortThLabel}>{t('year')}</span>
+                    <span style={{ flexShrink: 0 }}><SortInd k="Année" current={sortKey} dir={sortDir} /></span>
+                  </div>
+                </th>
+              </>
+            )}
+            <th onClick={() => toggleSort('Period')} style={{ ...headerBase, width: tight ? 74 : 90, cursor: 'pointer' }} title={t('ps_col_period')}>
               <div style={sortThRow}>
                 <span style={sortThLabel}>{t('ps_col_period')}</span>
                 <span style={{ flexShrink: 0 }}><SortInd k="Period" current={sortKey} dir={sortDir} /></span>
               </div>
             </th>
-            <th onClick={() => toggleSort('Prix')} style={{ ...headerBase, width: 80, cursor: 'pointer' }}>
+            <th onClick={() => toggleSort('Prix')} style={{ ...headerBase, width: tight ? 68 : 80, cursor: 'pointer' }}>
               <div style={sortThRow}>
                 <span style={sortThLabel}>{t('price')}</span>
                 <span style={{ flexShrink: 0 }}><SortInd k="Prix" current={sortKey} dir={sortDir} /></span>
               </div>
             </th>
-            <th onClick={() => toggleSort('Contact')} style={{ ...headerBase, width: 100, cursor: 'pointer' }}>
-              <div style={sortThRow}>
-                <span style={sortThLabel}>Contact</span>
-                <span style={{ flexShrink: 0 }}><SortInd k="Contact" current={sortKey} dir={sortDir} /></span>
-              </div>
-            </th>
-            <th onClick={() => toggleSort('Custodian')} style={{ ...headerBase, width: 110, cursor: 'pointer' }}>
-              <div style={sortThRow}>
-                <span style={sortThLabel}>{t('inv_col_location')}</span>
-                <span style={{ flexShrink: 0 }}><SortInd k="Custodian" current={sortKey} dir={sortDir} /></span>
-              </div>
-            </th>
+            {tight ? (
+              <th style={{ ...headerBase, width: 124 }}>
+                <div onClick={() => toggleSort('Contact')} style={{ ...sortThRow, cursor: 'pointer' }}>
+                  <span style={sortThLabel}>Contact</span>
+                  <span style={{ flexShrink: 0 }}><SortInd k="Contact" current={sortKey} dir={sortDir} /></span>
+                </div>
+                <div onClick={() => toggleSort('Custodian')} style={{ ...sortThRow, cursor: 'pointer', color: 'var(--tx3)' }}>
+                  <span style={sortThLabel}>{t('inv_col_location')}</span>
+                  <span style={{ flexShrink: 0 }}><SortInd k="Custodian" current={sortKey} dir={sortDir} /></span>
+                </div>
+              </th>
+            ) : (
+              <>
+                <th onClick={() => toggleSort('Contact')} style={{ ...headerBase, width: 100, cursor: 'pointer' }}>
+                  <div style={sortThRow}>
+                    <span style={sortThLabel}>Contact</span>
+                    <span style={{ flexShrink: 0 }}><SortInd k="Contact" current={sortKey} dir={sortDir} /></span>
+                  </div>
+                </th>
+                <th onClick={() => toggleSort('Custodian')} style={{ ...headerBase, width: 110, cursor: 'pointer' }}>
+                  <div style={sortThRow}>
+                    <span style={sortThLabel}>{t('inv_col_location')}</span>
+                    <span style={{ flexShrink: 0 }}><SortInd k="Custodian" current={sortKey} dir={sortDir} /></span>
+                  </div>
+                </th>
+              </>
+            )}
             <th
               colSpan={2}
               onClick={() => toggleSort('Status')}
-              style={{ ...headerBase, width: 160, cursor: 'pointer' }}
+              style={{ ...headerBase, width: 116, cursor: 'pointer' }}
               title={t('inv_title_status_col')}
             >
               <div style={sortThRow}>
@@ -1873,7 +1916,7 @@ function InvList({
             </th>
             <th
               onClick={() => toggleSort('Comm')}
-              style={{ ...headerBase, width: 80, cursor: 'pointer', borderRight: 'none' }}
+              style={{ ...headerBase, width: 72, cursor: 'pointer', borderRight: 'none' }}
               title={t('inv_title_broadcast_col')}
             >
               <div style={sortThRow}>
@@ -1886,7 +1929,7 @@ function InvList({
         <tbody>
           {padTop > 0 && (
             <tr>
-              <td colSpan={INV_TABLE_COLS} style={{ height: padTop, padding: 0, border: 'none', lineHeight: 0 }} />
+              <td colSpan={tight ? INV_TABLE_COLS - 2 : INV_TABLE_COLS} style={{ height: padTop, padding: 0, border: 'none', lineHeight: 0 }} />
             </tr>
           )}
           {vItems.map((vi) => {
@@ -1963,36 +2006,65 @@ function InvList({
                         : <MissingThumb id={o.OeuvreID} onOpen={() => onOpen(o)} />}
                     </div>
                   </td>
-                  <td style={{ color: 'var(--tx)', padding: '0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', ...cellDivider, verticalAlign: 'middle' }}>{o.Titre || '—'}</td>
-                  <td style={{ padding: '0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: 0.8, ...cellDivider, verticalAlign: 'middle' }}>
-                    {o.Technique != null ? (tM[o.Technique] ?? '') : ''} 
-                    {o.Support != null ? ` · ${sM[o.Support] ?? ''}` : ''}
+                  {/* Owner 2026-11-13: nothing cut silently — two lines, then the full text on hover. */}
+                  <td title={o.Titre || undefined} style={{ color: 'var(--tx)', padding: '0 4px', ...cellDivider, verticalAlign: 'middle' }}>
+                    <div style={INV_CLAMP2}>{o.Titre || '—'}</div>
                   </td>
-                  <td style={{ padding: '0 4px', whiteSpace: 'nowrap', opacity: 0.8, ...cellDivider, verticalAlign: 'middle' }}>{dims}</td>
-                  <td style={{ padding: '0 4px', opacity: 0.8, ...cellDivider, verticalAlign: 'middle' }}>{yearOf(o.Année) ?? '—'}</td>
-                  <td style={{ padding: '0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: 0.8, fontSize: 12, ...cellDivider, verticalAlign: 'middle' }}>{periodName?.(o) || '—'}</td>
-                  <td style={{ padding: '0 4px', whiteSpace: 'nowrap', opacity: 0.8, ...cellDivider, verticalAlign: 'middle' }}>{o.Prix ? `€ ${Number(o.Prix).toLocaleString('fr-FR')}` : '—'}</td>
-                  <td style={{ padding: '0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: 0.8, ...cellDivider, verticalAlign: 'middle' }}>
-                    {(() => {
-                      const level = o.anonymity_level ?? 0
-                      const contactName = o.ContactID != null ? (cM[o.ContactID] ?? '—') : 'Pem'
-                      
-                      if (publicMode && level >= 1) return <span style={{ opacity: 0.3 }}>{t('inv_masked')}</span>
-                      
-                      return (
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{contactName}</span>
-                          {level === 1 && <span title={t('inv_title_contact_hidden')} style={{ color: 'var(--ac)' }}>👤</span>}
-                          {level === 2 && <span title={t('inv_title_private')} style={{ opacity: 0.6 }}>🔒</span>}
+                  {(() => {
+                    const medium = [o.Technique != null ? (tM[o.Technique] ?? '') : '', o.Support != null ? (sM[o.Support] ?? '') : ''].filter(Boolean).join(' · ')
+                    return (
+                      <td title={medium || undefined} style={{ padding: '0 4px', opacity: 0.8, fontSize: 13, ...cellDivider, verticalAlign: 'middle' }}>
+                        <div style={INV_CLAMP2}>{medium}</div>
+                      </td>
+                    )
+                  })()}
+                  {tight ? (
+                    <td title={dims || undefined} style={{ padding: '0 4px', opacity: 0.8, fontSize: 12, lineHeight: 1.25, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', ...cellDivider, verticalAlign: 'middle' }}>
+                      <div style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{dims || '—'}</div>
+                      <div style={{ color: 'var(--tx3)' }}>{yearOf(o.Année) ?? '—'}</div>
+                    </td>
+                  ) : (
+                    <>
+                      <td style={{ padding: '0 4px', whiteSpace: 'nowrap', opacity: 0.8, ...cellDivider, verticalAlign: 'middle' }}>{dims}</td>
+                      <td style={{ padding: '0 4px', opacity: 0.8, ...cellDivider, verticalAlign: 'middle' }}>{yearOf(o.Année) ?? '—'}</td>
+                    </>
+                  )}
+                  <td title={periodName?.(o) || undefined} style={{ padding: '0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: 0.8, fontSize: 12, ...cellDivider, verticalAlign: 'middle' }}>{periodName?.(o) || '—'}</td>
+                  <td title={o.Prix ? formatPriceFull(Number(o.Prix), lang) : undefined} style={{ padding: '0 6px 0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'right', fontVariantNumeric: 'tabular-nums', opacity: 0.8, ...cellDivider, verticalAlign: 'middle' }}>{o.Prix ? formatPriceCompact(Number(o.Prix), lang) : '—'}</td>
+                  {(() => {
+                    const level = o.anonymity_level ?? 0
+                    const contactName = o.ContactID != null ? (cM[o.ContactID] ?? '—') : 'Pem'
+                    const contactEl = publicMode && level >= 1
+                      ? <span style={{ opacity: 0.3 }}>{t('inv_masked')}</span>
+                      : (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
+                          <span title={contactName} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{contactName}</span>
+                          {level === 1 && <span title={t('inv_title_contact_hidden')} style={{ color: 'var(--ac)', flexShrink: 0 }}>👤</span>}
+                          {level === 2 && <span title={t('inv_title_private')} style={{ opacity: 0.6, flexShrink: 0 }}>🔒</span>}
                         </span>
                       )
-                    })()}
-                  </td>
-                  <td style={{ padding: '0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: 0.8, ...cellDivider, verticalAlign: 'middle' }}>
-                    {custodyLabel(o, cM, locMap, addrMap)}
-                  </td>
-                  <td style={{ padding: '0 4px', whiteSpace: 'nowrap', verticalAlign: 'middle', ...cellDivider }} colSpan={2}>
-                    <WorkStateChip o={o} statusLabelMap={statusLabelMap} />
+                    const custody = custodyLabel(o, cM, locMap, addrMap)
+                    if (tight) {
+                      return (
+                        <td style={{ padding: '0 4px', overflow: 'hidden', opacity: 0.8, fontSize: 12, lineHeight: 1.25, ...cellDivider, verticalAlign: 'middle' }}>
+                          {contactEl}
+                          <div title={custody} style={{ color: 'var(--tx3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{custody}</div>
+                        </td>
+                      )
+                    }
+                    return (
+                      <>
+                        <td style={{ padding: '0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: 0.8, ...cellDivider, verticalAlign: 'middle' }}>
+                          {contactEl}
+                        </td>
+                        <td title={custody} style={{ padding: '0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: 0.8, ...cellDivider, verticalAlign: 'middle' }}>
+                          {custody}
+                        </td>
+                      </>
+                    )
+                  })()}
+                  <td style={{ padding: '0 6px', overflow: 'hidden', whiteSpace: 'nowrap', verticalAlign: 'middle', ...cellDivider }} colSpan={2}>
+                    <WorkStateChip o={o} statusLabelMap={statusLabelMap} compact />
                   </td>
                   <td style={{ padding: '0 4px', verticalAlign: 'middle', borderRight: 'none' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
@@ -2024,7 +2096,7 @@ function InvList({
           })}
           {padBot > 0 && (
             <tr>
-              <td colSpan={INV_TABLE_COLS} style={{ height: padBot, padding: 0, border: 'none', lineHeight: 0 }} />
+              <td colSpan={tight ? INV_TABLE_COLS - 2 : INV_TABLE_COLS} style={{ height: padBot, padding: 0, border: 'none', lineHeight: 0 }} />
             </tr>
           )}
         </tbody>

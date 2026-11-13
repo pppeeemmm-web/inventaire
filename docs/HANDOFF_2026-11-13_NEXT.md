@@ -9,6 +9,7 @@
 ## A. Build next (in this order unless Pem reorders)
 
 ### A1. Inventory table — nothing truncated or overlapping (owner screenshot, bug-level)
+**Built 2026-11-13 (verified against live code 2026-11-13, committed locally):** `lib/format-price.ts` (compact / full), `StatusChip` + `WorkStateChip` `compact` (dot + label), title + medium 2-line clamp with hover, hover titles on period / contact / location / price; the table measures its pane — under 1100 px, dimensions + year and contact + location share a 2-line column (header has both sorts), so nothing runs off the right. Checked on dev at 1480 with the card open (list 823 px: no sideways scroll, 6 M € / 180 M € / 20 Md € in their column). Not checked: 1920 with the card closed and phone (browser pane hidden). What's new 3.1.4.
 File: `app/atelier/(portal)/inventory/_components/Inventory.tsx` (header ~1815–1880, price cell ~1974).
 Seen on desktop (~1480 px):
 - **Price** overflows into Contact (`€180 000 000`, `€20 002 000 000` + lock icon over the contact name). → compact form above 4 digits with `Intl.NumberFormat(lang, { notation: 'compact' })` (fr: `180 M €`, en: `€180M`; thousands → `K`), right-aligned, `tabular-nums`, never wider than the column; exact amount on hover (`title`). Same helper for the pivot sums.
