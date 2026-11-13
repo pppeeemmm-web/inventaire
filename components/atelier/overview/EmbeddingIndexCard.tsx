@@ -1,27 +1,37 @@
 'use client'
 
-// Overview "Local jobs" card (admin). The button opens `pem-embed:run`, a URL protocol that
+// Overview "Local jobs" (admin). The Run link opens `pem-embed:run`, a URL protocol that
 // scripts/register-embed-protocol.ps1 maps to scripts/embed-run.ps1 on the owner's PC:
 // voice notes -> transcripts, then search indexing (local GPU, one after the other).
-// On any other machine the link does nothing; on a phone the card only shows what is waiting.
+// On any other machine the link does nothing; on a phone only the counts show.
+// Since the one-glance dashboard (B1, 2026-11-13) the counts feed a signal cell, so they live in
+// a hook (`useLocalJobs`) and the panel only renders the Run / Copy controls.
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { countEmbeddingBacklog, countVoiceTranscriptBacklog, getLastArchiveRun } from '@/app/atelier/embedding-status-actions'
-import { interpolateMessage } from '@/lib/i18n/message-core'
 
 const PROTOCOL_HREF = 'pem-embed:run'
 const WORKER_COMMAND = 'pwsh scripts/embed-run.ps1'
 const POLL_MS = 5_000
 const POLL_MAX_MS = 10 * 60_000
 /** Owner 2026-11-13: remind when the PC archive copy is older than this. */
-const ARCHIVE_STALE_DAYS = 14
+export const ARCHIVE_STALE_DAYS = 14
 
-type Counts = { voice: number | null; index: number | null }
+export type LocalJobs = {
+  voice: number | null
+  index: number | null
+  /** undefined = loading · null = never archived · n = days since the last PC archive */
+  archiveDays: number | null | undefined
+  archiveStale: boolean
+  polling: boolean
+  startPolling: () => void
+}
 
-export function EmbeddingIndexCard({ t, narrow = false }: { t: (k: string) => string; narrow?: boolean }) {
-  const [counts, setCounts] = useState<Counts | null>(null)
+/** Counts behind the Local jobs signal; `enabled` = admin (others never fetch). */
+export function useLocalJobs(enabled: boolean): LocalJobs {
+  const [counts, setCounts] = useState<{ voice: number | null; index: number | null }>({ voice: null, index: null })
+  const [archiveDays, setArchiveDays] = useState<number | null | undefined>(undefined)
   const [polling, setPolling] = useState(false)
-  const [copied, setCopied] = useState(false)
   const pollStart = useRef(0)
 
   const refresh = useCallback(async () => {
@@ -31,17 +41,15 @@ export function EmbeddingIndexCard({ t, narrow = false }: { t: (k: string) => st
     return next
   }, [])
 
-  useEffect(() => { void refresh() }, [refresh])
-
-  // PC archive age (`npm run archive` stamps each run; the site cannot read the PC itself).
-  const [archiveDays, setArchiveDays] = useState<number | null | undefined>(undefined)
   useEffect(() => {
+    if (!enabled) return
+    void refresh()
+    // PC archive age (`npm run archive` stamps each run; the site cannot read the PC itself).
     void getLastArchiveRun().then((r) => {
       if (!r) return
       setArchiveDays(r.at ? Math.floor((Date.now() - new Date(r.at).getTime()) / 86_400_000) : null)
     })
-  }, [])
-  const archiveStale = archiveDays === null || (archiveDays != null && archiveDays > ARCHIVE_STALE_DAYS)
+  }, [enabled, refresh])
 
   // After "Run", poll until both queues are empty or the window runs out.
   useEffect(() => {
@@ -54,68 +62,39 @@ export function EmbeddingIndexCard({ t, narrow = false }: { t: (k: string) => st
     return () => clearInterval(id)
   }, [polling, refresh])
 
+  const archiveStale = archiveDays === null || (archiveDays != null && archiveDays > ARCHIVE_STALE_DAYS)
+  const startPolling = useCallback(() => { pollStart.current = Date.now(); setPolling(true) }, [])
+  return { ...counts, archiveDays, archiveStale, polling, startPolling }
+}
+
+/** Run on this PC + copy the command (desktop only). */
+export function LocalJobsControls({ jobs, t }: { jobs: LocalJobs; t: (k: string) => string }) {
+  const [copied, setCopied] = useState(false)
   const copyCommand = async () => {
     try {
       await navigator.clipboard.writeText(WORKER_COMMAND)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
+    // eslint-disable-next-line pem-i18n/no-silent-catch -- clipboard refusal is expected; the command stays in the tooltip
     } catch {
       // Clipboard blocked (permissions) — the command stays visible in the title tooltip.
       setCopied(false)
     }
   }
-
-  const line = (n: number | null | undefined, pendingKey: string, clearKey: string) =>
-    n == null ? '…' : n === 0 ? t(clearKey) : interpolateMessage(t(pendingKey), { n })
-
   return (
-    <div style={{ padding: 16, background: 'var(--bg1)', border: '1px solid var(--bd)' }} data-testid="overview-embedding-index">
-      <div className="t-eyebrow" style={{ fontSize: 8, marginBottom: 4, color: 'var(--tx3)' }}>{t('ov_jobs_title')}</div>
-      <div style={{ fontSize: 13, color: 'var(--tx)', marginBottom: 2 }} data-testid="overview-jobs-voice">
-        {line(counts?.voice, 'ov_jobs_voice_pending', 'ov_jobs_voice_clear')}
-      </div>
-      <div style={{ fontSize: 13, color: 'var(--tx)', marginBottom: 2 }}>
-        {line(counts?.index, 'ov_index_pending', 'ov_index_clear')}
-      </div>
-      {archiveDays !== undefined ? (
-        <div
-          data-testid="overview-jobs-archive"
-          style={{ fontSize: 13, marginBottom: 10, color: archiveStale ? 'var(--rust)' : 'var(--tx)' }}
-        >
-          {archiveDays === null
-            ? t('ov_jobs_archive_never')
-            : interpolateMessage(t(archiveStale ? 'ov_jobs_archive_stale' : 'ov_jobs_archive_ok'), { n: archiveDays })}
-        </div>
-      ) : (
-        <div style={{ marginBottom: 10 }} />
-      )}
-      {narrow ? (
-        <div className="t-mono-sm" style={{ fontSize: 9, color: 'var(--tx3)', lineHeight: 1.4 }}>{t('ov_jobs_phone_hint')}</div>
-      ) : (
-        <>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <a
-              href={PROTOCOL_HREF}
-              className="btn primary sm"
-              style={{ minHeight: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: '1 1 auto' }}
-              onClick={() => { pollStart.current = Date.now(); setPolling(true) }}
-              data-testid="overview-embedding-run"
-            >
-              {polling ? t('ov_jobs_running') : t('ov_jobs_run')}
-            </a>
-            <button
-              type="button"
-              className="btn ghost sm"
-              style={{ minHeight: 44 }}
-              title={WORKER_COMMAND}
-              onClick={() => void copyCommand()}
-            >
-              {copied ? t('ov_index_copied') : t('ov_index_copy')}
-            </button>
-          </div>
-          <div className="t-mono-sm" style={{ fontSize: 8, color: 'var(--tx3)', marginTop: 8, lineHeight: 1.4 }}>{t('ov_jobs_hint')}</div>
-        </>
-      )}
+    <div style={{ display: 'flex', gap: 6, padding: '6px 12px', alignItems: 'center' }} title={t('ov_jobs_hint')}>
+      <a
+        href={PROTOCOL_HREF}
+        className="btn primary sm"
+        style={{ minHeight: 26, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: '1 1 auto' }}
+        onClick={jobs.startPolling}
+        data-testid="overview-embedding-run"
+      >
+        {jobs.polling ? t('ov_jobs_running') : t('ov_jobs_run')}
+      </a>
+      <button type="button" className="btn ghost sm" style={{ minHeight: 26 }} title={WORKER_COMMAND} onClick={() => void copyCommand()}>
+        {copied ? t('ov_index_copied') : t('ov_index_copy')}
+      </button>
     </div>
   )
 }

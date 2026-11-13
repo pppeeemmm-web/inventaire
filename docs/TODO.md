@@ -13,7 +13,7 @@ _Open items only, one line each, in order. Details → [`TODO_NOTES.md`](./TODO_
 ## 2. To build — in order
 
 Current batch (design build)
-- [ ] ~~B2 Batch modify mixer~~ (built 2026-11-13, committed locally) → B1 Overview one-glance dashboard → (A2, A4, A3) → B3 Export with live preview — build from the approved mocks, order in [NEXT](./HANDOFF_2026-11-13_NEXT.md) → [handoff](./HANDOFF_2026-11-13_DESIGN_BUILD.md) (4 decisions for Pem inside: D1–D4)
+- [ ] ~~B2 Batch modify mixer~~ (built 2026-11-13, committed locally) → ~~B1 Overview one-glance dashboard~~ (built 2026-11-13, committed locally) → (A2, A4, A3) → B3 Export with live preview — build from the approved mocks, order in [NEXT](./HANDOFF_2026-11-13_NEXT.md) → [handoff](./HANDOFF_2026-11-13_DESIGN_BUILD.md) (4 decisions for Pem inside: D1–D4)
 
 Trace
 - [ ] 1. Handwriting batch (after the test above) → [notes](./TODO_NOTES.md#journal-phase-2)

@@ -4,7 +4,7 @@
 
 ## Order (readjusted 2026-11-13 after the design pass — Pem may reorder)
 1. **B2 Batch modify** — Pem's sharpest complaint (said twice), mock ready, no decision needed. Place made left out until A3, then one row added. **Built 2026-11-13 (verified against live code 2026-11-13, committed locally, What's new 3.1.5)** — see the status under §3 of the design build handoff.
-2. **B1 Overview** (+ shared `SignalMark`) — mock ready; D1 and D3 have safe defaults (D1 = the mock's rule, D3 = today's cash-health flag) until Pem answers.
+2. **B1 Overview** (+ shared `SignalMark`) — mock ready; D1 and D3 have safe defaults (D1 = the mock's rule, D3 = today's cash-health flag) until Pem answers. **Built 2026-11-13 (verified against live code 2026-11-13, committed locally, What's new 3.1.5)** — status under §2 of the design build handoff.
 3. **A2 AI descriptions** with the usefulness slider (migration, drawer section).
 4. **A4 answer** (read only, no code) — what location/weather is recorded and for how many works; it decides what A3 can take from field sessions.
 5. **A3 periods by date + place per work** (migration) → then add **Place made** to Identity in batch modify (B2) and to the drawer.

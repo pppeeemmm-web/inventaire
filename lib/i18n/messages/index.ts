@@ -38,6 +38,7 @@ import { workPeriodsMessages } from './work-periods.messages'
 import { whatsNewMessages } from './whats-new.messages'
 import { journalEntryMessages } from './journal-entry.messages'
 import { batchEditMessages } from './batch-edit.messages'
+import { overviewDashMessages } from './overview-dash.messages'
 
 export const featureMessages = {
   ...atelierMessages,
@@ -80,6 +81,7 @@ export const featureMessages = {
   ...whatsNewMessages,
   ...journalEntryMessages,
   ...batchEditMessages,
+  ...overviewDashMessages,
 } as const
 
 export type MessageKey = keyof typeof featureMessages

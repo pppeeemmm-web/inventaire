@@ -8,6 +8,12 @@ export const whatsNewMessages = defineMessages({
     en: 'What changed in the Atelier over the last few days.',
   },
 
+  // 3.1.5 (2026-11-13) — Overview dashboard (B1) + batch modify (B2), rebuilt from the design pass.
+  wn_overview_dashboard_t: { fr: 'Vue d’ensemble : l’atelier d’un coup d’œil', en: 'Overview: the studio at a glance' },
+  wn_overview_dashboard_d: {
+    fr: 'La Vue d’ensemble tient sur un écran, sans défiler. En haut, une rangée de signaux toujours à la même place : ■ à corriger, ▲ à surveiller, ● OK, ○ info — forme et couleur, lisibles de loin. Un clic sur un signal mène à l’onglet qui le corrige. Dessous, quatre colonnes : à traiter et santé du catalogue · échéances, semaine et rappels · argent et collection · tâches locales, idées, à revoir et dernières œuvres. Laissez la souris sur un panneau marqué « +N » : il s’ouvre sur place. Sur téléphone, la liste des signaux, le pire d’abord, puis les rappels.',
+    en: 'The Overview fits one screen, no scrolling. At the top, a row of signals that always sit in the same place: ■ wrong, ▲ attention, ● OK, ○ info — shape and colour, readable from across the room. Clicking a signal goes to the tab that fixes it. Below, four columns: to do and catalogue health · deadlines, week and reminders · money and collection · local jobs, ideas, see again and latest works. Rest the pointer on a panel marked “+N”: it opens in place. On the phone, the list of signals, worst first, then the reminders.',
+  },
   // 3.1.5 (2026-11-13) — batch modify rebuilt from the design pass (B2).
   wn_batch_modify_mixer_t: { fr: 'Modification en lot : tout d’un coup d’œil', en: 'Batch modify: everything at a glance' },
   wn_batch_modify_mixer_d: {
