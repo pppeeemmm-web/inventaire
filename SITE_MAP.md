@@ -37,6 +37,7 @@
 | Path | Purpose |
 |------|---------|
 | `/login` | Sign-in; `?next=` return path after success |
+| `/login/reset-password` | Set a new password: from the emailed reset link (via `/auth/callback?next=`), or **Change password** for a signed-in email account. Sign out / Change password: [`AccountActions`](components/shared/AccountActions.tsx) in the Atelier header (desktop + phone drawer) and at the bottom of `/hub`; Change password hidden for Google-only accounts (`app_metadata.providers` without `email`); Sign out = `signOut()` + full load of `/login` |
 | `/auth/callback` | Supabase OAuth callback |
 
 ### Team (login required — see middleware)

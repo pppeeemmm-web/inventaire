@@ -8,6 +8,7 @@
 import { useState, useMemo, useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { WhatsNewDialog } from '@/components/atelier/WhatsNew'
+import { AccountActions } from '@/components/shared/AccountActions'
 import { CommandPalette } from './CommandPalette'
 import { useUnsavedActionGuard } from '@/hooks/useUnsavedActionGuard'
 import { useEscapeClose } from '@/hooks/useEscapeClose'
@@ -109,7 +110,10 @@ function AtelierHeaderChrome({
     : { fontSize: 11, letterSpacing: 1 }
 
   return (
-    <div className="row gap-sm" style={{ flexShrink: 0, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end' }}>
+    <div
+      className="row gap-sm"
+      style={{ flexShrink: 0, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end', ...(compact ? { width: '100%', minWidth: 0 } : {}) }}
+    >
       <div
         role="toolbar"
         aria-label={t('quickActions')}
@@ -194,6 +198,7 @@ function AtelierHeaderChrome({
           </button>
         ))}
       </div>
+      <AccountActions compact={compact} style={compact ? { width: '100%', justifyContent: 'flex-end' } : undefined} />
     </div>
   )
 }

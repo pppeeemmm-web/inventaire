@@ -1,5 +1,6 @@
 'use client'
 
+import { AccountActions } from '@/components/shared/AccountActions'
 import { useEffect, useState } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import Link from 'next/link'
@@ -363,6 +364,7 @@ export function HubLauncherClient({ fieldPulse }: { fieldPulse: FieldPulseData }
       >
         {t('hub_launcher_enter_atelier')}
       </button>
+      <AccountActions compact style={{ width: '100%', maxWidth: 420, justifyContent: 'center', flexShrink: 0 }} />
     </div>
   )
 }
