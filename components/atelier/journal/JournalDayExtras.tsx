@@ -9,6 +9,8 @@ import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from 'react'
 import { EntryText } from '@/components/atelier/journal/EntryText'
 import { imageUrl } from '@/lib/data'
+import { SeeAgainCard, JOURNAL_COMPOSE_EVENT } from '@/components/atelier/SeeAgainCard'
+import { calendarDayInParisFromIso } from '@/lib/session-calendar-day'
 import { VoiceNoteSheet } from '@/components/shared/VoiceNoteSheet'
 import { getLiveDictationAvailability, startLiveDictation, type LiveDictationSession } from '@/lib/voice/web-speech'
 import { useI18n } from '@/lib/i18n/context'
@@ -163,6 +165,29 @@ export function JournalDayExtras({
     }, 60)
   }
 
+  // "See again" → "Write about it": the form opens with `#1234 ` prefilled (event on this page,
+  // `?write=` when coming from Overview). An existing draft is kept, the mention is added in front.
+  const openComposerRef = useRef(openComposer)
+  openComposerRef.current = openComposer
+  useEffect(() => {
+    const prefill = (text: string) => {
+      if (!/^(#\d+ ?)+$/.test(text.trim() + ' ')) return
+      setBody((b) => (b.includes(text.trim()) ? b : `${text.trim()} ${b}`))
+      openComposerRef.current()
+    }
+    const onCompose = (ev: Event) => prefill(String((ev as CustomEvent<string>).detail ?? ''))
+    window.addEventListener(JOURNAL_COMPOSE_EVENT, onCompose)
+    const url = new URL(window.location.href)
+    const w = url.searchParams.get('write')
+    if (w) {
+      prefill(w)
+      url.searchParams.delete('write')
+      window.history.replaceState(null, '', url.toString())
+    }
+    return () => window.removeEventListener(JOURNAL_COMPOSE_EVENT, onCompose)
+  }, [])
+  const isToday = day === calendarDayInParisFromIso(new Date().toISOString())
+
   useEffect(() => {
     if (composeSignal > 0) openComposer()
   }, [composeSignal])
@@ -257,6 +282,8 @@ export function JournalDayExtras({
           </button>
         ))}
       </div>
+
+      {isToday ? <SeeAgainCard context="journal" /> : null}
 
       <section>
         <h2 className="t-eyebrow" style={{ marginBottom: 12, color: 'var(--tx3)' }}>

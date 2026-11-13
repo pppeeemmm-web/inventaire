@@ -25,6 +25,7 @@ import { knobsPanelMessages } from './knobs-panel.messages'
 import { sessionFieldMessages } from './session-field.messages'
 import { overviewConsoleMessages } from './overview-console.messages'
 import { accountMessages } from './account.messages'
+import { seeAgainMessages } from './see-again.messages'
 import { pipelineUiMessages } from './pipeline-ui.messages'
 import { conceptDocsMessages } from './concept-docs.messages'
 import { notesTriageMessages } from './notes-triage.messages'
@@ -64,6 +65,7 @@ export const featureMessages = {
   ...sessionFieldMessages,
   ...overviewConsoleMessages,
   ...accountMessages,
+  ...seeAgainMessages,
   ...pipelineUiMessages,
   ...conceptDocsMessages,
   ...notesTriageMessages,

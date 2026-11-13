@@ -30,7 +30,7 @@ _Open items only. Closed → [`DONE.md`](./DONE.md). History → [`archive/`](./
   - [ ] Security, remaining: `anon` write grants on most tables (RLS only); `system_log` + `studio_task` open to any signed-in account; no content security policy (start report-only); `xlsx` 0.18.5 usage to check; `storage_object_ledger` table does not exist (`lib/storage-object-ledger.ts` writes to it).
   - [ ] Restore drill (O4) never run. Archive: no in-app reminder when the last run is old; no second-disk copy.
   - [ ] Image descriptions by the local vision model: 20-work test run 2026-11-13 (`scripts/transcribe/describe_images_test.py`, nothing saved) — owner to judge before any batch.
-  - [ ] Ideas agreed in principle, not built: work ↔ work links from the drawer; a daily "see again" card (old entry / unlinked work / close pair); journal day page showing a transcript's audio + engine mark.
+  - [ ] Ideas agreed in principle, not built: work ↔ work links from the drawer (task E of `HANDOFF_2026-11-13_OPUS.md`). Built 2026-11-13: "see again" card (Journal today + Overview; `see_again_dismissed.sql`), transcript audio + ✦ engine mark on the journal day.
   - [ ] Cold load: Overview figures are fetched before first paint on every tab — owner unsure of the gain; measure before any change.
 
 - [ ] **Owner bug review, 2026-11-12** — done parts in [`DONE.md`](./DONE.md).

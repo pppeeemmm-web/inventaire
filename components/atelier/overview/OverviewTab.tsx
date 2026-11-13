@@ -5,6 +5,7 @@ import { listUnreadSuiviReminders, markSuiviReminderRead } from '@/app/atelier/r
 import { useI18n } from '@/lib/i18n/context'
 import { WorkThumb } from '@/components/atelier/WorkThumb'
 import { EmbeddingIndexCard } from '@/components/atelier/overview/EmbeddingIndexCard'
+import { SeeAgainCard } from '@/components/atelier/SeeAgainCard'
 import type { Oeuvre, SuiviReminderListRow } from '@/lib/types/database'
 import type { AtelierOverviewBootstrap } from '@/components/atelier/team-portal-types'
 import { yearOf } from '@/lib/data'
@@ -392,6 +393,7 @@ export function OverviewTab({
 
       {/* Right Column: Deadlines & Concepts */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: ovNarrow ? 28 : 20, minWidth: 0 }}>
+        <SeeAgainCard context="overview" />
         <div>
           <button
             type="button"

@@ -2071,6 +2071,30 @@ export type Database = {
         }
         Relationships: []
       }
+      see_again_dismissed: {
+        Row: {
+          a: string
+          at: string
+          b: string
+          kind: string
+          user_id: string
+        }
+        Insert: {
+          a: string
+          at?: string
+          b?: string
+          kind: string
+          user_id?: string
+        }
+        Update: {
+          a?: string
+          at?: string
+          b?: string
+          kind?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       share_inbox: {
         Row: {
           created_at: string
