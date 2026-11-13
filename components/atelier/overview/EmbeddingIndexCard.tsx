@@ -6,13 +6,15 @@
 // On any other machine the link does nothing; on a phone the card only shows what is waiting.
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { countEmbeddingBacklog, countVoiceTranscriptBacklog } from '@/app/atelier/embedding-status-actions'
+import { countEmbeddingBacklog, countVoiceTranscriptBacklog, getLastArchiveRun } from '@/app/atelier/embedding-status-actions'
 import { interpolateMessage } from '@/lib/i18n/message-core'
 
 const PROTOCOL_HREF = 'pem-embed:run'
 const WORKER_COMMAND = 'pwsh scripts/embed-run.ps1'
 const POLL_MS = 5_000
 const POLL_MAX_MS = 10 * 60_000
+/** Owner 2026-11-13: remind when the PC archive copy is older than this. */
+const ARCHIVE_STALE_DAYS = 14
 
 type Counts = { voice: number | null; index: number | null }
 
@@ -30,6 +32,16 @@ export function EmbeddingIndexCard({ t, narrow = false }: { t: (k: string) => st
   }, [])
 
   useEffect(() => { void refresh() }, [refresh])
+
+  // PC archive age (`npm run archive` stamps each run; the site cannot read the PC itself).
+  const [archiveDays, setArchiveDays] = useState<number | null | undefined>(undefined)
+  useEffect(() => {
+    void getLastArchiveRun().then((r) => {
+      if (!r) return
+      setArchiveDays(r.at ? Math.floor((Date.now() - new Date(r.at).getTime()) / 86_400_000) : null)
+    })
+  }, [])
+  const archiveStale = archiveDays === null || (archiveDays != null && archiveDays > ARCHIVE_STALE_DAYS)
 
   // After "Run", poll until both queues are empty or the window runs out.
   useEffect(() => {
@@ -62,9 +74,21 @@ export function EmbeddingIndexCard({ t, narrow = false }: { t: (k: string) => st
       <div style={{ fontSize: 13, color: 'var(--tx)', marginBottom: 2 }} data-testid="overview-jobs-voice">
         {line(counts?.voice, 'ov_jobs_voice_pending', 'ov_jobs_voice_clear')}
       </div>
-      <div style={{ fontSize: 13, color: 'var(--tx)', marginBottom: 10 }}>
+      <div style={{ fontSize: 13, color: 'var(--tx)', marginBottom: 2 }}>
         {line(counts?.index, 'ov_index_pending', 'ov_index_clear')}
       </div>
+      {archiveDays !== undefined ? (
+        <div
+          data-testid="overview-jobs-archive"
+          style={{ fontSize: 13, marginBottom: 10, color: archiveStale ? 'var(--rust)' : 'var(--tx)' }}
+        >
+          {archiveDays === null
+            ? t('ov_jobs_archive_never')
+            : interpolateMessage(t(archiveStale ? 'ov_jobs_archive_stale' : 'ov_jobs_archive_ok'), { n: archiveDays })}
+        </div>
+      ) : (
+        <div style={{ marginBottom: 10 }} />
+      )}
       {narrow ? (
         <div className="t-mono-sm" style={{ fontSize: 9, color: 'var(--tx3)', lineHeight: 1.4 }}>{t('ov_jobs_phone_hint')}</div>
       ) : (

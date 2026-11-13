@@ -116,3 +116,5 @@ Faster than a full restore for a one-off "I just deleted the wrong row":
 
 ## Recovery drill schedule
 Once per quarter, do steps 1–5 of "full restore" into a throwaway project to confirm the dumps are actually readable. A backup you never test is wishful thinking, not a backup.
+
+**Archive reminder (2026-11-13):** each `npm run archive` run inserts a `system_log` row (`event_type = 'ARCHIVE_RUN'`); Overview → Local jobs shows the age of the last copy and turns red after 14 days.

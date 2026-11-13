@@ -79,3 +79,21 @@ export async function countVoiceTranscriptBacklog(): Promise<number | null> {
   const transcribed = new Set((done.data ?? []).map(r => r.voice_note_id))
   return (notes.data ?? []).filter(n => !transcribed.has(n.id)).length
 }
+
+/** When the PC archive (`npm run archive`) last ran — `system_log` ARCHIVE_RUN row stamped by the script. */
+export async function getLastArchiveRun(): Promise<{ at: string | null } | null> {
+  const { error: authErr, supabase } = await guardTeam()
+  if (authErr || !supabase) return null
+  const { data, error } = await supabase
+    .from('system_log')
+    .select('created_at')
+    .eq('event_type', 'ARCHIVE_RUN')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (error) {
+    console.error('[archive-run]', error.message)
+    return null
+  }
+  return { at: data?.created_at ?? null }
+}

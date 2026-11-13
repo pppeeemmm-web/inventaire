@@ -3016,6 +3016,50 @@ export type Database = {
         }
         Relationships: []
       }
+      work_description: {
+        Row: {
+          body: string
+          created_at: string
+          echoes: string | null
+          engine: string
+          id: number
+          image_key: string
+          oeuvre_id: number
+          prompt: string
+          verification: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          echoes?: string | null
+          engine: string
+          id?: never
+          image_key: string
+          oeuvre_id: number
+          prompt: string
+          verification?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          echoes?: string | null
+          engine?: string
+          id?: never
+          image_key?: string
+          oeuvre_id?: number
+          prompt?: string
+          verification?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_description_oeuvre_id_fkey"
+            columns: ["oeuvre_id"]
+            isOneToOne: false
+            referencedRelation: "Oeuvres"
+            referencedColumns: ["OeuvreID"]
+          },
+        ]
+      }
       work_period: {
         Row: {
           created_at: string

@@ -66,6 +66,12 @@ export const overviewConsoleMessages = defineMessages({
     fr: "Transcrit les notes vocales puis indexe la recherche, l'un après l'autre (GPU de ce PC). Installation unique : scripts/register-embed-protocol.ps1.",
     en: "Transcribes voice notes, then indexes search, one after the other (this PC's GPU). One-time setup: scripts/register-embed-protocol.ps1.",
   },
+  ov_jobs_archive_ok: { fr: 'Archive sur le PC : copiée il y a {n} j.', en: 'PC archive: copied {n} days ago.' },
+  ov_jobs_archive_stale: {
+    fr: 'Archive sur le PC : dernière copie il y a {n} j — lancez npm run archive.',
+    en: 'PC archive: last copy {n} days ago — run npm run archive.',
+  },
+  ov_jobs_archive_never: { fr: 'Archive sur le PC : aucune copie enregistrée.', en: 'PC archive: no copy recorded.' },
   ov_jobs_phone_hint: {
     fr: 'Se lance depuis le PC (Aperçu, bouton « Lancer sur ce PC »).',
     en: 'Runs from the PC (Overview, “Run on this PC”).',

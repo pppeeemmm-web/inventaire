@@ -5,6 +5,9 @@ _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, t
 ## 2026-11-13 — closed while tidying the list
 
 - Ideas agreed in principle (work links, see again, transcript audio) — all built 2026-11-13: work ↔ work links from the drawer (`WorkLinksSection`), "see again" card (Journal today + Overview; `see_again_dismissed.sql`), transcript audio + ✦ engine mark on the journal day.
+- Vercel `QDRANT_*` variables removed (owner, 2026-11-13).
+- Overview reminder for the PC archive: `scripts/archive-export.mjs` stamps each run (`system_log` `ARCHIVE_RUN`); Overview → Local jobs shows its age, red after 14 days (first run stamped afterwards from `archive-info.json`).
+- Image descriptions: owner chose `gemma3:4b` + an "echoes" line; `work_description` table (AI, unverified, never in `Commentaires`) added to search text; batch `scripts/transcribe/describe_batch.py` scheduled once for 2026-11-13 14:00 (Windows task "PEM describe batch").
 - Four works whose cover was in doubt (#272, #1434, #2103, #2339) — owner chose the covers; each has exactly one cover (checked in the DB 2026-11-13).
 - Lightroom-return loop (`lib/mobile/lightroom-return.ts`, imported by `ShareTriageClient.tsx`) — wired; owner tested it end to end (2026-11-13).
 - Staging AVIF upload smoke — superseded: 1 231 AVIF images are live in `tblImage` and uploads work in production (checked 2026-11-13).

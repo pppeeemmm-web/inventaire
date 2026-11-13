@@ -242,6 +242,17 @@ q.oninput=show;show();
     failed: [...img.failed, ...vault.failed],
   }
   await writeText('archive-info.json', JSON.stringify(info, null, 2))
+  // Stamp the run in the database: Overview (Local jobs) reminds the owner when the last copy is
+  // older than 14 days — the site cannot read this PC. Machine row (event_type), pruned after 365 days.
+  const { error: stampErr } = await sb.from('system_log').insert({
+    action: 'Archive copied to this PC',
+    event_type: 'ARCHIVE_RUN',
+    type: 'maintenance',
+    status: 'completed',
+    details: `${info.works} works, ${info.images.files} images, ${info.failed.length} failed`,
+    metadata: { works: info.works, images: info.images.files, failed: info.failed.length },
+  })
+  if (stampErr) console.warn('  could not stamp the run in system_log:', stampErr.message)
   await writeText('LISEZ-MOI.txt', [
     `Archive de l'œuvre de Pierre Emmanuel Moulin — ${started.toISOString().slice(0, 10)}`,
     '',

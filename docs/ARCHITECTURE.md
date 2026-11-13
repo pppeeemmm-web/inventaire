@@ -68,6 +68,7 @@ Column-specific triggers (`UPDATE OF …`) fire on the columns **in the UPDATE s
 | `saveWork` (`app/atelier/works/actions.ts`) | Most `Oeuvres` fields incl. `statusId` | Non-admin edits on existing works → `pending_changes` (keys in `lib/work-pending-keys.ts`); approval replays `saveWork` |
 | Drawer pipeline stages | Status 1/2/3/4/7/8/6/11 via orders | 9/10 not offered |
 | Production board (`Production.tsx`) | `work_action` done; `Catalogué`, `NeedsPhotograph`, `statusId` 1/2; drag-back (desktop, 2026-11-13) deletes the pending source row, adds the target row; onto Catalogue: `Catalogué=false`, `statusId=1` | Columns: not catalogued → Catalogue only; Photography needs catalogued; handling columns stack; forward onto Photography only by ✓ |
+| Image descriptions (`describe_batch.py`, service role) | `work_description` (AI, unverified); feeds `oeuvre_search_text` → node pending | Never writes `Commentaires`; one row per work + cover + engine + prompt |
 | Work drawer links (`WorkLinksSection`), See again **Link** | `tblrelations` (source = this work, target = other; `lib/work-links.ts` types: painted_on, derived_from, answers, series, diptych, influence, proximity) via `insertConstellationRelation` | Human links only; the Constellation draws unknown types with its default edge |
 | Orders: sales, consignments, gifts, exhibitions | `statusId`, `ContactID`, `LocalisationID` | Through the holder check |
 | Bulk edit (`BatchEditModal`) | Status 1/2/3, Pem address | |
