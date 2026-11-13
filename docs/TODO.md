@@ -6,12 +6,10 @@ _Open items only, one line each, in order. Details → [`TODO_NOTES.md`](./TODO_
 
 ## 1. Waiting on Pem — only you can do these
 
-- [ ] **Vercel env:** `NEXT_PUBLIC_SITE_URL` = `https://www.thepemworkshop.com` — Vercel refused to save it as *Secret* (a `NEXT_PUBLIC_` value must be *Config*): delete the variable, add it again as **Config**, Production + Preview. Checked after the next deploy (sitemap must read `https://`).
 - [ ] **Voice:** OK the first transcript write (1 note, 8 Aug 2026, read back in French) — then "Run on this PC" in Overview → Local jobs.
 - [ ] **Handwriting test:** give the folder of ~10 notebook pages.
 - [ ] **R2 access key rotation (O2)** — not done or not recorded; note the date in `CLAUDE.md`.
 - [ ] **Restore drill (O4)** — never run ([`BACKUP_RECOVERY.md`](./BACKUP_RECOVERY.md)).
-- [ ] **Keep or drop?** (a) status chips stay French when the app is in English → [notes](./TODO_NOTES.md#status-labels) · (b) consignment sales counted gross or net in Revenus (ask the accountant; matters only once a consignment sells) → [notes](./TODO_NOTES.md#money) · (c) public carousel: last "outro" card on phones.
 
 ## 2. To build — in order
 
@@ -22,8 +20,7 @@ Trace
 - [ ] 4. Production span: end date by hand (start is editable since 2026-11-03); new / found choice in WorkForm (only in capture today) → [notes](./TODO_NOTES.md#production-span)
 
 Links
-- [ ] 6. Work or version: a partial rework = a version on the same number (the links part is built) → [notes](./TODO_NOTES.md#work-or-version)
-- [ ] 7. Journal entries as Constellation canvas nodes — needs a canvas redesign, no GO yet → [notes](./TODO_NOTES.md#journal-phase-2)
+- [ ] 6. Versions: a partial rework (glaze, correction) = a new version of the same work, same number, recorded in its history with its photo (owner 2026-11-13) → [notes](./TODO_NOTES.md#work-or-version)
 
 Transmission (safety of what is kept)
 - [ ] 8. Security remaining: anon write grants, `system_log` / `studio_task` access, CSP report-only, `xlsx`, `storage_object_ledger` → [notes](./TODO_NOTES.md#security)
@@ -34,6 +31,8 @@ Value
 - [ ] 11. Supplies: orders table, order → expense → [notes](./TODO_NOTES.md#supplies)
 
 Public site — next batch
+- [ ] Status chips in English (translate the DB labels) — after the next batch → [notes](./TODO_NOTES.md#status-labels)
+- [ ] Phones: where the closing text ("outro") of a works sequence shows on `/works` — after the next batch
 - [ ] 12. Circadian sky leftovers (preview another hour, real shadow direction, inert `atm` knobs) → [notes](./TODO_NOTES.md#circadian)
 - [ ] 13. Upload the panorama + video for the map / motion layouts (`site/forest-panorama.avif`, `site/interior-loop.webm`)
 - [ ] 14. `/works` gallery: cm-scaled wall scroll (on hold)
@@ -58,8 +57,9 @@ Speed and code health — measure soon after the next batch
 ## 4. Parked ideas — no GO
 
 - VAT per sale, resolved from the transaction → [notes](./TODO_NOTES.md#vat)
-- Photothèque (~4 000 photos): documentation or library? → [notes](./TODO_NOTES.md#phototheque)
-- F2–F10 (preview token, quick-add, saved searches, share kit, flags, digest, outbox, OCR, `concept_themes`) — [archive/STATUS.md](./archive/STATUS.md)
+- Photothèque (~4 000 photos): a **library** (owner 2026-11-13) — standalone photographs, mostly not tied to a work, sometimes serving one → [notes](./TODO_NOTES.md#phototheque)
+- Journal entries as Constellation canvas nodes — a big one, not now (owner 2026-11-13) → [notes](./TODO_NOTES.md#journal-phase-2)
+- F2–F10 — owner to choose which to keep (see the 2026-11-13 conversation; detail in [archive/STATUS.md](./archive/STATUS.md))
 - Background jobs / queues · broader field OCR · transactional email (explicit no-GO in `CLAUDE.md`)
 
 ## Rules (not tasks)

@@ -16,6 +16,8 @@ _Details of the open items in [`TODO.md`](./TODO.md), text as it was on 2026-11-
 
 ## work-or-version
 
+**Owner 2026-11-13:** a partial rework is a new version of the same work (same number) — record it in the work's history (date, new photo, what changed). Full cover / new support = new work + "painted on" / "derived from" link (built 2026-11-13).
+
 **Work or version.** From the proposal (archived 2026-11-13), still open: **work or version** rule — partial rework (glaze, scumble, pentimento) = new photo + version row on the same number; full cover = new work + "painted on" link; new support = new work + "derived from" link (work ↔ work links: HANDOFF_2026-11-13_OPUS task E).
 
 ## production-start-date
@@ -44,6 +46,8 @@ _Details of the open items in [`TODO.md`](./TODO.md), text as it was on 2026-11-
 
 ## phototheque
 
+**Owner 2026-11-13:** a library — 99 % standalone photographs, not linked to a painting or drawing, though they sometimes serve one. So: its own table, search and browsing; an optional link to a work, never required.
+
 **Photothèque ~4000 photos** — parked ("on verra plus tard"). Recommendation on file: parallel table reusing R2/AVIF pipeline, optional link to Oeuvres; blocked on owner clarifying documentation-vs-library nature.
 
 ## status-labels
@@ -59,6 +63,8 @@ _Details of the open items in [`TODO.md`](./TODO.md), text as it was on 2026-11-
 **Production span follow-ups** (2026-11-01, after `oeuvres_production_span.sql` shipped). Rule lives in the trigger `trg_oeuvre_production_span`: Catalogué ticked → `production_completed_on` = today (Paris), unticked → end cleared + Historique "Reprise en production" line, empty `Année` follows the end year; session new-work items carry a *new / found* choice (`production_origin`, start = session day for *new*). Open: (a) no UI to set or correct the dates by hand — the drawer shows the span read-only; editing needs state + dirty baseline + `saveWork` + pending allow-list; (b) WorkForm "new work" has no new/found choice yet, only sessions do; (c) no backfill — the only catalogue transitions in `oeuvre_versions` are a 2-minute bulk script on 2026-10-31, not real events, so existing works start with no span.
 
 ## money
+
+**Decided 2026-11-13 (owner):** consignment sales count **gross** (`prix_final`) in Revenus — (c) below is closed.
 
 **Money pipeline follow-ups** (2026-11-01, after `sales_payments_and_commission.sql` applied). Live now: `payments` table (RLS team read/write, admin delete, no anon) and the commission columns from `commission_tracking.sql`. Overview income + Fiscal recettes read `lib/sales/income.ts` `fetchSalesIncome` (payments by `payment_date`, plus completed orders with no payment rows at `prix_final` by `completed_at`) — no longer `Oeuvres.statusId === 4` (4 is Réservé, not Vendu). Open: (a) a real sale order + payment has not been created end-to-end yet — 0 `sale_order` rows exist; (b) `Oeuvres.is_paid` is still hand-editable (drawer, batch edit) and not derived from payments; (c) recettes count the gross `prix_final` even for consignment sales with `commission_amount` — decide gross vs net for BNC; (d) `lib/sales/sales-client.ts` still carries hand-written extras (incl. a `sale_order.updated_at` that does not exist) now covered by generated types.
 

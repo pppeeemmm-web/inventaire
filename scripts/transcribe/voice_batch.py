@@ -39,6 +39,7 @@ def main() -> None:
     ap.add_argument("--words", help="text file of names / terms to help spelling")
     ap.add_argument("--only", help="one voice_note id")
     ap.add_argument("--language", help="force fr / en (default: auto)")
+    ap.add_argument("--device", choices=["cuda", "cpu"], default="cuda", help="cpu when the GPU is busy (slower)")
     args = ap.parse_args()
 
     env = load_env()
@@ -94,7 +95,7 @@ def main() -> None:
 
     t0 = time.time()
     try:
-        model = WhisperModel(str(model_dir), device="cuda", compute_type="float16")
+        model = WhisperModel(str(model_dir), device=args.device, compute_type="float16" if args.device == "cuda" else "int8")
     except Exception as err:  # noqa: BLE001 — fall back rather than stop the batch
         print(f"GPU load failed ({err}); using CPU int8 — slower.")
         model = WhisperModel(str(model_dir), device="cpu", compute_type="int8")

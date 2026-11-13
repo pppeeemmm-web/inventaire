@@ -6,6 +6,8 @@ _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, t
 
 - Ideas agreed in principle (work links, see again, transcript audio) — all built 2026-11-13: work ↔ work links from the drawer (`WorkLinksSection`), "see again" card (Journal today + Overview; `see_again_dismissed.sql`), transcript audio + ✦ engine mark on the journal day.
 - Vercel `QDRANT_*` variables removed (owner, 2026-11-13).
+- Vercel `NEXT_PUBLIC_SITE_URL` re-created as Config with `https://` and redeployed (owner); live sitemap + canonical read `https://www.thepemworkshop.com` (checked 2026-11-13).
+- Consignment sales in Revenus: **gross** (owner decision 2026-11-13).
 - Overview reminder for the PC archive: `scripts/archive-export.mjs` stamps each run (`system_log` `ARCHIVE_RUN`); Overview → Local jobs shows its age, red after 14 days (first run stamped afterwards from `archive-info.json`).
 - Image descriptions: owner chose `gemma3:4b` + an "echoes" line; `work_description` table (AI, unverified, never in `Commentaires`) added to search text; batch `scripts/transcribe/describe_batch.py` scheduled once for 2026-11-13 14:00 (Windows task "PEM describe batch").
 - Four works whose cover was in doubt (#272, #1434, #2103, #2339) — owner chose the covers; each has exactly one cover (checked in the DB 2026-11-13).
