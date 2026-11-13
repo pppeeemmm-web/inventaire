@@ -17,9 +17,7 @@
 
 | Control | Behaviour |
 |---------|-----------|
-| **Site checklist (PDF)** | i18n: `system_download_site_checklist` — calls `exportSiteMapChecklistPdf()` (`app/atelier/vault/actions.ts`). |
 | **Regenerate Studio Bible** | i18n: `system_ledger_bible_cta` / `system_ledger_bible_regenerating`. Confirms (`system_ledger_bible_confirm`), then `vaultStudioBible()`; on success inserts a completed `improvement` log row. |
-| **Copy / download reference MD** | `system_ledger_ref_*` keys; server: `getSystemLedgerReferenceMarkdown()` (`app/atelier/system-reference-actions.ts`). |
 
 ---
 
@@ -126,6 +124,5 @@ R2 credentials are in `.env.local` (`R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`) 
 |------|------|
 | UI | `components/atelier/SystemTab.tsx` |
 | Ledger screenshot upload | `app/atelier/system/ledger-attachment-actions.ts` |
-| Site map checklist PDF | `app/atelier/vault/actions.ts` → `exportSiteMapChecklistPdf` |
 | Studio Bible vault | `app/atelier/vault/bible-action.ts` → `vaultStudioBible` |
 | Copy (strings) | Legacy `lib/i18n/dictionary/` (`system_*`, `system_task_type_*`); new Atelier copy → `defineMessages` per [`archive/HANDOFF_SLICE4.md`](./archive/HANDOFF_SLICE4.md) |

@@ -1,5 +1,6 @@
 'use client'
 
+import { WorkRef } from '@/components/atelier/WorkRef'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
@@ -1027,13 +1028,11 @@ export function SessionNewClient({ embed }: { embed?: SessionEmbed } = {}) {
                       the work form rather than pretending the session can edit them. */}
                   {activeItem.oeuvre_id ? (
                     <p className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx3)', margin: '6px 0 0' }}>
-                      <Link
-                        href={`/atelier/inventory?work=${activeItem.oeuvre_id}`}
-                        data-testid="session-item-work-link"
+                      <WorkRef
+                        id={activeItem.oeuvre_id}
+                        testId="session-item-work-link"
                         style={{ color: 'var(--ac)', textDecoration: 'underline', textUnderlineOffset: 2 }}
-                      >
-                        #{activeItem.oeuvre_id}
-                      </Link>
+                      />
                       {itemLocked ? ` · ${t('session_status_applied')}` : ''}
                     </p>
                   ) : null}
@@ -1213,12 +1212,7 @@ export function SessionNewClient({ embed }: { embed?: SessionEmbed } = {}) {
                   {titleMatches.map((m, idx) => (
                     <span key={m.OeuvreID}>
                       {idx > 0 ? ', ' : ''}
-                      <Link
-                        href={`/atelier/inventory?work=${m.OeuvreID}`}
-                        style={{ color: 'var(--ac)', textDecoration: 'underline', textUnderlineOffset: 2 }}
-                      >
-                        #{m.OeuvreID}
-                      </Link>
+                      <WorkRef id={m.OeuvreID} style={{ color: 'var(--ac)', textDecoration: 'underline', textUnderlineOffset: 2 }} />
                     </span>
                   ))}
                 </p>

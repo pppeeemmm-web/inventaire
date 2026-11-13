@@ -47,6 +47,7 @@ import { emitJunctionSaved } from '@/lib/atelier/junction-refresh-bus'
 import { NewContactModal, EMPTY_CONTACT_DRAFT } from './NewContactModal'
 import { UnsavedChangesModal } from './UnsavedChangesModal'
 import { GiftTransferModal } from './GiftTransferModal'
+import { ContactQuickModal } from './ContactQuickModal'
 import { FIS, cap } from './drawer-widgets'
 import { WorkFormPhysicalQr } from '@/components/atelier/WorkFormPhysicalQr'
 import { WorkProductionSpan } from './WorkProductionSpan'
@@ -149,6 +150,8 @@ export function DrawerContent({
   const [selThemes, setSelThemes] = useState<Set<number>>(new Set())
   const [selGroups, setSelGroups] = useState<Set<string>>(new Set())
   const [localContacts, setLocalContacts] = useState<DrawerContactRow[]>(initialContacts as DrawerContactRow[])
+  /** Contact card open over the drawer (↗ in Ownership); the work stays open underneath. */
+  const [quickContactId, setQuickContactId] = useState<number | null>(null)
   const [showNewContact, setShowNewContact] = useState(false)
   const [newC, setNewC] = useState(EMPTY_CONTACT_DRAFT)
   const [creatingContact, setCreatingContact] = useState(false)
@@ -1321,14 +1324,8 @@ export function DrawerContent({
         style={{ border: 0, padding: 0, margin: 0, minWidth: 0, ...(o.fate ? { opacity: 0.55, pointerEvents: 'none' } : null) }}
       >
       <WorkDrawerPipelineSection
-        onOpenContact={(cid) =>
-          // Unsaved-changes guard first; then close the drawer and open the contact card, which
-          // offers "← back to work" (Kaizen #34).
-          runGuarded(() => {
-            onClose()
-            router.push(`/atelier/contacts?contact=${cid}&from_work=${o.OeuvreID}`)
-          })
-        }
+        // Kaizen #34: the contact card opens over the drawer; no guard needed, the work stays open.
+        onOpenContact={(cid) => setQuickContactId(cid)}
         narrow={narrow}
         prodStage={prodStage}
         setProdStage={handleProdStageChange}
@@ -1595,6 +1592,21 @@ export function DrawerContent({
           t={t}
           onClose={() => setShowGiftModal(false)}
           onGifted={() => { setShowGiftModal(false); setLongTextReloadNonce((n) => n + 1); router.refresh() }}
+        />
+      )}
+
+      {quickContactId != null && (
+        <ContactQuickModal
+          contactId={quickContactId}
+          narrow={narrow}
+          onClose={() => setQuickContactId(null)}
+          onSaved={(c) =>
+            setLocalContacts((prev) =>
+              prev.map((x) =>
+                x.ContactID === c.ContactID ? { ...x, NomInstitution: c.NomInstitution, Nom: c.Nom, Prénom: c.Prénom, Role: c.Role } : x,
+              ),
+            )
+          }
         />
       )}
     </>

@@ -5,6 +5,7 @@
 // moved from the System ledger). Ticked done or reopened, never deleted. Opening an entry marks it
 // seen (sidebar badge) and flags what others added since the last visit.
 
+import { WorkRef } from '@/components/atelier/WorkRef'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
@@ -363,9 +364,7 @@ export function Kaizen({ scope = 'creation' }: { scope?: KaizenScope }) {
                     {fmtDate(it.created_at)} · {who(it.author_id)}
                   </span>
                   {it.work_ids.map((w) => (
-                    <Link key={w} href={`/atelier/inventory?work=${w}`} className="t-mono-sm" style={{ fontSize: 10, color: 'var(--ac)' }}>
-                      #{w}
-                    </Link>
+                    <WorkRef key={w} id={w} className="t-mono-sm" style={{ fontSize: 10, color: 'var(--ac)' }} />
                   ))}
                   {done ? (
                     <span className="t-mono-sm" style={{ fontSize: 10, color: 'var(--sage)' }}>

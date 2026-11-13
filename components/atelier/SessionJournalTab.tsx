@@ -1,5 +1,6 @@
 'use client'
 
+import { WorkRef } from '@/components/atelier/WorkRef'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Suspense, useCallback, useEffect, useMemo, useState, useTransition } from 'react'
@@ -98,21 +99,20 @@ function JournalInventoryIdLink({
 }) {
   const { t } = useI18n()
   return (
-    <Link
+    <WorkRef
+      id={oeuvreId}
       href={atelierInventoryWorkHref(oeuvreId)}
       className="t-mono-sm"
-      data-testid={`journal-inventory-link-${oeuvreId}`}
-      onClick={stopPropagation ? (e) => e.stopPropagation() : undefined}
+      testId={`journal-inventory-link-${oeuvreId}`}
+      stopPropagation={stopPropagation}
       style={{
         fontSize: 'inherit',
         color: 'var(--ac)',
         textDecoration: 'underline',
         textUnderlineOffset: 2,
       }}
-      aria-label={t('journal_inventory_link_aria').replace('{id}', String(oeuvreId))}
-    >
-      #{oeuvreId}
-    </Link>
+      ariaLabel={t('journal_inventory_link_aria').replace('{id}', String(oeuvreId))}
+    />
   )
 }
 

@@ -8,6 +8,7 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from 'react'
 import { EntryText } from '@/components/atelier/journal/EntryText'
+import { WorkRef } from '@/components/atelier/WorkRef'
 import { imageUrl } from '@/lib/data'
 import { SeeAgainCard, JOURNAL_COMPOSE_EVENT } from '@/components/atelier/SeeAgainCard'
 import { calendarDayInParisFromIso } from '@/lib/session-calendar-day'
@@ -343,10 +344,10 @@ export function JournalDayExtras({
               {e.works.length > 0 ? (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 8 }}>
                   {e.works.map((w) => (
-                    <Link key={w.id} href={workHref(w.id)} className="t-mono-sm" style={{ color: 'var(--ac)', textDecoration: 'underline', textUnderlineOffset: 2 }}>
+                    <WorkRef key={w.id} id={w.id} href={workHref(w.id)} className="t-mono-sm" style={{ color: 'var(--ac)', textDecoration: 'underline', textUnderlineOffset: 2 }}>
                       #{w.id}
                       {w.title ? ` ${w.title}` : ''}
-                    </Link>
+                    </WorkRef>
                   ))}
                 </div>
               ) : null}

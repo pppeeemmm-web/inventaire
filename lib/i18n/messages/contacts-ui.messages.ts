@@ -1,7 +1,6 @@
 import { defineMessages } from '../message-core'
 
 export const contactsUiMessages = defineMessages({
-  contacts_back_to_work: { fr: '← Retour à l’œuvre #{n}', en: '← Back to work #{n}' },
   contact_team_section: {
     fr: 'Accès atelier',
     en: 'Studio access',

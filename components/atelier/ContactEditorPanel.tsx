@@ -1,5 +1,6 @@
 'use client'
 
+import { WorkRef } from '@/components/atelier/WorkRef'
 import {
   useState,
   useEffect,
@@ -142,7 +143,7 @@ function WorkMini({ label, items }: { label: string; items: Oeuvre[] }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 140, overflow: 'auto' }}>
         {items.slice(0, 30).map((o) => (
           <div key={o.OeuvreID} className="t-mono-sm" style={{ color: 'var(--tx2)' }}>
-            #{o.OeuvreID} {o.Titre ?? '—'}
+            <WorkRef id={o.OeuvreID} style={{ color: 'var(--ac)' }} /> {o.Titre ?? '—'}
           </div>
         ))}
         {items.length > 30 && (

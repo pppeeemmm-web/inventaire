@@ -3,8 +3,6 @@
 import { useState, useEffect, useTransition, useRef, type SyntheticEvent, type ClipboardEvent } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { vaultStudioBible } from '@/app/atelier/(portal)/vault/bible-action'
-import { exportSiteMapChecklistPdf } from '@/app/atelier/(portal)/vault/actions'
-import { getSystemLedgerReferenceMarkdown } from '@/app/atelier/system-reference-actions'
 import { uploadLedgerAttachment } from '@/app/atelier/(portal)/system/ledger-attachment-actions'
 import { stringifyError } from '@/lib/error'
 import { useI18n } from '@/lib/i18n/context'
@@ -132,7 +130,7 @@ function LedgerThumb({
   )
 }
 
-/** `embedded`: inside Kaizen → Système, only the site tools (checklist PDF, Studio Bible, reference). */
+/** `embedded`: inside Kaizen → Système, only the site tool: Regenerate Studio Bible (owner 2026-11-12 removed the checklist PDF and the reference copy / download). */
 export function SystemTab({ embedded = false }: { embedded?: boolean } = {}) {
   const { t, lang } = useI18n()
   const narrow = useMediaQuery('(max-width: 767px)')
@@ -141,9 +139,6 @@ export function SystemTab({ embedded = false }: { embedded?: boolean } = {}) {
   const [isAdmin, setIsAdmin] = useState(false)
   const [busy, setBusy] = useState(false)
   const [isPending, startTransition] = useTransition()
-  const [checklistPending, startChecklist] = useTransition()
-  const [refMdBusy, setRefMdBusy] = useState(false)
-  const [refCopiedFlash, setRefCopiedFlash] = useState(false)
   const [attachBusy, setAttachBusy] = useState(false)
 
   const attachFileRef = useRef<HTMLInputElement>(null)
@@ -334,66 +329,6 @@ export function SystemTab({ embedded = false }: { embedded?: boolean } = {}) {
     if (!error) setLogs(logs.filter((l) => l.id !== id))
   }
 
-  function handleDownloadChecklist() {
-    startChecklist(async () => {
-      const res = await exportSiteMapChecklistPdf()
-      if (!('ok' in res) || !res.ok) {
-        const err = 'error' in res ? res.error : 'Unknown'
-        alert(`${t('system_checklist_error_prefix')} ${stringifyError(err)}`)
-        return
-      }
-      const bin = atob(res.base64)
-      const bytes = new Uint8Array(bin.length)
-      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
-      const blob = new Blob([bytes], { type: 'application/pdf' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = res.filename
-      a.click()
-      URL.revokeObjectURL(url)
-    })
-  }
-
-  async function fetchLedgerReferenceMd() {
-    setRefMdBusy(true)
-    try {
-      const res = await getSystemLedgerReferenceMarkdown()
-      if (!('ok' in res) || !res.ok) {
-        const err = 'error' in res ? res.error : 'Unknown'
-        alert(`${t('system_ledger_ref_error_prefix')} ${stringifyError(err)}`)
-        return null
-      }
-      return res
-    } finally {
-      setRefMdBusy(false)
-    }
-  }
-
-  async function handleCopyLedgerReference() {
-    const res = await fetchLedgerReferenceMd()
-    if (!res) return
-    try {
-      await navigator.clipboard.writeText(res.markdown)
-      setRefCopiedFlash(true)
-      window.setTimeout(() => setRefCopiedFlash(false), 2500)
-    } catch {
-      alert(t('system_ledger_ref_clipboard_failed'))
-    }
-  }
-
-  async function handleDownloadLedgerReference() {
-    const res = await fetchLedgerReferenceMd()
-    if (!res) return
-    const blob = new Blob([res.markdown], { type: 'text/markdown;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = res.filename
-    a.click()
-    URL.revokeObjectURL(url)
-  }
-
   function handleRegenerateBible() {
     if (!confirm(t('system_ledger_bible_confirm'))) return
     startTransition(async () => {
@@ -491,15 +426,6 @@ export function SystemTab({ embedded = false }: { embedded?: boolean } = {}) {
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: narrow || embedded ? 'stretch' : 'flex-end', gap: 8 }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: narrow || embedded ? 'flex-start' : 'flex-end' }}>
         <button
-          type="button"
-          className="btn ghost sm"
-          onClick={handleDownloadChecklist}
-          disabled={checklistPending}
-          style={{ borderColor: 'var(--bd)', color: 'var(--tx2)' }}
-        >
-          {checklistPending ? t('system_checklist_building') : t('system_download_site_checklist')}
-        </button>
-        <button
           className="btn ghost sm"
           onClick={handleRegenerateBible}
           disabled={isPending}
@@ -507,32 +433,7 @@ export function SystemTab({ embedded = false }: { embedded?: boolean } = {}) {
         >
           {isPending ? t('system_ledger_bible_regenerating') : t('system_ledger_bible_cta')}
         </button>
-        <button
-          type="button"
-          data-testid="system-ledger-ref-copy"
-          className="btn ghost sm"
-          onClick={() => void handleCopyLedgerReference()}
-          disabled={refMdBusy}
-          style={{ borderColor: 'var(--bd)', color: 'var(--tx2)' }}
-        >
-          {refMdBusy ? t('system_ledger_ref_loading') : t('system_ledger_ref_copy')}
-        </button>
-        <button
-          type="button"
-          data-testid="system-ledger-ref-download"
-          className="btn ghost sm"
-          onClick={() => void handleDownloadLedgerReference()}
-          disabled={refMdBusy}
-          style={{ borderColor: 'var(--bd)', color: 'var(--tx2)' }}
-        >
-          {refMdBusy ? t('system_ledger_ref_loading') : t('system_ledger_ref_download')}
-        </button>
       </div>
-      {refCopiedFlash && (
-        <span className="t-mono-sm" style={{ color: 'var(--green)' }} role="status">
-          {t('system_ledger_ref_clipboard_ok')}
-        </span>
-      )}
     </div>
   )
 
