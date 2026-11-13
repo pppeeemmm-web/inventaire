@@ -5,7 +5,7 @@
 ## Order (readjusted 2026-11-13 after the design pass — Pem may reorder)
 1. **B2 Batch modify** — Pem's sharpest complaint (said twice), mock ready, no decision needed. Place made left out until A3, then one row added. **Built 2026-11-13 (verified against live code 2026-11-13, committed locally, What's new 3.1.5)** — see the status under §3 of the design build handoff.
 2. **B1 Overview** (+ shared `SignalMark`) — mock ready; D1 and D3 have safe defaults (D1 = the mock's rule, D3 = today's cash-health flag) until Pem answers. **Built 2026-11-13 (verified against live code 2026-11-13, committed locally, What's new 3.1.5)** — status under §2 of the design build handoff.
-3. **A2 AI descriptions** with the usefulness slider (migration, drawer section).
+3. **A2 AI descriptions** with the usefulness slider (migration, drawer section). **Built 2026-11-14 (verified against live code 2026-11-14, committed locally; migration applied to the live DB 2026-11-14, What's new 3.1.6)** — status under §A2.
 4. **A4 answer** (read only, no code) — what location/weather is recorded and for how many works; it decides what A3 can take from field sessions.
 5. **A3 periods by date + place per work** (migration) → then add **Place made** to Identity in batch modify (B2) and to the drawer.
 6. **B3 Export** with live preview — biggest piece (preview engine); start only after Pem answers D2.
@@ -35,6 +35,14 @@ Data: table `work_description` (1,172 works, `supabase/sql/work_description.sql`
 - Migration: `usefulness smallint null check (0..4)`, `rated_by`, `rated_at` on `work_description`; team may update only those columns (explicit GRANT on the columns); `verification` stays for now.
 - Use of the rating: rated 0 → left out of the search text; the average per prompt tells whether the prompt is worth re-running. Rapports field "AI description usefulness".
 - Never copied into Commentaires.
+
+**Status 2026-11-14 (verified against live code 2026-11-14):** built, committed locally.
+- Migration `supabase/sql/work_description_usefulness.sql` — **applied to the live DB 2026-11-14** (Pem's OK); checked: 3 columns, 3 triggers, `UPDATE(usefulness)` the only team grant, AI text still in search. Adds `usefulness` (0–4, null = not judged), `rated_by`, `rated_at`; a BEFORE UPDATE trigger stamps who / when from `auth.uid()` / `now()`; team UPDATE policy + `grant update (usefulness)` only; `oeuvre_search_text` leaves out the latest description when rated 0; the re-index trigger now fires on update only when body / echoes change or the rating moves to / from 0.
+- Drawer: `components/atelier/work-drawer/WorkAiDescriptionSection.tsx` (folded, after work sessions; nothing for a work never described). The same work can be open twice (Inventory side card + drawer): a rating reloads every copy (window event). AI badge + engine + date, body, echoes, 0–4 segmented control (44 px taps), clear, who / when, the prompt's average over rated descriptions.
+- Actions: `app/atelier/works/description-actions.ts` (`getWorkDescription`, `rateWorkDescription`, `listDescriptionRatings`, paged past the 1000-row cap).
+- Rapports: field `ai_usefulness` on Œuvres / Production / Ventes (loaded on demand; a failed load leaves the column empty).
+- `lib/types/supabase.generated.ts` regenerated (`npm run gen:types`).
+- Verified on dev 2026-11-14 in Chrome (admin, desktop): #2407 shows the section; rated 3 → "3/4 · Useful", stamped with the rater's name + date, prompt average 3 over 1 rated; cleared → back to not judged, both copies in sync, DB back to 0 rated / 0 stamped. Not checked: phone width, the Rapports column, a team (non-admin) rating.
 
 ### A3. Periods by date + place per work (bug-level for Pem)
 Today `work_period` has `start_year` / `end_year`; a work's period comes from its year (`lib/work-periods.ts` `periodYearOf`, SQL `oeuvre_search_text`). Pem returned to France on **2024-06-13**: 2024 works before that are **Galway**, after are **Marseille** — a year cannot say that.

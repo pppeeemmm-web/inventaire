@@ -3026,6 +3026,9 @@ export type Database = {
           image_key: string
           oeuvre_id: number
           prompt: string
+          rated_at: string | null
+          rated_by: string | null
+          usefulness: number | null
           verification: string
         }
         Insert: {
@@ -3037,6 +3040,9 @@ export type Database = {
           image_key: string
           oeuvre_id: number
           prompt: string
+          rated_at?: string | null
+          rated_by?: string | null
+          usefulness?: number | null
           verification?: string
         }
         Update: {
@@ -3048,6 +3054,9 @@ export type Database = {
           image_key?: string
           oeuvre_id?: number
           prompt?: string
+          rated_at?: string | null
+          rated_by?: string | null
+          usefulness?: number | null
           verification?: string
         }
         Relationships: [

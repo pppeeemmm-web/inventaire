@@ -8,6 +8,12 @@ export const whatsNewMessages = defineMessages({
     en: 'What changed in the Atelier over the last few days.',
   },
 
+  // 3.1.6 (2026-11-14) — AI descriptions rated for usefulness (A2).
+  wn_ai_description_rating_t: { fr: 'Fiche : ce que l’IA voit, et si c’est utile', en: 'Work card: what the AI sees, and whether it helps' },
+  wn_ai_description_rating_d: {
+    fr: 'Dans la fiche d’une œuvre, une section repliée « ✦ Vu par l’IA » montre la description faite par le modèle local et sa ligne d’échos, marquées IA. Au lieu de juste / faux, notez son utilité de 0 (inutile) à 4 (très juste) ; la note garde qui et quand. Une description notée 0 sort de la recherche. La moyenne par consigne dit s’il vaut la peine de la relancer. Jamais copiée dans les commentaires. Rapports : champ « Utilité de la description IA ».',
+    en: 'In a work’s card, a folded “✦ Seen by AI” section shows the local model’s description and its echoes line, marked AI. Instead of right / wrong, rate how useful it is from 0 (useless) to 4 (spot on); the rating keeps who and when. A description rated 0 leaves search. The average per prompt tells whether the prompt is worth re-running. Never copied into the comments. Reports: “AI description usefulness” field.',
+  },
   // 3.1.5 (2026-11-13) — Overview dashboard (B1) + batch modify (B2), rebuilt from the design pass.
   wn_overview_dashboard_t: { fr: 'Vue d’ensemble : l’atelier d’un coup d’œil', en: 'Overview: the studio at a glance' },
   wn_overview_dashboard_d: {

@@ -12,6 +12,7 @@ import type { ReportConfig, ReportField } from '@/lib/reports/engine'
 import { REPORT_COLUMN_HEADER_KEY, formatReportCell, type ReportMaps } from '@/lib/reports/works-table'
 import type { ReportSource } from '@/lib/reports/saved-report'
 import { effectivePeriod, periodYearOf, type PeriodSourceData } from '@/lib/work-periods'
+import type { DescriptionRating } from '@/app/atelier/works/description-actions'
 
 export type SaleRow = { o: Oeuvre; order: SaleOrderRow | null }
 
@@ -26,6 +27,8 @@ export type SourceCtx = {
   worksByBuyer: Map<number, number>
   worksAtLocation: Map<number, number>
   periodSource: PeriodSourceData
+  /** Latest AI description's usefulness per work (A2); empty until loaded. */
+  aiRatings: Record<number, DescriptionRating>
 }
 
 export type SourceDef<R> = {
@@ -145,6 +148,8 @@ function workFields(c: SourceCtx): ReportField<Oeuvre>[] {
     { id: 'exposable', label: h('exposable'), kind: 'bool', value: (o) => !!o.Exposable },
     { id: 'delivery', label: t('report_f_delivery'), kind: 'date', value: (o) => o.DateLivraison ?? null, display: (o) => day(o.DateLivraison, locale) },
     { id: 'notes', label: h('notes'), kind: 'text', value: (o) => orNull((o.Commentaires ?? '').replace(/\s+/g, ' ').slice(0, 500)) },
+    // A2: 0 useless … 4 spot on; empty = never described or not yet judged.
+    { id: 'ai_usefulness', label: t('wd_report_field'), kind: 'number', value: (o) => c.aiRatings[o.OeuvreID]?.usefulness ?? null },
   ]
 }
 

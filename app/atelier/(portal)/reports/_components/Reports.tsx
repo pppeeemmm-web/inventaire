@@ -28,6 +28,7 @@ import { PivotPanel } from '@/components/atelier/PivotPanel'
 import { generateTablePdf } from '@/app/atelier/(portal)/reports/actions'
 import { deleteSavedReport, listSavedReports, saveReport } from '@/app/atelier/(portal)/reports/saved-actions'
 import { listReportContacts, type ReportContactRow } from '@/app/atelier/(portal)/reports/source-actions'
+import { listDescriptionRatings, type DescriptionRating } from '@/app/atelier/works/description-actions'
 import { listKaizen } from '@/app/atelier/(portal)/kaizen/actions'
 import { fetchOrders, type SaleOrderRow } from '@/app/atelier/(portal)/sales/actions'
 import { PivotAtlasPanel } from '@/app/atelier/(portal)/reports/_components/PivotAtlasPanel'
@@ -67,12 +68,15 @@ type Props = {
   isAdmin?: boolean
 }
 
+const NO_AI_RATINGS: Record<number, DescriptionRating> = {}
+
 type Loaded = {
   pendingActions?: Map<number, string[]>
   kaizen?: { items: KaizenItem[]; names: Record<string, string> }
   constats?: { reports: ConditionReport[]; names: Record<string, string> }
   orders?: SaleOrderRow[]
   contacts?: ReportContactRow[]
+  aiRatings?: Record<number, DescriptionRating>
 }
 
 export function Reports({
@@ -158,8 +162,9 @@ export function Reports({
       periodSource,
       worksByBuyer,
       worksAtLocation,
+      aiRatings: loaded.aiRatings ?? NO_AI_RATINGS,
     }),
-    [t, locale, maps, loaded.pendingActions, loaded.kaizen, loaded.constats, worksById, worksByBuyer, worksAtLocation, periodSource],
+    [t, locale, maps, loaded.pendingActions, loaded.kaizen, loaded.constats, loaded.aiRatings, worksById, worksByBuyer, worksAtLocation, periodSource],
   )
   const def = useMemo(() => buildSource(source, ctx), [source, ctx])
   const config = cfg ?? def.defaults
@@ -173,6 +178,7 @@ export function Reports({
       constats: source === 'constats',
       orders: source === 'sales',
       contacts: source === 'contacts',
+      aiRatings: source === 'works' || source === 'production' || source === 'sales',
     }
   }, [source])
   useEffect(() => {
@@ -214,6 +220,12 @@ export function Reports({
           if ('error' in r) fail()
           else setLoaded((p) => ({ ...p, contacts: r.rows }))
         })
+        .catch(fail)
+    }
+    if (needs.aiRatings && !loaded.aiRatings) {
+      // Optional column: a failed load leaves it empty instead of failing the whole report.
+      listDescriptionRatings()
+        .then((r) => { if (live) setLoaded((p) => ({ ...p, aiRatings: 'error' in r ? {} : r })) })
         .catch(fail)
     }
     return () => { live = false }
