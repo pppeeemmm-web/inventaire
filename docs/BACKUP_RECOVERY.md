@@ -57,6 +57,20 @@ GitHub → repo → **Settings → Secrets and variables → Actions → New rep
 Actions tab → **Daily Supabase backup** → **Run workflow** → check it completes green.
 Open R2 → `art-db-backups/daily/` → confirm the `.sql.gz` is there and the size looks reasonable.
 
+## Images and the readable archive (2026-11-13)
+
+The daily job above covers the **database only**. Images and documents live in R2 and had no second copy.
+
+`npm run archive` ([`scripts/archive-export.mjs`](../scripts/archive-export.mjs)) makes one on this PC — `%USERPROFILE%\PEM-Archive`, or `-- --out "E:\PEM-Archive"`:
+
+- `images/` and `vault/`: every R2 object except `recycle/`, `share-inbox/`, `ledger/`. Repeat runs download only new or changed files.
+- `index.html`: every work, searchable, with its journal entries — opens in a browser with no app and no network.
+- `works.csv`, `journal/YYYY.md`, `data/json/*.json` (every table), `private/` (contacts).
+
+It only reads. Prices, notes and contacts are inside: keep the folder private. This is a copy to read and to hand over, not a restore path for the database (use the pg_dump above for that); the images in it are what a restore would re-upload.
+
+Weekly, automatic: `pwsh scripts/register-archive-task.ps1` (once; Windows scheduled task, Sunday 10:00, log in `%USERPROFILE%\PEM-Archive-last-run.log`; `-Out`, `-Day`, `-At`, `-Unregister`). A copy on a second disk or with a trusted person is still a manual step.
+
 ## Graph CSV exports (Slice 7 Phase 2)
 
 **Workflow:** `.github/workflows/graph-csv-backup.yml`  

@@ -1,6 +1,20 @@
 # Transcription batches — owner instructions
 
-Journal build step 4 ([`JOURNAL_PROPOSAL.md`](./JOURNAL_PROPOSAL.md)). Written 2026-11-12. **Not built yet**: the batch scripts are written only after your GO, so these are the steps for when you start.
+Journal build step 4 ([`JOURNAL_PROPOSAL.md`](./JOURNAL_PROPOSAL.md)). Written 2026-11-12; scripts added 2026-11-13 (owner GO "write the scripts").
+
+## Scripts (written 2026-11-13, `scripts/transcribe/`)
+
+Run from the repo folder with the venv's Python: `C:\Users\pppee\.venvs\transcribe\Scripts\python.exe`.
+
+| Script | Does | Writes |
+|---|---|---|
+| `voice_batch.py` | Lists voice notes that have audio. `--run` transcribes them (faster-whisper, GPU). `--run --write` adds each transcript as a journal entry (kind voice, unverified, engine named). | Without `--write`: local JSON only, in `C:\Users\pppee\.venvs\transcribe-out\voice`. `--write` is refused until [`journal_entry_source.sql`](../supabase/sql/journal_entry_source.sql) is applied. |
+| `fetch_whisper_model.py large-v3` | Downloads the transcription model once (~3.1 GB, curl, resumes). | `C:\Users\pppee\.venvs\models\` |
+| `handwriting_test.py "<folder>"` | Runs `qwen2.5vl:7b` on up to 10 page photos; makes `report.html` (photo · transcript). | Local files only — never the database. |
+
+Test-run 2026-11-13: list mode (1 of 9 voice notes has audio, 184 s — the other 8 are dictation text only); `--run --model tiny` (160 s of audio in 4 s, French detected, local file); handwriting pipeline on a generated page (11 of 11 words, 39 s including model load). Not run: large-v3 (model not downloaded), `--write`, real handwriting.
+
+Not built: the journal day page does not yet show the audio player or the engine mark next to a transcript; the handwriting full batch (C) is not written — it depends on the test result.
 
 ## What is already in place
 

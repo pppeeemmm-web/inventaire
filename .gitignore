@@ -43,3 +43,6 @@ graphify-out/
 .vercel
 .claude/
 components/public/WorksClient_clean.tsx
+
+# python caches (scripts/transcribe)
+__pycache__/

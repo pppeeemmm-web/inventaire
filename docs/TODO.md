@@ -9,7 +9,7 @@ _Live checklist. History → [`archive/`](./archive/). Current workstream → [`
 - [ ] **Mobile rationalization 2.2** — share-triage as canonical photo funnel. Blocked on: 2–3 owner painting sessions with friction notes.
 - [ ] **Phase 3 decision (owner)** — regroup hub tiles by verb, or keep 10-tile layout?
 - [ ] Follow-ups from 2.x (Commentaires ungated, reorder/replace image gating, `attachShareInboxFilesToWork` audit) — tracked in the plan doc.
-- [ ] **STRATEGY.md** — fill with owner (dedicated exchange planned; skeleton in place).
+- [x] **STRATEGY.md** — filled 2026-11-13 (owner words + order of aims).
 
 ## Operations — time-sensitive
 
@@ -27,6 +27,19 @@ _Live checklist. History → [`archive/`](./archive/). Current workstream → [`
 - [x] **CORS on the R2 `vault` bucket** — set 2026-11-01 with owner OK: `PUT` + `content-type` only, origins `https://www.thepemworkshop.com`, `https://thepemworkshop.com`, `http://localhost:3000`. Verified by preflight (allowed origins 204, other origin 403). Needed by the browser-to-R2 path in `createVaultUploadUrl` (files > 4 MB). A new app origin (preview domain, LAN dev URL) must be added there too.
 
 ## Product — open
+
+- [ ] **App review, 2026-11-13** (Fable; verified against live code + DB 2026-11-13).
+  - [x] Signed-out read lockdown — [`anon_read_lockdown.sql`](../supabase/sql/anon_read_lockdown.sql), applied + tested (anon key: Contact / tblrelations / work_action / `Oeuvres.Prix` → 42501; `/works` still lists 836 works). Rules in [`ARCHITECTURE.md`](./ARCHITECTURE.md) §7.
+  - [x] Wider search text for works (themes, period, source, year, support, colours) — [`oeuvre_search_text_wider.sql`](../supabase/sql/oeuvre_search_text_wider.sql), applied; 1 182 works re-indexed, 0 skipped. What's new 3.1.1.
+  - [x] Transcription scripts written and test-run — `scripts/transcribe/` (see [`TRANSCRIPTION_BATCHES.md`](./TRANSCRIPTION_BATCHES.md)). Not done: large-v3 model not downloaded; `journal_entry_source.sql` not applied (needed for `--write`); day page does not yet show the audio / ✦ engine mark.
+  - [x] Frame / nosniff / referrer headers (`next.config.ts`); `/api/geocode` needs a sign-in. `journal_entry_source.sql` applied (transcript → its audio + engine).
+  - [x] Archive export + image backup: `npm run archive` ([`BACKUP_RECOVERY.md`](./BACKUP_RECOVERY.md)); weekly task = `scripts/register-archive-task.ps1`, to be run once by the owner.
+  - [x] [`STRATEGY.md`](./STRATEGY.md) filled with the owner's words and the order of aims (2026-11-13).
+  - [ ] Security, remaining: `anon` write grants on most tables (RLS only); `system_log` + `studio_task` open to any signed-in account; no content security policy (start report-only); `xlsx` 0.18.5 usage to check; `storage_object_ledger` table does not exist (`lib/storage-object-ledger.ts` writes to it).
+  - [ ] Restore drill (O4) never run. Archive: no in-app reminder when the last run is old; no second-disk copy.
+  - [ ] Image descriptions by the local vision model: 20-work test run 2026-11-13 (`scripts/transcribe/describe_images_test.py`, nothing saved) — owner to judge before any batch.
+  - [ ] Ideas agreed in principle, not built: work ↔ work links from the drawer; a daily "see again" card (old entry / unlinked work / close pair); journal day page showing a transcript's audio + engine mark.
+  - [ ] Cold load: Overview figures are fetched before first paint on every tab — owner unsure of the gain; measure before any change.
 
 - [ ] **Owner bug review, 2026-11-12** (brief `BRIEF_CLAUDE_CODE_audit_journal.md`, phase 1 A; verified against live code 2026-11-12).
   - [x] Session journal before/after compare read 6 field names absent from `oeuvre_versions.snapshot` (`TechniqueID`, `SupportID`, `FormatID`, `TVARate`, `is_commission`, `AnonymityLevel`) — fixed `6b87b6d`, deployed. Same list fixed in the drawer version history (`WorkVersionHistory.tsx`).

@@ -34,7 +34,18 @@ const nextConfig: NextConfig = {
   /** Deploy check: `curl -sI <url>` shows which commit is live (Vercel sets VERCEL_GIT_COMMIT_SHA). */
   async headers() {
     const sha = process.env.VERCEL_GIT_COMMIT_SHA || swRevision
-    return [{ source: '/:path*', headers: [{ key: 'x-build-sha', value: sha }] }]
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          { key: 'x-build-sha', value: sha },
+          // Hardening (2026-11-13): no framing by other sites, no MIME sniffing, short referrer.
+          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+        ],
+      },
+    ]
   },
 
   /** Browsers still request /favicon.ico by default */

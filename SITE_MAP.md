@@ -181,7 +181,7 @@ These are **`'use server'`** modules (callable from Server Components and from t
 | Route | Auth | Purpose |
 |-------|------|---------|
 | `POST` | Bearer `CRON_SECRET` | [`app/api/cron/return-window/route.ts`](../app/api/cron/return-window/route.ts) — applies expired sale return windows (`sale_order` → archive sold works) |
-| `GET/POST` … | varies | [`app/api/geocode/route.ts`](../app/api/geocode/route.ts) — geocoding helper |
+| `GET` | Supabase session cookie (2026-11-13; was open) | [`app/api/geocode/route.ts`](../app/api/geocode/route.ts) — geocoding helper for the Atelier map |
 | `GET` | Supabase session cookie | [`app/api/field-weather/route.ts`](../app/api/field-weather/route.ts) — Open-Meteo current conditions proxy for field sessions (`latitude` / `longitude` query) |
 | `GET` | `is_admin()` session | [`app/api/export/csv/route.ts`](../app/api/export/csv/route.ts) — Slice 7 graph CSV export (`?view=entity` \| `edge_fact`; UTF-8 BOM) |
 | `GET` … | Bearer `INVENTORY_BROADCAST_SECRET` | [`feed`](../app/api/inventory/broadcast/feed/route.ts), [`queue`](../app/api/inventory/broadcast/queue/route.ts), [`confirm`](../app/api/inventory/broadcast/confirm/route.ts), [`event`](../app/api/inventory/broadcast/event/route.ts) — Make/n8n broadcast chain; shared in-process rate limit [`lib/inventory-broadcast-rate-limit.ts`](../lib/inventory-broadcast-rate-limit.ts) → HTTP 429 |

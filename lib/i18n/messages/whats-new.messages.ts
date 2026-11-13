@@ -9,6 +9,11 @@ export const whatsNewMessages = defineMessages({
   },
 
   // 3.0.3 (2026-11-12) — owner bug review + journal entries.
+  wn_search_wider_t: { fr: 'La recherche connaît mieux les œuvres', en: 'Search knows the works better' },
+  wn_search_wider_d: {
+    fr: 'La recherche (⌘K) et les suggestions ✦ tiennent compte, pour chaque œuvre, du support, de l’année, des thèmes, de la période, de la source et des couleurs dominantes — plus seulement du titre, des commentaires et de la technique. Les œuvres sans titre deviennent trouvables (« pierre noire Marseille », « huile bleu »).',
+    en: 'Search (⌘K) and ✦ suggestions now use each work’s support, year, themes, period, source and main colours — not just title, comments and technique. Untitled works can be found ("black chalk Marseille", "oil blue").',
+  },
   wn_contact_bounce_t: { fr: 'De l’œuvre au contact, et retour', en: 'From work to contact and back' },
   wn_contact_bounce_d: {
     fr: 'Dans la fiche d’une œuvre (Propriété), le bouton ↗ à côté du propriétaire, du lieu ou de l’acheteur ouvre la fiche du contact ; en haut, « ← Retour à l’œuvre #… » rouvre l’œuvre. Production : le crayon ✎ d’une carte ouvre maintenant l’œuvre sur place (il ouvrait la Vue d’ensemble).',

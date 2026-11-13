@@ -1,31 +1,25 @@
-# Strategy — owner intent (living document)
+# Strategy — owner intent
 
-**Status: SKELETON — content to be filled in a dedicated owner exchange (planned 2026-07). Until then, treat every section as unanswered, not as "no".**
+The filter for new work: a request that serves none of the aims below gets parked, not built. Open items live in [`TODO.md`](./TODO.md); this file only says why.
 
-Purpose: the filter for all new work. A request that serves none of the goals below — or touches a non-goal — gets parked, not built. Companion to the [request protocol](../CLAUDE.md) (bug / lived friction / idea triage).
+## What this is for (Pem, 2026-11-13)
 
-## 1. What this system is for (owner's words)
+> Keep trace of my work in all its forms — paintings, writings, anything that has to do with my wondering at the world in that existence of mine — to transmit affections and hopes; to create links between nodes and extract meaningful insights. To help me value the oeuvre against all odds.
+>
+> I hope somebody, now or in the future, will be able to extract from my painting some joy, emotion, mystery — anything that creates true value to other humans.
 
-_À remplir : la mission en 2-3 phrases. Ex. : « registre d'atelier fiable + terminal de terrain + vitrine — pour un artiste seul avec une petite équipe occasionnelle »._
+## Aims, in order
 
-## 2. Long-term goals (ranked)
+1. **Trace** — nothing lost; intake is easy on the phone, in the field.
+2. **Links and mapping** — search, suggestions, journal ↔ work, Constellation, map.
+3. **Transmission** — reaching other people, now and later: the public site, portfolios, diffusion; and the archive that stays readable without this app.
+4. **Value** — follows from 3: what the work gives to others. Records that support it (provenance, condition reports, certificates) serve this.
 
-_À remplir. Candidats évoqués à valider/ordonner : fiabilité du registre (aucune donnée perdue, traçabilité), fluidité du flux terrain (capture → journal → œuvre en minutes), diffusion (site public, portfolio, broadcast), scalabilité (catalogue qui grandit sans refonte)._
+Commercial tools (sales, logistics, fiscal, stock) hold almost no data: nothing is spent there until a real case needs it.
 
-## 3. Potentials under consideration (not commitments)
+## Standing decisions
 
-_À remplir : pistes envisagées (ex. F2–F10 du TODO, OCR élargi, e-mail transactionnel, ventes en ligne ?, multi-artistes ?) avec pour chacune : quel problème réel elle résoudrait, et quel signal déclencherait un GO._
-
-## 4. Non-goals (explicit refusals)
-
-_À remplir. Déjà actés ailleurs : pas de background queues / OCR élargi / e-mail transactionnel sans GO (CLAUDE.md) ; pas de polish spéculatif sans friction vécue ×2 ; `NeedsPhotograph` reste un gate qualité manuel._
-
-## 5. Scalability assumptions
-
-_À remplir : ordres de grandeur cibles (nb d'œuvres, images, utilisateurs, sessions/mois) pour dimensionner sans sur-construire._
-
-## 6. Decision log (strategy-level only)
-
-- 2026-07-15 — `NeedsPhotograph` = manual quality gate, never auto-cleared by any image add (phone photos are journal references, not diffusion-grade).
-- 2026-07-15 — Lightroom in-app UI removed; canonical mobile flow = capture in Lightroom → export → library picker → new/existing item.
-- 2026-07-16 — Changes gated on lived friction (≥2×) from real usage; problem-statements over prescribed solutions; batch fixes.
+- 2026-07-15 — `NeedsPhotograph` is a manual quality gate, never cleared by adding an image (phone photos are journal references, not diffusion-grade).
+- 2026-07-15 — Phone images: capture in Lightroom → export → library picker → new or existing work.
+- 2026-07-16 — Changes follow lived friction (felt at least twice); problems stated, not solutions prescribed; fixes batched.
+- CLAUDE.md — no background queues, wider OCR or transactional email without a GO.

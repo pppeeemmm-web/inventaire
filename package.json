@@ -14,6 +14,7 @@
     "regen:work-thumbs": "node scripts/regen-work-thumbs.mjs",
     "storage:ledger:backfill": "node scripts/storage-ledger-backfill.mjs",
     "embed:worker": "node scripts/embed-worker/index.mjs",
+    "archive": "node scripts/archive-export.mjs",
     "test:e2e": "playwright test",
     "test:e2e:field": "node scripts/run-atelier-e2e.mjs"
   },

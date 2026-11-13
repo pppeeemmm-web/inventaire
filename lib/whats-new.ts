@@ -16,7 +16,8 @@
 // '3.0.8' (2026-11-12): capture tidy (apply bar, photo first, location folded).
 // '3.0.9' (2026-11-12): journal in search + Constellation, stricter ✦, phone drawer + inventory tidy.
 // '3.1.0' (2026-11-12): work → contact bounce, Production ✎ fix, journal day tidy + ✦ day counts.
-export const WHATS_NEW_RELEASE = '3.1.0'
+// '3.1.1' (2026-11-13): wider search text for works (supabase/sql/oeuvre_search_text_wider.sql).
+export const WHATS_NEW_RELEASE = '3.1.1'
 
 /** localStorage: release the viewer chose not to see again. sessionStorage: already shown this visit. */
 export const WHATS_NEW_DISMISSED_KEY = 'pem_whats_new_dismissed'
@@ -26,6 +27,7 @@ export type WhatsNewItem = { id: string; day: string }
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'search_wider', day: '2026-11-13' },
   { id: 'contact_bounce', day: '2026-11-12' },
   { id: 'journal_day_tidy', day: '2026-11-12' },
   { id: 'journal_search', day: '2026-11-12' },
