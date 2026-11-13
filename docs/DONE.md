@@ -2,6 +2,15 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-13 — closed while tidying the list
+
+- Ideas agreed in principle (work links, see again, transcript audio) — all built 2026-11-13: work ↔ work links from the drawer (`WorkLinksSection`), "see again" card (Journal today + Overview; `see_again_dismissed.sql`), transcript audio + ✦ engine mark on the journal day.
+- Lightroom-return loop (`lib/mobile/lightroom-return.ts`, imported by `ShareTriageClient.tsx`) — wired; owner tested it end to end (2026-11-13).
+- Staging AVIF upload smoke — superseded: 1 231 AVIF images are live in `tblImage` and uploads work in production (checked 2026-11-13).
+- Verify `OeuvresComplete` after `dead_columns_drop.sql` — the view no longer exists and no code reads it (checked 2026-11-13).
+- `SUPABASE_DB_URL` secret for `audit-prune.yml` — same secret as the daily backup, which runs; `audit_log_prune()` exists (checked 2026-11-13; the Actions run itself not checked).
+- Field UX batch of 2026-11-12 + Opus batch of 2026-11-13 — see What's new 3.1.2 and `archive/HANDOFF_2026-11-12_FIELD_UX.md`.
+
 ## 2026-11-13 — App review (done parts)
 
   - [x] Signed-out read lockdown — [`anon_read_lockdown.sql`](../supabase/sql/anon_read_lockdown.sql), applied + tested (anon key: Contact / tblrelations / work_action / `Oeuvres.Prix` → 42501; `/works` still lists 836 works). Rules in [`ARCHITECTURE.md`](./ARCHITECTURE.md) §7.

@@ -4,7 +4,7 @@
 >
 > **Freshness (2026-11-03):** the November 2026 changes are summarised just below; the chapters after it were written in July 2026.
 >
-> **⚠ Older note (2026-07-16):** photo/session/hub/approval sections predate the 2026-07 mobile rationalization pass (Lightroom UI removed, `image_add` pending gate, manual `NeedsPhotograph` gate, session apply guards). Where this guide and [`MOBILE_RATIONALIZATION_PLAN.md`](./MOBILE_RATIONALIZATION_PLAN.md) disagree, the plan + live code win. Full guide update owed with Phase 5.
+> **⚠ Older note (2026-07-16):** photo/session/hub/approval sections predate the 2026-07 mobile rationalization pass (Lightroom UI removed, `image_add` pending gate, manual `NeedsPhotograph` gate, session apply guards). Where this guide and [`MOBILE_RATIONALIZATION_PLAN.md`](./archive/MOBILE_RATIONALIZATION_PLAN.md) disagree, the plan + live code win. Full guide update owed with Phase 5.
 
 **Audience.** You are an **admin** (`is_admin()` returns `true`, your `Contact.is_admin = true` linked to `auth.uid()`). This document is **self-contained**: it covers every team-accessible feature **and** every admin-only chapter. You do not need to read [`TEAM_MEMBER_GUIDE.md`](./TEAM_MEMBER_GUIDE.md) alongside it — but team members read that one.
 

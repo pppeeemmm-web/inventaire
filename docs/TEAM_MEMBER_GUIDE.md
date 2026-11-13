@@ -4,7 +4,7 @@
 >
 > **Freshness (2026-11-03):** the November 2026 changes are summarised just below; the chapters after it were written in July 2026.
 >
-> **⚠ Older note (2026-07-16):** photo/session/hub sections predate the 2026-07 mobile rationalization pass (Lightroom UI removed, image adds queue for approval, manual `NeedsPhotograph` gate). Where this guide and [`MOBILE_RATIONALIZATION_PLAN.md`](./MOBILE_RATIONALIZATION_PLAN.md) disagree, the plan + live code win. Full guide update owed with Phase 5.
+> **⚠ Older note (2026-07-16):** photo/session/hub sections predate the 2026-07 mobile rationalization pass (Lightroom UI removed, image adds queue for approval, manual `NeedsPhotograph` gate). Where this guide and [`MOBILE_RATIONALIZATION_PLAN.md`](./archive/MOBILE_RATIONALIZATION_PLAN.md) disagree, the plan + live code win. Full guide update owed with Phase 5.
 
 **Audience.** You are a **team member** (signed in, `is_team()` returns `true`) — not an admin. This guide covers **every** team-accessible function in Hub and Atelier as of the 2025–2026 release: every field, every button, every query parameter, every keyboard shortcut, every saved state, every pitfall.
 
