@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { listUnreadSuiviReminders, markSuiviReminderRead } from '@/app/atelier/reminders-actions'
 import { useI18n } from '@/lib/i18n/context'
+import Link from 'next/link'
 import { WorkThumb } from '@/components/atelier/WorkThumb'
+import { ImageLoupe } from '@/components/atelier/ImageLoupe'
 import { EmbeddingIndexCard } from '@/components/atelier/overview/EmbeddingIndexCard'
 import { SeeAgainCard } from '@/components/atelier/SeeAgainCard'
 import type { Oeuvre, SuiviReminderListRow } from '@/lib/types/database'
@@ -262,16 +264,18 @@ export function OverviewTab({
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: ovNarrow ? 'repeat(3, minmax(0, 1fr))' : 'repeat(6, minmax(0, 96px))', gap: ovNarrow ? 12 : 10 }}>
             {recentWorks.map((o) => (
-              <div key={o.OeuvreID} style={{ aspectRatio: '1', background: 'var(--bg1)', border: '1px solid var(--bd2)', position: 'relative', overflow: 'hidden', cursor: 'pointer' }}>
+              <Link key={o.OeuvreID} href={`/atelier/inventory?work=${o.OeuvreID}`} aria-label={`#${o.OeuvreID} ${o.Titre ?? ''}`.trim()} style={{ display: 'block', aspectRatio: '1', background: 'var(--bg1)', border: '1px solid var(--bd2)', position: 'relative', overflow: 'hidden', cursor: 'pointer', color: 'inherit', textDecoration: 'none' }}>
                 {o.txtImageNameLink ? (
-                  <WorkThumb file={o.txtImageNameLink} size={256} alt="" />
+                  <ImageLoupe file={o.txtImageNameLink} alt={o.Titre ?? `#${o.OeuvreID}`} style={{ width: '100%', height: '100%' }}>
+                    <WorkThumb file={o.txtImageNameLink} size={256} alt="" />
+                  </ImageLoupe>
                 ) : (
                   <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--tx3)', fontSize: 10 }}>{t('ov_no_image_placeholder')}</div>
                 )}
                 <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '4px 6px', background: 'linear-gradient(transparent, color-mix(in srgb, var(--bg0) 80%, transparent))', color: 'var(--tx)', fontSize: 8, fontFamily: 'var(--font-mono)' }}>
                   #{o.OeuvreID}
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </div>
