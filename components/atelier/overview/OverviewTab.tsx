@@ -250,7 +250,8 @@ export function OverviewTab({
     signals.push({
       id: 'money', label: t('od_sig_money'),
       // D3 (thresholds) open: until Pem sets "cash low", a negative net this year is the alarm.
-      kind: net < 0 ? 'attention' : 'ok',
+      // D3 (Pem 2026-11-14): a negative net for the year is wrong (■), not just attention.
+      kind: net < 0 ? 'wrong' : 'ok',
       value: `${net > 0 ? '+' : ''}${formatPriceCompact(net, lang)}`,
       detail: fmt('od_money_net', { year: thisYear }),
       go: () => onGoTab('fiscal'),

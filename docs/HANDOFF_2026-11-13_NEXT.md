@@ -8,7 +8,7 @@
 3. **A2 AI descriptions** with the usefulness slider (migration, drawer section). **Built 2026-11-14 (verified against live code 2026-11-14, committed locally; migration applied to the live DB 2026-11-14, What's new 3.1.6)** — status under §A2.
 4. **A4 answer** (read only, no code) — what location/weather is recorded and for how many works; it decides what A3 can take from field sessions. **Answered 2026-11-14** — under §A4 (2 of 54 sessions, 5 works). Pem chose point 1 = automatic: **built 2026-11-14, committed locally** (What's new 3.1.6); points 2–5 wait for A3 / a GO.
 5. **A3 periods by date + place per work** (migration) → then add **Place made** to Identity in batch modify (B2) and to the drawer. **Built 2026-11-14 (verified against live code 2026-11-14, committed locally; migration applied 2026-11-14, What's new 3.1.7)** — status under §A3.
-6. **B3 Export** with live preview — biggest piece (preview engine); start only after Pem answers D2.
+6. **B3 Export** with live preview — biggest piece (preview engine). **D2 answered 2026-11-14: Cards / Grid / Quick list + Labels (new) + CSV/XLSX as a tab.** D1 keep, D3 net < 0 → ■ (built, committed locally), D4 keep. Not started.
 Then C (ask), D (housekeeping), E.
 Why this order: the two dialogs Pem looked at and rejected come first; A3 goes after B2 so batch modify isn't redesigned twice (adding one row later is cheap); B3 waits on a decision.
 **Rules:** `CLAUDE.md` (auto-loaded). Plan in one message, build in order, one commit per item, What's new 3.1.4 for the batch, checks once per batch. Open only the files named.

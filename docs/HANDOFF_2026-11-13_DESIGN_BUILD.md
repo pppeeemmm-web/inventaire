@@ -151,6 +151,7 @@ Per commit: `npm run i18n:check`, `npm run lint`, `npm run typecheck`; screensho
 
 ## 6. Decisions for Pem (ask before building the part they block)
 
+**Pem's answers 2026-11-14:** D1 keep (backlog ▲, archive > 14 d or never ■) · D2 **all tabs: the three live layouts + Labels + CSV/XLSX** · D3 **net < 0 → ■** (built 2026-11-14) · D4 keep ~0.7 s.
 - **D1 — Local jobs signal.** Brief: any backlog = wrong. Mock proposes backlog > 0 = attention ▲, PC archive > 14 days = wrong ■.
 - **D2 — Export types.** Keep the three live layouts as the tabs, or also add **Labels** (new: label-sheet presets, start position) and/or **CSV/XLSX** as a tab? Both are new work, not in the live dialog.
 - **D3 — Money thresholds.** What counts as "cash low" and "negative trend" for the ■?

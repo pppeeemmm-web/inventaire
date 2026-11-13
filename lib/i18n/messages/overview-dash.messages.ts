@@ -70,8 +70,8 @@ export const overviewDashMessages = defineMessages({
   od_expenses: { fr: 'Dépenses', en: 'Expenses' },
   od_net: { fr: 'Net (BNC)', en: 'Net (BNC)' },
   od_money_note: {
-    fr: 'Ventes + paiements de l’année, dépenses TTC. Pas encore de seuil « trésorerie basse » : le signal passe à ▲ si le net est négatif.',
-    en: 'Sales + payments this year, expenses incl. VAT. No “cash low” threshold yet: the signal turns ▲ when net is negative.',
+    fr: 'Ventes + paiements de l’année, dépenses TTC. Le signal passe à ■ (à corriger) si le net de l’année est négatif.',
+    en: 'Sales + payments this year, expenses incl. VAT. The signal turns ■ (wrong) when the year’s net is negative.',
   },
   od_total_value: { fr: 'Valeur totale', en: 'Total value' },
   od_made_year: { fr: 'Faites en {year}', en: 'Made {year}' },
