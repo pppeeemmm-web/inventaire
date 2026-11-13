@@ -48,6 +48,7 @@ import { NewContactModal, EMPTY_CONTACT_DRAFT } from './NewContactModal'
 import { UnsavedChangesModal } from './UnsavedChangesModal'
 import { GiftTransferModal } from './GiftTransferModal'
 import { ContactQuickModal } from './ContactQuickModal'
+import { WorkLinksSection } from './WorkLinksSection'
 import { FIS, cap } from './drawer-widgets'
 import { WorkFormPhysicalQr } from '@/components/atelier/WorkFormPhysicalQr'
 import { WorkProductionSpan } from './WorkProductionSpan'
@@ -1430,6 +1431,8 @@ export function DrawerContent({
         ) : null}
 
         <WorkPeriodSourceSection oeuvreId={o.OeuvreID} year={periodYearOf({ Année: annee, production_started_on: o.production_started_on })} />
+
+        <WorkLinksSection oeuvreId={o.OeuvreID} />
 
         <WorkFormPhysicalQr oeuvreId={o.OeuvreID} titre={titre || o.Titre} />
 

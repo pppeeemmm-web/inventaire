@@ -17,7 +17,8 @@
 // '3.0.9' (2026-11-12): journal in search + Constellation, stricter ✦, phone drawer + inventory tidy.
 // '3.1.0' (2026-11-12): work → contact bounce, Production ✎ fix, journal day tidy + ✦ day counts.
 // '3.1.1' (2026-11-13): wider search text for works (supabase/sql/oeuvre_search_text_wider.sql).
-export const WHATS_NEW_RELEASE = '3.1.1'
+// '3.1.2' (2026-11-13): sign out + password, see again, contact pop-up, #1234 preview, work links, Production drag-back, voice transcripts.
+export const WHATS_NEW_RELEASE = '3.1.2'
 
 /** localStorage: release the viewer chose not to see again. sessionStorage: already shown this visit. */
 export const WHATS_NEW_DISMISSED_KEY = 'pem_whats_new_dismissed'
@@ -27,6 +28,13 @@ export type WhatsNewItem = { id: string; day: string }
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'sign_out', day: '2026-11-13' },
+  { id: 'see_again', day: '2026-11-13' },
+  { id: 'contact_popup', day: '2026-11-13' },
+  { id: 'work_preview', day: '2026-11-13' },
+  { id: 'work_links', day: '2026-11-13' },
+  { id: 'production_drag', day: '2026-11-13' },
+  { id: 'voice_transcripts', day: '2026-11-13' },
   { id: 'search_wider', day: '2026-11-13' },
   { id: 'contact_bounce', day: '2026-11-12' },
   { id: 'journal_day_tidy', day: '2026-11-12' },

@@ -9,6 +9,41 @@ export const whatsNewMessages = defineMessages({
   },
 
   // 3.0.3 (2026-11-12) — owner bug review + journal entries.
+  wn_sign_out_t: { fr: 'Se déconnecter, changer son mot de passe', en: 'Sign out, change your password' },
+  wn_sign_out_d: {
+    fr: 'En haut de l’Atelier (et dans le menu sur téléphone) et en bas du Hub : « Se déconnecter ». Les comptes avec e-mail + mot de passe ont aussi « Changer le mot de passe » ; les comptes Google ne l’ont pas (le mot de passe est chez Google).',
+    en: 'At the top of the Atelier (in the menu on a phone) and at the bottom of the Hub: "Sign out". Email + password accounts also get "Change password"; Google accounts don’t (Google holds the password).',
+  },
+  wn_see_again_t: { fr: 'À revoir aujourd’hui', en: 'See again today' },
+  wn_see_again_d: {
+    fr: 'En haut du Journal du jour et dans la Vue d’ensemble : une entrée d’une autre année à la même semaine, une œuvre sans aucun lien, et deux œuvres proches pas encore liées. Les mêmes toute la journée. « Lier », « Sans rapport », « Écrire à ce sujet » (le formulaire s’ouvre avec #numéro). Rien n’est écrit par une IA : la carte choisit seulement quoi montrer.',
+    en: 'At the top of today’s Journal and in Overview: an entry from this week in another year, a work with no link at all, and two close works not linked yet. The same all day. "Link", "Not related", "Write about it" (the form opens with #number). Nothing is written by AI: the card only chooses what to show.',
+  },
+  wn_contact_popup_t: { fr: 'Le contact s’ouvre par-dessus l’œuvre', en: 'The contact opens over the work' },
+  wn_contact_popup_d: {
+    fr: 'Dans la fiche d’une œuvre, ↗ à côté du propriétaire, du lieu ou de l’acheteur ouvre la fiche du contact par-dessus : on la modifie, on ferme, l’œuvre est toujours là. Plus d’aller-retour vers Contacts.',
+    en: 'In a work’s card, ↗ next to the owner, location or buyer opens the contact on top: edit, close, the work is still there. No more round trip to Contacts.',
+  },
+  wn_work_preview_t: { fr: 'Aperçu d’une œuvre sur #numéro', en: 'Work preview on #number' },
+  wn_work_preview_d: {
+    fr: 'Partout où un #numéro d’œuvre est un lien (Journal, entrées, Kaizen, capture, contacts) : survol à la souris ou appui long sur téléphone = petite fiche (image, titre, année, technique, statut). Un clic ouvre toujours l’œuvre. Dans le texte des entrées, #1234 devient un lien.',
+    en: 'Wherever a #work number is a link (Journal, entries, Kaizen, capture, contacts): mouse hover or a long press on a phone shows a small card (image, title, year, technique, status). A click still opens the work. In entry text, #1234 becomes a link.',
+  },
+  wn_work_links_t: { fr: 'Liens entre œuvres depuis la fiche', en: 'Links between works from the card' },
+  wn_work_links_d: {
+    fr: 'Fiche d’une œuvre → « Liens avec d’autres œuvres » : peinte sur, dérivée de, répond à, même série, diptyque, influence, proche de — avec le numéro de l’autre œuvre. Les mêmes liens que la Constellation.',
+    en: 'A work’s card → "Links to other works": painted on, derived from, answers, same series, diptych, influence, close to — with the other work’s number. The same links as the Constellation.',
+  },
+  wn_production_drag_t: { fr: 'Production : glisser une carte en arrière', en: 'Production: drag a card back' },
+  wn_production_drag_d: {
+    fr: 'Sur ordinateur, glissez une carte vers une autre colonne pour déplacer la tâche. Vers « Cataloguer » = retour en production (non cataloguée, statut En production). Avancer vers « Photographier » passe toujours par ✓.',
+    en: 'On a computer, drag a card to another column to move the to-do. Onto "Catalogue" = back to production (not catalogued, status In production). Moving forward to "Photograph" still goes through ✓.',
+  },
+  wn_voice_transcripts_t: { fr: 'Notes vocales transcrites dans le Journal', en: 'Voice notes transcribed in the Journal' },
+  wn_voice_transcripts_d: {
+    fr: 'Une note vocale enregistrée (🎤) est transcrite sur le PC de l’atelier et apparaît au jour de la note, avec son audio et la marque « ✦ transcription · moteur · non vérifiée ». L’audio reste la référence ; la transcription est trouvable par ⌘K.',
+    en: 'A recorded voice note (🎤) is transcribed on the studio PC and appears on the note’s day, with its audio and the mark "✦ transcript · engine · unverified". The audio stays the reference; the transcript is found by ⌘K.',
+  },
   wn_search_wider_t: { fr: 'La recherche connaît mieux les œuvres', en: 'Search knows the works better' },
   wn_search_wider_d: {
     fr: 'La recherche (⌘K) et les suggestions ✦ tiennent compte, pour chaque œuvre, du support, de l’année, des thèmes, de la période, de la source et des couleurs dominantes — plus seulement du titre, des commentaires et de la technique. Les œuvres sans titre deviennent trouvables (« pierre noire Marseille », « huile bleu »).',

@@ -9,9 +9,9 @@ import { revalidatePath } from 'next/cache'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { calendarDayInParisFromIso } from '@/lib/session-calendar-day'
 import { insertConstellationRelation } from '@/app/atelier/(portal)/constellation/actions'
+// Hand-made work ↔ work relations: a pair with one of these is already linked.
+import { WORK_LINK_TYPES } from '@/lib/work-links'
 
-/** Hand-made work ↔ work relations: a pair with one of these is already linked. */
-const WORK_LINK_TYPES = ['influence', 'proximity', 'series', 'diptych']
 
 export type SeeAgainWork = { id: number; title: string | null; image: string | null }
 export type SeeAgainSlots = {
@@ -62,7 +62,7 @@ export async function getSeeAgain(): Promise<SeeAgainSlots | Err> {
       .order('OeuvreID', { ascending: true })
       .limit(5000),
     supabase.from('journal_entry_link').select('oeuvre_id').not('oeuvre_id', 'is', null).not('validated_at', 'is', null),
-    supabase.from('tblrelations').select('source_id, target_id').in('relation_type', WORK_LINK_TYPES),
+    supabase.from('tblrelations').select('source_id, target_id').in('relation_type', [...WORK_LINK_TYPES]),
     supabase.from('see_again_dismissed').select('kind, a, b'),
   ])
   for (const r of [entriesRes, worksRes, linksRes, relsRes, dismissedRes]) {

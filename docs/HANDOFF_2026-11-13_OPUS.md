@@ -1,5 +1,7 @@
 # Handoff — 2026-11-13, for Opus
 
+> **Status (Opus session, 2026-11-13, verified against live code 2026-11-13):** F, B, C, A, D, E built and committed locally (not pushed at time of writing). Open: owner OK for the first voice `--write`; owner's reading of the image test round 2; owner decisions on the unclear TODO items; G (small leftovers) not started. Archive this file once those are answered.
+
 **From:** Fable session of 2026-11-13. **Owner:** Pem. **State:** `main` = `origin/main` = `33c06f2`.
 **Owner's constraint:** credits are short. Build cheaply (section 0), in the order of section 2.
 **Why any of this:** [`STRATEGY.md`](./STRATEGY.md) — trace → links and mapping → transmission → value. Rank by that.
@@ -75,7 +77,7 @@ Purpose: links come from seeing things again. No AI-written text; it only choose
 
 ### E. Earlier brief, still unbuilt
 
-[`HANDOFF_2026-11-12_FIELD_UX.md`](./HANDOFF_2026-11-12_FIELD_UX.md), owner's order: item 3 (contact pop-up over the drawer) → item 4 (`#1234` preview) → item 5 (Système tools cleanup) → item 1 (Production drag-back) → item 2 (✦ banner; open suggestions are 0 today, lowest priority). Plus, agreed in principle: **work ↔ work links from the drawer** ("painted on", "derived from", "answers" — `tblrelations`, see `JOURNAL_PROPOSAL.md` "Work or version").
+[`HANDOFF_2026-11-12_FIELD_UX.md`](./archive/HANDOFF_2026-11-12_FIELD_UX.md), owner's order: item 3 (contact pop-up over the drawer) → item 4 (`#1234` preview) → item 5 (Système tools cleanup) → item 1 (Production drag-back) → item 2 (✦ banner; open suggestions are 0 today, lowest priority). Plus, agreed in principle: **work ↔ work links from the drawer** ("painted on", "derived from", "answers" — `tblrelations`, see `JOURNAL_PROPOSAL.md` "Work or version").
 
 ### F. Docs tidy (owner request) — cheap, mostly moving text
 

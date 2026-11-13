@@ -26,6 +26,7 @@ import { sessionFieldMessages } from './session-field.messages'
 import { overviewConsoleMessages } from './overview-console.messages'
 import { accountMessages } from './account.messages'
 import { seeAgainMessages } from './see-again.messages'
+import { workLinksMessages } from './work-links.messages'
 import { pipelineUiMessages } from './pipeline-ui.messages'
 import { conceptDocsMessages } from './concept-docs.messages'
 import { notesTriageMessages } from './notes-triage.messages'
@@ -66,6 +67,7 @@ export const featureMessages = {
   ...overviewConsoleMessages,
   ...accountMessages,
   ...seeAgainMessages,
+  ...workLinksMessages,
   ...pipelineUiMessages,
   ...conceptDocsMessages,
   ...notesTriageMessages,

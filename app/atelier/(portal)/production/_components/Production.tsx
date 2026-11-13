@@ -9,6 +9,7 @@ import { useMemo, useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { useI18n } from '@/lib/i18n/context'
+import { toast } from '@/lib/ui/toast'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import { createClient } from '@/lib/supabase/client'
@@ -230,6 +231,41 @@ export function Production({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
     ), data])
   }
 
+  // Drag a card back to an earlier column (desktop, owner 2026-11-12): the pending to-do of the
+  // source column is deleted (not marked done — markDone has side effects) and one is added on the
+  // target. Onto Catalogue = rewind: not catalogued, status En production (photo flag kept).
+  // Forward onto Photography stays on ✓ only.
+  const [drag, setDrag] = useState<{ oid: number; from: number } | null>(null)
+  async function moveAction(oeuvreId: number, fromType: number, toType: number) {
+    if (fromType === toType) return
+    if (toType === 6) {
+      toast.info(t('prod_drag_forward_tick'))
+      return
+    }
+    const { error: delErr } = await sb.from('work_action')
+      .delete()
+      .eq('oeuvre_id', oeuvreId)
+      .eq('action_type_id', fromType)
+      .eq('done', false)
+    if (delErr) {
+      alert(t('prod_tab_err_update').replace('{msg}', delErr.message))
+      return
+    }
+    if (toType === 9) {
+      const updates = { Catalogué: false, statusId: 1 }
+      const { error } = await sb.from('Oeuvres').update(updates).eq('OeuvreID', oeuvreId)
+      if (error) {
+        alert(t('prod_tab_err_update').replace('{msg}', error.message))
+        await loadData()
+        return
+      }
+      setLocalOeuvres((prev) => prev.map((item) => (item.OeuvreID === oeuvreId ? { ...item, ...updates } : item)))
+    }
+    setActions((prev) => prev.filter((a) => !(a.oeuvre_id === oeuvreId && a.action_type_id === fromType)))
+    await addAction(oeuvreId, toType)
+    router.refresh()
+  }
+
   const productionCount = localOeuvres.filter(o => statusOf(o, statusLabelMap) === 'en_production').length
   const availableCount = localOeuvres.filter(o => statusOf(o, statusLabelMap) === 'available').length
   const archivePemCount = localOeuvres.filter(o => statusOf(o, statusLabelMap) === 'artist_archive').length
@@ -405,6 +441,14 @@ export function Production({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
                   onMarkDone={(oid) => markDone(oid, at.id)}
                   onAddAction={(oid) => addAction(oid, at.id)}
                   onOpen={onOpen}
+                  dragEnabled={!narrow}
+                  dragging={drag}
+                  onDragStartWork={(oid) => setDrag({ oid, from: at.id })}
+                  onDragEndWork={() => setDrag(null)}
+                  onDropWork={() => {
+                    if (drag) void moveAction(drag.oid, drag.from, at.id)
+                    setDrag(null)
+                  }}
                 />
               </div>
             )
@@ -419,6 +463,7 @@ export function Production({ oeuvres, tM, statusLabelMap, onOpen }: Props) {
 
 function ActionColumn({
   actionType, works, active, tM, onMarkDone, onAddAction, onOpen,
+  dragEnabled = false, dragging = null, onDragStartWork, onDragEndWork, onDropWork,
 }: {
   actionType:  ActionType
   works:       Oeuvre[]
@@ -428,9 +473,16 @@ function ActionColumn({
   onMarkDone:  (oid: number) => void
   onAddAction: (oid: number) => void
   onOpen:      (o: Oeuvre) => void
+  dragEnabled?: boolean
+  dragging?: { oid: number; from: number } | null
+  onDragStartWork?: (oid: number) => void
+  onDragEndWork?: () => void
+  onDropWork?: () => void
 }) {
   const { t } = useI18n()
   const [showAdd, setShowAdd] = useState(false)
+  const [over, setOver] = useState(false)
+  const isTarget = !!dragging && dragging.from !== actionType.id
   const [addQ,    setAddQ]    = useState('')
 
   const columnTitle = workActionTypeDisplayLabel(actionType.id, actionType.label, t)
@@ -467,7 +519,18 @@ function ActionColumn({
   }, [active, works, addQ])
 
   return (
-    <div style={{ background: 'var(--bg1)', display: 'flex', flexDirection: 'column', minHeight: 0, width: '100%', flex: 1 }}>
+    <div
+      style={{
+        background: over && isTarget ? 'var(--bg2)' : 'var(--bg1)',
+        outline: isTarget ? `2px ${over ? 'solid' : 'dashed'} ${over ? actionType.color : 'var(--bd2)'}` : 'none',
+        outlineOffset: -2,
+        display: 'flex', flexDirection: 'column', minHeight: 0, width: '100%', flex: 1,
+      }}
+      data-testid={`production-column-${actionType.id}`}
+      onDragOver={dragEnabled && isTarget ? (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; if (!over) setOver(true) } : undefined}
+      onDragLeave={dragEnabled ? (e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver(false) } : undefined}
+      onDrop={dragEnabled && isTarget ? (e) => { e.preventDefault(); setOver(false); onDropWork?.() } : undefined}
+    >
       {/* Header */}
       <div style={{
         padding: '12px 10px 10px', borderBottom: '1px solid var(--bd)', flexShrink: 0,
@@ -545,6 +608,9 @@ function ActionColumn({
             tM={tM}
             onMarkDone={() => onMarkDone(o.OeuvreID)}
             onOpen={onOpen}
+            draggable={dragEnabled}
+            onDragStart={() => onDragStartWork?.(o.OeuvreID)}
+            onDragEnd={() => { setOver(false); onDragEndWork?.() }}
           />
         ))}
         {works.length === 0 && (
@@ -557,11 +623,14 @@ function ActionColumn({
 
 // ── Work card ─────────────────────────────────────────────────
 
-function WorkCard({ o, tM, onMarkDone, onOpen }: {
+function WorkCard({ o, tM, onMarkDone, onOpen, draggable = false, onDragStart, onDragEnd }: {
   o:          Oeuvre
   tM:         Record<number, string>
   onMarkDone: () => void
   onOpen:     (o: Oeuvre) => void
+  draggable?: boolean
+  onDragStart?: () => void
+  onDragEnd?: () => void
 }) {
   const { t, lang } = useI18n()
   const techLabel  = o.Technique != null ? tM[o.Technique] : null
@@ -576,7 +645,12 @@ function WorkCard({ o, tM, onMarkDone, onOpen }: {
       border: `1px solid ${isCommission ? 'var(--ac)' : 'var(--bd)'}`,
       padding: '6px 7px', background: 'var(--bg2)',
       display: 'flex', flexDirection: 'column', gap: 5,
+      cursor: draggable ? 'grab' : undefined,
     }}
+      draggable={draggable}
+      onDragStart={draggable ? (e) => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(o.OeuvreID)); onDragStart?.() } : undefined}
+      onDragEnd={draggable ? () => onDragEnd?.() : undefined}
+      data-testid={`production-card-${o.OeuvreID}`}
       onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg0)')}
       onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--bg2)')}
     >

@@ -702,6 +702,17 @@ export function SessionJournalTab() {
     return [...byDay.values()].sort((a, b) => rowDay(b).localeCompare(rowDay(a)))
   }, [sessionRows, sourceDays, todayDay])
   const sourceByDay = useMemo(() => new Map(sourceDays.map((d) => [d.day, d])), [sourceDays])
+  // ✦ bar (admins): open AI link suggestions across all days, and the oldest day that still has some.
+  const proposalsOpen = useMemo(() => {
+    let total = 0
+    let oldest: string | null = null
+    for (const d of sourceDays) {
+      if (!d.proposals) continue
+      total += d.proposals
+      if (!oldest || d.day < oldest) oldest = d.day
+    }
+    return { total, oldest }
+  }, [sourceDays])
 
   useEffect(() => {
     setSelectedId((current) => (current && rows.some((row) => row.id === current) ? current : rows[0]?.id ?? null))
@@ -933,6 +944,17 @@ export function SessionJournalTab() {
                 style={{ minHeight: 44, width: '100%' }}
               >
                 {t('journal_capture_today')}
+              </button>
+            ) : null}
+            {isAdmin && proposalsOpen.total > 0 && proposalsOpen.oldest ? (
+              <button
+                type="button"
+                className="btn ghost sm"
+                data-testid="journal-proposals-bar"
+                onClick={() => setOpenDay(proposalsOpen.oldest)}
+                style={{ minHeight: 44, width: '100%', marginTop: 8, borderColor: 'var(--ac)', color: 'var(--ac)', justifyContent: 'center' }}
+              >
+                {t('je_proposals_bar').replace('{n}', String(proposalsOpen.total))}
               </button>
             ) : null}
           </div>
