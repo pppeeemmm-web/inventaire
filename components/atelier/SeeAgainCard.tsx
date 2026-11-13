@@ -8,6 +8,7 @@ import Link from 'next/link'
 import { useCallback, useEffect, useState, useTransition, type CSSProperties } from 'react'
 import { dismissSeeAgain, getSeeAgain, linkSeeAgainPair, type SeeAgainSlots, type SeeAgainWork } from '@/app/atelier/see-again/actions'
 import { thumbUrl } from '@/lib/data'
+import { WORK_LINK_TYPES, type WorkLinkType } from '@/lib/work-links'
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from '@/lib/ui/toast'
 
@@ -21,6 +22,8 @@ export function SeeAgainCard({ context }: { context: 'journal' | 'overview' }) {
   const { t, lang } = useI18n()
   const [slots, setSlots] = useState<SeeAgainSlots | null>(null)
   const [pending, startTransition] = useTransition()
+  /** Link picker on the close pair: from → to, of a type (owner 2026-11-13: links have a direction). */
+  const [linking, setLinking] = useState<{ from: number; to: number; type: WorkLinkType } | null>(null)
 
   const load = useCallback(async () => {
     const res = await getSeeAgain()
@@ -103,13 +106,61 @@ export function SeeAgainCard({ context }: { context: 'journal' | 'overview' }) {
             <WorkLine w={slots.close.a} untitled={t('sa_untitled')} />
             <WorkLine w={slots.close.b} untitled={t('sa_untitled')} />
           </div>
+          {linking ? (
+            <div data-testid="see-again-link-picker" style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 600 }}>#{linking.from}</span>
+                <select
+                  value={linking.type}
+                  aria-label={t('sa_link_type')}
+                  onChange={(e) => setLinking({ ...linking, type: e.target.value as WorkLinkType })}
+                  style={{ minHeight: 44, padding: '6px 8px', fontSize: 13, background: 'var(--bg0)', border: '1px solid var(--bd)', color: 'var(--tx)', flex: '1 1 140px' }}
+                >
+                  {WORK_LINK_TYPES.map((k) => (
+                    <option key={k} value={k}>
+                      {t(`wl_${k}_out` as Parameters<typeof t>[0])}
+                    </option>
+                  ))}
+                </select>
+                <span style={{ fontSize: 13, fontWeight: 600 }}>#{linking.to}</span>
+                <button
+                  type="button"
+                  className="btn ghost sm"
+                  style={{ ...btn, minWidth: 44 }}
+                  aria-label={t('sa_link_swap')}
+                  title={t('sa_link_swap')}
+                  onClick={() => setLinking({ ...linking, from: linking.to, to: linking.from })}
+                >
+                  ⇄
+                </button>
+              </div>
+              <Actions>
+                <button
+                  type="button"
+                  className="btn primary sm"
+                  style={btn}
+                  disabled={pending}
+                  onClick={() => {
+                    const l = linking
+                    setLinking(null)
+                    run(() => linkSeeAgainPair(l.from, l.to, l.type), t('sa_linked'))
+                  }}
+                >
+                  {t('sa_link_save')}
+                </button>
+                <button type="button" className="btn ghost sm" style={btn} onClick={() => setLinking(null)}>
+                  {t('sa_link_cancel')}
+                </button>
+              </Actions>
+            </div>
+          ) : null}
           <Actions>
             <button
               type="button"
               className="btn primary sm"
               style={btn}
-              disabled={pending}
-              onClick={() => run(() => linkSeeAgainPair(slots.close!.a.id, slots.close!.b.id), t('sa_linked'))}
+              disabled={pending || !!linking}
+              onClick={() => setLinking({ from: slots.close!.a.id, to: slots.close!.b.id, type: 'proximity' })}
             >
               {t('sa_link')}
             </button>

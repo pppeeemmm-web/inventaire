@@ -6,6 +6,7 @@
 ## Order (owner)
 
 ### 1. See again → Link: type + direction (owner GO "yes build it + type choices")
+**Built 2026-11-13 (verified against live code 2026-11-13, committed locally):** picker in `SeeAgainCard.tsx` (type select + ⇄ + Save / Cancel), `linkSeeAgainPair(from, to, type)`; checked on dev at desktop and 375 px (not saved — would write a real link). Constellation arrows: still to ask.
 Today `linkSeeAgainPair` (`app/atelier/see-again/actions.ts`) always writes `proximity`. Wanted: pressing **Link** opens a small choice — type (close to · same series · painted on · derived from · answers · diptych · influence) + a ⇄ button to swap direction (#A → #B). Reuse `WORK_LINK_TYPES` (`lib/work-links.ts`), `addWorkLink` (`app/atelier/works/work-link-actions.ts`), labels `wl_<type>_out` (`lib/i18n/messages/work-links.messages.ts`). Component: `components/atelier/SeeAgainCard.tsx` (close slot). Owner also wants directed links to read as parent → child; **Constellation arrows** for directed types = separate, ask before (`components/atelier/constellation/constellation-draw-frame.ts`, `LINK_VIS`).
 
 ### 2. Inventory loupe (owner screenshot: "DOUBLE-CLICK pour agrandir l'aperçu" on the list thumbnail)

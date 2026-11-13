@@ -13,6 +13,10 @@ export const seeAgainMessages = defineMessages({
   sa_hide: { fr: 'Ne plus montrer', en: "Don't show again" },
   sa_link: { fr: 'Lier', en: 'Link' },
   sa_not_related: { fr: 'Sans rapport', en: 'Not related' },
-  sa_linked: { fr: 'Lien ajouté (proximité).', en: 'Link added (proximity).' },
+  sa_linked: { fr: 'Lien ajouté.', en: 'Link added.' },
+  sa_link_type: { fr: 'Type de lien', en: 'Link type' },
+  sa_link_swap: { fr: 'Inverser le sens', en: 'Swap direction' },
+  sa_link_save: { fr: 'Enregistrer le lien', en: 'Save link' },
+  sa_link_cancel: { fr: 'Annuler', en: 'Cancel' },
   sa_untitled: { fr: 'Sans titre', en: 'Untitled' },
 })

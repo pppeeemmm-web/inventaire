@@ -10,7 +10,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { calendarDayInParisFromIso } from '@/lib/session-calendar-day'
 import { insertConstellationRelation } from '@/app/atelier/(portal)/constellation/actions'
 // Hand-made work ↔ work relations: a pair with one of these is already linked.
-import { WORK_LINK_TYPES } from '@/lib/work-links'
+import { WORK_LINK_TYPES, type WorkLinkType } from '@/lib/work-links'
 
 
 export type SeeAgainWork = { id: number; title: string | null; image: string | null }
@@ -162,9 +162,13 @@ export async function dismissSeeAgain(kind: Kind, a: number, b?: number): Promis
   return { ok: true }
 }
 
-/** "Link" on the close pair: a human relation (proximity), written like the Constellation does. */
-export async function linkSeeAgainPair(a: number, b: number): Promise<{ ok: true } | Err> {
-  const res = await insertConstellationRelation({ source_id: a, target_id: b, relation_type: 'proximity' })
+/**
+ * "Link" on the close pair (owner 2026-11-13: links have a type and a direction): a human relation
+ * `from` → `to` of the chosen type, written like the Constellation does.
+ */
+export async function linkSeeAgainPair(from: number, to: number, type: WorkLinkType = 'proximity'): Promise<{ ok: true } | Err> {
+  if (!(WORK_LINK_TYPES as readonly string[]).includes(type)) return { error: 'type' }
+  const res = await insertConstellationRelation({ source_id: from, target_id: to, relation_type: type })
   if ('error' in res) return { error: res.error }
   revalidatePath('/atelier/constellation')
   return { ok: true }

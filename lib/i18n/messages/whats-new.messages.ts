@@ -9,6 +9,11 @@ export const whatsNewMessages = defineMessages({
   },
 
   // 3.0.3 (2026-11-12) — owner bug review + journal entries.
+  wn_see_again_link_type_t: { fr: '« Lier » : choisir le type et le sens', en: '"Link": choose the type and direction' },
+  wn_see_again_link_type_d: {
+    fr: 'Dans « À revoir aujourd’hui », « Lier » ouvre un choix : peinte sur, dérivée de, répond à, même série, diptyque, influence, proche de — et ⇄ pour inverser le sens (#A → #B). Les mêmes liens que la fiche de l’œuvre et la Constellation.',
+    en: 'In "See again today", "Link" opens a choice: painted on, derived from, answers, same series, diptych, influence, close to — and ⇄ to swap the direction (#A → #B). The same links as the work card and the Constellation.',
+  },
   wn_journal_jump_t: { fr: 'Journal : aller à une date', en: 'Journal: go to a date' },
   wn_journal_jump_d: {
     fr: 'Au-dessus de la liste des jours, « Aller au » + une date : le Journal ouvre ce jour, ou le jour le plus proche qui a quelque chose. Plus besoin de faire défiler.',
