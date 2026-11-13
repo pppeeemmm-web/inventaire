@@ -14,6 +14,7 @@ _Open items only, one line each, in order. Details → [`TODO_NOTES.md`](./TODO_
 
 Trace
 - [ ] 1. Handwriting batch (after the test above) → [notes](./TODO_NOTES.md#journal-phase-2)
+- [ ] 1b. One plan for every local "reading" AI (owner 2026-11-13: "it all needs rationalization"): handwriting, text in field photos (labels, notebooks, invoices — F9), business-card reader, and the owner's local contact-details scraper. Inventory what exists first; then one engine, one place. Widening field OCR needs the owner's GO (`CLAUDE.md`).
 - [ ] 2. Warn when a session photo is staged but never applied → [notes](./TODO_NOTES.md#staged-photos)
 - [ ] 3. Production start: partial date input (year / month / day) — not built (the drawer has a full-date field, admin) → [notes](./TODO_NOTES.md#production-start-date)
 - [ ] 4. Production span: end date by hand (start is editable since 2026-11-03); new / found choice in WorkForm (only in capture today) → [notes](./TODO_NOTES.md#production-span)
@@ -28,10 +29,11 @@ Value
 - [ ] 9. Custody follow-ups (custodian address on orders, cancelled consigned sale) → [notes](./TODO_NOTES.md#custody)
 - [ ] 10. Money: `is_paid` from payments; clean `sales-client.ts` extras → [notes](./TODO_NOTES.md#money)
 - [ ] 11. Supplies: orders table, order → expense → [notes](./TODO_NOTES.md#supplies)
+- [ ] 11b. Collector share kit (F5, owner 2026-11-13): one click → a private link for one collector with a selection of works, a printable PDF and an "enquire" button — [archive/STATUS.md](./archive/STATUS.md)
+- [ ] 11c. Link Recherche concepts to catalogue themes (F10, owner: "can do") — `concept_themes` junction + UI
 
 Public site — next batch
 - [ ] Status chips in English (translate the DB labels) — after the next batch → [notes](./TODO_NOTES.md#status-labels)
-- [ ] Phones: where the closing text ("outro") of a works sequence shows on `/works` — after the next batch
 - [ ] 12. Circadian sky leftovers (preview another hour, real shadow direction, inert `atm` knobs) → [notes](./TODO_NOTES.md#circadian)
 - [ ] 13. Upload the panorama + video for the map / motion layouts (`site/forest-panorama.avif`, `site/interior-loop.webm`)
 - [ ] 14. `/works` gallery: cm-scaled wall scroll (on hold)
@@ -58,7 +60,7 @@ Speed and code health — measure soon after the next batch
 - VAT per sale, resolved from the transaction → [notes](./TODO_NOTES.md#vat)
 - Photothèque (~4 000 photos): a **library** (owner 2026-11-13) — standalone photographs, mostly not tied to a work, sometimes serving one → [notes](./TODO_NOTES.md#phototheque)
 - Journal entries as Constellation canvas nodes — a big one, not now (owner 2026-11-13) → [notes](./TODO_NOTES.md#journal-phase-2)
-- F2–F10 — owner to choose which to keep (see the 2026-11-13 conversation; detail in [archive/STATUS.md](./archive/STATUS.md))
+- F7 daily digest email (owner: "not sure"; needs an email service) · F6 feature switches · F8 background job outbox — [archive/STATUS.md](./archive/STATUS.md)
 - Background jobs / queues · broader field OCR · transactional email (explicit no-GO in `CLAUDE.md`)
 
 ## Rules (not tasks)

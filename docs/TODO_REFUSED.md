@@ -10,3 +10,10 @@ _Items taken off the list on purpose, with the reason, so they are not proposed 
 - **E2E suites fail against a DEV_AUTO_LOGIN dev server** (2026-07-30). `playwright.config.ts` has `reuseExistingServer: true`, so a running `npm run dev` with `DEV_AUTO_LOGIN_*` set makes `/` and `/login` render the authenticated shell — 7 public-shell specs fail (public-seo, login-i18n ×3, landing-mobile-nav ×2, command-palette). `test:e2e:field` fails 10 more (hub-field-launcher ×7, atelier-shell-tab-hop, atelier-mobile-action-bar, hub-mobile-capture, session-new). `session-new.spec.ts` fails at line 17 with `session-new-root` visible but no `session-date-input` — i.e. the `!sessionId` branch, session never opened. Needs a clean run (auto-login off, or a dedicated Playwright server) to separate real regressions from environment. Not attributed to the 2026-07-30 session refactor: 9 of the 10 field failures are in specs that refactor never touched.
 
 Reason: not done in four months, the field workflow moved on (the Journal day is the field tab since 2026-11-12, Hub rows changed); the E2E note describes a test-environment problem, not an app bug.
+
+## 2026-11-13 — old ideas F2–F10 (owner)
+
+- **F2** Public-site preview link (`?preview=<token>`) — unnecessary: an edit to the site is public as soon as it is saved, and that is fine.
+- **F3** Quick add from a phone photo with AI-suggested fields — far-fetched, not worth the effort, misplaced.
+- **F4** Saved searches in Inventory — already exists (Inventory "Filtres & vues").
+- **F9** Field OCR on its own — folded into one plan for all local reading AIs (TODO "To build" 1b).
