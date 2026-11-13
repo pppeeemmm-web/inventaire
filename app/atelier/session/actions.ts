@@ -2382,7 +2382,7 @@ export async function discardEmptyWorkSession(
     !r.oeuvre_id &&
     payload.shots.length === 0 &&
     !payload.notes?.trim() &&
-    !payload.field_context &&
+    // Location + weather alone do not make a day: the phone records them by itself (2026-11-14).
     !payload.items.some(sessionItemHasContent)
   if (!empty) return { ok: true, discarded: false }
   const { error: delErr } = await workSessionTable(supabase).delete().eq('id', sessionId)

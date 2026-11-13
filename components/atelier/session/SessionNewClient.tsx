@@ -344,6 +344,26 @@ export function SessionNewClient({ embed }: { embed?: SessionEmbed } = {}) {
     [sessionId],
   )
 
+  // Owner 2026-11-14 (A4: only 2 of 54 sessions had it): on the phone, location + weather are
+  // recorded by themselves when today's session opens — once per session, never on a past day
+  // (it would stamp today's place on it), never over a snapshot already saved. Failures stay quiet
+  // (a refused permission is the person's answer); the button below still retries by hand.
+  const autoCaptured = useRef<string | null>(null)
+  useEffect(() => {
+    if (!narrow || !hydrated || !sessionId || sessionReadOnly || !canCaptureSessions || fieldContext) return
+    if (autoCaptured.current === sessionId) return
+    if (sessionDate !== calendarDayInParisFromIso(new Date().toISOString())) return
+    autoCaptured.current = sessionId
+    const id = sessionId
+    void (async () => {
+      const r = await captureFieldContext()
+      if (!r.ok) return
+      const save = await updateWorkSessionMetadata(id, { field_context: r.snapshot })
+      if ('error' in save) return
+      setFieldContext((cur) => cur ?? r.snapshot)
+    })()
+  }, [narrow, hydrated, sessionId, sessionReadOnly, canCaptureSessions, fieldContext, sessionDate])
+
   const captureEnv = () => {
     if (!sessionId) return
     startBusy(() => {
@@ -1369,7 +1389,7 @@ export function SessionNewClient({ embed }: { embed?: SessionEmbed } = {}) {
           {t('session_field_context_cta')}{fieldContext ? ' ✓' : ''}
         </summary>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <p style={{ color: 'var(--tx2)', fontSize: 11, lineHeight: 1.4, margin: 0 }}>{t('session_field_context_hint')}</p>
+        <p style={{ color: 'var(--tx2)', fontSize: 11, lineHeight: 1.4, margin: 0 }}>{t('session_field_context_auto_hint')}</p>
         <button
           type="button"
           className="btn ghost"

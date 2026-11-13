@@ -21,7 +21,7 @@
 // '3.1.3' (2026-11-13): Journal date jump; See again link type + direction; Inventory loupe; batch modify.
 // '3.1.4' (2026-11-13): Inventory table tidy (compact prices, two-line cells, narrow layout); Overview thumbnails open the work.
 // '3.1.5' (2026-11-13): Batch modify redesigned as a mixer (B2); Overview one-glance dashboard (B1).
-// '3.1.6' (2026-11-14): AI descriptions in the work card, rated for usefulness (A2).
+// '3.1.6' (2026-11-14): AI descriptions in the work card, rated for usefulness (A2); place + weather recorded by themselves on the phone (A4).
 export const WHATS_NEW_RELEASE = '3.1.6'
 
 /** localStorage: release the viewer chose not to see again. sessionStorage: already shown this visit. */
@@ -32,6 +32,7 @@ export type WhatsNewItem = { id: string; day: string }
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'field_context_auto', day: '2026-11-14' },
   { id: 'ai_description_rating', day: '2026-11-14' },
   { id: 'overview_dashboard', day: '2026-11-13' },
   { id: 'batch_modify_mixer', day: '2026-11-13' },

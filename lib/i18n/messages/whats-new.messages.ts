@@ -8,7 +8,12 @@ export const whatsNewMessages = defineMessages({
     en: 'What changed in the Atelier over the last few days.',
   },
 
-  // 3.1.6 (2026-11-14) — AI descriptions rated for usefulness (A2).
+  // 3.1.6 (2026-11-14) — AI descriptions rated for usefulness (A2); field place + weather automatic (A4).
+  wn_field_context_auto_t: { fr: 'Session terrain : lieu et météo tout seuls', en: 'Field session: place and weather on their own' },
+  wn_field_context_auto_d: {
+    fr: 'Sur le téléphone, ouvrir la session du jour enregistre seul le lieu et la météo (température, vent, humidité) — le navigateur demande l’accès une fois. Jamais sur un jour passé, jamais par-dessus une mesure déjà faite. Refuser l’accès ne bloque rien ; le bouton « Lieu et météo » relance la mesure à la main. Un jour qui n’a que le lieu et la météo reste un jour vide.',
+    en: 'On the phone, opening today’s session records the place and the weather (temperature, wind, humidity) on its own — the browser asks for access once. Never on a past day, never over a reading already taken. Refusing access blocks nothing; the “Location & weather” button takes the reading by hand. A day with only place and weather still counts as empty.',
+  },
   wn_ai_description_rating_t: { fr: 'Fiche : ce que l’IA voit, et si c’est utile', en: 'Work card: what the AI sees, and whether it helps' },
   wn_ai_description_rating_d: {
     fr: 'Dans la fiche d’une œuvre, une section repliée « ✦ Vu par l’IA » montre la description faite par le modèle local et sa ligne d’échos, marquées IA. Au lieu de juste / faux, notez son utilité de 0 (inutile) à 4 (très juste) ; la note garde qui et quand. Une description notée 0 sort de la recherche. La moyenne par consigne dit s’il vaut la peine de la relancer. Jamais copiée dans les commentaires. Rapports : champ « Utilité de la description IA ».',

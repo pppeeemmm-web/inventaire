@@ -6,7 +6,7 @@
 1. **B2 Batch modify** — Pem's sharpest complaint (said twice), mock ready, no decision needed. Place made left out until A3, then one row added. **Built 2026-11-13 (verified against live code 2026-11-13, committed locally, What's new 3.1.5)** — see the status under §3 of the design build handoff.
 2. **B1 Overview** (+ shared `SignalMark`) — mock ready; D1 and D3 have safe defaults (D1 = the mock's rule, D3 = today's cash-health flag) until Pem answers. **Built 2026-11-13 (verified against live code 2026-11-13, committed locally, What's new 3.1.5)** — status under §2 of the design build handoff.
 3. **A2 AI descriptions** with the usefulness slider (migration, drawer section). **Built 2026-11-14 (verified against live code 2026-11-14, committed locally; migration applied to the live DB 2026-11-14, What's new 3.1.6)** — status under §A2.
-4. **A4 answer** (read only, no code) — what location/weather is recorded and for how many works; it decides what A3 can take from field sessions.
+4. **A4 answer** (read only, no code) — what location/weather is recorded and for how many works; it decides what A3 can take from field sessions. **Answered 2026-11-14** — under §A4 (2 of 54 sessions, 5 works). Pem chose point 1 = automatic: **built 2026-11-14, committed locally** (What's new 3.1.6); points 2–5 wait for A3 / a GO.
 5. **A3 periods by date + place per work** (migration) → then add **Place made** to Identity in batch modify (B2) and to the drawer.
 6. **B3 Export** with live preview — biggest piece (preview engine); start only after Pem answers D2.
 Then C (ask), D (housekeeping), E.
@@ -53,6 +53,20 @@ Today `work_period` has `start_year` / `end_year`; a work's period comes from it
 
 ### A4. Conditions of making (Pem's question — answer first, then plan)
 "We can record location and weather — are we doing anything with that data? What about works without it?" Check where it is stored (grep `field-weather`, `weather`, `latitude` in `app/atelier/session`, `lib/`, `work_session.payload`; `app/api/field-weather`). Answer plainly: what is recorded, for how many works, where it is shown or used. Then propose: show it on the work and the journal day, add it to search, a Rapports field; works without it may take the place from A3, marked "from the period", never as fact.
+
+**Answer 2026-11-14 (read only, verified against live code + live DB 2026-11-14):**
+- **What is recorded:** one snapshot per field session, only when someone taps "Capture location & weather" (folded in capture since 3.0.8): time, latitude / longitude (± accuracy), temperature, weather code, wind, humidity (Open-Meteo via `/api/field-weather`). Stored in `work_session.payload.field_context` (`lib/field-context.ts`, `lib/work-session-payload.ts`). No place name — raw coordinates only.
+- **How much:** 2 of 54 field sessions (22 Aug and 23 Sep 2026, both Marseille 43.29 / 5.38). They touch 5 works (#2379–#2382, #2394). 72 works appear in any session; 1,182 works in all → the other ~1,177 have nothing.
+- **Photos:** none. Uploads re-encode to AVIF and write only Artist / Copyright EXIF (`lib/image-upload.ts`), so any GPS in a Lightroom / phone export is dropped at upload. No other table holds coordinates for works (only `forest_pins`, the portfolio map layout).
+- **Where it is shown / used:** only the journal (`SessionJournalTab.tsx` `FieldContextLede`: date, coordinates, °C, km/h — weather code and humidity unused). Not on the work, not in search, not in Rapports, not in the Overview.
+- **Side finding for A3:** only 541 of 1,182 works have a year (`Année` or production start). A period by date can only place those; the other 641 need a hand-set period or place.
+
+**Proposal (Pem's answers below each point):**
+1. Root cause is capture, not display: 2 / 54. Either capture location once, automatically, when a session starts on the phone (asks permission once), or keep the tap but unfold it. **Pem 2026-11-14: automatic. Built (verified against live code 2026-11-14, committed locally):** `SessionNewClient.tsx` effect — phone width only, today's session only (never a past day), once per session, never over a saved snapshot, failures quiet; the button stays to retry by hand. `discardEmptyWorkSession` no longer counts location + weather as content, so blank journal days are still dropped. Not verified on a device: the dev account cannot capture and the pane denies location — check on the phone after the push (open today's session → the fold shows ✓, the journal day shows the line).
+2. With A3's places list: match the session coordinates to the nearest known place (no outside call) → the session's works get that place as a *suggestion* "from the field session", Pem confirms. Works without it may take the period's default place, marked "from the period", never as fact.
+3. On the work card (A3's Place made row): show "recorded on site — 22 Aug 2026, 29 °C, clear" when a session has it. Journal day: the place name instead of raw coordinates.
+4. Optional, bigger: read GPS from the photo at upload, before the re-encode, into `tblImage` — every future phone photo would carry where it was taken. A new capture path → GO first.
+5. Search / Rapports: not worth it at 5 works; revisit once capture is common.
 
 ---
 

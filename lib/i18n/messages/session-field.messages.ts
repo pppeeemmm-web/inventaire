@@ -1,6 +1,11 @@
 import { defineMessages } from '../message-core'
 
 export const sessionFieldMessages = defineMessages({
+  // Location + weather recorded by themselves on the phone (owner 2026-11-14, A4).
+  session_field_context_auto_hint: {
+    fr: 'Sur le téléphone, le lieu et la météo s’enregistrent seuls à l’ouverture de la session du jour (le navigateur demande l’accès une fois). Ce bouton relance la mesure.',
+    en: 'On the phone, place and weather are recorded by themselves when today’s session opens (the browser asks for access once). This button takes them again.',
+  },
   // ── Applied photos (already committed to the work) ─────────────────────────
   // Shown inside a painting so a past day can be checked and a wrong picture
   // corrected. Removal is a catalogue delete, so the copy says so plainly.
