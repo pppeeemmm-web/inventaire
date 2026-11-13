@@ -724,9 +724,27 @@ export function SessionJournalTab() {
     if (row) {
       setSelectedId(row.id)
       setPhoneView('day')
+      // Bring the day into view in the list (date jump, ✦ bar, ?day=).
+      requestAnimationFrame(() => document.getElementById(`journal-day-${openDay}`)?.scrollIntoView({ block: 'center' }))
     }
     setOpenDay(null)
   }, [openDay, loading, rows])
+
+  // Date jump (owner 2026-11-13: "avoid long scrolling"): the picked day, or the nearest day that has something.
+  const jumpToDate = (d: string) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || rows.length === 0) return
+    const ms = (x: string) => new Date(`${x}T12:00:00Z`).getTime()
+    let best = rowDay(rows[0])
+    for (const r of rows) {
+      if (Math.abs(ms(rowDay(r)) - ms(d)) < Math.abs(ms(best) - ms(d))) best = rowDay(r)
+    }
+    if (best !== d) {
+      const fmt = (x: string) => new Date(`${x}T12:00:00`).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+      toast.info(t('journal_jump_nearest').replace('{asked}', fmt(d)).replace('{shown}', fmt(best)))
+    }
+    setOpenDay(best)
+  }
+  const oldestDay = rows.length ? rowDay(rows[rows.length - 1]) : todayDay
 
   useEffect(() => {
     reload()
@@ -957,6 +975,29 @@ export function SessionJournalTab() {
                 {t('je_proposals_bar').replace('{n}', String(proposalsOpen.total))}
               </button>
             ) : null}
+            <label
+              style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}
+              data-testid="journal-date-jump"
+            >
+              <span className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx2)', flexShrink: 0 }}>{t('journal_jump_label')}</span>
+              <input
+                type="date"
+                min={oldestDay}
+                max={todayDay}
+                defaultValue=""
+                onChange={(e) => jumpToDate(e.target.value)}
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  minHeight: 44,
+                  padding: '6px 8px',
+                  fontSize: 14,
+                  background: 'var(--bg0)',
+                  border: '1px solid var(--bd)',
+                  color: 'var(--tx)',
+                }}
+              />
+            </label>
           </div>
 
           {loading ? (
@@ -996,6 +1037,7 @@ export function SessionJournalTab() {
                     return (
                       <button
                         key={row.id}
+                        id={`journal-day-${rowDay(row)}`}
                         type="button"
                         data-testid={`journal-session-row-${row.id.slice(0, 8)}`}
                         onClick={() => selectDay(row)}

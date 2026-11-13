@@ -9,6 +9,11 @@ export const whatsNewMessages = defineMessages({
   },
 
   // 3.0.3 (2026-11-12) — owner bug review + journal entries.
+  wn_journal_jump_t: { fr: 'Journal : aller à une date', en: 'Journal: go to a date' },
+  wn_journal_jump_d: {
+    fr: 'Au-dessus de la liste des jours, « Aller au » + une date : le Journal ouvre ce jour, ou le jour le plus proche qui a quelque chose. Plus besoin de faire défiler.',
+    en: 'Above the list of days, "Go to" + a date: the Journal opens that day, or the nearest day that has something. No more long scrolling.',
+  },
   wn_sign_out_t: { fr: 'Se déconnecter, changer son mot de passe', en: 'Sign out, change your password' },
   wn_sign_out_d: {
     fr: 'En haut de l’Atelier (et dans le menu sur téléphone) et en bas du Hub : « Se déconnecter ». Les comptes avec e-mail + mot de passe ont aussi « Changer le mot de passe » ; les comptes Google ne l’ont pas (le mot de passe est chez Google).',
