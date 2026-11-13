@@ -1,6 +1,6 @@
 # Transcription batches — owner instructions
 
-Journal build step 4 ([`JOURNAL_PROPOSAL.md`](./JOURNAL_PROPOSAL.md)). Written 2026-11-12; scripts added 2026-11-13 (owner GO "write the scripts").
+Journal build step 4 ([`JOURNAL_PROPOSAL.md`](./archive/JOURNAL_PROPOSAL.md)). Written 2026-11-12; scripts added 2026-11-13 (owner GO "write the scripts").
 
 ## Scripts (written 2026-11-13, `scripts/transcribe/`)
 
@@ -18,7 +18,7 @@ Not built: the journal day page does not yet show the audio player or the engine
 
 ## What is already in place
 
-- On this PC (RTX 4070 laptop): Python 3.12, FFmpeg, the `transcribe` venv with faster-whisper, and `qwen2.5vl:7b` in Ollama. A GPU test passed on 2026-11-12 ([`AUDIT_2026-11.md`](./AUDIT_2026-11.md)).
+- On this PC (RTX 4070 laptop): Python 3.12, FFmpeg, the `transcribe` venv with faster-whisper, and `qwen2.5vl:7b` in Ollama. A GPU test passed on 2026-11-12 ([`AUDIT_2026-11.md`](./archive/AUDIT_2026-11.md)).
 - The database accepts journal entries of kind `voice` and `handwriting`, with provenance `voice` / `photo` and verification "unverified".
 - The rules, unchanged: the audio or the photo stays the reference; a transcript is **added** text marked AI and unverified; it never overwrites anything; nothing is deleted.
 

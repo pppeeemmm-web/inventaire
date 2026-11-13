@@ -82,7 +82,7 @@ Submitted rows insert into `system_log` with: `action`, `details`, `type`, `stat
 | **O3 Broadcast secret rotation** | When rotating `INVENTORY_BROADCAST_SECRET` | See runbook below |
 | **R2 lifecycle** | One-time Cloudflare console | Bucket `paintings`: prefix **`recycle/`** delete after **90d**; **`ledger/`** after **30d** (see § Attachments above) |
 | **Graph CSV backup** | Weekly (Sun 04:30 UTC) + manual | [`graph-csv-backup.yml`](../.github/workflows/graph-csv-backup.yml); verify: `pwsh scripts/verify-graph-csv-backup.ps1` |
-| **Embed backfill** | Desktop ongoing | `npm run embed:worker -- --watch` (Ollama → `nodes.embedding` pgvector), or Overview **Run indexing** (`pem-embed:` protocol → `--drain`, setup in [`scripts/embed-worker/README.md`](../scripts/embed-worker/README.md)) — see [`docs/GRAPHIFY_NOTES.md`](./GRAPHIFY_NOTES.md) |
+| **Embed backfill** | Desktop ongoing | `npm run embed:worker -- --watch` (Ollama → `nodes.embedding` pgvector), or Overview **Run indexing** (`pem-embed:` protocol → `--drain`, setup in [`scripts/embed-worker/README.md`](../scripts/embed-worker/README.md)) — see [`docs/archive/GRAPHIFY_NOTES.md`](./archive/GRAPHIFY_NOTES.md) |
 | **gen:types** | After each `public` table migration | `npm run gen:types` (requires `SUPABASE_ACCESS_TOKEN` in `.env.local`) |
 
 ---

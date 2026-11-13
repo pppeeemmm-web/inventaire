@@ -47,4 +47,4 @@ Bearer `INVENTORY_BROADCAST_SECRET` (or `x-inventory-broadcast-secret` — see [
 - Platform filter in Broadcast tab
 - True VIP “unread” cursor (today: count in fetched window only)
 
-See also [`PROJECT_SYNTHESIS.md`](./PROJECT_SYNTHESIS.md) § assessment / outside-repo scope.
+See also [`PROJECT_SYNTHESIS.md`](./archive/PROJECT_SYNTHESIS.md) § assessment / outside-repo scope.

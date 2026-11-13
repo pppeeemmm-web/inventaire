@@ -128,4 +128,4 @@ Useful hooks:
 4. **Scenario B** — B1 webhook → `confirm`.  
 5. Optional **HTTP** `event` for VIP-style lines in Atelier.
 
-When stable, note it in [PROJECT_SYNTHESIS.md](./PROJECT_SYNTHESIS.md).
+When stable, note it in [PROJECT_SYNTHESIS.md](./archive/PROJECT_SYNTHESIS.md).

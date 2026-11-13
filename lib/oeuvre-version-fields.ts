@@ -2,7 +2,7 @@
  * Fields shown when two `oeuvre_versions` snapshots are compared (session journal compare,
  * drawer version history, journal day "field changes"). Keys = real `Oeuvres` column names —
  * the snapshot is `to_jsonb(OLD)`. One list so the three views cannot drift apart again
- * (6 wrong names until 2026-11-12, docs/AUDIT_2026-11.md). Browser-safe.
+ * (6 wrong names until 2026-11-12, docs/archive/AUDIT_2026-11.md). Browser-safe.
  */
 export const OEUVRE_VERSION_FIELDS = [
   'Titre',

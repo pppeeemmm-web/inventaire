@@ -1,6 +1,6 @@
 import { defineMessages } from '../message-core'
 
-/** Journal day page: entries + everything logged that day (Création, voice notes, works changed) — build step 1 (owner 2026-11-12, docs/JOURNAL_PROPOSAL.md). */
+/** Journal day page: entries + everything logged that day (Création, voice notes, works changed) — build step 1 (owner 2026-11-12, docs/archive/JOURNAL_PROPOSAL.md). */
 export const journalEntryMessages = defineMessages({
   je_heading: { fr: 'Entrées du jour', en: 'Entries of the day' },
   je_empty: { fr: 'Aucune entrée ce jour.', en: 'No entries this day.' },

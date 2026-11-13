@@ -1,5 +1,7 @@
 # PEM Studio — Team Member Guide (Encyclopedia)
 
+> **Dated 2026-11-13:** this guide is accurate to 2026-07 (plus the November summary below). Later changes are listed in the app: **Kaizen → Nouveautés**. It is not being rewritten.
+>
 > **Freshness (2026-11-03):** the November 2026 changes are summarised just below; the chapters after it were written in July 2026.
 >
 > **⚠ Older note (2026-07-16):** photo/session/hub sections predate the 2026-07 mobile rationalization pass (Lightroom UI removed, image adds queue for approval, manual `NeedsPhotograph` gate). Where this guide and [`MOBILE_RATIONALIZATION_PLAN.md`](./MOBILE_RATIONALIZATION_PLAN.md) disagree, the plan + live code win. Full guide update owed with Phase 5.
@@ -8,7 +10,7 @@
 
 **Companion guide.** [`ADMIN_GUIDE.md`](./ADMIN_GUIDE.md) covers admin-only chapters (Audit, Broadcast, version restore, hard purge, conflict queue, field session capture). Read that one if you have admin rights.
 
-**Engineer references.** Routes, RSC loaders, hooks: [`SITE_MAP.md`](../SITE_MAP.md). Project synthesis: [`PROJECT_SYNTHESIS.md`](./PROJECT_SYNTHESIS.md).
+**Engineer references.** Routes, RSC loaders, hooks: [`SITE_MAP.md`](../SITE_MAP.md). Project synthesis: [`PROJECT_SYNTHESIS.md`](./archive/PROJECT_SYNTHESIS.md).
 
 ---
 
@@ -1810,7 +1812,7 @@ The public pages read from R2-cached config via `loadPortfolioSectionsCached()` 
 | [`BROADCAST.md`](./BROADCAST.md) | Broadcast pipeline contract. |
 | [`BROADCAST_OUTSIDE_CHAIN.md`](./BROADCAST_OUTSIDE_CHAIN.md) | Make / n8n orchestration outside the repo. |
 | [`BACKUP_RECOVERY.md`](./BACKUP_RECOVERY.md) | Daily pg_dump + R2 lifecycle. |
-| [`PROJECT_SYNTHESIS.md`](./PROJECT_SYNTHESIS.md) | Stack and architecture overview. |
+| [`PROJECT_SYNTHESIS.md`](./archive/PROJECT_SYNTHESIS.md) | Stack and architecture overview. |
 | [`SITE_MAP.md`](../SITE_MAP.md) | Engineer reference — all routes, RSC loaders, hooks. |
 | [`SYSTEM_LEDGER.md`](./SYSTEM_LEDGER.md) | System tab's MD source. |
 

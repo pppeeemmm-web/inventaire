@@ -1,6 +1,6 @@
 'use server'
 
-/** Business-card capture — Contact-only (no Oeuvres reads). See docs/GRAPHIFY_NOTES.md. */
+/** Business-card capture — Contact-only (no Oeuvres reads). See docs/archive/GRAPHIFY_NOTES.md. */
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { importGoogleContacts } from '@/app/atelier/(portal)/contacts/actions'

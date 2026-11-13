@@ -8,8 +8,8 @@
 
 // '3.0.1' (2026-11-03 pm): safety, destroyed / lost, live list rows, earlier items not yet listed.
 // '3.0.2' (2026-11-03 eve): owner / custodian / address (docs/WORK_CUSTODY_MODEL.md).
-// '3.0.3' (2026-11-12): owner bug review fixes (docs/AUDIT_2026-11.md).
-// '3.0.4' (2026-11-12): journal entries (docs/JOURNAL_PROPOSAL.md step 1).
+// '3.0.3' (2026-11-12): owner bug review fixes (docs/archive/AUDIT_2026-11.md).
+// '3.0.4' (2026-11-12): journal entries (docs/archive/JOURNAL_PROPOSAL.md step 1).
 // '3.0.5' (2026-11-12): journal on the phone + dictation; drawer field mode (step 2).
 // '3.0.6' (2026-11-12): readable entries, concept link, new-work field mode, AI link suggestions (step 5).
 // '3.0.7' (2026-11-12): the Journal is the main field tab (Hub → today; capture inside the day).

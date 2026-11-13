@@ -2,7 +2,7 @@
 
 // Journal day page — entries, Kaizen Création items, voice notes, works changed of one Paris calendar day.
 // Création items are read from `kaizen_item` (never copied; owner 2026-11-12).
-// Build step 1 (owner GO 2026-11-12, docs/JOURNAL_PROPOSAL.md). Rules are in the DB
+// Build step 1 (owner GO 2026-11-12, docs/archive/JOURNAL_PROPOSAL.md). Rules are in the DB
 // (supabase/sql/journal_entry.sql): append only, never deleted, hide = admin.
 
 import Link from 'next/link'

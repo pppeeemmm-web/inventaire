@@ -1,6 +1,6 @@
 'use server'
 
-// Journal entries — build step 1 (owner GO 2026-11-12, docs/JOURNAL_PROPOSAL.md).
+// Journal entries — build step 1 (owner GO 2026-11-12, docs/archive/JOURNAL_PROPOSAL.md).
 // Rules live in the DB (supabase/sql/journal_entry.sql): team only, append only, never deleted,
 // hide = admin. Works are linked from `#1234` in the text (same as Kaizen).
 

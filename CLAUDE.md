@@ -62,7 +62,7 @@ Repo guide. Conflict → ask owner before edit.
 - Keep `SITE_MAP.md`, `docs/TODO.md`, `docs/SYSTEM_LEDGER.md`, `docs/README.md` in sync when routes/features change; don't trust over live code when stale.
 
 ## Docs ↔ Code Currency
-- Session bootstrap: `docs/README.md` = orientation table with freshness stamps; current workstream = `docs/MOBILE_RATIONALIZATION_PLAN.md`; owner strategy/non-goals = `docs/STRATEGY.md`.
+- Session bootstrap: `docs/README.md` = orientation table with freshness stamps; live checklist = `docs/TODO.md` (closed items in `docs/DONE.md`); current batch = latest `docs/HANDOFF_*.md` listed in the README; owner strategy/non-goals = `docs/STRATEGY.md`.
 - DB schema: read live (Supabase MCP or `lib/types/supabase.generated.ts`), never from guides.
 - Owner requests triage: bug (fix now) / lived friction ≥2× (batch) / idea (park in TODO). Problem statements over prescribed solutions.
 - Refactor/feature landing → update affected docs IN THE SAME change (handoff "Open work", `docs/TODO.md`, `SITE_MAP.md`, `docs/SYSTEM_LEDGER.md` as relevant). A change with stale docs is not done.

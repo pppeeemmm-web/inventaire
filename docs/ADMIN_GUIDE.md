@@ -1,5 +1,7 @@
 # PEM Studio — Admin Guide (Encyclopedia, Standalone)
 
+> **Dated 2026-11-13:** this guide is accurate to 2026-07 (plus the November summary below). Later changes are listed in the app: **Kaizen → Nouveautés**. It is not being rewritten.
+>
 > **Freshness (2026-11-03):** the November 2026 changes are summarised just below; the chapters after it were written in July 2026.
 >
 > **⚠ Older note (2026-07-16):** photo/session/hub/approval sections predate the 2026-07 mobile rationalization pass (Lightroom UI removed, `image_add` pending gate, manual `NeedsPhotograph` gate, session apply guards). Where this guide and [`MOBILE_RATIONALIZATION_PLAN.md`](./MOBILE_RATIONALIZATION_PLAN.md) disagree, the plan + live code win. Full guide update owed with Phase 5.
@@ -7,7 +9,7 @@
 **Audience.** You are an **admin** (`is_admin()` returns `true`, your `Contact.is_admin = true` linked to `auth.uid()`). This document is **self-contained**: it covers every team-accessible feature **and** every admin-only chapter. You do not need to read [`TEAM_MEMBER_GUIDE.md`](./TEAM_MEMBER_GUIDE.md) alongside it — but team members read that one.
 
 **Companion docs.**
-[`SITE_MAP.md`](../SITE_MAP.md) (engineer reference) • [`CONSTELLATION.md`](./CONSTELLATION.md) (canvas contract) • [`BROADCAST.md`](./BROADCAST.md) + [`BROADCAST_OUTSIDE_CHAIN.md`](./BROADCAST_OUTSIDE_CHAIN.md) (broadcast pipeline) • [`BACKUP_RECOVERY.md`](./BACKUP_RECOVERY.md) (backups) • [`PROJECT_SYNTHESIS.md`](./PROJECT_SYNTHESIS.md) (stack).
+[`SITE_MAP.md`](../SITE_MAP.md) (engineer reference) • [`CONSTELLATION.md`](./CONSTELLATION.md) (canvas contract) • [`BROADCAST.md`](./BROADCAST.md) + [`BROADCAST_OUTSIDE_CHAIN.md`](./BROADCAST_OUTSIDE_CHAIN.md) (broadcast pipeline) • [`BACKUP_RECOVERY.md`](./BACKUP_RECOVERY.md) (backups) • [`PROJECT_SYNTHESIS.md`](./archive/PROJECT_SYNTHESIS.md) (stack).
 
 ---
 
@@ -1832,7 +1834,7 @@ Cached via `loadPortfolioSectionsFromR2` + `cache()`. Edits trigger `revalidateP
 | [`CONSTELLATION.md`](./CONSTELLATION.md) | Constellation curator contract. |
 | [`BROADCAST.md`](./BROADCAST.md) + [`BROADCAST_OUTSIDE_CHAIN.md`](./BROADCAST_OUTSIDE_CHAIN.md) | Broadcast pipeline + Make scenarios. |
 | [`BACKUP_RECOVERY.md`](./BACKUP_RECOVERY.md) | Backup playbook. |
-| [`PROJECT_SYNTHESIS.md`](./PROJECT_SYNTHESIS.md) | Stack overview. |
+| [`PROJECT_SYNTHESIS.md`](./archive/PROJECT_SYNTHESIS.md) | Stack overview. |
 | [`SITE_MAP.md`](../SITE_MAP.md) | Engineer route index + RSC loaders. |
 | [`SYSTEM_LEDGER.md`](./SYSTEM_LEDGER.md) | System tab's MD source. |
 | `docs/archive/HANDOFF_*.md` | Slice handoffs (Slice 3, 3B, 4, etc.). |
