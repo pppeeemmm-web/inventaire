@@ -12,6 +12,7 @@
 | [`AUDIT_2026-11.md`](./AUDIT_2026-11.md) | Phase 1 audit (brief): reported bugs, Kaizen vs code, found issues, what is not verified | 2026-11-12 |
 | [`WORK_CUSTODY_MODEL.md`](./WORK_CUSTODY_MODEL.md) | Owner / custodian / address per work stage — the rule every order, screen and trigger follows | 2026-11-12 |
 | [`STRATEGY.md`](./STRATEGY.md) | Owner intent and order of aims — the filter for new work | 2026-11-13 |
+| [`HANDOFF_2026-11-13_OPUS.md`](./HANDOFF_2026-11-13_OPUS.md) | **Next batch, for Opus** — sign out + password, transcription from the app, description test round 2, "see again" card, docs tidy | 2026-11-13 |
 | [`TODO.md`](./TODO.md) | Live checklist (ops deadlines, open product items, roadmap) | 2026-11-12 |
 | [`PROJECT_SYNTHESIS.md`](./PROJECT_SYNTHESIS.md) | Onboarding: stack boundaries, broadcast chain, where truth lives | 2026-05-25 — accurate on stack; silent on mobile field-tool era |
 | [`ADMIN_GUIDE.md`](./ADMIN_GUIDE.md) | Onboarding (admin): encyclopedia, every feature | 2026-05-25 — **photo/session/hub sections predate the 2026-07 mobile pass** (banner inside) |
