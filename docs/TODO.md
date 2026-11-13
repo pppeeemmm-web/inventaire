@@ -6,7 +6,6 @@ _Open items only, one line each, in order. Details → [`TODO_NOTES.md`](./TODO_
 
 ## 1. Waiting on Pem — only you can do these
 
-- [ ] **Voice:** OK the first transcript write (1 note, 8 Aug 2026, read back in French) — then "Run on this PC" in Overview → Local jobs.
 - [ ] **Handwriting test:** give the folder of ~10 notebook pages.
 - [ ] **R2 access key rotation (O2)** — not done or not recorded; note the date in `CLAUDE.md`.
 - [ ] **Restore drill (O4)** — never run ([`BACKUP_RECOVERY.md`](./BACKUP_RECOVERY.md)).
