@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Overview — phone</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sofia+Sans:wght@400;500;600;700&amp;family=Instrument+Serif&amp;display=swap">
+<style>
+body{margin:0;background:#080809}
+a{color:#f8f7f3;text-decoration:none}a:hover{color:#d4b886}
+.sq{display:inline-block;flex:none;width:12px;height:12px;background:#ee7a52}
+.tri{display:inline-block;flex:none;width:14px;height:13px;background:#e6c04a;clip-path:polygon(50% 0,100% 100%,0 100%)}
+.dot{display:inline-block;flex:none;width:12px;height:12px;border-radius:50%;background:#8fb070}
+.ring{display:inline-block;flex:none;width:12px;height:12px;border-radius:50%;border:2px solid #b4afa1;box-sizing:border-box}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden; background: #080809; color: #f8f7f3; font-family: 'Sofia Sans', system-ui, sans-serif; font-size: 15px; font-variant-numeric: tabular-nums">
+
+  <header style="flex: none; height: 52px; display: flex; align-items: center; gap: 10px; padding: 0 16px; background: #101011; border-bottom: 1px solid #2d2d32">
+    <h1 style="margin: 0; font-family: 'Instrument Serif', serif; font-weight: 400; font-size: 26px">Overview</h1>
+    <span style="flex: 1"></span>
+    <span style="font-size: 13px; color: #807c72">Thu 13 Nov · 09:42</span>
+  </header>
+
+  <div style="flex: none; height: 44px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-bottom: 1px solid #2d2d32; font-size: 14px">
+    <span style="display: flex; align-items: center; justify-content: center; gap: 7px; border-right: 1px solid #2d2d32; background: rgba(238, 122, 82, 0.09)"><span class="sq" aria-hidden="true"></span><b>3</b> wrong</span>
+    <span style="display: flex; align-items: center; justify-content: center; gap: 7px; border-right: 1px solid #2d2d32; background: rgba(230, 192, 74, 0.07)"><span class="tri" aria-hidden="true"></span><b>6</b> attention</span>
+    <span style="display: flex; align-items: center; justify-content: center; gap: 7px"><span class="dot" aria-hidden="true"></span><b>3</b> OK</span>
+  </div>
+
+  <h2 style="margin: 0; flex: none; height: 26px; display: flex; align-items: center; padding: 0 16px; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #ee7a52; background: #101011; border-bottom: 1px solid #2d2d32">Wrong</h2>
+  <a href="#" style="flex: none; height: 46px; display: flex; align-items: center; gap: 12px; padding: 0 16px; border-bottom: 1px solid #19191b"><span class="sq" aria-hidden="true"></span><span style="flex: 1">Catalogue gaps</span><b>214</b><span style="color: #807c72" aria-hidden="true">›</span></a>
+  <a href="#" style="flex: none; height: 46px; display: flex; align-items: center; gap: 12px; padding: 0 16px; border-bottom: 1px solid #19191b"><span class="sq" aria-hidden="true"></span><span style="flex: 1">Colliding records</span><b>2</b><span style="color: #807c72" aria-hidden="true">›</span></a>
+  <a href="#" style="flex: none; height: 46px; display: flex; align-items: center; gap: 12px; padding: 0 16px; border-bottom: 1px solid #2d2d32"><span class="sq" aria-hidden="true"></span><span style="flex: 1">Deadline overdue</span><b>1</b><span style="color: #807c72" aria-hidden="true">›</span></a>
+
+  <h2 style="margin: 0; flex: none; height: 26px; display: flex; align-items: center; padding: 0 16px; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #e6c04a; background: #101011; border-bottom: 1px solid #2d2d32">Needs attention</h2>
+  <a href="#" style="flex: none; height: 46px; display: flex; align-items: center; gap: 12px; padding: 0 16px; border-bottom: 1px solid #19191b"><span class="tri" aria-hidden="true"></span><span style="flex: 1">Reminders today</span><b>4</b><span style="color: #807c72" aria-hidden="true">›</span></a>
+  <a href="#" style="flex: none; height: 46px; display: flex; align-items: center; gap: 12px; padding: 0 16px; border-bottom: 1px solid #19191b"><span class="tri" aria-hidden="true"></span><span style="flex: 1">Photos to validate</span><b>3</b><span style="color: #807c72" aria-hidden="true">›</span></a>
+  <a href="#" style="flex: none; height: 46px; display: flex; align-items: center; gap: 12px; padding: 0 16px; border-bottom: 1px solid #19191b"><span class="tri" aria-hidden="true"></span><span style="flex: 1">Field tasks</span><b>3</b><span style="color: #807c72" aria-hidden="true">›</span></a>
+  <a href="#" style="flex: none; height: 46px; display: flex; align-items: center; gap: 12px; padding: 0 16px; border-bottom: 1px solid #19191b"><span class="tri" aria-hidden="true"></span><span style="flex: 1">Voice notes to transcribe</span><b>3</b><span style="color: #807c72" aria-hidden="true">›</span></a>
+  <a href="#" style="flex: none; height: 46px; display: flex; align-items: center; gap: 12px; padding: 0 16px; border-bottom: 1px solid #19191b"><span class="tri" aria-hidden="true"></span><span style="flex: 1">Approvals waiting</span><b>2</b><span style="color: #807c72" aria-hidden="true">›</span></a>
+  <a href="#" style="flex: none; height: 46px; display: flex; align-items: center; gap: 12px; padding: 0 16px; border-bottom: 1px solid #2d2d32"><span class="tri" aria-hidden="true"></span><span style="flex: 1">Ledger items</span><b>1</b><span style="color: #807c72" aria-hidden="true">›</span></a>
+
+  <h2 style="margin: 0; flex: none; height: 26px; display: flex; align-items: center; padding: 0 16px; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #8fb070; background: #101011; border-bottom: 1px solid #2d2d32">OK</h2>
+  <a href="#" style="flex: none; height: 46px; display: flex; align-items: center; gap: 12px; padding: 0 16px; border-bottom: 1px solid #19191b; color: #b4afa1"><span class="dot" aria-hidden="true"></span><span style="flex: 1">Money · net 2026</span><b style="color: #f8f7f3">+8,550 €</b><span style="color: #807c72" aria-hidden="true">›</span></a>
+  <a href="#" style="flex: none; height: 46px; display: flex; align-items: center; gap: 12px; padding: 0 16px; border-bottom: 1px solid #19191b; color: #b4afa1"><span class="dot" aria-hidden="true"></span><span style="flex: 1">Last PC archive</span><b style="color: #f8f7f3">11 d</b><span style="color: #807c72" aria-hidden="true">›</span></a>
+  <a href="#" style="flex: none; height: 46px; display: flex; align-items: center; gap: 12px; padding: 0 16px; border-bottom: 1px solid #2d2d32; color: #b4afa1"><span class="dot" aria-hidden="true"></span><span style="flex: 1">Reminders overdue</span><b style="color: #f8f7f3">0</b><span style="color: #807c72" aria-hidden="true">›</span></a>
+
+  <a href="#" style="flex: none; height: 46px; display: flex; align-items: center; gap: 12px; padding: 0 16px; border-bottom: 1px solid #2d2d32; color: #b4afa1"><span class="ring" aria-hidden="true"></span><span style="flex: 1">Collection · works</span><b style="color: #f8f7f3">1,180</b><span style="color: #807c72" aria-hidden="true">›</span></a>
+  <div style="flex: 1"></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

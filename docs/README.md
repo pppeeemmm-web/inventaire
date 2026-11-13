@@ -12,6 +12,7 @@
 | [`STRATEGY.md`](./STRATEGY.md) | Owner intent and order of aims — the filter for new work | 2026-11-13 |
 | [`HANDOFF_2026-11-13_OPUS.md`](./HANDOFF_2026-11-13_OPUS.md) | Batch of 2026-11-13 (A–F built; G + owner answers open — status at the top of the file) | 2026-11-13 |
 | [`HANDOFF_2026-11-13_NEXT.md`](./HANDOFF_2026-11-13_NEXT.md) | **Next batch** — See again link type + direction, Inventory loupe, batch modify, periods by date, conditions of making, export dialog preview | 2026-11-13 |
+| [`HANDOFF_2026-11-13_DESIGN_BUILD.md`](./HANDOFF_2026-11-13_DESIGN_BUILD.md) | **Build from the design pass** — B1 Overview, B2 Batch modify, B3 Export; mocks in [`design/2026-11-13/`](./design/2026-11-13/); mock-vs-live corrections + decisions D1–D4 | 2026-11-13 |
 | [`TODO.md`](./TODO.md) | Live checklist — one line per open item: waiting on Pem / to build (ranked) / to check once / parked | 2026-11-13 |
 | [`DONE.md`](./DONE.md) | Closed items, newest first (moved out of TODO) | 2026-11-13 |
 | [`TODO_NOTES.md`](./TODO_NOTES.md) | Details behind each open TODO line (reference, not a list) | 2026-11-13 |

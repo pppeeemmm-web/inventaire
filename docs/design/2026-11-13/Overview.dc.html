@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Overview — desktop</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sofia+Sans:wght@400;500;600;700;800&amp;family=Instrument+Serif&amp;display=swap">
+<style>
+body{margin:0;background:#080809}
+a{color:#b4afa1;text-decoration:none}a:hover{color:#d4b886}
+.sq{display:inline-block;flex:none;width:10px;height:10px;background:#ee7a52}
+.tri{display:inline-block;flex:none;width:12px;height:11px;background:#e6c04a;clip-path:polygon(50% 0,100% 100%,0 100%)}
+.dot{display:inline-block;flex:none;width:10px;height:10px;border-radius:50%;background:#8fb070}
+.ring{display:inline-block;flex:none;width:10px;height:10px;border-radius:50%;border:1.5px solid #b4afa1;box-sizing:border-box}
+.more{font-size:11px;color:#807c72;white-space:nowrap}
+</style>
+</helmet>
+<div style="position: relative; width: 1440px; height: 900px; box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden; background: #080809; color: #f8f7f3; font-family: 'Sofia Sans', system-ui, sans-serif; font-size: 13px; line-height: 1.25; font-variant-numeric: tabular-nums">
+
+<!-- Header -->
+<header style="flex: none; height: 44px; display: flex; align-items: center; gap: 16px; padding: 0 16px; background: #101011; border-bottom: 1px solid #2d2d32">
+  <h1 style="margin: 0; font-family: 'Instrument Serif', serif; font-weight: 400; font-size: 24px; letter-spacing: 0.01em">Overview</h1>
+  <span style="color: #807c72">Thu 13 Nov 2026 · 09:42</span>
+  <div style="display: flex; align-items: center; gap: 12px; padding: 4px 10px; border: 1px solid #3f3f46; border-radius: 3px">
+    <span style="display: flex; align-items: center; gap: 6px"><span class="sq" aria-hidden="true"></span><b>3</b> wrong</span>
+    <span style="display: flex; align-items: center; gap: 6px"><span class="tri" aria-hidden="true"></span><b>3</b> attention</span>
+    <span style="display: flex; align-items: center; gap: 6px"><span class="dot" aria-hidden="true"></span><b>1</b> OK</span>
+  </div>
+  <span style="flex: 1"></span>
+  <span style="font-size: 11px; color: #807c72; letter-spacing: 0.06em; text-transform: uppercase">Legend</span>
+  <span style="display: flex; align-items: center; gap: 5px; color: #b4afa1; font-size: 12px"><span class="sq" aria-hidden="true"></span>wrong</span>
+  <span style="display: flex; align-items: center; gap: 5px; color: #b4afa1; font-size: 12px"><span class="tri" aria-hidden="true"></span>attention</span>
+  <span style="display: flex; align-items: center; gap: 5px; color: #b4afa1; font-size: 12px"><span class="dot" aria-hidden="true"></span>OK</span>
+  <span style="display: flex; align-items: center; gap: 5px; color: #b4afa1; font-size: 12px"><span class="ring" aria-hidden="true"></span>info</span>
+  <span style="padding: 2px 6px; border: 1px dashed #52525b; border-radius: 3px; font-size: 10px; letter-spacing: 0.08em; color: #b4afa1">SAMPLE DATA</span>
+  <button type="button" aria-label="Refresh" style="width: 28px; height: 28px; display: grid; place-items: center; background: none; border: 1px solid #3f3f46; border-radius: 3px; color: #b4afa1; cursor: pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4"></path><path d="M21 3v6h-6"></path></svg></button>
+</header>
+
+<!-- Annunciator row: fixed positions, signal first -->
+<nav aria-label="Signals" style="flex: none; height: 112px; display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); border-bottom: 1px solid #2d2d32">
+  <a href="#needs" aria-label="Needs you: attention, 9 items" style="display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-right: 1px solid #2d2d32; border-top: 3px solid #e6c04a; background: rgba(230, 192, 74, 0.07); color: #f8f7f3">
+    <span style="display: flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #b4afa1"><span class="tri" aria-hidden="true"></span>Needs you</span>
+    <span style="font-size: 34px; font-weight: 700; line-height: 1">9</span>
+    <span style="font-size: 12px; color: #b4afa1">2 approvals · 3 photos · 3 field</span>
+  </a>
+  <a href="#catalogue" aria-label="Catalogue health: wrong, 214 gaps" style="display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-right: 1px solid #2d2d32; border-top: 3px solid #ee7a52; background: rgba(238, 122, 82, 0.09); color: #f8f7f3">
+    <span style="display: flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #b4afa1"><span class="sq" aria-hidden="true"></span>Catalogue</span>
+    <span style="font-size: 34px; font-weight: 700; line-height: 1">214</span>
+    <span style="font-size: 12px; color: #b4afa1">gaps · worst: 63 no photo</span>
+  </a>
+  <a href="#integrity" aria-label="Integrity: wrong, 2 collisions" style="display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-right: 1px solid #2d2d32; border-top: 3px solid #ee7a52; background: rgba(238, 122, 82, 0.09); color: #f8f7f3">
+    <span style="display: flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #b4afa1"><span class="sq" aria-hidden="true"></span>Integrity</span>
+    <span style="font-size: 34px; font-weight: 700; line-height: 1">2</span>
+    <span style="font-size: 12px; color: #b4afa1">colliding records</span>
+  </a>
+  <a href="#deadlines" aria-label="Deadlines: wrong, 1 overdue" style="display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-right: 1px solid #2d2d32; border-top: 3px solid #ee7a52; background: rgba(238, 122, 82, 0.09); color: #f8f7f3">
+    <span style="display: flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #b4afa1"><span class="sq" aria-hidden="true"></span>Deadlines</span>
+    <span style="font-size: 34px; font-weight: 700; line-height: 1">1</span>
+    <span style="font-size: 12px; color: #b4afa1">overdue · 7 active projects</span>
+  </a>
+  <a href="#reminders" aria-label="Reminders: attention, 4 today" style="display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-right: 1px solid #2d2d32; border-top: 3px solid #e6c04a; background: rgba(230, 192, 74, 0.07); color: #f8f7f3">
+    <span style="display: flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #b4afa1"><span class="tri" aria-hidden="true"></span>Reminders</span>
+    <span style="font-size: 34px; font-weight: 700; line-height: 1">4</span>
+    <span style="font-size: 12px; color: #b4afa1">today · 0 overdue</span>
+  </a>
+  <a href="#money" aria-label="Money: OK" style="display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-right: 1px solid #2d2d32; border-top: 3px solid #8fb070; color: #f8f7f3">
+    <span style="display: flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #b4afa1"><span class="dot" aria-hidden="true"></span>Money</span>
+    <span style="font-size: 34px; font-weight: 700; line-height: 1">+8,550 €</span>
+    <span style="font-size: 12px; color: #b4afa1">net BNC 2026 · cash 4.2 mo</span>
+  </a>
+  <a href="#jobs" aria-label="Local jobs: attention, 3 waiting" style="display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-right: 1px solid #2d2d32; border-top: 3px solid #e6c04a; background: rgba(230, 192, 74, 0.07); color: #f8f7f3">
+    <span style="display: flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #b4afa1"><span class="tri" aria-hidden="true"></span>Local jobs</span>
+    <span style="font-size: 34px; font-weight: 700; line-height: 1">3</span>
+    <span style="font-size: 12px; color: #b4afa1">voice notes · archive 11 d</span>
+  </a>
+  <a href="#collection" aria-label="Collection: informative, 1,180 works" style="display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-top: 3px solid #3f3f46; color: #f8f7f3">
+    <span style="display: flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #b4afa1"><span class="ring" aria-hidden="true"></span>Collection</span>
+    <span style="font-size: 34px; font-weight: 700; line-height: 1">1,180</span>
+    <span style="font-size: 12px; color: #b4afa1">works · 412 available</span>
+  </a>
+</nav>
+
+<!-- Detail columns -->
+<main style="flex: 1; min-height: 0; display: grid; grid-template-columns: 1.15fr 1.1fr 1fr 0.9fr">
+
+  <!-- Col 1: act (nothing more to show: no expansion) -->
+  <section style="display: flex; flex-direction: column; min-width: 0; overflow: hidden; border-right: 1px solid #2d2d32">
+    <div id="needs" style="display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; background: #101011; border-bottom: 1px solid #2d2d32">
+      <span class="tri" aria-hidden="true"></span>
+      <h2 style="margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #b4afa1">Needs you</h2>
+      <b>9</b><span style="flex: 1"></span><a href="#" style="font-size: 12px">Open Hub →</a>
+    </div>
+    <a href="#" style="display: flex; align-items: center; gap: 8px; height: 26px; padding: 0 12px; border-bottom: 1px solid #19191b; color: #f8f7f3"><span style="flex: 1">Approvals waiting</span><b>2</b><span class="tri" aria-hidden="true"></span></a>
+    <a href="#" style="display: flex; align-items: center; gap: 8px; height: 26px; padding: 0 12px; border-bottom: 1px solid #19191b; color: #f8f7f3"><span style="flex: 1">Photos to validate</span><b>3</b><span class="tri" aria-hidden="true"></span></a>
+    <a href="#" style="display: flex; align-items: center; gap: 8px; height: 26px; padding: 0 12px; border-bottom: 1px solid #19191b; color: #f8f7f3"><span style="flex: 1">Field tasks</span><b>3</b><span class="tri" aria-hidden="true"></span></a>
+    <a href="#" style="display: flex; align-items: center; gap: 8px; height: 26px; padding: 0 12px; border-bottom: 1px solid #19191b; color: #f8f7f3"><span style="flex: 1">Ledger items</span><b>1</b><span class="tri" aria-hidden="true"></span></a>
+    <a href="#" style="display: flex; align-items: center; gap: 8px; height: 26px; padding: 0 12px; border-bottom: 1px solid #19191b; color: #807c72"><span style="flex: 1">Works not catalogued</span><span>0</span><span class="dot" aria-hidden="true"></span></a>
+    <a href="#" style="display: flex; align-items: center; gap: 8px; height: 26px; padding: 0 12px; border-bottom: 1px solid #2d2d32; color: #807c72"><span style="flex: 1">Sessions to finish</span><span>0</span><span class="dot" aria-hidden="true"></span></a>
+
+    <div id="catalogue" style="display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; background: #101011; border-bottom: 1px solid #2d2d32">
+      <span class="sq" aria-hidden="true"></span>
+      <h2 style="margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #b4afa1">Catalogue health</h2>
+      <b>214</b><span style="color: #807c72">gaps / 1,180 works</span><span style="flex: 1"></span><a href="#" style="font-size: 12px">Inventory →</a>
+    </div>
+    <a id="integrity" href="#" style="display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-bottom: 1px solid #2d2d32; background: rgba(238, 122, 82, 0.09); color: #f8f7f3"><span class="sq" aria-hidden="true"></span><span style="flex: 1; font-weight: 600">Integrity — colliding records</span><b>2</b><span style="font-size: 12px; color: #ee7a52">Resolve →</span></a>
+    <sc-for list="{{gaps}}" as="g" hint-placeholder-count="8">
+      <a href="#" style="display: grid; grid-template-columns: 150px 1fr 34px 12px; align-items: center; gap: 8px; height: 26px; padding: 0 12px; border-bottom: 1px solid #19191b; color: #f8f7f3">
+        <span>{{g.label}}</span>
+        <span style="height: 6px; background: #19191b; border-radius: 1px; overflow: hidden"><span style="{{g.bar}}"></span></span>
+        <b style="text-align: right">{{g.n}}</b>
+        <span class="sq" aria-hidden="true"></span>
+      </a>
+    </sc-for>
+    <div style="flex: 1"></div>
+  </section>
+
+  <!-- Col 2: time — Pipeline and Reminders expand on long hover -->
+  <section style="display: flex; flex-direction: column; min-width: 0; overflow: hidden; border-right: 1px solid #2d2d32">
+
+    <div onMouseEnter="{{pipe.enter}}" onMouseLeave="{{leave}}" style="{{pipe.s}}">
+      <div id="deadlines" style="position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; background: #101011; border-bottom: 1px solid #2d2d32">
+        <span class="sq" aria-hidden="true"></span>
+        <h2 style="margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #b4afa1">Pipeline &amp; deadlines</h2>
+        <span style="color: #807c72">7 active</span><span style="flex: 1"></span><span class="more">{{pipe.hint}}</span><a href="#" style="font-size: 12px">Calendar →</a>
+      </div>
+      <a href="#" style="display: grid; grid-template-columns: 74px 1fr 12px; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-bottom: 1px solid #19191b; background: rgba(238, 122, 82, 0.09); color: #f8f7f3"><span style="font-size: 12px; font-weight: 700; color: #ee7a52">2 d late</span><span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">[Gallery] — send price list</span><span class="sq" aria-hidden="true"></span></a>
+      <a href="#" style="display: grid; grid-template-columns: 74px 1fr 12px; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-bottom: 1px solid #19191b; color: #f8f7f3"><span style="font-size: 12px; font-weight: 700; color: #e6c04a">Today</span><span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">[Project] — framer pick-up</span><span class="tri" aria-hidden="true"></span></a>
+      <a href="#" style="display: grid; grid-template-columns: 74px 1fr 12px; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-bottom: 1px solid #19191b; color: #f8f7f3"><span style="font-size: 12px; color: #b4afa1">in 3 days</span><span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">[Exhibition] — hanging list due</span><span></span></a>
+      <a href="#" style="display: grid; grid-template-columns: 74px 1fr 12px; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-bottom: 1px solid #19191b; color: #f8f7f3"><span style="font-size: 12px; color: #b4afa1">in 6 days</span><span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">[Fair] — application closes</span><span></span></a>
+      <a href="#" style="display: grid; grid-template-columns: 74px 1fr 12px; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-bottom: 1px solid #2d2d32; color: #f8f7f3"><span style="font-size: 12px; color: #b4afa1">in 12 days</span><span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">[Collector] — studio visit</span><span></span></a>
+      <div style="{{pipe.x}}">
+        <sc-for list="{{pipeMore}}" as="d" hint-placeholder-count="3">
+          <a href="#" style="display: grid; grid-template-columns: 74px 1fr 12px; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-bottom: 1px solid #19191b; color: #f8f7f3"><span style="font-size: 12px; color: #b4afa1">{{d.when}}</span><span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{d.what}}</span><span></span></a>
+        </sc-for>
+        <div style="height: 24px; display: flex; align-items: center; padding: 0 12px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #807c72; border-bottom: 1px solid #19191b">Active projects · 7</div>
+        <sc-for list="{{projects}}" as="p" hint-placeholder-count="7">
+          <a href="#" style="display: grid; grid-template-columns: 1fr 96px; align-items: center; gap: 8px; height: 26px; padding: 0 12px; border-bottom: 1px solid #19191b; color: #f8f7f3"><span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{p.n}}</span><span style="font-size: 12px; color: #b4afa1; text-align: right">{{p.stage}}</span></a>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="flex: 0 50 auto; min-height: 30px; overflow: hidden">
+      <div style="display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; background: #101011; border-bottom: 1px solid #2d2d32">
+        <span class="ring" aria-hidden="true"></span>
+        <h2 style="margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #b4afa1">This week</h2>
+        <span style="color: #807c72">10 – 16 Nov</span>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border-bottom: 1px solid #2d2d32">
+        <sc-for list="{{week}}" as="d" hint-placeholder-count="7">
+          <div style="{{d.cell}}">
+            <span style="font-size: 11px; color: #b4afa1; letter-spacing: 0.04em">{{d.day}}</span>
+            <b style="font-size: 16px">{{d.n}}</b>
+            <span style="font-size: 11px; color: #b4afa1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{d.what}}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div onMouseEnter="{{rem.enter}}" onMouseLeave="{{leave}}" style="{{rem.s}}">
+      <div id="reminders" style="position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; background: #101011; border-bottom: 1px solid #2d2d32">
+        <span class="tri" aria-hidden="true"></span>
+        <h2 style="margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #b4afa1">Reminders</h2>
+        <b>11</b><span style="flex: 1"></span><span class="more">{{rem.hint}}</span><a href="#" style="font-size: 12px">Contacts →</a>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-bottom: 1px solid #2d2d32">
+        <a href="#" style="display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; border-right: 1px solid #19191b; color: #807c72"><span style="font-size: 11px">Overdue</span><span style="display: flex; align-items: center; gap: 6px; font-size: 20px; font-weight: 700">0 <span class="dot" aria-hidden="true"></span></span></a>
+        <a href="#" style="display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; border-right: 1px solid #19191b; background: rgba(230, 192, 74, 0.07); color: #f8f7f3"><span style="font-size: 11px; color: #b4afa1">Today</span><span style="display: flex; align-items: center; gap: 6px; font-size: 20px; font-weight: 700">4 <span class="tri" aria-hidden="true"></span></span></a>
+        <a href="#" style="display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; border-right: 1px solid #19191b; color: #f8f7f3"><span style="font-size: 11px; color: #b4afa1">Tomorrow</span><span style="font-size: 20px; font-weight: 700">2</span></a>
+        <a href="#" style="display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; color: #f8f7f3"><span style="font-size: 11px; color: #b4afa1">Next 7 days</span><span style="font-size: 20px; font-weight: 700">5</span></a>
+      </div>
+      <a href="#" style="display: flex; align-items: center; gap: 8px; height: 26px; padding: 0 12px; border-bottom: 1px solid #19191b; color: #f8f7f3"><span class="tri" aria-hidden="true"></span><span style="flex: 1">Follow up [Contact] — catalogue sent</span><span style="font-size: 12px; color: #b4afa1">today</span></a>
+      <a href="#" style="display: flex; align-items: center; gap: 8px; height: 26px; padding: 0 12px; border-bottom: 1px solid #19191b; color: #f8f7f3"><span class="tri" aria-hidden="true"></span><span style="flex: 1">Call [Contact] — loan return</span><span style="font-size: 12px; color: #b4afa1">today</span></a>
+      <div style="{{rem.x}}">
+        <sc-for list="{{remMore}}" as="r" hint-placeholder-count="9">
+          <a href="#" style="display: flex; align-items: center; gap: 8px; height: 26px; padding: 0 12px; border-bottom: 1px solid #19191b; color: #f8f7f3"><span style="{{r.mark}}" aria-hidden="true"></span><span style="flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.t}}</span><span style="font-size: 12px; color: #b4afa1">{{r.when}}</span></a>
+        </sc-for>
+      </div>
+    </div>
+    <div style="{{spacer2}}"></div>
+  </section>
+
+  <!-- Col 3: money + collection (no expansion) -->
+  <section style="display: flex; flex-direction: column; min-width: 0; overflow: hidden; border-right: 1px solid #2d2d32">
+    <div id="money" style="display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; background: #101011; border-bottom: 1px solid #2d2d32">
+      <span class="dot" aria-hidden="true"></span>
+      <h2 style="margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #b4afa1">Money · 2026</h2>
+      <span style="flex: 1"></span><a href="#" style="font-size: 12px">Ledger →</a>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-bottom: 1px solid #19191b">
+      <div style="display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; border-right: 1px solid #19191b"><span style="font-size: 11px; color: #b4afa1">Income</span><b style="font-size: 18px">18,420 €</b></div>
+      <div style="display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; border-right: 1px solid #19191b"><span style="font-size: 11px; color: #b4afa1">Expenses</span><b style="font-size: 18px">9,870 €</b></div>
+      <div style="display: flex; flex-direction: column; gap: 2px; padding: 8px 12px"><span style="font-size: 11px; color: #b4afa1">Net (BNC)</span><b style="font-size: 18px; color: #8fb070">+8,550 €</b></div>
+    </div>
+    <div role="img" aria-label="Monthly income and expenses, January to November" style="height: 92px; display: grid; grid-template-columns: repeat(11, minmax(0, 1fr)); align-items: end; gap: 6px; padding: 8px 12px 0; border-bottom: 1px solid #19191b">
+      <sc-for list="{{months}}" as="m" hint-placeholder-count="11">
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 3px">
+          <div style="display: flex; align-items: flex-end; gap: 2px; height: 64px">
+            <span style="{{m.inc}}"></span><span style="{{m.exp}}"></span>
+          </div>
+          <span style="font-size: 10px; color: #807c72">{{m.l}}</span>
+        </div>
+      </sc-for>
+    </div>
+    <div style="display: flex; align-items: center; gap: 14px; height: 28px; padding: 0 12px; border-bottom: 1px solid #2d2d32; font-size: 12px; color: #b4afa1">
+      <span style="display: flex; align-items: center; gap: 5px"><span style="width: 8px; height: 8px; background: #d4b886"></span>income</span>
+      <span style="display: flex; align-items: center; gap: 5px"><span style="width: 8px; height: 8px; background: #52525b"></span>expenses</span>
+      <span style="flex: 1"></span>
+      <span style="display: flex; align-items: center; gap: 6px; color: #f8f7f3"><span class="dot" aria-hidden="true"></span>Cash 4.2 months · pulse ↗</span>
+    </div>
+
+    <div id="collection" style="display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; background: #101011; border-bottom: 1px solid #2d2d32">
+      <span class="ring" aria-hidden="true"></span>
+      <h2 style="margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #b4afa1">Collection</h2>
+      <span style="flex: 1"></span><a href="#" style="font-size: 12px">Reports →</a>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-bottom: 1px solid #19191b">
+      <div style="display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; border-right: 1px solid #19191b; border-bottom: 1px solid #19191b"><span style="font-size: 11px; color: #b4afa1">Total value</span><b style="font-size: 18px">[VALUE] €</b></div>
+      <div style="display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; border-right: 1px solid #19191b; border-bottom: 1px solid #19191b"><span style="font-size: 11px; color: #b4afa1">Available</span><b style="font-size: 18px">412</b></div>
+      <div style="display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; border-bottom: 1px solid #19191b"><span style="font-size: 11px; color: #b4afa1">Exhibitable</span><b style="font-size: 18px">655</b></div>
+      <div style="display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; border-right: 1px solid #19191b"><span style="font-size: 11px; color: #b4afa1">Priced</span><b style="font-size: 18px">803</b></div>
+      <div style="display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; border-right: 1px solid #19191b"><span style="font-size: 11px; color: #b4afa1">Made 2026</span><b style="font-size: 18px">37</b></div>
+      <div style="display: flex; flex-direction: column; gap: 2px; padding: 8px 12px"><span style="font-size: 11px; color: #b4afa1">Catalogued</span><b style="font-size: 18px">100 %</b></div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 6px; padding: 10px 12px">
+      <span style="font-size: 11px; color: #b4afa1">By technique</span>
+      <div role="img" aria-label="Oil 38%, pastel 27%, drawing 22%, mixed media 13%" style="display: flex; height: 10px; gap: 2px">
+        <span style="width: 38%; background: #d4b886"></span><span style="width: 27%; background: #a68b55"></span><span style="width: 22%; background: #807c72"></span><span style="width: 13%; background: #52525b"></span>
+      </div>
+      <div style="display: flex; gap: 12px; font-size: 12px; color: #b4afa1">
+        <span>Oil 38 %</span><span>Pastel 27 %</span><span>Drawing 22 %</span><span>Mixed 13 %</span>
+      </div>
+    </div>
+    <div style="flex: 1"></div>
+  </section>
+
+  <!-- Col 4: studio life — Burning ideas and Latest works expand on long hover -->
+  <section style="display: flex; flex-direction: column; min-width: 0; overflow: hidden">
+    <div style="flex: 0 50 auto; min-height: 30px; overflow: hidden">
+      <div id="jobs" style="display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; background: #101011; border-bottom: 1px solid #2d2d32">
+        <span class="tri" aria-hidden="true"></span>
+        <h2 style="margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #b4afa1">Local jobs</h2>
+      </div>
+      <a href="#" style="display: flex; align-items: center; gap: 8px; height: 26px; padding: 0 12px; border-bottom: 1px solid #19191b; color: #f8f7f3"><span style="flex: 1">Voice notes to transcribe</span><b>3</b><span class="tri" aria-hidden="true"></span></a>
+      <a href="#" style="display: flex; align-items: center; gap: 8px; height: 26px; padding: 0 12px; border-bottom: 1px solid #19191b; color: #807c72"><span style="flex: 1">Search index backlog</span><span>0</span><span class="dot" aria-hidden="true"></span></a>
+      <a href="#" style="display: flex; flex-direction: column; gap: 5px; padding: 6px 12px 8px; border-bottom: 1px solid #2d2d32; color: #f8f7f3">
+        <span style="display: flex; align-items: center; gap: 8px"><span style="flex: 1">Last PC archive</span><b>11 d</b><span class="dot" aria-hidden="true"></span></span>
+        <span role="img" aria-label="11 of 14 days before alarm" style="position: relative; height: 6px; background: #19191b"><span style="position: absolute; left: 0; top: 0; bottom: 0; width: 78%; background: #8fb070"></span><span style="position: absolute; right: 0; top: -3px; bottom: -3px; width: 2px; background: #ee7a52"></span></span>
+        <span style="font-size: 11px; color: #807c72">alarm at 14 days</span>
+      </a>
+    </div>
+
+    <div onMouseEnter="{{ide.enter}}" onMouseLeave="{{leave}}" style="{{ide.s}}">
+      <div style="position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; background: #101011; border-bottom: 1px solid #2d2d32">
+        <span class="ring" aria-hidden="true"></span>
+        <h2 style="margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #b4afa1">Burning ideas</h2>
+        <span style="flex: 1"></span><span class="more">{{ide.hint}}</span><a href="#" style="font-size: 12px">Kaizen →</a>
+      </div>
+      <sc-for list="{{ideas}}" as="i" hint-placeholder-count="3">
+        <a href="#" style="display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 12px; border-bottom: 1px solid #19191b; color: #f8f7f3">
+          <span style="flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{i.t}}</span>
+          <span role="img" aria-label="{{i.aria}}" style="display: flex; gap: 2px">
+            <sc-for list="{{i.pips}}" as="p" hint-placeholder-count="5"><span style="{{p.s}}"></span></sc-for>
+          </span>
+        </a>
+      </sc-for>
+      <div style="{{ide.x}}">
+        <sc-for list="{{ideasMore}}" as="i" hint-placeholder-count="6">
+          <a href="#" style="display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 12px; border-bottom: 1px solid #19191b; color: #f8f7f3">
+            <span style="flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{i.t}}</span>
+            <span role="img" aria-label="{{i.aria}}" style="display: flex; gap: 2px">
+              <sc-for list="{{i.pips}}" as="p" hint-placeholder-count="5"><span style="{{p.s}}"></span></sc-for>
+            </span>
+          </a>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="flex: 0 50 auto; min-height: 30px; overflow: hidden">
+      <div style="display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; background: #101011; border-bottom: 1px solid #2d2d32; border-top: 1px solid #2d2d32">
+        <span class="ring" aria-hidden="true"></span>
+        <h2 style="margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #b4afa1">See again</h2>
+      </div>
+      <div style="display: flex; gap: 10px; padding: 10px 12px; border-bottom: 1px solid #2d2d32">
+        <div aria-label="Work image placeholder" role="img" style="flex: none; width: 76px; height: 96px; background: #3d4b57; display: grid; place-items: end start; padding: 4px; box-sizing: border-box; font-size: 9px; color: #b4afa1">image</div>
+        <div style="display: flex; flex-direction: column; gap: 3px; min-width: 0">
+          <b style="font-size: 13px">[Title]</b>
+          <span style="font-size: 12px; color: #b4afa1">2009 · pastel on paper</span>
+          <span style="font-size: 12px; color: #b4afa1">last opened 3 years ago</span>
+          <span style="flex: 1"></span>
+          <button type="button" style="align-self: flex-start; height: 26px; padding: 0 8px; background: none; border: 1px solid #3f3f46; border-radius: 3px; color: #f8f7f3; font: inherit; font-size: 12px; cursor: pointer">Link to another work</button>
+        </div>
+      </div>
+    </div>
+
+    <div onMouseEnter="{{lat.enter}}" onMouseLeave="{{leave}}" style="{{lat.s}}">
+      <div style="position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; background: #101011; border-bottom: 1px solid #2d2d32">
+        <span class="ring" aria-hidden="true"></span>
+        <h2 style="margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #b4afa1">Latest works</h2>
+        <span style="flex: 1"></span><span class="more">{{lat.hint}}</span><a href="#" style="font-size: 12px">Inventory →</a>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; padding: 8px 12px">
+        <sc-for list="{{works}}" as="w" hint-placeholder-count="4">
+          <a href="#" aria-label="{{w.aria}}" onMouseEnter="{{w.show}}" onMouseLeave="{{hideLoupe}}" style="display: flex; flex-direction: column; gap: 3px; color: #b4afa1">
+            <span style="{{w.img}}"></span>
+            <span style="font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{w.cap}}</span>
+          </a>
+        </sc-for>
+      </div>
+      <div style="{{lat.x}}">
+        <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; padding: 0 12px 8px">
+          <sc-for list="{{worksMore}}" as="w" hint-placeholder-count="8">
+            <a href="#" aria-label="{{w.aria}}" onMouseEnter="{{w.show}}" onMouseLeave="{{hideLoupe}}" style="display: flex; flex-direction: column; gap: 3px; color: #b4afa1">
+              <span style="{{w.img}}"></span>
+              <span style="font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{w.cap}}</span>
+            </a>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+    <div style="{{spacer4}}"></div>
+  </section>
+</main>
+
+<!-- Status bar -->
+<footer style="flex: none; height: 24px; display: flex; align-items: center; gap: 16px; padding: 0 16px; background: #101011; border-top: 1px solid #2d2d32; font-size: 11px; color: #807c72">
+  <span>Click a block to open the tab that fixes it · rest the pointer ~0.7 s on a panel marked “+ more” to open it · hover a work to see it whole</span>
+  <span style="flex: 1"></span>
+  <span>Last sync 09:42</span>
+</footer>
+
+<!-- Loupe: the whole work, full screen, while hovering a thumbnail -->
+<sc-if value="{{loupeOn}}" hint-placeholder-val="{{false}}">
+  <div aria-hidden="true" style="position: absolute; inset: 0; z-index: 10; display: grid; place-items: center; background: rgba(8, 8, 9, 0.9); pointer-events: none">
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 12px">
+      <span style="{{loupe.img}}"></span>
+      <span style="font-family: 'Instrument Serif', serif; font-size: 22px; color: #f8f7f3">{{loupe.title}}</span>
+      <span style="font-size: 12px; color: #b4afa1">{{loupe.meta}}</span>
+    </div>
+  </div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { hot: null, lw: -1 };
+    this.timer = null;
+  }
+  componentWillUnmount() {
+    clearTimeout(this.timer);
+  }
+  renderVals() {
+    const self = this;
+    const hot = this.state.hot;
+    function panel(id, more) {
+      const on = hot === id;
+      return {
+        enter: function () {
+          clearTimeout(self.timer);
+          self.timer = setTimeout(function () { self.setState({ hot: id }); }, self.state.hot ? 250 : 700);
+        },
+        hint: on ? '' : '+' + more + ' more',
+        s: on
+          ? 'flex:1 1 auto;min-height:220px;overflow-y:auto;background:#0c0c0d;box-shadow:inset 0 2px 0 #d4b886;transition:background 300ms'
+          : 'flex:0 50 auto;min-height:30px;overflow:hidden;transition:background 300ms',
+        x: 'overflow:hidden;transition:max-height 380ms cubic-bezier(.2,.7,.2,1),opacity 260ms;' + (on ? 'max-height:640px;opacity:1' : 'max-height:0;opacity:0')
+      };
+    }
+    const leave = function () {
+      clearTimeout(self.timer);
+      self.timer = setTimeout(function () { self.setState({ hot: null }); }, 300);
+    };
+    const col2Hot = hot === 'pipe' || hot === 'rem';
+    const col4Hot = hot === 'ide' || hot === 'lat';
+
+    const gapsRaw = [
+      ['Missing photo', 63], ['Missing dimensions', 41], ['Missing location', 38],
+      ['Custodian address', 27], ['Missing technique', 19], ['Missing support', 14],
+      ['Missing title', 8], ['Missing year', 4]
+    ];
+    const gaps = gapsRaw.map(function (g) {
+      return { label: g[0], n: g[1], bar: 'display:block;height:100%;background:#ee7a52;width:' + Math.round(g[1] / 63 * 100) + '%' };
+    });
+    const weekRaw = [
+      ['MON 10', 2, 'framer'], ['TUE 11', 1, 'session'], ['WED 12', 3, 'visit'],
+      ['THU 13', 4, 'today'], ['FRI 14', 2, 'delivery'], ['SAT 15', 0, '—'], ['SUN 16', 1, 'idea']
+    ];
+    const week = weekRaw.map(function (d, i) {
+      const today = i === 3;
+      return {
+        day: d[0], n: d[1], what: d[2],
+        cell: 'display:flex;flex-direction:column;gap:2px;padding:8px 8px;min-width:0;border-right:1px solid #19191b;' + (today ? 'background:#19191b;box-shadow:inset 0 -2px 0 #d4b886;' : '')
+      };
+    });
+    const inc = [9, 14, 6, 22, 30, 12, 8, 4, 26, 38, 15];
+    const exp = [10, 9, 11, 8, 12, 9, 10, 7, 13, 11, 9];
+    const labels = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N'];
+    const months = labels.map(function (l, i) {
+      return {
+        l: l,
+        inc: 'display:block;width:6px;background:#d4b886;height:' + Math.round(inc[i] / 38 * 60) + 'px',
+        exp: 'display:block;width:6px;background:#52525b;height:' + Math.round(exp[i] / 38 * 60) + 'px'
+      };
+    });
+
+    const pipeMore = [
+      { when: 'in 18 days', what: '[Printer] — proofs back' },
+      { when: 'in 25 days', what: '[Exhibition] — opening' },
+      { when: 'in 34 days', what: '[Collector] — delivery' }
+    ];
+    const projects = [
+      { n: '[Project A]', stage: 'framing' }, { n: '[Project B]', stage: 'price list' },
+      { n: '[Exhibition]', stage: 'hanging' }, { n: '[Fair]', stage: 'application' },
+      { n: '[Commission]', stage: 'sketches' }, { n: '[Book]', stage: 'photos' }, { n: '[Collector]', stage: 'delivery' }
+    ];
+    const tri = 'display:inline-block;flex:none;width:12px;height:11px;background:#e6c04a;clip-path:polygon(50% 0,100% 100%,0 100%)';
+    const none = 'display:inline-block;flex:none;width:12px;height:11px';
+    const remMore = [
+      { t: 'Send invoice [Contact]', when: 'today', mark: tri },
+      { t: 'Confirm visit [Contact]', when: 'today', mark: tri },
+      { t: 'Thank-you note [Contact]', when: 'tomorrow', mark: none },
+      { t: 'Ask for photos back [Contact]', when: 'tomorrow', mark: none },
+      { t: 'Follow up quote [Contact]', when: 'Mon', mark: none },
+      { t: 'Return loan form [Contact]', when: 'Tue', mark: none },
+      { t: 'Check framing [Contact]', when: 'Wed', mark: none },
+      { t: 'Call [Contact] — show dates', when: 'Thu', mark: none },
+      { t: 'Send catalogue [Contact]', when: 'Fri', mark: none }
+    ];
+
+    function idea(x) {
+      const pips = [0, 1, 2, 3, 4].map(function (k) {
+        return { s: 'display:block;width:6px;height:12px;background:' + (k < x[1] ? '#d4b886' : '#2d2d32') };
+      });
+      return { t: x[0], pips: pips, aria: 'energy ' + x[1] + ' of 5' };
+    }
+    const ideas = [['Series on the river at dawn', 5], ['Open-studio weekend in spring', 4], ['Small-format pastel boxes', 3]].map(idea);
+    const ideasMore = [
+      ['Printed notebook of studies', 3], ['Night walks — charcoal', 3], ['Collector letters, yearly', 2],
+      ['Re-photograph early works', 2], ['Workshop for children', 1], ['Large diptych for the hall', 1]
+    ].map(idea);
+
+    const tones = ['#3d4b57', '#6b5a48', '#55603f', '#7a5f4d', '#40465a', '#8a7c5c', '#5a4a52', '#4b5a55', '#6a4f3f', '#36505a', '#7d6a50', '#4e4a60'];
+    const techs = ['oil', 'pastel', 'charcoal', 'oil', 'mixed', 'pastel'];
+    const ratios = [[64, 80], [64, 50], [64, 80], [64, 64], [64, 86], [64, 48]];
+    function work(i) {
+      const r = ratios[i % ratios.length];
+      return {
+        aria: 'Work ' + (i + 1) + ', hover to see it whole',
+        cap: '2026 · ' + techs[i % techs.length],
+        img: 'display:block;width:100%;height:64px;background:' + tones[i],
+        show: function () { self.setState({ lw: i }); },
+        big: 'display:block;width:' + Math.round(r[0] * 7.6) + 'px;height:' + Math.round(r[1] * 7.6) + 'px;max-height:640px;background:' + tones[i],
+        title: '[Title]', meta: '2026 · ' + techs[i % techs.length] + ' · PEM-' + (1180 - i)
+      };
+    }
+    const all = []; for (let k = 0; k < 12; k++) all.push(work(k));
+    const lw = this.state.lw;
+    const loupe = lw >= 0 ? { img: all[lw].big, title: all[lw].title, meta: all[lw].meta } : { img: '', title: '', meta: '' };
+
+    return {
+      gaps: gaps, week: week, months: months,
+      pipe: panel('pipe', 10), rem: panel('rem', 9), ide: panel('ide', 6), lat: panel('lat', 8),
+      leave: leave, pipeMore: pipeMore, projects: projects, remMore: remMore,
+      ideas: ideas, ideasMore: ideasMore,
+      works: all.slice(0, 4), worksMore: all.slice(4),
+      loupeOn: lw >= 0, loupe: loupe, hideLoupe: function () { self.setState({ lw: -1 }); },
+      spacer2: col2Hot ? 'flex:0 0 0' : 'flex:1 1 0',
+      spacer4: col4Hot ? 'flex:0 0 0' : 'flex:1 1 0'
+    };
+  }
+}
+</script>
+</body>
+</html>

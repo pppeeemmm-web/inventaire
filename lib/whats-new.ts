@@ -20,7 +20,8 @@
 // '3.1.2' (2026-11-13): sign out + password, see again, contact pop-up, #1234 preview, work links, Production drag-back, voice transcripts.
 // '3.1.3' (2026-11-13): Journal date jump; See again link type + direction; Inventory loupe; batch modify.
 // '3.1.4' (2026-11-13): Inventory table tidy (compact prices, two-line cells, narrow layout); Overview thumbnails open the work.
-export const WHATS_NEW_RELEASE = '3.1.4'
+// '3.1.5' (2026-11-13): Batch modify redesigned as a mixer (design pass B2).
+export const WHATS_NEW_RELEASE = '3.1.5'
 
 /** localStorage: release the viewer chose not to see again. sessionStorage: already shown this visit. */
 export const WHATS_NEW_DISMISSED_KEY = 'pem_whats_new_dismissed'
@@ -30,6 +31,7 @@ export type WhatsNewItem = { id: string; day: string }
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'batch_modify_mixer', day: '2026-11-13' },
   { id: 'inventory_table_tidy', day: '2026-11-13' },
   { id: 'batch_modify', day: '2026-11-13' },
   { id: 'inventory_loupe', day: '2026-11-13' },

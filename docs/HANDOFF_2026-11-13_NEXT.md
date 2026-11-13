@@ -1,6 +1,16 @@
 # Handoff — next batch (owner requests, 2026-11-13, reorganised evening)
 
-**State:** `origin/main` = `5f10042` (deployed). Local `main` +1 docs commit, + this rewrite. Push when Pem says.
+**State:** `origin/main` = `bddc428` (deployed: A1 table tidy, Overview thumbnails, What's new 3.1.4). Local, not committed: this file, the design build handoff + mocks (`docs/design/2026-11-13/`), README + TODO lines. Push when Pem says.
+
+## Order (readjusted 2026-11-13 after the design pass — Pem may reorder)
+1. **B2 Batch modify** — Pem's sharpest complaint (said twice), mock ready, no decision needed. Place made left out until A3, then one row added. **Built 2026-11-13 (verified against live code 2026-11-13, committed locally, What's new 3.1.5)** — see the status under §3 of the design build handoff.
+2. **B1 Overview** (+ shared `SignalMark`) — mock ready; D1 and D3 have safe defaults (D1 = the mock's rule, D3 = today's cash-health flag) until Pem answers.
+3. **A2 AI descriptions** with the usefulness slider (migration, drawer section).
+4. **A4 answer** (read only, no code) — what location/weather is recorded and for how many works; it decides what A3 can take from field sessions.
+5. **A3 periods by date + place per work** (migration) → then add **Place made** to Identity in batch modify (B2) and to the drawer.
+6. **B3 Export** with live preview — biggest piece (preview engine); start only after Pem answers D2.
+Then C (ask), D (housekeeping), E.
+Why this order: the two dialogs Pem looked at and rejected come first; A3 goes after B2 so batch modify isn't redesigned twice (adding one row later is cheap); B3 waits on a decision.
 **Rules:** `CLAUDE.md` (auto-loaded). Plan in one message, build in order, one commit per item, What's new 3.1.4 for the batch, checks once per batch. Open only the files named.
 **Owner verdict 2026-11-13:** the batch-modify dialog "didn't respect the brief" — it was tweaked (narrower, 3 columns), not redesigned; dead space remains. Big layout surfaces now go through a design pass first (part B), then get built from that design, not tweaked.
 
@@ -39,6 +49,12 @@ Today `work_period` has `start_year` / `end_year`; a work's period comes from it
 ---
 
 ## B. Design first — brief for Claude Design: `docs/DESIGN_BRIEF_2026-11-13.md`
+**Design pass done 2026-11-13** — mocks in `docs/design/2026-11-13/`, build instructions in [`HANDOFF_2026-11-13_DESIGN_BUILD.md`](./HANDOFF_2026-11-13_DESIGN_BUILD.md) (build from that file, not from the lines below).
+**Checked against the brief + live code 2026-11-13:** the design covers every block, field and export option of the brief, and already corrects the mock where live code differs (commission = yes/no, Format added, no "location notes", export tabs = the live layouts). Gaps the design handoff did not cover (now added to its §2–§3):
+- Overview: Integrity, Local jobs and pending approvals are **admin-only** today (`OverviewTab.tsx` `isAdmin`). The design shows one 8-cell signal row; for non-admins the row has 6 cells (Integrity + Local jobs hidden, remaining cells keep their order), "Needs you" counts without approvals.
+- Batch modify receives only `ids` (`CurationDock.tsx` → `BatchEditModal`). The selection strip (thumbs, techniques, years, status mix) needs the selected works: pass the rows `CurationDock` already has (it passes `oeuvres` to `ExportModal`), no new query. Theme/group `n/N` counts only if memberships are already in those rows, otherwise chips without counts.
+- Batch modify `Format` label is hardcoded (`label="Format"`) → move to i18n while rebuilding.
+- The mocks were not opened at 1280×800 by the design pass: check the fit on the first build screenshot, before polishing.
 Three surfaces, each redesigned as a whole, then built from the approved design:
 - **B1. Overview tab** — a one-glance dashboard: no scrolling, every block says OK or needs attention at a glance.
 - **B2. Batch modify dialog** — all fields visible at once, no dead space (mixing-desk rule).

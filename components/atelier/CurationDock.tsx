@@ -29,13 +29,17 @@ interface Props {
   onGoConstellation:  () => void
   onSaveGroup:        (name: string, ids: number[]) => Promise<string | null>
   onCompare:          () => void
+  /** Batch modify hides the fields the server keeps admin-only. */
+  isAdmin:            boolean
+  /** Theme ids per work (already loaded) — n/N counts on the batch theme chips. */
+  oeuvreThemeMap?:    Map<number, number[]>
 }
 
 export function CurationDock({
   selection, setSelection,
-  oeuvres, techniques, supports, formats, contacts, themes, groups, tM, sM, statusLabelMap,
+  oeuvres, techniques, supports, formats, themes, groups, tM, sM, statusLabelMap,
   addresses = [],
-  onGoConstellation, onSaveGroup, onCompare,
+  onGoConstellation, onSaveGroup, onCompare, isAdmin, oeuvreThemeMap,
 }: Props) {
   const { t } = useI18n()
   const [quickName, setQuickName] = useState('')
@@ -159,10 +163,13 @@ export function CurationDock({
       {showBatch && (
         <BatchEditModal
           ids={ids}
+          oeuvres={oeuvres}
+          themeIdsByWork={oeuvreThemeMap}
+          isAdmin={isAdmin}
+          tM={tM}
           techniques={techniques}
           supports={supports}
           formats={formats}
-          contacts={contacts}
           addresses={addresses}
           themes={themes}
           groups={groups}

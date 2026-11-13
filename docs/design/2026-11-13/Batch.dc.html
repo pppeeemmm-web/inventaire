@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Batch modify — desktop</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sofia+Sans:wght@400;500;600;700&amp;family=Instrument+Serif&amp;display=swap">
+<style>
+body{margin:0;background:#080809}
+a{color:#b4afa1;text-decoration:none}a:hover{color:#d4b886}
+input::placeholder,textarea::placeholder{color:#807c72;opacity:1}
+.gd{display:inline-block;flex:none;width:6px;height:6px;border-radius:50%;background:#d4b886}
+</style>
+</helmet>
+<div style="position: relative; width: 1440px; height: 900px; overflow: hidden; background: #080809; color: #f8f7f3; font-family: 'Sofia Sans', system-ui, sans-serif; font-size: 13px; line-height: 1.25; font-variant-numeric: tabular-nums">
+
+  <!-- Inventory behind, dimmed -->
+  <div aria-hidden="true" style="position: absolute; inset: 0; display: flex; flex-direction: column">
+    <div style="height: 44px; background: #101011; border-bottom: 1px solid #2d2d32"></div>
+    <sc-for list="{{bgRows}}" as="r" hint-placeholder-count="28">
+      <div style="height: 30px; display: grid; grid-template-columns: 40px 60px 260px 120px 160px 120px 1fr; gap: 12px; align-items: center; padding: 0 16px; border-bottom: 1px solid #19191b">
+        <span style="{{r.check}}"></span><span style="width: 40px; height: 22px; background: #2d2d32"></span><span style="height: 8px; width: 70%; background: #2d2d32"></span><span style="height: 8px; width: 50%; background: #2d2d32"></span><span style="height: 8px; width: 60%; background: #2d2d32"></span><span style="height: 8px; width: 40%; background: #2d2d32"></span><span></span>
+      </div>
+    </sc-for>
+  </div>
+  <div aria-hidden="true" style="position: absolute; inset: 0; background: rgba(0, 0, 0, 0.62)"></div>
+
+  <!-- Dialog -->
+  <section role="dialog" aria-labelledby="bm-title" style="position: absolute; left: 24px; top: 126px; width: 1392px; height: 648px; display: flex; flex-direction: column; background: #101011; border: 1px solid #3f3f46; border-radius: 4px; box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6); overflow: hidden">
+
+    <header style="flex: none; height: 52px; display: flex; align-items: center; gap: 14px; padding: 0 16px; border-bottom: 1px solid #2d2d32">
+      <h1 id="bm-title" style="margin: 0; font-family: 'Instrument Serif', serif; font-weight: 400; font-size: 26px">Modify 24 works</h1>
+      <span style="color: #b4afa1">Every field starts unchanged — only what you set is applied.</span>
+      <span style="flex: 1"></span>
+      <button type="button" style="height: 28px; padding: 0 10px; background: none; border: 1px solid #3f3f46; border-radius: 3px; color: #b4afa1; font: inherit; cursor: pointer">Reset all</button>
+      <button type="button" aria-label="Close" style="width: 28px; height: 28px; display: grid; place-items: center; background: none; border: 1px solid #3f3f46; border-radius: 3px; color: #b4afa1; cursor: pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+    </header>
+
+    <div style="flex: none; height: 40px; display: flex; align-items: center; gap: 4px; padding: 0 16px; background: #080809; border-bottom: 1px solid #2d2d32">
+      <sc-for list="{{thumbs}}" as="t" hint-placeholder-count="20">
+        <span role="img" aria-label="selected work" style="{{t.s}}"></span>
+      </sc-for>
+      <span style="margin-left: 4px; font-size: 12px; color: #b4afa1">+4</span>
+      <span style="flex: 1"></span>
+      <span style="font-size: 12px; color: #b4afa1">24 selected in Inventory · 3 techniques · 2009 – 2024 · 18 available, 6 on loan</span>
+    </div>
+
+    <div style="flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr 1fr">
+
+      <!-- Channel 1: identity, price, location -->
+      <div style="display: flex; flex-direction: column; border-right: 1px solid #2d2d32; min-width: 0">
+        <h2 style="margin: 0; height: 26px; display: flex; align-items: center; padding: 0 12px; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #b4afa1; background: #19191b; border-bottom: 1px solid #2d2d32">Identity</h2>
+
+        <div style="display: grid; grid-template-columns: 132px 1fr 22px; align-items: center; gap: 8px; height: 28px; padding: 0 12px; border-bottom: 1px solid #19191b; background: rgba(212, 184, 134, 0.07)">
+          <label for="b-status" style="display: flex; align-items: center; gap: 6px; color: #d4b886; font-weight: 600"><span class="gd" aria-hidden="true"></span>Status</label>
+          <button id="b-status" type="button" style="height: 22px; display: flex; align-items: center; justify-content: space-between; padding: 0 8px; background: #19191b; border: 1px solid #d4b886; border-radius: 2px; color: #f8f7f3; font: inherit; cursor: pointer">Available<span style="color: #d4b886">▾</span></button>
+          <button type="button" aria-label="Reset status to unchanged" style="width: 22px; height: 22px; display: grid; place-items: center; background: none; border: 0; color: #b4afa1; cursor: pointer">✕</button>
+        </div>
+        <div style="display: grid; grid-template-columns: 132px 1fr 22px; align-items: center; gap: 8px; height: 28px; padding: 0 12px; border-bottom: 1px solid #19191b">
+          <label for="b-year" style="color: #807c72">Year</label>
+          <input id="b-year" placeholder="—" style="height: 22px; box-sizing: border-box; padding: 0 8px; background: none; border: 1px solid #19191b; border-radius: 2px; color: #f8f7f3; font: inherit">
+          <span></span>
+        </div>
+        <div style="display: grid; grid-template-columns: 132px 1fr 22px; align-items: center; gap: 8px; height: 28px; padding: 0 12px; border-bottom: 1px solid #19191b">
+          <label for="b-title" style="color: #807c72">Title</label>
+          <input id="b-title" placeholder="— (same title on all 24)" style="height: 22px; box-sizing: border-box; padding: 0 8px; background: none; border: 1px solid #19191b; border-radius: 2px; color: #f8f7f3; font: inherit">
+          <span></span>
+        </div>
+        <div style="display: grid; grid-template-columns: 132px 1fr 22px; align-items: center; gap: 8px; height: 28px; padding: 0 12px; border-bottom: 1px solid #19191b">
+          <label for="b-tech" style="color: #807c72">Technique</label>
+          <button id="b-tech" type="button" style="height: 22px; display: flex; align-items: center; justify-content: space-between; padding: 0 8px; background: none; border: 1px solid #19191b; border-radius: 2px; color: #807c72; font: inherit; cursor: pointer">—<span>▾</span></button>
+          <span></span>
+        </div>
+        <div style="display: grid; grid-template-columns: 132px 1fr 22px; align-items: center; gap: 8px; height: 28px; padding: 0 12px; border-bottom: 1px solid #19191b">
+          <label for="b-support" style="color: #807c72">Support</label>
+          <button id="b-support" type="button" style="height: 22px; display: flex; align-items: center; justify-content: space-between; padding: 0 8px; background: none; border: 1px solid #19191b; border-radius: 2px; color: #807c72; font: inherit; cursor: pointer">—<span>▾</span></button>
+          <span></span>
+        </div>
+        <div style="display: grid; grid-template-columns: 132px 1fr 22px; align-items: center; gap: 8px; height: 28px; padding: 0 12px; border-bottom: 1px solid #19191b; background: rgba(212, 184, 134, 0.07)">
+          <span id="b-period" style="display: flex; align-items: center; gap: 6px; color: #d4b886; font-weight: 600"><span class="gd" aria-hidden="true"></span>Period</span>
+          <div role="group" aria-labelledby="b-period" style="display: grid; grid-template-columns: 0.8fr 1fr 0.8fr 1.3fr; height: 22px; border: 1px solid #3f3f46; border-radius: 2px; overflow: hidden; font-size: 12px">
+            <button type="button" style="background: none; border: 0; border-right: 1px solid #3f3f46; color: #807c72; font: inherit; cursor: pointer">—</button>
+            <button type="button" aria-pressed="true" style="background: #d4b886; border: 0; border-right: 1px solid #3f3f46; color: #101011; font: inherit; font-weight: 700; cursor: pointer">Automatic</button>
+            <button type="button" style="background: none; border: 0; border-right: 1px solid #3f3f46; color: #b4afa1; font: inherit; cursor: pointer">None</button>
+            <button type="button" style="background: none; border: 0; color: #b4afa1; font: inherit; cursor: pointer">Named ▾</button>
+          </div>
+          <button type="button" aria-label="Reset period to unchanged" style="width: 22px; height: 22px; display: grid; place-items: center; background: none; border: 0; color: #b4afa1; cursor: pointer">✕</button>
+        </div>
+        <div style="display: grid; grid-template-columns: 132px 1fr 22px; align-items: center; gap: 8px; height: 28px; padding: 0 12px; border-bottom: 1px solid #2d2d32">
+          <label for="b-place" style="color: #807c72">Place made</label>
+          <div style="display: flex; gap: 4px; min-width: 0">
+            <button id="b-place" type="button" style="flex: 1; height: 22px; display: flex; align-items: center; justify-content: space-between; padding: 0 8px; background: none; border: 1px solid #19191b; border-radius: 2px; color: #807c72; font: inherit; cursor: pointer">—<span>▾</span></button>
+            <button type="button" style="height: 22px; padding: 0 6px; background: none; border: 1px solid #3f3f46; border-radius: 2px; color: #b4afa1; font: inherit; font-size: 12px; cursor: pointer">+ New</button>
+          </div>
+          <span></span>
+        </div>
+
+        <h2 style="margin: 0; height: 26px; display: flex; align-items: center; gap: 8px; padding: 0 12px; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #b4afa1; background: #19191b; border-bottom: 1px solid #2d2d32">Price <span style="padding: 1px 5px; border: 1px solid #52525b; border-radius: 2px; font-size: 10px; letter-spacing: 0.06em; color: #b4afa1">🔒 Admin</span></h2>
+        <div style="display: grid; grid-template-columns: 132px 1fr 22px; align-items: center; gap: 8px; height: 28px; padding: 0 12px; border-bottom: 1px solid #19191b">
+          <label for="b-price" style="color: #807c72">Price (€)</label>
+          <input id="b-price" placeholder="—" style="height: 22px; box-sizing: border-box; padding: 0 8px; background: none; border: 1px solid #19191b; border-radius: 2px; color: #f8f7f3; font: inherit">
+          <span></span>
+        </div>
+        <div style="display: grid; grid-template-columns: 132px 1fr 22px; align-items: center; gap: 8px; height: 28px; padding: 0 12px; border-bottom: 1px solid #19191b">
+          <label for="b-disc" style="color: #807c72">Discount (%)</label>
+          <input id="b-disc" placeholder="—" style="height: 22px; box-sizing: border-box; padding: 0 8px; background: none; border: 1px solid #19191b; border-radius: 2px; color: #f8f7f3; font: inherit">
+          <span></span>
+        </div>
+        <div style="display: grid; grid-template-columns: 132px 1fr 22px; align-items: center; gap: 8px; height: 28px; padding: 0 12px; border-bottom: 1px solid #2d2d32">
+          <label for="b-comm" style="color: #807c72">Commission (%)</label>
+          <input id="b-comm" placeholder="—" style="height: 22px; box-sizing: border-box; padding: 0 8px; background: none; border: 1px solid #19191b; border-radius: 2px; color: #f8f7f3; font: inherit">
+          <span></span>
+        </div>
+
+        <h2 style="margin: 0; height: 26px; display: flex; align-items: center; padding: 0 12px; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #b4afa1; background: #19191b; border-bottom: 1px solid #2d2d32">Location</h2>
+        <div style="display: grid; grid-template-columns: 132px 1fr 22px; align-items: center; gap: 8px; height: 28px; padding: 0 12px; border-bottom: 1px solid #19191b; background: rgba(212, 184, 134, 0.07)">
+          <label for="b-loc" style="display: flex; align-items: center; gap: 6px; color: #d4b886; font-weight: 600"><span class="gd" aria-hidden="true"></span>Location detail</label>
+          <input id="b-loc" value="Rack B · shelf 3" style="height: 22px; box-sizing: border-box; padding: 0 8px; background: #19191b; border: 1px solid #d4b886; border-radius: 2px; color: #f8f7f3; font: inherit">
+          <button type="button" aria-label="Reset location detail to unchanged" style="width: 22px; height: 22px; display: grid; place-items: center; background: none; border: 0; color: #b4afa1; cursor: pointer">✕</button>
+        </div>
+        <div style="display: grid; grid-template-columns: 132px 1fr 22px; align-items: start; gap: 8px; padding: 4px 12px; border-bottom: 1px solid #19191b">
+          <label for="b-locn" style="padding-top: 4px; color: #807c72">Location notes</label>
+          <textarea id="b-locn" rows="2" placeholder="—" style="height: 40px; box-sizing: border-box; padding: 4px 8px; background: none; border: 1px solid #19191b; border-radius: 2px; color: #f8f7f3; font: inherit; resize: none"></textarea>
+          <span></span>
+        </div>
+        <div style="display: grid; grid-template-columns: 132px 1fr 22px; align-items: center; gap: 8px; height: 28px; padding: 0 12px">
+          <label for="b-pem" style="color: #807c72">Pem address</label>
+          <button id="b-pem" type="button" style="height: 22px; display: flex; align-items: center; justify-content: space-between; padding: 0 8px; background: none; border: 1px solid #19191b; border-radius: 2px; color: #807c72; font: inherit; cursor: pointer">—<span>▾</span></button>
+          <button type="button" aria-label="Help: Pem address" style="width: 22px; height: 22px; display: grid; place-items: center; background: none; border: 1px solid #3f3f46; border-radius: 50%; color: #b4afa1; font: inherit; font-size: 11px; cursor: pointer">?</button>
+        </div>
+        <p style="margin: 0; padding: 0 12px 6px 152px; font-size: 11px; color: #807c72">[Help text] — the address where Pem holds the work when Pem is the custodian.</p>
+      </div>
+
+      <!-- Channel 2: flags matrix, groups, note -->
+      <div style="display: flex; flex-direction: column; border-right: 1px solid #2d2d32; min-width: 0">
+        <div style="height: 26px; display: grid; grid-template-columns: 1fr 52px 52px 52px; align-items: center; gap: 0; padding: 0 12px; background: #19191b; border-bottom: 1px solid #2d2d32; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #b4afa1">
+          <h2 style="margin: 0; font: inherit">Flags</h2>
+          <span style="text-align: center">—</span><span style="text-align: center">Yes</span><span style="text-align: center">No</span>
+        </div>
+        <sc-for list="{{flags}}" as="f" hint-placeholder-count="8">
+          <div role="radiogroup" aria-label="{{f.label}}" style="{{f.row}}">
+            <span style="{{f.lab}}"><sc-if value="{{f.changed}}" hint-placeholder-val="{{false}}"><span class="gd" aria-hidden="true"></span></sc-if>{{f.label}}<sc-if value="{{f.admin}}" hint-placeholder-val="{{false}}"><span style="font-size: 10px; color: #807c72">🔒</span></sc-if></span>
+            <button type="button" role="radio" aria-checked="{{f.u}}" aria-label="unchanged" style="{{f.su}}">—</button>
+            <button type="button" role="radio" aria-checked="{{f.y}}" style="{{f.sy}}">Yes</button>
+            <button type="button" role="radio" aria-checked="{{f.n}}" style="{{f.sn}}">No</button>
+          </div>
+        </sc-for>
+
+        <h2 style="margin: 0; height: 26px; display: flex; align-items: center; gap: 6px; padding: 0 12px; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #d4b886; background: #19191b; border-top: 1px solid #2d2d32; border-bottom: 1px solid #2d2d32"><span class="gd" aria-hidden="true"></span><label for="b-note" style="font: inherit">Note to append</label></h2>
+        <div style="flex: 1; display: flex; flex-direction: column; gap: 6px; padding: 8px 12px; background: rgba(212, 184, 134, 0.05)">
+          <textarea id="b-note" style="height: 52px; box-sizing: border-box; padding: 6px 8px; background: #19191b; border: 1px solid #d4b886; border-radius: 2px; color: #f8f7f3; font: inherit; resize: none">Frames checked before the open studio.</textarea>
+          <div style="display: flex; flex-direction: column; gap: 2px; padding: 6px 8px; border: 1px dashed #3f3f46; border-radius: 2px; font-size: 12px">
+            <span style="color: #807c72">Each of the 24 works gets a new line:</span>
+            <span><b style="color: #d4b886">13/11/2026</b> — Frames checked before the open studio.</span>
+            <span style="color: #807c72">Existing notes are kept, never overwritten.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Channel 3: themes -->
+      <div style="display: flex; flex-direction: column; min-width: 0; background: rgba(212, 184, 134, 0.03)">
+        <h2 style="margin: 0; height: 26px; display: flex; align-items: center; gap: 6px; padding: 0 12px; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #d4b886; background: #19191b; border-bottom: 1px solid #2d2d32"><span class="gd" aria-hidden="true"></span>Themes <span style="font-weight: 500; letter-spacing: 0; text-transform: none; color: #b4afa1">+2 added · −1 removed</span></h2>
+        <div style="display: flex; gap: 6px; padding: 8px 12px; border-bottom: 1px solid #19191b">
+          <label for="b-themes" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Search themes</label>
+          <input id="b-themes" placeholder="Search themes…" style="flex: 1; height: 26px; box-sizing: border-box; padding: 0 8px; background: #080809; border: 1px solid #3f3f46; border-radius: 2px; color: #f8f7f3; font: inherit">
+          <button type="button" style="height: 26px; padding: 0 10px; background: none; border: 1px solid #3f3f46; border-radius: 2px; color: #b4afa1; font: inherit; cursor: pointer">+ New theme</button>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; padding: 6px 12px; font-size: 11px; color: #807c72; border-bottom: 1px solid #19191b">
+          <span>Click: add to all · again: remove from all · again: unchanged</span>
+          <span style="flex: 1"></span><span>n/24 = works that have it now</span>
+        </div>
+        <div style="flex: 1; min-height: 0; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 5px; padding: 10px 12px">
+          <sc-for list="{{themes}}" as="t" hint-placeholder-count="30">
+            <button type="button" aria-label="{{t.aria}}" style="{{t.s}}">{{t.sign}}{{t.name}} <span style="{{t.cs}}">{{t.c}}</span></button>
+          </sc-for>
+        </div>
+
+        <h2 style="margin: 0; flex: none; height: 26px; display: flex; align-items: center; gap: 6px; padding: 0 12px; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #d4b886; background: #19191b; border-top: 1px solid #2d2d32; border-bottom: 1px solid #2d2d32"><span class="gd" aria-hidden="true"></span>Working groups <span style="font-weight: 500; letter-spacing: 0; text-transform: none; color: #b4afa1">+1 added</span><span style="flex: 1"></span><button type="button" style="height: 20px; padding: 0 8px; background: none; border: 1px solid #3f3f46; border-radius: 2px; color: #b4afa1; font: inherit; font-size: 11px; font-weight: 500; letter-spacing: 0; text-transform: none; cursor: pointer">+ New group</button></h2>
+        <div style="flex: none; display: flex; flex-wrap: wrap; gap: 5px; padding: 8px 12px 10px">
+          <button type="button" aria-label="[Group A], will be added to all" style="height: 26px; padding: 0 9px; background: #d4b886; border: 1px solid #d4b886; border-radius: 13px; color: #101011; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer">+ [Group A] <span style="font-size: 11px; color: #3a3020">5→24</span></button>
+          <button type="button" aria-label="[Group B], unchanged" style="height: 26px; padding: 0 9px; background: none; border: 1px solid #2d2d32; border-radius: 13px; color: #807c72; font: inherit; font-size: 12px; cursor: pointer">[Group B] <span style="font-size: 11px">0/24</span></button>
+          <button type="button" aria-label="[Group C], unchanged" style="height: 26px; padding: 0 9px; background: none; border: 1px solid #3f3f46; border-radius: 13px; color: #b4afa1; font: inherit; font-size: 12px; cursor: pointer">[Group C] <span style="font-size: 11px; color: #807c72">12/24</span></button>
+          <button type="button" aria-label="[Group D], unchanged" style="height: 26px; padding: 0 9px; background: none; border: 1px solid #3f3f46; border-radius: 13px; color: #b4afa1; font: inherit; font-size: 12px; cursor: pointer">[Group D] <span style="font-size: 11px; color: #807c72">24/24</span></button>
+          <button type="button" aria-label="[Group E], unchanged" style="height: 26px; padding: 0 9px; background: none; border: 1px solid #2d2d32; border-radius: 13px; color: #807c72; font: inherit; font-size: 12px; cursor: pointer">[Group E] <span style="font-size: 11px">0/24</span></button>
+        </div>
+      </div>
+    </div>
+
+    <footer style="flex: none; height: 56px; display: flex; align-items: center; gap: 8px; padding: 0 16px; border-top: 1px solid #3f3f46; background: #19191b">
+      <b style="font-size: 15px; color: #d4b886">8</b><span style="color: #b4afa1; margin-right: 6px">fields will change:</span>
+      <span style="display: flex; gap: 4px; flex-wrap: nowrap; overflow: hidden; min-width: 0">
+        <sc-for list="{{changes}}" as="c" hint-placeholder-count="8">
+          <span style="flex: none; height: 22px; display: flex; align-items: center; padding: 0 7px; background: rgba(212, 184, 134, 0.12); border: 1px solid rgba(212, 184, 134, 0.45); border-radius: 2px; font-size: 12px; white-space: nowrap">{{c}}</span>
+        </sc-for>
+      </span>
+      <span style="flex: 1"></span>
+      <button type="button" style="flex: none; height: 34px; padding: 0 16px; background: none; border: 1px solid #3f3f46; border-radius: 3px; color: #f8f7f3; font: inherit; cursor: pointer">Cancel</button>
+      <button type="button" style="flex: none; height: 34px; padding: 0 18px; background: #d4b886; border: 0; border-radius: 3px; color: #101011; font: inherit; font-weight: 700; cursor: pointer">Apply to 24 works</button>
+    </footer>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var bgRows = [];
+    for (var i = 0; i < 28; i++) {
+      bgRows.push({ check: 'width:14px;height:14px;border:1px solid #52525b;' + (i % 3 !== 1 ? 'background:#d4b886;' : '') });
+    }
+    var tones = ['#3d4b57', '#6b5a48', '#55603f', '#7a5f4d', '#40465a', '#8a7c5c', '#5a4a52', '#4b5a55'];
+    var thumbs = [];
+    for (var k = 0; k < 20; k++) {
+      thumbs.push({ s: 'display:block;flex:none;width:24px;height:28px;background:' + tones[k % tones.length] });
+    }
+    var flagDefs = [
+      ['Framed', 'y', false], ['Mounted', 'u', false], ['Paid', 'u', true], ['Gift', 'u', true],
+      ['Catalogued', 'u', false], ['Exhibitable', 'y', false], ['Needs photo', 'u', false], ['Ready to broadcast', 'u', false]
+    ];
+    var segBase = 'height:22px;margin:0 2px;border-radius:2px;font:inherit;font-size:12px;cursor:pointer;';
+    var flags = flagDefs.map(function (f) {
+      var v = f[1];
+      var changed = v !== 'u';
+      function seg(key) {
+        var on = v === key;
+        if (key === 'u') return segBase + (on ? 'background:#2d2d32;border:1px solid #3f3f46;color:#b4afa1;' : 'background:none;border:1px solid #19191b;color:#807c72;');
+        return segBase + (on ? 'background:#d4b886;border:1px solid #d4b886;color:#101011;font-weight:700;' : 'background:none;border:1px solid #2d2d32;color:#b4afa1;');
+      }
+      return {
+        label: f[0], admin: f[2], changed: changed,
+        u: v === 'u' ? 'true' : 'false', y: v === 'y' ? 'true' : 'false', n: v === 'n' ? 'true' : 'false',
+        su: seg('u'), sy: seg('y'), sn: seg('n'),
+        row: 'display:grid;grid-template-columns:1fr 52px 52px 52px;align-items:center;height:28px;padding:0 12px;border-bottom:1px solid #19191b;' + (changed ? 'background:rgba(212,184,134,0.07);' : ''),
+        lab: 'display:flex;align-items:center;gap:6px;' + (changed ? 'color:#d4b886;font-weight:600;' : 'color:#807c72;')
+      };
+    });
+    var names = ['Landscape', 'River', 'Portrait', 'Sea', 'Garden', 'Trees', 'Night', 'Sky', 'Still life', 'Flowers', 'Interiors', 'Studio', 'Figures', 'Nude', 'Animals', 'City', 'Bridges', 'Boats', 'Winter', 'Rain', 'Abstraction', 'Light', 'Shadows', 'Travel', 'Mountains', 'Fields', 'Windows', 'Music', 'Dance', 'Family', 'Dawn', 'Harbour', 'Market', 'Self-portrait'];
+    var counts = [9, 0, 6, 14, 3, 7, 2, 11, 0, 4, 1, 5, 8, 0, 2, 3, 6, 4, 0, 1, 2, 12, 3, 0, 5, 7, 1, 0, 0, 2, 4, 3, 1, 0];
+    var themes = names.map(function (n, i) {
+      var state = i < 2 ? 'add' : (i === 2 ? 'rm' : 'u');
+      var c = counts[i];
+      var s = 'height:26px;padding:0 9px;border-radius:13px;font:inherit;font-size:12px;cursor:pointer;';
+      var cs = 'font-size:11px;';
+      if (state === 'add') { s += 'background:#d4b886;border:1px solid #d4b886;color:#101011;font-weight:700;'; cs += 'color:#3a3020;'; }
+      else if (state === 'rm') { s += 'background:rgba(238,122,82,0.12);border:1px solid #ee7a52;color:#f8f7f3;text-decoration:line-through;'; cs += 'color:#ee7a52;'; }
+      else { s += 'background:none;border:1px solid ' + (c > 0 ? '#3f3f46' : '#2d2d32') + ';color:' + (c > 0 ? '#b4afa1' : '#807c72') + ';'; cs += 'color:#807c72;'; }
+      return {
+        name: n, s: s, cs: cs,
+        sign: state === 'add' ? '+ ' : (state === 'rm' ? '− ' : ''),
+        c: state === 'add' ? (c + '→24') : (state === 'rm' ? (c + '→0') : (c + '/24')),
+        aria: n + (state === 'add' ? ', will be added to all' : state === 'rm' ? ', will be removed from all' : ', unchanged')
+      };
+    });
+    var changes = ['Status → Available', 'Period → Automatic', 'Location → Rack B · shelf 3', 'Framed → Yes', 'Exhibitable → Yes', 'Themes +2 −1', 'Groups +1', 'Note appended'];
+    return { bgRows: bgRows, thumbs: thumbs, flags: flags, themes: themes, changes: changes };
+  }
+}
+</script>
+</body>
+</html>

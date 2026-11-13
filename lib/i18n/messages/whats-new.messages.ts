@@ -8,6 +8,13 @@ export const whatsNewMessages = defineMessages({
     en: 'What changed in the Atelier over the last few days.',
   },
 
+  // 3.1.5 (2026-11-13) — batch modify rebuilt from the design pass (B2).
+  wn_batch_modify_mixer_t: { fr: 'Modification en lot : tout d’un coup d’œil', en: 'Batch modify: everything at a glance' },
+  wn_batch_modify_mixer_d: {
+    fr: 'La fenêtre a été redessinée comme une table de mixage : tous les champs visibles sans défiler, en trois colonnes (identité · prix · emplacement / attributs · note / thèmes · groupes). Un champ inchangé reste gris ; un champ qui va changer passe en doré, avec ✕ pour l’annuler. En bas, le nombre de champs qui vont changer et leur liste. Attributs en grille — / Oui / Non. Thèmes : n/N indique combien d’œuvres de la sélection l’ont déjà. Nouveau groupe directement depuis la fenêtre. Sur téléphone, une colonne et la barre Appliquer reste en bas.',
+    en: 'The window was redrawn like a mixing desk: every field visible without scrolling, in three columns (identity · price · location / flags · note / themes · groups). An unchanged field stays grey; a field that will change turns gold, with ✕ to undo it. At the bottom, how many fields will change and which. Flags in a — / Yes / No grid. Themes: n/N shows how many works in the selection already have it. New group right from the window. On the phone, one column and the Apply bar stays at the bottom.',
+  },
+
   // 3.1.4 (2026-11-13) — inventory table tidy + overview thumbnails.
   wn_inventory_table_tidy_t: { fr: 'Inventaire : un tableau qui tient', en: 'Inventory: a table that fits' },
   wn_inventory_table_tidy_d: {

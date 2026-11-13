@@ -1648,6 +1648,8 @@ export function TeamPortalClient({
             addresses={curationAddresses}
             onSaveGroup={handleSaveGroup}
             onCompare={() => setShowCompare(true)}
+            isAdmin={isAdmin}
+            oeuvreThemeMap={oeuvreThemeMap}
           />
         </BottomStackLayer>
 

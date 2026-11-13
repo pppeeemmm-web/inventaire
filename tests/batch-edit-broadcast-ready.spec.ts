@@ -18,10 +18,12 @@ test.describe('Batch edit broadcast-ready', () => {
 
     const tri = page.getByTestId('batch-broadcast-ready-tri')
     await expect(tri).toBeVisible({ timeout: 15_000 })
-    await expect(tri).toContainText('—')
+    // Flags matrix (B2 2026-11-13): — / Yes / No segments; starts on "—" (unchanged).
+    await expect(tri.getByRole('radio', { name: '—' })).toHaveAttribute('aria-checked', 'true')
 
-    await tri.click()
-    await expect(tri).not.toContainText('—')
+    const yes = tri.getByRole('radio', { name: /Oui|Yes/ })
+    await yes.click()
+    await expect(yes).toHaveAttribute('aria-checked', 'true')
 
     await page.getByRole('button', { name: /Annuler|Cancel/i }).click()
     await expect(tri).toHaveCount(0)

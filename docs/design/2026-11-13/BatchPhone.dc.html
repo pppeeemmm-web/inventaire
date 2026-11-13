@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Batch modify — phone</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sofia+Sans:wght@400;500;600;700&amp;family=Instrument+Serif&amp;display=swap">
+<style>
+body{margin:0;background:#080809}
+input::placeholder,textarea::placeholder{color:#807c72;opacity:1}
+.gd{display:inline-block;flex:none;width:7px;height:7px;border-radius:50%;background:#d4b886}
+</style>
+</helmet>
+<div style="position: relative; width: 390px; height: 1720px; overflow: hidden; display: flex; flex-direction: column; background: #101011; color: #f8f7f3; font-family: 'Sofia Sans', system-ui, sans-serif; font-size: 15px; line-height: 1.25; font-variant-numeric: tabular-nums">
+
+  <header style="flex: none; height: 56px; display: flex; align-items: center; gap: 10px; padding: 0 8px 0 16px; background: #101011; border-bottom: 1px solid #3f3f46">
+    <h1 style="margin: 0; flex: 1; font-family: 'Instrument Serif', serif; font-weight: 400; font-size: 24px">Modify 24 works</h1>
+    <button type="button" style="height: 44px; padding: 0 10px; background: none; border: 0; color: #b4afa1; font: inherit; font-size: 14px; cursor: pointer">Reset</button>
+    <button type="button" aria-label="Close" style="width: 44px; height: 44px; display: grid; place-items: center; background: none; border: 0; color: #b4afa1; cursor: pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+  </header>
+
+  <sc-for list="{{sections}}" as="sec" hint-placeholder-count="3">
+    <h2 style="margin: 0; flex: none; height: 28px; display: flex; align-items: center; gap: 8px; padding: 0 16px; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #b4afa1; background: #19191b; border-bottom: 1px solid #2d2d32">{{sec.title}}<sc-if value="{{sec.admin}}" hint-placeholder-val="{{false}}"><span style="font-size: 10px; letter-spacing: 0.04em; color: #807c72">🔒 ADMIN</span></sc-if></h2>
+    <sc-for list="{{sec.rows}}" as="r" hint-placeholder-count="4">
+      <div style="{{r.row}}">
+        <span style="{{r.lab}}"><sc-if value="{{r.changed}}" hint-placeholder-val="{{false}}"><span class="gd" aria-hidden="true"></span></sc-if>{{r.label}}</span>
+        <sc-if value="{{r.isFlag}}" hint-placeholder-val="{{false}}">
+          <span role="radiogroup" aria-label="{{r.label}}" style="display: grid; grid-template-columns: repeat(3, 44px); gap: 3px">
+            <button type="button" role="radio" aria-checked="{{r.u}}" aria-label="unchanged" style="{{r.su}}">—</button>
+            <button type="button" role="radio" aria-checked="{{r.y}}" style="{{r.sy}}">Yes</button>
+            <button type="button" role="radio" aria-checked="{{r.n}}" style="{{r.sn}}">No</button>
+          </span>
+        </sc-if>
+        <sc-if value="{{r.isField}}" hint-placeholder-val="{{true}}">
+          <button type="button" style="{{r.ctl}}">{{r.value}}</button>
+        </sc-if>
+      </div>
+    </sc-for>
+  </sc-for>
+
+  <h2 style="margin: 0; flex: none; height: 28px; display: flex; align-items: center; gap: 8px; padding: 0 16px; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #d4b886; background: #19191b; border-bottom: 1px solid #2d2d32"><span class="gd" aria-hidden="true"></span>Themes <span style="letter-spacing: 0; text-transform: none; font-weight: 500; color: #b4afa1">+2 −1</span></h2>
+  <div style="flex: none; display: flex; flex-direction: column; gap: 8px; padding: 8px 16px 10px; border-bottom: 1px solid #2d2d32">
+    <div style="display: flex; gap: 6px">
+      <label for="p-themes" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Search themes</label>
+      <input id="p-themes" placeholder="Search themes…" style="flex: 1; height: 44px; box-sizing: border-box; padding: 0 10px; background: #080809; border: 1px solid #3f3f46; border-radius: 3px; color: #f8f7f3; font: inherit">
+      <button type="button" style="height: 44px; padding: 0 12px; background: none; border: 1px solid #3f3f46; border-radius: 3px; color: #b4afa1; font: inherit; font-size: 14px; cursor: pointer">+ New</button>
+    </div>
+    <div style="display: flex; flex-wrap: wrap; gap: 6px">
+      <button type="button" style="height: 36px; padding: 0 12px; background: #d4b886; border: 1px solid #d4b886; border-radius: 18px; color: #101011; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer">+ Landscape</button>
+      <button type="button" style="height: 36px; padding: 0 12px; background: #d4b886; border: 1px solid #d4b886; border-radius: 18px; color: #101011; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer">+ River</button>
+      <button type="button" style="height: 36px; padding: 0 12px; background: rgba(238, 122, 82, 0.12); border: 1px solid #ee7a52; border-radius: 18px; color: #f8f7f3; font: inherit; font-size: 14px; text-decoration: line-through; cursor: pointer">− Portrait</button>
+      <button type="button" style="height: 36px; padding: 0 12px; background: none; border: 1px solid #3f3f46; border-radius: 18px; color: #b4afa1; font: inherit; font-size: 14px; cursor: pointer">Sea 14/24</button>
+      <button type="button" style="height: 36px; padding: 0 12px; background: none; border: 1px solid #3f3f46; border-radius: 18px; color: #b4afa1; font: inherit; font-size: 14px; cursor: pointer">Light 12/24</button>
+      <button type="button" style="height: 36px; padding: 0 12px; background: none; border: 1px solid #3f3f46; border-radius: 18px; color: #b4afa1; font: inherit; font-size: 14px; cursor: pointer">Sky 11/24</button>
+      <button type="button" style="height: 36px; padding: 0 12px; background: none; border: 1px solid #3f3f46; border-radius: 18px; color: #b4afa1; font: inherit; font-size: 14px; cursor: pointer">Figures 8/24</button>
+      <button type="button" style="height: 36px; padding: 0 12px; background: none; border: 1px dashed #3f3f46; border-radius: 18px; color: #b4afa1; font: inherit; font-size: 14px; cursor: pointer">All themes…</button>
+    </div>
+  </div>
+
+  <h2 style="margin: 0; flex: none; height: 28px; display: flex; align-items: center; padding: 0 16px; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #b4afa1; background: #19191b; border-bottom: 1px solid #2d2d32">Working groups</h2>
+  <div style="flex: none; display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 16px 10px; border-bottom: 1px solid #2d2d32">
+    <button type="button" style="height: 36px; padding: 0 12px; background: none; border: 1px solid #3f3f46; border-radius: 18px; color: #b4afa1; font: inherit; font-size: 14px; cursor: pointer">[Group A] 5/24</button>
+    <button type="button" style="height: 36px; padding: 0 12px; background: none; border: 1px solid #3f3f46; border-radius: 18px; color: #b4afa1; font: inherit; font-size: 14px; cursor: pointer">[Group C] 12/24</button>
+    <button type="button" style="height: 36px; padding: 0 12px; background: none; border: 1px dashed #3f3f46; border-radius: 18px; color: #b4afa1; font: inherit; font-size: 14px; cursor: pointer">More…</button>
+  </div>
+
+  <h2 style="margin: 0; flex: none; height: 28px; display: flex; align-items: center; gap: 8px; padding: 0 16px; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #d4b886; background: #19191b; border-bottom: 1px solid #2d2d32"><span class="gd" aria-hidden="true"></span><label for="p-note" style="font: inherit">Note to append</label></h2>
+  <div style="flex: none; display: flex; flex-direction: column; gap: 6px; padding: 8px 16px 12px; background: rgba(212, 184, 134, 0.05)">
+    <textarea id="p-note" style="height: 64px; box-sizing: border-box; padding: 8px 10px; background: #19191b; border: 1px solid #d4b886; border-radius: 3px; color: #f8f7f3; font: inherit; resize: none">Frames checked before the open studio.</textarea>
+    <span style="font-size: 13px; color: #b4afa1">Adds <b style="color: #d4b886">13/11/2026</b> — … to each work. Never overwrites.</span>
+  </div>
+
+  <div style="flex: 1"></div>
+
+  <!-- Sticky Apply bar -->
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; gap: 8px; padding: 10px 16px max(14px, env(safe-area-inset-bottom)); background: #19191b; border-top: 1px solid #3f3f46; box-shadow: 0 -12px 24px rgba(0, 0, 0, 0.45)">
+    <span style="font-size: 13px; color: #b4afa1"><b style="color: #d4b886">7</b> fields will change · Status, Period, Location, Framed, Exhibitable, Themes, Note</span>
+    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 8px">
+      <button type="button" style="height: 48px; background: none; border: 1px solid #3f3f46; border-radius: 4px; color: #f8f7f3; font: inherit; cursor: pointer">Cancel</button>
+      <button type="button" style="height: 48px; background: #d4b886; border: 0; border-radius: 4px; color: #101011; font: inherit; font-weight: 700; cursor: pointer">Apply to 24 works</button>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1720}}'>
+class Component extends DCLogic {
+  renderVals() {
+    function field(label, value, changed) {
+      return {
+        label: label, value: changed ? value + '  ▾' : (value || '—'), changed: changed, isField: true, isFlag: false,
+        row: 'flex:none;height:46px;display:grid;grid-template-columns:140px 1fr;align-items:center;gap:10px;padding:0 16px;border-bottom:1px solid #19191b;' + (changed ? 'background:rgba(212,184,134,0.07);' : ''),
+        lab: 'display:flex;align-items:center;gap:6px;font-size:14px;' + (changed ? 'color:#d4b886;font-weight:600;' : 'color:#807c72;'),
+        ctl: 'height:36px;min-width:0;text-align:left;padding:0 10px;border-radius:3px;font:inherit;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;' + (changed ? 'background:#19191b;border:1px solid #d4b886;color:#f8f7f3;' : 'background:none;border:1px solid #19191b;color:#807c72;')
+      };
+    }
+    function flag(label, v) {
+      var changed = v !== 'u';
+      var base = 'height:36px;border-radius:3px;font:inherit;font-size:14px;cursor:pointer;';
+      function seg(key) {
+        var on = v === key;
+        if (key === 'u') return base + (on ? 'background:#2d2d32;border:1px solid #3f3f46;color:#b4afa1;' : 'background:none;border:1px solid #19191b;color:#807c72;');
+        return base + (on ? 'background:#d4b886;border:1px solid #d4b886;color:#101011;font-weight:700;' : 'background:none;border:1px solid #2d2d32;color:#b4afa1;');
+      }
+      return {
+        label: label, changed: changed, isFlag: true, isField: false,
+        u: v === 'u' ? 'true' : 'false', y: v === 'y' ? 'true' : 'false', n: v === 'n' ? 'true' : 'false',
+        su: seg('u'), sy: seg('y'), sn: seg('n'),
+        row: 'flex:none;height:46px;display:grid;grid-template-columns:1fr auto;align-items:center;gap:10px;padding:0 16px;border-bottom:1px solid #19191b;' + (changed ? 'background:rgba(212,184,134,0.07);' : ''),
+        lab: 'display:flex;align-items:center;gap:6px;font-size:14px;' + (changed ? 'color:#d4b886;font-weight:600;' : 'color:#807c72;')
+      };
+    }
+    var sections = [
+      { title: 'Identity', admin: false, rows: [
+        field('Status', 'Available', true), field('Year', '', false), field('Title', '', false),
+        field('Technique', '', false), field('Support', '', false), field('Period', 'Automatic', true), field('Place made', '', false)
+      ] },
+      { title: 'Price', admin: true, rows: [field('Price (€)', '', false), field('Discount (%)', '', false), field('Commission (%)', '', false)] },
+      { title: 'Flags', admin: false, rows: [
+        flag('Framed', 'y'), flag('Mounted', 'u'), flag('Paid', 'u'), flag('Gift', 'u'),
+        flag('Catalogued', 'u'), flag('Exhibitable', 'y'), flag('Needs photo', 'u'), flag('Ready to broadcast', 'u')
+      ] },
+      { title: 'Location', admin: false, rows: [field('Location detail', 'Rack B · shelf 3', true), field('Location notes', '', false), field('Pem address', '', false)] }
+    ];
+    return { sections: sections };
+  }
+}
+</script>
+</body>
+</html>

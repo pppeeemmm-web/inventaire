@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Export — desktop</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sofia+Sans:wght@400;500;600;700&amp;family=Instrument+Serif:ital@0;1&amp;display=swap">
+<style>
+body{margin:0;background:#080809}
+a{color:#b4afa1;text-decoration:none}a:hover{color:#d4b886}
+input::placeholder{color:#807c72;opacity:1}
+</style>
+</helmet>
+<div style="width: 1440px; height: 900px; display: flex; flex-direction: column; overflow: hidden; background: #101011; color: #f8f7f3; font-family: 'Sofia Sans', system-ui, sans-serif; font-size: 13px; line-height: 1.25; font-variant-numeric: tabular-nums">
+
+  <!-- Top bar -->
+  <header style="flex: none; height: 52px; display: flex; align-items: center; gap: 16px; padding: 0 16px; border-bottom: 1px solid #2d2d32">
+    <h1 style="margin: 0; font-family: 'Instrument Serif', serif; font-weight: 400; font-size: 26px">Export 24 works</h1>
+    <div role="tablist" aria-label="Export type" style="display: flex; height: 32px; border: 1px solid #3f3f46; border-radius: 3px; overflow: hidden">
+      <sc-for list="{{tabs}}" as="t" hint-placeholder-count="4">
+        <button type="button" role="tab" aria-selected="{{t.sel}}" onClick="{{t.pick}}" style="{{t.s}}">{{t.label}}</button>
+      </sc-for>
+    </div>
+    <span style="flex: 1"></span>
+    <label for="x-src" style="font-size: 12px; color: #b4afa1">Preview with</label>
+    <button id="x-src" type="button" style="height: 30px; padding: 0 10px; display: flex; align-items: center; gap: 8px; background: none; border: 1px solid #3f3f46; border-radius: 3px; color: #f8f7f3; font: inherit; cursor: pointer">My 24 works <span style="color: #807c72">▾</span></button>
+    <button type="button" style="height: 34px; padding: 0 14px; background: none; border: 1px solid #3f3f46; border-radius: 3px; color: #f8f7f3; font: inherit; cursor: pointer">Cancel</button>
+    <button type="button" style="height: 34px; padding: 0 16px; background: #d4b886; border: 0; border-radius: 3px; color: #101011; font: inherit; font-weight: 700; cursor: pointer">{{primary}}</button>
+  </header>
+
+  <div style="flex: 1; min-height: 0; display: grid; grid-template-columns: 132px 1fr 320px">
+
+    <!-- Pages panel -->
+    <nav aria-label="Pages" style="display: flex; flex-direction: column; min-height: 0; background: #101011; border-right: 1px solid #2d2d32">
+      <div style="flex: none; height: 28px; display: flex; align-items: center; padding: 0 10px; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #b4afa1; border-bottom: 1px solid #2d2d32">{{pagesTitle}}</div>
+      <div style="flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 10px 0">
+        <sc-for list="{{pages}}" as="p" hint-placeholder-count="5">
+          <button type="button" aria-label="{{p.aria}}" style="{{p.btn}}">
+            <span style="{{p.page}}"><span style="{{p.img}}"></span><span style="{{p.line}}"></span></span>
+            <span style="font-size: 11px; color: #b4afa1">{{p.n}}</span>
+          </button>
+        </sc-for>
+      </div>
+    </nav>
+
+    <!-- Preview -->
+    <section aria-label="Live preview" style="display: flex; flex-direction: column; min-width: 0; min-height: 0; background: #19191b">
+      <div style="flex: 1; min-height: 0; display: grid; place-items: center; overflow: hidden">
+
+        <sc-if value="{{isP}}" hint-placeholder-val="{{true}}">
+          <div style="width: 523px; height: 740px; box-sizing: border-box; padding: 44px 40px 28px; display: flex; flex-direction: column; background: #fbfaf7; color: #1a1a1a; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5)">
+            <div style="flex: none; height: 476px; display: grid; place-items: center; background: #f1efe9">
+              <div role="img" aria-label="Sample work image, contained" style="width: 380px; height: 476px; background: #3d4b57"></div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 4px; padding-top: 22px">
+              <span style="font-family: 'Instrument Serif', serif; font-style: italic; font-size: 24px">[Title]</span>
+              <span style="font-size: 12px; color: #4a4a4a">2014 · oil on canvas · 81 × 65 cm</span>
+              <span style="font-size: 11px; color: #737373">PEM-0412</span>
+            </div>
+            <span style="flex: 1"></span>
+            <div style="display: flex; justify-content: space-between; font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: #737373; border-top: 1px solid #e0ded8; padding-top: 8px"><span>Pem — Portfolio 2026</span><span>3</span></div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{isS}}" hint-placeholder-val="{{false}}">
+          <div style="width: 523px; height: 740px; box-sizing: border-box; padding: 36px 36px 28px; display: flex; flex-direction: column; gap: 16px; background: #fbfaf7; color: #1a1a1a; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5); font-size: 10.5px">
+            <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1.5px solid #1a1a1a; padding-bottom: 6px">
+              <span style="font-family: 'Instrument Serif', serif; font-size: 20px">Catalogue sheet</span><span style="font-size: 11px; font-weight: 700">PEM-0412</span>
+            </div>
+            <div style="display: grid; grid-template-columns: 200px 1fr; gap: 18px">
+              <div role="img" aria-label="Sample work image" style="height: 250px; background: #3d4b57"></div>
+              <div style="display: flex; flex-direction: column">
+                <span style="font-family: 'Instrument Serif', serif; font-style: italic; font-size: 20px; padding-bottom: 8px">[Title]</span>
+                <sc-for list="{{sheetFields}}" as="f" hint-placeholder-count="10">
+                  <div style="display: grid; grid-template-columns: 88px 1fr; gap: 8px; padding: 3px 0; border-bottom: 1px solid #e5e3dd"><span style="color: #737373">{{f.k}}</span><span>{{f.v}}</span></div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px">
+              <div style="display: flex; flex-direction: column; gap: 4px"><b style="font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase">Exhibitions</b><span style="color: #4a4a4a">[Exhibition, place, year]</span><span style="color: #4a4a4a">[Exhibition, place, year]</span></div>
+              <div style="display: flex; flex-direction: column; gap: 4px"><b style="font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase">Custody</b><span style="color: #4a4a4a">[Owner] · [Custodian]</span><span style="color: #4a4a4a">[Address]</span></div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 4px"><b style="font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase">Notes</b><span style="color: #4a4a4a">[Dated notes appear here, newest first.]</span></div>
+            <span style="flex: 1"></span>
+            <div style="display: flex; justify-content: space-between; font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: #737373; border-top: 1px solid #e0ded8; padding-top: 8px"><span>Pem — catalogue raisonné</span><span>13/11/2026</span></div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{isL}}" hint-placeholder-val="{{false}}">
+          <div style="width: 523px; height: 740px; box-sizing: border-box; padding: 34px 18px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(7, minmax(0, 1fr)); gap: 0 6px; background: #fbfaf7; color: #1a1a1a; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5)">
+            <sc-for list="{{labels}}" as="l" hint-placeholder-count="21">
+              <div style="{{l.s}}">
+                <sc-if value="{{l.full}}" hint-placeholder-val="{{true}}">
+                  <span style="font-family: 'Instrument Serif', serif; font-style: italic; font-size: 13px">[Title]</span>
+                  <span style="font-size: 8.5px; color: #4a4a4a">{{l.meta}}</span>
+                  <span style="font-size: 8.5px; color: #4a4a4a">{{l.dims}}</span>
+                  <span style="font-size: 8.5px; font-weight: 700">[price] €</span>
+                </sc-if>
+                <sc-if value="{{l.skip}}" hint-placeholder-val="{{false}}">
+                  <span style="font-size: 8px; color: #b5b5b5">skipped</span>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{isT}}" hint-placeholder-val="{{false}}">
+          <div style="width: 940px; height: 740px; display: flex; flex-direction: column; background: #fbfaf7; color: #1a1a1a; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5); font-size: 11px; overflow: hidden">
+            <div style="flex: none; height: 26px; display: grid; grid-template-columns: 34px 70px 1.4fr 44px 0.9fr 0.9fr 44px 44px 64px 0.8fr 0.9fr; background: #ebebeb; border-bottom: 1px solid #b5b5b5; font-weight: 700">
+              <span style="display: grid; place-items: center; border-right: 1px solid #d4d4d4; color: #737373"></span>
+              <sc-for list="{{cols}}" as="c" hint-placeholder-count="10"><span style="display: flex; align-items: center; padding: 0 6px; border-right: 1px solid #d4d4d4; white-space: nowrap; overflow: hidden">{{c}}</span></sc-for>
+            </div>
+            <sc-for list="{{rows}}" as="r" hint-placeholder-count="24">
+              <div style="flex: none; height: 26px; display: grid; grid-template-columns: 34px 70px 1.4fr 44px 0.9fr 0.9fr 44px 44px 64px 0.8fr 0.9fr; border-bottom: 1px solid #e5e5e5">
+                <span style="display: grid; place-items: center; background: #f5f5f5; border-right: 1px solid #d4d4d4; color: #737373">{{r.i}}</span>
+                <sc-for list="{{r.cells}}" as="v" hint-placeholder-count="10"><span style="display: flex; align-items: center; padding: 0 6px; border-right: 1px solid #ececec; white-space: nowrap; overflow: hidden">{{v}}</span></sc-for>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+      </div>
+
+      <div style="flex: none; height: 32px; display: flex; align-items: center; gap: 14px; padding: 0 12px; border-top: 1px solid #2d2d32; background: #101011; font-size: 12px; color: #b4afa1">
+        <span>{{pageInfo}}</span>
+        <span style="flex: 1"></span>
+        <span>{{formatInfo}}</span>
+        <span style="display: flex; align-items: center; gap: 4px">
+          <button type="button" aria-label="Zoom out" style="width: 24px; height: 24px; background: none; border: 1px solid #3f3f46; border-radius: 2px; color: #b4afa1; font: inherit; cursor: pointer">−</button>
+          <span style="width: 40px; text-align: center; color: #f8f7f3">{{zoom}}</span>
+          <button type="button" aria-label="Zoom in" style="width: 24px; height: 24px; background: none; border: 1px solid #3f3f46; border-radius: 2px; color: #b4afa1; font: inherit; cursor: pointer">+</button>
+        </span>
+        <button type="button" style="height: 24px; padding: 0 8px; background: none; border: 1px solid #3f3f46; border-radius: 2px; color: #b4afa1; font: inherit; cursor: pointer">Fit</button>
+      </div>
+    </section>
+
+    <!-- Options dock -->
+    <aside aria-label="Options" style="display: flex; flex-direction: column; min-height: 0; background: #101011; border-left: 1px solid #2d2d32; overflow: hidden">
+
+      <sc-if value="{{isPaged}}" hint-placeholder-val="{{true}}">
+        <h2 style="margin: 0; height: 26px; display: flex; align-items: center; padding: 0 12px; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #b4afa1; background: #19191b; border-bottom: 1px solid #2d2d32">Page</h2>
+        <div style="display: grid; grid-template-columns: 100px 1fr; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-bottom: 1px solid #19191b">
+          <label for="x-size" style="color: #b4afa1">Format</label>
+          <button id="x-size" type="button" style="height: 24px; display: flex; align-items: center; justify-content: space-between; padding: 0 8px; background: #19191b; border: 1px solid #3f3f46; border-radius: 2px; color: #f8f7f3; font: inherit; cursor: pointer">A4 · 210 × 297 mm<span style="color: #807c72">▾</span></button>
+        </div>
+        <div style="display: grid; grid-template-columns: 100px 1fr; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-bottom: 1px solid #19191b">
+          <span style="color: #b4afa1">Orientation</span>
+          <div role="group" aria-label="Orientation" style="display: grid; grid-template-columns: 1fr 1fr; height: 24px; border: 1px solid #3f3f46; border-radius: 2px; overflow: hidden; font-size: 12px">
+            <button type="button" aria-pressed="true" style="background: #3f3f46; border: 0; color: #f8f7f3; font: inherit; cursor: pointer">Portrait</button>
+            <button type="button" style="background: none; border: 0; color: #b4afa1; font: inherit; cursor: pointer">Landscape</button>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 100px 1fr 44px; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-bottom: 1px solid #2d2d32">
+          <label for="x-marg" style="color: #b4afa1">Margins</label>
+          <input id="x-marg" type="range" min="5" max="30" value="14" style="accent-color: #d4b886">
+          <span style="text-align: right">14 mm</span>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isP}}" hint-placeholder-val="{{true}}">
+        <h2 style="margin: 0; height: 26px; display: flex; align-items: center; padding: 0 12px; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #b4afa1; background: #19191b; border-bottom: 1px solid #2d2d32">Layout</h2>
+        <div style="display: grid; grid-template-columns: 100px 1fr; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-bottom: 1px solid #19191b">
+          <span style="color: #b4afa1">Works / page</span>
+          <div role="group" aria-label="Works per page" style="display: grid; grid-template-columns: repeat(3, 1fr); height: 24px; border: 1px solid #3f3f46; border-radius: 2px; overflow: hidden; font-size: 12px">
+            <button type="button" aria-pressed="true" style="background: #3f3f46; border: 0; color: #f8f7f3; font: inherit; cursor: pointer">1</button>
+            <button type="button" style="background: none; border: 0; border-left: 1px solid #3f3f46; color: #b4afa1; font: inherit; cursor: pointer">2</button>
+            <button type="button" style="background: none; border: 0; border-left: 1px solid #3f3f46; color: #b4afa1; font: inherit; cursor: pointer">4</button>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 100px 1fr; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-bottom: 1px solid #19191b">
+          <span style="color: #b4afa1">Image fit</span>
+          <div role="group" aria-label="Image fit" style="display: grid; grid-template-columns: 1fr 1fr; height: 24px; border: 1px solid #3f3f46; border-radius: 2px; overflow: hidden; font-size: 12px">
+            <button type="button" aria-pressed="true" style="background: #3f3f46; border: 0; color: #f8f7f3; font: inherit; cursor: pointer">Whole work</button>
+            <button type="button" style="background: none; border: 0; border-left: 1px solid #3f3f46; color: #b4afa1; font: inherit; cursor: pointer">Fill frame</button>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 100px 1fr; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-bottom: 1px solid #19191b">
+          <span style="color: #b4afa1">Caption</span>
+          <div role="group" aria-label="Caption position" style="display: grid; grid-template-columns: repeat(3, 1fr); height: 24px; border: 1px solid #3f3f46; border-radius: 2px; overflow: hidden; font-size: 12px">
+            <button type="button" aria-pressed="true" style="background: #3f3f46; border: 0; color: #f8f7f3; font: inherit; cursor: pointer">Below</button>
+            <button type="button" style="background: none; border: 0; border-left: 1px solid #3f3f46; color: #b4afa1; font: inherit; cursor: pointer">Side</button>
+            <button type="button" style="background: none; border: 0; border-left: 1px solid #3f3f46; color: #b4afa1; font: inherit; cursor: pointer">None</button>
+          </div>
+        </div>
+        <label style="display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-bottom: 1px solid #19191b; color: #f8f7f3"><input type="checkbox" checked style="accent-color: #d4b886"> Cover page (first image)</label>
+        <label style="display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-bottom: 1px solid #2d2d32; color: #f8f7f3"><input type="checkbox" checked style="accent-color: #d4b886"> Sections by theme, manual order first</label>
+      </sc-if>
+
+      <sc-if value="{{isL}}" hint-placeholder-val="{{false}}">
+        <h2 style="margin: 0; height: 26px; display: flex; align-items: center; padding: 0 12px; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #b4afa1; background: #19191b; border-bottom: 1px solid #2d2d32">Label sheet</h2>
+        <div style="display: grid; grid-template-columns: 100px 1fr; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-bottom: 1px solid #19191b">
+          <label for="x-lab" style="color: #b4afa1">Sheet</label>
+          <button id="x-lab" type="button" style="height: 24px; display: flex; align-items: center; justify-content: space-between; padding: 0 8px; background: #19191b; border: 1px solid #3f3f46; border-radius: 2px; color: #f8f7f3; font: inherit; cursor: pointer">21 / sheet · 63.5 × 38.1<span style="color: #807c72">▾</span></button>
+        </div>
+        <div style="display: grid; grid-template-columns: 100px 1fr; align-items: start; gap: 8px; padding: 6px 12px; border-bottom: 1px solid #19191b">
+          <span style="color: #b4afa1; padding-top: 2px">Start at</span>
+          <div role="group" aria-label="Start position on the first sheet" style="display: grid; grid-template-columns: repeat(3, 22px); gap: 3px">
+            <sc-for list="{{startGrid}}" as="g" hint-placeholder-count="21"><button type="button" aria-label="{{g.aria}}" style="{{g.s}}"></button></sc-for>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 100px 1fr 44px; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-bottom: 1px solid #2d2d32">
+          <label for="x-fs" style="color: #b4afa1">Text size</label>
+          <input id="x-fs" type="range" min="7" max="14" value="9" style="accent-color: #d4b886">
+          <span style="text-align: right">9 pt</span>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isS}}" hint-placeholder-val="{{false}}">
+        <h2 style="margin: 0; height: 26px; display: flex; align-items: center; padding: 0 12px; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #b4afa1; background: #19191b; border-bottom: 1px solid #2d2d32">Sheet blocks</h2>
+        <label style="display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-bottom: 1px solid #19191b"><input type="checkbox" checked style="accent-color: #d4b886"> Exhibitions</label>
+        <label style="display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-bottom: 1px solid #19191b"><input type="checkbox" checked style="accent-color: #d4b886"> Custody (owner · custodian · address)</label>
+        <label style="display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-bottom: 1px solid #2d2d32"><input type="checkbox" checked style="accent-color: #d4b886"> Dated notes</label>
+      </sc-if>
+
+      <sc-if value="{{isT}}" hint-placeholder-val="{{false}}">
+        <h2 style="margin: 0; height: 26px; display: flex; align-items: center; padding: 0 12px; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #b4afa1; background: #19191b; border-bottom: 1px solid #2d2d32">File</h2>
+        <div style="display: grid; grid-template-columns: 100px 1fr; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-bottom: 1px solid #19191b">
+          <span style="color: #b4afa1">Format</span>
+          <div role="group" aria-label="File format" style="display: grid; grid-template-columns: 1fr 1fr; height: 24px; border: 1px solid #3f3f46; border-radius: 2px; overflow: hidden; font-size: 12px">
+            <button type="button" style="background: none; border: 0; color: #b4afa1; font: inherit; cursor: pointer">CSV</button>
+            <button type="button" aria-pressed="true" style="background: #3f3f46; border: 0; border-left: 1px solid #3f3f46; color: #f8f7f3; font: inherit; cursor: pointer">XLSX</button>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 100px 1fr; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-bottom: 1px solid #19191b">
+          <span style="color: #b4afa1">Separator</span>
+          <span style="color: #807c72">; (CSV only)</span>
+        </div>
+        <label style="display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-bottom: 1px solid #19191b"><input type="checkbox" checked style="accent-color: #d4b886"> Header row</label>
+        <label style="display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-bottom: 1px solid #2d2d32"><input type="checkbox" style="accent-color: #d4b886"> Image links column</label>
+      </sc-if>
+
+      <h2 style="margin: 0; height: 26px; display: flex; align-items: center; gap: 8px; padding: 0 12px; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #b4afa1; background: #19191b; border-bottom: 1px solid #2d2d32">{{fieldsTitle}} <span style="font-weight: 500; letter-spacing: 0; text-transform: none; color: #807c72">drag to reorder</span></h2>
+      <sc-for list="{{fields}}" as="f" hint-placeholder-count="8">
+        <label style="display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 12px; border-bottom: 1px solid #19191b">
+          <span aria-hidden="true" style="color: #52525b; letter-spacing: -2px">⋮⋮</span>
+          <input type="checkbox" checked="{{f.on}}" style="accent-color: #d4b886">
+          <span style="{{f.ls}}">{{f.k}}</span>
+          <span style="flex: 1"></span>
+          <sc-if value="{{f.admin}}" hint-placeholder-val="{{false}}"><span style="font-size: 10px; color: #807c72">🔒 admin</span></sc-if>
+        </label>
+      </sc-for>
+
+      <span style="flex: 1"></span>
+      <h2 style="margin: 0; height: 26px; display: flex; align-items: center; padding: 0 12px; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #b4afa1; background: #19191b; border-top: 1px solid #2d2d32; border-bottom: 1px solid #2d2d32">Output</h2>
+      <div style="display: grid; grid-template-columns: 100px 1fr; align-items: center; gap: 8px; height: 32px; padding: 0 12px; border-bottom: 1px solid #19191b">
+        <label for="x-name" style="color: #b4afa1">File name</label>
+        <input id="x-name" value="{{fileName}}" style="height: 24px; box-sizing: border-box; padding: 0 8px; background: #19191b; border: 1px solid #3f3f46; border-radius: 2px; color: #f8f7f3; font: inherit; font-size: 12px">
+      </div>
+      <div style="display: flex; align-items: center; justify-content: space-between; height: 32px; padding: 0 12px; font-size: 12px; color: #b4afa1">
+        <span>{{outInfo}}</span><span>≈ {{outSize}}</span>
+      </div>
+    </aside>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { type: 'portfolio' };
+  }
+  renderVals() {
+    var self = this;
+    var type = this.state.type;
+    var defs = [['portfolio', 'PDF portfolio'], ['sheet', 'Catalogue sheet'], ['labels', 'Labels'], ['table', 'Table · CSV / XLSX']];
+    var tabs = defs.map(function (d, i) {
+      var on = d[0] === type;
+      return {
+        label: d[1], sel: on ? 'true' : 'false',
+        pick: function () { self.setState({ type: d[0] }); },
+        s: 'height:100%;padding:0 14px;border:0;' + (i > 0 ? 'border-left:1px solid #3f3f46;' : '') + 'font:inherit;cursor:pointer;' + (on ? 'background:#d4b886;color:#101011;font-weight:700;' : 'background:none;color:#b4afa1;')
+      };
+    });
+    var tones = ['#3d4b57', '#6b5a48', '#55603f', '#7a5f4d', '#40465a', '#8a7c5c', '#5a4a52', '#4b5a55'];
+    var isP = type === 'portfolio', isS = type === 'sheet', isL = type === 'labels', isT = type === 'table';
+    var nPages = isP ? 26 : isS ? 24 : isL ? 2 : 1;
+    var active = isP ? 2 : 0;
+    var shown = isT ? 1 : Math.min(nPages, 6);
+    var pages = [];
+    for (var i = 0; i < shown; i++) {
+      var on = i === active;
+      var cover = isP && i === 0;
+      pages.push({
+        n: isP ? (i === 0 ? 'Cover' : String(i + 1)) : isT ? 'Sheet 1' : String(i + 1),
+        aria: 'Page ' + (i + 1),
+        btn: 'display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px;background:none;border:2px solid ' + (on ? '#d4b886' : 'transparent') + ';border-radius:3px;cursor:pointer',
+        page: 'position:relative;display:flex;flex-direction:column;gap:5px;width:' + (isT ? '96px' : '76px') + ';height:' + (isT ? '68px' : '107px') + ';box-sizing:border-box;padding:' + (cover ? '0' : '7px 6px') + ';background:#fbfaf7',
+        img: isL ? 'display:block;flex:1;background:repeating-linear-gradient(0deg,#fbfaf7 0 12px,#e0ded8 12px 13px)' : isT ? 'display:block;flex:1;background:repeating-linear-gradient(0deg,#fbfaf7 0 5px,#d4d4d4 5px 6px)' : 'display:block;flex:' + (cover ? '1' : '0 0 ' + (isS ? '38px' : '62px')) + ';background:' + tones[(i + 3) % tones.length],
+        line: cover || isL || isT ? 'display:none' : 'display:block;height:3px;width:60%;background:#b5b5b5'
+      });
+    }
+    var sheetFields = [
+      { k: 'Year', v: '2014' }, { k: 'Technique', v: 'Oil' }, { k: 'Support', v: 'Canvas' },
+      { k: 'Dimensions', v: '81 × 65 cm' }, { k: 'Period', v: '[Period]' }, { k: 'Place made', v: '[Place]' },
+      { k: 'Themes', v: '[Theme], [Theme]' }, { k: 'Status', v: 'Available' }, { k: 'Location', v: 'Rack B · shelf 3' }, { k: 'Price', v: '[price] €' }
+    ];
+    var techs = ['oil on canvas', 'pastel on paper', 'charcoal on paper', 'oil on board'];
+    var dims = ['81 × 65 cm', '50 × 65 cm', '30 × 40 cm', '65 × 54 cm'];
+    var labels = [];
+    for (var k = 0; k < 21; k++) {
+      var skip = k < 2;
+      labels.push({
+        full: !skip, skip: skip,
+        meta: (2009 + (k * 3) % 15) + ' · ' + techs[k % 4], dims: dims[k % 4],
+        s: 'display:flex;flex-direction:column;justify-content:center;gap:1px;padding:0 10px;border:1px dashed ' + (skip ? '#e0e0e0' : '#d4d4d4') + ';border-radius:4px;margin:2px 0;overflow:hidden'
+      });
+    }
+    var startGrid = [];
+    for (var g = 0; g < 21; g++) {
+      startGrid.push({ aria: 'Position ' + (g + 1), s: 'width:22px;height:14px;border-radius:2px;cursor:pointer;' + (g === 2 ? 'background:#d4b886;border:1px solid #d4b886;' : g < 2 ? 'background:#2d2d32;border:1px solid #2d2d32;' : 'background:none;border:1px solid #3f3f46;') });
+    }
+    var cols = ['Inv. no', 'Title', 'Year', 'Technique', 'Support', 'H cm', 'W cm', 'Price €', 'Status', 'Location'];
+    var supports = ['Canvas', 'Paper', 'Paper', 'Board'];
+    var statuses = ['Available', 'Available', 'On loan', 'Available', 'Sold'];
+    var rows = [];
+    for (var r = 0; r < 24; r++) {
+      var d = dims[r % 4].split(' × ');
+      rows.push({ i: r + 2, cells: ['PEM-' + (401 + r * 7), '[Title]', String(2009 + (r * 3) % 15), techs[r % 4].split(' ')[0], supports[r % 4], d[0], d[1].replace(' cm', ''), '[price]', statuses[r % 5], 'Rack ' + 'ABCD'.charAt(r % 4)] });
+    }
+    var fieldSets = {
+      portfolio: [['Title', 1], ['Year', 1], ['Technique & support', 1], ['Dimensions', 1], ['Inventory no.', 1], ['Price', 0, 1], ['Location', 0]],
+      sheet: [['Title', 1], ['Year', 1], ['Technique & support', 1], ['Dimensions', 1], ['Period & place', 1], ['Themes', 1], ['Status & location', 1], ['Price', 1, 1]],
+      labels: [['Title', 1], ['Year', 1], ['Technique', 1], ['Dimensions', 1], ['Price', 1, 1], ['Inventory no.', 0]],
+      table: [['Inv. no', 1], ['Title', 1], ['Year', 1], ['Technique', 1], ['Support', 1], ['Dimensions (H, W)', 1], ['Price', 1, 1], ['Status', 1], ['Location', 1], ['Themes', 0]]
+    };
+    var fields = fieldSets[type].map(function (f) {
+      return { k: f[0], on: !!f[1], admin: !!f[2], ls: f[1] ? 'color:#f8f7f3' : 'color:#807c72' };
+    });
+    var info = {
+      portfolio: ['Page 3 of 26 · cover + 24 works + back', 'A4 portrait · 1 work per page', '57 %', 'Export PDF (26 pages)', 'Pem_portfolio_2026-11-13.pdf', 'PDF · 26 pages', '18 MB'],
+      sheet: ['Sheet 1 of 24 · one work per sheet', 'A4 portrait', '57 %', 'Export PDF (24 sheets)', 'Pem_catalogue_2026-11-13.pdf', 'PDF · 24 pages', '14 MB'],
+      labels: ['Sheet 1 of 2 · 24 labels, starting at position 3', 'A4 · 21 labels per sheet', '57 %', 'Export labels (2 sheets)', 'Pem_labels_2026-11-13.pdf', 'PDF · 2 pages', '0.2 MB'],
+      table: ['24 rows · 9 columns', 'XLSX · first sheet', '100 %', 'Export XLSX (24 rows)', 'Pem_works_2026-11-13.xlsx', 'XLSX · 1 sheet', '30 KB']
+    }[type];
+    return {
+      tabs: tabs, isP: isP, isS: isS, isL: isL, isT: isT, isPaged: !isT,
+      pages: pages, pagesTitle: isT ? 'Sheets' : 'Pages · ' + nPages,
+      sheetFields: sheetFields, labels: labels, startGrid: startGrid, cols: cols, rows: rows,
+      fields: fields, fieldsTitle: isT ? 'Columns' : 'Fields',
+      pageInfo: info[0], formatInfo: info[1], zoom: info[2], primary: info[3], fileName: info[4], outInfo: info[5], outSize: info[6]
+    };
+  }
+}
+</script>
+</body>
+</html>
