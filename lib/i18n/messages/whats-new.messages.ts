@@ -8,6 +8,12 @@ export const whatsNewMessages = defineMessages({
     en: 'What changed in the Atelier over the last few days.',
   },
 
+  // 3.1.7 (2026-11-14) — periods by date + place made (A3).
+  wn_periods_dates_places_t: { fr: 'Périodes au jour près, et le lieu de chaque œuvre', en: 'Periods to the day, and where each work was made' },
+  wn_periods_dates_places_d: {
+    fr: 'Une période a maintenant une date de début et de fin, pas seulement des années : Galway s’arrête le 12 juin 2024, Marseille commence le 13. Une œuvre datée (fin ou début de production, ou sa date) tombe dans la bonne période ; avec l’année seule, la fiche signale quand l’année couvre deux périodes. Nouveau : le lieu de création de chaque œuvre (fiche, modification en lot, Rapports, recherche). La liste des lieux se gère avec les périodes ; une période peut proposer un lieu, jamais le poser seule.',
+    en: 'A period now has a start and end date, not just years: Galway ends on 12 June 2024, Marseille starts on the 13th. A dated work (production end or start, or its date) lands in the right period; with a year alone, the card says when that year spans two periods. New: the place each work was made (work card, batch modify, Reports, search). The places list is managed with the periods; a period can suggest a place, never set it by itself.',
+  },
   // 3.1.6 (2026-11-14) — AI descriptions rated for usefulness (A2); field place + weather automatic (A4).
   wn_field_context_auto_t: { fr: 'Session terrain : lieu et météo tout seuls', en: 'Field session: place and weather on their own' },
   wn_field_context_auto_d: {

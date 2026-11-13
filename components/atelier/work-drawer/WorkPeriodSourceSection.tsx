@@ -1,8 +1,9 @@
 'use client'
 
-// Work drawer: Période & source (owner 2026-11-02). The period follows the year in the form
-// (even unsaved) unless set by hand; sources are toggles. Own saves, outside the drawer's dirty
-// baseline, like Constats.
+// Work drawer: Période & source (owner 2026-11-02). The period follows the work's date / year in
+// the form (even unsaved) unless set by hand; sources are toggles. Own saves, outside the drawer's
+// dirty baseline, like Constats. A3 (2026-11-14): + the place the work was made; the period may
+// suggest one, the work never takes it by itself.
 
 import { useMemo, useState } from 'react'
 import { useI18n } from '@/lib/i18n/context'
@@ -13,22 +14,32 @@ import {
   effectivePeriod,
   periodChoiceOf,
   periodRange,
+  placeLabel,
   sortPeriods,
+  sortPlaces,
+  yearIsShared,
   type PeriodChoice,
+  type WorkWhen,
 } from '@/lib/work-periods'
-import { setWorkPeriod, setWorkSourceNote, setWorkSources } from '@/app/atelier/works/period-source-actions'
+import { setWorkPeriod, setWorkPlace, setWorkSourceNote, setWorkSources } from '@/app/atelier/works/period-source-actions'
 import { PeriodSourceManager } from '@/components/atelier/PeriodSourceManager'
 
-export function WorkPeriodSourceSection({ oeuvreId, year }: { oeuvreId: number; year: number | null }) {
-  const { t } = useI18n()
+export function WorkPeriodSourceSection({ oeuvreId, when }: { oeuvreId: number; when: WorkWhen }) {
+  const { t, lang } = useI18n()
+  const locale = lang === 'fr' ? 'fr-FR' : 'en-GB'
   const data = usePeriodSource()
   const [busy, setBusy] = useState(false)
   const [manage, setManage] = useState(false)
   const periods = useMemo(() => sortPeriods(data.periods), [data.periods])
   const sources = useMemo(() => [...data.sources].sort((a, b) => a.name.localeCompare(b.name)), [data.sources])
   const choice = periodChoiceOf(oeuvreId, data)
-  const auto = autoPeriodFor(year, periods)
-  const eff = effectivePeriod(oeuvreId, year, data)
+  const auto = autoPeriodFor(when, periods)
+  const eff = effectivePeriod(oeuvreId, when, data)
+  const places = useMemo(() => sortPlaces(data.places), [data.places])
+  const placeId = data.workPlaces[oeuvreId] ?? null
+  const suggested = placeId == null && eff.period?.default_place_id != null
+    ? (data.places.find((p) => p.id === eff.period?.default_place_id) ?? null)
+    : null
   const mine = data.sourcesByWork[oeuvreId] ?? []
 
   async function choose(next: PeriodChoice) {
@@ -44,6 +55,25 @@ export function WorkPeriodSourceSection({ oeuvreId, year }: { oeuvreId: number; 
         if (next === 'auto') delete overrides[oeuvreId]
         else overrides[oeuvreId] = next === 'none' ? null : next
         return { ...d, overrides }
+      })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function choosePlace(next: number | null) {
+    setBusy(true)
+    try {
+      const res = await setWorkPlace(oeuvreId, next)
+      if ('error' in res) {
+        toast.error(`${t('error_prefix')} ${res.error}`)
+        return
+      }
+      patchPeriodSource((d) => {
+        const workPlaces = { ...d.workPlaces }
+        if (next == null) delete workPlaces[oeuvreId]
+        else workPlaces[oeuvreId] = next
+        return { ...d, workPlaces }
       })
     } finally {
       setBusy(false)
@@ -127,22 +157,64 @@ export function WorkPeriodSourceSection({ oeuvreId, year }: { oeuvreId: number; 
           >
             <option value="auto">
               {auto
-                ? t('ps_period_auto_fmt').replace('{name}', `${auto.name} · ${periodRange(auto)}`)
+                ? t('ps_period_auto_fmt').replace('{name}', `${auto.name} · ${periodRange(auto, locale)}`)
                 : t('ps_period_auto_empty')}
             </option>
             <option value="none">{t('ps_period_none')}</option>
             {periods.map((p) => (
               <option key={p.id} value={String(p.id)}>
-                {p.name} · {periodRange(p)}
+                {p.name} · {periodRange(p, locale)}
               </option>
             ))}
           </select>
           {eff.period ? (
             <span className="t-mono-sm" style={{ fontSize: 10, color: 'var(--tx3)' }}>
-              {eff.overridden ? t('ps_period_by_hand') : t('ps_period_from_year')}
+              {eff.overridden ? t('ps_period_by_hand') : when.day ? t('ps_period_from_day') : t('ps_period_from_year')}
             </span>
           ) : null}
         </div>
+        {!eff.overridden && yearIsShared(when, periods) ? (
+          <p className="t-mono-sm" style={{ fontSize: 11, color: 'var(--yellow)', margin: '6px 0 0' }} data-testid="work-period-year-shared">
+            {t('ps_period_year_shared_fmt').replace('{year}', String(when.year))}
+          </p>
+        ) : null}
+      </div>
+
+      <div>
+        <div className="t-label" style={{ marginBottom: 6 }}>{t('ps_place_made')}</div>
+        <select
+          className="input"
+          style={{ fontSize: 13, width: '100%', maxWidth: 380, minHeight: 44 }}
+          value={placeId == null ? '' : String(placeId)}
+          disabled={busy}
+          aria-label={t('ps_place_made')}
+          data-testid="work-place-select"
+          onChange={(e) => void choosePlace(e.target.value ? Number(e.target.value) : null)}
+        >
+          <option value="">{t('ps_place_none')}</option>
+          {places.map((p) => (
+            <option key={p.id} value={String(p.id)}>
+              {placeLabel(p)}
+            </option>
+          ))}
+        </select>
+        {suggested ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }} title={t('ps_place_from_period_hint')}>
+            <span className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx3)' }}>
+              {t('ps_place_suggest_fmt').replace('{name}', suggested.name)}
+            </span>
+            <button
+              type="button"
+              className="btn ghost sm"
+              style={{ minHeight: 44 }}
+              disabled={busy}
+              data-testid="work-place-use-suggestion"
+              onClick={() => void choosePlace(suggested.id)}
+            >
+              {t('ps_place_use')}
+            </button>
+          </div>
+        ) : null}
       </div>
 
       <div>

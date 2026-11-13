@@ -2,19 +2,44 @@
 
 // Periods + source values (owner 2026-11-02): add / edit / delete. Opened from Inventory
 // ("Périodes") and from the work drawer's Période & source section. Saves straight away.
+// A3 (2026-11-14): periods have start / end DATES and may suggest a place; the places list lives here.
 
 import { useMemo, useState, type CSSProperties } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from '@/lib/ui/toast'
 import { isPeriodSourceLoaded, patchPeriodSource, usePeriodSource } from '@/lib/atelier/use-period-source'
-import { effectivePeriod, periodRange, periodYearOf, sortPeriods, type WorkPeriod } from '@/lib/work-periods'
-import { deletePeriod, deleteSource, savePeriod, saveSource } from '@/app/atelier/works/period-source-actions'
+import { effectivePeriod, periodRange, placeLabel, sortPeriods, sortPlaces, workWhen, type Place, type WorkPeriod } from '@/lib/work-periods'
+import { deletePeriod, deletePlace, deleteSource, savePeriod, savePlace, saveSource } from '@/app/atelier/works/period-source-actions'
 
-type Draft = { name: string; start: string; end: string }
-const emptyDraft: Draft = { name: '', start: '', end: '' }
+type Draft = { name: string; start: string; end: string; place: string }
+const emptyDraft: Draft = { name: '', start: '', end: '', place: '' }
 
 function toDraft(p: WorkPeriod): Draft {
-  return { name: p.name, start: String(p.start_year), end: p.end_year == null ? '' : String(p.end_year) }
+  return { name: p.name, start: p.start_on, end: p.end_on ?? '', place: p.default_place_id == null ? '' : String(p.default_place_id) }
+}
+
+type PlaceDraft = { name: string; town: string; country: string; coords: string }
+const emptyPlace: PlaceDraft = { name: '', town: '', country: '', coords: '' }
+
+function toPlaceDraft(p: Place): PlaceDraft {
+  return {
+    name: p.name,
+    town: p.town ?? '',
+    country: p.country ?? '',
+    coords: p.latitude != null && p.longitude != null ? `${p.latitude}, ${p.longitude}` : '',
+  }
+}
+
+/** "43.29, 5.38" → numbers; '' → nulls; anything else → 'bad'. */
+function parseCoords(s: string): { latitude: number | null; longitude: number | null } | 'bad' {
+  const v = s.trim()
+  if (!v) return { latitude: null, longitude: null }
+  const m = v.match(/^(-?\d+(?:[.,]\d+)?)\s*[,;\s]\s*(-?\d+(?:[.,]\d+)?)$/)
+  if (!m) return 'bad'
+  const latitude = Number(m[1].replace(',', '.'))
+  const longitude = Number(m[2].replace(',', '.'))
+  if (Math.abs(latitude) > 90 || Math.abs(longitude) > 180) return 'bad'
+  return { latitude, longitude }
 }
 
 export function PeriodSourceManager({
@@ -22,10 +47,11 @@ export function PeriodSourceManager({
   onClose,
 }: {
   /** Loaded works, for the per-period / per-source counts. */
-  works?: { OeuvreID: number; Année: string | null; production_started_on?: string | null }[]
+  works?: { OeuvreID: number; Année: string | null; production_started_on?: string | null; production_completed_on?: string | null }[]
   onClose?: () => void
 }) {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
+  const locale = lang === 'fr' ? 'fr-FR' : 'en-GB'
   const data = usePeriodSource()
   const periods = useMemo(() => sortPeriods(data.periods), [data.periods])
   const sources = useMemo(() => [...data.sources].sort((a, b) => a.name.localeCompare(b.name)), [data.sources])
@@ -35,11 +61,19 @@ export function PeriodSourceManager({
   const [srcName, setSrcName] = useState('')
   const [newSource, setNewSource] = useState('')
   const [busy, setBusy] = useState(false)
+  const places = useMemo(() => sortPlaces(data.places), [data.places])
+  const [placeEditing, setPlaceEditing] = useState<number | 'new' | null>(null)
+  const [placeDraft, setPlaceDraft] = useState<PlaceDraft>(emptyPlace)
+  const placeCounts = useMemo(() => {
+    const c = new Map<number, number>()
+    for (const id of Object.values(data.workPlaces)) c.set(id, (c.get(id) ?? 0) + 1)
+    return c
+  }, [data.workPlaces])
 
   const periodCounts = useMemo(() => {
     const c = new Map<number, number>()
     for (const w of works ?? []) {
-      const p = effectivePeriod(w.OeuvreID, periodYearOf(w), data).period
+      const p = effectivePeriod(w.OeuvreID, workWhen(w), data).period
       if (p) c.set(p.id, (c.get(p.id) ?? 0) + 1)
     }
     return c
@@ -54,19 +88,19 @@ export function PeriodSourceManager({
     if (code === 'start_year' || code === 'end_year' || code === 'end_before_start') toast.error(t('ps_err_years'))
     else if (code === 'name') toast.error(t('ps_err_name'))
     else if (code === 'duplicate') toast.error(t('ps_err_duplicate'))
+    else if (code === 'coords') toast.error(t('ps_err_coords'))
     else toast.error(`${t('error_prefix')} ${code}`)
   }
 
   async function submitPeriod() {
-    const start = Number(draft.start)
-    const end = draft.end.trim() === '' ? null : Number(draft.end)
     setBusy(true)
     try {
       const res = await savePeriod({
         id: typeof editing === 'number' ? editing : undefined,
         name: draft.name,
-        start_year: start,
-        end_year: end,
+        start_on: draft.start,
+        end_on: draft.end.trim() === '' ? null : draft.end,
+        default_place_id: draft.place ? Number(draft.place) : null,
       })
       if ('error' in res) return fail(res.error)
       patchPeriodSource((d) => ({
@@ -90,6 +124,45 @@ export function PeriodSourceManager({
         ...d,
         periods: d.periods.filter((x) => x.id !== p.id),
         overrides: Object.fromEntries(Object.entries(d.overrides).filter(([, v]) => v !== p.id)),
+      }))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function submitPlace() {
+    const coords = parseCoords(placeDraft.coords)
+    if (coords === 'bad') return fail('coords')
+    setBusy(true)
+    try {
+      const res = await savePlace({
+        id: typeof placeEditing === 'number' ? placeEditing : undefined,
+        name: placeDraft.name,
+        town: placeDraft.town,
+        country: placeDraft.country,
+        ...coords,
+      })
+      if ('error' in res) return res.error === 'duplicate' ? toast.error(t('ps_err_place_duplicate')) : fail(res.error)
+      patchPeriodSource((d) => ({ ...d, places: [...d.places.filter((x) => x.id !== res.place.id), res.place] }))
+      setPlaceEditing(null)
+      setPlaceDraft(emptyPlace)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function removePlace(p: Place) {
+    const n = placeCounts.get(p.id) ?? 0
+    if (!window.confirm(t('ps_confirm_delete_place_fmt').replace('{name}', p.name).replace('{n}', String(n)))) return
+    setBusy(true)
+    try {
+      const res = await deletePlace(p.id)
+      if ('error' in res) return fail(res.error)
+      patchPeriodSource((d) => ({
+        ...d,
+        places: d.places.filter((x) => x.id !== p.id),
+        periods: d.periods.map((x) => (x.default_place_id === p.id ? { ...x, default_place_id: null } : x)),
+        workPlaces: Object.fromEntries(Object.entries(d.workPlaces).filter(([, v]) => v !== p.id)),
       }))
     } finally {
       setBusy(false)
@@ -131,7 +204,7 @@ export function PeriodSourceManager({
   }
 
   const row: CSSProperties = { display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', minHeight: 44 }
-  const yearInput: CSSProperties = { fontSize: 13, width: 84 }
+  const dateInput: CSSProperties = { fontSize: 13, width: 150, minHeight: 44 }
 
   const periodForm = (
     <div style={row} data-testid="ps-period-form">
@@ -143,24 +216,46 @@ export function PeriodSourceManager({
         placeholder={t('ps_period_name_ph')}
         aria-label={t('ps_period_name_ph')}
       />
-      <input
+      <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+        <span className="t-mono-sm" style={{ fontSize: 10, color: 'var(--tx3)' }}>{t('ps_start')}</span>
+        <input
+          className="input"
+          type="date"
+          style={dateInput}
+          value={draft.start}
+          onChange={(e) => setDraft({ ...draft, start: e.target.value })}
+          aria-label={t('ps_start')}
+          data-testid="ps-period-start"
+        />
+      </label>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+        <span className="t-mono-sm" style={{ fontSize: 10, color: 'var(--tx3)' }}>{t('ps_end')}</span>
+        <input
+          className="input"
+          type="date"
+          style={dateInput}
+          value={draft.end}
+          onChange={(e) => setDraft({ ...draft, end: e.target.value })}
+          aria-label={t('ps_end')}
+          title={t('ps_end_ph')}
+          data-testid="ps-period-end"
+        />
+      </label>
+      <select
         className="input"
-        style={yearInput}
-        inputMode="numeric"
-        value={draft.start}
-        onChange={(e) => setDraft({ ...draft, start: e.target.value.replace(/\D/g, '').slice(0, 4) })}
-        placeholder={t('ps_start')}
-        aria-label={t('ps_start')}
-      />
-      <input
-        className="input"
-        style={yearInput}
-        inputMode="numeric"
-        value={draft.end}
-        onChange={(e) => setDraft({ ...draft, end: e.target.value.replace(/\D/g, '').slice(0, 4) })}
-        placeholder={t('ps_end_ph')}
-        aria-label={t('ps_end')}
-      />
+        style={{ fontSize: 13, minHeight: 44, minWidth: 160, flex: '1 1 160px' }}
+        value={draft.place}
+        onChange={(e) => setDraft({ ...draft, place: e.target.value })}
+        aria-label={t('ps_default_place')}
+        title={t('ps_place_from_period_hint')}
+      >
+        <option value="">{t('ps_default_place_none')}</option>
+        {places.map((pl) => (
+          <option key={pl.id} value={String(pl.id)}>
+            {pl.name}
+          </option>
+        ))}
+      </select>
       <button type="button" className="btn sm" style={{ minHeight: 44 }} disabled={busy} onClick={() => void submitPeriod()}>
         {t('ps_save')}
       </button>
@@ -172,6 +267,59 @@ export function PeriodSourceManager({
         onClick={() => {
           setEditing(null)
           setDraft(emptyDraft)
+        }}
+      >
+        {t('ps_close')}
+      </button>
+    </div>
+  )
+
+  const placeForm = (
+    <div style={row} data-testid="ps-place-form">
+      <input
+        className="input"
+        style={{ fontSize: 13, flex: '2 1 160px', minWidth: 140 }}
+        value={placeDraft.name}
+        onChange={(e) => setPlaceDraft({ ...placeDraft, name: e.target.value })}
+        placeholder={t('ps_place_name_ph')}
+        aria-label={t('ps_place_name_ph')}
+      />
+      <input
+        className="input"
+        style={{ fontSize: 13, flex: '1 1 110px', minWidth: 100 }}
+        value={placeDraft.town}
+        onChange={(e) => setPlaceDraft({ ...placeDraft, town: e.target.value })}
+        placeholder={t('ps_town_ph')}
+        aria-label={t('ps_town_ph')}
+      />
+      <input
+        className="input"
+        style={{ fontSize: 13, flex: '1 1 100px', minWidth: 90 }}
+        value={placeDraft.country}
+        onChange={(e) => setPlaceDraft({ ...placeDraft, country: e.target.value })}
+        placeholder={t('ps_country_ph')}
+        aria-label={t('ps_country_ph')}
+      />
+      <input
+        className="input"
+        style={{ fontSize: 13, flex: '1 1 140px', minWidth: 130 }}
+        value={placeDraft.coords}
+        onChange={(e) => setPlaceDraft({ ...placeDraft, coords: e.target.value })}
+        placeholder={t('ps_coords_ph')}
+        aria-label={t('ps_coords_ph')}
+        inputMode="decimal"
+      />
+      <button type="button" className="btn sm" style={{ minHeight: 44 }} disabled={busy} onClick={() => void submitPlace()}>
+        {t('ps_save')}
+      </button>
+      <button
+        type="button"
+        className="btn ghost sm"
+        style={{ minHeight: 44 }}
+        disabled={busy}
+        onClick={() => {
+          setPlaceEditing(null)
+          setPlaceDraft(emptyPlace)
         }}
       >
         {t('ps_close')}
@@ -208,7 +356,12 @@ export function PeriodSourceManager({
           ) : (
             <div key={p.id} style={{ ...row, borderBottom: '1px solid var(--bd)' }} data-testid="ps-period-row">
               <span style={{ fontSize: 13, flex: 1, minWidth: 140 }}>{p.name}</span>
-              <span className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx2)' }}>{periodRange(p)}</span>
+              <span className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx2)' }}>{periodRange(p, locale)}</span>
+              {p.default_place_id != null ? (
+                <span className="t-mono-sm" style={{ fontSize: 10, color: 'var(--tx3)' }} title={t('ps_default_place')}>
+                  → {places.find((pl) => pl.id === p.default_place_id)?.name ?? '?'}
+                </span>
+              ) : null}
               {works ? (
                 <span className="t-mono-sm" style={{ fontSize: 10, color: 'var(--tx3)', minWidth: 64 }}>
                   {t('ps_works_fmt').replace('{n}', String(periodCounts.get(p.id) ?? 0))}
@@ -253,6 +406,68 @@ export function PeriodSourceManager({
             }}
           >
             {t('ps_add_period')}
+          </button>
+        )}
+      </div>
+
+      <div data-testid="ps-places">
+        <div className="t-label" style={{ marginBottom: 6 }}>{t('ps_places')}</div>
+        {places.length === 0 && placeEditing !== 'new' && isPeriodSourceLoaded() ? (
+          <p style={{ fontSize: 12, color: 'var(--tx3)', margin: '0 0 6px' }}>{t('ps_places_empty')}</p>
+        ) : null}
+        {places.map((pl) =>
+          placeEditing === pl.id ? (
+            <div key={pl.id}>{placeForm}</div>
+          ) : (
+            <div key={pl.id} style={{ ...row, borderBottom: '1px solid var(--bd)' }} data-testid="ps-place-row">
+              <span style={{ fontSize: 13, flex: 1, minWidth: 140 }}>{placeLabel(pl)}</span>
+              {pl.latitude != null && pl.longitude != null ? (
+                <span className="t-mono-sm" style={{ fontSize: 10, color: 'var(--tx3)' }}>
+                  {pl.latitude.toFixed(2)}, {pl.longitude.toFixed(2)}
+                </span>
+              ) : null}
+              <span className="t-mono-sm" style={{ fontSize: 10, color: 'var(--tx3)', minWidth: 64 }}>
+                {t('ps_works_fmt').replace('{n}', String(placeCounts.get(pl.id) ?? 0))}
+              </span>
+              <button
+                type="button"
+                className="btn ghost sm"
+                style={{ minHeight: 44 }}
+                disabled={busy}
+                onClick={() => {
+                  setPlaceEditing(pl.id)
+                  setPlaceDraft(toPlaceDraft(pl))
+                }}
+              >
+                {t('ps_rename')}
+              </button>
+              <button
+                type="button"
+                className="btn ghost sm"
+                style={{ minHeight: 44, color: 'var(--rust)' }}
+                disabled={busy}
+                onClick={() => void removePlace(pl)}
+              >
+                {t('ps_delete')}
+              </button>
+            </div>
+          ),
+        )}
+        {placeEditing === 'new' ? (
+          placeForm
+        ) : (
+          <button
+            type="button"
+            className="btn ghost sm"
+            style={{ minHeight: 44, marginTop: 4 }}
+            disabled={busy || placeEditing != null}
+            data-testid="ps-add-place"
+            onClick={() => {
+              setPlaceEditing('new')
+              setPlaceDraft(emptyPlace)
+            }}
+          >
+            {t('ps_add_place')}
           </button>
         )}
       </div>

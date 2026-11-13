@@ -48,7 +48,7 @@ import { PeriodSourceManager } from '@/components/atelier/PeriodSourceManager'
 import { patchPeriodSource, usePeriodSource } from '@/lib/atelier/use-period-source'
 import { addSourceToWorks } from '@/app/atelier/works/period-source-actions'
 import { ReportLinkButton } from '@/components/atelier/ReportLinkButton'
-import { effectivePeriod, periodYearOf, type WorkPeriod } from '@/lib/work-periods'
+import { effectivePeriod, workWhen, type WorkPeriod } from '@/lib/work-periods'
 
 // ── Types ───────────────────────────────────────────────────────────
 
@@ -406,7 +406,7 @@ export function Inventory({
   const [showPeriods, setShowPeriods] = useState(false)
   const periodSource = usePeriodSource()
   const periodOf = useCallback(
-    (o: Oeuvre): WorkPeriod | null => effectivePeriod(o.OeuvreID, periodYearOf(o), periodSource).period,
+    (o: Oeuvre): WorkPeriod | null => effectivePeriod(o.OeuvreID, workWhen(o), periodSource).period,
     [periodSource],
   )
   const sourceNameMap = useMemo(

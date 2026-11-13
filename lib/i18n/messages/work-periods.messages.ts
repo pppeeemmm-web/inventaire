@@ -34,8 +34,8 @@ export const workPeriodsMessages = defineMessages({
   ps_rename: { fr: 'Renommer', en: 'Rename' },
   ps_works_fmt: { fr: '{n} œuvres', en: '{n} works' },
   ps_overlap_hint: {
-    fr: 'Une œuvre tombe dans une période d’après son année. Si deux périodes se chevauchent, celle qui commence le plus tard l’emporte. Une œuvre peut être réglée à la main dans sa fiche.',
-    en: 'A work falls into a period from its year. When two periods overlap, the one that starts later wins. A work can be set by hand in its drawer.',
+    fr: 'Une œuvre tombe dans une période d’après sa date (fin, sinon début de production, sinon la date de l’œuvre), à défaut son année. Avec l’année seule, si deux périodes se chevauchent, celle qui commence le plus tard l’emporte. Une œuvre peut être réglée à la main dans sa fiche.',
+    en: 'A work falls into a period from its date (production end, else start, else the work’s date), failing that its year. With a year alone, when two periods overlap, the one that starts later wins. A work can be set by hand in its drawer.',
   },
   ps_confirm_delete_period_fmt: {
     fr: 'Supprimer la période « {name} » ? Les œuvres réglées à la main sur elle repassent en automatique.',
@@ -45,7 +45,7 @@ export const workPeriodsMessages = defineMessages({
     fr: 'Supprimer la source « {name} » ? Elle sera retirée de {n} œuvre(s).',
     en: 'Delete the source “{name}”? It will be removed from {n} work(s).',
   },
-  ps_err_years: { fr: 'Années invalides (fin avant le début ?).', en: 'Invalid years (end before start?).' },
+  ps_err_years: { fr: 'Dates invalides (fin avant le début ?).', en: 'Invalid dates (end before start?).' },
   ps_err_name: { fr: 'Donnez un nom.', en: 'Enter a name.' },
   ps_err_duplicate: { fr: 'Cette source existe déjà.', en: 'This source already exists.' },
   ps_saved: { fr: 'Enregistré', en: 'Saved' },
@@ -63,4 +63,33 @@ export const workPeriodsMessages = defineMessages({
   ps_bulk_source_label: { fr: 'Ajouter une source à la sélection', en: 'Add a source to the selection' },
   ps_bulk_source_pick: { fr: 'Source…', en: 'Source…' },
   ps_bulk_source_done_fmt: { fr: 'Source « {name} » ajoutée à {n} œuvre(s)', en: 'Source "{name}" added to {n} work(s)' },
+  // A3 (2026-11-14): periods by date, place made per work.
+  ps_period_from_day: { fr: 'd’après sa date', en: 'from its date' },
+  ps_period_year_shared_fmt: {
+    fr: 'année seule : {year} couvre deux périodes — réglez à la main si besoin',
+    en: 'year only: {year} spans two periods — set by hand if needed',
+  },
+  ps_default_place: { fr: 'Lieu proposé', en: 'Suggested place' },
+  ps_default_place_none: { fr: 'Aucun lieu proposé', en: 'No suggested place' },
+  ps_places: { fr: 'Lieux', en: 'Places' },
+  ps_places_empty: { fr: 'Aucun lieu. Ajoutez l’atelier, la maison, le motif…', en: 'No place yet. Add the studio, home, a site…' },
+  ps_place_name_ph: { fr: 'Nom du lieu', en: 'Place name' },
+  ps_town_ph: { fr: 'Ville', en: 'Town' },
+  ps_country_ph: { fr: 'Pays', en: 'Country' },
+  ps_coords_ph: { fr: 'lat, long (facultatif)', en: 'lat, long (optional)' },
+  ps_add_place: { fr: '+ Lieu', en: '+ Place' },
+  ps_confirm_delete_place_fmt: {
+    fr: 'Supprimer le lieu « {name} » ? Il sera retiré de {n} œuvre(s) et des périodes qui le proposent.',
+    en: 'Delete the place “{name}”? It will be removed from {n} work(s) and from periods that suggest it.',
+  },
+  ps_err_coords: { fr: 'Coordonnées invalides : « 43.29, 5.38 ».', en: 'Invalid coordinates: “43.29, 5.38”.' },
+  ps_err_place_duplicate: { fr: 'Ce lieu existe déjà.', en: 'This place already exists.' },
+  ps_place_made: { fr: 'Lieu de création', en: 'Place made' },
+  ps_place_none: { fr: '— Non renseigné', en: '— Not set' },
+  ps_place_suggest_fmt: { fr: 'La période propose : {name}', en: 'The period suggests: {name}' },
+  ps_place_use: { fr: 'Utiliser', en: 'Use it' },
+  ps_place_from_period_hint: {
+    fr: 'Une suggestion, jamais posée seule : l’œuvre reste sans lieu tant que personne ne le choisit.',
+    en: 'A suggestion, never set by itself: the work stays without a place until someone picks it.',
+  },
 })

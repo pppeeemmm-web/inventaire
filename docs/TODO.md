@@ -13,7 +13,7 @@ _Open items only, one line each, in order. Details → [`TODO_NOTES.md`](./TODO_
 ## 2. To build — in order
 
 Current batch (design build)
-- [ ] ~~B2 Batch modify mixer~~ + ~~B1 Overview one-glance dashboard~~ (deployed 2026-11-13, `92677d9`) → A2 AI descriptions rated (built 2026-11-14, committed locally; migration `supabase/sql/work_description_usefulness.sql` applied) → A4 answered + automatic place/weather on the phone (built 2026-11-14, committed locally) → A3 → B3 Export with live preview — build from the approved mocks, order in [NEXT](./HANDOFF_2026-11-13_NEXT.md) → [handoff](./HANDOFF_2026-11-13_DESIGN_BUILD.md) (4 decisions for Pem inside: D1–D4)
+- [ ] ~~B2 Batch modify mixer~~ + ~~B1 Overview one-glance dashboard~~ (deployed 2026-11-13, `92677d9`) → A2 AI descriptions rated (deployed 2026-11-14) → A4 answered + automatic place/weather on the phone (deployed 2026-11-14, `ddc3c38`) → A3 periods by date + place made (built 2026-11-14, committed locally; migration `supabase/sql/work_period_dates_places.sql` applied) → B3 Export with live preview — build from the approved mocks, order in [NEXT](./HANDOFF_2026-11-13_NEXT.md) → [handoff](./HANDOFF_2026-11-13_DESIGN_BUILD.md) (4 decisions for Pem inside: D1–D4)
 
 Trace
 - [ ] 1. Handwriting batch (after the test above) → [notes](./TODO_NOTES.md#journal-phase-2)

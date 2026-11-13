@@ -57,7 +57,7 @@ import { LinkedVoiceNotes } from '@/components/atelier/LinkedVoiceNotes'
 import { ConditionReportsSection } from './ConditionReportsSection'
 import { WorkPeriodSourceSection } from './WorkPeriodSourceSection'
 import { WorkAiDescriptionSection } from './WorkAiDescriptionSection'
-import { periodYearOf } from '@/lib/work-periods'
+import { workWhen } from '@/lib/work-periods'
 import { normalizeAnonymityLevel } from '@/lib/anonymity-level'
 import { formatPartialDate } from '@/lib/partial-date'
 
@@ -1431,7 +1431,10 @@ export function DrawerContent({
           </button>
         ) : null}
 
-        <WorkPeriodSourceSection oeuvreId={o.OeuvreID} year={periodYearOf({ Année: annee, production_started_on: o.production_started_on })} />
+        <WorkPeriodSourceSection
+          oeuvreId={o.OeuvreID}
+          when={workWhen({ Année: annee, production_started_on: o.production_started_on, production_completed_on: o.production_completed_on })}
+        />
 
         <WorkLinksSection oeuvreId={o.OeuvreID} />
 

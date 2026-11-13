@@ -1831,6 +1831,36 @@ export type Database = {
         }
         Relationships: []
       }
+      place: {
+        Row: {
+          country: string | null
+          created_at: string
+          id: number
+          latitude: number | null
+          longitude: number | null
+          name: string
+          town: string | null
+        }
+        Insert: {
+          country?: string | null
+          created_at?: string
+          id?: never
+          latitude?: number | null
+          longitude?: number | null
+          name: string
+          town?: string | null
+        }
+        Update: {
+          country?: string | null
+          created_at?: string
+          id?: never
+          latitude?: number | null
+          longitude?: number | null
+          name?: string
+          town?: string | null
+        }
+        Relationships: []
+      }
       private_link: {
         Row: {
           created_at: string
@@ -3072,26 +3102,43 @@ export type Database = {
       work_period: {
         Row: {
           created_at: string
+          default_place_id: number | null
+          end_on: string | null
           end_year: number | null
           id: number
           name: string
+          start_on: string
           start_year: number
         }
         Insert: {
           created_at?: string
+          default_place_id?: number | null
+          end_on?: string | null
           end_year?: number | null
           id?: never
           name: string
+          start_on: string
           start_year: number
         }
         Update: {
           created_at?: string
+          default_place_id?: number | null
+          end_on?: string | null
           end_year?: number | null
           id?: never
           name?: string
+          start_on?: string
           start_year?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "work_period_default_place_id_fkey"
+            columns: ["default_place_id"]
+            isOneToOne: false
+            referencedRelation: "place"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       work_period_override: {
         Row: {
@@ -3125,6 +3172,42 @@ export type Database = {
             columns: ["period_id"]
             isOneToOne: false
             referencedRelation: "work_period"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      work_place: {
+        Row: {
+          oeuvre_id: number
+          place_id: number
+          set_at: string
+          set_by: string | null
+        }
+        Insert: {
+          oeuvre_id: number
+          place_id: number
+          set_at?: string
+          set_by?: string | null
+        }
+        Update: {
+          oeuvre_id?: number
+          place_id?: number
+          set_at?: string
+          set_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_place_oeuvre_id_fkey"
+            columns: ["oeuvre_id"]
+            isOneToOne: true
+            referencedRelation: "Oeuvres"
+            referencedColumns: ["OeuvreID"]
+          },
+          {
+            foreignKeyName: "work_place_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "place"
             referencedColumns: ["id"]
           },
         ]

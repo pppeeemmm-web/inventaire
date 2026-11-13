@@ -42,6 +42,8 @@ export interface BatchChanges {
   Commentaires?:      string | null
   /** Period for every selected work: 'auto' (from its date), 'none', or a period id (`work_period_override`). */
   periodChoice?:      'auto' | 'none' | number
+  /** A3: the place the works were made — a place id, or 'none' to clear (work_place). */
+  placeChoice?:       'none' | number
   // Theme junction — add and/or remove theme IDs across OeuvreTheme
   addThemeIds?:       number[]
   removeThemeIds?:    number[]
@@ -150,9 +152,10 @@ export async function batchEdit(ids: number[], changes: BatchChanges): Promise<B
   const hasScalarChanges  = Object.keys(update).length > 0
   const hasComment        = commentToAdd.length > 0
   const hasPeriodChange   = changes.periodChoice !== undefined
+  const hasPlaceChange    = changes.placeChoice !== undefined
   const hasThemeChanges   = (changes.addThemeIds?.length ?? 0) > 0 || (changes.removeThemeIds?.length ?? 0) > 0
   const hasGroupChanges   = (changes.addGroupIds?.length ?? 0) > 0 || (changes.removeGroupIds?.length ?? 0) > 0
-  if (!hasScalarChanges && !hasThemeChanges && !hasGroupChanges && !hasComment && !hasPeriodChange) return { error: 'Aucun champ modifié' }
+  if (!hasScalarChanges && !hasThemeChanges && !hasGroupChanges && !hasComment && !hasPeriodChange && !hasPlaceChange) return { error: 'Aucun champ modifié' }
 
   // Owner 2026-11-03: a team member's edits to existing works go through review (saveWork →
   // pending_changes); a bulk edit of status / contact / price / … would skip it, so it is admin
@@ -249,6 +252,21 @@ export async function batchEdit(ids: number[], changes: BatchChanges): Promise<B
         .from('work_period_override')
         .upsert(ids.map((oeuvre_id) => ({ oeuvre_id, period_id: choice === 'none' ? null : choice, set_at })), { onConflict: 'oeuvre_id' })
       if (pErr) return { error: pErr.message }
+    }
+  }
+
+  // Place made for every selected work (team may set it, like the period: its own table).
+  if (hasPlaceChange) {
+    const choice = changes.placeChoice!
+    if (choice !== 'none' && !(Number.isInteger(choice) && choice > 0)) return { error: 'bad_place' }
+    for (let i = 0; i < ids.length; i += 1000) {
+      const chunk = ids.slice(i, i + 1000)
+      const set_at = new Date().toISOString()
+      const { error: plErr } =
+        choice === 'none'
+          ? await supabase.from('work_place').delete().in('oeuvre_id', chunk)
+          : await supabase.from('work_place').upsert(chunk.map((oeuvre_id) => ({ oeuvre_id, place_id: choice, set_at })), { onConflict: 'oeuvre_id' })
+      if (plErr) return { error: plErr.message }
     }
   }
 

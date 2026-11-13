@@ -4,8 +4,8 @@
 // 2026-11-13, mock `docs/design/2026-11-13/Batch.dc.html`). Every field starts "unchanged"
 // (quiet grey, em dash); a field that will change turns gold (dot, label, border, row tint, ✕).
 // The footer repeats what Apply will do. Only fields explicitly set are sent to `batchEdit`.
-// Non-admins only see what the server lets them change in bulk (period, broadcast, themes,
-// groups — `batchEdit` returns `bulk_admin_only` for the rest).
+// Non-admins only see what the server lets them change in bulk (period, place made, broadcast,
+// themes, groups — `batchEdit` returns `bulk_admin_only` for the rest).
 
 import { useMemo, useState, useTransition, type CSSProperties, type ReactNode } from 'react'
 import { useI18n } from '@/lib/i18n/context'
@@ -18,7 +18,7 @@ import { gateErrorKey } from '@/lib/work-save-error'
 import { surfaceError } from '@/lib/error-reporter/client'
 import { PEM_CONTACT_ID, yearOf } from '@/lib/data'
 import { usePeriodSource } from '@/lib/atelier/use-period-source'
-import { sortPeriods } from '@/lib/work-periods'
+import { placeLabel, sortPeriods, sortPlaces } from '@/lib/work-periods'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { calendarDayInParisFromIso } from '@/lib/session-calendar-day'
 import type { Oeuvre } from '@/lib/types/database'
@@ -82,6 +82,9 @@ export function BatchEditModal({
   const [period,    setPeriod]    = useState('')
   const periodData = usePeriodSource()
   const periods = useMemo(() => sortPeriods(periodData.periods), [periodData.periods])
+  /** '' unchanged · 'none' clear · place id (A3) */
+  const [place, setPlace] = useState('')
+  const places = useMemo(() => sortPlaces(periodData.places), [periodData.places])
 
   // Boolean fields — null = unchanged
   const [exposable,      setExposable]      = useState<Tri>(null)
@@ -105,7 +108,7 @@ export function BatchEditModal({
 
   function resetAll() {
     setTitre(''); setStatusId(''); setTechnique(''); setSupport(''); setFormat('')
-    setPrix(''); setDiscount(''); setAnnee(''); setAddressId(''); setLocDetail(''); setNote(''); setPeriod('')
+    setPrix(''); setDiscount(''); setAnnee(''); setAddressId(''); setLocDetail(''); setNote(''); setPeriod(''); setPlace('')
     for (const s of [setExposable, setMontee, setEncadree, setCatalogued, setIsCommission, setIsGift, setIsPaid, setNeedsPhoto, setBroadcastReady]) s(null)
     setThemeSel(EMPTY_SEL as JunctionSel<number>); setGroupSel(EMPTY_SEL as JunctionSel<string>)
     setError(null)
@@ -211,6 +214,7 @@ export function BatchEditModal({
   add(support !== '', 'support', t('support'), optLabel(sortedSupports, support, x => x.SupportID, x => x?.Support ?? null))
   add(format !== '', 'format', t('bm_format'), optLabel(sortedFormats, format, x => x.FormatID, x => x?.Format ?? null))
   add(period !== '', 'period', t('ps_period'), periodLabel)
+  add(place !== '', 'place', t('ps_place_made'), place === 'none' ? t('remove') : places.find(p => String(p.id) === place)?.name ?? place)
   add(prix !== '', 'price', t('price'), `${prix} €`)
   add(discount !== '', 'discount', t('discount'), `${discount} %`)
   add(locDetail !== '', 'loc', t('localisationDetail'), locDetail.trim() || t('remove'))
@@ -235,6 +239,7 @@ export function BatchEditModal({
     if (locDetail  !== '') c.LocalisationDetail = locDetail.trim() || null
     if (note.trim() !== '') c.Commentaires = note.trim()
     if (period     !== '') c.periodChoice = period === 'auto' || period === 'none' ? period : Number(period)
+    if (place      !== '') c.placeChoice  = place === 'none' ? 'none' : Number(place)
 
     if (exposable      !== null) c.Exposable       = exposable
     if (montee         !== null) c.Montee          = montee
@@ -348,6 +353,12 @@ export function BatchEditModal({
             {periods.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
         </div>
+      </Row>
+      <Row {...rowProps} label={t('ps_place_made')} active={place !== ''} onReset={() => setPlace('')} htmlFor="bm-place">
+        <Select narrow={narrow} id="bm-place" testId="batch-place" value={place} onChange={setPlace}>
+          <option value="none">{t('remove')}</option>
+          {places.map(p => <option key={p.id} value={p.id}>{placeLabel(p)}</option>)}
+        </Select>
       </Row>
     </>
   )
