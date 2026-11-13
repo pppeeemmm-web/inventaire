@@ -34,10 +34,6 @@ _Details of the open items in [`TODO.md`](./TODO.md), text as it was on 2026-11-
 
 **Verify two session write paths on the next real capture** (2026-07-30). Both are code-complete but unexercised, because each needs a photo uploaded from a device: (a) `Technique`/`Support` written to `Oeuvres` when a new work is committed from the field — check with `select "OeuvreID","Titre","Technique","Support" from "Oeuvres" order by "OeuvreID" desc limit 5;`, (b) applied-photo removal (`removeAppliedSessionImage` → `deleteWorkImage` → `recycle/`). No lossless test image exists — the catalogue has zero duplicate-sha rows — so (b) should be tested on a throwaway photo, not a real one. The `sha256` duplicate guard IS verified: it skipped 4 of 10 shots during the 2026-07-30 apply.
 
-## four-covers
-
-**Four works whose last image is older than their cover** (2026-07-30) — #272, #1434, #2103, #2339. The app's rule is "highest `SeqNo` = cover", but on these the highest-SeqNo row predates the current cover by `DateAdded`: three carry a foreign `W_xxxx_01_` prefix inside their filename (imported from another work), and #2339 has `SeqNo` and filename seq swapped. [`cover_follows_newest_image.sql`](../supabase/sql/cover_follows_newest_image.sql) deliberately skips them. Needs eyes on the actual pictures to say which one should be the cover.
-
 ## staged-photos
 
 **Warn when a session photo is staged but never applied** (2026-07-30) — root cause of the 10 stranded photos: a shot can sit in `payload.items[].shots[]` indefinitely with no signal on the work or in the journal. Wants a visible "staged, not applied" marker.

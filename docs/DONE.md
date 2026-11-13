@@ -5,6 +5,7 @@ _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, t
 ## 2026-11-13 — closed while tidying the list
 
 - Ideas agreed in principle (work links, see again, transcript audio) — all built 2026-11-13: work ↔ work links from the drawer (`WorkLinksSection`), "see again" card (Journal today + Overview; `see_again_dismissed.sql`), transcript audio + ✦ engine mark on the journal day.
+- Four works whose cover was in doubt (#272, #1434, #2103, #2339) — owner chose the covers; each has exactly one cover (checked in the DB 2026-11-13).
 - Lightroom-return loop (`lib/mobile/lightroom-return.ts`, imported by `ShareTriageClient.tsx`) — wired; owner tested it end to end (2026-11-13).
 - Staging AVIF upload smoke — superseded: 1 231 AVIF images are live in `tblImage` and uploads work in production (checked 2026-11-13).
 - Verify `OeuvresComplete` after `dead_columns_drop.sql` — the view no longer exists and no code reads it (checked 2026-11-13).

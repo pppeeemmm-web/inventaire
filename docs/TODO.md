@@ -11,7 +11,6 @@ _Open items only, one line each, in order. Details → [`TODO_NOTES.md`](./TODO_
 - [ ] **Voice:** OK the first transcript write (1 note, 8 Aug 2026, read back in French) — then "Run on this PC" in Overview → Local jobs.
 - [ ] **Image descriptions:** Gemma chosen (2026-11-13). Say GO for a batch, and whether to add an "echoes" line (artists / styles it recalls, marked AI) — you liked that in round 1. Report: [`TRANSCRIPTION_BATCHES.md`](./TRANSCRIPTION_BATCHES.md).
 - [ ] **Handwriting test:** give the folder of ~10 notebook pages.
-- [ ] **Four works, which cover?** #272, #1434, #2103, #2339 — look at the pictures. → [notes](./TODO_NOTES.md#four-covers)
 - [ ] **R2 access key rotation (O2)** — not done or not recorded; note the date in `CLAUDE.md`.
 - [ ] **Restore drill (O4)** — never run ([`BACKUP_RECOVERY.md`](./BACKUP_RECOVERY.md)).
 - [ ] **Decisions:** status chips in English (translate the DB labels?) → [notes](./TODO_NOTES.md#status-labels) · consignment sales in recettes: gross or net (ask the accountant) → [notes](./TODO_NOTES.md#money) · carousel outro card on the phone (own slide or below?).
