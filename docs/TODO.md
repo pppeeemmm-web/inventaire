@@ -33,6 +33,7 @@ Value
 - [ ] 11c. Link Recherche concepts to catalogue themes (F10, owner: "can do") — `concept_themes` junction + UI
 
 Public site — next batch
+- [ ] Phones must show the closing text ("outro") of a works sequence on `/works` (owner 2026-11-13: visitors need to see it) — desktop shows it as the last card; decide its place on phones (own last slide, or below the sequence)
 - [ ] Status chips in English (translate the DB labels) — after the next batch → [notes](./TODO_NOTES.md#status-labels)
 - [ ] 12. Circadian sky leftovers (preview another hour, real shadow direction, inert `atm` knobs) → [notes](./TODO_NOTES.md#circadian)
 - [ ] 13. Upload the panorama + video for the map / motion layouts (`site/forest-panorama.avif`, `site/interior-loop.webm`)
