@@ -1114,21 +1114,35 @@ export function TeamPortalClient({
 
   // ── Tab definitions (GROUPS) ───────────────────────────────────
 
-  /** 6 rooms — same structure on narrow and wide; narrow puts Field first. */
+  /** 6 rooms. Desktop and phone differ in order (and Inventaire sits in Catalogue on desktop, Terrain on phone). */
   // System lives inside Kaizen (Opérations & Stratégie → Système) since 2026-11-02.
   // Diffusion (broadcast) is about what goes public — Public room, still admin-only.
   const publicTabs: Tab[] = isAdmin ? ['site', 'portfolio', 'analytics', 'broadcast'] : ['site', 'portfolio', 'analytics']
   // Kaizen: top of the sidebar on desktop, right after Terrain on phone. Audit (admin only) heads
   // it — reviews are improvement work too (owner 2026-11-12); the Admin group is gone.
   const kaizenGroup = { label: t('tab_kaizen'), tabs: (isAdmin ? ['audit', 'kaizen', 'kaizen-ops'] : ['kaizen', 'kaizen-ops']) as Tab[] }
-  const fieldGroup = { label: t('nav_group_field'), tabs: ['inventory', 'production', 'journal', 'notes'] as Tab[] }
-  const GROUPS: { label: string; tabs: Tab[] }[] = [
-    ...(atelierNarrow ? [fieldGroup, kaizenGroup] : [kaizenGroup, fieldGroup]),
-    { label: t('nav_group_studio'),       tabs: ['overview', 'pipeline', 'exhibitions', 'concepts', 'stock'] },
-    { label: t('nav_group_catalogue'),    tabs: ['reports', 'themes', 'constellation'] },
-    { label: t('nav_group_commercial'),   tabs: ['sales', 'contacts', 'map', 'logistics', 'fiscal', 'vault'] },
-    { label: t('nav_group_public_tab'),   tabs: publicTabs },
-  ]
+  const studioGroup = { label: t('nav_group_studio'), tabs: ['overview', 'pipeline', 'exhibitions', 'concepts', 'stock'] as Tab[] }
+  const commercialGroup = { label: t('nav_group_commercial'), tabs: ['sales', 'contacts', 'map', 'logistics', 'fiscal', 'vault'] as Tab[] }
+  const publicGroup = { label: t('nav_group_public_tab'), tabs: publicTabs }
+  // Desktop (Pem 2026-11-14): Kaizen → Catalogue (Inventaire at the top) → Terrain → Studio → Commercial → Public.
+  // Phone unchanged for now (Pem: "don't touch yet"): Terrain (with Inventaire) first, then Kaizen.
+  const GROUPS: { label: string; tabs: Tab[] }[] = atelierNarrow
+    ? [
+        { label: t('nav_group_field'), tabs: ['inventory', 'production', 'journal', 'notes'] },
+        kaizenGroup,
+        studioGroup,
+        { label: t('nav_group_catalogue'), tabs: ['reports', 'themes', 'constellation'] },
+        commercialGroup,
+        publicGroup,
+      ]
+    : [
+        kaizenGroup,
+        { label: t('nav_group_catalogue'), tabs: ['inventory', 'reports', 'themes', 'constellation'] },
+        { label: t('nav_group_field'), tabs: ['production', 'journal', 'notes'] },
+        studioGroup,
+        commercialGroup,
+        publicGroup,
+      ]
 
   const activeTab = effectiveRouteTab ?? tab
   const showDock = selection.size > 0 && activeTab !== 'constellation'

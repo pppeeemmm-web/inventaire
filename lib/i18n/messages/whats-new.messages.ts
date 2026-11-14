@@ -9,6 +9,12 @@ export const whatsNewMessages = defineMessages({
   },
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
+  // 3.1.15 (2026-11-14) — desktop sidebar order (Pem).
+  wn_sidebar_catalogue_up_t: { fr: 'Menu de gauche : Catalogue remonte', en: 'Left menu: Catalogue moves up' },
+  wn_sidebar_catalogue_up_d: {
+    fr: 'Sur ordinateur, le menu de gauche suit maintenant cet ordre : Kaizen, Catalogue (avec l’Inventaire en tête), Terrain (Production, Journal, Notes vocales), Studio, Commercial, Public. Le menu du téléphone ne change pas pour l’instant.',
+    en: 'On a computer, the left menu now reads: Kaizen, Catalogue (with Inventory at the top), Field (Production, Journal, Voice notes), Studio, Commercial, Public. The phone menu does not change for now.',
+  },
   // 3.1.14 (2026-11-14) — staged session photos shown; production dates partial + end by hand; new / found in WorkForm (TODO 2–4).
   wn_staged_photos_dates_t: { fr: 'Photos en attente et dates de production', en: 'Waiting photos and production dates' },
   wn_staged_photos_dates_d: {
