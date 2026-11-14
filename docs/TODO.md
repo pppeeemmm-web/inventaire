@@ -13,7 +13,7 @@ _Open items only, one line each, in order. Details → [`TODO_NOTES.md`](./TODO_
 ## 2. To build — in order
 
 Current batch (design build)
-- [ ] ~~B2 Batch modify mixer~~ + ~~B1 Overview one-glance dashboard~~ (deployed 2026-11-13, `92677d9`) → A2 AI descriptions rated (deployed 2026-11-14) → A4 answered + automatic place/weather on the phone (deployed 2026-11-14, `ddc3c38`) → A3 periods by date + place made (deployed 2026-11-14, `f51ad36`) → B3 Export with live preview + Labels + CSV/XLSX (built 2026-11-14, committed locally; D3 built) — order in [NEXT](./HANDOFF_2026-11-13_NEXT.md) → [handoff](./HANDOFF_2026-11-13_DESIGN_BUILD.md)
+- [ ] Places continued (Place made empty-list fix, place from the field session, Inventory column + filter, timeline map) → staged photos + production dates (items 2–4 below) → measure speed → work card empty fields folded — order in [NEXT](./HANDOFF_2026-11-14_NEXT.md). Previous batch (B1–B3, A2–A4, D, C arrows, export image quality) all deployed 2026-11-14 (`d9bb23f`) → [archive](./archive/HANDOFF_2026-11-13_NEXT.md)
 
 Trace
 - [ ] 1. Handwriting batch (after the test above) → [notes](./TODO_NOTES.md#journal-phase-2)

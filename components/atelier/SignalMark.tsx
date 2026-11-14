@@ -1,5 +1,5 @@
 // SignalMark — one state mark readable from 2 m: colour AND shape, never colour alone
-// (design pass 2026-11-13, docs/HANDOFF_2026-11-13_DESIGN_BUILD.md §1).
+// (design pass 2026-11-13, docs/archive/HANDOFF_2026-11-13_DESIGN_BUILD.md §1).
 // ■ square = wrong · ▲ triangle = needs attention · ● filled circle = OK · ○ outline circle = info.
 // Decorative: the parent carries the text / aria-label.
 

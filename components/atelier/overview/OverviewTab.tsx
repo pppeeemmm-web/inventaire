@@ -1,7 +1,7 @@
 'use client'
 
 // Overview — one-glance dashboard (B1, design pass 2026-11-13, mock
-// `docs/design/2026-11-13/Overview.dc.html`, build notes `docs/HANDOFF_2026-11-13_DESIGN_BUILD.md` §2).
+// `docs/design/2026-11-13/Overview.dc.html`, build notes `docs/archive/HANDOFF_2026-11-13_DESIGN_BUILD.md` §2).
 // Desktop: header · a row of signal cells in fixed positions (signal first, number second) · four
 // columns of panels filling the window (no page scroll) · status bar. Panels with more to show open
 // in place when the pointer rests on them ("liquid grid"). Phone: signal rows, worst first.
