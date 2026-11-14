@@ -4,7 +4,7 @@ _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, t
 
 ## 2026-11-14 — duplicate work from one session line (#2397 / #2398) + comments left in History
 
-- Cause: the phone's field save (`saveItem`, `SessionNewClient.tsx`) re-sent the line's stale « new work » mode after an apply had created the work; `updateWorkSessionItemMetadata` then unlinked it, and the next save created a second work (#2397 from the half-typed title at 22:03, #2398 at 22:07, same photo). Fixed: the field save no longer sends the mode (only « changeItemMode » does), and the server refuses to switch a line back to « new » once its work was made (applied / photos applied). Only pair of works sharing a photo in the catalogue (checked 2026-11-14). #2397 left for Pem to delete from its card (TODO §1).
+- Cause: the phone's field save (`saveItem`, `SessionNewClient.tsx`) re-sent the line's stale « new work » mode after an apply had created the work; `updateWorkSessionItemMetadata` then unlinked it, and the next save created a second work (#2397 from the half-typed title at 22:03, #2398 at 22:07, same photo). Fixed: the field save no longer sends the mode (only « changeItemMode » does), and the server refuses to switch a line back to « new » once its work was made (applied / photos applied). Only pair of works sharing a photo in the catalogue (checked 2026-11-14). Pem kept #2397 and amended its fields himself (2026-11-14).
 - Comments copied into History cleaned with Pem's OK on #2398, #2403, #2404, #2406 (History = « [date] Session terrain » only; comments untouched; old text in `oeuvre_versions`). #2343 (test) and #2397 (duplicate) left.
 
 ## 2026-11-14 — phone-recorded works had no period (Pem, Inventory screenshot)

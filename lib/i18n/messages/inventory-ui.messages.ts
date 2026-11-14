@@ -132,4 +132,7 @@ export const inventoryUiMessages = defineMessages({
     fr: '{c} — voir les œuvres de cette couleur',
     en: '{c} — show works with this colour',
   },
+  // Pem 2026-11-14: « — » under the size read as "date missing" for a work still being made.
+  inv_year_in_progress: { fr: 'en cours', en: 'in progress' },
+  inv_year_in_progress_title: { fr: 'Pas encore d’année : l’œuvre est en production', en: 'No year yet: the work is in production' },
 })

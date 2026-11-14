@@ -2060,12 +2060,12 @@ function InvList({
                   {tight ? (
                     <td title={dims || undefined} style={{ padding: '0 4px', opacity: 0.8, fontSize: 12, lineHeight: 1.25, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', ...cellDivider, verticalAlign: 'middle' }}>
                       <div style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{dims || '—'}</div>
-                      <div style={{ color: 'var(--tx3)' }}>{yearOf(o.Année) ?? '—'}</div>
+                      <div style={{ color: 'var(--tx3)' }} title={yearOf(o.Année) == null && !o.Catalogué ? t('inv_year_in_progress_title') : undefined}>{yearOf(o.Année) ?? (o.Catalogué ? '—' : t('inv_year_in_progress'))}</div>
                     </td>
                   ) : (
                     <>
                       <td style={{ padding: '0 4px', whiteSpace: 'nowrap', opacity: 0.8, ...cellDivider, verticalAlign: 'middle' }}>{dims}</td>
-                      <td style={{ padding: '0 4px', opacity: 0.8, ...cellDivider, verticalAlign: 'middle' }}>{yearOf(o.Année) ?? '—'}</td>
+                      <td style={{ padding: '0 4px', opacity: 0.8, ...cellDivider, verticalAlign: 'middle' }} title={yearOf(o.Année) == null && !o.Catalogué ? t('inv_year_in_progress_title') : undefined}>{yearOf(o.Année) ?? (o.Catalogué ? '—' : t('inv_year_in_progress'))}</td>
                     </>
                   )}
                   {(() => {

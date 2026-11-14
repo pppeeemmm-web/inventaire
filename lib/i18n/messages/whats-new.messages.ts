@@ -9,6 +9,12 @@ export const whatsNewMessages = defineMessages({
   },
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
+  // 3.1.16 (2026-11-14) — Inventory year cell, phone works dated, duplicate fix (Pem).
+  wn_inventory_year_in_progress_t: { fr: 'Inventaire : « en cours » au lieu de « — »', en: 'Inventory: « in progress » instead of « — »' },
+  wn_inventory_year_in_progress_d: {
+    fr: 'Sous les dimensions, une œuvre encore en production et sans année affiche « en cours » (le « — » faisait croire à une date manquante). Les œuvres enregistrées depuis le téléphone avant le 8 novembre ont reçu leur année (2026) et une ligne datée de leur première session de terrain : elles sont dans la période Marseille. Enregistrer une ligne de session ne peut plus créer l’œuvre en double.',
+    en: 'Under the size, a work still in production with no year now reads « in progress » (the « — » looked like a missing date). Works recorded from the phone before 8 November got their year (2026) and a line dated their first field session: they sit in the Marseille period. Saving a session line can no longer create the work twice.',
+  },
   // 3.1.15 (2026-11-14) — desktop sidebar order (Pem).
   wn_sidebar_catalogue_up_t: { fr: 'Menu de gauche : Catalogue remonte', en: 'Left menu: Catalogue moves up' },
   wn_sidebar_catalogue_up_d: {
