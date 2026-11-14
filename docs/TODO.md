@@ -12,6 +12,8 @@ _Open items only, one line each, in order. Details → [`TODO_NOTES.md`](./TODO_
 
 ## 2. To build — in order
 
+**Rethink (Pem 2026-11-14) — design first, before more features:** inputs (images / voice notes / writings) vs outputs (works via sessions); mobile terminal reprioritized for day-to-day; work drawer reorganized; timeline + map + previews; slideshow; clear the research / concepts / AI / search confusion → [RETHINK](./RETHINK_2026-11-14.md)
+
 Current batch (design build)
 - [ ] Places continued (Place made empty-list fix ✓, place from the field session ✓ 2026-11-14, Inventory column + filter ✓, « Historique de création » ✓ 2026-11-14 (SQL applied, pushed), timeline map / map « Création » mode, drop `work_place`) → staged photos + production dates (items 2–4 below: built 2026-11-14, local, SQL applied) → measure speed → work card empty fields folded — order in [NEXT](./HANDOFF_2026-11-14_NEXT.md). Previous batch (B1–B3, A2–A4, D, C arrows, export image quality) all deployed 2026-11-14 (`d9bb23f`) → [archive](./archive/HANDOFF_2026-11-13_NEXT.md)
 

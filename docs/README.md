@@ -11,6 +11,7 @@
 | [`WORK_CUSTODY_MODEL.md`](./WORK_CUSTODY_MODEL.md) | Owner / custodian / address per work stage — the rule every order, screen and trigger follows | 2026-11-12 |
 | [`STRATEGY.md`](./STRATEGY.md) | Owner intent and order of aims — the filter for new work | 2026-11-13 |
 | [`HANDOFF_2026-11-13_OPUS.md`](./HANDOFF_2026-11-13_OPUS.md) | Batch of 2026-11-13 (A–F built; G + owner answers open — status at the top of the file) | 2026-11-13 |
+| [`RETHINK_2026-11-14.md`](./RETHINK_2026-11-14.md) | **Pem's rethink** — inputs → outputs, mobile terminal, work drawer, timeline / map, slideshow, research / AI / search confusion. Design first, not a GO | 2026-11-14 |
 | [`HANDOFF_2026-11-14_NEXT.md`](./HANDOFF_2026-11-14_NEXT.md) | **Next batch** (Pem 2026-11-14) — places continued (Place made empty-list fix, place from the field session, Inventory column + filter, timeline map) → staged photos + production dates → measure speed → work card empty fields folded | 2026-11-14 |
 | [`TODO.md`](./TODO.md) | Live checklist — one line per open item: waiting on Pem / to build (ranked) / to check once / parked | 2026-11-13 |
 | [`DONE.md`](./DONE.md) | Closed items, newest first (moved out of TODO) | 2026-11-13 |
