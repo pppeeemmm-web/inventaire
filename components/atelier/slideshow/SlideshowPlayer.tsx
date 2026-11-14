@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useI18n } from '@/lib/i18n/context'
 import { imageUrl, thumbUrl } from '@/lib/data'
+import { SlideshowExport } from './SlideshowExport'
 import {
   CAPTION_FIELDS,
   SLIDESHOW_BACKGROUNDS,
@@ -442,6 +443,7 @@ export function SlideshowPlayer({
           saving={saving}
           onSave={() => void save()}
           notice={notice}
+          playWorks={order.map((id) => byId.get(id)).filter((w): w is SlideWork => !!w)}
         />
       ) : null}
     </div>
@@ -464,6 +466,7 @@ function SettingsPanel({
   saving,
   onSave,
   notice,
+  playWorks,
 }: {
   settings: SlideshowSettings
   update: (patch: Partial<SlideshowSettings>) => void
@@ -478,6 +481,8 @@ function SettingsPanel({
   saving: boolean
   onSave: () => void
   notice: string | null
+  /** The works in playing order (shuffled when random) — what the export renders. */
+  playWorks: SlideWork[]
 }) {
   const { t } = useI18n()
   const label: React.CSSProperties = { fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', color: 'var(--tx3)', marginBottom: 6 }
@@ -642,6 +647,8 @@ function SettingsPanel({
           <span className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx3)' }}>{t('ss_order_long')}</span>
         )}
       </div>
+
+      <SlideshowExport works={playWorks} settings={settings} />
 
       {canSave ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, borderTop: '1px solid var(--bd)', paddingTop: 12 }}>

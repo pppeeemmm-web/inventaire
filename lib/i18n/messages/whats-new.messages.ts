@@ -9,6 +9,12 @@ export const whatsNewMessages = defineMessages({
   },
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
+  // 3.1.18 (2026-11-15) — slideshow export (docs/PLAN_SLIDESHOW.md step 2).
+  wn_slideshow_export_t: { fr: 'Diaporama : export GIF ou images', en: 'Slideshow: GIF or image export' },
+  wn_slideshow_export_d: {
+    fr: 'Dans les réglages ⚙ du diaporama, « Exporter » : un GIF animé (une image par œuvre, sans transition, pause réglable, 256 couleurs) ou les mêmes images en couleurs complètes (JPEG ou PNG, numérotées, dans un ZIP avec la liste de l’ordre) pour en faire une vidéo plus tard. Formats 1:1, 4:5, 9:16 Reels, 16:9 ou sur mesure, taille web en option ; l’image entière (fond autour) ou remplissant le cadre (bords coupés). En 9:16, la légende reste hors des bandes d’Instagram. Tout se fait dans le navigateur.',
+    en: 'In the slideshow settings ⚙, « Export »: an animated GIF (one frame per work, no transition, adjustable pause, 256 colours) or the same frames in full colour (JPEG or PNG, numbered, in a ZIP with the order list) to make a video later. Sizes 1:1, 4:5, 9:16 Reels, 16:9 or custom, web size optional; the whole picture (background around) or filling the frame (edges cut). In 9:16 the caption stays out of Instagram’s bands. It all runs in the browser.',
+  },
   // 3.1.17 (2026-11-15) — slideshow (TODO R5, docs/PLAN_SLIDESHOW.md step 1).
   wn_slideshow_t: { fr: 'Diaporama de la sélection', en: 'Slideshow of the selection' },
   wn_slideshow_d: {

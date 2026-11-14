@@ -33,7 +33,8 @@
 // '3.1.15' (2026-11-14): desktop sidebar — Catalogue moved up, Inventaire inside it.
 // '3.1.16' (2026-11-14): Inventory says « en cours » (not « — ») for a work in production with no year; phone works get their 2026 / Marseille; duplicate-work fix.
 // '3.1.17' (2026-11-15): slideshow from the selection + saved slideshows (« Diaporamas » in Catalogue).
-export const WHATS_NEW_RELEASE = '3.1.17'
+// '3.1.18' (2026-11-15): slideshow export — animated GIF or full-colour frames (ZIP), frame sizes, whole / fill.
+export const WHATS_NEW_RELEASE = '3.1.18'
 /** Popup on Atelier open — off for now (Pem 2026-11-14: "remove the pop up what's new for now"). The list stays in Kaizen → What's new. */
 export const WHATS_NEW_POPUP = false
 
@@ -45,6 +46,7 @@ export type WhatsNewItem = { id: string; day: string }
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'slideshow_export', day: '2026-11-15' },
   { id: 'slideshow', day: '2026-11-15' },
   { id: 'inventory_states', day: '2026-11-14' },
   { id: 'inventory_year_in_progress', day: '2026-11-14' },

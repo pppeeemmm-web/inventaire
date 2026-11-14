@@ -1,6 +1,6 @@
 # Plan — Slideshow, step 1: in the browser (TODO R5)
 
-Pem 2026-11-14: "the slideshow will be a good addition". Brief + Pem's first answers: [HANDOFF NEXT §6](./HANDOFF_2026-11-14_NEXT.md). This is the plan for **step 1 only** (no file export, no sound). **Step 1 built 2026-11-15 (verified against live code + dev 2026-11-15, What's new 3.1.17; SQL `slideshow.sql` applied with Pem's OK).** Reorder = ‹ › buttons under each thumbnail (≤ 20 works), not drag. Step 2 (GIF + frames ZIP) not built. Checked against live code 2026-11-14.
+Pem 2026-11-14: "the slideshow will be a good addition". Brief + Pem's first answers: [HANDOFF NEXT §6](./HANDOFF_2026-11-14_NEXT.md). This is the plan for **step 1 only** (no file export, no sound). **Step 1 built 2026-11-15 (verified against live code + dev 2026-11-15, What's new 3.1.17; SQL `slideshow.sql` applied with Pem's OK).** Reorder = ‹ › buttons under each thumbnail (≤ 20 works), not drag. **Step 2 built 2026-11-15** (What's new 3.1.18): `lib/slideshow-export.ts` (frames on a canvas, `gifenc` 1.0.3 MIT for the GIF, a store-only ZIP writer for the frames + `sequence.txt`), panel `SlideshowExport.tsx` in the player's settings. Measured on dev: 3 works → GIF 1080 × 1080 = 1.9 MB in 12 s (~0.65 MB a frame; a 9:16 frame is larger); ZIP 1080 × 1920 JPEG = 1.9 MB in 5 s. R2 sends `Access-Control-Allow-Origin: *`, so the browser can read the pictures. Checked against live code 2026-11-14.
 
 ## What it is for
 
