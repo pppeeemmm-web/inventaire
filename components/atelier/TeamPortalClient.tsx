@@ -1058,6 +1058,7 @@ export function TeamPortalClient({
       ['fiscal',        t('fiscal')],
       ['concepts',      t('concepts')],
       ['themes',        t('themes')],
+      ['slideshows',    t('ss_tab')],
       ['site',          t('portfolio_subtab_website')],
       ['portfolio',     t('portfolio_subtab_portfolio')],
       ['analytics',     t('portfolio_subtab_analytics')],
@@ -1131,13 +1132,13 @@ export function TeamPortalClient({
         { label: t('nav_group_field'), tabs: ['inventory', 'production', 'journal', 'notes'] },
         kaizenGroup,
         studioGroup,
-        { label: t('nav_group_catalogue'), tabs: ['reports', 'themes', 'constellation'] },
+        { label: t('nav_group_catalogue'), tabs: ['reports', 'themes', 'constellation', 'slideshows'] },
         commercialGroup,
         publicGroup,
       ]
     : [
         kaizenGroup,
-        { label: t('nav_group_catalogue'), tabs: ['inventory', 'reports', 'themes', 'constellation'] },
+        { label: t('nav_group_catalogue'), tabs: ['inventory', 'reports', 'themes', 'constellation', 'slideshows'] },
         { label: t('nav_group_field'), tabs: ['production', 'journal', 'notes'] },
         studioGroup,
         commercialGroup,

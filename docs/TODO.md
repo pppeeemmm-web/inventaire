@@ -19,7 +19,7 @@ Each one: what the screen is for, a whole-screen design, Pem's say — then buil
 - [ ] R2. **Mobile terminal reprioritized** for the day-to-day, not the sales on the welcome page. Takes in: 4b (`/atelier/works/new` keeps its desktop two columns at 375 px; the menu leads there since ➕ left the bar); a session work with no « Nouvelle / Ancienne » choice still gets no date, so no period (46 backfilled 2026-11-14) — make the choice required?
 - [ ] R3. **Work drawer reorganized** — a quicker, organized glance at everything. Replaces "empty fields folded" ([NEXT §4](./HANDOFF_2026-11-14_NEXT.md)).
 - [ ] R4. **Timeline + map + previews.** Takes in: timeline map / map « Création » mode (places with coordinates, works by date), `#1234` thumbnail + loupe everywhere, and a title next to the number in the AI suggestion rows ([NEXT §5](./HANDOFF_2026-11-14_NEXT.md) lists every plain `#id` link).
-- [ ] R5. **Slideshow** from the selection — step 1 in the browser first; write its plan and get Pem's say before building ([NEXT §6](./HANDOFF_2026-11-14_NEXT.md)).
+- [ ] R5. **Slideshow** — step 1 (in the browser, saved slideshows, « Diaporamas » in Catalogue) built 2026-11-15, What's new 3.1.17; left: step 2 export (GIF without transitions + full-colour frames ZIP, frame sizes, contain / fill) → [PLAN](./PLAN_SLIDESHOW.md)
 
 ## 3. To build — outside the rethink
 

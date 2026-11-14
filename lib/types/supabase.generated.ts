@@ -2272,6 +2272,36 @@ export type Database = {
         }
         Relationships: []
       }
+      slideshow: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          settings: Json
+          updated_at: string
+          work_ids: number[]
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          settings?: Json
+          updated_at?: string
+          work_ids?: number[]
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          settings?: Json
+          updated_at?: string
+          work_ids?: number[]
+        }
+        Relationships: []
+      }
       stock_item: {
         Row: {
           category: string | null

@@ -9,6 +9,12 @@ export const whatsNewMessages = defineMessages({
   },
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
+  // 3.1.17 (2026-11-15) — slideshow (TODO R5, docs/PLAN_SLIDESHOW.md step 1).
+  wn_slideshow_t: { fr: 'Diaporama de la sélection', en: 'Slideshow of the selection' },
+  wn_slideshow_d: {
+    fr: 'Sélectionnez des œuvres, puis « Diaporama » dans la barre de sélection : chaque œuvre en plein écran, l’image entière (jamais recadrée), sur fond noir, gris ou blanc. ← → ou glisser sur le téléphone, Espace pour lecture / pause, Échap pour fermer. Réglages ⚙ : secondes par image, coupe / fondu / glissé, en boucle, ordre au hasard, légende (titre, année, technique, support, dimensions, numéro ; FR ou EN ; à placer en la glissant ; ombre portée). « Enregistrer » garde le diaporama sous un nom, pour toute l’équipe : Catalogue → Diaporamas pour le relire, le renommer ou le supprimer.',
+    en: 'Select works, then « Slideshow » in the selection bar: each work full screen, the whole picture (never cropped), on black, grey or white. ← → or swipe on the phone, Space to play / pause, Esc to close. Settings ⚙: seconds per slide, cut / fade / slide, loop, random order, caption (title, year, technique, support, dimensions, number; FR or EN; dragged into place; cast shadow). « Save » keeps the slideshow under a name, for the whole team: Catalogue → Slideshows to play, rename or delete it.',
+  },
   // 3.1.16 (2026-11-14) — Inventory états: Catalogué named, sort by stage, État filter, + filter list A→Z (Pem).
   wn_inventory_states_t: { fr: 'Inventaire : les états, triés et filtrables', en: 'Inventory: states, sorted and filterable' },
   wn_inventory_states_d: {

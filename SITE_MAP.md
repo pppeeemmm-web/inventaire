@@ -84,6 +84,7 @@
 | `/atelier/documents/new` | Ring C **documents** — stub + links (`kind="documents"`) until COA / paperwork flow ships |
 | `/atelier/issue/new` | Ring C **issue** — maintenance report form → `studio_task` ([`IssueNewForm`](../components/atelier/IssueNewForm.tsx), [`field/actions`](../app/atelier/field/actions.ts)) |
 | `/atelier/triage` | Ring C **broadcast triage** — stub + links (`kind="triage"`) distinct from **share-triage** |
+| `/atelier/slideshows` | **Diaporamas** (Catalogue, 2026-11-15): saved slideshows — play / rename / delete ([`SlideshowsTab.tsx`](../components/atelier/slideshow/SlideshowsTab.tsx)); a new one starts from « Diaporama » in the selection bar ([`SlideshowPlayer.tsx`](../components/atelier/slideshow/SlideshowPlayer.tsx)); actions [`app/atelier/slideshow/actions.ts`](../app/atelier/slideshow/actions.ts); team table `slideshow` ([`slideshow.sql`](../supabase/sql/slideshow.sql)) |
 | `/maps` | Index of saved constellation maps → open in Atelier (`noindex`) |
 
 ### Partner portals (login + row-level checks in page)

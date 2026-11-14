@@ -11,6 +11,10 @@ import { ExportModal }    from '@/components/atelier/ExportModal'
 import { SelectionImagesDownloadModal } from '@/components/atelier/SelectionImagesDownloadModal'
 import type { Oeuvre }    from '@/lib/types/database'
 import { PEM_Z_INDEX } from '@/components/shared/BottomStack'
+import { SlideshowPlayer } from '@/components/atelier/slideshow/SlideshowPlayer'
+import { slideWorksFromOeuvres } from '@/components/atelier/slideshow/slide-works'
+import { readRememberedSlideshowSettings, rememberSlideshowSettings } from '@/lib/slideshow'
+import { saveSlideshow } from '@/app/atelier/slideshow/actions'
 
 interface Props {
   selection:          Set<number>
@@ -49,6 +53,8 @@ export function CurationDock({
   const [showExport,setShowExport]= useState(false)
   const [showImagesZip, setShowImagesZip] = useState(false)
   const [showCatalogPersist, setShowCatalogPersist] = useState(false)
+  // Slides are built once when the slideshow opens (the selection can change underneath).
+  const [slideshow, setSlideshow] = useState<ReturnType<typeof slideWorksFromOeuvres> | null>(null)
 
   const ids = [...selection]
 
@@ -99,6 +105,17 @@ export function CurationDock({
         {/* Batch edit */}
         <button type="button" className="btn sm ghost" data-testid="curation-open-batch" onClick={() => setShowBatch(true)}>
           {t('modify')}
+        </button>
+
+        {/* Slideshow (TODO R5): the selection, in the order it was selected. */}
+        <button
+          type="button"
+          className="btn sm ghost"
+          data-testid="curation-open-slideshow"
+          onClick={() => setSlideshow(slideWorksFromOeuvres(ids, oeuvres, tM, sM))}
+          title={t('ss_open_title')}
+        >
+          {t('ss_open')}
         </button>
 
         {/* Export */}
@@ -192,6 +209,16 @@ export function CurationDock({
           catalogThemes={themes}
           catalogGroups={groups}
           onClose={() => setShowExport(false)}
+        />
+      )}
+
+      {slideshow && (
+        <SlideshowPlayer
+          works={slideshow}
+          initialSettings={readRememberedSlideshowSettings()}
+          onSettingsChange={rememberSlideshowSettings}
+          onSave={saveSlideshow}
+          onClose={() => setSlideshow(null)}
         />
       )}
 

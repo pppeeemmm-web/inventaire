@@ -10,6 +10,7 @@ import type { SegmentedAtelierTab } from '@/lib/atelier/tab-routes'
 import type { TeamPortalClientProps, AtelierOverviewBootstrap } from '@/components/atelier/team-portal-types'
 import type { Lang } from '@/lib/i18n/dictionary'
 import type { ContactAddress } from '@/components/atelier/contact-editor-types'
+import { SlideshowsTab } from '@/components/atelier/slideshow/SlideshowsTab'
 
 function TabPanelFallback() {
   const { t } = useI18n()
@@ -392,6 +393,8 @@ export function SegmentRoutePanel({
           oeuvresCatalogueTotal={oeuvresPaging?.totalCount}
         />
       )
+    case 'slideshows':
+      return <SlideshowsTab oeuvres={oeuvres} tM={tM} sM={sM} />
     case 'concepts':
       return (
         <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
