@@ -8,7 +8,7 @@
 import type { ExportConfig, ExportFields } from '@/app/atelier/selection/actions'
 
 export type ExportDpi = 72 | 150 | 300
-export type ExportColour = 'colour' | 'mono'
+export type ExportColour = 'colour' | 'mono' | 'light'
 export type ExportDestination = 'screen' | 'print'
 
 export const EXPORT_DPIS: readonly ExportDpi[] = [72, 150, 300]
@@ -16,6 +16,9 @@ export const EXPORT_DPIS: readonly ExportDpi[] = [72, 150, 300]
 export const DEFAULT_EXPORT_DPI: ExportDpi = 150
 /** Picking a destination sets this density (it can still be changed afterwards). */
 export const DPI_FOR_DESTINATION: Record<ExportDestination, ExportDpi> = { screen: 72, print: 300 }
+/** Light black & white: tones scaled to 65 % (the darkest prints as a 65 % grey) — measured
+ *  ~35 % less image ink on 6 works, 2026-11-14 (owner: ink saving). */
+export const LIGHT_TONE = 0.65
 /** Stored thumbnails: 400 px on the long edge (`lib/image-upload.ts`). */
 export const THUMB_EDGE = 400
 
@@ -28,7 +31,7 @@ export function dpiOf(cfg: Pick<ExportConfig, 'dpi'>): ExportDpi {
   return cfg.dpi && EXPORT_DPIS.includes(cfg.dpi) ? cfg.dpi : DEFAULT_EXPORT_DPI
 }
 export function colourOf(cfg: Pick<ExportConfig, 'colour'>): ExportColour {
-  return cfg.colour === 'mono' ? 'mono' : 'colour'
+  return cfg.colour === 'mono' || cfg.colour === 'light' ? cfg.colour : 'colour'
 }
 
 /** PDF: points (1/72 in) → image pixels. */
@@ -121,24 +124,39 @@ export function htmlGridCellCss(cfg: Cfg): number {
   return Math.round(base / htmlGridCols(cfg))
 }
 
-export type ImageTarget = { w: number; h: number; fit: 'cover' | 'inside' }
+/** The space an image takes: points on a PDF page, CSS pixels in HTML. Resolution never changes it. */
+export type ImageFrame = { w: number; h: number; unit: 'pt' | 'css' }
 
-/** Pixels each image needs in this export, or null when the export prints no image. */
-export function exportImageTarget(cfg: Cfg): ImageTarget | null {
+export function exportImageFrame(cfg: Cfg): ImageFrame | null {
   if (!cfg.fields.image || cfg.imageSize === 'none' || cfg.layout === 'labels') return null
-  const dpi = dpiOf(cfg)
-  const fit = cfg.imageCrop === 'native' ? 'inside' : 'cover'
   if (cfg.format === 'pdf') {
     if (cfg.layout === 'list') return null // the PDF quick list prints no image
     if (cfg.layout === 'grid') {
       const g = gridGeometry(cfg)
-      return g.imgH > 0 ? { w: pxFromPt(g.cellW, dpi), h: pxFromPt(g.imgH, dpi), fit } : null
+      return g.imgH > 0 ? { w: g.cellW, h: g.imgH, unit: 'pt' } : null
     }
     const c = cardImageBox(cfg)
-    return c.side > 0 ? { w: pxFromPt(c.side, dpi), h: pxFromPt(c.side, dpi), fit } : null
+    return c.side > 0 ? { w: c.side, h: c.side, unit: 'pt' } : null
   }
-  if (cfg.layout === 'list') return { w: pxFromCss(48, dpi), h: pxFromCss(48, dpi), fit: 'cover' }
-  const css = cfg.layout === 'grid' ? htmlGridCellCss(cfg) : htmlCardSideCss(cfg).side
-  const px = pxFromCss(css, dpi)
-  return { w: px, h: px, fit }
+  const css = cfg.layout === 'list' ? 48 : cfg.layout === 'grid' ? htmlGridCellCss(cfg) : htmlCardSideCss(cfg).side
+  return { w: css, h: css, unit: 'css' }
+}
+
+/** Frame size on paper in cm (PDF, or HTML meant for print); null for HTML on screen (CSS px). */
+export function frameCm(frame: ImageFrame, cfg: Pick<ExportConfig, 'destination' | 'format'>): { w: number; h: number } | null {
+  if (frame.unit === 'pt') return { w: (frame.w / 72) * 2.54, h: (frame.h / 72) * 2.54 }
+  if (destinationOf(cfg) === 'print') return { w: (frame.w / 96) * 2.54, h: (frame.h / 96) * 2.54 }
+  return null
+}
+
+export type ImageTarget = { w: number; h: number; fit: 'cover' | 'inside' }
+
+/** Pixels each image needs in this export (its frame at the chosen dpi), or null when it prints none. */
+export function exportImageTarget(cfg: Cfg): ImageTarget | null {
+  const frame = exportImageFrame(cfg)
+  if (!frame) return null
+  const dpi = dpiOf(cfg)
+  const fit = cfg.layout === 'list' && cfg.format === 'html' ? 'cover' : cfg.imageCrop === 'native' ? 'inside' : 'cover'
+  const px = (v: number) => (frame.unit === 'pt' ? pxFromPt(v, dpi) : pxFromCss(v, dpi))
+  return { w: px(frame.w), h: px(frame.h), fit }
 }

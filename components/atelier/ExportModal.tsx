@@ -18,7 +18,9 @@ import {
   colourOf,
   destinationOf,
   dpiOf,
+  exportImageFrame,
   exportImageTarget,
+  frameCm,
   type ExportDestination,
 } from '@/lib/export/image-quality'
 import { useI18n } from '@/lib/i18n/context'
@@ -491,201 +493,186 @@ export function ExportModal({
 
         <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
 
-          {/* ── Config panel ────────────────────────────────── */}
-          <div style={{ width: 340, flexShrink: 0, padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 18, borderRight: '1px solid var(--bd)', overflow: 'auto' }}>
+          {/* ── Config panel: no scroll at 1280 × 800 (owner 2026-11-14) — Page / Fields / Image
+              blocks, related settings side by side, compact segmented toggles. ── */}
+          <div data-testid="export-options" style={{ width: 460, flexShrink: 0, padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 12, borderRight: '1px solid var(--bd)', overflow: 'auto' }}>
 
-            {/* Format */}
-            {!csvMode && <Section label="FORMAT">
-              <ToggleRow
-                groupLabel="FORMAT"
-                options={[{ v: 'html', l: 'HTML' }, { v: 'pdf', l: 'PDF' }]}
-                value={cfg.format} onChange={(v) => {
-                  set('format', v as 'html' | 'pdf')
-                  // HTML stays on its page size when it is meant for print (owner 2026-11-14).
-                  if (v === 'html' && destinationOf({ ...cfg, format: 'html' }) === 'screen') set('paper', 'screen')
-                  if (cfg.paper === 'screen' && (v === 'pdf' || destinationOf({ ...cfg, format: 'html' }) === 'print')) set('paper', 'a4')
-                }}
-              />
-            </Section>}
+            {/* ── Page ── */}
+            {!csvMode && <Block label={t('ex_block_page')}>
+              <Pair>
+                <Mini label="FORMAT">
+                  <Seg groupLabel="FORMAT"
+                    options={[{ v: 'html', l: 'HTML' }, { v: 'pdf', l: 'PDF' }]}
+                    value={cfg.format} onChange={(v) => {
+                      set('format', v as 'html' | 'pdf')
+                      // HTML stays on its page size when it is meant for print (owner 2026-11-14).
+                      if (v === 'html' && destinationOf({ ...cfg, format: 'html' }) === 'screen') set('paper', 'screen')
+                      if (cfg.paper === 'screen' && (v === 'pdf' || destinationOf({ ...cfg, format: 'html' }) === 'print')) set('paper', 'a4')
+                    }} />
+                </Mini>
+                {cfg.layout !== 'labels' && <Mini label={t('ex_output')}>
+                  <Seg groupLabel={t('ex_output')} title={t('ex_output_hint')}
+                    options={[{ v: 'screen', l: t('ex_output_screen') }, { v: 'print', l: t('ex_output_print') }]}
+                    value={destinationOf(cfg)} onChange={(v) => chooseDestination(v as ExportDestination)} />
+                </Mini>}
+              </Pair>
 
-            {/* Output: screen or print, whatever the format — sets the density (owner 2026-11-14) */}
-            {!csvMode && cfg.layout !== 'labels' && <Section label={t('ex_output')}>
-              <ToggleRow
-                groupLabel={t('ex_output')}
-                options={[{ v: 'screen', l: t('ex_output_screen') }, { v: 'print', l: t('ex_output_print') }]}
-                value={destinationOf(cfg)} onChange={(v) => chooseDestination(v as ExportDestination)}
-              />
-              <div className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 10, marginTop: 6, lineHeight: 1.4 }}>{t('ex_output_hint')}</div>
-            </Section>}
+              {cfg.layout !== 'labels' && (
+                <input
+                  className="input"
+                  aria-label={t('exportTitle')}
+                  placeholder={`${t('exportTitle')} — ${t('exportTitlePlaceholder')}`}
+                  value={cfg.exportTitle ?? ''}
+                  onChange={(e) => set('exportTitle', e.target.value || null)}
+                  style={{ width: '100%', fontSize: 11, minHeight: 30 }}
+                />
+              )}
 
-            {/* Title */}
-            {!csvMode && cfg.layout !== 'labels' && <Section label={t('exportTitle')}>
-              <input
-                className="input"
-                placeholder={t('exportTitlePlaceholder')}
-                value={cfg.exportTitle ?? ''}
-                onChange={(e) => set('exportTitle', e.target.value || null)}
-                style={{ width: '100%', fontSize: 11 }}
-              />
-            </Section>}
-
-            {/* Labels: sheet preset + first free label (B3 / D2) */}
-            {!csvMode && cfg.layout === 'labels' && (() => {
-              const lp = labelPreset(cfg.labelPreset)
-              const start = clampLabelStart(cfg.labelStart, lp)
-              const sheets = Math.ceil((start - 1 + ids.length) / labelsPerSheet(lp))
-              return (
-                <Section label={t('ex_layout_options')}>
-                  <label className="t-label" htmlFor="export-label-preset" style={{ display: 'block', marginBottom: 4 }}>{t('ex_label_preset')}</label>
-                  <select id="export-label-preset" className="input" data-testid="export-label-preset" value={lp.id}
-                    onChange={(e) => set('labelPreset', e.target.value as ExportConfig['labelPreset'])}
-                    style={{ width: '100%', fontSize: 12, minHeight: 36 }}>
-                    {LABEL_PRESETS.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                  </select>
-                  <label className="t-label" htmlFor="export-label-start" style={{ display: 'block', margin: '10px 0 4px' }}>{t('ex_label_start')}</label>
-                  <input id="export-label-start" className="input" type="number" min={1} max={labelsPerSheet(lp)} value={start}
-                    data-testid="export-label-start"
-                    onChange={(e) => set('labelStart', clampLabelStart(Number(e.target.value), lp))}
-                    style={{ width: 90, fontSize: 12, minHeight: 36 }} />
-                  <div className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 10, marginTop: 6, lineHeight: 1.4 }}>{t('ex_label_start_hint')}</div>
-                  <div className="t-mono-sm" style={{ color: 'var(--tx2)', fontSize: 11, marginTop: 8 }}>
-                    {interpolateMessage(t('ex_label_sheets_fmt'), { n: ids.length, sheets })}
+              {/* Labels: sheet preset + first free label (B3 / D2) */}
+              {cfg.layout === 'labels' && (() => {
+                const lp = labelPreset(cfg.labelPreset)
+                const start = clampLabelStart(cfg.labelStart, lp)
+                const sheets = Math.ceil((start - 1 + ids.length) / labelsPerSheet(lp))
+                return (
+                  <div>
+                    <label className="t-label" htmlFor="export-label-preset" style={{ display: 'block', marginBottom: 4, fontSize: 9.5 }}>{t('ex_label_preset')}</label>
+                    <select id="export-label-preset" className="input" data-testid="export-label-preset" value={lp.id}
+                      onChange={(e) => set('labelPreset', e.target.value as ExportConfig['labelPreset'])}
+                      style={{ width: '100%', fontSize: 12, minHeight: 32 }}>
+                      {LABEL_PRESETS.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8 }}>
+                      <label className="t-label" htmlFor="export-label-start" style={{ fontSize: 9.5 }}>{t('ex_label_start')}</label>
+                      <input id="export-label-start" className="input" type="number" min={1} max={labelsPerSheet(lp)} value={start}
+                        data-testid="export-label-start"
+                        onChange={(e) => set('labelStart', clampLabelStart(Number(e.target.value), lp))}
+                        style={{ width: 70, fontSize: 12, minHeight: 30 }} />
+                      <span className="t-mono-sm" style={{ color: 'var(--tx2)', fontSize: 11 }}>
+                        {interpolateMessage(t('ex_label_sheets_fmt'), { n: ids.length, sheets })}
+                      </span>
+                    </div>
+                    <div className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 10, marginTop: 6, lineHeight: 1.4 }}>{t('ex_label_start_hint')}</div>
+                    <div className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 10, marginTop: 4, lineHeight: 1.4 }}>{t('ex_label_fields_hint')}</div>
                   </div>
-                  <div className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 10, marginTop: 6, lineHeight: 1.4 }}>{t('ex_label_fields_hint')}</div>
-                </Section>
-              )
-            })()}
+                )
+              })()}
 
-            {/* Layout options (the layout itself is the tab above) */}
-            {!csvMode && cfg.layout !== 'labels' && cfg.layout !== 'list' && <Section label={t('ex_layout_options')}>
-              {cfg.layout === 'grid' && (
-                <div style={{ marginTop: 10 }}>
-                  <div className="row gap-sm" style={{ flexWrap: 'wrap' }}>
-                    <span className="t-label">{t('export_rows_per_page_label')}</span>
-                    {([2, 3, 4, 5, 6, 8, 10] as const).map((n) => (
-                      <button key={n} className={`btn sm ${cfg.rowsPerPage === n ? 'primary' : 'ghost'}`}
-                        aria-label={`${t('export_rows_per_page_label')} ${n}`}
-                        aria-pressed={cfg.rowsPerPage === n}
-                        onClick={() => set('rowsPerPage', n)}>{n}</button>
-                    ))}
-                  </div>
+              {/* Per page (the layout itself is the tab above) + index */}
+              {(cfg.layout === 'cards' || cfg.layout === 'grid') && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <span className="t-label" style={{ fontSize: 9.5 }}>{cfg.layout === 'grid' ? t('export_rows_per_page_label') : `${t('cardsPerPage')} :`}</span>
+                  {cfg.layout === 'grid' ? (
+                    <Seg groupLabel={t('export_rows_per_page_label')}
+                      options={([2, 3, 4, 5, 6, 8, 10] as const).map((n) => ({ v: String(n), l: String(n), aria: `${t('export_rows_per_page_label')} ${n}` }))}
+                      value={String(cfg.rowsPerPage)} onChange={(v) => set('rowsPerPage', Number(v))} />
+                  ) : (
+                    <Seg groupLabel={t('cardsPerPage')}
+                      options={([1, 2, 3, 4, 5, 6] as const).map((n) => ({ v: String(n), l: String(n), aria: `${t('cardsPerPage')} ${n}` }))}
+                      value={String(cfg.cardsPerPage)} onChange={(v) => set('cardsPerPage', Number(v) as ExportConfig['cardsPerPage'])} />
+                  )}
                 </div>
               )}
-              {cfg.layout === 'cards' && (
-                <div className="row gap-sm" style={{ marginTop: 10, flexWrap: 'wrap' }}>
-                  <span className="t-label">{t('cardsPerPage')} :</span>
-                  {([1, 2, 3, 4, 5, 6] as const).map((n) => (
-                    <button key={n} className={`btn sm ${cfg.cardsPerPage === n ? 'primary' : 'ghost'}`}
-                      aria-label={`${t('cardsPerPage')} ${n}`}
-                      aria-pressed={cfg.cardsPerPage === n}
-                      onClick={() => set('cardsPerPage', n as ExportConfig['cardsPerPage'])}>{n}</button>
-                  ))}
-                </div>
+              {(cfg.layout === 'cards' || cfg.layout === 'grid') && (
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={cfg.appendList}
+                    onChange={(e) => set('appendList', e.target.checked)} />
+                  <span className="t-mono-sm" style={{ color: cfg.appendList ? 'var(--tx)' : 'var(--tx3)' }}>
+                    {t('appendIndex')}
+                  </span>
+                </label>
               )}
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, cursor: 'pointer' }}>
-                <input type="checkbox" checked={cfg.appendList}
-                  onChange={(e) => set('appendList', e.target.checked)} />
-                <span className="t-mono-sm" style={{ color: cfg.appendList ? 'var(--tx)' : 'var(--tx3)' }}>
-                  {t('appendIndex')}
-                </span>
-              </label>
-            </Section>}
 
-            {/* Fields */}
-            <Section label={t('displayedFields')}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }}>
+              {/* Paper + orientation — PDF, or HTML meant for print (labels are A4 sheets) */}
+              {(cfg.format === 'pdf' || destinationOf(cfg) === 'print') && cfg.layout !== 'labels' && (
+                <Pair>
+                  <Mini label={t('paperFormat')}>
+                    <Seg groupLabel={t('paperFormat')}
+                      options={[{ v: 'a4', l: 'A4' }, { v: 'a3', l: 'A3' }]}
+                      value={cfg.paper} onChange={(v) => set('paper', v as ExportConfig['paper'])} />
+                  </Mini>
+                  <Mini label={t('ex_orientation')}>
+                    <Seg groupLabel={t('ex_orientation')}
+                      options={[{ v: 'portrait', l: t('ex_portrait') }, { v: 'landscape', l: t('ex_landscape') }]}
+                      value={cfg.orientation} onChange={(v) => set('orientation', v as ExportConfig['orientation'])} />
+                  </Mini>
+                </Pair>
+              )}
+            </Block>}
+
+            {/* ── Fields ── */}
+            <Block label={t('displayedFields')}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px 8px' }}>
                 {(Object.entries(cfg.fields) as [keyof ExportFields, boolean][]).map(([k, v]) => (
-                  <label key={k} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                  <label key={k} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', minWidth: 0 }}>
                     <input type="checkbox" checked={v} onChange={(e) => setField(k, e.target.checked)} />
-                    <span className="t-mono-sm" style={{ color: v ? 'var(--tx)' : 'var(--tx3)' }}>
+                    <span className="t-mono-sm" style={{ color: v ? 'var(--tx)' : 'var(--tx3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {FIELD_LABELS[k]}
                     </span>
                   </label>
                 ))}
               </div>
-            </Section>
+            </Block>
 
-            {/* Image options */}
-            {cfg.fields.image && !csvMode && cfg.layout !== 'labels' && (
-              <>
-                <Section label={t('imageSize')}>
-                  <ToggleRow
-                    groupLabel={t('imageSize')}
-                    options={[{ v: 'large', l: t('large') }, { v: 'small', l: t('small') }, { v: 'none', l: t('none') }]}
-                    value={cfg.imageSize} onChange={(v) => set('imageSize', v as ExportConfig['imageSize'])}
-                  />
-                </Section>
-                <Section label={t('imageFormat')}>
-                  <ToggleRow
-                    groupLabel={t('imageFormat')}
-                    options={[{ v: 'square', l: t('square') }, { v: 'native', l: t('original') }]}
-                    value={cfg.imageCrop} onChange={(v) => set('imageCrop', v as 'square' | 'native')}
-                  />
-                </Section>
-                {cfg.format === 'html' && cfg.imageSize !== 'none' && (
-                  <Section label={t('images')}>
-                    <ToggleRow
-                      groupLabel={t('images')}
-                      options={[{ v: 'linked', l: t('ex_img_linked') }, { v: 'embedded', l: t('ex_img_embedded') }]}
-                      value={cfg.imageEmbed} onChange={(v) => set('imageEmbed', v as 'linked' | 'embedded')}
-                    />
-                    {isEmbedHeavy && (
-                      <div className="t-mono-sm" style={{ color: '#c8a86e', marginTop: 6 }}>
-                        ⚠ {ids.length} {t('embedHeavyWarning')}
-                      </div>
-                    )}
-                  </Section>
-                )}
-              </>
-            )}
-
-            {/* Resolution (images only) + colour (owner 2026-11-14) */}
+            {/* ── Image: the frame (size, crop — set by the layout) and what fills it (resolution,
+                colour). Resolution never changes the frame (owner question 2026-11-14). ── */}
             {!csvMode && cfg.layout !== 'labels' && (() => {
+              const frame = exportImageFrame(cfg)
               const target = exportImageTarget(cfg)
+              const cm = frame ? frameCm(frame, cfg) : null
+              const nf = new Intl.NumberFormat(lang === 'fr' ? 'fr-FR' : 'en-GB', { maximumFractionDigits: 1 })
+              const pxStr = target ? (target.w === target.h ? String(target.w) : `${target.w} × ${target.h}`) : ''
+              const showImage = cfg.fields.image && !(cfg.format === 'pdf' && cfg.layout === 'list')
               return (
-                <>
-                  {target && (
-                    <Section label={t('ex_dpi')}>
-                      <ToggleRow
-                        groupLabel={t('ex_dpi')}
-                        options={EXPORT_DPIS.map((d) => ({ v: String(d), l: `${d} dpi` }))}
-                        value={String(dpiOf(cfg))} onChange={(v) => set('dpi', Number(v) as ExportConfig['dpi'])}
-                      />
-                      <div className="t-mono-sm" data-testid="export-dpi-px" style={{ color: 'var(--tx3)', fontSize: 10, marginTop: 6 }}>
-                        {interpolateMessage(t('ex_dpi_px_fmt'), { px: target.w === target.h ? String(target.w) : `${target.w} × ${target.h}` })}
-                      </div>
-                    </Section>
+                <Block label={t('ex_block_image')}>
+                  {showImage && (
+                    <Pair>
+                      <Mini label={t('imageSize')}>
+                        <Seg groupLabel={t('imageSize')}
+                          options={[{ v: 'large', l: t('large') }, { v: 'small', l: t('small') }, { v: 'none', l: t('none') }]}
+                          value={cfg.imageSize} onChange={(v) => set('imageSize', v as ExportConfig['imageSize'])} />
+                      </Mini>
+                      <Mini label={t('imageFormat')}>
+                        <Seg groupLabel={t('imageFormat')}
+                          options={[{ v: 'square', l: t('square') }, { v: 'native', l: t('original') }]}
+                          value={cfg.imageCrop} onChange={(v) => set('imageCrop', v as 'square' | 'native')} />
+                      </Mini>
+                    </Pair>
                   )}
-                  <Section label={t('ex_colour')}>
-                    <ToggleRow
-                      groupLabel={t('ex_colour')}
-                      options={[{ v: 'colour', l: t('ex_colour_colour') }, { v: 'mono', l: t('ex_colour_mono') }]}
-                      value={colourOf(cfg)} onChange={(v) => set('colour', v as ExportConfig['colour'])}
-                    />
-                  </Section>
-                </>
+                  <Pair>
+                    {target ? (
+                      <Mini label={t('ex_dpi')}>
+                        <Seg groupLabel={t('ex_dpi')}
+                          options={EXPORT_DPIS.map((d) => ({ v: String(d), l: `${d} dpi` }))}
+                          value={String(dpiOf(cfg))} onChange={(v) => set('dpi', Number(v) as ExportConfig['dpi'])} />
+                      </Mini>
+                    ) : <span />}
+                    <Mini label={t('ex_colour')}>
+                      <Seg groupLabel={t('ex_colour')} title={t('ex_colour_hint')}
+                        options={[{ v: 'colour', l: t('ex_colour_colour') }, { v: 'mono', l: t('ex_colour_mono') }, { v: 'light', l: t('ex_colour_light') }]}
+                        value={colourOf(cfg)} onChange={(v) => set('colour', v as ExportConfig['colour'])} />
+                    </Mini>
+                  </Pair>
+                  {frame && target && (
+                    <div className="t-mono-sm" data-testid="export-dpi-px" style={{ color: 'var(--tx2)', fontSize: 10.5 }}>
+                      {cm
+                        ? interpolateMessage(t('ex_frame_cm_fmt'), { w: nf.format(cm.w), h: nf.format(cm.h), px: pxStr })
+                        : interpolateMessage(t('ex_frame_screen_fmt'), { w: Math.round(frame.w), h: Math.round(frame.h), px: pxStr })}
+                    </div>
+                  )}
+                  {cfg.format === 'html' && target && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                      <span className="t-label" style={{ fontSize: 9.5 }}>{t('images')}</span>
+                      <Seg groupLabel={t('images')}
+                        options={[{ v: 'linked', l: t('ex_img_linked') }, { v: 'embedded', l: t('ex_img_embedded') }]}
+                        value={cfg.imageEmbed} onChange={(v) => set('imageEmbed', v as 'linked' | 'embedded')} />
+                      {isEmbedHeavy && (
+                        <span className="t-mono-sm" title={t('embedHeavyWarning')} style={{ color: '#c8a86e', fontSize: 10 }}>⚠ {ids.length}</span>
+                      )}
+                    </div>
+                  )}
+                </Block>
               )
             })()}
-
-            {/* Paper + orientation — PDF, or HTML meant for print (labels are A4 sheets) */}
-            {(cfg.format === 'pdf' || destinationOf(cfg) === 'print') && !csvMode && cfg.layout !== 'labels' && (
-              <>
-                <Section label={t('paperFormat')}>
-                  <ToggleRow
-                    groupLabel={t('paperFormat')}
-                    options={[{ v: 'a4', l: 'A4' }, { v: 'a3', l: 'A3' }]}
-                    value={cfg.paper} onChange={(v) => set('paper', v as ExportConfig['paper'])}
-                  />
-                </Section>
-                <Section label="ORIENTATION">
-                  <ToggleRow
-                    groupLabel="ORIENTATION"
-                    options={[{ v: 'portrait', l: 'Portrait' }, { v: 'landscape', l: 'Paysage' }]}
-                    value={cfg.orientation} onChange={(v) => set('orientation', v as ExportConfig['orientation'])}
-                  />
-                </Section>
-              </>
-            )}
           </div>
 
           {/* ── Live preview (B3): the real output on the first works, or the CSV table ── */}
@@ -799,23 +786,24 @@ export function ExportModal({
         </div>
 
         {/* Footer */}
-        <div style={{ padding: '14px 28px', borderTop: '1px solid var(--bd)', flexShrink: 0 }}>
+        <div style={{ padding: '10px 20px', borderTop: '1px solid var(--bd)', flexShrink: 0 }}>
           {progress && <div className="t-mono-sm" style={{ color: 'var(--tx3)', marginBottom: 8 }}>{progress}</div>}
           {error    && <div className="t-mono-sm" style={{ color: '#c0392b', marginBottom: 8 }}>{error}</div>}
           {persistError && <div className="t-mono-sm" style={{ color: '#c88a20', marginBottom: 8 }}>{persistError}</div>}
-          {(() => {
-            const nonPublicCount = oeuvres.filter(o => ids.includes(o.OeuvreID) && o.anonymity_level === 2).length
-            return nonPublicCount > 0 ? (
-              <div className="t-mono-sm" style={{
-                color: '#c88a20', marginBottom: 8,
-                background: 'rgba(200,140,40,0.10)', border: '1px solid rgba(200,140,40,0.4)',
-                padding: '5px 10px', borderRadius: 2,
-              }}>
-                ⚠ {nonPublicCount} œuvre{nonPublicCount > 1 ? 's' : ''} non publique{nonPublicCount > 1 ? 's' : ''} dans cette sélection
-              </div>
-            ) : null
-          })()}
-          <div className="row gap-sm" style={{ justifyContent: 'flex-end' }}>
+          <div className="row gap-sm" style={{ justifyContent: 'flex-end', alignItems: 'center' }}>
+            {/* Non-public warning on the buttons' line: the options panel keeps the height. */}
+            {(() => {
+              const nonPublicCount = oeuvres.filter(o => ids.includes(o.OeuvreID) && o.anonymity_level === 2).length
+              return nonPublicCount > 0 ? (
+                <div className="t-mono-sm" style={{
+                  color: '#c88a20', marginRight: 'auto',
+                  background: 'rgba(200,140,40,0.10)', border: '1px solid rgba(200,140,40,0.4)',
+                  padding: '5px 10px', borderRadius: 2,
+                }}>
+                  ⚠ {nonPublicCount} œuvre{nonPublicCount > 1 ? 's' : ''} non publique{nonPublicCount > 1 ? 's' : ''} dans cette sélection
+                </div>
+              ) : null
+            })()}
             <button type="button" className="btn ghost" onClick={onClose}>{t('cancel')}</button>
             {csvMode ? (
               <>
@@ -1020,6 +1008,53 @@ export function ExportModal({
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────
+
+/** Options block: small heading + rule, then its rows (mixing-desk density). */
+function Block({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div className="t-label" style={{ fontSize: 10, letterSpacing: '0.12em', borderBottom: '1px solid var(--bd)', paddingBottom: 3 }}>{label}</div>
+      {children}
+    </div>
+  )
+}
+
+/** Two settings side by side. */
+function Pair({ children }: { children: React.ReactNode }) {
+  return <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 16px', alignItems: 'flex-start' }}>{children}</div>
+}
+
+function Mini({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div style={{ minWidth: 0 }}>
+      <div className="t-label" style={{ fontSize: 9.5, marginBottom: 4 }}>{label}</div>
+      {children}
+    </div>
+  )
+}
+
+/** Compact segmented toggle (same look as the type tabs). */
+function Seg({ options, value, onChange, groupLabel, title }: {
+  options: { v: string; l: string; aria?: string }[]
+  value: string
+  onChange: (v: string) => void
+  groupLabel?: string
+  title?: string
+}) {
+  return (
+    <div role="group" aria-label={groupLabel} title={title} style={{ display: 'inline-flex', flexWrap: 'wrap', border: '1px solid var(--bd)', maxWidth: '100%' }}>
+      {options.map(({ v, l, aria }, i) => (
+        <button key={v} type="button" aria-pressed={value === v} aria-label={aria}
+          onClick={() => onChange(v)}
+          style={{
+            minHeight: 28, padding: '0 9px', border: 'none', borderLeft: i ? '1px solid var(--bd)' : 'none',
+            background: value === v ? 'var(--ac)' : 'transparent', color: value === v ? 'var(--bg0)' : 'var(--tx)',
+            fontFamily: 'inherit', fontSize: 11, letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap', cursor: 'pointer',
+          }}>{l}</button>
+      ))}
+    </div>
+  )
+}
 
 /** "27 Mo" / "27 MB" (Intl units follow the language). */
 function formatBytes(n: number, lang: string): string {

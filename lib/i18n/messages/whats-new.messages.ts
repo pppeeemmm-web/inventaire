@@ -9,6 +9,11 @@ export const whatsNewMessages = defineMessages({
   },
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
+  wn_export_panel_light_t: { fr: 'Export : tous les réglages sur un écran, N&B clair', en: 'Export: every setting on one screen, light B&W' },
+  wn_export_panel_light_d: {
+    fr: 'Les réglages d’export tiennent sur un écran, sans défiler : Page, Champs, Image. La ligne « Cadre » donne la place de l’image sur la page (en cm) et, à côté, les pixels qui la remplissent : changer la résolution ne change que les pixels, jamais le cadre. Nouveau en Couleur : N&B clair, un gris adouci (le noir imprime à 65 %) qui met environ 35 % d’encre en moins sur les images.',
+    en: 'The export settings fit on one screen, no scrolling: Page, Fields, Image. The « Frame » line gives the image’s space on the page (in cm) and, next to it, the pixels that fill it: changing the resolution changes only the pixels, never the frame. New in Colour: Light B&W, a softened grey (black prints at 65 %) that puts about 35 % less ink on the images.',
+  },
   wn_export_image_quality_t: { fr: 'Export : écran ou impression, résolution, noir & blanc', en: 'Export: screen or print, resolution, black & white' },
   wn_export_image_quality_d: {
     fr: 'Dans Exporter, choisissez Écran (72 dpi, fichier léger) ou Impression (300 dpi), changez la résolution (72 / 150 / 300 dpi) et passez en noir & blanc. Chaque image est taillée à sa taille imprimée : 550 œuvres en fiches (2 par page, petite image) passent d’environ 326 Mo à 5 Mo pour l’écran ou 65 Mo pour l’impression à 300 dpi. En fiches, la taille de l’image suit le nombre de fiches par page (1 par page = toute la largeur). La taille estimée du fichier s’affiche au-dessus de l’aperçu.',

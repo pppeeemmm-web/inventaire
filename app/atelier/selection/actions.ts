@@ -5,6 +5,7 @@
 
 import { clampLabelStart, labelPreset, labelSlot, labelText, type LabelPresetId } from '@/lib/export/labels'
 import {
+  LIGHT_TONE,
   THUMB_EDGE,
   cardImageBox,
   colourOf,
@@ -562,7 +563,7 @@ export async function generateExport(
     const thumbOf = (file: string) =>
       file.startsWith('http') ? null : `${R2_URL}/thumbs/${encodeURIComponent(file.replace(/\.[^.]+$/, ''))}.avif`
     const thumbMayDo = Math.max(target.w, target.h) <= THUMB_EDGE
-    const mono = colourOf(config) === 'mono'
+    const colour = colourOf(config)
 
     if (config.format === 'pdf' || config.imageEmbed === 'embedded') {
       const get = async (url: string | null): Promise<Buffer | null> => {
@@ -590,8 +591,10 @@ export async function generateExport(
             let img = sharp(buf)
               .resize(target.w, target.h, { fit: target.fit, withoutEnlargement: true })
               .flatten({ background: '#ffffff' })
-            // One grey channel (grayscale() alone keeps three identical RGB channels).
-            if (mono) img = img.grayscale().toColourspace('b-w')
+            // One grey channel (grayscale() alone keeps three identical RGB channels). Light B&W:
+            // tones scaled to LIGHT_TONE over white (black → 65 % grey), ~35 % less image ink.
+            if (colour !== 'colour') img = img.grayscale().toColourspace('b-w')
+            if (colour === 'light') img = img.linear(LIGHT_TONE, 255 * (1 - LIGHT_TONE))
             const out = await img.jpeg({ quality: 82 }).toBuffer()
             imageMap.set(o.OeuvreID, `data:image/jpeg;base64,${out.toString('base64')}`)
           } catch (e) {
@@ -781,8 +784,13 @@ function buildHtml(
       ? `.card .img-wrap,.card .img-wrap.large,.card .img-wrap:not(.large){flex:0 0 ${cardSide.side}px;width:${cardSide.side}px;max-width:100%;height:${cardSide.side}px}`
         + (cardSide.below ? '.card{flex-direction:column}' : '')
       : '',
-    colourOf(cfg) === 'mono'
-      ? 'img{filter:grayscale(1)!important}.np-badge,.np-badge-block{color:#666!important;border-color:#aaa!important;background:#f2f2f2!important}'
+    colourOf(cfg) !== 'colour'
+      ? '.np-badge,.np-badge-block{color:#666!important;border-color:#aaa!important;background:#f2f2f2!important}'
+        // Linked images are greyed by the browser; light = 65 % opacity over white, the same tones
+        // the server gives embedded images (which are already grey / light, so no second pass).
+        + (cfg.imageEmbed !== 'embedded'
+          ? `img{filter:grayscale(1)${colourOf(cfg) === 'light' ? ` opacity(${LIGHT_TONE})` : ''}!important}`
+          : 'img{filter:none!important}')
       : '',
   ].join('')
 
@@ -1006,7 +1014,7 @@ async function buildPdf(
     const margin = 50
     const usable = PW - margin * 2
     /** "⚠ NON PUBLIC" colour; grey in black & white. */
-    const accent = colourOf(cfg) === 'mono' ? '#888888' : '#c88a20'
+    const accent = colourOf(cfg) !== 'colour' ? '#888888' : '#c88a20'
 
     // Stamp header on every page as it opens — no bufferPages/switchToPage needed
     let pageNum = 0
