@@ -25,6 +25,15 @@ export const exportUiMessages = defineMessages({
     fr: 'Sur l’étiquette : titre, année · technique · support, dimensions, prix, n°. Image, statut et notes ne s’impriment pas.',
     en: 'On the label: title, year · technique · support, dimensions, price, no. Image, status and notes are not printed.',
   },
+  ex_label_qr: { fr: 'QR code (ouvre l’œuvre dans l’Atelier)', en: 'QR code (opens the work in the Atelier)' },
+  ex_label_qr_hint: {
+    fr: 'À droite de l’étiquette. Le scanner de l’Atelier le lit ; il faut être connecté pour voir l’œuvre.',
+    en: 'On the right of the label. The Atelier scanner reads it; you need to be signed in to see the work.',
+  },
+  ex_label_qr_hint_small: {
+    fr: 'Petite étiquette : QR d’environ 17 mm, le titre est coupé plus tôt. Testez un scan avant d’imprimer toute une planche.',
+    en: 'Small label: QR about 17 mm, the title is cut sooner. Test a scan before printing a whole sheet.',
+  },
   ex_csv_rows_fmt: { fr: '{n} lignes · colonnes = champs cochés', en: '{n} rows · columns = ticked fields' },
   ex_csv_more_fmt: { fr: '… et {n} autres lignes', en: '… and {n} more rows' },
   ex_download_csv: { fr: 'Télécharger CSV', en: 'Download CSV' },

@@ -56,6 +56,19 @@ export function labelSlot(n: number, p: LabelPreset): { sheet: number; x: number
   return { sheet, x: p.left + col * p.pitchX, y: p.top + row * p.pitchY }
 }
 
+/** Inner padding of a label, mm (small = the 21 mm-high L7651). Shared by the PDF and HTML drawers. */
+export function labelPadding(p: LabelPreset): { x: number; y: number; gap: number } {
+  const small = p.h < 30
+  return { x: small ? 2 : 4, y: small ? 1.5 : 3, gap: small ? 1.5 : 3 }
+}
+
+/** QR square side, mm (owner 2026-11-15: QR on labels, opens the work). Right of the text, at most
+ *  45 % of the label width so the title keeps room; 40 mm cap on the tall L7165. */
+export function labelQrSide(p: LabelPreset): number {
+  const pad = labelPadding(p)
+  return Math.min(p.h - pad.y * 2, p.w * 0.45, 40)
+}
+
 export type LabelText = { title: string; lines: string[]; ref: string | null }
 
 type LabelWork = {

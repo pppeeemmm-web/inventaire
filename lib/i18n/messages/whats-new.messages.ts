@@ -9,6 +9,12 @@ export const whatsNewMessages = defineMessages({
   },
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
+  // 3.1.19 (2026-11-15) — QR code on labels.
+  wn_labels_qr_t: { fr: 'Étiquettes avec QR code', en: 'Labels with a QR code' },
+  wn_labels_qr_d: {
+    fr: 'Exporter → Étiquettes : cochez « QR code » pour l’imprimer à droite de chaque étiquette. Scanné avec l’Atelier, il ouvre l’œuvre — pour les étiquettes de stockage et d’inventaire.',
+    en: 'Export → Labels: tick « QR code » to print it on the right of each label. Scanned with the Atelier, it opens the work — for storage and inventory labels.',
+  },
   // 3.1.18 (2026-11-15) — slideshow export (docs/PLAN_SLIDESHOW.md step 2).
   wn_slideshow_export_t: { fr: 'Diaporama : export GIF ou images', en: 'Slideshow: GIF or image export' },
   wn_slideshow_export_d: {

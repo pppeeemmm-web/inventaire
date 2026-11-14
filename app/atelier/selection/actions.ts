@@ -3,7 +3,9 @@
 // Selection actions — batch edit and export (HTML / PDF).
 // Called from BatchEditModal and ExportModal via useTransition.
 
-import { clampLabelStart, labelPreset, labelSlot, labelText, type LabelPresetId } from '@/lib/export/labels'
+import QRCode from 'qrcode'
+import { clampLabelStart, labelPadding, labelPreset, labelQrSide, labelSlot, labelText, type LabelPresetId } from '@/lib/export/labels'
+import { workPhysicalBridgeUrl } from '@/lib/atelier/work-physical-bridge-url'
 import {
   LIGHT_TONE,
   THUMB_EDGE,
@@ -88,6 +90,8 @@ export interface ExportConfig {
   /** Labels layout (B3 / D2): A4 sheet preset + 1-based first free label on the sheet. */
   labelPreset?: LabelPresetId
   labelStart?:  number
+  /** QR on each label → the work in the Atelier (owner 2026-11-15, storage / inventory labels). */
+  labelQr?:     boolean
   /** Image quality (owner 2026-11-14, `lib/export/image-quality.ts`). Missing in older saved
    *  setups: destination follows the format, 150 dpi, colour. */
   destination?: ExportDestination
@@ -916,15 +920,21 @@ function buildLabelsHtml(
   const p = labelPreset(cfg.labelPreset)
   const start = clampLabelStart(cfg.labelStart, p) - 1
   const small = p.h < 30
+  const pad = labelPadding(p)
+  const qr = cfg.labelQr === true
+  const side = labelQrSide(p)
+  // With a QR the text column ends before it (padding-right) and the ref follows.
+  const textRight = qr ? pad.x + side + pad.gap : pad.x
   const sheets: string[][] = []
   oeuvres.forEach((o, i) => {
     const s = labelSlot(start + i, p)
     const tx = labelText(o, cfg.fields, tM, sM, untitled)
     ;(sheets[s.sheet] ??= []).push(
-      `<div class="lb" style="left:${s.x}mm;top:${s.y}mm;width:${p.w}mm;height:${p.h}mm">` +
+      `<div class="lb" style="left:${s.x}mm;top:${s.y}mm;width:${p.w}mm;height:${p.h}mm;padding-right:${textRight}mm">` +
         (tx.title ? `<div class="t">${escHtml(tx.title)}</div>` : '') +
         tx.lines.map((l) => `<div class="l">${escHtml(l)}</div>`).join('') +
-        (tx.ref ? `<div class="r">${escHtml(tx.ref)}</div>` : '') +
+        (tx.ref ? `<div class="r" style="right:${textRight}mm">${escHtml(tx.ref)}</div>` : '') +
+        (qr ? `<div class="q" style="right:${pad.x}mm;top:${(p.h - side) / 2}mm;width:${side}mm;height:${side}mm">${qrSvg(workPhysicalBridgeUrl(o.OeuvreID))}</div>` : '') +
         '</div>',
     )
   })
@@ -934,12 +944,27 @@ function buildLabelsHtml(
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#e9e7e3;font-family:'Helvetica Neue',Arial,sans-serif;color:#111}
 .sheet{position:relative;width:210mm;height:297mm;background:#fff;margin:0 auto 8mm;break-after:page;overflow:hidden}
-.lb{position:absolute;padding:${small ? '1.5mm 2mm' : '3mm 4mm'};overflow:hidden;outline:0.2mm dashed #ddd}
+.lb{position:absolute;padding:${pad.y}mm ${pad.x}mm;overflow:hidden;outline:0.2mm dashed #ddd}
 .t{font-weight:700;font-size:${small ? 7 : 10}pt;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .l{font-size:${small ? 6 : 8}pt;line-height:1.3;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.r{position:absolute;right:${small ? '2mm' : '4mm'};bottom:${small ? '1.2mm' : '2.5mm'};font-family:monospace;font-size:${small ? 6 : 7.5}pt;color:#777}
+.r{position:absolute;bottom:${small ? '1.2mm' : '2.5mm'};font-family:monospace;font-size:${small ? 6 : 7.5}pt;color:#777}
+.q{position:absolute}.q svg{display:block;width:100%;height:100%}
 @media print{body{background:#fff}.sheet{margin:0}.lb{outline:none}}
 </style></head><body>${pages}</body></html>`
+}
+
+/** QR modules (error correction M) with a 1-module quiet zone inside the square — the label's own
+ *  white padding adds the rest. Drawn as vector in both the PDF and the HTML, so it prints sharp. */
+function qrModules(text: string): { n: number; dark: (r: number, c: number) => boolean } {
+  const m = QRCode.create(text, { errorCorrectionLevel: 'M' }).modules
+  return { n: m.size + 2, dark: (r, c) => r >= 1 && c >= 1 && r <= m.size && c <= m.size && m.get(r - 1, c - 1) === 1 }
+}
+
+function qrSvg(text: string): string {
+  const { n, dark } = qrModules(text)
+  let d = ''
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (dark(r, c)) d += `M${c} ${r}h1v1h-1z`
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${n} ${n}" shape-rendering="crispEdges"><path fill="#000" d="${d}"/></svg>`
 }
 
 /** Label sheet as PDF (pdfkit, A4, no margins) — same positions as the HTML. */
@@ -954,8 +979,13 @@ async function buildLabelsPdf(
   const p = labelPreset(cfg.labelPreset)
   const start = clampLabelStart(cfg.labelStart, p) - 1
   const small = p.h < 30
-  const padX = (small ? 2 : 4) * MM
-  const padY = (small ? 1.5 : 3) * MM
+  const pad = labelPadding(p)
+  const padX = pad.x * MM
+  const padY = pad.y * MM
+  const qr = cfg.labelQr === true
+  const side = labelQrSide(p)
+  // Space the QR takes off the text column (QR + gap), in points.
+  const qrCut = qr ? (side + pad.gap) * MM : 0
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: 'A4', margin: 0, autoFirstPage: true })
     const chunks: Buffer[] = []
@@ -968,7 +998,7 @@ async function buildLabelsPdf(
       while (sheet < s.sheet) { doc.addPage({ size: 'A4', margin: 0 }); sheet++ }
       const x = s.x * MM + padX
       let y = s.y * MM + padY
-      const w = p.w * MM - padX * 2
+      const w = p.w * MM - padX * 2 - qrCut
       const tx = labelText(o, cfg.fields, tM, sM, untitled)
       if (tx.title) {
         doc.font('Helvetica-Bold').fontSize(small ? 7 : 10).fillColor('#111111').text(tx.title, x, y, { width: w, lineBreak: false, ellipsis: true })
@@ -982,7 +1012,15 @@ async function buildLabelsPdf(
       if (tx.ref) {
         const fs = small ? 6 : 7.5
         doc.font('Courier').fontSize(fs).fillColor('#777777')
-          .text(tx.ref, s.x * MM, (s.y + p.h) * MM - padY - fs, { width: p.w * MM - padX, align: 'right', lineBreak: false })
+          .text(tx.ref, s.x * MM, (s.y + p.h) * MM - padY - fs, { width: p.w * MM - padX - qrCut, align: 'right', lineBreak: false })
+      }
+      if (qr) {
+        const { n, dark } = qrModules(workPhysicalBridgeUrl(o.OeuvreID))
+        const u = (side * MM) / n
+        const qx = (s.x + p.w - pad.x - side) * MM
+        const qy = (s.y + (p.h - side) / 2) * MM
+        for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (dark(r, c)) doc.rect(qx + c * u, qy + r * u, u, u)
+        doc.fillColor('#000000').fill()
       }
     })
     doc.end()

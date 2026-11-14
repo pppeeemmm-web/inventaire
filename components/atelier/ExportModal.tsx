@@ -552,6 +552,16 @@ export function ExportModal({
                       </span>
                     </div>
                     <div className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 10, marginTop: 6, lineHeight: 1.4 }}>{t('ex_label_start_hint')}</div>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginTop: 8, minHeight: 30 }}>
+                      <input type="checkbox" data-testid="export-label-qr" checked={cfg.labelQr === true}
+                        onChange={(e) => set('labelQr', e.target.checked)} />
+                      <span className="t-mono-sm" style={{ color: cfg.labelQr ? 'var(--tx)' : 'var(--tx3)' }}>{t('ex_label_qr')}</span>
+                    </label>
+                    {cfg.labelQr && (
+                      <div className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 10, marginTop: 4, lineHeight: 1.4 }}>
+                        {t(lp.h < 30 ? 'ex_label_qr_hint_small' : 'ex_label_qr_hint')}
+                      </div>
+                    )}
                     <div className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 10, marginTop: 4, lineHeight: 1.4 }}>{t('ex_label_fields_hint')}</div>
                   </div>
                 )
