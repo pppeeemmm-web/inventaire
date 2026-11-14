@@ -2,6 +2,13 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-14 — closed while tidying the list (verified against live code + DB 2026-11-14)
+
+- Places continued (all on `origin/main`): Place made empty-list fix; a work's place follows its period (`dd6bb9d`, What's new 3.1.10); place suggested from the field session (`0dc686f`, 3.1.12); Inventory place column + filter (reads the creation route); « Historique de création » — dated lines with a place, replacing the single place made (`e48eac8`, 3.1.13, `work_creation_step.sql` applied). Left over → TODO R4 (timeline map) and 1e (drop `work_place`).
+- 16. Journal cold load on the phone: measured on dev (~15 Server Actions queued one at a time ahead of the day) and fixed — one bootstrap request, shell background loads wait for the Journal, `?today=1` opens the day before first paint (`0e7a160`, pushed). Live phone timing → TODO §4.
+- 2–4. Staged session photos shown (Journal day + summary, work card Sessions); production start / end as year / month / day, end by hand (admin); new / found in the new-work form (`85b450c`, What's new 3.1.14, `oeuvres_production_precision.sql` applied with Pem's OK). Status at writing: committed locally, not pushed. Live checks → TODO §4.
+- Slideshow moved from "parked" to the rethink (TODO R5: Pem 2026-11-14 "will be a good addition").
+
 ## 2026-11-14 — voice notes record first (Pem, after a morning in the field)
 
 - Voice-note sheet rebuilt record-first: opens on the recorder, saves on Stop, « Enregistrée · 0:42 » + replay, details optional after, red « Pas enregistrée » + Retry on failure, mic-refused help (iPhone settings path; the phone decides, no app can force it). `VoiceNoteSheet.tsx`, `updateVoiceNoteDetails`, `lib/voice/mic-permission.ts`, What's new 3.1.11. Status at writing: committed locally, not pushed (rides with the places batch).
