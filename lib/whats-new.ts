@@ -23,7 +23,8 @@
 // '3.1.5' (2026-11-13): Batch modify redesigned as a mixer (B2); Overview one-glance dashboard (B1).
 // '3.1.6' (2026-11-14): AI descriptions in the work card, rated for usefulness (A2); place + weather recorded by themselves on the phone (A4).
 // '3.1.7' (2026-11-14): periods by date + place made per work (A3).
-export const WHATS_NEW_RELEASE = '3.1.7'
+// '3.1.8' (2026-11-14): export with a live preview + Labels + CSV/XLSX tabs (B3); money signal ■ when net < 0 (D3).
+export const WHATS_NEW_RELEASE = '3.1.8'
 
 /** localStorage: release the viewer chose not to see again. sessionStorage: already shown this visit. */
 export const WHATS_NEW_DISMISSED_KEY = 'pem_whats_new_dismissed'
@@ -33,6 +34,7 @@ export type WhatsNewItem = { id: string; day: string }
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'export_preview', day: '2026-11-14' },
   { id: 'periods_dates_places', day: '2026-11-14' },
   { id: 'field_context_auto', day: '2026-11-14' },
   { id: 'ai_description_rating', day: '2026-11-14' },

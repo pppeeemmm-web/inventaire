@@ -40,6 +40,7 @@ import { journalEntryMessages } from './journal-entry.messages'
 import { batchEditMessages } from './batch-edit.messages'
 import { overviewDashMessages } from './overview-dash.messages'
 import { workDescriptionMessages } from './work-description.messages'
+import { exportUiMessages } from './export-ui.messages'
 
 export const featureMessages = {
   ...atelierMessages,
@@ -84,6 +85,7 @@ export const featureMessages = {
   ...batchEditMessages,
   ...overviewDashMessages,
   ...workDescriptionMessages,
+  ...exportUiMessages,
 } as const
 
 export type MessageKey = keyof typeof featureMessages

@@ -8,6 +8,12 @@ export const whatsNewMessages = defineMessages({
     en: 'What changed in the Atelier over the last few days.',
   },
 
+  // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3).
+  wn_export_preview_t: { fr: 'Export : on voit le fichier avant de l’exporter', en: 'Export: see the file before you export it' },
+  wn_export_preview_d: {
+    fr: 'L’export de la sélection s’ouvre en grand : en haut, le type (Fiches, Grille, Liste rapide, Étiquettes, CSV / XLSX) ; à gauche, les réglages ; au centre, le vrai fichier, refait à chaque changement sur les premières œuvres. Nouveau : Étiquettes — planches A4 (3 × 7, 2 × 7, 2 × 4, 5 × 13), avec le numéro de la première étiquette libre pour une planche entamée. Nouveau : CSV / XLSX — le tableau des champs cochés, téléchargeable. Vue d’ensemble : le signal Argent passe au ■ si le net de l’année est négatif.',
+    en: 'The selection export opens large: the type on top (Cards, Grid, Quick list, Labels, CSV / XLSX), settings on the left, and in the middle the real file, redone on the first works at every change. New: Labels — A4 sheets (3 × 7, 2 × 7, 2 × 4, 5 × 13), with the first free label for a partly used sheet. New: CSV / XLSX — the table of ticked fields, ready to download. Overview: the Money signal turns ■ when the year’s net is negative.',
+  },
   // 3.1.7 (2026-11-14) — periods by date + place made (A3).
   wn_periods_dates_places_t: { fr: 'Périodes au jour près, et le lieu de chaque œuvre', en: 'Periods to the day, and where each work was made' },
   wn_periods_dates_places_d: {

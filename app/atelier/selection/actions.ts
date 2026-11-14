@@ -3,6 +3,7 @@
 // Selection actions — batch edit and export (HTML / PDF).
 // Called from BatchEditModal and ExportModal via useTransition.
 
+import { clampLabelStart, labelPreset, labelSlot, labelText, type LabelPresetId } from '@/lib/export/labels'
 import { calendarDayInParisFromIso } from '@/lib/session-calendar-day'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { STATUS_ID_ARCHIVE_ARTISTE } from '@/lib/data'
@@ -59,7 +60,7 @@ export interface BatchChanges {
 
 export interface ExportConfig {
   format:       'html' | 'pdf'
-  layout:       'cards' | 'grid' | 'list'
+  layout:       'cards' | 'grid' | 'list' | 'labels'
   columns:      2 | 3 | 4 | 6 | 8 | 10 | 12
   cardsPerPage: 1 | 2 | 3 | 4 | 5 | 6   // fiches layout only
   rowsPerPage:  number                  // grid layout only (0 = auto)
@@ -71,6 +72,9 @@ export interface ExportConfig {
   orientation:  'portrait' | 'landscape'
   appendList:   boolean   // append a quick ID list after the card/grid section
   exportTitle?: string | null
+  /** Labels layout (B3 / D2): A4 sheet preset + 1-based first free label on the sheet. */
+  labelPreset?: LabelPresetId
+  labelStart?:  number
 }
 
 export interface ExportFields {
@@ -514,6 +518,20 @@ export async function generateExport(
   const R2   = process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? ''
   const STR  = R2
 
+  // Labels: text only, no images (B3 / D2).
+  if (config.layout === 'labels') {
+    const ts = new Date().toISOString().slice(0, 10)
+    const untitled = lang === 'fr' ? 'Sans titre' : 'Untitled'
+    if (config.format === 'html') {
+      return { ok: true, content: buildLabelsHtml(oeuvres, config, tM, sM, untitled), filename: `etiquettes_${ts}.html`, mime: 'text/html' }
+    }
+    try {
+      return { ok: true, content: await buildLabelsPdf(oeuvres, config, tM, sM, untitled), filename: `etiquettes_${ts}.pdf`, mime: 'application/pdf' }
+    } catch (e) {
+      return { error: `PDF : ${String(e)}` }
+    }
+  }
+
   // Build image map: id → url or base64 data url
   // PDF always needs server-fetched images (pdfkit cannot load remote URLs).
   const imageMap = new Map<number, string>()
@@ -837,6 +855,93 @@ function buildHtml(
 }
 
 // ── PDF builder ───────────────────────────────────────────────────────────
+
+const MM = 72 / 25.4
+const escHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+
+/** Label sheet as print-ready HTML: absolute boxes in mm on A4 pages (print at 100 %, no margins). */
+function buildLabelsHtml(
+  oeuvres: Oeuvre[],
+  cfg: ExportConfig,
+  tM: Record<number, string>,
+  sM: Record<number, string>,
+  untitled: string,
+): string {
+  const p = labelPreset(cfg.labelPreset)
+  const start = clampLabelStart(cfg.labelStart, p) - 1
+  const small = p.h < 30
+  const sheets: string[][] = []
+  oeuvres.forEach((o, i) => {
+    const s = labelSlot(start + i, p)
+    const tx = labelText(o, cfg.fields, tM, sM, untitled)
+    ;(sheets[s.sheet] ??= []).push(
+      `<div class="lb" style="left:${s.x}mm;top:${s.y}mm;width:${p.w}mm;height:${p.h}mm">` +
+        (tx.title ? `<div class="t">${escHtml(tx.title)}</div>` : '') +
+        tx.lines.map((l) => `<div class="l">${escHtml(l)}</div>`).join('') +
+        (tx.ref ? `<div class="r">${escHtml(tx.ref)}</div>` : '') +
+        '</div>',
+    )
+  })
+  const pages = sheets.map((labels) => `<section class="sheet">${(labels ?? []).join('')}</section>`).join('')
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Labels — the pem workshop</title><style>
+@page{size:A4;margin:0}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#e9e7e3;font-family:'Helvetica Neue',Arial,sans-serif;color:#111}
+.sheet{position:relative;width:210mm;height:297mm;background:#fff;margin:0 auto 8mm;break-after:page;overflow:hidden}
+.lb{position:absolute;padding:${small ? '1.5mm 2mm' : '3mm 4mm'};overflow:hidden;outline:0.2mm dashed #ddd}
+.t{font-weight:700;font-size:${small ? 7 : 10}pt;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.l{font-size:${small ? 6 : 8}pt;line-height:1.3;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.r{position:absolute;right:${small ? '2mm' : '4mm'};bottom:${small ? '1.2mm' : '2.5mm'};font-family:monospace;font-size:${small ? 6 : 7.5}pt;color:#777}
+@media print{body{background:#fff}.sheet{margin:0}.lb{outline:none}}
+</style></head><body>${pages}</body></html>`
+}
+
+/** Label sheet as PDF (pdfkit, A4, no margins) — same positions as the HTML. */
+async function buildLabelsPdf(
+  oeuvres: Oeuvre[],
+  cfg: ExportConfig,
+  tM: Record<number, string>,
+  sM: Record<number, string>,
+  untitled: string,
+): Promise<string> {
+  const PDFDocument = (await import('pdfkit')).default
+  const p = labelPreset(cfg.labelPreset)
+  const start = clampLabelStart(cfg.labelStart, p) - 1
+  const small = p.h < 30
+  const padX = (small ? 2 : 4) * MM
+  const padY = (small ? 1.5 : 3) * MM
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ size: 'A4', margin: 0, autoFirstPage: true })
+    const chunks: Buffer[] = []
+    doc.on('data', (c: Buffer) => chunks.push(c))
+    doc.on('end', () => resolve(Buffer.concat(chunks).toString('base64')))
+    doc.on('error', reject)
+    let sheet = 0
+    oeuvres.forEach((o, i) => {
+      const s = labelSlot(start + i, p)
+      while (sheet < s.sheet) { doc.addPage({ size: 'A4', margin: 0 }); sheet++ }
+      const x = s.x * MM + padX
+      let y = s.y * MM + padY
+      const w = p.w * MM - padX * 2
+      const tx = labelText(o, cfg.fields, tM, sM, untitled)
+      if (tx.title) {
+        doc.font('Helvetica-Bold').fontSize(small ? 7 : 10).fillColor('#111111').text(tx.title, x, y, { width: w, lineBreak: false, ellipsis: true })
+        y += (small ? 7 : 10) * 1.3
+      }
+      doc.font('Helvetica').fontSize(small ? 6 : 8).fillColor('#333333')
+      for (const l of tx.lines) {
+        doc.text(l, x, y, { width: w, lineBreak: false, ellipsis: true })
+        y += (small ? 6 : 8) * 1.35
+      }
+      if (tx.ref) {
+        const fs = small ? 6 : 7.5
+        doc.font('Courier').fontSize(fs).fillColor('#777777')
+          .text(tx.ref, s.x * MM, (s.y + p.h) * MM - padY - fs, { width: p.w * MM - padX, align: 'right', lineBreak: false })
+      }
+    })
+    doc.end()
+  })
+}
 
 async function buildPdf(
   oeuvres:        Oeuvre[],

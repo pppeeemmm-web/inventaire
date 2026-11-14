@@ -3,8 +3,15 @@
 // ExportModal — configure and trigger selection export (HTML / PDF).
 // Supports cards, grid (N cols), and quick list layouts.
 // Export themes are saved to localStorage for reuse.
+// B3 (design pass 2026-11-13, D2 answered 2026-11-14): type tabs (Cards / Grid / Quick list / Labels /
+// CSV-XLSX) and a live preview that is the real output — `generateExport` run on the first works of
+// the selection (HTML in a sandboxed frame, PDF in the browser's viewer). CSV / XLSX are built here
+// from the rows already loaded.
 
-import { useState, useTransition, useEffect, useCallback } from 'react'
+import { useState, useTransition, useEffect, useCallback, useMemo, useRef } from 'react'
+import * as XLSX from 'xlsx'
+import { interpolateMessage } from '@/lib/i18n/message-core'
+import { LABEL_PRESETS, DEFAULT_LABEL_PRESET, clampLabelStart, labelPreset, labelsPerSheet } from '@/lib/export/labels'
 import { useI18n } from '@/lib/i18n/context'
 import { PemModalOverlay } from '@/components/shared/PemModalOverlay'
 import { useEscapeClose } from '@/hooks/useEscapeClose'
@@ -27,6 +34,11 @@ const THEME_KEY      = 'pem_export_themes'
 const LAST_CFG_KEY   = 'pem_export_last_cfg'
 
 const cap = (s: string) => s ? s.charAt(0).toUpperCase() + s.slice(1) : s
+
+/** Live preview size: enough to judge a page, small enough to stay quick. */
+const PREVIEW_WORKS = 6
+const PREVIEW_LABELS = 24
+const PREVIEW_DEBOUNCE_MS = 450
 
 interface ExportTheme {
   name:   string
@@ -109,6 +121,8 @@ export function ExportModal({
 }: Props) {
   const { t, lang } = useI18n()
   const [cfg,          setCfg]          = useState<ExportConfig>(DEFAULT_CONFIG)
+  /** CSV / XLSX tab (not an ExportConfig layout: built in the browser). */
+  const [csvMode,      setCsvMode]      = useState(false)
 
   const FIELD_LABELS: Record<keyof ExportFields, string> = {
     image:     t('image'),
@@ -161,6 +175,88 @@ export function ExportModal({
   useEffect(() => {
     saveLastCfg(cfg)
   }, [cfg])
+
+  // ── Live preview: the real export on the first works (B3) ─────────────────
+  const previewIds = useMemo(() => ids.slice(0, cfg.layout === 'labels' ? PREVIEW_LABELS : PREVIEW_WORKS), [ids, cfg.layout])
+  const [preview, setPreview] = useState<{ kind: 'html' | 'pdf'; src: string } | null>(null)
+  const [previewErr, setPreviewErr] = useState<string | null>(null)
+  const [previewBusy, setPreviewBusy] = useState(false)
+  const previewSeq = useRef(0)
+  useEffect(() => {
+    if (csvMode || previewIds.length === 0) return
+    const seq = ++previewSeq.current
+    const timer = setTimeout(() => {
+      setPreviewBusy(true)
+      void generateExport(previewIds, cfg, tM, sM, statusLabelMap, lang)
+        .then((r) => {
+          if (seq !== previewSeq.current) return
+          if ('error' in r) {
+            setPreviewErr(stringifyError(r.error))
+            return
+          }
+          setPreviewErr(null)
+          if (r.mime === 'application/pdf') {
+            const binary = atob(r.content)
+            const bytes = new Uint8Array(binary.length)
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+            setPreview({ kind: 'pdf', src: URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' })) })
+          } else {
+            setPreview({ kind: 'html', src: r.content })
+          }
+        })
+        .catch((e) => { if (seq === previewSeq.current) setPreviewErr(stringifyError(e)) })
+        .finally(() => { if (seq === previewSeq.current) setPreviewBusy(false) })
+    }, PREVIEW_DEBOUNCE_MS)
+    return () => clearTimeout(timer)
+  }, [csvMode, previewIds, cfg, tM, sM, statusLabelMap, lang])
+  // Free the previous PDF blob when a new preview replaces it.
+  useEffect(() => () => { if (preview?.kind === 'pdf') URL.revokeObjectURL(preview.src) }, [preview])
+
+  // ── CSV / XLSX: rows already loaded, columns = ticked fields (no image) ───
+  const csvTable = useMemo(() => {
+    if (!csvMode) return null
+    const byId = new Map(oeuvres.map((o) => [o.OeuvreID, o]))
+    const f = cfg.fields
+    const cols: { label: string; get: (o: Oeuvre) => string | number | null }[] = []
+    if (f.id) cols.push({ label: FIELD_LABELS.id, get: (o) => o.OeuvreID })
+    if (f.title) cols.push({ label: FIELD_LABELS.title, get: (o) => o.Titre ?? '' })
+    if (f.year) cols.push({ label: FIELD_LABELS.year, get: (o) => (o.Année ? o.Année.slice(0, 4) : '') })
+    if (f.technique) cols.push({ label: FIELD_LABELS.technique, get: (o) => (o.Technique != null ? tM[o.Technique] ?? '' : '') })
+    if (f.support) cols.push({ label: FIELD_LABELS.support, get: (o) => (o.Support != null ? sM[o.Support] ?? '' : '') })
+    if (f.dims) cols.push({ label: FIELD_LABELS.dims, get: (o) => (o.Hauteur && o.Largeur ? `${o.Hauteur} × ${o.Largeur}${o.Profondeur ? ` × ${o.Profondeur}` : ''}` : '') })
+    if (f.price) cols.push({ label: FIELD_LABELS.price, get: (o) => (o.PrixFinal ?? o.Prix ?? null) as number | null })
+    if (f.status) cols.push({ label: FIELD_LABELS.status, get: (o) => (o.statusId != null ? statusLabelMap[o.statusId] ?? '' : '') })
+    if (f.notes) cols.push({ label: FIELD_LABELS.notes, get: (o) => (o.Commentaires ?? '').replace(/\s+/g, ' ').trim() })
+    const rows = ids.map((id) => byId.get(id)).filter((o): o is Oeuvre => !!o).map((o) => cols.map((c) => c.get(o)))
+    return { headers: cols.map((c) => c.label), rows }
+    // FIELD_LABELS is rebuilt each render from t(); its content only changes with the language.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [csvMode, oeuvres, ids, cfg.fields, tM, sM, statusLabelMap, lang])
+
+  function downloadCsv() {
+    if (!csvTable) return
+    const esc = (v: string | number | null) => {
+      const s = v == null ? '' : String(v)
+      return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+    }
+    const text = [csvTable.headers, ...csvTable.rows].map((r) => r.map(esc).join(';')).join('\r\n')
+    // BOM so Excel opens the accents right.
+    triggerDownload(URL.createObjectURL(new Blob(['\ufeff' + text], { type: 'text/csv;charset=utf-8' })), `export_${new Date().toISOString().slice(0, 10)}.csv`)
+  }
+  function downloadXlsx() {
+    if (!csvTable) return
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([csvTable.headers, ...csvTable.rows]), 'Export')
+    XLSX.writeFile(wb, `export_${new Date().toISOString().slice(0, 10)}.xlsx`)
+  }
+
+  const tab: ExportConfig['layout'] | 'csv' = csvMode ? 'csv' : cfg.layout
+  function chooseTab(next: ExportConfig['layout'] | 'csv') {
+    if (next === 'csv') { setCsvMode(true); return }
+    setCsvMode(false)
+    set('layout', next)
+    if (next === 'labels' && !cfg.labelPreset) set('labelPreset', DEFAULT_LABEL_PRESET)
+  }
 
   function set<K extends keyof ExportConfig>(key: K, val: ExportConfig[K]) {
     setCfg((prev) => ({ ...prev, [key]: val }))
@@ -330,10 +426,10 @@ export function ExportModal({
     <PemModalOverlay
       onClose={onClose}
       panelStyle={{
-        width: 680,
-        maxWidth: '95vw',
-        maxHeight: '90vh',
-        overflow: 'auto',
+        width: 'min(1440px, 96vw)',
+        height: '92vh',
+        maxWidth: '96vw',
+        overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
         padding: 0,
@@ -341,21 +437,45 @@ export function ExportModal({
     >
       <div role="dialog" aria-modal="true" aria-labelledby="export-modal-title" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
 
-        {/* Header */}
-        <div style={{ padding: '20px 28px 16px', borderBottom: '1px solid var(--bd)', flexShrink: 0 }}>
-          <div id="export-modal-title" className="t-eyebrow" style={{ marginBottom: 4 }}>{t('exportSelection')}</div>
-          <div className="t-mono-sm" style={{ color: 'var(--tx3)', marginBottom: 24 }}>
-            {ids.length} {t('works')}
+        {/* Header: title + type tabs (B3) */}
+        <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--bd)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+          <div id="export-modal-title" style={{ fontFamily: 'var(--font-serif, serif)', fontSize: 22, lineHeight: 1.1 }}>
+            {interpolateMessage(t('ex_title_fmt'), { n: ids.length })}
+          </div>
+          <div role="tablist" aria-label={t('ex_tabs')} style={{ display: 'flex', border: '1px solid var(--bd)' }}>
+            {([
+              ['cards', t('fiches')],
+              ['grid', t('grille')],
+              ['list', t('listeRapide')],
+              ['labels', t('ex_tab_labels')],
+              ['csv', t('ex_tab_csv')],
+            ] as const).map(([k, label], i) => (
+              <button
+                key={k}
+                type="button"
+                role="tab"
+                aria-selected={tab === k}
+                data-testid={`export-tab-${k}`}
+                onClick={() => chooseTab(k)}
+                style={{
+                  minHeight: 34, padding: '0 14px', border: 'none', borderLeft: i ? '1px solid var(--bd)' : 'none',
+                  background: tab === k ? 'var(--ac)' : 'transparent', color: tab === k ? 'var(--bg0)' : 'var(--tx)',
+                  fontFamily: 'inherit', fontSize: 12, cursor: 'pointer', textTransform: 'capitalize',
+                }}
+              >
+                {label}
+              </button>
+            ))}
           </div>
         </div>
 
-        <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'auto' }}>
+        <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
 
           {/* ── Config panel ────────────────────────────────── */}
-          <div style={{ flex: 1, padding: '20px 28px', display: 'flex', flexDirection: 'column', gap: 20, borderRight: '1px solid var(--bd)', overflow: 'auto' }}>
+          <div style={{ width: 340, flexShrink: 0, padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 18, borderRight: '1px solid var(--bd)', overflow: 'auto' }}>
 
             {/* Format */}
-            <Section label="FORMAT">
+            {!csvMode && <Section label="FORMAT">
               <ToggleRow
                 groupLabel="FORMAT"
                 options={[{ v: 'html', l: 'HTML' }, { v: 'pdf', l: 'PDF' }]}
@@ -365,10 +485,10 @@ export function ExportModal({
                   if (v === 'pdf' && cfg.paper === 'screen') set('paper', 'a4')
                 }}
               />
-            </Section>
+            </Section>}
 
             {/* Title */}
-            <Section label={t('exportTitle')}>
+            {!csvMode && cfg.layout !== 'labels' && <Section label={t('exportTitle')}>
               <input
                 className="input"
                 placeholder={t('exportTitlePlaceholder')}
@@ -376,19 +496,37 @@ export function ExportModal({
                 onChange={(e) => set('exportTitle', e.target.value || null)}
                 style={{ width: '100%', fontSize: 11 }}
               />
-            </Section>
+            </Section>}
 
-            {/* Layout */}
-            <Section label={t('layout')}>
-              <ToggleRow
-                groupLabel={t('layout')}
-                options={[
-                  { v: 'cards', l: t('fiches') },
-                  { v: 'grid',  l: t('grille') },
-                  { v: 'list',  l: t('listeRapide') },
-                ]}
-                value={cfg.layout} onChange={(v) => set('layout', v as ExportConfig['layout'])}
-              />
+            {/* Labels: sheet preset + first free label (B3 / D2) */}
+            {!csvMode && cfg.layout === 'labels' && (() => {
+              const lp = labelPreset(cfg.labelPreset)
+              const start = clampLabelStart(cfg.labelStart, lp)
+              const sheets = Math.ceil((start - 1 + ids.length) / labelsPerSheet(lp))
+              return (
+                <Section label={t('ex_layout_options')}>
+                  <label className="t-label" htmlFor="export-label-preset" style={{ display: 'block', marginBottom: 4 }}>{t('ex_label_preset')}</label>
+                  <select id="export-label-preset" className="input" data-testid="export-label-preset" value={lp.id}
+                    onChange={(e) => set('labelPreset', e.target.value as ExportConfig['labelPreset'])}
+                    style={{ width: '100%', fontSize: 12, minHeight: 36 }}>
+                    {LABEL_PRESETS.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                  <label className="t-label" htmlFor="export-label-start" style={{ display: 'block', margin: '10px 0 4px' }}>{t('ex_label_start')}</label>
+                  <input id="export-label-start" className="input" type="number" min={1} max={labelsPerSheet(lp)} value={start}
+                    data-testid="export-label-start"
+                    onChange={(e) => set('labelStart', clampLabelStart(Number(e.target.value), lp))}
+                    style={{ width: 90, fontSize: 12, minHeight: 36 }} />
+                  <div className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 10, marginTop: 6, lineHeight: 1.4 }}>{t('ex_label_start_hint')}</div>
+                  <div className="t-mono-sm" style={{ color: 'var(--tx2)', fontSize: 11, marginTop: 8 }}>
+                    {interpolateMessage(t('ex_label_sheets_fmt'), { n: ids.length, sheets })}
+                  </div>
+                  <div className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 10, marginTop: 6, lineHeight: 1.4 }}>{t('ex_label_fields_hint')}</div>
+                </Section>
+              )
+            })()}
+
+            {/* Layout options (the layout itself is the tab above) */}
+            {!csvMode && cfg.layout !== 'labels' && cfg.layout !== 'list' && <Section label={t('ex_layout_options')}>
               {cfg.layout === 'grid' && (
                 <div style={{ marginTop: 10 }}>
                   <div className="row gap-sm" style={{ flexWrap: 'wrap' }}>
@@ -413,16 +551,14 @@ export function ExportModal({
                   ))}
                 </div>
               )}
-              {cfg.layout !== 'list' && (
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, cursor: 'pointer' }}>
-                  <input type="checkbox" checked={cfg.appendList}
-                    onChange={(e) => set('appendList', e.target.checked)} />
-                  <span className="t-mono-sm" style={{ color: cfg.appendList ? 'var(--tx)' : 'var(--tx3)' }}>
-                    {t('appendIndex')}
-                  </span>
-                </label>
-              )}
-            </Section>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, cursor: 'pointer' }}>
+                <input type="checkbox" checked={cfg.appendList}
+                  onChange={(e) => set('appendList', e.target.checked)} />
+                <span className="t-mono-sm" style={{ color: cfg.appendList ? 'var(--tx)' : 'var(--tx3)' }}>
+                  {t('appendIndex')}
+                </span>
+              </label>
+            </Section>}
 
             {/* Fields */}
             <Section label={t('displayedFields')}>
@@ -439,7 +575,7 @@ export function ExportModal({
             </Section>
 
             {/* Image options */}
-            {cfg.fields.image && (
+            {cfg.fields.image && !csvMode && cfg.layout !== 'labels' && (
               <>
                 <Section label={t('imageSize')}>
                   <ToggleRow
@@ -472,8 +608,8 @@ export function ExportModal({
               </>
             )}
 
-            {/* Paper + orientation — PDF only */}
-            {cfg.format === 'pdf' && (
+            {/* Paper + orientation — PDF only (labels are A4 sheets) */}
+            {cfg.format === 'pdf' && !csvMode && cfg.layout !== 'labels' && (
               <>
                 <Section label={t('paperFormat')}>
                   <ToggleRow
@@ -491,6 +627,45 @@ export function ExportModal({
                 </Section>
               </>
             )}
+          </div>
+
+          {/* ── Live preview (B3): the real output on the first works, or the CSV table ── */}
+          <div data-testid="export-preview" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', background: 'var(--bg2)' }}>
+            <div className="t-mono-sm" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', borderBottom: '1px solid var(--bd)', color: 'var(--tx3)', fontSize: 11, flexShrink: 0 }}>
+              <span className="t-label" style={{ color: 'var(--tx2)' }}>{t('ex_preview')}</span>
+              <span>
+                {csvMode
+                  ? interpolateMessage(t('ex_csv_rows_fmt'), { n: csvTable?.rows.length ?? 0 })
+                  : interpolateMessage(t('ex_preview_of_fmt'), { n: previewIds.length, total: ids.length })}
+              </span>
+              {!csvMode && previewBusy ? <span style={{ marginLeft: 'auto' }}>{t('ex_preview_loading')}</span> : null}
+            </div>
+            <div style={{ flex: 1, minHeight: 0, position: 'relative', overflow: csvMode ? 'auto' : 'hidden' }}>
+              {csvMode && csvTable ? (
+                <table className="t-mono-sm" style={{ borderCollapse: 'collapse', fontSize: 11, width: '100%', background: 'var(--bg0)' }}>
+                  <thead style={{ position: 'sticky', top: 0, background: 'var(--bg1)' }}>
+                    <tr>{csvTable.headers.map((h) => <th key={h} style={{ textAlign: 'left', padding: '6px 8px', borderBottom: '1px solid var(--bd)', whiteSpace: 'nowrap' }}>{h}</th>)}</tr>
+                  </thead>
+                  <tbody>
+                    {csvTable.rows.slice(0, 200).map((r, i) => (
+                      <tr key={i}>{r.map((c, j) => <td key={j} style={{ padding: '4px 8px', borderBottom: '1px solid var(--bd)', maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c == null ? '' : String(c)}</td>)}</tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : null}
+              {csvMode && csvTable && csvTable.rows.length > 200 ? (
+                <div className="t-mono-sm" style={{ padding: 8, color: 'var(--tx3)' }}>{interpolateMessage(t('ex_csv_more_fmt'), { n: csvTable.rows.length - 200 })}</div>
+              ) : null}
+              {!csvMode && previewErr ? (
+                <div className="t-mono-sm" style={{ padding: 14, color: 'var(--rust)' }}>{t('ex_preview_error')} {previewErr}</div>
+              ) : null}
+              {!csvMode && !previewErr && preview?.kind === 'html' ? (
+                <iframe title={t('ex_preview')} sandbox="" srcDoc={preview.src} style={{ width: '100%', height: '100%', border: 0, background: '#fff', opacity: previewBusy ? 0.6 : 1 }} />
+              ) : null}
+              {!csvMode && !previewErr && preview?.kind === 'pdf' ? (
+                <iframe title={t('ex_preview')} src={preview.src} style={{ width: '100%', height: '100%', border: 0, opacity: previewBusy ? 0.6 : 1 }} />
+              ) : null}
+            </div>
           </div>
 
           {/* ── Themes sidebar ──────────────────────────────── */}
@@ -576,14 +751,19 @@ export function ExportModal({
           })()}
           <div className="row gap-sm" style={{ justifyContent: 'flex-end' }}>
             <button type="button" className="btn ghost" onClick={onClose}>{t('cancel')}</button>
-            <button
+            {csvMode ? (
+              <>
+                <button type="button" className="btn secondary" data-testid="export-download-csv" onClick={downloadCsv}>{t('ex_download_csv')}</button>
+                <button type="button" className="btn primary" data-testid="export-download-xlsx" onClick={downloadXlsx}>{t('ex_download_xlsx')}</button>
+              </>
+            ) : <button
               type="button"
               className="btn primary"
               disabled={pending}
               data-testid="export-open-save-dialog"
               onClick={(e) => { e.stopPropagation(); openSaveSelectionDialog() }}>
               {pending ? `${t('generating')}…` : `${t('export')} (${cfg.format.toUpperCase()})${activePresetName ? ` · ${activePresetName}` : ''}`}
-            </button>
+            </button>}
           </div>
         </div>
       </div>
