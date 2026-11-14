@@ -2,7 +2,7 @@
 
 _Open items only, one line each, in order. Details → [`TODO_NOTES.md`](./TODO_NOTES.md). Closed → [`DONE.md`](./DONE.md). Dropped on purpose → [`TODO_REFUSED.md`](./TODO_REFUSED.md). Aims → [`STRATEGY.md`](./STRATEGY.md)._
 
-**Last refresh: 2026-11-14** (verified against live code + DB 2026-11-14). Pem's rethink comes first: design whole screens before building ([RETHINK](./RETHINK_2026-11-14.md)). Item numbers are kept from earlier lists (other docs point to them); a closed item leaves for [DONE](./DONE.md) — never ticked in place.
+**Last refresh: 2026-11-15** (verified against live code + DB + `origin/main` `7caaebe` 2026-11-15). Pem's rethink comes first: design whole screens before building ([RETHINK](./RETHINK_2026-11-14.md)). Item numbers are kept from earlier lists (other docs point to them); a closed item leaves for [DONE](./DONE.md) — never ticked in place.
 
 ## 1. Waiting on Pem — only you can do these
 
@@ -13,13 +13,12 @@ _Open items only, one line each, in order. Details → [`TODO_NOTES.md`](./TODO_
 
 ## 2. Rethink — design first (Pem 2026-11-14) → [RETHINK](./RETHINK_2026-11-14.md)
 
-Each one: what the screen is for, a whole-screen design, Pem's say — then build. No tweaks to the current screens meanwhile.
+Each one: what the screen is for, a whole-screen design, Pem's say — then build. No tweaks to the current screens meanwhile. (R5 slideshow: built and pushed 2026-11-15 → [DONE](./DONE.md); live checks in §4.)
 
 - [ ] R1. **Inputs → outputs.** One clear place for inputs (images / documents with their text, voice notes as the main spoken input, writings) feeding the practice; outputs = works via sessions. Clears the research / concepts / voice notes / « reminders » / AI suggestions / search confusion. Takes in: 1b (one plan for every local "reading" AI — inventory first, widening field OCR needs a GO), 1d (Overview tile « Reminders » opens voice notes, `od_rem_*`), 11c (concepts ↔ catalogue themes — hold until R1), search indexing (whole re-index each time vs one by one — Pem: not now), and the ⌘K proposal after « degas » found nothing: a word match over the works' search text with typo tolerance, so ⌘K answers with the PC off (needs GO; `pg_trgm` not installed).
 - [ ] R2. **Mobile terminal reprioritized** for the day-to-day, not the sales on the welcome page. Takes in: 4b (`/atelier/works/new` keeps its desktop two columns at 375 px; the menu leads there since ➕ left the bar); a session work with no « Nouvelle / Ancienne » choice still gets no date, so no period (46 backfilled 2026-11-14) — make the choice required?
 - [ ] R3. **Work drawer reorganized** — a quicker, organized glance at everything. Replaces "empty fields folded" ([NEXT §4](./HANDOFF_2026-11-14_NEXT.md)).
 - [ ] R4. **Timeline + map + previews.** Takes in: timeline map / map « Création » mode (places with coordinates, works by date), `#1234` thumbnail + loupe everywhere, and a title next to the number in the AI suggestion rows ([NEXT §5](./HANDOFF_2026-11-14_NEXT.md) lists every plain `#id` link).
-- [ ] R5. **Slideshow** — step 1 (in the browser, saved slideshows, « Diaporamas » in Catalogue) built 2026-11-15 (3.1.17); step 2 export (GIF without transitions, full-colour frames ZIP, frame sizes, whole / fill) built 2026-11-15 (3.1.18). Left: try a long slideshow (20+ works) for GIF size and time; PowerPoint / MP4 / Reels posting not asked for → [PLAN](./PLAN_SLIDESHOW.md)
 
 ## 3. To build — outside the rethink
 
@@ -60,6 +59,7 @@ Speed and code health — measure first, change after
 - [ ] Waiting photos + production dates (`85b450c`): one real waiting photo on the Journal day and the work card; an admin save of a year / month start or end; a work created with « Nouvelle » starts production today.
 - [ ] « Historique de création » (`e48eac8`): a real line saved, edited, deleted; Inventory « Périodes à trancher » filter and the route line (« Tooreeney → Marseille ») in a browser.
 - [ ] Journal on the phone, live, after the speed fix (`0e7a160`): how long until the day shows.
+- [ ] Slideshow (`bab78b6`, `7caaebe`): a GIF of 20+ works (size, time); full screen + swipe on a real iPhone; « Renommer » in Diaporamas; fade / slide by eye; a full loop of auto-advance.
 - [ ] Live, from the 2026-11-13/14 batches: admin Overview and batch modify; the export panel + a real export; a real print (300 dpi, Light B&W, labels on a sheet); admin screens in Chrome (Local jobs, ✦ bar); one real Production drag-back; saving a contact from the pop-up.
 - [ ] Phone: opening today's session records place and weather by itself.
 - [ ] Constellation: the arrow on the first real "painted on" / "derived from" / "answers" link.

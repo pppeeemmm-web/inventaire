@@ -2,6 +2,18 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-15 — slideshow (TODO R5, verified against live code + dev + `origin/main` 2026-11-15)
+
+- Step 1 (`bab78b6`, What's new 3.1.17): « Diaporama » in the selection bar — full screen, whole picture on black / grey / white, ← → / swipe, play / pause, cut / fade / slide, loop, random order, caption dragged anywhere (FR / EN, chosen details, shadow); saved slideshows shared with the team in Catalogue → « Diaporamas » (play, rename, delete). SQL `slideshow.sql` applied with Pem's OK. Reorder = ‹ › under each thumbnail (≤ 20 works).
+- Step 2 (`7caaebe`, 3.1.18): export in the browser — animated GIF (one frame per work, no transition, pause time, loops) or full-colour JPEG / PNG frames in a ZIP with `sequence.txt`; 1:1, 4:5, 9:16, 16:9, custom, web half size; whole or fill; 9:16 caption out of Instagram's bands. Adds `gifenc` 1.0.3 (MIT). Measured on dev: 3 works → GIF 1080² 1.9 MB / 12 s; ZIP 1080 × 1920 1.9 MB / 5 s.
+- Plan and Pem's answers: [`PLAN_SLIDESHOW.md`](./PLAN_SLIDESHOW.md). Live checks left → TODO §4.
+
+## 2026-11-14 — Inventory and sidebar (other session, all on `origin/main`)
+
+- Desktop sidebar: Kaizen → Catalogue (Inventaire at the top) → Terrain → Studio → Commercial → Public; phone order unchanged (`0d4eea9`, What's new 3.1.15).
+- Inventory year cell says « en cours » for a work in production with no year (`8265d62`, 3.1.16).
+- Inventory états: « Catalogué » named apart from « En production », État sorts by stage, État filter menu, « + filter » list named and A→Z, group + period menus A→Z (`313a49c`).
+
 ## 2026-11-14 — duplicate work from one session line (#2397 / #2398) + comments left in History
 
 - Cause: the phone's field save (`saveItem`, `SessionNewClient.tsx`) re-sent the line's stale « new work » mode after an apply had created the work; `updateWorkSessionItemMetadata` then unlinked it, and the next save created a second work (#2397 from the half-typed title at 22:03, #2398 at 22:07, same photo). Fixed: the field save no longer sends the mode (only « changeItemMode » does), and the server refuses to switch a line back to « new » once its work was made (applied / photos applied). Only pair of works sharing a photo in the catalogue (checked 2026-11-14). Pem kept #2397 and amended its fields himself (2026-11-14).
@@ -15,7 +27,7 @@ _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, t
 
 - Places continued (all on `origin/main`): Place made empty-list fix; a work's place follows its period (`dd6bb9d`, What's new 3.1.10); place suggested from the field session (`0dc686f`, 3.1.12); Inventory place column + filter (reads the creation route); « Historique de création » — dated lines with a place, replacing the single place made (`e48eac8`, 3.1.13, `work_creation_step.sql` applied). Left over → TODO R4 (timeline map) and 1e (drop `work_place`).
 - 16. Journal cold load on the phone: measured on dev (~15 Server Actions queued one at a time ahead of the day) and fixed — one bootstrap request, shell background loads wait for the Journal, `?today=1` opens the day before first paint (`0e7a160`, pushed). Live phone timing → TODO §4.
-- 2–4. Staged session photos shown (Journal day + summary, work card Sessions); production start / end as year / month / day, end by hand (admin); new / found in the new-work form (`85b450c`, What's new 3.1.14, `oeuvres_production_precision.sql` applied with Pem's OK). Status at writing: committed locally, not pushed. Live checks → TODO §4.
+- 2–4. Staged session photos shown (Journal day + summary, work card Sessions); production start / end as year / month / day, end by hand (admin); new / found in the new-work form (`85b450c`, What's new 3.1.14, `oeuvres_production_precision.sql` applied with Pem's OK). Status at writing: committed locally, not pushed (pushed later on 2026-11-14, `origin/main` `4ec83c4`). Live checks → TODO §4.
 - Slideshow moved from "parked" to the rethink (TODO R5: Pem 2026-11-14 "will be a good addition").
 
 ## 2026-11-14 — voice notes record first (Pem, after a morning in the field)

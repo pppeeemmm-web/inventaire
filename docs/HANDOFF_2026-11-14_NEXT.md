@@ -1,17 +1,17 @@
 # Handoff 2026-11-14 — next batch
 
-**State (2026-11-14, verified against live code + git 2026-11-14, cross-checked with [`TODO.md`](./TODO.md)):** `origin/main` = `4ec83c4`, pushed 2026-11-14: journal phone speed (`0e7a160`), item 2 waiting photos + production dates (`85b450c`, What's new 3.1.14, SQL applied live), Pem's [rethink](./RETHINK_2026-11-14.md) (`b6a0a20`), TODO tidy + cross-check (`e5931c6`, `4ec83c4`). Deploy of the pushed commits not confirmed (Pem: no deploy checks). The 2026-11-13 batch is archived: [`archive/HANDOFF_2026-11-13_NEXT.md`](./archive/HANDOFF_2026-11-13_NEXT.md), [`archive/HANDOFF_2026-11-13_DESIGN_BUILD.md`](./archive/HANDOFF_2026-11-13_DESIGN_BUILD.md).
+**State (2026-11-15, verified against live code + git 2026-11-15, cross-checked with [`TODO.md`](./TODO.md)):** `origin/main` = `7caaebe`, working tree clean, nothing local. **This batch is closed:** items 1–3 and 6 are built and pushed (DONE), items 4–5 moved into Pem's [rethink](./RETHINK_2026-11-14.md) (TODO R3, R4). Deploys not confirmed (Pem: no deploy checks). The file stays here (not archived) because TODO R3 / R4 point to §4–§5 for their details.
 
-**Next:** Pem's [rethink](./RETHINK_2026-11-14.md) comes first — TODO §2 R1–R5, design whole screens before building. Below, items 4–6 now live there (4 → R3 work drawer, 5 → R4 previews, 6 → R5 slideshow); item 1's timeline map → R4; item 1's `work_place` drop → TODO 1e. Places: Marseille and Tooreeney periods have their place; Waterford / Rebirth and Youth still without (TODO §1). Side sessions writing code must use a worktree (CLAUDE.md): sharing this checkout blocked both commits on 2026-11-14 until one stashed.
+**Next:** Pem's [rethink](./RETHINK_2026-11-14.md) — TODO §2 R1–R4, design whole screens before building (Pem's annotated phone mockups are transcribed there, for Claude Design). Small items outside it: TODO 1f (« 1 photos »), 1e (drop `work_place`, SQL needs OK), live checks in TODO §4. Side sessions writing code must use a worktree (CLAUDE.md): two dev servers sharing this checkout also share `.next` (cache errors seen 2026-11-15).
 
 ## Order (Pem 2026-11-14)
 
 1. **Places, continued** — done and pushed, except the timeline map (→ TODO R4) and dropping `work_place` (→ TODO 1e)
-2. **Staged photos warning + production dates** — built 2026-11-14, committed locally (`85b450c`), live checks in TODO §4
+2. **Staged photos warning + production dates** — built and pushed 2026-11-14 (`85b450c`), live checks in TODO §4
 3. **Measure speed** (read only) — Journal measured and fixed (`0e7a160`); the rest → TODO 16b
 4. **Work card: empty fields folded** → replaced by TODO R3 (work drawer reorganized)
 5. **`#1234` previews everywhere + larger view** → TODO R4
-6. **Slideshow from the selection → PowerPoint / video / Reels** → TODO R5 (plan step 1 first, see §6)
+6. **Slideshow from the selection** — built and pushed 2026-11-15: step 1 player + saved slideshows (`bab78b6`), step 2 GIF / frames ZIP export (`7caaebe`) → [PLAN](./PLAN_SLIDESHOW.md), DONE; PowerPoint / MP4 / Reels posting not asked for
 
 Dropped: "Frame only" in Export (Pem 2026-11-14 — not wanted; in [`TODO_REFUSED.md`](./TODO_REFUSED.md)).
 
@@ -39,7 +39,7 @@ From `TODO.md` "To build" 2–4 (details in [`TODO_NOTES.md`](./TODO_NOTES.md)):
 - **Production start, partial date** (year / month / day) — the drawer has a full-date field only (admin).
 - **Production span:** end date by hand; new / found choice in WorkForm (only in capture today).
 
-**Built 2026-11-14 (verified against live code + live DB 2026-11-14, What's new 3.1.14 `staged_photos_dates`, not yet pushed):**
+**Built 2026-11-14 (verified against live code + live DB 2026-11-14, What's new 3.1.14 `staged_photos_dates`, pushed 2026-11-14):**
 - Staged photos (none live today: 0 across 54 sessions): `JournalPaintingEntry` (`SessionJournalTab.tsx`) shows « N photos en attente : pas encore sur l'œuvre » + « Ouvrir la session » (`/atelier/session/new?date=`), testid `journal-item-staged-{itemId}`; the day summary line adds « N en attente »; the work card's Sessions section (`DrawerWorkSessionsSection.tsx`) lists « Session du … : N photo(s) pas encore sur l'œuvre » per session (testid `drawer-work-sessions-staged`). Copy `session-staged.messages.ts`.
 - Production dates: SQL `supabase/sql/oeuvres_production_precision.sql` **applied 2026-11-14 with Pem's OK** — `production_started_precision` / `production_completed_precision` (year / month / day, null = day; checks like `work_creation_step`), trigger resets the end's precision when it writes / clears the end and fires on precision changes, `oeuvre_search_text` reads a month as its 15th and a bare year as no day. App: `setProductionDate(oid, 'start' | 'end', input)` (`production-actions.ts`, admin, `parseStepDate`), `WorkProductionSpan` text fields for start + end (days counted only when both are full days), `workWhen` takes the precisions. Types regenerated.
 - WorkForm (new work only): « Nouvelle — commencée maintenant / Ancienne — retrouvée » → `production_origin` (+ start = today, Paris) on insert; `production_origin` added to the pending allow-list.
@@ -70,7 +70,7 @@ To build:
 1. Swap those work `#id` links to `WorkRef` (same `href` each place uses today).
 2. **Thumbnail + loupe, like Inventory (Pem 2026-11-14: "do like the inventory").** Inventory's list row = 40 px `WorkThumb` (`size={96}`, `displaySize="40px"`, 1px `var(--bd)` border, `cursor: zoom-in`) wrapped in `ImageLoupe` (`components/atelier/ImageLoupe.tsx`, owner 2026-11-13): computer hover ~350 ms → the picture as large as the screen allows on the free side, never cropped, gone when the pointer leaves; phone long press ~450 ms → near full screen, any tap closes, the ending tap does not open the work. Full image via `imageUrl()`, thumb as placeholder (`Inventory.tsx` ~l.2037). Do the same in front of each `#id` in the AI suggestion rows first (decision list), then the other work lists above where a row has room; no image → `MissingThumb`-style empty box, no loupe. The `#id` text itself stays a `WorkRef` (title / year / technique card). Needs the work's cover file (`Oeuvres.txtImageNameLink`) in each list's data — the proposal query likely lacks it (and the title). Read-only; no drawer; tap on the thumb / text still opens the work.
 
-## 6. Slideshow from the selection → PowerPoint / video / Reels (Pem 2026-11-14, idea — design first)
+## 6. Slideshow from the selection → PowerPoint / video / Reels (Pem 2026-11-14) — built 2026-11-15, see [`PLAN_SLIDESHOW.md`](./PLAN_SLIDESHOW.md) (this section = the first brief, kept for history)
 
 Pem: create a slideshow from the batch dock; choice of background (black, grey, white); manual controls; slide length and transitions configurable. Then maybe turn it into PowerPoint slides, and a base to work on in Premiere or Photoshop (layers to move on a timeline for a film); export as a moving file (GIF, MOV, AVI, MP4…). "The idea also is maybe to begin the work on the Reels, the Instagram Reels system."
 

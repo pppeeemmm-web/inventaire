@@ -11,8 +11,9 @@
 | [`WORK_CUSTODY_MODEL.md`](./WORK_CUSTODY_MODEL.md) | Owner / custodian / address per work stage — the rule every order, screen and trigger follows | 2026-11-12 |
 | [`STRATEGY.md`](./STRATEGY.md) | Owner intent and order of aims — the filter for new work | 2026-11-13 |
 | [`HANDOFF_2026-11-13_OPUS.md`](./HANDOFF_2026-11-13_OPUS.md) | Batch of 2026-11-13 (A–F built; G + owner answers open — status at the top of the file) | 2026-11-13 |
-| [`RETHINK_2026-11-14.md`](./RETHINK_2026-11-14.md) | **Pem's rethink** — inputs → outputs, mobile terminal, work drawer, timeline / map, slideshow, research / AI / search confusion. Design first, not a GO | 2026-11-14 |
-| [`HANDOFF_2026-11-14_NEXT.md`](./HANDOFF_2026-11-14_NEXT.md) | **Current batch** (Pem 2026-11-14) — places done (timeline map → rethink), waiting photos + production dates built (local), Journal speed fixed; details for rethink items R3–R5 (drawer, `#1234` previews, slideshow plan). Cross-checked with TODO.md | 2026-11-14 |
+| [`RETHINK_2026-11-14.md`](./RETHINK_2026-11-14.md) | **Pem's rethink — what comes next** — inputs → outputs (R1), mobile terminal + his annotated phone mockups for Claude Design (R2), work drawer (R3), timeline / map / previews (R4); slideshow done. Design first, not a GO | 2026-11-15 |
+| [`HANDOFF_2026-11-14_NEXT.md`](./HANDOFF_2026-11-14_NEXT.md) | **Batch closed 2026-11-15** — places, waiting photos + production dates, Journal speed, slideshow: all pushed; drawer (§4) and `#1234` previews (§5) details kept for TODO R3 / R4 | 2026-11-15 |
+| [`PLAN_SLIDESHOW.md`](./PLAN_SLIDESHOW.md) | Slideshow plan + Pem's answers — step 1 (player, saved « Diaporamas ») and step 2 (GIF / frames ZIP) built 2026-11-15 | 2026-11-15 |
 | [`TODO.md`](./TODO.md) | Live checklist — one line per open item: waiting on Pem / to build (ranked) / to check once / parked | 2026-11-13 |
 | [`DONE.md`](./DONE.md) | Closed items, newest first (moved out of TODO) | 2026-11-13 |
 | [`TODO_NOTES.md`](./TODO_NOTES.md) | Details behind each open TODO line (reference, not a list) | 2026-11-13 |
