@@ -8,7 +8,12 @@ export const whatsNewMessages = defineMessages({
     en: 'What changed in the Atelier over the last few days.',
   },
 
-  // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3).
+  // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
+  wn_constellation_arrows_t: { fr: 'Constellation : les liens orientés ont une flèche', en: 'Constellation: directed links get an arrow' },
+  wn_constellation_arrows_d: {
+    fr: '« Peinte sur », « Dérivée de » et « Répond à » ont un sens : la carte dessine maintenant une petite flèche de l’œuvre d’origine vers la nouvelle. Série, diptyque, influence et proximité restent des traits simples.',
+    en: '“Painted on”, “Derived from” and “Answers” have a direction: the map now draws a small arrow from the original work to the new one. Series, diptych, influence and proximity stay plain lines.',
+  },
   wn_export_preview_t: { fr: 'Export : on voit le fichier avant de l’exporter', en: 'Export: see the file before you export it' },
   wn_export_preview_d: {
     fr: 'L’export de la sélection s’ouvre en grand : en haut, le type (Fiches, Grille, Liste rapide, Étiquettes, CSV / XLSX) ; à gauche, les réglages ; au centre, le vrai fichier, refait à chaque changement sur les premières œuvres. Nouveau : Étiquettes — planches A4 (3 × 7, 2 × 7, 2 × 4, 5 × 13), avec le numéro de la première étiquette libre pour une planche entamée. Nouveau : CSV / XLSX — le tableau des champs cochés, téléchargeable. Vue d’ensemble : le signal Argent passe au ■ si le net de l’année est négatif.',

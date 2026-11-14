@@ -4,7 +4,7 @@ import {
   NW, NH, NR, RING,
   drawContain, thumbTier,
   type Pt, type NodeMap, type GroupBy, type LinkType, type VP, type Edge, type Shape,
-  LINK_VIS, LINK_DEF,
+  LINK_VIS, LINK_DEF, LINK_DIRECTED,
 } from './constellation-shared'
 
 export type ConstellationDrawFrameRefs = {
@@ -372,6 +372,27 @@ export function drawConstellationFrame(
     ctx.globalAlpha = isHov ? 1 : 0.6
     ctx.stroke()
     ctx.setLineDash([])
+    // Arrowhead at the child (source) end, on the edge of its card, pointing away from the parent.
+    if (LINK_DIRECTED.has(e.relation_type ?? '')) {
+      const ax = a.x + NW / 2, ay = a.y + NH / 2
+      const dx = ax - (b.x + NW / 2), dy = ay - (b.y + NH / 2)
+      const len = Math.hypot(dx, dy)
+      if (len > 1) {
+        const ux = dx / len, uy = dy / len
+        // Distance from the card centre to its border along the line.
+        const tEdge = Math.min(Math.abs(ux) > 1e-6 ? (NW / 2) / Math.abs(ux) : Infinity, Math.abs(uy) > 1e-6 ? (NH / 2) / Math.abs(uy) : Infinity)
+        const tipX = ax - ux * tEdge, tipY = ay - uy * tEdge
+        const size = (isHov ? 12 : 9) / vp.z
+        const spread = size * 0.55
+        ctx.beginPath()
+        ctx.moveTo(tipX, tipY)
+        ctx.lineTo(tipX - ux * size - uy * spread, tipY - uy * size + ux * spread)
+        ctx.lineTo(tipX - ux * size + uy * spread, tipY - uy * size - ux * spread)
+        ctx.closePath()
+        ctx.fillStyle = vis.color
+        ctx.fill()
+      }
+    }
     ctx.globalAlpha = 1
   }
 

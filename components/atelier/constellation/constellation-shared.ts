@@ -100,6 +100,11 @@ export const LINK_VIS: Record<string, { color: string; dash: number[]; w: number
   diptych:   { color: '#c87a9e', dash: [3, 3],  w: 2   },
 }
 export const LINK_DEF = { color: '#706c62', dash: [4, 6], w: 1 }
+/**
+ * Directed links (owner 2026-11-14: arrows). The source is the newer work ("#A painted on #B":
+ * source A, target B), so the arrow runs target (parent) → source (child), head at the child.
+ */
+export const LINK_DIRECTED: ReadonlySet<string> = new Set(['painted_on', 'derived_from', 'answers'])
 
 /** Draw image cover-cropped to fill a circle of radius r centred at cx,cy */
 export function drawContain(

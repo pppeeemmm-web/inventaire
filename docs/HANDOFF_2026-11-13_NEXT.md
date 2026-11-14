@@ -91,10 +91,10 @@ Three surfaces, each redesigned as a whole, then built from the approved design:
 - **B3. Export dialog** (from the batch dock) — options on one side, a faithful preview of each export type on the other, fits the screen without scrolling (InDesign / Photoshop docked panels).
 
 ## C. Ask Pem first
-- Constellation arrows for directed links (parent → child) — `components/atelier/constellation/constellation-draw-frame.ts`, `LINK_VIS`.
+- Constellation arrows for directed links (parent → child) — `components/atelier/constellation/constellation-draw-frame.ts`, `LINK_VIS`. **Pem 2026-11-14: yes, arrows. Built 2026-11-14 (verified against live code 2026-11-14, committed locally, What's new 3.1.8):** `LINK_DIRECTED` (painted_on, derived_from, answers) in `constellation-shared.ts`; arrowhead at the child (source) card's edge, larger on hover. No directed link exists in the DB today; a test link (#2407 painted on #2406) was added and removed — **not seen drawn** (Chrome would not paint the canvas, the built-in pane is non-admin with a crowded view). Check on the first real link.
 
 ## D. Housekeeping
-- Describe the 2 works the batch missed (#1636, #2357) once Ollama with `gemma3:4b` runs: `pwsh scripts/describe-run.ps1`.
+- ~~Describe the 2 works the batch missed (#1636, #2357)~~ — **done 2026-11-14** (`describe-run.ps1`; Ollama listens on 11435 on this PC): 1,174 / 1,174 works with a cover described, both re-indexed, index queue empty.
 - After this batch ships: measure speed (TODO).
 
 ## E. Still on the TODO, not this batch
