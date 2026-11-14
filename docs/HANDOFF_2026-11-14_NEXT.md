@@ -10,6 +10,7 @@
 2. **Staged photos warning + production dates** (TODO "To build" 2–4)
 3. **Measure speed** (read only)
 4. **Work card: empty fields folded** — Pem 2026-11-14, placed here pending his say
+5. **`#1234` previews everywhere + larger view** — Pem 2026-11-14, placed here pending his say
 
 Dropped: "Frame only" in Export (Pem 2026-11-14 — not wanted).
 
@@ -38,6 +39,19 @@ Planned "after this batch ships" — it has shipped. Live site, read only: Inven
 ## 4. Work card: empty fields folded (Pem 2026-11-14)
 
 "The work drawer is excellent although it could do with some visual separation; mainly, if a field has no content — the comment has none, for instance — fold it and show it as empty (or greyed out), then show the box to enter it on click or long hover." Applies to the drawer's text fields (comment, notes, memory / place-of-invention texts, physical label…). Keep the drawer guard (`useUnsavedActionGuard`) behaviour; phone: tap, not hover.
+
+## 5. `#1234` previews everywhere + larger view (Pem 2026-11-14)
+
+Pem (screenshot of a journal entry's « ✦ Suggestions IA (à valider) »: `✦ #1316`, `✦ #1323`, `✦ #2336`, each with Confirm / Reject): "same with other '#items' show a preview on hover, or maybe thumb then hover show fit screen."
+
+Verified against live code 2026-11-14:
+- **The preview exists:** `components/atelier/WorkRef.tsx` (owner 2026-11-12) — hover ~300 ms (desktop) / hold ~450 ms (phone) → 288 px card with a 96 px thumbnail, title, year, technique, status (`fetchWorkPreview`, cached per session). Used in the journal entry's linked works, `EntryText`, `SessionJournalTab`, session new, Kaizen, `ContactEditorPanel`, `WorkLinksSection`.
+- **Missing it — plain `<Link>` `#id`:** the AI suggestion rows (`JournalDayExtras.tsx` ~l.361, the screenshot — so Pem cannot judge Confirm / Reject without opening each work), the Kaizen works row (~l.564) and the changes list (~l.615) in the same file; also `NoteTriagePanel.tsx` (`#{note.oeuvre_id}`), `Notes.tsx` labels, `Production.tsx` (~l.820), `Sales.tsx` (~l.504, ~l.534). Sweep: grep `#{` and `#${` in `app/` + `components/` `.tsx`, keep only work ids (contact / order ids are not works).
+- The suggestion rows show no title in the screenshot (`{p.title ?? ''}` empty) — check whether the proposal query loads the work's title; a title next to the number would help on its own.
+
+To build:
+1. Swap those work `#id` links to `WorkRef` (same `href` each place uses today).
+2. **Thumbnail + loupe, like Inventory (Pem 2026-11-14: "do like the inventory").** Inventory's list row = 40 px `WorkThumb` (`size={96}`, `displaySize="40px"`, 1px `var(--bd)` border, `cursor: zoom-in`) wrapped in `ImageLoupe` (`components/atelier/ImageLoupe.tsx`, owner 2026-11-13): computer hover ~350 ms → the picture as large as the screen allows on the free side, never cropped, gone when the pointer leaves; phone long press ~450 ms → near full screen, any tap closes, the ending tap does not open the work. Full image via `imageUrl()`, thumb as placeholder (`Inventory.tsx` ~l.2037). Do the same in front of each `#id` in the AI suggestion rows first (decision list), then the other work lists above where a row has room; no image → `MissingThumb`-style empty box, no loupe. The `#id` text itself stays a `WorkRef` (title / year / technique card). Needs the work's cover file (`Oeuvres.txtImageNameLink`) in each list's data — the proposal query likely lacks it (and the title). Read-only; no drawer; tap on the thumb / text still opens the work.
 
 ## Answered, nothing to build
 
