@@ -177,7 +177,11 @@ export function ExportModal({
   }, [cfg])
 
   // ── Live preview: the real export on the first works (B3) ─────────────────
-  const previewIds = useMemo(() => ids.slice(0, cfg.layout === 'labels' ? PREVIEW_LABELS : PREVIEW_WORKS), [ids, cfg.layout])
+  // Keyed on the ids' content: the dock hands over a new array on every render (it re-renders while
+  // the catalogue loads), and a new array would restart the preview each time.
+  const previewKey = ids.slice(0, cfg.layout === 'labels' ? PREVIEW_LABELS : PREVIEW_WORKS).join(',')
+  const previewIds = useMemo(() => (previewKey ? previewKey.split(',').map(Number) : []), [previewKey])
+  const total = ids.length
   const [preview, setPreview] = useState<{ kind: 'html' | 'pdf'; src: string } | null>(null)
   const [previewErr, setPreviewErr] = useState<string | null>(null)
   const [previewBusy, setPreviewBusy] = useState(false)
@@ -187,7 +191,7 @@ export function ExportModal({
     const seq = ++previewSeq.current
     const timer = setTimeout(() => {
       setPreviewBusy(true)
-      void generateExport(previewIds, cfg, tM, sM, statusLabelMap, lang)
+      void generateExport(previewIds, cfg, tM, sM, statusLabelMap, lang, total)
         .then((r) => {
           if (seq !== previewSeq.current) return
           if ('error' in r) {
@@ -208,7 +212,7 @@ export function ExportModal({
         .finally(() => { if (seq === previewSeq.current) setPreviewBusy(false) })
     }, PREVIEW_DEBOUNCE_MS)
     return () => clearTimeout(timer)
-  }, [csvMode, previewIds, cfg, tM, sM, statusLabelMap, lang])
+  }, [csvMode, previewIds, cfg, tM, sM, statusLabelMap, lang, total])
   // Free the previous PDF blob when a new preview replaces it.
   useEffect(() => () => { if (preview?.kind === 'pdf') URL.revokeObjectURL(preview.src) }, [preview])
 

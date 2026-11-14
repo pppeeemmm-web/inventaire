@@ -499,6 +499,8 @@ export async function generateExport(
   sM:     Record<number, string>,
   statusLabelMap: Record<number, string>,
   lang:   Lang = 'fr',
+  /** Live preview runs on the first works only: the header still states the whole selection. */
+  headerCount?: number,
 ): Promise<ExportResult> {
   if (!ids.length) return { error: 'Aucune sélection' }
 
@@ -582,14 +584,14 @@ export async function generateExport(
   }
 
   if (config.format === 'html') {
-    const html = buildHtml(oeuvres, config, tM, sM, statusLabelMap, imageMap, lang)
+    const html = buildHtml(oeuvres, config, tM, sM, statusLabelMap, imageMap, lang, headerCount ?? oeuvres.length)
     const ts   = new Date().toISOString().slice(0, 10)
     return { ok: true, content: html, filename: `export_${ts}.html`, mime: 'text/html' }
   }
 
   // PDF
   try {
-    const b64 = await buildPdf(oeuvres, config, tM, sM, statusLabelMap, imageMap)
+    const b64 = await buildPdf(oeuvres, config, tM, sM, statusLabelMap, imageMap, headerCount ?? oeuvres.length)
     const ts  = new Date().toISOString().slice(0, 10)
     return { ok: true, content: b64, filename: `export_${ts}.pdf`, mime: 'application/pdf' }
   } catch (e) {
@@ -617,6 +619,7 @@ function buildHtml(
   statusLabelMap: Record<number, string>,
   imageMap:       Map<number, string>,
   lang:           Lang,
+  total:          number,
 ): string {
   const L = dict[lang]
   const f = cfg.fields
@@ -843,7 +846,7 @@ function buildHtml(
     <div class="header-sep"></div>
     ${cfg.exportTitle ? `<h2 class="header-title">${cfg.exportTitle}</h2>` : ''}
     <p class="header-meta">
-      Sélection · ${oeuvres.length} œuvre${oeuvres.length > 1 ? 's' : ''} · ${new Date().toLocaleDateString('fr-FR')}
+      Sélection · ${total} œuvre${total > 1 ? 's' : ''} · ${new Date().toLocaleDateString('fr-FR')}
     </p>
   </div>
   ${bodyContent}
@@ -950,6 +953,7 @@ async function buildPdf(
   sM:             Record<number, string>,
   statusLabelMap: Record<number, string>,
   imageMap:       Map<number, string>,
+  total:          number,
 ): Promise<string> {
   const PDFDocument = (await import('pdfkit')).default
 
@@ -983,9 +987,9 @@ async function buildPdf(
       if (cfg.exportTitle) {
         doc.fontSize(16).fillColor('#111111').text(cfg.exportTitle, margin, headY, { lineBreak: false })
         headY += 20
-        doc.fontSize(6.5).fillColor('#aaaaaa').text(`SÉLECTION · ${oeuvres.length} ŒUVRES · PAGE ${pageNum}`, margin, headY, { characterSpacing: 0.8, lineBreak: false })
+        doc.fontSize(6.5).fillColor('#aaaaaa').text(`SÉLECTION · ${total} ŒUVRES · PAGE ${pageNum}`, margin, headY, { characterSpacing: 0.8, lineBreak: false })
       } else {
-        doc.fontSize(8).fillColor('#111111').text(`SÉLECTION · ${oeuvres.length} ŒUVRES · PAGE ${pageNum}`, margin, headY, { characterSpacing: 0.8, lineBreak: false })
+        doc.fontSize(8).fillColor('#111111').text(`SÉLECTION · ${total} ŒUVRES · PAGE ${pageNum}`, margin, headY, { characterSpacing: 0.8, lineBreak: false })
       }
       doc.moveTo(margin, headY + 10).lineTo(margin + 40, headY + 10).lineWidth(0.5).strokeColor('#eeeeee').stroke()
       doc.y = savedY
