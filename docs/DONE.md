@@ -2,6 +2,10 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-14 — phone-recorded works had no period (Pem, Inventory screenshot)
+
+- 46 works created from field sessions before 2026-11-08 (#2345–#2398, sessions 2026-05-31 → 2026-09-28) carried no date (no « Année », no production dates; the day only as text in Historique), so no period could be read. Data fix `supabase/sql/backfill_session_work_dates.sql` applied with Pem's OK: « Année » = 2026 (year) + one « Historique de création » line « Travaillée » dated the first session day, linked to it. Checked: 46/46 read Marseille (DB search text + Inventory #2350, #2355). Not covered: #2343, #2346, #2371, #2397 (History says « Session terrain » but no session links them; #2343 is a test). Re-embedding for search waits for the PC worker. Still possible: a session work with no « Nouvelle / Ancienne » choice gets no date (→ TODO R2).
+
 ## 2026-11-14 — closed while tidying the list (verified against live code + DB 2026-11-14)
 
 - Places continued (all on `origin/main`): Place made empty-list fix; a work's place follows its period (`dd6bb9d`, What's new 3.1.10); place suggested from the field session (`0dc686f`, 3.1.12); Inventory place column + filter (reads the creation route); « Historique de création » — dated lines with a place, replacing the single place made (`e48eac8`, 3.1.13, `work_creation_step.sql` applied). Left over → TODO R4 (timeline map) and 1e (drop `work_place`).
