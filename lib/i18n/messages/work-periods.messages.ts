@@ -112,6 +112,18 @@ export const workPeriodsMessages = defineMessages({
     fr: 'Facultatif. Avec des coordonnées, le lieu pourra être proposé d’après la position des sessions terrain.',
     en: 'Optional. With coordinates, the place can be suggested from where field sessions were captured.',
   },
+  ps_place_session_suggest_fmt: {
+    fr: 'Session de terrain du {date} : {name}',
+    en: 'Field session of {date}: {name}',
+  },
+  ps_place_session_confirm_fmt: {
+    fr: 'Confirmé par la session de terrain du {date}',
+    en: 'Confirmed by the field session of {date}',
+  },
+  ps_place_session_hint: {
+    fr: 'Lieu enregistré le plus proche (moins de 2 km) de la position du téléphone lors de la première session de terrain de cette œuvre. Jamais enregistré seul : « Utiliser » le pose sur l’œuvre.',
+    en: 'Nearest saved place (under 2 km) to where the phone was at this work’s first field session. Never set by itself: “Use it” sets it on the work.',
+  },
   ps_place_from_period_hint: {
     fr: 'Déduit de la période (son atelier), jamais enregistré sur l’œuvre : choisissez un lieu pour la sortir de la règle.',
     en: 'Inferred from the period (its atelier), never written on the work: pick a place to take it out of the rule.',

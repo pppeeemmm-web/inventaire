@@ -5,7 +5,7 @@
 // dirty baseline, like Constats. A3 (2026-11-14): + the place the work was made; the period may
 // suggest one, the work never takes it by itself.
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from '@/lib/ui/toast'
 import { isPeriodSourceLoaded, patchPeriodSource, usePeriodSource } from '@/lib/atelier/use-period-source'
@@ -13,6 +13,7 @@ import {
   autoPeriodFor,
   effectivePeriod,
   effectivePlace,
+  nearestPlace,
   periodChoiceOf,
   parsePlaceCoords,
   periodRange,
@@ -23,7 +24,15 @@ import {
   type PeriodChoice,
   type WorkWhen,
 } from '@/lib/work-periods'
-import { findPlaceCoords, savePlace, setWorkPeriod, setWorkPlace, setWorkSourceNote, setWorkSources } from '@/app/atelier/works/period-source-actions'
+import {
+  fetchWorkSessionLocations,
+  findPlaceCoords,
+  savePlace,
+  setWorkPeriod,
+  setWorkPlace,
+  setWorkSourceNote,
+  setWorkSources,
+} from '@/app/atelier/works/period-source-actions'
 import { PeriodSourceManager } from '@/components/atelier/PeriodSourceManager'
 
 export function WorkPeriodSourceSection({ oeuvreId, when }: { oeuvreId: number; when: WorkWhen }) {
@@ -42,6 +51,30 @@ export function WorkPeriodSourceSection({ oeuvreId, when }: { oeuvreId: number; 
   /** Without a place of its own, the work is read at its period's place (Pem 2026-11-14). */
   const periodPlace = placeId == null ? effectivePlace(oeuvreId, when, data) : null
   const mine = data.sourcesByWork[oeuvreId] ?? []
+  /** Where the phone was at this work's field sessions (earliest first) — feeds the place suggestion. */
+  const [sessionLocs, setSessionLocs] = useState<{ day: string | null; latitude: number; longitude: number }[]>([])
+  useEffect(() => {
+    let live = true
+    setSessionLocs([])
+    void fetchWorkSessionLocations(oeuvreId).then((res) => {
+      if (live && 'ok' in res) setSessionLocs(res.locations)
+    })
+    return () => {
+      live = false
+    }
+  }, [oeuvreId])
+  /** First located session that sits at a saved place (≤ 2 km). A suggestion only: the work's own place is never changed by it. */
+  const sessionPlace = useMemo(() => {
+    for (const l of sessionLocs) {
+      const p = nearestPlace(l.latitude, l.longitude, data.places)
+      if (p) return { place: p, day: l.day }
+    }
+    return null
+  }, [sessionLocs, data.places])
+  const shownPlaceId = placeId ?? periodPlace?.place?.id ?? null
+  const sessionDay = sessionPlace?.day
+    ? new Date(`${sessionPlace.day}T12:00:00`).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' })
+    : ''
   /** New place typed right here (Pem 2026-11-14: the list was empty, the select offered no choice). */
   const [newPlace, setNewPlace] = useState<{ name: string; address: string; town: string; country: string; coords: string } | null>(null)
 
@@ -285,6 +318,24 @@ export function WorkPeriodSourceSection({ oeuvreId, when }: { oeuvreId: number; 
           <div className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 6 }} title={t('ps_place_from_period_hint')}>
             {t('ps_place_from_period_line')}
           </div>
+        ) : null}
+        {sessionPlace && !newPlace ? (
+          sessionPlace.place.id === shownPlaceId ? (
+            <div className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 6 }} title={t('ps_place_session_hint')}
+              data-testid="work-place-session-confirm">
+              {t('ps_place_session_confirm_fmt').replace('{date}', sessionDay)}
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 6 }} data-testid="work-place-session-suggest">
+              <span className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx2)', overflowWrap: 'anywhere' }} title={t('ps_place_session_hint')}>
+                {t('ps_place_session_suggest_fmt').replace('{date}', sessionDay).replace('{name}', placeLabel(sessionPlace.place))}
+              </span>
+              <button type="button" className="btn ghost sm" style={{ minHeight: 44 }} disabled={busy}
+                data-testid="work-place-session-use" onClick={() => void choosePlace(sessionPlace.place.id)}>
+                {t('ps_place_use')}
+              </button>
+            </div>
+          )
         ) : null}
       </div>
 

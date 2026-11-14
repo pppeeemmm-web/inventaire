@@ -9,6 +9,12 @@ export const whatsNewMessages = defineMessages({
   },
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
+  // 3.1.12 (2026-11-14) — place suggested from the field session.
+  wn_place_from_session_t: { fr: 'Lieu de création : proposé par la session de terrain', en: 'Place made: suggested by the field session' },
+  wn_place_from_session_d: {
+    fr: 'Quand une œuvre a été prise en photo dans une session de terrain avec sa position, la fiche cherche le lieu enregistré le plus proche (moins de 2 km). S’il diffère du lieu affiché — ou s’il n’y en a pas — elle propose « Session de terrain du 22 août 2026 : Marseille Atelier » avec « Utiliser » ; s’il est le même, elle écrit « Confirmé par la session de terrain ». Rien n’est posé tout seul, et un lieu choisi à la main n’est jamais remplacé (changer la date de l’œuvre ne touche pas non plus à son lieu).',
+    en: 'When a work was photographed in a field session that recorded its position, the card looks for the nearest saved place (under 2 km). If it differs from the place shown — or there is none — it offers « Field session of 22 Aug 2026: Marseille Atelier » with « Use it »; if it is the same, it says « Confirmed by the field session ». Nothing is set by itself, and a place picked by hand is never replaced (changing the work’s date does not touch its place either).',
+  },
   // 3.1.11 (2026-11-14) — voice notes: record first (Pem, after a morning in the field).
   wn_voice_record_first_t: { fr: 'Note vocale : on enregistre d’abord', en: 'Voice note: record first' },
   wn_voice_record_first_d: {

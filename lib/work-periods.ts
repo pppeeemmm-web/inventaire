@@ -177,6 +177,33 @@ export function placeLabel(p: Place): string {
   return where ? `${p.name} · ${where}` : p.name
 }
 
+/** Great-circle distance in km (haversine). */
+export function distanceKm(aLat: number, aLon: number, bLat: number, bLon: number): number {
+  const rad = Math.PI / 180
+  const dLat = (bLat - aLat) * rad
+  const dLon = (bLon - aLon) * rad
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(aLat * rad) * Math.cos(bLat * rad) * Math.sin(dLon / 2) ** 2
+  return 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(h)))
+}
+
+/** Radius for "the field session was at this place" (brief 2026-11-14: ≈ 2 km). */
+export const SESSION_PLACE_RADIUS_KM = 2
+
+/** Nearest place with coordinates within the radius of a point, else null. */
+export function nearestPlace(lat: number, lon: number, places: Place[], maxKm = SESSION_PLACE_RADIUS_KM): Place | null {
+  let best: Place | null = null
+  let bestKm = maxKm
+  for (const p of places) {
+    if (p.latitude == null || p.longitude == null) continue
+    const km = distanceKm(lat, lon, p.latitude, p.longitude)
+    if (km <= bestKm) {
+      best = p
+      bestKm = km
+    }
+  }
+  return best
+}
+
 /** "43.29, 5.38" (comma, semicolon or space; decimal comma accepted) → coordinates; '' → none. */
 export function parsePlaceCoords(s: string): { latitude: number | null; longitude: number | null } | 'bad' {
   const v = s.trim()

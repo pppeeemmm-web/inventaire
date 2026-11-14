@@ -302,6 +302,32 @@ export async function deletePlace(id: number): Promise<{ ok: true } | Err> {
   return { ok: true }
 }
 
+/**
+ * Where the phone was when a field session held this work (`work_session.payload.field_context`,
+ * captured since 3.1.6), earliest session first — the one closest to when the work was made. Read
+ * only; the card turns it into a place suggestion (`nearestPlace`), never a write.
+ */
+export async function fetchWorkSessionLocations(
+  oeuvreId: number,
+): Promise<{ ok: true; locations: { day: string | null; latitude: number; longitude: number }[] } | Err> {
+  const supabase = await createClient()
+  if (!(await signedIn(supabase))) return { error: 'auth' }
+  if (!(Number.isInteger(oeuvreId) && oeuvreId > 0)) return { error: 'bad_work' }
+  const { data, error } = await supabase
+    .from('work_session')
+    .select('created_at, day:payload->>session_day, lat:payload->field_context->latitude, lon:payload->field_context->longitude')
+    .contains('payload', { items: [{ oeuvre_id: oeuvreId }] })
+    .order('created_at')
+    .limit(50)
+  if (error) return { error: error.message }
+  const locations: { day: string | null; latitude: number; longitude: number }[] = []
+  for (const r of (data ?? []) as { created_at: string; day: string | null; lat: unknown; lon: unknown }[]) {
+    if (typeof r.lat !== 'number' || typeof r.lon !== 'number') continue
+    locations.push({ day: r.day ?? r.created_at.slice(0, 10), latitude: r.lat, longitude: r.lon })
+  }
+  return { ok: true, locations }
+}
+
 /** The place a work was made; null clears it. */
 export async function setWorkPlace(oeuvreId: number, placeId: number | null): Promise<{ ok: true } | Err> {
   return setWorksPlace([oeuvreId], placeId)
