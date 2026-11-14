@@ -9,6 +9,11 @@ export const whatsNewMessages = defineMessages({
   },
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
+  wn_export_image_quality_t: { fr: 'Export : écran ou impression, résolution, noir & blanc', en: 'Export: screen or print, resolution, black & white' },
+  wn_export_image_quality_d: {
+    fr: 'Dans Exporter, choisissez Écran (72 dpi, fichier léger) ou Impression (300 dpi), changez la résolution (72 / 150 / 300 dpi) et passez en noir & blanc. Chaque image est taillée à sa taille imprimée : 550 œuvres en fiches (2 par page, petite image) passent d’environ 326 Mo à 5 Mo pour l’écran ou 65 Mo pour l’impression à 300 dpi. En fiches, la taille de l’image suit le nombre de fiches par page (1 par page = toute la largeur). La taille estimée du fichier s’affiche au-dessus de l’aperçu.',
+    en: 'In Export, pick Screen (72 dpi, a light file) or Print (300 dpi), change the resolution (72 / 150 / 300 dpi) and switch to black & white. Each image is cut to its printed size: 550 works as cards (2 per page, small image) go from about 326 MB to 5 MB for screen or 65 MB for print at 300 dpi. In Cards, the image size follows the cards per page (1 per page = the full width). The estimated file size shows above the preview.',
+  },
   wn_constellation_arrows_t: { fr: 'Constellation : les liens orientés ont une flèche', en: 'Constellation: directed links get an arrow' },
   wn_constellation_arrows_d: {
     fr: '« Peinte sur », « Dérivée de » et « Répond à » ont un sens : la carte dessine maintenant une petite flèche de l’œuvre d’origine vers la nouvelle. Série, diptyque, influence et proximité restent des traits simples.',

@@ -12,6 +12,15 @@ import { useState, useTransition, useEffect, useCallback, useMemo, useRef } from
 import * as XLSX from 'xlsx'
 import { interpolateMessage } from '@/lib/i18n/message-core'
 import { LABEL_PRESETS, DEFAULT_LABEL_PRESET, clampLabelStart, labelPreset, labelsPerSheet } from '@/lib/export/labels'
+import {
+  DPI_FOR_DESTINATION,
+  EXPORT_DPIS,
+  colourOf,
+  destinationOf,
+  dpiOf,
+  exportImageTarget,
+  type ExportDestination,
+} from '@/lib/export/image-quality'
 import { useI18n } from '@/lib/i18n/context'
 import { PemModalOverlay } from '@/components/shared/PemModalOverlay'
 import { useEscapeClose } from '@/hooks/useEscapeClose'
@@ -182,7 +191,8 @@ export function ExportModal({
   const previewKey = ids.slice(0, cfg.layout === 'labels' ? PREVIEW_LABELS : PREVIEW_WORKS).join(',')
   const previewIds = useMemo(() => (previewKey ? previewKey.split(',').map(Number) : []), [previewKey])
   const total = ids.length
-  const [preview, setPreview] = useState<{ kind: 'html' | 'pdf'; src: string } | null>(null)
+  /** `bytes` / `n`: the preview file's size and how many works it holds → the full file's estimate. */
+  const [preview, setPreview] = useState<{ kind: 'html' | 'pdf'; src: string; bytes: number; n: number } | null>(null)
   const [previewErr, setPreviewErr] = useState<string | null>(null)
   const [previewBusy, setPreviewBusy] = useState(false)
   const previewSeq = useRef(0)
@@ -203,9 +213,9 @@ export function ExportModal({
             const binary = atob(r.content)
             const bytes = new Uint8Array(binary.length)
             for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
-            setPreview({ kind: 'pdf', src: URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' })) })
+            setPreview({ kind: 'pdf', src: URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' })), bytes: bytes.length, n: previewIds.length })
           } else {
-            setPreview({ kind: 'html', src: r.content })
+            setPreview({ kind: 'html', src: r.content, bytes: new Blob([r.content]).size, n: previewIds.length })
           }
         })
         .catch((e) => { if (seq === previewSeq.current) setPreviewErr(stringifyError(e)) })
@@ -265,6 +275,12 @@ export function ExportModal({
   function set<K extends keyof ExportConfig>(key: K, val: ExportConfig[K]) {
     setCfg((prev) => ({ ...prev, [key]: val }))
     setActivePresetName(null)
+  }
+  /** Screen / print: sets the density (screen 72, print 300) and, for HTML, the page size. */
+  function chooseDestination(d: ExportDestination) {
+    set('destination', d)
+    set('dpi', DPI_FOR_DESTINATION[d])
+    if (cfg.format === 'html') set('paper', d === 'print' ? (cfg.paper === 'screen' ? 'a4' : cfg.paper) : 'screen')
   }
   function setField<K extends keyof ExportFields>(key: K, val: boolean) {
     setCfg((prev) => ({ ...prev, fields: { ...prev.fields, [key]: val } }))
@@ -485,10 +501,21 @@ export function ExportModal({
                 options={[{ v: 'html', l: 'HTML' }, { v: 'pdf', l: 'PDF' }]}
                 value={cfg.format} onChange={(v) => {
                   set('format', v as 'html' | 'pdf')
-                  if (v === 'html') set('paper', 'screen')
-                  if (v === 'pdf' && cfg.paper === 'screen') set('paper', 'a4')
+                  // HTML stays on its page size when it is meant for print (owner 2026-11-14).
+                  if (v === 'html' && destinationOf({ ...cfg, format: 'html' }) === 'screen') set('paper', 'screen')
+                  if (cfg.paper === 'screen' && (v === 'pdf' || destinationOf({ ...cfg, format: 'html' }) === 'print')) set('paper', 'a4')
                 }}
               />
+            </Section>}
+
+            {/* Output: screen or print, whatever the format — sets the density (owner 2026-11-14) */}
+            {!csvMode && cfg.layout !== 'labels' && <Section label={t('ex_output')}>
+              <ToggleRow
+                groupLabel={t('ex_output')}
+                options={[{ v: 'screen', l: t('ex_output_screen') }, { v: 'print', l: t('ex_output_print') }]}
+                value={destinationOf(cfg)} onChange={(v) => chooseDestination(v as ExportDestination)}
+              />
+              <div className="t-mono-sm" style={{ color: 'var(--tx3)', fontSize: 10, marginTop: 6, lineHeight: 1.4 }}>{t('ex_output_hint')}</div>
             </Section>}
 
             {/* Title */}
@@ -599,7 +626,7 @@ export function ExportModal({
                   <Section label={t('images')}>
                     <ToggleRow
                       groupLabel={t('images')}
-                      options={[{ v: 'linked', l: t('highRes') }, { v: 'embedded', l: t('lowRes') }]}
+                      options={[{ v: 'linked', l: t('ex_img_linked') }, { v: 'embedded', l: t('ex_img_embedded') }]}
                       value={cfg.imageEmbed} onChange={(v) => set('imageEmbed', v as 'linked' | 'embedded')}
                     />
                     {isEmbedHeavy && (
@@ -612,8 +639,36 @@ export function ExportModal({
               </>
             )}
 
-            {/* Paper + orientation — PDF only (labels are A4 sheets) */}
-            {cfg.format === 'pdf' && !csvMode && cfg.layout !== 'labels' && (
+            {/* Resolution (images only) + colour (owner 2026-11-14) */}
+            {!csvMode && cfg.layout !== 'labels' && (() => {
+              const target = exportImageTarget(cfg)
+              return (
+                <>
+                  {target && (
+                    <Section label={t('ex_dpi')}>
+                      <ToggleRow
+                        groupLabel={t('ex_dpi')}
+                        options={EXPORT_DPIS.map((d) => ({ v: String(d), l: `${d} dpi` }))}
+                        value={String(dpiOf(cfg))} onChange={(v) => set('dpi', Number(v) as ExportConfig['dpi'])}
+                      />
+                      <div className="t-mono-sm" data-testid="export-dpi-px" style={{ color: 'var(--tx3)', fontSize: 10, marginTop: 6 }}>
+                        {interpolateMessage(t('ex_dpi_px_fmt'), { px: target.w === target.h ? String(target.w) : `${target.w} × ${target.h}` })}
+                      </div>
+                    </Section>
+                  )}
+                  <Section label={t('ex_colour')}>
+                    <ToggleRow
+                      groupLabel={t('ex_colour')}
+                      options={[{ v: 'colour', l: t('ex_colour_colour') }, { v: 'mono', l: t('ex_colour_mono') }]}
+                      value={colourOf(cfg)} onChange={(v) => set('colour', v as ExportConfig['colour'])}
+                    />
+                  </Section>
+                </>
+              )
+            })()}
+
+            {/* Paper + orientation — PDF, or HTML meant for print (labels are A4 sheets) */}
+            {(cfg.format === 'pdf' || destinationOf(cfg) === 'print') && !csvMode && cfg.layout !== 'labels' && (
               <>
                 <Section label={t('paperFormat')}>
                   <ToggleRow
@@ -642,6 +697,13 @@ export function ExportModal({
                   ? interpolateMessage(t('ex_csv_rows_fmt'), { n: csvTable?.rows.length ?? 0 })
                   : interpolateMessage(t('ex_preview_of_fmt'), { n: previewIds.length, total: ids.length })}
               </span>
+              {/* Size estimate only when images go into the file (they make the size; without them
+                  the preview's fixed part, multiplied, overstates it). */}
+              {!csvMode && !previewBusy && preview && preview.n > 0 && exportImageTarget(cfg) && (cfg.format === 'pdf' || cfg.imageEmbed === 'embedded') ? (
+                <span data-testid="export-size-estimate" title={t('ex_size_hint')} style={{ marginLeft: 'auto', color: 'var(--tx2)' }}>
+                  {interpolateMessage(t('ex_size_fmt'), { size: formatBytes((preview.bytes * ids.length) / preview.n, lang) })}
+                </span>
+              ) : null}
               {!csvMode && previewBusy ? <span style={{ marginLeft: 'auto' }}>{t('ex_preview_loading')}</span> : null}
             </div>
             <div style={{ flex: 1, minHeight: 0, position: 'relative', overflow: csvMode ? 'auto' : 'hidden' }}>
@@ -958,6 +1020,13 @@ export function ExportModal({
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────
+
+/** "27 Mo" / "27 MB" (Intl units follow the language). */
+function formatBytes(n: number, lang: string): string {
+  const loc = lang === 'fr' ? 'fr-FR' : 'en-GB'
+  const [v, unit] = n >= 1024 * 1024 ? [n / (1024 * 1024), 'megabyte'] : [Math.max(1, n / 1024), 'kilobyte']
+  return new Intl.NumberFormat(loc, { style: 'unit', unit, unitDisplay: 'short', maximumFractionDigits: v < 10 ? 1 : 0 }).format(v)
+}
 
 function Section({ label, children }: { label: string; children: React.ReactNode }) {
   return (

@@ -4,6 +4,18 @@
 // Called from BatchEditModal and ExportModal via useTransition.
 
 import { clampLabelStart, labelPreset, labelSlot, labelText, type LabelPresetId } from '@/lib/export/labels'
+import {
+  THUMB_EDGE,
+  cardImageBox,
+  colourOf,
+  exportImageTarget,
+  gridGeometry,
+  htmlCardSideCss,
+  htmlGridCols,
+  type ExportColour,
+  type ExportDestination,
+  type ExportDpi,
+} from '@/lib/export/image-quality'
 import { calendarDayInParisFromIso } from '@/lib/session-calendar-day'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { STATUS_ID_ARCHIVE_ARTISTE } from '@/lib/data'
@@ -75,6 +87,11 @@ export interface ExportConfig {
   /** Labels layout (B3 / D2): A4 sheet preset + 1-based first free label on the sheet. */
   labelPreset?: LabelPresetId
   labelStart?:  number
+  /** Image quality (owner 2026-11-14, `lib/export/image-quality.ts`). Missing in older saved
+   *  setups: destination follows the format, 150 dpi, colour. */
+  destination?: ExportDestination
+  dpi?:         ExportDpi
+  colour?:      ExportColour
 }
 
 export interface ExportFields {
@@ -534,51 +551,59 @@ export async function generateExport(
     }
   }
 
-  // Build image map: id → url or base64 data url
-  // PDF always needs server-fetched images (pdfkit cannot load remote URLs).
+  // Image map: id → URL (linked HTML) or JPEG data URL (PDF, embedded HTML). Each image is cut to
+  // the pixels its printed box needs at the chosen dpi (`exportImageTarget`), from the stored
+  // 400 px thumbnail when that is enough, else from the original; greyscale when black & white.
   const imageMap = new Map<number, string>()
-  if (config.fields.image && config.imageSize !== 'none') {
-    const imgSize  = config.imageSize === 'large' ? 600 : 240
-    const needFetch = config.imageEmbed === 'embedded' || config.format === 'pdf'
-    const R2_URL = process.env.NEXT_PUBLIC_R2_PUBLIC_URL || process.env.R2_PUBLIC_URL || ''
+  const target = exportImageTarget(config)
+  if (target) {
+    const R2_URL = (process.env.NEXT_PUBLIC_R2_PUBLIC_URL || process.env.R2_PUBLIC_URL || '').replace(/\/$/, '')
+    const fullUrl = (file: string) => (file.startsWith('http') ? file : `${R2_URL}/${encodeURIComponent(file)}`)
+    const thumbOf = (file: string) =>
+      file.startsWith('http') ? null : `${R2_URL}/thumbs/${encodeURIComponent(file.replace(/\.[^.]+$/, ''))}.avif`
+    const thumbMayDo = Math.max(target.w, target.h) <= THUMB_EDGE
+    const mono = colourOf(config) === 'mono'
 
-    if (needFetch) {
-      // Fetch + base64 encode server-side, 8 at a time
+    if (config.format === 'pdf' || config.imageEmbed === 'embedded') {
+      const get = async (url: string | null): Promise<Buffer | null> => {
+        if (!url) return null
+        const res = await fetch(url)
+        return res.ok ? Buffer.from(await res.arrayBuffer()) : null
+      }
+      // Big enough to cut the box without enlarging? (cover needs both sides, inside one.)
+      const bigEnough = async (buf: Buffer) => {
+        const m = await sharp(buf).metadata()
+        const w = m.width ?? 0
+        const h = m.height ?? 0
+        return target.fit === 'cover' ? w >= target.w && h >= target.h : w >= target.w || h >= target.h
+      }
       const concurrency = 8
-      const chunks: typeof oeuvres[] = []
-      for (let i = 0; i < oeuvres.length; i += concurrency)
-        chunks.push(oeuvres.slice(i, i + concurrency))
-
-      for (const chunk of chunks) {
-        await Promise.all(chunk.map(async (o) => {
-          if (!o.txtImageNameLink) return
+      for (let i = 0; i < oeuvres.length; i += concurrency) {
+        await Promise.all(oeuvres.slice(i, i + concurrency).map(async (o) => {
+          const file = o.txtImageNameLink
+          if (!file) return
           try {
-            const fileName = o.txtImageNameLink
-            const url = fileName.startsWith('http') ? fileName : `${R2_URL}/${encodeURIComponent(fileName)}`
-            const res = await fetch(url)
-            if (!res.ok) return
-            let buf   = Buffer.from(await res.arrayBuffer())
-            
-            // PDF: pdfkit only supports JPEG and PNG. Convert others (AVIF, etc) to JPEG.
-            if (config.format === 'pdf') {
-              buf = Buffer.from(await sharp(buf).jpeg({ quality: 85 }).toBuffer())
-            }
-
-            const mime = config.format === 'pdf' ? 'image/jpeg' : (res.headers.get('content-type') ?? 'image/jpeg')
-            imageMap.set(o.OeuvreID, `data:${mime};base64,${buf.toString('base64')}`)
-          } catch (e) { 
+            let buf = thumbMayDo ? await get(thumbOf(file)) : null
+            if (buf && !(await bigEnough(buf))) buf = null
+            if (!buf) buf = await get(fullUrl(file))
+            if (!buf) return
+            let img = sharp(buf)
+              .resize(target.w, target.h, { fit: target.fit, withoutEnlargement: true })
+              .flatten({ background: '#ffffff' })
+            // One grey channel (grayscale() alone keeps three identical RGB channels).
+            if (mono) img = img.grayscale().toColourspace('b-w')
+            const out = await img.jpeg({ quality: 82 }).toBuffer()
+            imageMap.set(o.OeuvreID, `data:image/jpeg;base64,${out.toString('base64')}`)
+          } catch (e) {
             console.error(`Export image fetch error (#${o.OeuvreID}):`, e)
           }
         }))
       }
     } else {
-      // Linked HTML — include URL directly (browser loads it)
+      // Linked HTML: the browser loads the thumbnail when it is enough, else the original.
       for (const o of oeuvres) {
-        if (o.txtImageNameLink) {
-          const fileName = o.txtImageNameLink
-          const url = fileName.startsWith('http') ? fileName : `${R2_URL}/${encodeURIComponent(fileName)}`
-          imageMap.set(o.OeuvreID, url)
-        }
+        const file = o.txtImageNameLink
+        if (file) imageMap.set(o.OeuvreID, (thumbMayDo ? thumbOf(file) : null) ?? fullUrl(file))
       }
     }
   }
@@ -738,18 +763,8 @@ function buildHtml(
     return pages.join('\n') + appendBlock
   })()
 
-  // Derive HTML column count from rowsPerPage using A4 portrait proportions as baseline
-  const htmlCols = (() => {
-    const r = cfg.rowsPerPage > 0 ? cfg.rowsPerPage : 4
-    const isL = cfg.orientation === 'landscape'
-    const pw = cfg.paper === 'a3' ? (isL ? 1189 : 841) : (isL ? 842 : 595)
-    const ph = cfg.paper === 'a3' ? (isL ? 841 : 1189) : (isL ? 595 : 842)
-    const usableW = pw - 100
-    const availH  = ph - 100 - 60
-    const cellH   = Math.floor((availH - 16 * (r - 1)) / r)
-    const imgH    = Math.max(20, cellH - 30)
-    return Math.max(1, Math.floor((usableW + 8) / (imgH + 8)))
-  })()
+  // HTML columns from the rows per page, on an A4 baseline (`lib/export/image-quality.ts`)
+  const htmlCols = htmlGridCols(cfg)
   const gridGap = htmlCols >= 10 ? '8px 12px' : htmlCols >= 6 ? '16px 24px' : '32px 48px'
 
   const bodyContent = cfg.layout === 'list'
@@ -757,6 +772,19 @@ function buildHtml(
     : cfg.layout === 'grid'
       ? `<div class="grid" style="display:grid;grid-template-columns:repeat(${htmlCols},1fr);gap:${gridGap}">` + rows.join('') + '</div>' + appendBlock
       : cardsBody
+
+  // Card image size: on screen today's 320 / 160 px; for print it follows the cards per page
+  // (the PDF rule), the text going under a full-width image. Black & white: grey images + accents.
+  const cardSide = cfg.layout === 'cards' ? htmlCardSideCss(cfg) : null
+  const qualityCss = [
+    cardSide && cardSide.side > 0
+      ? `.card .img-wrap,.card .img-wrap.large,.card .img-wrap:not(.large){flex:0 0 ${cardSide.side}px;width:${cardSide.side}px;max-width:100%;height:${cardSide.side}px}`
+        + (cardSide.below ? '.card{flex-direction:column}' : '')
+      : '',
+    colourOf(cfg) === 'mono'
+      ? 'img{filter:grayscale(1)!important}.np-badge,.np-badge-block{color:#666!important;border-color:#aaa!important;background:#f2f2f2!important}'
+      : '',
+  ].join('')
 
   const titleHtml = cfg.exportTitle ? `<h1 style="font-family:'Instrument Serif', serif; font-size:32pt; margin-bottom:40px; border-bottom:1px solid #ddd; padding-bottom:10px;">${cfg.exportTitle}</h1>` : ''
 
@@ -838,6 +866,7 @@ function buildHtml(
     .card{page-break-inside:avoid}
     .grid{page-break-inside:avoid}
   }
+  ${qualityCss}
 </style>
 </head>
 <body>
@@ -976,6 +1005,8 @@ async function buildPdf(
     const PH = isLandscape ? PW_RAW : PH_RAW
     const margin = 50
     const usable = PW - margin * 2
+    /** "⚠ NON PUBLIC" colour; grey in black & white. */
+    const accent = colourOf(cfg) === 'mono' ? '#888888' : '#c88a20'
 
     // Stamp header on every page as it opens — no bufferPages/switchToPage needed
     let pageNum = 0
@@ -1058,21 +1089,9 @@ async function buildPdf(
 
     } else if (cfg.layout === 'grid') {
       // ── Grid layout (Contact Sheet) — rows-first ─────────────
-      // Rows per page drives cell height; columns auto-fill from square cells.
-      const rows    = Math.max(1, cfg.rowsPerPage > 0 ? cfg.rowsPerPage : 4)
-      const gap     = 8
-      const rowGap  = 16
-
-      const activeMetaCount = [f.year, f.technique, f.support, f.dims, f.price].filter(Boolean).length
-      const textH   = (f.title ? 12 : 0) + (f.id ? 10 : 0) + (activeMetaCount * 8) + 4
-
-      const availH  = PH - margin * 2 - 60
-      const cellH   = Math.floor((availH - rowGap * (rows - 1)) / rows)
-      const imgH    = cfg.imageSize !== 'none' ? Math.max(20, cellH - textH - 3) : 0
-
-      // Square cells: columns = how many imgH-wide cells fit across the page
-      const cols    = Math.max(1, Math.floor((usable + gap) / (imgH > 0 ? imgH + gap : cellH + gap)))
-      const cellW   = (usable - gap * (cols - 1)) / cols
+      // Rows per page drives cell height; columns auto-fill from square cells. Same geometry the
+      // images were cut for (`gridGeometry`, lib/export/image-quality.ts).
+      const { cols, gap, rowGap, cellH, imgH, cellW } = gridGeometry(cfg)
 
       let col = 0
       for (const o of oeuvres) {
@@ -1086,14 +1105,9 @@ async function buildPdf(
         if (imgH > 0) {
           const imgSrc = imageMap.get(o.OeuvreID)
           if (imgSrc?.startsWith('data:')) {
-            const imgBuf = Buffer.from(imgSrc.split(',')[1], 'base64')
             try {
-              const processed = await sharp(imgBuf)
-                .resize(Math.round(cellW * 2), Math.round(imgH * 2), {
-                  fit: cfg.imageCrop === 'native' ? 'inside' : 'cover',
-                  background: { r: 255, g: 255, b: 255, alpha: 0 }
-                }).toBuffer()
-              doc.image(processed, cx, y, { width: cellW, height: imgH })
+              // Already cut to the cell at the chosen dpi; `fit` keeps an "original" crop undistorted.
+              doc.image(Buffer.from(imgSrc.split(',')[1], 'base64'), cx, y, { fit: [cellW, imgH], align: 'center', valign: 'center' })
             } catch (e) {
               console.warn('[selection/pdf] grid cell image', o.OeuvreID, e)
             }
@@ -1116,7 +1130,7 @@ async function buildPdf(
           ty += fTitle + 2
         }
         if (o.anonymity_level === 2) {
-          doc.fontSize(fSmall).fillColor('#c88a20').text('⚠ NON PUBLIC', cx, ty, { width: cellW, align: 'left', lineBreak: false })
+          doc.fontSize(fSmall).fillColor(accent).text('⚠ NON PUBLIC', cx, ty, { width: cellW, align: 'left', lineBreak: false })
           ty += fSmall + 2
         }
 
@@ -1150,14 +1164,14 @@ async function buildPdf(
 
     } else {
       // ── Cards layout ─────────────────────────────────────────
-      const imgW       = cfg.imageSize === 'large' ? 200 : cfg.imageSize === 'small' ? 120 : 0
-      const imgH       = imgW
+      // Image side follows the cards per page (`cardImageBox`, lib/export/image-quality.ts): each
+      // card gets 1/n of the page; at one per page the image takes the width and the text goes under.
+      const { side, below, textH } = cardImageBox(cfg)
       const perPage    = cfg.cardsPerPage ?? 1
       let   cardCount  = 0
 
       for (const o of oeuvres) {
-        // Robust card height estimation for page break
-        const estH = Math.max(imgH, 100) + 40
+        const estH = below ? side + 12 + textH + 24 : Math.max(side, textH, 40) + 24
         if ((cardCount > 0 && cardCount % perPage === 0) || (y + estH > PH - margin - 20)) {
           doc.addPage(); y = margin + 40; cardCount = 0
         }
@@ -1168,24 +1182,24 @@ async function buildPdf(
         const status = o.statusId  != null ? statusLabelMap[o.statusId] ?? '' : ''
         const price  = o.PrixFinal ?? o.Prix
 
-        if (imgW > 0) {
+        if (side > 0) {
           const imgSrc = imageMap.get(o.OeuvreID)
           if (imgSrc?.startsWith('data:')) {
             try {
-              const imgBuf = Buffer.from(imgSrc.split(',')[1], 'base64')
-              doc.image(imgBuf, margin, y, { cover: [imgW, imgH], align: 'center', valign: 'center' })
+              // Already cut to the box at the chosen dpi; `fit` keeps an "original" crop whole.
+              doc.image(Buffer.from(imgSrc.split(',')[1], 'base64'), margin, y, { fit: [side, side], align: 'center', valign: 'center' })
             } catch (e) {
               console.warn('[selection/pdf] card image', o.OeuvreID, e)
             }
           }
         }
 
-        const tx = margin + (imgW > 0 ? imgW + 16 : 0)
-        const tw = usable - (imgW > 0 ? imgW + 16 : 0)
-        let   ty = y
+        const tx = margin + (side > 0 && !below ? side + 16 : 0)
+        const tw = usable - (tx - margin)
+        let   ty = below ? y + side + 12 : y
 
         if (f.title) { doc.fontSize(14).fillColor('#1a1a1a').text(o.Titre ?? 'Sans titre', tx, ty, { width: tw }); ty += 20 }
-        if (o.anonymity_level === 2) { doc.fontSize(7).fillColor('#c88a20').text('⚠ NON PUBLIC', tx, ty, { width: tw }); ty += 11 }
+        if (o.anonymity_level === 2) { doc.fontSize(7).fillColor(accent).text('⚠ NON PUBLIC', tx, ty, { width: tw }); ty += 11 }
         if (f.year && o.Année) { doc.fontSize(9).fillColor('#666666').text(o.Année.slice(0, 4), tx, ty, { width: tw }); ty += 13 }
         if (f.technique && tech) { doc.fontSize(8).fillColor('#888888').text(tech + (supp ? `, ${supp}` : ''), tx, ty, { width: tw }); ty += 12 }
         if (f.dims && dims) { doc.fontSize(8).fillColor('#888888').text(dims, tx, ty, { width: tw }); ty += 12 }
@@ -1193,7 +1207,7 @@ async function buildPdf(
         if (f.status && status) { doc.fontSize(8).fillColor('#888888').text(status, tx, ty, { width: tw }); ty += 12 }
         if (f.id) { doc.fontSize(7).fillColor('#cccccc').text(`#${o.OeuvreID}`, tx, ty, { width: tw }); ty += 10 }
 
-        const actualCardH = Math.max(ty - y, imgH) + 24
+        const actualCardH = (below ? ty - y : Math.max(ty - y, side)) + 24
         y += actualCardH
         doc.moveTo(margin, y - 12).lineTo(margin + usable, y - 12).lineWidth(0.3).strokeColor('#eeeeee').stroke()
         cardCount++

@@ -29,4 +29,24 @@ export const exportUiMessages = defineMessages({
   ex_csv_more_fmt: { fr: '… et {n} autres lignes', en: '… and {n} more rows' },
   ex_download_csv: { fr: 'Télécharger CSV', en: 'Download CSV' },
   ex_download_xlsx: { fr: 'Télécharger XLSX', en: 'Download XLSX' },
+  // Image quality (owner 2026-11-14): screen / print, 72 / 150 / 300 dpi, colour / black & white.
+  ex_output: { fr: 'Sortie', en: 'Output' },
+  ex_output_screen: { fr: 'Écran', en: 'Screen' },
+  ex_output_print: { fr: 'Impression', en: 'Print' },
+  ex_output_hint: {
+    fr: 'Écran : 72 dpi, fichier léger (à envoyer, à regarder). Impression : 300 dpi. La résolution reste modifiable.',
+    en: 'Screen: 72 dpi, a light file (to send, to look at). Print: 300 dpi. The resolution can still be changed.',
+  },
+  ex_dpi: { fr: 'Résolution', en: 'Resolution' },
+  ex_dpi_px_fmt: { fr: '≈ {px} px par image', en: '≈ {px} px per image' },
+  ex_colour: { fr: 'Couleur', en: 'Colour' },
+  ex_colour_colour: { fr: 'Couleur', en: 'Colour' },
+  ex_colour_mono: { fr: 'Noir & blanc', en: 'Black & white' },
+  ex_img_linked: { fr: 'En ligne (chargées à l’ouverture)', en: 'Online (loaded when opened)' },
+  ex_img_embedded: { fr: 'Dans le fichier', en: 'In the file' },
+  ex_size_fmt: { fr: 'Fichier ≈ {size}', en: 'File ≈ {size}' },
+  ex_size_hint: {
+    fr: 'Estimé d’après les premières œuvres : l’écart peut atteindre ± 40 % selon les images.',
+    en: 'Estimated from the first works: it can be off by ± 40 % depending on the images.',
+  },
 })
