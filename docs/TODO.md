@@ -13,7 +13,7 @@ _Open items only, one line each, in order. Details → [`TODO_NOTES.md`](./TODO_
 ## 2. To build — in order
 
 Current batch (design build)
-- [ ] Places continued (Place made empty-list fix ✓, place from the field session ✓ 2026-11-14, Inventory column + filter ✓, timeline map) → staged photos + production dates (items 2–4 below) → measure speed → work card empty fields folded — order in [NEXT](./HANDOFF_2026-11-14_NEXT.md). Previous batch (B1–B3, A2–A4, D, C arrows, export image quality) all deployed 2026-11-14 (`d9bb23f`) → [archive](./archive/HANDOFF_2026-11-13_NEXT.md)
+- [ ] Places continued (Place made empty-list fix ✓, place from the field session ✓ 2026-11-14, Inventory column + filter ✓, « Historique de création » ✓ 2026-11-14 local (SQL applied), timeline map / map « Création » mode, drop `work_place`) → staged photos + production dates (items 2–4 below) → measure speed → work card empty fields folded — order in [NEXT](./HANDOFF_2026-11-14_NEXT.md). Previous batch (B1–B3, A2–A4, D, C arrows, export image quality) all deployed 2026-11-14 (`d9bb23f`) → [archive](./archive/HANDOFF_2026-11-13_NEXT.md)
 
 Trace
 - [ ] 1. Handwriting batch (after the test above) → [notes](./TODO_NOTES.md#journal-phase-2)
@@ -64,6 +64,7 @@ Speed and code health — measure soon after the next batch
 
 - VAT per sale, resolved from the transaction → [notes](./TODO_NOTES.md#vat)
 - Photothèque (~4 000 photos): a **library** (owner 2026-11-13) — standalone photographs, mostly not tied to a work, sometimes serving one → [notes](./TODO_NOTES.md#phototheque)
+- Slideshow from the selection (batch dock): background black / grey / white, manual controls, slide length + transitions → PowerPoint, MP4 / GIF, a base for Premiere / Photoshop, Instagram Reels (owner 2026-11-14) → [brief §6](./HANDOFF_2026-11-14_NEXT.md)
 - Journal entries as Constellation canvas nodes — a big one, not now (owner 2026-11-13) → [notes](./TODO_NOTES.md#journal-phase-2)
 - F7 daily digest email (owner: "not sure"; needs an email service) · F6 feature switches · F8 background job outbox — [archive/STATUS.md](./archive/STATUS.md)
 - Background jobs / queues · broader field OCR · transactional email (explicit no-GO in `CLAUDE.md`)

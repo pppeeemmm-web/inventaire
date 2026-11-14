@@ -95,12 +95,6 @@ export const workPeriodsMessages = defineMessages({
   ps_err_coords: { fr: 'Coordonnées invalides : « 43.29, 5.38 ».', en: 'Invalid coordinates: “43.29, 5.38”.' },
   ps_err_place_duplicate: { fr: 'Ce lieu existe déjà.', en: 'This place already exists.' },
   ps_place_made: { fr: 'Lieu de création', en: 'Place made' },
-  ps_place_none: { fr: '— Non renseigné', en: '— Not set' },
-  ps_place_suggest_fmt: { fr: 'La période propose : {name}', en: 'The period suggests: {name}' },
-  ps_place_use: { fr: 'Utiliser', en: 'Use it' },
-  ps_place_auto_fmt: { fr: 'Automatique : {name}', en: 'Automatic: {name}' },
-  ps_place_back_to_period: { fr: 'Revenir au lieu de la période', en: 'Back to the period’s place' },
-  ps_place_auto_none: { fr: 'Automatique : non renseigné', en: 'Automatic: not set' },
   ps_place_from_period_line: { fr: 'd’après la période', en: 'from the period' },
   ps_place_new_option: { fr: '+ Nouveau lieu…', en: '+ New place…' },
   ps_place_list_empty: {
@@ -111,18 +105,6 @@ export const workPeriodsMessages = defineMessages({
   ps_place_coords_hint: {
     fr: 'Facultatif. Avec des coordonnées, le lieu pourra être proposé d’après la position des sessions terrain.',
     en: 'Optional. With coordinates, the place can be suggested from where field sessions were captured.',
-  },
-  ps_place_session_suggest_fmt: {
-    fr: 'Session de terrain du {date} : {name}',
-    en: 'Field session of {date}: {name}',
-  },
-  ps_place_session_confirm_fmt: {
-    fr: 'Confirmé par la session de terrain du {date}',
-    en: 'Confirmed by the field session of {date}',
-  },
-  ps_place_session_hint: {
-    fr: 'Lieu enregistré le plus proche (moins de 2 km) de la position du téléphone lors de la première session de terrain de cette œuvre. Jamais enregistré seul : « Utiliser » le pose sur l’œuvre.',
-    en: 'Nearest saved place (under 2 km) to where the phone was at this work’s first field session. Never set by itself: “Use it” sets it on the work.',
   },
   ps_place_from_period_hint: {
     fr: 'Déduit de la période (son atelier), jamais enregistré sur l’œuvre : choisissez un lieu pour la sortir de la règle.',

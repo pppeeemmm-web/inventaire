@@ -56,8 +56,8 @@ export interface BatchChanges {
   Commentaires?:      string | null
   /** Period for every selected work: 'auto' (from its date), 'none', or a period id (`work_period_override`). */
   periodChoice?:      'auto' | 'none' | number
-  /** A3: the place the works were made — a place id, or 'none' to clear (work_place). */
-  placeChoice?:       'none' | number
+  /** A place the works were made: adds an undated « Création » line with it to each work that has no line there. */
+  placeChoice?:       number
   // Theme junction — add and/or remove theme IDs across OeuvreTheme
   addThemeIds?:       number[]
   removeThemeIds?:    number[]
@@ -277,17 +277,23 @@ export async function batchEdit(ids: number[], changes: BatchChanges): Promise<B
     }
   }
 
-  // Place made for every selected work (team may set it, like the period: its own table).
+  // Place made (Pem 2026-11-14, « Création » history): an undated line with that place on each selected
+  // work that has no line there yet — never removes or replaces a line (team table, like the period).
   if (hasPlaceChange) {
     const choice = changes.placeChoice!
-    if (choice !== 'none' && !(Number.isInteger(choice) && choice > 0)) return { error: 'bad_place' }
+    if (!(Number.isInteger(choice) && choice > 0)) return { error: 'bad_place' }
     for (let i = 0; i < ids.length; i += 1000) {
       const chunk = ids.slice(i, i + 1000)
-      const set_at = new Date().toISOString()
-      const { error: plErr } =
-        choice === 'none'
-          ? await supabase.from('work_place').delete().in('oeuvre_id', chunk)
-          : await supabase.from('work_place').upsert(chunk.map((oeuvre_id) => ({ oeuvre_id, place_id: choice, set_at })), { onConflict: 'oeuvre_id' })
+      const { data: have, error: hErr } = await supabase
+        .from('work_creation_step')
+        .select('oeuvre_id')
+        .eq('place_id', choice)
+        .in('oeuvre_id', chunk)
+      if (hErr) return { error: hErr.message }
+      const done = new Set((have ?? []).map((r) => r.oeuvre_id))
+      const rows = chunk.filter((oeuvre_id) => !done.has(oeuvre_id)).map((oeuvre_id) => ({ oeuvre_id, kind: 'worked', place_id: choice }))
+      if (!rows.length) continue
+      const { error: plErr } = await supabase.from('work_creation_step').insert(rows)
       if (plErr) return { error: plErr.message }
     }
   }

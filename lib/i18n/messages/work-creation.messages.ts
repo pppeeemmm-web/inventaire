@@ -1,0 +1,40 @@
+import { defineMessages } from '../message-core'
+
+/** « Historique de création » per work (Pem 2026-11-14): dated lines, each with a place. */
+export const workCreationMessages = defineMessages({
+  cr_heading: { fr: 'Historique de création', en: 'Creation history' },
+  cr_add: { fr: '+ Ligne', en: '+ Line' },
+  cr_empty: { fr: 'Aucune ligne : ajoutez où et quand l’œuvre a été faite.', en: 'No line yet: add where and when the work was made.' },
+  cr_empty_period_fmt: { fr: 'Aucune ligne. Lieu d’après la période : {name}', en: 'No line yet. Place from the period: {name}' },
+  cr_kind_started: { fr: 'Commencée', en: 'Started' },
+  cr_kind_worked: { fr: 'Travaillée', en: 'Worked on' },
+  cr_kind_resumed: { fr: 'Reprise', en: 'Resumed' },
+  cr_kind_finished: { fr: 'Terminée', en: 'Finished' },
+  cr_kind_label: { fr: 'Étape', en: 'Step' },
+  cr_date_label: { fr: 'Date', en: 'Date' },
+  cr_date_ph: { fr: '2021, 06/2024, 22/08/2026', en: '2021, 2024-06, 2026-08-22' },
+  cr_undated: { fr: 'sans date', en: 'undated' },
+  cr_place_label: { fr: 'Lieu', en: 'Place' },
+  cr_place_none: { fr: '— Lieu non renseigné', en: '— Place not set' },
+  cr_note_ph: { fr: 'Note (facultatif)', en: 'Note (optional)' },
+  cr_delete: { fr: 'Supprimer la ligne', en: 'Delete line' },
+  cr_confirm_delete: { fr: 'Supprimer cette ligne de l’historique de création ?', en: 'Delete this line from the creation history?' },
+  cr_err_date: { fr: 'Date invalide : 2021, 06/2024 ou 22/08/2026.', en: 'Invalid date: 2021, 2024-06 or 2026-08-22.' },
+  cr_err_empty: { fr: 'Indiquez au moins une date, un lieu ou une note.', en: 'Enter at least a date, a place or a note.' },
+  cr_edit_aria_fmt: { fr: 'Modifier la ligne : {date}', en: 'Edit line: {date}' },
+  cr_from_session: { fr: 'session de terrain', en: 'field session' },
+  cr_session_suggest_fmt: { fr: 'Session de terrain du {date} : {name}', en: 'Field session of {date}: {name}' },
+  cr_session_add: { fr: 'Ajouter', en: 'Add' },
+  cr_session_hint: {
+    fr: 'Lieu enregistré le plus proche (moins de 2 km) de la position du téléphone pendant cette session. Jamais ajouté seul : « Ajouter » crée la ligne.',
+    en: 'Nearest saved place (under 2 km) to where the phone was during that session. Never added by itself: “Add” creates the line.',
+  },
+  cr_split_fmt: { fr: 'Création sur {n} périodes : laquelle ?', en: 'Made across {n} periods: which one?' },
+  cr_split_hint: {
+    fr: 'Choisir range l’œuvre dans cette période (à la main). Sans choix, elle suit sa date.',
+    en: 'Picking one puts the work in that period (by hand). Until then it follows its date.',
+  },
+  cr_period_from_steps: { fr: 'd’après l’historique de création', en: 'from the creation history' },
+  cr_filter_split: { fr: 'Périodes à trancher', en: 'Periods to decide' },
+  cr_batch_add: { fr: 'Lieu de création (ajoute une ligne)', en: 'Place made (adds a line)' },
+})

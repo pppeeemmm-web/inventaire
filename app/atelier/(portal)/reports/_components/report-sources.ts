@@ -123,13 +123,13 @@ function workFields(c: SourceCtx): ReportField<Oeuvre>[] {
       value: (o) => effectivePeriod(o.OeuvreID, workWhen(o), c.periodSource).period?.name ?? null,
     },
     {
-      // The place the work was made: its own, else its period's place (Pem 2026-11-14).
+      // The place the work was made: its « Création » route, else its period's place (Pem 2026-11-14).
       id: 'place_made',
       label: t('ps_place_made'),
       kind: 'enum',
       value: (o) => {
-        const pl = effectivePlace(o.OeuvreID, workWhen(o), c.periodSource).place
-        return pl ? placeLabel(pl) : null
+        const route = effectivePlace(o.OeuvreID, workWhen(o), c.periodSource).route
+        return route.length ? route.map(placeLabel).join(' → ') : null
       },
     },
     {

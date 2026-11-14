@@ -48,7 +48,7 @@ import { PeriodSourceManager } from '@/components/atelier/PeriodSourceManager'
 import { patchPeriodSource, usePeriodSource } from '@/lib/atelier/use-period-source'
 import { addSourceToWorks } from '@/app/atelier/works/period-source-actions'
 import { ReportLinkButton } from '@/components/atelier/ReportLinkButton'
-import { effectivePeriod, effectivePlace, placeLabel, sortPlaces, workWhen, type EffectivePlace, type WorkPeriod } from '@/lib/work-periods'
+import { effectivePeriod, effectivePlace, periodsOfSteps, placeLabel, routeLabel, sortPlaces, workWhen, type EffectivePlace, type WorkPeriod } from '@/lib/work-periods'
 
 // ── Types ───────────────────────────────────────────────────────────
 
@@ -690,8 +690,7 @@ export function Inventory({
         const themeNames = (oeuvreThemeMap.get(o.OeuvreID) ?? []).map(tid => thM[tid] ?? '').join(' ')
         const groupNames = (oeuvreGroupMap.get(o.OeuvreID) ?? []).map(gid => groupNameMap[gid] ?? '').join(' ')
         const periodName = periodOf(o)?.name ?? ''
-        const pl = placeOf(o).place
-        const placeName = pl ? `${pl.name} ${pl.town ?? ''}` : ''
+        const placeName = placeOf(o).route.map((pl) => `${pl.name} ${pl.town ?? ''}`).join(' ')
         const sourceNames = (periodSource.sourcesByWork[o.OeuvreID] ?? []).map((id) => sourceNameMap[id] ?? '').join(' ')
         const sourceNotes = Object.values(periodSource.sourceNotes[o.OeuvreID] ?? {}).join(' ')
         const bag = `${o.Titre ?? ''} #${o.OeuvreID} ${o.Technique != null ? (tM[o.Technique] ?? '') : ''} ${o.Support != null ? (sM[o.Support] ?? '') : ''} ${themeNames} ${groupNames} ${periodName} ${placeName} ${sourceNames} ${sourceNotes}`.toLowerCase()
@@ -716,13 +715,17 @@ export function Inventory({
       // Period filter (automatic from the year, unless set by hand)
       if (filterPeriod !== 'all') {
         const pid = periodOf(o)?.id ?? null
-        if (filterPeriod === 'none' ? pid != null : pid !== Number(filterPeriod)) return false
+        if (filterPeriod === 'split') {
+          // « Périodes à trancher »: lines in two periods or more, no period chosen by hand.
+          if (Object.prototype.hasOwnProperty.call(periodSource.overrides, o.OeuvreID)) return false
+          if (periodsOfSteps(periodSource.creation[o.OeuvreID], periodSource.periods).length < 2) return false
+        } else if (filterPeriod === 'none' ? pid != null : pid !== Number(filterPeriod)) return false
       }
 
-      // Place filter (own place, else the period's)
+      // Place filter: any place of its « Création » lines, else the period's
       if (filterPlace !== 'all') {
-        const plid = placeOf(o).place?.id ?? null
-        if (filterPlace === 'none' ? plid != null : plid !== Number(filterPlace)) return false
+        const route = placeOf(o).route
+        if (filterPlace === 'none' ? route.length > 0 : !route.some((pl) => pl.id === Number(filterPlace))) return false
       }
 
       // Source filter
@@ -871,7 +874,7 @@ export function Inventory({
       {
         id: 'place',
         label: t('ps_place_made'),
-        get: (o) => { const pl = placeOf(o).place; return pl ? pl.name : '—' },
+        get: (o) => routeLabel(placeOf(o).route) || '—',
       },
       {
         id: 'source',
@@ -1023,11 +1026,12 @@ export function Inventory({
           options={[
             ['all', t('ps_filter_all_periods')],
             ['none', t('ps_filter_no_period')],
+            ['split', t('cr_filter_split')],
             ...sortedPeriods.map((x) => [String(x.id), x.name] as [string, string]),
           ]}
         />
 
-        {/* Place (own, else the period's) */}
+        {/* Place (any « Création » line, else the period's) */}
         <InvSelect
           value={filterPlace} onChange={setFilterPlace}
           label={t('ps_place_made')}
@@ -2067,14 +2071,14 @@ function InvList({
                   {(() => {
                     const pn = periodName?.(o) || ''
                     const ep = placeOf?.(o)
-                    const pl = ep?.place ? placeLabel(ep.place) : ''
+                    const pl = ep?.route.length ? ep.route.map(placeLabel).join(' → ') : ''
                     const tip = [pn, pl && (ep?.fromPeriod ? `${pl} (${t('ps_place_from_period_line')})` : pl)].filter(Boolean).join(' — ')
                     const one: React.CSSProperties = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
                     return (
                       <td title={tip || undefined} style={{ padding: '0 4px', overflow: 'hidden', fontSize: 12, ...cellDivider, verticalAlign: 'middle' }}>
                         <div style={{ ...one, opacity: 0.8 }}>{pn || '—'}</div>
                         {ep?.place ? (
-                          <div data-testid="inv-place" style={{ ...one, fontSize: 11, color: 'var(--tx3)', fontStyle: ep.fromPeriod ? 'italic' : 'normal' }}>{ep.place.name}</div>
+                          <div data-testid="inv-place" style={{ ...one, fontSize: 11, color: 'var(--tx3)', fontStyle: ep.fromPeriod ? 'italic' : 'normal' }}>{routeLabel(ep.route)}</div>
                         ) : null}
                       </td>
                     )

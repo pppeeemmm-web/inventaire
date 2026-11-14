@@ -2,38 +2,28 @@
 
 // Work drawer: Période & source (owner 2026-11-02). The period follows the work's date / year in
 // the form (even unsaved) unless set by hand; sources are toggles. Own saves, outside the drawer's
-// dirty baseline, like Constats. A3 (2026-11-14): + the place the work was made; the period may
-// suggest one, the work never takes it by itself.
+// dirty baseline, like Constats. A3 (2026-11-14): + where the work was made — since Pem 2026-11-14 the
+// « Historique de création » (`WorkCreationHistory`); lines in two periods ask which one.
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from '@/lib/ui/toast'
 import { isPeriodSourceLoaded, patchPeriodSource, usePeriodSource } from '@/lib/atelier/use-period-source'
 import {
   autoPeriodFor,
   effectivePeriod,
-  effectivePlace,
-  nearestPlace,
   periodChoiceOf,
-  parsePlaceCoords,
   periodRange,
-  placeLabel,
+  periodsOfSteps,
   sortPeriods,
-  sortPlaces,
+  whenWithSteps,
   yearIsShared,
   type PeriodChoice,
   type WorkWhen,
 } from '@/lib/work-periods'
-import {
-  fetchWorkSessionLocations,
-  findPlaceCoords,
-  savePlace,
-  setWorkPeriod,
-  setWorkPlace,
-  setWorkSourceNote,
-  setWorkSources,
-} from '@/app/atelier/works/period-source-actions'
+import { setWorkPeriod, setWorkSourceNote, setWorkSources } from '@/app/atelier/works/period-source-actions'
 import { PeriodSourceManager } from '@/components/atelier/PeriodSourceManager'
+import { WorkCreationHistory } from '@/components/atelier/work-drawer/WorkCreationHistory'
 
 export function WorkPeriodSourceSection({ oeuvreId, when }: { oeuvreId: number; when: WorkWhen }) {
   const { t, lang } = useI18n()
@@ -44,77 +34,12 @@ export function WorkPeriodSourceSection({ oeuvreId, when }: { oeuvreId: number; 
   const periods = useMemo(() => sortPeriods(data.periods), [data.periods])
   const sources = useMemo(() => [...data.sources].sort((a, b) => a.name.localeCompare(b.name)), [data.sources])
   const choice = periodChoiceOf(oeuvreId, data)
-  const auto = autoPeriodFor(when, periods)
+  /** A work with no date of its own reads its « Création » lines (`whenWithSteps`). */
+  const auto = autoPeriodFor(whenWithSteps(when, data.creation[oeuvreId]), periods)
   const eff = effectivePeriod(oeuvreId, when, data)
-  const places = useMemo(() => sortPlaces(data.places), [data.places])
-  const placeId = data.workPlaces[oeuvreId] ?? null
-  /** Without a place of its own, the work is read at its period's place (Pem 2026-11-14). */
-  const periodPlace = placeId == null ? effectivePlace(oeuvreId, when, data) : null
+  /** Lines in two periods or more (Ireland 2021 → Marseille 2026): ask which one (Pem 2026-11-14). */
+  const spanned = useMemo(() => periodsOfSteps(data.creation[oeuvreId], periods), [data.creation, oeuvreId, periods])
   const mine = data.sourcesByWork[oeuvreId] ?? []
-  /** Where the phone was at this work's field sessions (earliest first) — feeds the place suggestion. */
-  const [sessionLocs, setSessionLocs] = useState<{ day: string | null; latitude: number; longitude: number }[]>([])
-  useEffect(() => {
-    let live = true
-    setSessionLocs([])
-    void fetchWorkSessionLocations(oeuvreId).then((res) => {
-      if (live && 'ok' in res) setSessionLocs(res.locations)
-    })
-    return () => {
-      live = false
-    }
-  }, [oeuvreId])
-  /** First located session that sits at a saved place (≤ 2 km). A suggestion only: the work's own place is never changed by it. */
-  const sessionPlace = useMemo(() => {
-    for (const l of sessionLocs) {
-      const p = nearestPlace(l.latitude, l.longitude, data.places)
-      if (p) return { place: p, day: l.day }
-    }
-    return null
-  }, [sessionLocs, data.places])
-  const shownPlaceId = placeId ?? periodPlace?.place?.id ?? null
-  const sessionDay = sessionPlace?.day
-    ? new Date(`${sessionPlace.day}T12:00:00`).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' })
-    : ''
-  /** New place typed right here (Pem 2026-11-14: the list was empty, the select offered no choice). */
-  const [newPlace, setNewPlace] = useState<{ name: string; address: string; town: string; country: string; coords: string } | null>(null)
-
-  async function fillNewPlaceCoords() {
-    if (!newPlace) return
-    setBusy(true)
-    try {
-      const res = await findPlaceCoords({ address: newPlace.address, town: newPlace.town, country: newPlace.country })
-      if ('error' in res) return toast.error(t(res.error === 'empty' ? 'ps_find_coords_empty' : 'ps_find_coords_none'))
-      setNewPlace((d) => (d ? { ...d, coords: `${res.latitude}, ${res.longitude}` } : d))
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function addPlaceHere() {
-    if (!newPlace || !newPlace.name.trim()) return
-    const coords = parsePlaceCoords(newPlace.coords)
-    if (coords === 'bad') {
-      toast.error(t('ps_err_coords'))
-      return
-    }
-    let addedId: number | null = null
-    setBusy(true)
-    try {
-      const res = await savePlace({ name: newPlace.name, address: newPlace.address, town: newPlace.town, country: newPlace.country, ...coords })
-      if ('error' in res) {
-        toast.error(res.error === 'duplicate' ? t('ps_err_place_duplicate') : `${t('error_prefix')} ${res.error}`)
-        return
-      }
-      patchPeriodSource((d) => ({ ...d, places: [...d.places.filter((x) => x.id !== res.place.id), res.place] }))
-      setNewPlace(null)
-      addedId = res.place.id
-    } finally {
-      setBusy(false)
-    }
-    // The place just added is the one this work was made in.
-    if (addedId != null) await choosePlace(addedId)
-  }
-
   async function choose(next: PeriodChoice) {
     setBusy(true)
     try {
@@ -128,25 +53,6 @@ export function WorkPeriodSourceSection({ oeuvreId, when }: { oeuvreId: number; 
         if (next === 'auto') delete overrides[oeuvreId]
         else overrides[oeuvreId] = next === 'none' ? null : next
         return { ...d, overrides }
-      })
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function choosePlace(next: number | null) {
-    setBusy(true)
-    try {
-      const res = await setWorkPlace(oeuvreId, next)
-      if ('error' in res) {
-        toast.error(`${t('error_prefix')} ${res.error}`)
-        return
-      }
-      patchPeriodSource((d) => {
-        const workPlaces = { ...d.workPlaces }
-        if (next == null) delete workPlaces[oeuvreId]
-        else workPlaces[oeuvreId] = next
-        return { ...d, workPlaces }
       })
     } finally {
       setBusy(false)
@@ -242,10 +148,29 @@ export function WorkPeriodSourceSection({ oeuvreId, when }: { oeuvreId: number; 
           </select>
           {eff.period ? (
             <span className="t-mono-sm" style={{ fontSize: 10, color: 'var(--tx3)' }}>
-              {eff.overridden ? t('ps_period_by_hand') : when.day ? t('ps_period_from_day') : t('ps_period_from_year')}
+              {eff.overridden
+                ? t('ps_period_by_hand')
+                : when.day
+                  ? t('ps_period_from_day')
+                  : when.year != null
+                    ? t('ps_period_from_year')
+                    : t('cr_period_from_steps')}
             </span>
           ) : null}
         </div>
+        {!eff.overridden && spanned.length > 1 ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 6 }} data-testid="work-period-split">
+            <span className="t-mono-sm" style={{ fontSize: 11, color: 'var(--yellow)' }} title={t('cr_split_hint')}>
+              {t('cr_split_fmt').replace('{n}', String(spanned.length))}
+            </span>
+            {spanned.map((p) => (
+              <button key={p.id} type="button" className="btn ghost sm" style={{ minHeight: 44 }} disabled={busy}
+                data-testid="work-period-split-pick" onClick={() => void choose(p.id)}>
+                {p.name}
+              </button>
+            ))}
+          </div>
+        ) : null}
         {!eff.overridden && yearIsShared(when, periods) ? (
           <p className="t-mono-sm" style={{ fontSize: 11, color: 'var(--yellow)', margin: '6px 0 0' }} data-testid="work-period-year-shared">
             {t('ps_period_year_shared_fmt').replace('{year}', String(when.year))}
@@ -253,91 +178,7 @@ export function WorkPeriodSourceSection({ oeuvreId, when }: { oeuvreId: number; 
         ) : null}
       </div>
 
-      <div>
-        <div className="t-label" style={{ marginBottom: 6 }}>{t('ps_place_made')}</div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <select
-            className="input"
-            style={{ fontSize: 13, flex: '1 1 220px', maxWidth: 380, minHeight: 44 }}
-            value={placeId == null ? '' : String(placeId)}
-            disabled={busy}
-            aria-label={t('ps_place_made')}
-            data-testid="work-place-select"
-            onChange={(e) => {
-              if (e.target.value === '__new') return setNewPlace({ name: '', address: '', town: '', country: '', coords: '' })
-              void choosePlace(e.target.value ? Number(e.target.value) : null)
-            }}
-          >
-            <option value="">
-              {periodPlace?.place
-                ? t('ps_place_auto_fmt').replace('{name}', placeLabel(periodPlace.place))
-                : t('ps_place_auto_none')}
-            </option>
-            {places.map((p) => (
-              <option key={p.id} value={String(p.id)}>
-                {placeLabel(p)}
-              </option>
-            ))}
-            <option value="__new">{t('ps_place_new_option')}</option>
-          </select>
-          {!newPlace ? (
-            <button type="button" className="btn ghost sm" style={{ minHeight: 44 }} disabled={busy}
-              data-testid="work-place-add" onClick={() => setNewPlace({ name: '', address: '', town: '', country: '', coords: '' })}>
-              {t('ps_add_place')}
-            </button>
-          ) : null}
-        </div>
-        {places.length === 0 && !newPlace ? (
-          <p className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx3)', margin: '6px 0 0' }}>{t('ps_place_list_empty')}</p>
-        ) : null}
-        {newPlace ? (
-          <div data-testid="work-place-new" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8, marginTop: 8, maxWidth: 520 }}>
-            <input className="input" autoFocus style={{ minHeight: 44, fontSize: 13 }} placeholder={t('ps_place_name_ph')} aria-label={t('ps_place_name_ph')}
-              value={newPlace.name} onChange={(e) => setNewPlace({ ...newPlace, name: e.target.value })}
-              onKeyDown={(e) => { if (e.key === 'Enter') void addPlaceHere() }} />
-            <input className="input" style={{ minHeight: 44, fontSize: 13 }} placeholder={t('ps_address_ph')} aria-label={t('ps_address_ph')}
-              value={newPlace.address} onChange={(e) => setNewPlace({ ...newPlace, address: e.target.value })} />
-            <input className="input" style={{ minHeight: 44, fontSize: 13 }} placeholder={t('ps_town_ph')} aria-label={t('ps_town_ph')}
-              value={newPlace.town} onChange={(e) => setNewPlace({ ...newPlace, town: e.target.value })} />
-            <input className="input" style={{ minHeight: 44, fontSize: 13 }} placeholder={t('ps_country_ph')} aria-label={t('ps_country_ph')}
-              value={newPlace.country} onChange={(e) => setNewPlace({ ...newPlace, country: e.target.value })} />
-            <input className="input" style={{ minHeight: 44, fontSize: 13 }} placeholder={t('ps_coords_ph')} aria-label={t('ps_coords_ph')}
-              title={t('ps_place_coords_hint')}
-              value={newPlace.coords} onChange={(e) => setNewPlace({ ...newPlace, coords: e.target.value })} />
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button type="button" className="btn ghost sm" style={{ minHeight: 44 }} disabled={busy} title={t('ps_find_coords_hint')}
-                onClick={() => void fillNewPlaceCoords()}>{t('ps_find_coords')}</button>
-              <button type="button" className="btn primary sm" style={{ minHeight: 44 }} disabled={busy || !newPlace.name.trim()}
-                data-testid="work-place-new-save" onClick={() => void addPlaceHere()}>{t('ps_place_add_set')}</button>
-              <button type="button" className="btn ghost sm" style={{ minHeight: 44 }} disabled={busy}
-                onClick={() => setNewPlace(null)}>{t('cancel')}</button>
-            </div>
-          </div>
-        ) : null}
-        {placeId == null && periodPlace?.place ? (
-          <div className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 6 }} title={t('ps_place_from_period_hint')}>
-            {t('ps_place_from_period_line')}
-          </div>
-        ) : null}
-        {sessionPlace && !newPlace ? (
-          sessionPlace.place.id === shownPlaceId ? (
-            <div className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 6 }} title={t('ps_place_session_hint')}
-              data-testid="work-place-session-confirm">
-              {t('ps_place_session_confirm_fmt').replace('{date}', sessionDay)}
-            </div>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 6 }} data-testid="work-place-session-suggest">
-              <span className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx2)', overflowWrap: 'anywhere' }} title={t('ps_place_session_hint')}>
-                {t('ps_place_session_suggest_fmt').replace('{date}', sessionDay).replace('{name}', placeLabel(sessionPlace.place))}
-              </span>
-              <button type="button" className="btn ghost sm" style={{ minHeight: 44 }} disabled={busy}
-                data-testid="work-place-session-use" onClick={() => void choosePlace(sessionPlace.place.id)}>
-                {t('ps_place_use')}
-              </button>
-            </div>
-          )
-        ) : null}
-      </div>
+      <WorkCreationHistory oeuvreId={oeuvreId} when={when} />
 
       <div>
         <div className="t-label" style={{ marginBottom: 6 }}>{t('ps_source')}</div>

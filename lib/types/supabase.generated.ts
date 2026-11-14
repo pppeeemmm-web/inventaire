@@ -3049,6 +3049,67 @@ export type Database = {
         }
         Relationships: []
       }
+      work_creation_step: {
+        Row: {
+          created_at: string
+          date_precision: string | null
+          id: number
+          kind: string
+          note: string | null
+          oeuvre_id: number
+          on_date: string | null
+          place_id: number | null
+          set_by: string | null
+          work_session_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          date_precision?: string | null
+          id?: never
+          kind?: string
+          note?: string | null
+          oeuvre_id: number
+          on_date?: string | null
+          place_id?: number | null
+          set_by?: string | null
+          work_session_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          date_precision?: string | null
+          id?: never
+          kind?: string
+          note?: string | null
+          oeuvre_id?: number
+          on_date?: string | null
+          place_id?: number | null
+          set_by?: string | null
+          work_session_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_creation_step_oeuvre_id_fkey"
+            columns: ["oeuvre_id"]
+            isOneToOne: false
+            referencedRelation: "Oeuvres"
+            referencedColumns: ["OeuvreID"]
+          },
+          {
+            foreignKeyName: "work_creation_step_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "place"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_creation_step_work_session_id_fkey"
+            columns: ["work_session_id"]
+            isOneToOne: false
+            referencedRelation: "work_session"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       work_description: {
         Row: {
           body: string

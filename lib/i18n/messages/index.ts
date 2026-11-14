@@ -35,6 +35,7 @@ import { reportsUiMessages } from './reports-ui.messages'
 import { conditionMessages } from './condition.messages'
 import { custodyMessages } from './custody.messages'
 import { workPeriodsMessages } from './work-periods.messages'
+import { workCreationMessages } from './work-creation.messages'
 import { whatsNewMessages } from './whats-new.messages'
 import { journalEntryMessages } from './journal-entry.messages'
 import { batchEditMessages } from './batch-edit.messages'
@@ -81,6 +82,7 @@ export const featureMessages = {
   ...conditionMessages,
   ...custodyMessages,
   ...workPeriodsMessages,
+  ...workCreationMessages,
   ...whatsNewMessages,
   ...journalEntryMessages,
   ...batchEditMessages,

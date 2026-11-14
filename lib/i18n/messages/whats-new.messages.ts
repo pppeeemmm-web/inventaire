@@ -9,6 +9,12 @@ export const whatsNewMessages = defineMessages({
   },
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
+  // 3.1.13 (2026-11-14) — « Historique de création » (Pem: "a history for the creation where 'place' is just like 'history'").
+  wn_creation_history_t: { fr: 'Historique de création : où et quand l’œuvre a été faite', en: 'Creation history: where and when the work was made' },
+  wn_creation_history_d: {
+    fr: 'Dans la fiche, « Lieu de création » devient une liste datée, comme l’historique : « 2021 · Commencée · Tooreeney », « 2026 · Terminée · Marseille Atelier ». Chaque ligne a une date (année, mois ou jour), une étape, un lieu et une note. « + Ligne » en ajoute une ; toucher une ligne la modifie ou la supprime. Une session de terrain tenue à l’un de vos lieux propose sa ligne (« Ajouter »), jamais ajoutée toute seule. Si les lignes tombent dans deux périodes, la fiche demande laquelle — Inventaire → Période → « Périodes à trancher » les liste. Inventaire affiche le parcours (« Tooreeney → Marseille Atelier ») et le filtre Lieu trouve chaque étape. Sans ligne, le lieu reste celui de la période, en gris. Modifier par lot : « Lieu de création » ajoute une ligne à chaque œuvre, sans rien effacer.',
+    en: 'On the card, « Place made » becomes a dated list, like the history: « 2021 · Started · Tooreeney », « 2026 · Finished · Marseille Atelier ». Each line has a date (year, month or day), a step, a place and a note. « + Line » adds one; tap a line to edit or delete it. A field session held at one of your places offers its line (« Add »), never added by itself. If the lines fall in two periods, the card asks which one — Inventory → Period → « Periods to decide » lists them. Inventory shows the route (« Tooreeney → Marseille Atelier ») and the Place filter finds every step. With no line, the place stays the period’s, in grey. Batch modify: « Place made » adds a line to each work, erasing nothing.',
+  },
   // 3.1.12 (2026-11-14) — place suggested from the field session.
   wn_place_from_session_t: { fr: 'Lieu de création : proposé par la session de terrain', en: 'Place made: suggested by the field session' },
   wn_place_from_session_d: {

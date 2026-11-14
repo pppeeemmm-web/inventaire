@@ -54,16 +54,17 @@ export function PeriodSourceManager({
   const places = useMemo(() => sortPlaces(data.places), [data.places])
   const [placeEditing, setPlaceEditing] = useState<number | 'new' | null>(null)
   const [placeDraft, setPlaceDraft] = useState<PlaceDraft>(emptyPlace)
-  /** Works at each place: their own, else their period's (Pem 2026-11-14). */
+  /** Works at each place: their « Création » lines (each place counted once per work), else their period's (Pem 2026-11-14). */
   const placeCounts = useMemo(() => {
     const c = new Map<number, number>()
     if (works) {
       for (const w of works) {
-        const pl = effectivePlace(w.OeuvreID, workWhen(w), data).place
-        if (pl) c.set(pl.id, (c.get(pl.id) ?? 0) + 1)
+        for (const pl of effectivePlace(w.OeuvreID, workWhen(w), data).route) c.set(pl.id, (c.get(pl.id) ?? 0) + 1)
       }
     } else {
-      for (const id of Object.values(data.workPlaces)) c.set(id, (c.get(id) ?? 0) + 1)
+      for (const steps of Object.values(data.creation)) {
+        for (const id of new Set(steps.map((s) => s.place_id).filter((x): x is number => x != null))) c.set(id, (c.get(id) ?? 0) + 1)
+      }
     }
     return c
   }, [works, data])
@@ -173,7 +174,10 @@ export function PeriodSourceManager({
         ...d,
         places: d.places.filter((x) => x.id !== p.id),
         periods: d.periods.map((x) => (x.default_place_id === p.id ? { ...x, default_place_id: null } : x)),
-        workPlaces: Object.fromEntries(Object.entries(d.workPlaces).filter(([, v]) => v !== p.id)),
+        // The lines stay (dated, with their note); only the place goes (on delete set null).
+        creation: Object.fromEntries(
+          Object.entries(d.creation).map(([k, steps]) => [k, steps.map((st) => (st.place_id === p.id ? { ...st, place_id: null } : st))]),
+        ),
       }))
     } finally {
       setBusy(false)

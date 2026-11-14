@@ -5,11 +5,13 @@
 // A3 (2026-11-14): periods carry dates (`start_on` / `end_on`), and each work may have the place it
 // was made (`work_place` → `place`). Pem 2026-11-14: a period's place is every work's place unless the
 // work has its own (read, never written — `effectivePlace`); places carry an address (`place.address`).
+// Pem 2026-11-14: the single place became the « Création » history — dated lines, each with a place
+// (`work_creation_step`, supabase/sql/work_creation_steps.sql); `work_place` is no longer read.
 
 import { createClient } from '@/lib/supabase/server'
 import { lookupGeocode } from '@/lib/geocode-nominatim'
 import { logError } from '@/lib/error-reporter/server'
-import type { PeriodChoice, PeriodSourceData, Place, WorkPeriod, WorkSource } from '@/lib/work-periods'
+import { CREATION_KINDS, sortSteps, type CreationKind, type CreationStep, type DatePrecision, type PeriodChoice, type PeriodSourceData, type Place, type WorkPeriod, type WorkSource } from '@/lib/work-periods'
 
 type Err = { error: string }
 type Supa = Awaited<ReturnType<typeof createClient>>
@@ -20,6 +22,8 @@ const MIN_YEAR = 1900
 const MAX_YEAR = 2200
 const PERIOD_COLS = 'id, name, start_year, end_year, start_on, end_on, default_place_id'
 const PLACE_COLS = 'id, name, address, town, country, latitude, longitude'
+const STEP_COLS = 'id, oeuvre_id, on_date, date_precision, kind, place_id, note, work_session_id'
+const MAX_STEP_NOTE = 500
 
 async function signedIn(supabase: Supa): Promise<boolean> {
   const {
@@ -60,17 +64,18 @@ export async function loadPeriodSourceData(): Promise<PeriodSourceData | Err> {
     }
     if (!data || data.length < PAGE) break
   }
-  const workPlaces: Record<number, number> = {}
+  const creation: Record<number, CreationStep[]> = {}
   for (let from = 0; ; from += PAGE) {
     const { data, error } = await supabase
-      .from('work_place')
-      .select('oeuvre_id, place_id')
-      .order('oeuvre_id')
+      .from('work_creation_step')
+      .select(STEP_COLS)
+      .order('id')
       .range(from, from + PAGE - 1)
     if (error) return { error: error.message }
-    for (const r of data ?? []) workPlaces[r.oeuvre_id] = r.place_id
+    for (const r of (data ?? []) as CreationStep[]) (creation[r.oeuvre_id] ??= []).push(r)
     if (!data || data.length < PAGE) break
   }
+  for (const k of Object.keys(creation)) creation[Number(k)] = sortSteps(creation[Number(k)])
   return {
     periods: (pRes.data ?? []) as WorkPeriod[],
     sources: (sRes.data ?? []) as WorkSource[],
@@ -78,7 +83,7 @@ export async function loadPeriodSourceData(): Promise<PeriodSourceData | Err> {
     sourcesByWork,
     sourceNotes,
     places: (plRes.data ?? []) as Place[],
-    workPlaces,
+    creation,
   }
 }
 
@@ -302,6 +307,8 @@ export async function deletePlace(id: number): Promise<{ ok: true } | Err> {
   return { ok: true }
 }
 
+export type SessionLocation = { sessionId: string; day: string | null; latitude: number; longitude: number }
+
 /**
  * Where the phone was when a field session held this work (`work_session.payload.field_context`,
  * captured since 3.1.6), earliest session first — the one closest to when the work was made. Read
@@ -309,49 +316,77 @@ export async function deletePlace(id: number): Promise<{ ok: true } | Err> {
  */
 export async function fetchWorkSessionLocations(
   oeuvreId: number,
-): Promise<{ ok: true; locations: { day: string | null; latitude: number; longitude: number }[] } | Err> {
+): Promise<{ ok: true; locations: SessionLocation[] } | Err> {
   const supabase = await createClient()
   if (!(await signedIn(supabase))) return { error: 'auth' }
   if (!(Number.isInteger(oeuvreId) && oeuvreId > 0)) return { error: 'bad_work' }
   const { data, error } = await supabase
     .from('work_session')
-    .select('created_at, day:payload->>session_day, lat:payload->field_context->latitude, lon:payload->field_context->longitude')
+    .select('id, created_at, day:payload->>session_day, lat:payload->field_context->latitude, lon:payload->field_context->longitude')
     .contains('payload', { items: [{ oeuvre_id: oeuvreId }] })
     .order('created_at')
     .limit(50)
   if (error) return { error: error.message }
-  const locations: { day: string | null; latitude: number; longitude: number }[] = []
-  for (const r of (data ?? []) as { created_at: string; day: string | null; lat: unknown; lon: unknown }[]) {
+  const locations: SessionLocation[] = []
+  for (const r of (data ?? []) as { id: string; created_at: string; day: string | null; lat: unknown; lon: unknown }[]) {
     if (typeof r.lat !== 'number' || typeof r.lon !== 'number') continue
-    locations.push({ day: r.day ?? r.created_at.slice(0, 10), latitude: r.lat, longitude: r.lon })
+    locations.push({ sessionId: r.id, day: r.day ?? r.created_at.slice(0, 10), latitude: r.lat, longitude: r.lon })
   }
   return { ok: true, locations }
 }
 
-/** The place a work was made; null clears it. */
-export async function setWorkPlace(oeuvreId: number, placeId: number | null): Promise<{ ok: true } | Err> {
-  return setWorksPlace([oeuvreId], placeId)
+export type CreationStepInput = {
+  id?: number
+  oeuvre_id: number
+  on_date: string | null
+  date_precision: DatePrecision | null
+  kind: CreationKind
+  place_id: number | null
+  note: string | null
+  work_session_id?: string | null
 }
 
-/** Same for several works (batch modify). */
-export async function setWorksPlace(oeuvreIds: number[], placeId: number | null): Promise<{ ok: true } | Err> {
+const PRECISIONS: DatePrecision[] = ['year', 'month', 'day']
+
+/** Add or edit one line of a work's « Création » history. */
+export async function saveCreationStep(input: CreationStepInput): Promise<{ ok: true; step: CreationStep } | Err> {
   const supabase = await createClient()
   if (!(await signedIn(supabase))) return { error: 'auth' }
-  const ids = [...new Set(oeuvreIds.filter((x) => Number.isInteger(x) && x > 0))]
-  if (!ids.length) return { error: 'bad_work' }
-  if (placeId != null && !(Number.isInteger(placeId) && placeId > 0)) return { error: 'bad_place' }
-  for (let i = 0; i < ids.length; i += PAGE) {
-    const chunk = ids.slice(i, i + PAGE)
-    const { error } =
-      placeId == null
-        ? await supabase.from('work_place').delete().in('oeuvre_id', chunk)
-        : await supabase
-            .from('work_place')
-            .upsert(chunk.map((oeuvre_id) => ({ oeuvre_id, place_id: placeId, set_at: new Date().toISOString() })), { onConflict: 'oeuvre_id' })
-    if (error) {
-      await logError('setWorksPlace failed', error, { source: 'periods.setWorksPlace', metadata: { n: ids.length, placeId } })
-      return { error: error.message }
-    }
+  if (!(Number.isInteger(input.oeuvre_id) && input.oeuvre_id > 0)) return { error: 'bad_work' }
+  if (!CREATION_KINDS.includes(input.kind)) return { error: 'bad_kind' }
+  const on = input.on_date == null || input.on_date === '' ? null : cleanDay(input.on_date)
+  if (input.on_date && on == null) return { error: 'bad_date' }
+  const precision = on == null ? null : input.date_precision
+  if (on != null && (precision == null || !PRECISIONS.includes(precision))) return { error: 'bad_date' }
+  if (precision === 'year' && !on!.endsWith('-01-01')) return { error: 'bad_date' }
+  if (precision === 'month' && !on!.endsWith('-01')) return { error: 'bad_date' }
+  const place = input.place_id
+  if (place != null && !(Number.isInteger(place) && place > 0)) return { error: 'bad_place' }
+  const note = (input.note ?? '').trim().slice(0, MAX_STEP_NOTE) || null
+  if (on == null && place == null && note == null) return { error: 'empty' }
+  const values = { on_date: on, date_precision: precision, kind: input.kind, place_id: place, note }
+  const q =
+    input.id != null
+      ? supabase.from('work_creation_step').update(values).eq('id', input.id).eq('oeuvre_id', input.oeuvre_id)
+      : supabase
+          .from('work_creation_step')
+          .insert({ ...values, oeuvre_id: input.oeuvre_id, work_session_id: input.work_session_id ?? null })
+  const { data, error } = await q.select(STEP_COLS).single()
+  if (error) {
+    await logError('saveCreationStep failed', error, { source: 'periods.saveCreationStep', metadata: { oeuvreId: input.oeuvre_id } })
+    return { error: error.message }
+  }
+  return { ok: true, step: data as CreationStep }
+}
+
+export async function deleteCreationStep(id: number): Promise<{ ok: true } | Err> {
+  const supabase = await createClient()
+  if (!(await signedIn(supabase))) return { error: 'auth' }
+  if (!(Number.isInteger(id) && id > 0)) return { error: 'bad_step' }
+  const { error } = await supabase.from('work_creation_step').delete().eq('id', id)
+  if (error) {
+    await logError('deleteCreationStep failed', error, { source: 'periods.deleteCreationStep', metadata: { id } })
+    return { error: error.message }
   }
   return { ok: true }
 }

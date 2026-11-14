@@ -456,9 +456,10 @@ async function createWorkFromSessionFields(
 
   const sessionAt = normalizeSessionAt(fields.session_at) ?? new Date().toISOString()
   const dateStr = formatSessionHistoryDate(sessionAt)
-  const originEntry = `[${dateStr}] Session terrain`
+  // History records where the work came from; the session note goes to Comments only
+  // (Pem 2026-11-14: the note was written to both).
+  const historique = `[${dateStr}] Session terrain`
   const notesTrim = (fields.notes ?? '').trim()
-  const historique = notesTrim ? `${originEntry}\n${notesTrim}` : originEntry
 
   const actorId = provenanceUserId(actorUserId, null)
   const editedAt = provenanceTimestamp()
