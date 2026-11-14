@@ -1313,7 +1313,9 @@ export function DrawerContent({
           oeuvreId={o.OeuvreID}
           editable={isAdmin}
           startedOn={o.production_started_on}
+          startedPrecision={o.production_started_precision}
           completedOn={o.production_completed_on}
+          completedPrecision={o.production_completed_precision}
           origin={o.production_origin}
           inProduction={!o.Catalogué}
         />
@@ -1433,7 +1435,13 @@ export function DrawerContent({
 
         <WorkPeriodSourceSection
           oeuvreId={o.OeuvreID}
-          when={workWhen({ Année: annee, production_started_on: o.production_started_on, production_completed_on: o.production_completed_on })}
+          when={workWhen({
+            Année: annee,
+            production_started_on: o.production_started_on,
+            production_completed_on: o.production_completed_on,
+            production_started_precision: o.production_started_precision,
+            production_completed_precision: o.production_completed_precision,
+          })}
         />
 
         <WorkLinksSection oeuvreId={o.OeuvreID} />

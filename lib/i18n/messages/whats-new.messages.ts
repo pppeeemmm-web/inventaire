@@ -9,6 +9,12 @@ export const whatsNewMessages = defineMessages({
   },
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
+  // 3.1.14 (2026-11-14) — staged session photos shown; production dates partial + end by hand; new / found in WorkForm (TODO 2–4).
+  wn_staged_photos_dates_t: { fr: 'Photos en attente et dates de production', en: 'Waiting photos and production dates' },
+  wn_staged_photos_dates_d: {
+    fr: 'Une photo prise en session qui n’est pas encore sur son œuvre se voit : « en attente » sur la journée du Journal et dans sa ligne de résumé, et sur la fiche de l’œuvre (section Sessions), avec « Ouvrir la session ». Sur la fiche, le début et la fin de production acceptent une année, un mois ou un jour (2021, 06/2024, 22/08/2026) ; la fin peut être corrigée à la main (elle se remplit toujours seule quand l’œuvre est cataloguée). Le formulaire « nouvelle œuvre » demande aussi : nouvelle (commencée aujourd’hui) ou ancienne (retrouvée).',
+    en: 'A session photo not yet on its work now shows: « waiting » on the Journal day and its summary line, and on the work card (Sessions section), with « Open the session ». On the card, production start and end take a year, a month or a day (2021, 2024-06, 2026-08-22); the end can be corrected by hand (it still fills itself in when the work is catalogued). The new-work form also asks: new (started today) or older (found).',
+  },
   // 3.1.13 (2026-11-14) — Journal on the phone (Pem, opening the Journal on his phone).
   wn_journal_phone_tidy_t: { fr: 'Journal sur téléphone : on reste sur la journée', en: 'Journal on the phone: you stay on the day' },
   wn_journal_phone_tidy_d: {

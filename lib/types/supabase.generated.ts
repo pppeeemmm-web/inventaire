@@ -1472,8 +1472,10 @@ export type Database = {
           Prix: number | null
           PrixFinal: number | null
           production_completed_on: string | null
+          production_completed_precision: string | null
           production_origin: string | null
           production_started_on: string | null
+          production_started_precision: string | null
           Profondeur: string | null
           ReturnDate: string | null
           StageProduction: string | null
@@ -1526,8 +1528,10 @@ export type Database = {
           Prix?: number | null
           PrixFinal?: number | null
           production_completed_on?: string | null
+          production_completed_precision?: string | null
           production_origin?: string | null
           production_started_on?: string | null
+          production_started_precision?: string | null
           Profondeur?: string | null
           ReturnDate?: string | null
           StageProduction?: string | null
@@ -1580,8 +1584,10 @@ export type Database = {
           Prix?: number | null
           PrixFinal?: number | null
           production_completed_on?: string | null
+          production_completed_precision?: string | null
           production_origin?: string | null
           production_started_on?: string | null
+          production_started_precision?: string | null
           Profondeur?: string | null
           ReturnDate?: string | null
           StageProduction?: string | null

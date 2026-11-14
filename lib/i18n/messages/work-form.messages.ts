@@ -83,16 +83,25 @@ export const workFormMessages = defineMessages({
     en: 'Production started',
   },
   wf_production_start_hint: {
-    fr: 'La fin se remplit seule : cataloguée ou mise en archive.',
-    en: 'The end fills itself in: catalogued or archived.',
+    fr: 'Année, mois ou jour : 2021, 06/2024, 22/08/2026. La fin se remplit seule quand l’œuvre est cataloguée ou archivée ; on peut aussi la corriger ici.',
+    en: 'Year, month or day: 2021, 2024-06, 2026-08-22. The end fills itself in when the work is catalogued or archived; it can also be corrected here.',
   },
+  wf_origin_hint: {
+    fr: 'Nouvelle : la production démarre aujourd’hui. Ancienne : début inconnu. Sans choix, rien n’est noté.',
+    en: 'New: production starts today. Older: start unknown. No choice, nothing recorded.',
+  },
+  wf_production_end_label: { fr: 'Fin de production', en: 'Production ended' },
+  wf_production_end_saved: { fr: 'Date de fin enregistrée', en: 'End date saved' },
+  wf_production_date_ph: { fr: '2021, 06/2024, 22/08/2026', en: '2021, 2024-06, 2026-08-22' },
+  wf_production_span_nodays_fmt: { fr: '{start} → {end}', en: '{start} → {end}' },
+  wf_production_open_nodays_fmt: { fr: 'En cours depuis {start}', en: 'In progress since {start}' },
   wf_production_start_save: { fr: 'Enregistrer', en: 'Save' },
   wf_production_start_saved: { fr: 'Date de début enregistrée', en: 'Start date saved' },
   wf_production_start_after_end: {
     fr: 'Le début ne peut pas être après la fin de production.',
     en: 'The start cannot be after the end of production.',
   },
-  wf_production_start_invalid: { fr: 'Date invalide.', en: 'Invalid date.' },
+  wf_production_start_invalid: { fr: 'Date invalide : 2021, 06/2024 ou 22/08/2026.', en: 'Invalid date: 2021, 2024-06 or 2026-08-22.' },
   wf_production_origin_found: {
     fr: 'œuvre retrouvée',
     en: 'found work',

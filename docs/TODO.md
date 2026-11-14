@@ -13,15 +13,15 @@ _Open items only, one line each, in order. Details → [`TODO_NOTES.md`](./TODO_
 ## 2. To build — in order
 
 Current batch (design build)
-- [ ] Places continued (Place made empty-list fix ✓, place from the field session ✓ 2026-11-14, Inventory column + filter ✓, « Historique de création » ✓ 2026-11-14 (SQL applied, pushed), timeline map / map « Création » mode, drop `work_place`) → staged photos + production dates (items 2–4 below) → measure speed → work card empty fields folded — order in [NEXT](./HANDOFF_2026-11-14_NEXT.md). Previous batch (B1–B3, A2–A4, D, C arrows, export image quality) all deployed 2026-11-14 (`d9bb23f`) → [archive](./archive/HANDOFF_2026-11-13_NEXT.md)
+- [ ] Places continued (Place made empty-list fix ✓, place from the field session ✓ 2026-11-14, Inventory column + filter ✓, « Historique de création » ✓ 2026-11-14 (SQL applied, pushed), timeline map / map « Création » mode, drop `work_place`) → staged photos + production dates (items 2–4 below: built 2026-11-14, local, SQL applied) → measure speed → work card empty fields folded — order in [NEXT](./HANDOFF_2026-11-14_NEXT.md). Previous batch (B1–B3, A2–A4, D, C arrows, export image quality) all deployed 2026-11-14 (`d9bb23f`) → [archive](./archive/HANDOFF_2026-11-13_NEXT.md)
 
 Trace
 - [ ] 1. Handwriting batch (after the test above) → [notes](./TODO_NOTES.md#journal-phase-2)
 - [ ] 1b. One plan for every local "reading" AI (owner 2026-11-13: "it all needs rationalization"): handwriting, text in field photos (labels, notebooks, invoices — F9), business-card reader, and the owner's local contact-details scraper. Inventory what exists first; then one engine, one place. Widening field OCR needs the owner's GO (`CLAUDE.md`).
 - [ ] 1c. Voice notes, after the record-first sheet (2026-11-14): a note longer than one upload (~4 MB — auto-stopped today, the owner starts a new one) → browser → R2 direct upload (needs a CORS PUT rule on the public bucket); a note recorded with no network is kept only while the sheet is open → keep it on the phone (IndexedDB) and send later. Build only if Pem hits either ≥2×.
-- [ ] 2. Warn when a session photo is staged but never applied → [notes](./TODO_NOTES.md#staged-photos)
-- [ ] 3. Production start: partial date input (year / month / day) — not built (the drawer has a full-date field, admin) → [notes](./TODO_NOTES.md#production-start-date)
-- [ ] 4. Production span: end date by hand (start is editable since 2026-11-03); new / found choice in WorkForm (only in capture today) → [notes](./TODO_NOTES.md#production-span)
+- [ ] 1d. Overview tile « Reminders / Rappels » (`od_rem_*` in `lib/i18n/messages/overview-dash.messages.ts`) opens voice notes (owner 2026-11-14: "title is wrong, they are voice notes") — check what it counts and where it links, then fix the title (or the count/link). To review later, not started.
+- [ ] 2–4. Built 2026-11-14 (verified against live code 2026-11-14; not yet pushed): staged session photos shown (Journal day + summary, work card Sessions); production start / end as year / month / day, end by hand (admin); new / found in WorkForm. SQL `oeuvres_production_precision.sql` applied with Pem's OK. Left: see one real waiting photo and one admin save of a partial date (dev user is not admin) → [NEXT §2](./HANDOFF_2026-11-14_NEXT.md#2-staged-photos-warning--production-dates)
+- [ ] 4b. `/atelier/works/new` on a phone: the page keeps its desktop two columns at 375 px (images column takes half the screen; every field squeezed) — seen 2026-11-14, was already so before 2–4. The ➕ left the phone bar, so the menu leads here
 
 Links
 - [ ] 6. Versions: a partial rework (glaze, correction) = a new version of the same work, same number, recorded in its history with its photo (owner 2026-11-13) → [notes](./TODO_NOTES.md#work-or-version)

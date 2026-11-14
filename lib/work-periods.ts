@@ -77,6 +77,9 @@ type WhenFields = {
   Année?: string | null
   production_started_on?: string | null
   production_completed_on?: string | null
+  /** Null = a full day (TODO 3–4: start / end can be a year or a month). */
+  production_started_precision?: string | null
+  production_completed_precision?: string | null
 }
 
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/
@@ -86,6 +89,13 @@ function dayOf(v: string | null | undefined): string | null {
   return ISO_DAY.test(s) ? s : null
 }
 
+/** A production date as a period day: a day as itself, a month as its 15th, a year → none. */
+function productionDayOf(v: string | null | undefined, precision: string | null | undefined): string | null {
+  const d = dayOf(v)
+  if (!d || precision === 'year') return null
+  return precision === 'month' ? `${d.slice(0, 7)}-15` : d
+}
+
 /**
  * The day a work's period reads: production end, else production start, else `Année` when it
  * carries a real day (not 1 Jan — a bare year is stored as YYYY-01-01). Same rule as SQL
@@ -93,8 +103,14 @@ function dayOf(v: string | null | undefined): string | null {
  */
 export function workWhen(w: WhenFields): WorkWhen {
   const annee = dayOf(w.Année)
-  const day = dayOf(w.production_completed_on) ?? dayOf(w.production_started_on) ?? (annee && !annee.endsWith('-01-01') ? annee : null)
-  return { day, year: yearOf(w.Année) ?? yearOf(w.production_started_on) ?? (day ? Number(day.slice(0, 4)) : null) }
+  const day =
+    productionDayOf(w.production_completed_on, w.production_completed_precision)
+    ?? productionDayOf(w.production_started_on, w.production_started_precision)
+    ?? (annee && !annee.endsWith('-01-01') ? annee : null)
+  return {
+    day,
+    year: yearOf(w.Année) ?? yearOf(w.production_started_on) ?? (day ? Number(day.slice(0, 4)) : null),
+  }
 }
 
 /** Kept for callers that only need the year (display). */

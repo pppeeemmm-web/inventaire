@@ -22,6 +22,9 @@ export interface Oeuvre {
   /** Production span — see supabase/sql/oeuvres_production_span.sql. */
   production_started_on?: string | null;
   production_completed_on?: string | null;
+  /** 'year' | 'month' | 'day'; null = a full day. */
+  production_started_precision?: 'year' | 'month' | 'day' | null;
+  production_completed_precision?: 'year' | 'month' | 'day' | null;
   production_origin?: 'new' | 'found' | null;
   /** End of life, kept by trigger from destroyed / lost constats (supabase/sql/condition_report_fate.sql). Never write. */
   fate?: 'destroyed' | 'lost' | null;

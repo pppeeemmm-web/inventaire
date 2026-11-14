@@ -146,6 +146,8 @@ export function WorkForm({
   // ── Identity ──────────────────────────────────────────────────────
   const [titre,       setTitre]       = useState(oeuvre?.Titre ?? shareInboxPrefill?.titre ?? '')
   const [annee,       setAnnee]       = useState(oeuvre?.Année ?? '')
+  // New work only (TODO 4, like the session's choice): 'new' starts production today, 'found' = start unknown.
+  const [productionOrigin, setProductionOrigin] = useState<'new' | 'found' | ''>('')
   const [techniqueId, setTechniqueId] = useState(String(oeuvre?.Technique ?? ''))
   const [supportId,   setSupportId]   = useState(String(oeuvre?.Support ?? ''))
   const [formatId,    setFormatId]    = useState(String(oeuvre?.Format ?? ''))
@@ -478,6 +480,7 @@ export function WorkForm({
     fd.set('tva_rate', tvaRate)
     fd.set('broadcast_ready', broadcastReady ? '1' : '0')
     fd.set('broadcast_caption_seed', broadcastCaptionSeed ?? '')
+    if (!oeuvre) fd.set('production_origin', productionOrigin)
 
     fd.delete('themes')
     selThemes.forEach(id => fd.append('themes', String(id)))
@@ -740,6 +743,32 @@ export function WorkForm({
                   <div className="t-mono-xs" style={{ color: 'var(--ac)', fontSize: 12 }}>≈ {pxToCm(hauteur)} × {pxToCm(largeur)} cm (@300dpi)</div>
                 </div>
               )}
+              {!oeuvre ? (
+                <div role="group" aria-label={t('session_origin_label')} className="t-mono-sm" style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 20 }}>
+                  <span>{t('session_origin_label')}</span>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 8, maxWidth: 520 }}>
+                    {(['new', 'found'] as const).map((origin) => (
+                      <button
+                        key={origin}
+                        type="button"
+                        className="btn ghost sm"
+                        data-testid={`wf-origin-${origin}`}
+                        aria-pressed={productionOrigin === origin}
+                        onClick={() => setProductionOrigin((v) => (v === origin ? '' : origin))}
+                        style={{
+                          minHeight: 44,
+                          whiteSpace: 'normal',
+                          background: productionOrigin === origin ? 'var(--ac)' : undefined,
+                          color: productionOrigin === origin ? 'var(--bg0)' : undefined,
+                        }}
+                      >
+                        {t(origin === 'new' ? 'session_origin_new' : 'session_origin_found')}
+                      </button>
+                    ))}
+                  </div>
+                  <span style={{ fontSize: 11, color: 'var(--tx3)' }}>{t('wf_origin_hint')}</span>
+                </div>
+              ) : null}
             </section>
 
             {narrow ? (

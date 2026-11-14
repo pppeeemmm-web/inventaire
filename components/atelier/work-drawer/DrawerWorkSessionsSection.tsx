@@ -6,6 +6,8 @@ import type { WorkSessionRow } from '@/lib/types/database'
 import { parseWorkSessionPayload } from '@/lib/work-session-payload'
 import { toast } from '@/lib/ui/toast'
 import type { DictKey, Lang } from '@/lib/i18n/dictionary'
+import Link from 'next/link'
+import { calendarDayInParisFromIso } from '@/lib/session-calendar-day'
 
 type TFn = (key: DictKey) => string
 
@@ -68,6 +70,31 @@ export function DrawerWorkSessionsSection({
         aria-busy={loading}
       >
         {!loading && rows.length === 0 ? t('drawer_work_sessions_empty') : null}
+        {!loading
+          ? rows.map((row) => {
+              // Photos of this work still staged in a session (not applied): said up front (TODO 2).
+              const payload = parseWorkSessionPayload(row.payload)
+              const staged =
+                payload.items.reduce((sum, item) => sum + (item.oeuvre_id === oeuvreId ? item.shots.length : 0), 0)
+                + (row.oeuvre_id === oeuvreId ? payload.shots.length : 0)
+              if (staged === 0) return null
+              const day = payload.session_day || calendarDayInParisFromIso(payload.session_at || row.created_at)
+              const dayLabel = new Date(`${day}T12:00:00`).toLocaleDateString(locale, { dateStyle: 'medium' })
+              return (
+                <div
+                  key={`staged-${row.id}`}
+                  data-testid="drawer-work-sessions-staged"
+                  title={t('st_hint')}
+                  style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, color: 'var(--rust)', padding: '4px 0 8px' }}
+                >
+                  <span>{t('st_drawer_fmt').replace('{date}', dayLabel).replace('{n}', String(staged))}</span>
+                  <Link href={`/atelier/session/new?date=${encodeURIComponent(day)}`} style={{ color: 'var(--ac)', minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>
+                    {t('st_open_session')}
+                  </Link>
+                </div>
+              )
+            })
+          : null}
         {!loading &&
           rows.map((row) => {
             const payload = parseWorkSessionPayload(row.payload)

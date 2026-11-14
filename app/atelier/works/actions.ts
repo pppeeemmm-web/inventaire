@@ -4,6 +4,7 @@
 // Called from WorkForm (client component) via useTransition.
 
 import { revalidatePath } from 'next/cache'
+import { calendarDayInParisFromIso } from '@/lib/session-calendar-day'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/types/supabase.generated'
@@ -450,6 +451,11 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       ? `${originEntry}\n${historiqueAppend}`
       : originEntry
 
+    // New / found (TODO 4, like the session's choice): a work started now starts production today
+    // (studio day, Paris); a found work has an unknown start. Not stated → nothing recorded.
+    const originRaw = (formData.get('production_origin') as string | null)?.trim()
+    const productionOrigin = originRaw === 'new' || originRaw === 'found' ? originRaw : null
+
     // INSERT
     const insertRes = await insertOeuvreRow(supabase, oid, {
       Titre:        titre,
@@ -487,6 +493,8 @@ export async function saveWork(formData: FormData): Promise<SaveResult> {
       is_gift:           isGift,
       PresentationID:  presentationId,
       txtImageNameLink:  imageName,
+      production_origin: productionOrigin,
+      production_started_on: productionOrigin === 'new' ? calendarDayInParisFromIso(new Date().toISOString()) : null,
     }, { actorId, editedAt })
 
     if ('error' in insertRes) return { error: insertRes.error }
@@ -1545,7 +1553,7 @@ export async function loadOeuvreLongText(
 }
 
 const OEUVRES_KEYSET_SELECT =
-  'OeuvreID, Titre, Technique, Support, "Année", Format, Hauteur, Largeur, Profondeur, Exposable, broadcast_ready, broadcast_caption_seed, Prix, PrixFinal, Discount, statusId, "Catalogué", txtImageNameLink, ContactID, LocalisationID, LocalisationDetail, localisation_address_id, is_public, Encadree, IsCommission, PresentationID, ReturnDate, DateLivraison, AcheteurID, NeedsPhotograph, anonymity_level, admin_override_anonymity, production_started_on, production_completed_on, production_origin, fate, fate_on, fate_precision'
+  'OeuvreID, Titre, Technique, Support, "Année", Format, Hauteur, Largeur, Profondeur, Exposable, broadcast_ready, broadcast_caption_seed, Prix, PrixFinal, Discount, statusId, "Catalogué", txtImageNameLink, ContactID, LocalisationID, LocalisationDetail, localisation_address_id, is_public, Encadree, IsCommission, PresentationID, ReturnDate, DateLivraison, AcheteurID, NeedsPhotograph, anonymity_level, admin_override_anonymity, production_started_on, production_completed_on, production_origin, production_started_precision, production_completed_precision, fate, fate_on, fate_precision'
 
 /**
  * PostgREST infers a partial-row shape from OEUVRES_KEYSET_SELECT that is missing

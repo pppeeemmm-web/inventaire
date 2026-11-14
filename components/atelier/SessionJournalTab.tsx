@@ -141,6 +141,7 @@ function daySummaryLine(row: WorkSessionJournalRow, t: SummaryT, src?: JournalSo
         : t('journal_day_photos').replace('{n}', String(photos)),
     )
   }
+  if (row.staged_shot_count > 0) parts.push(t('st_sum_fmt').replace('{n}', String(row.staged_shot_count)))
   return parts.length > 0 ? parts.join(' · ') : t('journal_day_empty_summary')
 }
 
@@ -325,6 +326,26 @@ function JournalPaintingEntry({
               {totalPhotos === 1
                 ? t('journal_day_one_photo')
                 : t('journal_day_photos').replace('{n}', String(totalPhotos))}
+            </div>
+          ) : null}
+          {item.staged_shots.length > 0 ? (
+            // Staged but not applied: before this, nothing outside the session said so (TODO 2).
+            <div
+              data-testid={`journal-item-staged-${item.id}`}
+              className="t-mono-sm"
+              title={t('st_hint')}
+              style={{ fontSize: 11, color: 'var(--rust)', marginTop: 6, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}
+            >
+              <span>
+                {item.staged_shots.length === 1
+                  ? t('st_waiting_one')
+                  : t('st_waiting_fmt').replace('{n}', String(item.staged_shots.length))}
+              </span>
+              {sessionDate ? (
+                <Link href={`/atelier/session/new?date=${encodeURIComponent(calendarDayInParisFromIso(sessionDate))}`} style={{ color: 'var(--ac)' }}>
+                  {t('st_open_session')}
+                </Link>
+              ) : null}
             </div>
           ) : null}
         </div>

@@ -37,7 +37,7 @@ export function PeriodSourceManager({
   onClose,
 }: {
   /** Loaded works, for the per-period / per-source counts. */
-  works?: { OeuvreID: number; Année: string | null; production_started_on?: string | null; production_completed_on?: string | null }[]
+  works?: { OeuvreID: number; Année: string | null; production_started_on?: string | null; production_completed_on?: string | null; production_started_precision?: string | null; production_completed_precision?: string | null }[]
   onClose?: () => void
 }) {
   const { t, lang } = useI18n()

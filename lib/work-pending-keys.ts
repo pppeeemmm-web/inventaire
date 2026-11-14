@@ -31,6 +31,7 @@ export const PENDING_SCALAR_FORM_KEYS = [
   'presentation_id',
   'image_existing',
   'historique_append',
+  'production_origin',
 ] as const
 
 /** Checkbox-style fields (typically '' or '1'). */
