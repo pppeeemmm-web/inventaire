@@ -23,7 +23,7 @@ import {
   type PeriodChoice,
   type WorkWhen,
 } from '@/lib/work-periods'
-import { savePlace, setWorkPeriod, setWorkPlace, setWorkSourceNote, setWorkSources } from '@/app/atelier/works/period-source-actions'
+import { findPlaceCoords, savePlace, setWorkPeriod, setWorkPlace, setWorkSourceNote, setWorkSources } from '@/app/atelier/works/period-source-actions'
 import { PeriodSourceManager } from '@/components/atelier/PeriodSourceManager'
 
 export function WorkPeriodSourceSection({ oeuvreId, when }: { oeuvreId: number; when: WorkWhen }) {
@@ -43,7 +43,19 @@ export function WorkPeriodSourceSection({ oeuvreId, when }: { oeuvreId: number; 
   const periodPlace = placeId == null ? effectivePlace(oeuvreId, when, data) : null
   const mine = data.sourcesByWork[oeuvreId] ?? []
   /** New place typed right here (Pem 2026-11-14: the list was empty, the select offered no choice). */
-  const [newPlace, setNewPlace] = useState<{ name: string; town: string; country: string; coords: string } | null>(null)
+  const [newPlace, setNewPlace] = useState<{ name: string; address: string; town: string; country: string; coords: string } | null>(null)
+
+  async function fillNewPlaceCoords() {
+    if (!newPlace) return
+    setBusy(true)
+    try {
+      const res = await findPlaceCoords({ address: newPlace.address, town: newPlace.town, country: newPlace.country })
+      if ('error' in res) return toast.error(t(res.error === 'empty' ? 'ps_find_coords_empty' : 'ps_find_coords_none'))
+      setNewPlace((d) => (d ? { ...d, coords: `${res.latitude}, ${res.longitude}` } : d))
+    } finally {
+      setBusy(false)
+    }
+  }
 
   async function addPlaceHere() {
     if (!newPlace || !newPlace.name.trim()) return
@@ -55,7 +67,7 @@ export function WorkPeriodSourceSection({ oeuvreId, when }: { oeuvreId: number; 
     let addedId: number | null = null
     setBusy(true)
     try {
-      const res = await savePlace({ name: newPlace.name, town: newPlace.town, country: newPlace.country, ...coords })
+      const res = await savePlace({ name: newPlace.name, address: newPlace.address, town: newPlace.town, country: newPlace.country, ...coords })
       if ('error' in res) {
         toast.error(res.error === 'duplicate' ? t('ps_err_place_duplicate') : `${t('error_prefix')} ${res.error}`)
         return
@@ -219,7 +231,7 @@ export function WorkPeriodSourceSection({ oeuvreId, when }: { oeuvreId: number; 
             aria-label={t('ps_place_made')}
             data-testid="work-place-select"
             onChange={(e) => {
-              if (e.target.value === '__new') return setNewPlace({ name: '', town: '', country: '', coords: '' })
+              if (e.target.value === '__new') return setNewPlace({ name: '', address: '', town: '', country: '', coords: '' })
               void choosePlace(e.target.value ? Number(e.target.value) : null)
             }}
           >
@@ -237,7 +249,7 @@ export function WorkPeriodSourceSection({ oeuvreId, when }: { oeuvreId: number; 
           </select>
           {!newPlace ? (
             <button type="button" className="btn ghost sm" style={{ minHeight: 44 }} disabled={busy}
-              data-testid="work-place-add" onClick={() => setNewPlace({ name: '', town: '', country: '', coords: '' })}>
+              data-testid="work-place-add" onClick={() => setNewPlace({ name: '', address: '', town: '', country: '', coords: '' })}>
               {t('ps_add_place')}
             </button>
           ) : null}
@@ -250,6 +262,8 @@ export function WorkPeriodSourceSection({ oeuvreId, when }: { oeuvreId: number; 
             <input className="input" autoFocus style={{ minHeight: 44, fontSize: 13 }} placeholder={t('ps_place_name_ph')} aria-label={t('ps_place_name_ph')}
               value={newPlace.name} onChange={(e) => setNewPlace({ ...newPlace, name: e.target.value })}
               onKeyDown={(e) => { if (e.key === 'Enter') void addPlaceHere() }} />
+            <input className="input" style={{ minHeight: 44, fontSize: 13 }} placeholder={t('ps_address_ph')} aria-label={t('ps_address_ph')}
+              value={newPlace.address} onChange={(e) => setNewPlace({ ...newPlace, address: e.target.value })} />
             <input className="input" style={{ minHeight: 44, fontSize: 13 }} placeholder={t('ps_town_ph')} aria-label={t('ps_town_ph')}
               value={newPlace.town} onChange={(e) => setNewPlace({ ...newPlace, town: e.target.value })} />
             <input className="input" style={{ minHeight: 44, fontSize: 13 }} placeholder={t('ps_country_ph')} aria-label={t('ps_country_ph')}
@@ -258,6 +272,8 @@ export function WorkPeriodSourceSection({ oeuvreId, when }: { oeuvreId: number; 
               title={t('ps_place_coords_hint')}
               value={newPlace.coords} onChange={(e) => setNewPlace({ ...newPlace, coords: e.target.value })} />
             <div style={{ display: 'flex', gap: 8 }}>
+              <button type="button" className="btn ghost sm" style={{ minHeight: 44 }} disabled={busy} title={t('ps_find_coords_hint')}
+                onClick={() => void fillNewPlaceCoords()}>{t('ps_find_coords')}</button>
               <button type="button" className="btn primary sm" style={{ minHeight: 44 }} disabled={busy || !newPlace.name.trim()}
                 data-testid="work-place-new-save" onClick={() => void addPlaceHere()}>{t('ps_place_add_set')}</button>
               <button type="button" className="btn ghost sm" style={{ minHeight: 44 }} disabled={busy}

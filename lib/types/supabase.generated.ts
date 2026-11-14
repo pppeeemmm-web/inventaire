@@ -1833,6 +1833,7 @@ export type Database = {
       }
       place: {
         Row: {
+          address: string | null
           country: string | null
           created_at: string
           id: number
@@ -1842,6 +1843,7 @@ export type Database = {
           town: string | null
         }
         Insert: {
+          address?: string | null
           country?: string | null
           created_at?: string
           id?: never
@@ -1851,6 +1853,7 @@ export type Database = {
           town?: string | null
         }
         Update: {
+          address?: string | null
           country?: string | null
           created_at?: string
           id?: never

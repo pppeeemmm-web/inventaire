@@ -21,6 +21,8 @@ export type WorkSource = { id: number; name: string }
 export type Place = {
   id: number
   name: string
+  /** Street, number, postcode (Pem 2026-11-14: "a place can be an address"). */
+  address: string | null
   town: string | null
   country: string | null
   latitude: number | null

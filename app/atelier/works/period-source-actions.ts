@@ -3,9 +3,11 @@
 // Periods + source per work (owner 2026-11-02). Team reads and writes (RLS, like themes). A work's
 // period is automatic from its day / year unless `work_period_override` has a row for it.
 // A3 (2026-11-14): periods carry dates (`start_on` / `end_on`), and each work may have the place it
-// was made (`work_place` → `place`); a period may suggest a default place, never set it.
+// was made (`work_place` → `place`). Pem 2026-11-14: a period's place is every work's place unless the
+// work has its own (read, never written — `effectivePlace`); places carry an address (`place.address`).
 
 import { createClient } from '@/lib/supabase/server'
+import { lookupGeocode } from '@/lib/geocode-nominatim'
 import { logError } from '@/lib/error-reporter/server'
 import type { PeriodChoice, PeriodSourceData, Place, WorkPeriod, WorkSource } from '@/lib/work-periods'
 
@@ -17,7 +19,7 @@ const MAX_NAME = 120
 const MIN_YEAR = 1900
 const MAX_YEAR = 2200
 const PERIOD_COLS = 'id, name, start_year, end_year, start_on, end_on, default_place_id'
-const PLACE_COLS = 'id, name, town, country, latitude, longitude'
+const PLACE_COLS = 'id, name, address, town, country, latitude, longitude'
 
 async function signedIn(supabase: Supa): Promise<boolean> {
   const {
@@ -247,6 +249,7 @@ export async function addSourceToWorks(sourceId: number, oeuvreIds: number[]): P
 export type PlaceInput = {
   id?: number
   name: string
+  address?: string | null
   town?: string | null
   country?: string | null
   latitude?: number | null
@@ -265,7 +268,7 @@ export async function savePlace(input: PlaceInput): Promise<{ ok: true; place: P
   if ((lat == null) !== (lon == null)) return { error: 'coords' }
   if (lat != null && (!Number.isFinite(lat) || lat < -90 || lat > 90)) return { error: 'coords' }
   if (lon != null && (!Number.isFinite(lon) || lon < -180 || lon > 180)) return { error: 'coords' }
-  const values = { name, town: short(input.town), country: short(input.country), latitude: lat, longitude: lon }
+  const values = { name, address: (input.address ?? '').trim().slice(0, 300) || null, town: short(input.town), country: short(input.country), latitude: lat, longitude: lon }
   const q =
     input.id != null
       ? supabase.from('place').update(values).eq('id', input.id)
@@ -273,6 +276,21 @@ export async function savePlace(input: PlaceInput): Promise<{ ok: true; place: P
   const { data, error } = await q.select(PLACE_COLS).single()
   if (error || !data) return { error: error?.code === '23505' ? 'duplicate' : (error?.message ?? 'save') }
   return { ok: true, place: data as Place }
+}
+
+/**
+ * Coordinates for a place from its address / town / country (OpenStreetMap Nominatim, the lookup the
+ * Atelier map already uses). Only when someone asks — the address leaves the app for that search.
+ */
+export async function findPlaceCoords(input: { address?: string | null; town?: string | null; country?: string | null }): Promise<{ ok: true; latitude: number; longitude: number } | Err> {
+  const supabase = await createClient()
+  if (!(await signedIn(supabase))) return { error: 'auth' }
+  const where = [input.address, input.town].map((v) => (v ?? '').trim()).filter(Boolean).join(', ')
+  const country = (input.country ?? '').trim()
+  if (!where && !country) return { error: 'empty' }
+  const hit = await lookupGeocode(where, country)
+  if (!hit) return { error: 'not_found' }
+  return { ok: true, latitude: Math.round(hit.lat * 1e5) / 1e5, longitude: Math.round(hit.lng * 1e5) / 1e5 }
 }
 
 /** Deleting a place clears it from every work (cascade) and from periods that suggested it. */

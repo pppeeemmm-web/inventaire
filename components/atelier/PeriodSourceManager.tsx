@@ -8,8 +8,8 @@ import { useMemo, useState, type CSSProperties } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from '@/lib/ui/toast'
 import { isPeriodSourceLoaded, patchPeriodSource, usePeriodSource } from '@/lib/atelier/use-period-source'
-import { parsePlaceCoords, effectivePeriod, periodRange, placeLabel, sortPeriods, sortPlaces, workWhen, type Place, type WorkPeriod } from '@/lib/work-periods'
-import { deletePeriod, deletePlace, deleteSource, savePeriod, savePlace, saveSource } from '@/app/atelier/works/period-source-actions'
+import { parsePlaceCoords, effectivePeriod, effectivePlace, periodRange, placeLabel, sortPeriods, sortPlaces, workWhen, type Place, type WorkPeriod } from '@/lib/work-periods'
+import { deletePeriod, deletePlace, deleteSource, findPlaceCoords, savePeriod, savePlace, saveSource } from '@/app/atelier/works/period-source-actions'
 
 type Draft = { name: string; start: string; end: string; place: string }
 const emptyDraft: Draft = { name: '', start: '', end: '', place: '' }
@@ -18,12 +18,13 @@ function toDraft(p: WorkPeriod): Draft {
   return { name: p.name, start: p.start_on, end: p.end_on ?? '', place: p.default_place_id == null ? '' : String(p.default_place_id) }
 }
 
-type PlaceDraft = { name: string; town: string; country: string; coords: string }
-const emptyPlace: PlaceDraft = { name: '', town: '', country: '', coords: '' }
+type PlaceDraft = { name: string; address: string; town: string; country: string; coords: string }
+const emptyPlace: PlaceDraft = { name: '', address: '', town: '', country: '', coords: '' }
 
 function toPlaceDraft(p: Place): PlaceDraft {
   return {
     name: p.name,
+    address: p.address ?? '',
     town: p.town ?? '',
     country: p.country ?? '',
     coords: p.latitude != null && p.longitude != null ? `${p.latitude}, ${p.longitude}` : '',
@@ -53,11 +54,19 @@ export function PeriodSourceManager({
   const places = useMemo(() => sortPlaces(data.places), [data.places])
   const [placeEditing, setPlaceEditing] = useState<number | 'new' | null>(null)
   const [placeDraft, setPlaceDraft] = useState<PlaceDraft>(emptyPlace)
+  /** Works at each place: their own, else their period's (Pem 2026-11-14). */
   const placeCounts = useMemo(() => {
     const c = new Map<number, number>()
-    for (const id of Object.values(data.workPlaces)) c.set(id, (c.get(id) ?? 0) + 1)
+    if (works) {
+      for (const w of works) {
+        const pl = effectivePlace(w.OeuvreID, workWhen(w), data).place
+        if (pl) c.set(pl.id, (c.get(pl.id) ?? 0) + 1)
+      }
+    } else {
+      for (const id of Object.values(data.workPlaces)) c.set(id, (c.get(id) ?? 0) + 1)
+    }
     return c
-  }, [data.workPlaces])
+  }, [works, data])
 
   const periodCounts = useMemo(() => {
     const c = new Map<number, number>()
@@ -127,6 +136,7 @@ export function PeriodSourceManager({
       const res = await savePlace({
         id: typeof placeEditing === 'number' ? placeEditing : undefined,
         name: placeDraft.name,
+        address: placeDraft.address,
         town: placeDraft.town,
         country: placeDraft.country,
         ...coords,
@@ -135,6 +145,18 @@ export function PeriodSourceManager({
       patchPeriodSource((d) => ({ ...d, places: [...d.places.filter((x) => x.id !== res.place.id), res.place] }))
       setPlaceEditing(null)
       setPlaceDraft(emptyPlace)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** Coordinates from the address (for the map), on request only. */
+  async function fillCoords() {
+    setBusy(true)
+    try {
+      const res = await findPlaceCoords({ address: placeDraft.address, town: placeDraft.town, country: placeDraft.country })
+      if ('error' in res) return toast.error(t(res.error === 'empty' ? 'ps_find_coords_empty' : 'ps_find_coords_none'))
+      setPlaceDraft((d) => ({ ...d, coords: `${res.latitude}, ${res.longitude}` }))
     } finally {
       setBusy(false)
     }
@@ -275,6 +297,14 @@ export function PeriodSourceManager({
       />
       <input
         className="input"
+        style={{ fontSize: 13, flex: '2 1 200px', minWidth: 160 }}
+        value={placeDraft.address}
+        onChange={(e) => setPlaceDraft({ ...placeDraft, address: e.target.value })}
+        placeholder={t('ps_address_ph')}
+        aria-label={t('ps_address_ph')}
+      />
+      <input
+        className="input"
         style={{ fontSize: 13, flex: '1 1 110px', minWidth: 100 }}
         value={placeDraft.town}
         onChange={(e) => setPlaceDraft({ ...placeDraft, town: e.target.value })}
@@ -298,6 +328,10 @@ export function PeriodSourceManager({
         aria-label={t('ps_coords_ph')}
         inputMode="decimal"
       />
+      <button type="button" className="btn ghost sm" style={{ minHeight: 44 }} disabled={busy} title={t('ps_find_coords_hint')}
+        data-testid="ps-place-find-coords" onClick={() => void fillCoords()}>
+        {t('ps_find_coords')}
+      </button>
       <button type="button" className="btn sm" style={{ minHeight: 44 }} disabled={busy} onClick={() => void submitPlace()}>
         {t('ps_save')}
       </button>
@@ -409,7 +443,10 @@ export function PeriodSourceManager({
             <div key={pl.id}>{placeForm}</div>
           ) : (
             <div key={pl.id} style={{ ...row, borderBottom: '1px solid var(--bd)' }} data-testid="ps-place-row">
-              <span style={{ fontSize: 13, flex: 1, minWidth: 140 }}>{placeLabel(pl)}</span>
+              <span style={{ fontSize: 13, flex: 1, minWidth: 140 }} title={pl.address ?? undefined}>
+                {placeLabel(pl)}
+                {pl.address ? <span className="t-mono-sm" style={{ display: 'block', fontSize: 10, color: 'var(--tx3)' }}>{pl.address}</span> : null}
+              </span>
               {pl.latitude != null && pl.longitude != null ? (
                 <span className="t-mono-sm" style={{ fontSize: 10, color: 'var(--tx3)' }}>
                   {pl.latitude.toFixed(2)}, {pl.longitude.toFixed(2)}
