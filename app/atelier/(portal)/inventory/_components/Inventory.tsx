@@ -98,7 +98,33 @@ const buildFieldLabels = (t: (k: DictKey) => string): Record<string, string> => 
   txtImageNameLink: 'Image',
   IsCommission:    t('commission'),
   DateLivraison:   t('deliveryDate'),
+  Format:          t('inv_fl_format'),
+  LocalisationDetail: t('inv_fl_localisation_detail'),
+  broadcast_ready: t('inv_fl_broadcast_ready'),
+  broadcast_caption_seed: t('inv_fl_broadcast_caption_seed'),
+  fate:            t('inv_fl_fate'),
+  fate_on:         t('inv_fl_fate_on'),
+  production_started_on: t('inv_fl_production_started_on'),
+  production_completed_on: t('inv_fl_production_completed_on'),
+  production_origin: t('inv_fl_production_origin'),
 })
+
+/** Columns the « + filter » list never offers: storage keys, ids behind a shown field, date precisions. */
+const FILTER_HIDDEN_FIELDS = new Set([
+  'txtImageNameLink',
+  'theme', // themes are handled separately via _theme virtual field
+  'is_public', // deprecated by anonymity_level
+  'localisation_address_id',
+  'admin_override_anonymity',
+  'production_started_precision',
+  'production_completed_precision',
+  'fate_precision',
+])
+
+/** The stages in their real order (Pem 2026-11-14): sorting État follows the pipeline, not the label. */
+const STATE_ORDER = [
+  'en_production', 'catalogued', 'available', 'reserved', 'consigned', 'loan', 'sold', 'gift', 'artist_archive', 'destroyed', 'lost',
+] as const
 
 interface FieldDef { k: string; l: string; t: 'num' | 'text' | 'bool' | 'lookup' | 'year' }
 
@@ -421,7 +447,7 @@ export function Inventory({
     [periodSource.sources],
   )
   const sortedPeriods = useMemo(
-    () => [...periodSource.periods].sort((a, b) => a.start_year - b.start_year || a.id - b.id),
+    () => [...periodSource.periods].sort((a, b) => a.name.localeCompare(b.name, 'fr')),
     [periodSource.periods],
   )
   const sortedSources = useMemo(
@@ -561,24 +587,9 @@ export function Inventory({
     const sample = oeuvres[0]
     const keys = Object.keys(sample)
     
-    // Curated order for known fields
     const FIELD_LABELS = buildFieldLabels(t)
-    const labelKeys = Object.keys(FIELD_LABELS)
-    const sorted = keys.sort((a, b) => {
-      const ia = labelKeys.indexOf(a)
-      const ib = labelKeys.indexOf(b)
-      if (ia !== -1 && ib !== -1) return ia - ib
-      if (ia !== -1) return -1
-      if (ib !== -1) return 1
-      return a.localeCompare(b)
-    })
-
-    const fields = sorted
-      .filter(k => ![
-        'txtImageNameLink', 
-        'theme', // themes are handled separately via _theme virtual field
-        'is_public' // deprecated by anonymity_level
-      ].includes(k))
+    const fields = keys
+      .filter(k => !FILTER_HIDDEN_FIELDS.has(k))
       .map(k => ({
         k,
         l: k === 'anonymity_level' ? t('confidentiality') : (FIELD_LABELS[k] || k),
@@ -590,7 +601,8 @@ export function Inventory({
     fields.push({ k: '_group', l: t('const_viewGroup'), t: 'lookup' })
     fields.push({ k: '_hasImage', l: t('inv_field_has_image'), t: 'lookup' })
 
-    return fields
+    // Every drop-down A→Z (Pem 2026-11-14).
+    return fields.sort((a, b) => a.l.localeCompare(b.l, 'fr', { sensitivity: 'base' }))
   }, [oeuvres, t])
 
   const handleLoadGroup = useCallback(async (id: string, mode: 'select' | 'filter' = 'select') => {
@@ -668,6 +680,42 @@ export function Inventory({
     }
   }
 
+  // État as the pipeline sees it: « Catalogué » is its own stage, not a second « En production ».
+  const stateKeyOf = useCallback(
+    (o: Oeuvre): string => {
+      const st = statusOf(o, statusLabelMap)
+      return st === 'en_production' && o.Catalogué ? 'catalogued' : st
+    },
+    [statusLabelMap],
+  )
+  const stateRank = useCallback(
+    (o: Oeuvre): number => {
+      const i = (STATE_ORDER as readonly string[]).indexOf(stateKeyOf(o))
+      return i < 0 ? STATE_ORDER.length : i
+    },
+    [stateKeyOf],
+  )
+  const stateOptions = useMemo(() => {
+    const label: Record<string, string> = {
+      en_production: t('wf_prod_atelier_l'),
+      catalogued: t('inv_state_catalogued'),
+      available: t('wf_prod_avail_l'),
+      reserved: t('wf_own_reserved_l'),
+      consigned: t('wf_own_consigned_l'),
+      loan: t('wf_own_loan_l'),
+      sold: t('wf_own_sold_l'),
+      gift: t('wf_own_gift_l'),
+      artist_archive: t('wf_own_archive_l'),
+      destroyed: t('status_destroyed'),
+      lost: t('status_lost'),
+    }
+    const present = new Set(oeuvres.map(stateKeyOf))
+    return [...present]
+      .filter((k) => label[k])
+      .map((k) => [k, label[k]] as [string, string])
+      .sort((a, b) => a[1].localeCompare(b[1], 'fr', { sensitivity: 'base' }))
+  }, [oeuvres, stateKeyOf, t])
+
   const filtered = useMemo(() => {
     const trimmedQ = q.trim()
     const sq = trimmedQ.toLowerCase()
@@ -698,7 +746,7 @@ export function Inventory({
       }
       if (tech !== 'all' && String(o.Technique ?? '') !== tech) return false
       if (support !== 'all' && String(o.Support ?? '') !== support) return false
-      if (status !== 'all' && statusOf(o, statusLabelMap) !== status) return false
+      if (status !== 'all' && stateKeyOf(o) !== status) return false
       
       // Theme filter
       if (filterTheme !== 'all') {
@@ -791,15 +839,8 @@ export function Inventory({
         const pb = periodOf(b)
         return ((pa?.start_year ?? 99999) - (pb?.start_year ?? 99999) || (pa?.name ?? '').localeCompare(pb?.name ?? '')) * dir
       }
-      if (sortKey === 'Status') {
-        const sa = statusOf(a, statusLabelMap)
-        const sb = statusOf(b, statusLabelMap)
-        return sa.localeCompare(sb) * dir
-      }
-      if (sortKey === 'Stage') {
-        const sa = statusOf(a, statusLabelMap)
-        const sb = statusOf(b, statusLabelMap)
-        return sa.localeCompare(sb) * dir
+      if (sortKey === 'Status' || sortKey === 'Stage') {
+        return (stateRank(a) - stateRank(b)) * dir
       }
       if (sortKey === 'Contact') {
         const ca = a.ContactID != null ? (cM[a.ContactID] || '') : 'Pem'
@@ -819,7 +860,7 @@ export function Inventory({
       return 0
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [oeuvres, q, tech, support, status, filterTheme, filterGroup, filterPeriod, filterSource, filterPlace, periodOf, placeOf, periodSource, sourceNameMap, criteria, oeuvreThemeMap, oeuvreGroupMap, thM, groupNameMap, tM, sM, statusLabelMap, allFields, sortKey, sortDir, cM, locMap, addrMap, colourScores, colourRank])
+  }, [oeuvres, q, tech, support, status, filterTheme, filterGroup, filterPeriod, filterSource, filterPlace, periodOf, placeOf, periodSource, sourceNameMap, criteria, oeuvreThemeMap, oeuvreGroupMap, thM, groupNameMap, tM, sM, statusLabelMap, stateKeyOf, stateRank, allFields, sortKey, sortDir, cM, locMap, addrMap, colourScores, colourRank])
 
   const invPivotDims: Dim<Oeuvre>[] = useMemo(
     () => [
@@ -942,7 +983,7 @@ export function Inventory({
   // passed to InvList for range selection
 
   const activeFilterCount =
-    [filterTheme, filterGroup, filterPeriod, filterSource, filterPlace].filter((v) => v !== 'all').length +
+    [filterTheme, filterGroup, filterPeriod, filterSource, filterPlace, status].filter((v) => v !== 'all').length +
     criteria.length +
     (isColourQueryActive(colourQ) ? 1 : 0)
 
@@ -1016,7 +1057,14 @@ export function Inventory({
         <InvSelect
           value={filterGroup} onChange={setFilterGroup}
           label={t('const_viewGroup')}
-          options={[['all', t('const_allGroups')], ...groups.map((x) => [x.id, x.name] as [string, string])]}
+          options={[['all', t('const_allGroups')], ...[...groups].sort((a, b) => a.name.localeCompare(b.name, 'fr')).map((x) => [x.id, x.name] as [string, string])]}
+        />
+
+        {/* État — the stages, « Catalogué » apart from « En production » (Pem 2026-11-14) */}
+        <InvSelect
+          value={status} onChange={setStatus}
+          label={t('inv_state_filter')}
+          options={[['all', t('inv_state_filter_all')], ...stateOptions]}
         />
 
         {/* Period */}
@@ -1978,7 +2026,7 @@ function InvList({
             const isFoc = focused?.OeuvreID === o.OeuvreID
             const st    = statusOf(o, statusLabelMap)
             const dims  = formatInventoryDims(o.Hauteur, o.Largeur, o.Support != null ? sM[o.Support] : null, o.Profondeur)
-            const sCol  = statusColor(st)
+            const sCol  = st === 'en_production' && o.Catalogué ? 'var(--yellow)' : statusColor(st) // Catalogué edge = its yellow dot
             
             // CLEAN LOGIC: Background is ONLY for Focus or Selection.
             const rowBg = isFoc 
@@ -2213,7 +2261,7 @@ function InvGrid({
   function renderCard(o: Oeuvre) {
     const isSel = selection.has(o.OeuvreID)
     const st = statusOf(o, statusLabelMap)
-    const sCol = statusColor(st)
+    const sCol = st === 'en_production' && o.Catalogué ? 'var(--yellow)' : statusColor(st)
     return (
       <div
         key={o.OeuvreID}

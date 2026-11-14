@@ -135,4 +135,17 @@ export const inventoryUiMessages = defineMessages({
   // Pem 2026-11-14: « — » under the size read as "date missing" for a work still being made.
   inv_year_in_progress: { fr: 'en cours', en: 'in progress' },
   inv_year_in_progress_title: { fr: 'Pas encore d’année : l’œuvre est en production', en: 'No year yet: the work is in production' },
+  // Pem 2026-11-14: stages told apart (label, sort, filter) and the « + filter » list named + A→Z.
+  inv_state_catalogued: { fr: 'Catalogué', en: 'Catalogued' },
+  inv_state_filter: { fr: 'État', en: 'State' },
+  inv_state_filter_all: { fr: 'Tous les états', en: 'All states' },
+  inv_fl_broadcast_caption_seed: { fr: 'Légende de diffusion', en: 'Broadcast caption' },
+  inv_fl_broadcast_ready: { fr: 'Prête pour la diffusion', en: 'Ready to broadcast' },
+  inv_fl_fate: { fr: 'Détruite / perdue', en: 'Destroyed / lost' },
+  inv_fl_fate_on: { fr: 'Date (détruite / perdue)', en: 'Date (destroyed / lost)' },
+  inv_fl_format: { fr: 'Format', en: 'Format' },
+  inv_fl_localisation_detail: { fr: 'Emplacement (détail)', en: 'Location (detail)' },
+  inv_fl_production_completed_on: { fr: 'Fin de production', en: 'Production ended' },
+  inv_fl_production_origin: { fr: 'Nouvelle / retrouvée', en: 'New / found' },
+  inv_fl_production_started_on: { fr: 'Début de production', en: 'Production started' },
 })

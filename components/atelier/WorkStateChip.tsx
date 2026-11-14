@@ -20,19 +20,21 @@ export function WorkStateChip({ o, statusLabelMap, compact }: Props) {
   const st = statusOf(o, statusLabelMap)
   // Catalogued but still in production (explicit status or photo pending) → yellow, not rust.
   const cls = st === 'en_production' && o.Catalogué ? 'yellow' : undefined
+  // Pem 2026-11-14: the second stage was labelled « En production » too — say « Catalogué ».
+  const label = cls === 'yellow' ? t('inv_state_catalogued') : undefined
   // Sold / gift keep their status after a destruction or loss; the fate rides along.
   const fate = o.fate && st !== 'destroyed' && st !== 'lost' ? o.fate : null
   if (compact) {
     return (
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, minWidth: 0, maxWidth: '100%' }}>
-        <StatusChip s={st} cls={cls} compact />
+        <StatusChip s={st} cls={cls} label={label} compact />
         {fate ? <span style={{ fontSize: 11, color: 'var(--tx3)', whiteSpace: 'nowrap' }}>· {t(fate === 'destroyed' ? 'fate_destroyed_suffix' : 'fate_lost_suffix')}</span> : null}
       </span>
     )
   }
   return (
     <>
-      <StatusChip s={st} cls={cls} />
+      <StatusChip s={st} cls={cls} label={label} />
       {fate ? (
         <span className="chip mt" style={{ marginLeft: 4 }}>
           {t(fate === 'destroyed' ? 'fate_destroyed_suffix' : 'fate_lost_suffix')}

@@ -23,8 +23,9 @@ const DOT: Record<string, string> = {
 }
 
 /** `compact`: dot + label, no box — for dense table cells (owner 2026-11-13); full label on hover. */
-export function StatusChip({ s, cls, compact }: { s: StatusKey; cls?: string; compact?: boolean }) {
-  const m = MAP[s] ?? MAP.en_production
+export function StatusChip({ s, cls, compact, label }: { s: StatusKey; cls?: string; compact?: boolean; label?: string }) {
+  const base = MAP[s] ?? MAP.en_production
+  const m = label ? { ...base, lbl: label } : base
   const c = cls ?? m.cls
   if (compact) {
     return (

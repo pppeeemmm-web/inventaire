@@ -9,6 +9,12 @@ export const whatsNewMessages = defineMessages({
   },
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
+  // 3.1.16 (2026-11-14) — Inventory états: Catalogué named, sort by stage, État filter, + filter list A→Z (Pem).
+  wn_inventory_states_t: { fr: 'Inventaire : les états, triés et filtrables', en: 'Inventory: states, sorted and filterable' },
+  wn_inventory_states_d: {
+    fr: 'Le second stade de production s’appelle maintenant « Catalogué » (point jaune) au lieu d’un second « En production ». Trier par État suit l’ordre des stades : En production, Catalogué, Disponible, Réservé, En dépôt, Prêt, Vendu, Don, Archive, Détruite, Perdue. Un menu « État » rejoint les filtres. La liste « + filter » donne un nom à chaque champ, cache les champs techniques et suit l’ordre alphabétique, comme toutes les listes (groupes et périodes aussi).',
+    en: 'The second production stage is now called « Catalogued » (yellow dot) instead of a second « In production ». Sorting by State follows the stages: In production, Catalogued, Available, Reserved, Consigned, Loan, Sold, Gift, Archive, Destroyed, Lost. A « State » menu joins the filters. The « + filter » list names every field, hides technical ones and is alphabetical, like every list (groups and periods too).',
+  },
   // 3.1.16 (2026-11-14) — Inventory year cell, phone works dated, duplicate fix (Pem).
   wn_inventory_year_in_progress_t: { fr: 'Inventaire : « en cours » au lieu de « — »', en: 'Inventory: « in progress » instead of « — »' },
   wn_inventory_year_in_progress_d: {
