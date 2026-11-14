@@ -2,6 +2,10 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-14 — voice notes record first (Pem, after a morning in the field)
+
+- Voice-note sheet rebuilt record-first: opens on the recorder, saves on Stop, « Enregistrée · 0:42 » + replay, details optional after, red « Pas enregistrée » + Retry on failure, mic-refused help (iPhone settings path; the phone decides, no app can force it). `VoiceNoteSheet.tsx`, `updateVoiceNoteDetails`, `lib/voice/mic-permission.ts`, What's new 3.1.11. Status at writing: committed locally, not pushed (rides with the places batch).
+
 ## 2026-11-13 — closed while tidying the list
 
 - Ideas agreed in principle (work links, see again, transcript audio) — all built 2026-11-13: work ↔ work links from the drawer (`WorkLinksSection`), "see again" card (Journal today + Overview; `see_again_dismissed.sql`), transcript audio + ✦ engine mark on the journal day.

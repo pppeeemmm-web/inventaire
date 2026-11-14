@@ -92,17 +92,16 @@ export async function createVoiceNote(formData: FormData): Promise<CreateVoiceNo
     if (Number.isFinite(d) && d >= 0 && d < 24 * 60 * 60 * 1000) duration_ms = d
   }
 
-  // `suivi_reminder.remind_at` is a DATE: prefer the client's local calendar day
-  // (`follow_up_date`), since slicing the UTC instant can land on the wrong day near midnight.
-  const followUpDueRaw = (formData.get('follow_up_due') as string | null)?.trim() || null
-  const followUpDateRaw = (formData.get('follow_up_date') as string | null)?.trim() || null
-  const followUpLabelRaw = (formData.get('follow_up_label') as string | null)?.trim() || null
-  let followUpDate: string | null = null
-  if (followUpDateRaw && /^\d{4}-\d{2}-\d{2}$/.test(followUpDateRaw)) {
-    followUpDate = followUpDateRaw
-  } else if (followUpDueRaw) {
-    const d = new Date(followUpDueRaw)
-    if (Number.isFinite(d.getTime())) followUpDate = d.toISOString().slice(0, 10)
+  // When the recording started (client clock): the note's date/time. Kept only when plausible
+  // (last 24 h, not ahead of the server by more than 5 min); otherwise the DB default (now).
+  const recordedAtRaw = (formData.get('recorded_at') as string | null)?.trim() || null
+  let created_at: string | undefined
+  if (recordedAtRaw) {
+    const ts = new Date(recordedAtRaw).getTime()
+    const now = Date.now()
+    if (Number.isFinite(ts) && ts <= now + 5 * 60_000 && ts >= now - 24 * 60 * 60_000) {
+      created_at = new Date(ts).toISOString()
+    }
   }
 
   const id = crypto.randomUUID()
@@ -135,6 +134,7 @@ export async function createVoiceNote(formData: FormData): Promise<CreateVoiceNo
     audio_mime: audio_r2_key ? audioMime : null,
     duration_ms,
     oeuvre_id,
+    ...(created_at ? { created_at } : {}),
   })
 
   if (error) {
@@ -149,26 +149,107 @@ export async function createVoiceNote(formData: FormData): Promise<CreateVoiceNo
     return { error: error.message }
   }
 
-  // A follow-up is a reminder, not a studio-floor issue: it goes to `suivi_reminder`
-  // (no pipeline process), which the Hub inbox and Pipeline's reminders panel list and dismiss.
-  // `studio_task kind='field'` is for material issue reports and feeds Production's triage panel.
-  let followUpOk: boolean | undefined
-  if (followUpDate) {
-    const message = (followUpLabelRaw || subjectRaw || 'Voice note follow-up').slice(0, MAX_FOLLOW_UP_LABEL)
-    const { error: followUpError } = await supabase.from('suivi_reminder').insert({
-      process_id: null,
-      message,
-      remind_at: followUpDate,
-    })
-    followUpOk = !followUpError
-    if (followUpError) console.error('[createVoiceNote follow-up]', followUpError.message)
-    else revalidateTag('reminders')
-  }
+  const followUpOk = await insertFollowUp(supabase, formData, subjectRaw)
 
   revalidatePath('/atelier')
   revalidatePath('/hub')
   revalidatePath('/atelier/field-inbox')
   return { ok: true, id, followUpOk }
+}
+
+/**
+ * A follow-up is a reminder, not a studio-floor issue: it goes to `suivi_reminder`
+ * (no pipeline process), which the Hub inbox and Pipeline's reminders panel list and dismiss.
+ * `studio_task kind='field'` is for material issue reports and feeds Production's triage panel.
+ * Returns `undefined` when the form asks for no follow-up.
+ */
+async function insertFollowUp(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  formData: FormData,
+  subject: string | null,
+): Promise<boolean | undefined> {
+  // `suivi_reminder.remind_at` is a DATE: prefer the client's local calendar day
+  // (`follow_up_date`), since slicing the UTC instant can land on the wrong day near midnight.
+  const followUpDueRaw = (formData.get('follow_up_due') as string | null)?.trim() || null
+  const followUpDateRaw = (formData.get('follow_up_date') as string | null)?.trim() || null
+  const followUpLabelRaw = (formData.get('follow_up_label') as string | null)?.trim() || null
+  let followUpDate: string | null = null
+  if (followUpDateRaw && /^\d{4}-\d{2}-\d{2}$/.test(followUpDateRaw)) {
+    followUpDate = followUpDateRaw
+  } else if (followUpDueRaw) {
+    const d = new Date(followUpDueRaw)
+    if (Number.isFinite(d.getTime())) followUpDate = d.toISOString().slice(0, 10)
+  }
+  if (!followUpDate) return undefined
+  const message = (followUpLabelRaw || subject || 'Voice note follow-up').slice(0, MAX_FOLLOW_UP_LABEL)
+  const { error: followUpError } = await supabase.from('suivi_reminder').insert({
+    process_id: null,
+    message,
+    remind_at: followUpDate,
+  })
+  if (followUpError) {
+    console.error('[voice note follow-up]', followUpError.message)
+    return false
+  }
+  revalidateTag('reminders')
+  return true
+}
+
+/**
+ * Details added after the recording was saved (the phone sheet saves the audio first, then
+ * asks for a title etc.). Only fields present in the form are written; same owner/admin rule
+ * as the transcript edit. Optional follow-up as in `createVoiceNote`.
+ */
+export async function updateVoiceNoteDetails(
+  id: string,
+  formData: FormData,
+): Promise<{ ok: true; followUpOk?: boolean } | NotesActionErr> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'auth' }
+
+  const { data: row, error: selErr } = await voiceNoteTable(supabase)
+    .select('id, user_id')
+    .eq('id', id)
+    .maybeSingle()
+  if (selErr || !row) return { error: 'not_found' }
+  const r = row as { id: string; user_id: string }
+  const admin = await rpcIsAdmin(supabase)
+  if (r.user_id !== user.id && !admin) return { error: 'forbidden' }
+
+  const patch: Record<string, unknown> = {}
+  if (formData.has('kind')) {
+    const kind = parseVoiceNoteKind(String(formData.get('kind') ?? ''))
+    if (kind) patch.kind = kind
+  }
+  if (formData.has('bucket')) {
+    const bucket = parseVoiceNoteBucket(String(formData.get('bucket') ?? ''))
+    if (bucket) patch.bucket = bucket
+  }
+  if (formData.has('subject')) patch.subject = (formData.get('subject') as string | null)?.trim() || null
+  if (formData.has('transcript')) {
+    const tx = (formData.get('transcript') as string | null) ?? ''
+    patch.transcript = tx.length > MAX_TRANSCRIPT ? tx.slice(0, MAX_TRANSCRIPT) : tx
+  }
+  if (formData.has('oeuvre_id')) {
+    const raw = (formData.get('oeuvre_id') as string | null)?.trim()
+    const n = raw ? parseInt(raw, 10) : NaN
+    patch.oeuvre_id = Number.isFinite(n) && n > 0 ? n : null
+  }
+
+  if (Object.keys(patch).length > 0) {
+    const { error: upErr } = await voiceNoteTable(supabase).update(patch).eq('id', id)
+    if (upErr) return { error: upErr.message }
+  }
+
+  const subject = typeof patch.subject === 'string' ? patch.subject : null
+  const followUpOk = await insertFollowUp(supabase, formData, subject)
+
+  revalidatePath('/atelier')
+  revalidatePath('/hub')
+  return { ok: true, followUpOk }
 }
 
 export async function updateVoiceNoteTranscript(

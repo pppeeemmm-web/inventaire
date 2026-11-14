@@ -9,6 +9,12 @@ export const whatsNewMessages = defineMessages({
   },
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
+  // 3.1.11 (2026-11-14) — voice notes: record first (Pem, after a morning in the field).
+  wn_voice_record_first_t: { fr: 'Note vocale : on enregistre d’abord', en: 'Voice note: record first' },
+  wn_voice_record_first_d: {
+    fr: 'Ouvrir une note vocale lance l’enregistrement tout de suite : gros bouton rouge, minuteur, niveau du micro. « Arrêter et enregistrer » envoie la note aussitôt (date et heure = début de l’enregistrement) et affiche « Enregistrée · 0:42 » avec la réécoute ; titre, type, œuvre, texte et rappel s’ajoutent après, s’il le faut. Si l’envoi échoue, c’est écrit en rouge avec « Réessayer » — la note reste sur le téléphone tant que la fenêtre est ouverte. Si l’écran se verrouille, la note s’arrête et elle est enregistrée. Dans Notes, chaque ligne montre la durée de l’audio. Micro refusé : la fenêtre dit où l’autoriser (c’est le téléphone qui décide, l’app ne peut pas se l’accorder pour toujours).',
+    en: 'Opening a voice note starts recording at once: big red button, timer, mic level. « Stop and save » sends the note straight away (date and time = start of the recording) and shows « Saved · 0:42 » with a replay; title, kind, work, text and reminder are added after, if needed. If the upload fails it says so in red with « Retry » — the note stays on the phone while the window is open. If the screen locks, the note stops and is saved. In Notes each row shows the audio length. Mic refused: the window says where to allow it (the phone decides; the app cannot grant itself the mic for good).',
+  },
   wn_place_from_period_t: { fr: 'Le lieu suit la période (l’atelier du moment)', en: 'The place follows the period (the atelier of the time)' },
   wn_place_from_period_d: {
     fr: 'Donnez un lieu à une période (Gérer périodes et sources → Lieu de la période) : toutes ses œuvres sans lieu propre y sont rangées, en gris « d’après la période ». Choisir un autre lieu sur la fiche sort l’œuvre de la règle ; « Revenir au lieu de la période » l’y remet (aussi en Modifier la sélection). Dans l’Inventaire, le lieu s’affiche sous la période, avec un filtre Lieu ; Rapports et la recherche le lisent aussi. Un lieu a maintenant une adresse, et « Trouver les coordonnées » le place sur la carte.',

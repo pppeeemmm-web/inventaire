@@ -8,6 +8,7 @@ import { deleteVoiceNote, listVoiceNotes, updateVoiceNoteTranscript } from '@/ap
 import {
   VOICE_NOTE_BUCKETS,
   VOICE_NOTE_KINDS,
+  formatVoiceDuration,
   type VoiceNoteBucket,
   type VoiceNoteKind,
 } from '@/lib/voice-note-domain'
@@ -275,6 +276,14 @@ export function Notes({ refreshTick, oeuvres }: { refreshTick: number; oeuvres: 
                     {r.subject?.trim() || t('notes_list_untitled')}
                   </div>
                   <div className="t-mono-sm" style={{ fontSize: 10, opacity: 0.65, marginBottom: 4 }}>
+                    {r.audio_r2_key ? (
+                      <span style={{ color: 'var(--rust)' }}>
+                        {t('vc_row_audio_fmt').replace('{d}', r.duration_ms != null ? formatVoiceDuration(r.duration_ms) : '…')}
+                      </span>
+                    ) : (
+                      t('vc_row_text_only')
+                    )}
+                    {' · '}
                     {t(voiceKindKey(r.kind))} · {t(voiceBucketKey(r.bucket))}
                     {!r.routed_at ? (
                       <span style={{ color: 'var(--rust)' }}> · {t('notes_triage_unsorted_badge')}</span>

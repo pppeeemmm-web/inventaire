@@ -14,8 +14,18 @@ test.describe('Voice notes (Verb 2)', () => {
   test('journal day opens voice sheet', async ({ page }) => {
     await page.goto('/atelier/journal?today=1')
     await page.getByTestId('journal-quick-voice').click({ timeout: 45_000 })
-    await expect(page.getByTestId('ring-b-voice-sheet')).toBeVisible()
-    await expect(page.getByTestId('ring-b-voice-record-toggle')).toBeVisible()
+    const sheet = page.getByTestId('ring-b-voice-sheet')
+    await expect(sheet).toBeVisible()
+    // Record first: the sheet opens on the recorder, or on the mic-blocked panel when the
+    // browser has no microphone / refuses it (headless). Never on a form to fill first.
+    await expect(sheet).toHaveAttribute('data-phase', /starting|recording|blocked/)
+    if ((await sheet.getAttribute('data-phase')) === 'recording') {
+      await expect(page.getByTestId('ring-b-voice-record-toggle')).toBeVisible()
+      await page.getByTestId('ring-b-voice-cancel').click()
+      return
+    }
+    await expect(page.getByTestId('ring-b-voice-blocked')).toBeVisible({ timeout: 10_000 })
+    await page.getByTestId('ring-b-voice-write').click()
     await expect(page.getByText(/Demain|Tomorrow/)).toBeVisible()
   })
 

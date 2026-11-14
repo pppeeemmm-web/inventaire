@@ -174,22 +174,55 @@ export async function startLiveDictation(
 }
 
 export type RecorderSession = {
+  /** The live mic stream (level meter); its tracks stop with `stop()`. */
+  stream: MediaStream
   stop: () => Promise<{ blob: Blob; mime: string }>
 }
 
+export type MicRecorderOptions = {
+  /** Asked of the encoder; browsers may round it or ignore it. Keeps uploads small. */
+  audioBitsPerSecond?: number
+  /** Running total of recorded bytes, called as chunks arrive (~4×/s). */
+  onBytes?: (total: number) => void
+}
+
 /**
- * Records microphone input until `stop()` is called. Caller should request mic permission first.
+ * Records microphone input until `stop()` is called. `getUserMedia` here is what asks for
+ * the mic permission when the browser has not decided yet.
  */
-export async function startMicRecorder(): Promise<RecorderSession> {
+export async function startMicRecorder(opts: MicRecorderOptions = {}): Promise<RecorderSession> {
+  if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+    throw Object.assign(new Error('getUserMedia unavailable'), { name: 'NotSupportedError' })
+  }
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
   const mime = pickMediaRecorderMime()
-  const rec = new MediaRecorder(stream, { mimeType: mime })
+  let rec: MediaRecorder
+  try {
+    if (typeof MediaRecorder === 'undefined') {
+      throw Object.assign(new Error('MediaRecorder unavailable'), { name: 'NotSupportedError' })
+    }
+    try {
+      rec = new MediaRecorder(stream, { mimeType: mime, audioBitsPerSecond: opts.audioBitsPerSecond })
+    } catch {
+      rec = new MediaRecorder(stream)
+    }
+  } catch (e) {
+    stream.getTracks().forEach((t) => t.stop())
+    throw e
+  }
   const chunks: Blob[] = []
+  let total = 0
   rec.ondataavailable = (e) => {
-    if (e.data.size > 0) chunks.push(e.data)
+    if (e.data.size > 0) {
+      chunks.push(e.data)
+      total += e.data.size
+      opts.onBytes?.(total)
+    }
   }
   rec.start(250)
+  const recordedMime = () => (rec.mimeType || mime).split(';')[0] || mime
   return {
+    stream,
     stop: () =>
       new Promise<{ blob: Blob; mime: string }>((resolve, reject) => {
         rec.onerror = () => {
@@ -198,8 +231,9 @@ export async function startMicRecorder(): Promise<RecorderSession> {
         }
         rec.onstop = () => {
           stream.getTracks().forEach((t) => t.stop())
-          const blob = new Blob(chunks, { type: mime })
-          resolve({ blob, mime })
+          const type = recordedMime()
+          const blob = new Blob(chunks, { type })
+          resolve({ blob, mime: type })
         }
         try {
           rec.stop()

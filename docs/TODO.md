@@ -18,6 +18,7 @@ Current batch (design build)
 Trace
 - [ ] 1. Handwriting batch (after the test above) → [notes](./TODO_NOTES.md#journal-phase-2)
 - [ ] 1b. One plan for every local "reading" AI (owner 2026-11-13: "it all needs rationalization"): handwriting, text in field photos (labels, notebooks, invoices — F9), business-card reader, and the owner's local contact-details scraper. Inventory what exists first; then one engine, one place. Widening field OCR needs the owner's GO (`CLAUDE.md`).
+- [ ] 1c. Voice notes, after the record-first sheet (2026-11-14): a note longer than one upload (~4 MB — auto-stopped today, the owner starts a new one) → browser → R2 direct upload (needs a CORS PUT rule on the public bucket); a note recorded with no network is kept only while the sheet is open → keep it on the phone (IndexedDB) and send later. Build only if Pem hits either ≥2×.
 - [ ] 2. Warn when a session photo is staged but never applied → [notes](./TODO_NOTES.md#staged-photos)
 - [ ] 3. Production start: partial date input (year / month / day) — not built (the drawer has a full-date field, admin) → [notes](./TODO_NOTES.md#production-start-date)
 - [ ] 4. Production span: end date by hand (start is editable since 2026-11-03); new / found choice in WorkForm (only in capture today) → [notes](./TODO_NOTES.md#production-span)

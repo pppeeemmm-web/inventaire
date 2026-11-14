@@ -50,7 +50,13 @@ test.describe('Hub field launcher (Ring B.1)', () => {
     await page.goto('/atelier/journal?today=1')
     await page.getByTestId('journal-quick-voice').click({ timeout: 45_000 })
     await expect(page.getByTestId('ring-b-voice-sheet')).toBeVisible()
-    await page.getByTestId('ring-b-voice-sheet-close').click()
+    // Recording starts on open; with a real mic, cancel it — otherwise close the blocked panel.
+    if ((await page.getByTestId('ring-b-voice-sheet').getAttribute('data-phase')) === 'recording') {
+      await page.getByTestId('ring-b-voice-cancel').click()
+      await page.getByRole('button', { name: /Jeter|Throw away/ }).click()
+    } else {
+      await page.getByTestId('ring-b-voice-sheet-close').click()
+    }
     await expect(page.getByTestId('ring-b-voice-sheet')).not.toBeVisible()
   })
 
