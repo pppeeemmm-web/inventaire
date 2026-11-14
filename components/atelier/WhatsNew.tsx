@@ -10,6 +10,7 @@ import { useI18n } from '@/lib/i18n/context'
 import {
   WHATS_NEW_DISMISSED_KEY,
   WHATS_NEW_ITEMS,
+  WHATS_NEW_POPUP,
   WHATS_NEW_RELEASE,
   WHATS_NEW_SEEN_SESSION_KEY,
 } from '@/lib/whats-new'
@@ -67,7 +68,7 @@ export function WhatsNewDialog({ suppressed = false }: { suppressed?: boolean })
   const [dontShow, setDontShow] = useState(false)
 
   useEffect(() => {
-    if (suppressed) return
+    if (suppressed || !WHATS_NEW_POPUP) return
     if (readStorage('local', WHATS_NEW_DISMISSED_KEY) === WHATS_NEW_RELEASE) return
     if (readStorage('session', WHATS_NEW_SEEN_SESSION_KEY) === WHATS_NEW_RELEASE) return
     setOpen(true)

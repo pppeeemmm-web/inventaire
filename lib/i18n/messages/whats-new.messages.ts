@@ -9,6 +9,12 @@ export const whatsNewMessages = defineMessages({
   },
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
+  // 3.1.13 (2026-11-14) — Journal on the phone (Pem, opening the Journal on his phone).
+  wn_journal_phone_tidy_t: { fr: 'Journal sur téléphone : on reste sur la journée', en: 'Journal on the phone: you stay on the day' },
+  wn_journal_phone_tidy_d: {
+    fr: 'Le Journal s’ouvre plus vite : il charge sa journée avant le reste de l’Atelier. Depuis le Hub, il s’ouvre directement sur la page du jour, sans passer par la liste. Dans « À revoir » et dans les œuvres du jour, toucher ou garder le doigt sur une vignette montre l’image en grand ; un toucher la ferme, et l’on reste sur le Journal (« Ouvrir » mène toujours à la fiche). Le « + » (nouvelle œuvre) quitte la barre du bas : il reste dans le menu. La fenêtre « Quoi de neuf » ne s’ouvre plus toute seule : la liste est dans Kaizen.',
+    en: 'The Journal opens faster: it loads its day before the rest of the Atelier. From the Hub, it opens straight on today’s page, without the list first. In « See again » and in the day’s works, tap or hold a thumbnail to see the picture large; a tap closes it and you stay on the Journal (« Open » still goes to the card). The « + » (new work) left the bottom bar: it stays in the menu. The « What’s new » window no longer opens by itself: the list is in Kaizen.',
+  },
   // 3.1.13 (2026-11-14) — « Historique de création » (Pem: "a history for the creation where 'place' is just like 'history'").
   wn_creation_history_t: { fr: 'Historique de création : où et quand l’œuvre a été faite', en: 'Creation history: where and when the work was made' },
   wn_creation_history_d: {

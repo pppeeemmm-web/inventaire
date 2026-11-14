@@ -8,14 +8,14 @@ import { useI18n } from '@/lib/i18n/context'
 import type { DictKey } from '@/lib/i18n/dictionary'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { imageUrl, thumbUrl } from '@/lib/data'
+import { ImageLoupe } from '@/components/atelier/ImageLoupe'
 import { toast } from '@/lib/ui/toast'
 import {
   deleteWorkSessionItem,
   deleteWorkSessionJournalEntries,
   deleteWorkSessionJournalEntry,
   fetchSessionItemVersionCompare,
-  getSessionNewPageContext,
-  listWorkSessionJournal,
+  loadJournalBootstrap,
   updateWorkSessionJournalMetadata,
   updateWorkSessionItemMetadata,
   type WorkSessionJournalItem,
@@ -25,7 +25,8 @@ import {
 import type { WorkSessionFieldContext } from '@/lib/work-session-payload'
 import { JournalDayExtras } from '@/components/atelier/journal/JournalDayExtras'
 import { SessionNewClient } from '@/components/atelier/session/SessionNewClient'
-import { listJournalSourceDays, type JournalSourceDay } from '@/app/atelier/(portal)/journal/entry-actions'
+import type { JournalSourceDay } from '@/app/atelier/(portal)/journal/entry-actions'
+import { foregroundSettled } from '@/lib/atelier/foreground-gate'
 import {
   calendarDayInParisFromIso,
   sessionAtIsoForCalendarDay,
@@ -328,12 +329,15 @@ function JournalPaintingEntry({
           ) : null}
         </div>
         {item.work_thumb ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={thumbUrl(item.work_thumb, 128) ?? ''}
-            alt=""
-            style={{ width: '100%', maxWidth: 280, height: 160, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--bd)' }}
-          />
+          // Press or tap → the picture full screen, staying on the day (Pem 2026-11-14).
+          <ImageLoupe file={item.work_thumb} alt={displayTitle} tapOpens style={{ width: '100%', maxWidth: 280 }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={thumbUrl(item.work_thumb, 128) ?? ''}
+              alt=""
+              style={{ display: 'block', width: '100%', height: 160, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--bd)' }}
+            />
+          </ImageLoupe>
         ) : item.staged_shots[0] ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -650,6 +654,14 @@ function JournalDayPage({
   )
 }
 
+function requestedDayFromUrl(): string | null {
+  if (typeof window === 'undefined') return null
+  const params = new URLSearchParams(window.location.search)
+  const day = params.get('day')
+  if (day && /^\d{4}-\d{2}-\d{2}$/.test(day)) return day
+  return params.get('today') === '1' ? todayCalendarDayInParis() : null
+}
+
 export function SessionJournalTab() {
   const { t, lang } = useI18n()
   const router = useRouter()
@@ -663,18 +675,13 @@ export function SessionJournalTab() {
   const [journalTeamReadAccess, setJournalTeamReadAccess] = useState(false)
   const [showManage, setShowManage] = useState(false)
   // Phone: the list of days OR one day, full screen (owner 2026-11-12: iPhone SE had ~270 px for the day).
-  const [phoneView, setPhoneView] = useState<'list' | 'day'>('list')
+  // `/atelier/journal?today=1` (Hub → Journal) opens today's page; `?day=YYYY-MM-DD` (search hit,
+  // Constellation panel) opens that day. Read before the first paint (the tab is client-only), so the
+  // phone opens straight on the day instead of flashing the list first (Pem 2026-11-14).
+  const [openDay, setOpenDay] = useState<string | null>(() => requestedDayFromUrl())
+  const [phoneView, setPhoneView] = useState<'list' | 'day'>(() => (requestedDayFromUrl() ? 'day' : 'list'))
   const [composeSignal, setComposeSignal] = useState(0)
   const [captureSignal, setCaptureSignal] = useState(0)
-  // `/atelier/journal?today=1` (Hub → Journal) opens today's page; `?day=YYYY-MM-DD`
-  // (search hit, Constellation panel) opens that day.
-  const [openDay, setOpenDay] = useState<string | null>(null)
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const day = params.get('day')
-    if (day && /^\d{4}-\d{2}-\d{2}$/.test(day)) setOpenDay(day)
-    else if (params.get('today') === '1') setOpenDay(todayCalendarDayInParis())
-  }, [])
   const [loading, setLoading] = useState(true)
   const [editingSession, setEditingSession] = useState(false)
   const [sessionDateInput, setSessionDateInput] = useState('')
@@ -682,13 +689,19 @@ export function SessionJournalTab() {
   const [sessionPending, startSessionTransition] = useTransition()
   const locale = lang === 'fr' ? 'fr-FR' : 'en-GB'
 
+  // One request for the list, the days and the roles (see `loadJournalBootstrap`); the first one
+  // also lets the Atelier shell start its background loads (`foregroundSettled`).
   const reload = useCallback(() => {
     setLoading(true)
-    void Promise.all([listWorkSessionJournal(), listJournalSourceDays()]).then(([data, days]) => {
-      setSessionRows(data)
-      setSourceDays(days)
-      setLoading(false)
-    })
+    void loadJournalBootstrap()
+      .then((b) => {
+        setSessionRows(b.rows)
+        setSourceDays(b.days)
+        setIsAdmin(b.isAdmin)
+        setJournalTeamReadAccess(b.journalTeamReadAccess)
+        setLoading(false)
+      })
+      .finally(() => foregroundSettled())
   }, [])
 
   // One row per day: field-session days, plus days with only entries / Création items / voice notes,
@@ -749,13 +762,6 @@ export function SessionJournalTab() {
   useEffect(() => {
     reload()
   }, [reload])
-
-  useEffect(() => {
-    void getSessionNewPageContext().then((ctx) => {
-      setIsAdmin(ctx.isAdmin)
-      setJournalTeamReadAccess(ctx.journalTeamReadAccess)
-    })
-  }, [])
 
   useEffect(() => {
     setCheckedIds((prev) => {
@@ -891,7 +897,9 @@ export function SessionJournalTab() {
     })
   }
 
-  const showPage = Boolean(selected) && (!narrow || phoneView === 'day')
+  /** A requested day that is not today waits for the list (today's row exists before it loads). */
+  const waitingForDay = loading && openDay != null && openDay !== todayDay
+  const showPage = Boolean(selected) && (!narrow || phoneView === 'day') && !waitingForDay
   const showIndex = !narrow || phoneView === 'list'
 
   return (
@@ -1163,6 +1171,11 @@ export function SessionJournalTab() {
         </aside>
       ) : null}
 
+      {waitingForDay && (!narrow || phoneView === 'day') ? (
+        <p className="t-mono-sm" data-testid="journal-day-waiting" style={{ padding: narrow ? '16px' : '32px 40px', color: 'var(--tx3)', margin: 0 }}>
+          {t('loading')}
+        </p>
+      ) : null}
       {showPage ? (
         <main
           id="journal-day-panel"

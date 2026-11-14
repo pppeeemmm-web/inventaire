@@ -30,6 +30,8 @@
 // '3.1.12' (2026-11-14): place suggested from the field session (nearest saved place, ≤ 2 km).
 // '3.1.13' (2026-11-14): « Historique de création » — dated lines, each with a place (replaces the single place).
 export const WHATS_NEW_RELEASE = '3.1.13'
+/** Popup on Atelier open — off for now (Pem 2026-11-14: "remove the pop up what's new for now"). The list stays in Kaizen → What's new. */
+export const WHATS_NEW_POPUP = false
 
 /** localStorage: release the viewer chose not to see again. sessionStorage: already shown this visit. */
 export const WHATS_NEW_DISMISSED_KEY = 'pem_whats_new_dismissed'
@@ -39,6 +41,7 @@ export type WhatsNewItem = { id: string; day: string }
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'journal_phone_tidy', day: '2026-11-14' },
   { id: 'creation_history', day: '2026-11-14' },
   { id: 'place_from_session', day: '2026-11-14' },
   { id: 'voice_record_first', day: '2026-11-14' },

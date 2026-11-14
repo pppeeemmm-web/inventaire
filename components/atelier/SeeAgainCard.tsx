@@ -8,6 +8,7 @@ import Link from 'next/link'
 import { useCallback, useEffect, useState, useTransition, type CSSProperties } from 'react'
 import { dismissSeeAgain, getSeeAgain, linkSeeAgainPair, type SeeAgainSlots, type SeeAgainWork } from '@/app/atelier/see-again/actions'
 import { thumbUrl } from '@/lib/data'
+import { ImageLoupe } from '@/components/atelier/ImageLoupe'
 import { WORK_LINK_TYPES, type WorkLinkType } from '@/lib/work-links'
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from '@/lib/ui/toast'
@@ -199,9 +200,11 @@ function Actions({ children }: { children: React.ReactNode }) {
 }
 
 function WorkLine({ w, untitled }: { w: SeeAgainWork; untitled: string }) {
+  // Pem 2026-11-14: tapping a work here must not leave the Journal for Inventory — a tap (or a long
+  // press) shows the picture full screen, any tap closes it; « Ouvrir l'œuvre » still opens the card.
   const src = thumbUrl(w.image)
-  return (
-    <Link href={workHref(w.id)} style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'inherit', textDecoration: 'none', minHeight: 44 }}>
+  const line = (
+    <div data-testid={`see-again-work-${w.id}`} style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 44 }}>
       {src ? (
         // eslint-disable-next-line @next/next/no-img-element -- R2 thumbnails, same as the inventory list
         <img src={src} alt="" width={56} height={56} style={{ width: 56, height: 56, objectFit: 'cover', flexShrink: 0, border: '1px solid var(--bd)' }} />
@@ -209,6 +212,13 @@ function WorkLine({ w, untitled }: { w: SeeAgainWork; untitled: string }) {
       <span style={{ fontSize: 13, minWidth: 0, overflowWrap: 'anywhere' }}>
         #{w.id} {w.title?.trim() || untitled}
       </span>
-    </Link>
+    </div>
+  )
+  return w.image ? (
+    <ImageLoupe file={w.image} alt={w.title?.trim() || untitled} tapOpens>
+      {line}
+    </ImageLoupe>
+  ) : (
+    line
   )
 }

@@ -1,5 +1,6 @@
 'use server'
 
+import { listJournalSourceDays, type JournalSourceDay } from '@/app/atelier/(portal)/journal/entry-actions'
 import crypto from 'crypto'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
@@ -1388,6 +1389,27 @@ async function appliedShotsForIds(
     map.set(row.OeuvreID, list)
   }
   return map
+}
+
+/**
+ * Everything the Journal needs to open, in ONE request (Pem 2026-11-14: "very long to load" on the
+ * phone). Next.js runs a page's Server Actions one at a time, so three separate calls queued behind
+ * the Atelier shell's loads; one call, run in parallel on the server, does not.
+ */
+export async function loadJournalBootstrap(): Promise<{
+  rows: WorkSessionJournalRow[]
+  days: JournalSourceDay[]
+  isAdmin: boolean
+  journalTeamReadAccess: boolean
+}> {
+  const supabase = await createClient()
+  const [rows, days, isAdmin, journalTeamReadAccess] = await Promise.all([
+    listWorkSessionJournal(),
+    listJournalSourceDays(),
+    rpcIsAdmin(supabase),
+    canReadTeamWorkSessions(supabase),
+  ])
+  return { rows, days, isAdmin, journalTeamReadAccess }
 }
 
 export async function listWorkSessionJournal(

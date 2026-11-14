@@ -4,6 +4,8 @@
 // screen allows on the free side of the thumbnail, never cropped, gone when the pointer leaves.
 // Phone: long press ~450 ms → the picture almost full screen; a tap anywhere closes it, and the tap
 // that ends the press does not also open the work. Full image via `imageUrl()`, thumb as placeholder.
+// `tapOpens` (Pem 2026-11-14, Journal « À revoir »): a tap / click shows the picture full screen too,
+// instead of following a link — for places where leaving the page is not wanted.
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
@@ -14,7 +16,19 @@ const HOLD_MS = 450
 const MOVE_PX = 10
 const GAP = 16
 
-export function ImageLoupe({ file, alt, children, style }: { file: string; alt: string; children: ReactNode; style?: CSSProperties }) {
+export function ImageLoupe({
+  file,
+  alt,
+  children,
+  style,
+  tapOpens = false,
+}: {
+  file: string
+  alt: string
+  children: ReactNode
+  style?: CSSProperties
+  tapOpens?: boolean
+}) {
   const [open, setOpen] = useState<null | { mode: 'hover'; rect: DOMRect } | { mode: 'hold' }>(null)
   const box = useRef<HTMLDivElement | null>(null)
   const timer = useRef<number | null>(null)
@@ -41,7 +55,7 @@ export function ImageLoupe({ file, alt, children, style }: { file: string; alt: 
   return (
     <div
       ref={box}
-      style={{ WebkitTouchCallout: 'none', userSelect: 'none', ...style }}
+      style={{ WebkitTouchCallout: 'none', userSelect: 'none', ...(tapOpens ? { cursor: 'zoom-in' } : {}), ...style }}
       onPointerEnter={(e) => {
         if (e.pointerType !== 'mouse') return
         clear()
@@ -86,6 +100,13 @@ export function ImageLoupe({ file, alt, children, style }: { file: string; alt: 
           e.preventDefault()
           e.stopPropagation()
           swallow.current = false
+          return
+        }
+        if (tapOpens) {
+          e.preventDefault()
+          e.stopPropagation()
+          clear()
+          setOpen({ mode: 'hold' })
         }
       }}
       onDoubleClick={(e) => e.stopPropagation()}

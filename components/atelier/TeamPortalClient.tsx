@@ -5,6 +5,7 @@
 // Manages global state: active tab, work drawer, selection, working groups.
 // Heavy tab panels load on demand (next/dynamic). SystemTab + ContactsTab eager-loaded to avoid dev ChunkLoadError on those chunks.
 
+import { afterForeground, holdBackground } from '@/lib/atelier/foreground-gate'
 import { useState, useMemo, useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { WhatsNewDialog } from '@/components/atelier/WhatsNew'
@@ -228,21 +229,19 @@ function junctionFromServerInitial(init: Partial<AtelierJunctionDerived>): Ateli
   }
 }
 
-/** Ring B.2 — fixed bottom bar (narrow only; hidden when WorkDrawer open). Ring A.1: includes new work (+). */
+/** Ring B.2 — fixed bottom bar (narrow only; hidden when WorkDrawer open). New work (+) left the bar (Pem 2026-11-14: "not useful anymore"); it stays in the menu. */
 function MobileActionBar({
   t,
   onCapture,
   onScan,
   onNote,
   onReminders,
-  onNewWork,
 }: {
   t: (k: string) => string
   onCapture: () => void
   onScan: () => void
   onNote: () => void
   onReminders: () => void
-  onNewWork: () => void
 }) {
   return (
     <div
@@ -256,7 +255,7 @@ function MobileActionBar({
         bottom: 0,
         zIndex: PEM_Z_INDEX.mobileActionBar,
         display: 'grid',
-        gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
+        gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
         gap: 4,
         paddingTop: 8,
         paddingLeft: 'max(6px, env(safe-area-inset-left, 0px))',
@@ -306,17 +305,6 @@ function MobileActionBar({
       >
         ⏰
       </button>
-      <button
-        type="button"
-        data-testid="atelier-mobile-bar-new-work"
-        className="btn ghost sm"
-        aria-label={t('ring_b_bar_new_work_aria')}
-        title={t('ring_b_bar_new_work_aria')}
-        onClick={onNewWork}
-        style={{ minHeight: 44, minWidth: 0, fontSize: 18, padding: 4 }}
-      >
-        ➕
-      </button>
     </div>
   )
 }
@@ -357,6 +345,12 @@ export function TeamPortalClient({
   const effectiveRouteTab = shellPersistsAcrossTabs
     ? (routeTabFromUrl ?? routeTab)
     : routeTab
+  // Opened on the Journal: its own read goes first, the shell's background loads wait for it
+  // (`lib/atelier/foreground-gate.ts`, Pem 2026-11-14: "very long to load" on the phone).
+  useState(() => {
+    if (effectiveRouteTab === 'journal') holdBackground()
+    return null
+  })
   const junctionHydratedIdsRef = useRef<Set<number>>(new Set())
   const [junction, setJunction] = useState<AtelierJunctionDerived>(() =>
     junctionFromServerInitial({
@@ -391,6 +385,8 @@ export function TeamPortalClient({
     if (shellPersistsAcrossTabs && postPaintLoadedRef.current) return
     let cancelled = false
     void (async () => {
+      await afterForeground()
+      if (cancelled) return
       const p = await fetchAtelierShellPostPaint()
       if (cancelled) return
       setContacts(p.contacts)
@@ -499,6 +495,8 @@ export function TeamPortalClient({
     void (async () => {
       try {
         const lim = oeuvresPaging.pageSize || 50
+        await afterForeground()
+        if (cancelled) return
         const { rows, nextCursor, hasMore } = await fetchOeuvresInitialKeysetPage(lim)
         if (cancelled) return
         setOeuvres(rows)
@@ -521,6 +519,8 @@ export function TeamPortalClient({
     if (pending.length === 0) return
     let cancelled = false
     void (async () => {
+      await afterForeground()
+      if (cancelled) return
       const res = await fetchAtelierJunctionHydrationForOeuvreIds(pending)
       if (cancelled) return
       if (!res.ok) {
@@ -596,6 +596,7 @@ export function TeamPortalClient({
 
     ;(async () => {
       let cursor: number | null = initialCursor
+      await afterForeground()
       while (cursor != null && !cancelled) {
         try {
           const { rows, nextCursor, hasMore } = await fetchOeuvresKeysetPage(cursor, 500)
@@ -775,7 +776,8 @@ export function TeamPortalClient({
       }
       return v
     }
-    void countTeamActivitySince(readSince(TEAM_ACTIVITY_SEEN_KEY)).then((r) => {
+    const since = readSince(TEAM_ACTIVITY_SEEN_KEY)
+    void afterForeground().then(() => countTeamActivitySince(since)).then((r) => {
       if (cancelled || 'error' in r) return
       setTeamActivityCount(r.journal)
     }).catch(() => { /* badges stay 0 */ })
@@ -789,7 +791,7 @@ export function TeamPortalClient({
     }
     // Opening a Kaizen entry marks it seen (Kaizen.tsx calls markKaizenSeen); the other one refreshes.
     let cancelled = false
-    void kaizenUnseenCounts().then((r) => {
+    void afterForeground().then(() => kaizenUnseenCounts()).then((r) => {
       if (cancelled || 'error' in r) return
       setKaizenUnseen({
         creation: tab === 'kaizen' ? 0 : r.creation,
@@ -910,7 +912,7 @@ export function TeamPortalClient({
   }, [initialIsAdmin])
 
   useEffect(() => {
-    fetchContactConflicts().then(setConflicts).catch((err) => console.error('Contact conflicts:', err))
+    void afterForeground().then(() => fetchContactConflicts()).then(setConflicts).catch((err) => console.error('Contact conflicts:', err))
   }, [])
 
   useEffect(() => {
@@ -1669,7 +1671,6 @@ export function TeamPortalClient({
             onScan={() => void router.push('/atelier/scan')}
             onNote={() => setVoiceNoteSheetOpen(true)}
             onReminders={openFieldReminders}
-            onNewWork={() => void router.push('/atelier/works/new')}
           />
         </BottomStackLayer>
       </BottomStack>

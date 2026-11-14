@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 
 /**
- * Ring A.1 / B.2 — narrow Atelier bottom field bar (+ new work on bar, hidden when drawer open).
+ * Ring B.2 — narrow Atelier bottom field bar (hidden when drawer open). New work left the bar (Pem 2026-11-14).
  * Requires authenticated session — same as other ATELIER_E2E tests.
  */
 test.describe('Atelier mobile action bar', () => {
@@ -12,11 +12,11 @@ test.describe('Atelier mobile action bar', () => {
 
   test.use({ viewport: { width: 375, height: 812 } })
 
-  test('narrow atelier shows five-slot field bar including new work', async ({ page }) => {
+  test('narrow atelier shows the four-slot field bar, without new work', async ({ page }) => {
     await page.goto('/atelier', { waitUntil: 'domcontentloaded' })
     const bar = page.getByTestId('atelier-mobile-action-bar')
     await expect(bar).toBeVisible({ timeout: 45_000 })
-    await expect(page.getByTestId('atelier-mobile-bar-new-work')).toBeVisible()
+    await expect(page.getByTestId('atelier-mobile-bar-new-work')).toHaveCount(0)
   })
 
   test('narrow atelier header exposes hub launchpad', async ({ page }) => {
