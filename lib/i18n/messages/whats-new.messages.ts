@@ -9,6 +9,11 @@ export const whatsNewMessages = defineMessages({
   },
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
+  wn_place_add_from_card_t: { fr: 'Lieu de création : ajouter un lieu depuis la fiche', en: 'Place made: add a place from the work card' },
+  wn_place_add_from_card_d: {
+    fr: 'Le choix « Lieu de création » était vide tant qu’aucun lieu n’avait été enregistré. Il propose maintenant « + Lieu » (et « + Nouveau lieu… » dans la liste) : nom, ville, pays, coordonnées si vous les avez ; le lieu est créé et posé sur l’œuvre en un geste.',
+    en: 'The « Place made » choice was empty until a place had been saved. It now offers « + Place » (and « + New place… » in the list): name, town, country, coordinates if you have them; the place is created and set on the work in one go.',
+  },
   wn_export_panel_light_t: { fr: 'Export : tous les réglages sur un écran, N&B clair', en: 'Export: every setting on one screen, light B&W' },
   wn_export_panel_light_d: {
     fr: 'Les réglages d’export tiennent sur un écran, sans défiler : Page, Champs, Image. La ligne « Cadre » donne la place de l’image sur la page (en cm) et, à côté, les pixels qui la remplissent : changer la résolution ne change que les pixels, jamais le cadre. Nouveau en Couleur : N&B clair, un gris adouci (le noir imprime à 65 %) qui met environ 35 % d’encre en moins sur les images.',

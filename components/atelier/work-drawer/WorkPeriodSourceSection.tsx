@@ -13,6 +13,7 @@ import {
   autoPeriodFor,
   effectivePeriod,
   periodChoiceOf,
+  parsePlaceCoords,
   periodRange,
   placeLabel,
   sortPeriods,
@@ -21,7 +22,7 @@ import {
   type PeriodChoice,
   type WorkWhen,
 } from '@/lib/work-periods'
-import { setWorkPeriod, setWorkPlace, setWorkSourceNote, setWorkSources } from '@/app/atelier/works/period-source-actions'
+import { savePlace, setWorkPeriod, setWorkPlace, setWorkSourceNote, setWorkSources } from '@/app/atelier/works/period-source-actions'
 import { PeriodSourceManager } from '@/components/atelier/PeriodSourceManager'
 
 export function WorkPeriodSourceSection({ oeuvreId, when }: { oeuvreId: number; when: WorkWhen }) {
@@ -41,6 +42,33 @@ export function WorkPeriodSourceSection({ oeuvreId, when }: { oeuvreId: number; 
     ? (data.places.find((p) => p.id === eff.period?.default_place_id) ?? null)
     : null
   const mine = data.sourcesByWork[oeuvreId] ?? []
+  /** New place typed right here (Pem 2026-11-14: the list was empty, the select offered no choice). */
+  const [newPlace, setNewPlace] = useState<{ name: string; town: string; country: string; coords: string } | null>(null)
+
+  async function addPlaceHere() {
+    if (!newPlace || !newPlace.name.trim()) return
+    const coords = parsePlaceCoords(newPlace.coords)
+    if (coords === 'bad') {
+      toast.error(t('ps_err_coords'))
+      return
+    }
+    let addedId: number | null = null
+    setBusy(true)
+    try {
+      const res = await savePlace({ name: newPlace.name, town: newPlace.town, country: newPlace.country, ...coords })
+      if ('error' in res) {
+        toast.error(res.error === 'duplicate' ? t('ps_err_place_duplicate') : `${t('error_prefix')} ${res.error}`)
+        return
+      }
+      patchPeriodSource((d) => ({ ...d, places: [...d.places.filter((x) => x.id !== res.place.id), res.place] }))
+      setNewPlace(null)
+      addedId = res.place.id
+    } finally {
+      setBusy(false)
+    }
+    // The place just added is the one this work was made in.
+    if (addedId != null) await choosePlace(addedId)
+  }
 
   async function choose(next: PeriodChoice) {
     setBusy(true)
@@ -182,22 +210,57 @@ export function WorkPeriodSourceSection({ oeuvreId, when }: { oeuvreId: number; 
 
       <div>
         <div className="t-label" style={{ marginBottom: 6 }}>{t('ps_place_made')}</div>
-        <select
-          className="input"
-          style={{ fontSize: 13, width: '100%', maxWidth: 380, minHeight: 44 }}
-          value={placeId == null ? '' : String(placeId)}
-          disabled={busy}
-          aria-label={t('ps_place_made')}
-          data-testid="work-place-select"
-          onChange={(e) => void choosePlace(e.target.value ? Number(e.target.value) : null)}
-        >
-          <option value="">{t('ps_place_none')}</option>
-          {places.map((p) => (
-            <option key={p.id} value={String(p.id)}>
-              {placeLabel(p)}
-            </option>
-          ))}
-        </select>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <select
+            className="input"
+            style={{ fontSize: 13, flex: '1 1 220px', maxWidth: 380, minHeight: 44 }}
+            value={placeId == null ? '' : String(placeId)}
+            disabled={busy}
+            aria-label={t('ps_place_made')}
+            data-testid="work-place-select"
+            onChange={(e) => {
+              if (e.target.value === '__new') return setNewPlace({ name: '', town: '', country: '', coords: '' })
+              void choosePlace(e.target.value ? Number(e.target.value) : null)
+            }}
+          >
+            <option value="">{t('ps_place_none')}</option>
+            {places.map((p) => (
+              <option key={p.id} value={String(p.id)}>
+                {placeLabel(p)}
+              </option>
+            ))}
+            <option value="__new">{t('ps_place_new_option')}</option>
+          </select>
+          {!newPlace ? (
+            <button type="button" className="btn ghost sm" style={{ minHeight: 44 }} disabled={busy}
+              data-testid="work-place-add" onClick={() => setNewPlace({ name: '', town: '', country: '', coords: '' })}>
+              {t('ps_add_place')}
+            </button>
+          ) : null}
+        </div>
+        {places.length === 0 && !newPlace ? (
+          <p className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx3)', margin: '6px 0 0' }}>{t('ps_place_list_empty')}</p>
+        ) : null}
+        {newPlace ? (
+          <div data-testid="work-place-new" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8, marginTop: 8, maxWidth: 520 }}>
+            <input className="input" autoFocus style={{ minHeight: 44, fontSize: 13 }} placeholder={t('ps_place_name_ph')} aria-label={t('ps_place_name_ph')}
+              value={newPlace.name} onChange={(e) => setNewPlace({ ...newPlace, name: e.target.value })}
+              onKeyDown={(e) => { if (e.key === 'Enter') void addPlaceHere() }} />
+            <input className="input" style={{ minHeight: 44, fontSize: 13 }} placeholder={t('ps_town_ph')} aria-label={t('ps_town_ph')}
+              value={newPlace.town} onChange={(e) => setNewPlace({ ...newPlace, town: e.target.value })} />
+            <input className="input" style={{ minHeight: 44, fontSize: 13 }} placeholder={t('ps_country_ph')} aria-label={t('ps_country_ph')}
+              value={newPlace.country} onChange={(e) => setNewPlace({ ...newPlace, country: e.target.value })} />
+            <input className="input" style={{ minHeight: 44, fontSize: 13 }} placeholder={t('ps_coords_ph')} aria-label={t('ps_coords_ph')}
+              title={t('ps_place_coords_hint')}
+              value={newPlace.coords} onChange={(e) => setNewPlace({ ...newPlace, coords: e.target.value })} />
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="button" className="btn primary sm" style={{ minHeight: 44 }} disabled={busy || !newPlace.name.trim()}
+                data-testid="work-place-new-save" onClick={() => void addPlaceHere()}>{t('ps_place_add_set')}</button>
+              <button type="button" className="btn ghost sm" style={{ minHeight: 44 }} disabled={busy}
+                onClick={() => setNewPlace(null)}>{t('cancel')}</button>
+            </div>
+          </div>
+        ) : null}
         {suggested ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }} title={t('ps_place_from_period_hint')}>
             <span className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx3)' }}>

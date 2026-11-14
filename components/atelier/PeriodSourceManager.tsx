@@ -8,7 +8,7 @@ import { useMemo, useState, type CSSProperties } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { toast } from '@/lib/ui/toast'
 import { isPeriodSourceLoaded, patchPeriodSource, usePeriodSource } from '@/lib/atelier/use-period-source'
-import { effectivePeriod, periodRange, placeLabel, sortPeriods, sortPlaces, workWhen, type Place, type WorkPeriod } from '@/lib/work-periods'
+import { parsePlaceCoords, effectivePeriod, periodRange, placeLabel, sortPeriods, sortPlaces, workWhen, type Place, type WorkPeriod } from '@/lib/work-periods'
 import { deletePeriod, deletePlace, deleteSource, savePeriod, savePlace, saveSource } from '@/app/atelier/works/period-source-actions'
 
 type Draft = { name: string; start: string; end: string; place: string }
@@ -31,17 +31,6 @@ function toPlaceDraft(p: Place): PlaceDraft {
 }
 
 /** "43.29, 5.38" → numbers; '' → nulls; anything else → 'bad'. */
-function parseCoords(s: string): { latitude: number | null; longitude: number | null } | 'bad' {
-  const v = s.trim()
-  if (!v) return { latitude: null, longitude: null }
-  const m = v.match(/^(-?\d+(?:[.,]\d+)?)\s*[,;\s]\s*(-?\d+(?:[.,]\d+)?)$/)
-  if (!m) return 'bad'
-  const latitude = Number(m[1].replace(',', '.'))
-  const longitude = Number(m[2].replace(',', '.'))
-  if (Math.abs(latitude) > 90 || Math.abs(longitude) > 180) return 'bad'
-  return { latitude, longitude }
-}
-
 export function PeriodSourceManager({
   works,
   onClose,
@@ -131,7 +120,7 @@ export function PeriodSourceManager({
   }
 
   async function submitPlace() {
-    const coords = parseCoords(placeDraft.coords)
+    const coords = parsePlaceCoords(placeDraft.coords)
     if (coords === 'bad') return fail('coords')
     setBusy(true)
     try {

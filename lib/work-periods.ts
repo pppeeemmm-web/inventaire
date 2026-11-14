@@ -159,3 +159,15 @@ export function placeLabel(p: Place): string {
   const where = [p.town, p.country].filter((x) => x && x.trim()).join(', ')
   return where ? `${p.name} · ${where}` : p.name
 }
+
+/** "43.29, 5.38" (comma, semicolon or space; decimal comma accepted) → coordinates; '' → none. */
+export function parsePlaceCoords(s: string): { latitude: number | null; longitude: number | null } | 'bad' {
+  const v = s.trim()
+  if (!v) return { latitude: null, longitude: null }
+  const m = v.match(/^(-?\d+(?:[.,]\d+)?)\s*[,;\s]\s*(-?\d+(?:[.,]\d+)?)$/)
+  if (!m) return 'bad'
+  const latitude = Number(m[1].replace(',', '.'))
+  const longitude = Number(m[2].replace(',', '.'))
+  if (Math.abs(latitude) > 90 || Math.abs(longitude) > 180) return 'bad'
+  return { latitude, longitude }
+}

@@ -88,6 +88,16 @@ export const workPeriodsMessages = defineMessages({
   ps_place_none: { fr: '— Non renseigné', en: '— Not set' },
   ps_place_suggest_fmt: { fr: 'La période propose : {name}', en: 'The period suggests: {name}' },
   ps_place_use: { fr: 'Utiliser', en: 'Use it' },
+  ps_place_new_option: { fr: '+ Nouveau lieu…', en: '+ New place…' },
+  ps_place_list_empty: {
+    fr: 'Aucun lieu enregistré pour l’instant : ajoutez-le ici (+ Lieu). La liste complète est dans « Gérer périodes et sources ».',
+    en: 'No place saved yet: add it here (+ Place). The full list is under “Manage periods and sources”.',
+  },
+  ps_place_add_set: { fr: 'Ajouter et choisir', en: 'Add and pick' },
+  ps_place_coords_hint: {
+    fr: 'Facultatif. Avec des coordonnées, le lieu pourra être proposé d’après la position des sessions terrain.',
+    en: 'Optional. With coordinates, the place can be suggested from where field sessions were captured.',
+  },
   ps_place_from_period_hint: {
     fr: 'Une suggestion, jamais posée seule : l’œuvre reste sans lieu tant que personne ne le choisit.',
     en: 'A suggestion, never set by itself: the work stays without a place until someone picks it.',

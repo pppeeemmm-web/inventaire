@@ -25,7 +25,8 @@
 // '3.1.7' (2026-11-14): periods by date + place made per work (A3).
 // '3.1.8' (2026-11-14): export with a live preview + Labels + CSV/XLSX tabs (B3); money signal ■ when net < 0 (D3); Constellation arrows; export images by screen / print, 72 / 150 / 300 dpi, colour / black & white.
 // '3.1.9' (2026-11-14): export options on one screen (no scroll), frame size apart from pixels, light black & white.
-export const WHATS_NEW_RELEASE = '3.1.9'
+// '3.1.10' (2026-11-14): places continued — add a place right from the work card.
+export const WHATS_NEW_RELEASE = '3.1.10'
 
 /** localStorage: release the viewer chose not to see again. sessionStorage: already shown this visit. */
 export const WHATS_NEW_DISMISSED_KEY = 'pem_whats_new_dismissed'
@@ -35,6 +36,7 @@ export type WhatsNewItem = { id: string; day: string }
 
 /** Newest first. Team-facing features only (admin-only tools are in the admin guide). */
 export const WHATS_NEW_ITEMS: readonly WhatsNewItem[] = [
+  { id: 'place_add_from_card', day: '2026-11-14' },
   { id: 'export_panel_light', day: '2026-11-14' },
   { id: 'export_image_quality', day: '2026-11-14' },
   { id: 'constellation_arrows', day: '2026-11-14' },
