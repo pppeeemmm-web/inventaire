@@ -9,15 +9,16 @@ _Open items only, one line each, in order. Details → [`TODO_NOTES.md`](./TODO_
 - [ ] **Handwriting test:** give the folder of ~10 notebook pages.
 - [ ] **R2 access key rotation (O2)** — not done or not recorded; note the date in `CLAUDE.md`.
 - [ ] **Restore drill (O4)** — never run ([`BACKUP_RECOVERY.md`](./BACKUP_RECOVERY.md)).
+- [ ] **Period places:** Waterford / Rebirth and Youth have no place yet (Marseille and Tooreeney do) — give the addresses, or set them in Inventory → Périodes & sources.
 
 ## 2. Rethink — design first (Pem 2026-11-14) → [RETHINK](./RETHINK_2026-11-14.md)
 
 Each one: what the screen is for, a whole-screen design, Pem's say — then build. No tweaks to the current screens meanwhile.
 
-- [ ] R1. **Inputs → outputs.** One clear place for inputs (images / documents with their text, voice notes as the main spoken input, writings) feeding the practice; outputs = works via sessions. Clears the research / concepts / voice notes / « reminders » / AI suggestions / search confusion. Takes in: 1b (one plan for every local "reading" AI — inventory first, widening field OCR needs a GO), 1d (Overview tile « Reminders » opens voice notes, `od_rem_*`), 11c (concepts ↔ catalogue themes — hold until R1), search indexing (whole re-index each time vs one by one — Pem: not now).
+- [ ] R1. **Inputs → outputs.** One clear place for inputs (images / documents with their text, voice notes as the main spoken input, writings) feeding the practice; outputs = works via sessions. Clears the research / concepts / voice notes / « reminders » / AI suggestions / search confusion. Takes in: 1b (one plan for every local "reading" AI — inventory first, widening field OCR needs a GO), 1d (Overview tile « Reminders » opens voice notes, `od_rem_*`), 11c (concepts ↔ catalogue themes — hold until R1), search indexing (whole re-index each time vs one by one — Pem: not now), and the ⌘K proposal after « degas » found nothing: a word match over the works' search text with typo tolerance, so ⌘K answers with the PC off (needs GO; `pg_trgm` not installed).
 - [ ] R2. **Mobile terminal reprioritized** for the day-to-day, not the sales on the welcome page. Takes in: 4b (`/atelier/works/new` keeps its desktop two columns at 375 px; the menu leads there since ➕ left the bar).
 - [ ] R3. **Work drawer reorganized** — a quicker, organized glance at everything. Replaces "empty fields folded" ([NEXT §4](./HANDOFF_2026-11-14_NEXT.md)).
-- [ ] R4. **Timeline + map + previews.** Takes in: timeline map / map « Création » mode (places with coordinates, works by date), `#1234` thumbnail + loupe everywhere ([NEXT §5](./HANDOFF_2026-11-14_NEXT.md)).
+- [ ] R4. **Timeline + map + previews.** Takes in: timeline map / map « Création » mode (places with coordinates, works by date), `#1234` thumbnail + loupe everywhere, and a title next to the number in the AI suggestion rows ([NEXT §5](./HANDOFF_2026-11-14_NEXT.md) lists every plain `#id` link).
 - [ ] R5. **Slideshow** from the selection — step 1 in the browser first; write its plan and get Pem's say before building ([NEXT §6](./HANDOFF_2026-11-14_NEXT.md)).
 
 ## 3. To build — outside the rethink
@@ -25,6 +26,7 @@ Each one: what the screen is for, a whole-screen design, Pem's say — then buil
 Trace
 - [ ] 1. Handwriting batch (after the test above) → [notes](./TODO_NOTES.md#journal-phase-2)
 - [ ] 1c. Voice notes, after the record-first sheet (2026-11-14): a note longer than one upload (~4 MB — auto-stopped today, the owner starts a new one) → browser → R2 direct upload (needs a CORS PUT rule on the public bucket); a note recorded with no network is kept only while the sheet is open → keep it on the phone (IndexedDB) and send later. Build only if Pem hits either ≥2×.
+- [ ] 1f. Bug: the work card's field-session list says « 1 photos » (no singular; `DrawerWorkSessionsSection.tsx`, Pem screenshot 2026-11-14).
 - [ ] 1e. Drop `work_place`: no code reads or writes it since 2026-11-14 (« Historique de création »); its 2 rows are in `work_creation_step`. A one-line SQL — show it, apply with Pem's OK.
 
 Links
@@ -73,6 +75,7 @@ Speed and code health — measure first, change after
 - VAT per sale, resolved from the transaction → [notes](./TODO_NOTES.md#vat)
 - Photothèque (~4 000 photos): a **library** (owner 2026-11-13) — standalone photographs, mostly not tied to a work; Pem 2026-11-14: needs a different system, another time → [notes](./TODO_NOTES.md#phototheque)
 - Writings as an output (Pem 2026-11-14: "we'll leave it for now").
+- A "no year" filter in Inventory to fill dates in batch — only if wanted (641 works have no year; a period can't be inferred without a date, Pem 2026-11-14).
 - Journal entries as Constellation canvas nodes — a big one, not now (owner 2026-11-13) → [notes](./TODO_NOTES.md#journal-phase-2)
 - F7 daily digest email (owner: "not sure"; needs an email service) · F6 feature switches · F8 background job outbox — [archive/STATUS.md](./archive/STATUS.md)
 - Background jobs / queues · broader field OCR · transactional email (explicit no-GO in `CLAUDE.md`)

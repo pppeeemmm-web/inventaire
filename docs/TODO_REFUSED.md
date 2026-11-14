@@ -2,6 +2,10 @@
 
 _Items taken off the list on purpose, with the reason, so they are not proposed again by accident. Reopen only with the owner's GO._
 
+## 2026-11-14
+
+- **"Frame only" in Export** — Pem 2026-11-14: not wanted.
+
 ## 2026-11-13 (owner: "if it hasn't been done, drop it")
 
 - **Mobile rationalization 2.2** — share-triage as canonical photo funnel. Blocked on: 2–3 owner painting sessions with friction notes.

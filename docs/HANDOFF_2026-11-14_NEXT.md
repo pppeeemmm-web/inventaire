@@ -1,19 +1,19 @@
 # Handoff 2026-11-14 — next batch
 
-**State (2026-11-14 end of session):** `origin/main` = `192f11a`, pushed (deploy was still building at hand-off — check `curl -sI https://www.thepemworkshop.com` → `x-build-sha` = `192f11a` before saying deployed). Live in that push: place added from the card + a work's place follows its period + Inventory place line / filter (What's new 3.1.10), place addresses + « Trouver les coordonnées » (DB part applied), voice notes record first (3.1.11, other session — not tried on a real iPhone mic). The 2026-11-13 batch is archived: [`archive/HANDOFF_2026-11-13_NEXT.md`](./archive/HANDOFF_2026-11-13_NEXT.md), [`archive/HANDOFF_2026-11-13_DESIGN_BUILD.md`](./archive/HANDOFF_2026-11-13_DESIGN_BUILD.md).
+**State (2026-11-14, verified against live code + git 2026-11-14, cross-checked with [`TODO.md`](./TODO.md)):** `origin/main` = `0e7a160` (journal phone speed). Committed locally, **not pushed**: `85b450c` (item 2: waiting photos + production dates, What's new 3.1.14; its SQL is already applied live), `b6a0a20` (Pem's [rethink](./RETHINK_2026-11-14.md)), `e5931c6` + this cross-check (TODO tidy). Deploy of the pushed commits not confirmed (Pem: no deploy checks). The 2026-11-13 batch is archived: [`archive/HANDOFF_2026-11-13_NEXT.md`](./archive/HANDOFF_2026-11-13_NEXT.md), [`archive/HANDOFF_2026-11-13_DESIGN_BUILD.md`](./archive/HANDOFF_2026-11-13_DESIGN_BUILD.md).
 
-**Next, in order:** (a) done by Pem 2026-11-14 — 8 places with coordinates, Marseille and Tooreeney periods have their place (Waterford / Rebirth and Youth still without); (b) item 1: place suggested from the field session built 2026-11-14 (pushed, 3.1.12), then replaced by the « Historique de création » (SQL applied, app pushed, 3.1.13); still open: the timeline map (design first: "where was I making what, when"; `/maps` shows contacts today); (c) items 2 → 4 below. Side sessions writing code must use a worktree (CLAUDE.md): sharing this checkout blocked both commits on 2026-11-14 until one stashed.
+**Next:** Pem's [rethink](./RETHINK_2026-11-14.md) comes first — TODO §2 R1–R5, design whole screens before building. Below, items 4–6 now live there (4 → R3 work drawer, 5 → R4 previews, 6 → R5 slideshow); item 1's timeline map → R4; item 1's `work_place` drop → TODO 1e. Places: Marseille and Tooreeney periods have their place; Waterford / Rebirth and Youth still without (TODO §1). Side sessions writing code must use a worktree (CLAUDE.md): sharing this checkout blocked both commits on 2026-11-14 until one stashed.
 
 ## Order (Pem 2026-11-14)
 
-1. **Places, continued**
-2. **Staged photos warning + production dates** (TODO "To build" 2–4)
-3. **Measure speed** (read only)
-4. **Work card: empty fields folded** — Pem 2026-11-14, placed here pending his say
-5. **`#1234` previews everywhere + larger view** — Pem 2026-11-14, placed here pending his say
-6. **Slideshow from the selection → PowerPoint / video / Reels** — Pem 2026-11-14, idea, design first (see §6)
+1. **Places, continued** — done and pushed, except the timeline map (→ TODO R4) and dropping `work_place` (→ TODO 1e)
+2. **Staged photos warning + production dates** — built 2026-11-14, committed locally (`85b450c`), live checks in TODO §4
+3. **Measure speed** (read only) — Journal measured and fixed (`0e7a160`); the rest → TODO 16b
+4. **Work card: empty fields folded** → replaced by TODO R3 (work drawer reorganized)
+5. **`#1234` previews everywhere + larger view** → TODO R4
+6. **Slideshow from the selection → PowerPoint / video / Reels** → TODO R5 (plan step 1 first, see §6)
 
-Dropped: "Frame only" in Export (Pem 2026-11-14 — not wanted).
+Dropped: "Frame only" in Export (Pem 2026-11-14 — not wanted; in [`TODO_REFUSED.md`](./TODO_REFUSED.md)).
 
 ## 1. Places, continued
 
