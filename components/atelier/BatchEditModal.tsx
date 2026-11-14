@@ -214,7 +214,7 @@ export function BatchEditModal({
   add(support !== '', 'support', t('support'), optLabel(sortedSupports, support, x => x.SupportID, x => x?.Support ?? null))
   add(format !== '', 'format', t('bm_format'), optLabel(sortedFormats, format, x => x.FormatID, x => x?.Format ?? null))
   add(period !== '', 'period', t('ps_period'), periodLabel)
-  add(place !== '', 'place', t('ps_place_made'), place === 'none' ? t('remove') : places.find(p => String(p.id) === place)?.name ?? place)
+  add(place !== '', 'place', t('ps_place_made'), place === 'none' ? t('ps_place_back_to_period') : places.find(p => String(p.id) === place)?.name ?? place)
   add(prix !== '', 'price', t('price'), `${prix} €`)
   add(discount !== '', 'discount', t('discount'), `${discount} %`)
   add(locDetail !== '', 'loc', t('localisationDetail'), locDetail.trim() || t('remove'))
@@ -356,7 +356,7 @@ export function BatchEditModal({
       </Row>
       <Row {...rowProps} label={t('ps_place_made')} active={place !== ''} onReset={() => setPlace('')} htmlFor="bm-place">
         <Select narrow={narrow} id="bm-place" testId="batch-place" value={place} onChange={setPlace}>
-          <option value="none">{t('remove')}</option>
+          <option value="none">{t('ps_place_back_to_period')}</option>
           {places.map(p => <option key={p.id} value={p.id}>{placeLabel(p)}</option>)}
         </Select>
       </Row>

@@ -48,7 +48,7 @@ import { PeriodSourceManager } from '@/components/atelier/PeriodSourceManager'
 import { patchPeriodSource, usePeriodSource } from '@/lib/atelier/use-period-source'
 import { addSourceToWorks } from '@/app/atelier/works/period-source-actions'
 import { ReportLinkButton } from '@/components/atelier/ReportLinkButton'
-import { effectivePeriod, workWhen, type WorkPeriod } from '@/lib/work-periods'
+import { effectivePeriod, effectivePlace, placeLabel, sortPlaces, workWhen, type EffectivePlace, type WorkPeriod } from '@/lib/work-periods'
 
 // ── Types ───────────────────────────────────────────────────────────
 
@@ -403,12 +403,19 @@ export function Inventory({
   /** 'all' | 'none' | period id; same for sources. */
   const [filterPeriod, setFilterPeriod] = useState('all')
   const [filterSource, setFilterSource] = useState('all')
+  /** 'all' | 'none' | place id — the work's place, else its period's (Pem 2026-11-14). */
+  const [filterPlace, setFilterPlace] = useState('all')
   const [showPeriods, setShowPeriods] = useState(false)
   const periodSource = usePeriodSource()
   const periodOf = useCallback(
     (o: Oeuvre): WorkPeriod | null => effectivePeriod(o.OeuvreID, workWhen(o), periodSource).period,
     [periodSource],
   )
+  const placeOf = useCallback(
+    (o: Oeuvre): EffectivePlace => effectivePlace(o.OeuvreID, workWhen(o), periodSource),
+    [periodSource],
+  )
+  const sortedPlaces = useMemo(() => sortPlaces(periodSource.places), [periodSource.places])
   const sourceNameMap = useMemo(
     () => Object.fromEntries(periodSource.sources.map((x) => [x.id, x.name])) as Record<number, string>,
     [periodSource.sources],
@@ -683,9 +690,11 @@ export function Inventory({
         const themeNames = (oeuvreThemeMap.get(o.OeuvreID) ?? []).map(tid => thM[tid] ?? '').join(' ')
         const groupNames = (oeuvreGroupMap.get(o.OeuvreID) ?? []).map(gid => groupNameMap[gid] ?? '').join(' ')
         const periodName = periodOf(o)?.name ?? ''
+        const pl = placeOf(o).place
+        const placeName = pl ? `${pl.name} ${pl.town ?? ''}` : ''
         const sourceNames = (periodSource.sourcesByWork[o.OeuvreID] ?? []).map((id) => sourceNameMap[id] ?? '').join(' ')
         const sourceNotes = Object.values(periodSource.sourceNotes[o.OeuvreID] ?? {}).join(' ')
-        const bag = `${o.Titre ?? ''} #${o.OeuvreID} ${o.Technique != null ? (tM[o.Technique] ?? '') : ''} ${o.Support != null ? (sM[o.Support] ?? '') : ''} ${themeNames} ${groupNames} ${periodName} ${sourceNames} ${sourceNotes}`.toLowerCase()
+        const bag = `${o.Titre ?? ''} #${o.OeuvreID} ${o.Technique != null ? (tM[o.Technique] ?? '') : ''} ${o.Support != null ? (sM[o.Support] ?? '') : ''} ${themeNames} ${groupNames} ${periodName} ${placeName} ${sourceNames} ${sourceNotes}`.toLowerCase()
         if (!bag.includes(sq)) return false
       }
       if (tech !== 'all' && String(o.Technique ?? '') !== tech) return false
@@ -708,6 +717,12 @@ export function Inventory({
       if (filterPeriod !== 'all') {
         const pid = periodOf(o)?.id ?? null
         if (filterPeriod === 'none' ? pid != null : pid !== Number(filterPeriod)) return false
+      }
+
+      // Place filter (own place, else the period's)
+      if (filterPlace !== 'all') {
+        const plid = placeOf(o).place?.id ?? null
+        if (filterPlace === 'none' ? plid != null : plid !== Number(filterPlace)) return false
       }
 
       // Source filter
@@ -801,7 +816,7 @@ export function Inventory({
       return 0
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [oeuvres, q, tech, support, status, filterTheme, filterGroup, filterPeriod, filterSource, periodOf, periodSource, sourceNameMap, criteria, oeuvreThemeMap, oeuvreGroupMap, thM, groupNameMap, tM, sM, statusLabelMap, allFields, sortKey, sortDir, cM, locMap, addrMap, colourScores, colourRank])
+  }, [oeuvres, q, tech, support, status, filterTheme, filterGroup, filterPeriod, filterSource, filterPlace, periodOf, placeOf, periodSource, sourceNameMap, criteria, oeuvreThemeMap, oeuvreGroupMap, thM, groupNameMap, tM, sM, statusLabelMap, allFields, sortKey, sortDir, cM, locMap, addrMap, colourScores, colourRank])
 
   const invPivotDims: Dim<Oeuvre>[] = useMemo(
     () => [
@@ -854,6 +869,11 @@ export function Inventory({
         get: (o) => periodOf(o)?.name ?? '—',
       },
       {
+        id: 'place',
+        label: t('ps_place_made'),
+        get: (o) => { const pl = placeOf(o).place; return pl ? pl.name : '—' },
+      },
+      {
         id: 'source',
         label: t('ps_source'),
         get: (o) =>
@@ -864,7 +884,7 @@ export function Inventory({
             .join(', ') || '—',
       },
     ],
-    [t, tM, thM, groupNameMap, oeuvreThemeMap, oeuvreGroupMap, cM, locMap, addrMap, statusLabelMap, periodOf, periodSource, sourceNameMap],
+    [t, tM, thM, groupNameMap, oeuvreThemeMap, oeuvreGroupMap, cM, locMap, addrMap, statusLabelMap, periodOf, placeOf, periodSource, sourceNameMap],
   )
 
   const invPivotValues: Agg<Oeuvre>[] = useMemo(
@@ -919,7 +939,7 @@ export function Inventory({
   // passed to InvList for range selection
 
   const activeFilterCount =
-    [filterTheme, filterGroup, filterPeriod, filterSource].filter((v) => v !== 'all').length +
+    [filterTheme, filterGroup, filterPeriod, filterSource, filterPlace].filter((v) => v !== 'all').length +
     criteria.length +
     (isColourQueryActive(colourQ) ? 1 : 0)
 
@@ -1004,6 +1024,17 @@ export function Inventory({
             ['all', t('ps_filter_all_periods')],
             ['none', t('ps_filter_no_period')],
             ...sortedPeriods.map((x) => [String(x.id), x.name] as [string, string]),
+          ]}
+        />
+
+        {/* Place (own, else the period's) */}
+        <InvSelect
+          value={filterPlace} onChange={setFilterPlace}
+          label={t('ps_place_made')}
+          options={[
+            ['all', t('ps_filter_all_places')],
+            ['none', t('ps_filter_no_place')],
+            ...sortedPlaces.map((x) => [String(x.id), x.name] as [string, string]),
           ]}
         />
 
@@ -1219,6 +1250,7 @@ export function Inventory({
               setFilterTheme('all')
               setFilterGroup('all')
               setFilterPeriod('all')
+              setFilterPlace('all')
               setFilterSource('all')
               setCriteria([])
             }}
@@ -1365,6 +1397,7 @@ export function Inventory({
               onOpen={onOpen}
               onLoadMore={onLoadMore}
               periodName={(o) => periodOf(o)?.name ?? ''}
+              placeOf={placeOf}
             />
             {showPreview && !narrow && (
               <WorkDrawer
@@ -1634,7 +1667,7 @@ function InvSelect({
 function InvList({
   rows, tM, sM, cM, locMap, addrMap, statusLabelMap, embeddingStatusMap, focused, setFocused, selection, setSelection,
   sortKey, sortDir, toggleSort,
-  onImageDoubleClick, onOpen, publicMode, onLoadMore, periodName,
+  onImageDoubleClick, onOpen, publicMode, onLoadMore, periodName, placeOf,
 }: {
   rows:           Oeuvre[]
   tM:             Record<number, string>
@@ -1656,6 +1689,8 @@ function InvList({
   publicMode?:    boolean
   onLoadMore?:    () => void
   periodName?:    (o: Oeuvre) => string
+  /** Second line of the period cell: the place (greyed when it comes from the period). */
+  placeOf?:       (o: Oeuvre) => EffectivePlace
 }) {
   const { t, lang } = useI18n()
   const lastSelIdxRef = useRef<number | null>(null)
@@ -2029,7 +2064,21 @@ function InvList({
                       <td style={{ padding: '0 4px', opacity: 0.8, ...cellDivider, verticalAlign: 'middle' }}>{yearOf(o.Année) ?? '—'}</td>
                     </>
                   )}
-                  <td title={periodName?.(o) || undefined} style={{ padding: '0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: 0.8, fontSize: 12, ...cellDivider, verticalAlign: 'middle' }}>{periodName?.(o) || '—'}</td>
+                  {(() => {
+                    const pn = periodName?.(o) || ''
+                    const ep = placeOf?.(o)
+                    const pl = ep?.place ? placeLabel(ep.place) : ''
+                    const tip = [pn, pl && (ep?.fromPeriod ? `${pl} (${t('ps_place_from_period_line')})` : pl)].filter(Boolean).join(' — ')
+                    const one: React.CSSProperties = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
+                    return (
+                      <td title={tip || undefined} style={{ padding: '0 4px', overflow: 'hidden', fontSize: 12, ...cellDivider, verticalAlign: 'middle' }}>
+                        <div style={{ ...one, opacity: 0.8 }}>{pn || '—'}</div>
+                        {ep?.place ? (
+                          <div data-testid="inv-place" style={{ ...one, fontSize: 11, color: 'var(--tx3)', fontStyle: ep.fromPeriod ? 'italic' : 'normal' }}>{ep.place.name}</div>
+                        ) : null}
+                      </td>
+                    )
+                  })()}
                   <td title={o.Prix ? formatPriceFull(Number(o.Prix), lang) : undefined} style={{ padding: '0 6px 0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'right', fontVariantNumeric: 'tabular-nums', opacity: 0.8, ...cellDivider, verticalAlign: 'middle' }}>{o.Prix ? formatPriceCompact(Number(o.Prix), lang) : '—'}</td>
                   {(() => {
                     const level = o.anonymity_level ?? 0

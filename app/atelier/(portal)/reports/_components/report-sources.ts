@@ -11,7 +11,7 @@ import { yearOf } from '@/lib/data'
 import type { ReportConfig, ReportField } from '@/lib/reports/engine'
 import { REPORT_COLUMN_HEADER_KEY, formatReportCell, type ReportMaps } from '@/lib/reports/works-table'
 import type { ReportSource } from '@/lib/reports/saved-report'
-import { effectivePeriod, placeLabel, workWhen, type PeriodSourceData } from '@/lib/work-periods'
+import { effectivePeriod, effectivePlace, placeLabel, workWhen, type PeriodSourceData } from '@/lib/work-periods'
 import type { DescriptionRating } from '@/app/atelier/works/description-actions'
 
 export type SaleRow = { o: Oeuvre; order: SaleOrderRow | null }
@@ -123,13 +123,12 @@ function workFields(c: SourceCtx): ReportField<Oeuvre>[] {
       value: (o) => effectivePeriod(o.OeuvreID, workWhen(o), c.periodSource).period?.name ?? null,
     },
     {
-      // A3: the place the work was made (empty = not set; a period's suggestion is not counted).
+      // The place the work was made: its own, else its period's place (Pem 2026-11-14).
       id: 'place_made',
       label: t('ps_place_made'),
       kind: 'enum',
       value: (o) => {
-        const pid = c.periodSource.workPlaces[o.OeuvreID]
-        const pl = pid != null ? c.periodSource.places.find((x) => x.id === pid) : undefined
+        const pl = effectivePlace(o.OeuvreID, workWhen(o), c.periodSource).place
         return pl ? placeLabel(pl) : null
       },
     },

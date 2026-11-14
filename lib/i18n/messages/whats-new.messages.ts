@@ -9,6 +9,11 @@ export const whatsNewMessages = defineMessages({
   },
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
+  wn_place_from_period_t: { fr: 'Le lieu suit la période (l’atelier du moment)', en: 'The place follows the period (the atelier of the time)' },
+  wn_place_from_period_d: {
+    fr: 'Donnez un lieu à une période (Gérer périodes et sources → Lieu de la période) : toutes ses œuvres sans lieu propre y sont rangées, en gris « d’après la période ». Choisir un autre lieu sur la fiche sort l’œuvre de la règle ; « Revenir au lieu de la période » l’y remet (aussi en Modifier la sélection). Dans l’Inventaire, le lieu s’affiche sous la période, avec un filtre Lieu ; Rapports le lit aussi.',
+    en: 'Give a period a place (Manage periods and sources → Period’s place): all its works without a place of their own sit there, greyed « from the period ». Picking another place on the card takes the work out of the rule; « Back to the period’s place » puts it back (also in Modify selection). In Inventory the place shows under the period, with a Place filter; Reports read it too.',
+  },
   wn_place_add_from_card_t: { fr: 'Lieu de création : ajouter un lieu depuis la fiche', en: 'Place made: add a place from the work card' },
   wn_place_add_from_card_d: {
     fr: 'Le choix « Lieu de création » était vide tant qu’aucun lieu n’avait été enregistré. Il propose maintenant « + Lieu » (et « + Nouveau lieu… » dans la liste) : nom, ville, pays, coordonnées si vous les avez ; le lieu est créé et posé sur l’œuvre en un geste.',

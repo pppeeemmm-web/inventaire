@@ -14,7 +14,7 @@ export type WorkPeriod = {
   end_year: number | null
   start_on: string
   end_on: string | null
-  /** Place the period suggests for its works — a suggestion, never set by itself. */
+  /** The period's place (its atelier): works without a place of their own are read there (`effectivePlace`). */
   default_place_id: number | null
 }
 export type WorkSource = { id: number; name: string }
@@ -122,6 +122,21 @@ export function effectivePeriod(oeuvreId: number, when: WorkWhen | number | null
     return { period: pid == null ? null : (data.periods.find((p) => p.id === pid) ?? null), overridden: true }
   }
   return { period: autoPeriodFor(when, data.periods), overridden: false }
+}
+
+/**
+ * Place a work was made (Pem 2026-11-14: "by default it would be set there"): the place set on the
+ * work, else the place of its period (the atelier of that time) — read like the automatic period,
+ * never written. `fromPeriod` marks the inferred case (shown greyed).
+ */
+export type EffectivePlace = { place: Place | null; fromPeriod: boolean }
+
+export function effectivePlace(oeuvreId: number, when: WorkWhen | number | null, data: PeriodSourceData): EffectivePlace {
+  const own = data.workPlaces[oeuvreId]
+  if (own != null) return { place: data.places.find((p) => p.id === own) ?? null, fromPeriod: false }
+  const period = effectivePeriod(oeuvreId, when, data).period
+  const pid = period?.default_place_id ?? null
+  return pid == null ? { place: null, fromPeriod: false } : { place: data.places.find((p) => p.id === pid) ?? null, fromPeriod: true }
 }
 
 export function periodChoiceOf(oeuvreId: number, data: PeriodSourceData): PeriodChoice {

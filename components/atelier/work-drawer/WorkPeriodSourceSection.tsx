@@ -12,6 +12,7 @@ import { isPeriodSourceLoaded, patchPeriodSource, usePeriodSource } from '@/lib/
 import {
   autoPeriodFor,
   effectivePeriod,
+  effectivePlace,
   periodChoiceOf,
   parsePlaceCoords,
   periodRange,
@@ -38,9 +39,8 @@ export function WorkPeriodSourceSection({ oeuvreId, when }: { oeuvreId: number; 
   const eff = effectivePeriod(oeuvreId, when, data)
   const places = useMemo(() => sortPlaces(data.places), [data.places])
   const placeId = data.workPlaces[oeuvreId] ?? null
-  const suggested = placeId == null && eff.period?.default_place_id != null
-    ? (data.places.find((p) => p.id === eff.period?.default_place_id) ?? null)
-    : null
+  /** Without a place of its own, the work is read at its period's place (Pem 2026-11-14). */
+  const periodPlace = placeId == null ? effectivePlace(oeuvreId, when, data) : null
   const mine = data.sourcesByWork[oeuvreId] ?? []
   /** New place typed right here (Pem 2026-11-14: the list was empty, the select offered no choice). */
   const [newPlace, setNewPlace] = useState<{ name: string; town: string; country: string; coords: string } | null>(null)
@@ -223,7 +223,11 @@ export function WorkPeriodSourceSection({ oeuvreId, when }: { oeuvreId: number; 
               void choosePlace(e.target.value ? Number(e.target.value) : null)
             }}
           >
-            <option value="">{t('ps_place_none')}</option>
+            <option value="">
+              {periodPlace?.place
+                ? t('ps_place_auto_fmt').replace('{name}', placeLabel(periodPlace.place))
+                : t('ps_place_auto_none')}
+            </option>
             {places.map((p) => (
               <option key={p.id} value={String(p.id)}>
                 {placeLabel(p)}
@@ -261,21 +265,9 @@ export function WorkPeriodSourceSection({ oeuvreId, when }: { oeuvreId: number; 
             </div>
           </div>
         ) : null}
-        {suggested ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }} title={t('ps_place_from_period_hint')}>
-            <span className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx3)' }}>
-              {t('ps_place_suggest_fmt').replace('{name}', suggested.name)}
-            </span>
-            <button
-              type="button"
-              className="btn ghost sm"
-              style={{ minHeight: 44 }}
-              disabled={busy}
-              data-testid="work-place-use-suggestion"
-              onClick={() => void choosePlace(suggested.id)}
-            >
-              {t('ps_place_use')}
-            </button>
+        {placeId == null && periodPlace?.place ? (
+          <div className="t-mono-sm" style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 6 }} title={t('ps_place_from_period_hint')}>
+            {t('ps_place_from_period_line')}
           </div>
         ) : null}
       </div>
