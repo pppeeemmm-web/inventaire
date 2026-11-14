@@ -42,10 +42,11 @@ Music; a public / shared link (that is the collector share kit, TODO 11b); editi
 
 ## Step 2 — export (Pem 2026-11-15: "only GIF is fine, I can use the frames for video later"; GIF also replaces the Premiere / Photoshop base)
 
-- **Output:** an animated **GIF** of the slideshow (same order, timing, transitions, caption, background), made in the browser — no server job, no background queue.
+- **Output:** an animated **GIF** of the slideshow (same order, caption, background), made in the browser — no server job, no background queue. **No transitions in the GIF** (Pem 2026-11-15: "remove fades"): one frame per slide, held for a **pause time** set in the export (default = the slideshow's seconds per slide). Fades stay in the on-screen slideshow.
 - **Frame size** (Pem: "offer frame sizes"): 1:1 (1080 × 1080), 4:5 (1080 × 1350, Instagram portrait), 9:16 (1080 × 1920, Reels / stories), 16:9 (1920 × 1080), or custom; plus a smaller « web » size of each.
 - **Image in the frame:** **contain** (the whole picture, the background around it — the slideshow's own rule) or **fill** (the picture covers the whole frame, the edges cut off) — Pem's choice per export. For 9:16, the caption stays clear of Instagram's own top and bottom bands.
-- **Honest limits of GIF, to decide with Pem when building:** 256 colours per frame (painted gradients band or speckle); large frames × many slides = big files (a 1080 × 1920 GIF of 20 slides with fades can pass 50 MB); fades add many in-between frames. If the frames are meant for video later, a ZIP of the same frames as full-colour JPEG / PNG (numbered, same size) keeps them clean — offered next to the GIF, same settings.
+- **GIF limits, accepted by Pem ("ok for now"):** 256 colours per frame (painted gradients band or speckle). With one frame per slide the file stays modest (roughly a few MB per 10 slides at 1080 × 1920; measured when built).
+- **Frames ZIP (Pem: "offer that"):** next to the GIF, the same frames as numbered full-colour JPEG or PNG, same size and settings — for a video later.
 - PowerPoint, MP4 and Reels posting: not asked for now (Pem kept GIF only).
 
 ## Work, once agreed
