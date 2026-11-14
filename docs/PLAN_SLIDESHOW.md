@@ -1,6 +1,6 @@
 # Plan — Slideshow, step 1: in the browser (TODO R5)
 
-Pem 2026-11-14: "the slideshow will be a good addition". Brief + Pem's first answers: [HANDOFF NEXT §6](./HANDOFF_2026-11-14_NEXT.md). This is the plan for **step 1 only** (no file export, no sound). **Not built. Pem answered the questions 2026-11-14 (end of this doc); one point still open: where saved slideshows are listed.** Checked against live code 2026-11-14.
+Pem 2026-11-14: "the slideshow will be a good addition". Brief + Pem's first answers: [HANDOFF NEXT §6](./HANDOFF_2026-11-14_NEXT.md). This is the plan for **step 1 only** (no file export, no sound). **Not built. All questions answered by Pem 2026-11-14/15 (end of this doc) — ready to build step 1 on his GO.** Checked against live code 2026-11-14.
 
 ## What it is for
 
@@ -32,13 +32,21 @@ Show a selection of works one by one, full screen, well framed — to look at a 
 ## Settings and saving
 
 - **Not saved:** the last settings used are remembered on this device (background, timing, transition, caption choices), so a quick slideshow needs no setup.
-- **Saved slideshow:** « Enregistrer » → a name; stores the works in order + all settings. Reopen, rename, delete; change the order by dragging in a strip of thumbnails (settings panel).
+- **Saved slideshow:** « Enregistrer » → a name; stores the works in order + all settings. Reopen, rename, delete; change the order by dragging in a strip of thumbnails (settings panel) — made for short slideshows (Pem: "not beyond 20"); a longer one keeps the selection order, or plays in random order.
 - **Storage (proposed):** a new team table `slideshow` — `id`, `name`, `work_ids` (ordered list), `settings` (background, timing, transition, caption), `created_by`, `created_at`, `updated_at`; team RLS like the other team tables — **shared with the whole team** (Pem), no public access. A slideshow that points to a deleted work just skips it.
 - **Size:** no limit needed. A saved slideshow stores only the work numbers (1 000 works ≈ a few kB), and the player only ever loads the current image and the next two, so a long slideshow plays as smoothly as a short one. The only practical limit is the thumbnail strip used to reorder — long lists scroll.
 
 ## Out of step 1
 
-PowerPoint, MP4 / GIF, Premiere / Photoshop base, Reels (steps 2–5, each its own decision); music; a public / shared link (that is the collector share kit, TODO 11b); editing work data from the slideshow.
+Music; a public / shared link (that is the collector share kit, TODO 11b); editing work data from the slideshow.
+
+## Step 2 — export (Pem 2026-11-15: "only GIF is fine, I can use the frames for video later"; GIF also replaces the Premiere / Photoshop base)
+
+- **Output:** an animated **GIF** of the slideshow (same order, timing, transitions, caption, background), made in the browser — no server job, no background queue.
+- **Frame size** (Pem: "offer frame sizes"): 1:1 (1080 × 1080), 4:5 (1080 × 1350, Instagram portrait), 9:16 (1080 × 1920, Reels / stories), 16:9 (1920 × 1080), or custom; plus a smaller « web » size of each.
+- **Image in the frame:** **contain** (the whole picture, the background around it — the slideshow's own rule) or **fill** (the picture covers the whole frame, the edges cut off) — Pem's choice per export. For 9:16, the caption stays clear of Instagram's own top and bottom bands.
+- **Honest limits of GIF, to decide with Pem when building:** 256 colours per frame (painted gradients band or speckle); large frames × many slides = big files (a 1080 × 1920 GIF of 20 slides with fades can pass 50 MB); fades add many in-between frames. If the frames are meant for video later, a ZIP of the same frames as full-colour JPEG / PNG (numbered, same size) keeps them clean — offered next to the GIF, same settings.
+- PowerPoint, MP4 and Reels posting: not asked for now (Pem kept GIF only).
 
 ## Work, once agreed
 
@@ -50,9 +58,9 @@ PowerPoint, MP4 / GIF, Premiere / Photoshop base, Reels (steps 2–5, each its o
 
 ## Pem's answers (2026-11-14)
 
-1. Caption: drag it anywhere — yes. 2. Cut / fade / slide: enough. 3. Saved slideshows: shared with the team. 4. Where the list goes: not clear (see below). 5. Size: "is there a technical limit?" — no (above). 6. One caption setting for the whole slideshow. Added: **random order**.
+1. Caption: drag it anywhere — yes. 2. Cut / fade / slide: enough. 3. Saved slideshows: shared with the team. 4. Where the list goes: « Diaporamas » in the Catalogue menu (Pem: "ok"). 5. Size: "is there a technical limit?" — no (above). 6. One caption setting for the whole slideshow. Added: **random order**.
 
-**Still open — where to find a saved slideshow again.** The selection bar only appears once works are selected, so it cannot be the only door. Proposed: a « Diaporamas » entry in the Catalogue menu (with Inventaire, Rapports, Thèmes, Constellation) that lists the saved ones; « Diaporama » in the selection bar starts a new one.
+**Where to find a saved slideshow (agreed 2026-11-15):** a « Diaporamas » entry in the Catalogue menu (with Inventaire, Rapports, Thèmes, Constellation) lists the saved ones; « Diaporama » in the selection bar starts a new one. Reordering by thumbnails: short slideshows only (Pem: "not beyond 20"). Export: GIF only, with frame sizes and contain / fill (step 2 above).
 
 ## Questions (as first asked)
 
