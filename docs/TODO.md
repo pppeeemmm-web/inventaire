@@ -9,6 +9,7 @@ _Open items only, one line each, in order. Details → [`TODO_NOTES.md`](./TODO_
 - [ ] **Handwriting test:** give the folder of ~10 notebook pages.
 - [ ] **R2 access key rotation (O2)** — not done or not recorded; note the date in `CLAUDE.md`.
 - [ ] **Restore drill (O4)** — never run ([`BACKUP_RECOVERY.md`](./BACKUP_RECOVERY.md)).
+- [ ] **Delete #2397** from its card (« Supprimer », admin): a duplicate of #2398 (same session line, same photo; the photo goes to the recycle bin for 90 days).
 - [ ] **Period places:** Waterford / Rebirth and Youth have no place yet (Marseille and Tooreeney do) — give the addresses, or set them in Inventory → Périodes & sources.
 
 ## 2. Rethink — design first (Pem 2026-11-14) → [RETHINK](./RETHINK_2026-11-14.md)

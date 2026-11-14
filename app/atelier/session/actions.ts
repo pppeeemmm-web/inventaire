@@ -1165,9 +1165,14 @@ export async function updateWorkSessionItemMetadata(
   const idx = findItemIndex(payload, itemId)
   if (idx < 0) return { error: 'Entrée introuvable' }
   const current = payload.items[idx]
+  // A line whose work was already created / received photos keeps it: switching it back to « new »
+  // would unlink the work and the next apply would create a duplicate (#2397 / #2398, 2026-09-28).
+  const workMade = current.status === 'applied' || (current.applied_shot_count ?? 0) > 0
+  const modeChange =
+    patch.mode && patch.mode !== current.mode && !(patch.mode === 'new' && workMade) ? patch.mode : null
   payload.items[idx] = touchItem({
     ...current,
-    ...(patch.mode ? { mode: patch.mode, oeuvre_id: patch.mode === 'new' ? null : current.oeuvre_id } : {}),
+    ...(modeChange ? { mode: modeChange, oeuvre_id: modeChange === 'new' ? null : current.oeuvre_id } : {}),
     ...(typeof patch.notes === 'string' ? { notes: patch.notes } : {}),
     ...(typeof patch.title_hint === 'string' ? { title_hint: patch.title_hint } : {}),
     ...(typeof patch.width_cm === 'string' ? { width_cm: patch.width_cm } : {}),

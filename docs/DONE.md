@@ -2,6 +2,11 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-14 — duplicate work from one session line (#2397 / #2398) + comments left in History
+
+- Cause: the phone's field save (`saveItem`, `SessionNewClient.tsx`) re-sent the line's stale « new work » mode after an apply had created the work; `updateWorkSessionItemMetadata` then unlinked it, and the next save created a second work (#2397 from the half-typed title at 22:03, #2398 at 22:07, same photo). Fixed: the field save no longer sends the mode (only « changeItemMode » does), and the server refuses to switch a line back to « new » once its work was made (applied / photos applied). Only pair of works sharing a photo in the catalogue (checked 2026-11-14). #2397 left for Pem to delete from its card (TODO §1).
+- Comments copied into History cleaned with Pem's OK on #2398, #2403, #2404, #2406 (History = « [date] Session terrain » only; comments untouched; old text in `oeuvre_versions`). #2343 (test) and #2397 (duplicate) left.
+
 ## 2026-11-14 — phone-recorded works had no period (Pem, Inventory screenshot)
 
 - 46 works created from field sessions before 2026-11-08 (#2345–#2398, sessions 2026-05-31 → 2026-09-28) carried no date (no « Année », no production dates; the day only as text in Historique), so no period could be read. Data fix `supabase/sql/backfill_session_work_dates.sql` applied with Pem's OK: « Année » = 2026 (year) + one « Historique de création » line « Travaillée » dated the first session day, linked to it. Checked: 46/46 read Marseille (DB search text + Inventory #2350, #2355). Not covered: #2343, #2346, #2371, #2397 (History says « Session terrain » but no session links them; #2343 is a test). Re-embedding for search waits for the PC worker. Still possible: a session work with no « Nouvelle / Ancienne » choice gets no date (→ TODO R2).

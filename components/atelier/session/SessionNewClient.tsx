@@ -329,8 +329,10 @@ export function SessionNewClient({ embed }: { embed?: SessionEmbed } = {}) {
   const saveItem = useCallback(
     async (item: WorkSessionItem) => {
       if (!sessionId) return
+      // No `mode` here (bug #2397 / #2398, 2026-11-14): a field save re-sent the phone's stale
+      // « new work » mode after an apply had already created the work, and the server unlinked
+      // it, so the next save created a second work. The mode changes only via changeItemMode.
       const r = await updateWorkSessionItemMetadata(sessionId, item.id, {
-        mode: item.mode,
         notes: item.notes ?? '',
         title_hint: item.title_hint ?? '',
         width_cm: item.width_cm ?? '',
