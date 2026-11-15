@@ -6,7 +6,6 @@ _Open items only, one line each, in order. Details → [`TODO_NOTES.md`](./TODO_
 
 ## 0. Bugs — fix now (each still needs Pem's GO to edit, `CLAUDE.md`)
 
-- [ ] B6. **Constellation eraser** rubs out drawn strokes bit by bit as you drag and never removes a link — make it remove a whole object (stroke, text, box, link) on click.
 - [ ] B7. **Export → Labels: « Image » stays ticked but no label prints an image.** Pem 2026-11-15: « yes, otherwise it's absurd » → print a small image on the label (left of the text, PDF + HTML, fits beside the QR on L7163 / L7651); grey out the ticks that still do not apply (status, notes).
 - [ ] B9. **Inventory / drawer quick fixes (6)** from Pem's review of 2026-11-15 (status wording for status 1, QR fallback on dev, cut column titles, « Filters + », « Data history », palette accents) → [DESIGN_DRAWER](./DESIGN_DRAWER.md) « Quick fixes ».
 

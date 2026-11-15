@@ -44,6 +44,7 @@ export interface UseConstellationPointerArgs {
   selectedGroupId: string | null
   frozenEdges:     Edge[] | null
   activeShape:     Shape | null
+  shapes:          Shape[]
   marquee:         { x: number; y: number; w: number; h: number } | null
   customIds:       Set<number>
   oeuvresById:     Map<number, Oeuvre>
@@ -67,12 +68,28 @@ export interface UseConstellationPointerArgs {
   t:                (key: DictKey) => string
 }
 
+/** Index of the topmost drawn shape under (wx, wy) — world coords — or -1. B6: the eraser removes one whole object. */
+function topShapeAt(shapes: Shape[], wx: number, wy: number, z: number): number {
+  for (let k = shapes.length - 1; k >= 0; k--) {
+    const s = shapes[k]
+    if (s.type === 'line') {
+      for (let i = 0; i < s.points.length - 1; i++) {
+        if (ptSeg(wx, wy, s.points[i].x, s.points[i].y, s.points[i + 1].x, s.points[i + 1].y) < 12 / z) return k
+      }
+    } else {
+      const tw = s.text.length * s.size * 0.6
+      if (wx >= s.x - 10 && wx <= s.x + tw + 10 && wy >= s.y - s.size && wy <= s.y + 10) return k
+    }
+  }
+  return -1
+}
+
 // ── Hook ───────────────────────────────────────────────────────────────────
 
 export function useConstellationPointer({
   canvasRef, vpRef, posRef, edgesRef, dragRef, draftRef, hovNodeRef, hovEdgeRef, selRef, groupByRef,
   tool, drawColor, drawWidth, spacePressed, linkType, groupBy,
-  selectedThemeId, selectedGroupId, frozenEdges, activeShape, marquee, customIds, oeuvresById,
+  selectedThemeId, selectedGroupId, frozenEdges, activeShape, shapes, marquee, customIds, oeuvresById,
   setActiveShape, setShapes, setMarquee, setCustomIds, setPanelNode, setSelection, setTextInput,
   onOpen, removeFromCustom, reloadGraphData, onDropExternal, onNodesMoved,
   redraw, router, t,
@@ -98,6 +115,18 @@ export function useConstellationPointer({
   }, [redraw])
 
   // ── Mouse handlers ────────────────────────────────────────────────────────
+
+  /** Delete a link (tblrelations row) and drop it from the canvas. */
+  const removeEdge = useCallback(async (edge: Edge) => {
+    const res = await deleteConstellationRelation(edge.id)
+    if ('error' in res) {
+      console.warn('[constellation] delete edge', res.error)
+      return
+    }
+    edgesRef.current = edgesRef.current.filter(e2 => e2.id !== edge.id)
+    if (hovEdgeRef.current === edge) hovEdgeRef.current = null
+    redraw()
+  }, [redraw])
 
   const onMouseDown = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     const rect = canvasRef.current!.getBoundingClientRect()
@@ -136,23 +165,17 @@ export function useConstellationPointer({
     }
 
     if (tool === 'erase') {
-      dragRef.current = { mode: 'erase', startX: lx, startY: ly }
-      const ex = (lx - vpRef.current.x) / vpRef.current.z
-      const ey = (ly - vpRef.current.y) / vpRef.current.z
-      setShapes(prev => prev.filter(s => {
-        if (s.type === 'line') {
-          for (let i = 0; i < s.points.length - 1; i++) {
-            if (ptSeg(ex, ey, s.points[i].x, s.points[i].y, s.points[i+1].x, s.points[i+1].y) < 12 / vpRef.current.z) return false
-          }
-          return true
-        } else {
-          const charW = s.size * 0.6
-          const tw = s.text.length * charW
-          const th = s.size
-          return !(ex >= s.x - 10 && ex <= s.x + tw + 10 && ey >= s.y - th && ey <= s.y + 10)
-        }
-      }))
-      redraw()
+      // B6: one click removes one whole object — the topmost drawing / text under the cursor, else the link.
+      // Dragging no longer erases everything it passes over.
+      const k = topShapeAt(shapes, wx, wy, vpRef.current.z)
+      if (k >= 0) {
+        const target = shapes[k]
+        setShapes(prev => prev.filter(s => s !== target))
+        redraw()
+        return
+      }
+      const edge = frozenEdges === null ? hitEdge(lx, ly, edgesRef.current, posRef.current, vpRef.current) : null
+      if (edge) void removeEdge(edge)
       return
     }
 
@@ -173,7 +196,7 @@ export function useConstellationPointer({
       dragRef.current = { mode: 'node', startX: lx, startY: ly, nodeId: hit.id, moveIds }
       if (canvasRef.current) canvasRef.current.style.cursor = 'grabbing'
     }
-  }, [tool, drawColor, drawWidth, spacePressed, frozenEdges])
+  }, [tool, drawColor, drawWidth, spacePressed, frozenEdges, shapes, removeEdge])
 
   const onMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     const rect = canvasRef.current!.getBoundingClientRect()
@@ -199,26 +222,6 @@ export function useConstellationPointer({
 
     if (drag.mode === 'marquee') {
       setMarquee({ x: drag.startX, y: drag.startY, w: lx - drag.startX, h: ly - drag.startY })
-      redraw()
-      return
-    }
-
-    if (drag.mode === 'erase') {
-      const wx = (lx - vp.x) / vp.z
-      const wy = (ly - vp.y) / vp.z
-      setShapes(prev => prev.filter(s => {
-        if (s.type === 'line') {
-          for (let i = 0; i < s.points.length - 1; i++) {
-            if (ptSeg(wx, wy, s.points[i].x, s.points[i].y, s.points[i+1].x, s.points[i+1].y) < 12 / vp.z) return false
-          }
-          return true
-        } else {
-          const charW = s.size * 0.6
-          const tw = s.text.length * charW
-          const th = s.size
-          return !(wx >= s.x - 10 && wx <= s.x + tw + 10 && wy >= s.y - th && wy <= s.y + 10)
-        }
-      }))
       redraw()
       return
     }
@@ -423,42 +426,25 @@ export function useConstellationPointer({
       return
     }
 
-    // Erase shape on right-click
+    // Erase shape on right-click (same single-object rule as a left click)
     if (tool === 'erase') {
       const wx = (lx - vpRef.current.x) / vpRef.current.z
       const wy = (ly - vpRef.current.y) / vpRef.current.z
-      setShapes(prev => prev.filter(s => {
-        if (s.type === 'line') {
-          for (let i = 0; i < s.points.length - 1; i++) {
-            if (ptSeg(wx, wy, s.points[i].x, s.points[i].y, s.points[i+1].x, s.points[i+1].y) < 12 / vpRef.current.z) return false
-          }
-          return true
-        } else {
-          const charW = s.size * 0.6
-          const tw = s.text.length * charW
-          const th = s.size
-          return !(wx >= s.x - 10 && wx <= s.x + tw + 10 && wy >= s.y - th && wy <= s.y + 10)
-        }
-      }))
-      redraw()
-      return
+      const k = topShapeAt(shapes, wx, wy, vpRef.current.z)
+      if (k >= 0) {
+        const target = shapes[k]
+        setShapes(prev => prev.filter(s => s !== target))
+        redraw()
+        return
+      }
     }
 
     const edge = frozenEdges === null
       ? hitEdge(lx, ly, edgesRef.current, posRef.current, vpRef.current)
       : null
     if (!edge) return
-    void (async () => {
-      const res = await deleteConstellationRelation(edge.id)
-      if ('error' in res) {
-        console.warn('[constellation] delete edge', res.error)
-        return
-      }
-      edgesRef.current = edgesRef.current.filter(e2 => e2.id !== edge.id)
-      if (hovEdgeRef.current === edge) hovEdgeRef.current = null
-      redraw()
-    })()
-  }, [removeFromCustom, tool, redraw, selectedThemeId, selectedGroupId, reloadGraphData, router, oeuvresById, onOpen, t, frozenEdges])
+    void removeEdge(edge)
+  }, [removeFromCustom, tool, redraw, selectedThemeId, selectedGroupId, reloadGraphData, router, oeuvresById, onOpen, t, frozenEdges, shapes, removeEdge])
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()

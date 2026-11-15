@@ -9,6 +9,12 @@ export const whatsNewMessages = defineMessages({
   },
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
+  // 3.1.26 (2026-11-15) — Constellation eraser: one whole object per click (TODO B6).
+  wn_constellation_eraser_t: { fr: 'Constellation : la gomme efface un objet entier', en: 'Constellation: the eraser removes a whole object' },
+  wn_constellation_eraser_d: {
+    fr: 'Avec la gomme, un clic efface le trait ou le texte sous le curseur en entier, ou à défaut le lien entre deux œuvres. Glisser n’efface plus tout sur son passage. Un lien effacé est supprimé (pas d’annulation).',
+    en: 'With the eraser, one click removes the whole stroke or text under the cursor, or else the link between two works. Dragging no longer wipes everything it passes over. An erased link is deleted (no undo).',
+  },
   // 3.1.25 (2026-11-15) — Constellation keeps the blank canvas + selection for the session (TODO B5).
   wn_constellation_session_t: { fr: 'Constellation : le canevas libre reste', en: 'Constellation: the blank canvas stays' },
   wn_constellation_session_d: {

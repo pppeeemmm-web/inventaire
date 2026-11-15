@@ -2,6 +2,11 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-15 — Constellation eraser removes one whole object per click (TODO B6; verified on dev 2026-11-15, What's new 3.1.26)
+
+- `useConstellationPointer.ts`: the eraser (left or right click) removes the **topmost** drawing or text under the cursor (`topShapeAt`); with none there, the **link** under the cursor (same delete as right-click, now `removeEdge`). Dragging no longer erases everything it passes over (the `erase` drag branch is gone). Canvas « box » = text, the only other drawn object.
+- Checked on dev: two lines drawn, press on the top one and drag across the bottom one → only the top one goes; a click removes the other. **Link removal not clicked on dev** — the only link on screen was real data (#347 → #345); the code path is the existing right-click delete. A link deleted this way is gone from the database (no undo).
+
 ## 2026-11-15 — Constellation keeps the blank canvas and the selection for the session (TODO B5; verified on dev 2026-11-15, What's new 3.1.25)
 
 - Blank canvas (works added, their spots, drawings / texts) → `sessionStorage` `pem_const_session_canvas` (`readSessionCanvas` / `writeSessionCanvas`, `constellation-shared.ts`): restored on mount, written on change, on leaving the tab (unmount) and on `pagehide`. Never on the floor plan (it has its own saved view). Positions are recorded while in « Vider le canevas » mode.

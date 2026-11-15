@@ -552,7 +552,7 @@ export function ConstellationCanvas({
   } = useConstellationPointer({
     canvasRef, vpRef, posRef, edgesRef, dragRef, draftRef, hovNodeRef, hovEdgeRef, selRef, groupByRef,
     tool, drawColor, drawWidth, spacePressed, linkType, groupBy,
-    selectedThemeId, selectedGroupId, frozenEdges, activeShape, marquee, customIds, oeuvresById,
+    selectedThemeId, selectedGroupId, frozenEdges, activeShape, shapes, marquee, customIds, oeuvresById,
     setActiveShape, setShapes, setMarquee, setCustomIds, setPanelNode, setSelection, setTextInput,
     onOpen, removeFromCustom, reloadGraphData, onDropExternal, onNodesMoved,
     redraw, router, t,
