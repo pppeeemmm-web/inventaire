@@ -98,16 +98,16 @@ States: 828 Disponible, 204 Archive artiste, 143 En production, 7 Gift; 835 publ
    - **Création** (creative): creation history, sources, links, comments and notes, field-session history, AI description, themes. Voice notes belong here; their transcript should sit in the comments with its reference (date).
    - **Objet** (object): history / provenance (and future tracking), visibility, fate, condition, physical label, presentation (with the pipeline's gates and checkboxes), value, groups (in link with exhibitions / events).
 5. **Phone — two uses:**
-   - **Recording a new work or a new version** (the field drawer): the same drawer adapted to the phone with fewer fields, mostly inputs — title, technique, support, dimensions, source, maybe a link, place (recorded automatically, or typed), a note, maybe record a voice note.
+   - **Recording a new work or a new version** (the field drawer): the same drawer adapted to the phone with fewer fields, mostly inputs — **the picture import**, title, technique, support, dimensions, source, maybe a link, place (recorded automatically, or typed), a note, maybe record a voice note.
    - **Inventory on the phone:** the same as desktop (though Pem prefers the desktop for it).
    - Same colour code: greyed out when empty.
    - **Adding the artwork's picture on the phone: one button, not a choice** (Pem 2026-11-15: "I always use the photothèque to grab the file I've edited in Lr beforehand"). Today the drawer's « + photo » and the session's two buttons (« Prendre une photo » / « Choisir dans la photothèque ») lead to a file input; on the iPhone, Safari itself then shows its own menu (Photothèque / Prendre une photo / Choisir un fichier) — a web page cannot skip that menu or open the photothèque directly. What the design can do: **one button « Ajouter la photo »** (no in-app choice; the camera button goes), so it is one tap + « Photothèque » in Safari's menu. The path with no menu at all stays Lightroom → Partager → PEM (the share target, `CLAUDE.md`).
 
-## Open points (to settle in the mockups)
+## Settled with Pem (2026-11-15)
 
-- **Voice transcript "in the comments with refs (date)":** copy the transcript text into Commentaires (one text, editable), or show it inside the comments area as a dated entry that stays linked to its audio (nothing copied)? The second keeps one source of truth and the audio; proposed unless Pem prefers the copy.
-- **Themes** move from the top into Création (Pem's list) — the top block then shows period but not themes. OK?
+- **Voice transcript:** **copied into Commentaires** with its reference (date) — "usual process" (the audio stays linked to the work as today).
+- **Themes:** in Création only — "only creative, not essential to the top block".
+- **Collapse / develop switch:** Pem: collapsed shows "the fields in their entirety" — read as: collapsed still lists every field with its full value (no one-line summaries); the mockups show both states so Pem can confirm what the switch folds.
 - ~~Price in the top block?~~ Pem 2026-11-15: **the value group** (price, VAT, discount, payment, costs) stays together in Objet.
-- **Collapse / develop switch:** collapse = only the top block + the two drawer headers (each with a one-line summary); develop = everything open.
 
 Next: whole-screen mockups — desktop (a full work, an almost-empty one) + phone (recording a new work; inventory) — then build.
