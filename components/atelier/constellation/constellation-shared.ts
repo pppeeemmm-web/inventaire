@@ -507,3 +507,26 @@ export function groupWorkSize(
 ): number {
   return groupWork.get(groupId)?.size ?? fallback?.[groupId] ?? 0
 }
+
+// ── Session canvas (TODO B5) ─────────────────────────────────────────────────
+// The blank canvas (works added, their spots, drawings) lives in component state and was lost when
+// leaving the tab. Kept for the browser session (this tab, until closed) — not across devices.
+const SESSION_CANVAS_KEY = 'pem_const_session_canvas'
+export type SessionCanvas = { ids: number[]; pos: Record<string, Pt>; shapes: Shape[] }
+
+export function readSessionCanvas(): SessionCanvas | null {
+  try {
+    const raw = sessionStorage.getItem(SESSION_CANVAS_KEY)
+    if (!raw) return null
+    const v = JSON.parse(raw) as Partial<SessionCanvas>
+    return { ids: Array.isArray(v.ids) ? v.ids : [], pos: v.pos ?? {}, shapes: Array.isArray(v.shapes) ? v.shapes : [] }
+    // eslint-disable-next-line pem-i18n/no-silent-catch -- unreadable / private mode: start empty, as before
+  } catch {
+    return null // unreadable / private mode: start empty, as before
+  }
+}
+
+export function writeSessionCanvas(v: SessionCanvas) {
+  // eslint-disable-next-line pem-i18n/no-silent-catch -- quota / private mode: keep working in memory
+  try { sessionStorage.setItem(SESSION_CANVAS_KEY, JSON.stringify(v)) } catch { /* quota / private mode: keep working in memory */ }
+}

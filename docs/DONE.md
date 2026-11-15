@@ -2,6 +2,12 @@
 
 _Closed items moved out of [`TODO.md`](./TODO.md) on 2026-11-13, newest first, text unchanged. Older history → [`archive/`](./archive/) + git._
 
+## 2026-11-15 — Constellation keeps the blank canvas and the selection for the session (TODO B5; verified on dev 2026-11-15, What's new 3.1.25)
+
+- Blank canvas (works added, their spots, drawings / texts) → `sessionStorage` `pem_const_session_canvas` (`readSessionCanvas` / `writeSessionCanvas`, `constellation-shared.ts`): restored on mount, written on change, on leaving the tab (unmount) and on `pagehide`. Never on the floor plan (it has its own saved view). Positions are recorded while in « Vider le canevas » mode.
+- Selection → `sessionStorage` `pem_selection_session` (`TeamPortalClient`), restored after mount (no server-render mismatch); save declared before restore so the first empty render never wipes it.
+- Scope: this browser tab until it is closed — not across devices or windows. Checked on dev: 3 works + selection 2 kept after Inventaire → Constellation and after a full reload.
+
 ## 2026-11-15 — Exhibition floor plan: groups, saved moves, open a work (TODO B4; verified on dev 2026-11-15, What's new 3.1.24)
 
 - Pem 2026-11-15: **groups = collections of works gathered for an exhibition or event** (not themes, which are creative); you use a group to dispatch works onto the floor plan, and the plan is saved as its own view (one per « mise en espace »).

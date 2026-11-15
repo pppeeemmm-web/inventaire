@@ -25,6 +25,7 @@ import {
   LINK_LABEL_KEYS,
   loadPos, savePos, filterSavedToMembership,
   objToPos,
+  readSessionCanvas, writeSessionCanvas, type SessionCanvas,
   layoutYear, layoutTheme, layoutWorkGroup, layoutGrid,
   buildThemeWorkFromRows, buildThemeWorkFromOeuvreMap, mergeThemeWorkMaps, themeWorkSize,
   buildGroupWorkFromRows, buildGroupWorkFromOeuvreMap, mergeGroupWorkMaps, groupWorkSize,
@@ -106,9 +107,16 @@ export function ConstellationCanvas({
     }
   }, [])
 
+  /** Blank canvas kept for the session (B5); never on the floor plan, which has its own saved view. */
+  const [restored] = useState<SessionCanvas | null>(() => (initialPositions ? null : readSessionCanvas()))
+
   // Refs for stale-closure-safe event handlers
   const vpRef       = useRef<VP>({ x: 40, y: 40, z: 1 })
-  const posRef      = useRef<NodeMap>(new Map())
+  const posRef      = useRef<NodeMap>(
+    restored && initialGroupBy === 'custom'
+      ? new Map(restored.ids.flatMap((id) => (restored.pos[id] ? [[id, restored.pos[id]] as const] : [])))
+      : new Map(),
+  )
   const edgesRef    = useRef<Edge[]>([])
   /** When set, layout effect applies this document once (avoids overwriting cloud positions). */
   const constellationImportPendingRef = useRef<ConstellationMapDocument | null>(null)
@@ -126,7 +134,7 @@ export function ConstellationCanvas({
   const [linkType,  setLinkType]  = useState<LinkType>('influence')
   const [loading,   setLoading]   = useState(true)
   const [tool,      setTool]      = useState<Tool>('move')
-  const [shapes,    setShapes]    = useState<Shape[]>([])
+  const [shapes,    setShapes]    = useState<Shape[]>(() => restored?.shapes ?? [])
   const [marquee,   setMarquee]   = useState<{ x: number; y: number; w: number; h: number } | null>(null)
   const [themeWork, setThemeWork] = useState<Map<number, Set<number>>>(new Map())
   const effectiveThemeWork = useMemo(() => {
@@ -153,7 +161,26 @@ export function ConstellationCanvas({
   const [frozenEdges,      setFrozenEdges]      = useState<Edge[] | null>(null)
   const [activeCloudMapId, setActiveCloudMapId] = useState<string | null>(null)
   // Custom (blank canvas) mode
-  const [customIds,        setCustomIds]        = useState<Set<number>>(new Set())
+  const [customIds,        setCustomIds]        = useState<Set<number>>(() => new Set(restored?.ids ?? []))
+  // B5: write the blank canvas to the session on change and when the tab is left (unmount) — positions are read then.
+  const sessionRef = useRef({ customIds, shapes, pos: restored?.pos ?? {} })
+  sessionRef.current.customIds = customIds
+  sessionRef.current.shapes = shapes
+  const persistSession = useCallback(() => {
+    if (initialPositions) return
+    const s = sessionRef.current
+    const pos: Record<string, Pt> = { ...s.pos }
+    if (groupByRef.current === 'custom') {
+      s.customIds.forEach((id) => { const p = posRef.current.get(id); if (p) pos[id] = { x: p.x, y: p.y } })
+    }
+    s.pos = pos
+    writeSessionCanvas({ ids: [...s.customIds], pos, shapes: s.shapes })
+  }, [initialPositions])
+  useEffect(() => { persistSession() }, [customIds, shapes, persistSession])
+  useEffect(() => {
+    window.addEventListener('pagehide', persistSession)
+    return () => { window.removeEventListener('pagehide', persistSession); persistSession() }
+  }, [persistSession])
   const [pickerQ,          setPickerQ]          = useState('')
   const [spacePressed, setSpacePressed] = useState(false)
   // Theme mode: optional single-theme filter

@@ -841,6 +841,24 @@ export function TeamPortalClient({
 
   const [selection,  setSelection]  = useState<Set<number>>(new Set())
 
+  // B5: the selection survives a reload for the browser session. Save is declared before restore so the
+  // first (empty) render never overwrites what is stored; restore runs after mount (no SSR mismatch).
+  const selectionRestoredRef = useRef(false)
+  useEffect(() => {
+    if (!selectionRestoredRef.current) return
+    // eslint-disable-next-line pem-i18n/no-silent-catch -- sessionStorage blocked (private mode): selection stays in memory
+    try { sessionStorage.setItem('pem_selection_session', JSON.stringify([...selection])) } catch { /* private mode: memory only */ }
+  }, [selection])
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('pem_selection_session')
+      const ids = raw ? (JSON.parse(raw) as unknown) : null
+      if (Array.isArray(ids) && ids.length > 0) setSelection(new Set(ids.filter((n): n is number => typeof n === 'number')))
+      // eslint-disable-next-line pem-i18n/no-silent-catch -- unreadable session value: start empty, as before
+    } catch { /* unreadable: start empty, as before */ }
+    selectionRestoredRef.current = true
+  }, [])
+
   useEffect(() => {
     (window as any).setSelection = setSelection
   }, [])

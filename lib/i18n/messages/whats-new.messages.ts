@@ -9,6 +9,12 @@ export const whatsNewMessages = defineMessages({
   },
 
   // 3.1.8 (2026-11-14) — export rebuilt with a live preview (B3); Constellation arrows.
+  // 3.1.25 (2026-11-15) — Constellation keeps the blank canvas + selection for the session (TODO B5).
+  wn_constellation_session_t: { fr: 'Constellation : le canevas libre reste', en: 'Constellation: the blank canvas stays' },
+  wn_constellation_session_d: {
+    fr: 'Les œuvres posées sur le canevas libre, leur place, vos dessins et la sélection restent quand vous changez d’onglet ou rechargez la page, jusqu’à la fermeture de l’onglet du navigateur.',
+    en: 'Works placed on the blank canvas, their spots, your drawings and the selection now stay when you switch tabs or reload the page, until you close the browser tab.',
+  },
   // 3.1.24 (2026-11-15) — exhibition floor plan: groups, saved moves, open a work (TODO B4).
   wn_floor_plan_groups_t: { fr: 'Plan de salle : placer un groupe', en: 'Floor plan: place a group' },
   wn_floor_plan_groups_d: {
